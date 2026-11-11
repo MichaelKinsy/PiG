@@ -138,7 +138,7 @@ const pigLogo = (() => {
 	const rects = inner.match(/<rect [^>]*\/>/g).map((rect) => `\t\t\t${rect}`).join("\n");
 	return `import { useSyncExternalStore } from "react";
 
-// The mark is the PiG pig. With a sprite hook on the server (PiG Standard's \`/sprite\`) the page carries the chosen
+// The mark is the PiG pig. With a sprite hook on the server (pig additive (D482): PiG Standard's \`/sprite\`) the page carries the chosen
 // sprite's info as JSON (data-brand-sprite: key, name; "" for none) and streams changes; the mark and the favicon then draw
 // that sprite's SVGs. Without the hook the attribute is absent and nothing below runs: the mark is
 // the brand's pig.
@@ -198,7 +198,7 @@ ${rects}
 /** By file: the vendored file's sha256 when it is replaced or extended (a Pi change fails the build), the whole replacement, the appended CSS, and the exact literals replaced once each. */
 const files = {
 	"src/web/PiLogo.tsx": { sha256: "2b29bc2437e8cc0285678c5e8ad2bb6153fe45943ce9fcc28d37e7c804edb0de", replaceWhole: pigLogo },
-	"src/web/style.css": { sha256: "c9da1c6e1db2a3dae93d7d6baa15cc3168b81b20b94d906ef6c4ce9b8581efd6", append: stylesheet },
+	"src/web/style.css": { sha256: "b100b29708d6d209456a3766b1a4fdaeb0b81ed5731fbb0dca16ed9292809447", append: stylesheet },
 	"plugins/chat/web.tsx": {
 		literals: [
 			['"Message Pi…"', '"Message PiG…"', "Message Pi…"],

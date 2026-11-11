@@ -2,9 +2,11 @@ package documents
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 	"github.com/MichaelKinsy/PiG/chord/next/store"
@@ -309,7 +311,7 @@ func (d *Documents) Tx(fn func(tx *Transaction) (any, error), token *SealToken, 
 	})
 	var result any
 	if err == nil {
-		result, err = fn(tx)
+		result, err = callTx(fn, tx)
 	}
 	if err == nil {
 		// Timed only when something records: the commit's duration metric, its event on the enclosing span.
@@ -336,6 +338,24 @@ func (d *Documents) Tx(fn func(tx *Transaction) (any, error), token *SealToken, 
 		return nil, err
 	}
 	return result, nil
+}
+
+// callTx runs fn on tx. A transaction cut at its token's seal (or discarded) aborts its drafts, and Pi's overlay proxy then
+// throws a TypeError ("Cannot use a settled overlay") inside `fn`, which rejects the transaction: the callback's goroutine goes
+// on. A Go draft panics with delta.ErrRevoked instead; that panic is returned as the transaction's error, the rejection, so a
+// callback that runs on a task of the host (a handler's blocking work) fails its handler when the object ends under it and does
+// not crash the process. Any other panic is the caller's own.
+func callTx(fn func(tx *Transaction) (any, error), tx *Transaction) (result any, err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			if revoked, ok := recovered.(error); ok && errors.Is(revoked, delta.ErrRevoked) {
+				result, err = nil, revoked
+				return
+			}
+			panic(recovered)
+		}
+	}()
+	return fn(tx)
 }
 
 // commitNow reads the clock a timed commit uses; a package var so a test can count its reads (as host_uuid.go's setUUIDClock).

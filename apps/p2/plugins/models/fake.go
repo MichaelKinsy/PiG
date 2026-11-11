@@ -88,6 +88,10 @@ var scripted = map[string]func() ai.FauxContentBlock{
 	"slow-tool": func() ai.FauxContentBlock {
 		return call("bash", map[string]any{"command": "printf tool-running; sleep 4; printf tool-finished"})
 	},
+	// A tool call that lasts until the run is stopped: a test that needs the run still going, with no clock for the machine's load to beat.
+	"hold-tool": func() ai.FauxContentBlock {
+		return call("bash", map[string]any{"command": "sleep 3600"})
+	},
 }
 
 // oneShotSchemaMarker ends a one-shot agent's instructions (plugins/agent): its schema follows on the same line.

@@ -203,7 +203,7 @@ func TestUploadsTheBoundSessionFixedRouteAndOriginConfirmationFirstNoRedirectsCa
 	}
 	fixture, session := startUploadServer(t)
 	address := mustURL("http://127.0.0.1:" + itoa(fixture.Server.Port))
-	attach := actionC(t, host.LauncherActions(host.LauncherActionOptions{URL: address, Role: "owner"})["attach"])
+	attach := actionC(t, host.LauncherActions(host.LauncherActionOptions{URL: address, Credentials: host.Credentials{Cookie: fixture.Owner().Cookie}, Role: "owner"})["attach"])
 	if attach.Consent(map[string]any{"path": file}, host.ConsentContext{Origin: address}) != nil {
 		t.Fatal("no session bound")
 	}
@@ -314,7 +314,7 @@ func TestCtrlVAnImageUploadsAfterConfirmationTextIsPastedAsTypedFilesGoThroughTh
 		text  string
 	}{image: png}
 	paste := actionK(t, host.LauncherActions(host.LauncherActionOptions{
-		URL: address, Role: "owner",
+		URL: address, Credentials: host.Credentials{Cookie: fixture.Owner().Cookie}, Role: "owner",
 		ReadClipboard: &host.ClipboardReaders{
 			Files: func() []string { return nil },
 			Image: func() *host.ClipboardImage {

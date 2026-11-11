@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -15,6 +16,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/gorilla/websocket"
 
 	"github.com/MichaelKinsy/PiG/apps/p2/hosts"
 	"github.com/MichaelKinsy/PiG/apps/p2/p2test"
@@ -181,11 +184,20 @@ func TestDevicesPluginSignsInARemoteOwnerOverHTTPAndWSNeverGrantsRemoteOrGuestTo
 	if got := statusOf(t, port, "/owner-token", headers); got != 403 {
 		t.Fatalf("/owner-token with a remote cookie: %d", got)
 	}
-	if got := statusOf(t, port, "/owner-token", map[string]string{"Sec-Fetch-Site": "cross-site"}); got != 403 {
-		t.Fatalf("/owner-token cross-site: %d", got)
+	localOwner := map[string]string{"Cookie": fixture.Owner().Cookie}
+	if got := statusOf(t, port, "/owner-token", nil); got != 403 {
+		t.Fatalf("loopback without a credential is nobody: %d", got)
 	}
-	if got := statusOf(t, port, "/owner-token", nil); got != 200 {
-		t.Fatalf("/owner-token on loopback: %d", got)
+	for _, site := range []string{"cross-site", "same-site", "none"} {
+		if got := statusOf(t, port, "/owner-token", merged(localOwner, map[string]string{"Sec-Fetch-Site": site})); got != 403 {
+			t.Fatalf("/owner-token refuses Sec-Fetch-Site: %s: %d", site, got)
+		}
+	}
+	if got := statusOf(t, port, "/owner-token", merged(localOwner, map[string]string{"Sec-Fetch-Site": "same-origin"})); got != 200 {
+		t.Fatalf("/owner-token same-origin: %d", got)
+	}
+	if got := statusOf(t, port, "/owner-token", localOwner); got != 200 {
+		t.Fatalf("/owner-token as the local owner: %d", got)
 	}
 	if got := statusOf(t, port, "/", merged(headers, map[string]string{"Cookie": "wrong"})); got != 401 {
 		t.Fatalf("/ with a wrong cookie: %d", got)
@@ -193,7 +205,7 @@ func TestDevicesPluginSignsInARemoteOwnerOverHTTPAndWSNeverGrantsRemoteOrGuestTo
 	if got := statusOf(t, port, "/", merged(headers, map[string]string{"Host": "wrong.test"})); got != 403 {
 		t.Fatalf("/ on a wrong host: %d", got)
 	}
-	if got := statusOf(t, port, "/", map[string]string{"X-Forwarded-For": "203.0.113.7"}); got != 403 {
+	if got := statusOf(t, port, "/", merged(localOwner, map[string]string{"X-Forwarded-For": "203.0.113.7"})); got != 403 {
 		t.Fatalf("/ forwarded: %d", got)
 	}
 	if got := statusOf(t, port, "/owner-key", headers); got != 404 {
@@ -229,8 +241,8 @@ func TestDevicesPluginSignsInARemoteOwnerOverHTTPAndWSNeverGrantsRemoteOrGuestTo
 	}
 	probe, _ := http.NewRequest(http.MethodGet, "http://127.0.0.1/", nil)
 	probe.Header.Set("Cookie", cookie)
-	if !parts.Access().Authorized(probe, port) {
-		t.Fatal("the internal access does not know the cookie")
+	if session := parts.Access().Session(probe, port); session == nil || session.Kind != devicescontract.SessionDevice {
+		t.Fatalf("the internal access does not know the cookie: %+v", session)
 	}
 	outstanding := mint(t, devices)
 	// Pi: a reload of unchanged code is a no-op, the facet and its open owner access stay.
@@ -391,7 +403,7 @@ func TestOwnerLinkMintsAPrivateFragmentLinkFromTheRunningDevicePathWithoutABrows
 	env := func(values map[string]string) func(string) string {
 		return func(name string) string { return values[name] }
 	}
-	link, err := p2runtime.OwnerLink(context.Background(), nil, env(map[string]string{"PORT": strconv.Itoa(port), "P2_PUBLIC_URL": "https://owner.test"}))
+	link, err := p2runtime.OwnerLink(context.Background(), nil, env(map[string]string{"PORT": strconv.Itoa(port), "P2_PUBLIC_URL": "https://owner.test", "P2_DATA_DIR": fixture.DataDir}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -406,8 +418,250 @@ func TestOwnerLinkMintsAPrivateFragmentLinkFromTheRunningDevicePathWithoutABrows
 		t.Fatalf("a link works once: %d", got)
 	}
 	local := "http://127.0.0.1:" + strconv.Itoa(port)
-	overridden, err := p2runtime.OwnerLink(context.Background(), []string{local}, env(map[string]string{"PORT": strconv.Itoa(port), "P2_PUBLIC_URL": "https://owner.test"}))
+	overridden, err := p2runtime.OwnerLink(context.Background(), []string{local}, env(map[string]string{"PORT": strconv.Itoa(port), "P2_PUBLIC_URL": "https://owner.test", "P2_DATA_DIR": fixture.DataDir}))
 	if err != nil || !strings.HasPrefix(overridden, local+"/owner#") {
 		t.Fatalf("override: %q %v", overridden, err)
+	}
+}
+
+// The data directory is private: the server makes it 0700 and its owner key 0600 (the local owner is whoever can read
+// that key).
+func TestTheDataDirectoryIsPrivateTheServerMakesItMode0700AndItsOwnerKeyMode0600(t *testing.T) {
+	p2test.NoLeakedGoroutines(t)
+	dataDir := filepath.Join(t.TempDir(), "data")
+	if err := os.Mkdir(dataDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(dataDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	p2test.StartFixture(t, hosts.ServerOptions{DataDir: dataDir, Plugins: []string{"devices"}})
+	for path, want := range map[string]os.FileMode{dataDir: 0o700, filepath.Join(dataDir, "owner-key"): 0o600} {
+		info, err := os.Stat(path)
+		if err != nil || info.Mode().Perm() != want {
+			t.Fatalf("%s: mode %v, %v (want %o)", path, info, err, want)
+		}
+	}
+}
+
+// Loopback alone is nobody: any user of the machine reaches 127.0.0.1.
+func TestLoopbackWithoutACredentialIsNobodyPagesAskToSignInOwnerRoutesAndWebSocketsRefuse(t *testing.T) {
+	p2test.NoLeakedGoroutines(t)
+	fixture := p2test.StartFixture(t, hosts.ServerOptions{})
+	port := fixture.Server.Port
+	page := httpGet(t, port, "/", p2test.HTTPOptions{})
+	if page.Status != 401 || !strings.Contains(page.Body, "Sign in to Pi") || page.Headers.Get("Set-Cookie") != "" {
+		t.Fatalf("/: %d %q %q", page.Status, page.Body, page.Headers.Get("Set-Cookie"))
+	}
+	for path, want := range map[string]int{"/s/anything": 401, "/owner/check": 401, "/__p2_dev": 403, "/__p2_tui": 401, "/health": 200} {
+		if got := statusOf(t, port, path, nil); got != want {
+			t.Fatalf("%s without a credential: %d, want %d", path, got, want)
+		}
+	}
+	conn, response, err := websocket.DefaultDialer.Dial("ws://127.0.0.1:"+strconv.Itoa(port)+"/chord", nil)
+	if err == nil {
+		_ = conn.Close()
+		t.Fatal("a WebSocket without a credential is accepted")
+	}
+	if response == nil || response.StatusCode != 403 {
+		t.Fatalf("WebSocket refusal: %v", response)
+	}
+	_ = response.Body.Close()
+	if got := statusOf(t, port, "/", map[string]string{"Cookie": fixture.Owner().Cookie}); got != 404 && got != 200 {
+		t.Fatalf("/ as the local owner: %d", got)
+	}
+}
+
+func TestLocalSignInAOneTimePortBoundChallengeAnsweredWithTheDataDirectorysOwnerKey(t *testing.T) {
+	p2test.NoLeakedGoroutines(t)
+	fixture := p2test.StartFixture(t, hosts.ServerOptions{AllowedHosts: []string{"owner.test"}})
+	port := fixture.Server.Port
+	origin := "http://127.0.0.1:" + strconv.Itoa(port)
+	keyText, err := os.ReadFile(filepath.Join(fixture.DataDir, "owner-key"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	key := strings.TrimSpace(string(keyText))
+	post := func(path string, body any, headers map[string]string) p2test.HTTPResult {
+		t.Helper()
+		encoded, _ := json.Marshal(body)
+		return httpGet(t, port, path, p2test.HTTPOptions{Method: http.MethodPost, Headers: merged(headers, map[string]string{"Content-Type": "application/json"}), Body: strings.NewReader(string(encoded))})
+	}
+	sameOrigin := map[string]string{"Origin": origin}
+	challenge := func() string {
+		t.Helper()
+		response := post(p2runtime.LocalChallengePath, map[string]any{}, sameOrigin)
+		var value struct {
+			Challenge string `json:"challenge"`
+		}
+		if response.Status != 200 || json.Unmarshal([]byte(response.Body), &value) != nil || value.Challenge == "" {
+			t.Fatalf("challenge: %d %q", response.Status, response.Body)
+		}
+		return value.Challenge
+	}
+	claim := func(challenge, proofKey string, proofPort int, headers map[string]string) p2test.HTTPResult {
+		return post(p2runtime.LocalClaimPath, map[string]any{"challenge": challenge, "proof": p2runtime.LocalOwnerProof(proofKey, proofPort, challenge)}, headers)
+	}
+	// Not for another origin, a tunnel host or without the exact Origin.
+	for name, headers := range map[string]map[string]string{"another origin": {"Origin": "http://127.0.0.1:1"}, "no origin": nil, "a tunnel host": ownerTunnel} {
+		if got := post(p2runtime.LocalChallengePath, map[string]any{}, headers).Status; got != 403 {
+			t.Fatalf("a challenge for %s: %d", name, got)
+		}
+	}
+	first := challenge()
+	if got := claim(first, strings.Repeat("f", 64), port, sameOrigin).Status; got != 403 {
+		t.Fatalf("another key's answer: %d", got)
+	}
+	if got := claim(first, key, port, sameOrigin).Status; got != 403 {
+		t.Fatalf("a challenge works once, even after a wrong answer: %d", got)
+	}
+	if got := claim(challenge(), key, port+1, sameOrigin).Status; got != 403 {
+		t.Fatalf("an answer for another port: %d", got)
+	}
+	if got := claim(challenge(), key, port, ownerTunnel).Status; got != 403 {
+		t.Fatalf("no local sign-in on a tunnel host: %d", got)
+	}
+	claimed := claim(challenge(), key, port, sameOrigin)
+	if claimed.Status != 200 {
+		t.Fatalf("claim: %d %s", claimed.Status, claimed.Body)
+	}
+	setCookie := claimed.Headers.Get("Set-Cookie")
+	if !regexp.MustCompile(`^p2_owner_\d+=local\.[a-f0-9]{32}\.\d+\.[a-f0-9]{64}; HttpOnly; SameSite=Lax; Path=/; Max-Age=2592000$`).MatchString(setCookie) {
+		t.Fatalf("Set-Cookie %q", setCookie)
+	}
+	if strings.Contains(setCookie, key) {
+		t.Fatal("the cookie is a session, never the key")
+	}
+	cookie := cookieOf(t, claimed)
+	owner, _ := fixture.Client(map[string]string{"Cookie": cookie})
+	devices, err := p2test.HoldIn(owner, devicescontract.Devices, delta.NewJsonObject(0), "owner")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p2test.Until(devices.Member("canMint"), func(value delta.JsonValue) bool { return value == true }, 0); err != nil {
+		t.Fatalf("a local session has local powers: %v", err)
+	}
+	if got := statusOf(t, port, "/owner/check", merged(ownerTunnel, map[string]string{"Cookie": cookie})); got != 401 {
+		t.Fatalf("a local session copied to a tunnel host is nobody: %d", got)
+	}
+	// The client helper signs in the same way; another data directory gets a clear error, a missing key a reason.
+	target := &url.URL{Scheme: "http", Host: "127.0.0.1:" + strconv.Itoa(port)}
+	other := t.TempDir()
+	missing, err := p2runtime.LocalOwnerSignIn(context.Background(), nil, target, other)
+	if err != nil || missing.Kind != p2runtime.LocalUnavailable {
+		t.Fatalf("missing key: %+v %v", missing, err)
+	}
+	if err := os.WriteFile(filepath.Join(other, "owner-key"), []byte(strings.Repeat("a", 64)), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	mismatch, err := p2runtime.LocalOwnerSignIn(context.Background(), nil, target, other)
+	if err != nil || mismatch.Kind != p2runtime.LocalUnavailable || !strings.Contains(mismatch.Message, "does not use the data directory") {
+		t.Fatalf("another key: %+v %v", mismatch, err)
+	}
+	if again, err := p2runtime.LocalOwnerSignIn(context.Background(), nil, target, fixture.DataDir); err != nil || again.Kind != p2runtime.LocalSignedIn {
+		t.Fatalf("the data directory's key: %+v %v", again, err)
+	}
+}
+
+func TestAnOwnerLinkRedeemedOnLoopbackIsALocalSessionRenewedOnAppLoadsAndEndedBySignOutOfAllDevices(t *testing.T) {
+	p2test.NoLeakedGoroutines(t)
+	web := true
+	fixture := p2test.StartFixture(t, hosts.ServerOptions{Web: &web})
+	port := fixture.Server.Port
+	origin := "http://127.0.0.1:" + strconv.Itoa(port)
+	minted, err := fixture.HTTP("/owner-token", p2test.HTTPOptions{})
+	if err != nil || minted.Status != 200 {
+		t.Fatalf("mint: %+v %v", minted, err)
+	}
+	var token struct {
+		Token string `json:"token"`
+	}
+	if err := json.Unmarshal([]byte(minted.Body), &token); err != nil {
+		t.Fatal(err)
+	}
+	claimed := claimWith(t, port, tokenBody(token.Token), map[string]string{"Origin": origin})
+	if claimed.Status != 200 || !strings.Contains(claimed.Headers.Get("Set-Cookie"), "=local.") || strings.Contains(claimed.Headers.Get("Set-Cookie"), "Secure") {
+		t.Fatalf("claim: %d %q", claimed.Status, claimed.Headers.Get("Set-Cookie"))
+	}
+	cookie := cookieOf(t, claimed)
+	browser, _ := fixture.Client(map[string]string{"Cookie": cookie})
+	devices, err := p2test.HoldIn(browser, devicescontract.Devices, delta.NewJsonObject(0), "owner")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p2test.Until(devices.Member("canMint"), func(value delta.JsonValue) bool { return value == true }, 0); err != nil {
+		t.Fatal(err)
+	}
+	// Each app load renews the same session for another 30 days; other routes leave it alone.
+	sessionID := regexp.MustCompile(`=local\.([a-f0-9]{32})\.`)
+	loaded := httpGet(t, port, "/", p2test.HTTPOptions{Headers: map[string]string{"Cookie": cookie}})
+	renewed := loaded.Headers.Get("Set-Cookie")
+	if loaded.Status != 200 || !strings.HasSuffix(renewed, "SameSite=Lax; Path=/; Max-Age=2592000") ||
+		sessionID.FindStringSubmatch(renewed) == nil || sessionID.FindStringSubmatch(renewed)[1] != sessionID.FindStringSubmatch(cookie)[1] {
+		t.Fatalf("app load: %d %q (cookie %q)", loaded.Status, renewed, cookie)
+	}
+	if got := httpGet(t, port, "/owner/check", p2test.HTTPOptions{Headers: map[string]string{"Cookie": cookie}}).Headers.Get("Set-Cookie"); got != "" {
+		t.Fatalf("other routes renew the cookie: %q", got)
+	}
+	if got := statusOf(t, port, "/", map[string]string{"Cookie": strings.SplitN(renewed, ";", 2)[0]}); got != 200 {
+		t.Fatalf("the renewed cookie: %d", got)
+	}
+	// Sign-out of this local browser ends its cookie only; sign-out of all devices ends every local session too.
+	tui, tuiSocket := fixture.Client(map[string]string{"Cookie": fixture.Owner().Cookie})
+	if _, err := p2test.HoldIn(tui, p2runtime.Access, delta.NewJsonObject(0), "owner"); err != nil {
+		t.Fatal(err)
+	}
+	logout := func(path, value string) p2test.HTTPResult {
+		return httpGet(t, port, path, p2test.HTTPOptions{Method: http.MethodPost, Headers: map[string]string{"Origin": origin, "Cookie": value}})
+	}
+	if got := logout("/owner/logout", cookie).Status; got != 200 {
+		t.Fatalf("logout: %d", got)
+	}
+	if got := statusOf(t, port, "/owner/check", map[string]string{"Cookie": cookie}); got != 401 {
+		t.Fatalf("the signed-out local browser: %d", got)
+	}
+	if got := statusOf(t, port, "/owner/check", map[string]string{"Cookie": fixture.Owner().Cookie}); got != 200 {
+		t.Fatalf("another local session: %d", got)
+	}
+	if p2test.SocketClosed(tuiSocket) {
+		t.Fatal("other local sessions keep their links")
+	}
+	if got := logout("/owner/logout-all", fixture.Owner().Cookie).Status; got != 200 {
+		t.Fatalf("logout-all: %d", got)
+	}
+	if err := p2test.Poll(func() (bool, error) { return p2test.SocketClosed(tuiSocket), nil }, 10*time.Second, "the local session's socket to close"); err != nil {
+		t.Fatal(err)
+	}
+	if got := statusOf(t, port, "/owner/check", map[string]string{"Cookie": fixture.Owner().Cookie}); got != 401 {
+		t.Fatalf("after logout-all: %d", got)
+	}
+	target := &url.URL{Scheme: "http", Host: "127.0.0.1:" + strconv.Itoa(port)}
+	if again, err := p2runtime.LocalOwnerSignIn(context.Background(), nil, target, fixture.DataDir); err != nil || again.Kind != p2runtime.LocalSignedIn {
+		t.Fatalf("the new key signs in: %+v %v", again, err)
+	}
+}
+
+// Another user (no readable key) or another data directory gets a clear error from `p2 owner-link`, never a link.
+func TestOwnerLinkNeedsTheServersDataDirectoryAndItsOwnerKey(t *testing.T) {
+	p2test.NoLeakedGoroutines(t)
+	fixture := p2test.StartFixture(t, hosts.ServerOptions{})
+	other := t.TempDir()
+	run := func(dataDir string) error {
+		_, err := p2runtime.OwnerLink(context.Background(), nil, func(name string) string {
+			return map[string]string{"PORT": strconv.Itoa(fixture.Server.Port), "P2_DATA_DIR": dataDir}[name]
+		})
+		return err
+	}
+	if err := run(other); err == nil || !regexp.MustCompile(`^Cannot read .*owner-key: local sign-in needs the user running the p2 server`).MatchString(err.Error()) {
+		t.Fatalf("no key: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(other, "owner-key"), []byte(strings.Repeat("a", 64)), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := run(other); err == nil || !strings.Contains(err.Error(), "does not use the data directory") {
+		t.Fatalf("another key: %v", err)
+	}
+	if err := run(fixture.DataDir); err != nil {
+		t.Fatalf("the server's data directory: %v", err)
 	}
 }

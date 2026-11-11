@@ -7,8 +7,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -19,6 +21,7 @@ import (
 	// The plugins this executable ships (every directory of plugins/ with a plugin.go: plugins_test.go checks the list).
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/agent"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/artifacts"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/cache-warming"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/chat"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/chat-mode"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/codemode"
@@ -107,6 +110,15 @@ func runServer() int {
 		return 1
 	}
 	fmt.Printf("p2: http://127.0.0.1:%d (data %s)\n", server.Port, server.DataDir)
+	// A browser on this machine signs in once per profile by pasting this one-time token into the sign-in page (ten
+	// minutes; later ones: `p2 owner-link`). It is redacted from the server's log buffer; only the terminal shows it.
+	local := &url.URL{Scheme: "http", Host: "127.0.0.1:" + strconv.Itoa(server.Port)}
+	if token, err := p2runtime.MintOwnerToken(context.Background(), nil, local, server.DataDir); err != nil {
+		fmt.Fprintf(os.Stderr, "p2: no sign-in token: %v\n", err)
+	} else {
+		p2runtime.ProcessLogs.Redactor.AddSecret(token)
+		fmt.Printf("p2: sign-in token (one use, ten minutes; paste it at %s): %s\n", local, token)
+	}
 	signals := make(chan os.Signal, 2)
 	signal.Notify(signals, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
 	// Every way out goes through the returned code: a signal's default action would skip the close (the lock files, the

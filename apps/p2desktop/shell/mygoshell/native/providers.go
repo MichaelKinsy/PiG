@@ -10,7 +10,7 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// the providers sheet, as the web's "Providers": the providers that can be signed in to, each with its ways
+// pig additive (D481): the providers sheet, as the web's "Providers": the providers that can be signed in to, each with its ways
 // (an API key, OAuth), the flow of the sign-in in progress (a URL to open, a device code, the question it waits for) and signing
 // out. The flows run on the server (p2.provider-login) over the same credentials the web and the TUI use.
 

@@ -17,13 +17,15 @@ import (
 // A file chosen with the composer's + goes up through the server's upload route and rides on Chat.send as an attachment.
 func TestAttachmentsGoWithTheMessage(t *testing.T) {
 	fake, zero := true, 0
-	server, err := hosts.StartServer(hosts.ServerOptions{DataDir: t.TempDir(), Port: &zero, Fake: &fake, Facets: []host.HostFacet{surfacehost.ServerFacet(nil)}})
+	dataDir := t.TempDir()
+	server, err := hosts.StartServer(hosts.ServerOptions{DataDir: dataDir, Port: &zero, Fake: &fake, Facets: []host.HostFacet{surfacehost.ServerFacet(nil)}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = server.Close(p2test.Background) })
 	origin := fmt.Sprintf("http://127.0.0.1:%d", server.Port)
-	h, err := surfacehost.Open(surfacehost.Options{Server: server.Host, Origin: origin})
+	cookie := p2test.SignInLocalOwner(t, server.Port, dataDir).Cookie
+	h, err := surfacehost.Open(surfacehost.Options{Server: server.Host, Origin: origin, Cookie: cookie})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,12 +48,15 @@ func TestAttachmentsGoWithTheMessage(t *testing.T) {
 	if h.Origin() != origin {
 		t.Fatalf("origin = %q", h.Origin())
 	}
-	up, err := screens.UploadFile(context.Background(), origin, id, path)
+	up, err := screens.UploadFile(context.Background(), origin, cookie, id, path)
 	if err != nil || up.ID == "" || up.Name != "notes.txt" || up.Size != 17 {
 		t.Fatalf("upload = %+v, %v", up, err)
 	}
-	if _, err := screens.UploadFile(context.Background(), origin, "no-such-session", path); err == nil {
+	if _, err := screens.UploadFile(context.Background(), origin, cookie, "no-such-session", path); err == nil {
 		t.Fatal("an upload to an unknown session was taken")
+	}
+	if _, err := screens.UploadFile(context.Background(), origin, "", id, path); err == nil {
+		t.Fatal("an upload without the owner's session was taken")
 	}
 	chat, err := screens.OpenChat(h, scope, id, 1, func() {})
 	if err != nil {

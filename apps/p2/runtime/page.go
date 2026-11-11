@@ -61,8 +61,8 @@ func Page(options PageOptions) string {
 		`<h1>` + htmlEscaper.Replace(options.Heading) + `</h1></header>` + options.Body + `</main>` + script + `</body></html>`
 }
 
-const signInBody = `<p>Run <span class="mono">npm run owner-link</span> on the host and open its link on this device. You can also paste a one-time token from Devices.</p>
-<form id="sign-in"><label for="token">One-time token</label><input id="token" class="mono" type="password" autocomplete="off" spellcheck="false" required><button id="submit" type="submit">Sign in</button></form>
+const signInBody = `<p>Paste the sign-in token the server printed when it started, or run <span class="mono">npm run owner-link</span> on the host and open its link on this device. You can also paste a one-time token from Devices.</p>
+<form id="sign-in"><label for="token">One-time token</label><input id="token" class="mono" type="password" autocomplete="off" spellcheck="false" required autofocus><button id="submit" type="submit">Sign in</button></form>
 <p id="status" role="status"></p><p class="small">This grants full owner access, including shell commands. Tokens expire after ten minutes and work once.</p>`
 
 const signInScript = `const input=document.getElementById("token"),button=document.getElementById("submit"),status=document.getElementById("status");
@@ -73,18 +73,32 @@ async function claim(token){button.disabled=true;status.className="";status.text
 document.getElementById("sign-in").onsubmit=(event)=>{event.preventDefault();claim(input.value.trim());};
 if(location.hash){const fragment=location.hash.slice(1);history.replaceState(null,"","/owner");try{claim(decodeURIComponent(fragment));}catch{status.className="error";status.textContent="Invalid owner link.";}}`
 
+// signInReload loads the page once more from this origin first (see SignInOptions.Reload).
+const signInReload = `if(!location.hash)location.replace(location.href);`
+
+// SignInOptions are the options of SignIn.
+type SignInOptions struct {
+	// Reload loads the page once more from this origin first (a navigation from another site may have arrived without the
+	// owner's cookie); that load is same-origin, so it never reloads again.
+	Reload bool
+}
+
 // SignIn answers with the public, credential-free landing page. An invitation is only ever submitted in a same-origin
 // POST.
-func SignIn(response http.ResponseWriter, request *http.Request, status int) {
+func SignIn(response http.ResponseWriter, request *http.Request, status int, options SignInOptions) {
 	random := make([]byte, 18)
 	// crypto/rand does not fail on the supported systems (it terminates the program if it would).
 	_, _ = rand.Read(random)
 	nonce := base64.RawURLEncoding.EncodeToString(random)
+	script := signInScript
+	if options.Reload {
+		script = signInReload + script
+	}
 	response.Header().Set("Content-Type", "text/html; charset=utf-8")
 	response.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'nonce-"+nonce+"'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
 	response.WriteHeader(status)
 	if request.Method == http.MethodHead {
 		return
 	}
-	_, _ = response.Write([]byte(Page(PageOptions{Title: "Pi · Sign in", Heading: "Sign in to Pi", Nonce: nonce, Body: signInBody, Script: signInScript})))
+	_, _ = response.Write([]byte(Page(PageOptions{Title: "Pi · Sign in", Heading: "Sign in to Pi", Nonce: nonce, Body: signInBody, Script: script})))
 }

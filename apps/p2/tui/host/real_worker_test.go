@@ -29,7 +29,7 @@ const (
 	keyCtrlX = "\x18"
 )
 
-var realPlugins = []string{"chat", "chat-mode", "conversations", "drafts", "envs", "files", "models", "sessions", "sharing", "status", "subagents"}
+var realPlugins = []string{"devices", "chat", "chat-mode", "conversations", "drafts", "envs", "files", "models", "sessions", "sharing", "status", "subagents"}
 
 // startReal is a launcher with the real surfaces on a real server that has one session (Pi's `startFixture` + `sessions.create`).
 func startReal(t *testing.T, options launcherOptions, server ...func(*hosts.ServerOptions)) *launcher {
@@ -86,7 +86,7 @@ func (l *launcher) openNewestSession() {
 	l.waitScreen(15*time.Second, "New session")
 	l.terminal.SendInput(keyDown)
 	l.terminal.SendInput(keyEnter)
-	pollFor(l.t, 10*time.Second, func() bool {
+	l.until(10*time.Second, "the conversation connected", func() bool {
 		screen := l.terminal.screen()
 		return !strings.Contains(screen, "Connecting conversation") && strings.Contains(screen, "•")
 	})

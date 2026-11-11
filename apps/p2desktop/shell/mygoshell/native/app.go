@@ -22,7 +22,7 @@ var logoPNG []byte
 
 var logo, _ = ui.DecodeBitmap(logoPNG)
 
-// the native client is a surface host (internal/surfacehost); these are its views.
+// pig additive (D481): the native client is a surface host (internal/surfacehost); these are its views.
 
 // App is the window's content: a view that is a function of the surface host's state. Make it with New (before the host,
 // whose Changed is App.Invalidate), give it the host with Start, give it to the window (shell.Content, Build).

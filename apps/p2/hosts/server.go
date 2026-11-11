@@ -134,6 +134,11 @@ func StartServer(options ServerOptions) (*P2Server, error) {
 	if err := os.MkdirAll(filepath.Join(dataDir, "sessions"), 0o700); err != nil {
 		return nil, err
 	}
+	// The local owner is whoever can read this directory's owner key, and not every file in it is 0600 (SQLite stores,
+	// mcp.json): a directory made before p2 (another umask) is made private too.
+	if err := os.Chmod(dataDir, 0o700); err != nil {
+		return nil, err
+	}
 	// One server per data directory: a lock another server holds refuses the start after a short wait (a restart's old
 	// server may still be exiting).
 	unlock, err := p2runtime.TakeProcessLock("p2:server:"+dataDir, 5*time.Second)
@@ -401,12 +406,10 @@ type serverState struct {
 	sprite *spriteHub
 }
 
-// authenticate is who the request is. Loopback is the device owner, except for a browser request another site made or
-// frames (Fetch Metadata) other than a top-level navigation to an app page: no clickjacking or cross-site driving of the
-// owner UI (resolveAccess also drops cookie principals of such requests). Tunnel requests are whoever an authenticator (a
-// cookie) says. As in Pi Mobile, the device owner's browser carries a loopback owner cookie (set when it loads the app),
-// which wins over a guest cookie; without it, a guest cookie wins over the cookieless loopback fallback, so a browser that
-// joined a share on loopback is that guest everywhere.
+// authenticate is who the request is: an owner session cookie (a local one only on loopback), a guest cookie, a Radius user.
+// An owner wins over a guest cookie in the same browser. Loopback alone proves nothing (any user of the machine reaches
+// it): the local owner is whoever proved to run as the server's user (runtime/local_owner.go) or redeemed an owner link on
+// loopback, and holds that local session cookie. Another site's requests lose every principal in resolveAccess.
 func (s *serverState) authenticate(request *http.Request, origin p2runtime.RequestOrigin, ctx host.Ctx) (p2runtime.Principal, error) {
 	source, err := s.host.Registry(ctx, p2runtime.Authenticators.Registry, host.GetOptions{})
 	if err != nil {
@@ -423,7 +426,6 @@ func (s *serverState) authenticate(request *http.Request, origin p2runtime.Reque
 		if err != nil {
 			return nil, err
 		}
-		// Associated owners stay remote even on localhost; a guest cookie cannot downgrade them.
 		if p2runtime.IsOwner(principal) {
 			return principal, nil
 		}
@@ -431,25 +433,7 @@ func (s *serverState) authenticate(request *http.Request, origin p2runtime.Reque
 			authenticated = principal
 		}
 	}
-	// A top-level page navigation from another site may load the app too (a link from another local port): it can neither be
-	// framed nor read back, and the page's own requests are same-origin.
-	loopbackOwner := !origin.Remote && (!ForeignBrowserRequest(request) || PageNavigation(request))
-	if loopbackOwner && authenticated != nil {
-		has, err := p2runtime.HasLoopbackCookie(request, origin.Port, s.dataDir)
-		if err != nil {
-			return nil, err
-		}
-		if has {
-			return p2runtime.OwnerPrincipal{Access: p2runtime.AccessLocal}, nil
-		}
-	}
-	if authenticated != nil {
-		return authenticated, nil
-	}
-	if loopbackOwner {
-		return p2runtime.OwnerPrincipal{Access: p2runtime.AccessLocal}, nil
-	}
-	return nil, nil
+	return authenticated, nil
 }
 
 func (s *serverState) credentialAccess(request *http.Request, ctx host.Ctx) (*p2runtime.RequestAccess, error) {
@@ -582,9 +566,7 @@ func (s *serverState) handle(response http.ResponseWriter, request *http.Request
 	// A stream (the sprite events) outlives the host's root scope: dispatch hands it back to run once the scope has ended, so
 	// closing the host never waits for it.
 	var stream func()
-	_, err := s.host.Root(func(ctx host.Ctx) (any, error) {
-		return nil, s.dispatch(response, request, path, ctx, &stream)
-	}, chordctx.Background(), host.RootOptions{})
+	err := s.serveRoot(func(ctx host.Ctx) error { return s.dispatch(response, request, path, ctx, &stream) })
 	if err == nil && stream != nil {
 		stream()
 		return
@@ -593,6 +575,46 @@ func (s *serverState) handle(response http.ResponseWriter, request *http.Request
 		fmt.Fprintln(os.Stderr, "p2 server: request failed", err)
 		http.Error(response, "", http.StatusInternalServerError)
 	}
+}
+
+// serveRoot runs fn, which writes the response, in a root scope of the host, and returns once fn does not write any more: the response has one writer at a
+// time. A root scope returns at once when the host closes (an uncooperative fn runs on and fails at its next use of Chord), and the caller then answers
+// the request itself (the error) or returns from the handler, while fn still writes. So an fn that has not begun is abandoned (it does nothing when it
+// does), and one that has is waited for; what it returned is the result then, not the scope's rejection.
+func (s *serverState) serveRoot(fn func(ctx host.Ctx) error) error {
+	var mu sync.Mutex
+	var abandoned, running, completed bool
+	var fnErr error
+	finished := make(chan struct{})
+	_, err := s.host.Root(func(ctx host.Ctx) (any, error) {
+		mu.Lock()
+		if abandoned {
+			mu.Unlock()
+			return nil, nil
+		}
+		running = true
+		mu.Unlock()
+		defer close(finished)
+		fnErr = fn(ctx)
+		completed = true
+		return nil, fnErr
+	}, chordctx.Background(), host.RootOptions{})
+	if err == nil {
+		return nil
+	}
+	mu.Lock()
+	abandoned = true
+	waits := running
+	mu.Unlock()
+	if !waits {
+		return err
+	}
+	<-finished
+	if completed {
+		return fnErr
+	}
+	// A panic of fn: the scope's rejection.
+	return err
 }
 
 func (s *serverState) dispatch(response http.ResponseWriter, request *http.Request, path string, ctx host.Ctx, stream *func()) error {
@@ -668,7 +690,7 @@ func (s *serverState) dispatch(response http.ResponseWriter, request *http.Reque
 		case isGuest:
 			response.WriteHeader(http.StatusForbidden)
 		default:
-			p2runtime.SignIn(response, request, http.StatusUnauthorized)
+			p2runtime.SignIn(response, request, http.StatusUnauthorized, p2runtime.SignInOptions{})
 		}
 		return nil
 	}
@@ -683,14 +705,26 @@ func (s *serverState) dispatch(response http.ResponseWriter, request *http.Reque
 	if route, ok := p2runtime.FindRoute(routes, request.Method, path); ok {
 		return route(response, request, p2runtime.RequestAccess{Principal: principal, Origin: origin}, ctx)
 	}
-	// The local owner's browser loading the app gets the loopback owner cookie (Pi Mobile sets it on `/`).
-	if owner, ok := principal.(p2runtime.OwnerPrincipal); ok && owner.Access == p2runtime.AccessLocal && !origin.Remote && get &&
-		(path == "/" || len(path) > 3 && path[:3] == "/s/") {
-		cookie, err := p2runtime.LoopbackCookie(origin.Port, s.dataDir)
+	// An owner loading the app may get renewed cookies (a local session in use does not expire).
+	if p2runtime.IsOwner(principal) && get && (path == "/" || strings.HasPrefix(path, "/s/")) {
+		source, err := s.host.Registry(ctx, p2runtime.PageCookies.Registry, host.GetOptions{})
 		if err != nil {
 			return err
 		}
-		response.Header().Set("Set-Cookie", cookie)
+		cookies, err := p2runtime.PageCookies.Table(source)
+		if err != nil {
+			return err
+		}
+		var values []string
+		for _, key := range cookies.Keys() {
+			cookie, _ := cookies.Get(key)
+			if value := cookie(request, p2runtime.RequestAccess{Principal: principal, Origin: origin}); value != "" {
+				values = append(values, value)
+			}
+		}
+		if len(values) > 0 {
+			response.Header()["Set-Cookie"] = values
+		}
 	}
 	if s.sprite != nil && path == SpriteEventsPath && get && (p2runtime.IsOwner(principal) || p2runtime.IsGuest(principal)) {
 		*stream = func() { s.sprite.serveEvents(response, request) }
@@ -721,7 +755,9 @@ func (s *serverState) dispatch(response http.ResponseWriter, request *http.Reque
 		_, _ = response.Write([]byte("Nothing on this brain is shared with you. Ask its owner for a share link.\n"))
 		return nil
 	}
-	p2runtime.SignIn(response, request, http.StatusUnauthorized)
+	// A link from another site may arrive without the owner's cookie (Chrome launching an installed app sent none): the
+	// page loads itself once more from this origin, which sends it.
+	p2runtime.SignIn(response, request, http.StatusUnauthorized, p2runtime.SignInOptions{Reload: ForeignBrowserRequest(request) && PageNavigation(request)})
 	return nil
 }
 

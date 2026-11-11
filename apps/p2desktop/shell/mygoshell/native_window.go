@@ -13,7 +13,7 @@ type builder interface {
 	Build(c *ui.Context)
 }
 
-// a native window draws the content itself: no page, no web view, no bridge.
+// pig additive (D481): a native window draws the content itself: no page, no web view, no bridge.
 func (p *Platform) newNativeWindow(spec shell.WindowSpec) (shell.Window, error) {
 	content, ok := spec.Content.(builder)
 	if !ok {

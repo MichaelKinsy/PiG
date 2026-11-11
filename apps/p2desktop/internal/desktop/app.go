@@ -12,6 +12,7 @@ import (
 	"fmt"
 	brandsprite "github.com/MichaelKinsy/PiG/apps/p2/brand/sprite"
 	"net"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -21,10 +22,12 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/apps/p2/hosts"
+	devicescontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/devices/contract"
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	"github.com/MichaelKinsy/PiG/apps/p2desktop/internal/leakcheck"
 	"github.com/MichaelKinsy/PiG/apps/p2desktop/internal/surfacehost"
 	"github.com/MichaelKinsy/PiG/apps/p2desktop/shell"
+	"github.com/MichaelKinsy/PiG/chord/next/host"
 )
 
 var configureFetch sync.Once
@@ -84,6 +87,8 @@ type App struct {
 	pending  string
 	closed   bool
 	starting sync.WaitGroup
+	// webSignedIn is set once the web view was given a link that signs it in (see entryURL).
+	webSignedIn bool
 	// notices are the notifications being shown (the first can wait for the user's answer); cancel ends the waits.
 	notices sync.WaitGroup
 	cancel  context.CancelFunc
@@ -206,16 +211,91 @@ func (a *App) startServer() {
 		route = "/"
 	}
 	if window != nil {
-		window.Load(origin + route)
+		window.Load(a.entryURL(route))
 	}
+}
+
+// entryURL is what the web view loads for route. Loopback alone is nobody, so a web view holds no session of p2 until it
+// redeems an owner link: its first page is a one-time link minted with the data directory's owner key (the page claims it and
+// lands on "/", and the session cookie stays in the view); later loads go to the route itself.
+func (a *App) entryURL(route string) string {
+	a.mu.Lock()
+	server, origin, signed := a.server, a.origin, a.webSignedIn
+	a.mu.Unlock()
+	if signed || server == nil {
+		return origin + route
+	}
+	token, err := p2runtime.MintOwnerToken(a.ctx, nil, loopback(server.Port), server.DataDir)
+	if err != nil {
+		a.cfg.Errors("signing the web view in: %v", err)
+		return origin + route
+	}
+	a.mu.Lock()
+	watching := !a.closed
+	if watching {
+		a.starting.Add(1)
+	}
+	a.mu.Unlock()
+	if watching {
+		go func() {
+			defer a.starting.Done()
+			a.watchClaim(server, token)
+		}()
+	}
+	return origin + "/owner#" + token
+}
+
+// watchClaim marks the web view signed in once its owner link was redeemed (the invitation is no longer outstanding
+// within its ten minutes); a first load that failed leaves it unmarked, so the next navigation mints a new link.
+func (a *App) watchClaim(server *hosts.P2Server, token string) {
+	source, err := server.Host.Registry(a.ctx, devicescontract.DeviceAccesses, host.GetOptions{})
+	if err != nil {
+		return
+	}
+	parts, _ := source.Value().(*devicescontract.DeviceAccessParts)
+	if parts == nil {
+		return
+	}
+	deadline := time.NewTimer(9 * time.Minute)
+	defer deadline.Stop()
+	tick := time.NewTicker(100 * time.Millisecond)
+	defer tick.Stop()
+	for parts.Access().Pending(token) {
+		select {
+		case <-tick.C:
+		case <-deadline.C:
+			return
+		case <-a.ctx.Done():
+			return
+		}
+	}
+	a.mu.Lock()
+	a.webSignedIn = true
+	a.mu.Unlock()
+}
+
+// loopback is the origin of the server on port.
+func loopback(port int) *url.URL {
+	return &url.URL{Scheme: "http", Host: net.JoinHostPort("127.0.0.1", strconv.Itoa(port))}
 }
 
 // startNative opens the surface host on the server and gives it to the window's content.
 func (a *App) startNative(server *hosts.P2Server, route string) {
 	native := a.cfg.Native
+	// The uploads are the local owner's: they sign in with the owner key of the data directory, as the TUI does.
+	signIn, err := p2runtime.LocalOwnerSignIn(a.ctx, nil, loopback(server.Port), server.DataDir)
+	if err == nil && signIn.Kind == p2runtime.LocalUnavailable {
+		err = errors.New(signIn.Message)
+	}
+	if err != nil {
+		a.cfg.Errors("the native client did not start: %v", err)
+		a.p.ShowError("PiG could not sign in to its server", err.Error())
+		return
+	}
 	h, err := surfacehost.Open(surfacehost.Options{
 		Server:    server.Host,
 		Origin:    a.Origin(),
+		Cookie:    signIn.Cookie,
 		Plugins:   builtinPlugins,
 		Modules:   builtinModules,
 		Preferred: preferredLanguages(),
@@ -247,7 +327,7 @@ func (a *App) startNative(server *hosts.P2Server, route string) {
 	}
 }
 
-// the server runs in the app's process on loopback; the port of the last launch is asked for first so the
+// pig additive (D481): the server runs in the app's process on loopback; the port of the last launch is asked for first so the
 // web UI keeps its per-origin settings.
 // listen starts the server on the port asked for: the last one when it is free, else any free port.
 func (a *App) listen() (*hosts.P2Server, error) {
@@ -262,7 +342,7 @@ func (a *App) listen() (*hosts.P2Server, error) {
 	configureFetch.Do(p2runtime.ConfigureFetch)
 	options := hosts.ServerOptions{DataDir: a.cfg.DataDir, Port: &port, Fake: a.cfg.Fake, Idle: a.cfg.Idle}
 	if a.cfg.Native != nil {
-		// the server serves the desktop surface's scripts object beside its own.
+		// pig additive (D481): the server serves the desktop surface's scripts object beside its own.
 		options.Facets = append(options.Facets, surfacehost.ServerFacet(builtinPlugins))
 	}
 	withSprite := func() { // the branded web UI (browser, phone, fallback webview) draws the sprite the user chose with /sprite
@@ -313,7 +393,7 @@ func (a *App) openWindow() {
 		spec.Background = ""
 		spec.Microphone = false
 	} else if origin != "" {
-		spec.URL, spec.Origin = origin+"/", origin
+		spec.URL, spec.Origin = a.entryURL("/"), origin
 	}
 	// Without an origin the window shows a blank page; Load gives it the server's origin once the server listens.
 	window, err := a.p.NewWindow(spec)
@@ -376,7 +456,7 @@ func (a *App) navigate(route string) {
 		a.mu.Unlock()
 	}
 	if window != nil {
-		window.Load(origin + route)
+		window.Load(a.entryURL(route))
 		window.Focus()
 	}
 }

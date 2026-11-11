@@ -59,14 +59,7 @@ func (r *discordRig) must(method string, args delta.JsonValue) *delta.JsonObject
 	r.t.Helper()
 	value, err := r.ingress(method, args)
 	if err != nil {
-		workers, _ := r.f.Fixture.Server.Host.Root(func(ctx host.Ctx) (any, error) {
-			hosts, err := ctx.Get(p2runtime.Hosts, delta.NewJsonObject(0), host.GetOptions{})
-			if err != nil {
-				return nil, err
-			}
-			return hosts.Member("workers").Value()
-		}, p2test.Background, host.RootOptions{})
-		r.t.Fatalf("%s: %v (workers %v)", method, err, workers)
+		r.t.Fatalf("%s: %v", method, err)
 	}
 	return object(value)
 }

@@ -154,6 +154,7 @@ func withTerminal(t *testing.T, touch bool, script string, run func(page *termin
 	}
 	id := object(created).Value("id").(string)
 	page := &terminalPage{Chromium: p2test.StartChromium(t), t: t, origin: "http://127.0.0.1:" + strconv.Itoa(fixture.Server.Port)}
+	page.SignIn(fixture.Owner())
 	t.Cleanup(func() {
 		if t.Failed() {
 			var state string

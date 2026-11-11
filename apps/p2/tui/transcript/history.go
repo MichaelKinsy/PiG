@@ -263,13 +263,16 @@ func (s *TranscriptStore) startLocked() {
 			s.apply(ctx, view, ops)
 		}
 		apply(watch.Value(), false)
-		watch.Start(func(_ context.Context, call chord.WatchCall[delta.JsonValue]) error {
-			if call.Kind == chord.WatchCallValue && ctx.Err() == nil {
-				// A change as operations, unless the whole value was replaced (`r`: the first, a reconnect's).
-				replaced := len(call.Ops) == 1 && delta.Verb(call.Ops[0]) == "r"
-				apply(call.Value, !replaced)
-			}
-			return nil
+		// The stop (a switch of conversation) may reach the watch between the check above and its start: that only means the follow ended.
+		chord.StartUnlessEnded(func() {
+			watch.Start(func(_ context.Context, call chord.WatchCall[delta.JsonValue]) error {
+				if call.Kind == chord.WatchCallValue && ctx.Err() == nil {
+					// A change as operations, unless the whole value was replaced (`r`: the first, a reconnect's).
+					replaced := len(call.Ops) == 1 && delta.Verb(call.Ops[0]) == "r"
+					apply(call.Value, !replaced)
+				}
+				return nil
+			})
 		})
 	}()
 }

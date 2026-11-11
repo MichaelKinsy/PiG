@@ -1,0 +1,4 @@
+### Fixed
+
+- p2 TUI: the chat screen's calls to the server (send, follow-up, stop, dequeue, compact, new context, branch switch, shell) run one at a time in the order they were made, as Pi's do. Each ran on a goroutine of its own, so Alt+Up could reach the server before the Alt+Enter it follows and find nothing queued. A running command's card in the TUI counts its elapsed time without rebuilding its display beside the render, and the TUI client publishes its chord socket before any of its callbacks runs. <!-- fix: p2-tui-race -->
+- p2 server: a request still being served when the host closes has one writer of its response (the server's own error answer wrote it beside the handler), and a worker follows its host's activity counts from a section of the host's loop (they were read beside the links' references). <!-- fix: p2-tui-race -->

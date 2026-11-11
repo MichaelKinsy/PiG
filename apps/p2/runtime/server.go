@@ -217,6 +217,13 @@ type RouteHandler func(response http.ResponseWriter, request *http.Request, acce
 // Routes is the registry of HTTP routes.
 var Routes = NewKeyedRegistry[RouteHandler]("p2.routes")
 
+// PageCookie gives `Set-Cookie` values for an owner's app page load (`/`, `/s/...`); "" for none. Example: the devices
+// plugin renews a local owner session, so a browser in use stays signed in.
+type PageCookie func(request *http.Request, access RequestAccess) string
+
+// PageCookies is the registry of page cookies.
+var PageCookies = NewKeyedRegistry[PageCookie]("p2.page-cookies")
+
 // UpgradeHandler takes an authorized WebSocket upgrade by exact path (it hijacks the response writer). Plugins own their
 // byte channels, not the server host.
 type UpgradeHandler func(response http.ResponseWriter, request *http.Request, principal Principal, ctx host.Ctx) error
@@ -238,8 +245,8 @@ func FindRoute(table *KeyedTable[RouteHandler], method, path string) (RouteHandl
 	return nil, false
 }
 
-// Authenticator authenticates requests from tunnel hosts (loopback is the device owner): the first principal returned
-// wins. Example: the sharing plugin maps a guest cookie to its current grant. nil: not authenticated.
+// Authenticator authenticates requests (loopback and tunnel hosts): an owner returned wins, else the first principal
+// returned. Example: the sharing plugin maps a guest cookie to its current grant. nil: not authenticated.
 type Authenticator func(request *http.Request, origin RequestOrigin, ctx host.Ctx) (Principal, error)
 
 // Authenticators is the registry of authenticators.
@@ -335,7 +342,7 @@ var Hosts = mustContract(contracts.Local("p2.hosts", contracts.LocalDeclaration{
 
 func serverKeyedRegistries() []interface{ Serve(host.FacetHost) error } {
 	return []interface{ Serve(host.FacetHost) error }{
-		RequestResolvers, Routes, Upgrades, Authenticators, ShareUrls, SessionAccess, WorkerInitValues,
+		RequestResolvers, Routes, PageCookies, Upgrades, Authenticators, ShareUrls, SessionAccess, WorkerInitValues,
 	}
 }
 
@@ -377,7 +384,10 @@ func ServerCore(h host.Host, info ServerInfo, parts *ServerParts) host.Facet {
 						if device, ok := args.Value("device").(string); ok {
 							return h.Revoke(RevokeDevice(device), ctx)
 						}
-						return h.Revoke(RevokeRemoteOwners(), ctx)
+						if err := h.Revoke(RevokeRemoteOwners(), ctx); err != nil {
+							return err
+						}
+						return h.Revoke(RevokeLocalOwners(), ctx)
 					}),
 					"revokeGuests": methodOf(func(args *delta.JsonObject, ctx context.Context) error {
 						id, _ := args.Value("id").(string)

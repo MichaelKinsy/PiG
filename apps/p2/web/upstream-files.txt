@@ -470,6 +470,8 @@ src/web/ModelPicker.tsx
 src/web/OwnerNotices.tsx
 src/web/PiLogo.tsx
 src/web/SessionStats.tsx
+src/web/SidePanel.tsx
+src/web/Time.tsx
 src/web/Viewer.tsx
 src/web/activity/ActivityRow.tsx
 src/web/activity/ActivitySheet.tsx
@@ -499,6 +501,7 @@ src/web/navigation.ts
 src/web/new-session.tsx
 src/web/notice-state.ts
 src/web/owner-notices.css
+src/web/path-label.ts
 src/web/query-cache.ts
 src/web/reconnect.ts
 src/web/row-estimate.ts
@@ -514,6 +517,7 @@ tsconfig.json
 plugins/terminals/protocol.ts
 plugins/terminals/wasm.d.ts
 test/p2/outbox.test.ts
+test/p2/path-label.test.ts
 test/p2/session-start.test.ts
 plugins/conversations/contract.ts
 plugins/codemode/contract.ts

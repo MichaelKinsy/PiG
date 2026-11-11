@@ -75,7 +75,7 @@ func TestFilesFakeProvider(t *testing.T) {
 		if len(method) > 0 {
 			options.Method = method[0]
 		}
-		result, err := p2test.HTTP(fixture.Server.Port, path, options)
+		result, err := fixture.HTTP(path, options)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -83,7 +83,7 @@ func TestFilesFakeProvider(t *testing.T) {
 	}
 	upload := func(id, name string, body string, headers map[string]string) p2test.HTTPResult {
 		t.Helper()
-		result, err := p2test.HTTP(fixture.Server.Port, "/upload?"+url.Values{"session": {id}, "name": {name}}.Encode(),
+		result, err := fixture.HTTP("/upload?"+url.Values{"session": {id}, "name": {name}}.Encode(),
 			p2test.HTTPOptions{Method: http.MethodPost, Headers: headers, Body: strings.NewReader(body)})
 		if err != nil {
 			t.Fatal(err)

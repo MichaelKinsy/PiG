@@ -83,7 +83,7 @@ func TestCacheWarmerPureFunctionsMatchPi(t *testing.T) {
 		status := cacheWarmerOracleStatus{State: pick("inactive", "scheduled", "refreshing"), Reason: pick("", "", "no model"), ExtensionOverride: rng.Intn(3) == 0}
 		status.HasDecision = rng.Intn(5) > 0
 		status.Decision = CacheWarmingDecision{
-			Phase:                   pick("streaming", "idle"),
+			Phase:                   ai.CacheWarmingPhase(pick("streaming", "idle")),
 			WarmCost:                floats(0, 0.001, 0.2),
 			MissCost:                floats(0, 0.5, 3),
 			ContinuationProbability: floats(0, 0.15, 0.145, 0.155, 0.005, 0.995, 1, 0.3, 0.125, 0.355),
@@ -133,13 +133,13 @@ emit(out);`
 				}
 				options := ai.StreamOptions{CacheRetention: ai.CacheRetention(in.Retention), Thinking: ai.ThinkingLevel(in.Reasoning), Env: in.Env}
 				var got cacheWarmerOracleOutput
-				if delay, ok := GetCacheWarmingDelayMs(in.TTL); ok {
+				if delay, ok := ai.GetCacheWarmingDelayMs(in.TTL); ok {
 					got.Delay = new(float64(delay))
 				}
-				if ttl, ok := GetPromptCacheTtlMs(model, options); ok {
+				if ttl, ok := ai.GetPromptCacheTtlMs(model, options); ok {
 					got.TTL = new(ttl)
 				}
-				got.Replay = IsReplayable(model, options)
+				got.Replay = ai.IsCacheWarmingReplayable(model, options)
 				status := CacheWarmingStatus{State: in.Status.State, Reason: in.Status.Reason, ExtensionOverride: in.Status.ExtensionOverride}
 				if in.Status.HasDecision {
 					decision := in.Status.Decision

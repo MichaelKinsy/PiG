@@ -26,16 +26,18 @@ import (
 // Ports apps/p2/plugins/devices/owner-access.ts.
 
 const (
-	tokenLifetime  = 10 * 60_000
-	cookieLifetime = 30 * 24 * 60 * 60_000
-	maxInvitations = 32
-	maxSafeInteger = 1<<53 - 1
+	tokenLifetime     = 10 * 60_000
+	challengeLifetime = 60_000
+	cookieLifetime    = 30 * 24 * 60 * 60_000
+	maxInvitations    = 32
+	maxSafeInteger    = 1<<53 - 1
 )
 
 var (
-	keyPattern    = regexp.MustCompile(`^[a-f0-9]{64}$`)
-	devicePattern = regexp.MustCompile(`^([a-f0-9]{32})\.([0-9]+)\.([a-f0-9]{64})$`)
-	idPattern     = regexp.MustCompile(`^[a-f0-9]{32}$`)
+	keyPattern = regexp.MustCompile(`^[a-f0-9]{64}$`)
+	// sessionPattern is `[local.]<id>.<expiry>.<signature>`; the signature covers the port and everything before it.
+	sessionPattern = regexp.MustCompile(`^((?:local\.)?)([a-f0-9]{32})\.([0-9]+)\.([a-f0-9]{64})$`)
+	idPattern      = regexp.MustCompile(`^[a-f0-9]{32}$`)
 )
 
 // OwnerCookieName is the name of the owner cookie of a server on port.
@@ -82,8 +84,20 @@ func jsTrim(text string) string {
 	})
 }
 
-// Device is one signed browser cookie: its ID and its expiry (ms).
-type Device struct {
+// SessionKind is what an owner session is.
+type SessionKind string
+
+const (
+	// SessionDevice is an associated device's session.
+	SessionDevice SessionKind = "device"
+	// SessionLocal is the local owner's session (loopback only).
+	SessionLocal SessionKind = "local"
+)
+
+// OwnerSession is an owner session of a browser or client: an associated device's, or the local owner's (loopback
+// only).
+type OwnerSession struct {
+	Kind    SessionKind
 	ID      string
 	Expires int64
 }
@@ -98,8 +112,10 @@ type revocation struct {
 	expires int64
 }
 
-// OwnerAccess is the installation-owned key and one-time tokens. Browser cookies are distinct signed devices, not the
-// installation key. Invitations stay single-use in memory.
+// OwnerAccess is the installation-owned key and one-time tokens. Owner sessions are signed cookies, never the
+// installation key: one per associated device, and local sessions that prove a loopback client ran as the server's user
+// (it answered a challenge with the key, runtime/local_owner.go). Invitations and challenges stay single-use in memory.
+// Rotating the key ends every session of both kinds.
 type OwnerAccess struct {
 	directory string
 	now       func() int64
@@ -109,6 +125,7 @@ type OwnerAccess struct {
 	mu         sync.Mutex
 	key        string
 	invites    []invitation
+	challenges []invitation
 	revoked    []revocation
 }
 
@@ -245,38 +262,77 @@ func objectKeys(text []byte) ([]string, error) {
 func (a *OwnerAccess) IssueToken() string {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	return a.issueLocked()
+	return a.issueLocked(&a.invites, tokenLifetime)
 }
 
-func (a *OwnerAccess) issueLocked() string {
+func (a *OwnerAccess) issueLocked(pending *[]invitation, lifetime int64) string {
 	now := a.now()
-	kept := a.invites[:0]
-	for _, each := range a.invites {
+	kept := (*pending)[:0]
+	for _, each := range *pending {
 		if each.expires > now {
 			kept = append(kept, each)
 		}
 	}
-	a.invites = kept
-	if len(a.invites) >= maxInvitations {
-		a.invites = a.invites[1:]
+	*pending = kept
+	if len(*pending) >= maxInvitations {
+		*pending = (*pending)[1:]
 	}
 	token := randomHex(32)
-	a.invites = append(a.invites, invitation{id: hashOf(token), expires: now + tokenLifetime})
+	*pending = append(*pending, invitation{id: hashOf(token), expires: now + lifetime})
 	return token
 }
 
-// Claim consumes an invitation (whitespace around it is ignored): true when it was outstanding and unexpired.
-func (a *OwnerAccess) Claim(token string) bool {
-	id := hashOf(jsTrim(token))
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	for index, each := range a.invites {
+// redeemLocked consumes token from pending: true when it was outstanding and unexpired.
+func (a *OwnerAccess) redeemLocked(pending *[]invitation, token string) bool {
+	id := hashOf(token)
+	for index, each := range *pending {
 		if each.id == id {
-			a.invites = append(a.invites[:index:index], a.invites[index+1:]...)
+			*pending = append((*pending)[:index:index], (*pending)[index+1:]...)
 			return each.expires > a.now()
 		}
 	}
 	return false
+}
+
+// Claim consumes an invitation (whitespace around it is ignored): true when it was outstanding and unexpired.
+func (a *OwnerAccess) Claim(token string) bool {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.redeemLocked(&a.invites, jsTrim(token))
+}
+
+// Pending reports whether the invitation token is outstanding and unexpired, without using it up.
+func (a *OwnerAccess) Pending(token string) bool {
+	id := hashOf(jsTrim(token))
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	for _, each := range a.invites {
+		if each.id == id {
+			return each.expires > a.now()
+		}
+	}
+	return false
+}
+
+// IssueChallenge is a one-time local sign-in challenge (one minute); a restart or key rotation forgets it.
+func (a *OwnerAccess) IssueChallenge() string {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.issueLocked(&a.challenges, challengeLifetime)
+}
+
+// ProveLocal reports whether proof answers the unused challenge for this port with the current key; the challenge is
+// used up.
+func (a *OwnerAccess) ProveLocal(challenge, proof string, port int) bool {
+	if !keyPattern.MatchString(proof) {
+		return false
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if !a.redeemLocked(&a.challenges, challenge) {
+		return false
+	}
+	return hmac.Equal([]byte(proof), []byte(p2runtime.LocalOwnerProof(a.key, port, challenge)))
 }
 
 func (a *OwnerAccess) signature(key string, port int, payload string) string {
@@ -285,12 +341,27 @@ func (a *OwnerAccess) signature(key string, port int, payload string) string {
 	return hex.EncodeToString(mac.Sum(nil))
 }
 
-// Cookie is the `Set-Cookie` value of a new signed device on port.
+// Cookie is the `Set-Cookie` value of a new associated device's session on port.
 func (a *OwnerAccess) Cookie(port int, secure bool) string {
+	return a.sessionCookie(port, "", randomHex(16), secure)
+}
+
+// LocalCookie is the `Set-Cookie` value of a local session on port: id's renewed for another 30 days, or a new session
+// when id is empty (loopback only, never Secure).
+func (a *OwnerAccess) LocalCookie(port int, id string) string {
+	if id == "" {
+		id = randomHex(16)
+	}
+	return a.sessionCookie(port, "local.", id, false)
+}
+
+// sessionCookie is SameSite=Lax, not Strict: a link into p2 from another site or local port must arrive signed in. The
+// server drops every cookie principal of another site's requests except top-level page navigations (Fetch Metadata).
+func (a *OwnerAccess) sessionCookie(port int, prefix, id string, secure bool) string {
 	a.mu.Lock()
 	key := a.key
 	a.mu.Unlock()
-	payload := randomHex(16) + "." + strconv.FormatInt(a.now()+cookieLifetime, 10)
+	payload := prefix + id + "." + strconv.FormatInt(a.now()+cookieLifetime, 10)
 	suffix := ""
 	if secure {
 		suffix = "; Secure"
@@ -307,17 +378,17 @@ func (a *OwnerAccess) ClearCookie(port int, secure bool) string {
 	return OwnerCookieName(port) + "=; HttpOnly" + suffix + "; SameSite=Lax; Path=/; Max-Age=0"
 }
 
-// Device is the signed, unexpired, unrevoked device the request's cookie names (nil: none).
-func (a *OwnerAccess) Device(request *http.Request, port int) *Device {
+// Session is the request's valid, unrevoked owner session for this port (nil: none).
+func (a *OwnerAccess) Session(request *http.Request, port int) *OwnerSession {
 	value, ok := p2runtime.CookieValue(request, OwnerCookieName(port))
 	if !ok {
 		return nil
 	}
-	match := devicePattern.FindStringSubmatch(value)
+	match := sessionPattern.FindStringSubmatch(value)
 	if match == nil {
 		return nil
 	}
-	id, expiry, signature := match[1], match[2], match[3]
+	prefix, id, expiry, signature := match[1], match[2], match[3], match[4]
 	parsed, err := strconv.ParseFloat(expiry, 64)
 	if err != nil || parsed > maxSafeInteger {
 		return nil
@@ -334,15 +405,14 @@ func (a *OwnerAccess) Device(request *http.Request, port int) *Device {
 			return nil
 		}
 	}
-	if !hmac.Equal([]byte(signature), []byte(a.signature(a.key, port, id+"."+expiry))) {
+	if !hmac.Equal([]byte(signature), []byte(a.signature(a.key, port, prefix+id+"."+expiry))) {
 		return nil
 	}
-	return &Device{ID: id, Expires: expires}
-}
-
-// Authorized reports whether the request carries a valid owner cookie.
-func (a *OwnerAccess) Authorized(request *http.Request, port int) bool {
-	return a.Device(request, port) != nil
+	kind := SessionDevice
+	if prefix != "" {
+		kind = SessionLocal
+	}
+	return &OwnerSession{Kind: kind, ID: id, Expires: expires}
 }
 
 func (a *OwnerAccess) writeRevoked() error {
@@ -358,19 +428,20 @@ func (a *OwnerAccess) writeRevoked() error {
 	return privateWrite(filepath.Join(a.directory, "owner-revoked.json"), text.String())
 }
 
-// Logout revokes one device, persistently.
-func (a *OwnerAccess) Logout(device Device) error {
+// Logout revokes one session, persistently.
+func (a *OwnerAccess) Logout(session OwnerSession) error {
 	a.operations.Lock()
 	defer a.operations.Unlock()
 	a.mu.Lock()
 	now := a.now()
 	kept := make([]revocation, 0, len(a.revoked)+1)
 	for _, each := range a.revoked {
-		if each.expires > now && each.id != device.ID {
+		if each.expires > now && each.id != session.ID {
 			kept = append(kept, each)
 		}
 	}
-	a.revoked = append(kept, revocation{id: device.ID, expires: device.Expires})
+	kept = append(kept, revocation{id: session.ID, expires: session.Expires})
+	a.revoked = kept
 	err := a.writeRevoked()
 	a.mu.Unlock()
 	return err
@@ -387,6 +458,7 @@ func (a *OwnerAccess) Rotate() error {
 	a.mu.Lock()
 	a.key = next
 	a.invites = nil
+	a.challenges = nil
 	a.revoked = nil
 	err := a.writeRevoked()
 	a.mu.Unlock()
@@ -396,11 +468,12 @@ func (a *OwnerAccess) Rotate() error {
 	return privateWrite(filepath.Join(a.directory, "owner-token.txt"), a.IssueToken()+"\n")
 }
 
-// Close forgets the outstanding invitations once pending writes finished.
+// Close forgets the outstanding invitations and challenges once pending writes finished.
 func (a *OwnerAccess) Close() {
 	a.operations.Lock()
 	defer a.operations.Unlock()
 	a.mu.Lock()
 	a.invites = nil
+	a.challenges = nil
 	a.mu.Unlock()
 }

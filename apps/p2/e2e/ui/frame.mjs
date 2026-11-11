@@ -20,7 +20,14 @@ const fail = async (message) => {
 	framer.close();
 	process.exit(1);
 };
-const page = await (await browser.newContext()).newPage();
+const signedIn = async (context) => {
+	const pair = process.env.P2_UI_COOKIE;
+	if (!pair) return context;
+	const [name, ...value] = pair.split("=");
+	await context.addCookies([{ name, value: value.join("="), url: base, httpOnly: true, sameSite: "Lax" }]);
+	return context;
+};
+const page = await (await signedIn(await browser.newContext())).newPage();
 await page.addInitScript(() => {
 	window.cspViolations = [];
 	document.addEventListener("securitypolicyviolation", (event) => window.cspViolations.push(`${event.violatedDirective} ${event.blockedURI}`));

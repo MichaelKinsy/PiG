@@ -617,12 +617,7 @@ func serveSharing(facet host.FacetHost) error {
 func serveHTTP(facet host.FacetHost) error {
 	return p2runtime.Contribute(facet, "p2.sharing-http", func(self host.StoreSelf) error {
 		shares := self.Get(contract.Shares, delta.NewJsonObject(0))
-		server := self.Get(p2runtime.ServerLocal, delta.NewJsonObject(0))
 		catalog := self.Get(sessioncontract.Catalog, delta.NewJsonObject(0))
-		dataDir := func() (string, error) {
-			info, err := server.Member("info").Value()
-			return stringOf(objectOf(info).Value("dataDir")), err
-		}
 		joinPage := func(response http.ResponseWriter, request *http.Request, access p2runtime.RequestAccess, ctx host.Ctx) error {
 			segments := strings.Split(request.URL.EscapedPath(), "/")
 			token := ""
@@ -638,22 +633,9 @@ func serveHTTP(facet host.FacetHost) error {
 				return sendPage(response, request, http.StatusGone, "Share ended", "This share has ended",
 					"<p>The link was reset or the session was archived. Ask the owner for a new one.</p>", "")
 			}
-			// The owner, or a guest who already joined through this link, goes straight to the session. As in Pi Mobile, an
-			// owner only by its cookie (or relay): a cookieless loopback browser (a fresh profile opening the link) is not
-			// the device owner here, but someone joining.
-			owner := false
-			if who, ok := access.Principal.(p2runtime.OwnerPrincipal); ok {
-				owner = who.Access != p2runtime.AccessLocal
-				if !owner {
-					directory, err := dataDir()
-					if err != nil {
-						return err
-					}
-					if owner, err = p2runtime.HasLoopbackCookie(request, access.Origin.Port, directory); err != nil {
-						return err
-					}
-				}
-			}
+			// The owner, or a guest who already joined through this link, goes straight to the session; anyone else (a fresh
+			// browser profile on the host too) is someone joining.
+			owner := p2runtime.IsOwner(access.Principal)
 			session := stringOf(link.Value("session"))
 			if guest, ok := access.Principal.(p2runtime.GuestPrincipal); owner || (ok && string(guest.Sessions[session]) == stringOf(link.Value("mode"))) {
 				response.Header().Set("Location", "/s/"+session)

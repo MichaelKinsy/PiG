@@ -4,8 +4,6 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"reflect"
 	"slices"
 	"testing"
@@ -130,24 +128,11 @@ func TestEnvDefaultModelNeedsBoth(t *testing.T) {
 	}
 }
 
-func TestLoopbackCookieAndCookieValue(t *testing.T) {
-	dir := t.TempDir()
-	set, err := LoopbackCookie(8788, dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	secret, _ := os.ReadFile(filepath.Join(dir, "device-cookie"))
-	if want := "p2_device_8788=" + string(secret) + "; HttpOnly; SameSite=Strict; Path=/; Max-Age=2592000"; set != want {
-		t.Fatalf("cookie %q, want %q", set, want)
-	}
+func TestCookieValueAndFromOrigin(t *testing.T) {
 	request := httptest.NewRequest(http.MethodGet, "/", nil)
-	request.Header.Set("Cookie", "other=1; p2_device_8788="+string(secret))
-	if ok, err := HasLoopbackCookie(request, 8788, dir); !ok || err != nil {
-		t.Errorf("owner cookie = %v, %v", ok, err)
-	}
-	request.Header.Set("Cookie", "p2_device_8788=wrong")
-	if ok, _ := HasLoopbackCookie(request, 8788, dir); ok {
-		t.Error("a wrong cookie must not count")
+	request.Header.Set("Cookie", "other=1; p2_owner_8788=value")
+	if value, ok := CookieValue(request, "p2_owner_8788"); !ok || value != "value" {
+		t.Errorf("cookie = %q, %v", value, ok)
 	}
 	if _, ok := CookieValue(request, "absent"); ok {
 		t.Error("absent cookie found")

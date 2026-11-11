@@ -28,7 +28,7 @@ type notifier struct {
 	err  map[string]string // the last error reported per session
 }
 
-// the notifier is one more owner client of the server; it adds nothing to the protocol.
+// pig additive (D481): the notifier is one more owner client of the server; it adds nothing to the protocol.
 // startNotifier connects an owner client to server and calls report(session, kind) when a session finishes ("finished")
 // or fails ("failed"). Call close to stop it before the server closes.
 func startNotifier(server host.Host, report func(session, kind string)) (*notifier, error) {

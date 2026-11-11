@@ -22,6 +22,7 @@ import (
 	// The plugins the desktop app's server loads (cmd/p2-desktop/plugins.go), registered in this test binary, which is also
 	// the session worker.
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/chat"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/devices"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/drafts"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/envs"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/models"
@@ -90,6 +91,30 @@ func (r *running) stop(t *testing.T) {
 	}
 }
 
+// claimed plays the web view's part: it redeems the owner link the window was given, as the sign-in page does, and waits for
+// the app to notice (later navigations then load their route directly).
+func (r *running) claimed(t *testing.T) {
+	t.Helper()
+	win := r.window(t)
+	_, token, ok := strings.Cut(win.CurrentURL(), "/owner#")
+	if !ok {
+		t.Fatalf("the window was not given an owner link: %q", win.CurrentURL())
+	}
+	claim, err := p2test.HTTP(r.port, "/owner/claim", p2test.HTTPOptions{
+		Method: http.MethodPost, Headers: map[string]string{"Origin": r.app.Origin(), "Content-Type": "application/json"},
+		Body: strings.NewReader(`{"token":"` + token + `"}`),
+	})
+	if err != nil || claim.Status != 200 {
+		t.Fatalf("claim: %+v %v", claim, err)
+	}
+	if err := p2test.Poll(func() (bool, error) {
+		r.shell.Handlers.OpenURL("pig://open")
+		return win.CurrentURL() == r.app.Origin()+"/", nil
+	}, 10*time.Second, "the app to notice the claim"); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func (r *running) window(t *testing.T) *fakeshell.Window {
 	t.Helper()
 	windows, _, _, _ := r.shell.Snapshot()
@@ -102,8 +127,9 @@ func (r *running) window(t *testing.T) *fakeshell.Window {
 func TestLaunchShowsTheServerAndQuitsCleanly(t *testing.T) {
 	r := start(t, nil)
 	win := r.window(t)
-	if want := r.app.Origin() + "/"; win.CurrentURL() != want {
-		t.Fatalf("window shows %q, want %q", win.CurrentURL(), want)
+	// Loopback alone is nobody: the web view's first page is a one-time owner link, which signs it in.
+	if want := r.app.Origin() + "/owner#"; !strings.HasPrefix(win.CurrentURL(), want) || len(win.CurrentURL()) != len(want)+64 {
+		t.Fatalf("window shows %q, want an owner link of %q", win.CurrentURL(), r.app.Origin())
 	}
 	if !strings.HasPrefix(r.app.Origin(), "http://127.0.0.1:") {
 		t.Fatalf("origin %q is not loopback", r.app.Origin())
@@ -118,15 +144,17 @@ func TestLaunchShowsTheServerAndQuitsCleanly(t *testing.T) {
 	if resp.StatusCode != 200 || !strings.Contains(string(body), `"name":"p2"`) {
 		t.Fatalf("/health: %d %s", resp.StatusCode, body)
 	}
-	// And serves p2's UI at the page the window shows.
-	page, err := http.Get(win.CurrentURL())
+	// And serves p2's UI to the local owner at the page the window lands on.
+	owner := p2test.SignInLocalOwner(t, r.port, r.data)
+	page, err := p2test.HTTP(r.port, "/", p2test.HTTPOptions{Headers: owner.OwnerHeaders(nil)})
 	if err != nil {
 		t.Fatal(err)
 	}
-	html, _ := io.ReadAll(page.Body)
-	_ = page.Body.Close()
-	if page.StatusCode != 200 || !strings.Contains(string(html), "<title>") {
-		t.Fatalf("GET %s: %d %.200s", win.CurrentURL(), page.StatusCode, html)
+	if page.Status != 200 || !strings.Contains(page.Body, "<title>") {
+		t.Fatalf("GET /: %d %.200s", page.Status, page.Body)
+	}
+	if signIn, err := p2test.HTTP(r.port, "/", p2test.HTTPOptions{}); err != nil || signIn.Status != 401 {
+		t.Fatalf("GET / without the owner's session: %+v %v", signIn, err)
 	}
 	// Binds the loopback interface only.
 	if conn, err := net.DialTimeout("tcp", net.JoinHostPort(outboundIP(), strconv.Itoa(r.port)), 300*time.Millisecond); err == nil {
@@ -154,7 +182,8 @@ func outboundIP() string {
 func TestChatRoundTripAndNotification(t *testing.T) {
 	r := start(t, nil)
 	win := r.window(t)
-	conn, err := p2test.Dial(r.port, nil)
+	r.claimed(t)
+	conn, err := p2test.Dial(r.port, p2test.SignInLocalOwner(t, r.port, r.data).OwnerHeaders(nil))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -222,7 +251,7 @@ func TestChatRoundTripAndNotification(t *testing.T) {
 func TestFocusedWindowGetsNoNotification(t *testing.T) {
 	r := start(t, nil)
 	r.window(t).SetFocused(true)
-	conn, err := p2test.Dial(r.port, nil)
+	conn, err := p2test.Dial(r.port, p2test.SignInLocalOwner(t, r.port, r.data).OwnerHeaders(nil))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -259,6 +288,7 @@ func TestFocusedWindowGetsNoNotification(t *testing.T) {
 func TestDeepLinks(t *testing.T) {
 	r := start(t, nil)
 	win := r.window(t)
+	r.claimed(t)
 	origin := r.app.Origin()
 	id := "0b1c2d3e-4f50-4162-8394-a5b6c7d8e9f0"
 	for link, want := range map[string]string{
@@ -296,7 +326,8 @@ func TestMacWindowReopensOnActivate(t *testing.T) {
 	first.Close()
 	r.shell.Handlers.Activate()
 	second := r.window(t)
-	if second == first || second.CurrentURL() != r.app.Origin()+"/" {
+	// Nothing claims the first window's link in the fake shell, so the reopened window gets a link of its own.
+	if second == first || !strings.HasPrefix(second.CurrentURL(), r.app.Origin()+"/owner#") {
 		t.Fatalf("activate did not open a window on the server: %v", second.CurrentURL())
 	}
 	r.stop(t)

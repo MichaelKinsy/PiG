@@ -100,7 +100,7 @@ func TestSharingFakeProvider(t *testing.T) {
 		if body != "" {
 			options.Body = strings.NewReader(body)
 		}
-		result, err := p2test.HTTP(fixture.Server.Port, path, options)
+		result, err := fixture.HTTP(path, options)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -215,21 +215,13 @@ func TestSharingFakeProvider(t *testing.T) {
 		if !strings.Contains(page.Headers.Get("Content-Security-Policy"), "script-src 'nonce-") {
 			t.Fatalf("CSP = %q", page.Headers.Get("Content-Security-Policy"))
 		}
-		// A cookieless loopback browser joins (Pi Mobile); the owner's browser, with the loopback owner cookie it got loading
-		// the app, goes straight to the session.
+		// A cookieless loopback browser joins; the owner's browser, with its local owner session, goes straight to the
+		// session.
 		loopback, err := p2test.HTTP(fixture.Server.Port, "/join/"+token, p2test.HTTPOptions{})
 		if err != nil || loopback.Status != 200 {
 			t.Fatalf("cookieless loopback join page: %v %+v", err, loopback)
 		}
-		app, err := p2test.HTTP(fixture.Server.Port, "/", p2test.HTTPOptions{})
-		if err != nil {
-			t.Fatal(err)
-		}
-		device, _, _ := strings.Cut(app.Headers.Get("Set-Cookie"), ";")
-		if !regexp.MustCompile(`^p2_device_\d+=`).MatchString(device) {
-			t.Fatalf("device cookie = %q", device)
-		}
-		ownerJoin, err := p2test.HTTP(fixture.Server.Port, "/join/"+token, p2test.HTTPOptions{Headers: map[string]string{"Cookie": device}})
+		ownerJoin, err := fixture.HTTP("/join/"+token, p2test.HTTPOptions{})
 		if err != nil || ownerJoin.Status != 303 || ownerJoin.Headers.Get("Location") != "/s/"+session {
 			t.Fatalf("the owner goes to the session: %v %+v", err, ownerJoin)
 		}
@@ -692,7 +684,7 @@ func TestSharingAcrossRestartsDoesNotCountASessionArchivedBeforeTheRestartAsNewl
 	restarted := restart(t, fixture)
 	// The archive listener's first value is the stored catalog, where the session is already archived: it bumps nothing at
 	// startup. Only the restore bumps the grant.
-	conn, err := p2test.Dial(restarted.Port, nil)
+	conn, err := p2test.Dial(restarted.Port, p2test.SignInLocalOwner(t, restarted.Port, restarted.DataDir).OwnerHeaders(nil))
 	if err != nil {
 		t.Fatal(err)
 	}

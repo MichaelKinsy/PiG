@@ -18,8 +18,8 @@ import (
 // Ports apps/p2/plugins/artifacts/server.ts: the server's `GET /artifact` route.
 
 const (
-	executableCSP = "default-src 'none'; script-src 'unsafe-inline' 'wasm-unsafe-eval' https:; style-src 'unsafe-inline' https:; img-src data: blob: https:; font-src data: https:; media-src data: blob: https:; connect-src https:; worker-src blob:; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'; sandbox allow-scripts allow-modals allow-pointer-lock"
-	documentCSP   = "default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'; sandbox"
+	executableCSP = "default-src 'none'; script-src 'unsafe-inline' 'wasm-unsafe-eval' https:; style-src 'unsafe-inline' https:; img-src data: blob: https:; font-src data: https:; media-src data: blob: https:; connect-src https:; worker-src blob:; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; sandbox allow-scripts allow-modals allow-pointer-lock"
+	documentCSP   = "default-src 'none'; base-uri 'none'; form-action 'none'; sandbox"
 )
 
 // versionOf is `Number(text)` when it is a safe integer of at least 1, else false: an empty or blank text is 0, and a
@@ -118,11 +118,17 @@ func serveRoutes(facet host.FacetHost) error {
 					extension = "txt"
 				}
 				header := response.Header()
+				// `frame-ancestors` checks every ancestor: through Radius the app itself sits in the Radius shell's frame, so
+				// `'self'` alone would block every preview there.
+				policy := documentCSP
 				if executable {
-					header.Set("Content-Security-Policy", executableCSP)
-				} else {
-					header.Set("Content-Security-Policy", documentCSP)
+					policy = executableCSP
 				}
+				policy += "; frame-ancestors 'self'"
+				if access.Origin.RelayShellOrigin != "" {
+					policy += " " + access.Origin.RelayShellOrigin
+				}
+				header.Set("Content-Security-Policy", policy)
 				switch info.Type {
 				case p2runtime.ArtifactHTML:
 					header.Set("Content-Type", "text/html; charset=utf-8")

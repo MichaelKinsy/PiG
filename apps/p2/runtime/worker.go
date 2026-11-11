@@ -255,8 +255,8 @@ type RelocationCheck func(ctx context.Context, harness harness.Harness, from, to
 var RelocationChecks = NewKeyedRegistry[RelocationCheck]("p2.relocation-checks")
 
 // Liveness is what keeps the worker process alive besides held references (Chord's own count): its Durable tasks, calls
-// under way (Call), viewers plugins count themselves, and the relocation fence. A JSON watchable of those counts
-// (`workerMain`'s `busy`): the worker is idle when every count is zero.
+// under way (Call), viewers plugins count themselves, conversations whose prompt cache is kept warm, and the relocation
+// fence. A JSON watchable of those counts (`workerMain`'s `busy`): the worker is idle when every count is zero.
 type Liveness struct {
 	mu         sync.Mutex
 	relocating bool
@@ -264,13 +264,13 @@ type Liveness struct {
 	// releases the count.
 	fenceHeld bool
 	stopping  bool
-	counts     map[string]int
-	watches    map[*livenessWatch]struct{}
+	counts    map[string]int
+	watches   map[*livenessWatch]struct{}
 }
 
 // NewLiveness is a Liveness with every count zero.
 func NewLiveness() *Liveness {
-	return &Liveness{counts: map[string]int{"activeCalls": 0, "viewers": 0, "durableTasks": 0}, watches: map[*livenessWatch]struct{}{}}
+	return &Liveness{counts: map[string]int{"activeCalls": 0, "viewers": 0, "durableTasks": 0, "cacheWarming": 0}, watches: map[*livenessWatch]struct{}{}}
 }
 
 func (l *Liveness) object() *delta.JsonObject {
@@ -282,15 +282,12 @@ func (l *Liveness) object() *delta.JsonObject {
 }
 
 // livenessKinds are the counts, in the order the value lists them: the worker's own, then its host's (`host.Activity`).
-var livenessKinds = []string{"activeCalls", "viewers", "durableTasks", "references", "calls", "jobs", "lingering"}
+var livenessKinds = []string{"activeCalls", "viewers", "durableTasks", "cacheWarming", "references", "calls", "jobs", "lingering"}
 
 // FollowActivity counts what keeps h busy (the references held on it, its calls, jobs and lingering objects, Chord's own
-// keep-alive counts) as part of the worker's: the worker is idle when those are zero too.
+// keep-alive counts) as part of the worker's: the worker is idle when those are zero too. The watch opens, and its first
+// counts are read, in a section of h's loop: the counts change there while the links of h hold references.
 func (l *Liveness) FollowActivity(h host.Host) error {
-	watch, err := h.Activity().Watch(chordctx.Background())
-	if err != nil {
-		return err
-	}
 	apply := func(value delta.JsonValue) {
 		counts, _ := value.(*delta.JsonObject)
 		if counts == nil {
@@ -301,14 +298,26 @@ func (l *Liveness) FollowActivity(h host.Host) error {
 			l.set(kind, int(count))
 		}
 	}
-	apply(watch.Value())
-	watch.Start(func(_ context.Context, call chord.WatchCall[delta.JsonValue]) error {
-		if call.Kind == chord.WatchCallValue {
-			apply(call.Value)
+	_, err := h.Root(func(ctx host.Ctx) (any, error) {
+		var watchErr error
+		if err := host.InSection(ctx, func() {
+			var watch chord.WatchHandle[delta.JsonValue]
+			if watch, watchErr = h.Activity().Watch(chordctx.Background()); watchErr != nil {
+				return
+			}
+			apply(watch.Value())
+			watch.Start(func(_ context.Context, call chord.WatchCall[delta.JsonValue]) error {
+				if call.Kind == chord.WatchCallValue {
+					apply(call.Value)
+				}
+				return nil
+			})
+		}); err != nil {
+			return nil, err
 		}
-		return nil
-	})
-	return nil
+		return nil, watchErr
+	}, chordctx.Background(), host.RootOptions{})
+	return err
 }
 
 // Value is the counts.
@@ -407,6 +416,9 @@ func (l *Liveness) AddActiveCalls(by int) { l.add("activeCalls", by) }
 
 // AddViewers counts viewers plugins count themselves.
 func (l *Liveness) AddViewers(by int) { l.add("viewers", by) }
+
+// AddCacheWarming counts the conversations whose prompt cache is kept warm.
+func (l *Liveness) AddCacheWarming(by int) { l.add("cacheWarming", by) }
 
 // SetDurableTasks sets the Durable tasks' count.
 func (l *Liveness) SetDurableTasks(count int) {
@@ -522,6 +534,9 @@ type HarnessParts struct {
 	// move visible (the SessionLocation is committed before it, so what is admitted from then on works at the new
 	// location), as Pi's fence is lifted before a client can observe the commit; nil when no fence is up.
 	Relocate func(ctx context.Context, location Location, unfence func()) error
+	// RequestOf takes the request that produced response, for GenerationTask's `afterResponse` hooks (api is the hook's):
+	// each response is taken once; nil when none produced it. See ModelRequest.
+	RequestOf func(ctx context.Context, api harness.HookApi, response ai.AssistantMessage) (*ModelRequest, error)
 }
 
 // HarnessNative is the registry of the session's Harness (the core's contribution once it is open).
@@ -899,13 +914,15 @@ func openHarness(self host.StoreSelf, init WorkerInit, session SessionInit, loca
 		table, _ := config.Value().(*KeyedTable[HarnessConfigEntry])
 		return table.Get("default")
 	}
-	// Model access is looked up at each use: the models plugin may reload or replace its configuration.
+	// Model access is looked up at each use: the models plugin may reload or replace its configuration. Every generation
+	// request passes through StreamSimple here, after Durable and the Harness's identity wrapper completed it.
+	requests := newRequestLog()
 	models := func() durable.Models {
 		entry, ok := configured()
 		if !ok {
 			panic("No model configuration installed (models plugin)")
 		}
-		return entry.Models()
+		return requests.remembering(entry.Models())
 	}
 	settings := func() *harness.HarnessSettings {
 		if entry, ok := configured(); ok {
@@ -1080,6 +1097,9 @@ func openHarness(self host.StoreSelf, init WorkerInit, session SessionInit, loca
 			}
 			executions.retire(append([]Location{next}, own...))
 			return nil
+		},
+		RequestOf: func(ctx context.Context, api harness.HookApi, response ai.AssistantMessage) (*ModelRequest, error) {
+			return requests.requestOf(ctx, api, response)
 		},
 	}
 }

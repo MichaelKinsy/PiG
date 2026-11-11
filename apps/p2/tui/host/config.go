@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
 
@@ -54,11 +55,13 @@ type Config struct {
 	Connections map[string]Connection `json:"connections"`
 }
 
-// Admission is who the launcher signed in as.
+// Admission is who the launcher signed in as. Local: signed in with the data directory's owner key (never saved; a new
+// sign-in replaces it).
 type Admission struct {
 	Credentials
 	Role    string // "owner" or "guest"
 	Session string
+	Local   bool
 }
 
 var (
@@ -384,21 +387,26 @@ func CheckGuest(client *http.Client, ctx context.Context, target *url.URL, guest
 	return false, errors.New("Cannot check guest access")
 }
 
-// Prompt asks the visitor for a "link" or a "name".
-type Prompt func(kind string) (string, error)
+// Prompt asks the visitor for a "link" or a "name"; reason says why a link is needed (shown before the question; may be
+// empty).
+type Prompt func(kind, reason string) (string, error)
 
 // AuthOptions are the sign-in arguments.
 type AuthOptions struct {
 	URL       *url.URL
 	OwnerLink string
 	JoinLink  string
+	// DataDir is the data directory whose owner key signs in on loopback: `P2_DATA_DIR` or `~/.pi/p2` when empty.
+	DataDir string
 	// HTTP is the client of the sign-in requests (a test's); nil refuses redirects and times out after 10 s.
 	HTTP *http.Client
 }
 
 // Authenticate is the sign-in (section 4.1). An expired or remotely revoked cookie leads back to sign-in, not an endless unauthenticated reconnect.
-// Loopback is the device owner unless `--join` explicitly asks for a guest view; a stored guest cookie never downgrades it. Remote origins use a valid
-// owner cookie, else a valid guest cookie, else a prompt for either link.
+// A valid saved owner cookie comes first. On loopback the server's own user then signs in with the owner key of its data
+// directory (DataDir; a server with another data directory refuses that with a clear error), unless `--join` explicitly
+// asks for a guest view; a stored guest cookie never downgrades it. Remote origins use a valid guest cookie next. Everyone
+// else is asked for either link.
 func Authenticate(ctx context.Context, options AuthOptions, config *Config, prompt Prompt) (Admission, error) {
 	target := options.URL
 	origin := OriginOf(target)
@@ -411,7 +419,7 @@ func Authenticate(ctx context.Context, options AuthOptions, config *Config, prom
 		}
 		name := ""
 		for name == "" {
-			answer, err := prompt("name")
+			answer, err := prompt("name", "")
 			if err != nil {
 				return Admission{}, err
 			}
@@ -431,27 +439,14 @@ func Authenticate(ctx context.Context, options AuthOptions, config *Config, prom
 	if options.JoinLink != "" {
 		return join(options.JoinLink)
 	}
-	// Direct local access is the device owner, not an associated remote cookie principal.
 	credentials := Credentials{Cookie: stored.Cookie}
-	if loopback && options.OwnerLink == "" {
-		credentials = Credentials{}
-	}
-	if options.OwnerLink == "" && (credentials.Cookie != "" || loopback) {
-		// The existing core owner-only endpoint also works before the Devices protocol is upgraded.
-		path := "/owner/check"
-		if loopback {
-			path = "/__p2_dev"
-		}
-		response, err := fixedRequest(options.HTTP, ctx, http.MethodGet, target, path, ConnectionHeaders(target, credentials), nil)
+	if options.OwnerLink == "" && credentials.Cookie != "" {
+		response, err := fixedRequest(options.HTTP, ctx, http.MethodGet, target, "/owner/check", ConnectionHeaders(target, credentials), nil)
 		if err != nil {
 			return Admission{}, err
 		}
 		defer response.Body.Close()
 		if response.StatusCode >= 200 && response.StatusCode <= 299 {
-			if loopback {
-				_, _ = io.Copy(io.Discard, response.Body)
-				return Admission{Role: "owner"}, nil
-			}
 			var value struct {
 				Owner bool `json:"owner"`
 			}
@@ -464,6 +459,24 @@ func Authenticate(ctx context.Context, options AuthOptions, config *Config, prom
 		if response.StatusCode != 401 && response.StatusCode != 403 {
 			return Admission{}, errors.New("Cannot check owner access")
 		}
+	}
+	reason := ""
+	if loopback && options.OwnerLink == "" {
+		dataDir := options.DataDir
+		if dataDir == "" {
+			var err error
+			if dataDir, err = p2runtime.DataDirectory(os.Getenv); err != nil {
+				return Admission{}, err
+			}
+		}
+		local, err := p2runtime.LocalOwnerSignIn(ctx, options.HTTP, target, dataDir)
+		if err != nil {
+			return Admission{}, err
+		}
+		if local.Kind == p2runtime.LocalSignedIn {
+			return Admission{Credentials: Credentials{Cookie: local.Cookie}, Role: "owner", Local: true}, nil
+		}
+		reason = local.Message
 	}
 	if options.OwnerLink == "" && !loopback && stored.Guest != nil {
 		ok, err := CheckGuest(options.HTTP, ctx, target, *stored.Guest)
@@ -481,7 +494,7 @@ func Authenticate(ctx context.Context, options AuthOptions, config *Config, prom
 	link := options.OwnerLink
 	if link == "" {
 		var err error
-		if link, err = prompt("link"); err != nil {
+		if link, err = prompt("link", reason); err != nil {
 			return Admission{}, err
 		}
 		if strings.Contains(link, "/join/") {

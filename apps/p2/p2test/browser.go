@@ -440,6 +440,19 @@ func (b *Chromium) Open(url string) {
 	}
 }
 
+// SignIn gives this profile the local owner's session cookie, as the owner's sign-in link would.
+func (b *Chromium) SignIn(owner LocalOwner) {
+	b.t.Helper()
+	name, value, _ := strings.Cut(owner.Cookie, "=")
+	ctx, cancel := context.WithTimeout(b.base, 30*time.Second)
+	defer cancel()
+	if _, err := b.Call(ctx, "Network.setCookie", map[string]any{
+		"name": name, "value": value, "url": fmt.Sprintf("http://127.0.0.1:%d/", owner.Port), "httpOnly": true, "sameSite": "Lax",
+	}); err != nil {
+		b.t.Fatal(err)
+	}
+}
+
 // Type types text into the focused element.
 func (b *Chromium) Type(text string) {
 	b.t.Helper()
