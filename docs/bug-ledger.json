@@ -10840,6 +10840,28 @@
       ]
     },
     {
+      "id": "BF-3d49280",
+      "title": "`listDir` of the local execution environment leaves out an entry whose name is not valid UTF-8, as Pi does…",
+      "symptom": "`listDir` of the local execution environment leaves out an entry whose name is not valid UTF-8, as Pi does (Node decodes the name with replacement characters, so its `lstat` finds nothing and #12055 skips the entry); the remote environment already matched.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`listDir` of the local execution environment leaves out an entry whose name is not valid UTF-8, as Pi does (Node decodes the name with replacement characters, so its `lstat` finds nothing and #12055 skips the entry); the remote environment already matched.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3d492806e5",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "durable/env/node/list_race_port_test.go::TestListDirLeavesOutANonUTF8Name"
+      ]
+    },
+    {
       "id": "BF-3d98081",
       "title": "Validating arguments against a recursive schema whose object alternatives all reject a deeply nested value no…",
       "symptom": "Validating arguments against a recursive schema whose object alternatives all reject a deeply nested value no longer takes exponential time: the call is rejected with its errors at once.",
