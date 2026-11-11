@@ -34,6 +34,34 @@ func LocationText(location Location) string {
 	return location.Cwd
 }
 
+// ShortPath shows conventional macOS, Linux and Termux home directories as `~` (`shortPath`): every process shortens paths
+// alike (project glyphs hash the short form), so the rule lives in the runtime.
+func ShortPath(path string) string {
+	rest, ok := strings.CutPrefix(path, "/")
+	if !ok {
+		return path
+	}
+	home := ""
+	for _, prefix := range []string{"Users/", "home/"} {
+		if tail, found := strings.CutPrefix(rest, prefix); found {
+			// `[^/]+`: at least one character up to the next slash.
+			name, _, _ := strings.Cut(tail, "/")
+			if name != "" {
+				home = prefix + name
+			}
+		}
+	}
+	for _, fixed := range []string{"root", "data/data/com.termux/files/home"} {
+		if home == "" && strings.HasPrefix(rest, fixed) {
+			home = fixed
+		}
+	}
+	if home == "" || (len(rest) > len(home) && rest[len(home)] != '/') {
+		return path
+	}
+	return "~" + rest[len(home):]
+}
+
 // envPrefix is `envs.ENV_NAME`: the names an environment may have (`ENV_PREFIX`).
 var envPrefix = regexp.MustCompile(`(?s)^([a-z0-9][a-z0-9_-]{0,31}):(.*)$`)
 

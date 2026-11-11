@@ -34,6 +34,7 @@ import (
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/envs"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/file-index"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/files"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/glyphs"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/history"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/locations"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/login"
