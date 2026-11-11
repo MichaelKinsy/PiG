@@ -6,7 +6,7 @@ name: Pre-flight
 on:
   # A PR event judges that PR at once, from main's workflow and a checkout of main (pull_request_target; the PR's own code
   # is never run), so ci.yml's Pre-flight verdict job has a status to wait for. The hourly run judges every open PR again.
-  pull_request_target:
+  pull_request_target: # zizmor: ignore[dangerous-triggers] main's code and a sparse checkout of main; the PR is data read through the API, never executed
     types: [opened, synchronize, reopened, edited, ready_for_review]
   schedule:
     - cron: '17 * * * *'

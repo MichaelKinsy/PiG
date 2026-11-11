@@ -6,7 +6,7 @@ name: Nightly bisect
 # bisect/* branch, deleted after its run), and it merges nothing: the issue names the commit, its author and the failed
 # jobs, and a person opens the fix PR. automation/ci/nightly-bisect.sh holds the search, nightly-probe.sh the probe.
 on:
-  workflow_run:
+  workflow_run: # zizmor: ignore[dangerous-triggers] runs main's workflow; reads only the run's head sha and conclusion, never a pull request's code
     workflows: [CI]
     types: [completed]
   workflow_dispatch:
