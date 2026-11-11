@@ -197,7 +197,7 @@ const (
 // pig additive (D112): the slices move when the highlight is computed, not what it is.
 var writeWarmBudget = 4 * time.Millisecond
 
-const writeWarmMinSlice = 1 << 10
+const writeWarmMinSlice = 1 << 10 // pig additive (D112): the smallest slice of a warm-up, a byte count of pig-only pacing
 
 // writeWarmStep is how many bytes a streaming write call's content of length n grows before its next warm-up.
 //

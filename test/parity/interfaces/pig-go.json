@@ -258254,6 +258254,17 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.rebuildPendingMessages",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.rebuildPendingMessages",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.rebuildSystemPromptFromResources",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.rebuildSystemPromptFromResources",
@@ -312374,9 +312385,152 @@
       "shapeHash": "sha256:2dd4380a85eb4638dceb9d6a4c5880ec79196c6143342de2e52be58406c2ea09"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#writeWarmBudget",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "writeWarmBudget",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "time.Duration"
+      },
+      "shapeHash": "sha256:83488df5bf69d53eed0fce849900072064e69ce5fc0b1a0f19720f7f5af6ce46"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#writeWarmBudget.Abs",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "writeWarmBudget.Abs",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() time.Duration"
+      },
+      "shapeHash": "sha256:182a2bb05a9afffa29d82fa1b9199409a6edc02648d561478a37684fc219d429"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#writeWarmBudget.Hours",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "writeWarmBudget.Hours",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() float64"
+      },
+      "shapeHash": "sha256:dd83be6ee46574c9a5e582bb0e3ecaa65591b89698409ba285fe424794c25f12"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#writeWarmBudget.Microseconds",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "writeWarmBudget.Microseconds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int64"
+      },
+      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#writeWarmBudget.Milliseconds",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "writeWarmBudget.Milliseconds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int64"
+      },
+      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#writeWarmBudget.Minutes",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "writeWarmBudget.Minutes",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() float64"
+      },
+      "shapeHash": "sha256:dd83be6ee46574c9a5e582bb0e3ecaa65591b89698409ba285fe424794c25f12"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#writeWarmBudget.Nanoseconds",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "writeWarmBudget.Nanoseconds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int64"
+      },
+      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#writeWarmBudget.Round",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "writeWarmBudget.Round",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(m time.Duration) time.Duration"
+      },
+      "shapeHash": "sha256:39141cddd85eb7dfd5f1aefdd730190ba3f474ef79255ee327bb2fbccb4168ae"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#writeWarmBudget.Seconds",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "writeWarmBudget.Seconds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() float64"
+      },
+      "shapeHash": "sha256:dd83be6ee46574c9a5e582bb0e3ecaa65591b89698409ba285fe424794c25f12"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#writeWarmBudget.String",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "writeWarmBudget.String",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#writeWarmBudget.Truncate",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "writeWarmBudget.Truncate",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(m time.Duration) time.Duration"
+      },
+      "shapeHash": "sha256:39141cddd85eb7dfd5f1aefdd730190ba3f474ef79255ee327bb2fbccb4168ae"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#writeWarmBudget.format",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "writeWarmBudget.format",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(buf *[32]byte) int"
+      },
+      "shapeHash": "sha256:2dfd215036b14c3898ddd16ce618fec9fa6ba141357d49869e3171fbf3801867"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#writeWarmMaxStep",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "writeWarmMaxStep",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#writeWarmMinSlice",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "writeWarmMinSlice",
       "kind": "constant",
       "exported": false,
       "shape": {
@@ -396533,6 +396687,17 @@
         "type": "func(code string, from int) (ok bool, read int)"
       },
       "shapeHash": "sha256:8891dc268cd17ceeda68bf9209f62d21079becfc6b0610de6d946eee0630282e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#unitCount",
+      "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
+      "name": "unitCount",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(text string) int"
+      },
+      "shapeHash": "sha256:c1f5e62c046a3890a218805dbb9817e75c76785483920a44b0b85f6622169fab"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#unitsByteLen",

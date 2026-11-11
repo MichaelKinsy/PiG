@@ -490,6 +490,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-471c46e](#bf-471c46e) | An MCP tool or resource link with an explicit empty `title` keeps it, as Pi does, instead of falling back to… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-471d6fb](#bf-471d6fb) | `pig piglet build` of an ahead-of-time image no longer waits 200 ms per extension after each training run's… | PiG's own defect | All platforms | Unreleased |
 | [BF-4741f6a](#bf-4741f6a) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
+| [BF-4754bab](#bf-4754bab) | After an answer, interactive mode no longer draws three more frames that repaint nothing and only move and… | PiG's own defect | All platforms | Unreleased |
 | [BF-47590f3](#bf-47590f3) | fix(chord/nextnode/workers): Windows reports a worker the component killed as SIGKILL | PiG's own defect | Windows | Unreleased |
 | [BF-4789fa5](#bf-4789fa5) | `thinking_level_select` and `turn_start` handlers are covered through the production Session: a handler sees… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-47aad78](#bf-47aad78) | fix(durable/core): a phase span answer that is no uint32 handle names no span | PiG's own defect | All platforms | Unreleased |
@@ -1010,6 +1011,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-8022d7a](#bf-8022d7a) | fix(chord/nextnode): no JSON decode into an interface value in the terminal pipe or the browser driver… | PiG's own defect | All platforms | Unreleased |
 | [BF-8048c85](#bf-8048c85) | Tool-call header argument preview no longer splits a character: `truncateArg` (`tui/tool_execution.go`) cut… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8070fcc](#bf-8070fcc) | OpenAI Codex and Azure OpenAI requests parse their URL as fetch does again: an upper-case scheme, a space or… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-8077552](#bf-8077552) | A `write` tool call that streams a large file no longer stalls one frame in twenty for 20-30 ms: the… | PiG's own defect | All platforms | Unreleased |
 | [BF-8085dc0](#bf-8085dc0) | A legacy `oauth.json` or `settings.json` that starts with a byte order mark migrates to `auth.json`, as in Pi | PiG's own defect | All platforms | 0.5.0 |
 | [BF-80970da](#bf-80970da) | The Go SDK page now says that leaving `AgentDir` empty in `CreateAgentSessionServicesOptions` makes a program… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-80b912a](#bf-80b912a) | A failed install-receipt write during `pig update` or install, such as one rejected because the update CA… | PiG's own defect | Windows | 0.7.0 |
@@ -8503,6 +8505,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `4741f6ade2` (2026-10-23)
 - **Tests:** None recorded.
 
+### BF-4754bab
+
+**After an answer, interactive mode no longer draws three more frames that repaint nothing and only move and…**
+
+- **Source:** PiG's own defect
+- **Symptom:** After an answer, interactive mode no longer draws three more frames that repaint nothing and only move and hide the cursor (two direct renders at the end of the turn and one requested by `agent_settled`).
+- **Root cause:** After each answer PiG wrote three more frames that repaint nothing and only move and hide the cursor: two direct renders at the end of the turn (the pending message refresh and the turn flush, each after the turn had already rendered) and a RequestRender from agent_settled, 16 ms later. The extra frames made a harness that waits for output silence wait longer (interactive session wall 581 vs 512 ms for Pi-Bolt 1.2.1) and wrote 29 bytes per answer.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `4754babfb8` (2026-11-11)
+- **Tests:** `internal/codingagent/interactive_answer_end_frames_test.go::TestInteractiveAnswerEndEmitsNoTrailingFrame`, `test/parity/runner/final_frame_test.go::TestEvaluateOutcome_NoFramesAfterReply`, `test/parity/runner/final_frame_test.go::TestObserveFinalFrame`, `test/parity/scenarios/interactive-rendering/68-no-frame-after-reply.toml`
+- **Release note:** After an answer, interactive mode no longer draws three more frames that repaint nothing and only move and hide the cursor (two direct renders at the end of the turn and one requested by `agent_settled`). Pi ends its output with the frame that carries the end of the reply; PiG now does too, which also stops a terminal multiplexer or a script that waits for output to go quiet from waiting a frame longer after every answer.
+
 ### BF-47590f3
 
 **fix(chord/nextnode/workers): Windows reports a worker the component killed as SIGKILL**
@@ -15696,6 +15712,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `8070fcc38b` (2026-10-10)
 - **Tests:** `ai/fetch_request_url_test.go::TestCodexAndAzureRequestTargetIsParsedLikeFetch`, `ai/fetch_request_url_test.go::TestCodexRequestTargetDropsTheFragmentOfAnOpaquePath`
 - **Release note:** OpenAI Codex and Azure OpenAI requests parse their URL as fetch does again: an upper-case scheme, a space or a dot segment in a configured base URL reaches the server as the serialized URL, and the fragment is not sent. Codex reports a base URL with credentials with fetch's own message.
+
+### BF-8077552
+
+**A `write` tool call that streams a large file no longer stalls one frame in twenty for 20-30 ms: the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A `write` tool call that streams a large file no longer stalls one frame in twenty for 20-30 ms: the highlighting of the whole file that is kept warm while the content arrives runs in slices of about 4 ms per frame instead of 8-32 KB at a time.
+- **Root cause:** A streaming write call warms the highlight of its whole file a step (a sixteenth of the content, 8-32 KB) at a time so the frame that completes the call does not stall. The step ran in whichever frame it fell in: 20-30 ms of highlighting inside ToolExecutionComponent.Render on the owner loop, which doubled the 99th percentile of the gap between frames (29-36 ms against Pi-Bolt 1.2.1 at 17-18 ms in the write:50/200/400 race rows).
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8077552b6c` (2026-11-11)
+- **Tests:** `internal/codingagent/write_highlight_warm_test.go::TestWarmUpSlicesBoundWhatAFrameWarmsAndLeaveTheCardUnchanged`, `tui/internal/hljs/unit_count_test.go::TestUnitCountIsTheLengthOfTheUnits`
+- **Release note:** A `write` tool call that streams a large file no longer stalls one frame in twenty for 20-30 ms: the highlighting of the whole file that is kept warm while the content arrives runs in slices of about 4 ms per frame instead of 8-32 KB at a time. The lines the card draws are unchanged.
 
 ### BF-8085dc0
 

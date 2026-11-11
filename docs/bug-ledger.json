@@ -13306,6 +13306,31 @@
       "tests": []
     },
     {
+      "id": "BF-4754bab",
+      "title": "After an answer, interactive mode no longer draws three more frames that repaint nothing and only move and…",
+      "symptom": "After an answer, interactive mode no longer draws three more frames that repaint nothing and only move and hide the cursor (two direct renders at the end of the turn and one requested by `agent_settled`).",
+      "rootCause": "After each answer PiG wrote three more frames that repaint nothing and only move and hide the cursor: two direct renders at the end of the turn (the pending message refresh and the turn flush, each after the turn had already rendered) and a RequestRender from agent_settled, 16 ms later. The extra frames made a harness that waits for output silence wait longer (interactive session wall 581 vs 512 ms for Pi-Bolt 1.2.1) and wrote 29 bytes per answer.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "After an answer, interactive mode no longer draws three more frames that repaint nothing and only move and hide the cursor (two direct renders at the end of the turn and one requested by `agent_settled`). Pi ends its output with the frame that carries the end of the reply; PiG now does too, which also stops a terminal multiplexer or a script that waits for output to go quiet from waiting a frame longer after every answer.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4754babfb8",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/interactive_answer_end_frames_test.go::TestInteractiveAnswerEndEmitsNoTrailingFrame",
+        "test/parity/runner/final_frame_test.go::TestEvaluateOutcome_NoFramesAfterReply",
+        "test/parity/runner/final_frame_test.go::TestObserveFinalFrame",
+        "test/parity/scenarios/interactive-rendering/68-no-frame-after-reply.toml"
+      ]
+    },
+    {
       "id": "BF-47590f3",
       "title": "fix(chord/nextnode/workers): Windows reports a worker the component killed as SIGKILL",
       "symptom": "fix(chord/nextnode/workers): Windows reports a worker the component killed as SIGKILL",
@@ -27562,6 +27587,29 @@
       "tests": [
         "ai/fetch_request_url_test.go::TestCodexAndAzureRequestTargetIsParsedLikeFetch",
         "ai/fetch_request_url_test.go::TestCodexRequestTargetDropsTheFragmentOfAnOpaquePath"
+      ]
+    },
+    {
+      "id": "BF-8077552",
+      "title": "A `write` tool call that streams a large file no longer stalls one frame in twenty for 20-30 ms: the…",
+      "symptom": "A `write` tool call that streams a large file no longer stalls one frame in twenty for 20-30 ms: the highlighting of the whole file that is kept warm while the content arrives runs in slices of about 4 ms per frame instead of 8-32 KB at a time.",
+      "rootCause": "A streaming write call warms the highlight of its whole file a step (a sixteenth of the content, 8-32 KB) at a time so the frame that completes the call does not stall. The step ran in whichever frame it fell in: 20-30 ms of highlighting inside ToolExecutionComponent.Render on the owner loop, which doubled the 99th percentile of the gap between frames (29-36 ms against Pi-Bolt 1.2.1 at 17-18 ms in the write:50/200/400 race rows).",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A `write` tool call that streams a large file no longer stalls one frame in twenty for 20-30 ms: the highlighting of the whole file that is kept warm while the content arrives runs in slices of about 4 ms per frame instead of 8-32 KB at a time. The lines the card draws are unchanged.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8077552b6c",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/write_highlight_warm_test.go::TestWarmUpSlicesBoundWhatAFrameWarmsAndLeaveTheCardUnchanged",
+        "tui/internal/hljs/unit_count_test.go::TestUnitCountIsTheLengthOfTheUnits"
       ]
     },
     {

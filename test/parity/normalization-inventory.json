@@ -2,7 +2,7 @@
   "mechanisms": [
     {
       "source": "test/parity/runner/asserts.go",
-      "sha256": "377ce40e43952adac9a3b5d2080eb5f4a943c4e17e47836187cceb1ec8fb2dce",
+      "sha256": "c5386bb97328c246411e0c6b0919877745db4f44c2ec975d6ba76d15f6ffa375",
       "reason": "Normalized/layout comparators are explicit plain-terminal contracts: ANSI, CR, trailing spaces and outer blank rows are not compared. They are not full wire proof. Exact comparators apply only scenario-declared, justified replacements."
     },
     {
@@ -27,7 +27,7 @@
     },
     {
       "source": "test/parity/runner/driver_tmux.go",
-      "sha256": "84dc8e44efd154fa7092a78f7b743e9f38027758a721878cbe08c52b2b1f9a41",
+      "sha256": "6da493568046b813904eb4e809da7cf6f8d563e5d1b72549bec8593fed0a1f98",
       "reason": "Terminal state capture is not a byte-stream assertion. A scenario explicitly selects viewport or retained history and its crop. History capture uses session-local maximum retention without changing pane size or shared defaults; required anchors and source-derived assertions reject incomplete history. Readiness and new-output barriers are synchronization, not behavioral coverage."
     },
     {
@@ -4618,6 +4618,24 @@
             "capture_end_regex": "faux-1\\s*$"
           },
           "reason": "Owned visible surface: The /fork selector wraps, clamps on page keys and confirms the highlighted message in both binaries.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/interactive-rendering/68-no-frame-after-reply.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "reply with exactly: FRAMETAILOK",
+            "capture_end": "FRAMETAILOK"
+          },
+          "reason": "Owned visible surface: No frame begins after the frame that carries the end of a reply, in the raw terminal stream.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
