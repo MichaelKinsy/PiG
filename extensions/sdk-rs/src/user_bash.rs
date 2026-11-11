@@ -53,7 +53,10 @@ impl BashExecError {
 
     /// The error of a command that timed out after its shell had exited: only the local operations make one.
     pub(crate) fn shell_timeout(message: String, shell_exit: crate::protocol::ShellExit) -> Self {
-        BashExecError { message, shell_exit: Some(shell_exit) }
+        BashExecError {
+            message,
+            shell_exit: Some(shell_exit),
+        }
     }
 
     /// The error's message and its shell exit, consumed: the `user_bash_exec` error response carries both.
@@ -64,7 +67,10 @@ impl BashExecError {
 
 impl From<String> for BashExecError {
     fn from(message: String) -> Self {
-        BashExecError { message, shell_exit: None }
+        BashExecError {
+            message,
+            shell_exit: None,
+        }
     }
 }
 

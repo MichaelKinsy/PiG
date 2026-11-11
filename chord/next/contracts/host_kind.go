@@ -2,7 +2,6 @@ package contracts
 
 import (
 	"math"
-	"strconv"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -211,11 +210,8 @@ func AddressOfKey(kind *HostKind, key string) (Address, error) {
 		part := parts[i+1]
 		switch field.typeName {
 		case "integer":
-			number, err := strconv.ParseFloat(part, 64)
-			if err != nil {
-				number = math.NaN()
-			}
-			params.Set(field.name, number)
+			// Pi's `Number(part)` (host-kind.ts addressOfKey): StringToNumber, so padding, an empty part and 0x/0o/0b literals read as it reads them and an unreadable part is NaN.
+			params.Set(field.name, jsnumber.Parse(part))
 		case "boolean":
 			params.Set(field.name, part == "true")
 		default:

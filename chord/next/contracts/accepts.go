@@ -158,11 +158,12 @@ func needsOf(data *ContractData, index int) needs {
 		now := current.Variants.Value(variant)
 		for member, oldKeyed := range oldVariant.Keyed.All() {
 			current, kept := now.Keyed.Get(member)
-			if !kept {
+			switch {
+			case !kept:
 				keyed.Set(member, keyedRemoved)
-			} else if keyKind(current) != keyKind(oldKeyed) {
+			case keyKind(current) != keyKind(oldKeyed):
 				keyed.Set(member, keyedRekeyed)
-			} else if changes[Change{variant, member, SideKeyed}] {
+			case changes[Change{variant, member, SideKeyed}]:
 				keyed.Set(member, keyedChanged)
 			}
 		}

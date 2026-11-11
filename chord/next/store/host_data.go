@@ -306,13 +306,14 @@ func (reader *hostArchiveReader) revision(part *DocumentRevisionWrite, what stri
 		return invalidArgs("%s: a revision follows its record's create, in seq order", what)
 	}
 	content := part.Content
-	if content.Kind == ContentBase {
+	switch {
+	case content.Kind == ContentBase:
 		version := content.Version
 		document.base = &version
 		document.value = content.Value
-	} else if document.base == nil || *document.base != content.Version {
+	case document.base == nil || *document.base != content.Version:
 		return invalidArgs("%s: a delta without a base at its version", what)
-	} else {
+	default:
 		applied, err := delta.Apply(document.value, content.Ops)
 		if err != nil {
 			return invalidArgs("%s: a delta that does not apply (%s)", what, err.Error())

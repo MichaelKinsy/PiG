@@ -31,7 +31,7 @@ type frameCheck struct {
 	signalCancels int
 	// toolCalls counts the tool_call requests the host wrote.
 	toolCalls int
-	failures      []string
+	failures  []string
 	// keep names the events whose request frames are kept as written, by extension: kept[extName+"\x00"+event].
 	keep map[string]bool
 	kept map[string][][]byte

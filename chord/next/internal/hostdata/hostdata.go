@@ -76,7 +76,9 @@ func operations() *Operations {
 }
 
 // TablesToMigrate is Operations.TablesToMigrate.
-func TablesToMigrate(store, archive any) []string { return operations().TablesToMigrate(store, archive) }
+func TablesToMigrate(store, archive any) []string {
+	return operations().TablesToMigrate(store, archive)
+}
 
 // Owners is Operations.Owners.
 func Owners(store any, key string, archive any, ctx context.Context) (map[string]struct{}, error) {

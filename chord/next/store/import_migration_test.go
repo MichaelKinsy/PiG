@@ -85,7 +85,7 @@ func importMigrationSame(t *testing.T, got any, want string) {
 
 func TestMigratedRows(t *testing.T) {
 	v1, v2, v3 := importMigrationDefinitions(t)
-	versioned := func(pairs ...any) *delta.JsonObject { return delta.JsonObjectOf(pairs...) }
+	versioned := delta.JsonObjectOf
 
 	t.Run("go through each version's edits and data step, with `$v` and json cell versions exact", func(t *testing.T) {
 		rows, err := migrateRows(

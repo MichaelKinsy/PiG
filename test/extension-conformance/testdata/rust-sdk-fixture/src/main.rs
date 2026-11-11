@@ -2799,8 +2799,17 @@ fn main() {
         "Run abort_tool as a nested tool call",
         json!({"type": "object", "properties": {}}),
         |ctx, _params: Value| {
-            let text = match ctx.execute_tool("abort_tool", json!({}), pig_sdk::ExecuteToolOptions::default()) {
-                Ok(outcome) => outcome.result.content.iter().filter_map(|block| block["text"].as_str()).collect::<String>(),
+            let text = match ctx.execute_tool(
+                "abort_tool",
+                json!({}),
+                pig_sdk::ExecuteToolOptions::default(),
+            ) {
+                Ok(outcome) => outcome
+                    .result
+                    .content
+                    .iter()
+                    .filter_map(|block| block["text"].as_str())
+                    .collect::<String>(),
                 Err(error) => format!("failed: {error}"),
             };
             ToolResult::text(format!("tool_signal_nested:{text}"))
