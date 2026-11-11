@@ -758,6 +758,12 @@ jobs:
       - name: Check the Durable core budget
         shell: bash
         run: automation/ci/with-isolated-pig-home.sh make durable-core-budget
+      # test-carried-oracles: the oracle tests of Pi 473515f9c (suspendable work), which the Go port carries ahead of the committed pin, run with the pin overridden to
+      # that commit (PI_UPSTREAM_REF; its frozen closure is in automation/pin/frozen): the pin's own mirror has none of that work, so the same tests skip in every other job.
+      # The oracle build of that commit is cached by the key above, which hashes the frozen closures.
+      - name: Run the oracle tests of carried Pi work
+        shell: bash
+        run: automation/ci/with-isolated-pig-home.sh make test-carried-oracles
 
   durable-contract:
     name: Durable contract / ${{ matrix.impl }}

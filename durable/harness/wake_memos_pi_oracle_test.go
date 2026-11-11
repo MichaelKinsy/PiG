@@ -96,7 +96,7 @@ func TestWakeRecordMemosMatchPi(t *testing.T) {
 	}
 
 	root := testenv.ModuleRoot(t)
-	cmd := exec.CommandContext(t.Context(), "node", "--disable-warning=ExperimentalWarning", "testdata/wake_memos_oracle.mjs", filepath.Join(root, ".upstream", "current", "packages"))
+	cmd := exec.CommandContext(t.Context(), "node", "--disable-warning=ExperimentalWarning", "testdata/wake_memos_oracle.mjs", suspendableOraclePackages(t))
 	cmd.Env = append(cmd.Environ(), "PI_INTEROP_DIR="+filepath.Join(root, "durable", "interop")+"/")
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
