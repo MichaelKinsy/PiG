@@ -36,13 +36,19 @@ type pending struct {
 	pr      int
 	comment prComment
 	err     error
+	// pull is read while the comments load, so GitHub starts computing mergeable early; nil when that read failed.
+	pull     *pull
+	pulledAt time.Time
 }
+
+// loadJobs is how many PRs load their comment and pull at once: light reads, all before any PR runs.
+const loadJobs = 16
 
 func runPR(ctx context.Context, cfg config, env *ruleEnv, o runOptions, version string, p pending, admit func() bool, t *tips, log io.Writer) (result, head string, err error) {
 	if p.err != nil {
 		return resultError, "", fmt.Errorf("its pre-flight comment could not be read: %w", p.err)
 	}
-	d, err := fetch(ctx, cfg, fetchOptions{apiBase: o.apiBase, token: o.token, repo: o.repo, pr: p.pr, version: version, previous: p.comment.State, admit: admit, tips: t}, log)
+	d, err := fetch(ctx, cfg, fetchOptions{apiBase: o.apiBase, token: o.token, repo: o.repo, pr: p.pr, version: version, previous: p.comment.State, admit: admit, tips: t, pull: p.pull, pulledAt: p.pulledAt}, log)
 	if err != nil {
 		return resultError, "", err
 	}
@@ -126,18 +132,31 @@ func runBatch(ctx context.Context, cfg config, o runOptions, out io.Writer) ([]h
 	if err != nil {
 		return nil, err
 	}
+	t := newTips(a)
 	prs := make([]pending, len(numbers))
-	each(len(numbers), o.jobs, func(i int) {
-		prs[i].pr = numbers[i]
-		prs[i].comment, prs[i].err = loadComment(ctx, a, o.repo, numbers[i], o.bot)
-	})
+	each(len(numbers), loadJobs, func(i int) { prs[i] = load(ctx, a, o, numbers[i], t) })
 	logf(out, "pre-flight %s over %d PR(s) of %s, %d at a time", short(version), len(prs), o.repo, o.jobs)
-	runs := runAll(ctx, cfg, o, version, prs, newTips(a))
+	runs := runAll(ctx, cfg, o, version, prs, t)
 	hs, failedToRun := reportRuns(runs, out)
 	if failedToRun > 0 && failedToRun == len(runs) {
 		return hs, fmt.Errorf("the pre-flight could not run for any of the %d PR(s)", failedToRun)
 	}
 	return hs, nil
+}
+
+func load(ctx context.Context, a *api, o runOptions, pr int, t *tips) pending {
+	p := pending{pr: pr}
+	var wg sync.WaitGroup
+	wg.Go(func() { p.comment, p.err = loadComment(ctx, a, o.repo, pr, o.bot) })
+	wg.Go(func() {
+		var pl pull
+		if a.get(ctx, fmt.Sprintf("repos/%s/pulls/%d", o.repo, pr), &pl, false) == nil {
+			p.pull, p.pulledAt = &pl, time.Now()
+			_, _ = t.get(ctx, o.repo, pl.Base.Ref)
+		}
+	})
+	wg.Wait()
+	return p
 }
 
 func prNumbers(ctx context.Context, a *api, o runOptions) ([]int, error) {

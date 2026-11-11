@@ -170,6 +170,8 @@ type fetchOptions struct {
 	previous *state
 	admit    func() bool
 	tips     *tips
+	pull     *pull
+	pulledAt time.Time
 }
 
 func fetch(ctx context.Context, cfg config, o fetchOptions, log io.Writer) (*data, error) {
@@ -205,8 +207,13 @@ type fetcher struct {
 
 func (f *fetcher) readPull(ctx context.Context) error {
 	d := f.d
-	if err := f.a.get(ctx, fmt.Sprintf("%s/pulls/%d", f.prefix, f.o.pr), &d.Pull, false); err != nil {
-		return err
+	if f.o.pull == nil {
+		if err := f.a.get(ctx, fmt.Sprintf("%s/pulls/%d", f.prefix, f.o.pr), &d.Pull, false); err != nil {
+			return err
+		}
+		f.o.pulledAt = time.Now()
+	} else {
+		d.Pull = *f.o.pull
 	}
 	switch {
 	case d.Pull.Commits > maxCommits:
@@ -327,7 +334,7 @@ func (f *fetcher) mergeableAgain(ctx context.Context) error {
 	select {
 	case <-ctx.Done():
 		return nil
-	case <-time.After(mergeableRetryDelay):
+	case <-time.After(mergeableRetryDelay - time.Since(f.o.pulledAt)):
 	}
 	var p pull
 	if err := f.a.get(ctx, fmt.Sprintf("%s/pulls/%d", f.prefix, f.o.pr), &p, false); err != nil {
