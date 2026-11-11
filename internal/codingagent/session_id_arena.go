@@ -21,7 +21,7 @@ const (
 	// maxIDChunks is the number of chunks a reference can name.
 	maxIDChunks = 1 << (31 - idChunkBits)
 	// maxArenaID is the longest id kept in a chunk.
-	maxArenaID = 255 // pig divergence (D112): a one-byte length in the arena, not an upstream limit; a longer id is kept as a string.
+	maxArenaID = 255 // pig additive (D112): a one-byte length in the arena, not an upstream limit; a longer id is kept as a string.
 )
 
 // add stores id and returns its reference.
