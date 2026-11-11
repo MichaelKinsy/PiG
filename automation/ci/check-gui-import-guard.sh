@@ -13,5 +13,12 @@ while read -r pkg imports; do
     done
   done
 done < <(go list -test -f '{{.ImportPath}} {{join .Imports " "}} {{join .TestImports " "}} {{join .XTestImports " "}}' ./chord/... 2>/dev/null)
-[ $status -eq 0 ] && echo "gui import guard: chord imports no UI package"
+# No Wails anywhere (owner decision 2026-11-11): the UI contract is host-agnostic, so no Go file imports a wails package and
+# no module file requires one. Hosts (TUI, p2 web, MyGo, ACP, third-party) connect through adapters.
+if git grep -nIiE '^[[:space:]]*(import[[:space:]]+)?([A-Za-z_.]+[[:space:]]+)?"[^"]*wails[^"]*"[[:space:]]*$' -- '*.go' ':!third_party' >&2 ||
+   git grep -nIiE 'wailsapp|wails\.io' -- go.mod go.sum go.work go.work.sum '*/go.mod' '*/go.sum' >&2; then
+  echo "a wails import or requirement is not allowed" >&2
+  status=1
+fi
+[ $status -eq 0 ] && echo "gui import guard: chord imports no UI package; no wails import"
 exit $status

@@ -30,8 +30,8 @@ PROVENANCE = re.compile(
 EMPLOYER = re.compile(r"hew" + r"lett|\bh" + r"pe\b", re.IGNORECASE)
 GUI_PATHS = re.compile(
     r"^(?:coding/uiview/|extensions/pig-ui/|extensions/sdk/(?:ui|view)|extensions/sdk-py/pig_sdk/ui|"
-    r"extensions/sdk-rs/src/ui|coding/presentation/|cmd/pig/rpc_gui|"
-    r"coding/extension/host/subprocess/(?:uiview|view_|presentation_bridge)|"
+    r"extensions/sdk-rs/src/ui|coding/presentation/|coding/extension/presentation|schema/ui-view/|cmd/pig/rpc_gui|cmd/pig/testdata/ui-present|"
+    r"coding/extension/host/subprocess/(?:uiview|view_|presentation_bridge|ui_present)|"
     r"coding/extension/host/subprocess/runtime-node/shims/pig-ui|docs/ui-)"
 )
 WORD = re.compile(r"[A-Za-z]{3,}")
