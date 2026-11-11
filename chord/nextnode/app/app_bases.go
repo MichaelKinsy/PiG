@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/workers"
 )
 
 // Ports the bases' part of packages/chord/src/node/app/app.ts (Pi 284e63d9): `buildBases`, `watchBaseCode` and `editedSinceStart`.
@@ -169,8 +170,12 @@ func (a *App) baseBuilds() []baseBuild {
 	for _, kind := range a.options.Workers {
 		name := kind.Kind.Kind
 		bases = append(bases, baseBuild{name: name, build: func() (model.BaseInputs, error) {
+			// How the build ended: Pi's `error` of a failed one, the `inputs` of a built one (Build never returns nil).
 			built := a.Workers[name].Build()
-			return built.Inputs, built.Err
+			if failed, ok := built.(workers.WorkersBuiltFailed); ok {
+				return nil, failed.Error
+			}
+			return built.(workers.WorkersBuiltBuilt).Inputs, nil
 		}})
 	}
 	return bases

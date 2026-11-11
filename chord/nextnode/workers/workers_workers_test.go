@@ -826,16 +826,36 @@ func TestTheWorkerBaseForksWithoutEnableSourceMapsNodeParsesNoMapOfTheBaseWhoseM
 	}
 }
 
-// `WorkersBuilt` is Pi's `{ kind: "built", inputs } | { kind: "failed", error }` (workers.ts:103-105, builtOf :259-260): its kind says how
-// the build ended, a Go worker's base being the copy of its entry.
+// buildError is the error of a failed build, nil for a built one: Pi's `built.kind === "failed" ? built.error : undefined`.
+func buildError(built WorkersBuilt) error {
+	if failed, ok := built.(WorkersBuiltFailed); ok {
+		return failed.Error
+	}
+	return nil
+}
+
+// `WorkersBuilt` is Pi's `{ kind: "built", inputs } | { kind: "failed", error }` (workers.ts:103-105, builtOf :259-260): a
+// WorkersBuiltBuilt carries the inputs, a WorkersBuiltFailed the error, a Go worker's base being the copy of its entry
+// (workers.test.ts:77 `built.kind === "built" ? [...built.inputs.keys()]`, :141 `built.kind === "failed" ? built.error.message`).
 func TestTheWorkersBuildSaysHowItEndedItsKindBuiltWithItsInputsOrFailedWithItsError(t *testing.T) {
 	ok := newFleet(t, fleetOptions{})
-	if built := ok.workers.Build(); built.Kind != WorkersBuiltBuilt || built.Err != nil || len(built.Inputs) != 1 {
-		t.Fatalf("build = %+v, want kind %q with its inputs", built, WorkersBuiltBuilt)
+	built, isBuilt := ok.workers.Build().(WorkersBuiltBuilt)
+	if !isBuilt || len(built.Inputs) != 1 || built.Kind() != "built" {
+		t.Fatalf("build = %+v, want the built variant (kind %q) with its inputs", ok.workers.Build(), "built")
+	}
+	if again, _ := ok.workers.Built().(WorkersBuiltBuilt); len(again.Inputs) != 1 {
+		t.Fatalf("Built() = %+v, want the same built variant", ok.workers.Built())
 	}
 	broken := newFleet(t, fleetOptions{entry: filepath.Join(t.TempDir(), "no-such-worker")})
-	if built := broken.workers.Build(); built.Kind != WorkersBuiltFailed || built.Err == nil || built.Inputs != nil {
-		t.Fatalf("build = %+v, want kind %q with its error", built, WorkersBuiltFailed)
+	failed, isFailed := broken.workers.Build().(WorkersBuiltFailed)
+	if !isFailed || failed.Kind() != "failed" || failed.Error == nil || !strings.Contains(failed.Error.Error(), "the worker entry cannot be started") {
+		t.Fatalf("build = %+v, want the failed variant (kind %q) with its error", broken.workers.Build(), "failed")
+	}
+	if again, isFailed := broken.workers.Built().(WorkersBuiltFailed); !isFailed || again.Error != failed.Error {
+		t.Fatalf("Built() = %+v, want the same failed variant", broken.workers.Built())
+	}
+	if inputs := broken.workers.Inputs(); inputs != nil {
+		t.Fatalf("Inputs() of a failed build = %v, want none", inputs)
 	}
 }
 
@@ -884,13 +904,14 @@ func TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTheCodeT
 	if f.workers.Built() != nil {
 		t.Fatal("built before anything asked for it")
 	}
-	built := f.workers.Build()
+	build := f.workers.Build()
+	built, _ := build.(WorkersBuiltBuilt)
 	resolved, err := filepath.Abs(entry)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want, ok := built.Inputs[resolved]; built.Err != nil || !ok || len(built.Inputs) != 1 || want != model.ContentHash(mustRead(t, entry)) {
-		t.Fatalf("build = %+v, want the entry with its bytes' hash", built)
+	if want, ok := built.Inputs[resolved]; buildError(build) != nil || !ok || len(built.Inputs) != 1 || want != model.ContentHash(mustRead(t, entry)) {
+		t.Fatalf("build = %+v, want the entry with its bytes' hash", build)
 	}
 	if inputs := f.workers.Inputs(); len(inputs) != 1 || inputs[resolved] != built.Inputs[resolved] {
 		t.Fatalf("Inputs() = %v, want the files the base was built from: %v", inputs, built.Inputs)
@@ -961,7 +982,7 @@ func TestTheWorkerBaseAComponentThatClosedBeforeItsBuildWritesNothingAndLeavesAN
 	if err := f.workers.Close(background); err != nil {
 		t.Fatal(err)
 	}
-	if built := f.workers.Build(); built.Err == nil {
+	if built := f.workers.Build(); buildError(built) == nil {
 		t.Fatal("a closed component built")
 	}
 	if got := mustRead(t, other); string(got) != "another start's" {
@@ -979,8 +1000,8 @@ func TestTheWorkerBaseInANamedDirectoryEmptiedFirstWrittenAgainThereRemovedByClo
 		t.Fatal(err)
 	}
 	f := newFleet(t, fleetOptions{baseDir: named, env: map[string]string{fixtureReportExecutable: "1"}})
-	if built := f.workers.Build(); built.Err != nil {
-		t.Fatal(built.Err)
+	if err := buildError(f.workers.Build()); err != nil {
+		t.Fatal(err)
 	}
 	copied := filepath.Join(named, "worker"+filepath.Ext(fixtureEntry(t)))
 	if names := listDir(t, named); len(names) != 1 || filepath.Join(named, names[0]) != copied {
@@ -1017,8 +1038,8 @@ func TestTheWorkerBaseAStartWaitsForTheBasesBuildAndStartsItWhenNothingDid(t *te
 	notes := f.hold(fixtureNotes, "S1")
 	defer notes.Release()
 	until(t, func() bool { return refKind(notes) == host.RefStateLive })
-	if built := f.workers.Built(); built == nil || built.Err != nil {
-		t.Fatalf("built = %+v, want built", built)
+	if _, built := f.workers.Built().(WorkersBuiltBuilt); !built {
+		t.Fatalf("built = %+v, want built", f.workers.Built())
 	}
 	if starts := f.starts.all(); !reflect.DeepEqual(starts, []string{"session|S1"}) {
 		t.Fatalf("starts = %v", starts)
@@ -1029,8 +1050,8 @@ func TestTheWorkerBaseAStartWaitsForTheBasesBuildAndStartsItWhenNothingDid(t *te
 // program that can be started is the Go worker base that does not build.
 func TestTheWorkerBaseABrokenEntryFailsItsBuildAndEveryStartWorkerFailedThePublicStartErrorNothingForks(t *testing.T) {
 	f := newFleet(t, fleetOptions{entry: filepath.Join(t.TempDir(), "no-such-worker")})
-	if built := f.workers.Build(); built.Err == nil || !strings.Contains(built.Err.Error(), "the worker entry cannot be started") {
-		t.Fatalf("build = %+v, want the entry that cannot be started", built)
+	if err := buildError(f.workers.Build()); err == nil || !strings.Contains(err.Error(), "the worker entry cannot be started") {
+		t.Fatalf("build = %+v, want the entry that cannot be started", f.workers.Build())
 	}
 	notes := f.hold(fixtureNotes, "S1")
 	defer notes.Release()

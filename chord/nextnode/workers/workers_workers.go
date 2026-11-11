@@ -166,28 +166,38 @@ func (WorkerExitedError) workersError()    {}
 func (WorkerLinkLostError) workersError()  {}
 func (BatchWorkersError) workersError()    {}
 
-// WorkersBuilt is how a worker kind's base build ended: built (the file it was built from with its bytes' hash), or failed. A
-// Go worker's base is a private copy of its own executable, which holds its code already (no bundle: see the worker base note in
-// doc.go); its build checks that Entry is a program that can be started and copies it.
-type WorkersBuilt struct {
-	// Kind says how it ended: WorkersBuiltBuilt (Inputs) or WorkersBuiltFailed (Err), Pi's `kind`. Empty when a close ended the wait
-	// for the build (awaitBuild): it did not end.
-	Kind WorkersBuiltKind
-	// Inputs is the file the base was built from with the hash of the bytes copied: the app's base code for its workers, an edit
-	// of it outdates the base. Nil when it failed.
-	Inputs model.BaseInputs
-	// Err is why it did not build.
-	Err error
+// WorkersBuilt is how a worker kind's base build ended, Pi's `{ kind: "built"; inputs } | { kind: "failed"; error }`
+// (workers.ts:103-105): a WorkersBuiltBuilt (the file it was built from with its bytes' hash) or a WorkersBuiltFailed (why it
+// did not build). A Go worker's base is a private copy of its own executable, which holds its code already (no bundle: see the
+// worker base note in doc.go); its build checks that Entry is a program that can be started and copies it. Switch on the
+// variant: nil is Pi's `undefined`, a build that did not end (`Built`) or a wait a close ended (awaitBuild).
+type WorkersBuilt interface {
+	workersBuilt()
+	// Kind is Pi's `kind`: "built" or "failed".
+	Kind() string
 }
 
-// WorkersBuiltKind is the `kind` of how a build ended.
-type WorkersBuiltKind string
+// WorkersBuiltBuilt is `{ kind: "built"; inputs }`: the base was built.
+type WorkersBuiltBuilt struct {
+	// Inputs is the file the base was built from with the hash of the bytes copied: the app's base code for its workers, an edit
+	// of it outdates the base.
+	Inputs model.BaseInputs
+}
 
-// The kinds of how a build ended.
-const (
-	WorkersBuiltBuilt  WorkersBuiltKind = "built"
-	WorkersBuiltFailed WorkersBuiltKind = "failed"
-)
+// WorkersBuiltFailed is `{ kind: "failed"; error }`: the base did not build; every start fails while it did.
+type WorkersBuiltFailed struct {
+	// Error is why it did not build (Pi's `unknown`).
+	Error error
+}
+
+func (WorkersBuiltBuilt) workersBuilt()  {}
+func (WorkersBuiltFailed) workersBuilt() {}
+
+// Kind is "built".
+func (WorkersBuiltBuilt) Kind() string { return "built" }
+
+// Kind is "failed".
+func (WorkersBuiltFailed) Kind() string { return "failed" }
 
 // Build copies the worker's entry into the base's private directory and records its bytes, once (a start waits for it, and starts
 // it when nothing did); Pi's `build` bundles the worker base in memory and writes it at the first fork. A program cannot be held in
@@ -210,17 +220,17 @@ func (c *Workers) startBuild() {
 	c.buildOnce.Do(func() {
 		//portlint:allow golifetime the build is shared by every waiter and ends with the copy of the entry, which cannot be cancelled (a read of a program on a slow or stalled file system); Close does not wait for it and what it finishes after the close is dropped, as upstream's
 		go func() { //portlint:allow asyncorder Pi's `#built()` is one shared Promise: its ordering point is buildDone, closed once the outcome is stored, which Build and awaitBuild wait on
-			built := WorkersBuilt{}
+			var built WorkersBuilt
 			// A component that closed copies nothing; a named directory's staged leftovers of an earlier process go first.
 			found, staged, err := c.stageBase("")
 			if err == nil {
 				err = c.commitBase(staged)
 			}
 			if err != nil {
-				built.Kind, built.Err = WorkersBuiltFailed, err
+				built = WorkersBuiltFailed{Error: err}
 			} else {
 				c.entryPath = found
-				built.Kind, built.Inputs = WorkersBuiltBuilt, model.BaseInputs{found: staged.hash}
+				built = WorkersBuiltBuilt{Inputs: model.BaseInputs{found: staged.hash}}
 			}
 			c.built.Store(&built)
 			close(c.buildDone)
@@ -228,8 +238,13 @@ func (c *Workers) startBuild() {
 	})
 }
 
-// Built is how the build ended, once it did (nil before).
-func (c *Workers) Built() *WorkersBuilt { return c.built.Load() }
+// Built is how the build ended, once it did (nil before: Pi's `undefined`).
+func (c *Workers) Built() WorkersBuilt {
+	if built := c.built.Load(); built != nil {
+		return *built
+	}
+	return nil
+}
 
 // awaitBuild waits for the base's build, started when nothing did, as long as the component is open (Pi's
 // `awaitWithContext(this.#built(), this.#closingContext)` in a start): false when the close ended the wait.
@@ -240,7 +255,7 @@ func (c *Workers) awaitBuild() (WorkersBuilt, bool) {
 		// Pi's closing re-check after the await: both ready at once is a close.
 		return *c.built.Load(), !c.isClosing()
 	case <-c.closingCtx.Done():
-		return WorkersBuilt{}, false
+		return nil, false
 	}
 }
 
@@ -316,7 +331,7 @@ func (c *Workers) baseFile() (string, error) {
 			return copied, nil
 		}
 	}
-	built := c.built.Load()
+	built, _ := (*c.built.Load()).(WorkersBuiltBuilt)
 	_, staged, err := c.stageBase(c.entryPath)
 	if err != nil {
 		return "", err
@@ -571,7 +586,10 @@ func (c *Workers) State() chord.Watchable[delta.JsonValue] { return host.Expose(
 // Inputs are the files its worker base was built from, with their bytes' hashes: the app's base code for its workers (Pi's
 // `inputs`, `base.inputs` of the base `createWorkers` built before it returned). Go builds the base lazily (Build): it is built
 // here when nothing did, and none when the build failed (Pi's `createWorkers` rejects then).
-func (c *Workers) Inputs() model.BaseInputs { return c.Build().Inputs }
+func (c *Workers) Inputs() model.BaseInputs {
+	built, _ := c.Build().(WorkersBuiltBuilt)
+	return built.Inputs
+}
 
 // isClosing reports whether `Close` was called.
 func (c *Workers) isClosing() bool { return c.closingCtx.Err() != nil }
@@ -824,8 +842,8 @@ func (c *Workers) start(record *routed, routing context.Context) (host.ResolvedL
 	if !open {
 		return host.ResolvedLink{}, closed()
 	}
-	if built.Err != nil {
-		return host.ResolvedLink{}, c.failLocked(record, cause{err: built.Err, public: &startFailed}, "")
+	if failed, ok := built.(WorkersBuiltFailed); ok {
+		return host.ResolvedLink{}, c.failLocked(record, cause{err: failed.Error, public: &startFailed}, "")
 	}
 	// The start's context ends with the route's or with Close, and its registrations on both end with the start.
 	own, release := chordctx.WithCancel(routing)

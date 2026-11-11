@@ -117948,8 +117948,25 @@
     },
     {
       "id": "pkg:chord/.#StateDefinition",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:92020a22a7395494554704410195caa99de6cd556bedac4fed975972fc523466"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:92020a22a7395494554704410195caa99de6cd556bedac4fed975972fc523466",
+      "rationale": "Derived by the interface gap detector: StateDefinition is Go chord/next/documents/definition.go#StateDefinition (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/documents/definition.go#StateDefinition"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/documents/definition.go#DefineState"
+      ],
+      "evidence": [
+        "test:chord/next/documents/definition_test.go#TestInitialIsCheckedAgainstTheSchemaOnceTheFirstTimeItIsUsed",
+        "test:chord/next/documents/definition_test.go#TestInitialRefusesAValueThatDoesNotMatchEveryTimeUntilOneDoes",
+        "test:chord/next/documents/definition_test.go#TestMigrateMapsAnOlderValueAndChecksTheResultEachTimeItProducesOne"
+      ]
     },
     {
       "id": "pkg:chord/.#StateDefinition::construct:0",
@@ -118066,8 +118083,23 @@
     },
     {
       "id": "pkg:chord/.#StateDefinition::property:host",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0cdc0082ac0303a8834a5fd2fa7a98de0b1816cf0e0970266239df3acc1cf213"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:0cdc0082ac0303a8834a5fd2fa7a98de0b1816cf0e0970266239df3acc1cf213",
+      "rationale": "Derived by the interface gap detector: StateDefinition::property:host is Go chord/next/documents/definition.go#StateDefinition.Host (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/documents/definition.go#StateDefinition.Host"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/documents/definition.go#newStateDefinition"
+      ],
+      "evidence": [
+        "test:chord/next/documents/definition_test.go#TestDefineStateKeysByADeclaredHostKindKeyedWithTheKindAsItsHostAnUndeclaredKindIsRefused"
+      ]
     },
     {
       "id": "pkg:chord/.#StateDefinition::property:initial",
@@ -141284,8 +141316,25 @@
     },
     {
       "id": "pkg:chord/workers#WorkersBuilt",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:28e0838e8583587b83f3a383a3c21950c6203300232bb9dec6d58a0ed7453419"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:28e0838e8583587b83f3a383a3c21950c6203300232bb9dec6d58a0ed7453419",
+      "rationale": "Derived by the interface gap detector: WorkersBuilt is Go chord/nextnode/workers/workers_workers.go#WorkersBuilt (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/workers/workers_workers.go#WorkersBuilt"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/workers/workers_workers.go#Workers.Build"
+      ],
+      "evidence": [
+        "test:chord/nextnode/workers/workers_base_held_linux_test.go#TestTheWorkerBaseAComponentThatClosedOpensNotItsEntry",
+        "test:chord/nextnode/workers/workers_base_close_test.go#TestTheWorkerBaseAStartsWaitForTheBuildEndsClosedWhenTheBuildAndTheCloseAreBothDone",
+        "test:chord/nextnode/workers/workers_base_held_linux_test.go#TestTheWorkerBaseACloseDoesNotWaitForTheBasesBuildAStartWaitingForItEndsAtTheCloseTheLateBuildWritesNothing"
+      ]
     },
     {
       "id": "pkg:chord/workers#WorkersError",

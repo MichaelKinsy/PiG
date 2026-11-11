@@ -1,3 +1,0 @@
-pkg:chord/.#StateDefinition	chord	child-gap	chord/next/documents/definition.go#StateDefinition
-pkg:chord/.#StateDefinition::property:host	chord	type-mismatch	chord/next/documents/definition.go#StateDefinition.Host
-pkg:chord/workers#WorkersBuilt	chord	type-mismatch	chord/nextnode/workers/workers_workers.go#WorkersBuilt

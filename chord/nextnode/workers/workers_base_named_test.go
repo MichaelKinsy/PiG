@@ -16,8 +16,8 @@ import (
 func TestTheWorkerBaseANamedDirectoryEndingInASeparatorBuildsTheSameBase(t *testing.T) {
 	named := filepath.Join(t.TempDir(), "bases", "worker")
 	f := newFleet(t, fleetOptions{baseDir: named + string(filepath.Separator)})
-	if built := f.workers.Build(); built.Err != nil {
-		t.Fatalf("the build failed: %v", built.Err)
+	if err := buildError(f.workers.Build()); err != nil {
+		t.Fatalf("the build failed: %v", err)
 	}
 	copied := filepath.Join(named, "worker"+filepath.Ext(fixtureEntry(t)))
 	if names := listDir(t, named); len(names) != 1 || filepath.Join(named, names[0]) != copied {
@@ -44,8 +44,8 @@ func TestTheWorkerBaseABuildRemovesTheStagedDirectoriesAnEarlierProcessLeftBesid
 		t.Fatal(err)
 	}
 	f := newFleet(t, fleetOptions{baseDir: named})
-	if built := f.workers.Build(); built.Err != nil {
-		t.Fatalf("the build failed: %v", built.Err)
+	if err := buildError(f.workers.Build()); err != nil {
+		t.Fatalf("the build failed: %v", err)
 	}
 	if _, err := os.Stat(stale); !os.IsNotExist(err) {
 		t.Fatalf("the stale staged directory after the build: %v, want it removed", err)
@@ -66,8 +66,8 @@ func TestTheWorkerBaseABuildLeavesTheStagingDirectoryOfAnotherKindWhoseNameStart
 		t.Fatal(err)
 	}
 	f := newFleet(t, fleetOptions{baseDir: filepath.Join(bases, "a")})
-	if built := f.workers.Build(); built.Err != nil {
-		t.Fatalf("the build failed: %v", built.Err)
+	if err := buildError(f.workers.Build()); err != nil {
+		t.Fatalf("the build failed: %v", err)
 	}
 	if _, err := os.Stat(inFlight.dir); err != nil {
 		t.Fatalf("the other kind's staging directory after kind a's build: %v, want it left", err)
@@ -81,8 +81,8 @@ func TestTheWorkerBaseKindsWhoseNamesStartWithEachOtherBuildInParallel(t *testin
 	for _, name := range []string{"a", "a-build-x", "a-build-y"} {
 		f := newFleet(t, fleetOptions{baseDir: filepath.Join(bases, name)})
 		wg.Go(func() {
-			if built := f.workers.Build(); built.Err != nil {
-				t.Errorf("kind %s: the build failed: %v", name, built.Err)
+			if err := buildError(f.workers.Build()); err != nil {
+				t.Errorf("kind %s: the build failed: %v", name, err)
 			}
 		})
 	}
@@ -110,8 +110,8 @@ func TestTheWorkerBaseABuildRemovesTheStagedDirectoriesBesideANamedDirectoryWhos
 		t.Fatal(err)
 	}
 	f := newFleet(t, fleetOptions{baseDir: named})
-	if built := f.workers.Build(); built.Err != nil {
-		t.Fatalf("the build failed: %v", built.Err)
+	if err := buildError(f.workers.Build()); err != nil {
+		t.Fatalf("the build failed: %v", err)
 	}
 	if _, err := os.Stat(stale); !os.IsNotExist(err) {
 		t.Fatalf("the stale staged directory after the build: %v, want it removed", err)
@@ -126,8 +126,8 @@ func TestTheWorkerBaseABuildRemovesTheStagedDirectoriesBesideANamedDirectoryWhos
 func TestTheWorkerBaseTheCopyMadeAgainForAStartLeavesALiveStagingDirectoryAlone(t *testing.T) {
 	named := filepath.Join(t.TempDir(), "bases", "worker")
 	f := newFleet(t, fleetOptions{baseDir: named})
-	if built := f.workers.Build(); built.Err != nil {
-		t.Fatalf("the build failed: %v", built.Err)
+	if err := buildError(f.workers.Build()); err != nil {
+		t.Fatalf("the build failed: %v", err)
 	}
 	live := filepath.Join(filepath.Dir(named), ".worker+build-live")
 	if err := os.MkdirAll(live, 0o700); err != nil {
