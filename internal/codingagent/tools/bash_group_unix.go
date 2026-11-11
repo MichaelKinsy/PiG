@@ -9,11 +9,13 @@ import (
 	"syscall"
 )
 
-// setProcessGroup puts the command in its own process group so a group-kill
-// reaps grandchildren.
+// setProcessGroup starts the command as the leader of a new session, as Pi's bash tool spawns the shell with `detached: true`, which libuv starts with
+// setsid(2). A session leader also leads a process group of its own, so a group-kill reaps grandchildren, and the session has no controlling terminal:
+// an interactive shell the command starts (`zsh -i`) cannot open /dev/tty and make its own process group the terminal's foreground group, which would
+// leave PiG in the background of its own terminal.
 // Ports packages/coding-agent/src/utils/shell.ts
 func setProcessGroup(cmd *exec.Cmd) {
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
 }
 
 // attachProcessGroup and releaseProcessGroup are no-ops: the process group is
