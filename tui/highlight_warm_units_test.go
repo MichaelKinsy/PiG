@@ -13,7 +13,7 @@ import (
 // the streaming argument parser keeps one), escapes in strings and comments, and a language construct that spans lines.
 func warmedSource(lines int) string {
 	var b strings.Builder
-	for n := 0; n < lines; n++ {
+	for n := range lines {
 		switch n % 6 {
 		case 0:
 			fmt.Fprintf(&b, "export function step%d(input: number[]): number { return input.reduce((a, b) => a + b * %d, 0); }\n", n, n)
