@@ -350,21 +350,23 @@ func (s *TuiScope) Messages(messages *surfaces.Messages) *BoundMessages {
 	return &BoundMessages{messages: messages, language: language}
 }
 
-// othersDelivering says a delivery runs on a goroutine other than id that is not itself in Dispose. It runs with delivery held.
+// othersDelivering says a delivery runs on a goroutine other than id that Dispose on id must wait for: any, unless id is itself
+// delivering and the other is in Dispose too (two `changed` that dispose their scope would wait for each other). A caller outside
+// a delivery waits for every other delivery, one in Dispose included. It runs with delivery held.
 func (s *TuiScope) othersDelivering(id uint64) bool {
 	for other := range s.active {
-		if other != id && !s.disposing[other] {
+		if other != id && !(s.active[id] > 0 && s.disposing[other]) {
 			return true
 		}
 	}
 	return false
 }
 
-// Dispose releases every reference and ends every watch; changed is not called after it.
+// Dispose releases every reference and ends every watch; changed is not called after it. It blocks until a `changed` running on
+// another goroutine returned (a `changed` of this scope, on the calling goroutine, may call it: it only stops later deliveries).
 func (s *TuiScope) Dispose() {
 	s.cancel()
-	// A delivery on another goroutine, already past the check, ends before Dispose goes on; none starts after it. A goroutine
-	// in Dispose is not waited for (two `changed` that dispose their scope would wait for each other).
+	// A delivery on another goroutine, already past the check, ends before Dispose goes on; none starts after it.
 	id := goroutineID()
 	s.delivery.Lock()
 	s.disposing[id] = true
