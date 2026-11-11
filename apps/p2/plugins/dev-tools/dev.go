@@ -87,7 +87,7 @@ func inside(parent, child string) bool {
 }
 
 func init() {
-	workerFacet = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+	workerFacet = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 		return p2runtime.Contribute(facet, "p2.dev-tools", func(self host.StoreSelf) error {
 			workerOf := p2runtime.WorkerOf(self)
 			onCheckout := func() bool {

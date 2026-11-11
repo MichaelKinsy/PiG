@@ -76,7 +76,7 @@ var TuiSlots = p2runtime.NewKeyedRegistry[*TuiSlot]("p2.tui-slots")
 
 // TuiFacet is a TUI facet: one slot and, optionally, its commands (section 7.1); setup declares what else it serves (a registry its plugin defines).
 func TuiFacet(name string, factory TuiFactory, commands p2runtime.Keyed[TuiCommand], setup func(facet host.FacetHost) error) host.Facet {
-	return host.DefineFacet(func(facet host.FacetHost, self host.FacetSelf) error {
+	return p2runtime.DefineFacet(func(facet host.FacetHost, self host.FacetSelf) error {
 		if setup != nil {
 			if err := setup(facet); err != nil {
 				return err

@@ -124,10 +124,26 @@ const version = createHash("sha256")
 	.update([...files.keys()].sort().join("\n"))
 	.digest("hex");
 
+// The view kit (plugins/views/kit/main.ts, apps/p2/docs/rooms.md): the one script a custom view's frame loads beside its bridge. Pi's
+// server builds it on first request with `buildBrowserScript` (an IIFE compiled exactly like the web bundle); the Go server serves
+// the bytes built here at /view-kit/<sha256>.js. It is no file of the web bundle (not in bundle.json: the bundle's version is Pi's).
+let kit;
+if (plugins.includes("views")) {
+	const built = await build({
+		...browser,
+		entryPoints: [join(root, "plugins/views/kit/main.ts")],
+		outdir: join(root, ".p2-script"),
+		format: "iife",
+		plugins: [assetUrls],
+	});
+	kit = built.outputFiles.find((file) => file.path.endsWith(".js"));
+	if (!kit) throw new Error("The view kit compiled to no script");
+}
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
 const names = [...files.keys()].sort();
 for (const name of names) writeFileSync(join(out, name), files.get(name).body);
+if (kit) writeFileSync(join(out, "view-kit.js"), kit.contents);
 // bundle.json is what the Go server embeds beside the files: the manifest's inputs (version, entry script, stylesheet), each
 // file's type, and the plugins whose web facets the bundle holds.
 writeFileSync(

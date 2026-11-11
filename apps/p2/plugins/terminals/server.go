@@ -53,7 +53,7 @@ func intOf(value any) int {
 }
 
 // ServerFacet is the plugin's server facet.
-var ServerFacet = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+var ServerFacet = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 	if err := p2runtime.ServeNative[ServiceParts](facet, contract.TerminalServices); err != nil {
 		return err
 	}

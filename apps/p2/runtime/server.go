@@ -58,13 +58,16 @@ func (info ServerInfo) json() *delta.JsonObject {
 // `revokeGuests` ends every object of one guest's principals, here and in workers: their references end
 // `forbidden/revoked`, and the server closes their sockets.
 var ServerLocal = mustContract(contracts.Local("p2.server", contracts.LocalDeclaration{
-	Version: 2,
+	Version: 3,
 	Params:  contracts.Params{},
 	Members: []contracts.LocalEntry{
 		contracts.Mem("info", Contract(ServerInfoSchema)),
 		// Ends remote owners' live links and objects (one device, or every remote owner).
 		contracts.Mem("revokeOwners", contracts.NewMethod(Contract(schema.Obj(schema.Properties{schema.Opt("device", schema.Str())})))),
 		contracts.Mem("revokeGuests", contracts.NewMethod(Contract(schema.Obj(schema.Properties{schema.Prop("id", schema.Str())})))),
+		// Ends custom views' frame links and their objects (apps/p2/docs/rooms.md): every frame of one opening of a view
+		// (`ViewKey`), or one frame's link.
+		contracts.Mem("revokeFrames", contracts.NewMethod(Contract(schema.Obj(schema.Properties{schema.Opt("view", schema.Str()), schema.Opt("link", schema.Str())})))),
 	},
 }))
 
@@ -231,6 +234,14 @@ type UpgradeHandler func(response http.ResponseWriter, request *http.Request, pr
 // Upgrades is the registry of upgrade handlers.
 var Upgrades = NewKeyedRegistry[UpgradeHandler]("p2.upgrades")
 
+// LinkToken admits a link by a token alone (`/chord/<kind>?token=…`): the principal the link acts as, taking the token (single
+// use), or nil to refuse it. The request's cookies are never read: the caller may be a sandboxed frame with an opaque origin
+// (`Origin: null`).
+type LinkToken func(token string, ctx host.Ctx) (Principal, error)
+
+// LinkTokens is the registry of links admitted by a token alone, by kind.
+var LinkTokens = NewKeyedRegistry[LinkToken]("p2.link-tokens")
+
 // FindRoute is the handler for method and path: exact, then `/a/b/*`, `/a/*`, `/*`.
 func FindRoute(table *KeyedTable[RouteHandler], method, path string) (RouteHandler, bool) {
 	if handler, ok := table.Get(method + " " + path); ok {
@@ -342,7 +353,7 @@ var Hosts = mustContract(contracts.Local("p2.hosts", contracts.LocalDeclaration{
 
 func serverKeyedRegistries() []interface{ Serve(host.FacetHost) error } {
 	return []interface{ Serve(host.FacetHost) error }{
-		RequestResolvers, Routes, PageCookies, Upgrades, Authenticators, ShareUrls, SessionAccess, WorkerInitValues,
+		RequestResolvers, Routes, PageCookies, Upgrades, LinkTokens, Authenticators, ShareUrls, SessionAccess, WorkerInitValues,
 	}
 }
 
@@ -392,6 +403,17 @@ func ServerCore(h host.Host, info ServerInfo, parts *ServerParts) host.Facet {
 					"revokeGuests": methodOf(func(args *delta.JsonObject, ctx context.Context) error {
 						id, _ := args.Value("id").(string)
 						return h.Revoke(RevokeGuest(id), ctx)
+					}),
+					"revokeFrames": methodOf(func(args *delta.JsonObject, ctx context.Context) error {
+						if view, ok := args.Value("view").(string); ok {
+							if err := h.Revoke(RevokeView(view), ctx); err != nil {
+								return err
+							}
+						}
+						if link, ok := args.Value("link").(string); ok {
+							return h.Revoke(RevokeLink(link), ctx)
+						}
+						return nil
 					}),
 				},
 			}}, nil

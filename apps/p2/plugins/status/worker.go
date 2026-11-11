@@ -74,7 +74,7 @@ func totalUsage(totals harness.UsageState) *ai.Usage {
 }
 
 // Worker is the status plugin's worker facet.
-var Worker = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+var Worker = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 	return facet.Serve(contract.StatusReport, host.LocalFactory(func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
 		session := p2runtime.HarnessOf(self)
 		worker := p2runtime.WorkerOf(self)

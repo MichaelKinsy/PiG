@@ -215,7 +215,7 @@ func serveRuntime(_ *delta.JsonObject, self host.Self) (contracts.Implementation
 
 // NewFacet is a new value of the plugin's worker facet (a reload with it replaces what the plugin contributed).
 func NewFacet() host.Facet {
-	return host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+	return p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 		return facet.Serve(contract.CacheWarmingRuntime, host.LocalFactory(serveRuntime), host.ServeOptions{})
 	})
 }

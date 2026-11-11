@@ -340,7 +340,7 @@ var Commands = p2runtime.Keyed[runtime.TuiCommand]{
 }
 
 // Facet is the plugin's TUI facet: the screen, its commands and the place.
-var Facet = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+var Facet = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 	return p2runtime.Contribute(facet, "p2.tui-sessions", func(self host.StoreSelf) error {
 		p2runtime.ContributeKeyed(self, runtime.TuiSlots, p2runtime.Entry(Slot, &runtime.TuiSlot{Factory: func(rt *runtime.TuiRuntime) runtime.TuiSurface { return New(rt) }}))
 		p2runtime.ContributeKeyed(self, runtime.TuiCommands, Commands...)

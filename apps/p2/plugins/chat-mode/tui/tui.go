@@ -295,7 +295,7 @@ var Displays = p2runtime.Keyed[func(data any) *chatcontract.EntryDisplay]{
 }
 
 // Facet is chat mode's TUI facet.
-var Facet = host.DefineFacet(func(_ host.FacetHost, self host.FacetSelf) error {
+var Facet = p2runtime.DefineFacet(func(_ host.FacetHost, self host.FacetSelf) error {
 	if err := chatcontract.TranscriptEntries.Contribute(self, Displays...); err != nil {
 		return err
 	}

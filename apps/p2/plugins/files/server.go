@@ -534,7 +534,7 @@ func sendJSON(response http.ResponseWriter, status int, value delta.JsonValue) e
 }
 
 // Server is the plugin's server facet.
-var Server = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+var Server = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 	for _, serve := range []func(host.FacetHost) error{serveSummaryIndex, serveFileSummaries, serveDownloadStore, serveRoutes} {
 		if err := serve(facet); err != nil {
 			return err

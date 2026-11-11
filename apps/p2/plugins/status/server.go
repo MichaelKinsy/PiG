@@ -251,7 +251,7 @@ func serveSessionStatus(facet host.FacetHost) error {
 }
 
 // Server is the status plugin's server facet.
-var Server = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+var Server = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 	for _, serve := range []func(host.FacetHost) error{serveSessionMetrics, serveStatusStore, serveWorkerControl, serveSessionStatus} {
 		if err := serve(facet); err != nil {
 			return err

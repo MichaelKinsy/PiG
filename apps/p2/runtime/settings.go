@@ -76,6 +76,9 @@ var SettingsSchema = schema.Obj(schema.Properties{
 	schema.Opt("detail", schema.Int(schema.Minimum(1), schema.Maximum(4))),
 	// The owner's name on the entries the owner writes from now on (default "Owner"). No control characters, `<` or `>`.
 	schema.Opt("ownerName", schema.Str(schema.MinLength(1), schema.MaxLength(40), schema.Pattern("^[^<>\\u0000-\\u001f\\u007f]*\\S[^<>\\u0000-\\u001f\\u007f]*$"))),
+	// p2 addition: how much memory, in MiB, all custom views' rooms may keep together (messages kept for peers that have
+	// not taken them, keyed messages); past it a room refuses new messages until it drains. Default 64.
+	schema.Opt("viewRoomsMemory", schema.Int(schema.Minimum(1))),
 })
 
 var isSettings = check(SettingsSchema)

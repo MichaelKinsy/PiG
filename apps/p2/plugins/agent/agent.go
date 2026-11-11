@@ -347,7 +347,7 @@ func oneLine(text string) string {
 }
 
 func init() {
-	workerFacet = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+	workerFacet = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 		return p2runtime.Contribute(facet, "p2.agent-tool", func(self host.StoreSelf) error {
 			config := self.Registry(p2runtime.HarnessConfig.Registry)
 			extensionsSource := self.Registry(p2runtime.Extensions.Registry)

@@ -282,7 +282,7 @@ func copyID(in *delta.JsonObject) string {
 func utf16Length(text string) int { return len(utf16.Encode([]rune(text))) }
 
 // Server is the sessions plugin's server facet.
-var Server = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+var Server = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 	if err := contract.SessionArchived.Serve(facet); err != nil {
 		return err
 	}

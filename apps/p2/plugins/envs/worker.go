@@ -19,7 +19,7 @@ type machine struct{ session RemoteSession }
 func (m machine) At(cwd string) durableenv.ExecutionEnv { return m.session.At(cwd) }
 func (m machine) Close()                                { m.session.Connection.Close() }
 
-var workerFacet = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+var workerFacet = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 	return p2runtime.Contribute(facet, "p2.worker-envs", registerWorkerEnvs)
 })
 

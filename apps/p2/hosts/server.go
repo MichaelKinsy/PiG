@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -512,6 +513,10 @@ func isUpgrade(request *http.Request) bool {
 
 func (s *serverState) upgrade(response http.ResponseWriter, request *http.Request) {
 	path := request.URL.EscapedPath()
+	if kind := tokenLinkKind(path); kind != "" {
+		s.tokenUpgrade(response, request, kind)
+		return
+	}
 	var principal p2runtime.Principal
 	_, err := s.host.Root(func(ctx host.Ctx) (any, error) {
 		access, err := s.resolveAccess(request, ctx)
@@ -552,6 +557,80 @@ func (s *serverState) upgrade(response http.ResponseWriter, request *http.Reques
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "p2 server: upgrade failed", err)
 	}
+}
+
+// viewKit is the view kit's path, the one route a sandboxed frame's `Origin: null` request reaches (apps/p2/docs/rooms.md).
+var viewKit = regexp.MustCompile(`^/view-kit/[0-9a-f]{64}\.js$`)
+
+// tokenLink is a token link's path: `/chord/<kind>`.
+var tokenLink = regexp.MustCompile(`^/chord/([a-z][a-z0-9-]{0,31})$`)
+
+// tokenLinkKind is the kind of a token link's path, "" for any other path.
+func tokenLinkKind(path string) string {
+	if found := tokenLink.FindStringSubmatch(path); found != nil {
+		return found[1]
+	}
+	return ""
+}
+
+// tokenUpgrade admits a link by its token alone (`/chord/<kind>?token=…`, `p2runtime.LinkTokens`). Its caller may be a sandboxed
+// frame: `Origin` may be `null` (or this server's own), and its cookies are never read. The Host must be one this server
+// answers (loopback, an allowed tunnel, a relay's): DNS rebinding is refused as for every request.
+func (s *serverState) tokenUpgrade(response http.ResponseWriter, request *http.Request, kind string) {
+	var principal p2runtime.Principal
+	_, err := s.host.Root(func(ctx host.Ctx) (any, error) {
+		var origin *p2runtime.RequestOrigin
+		source, err := s.host.Registry(ctx, p2runtime.RequestResolvers.Registry, host.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+		resolvers, err := p2runtime.RequestResolvers.Table(source)
+		if err != nil {
+			return nil, err
+		}
+		for _, key := range resolvers.Keys() {
+			resolve, _ := resolvers.Get(key)
+			access, err := resolve(request, ctx)
+			if err != nil {
+				return nil, err
+			}
+			if access != nil {
+				origin = &access.Origin
+				break
+			}
+		}
+		if origin == nil {
+			origin = RequestOrigin(request, s.allowedHosts)
+		}
+		from := request.Header.Get("Origin")
+		if origin == nil || (from != "" && from != "null" && from != origin.Origin) {
+			return nil, nil
+		}
+		token := request.URL.Query().Get("token")
+		source, err = s.host.Registry(ctx, p2runtime.LinkTokens.Registry, host.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+		admitters, err := p2runtime.LinkTokens.Table(source)
+		if err != nil {
+			return nil, err
+		}
+		admit, found := admitters.Get(kind)
+		if token == "" || !found {
+			return nil, nil
+		}
+		principal, err = admit(token, ctx)
+		return nil, err
+	}, chordctx.Background(), host.RootOptions{})
+	if err != nil || principal == nil {
+		http.Error(response, "Forbidden", http.StatusForbidden)
+		return
+	}
+	// Mobile's limits: frames up to 1 MiB (socket-limits.ts); Chord queues calls behind its window.
+	part := float64(MaxClientFrame)
+	s.upgrades.Link(response, request, chordhttp.UpgradeAdmission{Principal: p2runtime.ToChord(principal)},
+		chordhttp.LinkOptions{MaxPayload: MaxClientFrame, Limits: link.PartLimits{Part: &part}}, s.host, chordctx.Background(), &chordhttp.Router{},
+		func() func() { return nil })
 }
 
 func (s *serverState) handle(response http.ResponseWriter, request *http.Request) {
@@ -629,7 +708,10 @@ func (s *serverState) dispatch(response http.ResponseWriter, request *http.Reque
 			response.Header().Del("X-Frame-Options")
 		}
 	}
-	if access == nil || !SameOrigin(request, access.Origin) {
+	// A sandboxed frame (an opaque origin: Chrome sends `Origin: null` even for its scripts) may load the view kit
+	// (views plugin, apps/p2/docs/rooms.md), and only that, as nobody: no cookie reaches the route.
+	anonymous := request.Header.Get("Origin") == "null" && (request.Method == http.MethodGet || request.Method == http.MethodHead) && viewKit.MatchString(path)
+	if access == nil || (!anonymous && !SameOrigin(request, access.Origin)) {
 		response.Header().Set("Content-Type", "text/plain")
 		response.WriteHeader(http.StatusForbidden)
 		if access == nil {
@@ -640,6 +722,9 @@ func (s *serverState) dispatch(response http.ResponseWriter, request *http.Reque
 		return nil
 	}
 	principal, origin := access.Principal, access.Origin
+	if anonymous {
+		principal = nil
+	}
 	get := request.Method == http.MethodGet || request.Method == http.MethodHead
 	// Unauthenticated readiness (Pi Mobile's /health, polled by launchers); known Hosts only.
 	if path == "/health" && get {

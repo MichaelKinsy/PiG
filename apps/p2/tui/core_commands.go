@@ -351,7 +351,7 @@ func CoreCommands() p2runtime.Keyed[runtime.TuiCommand] {
 
 // CoreFacet is the facet the worker runtime always loads (tests load it next to plugin facets): it serves the TUI's registries and contributes the core
 // commands and renderers.
-var CoreFacet = host.DefineFacet(func(facet host.FacetHost, self host.FacetSelf) error {
+var CoreFacet = p2runtime.DefineFacet(func(facet host.FacetHost, self host.FacetSelf) error {
 	for _, serve := range []func(host.FacetHost) error{
 		runtime.TuiSlots.Serve, runtime.TuiCommands.Serve, runtime.TuiSlashSources.Serve, runtime.TuiToolRenderers.Serve,
 		runtime.TuiToolRendererResolvers.Serve, runtime.TuiSessionSources.Serve, runtime.TuiSessionPlaces.Serve,

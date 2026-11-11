@@ -767,7 +767,7 @@ func serveHTTP(facet host.FacetHost) error {
 }
 
 // Server is the sharing plugin's server facet.
-var Server = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+var Server = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 	for _, serve := range []func(host.FacetHost) error{serveShares, servePresence, serveSharing, serveHTTP} {
 		if err := serve(facet); err != nil {
 			return err

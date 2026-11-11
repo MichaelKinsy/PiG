@@ -28,3 +28,8 @@ func TestSidebarCustomRunsPisTests(t *testing.T) {
 func TestGlyphsRunPisTests(t *testing.T) {
 	oracle.RunNodeTests(t, "test/p2/glyphs.test.ts")
 }
+
+// Pi main da57c166: the views' layout (plugins/views/layout.ts).
+func TestViewsLayoutRunsPisTests(t *testing.T) {
+	oracle.RunNodeTests(t, "test/p2/views-layout.test.ts")
+}

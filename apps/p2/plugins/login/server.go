@@ -200,7 +200,7 @@ func providersOf(snapshot *delta.JsonObject) delta.JsonValue {
 }
 
 // Server is the login plugin's server facet.
-var Server = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+var Server = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 	if err := facet.Serve(contract.LoginService, host.LocalFactory(serveLoginService(facet.References(contract.ProviderLogin))), host.ServeOptions{}); err != nil {
 		return err
 	}

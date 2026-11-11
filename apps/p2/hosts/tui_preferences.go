@@ -24,7 +24,7 @@ import (
 
 // tuiPreferencesFacet serves prefs.TuiPreferences from dataDir/tui.json.
 func tuiPreferencesFacet(dataDir string) host.Facet {
-	return host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+	return p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 		return facet.Serve(prefs.TuiPreferences, host.RemoteFactory(func(_ *delta.JsonObject, principal data.Principal, _ host.Self) (contracts.Implementation, error) {
 			who, err := p2runtime.FromChord(principal)
 			if err != nil || (!p2runtime.IsOwner(who) && !p2runtime.IsGuest(who)) {

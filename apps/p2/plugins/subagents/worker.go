@@ -460,7 +460,7 @@ func serveControl(shared *reports) func(*delta.JsonObject, data.Principal, host.
 
 // workerFacet is the plugin's worker facet.
 func workerFacet() host.Facet {
-	return host.DefineFacet(func(facet host.FacetHost, self host.FacetSelf) error {
+	return p2runtime.DefineFacet(func(facet host.FacetHost, self host.FacetSelf) error {
 		shared := &reports{}
 		// Subagents spawned without a cwd and one-shot agents follow the session: the opening Harness gets this (without a
 		// Harness dependency) and moves them with it.

@@ -47,7 +47,7 @@ func placed(child *delta.JsonObject, env any) *delta.JsonObject {
 	return rest
 }
 
-var serverFacet = host.DefineFacet(func(facet host.FacetHost, self host.FacetSelf) error {
+var serverFacet = p2runtime.DefineFacet(func(facet host.FacetHost, self host.FacetSelf) error {
 	if err := facet.Serve(contract.ChildStore, host.LocalFactory(serveChildStore), host.ServeOptions{}); err != nil {
 		return err
 	}

@@ -23,7 +23,7 @@ import (
 
 // Ports apps/p2/plugins/locations/server.ts.
 
-var serverFacet = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+var serverFacet = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 	return facet.Serve(contract.AgentLocations, host.RemoteFactory(serveAgentLocations), host.ServeOptions{})
 })
 

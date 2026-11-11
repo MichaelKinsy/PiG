@@ -338,7 +338,7 @@ func serveIndex(facet host.FacetHost) error {
 }
 
 // WorkerFacet serves `FileIndexCache` and `FileIndex`.
-var WorkerFacet = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+var WorkerFacet = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 	if err := serveCache(facet); err != nil {
 		return err
 	}

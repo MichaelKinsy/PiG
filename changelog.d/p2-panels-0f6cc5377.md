@@ -1,0 +1,3 @@
+### Added
+
+- p2 follows Pi main for the right-hand panels and views: a session opens with the right-hand panels it last had on this device, the working wheel's thought shows in its own slot below it, panels resize by drag, iOS haptics and swipe-to-close sheets arrive with the web client, the owner's Settings window edits settings.json (the new settings plugin: owner-only `Settings.update` validates, merges and saves it), and views sit beside the transcript (the new views plugin: the agent's `view` tool, the person's selections and annotations carried with their next message, layouts, saved views in the owner's library, custom HTML views served into a sandboxed frame).

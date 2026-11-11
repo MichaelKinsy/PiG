@@ -69,7 +69,7 @@ var Server = ServerFacet(viewLinger, sshEnvironments)
 // ServerFacet is the facet, with views lingering linger after their last reference, reaching environments through connector
 // (tests shorten the one and replace the other).
 func ServerFacet(linger time.Duration, connector EnvConnector) host.Facet {
-	return host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+	return p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 		if err := facet.Serve(contract.McpManager, host.LocalFactory(managerFactory(connector)), host.ServeOptions{}); err != nil {
 			return err
 		}

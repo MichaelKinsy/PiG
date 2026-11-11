@@ -731,6 +731,26 @@ textarea.input {
 .row[data-lead] > * {
 	min-height: var(--row);
 }
+/* The row after a finished wheel takes the place of its thought (activity/ThoughtSlot.tsx): at least as tall as the
+   thought's slot while the turn runs (an inline min-height), its content fading in as the thought fades out; once the
+   turn ends the space it does not need closes smoothly. */
+.row[data-handoff] > * {
+	animation: row-handoff 0.38s ease-out both;
+}
+.row[data-handoff="released"] {
+	transition: min-height 0.36s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes row-handoff {
+	0%,
+	42% {
+		opacity: 0;
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.row[data-handoff] > * {
+		animation: none;
+	}
+}
 /* A transcript appearing (opening a conversation) fades in rather than snapping in (`.messages`). */
 @keyframes transcript-appear {
 	from {
@@ -1285,7 +1305,7 @@ audio.file-media {
 @media (min-width: 900px) {
 	.workspace {
 		left: auto;
-		width: min(520px, 100%);
+		width: min(var(--workspace-width, 520px), 100%);
 		border-left: 1px solid var(--line);
 	}
 }
@@ -1321,37 +1341,44 @@ audio.file-media {
 		overflow-y: auto;
 		padding-bottom: var(--s4);
 	}
-	/* Drag the left edge to resize the docked panel. touch-action: none, or the browser
-	   turns a finger drag into a pan and stops delivering pointer moves. */
-	.workspace-resize {
-		position: absolute;
-		top: 0;
-		bottom: 0;
-		left: -3px;
-		z-index: 2;
-		width: 6px;
-		cursor: col-resize;
-		touch-action: none;
-		user-select: none;
+}
+/* Drag the left edge to resize a right-hand panel (the workspace, the side panel; drag-size.ts). touch-action: none,
+   or the browser turns a finger drag into a pan and stops delivering pointer moves. */
+.workspace-resize,
+.side-panel-resize {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: -3px;
+	z-index: 2;
+	width: 6px;
+	cursor: col-resize;
+	touch-action: none;
+	user-select: none;
+}
+.workspace-resize:hover,
+.workspace-resize:active,
+.side-panel-resize:hover,
+.side-panel-resize:active {
+	background: var(--line);
+}
+/* Fingers get a wider target; the visible line stays thin. */
+@media (pointer: coarse) {
+	.workspace-resize,
+	.side-panel-resize {
+		left: -12px;
+		width: 24px;
+		background: linear-gradient(var(--line), var(--line)) center / 2px 100% no-repeat transparent;
 	}
 	.workspace-resize:hover,
-	.workspace-resize:active {
-		background: var(--line);
-	}
-	/* Fingers get a wider target; the visible line stays thin. */
-	@media (pointer: coarse) {
-		.workspace-resize {
-			left: -12px;
-			width: 24px;
-			background: linear-gradient(var(--line), var(--line)) center / 2px 100% no-repeat transparent;
-		}
-		.workspace-resize:hover,
-		.workspace-resize:active {
-			background: linear-gradient(var(--muted), var(--muted)) center / 2px 100% no-repeat transparent;
-		}
+	.workspace-resize:active,
+	.side-panel-resize:hover,
+	.side-panel-resize:active {
+		background: linear-gradient(var(--muted), var(--muted)) center / 2px 100% no-repeat transparent;
 	}
 }
-@media (max-width: 1279px) {
+/* Full screen on phones: nothing to resize. */
+@media (max-width: 899px) {
 	.workspace-resize {
 		display: none;
 	}
@@ -2628,22 +2655,6 @@ button.diff-number:hover {
 	overflow-y: auto;
 	padding: 0 var(--x) var(--s4);
 }
-.live-dot {
-	flex: none;
-	width: 7px;
-	height: 7px;
-	border-radius: 50%;
-	background: var(--working);
-	animation: pulse 1.2s ease-in-out infinite;
-}
-/* An answer the owner has not read yet: steady, unlike the working dot. */
-.unread-dot {
-	flex: none;
-	width: 7px;
-	height: 7px;
-	border-radius: 50%;
-	background: var(--unread);
-}
 .hit {
 	display: block;
 }
@@ -2794,6 +2805,8 @@ button.diff-number:hover {
 }
 .sheet-body {
 	overflow-y: auto;
+	/* At its top a drag down pulls the sheet (sheet-swipe.ts): no rubber band of the content as well. */
+	overscroll-behavior-y: none;
 	padding: var(--s3) var(--x) var(--s5);
 }
 .sheet-body > .muted.small {
@@ -2804,24 +2817,32 @@ button.diff-number:hover {
 .side-dock:empty {
 	display: none;
 }
+/* The dock takes the panel's width (`--side-panel-width`, dragged at its left edge). */
 @media (min-width: 700px) {
 	.side-dock {
 		position: fixed;
 		inset: 0 0 0 auto;
-		width: min(460px, 60vw);
 		z-index: 20;
+	}
+	.side-panel {
+		width: var(--side-panel-width, min(460px, 60vw));
+		max-width: 85vw;
 	}
 }
 @media (min-width: 1280px) {
 	.side-dock {
 		position: static;
-		flex: 0 0 460px;
-		width: 460px;
+		flex: none;
 		min-width: 0;
 		z-index: auto;
 	}
+	.side-panel {
+		width: var(--side-panel-width, 460px);
+		max-width: 70vw;
+	}
 }
 .side-panel {
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	min-width: 0;
@@ -3496,4 +3517,18 @@ button.history-edge:disabled {
 		height: var(--control);
 		min-width: var(--control);
 	}
+}
+
+/* A setting that applies at once (Switch.tsx): its label, and Elanor's switch at the row's end. */
+.switch-row {
+	display: flex;
+	align-items: center;
+	gap: var(--s3);
+	min-height: var(--row);
+	font-size: var(--fs-sm);
+	cursor: pointer;
+}
+.switch-label {
+	flex: 1;
+	min-width: 0;
 }

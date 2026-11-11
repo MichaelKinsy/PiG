@@ -730,7 +730,7 @@ func serveTransfer(facet host.FacetHost) error {
 }
 
 // WorkerFacet serves the worker's parts: `WorkspaceWrites`, `WorkspaceBackend`, `Workspace` and `WorkspaceTransfer`.
-var WorkerFacet = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+var WorkerFacet = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 	for _, serve := range []func(host.FacetHost) error{serveWrites, serveBackend, serveWorkspace, serveTransfer} {
 		if err := serve(facet); err != nil {
 			return err
