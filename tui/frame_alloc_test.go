@@ -12,7 +12,7 @@ import (
 
 // The cursor-column escapes are the bytes positionHardwareCursor always wrote, for the columns it keeps and the ones past them.
 func TestCursorColumnSequenceIsTheColumnEscape(t *testing.T) {
-	screen := &TuiMainScreen{}
+	screen := &TuiMainScreen{prevWidth: 512}
 	for _, col := range []int{0, 1, 9, 10, 99, 100, 511, 512, 513, 5000, 1 << 20} {
 		if got, want := screen.cursorColumnSequence(col), fmt.Sprintf("\x1b[%dG", col+1); got != want {
 			t.Errorf("cursorColumnSequence(%d) = %q, want %q", col, got, want)

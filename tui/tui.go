@@ -2519,7 +2519,7 @@ func (t *TuiMainScreen) doRender() {
 	}
 	buf.discard()
 	renderEnd := min(lastChanged, len(newLines)-1)
-	frameBytes := 64
+	frameBytes := len("\x1b[?2026h\x1b[?2026l")
 	for i := firstChanged; i <= renderEnd; i++ {
 		frameBytes += len(newLines[i]) + len("\r\n\x1b[2K")
 	}
@@ -2766,13 +2766,10 @@ func (t *TuiMainScreen) positionHardwareCursor(cursorPos widthx.CursorPosition, 
 	}
 }
 
-// maxCachedCursorColumns bounds cursorColumnSequence's cache: a terminal is rarely wider.
-const maxCachedCursorColumns = 512
-
 // cursorColumnSequence is the escape that moves the cursor to column col (zero-based) of its row, which a keystroke on one row repeats with
-// a new column each time. The sequences are built once per column and kept, so typing allocates none.
+// a new column each time. The sequences of the columns of the last frame's width are built once and kept, so typing allocates none.
 func (t *TuiMainScreen) cursorColumnSequence(col int) string {
-	if col >= maxCachedCursorColumns {
+	if col >= t.prevWidth {
 		return "\x1b[" + strconv.Itoa(col+1) + "G"
 	}
 	if col >= len(t.cursorColumns) {

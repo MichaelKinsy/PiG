@@ -160855,9 +160855,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(line string, width int) []github.com/MichaelKinsy/PiG/tui.textChunk"
+        "type": "func(reuse []github.com/MichaelKinsy/PiG/tui.textChunk, line string, width int) []github.com/MichaelKinsy/PiG/tui.textChunk"
       },
-      "shapeHash": "sha256:69ffaf5f4c6aff8a1b1f34ec9358bedfcc301e93c0d9b02b809212f7e300ba3b"
+      "shapeHash": "sha256:a940bdb2ca779c5be23dfdbbef75f321cc5c899b003afd5d6c60b0bfe1265f67"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewEditorComponent.wrappedChunks",
@@ -239829,6 +239829,17 @@
       "shapeHash": "sha256:391a9e96555d5038a6d0791e7a3018d91114729515dc2d23dd81c51a27a6b139"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#ResolveCursorFreeLine",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "name": "ResolveCursorFreeLine",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(line string, showHardwareCursor bool) (free string, col int)"
+      },
+      "shapeHash": "sha256:873ecc85200cbc9710ad4b169433d7fbd9d9ae798ef25b75b4b879e1f2b1c550"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#ResolveFakeCursorLine",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
       "name": "ResolveFakeCursorLine",
@@ -247139,9 +247150,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(line string, width int) []github.com/MichaelKinsy/PiG/tui.textChunk"
+        "type": "func(reuse []github.com/MichaelKinsy/PiG/tui.textChunk, line string, width int) []github.com/MichaelKinsy/PiG/tui.textChunk"
       },
-      "shapeHash": "sha256:69ffaf5f4c6aff8a1b1f34ec9358bedfcc301e93c0d9b02b809212f7e300ba3b"
+      "shapeHash": "sha256:a940bdb2ca779c5be23dfdbbef75f321cc5c899b003afd5d6c60b0bfe1265f67"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#CustomEditor.wrappedChunks",
@@ -336074,9 +336085,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(line string, width int) []textChunk"
+        "type": "func(reuse []textChunk, line string, width int) []textChunk"
       },
-      "shapeHash": "sha256:438753659461486c9b593b66d57ad19fbcda9dcd1f832b9107fdd72cf2a875c4"
+      "shapeHash": "sha256:0599af59223e31716889f87719c8b593a959137e1e6e3f76365ffb1bb0fef75f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#Editor.wrappedChunks",
@@ -364162,6 +364173,17 @@
       "shapeHash": "sha256:48afce19dd5a76ff39afa8d13aacec638d160e7b5eeb1b4b499a01b213e1f76d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.cursorColumnSequence",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiMainScreen.cursorColumnSequence",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(col int) string"
+      },
+      "shapeHash": "sha256:81c8f76099093c4b46437853eb5baecbb12326537b85b606fcd35db9b2484170"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.cursorOut",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiMainScreen.cursorOut",
@@ -371169,6 +371191,17 @@
       "shapeHash": "sha256:5f3d90a27b07444108a89b42c4e905744a26001eeb1ca00f87570220bbbedfeb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#boundedTerminalWriter.discard",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "boundedTerminalWriter.discard",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#boundedTerminalWriter.flush",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "boundedTerminalWriter.flush",
@@ -371178,6 +371211,17 @@
         "type": "func()"
       },
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#boundedTerminalWriter.grow",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "boundedTerminalWriter.grow",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(n int)"
+      },
+      "shapeHash": "sha256:678d26a8092ca69909d869f432200c6daab60758c625ca85c8ec99105bbca192"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#boxRenderCache",
@@ -373991,9 +374035,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(lines []string, height int) (github.com/MichaelKinsy/PiG/tui/widthx.CursorPosition, int, string, bool)"
+        "type": "func(lines []string, height int, unresolved bool, showHardwareCursor bool) (github.com/MichaelKinsy/PiG/tui/widthx.CursorPosition, int, string, bool)"
       },
-      "shapeHash": "sha256:13ec00fd1c1bba4b167e9b4091140692862da86b796ff8ea5bf81307804ad248"
+      "shapeHash": "sha256:67918b01aa3333ebda593cfc5bcc57385df57707b9cb5ffe05a5d2c9a4232087"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#findLastDelimiter",
@@ -397094,6 +397138,17 @@
         "type": "func(s string) string"
       },
       "shapeHash": "sha256:391a9e96555d5038a6d0791e7a3018d91114729515dc2d23dd81c51a27a6b139"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/widthx#ResolveCursorFreeLine",
+      "package": "github.com/MichaelKinsy/PiG/tui/widthx",
+      "name": "ResolveCursorFreeLine",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(line string, showHardwareCursor bool) (free string, col int)"
+      },
+      "shapeHash": "sha256:873ecc85200cbc9710ad4b169433d7fbd9d9ae798ef25b75b4b879e1f2b1c550"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui/widthx#ResolveFakeCursorLine",
