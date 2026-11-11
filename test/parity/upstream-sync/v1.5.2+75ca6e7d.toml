@@ -20,7 +20,7 @@ path = "packages/coding-agent/src/core/export-html/ansi-to-html.ts"
 change = "modified"
 disposition = "ported"
 evidence = ["test:internal/codingagent/export/ansi_links_port_test.go#TestAnsiToHTMLConvertsOSC8HyperlinksToAnchors", "test:internal/codingagent/export/ansi_links_port_test.go#TestAnsiToHTMLKeepsStyledTextNestedInAnchorAndClosesUnterminatedLink", "test:internal/codingagent/export/ansi_links_port_test.go#TestAnsiToHTMLDropsUnsafeSchemesAndOtherEscapeSequences"]
-rationale = "0e1e3fc81 (#12052): the converter matches SGR, other CSI, OSC and APC sequences; OSC 8 links with http, https or mailto URLs (C0 controls stripped before the scheme check) become anchors around the current span and other sequences and stray ESC are dropped. ansiToHTML in ansi_html.go does the same, and Pi's three tests are ported."
+rationale = "0e1e3fc81 (#12052): the converter matches SGR, other CSI, OSC and APC sequences; OSC 8 links with http, https or mailto URLs (C0 controls stripped before the scheme check) become anchors around the current span and other sequences and stray ESC are dropped. ansiToHTML in ansi_html.go does the same, and Pi's three tests are ported. Oracle-vs-next gap: the vendored oracle is Pi 1.5.2, which predates #12052, so TestAnsiToHTMLMatchesPiOracle skips the inputs with an ESC outside a complete SGR sequence and TestToolHTMLRendererMatchesPi no longer feeds the OSC 8 line; ansi_links_port_test.go and the ported tests cover those inputs, and the oracle comparison returns in full when the oracle pin passes #12052."
 
 [[files]]
 path = "packages/coding-agent/src/core/export-html/tool-renderer.ts"
@@ -61,8 +61,8 @@ rationale = "3345c2925 (#12054): a loadout change dropped the pending restored t
 path = "packages/durable/src/env/node.ts"
 change = "modified"
 disposition = "ported"
-evidence = ["test:durable/env/node/list_race_port_test.go#TestListDirLeavesOutAnEntryRemovedBetweenEnumerationAndLstat"]
-rationale = "75ca6e7d0 (#12055): NodeExecutionEnv.listDir leaves out an entry whose lstat reports ENOENT instead of failing. NodeExecutionEnv.ListDir does the same, and Pi's test is ported with a hook that runs the rename before the lstat. PiG lists non-UTF-8 names raw, where Node decodes them with replacement characters and now leaves them out; that difference predates this commit and is recorded in the report, not here."
+evidence = ["test:durable/env/node/list_race_port_test.go#TestListDirLeavesOutAnEntryRemovedBetweenEnumerationAndLstat", "test:durable/env/node/list_race_port_test.go#TestListDirLeavesOutANonUTF8Name"]
+rationale = "75ca6e7d0 (#12055): NodeExecutionEnv.listDir leaves out an entry whose lstat reports ENOENT instead of failing. NodeExecutionEnv.ListDir does the same, and Pi's test is ported with a hook that runs the rename before the lstat. Node decodes a non-UTF-8 name with replacement characters, so its lstat finds nothing and the entry is left out; the local ListDir now skips such names too (TestListDirLeavesOutANonUTF8Name), as the remote env already did."
 
 [[files]]
 path = "packages/env/src/remote-env.ts"
