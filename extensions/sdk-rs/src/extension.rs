@@ -2091,6 +2091,14 @@ impl Extension {
                             .insert(id.clone(), cancel.clone());
                         let active = active_requests.clone();
                         let base = base_ctx.clone_for_request(cancel.clone(), None, id.to_string());
+                        // A command handler and a withSession callback get Pi's command context: its host calls carry that kind for the context's whole life.
+                        if let Some(parent) = base
+                            .request_parent
+                            .as_ref()
+                            .filter(|_| matches!(req.method.as_str(), "command" | "with_session"))
+                        {
+                            parent.mark_command();
+                        }
                         let loaded_gate = loaded_gate.clone();
                         let conn = conn.clone();
                         let ext = ext.clone();

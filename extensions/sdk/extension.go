@@ -1471,6 +1471,9 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 		_ = e.conn.respond(id, nil, fmt.Errorf("nil request"))
 		return
 	}
+	if ctx.parent != nil && (req.Method == "command" || req.Method == requestWithSession) {
+		ctx.parent.markCommand()
+	}
 
 	// A handler runs on its own goroutine (see loop: `go handleRequest`). Without
 	// this guard a single panicking handler would crash the whole extension
