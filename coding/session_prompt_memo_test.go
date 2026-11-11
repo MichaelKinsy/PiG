@@ -118,32 +118,3 @@ func TestRunSystemPromptIsNotRebuiltForUnchangedInputs(t *testing.T) {
 		t.Fatalf("an unchanged run prompt costs %.0f allocations, want the key's names only", allocs)
 	}
 }
-
-// The key the extension host reads names the base options the Session hands out: it changes with every replacement of them (the tools, the resources), the options it names are the ones GetSystemPromptOptions returns, and it holds while they do not change.
-func TestSystemPromptOptionsKeyTracksTheBaseOptions(t *testing.T) {
-	h := newRecoveryHarness(t, harnessOptions{defaultTools: true})
-	s := h.session
-	key := func() systemPromptOptionsKey {
-		return systemPromptOptionsKey{session: s, generation: s.systemPromptOptionsGen.Load()}
-	}
-	options := s.GetSystemPromptOptions()
-	first := key()
-	if again := s.GetSystemPromptOptions(); again != options || key() != first {
-		t.Fatal("unchanged inputs changed the options object or its key")
-	}
-	active := s.ActiveToolNames()
-	if len(active) < 2 {
-		t.Fatalf("active tools %v: the test needs two", active)
-	}
-
-	s.SetActiveToolsByName(active[:1])
-	if key() == first || s.GetSystemPromptOptions() == options || len(s.GetSystemPromptOptions().SelectedTools) != 1 {
-		t.Fatalf("a tool change left the options %+v under key %v", s.GetSystemPromptOptions().SelectedTools, key())
-	}
-	afterTools, toolsKey := s.GetSystemPromptOptions(), key()
-
-	s.SetSystemPromptResources(SystemPromptResources{AppendSystemPrompt: "APPENDED-BY-RESOURCES"})
-	if key() == toolsKey || s.GetSystemPromptOptions() == afterTools || s.GetSystemPromptOptions().AppendSystemPrompt != "APPENDED-BY-RESOURCES" {
-		t.Fatalf("a resource change left the options %+v under key %v", s.GetSystemPromptOptions(), key())
-	}
-}

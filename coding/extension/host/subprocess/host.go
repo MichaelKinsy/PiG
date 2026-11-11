@@ -4763,7 +4763,7 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 			// so null never reaches the Runner as a result value.
 			if result := resp.Response.Result; len(result) > 0 && strings.TrimSpace(string(result)) != "null" {
 				// Return raw JSON for the Runner to interpret.
-				return bytes.Clone(result), nil
+				return slices.Clone(result), nil
 			}
 		}
 

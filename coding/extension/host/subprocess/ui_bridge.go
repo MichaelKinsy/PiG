@@ -42,7 +42,7 @@ type UIBridge struct {
 		version uint64
 		encoded json.RawMessage
 	}
-	// optionsCache memoizes the encoded system prompt options for the identity GetSystemPromptOptionsKey last reported.
+	// optionsCache memoizes the encoded system prompt options for the key GetSystemPromptOptionsKey last reported.
 	optionsCache struct {
 		key     any
 		encoded json.RawMessage
@@ -346,7 +346,7 @@ type HostCallbacks struct {
 	// upstream: runner.ts:653 (createCommandContext getSystemPromptOptions)
 	GetSystemPromptOptions func() extension.BuildSystemPromptOptions
 
-	// GetSystemPromptOptionsKey returns the identity of the options GetSystemPromptOptions returns: they are a pure function of an options object the host replaces when they change and never writes after, so a state push encodes them again only when the key changes. Nil means every push encodes them.
+	// GetSystemPromptOptionsKey returns a key for the contents of the options GetSystemPromptOptions returns: it changes whenever they change, whether the host replaced the options or an in-process extension wrote the object it was handed, so a state push encodes them again only when the key changes. Nil means every push encodes them.
 	GetSystemPromptOptionsKey func() any
 
 	// GetModelInfo returns the active model's object (extension.ModelObject), or nil without a model.
@@ -707,7 +707,7 @@ func (b *UIBridge) Snapshot(flagNames []string, cursor int, wantSessionLog bool)
 	return state
 }
 
-// systemPromptOptionsWire is the encoded system prompt options for a state push, made once for an options object when the host names its identity and it has not changed since the last push.
+// systemPromptOptionsWire is the encoded system prompt options for a state push, made once for each key the host reports.
 func (b *UIBridge) systemPromptOptionsWire(actions *HostCallbacks) (json.RawMessage, bool) {
 	if actions.GetSystemPromptOptionsKey == nil {
 		encoded, err := json.Marshal(actions.GetSystemPromptOptions())

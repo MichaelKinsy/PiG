@@ -277,10 +277,10 @@ func BindSessionExtensionActions(runner *inproc.Runner, bridge *subprocess.UIBri
 	bridge.SetHostAction("getSystemPromptOptions", func() extension.BuildSystemPromptOptions {
 		return *sessionContext.GetSystemPromptOptions()
 	})
-	// The base options are replaced whenever what they derive from changes, and the generation names each replacement.
+	// The base options are replaced when what they derive from changes and edited in place by in-process extensions; the key names each state of their contents.
 	bridge.SetHostAction("getSystemPromptOptionsKey", func() any {
 		if sess := current(); sess != nil {
-			return systemPromptOptionsKey{session: sess, generation: sess.systemPromptOptionsGen.Load()}
+			return sess.systemPromptOptionsKey()
 		}
 		return nil
 	})

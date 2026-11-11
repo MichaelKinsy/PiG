@@ -98,22 +98,9 @@ func (s *Session) GetSystemPromptOptions() *extension.BuildSystemPromptOptions {
 	defer s.toolRegistryMu.RUnlock()
 	options := s.buildSystemPromptOptions(s.ActiveToolNames())
 	if s.baseSystemPromptOptions.CompareAndSwap(nil, options) {
-		s.systemPromptOptionsGen.Add(1)
 		return options
 	}
 	return s.baseSystemPromptOptions.Load()
-}
-
-// systemPromptOptionsKey names one object of the Session's base system prompt options. The Session replaces its options object on every change of what the options derive from, bumping the generation, and writes none after publishing it, so the options a key names never change.
-type systemPromptOptionsKey struct {
-	session    *Session
-	generation uint64
-}
-
-// setBaseSystemPromptOptions publishes options as the Session's base options, the replacement of the earlier ones.
-func (s *Session) setBaseSystemPromptOptions(options *extension.BuildSystemPromptOptions) {
-	s.baseSystemPromptOptions.Store(options)
-	s.systemPromptOptionsGen.Add(1)
 }
 
 // SystemPromptResources is the resource-loader input of Pi's _rebuildSystemPrompt (agent-session.ts:1379-1391): the system prompt override, the joined append text, the loaded context files and the loaded skills.
@@ -365,5 +352,5 @@ func (s *Session) SetSystemPromptResources(resources SystemPromptResources) {
 	s.toolRegistryMu.Lock()
 	defer s.toolRegistryMu.Unlock()
 	s.systemPromptResources.Store(&resources)
-	s.setBaseSystemPromptOptions(s.buildSystemPromptOptions(s.ActiveToolNames()))
+	s.baseSystemPromptOptions.Store(s.buildSystemPromptOptions(s.ActiveToolNames()))
 }

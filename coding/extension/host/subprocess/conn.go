@@ -133,6 +133,8 @@ type Conn struct {
 	beforeCancel func()
 	// inbound observes each decoded frame on the read loop, in wire order, before routing. Cross-process reference accounting uses it so a later release on this connection can never overtake an earlier transmission.
 	inbound func(*Envelope)
+	// inboundWantsResponse, set together with inbound, reports whether inbound has any use for the response frame of request id: a response it does not need is routed without a full decode (routeResponseFrame). Nil means inbound reads every response.
+	inboundWantsResponse func(id string) bool
 	// outbound observes each frame's JSON on the write loop, in write order, before it is written (Host.SetOutboundObserver).
 	outbound func(frame []byte)
 	// parts is conn when it takes frames by parts (a fused extension's fusedConn); nil for a socket.
@@ -1257,7 +1259,7 @@ func (c *Conn) readLoop(ctx context.Context) {
 		}
 
 		// The response to a request has one shape nearly always; it is routed without decoding the whole envelope.
-		if c.inbound == nil && c.routeResponseFrame(frame.data) {
+		if c.routeResponseFrame(frame.data) {
 			frame.release()
 			continue
 		}
@@ -2232,30 +2234,39 @@ func (c *Conn) deliverResponse(id string, env *Envelope) {
 	}
 }
 
-// sendResponse puts env in the channel of the request id while the request is still registered: the request returns its channel for reuse only after it unregistered under pendingMu, so no response is sent to a channel that was reused.
-func (c *Conn) sendResponse(id string, ch chan *Envelope, env *Envelope) {
+// sendResponse puts env in the channel of the request id while the request is still registered, and reports whether it did: the request returns its channel for reuse only after it unregistered under pendingMu, so no response is sent to a channel that was reused.
+func (c *Conn) sendResponse(id string, ch chan *Envelope, env *Envelope) bool {
 	c.pendingMu.Lock()
+	sent := false
 	if c.pending[id] == ch {
 		select {
 		case ch <- env:
+			sent = true
 		default:
 		}
 	}
 	c.pendingMu.Unlock()
+	return sent
 }
 
-// routeResponseFrame delivers the frame when it is a response in the shape parseResponseFrame recognizes, and reports whether it did; any other frame is left for the full decode.
+// routeResponseFrame delivers the frame when it is a response in the shape parseResponseFrame recognizes that inbound does not need, and reports whether it did; any other frame is left for the full decode, which shows it to inbound.
 func (c *Conn) routeResponseFrame(data []byte) bool {
+	if c.inbound != nil && c.inboundWantsResponse == nil {
+		return false
+	}
 	id, result, ok := parseResponseFrame(data)
 	if !ok {
 		return false
 	}
-	c.pendingMu.Lock()
-	ch, found := c.pending[string(id)]
-	answered := c.answered[string(id)]
-	arrived := c.arrived[string(id)]
-	c.pendingMu.Unlock()
 	requestID := c.internRequestID(id)
+	if c.inbound != nil && c.inboundWantsResponse(requestID) {
+		return false
+	}
+	c.pendingMu.Lock()
+	ch, found := c.pending[requestID]
+	answered := c.answered[requestID]
+	arrived := c.arrived[requestID]
+	c.pendingMu.Unlock()
 	if !found {
 		c.settleAbandoned(requestID)
 		return true
@@ -2264,17 +2275,7 @@ func (c *Conn) routeResponseFrame(data []byte) bool {
 		arrived()
 	}
 	resp := pooledResponse(requestID, result)
-	c.pendingMu.Lock()
-	sent := false
-	if c.pending[requestID] == ch {
-		select {
-		case ch <- resp:
-			sent = true
-		default:
-		}
-	}
-	c.pendingMu.Unlock()
-	if !sent {
+	if !c.sendResponse(requestID, ch, resp) {
 		releaseResponse(resp)
 	}
 	if answered != nil {

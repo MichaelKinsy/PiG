@@ -63,6 +63,8 @@ func (h *Host) observeXref(conn *Conn) {
 		}
 		h.xref.inbound(conn, env)
 	}
+	// Cross-process accounting reads the response of a request it expects and an observer reads every response; any other response is routed without a decode.
+	conn.inboundWantsResponse = func(id string) bool { return observe != nil || h.xref.expects(conn, id) }
 	conn.onClosed = func() {
 		h.eventBus.closed(conn)
 		h.forgetLocalRealm(conn)
