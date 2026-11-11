@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"slices"
 	"sync"
+	"unicode/utf8"
 
 	durableenv "github.com/MichaelKinsy/PiG/durable/env"
 
@@ -379,6 +380,10 @@ func (env *NodeExecutionEnv) ListDir(ctx context.Context, path string) ([]durabl
 	for _, name := range names {
 		if err := abortedFileError(ctx, resolved); err != nil {
 			return nil, err
+		}
+		// Node decodes names as UTF-8 with U+FFFD; lstat of the decoded path is ENOENT, which Pi (#12055) leaves out.
+		if !utf8.ValidString(name) {
+			continue
 		}
 		entryPath := filepath.Join(resolved, name)
 		if testHookBeforeListLstat != nil {
