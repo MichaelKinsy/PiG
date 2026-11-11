@@ -267,6 +267,56 @@ func TestChangedsThatDisposeTheirScopeFromOtherGoroutinesAtOnceWaitForNoOne(t *t
 	}
 }
 
+// Dispose called outside a delivery does not return while a `changed` runs on another goroutine, even one that is itself in
+// Dispose (a self-disposing `changed` is exempt only for another delivery's Dispose, never for a caller outside).
+func TestADisposeFromOutsideWaitsForAChangedThatDisposesItsOwnScopeAndIsStillRunning(t *testing.T) {
+	for range 100 {
+		var calls atomic.Int64
+		var scope *TuiScope
+		cIn, gateC := make(chan struct{}), make(chan struct{})
+		var finished atomic.Bool
+		scope = scopeOn(newHost(t), func() {
+			if calls.Add(1) == 1 {
+				// C: a delivery that keeps A's Dispose waiting.
+				close(cIn)
+				<-gateC
+				return
+			}
+			// A: disposes its own scope (waits for C), then goes on for a moment.
+			scope.Dispose()
+			time.Sleep(2 * time.Millisecond)
+			finished.Store(true)
+		})
+		go scope.redraw()
+		<-cIn
+		go scope.redraw()
+		// A is in Dispose, waiting for C.
+		for {
+			scope.delivery.Lock()
+			in := len(scope.disposing) == 1
+			scope.delivery.Unlock()
+			if in {
+				break
+			}
+			time.Sleep(time.Millisecond)
+		}
+		returned := make(chan bool, 1)
+		go func() {
+			scope.Dispose()
+			returned <- finished.Load()
+		}()
+		close(gateC)
+		select {
+		case done := <-returned:
+			if !done {
+				t.Fatal("Dispose from outside returned while a changed was still running")
+			}
+		case <-time.After(5 * time.Second):
+			t.Fatal("Dispose from outside never returned")
+		}
+	}
+}
+
 type noValue struct{}
 
 func (noValue) Value() string { panic(errors.New("not ready")) }
