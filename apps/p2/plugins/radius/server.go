@@ -147,7 +147,7 @@ func serveRadiusService(_ *delta.JsonObject, self host.Self) (contracts.Implemen
 		if page == "" {
 			return "", false
 		}
-		return page + "?" + url.Values{"path": {"/s/" + session}}.Encode(), true
+		return page + "/s/" + url.PathEscape(session), true
 	})))
 	store.Contribute(contract.RadiusConnections, &contract.RadiusConnectionsParts{Connection: connection})
 	return contracts.Implementation{}, nil

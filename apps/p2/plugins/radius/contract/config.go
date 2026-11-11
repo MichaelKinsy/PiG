@@ -23,8 +23,10 @@ type Config struct {
 	// PublicOrigin is the brain's own Radius origin (`https://<label>.rdtun.com`), as last seen on a relayed request for its
 	// UI. Saved so forward links are known after a restart before anyone opens Pi through Radius again.
 	PublicOrigin string
-	// ShellPage is this brain's page in the Radius shell (`<shell>/pi/brains/<organization>/<server>`), as last seen on a
-	// relayed request for its UI. People sessions are shared with by email open them there, signed in to Radius.
+	// ShellPage is this brain's page in the Radius shell (`<shell>/pi/<organization ID>/<server>`), as last seen on a relayed
+	// request for its UI; a page of the brain's UI is below it (`…/s/<session>`). People sessions are shared with by email open
+	// them there, signed in to Radius. The shell names organizations by slug when they have one and replaces this ID form, but a
+	// link people keep names the organization by ID, which a slug change leaves valid.
 	ShellPage  string
 	Credential ai.OAuthCredentials
 }

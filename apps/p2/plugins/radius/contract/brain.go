@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -411,7 +412,7 @@ func (b *Brain) attempt() time.Duration {
 	}
 	b.mu.Lock()
 	if b.shell == "" {
-		b.shell = config.ShellPage
+		b.shell = CurrentShellPage(config.ShellPage)
 	}
 	replace := b.replace
 	closed := b.closed
@@ -1050,13 +1051,23 @@ func validToken(text string) bool {
 	return true
 }
 
+// shellPageWithBrains is a shell page in the form the shell's URLs had before they dropped `/brains`.
+var shellPageWithBrains = regexp.MustCompile(`^(https?://[^/]+)/pi/brains/`)
+
+// CurrentShellPage is a saved shell page in the shell's current URL form: pages saved before its URLs dropped `/brains`
+// (`<shell>/pi/brains/<organization>/<server>`) no longer resolve. The next relayed request saves the current form
+// (`currentShellPage`).
+func CurrentShellPage(saved string) string {
+	return shellPageWithBrains.ReplaceAllString(saved, "$1/pi/")
+}
+
 // remember keeps the brain's Radius addresses, in memory and in radius.json: its origin for forward links, and its page in the
 // shell that framed the request for share links.
 func (b *Brain) remember(origin, shellOrigin string, owner principal) {
 	b.mu.Lock()
 	shellPage := b.shell
 	if originPattern.MatchString(shellOrigin) && b.config != nil {
-		shellPage = shellOrigin + "/pi/brains/" + url.PathEscape(owner.OrganizationID) + "/" + url.PathEscape(b.config.ServerID)
+		shellPage = shellOrigin + "/pi/" + url.PathEscape(owner.OrganizationID) + "/" + url.PathEscape(b.config.ServerID)
 	}
 	newOrigin := b.forwards != nil && b.forwards.RadiusOrigin() != origin
 	if !newOrigin && shellPage == b.shell {
