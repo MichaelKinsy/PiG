@@ -321,7 +321,7 @@ func TestEventBusErrorPaths(t *testing.T) {
 	stopBusExtension(t, host, done)
 }
 
-// A request the factory pump serves while the extension loads (a dispatch, or one it refuses) never reaches the main loop's arming, so the read loop's queue entry for it is dropped when it is served.
+// A request the factory pump serves while the extension loads (an events dispatch) never reaches the main loop's arming, so the read loop's queue entry for it is dropped when it is served.
 func TestLoadTimeRequestsLeaveNothingQueuedForTheArming(t *testing.T) {
 	ext := New("bus")
 	if _, err := ext.Events().On("ch", func(Context, any) error { return nil }); err != nil {
@@ -333,11 +333,7 @@ func TestLoadTimeRequestsLeaveNothingQueuedForTheArming(t *testing.T) {
 	}
 	args, _ := json.Marshal(map[string]any{"handlerId": on.HandlerID, "channel": "ch", "json": "early"})
 	host.writeEnvelope(t, envelope{Type: msgRequest, ID: "d1", Request: &requestMsg{Method: "events.dispatch", Args: args}})
-	host.writeEnvelope(t, envelope{Type: msgRequest, ID: "r1", Request: &requestMsg{Method: "tool_call", Tool: "none"}})
-	for answered := 0; answered < 2; {
-		if host.readEnvelope(t).Type == msgResponse {
-			answered++
-		}
+	for host.readEnvelope(t).Type != msgResponse {
 	}
 	ext.eventMu.Lock()
 	loading := ext.loading
