@@ -132,8 +132,8 @@ func TestOrdinaryCancelReadBeforeTheRequestIsArmedEndsItAtStart(t *testing.T) {
 	if !<-h.first {
 		t.Errorf("Done at the handler's first line was open, want the request ended by the cancel frame the reader read")
 	}
-	h.freeSecond()
 	got := <-h.observed
+	h.freeSecond()
 	if !got.firstDone || !got.laterDone || got.reason != "user aborted" {
 		t.Errorf("Done at the first line = %v, after the call = %v, CancellationReason = %q, want the request ended with the cancel's reason", got.firstDone, got.laterDone, got.reason)
 	}

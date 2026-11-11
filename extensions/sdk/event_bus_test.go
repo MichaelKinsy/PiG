@@ -320,3 +320,34 @@ func TestEventBusErrorPaths(t *testing.T) {
 	}
 	stopBusExtension(t, host, done)
 }
+
+// A request the factory pump serves while the extension loads (a dispatch, or one it refuses) never reaches the main loop's arming, so the read loop's queue entry for it is dropped when it is served.
+func TestLoadTimeRequestsLeaveNothingQueuedForTheArming(t *testing.T) {
+	ext := New("bus")
+	if _, err := ext.Events().On("ch", func(Context, any) error { return nil }); err != nil {
+		t.Fatal(err)
+	}
+	host, done := startBusExtension(t, ext)
+	on, _ := readBusCall(t, host, "events.on", "null")
+	for host.readEnvelope(t).Type != msgRegister {
+	}
+	args, _ := json.Marshal(map[string]any{"handlerId": on.HandlerID, "channel": "ch", "json": "early"})
+	host.writeEnvelope(t, envelope{Type: msgRequest, ID: "d1", Request: &requestMsg{Method: "events.dispatch", Args: args}})
+	host.writeEnvelope(t, envelope{Type: msgRequest, ID: "r1", Request: &requestMsg{Method: "tool_call", Tool: "none"}})
+	for answered := 0; answered < 2; {
+		if host.readEnvelope(t).Type == msgResponse {
+			answered++
+		}
+	}
+	ext.eventMu.Lock()
+	loading := ext.loading
+	ext.eventMu.Unlock()
+	if loading == nil {
+		t.Fatal("the extension is not loading")
+	}
+	if got := unarmedRequests(loading); got != 0 {
+		t.Fatalf("requests queued and not armed after the load-time answers = %d, want none", got)
+	}
+	host.writeEnvelope(t, envelope{Type: msgReady, Ready: &readyMsg{Cwd: "/tmp", Width: 80}})
+	stopBusExtension(t, host, done)
+}
