@@ -63,8 +63,13 @@ jobs:
           PRS: ${{ inputs.prs }}
           DRY_RUN: ${{ inputs.dry-run }}
           REPO: ${{ inputs.repo }}
+          PRIVATE_TERMS: ${{ secrets.PIG_PRIVATE_TERMS }}
         run: |
           set -uo pipefail
+          if [ -n "${PRIVATE_TERMS:-}" ]; then
+            (umask 077 && printf '%s\n' "$PRIVATE_TERMS" > "$RUNNER_TEMP/private-terms")
+            export PIG_PRIVATE_TERMS_FILE="$RUNNER_TEMP/private-terms"
+          fi
           extra=()
           if [ "${DRY_RUN:-}" = true ]; then extra+=(--dry-run); fi
           # Another repository is read only.
@@ -128,8 +133,13 @@ jobs:
           JOB_INDEX: ${{ strategy.job-index }}
           DRY_RUN: ${{ inputs.dry-run }}
           REPO: ${{ inputs.repo }}
+          PRIVATE_TERMS: ${{ secrets.PIG_PRIVATE_TERMS }}
         run: |
           set -euo pipefail
+          if [ -n "${PRIVATE_TERMS:-}" ]; then
+            (umask 077 && printf '%s\n' "$PRIVATE_TERMS" > "$RUNNER_TEMP/private-terms")
+            export PIG_PRIVATE_TERMS_FILE="$RUNNER_TEMP/private-terms"
+          fi
           extra=()
           if [ "${DRY_RUN:-}" = true ]; then extra+=(--dry-run); fi
           "$RUNNER_TEMP/preflight/preflight" run --repo "${REPO:-$GITHUB_REPOSITORY}" --root "$GITHUB_WORKSPACE" \

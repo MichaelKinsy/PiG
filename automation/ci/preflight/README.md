@@ -138,6 +138,14 @@ named by a glob in another file (golden files in
 `variables/versions.yaml` is the one source of the toolchain versions; the
 copies elsewhere are `mandatory.yaml` rules.
 
+Private terms (FG006) are words that must never appear in the repository but
+cannot be published in `forbidden.yaml` either: names of people, customers or
+internal hosts. They live in the repository secret `PIG_PRIVATE_TERMS`, one
+term of at least three characters per line. The workflow writes the secret to
+a file outside the checkout and names it in `PIG_PRIVATE_TERMS_FILE`; locally,
+point that variable at a file of your own. A finding names the file, the line
+and the term's line number, never the term. Without the secret the rule is off.
+
 ## Acknowledgements
 
 A warning (a copyright notice, licence text, an inline `gitleaks:allow`) does

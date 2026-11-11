@@ -212,7 +212,9 @@ func TestMatchTerms(t *testing.T) {
 	if strings.Join(where, " ") != "notes/acmecorp.md:FG006: bin.dat:FG006:" {
 		t.Fatalf("findings %v", got)
 	}
-	writeFiles(t, filepath.Dir(terms), map[string]string{"terms": "ab\n"})
+	short := filepath.Join(t.TempDir(), "terms")
+	writeFiles(t, filepath.Dir(short), map[string]string{"terms": "ab\n"})
+	t.Setenv("PIG_PRIVATE_TERMS_FILE", short)
 	if got := checkForbidden(shippedContent(t).Forbidden, []textFile{added("x", "y")}, nil); len(got) != 1 || !strings.Contains(got[0].message, "shorter than 3") {
 		t.Fatalf("a short term: %v", got)
 	}

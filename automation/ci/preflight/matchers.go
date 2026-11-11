@@ -13,6 +13,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 type matcher struct {
@@ -191,7 +192,7 @@ func matchProse(name string, text []byte, lineAt func(int) int, p params) []find
 }
 
 func matchTerms(name string, text []byte, lineAt func(int) int, p params) []finding {
-	terms, err := loadTerms(os.Getenv(p.str("env")))
+	terms, err := cachedTerms(os.Getenv(p.str("env")))
 	if err != nil {
 		return []finding{{file: name, message: err.Error()}}
 	}
@@ -214,6 +215,23 @@ func matchTerms(name string, text []byte, lineAt func(int) int, p params) []find
 type term struct {
 	line int
 	re   *regexp.Regexp
+}
+
+type loadedTerms struct {
+	terms []term
+	err   error
+}
+
+var termsByFile sync.Map
+
+func cachedTerms(file string) ([]term, error) {
+	if v, ok := termsByFile.Load(file); ok {
+		l := v.(loadedTerms)
+		return l.terms, l.err
+	}
+	terms, err := loadTerms(file)
+	termsByFile.Store(file, loadedTerms{terms, err})
+	return terms, err
 }
 
 func loadTerms(file string) ([]term, error) {

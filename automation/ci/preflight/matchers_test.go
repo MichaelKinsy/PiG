@@ -258,3 +258,27 @@ func TestBinaryFilesGetOnlyByteMatchers(t *testing.T) {
 		t.Fatalf("a binary file: %+v", got)
 	}
 }
+
+func TestTermsAreReadOncePerFile(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "terms")
+	if err := os.WriteFile(file, []byte("abc\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	first, err := cachedTerms(file)
+	if err != nil || len(first) != 1 {
+		t.Fatalf("terms %v, err %v", first, err)
+	}
+	if err := os.Remove(file); err != nil {
+		t.Fatal(err)
+	}
+	if again, err := cachedTerms(file); err != nil || len(again) != 1 || again[0].re != first[0].re {
+		t.Fatalf("read again: %v, %v", again, err)
+	}
+	missing := filepath.Join(t.TempDir(), "none")
+	if _, err := cachedTerms(missing); err == nil {
+		t.Fatal("a missing terms file was not reported")
+	}
+	if _, err := cachedTerms(missing); err == nil {
+		t.Fatal("a missing terms file was not reported the second time")
+	}
+}
