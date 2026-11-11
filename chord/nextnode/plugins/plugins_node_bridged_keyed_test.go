@@ -308,9 +308,18 @@ func TestBridgedAKeyedMemberIsReadAgainWhenTheNextSlotEndsAfterTheResync(t *test
 	if got := kcCall(t, out, "read", "a"); got != nil {
 		t.Fatalf("read a = %v", got)
 	}
-	hook := func() { reload(kcDocs) }
+	reloaded := make(chan struct{})
+	hook := func() {
+		reload(kcDocs)
+		close(reloaded)
+	}
 	mirrorResyncedHook.Store(&hook)
 	reload(kcDocs2)
+	select {
+	case <-reloaded:
+	case <-time.After(30 * time.Second):
+		t.Fatal("the resync never sent its reset")
+	}
 	if _, err := goRef.Call("put", delta.JsonObjectOf("key", "y", "text", "third"), background); err != nil {
 		t.Fatal(err)
 	}
