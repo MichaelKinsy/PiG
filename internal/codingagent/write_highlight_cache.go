@@ -205,10 +205,14 @@ var writeWarmHighlight = tui.WarmHighlight
 // handed to it, so a step that arrives while one runs is folded into the next warm-up and the text a worker warms only grows. The
 // call's completion, the card's disposal and the end of the session drop the step that has not started; the card's Dispose, or the interactive
 // session's stop, joins the worker, so it ends with the step it is in. A language that cannot resume, and a warm-up that fails,
-// stop the warm-ups after it.
+// stop the warm-ups after it; the panic of a highlighter that fails is raised by the card's next frame, as an inline warm-up raised it.
 // state.mu is held; writeWarmed is the length of the content last handed to the worker.
 // pig additive (D112): upstream highlights the complete file once, when the call completes.
 func (state *builtInRenderState) warmWholeHighlight(content, lang string) {
+	if failure := state.writeWarmFailure; failure != nil {
+		state.writeWarmFailure = nil
+		panic(failure)
+	}
 	if state.writeWarmOff || state.writeWarmEnded() || len(content) < state.writeWarmed+writeWarmStep(len(content)) {
 		return
 	}
@@ -238,24 +242,27 @@ func (state *builtInRenderState) runWriteWarmUps() {
 			return
 		}
 		state.mu.Unlock()
-		if !warmWriteContent(content, lang) {
+		if resumable, failure := warmWriteContent(content, lang); !resumable {
 			state.mu.Lock()
 			state.writeWarmOff = true
+			if state.writeWarmFailure == nil {
+				state.writeWarmFailure = failure
+			}
 			state.mu.Unlock()
 		}
 	}
 }
 
 // warmWriteContent warms the highlight of content and reports whether a state to resume from is held. A panic of the
-// highlighter is not the card's to raise from a goroutine of its own: it reports false, the warm-ups stop, and the frame that
-// completes the call highlights the file as it did without warm-ups, where a failure surfaces on the goroutine that draws.
-func warmWriteContent(content, lang string) (resumable bool) {
+// highlighter does not end the process from a goroutine of its own: it is returned as failure, and the next frame of the
+// card raises it where an inline warm-up raised it (warmWholeHighlight).
+func warmWriteContent(content, lang string) (resumable bool, failure any) {
 	defer func() {
-		if recover() != nil {
-			resumable = false
+		if value := recover(); value != nil {
+			resumable, failure = false, value
 		}
 	}()
-	return writeWarmHighlight(normalizeWriteText(content), lang)
+	return writeWarmHighlight(normalizeWriteText(content), lang), nil
 }
 
 // normalizeWriteText is replaceTabs(normalizeDisplayText(text)) for the content of a write call. A lone surrogate, which
