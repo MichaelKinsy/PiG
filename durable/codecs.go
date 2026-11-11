@@ -6,6 +6,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // JSON codecs for records whose members hold the pi-ai Message union, the "self" entry head, or a present JSON-null
@@ -22,13 +23,25 @@ type entryRecordWire struct {
 	ByTaskId       *TaskId         `json:"byTaskId,omitempty"`
 }
 
-// MarshalJSON encodes Model and Edits when they are not nil, even when empty: upstream keeps a present empty list.
+// MarshalJSON encodes Model and Edits when they are not nil, even when empty: upstream keeps a present empty list. The text is what
+// JSON.stringify writes for the record: a lone UTF-16 surrogate (a Go string holds it as WTF-8) is the escape \udXXX and a high
+// unit followed by a low one is the character they make. appendMembers writes it; a record with a Data it does not know (a
+// struct, a Go slice type) goes through encoding/json, which keeps the lone surrogates of its strings as well.
 func (entry EntryRecord) MarshalJSON() ([]byte, error) {
+	if text, ok := entry.appendMembers(nil); ok {
+		return text, nil
+	}
+	return entry.marshalGeneral()
+}
+
+// marshalGeneral is the encoding/json encoding of the record: it carries a Data of any type and reports a message or an edit that
+// does not encode.
+func (entry EntryRecord) marshalGeneral() ([]byte, error) {
 	model, err := marshalModel(entry.Model)
 	if err != nil {
 		return nil, err
 	}
-	return json.Marshal(entryRecordWire{
+	return jsstring.MarshalKeepingSurrogates(entryRecordWire{
 		Id: entry.Id, ConversationId: entry.ConversationId, Kind: entry.Kind, Model: model, Data: entry.Data,
 		Head: entry.Head, Edits: presentEdits(entry.Edits), ByTaskId: entry.ByTaskId,
 	})
@@ -64,7 +77,7 @@ func (entry *EntryRecord) unmarshalGeneral(data []byte) error {
 		entryRecordWire
 		Data orderedValue `json:"data"`
 	}
-	if err := json.Unmarshal(data, &decoded); err != nil {
+	if err := jsstring.UnmarshalKeepingSurrogates(data, &decoded); err != nil {
 		return err
 	}
 	wire := decoded.entryRecordWire
@@ -169,7 +182,7 @@ func marshalModel(messages []ai.Message) (json.RawMessage, error) {
 	if messages == nil {
 		return nil, nil
 	}
-	return json.Marshal(messages)
+	return jsstring.MarshalKeepingSurrogates(messages)
 }
 
 func unmarshalModel(raw json.RawMessage) ([]ai.Message, error) {

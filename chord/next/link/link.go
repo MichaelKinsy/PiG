@@ -4,7 +4,7 @@ import (
 	"sync"
 )
 
-// Ports packages/chord/src/next/link/link.ts. Links (§3): an ordered, bidirectional channel of messages between two
+// Ports packages/chord/src/link/link.ts. Links (§3): an ordered, bidirectional channel of messages between two
 // hosts, and the in-memory pair.
 
 // Link is an ordered, bidirectional channel of `[]byte` messages between two hosts. Adapters only move bytes.

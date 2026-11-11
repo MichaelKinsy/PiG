@@ -465,7 +465,7 @@ func TestMcpToolCallPassesTheInputInItsMemberOrderToReachesTools(t *testing.T) {
 		t.Fatal(err)
 	}
 	wire := json.RawMessage(`{"zeta":1,"alpha":2}`)
-	event := extension.CustomToolCallEvent{ToolCallEventBase: extension.ToolCallEventBase{WireInput: &wire}, ToolName: "probe", Input: map[string]any{"zeta": 1.0, "alpha": 2.0}}
+	event := extension.CustomToolCallEvent{WireInput: &wire, ToolName: "probe", Input: map[string]any{"zeta": 1.0, "alpha": 2.0}}
 	if _, err := api.onToolCall(ctx, event); err != nil {
 		t.Fatal(err)
 	}

@@ -2,7 +2,7 @@ package host
 
 import "time"
 
-// Ports packages/chord/src/next/host/deadline.ts. An activation's `readyTimeout` deadline (slice 6a §9): one timer that
+// Ports packages/chord/src/host/deadline.ts. An activation's `readyTimeout` deadline (slice 6a §9): one timer that
 // eager migration work pauses and resumes with the budget it had left, so a long migration does not fail its object while
 // other activations keep their bounds.
 

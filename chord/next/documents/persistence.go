@@ -12,7 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/src/next/documents/persistence.ts
+// Ports packages/chord/src/documents/persistence.ts
 //
 // Persisted documents' store side (slice 6a §8, §10): a slot's address in the documents engine, what is stored of each
 // loaded document (Durable's `LoadedDocument` fields), its loads with the version and fingerprint checks and the

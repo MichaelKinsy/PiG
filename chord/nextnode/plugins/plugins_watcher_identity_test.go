@@ -4,7 +4,12 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"testing"
+
+	"github.com/fsnotify/fsnotify"
+
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
 // Not a port of a case of upstream's tests, cases of its behavior (the review of this slice ran them on Pi's `PluginWatcher`):
@@ -34,7 +39,7 @@ func TestTheBaseMarkDoesNotRenewTheWatchesOfADirectoryMovedAwayAndBackWhichIsThe
 	dir := filepath.Join(top, "d")
 	file := filepath.Join(dir, "entry.ts")
 	writeFiles(t, dir, map[string]string{"entry.ts": "A"})
-	f.recordBase(BaseInputs{file: hashOf("A")})
+	f.recordBase(model.BaseInputs{file: hashOf("A")})
 	f.settled()
 	if err := os.Link(file, filepath.Join(top, "g.ts")); err != nil {
 		t.Fatal(err)
@@ -77,7 +82,7 @@ func TestTheBaseMarkIsNotSetByADirectoryMovedAwayAndBackAndItsWatchesGoOn(t *tes
 	dir := filepath.Join(top, "d")
 	file := filepath.Join(dir, "entry.ts")
 	writeFiles(t, dir, map[string]string{"entry.ts": "A"})
-	f.recordBase(BaseInputs{file: hashOf("A")})
+	f.recordBase(model.BaseInputs{file: hashOf("A")})
 	f.settled()
 	f.run(func() {
 		if err := os.Rename(dir, filepath.Join(top, "x")); err != nil {
@@ -136,7 +141,7 @@ func TestTheBaseMarkRenewsTheWatchesOfADirectoryReplacedByAnotherOfTheSameName(t
 	dir := filepath.Join(top, "d")
 	file := filepath.Join(dir, "entry.ts")
 	writeFiles(t, dir, map[string]string{"entry.ts": "A"})
-	f.recordBase(BaseInputs{file: hashOf("A")})
+	f.recordBase(model.BaseInputs{file: hashOf("A")})
 	f.settled()
 	f.run(func() {
 		if err := os.Rename(dir, filepath.Join(top, "old")); err != nil {
@@ -154,6 +159,97 @@ func TestTheBaseMarkRenewsTheWatchesOfADirectoryReplacedByAnotherOfTheSameName(t
 		t.Fatal("base set by a directory made again with the same bytes")
 	}
 	write(t, file, "B")
+	f.baseIs(true)
+}
+
+// loseWatch has the watcher hold no watch of dir, as when fsnotify ends the watch of a directory: inotify's ends with the removal
+// of its directory, kqueue's with a rename of it. It runs in a section.
+func (f *watcherFixture) loseWatch(dir string) {
+	f.t.Helper()
+	_ = f.watcher.fs.Remove(dir) // an error: the watch has ended already
+	if slices.Contains(f.watcher.fs.WatchList(), dir) {
+		f.t.Errorf("the watcher still holds a watch of %s", dir)
+	}
+}
+
+// An event of an ancestor (here a late one: the creation of the directory the case works in) has `keepWatches` put back the
+// watches that ended under it. One of them ended with its directory's removal and cannot be put back while the directory is
+// missing; it must leave nothing that stands for it. The directory made again can have the identity of the one removed (a file
+// system that reuses the inode and stamps the birth time in coarse ticks: ext4 gave it exactly that, in the failures of
+// TestTheBaseMarkRenewsTheWatchOfAnAncestorRemovedAndMadeAgainWhileTheRecordedDirectoryIsMissing); moved away and back it has it
+// for certain. It is then no other directory than the one watched, and with a record of its identity and no watch, nothing
+// renews it: the files under it are never watched again.
+func TestTheBaseMarkWatchesADirectoryBackWhoseWatchCouldNotBePutBackWhileItWasAway(t *testing.T) {
+	_, f := based(t, nil)
+	top := realOf(t, tempRoot(t))
+	dir := filepath.Join(top, "d")
+	file := filepath.Join(dir, "sub", "entry.ts")
+	if err := os.Mkdir(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	f.recordBase(model.BaseInputs{file: hashOf("as built")})
+	f.baseIs(true)
+	f.run(func() {
+		away := filepath.Join(top, "away")
+		if err := os.Rename(dir, away); err != nil {
+			t.Error(err)
+		}
+		f.loseWatch(dir)
+		f.watcher.event(f.watcher.fs, fsnotify.Event{Name: top, Op: fsnotify.Create})
+		if _, watched := f.watcher.baseWatched[dir]; watched {
+			t.Errorf("%s is watched, though it is missing", dir)
+		}
+		if _, known := f.watcher.identities[dir]; known {
+			t.Errorf("the watcher holds the identity of %s, which it does not watch", dir)
+		}
+		if err := os.Rename(away, dir); err != nil {
+			t.Error(err)
+		}
+	})
+	f.settled()
+	writeFiles(t, filepath.Join(dir, "sub"), map[string]string{"entry.ts": "as built"})
+	f.baseIs(false)
+	write(t, file, "edited")
+	f.baseIs(true)
+}
+
+// The same for a base directory, a tree: the watches of its directories that ended while it was away cannot be put back, and
+// are put back when it is back, whatever its identity then.
+func TestTheBaseMarkWatchesTheTreeOfABaseDirectoryBackWhoseWatchesCouldNotBePutBackWhileItWasAway(t *testing.T) {
+	parent := realOf(t, tempRoot(t))
+	base := filepath.Join(parent, "app")
+	writeFiles(t, base, map[string]string{"core.ts": "v1", "sub/inner.ts": "inner"})
+	f := watcherOver(t, nil, base)
+	f.settled()
+	f.run(func() {
+		away := filepath.Join(parent, "away")
+		if err := os.Rename(base, away); err != nil {
+			t.Error(err)
+		}
+		f.loseWatch(base)
+		f.loseWatch(filepath.Join(base, "sub"))
+		f.watcher.event(f.watcher.fs, fsnotify.Event{Name: parent, Op: fsnotify.Create})
+		for _, dir := range []string{base, filepath.Join(base, "sub")} {
+			if _, watched := f.watcher.watched[dir]; watched {
+				t.Errorf("%s is watched, though it is missing", dir)
+			}
+			if _, known := f.watcher.identities[dir]; known {
+				t.Errorf("the watcher holds the identity of %s, which it does not watch", dir)
+			}
+		}
+		if err := os.Rename(away, base); err != nil {
+			t.Error(err)
+		}
+	})
+	f.settled()
+	if f.marks().Base {
+		t.Fatal("base set by the move away and back")
+	}
+	write(t, filepath.Join(base, "sub", "inner.ts"), "edited")
+	f.baseIs(true)
+	write(t, filepath.Join(base, "sub", "inner.ts"), "inner")
+	f.baseIs(false)
+	write(t, filepath.Join(base, "core.ts"), "v2")
 	f.baseIs(true)
 }
 

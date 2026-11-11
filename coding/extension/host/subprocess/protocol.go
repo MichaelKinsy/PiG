@@ -285,6 +285,8 @@ type ProviderDecl struct {
 	// ImageAPIs and ClassifierAPIs name the APIs whose implementations (ProviderConfig images and classifiers) run in the extension.
 	ImageAPIs      []string `json:"image_apis,omitempty"`
 	ClassifierAPIs []string `json:"classifier_apis,omitempty"`
+	// RefreshModels says the config's refreshModels callback runs in the extension (types.ts:1930); the host then runs it with provider_operation kind "refreshModels".
+	RefreshModels bool `json:"refresh_models,omitempty"`
 }
 
 // NativeProviderDeclaration describes callback ownership, never executable code. Key identifies the owner's callback object; Handle identifies its host-owned reference lifetime. Methods lists the callable public members. Provider calls carry caller callbacks as request-scoped handles, and stream creation is acknowledged before ordered events.
@@ -369,13 +371,17 @@ type ModelStreamCallback struct {
 // ProviderOAuthConfig is the "oauth" sub-object inside a ProviderDecl.Config. It
 // carries declarative fields and capability flags only, never functions.
 type ProviderOAuthConfig struct {
-	Name               string `json:"name"`
-	IsSubscription     bool   `json:"isSubscription,omitempty"`
-	HasLogin           bool   `json:"has_login"`
-	HasRefresh         bool   `json:"has_refresh"`
-	HasGetAPIKey       bool   `json:"has_get_api_key"`
-	HasModifyModels    bool   `json:"has_modify_models,omitempty"`
-	HasCredentialStore bool   `json:"has_credential_store,omitempty"`
+	Name           string `json:"name"`
+	IsSubscription bool   `json:"isSubscription,omitempty"`
+	// UsesCallbackServer is Pi's deprecated flag, kept for source compatibility: canonical auth flows ignore it (types.ts:2026), so the host
+	// carries the value in the registered config and never runs a callback server for it.
+	UsesCallbackServer bool `json:"usesCallbackServer,omitempty"`
+	HasLogin           bool `json:"has_login"`
+	HasRefresh         bool `json:"has_refresh"`
+	HasGetAPIKey       bool `json:"has_get_api_key"`
+	// HasModifyModels says the extension implements oauth.modifyModels; the host then runs it with MethodOAuthModifyModels.
+	HasModifyModels    bool `json:"has_modify_models,omitempty"`
+	HasCredentialStore bool `json:"has_credential_store,omitempty"`
 }
 
 // OAuth bridge request methods (host→ext), carried in RequestPayload.Method.
@@ -383,6 +389,7 @@ const (
 	MethodOAuthLogin             = "oauth_login"              // Args: none.                Result: OAuthCredentialsWire.
 	MethodOAuthRefresh           = "oauth_refresh"            // Args: OAuthCredentialsWire. Result: OAuthCredentialsWire.
 	MethodOAuthGetAPIKey         = "oauth_get_api_key"        // Args: OAuthCredentialsWire. Result: OAuthAPIKeyResult.
+	MethodOAuthModifyModels      = "oauth_modify_models"      // Args: OAuthModifyModelsArgs. Result: OAuthModifyModelsResult.
 	MethodOAuthCredentialStatus  = "oauth_credential_status"  // Args: none.                Result: OAuthCredentialStatusResult.
 	MethodOAuthStoreCredentials  = "oauth_store_credentials"  // Args: OAuthCredentialsWire. Result: OAuthStoreResult.
 	MethodOAuthDeleteCredentials = "oauth_delete_credentials" // Args: none.                Result: OAuthDeleteResult.
@@ -442,6 +449,18 @@ type OAuthSelectPromptWire struct {
 // OAuthAPIKeyResult is the reply to MethodOAuthGetAPIKey.
 type OAuthAPIKeyResult struct {
 	APIKey string `json:"apiKey"`
+}
+
+// OAuthModifyModelsArgs is the argument of MethodOAuthModifyModels: Pi's modifyModels(models, credentials) inputs. Models are the chat models' model objects and
+// Credentials the stored OAuth credential (the token object with its "type":"oauth" discriminator, as refreshToken and getApiKey receive it).
+type OAuthModifyModelsArgs struct {
+	Models      json.RawMessage `json:"models"`
+	Credentials json.RawMessage `json:"credentials"`
+}
+
+// OAuthModifyModelsResult is the reply to MethodOAuthModifyModels: the model objects modifyModels returned.
+type OAuthModifyModelsResult struct {
+	Models []json.RawMessage `json:"models"`
 }
 
 // OAuthInputResult is the reply to a value-returning login callback. Cancel is

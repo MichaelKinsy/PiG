@@ -123,7 +123,7 @@ func TestCoreHarnessCloseJoinsAToolAndAHookThatIgnoreTheirSignal(t *testing.T) {
 			models.SetProvider(faux.Provider())
 			registry := harness.CreateRegistry()
 			if err := registry.Install(&durable.Extension{Name: "tool:wait", Tools: []*durable.ToolRegistration{{
-				ToolSchema: ai.ToolSchema{Name: "wait", Description: "wait", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}},
+				Name: "wait", Description: "wait", Parameters: map[string]any{"type": "object", "properties": map[string]any{}},
 				Execute: func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 					if where == "tool" {
 						g.stubborn()

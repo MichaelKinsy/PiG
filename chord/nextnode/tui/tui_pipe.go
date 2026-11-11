@@ -34,19 +34,19 @@ func LauncherFrame(message LauncherMessage) ([]byte, error) {
 	case "input":
 		return frame(delta.JsonObjectOf("kind", "input"), []byte(message.Data))
 	case "socket_message":
-		return frame(delta.JsonObjectOf("kind", message.Kind, "socket", float64(message.Socket)), message.Bytes)
+		return frame(delta.JsonObjectOf("kind", string(message.Kind), "socket", float64(message.Socket)), message.Bytes)
 	case "attached":
-		return frame(delta.JsonObjectOf("kind", message.Kind, "id", float64(message.ID), "name", message.Name), message.Bytes)
+		return frame(delta.JsonObjectOf("kind", string(message.Kind), "id", float64(message.ID), "name", message.Name), message.Bytes)
 	case "resize":
-		return frame(delta.JsonObjectOf("kind", message.Kind, "columns", float64(message.Columns), "rows", float64(message.Rows)), nil)
+		return frame(delta.JsonObjectOf("kind", string(message.Kind), "columns", float64(message.Columns), "rows", float64(message.Rows)), nil)
 	case "socket_opened", "socket_closed":
-		return frame(delta.JsonObjectOf("kind", message.Kind, "socket", float64(message.Socket)), nil)
+		return frame(delta.JsonObjectOf("kind", string(message.Kind), "socket", float64(message.Socket)), nil)
 	case "reply":
-		return frame(delta.JsonObjectOf("kind", message.Kind, "id", float64(message.ID), "value", message.Value), nil)
+		return frame(delta.JsonObjectOf("kind", string(message.Kind), "id", float64(message.ID), "value", message.Value), nil)
 	case "refused":
-		return frame(delta.JsonObjectOf("kind", message.Kind, "id", float64(message.ID), "message", message.Message), nil)
+		return frame(delta.JsonObjectOf("kind", string(message.Kind), "id", float64(message.ID), "message", message.Message), nil)
 	}
-	return nil, errors.New("terminal: no such launcher message " + message.Kind)
+	return nil, errors.New("terminal: no such launcher message " + string(message.Kind))
 }
 
 // StartFrame is the first frame: the bridge's start and the base bundle's text as body.
@@ -87,14 +87,15 @@ type FrameReader struct {
 // NewFrameReader is a reader with nothing read.
 func NewFrameReader() *FrameReader { return &FrameReader{buffer: make([]byte, 64*1024)} }
 
-// Push is the messages complete with chunk.
+// Push is the messages complete with chunk. A malformed frame in it fails the whole chunk with no message, as Pi's `push` throws
+// before it returns any: the valid frames read before the bad one are dropped.
 func (r *FrameReader) Push(chunk []byte) ([]SandboxMessage, error) {
 	r.append(chunk)
 	var messages []SandboxMessage
 	for r.end-r.start >= 4 {
 		length := int(binary.BigEndian.Uint32(r.buffer[r.start:]))
 		if length < 4 || length > MaxPipeFrame {
-			return messages, ErrMalformedFrame
+			return nil, ErrMalformedFrame
 		}
 		if r.end-r.start < 4+length {
 			break
@@ -102,7 +103,7 @@ func (r *FrameReader) Push(chunk []byte) ([]SandboxMessage, error) {
 		// The message copies what it keeps: the buffer is reused.
 		message, err := sandboxMessage(r.buffer[r.start+4 : r.start+4+length])
 		if err != nil {
-			return messages, err
+			return nil, err
 		}
 		messages = append(messages, message)
 		r.start += 4 + length
@@ -174,35 +175,35 @@ func sandboxMessage(payload []byte) (SandboxMessage, error) {
 	kind, _ := stringField(header["kind"])
 	switch kind {
 	case "write":
-		return SandboxMessage{Kind: kind, Data: string(body)}, nil
+		return SandboxMessage{Kind: SandboxMessageKind(kind), Data: string(body)}, nil
 	case "socket_send":
 		if !socketOK {
 			return SandboxMessage{}, ErrMalformedMessage
 		}
 		// A copy: the payload's memory is the reader's.
-		return SandboxMessage{Kind: kind, Socket: socket, Bytes: append([]byte(nil), body...)}, nil
+		return SandboxMessage{Kind: SandboxMessageKind(kind), Socket: socket, Bytes: append([]byte(nil), body...)}, nil
 	case "socket_open", "socket_close":
 		if !socketOK {
 			return SandboxMessage{}, ErrMalformedMessage
 		}
-		return SandboxMessage{Kind: kind, Socket: socket}, nil
+		return SandboxMessage{Kind: SandboxMessageKind(kind), Socket: socket}, nil
 	case "request":
 		id, ok := safeInteger(header["id"])
 		request, valid := bridgeRequest(header["request"])
 		if !ok || !valid {
 			return SandboxMessage{}, ErrMalformedMessage
 		}
-		return SandboxMessage{Kind: kind, ID: id, Request: request}, nil
+		return SandboxMessage{Kind: SandboxMessageKind(kind), ID: id, Request: request}, nil
 	case "outdated":
-		return SandboxMessage{Kind: kind}, nil
+		return SandboxMessage{Kind: SandboxMessageKind(kind)}, nil
 	case "failed":
-		return SandboxMessage{Kind: kind, Message: jsString(header["message"])}, nil
+		return SandboxMessage{Kind: SandboxMessageKind(kind), Message: jsString(header["message"])}, nil
 	case "exit":
 		code, ok := safeInteger(header["code"])
 		if !ok {
 			code = 1
 		}
-		return SandboxMessage{Kind: kind, Code: code}, nil
+		return SandboxMessage{Kind: SandboxMessageKind(kind), Code: code}, nil
 	}
 	return SandboxMessage{}, ErrMalformedMessage
 }
@@ -233,18 +234,18 @@ func bridgeRequest(field json.RawMessage) (BridgeRequest, bool) {
 	kind, _ := stringField(request["kind"])
 	switch kind {
 	case "base":
-		return BridgeRequest{Kind: kind}, true
+		return BridgeRequest{Kind: BridgeRequestKind(kind)}, true
 	case "fetch", "attach":
 		if path, ok := stringField(request["path"]); ok {
-			return BridgeRequest{Kind: kind, Path: path}, true
+			return BridgeRequest{Kind: BridgeRequestKind(kind), Path: path}, true
 		}
 	case "copy":
 		if text, ok := stringField(request["text"]); ok {
-			return BridgeRequest{Kind: kind, Text: text}, true
+			return BridgeRequest{Kind: BridgeRequestKind(kind), Text: text}, true
 		}
 	case "open":
 		if url, ok := stringField(request["url"]); ok {
-			return BridgeRequest{Kind: kind, URL: url}, true
+			return BridgeRequest{Kind: BridgeRequestKind(kind), URL: url}, true
 		}
 	}
 	return BridgeRequest{}, false

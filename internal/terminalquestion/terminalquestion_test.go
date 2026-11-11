@@ -1,5 +1,7 @@
 package terminalquestion
 
+// pi: packages/coding-agent/src/utils/terminal-question.ts
+
 // Ports packages/coding-agent/test/terminal-question.test.ts
 
 import (
@@ -12,7 +14,7 @@ import (
 
 func TestQuestionWritesToTheSelectedOutputAndReturnsTheAnswer(t *testing.T) {
 	input, writer := io.Pipe()
-	defer writer.Close()
+	defer func() { _ = writer.Close() }()
 	var output bytes.Buffer
 	interrupts := 0
 	reader := NewReader(input)
@@ -29,7 +31,7 @@ func TestQuestionWritesToTheSelectedOutputAndReturnsTheAnswer(t *testing.T) {
 func TestQuestionFailsOnEOFWithoutRequiringAnInterruptCallback(t *testing.T) {
 	input, writer := io.Pipe()
 	reader := NewReader(input)
-	go writer.Close()
+	go func() { _ = writer.Close() }()
 	if _, err := reader.Question(t.Context(), "Paste URL: ", io.Discard, nil); !errors.Is(err, ErrInterrupted) {
 		t.Fatalf("err = %v, want ErrInterrupted", err)
 	}
@@ -62,7 +64,7 @@ func TestEOFReportsAnInterrupt(t *testing.T) {
 
 func TestCallerCancellationDoesNotReportAnInterruptAndKeepsTheLaterAnswer(t *testing.T) {
 	input, writer := io.Pipe()
-	defer writer.Close()
+	defer func() { _ = writer.Close() }()
 	reader := NewReader(input)
 	ctx, cancel := context.WithCancelCause(t.Context())
 	cause := errors.New("callback won")

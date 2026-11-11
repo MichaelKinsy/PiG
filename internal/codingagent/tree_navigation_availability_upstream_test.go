@@ -47,7 +47,7 @@ func TestTreeNavigationAvailabilityUpstream(t *testing.T) {
 			}
 			originalLeaf := *session.GetLeafID()
 			calls, aborts := 0, 0
-			h := &availabilityNavigationHandle{recordingCompactHandle: recordingCompactHandle{inner: session, agent: m.agent}}
+			h := &availabilityNavigationHandle{inner: session, agent: m.agent}
 			h.navigate = func(_ context.Context, id string, summarize bool, instructions string) (NavigateTreeResult, error) {
 				calls++
 				if id != target || summarize || instructions != "" {

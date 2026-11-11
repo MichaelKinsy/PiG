@@ -254,8 +254,8 @@ func TestConfigSelectorContractMatchesPi(t *testing.T) {
 									}
 								}
 								probes = append(probes, configContractProbe{
-									configOracleProbe: configOracleProbe{Resolved: resolveds[name], AgentDir: "/agent", Width: width, Height: height, WriteScope: mode.scope, ProjectModeAvailable: mode.avail, Bindings: bindings, Keys: keys},
-									Theme:             theme, TrueColor: trueColor,
+									Resolved: resolveds[name], AgentDir: "/agent", Width: width, Height: height, WriteScope: mode.scope, ProjectModeAvailable: mode.avail, Bindings: bindings, Keys: keys,
+									Theme: theme, TrueColor: trueColor,
 								})
 							}
 						}
@@ -291,8 +291,8 @@ func TestConfigSelectorContractMatchesPi(t *testing.T) {
 					for _, width := range []int{100, 30} {
 						for _, trueColor := range theme.trueColor {
 							probes = append(probes, configContractProbe{
-								configOracleProbe: configOracleProbe{Resolved: resolveds[name], AgentDir: "/agent", Width: width, WriteScope: scope, ProjectModeAvailable: true, Keys: keys},
-								Theme:             theme.name, TrueColor: trueColor,
+								Resolved: resolveds[name], AgentDir: "/agent", Width: width, WriteScope: scope, ProjectModeAvailable: true, Keys: keys,
+								Theme: theme.name, TrueColor: trueColor,
 							})
 						}
 					}

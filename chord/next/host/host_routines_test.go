@@ -23,7 +23,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/test/next/host/routines.test.ts: routines (§14), `on` (the first call with the current value,
+// Ports packages/chord/test/host/routines.test.ts: routines (§14), `on` (the first call with the current value,
 // folding, no overlap, retries after a throw with the whole value, retirements, the source ending or failing, native
 // sources), `onLive` (returning, retries, the backoff reset after a long run, aborts), the drain and `host.close`, and what
 // routines leave behind. Every case runs on a real host, as upstream's `store(...)` and `loaded(...)` do; time is the fake
@@ -2007,7 +2007,7 @@ func TestOnFollowsRefStateAReferenceOverALinkGoingLoadingAndLiveAgain(t *testing
 // --- routine spans (slice 9) --------------------------------------------------------------------------------------------
 
 // TestRoutineSpansTraceEachRoutineCallAsARootItsCommitsEventsOfItAThrowRoutineFailed runs `it("traces each routine call as a
-// root, its commits events of it, a throw `routine_failed`")` of packages/chord/test/next/host/routines.test.ts.
+// root, its commits events of it, a throw `routine_failed`")` of packages/chord/test/host/routines.test.ts.
 func TestRoutineSpansTraceEachRoutineCallAsARootItsCommitsEventsOfItAThrowRoutineFailed(t *testing.T) {
 	e := newRoutinesEnv(t)
 	e.telemetry = telemetry.NewInMemoryTelemetryContext()

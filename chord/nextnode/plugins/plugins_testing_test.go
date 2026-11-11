@@ -3,8 +3,10 @@ package plugins
 // pi: packages/chord/src/node/plugins/testing.ts
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -15,6 +17,8 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/build"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
 // Ports packages/chord/test/node/plugins/testing.test.ts: testing a plugin alone (slice 12 §6), the plugin built as production
@@ -49,7 +53,7 @@ func tpAppModules(t *testing.T, cache, registry, name string) HostPackages {
 	return HostPackages{"@acme/app/v3": filepath.Join(dir, "v3.ts"), "@acme/app/v3/worker": filepath.Join(dir, "v3", "worker.ts")}
 }
 
-var tpAPI = &AppApi{Name: "@acme/app", Versions: []string{"v3"}}
+var tpAPI = &model.AppApi{Name: "@acme/app", Versions: []string{"v3"}}
 
 // tpNotes is the notes contract the stats plugin uses, as the notes plugin declares it.
 var tpNotes = mustContract(contracts.Local("acme.notes", contracts.LocalDeclaration{
@@ -69,7 +73,7 @@ func tpEmpty() *delta.JsonObject { return delta.NewJsonObject(0) }
 // tpOpts are the options every case shares: the worker kind, the app's API and modules, a Node host cached under cache.
 func tpOpts(t *testing.T, cache string) TestPluginOptions {
 	t.Helper()
-	return TestPluginOptions{Kind: "worker", Api: tpAPI, Modules: tpModules(t, cache), Node: NodeOptions{CacheDir: cache}}
+	return TestPluginOptions{Build: build.BuildFacet, Kind: "worker", Api: tpAPI, Modules: tpModules(t, cache), Node: NodeOptions{CacheDir: cache}}
 }
 
 // tpNotesStub is a stub of the notes plugin: every project has 42 words.
@@ -98,6 +102,9 @@ func tpJSON(t *testing.T, v any) string {
 // tpPlugin tests the plugin in dir with options, closed when the test ends.
 func tpPlugin(t *testing.T, dir string, options TestPluginOptions) *TestedPlugin {
 	t.Helper()
+	if options.Build == nil {
+		options.Build = build.BuildFacet
+	}
 	tested, err := TestPlugin(dir, options, background)
 	if err != nil {
 		t.Fatal(err)
@@ -305,26 +312,54 @@ func TestTestPluginWaitsForSlowActivationsACollectionWokeBeforeItLooksAgainOpusR
 }
 
 // testing.test.ts › testPlugin › serves a registry contributed at a high version without an adapter per older version (Sol).
-// Pi times the whole call under a second; here the Node process is started first by an earlier load of the same cache, so the
-// bound is the collection's, as Pi's is (its process is the test's own).
+// Pi puts a bound of one second on the whole call. What it guards is that a registry at version 2000000 costs no adapter per
+// older version: `olderAs` answers a lookup, it does not hold 1999999 of them. Here the call also builds the plugin and
+// starts the Node subprocess (Pi's process is the test's own), and under CPU contention those alone take over a second at
+// version 1 as well (0.8-1.2 s at both versions under -race on 4 CPUs shared with 6 busy loops; the bound failed 8 runs of 20),
+// so the wall clock measured the process, not the version. The property is held where it is made, by what the adapters keep,
+// which no scheduler changes: the registry is collected at its high version end to end, and `olderAs` of that version holds
+// none of the adapters of the versions below it however many are looked up.
 func TestTestPluginServesARegistryContributedAtAHighVersionWithoutAnAdapterPerOlderVersionSol(t *testing.T) {
 	cache := t.TempDir()
 	options := tpOpts(t, cache)
-	root := t.TempDir()
-	warm := writePlugin(t, root, "warm", "@acme/warm", map[string]string{
-		"worker.ts": "import { defineFacet } from \"@acme/app/v3\";\nexport default defineFacet(() => {});",
-	}, nil)
-	tpPlugin(t, warm, options)
-	dir := writePlugin(t, root, "high", "@acme/high", map[string]string{
+	dir := writePlugin(t, t.TempDir(), "high", "@acme/high", map[string]string{
 		"worker.ts": "import { defineFacet, defineRegistry } from \"@acme/app/v3\";\nconst R = defineRegistry(\"acme.high\", { version: 2000000 });\nexport default defineFacet((_host, self) => self.contribute(R, 1));",
 	}, nil)
-	started := time.Now()
 	tested := tpPlugin(t, dir, options)
-	if elapsed := time.Since(started); elapsed >= time.Second {
-		t.Fatalf("testPlugin took %v, want under 1s", elapsed)
-	}
 	if got, want := tpContributed(t, tested, "acme.high"), `[["@acme/high",1]]`; got != want {
 		t.Fatalf("acme.high = %s, want %s", got, want)
+	}
+	table, err := tested.Contributions("acme.high", background)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(table) != 1 || table[0].Version != 2000000 {
+		t.Fatalf("acme.high = %+v, want its one contribution built against version 2000000", table)
+	}
+
+	tree, err := extractNode(cache)
+	if err != nil {
+		t.Fatal(err)
+	}
+	node, err := exec.LookPath("node")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	command := exec.CommandContext(ctx, node, "--input-type=module", "-e", `import { olderAs } from "./testing.mjs";
+const accepts = olderAs({ version: 9007199254740991 });
+const answers = [1, 1999999, 9007199254740990, 9007199254740991].map((version) => typeof accepts[version]);
+for (let version = 1; version < 1000000; version += 997) void accepts[version];
+const adapter = accepts[1999999];
+console.log(JSON.stringify({ held: Reflect.ownKeys(accepts).length, answers, adapted: [adapter.contribution("c"), adapter.value("v")] }));`)
+	command.Dir = tree
+	out, err := command.CombinedOutput()
+	if err != nil {
+		t.Fatalf("%v: %s", err, out)
+	}
+	if got, want := strings.TrimSpace(string(out)), `{"held":0,"answers":["object","object","object","undefined"],"adapted":["c","v"]}`; got != want {
+		t.Fatalf("olderAs(2000000) = %s, want %s (an adapter looked up and answered as it is, none held for a version below)", got, want)
 	}
 }
 

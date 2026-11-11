@@ -249,8 +249,8 @@ var _ chordsqlite.SqliteDatabase = (*DurableObjectSqliteDatabase)(nil)
 // NewDurableObjectSqliteDatabase adapts the `ctx.storage` of a SQLite-backed Durable Object.
 func NewDurableObjectSqliteDatabase(storage DurableObjectSqliteStorage) *DurableObjectSqliteDatabase {
 	return &DurableObjectSqliteDatabase{
-		durableObjectExecutor: durableObjectExecutor{storage: storage, check: func() error { return nil }},
-		queue:                 queueFor(storage),
+		storage: storage, check: func() error { return nil },
+		queue: queueFor(storage),
 	}
 }
 

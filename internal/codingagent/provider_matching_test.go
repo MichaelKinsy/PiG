@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/core/provider-matching.ts
+
 // Ports packages/coding-agent/test/provider-matching.test.ts
 
 import (

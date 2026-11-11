@@ -8,7 +8,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/internal/parking"
 )
 
-// Ports packages/chord/src/next/host/sleep.ts. Waiting helpers for routines, jobs and handlers (§14): `sleep(ms, ctx)` and
+// Ports packages/chord/src/host/sleep.ts. Waiting helpers for routines, jobs and handlers (§14): `sleep(ms, ctx)` and
 // `untilAborted(ctx)`, which end with their context, leaving no timer or listener behind. Portable: timers and abort
 // signals only.
 

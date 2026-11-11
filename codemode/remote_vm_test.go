@@ -198,7 +198,7 @@ func TestServeRemoteStopsAComputingScriptWhenItsContextEnds(t *testing.T) {
 			}
 			go func() {
 				// Answer the call, then end the context while the script computes.
-				reply(&codemode.RemoteReply{HostToWorkerMessage: codemode.HostToWorkerMessage{Type: codemode.MessageResult, ID: last.ID, Ok: true}}, nil)
+				reply(&codemode.RemoteReply{Type: codemode.MessageResult, ID: last.ID, Ok: true}, nil)
 				cancel()
 			}()
 		}, codemode.ServeOptions{MaxInterruptBudget: 1_000_000_000})
@@ -255,7 +255,7 @@ func TestARemoteExecutedByHandReportsTheScriptThroughTheExchange(t *testing.T) {
 			switch m.Type {
 			case codemode.MessageCall:
 				result := "2"
-				answer = &codemode.RemoteReply{HostToWorkerMessage: codemode.HostToWorkerMessage{Type: codemode.MessageResult, ID: m.ID, Ok: true, Payload: &result}}
+				answer = &codemode.RemoteReply{Type: codemode.MessageResult, ID: m.ID, Ok: true, Payload: &result}
 			case codemode.MessageDone:
 				done = &messages[i]
 			}

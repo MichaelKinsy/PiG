@@ -10,7 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 )
 
-// Ports packages/chord/test/next/store/jsonl.test.ts: tests of the JSONL archive encoding (slice 6a §13): parts as
+// Ports packages/chord/test/store/jsonl.test.ts: tests of the JSONL archive encoding (slice 6a §13): parts as
 // lines, chunks split anywhere (inside a line, inside a UTF-8 sequence), blank lines, and the refusal of a line that
 // is no JSON.
 

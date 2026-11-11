@@ -180,6 +180,7 @@ func TestReconnectsAfterAGrowingPauseAndReportsItsStates(t *testing.T) {
 	}
 }
 
+// Cites packages/chord/src/surfaces/connection.ts:31 (SocketEvents.opened).
 func TestStartsThePausesAgainAfterAConnectionThatStayedOpen10s(t *testing.T) {
 	w := newFakeWorld()
 	states := loopIn(w, nil)
@@ -280,6 +281,7 @@ func TestAnErrorFromCanRetryRetries(t *testing.T) {
 	}
 }
 
+// Cites packages/chord/src/surfaces/connection.ts:33 (SocketEvents.received).
 func TestASilentSocketIsReplacedOnAWakeOnceItsNextPingIsOverdueAndOneWithRecentFramesStays(t *testing.T) {
 	w := newFakeWorld()
 	loopIn(w, nil)

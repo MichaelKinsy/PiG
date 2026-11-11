@@ -103,7 +103,6 @@ func TestDelegatedEditorHooksMatchPi(t *testing.T) {
 	}
 
 	m, _ := newCustomEditorDispatchMode(t)
-	m.uiTaskCh = make(chan func(), 64)
 	m.editor.Focused = true
 	fake := &fakeDelegatedEditor{}
 	m.setRemoteEditor(fake)

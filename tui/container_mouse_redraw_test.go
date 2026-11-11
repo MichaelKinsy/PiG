@@ -29,7 +29,7 @@ func TestHandledMouseEventRedrawsComponentsThatChangedSilently(t *testing.T) {
 			return &TuiMouseEventResult{Handled: true}
 		})
 	}
-	root := NewContainer(NewContainer(NewCustomMessageComponent(&CustomMessage{CustomType: "card", Content: "x"}, renderer, nil, 1)))
+	root := NewContainer(NewContainer(NewCustomMessageComponent(&CustomMessage{CustomType: "card", Content: "x"}, renderer, nil, 1, nil, "", "")))
 	draw := func() string { return strings.TrimSpace(strings.Join(root.Render(40), "\n")) }
 
 	if got := draw(); got != "card: closed" {

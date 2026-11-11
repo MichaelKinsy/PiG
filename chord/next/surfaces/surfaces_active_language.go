@@ -113,6 +113,7 @@ func FollowActiveLanguage(h host.Host, preferred []string, changed func(*Languag
 	}
 	addStop(choice.Release)
 	// The pick follows once its hold binds; the hold ending (the follower stopped) before its first value is no error.
+	//portlint:allow asyncorder active-language.ts:58 `choice.pick.watch(ctx).then(start, () => {})` is not awaited: the pick follows once its hold binds, and the stop gate (gate, stopped) orders it against Stop
 	go func() {
 		watch, err := choice.Member("pick").Watch(ctx)
 		if err != nil {

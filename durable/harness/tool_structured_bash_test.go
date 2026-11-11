@@ -33,7 +33,7 @@ func TestCallersOfBashGetItsRetainedOutputAndExitCodeAlsoForANonzeroExit(t *test
 		t.Fatal(err)
 	}
 	var received []durable.NestedToolExecutionResult
-	probe := &durable.ToolRegistration{ToolSchema: ai.ToolSchema{Name: "probe", Description: "probe", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}}, Execute: func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
+	probe := &durable.ToolRegistration{Name: "probe", Description: "probe", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}, Execute: func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 		for _, command := range []string{"printf ok", "printf bad; exit 4"} {
 			result, err := api.ExecuteTool(ctx, "bash", map[string]any{"command": command})
 			if err != nil {

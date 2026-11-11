@@ -16,7 +16,7 @@ import (
 // `tx.update`, `tx.delete`, `tx.updateWhere`, `tx.deleteWhere` and the `tx.get` overlay of them.
 //
 // Pi tests these writes where they are staged, on TableChanges (store/table-changes.test.ts, store/table-writes.test.ts:
-// `tx.update` is `this.#changes(table).update(key, set)`, packages/chord/src/next/documents/transaction.ts:280-287),
+// `tx.update` is `this.#changes(table).update(key, set)`, packages/chord/src/documents/transaction.ts:280-287),
 // and uses `tx.update` and `tx.updateWhere` through `self.tx` in the example test/next/examples/20-tables.ts; it has no
 // test that calls `tx.delete` or `tx.deleteWhere` itself. Each test below runs Pi's case, with its inputs and expected
 // results, on a transaction of the harness object (transaction_test.go) instead of a bare TableChanges.
@@ -91,7 +91,7 @@ func requireAbsent(t *testing.T, row store.Row, err error, what string) {
 }
 
 // TestTablesInATransactionReplayOwnPutUpdateAndDeleteOverTheCommittedRowWithGet runs `it("replays the
-// transaction's own put, update and delete over the committed row")` of packages/chord/test/next/store/table-changes.test.ts:52
+// transaction's own put, update and delete over the committed row")` of packages/chord/test/store/table-changes.test.ts:52
 // on `tx.put`, `tx.update`, `tx.delete` and `tx.get` of a transaction; and `it("an update of an absent key changes
 // nothing")` of table-changes.test.ts:65. The rows the transaction leaves are then the committed ones.
 func TestTablesInATransactionReplayOwnPutUpdateAndDeleteOverTheCommittedRowWithGet(t *testing.T) {
@@ -161,7 +161,7 @@ func TestTablesInATransactionDeleteTheRowWhenTheTransactionCommits(t *testing.T)
 
 // TestTablesInATransactionRefuseGetOnATableAfterAnUpdateWhereOrDeleteWhereOtherTablesAreUnaffected runs `it("is
 // refused on a table after an updateWhere or deleteWhere (W10); other tables are unaffected")` of
-// packages/chord/test/next/store/table-changes.test.ts:71 on `tx.updateWhere`, `tx.deleteWhere` and `tx.get`: Pi's three
+// packages/chord/test/store/table-changes.test.ts:71 on `tx.updateWhere`, `tx.deleteWhere` and `tx.get`: Pi's three
 // TableChanges (updated, deleted-from, untouched) are three tables of the transaction.
 func TestTablesInATransactionRefuseGetOnATableAfterAnUpdateWhereOrDeleteWhereOtherTablesAreUnaffected(t *testing.T) {
 	s := storedOn(t, nil, false, nil)
@@ -195,7 +195,7 @@ func TestTablesInATransactionRefuseGetOnATableAfterAnUpdateWhereOrDeleteWhereOth
 
 // TestTablesInATransactionUpdateWhereAndDeleteWhereAreOneStatementEachWithTheirSets runs `it("updateWhere and
 // deleteWhere are one statement each, recorded with where, set and count")` of
-// packages/chord/test/next/store/table-writes.test.ts:124 on `tx.put`, `tx.updateWhere` and `tx.deleteWhere`: five
+// packages/chord/test/store/table-writes.test.ts:124 on `tx.put`, `tx.updateWhere` and `tx.deleteWhere`: five
 // rows, the `a/` ones moved to `c/` by an expression set, `b/4` deleted; the two bulk writes, the outbox commit and
 // lastSeq are the four statements.
 func TestTablesInATransactionUpdateWhereAndDeleteWhereAreOneStatementEachWithTheirSets(t *testing.T) {
@@ -244,9 +244,9 @@ func TestTablesInATransactionUpdateWhereAndDeleteWhereAreOneStatementEachWithThe
 }
 
 // TestTablesInATransactionUpdateAndUpdateWhereRunTheTablesExample runs the `history` object of the example
-// packages/chord/test/next/examples/20-tables.ts: `record` is `tx.put` (20-tables.ts:53), `hit` is `tx.update` with an
-// expression set (packages/chord/test/next/examples/20-tables.ts:58), `finish` is `tx.updateWhere` with a prefix
-// condition (packages/chord/test/next/examples/20-tables.ts:63); five rows, e1 hit twice and `src/a` finished give two
+// packages/chord/test/examples/20-tables.ts: `record` is `tx.put` (20-tables.ts:53), `hit` is `tx.update` with an
+// expression set (packages/chord/test/examples/20-tables.ts:58), `finish` is `tx.updateWhere` with a prefix
+// condition (packages/chord/test/examples/20-tables.ts:63); five rows, e1 hit twice and `src/a` finished give two
 // hits of e1 and three finished rows, and the open ones page by `at` descending (e3, then e1).
 func TestTablesInATransactionUpdateAndUpdateWhereRunTheTablesExample(t *testing.T) {
 	s := storedOn(t, nil, false, nil)

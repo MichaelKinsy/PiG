@@ -263,8 +263,555 @@ jobs:
           fi
           "$binary" --help >/dev/null
           "$binary" --version
-          "$binary" version
+          # --version prints Pi's version by design; only `version` names PiG's.
+          version_output=$("$binary" version)
+          printf '%s\n' "$version_output"
+          reported=$(printf '%s\n' "$version_output" | tr -d '\r' | sed -n 's/^pig: //p')
+          if [ "$reported" != "$VERSION" ]; then
+            echo "pig version reports pig: '$reported', want the release version '$VERSION'" >&2
+            exit 1
+          fi
           PIG_HOME="$RUNNER_TEMP/pig-home" "$binary" docs show install >/dev/null
+
+  acp:
+    name: ${{ matrix.goos }}/${{ matrix.goarch }} pig-acp candidate
+    # pig-acp ships beside the pig executable taken from this target's own pig
+    # candidate, so the bundled pig bytes are the bytes that candidate's
+    # checksums, smoke test and attestation cover. The ACP registry points at
+    # these archives.
+    needs: binary
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            format: tar
+          - goos: linux
+            goarch: arm64
+            format: tar
+          - goos: darwin
+            goarch: amd64
+            format: tar
+          - goos: darwin
+            goarch: arm64
+            format: tar
+          - goos: windows
+            goarch: amd64
+            format: zip
+          - goos: windows
+            goarch: arm64
+            format: zip
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - name: Download the pig candidate for this target
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: pig-${{ inputs.version }}-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: pig-candidate
+      - name: Verify the pig archive before taking pig from it
+        shell: bash
+        working-directory: pig-candidate
+        run: sha256sum -c SHA256SUMS
+      - name: Build archive
+        id: build
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          FORMAT: ${{ matrix.format }}
+        run: |
+          set -euo pipefail
+          python3 -B -m unittest discover -s automation/release -p test_pig_acp_source.py
+          mkdir -p out/evidence
+          pig_archive="pig-candidate/pig-${VERSION}-${GOOS}-${GOARCH}.tar.gz"
+          if [ "$FORMAT" = zip ]; then pig_archive="pig-candidate/pig-${VERSION}-${GOOS}-${GOARCH}.zip"; fi
+          automation/release/build-pig-acp.sh "$pig_archive" out "$RUNNER_TEMP/pig-acp" >> "$GITHUB_OUTPUT"
+      - name: Generate SPDX SBOM
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+        with:
+          path: ${{ steps.build.outputs.stage }}
+          format: spdx-json
+          output-file: out/evidence/sbom.spdx.json
+          upload-artifact: false
+      - name: Generate CycloneDX SBOM
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+        with:
+          path: ${{ steps.build.outputs.stage }}
+          format: cyclonedx-json
+          output-file: out/evidence/sbom.cyclonedx.json
+          upload-artifact: false
+      - name: Validate inventory
+        shell: bash
+        env:
+          STAGE: ${{ steps.build.outputs.stage }}
+        run: |
+          set -euo pipefail
+          python automation/release/validate-sbom.py \
+            --spdx out/evidence/sbom.spdx.json \
+            --cyclonedx out/evidence/sbom.cyclonedx.json \
+            --root "$STAGE" \
+            --licenses out/evidence/licenses.csv \
+            --out out/evidence/inventory-validation.json
+      - name: Scan artifact SBOM
+        uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439 # v7.4.2
+        with:
+          sbom: out/evidence/sbom.spdx.json
+          fail-build: true
+          output-format: sarif
+          output-file: out/evidence/grype-report.sarif
+          severity-cutoff: high
+          only-fixed: false
+      - name: Write and verify checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd out
+          find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > "$RUNNER_TEMP/SHA256SUMS"
+          mv "$RUNNER_TEMP/SHA256SUMS" SHA256SUMS
+          sha256sum -c SHA256SUMS
+      - name: Attest binary archive
+        id: attest
+        if: github.event.repository.private == false
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: ${{ steps.build.outputs.artifact }}
+      - name: Ship the Sigstore bundle beside the archive
+        if: steps.attest.outcome == 'success'
+        shell: bash
+        env:
+          BUNDLE: ${{ steps.attest.outputs.bundle-path }}
+          ARTIFACT: ${{ steps.build.outputs.artifact }}
+        run: cp "$BUNDLE" "out/$(basename "$ARTIFACT").sigstore.json"
+      - name: Upload candidate and evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: pig-acp-${{ inputs.version }}-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: out/
+          retention-days: 30
+
+  acp-native-smoke:
+    name: ${{ matrix.goos }}/${{ matrix.goarch }} packaged pig-acp smoke
+    needs: acp
+    permissions:
+      actions: read
+      contents: read
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            goos: linux
+            goarch: amd64
+            format: tar
+          - runner: macos-15
+            goos: darwin
+            goarch: arm64
+            format: tar
+          - runner: windows-2025
+            goos: windows
+            goarch: amd64
+            format: zip
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - name: Download packaged candidate
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: pig-acp-${{ inputs.version }}-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: candidate
+      - name: Verify and run packaged candidate
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          FORMAT: ${{ matrix.format }}
+        run: |
+          set -euo pipefail
+          name="pig-acp-${VERSION}-${GOOS}-${GOARCH}"
+          (cd candidate && sha256sum -c SHA256SUMS)
+          acp_version=$(python -c 'import json; print(json.load(open("automation/release/pig-acp.lock"))["version"])')
+          mkdir -p "extracted/$name"
+          if [ "$FORMAT" = zip ]; then
+            ARCHIVE_PATH="$(cygpath -w "candidate/$name.zip")"
+            DESTINATION_PATH="$(cygpath -w "extracted/$name")"
+            export ARCHIVE_PATH DESTINATION_PATH
+            # shellcheck disable=SC2016 # PowerShell, not bash, expands $env: variables.
+            powershell.exe -NoProfile -NonInteractive -Command \
+              'Expand-Archive -LiteralPath $env:ARCHIVE_PATH -DestinationPath $env:DESTINATION_PATH -Force'
+            suffix=.exe
+          else
+            tar -xzf "candidate/$name.tar.gz" -C "extracted/$name"
+            suffix=
+          fi
+          python automation/release/pig-acp-smoke.py --version "$acp_version" \
+            --pig-acp "extracted/$name/pig-acp$suffix" --pig "extracted/$name/pig$suffix"
+          "extracted/$name/pig$suffix" --version
+      - name: Assert the bundled pig reports the release version
+        # The pig beside pig-acp is the pig candidate's binary. pig-acp-smoke.py
+        # checks pig-acp's own version; `pig --version` prints Pi's version by
+        # design, so only `pig version` shows the archive holds this release.
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          FORMAT: ${{ matrix.format }}
+        run: |
+          set -euo pipefail
+          suffix=
+          if [ "$FORMAT" = zip ]; then suffix=.exe; fi
+          version_output=$("extracted/pig-acp-${VERSION}-${GOOS}-${GOARCH}/pig$suffix" version)
+          printf '%s\n' "$version_output"
+          reported=$(printf '%s\n' "$version_output" | tr -d '\r' | sed -n 's/^pig: //p')
+          if [ "$reported" != "$VERSION" ]; then
+            echo "pig version reports pig: '$reported', want the release version '$VERSION'" >&2
+            exit 1
+          fi
+
+  standard-build:
+    name: ${{ matrix.goos }}/${{ matrix.goarch }} PiG Standard build
+    # PiG Standard is a Piglet Binary: `pig piglet build` compiles it for its own
+    # host target only, so each target builds on a native runner, from a Git
+    # checkout of the release commit (the builder records the commit it builds
+    # from; the source archive has no VCS metadata). The result is the bare
+    # Binary. The standard job packages it and gives the archive the same
+    # evidence a pig archive has.
+    needs: source
+    permissions:
+      contents: read
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            goos: linux
+            goarch: amd64
+          - runner: ubuntu-24.04-arm
+            goos: linux
+            goarch: arm64
+          - runner: macos-15-intel
+            goos: darwin
+            goarch: amd64
+          - runner: macos-15
+            goos: darwin
+            goarch: arm64
+          - runner: windows-2025
+            goos: windows
+            goarch: amd64
+          - runner: windows-11-arm
+            goos: windows
+            goarch: arm64
+    steps:
+      # Every target must hash the same Piglet source bytes: no CRLF conversion on Windows.
+      - name: Keep checked-out line endings
+        shell: bash
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - name: Build the PiG Standard Piglet Binary
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          set -euo pipefail
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$ ]]
+          source_version=$(sed -nE 's/^const PigVersion = "([^"]+)"$/\1/p' internal/coding/pigversion/pigversion.go)
+          test "$VERSION" = "$source_version"
+          # The output stays outside the checkout: the builder hashes the source tree.
+          automation/release/build-pig-standard.sh "$GITHUB_WORKSPACE" "$RUNNER_TEMP/pig-standard-out" "$RUNNER_TEMP/pig-standard-build"
+      - name: Upload the Binary
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: pig-standard-build-${{ inputs.version }}-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: ${{ runner.temp }}/pig-standard-out/
+          if-no-files-found: error
+          retention-days: 30
+
+  standard:
+    name: ${{ matrix.goos }}/${{ matrix.goarch }} PiG Standard candidate
+    # Packages the Binary a native runner built and gives the archive the
+    # evidence the pig archive of the same target has. PiG Standard artifacts
+    # keep their own names, checksums, SBOMs, scans and attestations; they never
+    # share evidence with the pig archives.
+    needs: [source, standard-build]
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            format: tar
+          - goos: linux
+            goarch: arm64
+            format: tar
+          - goos: darwin
+            goarch: amd64
+            format: tar
+          - goos: darwin
+            goarch: arm64
+            format: tar
+          - goos: windows
+            goarch: amd64
+            format: zip
+          - goos: windows
+            goarch: arm64
+            format: zip
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - name: Download source candidate
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: pig-${{ inputs.version }}-source
+          path: source-candidate
+      - name: Download the Binary this target's runner built
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: pig-standard-build-${{ inputs.version }}-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: standard-binary
+      - name: Build archive
+        id: build
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          FORMAT: ${{ matrix.format }}
+        run: |
+          set -euo pipefail
+          name="pig-standard-${VERSION}-${GOOS}-${GOARCH}"
+          stage="$RUNNER_TEMP/$name"
+          source_root="$RUNNER_TEMP/pig-source"
+          mkdir -p "$stage" "$source_root" "$GITHUB_WORKSPACE/out/evidence"
+          tar -xzf "source-candidate/pig-${VERSION}-source.tar.gz" -C "$source_root" --strip-components=1
+          binary=pig-standard
+          if [ "$GOOS" = windows ]; then binary=pig-standard.exe; fi
+          # The Binary is what the native runner built and recorded: refuse any other bytes.
+          (cd standard-binary && sha256sum -c pig-standard.sha256)
+          cp "standard-binary/$binary" "$stage/$binary"
+          # The Binary reports build: dev; the Piglet build record names the source commit it was built from.
+          cp standard-binary/pig-standard-build-record.json "$GITHUB_WORKSPACE/out/evidence/build-record.json"
+          # Artifact upload does not keep the executable bit.
+          chmod 0755 "$stage/$binary"
+          cp "$source_root/LICENSE" "$source_root/NOTICE" "$source_root/THIRD_PARTY_NOTICES.md" "$stage/"
+          cp -R "$source_root/LICENSES" "$stage/"
+          if [ "$FORMAT" = zip ]; then
+            (cd "$RUNNER_TEMP" && zip -qr "$GITHUB_WORKSPACE/out/$name.zip" "$name")
+            artifact="out/$name.zip"
+          else
+            tar -C "$RUNNER_TEMP" -czf "$GITHUB_WORKSPACE/out/$name.tar.gz" "$name"
+            artifact="out/$name.tar.gz"
+          fi
+          printf 'artifact=%s\n' "$artifact" >> "$GITHUB_OUTPUT"
+          printf 'stage=%s\n' "$stage" >> "$GITHUB_OUTPUT"
+      - name: Generate SPDX SBOM
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+        with:
+          path: ${{ steps.build.outputs.stage }}
+          format: spdx-json
+          output-file: out/evidence/sbom.spdx.json
+          upload-artifact: false
+      - name: Generate CycloneDX SBOM
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+        with:
+          path: ${{ steps.build.outputs.stage }}
+          format: cyclonedx-json
+          output-file: out/evidence/sbom.cyclonedx.json
+          upload-artifact: false
+      - name: Validate inventory
+        shell: bash
+        env:
+          STAGE: ${{ steps.build.outputs.stage }}
+        run: |
+          set -euo pipefail
+          python automation/release/validate-sbom.py \
+            --spdx out/evidence/sbom.spdx.json \
+            --cyclonedx out/evidence/sbom.cyclonedx.json \
+            --root "$STAGE" \
+            --licenses out/evidence/licenses.csv \
+            --out out/evidence/inventory-validation.json
+      - name: Scan artifact SBOM
+        uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439 # v7.4.2
+        with:
+          sbom: out/evidence/sbom.spdx.json
+          fail-build: true
+          output-format: sarif
+          output-file: out/evidence/grype-report.sarif
+          severity-cutoff: high
+          only-fixed: false
+      - name: Write and verify checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd out
+          find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > "$RUNNER_TEMP/SHA256SUMS"
+          mv "$RUNNER_TEMP/SHA256SUMS" SHA256SUMS
+          sha256sum -c SHA256SUMS
+      - name: Attest binary archive
+        id: attest
+        if: github.event.repository.private == false
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: ${{ steps.build.outputs.artifact }}
+      - name: Ship the Sigstore bundle beside the archive
+        if: steps.attest.outcome == 'success'
+        shell: bash
+        env:
+          BUNDLE: ${{ steps.attest.outputs.bundle-path }}
+          ARTIFACT: ${{ steps.build.outputs.artifact }}
+        run: cp "$BUNDLE" "out/$(basename "$ARTIFACT").sigstore.json"
+      - name: Upload candidate and evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: pig-standard-${{ inputs.version }}-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: out/
+          retention-days: 30
+
+  standard-native-smoke:
+    name: ${{ matrix.goos }}/${{ matrix.goarch }} packaged PiG Standard smoke
+    # Every target runs on a runner of its own architecture, so each archive the
+    # release advertises is extracted and started natively. No network: the
+    # steps start the Binary offline and read its identity.
+    needs: standard
+    permissions:
+      actions: read
+      contents: read
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            goos: linux
+            goarch: amd64
+            format: tar
+          - runner: ubuntu-24.04-arm
+            goos: linux
+            goarch: arm64
+            format: tar
+          - runner: macos-15-intel
+            goos: darwin
+            goarch: amd64
+            format: tar
+          - runner: macos-15
+            goos: darwin
+            goarch: arm64
+            format: tar
+          - runner: windows-2025
+            goos: windows
+            goarch: amd64
+            format: zip
+          - runner: windows-11-arm
+            goos: windows
+            goarch: arm64
+            format: zip
+    steps:
+      - name: Download packaged candidate
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: pig-standard-${{ inputs.version }}-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: candidate
+      - name: Verify and run packaged candidate
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          FORMAT: ${{ matrix.format }}
+        run: |
+          set -euo pipefail
+          cd candidate
+          sha256sum -c SHA256SUMS
+          name="pig-standard-${VERSION}-${GOOS}-${GOARCH}"
+          archive="$name.tar.gz"
+          binary="extracted/$name/pig-standard"
+          mkdir -p extracted
+          if [ "$FORMAT" = zip ]; then
+            archive="$name.zip"
+            binary="extracted/$name/pig-standard.exe"
+            ARCHIVE_PATH="$(cygpath -w "$archive")"
+            DESTINATION_PATH="$(cygpath -w extracted)"
+            export ARCHIVE_PATH DESTINATION_PATH
+            # shellcheck disable=SC2016 # PowerShell, not bash, expands $env: variables.
+            powershell.exe -NoProfile -NonInteractive -Command \
+              'Expand-Archive -LiteralPath $env:ARCHIVE_PATH -DestinationPath $env:DESTINATION_PATH -Force'
+          else
+            tar -xzf "$archive" -C extracted
+          fi
+          # Offline, in an empty PiG home: the checks read the Binary's own
+          # embedded identity and make no request.
+          export PIG_HOME="$RUNNER_TEMP/pig-standard-home" PIG_OFFLINE=1 PI_SKIP_VERSION_CHECK=1 PI_TELEMETRY=0
+          "$binary" --help >/dev/null
+          "$binary" --version
+          # `version` names PiG's version (`--version` prints Pi's by design).
+          version_output=$("$binary" version | tr -d '\r')
+          printf '%s\n' "$version_output"
+          reported=$(printf '%s\n' "$version_output" | sed -n 's/^pig: //p')
+          if [ "$reported" != "$VERSION" ]; then
+            echo "pig-standard version reports pig: '$reported', want the release version '$VERSION'" >&2
+            exit 1
+          fi
+          # Only a Piglet Binary has a baked Piglet release, and it must be this release.
+          verify_output=$("$binary" verify --json | tr -d '\r')
+          printf '%s\n' "$verify_output"
+          piglet_release=$(printf '%s\n' "$verify_output" | sed -n 's/^ *"pigletRelease": "\(.*\)",\{0,1\}$/\1/p')
+          if [ "$piglet_release" != "$VERSION" ]; then
+            echo "pig-standard verify reports pigletRelease '$piglet_release', want the release version '$VERSION'" >&2
+            exit 1
+          fi
+          # The composition the Binary runs is PiG Standard, not Stock PiG.
+          status_output=$("$binary" status | tr -d '\r')
+          printf '%s\n' "$status_output"
+          if ! printf '%s\n' "$status_output" | grep -Eq '^ *active Piglet: pig-standard \(pig-standard\)$'; then
+            echo "pig-standard $VERSION: status does not report the pig-standard Piglet as active" >&2
+            exit 1
+          fi
 
   source:
     name: Source candidate
@@ -275,6 +822,21 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
+      - name: Require a public repository for attestation
+        # Attestation runs only when the repository is public, but
+        # assemble-evidence.py requires a Sigstore bundle for every archive, so
+        # a run from a private repository would build everything and then stop
+        # at the publish job. Every other job needs this one, so this is the
+        # earliest point to refuse.
+        shell: bash
+        env:
+          REPOSITORY_PRIVATE: ${{ github.event.repository.private }}
+        run: |
+          set -euo pipefail
+          if [ "${REPOSITORY_PRIVATE:-}" = true ]; then
+            echo "This repository is private. Release evidence needs a Sigstore bundle for every archive (assemble-evidence.py rejects an archive without one), and build-provenance attestation is skipped for private repositories, so the publish job would stop after every build. Run the release from a public repository." >&2
+            exit 1
+          fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
@@ -392,7 +954,7 @@ jobs:
     # RELEASING.md requires a publication job to run in an approved
     # protected environment and forbids publishing before every release
     # gate is complete.
-    needs: [binary, native-smoke, source]
+    needs: [binary, native-smoke, acp, acp-native-smoke, standard, standard-native-smoke, source]
     permissions:
       contents: write
     environment:
@@ -407,6 +969,16 @@ jobs:
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: pig-${{ inputs.version }}-*
+          path: candidates
+      - name: Download every pig-acp candidate
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: pig-acp-${{ inputs.version }}-*
+          path: candidates
+      - name: Download every PiG Standard candidate
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: pig-standard-${{ inputs.version }}-*
           path: candidates
       - name: Assemble the release archives
         shell: bash
@@ -503,9 +1075,25 @@ jobs:
           VERSION: ${{ inputs.version }}
         run: |
           set -euo pipefail
+          # The reviewed notes draft (make release-notes-draft, committed with the
+          # release candidate) is the body when it exists; GitHub's generated
+          # notes are the fallback.
+          notes_draft="docs/release/${VERSION}-release-notes-draft.md"
+          if [ -f "$notes_draft" ]; then
+            # The generator's banner is a note to the owner, not release text.
+            if grep -qF '**Draft. Not published.**' "$notes_draft"; then
+              echo "$notes_draft still has the generator's \"Draft. Not published.\" banner. Edit the draft (review it and remove the banner) and commit it before publishing; the banner would become the body of the published release." >&2
+              exit 1
+            fi
+            echo "Release body: $notes_draft"
+            notes=(--notes-file "$notes_draft")
+          else
+            echo "No $notes_draft; the release body is GitHub's generated notes"
+            notes=(--generate-notes)
+          fi
           gh release create "v${VERSION}" release/* \
             --repo "$GITHUB_REPOSITORY" \
             --title "PiG v${VERSION}" \
             --target "$GITHUB_SHA" \
             --draft \
-            --generate-notes
+            "${notes[@]}"

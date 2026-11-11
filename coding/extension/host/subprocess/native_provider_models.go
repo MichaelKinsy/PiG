@@ -10,9 +10,14 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
-// models decodes the provider object's model records. A record without a provider id belongs to this provider, as the registration's own records do; the id
-// follows the record's own members, which keep the order the extension wrote them in (models.ts:440-471 returns the provider object's model objects as they are).
+// decodeModels decodes the provider object's model records.
 func (p *nativeProviderProxy) decodeModels(raw []json.RawMessage) ([]ai.AnyModel, error) {
+	return decodeProviderModels(p.declaration.ID, raw)
+}
+
+// decodeProviderModels decodes an extension's model records. A record without a provider id belongs to the provider providerID, as the registration's own records do; the id
+// follows the record's own members, which keep the order the extension wrote them in (models.ts:440-471 returns the provider object's model objects as they are).
+func decodeProviderModels(providerID string, raw []json.RawMessage) ([]ai.AnyModel, error) {
 	records := make([]json.RawMessage, len(raw))
 	for i, record := range raw {
 		var fields map[string]json.RawMessage
@@ -26,7 +31,7 @@ func (p *nativeProviderProxy) decodeModels(raw []json.RawMessage) ([]ai.AnyModel
 		if _, ok := fields["provider"]; ok {
 			continue
 		}
-		id, err := json.Marshal(p.declaration.ID)
+		id, err := json.Marshal(providerID)
 		if err != nil {
 			return nil, err
 		}
@@ -41,7 +46,7 @@ func (p *nativeProviderProxy) decodeModels(raw []json.RawMessage) ([]ai.AnyModel
 	if err != nil {
 		return nil, err
 	}
-	return ai.DecodeModelsCatalog(models, p.declaration.ID)
+	return ai.DecodeModelsCatalog(models, providerID)
 }
 
 func (p *nativeProviderProxy) getModels(ctx context.Context) ([]*ai.Model, error) {
@@ -107,7 +112,17 @@ func (p *nativeProviderProxy) refreshModels(refresh ai.RefreshModelsContext) err
 	if !slices.Contains(p.declaration.Methods, "refreshModels") {
 		return nil
 	}
-	_, err := p.objectCall(refresh.Signal, "refreshModels", refreshModelsParams(refresh), func(raw json.RawMessage) (json.RawMessage, error) {
+	_, err := p.objectCall(refresh.Signal, "refreshModels", refreshModelsParams(refresh), refreshPublication(refresh, func(token string) error {
+		_, err := p.objectCall(refresh.Signal, "update", map[string]any{"token": token}, nil)
+		return err
+	}))
+	return err
+}
+
+// refreshPublication answers the publish callback an extension issues while its refreshModels runs (RefreshModelsContext.publish): the publication's persistence
+// and the token of its update reach refresh.Publish, whose update runs runUpdate(token) in the extension, and the answer is whether the publication was accepted.
+func refreshPublication(refresh ai.RefreshModelsContext, runUpdate func(token string) error) nativeProviderCallback {
+	return func(raw json.RawMessage) (json.RawMessage, error) {
 		var callback struct {
 			Method string `json:"method"`
 			Params struct {
@@ -136,9 +151,7 @@ func (p *nativeProviderProxy) refreshModels(refresh ai.RefreshModelsContext) err
 		}
 		var updateErr error
 		if token := callback.Params.Token; token != "" {
-			publication.Update = func() {
-				_, updateErr = p.objectCall(refresh.Signal, "update", map[string]any{"token": token}, nil)
-			}
+			publication.Update = func() { updateErr = runUpdate(token) }
 		}
 		accepted, err := refresh.Publish(publication)
 		if err != nil {
@@ -148,16 +161,21 @@ func (p *nativeProviderProxy) refreshModels(refresh ai.RefreshModelsContext) err
 			return nil, updateErr
 		}
 		return json.Marshal(accepted)
-	})
-	return err
+	}
 }
 
-// refreshModelsParams is the refreshModels call's argument: the context minus its callbacks. baseUrl is absent when the registered provider has none, as the
-// optional RefreshModelsContext.baseUrl is undefined then (models.ts RefreshModelsContext, pi-mono ee409a85).
-func refreshModelsParams(refresh ai.RefreshModelsContext) map[string]any {
-	params := map[string]any{"credential": refresh.Credential, "stored": refresh.Stored, "allowNetwork": refresh.AllowNetwork, "force": refresh.Force}
-	if refresh.BaseURL != "" {
-		params["baseUrl"] = refresh.BaseURL
-	}
-	return params
+// refreshModelsWire is the refreshModels call's argument: the context minus its callbacks (publish, signal), with the members in the order Pi's runProviderRefreshPhase writes
+// them, which JSON.stringify keeps: credential, stored, allowNetwork, force, baseUrl (packages/ai/src/models.ts:554-562; Go sorts the members of a map, so the order is the
+// struct's). A member Pi leaves undefined (no credential, no stored catalog, no force, no base URL) is absent, as JSON.stringify drops it; the runtime that rebuilds Pi's context
+// from it sets those members undefined.
+type refreshModelsWire struct {
+	Credential   *ai.Credential       `json:"credential,omitempty"`
+	Stored       *ai.ModelsStoreEntry `json:"stored,omitempty"`
+	AllowNetwork bool                 `json:"allowNetwork"`
+	Force        *bool                `json:"force,omitempty"`
+	BaseURL      string               `json:"baseUrl,omitempty"`
+}
+
+func refreshModelsParams(refresh ai.RefreshModelsContext) refreshModelsWire {
+	return refreshModelsWire{Credential: refresh.Credential, Stored: refresh.Stored, AllowNetwork: refresh.AllowNetwork, Force: refresh.Force, BaseURL: refresh.BaseURL}
 }

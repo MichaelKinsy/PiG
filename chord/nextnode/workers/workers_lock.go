@@ -12,7 +12,7 @@ import (
 	"sync"
 )
 
-// Ports packages/chord/src/next-node/workers/lock.ts. Process locks (slice 10 §3, Chord v1's `processLock`): one live
+// Ports packages/chord/src/node/workers/lock.ts. Process locks (slice 10 §3, Chord v1's `processLock`): one live
 // worker per address. A lock is a listening socket the kernel owns for the holder's lifetime (an abstract socket on Linux
 // and Android, a named pipe on Windows, a socket file elsewhere), so there is no race between two would-be holders; a
 // socket file a crashed holder left fails closed for a taker (the error names it: a takeover would race another taker), and

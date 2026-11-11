@@ -399,7 +399,7 @@ func listManagedRecords() ([]managedRecord, []error) {
 			continue
 		}
 		referencedArtifacts[artifactPath] = struct{}{}
-		records = append(records, managedRecord{Piglet: binary.Piglet, RecordInfo: RecordInfo{
+		records = append(records, managedRecord{Piglet: binary.Piglet,
 			Path: stored.Path, ResolutionPath: resolutionStored.Path, ArtifactPath: artifactPath,
 			PigletDigest: resolution.Resolution.SourceDigest, ReleaseVersion: binary.ReleaseVersion,
 			Target: binary.Binary.Target, ArtifactDigest: binary.Binary.Artifact.Digest,
@@ -407,8 +407,7 @@ func listManagedRecords() ([]managedRecord, []error) {
 			ComponentPlanDigest: resolution.Resolution.ComponentPlan.Digest,
 			ResolutionDigest:    resolution.Digest, BinaryDigest: binary.Digest,
 			Components: recordComponents(&resolution.Resolution.ComponentPlan),
-			Strip:      recordStrip(binary.Binary.Strip), StripKeep: recordStripKeep(binary.Binary.StripKeep),
-		}})
+			Strip:      recordStrip(binary.Binary.Strip), StripKeep: recordStripKeep(binary.Binary.StripKeep)})
 	}
 	pulled, pullErrs := pigletrelease.ListInstalled()
 	errs = append(errs, pullErrs...)
@@ -422,14 +421,13 @@ func listManagedRecords() ([]managedRecord, []error) {
 		}
 		referencedArtifacts[item.ArtifactPath] = struct{}{}
 		referencedArtifacts[item.CurrentPath] = struct{}{}
-		records = append(records, managedRecord{Piglet: item.Index.Piglet, RecordInfo: RecordInfo{
+		records = append(records, managedRecord{Piglet: item.Index.Piglet,
 			Path: item.ReceiptPath, ArtifactPath: item.ArtifactPath, CurrentPath: item.CurrentPath,
 			PigletDigest: item.Manifest.SourceDigest, ReleaseVersion: item.Index.Version,
 			Target: item.Manifest.Target, ArtifactDigest: item.Digest, VerificationOK: true,
 			ComponentPlanDigest: item.Manifest.ComponentPlanDigest,
 			ResolutionDigest:    item.Manifest.ResolutionDigest, BinaryDigest: item.Digest,
-			Components: components,
-		}})
+			Components: components})
 	}
 	errs = append(errs, findOrphanManagedArtifacts(referencedArtifacts)...)
 	return records, errs

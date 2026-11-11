@@ -19,6 +19,19 @@
   "The whole file as a UTF-8 string."
   (with-open-file (in path :external-format :utf-8)
     (let* ((text (make-string (file-length in))) (n (read-sequence text in))) (subseq text 0 n))))
+
+(defparameter *host-read-timeout* 10
+  "Seconds a fake host waits for the extension's next frame before the test fails. Every other SDK's fake host bounds its reads the same way
+(sdk/event_bus_factory_test.go: SetDeadline 5 s; sdk-rs/src/event_bus_tests.rs: set_read_timeout 5 s; sdk-py/tests/test_kit.py: settimeout 10): a frame that
+never comes fails the test that waits for it instead of blocking the run, and the extension thread that is itself waiting for the host's answer
+cannot keep a mismatched exchange alive.")
+
+(defun accept-host-conn (listener)
+  "The extension's connection to the fake host listening on LISTENER, with reads bounded by *HOST-READ-TIMEOUT* (a read past it signals SB-SYS:IO-TIMEOUT)."
+  (let* ((socket (sb-bsd-sockets:socket-accept listener))
+         (stream (sb-bsd-sockets:socket-make-stream socket :input t :output t :buffering :full :element-type '(unsigned-byte 8)
+                                                           :timeout *host-read-timeout*)))
+    (pig::%make-conn :impl socket :in stream :out stream)))
 (defvar *failures* 0)
 (defvar *checks* 0)
 
@@ -49,6 +62,8 @@
   (setf *failures* 0 *checks* 0)
   (dolist (test *tests*)
     (handler-case (funcall (cdr test))
+      (sb-sys:io-timeout ()
+        (report-failure (car test) (format nil "blocked: no frame arrived from the extension within ~D s (the extension and the test host were both waiting; the exchange before this point does not match)" *host-read-timeout*)))
       (error (e) (report-failure (car test) (format nil "unhandled ~A" e)))))
   (format t "~&~D tests, ~D checks, ~D failures~%" (length *tests*) *checks* *failures*)
   (unless (zerop *failures*) (sb-ext:exit :code 1 :abort t))

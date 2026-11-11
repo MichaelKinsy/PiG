@@ -11,7 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// Ports packages/chord/test/next/host/facet.test.ts. `loaded` of upstream's support builds a host and loads one facet
+// Ports packages/chord/test/host/facet.test.ts. `loaded` of upstream's support builds a host and loads one facet
 // named "@test/app"; its setup runs through `setUp`, which is what these cases assert, so each runs setUp directly. The
 // two cases that are TypeScript type-level checks are designed out (owner class a): their Go carriers are named on the
 // tests below and in the lane's rows.
@@ -168,6 +168,7 @@ func TestFacetsAreTypedByExactlyTheAppsPrincipalType(t *testing.T) {
 
 // Own tests of setUp: it returns what the setup served and contributed, in order, by kind (Pi's `setUp` doc comment).
 
+// Reads `host.references(Type)` of a facet's host as packages/chord/src/host/facet.ts:25 declares it.
 func TestSetUpReturnsServedEntriesAndContributionsInOrderByKind(t *testing.T) {
 	Info := scopeInfo(t)
 	Names, err := registries.DefineRegistry[string, int]("app.names", registries.DefineRegistryOptions{Version: 1})

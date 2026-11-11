@@ -12,7 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 )
 
-// Ports packages/chord/test/next/data/errors.test.ts.
+// Ports packages/chord/test/data/errors.test.ts.
 //
 // Designed out (type level): the
 // expectTypeOf assertions of "narrowing on code narrows reason" and "invalid builds an invalid error ...". Go's
@@ -130,6 +130,57 @@ func TestProtocolTable(t *testing.T) {
 	})
 }
 
+// ChordErrorCode is Pi's union of nine string literals (CHORD_ERROR_REASONS' keys): the codes in order, each accepted with exactly its own reasons
+// (and without one, but `invalid`), none with another code's reason, and no tenth.
+func TestChordErrorCodeAllKindsAreTheNineCodesAndEachTakesOnlyItsOwnReasons(t *testing.T) {
+	wire := []string{"invalid", "contract_mismatch", "forbidden", "gone", "not_ready", "released", "too_large", "unavailable", "aborted"}
+	codes := data.ChordErrorCodes()
+	if len(codes) != len(wire) {
+		t.Fatalf("%d codes, want Pi's %d", len(codes), len(wire))
+	}
+	every := map[data.ChordErrorReason]bool{}
+	for _, code := range codes {
+		reasons, _ := data.ChordErrorReasons(code)
+		for _, reason := range reasons {
+			every[reason] = true
+		}
+	}
+	for index, code := range codes {
+		if string(code) != wire[index] {
+			t.Errorf("code %d = %q, want %q", index, code, wire[index])
+		}
+		own, known := data.ChordErrorReasons(code)
+		if !known {
+			t.Errorf("%q is listed but unknown", code)
+		}
+		allowed := map[data.ChordErrorReason]bool{}
+		for _, reason := range own {
+			allowed[reason] = true
+			if _, err := data.ChordErrorFromJson(map[string]any{"code": string(code), "reason": string(reason), "message": "m"}); err != nil {
+				t.Errorf("%s/%s is refused: %v", code, reason, err)
+			}
+		}
+		for reason := range every {
+			if allowed[reason] {
+				continue
+			}
+			if _, err := data.ChordErrorFromJson(map[string]any{"code": string(code), "reason": string(reason), "message": "m"}); err == nil {
+				t.Errorf("%s/%s is accepted, but it is another code's reason", code, reason)
+			}
+		}
+		_, err := data.ChordErrorFromJson(map[string]any{"code": string(code), "message": "m"})
+		if (err == nil) == (code == data.CodeInvalid) {
+			t.Errorf("%s without a reason: err = %v; only `invalid` requires one", code, err)
+		}
+	}
+	if _, known := data.ChordErrorReasons(data.ChordErrorCode("unheard_of")); known {
+		t.Error("a tenth code is known")
+	}
+	if _, err := data.ChordErrorFromJson(map[string]any{"code": "unheard_of", "message": "m"}); err == nil {
+		t.Error("an unknown code is accepted from the wire")
+	}
+}
+
 func TestErrorHelpers(t *testing.T) {
 	t.Run("isChordError checks the class and optionally the code", func(t *testing.T) {
 		err := data.Invalid(data.ReasonMember, "no method")
@@ -165,6 +216,21 @@ func TestErrorHelpers(t *testing.T) {
 		))
 		if err.Code != data.CodeInvalid {
 			t.Fatalf("code = %q", err.Code)
+		}
+	})
+
+	// Pi packages/chord/src/data/errors.ts:117 forbidden(message, details?): a `forbidden` error without a reason.
+	t.Run("forbidden builds a forbidden error without a reason, with its details", func(t *testing.T) {
+		err := data.Forbidden("not authorized", delta.JsonObjectOf("who", "x"))
+		nexttest.RequireJSONEqual(t, err.ToJSON(), delta.JsonObjectOf(
+			"code", "forbidden", "message", "not authorized", "details", delta.JsonObjectOf("who", "x"),
+		))
+		if _, ok := data.IsChordErrorCode(err, data.CodeForbidden); !ok || err.Reason != "" {
+			t.Fatalf("forbidden = %+v", err)
+		}
+		bare := data.Forbidden("no details")
+		if bare.HasDetails || bare.Message != "no details" {
+			t.Fatalf("forbidden without details = %+v", bare)
 		}
 	})
 

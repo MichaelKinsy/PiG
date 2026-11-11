@@ -18,6 +18,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/internal/jsonparse"
+	"github.com/MichaelKinsy/PiG/internal/jsonwire"
 )
 
 // piMessagesEventLoop is `for await (const piEvent of readPiMessagesEvents(response.body))` (pi-messages.ts:432-441) on the executor
@@ -165,7 +166,7 @@ func parsePiMessagesEvent(raw string) (json.RawMessage, bool, error) {
 	if !found || data == "" || data == "[DONE]" {
 		return nil, false, nil
 	}
-	if !json.Valid([]byte(data)) {
+	if !jsonwire.Valid(data) {
 		if err := jsonparse.Validate([]byte(data)); err != nil {
 			return nil, false, err
 		}

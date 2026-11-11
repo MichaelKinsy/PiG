@@ -11,7 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// Ports packages/chord/src/next/store/query.ts
+// Ports packages/chord/src/store/query.ts
 //
 // Queries (decision "Query runner"; slice 6a §6, rule 17): `NewQuery(table).Where(…).OrderBy(…)` as immutable data
 // (the condition compiled when given, the order with the key appended as the tie-break), and the opaque cursors that

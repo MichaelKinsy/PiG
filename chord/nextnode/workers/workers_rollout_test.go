@@ -18,7 +18,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
 )
 
-// Ports the rollout tests of packages/chord/test/next-node/workers/workers.test.ts (the rollout step, §4, and the "fix round 1"
+// Ports the rollout tests of packages/chord/test/node/workers/workers.test.ts (the rollout step, §4, and the "fix round 1"
 // cases that ship a build): the set shipped to running workers, held failed ones retried, a worker starting during a
 // rollout, a plugin whose evaluation failed shipped again, two rollouts together, no reload report kept.
 

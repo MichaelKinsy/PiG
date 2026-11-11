@@ -21,6 +21,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/nextnode/app"
 	chordhttp "github.com/MichaelKinsy/PiG/chord/nextnode/http"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
@@ -94,9 +95,9 @@ func tuiApp(t testing.TB, text string) started {
 		Name: "chord-test", DataDir: filepath.Join(base, "data"), Root: root,
 		Listen: &chordhttp.ListenAddress{Host: "127.0.0.1", Port: 0},
 		API:    app.AppAPI{Name: "@test/app", Versions: []string{"v1"}, Modules: plugins.HostPackages{"@test/app/v1": api}},
-		Kinds: []app.AppKind{
-			{Name: "server", Platform: plugins.PlatformNode},
-			{Name: "tui", Platform: plugins.PlatformNode, Packages: plugins.HostPackages{"@test/app/v1/tui": tuiAPI}},
+		Kinds: []app.AppKindEntry{
+			{Name: "server", Kind: app.AppKind{Platform: model.PlatformNode}},
+			{Name: "tui", Kind: app.AppKind{Platform: model.PlatformNode, Packages: plugins.HostPackages{"@test/app/v1/tui": tuiAPI}}},
 		},
 		Principal: app.AppPrincipals{Server: delta.JsonObjectOf("kind", "server"), Owner: delta.JsonObjectOf("kind", "owner")},
 		Tui:       &app.AppTui{Entry: fixture(t, "tui", "main.ts"), Conditions: []string{"source"}},
@@ -197,8 +198,9 @@ type launched struct {
 func launch(t testing.TB, port int, credentials TerminalCredentials) *launched {
 	t.Helper()
 	terminal := newPipeTerminal()
+	input, output := streamsOf(terminal)
 	options := TerminalOptions{
-		URL: "http://127.0.0.1:" + strconv.Itoa(port), Credentials: credentials, Terminal: terminal, Colors: "truecolor", Node: tuiNode(t),
+		URL: "http://127.0.0.1:" + strconv.Itoa(port), Credentials: credentials, Input: input, Output: output, Colors: "truecolor", Node: tuiNode(t),
 		Opener: func(target string) error {
 			_, _ = terminal.output.Write([]byte("(opener " + target + ")\r\n"))
 			return nil

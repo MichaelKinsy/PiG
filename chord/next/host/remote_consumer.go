@@ -13,7 +13,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/src/next/remote/consumer.ts. The consumer side of a link (§7, §22, W1): the holds this host's own
+// Ports packages/chord/src/remote/consumer.ts. The consumer side of a link (§7, §22, W1): the holds this host's own
 // remote references sent on it, by this side's ids, the calls through them within the peer's call window, and each
 // `bound` and `state` message applied to their replicas as one batch, then acknowledged. Messages with an origin answer
 // holds this host relays: they go to that origin's provider side. On a host without a compressor, the deflated parts of

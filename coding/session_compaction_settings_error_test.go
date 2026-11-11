@@ -62,7 +62,7 @@ func TestCompactionInvalidSettingsReachCaller(t *testing.T) {
 		if len(messages) == 0 || messages[len(messages)-1].Assistant == nil || messages[len(messages)-1].Assistant.ErrorMessage != failure {
 			t.Fatalf("messages=%+v error=%v", messages, err)
 		}
-		branch := h.session.inner.GetBranch()
+		branch := h.session.inner.Load().GetBranch()
 		if len(branch) == 0 {
 			t.Fatal("failure not persisted")
 		}

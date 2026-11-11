@@ -52,6 +52,8 @@ type AssistantMessageComponent struct {
 	terminalError     []Component
 	terminalErrorLine string
 	terminalErrorPad  int
+	// rowBuf is the array renderBorrowedChild renders into.
+	rowBuf []string
 }
 
 func (b *AssistantMessageComponent) newMarkdown(text string) *Markdown {
@@ -442,6 +444,11 @@ func (b *AssistantMessageComponent) SetTerminalError(stopReason, errorMessage st
 	b.updateContent()
 }
 
+// IsDirty reports the block's own invalidation, which every mutator of the block calls (updateContent ends in Container.Invalidate), and not Container.IsDirty's scan of the
+// content beneath it: a parent container stops asking once it read the block clean (kidInvalidation lists the exact type), so a settled
+// transcript costs no scan per block. TestAParentContainerShowsWhatAnyExportedMutatorChanged holds each mutator to that.
+func (b *AssistantMessageComponent) IsDirty() bool { return b.invalidatable.IsDirty() }
+
 // Invalidate rebuilds the content so theme-baked colors follow the active theme (assistant-message.ts invalidate). It runs on the goroutine that owns the block, as Pi's runs on its event loop; a transform worker marks the block dirty through SetAsyncMarkdownTransforms instead.
 func (b *AssistantMessageComponent) Invalidate() {
 	b.Container.Invalidate()
@@ -456,7 +463,25 @@ func (b *AssistantMessageComponent) Render(width int) []string {
 	if b.ownedRuns {
 		b.measureOwnedRuns(width)
 	}
-	out := b.renderCopy(width)
+	return b.withZones(b.renderCopy(width))
+}
+
+// renderBorrowedChild is Render into an array the block keeps for its next render: the parent container that borrows it
+// copies the rows before the block renders again, so a streamed message does not allocate its whole row list each frame.
+// Only a container that holds the block as a child calls it, under that container's lock.
+func (b *AssistantMessageComponent) renderBorrowedChild(width int) []string {
+	if width < 1 {
+		width = 1
+	}
+	if b.ownedRuns {
+		b.measureOwnedRuns(width)
+	}
+	b.rowBuf = b.renderInto(width, b.rowBuf)
+	return b.withZones(b.rowBuf)
+}
+
+// withZones adds the OSC 133 zone boundaries to out in place.
+func (b *AssistantMessageComponent) withZones(out []string) []string {
 	if b.hasToolCalls || len(out) == 0 {
 		return out
 	}

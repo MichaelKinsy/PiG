@@ -84,19 +84,19 @@ func TestCustomToolCallEventInputJSONIsTheInputItWrites(t *testing.T) {
 		want  string
 	}{
 		"wire order": {
-			CustomToolCallEvent{ToolCallEventBase: ToolCallEventBase{Type: "tool_call", ToolCallID: "call", WireInput: wire(`{"command":"ls","aaa":1,"nested":{"y":2,"b":3}}`)}, ToolName: "bash", Input: map[string]any{"command": "ls", "aaa": 1.0, "nested": map[string]any{"y": 2.0, "b": 3.0}}},
+			CustomToolCallEvent{Type: "tool_call", ToolCallID: "call", WireInput: wire(`{"command":"ls","aaa":1,"nested":{"y":2,"b":3}}`), ToolName: "bash", Input: map[string]any{"command": "ls", "aaa": 1.0, "nested": map[string]any{"y": 2.0, "b": 3.0}}},
 			`{"type":"tool_call","toolName":"bash","toolCallId":"call","input":{"command":"ls","aaa":1,"nested":{"y":2,"b":3}}}`,
 		},
 		"parent": {
-			CustomToolCallEvent{ToolCallEventBase: ToolCallEventBase{Type: "tool_call", ToolCallID: "parent/1", ParentToolCallID: "parent", WireInput: wire(`{"z":true,"a":false}`)}, ToolName: "bash", Input: map[string]any{"z": true, "a": false}},
+			CustomToolCallEvent{Type: "tool_call", ToolCallID: "parent/1", ParentToolCallID: "parent", WireInput: wire(`{"z":true,"a":false}`), ToolName: "bash", Input: map[string]any{"z": true, "a": false}},
 			`{"type":"tool_call","toolName":"bash","toolCallId":"parent/1","parentToolCallId":"parent","input":{"z":true,"a":false}}`,
 		},
 		"in-process edit": {
-			CustomToolCallEvent{ToolCallEventBase: ToolCallEventBase{Type: "tool_call", ToolCallID: "call", WireInput: wire(`{"command":"ls","zz":1,"dropped":2}`)}, ToolName: "bash", Input: map[string]any{"command": "rewritten", "zz": true, "bb": false}},
+			CustomToolCallEvent{Type: "tool_call", ToolCallID: "call", WireInput: wire(`{"command":"ls","zz":1,"dropped":2}`), ToolName: "bash", Input: map[string]any{"command": "rewritten", "zz": true, "bb": false}},
 			`{"type":"tool_call","toolName":"bash","toolCallId":"call","input":{"command":"rewritten","zz":true,"bb":false}}`,
 		},
 		"no wire": {
-			CustomToolCallEvent{ToolCallEventBase: ToolCallEventBase{Type: "tool_call", ToolCallID: "call"}, ToolName: "probe", Input: map[string]any{"b": 1.0, "a": "x"}},
+			CustomToolCallEvent{Type: "tool_call", ToolCallID: "call", ToolName: "probe", Input: map[string]any{"b": 1.0, "a": "x"}},
 			`{"type":"tool_call","toolName":"probe","toolCallId":"call","input":{"a":"x","b":1}}`,
 		},
 	} {

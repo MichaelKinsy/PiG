@@ -1768,6 +1768,16 @@ def new_extension() -> pig_sdk.Extension:
             renderers.call_view = lambda _ctx, _args, _render, _width: kit_probe_view()
             renderers.result_view = lambda _ctx, _result, _options, _render, _width: kit_probe_view()
             return renderers
+        if tool == "last_view_probe":
+            # A view renderer that reads the view form of ToolRenderContext.last_component: the kind of what its previous run returned, and the run's own n.
+            def last_view_call(_ctx, args, render, _width):
+                last = render.last_component
+                kind = "none" if last is None else ("view" if isinstance(last, kit.View) else "lines")
+                return kit.View(kit.Container([kit.Text("lastview:%s:n=%s" % (kind, args.get("n")), 0, 0)]))
+
+            renderers = pig_sdk.ToolRenderers()
+            renderers.call_view = last_view_call
+            return renderers
         if tool == "conformance_keyhints":
             return pig_sdk.ToolRenderers(render_call=lambda _ctx, args, render, _width: [hints_of(render, args.get("q", ""))])
         if tool == "conformance_no_renderer":
@@ -1837,12 +1847,12 @@ def new_extension() -> pig_sdk.Extension:
 
     def render_probe_call(_ctx, args, render, width):
         render.state["calls"] = render.state.get("calls", 0) + 1
-        return ["toolrender:call:%s:partial=%s:calls=%d:width=%d" % (args.get("topic"), str(render.is_partial).lower(), render.state["calls"], width)]
+        return ["toolrender:call:%s:partial=%s:calls=%d:width=%d:last=%s" % (args.get("topic"), str(render.is_partial).lower(), render.state["calls"], width, (render.last_component or ["none"])[0])]
 
     def render_probe_result(_ctx, result, options, render, width):
         return [
-            "toolrender:result:%s:%s:expanded=%s:calls=%s:width=%d:duration=%s"
-            % (result["content"][0]["text"], result["details"]["k"], str(bool(options.get("expanded"))).lower(), render.state.get("calls"), width, "none" if render.duration_ms is None else render.duration_ms)
+            "toolrender:result:%s:%s:expanded=%s:calls=%s:width=%d:duration=%s:last=%s"
+            % (result["content"][0]["text"], result["details"]["k"], str(bool(options.get("expanded"))).lower(), render.state.get("calls"), width, "none" if render.duration_ms is None else render.duration_ms, (render.last_component or ["none"])[0])
         ]
 
     ext.tool_renderers("render_probe", render_call=render_probe_call, render_result=render_probe_result, render_shell="self")
@@ -2306,6 +2316,7 @@ def new_extension() -> pig_sdk.Extension:
     ext.command("send_message_default", "Send a custom message with default options", lambda ctx, args: ctx.send_message("notice", "default"))
     ext.command("send_message_no_turn", "Send a custom message that never starts a turn", lambda ctx, args: ctx.send_message("notice", "no-turn", trigger_turn=False))
     ext.command("send_user_message", "Send a user message", lambda ctx, args: ctx.send_user_message(json.loads(args) if args else "hello-user", "followUp"))
+    ext.command("send_user_message_expand", "Send a user message with expandPromptTemplates set to the argument", lambda ctx, args: ctx.send_user_message("expand-user", "followUp", expand_prompt_templates=(args == "true")))
     ext.command("settings_probe", "Report the effective settings", lambda ctx, args: ctx.notify("settings_probe:" + json.dumps(ctx.get_settings(), separators=(",", ":")), "info"))
 
     def model_set(ctx, args):
@@ -2548,22 +2559,64 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("event_payload_probe", "Subscribe and report the payload of the event named by the argument", event_payload_probe)
     def event_isolation_probe(ctx, args):
-        # Two handlers: the first reports the nested marker it received, writes a sentinel into it and changes it again from a timer thread after returning; the
-        # second reports what it received (TestConformance_EventHandlersDoNotShareTheirPayload).
+        # Two handlers: the first reports the marker it received, writes a sentinel into its container and changes it again from a timer thread after returning; the
+        # second reports what it received (TestConformance_EventHandlersDoNotShareTheirPayload). For a boundary event the marker is the first context entry's
+        # sourceEntry id and the container that source entry; for a context or context_with_system event it is the length of data["messages"] and the container
+        # that list.
         name = args.strip()
+        conversation = name in ("context", "context_with_system")
 
         def source(data):
             entries = (data.get("context") or {}).get("contextEntries") or []
             return entries[0]["sourceEntry"] if entries else None
 
+        def marker(data):
+            return len(data.get("messages") or []) if conversation else source(data)["id"]
+
+        def scribble(data, value):
+            if conversation:
+                data["messages"].append({"role": "user", "content": value, "timestamp": 0})
+            else:
+                source(data)["id"] = value
+
+        def messages(data):
+            # A boundary event: the first context message, the first llm message and the first message of the first context entry: one text in three places of the
+            # payload. A conversation event: its first three messages.
+            if conversation:
+                lst = data.get("messages") or []
+                return [lst[i] if i < len(lst) else None for i in range(3)]
+            context = data.get("context") or {}
+            found = []
+            for lst in (context.get("contextMessages"), context.get("llmMessages")):
+                found.append(lst[0] if lst else None)
+            entries = context.get("contextEntries") or []
+            inner = (entries[0].get("messages") if entries else None) or []
+            found.append(inner[0] if inner else None)
+            return found
+
         def first(hctx, data):
-            container = source(data)
-            hctx.notify("event_isolation:A:%s:end" % container["id"], "info")
-            container["id"] = "SENTINEL-HANDLER-A"
-            threading.Timer(0.1, lambda: container.__setitem__("id", "SENTINEL-LATE-WRITER")).start()
+            hctx.notify("event_isolation:A:%s:end" % marker(data), "info")
+            scribble(data, "SENTINEL-HANDLER-A")
+            found = messages(data)
+            hctx.notify("event_isolation_msgs:A:%s" % "|".join(str(m["content"]) if m else "None" for m in found), "info")
+            for m in found:
+                if m is not None:
+                    m["content"] = "SENTINEL-HANDLER-A"
+
+            def late():
+                scribble(data, "SENTINEL-LATE-WRITER")
+                for m in found:
+                    if m is not None:
+                        m["content"] = "SENTINEL-LATE-WRITER"
+
+            threading.Timer(0.1, late).start()
+
+        def second(hctx, data):
+            hctx.notify("event_isolation:B:%s:end" % marker(data), "info")
+            hctx.notify("event_isolation_msgs:B:%s" % "|".join(str(m["content"]) if m else "None" for m in messages(data)), "info")
 
         ext.on_event(name, first)
-        ext.on_event(name, lambda hctx, data: hctx.notify("event_isolation:B:%s:end" % source(data)["id"], "info"))
+        ext.on_event(name, second)
 
     ext.command("event_isolation_probe", "Subscribe two handlers that report the nested marker they received and then write sentinels into it", event_isolation_probe)
 

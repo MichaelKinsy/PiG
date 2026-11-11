@@ -90,7 +90,7 @@ func parseSpecialHref(raw string, schemes ...string) (HTTPHref, error) {
 	if err != nil {
 		return HTTPHref{}, err
 	}
-	result := HTTPHref{HTTPURL: HTTPURL{Protocol: scheme + ":", Hostname: hostname, Port: normalizedPort}}
+	result := HTTPHref{Protocol: scheme + ":", Hostname: hostname, Port: normalizedPort}
 	fragment, hasFragment := "", false
 	if hash := strings.IndexByte(tail, '#'); hash >= 0 {
 		fragment, hasFragment = tail[hash+1:], true

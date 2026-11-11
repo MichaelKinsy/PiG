@@ -9,6 +9,7 @@ import (
 	"testing"
 )
 
+// pi: packages/chord/src/node/tui/pipe.ts
 // Tests of the launcher's end of the sandbox's pipes (slice 11 §4; fix round 2): length-prefixed frames cut from the sandbox's
 // output however it chunks them, each message checked, and anything malformed or oversized refused, so the sandbox ends and the
 // launcher goes on (Opus E3). Ports packages/chord/test/node/tui/pipe.test.ts.
@@ -182,6 +183,24 @@ func TestReadingTheSandboxsHeaderChecksEachFieldAsPiDoes(t *testing.T) {
 		}
 		if !reflect.DeepEqual(got, want) {
 			t.Fatalf("header %s: message = %+v, want %+v", header, got, want)
+		}
+	}
+}
+
+// Pi's `FrameReader.push` throws when a frame is malformed and returns nothing: the valid frames before it in the same chunk are not
+// handed out (the sandbox fails and its caller gets none of that chunk's messages).
+func TestReadingTheSandboxsFramesHandsOutNoMessageOfAChunkWithAMalformedFrame(t *testing.T) {
+	valid := sandboxFrame(t, map[string]any{"kind": "write"}, []byte("one"))
+	malformed := []byte{0, 0, 0, 0}
+	badHeader := sandboxFrame(t, map[string]any{"kind": "nope"}, nil)
+	for name, tail := range map[string][]byte{"a frame length below 4": malformed, "a message of no known shape": badHeader} {
+		chunk := append(append(append([]byte(nil), valid...), valid...), tail...)
+		messages, err := NewFrameReader().Push(chunk)
+		if err == nil {
+			t.Fatalf("%s: no error", name)
+		}
+		if len(messages) != 0 {
+			t.Fatalf("%s: %d messages handed out with the error, want none (Pi's push throws before it returns any)", name, len(messages))
 		}
 	}
 }

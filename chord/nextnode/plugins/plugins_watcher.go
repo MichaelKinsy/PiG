@@ -16,9 +16,10 @@ import (
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
-// Ports packages/chord/src/next-node/plugins/watcher.ts. The watcher and its marks (slice 7c §5, slice 12 §4): a watch on
+// Ports packages/chord/src/node/plugins/watcher.ts. The watcher and its marks (slice 7c §5, slice 12 §4): a watch on
 // every directory of the plugin roots and the app's base code, `node_modules` and `.git` never watched (a directory
 // appearing later gets its watch), marks what changed and never applies it. A changed file dirties every plugin whose
 // facets used it (a copied contract every user), whose directory contains it or which is a single-file plugin of it; a
@@ -92,9 +93,6 @@ var sourceExtensions = map[string]struct{}{
 	".ts": {}, ".tsx": {}, ".mts": {}, ".cts": {}, ".js": {}, ".jsx": {}, ".mjs": {}, ".cjs": {}, ".json": {}, ".css": {},
 }
 
-// maxComparers bounds the goroutines reading base files at once.
-const maxComparers = 8
-
 // maxEventBurst bounds the file events one section of the host handles.
 const maxEventBurst = 256
 
@@ -123,7 +121,7 @@ type pluginWatcher struct {
 	// baseDirs are the base directories (watched as trees): a source file new in one marks `base`.
 	baseDirs []string
 	// records is what each running base artifact read: each file's bytes' hash, by real path (the server's own first).
-	records []BaseInputs
+	records []model.BaseInputs
 	// recorded is every file a record names.
 	recorded map[string]struct{}
 	// differing is the base files that differ now (changed, gone, or new in a base directory): `base` while there is one.
@@ -165,7 +163,7 @@ type pluginWatcher struct {
 	set int
 	// manifest is the latest change of a known plugin's `package.json` since the last discovery (0: none).
 	manifest  int
-	discovery Discovery
+	discovery model.Discovery
 	// usedBy is the files each built facet read (its inputs and copies), by plugin and kind.
 	usedBy    map[string]usedFiles
 	value     delta.JsonValue
@@ -192,7 +190,7 @@ func newPluginWatcher(options watcherOptions, batch *state.Batch) *pluginWatcher
 		generation:  1,
 		dirty:       map[string]int{},
 		install:     map[string]struct{}{},
-		discovery:   Discovery{Plugins: []Plugin{}, Problems: []DiscoveryProblem{}},
+		discovery:   model.Discovery{Plugins: []model.Plugin{}, Problems: []model.DiscoveryProblem{}},
 		usedBy:      map[string]usedFiles{},
 	}
 	w.Init(batch, w)
@@ -217,7 +215,7 @@ func newPluginWatcher(options watcherOptions, batch *state.Batch) *pluginWatcher
 func realPaths(dirs []string) []string {
 	out := make([]string, len(dirs))
 	for i, dir := range dirs {
-		if resolved, err := realpath(dir); err == nil {
+		if resolved, err := model.Realpath(dir); err == nil {
 			out[i] = resolved
 		} else if absolute, err := filepath.Abs(dir); err == nil {
 			out[i] = absolute
@@ -238,8 +236,8 @@ func (w *pluginWatcher) marks() PluginsState {
 	for name := range w.install {
 		install = append(install, name)
 	}
-	slices.SortFunc(dirty, compareUTF16)
-	slices.SortFunc(install, compareUTF16)
+	slices.SortFunc(dirty, model.CompareUTF16)
+	slices.SortFunc(install, model.CompareUTF16)
 	return PluginsState{Dirty: dirty, Install: install, Set: w.set > 0, Base: len(w.differing) > 0}
 }
 
@@ -267,18 +265,18 @@ func (w *pluginWatcher) discoverySnapshot() DiscoverySnapshot {
 }
 
 // know is the plugins discovery found: marks are for them (a removed one's install clears); the changes it had seen clear.
-func (w *pluginWatcher) know(discovery Discovery, seen DiscoverySnapshot) {
+func (w *pluginWatcher) know(discovery model.Discovery, seen DiscoverySnapshot) {
 	// A plugin whose files moved (a single file became a directory, a facet file came or went) is dirty.
 	generation := w.nextGeneration()
 	for _, plugin := range discovery.Plugins {
-		index := slices.IndexFunc(w.discovery.Plugins, func(each Plugin) bool { return each.Name == plugin.Name })
-		if index >= 0 && !SameFiles(w.discovery.Plugins[index], plugin) {
+		index := slices.IndexFunc(w.discovery.Plugins, func(each model.Plugin) bool { return each.Name == plugin.Name })
+		if index >= 0 && !model.SameFiles(w.discovery.Plugins[index], plugin) {
 			w.dirty[plugin.Name] = generation
 		}
 	}
 	// A plugin no longer discovered: what its builds read no longer dirties anything.
 	for key, user := range w.usedBy {
-		if !slices.ContainsFunc(discovery.Plugins, func(plugin Plugin) bool { return plugin.Name == user.plugin }) {
+		if !slices.ContainsFunc(discovery.Plugins, func(plugin model.Plugin) bool { return plugin.Name == user.plugin }) {
 			delete(w.usedBy, key)
 		}
 	}
@@ -291,14 +289,14 @@ func (w *pluginWatcher) know(discovery Discovery, seen DiscoverySnapshot) {
 	}
 	// A removed plugin has nothing to install (its directory went, its package.json with it).
 	for name := range w.install {
-		if !slices.ContainsFunc(discovery.Plugins, func(plugin Plugin) bool { return plugin.Name == name }) {
+		if !slices.ContainsFunc(discovery.Plugins, func(plugin model.Plugin) bool { return plugin.Name == name }) {
 			delete(w.install, name)
 		}
 	}
 	// A plugin directory linked from outside the roots: a tree of its own (a symlink is not followed).
 	var linked []string
 	for _, plugin := range discovery.Plugins {
-		if plugin.Layout == LayoutDirectory && !slices.ContainsFunc(w.roots, func(root string) bool { return inside(root, plugin.Dir) }) {
+		if plugin.Layout == model.LayoutDirectory && !slices.ContainsFunc(w.roots, func(root string) bool { return model.Inside(root, plugin.Dir) }) {
 			linked = append(linked, plugin.Dir)
 		}
 	}
@@ -314,9 +312,9 @@ func (w *pluginWatcher) know(discovery Discovery, seen DiscoverySnapshot) {
 }
 
 // used is what built facets read: a later change of one of these files dirties their plugins.
-func (w *pluginWatcher) used(built []BuiltFacet) {
+func (w *pluginWatcher) used(built []model.BuiltFacet) {
 	for _, facet := range built {
-		if facet.Kind != BuiltFacetScript {
+		if facet.Kind != model.BuiltFacetScript {
 			continue
 		}
 		files := make(map[string]struct{}, len(facet.Inputs)+len(facet.Copied))
@@ -415,12 +413,12 @@ func (w *pluginWatcher) join() { w.running.Wait() }
 // single-file plugin's file added or removed, a directory that is no plugin yet), discovery; every plugin whose facets read
 // the file is dirty too.
 func (w *pluginWatcher) markPlugin(path string, generation int) {
-	index := slices.IndexFunc(w.discovery.Plugins, func(each Plugin) bool { return owns(each, path) })
+	index := slices.IndexFunc(w.discovery.Plugins, func(each model.Plugin) bool { return owns(each, path) })
 	if index < 0 {
-		if slices.ContainsFunc(w.roots, func(root string) bool { return inside(root, path) }) {
+		if slices.ContainsFunc(w.roots, func(root string) bool { return model.Inside(root, path) }) {
 			w.set = generation
 		}
-	} else if plugin := w.discovery.Plugins[index]; plugin.Layout == LayoutFile {
+	} else if plugin := w.discovery.Plugins[index]; plugin.Layout == model.LayoutFile {
 		if _, err := os.Stat(path); err != nil {
 			w.set = generation
 		}
@@ -444,8 +442,8 @@ func (w *pluginWatcher) markPlugin(path string, generation int) {
 }
 
 // owns reports whether path is plugin's: in its directory, or one of a single-file plugin's files.
-func owns(plugin Plugin, path string) bool {
-	if plugin.Layout == LayoutFile {
+func owns(plugin model.Plugin, path string) bool {
+	if plugin.Layout == model.LayoutFile {
 		for _, file := range plugin.Facets {
 			if file == path {
 				return true
@@ -453,13 +451,13 @@ func owns(plugin Plugin, path string) bool {
 		}
 		return false
 	}
-	return plugin.Dir == path || inside(plugin.Dir, path)
+	return plugin.Dir == path || model.Inside(plugin.Dir, path)
 }
 
 // isFacetFile reports whether file (at a plugin's top) is named as a facet file of one of the app's kinds.
 func (w *pluginWatcher) isFacetFile(file string) bool {
 	return slices.ContainsFunc(w.options.Kinds, func(kind string) bool {
-		return slices.ContainsFunc(FacetExtensions, func(extension string) bool { return file == kind+extension })
+		return slices.ContainsFunc(model.FacetExtensions, func(extension string) bool { return file == kind+extension })
 	})
 }
 
@@ -613,7 +611,7 @@ func (w *pluginWatcher) changedIn(path string, op fsnotify.Op) {
 // unwatchDirs stops watching dir and the directories under it (it was removed, or its tree is not watched any more).
 func (w *pluginWatcher) unwatchDirs(dir string) {
 	for watched := range w.watched {
-		if watched != dir && !inside(dir, watched) {
+		if watched != dir && !model.Inside(dir, watched) {
 			continue
 		}
 		delete(w.watched, watched)
@@ -708,8 +706,8 @@ func (w *pluginWatcher) recordOwn(base []string) {
 	for _, file := range files {
 		w.locate(filepath.Dir(file))
 	}
-	record := BaseInputs{}
-	for i, hash := range hashFiles(files) {
+	record := model.BaseInputs{}
+	for i, hash := range model.HashFiles(files) {
 		if hash != "" {
 			record[files[i]] = hash
 		}
@@ -725,11 +723,11 @@ func (w *pluginWatcher) recordOwn(base []string) {
 // has no later event); files under ignored directories are skipped. The channel it returns closes once those first comparisons
 // ended: `base` then knows the record. A record arriving after the close (a scan that ended late) watches nothing (Pi 284e63d9
 // watcher.ts `recordBase`).
-func (w *pluginWatcher) recordBase(inputs BaseInputs) <-chan struct{} {
+func (w *pluginWatcher) recordBase(inputs model.BaseInputs) <-chan struct{} {
 	if w.closed {
 		return closedChannel()
 	}
-	record := make(BaseInputs, len(inputs))
+	record := make(model.BaseInputs, len(inputs))
 	for file, hash := range inputs {
 		path := realPaths([]string{file})[0]
 		if !hasIgnoredPart(path) {
@@ -847,7 +845,7 @@ func (w *pluginWatcher) compare(path string, wait *latch) {
 	}
 	w.comparing[path] = started
 	w.queue = append(w.queue, path)
-	if w.comparers < maxComparers {
+	if w.comparers < model.MaxComparers {
 		w.comparers++
 		//portlint:allow golifetime the goroutine ends when the queue is empty, and join waits for it
 		w.running.Go(w.compareQueued)
@@ -872,7 +870,7 @@ func (w *pluginWatcher) compareQueued() {
 	var current *comparison
 	w.Batch().Section(func() { path, current = w.nextComparison() })
 	for current != nil {
-		hash, ok := hashFile(path)
+		hash, ok := model.HashFile(path)
 		w.Batch().Section(func() {
 			w.applyComparison(path, hash, ok)
 			for _, each := range current.waiting {
@@ -901,7 +899,7 @@ func (w *pluginWatcher) applyComparison(path, hash string, readable bool) {
 		}
 	}
 	if !recorded {
-		_, source := sourceExtensions[extname(path)]
+		_, source := sourceExtensions[model.Extname(path)]
 		differs = readable && source && w.inBaseDir(path)
 	}
 	if _, was := w.differing[path]; was == differs {
@@ -995,8 +993,12 @@ func (w *pluginWatcher) baseEvent(path string, op fsnotify.Op) {
 
 // keepWatches puts back the watches at and under path that the watcher no longer holds, those alone and those of a base
 // directory's tree, for the directory there is the one they watched, moved away and back: libuv's watch follows it (inotify) or
-// its path (FSEvents), and some of fsnotify's end with the move (kqueue removes the watch of a directory that is renamed).
-// Nothing is compared: as Pi, it renewed nothing.
+// its path (FSEvents), and some of fsnotify's end with the move (kqueue removes the watch of a directory that is renamed) or
+// with the removal of the directory (inotify). Nothing is compared: as Pi, it renewed nothing. A watch it cannot put back (its
+// directory is missing for now) takes its identity with it, as `reconcile` and `unwatchDirs` do: the directory made again is
+// then another one, and its watches are renewed. A record of the identity of a directory not watched would call it the same,
+// as a file system that reuses the inode and stamps the birth time in coarse ticks (ext4) gives it that identity, and nothing
+// would watch it again.
 func (w *pluginWatcher) keepWatches(path string) {
 	if w.fs == nil {
 		return
@@ -1010,6 +1012,7 @@ func (w *pluginWatcher) keepWatches(path string) {
 	}
 	for _, dir := range lost {
 		delete(w.baseWatched, dir)
+		delete(w.identities, dir)
 		w.watchAlone(dir)
 	}
 	var lostTree []string
@@ -1020,6 +1023,7 @@ func (w *pluginWatcher) keepWatches(path string) {
 	}
 	for _, dir := range lostTree {
 		delete(w.watched, dir)
+		delete(w.identities, dir)
 	}
 	for _, dir := range lostTree {
 		w.watchDirs(dir)
@@ -1072,7 +1076,7 @@ func (w *pluginWatcher) reconcile(path string) {
 // directory.
 func sourceFiles(path string) []string {
 	if !isDirectory(path) {
-		if _, ok := sourceExtensions[extname(path)]; ok {
+		if _, ok := sourceExtensions[model.Extname(path)]; ok {
 			return []string{path}
 		}
 		return nil
@@ -1094,7 +1098,7 @@ func appendSourceFiles(files []string, dir string) []string {
 		case entry.IsDir():
 			files = appendSourceFiles(files, filepath.Join(dir, name))
 		default:
-			if _, ok := sourceExtensions[extname(name)]; ok {
+			if _, ok := sourceExtensions[model.Extname(name)]; ok {
 				files = append(files, filepath.Join(dir, name))
 			}
 		}

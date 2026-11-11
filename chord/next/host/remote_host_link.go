@@ -10,7 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 )
 
-// Ports packages/chord/src/next/remote/host-link.ts. One link of a host (§3, §22): its channel, its role, the peer's
+// Ports packages/chord/src/remote/host-link.ts. One link of a host (§3, §22): its channel, its role, the peer's
 // principal, its limits per part, and both sides: a provider side per origin (holds and calls the peer sent, its own or a
 // relay's for one of its downstream links) and the consumer side (holds and calls this host sent). Message kinds are
 // directional, so each goes to its side; a revocation is honoured from the parent only. Parts are made and opened here,

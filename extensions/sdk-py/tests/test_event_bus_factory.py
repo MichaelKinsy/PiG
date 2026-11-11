@@ -11,6 +11,8 @@ import os
 import socket
 import tempfile
 import threading
+from collections import defaultdict
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -166,6 +168,187 @@ def test_a_shutdown_read_during_a_factory_call_ends_the_run_after_it_registers(h
     assert fake.conn is not None
     assert _read_frame_raw(fake.conn)["type"] == "register"
     assert fake.conn.recv(1) == b""
+
+
+def test_a_factory_call_waiting_for_the_host_does_not_hold_up_another_members_register(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A packed cell's members build one after another, and the host accepts their connections in that order, serving a connection only after the members before it have
+    registered. The second member's factory-time call therefore waits for the first member's register, so the first member's run, which takes its own connection to
+    register, must not wait for that call: a lock held across the wait deadlocks the two, and the host never sees the first register."""
+    directory = tempfile.mkdtemp()
+    first_path, second_path = os.path.join(directory, "first.sock"), os.path.join(directory, "second.sock")
+    first_listener, second_listener = _start_fake_host(first_path), _start_fake_host(second_path)
+    connections: list[socket.socket] = []
+    threads: list[threading.Thread] = []
+    second_call: dict[str, Any] = {}
+
+    def factory_call() -> threading.Thread:
+        thread = threading.Thread(target=lambda: host_helpers.loading_call("factory-time", {}), daemon=True)
+        thread.start()
+        threads.append(thread)
+        return thread
+
+    def accept(listener: socket.socket) -> socket.socket:
+        conn, _ = listener.accept()
+        conn.settimeout(15)
+        connections.append(conn)
+        return conn
+
+    try:
+        # the first member's factory made its one host call and returned: its connection is dialled and waits for its run to take it
+        monkeypatch.setenv("PIG_EXT_SOCKET", first_path)
+        first_caller = factory_call()
+        first_conn = accept(first_listener)
+        call = _read_frame_raw(first_conn)
+        _write_frame(first_conn, {"type": "call_result", "id": call["id"], "call_result": {"result": None}})
+        first_caller.join(timeout=10)
+        # the second member's factory calls the host, which has not accepted its connection yet: the call waits
+        monkeypatch.setenv("PIG_EXT_SOCKET", second_path)
+        factory_call()
+        second_conn = accept(second_listener)
+        second_call.update(_read_frame_raw(second_conn))
+        assert second_call["type"] == "call"
+        # the first member's run registers meanwhile; a bounded wait, so a run held up by the second member's call fails the test instead of hanging it
+        first = pig_sdk.Extension("first")
+        runner = threading.Thread(target=lambda: first.run_with_socket(first_path), daemon=True)
+        runner.start()
+        threads.append(runner)
+        registered: list[str] = []
+        reader = threading.Thread(target=lambda: registered.append(_read_frame_raw(first_conn)["type"]), daemon=True)
+        reader.start()
+        reader.join(timeout=10)
+        assert registered == ["register"], "the first member did not register while the second member's call waited for the host"
+    finally:
+        # answer the waiting call so a held-up run finishes, then end both threads
+        if second_call:
+            _write_frame(connections[1], {"type": "call_result", "id": second_call["id"], "call_result": {"result": None}})
+        if connections:
+            _write_frame(connections[0], {"type": "shutdown", "shutdown": {"reason": "test"}})
+        for thread in threads:
+            thread.join(timeout=10)
+        for conn in connections:
+            conn.close()
+        first_listener.close()
+        second_listener.close()
+        host_helpers._State.dialled.clear()
+
+
+class _SpyLock:
+    """An ``RLock`` that records which lock object each thread went to take, and tells the test (``attempted``) when a thread is about to wait for it."""
+
+    def __init__(self, seen: dict[str, "_SpyLock"], attempted: dict[str, threading.Event]) -> None:
+        self._lock = threading.RLock()
+        self._seen = seen
+        self._attempted = attempted
+
+    def __enter__(self) -> "_SpyLock":
+        name = threading.current_thread().name
+        self._seen[name] = self
+        self._attempted[name].set()
+        self._lock.acquire()
+        return self
+
+    def __exit__(self, *exc: Any) -> None:
+        self._lock.release()
+
+
+class _PausingDialled(dict):
+    """The table of dialled connections, whose ``pop`` stops until the test lets it go. ``take_helper_socket`` makes that call while it holds its path's lock and
+    ``_State.lock``; the pause gives ``_State.lock`` up, as any wait for the host would, so other threads can look the path's lock up while the take holds it."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.in_pop = threading.Event()
+        self.go = threading.Event()
+
+    def pop(self, key: Any, *default: Any) -> Any:
+        self.in_pop.set()
+        host_helpers._State.lock.release()
+        try:
+            self.go.wait(timeout=10)
+        finally:
+            host_helpers._State.lock.acquire()
+        return super().pop(key, *default)
+
+
+def test_a_path_lock_is_not_dropped_while_a_thread_holds_or_waits_for_it(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Every call on a socket path takes that path's lock, and two threads on one path must never hold two different locks for it. ``take_helper_socket`` holds
+    the lock while it takes the connection; thread B comes to the same path and waits for that lock; the take ends, B takes the lock, and a third caller C then
+    comes to the path. C must wait for B: a lock the take dropped from the table while B waited for it gives C a new one, and B and C run at once."""
+    path = "/nonexistent/pig-path-lock.sock"
+    seen: dict[str, _SpyLock] = {}
+    attempted: dict[str, threading.Event] = defaultdict(threading.Event)
+    dialled = _PausingDialled()
+    monkeypatch.setattr(host_helpers, "threading", SimpleNamespace(**{**vars(threading), "RLock": lambda: _SpyLock(seen, attempted)}))
+    monkeypatch.setattr(host_helpers._State, "path_locks", {})
+    monkeypatch.setattr(host_helpers._State, "dialled", dialled)
+    holding = {"B": threading.Event(), "C": threading.Event()}
+    release = threading.Event()
+
+    def call_on_the_path(name: str) -> threading.Thread:
+        def run() -> None:
+            with host_helpers._path_lock(path):
+                holding[name].set()
+                release.wait(timeout=10)
+
+        thread = threading.Thread(target=run, name=name, daemon=True)
+        thread.start()
+        return thread
+
+    taker = threading.Thread(target=lambda: host_helpers.take_helper_socket(path), name="taker", daemon=True)
+    threads = [taker]
+    try:
+        taker.start()
+        assert dialled.in_pop.wait(timeout=10), "take_helper_socket never reached the connection table"
+        threads.append(call_on_the_path("B"))
+        assert attempted["B"].wait(timeout=10), "B never came to the path's lock"
+        dialled.go.set()
+        taker.join(timeout=10)
+        assert not taker.is_alive(), "take_helper_socket did not end"
+        assert holding["B"].wait(timeout=10), "B never took the path's lock after the take ended"
+        threads.append(call_on_the_path("C"))
+        assert attempted["C"].wait(timeout=10), "C never came to the path's lock"
+        assert seen["C"] is seen["B"], "B holds one lock for the path and C went for another: both run at once"
+    finally:
+        dialled.go.set()
+        release.set()
+        for thread in threads:
+            thread.join(timeout=10)
+    assert host_helpers._State.path_locks == {}, "a path's lock stays in the table after its last user left"
+
+
+def test_a_caller_that_raises_inside_a_path_lock_leaves_the_count_right(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A thread that leaves ``_path_lock`` by an exception is no longer a user of the lock, and the lock is released: the count is right while another use of
+    the same thread is inside, and the table is empty when nobody is."""
+    path = "/nonexistent/pig-path-lock-raise.sock"
+    monkeypatch.setattr(host_helpers._State, "path_locks", {})
+
+    def users() -> int | None:
+        entry = host_helpers._State.path_locks.get(path)
+        return None if entry is None else entry[1]
+
+    with pytest.raises(RuntimeError):
+        with host_helpers._path_lock(path):
+            assert users() == 1
+            raise RuntimeError("leaving by an exception")
+    assert users() is None, "an exception left the lock: no user, no entry"
+    with host_helpers._path_lock(path):
+        with pytest.raises(RuntimeError):
+            with host_helpers._path_lock(path):
+                assert users() == 2, "the nested use counts too"
+                raise RuntimeError("the nested use leaves by an exception")
+        assert users() == 1, "the outer use is still counted"
+    assert users() is None, "both uses left: no entry"
+    took: list[bool] = []
+
+    def take() -> None:
+        with host_helpers._path_lock(path):
+            took.append(True)
+
+    thread = threading.Thread(target=take, daemon=True)
+    thread.start()
+    thread.join(timeout=10)
+    assert took == [True], "another thread did not take the lock the exceptions released"
+    assert host_helpers._State.path_locks == {}
 
 
 def test_a_listener_failure_fails_only_its_dispatch(host) -> None:

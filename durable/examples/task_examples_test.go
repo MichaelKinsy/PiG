@@ -24,18 +24,16 @@ type todos struct {
 // 10-extension-state.ts: an extension keeps its own document, written by its tool and rendered into the prompt.
 func TestExample10ExtensionState(t *testing.T) {
 	todosDoc := durable.DefineDoc(durable.DocDefinition[todos]{
-		CommonDocDefinition: durable.CommonDocDefinition[todos]{Kind: "example.todos", Version: 1, Initial: func() todos { return todos{Items: []string{}} }, CheckpointWhen: func(todos, []durable.Op, durable.CheckpointInfo) bool { return false }},
-		DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryRewindable, Fork: durable.ForkAsOf},
+		Kind: "example.todos", Version: 1, Initial: func() todos { return todos{Items: []string{}} }, CheckpointWhen: func(todos, []durable.Op, durable.CheckpointInfo) bool { return false },
+		Scope: durable.ScopeConversation, History: durable.HistoryRewindable, Fork: durable.ForkAsOf,
 	})
 	todoTool := &durable.ToolRegistration{
-		ToolSchema: ai.ToolSchema{
-			Name:        "todo",
-			Description: "Add an item to your todo list",
-			Parameters: map[string]any{
-				"type":       "object",
-				"properties": map[string]any{"item": map[string]any{"type": "string"}},
-				"required":   []any{"item"},
-			},
+		Name:        "todo",
+		Description: "Add an item to your todo list",
+		Parameters: map[string]any{
+			"type":       "object",
+			"properties": map[string]any{"item": map[string]any{"type": "string"}},
+			"required":   []any{"item"},
 		},
 		Execute: func(ctx context.Context, args any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			item, _ := args.(map[string]any)["item"].(string)

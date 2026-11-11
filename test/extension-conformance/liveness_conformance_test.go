@@ -71,16 +71,18 @@ func TestLivenessConformanceSDKsMatch(t *testing.T) {
 		}},
 	}
 
-	var baseline livenessRecording
+	// The Go recording is the reference. It is recorded by the Go row, or by the first row that needs it when -run leaves the Go row out.
+	baseline := referenceRow[livenessRecording]{name: "Go"}
 	for index, fixture := range fixtures {
 		t.Run(fixture.name, func(t *testing.T) {
-			recording := recordSDKLiveness(t, fixture)
 			if index == 0 {
-				baseline = recording
+				baseline.set(t, recordSDKLiveness(t, fixture))
 				return
 			}
-			if !reflect.DeepEqual(recording, baseline) {
-				t.Fatalf("liveness recording differs from Go:\n got: %#v\nwant: %#v", recording, baseline)
+			want := baseline.get(t, func() livenessRecording { return recordSDKLiveness(t, fixtures[0]) })
+			recording := recordSDKLiveness(t, fixture)
+			if !reflect.DeepEqual(recording, want) {
+				t.Fatalf("liveness recording differs from Go:\n got: %#v\nwant: %#v", recording, want)
 			}
 		})
 	}

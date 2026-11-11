@@ -22,7 +22,7 @@ func TestAHoldersOwnReleaseBeforeTheScopesWatchStartsEndsQuietly(t *testing.T) {
 		}
 		held.Release()
 		noTuiGoroutines(t)
-		scope.Dispose()
+		(*TuiScope).Dispose(scope)
 	}
 }
 

@@ -32,7 +32,7 @@ func TestAltScreenResolveMouseFocusTargetKeepsTheClickOnTheFocusOwnerExceptForOv
 	overlay := NewContainer(input)
 	h.tui.ShowOverlay(overlay, OverlayOptions{anchor: overlayTopLeft, width: overlayCells(20)})
 	h.render()
-	result := &TuiMouseDispatchResult{TuiMouseEventResult: TuiMouseEventResult{Handled: true, Focus: true}, Target: TuiMouseDispatchTarget{Component: input}}
+	result := &TuiMouseDispatchResult{Handled: true, Focus: true, Target: TuiMouseDispatchTarget{Component: input}}
 	h.tui.applyMouseDispatchResult(TuiMouseEvent{Type: MousePress}, result)
 	if h.tui.GetFocusedComponent() != Component(overlay) {
 		t.Fatalf("after a nested overlay control's focus result: focused=%v", h.tui.GetFocusedComponent())

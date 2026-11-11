@@ -15,9 +15,9 @@ import (
 func TestBoundaryRecordsHandOutTheRecordOfTheSameObject(t *testing.T) {
 	parent := "0a1b2c3d"
 	entry := func(text string) icodingagent.MessageEntry {
-		return icodingagent.MessageEntry{SessionEntryBase: icodingagent.SessionEntryBase{Type: "message", ID: "4e5f6a7b", ParentID: &parent,
-			Timestamp: "2026-10-13T08:00:00.000Z"}, Message: agent.AgentMessage{User: &agent.UserMessage{Role: agent.RoleUser,
-			Content: ai.UserText(text), Timestamp: 1}}}
+		return icodingagent.MessageEntry{Type: "message", ID: "4e5f6a7b", ParentID: &parent,
+			Timestamp: "2026-10-13T08:00:00.000Z", Message: agent.AgentMessage{User: &agent.UserMessage{Role: agent.RoleUser,
+				Content: ai.UserText(text), Timestamp: 1}}}
 	}
 	var records boundaryRecords
 	first := entry("first")

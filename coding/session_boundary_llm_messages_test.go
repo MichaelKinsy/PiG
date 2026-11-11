@@ -48,7 +48,7 @@ func TestBoundaryContextLLMMessagesAreConvertToLlmOfTheProjectionWithoutNormaliz
 			}
 			defer func() { _ = sess.Close() }()
 			for _, message := range tc.history {
-				if _, err := sess.inner.AppendMessage(message); err != nil {
+				if _, err := sess.inner.Load().AppendMessage(message); err != nil {
 					t.Fatal(err)
 				}
 			}

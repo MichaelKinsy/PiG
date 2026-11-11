@@ -224,6 +224,12 @@ func runPiMessagesRPC(ctx context.Context, bin, dir, baseURL string, recorded ch
 		cancel()
 		_ = cmd.Wait()
 	}()
+	// stderrText is the child's stderr once the child ended: os/exec copies it into the buffer on a goroutine of its own until the child exits, and Wait joins that copy, so the buffer is read only after it.
+	stderrText := func() string {
+		cancel()
+		_ = cmd.Wait()
+		return stderr.String()
+	}
 	if _, err := io.WriteString(stdin, `{"id":"read","type":"prompt","message":"READ"}`+"\n"); err != nil {
 		return nil, err
 	}
@@ -244,7 +250,7 @@ func runPiMessagesRPC(ctx context.Context, bin, dir, baseURL string, recorded ch
 		case message["role"] == "assistant" && strings.HasPrefix(kind, "message_"):
 			record = map[string]any{"type": kind, "message": message}
 		case kind == "agent_settled":
-			return records, fmt.Errorf("settled before the first assistant message ended\nstderr: %s", stderr.String())
+			return records, fmt.Errorf("settled before the first assistant message ended\nstderr: %s", stderrText())
 		}
 		if record == nil {
 			continue
@@ -260,9 +266,9 @@ func runPiMessagesRPC(ctx context.Context, bin, dir, baseURL string, recorded ch
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		return records, fmt.Errorf("read RPC output: %w\nstderr: %s", err, stderr.String())
+		return records, fmt.Errorf("read RPC output: %w\nstderr: %s", err, stderrText())
 	}
-	return records, fmt.Errorf("no completed first assistant turn\nstderr: %s", stderr.String())
+	return records, fmt.Errorf("no completed first assistant turn\nstderr: %s", stderrText())
 }
 
 // TestRPCPiMessagesMatchesPi is the D82 pi-messages row: the first assistant turn's RPC records equal Pi's for every fixture and

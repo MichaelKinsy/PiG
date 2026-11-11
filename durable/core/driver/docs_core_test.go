@@ -897,8 +897,8 @@ func touch2(tx durable.Tx, token durable.AnyDocToken, args ...any) error {
 func TestCoreSelectsTheIncarnationAliveAtTheEntryCommitAcrossRetirementAndRecreation(t *testing.T) {
 	r := openCoreDB(t)
 	doc := durable.DefineDoc(durable.DocDefinition[obj]{
-		CommonDocDefinition: durable.CommonDocDefinition[obj]{Kind: "history.incarnation", Version: 1, Initial: func() obj { return delta.JsonObjectOf("value", "initial") }, CheckpointWhen: func(obj, []durable.Op, durable.CheckpointInfo) bool { return false }},
-		DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryRewindable, Fork: durable.ForkAsOf},
+		Kind: "history.incarnation", Version: 1, Initial: func() obj { return delta.JsonObjectOf("value", "initial") }, CheckpointWhen: func(obj, []durable.Op, durable.CheckpointInfo) bool { return false },
+		Scope: durable.ScopeConversation, History: durable.HistoryRewindable, Fork: durable.ForkAsOf,
 	})
 	conversationId := r.createConversation(t)
 	entry := func(kind string, then func(tx durable.Tx) error) durable.EntryId {
@@ -956,12 +956,12 @@ func TestCoreSelectsTheIncarnationAliveAtTheEntryCommitAcrossRetirementAndRecrea
 }
 
 var documentsMemberDoc = durable.DefineDocFamily(durable.DocFamilyDefinition[obj, string]{
-	Kind:              "test.member",
-	Version:           1,
-	DocumentSemantics: durable.DocumentSemantics{Scope: durable.ScopeSession},
-	Initial:           func(seed string) obj { return delta.JsonObjectOf("seed", seed, "hits", 0) },
-	Family:            true,
-	CheckpointWhen:    func(obj, []durable.Op, durable.CheckpointInfo) bool { return false },
+	Kind:           "test.member",
+	Version:        1,
+	Scope:          durable.ScopeSession,
+	Initial:        func(seed string) obj { return delta.JsonObjectOf("seed", seed, "hits", 0) },
+	Family:         true,
+	CheckpointWhen: func(obj, []durable.Op, durable.CheckpointInfo) bool { return false },
 })
 
 func hit(tx durable.Tx, key, seed string) error {
@@ -1009,8 +1009,8 @@ func TestCoreRejectsTokensWhoseSemanticsOrVersionDisagreeWithTheStoredIncarnatio
 	conversationId := r.createConversation(t)
 	live := func(version int, history durable.DocumentHistory) durable.DocToken[obj] {
 		return durable.DefineDoc(durable.DocDefinition[obj]{
-			CommonDocDefinition: durable.CommonDocDefinition[obj]{Kind: "test.live", Version: version, Initial: func() obj { return delta.JsonObjectOf("message", "x") }, CheckpointWhen: func(obj, []durable.Op, durable.CheckpointInfo) bool { return false }},
-			DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeConversation, History: history, Fork: durable.ForkInitial},
+			Kind: "test.live", Version: version, Initial: func() obj { return delta.JsonObjectOf("message", "x") }, CheckpointWhen: func(obj, []durable.Op, durable.CheckpointInfo) bool { return false },
+			Scope: durable.ScopeConversation, History: history, Fork: durable.ForkInitial,
 		})
 	}
 	r.commit(t, func(tx durable.Tx) error { return touch2(tx, live(1, durable.HistoryLatest), conversationId) })
@@ -1107,8 +1107,8 @@ func TestCoreRetiresWithoutAcquisitionAndRecreatesExistingAndAbsentAddresses(t *
 
 func defineConversationDoc(kind string) durable.DocToken[obj] {
 	return durable.DefineDoc(durable.DocDefinition[obj]{
-		CommonDocDefinition: durable.CommonDocDefinition[obj]{Kind: kind, Version: 1, Initial: func() obj { return delta.JsonObjectOf("message", "", "items", []any{}) }, CheckpointWhen: func(obj, []durable.Op, durable.CheckpointInfo) bool { return false }},
-		DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkInitial},
+		Kind: kind, Version: 1, Initial: func() obj { return delta.JsonObjectOf("message", "", "items", []any{}) }, CheckpointWhen: func(obj, []durable.Op, durable.CheckpointInfo) bool { return false },
+		Scope: durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkInitial,
 	})
 }
 
@@ -1227,8 +1227,8 @@ func TestCoreNonJSONPlacementsAreRejectedBeforeAnythingIsStored(t *testing.T) {
 		t.Fatalf("the document of the failed transactions does not exist: %v, %v", got, err)
 	}
 	bad := durable.DefineDoc(durable.DocDefinition[obj]{
-		CommonDocDefinition: durable.CommonDocDefinition[obj]{Kind: "test.badinit", Version: 1, Initial: func() obj { return delta.JsonObjectOf("at", math.NaN()) }, CheckpointWhen: func(obj, []durable.Op, durable.CheckpointInfo) bool { return false }},
-		DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeSession},
+		Kind: "test.badinit", Version: 1, Initial: func() obj { return delta.JsonObjectOf("at", math.NaN()) }, CheckpointWhen: func(obj, []durable.Op, durable.CheckpointInfo) bool { return false },
+		Scope: durable.ScopeSession,
 	})
 	if err := r.fail(t, func(tx durable.Tx) error { return touch2(tx, bad) }); err == nil {
 		t.Fatal("a non-JSON initial value must reject the access")
@@ -1237,19 +1237,19 @@ func TestCoreNonJSONPlacementsAreRejectedBeforeAnythingIsStored(t *testing.T) {
 
 func forkDoc(kind string, history durable.DocumentHistory, fork durable.DocumentFork) durable.DocToken[obj] {
 	return durable.DefineDoc(durable.DocDefinition[obj]{
-		CommonDocDefinition: durable.CommonDocDefinition[obj]{Kind: kind, Version: 1, Initial: func() obj { return delta.JsonObjectOf("value", "initial") }, CheckpointWhen: func(obj, []durable.Op, durable.CheckpointInfo) bool { return false }},
-		DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeConversation, History: history, Fork: fork},
+		Kind: kind, Version: 1, Initial: func() obj { return delta.JsonObjectOf("value", "initial") }, CheckpointWhen: func(obj, []durable.Op, durable.CheckpointInfo) bool { return false },
+		Scope: durable.ScopeConversation, History: history, Fork: fork,
 	})
 }
 
 func forkFamily(kind string, history durable.DocumentHistory, fork durable.DocumentFork) durable.DocFamilyToken[obj, string] {
 	return durable.DefineDocFamily(durable.DocFamilyDefinition[obj, string]{
-		Kind:              kind,
-		Version:           1,
-		DocumentSemantics: durable.DocumentSemantics{Scope: durable.ScopeConversation, History: history, Fork: fork},
-		Initial:           func(seed string) obj { return delta.JsonObjectOf("value", seed) },
-		Family:            true,
-		CheckpointWhen:    func(obj, []durable.Op, durable.CheckpointInfo) bool { return false },
+		Kind:    kind,
+		Version: 1,
+		Scope:   durable.ScopeConversation, History: history, Fork: fork,
+		Initial:        func(seed string) obj { return delta.JsonObjectOf("value", seed) },
+		Family:         true,
+		CheckpointWhen: func(obj, []durable.Op, durable.CheckpointInfo) bool { return false },
 	})
 }
 
@@ -1497,12 +1497,12 @@ func TestCoreForkRetiresACopiedDocumentAndRecreatesTheAddressInTheForkTransactio
 func TestCoreForkCopiesEveryFamilyMemberAcrossScanPages(t *testing.T) {
 	r := openCoreDB(t)
 	family := durable.DefineDocFamily(durable.DocFamilyDefinition[obj, int]{
-		Kind:              "fork.pagination",
-		Version:           1,
-		DocumentSemantics: durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkCurrent},
-		Initial:           func(seed int) obj { return delta.JsonObjectOf("value", seed) },
-		Family:            true,
-		CheckpointWhen:    func(obj, []durable.Op, durable.CheckpointInfo) bool { return false },
+		Kind:    "fork.pagination",
+		Version: 1,
+		Scope:   durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkCurrent,
+		Initial:        func(seed int) obj { return delta.JsonObjectOf("value", seed) },
+		Family:         true,
+		CheckpointWhen: func(obj, []durable.Op, durable.CheckpointInfo) bool { return false },
 	})
 	parentId := r.createConversation(t)
 	var forkAt durable.EntryId
@@ -1545,7 +1545,7 @@ func versionedFork(kind string, version int, initial func() obj, options ...docO
 	}
 	return durable.DefineDoc(durable.DocDefinition[obj]{
 		CommonDocDefinition: withInitial(common, initial),
-		DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryRewindable, Fork: durable.ForkAsOf},
+		Scope:               durable.ScopeConversation, History: durable.HistoryRewindable, Fork: durable.ForkAsOf,
 	})
 }
 

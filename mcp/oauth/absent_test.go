@@ -155,7 +155,7 @@ func TestAuthorizeMcpChecksAPresentEmptyIssAndSkipsAnEmptyAdvertisedScope(t *tes
 		}
 	})
 	provider := newTestOAuthProvider("http://127.0.0.1/callback")
-	provider.client = &oauth.OAuthClientInformationMixed{ClientID: "client", OAuthClientMetadata: oauth.OAuthClientMetadata{Scope: "client-scope"}}
+	provider.client = &oauth.OAuthClientInformationMixed{ClientID: "client", Scope: "client-scope"}
 	scoped := &scopedProvider{testOAuthProvider: provider, scope: "client-scope"}
 	result, err := oauth.AuthorizeMcp(ctx, scoped, oauth.OAuthFlowOptions{ServerURL: origin + "/mcp"})
 	if err != nil || result != oauth.OAuthRedirect {

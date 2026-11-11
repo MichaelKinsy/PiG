@@ -596,6 +596,44 @@ once the response arrives. A responder that returns (values nil message) answers
       (check-equal t (pig:jget oauth "has_login"))
       (check-equal t (pig:jget oauth "has_credential_store")))))
 
+(defun pt-modify-models-ext ()
+  (let ((ext (pt-ext)))
+    (pig:register-provider ext "mm" (pig:obj "baseUrl" "https://mm.test/v1" "refreshModels" (lambda (refresh) (declare (ignore refresh)) nil)))
+    (pig:register-oauth-provider
+     ext "mm" (pig:obj)
+     (pig:make-oauth-provider
+      :name "MM" :login (lambda (callbacks) (declare (ignore callbacks)) (pig:oauth-credentials :access "login"))
+      :uses-callback-server t
+      :modify-models (lambda (models credentials)
+                       (when (equal (pig:jget credentials "access") "boom") (error "modify boom"))
+                       (loop for model in (reverse (coerce models 'list))
+                             unless (equal (pig:jget model "id") "drop")
+                               collect (pig:obj "id" (pig:jget model "id") "name" (format nil "~A+~A" (pig:jget model "name") (pig:jget credentials "access")))))))
+    ext))
+
+(deftest an-oauth-registration-flags-modify-models-and-uses-callback-server-beside-refresh-models
+  (with-host (host (pt-modify-models-ext) register)
+    (let* ((providers (pig:jref register "register" "providers")) (models-entry (aref providers 0)) (oauth-entry (aref providers 1)) (oauth (pig:jref oauth-entry "config" "oauth")))
+      (check-equal 2 (length providers))
+      (check-equal t (pig:jget models-entry "refresh_models"))
+      (check (null (nth-value 1 (gethash "refreshModels" (pig:jget models-entry "config")))))
+      (check-equal "https://mm.test/v1" (pig:jref models-entry "config" "baseUrl"))
+      (check-equal t (pig:jget oauth "has_modify_models"))
+      (check-equal t (pig:jget oauth "usesCallbackServer")))
+    (let* ((models (pig:arr (pig:obj "id" "a" "name" "A") (pig:obj "id" "drop" "name" "Drop") (pig:obj "id" "b" "name" "B")))
+           (result (pt-run host "m1" "oauth_modify_models" #'pt-none "tool" "mm"
+                           "args" (pig:obj "models" models "credentials" (pig:obj "access" "tok"))))
+           (out (pig:jget result "models")))
+      (check-equal 2 (length out))
+      (check-equal "b" (pig:jget (aref out 0) "id"))
+      (check-equal "B+tok" (pig:jget (aref out 0) "name"))
+      (check-equal "A+tok" (pig:jget (aref out 1) "name")))
+    (multiple-value-bind (result message)
+        (pt-run host "m2" "oauth_modify_models" #'pt-none "tool" "mm"
+                "args" (pig:obj "models" (pig:arr) "credentials" (pig:obj "access" "boom")))
+      (declare (ignore result))
+      (check (search "modify boom" message)))))
+
 (deftest an-oauth-login-drives-the-hosts-login-ui-and-returns-the-credentials
   (with-host (host (pt-oauth-ext))
     (multiple-value-bind (result message frames)
@@ -901,6 +939,45 @@ once the response arrives. A responder that returns (values nil message) answers
           (check-equal "own" (pig:jget wrap "use"))
           (check-equal "self" (pig:jget wrap "render_shell")))
         (check-equal "next" (pig:jget (resolve "other" (pig:obj)) "use"))))))
+
+;;; Pi's tool-execution.ts keeps one slot per phase, sets it to the component the renderer returned and clears it when the renderer throws.
+(deftest tool-render-last-component-is-the-previous-run-and-nil-after-a-failed-run
+  (let ((ext (pt-ext (lambda (ext)
+                       (pig:tool ext "t" "T" (pig:obj "type" "object") (lambda (ctx p) (declare (ignore ctx p)) "x"))
+                       (pig:tool-renderers ext "t"
+                                           :render-call (lambda (ctx args render width)
+                                                          (declare (ignore ctx width))
+                                                          (let ((last (pig:tool-render-context-last-component render)))
+                                                            (when (eq (pig:jget args "fail") t) (error "boom"))
+                                                            (list (format nil "run~A:last=~A" (pig:jget args "n") (if last (first last) "none")))))
+                                           :result-view (lambda (ctx result options render width)
+                                                          (declare (ignore ctx result options width))
+                                                          (let ((last (pig:tool-render-context-last-component render)))
+                                                            (pig:kit-view
+                                                             (pig:kit-container
+                                                              (list (pig:kit-text (format nil "result:last=~A" (cond ((null last) "none") ((pig::kit-view-p last) "view") (t "lines")))
+                                                                                  0 0)))))))))))
+    (with-host (host ext)
+      (let ((n 0))
+        (flet ((call (card &rest args)
+                 (multiple-value-bind (result message)
+                     (pt-run host (format nil "r~D" (incf n)) "render_tool" #'pt-none
+                             "tool" "t" "args" (pig:obj "card" card "phase" "call" "width" 20 "args" (apply #'pig:obj args)))
+                   (if message :error (pig:jref result "lines" 0))))
+               (result (card)
+                 (pig:to-json (pig:jget (pt-run host (format nil "r~D" (incf n)) "render_tool" #'pt-none
+                                                "tool" "t" "args" (pig:obj "card" card "phase" "result" "width" 20))
+                                        "view"))))
+          (check-equal "run1:last=none" (call "c1" "n" 1))
+          (check-equal "run2:last=run1:last=none" (call "c1" "n" 2))
+          (check-equal :error (call "c1" "n" 3 "fail" t))
+          ;; the failed run left no component: the next run starts from nothing, not from run 2's lines
+          (check-equal "run4:last=none" (call "c1" "n" 4))
+          (check-equal "run5:last=run4:last=none" (call "c1" "n" 5))
+          (check-equal "run1:last=none" (call "c2" "n" 1))
+          ;; the result phase has a slot of its own, and a view stands in for the component it returned
+          (check (search "result:last=none" (result "c1")))
+          (check (search "result:last=view" (result "c1"))))))))
 
 ;;; ---------------------------------------------------------------- login and sprite
 

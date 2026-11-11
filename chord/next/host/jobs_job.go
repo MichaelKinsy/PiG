@@ -16,7 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/src/next/jobs/job.ts
+// Ports packages/chord/src/jobs/job.ts
 //
 // Jobs (§15), in memory: the handle `self.job` returns, one per attempt, over the job's records on its object. It holds
 // the implementation and the invocations: `run` runs outside transactions, `finish` in one with the cleanup, both on the

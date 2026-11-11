@@ -21,7 +21,6 @@ func TestShiftCtrlDWritesTheDebugLogThroughTheTuisDebugKey(t *testing.T) {
 			m.opts.AgentDir = t.TempDir()
 			m.opts.TuiMode = mode
 			m.agent = mustNewAgent(agent.AgentOptions{})
-			m.uiTaskCh = make(chan func(), 64)
 			m.rendererOut = io.Discard
 			m.createInteractiveTui(ctx)
 			t.Cleanup(m.teardownCurrentTui)

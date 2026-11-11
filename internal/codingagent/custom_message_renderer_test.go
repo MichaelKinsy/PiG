@@ -28,8 +28,8 @@ func TestCustomMessageUsesRegisteredProductionRenderer(t *testing.T) {
 		chatContainer: tui.NewContainer(),
 		toolsExpanded: true,
 	}
-	entry := CustomMessageEntry{CustomType: "notice", Content: "hello", Display: true}
-	entry.Timestamp = "2026-01-02T03:04:05.678Z"
+	entry := CustomMessageEntry{CustomType: "notice", Content: "hello", Display: true,
+		Timestamp: "2026-01-02T03:04:05.678Z"}
 	m.appendCustomMessage(entry, messageMeta{})
 
 	lines := m.chatContainer.Render(80)

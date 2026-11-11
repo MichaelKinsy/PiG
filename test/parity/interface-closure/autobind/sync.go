@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"encoding/json/jsontext"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -12,6 +13,8 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/jsonopts"
 )
 
 // The ledger status is derived: a row that is not a gap is `ported`, a row that is a gap is `pending`. Only numbered divergences and
@@ -138,21 +141,22 @@ func (r orderedRow) MarshalJSON() ([]byte, error) {
 }
 
 func (r *orderedRow) UnmarshalJSON(data []byte) error {
-	dec := json.NewDecoder(bytes.NewReader(data))
-	if _, err := dec.Token(); err != nil {
+	dec := jsontext.NewDecoder(bytes.NewReader(data), jsonopts.Parse)
+	if _, err := dec.ReadToken(); err != nil {
 		return err
 	}
 	*r = nil
-	for dec.More() {
-		tok, err := dec.Token()
+	for dec.PeekKind() != '}' {
+		tok, err := dec.ReadToken()
 		if err != nil {
 			return err
 		}
-		var v json.RawMessage
-		if err := dec.Decode(&v); err != nil {
+		key := tok.String() // a Token and the bytes ReadValue returns are void after the next call on the decoder
+		v, err := dec.ReadValue()
+		if err != nil {
 			return err
 		}
-		*r = append(*r, kv{key: tok.(string), value: v})
+		*r = append(*r, kv{key: key, value: json.RawMessage(bytes.Clone(v))})
 	}
 	return nil
 }

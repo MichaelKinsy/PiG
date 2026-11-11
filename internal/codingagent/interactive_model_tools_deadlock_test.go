@@ -47,7 +47,7 @@ func TestInteractiveModelSelectionPumpsToolRegistration(t *testing.T) {
 				m.runCtx = ctx
 				m.setModalInputChannel(nil)
 				next := &ai.Model{ID: "next", ProviderMeta: ai.ProviderMetadata{ProviderID: "capture"}}
-				h := &toolRegisteringModelHandle{mode: m, recordingCompactHandle: recordingCompactHandle{agent: m.agent, cycleResults: []*ModelCycleResult{{Model: next}}}}
+				h := &toolRegisteringModelHandle{mode: m, agent: m.agent, cycleResults: []*ModelCycleResult{{Model: next}}}
 				m.opts.SessionHandle = h
 				if cycle {
 					m.cycleModel(true)

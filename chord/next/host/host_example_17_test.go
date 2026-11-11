@@ -1,6 +1,6 @@
 package host
 
-// pi: packages/chord/test/next/examples/17-limits-and-compression.ts
+// pi: packages/chord/test/examples/17-limits-and-compression.ts
 
 import (
 	"context"

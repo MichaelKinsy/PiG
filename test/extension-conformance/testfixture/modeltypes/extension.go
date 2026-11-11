@@ -256,6 +256,7 @@ func Extension() *sdk.Extension {
 		},
 	})
 	registerLateProbe(e)
+	registerDynamicProvider(e)
 	registerThemeProbe(e)
 	registerTuiThemeProbe(e)
 	registerTuiProbe(e)

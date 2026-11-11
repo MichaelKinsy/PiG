@@ -52,15 +52,15 @@ func benchRun(b *testing.B, mode, shape string, n int) int64 {
 	echoSchema := map[string]any{"type": "object", "properties": map[string]any{"i": map[string]any{"type": "number"}}, "required": []any{"i"}}
 	plainSchema := map[string]any{"type": "object", "properties": map[string]any{"n": map[string]any{"type": "number"}, "shape": map[string]any{"type": "string"}}, "required": []any{"n", "shape"}}
 	echo := harness.DefineTool(durable.ToolRegistration{
-		ToolSchema: ai.ToolSchema{Name: "echo", Description: "echo", Parameters: echoSchema},
+		Name: "echo", Description: "echo", Parameters: echoSchema,
 		Execute: func(_ context.Context, args any, _ durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			input := args.(map[string]any)
 			return textResult(fmt.Sprint(input["i"])), nil
 		},
 	})
 	plain := harness.DefineTool(durable.ToolRegistration{
-		ToolSchema: ai.ToolSchema{Name: "plain", Description: "plain", Parameters: plainSchema},
-		Replay:     durable.ReplaySafe,
+		Name: "plain", Description: "plain", Parameters: plainSchema,
+		Replay: durable.ReplaySafe,
 		Execute: func(ctx context.Context, args any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			input := args.(map[string]any)
 			count := int(input["n"].(float64))

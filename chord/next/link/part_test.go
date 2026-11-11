@@ -15,7 +15,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/nextnode"
 )
 
-// Ports packages/chord/test/next/link/part.test.ts: the limits per part (in UTF-8 bytes), compression at the origin,
+// Ports packages/chord/test/link/part.test.ts: the limits per part (in UTF-8 bytes), compression at the origin,
 // opening a part where it is owned, and the asynchronous inflate with its limit, its corrupt outcome and its stop
 // when the link closes.
 

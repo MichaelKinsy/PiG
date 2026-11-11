@@ -7,7 +7,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 )
 
-// Ports packages/chord/src/next/link/errors.ts. Errors on the wire: a ChordError's JSON or a plugin's code, message
+// Ports packages/chord/src/link/errors.ts. Errors on the wire: a ChordError's JSON or a plugin's code, message
 // and details; never a stack or a cause.
 
 // WireError is an error as it crosses a link: `{kind: "chord", error}` (a ChordError's JSON) or

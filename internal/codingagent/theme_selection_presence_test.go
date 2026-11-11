@@ -166,12 +166,13 @@ console.log(JSON.stringify(results));
 
 // upstream 0.99.1 startup-ui.ts createStartupTui and theme.ts resolveThemeSetting: an explicitly empty theme resolves to itself, which setTheme rejects, so the prompt starts on the system theme and stays there once the terminal's colors arrive.
 func TestStartupPromptExplicitEmptyThemeFallsBackToSystem(t *testing.T) {
+	restoreTUIKeybindings(t)
 	restoreStartupTheme(t)
 	var settings Settings
 	if err := json.Unmarshal([]byte(`{"theme":""}`), &settings); err != nil {
 		t.Fatal(err)
 	}
-	configureStartupTheme(settings, nil)
+	configureStartupTui(StartupUIOptions{Settings: settings})
 	if got := tui.ActiveTheme().Name; got != tui.SystemThemeName {
 		t.Fatalf("initial theme = %q, want the system fallback for the empty name", got)
 	}
@@ -191,9 +192,10 @@ func TestStartupPromptExplicitEmptyThemeFallsBackToSystem(t *testing.T) {
 
 // upstream 0.99.1 theme.ts resolveThemeSetting returns undefined for a malformed slash setting, so startup uses the system theme.
 func TestStartupPromptMalformedThemeUsesSystemTheme(t *testing.T) {
+	restoreTUIKeybindings(t)
 	restoreStartupTheme(t)
 	settings := Settings{Theme: "light/dark/extra"}
-	configureStartupTheme(settings, nil)
+	configureStartupTui(StartupUIOptions{Settings: settings})
 	if got := tui.ActiveTheme().Name; got != tui.SystemThemeName {
 		t.Fatalf("initial theme = %q, want the system theme", got)
 	}

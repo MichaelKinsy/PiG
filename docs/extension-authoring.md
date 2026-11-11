@@ -354,14 +354,14 @@ Pig accepts exactly one conventional factory or exact standalone form.
 | Rust | `src/lib.rs` with `pub fn new_extension() -> Extension` | exact crate with `src/main.rs` only |
 | Python | one module with `def new_extension() -> Extension` | executable `main.py` with a shebang |
 | Lisp | one ASDF system (`<name>.asd`) or one `<name>.lisp` file that defines `(defun new-extension ())`, usually through `(pig:define-extension ...)` | executable `main.lisp` with a shebang |
-| Node | Pi-compatible default export | exact executable script with a shebang |
+| Node | Pi-compatible default export | exact executable script with a shebang, run as a native executable that speaks the wire itself (Node has no SDK, so `pig extension init` scaffolds no isolated Node form) |
 | Native | n/a | exact executable file |
 
 Factories of one language may share a generated language cell. Packed TypeScript and JavaScript factories share one Node process (D20). Every standalone remains isolated. Pig rejects mixed languages, several factories, factory-plus-standalone roots, nonstandard factory symbols, missing entrypoints, and identity mismatches. A direct directory uses its directory name as the expected identity. A Package or Piglet supplies its declared member name. Select a narrower exact root instead of relying on scan order.
 
 A Piglet Binary may fuse a compatible Go factory into Pig's process. Fused code must return errors and use extension host/UI APIs for output. The build rejects `os.Exit`, `os.Chdir`, `log.Fatal*`, `fmt.Print*`, and `os.Stdout` in the factory's local package closure with `PIGLET_FUSED_PROCESS_HAZARD` because those operations would terminate Pig, change its working directory, or corrupt terminal output.
 
-Use `pig extension init <path>` to create a factory. Add `--isolated` to create a standalone. The scaffold writes no extension metadata file.
+Use `pig extension init <path> [--lang go|python|rust|lisp|node]` to create a factory (`--lang node` writes `package.json` and a TypeScript `index.ts`). Add `--isolated` to create a standalone (not available for Node, whose executable scripts have no SDK to speak the wire with). The scaffold writes no extension metadata file.
 
 ### Extension directories that hold resource directories
 
@@ -499,7 +499,7 @@ ext.RegisterProvider("example-provider", sdk.ProviderConfig{
 })
 ```
 
-Rust: `ext.register_oauth_provider("example-provider", json!({"name": "Example Provider"}), OAuthProvider { login: Box::new(|cb| ...), .. })`.
+Rust: `ext.register_oauth_provider("example-provider", json!({"name": "Example Provider"}), OAuthProvider { modify_models: Some(Box::new(|models, creds| Ok(models))), ..OAuthProvider::new("Example Provider", |cb| ...) })`; set the optional `refresh_token`, `get_api_key`, `credential_store`, `modify_models` and `uses_callback_server` fields on the value `OAuthProvider::new(name, login)` returns.
 
 Python: `ext.register_oauth_provider("example-provider", {"name": "Example Provider"}, OAuthProvider(login=..., ...))`.
 

@@ -86,7 +86,10 @@ func requireLegacyRPCLines(t testing.TB, label string, event agent.AgentEvent) {
 		wantLine, wantLineErr := legacyRPCLine(want[i])
 		gotLine, gotLineErr := rpcclient.SerializeJsonLine(got[i])
 		// The replaced route's top-level type is the test's wrapper of rpcObject.
-		if fmt.Sprint(gotLineErr) != strings.ReplaceAll(fmt.Sprint(wantLineErr), "cli.legacyRPCObject", "cli.rpcObject") {
+		legacyErr := strings.ReplaceAll(fmt.Sprint(wantLineErr), "cli.legacyRPCObject", "cli.rpcObject")
+		// encoding/json calls the MarshalJSONTo that ai.Usage and the messages define; the sdk encoder calls their MarshalJSON. Same failure.
+		legacyErr = strings.ReplaceAll(legacyErr, "error calling MarshalJSONTo for type", "error calling MarshalJSON for type")
+		if fmt.Sprint(gotLineErr) != legacyErr {
 			t.Fatalf("%s frame %d: encode error %v, legacy %v", label, i, gotLineErr, wantLineErr)
 		}
 		if !bytes.Equal(gotLine, wantLine) {

@@ -157,7 +157,7 @@ func TestGenerateImagesMergesTheImageModelHeaders(t *testing.T) {
 	if err != nil || auth == nil || !reflect.DeepEqual(auth.Auth.Headers, ProviderHeaders{"x-auth": new("auth"), "x-model": new("model"), "x-shared": new("model")}) {
 		t.Fatalf("auth=%v err=%v", auth, err)
 	}
-	result := models.GenerateImages(t.Context(), model, ImagesContext{}, ModelsImagesOptions{ImagesOptions: ImagesOptions{Headers: ProviderHeaders{"x-request": new("request")}}})
+	result := models.GenerateImages(t.Context(), model, ImagesContext{}, ModelsImagesOptions{Headers: ProviderHeaders{"x-request": new("request")}})
 	if result.StopReason != ImagesStopReasonStop || len(calls) != 1 || !reflect.DeepEqual(calls[0].options.Headers, ProviderHeaders{"x-auth": new("auth"), "x-model": new("model"), "x-request": new("request"), "x-shared": new("model")}) {
 		t.Fatalf("result=%v calls=%v", result, calls)
 	}

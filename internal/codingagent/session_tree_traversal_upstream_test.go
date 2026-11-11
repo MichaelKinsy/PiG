@@ -41,7 +41,7 @@ func upstreamCustom(t *testing.T, s *Session, typ string, data any) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := s.AppendEntry(CustomEntry{SessionEntryBase: SessionEntryBase{Type: "custom", ID: id, ParentID: s.GetLeafID(), Timestamp: RFC3339NowNano()}, CustomType: typ, Data: data}); err != nil {
+	if err := s.AppendEntry(CustomEntry{Type: "custom", ID: id, ParentID: s.GetLeafID(), Timestamp: RFC3339NowNano(), CustomType: typ, Data: data}); err != nil {
 		t.Fatal(err)
 	}
 	return id

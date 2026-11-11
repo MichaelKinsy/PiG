@@ -5,6 +5,8 @@ package tui
 // Ports upstream skill-invocation-message.ts: a Box that holds a mouse region over the collapsed line or the expanded
 // header and markdown body.
 
+import "github.com/MichaelKinsy/PiG/coding/extension/markdowntransform"
+
 // ParsedSkillBlock holds the parsed skill invocation data.
 // Mirrors upstream's ParsedSkillBlock.
 type ParsedSkillBlock struct {
@@ -23,12 +25,15 @@ type SkillInvocationMessageComponent struct {
 	surface       markdownSurface
 }
 
-// NewSkillInvocationMessageComponent creates a skill invocation component (constructor(skillBlock, markdownTheme = getMarkdownTheme(), outputPad = 1), skill-invocation-message.ts:16). A nil markdownTheme is the default markdown theme; outputPad is the horizontal padding of the Box.
-func NewSkillInvocationMessageComponent(block ParsedSkillBlock, markdownTheme *MarkdownTheme, outputPad int) *SkillInvocationMessageComponent {
-	return NewSkillInvocationMessageComponentWithSurface(block, markdownTheme, outputPad, MarkdownSurface{})
+// NewSkillInvocationMessageComponent creates a skill invocation component (constructor(skillBlock, markdownTheme = getMarkdownTheme(), outputPad = 1,
+// markdownTransformers = [], messageId?, timestamp?), skill-invocation-message.ts:21). A nil markdownTheme is the default markdown theme; outputPad is the
+// horizontal padding of the Box. markdownTransformers run in order on the skill content as the display-only transform createMarkdownTransform("custom",
+// false, markdownTransformers, messageId, timestamp); messageID and timestamp are the persisted entry's, empty for a live message.
+func NewSkillInvocationMessageComponent(block ParsedSkillBlock, markdownTheme *MarkdownTheme, outputPad int, markdownTransformers []markdowntransform.MarkdownTransformer, messageID, timestamp string) *SkillInvocationMessageComponent {
+	return NewSkillInvocationMessageComponentWithSurface(block, markdownTheme, outputPad, transformerSurface(markdowntransform.MarkdownMessageCustom, markdownTransformers, messageID, timestamp))
 }
 
-// NewSkillInvocationMessageComponentWithSurface is the constructor with the transformers, messageId and timestamp Pi's takes after outputPad.
+// NewSkillInvocationMessageComponentWithSurface is [NewSkillInvocationMessageComponent] with a [MarkdownSurface] in place of the transformers, messageId and timestamp (pig additive, D19: the surface can run its chain off the render loop).
 func NewSkillInvocationMessageComponentWithSurface(block ParsedSkillBlock, markdownTheme *MarkdownTheme, outputPad int, surface MarkdownSurface) *SkillInvocationMessageComponent {
 	component := &SkillInvocationMessageComponent{
 		Box:           NewPaddedBox(outputPad, 1, func(text string) string { return ActiveTheme().Bg("customMessageBg", text) }),

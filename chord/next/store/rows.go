@@ -14,7 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// Ports packages/chord/src/next/store/rows.ts
+// Ports packages/chord/src/store/rows.ts
 //
 // Rows (slice 6a §5 "Values at write", §9): one compiled codec per table version between a plugin's rows and keys
 // (a trust boundary, checked closed) and what the store binds and reads; `json(...)` cells serialized at staging

@@ -188,25 +188,101 @@ func (b Build) Binary(ctx context.Context, out string, strip bool, ldflags ...st
 	return nil
 }
 
-// Symbols builds the package without stripping it and returns the symbols of its symbol table.
+// Symbols builds the package without stripping it and returns the symbols of its symbol table, with the sizes of the data symbols made exact (see ExactDataSizes) for a target whose symbol table does not record sizes.
 func (b Build) Symbols(ctx context.Context, workDir string) ([]Symbol, error) {
-	unstripped := filepath.Join(workDir, "unstripped")
-	if err := b.Binary(ctx, unstripped, false); err != nil {
+	symbols, err := b.nmSymbols(ctx, filepath.Join(workDir, "unstripped"))
+	if err != nil || b.GOOS == "linux" {
+		return symbols, err
+	}
+	reference := b
+	reference.GOOS = "linux"
+	exact, err := reference.nmSymbols(ctx, filepath.Join(workDir, "reference"))
+	if err != nil {
 		return nil, err
 	}
-	nm := b.command(ctx, "go", "tool", "nm", "-size", unstripped)
-	out, err := nm.StdoutPipe()
+	target, err := b.compiledFiles(ctx)
+	if err != nil {
+		return nil, err
+	}
+	linux, err := reference.compiledFiles(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return ExactDataSizes(symbols, exact, func(pkg string) bool {
+		files, ok := target[pkg]
+		return ok && files == linux[pkg]
+	}), nil
+}
+
+// nmSymbols builds the package unstripped into out and reads its symbol table.
+func (b Build) nmSymbols(ctx context.Context, out string) ([]Symbol, error) {
+	if err := b.Binary(ctx, out, false); err != nil {
+		return nil, err
+	}
+	nm := b.command(ctx, "go", "tool", "nm", "-size", out)
+	stdout, err := nm.StdoutPipe()
 	if err != nil {
 		return nil, err
 	}
 	if err = nm.Start(); err != nil {
 		return nil, err
 	}
-	symbols, err := ParseNM(out)
+	symbols, err := ParseNM(stdout)
 	if waitErr := nm.Wait(); err == nil {
 		err = waitErr
 	}
 	return symbols, err
+}
+
+// compiledFiles lists, for every package the build links, the files the compiler gets for the build's target after build constraints: Go, cgo, C, assembly and object files and the files its embed directives pick up. A file set is one comparable string. The key is the package as the linker writes it in symbol names (a dot in the last element of the import path becomes %2e).
+func (b Build) compiledFiles(ctx context.Context) (map[string]string, error) {
+	args := []string{"list", "-deps", "-f", "{{.ImportPath}}\t{{.GoFiles}} {{.CgoFiles}} {{.CFiles}} {{.SFiles}} {{.SysoFiles}} {{.EmbedFiles}}"}
+	if b.Tags != "" {
+		args = append(args, "-tags", b.Tags)
+	}
+	args = append(args, b.Package)
+	out, err := b.command(ctx, "go", args...).Output()
+	if err != nil {
+		return nil, fmt.Errorf("go list -deps %s for %s/%s: %w", b.Package, b.GOOS, b.GOARCH, err)
+	}
+	files := map[string]string{}
+	//portlint:allow pathseparators go list writes \n line ends only on every platform; Go-only build tooling, no Pi counterpart
+	for line := range strings.SplitSeq(string(out), "\n") {
+		if pkg, set, ok := strings.Cut(line, "\t"); ok {
+			files[linkerPath(pkg)] = set
+		}
+	}
+	return files, nil
+}
+
+// linkerPath is the import path as the linker writes it in symbol names.
+func linkerPath(pkg string) string {
+	slash := strings.LastIndexByte(pkg, '/')
+	return pkg[:slash+1] + strings.ReplaceAll(pkg[slash+1:], ".", "%2e")
+}
+
+// ExactDataSizes corrects the sizes of the data symbols of a Mach-O or PE binary with those of the same program built for linux on the same architecture. ELF symbol tables record each symbol's size; Mach-O and PE tables do not, and `go tool nm -size` then reports the distance to the next symbol in the table, which includes any symbols the linker leaves out of the table. A table such as bidi.bidiIndex (3,328 B) was reported as 13,760 B on darwin_arm64 and the embed.FS file list of export (408 B) as 3,328 B on windows_amd64, which put a package over the heavyweight line only because of where the linker had placed it. A data symbol's size does not depend on the operating system when the package compiles the same files on both, so for the packages sameFiles accepts the smaller of the two sizes is the real one. A package whose file set differs between the systems may declare a symbol of the same name with another size on each (a table in a !linux file), so its symbols keep the size nm reported: that never under-reports. Code and the linker's own tables (names that start with "go:") keep the reported size too, since they differ between the operating systems.
+//
+// Residual: a file shared by linux and the target can declare a table whose size depends on a per-OS constant (an array sized by a value a per-OS file defines). The file sets match, so the linux size is trusted and growth of that table on the target stays hidden from the per-package gate; only the stripped-size ceilings in ratchet.toml bound it, in total.
+func ExactDataSizes(symbols, linux []Symbol, sameFiles func(pkg string) bool) []Symbol {
+	exact := make(map[string]int64, len(linux))
+	for _, symbol := range linux {
+		if isData(symbol) {
+			exact[symbol.Name] = symbol.Size
+		}
+	}
+	corrected := slices.Clone(symbols)
+	for i, symbol := range corrected {
+		if size, ok := exact[symbol.Name]; ok && isData(symbol) && size < symbol.Size && sameFiles(PackageOf(symbol.Name)) {
+			corrected[i].Size = size
+		}
+	}
+	return corrected
+}
+
+// isData reports whether symbol is an initialized data symbol of a program's own packages: nm's types D and R and their local forms.
+func isData(symbol Symbol) bool {
+	return strings.ContainsRune("DdRr", rune(symbol.Kind)) && !strings.HasPrefix(symbol.Name, "go:")
 }
 
 // StrippedSize builds the package with -s -w and returns the size of the binary, the number the size gate measures.

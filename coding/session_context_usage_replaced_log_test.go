@@ -54,7 +54,7 @@ func contextUsageSession(t *testing.T, manager *SessionManager) *Session {
 func requireFreshContextUsage(t *testing.T, s *Session, step string) *SessionContextUsage {
 	t.Helper()
 	got := s.ContextUsage()
-	if want := s.projectedContextUsage(s.inner, s.limitsModel().Capabilities.ContextWindow); !reflect.DeepEqual(got, want) {
+	if want := s.projectedContextUsage(s.inner.Load(), s.limitsModel().Capabilities.ContextWindow); !reflect.DeepEqual(got, want) {
 		t.Fatalf("%s: ContextUsage = %s, a fresh estimate = %s", step, usageString(got), usageString(want))
 	}
 	return got
@@ -105,9 +105,9 @@ func TestProjectedContextUsageDoesNotCopyTheBranchMessages(t *testing.T) {
 	manager := contextUsageLog(t, 200, 1000)
 	s := contextUsageSession(t, manager)
 	window := s.limitsModel().Capabilities.ContextWindow
-	s.projectedContextUsage(s.inner, window)
-	estimate := testing.AllocsPerRun(10, func() { s.projectedContextUsage(s.inner, window) })
-	copied := testing.AllocsPerRun(10, func() { s.inner.BuildSessionProjection() })
+	s.projectedContextUsage(s.inner.Load(), window)
+	estimate := testing.AllocsPerRun(10, func() { s.projectedContextUsage(s.inner.Load(), window) })
+	copied := testing.AllocsPerRun(10, func() { s.inner.Load().BuildSessionProjection() })
 	if estimate >= copied {
 		t.Fatalf("estimating the context used %.0f allocations; copying its messages takes %.0f", estimate, copied)
 	}

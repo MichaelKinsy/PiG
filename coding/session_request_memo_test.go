@@ -48,7 +48,7 @@ func TestSessionRequestsMatchTheStandardConversionAfterHistoryOperations(t *test
 		var mu sync.Mutex
 		var requests []string
 		// Each answer carries the same durationMs: the stream would otherwise measure it per run, and a loaded host makes the two runs' requests differ by whole milliseconds while the conversion is identical.
-		provider := recordingDeltaProvider{scalingDeltaProvider: scalingDeltaProvider{deltas: 2, durationMs: 7}, mu: &mu, requests: &requests}
+		provider := recordingDeltaProvider{deltas: 2, durationMs: 7, mu: &mu, requests: &requests}
 		model := &ai.Model{ID: "scaling-model", DisplayName: "scaling", Provider: provider, Capabilities: ai.ModelCapabilities{ContextWindow: 10_000_000, MaxThinking: ai.ThinkingLevelHigh}}
 		s, err := NewSession(services, SessionOptions{Model: model, SessionManager: scalingSessionManager(t, 40), ResourceLoader: NoResources, SkipBuiltinTools: true, SystemPrompt: "Test"})
 		if err != nil {

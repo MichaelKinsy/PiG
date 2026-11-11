@@ -304,6 +304,11 @@ func (s *Sandbox) chunk(chunk []byte) {
 		_ = os.Remove(filepath.Join(s.directory, BootstrapFile))
 	}
 	messages, err := s.reader.Push(chunk)
+	if err != nil {
+		// Pi's `#read`: the push threw, the chunk's messages (none) are not passed on and the sandbox fails.
+		s.fail(err.Error())
+		return
+	}
 	for _, message := range messages {
 		s.mu.Lock()
 		ended := s.ended
@@ -311,9 +316,6 @@ func (s *Sandbox) chunk(chunk []byte) {
 		if !ended {
 			s.onMessage(message)
 		}
-	}
-	if err != nil {
-		s.fail(err.Error())
 	}
 }
 

@@ -171,11 +171,11 @@ func TestBuiltMembersWriteTheirFields(t *testing.T) {
 		entry SessionEntry
 		want  string
 	}{
-		{LabelEntry{SessionEntryBase: SessionEntryBase{Type: "label", ID: "l", Timestamp: "t"}, TargetID: "x", Label: &label},
+		{LabelEntry{Type: "label", ID: "l", Timestamp: "t", TargetID: "x", Label: &label},
 			`{"type":"label","id":"l","parentId":null,"timestamp":"t","targetId":"x","label":"<mark>&"}`},
-		{ContextEditEntry{SessionEntryBase: SessionEntryBase{Type: "context_edit", ID: "e", Timestamp: "t"}, TargetID: "x"},
+		{ContextEditEntry{Type: "context_edit", ID: "e", Timestamp: "t", TargetID: "x"},
 			`{"type":"context_edit","id":"e","parentId":null,"timestamp":"t","targetId":"x","replacement":null}`},
-		{SessionInfoEntry{SessionEntryBase: SessionEntryBase{Type: "session_info", ID: "i", Timestamp: "t"}, Name: "n"},
+		{SessionInfoEntry{Type: "session_info", ID: "i", Timestamp: "t", Name: "n"},
 			`{"type":"session_info","id":"i","parentId":null,"timestamp":"t","name":"n"}`},
 	} {
 		out, err := marshalLine(row.entry)

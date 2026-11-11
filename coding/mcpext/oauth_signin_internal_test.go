@@ -22,7 +22,7 @@ func TestSignInNoticeShowsThePlainAuthorizationURL(t *testing.T) {
 		var got []string
 		opened := ""
 		e := &Extension{options: Options{OpenURL: func(u string) { opened = u }}}
-		ctx := CommandContext{Mode: c.mode, EventContext: EventContext{Notify: func(message, _ string) { got = append(got, message) }}}
+		ctx := CommandContext{Mode: c.mode, Notify: func(message, _ string) { got = append(got, message) }}
 		(&commandSignIn{e: e, ctx: ctx, name: "docs"}).ShowAuthorizationURL(u)
 		if len(got) != 1 || got[0] != c.want {
 			t.Fatalf("mode %s: notes = %q, want %q", c.mode, got, c.want)

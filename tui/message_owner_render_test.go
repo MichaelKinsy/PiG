@@ -38,10 +38,10 @@ func TestMessageOwnersRenderBytes(t *testing.T) {
 		for _, width := range []int{20, 40, 80, 120} {
 			for _, pad := range []int{0, 1, 3} {
 				user := NewUserMessageComponent(src, nil, pad, nil, "id", "ts")
-				branch := NewBranchSummaryMessageComponent(BranchSummaryMessage{Summary: src}, nil, pad)
-				compaction := NewCompactionSummaryMessageComponent(CompactionSummaryMessage{Summary: src, TokensBefore: 87432}, nil, pad)
-				custom := NewCustomMessageComponent(&CustomMessage{CustomType: "x", Content: src}, nil, nil, pad)
-				skill := NewSkillInvocationMessageComponent(ParsedSkillBlock{Name: "skill", Content: src}, nil, pad)
+				branch := NewBranchSummaryMessageComponent(BranchSummaryMessage{Summary: src}, nil, pad, nil, "", "")
+				compaction := NewCompactionSummaryMessageComponent(CompactionSummaryMessage{Summary: src, TokensBefore: 87432}, nil, pad, nil, "", "")
+				custom := NewCustomMessageComponent(&CustomMessage{CustomType: "x", Content: src}, nil, nil, pad, nil, "", "")
+				skill := NewSkillInvocationMessageComponent(ParsedSkillBlock{Name: "skill", Content: src}, nil, pad, nil, "", "")
 				for _, expanded := range []bool{false, true} {
 					branch.SetExpanded(expanded)
 					compaction.SetExpanded(expanded)

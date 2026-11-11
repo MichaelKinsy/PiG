@@ -11,8 +11,8 @@ import (
 	"math"
 )
 
-// Ports packages/chord/src/next-node/compression.ts (nodeCompression) and the Inflated outcome of
-// packages/chord/src/next/link/part.ts it returns.
+// Ports packages/chord/src/node/compression.ts (nodeCompression) and the Inflated outcome of
+// packages/chord/src/link/part.ts it returns.
 
 // InflatedKind tags an Inflated outcome.
 type InflatedKind string
@@ -37,7 +37,7 @@ type Inflated struct {
 // NoLimit is `Number.POSITIVE_INFINITY`: an inflate limit that never bounds the output.
 var NoLimit = math.Inf(1)
 
-// Compression is the synchronous compressor `createHost({ compression })` takes (packages/chord/src/next/link/part.ts).
+// Compression is the synchronous compressor `createHost({ compression })` takes (packages/chord/src/link/part.ts).
 // Deflate is raw deflate at level 1. Inflate gives at most limit bytes (NoLimit: no limit; 0 allowed), too_large when
 // the output would be larger, corrupt for data that is no raw deflate stream.
 type Compression interface {

@@ -121,7 +121,7 @@ pub fn new_extension() -> Extension {
  let mut ext = Extension::new(%q);
  ext.register_oauth_provider(%q, serde_json::json!({}), OAuthProvider {
   name: String::new(), is_subscription: %t, login: Box::new(|_| Ok(OAuthCredentials { account_id: %q.to_string(), scope: %q.to_string(), ..OAuthCredentials::default() })),
-  refresh_token: Some(Box::new(|c| Ok(c))), get_api_key: None, credential_store: None,
+  refresh_token: Some(Box::new(|c| Ok(c))), get_api_key: None, credential_store: None, modify_models: None, uses_callback_server: false,
  });
  ext
 }

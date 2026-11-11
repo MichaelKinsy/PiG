@@ -29,12 +29,10 @@ func ECDSAKeyFromPoint(curve elliptic.Curve, d *big.Int) *ecdsa.PrivateKey {
 	pX, pY := curve.ScalarBaseMult(d.Bytes())
 
 	privKey := &ecdsa.PrivateKey{
-		PublicKey: ecdsa.PublicKey{
-			Curve: curve,
-			X:     pX,
-			Y:     pY,
-		},
-		D: d,
+		Curve: curve,
+		X:     pX,
+		Y:     pY,
+		D:     d,
 	}
 
 	return privKey

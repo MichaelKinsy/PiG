@@ -24,8 +24,8 @@ func serveTestMessages() []RemoteMessage {
 		wire(WorkerToHostMessage{Type: MessageDone, Ok: true, Writes: new("[]")}),
 		wire(WorkerToHostMessage{Type: MessageDone, Ok: false, Error: new(`{"name":"Error","message":"boom"}`)}),
 		wire(WorkerToHostMessage{Type: MessageCrash, Message: text}),
-		{WorkerToHostMessage: WorkerToHostMessage{Type: MessageFailure}, Failure: &Error{Kind: ErrorTimeout, Message: "Execution exceeded its interrupt budget of 1000"}},
-		{WorkerToHostMessage: WorkerToHostMessage{Type: MessageFailure}, Failure: &Error{Kind: ErrorScript, Name: "RangeError", Message: "m", Stack: "s\n  at x"}},
+		{Type: MessageFailure, Failure: &Error{Kind: ErrorTimeout, Message: "Execution exceeded its interrupt budget of 1000"}},
+		{Type: MessageFailure, Failure: &Error{Kind: ErrorScript, Name: "RangeError", Message: "m", Stack: "s\n  at x"}},
 	}
 }
 
@@ -63,7 +63,7 @@ func TestAppendExchangeMatchesEncodingJSON(t *testing.T) {
 // A JavaScript string keeps a lone surrogate (WTF-8 in a Go string) through the exchange, where encoding/json writes U+FFFD.
 func TestAppendExchangeKeepsALoneSurrogate(t *testing.T) {
 	lone := "a\xed\xa0\x80b"
-	got := string(appendExchange(nil, 1, []RemoteMessage{{WorkerToHostMessage: WorkerToHostMessage{Type: MessageOutput, Item: &OutputItem{Type: OutputItemText, Text: lone}}}}))
+	got := string(appendExchange(nil, 1, []RemoteMessage{{Type: MessageOutput, Item: &OutputItem{Type: OutputItemText, Text: lone}}}))
 	if !strings.Contains(got, `"a\ud800b"`) {
 		t.Fatalf("lone surrogate: %s", got)
 	}
@@ -72,8 +72,8 @@ func TestAppendExchangeKeepsALoneSurrogate(t *testing.T) {
 // The output items the host holds stand in a batch for a placeholder, which the encoder turns into the number of items the host puts in
 // front of the messages (the Worker host, serve.ts, takes that many from what the module handed it).
 func TestAppendExchangeCountsTheHostedOutput(t *testing.T) {
-	call := RemoteMessage{WorkerToHostMessage: WorkerToHostMessage{Type: MessageCall, ID: 7, Target: "tool", Name: "echo"}}
-	hosted := RemoteMessage{WorkerToHostMessage: WorkerToHostMessage{Type: messageHostedOutput, ID: 12}}
+	call := RemoteMessage{Type: MessageCall, ID: 7, Target: "tool", Name: "echo"}
+	hosted := RemoteMessage{Type: messageHostedOutput, ID: 12}
 	got := string(appendExchange(nil, 3, []RemoteMessage{hosted, call}))
 	want := `{"id":3,"take":12,"messages":[{"type":"call","id":7,"target":"tool","name":"echo"}]}`
 	if got != want {

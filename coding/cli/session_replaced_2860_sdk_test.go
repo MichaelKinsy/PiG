@@ -62,7 +62,15 @@ func runReplaced2860(t *testing.T, bin, fixture string, messages ...string) []st
 	t.Helper()
 	dir := t.TempDir()
 	log := filepath.Join(dir, "2860.log")
-	args := []string{"--no-extensions", "--no-skills", "--no-prompt-templates", "--session-dir", filepath.Join(dir, "sessions"), "--model", "test-faux/faux-1", "-e", fixture, "-p"}
+	// The prompt template "echo" ("/echo Alice" expands to "reply with exactly: expanded Alice") that the expand-it command sends to the replacement Session.
+	prompts := filepath.Join(dir, "prompts")
+	if err := os.MkdirAll(prompts, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(prompts, "echo.md"), []byte("reply with exactly: expanded $1"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	args := []string{"--no-extensions", "--no-skills", "--no-prompt-templates", "--prompt-template", prompts, "--session-dir", filepath.Join(dir, "sessions"), "--model", "test-faux/faux-1", "-e", fixture, "-p"}
 	// A blocked extension keeps pig running, so each run has a bound.
 	ctx := testbudget.Context(t)
 	cmd := exec.CommandContext(ctx, bin, append(args, messages...)...)
@@ -123,6 +131,13 @@ func TestReplacedSession2860AcrossSDKs(t *testing.T) {
 			name:     "callback error",
 			messages: []string{"/throw-it"},
 			want:     []string{"start:1", "shutdown:1", "start:2", "caught:callback failed", "shutdown:2"},
+		},
+		{
+			// types.ts:463-473, agent-session.ts:2530-2557: the replacement context's sendUserMessage hands expandPromptTemplates to the replacement Session. true runs the template "/echo Alice" as typed input would (the model sees "reply with exactly: expanded Alice"); false and no option send the text as it is, which the faux model answers "done" because it does not start with the reply prefix.
+			name:     "sendUserMessage expands prompt templates",
+			messages: []string{"/expand-it"},
+			want: []string{"start:1", "shutdown:1", "start:2",
+				"conversation:user:reply with exactly: expanded Alice|assistant:expanded Alice|user:/echo reply with exactly: Bob|assistant:done|user:/echo reply with exactly: Carol|assistant:done", "shutdown:2"},
 		},
 		{
 			// A replacement context the callback kept and used after the call returned must not block the extension process.

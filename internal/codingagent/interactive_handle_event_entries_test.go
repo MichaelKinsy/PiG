@@ -40,8 +40,8 @@ func entryRendererMode(t *testing.T) eventProbe {
 func TestHandleEventEntryAppendedCustomUsesTheEntryRenderer(t *testing.T) {
 	p := entryRendererMode(t)
 	p.handleAgentEvent(agent.MessageStartEvent{Message: assistantMsg("", ai.TextContent{Text: "STREAMING"})})
-	p.handleAgentEvent(entryAppended(t, CustomEntry{SessionEntryBase: SessionEntryBase{Type: "custom", ID: "e1"}, CustomType: "note", Data: "BOUNDARY-ENTRY"}))
-	p.handleAgentEvent(entryAppended(t, CustomEntry{SessionEntryBase: SessionEntryBase{Type: "custom", ID: "e2"}, CustomType: "unregistered", Data: "UNSEEN"}))
+	p.handleAgentEvent(entryAppended(t, CustomEntry{Type: "custom", ID: "e1", CustomType: "note", Data: "BOUNDARY-ENTRY"}))
+	p.handleAgentEvent(entryAppended(t, CustomEntry{Type: "custom", ID: "e2", CustomType: "unregistered", Data: "UNSEEN"}))
 	got := p.chat()
 	entry, streaming := strings.Index(got, "entry:BOUNDARY-ENTRY"), strings.Index(got, "STREAMING")
 	if entry < 0 || streaming < 0 || entry > streaming || strings.Contains(got, "UNSEEN") {
@@ -52,8 +52,8 @@ func TestHandleEventEntryAppendedCustomUsesTheEntryRenderer(t *testing.T) {
 // A custom_message entry draws as a message when it is displayed; a hidden one draws nothing.
 func TestHandleEventEntryAppendedCustomMessageDrawsWhenDisplayed(t *testing.T) {
 	p := newEventProbe(t, false)
-	p.handleAgentEvent(entryAppended(t, CustomMessageEntry{SessionEntryBase: SessionEntryBase{Type: "custom_message", ID: "m1"}, CustomType: "note", Content: "SHOWN BOUNDARY MESSAGE", Display: true}))
-	p.handleAgentEvent(entryAppended(t, CustomMessageEntry{SessionEntryBase: SessionEntryBase{Type: "custom_message", ID: "m2"}, CustomType: "note", Content: "HIDDEN BOUNDARY MESSAGE", Display: false}))
+	p.handleAgentEvent(entryAppended(t, CustomMessageEntry{Type: "custom_message", ID: "m1", CustomType: "note", Content: "SHOWN BOUNDARY MESSAGE", Display: true}))
+	p.handleAgentEvent(entryAppended(t, CustomMessageEntry{Type: "custom_message", ID: "m2", CustomType: "note", Content: "HIDDEN BOUNDARY MESSAGE", Display: false}))
 	if got := p.chat(); !strings.Contains(got, "SHOWN BOUNDARY MESSAGE") || strings.Contains(got, "HIDDEN BOUNDARY MESSAGE") {
 		t.Fatalf("chat = %q", got)
 	}

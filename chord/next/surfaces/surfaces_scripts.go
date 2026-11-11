@@ -76,6 +76,10 @@ var WebScripts = scriptsContract("chord.web.scripts")
 // TuiScripts is the current terminal scripts (ScriptSet), served by the server's terminal surface as WebScripts is.
 var TuiScripts = scriptsContract("chord.tui.scripts")
 
+// ScriptsContract is the contract of a client kind's scripts, as clients hold it (WebScripts, TuiScripts): Pi's
+// `typeof WebScripts | typeof TuiScripts`; both are a remote contract, whose Go type is *contracts.Contract.
+type ScriptsContract = *contracts.Contract
+
 // scriptsContract is the contract of a client kind's current scripts, named name: a remote object on the server, its state
 // the set.
 func scriptsContract(name string) *contracts.Contract {

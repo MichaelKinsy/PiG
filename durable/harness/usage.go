@@ -49,15 +49,13 @@ func (state *UsageState) bucket(name UsageBucket) map[string]ai.Usage {
 
 // UsageDoc is the built-in per-conversation usage ledger. Every change stores a complete base (usage.ts:21).
 var UsageDoc = durable.DefineDoc(durable.DocDefinition[UsageState]{
-	CommonDocDefinition: durable.CommonDocDefinition[UsageState]{
-		Kind:    "pi.usage",
-		Version: 1,
-		CheckpointWhenRaw: func(durable.JsonObject, []durable.Op, durable.CheckpointInfo) bool {
-			return true
-		},
-
-		Initial: NewUsageState,
+	Kind:    "pi.usage",
+	Version: 1,
+	CheckpointWhenRaw: func(durable.JsonObject, []durable.Op, durable.CheckpointInfo) bool {
+		return true
 	},
+
+	Initial:           NewUsageState,
 	DocumentSemantics: durable.NewLatestConversationSemantics(durable.ForkInitial).DocumentSemantics,
 })
 

@@ -39,9 +39,9 @@ func TestToolCallInputMutationAcrossSDKs(t *testing.T) {
 				input := newInput(command)
 				wire := json.RawMessage(`{"timeout":5,"drop":"dropped","command":` + mustJSON(t, command) + `}`)
 				event := extension.CustomToolCallEvent{
-					ToolCallEventBase: extension.ToolCallEventBase{Type: "tool_call", ToolCallID: tool + "-" + command, WireInput: &wire},
-					ToolName:          tool,
-					Input:             input,
+					Type: "tool_call", ToolCallID: tool + "-" + command, WireInput: &wire,
+					ToolName: tool,
+					Input:    input,
 				}
 				result, err := h.runner.EmitToolCall(ctx, event)
 				if err != nil {

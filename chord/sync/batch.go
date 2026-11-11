@@ -242,19 +242,21 @@ func (chunks *lineChunks) Next(ctx context.Context) ([]byte, bool, error) {
 			chunks.done = true
 			break
 		}
-		line, err := EncodeLogLine(commit)
+		before := len(chunks.pending)
+		pending, err := appendLogLine(chunks.pending, commit)
 		if err != nil {
 			chunks.done = true
 			_ = chunks.commits.Close()
 			return nil, false, err
 		}
+		chunks.pending = pending
 		// Pi's `pending += line` throws past V8's string length; a line this port writes must pull back, so it is refused alike.
-		if len(line)+len(chunks.pending) > stringLimit && jsstring.LengthBytes(line)+jsstring.LengthBytes(chunks.pending) > stringLimit {
+		line := pending[before:]
+		if len(line)+before > stringLimit && jsstring.LengthBytes(line)+jsstring.LengthBytes(pending[:before]) > stringLimit {
 			chunks.done = true
 			_ = chunks.commits.Close()
 			return nil, false, &RangeError{}
 		}
-		chunks.pending = append(chunks.pending, line...)
 	}
 	if len(chunks.pending) == 0 {
 		return nil, false, nil

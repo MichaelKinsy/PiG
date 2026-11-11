@@ -137,8 +137,8 @@ func TestConformance_HandedBackEventObjectsKeepTheirMemberOrder(t *testing.T) {
 			t.Run("tool_result", func(t *testing.T) {
 				runConformanceCommandArgs(t, h, "event_echo_probe", "tool_result")
 				got, err := h.runner.EmitToolResult(ctx, extension.CustomToolResultEvent{
-					ToolResultEventBase: extension.ToolResultEventBase{Type: "tool_result", ToolCallID: "c1", Input: map[string]any{}, Content: []any{map[string]any{"type": "text", "text": "ok"}}},
-					ToolName:            "probe", Details: json.RawMessage(details),
+					Type: "tool_result", ToolCallID: "c1", Input: map[string]any{}, Content: []any{map[string]any{"type": "text", "text": "ok"}},
+					ToolName: "probe", Details: json.RawMessage(details),
 				})
 				if err != nil {
 					t.Fatal(err)

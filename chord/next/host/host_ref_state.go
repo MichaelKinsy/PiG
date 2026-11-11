@@ -11,7 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// Ports packages/chord/src/next/host/ref-state.ts. The state of a reference (§7): loading, live, failed or ended; and
+// Ports packages/chord/src/host/ref-state.ts. The state of a reference (§7): loading, live, failed or ended; and
 // `ref.state`, the native watchable that follows it.
 
 // RefStateKind is where a reference stands.

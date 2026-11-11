@@ -438,8 +438,12 @@ function of the call's input (a hash-table) returning \"all\" or the words that 
     (ctx-call-host ctx "sendMessage" (obj "message" message "options" options))
     nil))
 
-(defun ctx-send-user-message (ctx content &key (deliver-as "followUp"))
-  (ctx-call-host ctx "sendUserMessage" (obj "content" content "options" (obj "deliverAs" deliver-as)))
+(defun ctx-send-user-message (ctx content &key (deliver-as "followUp") expand-prompt-templates)
+  "EXPAND-PROMPT-TEMPLATES (types.ts:1792): true dispatches an extension command and expands a skill command or prompt template in CONTENT as typed input would; :false is false; NIL is Pi's default, false."
+  (let ((options (obj "deliverAs" deliver-as)))
+    (when expand-prompt-templates
+      (setf (gethash "expandPromptTemplates" options) (if (eq expand-prompt-templates :false) :false t)))
+    (ctx-call-host ctx "sendUserMessage" (obj "content" content "options" options)))
   nil)
 
 (defun ctx-append-entry (ctx custom-type data)

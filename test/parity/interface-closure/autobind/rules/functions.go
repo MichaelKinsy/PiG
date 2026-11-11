@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"unicode"
 )
 
 // Functions and options rule family.
@@ -1020,22 +1021,26 @@ func containsString(list []string, s string) bool {
 
 // okErrorResult applies S13: Result<V, E>, an alias of { ok: true; value: V } | { ok: false; error: E }, is the Go results (V, error);
 // a void V is the single result error. The Go function must end in an error: without one the failure arm has nowhere to go.
+// S13f: any alias of that union with the error type fixed is the same, with V its one type argument (chord sync's
+// `FileResult<T> = { ok: true; value: T } | { ok: false; error: Error }`).
 func okErrorResult(env FuncEnv, returns string, values []types.Type, hadError bool) (Verdict, bool) {
-	args, ok := strings.CutPrefix(returns, "Result<")
-	if !ok || !strings.HasSuffix(args, ">") || env.Alias == nil {
+	name, args, ok := strings.Cut(returns, "<")
+	if !ok || !strings.HasSuffix(args, ">") || env.Alias == nil || !isIdentifier(name) {
 		return Verdict{}, false
 	}
-	body, ok := env.Alias("Result")
+	body, ok := env.Alias(name)
 	if !ok || !isOkErrorUnion(body) {
 		return Verdict{}, false
 	}
 	parts := SplitTop(strings.TrimSuffix(args, ">"), ",")
-	if len(parts) != 2 {
+	if len(parts) != 2 && (len(parts) != 1 || name == "Result") {
 		return Verdict{}, false
 	}
 	if !hadError {
-		if v, ok := resultStruct(env, parts, values); ok {
-			return v, true // S13r
+		if len(parts) == 2 {
+			if v, ok := resultStruct(env, parts, values); ok {
+				return v, true // S13r
+			}
 		}
 		return Refute("S13: upstream returns %s, Go has no error result for the failure arm", returns), true
 	}
@@ -1083,6 +1088,19 @@ func resultStruct(env FuncEnv, parts []string, values []types.Type) (Verdict, bo
 	return All(vs...), true
 }
 
+// isIdentifier reports whether name is one plain identifier.
+func isIdentifier(name string) bool {
+	if name == "" {
+		return false
+	}
+	for i, r := range name {
+		if r != '_' && r != '$' && !unicode.IsLetter(r) && (i == 0 || !unicode.IsDigit(r)) {
+			return false
+		}
+	}
+	return true
+}
+
 // isOkErrorUnion reports whether an alias body is exactly the two-arm union { ok: true; value: _ } | { ok: false; error: _ }.
 func isOkErrorUnion(body string) bool {
 	arms := SplitTop(strings.TrimSpace(body), "|")
@@ -1090,7 +1108,7 @@ func isOkErrorUnion(body string) bool {
 		return false
 	}
 	have := func(arm, want string) bool {
-		arm = strings.Join(strings.Fields(strings.NewReplacer("{", " ", "}", " ", ";", " ", ",", " ").Replace(arm)), " ")
+		arm = strings.Join(strings.Fields(strings.NewReplacer("{", " ", "}", " ", ";", " ", ",", " ", "readonly ", " ").Replace(arm)), " ")
 		return strings.HasPrefix(arm, want)
 	}
 	return have(arms[0], "ok: true value:") && have(arms[1], "ok: false error:")

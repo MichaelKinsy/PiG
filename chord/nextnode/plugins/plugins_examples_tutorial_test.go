@@ -20,6 +20,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/next/surfaces"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
 // tutorialModules writes the tutorial app's API v1 (`@todo/app/v1`) as src/api/v1/index.ts has it for a test: Chord's surface
@@ -87,7 +88,7 @@ func tutorialListOf(t *testing.T) *tutorialList {
 	worker := delta.JsonObjectOf("kind", "worker", "list", "list|groceries")
 	tested := tpPlugin(t, filepath.Join(root, "plugins", "lists"), TestPluginOptions{
 		Kind: "worker", Kinds: []string{"server", "worker", "web", "tui"},
-		Api:     &AppApi{Name: "@todo/app", Versions: []string{"v1"}},
+		Api:     &model.AppApi{Name: "@todo/app", Versions: []string{"v1"}},
 		Modules: tutorialModules(t, cache), Address: &address, Principal: worker, Node: NodeOptions{CacheDir: cache},
 	})
 	server, err := host.CreateHost(host.HostOptions{Principal: serverPrincipal, OnError: func(host.HostError) {}})

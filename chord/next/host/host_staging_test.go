@@ -17,8 +17,8 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/store"
 )
 
-// pi: packages/chord/src/next/host/staging.ts
-// Ports packages/chord/test/next/host/staging.test.ts: staging (slice 7b §2, per plugin since slice 7c): a reload's setups
+// pi: packages/chord/src/host/staging.ts
+// Ports packages/chord/test/host/staging.test.ts: staging (slice 7b §2, per plugin since slice 7c): a reload's setups
 // and recorded factories; each kind of throw keeps the failing plugin on its old code, reported; recorded declarations decide
 // an object's fate.
 
@@ -205,7 +205,7 @@ func TestStagingAFactoryThatUsesTheHandlesItDeclaresIsInertNotAFailure(t *testin
 		_ = keyedHandle.Retire(background, "a")
 		_, _ = table.Get(background, "a")
 		_, _ = table.Count(background, store.NewQuery(items))
-		_ = table.AssertVersion()
+		_ = table.(*store.TableHandle).AssertVersion()
 	}
 	host := newHost(t, HostOptions{Store: chordStore, OnError: noopOnError})
 	defer closeHosts(t, host)
@@ -231,7 +231,7 @@ func TestStagingATableOfTheNewFactoryAtANewerVersionThanTheStoresRestartsTheObje
 	chordStore := memoryStore(t)
 	v1, err := store.DefineTable("items", store.TableOptions{Version: 1, Columns: []store.ColumnProp{store.Col("id", store.Str()), store.Col("name", store.Str())}, Key: []string{"id"}})
 	must(t, err)
-	v2, err := store.EvolveTable(v1, func(e *store.TableEditor) *store.TableEditor { return e.Rename("name", "title") })
+	v2, err := store.EvolveTable(v1, func(e *store.TableEditor) store.TableTailEditor { return e.Rename("name", "title") })
 	must(t, err)
 	host := newHost(t, HostOptions{Store: chordStore, OnError: noopOnError})
 	defer closeHosts(t, host)

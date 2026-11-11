@@ -3,6 +3,8 @@ package tui
 import (
 	"strconv"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/coding/extension/markdowntransform"
 )
 
 // customMsgLabelFg is the foreground color for the [compaction] label.
@@ -31,18 +33,15 @@ type CompactionSummaryMessage struct {
 	TokensBefore int
 }
 
-// NewCompactionSummaryMessageComponent is Pi's constructor(message, markdownTheme = getMarkdownTheme(), outputPad = 1)
-// (compaction-summary-message.ts:15). The expanded body renders the summary with markdownTheme; nil selects the active
-// theme's markdown theme. outputPad is the horizontal padding; absent it is 1.
-func NewCompactionSummaryMessageComponent(message CompactionSummaryMessage, markdownTheme *MarkdownTheme, outputPad ...int) *CompactionSummaryMessageComponent {
-	padX := 1
-	if len(outputPad) > 0 {
-		padX = outputPad[0]
-	}
-	return NewCompactionSummaryMessageComponentWithSurface(message, markdownTheme, padX, MarkdownSurface{})
+// NewCompactionSummaryMessageComponent is Pi's constructor(message, markdownTheme = getMarkdownTheme(), outputPad = 1, markdownTransformers = [],
+// messageId?, timestamp?) (compaction-summary-message.ts:20). The expanded body renders the summary with markdownTheme; nil selects the active
+// theme's markdown theme. outputPad is the horizontal padding. markdownTransformers run in order on the summary as the display-only transform
+// createMarkdownTransform("summary", false, markdownTransformers, messageId, timestamp); messageID and timestamp are the persisted entry's, empty for a live message.
+func NewCompactionSummaryMessageComponent(message CompactionSummaryMessage, markdownTheme *MarkdownTheme, outputPad int, markdownTransformers []markdowntransform.MarkdownTransformer, messageID, timestamp string) *CompactionSummaryMessageComponent {
+	return NewCompactionSummaryMessageComponentWithSurface(message, markdownTheme, outputPad, summarySurface(markdownTransformers, messageID, timestamp))
 }
 
-// NewCompactionSummaryMessageComponentWithSurface is the constructor with the transformers, messageId and timestamp Pi's takes after outputPad.
+// NewCompactionSummaryMessageComponentWithSurface is [NewCompactionSummaryMessageComponent] with a [MarkdownSurface] in place of the transformers, messageId and timestamp (pig additive, D19: the surface can run its chain off the render loop).
 func NewCompactionSummaryMessageComponentWithSurface(message CompactionSummaryMessage, markdownTheme *MarkdownTheme, padX int, surface MarkdownSurface) *CompactionSummaryMessageComponent {
 	component := &CompactionSummaryMessageComponent{
 		Box:           NewPaddedBox(padX, 1, func(text string) string { return ActiveTheme().Bg("customMessageBg", text) }),

@@ -7,7 +7,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 )
 
-// Ports packages/chord/test/next/contracts/evolve.test.ts.
+// Ports packages/chord/test/contracts/evolve.test.ts.
 //
 // Designed out: every expectTypeOf and @ts-expect-error (the editor interfaces and Implementation<C> track edits in
 // the types; the Go editors are RemoteEditor and LocalEditor, both holding one draft), and the "types track every

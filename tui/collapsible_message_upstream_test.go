@@ -17,9 +17,9 @@ func TestCollapsibleMessageClicksThroughTerminal(t *testing.T) {
 		name, details string
 		component     Component
 	}{
-		{"compaction", "compaction details", NewCompactionSummaryMessageComponent(CompactionSummaryMessage{Summary: "compaction details", TokensBefore: 1234}, nil, 1)},
-		{"branch", "branch details", NewBranchSummaryMessageComponent(BranchSummaryMessage{Summary: "branch details"}, nil, 1)},
-		{"skill", "skill details", NewSkillInvocationMessageComponent(ParsedSkillBlock{Name: "example-skill", Content: "skill details"}, nil, 1)},
+		{"compaction", "compaction details", NewCompactionSummaryMessageComponent(CompactionSummaryMessage{Summary: "compaction details", TokensBefore: 1234}, nil, 1, nil, "", "")},
+		{"branch", "branch details", NewBranchSummaryMessageComponent(BranchSummaryMessage{Summary: "branch details"}, nil, 1, nil, "", "")},
+		{"skill", "skill details", NewSkillInvocationMessageComponent(ParsedSkillBlock{Name: "example-skill", Content: "skill details"}, nil, 1, nil, "", "")},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			h := newAltHarness(t, 80, 24, TuiAltScreenOptions{})
@@ -39,7 +39,7 @@ func TestCollapsibleMessageClicksThroughTerminal(t *testing.T) {
 func BenchmarkCollapsibleMessageClick(b *testing.B) {
 	for _, lines := range []int{1, 10000} {
 		b.Run(fmt.Sprint(lines), func(b *testing.B) {
-			component := NewCompactionSummaryMessageComponent(CompactionSummaryMessage{Summary: strings.Repeat("details\n", lines), TokensBefore: 1234}, nil, 1)
+			component := NewCompactionSummaryMessageComponent(CompactionSummaryMessage{Summary: strings.Repeat("details\n", lines), TokensBefore: 1234}, nil, 1, nil, "", "")
 			event := componentMouseEvent(MouseClick, 2, 1)
 			event.Height = 5
 			b.ReportAllocs()
@@ -56,11 +56,11 @@ func TestCollapsibleMessageComponentsUpstream(t *testing.T) {
 		component             Component
 	}{
 		// .upstream/v0.87.1/packages/coding-agent/test/collapsible-message-components.test.ts:39
-		{"toggles a compaction summary when clicked", "[compaction]", "compaction details", NewCompactionSummaryMessageComponent(CompactionSummaryMessage{Summary: "compaction details", TokensBefore: 1234}, nil, 1)},
+		{"toggles a compaction summary when clicked", "[compaction]", "compaction details", NewCompactionSummaryMessageComponent(CompactionSummaryMessage{Summary: "compaction details", TokensBefore: 1234}, nil, 1, nil, "", "")},
 		// .upstream/v0.87.1/packages/coding-agent/test/collapsible-message-components.test.ts:55
-		{"toggles a branch summary when clicked", "[branch]", "branch details", NewBranchSummaryMessageComponent(BranchSummaryMessage{Summary: "branch details"}, nil, 1)},
+		{"toggles a branch summary when clicked", "[branch]", "branch details", NewBranchSummaryMessageComponent(BranchSummaryMessage{Summary: "branch details"}, nil, 1, nil, "", "")},
 		// .upstream/v0.87.1/packages/coding-agent/test/collapsible-message-components.test.ts:71
-		{"toggles a skill invocation when clicked", "[skill]", "skill details", NewSkillInvocationMessageComponent(ParsedSkillBlock{Name: "example-skill", Content: "skill details"}, nil, 1)},
+		{"toggles a skill invocation when clicked", "[skill]", "skill details", NewSkillInvocationMessageComponent(ParsedSkillBlock{Name: "example-skill", Content: "skill details"}, nil, 1, nil, "", "")},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -114,8 +114,8 @@ func TestSummaryMessageComponentsInheritBoxMembers(t *testing.T) {
 		SetBgFn(func(string) string)
 		Clear()
 	}{
-		"compaction": NewCompactionSummaryMessageComponent(CompactionSummaryMessage{Summary: "details", TokensBefore: 1}, nil, 1),
-		"branch":     NewBranchSummaryMessageComponent(BranchSummaryMessage{Summary: "details"}, nil, 1),
+		"compaction": NewCompactionSummaryMessageComponent(CompactionSummaryMessage{Summary: "details", TokensBefore: 1}, nil, 1, nil, "", ""),
+		"branch":     NewBranchSummaryMessageComponent(BranchSummaryMessage{Summary: "details"}, nil, 1, nil, "", ""),
 	} {
 		t.Run(name, func(t *testing.T) {
 			component.SetBgFn(func(text string) string { return "<bg>" + text + "</bg>" })

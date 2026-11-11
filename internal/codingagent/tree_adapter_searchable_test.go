@@ -35,7 +35,7 @@ func TestTreeNodeAdapterSearchableText(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := sess.AppendEntry(MessageEntry{SessionEntryBase: SessionEntryBase{Type: "message"}, Message: tc.msg}); err != nil {
+			if err := sess.AppendEntry(MessageEntry{Type: "message", Message: tc.msg}); err != nil {
 				t.Fatalf("append: %v", err)
 			}
 			entries := sess.GetEntries()
@@ -56,7 +56,7 @@ func TestTreeNodeAdapterSearchableTextHasNoAnsi(t *testing.T) {
 	sess := NewSession("sess-test", t.TempDir())
 	f := newTreeRowFormatter(sess)
 	msg := agent.AgentMessage{User: &agent.UserMessage{Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: "hello world"}}}}
-	if err := sess.AppendEntry(MessageEntry{SessionEntryBase: SessionEntryBase{Type: "message"}, Message: msg}); err != nil {
+	if err := sess.AppendEntry(MessageEntry{Type: "message", Message: msg}); err != nil {
 		t.Fatalf("append: %v", err)
 	}
 	entries := sess.GetEntries()

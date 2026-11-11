@@ -140,7 +140,7 @@ func liveInputModelMode(t *testing.T) (*InteractiveMode, *liveInputModelHandle, 
 	m.tuiInst.SetFocus(m.editor)
 	m.setupEditorSubmitHandler(ctx)
 	m.slashRegistry = NewSlashRegistry()
-	h := &liveInputModelHandle{mode: m, ctx: ctx, recordingCompactHandle: recordingCompactHandle{agent: m.agent}}
+	h := &liveInputModelHandle{mode: m, ctx: ctx, agent: m.agent}
 	m.opts.SessionHandle = h
 	return m, h, ctx
 }

@@ -7,7 +7,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// Ports packages/chord/src/next/documents/address-source.ts
+// Ports packages/chord/src/documents/address-source.ts
 //
 // Watchable document addresses (slice 6a §11; decision "One retirement mechanism"): the frames of a source that
 // follows one address, a singleton's slot or one key of a keyed slot. A change arrives with its ops, a write over

@@ -9,6 +9,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -18,6 +19,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -27,9 +29,17 @@ type x11Display struct {
 	// screen is the requested screen; xcb_connect hands it to Pi unchanged, and a negative one selects the first screen (linux-platform-x11.c:188).
 	screen int32
 	local  bool
+	// socket is the path of a /path[.screen] or unix:path[.screen] display (libxcb 1.16+).
+	socket string
 }
 
 func parseX11Display(display string) (x11Display, error) {
+	if strings.HasPrefix(display, "/") {
+		return parseX11SocketPath(display)
+	}
+	if path, found := strings.CutPrefix(display, "unix:"); found {
+		return parseX11SocketPath(path)
+	}
 	separator := strings.LastIndexByte(display, ':')
 	if separator < 0 {
 		return x11Display{}, fmt.Errorf("invalid X11 display %q", display)
@@ -62,6 +72,37 @@ func parseX11Display(display string) (x11Display, error) {
 		}
 	}
 	return x11Display{host: host, number: number, screen: screen, local: local}, nil
+}
+
+// x11PathMax is PATH_MAX on Linux, the limit libxcb applies.
+const x11PathMax = 4096
+
+// parseX11SocketPath follows libxcb 1.16+: the whole text is the path if it exists, else a final .N (1 to INT_MAX) is the screen.
+func parseX11SocketPath(path string) (x11Display, error) {
+	//portlint:allow utf16units the limit is libxcb's sockaddr_un path buffer in C, a count of bytes
+	if len(path) >= x11PathMax {
+		return x11Display{}, fmt.Errorf("X11 socket path too long")
+	}
+	_, err := os.Stat(path)
+	if err == nil {
+		return x11Display{socket: path, local: true}, nil
+	}
+	if !errors.Is(err, syscall.ENOENT) && !errors.Is(err, syscall.ENOTDIR) {
+		return x11Display{}, fmt.Errorf("invalid X11 socket path %q: %w", path, err)
+	}
+	dot := strings.LastIndexByte(path, '.')
+	if dot < 0 || dot+1 >= len(path) || path[dot+1] < '1' || path[dot+1] > '9' {
+		return x11Display{}, fmt.Errorf("invalid X11 socket path %q", path)
+	}
+	//portlint:allow numbers libxcb reads the screen with strtoul (C, decimal digits only, a leading 1-9 checked above), not a JS parse; 31 bits keeps it within INT_MAX
+	screen, err := strconv.ParseUint(path[dot+1:], 10, 31)
+	if err != nil {
+		return x11Display{}, fmt.Errorf("invalid X11 screen %q", path[dot+1:])
+	}
+	if _, err = os.Stat(path[:dot]); err != nil {
+		return x11Display{}, fmt.Errorf("invalid X11 socket path %q: %w", path[:dot], err)
+	}
+	return x11Display{socket: path[:dot], screen: int32(screen), local: true}, nil
 }
 
 // xcbDisplayNumber reads a display or screen number as Pi's xcb_connect (linux-platform-x11.c:185) does: libxcb 1.15 xcb_util.c:176 and :186 parse it
@@ -164,6 +205,10 @@ func x11Authority(display x11Display, remote net.Addr) (name, data []byte) {
 
 func dialX11(ctx context.Context, display x11Display) (net.Conn, error) {
 	var dialer net.Dialer
+	if strings.HasPrefix(display.socket, "/") {
+		// As _xcb_open: the path as is, no abstract socket, no TCP fallback.
+		return dialer.DialContext(ctx, "unix", display.socket)
+	}
 	if display.local {
 		path := "/tmp/.X11-unix/X" + strconv.Itoa(int(display.number))
 		connection, err := dialer.DialContext(ctx, "unix", "\x00"+path)

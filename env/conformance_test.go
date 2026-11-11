@@ -51,8 +51,8 @@ func TestLocalExecutionEnvConformance(t *testing.T) {
 	shell, noSymlinks := conformanceShell()
 	durabletest.RegisterEnvConformance(t, "LocalExecutionEnv", func(use func(durableenv.ExecutionEnv) error) error {
 		return use(NewLocalExecutionEnv(LocalExecutionEnvOptions{
-			NodeExecutionEnvOptions: node.NodeExecutionEnvOptions{Cwd: t.TempDir(), Watch: node.NodeWatchOptions{PollIntervalMs: new(100)}},
-			Connection:              connection,
+			Cwd: t.TempDir(), Watch: node.NodeWatchOptions{PollIntervalMs: new(100)},
+			Connection: connection,
 		}))
 	}, durabletest.EnvConformanceRegisterOptions{Shell: shell, Symlinks: new(!noSymlinks), ListFiles: true})
 }

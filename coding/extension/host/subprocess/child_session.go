@@ -33,6 +33,8 @@ type ChildSession interface {
 	EmitExtensionEvent(ctx context.Context, event json.RawMessage) (result json.RawMessage, emitted bool, err error)
 	// RefreshContext is AgentSession.refreshContext.
 	RefreshContext()
+	// Op runs the AgentSession member op names (ChildSessionOp) with its argument object and returns its value in Pi's JSON shape. A member Pi declares async returns when its Promise settled, and ctx ends it early; the host advances the call's lane before it runs one. An op the session does not serve is an error that starts with ChildSessionUnknownOpMessage.
+	Op(ctx context.Context, op string, args json.RawMessage) (json.RawMessage, error)
 	// SessionManagerObject is AgentSession.sessionManager as a session graph object over the log the session appends to.
 	SessionManagerObject() SessionGraphObject
 	// State is the session's current state.
@@ -369,6 +371,20 @@ func (h *Host) handleChildSessionCall(ctx context.Context, conn *Conn, call *Cal
 		}
 		result, err := json.Marshal(ChildSessionEmitResult{Emitted: emitted, Result: answer})
 		return &CallResultPayload{Result: result}, err
+	case CallChildSessionOp, CallChildSessionOpAsync:
+		var op ChildSessionOp
+		if err := json.Unmarshal(call.Args, &op); err != nil {
+			return nil, fmt.Errorf("decode %s: %w", call.Method, err)
+		}
+		if call.Method == CallChildSessionOpAsync {
+			// A member Pi awaits (compact, navigateTree, executeBash, waitForIdle) can outlast calls the extension sends next, an abort among them: the call's lane advances here.
+			extension.CallInitiated(ctx)
+		}
+		result, err := session.Op(ctx, op.Op, op.Args)
+		if err != nil {
+			return nil, err
+		}
+		return &CallResultPayload{Result: result}, nil
 	case CallChildSessionRefreshContext:
 		session.RefreshContext()
 		return &CallResultPayload{}, nil

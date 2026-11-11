@@ -1,5 +1,7 @@
 package tui
 
+// Ports packages/chord/src/tui/terminal.ts
+
 import (
 	"io"
 	"os"
@@ -30,7 +32,7 @@ type Terminal interface {
 
 // ProcessTerminal is the process's own terminal: stdin and stdout, raw mode when stdin is a TTY, resizes by SIGWINCH.
 type ProcessTerminal struct {
-	state *term.State
+	state *rawState
 }
 
 var _ Terminal = (*ProcessTerminal)(nil)
@@ -56,7 +58,7 @@ func (*ProcessTerminal) IsTTY() bool { return term.IsTerminal(int(os.Stdin.Fd())
 // SetRaw sets or clears stdin's raw mode.
 func (t *ProcessTerminal) SetRaw(raw bool) error {
 	if raw {
-		state, err := term.MakeRaw(int(os.Stdin.Fd()))
+		state, err := makeRaw(int(os.Stdin.Fd()))
 		if err == nil {
 			t.state = state
 		}
@@ -67,7 +69,7 @@ func (t *ProcessTerminal) SetRaw(raw bool) error {
 	}
 	state := t.state
 	t.state = nil
-	return term.Restore(int(os.Stdin.Fd()), state)
+	return restoreRaw(int(os.Stdin.Fd()), state)
 }
 
 // OnResize calls handler for each resize signal.
@@ -93,4 +95,85 @@ func (*ProcessTerminal) OnResize(handler func()) func() {
 			close(stopped)
 		})
 	}
+}
+
+// inputRaw is what an Input may have for the launcher to put it in raw mode (Node's `setRawMode?` and `isTTY?`).
+type inputRaw interface {
+	SetRawMode(raw bool) error
+	IsTTY() bool
+}
+
+// outputSized is what an Output may have to report its size and resizes (Node's `columns?`, `rows?` and "resize").
+type outputSized interface {
+	Columns() int
+	Rows() int
+	OnResize(handler func()) (stop func())
+}
+
+// streams is the Terminal of an Input and an Output: the optional members are found by interface.
+type streams struct {
+	input  io.Reader
+	output io.Writer
+}
+
+// terminalOf is the terminal of input and output, the process's for a nil one.
+func terminalOf(input io.Reader, output io.Writer) Terminal {
+	if input == nil && output == nil {
+		return &ProcessTerminal{}
+	}
+	process := &ProcessTerminal{}
+	if input == nil {
+		input = processInput{process}
+	}
+	if output == nil {
+		output = processOutput{process}
+	}
+	return streams{input: input, output: output}
+}
+
+type processInput struct{ *ProcessTerminal }
+
+func (processInput) Read(p []byte) (int, error) { return os.Stdin.Read(p) }
+
+func (p processInput) SetRawMode(raw bool) error { return p.SetRaw(raw) }
+
+type processOutput struct{ *ProcessTerminal }
+
+func (processOutput) Write(p []byte) (int, error) { return os.Stdout.Write(p) }
+
+func (s streams) Input() io.Reader { return s.input }
+
+func (s streams) Output() io.Writer { return s.output }
+
+func (s streams) Columns() int {
+	if sized, ok := s.output.(outputSized); ok {
+		return sized.Columns()
+	}
+	return 0
+}
+
+func (s streams) Rows() int {
+	if sized, ok := s.output.(outputSized); ok {
+		return sized.Rows()
+	}
+	return 0
+}
+
+func (s streams) IsTTY() bool {
+	raw, ok := s.input.(inputRaw)
+	return ok && raw.IsTTY()
+}
+
+func (s streams) SetRaw(raw bool) error {
+	if r, ok := s.input.(inputRaw); ok {
+		return r.SetRawMode(raw)
+	}
+	return nil
+}
+
+func (s streams) OnResize(handler func()) func() {
+	if sized, ok := s.output.(outputSized); ok {
+		return sized.OnResize(handler)
+	}
+	return func() {}
 }

@@ -25,4 +25,4 @@ func NewInMemorySessionManager(cwd string) (*SessionManager, error) {
 }
 
 // SessionManager returns the backing log. A supplied manager is used directly; appends through either handle are visible through the other.
-func (s *Session) SessionManager() *SessionManager { return s.inner }
+func (s *Session) SessionManager() *SessionManager { return s.inner.Load() }

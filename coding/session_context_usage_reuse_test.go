@@ -44,7 +44,7 @@ func TestContextUsageReusesTheEstimateUntilTheLogOrWindowChanges(t *testing.T) {
 	})
 	fresh := func() *SessionContextUsage {
 		window := s.limitsModel().Capabilities.ContextWindow
-		return s.projectedContextUsage(s.inner, window)
+		return s.projectedContextUsage(s.inner.Load(), window)
 	}
 	check := func(step string) *SessionContextUsage {
 		t.Helper()
@@ -56,9 +56,9 @@ func TestContextUsageReusesTheEstimateUntilTheLogOrWindowChanges(t *testing.T) {
 	}
 
 	first := check("first call")
-	projections := s.inner.BuildSessionProjectionCalls()
+	projections := s.inner.Load().BuildSessionProjectionCalls()
 	second := s.ContextUsage()
-	if calls := s.inner.BuildSessionProjectionCalls() - projections; calls != 0 {
+	if calls := s.inner.Load().BuildSessionProjectionCalls() - projections; calls != 0 {
 		t.Fatalf("a second call with an unchanged log projected the branch %d times", calls)
 	}
 	if !reflect.DeepEqual(first, second) || first.Tokens == second.Tokens {

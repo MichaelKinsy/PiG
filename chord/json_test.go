@@ -95,3 +95,51 @@ func TestCopyJSONPreservesOwnProtoKeys(t *testing.T) {
 		}
 	}
 }
+
+// Intention of packages/chord/test/json.test.ts "optionally omits undefined object properties without normalizing arrays": a
+// value that is not JSON never becomes JSON silently; an absent property is dropped only where Pi's option allows, never in an
+// array. Go has no undefined, so the PiG form is: a nil member is JSON null and stays (nothing is dropped), and a Go kind JSON
+// cannot hold is refused as strict JSON in an object and in an array alike.
+func TestCopyJSONKeepsNilAsNullAndRefusesNonJSONKindsInObjectsAndArrays(t *testing.T) {
+	copied, err := CopyJSON(map[string]any{"kept": 1, "nothing": nil, "nested": map[string]any{"nothing": nil, "kept": true}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	object, ok := copied.(*delta.JsonObject)
+	if !ok || object.Len() != 3 {
+		t.Fatalf("copied = %#v, want an object with all 3 members (a nil member is null, not omitted)", copied)
+	}
+	if value, present := object.Get("nothing"); !present || value != nil {
+		t.Fatalf("nothing = %v, present %v, want null", value, present)
+	}
+	array, err := CopyJSON([]any{nil})
+	if err != nil || !reflect.DeepEqual(array, []any{nil}) {
+		t.Fatalf("[nil] copied = %#v, %v, want [null] kept", array, err)
+	}
+	for name, value := range map[string]any{"object member": map[string]any{"f": func() {}}, "array element": []any{func() {}}} {
+		if _, err := CopyJSON(value); err == nil {
+			t.Errorf("%s: a func was copied, want a strict JSON error", name)
+		} else if _, ok := errors.AsType[*delta.StrictJSONError](err); !ok {
+			t.Errorf("%s: err = %v, want *delta.StrictJSONError", name, err)
+		}
+	}
+}
+
+// Intention of Pi's JsonRepresentation<T> (json.ts:5-17): what crosses as JSON is only strict JSON values. PiG form: whatever
+// CopyJSON accepts comes back as a value IsJsonValue accepts, for every Go kind it normalizes.
+func TestCopyJSONResultIsAlwaysStrictJSON(t *testing.T) {
+	for name, value := range map[string]any{
+		"ints and floats": map[string]any{"i": 3, "u": uint8(4), "f": float32(1.5)},
+		"slices":          []string{"a", "b"},
+		"nested maps":     map[string]any{"m": map[string]int{"x": 1}, "s": []any{nil, true, "t"}},
+		"scalars":         "text",
+	} {
+		copied, err := CopyJSON(value)
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if !IsJsonValue(copied) {
+			t.Errorf("%s: %#v is not strict JSON", name, copied)
+		}
+	}
+}

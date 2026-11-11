@@ -11,7 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/src/next/store/json-column.ts
+// Ports packages/chord/src/store/json-column.ts
 //
 // `Json(schema, JsonColumnOptions{Version, Migrate})` table columns (decision "The `json(...)` column helper", W11):
 // one JSON `TEXT` cell with its own version, typed when read, migrated on access (the result checked once, R8),

@@ -15,8 +15,8 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/documents"
 )
 
-// pi: packages/chord/src/next/state/derive.ts
-// Mirrors cases of packages/chord/test/next/state/native-source.test.ts and derive.test.ts that run on a host.
+// pi: packages/chord/src/state/derive.ts
+// Mirrors cases of packages/chord/test/state/native-source.test.ts and derive.test.ts that run on a host.
 
 // Mirrors "native sources as derive sources › `ref.state` is a derive source: a state member can show a dependency's reachability".
 func TestNativeSourcesAsDeriveSourcesRefStateIsADeriveSourceAStateMemberCanShowADependencysReachability(t *testing.T) {

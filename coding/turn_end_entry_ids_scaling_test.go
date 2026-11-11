@@ -41,7 +41,7 @@ func TestTurnEndEntryIDsScaleWithTheTurnNotTheHistory(t *testing.T) {
 		}
 		// An earlier turn lets the kept projection grow once, as a running session's does, so the measured turn extends it in place.
 		persistTurn("warm_call_")
-		s.inner.BuildSessionProjectionView()
+		s.inner.Load().BuildSessionProjectionView()
 		assistant, persisted := persistTurn("turn_call_")
 		return func() {
 			event := agent.TurnEndEvent{Message: agent.AgentMessage{Assistant: assistant}, ToolResults: append([]agent.ToolResultMessage(nil), persisted...)}

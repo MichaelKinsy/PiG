@@ -561,7 +561,10 @@ func TestGeneration(t *testing.T) {
 		}
 		setup.Faux.SetResponses([]ai.FauxResponseStep{record("a"), record("b")})
 		setup.SetSettings(func(settings *HarnessSettings) {
-			settings.Stream = &durable.ConversationStreamOptions{TimeoutMs: new(1234), Headers: map[string]string{"x-test": "1"}}
+			settings.Stream = &durable.ConversationStreamOptions{
+				TimeoutMs: new(1234), Headers: map[string]string{"x-test": "1"}, WebsocketConnectTimeoutMs: new(5678),
+				ThinkingBudgets: ai.NewThinkingBudgets(new(128), new(512), new(2048), new(8192)),
+			}
 		})
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
 		if err := root.Configure(testContext, AgentChange{ThinkingLevel: SetTo(ai.ModelThinkingLevel("high"))}); err != nil {
@@ -587,6 +590,12 @@ func TestGeneration(t *testing.T) {
 		if first.Signal == nil {
 			t.Fatal("first options carry no signal")
 		}
+		if first.WebSocketConnectTimeoutMs == nil || *first.WebSocketConnectTimeoutMs != 5678 {
+			t.Fatalf("first websocketConnectTimeoutMs = %v, want 5678", first.WebSocketConnectTimeoutMs)
+		}
+		if b := first.ThinkingBudgets; b == nil || b.Minimal != 128 || b.Low != 512 || b.Medium != 2048 || b.High != 8192 {
+			t.Fatalf("first thinkingBudgets = %+v, want 128/512/2048/8192", b)
+		}
 		if second.Thinking != "" {
 			t.Fatalf("second reasoning = %q, want undefined", second.Thinking)
 		}
@@ -595,6 +604,9 @@ func TestGeneration(t *testing.T) {
 		}
 		if second.Headers != nil {
 			t.Fatalf("second headers = %v, want undefined", second.Headers)
+		}
+		if second.WebSocketConnectTimeoutMs != nil || second.ThinkingBudgets != nil {
+			t.Fatalf("second websocketConnectTimeoutMs = %v, thinkingBudgets = %+v, want undefined", second.WebSocketConnectTimeoutMs, second.ThinkingBudgets)
 		}
 		closeHarness(t, harness)
 	})
@@ -847,8 +859,8 @@ func TestGeneration(t *testing.T) {
 			Kind string `json:"kind"`
 		}
 		agentDoc := durable.DefineDoc(durable.DocDefinition[agentState]{
-			CommonDocDefinition: durable.CommonDocDefinition[agentState]{Kind: "test.agent", Version: 1, Initial: func() agentState { return agentState{Cwd: "/", Kind: "main"} }, CheckpointWhen: func(agentState, []durable.Op, durable.CheckpointInfo) bool { return false }},
-			DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkCurrent},
+			Kind: "test.agent", Version: 1, Initial: func() agentState { return agentState{Cwd: "/", Kind: "main"} }, CheckpointWhen: func(agentState, []durable.Op, durable.CheckpointInfo) bool { return false },
+			Scope: durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkCurrent,
 		})
 		read := func(ctx context.Context, input durable.PromptInput) (*agentState, error) {
 			return durable.Snapshot(ctx, input.Read, agentDoc, input.ConversationId)

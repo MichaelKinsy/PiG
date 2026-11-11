@@ -6,9 +6,9 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 )
 
-// pi: packages/chord/src/next/contracts/names.ts
+// pi: packages/chord/src/contracts/names.ts
 //
-// Mirrors the restricted-name cases of packages/chord/test/next/documents/definition.test.ts ("takes a restricted name
+// Mirrors the restricted-name cases of packages/chord/test/documents/definition.test.ts ("takes a restricted name
 // only: lowercase [a-z0-9@/._~-]"), which reach checkName through defineState.
 
 func TestCheckNameTakesRestrictedNamesOnly(t *testing.T) {

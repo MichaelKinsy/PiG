@@ -7,6 +7,8 @@ package tui
 import (
 	"encoding/json"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/coding/extension/markdowntransform"
 )
 
 // MessageRenderOptions is upstream MessageRenderOptions: the state a custom message renderer lays out for.
@@ -33,13 +35,15 @@ type CustomMessageComponent struct {
 	surface         markdownSurface
 }
 
-// NewCustomMessageComponent mirrors the upstream constructor (custom-message.ts:23): customRenderer may be nil, a nil
+// NewCustomMessageComponent mirrors the upstream constructor (custom-message.ts:26): customRenderer may be nil, a nil
 // markdownTheme selects the active theme's, and outputPad is the horizontal padding handed to customRenderer (upstream default 1).
-func NewCustomMessageComponent(message *CustomMessage, customRenderer MessageRenderer, markdownTheme *MarkdownTheme, outputPad int) *CustomMessageComponent {
-	return NewCustomMessageComponentWithSurface(message, customRenderer, markdownTheme, outputPad, MarkdownSurface{})
+// markdownTransformers run in order on the default body as the display-only transform createMarkdownTransform("custom", false,
+// markdownTransformers, messageId, timestamp); messageID and timestamp are the persisted entry's, empty for a live message.
+func NewCustomMessageComponent(message *CustomMessage, customRenderer MessageRenderer, markdownTheme *MarkdownTheme, outputPad int, markdownTransformers []markdowntransform.MarkdownTransformer, messageID, timestamp string) *CustomMessageComponent {
+	return NewCustomMessageComponentWithSurface(message, customRenderer, markdownTheme, outputPad, transformerSurface(markdowntransform.MarkdownMessageCustom, markdownTransformers, messageID, timestamp))
 }
 
-// NewCustomMessageComponentWithSurface is the constructor with the transformers, messageId and timestamp Pi's takes after outputPad. The surface
+// NewCustomMessageComponentWithSurface is [NewCustomMessageComponent] with a [MarkdownSurface] in place of the transformers, messageId and timestamp (pig additive, D19: the surface can run its chain off the render loop). The surface
 // transforms the default body only: a custom renderer's component stays, and the renderer is not called again.
 func NewCustomMessageComponentWithSurface(message *CustomMessage, customRenderer MessageRenderer, markdownTheme *MarkdownTheme, outputPad int, surface MarkdownSurface) *CustomMessageComponent {
 	c := &CustomMessageComponent{message: message, customRenderer: customRenderer, markdownTheme: markdownTheme, outputPad: outputPad}
@@ -51,9 +55,11 @@ func NewCustomMessageComponentWithSurface(message *CustomMessage, customRenderer
 	return c
 }
 
-// IsDirty reports a renderer component whose output changed on its own (an extension renderer proxy whose lines arrive after the first frame), so the parent container that caches this component re-renders it.
+// IsDirty reports the message's own invalidation, which every mutator sets (rebuild changes the children), and not Container.IsDirty's scan beneath it (see
+// AssistantMessageComponent.IsDirty): a renderer's card may be a component that reports nothing, which the scan would count as changing every frame. It also reports a
+// renderer component whose output changed on its own (an extension renderer proxy whose lines arrive after the first frame), so the parent container that caches this component re-renders it.
 func (c *CustomMessageComponent) IsDirty() bool {
-	if c.Container.IsDirty() {
+	if c.invalidatable.IsDirty() {
 		return true
 	}
 	dirty, ok := c.customComponent.(interface{ IsDirty() bool })

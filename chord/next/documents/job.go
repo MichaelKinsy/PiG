@@ -2,7 +2,7 @@ package documents
 
 import "context"
 
-// Ports packages/chord/src/next/documents/transaction.ts
+// Ports packages/chord/src/documents/transaction.ts
 
 // The types Pi's `transaction.ts` imports from `jobs/` (`JobHandle`, `Outcome`, `Run`, `StartOptions` and the
 // internal `Job`), as the interfaces `Tx.Start` needs. The jobs (chord/next/host) satisfy them structurally, so this

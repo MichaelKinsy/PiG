@@ -593,13 +593,11 @@ func TestSetSessionNamePersistsToDisk(t *testing.T) {
 	id, _ := generateEntryID()
 	parent := sess.GetLeafID()
 	entry := SessionInfoEntry{
-		SessionEntryBase: SessionEntryBase{
-			Type:      "session_info",
-			ID:        id,
-			ParentID:  parent,
-			Timestamp: "2026-04-29T19:00:00Z",
-		},
-		Name: "my project",
+		Type:      "session_info",
+		ID:        id,
+		ParentID:  parent,
+		Timestamp: "2026-04-29T19:00:00Z",
+		Name:      "my project",
 	}
 	if err := sess.AppendEntry(entry); err != nil {
 		t.Fatal(err)

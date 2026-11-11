@@ -1,7 +1,8 @@
 // The nested-call half of src/harness/tool.ts: `api.executeTool(name, args, context, options)` admits another tool as a nested call of the
 // running tool task (one commit: its pi.tool task owned by the caller, its slot in pi.live, its pi.tool.nested-call document), waits for the
 // task and returns the result the nested call stored. The core runs the nested task; this is the caller's side.
-import { copyJson, type Context, type JsonValue } from "@earendil-works/chord"
+import type { Context } from "@earendil-works/chord/context"
+import { copyJson, type JsonValue } from "@earendil-works/chord/json"
 import { LiveDoc, NestedCallDoc } from "./facade/docs.ts"
 import { ToolTask } from "./facade/define.ts"
 

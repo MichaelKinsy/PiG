@@ -51,14 +51,12 @@ func TestExample32TestsAfterEdits(t *testing.T) {
 	}
 
 	edit := &durable.ToolRegistration{
-		ToolSchema: ai.ToolSchema{
-			Name:        "edit",
-			Description: "Replace a file's content",
-			Parameters: map[string]any{
-				"type":       "object",
-				"properties": map[string]any{"path": map[string]any{"type": "string"}, "content": map[string]any{"type": "string"}},
-				"required":   []any{"path", "content"},
-			},
+		Name:        "edit",
+		Description: "Replace a file's content",
+		Parameters: map[string]any{
+			"type":       "object",
+			"properties": map[string]any{"path": map[string]any{"type": "string"}, "content": map[string]any{"type": "string"}},
+			"required":   []any{"path", "content"},
 		},
 		Execute: func(_ context.Context, args any, _ durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			input := args.(map[string]any)

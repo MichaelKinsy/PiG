@@ -145,8 +145,9 @@ help-parity: ## List the parity and porting targets (automation/make/parity.mk)
 ##@ Release maintenance
 
 .PHONY: set-version module-publication module-size
-set-version: ## Update the release identity; preserve dependencies unless SET_VERSION_ARGS=--release-modules
-	@./automation/ci/with-isolated-pig-home.sh go run ./automation/release/set-version -version "$(VERSION)" $(SET_VERSION_ARGS)
+set-version: ## Update the release identity, then regenerate the SDK bundles that carry the version (not on a dry run); preserve dependencies unless SET_VERSION_ARGS=--release-modules
+	@PIG_CACHE_HOME="$(PIG_CACHE_HOME)" ./automation/ci/with-isolated-pig-home.sh go run ./automation/release/set-version -version "$(VERSION)" $(SET_VERSION_ARGS)
+	@$(if $(findstring --dry-run,$(SET_VERSION_ARGS)),:,$(MAKE) sdk-bundles)
 
 module-publication: ## Verify nested Go dependency tags and checksums against their public source
 	@./automation/ci/with-isolated-pig-home.sh python3 -B -m unittest automation/ci/test_module_publication.py
@@ -222,7 +223,7 @@ help-text: parity-deps ## Regenerate the pinned upstream CLI help with PiG's ide
 	@./automation/gen/gen-help.sh
 
 highlight-grammars: parity-deps ## Snapshot Pi's highlight.js grammars into tui/internal/hljs and re-record Pi's highlighting oracle
-	@node automation/gen/generate-highlight-grammars.mjs "$(PI_PACKAGE_ROOT)" tui/internal/hljs
+	@dir=$$(mktemp -d) && trap 'rm -rf "$$dir"' EXIT && node automation/gen/generate-highlight-grammars.mjs "$(PI_PACKAGE_ROOT)" tui/internal/hljs "$$dir/grammars_all.json" && go run ./automation/gen/zstdfile "$$dir/grammars_all.json" tui/internal/hljs/grammars_all.json.zst
 	@node automation/gen/generate-highlight-oracle.mjs "$(PI_PACKAGE_ROOT)" tui/internal/hljs/testdata/corpus.json tui/internal/hljs/testdata/oracle.json.gz
 
 zone-names: ## Regenerate the long time-zone names Node's ICU prints for date mapping keys (needs Node; output depends on Node's ICU, so it is not part of `make generate`)
@@ -247,7 +248,7 @@ changelog-unreleased: ## Print the Unreleased changelog assembled from the fragm
 changelog-check: ## Fail on a changelog fragment that is not named <lane>-<sha>.md after a commit reachable from HEAD, is not sections of bullets, or has a "### Fixed" bullet without a reachable <!-- fix: <sha> --> marker; needs the full history (fragments listed in automation/ci/changelogfrag/legacy.txt are exempt from the name and reachability rules, not from the marker rule)
 	@go run ./automation/ci/changelogfrag -check
 
-changelog-fold: ## Fold the changelog.d fragments into the VERSION section of CHANGELOG.md and delete them (integrator; rerun at release for later fragments)
+changelog-fold: ## Fold the changelog.d fragments into the VERSION section of CHANGELOG.md and delete them (integrator; rerun at release for later fragments); stops while the Unreleased section holds entries (set-version --move-unreleased moves them) and does not fold into Unreleased
 	@test -n "$(VERSION)" || { echo "usage: make changelog-fold VERSION=x.y.z" >&2; exit 2; }
 	@go run ./automation/ci/changelogfrag -fold=$(VERSION)
 
@@ -258,7 +259,7 @@ piglet-strip-ids-drift: ## Fail when the Piglet strip ID table or the schema str
 	@go run ./coding/piglet/internal/genstripids -check
 
 piglet-strip-build: ## Vet every package and build cmd/pig with every Piglet strip build tag (D92)
-	@tags=$$(go run ./coding/piglet/internal/genstripids -print-tags) && go vet -tags "$$tags" ./... && CGO_ENABLED=0 go build -tags "$$tags" -o /dev/null ./cmd/pig
+	@tags=$$(go run ./coding/piglet/internal/genstripids -print-tags) && ./automation/ci/go-vet.sh -tags "$$tags" && CGO_ENABLED=0 go build -tags "$$tags" -o /dev/null ./cmd/pig
 
 # The SDK bundles are pure Go to regenerate (go generate in each SDK directory): the Go SDK's bundle in the root module (internal/gosdkbundle), the Python, Rust and Lisp bundles (extensions/sdk-py, sdk-rs, sdk-lisp) are sdk.zst, the SDK's files as one zstd frame, and bundle_pack.go, which embeds it with the file list and the staging hash (automation/gen/packsdk). The nested module extensions/sdk keeps the bundle it was published with, a gzip copy of each source under .gz and bundle_embed.go (automation/gen/embed-bundle.go). Each generator keeps an existing frame or copy that already holds the source's text, so only a stale one is rewritten.
 sdk-bundles: ## Regenerate the packed SDK bundles (sdk.zst, bundle_pack.go) of the Go, Python, Rust and Lisp SDKs, and the nested Go SDK module's own gzip bundle, from their sources (go generate)
@@ -272,10 +273,10 @@ sdk-bundles-drift: ## Fail when a packed SDK bundle differs from its sources (re
 ##@ Test and lint
 
 vet: ## Run go vet on every package, natively and for every shipped Windows architecture and for Android (Termux)
-	go vet ./...
-	GOOS=windows GOARCH=amd64 go vet ./...
-	GOOS=windows GOARCH=arm64 go vet ./...
-	CGO_ENABLED=0 GOOS=android GOARCH=arm64 go vet ./...
+	./automation/ci/go-vet.sh
+	GOOS=windows GOARCH=amd64 ./automation/ci/go-vet.sh
+	GOOS=windows GOARCH=arm64 ./automation/ci/go-vet.sh
+	CGO_ENABLED=0 GOOS=android GOARCH=arm64 ./automation/ci/go-vet.sh
 
 LINT_BASE ?= main
 
@@ -616,7 +617,7 @@ standard-check: ## Verify PiG Standard requires and resolves only fused extensio
 
 ##@ Gates
 
-check-core: startup-proxies build vet lint test test-go-modules lint-rust test-sdk-rs test-sdk-py test-sdk-py-311 test-sdk-lisp test-sdk-ts test-term-engines typescript-extension-corpus examples-check test-race test-integration lint-scenarios port-map-drift coverage-drift standard-check go-fix-clean divergence-consistency divergence-quality divergence-guard divergences-drift autofix-check port-lint any-trap perf-lint race-coverage check-contracts-fast source-hygiene fixture-guard test-provenance docs-drift bug-ledger-check perf-scoreboard-check module-size ## All deterministic build, lint, unit, race, and drift gates
+check-core: startup-proxies build vet lint test test-go-modules lint-rust test-sdk-rs test-sdk-py test-sdk-py-311 test-sdk-lisp test-sdk-ts test-term-engines typescript-extension-corpus examples-check test-race test-integration lint-scenarios port-map-drift coverage-drift standard-check go-fix-clean divergence-consistency divergence-quality divergence-guard divergences-drift autofix-check port-lint any-trap perf-lint race-coverage check-contracts-fast source-hygiene fixture-guard module-pins test-provenance docs-drift bug-ledger-check perf-scoreboard-check module-size ## All deterministic build, lint, unit, race, and drift gates
 
 check: module-publication check-core parity-fast ## Pre-commit gate: published dependencies, check-core and parity-fast
 	@echo

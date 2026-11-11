@@ -632,3 +632,26 @@ func TestTranscriptItemsAreWrittenWithPisKind(t *testing.T) {
 		t.Fatalf("a TranscriptView writes its items as %s", got)
 	}
 }
+
+// Pi harness/transcript.ts: a new ConversationTranscript holds nothing and calls its EntryLoader only when asked: Newest reports
+// nothing and Resume is nil before the first merge.
+func TestAFreshConversationTranscriptHoldsNothingAndNeverCallsItsEntryLoader(t *testing.T) {
+	loaded := false
+	load := EntryLoader(func(context.Context, durable.EntryQuery, int) (durable.Page[durable.EntryRecord, durable.Cursor], error) {
+		loaded = true
+		return durable.Page[durable.EntryRecord, durable.Cursor]{}, nil
+	})
+	check := func(transcript *ConversationTranscript) {
+		t.Helper()
+		if id, present := transcript.Newest(); present {
+			t.Fatalf("Newest = %d, true; want nothing before the first merge", id)
+		}
+		if window := transcript.Resume(); window != nil {
+			t.Fatalf("Resume = %+v, want nil before the first merge", window)
+		}
+	}
+	check(must(NewConversationTranscript(load, nil)))
+	if loaded {
+		t.Fatal("constructing a transcript called its loader")
+	}
+}

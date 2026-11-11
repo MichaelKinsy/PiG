@@ -42,7 +42,7 @@ func (c *clickLines) HandleMouse(event TuiMouseEvent) *TuiMouseDispatchResult {
 	if c.surface != nil {
 		c.screens = append(c.screens, c.surface.ScreenLines())
 	}
-	return &TuiMouseDispatchResult{TuiMouseEventResult: TuiMouseEventResult{Handled: true}}
+	return &TuiMouseDispatchResult{Handled: true}
 }
 
 func numbered(prefix string, n int) []string {

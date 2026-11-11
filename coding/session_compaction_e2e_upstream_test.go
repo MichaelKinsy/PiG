@@ -105,7 +105,7 @@ func TestAgentSessionCompactionE2EUpstream(t *testing.T) {
 				}
 				fmt.Printf("COMPACTION_E2E %s\n", trace)
 			}
-			entries := s.inner.GetEntries()
+			entries := s.inner.Load().GetEntries()
 			count := 0
 			for _, entry := range entries {
 				if entry.Base().Type != "compaction" {

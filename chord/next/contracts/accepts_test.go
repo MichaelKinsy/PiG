@@ -8,7 +8,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 )
 
-// Ports packages/chord/test/next/contracts/accepts.test.ts.
+// Ports packages/chord/test/contracts/accepts.test.ts.
 //
 // Designed out: AcceptsTable<C> and the mapping types (Static<...>) are type-level only, so every @ts-expect-error
 // line asserts nothing at runtime. A Go table is data (contracts.AcceptsTable of contracts.VersionMappings) whose

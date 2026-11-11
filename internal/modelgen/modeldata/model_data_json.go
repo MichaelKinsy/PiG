@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"cmp"
 	"encoding/json"
+	"encoding/json/jsontext"
 	"fmt"
 	"maps"
 	"math"
@@ -15,6 +16,7 @@ import (
 	"unicode/utf16"
 
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
+	"github.com/MichaelKinsy/PiG/internal/jsonopts"
 )
 
 type modelDataObject struct {
@@ -23,31 +25,28 @@ type modelDataObject struct {
 }
 
 func parseModelDataObject(data []byte) *modelDataObject {
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	token, err := decoder.Token()
-	if err != nil || token != json.Delim('{') {
+	decoder := jsontext.NewDecoder(bytes.NewReader(data), jsonopts.Parse)
+	token, err := decoder.ReadToken()
+	if err != nil || token.Kind() != '{' {
 		return nil
 	}
 	object := &modelDataObject{values: map[string]json.RawMessage{}}
-	for decoder.More() {
-		token, err := decoder.Token()
+	for decoder.PeekKind() != '}' {
+		key, err := jsonopts.ReadName(decoder) // the JavaScript key, not Token.String(): see jsonopts.ReadName
 		if err != nil {
 			return nil
 		}
-		key, ok := token.(string)
-		if !ok {
+		valueBytes, err := decoder.ReadValue()
+		if err != nil {
 			return nil
 		}
-		var value json.RawMessage
-		if err := decoder.Decode(&value); err != nil {
-			return nil
-		}
+		value := json.RawMessage(bytes.Clone(valueBytes))
 		if _, exists := object.values[key]; !exists {
 			object.keys = append(object.keys, key)
 		}
 		object.values[key] = value
 	}
-	if _, err := decoder.Token(); err != nil {
+	if _, err := decoder.ReadToken(); err != nil {
 		return nil
 	}
 	orderModelIntegerKeys(object.keys)

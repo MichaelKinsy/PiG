@@ -1,7 +1,7 @@
 package documents
 
-// Ports packages/chord/test/next/documents/address-source.test.ts
-// pi: packages/chord/src/next/documents/address-source.ts
+// Ports packages/chord/test/documents/address-source.test.ts
+// pi: packages/chord/src/documents/address-source.ts
 
 import (
 	"testing"

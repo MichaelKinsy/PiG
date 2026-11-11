@@ -10,7 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 )
 
-// pi: packages/chord/src/next/documents/documents.ts
+// pi: packages/chord/src/documents/documents.ts
 // Mirrors documents.test.ts "transactions their context's end cancelled (decision "Mistakes that wait are reported at
 // once" (e))" on a host: the `transaction_cancelled` report is the host's.
 

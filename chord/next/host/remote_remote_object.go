@@ -16,7 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/src/next/remote/remote-object.ts. An object held over a link (§7): what one remote reference is
+// Ports packages/chord/src/remote/remote-object.ts. An object held over a link (§7): what one remote reference is
 // bound to on the consumer, across the links of its path (the parent, or a route address). Its state, the replicas of its
 // last bound variant (kept while its link is down), its hold on the path's current link and calls through it.
 //
@@ -251,7 +251,7 @@ func (r *remoteObject) call(method string, args any, ctx context.Context, parent
 		telemetry.Attr("object", chordtelemetry.Capped(r.name)),
 		telemetry.Attr("address.kind", r.request.Address.Kind),
 	}
-	attributes = append(attributes, r.host.principalAttributes(r.caller.principal, ctx)...)
+	attributes = append(attributes, r.host.PrincipalAttributes(r.caller.principal, ctx)...)
 	span := chordtelemetry.NewOpenSpan(parent, "chord.call", attributes)
 	sent := held.side.call(held.id, index, methodData, args, chordctx.WithTelemetry(ctx, span.Span()))
 	sent.then(r.host.loop(), func(value any, err error) {

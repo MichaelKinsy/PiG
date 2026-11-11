@@ -135,7 +135,7 @@ func TestSummarizationRequestsEmitOnlyProviderHeaders(t *testing.T) {
 			}
 		}},
 		{"branch-summary", func(t *testing.T, sess *Session) {
-			target := sess.inner.GetEntries()[0].Base().ID
+			target := sess.inner.Load().GetEntries()[0].Base().ID
 			result, err := sess.NavigateTree(context.Background(), target, NavigateTreeOptions{Summarize: true})
 			if err != nil || result.Cancelled || result.SummaryEntry == nil {
 				t.Fatalf("navigate = %+v, %v", result, err)

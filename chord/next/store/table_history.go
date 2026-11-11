@@ -6,7 +6,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 )
 
-// Ports packages/chord/src/next/store/table-history.ts
+// Ports packages/chord/src/store/table-history.ts
 //
 // A table's history (slice 6a §9; decision "Second spec review: the majority"): the versions from a base
 // `DefineTable` through each `EvolveTable`, the migration each version recorded, and what an activation does with the

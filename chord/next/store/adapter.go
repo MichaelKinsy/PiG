@@ -10,7 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/sqlite"
 )
 
-// Ports packages/chord/src/next/store/adapter.ts
+// Ports packages/chord/src/store/adapter.ts
 //
 // The store for adapters (slice 6b §2.1, D1, D2): what an owner outside Chord's objects (Durable's `StoreStorage`)
 // uses to keep its data in the store as declared tables and engine documents: its tables declared and prepared under

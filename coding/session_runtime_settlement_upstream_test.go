@@ -92,7 +92,7 @@ func TestRuntimeOriginalSettlesActiveResponse(t *testing.T) {
 		t.Fatal("switch did not install destination Session")
 	}
 	// Replacement must have joined the outgoing tool and persisted its terminal response before returning.
-	loaded, err := newSessionManagerForDir(h.runtime.Services(), outgoing.inner.GetSessionDir()).Load(outgoing.Path())
+	loaded, err := newSessionManagerForDir(h.runtime.Services(), outgoing.inner.Load().GetSessionDir()).Load(outgoing.Path())
 	if err != nil {
 		t.Fatal(err)
 	}

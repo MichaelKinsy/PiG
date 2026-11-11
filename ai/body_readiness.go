@@ -91,7 +91,7 @@ func newObservedBodyReadiness(body *observedResponseBody) *observedBodyReadiness
 //perf:hot
 func (readiness *observedBodyReadiness) reads(yield func(bodyReadSignal) bool) {
 	readiness.read.yield = yield
-	readiness.read.owner = goroutineid.Current()
+	readiness.read.owner = goroutineid.Token()
 	// The coroutine ends when Close stops it, after waitBody delivered any read that was waiting; no read runs after it.
 	defer readiness.buffer.release()
 	var failed error

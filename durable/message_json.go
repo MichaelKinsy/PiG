@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // The pi-ai Message union in its JSON form, as entries, context edits, and documents store it. ai's message types
@@ -18,7 +19,7 @@ func DecodeMessage(data []byte) (ai.Message, error) {
 		var probe struct {
 			Role string `json:"role"`
 		}
-		if err := json.Unmarshal(data, &probe); err != nil {
+		if err := jsstring.UnmarshalKeepingSurrogates(data, &probe); err != nil {
 			return nil, fmt.Errorf("message: %w", err)
 		}
 		role = probe.Role
@@ -30,7 +31,7 @@ func DecodeMessage(data []byte) (ai.Message, error) {
 			plain
 			Content json.RawMessage `json:"content"`
 		}
-		if err := json.Unmarshal(data, &wire); err != nil {
+		if err := jsstring.UnmarshalKeepingSurrogates(data, &wire); err != nil {
 			return nil, fmt.Errorf("user message: %w", err)
 		}
 		message := ai.UserMessage(wire.plain)
@@ -42,13 +43,13 @@ func DecodeMessage(data []byte) (ai.Message, error) {
 		return message, nil
 	case "assistant":
 		var message ai.AssistantMessage
-		if err := json.Unmarshal(data, &message); err != nil {
+		if err := jsstring.UnmarshalKeepingSurrogates(data, &message); err != nil {
 			return nil, fmt.Errorf("assistant message: %w", err)
 		}
 		return message, nil
 	case "toolResult":
 		var message ai.ToolResultMessage
-		if err := json.Unmarshal(data, &message); err != nil {
+		if err := jsstring.UnmarshalKeepingSurrogates(data, &message); err != nil {
 			return nil, fmt.Errorf("tool result message: %w", err)
 		}
 		return message, nil
@@ -58,7 +59,7 @@ func DecodeMessage(data []byte) (ai.Message, error) {
 			plain
 			Content json.RawMessage `json:"content"`
 		}
-		if err := json.Unmarshal(data, &wire); err != nil {
+		if err := jsstring.UnmarshalKeepingSurrogates(data, &wire); err != nil {
 			return nil, fmt.Errorf("system message: %w", err)
 		}
 		message := ai.SystemMessage(wire.plain)
@@ -96,10 +97,11 @@ func leadingRole(data []byte) (string, bool) {
 // DecodeUserContent decodes user message content held as a JSON value: a string or an array of text and image
 // blocks.
 func DecodeUserContent(value JsonValue) (ai.UserContent, error) {
-	raw, err := json.Marshal(value)
+	raw, err := jsstring.MarshalKeepingSurrogates(value)
 	if err != nil {
 		return nil, err
 	}
+	//perf:ok value is an untyped JSON tree (any) from the queued inbox record with no typed route to ai.UserContent; one pass per queued user submission at a turn boundary, not per token or event
 	return decodeUserContent(raw)
 }
 
@@ -107,13 +109,13 @@ func decodeUserContent(raw json.RawMessage) (ai.UserContent, error) {
 	raw = bytes.TrimSpace(raw)
 	if len(raw) > 0 && raw[0] == '"' {
 		var text string
-		if err := json.Unmarshal(raw, &text); err != nil {
+		if err := jsstring.UnmarshalKeepingSurrogates(raw, &text); err != nil {
 			return nil, err
 		}
 		return ai.UserText(text), nil
 	}
 	var raws []json.RawMessage
-	if err := json.Unmarshal(raw, &raws); err != nil {
+	if err := jsstring.UnmarshalKeepingSurrogates(raw, &raws); err != nil {
 		return nil, fmt.Errorf("user content: %w", err)
 	}
 	blocks := make(ai.UserContentBlocks, 0, len(raws))
@@ -135,13 +137,13 @@ func decodeSystemContent(raw json.RawMessage) (ai.SystemContent, error) {
 	raw = bytes.TrimSpace(raw)
 	if len(raw) > 0 && raw[0] == '"' {
 		var text string
-		if err := json.Unmarshal(raw, &text); err != nil {
+		if err := jsstring.UnmarshalKeepingSurrogates(raw, &text); err != nil {
 			return nil, err
 		}
 		return ai.SystemText(text), nil
 	}
 	var blocks ai.SystemTextBlocks
-	if err := json.Unmarshal(raw, &blocks); err != nil {
+	if err := jsstring.UnmarshalKeepingSurrogates(raw, &blocks); err != nil {
 		return nil, fmt.Errorf("system content: %w", err)
 	}
 	return blocks, nil
@@ -150,7 +152,7 @@ func decodeSystemContent(raw json.RawMessage) (ai.SystemContent, error) {
 // DecodeMessages decodes a JSON message array; JSON null stays nil.
 func DecodeMessages(data []byte) ([]ai.Message, error) {
 	var raws []json.RawMessage
-	if err := json.Unmarshal(data, &raws); err != nil {
+	if err := jsstring.UnmarshalKeepingSurrogates(data, &raws); err != nil {
 		return nil, err
 	}
 	if raws == nil {

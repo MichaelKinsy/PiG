@@ -10,7 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// Ports packages/chord/src/next/jobs/definition.ts
+// Ports packages/chord/src/jobs/definition.ts
 //
 // Job definitions (§15): `DefineJob(name, ...)`, the checks of a declaration, and the types of what a run ends with.
 //

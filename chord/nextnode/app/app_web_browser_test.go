@@ -1,19 +1,25 @@
 package app
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
+	"strings"
 	"testing"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/chord/nextnode/internal/browsertest"
+	"github.com/MichaelKinsy/PiG/chord/sqlite/node"
+	"github.com/MichaelKinsy/PiG/chord/telemetrysqlite"
+	"github.com/MichaelKinsy/PiG/internal/browsertest"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // Ports packages/chord/test/node/react/hooks.test.ts, web/language.test.ts and the first two cases of web/page.test.ts (Pi main
-// c23b9ec1) over a real Chromium (the DevTools driver, chord/nextnode/internal/browsertest; skipped without one: `CHROMIUM_BIN`).
-// The page's third case (a click as the root of one trace) (a click as the root of one trace) waits on T6 (`ctx.trace`) and is not ported here; web/styles.test.ts in
-// app_web_styles_test.go.
+// c23b9ec1) over a real Chromium (the DevTools driver, internal/browsertest; skipped without one: `CHROMIUM_BIN`).
+// The page's third case (a click as the root of one trace through the server into the worker) runs the vendored fixture web/telemetry.ts
+// against the app's SQLite telemetry store; web/styles.test.ts in app_web_styles_test.go.
 //
 // Forced differences: the browser is driven from Go over the DevTools protocol (Pi's `ws` driver, ported as the Go driver); the
 // tests wait on the plugins' state through its watch (Pi polls it every 10 ms).
@@ -190,4 +196,108 @@ func TestAPageReloadsWhenTheServerComesBackWithAnotherBaseBundle(t *testing.T) {
 	browser.Wait(`globalThis.version === "2" && globalThis.connection === "connected"`, time.Minute)
 	// The panel follows the connection by a frame or two (Opus L6).
 	browser.Wait(`document.querySelector(".panel")?.textContent === "Notes"`)
+}
+
+var (
+	traceDuration = regexp.MustCompile(` \(\+?[\d.]+ms\)`)
+	clickSpanID   = regexp.MustCompile(`^browser:[0-9a-f-]{36}:\d+$`)
+)
+
+// clickNotesPlugin is the notes plugin with the contract the page fixture (web/telemetry.ts) declares again, whose Notes also has
+// Pi's `attach` and `file`: a TS plugin cannot get a worker's `Files` (D461), so the two are served as stubs the click never calls;
+// the contract's fingerprint must equal the page's.
+func clickNotesPlugin() map[string]string {
+	worker := strings.Replace(notesPlugin["worker.ts"], "visit: method(str(), int()) } } } });\nconst Text", "visit: method(str(), int()), attach: method(str(), str()), file: method(str(), str()) } } } });\nconst Text", 1)
+	worker = strings.Replace(worker, "visit: (page, ctx) => store.visit(page, ctx),\n\t\t} };", "visit: (page, ctx) => store.visit(page, ctx),\n\t\t\tattach: async () => \"\",\n\t\t\tfile: async () => \"\",\n\t\t} };", 1)
+	if worker == notesPlugin["worker.ts"] || !strings.Contains(worker, "attach: async") || !strings.Contains(worker, "attach: method") {
+		panic("clickNotesPlugin: the notes plugin changed")
+	}
+	return map[string]string{"worker.ts": worker}
+}
+
+func TestAPageRecordsAClickAsTheRootOfOneTraceThroughTheServerIntoTheWorkerStoredByTheServer(t *testing.T) {
+	browser := browsertest.Start(t)
+	db, err := node.OpenNodeSqliteDatabase(filepath.Join(t.TempDir(), "t.sqlite"), node.NodeSqliteDatabaseOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	store, err := telemetrysqlite.CreateSqliteTelemetry(db, telemetrysqlite.SqliteTelemetryOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = store.Close() }()
+	s := webBrowserApp(t, surfacesFixture(t, "web", "telemetry.ts"), freePort(t), map[string]map[string]string{"notes": clickNotesPlugin()}, func(o *AppOptions) {
+		o.Workers = []AppWorkerKind{testWorker(t, project, "")}
+		o.Telemetry = store
+	})
+	signIn(browser, s.app.OwnerLink())
+	browser.Run(`document.getElementById("write").click()`)
+	browser.Wait(`globalThis.written === 1`)
+	// The page sends every few seconds, the worker every second, the server writes every second.
+	name := "page.write"
+	var spans []telemetry.StoredSpan
+	err = browsertest.Poll(context.Background(), 30*time.Second, "the click's trace", func(context.Context) (bool, error) {
+		if err := store.Flush(); err != nil {
+			return false, err
+		}
+		found, err := store.FindTraces(telemetry.TraceQuery{Name: &name})
+		if err != nil || len(found.Traces) == 0 {
+			return false, err
+		}
+		spans = found.Traces[0].Spans
+		for _, span := range spans {
+			if kind, _ := span.Attributes.Get("type"); kind == "test.store" {
+				return true, nil
+			}
+		}
+		return false, nil
+	})
+	if err != nil {
+		all, _ := store.FindTraces(telemetry.TraceQuery{})
+		var seen []string
+		for _, trace := range all.Traces {
+			seen = append(seen, traceDuration.ReplaceAllString(telemetry.RenderTrace(trace.Spans), ""))
+		}
+		t.Fatalf("%v; stored traces:\n%s\npage console: %v", err, strings.Join(seen, "\n--\n"), browser.Console())
+	}
+	shown := make([]telemetry.StoredSpan, len(spans))
+	for index, span := range spans {
+		host, ok := span.Attributes.Get("chord.host")
+		if !ok {
+			host = "?"
+		}
+		shown[index] = span
+		shown[index].Attributes = telemetry.SpanAttributes{{Name: "host", Value: host}}
+	}
+	var tree []string
+	for line := range strings.SplitSeq(traceDuration.ReplaceAllString(telemetry.RenderTrace(shown), ""), "\n") {
+		if !strings.Contains(line, "·") {
+			tree = append(tree, line)
+		}
+	}
+	// Forced difference (D460): the worker's Go host is a relay to the NodeHost that runs the plugin's types, so its own
+	// chord.relay span sits between the server's and the two chord.method spans Pi's worker host records directly.
+	want := []string{
+		`page.write host="browser"`,
+		`  chord.call host="browser"`,
+		`    chord.relay host="server"`,
+		`      chord.relay host="project|p1"`,
+		`        chord.method host="project|p1"`,
+		`          chord.method host="project|p1"`,
+	}
+	if !reflect.DeepEqual(tree, want) {
+		t.Fatalf("the click's trace =\n%s\nwant\n%s", strings.Join(tree, "\n"), strings.Join(want, "\n"))
+	}
+	click := spans[0]
+	if !clickSpanID.MatchString(click.ID) {
+		t.Fatalf("the click's span id = %q, want browser:<uuid>:<n>", click.ID)
+	}
+	if principal, _ := click.Attributes.Get("chord.principal"); principal != `{"kind":"owner"}` {
+		t.Fatalf("the click's chord.principal = %q, want {\"kind\":\"owner\"}", principal)
+	}
+	for _, span := range spans {
+		if span.TraceID != click.ID {
+			t.Fatalf("span %s %q is in trace %q, want the click's %q", span.ID, span.Name, span.TraceID, click.ID)
+		}
+	}
 }

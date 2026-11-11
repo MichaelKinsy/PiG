@@ -268,7 +268,7 @@ func (s *Session) lazyTree() ([]*SessionTreeNode, *lazyTree) {
 		entry := slot.entry
 		loaded := entry != nil
 		if !loaded {
-			entry = RawEntry{SessionEntryBase: SessionEntryBase{Type: slot.typ(), ID: slot.id, ParentID: s.parentPtrLocked(i)}}
+			entry = RawEntry{Type: slot.typ(), ID: slot.id, ParentID: s.parentPtrLocked(i)}
 		}
 		n := &SessionTreeNode{Entry: entry}
 		nodes[slot.id] = n

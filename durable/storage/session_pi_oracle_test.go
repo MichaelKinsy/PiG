@@ -74,8 +74,8 @@ func probeDocInitial() durable.JsonObject {
 
 func probeDoc(kind string, semantics durable.DocumentSemantics) durable.DocToken[durable.JsonObject] {
 	return durable.DefineDoc(durable.DocDefinition[durable.JsonObject]{
-		CommonDocDefinition: durable.CommonDocDefinition[durable.JsonObject]{Kind: kind, Version: 1, Initial: probeDocInitial, CheckpointWhen: func(durable.JsonObject, []durable.Op, durable.CheckpointInfo) bool { return false }},
-		DocumentSemantics:   semantics,
+		Kind: kind, Version: 1, Initial: probeDocInitial, CheckpointWhen: func(durable.JsonObject, []durable.Op, durable.CheckpointInfo) bool { return false },
+		DocumentSemantics: semantics,
 	})
 }
 
@@ -87,14 +87,14 @@ var probeDocs = map[string]durable.AnyDocToken{
 	"r": probeDoc("p.r", durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryRewindable, Fork: durable.ForkAsOf}),
 	"k": probeDoc("p.k", durable.DocumentSemantics{Scope: durable.ScopeTask}),
 	"g": durable.DefineDocFamily(durable.DocFamilyDefinition[durable.JsonObject, durable.JsonValue]{
-		Family: true, Kind: "p.g", Version: 1, DocumentSemantics: durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryRewindable, Fork: durable.ForkAsOf},
+		Family: true, Kind: "p.g", Version: 1, Scope: durable.ScopeConversation, History: durable.HistoryRewindable, Fork: durable.ForkAsOf,
 		Initial: func(seed durable.JsonValue) durable.JsonObject {
 			return delta.JsonObjectOf("seed", seed, "count", 0, "items", []any{})
 		},
 		CheckpointWhen: func(durable.JsonObject, []durable.Op, durable.CheckpointInfo) bool { return false },
 	}),
 	"f": durable.DefineDocFamily(durable.DocFamilyDefinition[durable.JsonObject, durable.JsonValue]{
-		Family: true, Kind: "p.f", Version: 1, DocumentSemantics: durable.DocumentSemantics{Scope: durable.ScopeSession},
+		Family: true, Kind: "p.f", Version: 1, Scope: durable.ScopeSession,
 		Initial: func(seed durable.JsonValue) durable.JsonObject {
 			return delta.JsonObjectOf("seed", seed, "count", 0, "items", []any{})
 		},

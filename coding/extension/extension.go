@@ -106,14 +106,10 @@ type Extension struct {
 	// upstream: types.ts Extension.toolRenderers
 	ToolRenderers []ToolRendererResolver
 
-	// MarkdownTransformer is the extension's display-only Markdown transform,
-	// if it registered one; a later registration replaces an earlier one.
+	// MarkdownTransformer is the extension's display-only Markdown transform and the surfaces it runs on,
+	// if it registered one; a later registration replaces an earlier one. Nil when it registered none.
 	// upstream: types.ts Extension.markdownTransformer
-	MarkdownTransformer MarkdownTransformer
-
-	// MarkdownMessageTypes are the surfaces MarkdownTransformer runs on, as the registration chose them; nil means the default types.
-	// upstream: types.ts MarkdownTransformerRegistration.messageTypes
-	MarkdownMessageTypes []MarkdownMessageType
+	MarkdownTransformer *MarkdownTransformerRegistration
 
 	// Commands is keyed by the command name (without leading slash).
 	Commands map[string]RegisteredCommand

@@ -1736,7 +1736,7 @@ def agent_session_runtime_script(ctx, args):
 
     # dispose settles a run in flight before it emits session_shutdown; the model never ends this run, so only the abort can end it.
     observe_file = os.path.join(cwd, "observe-run")
-    open(observe_file, "w").close()
+    open(observe_file, "w", newline="").close()
     hung = runtime.session
     running = threading.Thread(target=lambda: hung.prompt("hang-forever"))
     running.start()

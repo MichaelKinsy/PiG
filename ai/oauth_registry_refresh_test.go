@@ -138,8 +138,8 @@ func TestGetOAuthAPIKey_LiveCredentialSkipsRefresh(t *testing.T) {
 func TestResolveStoredAPIKeyFromStorageContextCancellationPreservesCredential(t *testing.T) {
 	legacyCalls, contextCalls := 0, 0
 	useOAuthProvider(t, contextRefreshOAuthProvider{
-		spyOAuthProvider: spyOAuthProvider{id: "stored-context-refresh", refreshCalls: &legacyCalls},
-		contextCalls:     &contextCalls,
+		id: "stored-context-refresh", refreshCalls: &legacyCalls,
+		contextCalls: &contextCalls,
 	})
 	store, err := NewAuthStorage(filepath.Join(t.TempDir(), "auth.json"))
 	if err != nil {
@@ -168,8 +168,8 @@ func TestResolveStoredAPIKeyFromStorageContextCancellationPreservesCredential(t 
 func TestResolveOAuthAPIKeyFromStorageContextCancellationPreservesCredential(t *testing.T) {
 	legacyCalls, contextCalls := 0, 0
 	useOAuthProvider(t, contextRefreshOAuthProvider{
-		spyOAuthProvider: spyOAuthProvider{id: "context-refresh", refreshCalls: &legacyCalls},
-		contextCalls:     &contextCalls,
+		id: "context-refresh", refreshCalls: &legacyCalls,
+		contextCalls: &contextCalls,
 	})
 	store, err := NewAuthStorage(filepath.Join(t.TempDir(), "auth.json"))
 	if err != nil {

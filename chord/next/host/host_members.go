@@ -13,7 +13,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// Ports packages/chord/src/next/host/members.ts
+// Ports packages/chord/src/host/members.ts
 //
 // The member check (Q14): an implementation is one variant with exactly that variant's members, methods being
 // functions and state members JSON watchables; and the resolution of what Chord follows behind every derive's declared

@@ -54,11 +54,11 @@ func AppInfoFacet(info AppInfoValues) host.Facet {
 		return h.Serve(AppInfo, func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
 			return contracts.Implementation{Members: contracts.VariantImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{
-					"dataDir": constant(self, info.DataDir),
-					"name":    constant(self, info.Name),
-					"version": constant(self, info.Version),
+					"dataDir": constantMember(self, info.DataDir),
+					"name":    constantMember(self, info.Name),
+					"version": constantMember(self, info.Version),
 					// The same object at every get: its principal key is computed once.
-					"owner": constant(self, info.Owner),
+					"owner": constantMember(self, info.Owner),
 				},
 			}}, nil
 		}, host.ServeOptions{})
@@ -80,16 +80,16 @@ func WorkerInfoFacet(info WorkerInfoValues) host.Facet {
 		return h.Serve(WorkerInfo, func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
 			return contracts.Implementation{Members: contracts.VariantImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{
-					"address": constant(self, delta.JsonObjectOf("kind", info.Kind, "key", info.Key, "params", info.Params)),
-					"start":   constant(self, info.Start),
+					"address": constantMember(self, delta.JsonObjectOf("kind", info.Kind, "key", info.Key, "params", info.Params)),
+					"start":   constantMember(self, info.Start),
 				},
 			}}, nil
 		}, host.ServeOptions{})
 	})
 }
 
-// constant is a state member that never changes (upstream's `constant(value)`): a derive of no source. Go's Self has no
+// constantMember is a state member that never changes (upstream's `constant(value)`): a derive of no source. Go's Self has no
 // constant of its own (the host takes a *state.Constant only where a member is given as a value, not through Derive).
-func constant(self host.Self, value delta.JsonValue) chord.Watchable[delta.JsonValue] {
+func constantMember(self host.Self, value delta.JsonValue) chord.Watchable[delta.JsonValue] {
 	return self.Derive(nil, func([]any) (delta.JsonValue, error) { return value, nil })
 }

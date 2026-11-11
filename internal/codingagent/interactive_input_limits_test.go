@@ -111,6 +111,7 @@ func TestInteractivePromptImagesUsePostHookModelLimits(t *testing.T) {
 }
 
 func TestCompactionQueuePreservesUnprocessedImages(t *testing.T) {
+	restoreTUIKeybindings(t)
 	for _, mode := range []compactionQueueMode{compactionQueueSteer, compactionQueueFollowUp} {
 		t.Run(string(mode), func(t *testing.T) {
 			m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: t.TempDir()})

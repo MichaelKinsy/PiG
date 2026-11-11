@@ -1,5 +1,7 @@
 package mcp
 
+// pi: packages/mcp/src/transports/lines.ts
+
 import (
 	"bytes"
 	"testing"

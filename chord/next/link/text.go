@@ -12,7 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 )
 
-// Ports packages/chord/src/next/link/text.ts. The text codec (2b): one JSON tuple per message, Delta style (a short kind
+// Ports packages/chord/src/link/text.ts. The text codec (2b): one JSON tuple per message, Delta style (a short kind
 // tag, positional fields, no field names), and DescribeMessage, which prints any message in that form. A part's JSON
 // text is spliced into the tuple as it is; decoding parses the tuple and writes each part back as text (one parse per
 // part per hop: a debugging codec). Byte segments of a payload marked as carrying bytes follow the tuple after a
@@ -180,7 +180,6 @@ func ownTuple(message Message) string {
 		if typed.Args != nil {
 			part = mustPartText(typed.Args)
 		}
-		//portlint:allow utf16units head is a closed JSON tuple ending in the one-byte ASCII ']' that is also one code unit; dropped as head.slice(0, -1) at text.ts:93
 		tail := "null"
 		if typed.Trace != nil {
 			tail = jsonText(carrierValue(typed.Trace, typed.TraceOrder))
@@ -188,6 +187,7 @@ func ownTuple(message Message) string {
 		if typed.Old {
 			tail += ",true"
 		}
+		//portlint:allow utf16units head is a closed JSON tuple ending in the one-byte ASCII ']' that is also one code unit; dropped as head.slice(0, -1) at text.ts:96
 		return head[:len(head)-1] + "," + part + "," + lengths + "," + tail + "]"
 	case *AbortMessage:
 		return jsonText([]any{"x", float64(typed.Call)})

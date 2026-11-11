@@ -48,7 +48,7 @@ func TestParallelToolBatchRunsAtTheDefaultWidthUnderTheCap(t *testing.T) {
 		send := func(procs *[]int, names ...struct{ id, name string }) {
 			tools := make([]AgentTool, len(names))
 			for i, n := range names {
-				tools[i] = &widthTool{fakeTool: fakeTool{name: n.name, mode: ToolModeParallel, content: "ok"}, mu: &mu, procs: procs}
+				tools[i] = &widthTool{name: n.name, mode: ToolModeParallel, content: "ok", mu: &mu, procs: procs}
 			}
 			a := mustNewAgent(AgentOptions{Model: fakeTestModel(providerFromSeqs(toolCallSeq(names...), textSeq("done"))), Tools: tools, MaxTurns: 5})
 			if _, err := a.Send(context.Background(), "width"); err != nil {

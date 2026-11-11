@@ -1426,7 +1426,7 @@ allocs = 1539
 [[benchmark]]
 package = "./coding/cli"
 benchmark = "BenchmarkConfiguredPackageResources"
-allocs = 8693
+allocs = 7252
 
 [[benchmark]]
 package = "./coding/cli"
@@ -1466,7 +1466,7 @@ allocs = 1885
 [[benchmark]]
 package = "./coding/cli"
 benchmark = "BenchmarkPackageAutoloadResolution/1000"
-allocs = 200524
+allocs = 182523
 
 [[benchmark]]
 package = "./coding/cli"
@@ -1726,7 +1726,7 @@ allocs = 570
 [[benchmark]]
 package = "./coding/cli"
 benchmark = "BenchmarkSkillResourceMetadata/1000"
-allocs = 239520
+allocs = 221520
 
 [[benchmark]]
 package = "./coding/cli"
@@ -2661,12 +2661,12 @@ allocs = 108
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkSessionClone"
-allocs = 26213
+allocs = 25710
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkSessionOpen"
-allocs = 60408
+allocs = 35469
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -3267,6 +3267,16 @@ allocs = 99875
 package = "./tui"
 benchmark = "BenchmarkLongStreamingAssistantMessage/foreign"
 allocs = 3378634
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkLongStreamingAssistantMessage/default"
+allocs = 122545
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkLongStreamingAssistantMessage/foreign"
+allocs = 4814365
 
 [[benchmark]]
 package = "./tui"

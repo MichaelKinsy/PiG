@@ -86,8 +86,8 @@ func TestBranchSummaryEntryKeepsTheMemberOrderOfDetails(t *testing.T) {
 // session-manager.ts:1604-1621 branchWithSummary builds the entry literal {type, id, parentId, timestamp, fromId, summary, details, usage, fromHook}; navigateTree passes fromExtension=false (agent-session.ts:4110-4114), so a summary PiG writes carries "fromHook":false after the usage member, exactly as Pi's file does. Found by the tree-navigate-branch-summary journey, whose session comparison showed the member missing.
 func TestBranchSummaryEntryWritesFromHookFalseInPiMemberOrder(t *testing.T) {
 	entry := BranchSummaryEntry{
-		SessionEntryBase: SessionEntryBase{Type: "branch_summary", ID: "b1", Timestamp: "t"},
-		FromID:           "f", Summary: "s", Details: map[string]any{"a": 1},
+		Type: "branch_summary", ID: "b1", Timestamp: "t",
+		FromID: "f", Summary: "s", Details: map[string]any{"a": 1},
 	}
 	out, err := json.Marshal(entry)
 	if err != nil {
@@ -114,8 +114,8 @@ func TestBashExecutionEntryKeepsExcludeFromContextFalseAndOmitsUnset(t *testing.
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			entry := BashExecutionEntry{
-				SessionEntryBase: SessionEntryBase{Type: "message", ID: "e1"},
-				Role:             "bashExecution", Command: "ls", ExcludeFromContext: tc.exclude, MessageTimestamp: 5,
+				Type: "message", ID: "e1",
+				Role: "bashExecution", Command: "ls", ExcludeFromContext: tc.exclude, MessageTimestamp: 5,
 			}
 			encoded, err := json.Marshal(entry)
 			if err != nil {

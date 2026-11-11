@@ -48,7 +48,7 @@ type ReadOperations struct {
 	// CreateReadStream streams the file contents (upstream createReadStream). When set, text files are read through it and only the
 	// lines that will be shown stay in memory; otherwise ReadFile loads the whole file. The read stops consuming the stream and
 	// closes it when ctx is done; an implementation should stop reading then too.
-	CreateReadStream func(ctx context.Context, absolutePath string) (io.ReadCloser, error)
+	CreateReadStream func(ctx context.Context, absolutePath string) (*ReadStream, error)
 }
 
 func (t *ReadTool) Name() string  { return "read" }
@@ -265,7 +265,7 @@ func (t *ReadTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 // readSource is the file a read selected lines from: its bytes, or, when the range can be streamed, the stream that yields them.
 type readSource struct {
 	data   []byte
-	stream io.ReadCloser
+	stream *ReadStream
 	mime   string
 }
 
@@ -340,7 +340,7 @@ func readLocalFile(path string, stream bool) (readSource, string) {
 			if size > n {
 				stream.limited, stream.limit = true, size-n
 			}
-			return readSource{stream: stream}, ""
+			return readSource{stream: NewReadStream(stream)}, ""
 		}
 		for {
 			if len(data) == cap(data) {

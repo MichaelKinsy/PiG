@@ -12,7 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/src/next/link/channel.ts. A host's end of a link (§3, §22, 2b): the handshake, the link's codec,
+// Ports packages/chord/src/link/channel.ts. A host's end of a link (§3, §22, 2b): the handshake, the link's codec,
 // the checks of every message (skipped on a trusted link), the heartbeat, and messages handled in order while one waits
 // for an asynchronous inflate; a protocol error closes the link.
 //

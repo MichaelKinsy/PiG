@@ -75,9 +75,9 @@ Interactive `/login` masks secret input by default. Turn off **Mask secret input
 
 The [documentation](https://pi-in-go.dev/docs/latest) covers everything else, starting with the [quickstart](https://pi-in-go.dev/docs/latest/quickstart). You can also ask PiG to explain itself.
 
-## Serve many sessions (unreleased)
+## Serve many sessions
 
-`pig --mode rpc --listen <path>` serves one RPC session per connection on the Unix socket at `<path>`, with Pi's RPC protocol unchanged on each connection (D232). It is on the 0.7.1 branch and not in PiG 0.7.0, and Pi has no equivalent.
+`pig --mode rpc --listen <path>` serves one RPC session per connection on the Unix socket at `<path>`, with Pi's RPC protocol unchanged on each connection (D232). It is new in PiG 0.8.0 and not in PiG 0.7.0, and Pi has no equivalent.
 
 - There is no default socket path: `--listen` requires one, `--mode rpc`, and a path that does not exist. A path longer than a socket address holds (104 bytes on macOS, 108 on Linux) is refused.
 - The socket has mode 0600 from the moment the path exists and **has no authentication**: any process that runs as your user, and root, can connect and drive a full session with the server's credentials, tools and approvals. Put the socket in a directory only you can reach, such as `$XDG_RUNTIME_DIR`.
@@ -135,7 +135,7 @@ its standalone telemetry and evaluation packages. See
 - Main verification gate: `make check`
 - Full verification and coverage refresh: `make verify`
 
-`pig version` prints the PiG release and the pinned Pi release as separate fields. The interactive startup line prints PiG's version as `<PiG release>+<Pi release>`, for example `0.7.0+1.5.0+c23b9ec1`: the Pi release is semver build metadata, so the version sorts as the PiG release. `pig --version` and `pig -v` print the pinned Pi package version alone, exactly as `pi --version` does, so a launcher that checks Pi's version reads it. That change is on the 0.7.1 branch and unreleased: PiG 0.7.0 prints its own version with the Pi release as build metadata for `pig --version`. Neither command reads user configuration.
+`pig version` prints the PiG release and the pinned Pi release as separate fields. The interactive startup line prints PiG's version as `<PiG release>+<Pi release>`, for example `0.7.0+1.5.0+c23b9ec1`: the Pi release is semver build metadata, so the version sorts as the PiG release. `pig --version` and `pig -v` print the pinned Pi package version alone, exactly as `pi --version` does, so a launcher that checks Pi's version reads it. That change is new in PiG 0.8.0: PiG 0.7.0 prints its own version with the Pi release as build metadata for `pig --version`. Neither command reads user configuration.
 
 ## Repository map
 
@@ -213,7 +213,7 @@ npm-installed binary; update through npm.
 
 ## Install with Go
 
-Install the command without a source checkout with Go 1.26 or newer:
+Install the command without a source checkout with Go 1.27 or newer (an older Go, 1.21 or newer, downloads the toolchain `go.mod` names unless `GOTOOLCHAIN=local`):
 
 ```bash
 go install github.com/MichaelKinsy/PiG/cmd/pig@latest

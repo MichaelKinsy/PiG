@@ -290,7 +290,7 @@ func TestModelTypesUpstream(t *testing.T) {
 		if result.StopReason != ImagesStopReasonStop || len(calls) != 1 || calls[0].options.APIKey != "env-key" {
 			t.Fatalf("result=%+v calls=%+v", result, calls)
 		}
-		models.GenerateImages(t.Context(), model, request, ModelsImagesOptions{ImagesOptions: ImagesOptions{APIKey: "explicit"}})
+		models.GenerateImages(t.Context(), model, request, ModelsImagesOptions{APIKey: "explicit"})
 		if len(calls) != 2 || calls[1].options.APIKey != "explicit" {
 			t.Fatalf("calls=%+v", calls)
 		}
@@ -311,7 +311,7 @@ func TestModelTypesUpstream(t *testing.T) {
 			}}}}))
 		model := imageModelOf(t, models, "p1", "model-a")
 		models.GenerateImages(t.Context(), model, request, ModelsImagesOptions{
-			ImagesOptions: ImagesOptions{APIKey: "request-key", Env: map[string]string{"REQUEST_ONLY": "request", "SHARED": "request"}},
+			APIKey: "request-key", Env: map[string]string{"REQUEST_ONLY": "request", "SHARED": "request"},
 			// Pi's transform returns a new object ({ ...headers, "x-extra": "2" }) and leaves its input unchanged.
 			TransformHeaders: func(_ context.Context, headers ProviderHeaders) (ProviderHeaders, error) {
 				out := maps.Clone(headers)

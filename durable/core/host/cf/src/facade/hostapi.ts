@@ -10,7 +10,7 @@ import { enterCommit } from "./commit-context.ts"
 import { spanFields } from "./telemetry.ts"
 import { loadedTracker, keepTracker, settleRevision, shareSnapshot, snapshotStamp, stageRevision, unstageRevision } from "./snapshots.ts"
 import { resolveAddress, wireAddress, type AnyDocToken } from "./documents.ts"
-import type { Context } from "@earendil-works/chord"
+import type { Context } from "@earendil-works/chord/context"
 
 /** What ties a handle to an invocation: its signal, and a check that throws once the invocation has ended (harness.ts InvocationBinding). */
 export type InvocationBinding = { readonly signal: AbortSignal | undefined; /** The task whose invocation this binding belongs to; absent for a handle outside any invocation. */ readonly invocation?: number; check(): void; /** Run `callback` when the invocation ends (at once if it already has). */ onEnd(callback: () => void): void }
@@ -50,7 +50,6 @@ export interface HostApiOptions {
   agent?: (conversationId: number, context: Context) => Promise<unknown>
   /** The Harness's committed-document watches and states, which an invocation's handle stops when the invocation ends. */
   watchDoc?: (token: AnyDocToken, ...args: unknown[]) => Promise<{ stop(): unknown } | undefined>
-  documentState?: (token: AnyDocToken, ...args: unknown[]) => Promise<{ dispose?(): unknown } | undefined>
   /** session.ts assertUsable for a Session that failed: throws SessionFailed, so a commit whose callback outlived the failure does not commit. */
   failed?: () => void
   /** pi-durable `Context` values are chord contexts; every wait honours their cancellation. */
@@ -162,12 +161,6 @@ export function invocationApi(options: HostApiOptions, who: InvocationIdentity &
       const watch = await options.watchDoc?.(token, ...args)
       if (watch !== undefined) { binding.onEnd(() => { void watch.stop() }); binding.check() }
       return watch
-    },
-    documentState: async (token: AnyDocToken, ...args: unknown[]) => {
-      binding.check()
-      const state = await options.documentState?.(token, ...args)
-      if (state !== undefined) binding.onEnd(() => { void state.dispose?.() })
-      return state
     },
   }
 }

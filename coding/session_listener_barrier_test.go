@@ -40,7 +40,7 @@ func TestSessionPublicListenersPrecedePersistenceAndTools(t *testing.T) {
 		}
 		// A listener may inspect protected Session state without deadlocking the producer.
 		s.mu.Lock()
-		entries := s.inner.GetEntries()
+		entries := s.inner.Load().GetEntries()
 		s.mu.Unlock()
 		observed.Add(1)
 		for _, entry := range entries {
