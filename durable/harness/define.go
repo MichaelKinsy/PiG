@@ -50,9 +50,9 @@ func WrapSection(key string, wrapper func(section *durable.PromptSection) *durab
 	return durable.SectionWrap{Section: key, Wrap: wrapper}
 }
 
-// RunEndTaskOf is a task an afterRun hook asks for, its input typed by the task (spec §8.3). The input is checked and
+// HookTaskOf is a task an afterRun hook asks for, its input typed by the task (spec §8.3). The input is checked and
 // copied as JSON when the generation prepares the request, so a broken one is rejected there, against the hook's
 // extension.
-func RunEndTaskOf[I, S, R, H any](task durable.Task[I, S, R, H], input I) RunEndTask {
-	return RunEndTask{Task: task.Erased(), Input: input}
+func HookTaskOf[I, S, R, H any](task durable.Task[I, S, R, H], input I) HookTask {
+	return HookTask{Task: task.Erased(), Input: input}
 }

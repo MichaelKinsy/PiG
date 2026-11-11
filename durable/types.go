@@ -197,10 +197,17 @@ type (
 // RunningTask is a live task record reserved by one invocation; State.Status is TaskRunning.
 type RunningTask[I, S, R any] = TaskRecord[I, S, R]
 
-// NextTaskState is the next state a task commits for itself: a replacement checkpoint (running), a wait, or its
+// NextTaskState is the next state a task commits for itself: a replacement checkpoint (running), a wait, a sleep, or its
 // outcome (terminal). A returned terminal state is stored as completing while ordinary owned work below the task is
-// live (spec §5.5).
+// live (spec §5.5). A task never writes its own Wake: a commit of the same checkpoint keeps it, any other state drops
+// it.
 type NextTaskState[S, R any] = TaskState[S, R]
+
+// SubmissionNotify is where a settling submission delivers SubmissionSettled: a task, and the key it sleeps on.
+type SubmissionNotify struct {
+	TaskId TaskId `json:"taskId"`
+	Key    string `json:"key"`
+}
 
 // PhaseHandler runs one checkpoint phase. It must commit a changed checkpoint or a terminal outcome through
 // runtime.Commit; returning without durable progress faults the task.
@@ -263,6 +270,10 @@ type TaskRuntime[I, S, R any, H any] interface {
 	Memo(ctx context.Context, name string) (value JsonValue, ok bool, err error)
 	// MemoCandidate stores candidate unless a memo already exists and returns the durable winner.
 	MemoCandidate(ctx context.Context, name string, candidate JsonValue) (JsonValue, error)
+	// ReadSignalErased is a signal key's committed state, the value migrated to the token's version; nil while nothing came
+	// (ReadSignal is the typed read). It fails when the stored value cannot be migrated or the migrated value does not
+	// match the schema.
+	ReadSignalErased(ctx context.Context, token AnySignalSource, key string) (*ErasedSignalState, error)
 	// GetTask returns the committed task record; nil when absent.
 	GetTask(ctx context.Context, id TaskId) (*TaskRecord[JsonValue, JsonValue, JsonValue], error)
 	// WaitForTask returns the task's terminal receipt; it fails when the invocation ends.
@@ -352,12 +363,16 @@ type TaskOwnership struct {
 	TaskId TaskId `json:"taskId,omitempty"`
 }
 
-// JoinPolicy is how a waiting task treats the tasks it waits on (spec §5.5).
+// JoinPolicy is how a waiting task treats the tasks it waits on (spec §5.5): allSettled resumes once every task in on is
+// terminal, failFast too but aborts the others once one fails, any once at least one is terminal.
 type JoinPolicy string
 
 const (
 	JoinFailFast   JoinPolicy = "failFast"
 	JoinAllSettled JoinPolicy = "allSettled"
+	// JoinAny resumes once at least one task in on is terminal (allSettled: every task; failFast: too, but aborts the
+	// others once one fails).
+	JoinAny JoinPolicy = "any"
 )
 
 // TaskTrace is TaskOptions.trace, `TelemetryCarrier | "root"`: an explicit carrier override, or Root to start at the
@@ -531,7 +546,9 @@ type SubmissionRecord struct {
 	Id             SubmissionId               `json:"id"`
 	ConversationId ConversationId             `json:"conversationId"`
 	// RequestId is the host-provided deduplication key, scoped to the conversation; nil when absent.
-	RequestId *string          `json:"requestId,omitempty"`
+	RequestId *string `json:"requestId,omitempty"`
+	// Notify is the task to deliver SubmissionSettled to under Key when the submission settles; nil when absent.
+	Notify *SubmissionNotify `json:"notify,omitempty"`
 	Type      SubmissionType   `json:"type"`
 	Status    SubmissionStatus `json:"status"`
 	Entry     *EntryId         `json:"entry,omitempty"`
@@ -554,6 +571,7 @@ type SubmissionCreate struct {
 	Trace          telemetry.TelemetryCarrier `json:"trace,omitzero"`
 	ConversationId ConversationId             `json:"conversationId"`
 	RequestId      *string                    `json:"requestId,omitempty"`
+	Notify         *SubmissionNotify          `json:"notify,omitempty"`
 	Type           SubmissionType             `json:"type"`
 	Status         SubmissionStatus           `json:"status"`
 	Entry          *EntryId                   `json:"entry,omitempty"`
@@ -565,7 +583,7 @@ type SubmissionCreate struct {
 // Record returns the submission record of a create with its assigned ID.
 func (create SubmissionCreate) Record(id SubmissionId) SubmissionRecord {
 	return SubmissionRecord{
-		Trace: create.Trace, Id: id, ConversationId: create.ConversationId, RequestId: create.RequestId, Type: create.Type,
+		Trace: create.Trace, Id: id, ConversationId: create.ConversationId, RequestId: create.RequestId, Notify: create.Notify, Type: create.Type,
 		Status: create.Status, Entry: create.Entry, Answer: create.Answer, Reason: create.Reason, Detail: create.Detail,
 	}
 }
@@ -626,12 +644,42 @@ const (
 // carry Checkpoint; waiting also carries On and Policy; sleeping also carries Until; completing and terminal carry
 // Outcome.
 type TaskState[S, R any] struct {
-	Status     TaskStatus      `json:"status"`
-	Checkpoint *S              `json:"checkpoint,omitempty"`
-	On         []TaskId        `json:"on,omitempty"`
-	Policy     JoinPolicy      `json:"policy,omitempty"`
-	Until      *float64        `json:"until,omitempty"`
-	Outcome    *TaskOutcome[R] `json:"outcome,omitempty"`
+	Status     TaskStatus `json:"status"`
+	Checkpoint *S         `json:"checkpoint,omitempty"`
+	// Wake is why the task woke from its last wait or sleep, kept while it runs at the checkpoint it woke at. Pending and
+	// running only.
+	Wake    *WakeReason     `json:"wake,omitempty"`
+	On      []TaskId        `json:"on,omitempty"`
+	Policy  JoinPolicy      `json:"policy,omitempty"`
+	Until   *float64        `json:"until,omitempty"`
+	Signals []SignalKey     `json:"signals,omitempty"`
+	Outcome *TaskOutcome[R] `json:"outcome,omitempty"`
+}
+
+// WakeReasonKind is the `reason` of a WakeReason.
+type WakeReasonKind string
+
+// The wake reasons.
+const (
+	// WakeTime is the sleep's until, no signals listed.
+	WakeTime WakeReasonKind = "time"
+	// WakeExpired is until before any listed signal.
+	WakeExpired WakeReasonKind = "expired"
+	// WakeSignal is the key whose value woke the task (Signal, Key); read the value with ReadSignal.
+	WakeSignal WakeReasonKind = "signal"
+	// WakeTasks is the terminal tasks of the wait's on at the reservation (Ended).
+	WakeTasks WakeReasonKind = "tasks"
+)
+
+// WakeReason is why parked work runs again, as the reservation that woke it recorded: time (the sleep's until, no signals
+// listed), expired (until came before any listed signal), signal (the key whose value woke it; read the value with
+// ReadSignal), tasks (the terminal tasks of the wait's on at the reservation). Kept until the task commits another
+// checkpoint, parks, or ends. A union in TypeScript: Signal and Key are set for signal only, Ended for tasks only.
+type WakeReason struct {
+	Reason WakeReasonKind
+	Signal string
+	Key    string
+	Ended  []TaskId
 }
 
 // ReportTask is the task a report is about.
@@ -1137,6 +1185,12 @@ type Tx interface {
 	// PlaceSubmission places a queued submission at entry: an input becomes placed, a write done. Resolved like
 	// SettleSubmission. Inbox boundaries place the submissions they select.
 	PlaceSubmission(id SubmissionId, entry EntryId) error
+	// SignalErased is `signal(taskId, token, key, value)` (spec suspendable §3.2) with an erased token and a JSON value; Signal
+	// is the typed call. It delivers value to task taskId under key: stored in the task until a sleep on the key wakes on
+	// it, also when the task does not sleep on it yet. It reads the task, so it fails with ReadAfterWrite after the
+	// commit's first table write; the result is provisional until the commit is stored. It checks nothing about the
+	// caller.
+	SignalErased(taskId TaskId, token AnySignalSource, key string, value JsonValue) (SignalResult, error)
 
 	// Doc returns the draft of a document, creating it when absent. args are the owner ID (conversation or task
 	// scope), then the family key and seed (families). A family access without a seed fails as upstream's undefined

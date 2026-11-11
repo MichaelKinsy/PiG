@@ -283,6 +283,31 @@ func (harness *harnessImpl) AbortTask(ctx context.Context, id durable.TaskId) (s
 	return harness.tasks.Abort(ctx, id, false)
 }
 
+// SignalErased is tx.SignalErased in a commit of its own (harness.ts signal): scheduling is enabled first, so a host that
+// arms its recovery wakeup does so before the delivery, as before Submit.
+func (harness *harnessImpl) SignalErased(ctx context.Context, taskId durable.TaskId, token durable.AnySignalSource, key string, value durable.JsonValue) (durable.SignalResult, error) {
+	if err := harness.tasks.TryResume(); err != nil {
+		return "", err
+	}
+	result, err := harness.SessionImpl.Commit(ctx, func(tx durable.Tx) (any, error) {
+		return tx.SignalErased(taskId, token, key, value)
+	})
+	if err != nil {
+		return "", err
+	}
+	return result.(durable.SignalResult), nil
+}
+
+// Signal is `harness.signal(taskId, token, key, value, context)`: tx.Signal in a commit of its own, delivering value to
+// task taskId under key. Enables scheduling. Checks nothing about the caller. A value that is no JSON is answered invalid.
+func Signal[T any](ctx context.Context, harness Harness, taskId durable.TaskId, token durable.SignalToken[T], key string, value T) (durable.SignalResult, error) {
+	encoded, err := durable.ToJsonValue(value)
+	if err != nil {
+		return durable.SignalInvalid, nil
+	}
+	return harness.SignalErased(ctx, taskId, token, key, encoded)
+}
+
 func (harness *harnessImpl) WaitForTask(ctx context.Context, id durable.TaskId) (durable.SettledTask[durable.JsonValue], error) {
 	if err := harness.tasks.TryResume(); err != nil {
 		return durable.SettledTask[durable.JsonValue]{}, err

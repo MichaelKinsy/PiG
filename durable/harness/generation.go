@@ -1391,15 +1391,15 @@ type preparedTask struct {
 	input durable.JsonValue
 }
 
-// prepareRunEndTasks checks the tasks one afterRun hook asked for, off the line, and adds those that pass to prepared, so
+// prepareHookTasks checks the tasks one afterRun hook asked for, off the line, and adds those that pass to prepared, so
 // a broken request is skipped instead of failing the creating commit: its kind must be an installed task that is not
 // built-in, its input JSON, and its definition's Initial must return a JSON checkpoint of one of its phases. The task is
 // created from the installed definition, as every task runs under it, with that checkpoint, so Initial runs once. Then
 // it returns the rejections, which Hooks().Each reports against the hook's extension.
-func prepareRunEndTasks(runtime generationRuntime, requests []RunEndTask, prepared *[]preparedTask) error {
+func prepareHookTasks(runtime generationRuntime, requests []HookTask, prepared *[]preparedTask) error {
 	var rejected []error
 	for _, request := range requests {
-		task, err := prepareRunEndTask(runtime, request)
+		task, err := prepareHookTask(runtime, request)
 		if err != nil {
 			rejected = append(rejected, err)
 			continue
@@ -1415,8 +1415,8 @@ func prepareRunEndTasks(runtime generationRuntime, requests []RunEndTask, prepar
 	return chord.NewAggregateError(fmt.Sprintf("%d afterRun task requests were rejected", len(rejected)), rejected...)
 }
 
-// prepareRunEndTask checks one request of an afterRun hook.
-func prepareRunEndTask(runtime generationRuntime, request RunEndTask) (preparedTask, error) {
+// prepareHookTask checks one request of an afterRun hook.
+func prepareHookTask(runtime generationRuntime, request HookTask) (preparedTask, error) {
 	definition := request.Task.Definition
 	if definition == nil {
 		return preparedTask{}, errors.New("An afterRun hook asked for a task without a definition")
@@ -1970,7 +1970,7 @@ func generationFinishHandler(ctx context.Context, task durable.RunningTask[Gener
 		if asked == nil {
 			return nil
 		}
-		return prepareRunEndTasks(runtime, asked.Tasks, &prepared)
+		return prepareHookTasks(runtime, asked.Tasks, &prepared)
 	}); err != nil {
 		return err
 	}

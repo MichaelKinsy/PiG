@@ -197,15 +197,15 @@ func TestAPanickingHookIsAThrownOutcome(t *testing.T) {
 func TestAfterRunAnswersCarryRejectedOnlyWhenARequestWasRejected(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
-		asked harness.RunEndTasks
+		asked harness.HookTasks
 		want  string
 	}{
-		{"none asked", harness.RunEndTasks{}, `{"tasks":[]}`},
-		{"a request without a definition", harness.RunEndTasks{Tasks: []harness.RunEndTask{{}}},
+		{"none asked", harness.HookTasks{}, `{"tasks":[]}`},
+		{"a request without a definition", harness.HookTasks{Tasks: []harness.HookTask{{}}},
 			`{"tasks":[],"rejected":[{"name":"Error","message":"An afterRun hook asked for a task without a definition"}]}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			handler := &harness.GenerationHooks{AfterRun: func(context.Context, harness.RunSummary, harness.HookApi) (*harness.RunEndTasks, error) {
+			handler := &harness.GenerationHooks{AfterRun: func(context.Context, harness.RunSummary, harness.HookApi) (*harness.HookTasks, error) {
 				return &tc.asked, nil
 			}}
 			ev := hookRun(t, "afterRun", map[int]any{0: handler}, `{"run":{"reason":"answer","answer":1,"last":1,"first":1}}`)

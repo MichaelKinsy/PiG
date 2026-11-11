@@ -152,7 +152,7 @@ func (h *Hooks) afterRun(ctx context.Context, call *sqlhost.Call, p hookEffect) 
 		return post(abi.OutcomeResult, json.RawMessage("null"))
 	}
 	api := h.API(durable.TaskId(p.TaskID), durable.ConversationId(p.ConversationID))
-	var asked *harness.RunEndTasks
+	var asked *harness.HookTasks
 	if err := callDefinition(func() (err error) { asked, err = hooks.AfterRun(ctx, in.Run, api); return err }); err != nil {
 		return post(abi.OutcomeThrown, wireError(err))
 	}

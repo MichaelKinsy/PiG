@@ -26,8 +26,12 @@ type HookApi interface {
 	// Entry is a committed entry visible from the task's conversation, as TaskRuntime.Entry; nil when the entry is
 	// absent or not visible. A typed read is HookEntry.
 	Entry(ctx context.Context, id durable.EntryId) (*durable.EntryRecord, error)
-	// Entries is the committed raw history of the task's conversation, as TaskRuntime.Entries.
 	Entries(ctx context.Context, query durable.EntryQuery, limit int, cursor durable.Cursor) (durable.Page[durable.EntryRecord, durable.Cursor], error)
+	// ReadSignalErased is a signal key's committed state in the asking task, as TaskRuntime.ReadSignalErased; durable.ReadSignal
+	// is the typed read.
+	ReadSignalErased(ctx context.Context, token durable.AnySignalSource, key string) (*durable.ErasedSignalState, error)
+	// Now is the Harness clock.
+	Now() float64
 }
 
 // HookEntry is the typed overload of HookApi.entry (harness/types.ts:953): the committed entry visible from the task's
@@ -58,10 +62,21 @@ type ProviderPayload struct {
 	Payload any
 }
 
+// YieldResult is the onYield result: a YieldContinue or a YieldTasks (upstream's union `{ continue } | { tasks }`).
+type YieldResult interface{ isYieldResult() }
+
 // YieldContinue is the onYield result that appends a user message and continues the run.
 type YieldContinue struct {
 	Continue durable.UserInput
 }
+
+// YieldTasks is the onYield result whose tasks decide whether the answer stands.
+type YieldTasks struct {
+	Tasks []HookTask
+}
+
+func (*YieldContinue) isYieldResult() {}
+func (*YieldTasks) isYieldResult()    {}
 
 // GenerationHooks are the hooks of the built-in generation task. A nil member does not run. Register them as *GenerationHooks.
 type GenerationHooks struct {
@@ -74,16 +89,22 @@ type GenerationHooks struct {
 	BeforeProviderRequest func(ctx context.Context, request ProviderRequest, api HookApi) (*ProviderPayload, error)
 	// AfterResponse sees every terminal provider message, before classification.
 	AfterResponse func(ctx context.Context, message ai.AssistantMessage, api HookApi) error
-	// OnYield sees a final answer; the first non-nil result appends a user message and continues the run.
-	OnYield func(ctx context.Context, answer ai.AssistantMessage, api HookApi) (*YieldContinue, error)
+	// OnYield sees a final answer; the first non-nil result wins. A YieldContinue appends a user message and continues
+	// the run. YieldTasks decide whether the answer stands (spec suspendable §6): the answer is appended, the run's inputs
+	// stay open (LiveRun.Yield), the tasks run as the generation's children, and the first in creation order that
+	// completes with a YieldDecision holding Continue provides the continuation; without one the run ends with the answer.
+	OnYield func(ctx context.Context, answer ai.AssistantMessage, api HookApi) (YieldResult, error)
 	// AfterTools runs after every tool of the round is terminal; results are the round's result entries in call order.
-	AfterTools func(ctx context.Context, assistant durable.EntryId, results []durable.EntryId, api HookApi) error
+	// Requested tasks of every hook, concatenated in extension order, run as the generation's children before the round
+	// ends; one that completes with an AfterToolsDecision holding Terminate ends the run as a round whose calls all asked
+	// to terminate. A task answers the run otherwise by submitting a steer in its terminal commit.
+	AfterTools func(ctx context.Context, assistant durable.EntryId, results []durable.EntryId, api HookApi) (*HookTasks, error)
 	// AfterRun runs after a run answered, its answer committed and its inputs settled done: a final answer, or a
 	// terminate round; not when an onYield continuation is taken, and never after a failure or an abort. The requested
 	// tasks of every hook are created together as children of the generation, which keeps the run, and the conversation
 	// busy, until they are terminal; then queued items are placed and the run ends (spec §8.3). A crash before they are
 	// created asks again; once created, never again for this run.
-	AfterRun func(ctx context.Context, run RunSummary, api HookApi) (*RunEndTasks, error)
+	AfterRun func(ctx context.Context, run RunSummary, api HookApi) (*HookTasks, error)
 }
 
 // RunEndReason is how a run ended, for afterRun hooks.
@@ -121,15 +142,27 @@ func (run RunSummary) MarshalJSON() ([]byte, error) {
 	}{run.Reason, run.Answer, run.Last, run.First})
 }
 
-// RunEndTask is a task an afterRun hook asks for, built by RunEndTaskOf. Input is JSON.
-type RunEndTask struct {
+// HookTask is a task a hook (afterTools, onYield, afterRun) asks for, built by HookTaskOf. Input is JSON.
+type HookTask struct {
 	Task  durable.AnyTask
 	Input durable.JsonValue
 }
 
-// RunEndTasks is what an afterRun hook asks for: the tasks to create and wait for.
-type RunEndTasks struct {
-	Tasks []RunEndTask
+// HookTasks is what an afterTools or afterRun hook asks for, and an onYield hook (YieldTasks): the tasks to create and
+// wait for.
+type HookTasks struct {
+	Tasks []HookTask
+}
+
+// YieldDecision is what an onYield task completes with to continue the run instead of letting its answer stand. Continue is
+// nil when absent.
+type YieldDecision struct {
+	Continue durable.UserInput `json:"continue,omitempty"`
+}
+
+// AfterToolsDecision is what an afterTools task completes with to end the run after this round.
+type AfterToolsDecision struct {
+	Terminate bool `json:"terminate,omitempty"`
 }
 
 // ToolParent is the calling task and call ID of a nested call.
@@ -152,10 +185,18 @@ func NewToolHookCall(call ai.ToolCall, parent *ToolParent) ToolHookCall {
 	return ToolHookCall{Type: "toolCall", ToolCall: call, Parent: parent}
 }
 
-// BeforeToolResult is a beforeTool decision: a non-nil Block blocks the call, otherwise non-nil Arguments replace its arguments.
+// GateSleep is what a beforeTool hook sleeps for: a deadline, signals, or both.
+type GateSleep struct {
+	Until   *float64
+	Signals []durable.SignalKey
+}
+
+// BeforeToolResult is a beforeTool decision: a non-nil Block blocks the call, a non-nil Sleep parks it at its gates;
+// otherwise non-nil Arguments replace its arguments. The first Block or Sleep stops the chain; Block wins over Sleep.
 type BeforeToolResult struct {
 	Arguments map[string]any
 	Block     *string
+	Sleep     *GateSleep
 }
 
 // ToolHooks are the hooks of the built-in tool task. A nil member does not run. Register them as *ToolHooks.
@@ -300,8 +341,8 @@ type TaskInspectionState struct {
 	Kind     TaskInspectionKind
 	Migrates bool
 	On       []durable.TaskId
-	// Until is the time a sleeping task wakes at.
-	Until  float64
+	// Until is the time a sleeping task wakes at, when it has one: a sleep may wait for signals only.
+	Until *float64
 	Reason string
 	Error  error
 }
@@ -380,6 +421,10 @@ type Harness interface {
 	AbortSubmission(ctx context.Context, id durable.SubmissionId, conversationId *durable.ConversationId) (durable.SubmissionAbortResult, error)
 	// AbortTask commits the abort mark, signals and joins an active run invocation, and schedules the abort invocation. A task whose definition cannot take it settles as orphaned instead. It returns marked or terminal.
 	AbortTask(ctx context.Context, id durable.TaskId) (string, error)
+	// SignalErased is `signal` (spec suspendable §3) with an erased token and a JSON value; Signal is the typed call. It
+	// is tx.SignalErased in a commit of its own: deliver value to task taskId under key. Enables scheduling, so a host
+	// arms its recovery wakeup first, as before Submit. Checks nothing about the caller.
+	SignalErased(ctx context.Context, taskId durable.TaskId, token durable.AnySignalSource, key string, value durable.JsonValue) (durable.SignalResult, error)
 	// WaitForTask returns the terminal receipt; cancelling ctx cancels only this wait. A conversation-owned task nothing waits for commits in
 	// an order set by goroutine scheduling against its conversation's generation, so its record can still be live when the answer settles
 	// (D181); wait for it, or for WaitForIdle, before reading its state.

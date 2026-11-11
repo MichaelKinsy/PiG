@@ -70,6 +70,10 @@ type SubmissionDraft struct {
 	// (types.ts SubmissionDraft: an input's `entry` is an InputEntry, a write's is an EntryDraft).
 	InputEntry *InputEntry
 	Entry      *EntryDraft
+	// Notify, when the submission settles, delivers SubmissionSettledSignal (the settled record) to Notify.TaskId under
+	// Notify.Key, in the settling commit; a delivery the task refuses (closed, not_found) fails nothing. A submission that
+	// settles before the task sleeps on the key wakes the sleep at once. Nil when absent.
+	Notify *SubmissionNotify
 }
 
 // InputSubmissionDraft is a SubmissionDraft of type input.
@@ -186,6 +190,43 @@ type ToolExecutionResult struct {
 	// Usage is the spend of the execution itself, such as a model call; stored on the result and in pi.usage.tools.
 	Usage   *ai.Usage
 	Control *ToolControl
+	// Park, when set, parks the call instead of returning a result (spec suspendable §4): no other field may be set, and
+	// a park with one is invalid. Upstream's result and park are distinct object types, and a Go tool returns one struct.
+	Park *ToolPark
+}
+
+// ToolParkSleep is a park's sleep: until Until, for Signals, or both.
+type ToolParkSleep struct {
+	// Checkpoint is what the call parks with, given back as api.Checkpoint on the next run; set only with HasCheckpoint.
+	Checkpoint    JsonValue
+	HasCheckpoint bool
+	Until         *float64
+	Signals       []SignalKey
+}
+
+// ToolParkWait is a park's wait: for tasks the call's task owns.
+type ToolParkWait struct {
+	Checkpoint    JsonValue
+	HasCheckpoint bool
+	On            []TaskId
+	Policy        JoinPolicy
+}
+
+// ToolPark is what Execute returns instead of a result to park the call (spec suspendable §4): Sleep until Until, for
+// Signals, or both; or Wait for tasks the call's task owns; exactly one. The call holds no invocation meanwhile, then runs
+// Execute again with the same arguments, api.Wake saying why, and api.Checkpoint set to the park's checkpoint. Returned
+// by pointer: a wrapper's composite may return only a park its base returned.
+type ToolPark struct {
+	Sleep *ToolParkSleep
+	Wait  *ToolParkWait
+}
+
+// ToolTaskOptions is the options of ToolExecutionApi.CreateTaskErased: the creation options without ConversationId, and
+// the key of the task.
+type ToolTaskOptions struct {
+	TaskOptions
+	// Key records the task under a key of the call; nil when absent.
+	Key *string
 }
 
 // ToolExecutionMode is whether the tools of one round run at once or one after another in call order.
@@ -213,6 +254,10 @@ type ToolExecutionApi interface {
 	TaskId() TaskId
 	ConversationId() ConversationId
 	CallId() string
+	// Wake is why this run started after a park; nil on a fresh call, and in Cancel.
+	Wake() *WakeReason
+	// Checkpoint is what the call last parked with; ok is false on a fresh call or after a park without one.
+	Checkpoint() (value JsonValue, ok bool)
 	// Registry is the tool task's phase snapshot.
 	Registry() RegistrySnapshot
 	// Agent is the calling conversation's agent, as the tool task's phase resolved it.
@@ -244,12 +289,17 @@ type ToolExecutionApi interface {
 	Commit(ctx context.Context, change func(tx Tx) (any, error), options ...CommitOptions) (any, error)
 	// Memo reads a durable memo of the tool task; ok is false when absent.
 	Memo(ctx context.Context, name string) (value JsonValue, ok bool, err error)
-	// MemoCandidate stores candidate unless a memo already exists and returns the durable winner.
 	MemoCandidate(ctx context.Context, name string, candidate JsonValue) (JsonValue, error)
+	// ReadSignalErased is a signal key's committed state in this call's task, as TaskRuntime.ReadSignalErased; ReadSignal
+	// is the typed read.
+	ReadSignalErased(ctx context.Context, token AnySignalSource, key string) (*ErasedSignalState, error)
 	// CreateTaskErased creates a task in one commit in the calling conversation; options.ConversationId is ignored. A
 	// child task of a tool that is not replay-safe defaults to AbandonOnRestart: the tool never resumes after a restart,
-	// so nothing awaits the child then (harness/types.ts:232-234).
-	CreateTaskErased(ctx context.Context, task AnyTask, input JsonValue, options TaskOptions) (TaskId, error)
+	// so nothing awaits the child then (harness/types.ts:232-234). With a Key, validated like a nested call's, the task
+	// is recorded under it in the same commit, and a later call with the key, in this run, a rerun, or a run after a
+	// wake, returns that task; another task kind, other input, or a key a nested call uses fails. After a wake (Wake set)
+	// a key is required.
+	CreateTaskErased(ctx context.Context, task AnyTask, input JsonValue, options ToolTaskOptions) (TaskId, error)
 	// GetTask returns nil when absent.
 	GetTask(ctx context.Context, id TaskId) (*TaskRecord[JsonValue, JsonValue, JsonValue], error)
 	WaitForTask(ctx context.Context, id TaskId) (SettledTask[JsonValue], error)
@@ -262,13 +312,20 @@ type ToolExecutionApi interface {
 	// could not be made or waited for. Calls made without a key are keyed by their order, so a rerun that calls in the
 	// same order reattaches to the calls it made. Cancelling ctx stops only the wait.
 	ExecuteTool(ctx context.Context, name string, args map[string]any, options ...NestedCallOptions) (NestedToolExecutionResult, error)
+	// ExecuteToolNoWait is ExecuteTool with `wait: false`, which upstream's overload types as a call that returns
+	// a NestedToolCall (a Go method has one result type): it returns once the nested call is started or found, with a
+	// handle to its result, so a tool can park on its nested calls (a park's wait.on) and let the Session go idle.
+	// Awaiting a nested call with ExecuteTool holds this call's invocation for as long as it takes, also while it is
+	// parked.
+	ExecuteToolNoWait(ctx context.Context, name string, args map[string]any, options ...NestedCallOptions) (NestedToolCall, error)
 }
 
 // NestedCallOptions are the options of ExecuteTool (types.ts ToolExecutionApi.executeTool).
 type NestedCallOptions struct {
 	// Key names the call among this call's nested calls, so a rerun finds it. It is a path segment of the nested call's
 	// ID: non-empty, without "/", not "__proto__", and not a positive integer, which default keys use. Nil: the call's
-	// order among this call's nested calls.
+	// order among this call's nested calls. After a wake (Wake set) the same position may mean another call, so a key
+	// is required.
 	Key *string
 	// Progress false commits no running output, details, or diagnostics to the call's slot; the result still gets them.
 	Progress *bool
@@ -295,8 +352,20 @@ type NestedToolExecutionResult struct {
 	HasDetails          bool
 	Diagnostics         []ToolDiagnostic
 	Usage               *ai.Usage
-	// DurationMs is the execution time of the attempt that produced the result; nil when it never executed.
+	// DurationMs is the span from the tool task's first run (StartedAt) to its result on the Harness clock, hooks, parks,
+	// crash downtime, and reruns included; results that never executed have one too. A record written before StartedAt
+	// existed keeps the execution time of the last attempt. Nil when absent.
 	DurationMs *int64
+}
+
+// NestedToolCall is a nested call started without waiting for it (ExecuteToolNoWait, upstream's executeTool with wait
+// false).
+type NestedToolCall struct {
+	// TaskId is the nested call's tool task, for a park's wait.on.
+	TaskId TaskId
+	// Result is the stored result once the nested call is terminal; otherwise it waits for it. Cancelling ctx stops only
+	// the wait.
+	Result func(ctx context.Context) (NestedToolExecutionResult, error)
 }
 
 // ToolReplay is whether an interrupted execution may rerun on recovery.
@@ -346,7 +415,13 @@ type ToolRegistration struct {
 	// its exact list or its add, which a tool such as tool_search writes with the addTools control. Other tools can call it
 	// any time.
 	Deferred bool
-	Execute  func(ctx context.Context, args any, api ToolExecutionApi) (ToolExecutionResult, error)
+	// Execute runs the tool and returns its result, or a park (ToolExecutionResult.Park): the call then runs Execute again
+	// once woken.
+	Execute func(ctx context.Context, args any, api ToolExecutionApi) (ToolExecutionResult, error)
+	// Cancel cleans up the external work of a call that parked, when it is aborted while no code of the tool runs (spec
+	// suspendable §4.2): api.Checkpoint is the last park's, api.Wake nil, and it starts no nested calls or tasks. It may
+	// run more than once, so it is idempotent. A failure is reported and the call still ends. Nil when absent.
+	Cancel func(ctx context.Context, args any, api ToolExecutionApi) error
 }
 
 // ToolCaller is a kind of caller a tool admits (types.ts ToolRegistration.callers).

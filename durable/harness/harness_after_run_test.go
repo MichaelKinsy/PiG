@@ -4,8 +4,8 @@
 // Go mappings specific to this file. A crash is a killableStorage: after kill() every later storage call parks like a
 // crashed process, so nothing more lands, as the TypeScript Proxy over SQLite does. A hook or task that waits on a gate
 // also waits for the signal of its invocation, and for the end of the tests, so an abandoned Harness's goroutines end
-// with them. "not-a-list" (`{ tasks: "x" }` from an afterRun hook) is not expressible: RunEndTasks.Tasks is a slice of
-// RunEndTask, so the Go type system rejects what TypeScript's cast smuggles in; the rest of "reports broken requests
+// with them. "not-a-list" (`{ tasks: "x" }` from an afterRun hook) is not expressible: HookTasks.Tasks is a slice of
+// HookTask, so the Go type system rejects what TypeScript's cast smuggles in; the rest of "reports broken requests
 // and hooks and creates the rest" runs unchanged.
 // A report a task raises once its commit call returned (task_interrupted of a generation cut off at the limit) is read through
 // eventually: Pi reads it after the awaits of its wait and its snapshots, which let the continuation of that commit run first,
@@ -311,17 +311,17 @@ func arTests(state *arProbe) arTestsTask {
 
 // arInstall installs the after-run extension: its task and an afterRun hook, by default asking for one task per run.
 // It returns the task.
-func arInstall(t *testing.T, setup *chatState, state *arProbe, afterRun ...func(ctx context.Context, run RunSummary, api HookApi) (*RunEndTasks, error)) arTestsTask {
+func arInstall(t *testing.T, setup *chatState, state *arProbe, afterRun ...func(ctx context.Context, run RunSummary, api HookApi) (*HookTasks, error)) arTestsTask {
 	t.Helper()
 	tests := arTests(state)
-	handler := func(ctx context.Context, run RunSummary, _ HookApi) (*RunEndTasks, error) {
+	handler := func(ctx context.Context, run RunSummary, _ HookApi) (*HookTasks, error) {
 		count := state.addAsked(run)
 		if _, hookGate := state.gates(); hookGate != nil {
 			if err := arWait(hookGate, ctx); err != nil {
 				return nil, err
 			}
 		}
-		return &RunEndTasks{Tasks: []RunEndTask{RunEndTaskOf(tests, arInput{Label: "run " + itoaString(count)})}}, nil
+		return &HookTasks{Tasks: []HookTask{HookTaskOf(tests, arInput{Label: "run " + itoaString(count)})}}, nil
 	}
 	if len(afterRun) > 0 {
 		handler = afterRun[0]
@@ -543,7 +543,7 @@ func TestAfterRun(t *testing.T) {
 		closeHarness(t, harness)
 
 		setup := chatSetup(t)
-		arInstall(t, setup, state, func(_ context.Context, run RunSummary, _ HookApi) (*RunEndTasks, error) {
+		arInstall(t, setup, state, func(_ context.Context, run RunSummary, _ HookApi) (*HookTasks, error) {
 			state.addAsked(run)
 			return nil, nil
 		})
@@ -568,10 +568,10 @@ func TestAfterRun(t *testing.T) {
 		mustInstall(t, setup.Registry, new(durable.Extension{
 			Name:  "after-run",
 			Tasks: []durable.AnyTask{tests.Erased()},
-			Hooks: []durable.HookRegistration{Hook(GenerationTask, &GenerationHooks{AfterRun: func(_ context.Context, run RunSummary, _ HookApi) (*RunEndTasks, error) {
+			Hooks: []durable.HookRegistration{Hook(GenerationTask, &GenerationHooks{AfterRun: func(_ context.Context, run RunSummary, _ HookApi) (*HookTasks, error) {
 				// Only the first run gets a task.
 				if state.addAsked(run) == 1 {
-					return &RunEndTasks{Tasks: []RunEndTask{RunEndTaskOf(tests, arInput{Label: "run 1"})}}, nil
+					return &HookTasks{Tasks: []HookTask{HookTaskOf(tests, arInput{Label: "run 1"})}}, nil
 				}
 				return nil, nil
 			}})},
@@ -770,13 +770,13 @@ func TestAfterRun(t *testing.T) {
 			mustInstall(t, setup.Registry, new(durable.Extension{
 				Name:  "after-run",
 				Tasks: []durable.AnyTask{tests.Erased()},
-				Hooks: []durable.HookRegistration{Hook(GenerationTask, &GenerationHooks{AfterRun: func(ctx context.Context, run RunSummary, _ HookApi) (*RunEndTasks, error) {
+				Hooks: []durable.HookRegistration{Hook(GenerationTask, &GenerationHooks{AfterRun: func(ctx context.Context, run RunSummary, _ HookApi) (*HookTasks, error) {
 					state.addAsked(run)
 					if stage == "finish" {
 						<-ctx.Done()
 						return nil, abortedBy(ctx)
 					}
-					return &RunEndTasks{Tasks: []RunEndTask{RunEndTaskOf(tests, arInput{Label: "run 1"})}}, nil
+					return &HookTasks{Tasks: []HookTask{HookTaskOf(tests, arInput{Label: "run 1"})}}, nil
 				}})},
 			}))
 			setup.Faux.SetResponses([]ai.FauxResponseStep{fauxAnswer("done")})
@@ -867,24 +867,24 @@ func TestAfterRun(t *testing.T) {
 		})
 		unknown := *tests.AnyDefinition()
 		unknown.Name = "test.unknown"
-		requests := []RunEndTask{
+		requests := []HookTask{
 			{Task: durable.AnyTask{Definition: &unknown}, Input: nil},
 			{Task: GenerationTask.Erased(), Input: map[string]any{}},
 			{Task: tests.Erased(), Input: map[string]any{"label": func() string { return "not JSON" }}},
-			RunEndTaskOf(throwing, durable.JsonValue(nil)),
-			RunEndTaskOf(badStart, durable.JsonValue(nil)),
-			RunEndTaskOf(tests, arInput{Label: "ok"}),
+			HookTaskOf(throwing, durable.JsonValue(nil)),
+			HookTaskOf(badStart, durable.JsonValue(nil)),
+			HookTaskOf(tests, arInput{Label: "ok"}),
 		}
 		mustInstall(t, setup.Registry, new(durable.Extension{
 			Name:  "after-run",
 			Tasks: []durable.AnyTask{tests.Erased(), throwing.Erased(), badStart.Erased()},
-			Hooks: []durable.HookRegistration{Hook(GenerationTask, &GenerationHooks{AfterRun: func(context.Context, RunSummary, HookApi) (*RunEndTasks, error) {
-				return &RunEndTasks{Tasks: requests}, nil
+			Hooks: []durable.HookRegistration{Hook(GenerationTask, &GenerationHooks{AfterRun: func(context.Context, RunSummary, HookApi) (*HookTasks, error) {
+				return &HookTasks{Tasks: requests}, nil
 			}})},
 		}))
 		mustInstall(t, setup.Registry, new(durable.Extension{
 			Name: "broken",
-			Hooks: []durable.HookRegistration{Hook(GenerationTask, &GenerationHooks{AfterRun: func(context.Context, RunSummary, HookApi) (*RunEndTasks, error) {
+			Hooks: []durable.HookRegistration{Hook(GenerationTask, &GenerationHooks{AfterRun: func(context.Context, RunSummary, HookApi) (*HookTasks, error) {
 				return nil, errors.New("hook failed")
 			}})},
 		}))
@@ -954,8 +954,8 @@ func TestAfterRun(t *testing.T) {
 		mustInstall(t, setup.Registry, new(durable.Extension{Name: "tasks", Tasks: []durable.AnyTask{installed.Erased()}}))
 		mustInstall(t, setup.Registry, new(durable.Extension{
 			Name: "asker",
-			Hooks: []durable.HookRegistration{Hook(GenerationTask, &GenerationHooks{AfterRun: func(context.Context, RunSummary, HookApi) (*RunEndTasks, error) {
-				return &RunEndTasks{Tasks: []RunEndTask{RunEndTaskOf(stale, durable.JsonValue(nil))}}, nil
+			Hooks: []durable.HookRegistration{Hook(GenerationTask, &GenerationHooks{AfterRun: func(context.Context, RunSummary, HookApi) (*HookTasks, error) {
+				return &HookTasks{Tasks: []HookTask{HookTaskOf(stale, durable.JsonValue(nil))}}, nil
 			}})},
 		}))
 		setup.Faux.SetResponses([]ai.FauxResponseStep{fauxAnswer("done")})
@@ -980,7 +980,7 @@ func TestAfterRun(t *testing.T) {
 		setup := chatSetup(t)
 		var kinds syncList[string]
 		mustInstall(t, setup.Registry, arTools())
-		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{AfterRun: func(ctx context.Context, run RunSummary, api HookApi) (*RunEndTasks, error) {
+		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{AfterRun: func(ctx context.Context, run RunSummary, api HookApi) (*HookTasks, error) {
 			page, err := api.Entries(ctx, durable.EntryQuery{MinEntryId: &run.First, MaxEntryId: &run.Last, Order: new(durable.ScanAscending)}, 100, nil)
 			if err != nil {
 				return nil, err
@@ -1033,7 +1033,7 @@ func TestAfterRun(t *testing.T) {
 				Hook(CompactionTask, beforeCompact(func(CompactionRequest) (*CompactionDecision, error) {
 					return &CompactionDecision{Summary: new("earlier work")}, nil
 				})),
-				Hook(GenerationTask, &GenerationHooks{AfterRun: func(ctx context.Context, run RunSummary, api HookApi) (*RunEndTasks, error) {
+				Hook(GenerationTask, &GenerationHooks{AfterRun: func(ctx context.Context, run RunSummary, api HookApi) (*HookTasks, error) {
 					page, err := api.Entries(ctx, durable.EntryQuery{MinEntryId: &run.First, MaxEntryId: &run.Last, Order: new(durable.ScanAscending)}, 100, nil)
 					if err != nil {
 						return nil, err
@@ -1158,9 +1158,9 @@ func TestAfterRun(t *testing.T) {
 		mustInstall(t, setup.Registry, new(durable.Extension{
 			Name:  "after-run",
 			Tasks: []durable.AnyTask{tests.Erased()},
-			Hooks: []durable.HookRegistration{Hook(GenerationTask, &GenerationHooks{AfterRun: func(_ context.Context, run RunSummary, _ HookApi) (*RunEndTasks, error) {
+			Hooks: []durable.HookRegistration{Hook(GenerationTask, &GenerationHooks{AfterRun: func(_ context.Context, run RunSummary, _ HookApi) (*HookTasks, error) {
 				if state.addAsked(run) == 1 {
-					return &RunEndTasks{Tasks: []RunEndTask{RunEndTaskOf(tests, arInput{Label: "run 1"})}}, nil
+					return &HookTasks{Tasks: []HookTask{HookTaskOf(tests, arInput{Label: "run 1"})}}, nil
 				}
 				return nil, nil
 			}})},
@@ -1426,7 +1426,7 @@ func TestAfterRun(t *testing.T) {
 		setup := chatSetup(t)
 		var kinds syncList[[]string]
 		mustInstall(t, setup.Registry, arTools())
-		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{AfterRun: func(ctx context.Context, run RunSummary, api HookApi) (*RunEndTasks, error) {
+		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{AfterRun: func(ctx context.Context, run RunSummary, api HookApi) (*HookTasks, error) {
 			page, err := api.Entries(ctx, durable.EntryQuery{MinEntryId: &run.First, MaxEntryId: &run.Last, Order: new(durable.ScanAscending)}, 100, nil)
 			if err != nil {
 				return nil, err
@@ -1512,14 +1512,14 @@ func TestAfterRun(t *testing.T) {
 		mustInstall(t, setup.Registry, new(durable.Extension{
 			Name:  "after-run",
 			Tasks: []durable.AnyTask{tests.Erased()},
-			Hooks: []durable.HookRegistration{Hook(GenerationTask, &GenerationHooks{AfterRun: func(ctx context.Context, run RunSummary, _ HookApi) (*RunEndTasks, error) {
+			Hooks: []durable.HookRegistration{Hook(GenerationTask, &GenerationHooks{AfterRun: func(ctx context.Context, run RunSummary, _ HookApi) (*HookTasks, error) {
 				state.addAsked(run)
 				if gate, _ := hookGate.get(); gate != nil {
 					if err := arWait(gate, ctx); err != nil {
 						return nil, err
 					}
 				}
-				return &RunEndTasks{Tasks: []RunEndTask{RunEndTaskOf(tests, arInput{Label: "run"})}}, nil
+				return &HookTasks{Tasks: []HookTask{HookTaskOf(tests, arInput{Label: "run"})}}, nil
 			}})},
 		}))
 		setup.Faux.SetResponses([]ai.FauxResponseStep{fauxAnswer(strings.Repeat("x", 40))})
