@@ -1,7 +1,7 @@
-// Ports test/p2/subagents.test.ts, subagent-cwd.test.ts and subagent-team.test.ts (Pi main c23b9ec1) under the fake
-// provider. Not ported here (pending, rows/p2-agenttools.md): "reaches MCP tools installed after the spawn" (the MCP lane,
-// fix/p2-mcp, is not in this tree) and `history_search` in the default tools of "gives all the caller's tools by default"
-// (the chat tree's history lane, fix/p2-tree-history).
+// Ports test/p2/subagents.test.ts, subagent-cwd.test.ts and subagent-team.test.ts (Pi main c23b9ec1, with 7e3350e9f: `reported`
+// waits for a report after the test's own send) under the fake provider. Not ported here (pending, rows/p2-agenttools.md):
+// `history_search` in the default tools of "gives all the caller's tools by default" (the chat tree's history lane,
+// fix/p2-tree-history).
 
 package e2e_test
 
@@ -9,6 +9,7 @@ import (
 	"context"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -20,6 +21,7 @@ import (
 	"github.com/MichaelKinsy/PiG/apps/p2/hosts"
 	"github.com/MichaelKinsy/PiG/apps/p2/p2test"
 	chatcontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/chat/contract"
+	mcpcontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/mcp/contract"
 	sessionscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/sessions/contract"
 	sharingcontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/sharing/contract"
 	statuscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/status/contract"
@@ -768,12 +770,33 @@ func TestSubagentsWithCodeMode(t *testing.T) {
 		results := toolResults(done, "subagent")
 		return results[len(results)-1]
 	}
-	// reported waits until name's answer was reported and the main agent's turn on it ended, so it cannot race a later send.
-	reported := func(name string) {
+	// reported waits until name's answer was reported after entry `after` and the main agent's turn on it ended, so it cannot race
+	// a later send. A subagent asked again reports again: without `after`, its earlier report would satisfy the wait at once, and
+	// the new one would arrive with the next test's input (the faux model answers only the last user message).
+	reported := func(name string, after ...float64) {
 		t.Helper()
+		since := 0.0
+		if len(after) > 0 {
+			since = after[0]
+		}
 		f.until(view, func(v delta.JsonValue) bool {
-			return hasText(v, func(s string) bool { return s == `<sender kind="subagent" name="`+name+`"/>` }) && !running(v)
+			var later []any
+			for _, entry := range list(object(v).Value("entries")) {
+				if id, _ := object(entry).Value("id").(float64); id > since {
+					later = append(later, entry)
+				}
+			}
+			return hasText(delta.JsonObjectOf("entries", later), func(s string) bool { return s == `<sender kind="subagent" name="`+name+`"/>` }) && !running(v)
 		})
+	}
+	// newest is the newest entry of the main conversation's window: what a later report must follow.
+	newest := func() float64 {
+		entries := list(object(view0(f, view)).Value("entries"))
+		if len(entries) == 0 {
+			return 0
+		}
+		id, _ := object(entries[len(entries)-1]).Value("id").(float64)
+		return id
 	}
 	toolsOf := func(result *delta.JsonObject) []string {
 		var out []string
@@ -869,6 +892,51 @@ func TestSubagentsWithCodeMode(t *testing.T) {
 			return c != nil && strings.Contains(marshal(t, c.Value("tools")), `"codemode"`)
 		})
 		sub.Release()
+	})
+
+	t.Run("reaches MCP tools installed after the spawn", func(t *testing.T) {
+		node, err := exec.LookPath("node")
+		if err != nil {
+			t.Fatalf("node is not installed (the MCP fixture server is a Node program): %v", err)
+		}
+		script, err := filepath.Abs("../plugins/mcp/testdata/mcp-server.mjs")
+		if err != nil {
+			t.Fatal(err)
+		}
+		// The server connects after `coder` was spawned: the worker adds its tools to the subagent's tool list.
+		writeJSON(t, filepath.Join(f.Fixture.DataDir, "mcp.json"), map[string]any{"mcpServers": map[string]any{"files": map[string]any{"command": node, "args": []string{script}}}})
+		mcp, err := p2test.HoldIn(f.Owner, mcpcontract.Mcp, delta.NewJsonObject(0), "owner")
+		if err != nil {
+			t.Fatal(err)
+		}
+		f.until(mcp.Member("instances"), func(v delta.JsonValue) bool {
+			for _, each := range list(v) {
+				if object(each).Value("status") == "connected" {
+					return true
+				}
+			}
+			return false
+		}, 60*time.Second)
+		listed := f.until(children.Member("children"), func(v delta.JsonValue) bool { return f.childNamed(v, "coder") != nil })
+		sub := f.hold(f.childNamed(listed, "coder").Value("conversationId").(float64))
+		view := sub.Member("view")
+		scripts := func(v delta.JsonValue) []*delta.JsonObject { return toolResults(v, "codemode") }
+		// The worker adds the server's tools to the subagent's list when they are installed (enableScriptTools).
+		f.until(view, func(v delta.JsonValue) bool {
+			return strings.Contains(marshal(t, object(object(object(v).Value("docs")).Value("pi.agent")).Value("tools")), "mcp__files__echo")
+		}, 60*time.Second)
+		before := len(scripts(view0(f, view)))
+		sentAfter := newest()
+		call := `return await tools.mcp__files__echo({ text: "from coder" });`
+		subagent(map[string]any{"action": "send", "name": "coder", "message": "codemode " + call})
+		done := f.until(view, func(v delta.JsonValue) bool { return len(scripts(v)) > before }, 60*time.Second)
+		ran := scripts(done)[len(scripts(done))-1]
+		if ran.Value("isError") != false || !strings.HasSuffix(agentResultText(ran), "echo: from coder") {
+			t.Errorf("ran = %v %q", ran.Value("isError"), agentResultText(ran))
+		}
+		reported("coder", sentAfter)
+		sub.Release()
+		mcp.Release()
 	})
 
 	t.Run("leaves code mode out while the codemode setting is off, and refuses choosing it", func(t *testing.T) {
