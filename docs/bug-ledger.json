@@ -44154,6 +44154,28 @@
       ]
     },
     {
+      "id": "BF-c87d7e9",
+      "title": "p2's terminal client pushes the kitty keyboard flags on the alternate screen the runtime draws on (the main…",
+      "symptom": "p2's terminal client pushes the kitty keyboard flags on the alternate screen the runtime draws on (the main and alternate screens keep separate keyboard-mode stacks), so Alt+Enter in a kitty-protocol terminal sends a follow-up instead of inserting a newline; the flags are popped before the runtime leaves that screen, on suspend and on cleanup.",
+      "rootCause": "The main and alternate screens keep separate keyboard-mode stacks, and the launcher pushes only on the main screen, so on the alternate screen a kitty-protocol terminal reported Option+Enter as ESC CR, which the runtime decodes as Shift+Enter: Alt+Enter inserted a newline instead of sending a follow-up. TerminalModes.Keyboard pushes the flags once per alternate screen (after the runtime's output, after launcher UI closes, on input), and the pop goes before every sequence that leaves it (the runtime's own leave, suspend, cleanup).",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "p2's terminal client pushes the kitty keyboard flags on the alternate screen the runtime draws on (the main and alternate screens keep separate keyboard-mode stacks), so Alt+Enter in a kitty-protocol terminal sends a follow-up instead of inserting a newline; the flags are popped before the runtime leaves that screen, on suspend and on cleanup.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c87d7e96cd",
+          "date": "2026-11-10"
+        }
+      ],
+      "tests": [
+        "apps/p2/tui/host/grants_test.go::TestTerminalModesTheKittyKeyboardFlagsArePushedOnTheAlternateScreenAndPoppedBeforeLeavingIt"
+      ]
+    },
+    {
       "id": "BF-c8a90a6",
       "title": "Pressing the login dialog's cancel key again cancels again, and Enter after a cancelled prompt leaves the…",
       "symptom": "Pressing the login dialog's cancel key again cancels again, and Enter after a cancelled prompt leaves the field unchanged, as in Pi.",
