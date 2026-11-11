@@ -74,9 +74,10 @@ func (r *Registry) Highlight(code, language string, ignoreIllegals bool) (html s
 	return r.highlight(language, stringToUnits(code), ignoreIllegals, nil).Value, nil
 }
 
-// ResumePoint is a state of Highlight from which HighlightResumable continues over more text. Byte is the offset in the code and HTML the offset in the HTML of the run that recorded it; the text before it is a whole number of finished top-level nodes. Iterations is the scan iterations before it, which the resumed run continues counting.
+// ResumePoint is a state of Highlight from which HighlightResumable continues over more text. Byte is the offset in the code, Unit the offset in its UTF-16 code units, and HTML the offset in the HTML of the run that recorded it; the text before it is a whole number of finished top-level nodes. Iterations is the scan iterations before it, which the resumed run continues counting.
 type ResumePoint struct {
 	Byte       int
+	Unit       int
 	HTML       int
 	Iterations int
 }
@@ -84,8 +85,8 @@ type ResumePoint struct {
 // ErrResumeFailed reports that a resumed run hit an exception highlight.js reports for the whole code, so the caller highlights the whole code instead.
 var ErrResumeFailed = errors.New("hljs: resumed highlight failed")
 
-// HighlightResumable is Highlight that starts at from, a ResumePoint of a run over a prefix of code, or the zero ResumePoint for the whole code. It returns the HTML of code[from:] only, and the resume points at or after from, with HTML offsets into that returned HTML. The points are valid for code extended with more text: a language with a pattern that reads without bound has none, and the last ones, whose decisions could have read the end of the code, are dropped. javascript and typescript have three such patterns and a callback that reads past the match (the JSX tag's, which looks for a closing tag anywhere after); a text check bounds each (guardedSources), and a point that fails one is dropped.
-func (r *Registry) HighlightResumable(code, language string, ignoreIllegals bool, from ResumePoint) (html string, points []ResumePoint, err error) {
+// HighlightResumable is Highlight over the code of text that starts at from, a ResumePoint of a run over a prefix of that code, or the zero ResumePoint for the whole code. It returns the HTML of code[from:] only, and the resume points at or after from, with HTML offsets into that returned HTML. The points are valid for code extended with more text: a language with a pattern that reads without bound has none, and the last ones, whose decisions could have read the end of the code, are dropped. javascript and typescript have three such patterns and a callback that reads past the match (the JSX tag's, which looks for a closing tag anywhere after); a text check bounds each (guardedSources), and a point that fails one is dropped.
+func (r *Registry) HighlightResumable(text *Text, language string, ignoreIllegals bool, from ResumePoint) (html string, points []ResumePoint, err error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	defer func() {
@@ -97,12 +98,9 @@ func (r *Registry) HighlightResumable(code, language string, ignoreIllegals bool
 			err = fmt.Errorf("%s", thrown.message)
 		}
 	}()
-	units := stringToUnits(code)
-	start := checkpoint{iterations: from.Iterations}
-	if from.Byte > 0 {
-		start.unit = len(stringToUnits(code[:from.Byte]))
-	}
-	result := r.highlightFrom(language, units, ignoreIllegals, nil, start, true)
+	code := text.code
+	start := checkpoint{unit: from.Unit, iterations: from.Iterations}
+	result := r.highlightFrom(language, text.units, ignoreIllegals, nil, start, true)
 	if result.failed && from.Byte > 0 {
 		return "", nil, ErrResumeFailed
 	}
@@ -123,11 +121,11 @@ func (r *Registry) HighlightResumable(code, language string, ignoreIllegals bool
 		return jsstring.Canonical(value), nil, nil
 	}
 	points = make([]ResumePoint, len(offsets))
-	unit, byteOff := 0, 0
+	unit, byteOff := from.Unit, from.Byte
 	for i, c := range result.checkpoints {
 		byteOff += unitsByteLen(code[byteOff:], c.unit-unit)
 		unit = c.unit
-		points[i] = ResumePoint{Byte: byteOff, HTML: offsets[i], Iterations: c.iterations}
+		points[i] = ResumePoint{Byte: byteOff, Unit: unit, HTML: offsets[i], Iterations: c.iterations}
 	}
 	for len(points) > 0 && points[len(points)-1].Byte > limit {
 		points = points[:len(points)-1]

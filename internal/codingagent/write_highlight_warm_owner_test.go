@@ -118,6 +118,30 @@ func TestWriteWarmUpRunsOffTheRenderingGoroutine(t *testing.T) {
 	}
 }
 
+// A warm-up costs about what its step does, however long the file is, so a card warms in steps of writeWarmStep bytes from the first to
+// the last: a step of a sixteenth of the file, 32 KB at the most, held the highlighter for 20-30 ms inside the stretch of frames it fell in.
+func TestWriteWarmUpsFollowTheContentInSmallSteps(t *testing.T) {
+	probe := newWarmProbe(t)
+	close(probe.release)
+	content := streamedWriteTypeScript(300)
+	stream := newWriteStream(t, context.Background())
+	const frame = 1000
+	for end := frame; end < len(content); end += frame {
+		stream.draw(content[:end], false)
+		stream.state.tasks.Wait()
+	}
+	if len(probe.lengths) < (len(content)-frame)/(writeWarmStep+frame) {
+		t.Fatalf("%d warm-ups over %d bytes: steps larger than %d bytes", len(probe.lengths), len(content), writeWarmStep+frame)
+	}
+	previous := 0
+	for i, length := range probe.lengths {
+		if length-previous > writeWarmStep+frame {
+			t.Errorf("warm-up %d gained %d bytes, more than a step of %d and a frame", i, length-previous, writeWarmStep)
+		}
+		previous = length
+	}
+}
+
 // One warm-up runs at a time and holds only the newest content: steps that arrive while one runs are folded into one, so a slow
 // worker costs one pass over the text it has fallen behind, not a pass for each step. The texts warmed grow, each the start of
 // the next, so the highlighter's resume state always moves forward.

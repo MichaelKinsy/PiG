@@ -43,7 +43,7 @@ func TestStreamedHighlightEqualsAWholeRun(t *testing.T) {
 				end++
 			}
 			code := c.Code[:end]
-			if base, _ := hlFindResume(code, c.Lang, theme); base.prefix != "" {
+			if base, _ := hlFindResume(code, c.Lang, theme, false); base.prefix != "" {
 				resumed++
 				// A point follows at least one scan iteration; its count is where the resumed run continues counting.
 				if base.iterations == 0 {

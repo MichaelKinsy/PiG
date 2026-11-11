@@ -176,20 +176,14 @@ func updateWriteHighlightCacheIncremental(cache *writeHighlightCache, rawPath, f
 	return cache
 }
 
-// A warm-up highlights the text the content gained since the last one, and costs the same again for what it reads of the text before
-// (about a millisecond a 100 KB), so the steps are a sixteenth of the content, between writeWarmMinStep and writeWarmMaxStep: the
-// frame a warm-up falls in absorbs it (TypeScript: about 10 ms for the smallest step, 30 ms for the largest), and a file of 400 KB
-// warms in a few dozen steps.
+// A warm-up highlights the text the content gained since the last one, and the little of the text before it that the highlighter reads
+// again: the cost of a step does not grow with the file (the units of the text and the resume state are kept from step to step), so
+// the steps are a few kilobytes and a warm-up is a few milliseconds, which the frame it falls in absorbs; a step of 32 KB held the
+// highlighter for 20-30 ms and stretched the 99th percentile of the gap between frames. A file of 400 KB warms in about a hundred steps.
 // pig additive (D112): the steps move when the highlight is computed, not what it is.
-const (
-	writeWarmMinStep = 8 << 10
-	writeWarmMaxStep = 32 << 10
-)
-
-// writeWarmStep is how many bytes a streaming write call's content of length n grows before its next warm-up.
 //
 //portlint:allow numbers a byte count of pig-only pacing (D112): no JS expression to match, and a step a byte short moves only when a warm-up runs
-func writeWarmStep(n int) int { return min(max(n/16, writeWarmMinStep), writeWarmMaxStep) }
+const writeWarmStep = 4 << 10
 
 // writeWarmHighlight is the one place a write call warms the highlight of its file; tests replace it to see where and when.
 var writeWarmHighlight = tui.WarmHighlight
@@ -213,7 +207,7 @@ func (state *builtInRenderState) warmWholeHighlight(content, lang string) {
 		state.writeWarmFailure = nil
 		panic(failure)
 	}
-	if state.writeWarmOff || state.writeWarmEnded() || len(content) < state.writeWarmed+writeWarmStep(len(content)) {
+	if state.writeWarmOff || state.writeWarmEnded() || len(content) < state.writeWarmed+writeWarmStep {
 		return
 	}
 	state.writeWarmed, state.writeWarmNext, state.writeWarmLang = len(content), content, lang

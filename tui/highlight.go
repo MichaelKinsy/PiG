@@ -464,7 +464,7 @@ func WarmHighlight(code, lang string) bool {
 		hlTheme = t
 	}
 	hlMu.Unlock()
-	highlightResumable(highlightRegistry(), code, lang, t)
+	highlightResumable(highlightRegistry(), code, lang, t, true)
 	return highlightResumeHeld(code, lang, t)
 }
 
@@ -533,7 +533,7 @@ func highlightCodeLines(code, lang string) []string {
 	generation := hlGeneration
 	hlMu.Unlock()
 
-	out, ok := highlightResumable(highlightRegistry(), code, lang, t)
+	out, ok := highlightResumable(highlightRegistry(), code, lang, t, false)
 	if !ok {
 		out = highlightCodeUncached(highlightRegistry(), code, lang, t)
 	}
