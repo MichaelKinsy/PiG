@@ -533,6 +533,10 @@ Look for these faults:
 
 Work on a branch named `team/<name>/<topic>`. Push it to the staging remote, not to the public repository. The integrator stacks verified branches into the release branch. Each commit follows Commit hygiene below: `git commit --signoff -S`.
 
+## Writing p2 plugin code
+
+Before you write or review plugin code in `apps/p2` (server and worker facets, contracts, stores), read [apps/p2/docs/plugin-practices.md](apps/p2/docs/plugin-practices.md) in full and follow it. It is Pi's page for the same code (Pi commit `0f1e90696`) restated for Go.
+
 ## Code and lint policy
 
 Apply [Faithful, general implementations](#faithful-general-implementations) to code review and provider/model literal guard exceptions; each exception requires a Pi source citation.
