@@ -153,12 +153,13 @@ checks:
   - name: gitleaks
     when: {always: true}
     stage: scan
-    alert: 'a secret was found in this PR. Revoke it now, then remove it from the branch history (rewrite and force-push; a later commit that deletes it is not enough). A false positive goes in automation/ci/preflight/acknowledged.toml.'
+    alert: 'a secret was found in this PR. Revoke it now, then remove it from the branch history (rewrite and force-push; a later commit that deletes it is not enough). A false positive is allowed only on main: a maintainer adds an allowlist entry to .gitleaks.toml.'
     main: [.gitleaks.toml]
     scan:
       input: added
-      # --ignore-gitleaks-allow: an inline allow in the PR is not trusted; a real false positive goes in
-      # acknowledged.toml. --max-archive-depth looks inside archives a PR adds.
+      # --ignore-gitleaks-allow: an inline allow in the PR is not trusted. A real false positive is allowed only in
+      # main's .gitleaks.toml, read from main as are .gitleaksignore and the rest: acknowledged.toml comes from the
+      # PR's head and covers warnings, never a failing scan. --max-archive-depth looks inside archives a PR adds.
       run: [gitleaks, dir, '{input}', --config, '{main}/.gitleaks.toml', --gitleaks-ignore-path, '{main}', --ignore-gitleaks-allow, --max-archive-depth, '3', --no-banner, --redact, --exit-code, '3', --report-format, json, --report-path, '{out}']
       # Exit 3 means leaks; gitleaks exits 1 on its own errors.
       exit: {clean: [0], findings: [3]}
@@ -167,7 +168,9 @@ checks:
   - name: trufflehog
     when: {always: true}
     stage: scan
-    alert: 'a secret was found in this PR. Revoke it now, then remove it from the branch history (rewrite and force-push; a later commit that deletes it is not enough). A false positive goes in automation/ci/preflight/acknowledged.toml.'
+    # trufflehog reports only secrets it verified against their service: a finding is a live credential, never a false
+    # positive, so there is nothing to allow.
+    alert: 'a verified, working secret was found in this PR. Revoke it now, then remove it from the branch history (rewrite and force-push; a later commit that deletes it is not enough).'
     scan:
       input: added
       run: [trufflehog, filesystem, '{input}', --only-verified, --fail, --json, --no-update]
