@@ -12,3 +12,8 @@ import (
 func TestPathLabelRunsPisTests(t *testing.T) {
 	oracle.RunNodeTests(t, "test/p2/path-label.test.ts")
 }
+
+// Pi main 1d79ac79: the sidebar's rollups and rows as pure data (plugins/sessions/sidebar/model.ts).
+func TestSidebarModelRunsPisTests(t *testing.T) {
+	oracle.RunNodeTests(t, "test/p2/sidebar-model.test.ts")
+}

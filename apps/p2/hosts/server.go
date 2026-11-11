@@ -706,7 +706,7 @@ func (s *serverState) dispatch(response http.ResponseWriter, request *http.Reque
 		return route(response, request, p2runtime.RequestAccess{Principal: principal, Origin: origin}, ctx)
 	}
 	// An owner loading the app may get renewed cookies (a local session in use does not expire).
-	if p2runtime.IsOwner(principal) && get && (path == "/" || strings.HasPrefix(path, "/s/")) {
+	if p2runtime.IsOwner(principal) && get && IsAppPage(path) {
 		source, err := s.host.Registry(ctx, p2runtime.PageCookies.Registry, host.GetOptions{})
 		if err != nil {
 			return err

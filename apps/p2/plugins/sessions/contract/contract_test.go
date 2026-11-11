@@ -21,6 +21,8 @@ func TestSessionContractsFingerprintAsPi(t *testing.T) {
 		"SessionTransfer":   SessionTransfer,
 		"SessionLocks":      SessionLocks,
 		"SessionLock":       SessionLock,
+		"SidebarSettingsStore": SidebarSettingsStore,
+		"SidebarSettings":   SidebarSettings,
 	} {
 		want, ok := pi[module+"#"+name]
 		if !ok {

@@ -1503,7 +1503,7 @@ function NewSession() {
 	const sessions = liveIn(catalog, "owner");
 	const [resources, setDefault] = useModelResources(owner, useComposerState().fail);
 	const recent = useMemo(() => (listed ?? []).toSorted((a, b) => b.updatedAt - a.updatedAt), [listed]);
-	const { location: selectedLocation, setLocation, choice: selectedChoice, setChoice } = useNewSessionState();
+	const { location: selectedLocation, setLocation, join, choice: selectedChoice, setChoice } = useNewSessionState();
 	const location =
 		selectedLocation ?? (recent[0] ? { env: recent[0].env ?? null, cwd: recent[0].cwd } : { env: null, cwd: "~" });
 	const fallback = resources?.settings.defaultModel ?? recent[0]?.model;
@@ -1546,7 +1546,7 @@ function NewSession() {
 				item: outgoingItem(id, text, files, OWNER_AUTHOR),
 			},
 			// The page chooses the session's ID: a retried creation answers the same session.
-			{ session: crypto.randomUUID(), location, choice },
+			{ session: crypto.randomUUID(), location, choice, ...(join ? { join } : {}) },
 		);
 		setDraft("");
 		setFiles([]);
@@ -1567,7 +1567,9 @@ function NewSession() {
 			return;
 		}
 		sessionStart.connect({
-			create: async ({ session, location, choice }) => {
+			create: async ({ session, location, choice, join }) => {
+				// A group's session joins it first, so it never shows outside the group.
+				await join?.run(session);
 				// The new session's worker starts beside the creation, not after it (its start waits for the row): held
 				// here and lingering for the session's view, which holds it next.
 				const chat = host.hold(Chat, { session, conversation: 1 }, BACKGROUND_CONTEXT);
@@ -1677,6 +1679,7 @@ function NewSession() {
 							>
 								<FolderIcon />
 								<span>{locationLabel(location.env, location.cwd)}</span>
+								{join && <small className="cwd-join">in {join.label}</small>}
 								<ChevronIcon size={14} />
 							</button>
 							{owner && resources && !resources.credentials.length && (
