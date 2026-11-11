@@ -15,6 +15,7 @@ import (
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 	"github.com/MichaelKinsy/PiG/internal/sessionentry"
+	"github.com/MichaelKinsy/PiG/internal/streamattachhook"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
