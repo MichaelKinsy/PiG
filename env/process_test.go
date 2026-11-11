@@ -25,6 +25,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -219,6 +220,51 @@ func TestOpenProcessDeliversLargeOutputCompletely(t *testing.T) {
 		output := stdout.bytes()
 		if len(output) != 12*1024*1024 || len(bytes.Trim(output, "x")) != 0 {
 			t.Fatalf("output has %d bytes, %d of them not x", len(output), len(bytes.Trim(output, "x")))
+		}
+	})
+}
+
+// Pi b48c675a912f packages/env/test/process.test.ts:179 "delivers output left in the pipe when the program exits while the link is backed up"
+// mutation-checked: ending the wait at processExitGrace even while a reader is held (the held check in runProcess removed) loses
+// the part of the output still in the pipe and fails it (red: 65536 of 98304 bytes).
+// The pinned Pi (1.5.2) predates the fix, so only PiG's daemon runs it.
+func TestOpenProcessDeliversOutputLeftInThePipeWhenTheProgramExitsWhileTheLinkIsBackedUp(t *testing.T) {
+	skipPinnedPi := func(t testing.TB) {
+		t.Skip("the pinned Pi's daemon (1.5.2) predates Pi b48c675a912f, which keeps reading while the link holds a reader up")
+	}
+	eachDaemonWith(t, skipPinnedPi, func(t *testing.T) {
+		connection, cwd := processConnection(t)
+		stdout := newCollector()
+		// On input, after a pause, writes more than one pipe read and exits: the daemon reads the first part, waits for the
+		// link, and the rest is still in the pipe when the program has exited.
+		program := openProcess(t, connection, ProcessOptions{
+			Cwd:      cwd,
+			Argv:     nodeProgram(t, `process.stdin.once("data", () => { process.stdin.destroy(); setTimeout(() => process.stdout.write(Buffer.alloc(96 * 1024, 120)), 300); })`),
+			OnStdout: stdout.onData,
+		})
+		program.Write("go")
+		// A second program floods the link while this client stalls for longer than the grace after exit, so the unsent
+		// output stays above the daemon's limit while the first program writes and exits.
+		var stalled atomic.Bool
+		flood := openProcess(t, connection, ProcessOptions{
+			Cwd:  cwd,
+			Argv: nodeProgram(t, "const chunk = Buffer.alloc(1024 * 1024); const more = () => process.stdout.write(chunk, more); more();"),
+			OnStdout: func([]byte) {
+				if stalled.CompareAndSwap(false, true) {
+					time.Sleep(1500 * time.Millisecond)
+				}
+			},
+		})
+		if code, err := waitProcessExit(t, program); code != 0 || err != nil {
+			t.Fatalf("exit = %d, %v", code, err)
+		}
+		flood.Close()
+		_, _ = waitProcessExit(t, flood)
+		if !stalled.Load() {
+			t.Fatal("the flood never reached the client")
+		}
+		if got := len(stdout.bytes()); got != 96*1024 {
+			t.Fatalf("stdout has %d bytes, want %d", got, 96*1024)
 		}
 	})
 }
