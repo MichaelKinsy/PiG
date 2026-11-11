@@ -82,7 +82,7 @@ func openMcp(ctx runtime.TuiContext, args string) error {
 	signInsRead := chordtui.WatchMember(scope, held.Member("signIns"))
 	status := ""
 	// A restart shows the server starting and a sign-out signed out at once; the status line follows the call.
-	instances, changing, _ := chordtui.Optimistic(scope, func() []instance {
+	instances, changing, _ := p2tui.Optimistic(scope, func() []instance {
 		value, _ := instancesRead()
 		var out []instance
 		for _, each := range p2tui.JList(value) {
@@ -125,7 +125,7 @@ func openMcp(ctx runtime.TuiContext, args string) error {
 		// The status line shows how it ended, a failure included.
 		go func() {
 			if guess != nil {
-				_ = changing(*guess, call)
+				_ = p2tui.AddCall(changing, *guess, call)
 			} else {
 				_ = call()
 			}

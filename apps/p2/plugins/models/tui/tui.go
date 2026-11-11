@@ -100,7 +100,7 @@ type ModelState struct {
 	chatRef  *host.Reference
 	// shownState is the state as shown: the choices in flight over what the server last sent.
 	shownState func() shown
-	choosing   chordtui.OptimisticAdd[guess]
+	choosing   p2tui.OptimisticAdd[guess]
 	catalog    []ModelInfo
 	received   shown
 	remove     func()
@@ -110,7 +110,7 @@ type ModelState struct {
 func NewModelState(rt *runtime.TuiRuntime) *ModelState {
 	s := &ModelState{runtime: rt, received: shown{}}
 	s.scope = chordtui.NewTuiScope(context.Background(), rt.Host, rt.Ctx.RequestRender)
-	s.shownState, s.choosing, _ = chordtui.Optimistic(s.scope, func() shown { return s.received }, func(current shown, g guess) shown {
+	s.shownState, s.choosing, _ = p2tui.Optimistic(s.scope, func() shown { return s.received }, func(current shown, g guess) shown {
 		if g.hasModel {
 			current.model = g.model
 		}
@@ -303,7 +303,7 @@ func metaFor(state *ModelState, model components.SelectorModel) *ModelMeta {
 // perform runs call off the loop with the choice shown meanwhile; its failure is shown as an error line.
 func perform(ctx runtime.TuiContext, state *ModelState, g guess, call func() error) {
 	go func() {
-		if err := state.choosing(g, call); err != nil {
+		if err := p2tui.AddCall(state.choosing, g, call); err != nil {
 			ctx.Post(func() { ctx.Fail(err) })
 		}
 	}()

@@ -9,6 +9,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
 // Ports the reload of apps/p2/src/hosts/server.ts (`performReload`) under D473. Pi builds the named plugins' sources and
@@ -47,9 +48,9 @@ func scriptsOf(selection []Plugin, revision map[string]string) []plugins.PluginS
 			continue
 		}
 		scripts = append(scripts, plugins.PluginScript{
-			Plugin: plugins.Plugin{Name: plugin.Name},
-			Built: plugins.BuiltFacet{
-				Kind: plugins.BuiltFacetScript, Plugin: plugin.Name, Facet: "worker", Digest: digestOf(plugin.Name, revision[plugin.Name]),
+			Plugin: model.Plugin{Name: plugin.Name},
+			Built: model.BuiltFacet{
+				Kind: model.BuiltFacetScript, Plugin: plugin.Name, Facet: "worker", Digest: digestOf(plugin.Name, revision[plugin.Name]),
 			},
 		})
 	}

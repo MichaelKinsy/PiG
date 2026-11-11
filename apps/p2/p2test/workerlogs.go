@@ -34,10 +34,7 @@ func (f *Fixture) trackSessions() {
 
 // livePids are the processes of the workers that run now, by session.
 func (f *Fixture) livePids() map[string]int {
-	value, err := f.Server.Workers().Workers().State().Value()
-	if err != nil {
-		return nil
-	}
+	value := f.Server.Workers().Workers().State().Value()
 	states, _ := value.(*delta.JsonObject)
 	live := map[string]int{}
 	if states == nil {
