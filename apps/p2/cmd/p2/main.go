@@ -50,6 +50,7 @@ import (
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/search"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/send-file"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/sessions"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/settings"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/sharing"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/status"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/subagents"
