@@ -69,4 +69,39 @@ path = "packages/durable/src/harness/scheduler.ts"
 change = "modified"
 disposition = "ported"
 evidence = ["test:durable/harness/scheduler_scope_above_test.go#TestAddScopesAboveCostDoesNotGrowWithTheChain", "test:durable/harness/scheduler_scope_above_test.go#TestAddScopesAboveMatchesAWalkUp"]
-rationale = "628d8ab52ce2: #addScopesAbove starts at record.conversationId, because a child task lives in its owner's conversation, and walks conversation by conversation through the owner edge and the owner task's node, so a change deep in an owner chain costs the conversations above it, not the chain's depth. addScopesAboveLocked (scheduler_idle.go) does the same; it replaces this line's earlier walked-set variant: nothing is kept, and an unknown owner task in the middle of a chain no longer makes the walk fail, as in Pi. scheduler_scope_above_test.go (from next) gates the walk's allocations at depth 10 and 5,000 and compares it with a walk up. Pi's commit carries no test. The Rust daemon change of b48c675a912f (packages/env/daemon/src/{exec,output,process,pty}.rs, test/process.test.ts) is outside the tracked source files; env/daemon/{output,process,pty}.go port it."
+rationale = "628d8ab52ce2: #addScopesAbove starts at record.conversationId, because a child task lives in its owner's conversation, and walks conversation by conversation through the owner edge and the owner task's node, so a change deep in an owner chain costs the conversations above it, not the chain's depth. addScopesAboveLocked (scheduler_idle.go) does the same; it replaces this line's earlier walked-set variant: nothing is kept, and an unknown owner task in the middle of a chain no longer makes the walk fail, as in Pi. scheduler_scope_above_test.go (from next) gates the walk's allocations at depth 10 and 5,000 and compares it with a walk up. Pi's commit carries no test. The Rust daemon change of b48c675a912f (packages/env/daemon/src/{exec,output,process,pty}.rs, test/process.test.ts) is outside the tracked source files; env/daemon/{output,process,pty}.go port it. 64c96d00d (#11961, Harness close): the scheduler owns the Harness's providerSessionIds and associates every task runtime it builds with that set; scheduler.go holds the set and attaches it to the context every invocation's Signal derives from."
+
+[[files]]
+path = "packages/chord/src/node/plugins/install.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginReadsNpm12sPackOutputThePackedTarballsByPackageName", "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginTakesTheTarballOfItsPackageFromNpm12sOutputNotTheFirstOneListed", "test:chord/nextnode/plugins/plugins_install_test.go#TestPackedTarballReadsTheListNpm11PrintsAndTheMemberOfThePackageNpm12Prints"]
+rationale = "75d59639a reads `npm pack --json` as `Array.isArray(output) ? output[0] : output[name]`: the list npm 11 and earlier print, or the member of the package asked for in the object npm 12 prints. plugins_install.go packedTarball takes the package name and reads the same member, so D501 (PiG took the object's first member) is retired; Pi's own npm 12 test is ported with a fake npm 12, and the keyed selection and JavaScript's errors for a missing member or a JSON null are pinned."
+
+[[files]]
+path = "packages/durable/src/harness/harness.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_lifecycle_test.go#TestHarnessClose"]
+rationale = "64c96d00d (#11961): beforeClose joins the task invocations, then releases the pi-ai resources of every provider session the Harness's tasks used (cleanupSessionResources per session id, a failure reported as host_error for models), so none close while in use and none outlive the Harness. harness.go BeforeClose runs Join, then ai.CleanupSessionResources for each recorded id and reports a failure the same way; the three Pi cases (after running tasks join, when the Harness fails, not another Harness's) are ported."
+
+[[files]]
+path = "packages/durable/src/harness/provider.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_lifecycle_test.go#TestHarnessClose"]
+rationale = "64c96d00d: ensureProviderSessionId records the session id it returns in the set of the Harness that owns the task runtime (providerSessionsByRuntime); the persisted ProviderDoc is unchanged. provider.go records it in the Harness's providerSessionIds, which rides the invocation's Signal context because a Go runtime reaches the handler wrapped in its task definition's types."
+
+[[files]]
+path = "packages/ai/src/api/anthropic-messages.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsAnyProviderOnAnthropicEndpoint", "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsEndpointSupport"]
+rationale = "49fe0a237 (#11987) makes the default of supportsMessageThreads `compat ?? baseUrl.includes(\"api.anthropic.com\")`, with no provider id check. anthropicProvider.supportsMessageThreads (ai/anthropic.go) does the same; Pi's case (an alias provider on api.anthropic.com creates then continues a thread, a gateway sends none) is ported."
+
+[[files]]
+path = "packages/ai/src/providers/compat-schema.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/configschema/compat_schema_exports_test.go#TestCompatSchemaExportsMatchPi"]
+rationale = "49fe0a237 rewords the supportsMessageThreads description (default true for a baseUrl on api.anthropic.com); configschema/compat_b.go, the models.schema.json and models-configuration.md mirrors carry the new text."
