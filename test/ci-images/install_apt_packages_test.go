@@ -50,6 +50,8 @@ func newAptFixture(t *testing.T, curlStatus string, aptFailures int) aptFixture 
 	write(f.clock, "0\n", 0o600)
 	write(filepath.Join(f.bin, "clock"), "#!/bin/sh\ncat '"+f.clock+"'\n", 0o700)
 	write(filepath.Join(f.bin, "sleep"), "#!/bin/sh\nexit 0\n", 0o700)
+	// dpkg-query answers for the packages APT_TEST_INSTALLED names (space separated) and reports every other package as not installed, as dpkg does for a package it has no record of.
+	write(filepath.Join(f.bin, "dpkg-query"), "#!/bin/sh\nfor package; do :; done\ncase \" $APT_TEST_INSTALLED \" in\n*\" $package \"*) printf installed; exit 0 ;;\nesac\nexit 1\n", 0o700)
 	write(filepath.Join(f.bin, "timeout"), "#!/bin/sh\necho \"$1 $2 $3\" >> '"+f.timeout+"'\necho $(($(cat '"+f.clock+"') + ${APT_TEST_TICK:-0})) > '"+f.clock+"'\nshift 2\nexec \"$@\"\n", 0o700)
 	write(filepath.Join(f.bin, "apt-get"), `#!/bin/sh
 echo "$*" >> '`+f.apt+`'
@@ -164,6 +166,39 @@ func TestInstallAptPackagesRequiresPackages(t *testing.T) {
 	f := newAptFixture(t, "0", 0)
 	if _, err := f.run(t); err == nil {
 		t.Fatal("no packages was accepted")
+	}
+}
+
+// Packages the runner image already ships need no mirror: the script succeeds without running apt-get or curl and without touching the sources,
+// even when every mirror is down.
+func TestInstallAptPackagesLeavesAptAloneWhenEveryPackageIsInstalled(t *testing.T) {
+	f := newAptFixture(t, "28", 99).withEnv("APT_TEST_INSTALLED=tmux ripgrep")
+	if out, err := f.run(t, "tmux", "ripgrep"); err != nil {
+		t.Fatalf("installed packages failed the step: %v\n%s", err, out)
+	}
+	if got := f.read(t, f.apt); got != "" {
+		t.Fatalf("apt-get ran for installed packages:\n%s", got)
+	}
+	if got := f.read(t, f.curl); got != "" {
+		t.Fatalf("the mirror was probed for installed packages:\n%s", got)
+	}
+	if !strings.Contains(f.read(t, filepath.Join(f.sources, "ubuntu.sources")), "azure.archive.ubuntu.com") {
+		t.Fatal("the sources were rewritten for installed packages")
+	}
+	if _, err := os.Stat(filepath.Join(f.sources, "microsoft-prod.list")); err != nil {
+		t.Fatal("the Microsoft source was removed for installed packages")
+	}
+}
+
+// Only the packages the image lacks go to apt.
+func TestInstallAptPackagesInstallsOnlyTheMissingPackages(t *testing.T) {
+	f := newAptFixture(t, "0", 0).withEnv("APT_TEST_INSTALLED=tmux")
+	if out, err := f.run(t, "tmux", "ripgrep", "xclip"); err != nil {
+		t.Fatalf("install failed: %v\n%s", err, out)
+	}
+	apt := f.read(t, f.apt)
+	if !strings.Contains(apt, "install --yes ripgrep xclip") || strings.Contains(apt, "tmux") {
+		t.Fatalf("apt-get did not get exactly the missing packages:\n%s", apt)
 	}
 }
 

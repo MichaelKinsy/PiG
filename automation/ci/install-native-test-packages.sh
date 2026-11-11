@@ -9,8 +9,12 @@ set -euo pipefail
 # native-clipboard-linux test). Every workflow job that runs those tests calls this script, so the list has one owner:
 # a job with its own list lost xclip once and the clipboard tests failed there with "xclip: executable file not found".
 # Extra arguments name further packages for one job.
+#
+# install-apt-packages.sh asks dpkg first and runs apt only for packages the runner image lacks, so a package it already ships
+# never depends on a mirror. That is why the C toolchain is named by its members (libc6-dev, gcc, g++, make, dpkg-dev) and not
+# by the build-essential metapackage, which the runner image's package list does not name.
 
 here="$(dirname "${BASH_SOURCE[0]}")"
-"${here}/install-apt-packages.sh" tmux fd-find ripgrep build-essential xvfb xclip pkg-config libxcb1-dev xcb-proto python3-xcbgen libxau-dev libxdmcp-dev python3 "$@"
+"${here}/install-apt-packages.sh" tmux fd-find ripgrep libc6-dev gcc g++ make dpkg-dev xvfb xclip pkg-config libxcb1-dev xcb-proto python3-xcbgen libxau-dev libxdmcp-dev python3 "$@"
 
 pkg-config --atleast-version=1.16 xcb || "${here}/build-libxcb.sh"
