@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"sync"
 
@@ -944,12 +945,8 @@ func (tx *Transaction) stageTaskLocked(value AnyTaskRecord) error {
 	status := value.State.Status
 	if candidate != nil && candidate.Memos != nil && status != durable.TaskTerminal && status != durable.TaskCompleting {
 		memos := make(map[string]durable.JsonValue, len(candidate.Memos)+len(value.Memos))
-		for name, memo := range candidate.Memos {
-			memos[name] = memo
-		}
-		for name, memo := range value.Memos {
-			memos[name] = memo
-		}
+		maps.Copy(memos, candidate.Memos)
+		maps.Copy(memos, value.Memos)
 		value.Memos = memos
 	}
 	owned, err := copyTaskRecord(tx.stampTimes(value, candidate))

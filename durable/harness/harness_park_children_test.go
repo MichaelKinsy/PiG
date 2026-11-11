@@ -175,9 +175,8 @@ func TestParkChildrenNestedCallsWithoutWaiting(t *testing.T) {
 			if _, err := api.ExecuteToolNoWait(ctx, "research", map[string]any{"topic": "x"}); err != nil {
 				errs.add(err.Error())
 			}
-			if _, err := durable.ToolCreateTask(ctx, api, idle, nil, durable.ToolTaskOptions{TaskOptions: durable.TaskOptions{
-				Ownership: durable.TaskOwnership{Kind: durable.TaskOwnedByTask, TaskId: api.TaskId()},
-			}}); err != nil {
+			if _, err := durable.ToolCreateTask(ctx, api, idle, nil, durable.ToolTaskOptions{
+				Ownership: durable.TaskOwnership{Kind: durable.TaskOwnedByTask, TaskId: api.TaskId()}}); err != nil {
 				errs.add(err.Error())
 			}
 			return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{}}, nil

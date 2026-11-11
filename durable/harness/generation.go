@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"slices"
 	"strings"
@@ -1475,10 +1476,7 @@ func afterToolsDecision(result *durable.JsonValue) (decision AfterToolsDecision,
 func jsonRecordOf(value durable.JsonValue) (members map[string]durable.JsonValue, ok bool) {
 	switch record := value.(type) {
 	case *delta.JsonObject:
-		members = make(map[string]durable.JsonValue, record.Len())
-		for key, member := range record.All() {
-			members[key] = member
-		}
+		members = maps.Collect(record.All())
 		return members, true
 	case map[string]any:
 		return record, true
@@ -2247,9 +2245,9 @@ func generationAfterToolsHandler(ctx context.Context, task durable.RunningTask[G
 		}
 		extension := ""
 		installed := runtime.Registry().Installed()
-		for position := len(installed) - 1; position >= 0; position-- {
-			if slices.ContainsFunc(installed[position].Tasks, func(each durable.AnyTask) bool { return each.Definition != nil && each.Definition.Name == kind }) {
-				extension = installed[position].Name
+		for _, i := range slices.Backward(installed) {
+			if slices.ContainsFunc(i.Tasks, func(each durable.AnyTask) bool { return each.Definition != nil && each.Definition.Name == kind }) {
+				extension = i.Name
 				break
 			}
 		}

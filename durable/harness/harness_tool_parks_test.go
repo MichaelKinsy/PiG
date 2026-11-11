@@ -461,9 +461,8 @@ func TestToolParksOnTasks(t *testing.T) {
 			if api.Wake() != nil {
 				return ownText("joined"), nil
 			}
-			id, err := durable.ToolCreateTask(ctx, api, tpSleepingChild, nil, durable.ToolTaskOptions{TaskOptions: durable.TaskOptions{
-				Ownership: durable.TaskOwnership{Kind: durable.TaskOwnedByTask, TaskId: api.TaskId()},
-			}})
+			id, err := durable.ToolCreateTask(ctx, api, tpSleepingChild, nil, durable.ToolTaskOptions{
+				Ownership: durable.TaskOwnership{Kind: durable.TaskOwnedByTask, TaskId: api.TaskId()}})
 			if err != nil {
 				return durable.ToolExecutionResult{}, err
 			}

@@ -1450,7 +1450,7 @@ func TestToolExecutionApi(t *testing.T) {
 			seen.add(first)
 			seen.add(second)
 			input, _ := durable.ToJsonValue(childInput{N: 21})
-			id, err := api.CreateTaskErased(testContext, child.Erased(), input, durable.ToolTaskOptions{TaskOptions: durable.TaskOptions{Ownership: conversationOwned}})
+			id, err := api.CreateTaskErased(testContext, child.Erased(), input, durable.ToolTaskOptions{Ownership: conversationOwned})
 			if err != nil {
 				return durable.ToolExecutionResult{}, err
 			}

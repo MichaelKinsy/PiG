@@ -189,14 +189,12 @@ func specUsageSuspendableExamples(names specSuspendableNames) []any {
 	// ─── Section 7.3: tools that park ────────────────────────────────────────────
 
 	research := harness.DefineTool(durable.ToolRegistration{
-		ToolSchema: ai.ToolSchema{
-			Name:        "research_both",
-			Description: "Research two topics in parallel",
-			Parameters: map[string]any{
-				"type":       "object",
-				"properties": map[string]any{"x": map[string]any{"type": "string"}, "y": map[string]any{"type": "string"}},
-				"required":   []any{"x", "y"},
-			},
+		Name:        "research_both",
+		Description: "Research two topics in parallel",
+		Parameters: map[string]any{
+			"type":       "object",
+			"properties": map[string]any{"x": map[string]any{"type": "string"}, "y": map[string]any{"type": "string"}},
+			"required":   []any{"x", "y"},
 		},
 		Replay: durable.ReplaySafe,
 		Execute: func(ctx context.Context, args any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
@@ -260,12 +258,10 @@ func specUsageSuspendableExamples(names specSuspendableNames) []any {
 		Schema: schema.Obj(schema.Properties{schema.Prop("status", schema.OneOf([]any{"passed", "failed"})), schema.Prop("logUrl", schema.Str())}),
 	})
 	runCi := harness.DefineTool(durable.ToolRegistration{
-		ToolSchema: ai.ToolSchema{
-			Name:        "run_ci",
-			Description: "Run CI on a git ref and report the result",
-			Parameters:  map[string]any{"type": "object", "properties": map[string]any{"ref": map[string]any{"type": "string"}}, "required": []any{"ref"}},
-		},
-		Replay: durable.ReplaySafe,
+		Name:        "run_ci",
+		Description: "Run CI on a git ref and report the result",
+		Parameters:  map[string]any{"type": "object", "properties": map[string]any{"ref": map[string]any{"type": "string"}}, "required": []any{"ref"}},
+		Replay:      durable.ReplaySafe,
 		Execute: func(ctx context.Context, args any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			ref, _ := args.(map[string]any)["ref"].(string)
 			// The result, the deadline's expiry, or nothing yet (a fresh call).
@@ -330,12 +326,10 @@ func specUsageSuspendableExamples(names specSuspendableNames) []any {
 		Name: "parking-subagent",
 		Tools: []*durable.ToolRegistration{
 			harness.DefineTool(durable.ToolRegistration{
-				ToolSchema: ai.ToolSchema{
-					Name:        "subagent",
-					Description: "Delegate a task to a subagent and get its answer back",
-					Parameters:  map[string]any{"type": "object", "properties": map[string]any{"task": map[string]any{"type": "string"}}, "required": []any{"task"}},
-				},
-				Replay: durable.ReplaySafe,
+				Name:        "subagent",
+				Description: "Delegate a task to a subagent and get its answer back",
+				Parameters:  map[string]any{"type": "object", "properties": map[string]any{"task": map[string]any{"type": "string"}}, "required": []any{"task"}},
+				Replay:      durable.ReplaySafe,
 				Execute: func(ctx context.Context, args any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 					task, _ := args.(map[string]any)["task"].(string)
 					state, err := durable.ReadSignal(ctx, api, durable.SubmissionSettledSignal, "answered")

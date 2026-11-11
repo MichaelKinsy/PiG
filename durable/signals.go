@@ -7,6 +7,7 @@ package durable
 import (
 	"context"
 	"fmt"
+	"maps"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -247,12 +248,8 @@ func (memo signalMemo) json() JsonValue {
 // withMemos is record with memos added; signal memos are written only to live records.
 func withMemos(record AnyTaskRecord, memos map[string]JsonValue) AnyTaskRecord {
 	merged := make(map[string]JsonValue, len(record.Memos)+len(memos))
-	for name, value := range record.Memos {
-		merged[name] = value
-	}
-	for name, value := range memos {
-		merged[name] = value
-	}
+	maps.Copy(merged, record.Memos)
+	maps.Copy(merged, memos)
 	record.Memos = merged
 	return record
 }
