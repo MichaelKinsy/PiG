@@ -140464,8 +140464,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/workers/proof_chord_test.go#TestWorkerMainRunsTheForkedWorkerFromItsStartMessageToItsFirstServedCall",
-        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFailuresStayARunningWorkersLostLinkABlockedWorkerPastTheHeartbeatIsKilledAfterTheGraceItsHoldersGetANewWorkerASecondWithinAMinuteFailsTheAddress",
-        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFixRound1ReapsAWorkerThatClosedItsOwnIPCChannelAndLivesOnKilledAfterTheGraceALostLinkItsHolderGetsANewWorkerFor"
+        "test:chord/nextnode/workers/workers_applied_test.go#TestResolveReleasesTheNextOperationInTheSectionThatAppliesTheStartsResult",
+        "test:chord/nextnode/workers/workers_applied_test.go#TestResolveReleasesTheNextOperationWhenTheStartSettlesWithoutARouteThatApplies"
       ]
     },
     {
@@ -140486,8 +140486,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/workers/proof_chord_test.go#TestWorkerMainRunsTheForkedWorkerFromItsStartMessageToItsFirstServedCall",
-        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFailuresStayARunningWorkersLostLinkABlockedWorkerPastTheHeartbeatIsKilledAfterTheGraceItsHoldersGetANewWorkerASecondWithinAMinuteFailsTheAddress",
-        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFixRound1ReapsAWorkerThatClosedItsOwnIPCChannelAndLivesOnKilledAfterTheGraceALostLinkItsHolderGetsANewWorkerFor"
+        "test:chord/nextnode/workers/workers_applied_test.go#TestResolveReleasesTheNextOperationInTheSectionThatAppliesTheStartsResult",
+        "test:chord/nextnode/workers/workers_applied_test.go#TestResolveReleasesTheNextOperationWhenTheStartSettlesWithoutARouteThatApplies"
       ]
     },
     {
@@ -140508,8 +140508,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/workers/proof_chord_test.go#TestWorkerMainRunsTheForkedWorkerFromItsStartMessageToItsFirstServedCall",
-        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFailuresStayARunningWorkersLostLinkABlockedWorkerPastTheHeartbeatIsKilledAfterTheGraceItsHoldersGetANewWorkerASecondWithinAMinuteFailsTheAddress",
-        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFixRound1ReapsAWorkerThatClosedItsOwnIPCChannelAndLivesOnKilledAfterTheGraceALostLinkItsHolderGetsANewWorkerFor"
+        "test:chord/nextnode/workers/workers_applied_test.go#TestResolveReleasesTheNextOperationInTheSectionThatAppliesTheStartsResult",
+        "test:chord/nextnode/workers/workers_applied_test.go#TestResolveReleasesTheNextOperationWhenTheStartSettlesWithoutARouteThatApplies"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -140531,8 +140531,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/workers/proof_chord_test.go#TestWorkerMainRunsTheForkedWorkerFromItsStartMessageToItsFirstServedCall",
-        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFailuresStayARunningWorkersLostLinkABlockedWorkerPastTheHeartbeatIsKilledAfterTheGraceItsHoldersGetANewWorkerASecondWithinAMinuteFailsTheAddress",
-        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFixRound1ReapsAWorkerThatClosedItsOwnIPCChannelAndLivesOnKilledAfterTheGraceALostLinkItsHolderGetsANewWorkerFor"
+        "test:chord/nextnode/workers/workers_applied_test.go#TestResolveReleasesTheNextOperationInTheSectionThatAppliesTheStartsResult",
+        "test:chord/nextnode/workers/workers_applied_test.go#TestResolveReleasesTheNextOperationWhenTheStartSettlesWithoutARouteThatApplies"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
