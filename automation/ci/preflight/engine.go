@@ -202,7 +202,7 @@ func runBatch(ctx context.Context, cfg config, o runOptions, out io.Writer) ([]h
 		_, _ = out.Write(r.log.Bytes())
 		if r.err != nil {
 			failedToRun++
-			logf(out, "::error title=pre-flight #%d::the pre-flight could not run: %v", r.pr, r.err)
+			logf(out, "::error title=pre-flight #%d::%s", r.pr, annotation("the pre-flight could not run: "+r.err.Error()))
 		}
 		logf(out, "::endgroup::")
 	}

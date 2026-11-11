@@ -392,3 +392,18 @@ func TestRecordSetsTheStatusFirst(t *testing.T) {
 		t.Fatalf("err %v, log:\n%s", err, log.String())
 	}
 }
+
+func TestRecordSetsTheStatusEvenWhenTheCommentCannotBeBuilt(t *testing.T) {
+	cfg := config{Checks: []check{{Name: "a"}}}
+	d := &data{Repo: "o/r", PR: 7, Mode: modeFull}
+	ev := evaluation{Head: "h1", Checks: map[string]verdict{"a": {Result: resultFail, Reason: strings.Repeat("x", maxCommentLength)}}}
+	ev.finish()
+	g := &recordServer{comments: map[int64]string{}}
+	server := httptest.NewServer(g)
+	defer server.Close()
+	t.Setenv("GITHUB_STEP_SUMMARY", t.TempDir())
+	err := record(context.Background(), cfg, d, ev, recordOptions{apiBase: server.URL, token: "t"}, io.Discard)
+	if err == nil || !strings.Contains(err.Error(), "even without its warnings") || !strings.Contains(err.Error(), "is a directory") || len(g.statuses) != 1 || len(g.comments) != 0 {
+		t.Fatalf("err %v, statuses %v, comments %v", err, g.statuses, g.comments)
+	}
+}

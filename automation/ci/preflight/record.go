@@ -149,18 +149,19 @@ func record(ctx context.Context, cfg config, d *data, ev evaluation, o recordOpt
 	st := state{Version: ev.Version, Engine: ev.Engine, Head: ev.Head, Base: ev.Base, Checks: ev.Checks, Body: bodyHash(d.Pull.Body), Status: status + " " + description}
 	due, alerted := alertsFor(cfg, ev, prev)
 	st.Alerted = alerted
-	if summary := os.Getenv("GITHUB_STEP_SUMMARY"); summary != "" {
-		if err := appendFile(summary, report); err != nil {
+	setStatus := prev == nil || prev.Head != st.Head || prev.Status != st.Status
+	body, bodyErr := commentBody(cfg, d, ev, report, st)
+	writeBody := bodyErr == nil && body != o.comment.Body
+	summary := func() error {
+		if path := os.Getenv("GITHUB_STEP_SUMMARY"); path != "" {
+			return appendFile(path, report)
+		}
+		return nil
+	}
+	if o.dryRun {
+		if err := summary(); err != nil {
 			return err
 		}
-	}
-	setStatus := prev == nil || prev.Head != st.Head || prev.Status != st.Status
-	body, err := commentBody(cfg, d, ev, report, st)
-	if err != nil {
-		return err
-	}
-	writeBody := body != o.comment.Body
-	if o.dryRun {
 		if setStatus {
 			logf(log, "record (dry run): status %s %q on %s", status, description, short(ev.Head))
 		}
@@ -168,23 +169,27 @@ func record(ctx context.Context, cfg config, d *data, ev evaluation, o recordOpt
 			shown, _, _ := strings.Cut(body, stateOpen)
 			logf(log, "record (dry run): comment\n%s", shown)
 		}
-		if !setStatus && !writeBody {
+		if !setStatus && !writeBody && bodyErr == nil {
 			logf(log, "record (dry run): nothing changed, nothing to send")
 		}
 		for _, c := range due {
 			logf(log, "record (dry run): alert\n%s", alertBody(c, d, ev))
 		}
-		return nil
+		return bodyErr
 	}
 	a := newAPI(o.apiBase, o.token)
 	a.log = log
 	prefix := "repos/" + d.Repo
-	// The status first: it is what holds a PR back, so nothing about the comment or an alert may keep it from being set.
+	// The status first: it is what holds a PR back, so nothing about the summary, the comment or an alert may keep it
+	// from being set.
 	if setStatus {
 		if err := a.send(ctx, http.MethodPost, fmt.Sprintf("%s/statuses/%s", prefix, ev.Head), map[string]string{"state": status, "description": description, "context": statusContext}, nil); err != nil {
 			return err
 		}
 		logf(log, "record: status %s on %s", status, short(ev.Head))
+	}
+	if err := errors.Join(summary(), bodyErr); err != nil {
+		return err
 	}
 	for _, c := range due {
 		if err := a.send(ctx, http.MethodPost, fmt.Sprintf("%s/issues/%d/comments", prefix, d.PR), map[string]string{"body": alertBody(c, d, ev)}, nil); err != nil {

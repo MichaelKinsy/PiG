@@ -191,11 +191,11 @@ func report(w io.Writer, cfg config, ev evaluation) {
 	for _, c := range cfg.Checks {
 		v := ev.Checks[c.Name]
 		if v.Result == resultFail || v.Result == resultError {
-			logf(w, "::error title=pre-flight %s #%d::%s", c.Name, ev.PR, strings.ReplaceAll(v.Reason, "\n", " "))
+			logf(w, "::error title=pre-flight %s #%d::%s", c.Name, ev.PR, annotation(v.Reason))
 		}
 		for _, x := range v.Warnings {
 			if !x.Acknowledged {
-				logf(w, "::warning title=pre-flight %s #%d::%s", c.Name, ev.PR, x.where())
+				logf(w, "::warning title=pre-flight %s #%d::%s", c.Name, ev.PR, annotation(x.where()))
 			}
 		}
 	}

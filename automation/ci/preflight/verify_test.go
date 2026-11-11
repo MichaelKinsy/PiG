@@ -14,10 +14,11 @@ import (
 
 func TestVerifyHandled(t *testing.T) {
 	g := newFakeGitHub(nil)
-	// PR 2 has everything; PR 3 a status but a comment for an older head; PR 4 neither.
-	g.statuses["h2"], g.statuses["h3"] = "success", "failure"
+	// PR 2 has everything; PR 3 a status but a comment for an older head; PR 4 neither; PR 7's comment cannot be read.
+	g.statuses["h2"], g.statuses["h3"], g.statuses["h7"] = "success", "failure", "success"
 	withComment(g, 2, state{Head: "h2"})
 	withComment(g, 3, state{Head: "old"})
+	g.broken[-7] = true
 	server := httptest.NewServer(g)
 	defer server.Close()
 	a := newAPI(server.URL, "t")
@@ -33,30 +34,29 @@ func TestVerifyHandled(t *testing.T) {
 		{PR: 2, Head: "h2", Result: resultDeferred, PassedOn: true},
 		// Passed on, and no next job reported it.
 		{PR: 6, Head: "h6", Result: resultDeferred, PassedOn: true},
-	}
-	ms, err := verifyHandled(context.Background(), a, "o/r", defaultBot, hs)
-	if err != nil {
-		t.Fatal(err)
+		{PR: 7, Head: "h7", Result: resultPass},
+		// A head GitHub no longer knows: one PR, not the whole check.
+		{PR: 8, Head: "gone", Result: resultPass},
+		{PR: 9, Head: "h9", Result: resultPass},
+		// The first job could not start.
+		{Result: resultError, Error: "cannot list the PRs"},
 	}
 	var got []string
-	for _, m := range ms {
+	for _, m := range verifyHandled(context.Background(), a, "o/r", defaultBot, hs) {
 		got = append(got, m.where()+": "+m.What)
 	}
 	want := []string{
+		"the run: the pre-flight could not run: cannot list the PRs",
 		"#3 `h3`: the comment holds no state for this head",
 		"#4 `h4`: no preflight status, no pre-flight comment",
 		"#5: the pre-flight could not run: its pre-flight comment could not be read",
 		"#6 `h6`: passed on to a next job, which did not report it",
+		"#7 `h7`: its comment could not be checked: GET repos/o/r/issues/7/comments?per_page=100: HTTP 502: down",
+		"#8 `gone`: could not be checked: GET repos/o/r/commits/gone/statuses?per_page=100: HTTP 422: No commit found for SHA: gone",
+		"#9 `h9`: no preflight status, no pre-flight comment",
 	}
 	if strings.Join(got, "\n") != strings.Join(want, "\n") {
 		t.Fatalf("missing:\n%s", strings.Join(got, "\n"))
-	}
-	g.broken[-2] = true
-	if _, err := verifyHandled(context.Background(), a, "o/r", defaultBot, hs[2:3]); err == nil {
-		t.Fatal("a comment that cannot be read was not reported")
-	}
-	if _, err := verifyHandled(context.Background(), newAPI("http://127.0.0.1:1", "t"), "o/r", defaultBot, hs[2:3]); err == nil {
-		t.Fatal("statuses that cannot be read were not reported")
 	}
 }
 
@@ -68,65 +68,98 @@ func TestCapWarningsCarriesEveryCount(t *testing.T) {
 	}
 }
 
+func botIssue(g *fakeGitHub, n int, body, state string) {
+	i := &fakeIssue{Number: n, Title: issueTitle, Body: body, State: state}
+	i.User.Login = defaultBot
+	g.issues[n] = i
+}
+
 func TestKeepIssue(t *testing.T) {
 	g := newFakeGitHub(nil)
-	// Someone else's issue and a PR that start like the issue are not it.
-	g.issues[1] = &fakeIssue{Number: 1, Body: issueMarker + " not by the bot", State: "closed"}
-	g.issues[2] = &fakeIssue{Number: 2, Body: issueMarker, State: "open", PullRequest: &struct {
-		URL string `json:"url"`
-	}{"x"}}
+	// Not it: an issue with the marker by someone else, and the bot's issue without the marker.
+	g.issues[1] = &fakeIssue{Number: 1, Title: issueTitle, Body: issueMarker + " by someone", State: "open"}
+	g.issues[1].User.Login = "someone"
+	botIssue(g, 2, "something else", "open")
 	server := httptest.NewServer(g)
 	defer server.Close()
 	a := newAPI(server.URL, "t")
 	ctx := context.Background()
-	// An open issue of the bot that is not this one.
-	g.issues[3] = &fakeIssue{Number: 3, Body: "something else", State: "open"}
 	// Nothing missing and no issue: nothing is done.
-	if err := keepIssue(ctx, a, "o/r", defaultBot, nil, "", io.Discard); err != nil || len(g.issues) != 3 || g.issues[2].State != "open" || g.issues[3].State != "open" {
+	if err := keepIssue(ctx, a, "o/r", defaultBot, nil, "", io.Discard); err != nil || len(g.issues) != 2 || g.issues[1].State != "open" || g.issues[2].State != "open" {
 		t.Fatalf("err %v, issues %d", err, len(g.issues))
 	}
-	ms := []missing{{PR: 3, Head: "h3", What: "no preflight status"}, {What: "no job reported"}}
+	ms := []missing{{PR: 3, Head: "h3", What: "no preflight status"}, {What: "a <b>file</b> | `x`\nline"}}
 	var log strings.Builder
 	if err := keepIssue(ctx, a, "o/r", defaultBot, ms, "https://run/1", &log); err != nil {
 		t.Fatal(err)
 	}
-	issue := g.issues[903]
-	if issue == nil || issue.Title != issueTitle || !strings.HasPrefix(issue.Body, issueMarker) || !strings.Contains(issue.Body, "| #3 `h3` | no preflight status |") || !strings.Contains(issue.Body, "| the run | no job reported |") || !strings.Contains(issue.Body, "Run: https://run/1") {
+	issue := g.issues[902]
+	if issue == nil || issue.Title != issueTitle || !strings.HasPrefix(issue.Body, issueMarker) || !strings.Contains(issue.Body, "| #3 `h3` | <code>no preflight status</code> |") ||
+		!strings.Contains(issue.Body, "| the run | <code>a &lt;b&gt;file&lt;/b&gt; &#124; `x` line</code> |") || !strings.Contains(issue.Body, "Run: https://run/1") {
 		t.Fatalf("issue %+v, log %s", issue, log.String())
 	}
-	// The next run with other PRs missing updates the same issue.
-	if err := keepIssue(ctx, a, "o/r", defaultBot, ms[:1], "", io.Discard); err != nil || len(g.issues) != 4 || strings.Contains(g.issues[903].Body, "no job reported") {
-		t.Fatalf("err %v, issues %d, body %q", err, len(g.issues), g.issues[903].Body)
+	// The next run finds the same PRs missing: the issue is not written again, whatever run found it.
+	hits := g.hits["PATCH /repos/o/r/issues/902"]
+	if err := keepIssue(ctx, a, "o/r", defaultBot, ms, "https://run/2", io.Discard); err != nil || g.hits["PATCH /repos/o/r/issues/902"] != hits {
+		t.Fatal("an unchanged list was written again")
 	}
-	hits := g.hits["PATCH /repos/o/r/issues/903"]
-	if err := keepIssue(ctx, a, "o/r", defaultBot, ms[:1], "", io.Discard); err != nil || g.hits["PATCH /repos/o/r/issues/903"] != hits {
-		t.Fatal("an unchanged issue was written again")
+	// Other PRs missing: the same issue is updated.
+	if err := keepIssue(ctx, a, "o/r", defaultBot, ms[:1], "https://run/3", io.Discard); err != nil || len(g.issues) != 3 || strings.Contains(issue.Body, "the run") || !strings.Contains(issue.Body, "run/3") {
+		t.Fatalf("err %v, issues %d, body %q", err, len(g.issues), issue.Body)
 	}
-	// Every PR has its verdict again: the issue is closed, with a word why.
-	if err := keepIssue(ctx, a, "o/r", defaultBot, nil, "https://run/2", io.Discard); err != nil || g.issues[903].State != "closed" || len(g.issues[903].comments) != 1 || !strings.Contains(g.issues[903].comments[0], "https://run/2") {
-		t.Fatalf("err %v, issue %+v", err, g.issues[903])
+	// Every PR has its verdict again: closed, with a word why.
+	if err := keepIssue(ctx, a, "o/r", defaultBot, nil, "https://run/4", io.Discard); err != nil || issue.State != "closed" || len(issue.comments) != 1 || !strings.Contains(issue.comments[0], "https://run/4") {
+		t.Fatalf("err %v, issue %+v", err, issue)
 	}
-	if err := keepIssue(ctx, newAPI("http://127.0.0.1:1", "t"), "o/r", defaultBot, ms, "", io.Discard); err == nil {
-		t.Fatal("issues that cannot be listed were not reported")
+	// Missing again: the same issue is reopened, not a new one made.
+	if err := keepIssue(ctx, a, "o/r", defaultBot, ms, "", io.Discard); err != nil || issue.State != "open" || len(g.issues) != 3 || !strings.Contains(issue.Body, "the run") {
+		t.Fatalf("err %v, issues %d, issue %+v", err, len(g.issues), issue)
 	}
-	// Two open issues of this kind: the first is kept.
-	g.issues[910] = &fakeIssue{Number: 910, Body: issueMarker + " first", State: "open"}
-	g.issues[911] = &fakeIssue{Number: 911, Body: issueMarker + " second", State: "open"}
-	if err := keepIssue(ctx, a, "o/r", defaultBot, ms[:1], "", io.Discard); err != nil || strings.HasSuffix(g.issues[910].Body, "first") || !strings.HasSuffix(g.issues[911].Body, "second") {
-		t.Fatalf("err %v, %q %q", err, g.issues[910].Body, g.issues[911].Body)
+	// More than one open from before: the oldest is kept, the others closed as duplicates.
+	botIssue(g, 950, issueMarker+" later", "open")
+	if err := keepIssue(ctx, a, "o/r", defaultBot, ms, "", io.Discard); err != nil || g.issues[950].State != "closed" || issue.State != "open" || !strings.Contains(g.issues[950].comments[0], "#902") {
+		t.Fatalf("err %v, %+v", err, g.issues[950])
 	}
-	// Writes that fail are reported: opening, updating, closing.
-	g.issuesDown = true
-	for name, tc := range map[string]struct {
-		ms   []missing
-		open bool
-	}{"update": {ms, true}, "close": {nil, true}, "open": {ms, false}} {
-		if !tc.open {
-			g.issues[910].State, g.issues[911].State = "closed", "closed"
+	// Of closed ones only, the oldest is reopened.
+	issue.State = "closed"
+	if err := keepIssue(ctx, a, "o/r", defaultBot, ms, "", io.Discard); err != nil || issue.State != "open" || g.issues[950].State != "closed" {
+		t.Fatalf("err %v", err)
+	}
+	// An open one beside an older closed one: the open one is kept, the closed one stays closed.
+	issue.State, g.issues[950].State = "closed", "open"
+	if err := keepIssue(ctx, a, "o/r", defaultBot, ms, "", io.Discard); err != nil || issue.State != "closed" || g.issues[950].State != "open" {
+		t.Fatalf("err %v, 902 %s, 950 %s", err, issue.State, g.issues[950].State)
+	}
+	issue.State, g.issues[950].State = "open", "closed"
+	// Failures are reported: the search, and every write.
+	g.searchDown = true
+	if err := keepIssue(ctx, a, "o/r", defaultBot, ms, "", io.Discard); err == nil {
+		t.Fatal("a failed search was not reported")
+	}
+	g.searchDown, g.issuesDown = false, true
+	for _, tc := range []struct {
+		name  string
+		list  []missing
+		setup func()
+	}{
+		{"update", ms[:1], func() { issue.State, issue.Body = "open", issueMarker+" old"; g.issues[950].State = "closed" }},
+		{"close", nil, func() { issue.State = "open"; g.issues[950].State = "closed" }},
+		{"reopen", ms[:1], func() { issue.State = "closed"; g.issues[950].State = "closed" }},
+		// The kept issue needs no write: only closing the duplicate fails.
+		{"duplicate", ms[:1], func() { issue.State, issue.Body = "open", issueBody(ms[:1], ""); g.issues[950].State = "open" }},
+	} {
+		tc.setup()
+		if err := keepIssue(ctx, a, "o/r", defaultBot, tc.list, "", io.Discard); err == nil {
+			t.Errorf("%s: a refused write was not reported", tc.name)
 		}
-		if err := keepIssue(ctx, a, "o/r", defaultBot, tc.ms, "", io.Discard); err == nil {
-			t.Errorf("%s: a refused write was not reported", name)
-		}
+	}
+	g.issues = map[int]*fakeIssue{}
+	if err := keepIssue(ctx, a, "o/r", defaultBot, ms, "", io.Discard); err == nil {
+		t.Error("open: a refused write was not reported")
+	}
+	g.issuesDown = false
+	if err := closeIssue(ctx, newAPI("http://127.0.0.1:1", "t"), "o/r", 1, "x"); err == nil {
+		t.Error("a comment that cannot be posted was not reported")
 	}
 }
 
@@ -146,8 +179,8 @@ func TestVerifyCommand(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	write("first.json", handled{PR: 1, Head: "h1", Result: resultPass}, handled{PR: 2, Result: resultDeferred, PassedOn: true})
-	write("more-1.json", handled{PR: 2, Head: "h2", Result: resultPass})
+	write(firstReport, handled{PR: 1, Head: "h1", Result: resultPass}, handled{PR: 2, Result: resultDeferred, PassedOn: true})
+	write("preflight-handled-0-more.json", handled{PR: 2, Head: "h2", Result: resultPass})
 	args := []string{"verify", "--repo", "o/r", "--api", server.URL, "--handled", dir}
 	var out, errOut strings.Builder
 	if code := run(args, &out, &errOut); code != 1 || !strings.Contains(out.String(), "::error title=pre-flight verify::#2 h2: no preflight status, no pre-flight comment") {
@@ -159,45 +192,68 @@ func TestVerifyCommand(t *testing.T) {
 	g.statuses["h2"] = "success"
 	withComment(g, 2, state{Head: "h2"})
 	out.Reset()
-	if code := run(args, &out, &errOut); code != 0 || !strings.Contains(out.String(), "every PR of the run has its verdict") || g.issues[900].State != "closed" {
+	if code := run(args, &out, &errOut); code != 0 || !strings.Contains(out.String(), "every PR of the run has its verdict (3 report line(s))") || g.issues[900].State != "closed" {
 		t.Fatalf("exit %d:\n%s%s", code, out.String(), errOut.String())
 	}
-	// No report at all is a missing line of its own.
-	empty := t.TempDir()
-	out.Reset()
-	if code := run([]string{"verify", "--repo", "o/r", "--api", server.URL, "--handled", empty}, &out, &errOut); code != 1 || !strings.Contains(out.String(), "the run: no job reported what it did") {
-		t.Fatalf("exit %d:\n%s", code, out.String())
-	}
-	if err := os.WriteFile(filepath.Join(empty, "bad.json"), []byte("{"), 0o600); err != nil {
+	// The first report missing, and one that cannot be read: lines for the run; the readable reports are still checked.
+	if err := os.Rename(filepath.Join(dir, firstReport), filepath.Join(dir, "x")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := readHandled(empty); err == nil || !strings.Contains(err.Error(), "bad.json") {
-		t.Fatalf("a broken report: %v", err)
+	if err := os.WriteFile(filepath.Join(dir, "bad.json"), []byte("{"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	out.Reset()
+	if code := run(args, &out, &errOut); code != 1 || !strings.Contains(out.String(), "the run: the first job's report is missing") || !strings.Contains(out.String(), "the run: the report bad.json could not be read") {
+		t.Fatalf("exit %d:\n%s", code, out.String())
+	}
+	if !strings.Contains(g.issues[900].Body, "bad.json") || g.issues[900].State != "open" {
+		t.Fatalf("issue %+v", g.issues[900])
+	}
+	if _, problems := readHandled(filepath.Join(dir, "[")); len(problems) != 1 {
+		t.Fatalf("a bad directory: %v", problems)
 	}
 	issues := len(g.issues)
 	for _, bad := range [][]string{
 		{"verify", "--repo", "o/r", "--api", server.URL},
 		{"verify", "--repo", "", "--api", server.URL, "--handled", dir},
 		{"verify", "--nope"},
-		{"verify", "--repo", "o/r", "--api", "http://127.0.0.1:1", "--handled", dir},
 	} {
 		if code := run(bad, &out, &errOut); code != 2 {
 			t.Errorf("%v: exit %d", bad, code)
 		}
-	}
-	if len(g.issues) != issues {
-		t.Fatalf("a refused call wrote issues: %d, was %d", len(g.issues), issues)
 	}
 	t.Setenv("GITHUB_TOKEN", "")
 	t.Setenv("GH_TOKEN", "")
 	if code := run(args, &out, &errOut); code != 2 {
 		t.Errorf("no token: exit %d", code)
 	}
+	if len(g.issues) != issues {
+		t.Fatalf("a refused call wrote issues: %d, was %d", len(g.issues), issues)
+	}
 	t.Setenv("GITHUB_TOKEN", "t")
 	// The issue cannot be kept: the check could not finish.
-	g.issuesDown = true
-	g.statuses["h2"] = ""
+	g.searchDown = true
 	if code := run(args, &out, &errOut); code != 2 {
-		t.Errorf("an issue that cannot be written: exit %d", code)
+		t.Errorf("an issue that cannot be kept: exit %d", code)
+	}
+}
+
+func TestAnnotation(t *testing.T) {
+	if got := annotation("50% done\r\n::error::x"); got != "50%25 done%0D%0A::error::x" {
+		t.Fatalf("annotation %q", got)
+	}
+}
+
+func TestReadHandledReadsPastABadReport(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "a-bad.json"), []byte("{"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeJSON(filepath.Join(dir, firstReport), []handled{{PR: 1, Head: "h", Result: resultPass}}); err != nil {
+		t.Fatal(err)
+	}
+	hs, problems := readHandled(dir)
+	if len(hs) != 1 || len(problems) != 1 || !strings.Contains(problems[0].What, "a-bad.json") {
+		t.Fatalf("handled %+v, problems %+v", hs, problems)
 	}
 }

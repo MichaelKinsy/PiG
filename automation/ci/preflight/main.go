@@ -148,6 +148,10 @@ func runCommand(ctx context.Context, cfg config, args []string, stdout, stderr i
 			hs[i].PassedOn = hs[i].Result == resultDeferred
 		}
 	}
+	if err != nil && len(hs) == 0 {
+		// The job could not start: its report says so, rather than look like a repository without open PRs.
+		hs = []handled{{Result: resultError, Error: err.Error()}}
+	}
 	if *handledPath != "" {
 		if werr := writeJSON(*handledPath, append([]handled{}, hs...)); werr != nil {
 			err = errors.Join(err, werr)

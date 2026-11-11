@@ -37,16 +37,17 @@ type fakeGitHub struct {
 	// issues are the repository's issues by number; issuesDown makes writing one fail.
 	issues     map[int]*fakeIssue
 	issuesDown bool
+	searchDown bool
 }
 
 type fakeIssue struct {
-	Number      int    `json:"number"`
-	Title       string `json:"title"`
-	Body        string `json:"body"`
-	State       string `json:"state"`
-	PullRequest *struct {
-		URL string `json:"url"`
-	} `json:"pull_request,omitempty"`
+	Number int    `json:"number"`
+	Title  string `json:"title"`
+	Body   string `json:"body"`
+	State  string `json:"state"`
+	User   struct {
+		Login string `json:"login"`
+	} `json:"user"`
 	comments []string
 }
 
@@ -116,18 +117,20 @@ func (g *fakeGitHub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		_, _ = fmt.Fprint(w, `[{"sha":"c1c1c1c1c1","commit":{"message":"a: b","verification":{"verified":true,"reason":"valid"}}}]`)
 	case strings.HasPrefix(r.URL.Path, "/repos/o/r/compare/"):
 		_, _ = fmt.Fprint(w, `{"status":"ahead","ahead_by":1,"behind_by":0}`)
-	case r.URL.Path == "/repos/o/r/issues" && r.Method == http.MethodGet:
-		if r.URL.Query().Get("creator") != defaultBot || r.URL.Query().Get("state") != "open" {
-			http.Error(w, "unexpected query "+r.URL.RawQuery, http.StatusBadRequest)
+	case r.URL.Path == "/search/issues":
+		want := `repo:o/r is:issue in:title "` + issueTitle + `" author:app/github-actions`
+		if q := r.URL.Query().Get("q"); q != want || g.searchDown {
+			http.Error(w, "unexpected query "+q, http.StatusUnprocessableEntity)
 			return
 		}
-		var open []*fakeIssue
-		for n := 1; n <= 1000; n++ {
-			if i := g.issues[n]; i != nil && i.State == "open" {
-				open = append(open, i)
+		// Every issue, as a search may also find others with a similar title: the caller checks author and marker.
+		var items []*fakeIssue
+		for n := 1000; n >= 1; n-- {
+			if i := g.issues[n]; i != nil {
+				items = append(items, i)
 			}
 		}
-		_ = json.NewEncoder(w).Encode(append([]*fakeIssue{}, open...))
+		_ = json.NewEncoder(w).Encode(map[string]any{"items": append([]*fakeIssue{}, items...)})
 	case strings.HasPrefix(r.URL.Path, "/repos/o/r/issues") && !strings.Contains(r.URL.Path, "/comments") && r.Method != http.MethodGet && g.issuesDown:
 		http.Error(w, "no", http.StatusForbidden)
 	case r.URL.Path == "/repos/o/r/issues" && r.Method == http.MethodPost:
@@ -135,6 +138,7 @@ func (g *fakeGitHub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewDecoder(r.Body).Decode(&body)
 		n := 900 + len(g.issues)
 		g.issues[n] = &fakeIssue{Number: n, Title: body["title"], Body: body["body"], State: "open"}
+		g.issues[n].User.Login = defaultBot
 		_, _ = fmt.Fprintf(w, `{"number":%d}`, n)
 	case strings.HasPrefix(r.URL.Path, "/repos/o/r/issues/") && !strings.Contains(r.URL.Path, "/comments") && r.Method == http.MethodPatch:
 		var n int
@@ -152,6 +156,10 @@ func (g *fakeGitHub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		_, _ = fmt.Fprint(w, `{}`)
 	case strings.HasPrefix(r.URL.Path, "/repos/o/r/commits/") && strings.HasSuffix(r.URL.Path, "/statuses"):
 		sha := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/repos/o/r/commits/"), "/statuses")
+		if sha == "gone" {
+			http.Error(w, "No commit found for SHA: gone", http.StatusUnprocessableEntity)
+			return
+		}
 		if g.statuses[sha] == "" {
 			_, _ = fmt.Fprint(w, `[{"context":"other"}]`)
 			return
@@ -455,15 +463,15 @@ func TestRunCommandWritesTheDeferredPRsForNextJobs(t *testing.T) {
 	if err := os.Mkdir(reports, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	handledPath := filepath.Join(reports, "handled.json")
+	handledPath := filepath.Join(reports, firstReport)
 	run([]string{"run", "--repo", "o/r", "--api", server.URL, "--root", dir, "--bin", dir, "--work", dir, "--dry-run", "--jobs", "1", "--budget", "1", "--next", next, "--handled", handledPath}, &out, &errOut)
 	raw, err := os.ReadFile(next)
 	if err != nil || string(raw) != `["2","3"]`+"\n" {
 		t.Fatalf("next %q, err %v, log:\n%s%s", raw, err, out.String(), errOut.String())
 	}
-	hs, err := readHandled(reports)
-	if err != nil || len(hs) != 3 || hs[0].PR != 1 || hs[0].Head != "head1" || hs[0].PassedOn || !hs[1].PassedOn || hs[2] != (handled{PR: 3, Head: "head3", Result: resultDeferred, PassedOn: true}) {
-		t.Fatalf("handled %+v, err %v", hs, err)
+	hs, problems := readHandled(reports)
+	if problems != nil || len(hs) != 3 || hs[0].PR != 1 || hs[0].Head != "head1" || hs[0].PassedOn || !hs[1].PassedOn || hs[2] != (handled{PR: 3, Head: "head3", Result: resultDeferred, PassedOn: true}) {
+		t.Fatalf("handled %+v, problems %v", hs, problems)
 	}
 	// Without --next nothing is passed on.
 	run([]string{"run", "--repo", "o/r", "--api", server.URL, "--root", dir, "--bin", dir, "--work", dir, "--dry-run", "--jobs", "1", "--budget", "1", "--handled", handledPath}, &out, &errOut)
@@ -472,6 +480,22 @@ func TestRunCommandWritesTheDeferredPRsForNextJobs(t *testing.T) {
 	}
 	if code := run([]string{"run", "--repo", "o/r", "--api", server.URL, "--root", dir, "--bin", dir, "--work", dir, "--dry-run", "--prs", "1", "--handled", filepath.Join(dir, "no", "h.json")}, &out, &errOut); code != 2 {
 		t.Fatalf("an unwritable --handled: exit %d", code)
+	}
+	// A repository without open PRs is an empty report.
+	empty := httptest.NewServer(newFakeGitHub(map[int]string{}))
+	defer empty.Close()
+	if code := run([]string{"run", "--repo", "o/r", "--api", empty.URL, "--root", dir, "--bin", dir, "--work", dir, "--dry-run", "--handled", handledPath}, &out, &errOut); code != 0 {
+		t.Fatalf("no open PRs: exit %d", code)
+	}
+	if raw, _ := os.ReadFile(handledPath); strings.TrimSpace(string(raw)) != "[]" {
+		t.Fatalf("no open PRs: %s", raw)
+	}
+	// A job that cannot start says so in its report, rather than look like a repository without open PRs.
+	if code := run([]string{"run", "--repo", "o/r", "--api", "http://127.0.0.1:1", "--root", dir, "--bin", dir, "--work", dir, "--dry-run", "--handled", handledPath}, &out, &errOut); code != 2 {
+		t.Fatalf("a job that cannot list its PRs: exit %d", code)
+	}
+	if hs, _ := readHandled(reports); len(hs) != 1 || hs[0].PR != 0 || hs[0].Result != resultError || !strings.Contains(hs[0].Error, "pulls?state=open") {
+		t.Fatalf("handled %+v", hs)
 	}
 	if err := os.WriteFile(next, nil, 0o600); err != nil {
 		t.Fatal(err)
