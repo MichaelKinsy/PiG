@@ -38,7 +38,7 @@ type Chip struct {
 	mode     *host.Reference
 	// shownEnabled is the switch as shown (the owner's flip while its call is in flight); switching flips it.
 	shownEnabled func() bool
-	switching    chordtui.OptimisticAdd[bool]
+	switching    p2tui.OptimisticAdd[bool]
 	enabledRead  func() (delta.JsonValue, bool)
 	waitingRead  func() (delta.JsonValue, bool)
 	nameRead     func() (delta.JsonValue, bool)
@@ -79,7 +79,7 @@ func (c *Chip) changed() {
 	c.enabledRead = chordtui.WatchMember(c.scope, mode.Member("enabled"))
 	c.waitingRead = chordtui.WatchMember(c.scope, mode.Member("waiting"))
 	c.nameRead = chordtui.WatchMember(c.scope, mode.Member("name"))
-	c.shownEnabled, c.switching, _ = chordtui.OptimisticLast(c.scope, func() bool {
+	c.shownEnabled, c.switching, _ = p2tui.OptimisticLast(c.scope, func() bool {
 		value, _ := c.enabledRead()
 		enabled, _ := value.(bool)
 		return enabled
@@ -136,7 +136,7 @@ func (c *Chip) Toggle() {
 	name := c.Name()
 	switching := c.switching
 	go func() {
-		err := switching(enabled, func() error {
+		err := p2tui.AddCall(switching, enabled, func() error {
 			_, err := owner.Call("set", delta.JsonObjectOf("enabled", enabled), context.Background())
 			return err
 		})
