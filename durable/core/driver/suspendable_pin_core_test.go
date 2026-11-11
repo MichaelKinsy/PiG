@@ -17,11 +17,11 @@ import (
 	"github.com/MichaelKinsy/PiG/durable/harness"
 )
 
-// The Durable core is pinned to Pi 1.4.0+e7a0df27 (docs/plan/durable-core/CONTRACT.md section 1); Pi 473515f9c, the suspendable
+// The Durable core is pinned to the pin e7a0df27 (docs/plan/durable-core/CONTRACT.md section 1); Pi 473515f9c, the suspendable
 // work (signals, tool parks, gates, hook tasks), is a pin bump (CONTRACT.md section 8). These tests pin what a program that
 // uses it observes on the core backend: an error that names the pin, never a dropped park, signal, or task.
 
-const pinText = "is not in the Durable core's contract pin (Pi 1.4.0+e7a0df27, docs/plan/durable-core/CONTRACT.md); a pin bump adds it"
+const pinText = "is not in the Durable core's contract pin (the pin e7a0df27, docs/plan/durable-core/CONTRACT.md); a pin bump adds it"
 
 var pinSignal = durable.DefineSignal(durable.SignalDefinition[string]{Name: "pin.go", Version: 1, Schema: map[string]any{"type": "string"}})
 
@@ -87,7 +87,7 @@ func TestCoreToolThatParksEndsWithAnInvalidParkResultAndNeverCancels(t *testing.
 			var cancels atomic.Int32
 			core := &funcCore{respond: openWith("t", `{}`, "")}
 			registration := durable.ToolRegistration{
-				ToolSchema: ai.ToolSchema{Name: "t"},
+				Name: "t",
 				Execute: func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 					return durable.ToolExecutionResult{Park: park, Output: []ai.ToolResultMessageContent{ai.TextContent{Text: "dropped"}}}, nil
 				},
