@@ -1035,6 +1035,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-8048c85](#bf-8048c85) | Tool-call header argument preview no longer splits a character: `truncateArg` (`tui/tool_execution.go`) cut… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-806e993](#bf-806e993) | p2's session archive and copy jobs read their registries once the object composed them, so their first read… | PiG's own defect | All platforms | Unreleased |
 | [BF-8070fcc](#bf-8070fcc) | OpenAI Codex and Azure OpenAI requests parse their URL as fetch does again: an upper-case scheme, a space or… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-807e3cc](#bf-807e3cc) | chord: a server that closed a connection while the host loop was sending on it could freeze the host for good… | PiG's own defect | All platforms | Unreleased |
 | [BF-8085dc0](#bf-8085dc0) | A legacy `oauth.json` or `settings.json` that starts with a byte order mark migrates to `auth.json`, as in Pi | PiG's own defect | All platforms | 0.5.0 |
 | [BF-80970da](#bf-80970da) | The Go SDK page now says that leaving `AgentDir` empty in `CreateAgentSessionServicesOptions` makes a program… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-80b912a](#bf-80b912a) | A failed install-receipt write during `pig update` or install, such as one rejected because the update CA… | PiG's own defect | Windows | 0.7.0 |
@@ -16108,6 +16109,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `8070fcc38b` (2026-10-10)
 - **Tests:** `ai/fetch_request_url_test.go::TestCodexAndAzureRequestTargetIsParsedLikeFetch`, `ai/fetch_request_url_test.go::TestCodexRequestTargetDropsTheFragmentOfAnOpaquePath`
 - **Release note:** OpenAI Codex and Azure OpenAI requests parse their URL as fetch does again: an upper-case scheme, a space or a dot segment in a configured base URL reaches the server as the serialized URL, and the fragment is not sent. Codex reports a base URL with credentials with fetch's own message.
+
+### BF-807e3cc
+
+**chord: a server that closed a connection while the host loop was sending on it could freeze the host for good…**
+
+- **Source:** PiG's own defect
+- **Symptom:** chord: a server that closed a connection while the host loop was sending on it could freeze the host for good (seen as a hang of p2's code-mode restart test under stress).
+- **Root cause:** The reader of a socket that saw its connection fail ran the close listeners (the link end, whose Closed takes the host loop) inside a sync.Once, while the goroutine that held the host loop sent on the socket, found it over its output cap or closed and Terminate d it, and waited for that Once: loop -> close -> loop (the p2 stress hang, TestCodeModeFakeProvider graceful restart). Pi has no lock there: ws terminate() only destroys the connection, its close event follows on a later turn, and a second terminate() never waits for it. closed() now claims the close with an atomic compare-and-swap (the loser returns at once; the winner fails what is queued, stops the close timer and emits once), and…
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `807e3ccc90` (2026-11-11)
+- **Tests:** `apps/p2/e2e/codemode_test.go::TestCodeModeFakeProvider`, `chord/nextnode/http/websocket_close_test.go::TestWebSocketASecondCloserNeverWaitsForTheFirstClosersListeners`, `chord/nextnode/http/websocket_close_test.go::TestWebSocketCloseEmitsOnceFailsWhatIsQueuedAndStopsTheTimer`, `chord/nextnode/http/websocket_close_test.go::TestWebSocketLinkSendTerminatingUnderTheLoopWhileTheReaderClosesDoesNotDeadlock`, `chord/nextnode/http/websocket_close_test.go::TestWebSocketTerminateEmitsItsCloseOnALaterTurn`
+- **Release note:** chord: a server that closed a connection while the host loop was sending on it could freeze the host for good (seen as a hang of p2's code-mode restart test under stress). The socket's reader ran the close listeners, which take the host loop, inside a once-lock, while the goroutine holding the loop terminated the same socket and waited for that lock. As with Node's `ws`, whose `terminate()` only destroys the connection and whose `close` event follows on a later turn, a second closer no longer waits for the first one's listeners and `Terminate` no longer emits `close` inside the call; `close` is still emitted exactly once, queued sends still fail with `WebSocket is not open` and the close timer is still stopped.
 
 ### BF-8085dc0
 
