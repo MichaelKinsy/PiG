@@ -410,6 +410,34 @@ export default function (pi) {
       return { content: [{ type: "text", text: "late" }] };
     },
   });
+  // signal_host_probe awaits host dialogs across the abort: the host keeps answering a tool's host calls after the abort, as Pi's in-process calls are.
+  pi.registerTool({
+    name: "signal_host_probe",
+    description: "Await host dialogs across the abort",
+    parameters: { type: "object", properties: {} },
+    async execute(_id, _params, signal, _onUpdate, ctx) {
+      let first;
+      try { first = await ctx.ui.input("tool_signal:first", "p"); } catch (error) { first = `failed: ${error?.message ?? error}`; }
+      const aborted = signal.aborted;
+      let second;
+      try { second = await ctx.ui.input("tool_signal:later", "p"); } catch (error) { second = `failed: ${error?.message ?? error}`; }
+      return { content: [{ type: "text", text: `tool_signal:${aborted}:${first}:${second}` }] };
+    },
+  });
+  // signal_nested_probe runs abort_tool as a nested call: the host keeps answering a tool's host calls after the abort, as Pi's in-process calls are.
+  pi.registerTool({
+    name: "signal_nested_probe",
+    description: "Run abort_tool as a nested tool call",
+    parameters: { type: "object", properties: {} },
+    async execute(_id, _params, _signal, _onUpdate, ctx) {
+      try {
+        const outcome = await ctx.executeTool("abort_tool", {});
+        return { content: [{ type: "text", text: `tool_signal_nested:${outcome.result.content[0].text}` }] };
+      } catch (error) {
+        return { content: [{ type: "text", text: `tool_signal_nested:failed: ${error?.message ?? error}` }] };
+      }
+    },
+  });
   pi.registerCommand("abort_probe", {
     description: "Report whether abort_tool saw its abort signal",
     handler: async (_args, ctx) => ctx.ui.notify(`abort:${abortObserved}`, "info"),

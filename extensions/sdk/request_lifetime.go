@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
+	"time"
 )
 
 // requestParent separates an active handler's cancellation scope from a retained Context's runtime lifetime. The connection's write mutex orders parent selection with response publication.
@@ -16,19 +18,72 @@ type requestParent struct {
 	completed bool
 	finished  bool
 	cancelled bool
-	// signal aborts the request's signal alone (Context.Done and Err), for a signal-only cancel; nil until the request is armed with its signal (armRequestScope).
-	signal context.CancelCauseFunc
+	// signal is the request's signal, which a signal-only cancel aborts alone (Context.Done and Err); nil until the request is armed with its signal (armRequestScope).
+	signal *requestSignal
 }
 
+// requestSignal is a request's signal: the context Context.Done and Err report, a child of the request's context, which a signal-only cancel (a tool_call's abort, session_before_compact and session_before_tree's event.signal) ends while the request, and the host calls its handler waits on, go on. An ordinary cancel ends the request and with it the signal.
+//
+// The child context is made when something first asks for it: most requests never read their signal, and a child made at arming costs every tool_call round trip five allocations (the context, its cancel function and their registration with the request's context). A signal-only cancel makes it, then aborts it, so the order of the cancels is kept. requestSignal is itself the context.Context a Context holds, forwarding to the child, so context.Cause and contexts derived from it see the child.
+type requestSignal struct {
+	// parent is the request's context, set when the request is armed.
+	parent context.Context
+	mu     sync.Mutex
+	child  context.Context
+	abort  context.CancelCauseFunc
+}
+
+// get returns the signal's context, making it on first use.
+func (s *requestSignal) get() context.Context {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.child == nil {
+		s.child, s.abort = context.WithCancelCause(s.parent)
+	}
+	return s.child
+}
+
+// fire aborts the signal with cause (nil is context.Canceled), leaving the request it belongs to running. The first abort of the signal, or the end of its request, sets its cause.
+func (s *requestSignal) fire(cause error) {
+	s.get()
+	s.mu.Lock()
+	abort := s.abort
+	s.mu.Unlock()
+	abort(cause)
+}
+
+func (s *requestSignal) Deadline() (time.Time, bool) { return s.get().Deadline() }
+func (s *requestSignal) Done() <-chan struct{}       { return s.get().Done() }
+func (s *requestSignal) Err() error                  { return s.get().Err() }
+func (s *requestSignal) Value(key any) any           { return s.get().Value(key) }
+
 func (c *conn) armParent(id string, runtime, request context.Context) *requestParent {
-	parent := &requestParent{conn: c, id: id, runtime: runtime, request: request}
+	parent, _ := c.armParentWithSignal(id, runtime, request, nil)
+	return parent
+}
+
+// armParentWithSignal registers the request's parent with its signal and takes the cancel frames the read loop kept for it (queueRequest), in one step under pendingMu: a cancel the read loop reads next finds the armed request. An ordinary cancel among them marks the parent cancelled, so its host calls are refused as after the cancel frame.
+func (c *conn) armParentWithSignal(id string, runtime, request context.Context, signal *requestSignal) (*requestParent, queuedCancel) {
+	parent := &requestParent{conn: c, id: id, runtime: runtime, request: request, signal: signal}
 	c.pendingMu.Lock()
+	defer c.pendingMu.Unlock()
 	if c.requestParents == nil {
 		c.requestParents = make(map[string]*requestParent)
 	}
 	c.requestParents[id] = parent
+	queued := c.unarmed[id]
+	delete(c.unarmed, id)
+	if queued.request {
+		parent.cancelled = true
+	}
+	return parent, queued
+}
+
+// dropQueuedRequest forgets the read loop's queue entry of a request served without arming: while the extension loads, the factory pump answers it and the main loop never sees it.
+func (c *conn) dropQueuedRequest(id string) {
+	c.pendingMu.Lock()
+	delete(c.unarmed, id)
 	c.pendingMu.Unlock()
-	return parent
 }
 
 // loadingConn is the connection of a Context the factory's own emit made for a listener, while the extension has not connected: afterwards the Context is an ordinary one that rides the connection Run adopted, and this returns nil.
@@ -117,17 +172,49 @@ func hostServesBeforeRegister(method string) bool {
 	return false
 }
 
-// signalParent aborts the signal of the armed request id alone and reports whether it did: the request is not cancelled and none of its host calls ends. The read loop applies a signal-only cancel here, where the frame is read, so the handler finds its signal aborted when it wakes from a call whose result the same loop routes after the frame (the main loop reads the frames of requests in a later turn). A request not armed yet has no call to wake: the frame goes to the main loop, behind the request frame it follows.
-func (c *conn) signalParent(id string, cause error) bool {
+// queuedCancel is what the read loop read of a request's cancel frames while the main loop had not armed the request: the signal-only cancel and the ordinary cancel, each with the cause it carried. armParentWithSignal hands it to the arming, which applies both before the handler starts, in the order the frames came. The read loop keeps it by value, so queueing a request costs no allocation.
+type queuedCancel struct {
+	signal       bool
+	signalCause  error
+	request      bool
+	requestCause error
+}
+
+// queueRequest notes that the read loop passed request id to the main loop, which has not armed it yet, so a cancel frame that follows is kept for the arming (routeCancel).
+func (c *conn) queueRequest(id string) {
 	c.pendingMu.Lock()
-	var signal context.CancelCauseFunc
-	if parent := c.requestParents[id]; parent != nil {
-		signal = parent.signal
+	if c.unarmed == nil {
+		c.unarmed = make(map[string]queuedCancel)
+	}
+	c.unarmed[id] = queuedCancel{}
+	c.pendingMu.Unlock()
+}
+
+// routeCancel is what the read loop does with a cancel frame of request id before it queues the frame for the main loop, and reports whether the frame is spent. A signal-only cancel of an armed request aborts the request's signal alone, the request is not cancelled and none of its host calls ends: the handler finds its signal aborted when it wakes from a call whose result the same loop routes after the frame (the main loop reads the frames of requests in a later turn). A cancel of a request the main loop has not armed yet is kept in unarmed, and the arming applies it, so the handler starts with its request ended or its signal aborted whatever the main loop has taken by then; the frame still goes to the main loop, which applies it again to the armed request. A request that is neither armed nor queued is finished or unknown, and its cancel is the main loop's.
+func (c *conn) routeCancel(id string, signalOnly bool, cause error) bool {
+	c.pendingMu.Lock()
+	var signal *requestSignal
+	if signalOnly {
+		if parent := c.requestParents[id]; parent != nil {
+			signal = parent.signal
+		}
+	}
+	if signal == nil {
+		if queued, ok := c.unarmed[id]; ok {
+			switch {
+			case !signalOnly && !queued.request:
+				queued.request, queued.requestCause = true, cause
+				c.unarmed[id] = queued
+			case signalOnly && !queued.signal:
+				queued.signal, queued.signalCause = true, cause
+				c.unarmed[id] = queued
+			}
+		}
 	}
 	c.pendingMu.Unlock()
 	if signal == nil {
 		return false
 	}
-	signal(cause)
+	signal.fire(cause)
 	return true
 }

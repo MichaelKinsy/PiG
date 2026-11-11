@@ -30050,6 +30050,29 @@
       "tests": []
     },
     {
+      "id": "BF-8defe80",
+      "title": "In the Go extension SDK, a tool or command that the host cancelled right after sending its request could…",
+      "symptom": "In the Go extension SDK, a tool or command that the host cancelled right after sending its request could start with its context still open and its host calls sent: the cancel frame was read before the main loop armed the request and was applied only later.",
+      "rootCause": "The read loop records each request it queues for the main loop and, for a cancel frame of such a request, the signal-only and the ordinary cancel with their causes; armRequestScope takes them in the same step that registers the request and applies them before the handler can start, so the handler's signal is aborted at its first line and, after an ordinary cancel, its request is ended.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "In the Go extension SDK, a tool or command that the host cancelled right after sending its request could start with its context still open and its host calls sent: the cancel frame was read before the main loop armed the request and was applied only later. The SDK now keeps the cancel frames it reads for a request it has not armed yet and applies them when it arms the request, so the handler starts cancelled (or with its signal aborted for a signal-only cancel) and its host calls are refused.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8defe80574",
+          "date": "2026-11-10"
+        }
+      ],
+      "tests": [
+        "extensions/sdk/request_cancel_queue_test.go::TestQueuedCancelIsDroppedWhenTheRequestIsArmedAndNoneIsKeptForAnUnknownRequest",
+        "extensions/sdk/request_cancel_queue_test.go::TestSignalOnlyThenOrdinaryCancelReadBeforeTheArmingEndTheRequest"
+      ]
+    },
+    {
       "id": "BF-8e3613d",
       "title": "Text typed over an extension's autocomplete provider and followed at once by Enter no longer skips the menu…",
       "symptom": "Text typed over an extension's autocomplete provider and followed at once by Enter no longer skips the menu Pi opens.",
@@ -46941,6 +46964,38 @@
         "coding/session_prompt_compaction_check_test.go::TestBeginPromptCompactionCheckReturnsOnlyADueCompaction",
         "coding/session_prompt_compaction_check_test.go::TestPromptCompactionCheckReplaysAnOverflowedResponse",
         "coding/tree_edit_after_abort_test.go::TestNavigateToUserMessageAfterAbortLoadsEditor"
+      ]
+    },
+    {
+      "id": "BF-dafd5f5",
+      "title": "Aborting a run while an extension tool awaits a host call, such as a dialog, a notification, a session read…",
+      "symptom": "Aborting a run while an extension tool awaits a host call, such as a dialog, a notification, a session read or `exec`, no longer fails that call in the Go, Node, Python, Rust and Lisp extension SDKs.",
+      "rootCause": "Pi's abort aborts the signal of the tool in flight and nothing else (agent-loop.ts:817-853): the tool's in-process host calls complete, and a nested executeTool without a signal of its own runs with the outer tool's signal (runner.ts:979-981). The host sent the ordinary cancel and cancelled every host call of the request.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Aborting a run while an extension tool awaits a host call, such as a dialog, a notification, a session read or `exec`, no longer fails that call in the Go, Node, Python, Rust and Lisp extension SDKs. The abort aborts the tool's signal and nothing else, as in Pi: the pending call and later calls return their results, and only the tool's nested calls (`executeTool`, `builtinTool.execute` and `builtinTool.localExec`) take the abort as their signal. A tool that has not settled when the 3 s grace period ends (D111) is abandoned as before, and what it still awaits is cancelled then.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0821b337c2",
+          "date": "2026-11-10"
+        },
+        {
+          "hash": "0c06e59b1f",
+          "date": "2026-11-10"
+        },
+        {
+          "hash": "dafd5f5103",
+          "date": "2026-11-10"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/tool_abort_signal_only_test.go::TestToolCallAbortCancelsSignalOnlyAndSparesItsHostCalls",
+        "coding/extension/host/subprocess/tool_abort_signal_only_test.go::TestToolCallInactivityCancelStaysOrdinary",
+        "test/extension-conformance/tool_signal_only_test.go::TestToolAbortKeepsTheToolsHostCalls"
       ]
     },
     {
