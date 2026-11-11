@@ -16726,6 +16726,29 @@
       ]
     },
     {
+      "id": "BF-577d664",
+      "title": "Durable: a task change deep in a long ownership chain no longer costs time proportional to the chain's depth…",
+      "symptom": "Durable: a task change deep in a long ownership chain no longer costs time proportional to the chain's depth: finding the conversations whose idleness a change can affect starts at the task's own conversation, as Pi does (Pi 628d8ab52ce2), instead of walking every owner task up to the conversation.",
+      "rootCause": "A child task lives in its owner's conversation, so the first conversation above a task is its own and the walk needs no owner chain: it visits the conversations on the way up through each conversation's owner edge and that owner's node, keeps nothing, and costs the conversations above, not the chain's depth. This replaces the scopeAbove memo of (same cost, O(1) per change) with Pi's mechanism, so the code mirrors upstream: no per-task index to invalidate or to compare in the retention tests, and an owner task in the middle of a chain no longer has to be known for the walk to succeed (Pi's \"unknown\" result is now an unknown owner edge or an unknown owner of a conversation on the way up).",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Durable: a task change deep in a long ownership chain no longer costs time proportional to the chain's depth: finding the conversations whose idleness a change can affect starts at the task's own conversation, as Pi does (Pi 628d8ab52ce2), instead of walking every owner task up to the conversation.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "577d66446d",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "durable/harness/scheduler_scope_above_test.go::TestAddScopesAboveCostDoesNotGrowWithTheChain",
+        "durable/harness/scheduler_scope_above_test.go::TestAddScopesAboveMatchesAWalkUp"
+      ]
+    },
+    {
       "id": "BF-578804d",
       "title": "fix(photonimage): the remaining if-else chains of the inflater are switches",
       "symptom": "fix(photonimage): the remaining if-else chains of the inflater are switches",
@@ -32634,6 +32657,28 @@
       "tests": [
         "codemode/deterministic_internal_test.go::TestTheVirtualClockRoundsLikeMathRound",
         "durable/codemode/describe_test.go::TestDescribeRendersADefaultWithItsAuthoredMemberOrder"
+      ]
+    },
+    {
+      "id": "BF-951b35a",
+      "title": "The pi-env daemon no longer loses the end of a program's output when the program exits while the link is…",
+      "symptom": "The pi-env daemon no longer loses the end of a program's output when the program exits while the link is backed up: `process` (and the terminal) ended their wait 100 ms after the exit even though a reader still waited for the link with output left in the pipe, so up to one pipe buffer went missing.",
+      "rootCause": "The `process` and `pty` operations ended their wait 100 ms after the program's exit even when the reader was waiting for the link (waitForRoom above bulkLimit) with more output still in the pipe, so up to one pipe buffer of the end of the output went missing. A gate now counts a reader as held from the moment it hands a chunk over until it has room again, and the wait of the command extends its grace while one is held (Gate in output.rs, exec.rs, process.rs, pty.rs). `exec` is unchanged: the NodeExecutionEnv drain already treats a chunk mid-feed, which includes the OnOutput that waits for room, as activity.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The pi-env daemon no longer loses the end of a program's output when the program exits while the link is backed up: `process` (and the terminal) ended their wait 100 ms after the exit even though a reader still waited for the link with output left in the pipe, so up to one pipe buffer went missing. Reading now continues while a reader is held (Pi b48c675a912f).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "951b35a6af",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "env/process_test.go::TestOpenProcessDeliversOutputLeftInThePipeWhenTheProgramExitsWhileTheLinkIsBackedUp"
       ]
     },
     {

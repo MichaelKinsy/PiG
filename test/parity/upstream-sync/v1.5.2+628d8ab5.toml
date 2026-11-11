@@ -1,0 +1,9 @@
+from = "1.5.2+edbdf8d1"
+to = "1.5.2+628d8ab5"
+
+[[files]]
+path = "packages/durable/src/harness/scheduler.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/scheduler_scope_above_test.go#TestAddScopesAboveCostDoesNotGrowWithTheChain", "test:durable/harness/scheduler_scope_above_test.go#TestAddScopesAboveMatchesAWalkUp"]
+rationale = "628d8ab52ce2: #addScopesAbove starts at record.conversationId, because a child task lives in its owner's conversation, and walks conversation by conversation through the owner edge and the owner task's node, so a change deep in an owner chain costs the conversations above it, not the chain's depth. addScopesAboveLocked (scheduler_idle.go) does the same and the scopeAbove memo of 5c94d5587, which fixed the same walk with a per-task index, is removed: nothing is kept, the retention tests compare no extra index, and an unknown owner task in the middle of a chain no longer makes the walk fail, as in Pi. The allocation gate of the memo stays and gates this walk at depth 10 and 5,000. Pi's commit carries no test. The Rust daemon change of b48c675a912f (packages/env/daemon/src/{exec,output,process,pty}.rs, test/process.test.ts) is outside the tracked source files; env/daemon/{output,process,pty}.go port it."

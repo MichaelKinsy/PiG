@@ -293,13 +293,12 @@ func (s *server) runPty(id uint32, request *ptyRequest, ctl *control) (Object, *
 			return false
 		}
 	}
+	// Like a full pipe: a program that writes faster than the link waits.
+	gate := newGate(s.out)
 	var helpers sync.WaitGroup
 	helpers.Go(func() {
 		proc.read(done, func(bytes []byte) bool {
-			delivered := send(ptyMessage{kind: ptyData, data: bytes})
-			// Like a full pipe: a program that writes faster than the link waits.
-			s.out.waitForRoom(done)
-			return delivered
+			return gate.pass(done, func() bool { return send(ptyMessage{kind: ptyData, data: bytes}) })
 		})
 		send(ptyMessage{kind: ptyEOF})
 	})
@@ -341,10 +340,15 @@ func (s *server) runPty(id uint32, request *ptyRequest, ctl *control) (Object, *
 	for !exited || !ended {
 		var grace <-chan time.Time
 		if !idleUntil.IsZero() {
-			// A background job may keep the terminal open after the program exited.
 			remaining := time.Until(idleUntil)
 			if remaining <= 0 {
-				break
+				if !gate.isHeld() {
+					// A background job may keep the terminal open after the program exited.
+					break
+				}
+				// Silence while the link holds the reader up is not the end of the output.
+				idleUntil = time.Now().Add(ptyExitGrace)
+				remaining = ptyExitGrace
 			}
 			grace = graceTimer.arm(remaining)
 		}

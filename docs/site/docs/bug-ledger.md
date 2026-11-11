@@ -601,6 +601,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-576065f](#bf-576065f) | A stream of appends to one text costs the appended bytes instead of the whole text so far | PiG's own defect | All platforms | 0.7.0 |
 | [BF-576065f-2](#bf-576065f-2) | Several `AppendText` calls to one key in one change join their texts as JavaScript string concatenation does… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-5774749](#bf-5774749) | A Piglet found by name in `<project>/.pig/piglets` now follows project trust: it is used only when the… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-577d664](#bf-577d664) | Durable: a task change deep in a long ownership chain no longer costs time proportional to the chain's depth… | PiG's own defect | All platforms | Unreleased |
 | [BF-578804d](#bf-578804d) | fix(photonimage): the remaining if-else chains of the inflater are switches | PiG's own defect | All platforms | Unreleased |
 | [BF-578c1a3](#bf-578c1a3) | The "Applied use cases" page in the manual that ships inside PiG now links the Security page on the website | PiG's own defect | All platforms | 0.5.0 |
 | [BF-57a1687](#bf-57a1687) | fix(ai,agent): return a projection's blocks apart from its scalars so the caller's buffer stays on its stack | PiG's own defect | All platforms | Unreleased |
@@ -1202,6 +1203,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-94e6796](#bf-94e6796) | A Durable Harness task that went to sleep for a short time, such as the 1 ms backoff before a generation… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-94f1e6f](#bf-94f1e6f) | fix(coding): a provider of only virtual models is configured with source virtual | PiG's own defect | All platforms | Unreleased |
 | [BF-9515bcb](#bf-9515bcb) | Code mode: a deterministic run's clocks round like `Math.round` (0.49999999999999994 ms read 1 ms), and a… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-951b35a](#bf-951b35a) | The pi-env daemon no longer loses the end of a program's output when the program exits while the link is… | PiG's own defect | All platforms | Unreleased |
 | [BF-958e80d](#bf-958e80d) | A tool call whose arguments hold a number out of float64 range (`1e999`, `-1e999`) no longer ends the session… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-959a66e](#bf-959a66e) | fix(chord/nextnode/workers): shutdown takes effect before the next message; one signal channel each; no… | PiG's own defect | All platforms | Unreleased |
 | [BF-95a5f79](#bf-95a5f79) | RPC mode starts the `--tools` list active in its own order when it names extension tools, as Pi does | PiG's own defect | All platforms | 0.5.0 |
@@ -10025,6 +10027,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `coding/cli/main_test.go::TestResolvePigletResolvesExtends`, `coding/cli/main_test.go::TestResolvePiglet_FlagOverridesEnv`, `coding/cli/main_test.go::TestResolvePiglet_FromEnvPath`, `coding/cli/main_test.go::TestResolvePiglet_NoFlagNoEnv`, `coding/cli/mcp_builtin_binary_test.go::TestBuiltinMCPExtensionStartsProjectServersOnlyInATrustedProject`, `coding/cli/strip_app_features_test.go::TestStripExportHTMLBuildOmitsExportPackage`, `coding/piglet/workspace_trust_test.go::TestResolveNamesAnIgnoredUntrustedWorkspacePiglet`, `coding/piglet/workspace_trust_test.go::TestResolveSkipsAnUntrustedWorkspacePigletAndPrefersTheUsers` and 1 more in docs/bug-ledger.json
 - **Release note:** A Piglet found by name in `<project>/.pig/piglets` now follows project trust: it is used only when the project has a stored trust decision of yes or the run passes `--approve`, and an ignored workspace Piglet is named in the error. A bare `--piglet <name>` is never read as a file in the working directory. Before, a cloned repository could shadow the user's Piglet of that name, with its system prompt, extensions and model, with no prompt and no flag.
 
+### BF-577d664
+
+**Durable: a task change deep in a long ownership chain no longer costs time proportional to the chain's depth…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Durable: a task change deep in a long ownership chain no longer costs time proportional to the chain's depth: finding the conversations whose idleness a change can affect starts at the task's own conversation, as Pi does (Pi 628d8ab52ce2), instead of walking every owner task up to the conversation.
+- **Root cause:** A child task lives in its owner's conversation, so the first conversation above a task is its own and the walk needs no owner chain: it visits the conversations on the way up through each conversation's owner edge and that owner's node, keeps nothing, and costs the conversations above, not the chain's depth. This replaces the scopeAbove memo of (same cost, O(1) per change) with Pi's mechanism, so the code mirrors upstream: no per-task index to invalidate or to compare in the retention tests, and an owner task in the middle of a chain no longer has to be known for the walk to succeed (Pi's "unknown" result is now an unknown owner edge or an unknown owner of a conversation on the way up).
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `577d66446d` (2026-11-11)
+- **Tests:** `durable/harness/scheduler_scope_above_test.go::TestAddScopesAboveCostDoesNotGrowWithTheChain`, `durable/harness/scheduler_scope_above_test.go::TestAddScopesAboveMatchesAWalkUp`
+- **Release note:** Durable: a task change deep in a long ownership chain no longer costs time proportional to the chain's depth: finding the conversations whose idleness a change can affect starts at the task's own conversation, as Pi does (Pi 628d8ab52ce2), instead of walking every owner task up to the conversation.
+
 ### BF-578804d
 
 **fix(photonimage): the remaining if-else chains of the inflater are switches**
@@ -18360,6 +18376,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `89b9ec58c4` (2026-10-13), `9515bcbba5` (2026-10-13)
 - **Tests:** `codemode/deterministic_internal_test.go::TestTheVirtualClockRoundsLikeMathRound`, `durable/codemode/describe_test.go::TestDescribeRendersADefaultWithItsAuthoredMemberOrder`
 - **Release note:** Code mode: a deterministic run's clocks round like `Math.round` (0.49999999999999994 ms read 1 ms), and a tool declaration's `@default`/`const`/`enum` values keep the schema's authored member order instead of sorted members.
+
+### BF-951b35a
+
+**The pi-env daemon no longer loses the end of a program's output when the program exits while the link is…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The pi-env daemon no longer loses the end of a program's output when the program exits while the link is backed up: `process` (and the terminal) ended their wait 100 ms after the exit even though a reader still waited for the link with output left in the pipe, so up to one pipe buffer went missing.
+- **Root cause:** The `process` and `pty` operations ended their wait 100 ms after the program's exit even when the reader was waiting for the link (waitForRoom above bulkLimit) with more output still in the pipe, so up to one pipe buffer of the end of the output went missing. A gate now counts a reader as held from the moment it hands a chunk over until it has room again, and the wait of the command extends its grace while one is held (Gate in output.rs, exec.rs, process.rs, pty.rs). `exec` is unchanged: the NodeExecutionEnv drain already treats a chunk mid-feed, which includes the OnOutput that waits for room, as activity.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `951b35a6af` (2026-11-11)
+- **Tests:** `env/process_test.go::TestOpenProcessDeliversOutputLeftInThePipeWhenTheProgramExitsWhileTheLinkIsBackedUp`
+- **Release note:** The pi-env daemon no longer loses the end of a program's output when the program exits while the link is backed up: `process` (and the terminal) ended their wait 100 ms after the exit even though a reader still waited for the link with output left in the pipe, so up to one pipe buffer went missing. Reading now continues while a reader is held (Pi b48c675a912f).
 
 ### BF-958e80d
 

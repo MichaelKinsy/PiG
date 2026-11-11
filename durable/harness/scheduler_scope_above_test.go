@@ -1,6 +1,7 @@
 // The scopes above a task are what the idle check of kept contexts visits after the task parks, wakes or ends
 // (scheduler.ts #addScopesAbove). Pi 473515f9 makes a park count, so a chain of n tasks that park one commit at a time asks
-// n times: the walk must cost the conversations on the way up, not the depth of the chain (scopeAbove).
+// n times: the walk must cost the conversations on the way up, not the depth of the chain (Pi 628d8ab52: it starts at the
+// task's own conversation, which a child task shares with its owner).
 
 package harness
 
@@ -122,7 +123,7 @@ func TestAddScopesAboveMatchesAWalkUp(t *testing.T) {
 
 // TestAddScopesAboveCostDoesNotGrowWithTheChain is the gate on the walk: once a chain was walked, the next task's walk takes
 // the same few allocations at any depth: the key of each conversation it reads, two here. Walking the owners each time
-// allocated a list of the tasks passed that grows with the chain.
+// allocated a list of the tasks passed that grows with the chain. Gate kept from the memo this walk replaced (5c94d5587).
 func TestAddScopesAboveCostDoesNotGrowWithTheChain(t *testing.T) {
 	for _, depth := range []int{10, 5_000} {
 		t.Run(fmt.Sprintf("depth %d", depth), func(t *testing.T) {
