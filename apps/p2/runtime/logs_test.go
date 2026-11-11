@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	goruntime "runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -288,5 +289,29 @@ func TestRedactionSeesAnEnvironmentSecretSetAfterTheFirstRedaction(t *testing.T)
 	redactor.AddSecret("a b&c")
 	if got := redactor.Redact("x a%20b%26c y"); strings.Contains(got, "a%20b%26c") {
 		t.Fatalf("the percent-encoded form of a secret was printed: %q", got)
+	}
+}
+
+// The detached host's last snapshot is the one it exits with: the startup snapshot's writer (a goroutine of its own) must not
+// rename its older content over the fatal error's (the host exits right after Fatal, as Pi's exit hook leaves it the last
+// writer). Seen as an empty snapshot of a failed host under load (e2e TestDetachedHostStoresFatalStartupErrorsRedacted).
+func TestFatalLeavesTheFatalErrorInTheLastSnapshotWhateverTheStartupWriteDoes(t *testing.T) {
+	for i := range 100 {
+		directory := t.TempDir()
+		source := "fatal-order-" + strings.Repeat("x", i%7) + string(rune('a'+i%26))
+		published := CapturePublishedLogs(source, directory, true)
+		published.Fatal(os.ErrInvalid, nil)
+		text, err := os.ReadFile(filepath.Join(directory, source+".logs.json"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		// A late writer renames after Fatal returns, as the exiting host would not wait for it.
+		for range 3 {
+			goruntime.Gosched()
+		}
+		again, _ := os.ReadFile(filepath.Join(directory, source+".logs.json"))
+		if !strings.Contains(string(text), "invalid argument") || !strings.Contains(string(again), "invalid argument") {
+			t.Fatalf("round %d: the last snapshot lacks the fatal error: %s then %s", i, text, again)
+		}
 	}
 }
