@@ -50,6 +50,8 @@ type fleetOptions struct {
 	baseDir string
 	// execArgv is the workers' arguments (WorkersOptions.ExecArgv).
 	execArgv []string
+	// compileCache is WorkersOptions.CompileCache.
+	compileCache string
 }
 
 // collector collects values from callbacks on other goroutines.
@@ -142,11 +144,12 @@ func newFleet(t testing.TB, options fleetOptions) *fleet {
 		entry = fixtureEntry(t)
 	}
 	workers, err := CreateWorkers(server, fixtureSession, WorkersOptions{
-		Kind:     "worker",
-		Entry:    entry,
-		BaseDir:  options.baseDir,
-		ExecArgv: options.execArgv,
-		Env:      withEnv(fixtureEnvironment("worker"), options.env),
+		Kind:         "worker",
+		Entry:        entry,
+		BaseDir:      options.baseDir,
+		ExecArgv:     options.execArgv,
+		CompileCache: options.compileCache,
+		Env:          withEnv(fixtureEnvironment("worker"), options.env),
 		Authorize: func(_ data.Principal, address contracts.Address) (bool, error) {
 			if options.onAuthorize != nil {
 				options.onAuthorize(address)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -822,6 +823,54 @@ func TestTheWorkerBaseForksWithoutEnableSourceMapsNodeParsesNoMapOfTheBaseWhoseM
 	}
 	if got := argsOf([]string{"--enable-source-maps", "--other"}); got != `["--enable-source-maps" "--other"]` {
 		t.Fatalf("a worker's arguments = %s, want ExecArgv as given", got)
+	}
+}
+
+// `WorkersBuilt` is Pi's `{ kind: "built", inputs } | { kind: "failed", error }` (workers.ts:103-105, builtOf :259-260): its kind says how
+// the build ended, a Go worker's base being the copy of its entry.
+func TestTheWorkersBuildSaysHowItEndedItsKindBuiltWithItsInputsOrFailedWithItsError(t *testing.T) {
+	ok := newFleet(t, fleetOptions{})
+	if built := ok.workers.Build(); built.Kind != WorkersBuiltBuilt || built.Err != nil || len(built.Inputs) != 1 {
+		t.Fatalf("build = %+v, want kind %q with its inputs", built, WorkersBuiltBuilt)
+	}
+	broken := newFleet(t, fleetOptions{entry: filepath.Join(t.TempDir(), "no-such-worker")})
+	if built := broken.workers.Build(); built.Kind != WorkersBuiltFailed || built.Err == nil || built.Inputs != nil {
+		t.Fatalf("build = %+v, want kind %q with its error", built, WorkersBuiltFailed)
+	}
+}
+
+// Pi's `compileCache` (workers.ts:45-48, :288-289): every fork gets `NODE_COMPILE_CACHE` in its environment, unless `env` sets it;
+// none: the server's environment decides. A Go worker is no Node module, so the variable matters to the Node processes it starts
+// (its plugins' host), which inherit its environment.
+func TestTheWorkersCompileCacheIsNodeCompileCacheInEveryForksEnvironmentUnlessEnvSetsIt(t *testing.T) {
+	compileCacheOf := func(options fleetOptions) string {
+		env := map[string]string{fixtureReportArgs: "1"}
+		maps.Copy(env, options.env)
+		options.env = env
+		f := newFleet(t, options)
+		notes := f.hold(fixtureNotes, "S1")
+		until(t, func() bool { return refKind(notes) == host.RefStateLive })
+		var got string
+		for _, line := range f.output.all() {
+			if value, ok := strings.CutPrefix(line, "session|S1 compilecache "); ok {
+				got = value
+			}
+		}
+		notes.Release()
+		if err := f.workers.Close(background); err != nil {
+			t.Fatal(err)
+		}
+		return got
+	}
+	if got := compileCacheOf(fleetOptions{compileCache: "/data/cache/node"}); got != `"/data/cache/node"` {
+		t.Fatalf("NODE_COMPILE_CACHE = %s, want the option's", got)
+	}
+	if got := compileCacheOf(fleetOptions{compileCache: "/data/cache/node", env: map[string]string{"NODE_COMPILE_CACHE": "/elsewhere"}}); got != `"/elsewhere"` {
+		t.Fatalf("NODE_COMPILE_CACHE = %s, want env's", got)
+	}
+	t.Setenv("NODE_COMPILE_CACHE", "/server/env")
+	if got := compileCacheOf(fleetOptions{}); got != `"/server/env"` {
+		t.Fatalf("NODE_COMPILE_CACHE = %s, want the server's environment's", got)
 	}
 }
 
