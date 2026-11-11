@@ -3,11 +3,15 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+	"os"
 	"path"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
+	"sync"
 )
 
 // Results of a check.
@@ -32,21 +36,130 @@ func fail(format string, args ...any) outcome {
 	return outcome{result: resultFail, reason: fmt.Sprintf(format, args...)}
 }
 
-func scan(reason string) outcome { return outcome{result: resultScan, reason: reason} }
+// params are a rule's parameters, the with: map of its check.
+type params map[string]any
 
-// rules maps a check name of config.yaml to its rule. A check without a rule here is run by a scan step.
-var rules = map[string]func(*data) outcome{
-	"template":          ruleTemplate,
-	"signed":            ruleSigned,
-	"signoff":           ruleSignoff,
-	"depends-on":        ruleDependsOn,
-	"up-to-date":        ruleUpToDate,
-	"bug-ledger":        ruleBugLedger,
-	"changelog":         ruleChangelog,
-	"test-expectation":  ruleTestExpectation,
-	"dependency-review": ruleDependencyReview,
-	"reuse":             ruleReuse,
-	"gitleaks":          ruleGitleaks,
+func (p params) str(key string) string {
+	s, _ := p[key].(string)
+	return s
+}
+
+func (p params) strs(key string) []string {
+	var out []string
+	if list, ok := p[key].([]any); ok {
+		for _, v := range list {
+			if s, ok := v.(string); ok {
+				out = append(out, s)
+			}
+		}
+	}
+	return out
+}
+
+func (p params) maps(key string) []params {
+	var out []params
+	if list, ok := p[key].([]any); ok {
+		for _, v := range list {
+			if m, ok := v.(map[string]any); ok {
+				out = append(out, m)
+			}
+		}
+	}
+	return out
+}
+
+// need returns an error unless every key is a non-empty string parameter.
+func (p params) need(keys ...string) error {
+	for _, k := range keys {
+		if p.str(k) == "" {
+			return fmt.Errorf("needs %s", k)
+		}
+	}
+	return nil
+}
+
+func (p params) regexps(keys ...string) error {
+	for _, k := range keys {
+		if s := p.str(k); s != "" {
+			if _, err := regexp.Compile(s); err != nil {
+				return fmt.Errorf("%s: %w", k, err)
+			}
+		}
+	}
+	return nil
+}
+
+// ruleEnv is what a rule may read besides the PR's data: main's tree, read once per run.
+type ruleEnv struct {
+	root string
+
+	once     sync.Once
+	licenses []string
+	files    sync.Map // path -> content of a main file a rule read
+}
+
+// mainLicenses lists the license identifiers of LICENSES/ in main's tree.
+func (e *ruleEnv) mainLicenses() []string {
+	e.once.Do(func() {
+		entries, _ := os.ReadDir(filepath.Join(e.root, "LICENSES"))
+		for _, entry := range entries {
+			if id, ok := strings.CutSuffix(entry.Name(), ".txt"); ok {
+				e.licenses = append(e.licenses, id)
+			}
+		}
+	})
+	return e.licenses
+}
+
+// mainFiles returns the contents of the files of main's tree that match a glob.
+func (e *ruleEnv) mainFiles(glob string) string {
+	if v, ok := e.files.Load(glob); ok {
+		return v.(string)
+	}
+	var b strings.Builder
+	names, _ := filepath.Glob(filepath.Join(e.root, filepath.FromSlash(glob)))
+	slices.Sort(names)
+	for _, n := range names {
+		raw, err := os.ReadFile(n)
+		if err == nil {
+			b.Write(raw)
+			b.WriteByte('\n')
+		}
+	}
+	e.files.Store(glob, b.String())
+	return b.String()
+}
+
+// builtinRule is a rule config.yaml can name. validate checks its parameters when the config loads.
+type builtinRule struct {
+	validate func(params) error
+	run      func(*data, params, *ruleEnv) outcome
+}
+
+func noParams(params) error { return nil }
+
+var builtinRules map[string]builtinRule
+
+func init() {
+	builtinRules = map[string]builtinRule{
+		"body-fields":        {validateBodyFields, ruleBodyFields},
+		"all-commits":        {validateAllCommits, ruleAllCommits},
+		"depends-on-merged":  {noParams, ruleDependsOn},
+		"up-to-date":         {noParams, ruleUpToDate},
+		"fix-ledger":         {func(p params) error { return p.need("ledger") }, ruleFixLedger},
+		"changelog-fragment": {noParams, ruleChangelog},
+		"test-expectation":   {func(p params) error { return needList(p, "inventories") }, ruleTestExpectation},
+		"no-advisories":      {func(p params) error { return needList(p, "severities") }, ruleNoAdvisories},
+		"license-notices":    {validateLicenseNotices, ruleLicenseNotices},
+		"added-lines-warn":   {validateAddedLinesWarn, ruleAddedLinesWarn},
+	}
+}
+
+func needList(p params, key string) error {
+	if len(p.strs(key)) == 0 {
+		return fmt.Errorf("needs a list %s", key)
+	}
+	return nil
 }
 
 // templateField reads "Name: value" from the PR body; ok is false when the line is missing or empty.
@@ -70,23 +183,33 @@ func yesNo(body, name string) (yes, ok bool) {
 	return false, false
 }
 
-func ruleTemplate(d *data) outcome {
-	body := d.Pull.Body
-	if strings.TrimSpace(body) == "" {
+func validateBodyFields(p params) error {
+	fields := p.maps("fields")
+	if len(fields) == 0 {
+		return errors.New("needs fields")
+	}
+	for _, f := range fields {
+		if err := f.need("name", "pattern", "help"); err != nil {
+			return err
+		}
+		if err := f.regexps("pattern"); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ruleBodyFields fails unless the PR body fills in every template field with a value its pattern accepts.
+func ruleBodyFields(d *data, p params, _ *ruleEnv) outcome {
+	if strings.TrimSpace(d.Pull.Body) == "" {
 		return fail("the PR body is empty: fill in .github/pull_request_template.md")
 	}
 	var missing []string
-	if v, ok := templateField(body, "Tracking"); !ok || strings.HasPrefix(v, "<") {
-		missing = append(missing, "`Tracking: <issue URL>` or `Tracking: No issue: <reason>`")
-	}
-	if _, ok := parseDependsOn(body); !ok {
-		missing = append(missing, "`Depends on: None` or `Depends on: #<n>`")
-	}
-	if _, ok := yesNo(body, "Fix"); !ok {
-		missing = append(missing, "`Fix: yes` or `Fix: no`")
-	}
-	if _, ok := yesNo(body, "User-facing"); !ok {
-		missing = append(missing, "`User-facing: yes` or `User-facing: no`")
+	for _, f := range p.maps("fields") {
+		v, ok := templateField(d.Pull.Body, f.str("name"))
+		if !ok || !regexp.MustCompile(f.str("pattern")).MatchString(v) {
+			missing = append(missing, f.str("help"))
+		}
 	}
 	if len(missing) > 0 {
 		return fail("the PR body misses %s", strings.Join(missing, ", "))
@@ -94,35 +217,36 @@ func ruleTemplate(d *data) outcome {
 	return pass("the template is filled in")
 }
 
-func ruleSigned(d *data) outcome {
-	var bad []string
-	for _, c := range d.Commits {
-		if v := c.Commit.Verification; !v.Verified {
-			bad = append(bad, fmt.Sprintf("%s (%s)", short(c.SHA), v.Reason))
-		}
+func validateAllCommits(p params) error {
+	_, verified := p["verified"].(bool)
+	if verified == (p.str("message") != "") {
+		return errors.New("needs either verified: true or a message pattern")
 	}
-	if len(bad) > 0 {
-		return fail("commit(s) without a signature GitHub marks Verified: %s; sign with `git commit -S` (see .github/CONTRIBUTING.md)", strings.Join(bad, ", "))
+	if err := p.need("help"); err != nil {
+		return err
 	}
-	return pass(fmt.Sprintf("%d commit(s) Verified", len(d.Commits)))
+	return p.regexps("message")
 }
 
-var signedOffRE = regexp.MustCompile(`(?m)^Signed-off-by: .+ <[^>]+>\s*$`)
-
-func ruleSignoff(d *data) outcome {
+// ruleAllCommits fails on every PR commit that is not Verified, or whose message does not match the pattern.
+func ruleAllCommits(d *data, p params, _ *ruleEnv) outcome {
 	var bad []string
+	message := p.str("message")
 	for _, c := range d.Commits {
-		if !signedOffRE.MatchString(c.Commit.Message) {
+		switch {
+		case message == "" && !c.Commit.Verification.Verified:
+			bad = append(bad, fmt.Sprintf("%s (%s)", short(c.SHA), c.Commit.Verification.Reason))
+		case message != "" && !regexp.MustCompile(message).MatchString(c.Commit.Message):
 			bad = append(bad, short(c.SHA))
 		}
 	}
 	if len(bad) > 0 {
-		return fail("commit(s) without a `Signed-off-by:` line: %s; add it with `git commit --signoff`", strings.Join(bad, ", "))
+		return fail("commit(s) %s: %s", strings.Join(bad, ", "), p.str("help"))
 	}
-	return pass(fmt.Sprintf("%d commit(s) signed off", len(d.Commits)))
+	return pass(fmt.Sprintf("all %d commit(s) pass", len(d.Commits)))
 }
 
-func ruleDependsOn(d *data) outcome {
+func ruleDependsOn(d *data, _ params, _ *ruleEnv) outcome {
 	n, ok := parseDependsOn(d.Pull.Body)
 	switch {
 	case !ok:
@@ -137,7 +261,7 @@ func ruleDependsOn(d *data) outcome {
 	return pass(fmt.Sprintf("PR #%d it depends on is merged", n))
 }
 
-func ruleUpToDate(d *data) outcome {
+func ruleUpToDate(d *data, _ params, _ *ruleEnv) outcome {
 	var problems []string
 	if b := d.CompareMain.BehindBy; b > 0 {
 		problems = append(problems, fmt.Sprintf("%d commit(s) behind %s; rebase on it", b, d.Pull.Base.Ref))
@@ -182,7 +306,7 @@ func changed(d *data, name string) bool {
 	return slices.ContainsFunc(d.Files, func(f prFile) bool { return f.Filename == name })
 }
 
-func ruleBugLedger(d *data) outcome {
+func ruleFixLedger(d *data, p params, _ *ruleEnv) outcome {
 	isFix, ok := yesNo(d.Pull.Body, "Fix")
 	evidence := fixEvidence(d)
 	switch {
@@ -192,10 +316,10 @@ func ruleBugLedger(d *data) outcome {
 		return fail("cannot tell whether this is a fix: the template has no `Fix: yes` or `Fix: no`")
 	case !isFix && len(evidence) == 0:
 		return pass("not a fix")
-	case !changed(d, "docs/bug-ledger.json"):
-		return fail("a fix needs its bug ledger entry: run `make bug-ledger` and commit docs/bug-ledger.json and docs/site/docs/bug-ledger.md")
+	case !changed(d, p.str("ledger")):
+		return fail("a fix needs its bug ledger entry: %s", p.str("help"))
 	}
-	return pass("the fix updates docs/bug-ledger.json")
+	return pass("the fix updates " + p.str("ledger"))
 }
 
 var (
@@ -208,7 +332,7 @@ func (d *data) prCommit(prefix string) bool {
 	return slices.ContainsFunc(d.Commits, func(c prCommit) bool { return strings.HasPrefix(c.SHA, prefix) })
 }
 
-func ruleChangelog(d *data) outcome {
+func ruleChangelog(d *data, _ params, _ *ruleEnv) outcome {
 	isFix, fixOK := yesNo(d.Pull.Body, "Fix")
 	userFacing, ufOK := yesNo(d.Pull.Body, "User-facing")
 	isFix = isFix || len(fixEvidence(d)) > 0
@@ -269,10 +393,8 @@ func ruleChangelog(d *data) outcome {
 // addedLines returns the lines a unified diff patch adds, without the leading "+".
 func addedLines(patch string) []string {
 	var out []string
-	for line := range strings.SplitSeq(patch, "\n") {
-		if strings.HasPrefix(line, "+") && !strings.HasPrefix(line, "+++") {
-			out = append(out, line[1:])
-		}
+	for _, l := range addedNumbered(patch) {
+		out = append(out, l.text)
 	}
 	return out
 }
@@ -292,9 +414,7 @@ var (
 	expectRE  = regexp.MustCompile(`(?i)(?:\bwant\w*\b|\bexpect\w*\b|\bgot\b|!=|==|Equal|\bgolden\b|Contains)`)
 	literalRE = regexp.MustCompile("(?:\"[^\"]{2,}\"|`[^`]{2,}`|\\b\\d{2,}\\b)")
 	piCiteRE  = regexp.MustCompile(`(?m)^Pi-Behavior-Change:[ \t]*(\S+\.ts):\d+`)
-)
-
-var (
+	piPathRE  = regexp.MustCompile(`packages/[A-Za-z0-9_./-]+\.ts\b`)
 	// nilCheckRE matches an error or nil comparison, which compares no expected value.
 	nilCheckRE = regexp.MustCompile(`[!=]= nil\b`)
 	// reportRE matches a test's failure or log message: its literals are the message, not an expectation.
@@ -310,6 +430,12 @@ func isExpectation(line string) bool {
 	}
 	code := nilCheckRE.ReplaceAllString(quotedRE.ReplaceAllString(line, `""`), "")
 	return expectRE.MatchString(code)
+}
+
+// pathLike reports a quoted literal that names a file or package path: moving code changes these without changing behavior.
+func pathLike(literal string) bool {
+	body := strings.Trim(literal, "\"`")
+	return strings.Contains(body, "/") && !strings.ContainsAny(body, " \t\n")
 }
 
 // expectationEdits counts the expected literals a patch replaced: removed by one expectation line and not re-added,
@@ -340,17 +466,14 @@ func expectationEdits(patch string) int {
 	return min(g, c)
 }
 
-// pathLike reports a quoted literal that names a file or package path: moving code changes these without changing behavior.
-func pathLike(literal string) bool {
-	body := strings.Trim(literal, "\"`")
-	return strings.Contains(body, "/") && !strings.ContainsAny(body, " \t\n")
-}
-
 func isProdGo(p string) bool {
 	return strings.HasSuffix(p, ".go") && !strings.HasSuffix(p, "_test.go") && !strings.Contains(p, "/testdata/")
 }
 
-func ruleTestExpectation(d *data) outcome {
+// ruleTestExpectation fails when the PR changes expected values in a test together with production code of the same
+// directory, unless the PR body and a commit both cite, as `Pi-Behavior-Change: <file.ts:line>`, a Pi source that
+// main's inventories name.
+func ruleTestExpectation(d *data, p params, env *ruleEnv) outcome {
 	prodDirs := map[string]bool{}
 	for _, f := range d.Files {
 		if isProdGo(f.Filename) {
@@ -368,8 +491,17 @@ func ruleTestExpectation(d *data) outcome {
 	if len(edited) == 0 {
 		return pass("no expected value changed together with production code of its directory")
 	}
-	inBody := piCiteRE.MatchString(d.Pull.Body)
-	inCommit := slices.ContainsFunc(d.Commits, func(c prCommit) bool { return piCiteRE.MatchString(c.Commit.Message) })
+	cited := map[string]bool{}
+	inBody := false
+	for _, m := range piCiteRE.FindAllStringSubmatch(d.Pull.Body, -1) {
+		inBody, cited[m[1]] = true, true
+	}
+	inCommit := false
+	for _, c := range d.Commits {
+		for _, m := range piCiteRE.FindAllStringSubmatch(c.Commit.Message, -1) {
+			inCommit, cited[m[1]] = true, true
+		}
+	}
 	var missing []string
 	if !inBody {
 		missing = append(missing, "the PR body")
@@ -380,26 +512,42 @@ func ruleTestExpectation(d *data) outcome {
 	if len(missing) > 0 {
 		return fail("%s change expected values together with production code; cite the Pi behavior that changed as `Pi-Behavior-Change: <pi file.ts:line>` in %s", strings.Join(edited, ", "), strings.Join(missing, " and "))
 	}
-	// Whether the cited file is a real Pi source is checked against the inventories of main in a scan step.
-	return scan("cited; the cited Pi file is checked against PORT_MAP.md and the mappings")
+	known := map[string]bool{}
+	for _, glob := range p.strs("inventories") {
+		for _, m := range piPathRE.FindAllString(env.mainFiles(glob), -1) {
+			known[path.Base(m)] = true
+		}
+	}
+	var unknown []string
+	for name := range cited {
+		if !known[path.Base(name)] {
+			unknown = append(unknown, name)
+		}
+	}
+	slices.Sort(unknown)
+	if len(unknown) > 0 {
+		return fail("Pi-Behavior-Change cites %s, which no inventory of main names as a Pi source", strings.Join(unknown, ", "))
+	}
+	return pass("expected values changed with a cited Pi behavior change")
 }
 
-func ruleDependencyReview(d *data) outcome {
+func ruleNoAdvisories(d *data, p params, _ *ruleEnv) outcome {
+	severities := p.strs("severities")
 	var bad []string
 	for _, c := range d.Dependencies {
 		if c.ChangeType != "added" {
 			continue
 		}
 		for _, v := range c.Vulnerabilities {
-			if v.Severity == "high" || v.Severity == "critical" {
+			if slices.Contains(severities, v.Severity) {
 				bad = append(bad, fmt.Sprintf("%s %s %s (%s %s)", c.Ecosystem, c.Name, c.Version, v.Severity, v.AdvisoryID))
 			}
 		}
 	}
 	if len(bad) > 0 {
-		return fail("added dependencies with a high or critical advisory: %s", strings.Join(bad, ", "))
+		return fail("added dependencies with a %s advisory: %s", strings.Join(severities, " or "), strings.Join(bad, ", "))
 	}
-	return pass(fmt.Sprintf("%d dependency change(s), no high or critical advisory", len(d.Dependencies)))
+	return pass(fmt.Sprintf("%d dependency change(s), none with a %s advisory", len(d.Dependencies), strings.Join(severities, " or ")))
 }
 
 var (
@@ -407,69 +555,87 @@ var (
 	licenseIDRE   = regexp.MustCompile(`[A-Za-z0-9][A-Za-z0-9.+-]*`)
 	copyrightRE   = regexp.MustCompile(`(?i)\b(?:SPDX-FileCopyrightText:|Copyright\s+(?:\(c\)|©|\d{4}))`)
 	licenseTextRE = regexp.MustCompile(`(?i)Licensed under the Apache License|GNU (?:Lesser |Affero )?General Public License|Mozilla Public License|Eclipse Public License|Creative Commons|Redistribution and use in source and binary forms|Permission is hereby granted, free of charge`)
-	// codeFileRE matches the files a new SPDX header is expected in.
-	codeFileRE = regexp.MustCompile(`\.(?:go|sh|py|ts|mts|js|mjs|rs|lisp|c|h|ps1)$`)
 )
 
-// noticeFile reports the files whose job is to carry other licenses' texts and notices.
-func noticeFile(name string) bool {
-	return strings.HasPrefix(name, "LICENSES/") || name == "NOTICE" || name == "THIRD_PARTY_NOTICES.md" || name == "REUSE.toml" || strings.HasSuffix(name, "/FORK.md")
+func validateLicenseNotices(p params) error {
+	if err := needList(p, "notice-files"); err != nil {
+		return err
+	}
+	for _, g := range p.strs("notice-files") {
+		if _, err := globRegexp(g); err != nil {
+			return err
+		}
+	}
+	if err := p.need("code-files"); err != nil {
+		return err
+	}
+	return p.regexps("code-files")
 }
 
-// ruleReuse fails on a license the repository does not ship in LICENSES/, and warns on what a reviewer should see:
-// added copyright notices, license texts outside the notice files, and new code files without an SPDX header (the
-// blanket MIT of REUSE.toml then covers them). reuse lint-file runs after it.
-func ruleReuse(d *data) outcome {
+// ruleLicenseNotices fails on a license main does not ship in LICENSES/, and warns on what a reviewer should see: added
+// copyright notices, license texts outside the notice files, and new code files without an SPDX header (REUSE.toml's
+// blanket license then covers them).
+func ruleLicenseNotices(d *data, p params, env *ruleEnv) outcome {
+	var notices []*regexp.Regexp
+	for _, g := range p.strs("notice-files") {
+		re, _ := globRegexp(g)
+		notices = append(notices, re)
+	}
+	codeFile := regexp.MustCompile(p.str("code-files"))
+	licenses := env.mainLicenses()
 	var problems []string
 	var warnings []warning
 	for _, f := range d.Files {
-		if f.Status == "removed" || noticeFile(f.Filename) {
+		if f.Status == "removed" || slices.ContainsFunc(notices, func(re *regexp.Regexp) bool { return re.MatchString(f.Filename) }) {
 			continue
 		}
 		hasHeader := false
 		for _, l := range addedNumbered(f.Patch) {
-			line := l.text
-			if m := spdxLicenseRE.FindStringSubmatch(line); m != nil {
+			if m := spdxLicenseRE.FindStringSubmatch(l.text); m != nil {
 				hasHeader = true
 				for _, id := range licenseIDRE.FindAllString(m[1], -1) {
 					if up := strings.ToUpper(id); up == "AND" || up == "OR" || up == "WITH" {
 						continue
 					}
-					if !slices.Contains(d.Licenses, id) {
+					if !slices.Contains(licenses, id) {
 						problems = append(problems, fmt.Sprintf("%s:%d declares %s, which is not in LICENSES/", f.Filename, l.n, id))
 					}
 				}
 			}
-			if copyrightRE.MatchString(line) {
-				warnings = append(warnings, warning{File: f.Filename, Line: l.n, Blob: f.SHA, Notice: strings.TrimSpace(line), Text: "adds a copyright notice"})
+			if copyrightRE.MatchString(l.text) {
+				warnings = append(warnings, warning{File: f.Filename, Line: l.n, Blob: f.SHA, Notice: strings.TrimSpace(l.text), Text: "adds a copyright notice"})
 			}
-			if m := licenseTextRE.FindString(line); m != "" {
-				warnings = append(warnings, warning{File: f.Filename, Line: l.n, Blob: f.SHA, Notice: strings.TrimSpace(line), Text: fmt.Sprintf("adds license text (%q): is this code from a third party?", m)})
+			if m := licenseTextRE.FindString(l.text); m != "" {
+				warnings = append(warnings, warning{File: f.Filename, Line: l.n, Blob: f.SHA, Notice: strings.TrimSpace(l.text), Text: fmt.Sprintf("adds license text (%q): is this code from a third party?", m)})
 			}
 		}
-		if f.Status == "added" && codeFileRE.MatchString(f.Filename) && !hasHeader {
-			warnings = append(warnings, warning{File: f.Filename, Blob: f.SHA, Notice: "no SPDX-License-Identifier header", Text: "is new and has no SPDX-License-Identifier header; REUSE.toml's blanket MIT covers it"})
+		if f.Status == "added" && codeFile.MatchString(f.Filename) && !hasHeader {
+			warnings = append(warnings, warning{File: f.Filename, Blob: f.SHA, Notice: "no SPDX-License-Identifier header", Text: "is new and has no SPDX-License-Identifier header; REUSE.toml's blanket license covers it"})
 		}
 	}
+	o := pass("no foreign license declared")
 	if len(problems) > 0 {
-		o := fail("%s; add the license text to LICENSES/ and an annotation in REUSE.toml, or remove the code", strings.Join(problems, "; "))
-		o.warnings = warnings
-		return o
+		o = fail("%s; add the license text to LICENSES/ and an annotation in REUSE.toml, or remove the code", strings.Join(problems, "; "))
 	}
-	o := scan("no foreign license declared; reuse lint-file checks the changed files")
 	o.warnings = warnings
 	return o
 }
 
-var gitleaksAllowRE = regexp.MustCompile(`gitleaks:allow`)
+func validateAddedLinesWarn(p params) error {
+	if err := p.need("pattern", "text"); err != nil {
+		return err
+	}
+	return p.regexps("pattern")
+}
 
-// ruleGitleaks leaves the scan to its step and warns on every added inline suppression, so a reviewer sees each one.
-func ruleGitleaks(d *data) outcome {
-	o := scan("Gitleaks scans the added lines with main's configuration")
+// ruleAddedLinesWarn passes and warns on every added line that matches the pattern, so a reviewer sees each one.
+func ruleAddedLinesWarn(d *data, p params, _ *ruleEnv) outcome {
+	re := regexp.MustCompile(p.str("pattern"))
+	o := pass("checked the added lines")
 	for _, f := range d.Files {
 		for _, l := range addedNumbered(f.Patch) {
-			if gitleaksAllowRE.MatchString(l.text) {
-				o.warnings = append(o.warnings, warning{File: f.Filename, Line: l.n, Blob: f.SHA, Notice: strings.TrimSpace(l.text), Text: "adds an inline `gitleaks:allow` suppression"})
+			if re.MatchString(l.text) {
+				o.warnings = append(o.warnings, warning{File: f.Filename, Line: l.n, Blob: f.SHA, Notice: strings.TrimSpace(l.text), Text: p.str("text")})
 			}
 		}
 	}

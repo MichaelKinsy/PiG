@@ -18,20 +18,34 @@ func TestShippedConfigLoads(t *testing.T) {
 }
 
 func TestConfigRejects(t *testing.T) {
+	const cheap = `{name: a, when: {always: true}, stage: cheap, reads: [pull], rule: up-to-date}`
+	const scanOK = `{input: added, run: [x], exit: {clean: [0]}, report: {in: stdout, format: lines, pattern: '(?P<message>.+)'}}`
 	for _, tc := range []struct{ name, yaml, want string }{
 		{"no checks", "checks: []", "no checks"},
-		{"no name", "checks: [{always: true, sources: [pull], version: 1}]", "has no name"},
-		{"duplicate", "checks: [{name: a, always: true, sources: [pull], version: 1}, {name: a, always: true, sources: [pull], version: 1}]", "declared twice"},
-		{"no version", "checks: [{name: a, always: true, sources: [pull]}]", "version of 1 or more"},
-		{"neither always nor paths", "checks: [{name: a, sources: [pull], version: 1}]", "either always"},
-		{"both always and paths", "checks: [{name: a, always: true, paths: [x], sources: [pull], version: 1}]", "either always"},
-		{"no source", "checks: [{name: a, always: true, version: 1}]", "reads no source"},
-		{"unknown source", "checks: [{name: a, always: true, sources: [nope], version: 1}]", `unknown source "nope"`},
-		{"absolute path", "checks: [{name: a, paths: [/x], sources: [pull], version: 1}]", "must be relative"},
-		{"checkout escapes", "checkout: x", "field checkout not found"},
-		{"checkout absolute", "checks: [{name: a, always: true, sources: [pull], version: 1, checkout: [/etc]}]", "must be relative"},
-		{"checkout parent", "checks: [{name: a, always: true, sources: [pull], version: 1, checkout: [../x]}]", "must be relative"},
-		{"unknown field", "checks: [{name: a, always: true, sources: [pull], version: 1, extra: 1}]", "field extra not found"},
+		{"no name", "checks: [{when: {always: true}, stage: cheap, reads: [pull], rule: up-to-date}]", "has no name"},
+		{"duplicate", "checks: [" + cheap + ", " + cheap + "]", "declared twice"},
+		{"neither always nor paths", "checks: [{name: a, stage: cheap, reads: [pull], rule: up-to-date}]", "either always"},
+		{"both always and paths", "checks: [{name: a, when: {always: true, paths: [x]}, stage: cheap, reads: [pull], rule: up-to-date}]", "either always"},
+		{"absolute path", "checks: [{name: a, when: {paths: [/x]}, stage: cheap, reads: [pull], rule: up-to-date}]", "must be relative"},
+		{"unknown stage", "checks: [{name: a, when: {always: true}, stage: later}]", "neither cheap nor scan"},
+		{"unknown rule", "checks: [{name: a, when: {always: true}, stage: cheap, reads: [pull], rule: nope}]", `unknown rule "nope"`},
+		{"no source", "checks: [{name: a, when: {always: true}, stage: cheap, rule: up-to-date}]", "reads at least one source"},
+		{"unknown source", "checks: [{name: a, when: {always: true}, stage: cheap, reads: [nope], rule: up-to-date}]", `unknown source "nope"`},
+		{"bad rule params", "checks: [{name: a, when: {always: true}, stage: cheap, reads: [commits], rule: all-commits, with: {help: x}}]", "either verified"},
+		{"cheap with a scan", "checks: [{name: a, when: {always: true}, stage: cheap, reads: [pull], rule: up-to-date, scan: " + scanOK + "}]", "has a rule, not a scan"},
+		{"scan without scan", "checks: [{name: a, when: {always: true}, stage: scan}]", "needs scan:"},
+		{"scan with a rule", "checks: [{name: a, when: {always: true}, stage: scan, rule: up-to-date, scan: " + scanOK + "}]", "has a scan, not a rule"},
+		{"bad input", "checks: [{name: a, when: {always: true}, stage: scan, scan: {input: all, run: [x], exit: {clean: [0]}, report: {in: stdout, format: lines, pattern: '(?P<message>.+)'}}}]", "not added, changed or tree"},
+		{"no run", "checks: [{name: a, when: {always: true}, stage: scan, scan: {input: added, exit: {clean: [0]}, report: {in: stdout, format: lines, pattern: '(?P<message>.+)'}}}]", "run is empty"},
+		{"no clean code", "checks: [{name: a, when: {always: true}, stage: scan, scan: {input: added, run: [x], report: {in: stdout, format: lines, pattern: '(?P<message>.+)'}}}]", "clean codes"},
+		{"code both", "checks: [{name: a, when: {always: true}, stage: scan, scan: {input: added, run: [x], exit: {clean: [0], findings: [0]}, report: {in: stdout, format: lines, pattern: '(?P<message>.+)'}}}]", "both clean and findings"},
+		{"checkout escapes", "checks: [{name: a, when: {always: true}, stage: scan, scan: {input: added, run: [x], checkout: [../x], exit: {clean: [0]}, report: {in: stdout, format: lines, pattern: '(?P<message>.+)'}}}]", "must be relative"},
+		{"pattern without message", "checks: [{name: a, when: {always: true}, stage: scan, scan: {input: added, run: [x], exit: {clean: [0]}, report: {in: stdout, format: lines, pattern: '(?P<file>.+)'}}}]", "(?P<message>"},
+		{"json without message", "checks: [{name: a, when: {always: true}, stage: scan, scan: {input: added, run: [x], exit: {clean: [0]}, report: {in: stdout, format: json}}}]", "names the message field"},
+		{"bad report place", "checks: [{name: a, when: {always: true}, stage: scan, scan: {input: added, run: [x], exit: {clean: [0]}, report: {in: file, format: json, message: m}}}]", "neither out nor stdout"},
+		{"tool without pin", "tools: [{name: x, version: '1', url: 'https://x'}]\nchecks: [" + cheap + "]", "sha256"},
+		{"tool both kinds", "tools: [{name: x, version: '1', pip: r.txt, url: 'https://x'}]\nchecks: [" + cheap + "]", "not both"},
+		{"unknown field", "checks: [{name: a, when: {always: true}, stage: cheap, reads: [pull], rule: up-to-date, extra: 1}]", "field extra not found"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := loadConfig([]byte(tc.yaml))
@@ -39,6 +53,19 @@ func TestConfigRejects(t *testing.T) {
 				t.Fatalf("error = %v, want one containing %q", err, tc.want)
 			}
 		})
+	}
+}
+
+func TestDefinitionHashFollowsTheDeclaration(t *testing.T) {
+	load := func(rule string) string {
+		cfg, err := loadConfig([]byte("checks: [{name: a, when: {always: true}, stage: cheap, reads: [commits], rule: all-commits, with: {verified: true, help: " + rule + "}}]"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return cfg.Checks[0].definition
+	}
+	if a, b := load("x"), load("y"); a == "" || a == b {
+		t.Fatalf("definitions %q and %q: an edited check must hash differently", a, b)
 	}
 }
 
@@ -75,7 +102,7 @@ func TestGlobMatching(t *testing.T) {
 }
 
 func TestRelevant(t *testing.T) {
-	cfg, err := loadConfig([]byte("checks: [{name: go, paths: ['**/*.go'], sources: [pull], version: 1}, {name: all, always: true, sources: [pull], version: 1}]"))
+	cfg, err := loadConfig([]byte("checks: [{name: go, when: {paths: ['**/*.go']}, stage: cheap, reads: [pull], rule: up-to-date}, {name: all, when: {always: true}, stage: cheap, reads: [pull], rule: up-to-date}]"))
 	if err != nil {
 		t.Fatal(err)
 	}

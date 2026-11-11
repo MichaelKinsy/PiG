@@ -1,8 +1,0 @@
-# SPDX-License-Identifier: MIT
-#
-# The scanners the pre-flight runs, pinned by release and SHA-256 of the linux/amd64 archive (install-tools.sh).
-# name	version	sha256	url
-gitleaks	8.30.1	551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb	https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
-trufflehog	3.99.7	bdbea0508e439b144f49de14e775908de5f902f3d14ea7ae8354bae72b0b72ef	https://github.com/trufflesecurity/trufflehog/releases/download/v3.99.7/trufflehog_3.99.7_linux_amd64.tar.gz
-actionlint	1.7.12	8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8	https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz
-zizmor	1.31.1	d185f726bdaf92df78273217dfdd24ebcd6b0ef48cf3ce776ff5762b6e138c99	https://github.com/zizmorcore/zizmor/releases/download/v1.31.1/zizmor-x86_64-unknown-linux-gnu.tar.gz

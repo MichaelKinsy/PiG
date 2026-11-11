@@ -8,8 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
-	"path/filepath"
 	"slices"
 	"strings"
 )
@@ -23,7 +21,7 @@ type evaluation struct {
 	Version string             `json:"version"`
 	Result  string             `json:"result"`
 	Checks  map[string]verdict `json:"checks"`
-	// Scans are the checks a scan step still has to decide.
+	// Scans are the checks a scan still has to decide.
 	Scans []string `json:"scans"`
 }
 
@@ -46,11 +44,11 @@ func sourceValue(d *data, name string) any {
 	return nil
 }
 
-// inputHash is the SHA-256 of the canonical JSON of everything a check reads, with its version, so an unchanged input
-// and rule reuse the stored verdict and any change decides it again.
-func inputHash(d *data, c check) string {
-	parts := map[string]any{"check": c.Name, "version": c.Version}
-	for _, s := range c.Sources {
+// cheapInputHash is the SHA-256 of a cheap check's definition, the engine's version and every source it reads, so an
+// unchanged input and rule reuse the stored verdict and any change decides it again.
+func cheapInputHash(d *data, c check) string {
+	parts := map[string]any{"definition": c.definition, "version": d.Version}
+	for _, s := range c.Reads {
 		parts[s] = sourceValue(d, s)
 	}
 	raw, err := json.Marshal(parts)
@@ -61,7 +59,9 @@ func inputHash(d *data, c check) string {
 	return hex.EncodeToString(sum[:])
 }
 
-func evaluate(cfg config, d *data) evaluation {
+// evaluate decides every cheap check from the data and marks the scans still to run. A check no changed file makes
+// relevant passes; a check whose input hash equals the stored one keeps its stored pass or fail.
+func evaluate(cfg config, d *data, env *ruleEnv) evaluation {
 	ev := evaluation{Repo: d.Repo, PR: d.PR, Head: d.Pull.Head.SHA, Base: d.Pull.Base.SHA, Version: d.Version, Checks: map[string]verdict{}}
 	var prev map[string]verdict
 	if d.Previous != nil && d.Previous.Version == d.Version {
@@ -73,17 +73,24 @@ func evaluate(cfg config, d *data) evaluation {
 		return ev
 	}
 	for _, c := range cfg.Checks {
-		v := verdict{Input: inputHash(d, c)}
-		switch o, failedSource := decide(d, c); {
+		v := verdict{}
+		if c.Stage == stageCheap {
+			v.Input = cheapInputHash(d, c)
+		} else {
+			v.Input = scanInputHash(c, d.Version, selectedFiles(d, c.Scan))
+		}
+		stored, had := prev[c.Name]
+		switch {
 		case d.Limit != "":
 			v.Result, v.Reason = resultFail, "the PR is too large for the pre-flight: "+d.Limit
-		case failedSource != "":
-			v.Result, v.Reason = resultError, failedSource
 		case !slices.Contains(d.Relevant, c.Name):
 			v.Result, v.Reason = resultPass, "no file it covers changed"
-		case prev != nil && prev[c.Name].Input == v.Input && (prev[c.Name].Result == resultPass || prev[c.Name].Result == resultFail):
-			v = prev[c.Name]
+		case had && stored.Input == v.Input && (stored.Result == resultPass || stored.Result == resultFail):
+			v = stored
+		case c.Stage == stageScan:
+			v.Result, v.Reason = resultScan, "waits for its scan"
 		default:
+			o := decide(d, c, env)
 			v.Result, v.Reason, v.Warnings = o.result, o.reason, o.warnings
 		}
 		ev.Checks[c.Name] = v
@@ -91,12 +98,10 @@ func evaluate(cfg config, d *data) evaluation {
 	if d.Acknowledged != "" {
 		acks, err := parseAcknowledged(d.Acknowledged)
 		if err != nil {
-			for _, name := range []string{"reuse", "gitleaks"} {
-				if v, ok := ev.Checks[name]; ok && slices.Contains(d.Relevant, name) {
-					v.Result, v.Reason = resultFail, err.Error()
-					ev.Checks[name] = v
-				}
-			}
+			// A broken acknowledgement file must not hide warnings, so the check that warns most reports it.
+			v := ev.Checks["licenses"]
+			v.Result, v.Reason = resultFail, err.Error()
+			ev.Checks["licenses"] = v
 		} else {
 			applyAcknowledged(&ev, d, acks)
 		}
@@ -105,18 +110,14 @@ func evaluate(cfg config, d *data) evaluation {
 	return ev
 }
 
-// decide runs a check's rule, or marks it for its scan step. failedSource names a source the check reads that failed
-// after its retries.
-func decide(d *data, c check) (outcome, string) {
-	for _, s := range c.Sources {
+// decide runs a cheap check's rule, or reports the source it reads that failed after its retries.
+func decide(d *data, c check, env *ruleEnv) outcome {
+	for _, s := range c.Reads {
 		if msg, bad := d.SourceErrors[s]; bad {
-			return outcome{}, fmt.Sprintf("source %s failed after retries: %s", s, msg)
+			return outcome{result: resultError, reason: fmt.Sprintf("source %s failed after retries: %s", s, msg)}
 		}
 	}
-	if rule, ok := rules[c.Name]; ok {
-		return rule(d), ""
-	}
-	return scan("decided by its scan step"), ""
+	return builtinRules[c.Rule].run(d, params(c.With), env)
 }
 
 // finish derives the overall result: fail when any check failed or errored, scan while scans remain, else pass.
@@ -141,107 +142,48 @@ func (ev *evaluation) finish() {
 	}
 }
 
+// cheapFailed reports whether a cheap check failed or errored, which keeps the scans from running.
+func (ev evaluation) cheapFailed(cfg config) bool {
+	return slices.ContainsFunc(cfg.Checks, func(c check) bool {
+		r := ev.Checks[c.Name].Result
+		return c.Stage == stageCheap && (r == resultFail || r == resultError)
+	})
+}
+
 var resultMark = map[string]string{resultPass: "PASS ", resultFail: "FAIL ", resultScan: "SCAN ", resultError: "ERROR"}
 
-// report prints one line per check in config order, then the overall result.
+// report prints one line per check in config order, the warnings, the entries that would acknowledge them, and the
+// GitHub annotations.
 func report(w io.Writer, cfg config, ev evaluation) {
-	logf(w, "::group::evaluate PR #%d at %s", ev.PR, short(ev.Head))
+	var open []string
 	for _, c := range cfg.Checks {
 		v := ev.Checks[c.Name]
-		logf(w, "%s %-18s %s", resultMark[v.Result], c.Name, v.Reason)
+		logf(w, "%s %-20s %s", resultMark[v.Result], c.Name, v.Reason)
 	}
-	var open []string
 	for _, c := range cfg.Checks {
 		for _, x := range ev.Checks[c.Name].Warnings {
 			if x.Acknowledged {
-				logf(w, "ACK   %-18s %s", c.Name, x.where())
+				logf(w, "ACK   %-20s %s", c.Name, x.where())
 				continue
 			}
-			logf(w, "WARN  %-18s %s", c.Name, x.where())
+			logf(w, "WARN  %-20s %s", c.Name, x.where())
 			open = append(open, ackEntry(c.Name, x))
 		}
 	}
-	logf(w, "::endgroup::")
 	if len(open) > 0 {
-		logf(w, "::group::to acknowledge a warning, add its entry to %s", acknowledgedPath)
-		logf(w, "%s", strings.Join(open, "\n"))
-		logf(w, "::endgroup::")
+		logf(w, "to acknowledge a warning, add its entry to %s:\n%s", acknowledgedPath, strings.Join(open, "\n"))
 	}
 	for _, c := range cfg.Checks {
 		v := ev.Checks[c.Name]
 		if v.Result == resultFail || v.Result == resultError {
-			logf(w, "::error title=pre-flight %s::%s", c.Name, strings.ReplaceAll(v.Reason, "\n", " "))
+			logf(w, "::error title=pre-flight %s #%d::%s", c.Name, ev.PR, strings.ReplaceAll(v.Reason, "\n", " "))
 		}
 		for _, x := range v.Warnings {
 			if !x.Acknowledged {
-				logf(w, "::warning title=pre-flight %s::%s", c.Name, x.where())
+				logf(w, "::warning title=pre-flight %s #%d::%s", c.Name, ev.PR, x.where())
 			}
 		}
 	}
-	switch ev.Result {
-	case resultFail:
-		logf(w, "pre-flight: FAIL, scans skipped")
-	case resultScan:
-		logf(w, "pre-flight: cheap checks pass; scans to run: %s", strings.Join(ev.Scans, ", "))
-	default:
-		logf(w, "pre-flight: PASS")
-	}
-}
-
-// readLicenses lists the license identifiers of LICENSES/ under root.
-func readLicenses(root string) ([]string, error) {
-	entries, err := os.ReadDir(filepath.Join(root, "LICENSES"))
-	if err != nil {
-		return nil, err
-	}
-	var ids []string
-	for _, e := range entries {
-		if name, ok := strings.CutSuffix(e.Name(), ".txt"); ok {
-			ids = append(ids, name)
-		}
-	}
-	return ids, nil
-}
-
-func runEvaluate(cfg config, args []string, stdout, stderr io.Writer) int {
-	in, out, root := "preflight-data.json", "preflight-evaluation.json", "."
-	for i := 0; i+1 < len(args); i += 2 {
-		switch args[i] {
-		case "--data":
-			in = args[i+1]
-		case "--out":
-			out = args[i+1]
-		case "--root":
-			root = args[i+1]
-		default:
-			_, _ = fmt.Fprintf(stderr, "preflight evaluate: unknown flag %s\n", args[i])
-			return 2
-		}
-	}
-	raw, err := os.ReadFile(in)
-	if err != nil {
-		_, _ = fmt.Fprintln(stderr, "preflight evaluate:", err)
-		return 2
-	}
-	var d data
-	if err := json.Unmarshal(raw, &d); err != nil {
-		_, _ = fmt.Fprintf(stderr, "preflight evaluate: %s: %v\n", in, err)
-		return 2
-	}
-	if d.Licenses, err = readLicenses(root); err != nil {
-		_, _ = fmt.Fprintln(stderr, "preflight evaluate: main's licenses:", err)
-		return 2
-	}
-	ev := evaluate(cfg, &d)
-	report(stdout, cfg, ev)
-	if err := writeJSON(out, ev); err != nil {
-		_, _ = fmt.Fprintln(stderr, "preflight evaluate:", err)
-		return 2
-	}
-	if ev.Result == resultFail {
-		return 1
-	}
-	return 0
 }
 
 // where is a warning as one line: "file:line text: notice".

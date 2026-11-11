@@ -192,38 +192,3 @@ func record(ctx context.Context, cfg config, d *data, ev evaluation, o recordOpt
 	logf(log, "record: comment posted")
 	return nil
 }
-
-func runRecord(cfg config, args []string, stdout, stderr io.Writer) int {
-	flags, err := parseFlags(args, "--data", "--eval", "--state", "--api?", "--dry-run?")
-	if err != nil {
-		_, _ = fmt.Fprintln(stderr, "preflight record:", err)
-		return 2
-	}
-	var d data
-	raw, err := os.ReadFile(flags["--data"])
-	if err == nil {
-		err = json.Unmarshal(raw, &d)
-	}
-	if err != nil {
-		_, _ = fmt.Fprintln(stderr, "preflight record:", err)
-		return 2
-	}
-	ev, err := readEvaluation(flags["--eval"])
-	if err != nil {
-		_, _ = fmt.Fprintln(stderr, "preflight record:", err)
-		return 2
-	}
-	o := recordOptions{apiBase: "https://api.github.com", statePath: flags["--state"], dryRun: flags["--dry-run"] == "true", token: token()}
-	if v := flags["--api"]; v != "" {
-		o.apiBase = v
-	}
-	if !o.dryRun && o.token == "" {
-		_, _ = fmt.Fprintln(stderr, "preflight record: GITHUB_TOKEN or GH_TOKEN is required to set the status and the comment")
-		return 2
-	}
-	if err := record(context.Background(), cfg, &d, ev, o, stdout); err != nil {
-		_, _ = fmt.Fprintln(stderr, "preflight record:", err)
-		return 1
-	}
-	return 0
-}

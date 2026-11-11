@@ -75,8 +75,6 @@ type data struct {
 	// SourceErrors holds each source that still failed after its retries; the checks reading it cannot pass, the others
 	// are decided as usual.
 	SourceErrors map[string]string `json:"source_errors,omitempty"`
-	// Licenses are the license identifiers main ships in LICENSES/, read by evaluate from main's tree.
-	Licenses []string `json:"-"`
 	// Acknowledged is acknowledged.toml as it is at the PR's head; empty when the file does not exist there.
 	Acknowledged string `json:"acknowledged,omitempty"`
 }
@@ -236,8 +234,16 @@ func fetch(ctx context.Context, cfg config, o fetchOptions, log io.Writer) (*dat
 		return d, nil
 	}
 
+	reads := map[string]bool{}
+	for _, c := range cfg.Checks {
+		if slices.Contains(d.Relevant, c.Name) {
+			for _, r := range c.Reads {
+				reads[r] = true
+			}
+		}
+	}
 	logf(log, "::group::fetch wave 2")
-	if n, ok := parseDependsOn(d.Pull.Body); ok && n > 0 && slices.Contains(d.Relevant, "depends-on") {
+	if n, ok := parseDependsOn(d.Pull.Body); ok && n > 0 && reads["depends-on"] {
 		wg.Go(func() {
 			var p pull
 			if err := a.get(ctx, fmt.Sprintf("%s/pulls/%d", prefix, n), &p, false); err != nil {
@@ -248,7 +254,7 @@ func fetch(ctx context.Context, cfg config, o fetchOptions, log io.Writer) (*dat
 			logf(log, "depends on #%d: state %s, merged %v", n, p.State, p.Merged)
 		})
 	}
-	if slices.Contains(d.Relevant, "dependency-review") {
+	if reads["dependency-graph"] {
 		wg.Go(func() {
 			if err := a.get(ctx, fmt.Sprintf("%s/dependency-graph/compare/%s...%s", prefix, base, head), &d.Dependencies, false); err != nil {
 				d.failed(&mu, log, "dependency-graph", err)
@@ -257,7 +263,7 @@ func fetch(ctx context.Context, cfg config, o fetchOptions, log io.Writer) (*dat
 			logf(log, "dependency changes: %d", len(d.Dependencies))
 		})
 	}
-	if slices.Contains(d.Relevant, "reuse") || slices.Contains(d.Relevant, "gitleaks") {
+	{
 		wg.Go(func() {
 			var file struct {
 				Content  string `json:"content"`
@@ -301,76 +307,6 @@ func fetch(ctx context.Context, cfg config, o fetchOptions, log io.Writer) (*dat
 	logf(log, "::endgroup::")
 	logf(log, "fetch: %d API call(s)", a.callCount())
 	return d, nil
-}
-
-func runFetch(cfg config, args []string, stdout, stderr io.Writer) int {
-	opts, out, err := parseFetchFlags(args)
-	if err != nil {
-		_, _ = fmt.Fprintln(stderr, "preflight fetch:", err)
-		return 2
-	}
-	if opts.version, err = preflightVersion(opts.root); err != nil {
-		_, _ = fmt.Fprintln(stderr, "preflight fetch:", err)
-		return 2
-	}
-	d, err := fetch(context.Background(), cfg, opts, stdout)
-	if err != nil {
-		_, _ = fmt.Fprintln(stderr, "preflight fetch:", err)
-		return 1
-	}
-	if err := writeJSON(out, d); err != nil {
-		_, _ = fmt.Fprintln(stderr, "preflight fetch:", err)
-		return 1
-	}
-	return 0
-}
-
-func parseFetchFlags(args []string) (fetchOptions, string, error) {
-	o := fetchOptions{apiBase: "https://api.github.com", root: "."}
-	out := "preflight-data.json"
-	for i := 0; i < len(args); i++ {
-		flag := args[i]
-		if i+1 >= len(args) {
-			return o, "", fmt.Errorf("%s needs a value", flag)
-		}
-		value := args[i+1]
-		i++
-		switch flag {
-		case "--repo":
-			o.repo = value
-		case "--pr":
-			n, err := strconv.Atoi(value)
-			if err != nil || n < 1 {
-				return o, "", fmt.Errorf("--pr %q is not a PR number", value)
-			}
-			o.pr = n
-		case "--previous":
-			var s state
-			raw, err := os.ReadFile(value)
-			if err == nil {
-				err = json.Unmarshal(raw, &s)
-			}
-			if err != nil && !os.IsNotExist(err) {
-				return o, "", fmt.Errorf("--previous: %w", err)
-			}
-			if err == nil {
-				o.previous = &s
-			}
-		case "--out":
-			out = value
-		case "--api":
-			o.apiBase = value
-		case "--root":
-			o.root = value
-		default:
-			return o, "", fmt.Errorf("unknown flag %s", flag)
-		}
-	}
-	if o.repo == "" || o.pr == 0 {
-		return o, "", fmt.Errorf("--repo and --pr are required")
-	}
-	o.token = token()
-	return o, out, nil
 }
 
 func writeJSON(path string, v any) error {

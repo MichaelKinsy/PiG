@@ -3,6 +3,8 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -43,26 +45,37 @@ func TestExpectationEditsCountsChangedValuesNotRenames(t *testing.T) {
 	}
 }
 
-func TestRuleReuse(t *testing.T) {
-	d := &data{Licenses: []string{"MIT", "Apache-2.0"}, Files: []prFile{
+func TestRuleLicenseNotices(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "LICENSES"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range []string{"MIT", "Apache-2.0"} {
+		if err := os.WriteFile(filepath.Join(root, "LICENSES", id+".txt"), nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	env := &ruleEnv{root: root}
+	p := params{"notice-files": []any{"THIRD_PARTY_NOTICES.md"}, "code-files": `\.go$`}
+	d := &data{Files: []prFile{
 		{Filename: "a/new.go", Status: "added", Patch: "@@ -0,0 +1,2 @@\n+package a\n+// Copyright (c) 2020 Someone Else"},
 		{Filename: "b/ok.go", Status: "added", Patch: "@@ -0,0 +1,2 @@\n+// SPDX-License-Identifier: Apache-2.0 AND MIT\n+package b"},
 		{Filename: "THIRD_PARTY_NOTICES.md", Status: "modified", Patch: "@@ -1 +1,2 @@\n x\n+GNU General Public License"},
 	}}
-	o := ruleReuse(d)
-	if o.result != resultScan || len(o.warnings) != 2 {
-		t.Fatalf("outcome %+v, want a scan with a copyright and a missing-header warning", o)
+	o := ruleLicenseNotices(d, p, env)
+	if o.result != resultPass || len(o.warnings) != 2 {
+		t.Fatalf("outcome %+v, want a pass with a copyright and a missing-header warning", o)
 	}
 	d.Files = append(d.Files, prFile{Filename: "c/gpl.go", Status: "added", Patch: "@@ -0,0 +1 @@\n+// SPDX-License-Identifier: GPL-3.0-only"})
-	if o := ruleReuse(d); o.result != resultFail || !strings.Contains(o.reason, "c/gpl.go:1 declares GPL-3.0-only") {
+	if o := ruleLicenseNotices(d, p, env); o.result != resultFail || !strings.Contains(o.reason, "c/gpl.go:1 declares GPL-3.0-only") {
 		t.Fatalf("outcome %+v, want a fail naming GPL-3.0-only", o)
 	}
 }
 
-func TestRuleGitleaksWarnsOnInlineSuppression(t *testing.T) {
+func TestRuleAddedLinesWarn(t *testing.T) {
 	d := &data{Files: []prFile{{Filename: "x.go", Status: "modified", Patch: "@@ -3 +3,2 @@\n ctx\n+key := \"abc\" // gitleaks:allow"}}}
-	o := ruleGitleaks(d)
-	if o.result != resultScan || len(o.warnings) != 1 || o.warnings[0].File != "x.go" || o.warnings[0].Line != 4 {
+	o := ruleAddedLinesWarn(d, params{"pattern": "gitleaks:allow", "text": "suppression"}, nil)
+	if o.result != resultPass || len(o.warnings) != 1 || o.warnings[0].File != "x.go" || o.warnings[0].Line != 4 {
 		t.Fatalf("outcome %+v", o)
 	}
 }
