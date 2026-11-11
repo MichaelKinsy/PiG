@@ -557,6 +557,8 @@ def cmd_check_oracle(_: argparse.Namespace) -> None:
         problems = oracle.tree_differences(oracle.SDK_TS / "node_modules", closure)
         if problems:
             raise PinError("the installed dependency tree differs from the frozen closure:\n  " + "\n  ".join(problems[:20]))
+    if data.get("backports", "") != oracle.backports_digest(pin):
+        raise PinError("the installed Pi carries other post-release backports than automation/gen/pi-post-release-backports.mjs lists; rebuild with `pin.py install-oracle --force`")
     if pin.kind != "tag":
         oracle.check_durable(pin)
     print(f"check-oracle: Pi {pin.version} (source build of {pin.commit[:8]})")
