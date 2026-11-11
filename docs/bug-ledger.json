@@ -29905,6 +29905,29 @@
       "tests": []
     },
     {
+      "id": "BF-8defe80",
+      "title": "In the Go extension SDK, a tool or command that the host cancelled right after sending its request could…",
+      "symptom": "In the Go extension SDK, a tool or command that the host cancelled right after sending its request could start with its context still open and its host calls sent: the cancel frame was read before the main loop armed the request and was applied only later.",
+      "rootCause": "The read loop records each request it queues for the main loop and, for a cancel frame of such a request, the signal-only and the ordinary cancel with their causes; armRequestScope takes them in the same step that registers the request and applies them before the handler can start, so the handler's signal is aborted at its first line and, after an ordinary cancel, its request is ended.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "In the Go extension SDK, a tool or command that the host cancelled right after sending its request could start with its context still open and its host calls sent: the cancel frame was read before the main loop armed the request and was applied only later. The SDK now keeps the cancel frames it reads for a request it has not armed yet and applies them when it arms the request, so the handler starts cancelled (or with its signal aborted for a signal-only cancel) and its host calls are refused.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8defe80574",
+          "date": "2026-11-10"
+        }
+      ],
+      "tests": [
+        "extensions/sdk/request_cancel_queue_test.go::TestQueuedCancelIsDroppedWhenTheRequestIsArmedAndNoneIsKeptForAnUnknownRequest",
+        "extensions/sdk/request_cancel_queue_test.go::TestSignalOnlyThenOrdinaryCancelReadBeforeTheArmingEndTheRequest"
+      ]
+    },
+    {
       "id": "BF-8e3613d",
       "title": "Text typed over an extension's autocomplete provider and followed at once by Enter no longer skips the menu…",
       "symptom": "Text typed over an extension's autocomplete provider and followed at once by Enter no longer skips the menu Pi opens.",
@@ -46819,7 +46842,7 @@
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "Aborting a run while an extension tool awaits a host call, such as a dialog, a notification, a session read or `exec`, no longer fails that call in the Go, Node, Python, Rust and Lisp extension SDKs. The abort aborts the tool's signal and nothing else, as in Pi: the pending call and later calls return their results, and only the tool's nested `executeTool` calls take the abort as their signal. A tool that has not settled when the 3 s grace period ends (D111) is abandoned as before, and what it still awaits is cancelled then.",
+      "releaseNote": "Aborting a run while an extension tool awaits a host call, such as a dialog, a notification, a session read or `exec`, no longer fails that call in the Go, Node, Python, Rust and Lisp extension SDKs. The abort aborts the tool's signal and nothing else, as in Pi: the pending call and later calls return their results, and only the tool's nested calls (`executeTool`, `builtinTool.execute` and `builtinTool.localExec`) take the abort as their signal. A tool that has not settled when the 3 s grace period ends (D111) is abandoned as before, and what it still awaits is cancelled then.",
       "origin": "release note",
       "commits": [
         {
