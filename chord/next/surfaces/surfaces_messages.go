@@ -16,7 +16,7 @@ import (
 // which each client renders with Render in its own language, checked at run time (it crossed a link).
 
 // MessageFunc is a message that is a function of its arguments (plurals, word order). Its language is the one the
-// message renders in, nil outside a render (D450: Pi's current language is this parameter). It returns the error a
+// message renders in, nil outside a render (language mechanics: Pi's current language is this parameter). It returns the error a
 // JavaScript message would throw (its arguments do not fit).
 type MessageFunc func(lang *Language, args ...any) (string, error)
 

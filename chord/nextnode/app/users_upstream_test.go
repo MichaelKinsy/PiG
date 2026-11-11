@@ -11,7 +11,7 @@ import (
 )
 
 // Ports packages/chord/test/node/app/users.test.ts (Pi main c23b9ec1): tests of the users plugin (slice 13 §3): the app makes it
-// with its profile schema; the server reaches `Users`; profiles persist. The facet is a core facet of the server here (D456).
+// with its profile schema; the server reaches `Users`; profiles persist. The facet is a core facet of the server here (a TypeScript plugin cannot import a Go facet).
 
 func TestUsersKeepAccountsByIDWithTheAppsProfileListedUpdatedRemovedAndKeptAcrossStarts(t *testing.T) {
 	users, facet, err := DefineUsers(contracts.Obj(contracts.Prop("name", contracts.Str()), contracts.Prop("title", contracts.Opt(contracts.Str()))))

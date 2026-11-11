@@ -27,7 +27,7 @@ import (
 // Unpacking makes a staging directory, refusing every path that would leave it; the kit puts it in place, then imports the server's
 // part (app.go).
 //
-// Ports packages/chord/src/node/app/archive.ts (Pi 8a5da3ce6). Forced Go differences (D455, as tar.go): streams are io.Readers
+// Ports packages/chord/src/node/app/archive.ts (Pi 8a5da3ce6). Forced Go differences (language mechanics, as tar.go): streams are io.Readers
 // and the tar's entries a push; a context is a context.Context.
 
 const (

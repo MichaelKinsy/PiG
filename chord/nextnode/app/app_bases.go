@@ -1,13 +1,10 @@
 package app
 
 import (
-	"errors"
 	"os"
 	"sync"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/chord/next/data"
-	chordhttp "github.com/MichaelKinsy/PiG/chord/nextnode/http"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
@@ -177,19 +174,4 @@ func (a *App) baseBuilds() []baseBuild {
 		}})
 	}
 	return bases
-}
-
-// linksAfterTheBases holds a link's upgrade until the bases are built: a client that connects while the server builds (a page
-// reconnecting to a restarted server) would hold the scripts object's empty set, and its base is none the page runs (it reloads).
-// Pi's client has that window too; its build is quicker than a Go server's, which starts the plugins' Node. A request the server
-// closes meanwhile is refused. The options are the zero ones the links endpoint gave every socket.
-//
-// Pi's links connect at once; here an upgrade waits for the bases.
-func (a *App) linksAfterTheBases(chordhttp.HttpRequest, data.Principal) (chordhttp.LinkOptions, error) {
-	select {
-	case <-a.basesBuilt:
-		return chordhttp.LinkOptions{}, nil
-	case <-a.ended:
-		return chordhttp.LinkOptions{}, errors.New("the app is closing")
-	}
 }

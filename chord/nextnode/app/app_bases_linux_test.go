@@ -322,8 +322,8 @@ func TestAppAnAbortedApplyWaitingAtTheWebStepForTheInitialBuildStopsThereTheBuil
 	<-s.app.BaseWatched()
 }
 
-// D604: a link's upgrade is held until the bases are built, where Pi's connects at once.
-func TestAppHoldsALinkUntilTheBasesAreBuilt(t *testing.T) {
+// A link's upgrade is not held for the bases: it connects at once while they are still being built, as Pi's does.
+func TestAppConnectsALinkAtOnceWhileTheBasesAreBuilding(t *testing.T) {
 	entry, pipe := heldWebEntry(t)
 	s := startUnbuilt(t, nil, withPublicWeb(entry, plainPage))
 	headers := ownerHeaders(t, s.app)
@@ -354,13 +354,13 @@ func TestAppHoldsALinkUntilTheBasesAreBuilt(t *testing.T) {
 	}()
 	select {
 	case got := <-status:
-		t.Fatalf("the link answered %d before the bases were built", got)
-	case <-time.After(300 * time.Millisecond):
+		if got != http.StatusSwitchingProtocols {
+			t.Fatalf("link = %d, want 101 while the bases are still being built", got)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("the link was held until the bases were built")
 	}
 	stop := feedPipe(t, pipe, "export {};")
 	defer stop()
-	if got := <-status; got != http.StatusSwitchingProtocols {
-		t.Fatalf("link = %d, want 101 once the bases are built", got)
-	}
 	<-s.app.BaseWatched()
 }
