@@ -7,7 +7,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
 )
 
-// Ports packages/chord/test/next/registries/entries.test.ts.
+// Ports packages/chord/test/registries/entries.test.ts.
 
 type tableValue struct {
 	routes []registries.RecordEntry[string]

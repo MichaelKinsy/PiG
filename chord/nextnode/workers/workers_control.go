@@ -13,7 +13,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 )
 
-// Ports packages/chord/src/next-node/workers/control.ts. The control channel between the server and a worker (slice 10 §3):
+// Ports packages/chord/src/node/workers/control.ts. The control channel between the server and a worker (slice 10 §3):
 // JSON messages beside the link's frames on one IPC channel (the IPC link skips them), and errors as they cross it
 // (`{ message, code?, reason? }`, never a stack or a cause).
 //

@@ -1,15 +1,38 @@
 package ai
 
-import "testing"
+import (
+	"crypto/sha256"
+	"sync"
+	"testing"
+)
+
+// clearCatalogRecordBaselines forgets every cached baseline, so the next encoding of a built-in model computes its baseline again.
+func clearCatalogRecordBaselines() {
+	for i := range catalogRecordBaselines {
+		catalogRecordBaselines[i].ready.Store(false)
+	}
+}
+
+// cachedCatalogRecordBaselines is the number of built-in records whose baseline is cached.
+func cachedCatalogRecordBaselines() int {
+	cached := 0
+	for i := range catalogRecordBaselines {
+		if catalogRecordBaselines[i].ready.Load() {
+			cached++
+		}
+	}
+	return cached
+}
 
 // The record-shape cache holds only the catalog compiled into the binary. A models store record (here, a Radius gateway
 // model carried through CatalogRecordOf) changes with each refresh, so caching it would grow without bound.
 func TestCatalogRecordShapeCacheHoldsOnlyBuiltinRecords(t *testing.T) {
+	clearCatalogRecordBaselines()
 	builtin := GeneratedModels[0].ToModel()
 	if _, ok, err := CatalogModelJSON(builtin); !ok || err != nil {
 		t.Fatalf("builtin: ok %t, %v", ok, err)
 	}
-	if _, cached := catalogRecordBaselines.Load(GeneratedModels[0].Record); !cached {
+	if !catalogRecordBaselines[0].ready.Load() || cachedCatalogRecordBaselines() != 1 {
 		t.Fatal("the built-in record's shape was not cached")
 	}
 
@@ -26,7 +49,38 @@ func TestCatalogRecordShapeCacheHoldsOnlyBuiltinRecords(t *testing.T) {
 	if _, ok, err := CatalogModelJSON(rebuilt); !ok || err != nil {
 		t.Fatalf("store record: ok %t, %v", ok, err)
 	}
-	if _, cached := catalogRecordBaselines.Load(record); cached {
+	if cachedCatalogRecordBaselines() != 1 {
 		t.Fatal("a models store record's shape was cached")
+	}
+}
+
+// Many goroutines compute the baselines of every built-in record from a cold cache at once, each starting at a different row: the digest a
+// reader takes from a slot is written before the slot is published, so the race detector sees no unordered read, and every goroutine gets the same digest.
+func TestCatalogRecordBaselinesPublishedToConcurrentReaders(t *testing.T) {
+	clearCatalogRecordBaselines()
+	const readers = 32
+	got := make([][][sha256.Size]byte, readers)
+	var wg sync.WaitGroup
+	for g := range readers {
+		got[g] = make([][sha256.Size]byte, len(GeneratedModels))
+		wg.Go(func() {
+			for n := range GeneratedModels {
+				i := (g*53 + n) % len(GeneratedModels)
+				sum, err := catalogRecordBaseline(GeneratedModels[i].Record)
+				if err != nil {
+					t.Errorf("row %d: %v", i, err)
+					return
+				}
+				got[g][i] = sum
+			}
+		})
+	}
+	wg.Wait()
+	for i := range GeneratedModels {
+		for g := range readers {
+			if got[g][i] != got[0][i] {
+				t.Fatalf("row %d: goroutine %d read a different baseline digest than goroutine 0", i, g)
+			}
+		}
 	}
 }

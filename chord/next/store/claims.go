@@ -7,7 +7,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// Ports packages/chord/src/next/store/claims.ts
+// Ports packages/chord/src/store/claims.ts
 //
 // Claims (slice 6b "owner names and claims", "claims per table and per document namespace"): what can collide in a
 // store is claimed once, in memory: a table by its SQL name, documents by `(owner, namespace)`. A claim is held by

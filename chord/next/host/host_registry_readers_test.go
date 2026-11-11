@@ -19,12 +19,12 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// pi: packages/chord/src/next/registries/value.ts
-// pi: packages/chord/src/next/registries/contribution.ts
-// pi: packages/chord/src/next/registries/record.ts
-// pi: packages/chord/src/next/registries/internal.ts
+// pi: packages/chord/src/registries/value.ts
+// pi: packages/chord/src/registries/contribution.ts
+// pi: packages/chord/src/registries/record.ts
+// pi: packages/chord/src/registries/internal.ts
 
-// Ports the host-run cases of packages/chord/test/next/registries/value.test.ts: the readers of a registry (`self.registry`,
+// Ports the host-run cases of packages/chord/test/registries/value.test.ts: the readers of a registry (`self.registry`,
 // `host.registry`) on a loaded host with plugins, which the record-level cases in registries/value_test.go cannot run:
 // "older readers (S2)" (value mapping, a reader newer than the provider, a contributor that failed live, a native that
 // closed), "readers (S3)", "readers' memory" and "values' memory".
@@ -224,6 +224,58 @@ func TestOlderReadersWithoutAValueMappingAndForAReaderNewerThanTheProviderParkRe
 	wantMessage := "waiting for registry app.sum: registry app.sum: version 3 is not served here (version 2 is)"
 	if state.Cause.Kind != data.FailureWaiting || state.Cause.Error.Message != wantMessage || state.RetryAt != nil {
 		t.Fatalf("state = %+v (%v), want failed waiting %q without retry", state, state.Cause.Error, wantMessage)
+	}
+	must(t, host.Close(background))
+}
+
+// overdueLoop is a loop whose timer of one delay is due the moment its section ends, before the goroutine that armed it
+// runs on: the deadline of a `host.registry` call that the machine let the waiter miss, as a loaded CI runner does with a
+// 5 ms one. Pi's single event loop cannot do that to its `await`: the microtasks after the arming section (the
+// publication's, the first `usable()`) run before any timer, so the reason the registry cannot be read is what the
+// deadline reports.
+type overdueLoop struct {
+	*Loop
+	delay time.Duration
+}
+
+var _ sectionLoop = (*overdueLoop)(nil)
+
+// AfterFunc is the real timer, except for the delay that is overdue: its job is queued as a microtask.
+func (l *overdueLoop) AfterFunc(d time.Duration, job func()) Timer {
+	if d != l.delay {
+		return l.Loop.AfterFunc(d, job)
+	}
+	timer := &overdueTimer{job: job}
+	l.Queue(func() {
+		if timer.state.CompareAndSwap(timerPending, timerFired) {
+			timer.job()
+		}
+	})
+	return timer
+}
+
+type overdueTimer struct {
+	state atomic.Int32
+	job   func()
+}
+
+// Stop implements Timer.
+func (t *overdueTimer) Stop() bool { return t.state.CompareAndSwap(timerPending, timerStopped) }
+
+func TestReadersAHostRegistryWhoseDeadlineElapsedBeforeItsFirstLookReportsWhyTheRegistryIsNotUsable(t *testing.T) {
+	const deadline = 5 * time.Millisecond
+	host, _ := rvPlugins(t, HostOptions{loop: &overdueLoop{Loop: NewLoop(), delay: deadline}}, rvPlugin("@app/sum", func(h FacetHost, _ FacetSelf) error {
+		return rvServeSum(h, rvTotalCompose, nil)
+	}))
+	for _, registry := range []registries.Registry[any, any]{rvSumV1, rvSumV3} {
+		_, err := host.Registry(background, registry, rvWithin(deadline))
+		if chordErr, ok := data.IsChordErrorCode(err, data.CodeContractMismatch); !ok {
+			t.Fatalf("host.registry(v%d) = %v, want contract_mismatch (%v)", registry.Version, err, chordErr)
+		}
+	}
+	_, err := host.Registry(background, rvRegistry(t, "app.nobody", 1), rvWithin(deadline))
+	if chordErr, ok := data.IsChordErrorCode(err, data.CodeUnavailable); !ok || chordErr.Reason != data.ReasonUndeclared {
+		t.Fatalf("host.registry(app.nobody) = %v, want unavailable/undeclared", err)
 	}
 	must(t, host.Close(background))
 }

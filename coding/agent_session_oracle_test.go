@@ -276,7 +276,7 @@ func runAgentSessionWithPig(t *testing.T, scenario agentSessionScenario, dir str
 			id, _ := fields["id"].(string)
 			ids = append(ids, id)
 			parents = append(parents, fields["parentId"])
-			if label, ok := session.inner.GetLabel(id); ok {
+			if label, ok := session.inner.Load().GetLabel(id); ok {
 				labels = append(labels, label)
 			} else {
 				labels = append(labels, nil)

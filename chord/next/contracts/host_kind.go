@@ -7,7 +7,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 )
 
-// Ports packages/chord/src/next/contracts/host-kind.ts (host kinds and addresses (§3): a kind of addressable host with
+// Ports packages/chord/src/contracts/host-kind.ts (host kinds and addresses (§3): a kind of addressable host with
 // params like a contract's, and the address of one host of a kind, which a remote contract's `hostAddress` computes
 // from its params).
 //

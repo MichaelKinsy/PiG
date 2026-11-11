@@ -55,8 +55,8 @@ func sessionRig(t *testing.T, respond func(abi.Event) *abi.Step, mutate func(*dr
 
 func lookupTool() *durable.ToolRegistration {
 	return &durable.ToolRegistration{
-		ToolSchema: ai.ToolSchema{Name: "lookup", Description: "Look up record number n", Parameters: map[string]any{"type": "object", "properties": map[string]any{"n": map[string]any{"type": "number"}}, "required": []any{"n"}}},
-		Replay:     durable.ReplaySafe,
+		Name: "lookup", Description: "Look up record number n", Parameters: map[string]any{"type": "object", "properties": map[string]any{"n": map[string]any{"type": "number"}}, "required": []any{"n"}},
+		Replay: durable.ReplaySafe,
 		Execute: func(ctx context.Context, args any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			return durable.ToolExecutionResult{}, nil
 		},
@@ -695,8 +695,8 @@ func TestDocWritesFollowTheOrderTheTransactionAcquiredTheDocuments(t *testing.T)
 	tokens := make([]durable.AnyDocToken, len(kinds))
 	for i, kind := range kinds {
 		tokens[i] = durable.DefineDoc(durable.DocDefinition[durable.JsonObject]{
-			CommonDocDefinition: durable.CommonDocDefinition[durable.JsonObject]{Kind: kind, Version: 1, Initial: func() durable.JsonObject { return delta.JsonObjectOf() }, CheckpointWhen: func(durable.JsonObject, []durable.Op, durable.CheckpointInfo) bool { return false }},
-			DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeSession},
+			Kind: kind, Version: 1, Initial: func() durable.JsonObject { return delta.JsonObjectOf() }, CheckpointWhen: func(durable.JsonObject, []durable.Op, durable.CheckpointInfo) bool { return false },
+			Scope: durable.ScopeSession,
 		})
 	}
 	var written []string
@@ -749,8 +749,8 @@ func TestDocWritesFollowTheOrderTheTransactionAcquiredTheDocuments(t *testing.T)
 // host sends the retired incarnation's write after the retirement, as facade/tx.ts flush does. The proxy dropped the draft.
 func TestRetiringAnAcquiredDocumentStillWritesItsFinalContent(t *testing.T) {
 	token := durable.DefineDoc(durable.DocDefinition[durable.JsonObject]{
-		CommonDocDefinition: durable.CommonDocDefinition[durable.JsonObject]{Kind: "t.retired", Version: 1, Initial: func() durable.JsonObject { return delta.JsonObjectOf() }, CheckpointWhen: func(durable.JsonObject, []durable.Op, durable.CheckpointInfo) bool { return false }},
-		DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeSession},
+		Kind: "t.retired", Version: 1, Initial: func() durable.JsonObject { return delta.JsonObjectOf() }, CheckpointWhen: func(durable.JsonObject, []durable.Op, durable.CheckpointInfo) bool { return false },
+		Scope: durable.ScopeSession,
 	})
 	var ops []string
 	respond := func(ev abi.Event) *abi.Step {

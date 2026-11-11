@@ -28,7 +28,7 @@ func TestClientDoesNotSendACancelNotificationWhenInitializeIsAborted(t *testing.
 		}
 		return count
 	}
-	client := mcp.NewClient(mcp.ClientOptions{Implementation: mcp.Implementation{Name: "test-client", Version: "2.0.0"}})
+	client := mcp.NewClient(mcp.ClientOptions{Name: "test-client", Version: "2.0.0"})
 	ctx, cancel := context.WithCancelCause(t.Context())
 	errs := make(chan error, 1)
 	go func() {

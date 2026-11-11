@@ -13,7 +13,7 @@ import (
 func TestClientInitializeCarriesTheConfiguredClientOptions(t *testing.T) {
 	clientTransport, server := createServer(t)
 	client := mcp.NewClient(mcp.ClientOptions{
-		Implementation:  mcp.Implementation{Name: "opts-client", Version: "3.1.4", Title: "Options Client"},
+		Name: "opts-client", Version: "3.1.4", Title: "Options Client",
 		Capabilities:    &mcp.ClientCapabilities{Sampling: map[string]any{}},
 		ProtocolVersion: "2025-06-18",
 		Roots:           []mcp.Root{},

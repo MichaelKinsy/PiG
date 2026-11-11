@@ -7,7 +7,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 )
 
-// Ports packages/chord/src/next/documents/residency.ts
+// Ports packages/chord/src/documents/residency.ts
 //
 // Residency of keyed documents (slice 6a §10, rule 23): which keyed documents are in memory, and the eviction of
 // persisted ones nobody pinned and nobody read or wrote for the retention. One idle structure and one timer per

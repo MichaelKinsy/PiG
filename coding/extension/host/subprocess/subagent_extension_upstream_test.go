@@ -536,9 +536,9 @@ func (r *subagentRig) toolResultMarksError(result agent.AgentToolResult) bool {
 	r.t.Helper()
 	runner := inproc.NewRunner([]extension.Extension{*r.loaded}, r.dir)
 	patched, err := runner.EmitToolResult(r.ctx, extension.CustomToolResultEvent{
-		ToolResultEventBase: extension.ToolResultEventBase{Type: "tool_result", ToolCallID: "test", Input: map[string]any{}, Content: nil},
-		ToolName:            "subagent",
-		Details:             result.Details,
+		Type: "tool_result", ToolCallID: "test", Input: map[string]any{}, Content: nil,
+		ToolName: "subagent",
+		Details:  result.Details,
 	})
 	if err != nil {
 		r.t.Fatal(err)

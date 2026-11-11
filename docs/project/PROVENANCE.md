@@ -14,8 +14,8 @@ The public repository starts from a reviewed clean source root. Earlier private 
 
 PiG translates and adapts source from [Pi](https://github.com/earendil-works/pi).
 
-- Upstream release: `v0.99.1`
-- Upstream commit: `d86654abb8862e201933517d6f1fce9f88dd117f`
+- Upstream pin: `1.5.0+c23b9ec1` (a commit of Pi's main branch)
+- Upstream commit: `c23b9ec1ef12a63573d739d4c294f81a377b7d57`
 - Upstream copyright: Copyright (c) 2025 Mario Zechner
 - License: MIT
 - Exact pin: [`.upstream/pin`](../../.upstream/pin), with [`internal/coding/pigversion/pigversion.go`](../../internal/coding/pigversion/pigversion.go) generated from it

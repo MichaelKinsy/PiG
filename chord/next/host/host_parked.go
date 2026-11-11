@@ -11,7 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 )
 
-// Ports packages/chord/src/next/host/parked.ts. Parked calls (§3, §7): calls made on a loading reference, queued in the
+// Ports packages/chord/src/host/parked.ts. Parked calls (§3, §7): calls made on a loading reference, queued in the
 // order they were made until it goes live, each with its own deadline from the moment it was called (the reference's
 // `readyTimeout`, never renewed).
 

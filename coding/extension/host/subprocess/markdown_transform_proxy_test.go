@@ -33,7 +33,7 @@ func TestNodeMarkdownTransformerDoesNotCacheAcrossMessages(t *testing.T) {
 			if len(errs) != 0 || len(loaded) != 1 {
 				t.Fatalf("load: %v, %v", loaded, errs)
 			}
-			transform := loaded[0].MarkdownTransformer
+			transform := loaded[0].MarkdownTransformer.Transformer
 			ctx := extension.MarkdownTransformContext{Context: t.Context(), MessageType: extension.MarkdownMessageUser, AvailableWidth: 78}
 			for i := 1; i <= 2; i++ {
 				want := fmt.Sprintf("same:user:78:%d", i)

@@ -115,7 +115,7 @@ func TestManualCompactPersistsAbortedResponseBeforeCompaction(t *testing.T) {
 		t.Fatalf("starts=%v ends=%v", starts, ends)
 	}
 	aborted, compacted, count := -1, -1, 0
-	for i, entry := range s.inner.GetEntries() {
+	for i, entry := range s.inner.Load().GetEntries() {
 		if entry.Base().Type == "compaction" {
 			compacted = i
 			count++

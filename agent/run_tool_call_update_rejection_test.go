@@ -33,10 +33,10 @@ func TestRunToolCall_RejectsWithTheFirstUpdateSinkErrorAndSkipsAfterToolCall(t *
 	first, second := errors.New("first sink error"), errors.New("second sink error")
 	options := RunToolCallOptions{
 		Tools: []AgentTool{tool},
-		ToolCallHooks: ToolCallHooks{AfterToolCallHooks: []AfterToolCallHook{func(context.Context, string, string, json.RawMessage, AgentToolResult) AfterToolCallResult {
+		AfterToolCallHooks: []AfterToolCallHook{func(context.Context, string, string, json.RawMessage, AgentToolResult) AfterToolCallResult {
 			note("afterToolCall")
 			return AfterToolCallResult{}
-		}}},
+		}},
 		OnUpdate: func(partial AgentToolResult) error {
 			content := partial.Text()
 			note("update " + content)
@@ -66,10 +66,10 @@ func TestRunToolCall_AnUpdateSinkThatSucceedsKeepsTheOutcome(t *testing.T) {
 	var hooks int
 	options := RunToolCallOptions{
 		Tools: []AgentTool{newStructuredEchoTool()},
-		ToolCallHooks: ToolCallHooks{AfterToolCallHooks: []AfterToolCallHook{func(context.Context, string, string, json.RawMessage, AgentToolResult) AfterToolCallResult {
+		AfterToolCallHooks: []AfterToolCallHook{func(context.Context, string, string, json.RawMessage, AgentToolResult) AfterToolCallResult {
 			hooks++
 			return AfterToolCallResult{}
-		}}},
+		}},
 		OnUpdate: func(AgentToolResult) error { return nil },
 	}
 	outcome, err := RunToolCall(context.Background(), AgentToolCall{ID: "ok", Name: "echo", Arguments: ai.JsonObject{"value": "v"}}, options)

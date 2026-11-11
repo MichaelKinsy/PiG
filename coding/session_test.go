@@ -299,7 +299,7 @@ func TestResumeRestoresModelAndThinkingLevel(t *testing.T) {
 	if err := first.SetThinkingLevel(ai.ThinkingHigh); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := first.inner.AppendMessage(agent.AgentMessage{Assistant: &agent.AssistantMessage{
+	if _, err := first.inner.Load().AppendMessage(agent.AgentMessage{Assistant: &agent.AssistantMessage{
 		Role: agent.RoleAssistant, Content: []ai.AssistantContentBlock{ai.TextContent{Text: "saved"}}, StopReason: "stop",
 		Provider: model.Provider.ID(), ModelID: model.ID, API: model.ProviderMeta.API, Usage: &ai.Usage{},
 	}}); err != nil {
@@ -719,10 +719,10 @@ func TestSessionResumeRebuildsAgentMessages(t *testing.T) {
 			Timestamp: 2,
 		},
 	}
-	if _, err := sess1.inner.AppendMessage(userMsg); err != nil {
+	if _, err := sess1.inner.Load().AppendMessage(userMsg); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := sess1.inner.AppendMessage(asstMsg); err != nil {
+	if _, err := sess1.inner.Load().AppendMessage(asstMsg); err != nil {
 		t.Fatal(err)
 	}
 	_ = sess1.Close()
@@ -951,15 +951,15 @@ func buildSessionWithMessages(t *testing.T, svcs *AgentSessionServices, n int) *
 				Content: []ai.AssistantContentBlock{ai.TextContent{Text: fmt.Sprintf("a%d", i)}},
 			},
 		}
-		if _, err := sess.inner.AppendMessage(userMsg); err != nil {
+		if _, err := sess.inner.Load().AppendMessage(userMsg); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := sess.inner.AppendMessage(asstMsg); err != nil {
+		if _, err := sess.inner.Load().AppendMessage(asstMsg); err != nil {
 			t.Fatal(err)
 		}
 	}
 	// Rebuild agent messages to match inner state.
-	sess.agent.SetMessages(sess.inner.BuildContext(nil))
+	sess.agent.SetMessages(sess.inner.Load().BuildContext(nil))
 	return sess
 }
 
@@ -998,12 +998,12 @@ func TestCompact_Smoke(t *testing.T) {
 	}
 
 	// Tree should contain a compaction entry.
-	leafID := sess.inner.GetLeafID()
+	leafID := sess.inner.Load().GetLeafID()
 	if leafID == nil {
 		t.Fatal("leaf is nil after Compact")
 		return
 	}
-	entries := sess.inner.GetBranch(*leafID)
+	entries := sess.inner.Load().GetBranch(*leafID)
 	haveCompaction := false
 	for _, e := range entries {
 		if e.Base().Type == "compaction" {
@@ -1494,10 +1494,10 @@ func TestNavigateTree_NoSummary(t *testing.T) {
 			Content: ai.UserContentBlocks{ai.TextContent{Text: "first"}},
 		},
 	}
-	if _, err := sess.inner.AppendMessage(userMsg); err != nil {
+	if _, err := sess.inner.Load().AppendMessage(userMsg); err != nil {
 		t.Fatal(err)
 	}
-	firstLeaf := sess.inner.GetLeafID()
+	firstLeaf := sess.inner.Load().GetLeafID()
 	if firstLeaf == nil {
 		t.Fatal("leaf is nil after first message")
 		return
@@ -1511,7 +1511,7 @@ func TestNavigateTree_NoSummary(t *testing.T) {
 			Content: ai.UserContentBlocks{ai.TextContent{Text: "second"}},
 		},
 	}
-	if _, err := sess.inner.AppendMessage(userMsg2); err != nil {
+	if _, err := sess.inner.Load().AppendMessage(userMsg2); err != nil {
 		t.Fatal(err)
 	}
 
@@ -1527,11 +1527,11 @@ func TestNavigateTree_NoSummary(t *testing.T) {
 	// branchPoint is a user-role message entry. Upstream navigateTree sets leaf
 	// to the parent entry, which in a fresh session is the bootstrap
 	// thinking-level audit entry.
-	newLeaf := sess.inner.GetLeafID()
+	newLeaf := sess.inner.Load().GetLeafID()
 	if newLeaf == nil {
 		t.Fatal("leaf should point at bootstrap audit entry")
 	}
-	entry, ok := sess.inner.GetEntry(*newLeaf)
+	entry, ok := sess.inner.Load().GetEntry(*newLeaf)
 	if !ok || entry.Base().Type != "thinking_level_change" {
 		t.Fatalf("leaf entry = %v, want bootstrap thinking-level audit", entry.Base().Type)
 	}
@@ -1556,10 +1556,10 @@ func TestNavigateTree_WithSummary(t *testing.T) {
 			Content: ai.UserContentBlocks{ai.TextContent{Text: "root"}},
 		},
 	}
-	if _, err := sess.inner.AppendMessage(userMsg); err != nil {
+	if _, err := sess.inner.Load().AppendMessage(userMsg); err != nil {
 		t.Fatal(err)
 	}
-	branchPoint := *sess.inner.GetLeafID()
+	branchPoint := *sess.inner.Load().GetLeafID()
 
 	// Extend the branch.
 	userMsg2 := agent.AgentMessage{
@@ -1568,7 +1568,7 @@ func TestNavigateTree_WithSummary(t *testing.T) {
 			Content: ai.UserContentBlocks{ai.TextContent{Text: "diverged"}},
 		},
 	}
-	if _, err := sess.inner.AppendMessage(userMsg2); err != nil {
+	if _, err := sess.inner.Load().AppendMessage(userMsg2); err != nil {
 		t.Fatal(err)
 	}
 
@@ -1583,11 +1583,11 @@ func TestNavigateTree_WithSummary(t *testing.T) {
 	// A branch_summary entry should exist on the CURRENT LEAF'S branch
 	// (root → ... → branch_summary → leaf). Before the 3.2l fix, the entry
 	// was written to the abandoned branch and was invisible after navigation.
-	leaf := sess.inner.GetLeafID()
+	leaf := sess.inner.Load().GetLeafID()
 	if leaf == nil {
 		t.Fatal("expected non-nil leaf after NavigateTree with Summarize=true")
 	}
-	branch := sess.inner.GetBranch(*leaf)
+	branch := sess.inner.Load().GetBranch(*leaf)
 	foundOnBranch := false
 	for _, e := range branch {
 		if e.Base().Type == "branch_summary" {
@@ -1620,7 +1620,7 @@ func TestNavigateTreeRejectsStreamingSession(t *testing.T) {
 	}()
 	<-provider.started
 
-	_, navigateErr := sess.NavigateTree(t.Context(), *sess.inner.GetLeafID(), NavigateTreeOptions{})
+	_, navigateErr := sess.NavigateTree(t.Context(), *sess.inner.Load().GetLeafID(), NavigateTreeOptions{})
 	if navigateErr == nil || navigateErr.Error() != "Wait for the current response to finish before navigating the session tree." {
 		t.Fatalf("NavigateTree error = %v", navigateErr)
 	}
@@ -1638,7 +1638,7 @@ func TestCompactAbortsInFlightManualCompactionAndRestarts(t *testing.T) {
 	_ = sess.Events()
 	completer := newBlockingCompactionCompleter()
 	sess.completer = completer
-	originalLeafID := *sess.inner.GetLeafID()
+	originalLeafID := *sess.inner.Load().GetLeafID()
 
 	firstDone := make(chan error, 1)
 	go func() { _, err := sess.Compact(t.Context(), "first"); firstDone <- err }()
@@ -1663,7 +1663,7 @@ func TestCompactAbortsInFlightAutoCompactionAndRestarts(t *testing.T) {
 	_ = sess.Events()
 	completer := newBlockingCompactionCompleter()
 	sess.completer = completer
-	originalLeafID := *sess.inner.GetLeafID()
+	originalLeafID := *sess.inner.Load().GetLeafID()
 
 	autoDone := make(chan bool, 1)
 	go func() {
@@ -1690,7 +1690,7 @@ func TestCompactAbortsInFlightAutoCompactionAndRestarts(t *testing.T) {
 
 func assertRestartedCompaction(t *testing.T, sess *Session, originalLeafID string) {
 	t.Helper()
-	entries := sess.inner.GetEntries()
+	entries := sess.inner.Load().GetEntries()
 	compactionEntry := entries[len(entries)-1]
 	if compactionEntry.Base().Type != "compaction" || compactionEntry.Base().ParentID == nil || *compactionEntry.Base().ParentID != originalLeafID {
 		t.Fatalf("compaction entry = %#v, want parent %q", compactionEntry.Base(), originalLeafID)
@@ -1714,13 +1714,13 @@ func TestCompactAbortsTreeNavigationThenCompactsOriginalLeaf(t *testing.T) {
 	sess.completer = completer
 
 	var targetID string
-	for _, entry := range sess.inner.GetEntries() {
+	for _, entry := range sess.inner.Load().GetEntries() {
 		if message, ok := entry.(icodingagent.MessageEntry); ok && message.Message.Assistant != nil {
 			targetID = entry.Base().ID
 			break
 		}
 	}
-	originalLeafID := *sess.inner.GetLeafID()
+	originalLeafID := *sess.inner.Load().GetLeafID()
 	navigationDone := make(chan NavigateTreeResult, 1)
 	navigationErr := make(chan error, 1)
 	go func() {
@@ -1756,7 +1756,7 @@ func TestCompactAbortsTreeNavigationThenCompactsOriginalLeaf(t *testing.T) {
 	if err := <-compactDone; err != nil {
 		t.Fatalf("Compact: %v", err)
 	}
-	entries := sess.inner.GetEntries()
+	entries := sess.inner.Load().GetEntries()
 	compactionEntry := entries[len(entries)-1]
 	if compactionEntry.Base().Type != "compaction" || compactionEntry.Base().ParentID == nil || *compactionEntry.Base().ParentID != originalLeafID {
 		t.Fatalf("compaction entry = %#v, want parent %q", compactionEntry.Base(), originalLeafID)
@@ -1770,7 +1770,7 @@ func TestNavigateTreeRejectsManualCompactionBeforeLeafChanges(t *testing.T) {
 	sess.completer = completer
 
 	var targetID string
-	for _, entry := range sess.inner.GetEntries() {
+	for _, entry := range sess.inner.Load().GetEntries() {
 		if message, ok := entry.(icodingagent.MessageEntry); ok && message.Message.Assistant != nil {
 			targetID = entry.Base().ID
 			break
@@ -1779,7 +1779,7 @@ func TestNavigateTreeRejectsManualCompactionBeforeLeafChanges(t *testing.T) {
 	if targetID == "" {
 		t.Fatal("missing assistant navigation target")
 	}
-	originalLeafID := *sess.inner.GetLeafID()
+	originalLeafID := *sess.inner.Load().GetLeafID()
 	compactDone := make(chan error, 1)
 	go func() { _, err := sess.Compact(t.Context(), ""); compactDone <- err }()
 	<-completer.started
@@ -1791,7 +1791,7 @@ func TestNavigateTreeRejectsManualCompactionBeforeLeafChanges(t *testing.T) {
 	if navigateErr == nil || navigateErr.Error() != "Wait for the current compaction or tree navigation to finish before navigating the session tree." {
 		t.Fatalf("NavigateTree error = %v", navigateErr)
 	}
-	if leaf := sess.inner.GetLeafID(); leaf == nil || *leaf != originalLeafID {
+	if leaf := sess.inner.Load().GetLeafID(); leaf == nil || *leaf != originalLeafID {
 		t.Fatalf("leaf = %v, want original leaf %q", leaf, originalLeafID)
 	}
 
@@ -1799,7 +1799,7 @@ func TestNavigateTreeRejectsManualCompactionBeforeLeafChanges(t *testing.T) {
 	if err := <-compactDone; err != nil {
 		t.Fatalf("Compact: %v", err)
 	}
-	entries := sess.inner.GetEntries()
+	entries := sess.inner.Load().GetEntries()
 	compactionEntry := entries[len(entries)-1]
 	if compactionEntry.Base().Type != "compaction" || compactionEntry.Base().ParentID == nil || *compactionEntry.Base().ParentID != originalLeafID {
 		t.Fatalf("compaction entry = %#v, want parent %q", compactionEntry.Base(), originalLeafID)
@@ -1815,7 +1815,7 @@ func TestNavigateTreeRejectsSecondNavigationWhileFirstWaits(t *testing.T) {
 	completer := newBlockingCompactionCompleter()
 	sess.completer = completer
 
-	entries := sess.inner.GetEntries()
+	entries := sess.inner.Load().GetEntries()
 	var firstTargetID, secondTargetID string
 	for _, entry := range entries {
 		message, ok := entry.(icodingagent.MessageEntry)
@@ -1832,7 +1832,7 @@ func TestNavigateTreeRejectsSecondNavigationWhileFirstWaits(t *testing.T) {
 	if firstTargetID == "" || secondTargetID == "" {
 		t.Fatal("missing navigation targets")
 	}
-	originalLeafID := *sess.inner.GetLeafID()
+	originalLeafID := *sess.inner.Load().GetLeafID()
 	firstDone := make(chan error, 1)
 	go func() {
 		_, err := sess.NavigateTree(t.Context(), firstTargetID, NavigateTreeOptions{Summarize: true})
@@ -1847,7 +1847,7 @@ func TestNavigateTreeRejectsSecondNavigationWhileFirstWaits(t *testing.T) {
 	if secondErr == nil || secondErr.Error() != "Wait for the current compaction or tree navigation to finish before navigating the session tree." {
 		t.Fatalf("second NavigateTree error = %v", secondErr)
 	}
-	if leaf := sess.inner.GetLeafID(); leaf == nil || *leaf != originalLeafID {
+	if leaf := sess.inner.Load().GetLeafID(); leaf == nil || *leaf != originalLeafID {
 		t.Fatalf("leaf = %v while first navigation waits, want %q", leaf, originalLeafID)
 	}
 
@@ -1855,11 +1855,11 @@ func TestNavigateTreeRejectsSecondNavigationWhileFirstWaits(t *testing.T) {
 	if err := <-firstDone; err != nil {
 		t.Fatalf("first NavigateTree: %v", err)
 	}
-	leaf := sess.inner.GetLeafID()
+	leaf := sess.inner.Load().GetLeafID()
 	if leaf == nil {
 		t.Fatal("first navigation left a nil leaf")
 	}
-	summary, ok := sess.inner.GetEntry(*leaf)
+	summary, ok := sess.inner.Load().GetEntry(*leaf)
 	if !ok || summary.Base().Type != "branch_summary" || summary.Base().ParentID == nil || *summary.Base().ParentID != firstTargetID {
 		t.Fatalf("first navigation leaf = %#v, want branch summary under %q", summary.Base(), firstTargetID)
 	}
@@ -1965,7 +1965,7 @@ func TestCheckCompactionOverflow(t *testing.T) {
 		ModelID:      "fake-1",
 		Timestamp:    time.Now().UnixMilli(),
 	}
-	overflowID, err := sess.inner.AppendMessage(agent.AgentMessage{Assistant: overflowMsg})
+	overflowID, err := sess.inner.Load().AppendMessage(agent.AgentMessage{Assistant: overflowMsg})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1980,7 +1980,7 @@ func TestCheckCompactionOverflow(t *testing.T) {
 		t.Fatal("overflow recovery did not request a retry")
 	}
 	omitted := false
-	for _, entry := range sess.inner.GetEntries() {
+	for _, entry := range sess.inner.Load().GetEntries() {
 		var edit icodingagent.ContextEditEntry
 		if entry.Base().Type == "context_edit" && json.Unmarshal(entry.Raw(), &edit) == nil && edit.TargetID == overflowID && edit.Replacement == nil {
 			omitted = true
@@ -2159,7 +2159,7 @@ func TestPreSendCompactionCheck(t *testing.T) {
 			Timestamp:    time.Now().UnixMilli(),
 		},
 	}
-	if _, err := sess.inner.AppendMessage(overflowMsg); err != nil {
+	if _, err := sess.inner.Load().AppendMessage(overflowMsg); err != nil {
 		t.Fatal(err)
 	}
 	sess.refreshContext()
@@ -2174,7 +2174,7 @@ func TestPreSendCompactionCheck(t *testing.T) {
 		t.Error("pre-send compaction check should trigger compaction for aborted overflow, but completer was not called")
 	}
 	foundFollowUp := false
-	for _, entry := range sess.inner.GetEntries() {
+	for _, entry := range sess.inner.Load().GetEntries() {
 		if strings.Contains(string(entry.Raw()), "follow up") {
 			foundFollowUp = true
 		}
@@ -2241,10 +2241,10 @@ func TestNavigateTree_SummaryJoinsDestinationFromAbandonedLeaf(t *testing.T) {
 			Content: ai.UserContentBlocks{ai.TextContent{Text: "first question"}},
 		},
 	}
-	if _, err := sess.inner.AppendMessage(firstMsg); err != nil {
+	if _, err := sess.inner.Load().AppendMessage(firstMsg); err != nil {
 		t.Fatal(err)
 	}
-	firstID := *sess.inner.GetLeafID() // ID of "first question"
+	firstID := *sess.inner.Load().GetLeafID() // ID of "first question"
 
 	// Append a second user message to build out the "old branch".
 	secondMsg := agent.AgentMessage{
@@ -2253,11 +2253,11 @@ func TestNavigateTree_SummaryJoinsDestinationFromAbandonedLeaf(t *testing.T) {
 			Content: ai.UserContentBlocks{ai.TextContent{Text: "second question"}},
 		},
 	}
-	if _, err := sess.inner.AppendMessage(secondMsg); err != nil {
+	if _, err := sess.inner.Load().AppendMessage(secondMsg); err != nil {
 		t.Fatal(err)
 	}
 	// Session now: [firstID → secondID]; leaf = secondID.
-	abandonedLeafID := *sess.inner.GetLeafID()
+	abandonedLeafID := *sess.inner.Load().GetLeafID()
 
 	// Navigate to firstID (user message) with summarize=true. The bootstrap entries precede firstID, so its parent is the destination leaf.
 	res, err := sess.NavigateTree(context.Background(), firstID, NavigateTreeOptions{Summarize: true})
@@ -2273,11 +2273,11 @@ func TestNavigateTree_SummaryJoinsDestinationFromAbandonedLeaf(t *testing.T) {
 
 	// The current leaf's branch must contain the bootstrap audit entries and the
 	// new branch_summary entry, but not the abandoned user-message path.
-	leaf := sess.inner.GetLeafID()
+	leaf := sess.inner.Load().GetLeafID()
 	if leaf == nil {
 		t.Fatal("leaf must not be nil after summarize navigation")
 	}
-	branch := sess.inner.GetBranch(*leaf)
+	branch := sess.inner.Load().GetBranch(*leaf)
 	if len(branch) != 3 {
 		types := make([]string, len(branch))
 		for i, e := range branch {
@@ -2527,7 +2527,7 @@ func TestGetSessionStatsFollowsReplaceInner(t *testing.T) {
 			t.Errorf("close session: %v", err)
 		}
 	}()
-	if _, err := sess.inner.AppendMessage(agent.AgentMessage{User: &agent.UserMessage{Role: agent.RoleUser}}); err != nil {
+	if _, err := sess.inner.Load().AppendMessage(agent.AgentMessage{User: &agent.UserMessage{Role: agent.RoleUser}}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -2571,14 +2571,14 @@ func TestGetSessionStatsIncludesToolUsageAndCost(t *testing.T) {
 		Input: 7, Output: 1, CacheRead: 2, CacheWrite: 1,
 		Cost: ai.UsageCost{Total: 0.5},
 	}
-	if _, err := sess.inner.AppendMessage(agent.AgentMessage{Assistant: &agent.AssistantMessage{
+	if _, err := sess.inner.Load().AppendMessage(agent.AgentMessage{Assistant: &agent.AssistantMessage{
 		Role:    agent.RoleAssistant,
 		Content: []ai.AssistantContentBlock{ai.ToolCall{ID: "call-1", Name: "nested", Arguments: ai.JsonObject{}}},
 		Usage:   assistantUsage, StopReason: "toolUse",
 	}}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := sess.inner.AppendMessage(agent.AgentMessage{ToolResult: &agent.ToolResultMessage{
+	if _, err := sess.inner.Load().AppendMessage(agent.AgentMessage{ToolResult: &agent.ToolResultMessage{
 		Role: agent.RoleToolResult, ToolCallID: "call-1", ToolName: "nested", Usage: toolUsage,
 	}}); err != nil {
 		t.Fatal(err)
@@ -2624,7 +2624,7 @@ func TestGetSessionStatsUpstream(t *testing.T) {
 	}
 	appendMessage := func(t *testing.T, session *Session, message agent.AgentMessage) string {
 		t.Helper()
-		id, err := session.inner.AppendMessage(message)
+		id, err := session.inner.Load().AppendMessage(message)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -2637,7 +2637,7 @@ func TestGetSessionStatsUpstream(t *testing.T) {
 		appendMessage(t, session, assistant("response1", 180_000, 2))
 		kept := appendMessage(t, session, user("second", 3))
 		appendMessage(t, session, assistant("response2", 195_000, 4))
-		if _, err := session.inner.AppendCompaction("summary", kept, 195_000, nil, false, nil); err != nil {
+		if _, err := session.inner.Load().AppendCompaction("summary", kept, 195_000, nil, false, nil); err != nil {
 			t.Fatal(err)
 		}
 		appendMessage(t, session, user("third", 5))
@@ -2689,10 +2689,10 @@ func TestGetSessionStatsUpstream(t *testing.T) {
 			var err error
 			switch kind {
 			case "branch summary":
-				_, err = session.inner.BranchWithSummary(nil, "summary", nil, false, billed)
+				_, err = session.inner.Load().BranchWithSummary(nil, "summary", nil, false, billed)
 			case "compaction":
 				kept := appendMessage(t, session, user("hello", 1))
-				_, err = session.inner.AppendCompaction("summary", kept, 100, nil, false, billed)
+				_, err = session.inner.Load().AppendCompaction("summary", kept, 100, nil, false, billed)
 			case "tool result":
 				appendMessage(t, session, toolResult(billed))
 			}
@@ -2709,10 +2709,10 @@ func TestGetSessionStatsUpstream(t *testing.T) {
 	t.Run("cache-warming usage counted exactly once without messages", func(t *testing.T) { // upstream:211
 		session := newSession(t)
 		billed := ai.Usage{Input: 2, Output: 1, CacheRead: 97, TotalTokens: 100, Cost: ai.UsageCost{Input: 0.001, Output: 0.002, CacheRead: 0.007, Total: 0.01}}
-		if _, err := session.inner.AppendUsage("cache_warm", "anthropic", session.Model().ID, billed, "extension override"); err != nil {
+		if _, err := session.inner.Load().AppendUsage("cache_warm", "anthropic", session.Model().ID, billed, "extension override"); err != nil {
 			t.Fatal(err)
 		}
-		entries := session.inner.GetEntries()
+		entries := session.inner.Load().GetEntries()
 		var entry icodingagent.UsageEntry
 		if len(entries) != 1 {
 			t.Fatalf("entries = %d, want the single usage append", len(entries))
@@ -2724,11 +2724,11 @@ func TestGetSessionStatsUpstream(t *testing.T) {
 			t.Fatalf("entry = %+v", entry)
 		}
 		stats := session.GetSessionStats()
-		if stats.Tokens != (SessionStatsTokens{Input: 2, Output: 1, CacheRead: 97, Total: 100}) || stats.TotalMessages != 0 || len(session.inner.BuildSessionProjection().Messages) != 0 {
-			t.Fatalf("stats = %+v, context = %+v", stats, session.inner.BuildSessionProjection())
+		if stats.Tokens != (SessionStatsTokens{Input: 2, Output: 1, CacheRead: 97, Total: 100}) || stats.TotalMessages != 0 || len(session.inner.Load().BuildSessionProjection().Messages) != 0 {
+			t.Fatalf("stats = %+v, context = %+v", stats, session.inner.Load().BuildSessionProjection())
 		}
 		want := []icodingagent.SessionUsageBreakdown{{Key: "anthropic/" + session.Model().ID, Cost: 0.01, Tokens: 100}}
-		if got := session.inner.Accounting().UsageBreakdown; !reflect.DeepEqual(got, want) {
+		if got := session.inner.Load().Accounting().UsageBreakdown; !reflect.DeepEqual(got, want) {
 			t.Fatalf("breakdown = %+v, want %+v", got, want)
 		}
 	})
@@ -2743,16 +2743,16 @@ func TestGetSessionStatsUpstream(t *testing.T) {
 		appendMessage(t, session, toolResult(toolUsage))
 		compactionUsage := usage(100)
 		compactionUsage.Cost.Total = 2
-		if _, err := session.inner.AppendCompaction("summary", root, 100, nil, false, compactionUsage); err != nil {
+		if _, err := session.inner.Load().AppendCompaction("summary", root, 100, nil, false, compactionUsage); err != nil {
 			t.Fatal(err)
 		}
 		branchUsage := usage(100)
 		branchUsage.Cost.Total = 3
-		if _, err := session.inner.BranchWithSummary(nil, "branch summary", nil, false, branchUsage); err != nil {
+		if _, err := session.inner.Load().BranchWithSummary(nil, "branch summary", nil, false, branchUsage); err != nil {
 			t.Fatal(err)
 		}
 		want := []icodingagent.SessionUsageBreakdown{{Key: "Tools/summaries", Cost: 6, Tokens: 300}, {Key: "anthropic/claude-sonnet-4-5", Cost: 0.5, Tokens: 100}}
-		if got := session.inner.Accounting().UsageBreakdown; !reflect.DeepEqual(got, want) {
+		if got := session.inner.Load().Accounting().UsageBreakdown; !reflect.DeepEqual(got, want) {
 			t.Fatalf("breakdown = %+v, want %+v", got, want)
 		}
 	})

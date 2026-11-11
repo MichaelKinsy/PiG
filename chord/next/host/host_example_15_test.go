@@ -1,6 +1,6 @@
 package host
 
-// pi: packages/chord/test/next/examples/15-revocation.ts
+// pi: packages/chord/test/examples/15-revocation.ts
 
 import (
 	"context"
@@ -16,6 +16,7 @@ import (
 
 // --- 15-revocation.ts ----------------------------------------------------------------------------------------------
 
+// Ports packages/chord/test/examples/15-revocation.ts:2 (`host.revoke(r)` ends a principal's objects at once).
 func TestExample15Revocation(t *testing.T) {
 	// The same function on every host: a guest is revoked by its grant and by its session.
 	revokedBy := RevokedBy[delta.JsonValue](func(principal data.Principal) ([]delta.JsonValue, error) {

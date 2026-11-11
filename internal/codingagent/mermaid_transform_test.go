@@ -5,6 +5,7 @@ package codingagent
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -73,16 +74,46 @@ func TestMermaidTransformMatchesUpstream(t *testing.T) {
 // the bold title, classDef over the theme, hyperlinks only on node text and
 // only on terminals with hyperlinks, the themed warning) against Pi's own
 // createMermaidMarkdownTransformer driven with a {getFgAnsi, fg} theme built
-// from Go's ActiveTheme palette (truecolor and 256) and the terminal's
+// from the built-in dark theme's palette (truecolor and 256) and the terminal's
 // hyperlink capability. The goldens carry the palette they were generated
 // with; a theme change that moves it needs a regeneration.
 func TestMermaidThemedTransformMatchesUpstream(t *testing.T) {
+	checkMermaidThemedGoldens(t)
+}
+
+// TestMermaidThemedTransformIgnoresTheActiveTheme runs the themed goldens with each theme and color depth another test can leave active
+// (the process-global theme is shared by every test in the package, and a test that selects the light theme, or a theme by name in a 256-color
+// environment, leaves it selected for whichever test runs next under -shuffle or a narrower -run). The goldens name their own palette and color
+// depth, so the result must not depend on which theme was active.
+func TestMermaidThemedTransformIgnoresTheActiveTheme(t *testing.T) {
+	for _, name := range []string{"dark", "light"} {
+		for _, truecolor := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/truecolor=%v", name, truecolor), func(t *testing.T) {
+				restoreStartupTheme(t)
+				tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: truecolor})
+				tui.SetThemeByName(name)
+				checkMermaidThemedGoldens(t)
+			})
+		}
+	}
+}
+
+func checkMermaidThemedGoldens(t *testing.T) {
+	t.Helper()
 	f, err := os.Open("testdata/mermaid-transform-themed-golden.jsonl")
 	if err != nil {
 		t.Fatalf("open goldens: %v", err)
 	}
 	defer func() { _ = f.Close() }()
 	t.Cleanup(tui.ResetCapabilitiesCache)
+	// The goldens carry the built-in dark theme's palette, so it is loaded by name: the active theme is process-global and whichever test ran last leaves its own selected (the light theme, the system theme, or the dark theme in the color depth the environment reports).
+	// LoadBuiltinTheme resolves in the color depth of the capabilities and runs terminal detection when none are set, so they are set first; the mode each golden names is applied per case.
+	tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: true})
+	dark, err := tui.LoadBuiltinTheme("dark")
+	if err != nil {
+		t.Fatalf("load the built-in dark theme: %v", err)
+	}
+	dark256 := dark.WithColorMode(tui.TerminalColorMode256)
 
 	var total, styled, linked int
 	sc := bufio.NewScanner(f)
@@ -111,9 +142,9 @@ func TestMermaidThemedTransformMatchesUpstream(t *testing.T) {
 			t.Fatalf("bad golden %q: %v", sc.Bytes(), err)
 		}
 		total++
-		theme := tui.ActiveTheme()
+		theme := dark
 		if g.Input.Theme.ColorMode == "256" {
-			theme = theme.WithColorMode(tui.TerminalColorMode256)
+			theme = dark256
 		}
 		for color, want := range g.Input.Theme.Palette {
 			if got := theme.GetFgAnsi(color); got != want {

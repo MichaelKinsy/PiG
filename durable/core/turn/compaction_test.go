@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/durable/core/history"
 	"github.com/MichaelKinsy/PiG/durable/core/jv"
 	"github.com/MichaelKinsy/PiG/durable/core/session"
 	"github.com/MichaelKinsy/PiG/durable/core/turn"
@@ -205,5 +206,56 @@ func TestBackgroundThresholdCompactsBesideTheRequest(t *testing.T) {
 	}
 	if len(r.complete) != 1 {
 		t.Fatalf("summarization requests = %d", len(r.complete))
+	}
+}
+
+// TestCompactionPolicyLayers is the layering of per-conversation compaction settings (harness-compaction.test.ts "per-conversation
+// compaction settings"): a model-specific value beats a general one and the conversation beats the Harness at the same level, and the
+// conversation's own enabled: false beats the Harness's model override unless its own model override says otherwise.
+func TestCompactionPolicyLayers(t *testing.T) {
+	num := func(v float64) *float64 { return &v }
+	flag := func(v bool) *bool { return &v }
+	model := turn.ModelRef{Provider: "faux", ModelID: "faux-1"}
+	reserve := func(v float64) history.PolicyOverride { return history.PolicyOverride{ReserveTokens: num(v)} }
+	cases := []struct {
+		name            string
+		harness         map[string]history.PolicyOverride
+		conversation    *turn.AgentCompaction
+		reserve         float64
+		enabled, hasOff bool
+	}{
+		{name: "none", reserve: 1000},
+		{name: "conversation general", conversation: &turn.AgentCompaction{Own: reserve(500)}, reserve: 500},
+		{
+			name: "harness model beats conversation general", harness: map[string]history.PolicyOverride{"faux/faux-1": reserve(250)},
+			conversation: &turn.AgentCompaction{Own: reserve(500)}, reserve: 250,
+		},
+		{
+			name: "conversation model beats harness model", harness: map[string]history.PolicyOverride{"faux/faux-1": reserve(250)},
+			conversation: &turn.AgentCompaction{Own: reserve(500), Overrides: map[string]history.PolicyOverride{"faux/faux-1": reserve(125)}}, reserve: 125,
+		},
+		{
+			name:         "conversation override of another model is ignored",
+			conversation: &turn.AgentCompaction{Own: reserve(500), Overrides: map[string]history.PolicyOverride{"faux/other": reserve(125)}}, reserve: 500,
+		},
+		{
+			name: "conversation enabled false beats harness model override", harness: map[string]history.PolicyOverride{"faux/faux-1": {Enabled: flag(true)}},
+			conversation: &turn.AgentCompaction{Own: history.PolicyOverride{Enabled: flag(false)}}, reserve: 1000, hasOff: true,
+		},
+		{
+			name: "conversation model override beats its own enabled false", harness: map[string]history.PolicyOverride{"faux/faux-1": {Enabled: flag(true)}},
+			conversation: &turn.AgentCompaction{
+				Own:       history.PolicyOverride{Enabled: flag(false)},
+				Overrides: map[string]history.PolicyOverride{"faux/faux-1": {Enabled: flag(true)}},
+			}, reserve: 1000, enabled: true,
+		},
+	}
+	for _, c := range cases {
+		settings := turn.Settings{Compaction: history.Policy{Enabled: true, ReserveTokens: 1000, KeepRecentTokens: 400, BackgroundTokens: 800}, CompactionOverrides: c.harness}
+		got := settings.CompactionFor(model, c.conversation)
+		wantEnabled := !c.hasOff || c.enabled
+		if got.ReserveTokens != c.reserve || got.Enabled != wantEnabled {
+			t.Errorf("%s: policy = %+v, want reserve %v enabled %v", c.name, got, c.reserve, wantEnabled)
+		}
 	}
 }

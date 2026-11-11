@@ -14,16 +14,16 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	nextsurfaces "github.com/MichaelKinsy/PiG/chord/next/surfaces"
 	chordhttp "github.com/MichaelKinsy/PiG/chord/nextnode/http"
-	"github.com/MichaelKinsy/PiG/chord/nextnode/internal/browsertest"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
 	nodesurfaces "github.com/MichaelKinsy/PiG/chord/nextnode/surfaces"
+	"github.com/MichaelKinsy/PiG/internal/browsertest"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // Test support for the web surface in a real browser (Pi's test/node/web/support.ts; slice 11 §6): a kit app with the web
 // surface whose entry imports the fixture's web entry and a version (changing it changes the base bundle), its page template, a
 // web plugin, and the browser signed in as the owner through the owner link. The browser is headless Chromium over the DevTools
-// protocol (chord/nextnode/internal/browsertest); the tests are skipped without one (`CHROMIUM_BIN`).
+// protocol (internal/browsertest); the tests are skipped without one (`CHROMIUM_BIN`).
 
 // panelPlugin is a web plugin contributing the panel title and the themes accent colours.
 func panelPlugin(title, accent string) map[string]string {
@@ -87,7 +87,7 @@ func webBrowserApp(t testing.TB, entry string, port int, files map[string]map[st
 		withWeb(entry, false)(o)
 		// The web kind keeps React and the tests' web API as host packages: the page provides them (the fixture's entry).
 		last := &o.Kinds[len(o.Kinds)-1]
-		last.Packages = plugins.HostPackages{"react": "", "react/jsx-runtime": "", "@test/app/v1/web": surfacesFixture(t, "web", "api.ts")}
+		last.Kind.Packages = plugins.HostPackages{"react": "", "react/jsx-runtime": "", "@test/app/v1/web": surfacesFixture(t, "web", "api.ts")}
 		o.Web.Page = browserPage
 		// The vendored sources are the packages' `source` condition (as the terminal's tests).
 		o.Web.Conditions = []string{"source"}

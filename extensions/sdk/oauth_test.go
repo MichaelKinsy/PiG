@@ -195,6 +195,30 @@ func TestExtension_OAuthUnknownProvider(t *testing.T) {
 	<-done
 }
 
+// types.ts:2026 and :2034: the register payload advertises modifyModels as a flag (the closure stays in the extension) and carries usesCallbackServer as the extension set it.
+func TestOAuthConfigAdvertisesModifyModelsAndCallbackServer(t *testing.T) {
+	login := func(*OAuthLoginCallbacks) (OAuthCredentials, error) { return OAuthCredentials{}, nil }
+	plain := oauthConfigFor("p", &OAuthProvider{Login: login})
+	if plain.HasModifyModels || plain.UsesCallbackServer {
+		t.Fatalf("a provider without the capabilities advertises them: %+v", plain)
+	}
+	set := oauthConfigFor("p", &OAuthProvider{
+		Login:              login,
+		ModifyModels:       func(models []map[string]any, _ OAuthCredentials) ([]map[string]any, error) { return models, nil },
+		UsesCallbackServer: true,
+	})
+	if !set.HasModifyModels || !set.UsesCallbackServer {
+		t.Fatalf("oauth flags = %+v", set)
+	}
+	wire, err := json.Marshal(set)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !contains(string(wire), `"has_modify_models":true`) || !contains(string(wire), `"usesCallbackServer":true`) {
+		t.Fatalf("wire = %s", wire)
+	}
+}
+
 func contains(s, sub string) bool {
 	for i := 0; i+len(sub) <= len(s); i++ {
 		if s[i:i+len(sub)] == sub {

@@ -35,6 +35,11 @@ export function validateCorpus(corpus) {
 		}
 		// `exclusive`: the gate runs the row alone (gate.mjs runRows); only a vitest row's two runs know how to take turns.
 		if (s.exclusive !== undefined && (s.exclusive !== true || s.runner !== "vitest")) problems.push(`${s.id}: exclusive is true, and a field of vitest rows`)
+		// `cost_test`, `cost_max_ratio`: the recorded bound on the candidate's time for one test over the reference's (gate.mjs costOf).
+		if (s.cost_test !== undefined || s.cost_max_ratio !== undefined) {
+			if (s.runner !== "vitest" || typeof s.cost_test !== "string" || !s.cost_test || typeof s.cost_max_ratio !== "number" || !(s.cost_max_ratio > 1)) problems.push(`${s.id}: a cost bound is a vitest row's cost_test (a test name prefix) and cost_max_ratio (a number above 1)`)
+			if (s.exclusive !== true) problems.push(`${s.id}: a cost bound belongs to an exclusive row (the two runs take turns, so their times are comparable)`)
+		}
 		if (s.levels?.includes("order") && !["example", "interop", "diff"].includes(s.runner)) problems.push(`${s.id}: the order level needs a scenario program (an example, interop or diff row)`)
 		if (s.runner === "diff" && (!Number.isInteger(s.seed) || !["gate", "node"].includes(s.profile))) problems.push(`${s.id}: a diff row names an integer seed and a storage profile (gate or node)`)
 		if (s.normalisers?.length) problems.push(`${s.id}: normalisers are not allowed in acceptance runs (CONTRACT 2.2)`)

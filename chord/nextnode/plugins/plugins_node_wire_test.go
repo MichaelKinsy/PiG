@@ -8,6 +8,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
 // Not upstream's (docs/plan/chord-plugins-node-evaluator.md 10.3, 10.4): the JSON form of a value on the control channel. Bytes
@@ -90,12 +91,12 @@ func TestNodeGetPinsAKeyOfAKeyedMember(t *testing.T) {
 func TestWireABuiltFacetHasErrorsOnlyWhenItFailedAndThenAlways(t *testing.T) {
 	for _, each := range []struct {
 		name  string
-		built BuiltFacet
+		built model.BuiltFacet
 		want  string
 	}{
-		{"failed without errors", BuiltFacet{Kind: BuiltFacetFailed, Plugin: "@a/b", Facet: "worker"}, `{"kind":"failed","plugin":"@a/b","facet":"worker","errors":[]}`},
-		{"failed", BuiltFacet{Kind: BuiltFacetFailed, Plugin: "@a/b", Facet: "worker", Errors: []string{"x"}}, `{"kind":"failed","plugin":"@a/b","facet":"worker","errors":["x"]}`},
-		{"script", BuiltFacet{Kind: BuiltFacetScript, Plugin: "@a/b", Facet: "worker", Source: "s", Digest: "d"}, `{"kind":"script","plugin":"@a/b","facet":"worker","source":"s","digest":"d"}`},
+		{"failed without errors", model.BuiltFacet{Kind: model.BuiltFacetFailed, Plugin: "@a/b", Facet: "worker"}, `{"kind":"failed","plugin":"@a/b","facet":"worker","errors":[]}`},
+		{"failed", model.BuiltFacet{Kind: model.BuiltFacetFailed, Plugin: "@a/b", Facet: "worker", Errors: []string{"x"}}, `{"kind":"failed","plugin":"@a/b","facet":"worker","errors":["x"]}`},
+		{"script", model.BuiltFacet{Kind: model.BuiltFacetScript, Plugin: "@a/b", Facet: "worker", Source: "s", Digest: "d"}, `{"kind":"script","plugin":"@a/b","facet":"worker","source":"s","digest":"d"}`},
 	} {
 		got, err := json.Marshal(scriptsWire([]PluginScript{{Built: each.built}})[0].Built)
 		if err != nil || string(got) != each.want {

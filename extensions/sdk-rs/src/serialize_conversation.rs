@@ -260,13 +260,21 @@ fn content_text(content: Option<&Json>, separator: &[u16]) -> Result<Vec<u16>, S
     }
 }
 
-/// Pi's `truncateForSummary`: `text.length` counts UTF-16 units, and the cut keeps the first `max_chars` of them, a cut through a pair leaving its high surrogate.
+/// Pi's `truncateForSummary`: `text.length` counts UTF-16 units, and the cut keeps the first `max_chars` of them through `sliceHead` (core/tools/truncate.ts),
+/// one unit fewer when the cut would split a surrogate pair. The count in the marker is `text.length - max_chars` either way.
 fn truncate_for_summary(text: &[u16], max_chars: usize) -> Vec<u16> {
     if text.len() <= max_chars {
         return text.to_vec();
     }
+    let mut end = max_chars;
+    if end > 0
+        && (0xD800..=0xDBFF).contains(&text[end - 1])
+        && (0xDC00..=0xDFFF).contains(&text[end])
+    {
+        end -= 1;
+    }
     [
-        text[..max_chars].to_vec(),
+        text[..end].to_vec(),
         units(&format!(
             "\n\n[... {} more characters truncated]",
             text.len() - max_chars
@@ -624,9 +632,19 @@ mod tests {
     }
 
     #[test]
-    fn the_cut_of_a_pair_leaves_its_high_surrogate() {
+    fn the_cut_of_a_pair_drops_its_high_surrogate_and_the_cut_after_a_lone_one_keeps_it() {
         let json = format!(
             r#"[{{"role":"toolResult","content":"{}😀😀"}}]"#,
+            "a".repeat(1999)
+        );
+        let units = units_of(&serialize_conversation_json(&json).unwrap());
+        let body = &units["[Tool result]: ".len()..];
+        assert_eq!(
+            &body[1999..],
+            super::units("\n\n[... 3 more characters truncated]").as_slice()
+        );
+        let json = format!(
+            r#"[{{"role":"toolResult","content":"{}\ud83dx"}}]"#,
             "a".repeat(1999)
         );
         let units = units_of(&serialize_conversation_json(&json).unwrap());
@@ -634,7 +652,7 @@ mod tests {
         assert_eq!(body[1999], 0xD83D);
         assert_eq!(
             &body[2000..],
-            super::units("\n\n[... 3 more characters truncated]").as_slice()
+            super::units("\n\n[... 1 more characters truncated]").as_slice()
         );
     }
 

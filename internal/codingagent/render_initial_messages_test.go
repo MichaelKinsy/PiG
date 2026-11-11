@@ -111,3 +111,34 @@ func TestRenderCurrentSessionStateForgetsTheReplacedSessionsState(t *testing.T) 
 		t.Fatalf("transcript = %q", got)
 	}
 }
+
+// upstream: interactive-mode.ts renderCurrentSessionState sets `pendingBashComponents = []` (Pi c23b9ec1), so a `!cmd` that was
+// pending in the replaced Session is forgotten: the next flushPendingBashComponents (a prompt submitted while idle, or the run
+// settling) must not move it into the repainted transcript of the new Session.
+func TestRenderCurrentSessionStateForgetsPendingBashBlocks(t *testing.T) {
+	const command = "stale-from-replaced-session"
+	m := resumeThinkingMode(t, false, userMsg("kept prompt"))
+	stale := tui.NewBashExecutionComponent(command, m.tuiInst, false, m.outputPad)
+	m.pendingMessagesContainer = tui.NewContainer(stale)
+	m.pendingBashBlocksMu.Lock()
+	m.pendingBashBlocks = append(m.pendingBashBlocks, stale)
+	m.pendingBashBlocksMu.Unlock()
+
+	m.renderCurrentSessionState()
+
+	m.pendingBashBlocksMu.Lock()
+	remaining := len(m.pendingBashBlocks)
+	m.pendingBashBlocksMu.Unlock()
+	if remaining != 0 {
+		t.Fatalf("pending bash blocks after a Session replacement = %d, want 0", remaining)
+	}
+	m.flushPendingBashBlocks()
+	for _, child := range m.chatContainer.Children() {
+		if child == tui.Component(stale) {
+			t.Fatalf("the replaced Session's pending bash block was moved into the new transcript:\n%s", renderedChat(m))
+		}
+	}
+	if strings.Contains(renderedChat(m), command) {
+		t.Fatalf("the replaced Session's pending bash block is in the new transcript:\n%s", renderedChat(m))
+	}
+}

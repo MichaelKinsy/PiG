@@ -49,7 +49,7 @@ func queueUser(text string, timestamp int64) agent.AgentMessage {
 }
 func persistQueueMessage(t *testing.T, s *Session, message agent.AgentMessage) string {
 	t.Helper()
-	id, err := s.inner.AppendMessage(message)
+	id, err := s.inner.Load().AppendMessage(message)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +116,7 @@ func TestAutoCompactionQueueUpstream(t *testing.T) {
 		msg := queueAssistant(s, "large response before compaction", 600000, 10000, ai.StopReasonStop, now-10000)
 		first := persistQueueMessage(t, s, queueUser("before compaction", msg.Timestamp-1000))
 		persistQueueMessage(t, s, agent.AgentMessage{Assistant: msg})
-		if _, err := s.inner.AppendCompaction("summary", first, 610000, nil, false, nil); err != nil {
+		if _, err := s.inner.Load().AppendCompaction("summary", first, 610000, nil, false, nil); err != nil {
 			t.Fatal(err)
 		}
 		persistQueueMessage(t, s, queueUser("session recovery payload", now))
@@ -165,7 +165,7 @@ func TestAutoCompactionQueueUpstream(t *testing.T) {
 		kept := queueAssistant(s, "kept response from before compaction", 180000, 10000, ai.StopReasonStop, now-10000)
 		first := persistQueueMessage(t, s, queueUser("before compaction", kept.Timestamp-1000))
 		persistQueueMessage(t, s, agent.AgentMessage{Assistant: kept})
-		if _, err := s.inner.AppendCompaction("summary", first, 190000, nil, false, nil); err != nil {
+		if _, err := s.inner.Load().AppendCompaction("summary", first, 190000, nil, false, nil); err != nil {
 			t.Fatal(err)
 		}
 		failure := queueAssistant(s, "", 0, 0, ai.StopReasonError, now)

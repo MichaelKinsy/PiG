@@ -9,6 +9,7 @@ import (
 	"unicode/utf8"
 
 	sdkjson "github.com/MichaelKinsy/PiG/extensions/sdk/json"
+	"github.com/MichaelKinsy/PiG/internal/jsonwire"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
@@ -53,7 +54,7 @@ func parseStreamingJsonValue(input string) (JsonObject, schemaObjectOrder, json.
 func parseStreamingJsonValueAfterFastPath(input string) (JsonObject, schemaObjectOrder, json.RawMessage) {
 	candidates := []string{input, repairJSON(input)}
 	for _, candidate := range candidates {
-		if trimmed := jsstring.Trim(candidate); trimmed != "" && trimmed[0] != '{' && json.Valid([]byte(trimmed)) {
+		if trimmed := jsstring.Trim(candidate); trimmed != "" && trimmed[0] != '{' && jsonwire.Valid(trimmed) {
 			if value, ok := jsonParseValue(trimmed); ok {
 				order, err := readSchemaObjectOrder([]byte(trimmed))
 				if err != nil {
@@ -65,7 +66,7 @@ func parseStreamingJsonValueAfterFastPath(input string) (JsonObject, schemaObjec
 		var strict JsonObject
 		if sdkjson.Unmarshal([]byte(candidate), &strict) != nil {
 			strict = nil
-			if json.Valid([]byte(candidate)) {
+			if jsonwire.Valid(candidate) {
 				// Valid JSON that encoding/json refuses is a number out of float64 range, which JSON.parse reads as an infinity.
 				if value, ok := jsonParseValue(candidate); ok {
 					if object, isObject := value.(map[string]any); isObject {
@@ -167,7 +168,7 @@ func jsSubstring(text string, start, end int) string {
 
 // jsonParseValue is JSON.parse on text: JSON grammar, surrounding JSON whitespace allowed, a number out of range read as an infinity.
 func jsonParseValue(text string) (any, bool) {
-	if !json.Valid([]byte(text)) {
+	if !jsonwire.Valid(text) {
 		return nil, false
 	}
 	// sdkjson keeps a lone surrogate escape as one UTF-16 unit, as JSON.parse does. Unmarshal reads a number as

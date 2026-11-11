@@ -277,28 +277,28 @@ make async-contracts` or `make verify` from `docs/parity/PORT_MAP.md` and `test/
   port. Everything else is invariant rule, not progress narrative.
 -->
 
-**Porting:** 959 / 1021 intended-portable entries ✅ (93.9%); **Verification:** 814 behavioral (84.9%), 145 untested.
-Raw PORT_MAP rows: 1135. Breakdown: 114 n/a (designed out) · 20 🟡 partial · 42 ⬜ not started. See docs/parity/DIVERGENCES.md for the documented exceptions.
+**Porting:** 990 / 1021 intended-portable entries ✅ (97.0%); **Verification:** 813 behavioral (82.1%), 177 untested.
+Raw PORT_MAP rows: 1135. Breakdown: 114 n/a (designed out) · 29 🟡 partial · 2 ⬜ not started. See docs/parity/DIVERGENCES.md for the documented exceptions.
 
 | package | src files | n/a | intended | ✅ | 🟡 | ⬜ | ported | behavioral |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | `agent` | 6 | 1 | 5 | 5 | 0 | 0 | 100.0% | 100.0% |
 | `ai` | 270 | 22 | 248 | 246 | 0 | 2 | 99.2% | 97.6% |
-| `chord` | 323 | 39 | 284 | 240 | 7 | 37 | 84.5% | 67.5% |
+| `chord` | 323 | 39 | 284 | 273 | 11 | 0 | 96.1% | 59.0% |
 | `codemode` | 17 | 4 | 13 | 13 | 0 | 0 | 100.0% | 100.0% |
-| `coding-agent` | 263 | 27 | 236 | 235 | 1 | 0 | 99.6% | 96.6% |
-| `durable` | 100 | 10 | 90 | 76 | 11 | 3 | 84.4% | 98.7% |
-| `env` | 25 | 3 | 22 | 21 | 1 | 0 | 95.5% | 90.5% |
+| `coding-agent` | 263 | 27 | 236 | 232 | 4 | 0 | 98.3% | 97.8% |
+| `durable` | 100 | 10 | 90 | 78 | 12 | 0 | 86.7% | 96.2% |
+| `env` | 25 | 3 | 22 | 20 | 2 | 0 | 90.9% | 95.0% |
 | `evals` | 6 | 0 | 6 | 6 | 0 | 0 | 100.0% | 100.0% |
 | `mcp` | 28 | 3 | 25 | 25 | 0 | 0 | 100.0% | 60.0% |
 | `schema` | 43 | 3 | 40 | 40 | 0 | 0 | 100.0% | 0.0% |
 | `telemetry` | 8 | 1 | 7 | 7 | 0 | 0 | 100.0% | 100.0% |
 | `tui` | 46 | 1 | 45 | 45 | 0 | 0 | 100.0% | 100.0% |
 
-- **Four core packages (agent, ai, coding-agent, tui):** 531 / 534 intended-portable files ✅ (99.4%) from 585 rows; 517 behavioral (97.4%), 0 weak-only, 14 untested.
-- **Shipped surface (agent, ai, codemode, coding-agent, mcp, schema, telemetry, tui; coding-agent without ):** 616 / 619 intended-portable files ✅ (99.5%) from 681 rows; 552 behavioral (89.6%), 0 weak-only, 64 untested.
-- **Whole monorepo (12 packages):** 959 / 1021 intended-portable files ✅ (93.9%) from 1135 rows; 814 behavioral (84.9%), 0 weak-only, 145 untested.
-- **Interface closure:** 14317 of 15012 semantic interface IDs closed (307 designed-out, 695 pending, 14010 ported). A file-level ✅ does not close an interface ID.
+- **Four core packages (agent, ai, coding-agent, tui):** 528 / 534 intended-portable files ✅ (98.9%) from 585 rows; 517 behavioral (97.9%), 0 weak-only, 11 untested.
+- **Shipped surface (agent, ai, codemode, coding-agent, mcp, schema, telemetry, tui; coding-agent without ):** 613 / 619 intended-portable files ✅ (99.0%) from 681 rows; 552 behavioral (90.0%), 0 weak-only, 61 untested.
+- **Whole monorepo (12 packages):** 990 / 1021 intended-portable files ✅ (97.0%) from 1135 rows; 813 behavioral (82.1%), 0 weak-only, 177 untested.
+- **Interface closure:** 15003 of 15012 semantic interface IDs closed (519 designed-out, 9 pending, 14484 ported). A file-level ✅ does not close an interface ID.
 
 Behavioral evidence includes paired scenarios and reviewed mutation-proven unit tests; the family table below counts paired scenarios only.
 Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registration-only, 1 smoke-only.
@@ -313,7 +313,7 @@ Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registrati
 | `compaction` | 16 | 16 | 0 | 0 | 0 | 10 | not run |
 | `export-html` | 7 | 7 | 0 | 0 | 0 | 2 | not run |
 | `extension-host` | 1 | 1 | 0 | 0 | 0 | 2 | not run |
-| `extensions-runtime` | 150 | 149 | 0 | 1 | 0 | 67 | not run |
+| `extensions-runtime` | 151 | 150 | 0 | 1 | 0 | 67 | not run |
 | `footer` | 12 | 12 | 0 | 0 | 0 | 9 | not run |
 | `fullscreen` | 18 | 18 | 0 | 0 | 0 | 12 | not run |
 | `interactive-rendering` | 78 | 77 | 1 | 0 | 0 | 37 | not run |
@@ -582,7 +582,8 @@ Code and interface style:
 Go style:
 - Build, CI, release-candidate, security-analysis, and documented setup commands use the Go version in `.go-version`, the single source. Do not write the version number in this file.
 - `.go-version` is the one Go pin. Workflows, scripts, images, the devcontainer, and the `toolchain` lines of `go.mod` and `go.work` name that release and no other. A script reads `.go-version` instead of repeating the number. Moving the pin changes `.go-version` and its recorded copies in one change; `make compliance` and `TestGoVersionPolicy` fail on any other release. Dated measurement records keep the release they ran on.
-- Maintained modules declare Go 1.26 or 1.26.0 as their language floor unless a concrete language requirement is approved. Do not raise a `go` directive merely to match the build toolchain.
+- The root module declares Go 1.27.0 as its language floor: the JSON code uses `encoding/json/v2` and `encoding/json/jsontext`, which only a 1.27 module may import (the `stdversion` vet check in `go test` rejects them in a 1.26 module). A module that requires the root module (the Porter extension, the extension conformance fixtures) declares 1.27.0 too, because the go command rejects a lower line than a dependency declares. Every other maintained module (`extensions/sdk`, `piglets/standard`, `piglets/aot`, `examples`, other test and fixture modules) declares Go 1.26 or 1.26.0 and must not import them; the SDK keeps its own JSON copy (`extensions/sdk/json`). Do not raise a `go` directive merely to match the build toolchain, and do not raise any module past its floor without a concrete language requirement the owner approved.
+- JSON that follows `JSON.parse` or `JSON.stringify` takes its `encoding/json/v2` options from `internal/jsonopts` (`Parse`, `Stringify`), joined with the site's own options; a site never changes them for everyone.
 - Use language features available at the module floor. Prefer applicable modern standard-library APIs such as `slices.Sort`, `cmp.Compare`, `maps.Copy`, `slices.Sorted(maps.Keys(m))`, `strings.Cut`, `CutPrefix`, `SplitSeq`, `for i := range n`, `wg.Go`, `min`, and `max`. For a sort with a comparison function, `slices.SortFunc` and `slices.SortStableFunc` compile one more copy of the sort (6 to 27 KB) for each element shape. In code that `cmd/pig` links, call `sortx.Func` and `sortx.Stable` from `internal/sortx` instead: they sort up to 12 (`Func`) or 20 (`Stable`) elements as `slices` does, and a longer slice takes 13 to 68% more CPU. Keep `slices.SortFunc` and `slices.SortStableFunc` where n can be large on a timed path (a keystroke, a frame, a listing, a request body) or the element shape is already linked (strings, pointers, ints), and give the reason in the `sort-instance` entry of `automation/ci/perflint/baseline.toml`: `make perf-lint` fails on a new use without one.
 - `go fix -diff ./...` should be empty.
 - When observable behavior changes, update the doc comment in the same commit.
@@ -677,7 +678,7 @@ artifacts, and published evidence.
 
 ## Commit hygiene
 
-User-facing changes go in `changelog.d/<lane>-<sha>.md`, one fragment per commit range, as `### Added`, `### Changed`, `### Fixed` (and `Upgrading`, `Deprecated`, `Removed`, `Security`, `Known issues`) sections of bullets in `CHANGELOG.md`'s style. `<sha>` is a commit of the range reachable from `HEAD`; a rebase, squash or amend replaces SHAs, so rename the fragment after the commit that replaced it. Every `### Fixed` bullet ends with `<!-- fix: <sha> -->` naming the commit (or commits, comma-separated) that fixes it, also reachable from `HEAD` (or named by a `Fix-Commit: <full sha>` trailer of a squash commit `HEAD` reaches, see `.github/CONTRIBUTING.md`): the bug ledger reads `### Fixed`, and a bullet without a marker has its commits guessed from history, which once credited the 0.5.0 squash and its ~11,000 tests to five bullets. `### Upgrading` is what a user of the previous release must change; the fold appends it to the release's "Upgrading from" section. Do not edit `CHANGELOG.md`. `make changelog-check` validates the names, sections, markers and reachability against the full history of `HEAD` (a shallow clone fails) and `make changelog-unreleased` prints the assembly; fragments whose commits a squash replaced before these rules are listed in `automation/ci/changelogfrag/legacy.txt`, are exempt from the name and marker rules, and the list only shrinks. The integrator runs `make changelog-fold VERSION=x.y.z` to append the fragments to that release in `CHANGELOG.md` and delete them; it runs again at release for fragments written since. `make bug-ledger` refuses to attribute the tests of a commit that touches more than 500 files (a squash or merge) and names the entry; name the real fix commit in its marker.
+User-facing changes go in `changelog.d/<lane>-<sha>.md`, one fragment per commit range, as `### Added`, `### Changed`, `### Fixed` (and `Upgrading`, `Deprecated`, `Removed`, `Security`, `Known issues`) sections of bullets in `CHANGELOG.md`'s style. `<sha>` is a commit of the range reachable from `HEAD`; a rebase, squash or amend replaces SHAs, so rename the fragment after the commit that replaced it. Every `### Fixed` bullet ends with `<!-- fix: <sha> -->` naming the commit (or commits, comma-separated) that fixes it, also reachable from `HEAD` (or named by a `Fix-Commit: <full sha>` trailer of a squash commit `HEAD` reaches, see `.github/CONTRIBUTING.md`): the bug ledger reads `### Fixed`, and a bullet without a marker has its commits guessed from history, which once credited the 0.5.0 squash and its ~11,000 tests to five bullets. `### Upgrading` is what a user of the previous release must change; the fold appends it to the release's "Upgrading from" section. Do not edit `CHANGELOG.md`. `make changelog-check` validates the names, sections, markers and reachability against the full history of `HEAD` (a shallow clone fails) and `make changelog-unreleased` prints the assembly; fragments whose commits a squash replaced before these rules are listed in `automation/ci/changelogfrag/legacy.txt`, are exempt from the name and marker rules, and the list only shrinks. The integrator runs `make changelog-fold VERSION=x.y.z` to append the fragments to that release in `CHANGELOG.md` and delete them; it runs again at release for fragments written since. The fold moves fragments only and stops, changing nothing, while `## [Unreleased]` in `CHANGELOG.md` still holds an entry: run `make set-version VERSION=x.y.z SET_VERSION_ARGS=--move-unreleased` first (`docs/project/RELEASING.md`). It does not fold into `Unreleased`, whose fragments `make changelog-unreleased` assembles. `make bug-ledger` refuses to attribute the tests of a commit that touches more than 500 files (a squash or merge) and names the entry; name the real fix commit in its marker.
 
 Every commit requires both a DCO `Signed-off-by` line and a signature GitHub marks **Verified**. Use `git commit --signoff -S`. Sign-off is not a cryptographic signature. See `.github/CONTRIBUTING.md` for SSH signing setup and unsigned-commit repair. If signing is unavailable, a maintainer lands the change in a maintainer-signed commit with a `Co-authored-by:` trailer.
 

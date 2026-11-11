@@ -176,14 +176,12 @@ func userText(m ai.UserMessage) string {
 }
 
 var lookup = &durable.ToolRegistration{
-	ToolSchema: ai.ToolSchema{
-		Name:        "lookup",
-		Description: "Look up record number n",
-		Parameters: map[string]any{
-			"type":       "object",
-			"properties": map[string]any{"n": map[string]any{"type": "number"}},
-			"required":   []any{"n"},
-		},
+	Name:        "lookup",
+	Description: "Look up record number n",
+	Parameters: map[string]any{
+		"type":       "object",
+		"properties": map[string]any{"n": map[string]any{"type": "number"}},
+		"required":   []any{"n"},
 	},
 	Execute: func(_ context.Context, args any, _ durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 		n, _ := args.(map[string]any)["n"].(float64)

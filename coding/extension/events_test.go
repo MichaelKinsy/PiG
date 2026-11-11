@@ -58,8 +58,8 @@ func TestEvents_JSONTagsAreCamelCase(t *testing.T) {
 		// Embedded ToolCallEventBase must promote Type and ToolCallID into
 		// the JSON output.
 		b, err := marshalNoEscape(CustomToolCallEvent{
-			ToolCallEventBase: ToolCallEventBase{Type: "tool_call", ToolCallID: "x"},
-			ToolName:          "bash",
+			Type: "tool_call", ToolCallID: "x",
+			ToolName: "bash",
 		})
 		if err != nil {
 			t.Fatal(err)

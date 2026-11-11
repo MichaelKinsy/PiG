@@ -144,10 +144,9 @@ paths = [
 
 [[record]]
 version = "1.1.0"
-reason = "Observations recorded against Pi 1.1.0: the Node event-loop probe of the print and JSON prompt-end contract and the pi-subagents compatibility run in the extension API parity ledger, the example outputs that Pi 1.1.0 printed the same way, the /session screen compared with Pi 1.1.0, and the sdk-surface exception row that dates the tool render context's durationMs member to Pi 1.1.0."
+reason = "Observations recorded against Pi 1.1.0: the Node event-loop probe of the print and JSON prompt-end contract and the pi-subagents compatibility run in the extension API parity ledger, the example outputs that Pi 1.1.0 printed the same way, and the /session screen compared with Pi 1.1.0."
 paths = [
   "docs/extension-api-parity.md",
-  "docs/extension-sdk-surface.md",
   "docs/site/docs/json.md",
   "docs/site/docs/slash-commands.md",
 ]

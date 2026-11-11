@@ -1385,8 +1385,18 @@ fn markdown_transformer_message_types_reach_the_register_frame() {
         },
     );
     let host = Host::start(ext, json!({}));
-    assert_eq!(host.register["register"]["markdown_transformer"], json!(true), "register: {}", host.register);
-    assert_eq!(host.register["register"]["markdown_message_types"], json!(surfaces), "register: {}", host.register);
+    assert_eq!(
+        host.register["register"]["markdown_transformer"],
+        json!(true),
+        "register: {}",
+        host.register
+    );
+    assert_eq!(
+        host.register["register"]["markdown_message_types"],
+        json!(surfaces),
+        "register: {}",
+        host.register
+    );
     host.finish();
 
     let mut ext = Extension::new("api");
@@ -1403,13 +1413,26 @@ fn markdown_transformer_message_types_reach_the_register_frame() {
     let mut ext = Extension::new("api");
     ext.markdown_transformer_with_options(
         |markdown, _| Some(markdown.to_string()),
-        pig_sdk::MarkdownTransformerOptions { message_types: Some(vec![]) },
+        pig_sdk::MarkdownTransformerOptions {
+            message_types: Some(vec![]),
+        },
     );
     let host = Host::start(ext, json!({}));
-    assert_eq!(host.register["register"]["markdown_message_types"], json!([]), "register: {}", host.register);
+    assert_eq!(
+        host.register["register"]["markdown_message_types"],
+        json!([]),
+        "register: {}",
+        host.register
+    );
     host.finish();
 
     let host = Host::start(Extension::new("api"), json!({}));
-    assert!(host.register["register"].get("markdown_message_types").is_none(), "register: {}", host.register);
+    assert!(
+        host.register["register"]
+            .get("markdown_message_types")
+            .is_none(),
+        "register: {}",
+        host.register
+    );
     host.finish();
 }

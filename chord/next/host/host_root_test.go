@@ -16,8 +16,8 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 )
 
-// pi: packages/chord/src/next/host/root.ts
-// Ports packages/chord/test/next/host/root.test.ts: `host.root` on a host (createHost, loaded), its scopes sealed when fn
+// pi: packages/chord/src/host/root.ts
+// Ports packages/chord/test/host/root.test.ts: `host.root` on a host (createHost, loaded), its scopes sealed when fn
 // settles, when its context aborts and at the host's close.
 
 // rootInfo is root.test.ts `Info`: a param `id`, members `id` and `wait`.

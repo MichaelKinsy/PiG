@@ -102,7 +102,7 @@ func holdTool(t *testing.T, setup *chatState, gate *deferredGate, result ...dura
 		returned = result[0]
 	}
 	addTool(t, setup.Registry, DefineTool(durable.ToolRegistration{
-		ToolSchema: ai.ToolSchema{Name: "hold", Description: "Waits for the test", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}},
+		Name: "hold", Description: "Waits for the test", Parameters: map[string]any{"type": "object", "properties": map[string]any{}},
 		Execute: func(ctx context.Context, _ any, _ durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			if err := gate.wait(ctx); err != nil {
 				return durable.ToolExecutionResult{}, err
@@ -572,7 +572,7 @@ func TestInbox(t *testing.T) {
 		var mu sync.Mutex
 		handoffs := 0
 		addTool(t, setup.Registry, DefineTool(durable.ToolRegistration{
-			ToolSchema: ai.ToolSchema{Name: "hold", Description: "Hands off", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}},
+			Name: "hold", Description: "Hands off", Parameters: map[string]any{"type": "object", "properties": map[string]any{}},
 			Execute: func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 				mu.Lock()
 				defer mu.Unlock()
@@ -892,7 +892,7 @@ func TestInbox(t *testing.T) {
 		firstGate, secondGate := deferred(), deferred()
 		holdTool(t, setup, firstGate, durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{}, Control: &durable.ToolControl{Handoff: new("one")}})
 		addTool(t, setup.Registry, DefineTool(durable.ToolRegistration{
-			ToolSchema: ai.ToolSchema{Name: "later", Description: "Finishes first", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}},
+			Name: "later", Description: "Finishes first", Parameters: map[string]any{"type": "object", "properties": map[string]any{}},
 			Execute: func(ctx context.Context, _ any, _ durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 				if err := secondGate.wait(ctx); err != nil {
 					return durable.ToolExecutionResult{}, err

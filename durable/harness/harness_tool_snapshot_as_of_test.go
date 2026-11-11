@@ -19,7 +19,7 @@ func TestToolExecutionApiSnapshotAsOfReadsTheDocumentAsOfTheEntry(t *testing.T) 
 	var readErr error
 	var entryId durable.EntryId
 	addTool(t, setup.Registry, DefineTool(durable.ToolRegistration{
-		ToolSchema: ai.ToolSchema{Name: "peek", Description: "Reads the note", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}},
+		Name: "peek", Description: "Reads the note", Parameters: map[string]any{"type": "object", "properties": map[string]any{}},
 		Execute: func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			rootId := durable.ROOT_CONVERSATION_ID
 			if live, readErr = api.SnapshotErased(ctx, noteDoc, rootId); readErr == nil {

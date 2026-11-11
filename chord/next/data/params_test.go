@@ -13,8 +13,8 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest/contractstest"
 )
 
-// pi: packages/chord/src/next/data/params.ts
-// Ports packages/chord/test/next/data/params.test.ts.
+// pi: packages/chord/src/data/params.ts
+// Ports packages/chord/test/data/params.test.ts.
 //
 // Designed out: the expectTypeOf assertion of "returns the caller's own object ..." (CheckedParams.Params is the
 // caller's value as `any`; Go has no per-contract params type) and the two @ts-expect-error assertions of "local

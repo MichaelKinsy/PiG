@@ -7,6 +7,7 @@ package telemetrysqlite
 
 import (
 	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"reflect"
@@ -16,6 +17,7 @@ import (
 
 	chordsqlite "github.com/MichaelKinsy/PiG/chord/sqlite"
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
+	"github.com/MichaelKinsy/PiG/internal/jsonopts"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
@@ -149,33 +151,34 @@ func unmarshalAll(items []json.RawMessage, decode func(int, json.RawMessage) err
 // decodeAttributes is JSON.parse of an attribute object: members in the order written, with array-index names listed
 // first as a JavaScript object lists them.
 func decodeAttributes(text string) (telemetry.SpanAttributes, error) {
-	decoder := json.NewDecoder(strings.NewReader(text))
-	opening, err := decoder.Token()
+	decoder := jsontext.NewDecoder(strings.NewReader(text), jsonopts.Parse)
+	opening, err := decoder.ReadToken()
 	if err != nil {
 		return nil, err
 	}
-	if delimiter, ok := opening.(json.Delim); !ok || delimiter != '{' {
+	if opening.Kind() != '{' {
 		return nil, errors.New("telemetry-sqlite: attributes are not an object")
 	}
 	attributes := telemetry.SpanAttributes{}
-	for decoder.More() {
-		name, err := decoder.Token()
+	for decoder.PeekKind() != '}' {
+		nameToken, err := decoder.ReadToken()
 		if err != nil {
 			return nil, err
 		}
-		var raw json.RawMessage
-		if err := decoder.Decode(&raw); err != nil {
+		name := nameToken.String() // a Token and the bytes ReadValue returns are void after the next call on the decoder
+		raw, err := decoder.ReadValue()
+		if err != nil {
 			return nil, err
 		}
-		value, err := decodeAttributeValue(raw)
+		value, err := decodeAttributeValue(json.RawMessage(raw)) // reads raw before the decoder moves; keeps none of it
 		if err != nil {
 			return nil, err
 		}
 		if value != nil {
-			attributes = attributes.Set(name.(string), value)
+			attributes = attributes.Set(name, value)
 		}
 	}
-	if _, err := decoder.Token(); err != nil {
+	if _, err := decoder.ReadToken(); err != nil {
 		return nil, err
 	}
 	return attributes, nil

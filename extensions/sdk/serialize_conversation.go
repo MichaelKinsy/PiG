@@ -153,13 +153,18 @@ func contentTextOf(content any, separator string) (string, error) {
 	return "", errors.New("TypeError: content.filter is not a function")
 }
 
-// truncateForSummary is Pi's truncateForSummary (utils.ts:98-102): text.length counts UTF-16 units, and the cut keeps the first maxChars of them.
+// truncateForSummary is Pi's truncateForSummary (utils.ts:101-105): text.length counts UTF-16 units, and the cut keeps the first maxChars of them through sliceHead
+// (core/tools/truncate.ts), one unit fewer when the cut would split a surrogate pair. The count in the marker is text.length - maxChars either way.
 func truncateForSummary(text string, maxChars int) string {
 	units := jsUnits(text)
 	if len(units) <= maxChars {
 		return text
 	}
-	return jsUnitsString(units[:maxChars]) + "\n\n[... " + strconv.Itoa(len(units)-maxChars) + " more characters truncated]"
+	end := max(0, maxChars)
+	if end > 0 && units[end-1] >= 0xD800 && units[end-1] <= 0xDBFF && units[end] >= 0xDC00 && units[end] <= 0xDFFF {
+		end--
+	}
+	return jsUnitsString(units[:end]) + "\n\n[... " + strconv.Itoa(len(units)-maxChars) + " more characters truncated]"
 }
 
 // unitJSON is JSON.stringify of a one-unit string: an unpaired surrogate is written as the lowercase \uXXXX escape QuoteJSONString gives it.

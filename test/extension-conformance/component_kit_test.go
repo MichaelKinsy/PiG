@@ -160,8 +160,8 @@ func newKitProbeTree() (*tui.Container, *tui.SelectList, error) {
 		tui.NewPaddedText("Kit probe", 2, 0, func(s string) string { return th.Bg("customMessageBg", s) }),
 		tui.NewMarkdownWithOptions("- one\n- **two**", 1, 0, &md, nil, &tui.MarkdownOptions{}),
 		tui.NewHStack([]tui.StackChild{
-			{Component: tui.NewTruncatedText("left side", 0, 0), StackEntryOptions: tui.StackEntryOptions{Grow: &one}},
-			{Component: tui.NewTruncatedText("right", 0, 0), StackEntryOptions: tui.StackEntryOptions{Grow: &one}},
+			{Component: tui.NewTruncatedText("left side", 0, 0), Grow: &one},
+			{Component: tui.NewTruncatedText("right", 0, 0), Grow: &one},
 		}, tui.StackOptions{Gap: &one}),
 		tui.NewSpacer(1),
 		list,
@@ -610,6 +610,59 @@ func TestConformance_ComponentKitResolverDrawsCallAndResultViews(t *testing.T) {
 				t.Fatal("the resolver's result renderer returned no component")
 			}
 			waitKitRows(t, h, "resolved result", result.Render, reference.Render)
+		})
+	}
+}
+
+// trimmedRows is a component whose rows lose the padding a view's renderer adds up to the width.
+type trimmedRows struct {
+	component interface{ Render(int) []string }
+}
+
+func (r trimmedRows) Render(width int) []string {
+	rows := r.component.Render(width)
+	out := make([]string, len(rows))
+	for i, row := range rows {
+		out[i] = strings.TrimRight(row, " ")
+	}
+	return out
+}
+
+// ToolRenderContext.lastComponent of a view renderer: the second run of a resolver's call view on the same card receives the view its first run
+// returned (Pi hands back the component; here the view stands in for it), told from none and from lines. Each SDK's probe prints the kind of what
+// it received and the run's own n, so a renderer that is never handed the view, or is handed lines, fails with both rows.
+func TestConformance_ToolRenderLastComponentIsTheViewTheRendererReturned(t *testing.T) {
+	t.Parallel()
+	for _, tc := range componentKitSDKCells() {
+		if tc.frontend {
+			continue
+		}
+		t.Run(tc.name, func(t *testing.T) {
+			h := startKitCell(t, tc)
+			var renderers *extension.ToolRenderers
+			waitFor(t, func() bool {
+				renderers = h.runner.ResolveToolRenderers("last_view_probe", func() *extension.ToolRenderers { return nil })
+				return renderers != nil
+			})
+			if renderers.RenderCall == nil {
+				t.Fatalf("the resolver's renderers = %+v, want a call renderer", renderers)
+			}
+			render := extension.ToolRenderContext{
+				Args: json.RawMessage(`{"n":1}`), ToolCallID: "last-view-1", Card: "last-view-card",
+				State: map[string]any{}, Invalidate: func() {}, ExecutionStarted: true, ArgsComplete: true,
+			}
+			first, ok := renderers.RenderCall(json.RawMessage(`{"n":1}`), nil, render).(interface{ Render(int) []string })
+			if !ok {
+				t.Fatal("the first call render returned no component")
+			}
+			isRow := func(line string) bool { return strings.HasPrefix(line, "lastview:") }
+			expectRenderedLine(t, trimmedRows{first}, isRow, "lastview:none:n=1")
+			render.LastComponent = first.(extension.Component)
+			second, ok := renderers.RenderCall(json.RawMessage(`{"n":2}`), nil, render).(interface{ Render(int) []string })
+			if !ok {
+				t.Fatal("the second call render returned no component")
+			}
+			expectRenderedLine(t, trimmedRows{second}, func(line string) bool { return strings.HasSuffix(line, ":n=2") }, "lastview:view:n=2")
 		})
 	}
 }

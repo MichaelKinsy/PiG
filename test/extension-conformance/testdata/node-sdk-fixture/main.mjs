@@ -289,11 +289,14 @@ export default function (pi) {
     renderCall(args, _theme, context) {
       context.state.calls = (context.state.calls ?? 0) + 1;
       const calls = context.state.calls;
-      return { render: (width) => [`toolrender:call:${args.topic}:partial=${context.isPartial}:calls=${calls}:width=${width}`], invalidate() {} };
+      // lastComponent is the component this card's call renderer returned before; its line is what it drew last
+      const last = context.lastComponent?.line ?? "none";
+      return { line: undefined, render(width) { this.line = `toolrender:call:${args.topic}:partial=${context.isPartial}:calls=${calls}:width=${width}:last=${last}`; return [this.line]; }, invalidate() {} };
     },
     renderResult(result, options, _theme, context) {
       const calls = context.state.calls;
-      return { render: (width) => [`toolrender:result:${result.content[0].text}:${result.details.k}:expanded=${Boolean(options.expanded)}:calls=${calls}:width=${width}:duration=${context.durationMs ?? "none"}`], invalidate() {} };
+      const last = context.lastComponent?.line ?? "none";
+      return { line: undefined, render(width) { this.line = `toolrender:result:${result.content[0].text}:${result.details.k}:expanded=${Boolean(options.expanded)}:calls=${calls}:width=${width}:duration=${context.durationMs ?? "none"}:last=${last}`; return [this.line]; }, invalidate() {} };
     },
   });
   pi.registerTool({
@@ -917,6 +920,7 @@ export default function (pi) {
   pi.registerCommand("send_message_default", { description: "Send a custom message with default options", handler: async () => pi.sendMessage({ customType: "notice", content: "default", display: true }) });
   pi.registerCommand("send_message_no_turn", { description: "Send a custom message that never starts a turn", handler: async () => pi.sendMessage({ customType: "notice", content: "no-turn", display: true }, { triggerTurn: false }) });
   pi.registerCommand("send_user_message", { description: "Send a user message", handler: async (args) => pi.sendUserMessage(args ? JSON.parse(args) : "hello-user", { deliverAs: "followUp" }) });
+  pi.registerCommand("send_user_message_expand", { description: "Send a user message with expandPromptTemplates set to the argument", handler: async (args) => pi.sendUserMessage("expand-user", { deliverAs: "followUp", expandPromptTemplates: args === "true" }) });
   pi.registerCommand("set_session_name", { description: "Set the session name", handler: async () => pi.setSessionName("conformance-session") });
   pi.registerCommand("event_result_probe", { description: "Subscribe to an event with a handler that returns the given JSON", handler: async (args) => { const [name, ...rest] = String(args).trim().split(" "); const result = JSON.parse(rest.join(" ")); pi.on(name, async () => result); } });
   pi.registerCommand("event_ordered_result_probe", { description: "Subscribe to an event with a handler that returns the given JSON, members in written order", handler: async (args) => { const [name, ...rest] = String(args).trim().split(" "); const result = JSON.parse(rest.join(" ")); pi.on(name, async () => result); } });
@@ -1064,6 +1068,38 @@ export default function (pi) {
   pi.registerCommand("event_probe_off", { description: "Unsubscribe the event_probe_on handlers of the event named by the argument", handler: async (args) => { const name = String(args).trim(); for (const off of eventProbeOn.get(name) ?? []) off(); eventProbeOn.delete(name); } });
   // A JavaScript Set (session_before_compact preparation.fileOps) has no JSON form; the other SDKs receive the host's array, so report the Set as its members.
   pi.registerCommand("event_payload_probe", { description: "Subscribe and report the payload of the event named by the argument", handler: async (args) => { const name = String(args).trim(); pi.on(name, async (event, ctx) => { ctx.ui.notify(`event_payload:${name}:${stringifyEventPayload(event)}`, "info"); }); } });
+  // event_isolation_probe: two handlers; the first reports the marker it received, writes a sentinel into its container and changes it again from a timer after returning; the second reports what it received (TestConformance_EventHandlersDoNotShareTheirPayload). A boundary event's marker is the first context entry's sourceEntry id (the container is that source entry); a context or context_with_system event's is the length of event.messages (the container is that list).
+  pi.registerCommand("event_isolation_probe", { description: "Subscribe two handlers that report the nested marker they received and then write sentinels into it", handler: async (args) => {
+    const name = String(args).trim();
+    const conversation = name === "context" || name === "context_with_system";
+    const source = (event) => event.context?.contextEntries?.[0]?.sourceEntry;
+    const marker = (event) => (conversation ? (event.messages ?? []).length : source(event)?.id);
+    const scribble = (event, value) => {
+      if (conversation) event.messages.push({ role: "user", content: value, timestamp: 0 });
+      else source(event).id = value;
+    };
+    const messages = (event) => {
+      if (conversation) return [0, 1, 2].map((i) => event.messages?.[i]);
+      const context = event.context ?? {};
+      return [context.contextMessages?.[0], context.llmMessages?.[0], context.contextEntries?.[0]?.messages?.[0]];
+    };
+    const report = (found) => found.map((m) => (m ? String(m.content) : "None")).join("|");
+    pi.on(name, async (event, ctx) => {
+      ctx.ui.notify(`event_isolation:A:${marker(event)}:end`, "info");
+      scribble(event, "SENTINEL-HANDLER-A");
+      const found = messages(event);
+      ctx.ui.notify(`event_isolation_msgs:A:${report(found)}`, "info");
+      for (const m of found) if (m) m.content = "SENTINEL-HANDLER-A";
+      setTimeout(() => {
+        scribble(event, "SENTINEL-LATE-WRITER");
+        for (const m of found) if (m) m.content = "SENTINEL-LATE-WRITER";
+      }, 100);
+    });
+    pi.on(name, async (event, ctx) => {
+      ctx.ui.notify(`event_isolation:B:${marker(event)}:end`, "info");
+      ctx.ui.notify(`event_isolation_msgs:B:${report(messages(event))}`, "info");
+    });
+  } });
   pi.registerCommand("tool_result_guards_probe", { description: "Report the tool_result guards that accept each tool_result event", handler: async () => { const guards = { bash: isBashToolResult, edit: isEditToolResult, find: isFindToolResult, grep: isGrepToolResult, ls: isLsToolResult, powershell: isPowerShellToolResult, read: isReadToolResult, write: isWriteToolResult }; pi.on("tool_result", async (event, ctx) => { ctx.ui.notify(`tool_result_guards:${Object.keys(guards).filter((name) => guards[name](event)).join(",")}:end`, "info"); }); } });
   pi.registerCommand("language_probe", { description: "Report the highlight language of a path", handler: async (args, ctx) => {
     const c = JSON.parse(args);

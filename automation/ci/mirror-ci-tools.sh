@@ -21,6 +21,11 @@ for entry in "${assets[@]}"; do
   digest=${entry%% *}
   grep -qs -- "$digest" "$root/automation/ci/install-shellcheck.sh" "$root/automation/ci/seed-ci-image-bases.sh" || { echo "mirror-ci-tools.sh: $digest is no longer pinned by the installers" >&2; exit 1; }
 done
+# The TinyGo the Durable jobs install (tinygo-install.sh) is the linux/amd64 tinygo row of automation/dev/toolchains.lock: its digest and url, so the mirror
+# never carries a pin of its own for it.
+tinygo=$(awk -F'\t' '!/^#/ && $1 == "tinygo" && $3 == "linux" && $4 == "amd64" { print $7 " " $6; exit }' "$root/automation/dev/toolchains.lock")
+[ -n "$tinygo" ] || { echo "mirror-ci-tools.sh: automation/dev/toolchains.lock has no tinygo linux/amd64 row" >&2; exit 1; }
+assets+=("$tinygo")
 : "${GHCR_TOKEN:?GHCR_TOKEN is required}" "${GHCR_USER:?GHCR_USER is required}"
 
 work=$(mktemp -d)

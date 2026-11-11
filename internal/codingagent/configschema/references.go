@@ -2,9 +2,10 @@ package configschema
 
 import (
 	"bytes"
-	"regexp"
 	"slices"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
 
 // Mirrors packages/coding-agent/scripts/generate-references.ts: the reference page of the models.json fields, rendered from the schema
@@ -27,7 +28,7 @@ type referenceSection struct {
 	collapsed []string
 }
 
-var simpleTypeName = regexp.MustCompile(`^[a-z]+$`)
+var simpleTypeName = lazyregexp.New(`^[a-z]+$`)
 
 // formatList is formatList of generate-references.ts: "a, b and c".
 func formatList(items []string) string {

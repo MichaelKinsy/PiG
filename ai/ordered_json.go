@@ -3,8 +3,11 @@ package ai
 import (
 	"bytes"
 	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"io"
+
+	"github.com/MichaelKinsy/PiG/internal/jsonopts"
 )
 
 type orderedJSONEntry struct {
@@ -15,40 +18,37 @@ type orderedJSONEntry struct {
 // orderedJSONObject decodes one JSON object into its entries in source order. A repeated key keeps the position of its
 // first occurrence and the value of its last, as JSON.parse does.
 func orderedJSONObject(data []byte) ([]orderedJSONEntry, error) {
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	token, err := decoder.Token()
+	decoder := jsontext.NewDecoder(bytes.NewReader(data), jsonopts.Parse)
+	token, err := decoder.ReadToken()
 	if err != nil {
 		return nil, err
 	}
-	if delimiter, ok := token.(json.Delim); !ok || delimiter != '{' {
+	if token.Kind() != '{' {
 		return nil, errors.New("not a JSON object")
 	}
 	var entries []orderedJSONEntry
 	index := map[string]int{}
-	for decoder.More() {
-		keyToken, err := decoder.Token()
+	for decoder.PeekKind() != '}' {
+		name, err := jsonopts.ReadName(decoder) // the JavaScript key: "\ud800" and "\ud801" stay two keys, as in JSON.parse
 		if err != nil {
 			return nil, err
 		}
-		key, ok := keyToken.(string)
-		if !ok {
-			return nil, errors.New("invalid JSON object key")
-		}
-		var value json.RawMessage
-		if err := decoder.Decode(&value); err != nil {
+		value, err := decoder.ReadValue()
+		if err != nil {
 			return nil, err
 		}
-		if position, seen := index[key]; seen {
-			entries[position].value = value
+		raw := json.RawMessage(bytes.Clone(value))
+		if position, seen := index[name]; seen {
+			entries[position].value = raw
 			continue
 		}
-		index[key] = len(entries)
-		entries = append(entries, orderedJSONEntry{key: key, value: value})
+		index[name] = len(entries)
+		entries = append(entries, orderedJSONEntry{key: jsonopts.ValidName(name), value: raw})
 	}
-	if _, err := decoder.Token(); err != nil {
+	if _, err := decoder.ReadToken(); err != nil {
 		return nil, err
 	}
-	if _, err := decoder.Token(); err != io.EOF {
+	if _, err := decoder.ReadToken(); !errors.Is(err, io.EOF) {
 		return nil, errors.New("trailing data after JSON object")
 	}
 	return entries, nil

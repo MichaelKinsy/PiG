@@ -13,7 +13,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/src/next/remote/provider.ts. The provider side of one origin on a link (§3, §22, W1; decision
+// Ports packages/chord/src/remote/provider.ts. The provider side of one origin on a link (§3, §22, W1; decision
 // "Relay flow control per origin"): the holds the peer sent for that origin, served here or relayed, by their ids; the
 // calls on them, at most this side's N at once; and the window: at most K unacknowledged `bound` and `state` messages of
 // this host's own, with what waits meanwhile, and the sender of every message in flight, so each `ack` reaches the host

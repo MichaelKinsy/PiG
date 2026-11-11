@@ -13,7 +13,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// Ports packages/chord/src/next/store/outbox.ts
+// Ports packages/chord/src/store/outbox.ts
 //
 // The outbox (slice 6a §2; decisions "The outbox is optional, internal and versioned", small items 3-4): the store's
 // commits as the sync layer reads them, one `{ seq, writes }` per commit from its floor on, in the current format.

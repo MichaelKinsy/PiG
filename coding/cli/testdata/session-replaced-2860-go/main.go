@@ -197,6 +197,24 @@ func main() {
 		})
 		return err
 	})
+	// types.ts:463-473: the replacement context's sendUserMessage takes expandPromptTemplates; true expands the prompt template, false and no option send the text as typed.
+	ext.Command("expand-it", "expand-it", func(ctx sdk.Context, _ string) error {
+		_, err := ctx.NewSession(map[string]any{
+			"withSession": sdk.WithSessionFunc(func(replaced sdk.ReplacedSessionContext) error {
+				for _, send := range []struct {
+					text   string
+					expand *bool
+				}{{"/echo Alice", new(true)}, {"/echo reply with exactly: Bob", new(false)}, {"/echo reply with exactly: Carol", nil}} {
+					if err := replaced.SendUserMessageWith(send.text, sdk.SendUserMessageOptions{ExpandPromptTemplates: send.expand}); err != nil {
+						return err
+					}
+				}
+				record("conversation:" + conversation(replaced.SessionManager()))
+				return nil
+			}),
+		})
+		return err
+	})
 	ext.Command("mark", "mark", func(ctx sdk.Context, name string) error {
 		values := marks()
 		values[name] = sessionFile(ctx.SessionManager())

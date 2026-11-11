@@ -21,7 +21,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/test/next/host/route.test.ts: routes (§3) on whole relayed hosts, once per codec as upstream's
+// Ports packages/chord/test/host/route.test.ts: routes (§3) on whole relayed hosts, once per codec as upstream's
 // `forEachCodec`. Pi's fake timers are the scopeLoop every host of a case runs on (relayedOptions.Loop): `elapse` moves
 // its clock and lets links settle.
 

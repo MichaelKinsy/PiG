@@ -205,12 +205,10 @@ type bashExecutionWireEntry struct {
 // MarshalJSON serializes to upstream's wire shape (type:"message" + nested).
 func (b BashExecutionEntry) MarshalJSON() ([]byte, error) {
 	wire := bashExecutionWireEntry{
-		SessionEntryBase: SessionEntryBase{
-			Type:      "message",
-			ID:        b.ID,
-			ParentID:  b.ParentID,
-			Timestamp: b.Timestamp,
-		},
+		Type:      "message",
+		ID:        b.ID,
+		ParentID:  b.ParentID,
+		Timestamp: b.Timestamp,
 		Message: BashExecutionMessage{
 			Role:               "bashExecution",
 			Command:            b.Command,

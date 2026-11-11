@@ -28,7 +28,7 @@ func until(t testing.TB, ready func() bool, ms ...int) {
 	}
 }
 
-// expectCollected expects every referent to be collected once nothing else holds it (test/next/support.ts
+// expectCollected expects every referent to be collected once nothing else holds it (test/support.ts
 // `expectCollected`).
 func expectCollected[T any](t testing.TB, refs ...weak.Pointer[T]) {
 	t.Helper()

@@ -10,11 +10,11 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// Ports packages/chord/test/next/jobs/running.test.ts: `running`'s list: each change copies the list, keeps the other
+// Ports packages/chord/test/jobs/running.test.ts: `running`'s list: each change copies the list, keeps the other
 // entries identical and gives the ops of exactly that change (a state change re-pathed under its entry); one frame per
 // batch; derives over it are marked.
 //
-// pi: packages/chord/src/next/jobs/running.ts
+// pi: packages/chord/src/jobs/running.ts
 
 func newRunningList(t *testing.T) (*state.Batch, *chord.DeliveryScheduler, *running) {
 	t.Helper()

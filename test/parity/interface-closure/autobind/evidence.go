@@ -1,6 +1,8 @@
 package main
 
 import (
+	"go/ast"
+	"slices"
 	"sort"
 	"strings"
 )
@@ -97,7 +99,11 @@ func (ix *index) testsReaching(helper string) []string {
 }
 
 // testsFor lists the Test functions that reference any of the declaration keys, best evidence first.
-func (ix *index) testsFor(keys []string) []testEv {
+func (ix *index) testsFor(keys []string) []testEv { return ix.testsForUses(keys, false) }
+
+// testsForUses is testsFor; withoutDispatch drops the references that reach a declaration only through an interface method, which
+// say that a test can call an implementer, not that it runs the declaration.
+func (ix *index) testsForUses(keys []string, withoutDispatch bool) []testEv {
 	byTest := map[string]*testEv{}
 	note := func(testKey string, direct, called bool) {
 		ev := byTest[testKey]
@@ -117,7 +123,7 @@ func (ix *index) testsFor(keys []string) []testEv {
 			}
 			// A call through an interface method is attributed to every implementer (expandDispatch). It is evidence for an implementer
 			// only when the test's package can hold that type, and it ranks below a test that names the declaration itself.
-			if u.Dispatch && !ix.canHold(u.File, k) {
+			if u.Dispatch && (withoutDispatch || !ix.canHold(u.File, k)) {
 				continue
 			}
 			if isTestFunc(u.key()) {
@@ -140,6 +146,104 @@ func (ix *index) testsFor(keys []string) []testEv {
 		return out[i].Ref < out[j].Ref
 	})
 	return out
+}
+
+// evidenceCap is the most tests one derived row lists as evidence.
+const evidenceCap = 3
+
+// pickEvidence takes the evidence of s from its tests, best first: the asserting tests, at most evidenceCap. runsFile reports whether
+// a picked test runs the mapped Go file (a reference to a function or method with a body in it, within three helper calls: a static
+// reading, since portmap-check measures the execution itself); spare lists the asserting tests the cap left out that do.
+func (d *detector) pickEvidence(s *sym, tests []testEv) (picked []string, runsFile bool, spare []testEv) {
+	runs := d.ix.testsExecuting(s.Dir, s.File)
+	for _, t := range tests {
+		if !t.Asserts {
+			continue
+		}
+		switch {
+		case len(picked) < evidenceCap:
+			picked = append(picked, t.Ref)
+			runsFile = runsFile || runs[t.Ref]
+		case runs[t.Ref]:
+			spare = append(spare, t)
+		}
+	}
+	return picked, runsFile, spare
+}
+
+// keepFileRunners keeps the cap from dropping the last test that runs a mapped Go file. portmap-check (rule 3) asks the evidence
+// tests of one Pi file, the union over its members, to execute a statement of every Go file the members map to. A field or type
+// row has no statement of its own, so a file whose only function is not a ledger member (source_info.go's GetSourcePackageKey) is
+// run by the one test that happens to call it, and a new higher-ranked test for a member displaces that test from the list and
+// leaves the file unexecuted. For each Pi declaration file and mapped Go file whose rows list no test that runs the Go file, the
+// best-ranked test that does (a spare of one of those rows) takes the last place of its row. Nothing changes where a row of the pair
+// already lists such a test.
+func (d *detector) keepFileRunners(ds []*decision) {
+	type pair struct{ source, file string }
+	type pick struct {
+		d  *decision
+		ev testEv
+	}
+	has := map[pair]bool{}
+	best := map[pair]pick{}
+	for _, dec := range ds { // sorted by ID, so a tie goes to the first ID
+		if dec.Gap || dec.Info == nil || dec.Sym == nil {
+			continue
+		}
+		entry := d.l.byID[dec.ID]
+		if entry == nil {
+			continue
+		}
+		key := pair{entry.SourcePath, dec.Sym.File}
+		if dec.Info.RunsFile {
+			has[key] = true
+			continue
+		}
+		for _, ev := range dec.Info.Spare {
+			if cur, ok := best[key]; !ok || ev.rank() > cur.ev.rank() {
+				best[key] = pick{dec, ev}
+			}
+		}
+	}
+	for key, p := range best {
+		if !has[key] {
+			p.d.Info.Tests = slices.Clone(p.d.Info.Tests)
+			p.d.Info.Tests[evidenceCap-1] = p.ev.Ref
+			p.d.Info.RunsFile = true
+		}
+	}
+}
+
+// testsExecuting is the set of test refs that reference (not through an interface method) a function or method with a body declared in the non-test Go file, directly
+// or through a test helper, memoized per file.
+func (ix *index) testsExecuting(dir, file string) map[string]bool {
+	if runs, ok := ix.executing[file]; ok {
+		return runs
+	}
+	runs := map[string]bool{}
+	if info := ix.pkgs[dir]; info != nil {
+		var keys []string
+		for _, f := range info.Files {
+			if ix.rel(ix.pos(f.Pos()).Filename) != file {
+				continue
+			}
+			for _, decl := range f.Decls {
+				if fn, ok := decl.(*ast.FuncDecl); ok && fn.Body != nil {
+					if obj := info.Info.Defs[fn.Name]; obj != nil {
+						keys = append(keys, ix.declKey(obj))
+					}
+				}
+			}
+		}
+		for _, ev := range ix.testsForUses(keys, true) {
+			runs[ev.Ref] = true
+		}
+	}
+	if ix.executing == nil {
+		ix.executing = map[string]map[string]bool{}
+	}
+	ix.executing[file] = runs
+	return runs
 }
 
 // prodFor lists the production functions that reference any of the declaration keys, reachable ones first. exclude

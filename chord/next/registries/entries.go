@@ -5,7 +5,7 @@ import (
 	"slices"
 )
 
-// Ports packages/chord/src/next/registries/entries.ts (table helpers for `compose`: a map by key and an ordered list;
+// Ports packages/chord/src/registries/entries.ts (table helpers for `compose`: a map by key and an ordered list;
 // both keep each item's plugin, so a use site reports the contributor of an entry that throws).
 
 // TableItem is an item taken from a table, with the contributor it came from; Type is empty for a facet.

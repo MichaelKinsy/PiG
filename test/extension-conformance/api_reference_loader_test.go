@@ -108,11 +108,11 @@ func (l *loaderAPI) RegisterMessageRenderer(customType string, renderer extensio
 }
 
 func (l *loaderAPI) RegisterMarkdownTransformer(transformer extension.MarkdownTransformer, options ...extension.MarkdownTransformerOptions) { // loader.ts:340
-	l.ext.MarkdownTransformer = transformer
-	l.ext.MarkdownMessageTypes = nil // the default types
+	var messageTypes []extension.MarkdownMessageType // nil: the default types
 	if len(options) > 0 {
-		l.ext.MarkdownMessageTypes = options[0].MessageTypes
+		messageTypes = options[0].MessageTypes
 	}
+	l.ext.MarkdownTransformer = extension.NewMarkdownTransformerRegistration(transformer, messageTypes)
 }
 
 // TestConformanceAPIRegisterFlagMessageRendererAndMarkdownTransformer: a flag, a message renderer and a Markdown transformer an extension

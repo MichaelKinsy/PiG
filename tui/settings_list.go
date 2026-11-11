@@ -162,11 +162,13 @@ func (s *SettingsList) Reset() {
 	s.ChangedValue = ""
 }
 
-// UpdateValue sets a new current value for the item with the given ID.
+// UpdateValue sets a new current value for the item with the given ID. Pi's updateValue only assigns the value, because Pi's Container renders every child on every frame; the Invalidate is what a Go
+// parent's per-child cache needs to draw it.
 func (s *SettingsList) UpdateValue(id, newValue string) {
 	for i := range s.items {
 		if s.items[i].ID == id {
 			s.items[i].CurrentValue = newValue
+			s.Invalidate()
 			break
 		}
 	}
@@ -396,7 +398,7 @@ func (s *SettingsList) HandleMouse(event TuiMouseEvent) *TuiMouseDispatchResult 
 		if changed {
 			s.Invalidate()
 		}
-		return &TuiMouseDispatchResult{TuiMouseEventResult: TuiMouseEventResult{Handled: true, Render: new(changed)}}
+		return &TuiMouseDispatchResult{Handled: true, Render: new(changed)}
 	}
 	if event.Button != MouseButtonLeft || (event.Type != MousePress && event.Type != MouseClick) {
 		return nil
@@ -414,7 +416,7 @@ func (s *SettingsList) HandleMouse(event TuiMouseEvent) *TuiMouseDispatchResult 
 		s.mousePressedIndex = itemIndex
 		s.cursor = itemIndex
 		s.Invalidate()
-		return &TuiMouseDispatchResult{TuiMouseEventResult: TuiMouseEventResult{Handled: true, Focus: true}}
+		return &TuiMouseDispatchResult{Handled: true, Focus: true}
 	}
 	if s.mousePressedIndex >= 0 {
 		s.cursor = s.mousePressedIndex
@@ -424,7 +426,7 @@ func (s *SettingsList) HandleMouse(event TuiMouseEvent) *TuiMouseDispatchResult 
 	s.mousePressedIndex = -1
 	s.activateItem()
 	s.Invalidate()
-	return &TuiMouseDispatchResult{TuiMouseEventResult: TuiMouseEventResult{Handled: true}}
+	return &TuiMouseDispatchResult{Handled: true}
 }
 
 func (s *SettingsList) visibleRange(display []int) (start, end int) {

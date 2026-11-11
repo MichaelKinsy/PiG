@@ -319,6 +319,62 @@
   (declare (ignore ctx params))
   (pig:to-json (pig:obj "cancelled" *mp-cancelled*)))
 
+(defun mp-copy-model (model)
+  (let ((copy (make-hash-table :test 'equal)))
+    (maphash (lambda (key value) (setf (gethash key copy) value)) model)
+    copy))
+
+(defun mp-modify-models (models credentials)
+  "oauth.modifyModels of the provider \"dyn\": the models without the \"drop\" id, in reverse order, each named after the credential's access token."
+  (let ((access (pig:jget credentials "access")))
+    (when (equal access "boom") (error "modify boom"))
+    (loop for model in (reverse (coerce models 'list))
+          unless (equal (pig:jget model "id") "drop")
+            collect (let ((copy (mp-copy-model model)))
+                      (setf (gethash "name" copy) (format nil "~A+~A" (pig:jget model "name") access))
+                      copy))))
+
+(defun mp-refresh-models (refresh)
+  "refreshModels of the provider \"dyn\": publishes a persisted catalog, then an update, and names the model it returns after what the context carried."
+  (let ((credential (pig:refresh-models-context-credential refresh)))
+    (when (and credential (equal (pig:jget credential "access") "boom")) (error "refresh boom"))
+    (funcall (pig:refresh-models-context-publish refresh)
+             (pig:make-models-publication :persist (pig:obj "models" (pig:arr) "checkedAt" 99)))
+    (let* ((updated nil)
+           (accepted (funcall (pig:refresh-models-context-publish refresh)
+                              (pig:make-models-publication :update (lambda () (setf updated t) nil))))
+           (stored (pig:refresh-models-context-stored refresh))
+           (checked (and stored (pig:jget stored "checkedAt")))
+           (force (pig:refresh-models-context-force refresh))
+           (name (format nil "refresh|net=~A|force=~A|cred=~A|stored=~A|base=~A|updated=~A|accepted=~A"
+                         (if (pig:refresh-models-context-allow-network refresh) "true" "false")
+                         (cond ((eq force t) "true") ((eq force :false) "false") (t "none"))
+                         (if credential (pig:jget credential "access") "none")
+                         (if checked (if (floatp checked) (round checked) checked) "none")
+                         (or (pig:refresh-models-context-base-url refresh) "none")
+                         (if updated "true" "false")
+                         (if (eq accepted t) "true" "false"))))
+      (list (pig:obj "id" "r1" "name" name "api" "dyn-api" "reasoning" :false "input" (pig:arr "text") "cost" (mp-zero-rates)
+                     "contextWindow" 1000 "maxTokens" 100)))))
+
+(defun mp-register-dynamic-provider (ext)
+  "The provider \"dyn\": its oauth.usesCallbackServer is set, its oauth.modifyModels projects the models by the stored credential and its refreshModels reads the context and publishes (types.ts:1930, 2026, 2034). The other SDKs' fixtures register the same provider."
+  (pig:register-provider
+   ext "dyn"
+   (pig:obj "api" "dyn-api" "baseUrl" "https://dyn.test/v1" "apiKey" "dyn-key"
+            "models" (pig:arr (pig:obj "id" "a" "name" "A" "reasoning" :false "input" (pig:arr "text") "cost" (mp-zero-rates)
+                                       "contextWindow" 1000 "maxTokens" 100))
+            "refreshModels" #'mp-refresh-models))
+  (pig:register-oauth-provider
+   ext "dyn" (pig:obj)
+   (pig:make-oauth-provider
+    :name "Dynamic OAuth"
+    :login (lambda (callbacks) (declare (ignore callbacks)) (pig:oauth-credentials :access "login"))
+    :refresh-token #'identity
+    :get-api-key (lambda (credentials) (pig:jget credentials "access"))
+    :modify-models #'mp-modify-models
+    :uses-callback-server t)))
+
 (defun mp-register-providers (ext)
   (pig:register-provider
    ext "ops"
@@ -354,6 +410,7 @@
 
 (def-surface-fixture "model-types" (ext)
   (mp-register-providers ext)
+  (mp-register-dynamic-provider ext)
   (loop for (name handler) in (list (list "typed_reads" #'mp-typed-reads) (list "classify_probe" #'mp-classify-probe)
                                     (list "images_probe" #'mp-images-probe) (list "virtual_probe" #'mp-virtual-probe)
                                     (list "virtual_visible" #'mp-virtual-visible)

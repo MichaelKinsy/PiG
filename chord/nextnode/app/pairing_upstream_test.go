@@ -1,5 +1,7 @@
 package app
 
+// pi: packages/chord/src/node/app/pairing.ts
+
 import (
 	"encoding/json"
 	"fmt"

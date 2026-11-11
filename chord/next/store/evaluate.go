@@ -7,7 +7,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 )
 
-// Ports packages/chord/src/next/store/evaluate.ts
+// Ports packages/chord/src/store/evaluate.ts
 //
 // The evaluator of the compiled table vocabulary (slice 6a §6; rule 10): the `tx.get` overlay matches `where` nodes
 // and applies `set` nodes with SQL's three-valued `NULL` rules and code point text order, as the SQL that sql.go

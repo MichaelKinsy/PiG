@@ -162,8 +162,8 @@ func goOAuthURL(c urlCase) string {
 	case "token":
 		metadata := &oauth.AuthorizationServerMetadata{Issuer: c.Server, AuthorizationEndpoint: "https://as.example/a", TokenEndpoint: c.Endpoint, ResponseTypesSupported: []string{"code"}}
 		_, err := oauth.ExchangeAuthorizationCode(context.Background(), c.Server, oauth.ExchangeAuthorizationCodeOptions{
-			TokenRequestOptions: oauth.TokenRequestOptions{Metadata: metadata, ClientInformation: oauth.OAuthClientInformationMixed{ClientID: "c"}},
-			Code:                "x", CodeVerifier: "v", RedirectURL: "http://127.0.0.1/cb",
+			Metadata: metadata, ClientInformation: oauth.OAuthClientInformationMixed{ClientID: "c"},
+			Code: "x", CodeVerifier: "v", RedirectURL: "http://127.0.0.1/cb",
 		})
 		if err != nil {
 			return "error: " + err.Error()

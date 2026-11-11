@@ -85,7 +85,7 @@ func stackOracleProbes() []stackOracleProbe {
 func renderStackProbe(probe stackOracleProbe) [][]string {
 	var children []StackChild
 	for _, c := range probe.Children {
-		entry := StackEntry{StackEntryOptions: StackEntryOptions{Basis: c.Basis, Grow: c.Grow, Shrink: c.Shrink, MinSize: c.MinSize, MaxSize: c.MaxSize}}
+		entry := StackEntry{Basis: c.Basis, Grow: c.Grow, Shrink: c.Shrink, MinSize: c.MinSize, MaxSize: c.MaxSize}
 		if c.Rows != nil {
 			entry.Component = stackOracleRows{rows: c.Rows}
 		} else {

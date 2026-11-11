@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/chord/next/host"
@@ -162,8 +163,8 @@ func TestRouterPatternsAndPrecedence(t *testing.T) {
 				{Key: "GET /closed", Route: HttpRouteOptions{Handler: routerRoute("c")}},
 			},
 			Sockets: []HttpSocketEntry{
-				{Pattern: "/s", Handler: &HttpSocket{}, Public: true},
-				{Pattern: "/t", Handler: &HttpSocket{}},
+				{Pattern: "/s", Socket: HttpSocketOptions{Handler: &HttpSocket{}, Public: true}},
+				SocketFunc("/t", &HttpSocket{}),
 			},
 		}})
 		for _, want := range []struct {
@@ -196,7 +197,7 @@ func TestRouterConflicts(t *testing.T) {
 			routerEntry{"@app/a", HttpContribution{Routes: []HttpRouteEntry{RouteFunc("GET /x/:id", routerRoute("a"))}}},
 			routerEntry{"@app/b", HttpContribution{
 				Routes:  []HttpRouteEntry{RouteFunc("GET /x/:key", routerRoute("b")), RouteFunc("BAD", routerRoute("bad"))},
-				Sockets: []HttpSocketEntry{{Pattern: "nope", Handler: &HttpSocket{}}},
+				Sockets: []HttpSocketEntry{SocketFunc("nope", &HttpSocket{})},
 			}},
 		)
 		if match, _ := router.Route("GET", "/x/1"); match == nil || match.Plugin != "@app/a" {
@@ -300,21 +301,21 @@ func TestRouterHostsAndSockets(t *testing.T) {
 		relay := &HttpRelay{Name: "radius", Verify: func(*http.Request) (*RelayVerified, error) { return nil, nil }}
 		contribution := HttpContribution{
 			Hosts:      []string{"Notes.Example.com"},
-			Sockets:    []HttpSocketEntry{{Pattern: "/terminal/:id", Handler: terminal}},
+			Sockets:    []HttpSocketEntry{SocketFunc("/terminal/:id", terminal)},
 			MaxPayload: 10,
 			Framers:    []string{"https://frame.example.com"},
 			Relays:     []*HttpRelay{relay},
 			Csp:        []CspEntry{{Directive: "img-src", Sources: []string{"https://cdn.example.com"}}},
 		}
-		contribution.Sockets = append(contribution.Sockets, HttpSocketEntry{Pattern: "/open", Handler: &HttpSocket{}, Public: true})
+		contribution.Sockets = append(contribution.Sockets, HttpSocketEntry{Pattern: "/open", Socket: HttpSocketOptions{Handler: &HttpSocket{}, Public: true}})
 		router, _ := routerCompose(t,
 			routerEntry{"@app/a", contribution},
 			routerEntry{"@app/b", HttpContribution{Hosts: []string{"b.example.com"}, Csp: []CspEntry{{Directive: "img-src", Sources: []string{"data:"}}}}},
 		)
-		if got, want := router.Hosts.Values(), []string{"notes.example.com", "b.example.com"}; !reflect.DeepEqual(got, want) {
+		if got, want := router.Hosts, []string{"notes.example.com", "b.example.com"}; !reflect.DeepEqual(got, want) {
 			t.Fatalf("hosts = %v, want %v", got, want)
 		}
-		if got, want := router.Framers.Values(), []string{"https://frame.example.com"}; !reflect.DeepEqual(got, want) {
+		if got, want := router.Framers, []string{"https://frame.example.com"}; !reflect.DeepEqual(got, want) {
 			t.Fatalf("framers = %v, want %v", got, want)
 		}
 		if len(router.Relays) != 1 || router.Relays[0] != relay {
@@ -344,4 +345,23 @@ func TestRouterHostsAndSockets(t *testing.T) {
 			t.Fatal("socket handlers lack the terminal handler")
 		}
 	})
+}
+
+// Pi's `hosts` and `framers` are `Set<string>`s (router.ts:99-101, built with `new Set`): two contributions naming the same host
+// (any case: hosts are lowercased) or the same framer give one entry, so the CSP's `frame-ancestors` repeats no source.
+func TestRouterHostsAndFramersAreSetsAcrossContributions(t *testing.T) {
+	router, _ := routerCompose(t,
+		routerEntry{"@app/a", HttpContribution{Hosts: []string{"Notes.Example.com", "notes.example.com"}, Framers: []string{"https://frame.example.com"}}},
+		routerEntry{"@app/b", HttpContribution{Hosts: []string{"notes.EXAMPLE.com"}, Framers: []string{"https://frame.example.com", "https://other.example.com"}}},
+	)
+	if got, want := router.Hosts, []string{"notes.example.com"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("hosts = %v, want %v", got, want)
+	}
+	if got, want := router.Framers, []string{"https://frame.example.com", "https://other.example.com"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("framers = %v, want %v", got, want)
+	}
+	policy := csp(nil, router)
+	if text := policy[0] + policy[1]; strings.Count(text, "https://frame.example.com") != 1 || !strings.Contains(text, "frame-ancestors https://frame.example.com https://other.example.com") {
+		t.Fatalf("frame-ancestors repeats or loses a framer: %q", text)
+	}
 }

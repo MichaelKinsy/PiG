@@ -9,16 +9,28 @@ import (
 	"strconv"
 
 	sdkjson "github.com/MichaelKinsy/PiG/extensions/sdk/json"
+	"github.com/MichaelKinsy/PiG/internal/jsonwire"
 )
 
 // MarshalJSON emits the upstream Usage wire shape. A provider creates cacheWrite1h and reasoning on a usage object that already holds
 // totalTokens and cost (anthropic-messages.ts:684, :846-851, bedrock-converse-stream.ts:715), so JSON.stringify writes them last; usage
 // built as one literal (usage-totals.ts combineUsage) holds them before totalTokens.
 func (usage Usage) MarshalJSON() ([]byte, error) {
+	var encoded []byte
+	var err error
 	if usage.splitsAfterCost {
-		return json.Marshal(usage.wireSplitsAfterCost())
+		encoded, err = json.Marshal(usage.wireSplitsAfterCost())
+	} else {
+		encoded, err = json.Marshal(usage.wire())
 	}
-	return json.Marshal(usage.wire())
+	if err != nil {
+		return nil, err
+	}
+	// JSON.stringify writes a negative zero as 0, as MarshalJSONTo does.
+	if jsonwire.MayHaveJSForms(encoded) {
+		return sdkjson.AppendJSNormalized(encoded[:0], encoded)
+	}
+	return encoded, nil
 }
 
 // AppendStringify appends the JSON.stringify text of MarshalJSON's output to dst (sdkjson.StringifyAppender). A non-finite cost is the error MarshalJSON reports.

@@ -424,7 +424,7 @@ func TestRequireEvalAuthFileValidatesCredentials(t *testing.T) {
 func TestRunTaskEscapesTheCaseNameAndNamesTheDirectoryByIdentity(t *testing.T) {
 	fake := &fakeDocker{t: t, reports: map[string]bool{}}
 	docker := DockerContext{Command: fake, Images: BuiltImages{WithoutDocs: BuiltImage{Name: "image-a"}}, ArtifactDirectory: t.TempDir(), AuthPath: "/auth.json", Provider: "p", Model: "m", RunsPerVariant: 3}
-	task := EvalTask{DiscoveredEvalCase: DiscoveredEvalCase{File: "evals/x.docs.eval.go", EvalSet: "A (b)", CaseID: `c.d [e] $f \ *+?^{}|/`}, Variant: DocumentationVariantWithoutDocs, Model: "p/m", RunNumber: 2}
+	task := EvalTask{File: "evals/x.docs.eval.go", EvalSet: "A (b)", CaseID: `c.d [e] $f \ *+?^{}|/`, Variant: DocumentationVariantWithoutDocs, Model: "p/m", RunNumber: 2}
 	reportPath, err := RunTask(t.Context(), docker, task)
 	if err != nil || reportPath != "" {
 		t.Fatalf("RunTask = %q, %v; want no report", reportPath, err)

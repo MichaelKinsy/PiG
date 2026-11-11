@@ -7,8 +7,8 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 )
 
-// Ports packages/chord/test/next/documents/residency.test.ts
-// pi: packages/chord/src/next/documents/residency.ts
+// Ports packages/chord/test/documents/residency.test.ts
+// pi: packages/chord/src/documents/residency.ts
 //
 // Pi's fake timers (`vi.useFakeTimers`, `advanceTimersByTime`, `getTimerCount`) are the fakeClock of support_test.go.
 

@@ -16,11 +16,13 @@ import (
 // committedFrames are the zstd frames the repository embeds, relative to the module root. A frame that is not listed fails TestEveryCommittedFrameIsListed, so it cannot escape TestCommittedFramesAreWhatEncodeWrites.
 var committedFrames = []string{
 	"CHANGELOG.md.zst",
+	"codemode/assets/quickjs.wasm.zst",
 	"extensions/sdk-lisp/sdk.zst",
 	"extensions/sdk-py/sdk.zst",
 	"extensions/sdk-rs/sdk.zst",
 	"internal/gosdkbundle/sdk.zst",
 	"internal/pigdocs/pages.zst",
+	"tui/internal/hljs/grammars_all.json.zst",
 }
 
 func TestRoundTrip(t *testing.T) {

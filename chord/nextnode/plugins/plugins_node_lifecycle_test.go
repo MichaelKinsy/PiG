@@ -645,7 +645,7 @@ func TestNodeCloseKillsAHostThatDoesNotAnswerWithinTheGrace(t *testing.T) {
 }
 
 // A process that does not exit when its channel ended or it was told to close is killed after the same 5 s grace Pi's workers
-// give a worker (`GRACE = 5_000` in packages/chord/src/next-node/workers/workers.ts:182); NodeOptions.StopGrace replaces it.
+// give a worker (`GRACE = 5_000` in packages/chord/src/node/workers/workers.ts:182); NodeOptions.StopGrace replaces it.
 func TestNodeTheDefaultStopGraceIsPisFiveSeconds(t *testing.T) {
 	if got := (&NodeHost{}).stopGrace(); got != 5*time.Second {
 		t.Fatalf("default stop grace = %v, want 5s (Pi workers.ts:182 GRACE)", got)

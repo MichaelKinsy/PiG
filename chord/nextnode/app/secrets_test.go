@@ -1,5 +1,7 @@
 package app
 
+// pi: packages/chord/src/node/app/secrets.ts
+
 import (
 	"os"
 	"path/filepath"

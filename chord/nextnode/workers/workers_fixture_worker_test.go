@@ -23,7 +23,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
 )
 
-// Ports packages/chord/test/next-node/fixtures/workers/{control,worker}.ts: the fixture contracts (the session kind the
+// Ports packages/chord/test/node/fixtures/workers/{control,worker}.ts: the fixture contracts (the session kind the
 // workers serve, the fixture worker's `Control`, the plugin's `Notes`), the worker's start data (how it behaves), and the
 // fixture worker itself: `WorkerMain`, the shipped plugins, a JavaScript core facet serving `Control` (crash, busy, local calls)
 // and a Go core facet serving `Busy` (the app's keep-alive counts) and `Echo`. Its start data picks a behaviour for the tests:
@@ -421,14 +421,14 @@ func runWorkerFixture() {
 			if err != nil {
 				return nil, err
 			}
-			return &WorkerResult{Busy: busy.Member("counts")}, nil
+			return &WorkerResult{Busy: host.Expose(busy.Member("counts"))}, nil
 		}
-		if _, err := start.Plugins.Load(worker, WorkerLoad{
-			Kind: "worker", Core: []plugins.CoreFacet{fixtureCoreModule()}, HostKind: fixtureSession,
-			GoCore:    []host.HostFacet{{Name: fixtureGoCoreName, Facet: fixtureGoCore()}},
+		if _, err := start.Plugins.Load(ctx, worker, WorkerLoad{
+			Kind: "worker", NodeCore: []plugins.CoreFacet{fixtureCoreModule()}, HostKind: fixtureSession,
+			Core:      []host.HostFacet{{Name: fixtureGoCoreName, Facet: fixtureGoCore()}},
 			Bridged:   []plugins.BridgedFacet{{Name: fixtureGoCoreName, Contracts: []*contracts.Contract{fixtureBusy, fixtureEcho}}},
 			Principal: delta.JsonObjectOf("kind", "worker"), Peer: delta.JsonObjectOf("kind", "server"),
-		}, ctx); err != nil {
+		}); err != nil {
 			return nil, err
 		}
 		if behaviour.LateCloseMs != 0 {
@@ -495,7 +495,7 @@ func runWorkerFixture() {
 		if err != nil {
 			return nil, err
 		}
-		return &WorkerResult{Busy: busy.Member("counts")}, nil
+		return &WorkerResult{Busy: host.Expose(busy.Member("counts"))}, nil
 	}, WorkerMainOptions{
 		Node: plugins.NodeOptions{OnOutput: fixtureOutput(port), Command: holdNodeStart},
 		Reload: func(scripts []plugins.PluginScript, _ context.Context) (host.ReloadReport, error) {

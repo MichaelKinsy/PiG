@@ -183,9 +183,9 @@ func TestReadClipboardImageWSLTriesWlPasteWithoutWaylandDisplay(t *testing.T) {
 func TestReadClipboardImageWSLFallsBackToWindowsClipboard(t *testing.T) {
 	withEnv(t, map[string]string{"WSL_DISTRO_NAME": "Ubuntu", "WAYLAND_DISPLAY": "wayland-0", "DISPLAY": ":0"})
 	w := withWindowsClipboard(t, &windowsClipboard{
-		scriptedClipboard: scriptedClipboard{responses: map[string]fakeCall{
+		responses: map[string]fakeCall{
 			"wl-paste --list-types": {out: []byte("text/plain\n")},
-		}},
+		},
 		winPath: `C:\Users\o'brien\AppData\Local\Temp\clip.png`,
 		image:   linuxClipboardPNG,
 		output:  "ok",

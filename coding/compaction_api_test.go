@@ -47,12 +47,12 @@ func TestCompactionHelpersWorkOnASessionsEntries(t *testing.T) {
 	appendUser(t, sess, long)
 	withUsage := agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: "assistant", Content: []ai.AssistantContentBlock{ai.TextContent{Text: long}},
 		StopReason: ai.StopReasonStop, Timestamp: 3, Usage: &ai.Usage{Input: 7, Output: 3, TotalTokens: 10}}}
-	if _, err := sess.inner.AppendMessage(withUsage); err != nil {
+	if _, err := sess.inner.Load().AppendMessage(withUsage); err != nil {
 		t.Fatal(err)
 	}
 	latest := agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: "assistant", Content: []ai.AssistantContentBlock{ai.TextContent{Text: "latest"}},
 		StopReason: ai.StopReasonStop, Timestamp: 4, Usage: &ai.Usage{Input: 15, Output: 5, TotalTokens: 20}}}
-	if _, err := sess.inner.AppendMessage(latest); err != nil {
+	if _, err := sess.inner.Load().AppendMessage(latest); err != nil {
 		t.Fatal(err)
 	}
 	entries := sess.Entries()

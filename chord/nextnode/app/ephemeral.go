@@ -21,6 +21,18 @@ const LoginPath = "/_chord/login"
 // maxLoginName is the longest name taken, in UTF-16 code units.
 const maxLoginName = 40
 
+// EphemeralUser is the principal an ephemeral login issues a session for: `{ kind: "user", id, name }`.
+type EphemeralUser struct {
+	Kind string
+	ID   string
+	Name string
+}
+
+// Principal is the user as a principal (a JSON object).
+func (u EphemeralUser) Principal() *delta.JsonObject {
+	return delta.JsonObjectOf("kind", u.Kind, "id", u.ID, "name", u.Name)
+}
+
 // EphemeralLoginFacet is the ephemeral login plugin's server facet.
 func EphemeralLoginFacet() host.Facet {
 	return host.DefineFacet(func(_ host.FacetHost, self host.FacetSelf) error {
@@ -40,7 +52,7 @@ func EphemeralLoginFacet() host.Facet {
 				if name == "" {
 					return chordhttp.HttpResponse{Kind: chordhttp.KindError, Status: 400}, nil
 				}
-				principal := delta.JsonObjectOf("kind", "user", "id", NewToken(12), "name", name)
+				principal := EphemeralUser{Kind: "user", ID: NewToken(12), Name: name}.Principal()
 				issued, err := issueSession(ctx, principal, name, SessionEphemeral, request.Provenance().Kind != chordhttp.ProvenanceLocal)
 				if err != nil {
 					return chordhttp.HttpResponse{}, err

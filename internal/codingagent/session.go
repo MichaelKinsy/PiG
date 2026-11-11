@@ -719,13 +719,11 @@ func (s *Session) appendMessageEntry(msg agent.AgentMessage) (string, error) {
 	}
 	parent := s.GetLeafID()
 	entry := MessageEntry{
-		SessionEntryBase: SessionEntryBase{
-			Type:      "message",
-			ID:        id,
-			ParentID:  parent,
-			Timestamp: RFC3339NowNano(),
-		},
-		Message: msg,
+		Type:      "message",
+		ID:        id,
+		ParentID:  parent,
+		Timestamp: RFC3339NowNano(),
+		Message:   msg,
 	}
 	// The entry is encoded once: its record is what the session stores, counts, decodes and writes. A message that cannot be encoded is reported as the message's own error.
 	raw, err := marshalSessionLine(entry)
@@ -863,12 +861,10 @@ func (s *Session) customMessageEntry(customType string, content any, display boo
 		return CustomMessageEntry{}, err
 	}
 	entry := CustomMessageEntry{
-		SessionEntryBase: SessionEntryBase{
-			Type:      "custom_message",
-			ID:        id,
-			ParentID:  s.GetLeafID(),
-			Timestamp: RFC3339NowNano(),
-		},
+		Type:       "custom_message",
+		ID:         id,
+		ParentID:   s.GetLeafID(),
+		Timestamp:  RFC3339NowNano(),
 		CustomType: customType,
 		Content:    content,
 		Display:    display,
@@ -898,7 +894,7 @@ func (s *Session) AppendSessionInfoName(name string) (id, current string, err er
 	if err != nil {
 		return "", "", err
 	}
-	entry := SessionInfoEntry{SessionEntryBase: SessionEntryBase{Type: "session_info", ID: id, ParentID: s.GetLeafID(), Timestamp: RFC3339NowNano()}, Name: name}
+	entry := SessionInfoEntry{Type: "session_info", ID: id, ParentID: s.GetLeafID(), Timestamp: RFC3339NowNano(), Name: name}
 	if err := s.AppendEntry(entry); err != nil {
 		return "", "", err
 	}
@@ -927,7 +923,7 @@ func (s *Session) AppendCustomEntry(customType string, data any) (string, error)
 	if err != nil {
 		return "", err
 	}
-	entry := CustomEntry{SessionEntryBase: SessionEntryBase{Type: "custom", ID: id, ParentID: s.GetLeafID(), Timestamp: RFC3339NowNano()}, CustomType: customType, Data: data}
+	entry := CustomEntry{Type: "custom", ID: id, ParentID: s.GetLeafID(), Timestamp: RFC3339NowNano(), CustomType: customType, Data: data}
 	if err := s.AppendEntry(entry); err != nil {
 		return "", err
 	}
@@ -945,12 +941,10 @@ func (s *Session) AppendBashExecution(message BashExecutionMessage) (string, err
 	}
 	parent := s.GetLeafID()
 	entry := BashExecutionEntry{
-		SessionEntryBase: SessionEntryBase{
-			Type:      "message",
-			ID:        id,
-			ParentID:  parent,
-			Timestamp: RFC3339NowNano(),
-		},
+		Type:               "message",
+		ID:                 id,
+		ParentID:           parent,
+		Timestamp:          RFC3339NowNano(),
 		Role:               "bashExecution",
 		Command:            message.Command,
 		Output:             message.Output,
@@ -1013,14 +1007,12 @@ func (s *Session) AppendModelChange(provider, modelID string) (string, error) {
 		return "", err
 	}
 	entry := ModelChangeEntry{
-		SessionEntryBase: SessionEntryBase{
-			Type:      "model_change",
-			ID:        id,
-			ParentID:  s.GetLeafID(),
-			Timestamp: RFC3339NowNano(),
-		},
-		Provider: provider,
-		ModelID:  modelID,
+		Type:      "model_change",
+		ID:        id,
+		ParentID:  s.GetLeafID(),
+		Timestamp: RFC3339NowNano(),
+		Provider:  provider,
+		ModelID:   modelID,
 	}
 	if err := s.AppendEntry(entry); err != nil {
 		return "", err
@@ -1039,12 +1031,10 @@ func (s *Session) AppendThinkingLevelChange(level string) (string, error) {
 		return "", err
 	}
 	entry := ThinkingLevelEntry{
-		SessionEntryBase: SessionEntryBase{
-			Type:      "thinking_level_change",
-			ID:        id,
-			ParentID:  s.GetLeafID(),
-			Timestamp: RFC3339NowNano(),
-		},
+		Type:          "thinking_level_change",
+		ID:            id,
+		ParentID:      s.GetLeafID(),
+		Timestamp:     RFC3339NowNano(),
 		ThinkingLevel: level,
 	}
 	return id, s.AppendEntry(entry)
@@ -1061,17 +1051,15 @@ func (s *Session) AppendUsage(kind, provider, model string, usage ai.Usage, note
 		return UsageEntry{}, err
 	}
 	entry := UsageEntry{
-		SessionEntryBase: SessionEntryBase{
-			Type:      "usage",
-			ID:        id,
-			ParentID:  s.GetLeafID(),
-			Timestamp: RFC3339NowNano(),
-		},
-		Kind:     kind,
-		Provider: provider,
-		Model:    model,
-		Usage:    usage,
-		Note:     note,
+		Type:      "usage",
+		ID:        id,
+		ParentID:  s.GetLeafID(),
+		Timestamp: RFC3339NowNano(),
+		Kind:      kind,
+		Provider:  provider,
+		Model:     model,
+		Usage:     usage,
+		Note:      note,
 	}
 	if err := s.AppendEntry(entry); err != nil {
 		return UsageEntry{}, err
@@ -1111,12 +1099,10 @@ func (s *Session) appendCompaction(summary, firstKeptEntryID string, tokensBefor
 		firstKeptEntryID = id
 	}
 	entry := CompactionEntry{
-		SessionEntryBase: SessionEntryBase{
-			Type:      "compaction",
-			ID:        id,
-			ParentID:  s.GetLeafID(),
-			Timestamp: now.Format("2006-01-02T15:04:05.000Z"),
-		},
+		Type:             "compaction",
+		ID:               id,
+		ParentID:         s.GetLeafID(),
+		Timestamp:        now.Format("2006-01-02T15:04:05.000Z"),
 		Summary:          summary,
 		FirstKeptEntryID: firstKeptEntryID,
 		TokensBefore:     tokensBefore,
@@ -1160,17 +1146,15 @@ func (s *Session) BranchWithSummary(parentID *string, summary string, details an
 		return "", err
 	}
 	entry := BranchSummaryEntry{
-		SessionEntryBase: SessionEntryBase{
-			Type:      "branch_summary",
-			ID:        id,
-			ParentID:  parentID, // nil = root-level entry
-			Timestamp: RFC3339NowNano(),
-		},
-		FromID:   fromID,
-		Summary:  summary,
-		Details:  details,
-		FromHook: fromHook,
-		Usage:    usage,
+		Type:      "branch_summary",
+		ID:        id,
+		ParentID:  parentID, // nil = root-level entry
+		Timestamp: RFC3339NowNano(),
+		FromID:    fromID,
+		Summary:   summary,
+		Details:   details,
+		FromHook:  fromHook,
+		Usage:     usage,
 	}
 	if err := s.AppendEntry(entry); err != nil {
 		return "", err
@@ -1194,14 +1178,12 @@ func (s *Session) AppendLabelChange(targetID string, label *string) (string, err
 		return "", err
 	}
 	entry := LabelEntry{
-		SessionEntryBase: SessionEntryBase{
-			Type:      "label",
-			ID:        id,
-			ParentID:  s.GetLeafID(),
-			Timestamp: RFC3339NowNano(),
-		},
-		TargetID: targetID,
-		Label:    label,
+		Type:      "label",
+		ID:        id,
+		ParentID:  s.GetLeafID(),
+		Timestamp: RFC3339NowNano(),
+		TargetID:  targetID,
+		Label:     label,
 	}
 	return id, s.AppendEntry(entry)
 }

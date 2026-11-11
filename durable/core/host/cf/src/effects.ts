@@ -6,7 +6,8 @@ import { errorMessage } from "./errors.ts"
 import { expandRecipe } from "./recipe.ts"
 import { PartialPatcher } from "./partial.ts"
 import { BACKGROUND_CONTEXT, withAbortSignal } from "@earendil-works/chord/context"
-import { copyJson, type Context, type JsonValue } from "@earendil-works/chord"
+import type { Context } from "@earendil-works/chord/context"
+import { copyJson, type JsonValue } from "@earendil-works/chord/json"
 import { EFFECT } from "./abi.ts"
 import type { CoreClient, TxChannel } from "./client.ts"
 import type { EffectContext, EffectHandler, HostSession } from "./host.ts"
@@ -57,6 +58,8 @@ export interface EffectRuntime {
   phase?: (effect: PhaseEffect, context: Context, effectId: number, settled?: (failure?: { error: unknown }) => void) => Promise<void>
   /** Hooks the host answers itself, by `hook` effect name: `resolveAgent` (wraps are host code), `conversationCreated`. They take no registry handler. */
   hostHooks?: Record<string, (payload: any, context: Context, effect: HookEffect) => unknown | Promise<unknown>>
+  /** The agent the host's `resolveAgent` hook last answered for a conversation, which its sections render with (`PromptInput.agent`); absent: sections see `agent: undefined`. */
+  resolvedAgent?: (conversationId: number) => unknown
   /** The registry snapshot object tools and sections see as `api.registry` (the Harness layer's published state). */
   snapshot?: () => unknown
   /** The Harness itself: harness.ts buildEnv passes `read: this` to the environment builder. */
@@ -384,9 +387,9 @@ export function createEffectHandlers(rt: EffectRuntime): Partial<Record<number, 
     const context = contextOf(signal, p.span)
     try {
       const target = p.handler !== undefined ? rt.registry.at<{ render: (...a: unknown[]) => unknown }>(p.handler) : await sectionOf(rt, p)
-      // types.ts PromptInput: the section renders with the request's resolved agent (the codemode section lists its callable
-      // tools, deferred ones left out), resolved here from the conversation's committed state as the core resolved it.
-      const agent = rt.hostApi.agent === undefined ? undefined : await rt.hostApi.agent(p.conversationId, context)
+      // types.ts PromptInput: the section renders with the agent generation.ts resolved for the request (the codemode section lists its
+      // callable tools, deferred ones left out): the agent the host answered the core's last resolveAgent hook of the conversation with.
+      const agent = rt.resolvedAgent?.(p.conversationId)
       const input = { ...p.input, conversationId: p.conversationId, agent, env: envs.get(p.taskId), read: documentReader(rt.client) }
       host.hookDone(effect.id, 0, (await target.render(input, context)) ?? null)
     } catch (error) {

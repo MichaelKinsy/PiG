@@ -1,5 +1,11 @@
 package telemetryingest_test
 
+// pi: packages/chord/src/telemetry-ingest/facet.ts
+
+// pi: packages/chord/src/telemetry-ingest/sender.ts
+
+// pi: packages/chord/src/telemetry-ingest/batch.ts
+
 // Ports packages/chord/test/telemetry-ingest/facet.test.ts and sender.test.ts at Pi main c23b9ec1: the server's telemetry
 // ingest (decisions "Telemetry from browser pages", "The server is the one place telemetry is stored", "Who a span was
 // for"): a page's batch is checked by its schema (size, every field, no control characters), its spans must carry the
@@ -51,20 +57,20 @@ func transported() {
 
 type collector struct {
 	mu      sync.Mutex
-	batches []telemetryingest.Batch
+	batches []telemetryingest.TelemetryBatch
 }
 
-func (c *collector) Ingest(batch telemetryingest.Batch) int {
+func (c *collector) Ingest(batch telemetryingest.TelemetryBatch) int {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.batches = append(c.batches, batch)
 	return len(batch.Spans)
 }
 
-func (c *collector) taken() []telemetryingest.Batch {
+func (c *collector) taken() []telemetryingest.TelemetryBatch {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return append([]telemetryingest.Batch(nil), c.batches...)
+	return append([]telemetryingest.TelemetryBatch(nil), c.batches...)
 }
 
 func principalOf(kind string, more ...any) data.Principal {

@@ -7,7 +7,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/sqlite"
 )
 
-// Ports packages/chord/src/next/store/schema.ts
+// Ports packages/chord/src/store/schema.ts
 //
 // The store's own SQL schema (slice 6a §2): its metadata, the recorded table definitions, the documents engine's
 // records and revisions, and the outbox; versioned by `ApplySqliteMigrations`. Declared tables are named

@@ -60,12 +60,12 @@ func exchangeAndWait(ctx context.Context, exchange RemoteExchange, messages ...R
 }
 
 func callMessage(id int, name, args string) RemoteMessage {
-	return RemoteMessage{WorkerToHostMessage: WorkerToHostMessage{Type: MessageCall, ID: id, Target: "tool", Name: name, Args: &args}}
+	return RemoteMessage{Type: MessageCall, ID: id, Target: "tool", Name: name, Args: &args}
 }
 
 func doneMessage(value string) RemoteMessage {
 	writes := "[]"
-	return RemoteMessage{WorkerToHostMessage: WorkerToHostMessage{Type: MessageDone, Ok: true, Value: &value, Writes: &writes}}
+	return RemoteMessage{Type: MessageDone, Ok: true, Value: &value, Writes: &writes}
 }
 
 // Same scripts and messages; each remote gets its own sandbox, as upstream's failing, silent and unreachable do.
@@ -140,7 +140,7 @@ func TestTheRequestCarriesTheStartDataAndTheRequestedBudget(t *testing.T) {
 func TestAnExchangeIsAnsweredWithTheResultOfItsCall(t *testing.T) {
 	var replies []*RemoteReply
 	remote := remoteFunc(func(ctx context.Context, _ RemoteRequest, exchange RemoteExchange) error {
-		reply, err := exchangeAndWait(ctx, exchange, RemoteMessage{WorkerToHostMessage: WorkerToHostMessage{Type: MessageOutput, Item: &OutputItem{Type: OutputItemText, Text: "hi"}}})
+		reply, err := exchangeAndWait(ctx, exchange, RemoteMessage{Type: MessageOutput, Item: &OutputItem{Type: OutputItemText, Text: "hi"}})
 		if err != nil || reply != nil {
 			t.Errorf("exchange without a call answered %+v, %v, want null", reply, err)
 		}
@@ -254,9 +254,9 @@ func TestMalformedAndFailureMessagesEndTheExecution(t *testing.T) {
 		message RemoteMessage
 		want    Error
 	}{
-		{"unknown type", RemoteMessage{WorkerToHostMessage: WorkerToHostMessage{Type: "bogus"}}, Error{Kind: ErrorSandbox, Message: broken}},
-		{"crash", RemoteMessage{WorkerToHostMessage: WorkerToHostMessage{Type: MessageCrash, Message: "wasm trap"}}, Error{Kind: ErrorSandbox, Message: "wasm trap"}},
-		{"failure", RemoteMessage{WorkerToHostMessage: WorkerToHostMessage{Type: MessageFailure}, Failure: &Error{Kind: ErrorTimeout, Message: "Execution exceeded its interrupt budget of 5"}},
+		{"unknown type", RemoteMessage{Type: "bogus"}, Error{Kind: ErrorSandbox, Message: broken}},
+		{"crash", RemoteMessage{Type: MessageCrash, Message: "wasm trap"}, Error{Kind: ErrorSandbox, Message: "wasm trap"}},
+		{"failure", RemoteMessage{Type: MessageFailure, Failure: &Error{Kind: ErrorTimeout, Message: "Execution exceeded its interrupt budget of 5"}},
 			Error{Kind: ErrorTimeout, Message: "Execution exceeded its interrupt budget of 5"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

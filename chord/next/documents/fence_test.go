@@ -2,8 +2,8 @@ package documents
 
 import "testing"
 
-// Ports packages/chord/test/next/documents/fence.test.ts
-// pi: packages/chord/src/next/documents/fence.ts
+// Ports packages/chord/test/documents/fence.test.ts
+// pi: packages/chord/src/documents/fence.ts
 
 func TestSealTokensStartOpenAndStaySealedOnceSealed(t *testing.T) {
 	token := NewSealToken()

@@ -4,7 +4,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// Ports packages/chord/src/next/registries/contribution.ts (one contributor's contribution to a registry, slice 8 §1:
+// Ports packages/chord/src/registries/contribution.ts (one contributor's contribution to a registry, slice 8 §1:
 // its table entry, made once per value, followed when it is a Chord watchable, left out and reported when it fails or
 // is refused).
 

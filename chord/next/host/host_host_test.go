@@ -131,7 +131,7 @@ func constant(value delta.JsonValue) chord.Watchable[delta.JsonValue] {
 	return Expose(state.NewConstant(value))
 }
 
-// pi: packages/chord/src/next/host/host.ts
+// pi: packages/chord/src/host/host.ts
 // --- host.test.ts ---------------------------------------------------------------------------------------------------
 
 var (
@@ -878,7 +878,7 @@ var hostOuter = mustContract(declareLocal("app.outer", contracts.LocalDeclaratio
 
 // Mirrors "close › ends every object, the last to go live first, and rejects new calls".
 //
-// Pi: packages/chord/test/next/host/host.test.ts:520 (ends every object, the last to go live first, and rejects new calls)
+// Pi: packages/chord/test/host/host.test.ts:520 (ends every object, the last to go live first, and rejects new calls)
 func TestHostCloseEndsEveryObjectTheLastToGoLiveFirstAndRejectsNewCalls(t *testing.T) {
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
 		if err := serveInfoFactory(h, nil); err != nil {
@@ -929,7 +929,7 @@ func TestHostCloseEndsEveryObjectTheLastToGoLiveFirstAndRejectsNewCalls(t *testi
 
 // Mirrors "close › ends every object at once: calls fail released before any close ran".
 //
-// Pi: packages/chord/test/next/host/host.test.ts:548 (ends every object at once: calls fail released before any close ran)
+// Pi: packages/chord/test/host/host.test.ts:548 (ends every object at once: calls fail released before any close ran)
 func TestHostCloseEndsEveryObjectAtOnceCallsFailReleasedBeforeAnyCloseRan(t *testing.T) {
 	closing := make(chan struct{})
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
@@ -1003,7 +1003,7 @@ func TestHostCloseJoinsAnEndingRunningInTheBackground(t *testing.T) {
 
 // Mirrors "close › closes object by object, a dependent before its dependencies".
 //
-// Pi: packages/chord/test/next/host/host.test.ts:605 (closes object by object, a dependent before its dependencies)
+// Pi: packages/chord/test/host/host.test.ts:605 (closes object by object, a dependent before its dependencies)
 func TestHostCloseClosesObjectByObjectADependentBeforeItsDependencies(t *testing.T) {
 	view := mustContract(declareLocal("app.view", contracts.LocalDeclaration{
 		Version: 1, Params: contracts.Params{contracts.Prop("id", contracts.Int())},
@@ -1045,7 +1045,7 @@ func TestHostCloseClosesObjectByObjectADependentBeforeItsDependencies(t *testing
 
 // Mirrors "close, its order and its races › returns one closing to every caller: a second close waits for the first".
 //
-// Pi: packages/chord/test/next/host/host.test.ts:646 (returns one closing to every caller: a second close waits for the first)
+// Pi: packages/chord/test/host/host.test.ts:646 (returns one closing to every caller: a second close waits for the first)
 func TestHostCloseReturnsOneClosingToEveryCaller(t *testing.T) {
 	closing := make(chan struct{})
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
@@ -2659,6 +2659,9 @@ func TestHostReloadAcrossHostsInTheAppsOrderServerThenWorkerThenTabAnOldTabIsMap
 		scopeEventually(t, "the old tab reads one", titleIs(old, "one"))
 		stored, _ := r.Workers.Load("session|S1")
 		worker := stored.(Host)
+		// The worker's `host.load` is not awaited by the relay, and `reload` runs after load: the old tab reading one does
+		// not mean the worker's load returned.
+		r.WorkerLoaded(t, "session|S1")
 		// The server installs first: nothing of Title changes there.
 		_, err := r.Server.Reload([]HostFacet{{Name: "@test/server", Facet: emptyFacet()}}, background, ReloadOptions{})
 		must(t, err)

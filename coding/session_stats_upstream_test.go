@@ -23,7 +23,7 @@ func statsAssistant(text string, tokens int, timestamp int64) agent.AgentMessage
 
 func appendStatsMessage(t *testing.T, s *Session, message agent.AgentMessage) string {
 	t.Helper()
-	id, err := s.inner.AppendMessage(message)
+	id, err := s.inner.Load().AppendMessage(message)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +92,7 @@ func TestUpstreamAgentSessionStatsContext(t *testing.T) {
 				appendStatsMessage(t, s, statsAssistant("response1", 180000, 2))
 				kept := appendStatsMessage(t, s, statsUser("second", 3))
 				appendStatsMessage(t, s, statsAssistant("response2", 195000, 4))
-				if _, err := s.inner.AppendCompaction("summary", kept, 195000, nil, false, nil); err != nil {
+				if _, err := s.inner.Load().AppendCompaction("summary", kept, 195000, nil, false, nil); err != nil {
 					t.Fatal(err)
 				}
 				appendStatsMessage(t, s, statsUser("third", 5))
@@ -104,7 +104,7 @@ func TestUpstreamAgentSessionStatsContext(t *testing.T) {
 					appendStatsMessage(t, s, statsAssistant("partial", 0, 8))
 				}
 			}
-			s.agent.SetMessages(s.inner.BuildContext(nil))
+			s.agent.SetMessages(s.inner.Load().BuildContext(nil))
 			stats := s.GetSessionStats()
 			usage := stats.ContextUsage
 			if stats.Tokens.Input != tc.total {
@@ -148,17 +148,17 @@ func TestUpstreamAgentSessionStatsUsage(t *testing.T) {
 			var err error
 			switch tc.kind {
 			case "branch":
-				_, err = s.inner.BranchWithSummary(nil, "summary", nil, false, usage)
+				_, err = s.inner.Load().BranchWithSummary(nil, "summary", nil, false, usage)
 			case "compaction":
 				kept := appendStatsMessage(t, s, statsUser("hello", 1))
-				_, err = s.inner.AppendCompaction("summary", kept, 100, nil, false, usage)
+				_, err = s.inner.Load().AppendCompaction("summary", kept, 100, nil, false, usage)
 			case "tool":
 				appendStatsMessage(t, s, agent.AgentMessage{ToolResult: &agent.ToolResultMessage{Role: agent.RoleToolResult, ToolCallID: "tool-call-1", ToolName: "test_tool", Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "tool result"}}, Usage: usage, Timestamp: 1}})
 			}
 			if err != nil {
 				t.Fatal(err)
 			}
-			s.agent.SetMessages(s.inner.BuildContext(nil))
+			s.agent.SetMessages(s.inner.Load().BuildContext(nil))
 			stats := s.GetSessionStats()
 			if stats.Tokens != (SessionStatsTokens{Input: 10, Output: 20, CacheRead: 30, CacheWrite: 40, Total: 100}) || stats.Cost != 1 {
 				t.Fatalf("stats = %+v", stats)
@@ -171,11 +171,11 @@ func TestUpstreamAgentSessionStatsUsage(t *testing.T) {
 func TestUpstreamStatsIncludesCacheWarmingUsageExactlyOnceWithoutAddingMessages(t *testing.T) {
 	s := newStatsUpstreamSession(t)
 	usage := ai.Usage{Input: 2, Output: 1, CacheRead: 97, TotalTokens: 100, Cost: ai.UsageCost{Input: .001, Output: .002, CacheRead: .007, Total: .01}}
-	entry, err := s.inner.AppendUsage("cache_warm", "anthropic", "claude-sonnet-4-5", usage, "extension override")
+	entry, err := s.inner.Load().AppendUsage("cache_warm", "anthropic", "claude-sonnet-4-5", usage, "extension override")
 	if err != nil {
 		t.Fatal(err)
 	}
-	entries := s.inner.GetEntries()
+	entries := s.inner.Load().GetEntries()
 	if len(entries) == 0 {
 		t.Fatal("usage was not appended")
 	}
@@ -187,11 +187,11 @@ func TestUpstreamStatsIncludesCacheWarmingUsageExactlyOnceWithoutAddingMessages(
 		t.Fatalf("first entry = %+v, appended entry = %+v", first, entry)
 	}
 	stats := s.GetSessionStats()
-	if stats.Tokens != (SessionStatsTokens{Input: 2, Output: 1, CacheRead: 97, Total: 100}) || stats.TotalMessages != 0 || len(s.inner.BuildContext(nil)) != 0 {
+	if stats.Tokens != (SessionStatsTokens{Input: 2, Output: 1, CacheRead: 97, Total: 100}) || stats.TotalMessages != 0 || len(s.inner.Load().BuildContext(nil)) != 0 {
 		t.Fatalf("stats = %+v", stats)
 	}
 	want := []icodingagent.SessionUsageBreakdown{{Key: "anthropic/claude-sonnet-4-5", Cost: .01, Tokens: 100}}
-	if got := s.inner.Accounting().UsageBreakdown; !reflect.DeepEqual(got, want) {
+	if got := s.inner.Load().Accounting().UsageBreakdown; !reflect.DeepEqual(got, want) {
 		t.Fatalf("breakdown = %+v, want %+v", got, want)
 	}
 }
@@ -207,14 +207,14 @@ func TestUpstreamStatsGroupsToolAndSummaryUsageSeparatelyFromModelAttributedUsag
 		return &ai.Usage{Input: 100, TotalTokens: 100, Cost: ai.UsageCost{Total: cost}}
 	}
 	appendStatsMessage(t, s, agent.AgentMessage{ToolResult: &agent.ToolResultMessage{Role: agent.RoleToolResult, ToolCallID: "tool-call-1", ToolName: "test_tool", Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "tool result"}}, Usage: usage(1), Timestamp: 1}})
-	if _, err := s.inner.AppendCompaction("summary", root, 100, nil, false, usage(2)); err != nil {
+	if _, err := s.inner.Load().AppendCompaction("summary", root, 100, nil, false, usage(2)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.inner.BranchWithSummary(nil, "branch summary", nil, false, usage(3)); err != nil {
+	if _, err := s.inner.Load().BranchWithSummary(nil, "branch summary", nil, false, usage(3)); err != nil {
 		t.Fatal(err)
 	}
 	want := []icodingagent.SessionUsageBreakdown{{Key: "Tools/summaries", Cost: 6, Tokens: 300}, {Key: "anthropic/claude-sonnet-4-5", Cost: .5, Tokens: 100}}
-	if got := s.inner.Accounting().UsageBreakdown; !reflect.DeepEqual(got, want) {
+	if got := s.inner.Load().Accounting().UsageBreakdown; !reflect.DeepEqual(got, want) {
 		t.Fatalf("breakdown = %+v, want %+v", got, want)
 	}
 }

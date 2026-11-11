@@ -71,23 +71,32 @@ func startQueueProbe(t *testing.T, h *harness, settleMs int, tasks ...map[string
 	return run
 }
 
-// hostQueueBusy reports whether a mutation of file would have to wait in the host's queue now: it queues an empty mutation behind the current holder and sees
-// whether it runs at once. A mutation that had to wait runs later, once the holder is done, and changes nothing.
+// hostQueueBusy reports whether a mutation of file would have to wait in the host's queue now. It takes the next place in the queue and asks, at once, whether
+// that place is admitted: a place behind a holder is not, whatever the time the registration took. The place stays in the queue until the holder is done and
+// changes nothing.
 func hostQueueBusy(t *testing.T, file string) bool {
 	t.Helper()
-	ran := make(chan struct{})
-	go func() {
-		_, _ = tools.WithFileMutationQueue(file, func() (struct{}, error) {
-			close(ran)
-			return struct{}{}, nil
-		})
-	}()
-	select {
-	case <-ran:
-		return false
-	case <-time.After(50 * time.Millisecond):
-		return true
+	busy, err := hostQueueBusyVia(file, tools.ReserveFileMutation)
+	if err != nil {
+		t.Fatalf("registering in the host's queue for %s: %v", file, err)
 	}
+	return busy
+}
+
+// hostQueueBusyVia is hostQueueBusy with the registration in the host's queue passed in, so a test can model a slow one.
+func hostQueueBusyVia(file string, reserve func(string) (*tools.MutationTicket, error)) (bool, error) {
+	ticket, err := reserve(file)
+	if err != nil {
+		return false, err
+	}
+	// A ticket with no earlier mutation is admitted whatever the context says (MutationTicket.WaitContext), and one behind a holder gives up and keeps its place.
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if ticket.WaitContext(ctx) != nil {
+		return true, nil
+	}
+	ticket.Release()
+	return false, nil
 }
 
 func awaitHostQueueBusy(t *testing.T, name, file string) {
@@ -228,5 +237,47 @@ func TestConformance_FileMutationQueueSpansExtensionProcesses(t *testing.T) {
 			}
 			requireProbeLog(t, holderCase.name+" holding", holder, "start:1", "start:2", "end:2", "end:1")
 		})
+	}
+}
+
+// TestHostQueueBusyIsNotFooledByASlowRegistration: hostQueueBusy decides from the host's queue alone whether a task holds the file, and must not read the time a
+// registration takes as the answer. The registration resolves the path and reads the file under the queue's lock, which every mutation of the process shares, so
+// it can take longer than the wait for a free queue; a task that has not entered yet is not one that holds the file.
+func TestHostQueueBusyIsNotFooledByASlowRegistration(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "free.txt")
+	slow := func(path string) (*tools.MutationTicket, error) {
+		time.Sleep(150 * time.Millisecond)
+		return tools.ReserveFileMutation(path)
+	}
+	if busy, err := hostQueueBusyVia(file, slow); err != nil || busy {
+		t.Fatalf("hostQueueBusy took a registration that needed 150ms for a held file (error %v): nothing holds it", err)
+	}
+}
+
+// TestHostQueueBusySeesAHeldFile: a file a mutation holds is busy, with a fast registration and with a slow one.
+func TestHostQueueBusySeesAHeldFile(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "held.txt")
+	inside, release, done := make(chan struct{}), make(chan struct{}), make(chan struct{})
+	go func() {
+		defer close(done)
+		_, _ = tools.WithFileMutationQueue(file, func() (struct{}, error) {
+			close(inside)
+			<-release
+			return struct{}{}, nil
+		})
+	}()
+	<-inside
+	defer func() {
+		close(release)
+		<-done
+	}()
+	slow := func(path string) (*tools.MutationTicket, error) {
+		time.Sleep(150 * time.Millisecond)
+		return tools.ReserveFileMutation(path)
+	}
+	for name, reserve := range map[string]func(string) (*tools.MutationTicket, error){"fast": tools.ReserveFileMutation, "slow": slow} {
+		if busy, err := hostQueueBusyVia(file, reserve); err != nil || !busy {
+			t.Errorf("hostQueueBusy with a %s registration: a held file is not busy (%v)", name, err)
+		}
 	}
 }

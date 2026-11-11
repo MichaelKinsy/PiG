@@ -20,8 +20,8 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// pi: packages/chord/src/next/host/reference-source.ts
-// Ports packages/chord/test/next/host/reference-source.test.ts. The TestHostReferenceSource... tests are its cases, in its
+// pi: packages/chord/src/host/reference-source.ts
+// Ports packages/chord/test/host/reference-source.test.ts. The TestHostReferenceSource... tests are its cases, in its
 // order, on whole hosts (`loaded`, `serve`, `ChordObject` attempts, `failLive`, `defineState` documents, `createHost` with
 // links); the other tests are own tests of referenceSource over documents and derives of the state package, each naming
 // the upstream case whose behavior it mirrors.

@@ -13,6 +13,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/rpcclient"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/streamattachhook"
 )
 
 // providerBridgeRequest is one line of the provider bridge's input. Type "stream" starts the stream named by ID; "cancel" aborts it.
@@ -154,19 +155,34 @@ func serveBridgeStream(ctx context.Context, request providerBridgeRequest, trans
 		send(providerBridgeReply{ID: request.ID, Type: "error", Error: err.Error()})
 		return
 	}
-	stream, err := icodingagent.StreamAPILeaf(ctx, request.Simple, request.Model, decoded, transport, bridgeCallbackSet(ctx, request, send, callbacks))
-	if err != nil {
+	// Pi attaches its consumer in the synchronous prefix that creates the stream (agent-loop.ts:412-424), before any response I/O can complete, so the start event carries the pending, empty partial the provider built. A goroutine that attached after the stream was returned could run after the provider had published the whole response and serialize a start event holding the finished message. The creation and the iteration run in one stream continuation, as the Agent does (agent/agent_loop.go requestStream).
+	ctx = ai.WithStreamContinuations(ctx)
+	var stream *ai.AssistantMessageEventStream
+	delivered := true
+	if err := ai.RunStreamContinuation(ctx, func(observation *ai.StreamObservation) error {
+		var err error
+		stream, err = icodingagent.StreamAPILeaf(ctx, request.Simple, request.Model, decoded, transport, bridgeCallbackSet(ctx, request, send, callbacks))
+		if err != nil {
+			return err
+		}
+		// Events are delivered under the process context, not the stream's: a cancelled stream still ends with the provider's terminal event.
+		//portlint:allow ctxmapping events are read under the process, not the stream's ctx, so a cancelled stream still delivers its terminal aborted event, as Pi's for-await over the stream does
+		eventsCtx := observation.Context(context.Background()) //portlint:allow ctxbackground the process context, not the stream's: a cancelled stream still delivers its terminal aborted event
+		streamattachhook.Attach(eventsCtx, stream)
+		for event := range stream.Events(eventsCtx) {
+			if !send(providerBridgeReply{ID: request.ID, Type: "event", Event: event}) {
+				delivered = false
+				return nil
+			}
+		}
+		return nil
+	}); err != nil {
 		send(providerBridgeReply{ID: request.ID, Type: "error", Error: err.Error()})
 		return
 	}
-	// Events are delivered under the process context, not the stream's: a cancelled stream still ends with the provider's terminal event.
-	//portlint:allow ctxmapping events are read under the process, not the stream's ctx, so a cancelled stream still delivers its terminal aborted event, as Pi's for-await over the stream does
-	for event := range stream.Events(context.Background()) {
-		if !send(providerBridgeReply{ID: request.ID, Type: "event", Event: event}) {
-			return
-		}
+	if delivered {
+		send(providerBridgeReply{ID: request.ID, Type: "result", Result: stream.Result()})
 	}
-	send(providerBridgeReply{ID: request.ID, Type: "result", Result: stream.Result()})
 }
 
 func decodeBridgeRequest(raw json.RawMessage) (map[string]any, error) {

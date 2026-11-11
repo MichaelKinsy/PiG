@@ -1,6 +1,6 @@
 package store
 
-// pi: packages/chord/src/next/store/schema.ts
+// pi: packages/chord/src/store/schema.ts
 
 import (
 	"strings"

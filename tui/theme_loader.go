@@ -22,6 +22,7 @@ package tui
 import (
 	"embed"
 	"encoding/json"
+	"encoding/json/jsontext"
 	"fmt"
 	"math"
 	"os"
@@ -29,6 +30,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/MichaelKinsy/PiG/internal/jsonopts"
 	"github.com/MichaelKinsy/PiG/internal/jsonparse"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 	"github.com/MichaelKinsy/PiG/internal/text"
@@ -218,53 +220,42 @@ func LoadThemeDir(dir string) (map[string]*Theme, error) {
 // the "colors" object. json.Decoder preserves token order, unlike
 // json.Unmarshal into map[string]string which loses insertion order.
 func extractColorKeyOrder(data []byte) []string {
-	dec := json.NewDecoder(strings.NewReader(string(data)))
+	dec := jsontext.NewDecoder(strings.NewReader(string(data)), jsonopts.Parse)
 	// Find the "colors" key at the top level.
 	var keys []string
 	depth := 0
 	inColors := false
 	for {
-		t, err := dec.Token()
+		t, err := dec.ReadToken()
 		if err != nil {
 			break
 		}
-		switch v := t.(type) {
-		case json.Delim:
-			switch v {
-			case '{':
-				if inColors && depth == 1 {
-					// We're inside the colors object at depth 2.
-					// Read key-value pairs.
-					for dec.More() {
-						kt, err := dec.Token()
-						if err != nil {
-							return keys
-						}
-						if key, ok := kt.(string); ok {
-							keys = append(keys, key)
-						}
-						// Skip the value.
-						if _, err := dec.Token(); err != nil {
-							return keys
-						}
+		switch t.Kind() {
+		case '{':
+			if inColors && depth == 1 {
+				// We're inside the colors object at depth 2.
+				// Read key-value pairs.
+				for kind := dec.PeekKind(); kind != '}' && kind != ']' && kind != 0; kind = dec.PeekKind() {
+					kt, err := dec.ReadToken()
+					if err != nil {
+						return keys
 					}
-					return keys
+					if kt.Kind() == '"' {
+						keys = append(keys, kt.String())
+					}
+					// Skip the value.
+					if _, err := dec.ReadToken(); err != nil {
+						return keys
+					}
 				}
-				depth++
-			case '}':
-				depth--
-				inColors = false
-			case '[':
-				// skip arrays
-			case ']':
-				// skip arrays
+				return keys
 			}
-		case string:
-			if depth == 1 && v == "colors" {
-				inColors = true
-			} else {
-				inColors = false
-			}
+			depth++
+		case '}':
+			depth--
+			inColors = false
+		case '"':
+			inColors = depth == 1 && t.String() == "colors"
 		}
 	}
 	return keys

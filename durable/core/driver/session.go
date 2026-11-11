@@ -46,6 +46,9 @@ type SessionConfig struct {
 	Phases func(ctx context.Context, effect PhaseEffect) error
 	// OnCommitted observes every commit after the store applied it (trace capture).
 	OnCommitted func(c abi.Commit, sql []string)
+	// OnCommittedRun is sqlhost.Options.OnCommittedRun: it observes the commits of each store transaction (a Storage call's batches are one) after the
+	// store applied it, which is what one trace line of Pi's SqliteStorage.commit holds.
+	OnCommittedRun func(run []abi.Commit, sql []string)
 	// Monotonic is the clock a model request's duration is measured on (pi-ai: performance.now); nil uses Harness.Now.
 	Monotonic func() float64
 	// TimerLead and Settle are sqlhost.Options.TimerLead and Settle.
@@ -172,7 +175,7 @@ func open(ctx context.Context, cfg SessionConfig) (*coreSession, error) {
 	s.host = sqlhost.New(sqlhost.Options{
 		Core: cfg.Core, SQL: cfg.SQL, DB: cfg.DB, OwnDB: true, Clock: cfg.Harness.Now, TimerLead: cfg.TimerLead, Settle: cfg.Settle,
 		SetTimer: s.armTimer,
-		Handlers: handlers, OnNotice: func(n abi.Notice) { s.watches.notice(n); s.commitNotice(n); s.reportNotice(n); s.wakeNotice(n) }, OnCommit: cfg.onCommit, OnCommitted: cfg.OnCommitted, TimerFired: cfg.TimerFired,
+		Handlers: handlers, OnNotice: func(n abi.Notice) { s.watches.notice(n); s.commitNotice(n); s.reportNotice(n); s.wakeNotice(n) }, OnCommit: cfg.onCommit, OnCommitted: cfg.OnCommitted, OnCommittedRun: cfg.OnCommittedRun, TimerFired: cfg.TimerFired,
 		OnRejected: func(kind abi.EventKind, err *sqlhost.RejectedError) {
 			report(err, durable.ReportInfo{Kind: durable.ReportListenerError})
 		},
@@ -940,6 +943,9 @@ func (s *coreSession) agentJSON(agent durable.Agent) map[string]any {
 	}
 	if agent.MaxTurns != nil {
 		out["maxTurns"] = *agent.MaxTurns
+	}
+	if agent.Compaction != nil {
+		out["compaction"] = agent.Compaction
 	}
 	return out
 }

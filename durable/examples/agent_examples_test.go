@@ -140,18 +140,16 @@ type plan struct {
 func TestExample26PlanMode(t *testing.T) {
 	// The current plan of a conversation. A fork keeps the plan it had at the fork entry.
 	planDoc := durable.DefineDoc(durable.DocDefinition[plan]{
-		CommonDocDefinition: durable.CommonDocDefinition[plan]{Kind: "app.plan", Version: 1, Initial: func() plan { return plan{Steps: []string{}} }, CheckpointWhen: func(plan, []durable.Op, durable.CheckpointInfo) bool { return false }},
-		DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryRewindable, Fork: durable.ForkAsOf},
+		Kind: "app.plan", Version: 1, Initial: func() plan { return plan{Steps: []string{}} }, CheckpointWhen: func(plan, []durable.Op, durable.CheckpointInfo) bool { return false },
+		Scope: durable.ScopeConversation, History: durable.HistoryRewindable, Fork: durable.ForkAsOf,
 	})
 	submitPlan := new(durable.ToolRegistration{
-		ToolSchema: ai.ToolSchema{
-			Name:        "submit_plan",
-			Description: "Submit the plan as a list of steps.",
-			Parameters: map[string]any{
-				"type":       "object",
-				"properties": map[string]any{"steps": map[string]any{"type": "array", "items": map[string]any{"type": "string"}}},
-				"required":   []any{"steps"},
-			},
+		Name:        "submit_plan",
+		Description: "Submit the plan as a list of steps.",
+		Parameters: map[string]any{
+			"type":       "object",
+			"properties": map[string]any{"steps": map[string]any{"type": "array", "items": map[string]any{"type": "string"}}},
+			"required":   []any{"steps"},
 		},
 		Execute: func(ctx context.Context, args any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			steps, _ := args.(map[string]any)["steps"].([]any)

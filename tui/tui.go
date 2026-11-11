@@ -465,6 +465,14 @@ func (c *Container) renderCopy(width int) []string {
 	return slices.Clone(c.renderBorrowedLocked(width, true))
 }
 
+// renderInto is renderCopy into dst's array: the lines are copied under the lock into dst[:0], which grows when it is
+// too small, so a caller that renders every frame reuses one array instead of allocating a copy each time.
+func (c *Container) renderInto(width int, dst []string) []string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return append(dst[:0], c.renderBorrowedLocked(width, true)...)
+}
+
 // renderBorrowed returns immutable lines owned by the container. Callers must
 // not edit the slice, and must not read it after the second render after this
 // one: a borrowed render at the same width writes into the array the render
@@ -679,7 +687,15 @@ func (c *Container) renderChildLocked(ch Component, width int) ([]string, uint64
 	}
 	// Consume the dirty flag before rendering so an unchanged child hits the cache next frame. A child that another goroutine invalidates while it renders keeps the flag that Invalidate sets, so its next frame renders again; consuming after Render would erase that flag and cache lines that predate the change.
 	dc.NeedsRedraw()
-	lines := ch.Render(width)
+	var lines []string
+	switch concrete := ch.(type) {
+	case *Markdown:
+		lines = concrete.renderBorrowedChild(width)
+	case *AssistantMessageComponent:
+		lines = concrete.renderBorrowedChild(width)
+	default:
+		lines = ch.Render(width)
+	}
 	c.childCache[ch] = cachedChild{width: width, lines: lines}
 	return lines, 0
 }
@@ -1509,15 +1525,13 @@ func (w terminalCursorWriter) Write(data []byte) (int, error) {
 // the differential-render overflow crash log goes, the OS temp directory when empty.
 func NewTuiMainScreen(terminal Terminal, showHardwareCursor *bool, logDirectory string) *TuiMainScreen {
 	t := &TuiMainScreen{
-		tuiBase: tuiBase{
-			out:                terminalWriter{terminal},
-			direct:             terminalCursorWriter{terminal},
-			terminal:           terminal,
-			terminalBackground: &terminalBackgroundQueries{},
-			now:                time.Now,
-			afterFunc: func(d time.Duration, fn func()) stoppableTimer {
-				return time.AfterFunc(d, fn)
-			},
+		out:                terminalWriter{terminal},
+		direct:             terminalCursorWriter{terminal},
+		terminal:           terminal,
+		terminalBackground: &terminalBackgroundQueries{},
+		now:                time.Now,
+		afterFunc: func(d time.Duration, fn func()) stoppableTimer {
+			return time.AfterFunc(d, fn)
 		},
 		logDirectory: logDirectory,
 	}
@@ -1534,15 +1548,13 @@ func NewTuiMainScreen(terminal Terminal, showHardwareCursor *bool, logDirectory 
 // dimensions. Used only by tests; production code uses New().
 func NewWithOutput(out io.Writer, cols, rows int) *TuiMainScreen {
 	t := &TuiMainScreen{
-		tuiBase: tuiBase{
-			out:                stdoutWriter(out),
-			terminalBackground: &terminalBackgroundQueries{},
-			fixedSize:          true,
-			showHardwareCursor: os.Getenv("PI_HARDWARE_CURSOR") == "1",
-			now:                time.Now,
-			afterFunc: func(d time.Duration, fn func()) stoppableTimer {
-				return time.AfterFunc(d, fn)
-			},
+		out:                stdoutWriter(out),
+		terminalBackground: &terminalBackgroundQueries{},
+		fixedSize:          true,
+		showHardwareCursor: os.Getenv("PI_HARDWARE_CURSOR") == "1",
+		now:                time.Now,
+		afterFunc: func(d time.Duration, fn func()) stoppableTimer {
+			return time.AfterFunc(d, fn)
 		},
 	}
 	t.setSize(cols, rows)

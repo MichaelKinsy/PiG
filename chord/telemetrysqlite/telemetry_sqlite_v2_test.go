@@ -1,5 +1,7 @@
 package telemetrysqlite
 
+// pi: packages/chord/src/telemetry-sqlite/schema.ts
+
 // Ports packages/chord/test/telemetry-sqlite.test.ts (the slice 9 additions) and telemetry-sqlite-node.test.ts at Pi main
 // c23b9ec1: span times in whole microseconds, a version 1 store migrated, ingested spans and metric rows, and the
 // read-only store.
@@ -142,7 +144,7 @@ func TestWritesIngestedSpansAndMetricRowsWithItsOwnNeverReplacingAStoredSpan(t *
 		IntervalMs: 10_000, Name: "hits", Kind: telemetry.TelemetryMetricKindCounter,
 		Attributes: telemetry.SpanAttributes{telemetry.Attr("b", 1.0), telemetry.Attr("a", 2.0)}, Count: 2, Sum: 6, Min: 2, Max: 4,
 	}
-	if queued := f.telemetry.Ingest(Batch{Spans: []telemetry.StoredSpan{span, impostor}, Metrics: []telemetry.StoredMetric{metric}}); queued != 2 {
+	if queued := f.telemetry.Ingest(TelemetryBatch{Spans: []telemetry.StoredSpan{span, impostor}, Metrics: []telemetry.StoredMetric{metric}}); queued != 2 {
 		t.Fatalf("queued = %d", queued)
 	}
 	f.flush()

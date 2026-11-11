@@ -1491,6 +1491,7 @@ impl Extension {
             stream_simple: false,
             image_apis: Vec::new(),
             classifier_apis: Vec::new(),
+            refresh_models: false,
         });
         self.oauth_fns.insert(name, provider);
     }
@@ -1845,9 +1846,11 @@ impl Extension {
                 entry_renderers: self.entry_renderers.clone(),
                 markdown_transformer: self.markdown_transformer.is_some(),
                 markdown_message_types: self.markdown_transformer.is_some().then(|| {
-                    self.markdown_message_types
-                        .clone()
-                        .unwrap_or_else(|| ["user", "assistant", "assistant-thinking"].map(String::from).to_vec())
+                    self.markdown_message_types.clone().unwrap_or_else(|| {
+                        ["user", "assistant", "assistant-thinking"]
+                            .map(String::from)
+                            .to_vec()
+                    })
                 }),
                 owns_thinking_runs: self.owns_thinking_runs,
                 tool_renderers: self.tool_renderers.resolvers.len(),
@@ -2596,6 +2599,27 @@ impl Extension {
                     .unwrap_or_default();
                 let _ = conn.respond(id, Some(serde_json::json!({ "apiKey": key })), None);
             }
+            "oauth_modify_models" => {
+                let Some(modify) = provider.modify_models.as_ref() else {
+                    let _ = conn.respond(
+                        id,
+                        None,
+                        Some(err("provider does not support modifyModels".into())),
+                    );
+                    return;
+                };
+                let args = req.args.clone().unwrap_or(Value::Null);
+                let models = args["models"].as_array().cloned().unwrap_or_default();
+                match modify(models, decode_creds(&Some(args["credentials"].clone()))) {
+                    Ok(models) => {
+                        let _ =
+                            conn.respond(id, Some(serde_json::json!({ "models": models })), None);
+                    }
+                    Err(e) => {
+                        let _ = conn.respond(id, None, Some(err(e)));
+                    }
+                }
+            }
             "oauth_credential_status" => {
                 let Some(store) = provider.credential_store.as_ref() else {
                     let _ = conn.respond(
@@ -2852,6 +2876,24 @@ impl Extension {
                     let provider = req.tool.as_deref().unwrap_or("");
                     let api = args["api"].as_str().unwrap_or("");
                     let kind = args["kind"].as_str().unwrap_or("");
+                    if kind == "refreshModels" {
+                        // upstream: types.ts:1930; the models the callback returns (null for none) are the answer.
+                        let refresh = self
+                            .provider_callbacks
+                            .refresh_models(provider)
+                            .ok_or_else(|| format!("Provider {provider} has no refreshModels"))?;
+                        return crate::diagnostic::recover(|| {
+                            self.provider_objects.refresh_config(
+                                conn,
+                                id,
+                                provider,
+                                &args["context"],
+                                cancel.signal.clone(),
+                                &refresh,
+                            )
+                        })
+                        .map_err(|_| format!("provider {provider} refreshModels panicked"))?;
+                    }
                     let (images, label) = match kind {
                         "images" => (true, "image"),
                         "classifiers" => (false, "classifier"),
@@ -3151,6 +3193,7 @@ impl Extension {
             "oauth_login"
             | "oauth_refresh"
             | "oauth_get_api_key"
+            | "oauth_modify_models"
             | "oauth_credential_status"
             | "oauth_store_credentials"
             | "oauth_delete_credentials" => {
@@ -4169,6 +4212,36 @@ mod tests {
     }
 
     #[test]
+    fn oauth_registration_flags_modify_models_and_uses_callback_server_beside_refresh_models() {
+        use crate::oauth::{OAuthCredentials, OAuthProvider};
+        let mut ext = Extension::new("flags");
+        ext.register_provider_operations(
+            "dyn",
+            serde_json::json!({"baseUrl": "https://dyn.test", "apiKey": "key"}),
+            crate::ProviderOperations::new().refresh_models(|_| Ok(None)),
+        );
+        ext.register_oauth_provider(
+            "dyn",
+            serde_json::json!({}),
+            OAuthProvider {
+                modify_models: Some(Box::new(|models, _| Ok(models))),
+                uses_callback_server: true,
+                ..OAuthProvider::new("Dyn", |_| Ok(OAuthCredentials::default()))
+            },
+        );
+        assert_eq!(
+            ext.providers.len(),
+            2,
+            "a name's declarations stay separate, the registry merges them"
+        );
+        assert!(ext.providers[0].refresh_models);
+        assert_eq!(ext.providers[0].config["baseUrl"], "https://dyn.test");
+        assert_eq!(ext.providers[1].config["oauth"]["has_modify_models"], true);
+        assert_eq!(ext.providers[1].config["oauth"]["usesCallbackServer"], true);
+        assert!(ext.oauth_fns.contains_key("dyn"));
+    }
+
+    #[test]
     fn oauth_provider_bridge() {
         use crate::oauth::{
             OAuthCredentialStatus, OAuthCredentialStore, OAuthCredentials, OAuthDeviceCodeInfo,
@@ -4242,6 +4315,8 @@ mod tests {
             credential_store: Some(Box::new(FakeStore {
                 stored: StdMutex::new(None),
             })),
+            modify_models: None,
+            uses_callback_server: false,
         };
         ext.register_oauth_provider(
             "example-provider",

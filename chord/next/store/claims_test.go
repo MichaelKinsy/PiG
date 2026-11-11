@@ -5,14 +5,14 @@ import (
 	"testing"
 )
 
-// Ports packages/chord/test/next/store/claims.test.ts: tests of claims (slice 6b "owner names and claims", "claims
+// Ports packages/chord/test/store/claims.test.ts: tests of claims (slice 6b "owner names and claims", "claims
 // per table and per document namespace"): a table by its SQL name and documents by owner and namespace, once per
 // store; released by their claimant's end; none taken while a batch applies.
 //
 // The third case ("an object claims its tables and documents when it declares them, and releases them at its end")
 // runs a Chord host, which is outside this package: it is chord/next/host/host_store_claims_test.go.
 //
-// pi: packages/chord/src/next/store/claims.ts
+// pi: packages/chord/src/store/claims.ts
 
 func claimFails(t *testing.T, err error, want string) {
 	t.Helper()

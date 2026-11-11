@@ -12,7 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 )
 
-// Ports packages/chord/test/next/contracts/contract.test.ts.
+// Ports packages/chord/test/contracts/contract.test.ts.
 //
 // The "derived types" cases that assert Implementation<C> and ParamsOf with expectTypeOf are not designed out: the Go
 // forms (VariantImplementation, MethodFunction, *delta.JsonObject params) carry no per-contract type, so they are

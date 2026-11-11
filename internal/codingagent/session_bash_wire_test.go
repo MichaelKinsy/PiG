@@ -11,8 +11,8 @@ import (
 func BenchmarkBashExecutionMessageWire(b *testing.B) {
 	for _, size := range []int{0, 256, 50 * 1024} {
 		entry := BashExecutionEntry{
-			SessionEntryBase: SessionEntryBase{Type: "message", ID: "entry", Timestamp: "2026-09-01T00:00:02.000Z"},
-			Command:          "command", Output: strings.Repeat("x", size), Cancelled: true, MessageTimestamp: 1788220800000,
+			Type: "message", ID: "entry", Timestamp: "2026-09-01T00:00:02.000Z",
+			Command: "command", Output: strings.Repeat("x", size), Cancelled: true, MessageTimestamp: 1788220800000,
 		}
 		b.Run(fmt.Sprint(size), func(b *testing.B) {
 			b.ReportAllocs()

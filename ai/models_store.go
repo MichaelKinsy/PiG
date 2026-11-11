@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -14,9 +15,9 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/MichaelKinsy/PiG/internal/jsonopts"
 	"github.com/MichaelKinsy/PiG/internal/jsonparse"
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
-
 	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
 	"github.com/MichaelKinsy/PiG/internal/pilock"
 )
@@ -396,27 +397,27 @@ func parseStoredModels(data []byte) ([]storedModels, modelsRoot, error) {
 			return []storedModels{}, modelsRoot{kind: modelsRootScalar, scalar: string(canonical), scalarType: "number"}, nil
 		}
 	}
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	if token, err := decoder.Token(); err != nil || token != json.Delim('{') {
+	decoder := jsontext.NewDecoder(bytes.NewReader(data), jsonopts.Parse)
+	if token, err := decoder.ReadToken(); err != nil || token.Kind() != '{' {
 		return nil, modelsRoot{}, fmt.Errorf("models store: parse: expected a JSON object")
 	}
 	var entries []storedModels
 	positions := make(map[string]int)
-	for decoder.More() {
-		key, err := decoder.Token()
+	for decoder.PeekKind() != '}' {
+		name, err := jsonopts.ReadName(decoder) // the JavaScript key: "\ud800" and "\ud801" stay two keys, as in JSON.parse
 		if err != nil {
 			return nil, modelsRoot{}, fmt.Errorf("models store: parse: %w", err)
 		}
-		var raw json.RawMessage
-		if err := decoder.Decode(&raw); err != nil {
+		rawValue, err := decoder.ReadValue()
+		if err != nil {
 			return nil, modelsRoot{}, fmt.Errorf("models store: parse: %w", err)
 		}
-		providerID := key.(string)
-		if index, exists := positions[providerID]; exists {
+		raw := json.RawMessage(bytes.Clone(rawValue))
+		if index, exists := positions[name]; exists {
 			entries[index].raw = raw
 		} else {
-			positions[providerID] = len(entries)
-			entries = append(entries, storedModels{providerID: providerID, raw: raw})
+			positions[name] = len(entries)
+			entries = append(entries, storedModels{providerID: jsonopts.ValidName(name), raw: raw})
 		}
 	}
 	return entries, modelsRoot{}, nil

@@ -3303,11 +3303,27 @@ impl Context {
         content: impl serde::Serialize,
         deliver_as: &str,
     ) -> io::Result<()> {
+        self.send_user_message_with(content, deliver_as, None)
+    }
+
+    /// `send_user_message` with Pi's `expandPromptTemplates` option (types.ts:1792): `Some(true)` dispatches an extension
+    /// command and expands a skill command or prompt template in the text as typed input would; `None` is Pi's default,
+    /// false. On a withSession context the call runs on the replacement Session and returns after it.
+    pub fn send_user_message_with(
+        &self,
+        content: impl serde::Serialize,
+        deliver_as: &str,
+        expand_prompt_templates: Option<bool>,
+    ) -> io::Result<()> {
+        let mut options = serde_json::json!({"deliverAs": deliver_as});
+        if let Some(expand) = expand_prompt_templates {
+            options["expandPromptTemplates"] = serde_json::json!(expand);
+        }
         call_result_to_io(self.call_wire(
             "sendUserMessage",
             Some(serde_json::json!({
                 "content": content,
-                "options": {"deliverAs": deliver_as},
+                "options": options,
             })),
         )?)
     }

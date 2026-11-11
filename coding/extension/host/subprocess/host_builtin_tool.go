@@ -332,12 +332,12 @@ func (c *builtinCallbacks) readOperations(members []string) *tools.ReadOperation
 }
 
 // createReadStream opens the extension's stream of the file (Pi's createReadStream) and reads it a chunk per call; Close ends it in the extension.
-func (c *builtinCallbacks) createReadStream(_ context.Context, path string) (io.ReadCloser, error) {
+func (c *builtinCallbacks) createReadStream(_ context.Context, path string) (*tools.ReadStream, error) {
 	id, err := callString(c.call("operations.createReadStream", pathArgs{path}))
 	if err != nil {
 		return nil, err
 	}
-	return &callbackStream{callbacks: c, id: id}, nil
+	return tools.NewReadStream(&callbackStream{callbacks: c, id: id}), nil
 }
 
 // callbackStream reads a stream that lives in an extension: one operations.readStream call per chunk, which is empty at the end of the stream.

@@ -2,7 +2,7 @@ package store
 
 import "github.com/MichaelKinsy/PiG/chord/sqlite"
 
-// Ports packages/chord/src/next/store/backend.ts
+// Ports packages/chord/src/store/backend.ts
 //
 // Store backends (slice 6a §2): what a store runs on. One kind today, any `SqliteDatabase` (Node through
 // `chord/sqlite/node`, Durable Objects through `chord/sqlite/cloudflare`); its interface is internal to the store.

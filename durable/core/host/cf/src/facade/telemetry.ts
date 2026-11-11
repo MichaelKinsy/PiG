@@ -4,7 +4,7 @@
 // Context carries a span gives the core its handle (`span`) and the span's carrier (`trace`); the core answers a phase's start with the
 // `phaseSpan` hook, whose answer is the span's handle and carrier.
 import { BACKGROUND_CONTEXT, withTelemetry } from "@earendil-works/chord/context"
-import type { Context } from "@earendil-works/chord"
+import type { Context } from "@earendil-works/chord/context"
 import { NOOP_TELEMETRY_CONTEXT, NOOP_TELEMETRY_METRICS, type SpanAttributes, type TelemetryCarrier, type TelemetryContext, type TelemetrySpan } from "@earendil-works/pi-telemetry"
 import type { CoreClient } from "../client.ts"
 import type { ReportInfo } from "@earendil-works/pi-durable"

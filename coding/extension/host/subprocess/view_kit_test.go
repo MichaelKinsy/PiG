@@ -51,8 +51,8 @@ func directProbe(t *testing.T) (tui.Component, *tui.SelectList) {
 		tui.NewPaddedText("Kit probe", 2, 0, func(s string) string { return th.Bg("customMessageBg", s) }),
 		tui.NewMarkdownWithOptions("- one\n- **two**", 1, 0, &md, nil, &tui.MarkdownOptions{}),
 		tui.NewHStack([]tui.StackChild{
-			{Component: tui.NewTruncatedText("left side", 0, 0), StackEntryOptions: tui.StackEntryOptions{Grow: &one}},
-			{Component: tui.NewTruncatedText("right", 0, 0), StackEntryOptions: tui.StackEntryOptions{Grow: &one}},
+			{Component: tui.NewTruncatedText("left side", 0, 0), Grow: &one},
+			{Component: tui.NewTruncatedText("right", 0, 0), Grow: &one},
 		}, tui.StackOptions{Gap: &one}),
 		tui.NewSpacer(1),
 		list,

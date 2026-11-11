@@ -9,7 +9,8 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
-func recordUserContent(actions *[]string, content any, deliverAs string) error {
+// recordUserContent records one sendUserMessage the host received. expand is Pi's expandPromptTemplates option: nil (not sent) records nothing, so a row that must see the option cannot pass on an SDK that never sends it.
+func recordUserContent(actions *[]string, content any, deliverAs string, expand *bool) error {
 	text, ok := content.(string)
 	if !ok {
 		raw, err := json.Marshal(content)
@@ -18,7 +19,11 @@ func recordUserContent(actions *[]string, content any, deliverAs string) error {
 		}
 		text = string(raw)
 	}
-	*actions = append(*actions, fmt.Sprintf("sendUserMessage:%s:%s", text, deliverAs))
+	line := fmt.Sprintf("sendUserMessage:%s:%s", text, deliverAs)
+	if expand != nil {
+		line += fmt.Sprintf(":expand=%t", *expand)
+	}
+	*actions = append(*actions, line)
 	return nil
 }
 

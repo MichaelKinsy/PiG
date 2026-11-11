@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-// Ports packages/chord/src/next/registries/internal.ts (what Chord's layers import: the record, the contribution and
+// Ports packages/chord/src/registries/internal.ts (what Chord's layers import: the record, the contribution and
 // the value source). The barrel itself is designed out: Go imports the package.
 
 // try runs work, returning what a `throw` would: its error, or a panic recovered as one. A registry runs the

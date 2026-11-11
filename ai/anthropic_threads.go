@@ -14,6 +14,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 )
 
 // Message threads (Pi a758f3ae4): the server keeps the conversation of a thread, so a request can continue from the previous reply and send only the new
@@ -200,32 +202,80 @@ func (full *anthThreadPayload) hashPrefix(providerID, baseURL string, messages [
 // last request has none in this one. Extensions may add markers anywhere too. To attach that marker, the newest user message's string
 // content is sent as one text block; the next request sends the same message as a string.
 func normalizeThreadMessage(message json.RawMessage) ([]byte, error) {
-	decoder := json.NewDecoder(bytes.NewReader(message))
-	decoder.UseNumber()
-	var value any
-	if err := decoder.Decode(&value); err != nil {
-		return nil, err
-	}
-	return json.Marshal(normalizeThreadValue(value))
+	return normalizeThreadValue(message)
 }
 
-func normalizeThreadValue(value any) any {
-	switch v := value.(type) {
-	case map[string]any:
-		delete(v, "cache_control")
-		for key, member := range v {
-			if text, ok := member.(string); ok && key == "content" {
-				v[key] = []any{map[string]any{"type": "text", "text": text}}
+// normalizeThreadValue walks value through json.RawMessage containers, so no member is decoded into an interface, and writes every object's
+// members in the order they have (orderedjson), as JSON.stringify writes them in hashThreadPrefix.
+func normalizeThreadValue(value json.RawMessage) (json.RawMessage, error) {
+	switch firstJSONByte(value) {
+	case '{':
+		object, err := orderedjson.Parse(value)
+		if err != nil {
+			return nil, err
+		}
+		object.Delete("cache_control")
+		for _, key := range object.Keys() {
+			member, _ := object.Get(key)
+			if key == "content" && firstJSONByte(member) == '"' {
+				var text string
+				if err := json.Unmarshal(member, &text); err != nil {
+					return nil, err
+				}
+				quoted, err := json.Marshal(text)
+				if err != nil {
+					return nil, err
+				}
+				object.Set(key, append(append([]byte(`[{"type":"text","text":`), quoted...), "}]"...))
 				continue
 			}
-			v[key] = normalizeThreadValue(member)
+			normalized, err := normalizeThreadValue(member)
+			if err != nil {
+				return nil, err
+			}
+			object.Set(key, normalized)
 		}
-	case []any:
-		for i, member := range v {
-			v[i] = normalizeThreadValue(member)
+		return object.MarshalJSON()
+	case '[':
+		var members []json.RawMessage
+		if err := json.Unmarshal(value, &members); err != nil {
+			return nil, err
 		}
+		out := []byte{'['}
+		for i, member := range members {
+			normalized, err := normalizeThreadValue(member)
+			if err != nil {
+				return nil, err
+			}
+			if i > 0 {
+				out = append(out, ',')
+			}
+			out = append(out, normalized...)
+		}
+		return append(out, ']'), nil
+	case '"':
+		var text string
+		if err := json.Unmarshal(value, &text); err != nil {
+			return nil, err
+		}
+		return json.Marshal(text)
 	}
-	return value
+	if !json.Valid(value) {
+		return nil, fmt.Errorf("anthropic thread: message is not valid JSON")
+	}
+	return json.Marshal(value)
+}
+
+// firstJSONByte is the first non-space byte of value, or 0.
+func firstJSONByte(value json.RawMessage) byte {
+	for _, b := range value {
+		switch b {
+		case ' ', '\t', '\n', '\r':
+			continue
+		}
+		return b
+	}
+	return 0
 }
 
 // anthThreadRequest is a request sent with a thread member.

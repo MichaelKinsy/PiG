@@ -15,6 +15,7 @@ import (
 	"bytes"
 	"cmp"
 	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"flag"
 	"fmt"
@@ -30,6 +31,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
+	"github.com/MichaelKinsy/PiG/internal/jsonopts"
 )
 
 type modelRow struct {
@@ -444,36 +446,33 @@ func parseDataJSON(path string) ([]modelRow, error) {
 	if err != nil {
 		return nil, err
 	}
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	token, err := decoder.Token()
+	decoder := jsontext.NewDecoder(bytes.NewReader(data), jsonopts.Parse)
+	token, err := decoder.ReadToken()
 	if err != nil {
 		return nil, fmt.Errorf("decode catalog root: %w", err)
 	}
-	if token != json.Delim('{') {
+	if token.Kind() != '{' {
 		return nil, fmt.Errorf("catalog root is %v, want object", token)
 	}
 	var models []jsonModel
 	seen := make(map[string]string)
-	for decoder.More() {
-		keyToken, err := decoder.Token()
+	for decoder.PeekKind() != '}' {
+		keyToken, err := decoder.ReadToken()
 		if err != nil {
 			return nil, err
 		}
-		api, ok := keyToken.(string)
-		if !ok {
-			return nil, fmt.Errorf("catalog key is %T, want string", keyToken)
-		}
-		var encoded json.RawMessage
-		if err := decoder.Decode(&encoded); err != nil {
+		api := keyToken.String() // a Token and the bytes ReadValue returns are void after the next call on the decoder
+		encoded, err := decoder.ReadValue()
+		if err != nil {
 			return nil, fmt.Errorf("%s: %w", api, err)
 		}
-		group, err := decodeJSONModelGroup(encoded, seen)
+		group, err := decodeJSONModelGroup(encoded, seen) // reads encoded before the decoder moves; keeps none of it
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", api, err)
 		}
 		models = append(models, group...)
 	}
-	if _, err := decoder.Token(); err != nil {
+	if _, err := decoder.ReadToken(); err != nil {
 		return nil, err
 	}
 	rows := make([]modelRow, 0, len(models))
@@ -515,28 +514,26 @@ func parseDataJSON(path string) ([]modelRow, error) {
 
 // decodeJSONModelGroup decodes one API group. seen maps every "<type>:<id>" key of the file to its API group.
 func decodeJSONModelGroup(data []byte, seen map[string]string) ([]jsonModel, error) {
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	token, err := decoder.Token()
+	decoder := jsontext.NewDecoder(bytes.NewReader(data), jsonopts.Parse)
+	token, err := decoder.ReadToken()
 	if err != nil {
 		return nil, fmt.Errorf("decode model group: %w", err)
 	}
-	if token != json.Delim('{') {
+	if token.Kind() != '{' {
 		return nil, fmt.Errorf("model group root is %v, want object", token)
 	}
 	var models []jsonModel
-	for decoder.More() {
-		keyToken, err := decoder.Token()
+	for decoder.PeekKind() != '}' {
+		keyToken, err := decoder.ReadToken()
 		if err != nil {
 			return nil, err
 		}
-		key, ok := keyToken.(string)
-		if !ok {
-			return nil, fmt.Errorf("model key is %T, want string", keyToken)
-		}
-		var encoded json.RawMessage
-		if err := decoder.Decode(&encoded); err != nil {
+		key := keyToken.String() // a Token and the bytes ReadValue returns are void after the next call on the decoder
+		value, err := decoder.ReadValue()
+		if err != nil {
 			return nil, fmt.Errorf("%s: %w", key, err)
 		}
+		encoded := json.RawMessage(bytes.Clone(value)) // the next call on the decoder voids value
 		encoded, err = applyD240SonnetFiveTemperature(encoded)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", key, err)
@@ -559,7 +556,7 @@ func decodeJSONModelGroup(data []byte, seen map[string]string) ([]jsonModel, err
 		seen[key] = model.API
 		models = append(models, model)
 	}
-	if _, err := decoder.Token(); err != nil {
+	if _, err := decoder.ReadToken(); err != nil {
 		return nil, err
 	}
 	return models, nil

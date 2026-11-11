@@ -82,8 +82,8 @@ func tool(name, description string, deferred bool) *durable.ToolRegistration {
 		panic(err)
 	}
 	return harness.DefineTool(durable.ToolRegistration{
-		ToolSchema: ai.ToolSchema{Name: name, Description: description, Parameters: parameters},
-		Deferred:   deferred,
+		Name: name, Description: description, Parameters: parameters,
+		Deferred: deferred,
 		Execute: func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{ai.TextContent{Text: name + " ran"}}}, nil
 		},
@@ -259,7 +259,7 @@ func TestAppendsEachLoadedToolInLoadOrderNotRegistryOrder(t *testing.T) {
 func TestRecordsLoadsByNameUnknownAndNonDeferredNamesChangeNothingRemoveWinsAndALoadLiftsIt(t *testing.T) {
 	c := setup(t)
 	grow := harness.DefineTool(durable.ToolRegistration{
-		ToolSchema: ai.ToolSchema{Name: "grow", Description: "grow", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}},
+		Name: "grow", Description: "grow", Parameters: map[string]any{"type": "object", "properties": map[string]any{}},
 		Execute: func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{}, Control: &durable.ToolControl{AddTools: []string{"github_get_issue", "alpha", "ghost"}}}, nil
 		},
@@ -370,8 +370,8 @@ func TestFindsAToolByAParameterDescriptionBehindALocalReferenceAndNotByUnreferen
 		t.Fatal(err)
 	}
 	addTool(t, c.registry, harness.DefineTool(durable.ToolRegistration{
-		ToolSchema: ai.ToolSchema{Name: "ledger_inspect", Description: "Inspect records", Parameters: parameters},
-		Deferred:   true,
+		Name: "ledger_inspect", Description: "Inspect records", Parameters: parameters,
+		Deferred: true,
 		Execute: func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{ai.TextContent{Text: "ledger_inspect ran"}}}, nil
 		},

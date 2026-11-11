@@ -59,6 +59,7 @@ func appKeybindingsCandidates() []string {
 // under default and user-overridden bindings, with and without the Kitty protocol; the matched set, the resolved keys and the set of
 // conflicts agree. Pi orders conflicts by the user's JSON key order, which Pig's map decoding does not keep, so conflicts compare sorted.
 func TestAppKeybindingsManagerMatchesPi(t *testing.T) {
+	restoreTUIKeybindings(t)
 	candidates := appKeybindingsCandidates()
 	bindingSets := []map[string][]string{
 		nil,

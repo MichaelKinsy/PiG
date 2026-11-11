@@ -19,7 +19,7 @@ func TestMessageEntryAppendStringifyMatchesMarshalJSON(t *testing.T) {
 	entries := map[string]MessageEntry{}
 	for name, parentID := range map[string]*string{"string parent": &parent, "root": nil, "number parent": new(jsValueKey(json.RawMessage("-0"))),
 		"undefined parent": new(jsValueKey(nil)), "object parent": new(jsValueKey(json.RawMessage(`{"a":"<"}`)))} {
-		entries[name] = MessageEntry{SessionEntryBase: SessionEntryBase{Type: "message", ID: "e&1", ParentID: parentID, Timestamp: "t"}, Message: message}
+		entries[name] = MessageEntry{Type: "message", ID: "e&1", ParentID: parentID, Timestamp: "t", Message: message}
 	}
 	decoded, ok := DecodeSessionEntry(json.RawMessage(`{"type":"message","id":"e1","parentId":null,"timestamp":"t","extra":"\u003c","message":{"role":"user","content":"x","timestamp":1}}`)).(MessageEntry)
 	if !ok {

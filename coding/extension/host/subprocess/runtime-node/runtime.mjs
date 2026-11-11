@@ -6,7 +6,7 @@ import { syncTerminalGeometry } from "./terminal-geometry.mjs";
 import { mountedOverlayHandle, overlayFocusTarget } from "./overlay-handle.mjs";
 import { disposeIndependentSessions } from "./independent-session-owner.mjs";
 import { dispatchNativeProvider, nativeDeclaration } from "./native-provider.mjs";
-import { dispatchProviderObjectSync, dispatchProviderObjectCallback, remoteProvider } from "./provider-object.mjs";
+import { dispatchProviderObjectSync, dispatchProviderObjectCallback, refreshModelsContext, remoteProvider } from "./provider-object.mjs";
 import { isWaiting, ProviderSocket, setProviderSocketsRef, shareDecodedFrames } from "./provider-socket.mjs";
 import { diagnose } from "./diagnostic.mjs";
 import { constants as bufferConstants } from "node:buffer";
@@ -918,6 +918,7 @@ export class ThemeShim {
     this.modifiers = true;
     // The host resolves the appearance and the concrete colors with the palette (they depend on the terminal's reported colors, which this process cannot see). Before a palette there is none.
     this.appearance = undefined;
+    this.sourceInfo = undefined;
     this.colors = Object.freeze({});
   }
   setPalette(palette = {}) {
@@ -926,6 +927,8 @@ export class ThemeShim {
     this.modifiers = palette.modifiers !== false;
     this.name = typeof palette.name === "string" ? palette.name : undefined;
     this.sourcePath = typeof palette.sourcePath === "string" && palette.sourcePath !== "" ? palette.sourcePath : undefined;
+    // Theme.sourceInfo (theme.ts:188): where the resource loader found the theme, absent for a theme it did not load.
+    this.sourceInfo = palette.sourceInfo && typeof palette.sourceInfo === "object" ? palette.sourceInfo : undefined;
     this.mode = palette.mode === "256color" ? "256color" : "truecolor";
     this.appearance = palette.appearance === "light" || palette.appearance === "dark" ? palette.appearance : undefined;
     this.colors = wireColors(palette.colors);
@@ -2345,6 +2348,8 @@ export class Runtime {
     this.providerStreams = new Map();
     // The image and classifier implementations of each provider config (types.ts:1896-1903). They cannot cross the process boundary: the register frame names their APIs and the host calls back with provider_operation.
     this.providerOperations = new Map();
+    // The refreshModels callback of each provider config (types.ts:1930): it cannot cross the process boundary, the register frame says it exists (refresh_models) and the host calls back with provider_operation.
+    this.providerRefreshModels = new Map();
     // registeredProviderConfigs holds the provider configs this extension
     // registered, merged per upstream registerProvider, and nativeProviders
     // the provider objects it registered (upstream registerNativeProvider).
@@ -2624,6 +2629,7 @@ export class Runtime {
     this.providers.delete(name);
     this.providerStreams.delete(name);
     this.providerOperations.delete(name);
+    this.providerRefreshModels.delete(name);
     this.oauthProviders.delete(name);
     this.registeredProviderConfigs.delete(name);
     this.nativeProviders.delete(name);
@@ -4917,6 +4923,11 @@ export class Runtime {
       const {streamSimple, ...serializable} = config;
       config = serializable;
     }
+    if (typeof config.refreshModels === "function") {
+      this.providerRefreshModels.set(name, config.refreshModels);
+      const {refreshModels, ...serializable} = config;
+      config = serializable;
+    } else this.providerRefreshModels.delete(name);
     // Pi merges the defined values of a re-registration over the previous root (model-runtime.ts:753-766), so a registration that defines neither keeps the implementations of the root it merged over.
     if (config.images !== undefined || config.classifiers !== undefined) {
       this.providerOperations.set(name, { images: config.images, classifiers: config.classifiers });
@@ -4931,9 +4942,12 @@ export class Runtime {
         oauth: {
           name: oauth.name || name,
           isSubscription: oauth.isSubscription === true,
+          // types.ts:2026: deprecated and ignored by Pi's auth flows; the host carries the value and never runs a callback server for it.
+          ...(oauth.usesCallbackServer === true ? { usesCallbackServer: true } : {}),
           has_login: typeof oauth.login === "function",
           has_refresh: typeof oauth.refreshToken === "function",
           has_get_api_key: typeof oauth.getApiKey === "function",
+          ...(typeof oauth.modifyModels === "function" ? { has_modify_models: true } : {}),
         },
       };
     }
@@ -4954,7 +4968,21 @@ export class Runtime {
 
   // The declaration of a provider config, as the register frame and a registration after the factory carry it: the config without its callbacks, and the operations that run in this process.
   providerDeclaration(name, config) {
-    return { name, config, ...(this.providerStreams.has(name) ? { stream_simple: true } : {}), ...this.providerOperationAPIs(name) };
+    return { name, config, ...(this.providerStreams.has(name) ? { stream_simple: true } : {}), ...(this.providerRefreshModels.has(name) ? { refresh_models: true } : {}), ...this.providerOperationAPIs(name) };
+  }
+
+  // types.ts:1930 ProviderConfig.refreshModels: the callback runs here with the refresh context the host sent and a publish whose calls reach the host's refresh while this request is in flight (provider.callback calls of the request); a publication's update runs here by token (provider_sync "update"). Pi's composer calls it with the effective registered root as its receiver and publishes the models it returns itself, so the models are the answer.
+  async runProviderRefreshModels(id, name, context, signal) {
+    const refresh = this.providerRefreshModels.get(name);
+    if (typeof refresh !== "function") throw new Error(`Provider ${name} has no refreshModels`);
+    const input = refreshModelsContext(context, async publication => {
+      const { update, ...value } = publication;
+      const token = randomUUID();
+      if (update) this.providerUpdates.set(token, update);
+      try { return await this.call("provider.callback", { provider: name, method: "publish", params: { publication: value, token: update ? token : undefined } }, { parent: id }); }
+      finally { this.providerUpdates.delete(token); }
+    }, signal);
+    return (await refresh.call(this.registeredProviderConfig(name), input)) ?? null;
   }
 
   // The APIs a provider config implements, as the register frame names them.
@@ -4978,6 +5006,7 @@ export class Runtime {
     this.registeredProviderConfigs.delete(provider.id);
     this.providerStreams.delete(provider.id);
     this.providerOperations.delete(provider.id);
+    this.providerRefreshModels.delete(provider.id);
     this.providers.delete(provider.id);
     this.nativeProviders.set(provider.id, provider);
     if (this.loadState === "active") {
@@ -4999,6 +5028,7 @@ export class Runtime {
     this.providers.delete(name);
     this.providerStreams.delete(name);
     this.providerOperations.delete(name);
+    this.providerRefreshModels.delete(name);
     this.oauthProviders.delete(name);
     this.registeredProviderConfigs.delete(name);
     this.nativeProviders.delete(name);
@@ -5053,6 +5083,14 @@ export class Runtime {
           ? provider.getApiKey(oauthCredsFromWire(request.args))
           : (request.args?.access ?? "");
         await this.respond(id, { apiKey: String(key ?? "") });
+        return;
+      }
+      case "oauth_modify_models": {
+        // types.ts:2034: the legacy synchronous projection of the registered models by the stored credential; the host sends the chat models and the stored credential.
+        if (typeof provider.modifyModels !== "function") throw new Error("provider does not support modifyModels");
+        // provider-composer.ts:564-569 spreads the result into the model list, so a result that is not iterable is the TypeError of that spread, V8's own text.
+        const models = [...provider.modifyModels(request.args?.models ?? [], oauthCredsFromWire(request.args?.credentials))];
+        await this.respond(id, { models });
         return;
       }
       default:
@@ -5126,6 +5164,10 @@ export class Runtime {
         case "provider_operation": {
           // types.ts:1896-1898: the implementation of the config's image or classifier API runs here with the model, the context and the resolved request options; its result, or its error, is the answer.
           const { kind, api, model, context, options } = request.args ?? {};
+          if (kind === "refreshModels") {
+            await this.respond(id, await this.runProviderRefreshModels(id, request.tool, context ?? {}, ctx[requestSignal]));
+            return;
+          }
           if (kind !== "images" && kind !== "classifiers") throw new Error(`Unknown provider operation ${JSON.stringify(kind)}`);
           const label = kind === "images" ? "image" : "classifier";
           const method = kind === "images" ? "generateImages" : "classify";
@@ -5539,6 +5581,7 @@ export class Runtime {
         case "oauth_login":
         case "oauth_refresh":
         case "oauth_get_api_key":
+        case "oauth_modify_models":
           await this.dispatchOAuth(id, request, ctx[requestSignal]);
           return;
         default:

@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"encoding/json/jsontext"
 	"fmt"
 	"io"
 	"maps"
@@ -14,6 +15,8 @@ import (
 
 	sdkjson "github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/allocsize"
+	"github.com/MichaelKinsy/PiG/internal/jsonopts"
+	"github.com/MichaelKinsy/PiG/internal/jsonwire"
 	"github.com/MichaelKinsy/PiG/internal/jsparity"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/telemetry"
@@ -290,6 +293,10 @@ func marshalContent(contentType string, content any) ([]byte, error) {
 	} else {
 		encoded = append(encoded, '}')
 	}
+	// JSON.stringify writes a negative zero as 0 and an ill-formed byte as the replacement character, as MarshalJSONTo does.
+	if jsonwire.MayHaveJSForms(encoded) {
+		return sdkjson.AppendJSNormalized(encoded[:0], encoded)
+	}
 	return encoded, nil
 }
 
@@ -429,28 +436,27 @@ func (s OrderedSections) MarshalJSON() ([]byte, error) {
 }
 
 func (s *OrderedSections) UnmarshalJSON(data []byte) error {
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	token, err := decoder.Token()
+	decoder := jsontext.NewDecoder(bytes.NewReader(data), jsonopts.Parse)
+	token, err := decoder.ReadToken()
 	if err != nil {
 		return err
 	}
-	if token != json.Delim('{') {
+	if token.Kind() != '{' {
 		return fmt.Errorf("system message sections must be an object")
 	}
 	sections := OrderedSections{}
-	for decoder.More() {
-		nameToken, err := decoder.Token()
+	var jsNames []string // the keys as JSON.parse has them, parallel to sections
+	for decoder.PeekKind() != '}' {
+		jsName, err := jsonopts.ReadName(decoder) // the JavaScript key: "\ud800" and "\ud801" stay two keys, as in JSON.parse
 		if err != nil {
 			return err
 		}
-		name, ok := nameToken.(string)
-		if !ok {
-			return fmt.Errorf("system message section name must be a string")
-		}
-		var raw json.RawMessage
-		if err := decoder.Decode(&raw); err != nil {
+		name := jsonopts.ValidName(jsName)
+		rawValue, err := decoder.ReadValue()
+		if err != nil {
 			return err
 		}
+		raw := json.RawMessage(rawValue) // json.Unmarshal below reads it before the decoder moves on
 		var value *string
 		if string(raw) != "null" {
 			var text string
@@ -459,13 +465,14 @@ func (s *OrderedSections) UnmarshalJSON(data []byte) error {
 			}
 			value = &text
 		}
-		if index := slices.IndexFunc(sections, func(section PromptSection) bool { return section.Name == name }); index >= 0 {
+		if index := slices.Index(jsNames, jsName); index >= 0 {
 			sections[index].Value = value
 		} else {
+			jsNames = append(jsNames, jsName)
 			sections = append(sections, PromptSection{Name: name, Value: value})
 		}
 	}
-	if _, err := decoder.Token(); err != nil {
+	if _, err := decoder.ReadToken(); err != nil {
 		return err
 	}
 	// JSON.parse yields an object whose integer-like keys enumerate first.

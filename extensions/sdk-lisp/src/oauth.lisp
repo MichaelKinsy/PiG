@@ -23,7 +23,10 @@ DELETE-CREDENTIALS () -> boolean."
 (defstruct oauth-provider
   "An OAuth capability attached to a model provider; only the functions that are set are advertised. LOGIN is (lambda (callbacks)) ->
 credentials, REFRESH-TOKEN (credentials) -> credentials, GET-API-KEY (credentials) -> string."
-  (name "") login refresh-token get-api-key credential-store is-subscription)
+  (name "") login refresh-token get-api-key credential-store is-subscription
+  ;; MODIFY-MODELS is Pi's legacy projection (oauth.modifyModels, types.ts:2034): (lambda (models credentials)) -> models, the provider's chat models as model objects and the stored credential.
+  ;; USES-CALLBACK-SERVER is T for Pi's deprecated flag: canonical auth flows ignore it (types.ts:2026), so it changes nothing.
+  modify-models uses-callback-server)
 (defstruct (oauth-login-callbacks (:constructor make-oauth-login-callbacks (ext request-id))) ext request-id)
 
 (defun oauth-credentials (&key (access "") (refresh "") (expires 0) project-id account-id scope extra)
@@ -112,6 +115,8 @@ credentials, REFRESH-TOKEN (credentials) -> credentials, GET-API-KEY (credential
                                  "has_refresh" (prov-bool (oauth-provider-refresh-token provider))
                                  "has_get_api_key" (prov-bool (oauth-provider-get-api-key provider)))))
             (when (oauth-provider-credential-store provider) (setf (gethash "has_credential_store" descriptor) t))
+            (when (oauth-provider-modify-models provider) (setf (gethash "has_modify_models" descriptor) t))
+            (when (eq (oauth-provider-uses-callback-server provider) t) (setf (gethash "usesCallbackServer" descriptor) t))
             descriptor))
     (ensure-jsonable config (format nil "provider config for ~A" name))
     (let ((entry (obj "name" name "config" config)) previous)
@@ -151,6 +156,11 @@ credentials, REFRESH-TOKEN (credentials) -> credentials, GET-API-KEY (credential
 (def-request "oauth_get_api_key" (ext ctx req)
   (let ((provider (oauth-provider-for ext req)))
     (obj "apiKey" (if (oauth-provider-get-api-key provider) (funcall (oauth-provider-get-api-key provider) (jget req "args")) ""))))
+(def-request "oauth_modify_models" (ext ctx req)
+  ;; types.ts:2034: the legacy projection of the provider's chat models by the stored credential; the models it returns replace them.
+  (let ((provider (oauth-provider-for ext req)) (args (prov-object (jget req "args"))))
+    (unless (oauth-provider-modify-models provider) (error "provider does not support modifyModels"))
+    (obj "models" (prov-vec (funcall (oauth-provider-modify-models provider) (jget args "models") (jget args "credentials"))))))
 
 (def-request "oauth_credential_status" (ext ctx req)
   (let ((status (funcall (oauth-credential-store-credential-status (oauth-store-for ext req)))))

@@ -135,6 +135,13 @@ def readme(pin: Pin, text: str) -> str:
     return sub(r"The pinned Pi (?:release|build) is [^`]*at commit `[0-9a-f]{40}`\.|The pinned Pi build is [^`]*, commit `[0-9a-f]{40}` of the main branch\.", sentence, text, "README.md", 1)
 
 
+def provenance(pin: Pin, text: str) -> str:
+    """The upstream pin and commit lines of docs/project/PROVENANCE.md."""
+    kind = f"release tag `{pin.tag}`" if pin.kind == "tag" else "a commit of Pi's main branch"
+    lines = f"- Upstream pin: `{pin.version}` ({kind})\n- Upstream commit: `{pin.commit}`"
+    return sub(r"^- Upstream (?:release|pin): `[^`]*`[^\n]*\n- Upstream commit: `[0-9a-f]{40}`$", lines, text, "docs/project/PROVENANCE.md", 1)
+
+
 def package_deps(names: list[str]):
     def apply(pin: Pin, text: str, path: str = "") -> str:
         pattern = r'("(?:%s)"\s*:\s*")[^"]+(")' % "|".join(re.escape(n) for n in names)
@@ -175,6 +182,7 @@ ORACLE_PACKAGES = ['@earendil-works/pi-agent-core', '@earendil-works/pi-ai', '@e
 RULES: list[tuple[str, object, str | None]] = [
     (".gitignore", lambda p, t: interface_snapshot_ignore(p, t), None),
     ("README.md", lambda p, t: readme(p, t), None),
+    ("docs/project/PROVENANCE.md", lambda p, t: provenance(p, t), None),
     ("docs/site/docs/index.md", regex_rule(r"^(\| Pinned Pi release \(behavior oracle\) \| Pi )\S+( \|)", r"\g<1>{v}\g<2>"), None),
     ("extensions/sdk-ts/package.json", package_deps(["@earendil-works/pi-coding-agent"]), "extensions/sdk-ts"),
     ("extensions/sdk-ts/README.md", lambda p, t: sub(r"(pi-coding-agent@)\S+", rf"\g<1>{p.package_version}", sub(r"(API from Pi )\S+?(?=\. It contains)", rf"\g<1>{p.package_version}", t, "README"), "README"), None),

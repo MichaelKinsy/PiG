@@ -10,7 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 )
 
-// Ports packages/chord/src/next/host/destination.ts. Destination (§3, section 1's table; dependency model §1): where a
+// Ports packages/chord/src/host/destination.ts. Destination (§3, section 1's table; dependency model §1): where a
 // reference made on a host, or a hold arriving on one of its links, goes, by address alone: here when the address is this
 // host's (served here or not), else over the route of its host address's kind, or over the parent link; and the check
 // that an object served here lives here.

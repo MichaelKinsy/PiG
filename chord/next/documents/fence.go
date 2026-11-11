@@ -2,7 +2,7 @@ package documents
 
 import "sync/atomic"
 
-// Ports packages/chord/src/next/documents/fence.ts
+// Ports packages/chord/src/documents/fence.ts
 //
 // The seal fence (slice 6a §1.3): the token an attempt, a job run's invocation or the object itself hands its
 // transactions. Once sealed, new transactions under it are refused `released` and the open one is discarded.

@@ -243,7 +243,7 @@ func runLlamaOracleScenario(t *testing.T, scenario llamaOracleScenario) llamaOra
 		view.ShowStatus(op.Title, op.Message)
 	case "progress":
 		toState := func(s llamaOracleState) ProgressState {
-			return ProgressState{LlamaProgress: LlamaProgress{Message: s.Message, Ratio: s.Ratio, Detail: s.Detail}, Title: s.Title, Model: s.Model}
+			return ProgressState{Message: s.Message, Ratio: s.Ratio, Detail: s.Detail, Title: s.Title, Model: s.Model}
 		}
 		view.UpdateProgress(toState(op.States[0])) // ignored: no progress is showing yet
 		progressStop = view.Progress(toState(op.States[0]))

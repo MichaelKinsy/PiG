@@ -111,7 +111,7 @@ type wireTreeBuilder struct {
 
 func (b *wireTreeBuilder) add(message agent.AgentMessage) string {
 	b.t.Helper()
-	id, err := b.sess.inner.AppendMessage(message)
+	id, err := b.sess.inner.Load().AppendMessage(message)
 	if err != nil {
 		b.t.Fatal(err)
 	}
@@ -146,7 +146,7 @@ func (b *wireTreeBuilder) result(id string) string {
 
 func (b *wireTreeBuilder) forkAt(id string) {
 	b.t.Helper()
-	if err := b.sess.inner.SetLeafID(&id); err != nil {
+	if err := b.sess.inner.Load().SetLeafID(&id); err != nil {
 		b.t.Fatal(err)
 	}
 }

@@ -247,8 +247,9 @@ func TestATerminalIsNotLeftRawWhenTheSandboxEndsWhileTheLauncherStarts(t *testin
 	in, inWriter := io.Pipe()
 	defer func() { _ = inWriter.Close() }()
 	terminal := &slowTTY{in: in}
+	input, output := streamsOf(terminal)
 	running, err := StartTerminal(context.Background(), TerminalOptions{URL: server.URL, Credentials: TerminalCredentials{Kind: CredentialsToken, Token: "t"},
-		Terminal: terminal, Node: node, Locales: []string{"en"}})
+		Input: input, Output: output, Node: node, Locales: []string{"en"}})
 	if err != nil {
 		return
 	}

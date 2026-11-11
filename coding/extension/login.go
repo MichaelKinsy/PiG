@@ -3,6 +3,7 @@ package extension
 import (
 	"bytes"
 	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"image/color"
@@ -13,6 +14,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/MichaelKinsy/PiG/internal/jsonopts"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
@@ -105,35 +107,37 @@ func DecodeLoginDefinitionJSON(data []byte) (ValidatedLoginDefinition, error) {
 }
 
 func rejectDuplicateLoginJSONFields(data []byte) error {
-	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder := jsontext.NewDecoder(bytes.NewReader(data), jsonopts.Parse)
 	if err := scanLoginJSONValue(decoder, ""); err != nil {
 		return err
 	}
-	return requireLoginJSONEOF(decoder)
+	if _, err := decoder.ReadToken(); !errors.Is(err, io.EOF) {
+		if err == nil {
+			return fmt.Errorf("decode login definition: trailing JSON value")
+		}
+		return fmt.Errorf("decode login definition: %w", err)
+	}
+	return nil
 }
 
-func scanLoginJSONValue(decoder *json.Decoder, path string) error {
-	token, err := decoder.Token()
+func scanLoginJSONValue(decoder *jsontext.Decoder, path string) error {
+	token, err := decoder.ReadToken()
 	if err != nil {
 		return fmt.Errorf("decode login definition: %w", err)
 	}
-	delim, ok := token.(json.Delim)
-	if !ok {
+	delim := token.Kind()
+	if delim != '{' && delim != '[' && delim != '}' && delim != ']' {
 		return nil
 	}
 	switch delim {
 	case '{':
 		seen := make(map[string]struct{})
-		for decoder.More() {
-			keyToken, err := decoder.Token()
+		for decoder.PeekKind() != '}' {
+			key, err := jsonopts.ReadName(decoder) // the JavaScript key, not Token.String(): see jsonopts.ReadName
 			if err != nil {
 				return fmt.Errorf("decode login definition: %w", err)
 			}
-			key, ok := keyToken.(string)
-			if !ok {
-				return fmt.Errorf("decode login definition: object key is not a string")
-			}
-			field := loginJSONFieldPath(path, key)
+			field := loginJSONFieldPath(path, jsonopts.ValidName(key)) // the path is only for the message
 			if _, duplicate := seen[key]; duplicate {
 				return loginDefinitionError(field, "field occurs more than once")
 			}
@@ -142,20 +146,20 @@ func scanLoginJSONValue(decoder *json.Decoder, path string) error {
 				return err
 			}
 		}
-		if _, err := decoder.Token(); err != nil {
+		if _, err := decoder.ReadToken(); err != nil {
 			return fmt.Errorf("decode login definition: %w", err)
 		}
 	case '[':
-		for index := 0; decoder.More(); index++ {
+		for index := 0; decoder.PeekKind() != ']'; index++ {
 			if err := scanLoginJSONValue(decoder, fmt.Sprintf("%s[%d]", path, index)); err != nil {
 				return err
 			}
 		}
-		if _, err := decoder.Token(); err != nil {
+		if _, err := decoder.ReadToken(); err != nil {
 			return fmt.Errorf("decode login definition: %w", err)
 		}
 	default:
-		return fmt.Errorf("decode login definition: unexpected delimiter %q", delim)
+		return fmt.Errorf("decode login definition: unexpected delimiter %q", rune(delim))
 	}
 	return nil
 }

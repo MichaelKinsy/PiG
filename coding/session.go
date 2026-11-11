@@ -56,9 +56,10 @@ type Session struct {
 	rebindSession            func(context.Context, extension.SessionStartEvent) error
 	beforeSessionReplacement func(context.Context) error
 	services                 *AgentSessionServices
-	inner                    *icodingagent.Session
-	contextUsageMu           sync.Mutex
-	contextUsageMemo         contextUsageMemo
+	// inner is the session log. ReplaceInner stores it under mu, while ID, Path, CWD and Inner read it from any goroutine without mu (a host call reads the id while a swap holds mu through the host report), so it is read and stored atomically.
+	inner            atomic.Pointer[icodingagent.Session]
+	contextUsageMu   sync.Mutex
+	contextUsageMemo contextUsageMemo
 	// boundaryRecords are the entry records the latest boundary projection handed its dispatch.
 	boundaryRecords boundaryRecords
 	agent           *agent.Agent
@@ -75,7 +76,7 @@ type Session struct {
 	modelRuntime     *ModelRuntime
 	modelRegistry    *ModelRegistry
 	sessionDir       string
-	noSession        bool
+	noSession        atomic.Bool // whether the installed log has no file: ReplaceInner stores it under mu, /new, /fork and Clone read it without mu
 	scopedModels     sessionScopedModels
 	runnerMu         sync.RWMutex
 	runner           *inproc.Runner // extension runner for event dispatch
@@ -129,6 +130,8 @@ type Session struct {
 	lastAssistantMessage      *agent.AssistantMessage
 	// boundaryEncodings keeps the encodings of the latest boundary preview's messages for the next dispatch.
 	boundaryEncodings boundarywire.Encodings
+	// contextEncodings and contextWithSystemEncodings keep the encodings of the conversation's messages from one model request to the next, for the context and the context_with_system dispatch.
+	contextEncodings, contextWithSystemEncodings boundarywire.Encodings
 
 	mu sync.Mutex // protects Session state
 
@@ -733,7 +736,6 @@ func NewSession(svcs *AgentSessionServices, opts SessionOptions) (*Session, erro
 	sess = &Session{
 		processImage:            imageprocessing.ProcessImage,
 		services:                svcs,
-		inner:                   inner,
 		agent:                   agent,
 		previousPrepareRequest:  previousRequest,
 		previousPrepareNextTurn: previousNextTurn,
@@ -742,7 +744,6 @@ func NewSession(svcs *AgentSessionServices, opts SessionOptions) (*Session, erro
 		modelRuntime:            svcs.ModelRuntime(),
 		modelRegistry:           svcs.Registry(),
 		sessionDir:              opts.SessionDir,
-		noSession:               opts.NoSession,
 		runner:                  opts.Runner,
 		extensionHost:           opts.extensionHost,
 		sharedRunner:            sharedRunner(opts),
@@ -758,6 +759,8 @@ func NewSession(svcs *AgentSessionServices, opts SessionOptions) (*Session, erro
 			transport:       opts.Transport,
 		},
 	}
+	sess.inner.Store(inner)
+	sess.noSession.Store(opts.NoSession)
 	sess.resourceLoader.Store(resourceLoader)
 	sess.SetScopedModels(opts.ScopedModels)
 	var initialToolNames []string
@@ -798,6 +801,7 @@ func NewSession(svcs *AgentSessionServices, opts SessionOptions) (*Session, erro
 	sess.initSystemPrompt(opts)
 	sess.refreshContext()
 	sess.installCacheWarmer(inner, opts.CacheWarmer)
+	//portlint:allow asyncorder forwardAgentEvents is the Session's event executor: rawEvents is a FIFO and the ordering point, as agent.subscribe(_handleAgentEvent) (agent-session.ts:546, 1164) runs its listeners in emission order; it ends by closing events once the Session closes
 	go sess.forwardAgentEvents()
 	return sess, nil
 }
@@ -826,7 +830,7 @@ func (s *Session) persistMessage(msg agent.AgentMessage) error {
 		s.overflowRecoveryAttempted.Store(false)
 	}
 	var err error
-	if in := s.inner; in != nil {
+	if in := s.inner.Load(); in != nil {
 		var id string
 		if msg.Custom != nil {
 			customType, _ := msg.Custom["customType"].(string)
@@ -1182,13 +1186,13 @@ func providerID(m *ai.Model) string {
 
 // ID returns the session identifier (the part after the timestamp in
 // the JSONL filename).
-func (s *Session) ID() string { return s.inner.ID() }
+func (s *Session) ID() string { return s.inner.Load().ID() }
 
 // Path returns the absolute path to the session's JSONL file on disk.
-func (s *Session) Path() string { return s.inner.Path() }
+func (s *Session) Path() string { return s.inner.Load().Path() }
 
 // CWD returns the working directory the session was created with.
-func (s *Session) CWD() string { return s.inner.CWD() }
+func (s *Session) CWD() string { return s.inner.Load().CWD() }
 
 // Tools returns a defensive copy of the active loadout. Use GetAllTools for admitted definitions that are currently inactive.
 func (s *Session) Tools() []agent.AgentTool {
@@ -1371,8 +1375,8 @@ func (s *Session) beginModelChangeState(ctx context.Context, m *ai.Model, source
 		s.agent.SetModel(m)
 	}
 	s.modelChangeMu.Unlock()
-	if s.inner != nil {
-		if _, err := s.inner.AppendModelChange(providerID(m), m.ID); err != nil {
+	if in := s.inner.Load(); in != nil {
+		if _, err := in.AppendModelChange(providerID(m), m.ID); err != nil {
 			return nil, fmt.Errorf("coding: SetModel: persist audit: %w", err)
 		}
 	}
@@ -1438,7 +1442,7 @@ func (s *Session) Agent() *agent.Agent { return s.agent }
 // though it is exported. Likely to be removed once F4–F5 finalise
 // the public API surface; SDK consumers should use the public
 // Session methods (Path, ID, CWD, Messages, Send, etc.) instead.
-func (s *Session) Inner() *icodingagent.Session { return s.inner }
+func (s *Session) Inner() *icodingagent.Session { return s.inner.Load() }
 
 // ReplaceInner aborts work owned by the old Session, then installs the new
 // Session state, including whether its manager persists to a file.
@@ -1451,14 +1455,14 @@ func (s *Session) ReplaceInner(sess *icodingagent.Session) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	defer s.beginReplicatedChange()()
-	s.inner = sess
+	s.inner.Store(sess)
 	// The messages of the session left are no message of the one installed: the numbering does not hold them.
 	s.messageSeqs.reset()
 	// upstream: runner.ts:889-891. Extensions see the log the Session now owns, and nothing keeps the replaced one alive.
 	if runner := s.currentRunner(); runner != nil {
 		runner.BindSessionManager(sess)
 	}
-	s.noSession = sess.Path() == ""
+	s.noSession.Store(sess.Path() == "")
 	s.agent.SetSessionID(sess.ID())
 	s.refreshReplacementContext()
 	model, thinking := restoreSessionRuntimeState(sess, s.services, s.Model(), s.agent.ThinkingLevel(), true)
@@ -1616,13 +1620,13 @@ func (s *Session) Close() error {
 // SessionName returns the current user-defined session name (set via /name
 // or SetSessionName), or "" if none has been set.
 // Mirrors upstream session.sessionName getter (agent-session.ts:849).
-func (s *Session) SessionName() string { return s.inner.GetSessionName() }
+func (s *Session) SessionName() string { return s.inner.Load().GetSessionName() }
 
 // SetSessionName persists the sanitized Session name, immediately notifies subscribers, and admits the extension handler's synchronous prefix before returning. Suspended extension work belongs to the Session lifetime. An empty name clears the current name; RPC and slash-command boundaries validate their own non-empty input.
 func (s *Session) SetSessionName(name string) error {
 	// Pi reads the name synchronously after its own append (agent-session.ts:3559-3560); a concurrent caller's later append cannot change the name this call publishes.
 	s.replicatedBegin.Notify()
-	_, current, err := s.inner.AppendSessionInfoName(name)
+	_, current, err := s.inner.Load().AppendSessionInfoName(name)
 	if err != nil {
 		s.replicatedEnd.Notify()
 		return fmt.Errorf("coding: SetSessionName: append: %w", err)
@@ -1680,7 +1684,7 @@ type ForkMessage struct {
 // IDs, suitable for presenting fork targets to the user.
 // Mirrors upstream getUserMessagesForForking (agent-session.ts:2856).
 func (s *Session) UserMessagesForForking() []ForkMessage {
-	entries := s.inner.GetMessageEntriesWithRole("user")
+	entries := s.inner.Load().GetMessageEntriesWithRole("user")
 	out := make([]ForkMessage, 0, len(entries))
 	for _, e := range entries {
 		me, ok := icodingagent.AsMessage(e)
@@ -1746,7 +1750,7 @@ type SessionContextUsage struct {
 // GetSessionStats returns aggregate stats for this session.
 // Mirrors upstream getSessionStats (agent-session.ts:2887-2935).
 func (s *Session) GetSessionStats() SessionStats {
-	accounting := s.inner.Accounting()
+	accounting := s.inner.Load().Accounting()
 	return SessionStats{
 		SessionFile:       s.Path(),
 		SessionID:         s.ID(),
@@ -1779,7 +1783,7 @@ func (s *Session) ContextUsage() *SessionContextUsage {
 		return nil
 	}
 	contextWindow := model.Capabilities.ContextWindow
-	log := s.inner
+	log := s.inner.Load()
 	revision := log.Revision()
 	s.contextUsageMu.Lock()
 	memo := s.contextUsageMemo
@@ -2083,7 +2087,7 @@ func (s *Session) setThinkingLevelState(level ai.ModelThinkingLevel, options ...
 	if effective == previous {
 		return nil, nil
 	}
-	if _, err := s.inner.AppendThinkingLevelChange(string(effective)); err != nil {
+	if _, err := s.inner.Load().AppendThinkingLevelChange(string(effective)); err != nil {
 		return nil, err
 	}
 	runner := s.currentRunner()
@@ -2167,7 +2171,7 @@ func (s *Session) executeBash(ctx context.Context, command string, excludeFromCo
 	// The awaited executor can publish output through the Session event funnel, so release notification admission after setup rather than after Bash completion.
 	invocation.Acknowledge(ctx)
 	// upstream: packages/coding-agent/src/core/agent-session.ts:executeBash
-	shared, err := tools.ExecuteBashWithOperations(bashCtx, resolvedCommand, s.inner.CWD(), operations, tools.BashExecOptions{OnChunk: func(delta string) {
+	shared, err := tools.ExecuteBashWithOperations(bashCtx, resolvedCommand, s.inner.Load().CWD(), operations, tools.BashExecOptions{OnChunk: func(delta string) {
 		if onChunk != nil {
 			onChunk(delta)
 		}
@@ -2246,7 +2250,7 @@ func (s *Session) appendBashLocked(rec pendingBashRecord) error {
 }
 
 func (s *Session) appendBashEntry(rec pendingBashRecord) error {
-	_, err := s.inner.AppendBashExecution(icodingagent.BashExecutionMessage{
+	_, err := s.inner.Load().AppendBashExecution(icodingagent.BashExecutionMessage{
 		Role: "bashExecution", Command: rec.command, Output: rec.result.Output,
 		ExitCode: rec.result.ExitCode, Cancelled: rec.result.Cancelled,
 		Truncated: rec.result.Truncated, FullOutputPath: rec.result.FullOutputPath,
@@ -2946,14 +2950,14 @@ func (s *Session) compact(ctx context.Context, customInstructions string) (*Comp
 	}
 
 	s.mu.Lock()
-	entryID, err := s.inner.AppendCompaction(result.Summary, result.FirstKeptEntryID, result.TokensBefore, result.Details, fromExtension, result.Usage)
+	entryID, err := s.inner.Load().AppendCompaction(result.Summary, result.FirstKeptEntryID, result.TokensBefore, result.Details, fromExtension, result.Usage)
 	if err != nil {
 		s.mu.Unlock()
 		return fail(fmt.Errorf("coding: Compact: persist: %w", err), false)
 	}
 	s.refreshContext()
 	estimatedTokensAfter := estimateMessagesTokens(s.agent.Messages())
-	entry, haveEntry := s.inner.GetEntry(entryID)
+	entry, haveEntry := s.inner.Load().GetEntry(entryID)
 	s.mu.Unlock()
 
 	if haveEntry {
@@ -3136,7 +3140,8 @@ func (s *Session) navigateTree(ctx context.Context, targetID string, opts Naviga
 
 	// Snapshot current leaf under lock.
 	s.mu.Lock()
-	oldLeafID := s.inner.GetLeafID()
+	in := s.inner.Load()
+	oldLeafID := in.GetLeafID()
 	s.mu.Unlock()
 
 	// No-op if already at target.
@@ -3147,13 +3152,13 @@ func (s *Session) navigateTree(ctx context.Context, targetID string, opts Naviga
 	if opts.Summarize && s.Model() == nil {
 		return NavigateTreeResult{}, errors.New("No model available for summarization")
 	}
-	targetEntry, entryFound := s.inner.GetEntry(targetID)
+	targetEntry, entryFound := in.GetEntry(targetID)
 	if !entryFound {
 		return NavigateTreeResult{}, fmt.Errorf("Entry %s not found", targetID)
 	}
 
 	// Collect entries to summarize (from old leaf to common ancestor).
-	collected := compaction.CollectEntriesForBranchSummary(icodingagent.HandleReads{Session: s.inner}, derefLeafID(oldLeafID), targetID)
+	collected := compaction.CollectEntriesForBranchSummary(icodingagent.HandleReads{Session: in}, derefLeafID(oldLeafID), targetID)
 
 	// Extensions may override the instructions and label.
 	customInstructions := opts.CustomInstructions
@@ -3244,7 +3249,7 @@ func (s *Session) navigateTree(ctx context.Context, targetID string, opts Naviga
 		s.mu.Unlock()
 		return NavigateTreeResult{}, err
 	}
-	currentLeafID := s.inner.GetLeafID()
+	currentLeafID := s.inner.Load().GetLeafID()
 	s.mu.Unlock()
 
 	// The selected context is installed; session_tree handlers may now prompt or navigate again.
@@ -3343,7 +3348,7 @@ func (s *Session) checkCompactionDecision(ctx context.Context, assistantMsg *age
 
 	branch := s.currentBranch()
 	// The decision reads the projection (entry ids, estimates) and keeps none of its messages.
-	projection := s.inner.BuildSessionProjectionView()
+	projection := s.inner.Load().BuildSessionProjectionView()
 	// A message from before the latest compaction carries stale usage.
 	latestCompTS, hasCompaction := projectionCompactionTimestamp(projection)
 	if hasCompaction && assistantMsg.Timestamp <= latestCompTS {
@@ -3543,9 +3548,10 @@ func (s *Session) runAutoCompaction(ctx context.Context, reason string, willRetr
 	if err == nil && compactCtx.Err() != nil {
 		err = errCompactionCancelled
 	}
+	in := s.inner.Load()
 	var entryID string
 	if err == nil {
-		entryID, err = s.inner.AppendCompaction(result.Summary, result.FirstKeptEntryID, result.TokensBefore, result.Details, fromExtension, result.Usage)
+		entryID, err = in.AppendCompaction(result.Summary, result.FirstKeptEntryID, result.TokensBefore, result.Details, fromExtension, result.Usage)
 	}
 	if err != nil {
 		aborted := compactCtx.Err() != nil || cancelledByExtension
@@ -3563,7 +3569,7 @@ func (s *Session) runAutoCompaction(ctx context.Context, reason string, willRetr
 
 	s.refreshContext()
 	estimatedTokensAfter := estimateMessagesTokens(s.agent.Messages())
-	if entry, haveEntry := s.inner.GetEntry(entryID); haveEntry {
+	if entry, haveEntry := in.GetEntry(entryID); haveEntry {
 		s.emitSessionCompact(compactCtx, entry, fromExtension, reason, willRetry)
 	}
 	s.emitCompactionEvent(agent.CompactionEndEvent{

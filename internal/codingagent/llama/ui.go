@@ -731,8 +731,8 @@ func RunWithProgress[T any](ui LlamaUi, options RunWithProgressOptions[T]) (valu
 	runCtx, abort := context.WithCancelCause(context.Background())
 	defer abort(nil)
 	var stateMu sync.Mutex
-	state := ProgressState{Title: options.Title, Model: options.Model}
-	state.Message = options.InitialMessage
+	state := ProgressState{Title: options.Title, Model: options.Model,
+		Message: options.InitialMessage}
 	showProgress := func() <-chan struct{} {
 		stateMu.Lock()
 		defer stateMu.Unlock()

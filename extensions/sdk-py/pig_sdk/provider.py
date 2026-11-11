@@ -279,18 +279,7 @@ def dispatch_provider(extension, ctx, request):
     if method == "auth.oauth.toAuth":
         return fn(args["credential"])
     if method == "refreshModels":
-        def publish(publication):
-            value = {} if publication.persist is OMITTED else {"persist": publication.persist}
-            token = uuid.uuid4().hex
-            if publication.update:
-                with extension._provider_lock:
-                    extension._provider_updates[token] = publication.update
-            try:
-                return callback("publish", {"publication": value, **({"token": token} if publication.update else {})})
-            finally:
-                with extension._provider_lock:
-                    extension._provider_updates.pop(token, None)
-        return fn(RefreshModelsContext(publish, args.get("credential"), args.get("stored"), args.get("allowNetwork", False), args.get("force"), signal, args.get("baseUrl")))
+        return fn(refresh_context(extension, callback, args, signal))
     if method in ("generateImages", "classify"):
         return fn(args["model"], args["context"], ProviderOperationOptions(args.get("options") or {}, signal))
     options = ProviderStreamOptions(args.get("options") or {}, signal)
@@ -312,11 +301,33 @@ def dispatch_provider(extension, ctx, request):
     )
 
 
+def refresh_context(extension, callback, args, signal):
+    """RefreshModelsContext of a refresh request: publish sends the publication's persistence and the token of its update to the host as a publish callback of the request, and the host runs the update here by token (the "update" provider_sync request) while it applies the publication."""
+    def publish(publication):
+        value = {} if publication.persist is OMITTED else {"persist": publication.persist}
+        token = uuid.uuid4().hex
+        if publication.update:
+            with extension._provider_lock:
+                extension._provider_updates[token] = publication.update
+        try:
+            return callback("publish", {"publication": value, **({"token": token} if publication.update else {})})
+        finally:
+            with extension._provider_lock:
+                extension._provider_updates.pop(token, None)
+    return RefreshModelsContext(publish, args.get("credential"), args.get("stored"), args.get("allowNetwork", False), args.get("force"), signal, args.get("baseUrl"))
+
+
 def dispatch_operation(extension, ctx, request):
-    """Run the image or classifier implementation of a provider config that a provider_operation request names (types.ts:1896-1898). An error is the request's error."""
+    """Run the image, classifier or refreshModels implementation of a provider config that a provider_operation request names (types.ts:1896-1898, 1930). An error is the request's error."""
     args = request.get("args") or {}
     provider = request.get("tool", "")
     kind = args.get("kind")
+    if kind == "refreshModels":
+        refresh = (extension._provider_operations.get(provider) or {}).get("refreshModels")
+        if refresh is None:
+            raise RuntimeError(f"Provider {provider} has no refreshModels")
+        callback = lambda method, params: ctx._call("provider.callback", {"provider": provider, "method": method, "params": params}).get("result")
+        return refresh(refresh_context(extension, callback, args.get("context") or {}, ctx._cancelled))
     if kind not in ("images", "classifiers"):
         raise RuntimeError(f"Unknown provider operation {kind!r}")
     implementation = (extension._provider_operations.get(provider) or {}).get(kind, {}).get(args.get("api"))

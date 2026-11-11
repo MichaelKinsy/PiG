@@ -61,9 +61,9 @@ mod provider;
 pub use provider::{
     APIKeyAuth, APIKeyAuthInput, AuthCheck, AuthContext, AuthInteraction, AuthResult, LoginOptions,
     ModelsPublication, OAuthAuth, Provider, ProviderAuth, ProviderFilterFn, ProviderModel,
-    ProviderOperationFn, ProviderOperationOptions, ProviderOperations, ProviderResult,
-    ProviderSignal, ProviderSignalSubscription, ProviderStreamFn, ProviderStreamOptions,
-    ProviderStreamSimpleFn, RefreshModelsContext,
+    ProviderOperationFn, ProviderOperationOptions, ProviderOperations, ProviderRefreshModelsFn,
+    ProviderResult, ProviderSignal, ProviderSignalSubscription, ProviderStreamFn,
+    ProviderStreamOptions, ProviderStreamSimpleFn, RefreshModelsContext,
 };
 mod constrained_sampling;
 pub use constrained_sampling::ToolConstrainedSampling;
@@ -285,9 +285,13 @@ pub use context::{
 };
 pub use events::*;
 mod child_session;
+mod child_session_members;
 pub use child_session::{
     AgentSession, CreateAgentSessionOptions, PromptOptions, ResourceOptions, SessionStartEvent,
     SessionSubscription,
+};
+pub use child_session_members::{
+    ExecuteBashOptions, ForkMessage, ModelMutationOptions, QueuedMessages, SendUserMessageOptions,
 };
 mod create_provider;
 pub use create_provider::{
@@ -310,15 +314,15 @@ pub use agent_session_runtime::{
 pub use extension::report_load_failure;
 pub use extension::{
     CommandResult, EventSubscriber, EventSubscription, Extension, Factory, FlagOptions, FlagType,
-    MarkdownTransformContext, MarkdownTransformerOptions, ProjectTrustDecision, ProjectTrustResult, ToolDefinition,
-    ToolHandler, ToolPrepareArguments, ToolResult, context_unchanged,
+    MarkdownTransformContext, MarkdownTransformerOptions, ProjectTrustDecision, ProjectTrustResult,
+    ToolDefinition, ToolHandler, ToolPrepareArguments, ToolResult, context_unchanged,
 };
 pub use host_subscriptions::HostSubscription;
 pub use login::{LoginDefinition, SpriteDefinition};
 pub use oauth::{
     OAUTH_CANCELLED, OAuthAuthInfo, OAuthCredentialStatus, OAuthCredentialStore, OAuthCredentials,
-    OAuthDeviceCodeInfo, OAuthGetApiKeyFn, OAuthLoginCallbacks, OAuthLoginFn, OAuthPrompt,
-    OAuthProvider, OAuthRefreshFn, OAuthSelectOption, OAuthSelectPrompt,
+    OAuthDeviceCodeInfo, OAuthGetApiKeyFn, OAuthLoginCallbacks, OAuthLoginFn, OAuthModifyModelsFn,
+    OAuthPrompt, OAuthProvider, OAuthRefreshFn, OAuthSelectOption, OAuthSelectPrompt,
 };
 pub use protocol::{AutocompleteItem, ConstrainedSampling, Schema, empty_schema};
 pub use theme::{
@@ -327,6 +331,7 @@ pub use theme::{
 pub use tool_render::{
     SharedToolRenderCall, SharedToolRenderCallView, SharedToolRenderResult,
     SharedToolRenderResultView, ToolRenderCallHandler, ToolRenderCallViewHandler,
-    ToolRenderContext, ToolRenderResult, ToolRenderResultHandler, ToolRenderResultOptions,
-    ToolRenderResultViewHandler, ToolRenderShell, ToolRendererResolver, ToolRendererSet,
+    ToolRenderComponent, ToolRenderContext, ToolRenderResult, ToolRenderResultHandler,
+    ToolRenderResultOptions, ToolRenderResultViewHandler, ToolRenderShell, ToolRendererResolver,
+    ToolRendererSet,
 };

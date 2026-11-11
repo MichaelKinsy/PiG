@@ -13,7 +13,7 @@ import (
 // Pi custom-message.ts:23-45: the constructor builds Spacer(1) plus either the custom renderer's component or the default box.
 func TestCustomMessageComponentChildren(t *testing.T) {
 	message := &CustomMessage{CustomType: "notice", Content: "body"}
-	def := NewCustomMessageComponent(message, nil, nil, 1)
+	def := NewCustomMessageComponent(message, nil, nil, 1, nil, "", "")
 	children := def.Children()
 	if len(children) != 2 {
 		t.Fatalf("default children = %d, want Spacer + Box", len(children))
@@ -26,7 +26,7 @@ func TestCustomMessageComponentChildren(t *testing.T) {
 	}
 
 	custom := NewText("styled")
-	withRenderer := NewCustomMessageComponent(message, func(*CustomMessage, MessageRenderOptions) Component { return custom }, nil, 1)
+	withRenderer := NewCustomMessageComponent(message, func(*CustomMessage, MessageRenderOptions) Component { return custom }, nil, 1, nil, "", "")
 	children = withRenderer.Children()
 	if len(children) != 2 || children[1] != Component(custom) {
 		t.Fatalf("custom children = %v, want Spacer + the renderer's component", children)
@@ -40,7 +40,7 @@ func TestCustomMessageComponentRebuildsWithOptions(t *testing.T) {
 	c := NewCustomMessageComponent(&CustomMessage{CustomType: "x", Content: "y"}, func(_ *CustomMessage, options MessageRenderOptions) Component {
 		seen = append(seen, options)
 		return NewText("custom")
-	}, nil, 1)
+	}, nil, 1, nil, "", "")
 	c.SetExpanded(false)
 	c.SetOutputPad(1)
 	c.SetExpanded(true)
@@ -60,7 +60,7 @@ func TestCustomMessageComponentFallsBackToDefault(t *testing.T) {
 		"panic":      func(*CustomMessage, MessageRenderOptions) Component { panic("boom") },
 	} {
 		t.Run(name, func(t *testing.T) {
-			c := NewCustomMessageComponent(message, renderer, nil, 1)
+			c := NewCustomMessageComponent(message, renderer, nil, 1, nil, "", "")
 			text := widthx.StripAnsi(strings.Join(c.Render(40), "\n"))
 			if !strings.Contains(text, "[notice]") || !strings.Contains(text, "body text") {
 				t.Fatalf("default rendering missing: %q", text)
@@ -75,7 +75,7 @@ func TestCustomMessageComponentUsesMarkdownTheme(t *testing.T) {
 	theme := GetMarkdownTheme()
 	theme.Bold = func(s string) string { return "<b>" + s + "</b>" }
 	theme.Heading, theme.Italic, theme.Strikethrough, theme.Underline = identity, identity, identity, identity
-	c := NewCustomMessageComponent(&CustomMessage{CustomType: "x", Content: "**strong**"}, nil, &theme, 1)
+	c := NewCustomMessageComponent(&CustomMessage{CustomType: "x", Content: "**strong**"}, nil, &theme, 1, nil, "", "")
 	if got := strings.Join(c.Render(40), "\n"); !strings.Contains(got, "<b>") || !strings.Contains(got, "</b>") {
 		t.Fatalf("markdown theme not applied: %q", got)
 	}
@@ -84,7 +84,7 @@ func TestCustomMessageComponentUsesMarkdownTheme(t *testing.T) {
 // custom-message.ts:92-98: the default rendering shows the message text in the customMessageText color.
 func TestCustomMessageComponentColorsItsDefaultTextWithTheTheme(t *testing.T) {
 	render := func(component *CustomMessageComponent) string { return strings.Join(component.Render(40), "\n") }
-	got := render(NewCustomMessageComponent(&CustomMessage{CustomType: "note", Content: "hello"}, nil, nil, 1))
+	got := render(NewCustomMessageComponent(&CustomMessage{CustomType: "note", Content: "hello"}, nil, nil, 1, nil, "", ""))
 	if want := ActiveTheme().Fg("customMessageText", "hello"); !strings.Contains(got, want) {
 		t.Fatalf("the text is not in the customMessageText color:\n%q\nwant it to contain %q", got, want)
 	}
@@ -92,7 +92,7 @@ func TestCustomMessageComponentColorsItsDefaultTextWithTheTheme(t *testing.T) {
 
 // custom-message.ts:90-107: the default box shows the label in customMessageLabel and the body in customMessageText.
 func TestCustomMessageComponentDefaultColorsLabelAndBody(t *testing.T) {
-	c := NewCustomMessageComponent(&CustomMessage{CustomType: "note", Content: "body"}, nil, nil, 1)
+	c := NewCustomMessageComponent(&CustomMessage{CustomType: "note", Content: "body"}, nil, nil, 1, nil, "", "")
 	if _, ok := any(c).(*CustomMessageComponent); !ok {
 		t.Fatalf("NewCustomMessageComponent returned %T", c)
 	}

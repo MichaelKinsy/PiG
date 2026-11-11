@@ -14,7 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/src/next/documents/documents.ts
+// Ports packages/chord/src/documents/documents.ts
 //
 // An object's documents (§9, P2, slice 6a §1.2, §10): its slots across attempts, its line (its transactions and line
 // jobs run one at a time), the seal fence over the transaction holding the line, the factory's pins between attempts,

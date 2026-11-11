@@ -18,9 +18,9 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/nextnode"
 )
 
-// pi: packages/chord/src/next/remote/consumer.ts
+// pi: packages/chord/src/remote/consumer.ts
 
-// Ports packages/chord/test/next/remote/consumer.test.ts: the consumer side of a link, against a server host or a raw
+// Ports packages/chord/test/remote/consumer.test.ts: the consumer side of a link, against a server host or a raw
 // provider peer.
 
 // gotReference is what a Get that runs on a goroutine of its own returned.

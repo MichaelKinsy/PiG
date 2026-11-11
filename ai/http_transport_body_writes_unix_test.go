@@ -62,7 +62,7 @@ func BenchmarkRequestBodyWrite(b *testing.B) {
 					b.Fatal(err)
 				}
 				_, _ = io.Copy(io.Discard, response.Body)
-				response.Body.Close()
+				_ = response.Body.Close()
 			}
 			b.ReportMetric(float64(cpuTime()-start)/float64(b.N), "cpu-ns/op")
 		})

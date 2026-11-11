@@ -6,7 +6,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 )
 
-// Ports packages/chord/src/next/host/unbound.ts. The unbound index (dependency model §1, §4): the requests a host decided
+// Ports packages/chord/src/host/unbound.ts. The unbound index (dependency model §1, §4): the requests a host decided
 // cannot bind yet, by the name they wait for. Before the host's first publication every request made here, and every hold
 // arriving on its links, waits here (`unpublished`); after it, those its check left unbound (`not_served`, `version`): a
 // reference made here, a hold that arrived over a link and was refused for a name. A publication wakes the requests of the

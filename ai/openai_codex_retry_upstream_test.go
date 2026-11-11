@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"runtime"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -86,6 +87,46 @@ func TestCodexSSERetriesUpstream(t *testing.T) {
 			result := stream.Result()
 			if codexUpstreamText(result) != "Hello" || !reflect.DeepEqual(times, []time.Time{start, start.Add(time.Second), start.Add(3 * time.Second), start.Add(7 * time.Second)}) {
 				t.Fatalf("result=%#v times=%v", result, times)
+			}
+		})
+	})
+	// .upstream/current/packages/ai/test/openai-codex-stream.test.ts:324 (Pi #11708): three 429 answers with retry-after 0 and a
+	// fourth that succeeds. Pi asserts getEventListeners(signal, "abort") is empty after the result, i.e. a finished backoff
+	// leaves nothing registered on the caller's signal. The Go carrier of an abort listener is a goroutine (or AfterFunc) parked
+	// on the request context, so the assertion is that the goroutine count seen by the fourth request equals the first
+	// request's (no backoff left a waiter) and that nothing remains once the result is read.
+	t.Run("removes SSE retry backoff abort waiters after the retry succeeds", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			calls := 0
+			var goroutinesAtCall []int
+			provider := codexUpstreamProvider(t, "gpt-5.1-codex", codexRoundTripper(func(*http.Request) (*http.Response, error) {
+				calls++
+				goroutinesAtCall = append(goroutinesAtCall, runtime.NumGoroutine())
+				if calls <= 3 {
+					response := codexJSONResp(429, `{"error":{"message":"rate limited"}}`)
+					response.Header.Set("retry-after", "0")
+					return response, nil
+				}
+				return codexUpstreamHTTP(codexUpstreamSSE("completed", nil)), nil
+			}))
+			ctx, cancel := context.WithCancel(t.Context())
+			t.Cleanup(cancel)
+			synctest.Wait()
+			before := runtime.NumGoroutine()
+			stream, err := provider.Stream(WithProviderMaxRetries(ctx, 3), codexUpstreamContext(), StreamOptions{Transport: TransportSSE})
+			if err != nil {
+				t.Fatal(err)
+			}
+			result := stream.Result()
+			synctest.Wait()
+			if result.StopReason != StopReasonStop || calls != 4 {
+				t.Fatalf("stopReason=%v calls=%d", result.StopReason, calls)
+			}
+			if goroutinesAtCall[3] != goroutinesAtCall[0] {
+				t.Fatalf("goroutines at each request = %v; a finished retry backoff still waits on the request context", goroutinesAtCall)
+			}
+			if after := runtime.NumGoroutine(); after > before {
+				t.Fatalf("goroutines %d -> %d after the retried request completed", before, after)
 			}
 		})
 	})

@@ -40,7 +40,7 @@ func TestClientConnectAndCloseSemantics(t *testing.T) {
 	inner, server := createServer(t)
 	failure := errors.New("transport close failed")
 	var transport mcp.Transport = failingCloseTransport{inner, failure}
-	client := mcp.NewClient(mcp.ClientOptions{Implementation: mcp.Implementation{Name: "c", Version: "1"}})
+	client := mcp.NewClient(mcp.ClientOptions{Name: "c", Version: "1"})
 	if _, err := client.Connect(t.Context(), transport); err != nil {
 		t.Fatal(err)
 	}
@@ -162,7 +162,7 @@ func TestClientCancelledNotificationCarriesTheAbortReason(t *testing.T) {
 func TestClientReportsInvalidMessagesAndUnknownResponses(t *testing.T) {
 	inner, server := createServer(t)
 	_ = server
-	client := mcp.NewClient(mcp.ClientOptions{Implementation: mcp.Implementation{Name: "c", Version: "1"}})
+	client := mcp.NewClient(mcp.ClientOptions{Name: "c", Version: "1"})
 	errs := make(chan error, 4)
 	client.OnError(func(err error) { errs <- err })
 	if _, err := client.Connect(t.Context(), inner); err != nil {
@@ -184,7 +184,7 @@ func TestClientReportsInvalidMessagesAndUnknownResponses(t *testing.T) {
 // a panicking handler answers InternalError with the panic text, and notifications/cancelled for the request ends the handler's context.
 func TestClientAnswersServerRequestsLikePi(t *testing.T) {
 	clientTransport, server := createServer(t)
-	client := mcp.NewClient(mcp.ClientOptions{Implementation: mcp.Implementation{Name: "c", Version: "1"}})
+	client := mcp.NewClient(mcp.ClientOptions{Name: "c", Version: "1"})
 	if _, err := client.Connect(t.Context(), clientTransport); err != nil {
 		t.Fatal(err)
 	}

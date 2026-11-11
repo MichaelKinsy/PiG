@@ -154,12 +154,10 @@ func TestConcurrentFirstUseOfDrafts(t *testing.T) {
 	got := make([][perCase]string, len(cases))
 	for i, c := range cases {
 		for j := range perCase {
-			done.Add(1)
-			go func() {
-				defer done.Done()
+			done.Go(func() {
 				start.Wait()
 				got[i][j] = c.render()
-			}()
+			})
 		}
 	}
 	start.Done()

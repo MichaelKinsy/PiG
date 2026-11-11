@@ -104,14 +104,70 @@ func openKitStore(ctx context.Context, dir string) (store.Store, func() error, e
 
 // PackStore packs the open store, the kit's store beside it (nil: none) and the files directory files into the archive at path (mode 0600, staged beside it and renamed):
 // manifest, the store's export (one consistent point, written while the host runs on) and the finished files (uploads under way
-// left out). The kit's store is a second entry, `kit.archive`, and a running worker's plugins' store is opened on its file and read at
-// one point rather than held through the commit queue (D462).
-func PackStore(ctx context.Context, opened, kit store.Store, files string, manifest ArchiveManifest, path string) (err error) {
+// left out). The kit's store is a second entry, `kit.archive`. Both stores' commit queues are held (the first part of each export read)
+// before either archive is written, so the two are one point.
+func PackStore(ctx context.Context, opened, kit store.Store, files string, manifest ArchiveManifest, path string) error {
+	return packStores(ctx, kit, func(context.Context, string) (store.Store, func() error, error) {
+		return opened, func() error { return nil }, nil
+	}, files, manifest, path)
+}
+
+// PackRunning packs the host directory dir of a running worker into the archive at path: the manifest, the plugins' store (store.sqlite),
+// the kit's store `kit` (the live store of the worker's Go host) and the files. The plugins' store is held by the NodeHost, whose commit
+// queue is in another process, so it is read from a snapshot: the kit's commit queue is taken first, then SQLite copies the file at one
+// instant (`VACUUM INTO`, a read transaction that the NodeHost's writes do not disturb), and the copy is exported. The kit's writes
+// are held from before the snapshot until its archive is written, so the two archives are one point (D462: two stores, nothing commits
+// across them).
+// pig divergence (D462): a running worker's two stores are exported at one point by holding the kit's commit queue and snapshotting the plugins' file; Pi holds its one store's queue.
+func PackRunning(ctx context.Context, dir string, kit store.Store, manifest ArchiveManifest, path string) error {
+	return packStores(ctx, kit, func(ctx context.Context, staging string) (store.Store, func() error, error) {
+		snapshot := filepath.Join(staging, "snapshot.sqlite")
+		if err := snapshotDatabase(filepath.Join(dir, archiveStore), snapshot); err != nil {
+			return nil, nil, err
+		}
+		database, err := node.OpenNodeSqliteDatabase(snapshot, node.NodeSqliteDatabaseOptions{})
+		if err != nil {
+			return nil, nil, err
+		}
+		opened, err := store.OpenStore(store.SqliteBackend(database), ctx, store.StoreOptions{})
+		if err != nil {
+			return nil, nil, err
+		}
+		return opened, func() error { return opened.Close(ctx) }, nil
+	}, filepath.Join(dir, "files"), manifest, path)
+}
+
+// snapshotDatabase writes a copy of the SQLite file at source, as of one instant, to the new file into. The source is opened read-only: its
+// other writer (the NodeHost) is not disturbed, and its WAL is not checkpointed by this close.
+func snapshotDatabase(source, into string) error {
+	database, err := node.OpenNodeSqliteDatabase(source, node.NodeSqliteDatabaseOptions{Mode: node.NodeSqliteReadOnly})
+	if err != nil {
+		return err
+	}
+	return errors.Join(database.Exec("VACUUM INTO '"+strings.ReplaceAll(into, "'", "''")+"'"), database.Close())
+}
+
+// packStores is PackStore and PackRunning: the kit's export takes its commit queue first (when there is a kit store), then openPlugins
+// opens the plugins' store (staging is a private directory beside path to put a copy in; its close is called last), then both are
+// written.
+func packStores(ctx context.Context, kit store.Store, openPlugins func(ctx context.Context, staging string) (store.Store, func() error, error), files string, manifest ArchiveManifest, path string) (err error) {
 	staging, err := os.MkdirTemp(filepath.Dir(path), ".chord-export-")
 	if err != nil {
 		return err
 	}
 	defer func() { err = errors.Join(err, os.RemoveAll(staging)) }()
+	var kitArchive *pendingArchive
+	if kit != nil {
+		if kitArchive, err = beginStoreArchive(ctx, kit); err != nil {
+			return err
+		}
+		defer func() { err = errors.Join(err, kitArchive.close()) }()
+	}
+	opened, closePlugins, err := openPlugins(ctx, staging)
+	if err != nil {
+		return err
+	}
+	defer func() { err = errors.Join(err, closePlugins()) }()
 	exported := filepath.Join(staging, "store.archive")
 	if err := writeStoreArchive(ctx, opened, exported); err != nil {
 		return err
@@ -122,9 +178,9 @@ func PackStore(ctx context.Context, opened, kit store.Store, files string, manif
 	}
 	var kitExported string
 	var kitInfo os.FileInfo
-	if kit != nil {
+	if kitArchive != nil {
 		kitExported = filepath.Join(staging, "kit.archive")
-		if err := writeStoreArchive(ctx, kit, kitExported); err != nil {
+		if err := kitArchive.writeTo(ctx, kitExported); err != nil {
 			return err
 		}
 		if kitInfo, err = os.Stat(kitExported); err != nil {
@@ -151,7 +207,7 @@ func PackStore(ctx context.Context, opened, kit store.Store, files string, manif
 		if !yield(TarEntry{Path: "store.archive", Size: info.Size(), Data: stored}) {
 			return
 		}
-		if kit != nil {
+		if kitArchive != nil {
 			kitStored, err := os.Open(kitExported)
 			if err != nil {
 				walked = err
@@ -174,28 +230,59 @@ func PackStore(ctx context.Context, opened, kit store.Store, files string, manif
 	return os.Rename(written, path)
 }
 
-// writeStoreArchive writes the store's export, as JSONL, to path (mode 0600).
-func writeStoreArchive(ctx context.Context, opened store.Store, path string) (err error) {
+// pendingArchive is a store's export begun: its first chunk read, so the export holds the store's commit queue, until the archive is written
+// or closed.
+type pendingArchive struct {
+	source store.ByteSource
+	first  []byte
+	// started is false for an export that yielded nothing.
+	started bool
+}
+
+// beginStoreArchive starts the export of opened and reads its first chunk, which takes the commit queue.
+func beginStoreArchive(ctx context.Context, opened store.Store) (*pendingArchive, error) {
 	export, err := opened.Export(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	source := store.EncodeJsonl(export)
-	defer func() { err = errors.Join(err, source.Close()) }()
+	first, ok, err := source.Next(ctx)
+	if err != nil {
+		return nil, errors.Join(err, source.Close())
+	}
+	return &pendingArchive{source: source, first: first, started: ok}, nil
+}
+
+// close ends the export (the queue given back when it is not drained yet).
+func (pending *pendingArchive) close() error { return pending.source.Close() }
+
+// writeTo writes the rest of the archive, as JSONL, to path (mode 0600).
+func (pending *pendingArchive) writeTo(ctx context.Context, path string) (err error) {
 	out, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
 	if err != nil {
 		return err
 	}
 	defer func() { err = errors.Join(err, out.Close()) }()
-	for {
-		chunk, ok, err := source.Next(ctx)
-		if err != nil || !ok {
-			return err
-		}
+	chunk, ok := pending.first, pending.started
+	for ok {
 		if _, err := out.Write(chunk); err != nil {
 			return err
 		}
+		if chunk, ok, err = pending.source.Next(ctx); err != nil {
+			return err
+		}
 	}
+	return nil
+}
+
+// writeStoreArchive writes the store's export, as JSONL, to path (mode 0600).
+func writeStoreArchive(ctx context.Context, opened store.Store, path string) (err error) {
+	pending, err := beginStoreArchive(ctx, opened)
+	if err != nil {
+		return err
+	}
+	defer func() { err = errors.Join(err, pending.close()) }()
+	return pending.writeTo(ctx, path)
 }
 
 // packedFiles yields the files under root as entries `files/<relative path>` (hidden ones, uploads under way, left out), each opened

@@ -30,7 +30,7 @@ func TestRPCCatalogListsBuiltInLlamaCommandInLoadOrder(t *testing.T) {
 		return codingagent.PiSourceInfo{Path: "builtin:" + name, Source: "builtin", Scope: "temporary", Origin: "top-level"}
 	}
 	resolved := func(name, description string, info codingagent.PiSourceInfo) extension.ResolvedCommand {
-		return extension.ResolvedCommand{RegisteredCommand: extension.RegisteredCommand{Name: name, Description: description, SourceInfo: info}, InvocationName: name}
+		return extension.ResolvedCommand{Name: name, Description: description, SourceInfo: info, InvocationName: name}
 	}
 	runner := &fakeRPCCommandRunner{commands: []extension.ResolvedCommand{
 		resolved("other", "", codingagent.PiSourceInfo{Path: "/x/other.ts", Source: "local", Scope: "user", Origin: "top-level"}),

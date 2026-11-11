@@ -1,6 +1,6 @@
 // The module the upstream session tests import by path (`../src/session/session.ts`): `new SessionImpl(storage)` over the core's
 // Session mode (facade/session.ts opens it on first use). The gate replaces the reference's module of the same path with this one.
-import type { Context } from "@earendil-works/chord"
+import type { Context } from "@earendil-works/chord/context"
 import { createLazySession } from "../session.ts"
 import type { SetTimer } from "../../timers.ts"
 import type { Storage } from "../storage.ts"

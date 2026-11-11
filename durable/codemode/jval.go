@@ -3,6 +3,9 @@ package codemode
 import (
 	"bytes"
 	"encoding/json"
+	"encoding/json/jsontext"
+
+	"github.com/MichaelKinsy/PiG/internal/jsonopts"
 )
 
 // jval is a script value as JSON text: empty is JavaScript's undefined, and an object keeps its keys in the order the script
@@ -42,19 +45,18 @@ func (v jval) str() (string, bool) {
 // keys are the object's keys in the order written (JavaScript would list integer-like keys first, ascending, which a
 // model call's contexts do not use as keys).
 func (v jval) keys() []string {
-	decoder := json.NewDecoder(bytes.NewReader(v))
-	if token, err := decoder.Token(); err != nil || token != json.Delim('{') {
+	decoder := jsontext.NewDecoder(bytes.NewReader(v), jsonopts.Parse)
+	if token, err := decoder.ReadToken(); err != nil || token.Kind() != '{' {
 		return nil
 	}
 	var keys []string
-	for decoder.More() {
-		key, err := decoder.Token()
+	for decoder.PeekKind() != '}' {
+		key, err := decoder.ReadToken()
 		if err != nil {
 			return keys
 		}
-		keys = append(keys, key.(string))
-		var skip json.RawMessage
-		if decoder.Decode(&skip) != nil {
+		keys = append(keys, key.String()) // a Token is void after the next call on the decoder
+		if decoder.SkipValue() != nil {
 			return keys
 		}
 	}
