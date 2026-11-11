@@ -40986,6 +40986,28 @@
       ]
     },
     {
+      "id": "BF-bf5f8f0",
+      "title": "Fix lint, shellcheck and sdk-surface failures of fold CI 42929192407",
+      "symptom": "Fix lint, shellcheck and sdk-surface failures of fold CI 42929192407",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "bf5f8f010e",
+          "date": "2026-11-10"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/shell_exit_wire_test.go::TestLocalShellTimeoutReadsAFusedSDKsError",
+        "coding/extension/host/subprocess/shell_exit_wire_test.go::TestShellExitCrossesTheWireAsErrorInfoShellExit"
+      ]
+    },
+    {
       "id": "BF-bf73e77",
       "title": "fix(durable/core): join split surrogates through jv.AppendConcat, not byte slices",
       "symptom": "fix(durable/core): join split surrogates through jv.AppendConcat, not byte slices",

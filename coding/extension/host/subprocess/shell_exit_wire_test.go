@@ -23,8 +23,8 @@ func TestShellExitCrossesTheWireAsErrorInfoShellExit(t *testing.T) {
 	if err := json.Unmarshal(encoded, &info); err != nil {
 		t.Fatal(err)
 	}
-	back, ok := info.ToError().(*tools.ShellTimeoutError)
-	if !ok || back.Timeout != "2" || back.ShellExit == nil || *back.ShellExit != *timeout.ShellExit {
+	var back *tools.ShellTimeoutError
+	if !errors.As(info.ToError(), &back) || back.Timeout != "2" || back.ShellExit == nil || *back.ShellExit != *timeout.ShellExit {
 		t.Fatalf("the error read back = %#v, want the local backend's timeout with the shell's exit", info.ToError())
 	}
 
@@ -38,7 +38,7 @@ func TestShellExitCrossesTheWireAsErrorInfoShellExit(t *testing.T) {
 		if err := json.Unmarshal(encoded, &info); err != nil {
 			t.Fatal(err)
 		}
-		if _, ok := info.ToError().(*tools.ShellTimeoutError); ok {
+		if _, ok := errors.AsType[*tools.ShellTimeoutError](info.ToError()); ok {
 			t.Fatalf("%s without a shellExit was read back as the local backend's timeout", encoded)
 		}
 	}
@@ -58,15 +58,15 @@ func (fusedShellTimeout) ShellExitReport() (int, float64, bool) {
 }
 
 func TestLocalShellTimeoutReadsAFusedSDKsError(t *testing.T) {
-	got, ok := localShellTimeout(fusedShellTimeout{"timeout:2"}).(*tools.ShellTimeoutError)
-	if !ok || got.Timeout != "2" || got.ShellExit == nil || got.ShellExit.ExitCode != 7 || got.ShellExit.AfterSeconds != 0.5 {
+	var got *tools.ShellTimeoutError
+	if !errors.As(localShellTimeout(fusedShellTimeout{"timeout:2"}), &got) || got.Timeout != "2" || got.ShellExit == nil || got.ShellExit.ExitCode != 7 || got.ShellExit.AfterSeconds != 0.5 {
 		t.Fatalf("localShellTimeout = %#v, want the local backend's timeout with the shell's exit", got)
 	}
 	other := errors.New("boom")
-	if localShellTimeout(other) != other {
+	if !errors.Is(localShellTimeout(other), other) {
 		t.Fatal("an error that is not a timeout was replaced")
 	}
-	if err := localShellTimeout(fusedShellTimeout{"not a timeout"}); err != (fusedShellTimeout{"not a timeout"}) {
+	if err := localShellTimeout(fusedShellTimeout{"not a timeout"}); !errors.Is(err, fusedShellTimeout{"not a timeout"}) {
 		t.Fatalf("an error that is not a timeout became %#v", err)
 	}
 	if localShellTimeout(nil) != nil {
