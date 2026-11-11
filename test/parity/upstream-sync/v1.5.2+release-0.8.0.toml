@@ -105,3 +105,49 @@ change = "modified"
 disposition = "ported"
 evidence = ["test:internal/codingagent/configschema/compat_schema_exports_test.go#TestCompatSchemaExportsMatchPi"]
 rationale = "49fe0a237 rewords the supportsMessageThreads description (default true for a baseUrl on api.anthropic.com); configschema/compat_b.go, the models.schema.json and models-configuration.md mirrors carry the new text."
+
+[[files]]
+path = "packages/coding-agent/src/extensions/llama/provider.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/llama/native_provider_test.go#TestModelsProviderIsDormantUntilConfigured", "test:internal/codingagent/llama/client_test.go#TestNormalizeLlamaServerURL"]
+rationale = "Pi b3c2e4a6bef8 (#12001): DEFAULT_LLAMA_SERVER_URL is http://127.0.0.1:9931, not :8080; internal/codingagent/llama/provider.go DefaultLlamaServerURL follows, and the dormant provider test pins the default inference URL http://127.0.0.1:9931/v1."
+
+[[files]]
+path = "packages/coding-agent/docs/nvidia-rtx-llama-cpp.md"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/llama/native_provider_test.go#TestModelsProviderIsDormantUntilConfigured"]
+rationale = "Pi b3c2e4a6bef8 (#12001): the NVIDIA RTX guide drops --port 8080 from the llama-server command and connects to http://127.0.0.1:9931; docs/site/docs/nvidia-rtx-llama-cpp.md follows (the llama-cpp.md mirror also uses 9931 for the default URL, LLAMA_BASE_URL and health checks)."
+
+[[files]]
+path = "packages/coding-agent/docs/extensions.md"
+change = "modified"
+disposition = "n/a"
+rationale = "Pi b3c2e4a6bef8 (#12001): example snippets change localhost:8080 to localhost:9931; PiG ships no mirror of this Pi file and its extension docs carry other examples."
+
+[[files]]
+path = "packages/coding-agent/test/config-schemas.test.ts"
+change = "modified"
+disposition = "n/a"
+rationale = "Pi b3c2e4a6bef8 (#12001): the schema fixture baseUrl changes only its port; the validation it exercises does not depend on it."
+
+[[files]]
+path = "packages/coding-agent/test/llama-extension.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/llama/client_test.go#TestNormalizeLlamaServerURL", "test:internal/codingagent/llama/provider_test.go#TestSetCatalogExposesLoadedAndSleepingModelsWithRouterMetadata"]
+rationale = "Pi b3c2e4a6bef8 (#12001): the normalize, catalog base-URL and decision-model cases use http://127.0.0.1:9931 and http://localhost:9931; the Go tests carry the same inputs and expectations."
+
+[[files]]
+path = "packages/ai/test/llama-cpp-classify.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream"]
+rationale = "Pi b3c2e4a6bef8 (#12001): the classifier fixtures and the llamaServerRoot case use port 9931; ai/llama_cpp_classify_upstream_test.go follows with the same inputs and expectations."
+
+[[files]]
+path = "packages/ai/README.md"
+change = "modified"
+disposition = "n/a"
+rationale = "Pi b3c2e4a6bef8 (#12001): README examples change 127.0.0.1:8080 to 9931; PiG ships no mirror of this Pi README."
