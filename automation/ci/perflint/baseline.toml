@@ -260,14 +260,6 @@ count = 1
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
 
 [[hit]]
-file = "ai/providers/bedrock/bedrock_eventstream.go"
-func = "parseBedrockEventHeaders"
-pattern = "loop-format"
-detail = "fmt.Sprintf"
-count = 1
-class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
-
-[[hit]]
 file = "ai/classifier.go"
 func = "ClassifierAnswers.MarshalJSON"
 pattern = "nested-marshal"
@@ -600,6 +592,14 @@ file = "ai/provider_retry.go"
 func = "retryTransport.RoundTrip"
 pattern = "loop-format"
 detail = "string+="
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "ai/providers/bedrock/bedrock_eventstream.go"
+func = "parseBedrockEventHeaders"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
 count = 1
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
 
@@ -1453,14 +1453,6 @@ class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shr
 
 [[hit]]
 file = "coding/extension/host/inproc/runner.go"
-func = "Runner.emitContext"
-pattern = "history-clone"
-detail = "slices.Clone"
-count = 1
-class = "hot-owned:claude-history-hot"
-
-[[hit]]
-file = "coding/extension/host/inproc/runner.go"
 func = "Runner.Shortcuts"
 pattern = "loop-format"
 detail = "fmt.Sprintf"
@@ -1474,6 +1466,14 @@ pattern = "sort-instance"
 detail = "slices.SortStableFunc"
 count = 1
 class = "hot-kept:string or pointer element: the shape is already linked by the SDK copies, so package slices adds no code"
+
+[[hit]]
+file = "coding/extension/host/inproc/runner.go"
+func = "Runner.emitContext"
+pattern = "history-clone"
+detail = "slices.Clone"
+count = 1
+class = "hot-owned:claude-history-hot"
 
 [[hit]]
 file = "coding/extension/host/inproc/runner.go"
@@ -1584,14 +1584,6 @@ file = "coding/extension/host/runtimecell/go_packed.go"
 func = "CurrentGoPackedCellEntry"
 pattern = "env-stat"
 detail = "os.Getenv"
-count = 1
-class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
-
-[[hit]]
-file = "coding/extension/host/runtimecell/go_packed.go"
-func = "goSDKPathOverride"
-pattern = "env-stat"
-detail = "os.Stat"
 count = 1
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
 
@@ -3405,35 +3397,11 @@ class = "cold: once per compaction"
 
 [[hit]]
 file = "coding/session_extension_hooks.go"
-func = "Session.toolCallHook"
-pattern = "marshal-compare"
-detail = "bytes.Equal"
-count = 1
-class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
-
-[[hit]]
-file = "coding/session_extension_hooks.go"
 func = "sameContextMessages"
-pattern = "json-roundtrip"
-detail = "marshal+unmarshal"
+pattern = "decode-own-encode"
+detail = "jsstring.MarshalKeepingSurrogates->jsstring.UnmarshalKeepingSurrogates"
 count = 2
 class = "hot-owned:claude-history-hot"
-
-[[hit]]
-file = "coding/session_extension_hooks.go"
-func = "sameContextMessages"
-pattern = "marshal-compare"
-detail = "DeepEqual then Marshal"
-count = 1
-class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
-
-[[hit]]
-file = "coding/session_extension_hooks.go"
-func = "sameContextMessages"
-pattern = "marshal-compare"
-detail = "bytes.Equal"
-count = 1
-class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
 
 [[hit]]
 file = "coding/session_extension_replacement.go"
@@ -3470,8 +3438,8 @@ class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shr
 [[hit]]
 file = "coding/session_run_state.go"
 func = "extensionUserMessageContent"
-pattern = "json-roundtrip"
-detail = "marshal+unmarshal"
+pattern = "decode-own-encode"
+detail = "jsstring.MarshalKeepingSurrogates->jsstring.UnmarshalKeepingSurrogates"
 count = 1
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
 
@@ -3482,46 +3450,6 @@ pattern = "json-roundtrip"
 detail = "marshal+unmarshal"
 count = 1
 class = "cold: once per /tree navigation"
-
-[[hit]]
-file = "durable/codecs.go"
-func = "ContextEdit.MarshalJSON"
-pattern = "nested-marshal"
-detail = "json.Marshal"
-count = 1
-class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
-
-[[hit]]
-file = "durable/codecs.go"
-func = "DocumentContent.MarshalJSON"
-pattern = "nested-marshal"
-detail = "json.Marshal"
-count = 1
-class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
-
-[[hit]]
-file = "durable/codecs.go"
-func = "EntryDraft.MarshalJSON"
-pattern = "nested-marshal"
-detail = "json.Marshal"
-count = 2
-class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
-
-[[hit]]
-file = "durable/codecs.go"
-func = "TaskOutcome.MarshalJSON"
-pattern = "nested-marshal"
-detail = "json.Marshal"
-count = 2
-class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
-
-[[hit]]
-file = "durable/codecs.go"
-func = "TaskState.MarshalJSON"
-pattern = "nested-marshal"
-detail = "json.Marshal"
-count = 1
-class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
 
 [[hit]]
 file = "durable/core/driver/session.go"
@@ -3564,22 +3492,6 @@ count = 1
 class = "hot-kept: durable store per record; needs its own byte oracle, not attempted"
 
 [[hit]]
-file = "durable/harness/agent.go"
-func = "ExtensionSelection.MarshalJSON"
-pattern = "nested-marshal"
-detail = "json.Marshal"
-count = 1
-class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
-
-[[hit]]
-file = "durable/harness/agent.go"
-func = "ToolSelection.MarshalJSON"
-pattern = "nested-marshal"
-detail = "json.Marshal"
-count = 1
-class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
-
-[[hit]]
 file = "durable/harness/compaction.go"
 func = "sameAssistant"
 pattern = "marshal-compare"
@@ -3598,8 +3510,8 @@ class = "hot-kept: durable store per record; needs its own byte oracle, not atte
 [[hit]]
 file = "durable/harness/drafts.go"
 func = "decodeJSON"
-pattern = "json-roundtrip"
-detail = "marshal+unmarshal"
+pattern = "decode-own-encode"
+detail = "jsstring.MarshalKeepingSurrogates->jsstring.UnmarshalKeepingSurrogates"
 count = 1
 class = "hot-kept: durable store per record; needs its own byte oracle, not attempted"
 
@@ -3630,26 +3542,10 @@ class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder com
 [[hit]]
 file = "durable/harness/tool.go"
 func = "prepareArguments"
-pattern = "json-roundtrip"
-detail = "marshal+unmarshal"
+pattern = "decode-own-encode"
+detail = "jsstring.MarshalKeepingSurrogates->jsstring.UnmarshalKeepingSurrogates"
 count = 1
 class = "hot-kept: durable store per record; needs its own byte oracle, not attempted"
-
-[[hit]]
-file = "durable/harness/view.go"
-func = "ViewDocs.MarshalJSON"
-pattern = "nested-marshal"
-detail = "json.Marshal"
-count = 1
-class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
-
-[[hit]]
-file = "durable/harness_types.go"
-func = "ToolControl.MarshalJSON"
-pattern = "nested-marshal"
-detail = "json.Marshal"
-count = 1
-class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
 
 [[hit]]
 file = "durable/json.go"
@@ -3774,8 +3670,8 @@ class = "cold: once per paste"
 [[hit]]
 file = "internal/codingagent/compaction/compaction.go"
 func = "customMessageToLlm"
-pattern = "json-roundtrip"
-detail = "marshal+unmarshal"
+pattern = "decode-own-encode"
+detail = "jsstring.MarshalKeepingSurrogates->jsstring.UnmarshalKeepingSurrogates"
 count = 1
 class = "cold: startup, config, registration, login, export or command code that runs once per user action"
 
@@ -3802,6 +3698,14 @@ pattern = "nested-marshal"
 detail = "orderedjson.MarshalJSON"
 count = 1
 class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "internal/codingagent/env_lookup_other.go"
+func = "envVar.get"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: the settings getters' per-call PI_CLEAR_ON_SHRINK, PI_HARDWARE_CURSOR, VISUAL and EDITOR reads (Pi reads process.env each call), moved here from the three getters; shrink-only"
 
 [[hit]]
 file = "internal/codingagent/exit_record.go"
@@ -3908,14 +3812,6 @@ count = 1
 class = "hot-kept:string or pointer element: the shape is already linked by the SDK copies, so package slices adds no code"
 
 [[hit]]
-file = "internal/codingagent/env_lookup_other.go"
-func = "envVar.get"
-pattern = "env-stat"
-detail = "os.Getenv"
-count = 1
-class = "hot-kept: the settings getters' per-call PI_CLEAR_ON_SHRINK, PI_HARDWARE_CURSOR, VISUAL and EDITOR reads (Pi reads process.env each call), moved here from the three getters; shrink-only"
-
-[[hit]]
 file = "internal/codingagent/extension_ui_phase.go"
 func = "InteractiveMode.awaitSessionBefore"
 pattern = "json-roundtrip"
@@ -3957,14 +3853,6 @@ class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shr
 
 [[hit]]
 file = "internal/codingagent/git_watcher.go"
-func = "gitPathsAt"
-pattern = "env-stat"
-detail = "os.Stat"
-count = 4
-class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
-
-[[hit]]
-file = "internal/codingagent/git_watcher.go"
 func = "gitBranchWatcher.run"
 pattern = "env-stat"
 detail = "os.Getenv"
@@ -3986,6 +3874,14 @@ pattern = "timer-per-call"
 detail = "time.NewTimer"
 count = 1
 class = "hot-kept: one timer per git-branch poll while idle (RT-F12, routed to the git_watcher owner by lw-policy)"
+
+[[hit]]
+file = "internal/codingagent/git_watcher.go"
+func = "gitPathsAt"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 4
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
 
 [[hit]]
 file = "internal/codingagent/git_watcher.go"
