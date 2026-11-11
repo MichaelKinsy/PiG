@@ -511,6 +511,7 @@ src/web/query-cache.ts
 src/web/reconnect.ts
 src/web/row-estimate.ts
 src/web/scroll-gesture.ts
+src/web/session-panels.ts
 src/web/settings-embed.ts
 src/web/sheet-swipe.ts
 src/web/sidebar.ts
