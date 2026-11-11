@@ -65,7 +65,7 @@ func TestParseReport(t *testing.T) {
 }
 
 func TestRelativeTo(t *testing.T) {
-	roots := []string{"/w/added", "/w/head"}
+	roots := []string{"/w/added", "", "/w/head"}
 	for in, want := range map[string]string{
 		"/w/added/a/b.go": "a/b.go",
 		"/w/head/c.yml":   "c.yml",
@@ -327,5 +327,38 @@ func TestPrepareWorkspaceHead(t *testing.T) {
 	ws.head, ws.tree = filepath.Join(ws.dir, "head"), filepath.Join(ws.dir, "tree")
 	if err := prepareWorkspace(context.Background(), d, scans, ws, io.Discard); err == nil || !strings.Contains(err.Error(), "the PR moved") {
 		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestPrepareWorkspaceWholeTreeAndSeveralFiles(t *testing.T) {
+	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+	remote := t.TempDir()
+	head := gitRepo(t, remote, map[string]string{"one.go": "1", "two.go": "2", "other/untouched.go": "u"})
+	report := reportSpec{In: "stdout", Format: "lines", Pattern: `(?P<message>.+)`}
+	d := &data{Repo: "o/r", PR: 1, Files: []prFile{
+		{Filename: "gone.go", Status: "removed"},
+		{Filename: "one.go", Status: "modified", Patch: "@@ -0,0 +1 @@\n+1"},
+		{Filename: "two.go", Status: "modified", Patch: "@@ -0,0 +1 @@\n+2"},
+	}}
+	d.Pull.Head.SHA = head
+	for name, tc := range map[string]struct {
+		checkout  []string
+		untouched bool
+	}{"changed files only": {nil, false}, "whole tree": {[]string{"/*"}, true}} {
+		dir := t.TempDir()
+		ws := workspace{dir: dir, head: filepath.Join(dir, "head"), main: t.TempDir(), remote: "file://" + remote}
+		scans := []check{scanCheck(t, scanSpec{Input: inputChanged, Checkout: tc.checkout, Run: []string{"x"}, Exit: exitCodes{Clean: []int{0}}, Report: report})}
+		if err := prepareWorkspace(context.Background(), d, scans, ws, io.Discard); err != nil {
+			t.Fatal(err)
+		}
+		for _, f := range []string{"one.go", "two.go"} {
+			if _, err := os.Stat(filepath.Join(ws.head, f)); err != nil {
+				t.Errorf("%s: %s was not checked out", name, f)
+			}
+		}
+		if _, err := os.Stat(filepath.Join(ws.head, "other", "untouched.go")); (err == nil) != tc.untouched {
+			t.Errorf("%s: an untouched file checked out = %v, want %v", name, err == nil, tc.untouched)
+		}
 	}
 }

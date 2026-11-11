@@ -114,8 +114,6 @@ func TestParseAcknowledgedRejects(t *testing.T) {
 	}
 }
 
-func boolPtr(b bool) *bool { return &b }
-
 func commit(sha, message string, verified bool) prCommit {
 	var c prCommit
 	c.SHA = sha
@@ -223,10 +221,10 @@ func TestRuleUpToDate(t *testing.T) {
 		result string
 		reason string
 	}{
-		{"current", base(0, boolPtr(true)), resultPass, "up to date"},
-		{"behind", base(3, boolPtr(true)), resultFail, "3 commit(s) behind main"},
-		{"conflict", base(0, boolPtr(false)), resultFail, "conflicts with main"},
-		{"both", base(2, boolPtr(false)), resultFail, "behind main; rebase on it; conflicts"},
+		{"current", base(0, new(true)), resultPass, "up to date"},
+		{"behind", base(3, new(true)), resultFail, "3 commit(s) behind main"},
+		{"conflict", base(0, new(false)), resultFail, "conflicts with main"},
+		{"both", base(2, new(false)), resultFail, "behind main; rebase on it; conflicts"},
 		{"not computed", base(0, nil), resultError, "run again"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -370,5 +368,157 @@ func TestShippedRulesAreAllUsed(t *testing.T) {
 		if !used[name] {
 			t.Errorf("built-in rule %q is used by no check of config.yaml", name)
 		}
+	}
+}
+
+func TestRuleParamsRejected(t *testing.T) {
+	for _, tc := range []struct{ name, check, want string }{
+		{"body-fields without help", `{name: a, when: {always: true}, stage: cheap, reads: [pull], rule: body-fields, with: {fields: [{name: Fix, pattern: x}]}}`, "needs help"},
+		{"body-fields with a broken pattern", `{name: a, when: {always: true}, stage: cheap, reads: [pull], rule: body-fields, with: {fields: [{name: Fix, pattern: '(', help: h}]}}`, "pattern:"},
+		{"body-fields without fields", `{name: a, when: {always: true}, stage: cheap, reads: [pull], rule: body-fields}`, "needs fields"},
+		{"all-commits without help", `{name: a, when: {always: true}, stage: cheap, reads: [commits], rule: all-commits, with: {verified: true}}`, "needs help"},
+		{"all-commits with a broken message", `{name: a, when: {always: true}, stage: cheap, reads: [commits], rule: all-commits, with: {message: '[', help: h}}`, "message:"},
+		{"license-notices without notice files", `{name: a, when: {always: true}, stage: cheap, reads: [files], rule: license-notices, with: {code-files: x}}`, "notice-files"},
+		{"license-notices with an absolute notice file", `{name: a, when: {always: true}, stage: cheap, reads: [files], rule: license-notices, with: {notice-files: [/x], code-files: x}}`, "must be relative"},
+		{"license-notices without code files", `{name: a, when: {always: true}, stage: cheap, reads: [files], rule: license-notices, with: {notice-files: [x]}}`, "needs code-files"},
+		{"license-notices with a broken code-files", `{name: a, when: {always: true}, stage: cheap, reads: [files], rule: license-notices, with: {notice-files: [x], code-files: '('}}`, "code-files:"},
+		{"added-lines-warn without text", `{name: a, when: {always: true}, stage: cheap, reads: [files], rule: added-lines-warn, with: {pattern: x}}`, "needs text"},
+		{"added-lines-warn with a broken pattern", `{name: a, when: {always: true}, stage: cheap, reads: [files], rule: added-lines-warn, with: {pattern: '(', text: t}}`, "pattern:"},
+		{"fix-ledger without ledger", `{name: a, when: {always: true}, stage: cheap, reads: [files], rule: fix-ledger}`, "needs ledger"},
+		{"test-expectation without inventories", `{name: a, when: {always: true}, stage: cheap, reads: [files], rule: test-expectation}`, "inventories"},
+		{"no-advisories without severities", `{name: a, when: {always: true}, stage: cheap, reads: [dependency-graph], rule: no-advisories}`, "severities"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := loadConfig([]byte("checks: [" + tc.check + "]"))
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("error = %v, want one containing %q", err, tc.want)
+			}
+		})
+	}
+}
+
+func TestRuleChangelogEdges(t *testing.T) {
+	c1 := commit("1234567890abcdef", "x: change", true)
+	run := func(body string, files ...prFile) outcome {
+		return ruleChangelog(&data{Pull: pull{Body: body}, Commits: []prCommit{c1}, Files: files}, nil, nil)
+	}
+	if o := run("Fix: no"); o.result != resultPass {
+		t.Errorf("only Fix answered, no fix: %+v", o)
+	}
+	if o := run("User-facing: yes", prFile{Filename: "docs/notes.md", Status: "added"}, prFile{Filename: "changelog.d/lane-1234567.txt", Status: "added"}); !strings.Contains(o.reason, "needs a fragment") {
+		t.Errorf("a .md outside changelog.d or a non-.md inside it counted as a fragment: %+v", o)
+	}
+	if o := run("User-facing: yes", prFile{Filename: "changelog.d/lane-1234567.md", Status: "removed"}); !strings.Contains(o.reason, "needs a fragment") {
+		t.Errorf("a removed fragment counted: %+v", o)
+	}
+	two := "@@ -0,0 +1,3 @@\n+### Fixed\n+- One.\n+- Two. <!-- fix: fedcba9876 -->"
+	o := run("Fix: yes", prFile{Filename: "changelog.d/lane-1234567.md", Status: "added", Patch: two})
+	if !strings.Contains(o.reason, "no <!-- fix: <sha> --> marker") || !strings.Contains(o.reason, "fix marker fedcba9876") {
+		t.Errorf("a bullet after an unmarked one was not checked: %+v", o)
+	}
+}
+
+func TestExpectationEditsCounts(t *testing.T) {
+	patch := func(removed, added []string) string {
+		var b strings.Builder
+		b.WriteString("@@ -1,9 +1,9 @@\n")
+		for _, l := range removed {
+			b.WriteString("-" + l + "\n")
+		}
+		for _, l := range added {
+			b.WriteString("+" + l + "\n")
+		}
+		return b.String()
+	}
+	for _, tc := range []struct {
+		name           string
+		removed, added []string
+		want           int
+	}{
+		{"a one-word value", []string{`want := "abc"`}, []string{`want := "def"`}, 1},
+		{"two values on one line", []string{`want := []string{"aa", "bb"}`}, []string{`want := []string{"cc", "dd"}`}, 2},
+		{"a moved path", []string{`want := "a/b"`}, []string{`want := "a/c"`}, 0},
+		{"a kept value plus two new ones", []string{`want := "xx"`}, []string{`want := "xx"`, `want := "yy"`, `want := "zz"`}, 0},
+		{"two removed, one kept", []string{`want := "xx"`, `want := "yy"`, `want := "zz"`}, []string{`want := "xx"`}, 0},
+		{"a value after a plain line", []string{`x := 1`, `want := "abc"`}, []string{`x := 2`, `want := "def"`}, 1},
+		{"three replaced by two", []string{`want := "xx"`, `want := "yy"`, `want := "zz"`}, []string{`want := "pp"`, `want := "qq"`}, 2},
+		{"two replaced by three", []string{`want := "xx"`, `want := "yy"`}, []string{`want := "pp"`, `want := "qq"`, `want := "rr"`}, 2},
+	} {
+		if got := expectationEdits(patch(tc.removed, tc.added)); got != tc.want {
+			t.Errorf("%s: %d, want %d", tc.name, got, tc.want)
+		}
+	}
+}
+
+func TestRuleTestExpectationEdges(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "docs", "parity"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	inventory := "packages/a/src/first.ts\npackages/b/src/second.ts\n"
+	if err := os.WriteFile(filepath.Join(root, "docs", "parity", "PORT_MAP.md"), []byte(inventory), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	r, p := shippedRule(t, "test-expectation")
+	edit := []prFile{
+		{Filename: "a/a.go", Status: "modified", Patch: "@@ -1 +1 @@\n-x := 1\n+x := 2"},
+		{Filename: "a/a_test.go", Status: "modified", Patch: "@@ -1 +1 @@\n-\twant := \"old value\"\n+\twant := \"new value\""},
+	}
+	run := func(body, message string, files []prFile) outcome {
+		return r.run(&data{Pull: pull{Body: body}, Commits: []prCommit{commit("aaaaaaaaaa", message, true)}, Files: files}, p, &ruleEnv{root: root})
+	}
+	untouched := []prFile{edit[0], {Filename: "a/a_test.go", Status: "modified", Patch: "@@ -1 +1,2 @@\n x\n+// a comment"}}
+	if o := run("", "", untouched); o.result != resultPass {
+		t.Errorf("a test change without an expected value failed: %+v", o)
+	}
+	second := "Pi-Behavior-Change: packages/b/src/second.ts:3"
+	if o := run(second, "a: b\n\n"+second, edit); o.result != resultPass {
+		t.Errorf("the second path of an inventory was not read: %+v", o)
+	}
+	both := "Pi-Behavior-Change: packages/a/src/first.ts:1\nPi-Behavior-Change: packages/x/invented.ts:2"
+	if o := run(both, "a: b\n\nPi-Behavior-Change: packages/a/src/first.ts:1", edit); !strings.Contains(o.reason, "invented.ts") {
+		t.Errorf("a second citation in the body was not checked: %+v", o)
+	}
+	if o := run("Pi-Behavior-Change: packages/a/src/first.ts:1", "a: b\n\n"+both, edit); !strings.Contains(o.reason, "invented.ts") {
+		t.Errorf("a second citation in a commit was not checked: %+v", o)
+	}
+}
+
+func TestRuleNoAdvisoriesAfterARemoval(t *testing.T) {
+	r, p := shippedRule(t, "dependency-review")
+	mk := func(changeType, severity string) dependencyChange {
+		c := dependencyChange{ChangeType: changeType, Name: changeType}
+		c.Vulnerabilities = append(c.Vulnerabilities, struct {
+			Severity    string `json:"severity"`
+			AdvisoryID  string `json:"advisory_ghsa_id"`
+			AdvisoryURL string `json:"advisory_url"`
+		}{Severity: severity})
+		return c
+	}
+	if o := r.run(&data{Dependencies: []dependencyChange{mk("removed", "critical"), mk("added", "high")}}, p, nil); o.result != resultFail {
+		t.Fatalf("an added advisory after a removed dependency passed: %+v", o)
+	}
+}
+
+func TestRuleLicenseNoticesEdges(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "LICENSES"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "LICENSES", "MIT.txt"), nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	r, p := shippedRule(t, "licenses")
+	env := &ruleEnv{root: root}
+	expression := prFile{Filename: "x.go", Status: "added", Patch: "@@ -0,0 +1 @@\n+// SPDX-License-Identifier: MIT AND GPL-3.0-only"}
+	if o := r.run(&data{Files: []prFile{expression}}, p, env); o.result != resultFail || !strings.Contains(o.reason, "GPL-3.0-only") {
+		t.Errorf("the license after AND was not checked: %+v", o)
+	}
+	quiet := []prFile{
+		{Filename: "old.go", Status: "modified", Patch: "@@ -1 +1,2 @@\n x\n+y"},
+		{Filename: "notes.txt", Status: "added", Patch: "@@ -0,0 +1 @@\n+text"},
+	}
+	if o := r.run(&data{Files: quiet}, p, env); len(o.warnings) != 0 {
+		t.Errorf("a modified code file or a new non-code file got a missing-header warning: %+v", o.warnings)
 	}
 }

@@ -42,20 +42,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	case "run":
 		return runCommand(ctx, cfg, args[1:], stdout, stderr)
 	case "install":
-		fs := flag.NewFlagSet("install", flag.ContinueOnError)
-		fs.SetOutput(stderr)
-		root := fs.String("root", ".", "main's tree")
-		bin := fs.String("bin", "", "directory for the scanners")
-		cache := fs.String("cache", defaultCache(), "digest-keyed download cache")
-		if err := fs.Parse(args[1:]); err != nil || *bin == "" {
-			_, _ = fmt.Fprintln(stderr, "preflight install: --bin is required")
-			return 2
-		}
-		if err := install(ctx, cfg, *root, *bin, *cache, stdout); err != nil {
-			_, _ = fmt.Fprintln(stderr, "preflight install:", err)
-			return 1
-		}
-		return 0
+		return installCommand(ctx, cfg, args[1:], stdout, stderr)
 	case "checks":
 		for _, c := range cfg.Checks {
 			_, _ = fmt.Fprintf(stdout, "%-20s %s\n", c.Name, c.Stage)
@@ -65,6 +52,26 @@ func run(args []string, stdout, stderr io.Writer) int {
 		_, _ = fmt.Fprintf(stderr, "preflight: unknown command %q\n", args[0])
 		return 2
 	}
+}
+
+func installCommand(ctx context.Context, cfg config, args []string, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("install", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	root := fs.String("root", ".", "main's tree")
+	bin := fs.String("bin", "", "directory for the scanners")
+	cache := fs.String("cache", defaultCache(), "digest-keyed download cache")
+	if err := fs.Parse(args); err != nil {
+		return 2
+	}
+	if *bin == "" {
+		_, _ = fmt.Fprintln(stderr, "preflight install: --bin is required")
+		return 2
+	}
+	if err := install(ctx, cfg, *root, *bin, *cache, stdout); err != nil {
+		_, _ = fmt.Fprintln(stderr, "preflight install:", err)
+		return 1
+	}
+	return 0
 }
 
 func defaultCache() string {

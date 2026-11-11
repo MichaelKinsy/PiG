@@ -3,6 +3,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -25,6 +26,9 @@ const (
 	perPage    = 100
 )
 
+// apiTimeout bounds one API request.
+const apiTimeout = 30 * time.Second
+
 // api reads the GitHub REST API with a token.
 type api struct {
 	base   string
@@ -44,7 +48,7 @@ func newAPI(base, token string) *api {
 	return &api{
 		base:        strings.TrimSuffix(base, "/"),
 		token:       token,
-		client:      &http.Client{Timeout: 30 * time.Second},
+		client:      &http.Client{Timeout: apiTimeout},
 		retryDelays: defaultRetryDelays,
 	}
 }
@@ -52,36 +56,79 @@ func newAPI(base, token string) *api {
 // defaultRetryDelays are the waits before the first, second and third retry of a request.
 var defaultRetryDelays = []time.Duration{2 * time.Second, 4 * time.Second, 6 * time.Second}
 
-// transient reports whether a failed request may succeed when repeated: a network error, a timeout, HTTP 429, or a
-// 5xx. A 4xx other than 429 is the answer, not a hiccup.
-func transient(status int, err error) bool {
-	if err != nil {
-		return true
-	}
-	return status == http.StatusTooManyRequests || status >= 500
+// response is one HTTP answer.
+type response struct {
+	status int
+	header http.Header
+	body   []byte
 }
 
-// do sends one GET and returns the body, retrying a transient failure after each of retryDelays.
-func (a *api) do(ctx context.Context, path, target string) ([]byte, http.Header, error) {
+// retrying calls send until it answers 2xx, answers a status that is not transient, or the retries after each of
+// delays run out. A transient failure is a network error, a timeout, HTTP 429 or a 5xx; any other status is the answer,
+// not a hiccup. label names the request in errors and in the one log line per retry.
+func retrying(ctx context.Context, delays []time.Duration, log io.Writer, label string, send func() (response, error)) (response, error) {
 	for attempt := 0; ; attempt++ {
-		body, header, status, err := a.once(ctx, target)
-		if err == nil && status == http.StatusOK {
-			return body, header, nil
+		r, err := send()
+		if err == nil && succeeded(r.status) {
+			return r, nil
 		}
+		transient := err != nil || r.status == http.StatusTooManyRequests || r.status >= 500
 		if err == nil {
-			err = &httpError{path: path, status: status, body: strings.TrimSpace(string(body))}
+			err = &httpError{status: r.status, body: strings.TrimSpace(string(r.body))}
 		}
-		if ctx.Err() != nil || attempt >= len(a.retryDelays) || !transient(status, errOrNil(status, err)) {
-			return nil, nil, err
+		if ctx.Err() != nil || attempt >= len(delays) || !transient {
+			return r, fmt.Errorf("%s: %w", label, err)
 		}
-		wait := a.retryDelays[attempt]
-		if a.log != nil {
-			logf(a.log, "retry %d/%d of GET %s in %s: %v", attempt+1, len(a.retryDelays), path, wait, err)
+		if log != nil {
+			logf(log, "retry %d/%d of %s in %s: %v", attempt+1, len(delays), label, delays[attempt], err)
 		}
-		if err := sleep(ctx, wait); err != nil {
-			return nil, nil, err
+		if err := sleep(ctx, delays[attempt]); err != nil {
+			return r, err
 		}
 	}
+}
+
+// succeeded reports a 2xx status.
+func succeeded(status int) bool { return status >= 200 && status < 300 }
+
+// exchange sends one request and reads at most limit bytes of its answer. With a token it speaks the GitHub REST API.
+func exchange(ctx context.Context, client *http.Client, method, target, token string, body []byte, limit int64) (response, error) {
+	var reader io.Reader
+	if body != nil {
+		reader = bytes.NewReader(body)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, target, reader)
+	if err != nil {
+		return response{}, err
+	}
+	if token != "" {
+		req.Header.Set("Accept", "application/vnd.github+json")
+		req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return response{}, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, limit))
+	if err != nil {
+		return response{}, err
+	}
+	return response{status: resp.StatusCode, header: resp.Header, body: raw}, nil
+}
+
+// call sends one API request with the retries of the api and counts it.
+func (a *api) call(ctx context.Context, method, target, label string, body []byte, limit int64) (response, error) {
+	return retrying(ctx, a.retryDelays, a.log, label, func() (response, error) {
+		a.mu.Lock()
+		a.calls++
+		a.mu.Unlock()
+		return exchange(ctx, a.client, method, target, a.token, body, limit)
+	})
 }
 
 // sleep waits d or until ctx ends.
@@ -102,39 +149,6 @@ func token() string {
 	return os.Getenv("GH_TOKEN")
 }
 
-// errOrNil keeps a transport error and drops the httpError made from a status, so transient judges a status by its code.
-func errOrNil(status int, err error) error {
-	if status != 0 {
-		return nil
-	}
-	return err
-}
-
-func (a *api) once(ctx context.Context, target string) ([]byte, http.Header, int, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
-	if err != nil {
-		return nil, nil, 0, err
-	}
-	req.Header.Set("Accept", "application/vnd.github+json")
-	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
-	if a.token != "" {
-		req.Header.Set("Authorization", "Bearer "+a.token)
-	}
-	a.mu.Lock()
-	a.calls++
-	a.mu.Unlock()
-	resp, err := a.client.Do(req)
-	if err != nil {
-		return nil, nil, 0, err
-	}
-	defer func() { _ = resp.Body.Close() }()
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 64<<20))
-	if err != nil {
-		return nil, nil, 0, err
-	}
-	return body, resp.Header, resp.StatusCode, nil
-}
-
 func (a *api) callCount() int {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -151,16 +165,16 @@ func (a *api) get(ctx context.Context, path string, out any, all bool) error {
 		if !strings.HasPrefix(next, a.base+"/") {
 			return fmt.Errorf("GET %s: next page %q is not under %s", path, next, a.base)
 		}
-		body, header, err := a.do(ctx, path, next)
+		r, err := a.call(ctx, http.MethodGet, next, "GET "+path, nil, 64<<20)
 		if err != nil {
-			return fmt.Errorf("GET %s: %w", path, err)
+			return err
 		}
 		if !all {
-			return json.Unmarshal(body, out)
+			return json.Unmarshal(r.body, out)
 		}
-		pages = append(pages, body)
+		pages = append(pages, r.body)
 		next = ""
-		if m := nextLinkRE.FindStringSubmatch(header.Get("Link")); m != nil {
+		if m := nextLinkRE.FindStringSubmatch(r.header.Get("Link")); m != nil {
 			next = m[1]
 		}
 	}
@@ -180,7 +194,6 @@ func (a *api) get(ctx context.Context, path string, out any, all bool) error {
 }
 
 type httpError struct {
-	path   string
 	status int
 	body   string
 }

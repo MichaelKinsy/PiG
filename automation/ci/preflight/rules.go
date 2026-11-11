@@ -36,6 +36,19 @@ func fail(format string, args ...any) outcome {
 	return outcome{result: resultFail, reason: fmt.Sprintf(format, args...)}
 }
 
+// compiled holds every pattern a rule compiled, by its source; the config validated each one when it loaded.
+var compiled sync.Map
+
+// pattern returns the compiled regular expression of src, compiling it once per run.
+func pattern(src string) *regexp.Regexp {
+	if re, ok := compiled.Load(src); ok {
+		return re.(*regexp.Regexp)
+	}
+	re := regexp.MustCompile(src)
+	compiled.Store(src, re)
+	return re
+}
+
 // params are a rule's parameters, the with: map of its check.
 type params map[string]any
 
@@ -164,8 +177,7 @@ func needList(p params, key string) error {
 
 // templateField reads "Name: value" from the PR body; ok is false when the line is missing or empty.
 func templateField(body, name string) (string, bool) {
-	re := regexp.MustCompile(`(?mi)^[ \t]*` + regexp.QuoteMeta(name) + `:[ \t]*(\S.*?)[ \t]*$`)
-	m := re.FindStringSubmatch(body)
+	m := pattern(`(?mi)^[ \t]*` + regexp.QuoteMeta(name) + `:[ \t]*(\S.*?)[ \t]*$`).FindStringSubmatch(body)
 	if m == nil {
 		return "", false
 	}
@@ -207,7 +219,7 @@ func ruleBodyFields(d *data, p params, _ *ruleEnv) outcome {
 	var missing []string
 	for _, f := range p.maps("fields") {
 		v, ok := templateField(d.Pull.Body, f.str("name"))
-		if !ok || !regexp.MustCompile(f.str("pattern")).MatchString(v) {
+		if !ok || !pattern(f.str("pattern")).MatchString(v) {
 			missing = append(missing, f.str("help"))
 		}
 	}
@@ -236,7 +248,7 @@ func ruleAllCommits(d *data, p params, _ *ruleEnv) outcome {
 		switch {
 		case message == "" && !c.Commit.Verification.Verified:
 			bad = append(bad, fmt.Sprintf("%s (%s)", short(c.SHA), c.Commit.Verification.Reason))
-		case message != "" && !regexp.MustCompile(message).MatchString(c.Commit.Message):
+		case message != "" && !pattern(message).MatchString(c.Commit.Message):
 			bad = append(bad, short(c.SHA))
 		}
 	}
@@ -368,16 +380,7 @@ func ruleChangelog(d *data, _ params, _ *ruleEnv) outcome {
 				section = strings.TrimPrefix(line, "### ")
 				sawFixed = sawFixed || section == "Fixed"
 			case section == "Fixed" && strings.HasPrefix(line, "- "):
-				mm := fixMarkerRE.FindStringSubmatch(line)
-				if mm == nil {
-					problems = append(problems, fmt.Sprintf("%s: a ### Fixed bullet has no <!-- fix: <sha> --> marker", f.Filename))
-					continue
-				}
-				for sha := range strings.SplitSeq(mm[1], ",") {
-					if sha = strings.TrimSpace(sha); !d.prCommit(sha) {
-						problems = append(problems, fmt.Sprintf("%s: fix marker %s is not a commit of this PR", f.Filename, sha))
-					}
-				}
+				problems = append(problems, fixMarkerProblems(d, f.Filename, line)...)
 			}
 		}
 	}
@@ -388,6 +391,21 @@ func ruleChangelog(d *data, _ params, _ *ruleEnv) outcome {
 		return fail("%s", strings.Join(problems, "; "))
 	}
 	return pass(fmt.Sprintf("%d valid fragment(s)", len(fragments)))
+}
+
+// fixMarkerProblems checks one "### Fixed" bullet: it needs a <!-- fix: <sha> --> marker naming commits of the PR.
+func fixMarkerProblems(d *data, fragment, bullet string) []string {
+	m := fixMarkerRE.FindStringSubmatch(bullet)
+	if m == nil {
+		return []string{fragment + ": a ### Fixed bullet has no <!-- fix: <sha> --> marker"}
+	}
+	var problems []string
+	for sha := range strings.SplitSeq(m[1], ",") {
+		if sha = strings.TrimSpace(sha); !d.prCommit(sha) {
+			problems = append(problems, fmt.Sprintf("%s: fix marker %s is not a commit of this PR", fragment, sha))
+		}
+	}
+	return problems
 }
 
 // addedLines returns the lines a unified diff patch adds, without the leading "+".
@@ -581,7 +599,7 @@ func ruleLicenseNotices(d *data, p params, env *ruleEnv) outcome {
 		re, _ := globRegexp(g)
 		notices = append(notices, re)
 	}
-	codeFile := regexp.MustCompile(p.str("code-files"))
+	codeFile := pattern(p.str("code-files"))
 	licenses := env.mainLicenses()
 	var problems []string
 	var warnings []warning
@@ -630,7 +648,7 @@ func validateAddedLinesWarn(p params) error {
 
 // ruleAddedLinesWarn passes and warns on every added line that matches the pattern, so a reviewer sees each one.
 func ruleAddedLinesWarn(d *data, p params, _ *ruleEnv) outcome {
-	re := regexp.MustCompile(p.str("pattern"))
+	re := pattern(p.str("pattern"))
 	o := pass("checked the added lines")
 	for _, f := range d.Files {
 		for _, l := range addedNumbered(f.Patch) {

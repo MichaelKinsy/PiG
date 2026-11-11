@@ -3,9 +3,9 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -83,46 +83,11 @@ func (a *api) send(ctx context.Context, method, path string, body, out any) erro
 	if err != nil {
 		return err
 	}
-	target := a.base + "/" + strings.TrimPrefix(path, "/")
-	for attempt := 0; ; attempt++ {
-		req, err := http.NewRequestWithContext(ctx, method, target, bytes.NewReader(raw))
-		if err != nil {
-			return err
-		}
-		req.Header.Set("Accept", "application/vnd.github+json")
-		req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Authorization", "Bearer "+a.token)
-		a.mu.Lock()
-		a.calls++
-		a.mu.Unlock()
-		resp, err := a.client.Do(req)
-		status := 0
-		var respBody []byte
-		if err == nil {
-			respBody, err = io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-			_ = resp.Body.Close()
-			status = resp.StatusCode
-		}
-		if err == nil && status >= 200 && status < 300 {
-			if out != nil {
-				return json.Unmarshal(respBody, out)
-			}
-			return nil
-		}
-		if err == nil {
-			err = &httpError{path: path, status: status, body: strings.TrimSpace(string(respBody))}
-		}
-		if ctx.Err() != nil || attempt >= len(a.retryDelays) || !transient(status, errOrNil(status, err)) {
-			return fmt.Errorf("%s %s: %w", method, path, err)
-		}
-		if a.log != nil {
-			logf(a.log, "retry %d/%d of %s %s in %s: %v", attempt+1, len(a.retryDelays), method, path, a.retryDelays[attempt], err)
-		}
-		if err := sleep(ctx, a.retryDelays[attempt]); err != nil {
-			return err
-		}
+	r, err := a.call(ctx, method, a.base+"/"+strings.TrimPrefix(path, "/"), method+" "+path, raw, 1<<20)
+	if err != nil || out == nil {
+		return err
 	}
+	return json.Unmarshal(r.body, out)
 }
 
 type recordOptions struct {
@@ -141,15 +106,12 @@ func record(ctx context.Context, cfg config, d *data, ev evaluation, o recordOpt
 	logf(log, "record: state for %s written to %s", short(ev.Head), o.statePath)
 	report := markdown(cfg, d, ev)
 	if summary := os.Getenv("GITHUB_STEP_SUMMARY"); summary != "" {
-		f, err := os.OpenFile(summary, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
-		if err != nil {
+		// The step summary may already hold the other PRs' reports: this one is added after them.
+		before, err := os.ReadFile(summary)
+		if err != nil && !errors.Is(err, os.ErrNotExist) {
 			return err
 		}
-		_, err = f.WriteString(report)
-		if cerr := f.Close(); err == nil {
-			err = cerr
-		}
-		if err != nil {
+		if err := os.WriteFile(summary, append(before, report...), 0o600); err != nil {
 			return err
 		}
 	}

@@ -109,6 +109,8 @@ const (
 	inputTree    = "tree"
 )
 
+var sha256RE = regexp.MustCompile(`^[0-9a-f]{64}$`)
+
 // sourceNames are the data sources a cheap check may read.
 var sourceNames = []string{"pull", "files", "commits", "compare-main", "depends-on", "dependency-graph"}
 
@@ -151,7 +153,7 @@ func (t tool) validate() error {
 		return errors.New("needs a name and a version")
 	case t.Pip != "" && (t.URL != "" || t.SHA256 != ""):
 		return fmt.Errorf("%s: either pip or url and sha256, not both", t.Name)
-	case t.Pip == "" && (!strings.HasPrefix(t.URL, "https://") || !regexp.MustCompile(`^[0-9a-f]{64}$`).MatchString(t.SHA256)):
+	case t.Pip == "" && (!strings.HasPrefix(t.URL, "https://") || !sha256RE.MatchString(t.SHA256)):
 		return fmt.Errorf("%s: needs an https url and its lowercase sha256", t.Name)
 	}
 	return nil

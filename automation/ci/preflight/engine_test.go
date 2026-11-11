@@ -153,4 +153,34 @@ func TestRunBatch(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dir, "scanned-1")); err == nil {
 		t.Error("the reused PR ran its scan again")
 	}
+	if strings.Contains(out.String(), "scans skipped") {
+		t.Error("a run with no scan to run said it skipped them")
+	}
+
+	// A reused PR whose scans are still open does not run them, even when scans are forced.
+	o.prs, o.forceScans = []int{2}, true
+	out.Reset()
+	if err := runBatch(context.Background(), cfg, o, &out); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "scanned-2")); err == nil || !strings.Contains(out.String(), "mode reuse") {
+		t.Errorf("a reused PR ran its open scans; log:\n%s", out.String())
+	}
+}
+
+func TestRunPRMarksScansWhenTheirInputsFail(t *testing.T) {
+	cfg, err := loadConfig([]byte(strings.Replace(engineConfig, "input: added", "input: changed", 1)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	g := &fakeGitHub{bodies: map[int]string{1: "Fix: no"}, broken: map[int]bool{}, hits: map[string]int{}, statuses: map[string]string{}, comments: map[int]string{}}
+	server := httptest.NewServer(g)
+	defer server.Close()
+	dir := t.TempDir()
+	o := runOptions{apiBase: server.URL, gitBase: "file://" + filepath.Join(dir, "no-such-remote"), token: "t", repo: "o/r", root: dir, bin: dir, states: dir, work: filepath.Join(dir, "work"), dryRun: true}
+	var log strings.Builder
+	result, err := runPR(context.Background(), cfg, &ruleEnv{root: dir}, o, "v", 1, &log)
+	if err != nil || result != resultFail || !strings.Contains(log.String(), "the scan inputs could not be prepared") {
+		t.Fatalf("result %s, err %v, log:\n%s", result, err, log.String())
+	}
 }

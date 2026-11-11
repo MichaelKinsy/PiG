@@ -20,6 +20,9 @@ import (
 	"time"
 )
 
+// downloadTimeout bounds one download of a tool.
+const downloadTimeout = 5 * time.Minute
+
 // install puts every tool of the config into bin: a release archive is downloaded (or taken from the digest-keyed
 // cache), accepted only at its pinned SHA-256, and the tool's binary extracted; a pip tool is installed into its own
 // virtual environment from the hash-locked requirements file and linked into bin.
@@ -64,20 +67,15 @@ func installArchive(ctx context.Context, t tool, bin, cache string) error {
 		if h.Typeflag != tar.TypeReg || path.Base(h.Name) != t.Name {
 			continue
 		}
+		body, err := io.ReadAll(io.LimitReader(tr, 512<<20))
+		if err != nil {
+			return err
+		}
 		target := filepath.Join(bin, t.Name)
-		tmp := target + ".tmp"
-		f, err := os.OpenFile(tmp, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o755)
-		if err != nil {
+		if err := os.WriteFile(target+".tmp", body, 0o755); err != nil {
 			return err
 		}
-		_, err = io.Copy(f, io.LimitReader(tr, 512<<20))
-		if cerr := f.Close(); err == nil {
-			err = cerr
-		}
-		if err != nil {
-			return err
-		}
-		return os.Rename(tmp, target)
+		return os.Rename(target+".tmp", target)
 	}
 }
 
@@ -87,47 +85,20 @@ func download(ctx context.Context, url, want, cache string) ([]byte, error) {
 	if raw, err := os.ReadFile(cached); err == nil && sha256Hex(raw) == want {
 		return raw, nil
 	}
-	var lastErr error
-	for attempt, wait := range append([]time.Duration{0}, defaultRetryDelays...) {
-		if attempt > 0 {
-			if err := sleep(ctx, wait); err != nil {
-				return nil, err
-			}
-		}
-		raw, status, err := get(ctx, url)
-		switch {
-		case err != nil:
-			lastErr = err
-			continue
-		case status != http.StatusOK:
-			lastErr = fmt.Errorf("HTTP %d", status)
-			if !transient(status, nil) {
-				return nil, lastErr
-			}
-			continue
-		case sha256Hex(raw) != want:
-			return nil, fmt.Errorf("%s has SHA-256 %s, pinned %s", url, sha256Hex(raw), want)
-		}
-		if err := os.MkdirAll(cache, 0o755); err == nil {
-			_ = os.WriteFile(cached, raw, 0o600)
-		}
-		return raw, nil
-	}
-	return nil, lastErr
-}
-
-func get(ctx context.Context, url string) ([]byte, int, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	client := &http.Client{Timeout: downloadTimeout}
+	r, err := retrying(ctx, defaultRetryDelays, nil, "GET "+url, func() (response, error) {
+		return exchange(ctx, client, http.MethodGet, url, "", nil, 512<<20)
+	})
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
-	resp, err := (&http.Client{Timeout: 5 * time.Minute}).Do(req)
-	if err != nil {
-		return nil, 0, err
+	if got := sha256Hex(r.body); got != want {
+		return nil, fmt.Errorf("%s has SHA-256 %s, pinned %s", url, got, want)
 	}
-	defer func() { _ = resp.Body.Close() }()
-	raw, err := io.ReadAll(io.LimitReader(resp.Body, 512<<20))
-	return raw, resp.StatusCode, err
+	if err := os.MkdirAll(cache, 0o755); err == nil {
+		_ = os.WriteFile(cached, r.body, 0o600)
+	}
+	return r.body, nil
 }
 
 func sha256Hex(raw []byte) string {
