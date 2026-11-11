@@ -310,7 +310,7 @@ func TestExample40ToolWaitsForWebhook(t *testing.T) {
 		"result: CI passed: https://ci/1",
 		"  [cancel] cancelling build-2",
 		`builds: [{"id":"build-1","ref":"main","cancelled":false},{"id":"build-2","ref":"feature","cancelled":true}]`,
-		"result: Tool run_ci was aborted",
+		"result: <harness>\n[error] Tool run_ci was aborted\n</harness>",
 	})
 	if err := opened.Close(background); err != nil {
 		t.Fatal(err)

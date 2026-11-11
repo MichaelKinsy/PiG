@@ -203,9 +203,9 @@ func TestExample44ApprovalGate(t *testing.T) {
 		"  result: ran: rm -rf build (quiet-hours gate asked 2 times)",
 		`asked to approve "rm -rf dist"; the call is sleeping; wake: ` + wakeAtDeadline,
 		"  deny: delivered",
-		"  result: Tool call blocked: Not approved (quiet-hours gate asked 2 times)",
+		"  result: <harness> [error] Tool call blocked: Not approved </harness> (quiet-hours gate asked 2 times)",
 		`asked to approve "rm -rf cache"; the call is sleeping; wake: ` + wakeAtDeadline,
-		"  result: Tool call blocked: No approval within a day (quiet-hours gate asked 2 times)",
+		"  result: <harness> [error] Tool call blocked: No approval within a day </harness> (quiet-hours gate asked 2 times)",
 	})
 	if err := opened.Close(background); err != nil {
 		t.Fatal(err)
