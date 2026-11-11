@@ -1,3 +1,0 @@
-### Fixed
-
-- A worker that crashed while a script waited on it is restarted for its holders even under load: the workers component released the next queued operation of an address (the Stop and the Retry after it that follow a crash) when a start settled, before the route applied the start's result, so the Retry found the address still resolving, did nothing, and the failure the route then recorded stayed until the next retry (a Code Mode script resumed after its worker was killed could wait for ever). A start the route awaits now releases the next operation in the section that applies its result, the order of Pi's route continuation. <!-- fix: b5115ae25a -->
