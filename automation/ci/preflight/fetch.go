@@ -30,8 +30,6 @@ type state struct {
 	Body string `json:"body"`
 	// Status is the commit status last set, state and description; an equal one on the same head is not set again.
 	Status string `json:"status,omitempty"`
-	// Checked is when the PR was last decided (a reused run keeps it); the PR checked longest ago goes first.
-	Checked time.Time `json:"checked"`
 	// Alerted are the checks whose alert was posted; a check leaves the list when it passes, and alerts again when
 	// it fails again.
 	Alerted []string `json:"alerted,omitempty"`

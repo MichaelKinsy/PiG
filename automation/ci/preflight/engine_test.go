@@ -293,11 +293,7 @@ func TestRunBatchBudgets(t *testing.T) {
 	defer server.Close()
 	dir := t.TempDir()
 	o := runOptions{apiBase: server.URL, token: "t", repo: "o/r", root: dir, bin: dir, work: filepath.Join(dir, "work"), jobs: 1, budget: 2, bot: defaultBot}
-	// PR 2 was checked long ago, PR 3 and 4 recently, PR 1 never: 1, 2, 3, 4 is the order, and the budget of two
-	// defers 3 and 4.
-	withComment(g, 2, state{Checked: time.Unix(1000, 0)})
-	withComment(g, 3, state{Checked: time.Unix(2000, 0)})
-	withComment(g, 4, state{Checked: time.Unix(2000, 0)})
+	// PRs go in number order, and the budget of two leaves 3 and 4 to a next job.
 	var out strings.Builder
 	deferred, err := runBatch(context.Background(), cfg, o, &out)
 	if err != nil || !slices.Equal(deferred, []int{3, 4}) {
@@ -338,19 +334,7 @@ func TestRunBatchBudgets(t *testing.T) {
 	}
 }
 
-func TestLongestWaitingAndChunks(t *testing.T) {
-	at := func(pr int, sec int64) pending {
-		return pending{pr: pr, comment: prComment{State: &state{Checked: time.Unix(sec, 0)}}}
-	}
-	prs := []pending{at(6, 10), at(5, 10), {pr: 9}, at(7, 5), {pr: 8}}
-	longestWaiting(prs)
-	var got []int
-	for _, p := range prs {
-		got = append(got, p.pr)
-	}
-	if !slices.Equal(got, []int{8, 9, 7, 5, 6}) {
-		t.Fatalf("order %v", got)
-	}
+func TestChunks(t *testing.T) {
 	if c := chunks([]int{1, 2, 3, 4, 5}, 2); !slices.Equal(c, []string{"1 2", "3 4", "5"}) {
 		t.Fatalf("chunks %q", c)
 	}

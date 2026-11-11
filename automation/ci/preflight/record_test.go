@@ -112,18 +112,17 @@ func TestRecordSendsOnlyChangesAndAlertsOnce(t *testing.T) {
 	if !strings.HasPrefix(g.comments[1], commentMarker) || !strings.Contains(g.comments[1], "❌ fail") {
 		t.Fatalf("comment %q", g.comments[1])
 	}
-	// A reused run with nothing changed sends nothing, keeps the time it was checked, and does not alert again.
+	// A reused run with nothing changed sends nothing and does not alert again.
 	d.Mode = modeReuse
-	checked := st.Checked
-	if st = step(); len(g.calls) != 0 || len(g.alerts) != 1 || !st.Checked.Equal(checked) {
+	if step(); len(g.calls) != 0 || len(g.alerts) != 1 {
 		t.Fatalf("an unchanged run sent %v", g.calls)
 	}
-	// A changed verdict updates the comment by its id and sets the status; a decided run is checked anew.
+	// A changed verdict updates the comment by its id and sets the status.
 	d.Mode = modeFull
 	ev.Checks["template"] = verdict{Result: resultFail, Reason: "x"}
 	ev.finish()
-	if st = step(); !slices.Equal(g.calls, []string{"POST /repos/o/r/statuses/h1", "PATCH /repos/o/r/issues/comments/1"}) || !st.Checked.After(checked) {
-		t.Fatalf("calls %v, checked %v after %v", g.calls, st.Checked, checked)
+	if step(); !slices.Equal(g.calls, []string{"POST /repos/o/r/statuses/h1", "PATCH /repos/o/r/issues/comments/1"}) {
+		t.Fatalf("calls %v", g.calls)
 	}
 	// A full run that only moved main writes the new state but sets no status: the status did not change.
 	ev.Base = "b2"

@@ -35,8 +35,8 @@ type runOptions struct {
 	dryRun bool
 	// forceScans runs the scans even when a cheap check failed.
 	forceScans bool
-	// budget is how many PRs a run fully checks; a PR it reuses does not count. Zero is no limit; PRs named in prs
-	// are all run.
+	// budget is how many PRs a job fully checks before it leaves the rest to next jobs; a PR it reuses does not count.
+	// Zero is no limit; PRs named in prs are all run.
 	budget int
 	// timeBudget is how long a run starts PRs; the ones running then finish. Zero is no limit.
 	timeBudget time.Duration
@@ -47,22 +47,6 @@ type pending struct {
 	pr      int
 	comment prComment
 	err     error
-}
-
-// longestWaiting orders the PRs by when they were last decided, never decided first, then by number.
-func longestWaiting(prs []pending) {
-	checked := func(p pending) time.Time {
-		if p.comment.State == nil {
-			return time.Time{}
-		}
-		return p.comment.State.Checked
-	}
-	slices.SortStableFunc(prs, func(a, b pending) int {
-		if c := checked(a).Compare(checked(b)); c != 0 {
-			return c
-		}
-		return a.pr - b.pr
-	})
 }
 
 // runPR runs the whole pre-flight for one PR and returns its result. An error means the pre-flight itself could not
@@ -148,7 +132,8 @@ func runBatch(ctx context.Context, cfg config, o runOptions, out io.Writer) ([]i
 			numbers = append(numbers, p.Number)
 		}
 	}
-	// Every PR's comment is loaded first: it holds the state, and the state says which PR waited longest.
+	// PRs in number order, each with its comment, which holds its state.
+	slices.Sort(numbers)
 	prs := make([]pending, len(numbers))
 	each(len(numbers), o.jobs, func(i int) {
 		prs[i].pr = numbers[i]
@@ -157,8 +142,6 @@ func runBatch(ctx context.Context, cfg config, o runOptions, out io.Writer) ([]i
 	budget := o.budget
 	if len(o.prs) > 0 {
 		budget = 0
-	} else {
-		longestWaiting(prs)
 	}
 	logf(out, "pre-flight %s over %d PR(s) of %s, %d at a time", short(version), len(prs), o.repo, o.jobs)
 	deadline := time.Now().Add(o.timeBudget)

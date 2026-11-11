@@ -12,7 +12,6 @@ import (
 	"os"
 	"slices"
 	"strings"
-	"time"
 )
 
 // commentMarker identifies the pre-flight's one comment on a PR, which every run updates.
@@ -140,16 +139,12 @@ func alertBody(c check, d *data, ev evaluation) string {
 
 // record writes the step summary, the commit status, the PR's one pre-flight comment with the state for the next run in
 // it, and any alert. The status is set only when it differs from the one the previous run set on the same head, the
-// comment only when its text differs. A reused run keeps the previous time it was checked, so an unchanged PR is not
-// written at all. With dryRun it writes the summary and prints what it would send.
+// comment only when its text differs, so an unchanged PR is not written at all. With dryRun it writes the summary and prints what it would send.
 func record(ctx context.Context, cfg config, d *data, ev evaluation, o recordOptions, log io.Writer) error {
 	report := markdown(cfg, d, ev)
 	status, description := statusFor(cfg, ev)
 	prev := d.Previous
-	st := state{Version: ev.Version, Engine: ev.Engine, Head: ev.Head, Base: ev.Base, Checks: ev.Checks, Body: bodyHash(d.Pull.Body), Status: status + " " + description, Checked: time.Now().UTC()}
-	if d.Mode == modeReuse && prev != nil {
-		st.Checked = prev.Checked
-	}
+	st := state{Version: ev.Version, Engine: ev.Engine, Head: ev.Head, Base: ev.Base, Checks: ev.Checks, Body: bodyHash(d.Pull.Body), Status: status + " " + description}
 	due, alerted := alertsFor(cfg, ev, prev)
 	st.Alerted = alerted
 	if summary := os.Getenv("GITHUB_STEP_SUMMARY"); summary != "" {

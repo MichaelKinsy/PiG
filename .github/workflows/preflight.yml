@@ -6,7 +6,7 @@ name: Pre-flight
 # configuration, never a PR's: schedule and dispatch check out the default branch. Each PR gets a "preflight" commit
 # status and one comment, which also holds the PR's state for the next run; a PR whose head, main and description did
 # not change since its last run costs two API calls and is not written. The first job fully checks at most 20 PRs,
-# the longest waiting first; the PRs beyond go to next jobs, 20 each.
+# in number order; the PRs beyond go to next jobs, 20 each, at the same time.
 #
 # tree-pr: a report, not a check. It applies the forbidden.yaml and mandatory.yaml of that PR's head to every file of
 # its tree, for a PR that makes a rule stricter: the PR itself is judged on its diff only, so what the stricter rule
