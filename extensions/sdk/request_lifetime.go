@@ -16,6 +16,16 @@ type requestParent struct {
 	completed bool
 	finished  bool
 	cancelled bool
+	// command is set when the request hands its handler a command context (a command handler, a withSession callback): the context keeps the kind after the request ended, and the host refuses the command-only session actions from any other. Guarded by the connection's pendingMu.
+	command bool
+}
+
+// markCommand records that the request hands its handler a command context. The kind stays with the context for good: a retained command context is still one, and a retained event, tool or shortcut context never becomes one.
+// pig divergence (D617): the Go SDK has one static Context type, so the method exists on every context; the host answers a command-only call from a context that did not send this mark with not_a_command_context.
+func (p *requestParent) markCommand() {
+	p.conn.pendingMu.Lock()
+	p.command = true
+	p.conn.pendingMu.Unlock()
 }
 
 func (c *conn) armParent(id string, runtime, request context.Context) *requestParent {

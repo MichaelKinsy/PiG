@@ -2203,6 +2203,9 @@ class _RequestParent:
     socket: Any
     state: str = "active"
     finished: bool = False
+    # pig divergence (D617): the Python SDK has one static Context type, so the method exists on every context; the host answers a command-only call from a context that did not send this mark with not_a_command_context.
+    # True for the request of a command handler or a withSession callback, whose context is Pi's command context. The context keeps the kind after the request ended, and the host refuses the command-only session actions (new_session, fork, navigate_tree, switch_session, reload) from any other.
+    command: bool = False
 
 
 def _surface_args(lines: list[str], width: int) -> dict[str, Any]:
@@ -6040,7 +6043,7 @@ class Extension:
         req_id = env.get("id", "")
         req = env.get("request") or {}
         cancel = ProviderSignal()
-        parent = _RequestParent(req_id, self._sock)
+        parent = _RequestParent(req_id, self._sock, command=req.get("method") in ("command", "with_session"))
         with self._state_lock:
             self._active[req_id] = (cancel, None)
             self._request_parents[req_id] = parent
@@ -6569,6 +6572,8 @@ class Extension:
             call = {"method": method, "args": args}
             if parent_request_id:
                 call["parent_request_id"] = parent_request_id
+            if parent is not None and parent.command:
+                call["command_context"] = True
             if timer:
                 call["timer"] = True
             try:

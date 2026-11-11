@@ -712,6 +712,9 @@ pub struct CallMsg {
     pub args: Option<Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parent_request_id: Option<String>,
+    /// Set on a call made through a command context (a command handler's or a withSession callback's), kept with the context after its request ended: Pi gives `newSession`, `fork`, `navigateTree`, `switchSession` and `reload` to no other context, and the host refuses them from any call that does not carry this mark.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub command_context: bool,
     /// Set on a call made through a request's scope after its handler returned: deferred work, which the host runs once Pi's loop turns.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub timer: bool,
@@ -775,6 +778,8 @@ pub(crate) struct RequestParent {
     id: String,
     state: AtomicU8,
     finished: AtomicBool,
+    /// Set when the request hands its handler a command context (a command handler, a withSession callback). The context keeps the kind after the request ended.
+    command: AtomicBool,
     /// A `tool_call` request's place in the batch orders (`ToolStartOrder`), set once by the read loop. Its host calls are awaits of
     /// the handler, so the ones carrying this request's id keep the place.
     start: std::sync::OnceLock<Arc<crate::tool_start_order::ToolStart>>,
@@ -786,6 +791,14 @@ impl RequestParent {
     }
     pub(crate) fn cancelled(&self) -> bool {
         self.state.load(Ordering::Acquire) == 2
+    }
+    // pig divergence (D617): the Rust SDK has one static Context type, so the method exists on every context; the host answers a command-only call from a context that did not send this mark with not_a_command_context.
+    /// Marks the request as one whose handler receives a command context. The read loop calls it once, before the request's thread starts.
+    pub(crate) fn mark_command(&self) {
+        self.command.store(true, Ordering::Release);
+    }
+    pub(crate) fn command(&self) -> bool {
+        self.command.load(Ordering::Acquire)
     }
 
     /// Gives the request its place in the batch orders. The read loop calls it once, before the request's thread starts.
@@ -992,6 +1005,7 @@ impl Connection {
             id: id.to_owned(),
             state: AtomicU8::new(0),
             finished: AtomicBool::new(false),
+            command: AtomicBool::new(false),
             start: std::sync::OnceLock::new(),
         });
         self.request_parents
@@ -1368,6 +1382,7 @@ impl Connection {
             Some(parent) => Some(parent.id.as_str()),
             None => parent_request_id,
         };
+        let command_context = scope.is_some_and(RequestParent::command);
         let id = format!(
             "c{}",
             self.call_id
@@ -1391,6 +1406,9 @@ impl Connection {
             #[serde(skip_serializing_if = "Option::is_none")]
             parent_request_id: Option<&'a str>,
             #[serde(skip_serializing_if = "std::ops::Not::not")]
+            #[serde(skip_serializing_if = "std::ops::Not::not")]
+            command_context: bool,
+            #[serde(skip_serializing_if = "std::ops::Not::not")]
             timer: bool,
         }
         #[derive(Serialize)]
@@ -1409,6 +1427,7 @@ impl Connection {
                     method,
                     args,
                     parent_request_id,
+                    command_context,
                     timer,
                 },
             },

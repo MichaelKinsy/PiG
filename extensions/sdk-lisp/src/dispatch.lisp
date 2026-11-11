@@ -370,6 +370,7 @@
 (defun start-request (ext env)
   (let* ((id (jget env "id" "")) (req (or (jget env "request") (obj)))
          (request (make-request id (make-abort-signal))))
+    (setf (request-command request) (and (member (jget req "method") '("command" "with_session") :test #'equal) t))
     (sb-thread:with-mutex ((extension-state-lock ext))
       (setf (gethash id (extension-active ext)) request))
     (let ((ctx (make-ctx ext request env)))

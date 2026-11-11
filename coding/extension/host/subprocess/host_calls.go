@@ -379,6 +379,17 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 		refuseReferences()
 		return
 	}
+	// A command-only session action through a context that is not a command context (an event, a tool, a shortcut: Pi's createContext() object lacks the member) is refused before it can replace the session under the emit that made it. The kind is the SDK's, sent with the call from the context the call is made through, not the live request's: a context kept past its request is the same context. A call without the mark is not from a command context.
+	if commandOnlyCall(call.Method) && !call.CommandContext {
+		refuseReferences()
+		if mark != nil {
+			mark()
+		}
+		if callID != "" {
+			_ = conn.Send(&Envelope{Type: MsgCallResult, ID: callID, CallResult: &CallResultPayload{Error: commandOnlyCallError(call.Method)}})
+		}
+		return
+	}
 	// Pi's loop stays alive for a call that starts I/O, a child process or a session change, and does not for a dialog that stdin can no longer answer. The count runs from the call's frame, and the drain notification that follows it waits for the call's lane (queueCall), so the drain sees it.
 	if takesInteractiveFocus(call.Method) {
 		defer conn.countHostCall(call.ParentRequestID, true)()

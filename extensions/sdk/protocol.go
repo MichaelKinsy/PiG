@@ -227,6 +227,8 @@ type callMsg struct {
 	Method          string          `json:"method"`
 	Args            json.RawMessage `json:"args,omitempty"`
 	ParentRequestID string          `json:"parent_request_id,omitempty"`
+	// CommandContext marks a call made through a command context (a command handler's or a withSession callback's), kept with the context after its request ended: Pi gives newSession, fork, navigateTree, switchSession and reload to no other context, and the host refuses them without it.
+	CommandContext bool `json:"command_context,omitempty"`
 	// Timer marks a call made through a request's context after the request's handler returned: deferred work, which Pi runs from a timer, an immediate or a later continuation, once the loop turns (D189).
 	Timer bool `json:"timer,omitempty"`
 }
@@ -669,6 +671,7 @@ func (c *conn) beginCall(parentRequestID string, parent *requestParent, method s
 	default:
 	}
 	timer := false
+	commandContext := false
 	if parent != nil {
 		parentRequestID, err = c.parentIDLocked(parent)
 		if err != nil {
@@ -680,6 +683,7 @@ func (c *conn) beginCall(parentRequestID string, parent *requestParent, method s
 			callCtx = parent.runtime
 			timer = true
 		}
+		commandContext = parent.command
 	}
 	c.pending[id] = ch
 	c.pendingParents[id] = parentRequestID
@@ -691,7 +695,7 @@ func (c *conn) beginCall(parentRequestID string, parent *requestParent, method s
 	if err := c.sendLocked(envelope{
 		Type: msgCall,
 		ID:   id,
-		Call: &callMsg{Method: method, Args: argsJSON, ParentRequestID: parentRequestID, Timer: timer},
+		Call: &callMsg{Method: method, Args: argsJSON, ParentRequestID: parentRequestID, CommandContext: commandContext, Timer: timer},
 	}); err != nil {
 		c.pendingMu.Lock()
 		delete(c.pending, id)

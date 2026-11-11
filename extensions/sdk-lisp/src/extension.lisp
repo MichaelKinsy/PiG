@@ -67,7 +67,9 @@
   (state :active)               ; :active, :completed, :cancelled
   (finished nil)
   (reason nil)
-  (ticket nil))
+  (ticket nil)
+  ;; T for the request of a command handler or a withSession callback, whose context is Pi's command context. The context keeps the kind after the request ended; the host refuses the command-only session actions from any other.
+  (command nil))
 
 (defstruct (footer-data)
   (branch nil)

@@ -38,6 +38,7 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
           (setf (gethash id (extension-pending ext)) slot))
         (let ((call (obj "method" method "args" args)))
           (when (plusp (length request-id)) (setf (gethash "parent_request_id" call) request-id))
+          (when (and parent (request-command parent)) (setf (gethash "command_context" call) t))
           (when timer (setf (gethash "timer" call) t))
           (setf frame (obj "type" "call" "id" id "call" call))))
       (handler-case (send-frame-locked conn frame)

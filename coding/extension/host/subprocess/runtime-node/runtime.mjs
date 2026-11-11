@@ -1572,7 +1572,7 @@ export class Connection {
       this.pending.set(id, { resolve, reject, parentRequestId, method });
       refreshQuitDrain(drainFor(this.owner?.group));
       try {
-        this.send({ type: "call", id, call: { method, args, ...(parentRequestId ? { parent_request_id: parentRequestId } : {}), ...(timer ? { timer: true } : {}), ...(tick ? { tick: true } : {}), ...(originTool !== undefined ? { origin_tool_call_id: originTool } : {}) } });
+        this.send({ type: "call", id, call: { method, args, ...(parentRequestId ? { parent_request_id: parentRequestId } : {}), ...(COMMAND_ONLY_CALLS.has(method) ? { command_context: true } : {}), ...(timer ? { timer: true } : {}), ...(tick ? { tick: true } : {}), ...(originTool !== undefined ? { origin_tool_call_id: originTool } : {}) } });
       } catch (error) {
         this.pending.delete(id);
         reject(error);
@@ -1834,22 +1834,35 @@ class RuntimeContext {
     }
     return operation;
   }
-  newSession(options = {}) {
-    this.runtime.extensionRuntime.assertActive();
-    const { withSession, setup, ...rest } = options ?? {};
-    return this.runtime.callNewSession(rest, setup, withSession);
+}
+
+// COMMAND_ONLY_CALLS are the host calls of the members addCommandContextMembers adds. Only a command context sends them, so the call frame says so (the host refuses them without it).
+const COMMAND_ONLY_CALLS = new Set(["newSession", "fork", "navigateTree", "switchSession", "reload"]);
+
+// addCommandContextMembers gives target the members only Pi's command context has (runner.ts createCommandContext:1004-1038): newSession, fork, navigateTree, switchSession and reload. Pi's createContext() object, which every event, tool and shortcut handler receives, has none of them, so a call through it throws the TypeError of a missing function, and `typeof` says "undefined", whenever it is made. A request's context is a command context only for a command handler and a withSession callback (startRequest, createReplacedSessionContext); the other contexts never get the members, so a context an event handler kept cannot gain them later.
+// pig divergence (D617): the Go, Python, Rust and Lisp SDKs have one static Context type with these methods on it and answer a call from another context with a not_a_command_context error; this runtime has Pi's dynamic shape and never sends one.
+function addCommandContextMembers(target, context) {
+  const members = {
+    newSession(options = {}) {
+      this.runtime.extensionRuntime.assertActive();
+      const { withSession, setup, ...rest } = options ?? {};
+      return this.runtime.callNewSession(rest, setup, withSession);
+    },
+    fork(entryId, options = {}) {
+      this.runtime.extensionRuntime.assertActive();
+      const { withSession, ...rest } = options ?? {};
+      return this.runtime.callReplacement("fork", { ...rest, entryId }, withSession);
+    },
+    navigateTree(targetId, options = {}) { this.runtime.extensionRuntime.assertActive(); return this.runtime.call("navigateTree", { ...options, targetId }); },
+    switchSession(sessionPath, options = {}) {
+      this.runtime.extensionRuntime.assertActive();
+      return this.runtime.callReplacement("switchSession", { sessionPath }, options?.withSession);
+    },
+    reload() { this.runtime.extensionRuntime.assertActive(); return this.runtime.call("reload", {}); },
+  };
+  for (const [name, member] of Object.entries(members)) {
+    Object.defineProperty(target, name, { value: member.bind(context), writable: true, enumerable: true, configurable: true });
   }
-  fork(entryId, options = {}) {
-    this.runtime.extensionRuntime.assertActive();
-    const { withSession, ...rest } = options ?? {};
-    return this.runtime.callReplacement("fork", { ...rest, entryId }, withSession);
-  }
-  navigateTree(targetId, options = {}) { this.runtime.extensionRuntime.assertActive(); return this.runtime.call("navigateTree", { ...options, targetId }); }
-  switchSession(sessionPath, options = {}) {
-    this.runtime.extensionRuntime.assertActive();
-    return this.runtime.callReplacement("switchSession", { sessionPath }, options?.withSession);
-  }
-  reload() { this.runtime.extensionRuntime.assertActive(); return this.runtime.call("reload", {}); }
 }
 
 // Ports packages/coding-agent/src/core/extensions/runner.ts: noOpUIContext.
@@ -3252,6 +3265,8 @@ export class Runtime {
     }
     // The request's own cancellation is not ctx.signal, which is the run's. The runtime's internals read it through this key, which no extension can enumerate or collide with.
     Object.defineProperty(requestCtx, requestSignal, { value: controller.signal });
+    // Only a command handler's and a withSession callback's context has the session-replacing members (addCommandContextMembers); an event, tool or shortcut context, kept or not, has none.
+    if (env.request?.method === "command" || env.request?.method === "with_session") addCommandContextMembers(requestCtx, this.ctx);
     // Dispatch concurrently so long-running interactive calls
     // (e.g. ui.custom blocking on done()) don't starve incoming
     // notifications such as ui.custom.input. The handler will
@@ -5793,6 +5808,7 @@ export class Runtime {
       session: { sessionId: session.sessionId, sessionName: session.sessionName, sessionFile: session.sessionFile, leafId: session.leafId, info: session.info, entries: [] },
     };
     const context = new RuntimeContext(runtime);
+    addCommandContextMembers(context, context);
     // The host drops without an answer a call whose parent request has ended, so a synchronous read that named the settled with_session request would block this process for good. Once the callback settles, a read of a context the extension kept goes out like any other call of the code that runs it.
     const owner = this.requestContext.getStore();
     const parent = () => (owner?.id === requestId && !owner.settled ? requestId : this.activeRequest()?.id ?? "");
