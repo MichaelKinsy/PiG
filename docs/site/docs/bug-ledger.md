@@ -319,6 +319,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-31118b1](#bf-31118b1) | Installing a chord plugin's npm dependencies no longer waits for a process the install command left running… | PiG's own defect | All platforms | Unreleased |
 | [BF-31312ab](#bf-31312ab) | Chord's heartbeat closed every link after the process had slept (a laptop's sleep) or blocked its event loop… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-31312ab-2](#bf-31312ab-2) | Chord's workers no longer leave an address failed when a running worker loses its link (the heartbeat, a… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
+| [BF-3151efa](#bf-3151efa) | A `write` tool call that streams a large file no longer leaves the UTF-16 units of its last highlight warm-up… | PiG's own defect | All platforms | Unreleased |
 | [BF-316eac6](#bf-316eac6) | `pig status` and `pig status --json` no longer print the credentials of a configured Package source | PiG's own defect | All platforms | 0.7.0 |
 | [BF-31740ec](#bf-31740ec) | A `waitForIdle()` waiter registered during a run stays pending through `agent_settled` handlers and the… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-31a7d77](#bf-31a7d77) | `SessionBeforeTreeResultSummary.Usage` is typed as `ai.Usage` | PiG's own defect | All platforms | 0.5.0 |
@@ -6148,6 +6149,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `31312ab0f6` (2026-11-07)
 - **Tests:** None recorded.
 - **Release note:** Chord's workers no longer leave an address failed when a running worker loses its link (the heartbeat, a protocol error, the worker closing its own link): the worker is stopped, `WorkerLinkLostError` (`worker_link_lost`) is reported, and its holders get a new worker. A second lost link within a minute of the last recovery still fails the address (public error `worker lost its link`). Crashes, `fatal`s and failed starts still stay failed until `Retry` or a rollout.
+
+### BF-3151efa
+
+**A `write` tool call that streams a large file no longer leaves the UTF-16 units of its last highlight warm-up…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A `write` tool call that streams a large file no longer leaves the UTF-16 units of its last highlight warm-up in memory after the call is done: each finished card held up to 1.7 MB (a 400 KB file) in the highlighter until later warm-ups pushed it out.
+- **Root cause:** A warm-up keeps the UTF-16 units of its text with the resume state for the next step. The draw of the whole file that ends the call takes them, but a step that is still running when the call completes ends after that draw and leaves its units in a state nothing continues, so each finished write card held up to 4 bytes a unit of its file until later warm-ups pushed the state out: 1.7 MB of hljs.Text units in the heap of a session that had streamed a 400 KB write, none in the base. The worker that ends after the call completed or the card ended releases its units (tui.ReleaseWarmHighlight), the frame that completes the call releases what the worker left, and ToolRendererCard.Dispose releases…
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `3151efaf13` (2026-11-11)
+- **Tests:** `internal/codingagent/write_highlight_warm_release_test.go::TestWriteWarmUpKeepsItsUnitsWhileTheCallStreams`, `internal/codingagent/write_highlight_warm_release_test.go::TestWriteWarmUpReleasesItsUnitsAfterTheDrawOfTheCompleteCall`, `internal/codingagent/write_highlight_warm_release_test.go::TestWriteWarmUpReleasesItsUnitsWhenAnIdleCardIsDisposed`, `internal/codingagent/write_highlight_warm_release_test.go::TestWriteWarmUpReleasesItsUnitsWhenTheCallCompletesDuringAStep`, `internal/codingagent/write_highlight_warm_release_test.go::TestWriteWarmUpReleasesItsUnitsWhenTheCardEndsDuringAStep`, `internal/codingagent/write_highlight_warm_release_test.go::TestWriteWarmUpThatCannotResumeReleasesNothing`, `tui/highlight_warm_release_test.go::TestReleaseWarmHighlightDropsTheUnitsOfALateWarmUp`, `tui/highlight_warm_release_test.go::TestReleaseWarmHighlightDropsTheUnitsOfEveryWarmUpOfFilesThatBeginAlike` and 2 more in docs/bug-ledger.json
+- **Release note:** A `write` tool call that streams a large file no longer leaves the UTF-16 units of its last highlight warm-up in memory after the call is done: each finished card held up to 1.7 MB (a 400 KB file) in the highlighter until later warm-ups pushed it out. The units are released when the call completes, when its card is disposed, and by a warm-up that ends after either; the lines the card draws are unchanged.
 
 ### BF-316eac6
 
