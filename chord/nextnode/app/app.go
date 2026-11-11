@@ -44,11 +44,10 @@ import (
 // (the start-data object, sessions, the owner link, pairing, files), and gives the app the controls it needs: the owner link,
 // `ApplyChanges`, export and import per address.
 //
-// Forced Go differences (D460, D461, D462). The plugins run in a Node subprocess (docs/plan/chord-plugins-node-evaluator.md): the kit's
+// Forced Go differences (D460, D462). The plugins run in a Node subprocess (docs/plan/chord-plugins-node-evaluator.md): the kit's
 // facets are Go core facets on the server's Go host, the server's plugins' host is the NodeHost the server host delegates to (D605: the remote types placed on the server that no Go facet serves go over its link),
-// and the local types plugins use (AppInfo, Sessions) reach the Go facets through plugins.BridgedFacet (D460). `Files` and
-// `FilesFolder` are not bridged: `Files` has a keyed member (`summary`) and the bridge refuses keyed members, so a TS plugin cannot
-// get a host's files; Go code gets them directly (D461). The server's host and the plugins' NodeHost are two hosts with a store each
+// and the local types plugins use (AppInfo, Sessions) reach the Go facets through plugins.BridgedFacet (D460); so do `Files` and `FilesFolder`, `Files`'
+// keyed member `summary` as a copy the Node host keeps of the Go object's documents. The server's host and the plugins' NodeHost are two hosts with a store each
 // (D462). The server's own code is its executable, recorded after the listen (`BaseWatched`) where Pi compares the static import graph
 // of its start script; one changed since the process started is marked as a base change until a restart (`editedSinceStart`); one under the Go build cache (`go run`, `go test`) is never compared, as Pi skips an entry under `node_modules`;
 // one that cannot be read is reported as `server_scan` and the server runs on. A start script's lazy optional imports have no Go form
@@ -558,7 +557,6 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 		{Name: "chord.app.sessions", Facet: sessions.Facet},
 		{Name: "chord.app.owner", Facet: OwnerFacet(link, owner)},
 		{Name: "chord.app.pairing", Facet: PairingFacet(NewPairings(PairingLimits{MaxPending: limits.PendingPairings, PerAddress: limits.PairingsPerAddress}), owner)},
-		// pig divergence (D461): Files is a Go facet the plugins' NodeHost cannot get (the bridge refuses its keyed member); Pi's plugins `self.get(Files, {})`.
 		{Name: "chord.app.files", Facet: FilesFacet(filepath.Join(opened.layout.Server, "files"), options.Files, limits.Uploads)},
 		{Name: "chord.themes", Facet: surfaces.ThemesFacet()},
 		{Name: "chord.themes.choice", Facet: themeChoice},
@@ -648,6 +646,7 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 		Bridged: []plugins.BridgedFacet{
 			{Name: "chord.app.info", Host: h, Contracts: []*contracts.Contract{AppInfo}},
 			{Name: "chord.app.sessions", Host: h, Contracts: []*contracts.Contract{Sessions}},
+			{Name: "chord.app.files", Host: h, Contracts: []*contracts.Contract{Files, FilesFolder}},
 		},
 	}, ctx)
 	// A required root's plugin failing returns the loaded host with the *PluginError: the app owns it and closes it.

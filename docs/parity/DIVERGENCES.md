@@ -3330,28 +3330,6 @@ Parity allowance: none needed beyond the evidence above.
 
 SCRUTINIZED:approved 2026-11-08
 
-## D461 `Files` and `FilesFolder` are not reachable from TypeScript plugins
-
-What: `Files` has a keyed member (`summary`), and the plugin bridge refuses contracts with keyed members, so a TS plugin cannot `get` a host's files; Go code can. The bridge could forward it only by mirroring the Go documents into a non-persisted keyed document handle of the proxy object (a JS keyed member is a document handle or a reference's keyed member; the Go reference's `Keyed.Get/Watch` exist, the proxy side does not), which means an invented key-pin protocol between two hosts; not done.
-
-Why: the plugins' proxy facets (`plugins/node/proxy.mjs`) forward state members and methods to the Go object; a JS keyed member must be a keyed document handle or a reference's keyed member, and the proxy has neither for an object on another host. Pi has the kit and the plugins in one host, so `self.get(Files, {})` works there.
-
-Scope: `chord/nextnode/app` (the Files facet), `chord/nextnode/plugins` (the bridge refuses a contract with a keyed member at start). Observable: a TypeScript plugin loses Pi's public `chord/app/files` API (`Files`, `FilesFolder`); Go code and the kit's own routes keep them. Pi's own p2 plugins call `self.get(Files, {})`; PiG's p2 lane ports them to Go, so p2 itself is not affected.
-
-Pi bug: Not a Pi bug.
-
-Owner decision: accepted for 0.8.0 by the owner (Michael Kinsy) on 2026-11-08, OWNER-DECISIONS #19: the limitation stands.
-
-Remove when: the plugin bridge forwards a contract with a keyed member (a keyed-handle proxy between hosts), or the plugins run in the kit's host.
-
-Call-site markers: `chord/nextnode/app/app.go` (`start`), `chord/nextnode/app/worker.go` (`runWorker`).
-
-Evidence: `plugins_node_bridged_keyed_test.go` (the refusal); `files_test.go` (the facet from Go).
-
-Parity allowance: none needed beyond the evidence above.
-
-SCRUTINIZED:approved 2026-11-08 (accepted limitation for 0.8.0)
-
 ## D462 The server and each worker have two stores, not one
 
 What: Pi's host has one store and one commit queue. PiG has two hosts per server or worker (the Go host, the plugins' NodeHost), and a store has one writer (a singleton meta row: `last_seq`, `next_id`), so each has its own: the kit's (`kit.sqlite`, `store.sqlite` on a server) and the plugins' (`store.sqlite`, `plugins.sqlite` on a server). Nothing commits across them. Archives carry an optional `kit.archive` beside `store.archive`. A running worker's export (`PackRunning`) takes the kit's commit queue (its export's first part), then has SQLite copy the plugins' file at one instant (`VACUUM INTO` over a read-only connection, a read transaction the NodeHost's writes do not disturb) and exports the copy, so the two archives are one point; the kit's writes wait for its archive, the plugins' writes proceed meanwhile and are not in the archive. Pi holds its one store's commit queue. The copy costs the plugins' store's size in temporary space beside the archive.

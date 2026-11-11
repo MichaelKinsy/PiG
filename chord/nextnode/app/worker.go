@@ -34,11 +34,10 @@ import (
 // has a telemetry store, the host records in memory and sends its spans and metrics to the server every second (decision "The
 // server is the one place telemetry is stored").
 //
-// Go forced differences (D460, D461, D462). `workerMain` returns at once in Node; StartWorker blocks (workers.WorkerMain does not
+// Go forced differences (D460, D462). `workerMain` returns at once in Node; StartWorker blocks (workers.WorkerMain does not
 // return). The worker's plugins run in a Node subprocess (docs/plan/chord-plugins-node-evaluator.md), so the worker's own host is a
 // relay without an address: the kit's Go facets load on it and the local types plugins use (WorkerInfo) reach them through
-// plugins.BridgedFacet; the NodeHost serves the worker's address (D460). `Files` and `FilesFolder` are not bridged (the keyed member
-// `summary` cannot be forwarded), so a TS plugin cannot get the worker's files (D461). The relay and the NodeHost have a store each
+// plugins.BridgedFacet (`Files` and `FilesFolder` too, `summary` as a copy); the NodeHost serves the worker's address (D460). The relay and the NodeHost have a store each
 // (D462).
 //
 // Not ported yet (pending, no divergence): `principalAttributes` (T6 host spans: the Go host has no hook, so WorkerOptions has none);
@@ -171,7 +170,6 @@ func runWorker(options WorkerOptions, start workers.WorkerStart, ctx context.Con
 	// pig divergence (D460): the kit's worker facets are Go core facets on the worker's relay host, beside the plugins' NodeHost.
 	goCore := []host.HostFacet{
 		{Name: "chord.app.worker-info", Facet: WorkerInfoFacet(WorkerInfoValues{Kind: start.Address.Kind, Key: start.Address.Key, Params: start.Address.Params, Start: app})},
-		// pig divergence (D461): Files is not bridged to the plugins (its keyed member cannot be forwarded).
 		{Name: "chord.app.files", Facet: FilesFacet(files, kit.Files, kit.Uploads)},
 		{Name: "chord.app.data.export", Facet: HostDataFacet(kit.Dir, opened, token)},
 	}
@@ -180,6 +178,7 @@ func runWorker(options WorkerOptions, start workers.WorkerStart, ctx context.Con
 		NodeCore: []plugins.CoreFacet{{Name: "chord.app.data", Module: dataModule}},
 		Bridged: []plugins.BridgedFacet{
 			{Name: "chord.app.worker-info", Contracts: []*contracts.Contract{WorkerInfo}},
+			{Name: "chord.app.files", Contracts: []*contracts.Contract{Files, FilesFolder}},
 			{Name: "chord.app.data.export", Contracts: []*contracts.Contract{HostDataExport}},
 		},
 		Principal: kit.Principal, Peer: kit.Server, PrincipalAttributes: options.PrincipalAttributes,

@@ -15,8 +15,8 @@ import (
 // Ports packages/chord/test/node/app/app.test.ts "workers" and "export and import per address", and worker.test.ts (Pi main c23b9ec1):
 // a worker per address with the kit's start data and its own directory, two kinds side by side, a worker's directory outliving its
 // process, and a worker's data exported (running or not) and imported at another address. `Files` of a worker are the plugins'
-// through the bridge in Pi's test (`attach`, `file`); the Go kit's `Files` has its own tests (files_test.go), and the notes plugin here
-// uses what the tests' API declares (WorkerInfo).
+// through the bridge (`attach`, `file`, as in Pi's test); the Go kit's `Files` has its own tests (files_test.go), and the notes plugin
+// here uses what the tests' API declares (WorkerInfo, Files).
 
 func holdNotes(t *testing.T, s started, id string) *host.Reference {
 	t.Helper()
@@ -85,10 +85,19 @@ func TestAppAWorkersDirectoryKeepsItsStoreAndFilesAcrossItsProcessesRestarts(t *
 	if _, err := p1.Call("write", "kept", background); err != nil {
 		t.Fatal(err)
 	}
+	file, err := p1.Call("attach", "in p1's files", background)
+	if err != nil {
+		t.Fatalf("attach = %v, %v", file, err)
+	}
 	p1.Release()
 	dir := filepath.Join(s.dataDir, "workers", "project", "project%7Cp1")
-	if got := dirEntries(t, dir); !slices.Contains(got, "store.sqlite") {
+	if got := dirEntries(t, dir); !slices.Contains(got, "store.sqlite") || !slices.Contains(got, "files") {
 		t.Fatalf("worker directory = %v", got)
+	}
+	// The file's bytes are one blob in `files/blobs/`; its version id is the index's.
+	blobs := dirEntries(t, filepath.Join(dir, "files", "blobs"))
+	if len(blobs) != 1 {
+		t.Fatalf("blobs = %v", blobs)
 	}
 	mode := func(path string) os.FileMode {
 		t.Helper()
@@ -98,7 +107,8 @@ func TestAppAWorkersDirectoryKeepsItsStoreAndFilesAcrossItsProcessesRestarts(t *
 		}
 		return info.Mode().Perm()
 	}
-	if got := []os.FileMode{mode(dir), mode(filepath.Join(dir, "..")), mode(filepath.Join(dir, "store.sqlite"))}; !slices.Equal(got, []os.FileMode{0o700, 0o700, 0o600}) {
+	paths := []string{dir, filepath.Join(dir, ".."), filepath.Join(dir, "store.sqlite"), filepath.Join(dir, "files"), filepath.Join(dir, "files", "blobs", blobs[0])}
+	if got := []os.FileMode{mode(paths[0]), mode(paths[1]), mode(paths[2]), mode(paths[3]), mode(paths[4])}; !slices.Equal(got, []os.FileMode{0o700, 0o700, 0o600, 0o700, 0o600}) {
 		t.Fatalf("modes = %o", got)
 	}
 	workers := s.app.Workers["project"]
@@ -113,6 +123,15 @@ func TestAppAWorkersDirectoryKeepsItsStoreAndFilesAcrossItsProcessesRestarts(t *
 	defer again.Release()
 	if got := member(t, again, "text"); got != "kept" {
 		t.Fatalf("text after a restart = %v", got)
+	}
+	if got, err := again.Call("file", file, background); err != nil || got != "in p1's files" {
+		t.Fatalf("file after a restart = %v, %v", got, err)
+	}
+	// Another address has its own files: p1's id is unknown there.
+	other := holdNotes(t, s, "p2")
+	defer other.Release()
+	if _, err := other.Call("file", file, background); err == nil || string(refused(t, err).Code) != "invalid" {
+		t.Fatalf("p2 reads p1's file: %v", err)
 	}
 }
 

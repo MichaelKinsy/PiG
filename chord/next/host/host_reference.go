@@ -1374,6 +1374,48 @@ func (k *ReferenceKeyed) At(raw any) (*KeyedMemberAt, error) {
 	return at, err
 }
 
+// KeyedDocument is a document of a keyed member and its key.
+type KeyedDocument struct {
+	Key   string
+	Value delta.JsonValue
+}
+
+// Snapshot is every present document of this member and, registered before they are read, the observer of its later changes
+// (stop ends it). It is for the plugins bridge, which keeps a Node host's copy of a keyed member (Pi's plugins share the one
+// host, so Pi's ReferenceKeyed has no such call). It waits for the reference's first values and reads the provider's slot as
+// `Get` does; the observer is told of the slot's own commits, and of its end (`dropped`), after which the caller snapshots again
+// when the reference is live on the next instance. It blocks.
+func (k *ReferenceKeyed) Snapshot(ctx context.Context, observer documents.KeyObserver) (docs []KeyedDocument, stop func(), err error) {
+	if err = k.binding.awaitFirstValues(ctx); err != nil {
+		return nil, nil, err
+	}
+	slot, err := k.slot()
+	if err != nil {
+		return nil, nil, err
+	}
+	stop = slot.Observe(observer)
+	keys := slot.Keys(ownAccess(slot), ctx)
+	defer keys.Close()
+	for {
+		key, ok, err := keys.Next(ctx)
+		if err != nil {
+			stop()
+			return nil, nil, err
+		}
+		if !ok {
+			return docs, stop, nil
+		}
+		value, found, err := k.Get(ctx, key)
+		if err != nil {
+			stop()
+			return nil, nil, err
+		}
+		if found {
+			docs = append(docs, KeyedDocument{Key: key, Value: value})
+		}
+	}
+}
+
 // ownAccess is how a consumer reads its provider's keyed documents as the provider's own code may: current version, own
 // token.
 func ownAccess(slot *documents.KeyedSlot) documents.Access {
