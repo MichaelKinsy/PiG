@@ -162,11 +162,10 @@ func (m *Markdown) layoutRows(rows []string, starts []int, lines []string, width
 		row += strings.Repeat(" ", max(0, width-widthx.VisibleWidth(row)))
 		rows = append(rows, row)
 	}
-	for _, line := range lines {
-		starts = append(starts, len(rows))
+	layout := func(line string) {
 		if widthx.IsImageLine(line) || (!strings.ContainsAny(line, "\r\n") && widthx.VisibleWidth(line) <= contentWidth) {
 			add(line)
-			continue
+			return
 		}
 		wrapped, ok := m.wraps[line]
 		if !ok {
@@ -176,6 +175,17 @@ func (m *Markdown) layoutRows(rows []string, starts []int, lines []string, width
 		for _, row := range wrapped {
 			add(row)
 		}
+	}
+	for _, line := range lines {
+		starts = append(starts, len(rows))
+		if widthx.IsImageLine(line) && strings.Contains(line, "\n") {
+			// Image lines skip wrapping, so split them here: hard breaks after an image stay separate rows (upstream #12017).
+			for piece := range strings.SplitSeq(line, "\n") {
+				layout(piece)
+			}
+			continue
+		}
+		layout(line)
 	}
 	return rows, starts
 }
