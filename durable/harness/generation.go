@@ -33,6 +33,10 @@ const (
 	generationTools   GenerationPhase = "tools"
 	generationFinish  GenerationPhase = "finish"
 	generationDrain   GenerationPhase = "drain"
+	// generationAfterTools waits on the tasks the afterTools hooks asked for.
+	generationAfterTools GenerationPhase = "afterTools"
+	// generationYield waits on the tasks the onYield hooks asked for.
+	generationYield GenerationPhase = "yield"
 )
 
 // GenerationCheckpoint is the durable checkpoint of the generation task (generation.ts:49-90). Phase selects the
@@ -52,6 +56,11 @@ const (
 //   - finish: Run, the run that answered: its answer is committed and its inputs settled, and it keeps pi.live.run while
 //     afterRun hooks are asked for tasks (spec §8.3). A crash here asks them again: nothing was created yet.
 //   - drain: Answer and Tasks: waiting on the tasks afterRun hooks asked for, which the generation owns; then the run ends.
+//   - afterTools: Assistant, Tools, and Tasks: the round is complete and waits on the tasks afterTools hooks asked for, which
+//     the generation owns; then it ends as the tools phase ends it (spec suspendable §6). A crash before they exist asks the
+//     hooks again.
+//   - yield: Answer and Tasks: the answer is appended, and the run's inputs stay open while the tasks an onYield hook asked
+//     for, which the generation owns, decide whether it stands (LiveRun.Yield).
 type GenerationCheckpoint struct {
 	Phase         GenerationPhase                    `json:"phase"`
 	Attempt       int                                `json:"attempt,omitempty"`
@@ -135,10 +144,10 @@ var GenerationTask durable.Task[GenerationInput, GenerationCheckpoint, Generatio
 func init() {
 	GenerationTask = durable.DefineTask(durable.TaskDefinition[GenerationInput, GenerationCheckpoint, GenerationResult, *GenerationHooks]{
 		Name:    generationKind,
-		Version: 2,
+		Version: 3,
 		// Version 2 leaves calls to tools not offered in a sequential round's pending, flagged unoffered in their slots. A
 		// version 1 Harness would start their tool tasks unflagged, resolving the name, so it leaves version 2 blocked
-		// instead. A version 1 checkpoint has no such calls and is kept as it is.
+		// instead. Version 3 adds the afterTools and yield phases. Older checkpoints are kept as they are.
 		Migrate: func(input durable.JsonValue, checkpoint durable.JsonValue, _ int) (GenerationInput, GenerationCheckpoint, error) {
 			typedInput, err := durable.FromJsonValue[GenerationInput](input)
 			if err != nil {
@@ -151,13 +160,15 @@ func init() {
 			return GenerationCheckpoint{Phase: generationPrepare, Attempt: 1}
 		},
 		Phases: map[string]durable.PhaseHandler[GenerationInput, GenerationCheckpoint, GenerationResult, *GenerationHooks]{
-			string(generationPrepare): generationPrepareHandler,
-			string(generationRequest): generationRequestHandler,
-			string(generationRetry):   generationRetryHandler,
-			string(generationPoll):    generationPollHandler,
-			string(generationTools):   generationToolsHandler,
-			string(generationFinish):  generationFinishHandler,
-			string(generationDrain):   generationDrainHandler,
+			string(generationPrepare):    generationPrepareHandler,
+			string(generationRequest):    generationRequestHandler,
+			string(generationRetry):      generationRetryHandler,
+			string(generationPoll):       generationPollHandler,
+			string(generationTools):      generationToolsHandler,
+			string(generationFinish):     generationFinishHandler,
+			string(generationDrain):      generationDrainHandler,
+			string(generationAfterTools): generationAfterToolsHandler,
+			string(generationYield):      generationYieldHandler,
 		},
 		Abort: generationAbortHandler,
 	})
@@ -538,7 +549,13 @@ func generationAbortHandler(ctx context.Context, task durable.RunningTask[Genera
 				return nil, err
 			}
 		}
-		if err := EndRun(tx, live, runtime.TaskId(), runUnanswered(RunAborted, nil)); err != nil {
+		// In finish and drain the run answered already: it ends without a failure, its inputs stay done. In yield it
+		// answered too, and its inputs settle done with that answer.
+		end := runUnanswered(RunAborted, nil)
+		if checkpoint.Phase == generationYield && checkpoint.Answer != nil {
+			end = runDone(*checkpoint.Answer)
+		}
+		if err := EndRun(tx, live, runtime.TaskId(), end); err != nil {
 			return nil, err
 		}
 		return abortedState[GenerationCheckpoint, GenerationResult](), nil
