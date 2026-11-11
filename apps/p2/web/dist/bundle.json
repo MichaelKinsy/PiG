@@ -1,6 +1,6 @@
 {
-	"version": "4fcc8939dc769eec4347ff87983497acd317b264d67133fffede36434ae9f321",
-	"script": "app-PZ5MJCIU.js",
+	"version": "cbbfe65f2528ee90b06cf062563a0cbb41d075f3e5673c80e6e2dfdc4169ea09",
+	"script": "app-VQGZXDKA.js",
 	"style": "app-J6NM5X7N.css",
 	"plugins": [
 		"agent",
@@ -75,16 +75,16 @@
 			"sha256": "2e1ad9cdf10b1af4dcef6dcf3d359f41677ebd3ad30d1b848f9c1a3aadd8e51b"
 		},
 		{
-			"name": "app-PZ5MJCIU.js",
+			"name": "app-VQGZXDKA.js",
 			"type": "text/javascript; charset=utf-8",
-			"size": 1538929,
-			"sha256": "edbebb2373d5e7e03a6d68793bf4db2edc447fbb066c6db0c28d122f3d520c7e"
+			"size": 1539468,
+			"sha256": "fe11480a7d4aecdf5f5bf9e7b27c5e3455be7448c865c7e5921ab7fa587ccc54"
 		},
 		{
-			"name": "app-PZ5MJCIU.js.map",
+			"name": "app-VQGZXDKA.js.map",
 			"type": "application/json",
-			"size": 7349899,
-			"sha256": "db572d0d23628aaceac82c916f1662b3dcd97a61f033e0b9ab381b7a62f3d63e"
+			"size": 7353888,
+			"sha256": "15fa036200afb0daf559f94d80332e5a876167dc9f0d527cec6ab9f59cc59655"
 		},
 		{
 			"name": "ghostty-vt-BNEKZYKQ.wasm",
@@ -99,7 +99,7 @@
 			"light": "#ffffff",
 			"dark": "#101c1a"
 		},
-		"upstreamVersion": "fdb98c9d332f83feae929519e43b794f8e5fc61df676494212ac6ffe17222c37",
+		"upstreamVersion": "b206ceb2752dd7d6a5d781af6db6533fc883bbe2df7c3b463b10be24562fc632",
 		"public": [
 			"icons/apple-touch-icon.png",
 			"icons/favicon.svg",

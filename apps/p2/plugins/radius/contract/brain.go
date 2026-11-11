@@ -80,11 +80,13 @@ import (
 // `?replace=1`: the relay fails the old host and its channels and takes the new socket at once. Relays that predate the
 // parameter ignore it and answer 409, which the backoff retries until the old host expires.
 //
-// Name. Every host connect carries the brain's name (`?name=`, from `identity.json`, see identity.go), read again for each
-// attempt, and Radius records it when it claims the server. Reading the name never fails a connect: an unreadable or
-// unwritable data directory falls back to the device's name, and a brain without any name connects without `name`, which
-// keeps the name Radius has (else Radius shows the server ID). The brain owns its name, so a rename on this machine
-// reaches Radius with the next reconnect, and Radius never changes it. Relays that predate names ignore the parameter.
+// Name. The server owns its name (`ServerName`, runtime/server_name_file.go); Radius keeps a copy for its shell and never
+// changes it. Every host connect carries the current name (`?name=`), which Radius records when it claims the server, and a
+// rename while connected is sent with `PUT /v1/servers/<id>/name` at once, without a reconnect: a reconnect would drop every
+// channel, the browser's that made the rename among them. A rename that fails or happens while offline goes with the next
+// connect. A server without any name connects without `name`, which keeps the name Radius has (else Radius shows the server
+// ID). Relays that predate names ignore the parameter; relays without the endpoint answer 404 and get the name with the next
+// connect.
 //
 // Two p2 processes with the same `radius.json` share one server ID, so they would replace each other in turn. The relay
 // closes a replaced host with 1012 "Server host replaced", and that is always another process: this one gives up its own
@@ -169,7 +171,7 @@ type Status struct {
 	Kind           StatusKind
 	ServerID       string // connected
 	OrganizationID string // connected
-	// Name is the brain's name (identity.json) it connected under; "" when it has none (connected).
+	// Name is the server's name it connected under; "" when it has none (connected).
 	Name  string
 	Error string // retrying
 }
@@ -196,6 +198,8 @@ type BrainOptions struct {
 	Directory string
 	Port      func() int
 	Relay     *RelayAccess
+	// Name is the server's name at the start; Rename follows it.
+	Name string
 	// Forwards are the port forwards; without them, forward channels answer as unknown forwards.
 	Forwards Forwards
 	OnStatus func(Status)
@@ -275,9 +279,13 @@ type Brain struct {
 	shares   []string
 	haveShar bool
 	reported bool
+	// name is the server's name (see "Name"); radiusName the one Radius has as far as this brain knows ("": unknown). Both ""
+	// for none.
+	name, radiusName string
 
 	refreshMu sync.Mutex
 	kick      chan struct{}
+	nameKick  chan struct{}
 }
 
 // NewBrain makes a brain; Start connects it.
@@ -295,15 +303,16 @@ func NewBrain(options BrainOptions) *Brain {
 		onStatus = func(Status) {}
 	}
 	return &Brain{
-		directory: options.Directory, port: options.Port, relay: options.Relay, forwards: options.Forwards, onStatus: onStatus,
+		directory: options.Directory, port: options.Port, relay: options.Relay, forwards: options.Forwards, onStatus: onStatus, name: options.Name,
 		heartbeatIdle:    pick(options.Timing.HeartbeatIdle, heartbeatIdle),
 		heartbeatTimeout: pick(options.Timing.HeartbeatTimeout, heartbeatTimeout),
 		handshakeTimeout: pick(options.Timing.HandshakeTimeout, handshakeTimeout),
 		ctx:              ctx, cancel: cancel,
-		http:    newLoopbackTransport(),
-		retry:   retryInitial,
-		replace: true,
-		kick:    make(chan struct{}, 1),
+		http:     newLoopbackTransport(),
+		retry:    retryInitial,
+		replace:  true,
+		kick:     make(chan struct{}, 1),
+		nameKick: make(chan struct{}, 1),
 	}
 }
 
@@ -319,6 +328,16 @@ func (b *Brain) spawn(run func()) {
 func (b *Brain) Start() {
 	b.spawn(b.run)
 	b.spawn(b.reporter)
+	b.spawn(b.namer)
+}
+
+// Rename follows a rename of the server: sent to Radius now if connected, else with the next connect (see "Name"). An empty
+// name is none.
+func (b *Brain) Rename(name string) {
+	b.mu.Lock()
+	b.name = name
+	b.mu.Unlock()
+	b.wakeName()
 }
 
 // ReportShares reports the emails sessions are shared with now if connected, else after the next connect (see "Shares").
@@ -403,10 +422,9 @@ func (b *Brain) attempt() time.Duration {
 	if err != nil {
 		return b.retryAfter(err)
 	}
-	name := ""
-	if identity := ReadBrainIdentity(b.directory); identity != nil {
-		name = identity.Name
-	}
+	b.mu.Lock()
+	name := b.name
+	b.mu.Unlock()
 	if b.forwards != nil && b.forwards.RadiusOrigin() == "" && config.PublicOrigin != "" {
 		b.forwards.SetRadiusOrigin(config.PublicOrigin)
 	}
@@ -650,8 +668,11 @@ func (b *Brain) connect(config *Config, owner principal, replace bool, name stri
 	b.onStatus(Status{Kind: StatusConnected, ServerID: config.ServerID, OrganizationID: owner.OrganizationID, Name: name})
 	b.mu.Lock()
 	b.reported = false
+	// Radius has the name this connect carried; a rename during the handshake is sent now.
+	b.radiusName = name
 	b.mu.Unlock()
 	b.wake()
+	b.wakeName()
 	closeCode, closeReason := 0, ""
 	for {
 		kind, data, err := conn.ReadMessage()
@@ -1147,17 +1168,75 @@ func sameStrings(a, b []string) bool {
 	return true
 }
 
+func (b *Brain) wakeName() {
+	select {
+	case b.nameKick <- struct{}{}:
+	default:
+	}
+}
+
+// namer sends the server's name, one send at a time, so an older name never lands after a newer one.
+func (b *Brain) namer() {
+	for {
+		select {
+		case <-b.ctx.Done():
+			return
+		case <-b.nameKick:
+		}
+		for b.nameOnce() {
+		}
+	}
+}
+
+// nameOnce sends the server's name if the socket is open and Radius has another; true when another look is due (the name
+// changed while it ran). A name that is not sent (none, the one Radius has, offline) goes with the next connect.
+func (b *Brain) nameOnce() bool {
+	b.mu.Lock()
+	name, radiusName, current := b.name, b.radiusName, b.session
+	b.mu.Unlock()
+	if name == "" || name == radiusName || current == nil || !current.ws.open() {
+		return false
+	}
+	config, err := b.currentConfig()
+	if err == nil {
+		err = b.putName(config, name)
+	}
+	if err != nil {
+		// The next connect carries the name.
+		if !b.isClosed() {
+			fmt.Fprintf(os.Stderr, "Radius: sending the name failed (%v)\n", err)
+		}
+		return false
+	}
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.radiusName = name
+	return b.name != name
+}
+
 func (b *Brain) putShares(config *Config, shares []string) error {
 	// The body is what JSON.stringify({ emails: shares }) writes: `<`, `>` and `&` are not escaped.
-	body, err := chordjson.Marshal(struct {
+	return b.putJSON(config, "/shares", struct {
 		Emails []string `json:"emails"`
 	}{shares})
+}
+
+// putName sends the server's name to Radius (`PUT /v1/servers/<id>/name`).
+func (b *Brain) putName(config *Config, name string) error {
+	return b.putJSON(config, "/name", struct {
+		Name string `json:"name"`
+	}{name})
+}
+
+// putJSON puts value, as JSON.stringify writes it, to the server's endpoint at path.
+func (b *Brain) putJSON(config *Config, path string, value any) error {
+	body, err := chordjson.Marshal(value)
 	if err != nil {
 		return err
 	}
 	ctx, cancel := context.WithTimeout(b.ctx, 30*time.Second)
 	defer cancel()
-	request, err := http.NewRequestWithContext(ctx, http.MethodPut, strings.TrimRight(config.Gateway, "/")+"/v1/servers/"+config.ServerID+"/shares", strings.NewReader(string(body)))
+	request, err := http.NewRequestWithContext(ctx, http.MethodPut, strings.TrimRight(config.Gateway, "/")+"/v1/servers/"+config.ServerID+path, strings.NewReader(string(body)))
 	if err != nil {
 		return err
 	}

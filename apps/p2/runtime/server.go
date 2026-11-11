@@ -374,8 +374,8 @@ func methodOf(fn func(args *delta.JsonObject, ctx context.Context) error) contra
 	}
 }
 
-// ServerCore is the server's core facet: its start data and revocation (ServerLocal), its natives, the base registries,
-// the workers' states (Hosts) and who the caller is (Access).
+// ServerCore is the server's core facet: its start data and revocation (ServerLocal), its name (ServerName,
+// ServerNameSettings), its natives, the base registries, the workers' states (Hosts) and who the caller is (Access).
 func ServerCore(h host.Host, info ServerInfo, parts *ServerParts) host.Facet {
 	return host.DefineFacet(func(facet host.FacetHost, self host.FacetSelf) error {
 		if err := ServeServerRegistries(facet); err != nil {
@@ -418,6 +418,9 @@ func ServerCore(h host.Host, info ServerInfo, parts *ServerParts) host.Facet {
 				},
 			}}, nil
 		}), host.ServeOptions{}); err != nil {
+			return err
+		}
+		if err := serveServerName(facet, info); err != nil {
 			return err
 		}
 		if err := facet.Serve(Hosts, host.LocalFactory(func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
