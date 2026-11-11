@@ -207,6 +207,12 @@ func observe(t *testing.T, found *workers.Workers, key string, done <-chan struc
 		return nil
 	})
 	ended := make(chan struct{})
+	// A caller that fails before it closes done must not leave the watcher running: it ends with the test.
+	halt := make(chan struct{})
+	t.Cleanup(func() {
+		close(halt)
+		<-ended
+	})
 	go func() {
 		defer close(ended)
 		defer func() { _, _ = handle.Stop() }()
@@ -220,6 +226,8 @@ func observe(t *testing.T, found *workers.Workers, key string, done <-chan struc
 			select {
 			case <-changed:
 			case <-done:
+				return
+			case <-halt:
 				return
 			}
 		}
