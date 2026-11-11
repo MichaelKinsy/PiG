@@ -1759,6 +1759,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-e24487e](#bf-e24487e) | fix(cli): PIG_VERSION_FORMAT=pi prints the pinned Pi package version | PiG's own defect | All platforms | Unreleased |
 | [BF-e249b5c](#bf-e249b5c) | fix(coding): default the openai provider to gpt-6.1-sol (Pi) | PiG's own defect | All platforms | Unreleased |
 | [BF-e25a09f](#bf-e25a09f) | A tool argument or event payload with a number outside the double range (`1e400`), at any nesting depth, no… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-e299ba1](#bf-e299ba1) | An extension that calls `newSession`, `fork`, `navigateTree`, `switchSession` or `reload` from an event, tool… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-e2db931](#bf-e2db931) | On Windows, refreshing an MCP server's OAuth token no longer fails with `EPERM` when another `pig` process is… | PiG's own defect | Windows | 0.5.0 |
 | [BF-e2e5706](#bf-e2e5706) | fix(tools): type the D252 and D253 call-site markers | PiG's own defect | All platforms | Unreleased |
 | [BF-e32c60c](#bf-e32c60c) | A Piglet or Package installed under a symlinked agent directory keeps the origin integrity recorded in its… | PiG's own defect | All platforms | 0.5.0 |
@@ -26103,6 +26104,22 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `agent/message_json_number_spelling_test.go::TestAgentMessageDecodeKeepsANonNumberWhereAnIntegerIsExpected`, `agent/message_json_test.go::TestAgentMessageJSONRejectsInvalidUnion`, `agent/message_type_mismatch_test.go::TestDecodedMessageKeepsMembersOfAnyType`, `agent/provider_content_block_decode_test.go::TestUnknownContentBlockCostsOnlyThatBlock`, `extensions/sdk-py/tests/test_compaction_estimate.py`, `extensions/sdk/compaction_estimate_test.go::TestEstimateTokensCountsUTF16UnitsAndJSONStringifyLength`, `extensions/sdk/compaction_estimate_test.go::TestJSNumberStringMatchesNumberToString`, `extensions/sdk/json/decode_numbers_test.go::TestUnmarshalReadsANumberOutOfRangeAsInfinity` and 8 more in docs/bug-ledger.json
 - **Release note:** A tool argument or event payload with a number outside the double range (`1e400`), at any nesting depth, no longer fails the call in the Go SDK or ends a Rust extension; it reads as Infinity (Go) or `null` (Rust), as `JSON.parse` and `JSON.stringify` do.
 
+### BF-e299ba1
+
+**An extension that calls `newSession`, `fork`, `navigateTree`, `switchSession` or `reload` from an event, tool…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D617)
+- **Symptom:** An extension that calls `newSession`, `fork`, `navigateTree`, `switchSession` or `reload` from an event, tool or shortcut handler, for example a `session_start` handler, no longer replaces the session in the middle of the emit, which made the built-in MCP extension panic on a stale context and `pig` exit 1.
+- **Root cause:** A call with no live parent request was allowed, so a handler that stored its event context and called later replaced the session; Pi never allows that. The Go, Python, Rust and Lisp SDKs mark every call made through a command handler's or a withSession callback's context (command_context) for the context's whole life, and the host refuses newSession, fork, navigateTree, switchSession and reload without the mark. The Node runtime gives only those contexts the five members, so an event context has none: typeof is undefined and a call throws Pi's TypeError (D617).
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** the Go, Python, Rust and Lisp SDKs hand event, tool and shortcut handlers a context type that has no command-only session actions (a separate command-context type), so the call cannot be written.
+- **Fix commits:** `105a93fed1` (2026-11-11), `e299ba1cf9` (2026-11-11)
+- **Tests:** `coding/extension/host/subprocess/callpayload_shape_test.go::TestCallPayloadKeepsUnkeyedLiteralShape`, `coding/extension/host/subprocess/command_only_calls_test.go::TestCommandOnlyCallErrorIsPisMissingFunctionError`, `coding/extension/host/subprocess/command_only_calls_test.go::TestCommandOnlyCallsAreThePiCommandContextSessionActions`, `test/extension-conformance/session_actions_event_context_test.go::TestConformance_CommandOnlySessionActionsRefusedFromEventContext`
+- **Release note:** An extension that calls `newSession`, `fork`, `navigateTree`, `switchSession` or `reload` from an event, tool or shortcut handler, for example a `session_start` handler, no longer replaces the session in the middle of the emit, which made the built-in MCP extension panic on a stale context and `pig` exit 1. A handler that stores its event context and calls one of them after its request ended is refused as well. Pi gives these only to the command context, so its handler gets a `TypeError` there and the session goes on. In the Node runtime an event, tool or shortcut context has no such member (`typeof ctx.switchSession` is `undefined` and the call throws `ctx.switchSession is not a function`); the Go, Python, Rust and Lisp SDKs, whose `Context` type has the methods, get the error `not_a_command_context` and the host runs nothing (D617). A command handler and a `withSession` callback are unchanged.
+
 ### BF-e2db931
 
 **On Windows, refreshing an MCP server's OAuth token no longer fails with `EPERM` when another `pig` process is…**
@@ -29570,6 +29587,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D605 | The server's two hosts serve one union: `Host.Delegate` one way, the Node host's destination the other | [BF-D605](#bf-d605) |
 | D607 | The plugins component loads hosts through a Node subprocess it starts: Pi's `evaluate`, `stack` and runtime… | deliberate difference |
 | D616 | An npm tarball is extracted with `tar` told the archive relative to the pack directory, where Pi passes its… | [BF-5043738](#bf-5043738) |
+| D617 | A command-only session action called through a context that is not a command context is a method that refuses… | [BF-e299ba1](#bf-e299ba1) |
 
 ## Fix-titled commits that are not bugs in a release
 

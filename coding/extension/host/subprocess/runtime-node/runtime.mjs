@@ -1841,7 +1841,7 @@ const COMMAND_ONLY_CALLS = new Set(["newSession", "fork", "navigateTree", "switc
 
 // addCommandContextMembers gives target the members only Pi's command context has (runner.ts createCommandContext:1004-1038): newSession, fork, navigateTree, switchSession and reload. Pi's createContext() object, which every event, tool and shortcut handler receives, has none of them, so a call through it throws the TypeError of a missing function, and `typeof` says "undefined", whenever it is made. A request's context is a command context only for a command handler and a withSession callback (startRequest, createReplacedSessionContext); the other contexts never get the members, so a context an event handler kept cannot gain them later.
 // pig divergence (D617): the Go, Python, Rust and Lisp SDKs have one static Context type with these methods on it and answer a call from another context with a not_a_command_context error; this runtime has Pi's dynamic shape and never sends one.
-function addCommandContextMembers(target, context) {
+export function addCommandContextMembers(target, context) {
   const members = {
     newSession(options = {}) {
       this.runtime.extensionRuntime.assertActive();

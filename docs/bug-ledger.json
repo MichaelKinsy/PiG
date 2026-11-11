@@ -49776,6 +49776,37 @@
       ]
     },
     {
+      "id": "BF-e299ba1",
+      "title": "An extension that calls `newSession`, `fork`, `navigateTree`, `switchSession` or `reload` from an event, tool…",
+      "symptom": "An extension that calls `newSession`, `fork`, `navigateTree`, `switchSession` or `reload` from an event, tool or shortcut handler, for example a `session_start` handler, no longer replaces the session in the middle of the emit, which made the built-in MCP extension panic on a stale context and `pig` exit 1.",
+      "rootCause": "A call with no live parent request was allowed, so a handler that stored its event context and called later replaced the session; Pi never allows that. The Go, Python, Rust and Lisp SDKs mark every call made through a command handler's or a withSession callback's context (command_context) for the context's whole life, and the host refuses newSession, fork, navigateTree, switchSession and reload without the mark. The Node runtime gives only those contexts the five members, so an event context has none: typeof is undefined and a call throws Pi's TypeError (D617).",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D617",
+      "removeWhen": "the Go, Python, Rust and Lisp SDKs hand event, tool and shortcut handlers a context type that has no command-only session actions (a separate command-context type), so the call cannot be written.",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension that calls `newSession`, `fork`, `navigateTree`, `switchSession` or `reload` from an event, tool or shortcut handler, for example a `session_start` handler, no longer replaces the session in the middle of the emit, which made the built-in MCP extension panic on a stale context and `pig` exit 1. A handler that stores its event context and calls one of them after its request ended is refused as well. Pi gives these only to the command context, so its handler gets a `TypeError` there and the session goes on. In the Node runtime an event, tool or shortcut context has no such member (`typeof ctx.switchSession` is `undefined` and the call throws `ctx.switchSession is not a function`); the Go, Python, Rust and Lisp SDKs, whose `Context` type has the methods, get the error `not_a_command_context` and the host runs nothing (D617). A command handler and a `withSession` callback are unchanged.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "105a93fed1",
+          "date": "2026-11-11"
+        },
+        {
+          "hash": "e299ba1cf9",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/callpayload_shape_test.go::TestCallPayloadKeepsUnkeyedLiteralShape",
+        "coding/extension/host/subprocess/command_only_calls_test.go::TestCommandOnlyCallErrorIsPisMissingFunctionError",
+        "coding/extension/host/subprocess/command_only_calls_test.go::TestCommandOnlyCallsAreThePiCommandContextSessionActions",
+        "test/extension-conformance/session_actions_event_context_test.go::TestConformance_CommandOnlySessionActionsRefusedFromEventContext"
+      ]
+    },
+    {
       "id": "BF-e2db931",
       "title": "On Windows, refreshing an MCP server's OAuth token no longer fails with `EPERM` when another `pig` process is…",
       "symptom": "On Windows, refreshing an MCP server's OAuth token no longer fails with `EPERM` when another `pig` process is still deleting the refresh lock.",
@@ -57482,6 +57513,11 @@
       "id": "D616",
       "title": "An npm tarball is extracted with `tar` told the archive relative to the pack directory, where Pi passes its…",
       "entry": "BF-5043738"
+    },
+    {
+      "id": "D617",
+      "title": "A command-only session action called through a context that is not a command context is a method that refuses…",
+      "entry": "BF-e299ba1"
     }
   ],
   "exemptCommits": {
