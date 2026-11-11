@@ -353,6 +353,10 @@ func newFindFdInvocation(pattern, searchPath string, effectiveLimit float64, win
 	if windows {
 		effectivePattern = strings.ReplaceAll(pattern, `\`, "/")
 	}
+	// fd's full paths never contain "/./", so "./src/*.ts" would find nothing; drop the leading "./" (upstream #12020).
+	for strings.HasPrefix(effectivePattern, "./") {
+		effectivePattern = effectivePattern[2:]
+	}
 	isPathPattern := strings.Contains(effectivePattern, "/")
 	if isPathPattern && !strings.HasPrefix(effectivePattern, "/") && !strings.HasPrefix(effectivePattern, "**/") && effectivePattern != "**" {
 		effectivePattern = "**/" + effectivePattern
