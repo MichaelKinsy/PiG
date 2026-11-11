@@ -82,7 +82,7 @@ func (m *Models) Refresh(ctx context.Context, options ...ModelsRefreshOptions) M
 			continue
 		}
 		stop := context.AfterFunc(signal, func() { settle(context.Cause(signal)) })
-		m.operations.Go(func() {
+		m.goOwned(func() {
 			err := run()
 			stop()
 			if signal.Err() != nil {
@@ -93,7 +93,7 @@ func (m *Models) Refresh(ctx context.Context, options ...ModelsRefreshOptions) M
 	}
 	if !inline {
 		done := make(chan struct{})
-		m.operations.Go(func() { wg.Wait(); close(done) })
+		m.goOwned(func() { wg.Wait(); close(done) })
 		select {
 		case <-done:
 		case <-ctx.Done():
@@ -173,7 +173,7 @@ func (m *Models) publishProviderModels(providerID string, generation uint64, sig
 		return next.value, next.err
 	}
 	result := make(chan modelsOperationResult[bool], 1)
-	m.operations.Go(func() { result <- publish() })
+	m.goOwned(func() { result <- publish() })
 	if signal.Err() != nil {
 		return false, context.Cause(signal)
 	}
