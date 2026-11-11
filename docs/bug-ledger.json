@@ -14676,6 +14676,36 @@
       "tests": []
     },
     {
+      "id": "BF-4ea9ba8",
+      "title": "An interactive shell run by the bash tool or by a `!` command no longer suspends PiG with `suspended (tty…",
+      "symptom": "An interactive shell run by the bash tool or by a `!` command no longer suspends PiG with `suspended (tty input)` on the next key press.",
+      "rootCause": "Pi spawns the shell with `detached: true` (core/tools/bash.ts createLocalShellOperations), which Node starts with setsid(2): the shell leads a new session and a new process group and has no controlling terminal. PiG called setpgid only, so the shell stayed in PiG's session with PiG's controlling terminal. An interactive job-control shell (`zsh -f -i -c true; true`) opened /dev/tty, made its own process group the terminal's foreground group and left it so when it exited. PiG, in the background of its own terminal, was stopped by SIGTTIN on the next key press (`suspended (tty input)`). `bash -i -c true; true` stopped itself and the tool call never returned; Pi's shell prints `bash: cannot set…",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An interactive shell run by the bash tool or by a `!` command no longer suspends PiG with `suspended (tty input)` on the next key press. PiG started the shell in its own process group but in PiG's session, so the shell kept PiG's controlling terminal: `zsh -f -i -c true; true` opened `/dev/tty`, made its own process group the terminal's foreground group and left it so when it exited, and PiG's next read from the terminal raised SIGTTIN. `bash -i -c true; true` stopped itself and the tool call never returned. The shell now starts in a session of its own, as Pi's `detached: true` does (Node's spawn calls `setsid`), so it has no controlling terminal: `/dev/tty` cannot be opened and `bash -i` reports `no job control in this shell` and returns. The shell still leads its own process group, so abort, timeout and the exit cleanup still end every descendant (#427, reported by @asp345).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4ea9ba8a1b",
+          "date": "2026-11-11",
+          "pr": "427"
+        }
+      ],
+      "tests": [
+        "coding/cli/testmain_test.go::TestMain",
+        "coding/cli/user_bash_terminal_pty_test.go::TestInteractiveUserBashLeavesTheTerminalToPig",
+        "internal/codingagent/tools/bash_tty_linux_test.go::TestBashAbortAndTimeoutKillTheShellsDescendants",
+        "internal/codingagent/tools/bash_tty_linux_test.go::TestBashCommandCannotTakeThePigTerminal",
+        "internal/codingagent/tools/bash_tty_linux_test.go::TestBashShellLeadsItsOwnSessionAndProcessGroup",
+        "internal/codingagent/tools/testmain_test.go::TestMain",
+        "internal/testenv/terminal_session_linux_test.go::TestInTerminalSessionRunsTheTestAsTheLeaderOfAControllingTerminal",
+        "internal/testenv/terminal_session_linux_test.go::TestRequireTerminalForegroundFailsWhileAnotherGroupHoldsTheTerminal"
+      ]
+    },
+    {
       "id": "BF-4ed1d72",
       "title": "A session swap (`/new`, `/resume`, `/fork`, `Session.ReplaceInner`) no longer races with `/new`, a fork or a…",
       "symptom": "A session swap (`/new`, `/resume`, `/fork`, `Session.ReplaceInner`) no longer races with `/new`, a fork or a clone that reads whether the session has a file, and a routed request stores a virtual model's router state on the session it read the state from, not on one a swap installed meanwhile.",
@@ -19131,6 +19161,29 @@
       ],
       "tests": [
         "tui/terminal_write_allocs_norace_test.go::TestWriteToTerminalOfAByteWriterDoesNotAllocate"
+      ]
+    },
+    {
+      "id": "BF-6303d2b",
+      "title": "Chord workers now start in a session of their own, as Pi's `detached: true` fork does, so a worker no longer…",
+      "symptom": "Chord workers now start in a session of their own, as Pi's `detached: true` fork does, so a worker no longer keeps the launching terminal as its controlling terminal.",
+      "rootCause": "Pi forks a worker with `detached: true` (packages/chord/src/node/workers/process.ts:54), which Node starts with setsid(2). PiG's detach carried the comment \"Node's `detached: true`\" but called setpgid only, so a worker kept PiG's controlling terminal.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord workers now start in a session of their own, as Pi's `detached: true` fork does, so a worker no longer keeps the launching terminal as its controlling terminal. The worker still leads its own process group, so killing the group still kills everything it spawned (#427).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6303d2b3b9",
+          "date": "2026-11-11",
+          "pr": "427"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/workers/workers_process_session_linux_test.go::TestAWorkerProcessLeadsItsOwnSessionAndProcessGroup"
       ]
     },
     {
@@ -34033,6 +34086,31 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-9baf37f",
+      "title": "MCP stdio servers now start in a session of their own, as Pi's stdio transport does (`detached` in Node's…",
+      "symptom": "MCP stdio servers now start in a session of their own, as Pi's stdio transport does (`detached` in Node's spawn is `setsid`): a server, or a child of it, no longer keeps PiG's controlling terminal and cannot take the terminal's foreground process group from PiG.",
+      "rootCause": "Pi's stdio transport spawns the server with `detached: USE_PROCESS_GROUPS` (packages/mcp/src/transports/stdio.ts:107), which Node starts with setsid(2) on every platform but Windows. PiG called setpgid only, so a server, or a child of it, kept PiG's controlling terminal and could take the terminal's foreground group away from PiG, as the bash tool's shell did.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "MCP stdio servers now start in a session of their own, as Pi's stdio transport does (`detached` in Node's spawn is `setsid`): a server, or a child of it, no longer keeps PiG's controlling terminal and cannot take the terminal's foreground process group from PiG. The server still leads its own process group, so closing the transport still ends its children (#427).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "9baf37f4e1",
+          "date": "2026-11-11",
+          "pr": "427"
+        }
+      ],
+      "tests": [
+        "mcp/fixtures_test.go::TestMain",
+        "mcp/stdio_session_linux_test.go::TestStdioServerCannotTakeThePigTerminal",
+        "mcp/stdio_session_linux_test.go::TestStdioServerLeadsItsOwnSessionAndProcessGroup"
+      ]
     },
     {
       "id": "BF-9be5765",
