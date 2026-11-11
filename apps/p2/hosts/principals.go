@@ -90,8 +90,9 @@ func ForeignBrowserRequest(request *http.Request) bool {
 	return frameDestinations[dest] && !(hasSite && site[0] == "same-origin")
 }
 
-// pageRoutes are the app pages a link may open: the app, a session or conversation, a share's join page, owner sign-in.
-var pageRoutes = regexp.MustCompile(`^/(?:$|s/|join/|owner$)`)
+// pageRoutes are the app pages a link may open: the app, a session or conversation, the new-session screen, a share's join
+// page, owner sign-in.
+var pageRoutes = regexp.MustCompile(`^/(?:$|s/|new$|join/|owner$)`)
 
 // PageNavigation reports a top-level page load (link, address bar, bookmark, home-screen app launch): the only foreign
 // browser request that may authenticate. It cannot read anything back into the foreign page, and opens the app as usual.
