@@ -1052,8 +1052,8 @@ func (r *Runner) flagValue(name string) any {
 //
 // upstream: runner.ts:485-493 (hasHandlers)
 func (r *Runner) HasHandlers(eventType string) bool {
-	for _, ext := range r.extensions {
-		if handlers := ext.EventHandlers(eventType); len(handlers) > 0 {
+	for i := range r.extensions {
+		if r.extensions[i].HasEventHandlers(eventType) {
 			return true
 		}
 	}
