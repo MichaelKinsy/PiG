@@ -161,7 +161,7 @@ type OpenAICompat struct {
 	SupportsMidConvoSystemMessages *bool                    `json:"supportsMidConvoSystemMessages,omitempty"`
 	SupportsMidConvoToolAdditions  *bool                    `json:"supportsMidConvoToolAdditions,omitempty"`
 	SupportsMidConvoToolChanges    *bool                    `json:"supportsMidConvoToolChanges,omitempty"`
-	// SupportsMessageThreads reports whether the endpoint supports Anthropic message threads. Unset, it is true for provider anthropic on api.anthropic.com and false otherwise.
+	// SupportsMessageThreads reports whether the endpoint supports Anthropic message threads. Unset, it is true for a baseUrl on api.anthropic.com and false otherwise.
 	SupportsMessageThreads *bool                           `json:"supportsMessageThreads,omitempty"`
 	AllowedFallbackModels  []AnthropicAllowedFallbackModel `json:"allowedFallbackModels,omitempty"`
 	// Extra holds the members PiG does not model, as written. Pi's compat schemas allow additional properties and a compat object keeps
