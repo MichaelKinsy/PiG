@@ -225,7 +225,7 @@ func StartClient(options ClientOptions) (*Client, error) {
 	c.kitty = options.Terminal.KittyProtocolActive()
 	// After launcher-drawn UI: the runtime's output was discarded, so restore its modes and ask for a full redraw.
 	c.ui.OnClose = func() {
-		options.Terminal.Write(c.modes.Restore())
+		options.Terminal.Write(c.modes.Restore() + c.modes.Keyboard(options.Terminal.KittyProtocolActive()))
 		c.Post(func() { c.tui.RequestRender(true) })
 	}
 	scheme, _ := ColorFgBgSchemeFromEnv()
@@ -390,7 +390,7 @@ func (c *Client) output(data string) {
 	paused := c.paused
 	c.mu.Unlock()
 	if !c.ui.Active() && !paused {
-		c.options.Terminal.Write(filtered)
+		c.options.Terminal.Write(filtered + c.modes.Keyboard(c.options.Terminal.KittyProtocolActive()))
 	}
 }
 
@@ -498,6 +498,9 @@ func (c *Client) onInput(data string) {
 	// The launcher negotiates the kitty keyboard protocol; the runtime must decode accordingly.
 	if kitty := c.options.Terminal.KittyProtocolActive(); kitty != c.kittyState() {
 		c.setKitty(kitty)
+	}
+	if keyboard := c.modes.Keyboard(c.kittyState()); keyboard != "" {
+		c.options.Terminal.Write(keyboard)
 	}
 	c.mu.Lock()
 	privileged := c.privileged
