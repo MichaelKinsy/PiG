@@ -41,8 +41,10 @@ func (m *InteractiveMode) offerRadiusMcpServer(providerID, providerName string) 
 	}
 	// The MCP extension reads mcp.json when the session starts. Pi runs its /reload handler directly
 	// (interactive-mode.ts:6334 handleReloadCommand), not the slash command an extension may override.
-	if err := reloadHandler(m.buildSlashContext(m.loginContext())); err != nil {
-		m.showError(err.Error())
-	}
-	m.tuiInst.Render()
+	onMain(func() {
+		if err := reloadHandler(m.buildSlashContext(ctx)); err != nil {
+			m.showError(err.Error())
+		}
+		m.tuiInst.Render()
+	})
 }

@@ -2219,10 +2219,10 @@ rationale = ""
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/model-catalog-refresh.ts"
-disposition = "deferred"
-contracts = []
-evidence = []
-rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+disposition = "translated"
+contracts = ["cancellable", "concurrent-joined", "detached-owned"]
+evidence = ["test:internal/codingagent/model_catalog_refresh_upstream_test.go#TestModelCatalogRefreshUpstream", "test:internal/codingagent/model_catalog_refresh_test.go#TestModelCatalogRefreshCoordinator", "test:internal/codingagent/model_selector_refresh_owned_test.go#TestAbandonedModelCatalogRefreshIsJoinedByRegistryClose", "test:internal/codingagent/model_selector_refresh_owned_test.go#TestModelCatalogRefreshAfterRegistryCloseIsAborted"]
+rationale = "refreshModelCatalogs shares one `modelRuntime.refresh({ signal })` per runtime (a WeakMap of active refreshes) among concurrent callers; each caller races it with its own signal (raceWithAbortSignal) and rejects on abort, and the last waiter to leave aborts the operation's controller and drops the entry so a later call starts a new refresh. The runtime's refresh is not awaited by anyone after that: it settles on its own and is never joined. Go internal/codingagent/model_catalog_refresh.go keeps the sharing and the per-caller cancellation, and runs the operation as a task of the registry's model tasks (StartModelTask): CloseModelTasks, which Services.Close calls, cancels an abandoned operation and joins it, so the store and credential work it started ends before Close returns; a registry that has been closed admits none and the call returns an aborted result. A panic in the operation reaches the uncaught handler (RecoverUncaught)."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/session-share.ts"

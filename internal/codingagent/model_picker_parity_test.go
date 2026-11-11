@@ -31,8 +31,8 @@ func modelPickerTestMode(t *testing.T) *InteractiveMode {
 		t.Fatal(err)
 	}
 	registry := NewModelRegistry(dir)
-	// Catalog refresh can outlive picker cancellation. Keep its unrelated cache in memory; settings remain file-backed to verify default persistence.
-	registry.SetModelsStore(ai.NewInMemoryModelsStore())
+	// The picker's catalog refresh is background work of the mode and the registry; join it before t.TempDir removes the agent directory it writes to.
+	t.Cleanup(registry.CloseModelTasks)
 	m := NewInteractiveMode(nil, InteractiveModeOptions{AgentDir: dir, CWD: t.TempDir(), Model: current, SettingsManager: sm, ModelRegistry: registry, ModelBuilder: func(spec string) (*ai.Model, error) {
 		return &ai.Model{ID: spec, Provider: captureStreamOptionsProvider{}}, nil
 	}})
@@ -43,6 +43,7 @@ func modelPickerTestMode(t *testing.T) *InteractiveMode {
 	m.statusLine = NewFooterComponent(current, "", nil)
 	m.agent = mustNewAgent(agent.AgentOptions{Model: current})
 	m.setModalInputChannel(make(chan []byte, 2))
+	t.Cleanup(m.backgroundTasks.Wait)
 	return m
 }
 

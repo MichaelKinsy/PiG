@@ -278659,15 +278659,15 @@
       "shapeHash": "sha256:92df3ca4c486a936b0cc48e55385986cb76a99f287781557c707067338492fff"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#configureStartupTheme",
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#configureStartupTui",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "configureStartupTheme",
+      "name": "configureStartupTui",
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(settings Settings, paths []string)"
+        "type": "func(opts StartupUIOptions) *KeybindingsManager"
       },
-      "shapeHash": "sha256:06c63c5d0c3396680f078c197e6ded06c57cd5720aecd358c4d2e941843c9f31"
+      "shapeHash": "sha256:a00f585dbee4a36885a13b70e8dbc37790099f206f07acf437ca6ca960dbdc02"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#configuredNpmProbeError",
@@ -293122,6 +293122,17 @@
         "type": "func(ctx context.Context, _ ...github.com/MichaelKinsy/PiG/ai.ModelsRefreshOptions) github.com/MichaelKinsy/PiG/ai.ModelsRefreshResult"
       },
       "shapeHash": "sha256:edab9c65ed6924d915e2b6677b7660b58d92dbcb0fc58ac2c5e833a6077b7077"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#modelSelectorRuntime.StartModelSelectorTask",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "modelSelectorRuntime.StartModelSelectorTask",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(refresh func(context.Context)) bool"
+      },
+      "shapeHash": "sha256:74a902887d79e4e6eaa78bc78517173a124f0839cea2dbfca6b9f5d077654dfb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#modelSpec",
@@ -327802,9 +327813,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(width int, childLines []string, bgSample string) bool"
+        "type": "func(width int, childLines []string, hasBg bool, bgSample string) bool"
       },
-      "shapeHash": "sha256:1341099cd88843b5a61de0c2ddefc26c4762ffe3dd3dc6765a570516d962bff6"
+      "shapeHash": "sha256:878868d5d4b6d894940642bfcabec50aa075a7894d402a18a3543700b076243f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#Box.notifyOwner",
@@ -328033,9 +328044,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(width int, childLines []string, bgSample string) bool"
+        "type": "func(width int, childLines []string, hasBg bool, bgSample string) bool"
       },
-      "shapeHash": "sha256:1341099cd88843b5a61de0c2ddefc26c4762ffe3dd3dc6765a570516d962bff6"
+      "shapeHash": "sha256:878868d5d4b6d894940642bfcabec50aa075a7894d402a18a3543700b076243f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#BranchSummaryMessageComponent.notifyOwner",
@@ -329078,9 +329089,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(width int, childLines []string, bgSample string) bool"
+        "type": "func(width int, childLines []string, hasBg bool, bgSample string) bool"
       },
-      "shapeHash": "sha256:1341099cd88843b5a61de0c2ddefc26c4762ffe3dd3dc6765a570516d962bff6"
+      "shapeHash": "sha256:878868d5d4b6d894940642bfcabec50aa075a7894d402a18a3543700b076243f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#CompactionSummaryMessageComponent.notifyOwner",
@@ -340666,6 +340677,17 @@
       "shapeHash": "sha256:abda90b0a9dee566c1c4d8a5e69e5e1e0dc21a5f6a3f00ada27ad225d1a5f10b"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ModelSelectorComponent.Wait",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ModelSelectorComponent.Wait",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#ModelSelectorComponent.addLocked",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "ModelSelectorComponent.addLocked",
@@ -341159,6 +341181,17 @@
         "type": "ModelSelectorRuntime"
       },
       "shapeHash": "sha256:fdf237cff39b3552b487c0d1ef134f0d8f1bf167d7cffbda4f56a72260922671"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ModelSelectorTaskOwner",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ModelSelectorTaskOwner",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "ModelSelectorTaskOwner"
+      },
+      "shapeHash": "sha256:548ee241d0740cfe457dad6ad3a8456bcaa92b894f963bfb816fd45ff2357150"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#ModifierCommand",
@@ -349131,9 +349164,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(width int, childLines []string, bgSample string) bool"
+        "type": "func(width int, childLines []string, hasBg bool, bgSample string) bool"
       },
-      "shapeHash": "sha256:1341099cd88843b5a61de0c2ddefc26c4762ffe3dd3dc6765a570516d962bff6"
+      "shapeHash": "sha256:878868d5d4b6d894940642bfcabec50aa075a7894d402a18a3543700b076243f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#SkillInvocationMessageComponent.notifyOwner",
@@ -369233,6 +369266,17 @@
       "shapeHash": "sha256:a4307b294e707f8b9a300c3d47e756970f9abd9e03d8ef7c0feb728e6793f884"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#currentTrueColor",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "currentTrueColor",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#cusp",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "cusp",
@@ -376966,6 +377010,17 @@
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#maxPooledTerminalWrite",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "maxPooledTerminalWrite",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#maxRenderWriteChars",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "maxRenderWriteChars",
@@ -384466,6 +384521,72 @@
         "type": "terminalSizeCache"
       },
       "shapeHash": "sha256:ef77a6d211eef9983d02ae478f7847849eadf87abdfd3a0eab910ff6e66c520c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#terminalWriteBuffers",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "terminalWriteBuffers",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "sync.Pool"
+      },
+      "shapeHash": "sha256:6a409ceb1c50640bf5048fa9e0581f6319404b149e5ac6c23c128589cf1a214b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#terminalWriteBuffers.Get",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "terminalWriteBuffers.Get",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() any"
+      },
+      "shapeHash": "sha256:6b40cbb40507b7efce1d433d06fed509e653a5671897ef0381b72bf3dce3329e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#terminalWriteBuffers.Put",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "terminalWriteBuffers.Put",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(x any)"
+      },
+      "shapeHash": "sha256:b3c0458425ac22d36044f62b9640018449ae4ed98577c3f237817cc7ff99fa15"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#terminalWriteBuffers.getSlow",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "terminalWriteBuffers.getSlow",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(pid int) any"
+      },
+      "shapeHash": "sha256:5e78ffbe1c5bdcff9a6de1613449f1b918a0a7568d93ac8b6db8b1a632819ea4"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#terminalWriteBuffers.pin",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "terminalWriteBuffers.pin",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() (*sync.poolLocal, int)"
+      },
+      "shapeHash": "sha256:8e29662471c87a624090b974d35b3745c7898061975b31c44125e4b0ffd679b2"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#terminalWriteBuffers.pinSlow",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "terminalWriteBuffers.pinSlow",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() (*sync.poolLocal, int)"
+      },
+      "shapeHash": "sha256:8e29662471c87a624090b974d35b3745c7898061975b31c44125e4b0ffd679b2"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#terminalWriteBuffers",

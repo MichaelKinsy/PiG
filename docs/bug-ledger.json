@@ -22595,6 +22595,30 @@
       ]
     },
     {
+      "id": "BF-69c667b",
+      "title": "Changing the output padding now applies at once to the branch-summary, compaction-summary and…",
+      "symptom": "Changing the output padding now applies at once to the branch-summary, compaction-summary and skill-invocation cards already in the transcript.",
+      "rootCause": "Settings \u003e output padding calls SetOutputPad on every chat child; the branch-summary, compaction-summary and skill-invocation cards implement it as SetPaddingX on their embedded Box. A card is served from its container's per-child cache by its dirty flag, and SetPaddingX only dropped the Box's own render cache, so the chat kept drawing those cards at the old padding until the card changed for another reason. Pi's Container.render renders every child on every frame, so Pi shows the new padding at once. SetPaddingX and SetBgFn now set the Box's dirty flag.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Changing the output padding now applies at once to the branch-summary, compaction-summary and skill-invocation cards already in the transcript. Their padding change reached the card's box without telling the transcript, which kept showing the card at the old padding until the card changed for another reason.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "69c667b1ea",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/output_pad_test.go::TestApplyOutputPadReachesTheCardsTheChatContainerCaches",
+        "tui/box_dirty_test.go::TestBoxBackgroundThatDrawsNothingIsNotNoBackground",
+        "tui/box_dirty_test.go::TestBoxSetBgFnAndSetPaddingXReportTheChange"
+      ]
+    },
+    {
       "id": "BF-69cd9d2",
       "title": "PageUp and PageDown (`tui.select.pageUp` and `tui.select.pageDown`) move the selection by one page in the…",
       "symptom": "PageUp and PageDown (`tui.select.pageUp` and `tui.select.pageDown`) move the selection by one page in the select list, settings list, editor autocomplete, and the model, OAuth, scoped-models, user-message and settings-submenu selectors.",
@@ -24565,6 +24589,28 @@
       "tests": []
     },
     {
+      "id": "BF-7299966",
+      "title": "Every frame the renderer paints allocates two fewer objects: the cursor's hide and show copied their escape…",
+      "symptom": "Every frame the renderer paints allocates two fewer objects: the cursor's hide and show copied their escape sequence into a new slice, where they had copied it into a pooled buffer before dead-terminal handling routed them through `WriteToTerminal`.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Extra allocation or slower run",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Every frame the renderer paints allocates two fewer objects: the cursor's hide and show copied their escape sequence into a new slice, where they had copied it into a pooled buffer before dead-terminal handling routed them through `WriteToTerminal`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "72999669a8",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "tui/terminal_write_allocs_norace_test.go::TestWriteToTerminalOfAByteWriterDoesNotAllocate"
+      ]
+    },
+    {
       "id": "BF-72db80f",
       "title": "fix(durable): a streamed partial commits the text of its own events",
       "symptom": "fix(durable): a streamed partial commits the text of its own events",
@@ -26058,6 +26104,30 @@
       "tests": []
     },
     {
+      "id": "BF-79194eb",
+      "title": "Aborting a compaction while extensions were being told it finished no longer keeps the extensions after the…",
+      "symptom": "Aborting a compaction while extensions were being told it finished no longer keeps the extensions after the first from hearing about it.",
+      "rootCause": "Pi awaits runner.emit({ type: \"session_compact\" }) after the compaction entry is saved, and emit() takes no signal: an abort raised while the handlers run neither skips an extension nor fails the compaction. PiG passed the abortable compaction context to the dispatch, so AbortCompaction during the first handler cancelled that handler's request and every later subprocess extension's, which never received the event. Dispatch now detaches from the cancellation, as emitSessionCompactFailed already does.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Aborting a compaction while extensions were being told it finished no longer keeps the extensions after the first from hearing about it. `session_compact` now reaches every extension, in order, as in Pi, whichever of them calls `abortCompaction()` or has the compaction aborted while its handler runs; the saved compaction still completes.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "79194ebd9f",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "coding/session_compact_abort_dispatch_test.go::TestSessionCompactReachesEveryExtensionWhenAbortedDuringDispatch",
+        "test/extension-conformance/session_compact_abort_test.go::TestNodeSessionCompactReachesTheNextExtensionWhenAbortedDuringDispatch",
+        "test/extension-conformance/session_compact_abort_test.go::TestSessionCompactIsDeliveredToEverySDKWhenAbortedDuringDispatch"
+      ]
+    },
+    {
       "id": "BF-79eadcf",
       "title": "Long sessions no longer slow down each streamed frame in the main screen: a frame redraws from the first line…",
       "symptom": "Long sessions no longer slow down each streamed frame in the main screen: a frame redraws from the first line that changed instead of re-rendering and comparing the whole transcript, with the same terminal output.",
@@ -26215,6 +26285,30 @@
         "coding/pigletbuild/source_fetch_test.go::TestSourceRevisionOutsideGitCheckoutNamesDirectory",
         "internal/codingagent/program_status_reporter_oracle_test.go::TestProgramStatusReporterRandomSequencesMatchPi",
         "third_party/awssdk/internal/endpoints/v2/lazy_test.go::TestLazyRegexpMatchesLikeRegexp"
+      ]
+    },
+    {
+      "id": "BF-7b6510e",
+      "title": "On Linux, the native X11 clipboard reads a `DISPLAY` that starts with `/` or `unix:` as a socket path with an…",
+      "symptom": "On Linux, the native X11 clipboard reads a `DISPLAY` that starts with `/` or `unix:` as a socket path with an optional screen (`/tmp/.X11-unix/X0.1`, `unix:/tmp/.X11-unix/X0`), as libxcb 1.16 and later do.",
+      "rootCause": "Pi's Linux clipboard addon links libxcb.so.1 and calls xcb_connect, so the host's libxcb decides how DISPLAY is read. libxcb 1.16 (by Demi Marie Obenour, a mitigation for CVE-2020-25697) made a display that starts with \"/\" or \"unix:\" always a socket path with an optional screen of 1 to 9 first digit, and no longer a host:number display. PiG still read \"unix:\u003cnumber\u003e\" as a local display, so DISPLAY=unix:0.-1 connected where libxcb 1.16 and 1.17 fail, and a display such as /tmp/.X11-unix/X0 failed where they connect.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "Linux",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "On Linux, the native X11 clipboard reads a `DISPLAY` that starts with `/` or `unix:` as a socket path with an optional screen (`/tmp/.X11-unix/X0.1`, `unix:/tmp/.X11-unix/X0`), as libxcb 1.16 and later do. A socket path now connects where it failed before, and `DISPLAY=unix:0` no longer names display 0. Pi's addon links the host's libxcb, so hosts with libxcb 1.15 or earlier read these displays differently.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7b6510e674",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "internal/nativeplatform/clipboard_x11_display_range_linux_test.go::TestX11DisplayNumbersParseAsXcbDoes",
+        "internal/nativeplatform/clipboard_x11_display_range_linux_test.go::TestX11DisplaySpellingsConnectAsPiDoes",
+        "internal/nativeplatform/clipboard_x11_display_range_linux_test.go::TestX11SocketPathDisplaysParseAsXcbDoes"
       ]
     },
     {
@@ -27597,6 +27691,34 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-81a9b76",
+      "title": "Releasing a session's services no longer leaves the model selector's catalog refresh running",
+      "symptom": "The refresh the selector starts and the shared catalog operation behind it were not joined by anything, so with a file-backed registry the operation could still write `auth.json` and `models-store.json` in the agent directory after the registry's model tasks were closed.",
+      "rootCause": "- the registry runs the shared operation as a model task, so CloseModelTasks cancels and joins it, and a closed registry returns an aborted result; - the selector's refresh is a task of its runtime's ModelSelectorTaskOwner, which the interactive mode backs with its background tasks, so Run's teardown cancels and joins it, including the runtime call it raced with the selector's signal; Dispose still cancels from the constructor's return.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Releasing a session's services no longer leaves the model selector's catalog refresh running. Before, the refresh the selector starts and the shared catalog operation behind it were not joined by anything, so with a file-backed registry the operation could still write `auth.json` and `models-store.json` in the agent directory after the registry's model tasks were closed. The selector's refresh is now an owned task of the interactive mode, which cancels and joins it when the mode shuts down, and the operation behind it is a task of the model registry, which cancels and joins it when the session's services are released (for example on session replacement); at quit the process exits, as Pi's does. The refresh result and the picker are unchanged.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "81a9b7614b",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/model_selector_refresh_owned_test.go::TestAbandonedModelCatalogRefreshIsJoinedByRegistryClose",
+        "internal/codingagent/model_selector_refresh_owned_test.go::TestModelCatalogRefreshAfterRegistryCloseIsAborted",
+        "internal/codingagent/model_selector_refresh_owned_test.go::TestModelSelectorRefreshDoesNotOutliveShutdown",
+        "tui/model_selector_owner_test.go::TestModelSelectorDisposeBeforeTheOwnerStartsTheTask",
+        "tui/model_selector_owner_test.go::TestModelSelectorRefreshIsJoinedByItsTaskOwner",
+        "tui/model_selector_owner_test.go::TestModelSelectorWaitJoinsItsOwnRefresh",
+        "tui/model_selector_owner_test.go::TestModelSelectorWithAShutDownOwnerShowsNoRefreshStatus"
+      ]
     },
     {
       "id": "BF-81e1a45",
@@ -35595,6 +35717,28 @@
       ]
     },
     {
+      "id": "BF-a0eeb24",
+      "title": "`/fork` of a session that is not file-backed builds the clone's entries from the source's decoded messages…",
+      "symptom": "`/fork` of a session that is not file-backed builds the clone's entries from the source's decoded messages again instead of decoding every record a second time, which doubled the allocations of that clone.",
+      "rootCause": "An earlier change made Clone stream its records and decode each one it keeps in memory with DecodeFileEntry, where the earlier code rebased the source's decoded message entries onto their new parent and decoded only the other records.",
+      "rootCauseSource": "commit",
+      "userImpact": "Extra allocation or slower run",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`/fork` of a session that is not file-backed builds the clone's entries from the source's decoded messages again instead of decoding every record a second time, which doubled the allocations of that clone.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a0eeb24909",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/session_clone_memory_allocs_norace_test.go::TestCloneOfAnInMemorySessionReusesItsDecodedMessages"
+      ]
+    },
+    {
       "id": "BF-a110f68",
       "title": "fix(tui,codingagent): owner-loop frame deadline and reader-side input routing (TU-T11, TU-T12)",
       "symptom": "fix(tui,codingagent): owner-loop frame deadline and reader-side input routing (TU-T11, TU-T12)",
@@ -37674,6 +37818,28 @@
       "tests": [
         "chord/delta/retention_upstream_test.go::TestDeltaTrackerRetentionAcrossGCJobs",
         "chord/delta/retention_upstream_test.go::TestTrackerReleasesADroppedOpenChangeWhenTheNextOpens"
+      ]
+    },
+    {
+      "id": "BF-abd1431",
+      "title": "After a Radius sign-in, accepting the offer to configure the Radius MCP server updates the chat (its notices…",
+      "symptom": "After a Radius sign-in, accepting the offer to configure the Radius MCP server updates the chat (its notices, the reload status and the last paint) on the interactive loop, as Pi's single-threaded TUI does, and no longer from the login's own goroutine, where it raced the loop's status line (a data race the nightly race job reported).",
+      "rootCause": "After a Radius sign-in, accepting the offer to configure the Radius MCP server updates the chat (its notices, the reload status and the last paint) on the interactive loop, as Pi's single-threaded TUI does, and no longer from the login's own goroutine, where it raced the loop's status line (a data race the nightly race job reported).",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "After a Radius sign-in, accepting the offer to configure the Radius MCP server updates the chat (its notices, the reload status and the last paint) on the interactive loop, as Pi's single-threaded TUI does, and no longer from the login's own goroutine, where it raced the loop's status line (a data race the nightly race job reported).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "abd143147f",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/radius_login_mcp_offer_upstream_test.go::TestRadiusLoginOffersTheRadiusMCPServerUpstream"
       ]
     },
     {
@@ -41023,6 +41189,26 @@
       ]
     },
     {
+      "id": "BF-bf67aae",
+      "title": "Loading a packed Python cell no longer hangs when its second extension's factory makes a host call before the…",
+      "symptom": "The Python SDK had the same lock order as the Lisp SDK: a factory-time host call held the lock `run` takes while it waited for the host, so neither could continue.",
+      "rootCause": "loading_call held _State.lock across the whole wait for the host's answer, and run_with_socket needs that lock to take its connection. The host serves a packed cell's members in order, so the second member's call waits for the first member's register: when the second member's factory reached its first call before the first member's run took its connection, the two deadlocked.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Loading a packed Python cell no longer hangs when its second extension's factory makes a host call before the first extension's run has taken its connection. The Python SDK had the same lock order as the Lisp SDK: a factory-time host call held the lock `run` takes while it waited for the host, so neither could continue. A factory-time call now holds only the lock of its own connection.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "bf67aaefc7",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-bf73e77",
       "title": "fix(durable/core): join split surrogates through jv.AppendConcat, not byte slices",
       "symptom": "fix(durable/core): join split surrogates through jv.AppendConcat, not byte slices",
@@ -41150,6 +41336,28 @@
         "test/ci-images/verification_shards_test.go::TestGroupedTestsDoNotRunWhenTheAgentDirectoriesCannotBeSeeded",
         "test/ci-images/verification_shards_test.go::TestGroupedTestsIsolateAndGuardTheAgentDirectories",
         "test/ci-images/verification_shards_test.go::TestIsUnderDirComparesFileIdentity"
+      ]
+    },
+    {
+      "id": "BF-c0649a6",
+      "title": "On Windows, a chord plugin's Node host whose link had closed could be killed by the host after its…",
+      "symptom": "The process had ended its channel and run its exit handlers within 50 ms; what kept it alive was Node writing the V8 compile cache of every module it compiled, one file after another, as it exited, which on a loaded Windows machine and a cold cache (a new extraction directory or new plugins) took from one to over five seconds.",
+      "rootCause": "A host whose link closed was killed on Windows after the 5 s stop grace (exit status 1, \"its link closed and it did not exit within 5s\"). The process had ended its channel, run its exit handlers and reached its `exit` event 50 ms after the link closed; what kept it alive was Node writing the V8 compile cache of every module it compiled, one file after another, as the process exits (mkstemp, write, rename: Node's CompileCacheHandler::Persist, run at exit). A cold cache (a tree extracted for a new CacheDir, new plugins) made that many writes, and on a loaded Windows runner they took from 1 to over 5 s: 30 of about 8000 exits of the target test took over 2 s and 7 were killed (Windows…",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "On Windows, a chord plugin's Node host whose link had closed could be killed by the host after its five-second stop grace instead of exiting by itself (exit status 1, \"its link closed and it did not exit within 5s\"). The process had ended its channel and run its exit handlers within 50 ms; what kept it alive was Node writing the V8 compile cache of every module it compiled, one file after another, as it exited, which on a loaded Windows machine and a cold cache (a new extraction directory or new plugins) took from one to over five seconds. The host now writes the cache once it is up and after each load and reload, so its exit has none left to write.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c0649a6934",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_node_test.go::TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits"
       ]
     },
     {
@@ -46020,6 +46228,28 @@
       ]
     },
     {
+      "id": "BF-d856f4a",
+      "title": "`host.Registry` with a short `ReadyTimeout` no longer fails \"did not become live\" when the machine delays the…",
+      "symptom": "`host.Registry` with a short `ReadyTimeout` no longer fails \"did not become live\" when the machine delays the waiting goroutine past the deadline: in Pi the wait's publication, lookup and first usable check run before any timer, so the deadline reports why the registry cannot be read (`contract_mismatch` for a version the provider cannot serve, `unavailable/undeclared` for a registry nobody serves).",
+      "rootCause": "host.Registry armed its deadline, then left the wait to a goroutine: the publication, the value lookup and the first usable() check. In Pi those are microtasks that run before any timer, so a deadline can only report the last reason the registry was unusable. In Go a loaded machine could run the deadline's section before the goroutine looked, and the wait failed \"did not become live\" instead of contract_mismatch or unavailable/undeclared (main's TestOlderReadersWithoutAValueMapping... failed that way on CI).",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`host.Registry` with a short `ReadyTimeout` no longer fails \"did not become live\" when the machine delays the waiting goroutine past the deadline: in Pi the wait's publication, lookup and first usable check run before any timer, so the deadline reports why the registry cannot be read (`contract_mismatch` for a version the provider cannot serve, `unavailable/undeclared` for a registry nobody serves). A deadline that finds the host published and the first check not yet made now lets that check run first.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d856f4a399",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "chord/next/host/host_registry_readers_test.go::TestReadersAHostRegistryWhoseDeadlineElapsedBeforeItsFirstLookReportsWhyTheRegistryIsNotUsable"
+      ]
+    },
+    {
       "id": "BF-d87b70c",
       "title": "A second `ctx.ui.custom` component opened while one is shown now opens over it at once, as in Pi, whether it…",
       "symptom": "A subprocess extension's custom component waited until the shown one closed, and a subprocess custom component kept reading the keys while another custom component shown over it had focus.",
@@ -50517,6 +50747,28 @@
       ]
     },
     {
+      "id": "BF-e57eef0",
+      "title": "The RPC usage probe that checks Pi's stdout ordering no longer dies on an unhandled `write EPIPE` when the…",
+      "symptom": "The RPC usage probe that checks Pi's stdout ordering no longer dies on an unhandled `write EPIPE` when the CLI under test stops reading its stdin before the probe sends the prompt; it reports that the CLI wrote no frame, and any other failure to write the prompt still fails it.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The RPC usage probe that checks Pi's stdout ordering no longer dies on an unhandled `write EPIPE` when the CLI under test stops reading its stdin before the probe sends the prompt; it reports that the CLI wrote no frame, and any other failure to write the prompt still fails it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e57eef0e6d",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "coding/cli/stdout_backpressure_test.go::TestRPCUsageProbeFailsWhenTheCLIWritesNoFrame"
+      ]
+    },
+    {
       "id": "BF-e59f3f6",
       "title": "Fixed tool-call arguments losing a field and every field after it when the model wrote an invalid `\\u` escape…",
       "symptom": "Fixed tool-call arguments losing a field and every field after it when the model wrote an invalid `\\u` escape such as `\\usepackage`; the escape is now kept as literal text like other invalid escapes (Pi 4b994d5e, [#10868](https://github.com/earendil-works/pi/issues/10868)).",
@@ -51893,6 +52145,29 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-ecfaad1",
+      "title": "The startup prompts (the project-trust and extension selectors, the extension text input and first-time…",
+      "symptom": "The startup prompts (the project-trust and extension selectors, the extension text input and first-time setup) ignored the keybindings.json of the agent directory: a remapped tui.select.confirm or tui.select.cancel had no effect in them.",
+      "rootCause": "Pi's createStartupTui calls setKeybindings(KeybindingsManager.create()) for each startup prompt (cli/startup-ui.ts:91). configureStartupTheme only set the theme, so the selector, input and first-time-setup prompts took whatever keybindings the process already held and never read the user's keybindings.json.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The startup prompts (the project-trust and extension selectors, the extension text input and first-time setup) now load the `keybindings.json` of the agent directory, as Pi's startup UI does. They took whatever keybindings the process held before, so a remapped `tui.select.confirm` or `tui.select.cancel` was ignored by them.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ecfaad1026",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/startup_keybindings_test.go::TestStartupPromptsApplyTheKeybindingsOfTheAgentDirectory",
+        "internal/codingagent/startup_keybindings_test.go::TestStartupPromptsDoNotInheritKeybindingsInstalledBefore"
+      ]
     },
     {
       "id": "BF-ed01bf6",

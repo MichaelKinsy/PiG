@@ -4436,21 +4436,31 @@ func (b *UIBridge) handleModelStream(ctx context.Context, owner *Conn, actions *
 		delete(b.modelStreams, key)
 		b.modelStreamMu.Unlock()
 	}()
-	stream, err := streamModel(providerCtx, request.Model, decodedRequest)
-	if err != nil {
+	// The extension's `streamSimple(...)` and `for await` run in one synchronous prefix in Pi, before any response I/O can complete, so the start event carries the pending, empty partial the provider built. A goroutine that attached after the stream was created could run after the provider had published the whole response and forward a start event holding the finished message. The creation and the iteration run in one stream continuation, as the Agent does (agent/agent_loop.go requestStream).
+	streamCtx := ai.WithStreamContinuations(providerCtx)
+	var stream *ai.AssistantMessageEventStream
+	if err := ai.RunStreamContinuation(streamCtx, func(observation *ai.StreamObservation) error {
+		var err error
+		if stream, err = streamModel(streamCtx, request.Model, decodedRequest); err != nil {
+			return err
+		}
+		// Stream creation is the synchronous prefix. Event delivery and final
+		// result collection complete independently of later calls in the lane.
+		extension.CallInitiated(ctx)
+		eventsCtx := observation.Context(ctx)
+		streamattachhook.Attach(eventsCtx, stream)
+		for event := range stream.Events(eventsCtx) {
+			notifyArgs, err := json.Marshal(map[string]any{"streamId": request.StreamID, "event": event})
+			if err != nil {
+				return fmt.Errorf("marshal model stream event: %w", err)
+			}
+			if err := owner.sendAndWait(ctx, &Envelope{Type: MsgNotify, Notify: &NotifyPayload{Method: "model_stream_event", Args: notifyArgs}}); err != nil {
+				return err
+			}
+		}
+		return nil
+	}); err != nil {
 		return nil, err
-	}
-	// Stream creation is the synchronous prefix. Event delivery and final
-	// result collection complete independently of later calls in the lane.
-	extension.CallInitiated(ctx)
-	for event := range stream.Events(ctx) {
-		notifyArgs, err := json.Marshal(map[string]any{"streamId": request.StreamID, "event": event})
-		if err != nil {
-			return nil, fmt.Errorf("marshal model stream event: %w", err)
-		}
-		if err := owner.sendAndWait(ctx, &Envelope{Type: MsgNotify, Notify: &NotifyPayload{Method: "model_stream_event", Args: notifyArgs}}); err != nil {
-			return nil, err
-		}
 	}
 	result, err := json.Marshal(stream.Result())
 	if err != nil {

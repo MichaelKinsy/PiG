@@ -21,6 +21,7 @@ import (
 	"github.com/MichaelKinsy/PiG/durable/core/abi/payload"
 	"github.com/MichaelKinsy/PiG/durable/core/driver"
 	"github.com/MichaelKinsy/PiG/durable/core/sqlhost"
+	"github.com/MichaelKinsy/PiG/internal/streamattachhook/attachstall"
 )
 
 // funcCore is a core that is a function: the test says what each event produces.
@@ -331,5 +332,36 @@ func TestTheFinalMessageCarriesDurationMsAsPiMainTimesIt(t *testing.T) {
 	// A message whose timestamp predates the stream (a response that started elsewhere) stays untimed.
 	if got := final(9e15); strings.Contains(got, "durationMs") {
 		t.Fatalf("done event = %s, want no durationMs", got)
+	}
+}
+
+// durable's generation.ts (streamResponse) calls streamSimple and iterates it in one synchronous prefix, so Pi's consumer reads the start event's partial as the provider built it. The host forwards each event to the core as JSON; a forwarder that attached after the provider had finished would send start with the finished message.
+func TestModelContextSendsStartBeforeTheResponseFillsItsPartial(t *testing.T) {
+	models, _ := attachstall.ModelsOverOpenAI(t)
+	attachstall.Install(t)
+	core := &funcCore{respond: func(ev abi.Event) *abi.Step {
+		if ev.Kind == abi.EventOpen {
+			return &abi.Step{Effects: []abi.Effect{effect(1, abi.EffectModelContext, payload.ModelContextEffect{Model: probeModel, Options: json.RawMessage(`{"apiKey":"test"}`), Context: json.RawMessage(`{"messages":[` + userMessage + `]}`)})}}
+		}
+		return nil
+	}}
+	host := start(t, core, models)
+	if err := host.Send(t.Context(), abi.Event{Kind: abi.EventOpen, Payload: []byte(`{}`)}); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "a done event", func() bool { got := types(core); return len(got) > 0 && got[len(got)-1] == "done" })
+	first := core.events(abi.EventModelEvent)[0]
+	var batch []struct {
+		Type    string
+		Partial struct {
+			StopReason string
+			Content    []any
+		}
+	}
+	if err := json.Unmarshal(first.Payload, &batch); err != nil {
+		t.Fatal(err)
+	}
+	if batch[0].Type != "start" || batch[0].Partial.StopReason != "pending" || len(batch[0].Partial.Content) != 0 {
+		t.Fatalf("first model event %s: want start with the pending, empty partial the provider built", first.Payload)
 	}
 }

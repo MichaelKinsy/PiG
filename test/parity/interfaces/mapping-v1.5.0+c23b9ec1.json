@@ -143772,7 +143772,7 @@
       "evidence": [
         "test:coding/session_compaction_cancellation_upstream_test.go#TestAutomaticCompactionCancellationUpstream",
         "test:coding/session_compaction_retry_upstream_test.go#TestCompactionRetriesTransientStreamDropUpstream",
-        "test:coding/session_compaction_event_order_test.go#TestCompactionFailureWaitsForEndListeners"
+        "test:test/extension-conformance/session_compact_abort_test.go#TestNodeSessionCompactReachesTheNextExtensionWhenAbortedDuringDispatch"
       ]
     },
     {
@@ -143794,7 +143794,7 @@
       "evidence": [
         "test:coding/session_compaction_cancellation_upstream_test.go#TestAutomaticCompactionCancellationUpstream",
         "test:coding/session_compaction_retry_upstream_test.go#TestCompactionRetriesTransientStreamDropUpstream",
-        "test:coding/session_compaction_event_order_test.go#TestCompactionFailureWaitsForEndListeners"
+        "test:test/extension-conformance/session_compact_abort_test.go#TestNodeSessionCompactReachesTheNextExtensionWhenAbortedDuringDispatch"
       ]
     },
     {
@@ -152676,8 +152676,9 @@
         "call:tui/box.go#Box.SetBgFn"
       ],
       "evidence": [
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/component_members_test.go#TestBoxRemoveChildClearAndSetBgFnChangeWhatRenders"
+        "test:tui/box_dirty_test.go#TestBoxBackgroundThatDrawsNothingIsNotNoBackground",
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -152697,8 +152698,9 @@
         "call:tui/box.go#Box.SetBgFn"
       ],
       "evidence": [
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/component_members_test.go#TestBoxRemoveChildClearAndSetBgFnChangeWhatRenders"
+        "test:tui/box_dirty_test.go#TestBoxBackgroundThatDrawsNothingIsNotNoBackground",
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -152805,8 +152807,8 @@
       ],
       "evidence": [
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/output_pad_test.go#TestSetPaddingXDropsRenderCache"
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -152827,8 +152829,8 @@
       ],
       "evidence": [
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/output_pad_test.go#TestSetPaddingXDropsRenderCache"
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -155311,8 +155313,9 @@
         "call:tui/box.go#Box.SetBgFn"
       ],
       "evidence": [
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/component_members_test.go#TestBoxRemoveChildClearAndSetBgFnChangeWhatRenders"
+        "test:tui/box_dirty_test.go#TestBoxBackgroundThatDrawsNothingIsNotNoBackground",
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -155332,8 +155335,9 @@
         "call:tui/box.go#Box.SetBgFn"
       ],
       "evidence": [
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/component_members_test.go#TestBoxRemoveChildClearAndSetBgFnChangeWhatRenders"
+        "test:tui/box_dirty_test.go#TestBoxBackgroundThatDrawsNothingIsNotNoBackground",
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -155440,8 +155444,8 @@
       ],
       "evidence": [
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/output_pad_test.go#TestSetPaddingXDropsRenderCache"
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -155462,8 +155466,8 @@
       ],
       "evidence": [
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/output_pad_test.go#TestSetPaddingXDropsRenderCache"
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -171219,8 +171223,8 @@
       ],
       "evidence": [
         "test:tui/extension_input_oracle_test.go#TestExtensionInputMatchesPi",
-        "test:tui/extension_dialog_bindings_test.go#TestExtensionDialogCountdownMatchesPi",
-        "test:tui/extension_dialog_bindings_test.go#TestExtensionDialogsMatchPiBindingsAndPalette"
+        "test:internal/codingagent/startup_keybindings_test.go#TestStartupPromptsApplyTheKeybindingsOfTheAgentDirectory",
+        "test:internal/codingagent/startup_keybindings_test.go#TestStartupPromptsDoNotInheritKeybindingsInstalledBefore"
       ],
       "behaviorContracts": [
         "coding-agent/extension-input/remapped-confirm"
@@ -171244,8 +171248,8 @@
       ],
       "evidence": [
         "test:tui/extension_input_oracle_test.go#TestExtensionInputMatchesPi",
-        "test:tui/extension_dialog_bindings_test.go#TestExtensionDialogCountdownMatchesPi",
-        "test:tui/extension_dialog_bindings_test.go#TestExtensionDialogsMatchPiBindingsAndPalette"
+        "test:internal/codingagent/startup_keybindings_test.go#TestStartupPromptsApplyTheKeybindingsOfTheAgentDirectory",
+        "test:internal/codingagent/startup_keybindings_test.go#TestStartupPromptsDoNotInheritKeybindingsInstalledBefore"
       ],
       "behaviorContracts": [
         "coding-agent/extension-input/remapped-confirm"
@@ -213391,8 +213395,9 @@
         "call:tui/box.go#Box.SetBgFn"
       ],
       "evidence": [
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/component_members_test.go#TestBoxRemoveChildClearAndSetBgFnChangeWhatRenders"
+        "test:tui/box_dirty_test.go#TestBoxBackgroundThatDrawsNothingIsNotNoBackground",
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -213412,8 +213417,9 @@
         "call:tui/box.go#Box.SetBgFn"
       ],
       "evidence": [
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/component_members_test.go#TestBoxRemoveChildClearAndSetBgFnChangeWhatRenders"
+        "test:tui/box_dirty_test.go#TestBoxBackgroundThatDrawsNothingIsNotNoBackground",
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -213520,8 +213526,8 @@
       ],
       "evidence": [
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/output_pad_test.go#TestSetPaddingXDropsRenderCache"
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -213542,8 +213548,8 @@
       ],
       "evidence": [
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/output_pad_test.go#TestSetPaddingXDropsRenderCache"
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -221653,7 +221659,7 @@
       "evidence": [
         "test:internal/codingagent/tools/mutation_queue_upstream_test.go#TestFileMutationQueueUpstream",
         "test:test/extension-conformance/file_mutation_queue_host_test.go#TestConformance_FileMutationQueueIsTheHostsQueue",
-        "test:coding/extension/host/subprocess/host_file_mutation_test.go#TestFileMutationEnterCancelledWhileWaitingTakesNoTurn"
+        "test:test/extension-conformance/file_mutation_queue_host_test.go#TestHostQueueBusySeesAHeldFile"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -221676,7 +221682,7 @@
       "evidence": [
         "test:internal/codingagent/tools/mutation_queue_upstream_test.go#TestFileMutationQueueUpstream",
         "test:test/extension-conformance/file_mutation_queue_host_test.go#TestConformance_FileMutationQueueIsTheHostsQueue",
-        "test:coding/extension/host/subprocess/host_file_mutation_test.go#TestFileMutationEnterCancelledWhileWaitingTakesNoTurn"
+        "test:test/extension-conformance/file_mutation_queue_host_test.go#TestHostQueueBusySeesAHeldFile"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -282729,8 +282735,8 @@
       ],
       "evidence": [
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/output_pad_test.go#TestSetPaddingXDropsRenderCache"
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -282751,8 +282757,8 @@
       ],
       "evidence": [
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/output_pad_test.go#TestSetPaddingXDropsRenderCache"
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
