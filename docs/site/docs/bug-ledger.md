@@ -146,6 +146,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-136dab0](#bf-136dab0) | fix(chord/next/host): a route's Resolve calls carry their place in the order of the calls | PiG's own defect | All platforms | Unreleased |
 | [BF-1390c9d](#bf-1390c9d) | fix(ai): the Anthropic event reader matches the type member exactly | PiG's own defect | All platforms | Unreleased |
 | [BF-13f7697](#bf-13f7697) | The model catalog no longer offers models.dev's realtime and image models as chat models: `gpt-realtime-2.1`… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
+| [BF-14074a2](#bf-14074a2) | p2: a followed reference no longer misses the ended state it finishes with when its watch ends before its… | PiG's own defect | All platforms | Unreleased |
 | [BF-142baa3](#bf-142baa3) | Every strict and packed Go cell of the extension conformance suite (the theme, child-session, markdown… | PiG's own defect | All platforms | Unreleased |
 | [BF-14886f9](#bf-14886f9) | A call to `Session.DeferUntilPublished` from a goroutine other than the publishing one (a Harness's wait for… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-14c9304](#bf-14c9304) | fix(schema/internal/ecmaregex): modifier groups, V8's mid-pair and repeated-name rules, lone surrogates, V8… | PiG's own defect | All platforms | Unreleased |
@@ -3833,6 +3834,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `13f7697f6c` (2026-10-30, #11368)
 - **Tests:** `ai/builtin_catalog_upstream_test.go::TestBuiltinCatalogsMatchPinnedProviderDataModules`, `ai/catalog_published_test.go::TestGeneratedCatalogsMatchPublishedPackage`, `ai/provider_catalogs_test.go::TestProviderCatalogExportsMatchPinnedData`, `ai/registry_test.go::TestRegistryHasModels`
 - **Release note:** The model catalog no longer offers models.dev's realtime and image models as chat models: `gpt-realtime-2.1` (Azure and OpenAI), `gemini-3.1-flash-live-preview` and `gemini-3.1-flash-lite-image` (Google and Google Vertex). Carried forward, as the row removal only, from Pi 2e0f175b (earendil-works/pi#11368), past the 1.4.0+b3a29f11 pin.
+
+### BF-14074a2
+
+**p2: a followed reference no longer misses the ended state it finishes with when its watch ends before its…**
+
+- **Source:** PiG's own defect
+- **Symptom:** p2: a followed reference no longer misses the ended state it finishes with when its watch ends before its listener starts or terminates, and a follower's callbacks no longer run concurrently (a view room could stay open after its viewer's grant was revoked).
+- **Root cause:** A reference's state ends with its watches stopped, dropping frames still pending, so follow could miss the final ended state (TestViewRooms: ends a frame's room when its viewer's grant is revoked timed out). It now hands over the source's current value when the watch ends before its start or terminates, and serializes its callbacks. Pi's follow (apps/p2/src/runtime/refs.ts:16-40) is single-threaded and needs neither.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `14074a214e` (2026-11-11)
+- **Tests:** `apps/p2/e2e/rooms_cases_test.go::TestViewRooms`, `apps/p2/runtime/refs_test.go::TestFollowOfAWatchThatEndedBeforeItsStartDeliversTheValueItEndedWith`
+- **Release note:** p2: a followed reference no longer misses the ended state it finishes with when its watch ends before its listener starts or terminates, and a follower's callbacks no longer run concurrently (a view room could stay open after its viewer's grant was revoked).
 
 ### BF-142baa3
 
