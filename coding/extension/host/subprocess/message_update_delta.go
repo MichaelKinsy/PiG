@@ -584,6 +584,8 @@ func appendJSONString(out []byte, value string) []byte {
 }
 
 // diffPathCap is the room a diff's path buffer starts with: a payload's paths are a few elements deep.
+//
+// pig additive (D112): Pi loads extensions in process and has no delta frames; the cap only sizes a host-side path buffer.
 const diffPathCap = 128
 
 // diffDelta appends the operations that turn old into new. path is the path of old, in a buffer with room for the paths below it. A path element is a quoted key or an array index.

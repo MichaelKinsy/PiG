@@ -139,8 +139,8 @@ finding = "D56"
 [[hit]]
 check = "default-drop-send"
 file = "coding/extension/host/subprocess/conn.go"
-func = "Conn.readLoop"
-snippet = "case ch <- &env:"
+func = "Conn.sendResponse"
+snippet = "case ch <- env:"
 finding = "EXT-17"
 
 [[hit]]

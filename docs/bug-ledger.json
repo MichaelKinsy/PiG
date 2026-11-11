@@ -905,6 +905,39 @@
       ]
     },
     {
+      "id": "BF-05be6ad",
+      "title": "Fix the extension event result type and keep the event fast paths exact",
+      "symptom": "Fix the extension event result type and keep the event fast paths exact",
+      "rootCause": "A Host's connections read every response by the full decode, because Host.observeXref sets the inbound observer on each of them and the fast route ran only without one. The fast route now declines only the responses the observer needs: the response to a request cross-process accounting expects, and every response while a diagnostic observer is set. The event round-trip allocation gate wires its connection as a Host does, and a test shows which responses the Host's connection decodes.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "05be6adebd",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/event_result_type_test.go::TestEventHandlerResultKeepsTheRawJSONType",
+        "coding/extension/host/subprocess/perf_gate_norace_test.go::TestExtensionEventRoundTripAllocationGate",
+        "coding/extension/host/subprocess/response_channel_test.go::TestLateResponseNeverReachesTheRequestHoldingTheChannel",
+        "coding/extension/host/subprocess/response_channel_test.go::TestPythonSDKResponseFramesAreRoutedByTheFullDecode",
+        "coding/extension/host/subprocess/response_channel_test.go::TestResponseChannelIsEmptyWhenItsRequestReturnsIt",
+        "coding/extension/host/subprocess/response_channel_test.go::TestResponseReadForAnEndedRequestIsNotSent",
+        "coding/extension/host/subprocess/response_route_test.go::TestHostConnectionRoutesTheResponsesInboundDoesNotNeed",
+        "coding/session_prompt_options_version_test.go::TestRunSystemPromptFollowsAnInProcessEditOfTheBaseOptions",
+        "coding/session_prompt_options_version_test.go::TestStatePushEncodesAnInProcessEditOfTheBaseOptions",
+        "coding/session_prompt_options_version_test.go::TestSystemPromptOptionsKeyTracksTheBaseOptions",
+        "coding/session_prompt_options_version_test.go::TestSystemPromptOptionsVersionAllocatesNothingWhenUnchanged",
+        "coding/session_prompt_options_version_test.go::TestSystemPromptOptionsVersionFollowsTheContents",
+        "coding/session_prompt_options_version_test.go::TestSystemPromptOptionsVersionSeesEveryWrite"
+      ]
+    },
+    {
       "id": "BF-05c7426",
       "title": "CI: the nightly `-race` run no longer fails on the nested modules that only build inside a Go workspace…",
       "symptom": "CI: the nightly `-race` run no longer fails on the nested modules that only build inside a Go workspace (`apps/p2`, `apps/p2desktop`; `piglets/porter/extensions/pig-porter` builds and tests with `GOWORK=off` against its released dependencies and stays as it was): their entries in `automation/ci/race-packages.txt` carry `workspace`, and `test-race-nightly.sh` runs them without `GOWORK=off`.",

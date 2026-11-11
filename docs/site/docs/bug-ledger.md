@@ -53,6 +53,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-056bbfb](#bf-056bbfb) | Key matching follows Pi for three terminal inputs | PiG's own defect | All platforms | 0.5.0 |
 | [BF-058e7a0](#bf-058e7a0) | The Go, Rust and Python SDKs export Pi's compaction helpers `calculateContextTokens`, `shouldCompact`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-05b3416](#bf-05b3416) | Aborting a compaction or a session-tree move while extensions were handling `session_before_compact` or… | PiG's own defect | All platforms | Unreleased |
+| [BF-05be6ad](#bf-05be6ad) | Fix the extension event result type and keep the event fast paths exact | PiG's own defect | All platforms | Unreleased |
 | [BF-05c7426](#bf-05c7426) | CI: the nightly `-race` run no longer fails on the nested modules that only build inside a Go workspace… | PiG's own defect | All platforms | Unreleased |
 | [BF-0630078](#bf-0630078) | MCP tool calls no longer fail with "Invalid MCP tools/call structured content" when the server returns… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
 | [BF-0631c73](#bf-0631c73) | Go, Python and Rust extensions now draw an overlay component (`ctx.custom` with `overlay: true`) at the… | PiG's own defect | All platforms | 0.5.0 |
@@ -2478,6 +2479,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `05b3416ad9` (2026-11-09), `6b778e70d7` (2026-11-09)
 - **Tests:** `coding/session_before_abort_dispatch_test.go::TestNavigateTreeHonoursAHandlerResultReturnedAfterTheAbort`, `coding/session_before_abort_dispatch_test.go::TestSessionBeforeCompactReachesEveryExtensionWhenAbortedDuringDispatch`, `test/extension-conformance/session_before_abort_test.go::TestNodeSessionBeforeCompactReachesTheNextExtensionWhenAbortedDuringDispatch`, `test/extension-conformance/session_before_abort_test.go::TestNodeSessionBeforeTreeHonoursAResultReturnedAfterTheAbort`, `test/extension-conformance/session_before_signal_test.go::TestSessionBeforeSignalReachesEverySDKWhenAbortedDuringDispatch`
 - **Release note:** Aborting a compaction or a session-tree move while extensions were handling `session_before_compact` or `session_before_tree` no longer drops the handler's reply and keeps every later extension from hearing about it. As in Pi, each handler now receives the event in order, `event.signal` aborts for the one that is running, and a handler dispatched after the abort starts with the signal already aborted. A `{ cancel: true }`, summary, instructions or label returned after a tree move was aborted is honoured.
+
+### BF-05be6ad
+
+**Fix the extension event result type and keep the event fast paths exact**
+
+- **Source:** PiG's own defect
+- **Symptom:** Fix the extension event result type and keep the event fast paths exact
+- **Root cause:** A Host's connections read every response by the full decode, because Host.observeXref sets the inbound observer on each of them and the fast route ran only without one. The fast route now declines only the responses the observer needs: the response to a request cross-process accounting expects, and every response while a diagnostic observer is set. The event round-trip allocation gate wires its connection as a Host does, and a test shows which responses the Host's connection decodes.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `05be6adebd` (2026-11-11)
+- **Tests:** `coding/extension/host/subprocess/event_result_type_test.go::TestEventHandlerResultKeepsTheRawJSONType`, `coding/extension/host/subprocess/perf_gate_norace_test.go::TestExtensionEventRoundTripAllocationGate`, `coding/extension/host/subprocess/response_channel_test.go::TestLateResponseNeverReachesTheRequestHoldingTheChannel`, `coding/extension/host/subprocess/response_channel_test.go::TestPythonSDKResponseFramesAreRoutedByTheFullDecode`, `coding/extension/host/subprocess/response_channel_test.go::TestResponseChannelIsEmptyWhenItsRequestReturnsIt`, `coding/extension/host/subprocess/response_channel_test.go::TestResponseReadForAnEndedRequestIsNotSent`, `coding/extension/host/subprocess/response_route_test.go::TestHostConnectionRoutesTheResponsesInboundDoesNotNeed`, `coding/session_prompt_options_version_test.go::TestRunSystemPromptFollowsAnInProcessEditOfTheBaseOptions` and 5 more in docs/bug-ledger.json
 
 ### BF-05c7426
 

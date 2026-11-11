@@ -3,6 +3,8 @@ package subprocess
 import "strconv"
 
 // idChunkSize is the number of consecutive request IDs one chunk spells. A power of two, so a chunk starts at a multiple of it.
+//
+// pig additive (D112): Pi loads extensions in process and has no IPC request IDs; the chunk size only sizes a host-side string table.
 const idChunkSize = 32
 
 // idChunk holds the IDs "r<first>" to "r<first+idChunkSize-1>" as substrings of one string, so handing one out allocates nothing.
