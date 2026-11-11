@@ -26,7 +26,9 @@ import (
 )
 
 // hkCall is the tool-calling answer the afterTools tests start their round with.
-func hkCall() ai.FauxResponseStep { return tlCallsStep(tlCall{name: "noop", args: map[string]any{}, id: "c1"}) }
+func hkCall() ai.FauxResponseStep {
+	return tlCallsStep(tlCall{name: "noop", args: map[string]any{}, id: "c1"})
+}
 
 // hkPlan is what a hook task completes with, and an optional steer it submits in its terminal commit.
 type hkPlan struct {
@@ -122,7 +124,9 @@ func hkSetup(t *testing.T, hookName string, plan hkPlan) (*chatState, *hkSeen) {
 	hooks := &GenerationHooks{}
 	switch hookName {
 	case "afterTools":
-		hooks.AfterTools = func(context.Context, durable.EntryId, []durable.EntryId, HookApi) (*HookTasks, error) { return ask(), nil }
+		hooks.AfterTools = func(context.Context, durable.EntryId, []durable.EntryId, HookApi) (*HookTasks, error) {
+			return ask(), nil
+		}
 	case "onYield":
 		hooks.OnYield = func(context.Context, ai.AssistantMessage, HookApi) (YieldResult, error) {
 			if asked := ask(); asked != nil {
