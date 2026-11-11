@@ -23,7 +23,9 @@ const issueMarker = "<!-- pig-preflight-verify -->"
 const issueTitle = "Pre-flight: PRs without a verdict"
 
 // firstReport is the first job's report among the reports verify reads. It lists every PR of the run, so it must be
-// there: without it the PRs that job judged would go unchecked.
+// there: without it the PRs that job judged would go unchecked. It is the first job's artifact name in
+// .github/workflows/preflight.yml plus ".json", which the verify job's collect step makes of it; a test holds the two
+// together.
 const firstReport = "preflight-handled-0.json"
 
 // missing is a PR the pre-flight did not deliver for, and what is missing. PR 0 is the run itself.
@@ -68,8 +70,17 @@ func verifyHandled(ctx context.Context, a *api, repo, bot string, hs []handled) 
 		entries := byPR[pr]
 		i := slices.IndexFunc(entries, func(h handled) bool { return h.Result != resultDeferred })
 		if i < 0 {
-			if !slices.ContainsFunc(entries, func(h handled) bool { return !h.PassedOn }) {
-				out = append(out, missing{PR: pr, Head: entries[0].Head, What: "passed on to a next job, which did not report it"})
+			if slices.ContainsFunc(entries, func(h handled) bool { return !h.PassedOn }) {
+				continue // deferred by a next job's time budget: the next run takes it
+			}
+			// No next job reported it. When its report was only lost, GitHub has its verdict: check that, by the head
+			// the first job saw. Without a head (deferred before it was read) there is nothing to check it by.
+			what := "passed on to a next job, which did not report it"
+			if head := entries[0].Head; head != "" {
+				what = verifyPR(ctx, a, repo, bot, entries[0])
+			}
+			if what != "" {
+				out = append(out, missing{PR: pr, Head: entries[0].Head, What: what})
 			}
 			continue
 		}
@@ -88,7 +99,16 @@ func verifyHandled(ctx context.Context, a *api, repo, bot string, hs []handled) 
 // verifyPR says what one judged PR lacks, "" when nothing.
 func verifyPR(ctx context.Context, a *api, repo, bot string, h handled) string {
 	var statuses []commitStatus
-	if err := a.get(ctx, fmt.Sprintf("repos/%s/commits/%s/statuses?per_page=%d", repo, h.Head, perPage), &statuses, true); err != nil {
+	err := a.get(ctx, fmt.Sprintf("repos/%s/commits/%s/statuses?per_page=%d", repo, h.Head, perPage), &statuses, true)
+	switch {
+	case hasStatus(err, http.StatusNotFound) || hasStatus(err, http.StatusUnprocessableEntity):
+		// GitHub no longer knows the head (a force-push): the PR's new head is judged next run. A head that exists
+		// but has no status answers an empty list, so a real shortfall is never skipped here.
+		if a.log != nil {
+			logf(a.log, "verify: PR #%d: head %s is gone, its new head is judged next run", h.PR, short(h.Head))
+		}
+		return ""
+	case err != nil:
 		return "could not be checked: " + clip(err.Error(), maxReason)
 	}
 	var what []string
@@ -126,18 +146,16 @@ func issueBody(ms []missing, runURL string) string {
 	return b.String()
 }
 
-// sameList compares two issue bodies without their run line: a new run that finds the same PRs missing changes nothing.
+// sameList compares the lists of two issue bodies, the tables alone: a new run that finds the same PRs missing changes
+// nothing.
 func sameList(a, b string) bool {
-	strip := func(s string) string {
-		var keep []string
-		for line := range strings.SplitSeq(s, "\n") {
-			if !strings.HasPrefix(line, "Run: ") {
-				keep = append(keep, line)
-			}
+	table := func(s string) string {
+		if _, rest, ok := strings.Cut(s, "| PR |"); ok {
+			return rest
 		}
-		return strings.Join(keep, "\n")
+		return s
 	}
-	return strip(a) == strip(b)
+	return table(a) == table(b)
 }
 
 type foundIssue struct {
@@ -150,7 +168,9 @@ type foundIssue struct {
 }
 
 // findIssues finds the verify issues, open and closed, oldest first: by their title and author through the search API,
-// then each checked for the bot's login and the marker, so no one else's issue is taken for it.
+// then each checked for the bot's login and the marker, so no one else's issue is taken for it. Search trails a new
+// issue by a little: a run right after the one that opened it may open a second, which the next run closes as a
+// duplicate.
 func findIssues(ctx context.Context, a *api, repo, bot string) ([]foundIssue, error) {
 	q := fmt.Sprintf("repo:%s is:issue in:title %q", repo, issueTitle)
 	if name, ok := strings.CutSuffix(bot, "[bot]"); ok {

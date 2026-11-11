@@ -7,16 +7,21 @@ import (
 	"io"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"go.yaml.in/yaml/v3"
 )
 
 func TestVerifyHandled(t *testing.T) {
 	g := newFakeGitHub(nil)
-	// PR 2 has everything; PR 3 a status but a comment for an older head; PR 4 neither; PR 7's comment cannot be read.
-	g.statuses["h2"], g.statuses["h3"], g.statuses["h7"] = "success", "failure", "success"
+	// PR 2 has everything; PR 3 a status but a comment for an older head; PR 4 neither; PR 7's comment cannot be read;
+	// PR 10 was passed on and judged, but its next job's report was lost.
+	g.statuses["h2"], g.statuses["h3"], g.statuses["h7"], g.statuses["h10"] = "success", "failure", "success", "success"
 	withComment(g, 2, state{Head: "h2"})
+	withComment(g, 10, state{Head: "h10"})
 	withComment(g, 3, state{Head: "old"})
 	g.broken[-7] = true
 	server := httptest.NewServer(g)
@@ -32,15 +37,20 @@ func TestVerifyHandled(t *testing.T) {
 		{PR: 5, Result: resultError, Error: "its pre-flight comment could not be read"},
 		// Passed on by the first job and run by a next one.
 		{PR: 2, Head: "h2", Result: resultDeferred, PassedOn: true},
-		// Passed on, and no next job reported it.
+		// Passed on, and no next job reported it: GitHub says whether it was judged.
 		{PR: 6, Head: "h6", Result: resultDeferred, PassedOn: true},
+		{PR: 10, Head: "h10", Result: resultDeferred, PassedOn: true},
+		// Passed on before its head was read (the time budget), and not reported.
+		{PR: 11, Result: resultDeferred, PassedOn: true},
 		{PR: 7, Head: "h7", Result: resultPass},
-		// A head GitHub no longer knows: one PR, not the whole check.
+		// A head GitHub no longer knows (a force-push): its new head is judged next run.
 		{PR: 8, Head: "gone", Result: resultPass},
 		{PR: 9, Head: "h9", Result: resultPass},
 		// The first job could not start.
 		{Result: resultError, Error: "cannot list the PRs"},
 	}
+	var log strings.Builder
+	a.log = &log
 	var got []string
 	for _, m := range verifyHandled(context.Background(), a, "o/r", defaultBot, hs) {
 		got = append(got, m.where()+": "+m.What)
@@ -50,13 +60,30 @@ func TestVerifyHandled(t *testing.T) {
 		"#3 `h3`: the comment holds no state for this head",
 		"#4 `h4`: no preflight status, no pre-flight comment",
 		"#5: the pre-flight could not run: its pre-flight comment could not be read",
-		"#6 `h6`: passed on to a next job, which did not report it",
+		"#6 `h6`: no preflight status, no pre-flight comment",
 		"#7 `h7`: its comment could not be checked: GET repos/o/r/issues/7/comments?per_page=100: HTTP 502: down",
-		"#8 `gone`: could not be checked: GET repos/o/r/commits/gone/statuses?per_page=100: HTTP 422: No commit found for SHA: gone",
 		"#9 `h9`: no preflight status, no pre-flight comment",
+		"#11: passed on to a next job, which did not report it",
 	}
 	if strings.Join(got, "\n") != strings.Join(want, "\n") {
 		t.Fatalf("missing:\n%s", strings.Join(got, "\n"))
+	}
+	if !strings.Contains(log.String(), "verify: PR #8: head gone is gone, its new head is judged next run") {
+		t.Fatalf("log:\n%s", log.String())
+	}
+	// A head GitHub answers 404 for is skipped too, also without a log.
+	if what := verifyPR(context.Background(), newAPI(server.URL, "t"), "o/r", defaultBot, handled{PR: 8, Head: "gone404"}); what != "" {
+		t.Fatalf("a 404 head: %q", what)
+	}
+}
+
+func TestSameListComparesTheTablesAlone(t *testing.T) {
+	ms := []missing{{PR: 1, Head: "h", What: "x"}}
+	if !sameList(issueBody(ms, "https://run/1"), issueBody(ms, "")) || sameList(issueBody(ms, ""), issueBody([]missing{{PR: 2, What: "x"}}, "")) {
+		t.Fatal("sameList")
+	}
+	if !sameList("no table", "no table") || sameList("no table", "other") {
+		t.Fatal("sameList without a table")
 	}
 }
 
@@ -254,6 +281,78 @@ func TestReadHandledReadsPastABadReport(t *testing.T) {
 	}
 	hs, problems := readHandled(dir)
 	if len(hs) != 1 || len(problems) != 1 || !strings.Contains(problems[0].What, "a-bad.json") {
+		t.Fatalf("handled %+v, problems %+v", hs, problems)
+	}
+}
+
+// TestWorkflowNamesTheFirstReport runs the verify job's own collect step over artifacts named as the workflow names them,
+// laid out as download-artifact lays them out (one directory per artifact), and checks verify finds the first report.
+func TestWorkflowNamesTheFirstReport(t *testing.T) {
+	var raw []byte
+	for dir, _ := os.Getwd(); ; dir = filepath.Dir(dir) {
+		if b, err := os.ReadFile(filepath.Join(dir, ".github", "workflows", "preflight.yml")); err == nil {
+			raw = b
+			break
+		}
+		if dir == filepath.Dir(dir) {
+			t.Fatal("no .github/workflows/preflight.yml above the package")
+		}
+	}
+	type step struct {
+		Name string            `yaml:"name"`
+		Uses string            `yaml:"uses"`
+		Run  string            `yaml:"run"`
+		With map[string]string `yaml:"with"`
+	}
+	var wf struct {
+		Jobs map[string]struct {
+			Steps []step `yaml:"steps"`
+		} `yaml:"jobs"`
+	}
+	if err := yaml.Unmarshal(raw, &wf); err != nil {
+		t.Fatal(err)
+	}
+	find := func(job, uses string) step {
+		t.Helper()
+		for _, s := range wf.Jobs[job].Steps {
+			if strings.HasPrefix(s.Uses, uses) || (uses == "run" && strings.Contains(s.Run, "preflight\" verify")) {
+				return s
+			}
+		}
+		t.Fatalf("job %s has no %s step", job, uses)
+		return step{}
+	}
+	first := find("preflight", "actions/upload-artifact@").With["name"]
+	more := strings.ReplaceAll(find("more", "actions/upload-artifact@").With["name"], "${{ strategy.job-index }}", "0")
+	download := find("verify", "actions/download-artifact@")
+	if first+".json" != firstReport || more == first || download.With["merge-multiple"] != "" || download.With["path"] != "${{ runner.temp }}/handled" {
+		t.Fatalf("first %q, more %q, download %+v", first, more, download.With)
+	}
+	for _, name := range []string{first, more} {
+		if ok, _ := filepath.Match(download.With["pattern"], name); !ok {
+			t.Fatalf("the download pattern %q misses %q", download.With["pattern"], name)
+		}
+	}
+	temp := t.TempDir()
+	for _, name := range []string{first, more} {
+		if err := os.MkdirAll(filepath.Join(temp, "handled", name), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := writeJSON(filepath.Join(temp, "handled", name, "handled.json"), []handled{{PR: 1, Head: name, Result: resultPass}}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// The step's preflight is a stand-in: only the collecting is under test.
+	if err := os.WriteFile(filepath.Join(temp, "preflight"), []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command("bash", "-c", find("verify", "run").Run)
+	cmd.Env = append(os.Environ(), "RUNNER_TEMP="+temp, "GITHUB_REPOSITORY=o/r")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("collect step: %v %s", err, out)
+	}
+	hs, problems := readHandled(filepath.Join(temp, "handled"))
+	if len(problems) != 0 || len(hs) != 2 {
 		t.Fatalf("handled %+v, problems %+v", hs, problems)
 	}
 }

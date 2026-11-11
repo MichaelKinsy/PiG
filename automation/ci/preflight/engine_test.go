@@ -156,6 +156,10 @@ func (g *fakeGitHub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		_, _ = fmt.Fprint(w, `{}`)
 	case strings.HasPrefix(r.URL.Path, "/repos/o/r/commits/") && strings.HasSuffix(r.URL.Path, "/statuses"):
 		sha := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/repos/o/r/commits/"), "/statuses")
+		if sha == "gone404" {
+			http.NotFound(w, r)
+			return
+		}
 		if sha == "gone" {
 			http.Error(w, "No commit found for SHA: gone", http.StatusUnprocessableEntity)
 			return
