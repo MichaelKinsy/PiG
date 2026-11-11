@@ -117953,8 +117953,12 @@
     },
     {
       "id": "pkg:chord/.#StateDefinition::construct:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:79f362fa2ac9c7046817cf8fcdca23e0735013417c18c159093c868d313f52ed"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:79f362fa2ac9c7046817cf8fcdca23e0735013417c18c159093c868d313f52ed",
+      "rationale": "Pi packages/chord/src/documents/definition.ts:90 StateDefinition::construct:0 (Pi 1.5.2): `new StateDefinition(...)` is the class constructor DefineState calls; Go's documents.DefineState(name, options) (documents/definition.go:78) is the one constructor, returning (*StateDefinition, error) as Pi's throws, and the struct's unexported members (initial, migrate, checkpoint, snapshot) cannot be set by a literal. Exercised by TestDefineStateTakesARestrictedNameOnly (chord/next/documents/definition_test.go). Intention check (definition.ts:89-96 read): StateDefinition is a class whose constructor assigns the readonly name, schema, version, keyed, host and persist fields (host is the KindShape a host-keyed definition names, undefined otherwise) (TypeScript `readonly` declarations); defineState is its only caller, and Go's DefineState validates and builds the same fields (Keyed, Host and the rest).",
+      "pigTargets": [
+        "chord/next/documents/definition.go#DefineState"
+      ]
     },
     {
       "id": "pkg:chord/.#StateDefinition::property:~keyed",
@@ -121461,8 +121465,26 @@
     },
     {
       "id": "pkg:chord/.#Tx",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:1137da531786a48d18fb561294880f3d2d779fabfd3314d8830376d168784503"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:1137da531786a48d18fb561294880f3d2d779fabfd3314d8830376d168784503",
+      "rationale": "Derived by the interface gap detector: Tx is Go chord/next/documents/transaction.go#Tx (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/documents/transaction.go#Tx"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/host/host_attempt.go#attempt.Tx"
+      ],
+      "evidence": [
+        "test:chord/next/documents/documents_telemetry_test.go#TestCommitsInTelemetryCountTheTableRowsACommitsWritesChanged",
+        "test:chord/next/documents/handles_test.go#TestHostKeyedHandlesRefuseStringsAndAddressesOfAnotherKindThroughTheHandleAndInATransaction",
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotAColdGetRacingADraftOfTheSameKeyTheLoadInstallsOnlyWhileTheKeyIsAbsent"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/.#Tx::property:delete",
@@ -121554,8 +121576,26 @@
     },
     {
       "id": "pkg:chord/.#Tx::property:draft",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:d311d18cd05ffac11f37acd84ab16cbaebcfab371c693f2478a9eece1759ccbf"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:d311d18cd05ffac11f37acd84ab16cbaebcfab371c693f2478a9eece1759ccbf",
+      "rationale": "Derived by the interface gap detector: Tx::property:draft is Go chord/next/documents/transaction.go#Tx.Draft (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/documents/transaction.go#Tx.Draft"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/app/files.go#filesObject"
+      ],
+      "evidence": [
+        "test:chord/next/documents/handles_test.go#TestHostKeyedHandlesRefuseStringsAndAddressesOfAnotherKindThroughTheHandleAndInATransaction",
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotAColdGetRacingADraftOfTheSameKeyTheLoadInstallsOnlyWhileTheKeyIsAbsent",
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotALoadCutByTheSealNeverInstallsASuccessorsRetirementStands"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/.#Tx::property:draft::call:0",
@@ -121582,8 +121622,12 @@
     },
     {
       "id": "pkg:chord/.#Tx::property:draft::call:1",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:af0d15b99c3e570575c2c3821c9a5d737e7cfbde6ad6ca1b10fa1e4feb6e7dd8"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:af0d15b99c3e570575c2c3821c9a5d737e7cfbde6ad6ca1b10fa1e4feb6e7dd8",
+      "rationale": "Pi packages/chord/src/documents/transaction.ts:30 Tx::property:draft::call:1 (Pi 1.5.2): Pi declares draft as two overloads, (draft(handle: SingletonHandle)) and (draft(handle: KeyedHandle<T, Key>, key: NoInfer<Key>)); Go's one Tx.Draft takes the handle as `any` and the key as the variadic tail, so the keyed overload is the same method with one key (documents/transaction.go), which since Pi 1.5.2 is a string or, for a host-keyed definition, an address of its host kind (Key; Go reads the key as `any` and the slot refuses any other). Designed out as an overload set folded into one Go method (DESIGN-go-layout.md section 5: overloads are one method taking the implementation untyped). Exercised by TestTransactionsSettleAWarmDraftAtOnce (chord/next/documents/transaction_test.go). Intention check (transaction.ts:29-35 read): the two draft and the two retire signatures are TypeScript overload declarations (type-level) of one method each; the keyed overload differs only by the extra key argument, which Go's variadic key takes, typed `any`.",
+      "pigTargets": [
+        "chord/next/documents/transaction.go#Tx.Draft"
+      ]
     },
     {
       "id": "pkg:chord/.#Tx::property:get",
@@ -121715,8 +121759,26 @@
     },
     {
       "id": "pkg:chord/.#Tx::property:retire",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:c518b94d220905f39bb492497b76ddb904773745a3d7676e9a67f2034bb94c04"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:c518b94d220905f39bb492497b76ddb904773745a3d7676e9a67f2034bb94c04",
+      "rationale": "Derived by the interface gap detector: Tx::property:retire is Go chord/next/documents/transaction.go#Tx.Retire (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/documents/transaction.go#Tx.Retire"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/app/files_index.go#FilesIndex.RemoveSpace"
+      ],
+      "evidence": [
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotWatchKeyIsUndefinedWhenAbsentItFollowsTheAddressThroughARetirementAndARecreation",
+        "test:chord/next/documents/slot_test.go#TestARetireAndARecreateOfAPresentDocumentInOneTransactionOneFrameRetiredTheNewValue",
+        "test:chord/next/documents/transaction_test.go#TestPersistedDocumentsInATransactionAKeyedRetirementTakes6asStatementsTheCountedDeleteTheRevisionsLastSeq"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/.#Tx::property:retire::call:0",
@@ -121743,8 +121805,12 @@
     },
     {
       "id": "pkg:chord/.#Tx::property:retire::call:1",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:1bd6f0132f3ae1723c6821a41e986516e3c9340e2393d992c4b5f9b87c4ee296"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:1bd6f0132f3ae1723c6821a41e986516e3c9340e2393d992c4b5f9b87c4ee296",
+      "rationale": "Pi packages/chord/src/documents/transaction.ts:33 Tx::property:retire::call:1 (Pi 1.5.2): Pi declares retire as two overloads, (retire(handle: SingletonHandle)) and (retire(handle: KeyedHandle<JsonObject, Key>, key: NoInfer<Key>)); Go's one Tx.Retire takes the handle as `any` and the key as the variadic tail, so the keyed overload is the same method with one key (documents/transaction.go), which since Pi 1.5.2 is a string or, for a host-keyed definition, an address of its host kind (Key; Go reads the key as `any` and the slot refuses any other). Designed out as an overload set folded into one Go method (DESIGN-go-layout.md section 5: overloads are one method taking the implementation untyped). Exercised by TestRetirementReachesWatchesAsInitialWithRetiredTrue (chord/next/documents/slot_test.go). Intention check (transaction.ts:29-35 read): the two draft and the two retire signatures are TypeScript overload declarations (type-level) of one method each; the keyed overload differs only by the extra key argument, which Go's variadic key takes, typed `any`.",
+      "pigTargets": [
+        "chord/next/documents/transaction.go#Tx.Retire"
+      ]
     },
     {
       "id": "pkg:chord/.#Tx::property:rows",
