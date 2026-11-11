@@ -469,6 +469,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-448ff71-2](#bf-448ff71-2) | MCP notifications no longer swallow every panic from the notify callback; only the "MCP failed to load"… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-44f8d86](#bf-44f8d86) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-44f93fe](#bf-44f93fe) | A left click on a custom message or entry card now toggles it as it does in Pi: a message renderer receives… | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-450883a](#bf-450883a) | An extension that calls `newSession`, `fork`, `navigateTree`, `switchSession` or `reload` from an event, tool… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-4534a2b](#bf-4534a2b) | fix(durable): put the lifetime note of the publication goroutine on its line | PiG's own defect | All platforms | Unreleased |
 | [BF-4579493](#bf-4579493) | The terminal's frame and bundle limits count bytes, as Pi's `Buffer.byteLength` checks do, again | PiG's own defect | All platforms | Unreleased |
 | [BF-4599fab](#bf-4599fab) | fix(ai): an iteration's shared cancellation does not compare contexts | PiG's own defect | All platforms | Unreleased |
@@ -8220,6 +8221,22 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `44f93fea88` (2026-11-06), `54a86b2d68` (2026-11-06), `e7e37b38ad` (2026-11-06)
 - **Tests:** `coding/extension/host/subprocess/node_mouse_regions_test.go::TestNodeMouseRegionsAreTheCellsPiDispatchReaches`, `coding/extension/host/subprocess/render_proxy_mouse_test.go::TestRenderKeysNameIdentitiesAndReleaseThemWhenCollected`, `coding/extension/host/subprocess/render_proxy_mouse_test.go::TestRenderProxyClickNeverWaitsForIPC`, `coding/extension/host/subprocess/render_proxy_mouse_test.go::TestRenderProxyNodeComponentTakesClickOnly`, `coding/extension/host/subprocess/render_proxy_mouse_test.go::TestRenderProxyNodeMouseRegionsAreHitTestedLikePi`, `coding/extension/host/subprocess/render_proxy_mouse_test.go::TestRenderProxyRerendersOnlyWhenPiBuildsTheComponent`, `coding/extension/host/subprocess/render_proxy_mouse_test.go::TestRenderProxyViewMouseRegionClickReachesTheExtensionInTheNextRequest`, `coding/extension/host/subprocess/render_proxy_mouse_test.go::TestRenderProxyWithoutMouseTakesNone` and 7 more in docs/bug-ledger.json
 - **Release note:** A left click on a custom message or entry card now toggles it as it does in Pi: a message renderer receives the same message identity on every rebuild, the component it returns takes the mouse, and the extension keeps the card's state per message, and for an entry it keeps it across compaction, `/tree` and a resume, as Pi's renderer does for the session manager's one object per entry. The Node SDK runs Pi's own `WeakMap` and `MouseRegion` renderer unchanged, and the host hit-tests the `MouseRegion` rectangles the runtime finds in one walk over the rules by which Pi's dispatch hands an event down (a 4000-line card costs milliseconds, where asking Pi's dispatch about every cell took seconds), so a click on a card's padding falls through to text selection as in Pi and only a component with a hand-written `handleMouse` takes the click as a whole (D277); the Go, Rust, Python and Lisp SDKs get `options.state` and `MessageViewEvent`/`EntryViewEvent` handlers for the clicks on their view's mouse regions. A click does no IPC on the TUI loop, and a transcript container now redraws a component whose handler changed it without telling the container.
+
+### BF-450883a
+
+**An extension that calls `newSession`, `fork`, `navigateTree`, `switchSession` or `reload` from an event, tool…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D617)
+- **Symptom:** An extension that calls `newSession`, `fork`, `navigateTree`, `switchSession` or `reload` from an event, tool or shortcut handler, for example a `session_start` handler, no longer replaces the session in the middle of the emit, which made the built-in MCP extension panic on a stale context and `pig` exit 1.
+- **Root cause:** A call with no live parent request was allowed, so a handler that stored its event context and called later replaced the session; Pi never allows that. The Go, Python, Rust and Lisp SDKs mark every call made through a command handler's or a withSession callback's context (command_context) for the context's whole life, and the host refuses newSession, fork, navigateTree, switchSession and reload without the mark. The Node runtime gives only those contexts the five members, so an event context has none: typeof is undefined and a call throws Pi's TypeError (D617).
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** the Go, Python, Rust and Lisp SDKs hand event, tool and shortcut handlers a context type that has no command-only session actions (a separate command-context type), so the call cannot be written.
+- **Fix commits:** `450883ab60` (2026-11-11), `5c4865d8fb` (2026-11-11)
+- **Tests:** `coding/extension/host/subprocess/callpayload_shape_test.go::TestCallPayloadKeepsUnkeyedLiteralShape`, `coding/extension/host/subprocess/command_only_calls_test.go::TestCommandOnlyCallErrorIsPisMissingFunctionError`, `coding/extension/host/subprocess/command_only_calls_test.go::TestCommandOnlyCallsAreThePiCommandContextSessionActions`, `test/extension-conformance/session_actions_event_context_test.go::TestConformance_CommandOnlySessionActionsRefusedFromEventContext`
+- **Release note:** An extension that calls `newSession`, `fork`, `navigateTree`, `switchSession` or `reload` from an event, tool or shortcut handler, for example a `session_start` handler, no longer replaces the session in the middle of the emit, which made the built-in MCP extension panic on a stale context and `pig` exit 1. A handler that stores its event context and calls one of them after its request ended is refused as well. Pi gives these only to the command context, so its handler gets a `TypeError` there and the session goes on. In the Node runtime an event, tool or shortcut context has no such member (`typeof ctx.switchSession` is `undefined` and the call throws `ctx.switchSession is not a function`); the Go, Python, Rust and Lisp SDKs, whose `Context` type has the methods, get the error `not_a_command_context` and the host runs nothing (D617). A command handler and a `withSession` callback are unchanged.
 
 ### BF-4534a2b
 
@@ -29762,6 +29779,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D605 | The server's two hosts serve one union: `Host.Delegate` one way, the Node host's destination the other | [BF-D605](#bf-d605) |
 | D607 | The plugins component loads hosts through a Node subprocess it starts: Pi's `evaluate`, `stack` and runtime… | deliberate difference |
 | D616 | An npm tarball is extracted with `tar` told the archive and the destination relative to the pack directory… | [BF-5043738](#bf-5043738) |
+| D617 | A command-only session action called through a context that is not a command context is a method that refuses… | [BF-450883a](#bf-450883a) |
 
 ## Fix-titled commits that are not bugs in a release
 
