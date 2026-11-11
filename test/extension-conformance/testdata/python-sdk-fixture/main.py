@@ -1694,6 +1694,31 @@ def new_extension() -> pig_sdk.Extension:
             parts.append("reload=error:%s" % error)
         ctx.notify("unbound:" + ",".join(parts), "info")
 
+    # event_session_actions_on keeps the handler's context; event_session_actions_stored calls the actions through it after the handler's request ended.
+    kept_event_ctx = []
+
+    def report_session_actions(hctx):
+        parts = []
+        for name, call in (("new", lambda: hctx.new_session()), ("fork", lambda: hctx.fork("entry")), ("navigate", lambda: hctx.navigate_tree("entry")), ("switch", lambda: hctx.switch_session("/s.jsonl")), ("reload", lambda: hctx.reload())):
+            try:
+                call()
+                parts.append("%s=allowed" % name)
+            except Exception as error:
+                parts.append("%s=rejected" % name if "is not a function" in str(error) else "%s=error:%s" % (name, error))
+        return ",".join(parts)
+
+    def event_session_actions_on(ctx, args):
+        def handler(hctx, _data):
+            kept_event_ctx.append(hctx)
+            hctx.notify("event_actions:" + report_session_actions(hctx), "info")
+
+        ext.on_event(args.strip(), handler)
+
+    def event_session_actions_stored(ctx, _args):
+        ctx.notify("stored_actions:" + report_session_actions(kept_event_ctx[-1]), "info")
+
+    ext.command("event_session_actions_on", "Subscribe to the event named by the argument with a handler that calls the session actions", event_session_actions_on)
+    ext.command("event_session_actions_stored", "Call the session actions through the context an event handler kept", event_session_actions_stored)
     ext.command("session_actions_unbound", "Report what unbound session actions answer", session_actions_unbound)
     ext.command("active_tools_get", "Report the active tools", lambda ctx, _args: ctx.notify("active_tools:%s" % ",".join(ctx.get_active_tools()), "info"))
     # provider_probe_register and provider_probe_unregister register and unregister a plain provider after the extension connected.

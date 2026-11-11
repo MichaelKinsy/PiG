@@ -180,6 +180,33 @@ export default function (pi) {
     try { await ctx.reload(); parts.push("reload=ok"); } catch (error) { parts.push(`reload=error:${error.message}`); }
     ctx.ui.notify(`unbound:${parts.join(",")}`, "info");
   }});
+  // event_session_actions_on keeps the handler's context; event_session_actions_stored calls the actions through it after the handler's request ended. Pi's createContext() object has no such member (runner.ts:877-987), so Node's reports `undefined` and the call throws Pi's TypeError.
+  const sessionActionNames = ["newSession", "fork", "navigateTree", "switchSession", "reload"];
+  const reportSessionActions = async (ctx) => {
+    const parts = [];
+    for (const [name, call] of [["new", () => ctx.newSession()], ["fork", () => ctx.fork("entry")], ["navigate", () => ctx.navigateTree("entry")], ["switch", () => ctx.switchSession("/s.jsonl")], ["reload", () => ctx.reload()]]) {
+      try { await call(); parts.push(`${name}=allowed`); } catch (error) { parts.push(/is not a function/.test(error.message) ? `${name}=rejected` : `${name}=error:${error.message}`); }
+    }
+    return parts.join(",");
+  };
+  // sessionActionShape is what Pi's JavaScript shows of an event context: typeof of each member, and the synchronous error a call throws.
+  const sessionActionShape = (ctx) => {
+    let thrown = "returned";
+    try { void Promise.resolve(ctx.switchSession("/s.jsonl")).catch(() => {}); } catch (error) { thrown = `${error.constructor.name}:${error.message}`; }
+    return `${sessionActionNames.map((name) => typeof ctx[name]).join(",")};${thrown}`;
+  };
+  let keptEventCtx;
+  pi.registerCommand("event_session_actions_on", { description: "Subscribe to the event named by the argument with a handler that calls the session actions", handler: async (args) => {
+    pi.on(String(args).trim(), async (_event, ctx) => {
+      keptEventCtx = ctx;
+      ctx.ui.notify(`event_shape:${sessionActionShape(ctx)}`, "info");
+      ctx.ui.notify(`event_actions:${await reportSessionActions(ctx)}`, "info");
+    });
+  }});
+  pi.registerCommand("event_session_actions_stored", { description: "Call the session actions through the context an event handler kept", handler: async (_args, ctx) => {
+    ctx.ui.notify(`stored_shape:${sessionActionShape(keptEventCtx)}`, "info");
+    ctx.ui.notify(`stored_actions:${await reportSessionActions(keptEventCtx)}`, "info");
+  }});
   pi.registerCommand("active_tools_get", { description: "Report the active tools", handler: async (_args, ctx) => ctx.ui.notify(`active_tools:${pi.getActiveTools().join(",")}`, "info") });
   // registry-model-probe registers the provider of the active model again with the argument as the model's name, then reads the model (TestARegistryWriteIsVisibleToTheNextModelReadAcrossSDKs).
   pi.registerCommand("registry-model-probe", {

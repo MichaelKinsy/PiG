@@ -516,6 +516,55 @@ func Extension() *sdk.Extension {
 		ctx.Notify("unbound:"+strings.Join(parts, ","), "info")
 		return nil
 	})
+	// event_session_actions_on subscribes to the event named by the argument with a handler that calls every command-only session action, and keeps the handler's
+	// context. Pi's ExtensionContext has none of them (runner.ts createContext), so each must be refused with Pi's "is not a function" error and none may reach the host.
+	// event_session_actions_stored makes the same calls through the kept context after the handler's request ended: Pi's context never gains the members.
+	var keptEventCtx sdk.Context
+	var keptEventCtxSet bool
+	var keptEventCtxMu sync.Mutex
+	reportSessionActions := func(hctx sdk.Context) string {
+		var parts []string
+		report := func(name string, err error) {
+			switch {
+			case err == nil:
+				parts = append(parts, name+"=allowed")
+			case strings.Contains(err.Error(), "is not a function"):
+				parts = append(parts, name+"=rejected")
+			default:
+				parts = append(parts, name+"=error:"+err.Error())
+			}
+		}
+		_, err := hctx.NewSession(nil)
+		report("new", err)
+		_, err = hctx.Fork("entry", nil)
+		report("fork", err)
+		_, err = hctx.NavigateTree("entry", nil)
+		report("navigate", err)
+		_, err = hctx.SwitchSession("/s.jsonl", nil)
+		report("switch", err)
+		report("reload", hctx.Reload())
+		return strings.Join(parts, ",")
+	}
+	ext.Command("event_session_actions_on", "Subscribe to the event named by the argument with a handler that calls the session actions", func(ctx sdk.Context, args string) error {
+		ext.OnEvent(strings.TrimSpace(args), func(hctx sdk.Context, _ map[string]any) (any, error) {
+			keptEventCtxMu.Lock()
+			keptEventCtx, keptEventCtxSet = hctx, true
+			keptEventCtxMu.Unlock()
+			hctx.Notify("event_actions:"+reportSessionActions(hctx), "info")
+			return nil, nil
+		})
+		return nil
+	})
+	ext.Command("event_session_actions_stored", "Call the session actions through the context an event handler kept", func(ctx sdk.Context, _ string) error {
+		keptEventCtxMu.Lock()
+		kept, ok := keptEventCtx, keptEventCtxSet
+		keptEventCtxMu.Unlock()
+		if !ok {
+			return fmt.Errorf("no event context was kept")
+		}
+		ctx.Notify("stored_actions:"+reportSessionActions(kept), "info")
+		return nil
+	})
 	ext.Command("active_tools_get", "Report the active tools", func(ctx sdk.Context, _ string) error {
 		names, err := ctx.GetActiveTools()
 		if err != nil {
