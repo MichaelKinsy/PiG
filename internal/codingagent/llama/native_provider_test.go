@@ -75,7 +75,7 @@ func TestModelsProviderIsDormantUntilConfigured(t *testing.T) {
 	clearLlamaEnv(t)
 	models, _, _ := newTestModels(t, t.TempDir())
 	provider := models.GetProvider(LlamaProviderID)
-	if provider == nil || provider.Name != "llama.cpp" || provider.BaseURL != "http://127.0.0.1:8080/v1" || provider.Auth.APIKey == nil {
+	if provider == nil || provider.Name != "llama.cpp" || provider.BaseURL != "http://127.0.0.1:9931/v1" || provider.Auth.APIKey == nil {
 		t.Fatalf("provider = %+v", provider)
 	}
 	if result, err := models.GetAuth(context.Background(), LlamaProviderID); err != nil || result != nil {

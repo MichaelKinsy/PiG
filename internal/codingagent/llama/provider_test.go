@@ -53,18 +53,18 @@ func TestSetCatalogExposesLoadedAndSleepingModelsWithRouterMetadata(t *testing.T
 		{ID: "sleeping", Status: LlamaModelInfoStatus{Value: LlamaModelStatusSleeping}},
 		{ID: "unloaded", Status: LlamaModelInfoStatus{Value: LlamaModelStatusUnloaded}},
 		{ID: "loading", Status: LlamaModelInfoStatus{Value: LlamaModelStatusLoading}},
-	}, "http://localhost:8080", false)
+	}, "http://localhost:9931", false)
 
 	models := controller.Provider.GetModels()
 	if got := modelIDs(models); !reflect.DeepEqual(got, []string{"loaded", "sleeping"}) {
 		t.Fatalf("models = %v", got)
 	}
 	loaded := models[0]
-	if loaded.BaseURL != "http://localhost:8080/v1" || loaded.ContextWindow != 65536 || loaded.MaxTokens != 65536 ||
+	if loaded.BaseURL != "http://localhost:9931/v1" || loaded.ContextWindow != 65536 || loaded.MaxTokens != 65536 ||
 		!reflect.DeepEqual(loaded.Input, []string{"text", "image"}) {
 		t.Fatalf("loaded model = %+v", loaded)
 	}
-	if sleeping := models[1]; sleeping.BaseURL != "http://localhost:8080/v1" || sleeping.ContextWindow != 128000 {
+	if sleeping := models[1]; sleeping.BaseURL != "http://localhost:9931/v1" || sleeping.ContextWindow != 128000 {
 		t.Fatalf("sleeping model = %+v", sleeping)
 	}
 }
