@@ -40,7 +40,8 @@
 //     that closed copies nothing and leaves a named directory as it is (a start of the app's data directory removes the staged
 //     `.<kind>+build-*` directories an earlier process left beside it). It fails when `Entry` cannot be started or copied, as
 //     Pi's rejects when the base does not build: a start fails while it did (`worker failed to start`). There is no esbuild
-//     bundle, `cache/node` or `NODE_COMPILE_CACHE`: a Go worker is a program, not Node modules.
+//     bundle: a Go worker is a program, not Node modules. `WorkersOptions.CompileCache` sets `NODE_COMPILE_CACHE` in the workers'
+//     environment (unless `Env` sets it), as Pi's `compileCache` does: it matters to the Node processes a worker starts.
 //
 // # Async contract (AGENTS.md "TypeScript async/Promise parity")
 //
