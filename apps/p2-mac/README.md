@@ -72,7 +72,7 @@ Ctrl-C quits it like the Quit command, which also stops its server. A checkout u
   - **Native handling:** downloads go to ~/Downloads; `<input type=file>` gets a file panel; `alert`, `confirm` and `prompt` are sheets; the microphone is allowed for the brain origin only; the page reloads when the web process crashes.
   - **Placeholder:** while there is no page, a native view shows the server's state with Start PiG or Try Again.
 - **Menus** (`MainMenu.swift`): Edit (without it, copy and paste do nothing), Reload, zoom, full screen, windows.
-- **Icons** (`PiGlyph.swift`, `scripts/make-icon.swift`): the Pi logo's shape as a template image in the menu bar, and in black on a white plate as the app icon.
+- **Icons** (`PiGlyph.swift`, `scripts/build-app.sh`): the PiG pixel pig of the desktop app (`apps/p2desktop`): its tray template as the menu bar image and its `AppIcon.icns` as the app icon, both copied into the bundle by the build script. Pi's spike drew the Pi logo (`scripts/make-icon.swift`); that script is dropped.
 
 ## What the spike showed
 

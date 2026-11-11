@@ -1,27 +1,12 @@
-// Ports apps/p2-mac/Sources/P2Mac/PiGlyph.swift
-// The Pi logo's shape (apps/p2/src/web/PiLogo.tsx: five cells on a 4×4 grid), drawn in one colour for the menu bar.
+// Ports apps/p2-mac/Sources/P2Mac/PiGlyph.swift (the menu bar glyph is PiG's pixel pig, not Pi's logo)
+// The PiG pixel pig as a template image for the menu bar: the tray template of the desktop app (apps/p2desktop), which build-app.sh copies into the bundle.
 import AppKit
 
 enum PiGlyph {
-	/// The logo's cells as (x, y, width, height) on its 4×4 grid, y downwards.
-	static let cells: [CGRect] = [
-		CGRect(x: 0, y: 0, width: 3, height: 1),
-		CGRect(x: 2, y: 1, width: 1, height: 1),
-		CGRect(x: 0, y: 1, width: 1, height: 3),
-		CGRect(x: 1, y: 2, width: 1, height: 1),
-		CGRect(x: 3, y: 2, width: 1, height: 2),
-	]
-
-	/// A template image of the logo, `size` points square: macOS tints it for the menu bar (black or white).
-	static func templateImage(size: CGFloat) -> NSImage {
-		let image = NSImage(size: NSSize(width: size, height: size), flipped: true) { rect in
-			let cell = rect.width / 4
-			NSColor.black.setFill()
-			for c in cells {
-				NSRect(x: c.minX * cell, y: c.minY * cell, width: c.width * cell, height: c.height * cell).fill()
-			}
-			return true
-		}
+	/// A template image of the pig, `size` points square: macOS tints it for the menu bar (black or white). Nil when the bundle lacks the file.
+	static func templateImage(size: CGFloat) -> NSImage? {
+		guard let url = Bundle.main.url(forResource: "tray-template", withExtension: "png"), let image = NSImage(contentsOf: url) else { return nil }
+		image.size = NSSize(width: size, height: size)
 		image.isTemplate = true
 		image.accessibilityDescription = "PiG"
 		return image
