@@ -225,6 +225,16 @@ export async function runVitestRow(row, impl, ctx) {
 		if (failure?.includes(row.measured_failure)) { bad = bad.filter(b => !b.startsWith(`${name}: `)); measured = `${row.measured_divergence}: ${name} fails with "${row.measured_failure}"` }
 	}
 	if (c.status === "failed" && !c.tests.size) return failed({ problem: "the file failed to load", message: c.message?.slice(0, 400) })
+	// The owner's written exception (corpus `skip_tests`, with the row's `reason`): named tests the candidate cannot run yet. The row
+	// passes when every other test does and these are the only failures; a name the reference no longer passes, or one the candidate
+	// now passes, fails the row, so the exception cannot go stale unseen. The output names the skipped tests.
+	const skipTests = row.skip_tests ?? []
+	if (skipTests.length) {
+		const stale = skipTests.flatMap(name => r.tests.get(name) !== "passed" ? [`${name}: the reference no longer passes it here (${r.tests.get(name) ?? "no longer in the file"}); remove it from skip_tests`]
+			: !impl.control && c.tests.get(name) === "passed" ? [`${name}: the candidate now passes it (stale skip); remove it from skip_tests`] : [])
+		if (stale.length) return failed({ problem: `skip_tests of ${row.id} went stale`, stale })
+		bad = bad.filter(b => !skipTests.some(name => b.startsWith(`${name}: `)))
+	}
 	// A test whose assertion depends on a real-time window the reference shares (corpus `real_time_tests`: a throttle interval
 	// against a setTimeout of the test itself) fails in the reference too when the process stalls for longer than the window
 	// (measured: both fail at an 85 ms stall of an 80 ms window, both pass at 70 ms). Such a test, and only such a test, gets one
@@ -242,9 +252,9 @@ export async function runVitestRow(row, impl, ctx) {
 	// for the test is compared with the reference's.
 	const cost = impl.control ? undefined : costOf(row, r, c, refAgain?.timedOut ? undefined : refAgain?.get(file), candAgain?.timedOut || candAgain?.guard?.length ? undefined : candAgain?.get(file))
 	if (cost?.over) return failed(cost.over)
-	const count = [...r.tests.values()].filter(s => s === "passed").length
+	const count = [...r.tests].filter(([name, s]) => s === "passed" && !skipTests.includes(name)).length
 	const refFailed = [...r.tests].filter(([, st]) => st === "failed").map(([name]) => name)
-	const stated = (measured ? `; ${measured}` : "") + (cost ? `; ${cost.text}` : "")
+	const stated = (measured ? `; ${measured}` : "") + (cost ? `; ${cost.text}` : "") + (skipTests.length ? `; skipped by name (${row.reason}): ${skipTests.join("; ")}` : "")
 	const alongside = refFailed.length ? `; the reference failed ${refFailed.length} alongside: ${refFailed.slice(0, 5).join("; ")}` : ""
 	if (retried.length) return passed(`${count} tests${alongside}${stated}; retried once (real-time window shared with the reference): ${retried.join("; ")}`)
 	// A file whose every test the reference skips (a missing key) proves nothing about the candidate.

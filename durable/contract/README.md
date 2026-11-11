@@ -126,6 +126,10 @@ Running a row alone removes the load that made a slow candidate miss Pi's budget
 
 A U row may state the measured value of an approved divergence in a test of the reference's own file. `measured_test` names the test (a prefix of its full name), `measured_failure` the text the candidate's failure carries, and `measured_divergence` the divergence whose record (`docs/parity/divergences/D<N>.md`, `SCRUTINIZED:approved`) the corpus check requires. The row passes only when the candidate fails that test with that failure: a pass fails the row (the divergence is over; delete the fields and the record), and any other failure fails it like every other test. The control never takes it. `U-harness-restart-failure` carries D206: Pi's test counts 49 reads of `extensions` for a round, and the core's host reads them 6 times (`expected 6 to be 49`).
 
+## Skipped tests (`skip_tests`)
+
+A ready U row may name tests the candidate cannot run yet, by exact full name (`skip_tests`), with the row's `reason`: the owner's written exception, generated from `SKIP_TESTS` in `tools/gen-corpus.mjs`. The row passes only when every other test of the file passes and the named tests are the only failures; the row's detail lists them under `skipped by name`. A name the reference no longer passes (renamed or removed), or one the candidate now passes, fails the row, so the exception cannot go stale unseen. The control never skips. `U-harness-tasks` skips the two Pi #11892 tests that release a held publication from inside a monkeypatched `session.touch` (0.8.0).
+
 ## Count budgets (`cli/counts.mjs`)
 
 What a turn costs in work that does not depend on the machine, compared exactly with a committed baseline (`counts.json`). Build the cores first, as for the robustness proofs.

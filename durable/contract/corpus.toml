@@ -1071,6 +1071,8 @@ sha256 = "6b3c61985a68d9a96af0613a18e84a3ae30e914a7397caeae0f66e384e429f00"
 owner = "dcore-session"
 levels = ["tests"]
 status = "ready"
+skip_tests = ["task scheduling finalizes a holder whose last child is published while a finalize pass plans other holders","task scheduling runs a waiter whose last dependency is published while a reservation pass plans"]
+reason = "Pi 1.5.2's two #11892 tests release a held publication from inside a monkeypatched session.touch, which Pi's TaskScheduler calls once per key of every decision region. Here scheduler decision regions run inside the Go core, and the facade's harness.touch is reached only by line jobs, so the patched touch is never called. The scheduling fix itself is ported and unit-tested in durable/core/session/sched_candidates_test.go (TestAPassKeepsTheCandidateMadeWhilePlanning, TestAPassDoesNotReturnACandidateThatEndedOrHoldsMeanwhile, TestAPassListsATaskMadeACandidateAgainOnce, TestAJobRunAgainKeepsTheCandidatesItTook); running these two tests needs a core-to-host report of the keys each region reads, owner decision, post-0.8.0."
 
 [[scenario]]
 id = "U-harness-telemetry-options"
