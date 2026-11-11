@@ -2,6 +2,7 @@ package contract
 
 import (
 	"encoding/json"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -14,11 +15,12 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// Ports the reconnection cases of test/p2/radius.test.ts (Pi main c23b9ec1): a relay whose network can fail. `silent` drops
+// Ports the reconnection cases of test/p2/radius.test.ts (Pi main b22e525b3): a relay whose network can fail. `silent` drops
 // everything in both directions without closing (as a lost network does), `stallHandshakes` leaves upgrade requests
 // unanswered, `drop()` closes the host socket. `occupied` answers upgrades with 409 as while another host is connected, and
 // `replace()` closes the host as a relay does when another brain with the same server ID takes over. `urls` records every
-// upgrade request.
+// upgrade request, `renames` every name the brain sent with `PUT /v1/servers/<id>/name`, which answers `renameStatus`.
+// The brain starts under `name`.
 type flakyRelay struct {
 	t  *testing.T
 	mu sync.Mutex
@@ -26,6 +28,9 @@ type flakyRelay struct {
 	silent, stallHandshakes, occupied bool
 	connections, pings, stalled       int
 	urls                              []string
+	// renames is every name the brain sent with `PUT /v1/servers/<id>/name`, which answers renameStatus.
+	renames      []string
+	renameStatus int
 
 	host     *websocket.Conn
 	hostSend sync.Mutex
@@ -99,12 +104,63 @@ func waitFor(t *testing.T, what string, check func() bool) {
 	}
 }
 
-func startFlakyRelay(t *testing.T) *flakyRelay {
+func (f *flakyRelay) renameList() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]string(nil), f.renames...)
+}
+
+func (f *flakyRelay) snapshotURLs() []string {
+	_, _, _, urls, _ := f.snapshot()
+	return urls
+}
+
+// nameQueries is the `name` parameter of every upgrade request, in order ("" when absent).
+func (f *flakyRelay) nameQueries() []string {
+	var out []string
+	for _, raw := range f.snapshotURLs() {
+		parsed, err := url.Parse(raw)
+		if err != nil {
+			f.t.Fatal(err)
+		}
+		out = append(out, parsed.Query().Get("name"))
+	}
+	return out
+}
+
+// lastConnected is the latest connected status.
+func (f *flakyRelay) lastConnected() Status {
+	var last Status
+	for _, status := range f.statusList() {
+		if status.Kind == StatusConnected {
+			last = status
+		}
+	}
+	return last
+}
+
+func startFlakyRelay(t *testing.T) *flakyRelay { return startFlakyRelayNamed(t, "") }
+
+// startFlakyRelayNamed is startFlakyRelay with a brain that starts under name ("": none).
+func startFlakyRelayNamed(t *testing.T, name string) *flakyRelay {
 	t.Helper()
-	f := &flakyRelay{t: t}
+	f := &flakyRelay{t: t, renameStatus: http.StatusNoContent}
 	upgrader := websocket.Upgrader{Subprotocols: []string{"pi-server.host.v4"}, CheckOrigin: func(*http.Request) bool { return true }}
 	f.server = &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 		if !websocket.IsWebSocketUpgrade(request) {
+			if request.Method == http.MethodPut && strings.HasPrefix(request.URL.Path, "/v1/servers/") && strings.HasSuffix(request.URL.Path, "/name") {
+				raw, _ := io.ReadAll(request.Body)
+				var body struct {
+					Name string `json:"name"`
+				}
+				_ = json.Unmarshal(raw, &body)
+				f.mu.Lock()
+				f.renames = append(f.renames, body.Name)
+				status := f.renameStatus
+				f.mu.Unlock()
+				w.WriteHeader(status)
+				return
+			}
 			status := http.StatusNotFound
 			if request.URL.Path == "/v1/context" {
 				status = http.StatusOK
@@ -188,6 +244,7 @@ func startFlakyRelay(t *testing.T) *flakyRelay {
 		t.Fatal(err)
 	}
 	f.brain = NewBrain(BrainOptions{
+		Name:      name,
 		Directory: directory,
 		Port:      func() int { return 1 },
 		Relay:     NewRelayAccess(),
@@ -320,47 +377,71 @@ func TestBrainKeepsReplacingAgainstARelayThatIgnoresReplaceAndAnswers409(t *test
 	waitFor(t, "the connection", func() bool { return f.connected() == 1 })
 }
 
-// Ports "Radius brain connects under its name, the device's at first, and a rename goes with the next connect"
-// (test/p2/radius.test.ts, Pi main 5c37d3be1).
-func TestBrainConnectsUnderItsNameTheDevicesAtFirstAndARenameGoesWithTheNextConnect(t *testing.T) {
-	f := startFlakyRelay(t)
-	names := func() []string {
-		_, _, _, urls, _ := f.snapshot()
-		var out []string
-		for _, raw := range urls {
-			parsed, err := url.Parse(raw)
-			if err != nil {
-				t.Fatal(err)
-			}
-			out = append(out, parsed.Query().Get("name"))
-		}
-		return out
-	}
-	device, _ := DeviceName()
+// Ports "Radius brain connects under the server's name and sends a rename at once, without reconnecting"
+// (test/p2/radius.test.ts, Pi main b22e525b3).
+func TestBrainConnectsUnderTheServersNameAndSendsARenameAtOnceWithoutReconnecting(t *testing.T) {
+	f := startFlakyRelayNamed(t, "Studio")
+	names := f.nameQueries
 	f.brain.Start()
 	waitFor(t, "the first connection", func() bool { return f.connected() == 1 })
-	if got := names(); len(got) != 1 || got[0] != device {
-		t.Fatalf("names = %q, want [%q]", got, device)
+	if got := names(); len(got) != 1 || got[0] != "Studio" {
+		t.Fatalf("names = %q, want [Studio]", got)
 	}
-	// The first connect created identity.json with the device's name; it stays the brain's until changed here.
-	if got := ReadBrainIdentity(f.directory); device != "" && (got == nil || got.Name != device) {
-		t.Fatalf("identity = %v, want %q", got, device)
+	if last := f.lastConnected(); last.Name != "Studio" {
+		t.Fatalf("last connected status = %+v", last)
 	}
-	if err := WriteBrainIdentity(f.directory, BrainIdentity{Name: "Studio brain"}); err != nil {
-		t.Fatal(err)
+	// Radius has the name the connect carried: nothing to send.
+	f.brain.Rename("Studio")
+	f.brain.Rename("Lab")
+	waitFor(t, "the rename", func() bool { return len(f.renameList()) == 1 })
+	if got := f.renameList(); got[0] != "Lab" {
+		t.Fatalf("renames = %q, want [Lab]", got)
 	}
+	if _, connections, _, _, _ := f.snapshot(); connections != 1 {
+		t.Fatalf("connections = %d, want 1: a rename must not reconnect", connections)
+	}
+	// A relay without the endpoint gets the name with the next connect.
+	f.set(func() { f.renameStatus = http.StatusNotFound })
+	f.brain.Rename("Attic")
+	waitFor(t, "the refused rename", func() bool { return len(f.renameList()) == 2 })
 	f.closeHost(1001, "")
 	waitFor(t, "the second connection", func() bool { return f.connected() == 2 })
-	if got := names(); got[len(got)-1] != "Studio brain" {
-		t.Fatalf("names = %q", got)
+	if got := names(); got[len(got)-1] != "Attic" {
+		t.Fatalf("names = %q, want the last to be Attic", got)
 	}
-	var last Status
-	for _, status := range f.statusList() {
-		if status.Kind == StatusConnected {
-			last = status
-		}
+	// A rename while offline goes with the next connect, without a request of its own.
+	f.set(func() { f.silent = true })
+	waitFor(t, "the lost connection", func() bool {
+		statuses := f.statusList()
+		return statuses[len(statuses)-1].Kind == StatusRetrying
+	})
+	f.brain.Rename("Cellar")
+	f.set(func() { f.silent = false })
+	waitFor(t, "the third connection", func() bool { return f.connected() == 3 })
+	if got := names(); got[len(got)-1] != "Cellar" {
+		t.Fatalf("names = %q, want the last to be Cellar", got)
 	}
-	if last.Name != "Studio brain" {
-		t.Fatalf("last connected status = %+v", last)
+	if got := f.renameList(); len(got) != 2 {
+		t.Fatalf("renames = %q, want the two sent while connected", got)
+	}
+}
+
+// Ports "Radius brain without a name connects without one, and sends its first name once connected" (test/p2/radius.test.ts,
+// Pi main b22e525b3).
+func TestBrainWithoutANameConnectsWithoutOneAndSendsItsFirstNameOnceConnected(t *testing.T) {
+	f := startFlakyRelay(t)
+	f.brain.Start()
+	waitFor(t, "the first connection", func() bool { return f.connected() == 1 })
+	parsed, err := url.Parse(f.snapshotURLs()[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if parsed.Query().Has("name") {
+		t.Fatalf("the connect carried a name: %s", parsed.RawQuery)
+	}
+	f.brain.Rename("Studio")
+	waitFor(t, "the first name", func() bool { return len(f.renameList()) == 1 })
+	if got := f.renameList(); got[0] != "Studio" {
+		t.Fatalf("renames = %q, want [Studio]", got)
 	}
 }

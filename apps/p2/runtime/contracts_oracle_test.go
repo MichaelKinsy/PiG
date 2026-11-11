@@ -11,7 +11,7 @@ import (
 // as the contract Pi's module declares, name and version included.
 
 func TestContractsFingerprintAsPi(t *testing.T) {
-	pi := oracle.Fingerprints(t, "src/runtime/access.ts", "src/runtime/notices.ts", "src/runtime/session-worker.ts", "src/runtime/file-index.ts", "src/runtime/server.ts", "src/runtime/worker.ts")
+	pi := oracle.Fingerprints(t, "src/runtime/access.ts", "src/runtime/notices.ts", "src/runtime/session-worker.ts", "src/runtime/file-index.ts", "src/runtime/server.ts", "src/runtime/server-name.ts", "src/runtime/worker.ts")
 	for key, contract := range map[string]*contracts.Contract{
 		"src/runtime/access.ts#Access":                 Access,
 		"src/runtime/notices.ts#LogNotices":            LogNotices,
@@ -21,6 +21,9 @@ func TestContractsFingerprintAsPi(t *testing.T) {
 		"src/runtime/server.ts#Server":                 ServerLocal,
 		"src/runtime/server.ts#Hosts":                  Hosts,
 		"src/runtime/worker.ts#HarnessHost":            HarnessHost,
+		// ServerName (`p2.server-name`, server.ts) is a local contract: the browser never binds it, and server.ts is vendored at
+		// a Pi commit before it, so only ServerNameSettings (the browser's) has an oracle.
+		"src/runtime/server-name.ts#ServerNameSettings": ServerNameSettings,
 	} {
 		want, ok := pi[key]
 		if !ok {

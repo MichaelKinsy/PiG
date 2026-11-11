@@ -1,7 +1,7 @@
-// Ports test/p2/radius.test.ts (Pi main c23b9ec1), the cases that run a p2 server against a fake Radius relay: the owner's
-// admission, sharing by email, credit flow control, port forwards, relay v5 channel sockets and client channels. The brain's
-// reconnection cases are plugins/radius/contract/brain_test.go; the status lines plugins/radius/server_test.go. Pi's fake
-// relay (radius-fixture.ts) is plugins/radius/radiustest.
+// Ports test/p2/radius.test.ts (Pi main b22e525b3), the cases that run a p2 server against a fake Radius relay: the owner's
+// admission, sharing by email, credit flow control, port forwards, relay v5 channel sockets and client channels, and the
+// server's name following a rename. The brain's reconnection and naming cases are plugins/radius/contract/brain_test.go; the
+// status lines plugins/radius/server_test.go. Pi's fake relay (radius-fixture.ts) is plugins/radius/radiustest.
 
 package e2e_test
 
@@ -394,6 +394,33 @@ func TestRadiusRelayedAppPageNamesTheRadiusShellThatFramesIt(t *testing.T) {
 	}
 	if page, want := string(f.radius.Body(id)), `<meta name="p2-shell-origin" content="https://radius.earendil.com" />`; !strings.Contains(page, want) {
 		t.Fatalf("the page lacks %s:\n%s", want, page)
+	}
+}
+
+// Ports "The owner's rename of the server reaches Radius while connected" (Pi main b22e525b3).
+func TestRadiusTheOwnersRenameOfTheServerReachesRadiusWhileConnected(t *testing.T) {
+	p2test.NoLeakedGoroutines(t)
+	f := radiusFixture(t, nil, radiustest.Options{})
+	names, err := p2test.HoldIn(f.fixture.Browser(), p2runtime.ServerNameSettings, delta.NewJsonObject(0), "owner")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer names.Release()
+	if _, err := names.Call("rename", delta.JsonObjectOf("name", "Studio"), p2test.Background); err != nil {
+		t.Fatal(err)
+	}
+	learned := func(want string) func() bool {
+		return func() bool {
+			sent := f.radius.Names()
+			return len(sent) > 0 && sent[len(sent)-1] == want
+		}
+	}
+	radiustest.Wait(t, "Radius to learn the name", 10*time.Second, learned("Studio"))
+	if _, err := names.Call("rename", delta.JsonObjectOf("name", nil), p2test.Background); err != nil {
+		t.Fatal(err)
+	}
+	if device, _ := names.Member("device").Value(); device != nil {
+		radiustest.Wait(t, "Radius to learn the device's name", 10*time.Second, learned(device.(string)))
 	}
 }
 

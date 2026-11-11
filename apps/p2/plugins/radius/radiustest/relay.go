@@ -67,6 +67,7 @@ type Relay struct {
 	mu             sync.Mutex
 	cond           *sync.Cond
 	shares         [][]string
+	names          []string
 	controls       []map[string]any
 	frames         []Frame
 	host           *websocket.Conn
@@ -116,6 +117,7 @@ func (r *Relay) Close() {
 
 var channelPath = regexp.MustCompile(`^/v1/servers/[^/]+/channels/([^/]+)$`)
 var sharesPath = regexp.MustCompile(`^/v1/servers/[^/]+/shares$`)
+var namePath = regexp.MustCompile(`^/v1/servers/[^/]+/name$`)
 
 func (r *Relay) upgrade(w http.ResponseWriter, request *http.Request) *websocket.Conn {
 	offered := map[string]bool{}
@@ -143,6 +145,18 @@ func (r *Relay) upgrade(w http.ResponseWriter, request *http.Request) *websocket
 }
 
 func (r *Relay) serve(w http.ResponseWriter, request *http.Request) {
+	if request.Method == http.MethodPut && namePath.MatchString(request.URL.Path) {
+		var body struct {
+			Name string `json:"name"`
+		}
+		raw, _ := io.ReadAll(request.Body)
+		_ = json.Unmarshal(raw, &body)
+		r.mu.Lock()
+		r.names = append(r.names, body.Name)
+		r.mu.Unlock()
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
 	if request.Method == http.MethodPut && sharesPath.MatchString(request.URL.Path) {
 		var body struct {
 			Emails []string `json:"emails"`
@@ -331,6 +345,13 @@ func (r *Relay) Shares() [][]string {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return append([][]string(nil), r.shares...)
+}
+
+// Names is every name the brain sent on a rename (`PUT /v1/servers/<id>/name`), in order.
+func (r *Relay) Names() []string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return append([]string(nil), r.names...)
 }
 
 // Controls is every control message the brain sent, in order.

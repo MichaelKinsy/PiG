@@ -15,6 +15,7 @@ src/runtime/refs.ts
 src/runtime/schema.ts
 src/runtime/schemas.ts
 src/runtime/sender.ts
+src/runtime/server-name.ts
 src/runtime/session-lock.ts
 src/runtime/session-worker.ts
 src/runtime/shell.ts

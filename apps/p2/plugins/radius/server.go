@@ -65,6 +65,7 @@ var serverFacet = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetS
 
 func serveRadiusService(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
 	server := self.Get(p2runtime.ServerLocal, delta.NewJsonObject(0))
+	serverName := self.Get(p2runtime.ServerName, delta.NewJsonObject(0))
 	self.Get(portscontract.ForwardStore, delta.NewJsonObject(0))
 	forwards := portscontract.ForwardsOf(self)
 	opened := self.Open(
@@ -81,12 +82,18 @@ func serveRadiusService(_ *delta.JsonObject, self host.Self) (contracts.Implemen
 				return nil, err
 			}
 			relay := contract.NewRelayAccess()
+			current, err := serverName.Member("name").Value()
+			if err != nil {
+				return nil, err
+			}
+			name, _ := current.(string)
 			lastStatus := ""
 			brain := contract.NewBrain(contract.BrainOptions{
 				Directory: dataDir,
 				Port:      func() int { return int(port) },
 				Relay:     relay,
 				Forwards:  forwardsOf(parts.Forwards),
+				Name:      name,
 				// As Pi Mobile: each new status once, retries with their error.
 				OnStatus: func(status contract.Status) {
 					if text := StatusText(status); text != "" {
@@ -130,6 +137,12 @@ func serveRadiusService(_ *delta.JsonObject, self host.Self) (contracts.Implemen
 			origin.RelayUser = relayed.User
 			return &p2runtime.RequestAccess{Origin: origin}, nil
 		})))
+	// Radius shows the server under its name: a copy, which follows every rename.
+	self.On(serverName.Member("name"), func(call chord.WatchCall[delta.JsonValue], _ host.Ctx) *host.Handled {
+		name, _ := call.Value.(string)
+		connection().Brain.Rename(name)
+		return nil
+	})
 	// Radius admits and lists this brain for the emails sessions are shared with.
 	shares := self.Get(sharingcontract.Shares, delta.NewJsonObject(0))
 	self.On(shares.Member("emails"), func(call chord.WatchCall[delta.JsonValue], _ host.Ctx) *host.Handled {
