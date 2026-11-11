@@ -384,7 +384,10 @@ func fromBot(r *rig, channel, text string) Message {
 }
 
 func TestAnotherBotIsAPersonItWakesPiByTheLinksRulesTheLinksOwnBotNeverDoes(t *testing.T) {
-	r := setup(t, binding(func(b *Binding) { b.Cursor = sp("1"); b.Wake = Wake{Anyone: false, Users: []string{"b7"}, Roles: []string{}} }))
+	r := setup(t, binding(func(b *Binding) {
+		b.Cursor = sp("1")
+		b.Wake = Wake{Anyone: false, Users: []string{"b7"}, Roles: []string{}}
+	}))
 	own := r.discord.say("c1", message("<@"+botID+"> talking to myself", func(m *Message) { m.Author = Author{botID, "Pi", true} }))
 	r.on("bot-a", own)
 	eq(t, "never its own message", r.sessions.count(), 0)
@@ -394,7 +397,10 @@ func TestAnotherBotIsAPersonItWakesPiByTheLinksRulesTheLinksOwnBotNeverDoes(t *t
 }
 
 func TestLoopGuardAtMost3BotStartedTurnsInARowPerChannelOneNoticeAPersonsMessageResetsIt(t *testing.T) {
-	r := setup(t, binding(func(b *Binding) { b.Cursor = sp("1"); b.Wake = Wake{Anyone: true, Users: []string{}, Roles: []string{}} }))
+	r := setup(t, binding(func(b *Binding) {
+		b.Cursor = sp("1")
+		b.Wake = Wake{Anyone: true, Users: []string{}, Roles: []string{}}
+	}))
 	for _, text := range []string{"one", "two", "three", "four", "five"} {
 		r.on("bot-a", fromBot(r, "c1", text))
 	}
