@@ -1,0 +1,101 @@
+# SPDX-License-Identifier: MIT
+name: Nightly bisect
+
+# When the nightly full CI run on main is red, this finds the first bad commit and opens an issue for a fix PR.
+# It bisects between the last green nightly and the red one by running ci.yml on each probed commit (a temporary
+# bisect/* branch, deleted after its run), and it merges nothing: the issue names the commit, its author and the failed
+# jobs, and a person opens the fix PR. automation/ci/nightly-bisect.sh holds the search, nightly-probe.sh the probe.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      good:
+        description: Last known good commit (a nightly's head); empty uses the last green nightly
+        required: false
+        default: ''
+        type: string
+      bad:
+        description: Known bad commit; empty uses main's tip
+        required: false
+        default: ''
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: nightly-bisect
+  cancel-in-progress: false
+
+jobs:
+  bisect:
+    name: Bisect the red nightly
+    # Only the scheduled CI run on main; a pull request, merge queue or release run reports to its own change.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'failure' &&
+      github.event.workflow_run.event == 'schedule' &&
+      github.event.workflow_run.head_branch == 'main')
+    runs-on: ubuntu-24.04
+    # Each probe is a full CI run (about an hour), and a range of N commits takes about log2(N) of them.
+    timeout-minutes: 600
+    permissions:
+      contents: write # the temporary bisect/* branches
+      actions: write # dispatch and cancel ci.yml
+      issues: write # the report
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          # The probe pushes branches with this checkout's credentials.
+          persist-credentials: true
+          ref: ${{ github.event.workflow_run.head_sha || inputs.bad || 'main' }}
+      - name: Find the range
+        id: range
+        shell: bash
+        env:
+          RED_RUN: ${{ github.event.workflow_run.id }}
+          RED_SHA: ${{ github.event.workflow_run.head_sha }}
+          GOOD_INPUT: ${{ inputs.good }}
+        run: |
+          set -euo pipefail
+          bad=${RED_SHA:-$(git rev-parse HEAD)}
+          good=$GOOD_INPUT
+          if [ -z "$good" ]; then
+            # The newest green scheduled run on main that is older than the red one.
+            good=$(gh run list --repo "$REPO" --workflow ci.yml --branch main --event schedule --status success \
+              --limit 20 --json headSha,databaseId \
+              --jq "[.[] | select(.databaseId < ${RED_RUN:-999999999999})][0].headSha // empty")
+          fi
+          if [ -z "$good" ]; then
+            echo "::error::no green nightly run on main to bisect from; give the good commit as an input"
+            exit 1
+          fi
+          echo "good=$good" >> "$GITHUB_OUTPUT"
+          echo "bad=$bad" >> "$GITHUB_OUTPUT"
+      - name: Bisect
+        id: bisect
+        shell: bash
+        env:
+          GOOD: ${{ steps.range.outputs.good }}
+          BAD: ${{ steps.range.outputs.bad }}
+          BISECT_TAG: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          automation/ci/nightly-bisect.sh "$GOOD" "$BAD" | tee -a "$GITHUB_OUTPUT"
+      - name: Open the fix-PR issue
+        shell: bash
+        env:
+          FIRST: ${{ steps.bisect.outputs.first-bad }}
+          GOOD: ${{ steps.range.outputs.good }}
+          BAD: ${{ steps.range.outputs.bad }}
+          RED_URL: ${{ github.event.workflow_run.html_url }}
+        run: |
+          set -euo pipefail
+          automation/ci/nightly-issue.sh "$FIRST" "$GOOD" "$BAD" "${RED_URL:-}"
