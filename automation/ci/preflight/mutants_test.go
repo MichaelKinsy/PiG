@@ -357,7 +357,11 @@ func TestRecordReportsAFailedCommentWrite(t *testing.T) {
 				http.Error(w, "forbidden", http.StatusForbidden)
 			}
 		}))
-		err := record(context.Background(), cfg, d, ev, recordOptions{apiBase: server.URL, token: "t", statePath: filepath.Join(t.TempDir(), "s.json")}, io.Discard)
+		o := recordOptions{apiBase: server.URL, token: "t"}
+		if existing != `[]` {
+			o.comment = prComment{ID: 2, Body: commentMarker + "old"}
+		}
+		err := record(context.Background(), cfg, d, ev, o, io.Discard)
 		server.Close()
 		if err == nil || !strings.Contains(err.Error(), "403") {
 			t.Errorf("comments %s: a refused comment write was not reported: %v", existing, err)
@@ -487,13 +491,12 @@ func TestRunPRWithoutScansSaysNothingAboutSkipping(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	g := &fakeGitHub{bodies: map[int]string{1: "no template"}, broken: map[int]bool{}, hits: map[string]int{}, statuses: map[string]string{}, comments: map[int]string{}}
-	server := httptest.NewServer(g)
+	server := httptest.NewServer(newFakeGitHub(map[int]string{1: "no template"}))
 	defer server.Close()
 	dir := t.TempDir()
 	var log strings.Builder
-	o := runOptions{apiBase: server.URL, token: "t", repo: "o/r", root: dir, bin: dir, states: dir, work: dir, dryRun: true}
-	if result, err := runPR(context.Background(), cfg, &ruleEnv{root: dir}, o, "v", 1, nil, &log); err != nil || result != resultFail || strings.Contains(log.String(), "scans skipped") {
+	o := runOptions{apiBase: server.URL, token: "t", repo: "o/r", root: dir, bin: dir, work: dir, dryRun: true}
+	if result, err := runPR(context.Background(), cfg, &ruleEnv{root: dir}, o, "v", pending{pr: 1}, nil, nil, &log); err != nil || result != resultFail || strings.Contains(log.String(), "scans skipped") {
 		t.Fatalf("result %s, err %v, log:\n%s", result, err, log.String())
 	}
 }
@@ -572,7 +575,7 @@ func TestRecordWritesTheStepSummary(t *testing.T) {
 	}
 	t.Setenv("GITHUB_STEP_SUMMARY", summary)
 	var log strings.Builder
-	if err := record(context.Background(), cfg, d, ev, recordOptions{statePath: filepath.Join(t.TempDir(), "s.json"), dryRun: true}, &log); err != nil {
+	if err := record(context.Background(), cfg, d, ev, recordOptions{dryRun: true}, &log); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(log.String(), "record (dry run): status failure") {
@@ -584,14 +587,14 @@ func TestRecordWritesTheStepSummary(t *testing.T) {
 	}
 	fresh := filepath.Join(t.TempDir(), "new-summary.md")
 	t.Setenv("GITHUB_STEP_SUMMARY", fresh)
-	if err := record(context.Background(), cfg, d, ev, recordOptions{statePath: filepath.Join(t.TempDir(), "s.json"), dryRun: true}, io.Discard); err != nil {
+	if err := record(context.Background(), cfg, d, ev, recordOptions{dryRun: true}, io.Discard); err != nil {
 		t.Fatalf("a step summary that does not exist yet: %v", err)
 	}
 	if raw, _ := os.ReadFile(fresh); !strings.HasPrefix(string(raw), commentMarker) {
 		t.Fatalf("new summary:\n%s", raw)
 	}
 	t.Setenv("GITHUB_STEP_SUMMARY", t.TempDir())
-	if err := record(context.Background(), cfg, d, ev, recordOptions{statePath: filepath.Join(t.TempDir(), "s.json"), dryRun: true}, io.Discard); err == nil {
+	if err := record(context.Background(), cfg, d, ev, recordOptions{dryRun: true}, io.Discard); err == nil {
 		t.Fatal("an unwritable step summary was not reported")
 	}
 }
@@ -605,7 +608,7 @@ func TestRunCommandReportsABatchThatCannotStart(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chmod(filepath.Join(dir, "LICENSES"), 0o755) })
 	var out, errOut strings.Builder
-	code := run([]string{"run", "--repo", "o/r", "--root", dir, "--bin", dir, "--states", dir, "--work", dir}, &out, &errOut)
+	code := run([]string{"run", "--repo", "o/r", "--root", dir, "--bin", dir, "--work", dir}, &out, &errOut)
 	if code != 2 || !strings.Contains(errOut.String(), "check licenses") {
 		t.Fatalf("exit %d: %s", code, errOut.String())
 	}

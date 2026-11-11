@@ -63,7 +63,7 @@ func cheapInputHash(d *data, c check) string {
 // evaluate decides every cheap check from the data and marks the scans still to run. A check no changed file makes
 // relevant passes; a check whose input hash equals the stored one keeps its stored pass or fail.
 func evaluate(cfg config, d *data, env *ruleEnv) evaluation {
-	ev := evaluation{Repo: d.Repo, PR: d.PR, Head: d.Pull.Head.SHA, Base: d.Pull.Base.SHA, Version: d.Version, Engine: cfg.EngineRevision, Checks: map[string]verdict{}}
+	ev := evaluation{Repo: d.Repo, PR: d.PR, Head: d.Pull.Head.SHA, Base: d.BaseTip, Version: d.Version, Engine: cfg.EngineRevision, Checks: map[string]verdict{}}
 	var prev map[string]verdict
 	if d.Previous != nil && d.Previous.Engine == cfg.EngineRevision {
 		prev = d.Previous.Checks

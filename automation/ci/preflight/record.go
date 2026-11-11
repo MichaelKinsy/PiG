@@ -4,8 +4,6 @@ package main
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -101,8 +99,20 @@ func (a *api) send(ctx context.Context, method, path string, body, out any) erro
 
 type recordOptions struct {
 	apiBase, token string
-	statePath      string
 	dryRun         bool
+	// comment is the pre-flight's comment as the run found it; its ID is 0 when there is none yet.
+	comment prComment
+}
+
+// appendFile adds text at the end of path in one write: the PRs of a run record at the same time, and O_APPEND keeps
+// one report from overwriting another.
+func appendFile(path, text string) error {
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
+	if err != nil {
+		return err
+	}
+	_, err = f.WriteString(text)
+	return errors.Join(err, f.Close())
 }
 
 // alertsFor returns the checks with an alert that fail now and were not alerted since they last passed, and the
@@ -128,49 +138,37 @@ func alertBody(c check, d *data, ev evaluation) string {
 	return fmt.Sprintf("@%s %s\n\n%s on `%s`: %s", d.Pull.User.Login, c.Alert, c.Name, short(ev.Head), ev.Checks[c.Name].Reason)
 }
 
-// record writes the state for the next run, the step summary, the commit status, the PR's one pre-flight comment and
-// any alert. Status and comment are sent only when they differ from what the previous run sent. With dryRun it writes
-// the state and the summary and prints what it would send.
+// record writes the step summary, the commit status, the PR's one pre-flight comment with the state for the next run in
+// it, and any alert. The status is set only when it differs from the one the previous run set on the same head, the
+// comment only when its text differs. A reused run keeps the previous time it was checked, so an unchanged PR is not
+// written at all. With dryRun it writes the summary and prints what it would send.
 func record(ctx context.Context, cfg config, d *data, ev evaluation, o recordOptions, log io.Writer) error {
 	report := markdown(cfg, d, ev)
 	status, description := statusFor(cfg, ev)
-	sum := sha256.Sum256([]byte(status + "\x00" + description + "\x00" + report))
-	st := state{Version: ev.Version, Engine: ev.Engine, Head: ev.Head, Base: ev.Base, Checks: ev.Checks, Sent: hex.EncodeToString(sum[:]), Checked: time.Now().UTC()}
 	prev := d.Previous
-	if prev != nil {
-		st.Comment = prev.Comment
+	st := state{Version: ev.Version, Engine: ev.Engine, Head: ev.Head, Base: ev.Base, Checks: ev.Checks, Body: bodyHash(d.Pull.Body), Status: status + " " + description, Checked: time.Now().UTC()}
+	if d.Mode == modeReuse && prev != nil {
+		st.Checked = prev.Checked
 	}
 	due, alerted := alertsFor(cfg, ev, prev)
 	st.Alerted = alerted
 	if summary := os.Getenv("GITHUB_STEP_SUMMARY"); summary != "" {
-		// The step summary may already hold the other PRs' reports: this one is added after them.
-		before, err := os.ReadFile(summary)
-		if err != nil && !errors.Is(err, os.ErrNotExist) {
-			return err
-		}
-		if err := os.WriteFile(summary, append(before, report...), 0o600); err != nil {
+		if err := appendFile(summary, report); err != nil {
 			return err
 		}
 	}
-	if err := send(ctx, d, ev, o, &st, prev, report, status, description, due, log); err != nil {
-		return err
-	}
-	if err := writeJSON(o.statePath, st); err != nil {
-		return err
-	}
-	logf(log, "record: state for %s written to %s", short(ev.Head), o.statePath)
-	return nil
-}
-
-// send posts the status, the comment and the alerts; st.Comment is set to the comment's id.
-func send(ctx context.Context, d *data, ev evaluation, o recordOptions, st, prev *state, report, status, description string, due []check, log io.Writer) error {
-	unchanged := prev != nil && prev.Sent == st.Sent
+	setStatus := prev == nil || prev.Head != st.Head || prev.Status != st.Status
+	body := withState(report, st)
+	writeBody := body != o.comment.Body
 	if o.dryRun {
-		if unchanged {
-			logf(log, "record (dry run): status and comment unchanged, nothing to send")
-		} else {
+		if setStatus {
 			logf(log, "record (dry run): status %s %q on %s", status, description, short(ev.Head))
+		}
+		if writeBody {
 			logf(log, "record (dry run): comment\n%s", report)
+		}
+		if !setStatus && !writeBody {
+			logf(log, "record (dry run): nothing changed, nothing to send")
 		}
 		for _, c := range due {
 			logf(log, "record (dry run): alert\n%s", alertBody(c, d, ev))
@@ -186,61 +184,41 @@ func send(ctx context.Context, d *data, ev evaluation, o recordOptions, st, prev
 		}
 		logf(log, "record: alert for %s posted", c.Name)
 	}
-	if unchanged {
-		logf(log, "record: status and comment unchanged, nothing sent")
+	if setStatus {
+		if err := a.send(ctx, http.MethodPost, fmt.Sprintf("%s/statuses/%s", prefix, ev.Head), map[string]string{"state": status, "description": description, "context": statusContext}, nil); err != nil {
+			return err
+		}
+		logf(log, "record: status %s on %s", status, short(ev.Head))
+	}
+	if !writeBody {
+		if !setStatus {
+			logf(log, "record: nothing changed, nothing sent")
+		}
 		return nil
 	}
-	if err := a.send(ctx, http.MethodPost, fmt.Sprintf("%s/statuses/%s", prefix, ev.Head), map[string]string{"state": status, "description": description, "context": statusContext}, nil); err != nil {
-		return err
-	}
-	logf(log, "record: status %s on %s", status, short(ev.Head))
-	id, err := writeComment(ctx, a, prefix, d.PR, st.Comment, report, log)
-	st.Comment = id
-	return err
+	return writeComment(ctx, a, prefix, d.PR, o.comment.ID, body, log)
 }
 
-// writeComment updates the pre-flight's comment: by its stored id when there is one, else the one with the marker
-// among the PR's comments, else a new one. It returns the comment's id.
-func writeComment(ctx context.Context, a *api, prefix string, pr int, id int64, report string, log io.Writer) (int64, error) {
-	body := map[string]string{"body": report}
+// writeComment updates the pre-flight's comment, or posts it when there is none or it was deleted.
+func writeComment(ctx context.Context, a *api, prefix string, pr int, id int64, body string, log io.Writer) error {
+	payload := map[string]string{"body": body}
 	if id != 0 {
-		err := a.send(ctx, http.MethodPatch, fmt.Sprintf("%s/issues/comments/%d", prefix, id), body, nil)
+		err := a.send(ctx, http.MethodPatch, fmt.Sprintf("%s/issues/comments/%d", prefix, id), payload, nil)
 		if err == nil {
 			logf(log, "record: comment %d updated", id)
-			return id, nil
+			return nil
 		}
 		if !isNotFound(err) {
-			return id, err
+			return err
 		}
-		logf(log, "record: comment %d is gone, looking for another", id)
-	}
-	var comments []struct {
-		ID   int64  `json:"id"`
-		Body string `json:"body"`
-	}
-	if err := a.get(ctx, fmt.Sprintf("%s/issues/%d/comments?per_page=%d", prefix, pr, perPage), &comments, true); err != nil {
-		return 0, err
-	}
-	for _, c := range comments {
-		if !strings.HasPrefix(c.Body, commentMarker) {
-			continue
-		}
-		if c.Body == report {
-			logf(log, "record: comment %d unchanged", c.ID)
-			return c.ID, nil
-		}
-		if err := a.send(ctx, http.MethodPatch, fmt.Sprintf("%s/issues/comments/%d", prefix, c.ID), body, nil); err != nil {
-			return 0, err
-		}
-		logf(log, "record: comment %d updated", c.ID)
-		return c.ID, nil
+		logf(log, "record: comment %d is gone, posting it again", id)
 	}
 	var created struct {
 		ID int64 `json:"id"`
 	}
-	if err := a.send(ctx, http.MethodPost, fmt.Sprintf("%s/issues/%d/comments", prefix, pr), body, &created); err != nil {
-		return 0, err
+	if err := a.send(ctx, http.MethodPost, fmt.Sprintf("%s/issues/%d/comments", prefix, pr), payload, &created); err != nil {
+		return err
 	}
 	logf(log, "record: comment %d posted", created.ID)
-	return created.ID, nil
+	return nil
 }

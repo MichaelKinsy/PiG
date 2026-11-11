@@ -4,7 +4,9 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -24,11 +26,11 @@ type state struct {
 	Head    string             `json:"head"`
 	Base    string             `json:"base"`
 	Checks  map[string]verdict `json:"checks"`
-	// Sent is the SHA-256 of the status and comment last sent; an equal one is not sent again.
-	Sent string `json:"sent,omitempty"`
-	// Comment is the id of the pre-flight's comment on the PR, so a run updates it without listing the comments.
-	Comment int64 `json:"comment,omitempty"`
-	// Checked is when the PR was last run; the PR checked longest ago goes first.
+	// Body is the SHA-256 of the PR's description, which an author edits without a new commit.
+	Body string `json:"body"`
+	// Status is the commit status last set, state and description; an equal one on the same head is not set again.
+	Status string `json:"status,omitempty"`
+	// Checked is when the PR was last decided (a reused run keeps it); the PR checked longest ago goes first.
 	Checked time.Time `json:"checked"`
 	// Alerted are the checks whose alert was posted; a check leaves the list when it passes, and alerts again when
 	// it fails again.
@@ -69,6 +71,9 @@ type data struct {
 	Repo    string `json:"repo"`
 	PR      int    `json:"pr"`
 	Version string `json:"version"`
+	// BaseTip is the commit the base branch is at now. The pull's base.sha is not: it stays where the PR was last
+	// updated, so it cannot tell that main moved.
+	BaseTip string `json:"base_tip"`
 	Mode    string `json:"mode"`
 	Reason  string `json:"reason"`
 	// Limit names a GitHub REST limit the PR exceeds; the PR fails with it instead of being judged on truncated data.
@@ -120,17 +125,19 @@ func parseDependsOn(body string) (number int, ok bool) {
 	return 0, false
 }
 
-// decideMode compares this run with the previous state: the same head and base under the same version reuse every
+// decideMode compares this run with the previous state: the same version, head, base tip and description reuse every
 // verdict; anything else decides every check again, each reusing its own verdict while its definition and inputs are
 // unchanged.
-func decideMode(prev *state, version, head, base string) (mode, reason string) {
+func decideMode(prev *state, version, head, base, body string) (mode, reason string) {
 	switch {
 	case prev == nil:
 		return modeFull, "no previous state"
 	case prev.Version != version:
 		return modeFull, "the pre-flight changed since the previous run"
-	case prev.Head != head || prev.Base != base:
+	case prev.Head != head || prev.Base != base || base == "":
 		return modeFull, "the head or main moved since the previous run"
+	case prev.Body != body:
+		return modeFull, "the description changed since the previous run"
 	}
 	for _, v := range prev.Checks {
 		// An error or a pending check may come out otherwise next time; a scan a failed cheap check held back may not.
@@ -138,7 +145,48 @@ func decideMode(prev *state, version, head, base string) (mode, reason string) {
 			return modeFull, "the previous run left a check undecided"
 		}
 	}
-	return modeReuse, "same head and base as the previous run"
+	return modeReuse, "same head, base and description as the previous run"
+}
+
+// bodyHash is the SHA-256 of a PR description.
+func bodyHash(body string) string {
+	sum := sha256.Sum256([]byte(body))
+	return hex.EncodeToString(sum[:])
+}
+
+// tips looks up where each base branch is now, once per run.
+type tips struct {
+	a  *api
+	mu sync.Mutex
+	at map[string]*tip
+}
+
+type tip struct {
+	once sync.Once
+	sha  string
+	err  error
+}
+
+func newTips(a *api) *tips { return &tips{a: a, at: map[string]*tip{}} }
+
+func (t *tips) get(ctx context.Context, repo, ref string) (string, error) {
+	t.mu.Lock()
+	e := t.at[ref]
+	if e == nil {
+		e = &tip{}
+		t.at[ref] = e
+	}
+	t.mu.Unlock()
+	e.once.Do(func() {
+		var r struct {
+			Object struct {
+				SHA string `json:"sha"`
+			} `json:"object"`
+		}
+		e.err = t.a.get(ctx, fmt.Sprintf("repos/%s/git/ref/heads/%s", repo, pathEscape(ref)), &r, false)
+		e.sha = r.Object.SHA
+	})
+	return e.sha, e.err
 }
 
 type fetchOptions struct {
@@ -150,6 +198,8 @@ type fetchOptions struct {
 	previous *state
 	// admit is asked before a PR that is not reused is fetched further; false defers it to the next run.
 	admit func() bool
+	// tips gives where the base branch is now; without it the pull's base.sha stands in.
+	tips *tips
 }
 
 func fetch(ctx context.Context, cfg config, o fetchOptions, log io.Writer) (*data, error) {
@@ -168,9 +218,17 @@ func fetch(ctx context.Context, cfg config, o fetchOptions, log io.Writer) (*dat
 		d.Limit = fmt.Sprintf("%d changed files, more than the %d the API lists", d.Pull.ChangedFiles, maxFiles)
 	}
 	head, base := d.Pull.Head.SHA, d.Pull.Base.SHA
-	d.Mode, d.Reason = decideMode(o.previous, o.version, head, base)
+	if o.tips != nil {
+		var err error
+		if base, err = o.tips.get(ctx, o.repo, d.Pull.Base.Ref); err != nil {
+			// Without the tip the run cannot tell main did not move: it decides every check.
+			logf(log, "the tip of %s could not be read, so nothing is reused: %v", d.Pull.Base.Ref, err)
+		}
+	}
+	d.BaseTip = base
+	d.Mode, d.Reason = decideMode(o.previous, o.version, head, base, bodyHash(d.Pull.Body))
 	if d.Mode != modeReuse && o.admit != nil && !o.admit() {
-		d.Mode, d.Reason = modeDeferred, "the run's budget is spent; the next run takes it"
+		d.Mode, d.Reason = modeDeferred, "the run's budget is spent; a next job takes it"
 		logf(log, "::endgroup::")
 		logf(log, "mode %s: %s", d.Mode, d.Reason)
 		return d, nil
@@ -248,7 +306,7 @@ func fetch(ctx context.Context, cfg config, o fetchOptions, log io.Writer) (*dat
 	}
 	if reads["dependency-graph"] {
 		wg.Go(func() {
-			if err := a.get(ctx, fmt.Sprintf("%s/dependency-graph/compare/%s...%s", prefix, base, head), &d.Dependencies, false); err != nil {
+			if err := a.get(ctx, fmt.Sprintf("%s/dependency-graph/compare/%s...%s", prefix, d.Pull.Base.SHA, head), &d.Dependencies, false); err != nil {
 				d.failed(&mu, log, "dependency-graph", err)
 				return
 			}

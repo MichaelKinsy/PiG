@@ -427,15 +427,30 @@ func TestWhole(t *testing.T) {
 	}
 }
 
-func TestGitAuthPassesTheTokenInTheEnvironment(t *testing.T) {
+func TestGitAuthPassesTheTokenOnlyToTheRemotesHost(t *testing.T) {
 	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
 	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
-	out, err := gitAuth(context.Background(), "tok", "config", "--get", "http.extraHeader")
-	if err != nil || strings.TrimSpace(out) != "Authorization: Basic eC1hY2Nlc3MtdG9rZW46dG9r" {
-		t.Fatalf("with a token: %q %v", out, err)
+	header := func(remote, token, target string) string {
+		t.Helper()
+		out, _ := gitAuth(context.Background(), remote, token, "config", "--get-urlmatch", "http.extraHeader", target)
+		return strings.TrimSpace(out)
 	}
-	if out, err := gitAuth(context.Background(), "", "config", "--get", "http.extraHeader"); err == nil {
-		t.Fatalf("without a token a header was set: %q", out)
+	const want = "Authorization: Basic eC1hY2Nlc3MtdG9rZW46dG9r"
+	if got := header("https://github.com", "tok", "https://github.com/o/r"); got != want {
+		t.Fatalf("the remote's host: %q", got)
+	}
+	if got := header("http://gitea.local/", "tok", "http://gitea.local/o/r"); got != want {
+		t.Fatalf("an http remote: %q", got)
+	}
+	for _, tc := range []struct{ remote, token, target string }{
+		{"https://github.com", "tok", "https://evil.example/o/r"},
+		{"https://github.com", "", "https://github.com/o/r"},
+		{"file:///tmp/x", "tok", "https://github.com/o/r"},
+		{"::bad", "tok", "https://github.com/o/r"},
+	} {
+		if got := header(tc.remote, tc.token, tc.target); got != "" {
+			t.Errorf("%+v: a header %q", tc, got)
+		}
 	}
 }
 
@@ -516,12 +531,12 @@ func TestPendingResult(t *testing.T) {
 	}
 	for _, r := range []string{resultError, resultPending} {
 		prev := &state{Version: "v", Head: "h", Base: "b", Checks: map[string]verdict{"a": {Result: resultPass}, "b": {Result: r}}}
-		if mode, _ := decideMode(prev, "v", "h", "b"); mode != modeFull {
+		if mode, _ := decideMode(prev, "v", "h", "b", ""); mode != modeFull {
 			t.Errorf("a previous %s was reused", r)
 		}
 	}
 	prev := &state{Version: "v", Head: "h", Base: "b", Checks: map[string]verdict{"a": {Result: resultFail}, "b": {Result: resultScan}}}
-	if mode, _ := decideMode(prev, "v", "h", "b"); mode != modeReuse {
+	if mode, _ := decideMode(prev, "v", "h", "b", ""); mode != modeReuse {
 		t.Error("scans held back by a failed check were decided again")
 	}
 }

@@ -12,6 +12,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -92,7 +93,6 @@ func runCommand(ctx context.Context, cfg config, args []string, stdout, stderr i
 	fs.StringVar(&o.repo, "repo", os.Getenv("GITHUB_REPOSITORY"), "owner/repo whose PRs to check")
 	fs.StringVar(&o.root, "root", ".", "main's tree")
 	fs.StringVar(&o.bin, "bin", "", "main's built tools and the scanners")
-	fs.StringVar(&o.states, "states", "", "directory of the PR states")
 	fs.StringVar(&o.work, "work", "", "work directory")
 	fs.StringVar(&o.apiBase, "api", "https://api.github.com", "GitHub API base URL")
 	fs.StringVar(&o.gitBase, "git", "https://github.com", "where the PRs' heads are fetched from")
@@ -101,6 +101,8 @@ func runCommand(ctx context.Context, cfg config, args []string, stdout, stderr i
 	fs.BoolVar(&o.forceScans, "force-scans", false, "run the scans even when a cheap check failed")
 	fs.IntVar(&o.budget, "budget", 20, "PRs fully checked per run, the longest waiting first; reused PRs do not count; 0 is no limit")
 	fs.DurationVar(&o.timeBudget, "time-budget", 0, "start no PR after this long; 0 is no limit")
+	fs.StringVar(&o.bot, "bot", defaultBot, "the account the pre-flight comments as; only its comment holds a PR's state")
+	next := fs.String("next", "", "write the PRs the budget deferred to this file, as a JSON list of --prs values of --budget PRs each, for next jobs")
 	prs := fs.String("prs", "", "PR numbers, space- or comma-separated; empty runs every open PR")
 	if err := fs.Parse(args); err != nil {
 		return 2
@@ -113,7 +115,7 @@ func runCommand(ctx context.Context, cfg config, args []string, stdout, stderr i
 		}
 		o.prs = append(o.prs, n)
 	}
-	for _, p := range []*string{&o.root, &o.bin, &o.states, &o.work} {
+	for _, p := range []*string{&o.root, &o.bin, &o.work} {
 		// The tools run in other directories, so every path they are given is absolute.
 		if *p != "" {
 			abs, err := filepath.Abs(*p)
@@ -125,14 +127,21 @@ func runCommand(ctx context.Context, cfg config, args []string, stdout, stderr i
 		}
 	}
 	switch {
-	case o.repo == "" || o.bin == "" || o.states == "" || o.work == "":
-		_, _ = fmt.Fprintln(stderr, "preflight run: --repo, --bin, --states and --work are required")
+	case o.repo == "" || o.bin == "" || o.work == "":
+		_, _ = fmt.Fprintln(stderr, "preflight run: --repo, --bin and --work are required")
 		return 2
 	case o.token == "":
 		_, _ = fmt.Fprintln(stderr, "preflight run: GITHUB_TOKEN or GH_TOKEN is required")
 		return 2
 	}
-	if err := runBatch(ctx, cfg, o, stdout); err != nil {
+	deferred, err := runBatch(ctx, cfg, o, stdout)
+	if *next != "" {
+		// Written also when some PR could not run, so the deferred ones still get their job.
+		if werr := writeJSON(*next, append([]string{}, chunks(deferred, o.budget)...)); werr != nil {
+			err = errors.Join(err, werr)
+		}
+	}
+	if err != nil {
 		_, _ = fmt.Fprintln(stderr, "preflight run:", err)
 		return 2
 	}

@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -42,121 +43,101 @@ func TestStatusAndMarkdown(t *testing.T) {
 	}
 }
 
-func TestRecordSetsStatusAndKeepsOneComment(t *testing.T) {
-	cfg, d, ev := testEvaluation()
-	var mu sync.Mutex
-	var statuses []map[string]string
-	comments := []map[string]any{{"id": 1, "body": "someone else"}}
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		mu.Lock()
-		defer mu.Unlock()
-		var body map[string]string
-		_ = json.NewDecoder(r.Body).Decode(&body)
-		switch {
-		case r.Method == http.MethodPost && r.URL.Path == "/repos/o/r/statuses/head1234567":
-			statuses = append(statuses, body)
-		case r.Method == http.MethodGet && r.URL.Path == "/repos/o/r/issues/7/comments":
-			_ = json.NewEncoder(w).Encode(comments)
-		case r.Method == http.MethodPost && r.URL.Path == "/repos/o/r/issues/7/comments":
-			comments = append(comments, map[string]any{"id": 2, "body": body["body"]})
-			_, _ = io.WriteString(w, `{"id":2}`)
-		case r.Method == http.MethodPatch && r.URL.Path == "/repos/o/r/issues/comments/2":
-			comments[1]["body"] = body["body"]
-		default:
-			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
-			http.NotFound(w, r)
+// recordServer is a GitHub that keeps one PR's comments and statuses for record.
+type recordServer struct {
+	mu          sync.Mutex
+	calls       []string
+	comments    map[int64]string
+	alerts      []string
+	statuses    []map[string]string
+	patchStatus int
+	next        int64
+}
+
+func (s *recordServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.calls = append(s.calls, r.Method+" "+r.URL.Path)
+	var body map[string]string
+	_ = json.NewDecoder(r.Body).Decode(&body)
+	switch {
+	case r.Method == http.MethodPost && strings.Contains(r.URL.Path, "/statuses/"):
+		s.statuses = append(s.statuses, body)
+	case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/comments") && !strings.HasPrefix(body["body"], commentMarker):
+		s.alerts = append(s.alerts, body["body"])
+		_, _ = io.WriteString(w, `{"id":99}`)
+	case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/comments"):
+		s.next++
+		s.comments[s.next] = body["body"]
+		_, _ = fmt.Fprintf(w, `{"id":%d}`, s.next)
+	case r.Method == http.MethodPatch:
+		if s.patchStatus != 0 {
+			http.Error(w, "no", s.patchStatus)
+			return
 		}
-	}))
-	defer server.Close()
-	dir := t.TempDir()
-	o := recordOptions{apiBase: server.URL, token: "tok", statePath: filepath.Join(dir, "state.json")}
-	for run := range 3 {
-		if run == 2 {
-			ev.Checks["template"] = verdict{Result: resultPass, Reason: "the template is filled in"}
-			ev.finish()
-		}
-		if err := record(context.Background(), cfg, d, ev, o, io.Discard); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if len(comments) != 2 || !strings.HasPrefix(comments[1]["body"].(string), commentMarker) || !strings.Contains(comments[1]["body"].(string), "✅ pass") {
-		t.Fatalf("want one pre-flight comment beside the other, updated to pass: %v", comments)
-	}
-	if len(statuses) != 3 || statuses[0]["state"] != "failure" || statuses[2]["state"] != "success" || statuses[2]["context"] != statusContext {
-		t.Fatalf("statuses %v", statuses)
-	}
-	raw, err := os.ReadFile(o.statePath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var st state
-	if err := json.Unmarshal(raw, &st); err != nil || st.Head != "head1234567" || st.Checks["template"].Result != resultPass {
-		t.Fatalf("state %s, err %v", raw, err)
+		var id int64
+		_, _ = fmt.Sscanf(r.URL.Path, "/repos/o/r/issues/comments/%d", &id)
+		s.comments[id] = body["body"]
+		_, _ = io.WriteString(w, `{}`)
+	default:
+		http.NotFound(w, r)
 	}
 }
 
 func TestRecordSendsOnlyChangesAndAlertsOnce(t *testing.T) {
 	cfg := config{Checks: []check{{Name: "template"}, {Name: "secrets", Alert: "revoke it"}}}
-	d := &data{Repo: "o/r", PR: 7}
+	d := &data{Repo: "o/r", PR: 7, Mode: modeFull}
 	d.Pull.User.Login = "dev"
 	ev := evaluation{Head: "h1", Checks: map[string]verdict{"secrets": {Result: resultFail, Reason: "1 finding(s): a:1 key"}, "template": {Result: resultPass}}}
 	ev.finish()
-	var mu sync.Mutex
-	var calls []string
-	var alerts []string
-	patchStatus := http.StatusOK
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		mu.Lock()
-		defer mu.Unlock()
-		calls = append(calls, r.Method+" "+r.URL.Path)
-		var body map[string]string
-		_ = json.NewDecoder(r.Body).Decode(&body)
-		switch {
-		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/comments") && !strings.HasPrefix(body["body"], commentMarker):
-			alerts = append(alerts, body["body"])
-			_, _ = io.WriteString(w, `{"id":99}`)
-		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/comments"):
-			_, _ = io.WriteString(w, `{"id":5}`)
-		case r.Method == http.MethodGet:
-			_, _ = io.WriteString(w, `[]`)
-		case r.Method == http.MethodPatch:
-			w.WriteHeader(patchStatus)
-			_, _ = io.WriteString(w, `{}`)
-		}
-	}))
+	g := &recordServer{comments: map[int64]string{}}
+	server := httptest.NewServer(g)
 	defer server.Close()
-	o := recordOptions{apiBase: server.URL, token: "t", statePath: filepath.Join(t.TempDir(), "s.json")}
+	o := recordOptions{apiBase: server.URL, token: "t"}
+	// step records ev and then reads the comment back as the next run would.
 	step := func() *state {
 		t.Helper()
-		calls = nil
+		g.calls = nil
 		if err := record(context.Background(), cfg, d, ev, o, io.Discard); err != nil {
 			t.Fatal(err)
 		}
-		st := readState(o.statePath)
-		d.Previous = st
-		return st
+		o.comment = prComment{ID: g.next, Body: g.comments[g.next], State: parseState(g.comments[g.next])}
+		d.Previous = o.comment.State
+		return d.Previous
 	}
 	st := step()
-	if len(alerts) != 1 || alerts[0] != "@dev revoke it\n\nsecrets on `h1`: 1 finding(s): a:1 key" || st.Comment != 5 || !slices.Equal(st.Alerted, []string{"secrets"}) {
-		t.Fatalf("first run: alerts %q, state %+v", alerts, st)
+	if len(g.alerts) != 1 || g.alerts[0] != "@dev revoke it\n\nsecrets on `h1`: 1 finding(s): a:1 key" || st == nil || !slices.Equal(st.Alerted, []string{"secrets"}) || len(g.statuses) != 1 {
+		t.Fatalf("first run: alerts %q, state %+v, statuses %v", g.alerts, st, g.statuses)
 	}
-	// Nothing changed: nothing is sent, and the alert is not repeated.
-	if st = step(); len(calls) != 0 || len(alerts) != 1 || st.Comment != 5 {
-		t.Fatalf("an unchanged run sent %v", calls)
+	if !strings.HasPrefix(g.comments[1], commentMarker) || !strings.Contains(g.comments[1], "❌ fail") {
+		t.Fatalf("comment %q", g.comments[1])
 	}
-	// A changed verdict updates the comment by its stored id, without listing the comments.
+	// A reused run with nothing changed sends nothing, keeps the time it was checked, and does not alert again.
+	d.Mode = modeReuse
+	checked := st.Checked
+	if st = step(); len(g.calls) != 0 || len(g.alerts) != 1 || !st.Checked.Equal(checked) {
+		t.Fatalf("an unchanged run sent %v", g.calls)
+	}
+	// A changed verdict updates the comment by its id and sets the status; a decided run is checked anew.
+	d.Mode = modeFull
 	ev.Checks["template"] = verdict{Result: resultFail, Reason: "x"}
 	ev.finish()
-	if step(); !slices.Equal(calls, []string{"POST /repos/o/r/statuses/h1", "PATCH /repos/o/r/issues/comments/5"}) {
-		t.Fatalf("calls %v", calls)
+	if st = step(); !slices.Equal(g.calls, []string{"POST /repos/o/r/statuses/h1", "PATCH /repos/o/r/issues/comments/1"}) || !st.Checked.After(checked) {
+		t.Fatalf("calls %v, checked %v after %v", g.calls, st.Checked, checked)
 	}
-	// A deleted comment is found again or posted anew.
-	patchStatus = http.StatusNotFound
+	// A full run that only moved main writes the new state but sets no status: the status did not change.
+	ev.Base = "b2"
+	if step(); !slices.Equal(g.calls, []string{"PATCH /repos/o/r/issues/comments/1"}) {
+		t.Fatalf("calls %v", g.calls)
+	}
+	// A deleted comment is posted anew.
+	g.patchStatus = http.StatusNotFound
 	ev.Checks["template"] = verdict{Result: resultPass}
 	ev.finish()
-	if st = step(); st.Comment != 5 || !slices.Contains(calls, "GET /repos/o/r/issues/7/comments") {
-		t.Fatalf("calls %v, state %+v", calls, st)
+	if step(); !slices.Equal(g.calls, []string{"POST /repos/o/r/statuses/h1", "PATCH /repos/o/r/issues/comments/1", "POST /repos/o/r/issues/7/comments"}) || o.comment.ID != 2 {
+		t.Fatalf("calls %v", g.calls)
 	}
+	g.patchStatus = 0
 	// Passing clears the alert; failing again alerts again.
 	ev.Checks["secrets"] = verdict{Result: resultPass}
 	ev.finish()
@@ -165,11 +146,18 @@ func TestRecordSendsOnlyChangesAndAlertsOnce(t *testing.T) {
 	}
 	ev.Checks["secrets"] = verdict{Result: resultFail, Reason: "again"}
 	ev.finish()
-	if step(); len(alerts) != 2 {
-		t.Fatalf("alerts %q", alerts)
+	if step(); len(g.alerts) != 2 {
+		t.Fatalf("alerts %q", g.alerts)
 	}
+	// A new head sets the status even when it reads the same.
+	ev.Head = "h2"
+	g.calls = nil
+	if err := record(context.Background(), cfg, d, ev, o, io.Discard); err != nil || !slices.Contains(g.calls, "POST /repos/o/r/statuses/h2") {
+		t.Fatalf("calls %v, err %v", g.calls, err)
+	}
+	ev.Head = "h1"
 	// A refused PATCH is an error, not a new comment.
-	patchStatus = http.StatusForbidden
+	g.patchStatus = http.StatusForbidden
 	ev.Checks["template"] = verdict{Result: resultFail, Reason: "y"}
 	ev.finish()
 	if err := record(context.Background(), cfg, d, ev, o, io.Discard); err == nil || !strings.Contains(err.Error(), "403") {
@@ -179,27 +167,95 @@ func TestRecordSendsOnlyChangesAndAlertsOnce(t *testing.T) {
 
 func TestRecordDryRunSaysWhatItWouldSend(t *testing.T) {
 	cfg := config{Checks: []check{{Name: "secrets", Alert: "revoke it"}}}
-	d := &data{Repo: "o/r", PR: 7}
+	d := &data{Repo: "o/r", PR: 7, Mode: modeFull}
 	ev := evaluation{Head: "h1", Checks: map[string]verdict{"secrets": {Result: resultFail, Reason: "r"}}}
 	ev.finish()
-	o := recordOptions{statePath: filepath.Join(t.TempDir(), "s.json"), dryRun: true}
 	var log strings.Builder
-	if err := record(context.Background(), cfg, d, ev, o, &log); err != nil {
+	if err := record(context.Background(), cfg, d, ev, recordOptions{dryRun: true}, &log); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(log.String(), "record (dry run): status failure") || !strings.Contains(log.String(), "record (dry run): alert\n@ revoke it") {
-		t.Fatalf("log %s", log.String())
+	for _, want := range []string{"record (dry run): status failure", "record (dry run): comment\n" + commentMarker, "record (dry run): alert\n@ revoke it"} {
+		if !strings.Contains(log.String(), want) {
+			t.Fatalf("log lacks %q:\n%s", want, log.String())
+		}
 	}
-	d.Previous = readState(o.statePath)
+	// What the same run would leave is unchanged for the next one.
+	st := state{Head: "h1", Checks: ev.Checks, Body: bodyHash(""), Alerted: []string{"secrets"}}
+	st.Status = "failure 1 failed: secrets"
+	d.Previous, d.Mode = &st, modeReuse
+	body := withState(markdown(cfg, d, ev), st)
 	log.Reset()
-	if err := record(context.Background(), cfg, d, ev, o, &log); err != nil {
+	if err := record(context.Background(), cfg, d, ev, recordOptions{dryRun: true, comment: prComment{ID: 1, Body: body}}, &log); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(log.String(), "unchanged, nothing to send") || strings.Contains(log.String(), "alert") {
+	if !strings.Contains(log.String(), "nothing changed, nothing to send") || strings.Contains(log.String(), "alert") {
 		t.Fatalf("log %s", log.String())
 	}
-	o.statePath = filepath.Join(t.TempDir(), "missing", "s.json")
-	if err := record(context.Background(), cfg, d, ev, o, io.Discard); err == nil {
-		t.Fatal("an unwritable state was not reported")
+	// Only the comment differs: it is sent, and the run does not say nothing changed.
+	log.Reset()
+	if err := record(context.Background(), cfg, d, ev, recordOptions{dryRun: true, comment: prComment{ID: 1, Body: body + "x"}}, &log); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(log.String(), "record (dry run): comment") || strings.Contains(log.String(), "status") || strings.Contains(log.String(), "nothing changed") {
+		t.Fatalf("log %s", log.String())
+	}
+}
+
+func TestStateInTheComment(t *testing.T) {
+	st := state{Version: "v", Head: "h", Checks: map[string]verdict{"a": {Result: resultFail, Reason: "a --> b -- c --- d"}}, Alerted: []string{"a"}}
+	body := withState(commentMarker+"\nreport", st)
+	if _, state, _ := strings.Cut(body, stateOpen); strings.Count(state, "-->") != 1 || !strings.HasSuffix(state, "\n-->\n") {
+		t.Fatalf("the state ends the HTML comment early:\n%s", body)
+	}
+	got := parseState(body)
+	if got == nil || got.Checks["a"].Reason != "a --> b -- c --- d" || got.Head != "h" {
+		t.Fatalf("state %+v", got)
+	}
+	for _, broken := range []string{"no state", commentMarker + stateOpen + "{", commentMarker + stateOpen + "{not json" + stateClose} {
+		if parseState(broken) != nil {
+			t.Errorf("%q gave a state", broken)
+		}
+	}
+}
+
+func TestLoadCommentTrustsOnlyTheBot(t *testing.T) {
+	g := newFakeGitHub(nil)
+	forged := fakeComment{ID: 1, Body: withState(commentMarker+"\n", state{Head: "forged"})}
+	forged.User.Login = "author"
+	plain := fakeComment{ID: 2, Body: "thanks"}
+	plain.User.Login = defaultBot
+	g.comments[5] = []fakeComment{forged, plain}
+	withComment(g, 5, state{Head: "real"})
+	server := httptest.NewServer(g)
+	defer server.Close()
+	c, err := loadComment(context.Background(), newAPI(server.URL, "t"), "o/r", 5, defaultBot)
+	if err != nil || c.State == nil || c.State.Head != "real" {
+		t.Fatalf("comment %+v, err %v", c, err)
+	}
+	if c, err := loadComment(context.Background(), newAPI(server.URL, "t"), "o/r", 6, defaultBot); err != nil || c.ID != 0 || c.State != nil {
+		t.Fatalf("a PR without a comment: %+v %v", c, err)
+	}
+	g.broken[-5] = true
+	if _, err := loadComment(context.Background(), newAPI(server.URL, "t"), "o/r", 5, defaultBot); err == nil {
+		t.Fatal("a failed read was not reported")
+	}
+}
+
+func TestAppendFileKeepsEveryReport(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "summary")
+	var wg sync.WaitGroup
+	for i := range 50 {
+		wg.Go(func() {
+			if err := appendFile(path, strings.Repeat(string(rune('a'+i%26)), 100)+"\n"); err != nil {
+				t.Error(err)
+			}
+		})
+	}
+	wg.Wait()
+	if raw, _ := os.ReadFile(path); strings.Count(string(raw), "\n") != 50 || len(raw) != 50*101 {
+		t.Fatalf("%d bytes, %d reports", len(raw), strings.Count(string(raw), "\n"))
+	}
+	if err := appendFile(filepath.Join(path, "x"), "y"); err == nil {
+		t.Fatal("an unwritable summary was not reported")
 	}
 }

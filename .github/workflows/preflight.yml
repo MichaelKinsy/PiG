@@ -1,12 +1,16 @@
 # SPDX-License-Identifier: MIT
 name: Pre-flight
 
-# The cheap checks every open PR must pass before heavy CI: once an hour, one runner, every open PR, a few at a time
-# (`preflight run`; what it checks is declared in automation/ci/preflight/config.yaml). It always runs main's code and configuration, never a PR's: schedule and dispatch
-# check out the default branch. Each PR gets a "preflight" commit status and one comment the next run updates. A PR
-# whose head and base did not change since its last run costs one API call; its state is kept in the cache. A run
-# fully checks at most 20 PRs, the longest waiting first, and starts none after 25 of its 30 minutes; the rest wait
-# for the next run.
+# The cheap checks every open PR must pass before heavy CI: once an hour, every open PR, a few at a time (`preflight
+# run`; what it checks is declared in automation/ci/preflight/config.yaml). It always runs main's code and
+# configuration, never a PR's: schedule and dispatch check out the default branch. Each PR gets a "preflight" commit
+# status and one comment, which also holds the PR's state for the next run; a PR whose head, main and description did
+# not change since its last run costs two API calls and is not written. The first job fully checks at most 20 PRs,
+# the longest waiting first; the PRs beyond go to next jobs, 20 each.
+#
+# tree-pr: a report, not a check. It applies the forbidden.yaml and mandatory.yaml of that PR's head to every file of
+# its tree, for a PR that makes a rule stricter: the PR itself is judged on its diff only, so what the stricter rule
+# finds in existing files does not block it, and its author can paste this report into it.
 on:
   schedule:
     - cron: '17 * * * *'
@@ -22,10 +26,15 @@ on:
         required: false
         default: false
         type: boolean
+      tree-pr:
+        description: Only report what this PR's content rules find in its whole tree
+        required: false
+        default: ''
+        type: string
 
 permissions: {}
 
-# One run at a time, so two runs never write the same PR's comment or state; a run waits for the one before it.
+# One run at a time, so two runs never write the same PR's comment; a run waits for the one before it.
 concurrency:
   group: preflight
   cancel-in-progress: false
@@ -33,12 +42,15 @@ concurrency:
 jobs:
   preflight:
     name: Pre-flight
+    if: ${{ inputs.tree-pr == '' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
       contents: read
       statuses: write
       pull-requests: write
+    outputs:
+      next: ${{ steps.run.outputs.next }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -53,30 +65,114 @@ jobs:
           set -euo pipefail
           go build -o "$RUNNER_TEMP/preflight/preflight" ./automation/ci/preflight
           "$RUNNER_TEMP/preflight/preflight" install --bin "$RUNNER_TEMP/preflight/bin"
-      - name: Restore the PR states
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ${{ runner.temp }}/preflight/states
-          key: preflight-states-${{ github.run_id }}
-          restore-keys: |
-            preflight-states-
       - name: Run the pre-flight over the PRs
+        id: run
         shell: bash
         env:
           GITHUB_TOKEN: ${{ github.token }}
           PRS: ${{ inputs.prs }}
           DRY_RUN: ${{ inputs.dry-run }}
         run: |
+          set -uo pipefail
+          extra=()
+          if [ "${DRY_RUN:-}" = true ]; then extra+=(--dry-run); fi
+          "$RUNNER_TEMP/preflight/preflight" run --repo "$GITHUB_REPOSITORY" --root "$GITHUB_WORKSPACE" \
+            --bin "$RUNNER_TEMP/preflight/bin" --work "$RUNNER_TEMP/preflight/work" \
+            --prs "${PRS:-}" --budget 20 --time-budget 25m --next "$RUNNER_TEMP/preflight/next.json" "${extra[@]}"
+          status=$?
+          # The deferred PRs get their jobs also when some PR could not run.
+          if [ -s "$RUNNER_TEMP/preflight/next.json" ]; then
+            echo "next=$(tr -d '\n ' < "$RUNNER_TEMP/preflight/next.json")" >> "$GITHUB_OUTPUT"
+          fi
+          exit "$status"
+
+  # The PRs the first job's budget left: 20 per job, at the same time.
+  more:
+    name: Pre-flight (PRs ${{ matrix.prs }})
+    needs: preflight
+    if: ${{ !cancelled() && needs.preflight.outputs.next != '' && needs.preflight.outputs.next != '[]' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      statuses: write
+      pull-requests: write
+    strategy:
+      fail-fast: false
+      matrix:
+        prs: ${{ fromJSON(needs.preflight.outputs.next) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - name: Build the pre-flight and install its scanners
+        shell: bash
+        run: |
+          set -euo pipefail
+          go build -o "$RUNNER_TEMP/preflight/preflight" ./automation/ci/preflight
+          "$RUNNER_TEMP/preflight/preflight" install --bin "$RUNNER_TEMP/preflight/bin"
+      - name: Run the pre-flight over these PRs
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PRS: ${{ matrix.prs }}
+          DRY_RUN: ${{ inputs.dry-run }}
+        run: |
           set -euo pipefail
           extra=()
           if [ "${DRY_RUN:-}" = true ]; then extra+=(--dry-run); fi
           "$RUNNER_TEMP/preflight/preflight" run --repo "$GITHUB_REPOSITORY" --root "$GITHUB_WORKSPACE" \
-            --bin "$RUNNER_TEMP/preflight/bin" --states "$RUNNER_TEMP/preflight/states" --work "$RUNNER_TEMP/preflight/work" \
-            --prs "${PRS:-}" --budget 20 --time-budget 25m "${extra[@]}"
-      # Always, also after a failure or a timeout: the states of the PRs that were recorded must not be lost.
-      - name: Save the PR states
-        if: ${{ always() }}
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+            --bin "$RUNNER_TEMP/preflight/bin" --work "$RUNNER_TEMP/preflight/work" \
+            --prs "$PRS" --time-budget 25m "${extra[@]}"
+
+  tree:
+    name: Content rules of PR ${{ inputs.tree-pr }} over its whole tree
+    if: ${{ inputs.tree-pr != '' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    # Read only: the PR's tree is only read by main's program, never run.
+    permissions:
+      contents: read
+    steps:
+      - name: Check the PR number
+        shell: bash
+        env:
+          PR: ${{ inputs.tree-pr }}
+        run: |
+          [[ "$PR" =~ ^[1-9][0-9]*$ ]] || { echo "::error::tree-pr must be a PR number, got '$PR'"; exit 2; }
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          path: ${{ runner.temp }}/preflight/states
-          key: preflight-states-${{ github.run_id }}
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: refs/pull/${{ inputs.tree-pr }}/head
+          path: pr-head
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - name: Report what the PR's rules find in its tree
+        shell: bash
+        env:
+          PR: ${{ inputs.tree-pr }}
+        run: |
+          set -uo pipefail
+          go build -o "$RUNNER_TEMP/preflight" ./automation/ci/preflight
+          "$RUNNER_TEMP/preflight" content --tree --head pr-head --rules pr-head/automation/ci/preflight \
+            --out "$RUNNER_TEMP/tree.json" > "$RUNNER_TEMP/tree.txt"
+          status=$?
+          cat "$RUNNER_TEMP/tree.txt"
+          {
+            echo "### Content rules of PR #$PR over its whole tree"
+            echo
+            echo '```'
+            cat "$RUNNER_TEMP/tree.txt"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          # Findings are the report, not a failure; an error is.
+          [ "$status" -le 1 ]

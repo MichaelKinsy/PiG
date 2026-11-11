@@ -39,22 +39,24 @@ func TestParseDependsOn(t *testing.T) {
 }
 
 func TestDecideMode(t *testing.T) {
-	prev := &state{Version: "v", Head: "h1", Base: "b1"}
+	prev := &state{Version: "v", Head: "h1", Base: "b1", Body: "x"}
 	for _, tc := range []struct {
-		name       string
-		prev       *state
-		version    string
-		head, base string
-		mode       string
+		name             string
+		prev             *state
+		version          string
+		head, base, body string
+		mode             string
 	}{
-		{"no state", nil, "v", "h1", "b1", modeFull},
-		{"engine changed", prev, "w", "h1", "b1", modeFull},
-		{"same head and base", prev, "v", "h1", "b1", modeReuse},
-		{"main moved", prev, "v", "h1", "b2", modeFull},
-		{"new head", prev, "v", "h2", "b1", modeFull},
+		{"no state", nil, "v", "h1", "b1", "x", modeFull},
+		{"engine changed", prev, "w", "h1", "b1", "x", modeFull},
+		{"same head, base and description", prev, "v", "h1", "b1", "x", modeReuse},
+		{"main moved", prev, "v", "h1", "b2", "x", modeFull},
+		{"main unknown", &state{Version: "v", Head: "h1", Body: "x"}, "v", "h1", "", "x", modeFull},
+		{"new head", prev, "v", "h2", "b1", "x", modeFull},
+		{"description edited", prev, "v", "h1", "b1", "y", modeFull},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if mode, reason := decideMode(tc.prev, tc.version, tc.head, tc.base); mode != tc.mode || reason == "" {
+			if mode, reason := decideMode(tc.prev, tc.version, tc.head, tc.base, tc.body); mode != tc.mode || reason == "" {
 				t.Fatalf("mode %q reason %q, want %q", mode, reason, tc.mode)
 			}
 		})
@@ -262,8 +264,8 @@ func TestFetchWaveTwo(t *testing.T) {
 		t.Fatalf("relevant %v", d.Relevant)
 	}
 
-	// The same head and base reuse the previous run with one call.
-	prev.Head = "new"
+	// The same head, base and description reuse the previous run with one call.
+	prev.Head, prev.Body = "new", bodyHash("")
 	calls := 0
 	counted := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls++

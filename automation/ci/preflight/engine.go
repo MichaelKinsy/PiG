@@ -5,13 +5,12 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
-	"os"
 	"path/filepath"
 	"slices"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -26,63 +25,60 @@ type runOptions struct {
 	// root is main's tree: the code and configuration that judge the PRs.
 	root string
 	// bin holds main's built tools and the installed scanners.
-	bin string
-	// states holds one state file per PR, read as the previous run and written for the next.
-	states string
-	work   string
-	prs    []int
-	jobs   int
+	bin  string
+	work string
+	prs  []int
+	jobs int
+	// bot is the account the pre-flight comments as; only its comment holds a state.
+	bot string
 	// dryRun sets no status and posts no comment.
 	dryRun bool
 	// forceScans runs the scans even when a cheap check failed.
 	forceScans bool
-	// budget is how many PRs a run fully checks; a PR it reuses does not count. Zero is no limit.
+	// budget is how many PRs a run fully checks; a PR it reuses does not count. Zero is no limit; PRs named in prs
+	// are all run.
 	budget int
 	// timeBudget is how long a run starts PRs; the ones running then finish. Zero is no limit.
 	timeBudget time.Duration
 }
 
-// longestWaiting orders PRs by when they were last checked, never checked first, then by number.
-func longestWaiting(prs []int, states string) []int {
-	checked := map[int]time.Time{}
-	for _, pr := range prs {
-		if st := readState(filepath.Join(states, strconv.Itoa(pr)+".json")); st != nil {
-			checked[pr] = st.Checked
-		}
-	}
-	slices.SortStableFunc(prs, func(a, b int) int {
-		if c := checked[a].Compare(checked[b]); c != 0 {
-			return c
-		}
-		return a - b
-	})
-	return prs
+// pending is one PR of a run with its comment as loaded.
+type pending struct {
+	pr      int
+	comment prComment
+	err     error
 }
 
-func readState(path string) *state {
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		return nil
+// longestWaiting orders the PRs by when they were last decided, never decided first, then by number.
+func longestWaiting(prs []pending) {
+	checked := func(p pending) time.Time {
+		if p.comment.State == nil {
+			return time.Time{}
+		}
+		return p.comment.State.Checked
 	}
-	var s state
-	if json.Unmarshal(raw, &s) != nil {
-		return nil
-	}
-	return &s
+	slices.SortStableFunc(prs, func(a, b pending) int {
+		if c := checked(a).Compare(checked(b)); c != 0 {
+			return c
+		}
+		return a.pr - b.pr
+	})
 }
 
 // runPR runs the whole pre-flight for one PR and returns its result. An error means the pre-flight itself could not
 // run for it.
-func runPR(ctx context.Context, cfg config, env *ruleEnv, o runOptions, version string, pr int, admit func() bool, log io.Writer) (string, error) {
-	statePath := filepath.Join(o.states, strconv.Itoa(pr)+".json")
-	d, err := fetch(ctx, cfg, fetchOptions{apiBase: o.apiBase, token: o.token, repo: o.repo, pr: pr, version: version, previous: readState(statePath), admit: admit}, log)
+func runPR(ctx context.Context, cfg config, env *ruleEnv, o runOptions, version string, p pending, admit func() bool, t *tips, log io.Writer) (string, error) {
+	if p.err != nil {
+		return resultError, fmt.Errorf("its pre-flight comment could not be read: %w", p.err)
+	}
+	d, err := fetch(ctx, cfg, fetchOptions{apiBase: o.apiBase, token: o.token, repo: o.repo, pr: p.pr, version: version, previous: p.comment.State, admit: admit, tips: t}, log)
 	if err != nil {
 		return resultError, err
 	}
 	if d.Mode == modeDeferred {
 		return resultDeferred, nil
 	}
-	ws := workspace{dir: filepath.Join(o.work, strconv.Itoa(pr)), main: o.root, bin: o.bin, remote: o.gitBase, token: o.token}
+	ws := workspace{dir: filepath.Join(o.work, strconv.Itoa(p.pr)), main: o.root, bin: o.bin, remote: o.gitBase, token: o.token}
 	if d.Pull.Mergeable == nil && d.Mode != modeReuse {
 		if m, err := mergeTree(ctx, ws, d); err != nil {
 			logf(log, "mergeable: git merge-tree could not tell: %v", err)
@@ -107,43 +103,71 @@ func runPR(ctx context.Context, cfg config, env *ruleEnv, o runOptions, version 
 		}
 	}
 	report(log, cfg, ev)
-	if err := record(ctx, cfg, d, ev, recordOptions{apiBase: o.apiBase, token: o.token, statePath: statePath, dryRun: o.dryRun}, log); err != nil {
+	if err := record(ctx, cfg, d, ev, recordOptions{apiBase: o.apiBase, token: o.token, dryRun: o.dryRun, comment: p.comment}, log); err != nil {
 		return resultError, err
 	}
 	return ev.Result, nil
 }
 
+// each runs fn over 0..n-1, jobs at a time.
+func each(n, jobs int, fn func(i int)) {
+	next := make(chan int)
+	var wg sync.WaitGroup
+	for range max(jobs, 1) {
+		wg.Go(func() {
+			for i := range next {
+				fn(i)
+			}
+		})
+	}
+	for i := range n {
+		next <- i
+	}
+	close(next)
+	wg.Wait()
+}
+
 // runBatch runs the pre-flight over every PR of the run, o.jobs at a time, each PR's log printed as one group when it
-// is done. It returns an error only when the pre-flight could not run for some PR; failing PRs are its normal output.
-func runBatch(ctx context.Context, cfg config, o runOptions, out io.Writer) error {
+// is done. It returns the PRs the budget deferred, for a next job, and an error only when the pre-flight could not run
+// for some PR; failing PRs are its normal output.
+func runBatch(ctx context.Context, cfg config, o runOptions, out io.Writer) ([]int, error) {
 	version, err := bindMain(&cfg, o.root)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	if err := os.MkdirAll(o.states, 0o755); err != nil {
-		return err
-	}
-	prs := o.prs
-	if len(prs) == 0 {
+	a := newAPI(o.apiBase, o.token)
+	numbers := o.prs
+	if len(numbers) == 0 {
 		var open []struct {
 			Number int `json:"number"`
 		}
-		a := newAPI(o.apiBase, o.token)
 		if err := a.get(ctx, fmt.Sprintf("repos/%s/pulls?state=open&per_page=%d", o.repo, perPage), &open, true); err != nil {
-			return err
+			return nil, err
 		}
 		for _, p := range open {
-			prs = append(prs, p.Number)
+			numbers = append(numbers, p.Number)
 		}
-		prs = longestWaiting(prs, o.states)
+	}
+	// Every PR's comment is loaded first: it holds the state, and the state says which PR waited longest.
+	prs := make([]pending, len(numbers))
+	each(len(numbers), o.jobs, func(i int) {
+		prs[i].pr = numbers[i]
+		prs[i].comment, prs[i].err = loadComment(ctx, a, o.repo, numbers[i], o.bot)
+	})
+	budget := o.budget
+	if len(o.prs) > 0 {
+		budget = 0
+	} else {
+		longestWaiting(prs)
 	}
 	logf(out, "pre-flight %s over %d PR(s) of %s, %d at a time", short(version), len(prs), o.repo, o.jobs)
 	deadline := time.Now().Add(o.timeBudget)
 	var admitted atomic.Int32
 	admit := func() bool {
-		return o.budget <= 0 || int(admitted.Add(1)) <= o.budget
+		return budget <= 0 || int(admitted.Add(1)) <= budget
 	}
 	env := &ruleEnv{root: o.root}
+	t := newTips(a)
 	type done struct {
 		pr     int
 		result string
@@ -152,29 +176,18 @@ func runBatch(ctx context.Context, cfg config, o runOptions, out io.Writer) erro
 		took   time.Duration
 	}
 	results := make([]*done, len(prs))
-	next := make(chan int)
-	var wg sync.WaitGroup
-	for range max(o.jobs, 1) {
-		wg.Go(func() {
-			for i := range next {
-				r := &done{pr: prs[i]}
-				start := time.Now()
-				if o.timeBudget > 0 && !start.Before(deadline) {
-					r.result = resultDeferred
-					logf(&r.log, "the run's time budget of %s is spent; the next run takes it", o.timeBudget)
-				} else {
-					r.result, r.err = runPR(ctx, cfg, env, o, version, r.pr, admit, &r.log)
-				}
-				r.took = time.Since(start)
-				results[i] = r
-			}
-		})
-	}
-	for i := range prs {
-		next <- i
-	}
-	close(next)
-	wg.Wait()
+	each(len(prs), o.jobs, func(i int) {
+		r := &done{pr: prs[i].pr}
+		start := time.Now()
+		if o.timeBudget > 0 && !start.Before(deadline) {
+			r.result = resultDeferred
+			logf(&r.log, "the run's time budget of %s is spent", o.timeBudget)
+		} else {
+			r.result, r.err = runPR(ctx, cfg, env, o, version, prs[i], admit, t, &r.log)
+		}
+		r.took = time.Since(start)
+		results[i] = r
+	})
 	failedToRun := 0
 	for _, r := range results {
 		logf(out, "::group::PR #%d: %s (%s)", r.pr, r.result, r.took.Round(time.Millisecond))
@@ -185,18 +198,34 @@ func runBatch(ctx context.Context, cfg config, o runOptions, out io.Writer) erro
 		}
 		logf(out, "::endgroup::")
 	}
-	deferred := 0
+	var deferred []int
 	for _, r := range results {
 		logf(out, "PR #%d: %s", r.pr, r.result)
 		if r.result == resultDeferred {
-			deferred++
+			deferred = append(deferred, r.pr)
 		}
 	}
-	if deferred > 0 {
-		logf(out, "::notice title=pre-flight::%d PR(s) deferred to the next run by the budget", deferred)
+	if len(deferred) > 0 {
+		logf(out, "%d PR(s) deferred by the budget, for a next job: %v", len(deferred), deferred)
 	}
 	if failedToRun > 0 {
-		return fmt.Errorf("the pre-flight could not run for %d PR(s)", failedToRun)
+		return deferred, fmt.Errorf("the pre-flight could not run for %d PR(s)", failedToRun)
 	}
-	return nil
+	return deferred, nil
+}
+
+// chunks splits PRs into groups of size, each as the space-separated list `preflight run --prs` takes.
+func chunks(prs []int, size int) []string {
+	var out []string
+	for c := range slices.Chunk(prs, max(size, 1)) {
+		var b strings.Builder
+		for i, n := range c {
+			if i > 0 {
+				b.WriteByte(' ')
+			}
+			b.WriteString(strconv.Itoa(n))
+		}
+		out = append(out, b.String())
+	}
+	return out
 }

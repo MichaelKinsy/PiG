@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -161,7 +162,7 @@ func prepareWorkspace(ctx context.Context, d *data, scans []check, ws workspace,
 		steps = [][]string{steps[0], {"-C", ws.head, "fetch", "-q", "--depth=1", remote, ref}, steps[3]}
 	}
 	for _, args := range steps {
-		if out, err := gitAuth(ctx, ws.token, args...); err != nil {
+		if out, err := gitAuth(ctx, ws.remote, ws.token, args...); err != nil {
 			return fmt.Errorf("git %s: %w\n%s", strings.Join(args, " "), err, out)
 		}
 	}
@@ -237,7 +238,7 @@ func mergeTree(ctx context.Context, ws workspace, d *data) (bool, error) {
 		return false, err
 	}
 	for _, args := range steps {
-		if out, err := gitAuth(ctx, ws.token, args...); err != nil {
+		if out, err := gitAuth(ctx, ws.remote, ws.token, args...); err != nil {
 			return false, fmt.Errorf("git %s: %w\n%s", strings.Join(args, " "), err, out)
 		}
 	}
@@ -248,7 +249,7 @@ func mergeTree(ctx context.Context, ws workspace, d *data) (bool, error) {
 	if got = strings.TrimSpace(got); got != d.Pull.Head.SHA {
 		return false, fmt.Errorf("the PR's head is at %s, the evaluated head is %s", short(got), short(d.Pull.Head.SHA))
 	}
-	out, err := gitAuth(ctx, ws.token, "-C", dir, "merge-tree", "--write-tree", "--quiet", "refs/preflight/base", "refs/preflight/head")
+	out, err := gitAuth(ctx, ws.remote, ws.token, "-C", dir, "merge-tree", "--write-tree", "--quiet", "refs/preflight/base", "refs/preflight/head")
 	var exitErr *exec.ExitError
 	switch {
 	case err == nil:
@@ -260,14 +261,16 @@ func mergeTree(ctx context.Context, ws workspace, d *data) (bool, error) {
 	}
 }
 
-// gitAuth runs git with the token as an HTTP authorization header, passed in the environment (GIT_CONFIG_*), so it
-// never shows on a command line or in an error.
-func gitAuth(ctx context.Context, token string, args ...string) (string, error) {
+// gitAuth runs git with the token as an HTTP authorization header for remote's host only, passed in the environment
+// (GIT_CONFIG_*), so it never shows on a command line or in an error and is never offered to another host. A remote
+// that is not http(s) gets no header.
+func gitAuth(ctx context.Context, remote, token string, args ...string) (string, error) {
 	//nolint:gosec // G204: as git above.
 	cmd := exec.CommandContext(ctx, "git", args...)
-	if token != "" {
+	if u, err := url.Parse(remote); err == nil && token != "" && (u.Scheme == "https" || u.Scheme == "http") && u.Host != "" {
 		basic := base64.StdEncoding.EncodeToString([]byte("x-access-token:" + token))
-		cmd.Env = append(os.Environ(), "GIT_CONFIG_COUNT=1", "GIT_CONFIG_KEY_0=http.extraHeader", "GIT_CONFIG_VALUE_0=Authorization: Basic "+basic)
+		key := "http." + u.Scheme + "://" + u.Host + "/.extraHeader"
+		cmd.Env = append(os.Environ(), "GIT_CONFIG_COUNT=1", "GIT_CONFIG_KEY_0="+key, "GIT_CONFIG_VALUE_0=Authorization: Basic "+basic)
 	}
 	out, err := cmd.CombinedOutput()
 	return string(out), err
