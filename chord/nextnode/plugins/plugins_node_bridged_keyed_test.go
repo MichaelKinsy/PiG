@@ -311,6 +311,8 @@ func TestBridgedAKeyedMemberIsReadAgainWhenTheNextSlotEndsAfterTheResync(t *test
 	reloaded := make(chan struct{})
 	hook := func() {
 		reload(kcDocs)
+		// The end of the slot is told to the mirror, which starts the next resync (it must not be taken for the one that runs).
+		time.Sleep(300 * time.Millisecond)
 		close(reloaded)
 	}
 	mirrorResyncedHook.Store(&hook)
