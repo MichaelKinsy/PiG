@@ -148,6 +148,8 @@ func TestTimerDrivenFramesReachTerminalWithoutInput(t *testing.T) {
 					time.Sleep(80 * time.Millisecond)
 					synctest.Wait()
 					m.drainMainLoopOnce()
+					// The tick's frame waits up to tui.StepFrameDelay for a frame drawn for something else (D619); the test draws it as that wait would.
+					m.tuiInst.Render()
 					frame := widthx.StripAnsi(term.take())
 					spinner := tui.DefaultSpinnerFrames[tick%len(tui.DefaultSpinnerFrames)] + " Working"
 					if !strings.Contains(frame, spinner) {
@@ -195,6 +197,8 @@ func TestSpinnerCadenceSurvivesDispatchJitter(t *testing.T) {
 					}
 					synctest.Wait()
 					m.drainMainLoopOnce()
+					// The tick's frame waits up to tui.StepFrameDelay for a frame drawn for something else (D619); the test draws it as that wait would.
+					m.tuiInst.Render()
 					want := tui.DefaultSpinnerFrames[tick%len(tui.DefaultSpinnerFrames)] + " Working"
 					if frame := widthx.StripAnsi(term.take()); !strings.Contains(frame, want) {
 						t.Fatalf("tick %d after dispatch jitter wrote %q, want %q", tick, frame, want)
@@ -228,6 +232,8 @@ func TestSpinnerReplacementKeepsItsFirstDeadline(t *testing.T) {
 		time.Sleep(60 * time.Millisecond)
 		synctest.Wait()
 		m.drainMainLoopOnce()
+		// The tick's frame waits up to tui.StepFrameDelay for a frame drawn for something else (D619); the test draws it as that wait would.
+		m.tuiInst.Render()
 		if frame := widthx.StripAnsi(term.take()); !strings.Contains(frame, "⠙ Working") {
 			t.Fatalf("old callback postponed the replacement's first frame: %q", frame)
 		}
