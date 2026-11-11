@@ -157,7 +157,6 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 	case agent.AgentSettledEvent:
 		// Move user bash output shown while the agent works into the chat when the run settles.
 		m.flushPendingBashBlocks()
-		m.tuiInst.RequestRender()
 		m.checkShutdownRequested()
 
 	case agent.TurnEndEvent:

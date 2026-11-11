@@ -137,6 +137,7 @@ type assertBlock struct {
 	RuntimeRatioMax       float64                 `toml:"runtime_ratio_max"`
 	BothReachReady        bool                    `toml:"both_reach_ready"`
 	PigNoStaleFrames      bool                    `toml:"pig_no_stale_frames"`
+	NoFramesAfterReply    bool                    `toml:"no_frames_after_reply"`
 	Runs                  int                     `toml:"runs"`
 	NormalizeReplace      []normalizeReplaceBlock `toml:"normalize_replace"`
 	Extensions            extensionAssertBlock    `toml:"extensions"`
@@ -233,6 +234,12 @@ type tmuxStepBlock struct {
 	WaitStableMilliseconds int `toml:"wait_stable_milliseconds"`
 
 	FrameWatch *frameWatchBlock `toml:"frame_watch"`
+	FinalFrame *finalFrameBlock `toml:"final_frame"`
+}
+
+type finalFrameBlock struct {
+	Text              string `toml:"text"`
+	QuietMilliseconds int    `toml:"quiet_milliseconds"`
 }
 
 type frameWatchBlock struct {
@@ -655,7 +662,7 @@ func hasBehaviorAssertion(sc *scenario) bool {
 	return a.ExitCode != nil || a.PigExitCode != nil || a.PiExitCode != nil ||
 		len(a.BothContain) > 0 || len(a.PigContains) > 0 || len(a.PiContains) > 0 ||
 		a.ChangelogHeadersComplete || len(a.BothMatchRegex) > 0 || a.OutputEqual || a.OutputNormalizedEqual ||
-		a.OutputLayoutEqual || a.EscapedOutputEqual || a.JSONOutputEqual || a.StderrEqual || a.ArtifactEqual || a.BothReachReady || a.PigNoStaleFrames ||
+		a.OutputLayoutEqual || a.EscapedOutputEqual || a.JSONOutputEqual || a.StderrEqual || a.ArtifactEqual || a.BothReachReady || a.PigNoStaleFrames || a.NoFramesAfterReply ||
 		len(a.Extensions.RegisteredTools) > 0 || len(a.Extensions.RegisteredCommands) > 0 ||
 		len(a.Extensions.RegisteredProviders) > 0 || len(a.Extensions.RegisteredShortcuts) > 0 ||
 		a.Extensions.NoDiagnostics || len(a.Extensions.PlacementStrategy) > 0 ||
