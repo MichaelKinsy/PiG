@@ -344,8 +344,11 @@ func TestDeliversTheMessagesSinceTheCursorWhenSomeoneAllowedMentionsPi(t *testin
 	r.discord.say("c1", message("before the bot"))
 	r.on("bot-a", r.discord.say("c1", message("<@"+botID+"> hi", by("u2", "Eve"))))
 	eq(t, "delivered by a stranger", r.sessions.count(), 0)
-	r.on("bot-a", r.discord.say("c1", message("<@"+botID+"> I am a bot", func(m *Message) { m.Author = Author{"u1", "Bot", true} })))
-	eq(t, "delivered by a bot", r.sessions.count(), 0)
+	// Another bot is a person to the link: not allowed to wake Pi here, its message is in the batch.
+	r.on("bot-a", r.discord.say("c1", message("<@"+botID+"> I am a bot", func(m *Message) { m.Author = Author{"b7", "Helper", true} })))
+	eq(t, "b7 may not wake Pi", r.sessions.count(), 0)
+	// The link's own bot (an earlier reply) is never in a batch.
+	r.discord.say("c1", message("my earlier answer", func(m *Message) { m.Author = Author{botID, "Pi", true} }))
 	byRole := r.discord.say("c1", message("<@"+botID+"> what do you think?", by("u3", "Bo"), roles("r1")))
 	r.on("bot-a", byRole)
 	eq(t, "delivered", r.sessions.count(), 1)
@@ -353,14 +356,92 @@ func TestDeliversTheMessagesSinceTheCursorWhenSomeoneAllowedMentionsPi(t *testin
 	eq(t, "requestId", input.RequestID, "discord:"+byRole.ID)
 	eq(t, "author", input.Author, NamedID{"u3", "Bo"})
 	eq(t, "text", lines(input), []string{
-		"[Discord #general (Guild): 3 messages since the last delivery]", "Ada: before the bot", "Eve: @Pi hi", "Bo: @Pi what do you think?",
+		"[Discord #general (Guild): 4 messages since the last delivery]", "Ada (<@u1>): before the bot", "Eve (<@u2>): @Pi hi",
+		"Helper (bot, <@b7>): @Pi I am a bot", "Bo (<@u3>): @Pi what do you think?",
 	})
 	eq(t, "cursor", ptrTo(r.state.Value().Bindings["c1"].Cursor), byRole.ID)
 	eq(t, "submission", r.state.Value().Pending[byRole.ID].SubmissionID, float64(1))
 	eq(t, "typed", r.discord.typed, []string{"c1"})
 	next := r.discord.say("c1", message("<@"+botID+"> and now?"))
 	r.on("bot-a", next)
-	eq(t, "next batch", lines(r.sessions.delivery(1))[1:], []string{"Ada: @Pi and now?"})
+	eq(t, "next batch", lines(r.sessions.delivery(1))[1:], []string{"Ada (<@u1>): @Pi and now?"})
+}
+
+// untilPosts waits for n posts: a refusal's notice is not awaited by the relay.
+func untilPosts(t *testing.T, d *fakeDiscord, n int) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for len(d.posts()) < n {
+		if time.Now().After(deadline) {
+			t.Fatalf("posts = %v, want %d", d.posts(), n)
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+}
+
+func fromBot(r *rig, channel, text string) Message {
+	return r.discord.say(channel, message("<@"+botID+"> "+text, func(m *Message) { m.Author = Author{"b7", "Helper", true} }))
+}
+
+func TestAnotherBotIsAPersonItWakesPiByTheLinksRulesTheLinksOwnBotNeverDoes(t *testing.T) {
+	r := setup(t, binding(func(b *Binding) { b.Cursor = sp("1"); b.Wake = Wake{Anyone: false, Users: []string{"b7"}, Roles: []string{}} }))
+	own := r.discord.say("c1", message("<@"+botID+"> talking to myself", func(m *Message) { m.Author = Author{botID, "Pi", true} }))
+	r.on("bot-a", own)
+	eq(t, "never its own message", r.sessions.count(), 0)
+	r.on("bot-a", fromBot(r, "c1", "build done"))
+	eq(t, "author", r.sessions.delivery(0).Author, NamedID{"b7", "Helper"})
+	eq(t, "text", lines(r.sessions.delivery(0))[1:], []string{"Helper (bot, <@b7>): @Pi build done"})
+}
+
+func TestLoopGuardAtMost3BotStartedTurnsInARowPerChannelOneNoticeAPersonsMessageResetsIt(t *testing.T) {
+	r := setup(t, binding(func(b *Binding) { b.Cursor = sp("1"); b.Wake = Wake{Anyone: true, Users: []string{}, Roles: []string{}} }))
+	for _, text := range []string{"one", "two", "three", "four", "five"} {
+		r.on("bot-a", fromBot(r, "c1", text))
+	}
+	eq(t, "delivered", r.sessions.count(), 3)
+	untilPosts(t, r.discord, 1)
+	time.Sleep(50 * time.Millisecond)
+	var texts []string
+	for _, each := range r.discord.posts() {
+		texts = append(texts, each.Text)
+	}
+	// One notice, at the first refused.
+	eq(t, "notices", texts, []string{"Not answering more bots here until a person writes (3 bot turns in a row)."})
+	// A thread is counted on its own.
+	r.discord.add(Channel{ID: "t9", Name: "Side", GuildID: "g1", GuildName: "Guild", Thread: &ThreadInfo{ParentID: "c1", CreatedAt: 7000, CreatedID: "0"}})
+	r.on("bot-a", fromBot(r, "t9", "in a thread"))
+	eq(t, "thread delivered", r.sessions.count(), 4)
+	// A person writes (no mention needed): bots may start turns again.
+	r.on("bot-a", r.discord.say("c1", message("ok, carry on")))
+	r.on("bot-a", fromBot(r, "c1", "six"))
+	eq(t, "delivered again", r.sessions.count(), 5)
+	eq(t, "text", lines(r.sessions.delivery(4))[len(lines(r.sessions.delivery(4)))-2:], []string{"Ada (<@u1>): ok, carry on", "Helper (bot, <@b7>): @Pi six"})
+}
+
+func TestInputsSteeredIntoOneTurnItsAnswerIsPostedOnceToTheNewestMentionWithTheWholeTurnsFiles(t *testing.T) {
+	r := setup(t, binding(func(b *Binding) { b.Cursor = sp("1") }))
+	first := r.discord.say("c1", message("<@"+botID+"> start"))
+	r.on("bot-a", first)
+	second := r.discord.say("c1", message("<@"+botID+"> also this"))
+	r.on("bot-a", second)
+	r.sessions.bytes["plan"] = []byte("plan")
+	// The turn's answer settles both inputs; the steered one's span starts later and misses the earlier file.
+	r.sessions.setTurn(1, TurnState{State: "answered", Text: "Both done.", Files: []OfferedFile{{ID: "plan", Name: "plan.md", Size: 4}}, Answer: 77})
+	r.sessions.setTurn(2, TurnState{State: "answered", Text: "Both done.", Files: []OfferedFile{}, Answer: 77})
+	r.check()
+	eq(t, "one post", r.discord.posts(), []post{{"c1", second.ID, "Both done.", []string{"plan.md"}}})
+	eq(t, "pending", len(r.state.Value().Pending), 0)
+	// Settled apart (the older input checked after the newer one was posted): still one post.
+	third := r.discord.say("c1", message("<@"+botID+"> next"))
+	r.on("bot-a", third)
+	fourth := r.discord.say("c1", message("<@"+botID+"> and that"))
+	r.on("bot-a", fourth)
+	r.sessions.setTurn(4, TurnState{State: "answered", Text: "Later.", Files: []OfferedFile{}, Answer: 88})
+	r.check()
+	r.sessions.setTurn(3, TurnState{State: "answered", Text: "Later.", Files: []OfferedFile{}, Answer: 88})
+	r.check()
+	eq(t, "posts", r.discord.posts()[1:], []post{{"c1", fourth.ID, "Later.", nil}})
+	eq(t, "pending", len(r.state.Value().Pending), 0)
 }
 
 func TestPostsTheAnswerOnceItsTurnEndedAsAReplySplitAt2000Characters(t *testing.T) {
@@ -370,7 +451,7 @@ func TestPostsTheAnswerOnceItsTurnEndedAsAReplySplitAt2000Characters(t *testing.
 	r.check()
 	eq(t, "posted while pending", len(r.discord.posts()), 0)
 	answer := strings.Repeat("word ", 500) + "\n" + strings.Repeat("more ", 300)
-	r.sessions.setTurn(1, TurnState{State: "answered", Text: answer})
+	r.sessions.setTurn(1, TurnState{State: "answered", Text: answer, Answer: 1001})
 	var wait sync.WaitGroup
 	wait.Add(2)
 	go func() { defer wait.Done(); r.check() }()
@@ -434,7 +515,7 @@ func TestGivesAThreadItsOwnSubagentAtTheFirstMentionWithItsOwnCursor(t *testing.
 	eq(t, "conversation", *input.Conversation, 41)
 	eq(t, "thread", *input.Context.Thread, "Release plan")
 	eq(t, "text", lines(input), []string{
-		`[Discord thread "Release plan" in #general (Guild), its first delivery: 2 messages of the thread]`, "Ada: thread opener", "Ada: @Pi plan it",
+		`[Discord thread "Release plan" in #general (Guild), its first delivery: 2 messages of the thread]`, "Ada (<@u1>): thread opener", "Ada (<@u1>): @Pi plan it",
 	})
 	known := r.state.Value().Bindings["c1"].Threads["t1"]
 	eq(t, "thread binding", *known, ThreadBinding{Conversation: 41, Name: "Release plan", Cursor: sp(first.ID)})
@@ -442,7 +523,7 @@ func TestGivesAThreadItsOwnSubagentAtTheFirstMentionWithItsOwnCursor(t *testing.
 	r.on("bot-a", r.discord.say("t1", message("<@"+botID+"> next step")))
 	eq(t, "subagents", len(r.sessions.threads), 1)
 	eq(t, "conversation", *r.sessions.delivery(1).Conversation, 41)
-	r.sessions.setTurn(1, TurnState{State: "answered", Text: "Plan."})
+	r.sessions.setTurn(1, TurnState{State: "answered", Text: "Plan.", Answer: 1001})
 	r.check()
 	eq(t, "reply", r.discord.posts()[0], post{"t1", first.ID, "Plan.", nil})
 }
@@ -454,7 +535,7 @@ func TestListensOnlyThroughTheLinksOwnBotAReplyWaitsWhileItsBotIsNotConnected(t 
 	trigger := r.discord.say("c1", message("<@"+botID+"> hello again"))
 	r.on("bot-a", trigger)
 	eq(t, "bot", r.state.Value().Pending[trigger.ID].BotID, "bot-a")
-	r.sessions.setTurn(1, TurnState{State: "answered", Text: "Hi."})
+	r.sessions.setTurn(1, TurnState{State: "answered", Text: "Hi.", Answer: 1001})
 	r.setOffline("bot-a", true)
 	r.check()
 	eq(t, "posted", len(r.discord.posts()), 0)
@@ -493,8 +574,8 @@ func TestDeliversOneBatchAtATimePerChannelAndThread(t *testing.T) {
 		}
 		return out
 	}
-	eq(t, "channel batches", batches(false), [][]string{{"Ada: one", "Ada: @Pi first"}, {"Ada: two", "Ada: @Pi second"}})
-	eq(t, "thread batches", batches(true), [][]string{{"Ada: @Pi a"}, {"Ada: @Pi b"}})
+	eq(t, "channel batches", batches(false), [][]string{{"Ada (<@u1>): one", "Ada (<@u1>): @Pi first"}, {"Ada (<@u1>): two", "Ada (<@u1>): @Pi second"}})
+	eq(t, "thread batches", batches(true), [][]string{{"Ada (<@u1>): @Pi a"}, {"Ada (<@u1>): @Pi b"}})
 	eq(t, "subagents", len(r.sessions.threads), 1)
 	state := r.state.Value()
 	eq(t, "cursor", ptrTo(state.Bindings["c1"].Cursor), second.ID)
@@ -520,7 +601,7 @@ func TestAThreadsFirstBatchTheChannelsUndeliveredMessagesUpToTheThreadThenTheThr
 	r.on("bot-a", first)
 	eq(t, "first batch", lines(r.sessions.delivery(0)), []string{
 		`[Discord thread "Release plan" in #general (Guild), its first delivery: 2 messages of #general before the thread, then 2 messages of the thread]`,
-		"[#general, before the thread]", "Ada: before the thread", "Bo: shall we plan the release?", "[The thread]", "Ada: in the thread", "Ada: @Pi plan it",
+		"[#general, before the thread]", "Ada (<@u1>): before the thread", "Bo (<@u3>): shall we plan the release?", "[The thread]", "Ada (<@u1>): in the thread", "Ada (<@u1>): @Pi plan it",
 	})
 	eq(t, "messages", r.sessions.delivery(0).Context.Messages, 4)
 	eq(t, "channel cursor", ptrTo(r.state.Value().Bindings["c1"].Cursor), "1")
@@ -528,11 +609,11 @@ func TestAThreadsFirstBatchTheChannelsUndeliveredMessagesUpToTheThreadThenTheThr
 	r.discord.say("t1", message("more detail"))
 	r.on("bot-a", r.discord.say("t1", message("<@"+botID+"> and now?")))
 	eq(t, "second batch", lines(r.sessions.delivery(1)), []string{
-		`[Discord thread "Release plan" in #general (Guild): 2 messages since the last delivery]`, "Ada: more detail", "Ada: @Pi and now?",
+		`[Discord thread "Release plan" in #general (Guild): 2 messages since the last delivery]`, "Ada (<@u1>): more detail", "Ada (<@u1>): @Pi and now?",
 	})
 	r.on("bot-a", r.discord.say("c1", message("<@"+botID+"> back here")))
 	eq(t, "main batch", lines(r.sessions.delivery(2))[1:], []string{
-		"Ada: before the thread", "Bo: shall we plan the release?", "Ada: unrelated, after the thread", "Ada: @Pi back here",
+		"Ada (<@u1>): before the thread", "Bo (<@u3>): shall we plan the release?", "Ada (<@u1>): unrelated, after the thread", "Ada (<@u1>): @Pi back here",
 	})
 }
 
@@ -560,8 +641,8 @@ func TestStopWhileATurnRunsAnsweredAtOnceEvenBehindADelivery(t *testing.T) {
 	eq(t, "pending", keys, []string{second.ID})
 	eq(t, "posted", len(r.discord.posts()), 1)
 	r.on("bot-a", r.discord.say("c1", message("<@"+botID+"> next")))
-	eq(t, "next", lines(r.sessions.delivery(r.sessions.count() - 1))[1:], []string{"Ada: @Pi next"})
-	eq(t, "second", lines(r.sessions.delivery(1))[1:], []string{"Ada: @Pi and another"})
+	eq(t, "next", lines(r.sessions.delivery(r.sessions.count() - 1))[1:], []string{"Ada (<@u1>): @Pi next"})
+	eq(t, "second", lines(r.sessions.delivery(1))[1:], []string{"Ada (<@u1>): @Pi and another"})
 }
 
 func TestStopWithNothingRunningSaysSoStatusAndCompactGoToTheMainConversation(t *testing.T) {
@@ -627,7 +708,7 @@ func TestAttachesTheFilesATurnOfferedToItsReply(t *testing.T) {
 	}
 	pair := []OfferedFile{file("half-a", 600), file("half-b", 600)}
 	files := append(append(slices.Clone(small), file("huge", 2048)), pair...)
-	r.sessions.setTurn(1, TurnState{State: "answered", Text: "Built.", Files: files})
+	r.sessions.setTurn(1, TurnState{State: "answered", Text: "Built.", Files: files, Answer: 1001})
 	r.check()
 	var firstNames []string
 	for _, each := range small[:10] {
@@ -652,7 +733,7 @@ func TestATurnWithFilesAndNoTextInAThreadPostsThemAsTheReplyThere(t *testing.T) 
 	trigger := r.discord.say("t1", message("<@"+botID+"> send the log"))
 	r.on("bot-a", trigger)
 	r.sessions.bytes["log"] = []byte("log line\n")
-	r.sessions.setTurn(1, TurnState{State: "answered", Files: []OfferedFile{{ID: "log", Name: "build.log", Size: 9}}})
+	r.sessions.setTurn(1, TurnState{State: "answered", Files: []OfferedFile{{ID: "log", Name: "build.log", Size: 9}}, Answer: 1001})
 	r.check()
 	eq(t, "posts", r.discord.posts(), []post{{"t1", trigger.ID, "", []string{"build.log"}}})
 	eq(t, "uploaded", string(r.discord.uploaded["build.log"]), "log line\n")
@@ -682,7 +763,7 @@ func TestTypingAtOnceBeforeTheHistoryIsReadRefreshedThroughASlowDelivery(t *test
 	<-done
 	r.relay.Typing(ctx)
 	eq(t, "typed", r.discord.typedCount(), 3)
-	r.sessions.setTurn(1, TurnState{State: "answered", Text: "Done."})
+	r.sessions.setTurn(1, TurnState{State: "answered", Text: "Done.", Answer: 1001})
 	r.check()
 	eq(t, "pending", len(r.state.Value().Pending), 0)
 	r.relay.Typing(ctx)
@@ -721,9 +802,9 @@ func TestPagesThroughEverythingSinceTheCursorUpToTheMention(t *testing.T) {
 	r.on("bot-a", trigger)
 	got := lines(r.sessions.delivery(0))
 	eq(t, "header", got[0], "[Discord #general (Guild): 200 messages since the last delivery]")
-	eq(t, "first", got[1], "Ada: line 0")
-	eq(t, "past the first page", got[101], "Ada: "+said[100].Text)
-	eq(t, "last", got[len(got)-1], "Ada: @Pi summarize")
+	eq(t, "first", got[1], "Ada (<@u1>): line 0")
+	eq(t, "past the first page", got[101], "Ada (<@u1>): "+said[100].Text)
+	eq(t, "last", got[len(got)-1], "Ada (<@u1>): @Pi summarize")
 	eq(t, "messages", r.sessions.delivery(0).Context.Messages, 200)
 	eq(t, "requests", r.discord.requests, []string{"1", said[99].ID, trigger.ID})
 	eq(t, "cursor", ptrTo(r.state.Value().Bindings["c1"].Cursor), trigger.ID)
@@ -738,8 +819,8 @@ func TestPutsOnlyTheNewest200IntoAHugeBatch(t *testing.T) {
 	got := lines(r.sessions.delivery(0))
 	eq(t, "header", got[0], "[Discord #general (Guild): 451 messages since the last delivery; the 251 earliest are left out, the newest 200 follow]")
 	eq(t, "lines", len(got), 201)
-	eq(t, "first", got[1], "Ada: line 251")
-	eq(t, "last", got[len(got)-1], "Ada: @Pi what happened?")
+	eq(t, "first", got[1], "Ada (<@u1>): line 251")
+	eq(t, "last", got[len(got)-1], "Ada (<@u1>): @Pi what happened?")
 }
 
 func TestCatchesUpAfterDowntimeOneBatchPerLinkAndThread(t *testing.T) {
@@ -764,8 +845,8 @@ func TestCatchesUpAfterDowntimeOneBatchPerLinkAndThread(t *testing.T) {
 	channel := r.sessions.delivery(0)
 	eq(t, "requestId", channel.RequestID, "discord:"+newest.ID)
 	eq(t, "text", lines(channel), []string{
-		"[Discord #general (Guild): 5 messages since the last delivery]", "Ada: good morning", "Eve: @Pi me too", "Ada: @Pi first question",
-		"Bo: some context for it", "Ada: @Pi second question",
+		"[Discord #general (Guild): 5 messages since the last delivery]", "Ada (<@u1>): good morning", "Eve (<@u9>): @Pi me too", "Ada (<@u1>): @Pi first question",
+		"Bo (<@u3>): some context for it", "Ada (<@u1>): @Pi second question",
 	})
 	eq(t, "cursor", ptrTo(r.state.Value().Bindings["c1"].Cursor), newest.ID)
 	eq(t, "thread conversation", *r.sessions.delivery(1).Conversation, 41)
@@ -775,8 +856,8 @@ func TestCatchesUpAfterDowntimeOneBatchPerLinkAndThread(t *testing.T) {
 	_ = r.relay.CatchUp(ctx, "bot-a")
 	r.on("bot-a", newest)
 	eq(t, "replayed", r.sessions.count(), 2)
-	r.sessions.setTurn(1, TurnState{State: "answered", Text: "Second answer."})
-	r.sessions.setTurn(2, TurnState{State: "answered", Text: "Plan."})
+	r.sessions.setTurn(1, TurnState{State: "answered", Text: "Second answer.", Answer: 1001})
+	r.sessions.setTurn(2, TurnState{State: "answered", Text: "Plan.", Answer: 1002})
 	r.check()
 	posts := r.discord.posts()
 	slices.SortFunc(posts, func(a, b post) int { return strings.Compare(a.Channel, b.Channel) })
@@ -791,7 +872,7 @@ func TestBatchOfDownloadsAttachmentsUpTo25MiBAndListsLargerOnesAsLinks(t *testin
 	})
 	text, files := BatchOf([]Section{{Messages: []Message{m}}}, botID, "[h]")
 	eq(t, "files", files, []DownloadFile{{URL: "https://cdn/a.png", Name: "a.png", Size: 10, Key: "discord:7:0", Ref: "7"}})
-	eq(t, "text", text, fmt.Sprintf("[h]\nAda: see files\n[attachment huge.zip (%d bytes): https://cdn/huge.zip]", int(big)))
+	eq(t, "text", text, fmt.Sprintf("[h]\nAda (<@u1>): see files\n[attachment huge.zip (%d bytes): https://cdn/huge.zip]", int(big)))
 	var many []Attachment
 	for i := range 25 {
 		many = append(many, Attachment{fmt.Sprintf("f%d", i), "u", 1})

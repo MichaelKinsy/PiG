@@ -104,6 +104,7 @@ func (p *sessionsPort) Turn(ctx context.Context, session string, submissionID fl
 	}
 	out := argsOf(result)
 	turn := contract.TurnState{State: str(out, "state"), Text: str(out, "text"), Reason: str(out, "reason"), Files: []contract.OfferedFile{}}
+	turn.Answer, _ = out.Value("answer").(float64)
 	files, _ := out.Value("files").([]any)
 	for _, each := range files {
 		file := argsOf(each)

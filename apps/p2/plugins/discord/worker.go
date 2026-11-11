@@ -60,13 +60,14 @@ var DiscordLinkDoc = durable.DefineDoc(durable.DocDefinition[LinkState]{
 	DocumentSemantics: durable.DocumentSemantics{Scope: durable.ScopeSession},
 })
 
-// DiscordPrompt is what an agent answering Discord must know, in two sentences: stable for a link (it changes only with the
+// DiscordPrompt is what an agent answering Discord must know, in a few sentences: stable for a link (it changes only with the
 // channel or thread), so the prompt's cached prefix stays.
 func DiscordPrompt(where string) string {
 	return strings.Join([]string{
 		"Your input comes from " + where + "; your final answer of each turn is posted there as the reply, with the files you",
 		"offer with send_file during the turn attached. Nothing else is posted (not intermediate text, thinking or tool",
-		"output), so make the final answer complete on its own.",
+		"output), so make the final answer complete on its own. Each line names its author with their mention, as in",
+		"`Ann (<@1234>): text`; write `<@1234>` to mention them.",
 	}, " ")
 }
 
@@ -213,7 +214,8 @@ func serveIngress(_ *delta.JsonObject, principal data.Principal, raw host.Self) 
 			}
 			text := str(in, "text")
 			message := delta.JsonObjectOf("author", who, "text", text, "attachments", listed, "discord", where)
-			submit := delta.JsonObjectOf("text", text, "requestId", str(in, "requestId"), "whenBusy", "followUp", "author", who)
+			// A batch while a turn runs joins it: its answer replies to the newest mention.
+			submit := delta.JsonObjectOf("text", text, "requestId", str(in, "requestId"), "whenBusy", "steer", "author", who)
 			if list, ok := resolved.([]any); ok && len(list) > 0 {
 				submit.Set("files", list)
 			}
@@ -531,7 +533,11 @@ func turn(ctx context.Context, session harness.Harness, files *host.Reference, i
 		return nil, err
 	}
 	if answer != "" || len(sent) > 0 {
-		return turnState("answered", "text", answer, "files", sent), nil
+		entry := float64(0)
+		if record.Answer != nil {
+			entry = float64(*record.Answer)
+		}
+		return turnState("answered", "text", answer, "files", sent, "answer", entry), nil
 	}
 	reason := "The answer has no text."
 	if message != nil && message.StopReason == ai.StopReasonError {
