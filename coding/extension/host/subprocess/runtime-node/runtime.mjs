@@ -6117,4 +6117,4 @@ export function reportLoadFailure(sockPath, failure) {
 }
 
 // pig additive (D232): the per-group state the shared-process tests read.
-export { busFor, drainFor, xrefRealm, liveRuntimes, groupBuses, groupDrains, releaseGroup, siblingToolPending };
+export { addCommandContextMembers, busFor, drainFor, xrefRealm, liveRuntimes, groupBuses, groupDrains, releaseGroup, siblingToolPending };
