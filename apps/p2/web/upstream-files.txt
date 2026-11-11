@@ -534,8 +534,3 @@ plugins/locations/contract.ts
 plugins/proxy-marker/contract.ts
 plugins/proxy-marker/package.json
 plugins/radius/contract.ts
-plugins/glyphs/GlyphIcon.tsx
-plugins/glyphs/glyph.ts
-plugins/glyphs/package.json
-plugins/glyphs/seed.ts
-test/p2/glyphs.test.ts
