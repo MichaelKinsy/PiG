@@ -51,6 +51,7 @@ func TestNewSessionSelectorComponentLoaderReceivesTheSignalAndProgressCallback(t
 // session-selector.ts:757-770 options: options.keybindings is the selector's keybinding manager; renameSession enables the rename key and the hint;
 // currentSessionFilePath marks the session that refuses deletion; a missing deleteSession falls back to the file deletion of deleteSessionFile.
 func TestNewSessionSelectorComponentOptionsAndCurrentSessionPath(t *testing.T) {
+	restoreTUIKeybindings(t)
 	loader := func(context.Context, SessionListProgress) ([]SessionInfo, error) {
 		return []SessionInfo{scopeSession("one")}, nil
 	}

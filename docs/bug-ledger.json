@@ -42476,6 +42476,29 @@
       "tests": []
     },
     {
+      "id": "BF-ecfaad1",
+      "title": "The startup prompts (the project-trust and extension selectors, the extension text input and first-time…",
+      "symptom": "The startup prompts (the project-trust and extension selectors, the extension text input and first-time setup) ignored the keybindings.json of the agent directory: a remapped tui.select.confirm or tui.select.cancel had no effect in them.",
+      "rootCause": "Pi's createStartupTui calls setKeybindings(KeybindingsManager.create()) for each startup prompt (cli/startup-ui.ts:91). configureStartupTheme only set the theme, so the selector, input and first-time-setup prompts took whatever keybindings the process already held and never read the user's keybindings.json.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The startup prompts (the project-trust and extension selectors, the extension text input and first-time setup) now load the `keybindings.json` of the agent directory, as Pi's startup UI does. They took whatever keybindings the process held before, so a remapped `tui.select.confirm` or `tui.select.cancel` was ignored by them.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ecfaad1026",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/startup_keybindings_test.go::TestStartupPromptsApplyTheKeybindingsOfTheAgentDirectory",
+        "internal/codingagent/startup_keybindings_test.go::TestStartupPromptsDoNotInheritKeybindingsInstalledBefore"
+      ]
+    },
+    {
       "id": "BF-ed01bf6",
       "title": "Resuming a very long session no longer reads and decodes every entry of the branch to restore the tool loadout",
       "symptom": "Resuming a very long session no longer reads and decodes every entry of the branch to restore the tool loadout.",
