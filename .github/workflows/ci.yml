@@ -34,6 +34,10 @@ concurrency:
 # .upstream/pin (a release tag or a pinned commit). make compliance checks every other copy
 # of these pins.
 env:
+  # The big caches (Go modules and build output, Cargo, npm, the Durable Cloudflare host's TinyGo) are saved only from main (the weekly run and a dispatch there, and cache-warm.yml)
+  # and from a dispatch on a release branch. A pull request restores main's and saves none: its own copies are visible to that pull request alone, a handful of them filled
+  # the repository's cache limit and evicted main's. Every save step tests this.
+  CACHE_SAVE: ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/release/'))) }}
   NPM_VERSION: 12.1.0
   RUST_VERSION: 1.97.1
   # Wall-clock and speed-ratio gates only warn on shared runners (internal/testenv.TimingGate); count, size and allocation gates still block. make test-timing runs them blocking on quiet hardware before a release.
@@ -103,11 +107,33 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: .go-version
-          cache: true
+          cache: false
+      - name: Restore the Go module cache
+        id: cache-gomod
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            gomod-${{ runner.os }}-
+      # A pull request restores the newest build cache of main (cache-warm.yml and the weekly run save it) and saves none.
+      - name: Restore the Go build cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/go-build
+          key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-
       - name: Check the README, changelog and repository settings
         run: |
           go test ./test/ci-images/ ./test/docs-drift/
           python3 automation/ci/check-public-claims.py
+      - name: Save the Go module cache
+        if: ${{ env.CACHE_SAVE == 'true' && steps.cache-gomod.outcome == 'success' && steps.cache-gomod.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
 
   bookkeeping:
     name: Bookkeeping
@@ -129,10 +155,13 @@ jobs:
           # The job restores its own Go build cache below; setup-go's copy would download a second, older one.
           cache: false
       - name: Restore the Go module cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: cache-the-go-module-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/go/pkg/mod
           key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            gomod-${{ runner.os }}-
       - name: Restore the Go build cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -160,12 +189,14 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
-          cache: npm
-          cache-dependency-path: |
-            extensions/sdk-ts/package-lock.json
-            test/parity/interface-extractor/package-lock.json
-            automation/images/ci-parity/package-lock.json
-            automation/images/npm-runtime/package-lock.json
+      - name: Restore the npm cache
+        id: cache-npm
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.npm
+          key: node-cache-${{ runner.os }}-${{ runner.arch }}-npm-${{ hashFiles('extensions/sdk-ts/package-lock.json', 'test/parity/interface-extractor/package-lock.json', 'automation/images/ci-parity/package-lock.json', 'automation/images/npm-runtime/package-lock.json') }}
+          restore-keys: |
+            node-cache-${{ runner.os }}-${{ runner.arch }}-npm-
       - name: Install pinned npm
         shell: bash
         run: |
@@ -217,6 +248,18 @@ jobs:
         run: |
           echo "::error::bookkeeping gates failed; see the Run the bookkeeping gates step"
           exit 1
+      - name: Save the Go module cache
+        if: ${{ env.CACHE_SAVE == 'true' && steps.cache-the-go-module-cache.outcome == 'success' && steps.cache-the-go-module-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+      - name: Save the npm cache
+        if: ${{ env.CACHE_SAVE == 'true' && steps.cache-npm.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.npm
+          key: node-cache-${{ runner.os }}-${{ runner.arch }}-npm-${{ hashFiles('extensions/sdk-ts/package-lock.json', 'test/parity/interface-extractor/package-lock.json', 'automation/images/ci-parity/package-lock.json', 'automation/images/npm-runtime/package-lock.json') }}
 
   preflight:
     name: Linux / preflight
@@ -236,10 +279,13 @@ jobs:
           # The job restores its own Go build cache below; setup-go's copy would download a second, older one.
           cache: false
       - name: Restore the Go module cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: cache-the-go-module-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/go/pkg/mod
           key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            gomod-${{ runner.os }}-
       - name: Restore the Go build cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -255,6 +301,12 @@ jobs:
           CI: '1'
           MAKEFLAGS: -k
         run: make ci-preflight
+      - name: Save the Go module cache
+        if: ${{ env.CACHE_SAVE == 'true' && steps.cache-the-go-module-cache.outcome == 'success' && steps.cache-the-go-module-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
 
   linux:
     name: Linux / ${{ matrix.shard }}
@@ -282,10 +334,13 @@ jobs:
           cache: false
       # Modules are immutable for a go.sum, so one entry serves every job until a dependency changes.
       - name: Restore the Go module cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: cache-the-go-module-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/go/pkg/mod
           key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            gomod-${{ runner.os }}-
       # This restores the newest cache a previous run saved, so a job recompiles only what changed.
       - name: Restore the Go build cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -317,12 +372,14 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
-          cache: npm
-          cache-dependency-path: |
-            extensions/sdk-ts/package-lock.json
-            test/parity/interface-extractor/package-lock.json
-            automation/images/ci-parity/package-lock.json
-            automation/images/npm-runtime/package-lock.json
+      - name: Restore the npm cache
+        id: cache-npm
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.npm
+          key: node-cache-${{ runner.os }}-${{ runner.arch }}-npm-${{ hashFiles('extensions/sdk-ts/package-lock.json', 'test/parity/interface-extractor/package-lock.json', 'automation/images/ci-parity/package-lock.json', 'automation/images/npm-runtime/package-lock.json') }}
+          restore-keys: |
+            node-cache-${{ runner.os }}-${{ runner.arch }}-npm-
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         id: python
         with:
@@ -405,8 +462,9 @@ jobs:
           python3 automation/pin/pin.py check-oracle
       # Rust SDK dependencies and Pi's env daemon build into persistent targets (internal/testenv.SharedCargoTargetDir) named for a hash of their lockfiles, so a lock change selects a new directory and a hit skips the compile. The key also hashes automation/ci/test-warm.sh, the list of targets: actions/cache saves only on a key miss, so a target the script gains needs a new key to reach the cache.
       - name: Restore the Cargo registry and test targets
+        id: cache-the-cargo-registry-and-test-targets
         if: startsWith(matrix.shard, 'test-') || matrix.shard == 'toolchains'
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             ~/.cargo/registry
@@ -466,28 +524,49 @@ jobs:
           TEST_FAST_PARALLEL: 6
         run: make "$TARGET"
       - name: Save the golangci-lint cache
-        if: ${{ !cancelled() && matrix.shard == 'build' && steps.lintcache.outputs.cache-hit != 'true' }}
+        if: ${{ !cancelled() && matrix.shard == 'build' && steps.lintcache.outputs.cache-hit != 'true' && env.CACHE_SAVE == 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/golangci-lint
           key: golangci-lint-${{ runner.os }}-${{ hashFiles('.go-version', '.golangci.yml', 'go.mod') }}-${{ steps.lintweek.outputs.week }}
       - name: Save the PORT_MAP coverage cache
-        if: always() && startsWith(matrix.shard, 'portmap-')
+        if: ${{ always() && startsWith(matrix.shard, 'portmap-') && env.CACHE_SAVE == 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: build/portmap-coverage
           key: portmap-coverage-${{ matrix.shard }}-${{ github.sha }}
       # Go's build cache is content-addressed, so a failed run's compile output is as valid as a passing run's.
       - name: Keep only the Go build cache entries this job used
-        if: ${{ !cancelled() && steps.age.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.age.outcome == 'success' && env.CACHE_SAVE == 'true' }}
         shell: bash
         run: automation/ci/gocache-trim.sh trim
       - name: Save the Go build cache
-        if: ${{ !cancelled() && steps.age.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.age.outcome == 'success' && env.CACHE_SAVE == 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/go-build
           key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+      - name: Save the Go module cache
+        if: ${{ env.CACHE_SAVE == 'true' && steps.cache-the-go-module-cache.outcome == 'success' && steps.cache-the-go-module-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+      - name: Save the npm cache
+        if: ${{ env.CACHE_SAVE == 'true' && steps.cache-npm.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.npm
+          key: node-cache-${{ runner.os }}-${{ runner.arch }}-npm-${{ hashFiles('extensions/sdk-ts/package-lock.json', 'test/parity/interface-extractor/package-lock.json', 'automation/images/ci-parity/package-lock.json', 'automation/images/npm-runtime/package-lock.json') }}
+      - name: Save the Cargo registry and test targets
+        if: ${{ env.CACHE_SAVE == 'true' && steps.cache-the-cargo-registry-and-test-targets.outcome == 'success' && steps.cache-the-cargo-registry-and-test-targets.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cache/pig-dev/cargo-target
+          key: cargo-${{ runner.os }}-${{ env.RUST_VERSION }}-${{ hashFiles('extensions/sdk-rs/Cargo.lock', 'extensions/sdk-rs/Cargo.toml', 'automation/ci/test-warm.sh') }}
 
   node-runtime:
     name: Node extensions
@@ -502,14 +581,36 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: .go-version
-          cache: true
+          cache: false
+      - name: Restore the Go module cache
+        id: cache-gomod
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            gomod-${{ runner.os }}-
+      # A pull request restores the newest build cache of main (cache-warm.yml and the weekly run save it) and saves none.
+      - name: Restore the Go build cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/go-build
+          key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-
       # Install the oracle with the qualified npm runtime before selecting the
       # test runtime: pinned npm itself requires a newer Node than Pi's floor.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
-          cache: npm
-          cache-dependency-path: extensions/sdk-ts/package-lock.json
+      - name: Restore the npm cache
+        id: cache-npm
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.npm
+          key: node-cache-${{ runner.os }}-${{ runner.arch }}-npm-${{ hashFiles('extensions/sdk-ts/package-lock.json') }}
+          restore-keys: |
+            node-cache-${{ runner.os }}-${{ runner.arch }}-npm-
       # An unresponsive package mirror fails this step within its timeout instead of holding the job.
       - name: Install native test packages
         timeout-minutes: 10
@@ -562,6 +663,18 @@ jobs:
           set -euo pipefail
           node --version
           automation/ci/with-isolated-pig-home.sh make ci-node-runtime
+      - name: Save the Go module cache
+        if: ${{ env.CACHE_SAVE == 'true' && steps.cache-gomod.outcome == 'success' && steps.cache-gomod.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+      - name: Save the npm cache
+        if: ${{ env.CACHE_SAVE == 'true' && steps.cache-npm.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.npm
+          key: node-cache-${{ runner.os }}-${{ runner.arch }}-npm-${{ hashFiles('extensions/sdk-ts/package-lock.json') }}
   node-loader:
     name: Node loader / ${{ matrix.os }}
     needs: [changes, preflight]
@@ -580,7 +693,23 @@ jobs:
         id: go
         with:
           go-version-file: .go-version
-          cache: true
+          cache: false
+      - name: Restore the Go module cache
+        id: cache-gomod
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            gomod-${{ runner.os }}-
+      # A pull request restores the newest build cache of main (cache-warm.yml and the weekly run save it) and saves none.
+      - name: Restore the Go build cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/go-build
+          key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-
       # Exercise PiG's minimum and the current Node major, independently of the qualified default toolchain used by the full
       # suites. One job runs both in turn; the second starts even when the first failed.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -597,6 +726,12 @@ jobs:
         if: ${{ !cancelled() && steps.go.outcome == 'success' }}
         shell: bash
         run: automation/ci/node-loader-check.sh
+      - name: Save the Go module cache
+        if: ${{ env.CACHE_SAVE == 'true' && steps.cache-gomod.outcome == 'success' && steps.cache-gomod.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
 
   durable-cf-host:
     name: Durable Cloudflare host
@@ -611,7 +746,23 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: .go-version
-          cache: true
+          cache: false
+      - name: Restore the Go module cache
+        id: cache-gomod
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            gomod-${{ runner.os }}-
+      # A pull request restores the newest build cache of main (cache-warm.yml and the weekly run save it) and saves none.
+      - name: Restore the Go build cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/go-build
+          key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
@@ -635,7 +786,8 @@ jobs:
       # TinyGo (the tinygo row of automation/dev/toolchains.lock, digest-checked) builds the codemode module and the
       # TinyGo pass's core; the Pi reference the conformance tests read is the checkout durable/contract/PIN names.
       - name: Restore TinyGo and the Pi reference
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: cache-tinygo-and-the-pi-reference
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             ~/.cache/pig-dev/tinygo
@@ -656,6 +808,20 @@ jobs:
       - name: Check the Durable core budget
         shell: bash
         run: automation/ci/with-isolated-pig-home.sh make durable-core-budget
+      - name: Save the Go module cache
+        if: ${{ env.CACHE_SAVE == 'true' && steps.cache-gomod.outcome == 'success' && steps.cache-gomod.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+      - name: Save TinyGo and the Pi reference
+        if: ${{ env.CACHE_SAVE == 'true' && steps.cache-tinygo-and-the-pi-reference.outcome == 'success' && steps.cache-tinygo-and-the-pi-reference.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cache/pig-dev/tinygo
+            durable/contract/.cache
+          key: durable-cf-host-${{ runner.os }}-${{ hashFiles('automation/dev/toolchains.lock', 'durable/contract/PIN') }}
 
   durable-contract:
     name: Durable contract / ${{ matrix.impl }}
@@ -677,7 +843,23 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: .go-version
-          cache: true
+          cache: false
+      - name: Restore the Go module cache
+        id: cache-gomod
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            gomod-${{ runner.os }}-
+      # A pull request restores the newest build cache of main (cache-warm.yml and the weekly run save it) and saves none.
+      - name: Restore the Go build cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/go-build
+          key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
@@ -698,7 +880,8 @@ jobs:
           path: ~/.cache/pig-dev/pi-builds
           key: pi-oracle-${{ runner.os }}-${{ hashFiles('.upstream/pin', 'automation/pin/frozen/**', 'automation/pin/*.py', '.node-version', 'automation/ci/npm-toolchain/package-lock.json') }}
       - name: Restore TinyGo and the Pi reference
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: cache-tinygo-and-the-pi-reference
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             ~/.cache/pig-dev/tinygo
@@ -716,6 +899,20 @@ jobs:
         env:
           DURABLE_CONTRACT_ARGS: --impls ${{ matrix.impl }} -j 4
         run: automation/ci/with-isolated-pig-home.sh make ci-durable-contract
+      - name: Save the Go module cache
+        if: ${{ env.CACHE_SAVE == 'true' && steps.cache-gomod.outcome == 'success' && steps.cache-gomod.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+      - name: Save TinyGo and the Pi reference
+        if: ${{ env.CACHE_SAVE == 'true' && steps.cache-tinygo-and-the-pi-reference.outcome == 'success' && steps.cache-tinygo-and-the-pi-reference.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cache/pig-dev/tinygo
+            durable/contract/.cache
+          key: durable-cf-host-${{ runner.os }}-${{ hashFiles('automation/dev/toolchains.lock', 'durable/contract/PIN') }}
 
   verify:
     name: Linux verification
@@ -773,10 +970,13 @@ jobs:
           # The job restores its own Go build cache below; setup-go's copy would download a second, older one.
           cache: false
       - name: Restore the Go module cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: cache-the-go-module-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/go/pkg/mod
           key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            gomod-${{ runner.os }}-
       # This restores the newest cache a previous run saved, so a job recompiles only what changed.
       - name: Restore the Go build cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -793,10 +993,14 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
-          cache: npm
-          cache-dependency-path: |
-            extensions/sdk-ts/package-lock.json
-            test/parity/interface-extractor/package-lock.json
+      - name: Restore the npm cache
+        id: cache-npm
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~\AppData\Local\npm-cache
+          key: node-cache-${{ runner.os }}-${{ runner.arch }}-npm-${{ hashFiles('extensions/sdk-ts/package-lock.json', 'test/parity/interface-extractor/package-lock.json') }}
+          restore-keys: |
+            node-cache-${{ runner.os }}-${{ runner.arch }}-npm-
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.12'
@@ -966,15 +1170,27 @@ jobs:
           go test -v -timeout 30m -run $env:SHARD_RUN ./test/extension-conformance
           if ($LASTEXITCODE -ne 0) { throw "Windows Go, Node, Rust, Python, or fused-Go extension conformance failed" }
       - name: Keep only the Go build cache entries this job used
-        if: ${{ !cancelled() && steps.age.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.age.outcome == 'success' && env.CACHE_SAVE == 'true' }}
         shell: bash
         run: automation/ci/gocache-trim.sh trim
       - name: Save the Go build cache
-        if: ${{ !cancelled() && steps.age.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.age.outcome == 'success' && env.CACHE_SAVE == 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.temp }}\go-build
           key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+      - name: Save the Go module cache
+        if: ${{ env.CACHE_SAVE == 'true' && steps.cache-the-go-module-cache.outcome == 'success' && steps.cache-the-go-module-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+      - name: Save the npm cache
+        if: ${{ env.CACHE_SAVE == 'true' && steps.cache-npm.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~\AppData\Local\npm-cache
+          key: node-cache-${{ runner.os }}-${{ runner.arch }}-npm-${{ hashFiles('extensions/sdk-ts/package-lock.json', 'test/parity/interface-extractor/package-lock.json') }}
 
   macos:
     name: macOS ${{ matrix.shard }}
@@ -1011,10 +1227,14 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
-          cache: npm
-          cache-dependency-path: |
-            extensions/sdk-ts/package-lock.json
-            test/parity/interface-extractor/package-lock.json
+      - name: Restore the npm cache
+        id: cache-npm
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.npm
+          key: node-cache-${{ runner.os }}-${{ runner.arch }}-npm-${{ hashFiles('extensions/sdk-ts/package-lock.json', 'test/parity/interface-extractor/package-lock.json') }}
+          restore-keys: |
+            node-cache-${{ runner.os }}-${{ runner.arch }}-npm-
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.12'
@@ -1132,6 +1352,12 @@ jobs:
         env:
           UNITS: ${{ matrix.shard }}
         run: automation/ci/macos-units.sh packages
+      - name: Save the npm cache
+        if: ${{ env.CACHE_SAVE == 'true' && steps.cache-npm.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.npm
+          key: node-cache-${{ runner.os }}-${{ runner.arch }}-npm-${{ hashFiles('extensions/sdk-ts/package-lock.json', 'test/parity/interface-extractor/package-lock.json') }}
 
   android:
     name: Android build
@@ -1149,7 +1375,15 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: .go-version
-          cache: true
+          cache: false
+      - name: Restore the Go module cache
+        id: cache-gomod
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            gomod-${{ runner.os }}-
       - name: Build and check the Android binary
         shell: bash
         run: |
@@ -1158,6 +1392,12 @@ jobs:
           automation/release/android-binary.sh check "$RUNNER_TEMP/pig-android"
       - name: Vet the Android packages
         run: CGO_ENABLED=0 GOOS=android GOARCH=arm64 go vet ./...
+      - name: Save the Go module cache
+        if: ${{ env.CACHE_SAVE == 'true' && steps.cache-gomod.outcome == 'success' && steps.cache-gomod.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
 
   cache-prune:
     name: Prune superseded caches
