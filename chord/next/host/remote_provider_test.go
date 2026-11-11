@@ -1053,14 +1053,14 @@ func TestProviderOrigins(t *testing.T) {
 			nexttest.RequireJSONEqual(t, editor.NamedState(t, folded.Holds[0].Members)["count"], []any{[]any{"r", 4.0}})
 		})
 
-		// Ports "count calls per origin against N: 256 on each of two origins run, one more on one closes the link".
-		t.Run("count calls per origin against N: 256 on each of two origins run, one more on one closes the link", func(t *testing.T) {
-			s := notesServer(t, nil, true)
+		// Ports "count calls per origin against N: 8 on each of two origins run, one more on one closes the link".
+		t.Run("count calls per origin against N: 8 on each of two origins run, one more on one closes the link", func(t *testing.T) {
+			s := notesServerOf(t, rawLinkedOptions{Parent: true, CallWindow: intp(8)})
 			provHold(t, s.Peer, 0, specOf(Notes), jsonObject("session", "S1"))
 			provHold(t, s.Peer, 0, specOf(Notes), jsonObject("session", "S1"), 1)
 			s.Peer.Next("bound")
 			s.Peer.Next("bound")
-			for id := range 256 {
+			for id := range 8 {
 				provCall(t, s.Peer, id, 0, wait, nil)
 				provCall(t, s.Peer, id, 0, wait, nil, 1)
 			}
@@ -1068,12 +1068,12 @@ func TestProviderOrigins(t *testing.T) {
 			if s.Peer.Closed() {
 				t.Fatal("the link closed within the limit")
 			}
-			provCall(t, s.Peer, 256, 0, wait, nil, 1)
+			provCall(t, s.Peer, 8, 0, wait, nil, 1)
 			settle(s.Peer)
 			if !s.Peer.Closed() {
 				t.Fatal("the link stayed open past the limit")
 			}
-			requireStrings(t, protocolErrors(s.Errors), []string{"call 256: more than 256 calls"})
+			requireStrings(t, protocolErrors(s.Errors), []string{"call 8: more than 8 calls"})
 		})
 
 		// Ports "ignore a call on a hold they do not know before counting it (Q1)".
@@ -1200,36 +1200,79 @@ var Halves = remoteOneVariant("app.halves", contracts.Params{}, contracts.Varian
 func TestProviderCallLimit(t *testing.T) {
 	forEachCodec(t, func(t *testing.T) {
 		wait := editorWire(t).Methods["wait"]
+		windowed := func(t testing.TB, window int, trusted bool, parent bool) *notesServerRaw {
+			return notesServerOf(t, rawLinkedOptions{Parent: parent, CallWindow: intp(window), Trusted: trusted})
+		}
 
-		// Ports "the call limit › closes a link whose peer sends more calls than this side announced".
+		// Ports "the call limit (decision \"Call windows only for untrusted links\") › announces the host's callWindow on a link it was not given as trusted, 10,000 by default".
+		t.Run("announces the host's callWindow on a link it was not given as trusted, 10,000 by default", func(t *testing.T) {
+			if got := helloOf(t, notesServer(t, nil).Peer).Calls; got != 10_000 {
+				t.Fatalf("announced %d, want 10000", got)
+			}
+			if got := helloOf(t, windowed(t, 8, false, false).Peer).Calls; got != 8 {
+				t.Fatalf("announced %d, want 8", got)
+			}
+		})
+
+		// Ports "announces no window on a trusted link (accept and connect)".
+		t.Run("announces no window on a trusted link (accept and connect)", func(t *testing.T) {
+			for _, parent := range []bool{false, true} {
+				if got := helloOf(t, windowed(t, 8, true, parent).Peer).Calls; got != 0 {
+					t.Fatalf("parent=%v: announced %d, want none", parent, got)
+				}
+			}
+		})
+
+		// Ports "closes a link whose peer sends more calls than this side announced".
 		t.Run("closes a link whose peer sends more calls than this side announced", func(t *testing.T) {
-			s := notesServer(t, nil)
+			s := windowed(t, 8, false, false)
 			provHold(t, s.Peer, 0, specOf(Notes), jsonObject("session", "S1"))
 			s.Peer.Next("bound")
-			for id := range 257 {
+			for id := range 9 {
 				provCall(t, s.Peer, id, 0, wait, nil)
 			}
 			settle(s.Peer)
 			if !s.Peer.Closed() {
 				t.Fatal("the link stayed open")
 			}
-			requireStrings(t, protocolErrors(s.Errors), []string{"call 256: more than 256 calls"})
+			requireStrings(t, protocolErrors(s.Errors), []string{"call 8: more than 8 calls"})
+		})
+
+		// Ports "never closes a trusted link for running calls: 300 run where the window would be 8".
+		t.Run("never closes a trusted link for running calls: 300 run where the window would be 8", func(t *testing.T) {
+			s := windowed(t, 8, true, false)
+			provHold(t, s.Peer, 0, specOf(Notes), jsonObject("session", "S1"))
+			s.Peer.Next("bound")
+			for id := range 300 {
+				provCall(t, s.Peer, id, 0, wait, nil)
+			}
+			settle(s.Peer)
+			if s.Peer.Closed() {
+				t.Fatal("the trusted link closed")
+			}
+			s.Probe.AwaitWaits(t, 300)
+			if got := len(s.Probe.Waits()); got != 300 {
+				t.Fatalf("waits = %d, want 300", got)
+			}
+			if s.Errors.Len() != 0 {
+				t.Fatalf("errors = %v, want none", s.Errors.All())
+			}
 		})
 
 		// Ports "frees a slot per reply, cancel and release".
 		t.Run("frees a slot per reply, cancel and release", func(t *testing.T) {
-			s := notesServer(t, nil)
+			s := windowed(t, 8, false, false)
 			provHold(t, s.Peer, 0, specOf(Notes), jsonObject("session", "S1"))
 			s.Peer.Next("bound")
-			for id := range 256 {
+			for id := range 8 {
 				provCall(t, s.Peer, id, 0, wait, nil)
 			}
 			s.Peer.Send(&link.AbortMessage{Call: 0})
-			provCall(t, s.Peer, 256, 0, wait, nil)
+			provCall(t, s.Peer, 8, 0, wait, nil)
 			s.Peer.Send(&link.ReleaseMessage{Hold: 0})
 			provHold(t, s.Peer, 1, specOf(Notes), jsonObject("session", "S1"))
 			s.Peer.Next("bound")
-			for id := 300; id < 556; id++ {
+			for id := 300; id < 308; id++ {
 				provCall(t, s.Peer, id, 1, wait, nil)
 			}
 			settle(s.Peer)

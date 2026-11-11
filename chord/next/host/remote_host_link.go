@@ -37,9 +37,6 @@ type hostLinkOptions struct {
 	limits  link.Limits
 }
 
-// linkCalls is how many concurrent calls a host accepts on each of its links, announced in `hello`.
-const linkCalls = 256
-
 // inflatePart is a deflated part an owner admitted, with its decoded limit.
 type inflatePart struct {
 	part  *link.DeflatedPart
@@ -59,6 +56,9 @@ type hostLink struct {
 	trusted bool
 	// limits are the limits per part of what arrives on this link (Q2).
 	limits link.Limits
+	// calls is how many concurrent calls of one origin this side accepts, announced in `hello`: 0 (none) on a link it was
+	// given as trusted, else the host's `callWindow` (decision "Call windows only for untrusted links").
+	calls int
 	// context is the parent of the work arriving on this link.
 	context  context.Context
 	consumer *consumerSide
@@ -80,11 +80,14 @@ func newHostLink(host *chordHost, made link.Link, options hostLinkOptions, ctx c
 		host: host, role: options.role, principal: options.principal, trusted: options.trusted, limits: options.limits,
 		context: ctx,
 	}
+	if !options.trusted {
+		l.calls = host.callWindow
+	}
 	l.closing, l.closingCancel = chordctx.WithCancel(chordctx.Background())
 	l.consumer = newConsumerSide(l)
 	report := func(err error) { host.report(HostError{Kind: ErrProtocolError, Error: err}) }
 	channel, err := link.NewChannel(made, l, link.ChannelOptions{
-		Codec: options.codec, Incarnation: host.incarnation, Calls: linkCalls, Trusted: options.trusted, Report: report,
+		Codec: options.codec, Incarnation: host.incarnation, Calls: l.calls, Trusted: options.trusted, Report: report,
 		Now: host.loop().Now, Metrics: host.metrics,
 	}, ctx)
 	if err != nil {
@@ -219,7 +222,7 @@ func (l *hostLink) dispatch(message link.Message) (*link.Handling, error) {
 			provider.closed()
 		}
 		l.providers.delete(m.Origin)
-	case *link.BoundMessage, *link.StateMessage, *link.FailedMessage, *link.LoadingMessage, *link.ResultMessage, *link.ErrorMessage, *link.GoneMessage:
+	case *link.BoundMessage, *link.StateMessage, *link.FailedMessage, *link.LoadingMessage, *link.ResultMessage, *link.ErrorMessage, *link.GoneMessage, *link.EventMessage:
 		return l.consumer.message(message.(link.ConsumerMessage))
 	case *link.RevokeMessage:
 		// Only the parent revokes; a child or a route cannot (race 6). JSON from the parent, the app's revocation type
@@ -270,7 +273,7 @@ func (l *hostLink) hold(message *link.HoldMessage) error {
 	}
 	provider, ok := l.providers.get(origin)
 	if !ok {
-		provider = newProviderSide(l, origin, linkCalls)
+		provider = newProviderSide(l, origin, l.calls)
 		l.providers.set(origin, provider)
 	}
 	_, err := provider.message(message)

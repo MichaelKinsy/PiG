@@ -37,13 +37,15 @@ func (s *replicaSet) set(name string, r *replica) {
 	s.byName[name] = r
 }
 
-// boundVariant is the last binding: its variant, methods, the bound version's names (the wire's indexes) and a replica
-// per member.
+// boundVariant is the last binding: its variant, methods, the bound version's names (the wire's indexes), a replica per
+// member, and a node per event member, at which the events arriving for this binding go out (a new binding has new nodes,
+// so its reference's subscriptions move there from its counter value: nothing of an earlier binding reaches them).
 type boundVariant struct {
 	variant  string
 	methods  *contracts.NamedMap[*contracts.MethodData]
 	names    contracts.VariantNames
 	replicas *replicaSet
+	nodes    map[string]*eventNode
 }
 
 // remoteHold is the hold on the path's link while one is open: that link's consumer side and this hold's id on it.
@@ -293,8 +295,67 @@ func (r *remoteObject) followed(member string, _ int) followed {
 // attachedVariant makes a binding an `attachable`: the variant its replicas are of.
 func (b *boundVariant) attachedVariant() string { return b.variant }
 
-// eventNode: a remote replica has no event nodes yet (the remote layer's event messages come with ChordLink's port).
-func (b *boundVariant) eventNode(member string, version int) *eventNode { return nil }
+// eventNode is event member member's node as a binding taps it: a remote binding's reference binds at its own version (the
+// provider mapped what arrives).
+func (b *boundVariant) eventNode(member string, version int) *eventNode { return b.nodes[member] }
+
+// eventNodes are the nodes of a new binding with event members members (new nodes: nothing of an earlier binding reaches
+// its reference's subscriptions); nil for a variant without event members.
+func eventNodes(members []string) map[string]*eventNode {
+	if len(members) == 0 {
+		return nil
+	}
+	nodes := make(map[string]*eventNode, len(members))
+	for _, member := range members {
+		nodes[member] = &eventNode{}
+	}
+	return nodes
+}
+
+// eventNodeOf is where an event of member member (an index into the bound version's event members) of its hold goes: its
+// live binding's node for it, when something taps it; nil when the value is to be dropped unopened (not live, no
+// listener). An index outside the bound version is an error (a protocol error).
+func (r *remoteObject) eventNodeOf(member int) (*eventNode, error) {
+	bound := r.bound
+	if r.refState.Kind != RefStateLive || bound == nil {
+		return nil, nil
+	}
+	if member < 0 || member >= len(bound.names.Events) {
+		return nil, fmt.Errorf("%s: no event member %d", r.label(), member)
+	}
+	// A name of the bound variant's event members has its node.
+	node := bound.nodes[bound.names.Events[member]]
+	if !node.tapped() {
+		return nil, nil
+	}
+	return node, nil
+}
+
+// event is one entry of an `event` message for its hold: the value of event member member stamped at, taking this host's
+// next counter value, at the node its reference's subscriptions tap (dropped unopened when it is not live or nothing
+// listens); dropped past the link's limits (`too_large`, counted; the hold stays bound).
+func (r *remoteObject) event(member int, at int, value link.Part, hl *hostLink) error {
+	node, err := r.eventNodeOf(member)
+	if err != nil || node == nil {
+		return err
+	}
+	events := r.host.eventFlow
+	opened, err := hl.openPart(value, hl.limits, hl.context)
+	if err != nil {
+		if _, tooLarge := data.IsChordErrorCode(err, data.CodeTooLarge); !tooLarge {
+			return err
+		}
+		events.metrics.Counter("chord.events.dropped").Add(1, telemetry.SpanAttributes{telemetry.Attr("reason", "too_large")})
+		return nil
+	}
+	// Fresh JSON from the link: event values are never validated (as state, §30).
+	parsed, err := link.ParsePart(opened)
+	if err != nil {
+		return err
+	}
+	events.push(node, parsed, int64(at))
+	return nil
+}
 
 // attachable is its binding while live (its replicas change); nil while loading or failed.
 func (r *remoteObject) attachable() attachable {
@@ -451,7 +512,7 @@ func (r *remoteObject) prepareBound(entry link.BoundEntry, hl *hostLink) (func()
 		}
 		replicas := newReplicaSet()
 		// First: a derive recomputing in this batch reads the new variant through its reference.
-		r.bound = &boundVariant{variant: variant, methods: variantData.Methods, names: names, replicas: replicas}
+		r.bound = &boundVariant{variant: variant, methods: variantData.Methods, names: names, replicas: replicas, nodes: eventNodes(names.Events)}
 		for _, member := range memberOrder {
 			snapshot := members[member]
 			var existing *replica
