@@ -17,14 +17,16 @@ import (
 	"github.com/MichaelKinsy/PiG/durable/session"
 )
 
-// TaskGraphState is a live task's durable status without its checkpoint and outcome payloads (spec §9.5): pending or running with Phase, waiting with Phase, On, and Policy, sleeping with Phase and Until, or completing with the held Outcome status.
+// TaskGraphState is a live task's durable status without its checkpoint and outcome payloads (spec §9.5): pending or running with Phase, waiting with Phase, On, and Policy, sleeping with Phase and the Until, Signals it waits for, or completing with the held Outcome status.
 type TaskGraphState struct {
 	Status durable.TaskStatus `json:"status"`
 	Phase  string             `json:"phase,omitempty"`
 	On     []durable.TaskId   `json:"on,omitempty"`
 	Policy durable.JoinPolicy `json:"policy,omitempty"`
-	// Until is the time a sleeping task wakes at.
-	Until float64 `json:"until,omitempty"`
+	// Until is the time a sleeping task wakes at, when it has one: a sleep may wait for signals only. Nil when absent.
+	Until *float64 `json:"until,omitempty"`
+	// Signals are the signal keys a sleeping task wakes on, when it lists any; nil when absent.
+	Signals []durable.SignalKey `json:"signals,omitempty"`
 	// Outcome is the status of the outcome held until its ordinary owned work drains.
 	Outcome durable.TaskOutcomeStatus `json:"outcome,omitempty"`
 }
@@ -36,7 +38,14 @@ func (state TaskGraphState) MarshalJSON() ([]byte, error) {
 	case durable.TaskPending, durable.TaskRunning:
 		encoded = delta.JsonObjectOf("status", state.Status, "phase", state.Phase)
 	case durable.TaskSleeping:
-		encoded = delta.JsonObjectOf("status", state.Status, "phase", state.Phase, "until", state.Until)
+		pairs := []any{"status", state.Status, "phase", state.Phase}
+		if state.Until != nil {
+			pairs = append(pairs, "until", *state.Until)
+		}
+		if state.Signals != nil {
+			pairs = append(pairs, "signals", state.Signals)
+		}
+		encoded = delta.JsonObjectOf(pairs...)
 	case durable.TaskWaiting:
 		on := state.On
 		if on == nil {
@@ -468,11 +477,12 @@ func taskGraphStateOf(record durable.TaskRecord[durable.JsonValue, durable.JsonV
 	case durable.TaskWaiting:
 		return TaskGraphState{Status: durable.TaskWaiting, Phase: phaseOf(state.Checkpoint), On: slices.Clone(state.On), Policy: state.Policy}
 	case durable.TaskSleeping:
-		var until float64
+		sleeping := TaskGraphState{Status: durable.TaskSleeping, Phase: phaseOf(state.Checkpoint), Signals: slices.Clone(state.Signals)}
 		if state.Until != nil {
-			until = *state.Until
+			until := *state.Until
+			sleeping.Until = &until
 		}
-		return TaskGraphState{Status: durable.TaskSleeping, Phase: phaseOf(state.Checkpoint), Until: until}
+		return sleeping
 	}
 	// Terminal records never reach here: they leave the graph.
 	var outcome durable.TaskOutcomeStatus

@@ -123,7 +123,7 @@ func (s *TaskScheduler) settleIdleScopes(scopes map[durable.ConversationId]struc
 			continue
 		}
 		switch {
-		case !s.idleLocked(&conversationId):
+		case !s.inactiveLocked(conversationId):
 			if kept.idleSince == nil {
 				continue
 			}
@@ -214,8 +214,8 @@ type SchedulerIdleState struct {
 	FullIdleChecks int
 }
 
-// idleState computes the kept contexts' idle state on demand (scheduler.ts idleState): an idle period without idleLocked,
-// or idleLocked without one, and an expiry order that differs from the idle periods or is not sorted, are mismatches.
+// idleState computes the kept contexts' idle state on demand (scheduler.ts idleState): an idle period without inactiveLocked,
+// or inactiveLocked without one, and an expiry order that differs from the idle periods or is not sorted, are mismatches.
 func (s *TaskScheduler) idleState() SchedulerIdleState {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -224,7 +224,7 @@ func (s *TaskScheduler) idleState() SchedulerIdleState {
 		if kept.idleSince != nil {
 			state.IdleContexts++
 		}
-		if (kept.idleSince != nil) != s.idleLocked(&conversationId) {
+		if (kept.idleSince != nil) != s.inactiveLocked(conversationId) {
 			state.IdleMismatches++
 		}
 		if s.idleOrder.Has(conversationId) != (kept.idleSince != nil) {

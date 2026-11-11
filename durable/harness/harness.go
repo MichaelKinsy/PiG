@@ -702,6 +702,8 @@ func newHarness(ctx context.Context, storage durable.Storage, options HarnessOpt
 		},
 		Report:         harness.report,
 		LimitsRestarts: func(kind string) bool { return limitsRestarts[kind] },
+		KeepsAbandoned: keepsChildren,
+		Gated:          gatedCall,
 		SettleOutcome:  SettleSchedulerOutcome,
 		WithdrawInputs: WithdrawQueuedInputs,
 		Conversation: func(callCtx context.Context, id durable.ConversationId, binding InvocationBinding) (durable.ConversationHandle, error) {
