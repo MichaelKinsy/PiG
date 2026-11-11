@@ -372,6 +372,7 @@
          (request (make-request id (make-abort-signal)))
          ;; session_before_compact / session_before_tree dispatched after the event's signal aborted: the handler starts with its signal aborted, as a cancel frame queued ahead of it would leave it (runner.ts emit awaits the handler with event.signal aborted), but the request is not cancelled: its host calls run, as Pi's ctx.ui.notify never fails on abort
          (aborted (eq (jget req "signal_aborted") t)))
+    (setf (request-command request) (and (member (jget req "method") '("command" "with_session") :test #'equal) t))
     (sb-thread:with-mutex ((extension-state-lock ext))
       (when aborted (setf (request-reason request) "context canceled"))
       (setf (gethash id (extension-active ext)) request))

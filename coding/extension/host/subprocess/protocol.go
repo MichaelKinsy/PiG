@@ -1458,6 +1458,8 @@ type CallPayload struct {
 	Tick bool `json:"tick,omitempty"`
 	// OriginToolCallID, with Tick, is the tool call whose handler queued the callback that made the call (a Node runtime knows it from the request the callback was queued in). The host runs the call after that call's tool_execution_end, whether the call reaches the host before or after the event: the runtime is another process, so the time between its answer and the callback's call decides nothing about Pi's order. Empty when no tool call queued the callback.
 	OriginToolCallID string `json:"origin_tool_call_id,omitempty"`
+	// CommandContext marks a call made through a command context: the context of a command handler or of a withSession callback, the only contexts Pi gives newSession, fork, navigateTree, switchSession and reload (runner.ts createCommandContext). The SDK sets it from the kind of the context the call is made through, so a context kept past its request keeps its kind; the host refuses those five calls without it (commandOnlyCall).
+	CommandContext bool `json:"command_context,omitempty"`
 }
 
 // ── CallResult (host→ext) ────────────────────────────────────────────────────

@@ -20,6 +20,16 @@ type requestParent struct {
 	cancelled bool
 	// signal is the request's signal, which a signal-only cancel aborts alone (Context.Done and Err); nil until the request is armed with its signal (armRequestScope).
 	signal *requestSignal
+	// command is set when the request hands its handler a command context (a command handler, a withSession callback): the context keeps the kind after the request ended, and the host refuses the command-only session actions from any other. Guarded by the connection's pendingMu.
+	command bool
+}
+
+// markCommand records that the request hands its handler a command context. The kind stays with the context for good: a retained command context is still one, and a retained event, tool or shortcut context never becomes one.
+// pig divergence (D617): the Go SDK has one static Context type, so the method exists on every context; the host answers a command-only call from a context that did not send this mark with not_a_command_context.
+func (p *requestParent) markCommand() {
+	p.conn.pendingMu.Lock()
+	p.command = true
+	p.conn.pendingMu.Unlock()
 }
 
 // requestSignal is a request's signal: the context Context.Done and Err report, a child of the request's context, which a signal-only cancel (a tool_call's abort, session_before_compact and session_before_tree's event.signal) ends while the request, and the host calls its handler waits on, go on. An ordinary cancel ends the request and with it the signal.
