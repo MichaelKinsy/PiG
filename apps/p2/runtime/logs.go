@@ -796,7 +796,7 @@ func CapturePublishedLogs(source, directory string, inTests bool) *PublishedLogs
 }
 
 // Fatal records a fatal error of the host (an error's text, or a panic's value with its stack) and writes the final
-// snapshot at once: the host exits right after.
+// snapshot at once, after the writes already pending: the host exits right after.
 func (p *PublishedLogs) Fatal(value any, stack []byte) {
 	if p == nil || p.persist == nil {
 		return
@@ -811,15 +811,10 @@ func (p *PublishedLogs) Fatal(value any, stack []byte) {
 	ProcessLogs.Append(p.source, LogError, text)
 	p.once.Do(func() {
 		p.stopCapture()
-		// Diagnostics must not change process termination.
-		if os.MkdirAll(p.directory, 0o700) != nil {
-			return
-		}
-		content, _ := json.Marshal(LogSnapshot{Source: p.source, Lines: ProcessLogs.Lines(p.source)})
-		temporary := fmt.Sprintf("%s.%d.exit.tmp", p.path, os.Getpid())
-		if os.WriteFile(temporary, content, 0o600) == nil {
-			_ = os.Rename(temporary, p.path)
-		}
+		// The last snapshot goes through the publication's own writer, which finishes the writes it has pending first: a writer
+		// of its own for the exit would leave the startup snapshot's goroutine free to rename older content over it.
+		// Diagnostics must not change process termination: persist reports nothing.
+		_ = p.persist()
 	})
 }
 
