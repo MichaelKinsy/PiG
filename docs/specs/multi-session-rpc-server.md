@@ -1,6 +1,6 @@
 # Multi-session RPC server with shared extension cells
 
-Status: implemented on `feat/rpc-listen`, commits `205cfa483..bd6f9cad3` and the Task 7 record. Additive feature record: D205 in `docs/additive-features.md`.
+Status: implemented on `feat/rpc-listen`, commits `205cfa483..bd6f9cad3` and the Task 7 record. Additive feature record: D232 in `docs/additive-features.md`.
 
 ## Intent
 
@@ -42,7 +42,7 @@ The last two rows are the problem this design solves: a session's extension proc
 
 ## Constraints
 
-- `AGENTS.md`: the capability is classified before implementation (inert capability, selected only by `--listen`); it gets a `D205` record in `docs/additive-features.md`, one `// pig additive (D205)` marker at each production decision point, a `changelog.d` fragment, and `make generate` output committed. Extension Host changes are proven across Go, Rust, Python and Node, in isolated, packed and fused realizations, through `test/extension-conformance/`. New duration or cap literals need an upstream citation or a D205 marker for `make divergence-guard`. Windows is a first-class target: the server uses `AF_UNIX`, which Go supports on Windows 10 1803 and later, and the integration tests run in the Windows CI job.
+- `AGENTS.md`: the capability is classified before implementation (inert capability, selected only by `--listen`); it gets a `D232` record in `docs/additive-features.md`, one `// pig additive (D232)` marker at each production decision point, a `changelog.d` fragment, and `make generate` output committed. Extension Host changes are proven across Go, Rust, Python and Node, in isolated, packed and fused realizations, through `test/extension-conformance/`. New duration or cap literals need an upstream citation or a D232 marker for `make divergence-guard`. Windows is a first-class target: the server uses `AF_UNIX`, which Go supports on Windows 10 1803 and later, and the integration tests run in the Windows CI job.
 - The RPC protocol per connection stays Pi's. The existing `rpc` parity family proves `pig --mode rpc` against Pi; the server is proven equal to `pig --mode rpc`.
 - Extension processes keep one socket and one registration per extension instance (D20). Multi-register and session-tagged frames are out.
 
@@ -64,7 +64,7 @@ The last two rows are the problem this design solves: a session's extension proc
 - The process ignores its own stdin. The server runs until a termination signal.
 - A closed connection is that session's stdin end: PiG runs the session's shutdown (`session_shutdown` to its extensions, dispose of the runtime), closes the connection and keeps serving. The exit code a `pig --mode rpc` process would have returned is logged at debug level and otherwise dropped.
 - A termination signal runs every live session's shutdown concurrently, then exits with `128 + signal`, as `pig --mode rpc` does for one session. Extension processes are terminated after the shutdowns, as today's forced exit does.
-- `--listen` keeps D174's general GOMAXPROCS cap of 2 and does not apply the rpc cap of 1, because the process runs many sessions. It does not apply D175's GOGC 400 start, because resident memory is the server's objective. Both are recorded in D205.
+- `--listen` keeps D174's general GOMAXPROCS cap of 2 and does not apply the rpc cap of 1, because the process runs many sessions. It does not apply D175's GOGC 400 start, because resident memory is the server's objective. Both are recorded in D232.
 
 ### Per-connection runtime
 
@@ -109,12 +109,12 @@ Integration tests in `coding/cli`, faux provider, hermetic:
 
 Conformance row in `test/extension-conformance/`: two Hosts share one registry; their instances of one extension are admitted into one process for Go, Rust, Python and Node, isolated and packed, and the fused Go realization; each instance holds its own state and bus; the behavior equals two Hosts without a registry.
 
-Memory evidence: a bench script under `bench/` starts `pig --mode rpc --listen` against the scripted model, connects N = 1, 10, 50, 100 sessions, runs the five-turn workload, and records RSS and phys_footprint (PSS on Linux) with and without the two extensions, beside `pig --mode rpc` per session. The numbers go into the D205 record.
+Memory evidence: a bench script under `bench/` starts `pig --mode rpc --listen` against the scripted model, connects N = 1, 10, 50, 100 sessions, runs the five-turn workload, and records RSS and phys_footprint (PSS on Linux) with and without the two extensions, beside `pig --mode rpc` per session. The numbers go into the D232 record.
 
 ### Records and documentation
 
-- `docs/additive-features.md`: `## D205` with the Stock disposition (inert capability), what, current behavior, the Pi source note (Pi's RPC serves one session per process; Pi's SDK shares one resource loader across sessions from one services object (`agent-session-services.ts:214-233`)), the policy decisions above, the markers, the tests, the measurements, and the remove-when condition (Pi gains a multi-session RPC mode).
-- `// pig additive (D205)` markers: `coding/cli/args.go` (`--listen`), `coding/cli/rpc_mode.go` (transport, server loop), `coding/extension/host/subprocess` (registry opt-in and lookup), `coding/extension/host/subprocess/protocol.go` (`ready.group`), `runtime.mjs` (group scoping).
+- `docs/additive-features.md`: `## D232` with the Stock disposition (inert capability), what, current behavior, the Pi source note (Pi's RPC serves one session per process; Pi's SDK shares one resource loader across sessions from one services object (`agent-session-services.ts:214-233`)), the policy decisions above, the markers, the tests, the measurements, and the remove-when condition (Pi gains a multi-session RPC mode).
+- `// pig additive (D232)` markers: `coding/cli/args.go` (`--listen`), `coding/cli/rpc_mode.go` (transport, server loop), `coding/extension/host/subprocess` (registry opt-in and lookup), `coding/extension/host/subprocess/protocol.go` (`ready.group`), `runtime.mjs` (group scoping).
 - `docs/site/docs/cli.md` (PiG Options), `docs/site/docs/rpc.md` (a "Serve many sessions" section with a minimal client), `pigCommands` help text, `docs/extension-api-parity.md` (the cell-sharing invariant, the `ready.group` member and its async contract), `changelog.d/<lane>-<sha>.md` under `### Added`.
 - `make generate`, `make ci-drift ci-contracts`, `make lint-changed`, the affected `make parity-family rpc` and `make test` groups before the handoff.
 
@@ -128,4 +128,4 @@ Memory evidence: a bench script under `bench/` starts `pig --mode rpc --listen` 
 
 ## Approval
 
-The `--listen` proposal was posted on the PiG Discord and approved there on 2026-11-03, before PR #404 was opened. The D205 record carries that approval; the review of the PR is the owner's sign-off.
+The `--listen` proposal was posted on the PiG Discord and approved there on 2026-11-03, before PR #404 was opened. The D232 record carries that approval; the review of the PR is the owner's sign-off.

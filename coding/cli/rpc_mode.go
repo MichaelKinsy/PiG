@@ -246,7 +246,7 @@ func runRPCMode(ctx context.Context, flags Args, activePiglet *piglet.Piglet, re
 	defer rawStdout.Close()
 	defer func() {
 		// A normal exit flushes the tail; a termination signal exits without waiting on a blocked reader.
-		// pig additive (D205): a connection's tail is flushed on a server-wide signal too, bounded by flushConnectionTail.
+		// pig additive (D232): a connection's tail is flushed on a server-wide signal too, bounded by flushConnectionTail.
 		if !transport.processOwned {
 			flushConnectionTail(rawStdout)
 		} else if receivedTerminationSignal.Load() == 0 {
@@ -428,14 +428,14 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 	exitRPC := func(code int) {
 		stdoutClosed.Store(true)
 		if !transport.processOwned {
-			// pig additive (D205): a connection flushes its pending records on every exit, SIGTERM included, but never waits on a peer that stopped reading.
+			// pig additive (D232): a connection flushes its pending records on every exit, SIGTERM included, but never waits on a peer that stopped reading.
 			flushConnectionTail(rawStdout)
 		} else if code != 128+int(syscall.SIGTERM) {
 			// Upstream flushes stdout before process.exit unless the signal is SIGTERM; the queued tail is that pending output.
 			rawStdout.Wait(context.Background())
 		}
 		if !transport.processOwned {
-			// pig additive (D205): a connection's exit closes the connection only; the process and its extensions outlive it.
+			// pig additive (D232): a connection's exit closes the connection only; the process and its extensions outlive it.
 			transport.exit(code)
 			return
 		}
@@ -449,7 +449,7 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 	}
 	forceSignal := func(sig os.Signal) {
 		if !transport.processOwned {
-			// pig additive (D205): a connection session ends by closing its connection with the signal's exit code; the process keeps running.
+			// pig additive (D232): a connection session ends by closing its connection with the signal's exit code; the process keeps running.
 			code := 1
 			if number, ok := sig.(syscall.Signal); ok {
 				code = 128 + int(number)
@@ -498,7 +498,7 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 			host.detached.Store(true)
 		},
 		func() {
-			// pig additive (D205): a connection's session retires its own extension Host through the normal release; only a process about to exit holds its retirements for TerminateProcesses.
+			// pig additive (D232): a connection's session retires its own extension Host through the normal release; only a process about to exit holds its retirements for TerminateProcesses.
 			if extensionHost, _ := rpcExtensionHost(sess()); extensionHost != nil && transport.processOwned {
 				extensionHost.HoldRetirements()
 			}
@@ -592,7 +592,7 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 		setTerminationShutdownHook(func() { shutdown.signal(syscall.Signal(receivedTerminationSignal.Load())) })
 		defer setTerminationShutdownHook(nil)
 	} else if transport.register != nil {
-		// pig additive (D205): a connection hands its controls to the server's signal fan-out instead of the process hooks.
+		// pig additive (D232): a connection hands its controls to the server's signal fan-out instead of the process hooks.
 		defer transport.register(rpcSessionControls{prelude: prelude, shutdown: shutdown.signal})()
 	}
 

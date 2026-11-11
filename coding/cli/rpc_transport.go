@@ -8,7 +8,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
-// rpcTransport is where an RPC session reads its commands, writes its records and ends. The process transport is stdin, the raw stdout writer and os.Exit; a --listen connection's is the connection. pig additive (D205).
+// rpcTransport is where an RPC session reads its commands, writes its records and ends. The process transport is stdin, the raw stdout writer and os.Exit; a --listen connection's is the connection. pig additive (D232).
 type rpcTransport struct {
 	in  io.Reader
 	out io.Writer

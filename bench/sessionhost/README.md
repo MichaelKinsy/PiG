@@ -1,6 +1,6 @@
 # sessionhost: memory of N concurrent RPC sessions
 
-`sessionhost.py` compares two ways to serve N RPC sessions: arm `listen`, one `pig --mode rpc --listen` process with N connections, and arm `rpc`, N `pig --mode rpc` processes (D205). Both arms use the same agent directory, the same scripted model and the same workload, and sample the memory of the whole process tree before the first turn and after every turn.
+`sessionhost.py` compares two ways to serve N RPC sessions: arm `listen`, one `pig --mode rpc --listen` process with N connections, and arm `rpc`, N `pig --mode rpc` processes (D232). Both arms use the same agent directory, the same scripted model and the same workload, and sample the memory of the whole process tree before the first turn and after every turn.
 
 ```sh
 go build -trimpath -o /tmp/pig-listen ./cmd/pig

@@ -22,7 +22,7 @@ func sharedToolText(t *testing.T, h *harness, tool, params string) string {
 	return result.Text()
 }
 
-// Two Hosts that join one cell registry each keep their own instance of an extension in every SDK and realization: an instance-local counter, and a pi.events emit that only the emitting Host's instances hear (pig additive (D205)). The behavior equals two Hosts without a registry.
+// Two Hosts that join one cell registry each keep their own instance of an extension in every SDK and realization: an instance-local counter, and a pi.events emit that only the emitting Host's instances hear (pig additive (D232)). The behavior equals two Hosts without a registry.
 // isolatedByDesign names the cases whose member runs alone in its own process per Host (an exact standalone is always isolated; fused-go and inproc-go have no process): they prove instance-local state only. Every other case admits both Hosts' members into one process.
 var isolatedByDesign = map[string]bool{"subprocess-go": true, "subprocess-node": true, "subprocess-rust": true, "subprocess-python": true, "fused-go": true}
 
@@ -86,7 +86,7 @@ func TestConformance_SharedCellsIsolatePerHostInstances(t *testing.T) {
 	}
 }
 
-// Hosts that join one cell registry share an extension's process, so the module-level state of a Node extension and the package-level state of a Go extension is shared between their instances: the second Host's instance reads the first's factory increment (D205). Only state kept in the factory closure or the instance is per Host. An exact standalone is isolated by design and never shares: it reads 1 in each Host.
+// Hosts that join one cell registry share an extension's process, so the module-level state of a Node extension and the package-level state of a Go extension is shared between their instances: the second Host's instance reads the first's factory increment (D232). Only state kept in the factory closure or the instance is per Host. An exact standalone is isolated by design and never shares: it reads 1 in each Host.
 func TestConformance_SharedCellsShareModuleLevelState(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")

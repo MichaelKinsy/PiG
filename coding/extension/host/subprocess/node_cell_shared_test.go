@@ -134,7 +134,7 @@ func (w *beforeAdmit) Write(p []byte) (int, error) {
 	return w.WriteCloser.Write(p)
 }
 
-// Host A's last generation ends while Host B, which already joined the process, has not yet been admitted: the runner exits itself, and B starts the cell on a fresh process instead of running without it (D205).
+// Host A's last generation ends while Host B, which already joined the process, has not yet been admitted: the runner exits itself, and B starts the cell on a fresh process instead of running without it (D232).
 func TestSharedNodeCellAdmitsAHostWhoseJoinedProcessExitsBeforeAdmission(t *testing.T) {
 	skipWithoutNodeExtensions(t)
 	nodeCellRequireNode(t)
@@ -175,7 +175,7 @@ func TestSharedNodeCellAdmitsAHostWhoseJoinedProcessExitsBeforeAdmission(t *test
 	}
 }
 
-// Twelve Hosts join, end their input and shut down in turn while one stays: the process-wide beforeExit listener count does not grow with them, and the process's stderr shows no EventEmitter warning (D205).
+// Twelve Hosts join, end their input and shut down in turn while one stays: the process-wide beforeExit listener count does not grow with them, and the process's stderr shows no EventEmitter warning (D232).
 func TestSharedNodeCellKeepsOneBeforeExitListenerAcrossSessions(t *testing.T) {
 	skipWithoutNodeExtensions(t)
 	nodeCellRequireNode(t)
@@ -212,7 +212,7 @@ func TestSharedNodeCellKeepsOneBeforeExitListenerAcrossSessions(t *testing.T) {
 	}
 }
 
-// The registry drops a process's entry when its last reference releases (D205).
+// The registry drops a process's entry when its last reference releases (D232).
 func TestSharedCellsForgetAProcessWhenItsLastHostLeaves(t *testing.T) {
 	a, b := twoSharedNodeHosts(t)
 	registry := a.cells

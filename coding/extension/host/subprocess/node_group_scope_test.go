@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// nodeGroupScript runs body in Node against runtime.mjs with the per-group state exported (pig additive (D205)); group names an instance's Host group, "" a member of a process one Host owns.
+// nodeGroupScript runs body in Node against runtime.mjs with the per-group state exported (pig additive (D232)); group names an instance's Host group, "" a member of a process one Host owns.
 func nodeGroupScript(t *testing.T, body string) {
 	t.Helper()
 	nodeCellRequireNode(t)

@@ -31,7 +31,7 @@ The initial active tool list and system-message tool declarations retain extensi
 pig --mode rpc --listen /run/user/1000/pig.sock [--model <provider/model>] [options]
 ```
 
-`--listen <path>` serves one RPC session per connection on the Unix socket at `<path>` (D205). The connection carries Pi's RPC protocol unchanged: the client writes commands and reads responses and events, framed as in [Framing](#framing).
+`--listen <path>` serves one RPC session per connection on the Unix socket at `<path>` (D232). The connection carries Pi's RPC protocol unchanged: the client writes commands and reads responses and events, framed as in [Framing](#framing).
 
 - Every connection creates a new Session, persisted under the Session directory unless you pass `--no-session`. `--listen` rejects `--continue`, `--resume`, `--session`, `--session-id` and `--fork`.
 - Closing a connection is the end of that session's standard input: PiG shuts the session down, closes the connection and keeps serving.

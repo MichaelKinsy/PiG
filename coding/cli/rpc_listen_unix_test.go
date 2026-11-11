@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// TestListenSocketIsPrivateUnderAPermissiveUmask: the --listen socket is 0600 from the moment it exists, whatever umask the server inherited (D205). The server inherits the test's umask, so a permissive one here would show at the socket without the private bind.
+// TestListenSocketIsPrivateUnderAPermissiveUmask: the --listen socket is 0600 from the moment it exists, whatever umask the server inherited (D232). The server inherits the test's umask, so a permissive one here would show at the socket without the private bind.
 func TestListenSocketIsPrivateUnderAPermissiveUmask(t *testing.T) {
 	old := syscall.Umask(0)
 	server := newListenServer(t)

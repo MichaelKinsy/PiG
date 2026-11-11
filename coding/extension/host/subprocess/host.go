@@ -274,7 +274,7 @@ func extConfigOrigin(config ExtConfig) string {
 //
 // pig-specific: no upstream equivalent.
 type Host struct {
-	// cells is the registry of cell processes shared with other Hosts, and group this Host's ready.group in it; both are unset for a Host that shares no cells. pig additive (D205): Host.ShareCells.
+	// cells is the registry of cell processes shared with other Hosts, and group this Host's ready.group in it; both are unset for a Host that shares no cells. pig additive (D232): Host.ShareCells.
 	cells *CellRegistry
 	group string
 	// slotCalls keeps UI replacements in the order the extensions sent them (runSlotCall).
@@ -3322,7 +3322,7 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 		me.share.node = true
 		me.share.tier = tierOf(tsSelection)
 		h.retention().register(me.share)
-		// pig additive (D205): a Host that joined a CellRegistry offers this process to the other Hosts of the registry.
+		// pig additive (D232): a Host that joined a CellRegistry offers this process to the other Hosts of the registry.
 		if h.sharesCells(ctx) {
 			h.cells.register(h.cellRegistryKey(me.share.key), me.share)
 		}

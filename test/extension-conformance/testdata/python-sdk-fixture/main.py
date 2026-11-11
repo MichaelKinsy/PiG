@@ -1701,7 +1701,7 @@ def new_extension() -> pig_sdk.Extension:
         return {"content": "soft tool error", "is_error": True}
 
     ext.tool("echo", "Echo input text", {"type": "object", "required": ["text"], "properties": {"text": {"type": "string", "description": "Text to echo"}, "offset": {"type": "number"}}}, echo)
-    # D205 shared-cells rows: instance-local state, the process's event bus, and what this instance heard (the same three tools in every SDK fixture).
+    # D232 shared-cells rows: instance-local state, the process's event bus, and what this instance heard (the same three tools in every SDK fixture).
     shared = {"calls": 0, "heard": []}
     ext.events.on("shared-cells", lambda _ctx, data: shared["heard"].append(data["from"]))
 

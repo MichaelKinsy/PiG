@@ -258,7 +258,7 @@ func runListenScript(p *rpcProcess) []rpcRecord {
 	return records
 }
 
-// The second connection is built through listenBuild, not the startup build the first connection takes: its records equal pig --mode rpc's (D205).
+// The second connection is built through listenBuild, not the startup build the first connection takes: its records equal pig --mode rpc's (D232).
 func TestListenSecondConnectionMatchesPigModeRPC(t *testing.T) {
 	dir := listenTempDir(t)
 	env := listenEnv(t, dir)

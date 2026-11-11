@@ -974,11 +974,11 @@ path = "coding/cli/rpc_listen_test.go"
 commit = "edae8e70d714f24858560b47c9b12f1ca889e7f3"
 class = "NOBEHAVIOR"
 cite = ""
-reason = "The --listen server tests are PiG-original (D205): Pi serves one RPC session per process and has no counterpart, so no Pi line governs them. The commit's review round made the concurrency test count agent_end per connection across its whole traffic and prove overlap with an RPC bash sleep, and narrowed the cross-session text check to the message text; the behavior it tests is the D205 server's own."
+reason = "The --listen server tests are PiG-original (D232): Pi serves one RPC session per process and has no counterpart, so no Pi line governs them. The commit's review round made the concurrency test count agent_end per connection across its whole traffic and prove overlap with an RPC bash sleep, and narrowed the cross-session text check to the message text; the behavior it tests is the D232 server's own."
 
 [[entry]]
 path = "coding/extension/host/subprocess/node_cell_shared_test.go"
 commit = "f34cb22f47198d92a4f67c2b89301045cadeb067"
 class = "NOBEHAVIOR"
 cite = ""
-reason = "The shared-cell Node tests are PiG-original (D205): Pi runs one extension process per session and has no counterpart, so no Pi line governs them. The commit's review round replaced the sleep-based drain observation with the runtime-level drain test and asserted equal non-zero pids for the two Hosts' members; the behavior it tests is the D205 cell registry's own."
+reason = "The shared-cell Node tests are PiG-original (D232): Pi runs one extension process per session and has no counterpart, so no Pi line governs them. The commit's review round replaced the sleep-based drain observation with the runtime-level drain test and asserted equal non-zero pids for the two Hosts' members; the behavior it tests is the D232 cell registry's own."

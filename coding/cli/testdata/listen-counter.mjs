@@ -1,7 +1,7 @@
 import { appendFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 
-// The Node twin of listen-counter-go: every tool answers what the Go one answers. Tool names carry the extension name so both register in one session. pig additive (D205).
+// The Node twin of listen-counter-go: every tool answers what the Go one answers. Tool names carry the extension name so both register in one session. pig additive (D232).
 export default function (pi) {
   const name = "node";
   const instance = randomBytes(8).toString("hex");
