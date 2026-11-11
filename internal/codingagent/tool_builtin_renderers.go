@@ -200,7 +200,7 @@ type retainedToolResult struct {
 // structured content is the one the tool derives from its content, else the result.
 func retainToolResult(tool string, result agent.AgentToolResult) any {
 	if len(result.StructuredContent) > 0 {
-		if rebuilt, ok := tools.RebuildStructuredContent(tool, result.Content); ok && bytes.Equal(rebuilt, result.StructuredContent) {
+		if tools.StructuredContentMatches(tool, result.Content, result.StructuredContent) {
 			result.StructuredContent = nil
 			return retainedToolResult{result: result, tool: tool}
 		}
@@ -223,6 +223,19 @@ func toolResultOf(result any) (agent.AgentToolResult, bool) {
 		}
 	}
 	return agent.AgentToolResult{}, false
+}
+
+// readRenderResultCode identifies the built-in read renderer among the result renderers a card can hold.
+var readRenderResultCode = reflect.ValueOf(readRenderResult).Pointer()
+
+// toolResultForRenderer is toolResultOf for the result renderer render, which receives it. The built-in read renderer reads no structured
+// content, so it gets a retained read result as it is held, without the structured content toolResultOf derives from the file text again
+// for each draw. Every other renderer, an extension's included, receives the structured content the tool returned.
+func toolResultForRenderer(result any, render extension.ToolRenderResultFunc) (agent.AgentToolResult, bool) {
+	if held, ok := result.(retainedToolResult); ok && render != nil && reflect.ValueOf(render).Pointer() == readRenderResultCode {
+		return held.result, true
+	}
+	return toolResultOf(result)
 }
 
 // decodeRenderArgs reads the arguments a tool card holds once, so a renderer that needs several of them does not decode the whole object for each.

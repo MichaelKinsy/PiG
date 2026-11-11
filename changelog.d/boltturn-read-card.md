@@ -1,0 +1,3 @@
+### Changed
+
+- A finished `read` call no longer encodes the file text up to four times in the interactive screen. The card compares the tool's structured content with the text without making a copy (a stack buffer, a 2 KB step at a time), and the built-in read renderer, which never reads the structured content, is handed the card's result as it is held instead of one rebuilt from the file for each draw. A renderer an extension registers still receives the structured content. The text is scanned eight bytes at a time. On a 150 KB file the comparison allocates nothing where the rebuild allocated the file's size.

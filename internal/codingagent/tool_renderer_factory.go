@@ -82,7 +82,7 @@ func NewToolRendererCard(ctx context.Context, name, toolCallId, cwd string, args
 	if renderers.RenderResult != nil {
 		var last extension.Component
 		definition.Result = func(input tui.ToolRenderInput) (tui.Component, bool) {
-			value, ok := toolResultOf(component.ResultValue())
+			value, ok := toolResultForRenderer(component.ResultValue(), renderers.RenderResult)
 			if !ok {
 				value = agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: component.Output}}, IsError: input.IsError}
 			}
