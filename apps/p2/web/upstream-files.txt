@@ -494,6 +494,7 @@ src/web/elanor-extra/timeline.tsx
 src/web/elanor-markdown.css
 src/web/elanor.css
 src/web/file-completion.tsx
+src/web/haptics.ts
 src/web/history.ts
 src/web/icons.tsx
 src/web/image-size.ts
