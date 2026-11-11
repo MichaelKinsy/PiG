@@ -387,7 +387,7 @@ func TestCoreTaskRuntimeRejectsWhatOnlySuspendableWorkHas(t *testing.T) {
 	h := rig.open(nil)
 	id := rig.start(h, task.Erased())
 	h.Resume()
-	receipt := waitFinished(t, h, id)
+	receipt := waitSettled(t, h, id)
 	outcome := receipt.State.Outcome
 	if outcome == nil || outcome.Status != durable.OutcomeCompleted || outcome.Result == nil {
 		t.Fatalf("outcome = %+v, want completed", outcome)
