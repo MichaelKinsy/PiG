@@ -29,6 +29,26 @@
       (pig:model-stream-push result event))
     result))
 
+(defun snapshot-stream (ctx model request options)
+  "A producer thread appends to one shared partial message and pushes it, without yielding between the two: an event must show the message as it was at the push."
+  (declare (ignore ctx request options))
+  (let* ((block (pig:obj "type" "text" "text" ""))
+         (message (pig:obj "role" "assistant" "api" (pig:jget model "api") "provider" (pig:jget model "provider") "model" (pig:jget model "id")
+                           "content" (vector block) "stopReason" "stop" "timestamp" 1 "usage" (zero-usage)))
+         (result (pig:make-model-event-stream)))
+    (sb-thread:make-thread
+     (lambda ()
+       (pig:model-stream-push result (pig:obj "type" "start" "partial" message))
+       (let ((text ""))
+         (dotimes (i 100)
+           (setf text (concatenate 'string text "x"))
+           (setf (gethash "text" block) text)
+           (pig:model-stream-push result (pig:obj "type" "text_delta" "contentIndex" 0 "delta" "x" "partial" message)))
+         (setf (gethash "text" block) (concatenate 'string text "-AFTER")))
+       (pig:model-stream-push result (pig:obj "type" "done" "reason" "stop" "message" message)))
+     :name "snapshot producer")
+    result))
+
 (defun new-extension ()
   (let ((ext (pig:make-extension "provider-producer")))
     (pig:register-provider ext "extension-provider"
@@ -37,4 +57,10 @@
                                                               "cost" (pig:obj "input" 0 "output" 0 "cacheRead" 0 "cacheWrite" 0)
                                                               "contextWindow" 128000 "maxTokens" 4096))
                                     "streamSimple" #'produce-stream))
+    (pig:register-provider ext "snapshot-provider"
+                           (pig:obj "api" "snapshot-extension-api" "baseUrl" "https://extension.invalid" "apiKey" "extension-key"
+                                    "models" (vector (pig:obj "id" "faux" "name" "Faux" "reasoning" :false "input" (vector "text")
+                                                              "cost" (pig:obj "input" 0 "output" 0 "cacheRead" 0 "cacheWrite" 0)
+                                                              "contextWindow" 128000 "maxTokens" 4096))
+                                    "streamSimple" #'snapshot-stream))
     ext))
