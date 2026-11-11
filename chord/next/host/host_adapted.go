@@ -1,6 +1,7 @@
 package host
 
 import (
+	"math"
 	"sort"
 	"strconv"
 
@@ -8,6 +9,8 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
+	chordtelemetry "github.com/MichaelKinsy/PiG/chord/next/telemetry"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // Ports packages/chord/src/host/adapted.ts. Adapted members (Q10, §22, slice 7b §7; decision "References are the only
@@ -17,7 +20,8 @@ import (
 // member one derive of the key's document through the member's mapping, shared by the references holding it. One map and
 // one diff per commit per version, whatever the number of old references. Dropped when no reference of the version is left,
 // gone with the instance; references move to a new instance's mappings as to any new instance. A version the provider does
-// not accept, or a refused member, gives no member (`contract_mismatch`): its consumers wait unbound.
+// not accept, or a refused member, gives no member (`contract_mismatch`): its consumers wait unbound. Per changed event
+// member one node mapping each value once per emit (decision "Events: fire-and-forget members").
 //
 // Forced Go differences. The accepts table is data of `contracts.AcceptsTable` (the union `function | "refuse"` is
 // `contracts.StateMapping`/`KeyedMapping` with a Refuse flag, an absent mapping a nil pointer); a thrown error is a returned
@@ -36,6 +40,12 @@ type adaptedInstance struct {
 	member func(member string) (state.DeriveSource, error)
 	// report reports a mapping derive's failure (`derive_failed`).
 	report func(member string, err error)
+	// event is the instance's event member `member`'s node; nil when its variant has none.
+	event func(member string) *eventNode
+	// reportEvent reports an event mapping's failure (`event_mapping_failed`), once per failure episode.
+	reportEvent func(member string, err error)
+	// metrics are the host's instruments: an event dropped by its mapping is counted (`chord.events.dropped`).
+	metrics *chordtelemetry.Instruments
 }
 
 // heldKeys are one keyed member's held keys by the instance's key document; compared by identity (the member's entry).
@@ -88,6 +98,11 @@ func refusal(entry *served, version int, variant *string) *data.ChordError {
 			return refused(contract, version, member)
 		}
 	}
+	for _, member := range old.Events.Keys() {
+		if mapping := eventMappingOf(entry, mappings, variant, member); mapping != nil && mapping.Refuse {
+			return refused(contract, version, member)
+		}
+	}
 	return nil
 }
 
@@ -104,6 +119,8 @@ type adaptedMembers struct {
 	// the same document differently (Astra).
 	keys  map[string]*heldKeys
 	spawn int
+	// events are the event members mapped so far, each tapping the instance's node; made by the first.
+	events map[string]*mappedEvents
 }
 
 func newAdaptedMembers(instance adaptedInstance, version int) *adaptedMembers {
@@ -199,8 +216,50 @@ func (m *adaptedMembers) keyed(member string) (contracts.Mapping, error) {
 	}, nil
 }
 
+// event is event member `member`'s node as this version's bindings tap it: the instance's own when unchanged since, a
+// mapping node (made by the first use) when changed; nil when this version is not accepted, or the current variant lacks
+// the member (removed since: an older consumer receives none of it).
+func (m *adaptedMembers) event(member string) *eventNode {
+	instance := m.instance
+	accepted := false
+	for _, each := range instance.served.provider.Accepted {
+		if each.Version == m.version {
+			accepted = true
+			break
+		}
+	}
+	if !accepted {
+		return nil
+	}
+	node := instance.event(member)
+	if node == nil {
+		return nil
+	}
+	mapping := eventMappingOf(instance.served, m.mappings(), instance.variant, member)
+	if mapping == nil {
+		return node
+	}
+	// A refused member refused the binding (`refusal`): no binding of this version taps it.
+	if mapping.Refuse {
+		return nil
+	}
+	if mapped, found := m.events[member]; found {
+		return &mapped.eventNode
+	}
+	if m.events == nil {
+		m.events = map[string]*mappedEvents{}
+	}
+	mapped := newMappedEvents(node, mapping.Func, func(err error) { instance.reportEvent(member, err) }, instance.metrics)
+	m.events[member] = mapped
+	return &mapped.eventNode
+}
+
 // detach: its instance ended, or the version's last reference left: its derives go (their watches end with err).
 func (m *adaptedMembers) detach(err error) {
+	for _, mapped := range m.events {
+		mapped.detach()
+	}
+	m.events = nil
 	for _, derive := range m.derives {
 		derive.Detach(err)
 	}
@@ -341,6 +400,75 @@ func stateMapping(entry *served, mappings *contracts.VersionMappings, variant *s
 		}
 	}
 	return nil
+}
+
+// eventMappingOf is the mapping of event member `member` of `variant` in mappings (a remote contract's by variant, a
+// local one's flat); nil when it is unchanged.
+func eventMappingOf(entry *served, mappings *contracts.VersionMappings, variant *string, member string) *contracts.EventMapping {
+	if mappings == nil {
+		return nil
+	}
+	section := mappings.Events
+	if entry.kind != servedLocal {
+		name := ""
+		if variant != nil {
+			name = *variant
+		}
+		section = nil
+		for index := range mappings.VariantEvents {
+			if mappings.VariantEvents[index].Name == name {
+				section = mappings.VariantEvents[index].Value
+				break
+			}
+		}
+	}
+	for index := range section {
+		if section[index].Name == member {
+			return &section[index].Value
+		}
+	}
+	return nil
+}
+
+// mappedEvents is an older version's event member: a node tapping the instance's (every entry), mapping each value once
+// for all of this version's bindings, delivered to them with its stamp and counter value. A mapping that throws drops that
+// emit for this version only (counted), reported once per failure episode, and is tried again at the next emit.
+type mappedEvents struct {
+	eventNode
+	source  *eventNode
+	tap     *tap
+	failing bool
+}
+
+func newMappedEvents(source *eventNode, mapping contracts.Mapping, report func(error), metrics *chordtelemetry.Instruments) *mappedEvents {
+	m := &mappedEvents{source: source}
+	deliver := func(entry *eventEntry, flush *eventFlush) {
+		if !m.tapped() {
+			return
+		}
+		// The provider's mapping, typed by its contract; its result is the old shape (not validated).
+		value, err := mapping(entry.value)
+		if err != nil {
+			metrics.Counter("chord.events.dropped").Add(1, telemetry.SpanAttributes{telemetry.Attr("reason", "mapping")})
+			if !m.failing {
+				report(err)
+			}
+			m.failing = true
+			return
+		}
+		m.failing = false
+		m.deliver(&eventEntry{node: &m.eventNode, value: value, at: entry.at, n: entry.n}, flush)
+	}
+	// Every entry: its own bindings judge them by their counter values.
+	m.tap = &tap{boundAt: math.MinInt64, deliver: deliver}
+	source.tap(m.tap)
+	return m
+}
+
+// detach: its version's last binding left, or its instance ended: it maps nothing more.
+func (m *mappedEvents) detach() {
+	m.source.untap(m.tap)
+	m.clear()
 }
 
 // keyedMappingOf is the mapping of keyed member `member` in mappings; nil when it is unchanged.

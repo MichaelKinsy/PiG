@@ -293,6 +293,9 @@ func (r *remoteObject) followed(member string, _ int) followed {
 // attachedVariant makes a binding an `attachable`: the variant its replicas are of.
 func (b *boundVariant) attachedVariant() string { return b.variant }
 
+// eventNode: a remote replica has no event nodes yet (the remote layer's event messages come with ChordLink's port).
+func (b *boundVariant) eventNode(member string, version int) *eventNode { return nil }
+
 // attachable is its binding while live (its replicas change); nil while loading or failed.
 func (r *remoteObject) attachable() attachable {
 	if r.refState.Kind == RefStateLive && r.bound != nil {

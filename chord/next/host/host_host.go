@@ -60,6 +60,14 @@ type HostOptions struct {
 	ReloadDrainTimeout *time.Duration
 	// Heartbeat is the heartbeat of every link.
 	Heartbeat *HeartbeatOptions
+	// CallWindow is how many concurrent calls of one origin this host accepts on a link it was not given as trusted (its call
+	// window, announced in `hello`); nil is 10,000, a positive integer. On a trusted link it announces none (decision "Call
+	// windows only for untrusted links"): the app's own hosts never queue calls behind each other.
+	CallWindow *int
+	// EventWindow is how many `event` messages of its own this host leaves unacknowledged per link and origin (decision
+	// "Events: fire-and-forget members"); nil is 32. A flush finding the window full drops that origin's events (counted):
+	// nothing waits for a slow consumer.
+	EventWindow *int
 	// RevokedBy is what revokes a principal (§4): `host.Revoke(r)` ends the objects and closes the child links of every
 	// principal `p` whose RevokedBy(p) holds `r` (compared as canonical JSON). The same function on every host.
 	RevokedBy RevokedBy[delta.JsonValue]
@@ -300,6 +308,8 @@ const (
 	defaultReloadDrainTimeout = 5 * time.Second
 	defaultPing               = 15 * time.Second
 	defaultHeartbeat          = 30 * time.Second
+	defaultCallWindow         = 10_000
+	defaultEventWindow        = 32
 )
 
 // hostState is where a host stands.
@@ -382,10 +392,16 @@ type intervalLoop interface {
 
 // chordHost is the host: its served types, its objects by identity, its batch, backoff and endings.
 type chordHost struct {
-	batch     *state.Batch
-	events    sectionLoop
-	scheduler *chord.DeliveryScheduler
-	timeouts  hostTimeouts
+	batch  *state.Batch
+	events sectionLoop
+	// eventFlow is its events: the emit counter, the list waiting for the event flush, the flush (Pi's `events`).
+	eventFlow *hostEvents
+	// callWindow is the call window it announces on links it was not given as trusted (`HostOptions.callWindow`).
+	callWindow int
+	// eventWindow is its own `event` messages unacknowledged per link and origin at most (`HostOptions.eventWindow`).
+	eventWindow int
+	scheduler   *chord.DeliveryScheduler
+	timeouts    hostTimeouts
 	// oldWork is its old work during reloads (whether a context runs under it): see host_old_work.go.
 	oldWork oldWork
 	// reloadCycles are the waits of old work on objects that are not live, cut at once when they cycle through their own drain.
@@ -519,6 +535,16 @@ func createHost(options HostOptions) (*chordHost, error) {
 	h.revocationKeys = newRevocationKeys(options.RevokedBy.erased())
 	closeTimeout := durationOr(options.CloseTimeout, defaultCloseTimeout)
 	h.timeouts = hostTimeouts{close: closeTimeout, ready: durationOr(options.ReadyTimeout, defaultReadyTimeout), reload: min(closeTimeout, durationOr(options.ReloadDrainTimeout, defaultReloadDrainTimeout))}
+	h.callWindow, h.eventWindow = defaultCallWindow, defaultEventWindow
+	if options.CallWindow != nil {
+		h.callWindow = *options.CallWindow
+	}
+	if options.EventWindow != nil {
+		h.eventWindow = *options.EventWindow
+	}
+	h.eventFlow = newHostEvents(events, h.metrics, func(err error) {
+		h.report(BatchHostError(state.BatchError{Kind: state.BatchListenerError, Error: err}))
+	})
 	h.heartbeat.ping, h.heartbeat.close = defaultPing, defaultHeartbeat
 	if options.Heartbeat != nil {
 		h.heartbeat.ping = durationOr(options.Heartbeat.Ping, defaultPing)
@@ -1631,7 +1657,7 @@ func (h *chordHost) waitUnbound(b *binding, name string, cause *data.FailureCaus
 
 // newBindingFor is a new reference's binding made by from; its parked calls wait its `readyTimeout`.
 func (h *chordHost) newBindingFor(typ *contracts.Contract, dependent *chordObject, from caller, options GetOptions) *binding {
-	return newBinding(typ, h, h.batch, dependent, from, durationOr(options.ReadyTimeout, h.timeouts.ready))
+	return newBinding(typ, h, h.batch, dependent, from, durationOr(options.ReadyTimeout, h.timeouts.ready), h.eventFlow)
 }
 
 // own is this host as the maker of its own references: its principal and incarnation.
