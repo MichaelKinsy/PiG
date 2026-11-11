@@ -85,8 +85,8 @@ func selectStartupSession(
 	ui *tui.TuiMainScreen,
 	terminal startupTerminal,
 ) (path string, selected bool, err error) {
-	configureStartupTheme(opts.Settings, opts.ThemePaths)
-	selector, outcome := newStartupSessionSelector(currentLoader, allLoader, NewKeybindingsManager(opts.AgentDir))
+	keybindings := configureStartupTui(opts)
+	selector, outcome := newStartupSessionSelector(currentLoader, allLoader, keybindings)
 	completed, err := runStartupComponentWith(selector, opts, false, ui, terminal)
 	if err != nil {
 		return "", false, err
@@ -144,13 +144,13 @@ func ShowStartupInput(title, placeholder string, opts StartupUIOptions) (value s
 // component (cli/startup-ui.ts:84-92,185-189), and ExtensionSelectorComponent themes its title and rows when it
 // is constructed (extension-selector.ts:48-84), so they are drawn under the grayscale system theme.
 func newStartupSelector(title string, options []string, opts StartupUIOptions) *tui.ExtensionSelectorComponent {
-	configureStartupTheme(opts.Settings, opts.ThemePaths)
+	configureStartupTui(opts)
 	return tui.NewExtensionSelectorComponent(title, options, nil, nil)
 }
 
 // newStartupInput builds the input after the startup theme is configured, as showStartupInput does (cli/startup-ui.ts:238-262).
 func newStartupInput(title, placeholder string, opts StartupUIOptions) *tui.ExtensionInputComponent {
-	configureStartupTheme(opts.Settings, opts.ThemePaths)
+	configureStartupTui(opts)
 	return tui.NewExtensionInputComponent(title, placeholder, nil, nil)
 }
 
@@ -161,7 +161,7 @@ type startupTerminal interface {
 	Write(data string)
 }
 
-// runStartupComponent runs a component built after configureStartupTheme.
+// runStartupComponent runs a component built after configureStartupTui.
 func runStartupComponent(component startupComponent, opts StartupUIOptions, clear bool) (bool, error) {
 	ui := tui.New()
 	ui.SetLogDirectory(opts.AgentDir)
@@ -336,10 +336,13 @@ func runStartupComponentWith(component startupComponent, opts StartupUIOptions, 
 	return true, nil
 }
 
-// configureStartupTheme mirrors createStartupTui (cli/startup-ui.ts:84-92): it applies the terminal capability
+// configureStartupTui mirrors createStartupTui (cli/startup-ui.ts:84-92): it applies the terminal capability
 // overrides before it creates the theme, so the theme, and every prompt row built under it, uses the overridden
-// color mode.
-func configureStartupTheme(settings Settings, paths []string) {
+// color mode, and it installs the keybindings of the agent directory for the prompt (startup-ui.ts:91
+// setKeybindings(KeybindingsManager.create())), so a prompt answers to the user's keybindings.json and to no binding
+// installed earlier in the process. It returns that manager.
+func configureStartupTui(opts StartupUIOptions) *KeybindingsManager {
+	settings, paths := opts.Settings, opts.ThemePaths
 	tui.SetCapabilityOverrides(settings.GetTerminalCapabilityOverrides())
 	registry := tui.NewThemeRegistry()
 	// paths are in upstream precedence order, the first theme of a name
@@ -362,4 +365,5 @@ func configureStartupTheme(settings Settings, paths []string) {
 	// The system theme starts in grayscale until the terminal reports its colors.
 	tui.MarkTerminalColorsPending()
 	tui.SetThemeSettingPresence(settings.themeSetting())
+	return NewKeybindingsManager(opts.AgentDir)
 }
