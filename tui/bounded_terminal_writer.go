@@ -88,6 +88,16 @@ func wtf8SurrogateAt(value string) bool {
 }
 
 func (w *boundedTerminalWriter) WriteString(value string) { w.append(value) }
+
+// grow sizes the buffer for about n more bytes in one allocation, within the bound of one write.
+func (w *boundedTerminalWriter) grow(n int) { w.buffer.Grow(min(n, maxRenderWriteChars-w.bufferChars)) }
+
+// discard drops what was buffered and not written.
+func (w *boundedTerminalWriter) discard() {
+	w.buffer.Reset()
+	w.bufferChars = 0
+}
+
 func (w *boundedTerminalWriter) flush() {
 	if w.buffer.Len() == 0 {
 		return

@@ -1026,9 +1026,9 @@ techniques = []
 route = "perf-session (land)"
 
 [[plan]]
-gap = "Streaming Markdown re-lexes the whole message on every token: 289 allocations per token averaged over a 200-token message, and the average grows by 135 for each further 100 tokens (tui.stream_frame), so one frame costs about 2.7 allocations per token already in the message: about 5,400 at token 2,000."
-plan = "Cache the rendered lines of completed top-level blocks keyed by their source prefix and re-lex only from the last block boundary, falling back to a full render where a later line can change an earlier block (lazy continuation, setext headings, reference definitions). Prove identity against the full render on the Markdown corpus."
-gain = "constant allocations per token (about 60) at any message length"
+gap = "A streamed token costs 30 allocations per frame under any history and any message of paragraphs of 40 tokens (tui.stream_frame; the render resumes from the second-last top-level block, so completed blocks are not lexed or laid out again). A block that is still open is laid out again whole on each token: BenchmarkStreamFrame/open, one paragraph that never breaks, costs an allocation per wrapped row of the paragraph per token."
+plan = "Wrap the open block incrementally: a token appended to the last line of a paragraph can change only the rows from the last one on, so keep the paragraph's wrapped rows and re-wrap from its last row; prove identity against the full wrap on the Markdown corpus and a width sweep."
+gain = "constant allocations per token (about 30) in a paragraph of any length"
 techniques = []
 route = "go-native-perf"
 
@@ -1047,9 +1047,9 @@ techniques = ["T4", "T7"]
 route = "spawn-containment (requested); go-native-perf for the goroutineleak TestMains"
 
 [[plan]]
-gap = "A keystroke allocates 51 times and copies a line slice of the whole transcript per frame: 65 bytes per history message per keystroke (tui.keystroke_frame), 73 KB at 1,000 messages."
-plan = "Zero allocation on the render path, so the render goroutine never pays GC mark assist: keep the previous frame's line slice and rebuild only from the first component whose render changed; render cached components by reference; cache string widths, checked against a Pi width corpus."
-gain = "per-keystroke bytes independent of the history (8 KB at any length)"
+gap = "A keystroke allocates 7 times and 712 bytes per frame, under 10 and under 1,000 history messages alike (tui.keystroke_frame); the history costs the frame no allocation. What remains is the editor's own row strings (the cursor row is built, padded and reset-suffixed as three strings), the returned line slice, the frame string and the key decode. A transcript of Markdown children that report themselves dirty (TransformState or AsyncTransform set) is still asked about once per frame each, a CPU term that grows with the history."
+plan = "Build the editor's cursor row once, as padded and with its fake cursor, and reuse its line slice; keep frames of a Markdown child that has no transform out of the per-frame dirty scan. Check string widths against a Pi width corpus."
+gain = "about 4 allocations per keystroke and a frame whose CPU does not grow with the history"
 techniques = ["T11"]
 route = "go-native-perf"
 

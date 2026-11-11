@@ -9,13 +9,22 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/perfgate"
 )
 
-// keystrokeScreen is a main screen with history messages of markdown above a focused editor, rendered once.
-func keystrokeScreen(history int) (*TuiMainScreen, *Editor) {
+// keystrokeScreen is a main screen with history messages of markdown above a focused editor, rendered once. Its frames are due on the
+// owner loop (SetRenderDeadline), as the interactive mode's are, so a requested frame arms no timer goroutine that could paint it before the
+// test's own Render does.
+func keystrokeScreen(history int) (*TuiMainScreen, *Editor) { return frameScreen(history, true) }
+
+// frameScreen is keystrokeScreen with frames due on the owner loop, or on a timer goroutine as a screen with no owner arms them.
+func frameScreen(history int, owned bool) (*TuiMainScreen, *Editor) {
 	ui := NewWithOutput(io.Discard, 100, 40)
+	if owned {
+		ui.SetRenderDeadline(func(time.Time) {})
+	}
 	transcript := NewContainer()
 	for i := range history {
 		transcript.AddChild(NewMarkdown("Message " + strconv.Itoa(i) + ": some **bold** text, `code`, and a [link](https://example.com).\n\n- item one\n- item two"))
@@ -47,14 +56,14 @@ func TestKeystrokeToFrameAllocationGate(t *testing.T) {
 	t.Logf("perfgate: tui.keystroke_frame per keystroke: history 10: %.1f allocs %.0f B; history 1000: %.1f allocs %.0f B", short.Allocs, short.Bytes, long.Allocs, long.Bytes)
 	perfgate.Check(t, "tui.keystroke_frame.allocs", long.Allocs)
 	perfgate.Check(t, "tui.keystroke_frame.bytes", short.Bytes)
-	// The frame still copies a line slice of the whole transcript per keystroke, as Pi's render concatenates every child's lines; the bytes each history message adds to a keystroke ratchet toward zero.
+	// The frame keeps the last frame's line slice and rebuilds from the first changed child, so the bytes each history message adds to a keystroke are zero.
 	perfgate.Check(t, "tui.keystroke_frame.bytes_per_history_message", (long.Bytes-short.Bytes)/990)
 	if long.Allocs > 1.1*short.Allocs+2 {
 		t.Errorf("a keystroke allocates %.1f times under 1000 history messages and %.1f under 10: the input or render path scans the transcript", long.Allocs, short.Allocs)
 	}
 }
 
-// Each streamed token appended to the last assistant message costs a bounded number of allocations per frame, and the frame re-renders only the growing message, so the allocation count per token does not grow with the history above it. It still grows with the length of the message itself: Markdown re-lexes its whole text on every SetText, as Pi's does, so the per-token average over a 400-token message exceeds the average over a 200-token message. allocs_growth_per_100_tokens is half that difference: the growth of the per-token average for each 100 tokens of message length, which is half the growth of a single frame's cost. Its target is zero.
+// Each streamed token appended to the last assistant message costs a bounded number of allocations per frame, and the frame re-renders only the growing message from its second-last block, so the allocation count per token grows neither with the history above it nor with the completed blocks of the message (here a blank line every 40 tokens). allocs_growth_per_100_tokens is half the difference between the per-token average over a 400-token message and over a 200-token one: the growth of the average for each 100 tokens of message length, which is half the growth of a single frame's cost. Its target is zero. A block that is still open is laid out again whole on each token, so a message that never breaks its paragraph still costs per token what the paragraph's rows cost (BenchmarkStreamFrame, open).
 func TestStreamingMarkdownFrameAllocationGate(t *testing.T) {
 	perToken := func(history, tokens int) perfgate.Work {
 		ui, _ := keystrokeScreen(history)
@@ -104,4 +113,62 @@ func TestKeystrokeGCCyclesGate(t *testing.T) {
 	}
 	runtime.ReadMemStats(&after)
 	perfgate.Check(t, "tui.keystroke_10k.gc_cycles", float64(after.NumGC-before.NumGC))
+}
+
+// BenchmarkKeystrokeFrame is one editor keystroke through input dispatch and one differential frame, under a short and a long transcript.
+func BenchmarkKeystrokeFrame(b *testing.B) {
+	for _, owned := range []bool{true, false} {
+		for _, history := range []int{10, 1000} {
+			b.Run("owned="+strconv.FormatBool(owned)+"/history="+strconv.Itoa(history), func(b *testing.B) {
+				ui, editor := frameScreen(history, owned)
+				b.ReportAllocs()
+				i := 0
+				for b.Loop() {
+					ui.HandleTerminalInput(string(rune('a' + i%26)))
+					ui.Render()
+					if i++; i%64 == 0 {
+						editor.SetText("")
+					}
+				}
+			})
+		}
+	}
+}
+
+// BenchmarkStreamFrame is one streamed token appended to a Markdown message and one frame, for a short and a long message under a short and a
+// long transcript. A message of paragraphs of 40 tokens re-lays out only its last paragraph; one that never breaks its paragraph (open) re-lays
+// out all of it, so its cost per token still grows with the message.
+func BenchmarkStreamFrame(b *testing.B) {
+	for _, tc := range []struct {
+		history, tokens, paragraph int
+	}{{10, 200, 40}, {1000, 200, 40}, {10, 2000, 40}, {1000, 2000, 40}, {10, 200, 0}, {10, 2000, 0}} {
+		name := "history=" + strconv.Itoa(tc.history) + "/tokens=" + strconv.Itoa(tc.tokens)
+		if tc.paragraph == 0 {
+			name += "/open"
+		}
+		b.Run(name, func(b *testing.B) {
+			ui, _ := keystrokeScreen(tc.history)
+			message := NewMarkdown("")
+			ui.Add(message)
+			ui.Render()
+			var text strings.Builder
+			token := func(i int) {
+				text.WriteString("word" + strconv.Itoa(i%13) + " ")
+				if tc.paragraph > 0 && i%tc.paragraph == tc.paragraph-1 {
+					text.WriteString("\n\n")
+				}
+				message.SetText(text.String())
+				ui.Render()
+			}
+			for i := range tc.tokens {
+				token(i)
+			}
+			b.ReportAllocs()
+			i := tc.tokens
+			for b.Loop() {
+				token(i)
+				i++
+			}
+		})
+	}
 }

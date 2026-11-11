@@ -97,18 +97,18 @@
 "lw.row.headless.headless.peak_rss_mb.ratio_vs_bolt" = 0.5
 "lw.row.interactive.interactive.peak_rss_mb.ratio_vs_bolt" = 0.46
 
-# tui: one editor keystroke plus one differential frame under 10 and 1000 history messages (TestKeystrokeToFrameAllocationGate).
-"tui.keystroke_frame.allocs" = 54
-"tui.keystroke_frame.bytes" = 9300
-"tui.keystroke_frame.bytes_per_history_message" = 70
-# GC cycles over 10,000 keystrokes under 1,000 history messages at GOGC=100 (TestKeystrokeGCCyclesGate): the render path allocates, so the render goroutine pays mark assist.
-"tui.keystroke_10k.gc_cycles" = 125
+# tui: one editor keystroke plus one differential frame under 10 and 1000 history messages (TestKeystrokeToFrameAllocationGate), with frames due on the owner loop as the interactive mode's are. Measured at f632ec729b / go1.27.4: 15.3 allocs and 1,021 B before, 7.2 allocs and 712 B after (the frame is written through one sized buffer and a cached cursor-column escape, the cursor row is resolved and stripped in one pass, a short edited line re-wraps in its cached chunk slice); the ceilings are the measured counts with about 10% headroom.
+"tui.keystroke_frame.allocs" = 8
+"tui.keystroke_frame.bytes" = 780
+"tui.keystroke_frame.bytes_per_history_message" = 1
+# GC cycles over 10,000 keystrokes under 1,000 history messages at GOGC=100 (TestKeystrokeGCCyclesGate): measured 1 to 2 after, 2 before; the render path still allocates, so the render goroutine pays mark assist.
+"tui.keystroke_10k.gc_cycles" = 6
 
-# tui: one streamed markdown token plus one frame (TestStreamingMarkdownFrameAllocationGate).
-"tui.stream_frame.allocs" = 300
-"tui.stream_frame.bytes" = 20600
-"tui.stream_frame.bytes_per_history_message" = 70
-"tui.stream_frame.allocs_growth_per_100_tokens" = 142
+# tui: one streamed markdown token plus one frame (TestStreamingMarkdownFrameAllocationGate). Measured at f632ec729b / go1.27.4: 36.0 allocs and 3,669 B per token before, 30.3 and 3,407 B after (ceilings with 3% to 12% headroom) (a row laid out for the message is padded in two allocations, not three); the slope against the history is zero and against the message length is -0.5 allocations per 100 tokens.
+"tui.stream_frame.allocs" = 34
+"tui.stream_frame.bytes" = 3500
+"tui.stream_frame.bytes_per_history_message" = 1
+"tui.stream_frame.allocs_growth_per_100_tokens" = 1
 
 # session: loading a persisted session, per JSONL line (TestSessionLoadPerLineAllocationGate).
 "session.load_line.allocs" = 94

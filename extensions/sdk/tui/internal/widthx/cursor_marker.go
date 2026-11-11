@@ -122,6 +122,58 @@ func resolveFakeCursorLine(line string, showHardwareCursor bool) string {
 	return replaceFakeCursorMarkers(line)
 }
 
+// ResolveCursorFreeLine is the line ResolveFakeCursorLine returns with every CursorMarker removed (the first one is the cursor), and the
+// visible width of what precedes the first marker in the resolved line. A line with no marker is returned resolved, and its width is the
+// whole line's. A line with a fake cursor is resolved and stripped in one pass, so it costs one allocation where resolving and then
+// stripping cost two.
+func ResolveCursorFreeLine(line string, showHardwareCursor bool) (free string, col int) {
+	if !strings.Contains(line, FakeCursorStart) {
+		before, after, found := strings.Cut(line, CursorMarker)
+		if !found {
+			return line, VisibleWidth(line)
+		}
+		return before + strings.ReplaceAll(after, CursorMarker, ""), VisibleWidth(before)
+	}
+	if showHardwareCursor {
+		line = dropFocusedFakeCursor(line)
+	}
+	var b strings.Builder
+	b.Grow(len(line))
+	firstMarker := -1
+	for {
+		at := strings.Index(line, fakeCursorMarkerPrefix)
+		if at < 0 {
+			break
+		}
+		rest := line[at:]
+		switch {
+		case strings.HasPrefix(rest, FakeCursorStart):
+			b.WriteString(line[:at])
+			b.WriteString("\x1b[7m")
+			line = rest[len(FakeCursorStart):]
+		case strings.HasPrefix(rest, FakeCursorEnd):
+			b.WriteString(line[:at])
+			b.WriteString("\x1b[27m")
+			line = rest[len(FakeCursorEnd):]
+		case strings.HasPrefix(rest, CursorMarker):
+			b.WriteString(line[:at])
+			if firstMarker < 0 {
+				firstMarker = b.Len()
+			}
+			line = rest[len(CursorMarker):]
+		default:
+			b.WriteString(line[:at+len(fakeCursorMarkerPrefix)])
+			line = rest[len(fakeCursorMarkerPrefix):]
+		}
+	}
+	b.WriteString(line)
+	free = b.String()
+	if firstMarker < 0 {
+		return free, VisibleWidth(free)
+	}
+	return free, VisibleWidth(free[:firstMarker])
+}
+
 // fakeCursorMarkerPrefix starts both fake cursor markers (and CursorMarker).
 const fakeCursorMarkerPrefix = "\x1b_pi:"
 

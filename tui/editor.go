@@ -658,7 +658,7 @@ func thinkingBorderSGR(level string) string {
 // at the given width, memoizing per line. A line whose content is unchanged
 // from the previous call at the same width and with the same valid paste IDs reuses its cached chunks instead of
 // re-running wordWrapLine (grapheme segmentation + wrapping). Output is
-// identical to calling e.wrapLine(line, width) for each
+// identical to calling e.wrapLine(nil, line, width) for each
 // line; the reuse is invisible. The comparison is by content, so SetText
 // rebuilding the buffer still reuses chunks for lines whose text is unchanged.
 func (e *Editor) wrappedChunks(width int) [][]textChunk {
@@ -683,7 +683,7 @@ func (e *Editor) wrappedChunks(width int) [][]textChunk {
 				chunks[i] = e.wrapCacheChunks[i]
 				continue
 			}
-			chunks[i] = e.wrapLine(line, width)
+			chunks[i] = e.wrapLine(nil, line, width)
 		}
 		e.wrapCacheLines, e.wrapCacheChunks = lines, chunks
 		e.wrapCacheWidth = width
@@ -695,16 +695,20 @@ func (e *Editor) wrappedChunks(width int) [][]textChunk {
 	for i, line := range e.lines {
 		if e.wrapCacheLines[i] != line {
 			e.wrapCacheLines[i] = line
-			e.wrapCacheChunks[i] = e.wrapLine(line, width)
+			e.wrapCacheChunks[i] = e.wrapLine(e.wrapCacheChunks[i], line, width)
 		}
 	}
 	return e.wrapCacheChunks
 }
 
-// wrapLine is wordWrapLine(line, width, e.segmentLine(line)). A line that fits is one chunk, so it is not segmented.
-func (e *Editor) wrapLine(line string, width int) []textChunk {
-	if line == "" || width <= 0 || widthx.VisibleWidth(line) <= width {
-		return wordWrapLine(line, width, nil)
+// wrapLine is wordWrapLine(line, width, e.segmentLine(line)). A line that fits is one chunk, so it is not segmented, and its chunk is stored in
+// the slice reuse held for the line before, which only the wrap cache owns: a keystroke on a short line re-wraps it without an allocation.
+func (e *Editor) wrapLine(reuse []textChunk, line string, width int) []textChunk {
+	if line == "" || width <= 0 {
+		return append(reuse[:0], textChunk{})
+	}
+	if length := jsstring.Length(line); widthx.VisibleWidth(line) <= width {
+		return append(reuse[:0], textChunk{text: line, startIndex: 0, endIndex: length})
 	}
 	return wordWrapLine(line, width, e.segmentLine(line))
 }

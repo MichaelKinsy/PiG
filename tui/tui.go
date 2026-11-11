@@ -913,6 +913,12 @@ type TuiMainScreen struct {
 	previousKittyImageIDs []int
 	resetKittyIDs         map[int][]int
 	resetKittyWork        map[int][]int
+
+	// frameWriter buffers the differential frame being painted (doRender, frame lock held).
+	frameWriter boundedTerminalWriter
+
+	// cursorColumns[c] is the sequence that moves the cursor to column c (positionHardwareCursor), built when first needed.
+	cursorColumns []string
 }
 
 // OverlayOptions controls the size/position of an overlay.
@@ -2110,17 +2116,26 @@ func (t *tuiBase) Render() {
 	t.render()
 }
 
-func findCursorPosition(lines []string, height int) (widthx.CursorPosition, int, string, bool) {
+// findCursorPosition finds the cursor in the bottom height rows of lines: the last row that holds a cursor marker, the marker's column, and
+// that row without any marker (the line the frame paints). A frame with unresolved fake cursors resolves the row first, as the frame does,
+// so the column and the row it paints are those of the resolved row.
+func findCursorPosition(lines []string, height int, unresolved, showHardwareCursor bool) (widthx.CursorPosition, int, string, bool) {
 	if len(lines) == 0 || height <= 0 {
 		return widthx.CursorPosition{}, -1, "", false
 	}
 	viewportTop := max(len(lines)-height, 0)
 	for row := len(lines) - 1; row >= viewportTop; row-- {
-		before, after, ok := strings.Cut(lines[row], widthx.CursorMarker)
-		if ok {
-			// all markers leave the line; the first one is the cursor position (Pi main 25490ea49).
-			return widthx.CursorPosition{Row: row, Col: widthx.VisibleWidth(before)}, row, before + strings.ReplaceAll(after, widthx.CursorMarker, ""), true
+		if !strings.Contains(lines[row], widthx.CursorMarker) {
+			continue
 		}
+		if unresolved {
+			// Resolving keeps every cursor marker in place, so the marker is on the same row; the cursor-free line is the resolved one.
+			// all markers leave the line; the first one is the cursor position (Pi main 25490ea49).
+			free, col := widthx.ResolveCursorFreeLine(stripOsc133ZonePrefix(lines[row]), showHardwareCursor)
+			return widthx.CursorPosition{Row: row, Col: col}, row, free, true
+		}
+		before, after, _ := strings.Cut(lines[row], widthx.CursorMarker)
+		return widthx.CursorPosition{Row: row, Col: widthx.VisibleWidth(before)}, row, stripOsc133ZonePrefix(before + strings.ReplaceAll(after, widthx.CursorMarker, "")), true
 	}
 	return widthx.CursorPosition{}, -1, "", false
 }
@@ -2274,14 +2289,7 @@ func (t *TuiMainScreen) doRender() {
 	// hardware terminal cursor at the end of the frame. Components that
 	// don't emit the marker fall back to the legacy behaviour where the
 	// cursor lands at the end of the last written line.
-	cursorPos, cursorRow, cursorFreeLine, hasCursorPos := findCursorPosition(newLines, height)
-	cursorFreeLine = stripOsc133ZonePrefix(cursorFreeLine)
-	if hasCursorPos && unresolved {
-		// Resolving keeps every cursor marker in place, so the marker is on the same row; the cursor-free line is the resolved one.
-		before, after, _ := strings.Cut(widthx.ResolveFakeCursorLine(stripOsc133ZonePrefix(newLines[cursorRow]), t.showHardwareCursor), widthx.CursorMarker)
-		// as findCursorPosition, every marker leaves the line.
-		cursorPos.Col, cursorFreeLine = widthx.VisibleWidth(before), before+strings.ReplaceAll(after, widthx.CursorMarker, "")
-	}
+	cursorPos, cursorRow, cursorFreeLine, hasCursorPos := findCursorPosition(newLines, height, unresolved, t.showHardwareCursor)
 
 	// Mirrors upstream TUI.applyLineResets (tui.ts:427): every non-image
 	// line gets the SEGMENT_RESET barrier appended so SGR and OSC 8
@@ -2503,7 +2511,19 @@ func (t *TuiMainScreen) doRender() {
 		}
 	}
 
-	buf := boundedTerminalWriter{write: func(data string) { WriteToTerminal(t.out, data) }}
+	// The differential frame is written through the writer the screen keeps, so a frame allocates its one string and nothing else. The
+	// frame lock is held, and a frame that falls back to fullRender leaves its buffered rows behind, which the next frame drops here.
+	buf := &t.frameWriter
+	if buf.write == nil {
+		buf.write = func(data string) { WriteToTerminal(t.out, data) }
+	}
+	buf.discard()
+	renderEnd := min(lastChanged, len(newLines)-1)
+	frameBytes := 64
+	for i := firstChanged; i <= renderEnd; i++ {
+		frameBytes += len(newLines[i]) + len("\r\n\x1b[2K")
+	}
+	buf.grow(frameBytes)
 	buf.WriteString("\x1b[?2026h")
 	buf.WriteString(t.deleteChangedKittyImages(firstChanged, lastChanged))
 
@@ -2542,7 +2562,6 @@ func (t *TuiMainScreen) doRender() {
 		buf.WriteString("\r")
 	}
 
-	renderEnd := min(lastChanged, len(newLines)-1)
 	for i := firstChanged; i <= renderEnd; i++ {
 		if i > firstChanged {
 			buf.WriteString("\r\n")
@@ -2726,14 +2745,16 @@ func (t *TuiMainScreen) positionHardwareCursor(cursorPos widthx.CursorPosition, 
 	targetRow := max(0, min(cursorPos.Row, totalLines-1))
 	targetCol := max(0, cursorPos.Col)
 	rowDelta := targetRow - t.hardwareCursorRow
-	var buf strings.Builder
-	if rowDelta > 0 {
-		fmt.Fprintf(&buf, "\x1b[%dB", rowDelta)
-	} else if rowDelta < 0 {
-		fmt.Fprintf(&buf, "\x1b[%dA", -rowDelta)
-	}
-	fmt.Fprintf(&buf, "\x1b[%dG", targetCol+1)
-	if buf.Len() > 0 {
+	if rowDelta == 0 {
+		WriteToTerminal(t.out, t.cursorColumnSequence(targetCol))
+	} else {
+		var buf strings.Builder
+		if rowDelta > 0 {
+			fmt.Fprintf(&buf, "\x1b[%dB", rowDelta)
+		} else {
+			fmt.Fprintf(&buf, "\x1b[%dA", -rowDelta)
+		}
+		fmt.Fprintf(&buf, "\x1b[%dG", targetCol+1)
 		WriteToTerminal(t.out, buf.String())
 	}
 	t.hardwareCursorRow = targetRow
@@ -2743,6 +2764,24 @@ func (t *TuiMainScreen) positionHardwareCursor(cursorPos widthx.CursorPosition, 
 	} else {
 		t.HideCursor()
 	}
+}
+
+// maxCachedCursorColumns bounds cursorColumnSequence's cache: a terminal is rarely wider.
+const maxCachedCursorColumns = 512
+
+// cursorColumnSequence is the escape that moves the cursor to column col (zero-based) of its row, which a keystroke on one row repeats with
+// a new column each time. The sequences are built once per column and kept, so typing allocates none.
+func (t *TuiMainScreen) cursorColumnSequence(col int) string {
+	if col >= maxCachedCursorColumns {
+		return "\x1b[" + strconv.Itoa(col+1) + "G"
+	}
+	if col >= len(t.cursorColumns) {
+		t.cursorColumns = slices.Grow(t.cursorColumns, col+1-len(t.cursorColumns))[:col+1]
+	}
+	if t.cursorColumns[col] == "" {
+		t.cursorColumns[col] = "\x1b[" + strconv.Itoa(col+1) + "G"
+	}
+	return t.cursorColumns[col]
 }
 
 // viewportTop returns prevViewportTop unchanged. Kept as a named

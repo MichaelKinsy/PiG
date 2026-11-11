@@ -127,7 +127,7 @@ func normalizeSource(content string) string {
 
 // rawLineStarts is the byte offset in content of each line normalizeSource(content) has.
 func rawLineStarts(content string) []int {
-	starts := []int{0}
+	starts := make([]int, 1, 2+strings.Count(content, "\n")+strings.Count(content, "\r"))
 	for i := 0; i < len(content); i++ {
 		switch content[i] {
 		case '\r':
@@ -152,14 +152,14 @@ func (m *Markdown) layoutRows(rows []string, starts []int, lines []string, width
 	if m.nextWraps == nil {
 		m.nextWraps = map[string][]string{}
 	}
-	margin := strings.Repeat(" ", m.paddingX)
+	margin := blanks(m.paddingX)
 	add := func(row string) {
 		if widthx.IsImageLine(row) {
 			rows = append(rows, row)
 			return
 		}
 		row = margin + row + margin
-		row += strings.Repeat(" ", max(0, width-widthx.VisibleWidth(row)))
+		row += blanks(width - widthx.VisibleWidth(row))
 		rows = append(rows, row)
 	}
 	for _, line := range lines {

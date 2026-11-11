@@ -45,7 +45,7 @@ func TestMainScreenCursorExtractionDoesNotMutateBorrowedContainerLines(t *testin
 	renderer := &TuiMainScreen{}
 
 	borrowed := container.renderBorrowed(80)
-	position, row, cursorFreeLine, ok := findCursorPosition(borrowed, 24)
+	position, row, cursorFreeLine, ok := findCursorPosition(borrowed, 24, false, false)
 	if !ok || position.Row != 0 || position.Col != 7 {
 		t.Fatalf("cursor position = %+v, ok=%v", position, ok)
 	}
