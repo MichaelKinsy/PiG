@@ -1867,6 +1867,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-e5bfd24](#bf-e5bfd24) | fix(chord): Arr, Map, Union, Keyed and NewMethod refuse opt(...); Check returns pi-schema's error; record and… | PiG's own defect | All platforms | Unreleased |
 | [BF-e5d242d](#bf-e5d242d) | fix(chord/nextnode/workers): check the base copy's source close | PiG's own defect | All platforms | Unreleased |
 | [BF-e5f9fdd](#bf-e5f9fdd) | The provider retry transport no longer replaces `Body` on the caller's request when it retries | PiG's own defect | All platforms | 0.5.0 |
+| [BF-e624350](#bf-e624350) | p2: a worker's first turn no longer starts without a tool that a plugin contributed just before it | PiG's own defect | All platforms | Unreleased |
 | [BF-e63c61c](#bf-e63c61c) | fix(interactive): pump the owner loop while model selection awaits extensions (#208) (#209) | PiG's own defect | All platforms | Unreleased |
 | [BF-e64d2cf](#bf-e64d2cf) | fix(tui): a tool error result collapses like any other (Pi updateResult) | PiG's own defect | All platforms | Unreleased |
 | [BF-e65ade9](#bf-e65ade9) | `WaitForIdle` on the Harness or a Conversation no longer resumes before the `SubscribeCommits` listeners saw… | PiG's own defect | All platforms | 0.7.0 |
@@ -27648,6 +27649,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `e5f9fdd166` (2026-10-06)
 - **Tests:** `ai/provider_retry_test.go::TestRetryTransport_EarlyResponseDoesNotRaceRequestBody`, `coding/mcpext/connection_test.go::TestMCPConnectionsClosesAConnectionThatIsStillInitializingBeforeCloseReturns`, `coding/mcpext/connection_test.go::TestMCPConnectionsStopsWaitingToRetryAConnectionWhenClosed`
 - **Release note:** The provider retry transport no longer replaces `Body` on the caller's request when it retries. Each retry sends its own request clone with a fresh body, so a server that answers 503 with `Connection: close` before reading a large request body no longer races the HTTP transport's body writer.
+
+### BF-e624350
+
+**p2: a worker's first turn no longer starts without a tool that a plugin contributed just before it**
+
+- **Source:** PiG's own defect
+- **Symptom:** p2: a worker's first turn no longer starts without a tool that a plugin contributed just before it.
+- **Root cause:** Subscribe now attaches Pi's synchronous observers (RegistryValueSource.Observe, native-source.ts observe), which record the composition and wake the listener inside the batch that composed, and refreshes once from the values read after they are attached (what composed since the registry was made).
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `e6243507db` (2026-11-11)
+- **Tests:** `apps/p2/runtime/durable_registry_test.go::TestDurableRegistrySnapshotLeavesOutAnExtensionAsSoonAsTheBatchThatSwitchedItOffNotifiedItsObservers`, `apps/p2/runtime/durable_registry_test.go::TestDurableRegistrySnapshotListsAContributionAsSoonAsTheBatchThatComposedItNotifiedItsObservers`, `apps/p2/runtime/durable_registry_test.go::TestDurableRegistrySnapshotListsAContributionMadeBeforeItWasSubscribedTo`
+- **Release note:** p2: a worker's first turn no longer starts without a tool that a plugin contributed just before it. The registry the worker hands to Durable recorded each composition of the extensions and their switches on a watch's delivery goroutine, after the batch that composed it and once the host's loop was free, so a turn that took its snapshot in between (under load, with code mode listing its tools) missed the agent tool or an MCP server's tools, or kept one that the `codemode` setting had just switched off. As in Pi, the batch that composed records the composition, through a synchronous observer.
 
 ### BF-e63c61c
 
