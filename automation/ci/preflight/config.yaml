@@ -1,0 +1,77 @@
+# SPDX-License-Identifier: MIT
+#
+# The pre-flight checks. Each check names the data sources it reads, the paths that make it relevant (or always: true),
+# and a version that is raised whenever its rule changes, so a stored verdict is not reused across a rule change.
+# checkout lists what a scan reads at the PR's head besides the changed files ("/*" is the whole tree).
+# The sources are implemented in sources.go; the rules in rules.go.
+
+checks:
+  - name: template
+    always: true
+    sources: [pull]
+    version: 1
+  - name: signed
+    always: true
+    sources: [commits]
+    version: 1
+  - name: signoff
+    always: true
+    sources: [commits]
+    version: 1
+  - name: depends-on
+    always: true
+    sources: [pull, depends-on]
+    version: 1
+  - name: up-to-date
+    always: true
+    sources: [pull, compare-main]
+    version: 1
+  - name: bug-ledger
+    always: true
+    sources: [pull, commits, files]
+    version: 1
+  - name: changelog
+    always: true
+    sources: [pull, commits, files]
+    version: 1
+  - name: test-expectation
+    paths: ["**/*.go"]
+    sources: [pull, commits, files]
+    version: 1
+  - name: pins
+    # The files check_pins in automation/ci/check-compliance.py reads, and the files go_pin_strays scans.
+    paths: [".go-version", ".node-version", ".upstream/pin", "go.mod", "go.work", "README.md", ".devcontainer/devcontainer.json", "automation/ci/npm-toolchain/package.json", "automation/dev/setup.sh", "automation/images/**", "coding/cli/setup_command.go", "coding/extension/host/subprocess/builder_node.go", "docs/site/docs/containerization.md", "docs/site/docs/development.md", "docs/site/docs/install-troubleshooting.md", "docs/site/docs/quickstart.md", "docs/site/docs/termux.md", "docs/site/docs/windows.md", "extensions/sdk-ts/package.json", "internal/coding/pigversion/pigversion.go", "internal/pigdocs/content/extension-api.md", "internal/pigdocs/content/troubleshooting.md", "test/parity/behavior-contracts.toml", "test/parity/known-gaps.toml", "**/Dockerfile*", "**/Makefile", "**/go.mod", "**/go.work", "**/toolchains.lock", "**/metadata.env", "**/*.sh", "**/*.mk", "**/*.yml", "**/*.yaml", "**/*.toml", "**/*.env"]
+    checkout: [".go-version", ".node-version", "automation/ci/*.version", ".upstream/", "go.mod", "go.work", "README.md", ".devcontainer/", ".github/workflows/", "automation/ci/npm-toolchain/package.json", "automation/dev/setup.sh", "automation/images/", "coding/cli/setup_command.go", "coding/extension/host/subprocess/builder_node.go", "docs/site/docs/containerization.md", "docs/site/docs/development.md", "docs/site/docs/install-troubleshooting.md", "docs/site/docs/quickstart.md", "docs/site/docs/termux.md", "docs/site/docs/windows.md", "extensions/sdk-ts/package.json", "internal/coding/pigversion/pigversion.go", "internal/pigdocs/content/extension-api.md", "internal/pigdocs/content/troubleshooting.md", "test/parity/behavior-contracts.toml", "test/parity/known-gaps.toml"]
+    sources: [files]
+    version: 1
+  - name: provenance
+    paths: ["test/testdata-provenance.toml", "**/testdata/**", "**/*.golden", "**/*golden*.json", "**/__snapshots__/**"]
+    # testprune reads every tracked golden and every test name, so it needs the whole tree.
+    checkout: ["/*"]
+    sources: [files]
+    version: 1
+  - name: dependency-review
+    paths: ["**/go.mod", "**/go.sum", "**/package.json", "**/package-lock.json", "**/Cargo.toml", "**/Cargo.lock", "**/requirements*.txt"]
+    sources: [dependency-graph]
+    version: 1
+  - name: reuse
+    always: true
+    checkout: ["REUSE.toml", "LICENSES/", ".reuse/"]
+    sources: [files]
+    version: 1
+  - name: fixtures
+    always: true
+    sources: [files]
+    version: 1
+  - name: workflows
+    paths: [".github/**"]
+    sources: [files]
+    version: 1
+  - name: gitleaks
+    always: true
+    sources: [commits]
+    version: 1
+  - name: trufflehog
+    always: true
+    sources: [commits]
+    version: 1
