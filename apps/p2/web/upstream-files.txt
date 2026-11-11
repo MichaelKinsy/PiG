@@ -530,6 +530,7 @@ test/p2/outbox.test.ts
 test/p2/path-label.test.ts
 test/p2/session-start.test.ts
 test/p2/sidebar-model.test.ts
+test/p2/views-layout.test.ts
 plugins/conversations/contract.ts
 plugins/codemode/contract.ts
 plugins/codemode/card.ts
@@ -555,3 +556,17 @@ plugins/settings/contract.ts
 plugins/settings/package.json
 plugins/settings/settings.css
 plugins/settings/web.tsx
+plugins/views/Workbench.tsx
+plugins/views/activity.tsx
+plugins/views/annotate.tsx
+plugins/views/bridge.ts
+plugins/views/contract.ts
+plugins/views/display.ts
+plugins/views/kinds.ts
+plugins/views/layout-store.ts
+plugins/views/layout.ts
+plugins/views/package.json
+plugins/views/panes.tsx
+plugins/views/sheet.tsx
+plugins/views/views.css
+plugins/views/web.tsx
