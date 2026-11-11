@@ -954,11 +954,13 @@ func (t *TuiAltScreen) doRender() {
 	switch {
 	case fullRedraw:
 		t.fullRedrawCount.Add(1) // tui-alt-screen.ts:1725
-		clearImages := t.deleteKittyImages()
 		if t.imageProtocol == "kitty" && hadUploadedKittyImages {
-			clearImages = DeleteAllKittyPlacements()
+			// Kitty frees image data without placements on ED 2, which would break placement-only reuse.
+			// Every row is cleared with EL 2 below, so keep the uploads and skip the screen clear.
+			buf.WriteString(DeleteAllKittyPlacements())
+		} else {
+			buf.WriteString(t.deleteKittyImages() + "\x1b[2J")
 		}
-		buf.WriteString(clearImages + "\x1b[2J")
 	case imagesNeedRedraw:
 		switch t.imageProtocol {
 		case "iterm2":
