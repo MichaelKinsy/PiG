@@ -498,7 +498,7 @@ func TestSleepingOnSignals(t *testing.T) {
 
 	t.Run("wakes on the first listed key in order, and keeps the other key's value for a later sleep", func(t *testing.T) {
 		type twoState struct {
-			Phase string                `json:"phase"`
+			Phase string               `json:"phase"`
 			Wakes []durable.WakeReason `json:"wakes,omitempty"`
 		}
 		type (
