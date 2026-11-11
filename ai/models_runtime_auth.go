@@ -110,7 +110,7 @@ func (m *Models) GetAuth(ctx context.Context, providerID string, overrides ...Au
 	if len(overrides) > 0 {
 		opts = overrides[0]
 	}
-	return awaitModelsOperation(ctx, &m.operations, func() (*AuthResult, error) {
+	return awaitModelsOperation(ctx, m.goOwned, func() (*AuthResult, error) {
 		return ResolveProviderAuth(ctx, provider.ID, provider.Auth, m.credentials, m.authContext, opts)
 	})
 }
@@ -139,7 +139,7 @@ func (m *Models) GetModelAuth(ctx context.Context, anyModel AnyModel, overrides 
 }
 
 func (m *Models) CheckAuth(ctx context.Context, providerID string) (*AuthCheck, error) {
-	return awaitModelsOperation(ctx, &m.operations, func() (*AuthCheck, error) {
+	return awaitModelsOperation(ctx, m.goOwned, func() (*AuthCheck, error) {
 		if ctx.Err() != nil {
 			return nil, context.Cause(ctx)
 		}
@@ -175,7 +175,7 @@ func (m *Models) authenticatedProviders(ctx context.Context, providerID []string
 	checks := make([]checked, len(providers))
 	completed := make(chan checked, len(providers))
 	for i, provider := range providers {
-		m.operations.Go(func() {
+		m.goOwned(func() {
 			credential, err := readProviderCredential(ctx, m.credentials, provider.ID)
 			if err != nil {
 				completed <- checked{index: i, err: err}
@@ -202,7 +202,7 @@ func (m *Models) authenticatedProviders(ctx context.Context, providerID []string
 }
 
 func (m *Models) GetAvailable(ctx context.Context, providerID ...string) ([]*Model, error) {
-	return awaitModelsOperation(ctx, &m.operations, func() ([]*Model, error) {
+	return awaitModelsOperation(ctx, m.goOwned, func() ([]*Model, error) {
 		authenticated, err := m.authenticatedProviders(ctx, providerID)
 		if err != nil {
 			return nil, err
@@ -234,7 +234,7 @@ func (m *Models) GetAvailableOfType(ctx context.Context, modelType ModelType, pr
 // GetAllAvailable returns models of every type whose providers have complete auth configuration.
 // Without FilterAllModels, FilterModels applies to chat models and every other model is kept.
 func (m *Models) GetAllAvailable(ctx context.Context, providerID ...string) ([]AnyModel, error) {
-	return awaitModelsOperation(ctx, &m.operations, func() ([]AnyModel, error) {
+	return awaitModelsOperation(ctx, m.goOwned, func() ([]AnyModel, error) {
 		authenticated, err := m.authenticatedProviders(ctx, providerID)
 		if err != nil {
 			return nil, err
@@ -338,14 +338,14 @@ func (m *Models) LoginProvider(ctx context.Context, provider *ModelsProvider, au
 	if login == nil {
 		return Credential{}, NewModelsError(ModelsErrorAuth, fmt.Sprintf("%s does not support %s login", provider.Name, authType), nil)
 	}
-	credential, err := awaitModelsOperation(ctx, &m.operations, func() (Credential, error) { return login(ctx, interaction, loginOptions) })
+	credential, err := awaitModelsOperation(ctx, m.operations.Go, func() (Credential, error) { return login(ctx, interaction, loginOptions) })
 	if err != nil {
 		return Credential{}, err
 	}
 	if authType == CredentialOAuth && provider.Auth.OAuth.store != nil {
 		// pig additive (D40): an extension OAuth provider with its own credential store saves there, never in the core store, as /login and pig login do.
 		store := provider.Auth.OAuth.store
-		if _, err := awaitModelsOperation(ctx, &m.operations, func() (string, error) { return store.StoreOAuthCredentials(credential.OAuthCredentials()) }); err != nil {
+		if _, err := awaitModelsOperation(ctx, m.operations.Go, func() (string, error) { return store.StoreOAuthCredentials(credential.OAuthCredentials()) }); err != nil {
 			if ctx.Err() != nil {
 				return Credential{}, context.Cause(ctx)
 			}
