@@ -899,6 +899,10 @@ func (e *RemoteExecutionEnv) ListDir(ctx context.Context, path string) ([]durabl
 				return nil, err
 			}
 			if failure, failed := entry["error"].(Json); failed {
+				// Removed between enumeration and lstat: not part of the listing any more.
+				if failure["code"] == "ENOENT" {
+					continue
+				}
 				return nil, toFileError(NewRemoteError(failure), entryPath)
 			}
 			if info, infoErr := toInfo(entryPath, parseFileInfo(entry["info"]), paths); infoErr == nil {
