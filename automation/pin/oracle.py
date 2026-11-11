@@ -75,8 +75,43 @@ def entry(pin: Pin) -> Path:
 #   .lock-<identity>       serializes the builders of one identity.
 
 
-def identity(data_sha: str, closure_sha: str) -> str:
-    return hashlib.sha256(f"{data_sha}\n{closure_sha}".encode()).hexdigest()[:12]
+def identity(data_sha: str, closure_sha: str, backports: str = "") -> str:
+    return hashlib.sha256((f"{data_sha}\n{closure_sha}" + (f"\n{backports}" if backports else "")).encode()).hexdigest()[:12]
+
+
+# The release line's Pi is the pinned release plus the post-release Pi fixes its Go and vendored-Node ports carry
+# (automation/gen/pi-post-release-backports.mjs, accounted for in the release's upstream-sync ledger). The parity tests compare the
+# port with this oracle, so the oracle carries the same fixes: a pinned release lacks them, and every scenario they change would
+# differ for a reason that is the pin's age, not a port defect.
+BACKPORTS = ROOT / "automation" / "gen" / "pi-post-release-backports.mjs"
+BACKPORT_PACKAGES = ("pi-ai", "pi-coding-agent", "pi-tui")
+
+
+def backports_digest(pin: Pin) -> str:
+    """The digest of the backports the oracle of `pin` carries, "" for a pin that carries none. Only the committed pin does: a run
+    with PI_UPSTREAM_REF set builds another Pi (the upstream follower's), which the backports' exact before-strings do not describe."""
+    if pin != pinlib.committed():
+        return ""
+    return hashlib.sha256(BACKPORTS.read_bytes()).hexdigest()
+
+
+def apply_backports(modules: Path) -> None:
+    """Apply the post-release backports to the installed Pi packages under `modules` in place. The packs and the source tree stay
+    as built: the frozen closure pins each pack's integrity, and the Durable oracle packs the source tree again."""
+    found: dict[str, list[Path]] = {name: [] for name in BACKPORT_PACKAGES}
+    for key, installed in tree_packages(modules).items():
+        package = installed.rsplit("@", 1)[0].removeprefix("@earendil-works/")
+        if installed.startswith("@earendil-works/") and package in found:
+            found[package].append(modules.parent / key)
+    for package, places in found.items():
+        if len(places) != 1:
+            raise PinError(f"the installed oracle has {len(places)} copies of {package} ({', '.join(map(str, places))}); the post-release backports patch exactly one")
+    node = shutil.which("node")
+    if node is None:
+        raise PinError("node is required to apply the post-release backports to the oracle")
+    done = subprocess.run([node, str(BACKPORTS), "--packages", *(f"{name}={places[0]}" for name, places in found.items())], capture_output=True, text=True, check=False, timeout=120)
+    if done.returncode != 0:
+        raise PinError(f"the post-release backports do not apply to the installed oracle:\n{done.stderr.strip()}")
 
 
 def published(pin: Pin, name: str) -> Path | None:
@@ -565,7 +600,7 @@ def reusable(pin: Pin, build: Path | None) -> bool:
     if build is None or not (build / STAMP).is_file() or not installed(build / "node_modules", pin):
         return False
     data = json.loads((build / STAMP).read_text())
-    return data.get("commit") == pin.commit and data.get("package_version") == pin.package_version and data.get("source") == "build" and data.get("provider_data_sha256", "") == (frozen_digest(pin) or data.get("provider_data_sha256", "")) and data.get("closure_sha256", "") == (frozen_closure_digest(pin) or data.get("closure_sha256", ""))
+    return data.get("commit") == pin.commit and data.get("package_version") == pin.package_version and data.get("source") == "build" and data.get("provider_data_sha256", "") == (frozen_digest(pin) or data.get("provider_data_sha256", "")) and data.get("closure_sha256", "") == (frozen_closure_digest(pin) or data.get("closure_sha256", "")) and data.get("backports", "") == backports_digest(pin)
 
 
 def ensure(pin: Pin, *, force: bool = False) -> Path:
@@ -573,7 +608,7 @@ def ensure(pin: Pin, *, force: bool = False) -> Path:
     directory and is published by an atomic ref write after its stamp, so a published oracle is never rewritten or removed:
     a forced rebuild publishes another directory, and a build that fails part-way publishes nothing."""
     home = entry(pin)
-    key = identity(frozen_digest(pin) or "", frozen_closure_digest(pin) or "")
+    key = identity(frozen_digest(pin) or "", frozen_closure_digest(pin) or "", backports_digest(pin))
     candidates = (f"oracle-{key}", "current")
     if not force:
         for name in candidates:
@@ -612,12 +647,18 @@ def build_into(pin: Pin, build: Path) -> str:
     problems = tree_differences(modules, closure)
     if problems:
         raise PinError("the installed tree differs from the frozen closure:\n  " + "\n  ".join(problems[:20]))
+    backports = backports_digest(pin)
+    if backports:
+        apply_backports(modules)
     for scratch in ("flat", "packs", "closure"):
         shutil.rmtree(build / scratch, ignore_errors=True)
     closure_sha = closure_digest(closure)
-    write_replacing(build / STAMP, (json.dumps({"commit": pin.commit, "package_version": pin.package_version, "version": pin.version, "source": "build", "provider_data_sha256": data_sha, "closure_sha256": closure_sha}) + "\n").encode())
+    stamp = {"commit": pin.commit, "package_version": pin.package_version, "version": pin.version, "source": "build", "provider_data_sha256": data_sha, "closure_sha256": closure_sha}
+    if backports:
+        stamp["backports"] = backports
+    write_replacing(build / STAMP, (json.dumps(stamp) + "\n").encode())
     protect(modules)
-    return f"oracle-{identity(data_sha, closure_sha)}"
+    return f"oracle-{identity(data_sha, closure_sha, backports)}"
 
 
 def durable_modules(pin: Pin) -> Path:

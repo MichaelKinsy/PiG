@@ -9,6 +9,7 @@
 // at each entry. This is Pi's own later behavior, not a divergence.
 //
 // Run through vendor-pi-dist.sh after the identity patches and before the SDK and library bundles are compiled.
+// The same entries are applied to the installed Pi the parity tests compare with (`--packages name=dir ...`, from automation/pin/oracle.py), so the oracle is Pi with these fixes.
 //
 // Pi commits of the 0.8.0 list that are not here, and why:
 //   49fe0a237 (Anthropic threads by endpoint), code part: pi-ai's anthropic-messages implementation is a bridge stub that runs in PiG's host; only its description text is backported below.
@@ -226,4 +227,23 @@ export function applyBackportPatches(dist) {
   }
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) applyBackportPatches(process.argv[2]);
+// applyPackageBackports applies the backports of each package in `packages` (a short name such as "pi-tui" and the root directory
+// of that Pi package, as `npm ci` installs it) in place: a file of Pi's compiled output is under dist/ and the models docs under
+// docs/. The oracle the parity tests run (automation/pin/oracle.py) is that installed Pi, so it carries what the Go port carries.
+export function applyPackageBackports(packages) {
+  for (const file of Object.keys(backportPatches)) {
+    const [name, ...rest] = file.split("/");
+    if (!(name in packages)) continue;
+    const inPackage = name === "pi-coding-agent" && rest[0] === "docs" ? rest.join("/") : ["dist", ...rest].join("/");
+    const path = join(packages[name], inPackage);
+    writeFileSync(path, patchBackports(file, readFileSync(path, "utf8")));
+  }
+}
+
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  if (process.argv[2] === "--packages") {
+    applyPackageBackports(Object.fromEntries(process.argv.slice(3).map((arg) => arg.split(/=(.*)/s).slice(0, 2))));
+  } else {
+    applyBackportPatches(process.argv[2]);
+  }
+}
