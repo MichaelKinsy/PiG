@@ -1,0 +1,62 @@
+{
+  "opencode": {
+    "models": [
+      {
+        "id": "big-pickle",
+        "name": "Big Pickle",
+        "api": "openai-completions",
+        "provider": "opencode",
+        "baseUrl": "https://opencode.ai/inference/openai/v1",
+        "reasoning": false,
+        "input": ["text"],
+        "cost": {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0},
+        "contextWindow": 111000,
+        "maxTokens": 22000
+      },
+      {
+        "id": "fixture-new-free",
+        "name": "Fixture New Free",
+        "api": "openai-completions",
+        "provider": "opencode",
+        "baseUrl": "https://opencode.ai/inference/openai/v1",
+        "reasoning": true,
+        "input": ["text", "image"],
+        "cost": {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0},
+        "contextWindow": 262144,
+        "maxTokens": 32000
+      }
+    ],
+    "checkedAt": 4102444800000,
+    "lastModified": 4102444800000
+  },
+  "opencode-go": {
+    "models": [
+      {
+        "id": "kimi-k3",
+        "name": "Kimi K3",
+        "api": "openai-completions",
+        "provider": "opencode-go",
+        "baseUrl": "https://opencode.ai/inference/go/openai/v1",
+        "reasoning": false,
+        "input": ["text"],
+        "cost": {"input": 1, "output": 2, "cacheRead": 0, "cacheWrite": 0},
+        "contextWindow": 333000,
+        "maxTokens": 44000
+      },
+      {
+        "id": "fixture-go-new",
+        "name": "Fixture Go New",
+        "api": "openai-completions",
+        "provider": "opencode-go",
+        "baseUrl": "https://opencode.ai/inference/go/openai/v1",
+        "reasoning": true,
+        "input": ["text"],
+        "cost": {"input": 1, "output": 2, "cacheRead": 0, "cacheWrite": 0},
+        "contextWindow": 524288,
+        "maxTokens": 65536
+      }
+    ],
+    "checkedAt": 4102444800000,
+    "lastModified": 4102444800000
+  }
+}
