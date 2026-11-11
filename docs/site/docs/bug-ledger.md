@@ -1879,6 +1879,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-e77c2e2-2](#bf-e77c2e2-2) | fix(env/daemon): give the stdin and stdout mode back on every exit, and wait for room when stderr shares… | PiG's own defect | All platforms | Unreleased |
 | [BF-e77f039](#bf-e77f039) | The durable `read` tool prepares an image with a width or a height of zero (a farbfeld file with no pixels… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-e79c70e](#bf-e79c70e) | fix(ai): Codex WebSocket, OpenRouter images, pi-messages and replaced Anthropic bodies write JSON.stringify… | PiG's own defect | All platforms | Unreleased |
+| [BF-e7ad444](#bf-e7ad444) | p2: a subagent with code mode gets the tools of an MCP server that connects after it was spawned… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-e7b494a](#bf-e7b494a) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-e7ba8e4](#bf-e7ba8e4) | fix: raw content blocks sized without continue or discarded errors, tsruntime in a race group, provenance of… | PiG's own defect | All platforms | Unreleased |
 | [BF-e8489d4](#bf-e8489d4) | A key hint for an app action the user unbound shows no key, as in Pi, instead of the action's default key | PiG's own defect | All platforms | 0.5.0 |
@@ -27813,6 +27814,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `e79c70ea9e` (2026-10-10)
 - **Tests:** `ai/request_body_escaping_internal_test.go::TestAnthropicReplacedPayloadWritesCharactersAsJSONStringifyDoes`, `ai/request_body_escaping_internal_test.go::TestCodexWebSocketRequestWritesCharactersAsJSONStringifyDoes`, `ai/request_body_escaping_internal_test.go::TestOpenRouterImagesRequestWritesCharactersAsJSONStringifyDoes`, `ai/request_body_escaping_internal_test.go::TestPiMessagesRequestWritesCharactersAsJSONStringifyDoes`, `ai/request_body_escaping_test.go::TestProviderRequestBodiesWriteCharactersAsJSONStringifyDoes`
+
+### BF-e7ad444
+
+**p2: a subagent with code mode gets the tools of an MCP server that connects after it was spawned…**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** p2: a subagent with code mode gets the tools of an MCP server that connects after it was spawned (`enableScriptTools` tested the agent state's tool list with the wrong type and never added them), so its scripts can call them.
+- **Root cause:** Ports Pi (reported(name, after)) and the Pi case it fixes, "reaches MCP tools installed after the spawn", which the Go suite had left pending. Ported red: enableScriptTools tested the stored tools field as []any, but the document returns *delta.Array, so it skipped every agent and never added the tools; the script failed with "tools.mcp__files__echo does not exist".
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `e7ad444950` (2026-11-11)
+- **Tests:** `apps/p2/e2e/subagents_test.go::TestSubagentsWithCodeMode`
+- **Release note:** p2: a subagent with code mode gets the tools of an MCP server that connects after it was spawned (`enableScriptTools` tested the agent state's tool list with the wrong type and never added them), so its scripts can call them.
 
 ### BF-e7b494a
 
