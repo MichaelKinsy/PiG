@@ -51659,6 +51659,28 @@
       "tests": []
     },
     {
+      "id": "BF-ecc923b",
+      "title": "A packed Rust cell whose two members both failed to build could report the second member's panic as the first…",
+      "symptom": "A packed Rust cell whose two members both failed to build could report the second member's panic as the first member's load error.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A packed Rust cell whose two members both failed to build could report the second member's panic as the first member's load error. The runner started the next member while the failed one was still writing its line, so the panic output of the next member split the line, and the host, finding no line of its own for the first member, read the last panic in the log. The next member now starts after the failed member's line is written and the host's wait for it has ended, as the Go runner already did.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ecc923b099",
+          "date": "2026-11-10"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/runtimecell/rust_runner_test.go::TestRustPackedRunnerHoldsTheNextMemberUntilAFailureIsReported"
+      ]
+    },
+    {
       "id": "BF-ecf6db9",
       "title": "A chord session's `lastUsed` touch was written even when its request had been cancelled; it is now cancelled…",
       "symptom": "A chord session's `lastUsed` touch was written even when its request had been cancelled; it is now cancelled with the request (a disconnect or the server's close), as Pi's write on the request context, and a request that finished normally still lands it.",
@@ -54766,6 +54788,28 @@
       ],
       "tests": [
         "telemetry/telemetry_now_test.go::TestInMemoryStampsStartsWithTelemetryNowToTheMicrosecondInTheirOrder"
+      ]
+    },
+    {
+      "id": "BF-f81ce00",
+      "title": "Interactive mode: when the first message flushed from the compaction queue was rejected (a…",
+      "symptom": "Interactive mode: when the first message flushed from the compaction queue was rejected (a `before_agent_start` handler that fails, a missing model, an input handler error), a message queued behind it could start a run of its own if the rejection had already ended the first run, and be rejected for the same cause, so \"Failed to send queued messages\" was shown twice.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Interactive mode: when the first message flushed from the compaction queue was rejected (a `before_agent_start` handler that fails, a missing model, an input handler error), a message queued behind it could start a run of its own if the rejection had already ended the first run, and be rejected for the same cause, so \"Failed to send queued messages\" was shown twice. The rejection is now recorded when the run finds it, and a message behind it is neither sent nor queued; the whole queue comes back with one failure shown.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f81ce001e3",
+          "date": "2026-11-10"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go::TestFlushCompactionQueueDoesNotStartARunBehindARejectedPrompt"
       ]
     },
     {
