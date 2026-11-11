@@ -26,6 +26,10 @@ on:
 
 permissions: {}
 
+# The checkout is sparse: go.work names modules it leaves out.
+env:
+  GOWORK: "off"
+
 concurrency:
   group: preflight
   cancel-in-progress: false
@@ -45,6 +49,20 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # What the pre-flight builds from and reads of main; a test holds it to config.yaml.
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /go.mod
+            /go.sum
+            /.go-version
+            /automation/ci/preflight/
+            /.gitleaks.toml
+            /.gitleaksignore
+            /.github/actionlint.yaml
+            /LICENSES/
+            /docs/parity/PORT_MAP.md
+            /test/parity/interfaces/test-mapping-v*.json
+            /test/parity/upstream-sync/*.toml
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: .go-version
@@ -115,6 +133,19 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /go.mod
+            /go.sum
+            /.go-version
+            /automation/ci/preflight/
+            /.gitleaks.toml
+            /.gitleaksignore
+            /.github/actionlint.yaml
+            /LICENSES/
+            /docs/parity/PORT_MAP.md
+            /test/parity/interfaces/test-mapping-v*.json
+            /test/parity/upstream-sync/*.toml
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: .go-version
@@ -169,6 +200,12 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /go.mod
+            /go.sum
+            /.go-version
+            /automation/ci/preflight/
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: .go-version

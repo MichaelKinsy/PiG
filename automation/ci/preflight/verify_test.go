@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -356,5 +357,71 @@ func TestFindIssuesForAUserAccount(t *testing.T) {
 	defer server.Close()
 	if _, err := findIssues(context.Background(), newAPI(server.URL, "t"), "o/r", "a-user"); err != nil || query != `repo:o/r is:issue in:title "`+issueTitle+`" author:a-user` {
 		t.Fatalf("query %q, err %v", query, err)
+	}
+}
+
+func TestWorkflowChecksOutWhatThePreflightReads(t *testing.T) {
+	var raw []byte
+	for dir, _ := os.Getwd(); ; dir = filepath.Dir(dir) {
+		if b, err := os.ReadFile(filepath.Join(dir, ".github", "workflows", "preflight.yml")); err == nil {
+			raw = b
+			break
+		}
+		if dir == filepath.Dir(dir) {
+			t.Fatal("no .github/workflows/preflight.yml above the package")
+		}
+	}
+	var wf struct {
+		Env  map[string]string `yaml:"env"`
+		Jobs map[string]struct {
+			Steps []struct {
+				Uses string            `yaml:"uses"`
+				With map[string]string `yaml:"with"`
+			} `yaml:"steps"`
+		} `yaml:"jobs"`
+	}
+	if err := yaml.Unmarshal(raw, &wf); err != nil {
+		t.Fatal(err)
+	}
+	if wf.Env["GOWORK"] != "off" {
+		t.Fatal("a sparse checkout builds only with GOWORK=off")
+	}
+	sparse := func(job string) []string {
+		for _, s := range wf.Jobs[job].Steps {
+			if strings.HasPrefix(s.Uses, "actions/checkout@") && s.With["sparse-checkout-cone-mode"] == "false" {
+				return strings.Fields(s.With["sparse-checkout"])
+			}
+		}
+		t.Fatalf("job %s has no sparse checkout", job)
+		return nil
+	}
+	covered := func(list []string, path string) bool {
+		return slices.ContainsFunc(list, func(p string) bool { return p == path || strings.HasSuffix(p, "/") && strings.HasPrefix(path, p) })
+	}
+	build := []string{"/go.mod", "/go.sum", "/.go-version", "/automation/ci/preflight/config.go"}
+	cfg, err := loadConfig(configYAML)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reads := []string{"/.gitleaksignore"}
+	for _, c := range cfg.Checks {
+		paths := slices.Clone(c.Main)
+		if c.Scan != nil {
+			paths = append(paths, c.Scan.Overlay...)
+		}
+		for _, p := range paths {
+			if last := p[strings.LastIndex(p, "/")+1:]; !strings.ContainsAny(last, ".*") {
+				p += "/"
+			}
+			reads = append(reads, "/"+p)
+		}
+	}
+	for job, need := range map[string][]string{"preflight": slices.Concat(build, reads), "more": slices.Concat(build, reads), "verify": build} {
+		list := sparse(job)
+		for _, p := range need {
+			if !covered(list, p) {
+				t.Errorf("job %s does not check out %s", job, p)
+			}
+		}
 	}
 }
