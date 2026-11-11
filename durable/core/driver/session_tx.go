@@ -251,7 +251,7 @@ func (p *txProxy) CreateTaskErased(task durable.AnyTask, input durable.JsonValue
 	if options.ConversationId != nil {
 		wire["conversationId"] = *options.ConversationId
 	}
-	body := map[string]any{"task": def.Name, "version": def.Version, "input": input, "options": wire}
+	body := map[string]any{"task": def.Name, "version": corePinVersion(def), "input": input, "options": wire}
 	// The host computes initial(input) for a task whose definition it holds (PROTOCOL.md, createTask). The built-in tasks
 	// are core code: the core builds their first checkpoint.
 	if !builtinTask(def.Name) {
