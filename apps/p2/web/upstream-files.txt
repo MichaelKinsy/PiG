@@ -523,6 +523,7 @@ test/p2/outbox.test.ts
 test/p2/path-label.test.ts
 test/p2/session-start.test.ts
 test/p2/sidebar-model.test.ts
+test/p2/sidebar-custom.test.ts
 plugins/conversations/contract.ts
 plugins/codemode/contract.ts
 plugins/codemode/card.ts
@@ -544,3 +545,6 @@ plugins/sessions/sidebar/Row.tsx
 plugins/sessions/sidebar/Sidebar.tsx
 plugins/sessions/sidebar/model.ts
 plugins/sessions/sidebar/style.css
+plugins/sessions/sidebar/custom.ts
+plugins/rollups/contract.ts
+plugins/rollups/package.json

@@ -409,6 +409,27 @@ func serveIndex(facet host.FacetHost) error {
 					}
 					return out, nil
 				},
+				"mentions": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+					in := objectOf(args)
+					match := FTSQuery(stringOf(in.Value("query")))
+					if match == "" {
+						return delta.NewJsonObject(0), nil
+					}
+					since, _ := in.Value("since").(float64)
+					index, err := db()
+					if err != nil {
+						return nil, err
+					}
+					latest, order, err := index.Mentions(ctx, match, since)
+					if err != nil {
+						return nil, err
+					}
+					out := delta.NewJsonObject(len(order))
+					for _, session := range order {
+						out.Set(session, latest[session])
+					}
+					return out, nil
+				},
 				"history": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					in := objectOf(args)
 					session, conversation := stringOf(in.Value("session")), intOf(in.Value("conversation"), 0)

@@ -411,6 +411,45 @@ func TestSearchFakeProvider(t *testing.T) {
 	})
 }
 
+// Pi main b30d54b8a: SearchIndex.mentions answers the sessions with a message matching a query at or after `since`, each
+// with the time of its latest one (rollups' `mentions`); a query with no searchable word answers none.
+func TestSearchIndexMentionsAnswersSessionsWithTheTimeOfTheirLatestMatch(t *testing.T) {
+	p2test.NoLeakedGoroutines(t)
+	f := newSearchFixture(t, hosts.ServerOptions{})
+	first, second := f.create("First"), f.create("Second")
+	for at, id := range []string{first, second} {
+		f.onIndex("index", delta.JsonObjectOf("session", id, "conversation", float64(1), "messages", []any{
+			delta.JsonObjectOf("conversationId", float64(1), "entryId", float64(1), "role", "user", "timestamp", float64(1000*(at+1)), "text", "axolotl pond"),
+			delta.JsonObjectOf("conversationId", float64(1), "entryId", float64(2), "role", "user", "timestamp", float64(1000*(at+1)+500), "text", "axolotl again"),
+		}, "through", float64(2)))
+	}
+	mentions := func(args *delta.JsonObject) *delta.JsonObject {
+		var found delta.JsonValue
+		if _, err := f.fixture.Server.Host.Root(func(ctx host.Ctx) (any, error) {
+			index, err := ctx.Get(searchcontract.SearchIndex, delta.NewJsonObject(0), host.GetOptions{})
+			if err != nil {
+				return nil, err
+			}
+			found, err = index.Call("mentions", args, ctx)
+			return nil, err
+		}, p2test.Background, host.RootOptions{}); err != nil {
+			t.Fatal(err)
+		}
+		return object(found)
+	}
+	all := mentions(delta.JsonObjectOf("query", "axolotl"))
+	if all.Len() != 2 || all.Value(first) != float64(1500) || all.Value(second) != float64(2500) {
+		t.Fatalf("mentions = %v", all)
+	}
+	since := mentions(delta.JsonObjectOf("query", "axolotl", "since", float64(2000)))
+	if since.Len() != 1 || since.Value(second) != float64(2500) {
+		t.Fatalf("mentions since 2000 = %v", since)
+	}
+	if none := mentions(delta.JsonObjectOf("query", "!!!")); none.Len() != 0 {
+		t.Fatalf("a query without a word mentions %v", none)
+	}
+}
+
 func TestSearchAcrossRestartsServesTheIndexWithoutStartingWorkers(t *testing.T) {
 	p2test.NoLeakedGoroutines(t)
 	f := newSearchFixture(t, hosts.ServerOptions{})
