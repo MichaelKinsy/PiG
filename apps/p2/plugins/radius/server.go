@@ -29,6 +29,9 @@ func objectOf(value any) *delta.JsonObject { o, _ := value.(*delta.JsonObject); 
 func StatusText(status contract.Status) string {
 	switch status.Kind {
 	case contract.StatusConnected:
+		if status.Name != "" {
+			return "connected as brain " + status.Name
+		}
 		return "connected as brain " + status.ServerID
 	case contract.StatusRetrying:
 		return "not connected (" + status.Error + ")"
