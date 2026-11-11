@@ -260,6 +260,8 @@ type threadModel struct {
 	id        string
 	reasoning bool
 	compat    *ModelCompat
+	provider  string
+	baseURL   string
 }
 
 func (m threadModel) config() AnthropicConfig {
@@ -267,9 +269,16 @@ func (m threadModel) config() AnthropicConfig {
 	if id == "" {
 		id = "claude-test"
 	}
+	provider, baseURL := m.provider, m.baseURL
+	if provider == "" {
+		provider = "anthropic"
+	}
+	if baseURL == "" {
+		baseURL = "https://api.anthropic.com"
+	}
 	return AnthropicConfig{
-		Model: id, ProviderID: "anthropic", BaseURL: "https://api.anthropic.com", Compat: m.compat,
-		ModelMetadata: &Model{ID: id, DisplayName: "Test Claude", Input: []string{"text"}, Capabilities: ModelCapabilities{ContextWindow: 200000, MaxOutputTokens: 100}, ProviderMeta: ProviderMetadata{ProviderID: "anthropic", API: APIAnthropicMessages, BaseURL: "https://api.anthropic.com", Reasoning: m.reasoning}},
+		Model: id, ProviderID: provider, BaseURL: baseURL, Compat: m.compat,
+		ModelMetadata: &Model{ID: id, DisplayName: "Test Claude", Input: []string{"text"}, Capabilities: ModelCapabilities{ContextWindow: 200000, MaxOutputTokens: 100}, ProviderMeta: ProviderMetadata{ProviderID: provider, API: APIAnthropicMessages, BaseURL: baseURL, Reasoning: m.reasoning}},
 	}
 }
 
@@ -829,7 +838,7 @@ func TestAnthropicMessageThreadsEndpointSupport(t *testing.T) {
 	}{
 		{"anthropic on api.anthropic.com", "anthropic", "https://api.anthropic.com", nil, true},
 		{"a gateway", "anthropic", "https://gateway.invalid", nil, false},
-		{"another provider on api.anthropic.com", "other", "https://api.anthropic.com", nil, false},
+		{"another provider on api.anthropic.com", "other", "https://api.anthropic.com", nil, true},
 		{"a gateway with the compat on", "anthropic", "https://gateway.invalid", &ModelCompat{SupportsMessageThreads: new(true)}, true},
 		{"api.anthropic.com with the compat off", "anthropic", "https://api.anthropic.com", &ModelCompat{SupportsMessageThreads: new(false)}, false},
 	} {
@@ -851,5 +860,24 @@ func TestAnthropicMessageThreadsEndpointSupport(t *testing.T) {
 				t.Fatalf("thread sent = %v, betas = %v, want threads %v", sent, request.betas, tc.want)
 			}
 		})
+	}
+}
+
+// Ports packages/ai/test/anthropic-message-threads.test.ts "uses threads for any provider on api.anthropic.com, not for other endpoints" (#11987).
+func TestAnthropicMessageThreadsAnyProviderOnAnthropicEndpoint(t *testing.T) {
+	alias := newThreadHarness(t)
+	aliasInput := threadTurnInput{model: threadModel{provider: "anthropic-1-api"}}
+	aliasMessages := []Message{threadUser("first")}
+	alias.say(t, &aliasMessages, aliasInput)
+	aliasMessages = append(aliasMessages, threadUser("second"))
+	alias.say(t, &aliasMessages, aliasInput)
+	wantThread(t, alias.request(t, 0), map[string]any{"type": "create"})
+	wantThread(t, alias.request(t, 1), map[string]any{"type": "continue", "previous_message_id": "msg_1"})
+
+	gateway := newThreadHarness(t)
+	gateway.turn(t, []Message{threadUser("first")}, threadTurnInput{model: threadModel{baseURL: "https://gateway.example.com"}})
+	request := gateway.request(t, 0)
+	if _, sent := request.body["thread"]; sent || contains(request.betas, threadsBeta) {
+		t.Fatalf("gateway sent thread = %v, betas = %v", request.body["thread"], request.betas)
 	}
 }
