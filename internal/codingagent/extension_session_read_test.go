@@ -28,7 +28,7 @@ func TestExtensionSessionTimestampUsesMilliseconds(t *testing.T) {
 
 func TestExtensionSessionReadRejectsCorruptRetainedEntry(t *testing.T) {
 	s := NewSession("corrupt", "/test")
-	s.slots = []entrySlot{newSlot(sessionentry.DecodeSessionEntry(json.RawMessage(`{"type":`)))}
+	s.addSlotLocked(newSlot(sessionentry.DecodeSessionEntry(json.RawMessage(`{"type":`))), nil, nil)
 	if _, err := ExtensionSessionRead(ExtensionSessionView{Session: s}, "getEntries", nil); err == nil {
 		t.Fatal("corrupt retained entry was silently discarded")
 	}

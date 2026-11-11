@@ -30,9 +30,8 @@ import (
 
 // entrySlot is one entry of the log, in append order.
 type entrySlot struct {
-	id string
-	// entry is the decoded entry, nil when it is not resident.
-	entry SessionEntry
+	// idRef locates the entry's id in Session.ids (Session.idOf), which keeps it in an arena and not as a string of its own.
+	idRef uint32
 	// ts is Date.parse of the entry's timestamp, the key getTree sorts siblings by.
 	ts float64
 	// kind names the entry's type and, for a message entry, its message.role and (for an assistant) message.api in the process's slot kinds
@@ -56,19 +55,13 @@ const (
 // slotCold is the part of a slot that a resident entry with no line in a file and no search text lacks, which is every entry
 // of a session without a file until its first compaction: such an entry costs only its slot. Session.coldLocked gives a slot one.
 type slotCold struct {
-	// off and size locate the entry's line in the Session's backing file; off is -1 when the entry has no line there, and -2 minus the
-	// record's offset in block when block holds it.
+	// off and size locate the entry's line in the Session's backing file; off is -1 when the entry has no line there. A negative off below -1 locates
+	// the entry's record in a compressed block instead (blockOf, blockAt): the block's number in Session.blockList plus one, and the record's offset in
+	// the block, in 32 bits each.
 	off  int64
 	size int32
-	// searchAt locates, in the Session's searchTexts, the /tree search text without its branch label (tree-selector.ts getSearchableText),
-	// JavaScript-lowercased, of a message or custom message that is not resident, so a search reads no entry; it is 0 when the slot has
-	// none, which an open and an eviction leave for indexSearchTexts to fill on the first search.
-	searchAt uint32
-	// hash is recordHash of the record at off, or in block at at, which a read back verifies.
+	// hash is recordHash of the record at off, or in the block, which a read back verifies.
 	hash uint32
-	// block locates, in Session.blocks, plus one, the compressed records holding this entry's when it is not resident and has no line in a
-	// file, at blockAt with length size; 0 for none.
-	block uint32
 }
 
 // noCold is the cold part of a slot that has none.
@@ -125,8 +118,19 @@ func coldChunkCap(chunk int) int {
 	return coldChunkSize
 }
 
+// blockOf is the number, plus one, of the compressed block in Session.blockList that holds the cold part's record, 0 when no block does.
+func (c *slotCold) blockOf() uint32 {
+	if c.off >= -1 {
+		return 0
+	}
+	return uint32(uint64(-2-c.off) >> 32)
+}
+
 // blockAt is the offset of the cold part's record in its block.
-func (c *slotCold) blockAt() int64 { return -2 - c.off }
+func (c *slotCold) blockAt() int64 { return (-2 - c.off) & (1<<32 - 1) }
+
+// inBlock sets the cold part to locate its record at offset at of the block numbered block, plus one, in Session.blockList.
+func (c *slotCold) inBlock(block uint32, at int64) { c.off = -2 - (int64(block)<<32 | at) }
 
 // recordBlock is the compressed records of the entries one eviction took out of a session without a file, back to back. They are written
 // to the Session's spill file, so a long session without a file holds only where each block lies; data holds them instead when the spill
@@ -231,13 +235,22 @@ func (slot *entrySlot) evictable() bool {
 	return typ == typeMessage || typ == typeCustomMessage
 }
 
+// pendingSlot is the slot of an entry about to join a Session, with the id and the decoded entry the slot does not hold itself: the Session keeps the id in
+// its arena and the entry, when it is resident, in its resident store.
+type pendingSlot struct {
+	entrySlot
+	id string
+	// entry is the decoded entry, nil when the entry is not resident.
+	entry SessionEntry
+}
+
 // baseSlot is the slot of an entry with the given base members.
-func baseSlot(base SessionEntryBase) entrySlot {
-	return entrySlot{id: base.ID, parent: noParent, kind: internSlotKind(slotKind{typ: base.Type}), ts: ai.DateParse(base.Timestamp)}
+func baseSlot(base SessionEntryBase) pendingSlot {
+	return pendingSlot{parent: noParent, kind: internSlotKind(slotKind{typ: base.Type}), ts: ai.DateParse(base.Timestamp), id: base.ID}
 }
 
 // newSlot is the slot of an entry decoded or appended in memory.
-func newSlot(entry SessionEntry) entrySlot {
+func newSlot(entry SessionEntry) pendingSlot {
 	slot := baseSlot(entry.Base())
 	slot.entry = entry
 	slot.setMessageKind(messageKindOf(entry))
@@ -246,21 +259,23 @@ func newSlot(entry SessionEntry) entrySlot {
 
 // addSlotLocked appends slot, whose entry has parent as its parentId, to the log and indexes it. A compaction's firstKeptEntryId is read
 // once, here. The caller holds s.mu for writing.
-func (s *Session) addSlotLocked(slot entrySlot, parent *string, raw []byte) int {
+func (s *Session) addSlotLocked(slot pendingSlot, parent *string, raw []byte) int {
 	if slot.entry == nil {
-		s.indexSearchTextLocked(&slot, raw)
+		s.indexSearchTextLocked(&slot.entrySlot, raw)
 	}
 	return s.appendSlotLocked(slot, parent, raw)
 }
 
 // appendSlotLocked is addSlotLocked of a slot whose search text is indexed already. The caller holds s.mu for writing.
-func (s *Session) appendSlotLocked(slot entrySlot, parent *string, raw []byte) int {
+func (s *Session) appendSlotLocked(pending pendingSlot, parent *string, raw []byte) int {
 	idx := len(s.slots)
+	slot := pending.entrySlot
+	slot.idRef = s.ids.add(pending.id)
 	slot.parent = noParent
 	if parent != nil {
 		if p, ok := s.slotOf(*parent); ok {
 			slot.parent = int32(p)
-		} else if *parent == slot.id {
+		} else if *parent == pending.id {
 			slot.parent = int32(idx)
 		} else {
 			slot.parent = danglingParent
@@ -271,7 +286,10 @@ func (s *Session) appendSlotLocked(slot entrySlot, parent *string, raw []byte) i
 		}
 	}
 	s.slots = append(s.slots, slot)
-	s.byID.set(s.slots, idx)
+	if pending.entry != nil {
+		s.resident.set(idx, pending.entry)
+	}
+	s.byID.set(s, idx)
 	if slot.typ() == typeCompaction {
 		var compaction struct {
 			FirstKeptEntryID string `json:"firstKeptEntryId"`
@@ -344,7 +362,7 @@ func rawMessageKind(raw []byte) (messageKind, bool) {
 
 // entryAtLocked returns the entry of slot i, reading it from the backing file when it is not resident. The caller holds s.mu.
 func (s *Session) entryAtLocked(i int) SessionEntry {
-	if entry := s.slots[i].entry; entry != nil {
+	if entry := s.resident.get(i); entry != nil {
 		return entry
 	}
 	entries := s.readSlotsLocked([]int32{int32(i)})
@@ -357,7 +375,7 @@ func (s *Session) entriesAtLocked(indexes []int32) []SessionEntry {
 	out := make([]SessionEntry, len(indexes))
 	var missing []int
 	for k, i := range indexes {
-		if entry := s.slots[i].entry; entry != nil {
+		if entry := s.resident.get(int(i)); entry != nil {
 			out[k] = entry
 		} else {
 			missing = append(missing, k)
@@ -384,13 +402,13 @@ func (s *Session) retainReadLocked(indexes []int32, entries []SessionEntry) {
 	var scratch []byte
 	for k, idx := range indexes {
 		slot := &s.slots[idx]
-		if slot.entry != nil || !slot.evictable() || entries[k] == nil {
+		if s.resident.get(int(idx)) != nil || !slot.evictable() || entries[k] == nil {
 			continue
 		}
-		slot.entry = residentEntryOf(entries[k], &scratch)
-		if cold := s.coldPart(slot); cold.searchAt != 0 {
-			s.searchTexts.drop(cold.searchAt)
-			cold.searchAt = 0
+		s.resident.set(int(idx), residentEntryOf(entries[k], &scratch))
+		if ref := s.searchAtOf(slot); ref != 0 {
+			s.searchTexts.drop(ref)
+			s.setSearchAt(slot, 0)
 		}
 	}
 	s.compactSearchTextsLocked()
@@ -483,14 +501,14 @@ func (s *Session) readSlotsLocked(indexes []int32) []SessionEntry {
 		var run runBuffer
 		for _, k := range order {
 			slot := &s.slots[indexes[k]]
-			if slot.entry != nil {
-				out[k] = slot.entry
+			if resident := s.resident.get(int(indexes[k])); resident != nil {
+				out[k] = resident
 				continue
 			}
 			var entry SessionEntry
 			var record []byte
 			var ok bool
-			if cold := s.coldPart(slot); cold.block == 0 && file != nil && cold.off >= 0 {
+			if cold := s.coldPart(slot); cold.blockOf() == 0 && file != nil && cold.off >= 0 {
 				// Records close together share one read, and the record is a slice of that buffer. The decoded entry keeps its record, so the
 				// entry gets its own copy: a slice would pin the whole read, the gaps between the records included, while the entry is resident.
 				record, ok = run.record(file, s, indexes, order, k)
@@ -501,13 +519,13 @@ func (s *Session) readSlotsLocked(indexes []int32) []SessionEntry {
 			if ok {
 				record = bytes.Clone(record) // the lone reader's buffer is valid only until its next call
 				// An indexed line is never a header (the load skips records of type "session"), so it decodes as DecodeFileEntry decodes it.
-				if decoded := sessionentry.DecodeSessionEntry(record); decoded.Base().ID == slot.id && decoded.Base().Type == slot.typ() {
+				if decoded := sessionentry.DecodeSessionEntry(record); decoded.Base().ID == s.idOf(slot) && decoded.Base().Type == slot.typ() {
 					entry = decoded
 				}
 			}
 			if entry == nil {
 				s.staleReads.Add(1)
-				entry = RawEntry{Type: slot.typ(), ID: slot.id, ParentID: s.parentPtrLocked(int(indexes[k]))}
+				entry = RawEntry{Type: slot.typ(), ID: s.idOf(slot), ParentID: s.parentPtrLocked(int(indexes[k]))}
 			}
 			out[k] = entry
 		}
@@ -546,7 +564,7 @@ func (s *Session) pathIndexesLocked(leafID string) []int32 {
 		// getBranch starts at `startId ? byId.get(startId) : undefined`.
 		return nil
 	}
-	if s.branchLeaf >= 0 && s.slots[s.branchLeaf].id == leafID && s.slotOrZero(leafID) == s.branchLeaf {
+	if s.branchLeaf >= 0 && s.idAt(s.branchLeaf) == leafID && s.slotOrZero(leafID) == s.branchLeaf {
 		return s.branch
 	}
 	return s.walkPathLocked(leafID)
@@ -557,9 +575,9 @@ func (s *Session) walkPathLocked(leafID string) []int32 {
 	if !ok {
 		return nil
 	}
-	var path []int32
+	var walked []int32
 	for {
-		path = append(path, int32(cur))
+		walked = append(walked, int32(cur))
 		parentID, has := s.parentIDLocked(cur)
 		// The walks follow `current.parentId ? byId.get(current.parentId) : undefined`.
 		if !has || !sessionentry.Truthy(parentID) {
@@ -571,7 +589,11 @@ func (s *Session) walkPathLocked(leafID string) []int32 {
 		}
 		cur = next
 	}
-	slices.Reverse(path)
+	// The cached branch is kept for the session's life, so it holds no room that growing the walk left.
+	path := make([]int32, len(walked))
+	for i, idx := range walked {
+		path[len(walked)-1-i] = idx
+	}
 	return path
 }
 
@@ -593,7 +615,7 @@ func (s *Session) contextStartIn(path []int32) int {
 		}
 		firstKept := s.firstKept[int(p)]
 		for i := range path[:c] {
-			if s.slots[path[i]].id == firstKept {
+			if s.idAt(int(path[i])) == firstKept {
 				return i
 			}
 		}
@@ -645,7 +667,7 @@ func (s *Session) setBranchLocked() {
 // advanceBranchLocked extends the cached path by the slot just appended at idx as the new leaf. The caller holds s.mu for writing.
 func (s *Session) advanceBranchLocked(idx int) {
 	parent, has := s.parentIDLocked(idx)
-	if s.branchLeaf < 0 || !has || !sessionentry.Truthy(parent) || s.slots[s.branchLeaf].id != parent || s.slotOrZero(parent) != s.branchLeaf || s.slotOrZero(s.slots[idx].id) != idx {
+	if s.branchLeaf < 0 || !has || !sessionentry.Truthy(parent) || s.idAt(s.branchLeaf) != parent || s.slotOrZero(parent) != s.branchLeaf || s.slotOrZero(s.idAt(idx)) != idx {
 		s.setBranchLocked()
 		return
 	}
@@ -662,7 +684,7 @@ func (s *Session) advanceBranchLocked(idx int) {
 
 // contextIndexesLocked returns contextPathIn of the path ending at leafID, from the cache for the current leaf. The caller holds s.mu.
 func (s *Session) contextIndexesLocked(leafID string) []int32 {
-	if s.branchLeaf >= 0 && s.slots[s.branchLeaf].id == leafID && s.slotOrZero(leafID) == s.branchLeaf {
+	if s.branchLeaf >= 0 && s.idAt(s.branchLeaf) == leafID && s.slotOrZero(leafID) == s.branchLeaf {
 		return s.ctxPath
 	}
 	path := s.walkPathLocked(leafID)
@@ -688,29 +710,30 @@ func (s *Session) retainLocked() {
 	for i := range s.slots {
 		slot := &s.slots[i]
 		_, needed := keep[int32(i)]
+		resident := s.resident.get(i)
 		switch {
 		case !slot.evictable():
-		case needed && slot.entry == nil:
+		case needed && resident == nil:
 			load = append(load, int32(i))
-		case !needed && slot.entry != nil && s.coldPart(slot).off < 0:
+		case !needed && resident != nil && s.coldPart(slot).off < 0:
 			// An entry the session holds without its record encodes it here, once, for its block. Its search text is read from the block on
 			// the first search, as an open leaves it (indexSearchTexts): a session that is never searched keeps none.
-			raw := slot.entry.Raw()
-			s.noteTimestampLocked(i, slot.entry.Base().Timestamp)
+			raw := resident.Raw()
+			s.noteTimestampLocked(i, resident.Base().Timestamp)
 			pack = append(pack, packedRecord{index: i, raw: raw})
-		case !needed && slot.entry != nil:
-			s.noteTimestampLocked(i, slot.entry.Base().Timestamp)
-			slot.entry = nil
+		case !needed && resident != nil:
+			s.noteTimestampLocked(i, resident.Base().Timestamp)
+			s.resident.set(i, nil)
 		}
 	}
 	var scratch []byte
 	for k, entry := range s.readSlotsLocked(load) {
 		slot := &s.slots[load[k]]
-		slot.entry = residentEntryOf(entry, &scratch)
+		s.resident.set(int(load[k]), residentEntryOf(entry, &scratch))
 		// A resident entry's search text is read from the entry.
-		if cold := s.coldPart(slot); cold.searchAt != 0 {
-			s.searchTexts.drop(cold.searchAt)
-			cold.searchAt = 0
+		if ref := s.searchAtOf(slot); ref != 0 {
+			s.searchTexts.drop(ref)
+			s.setSearchAt(slot, 0)
 		}
 	}
 	s.compactSearchTextsLocked()
@@ -765,8 +788,9 @@ func (s *Session) packLocked(records []packedRecord) {
 		raw := record.raw
 		size := len(raw)
 		cold := s.coldLocked(slot)
-		cold.block, cold.off, cold.size, cold.hash = ref, -2-int64(at), int32(size), uint32(recordHash(raw))
-		slot.entry = nil
+		cold.inBlock(ref, int64(at))
+		cold.size, cold.hash = int32(size), uint32(recordHash(raw))
+		s.resident.set(record.index, nil)
 		at += size
 	}
 }
@@ -776,7 +800,7 @@ func (s *Session) packLocked(records []packedRecord) {
 // slots in file order.
 type recordReader struct {
 	file io.ReaderAt
-	// blocks are the Session's compressed blocks (slotCold.block).
+	// blocks are the Session's compressed blocks (slotCold.blockOf).
 	blocks []*recordBlock
 	window bool
 	buf    []byte
@@ -792,8 +816,8 @@ const recordWindow = 1 << 20
 
 // record returns the record cold locates, valid until the next call; ok is false when it cannot be read.
 func (r *recordReader) record(cold *slotCold) (record []byte, ok bool) {
-	if cold.block != 0 {
-		if block := r.blocks[cold.block-1]; r.block != block {
+	if blockNo := cold.blockOf(); blockNo != 0 {
+		if block := r.blocks[blockNo-1]; r.block != block {
 			packed, err := block.packed()
 			if err != nil {
 				return nil, false
@@ -941,7 +965,7 @@ func (s *Session) noteFlushedLocked(path string, lines [][]byte, snapshot *sessi
 	off := int64(len(lines[0]) + 1)
 	for i, line := range lines[1:] {
 		slot := &s.slots[i]
-		if s.coldPart(slot).off < 0 && slot.entry != nil && len(slot.entry.Raw()) == len(line) {
+		if resident := s.resident.get(i); s.coldPart(slot).off < 0 && resident != nil && len(resident.Raw()) == len(line) {
 			s.locateLocked(slot, off, line)
 		}
 		off += int64(len(line) + 1)
@@ -960,8 +984,8 @@ func (s *Session) noteAppendedLocked(path string, entry SessionEntry, off int64,
 	if !ok {
 		return
 	}
-	if slot := &s.slots[idx]; s.coldPart(slot).off < 0 && slot.entry != nil && sameBase(slot.entry.Base(), base) {
-		s.locateLocked(slot, off, raw)
+	if resident := s.resident.get(idx); s.coldPart(&s.slots[idx]).off < 0 && resident != nil && sameBase(resident.Base(), base) {
+		s.locateLocked(&s.slots[idx], off, raw)
 	}
 }
 
@@ -1048,8 +1072,8 @@ func (s *Session) RawEntriesPage(cursor, maxBytes int) (page []json.RawMessage, 
 	for next < total {
 		slot := &s.slots[next]
 		var raw []byte
-		if slot.entry != nil {
-			raw = slot.entry.Raw()
+		if resident := s.resident.get(next); resident != nil {
+			raw = resident.Raw()
 		} else {
 			reader.file = records.get()
 			if record, ok := reader.record(s.coldPart(slot)); ok {
@@ -1159,7 +1183,7 @@ const maxIndexedSearchText = 1 << 10
 // indexSearchTextLocked gives a message or custom message slot its search text from its record raw, once, when it is at most
 // maxIndexedSearchText bytes. The caller holds s.mu for writing.
 func (s *Session) indexSearchTextLocked(slot *entrySlot, raw []byte) {
-	if !slot.evictable() || s.coldPart(slot).searchAt != 0 {
+	if !slot.evictable() || s.searchAtOf(slot) != 0 {
 		return
 	}
 	s.storeSearchTextLocked(slot, searchTextOf(slot.typ(), raw))
@@ -1173,12 +1197,13 @@ func (s *Session) indexSearchTexts() {
 		index int
 		slot  entrySlot
 		cold  slotCold
+		id    string
 	}
 	s.mu.RLock()
 	var missing []located
 	for i := range s.slots {
-		if slot := &s.slots[i]; slot.entry == nil && slot.evictable() && slot.cold != 0 && s.coldPart(slot).searchAt == 0 {
-			missing = append(missing, located{index: i, slot: *slot, cold: *s.coldPart(slot)})
+		if slot := &s.slots[i]; s.resident.get(i) == nil && slot.evictable() && slot.cold != 0 && s.searchAtOf(slot) == 0 {
+			missing = append(missing, located{index: i, slot: *slot, cold: *s.coldPart(slot), id: s.idOf(slot)})
 		}
 	}
 	var file io.ReaderAt
@@ -1217,7 +1242,7 @@ func (s *Session) indexSearchTexts() {
 			continue
 		}
 		slot := &s.slots[m.index]
-		if cold := s.coldPart(slot); slot.id == m.slot.id && slot.entry == nil && slot.cold != 0 && cold.searchAt == 0 && cold.off == m.cold.off && cold.block == m.cold.block {
+		if s.idOf(slot) == m.id && s.resident.get(m.index) == nil && slot.cold != 0 && s.searchAtOf(slot) == 0 && s.coldPart(slot).off == m.cold.off {
 			s.storeSearchTextLocked(slot, texts[k])
 		}
 	}
@@ -1226,8 +1251,30 @@ func (s *Session) indexSearchTexts() {
 // storeSearchTextLocked gives slot the search text text, when it is at most maxIndexedSearchText bytes. The caller holds s.mu for writing.
 func (s *Session) storeSearchTextLocked(slot *entrySlot, text string) {
 	if len(text) <= maxIndexedSearchText {
-		s.coldLocked(slot).searchAt = s.searchTexts.add(text)
+		s.setSearchAt(slot, s.searchTexts.add(text))
 	}
+}
+
+// searchAtOf locates, in s.searchTexts, the /tree search text without its branch label (tree-selector.ts getSearchableText), JavaScript-lowercased, of a
+// message or custom message slot that is not resident, so a search reads no entry; it is 0 when the slot has none, which an open and an eviction leave
+// for indexSearchTexts to fill on the first search. The references are kept apart from the cold parts, which a session nobody searched has none of.
+func (s *Session) searchAtOf(slot *entrySlot) uint32 {
+	if slot.cold == 0 || int(slot.cold) > len(s.searchRefs) {
+		return 0
+	}
+	return s.searchRefs[slot.cold-1]
+}
+
+// setSearchAt makes ref the slot's search text (searchAtOf). The caller holds s.mu for writing.
+func (s *Session) setSearchAt(slot *entrySlot, ref uint32) {
+	if ref == 0 && int(slot.cold) > len(s.searchRefs) {
+		return
+	}
+	s.coldLocked(slot)
+	if grow := int(s.coldCount) - len(s.searchRefs); grow > 0 {
+		s.searchRefs = append(slices.Grow(s.searchRefs, grow), make([]uint32, grow)...)
+	}
+	s.searchRefs[slot.cold-1] = ref
 }
 
 // compactSearchTextsLocked copies the live search texts into a new arena once at least half of the arena's bytes are dead, so the arena
@@ -1237,9 +1284,9 @@ func (s *Session) compactSearchTextsLocked() {
 		return
 	}
 	var live searchTextArena
-	for i := range s.slots {
-		if cold := s.coldPart(&s.slots[i]); cold.searchAt != 0 {
-			cold.searchAt = live.add(s.searchTexts.text(cold.searchAt))
+	for i, ref := range s.searchRefs {
+		if ref != 0 {
+			s.searchRefs[i] = live.add(s.searchTexts.text(ref))
 		}
 	}
 	s.searchTexts = live
@@ -1280,7 +1327,7 @@ func (r *runBuffer) fill(file io.ReaderAt, s *Session, indexes []int32, order []
 	end := first.off + int64(first.size)
 	for _, j := range order[r.pos[k]+1:] {
 		c := s.coldPart(&s.slots[indexes[j]])
-		if s.slots[indexes[j]].entry != nil || c.block != 0 || c.off < 0 {
+		if s.resident.get(int(indexes[j])) != nil || c.off < 0 {
 			continue
 		}
 		if c.off-end > fileRunGap || c.off+int64(c.size)-r.base > fileRunMax {
@@ -1302,7 +1349,7 @@ func (s *Session) parentIDLocked(i int) (string, bool) {
 	case danglingParent:
 		return s.danglingParents[int32(i)], true
 	default:
-		return s.slots[p].id, true
+		return s.idAt(int(p)), true
 	}
 }
 
