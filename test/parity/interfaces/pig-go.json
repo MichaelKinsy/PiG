@@ -240302,15 +240302,15 @@
       "shapeHash": "sha256:8a1a6db8bd6a8a1c30f1886ba13f68a1328c78e95305f0e444754feb652227ef"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#bmpProps",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#bmpBlocks",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
-      "name": "bmpProps",
+      "name": "bmpBlocks",
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "[65536]uint16"
+        "type": "[256]sync/atomic.Pointer[[256]uint16]"
       },
-      "shapeHash": "sha256:48b81c8d269acdaba0213cbe21c238dc38964a2e0b9f1b442aa9f765d12c564b"
+      "shapeHash": "sha256:37f854cdcf44821fbbebc0abcb0a81ef505661a3b237e9da1beb99816b74fadc"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#boxDrawingAt",
@@ -240806,6 +240806,17 @@
         "type": "func(s string) uint64"
       },
       "shapeHash": "sha256:3f43bd997d2baf8f5c56fc48c5b64747f7c42a2cdba0f1b8d4a18503349732e9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#loadBMPBlock",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "name": "loadBMPBlock",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(block rune) *[256]uint16"
+      },
+      "shapeHash": "sha256:20dc16600a4e0d7a88832ff4a33982ea3c01972696a6db675841140403fb7859"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#lookupProps",
@@ -397690,15 +397701,15 @@
       "shapeHash": "sha256:8a1a6db8bd6a8a1c30f1886ba13f68a1328c78e95305f0e444754feb652227ef"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui/widthx#bmpProps",
+      "id": "go:github.com/MichaelKinsy/PiG/tui/widthx#bmpBlocks",
       "package": "github.com/MichaelKinsy/PiG/tui/widthx",
-      "name": "bmpProps",
+      "name": "bmpBlocks",
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "[65536]uint16"
+        "type": "[256]sync/atomic.Pointer[[256]uint16]"
       },
-      "shapeHash": "sha256:48b81c8d269acdaba0213cbe21c238dc38964a2e0b9f1b442aa9f765d12c564b"
+      "shapeHash": "sha256:37f854cdcf44821fbbebc0abcb0a81ef505661a3b237e9da1beb99816b74fadc"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui/widthx#boxDrawingAt",
@@ -398194,6 +398205,17 @@
         "type": "func(s string) uint64"
       },
       "shapeHash": "sha256:3f43bd997d2baf8f5c56fc48c5b64747f7c42a2cdba0f1b8d4a18503349732e9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/widthx#loadBMPBlock",
+      "package": "github.com/MichaelKinsy/PiG/tui/widthx",
+      "name": "loadBMPBlock",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(block rune) *[256]uint16"
+      },
+      "shapeHash": "sha256:20dc16600a4e0d7a88832ff4a33982ea3c01972696a6db675841140403fb7859"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui/widthx#lookupProps",
