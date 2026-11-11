@@ -170,3 +170,22 @@ func TestSessionLineReaderCancelsWithinAnOversizedRecord(t *testing.T) {
 		t.Fatalf("err=%v reads=%d callback=%v", err, reader.reads, called)
 	}
 }
+
+// Ported from upstream test/session-manager/file-operations.test.ts "SessionManager listing abort" (ef9361ab7, #11956). Pi's crash is a
+// Node stream 'error' no listener handles after the abort; Go has no such event, so this pins the observable contract: a file whose first
+// entry is not a session header is skipped without error, the listing returns, and an abort after that is harmless.
+func TestSessionListingDoesNotFailWhenAbortedAfterAFileThatIsNotASessionWasSkipped(t *testing.T) {
+	dir := t.TempDir()
+	// Larger than one stream chunk, so the file is still being read when the listing skips it.
+	if err := os.WriteFile(filepath.Join(dir, "other.jsonl"), []byte("{\"type\":\"other\"}\n"+strings.Repeat("x", 1024*1024)+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	got, err := NewSessionManagerWithDir(t.TempDir(), dir).ListAllSessions(SessionListOptions{Context: ctx})
+	if err != nil || len(got) != 0 {
+		t.Fatalf("listing = %v, %v; want no sessions and no error", got, err)
+	}
+	// The session picker aborts its loads when it closes, after files were skipped.
+	cancel()
+}
