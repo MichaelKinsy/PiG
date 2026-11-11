@@ -1,10 +1,11 @@
 package status
 
 import (
-	"cmp"
 	"context"
 	"slices"
+	"strconv"
 	"sync"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/apps/p2/plugins/status/contract"
@@ -21,14 +22,14 @@ import (
 // Ports apps/p2/plugins/status/worker.ts: the session worker's part of status: its Durable task graph, followed, and
 // pushed to the server's index of statuses (the sidebar's working dot). The worker pushes; the server never asks.
 
-// summarize is the live tasks, and the conversations with foreground work (ascending): a background reporter does not
-// make a conversation busy.
-func summarize(graph *delta.JsonObject) (tasks int, busy []any) {
+// summarize is the live tasks, and the conversations with foreground work with their tasks' kinds: a background reporter
+// does not make a conversation busy.
+func summarize(graph *delta.JsonObject) (tasks int, busy map[float64]map[string]bool) {
+	busy = map[float64]map[string]bool{}
 	nodes, _ := graph.Value("tasks").(*delta.JsonObject)
 	if nodes == nil {
-		return 0, []any{}
+		return 0, busy
 	}
-	seen := map[float64]struct{}{}
 	for _, value := range nodes.All() {
 		node, _ := value.(*delta.JsonObject)
 		tasks++
@@ -36,14 +37,80 @@ func summarize(graph *delta.JsonObject) (tasks int, busy []any) {
 			continue
 		}
 		conversation, _ := node.Value("conversationId").(float64)
-		seen[conversation] = struct{}{}
+		if busy[conversation] == nil {
+			busy[conversation] = map[string]bool{}
+		}
+		kind, _ := node.Value("kind").(string)
+		busy[conversation][kind] = true
 	}
-	busy = make([]any, 0, len(seen))
-	for conversation := range seen {
-		busy = append(busy, conversation)
-	}
-	slices.SortFunc(busy, func(a, b any) int { return cmp.Compare(a.(float64), b.(float64)) })
 	return tasks, busy
+}
+
+// busyList is the busy conversations, ascending.
+func busyList(busy map[float64]map[string]bool) []any {
+	ids := make([]float64, 0, len(busy))
+	for conversation := range busy {
+		ids = append(ids, conversation)
+	}
+	slices.Sort(ids)
+	list := make([]any, len(ids))
+	for at, id := range ids {
+		list[at] = id
+	}
+	return list
+}
+
+// workOf is what each busy conversation does, by its ID: its live document's tool round (the calls not done yet) and
+// run, else its tasks' kinds, which change in the commits that wake the report (a generation's presentation may follow
+// later). `since` keeps when each became busy, across reports.
+func workOf(ctx context.Context, opened harness.Harness, busy map[float64]map[string]bool, since map[float64]float64) (*delta.JsonObject, error) {
+	for id := range since {
+		if _, still := busy[id]; !still {
+			delete(since, id)
+		}
+	}
+	now := float64(time.Now().UnixMilli())
+	work := delta.NewJsonObject(len(busy))
+	for _, id := range busyList(busy) {
+		conversation := id.(float64)
+		started, known := since[conversation]
+		if !known {
+			started = now
+		}
+		since[conversation] = started
+		live, err := durable.Snapshot(ctx, opened, harness.LiveDoc, durable.ConversationId(conversation))
+		if err != nil {
+			return nil, err
+		}
+		rounds := 0
+		if live != nil && live.Run != nil {
+			rounds = live.Run.Turns
+		}
+		work.Set(strconv.FormatFloat(conversation, 'f', -1, 64), delta.JsonObjectOf("since", started, "rounds", float64(rounds), "step", StepOf(live, busy[conversation])))
+	}
+	return work, nil
+}
+
+// StepOf is a busy conversation's step: its running tools first, then a compaction, the model's answer, other work.
+func StepOf(live *harness.LiveState, kinds map[string]bool) *delta.JsonObject {
+	if live != nil {
+		var names []any
+		for _, slot := range live.Tools {
+			if slot.Status != harness.ToolSlotDone {
+				names = append(names, slot.Name)
+			}
+		}
+		if len(names) > 0 {
+			return delta.JsonObjectOf("kind", "tools", "names", names)
+		}
+	}
+	switch {
+	case kinds["pi.compaction"]:
+		return delta.JsonObjectOf("kind", "compacting")
+	case kinds["pi.generation"]:
+		return delta.JsonObjectOf("kind", "thinking")
+	}
+	return delta.JsonObjectOf("kind", "working")
 }
 
 // totalUsage is the session's spend: every model and tool bucket summed, or nil before the first one.
@@ -91,6 +158,8 @@ var Worker = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) 
 			return opened.ObserveTaskGraph(ctx, observer)
 		}))
 		// Pushes run one after another, each reading the graph when it starts.
+		// When each busy conversation became busy, as the reports saw it.
+		since := map[float64]float64{}
 		var pushing sync.Mutex
 		push := func(ctx context.Context) error {
 			pushing.Lock()
@@ -98,7 +167,7 @@ var Worker = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) 
 			// The graph is read in a section of the host's loop, as Pi's synchronous read of `graph.value`: its Durable
 			// publications apply there, and a push runs from its own goroutine.
 			var tasks int
-			var busy []any
+			var busy map[float64]map[string]bool
 			if err := host.InSection(ctx, func() { tasks, busy = summarize(graph.Value().(*delta.JsonObject)) }); err != nil {
 				return err
 			}
@@ -119,7 +188,11 @@ var Worker = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) 
 			if err != nil {
 				return err
 			}
-			report := delta.JsonObjectOf("tasks", float64(tasks), "busy", busy)
+			work, err := workOf(ctx, opened, busy, since)
+			if err != nil {
+				return err
+			}
+			report := delta.JsonObjectOf("tasks", float64(tasks), "busy", busyList(busy), "work", work)
 			if usage := totalUsage(totals); usage != nil {
 				encoded, err := durable.ToJsonValue(usage)
 				if err != nil {

@@ -19,12 +19,12 @@ import (
 	"github.com/MichaelKinsy/PiG/schema"
 )
 
-// reportsState is the latest report of each session's worker, with the generation that sent it (in memory).
+// reportsState is the latest report of each session's worker, with the generation that sent it (in memory). 2: `work`.
 var reportsState = func() *documents.StateDefinition {
 	definition, err := documents.DefineState("p2.status-reports", documents.StateOptions{
 		Schema: p2runtime.Contract(schema.Obj(schema.Properties{schema.Prop("reports", p2runtime.Record(schema.Obj(
 			append(schema.Properties{schema.Prop("generation", schema.Num())}, contract.ReportFields()...))))})),
-		Version: 1,
+		Version: 2,
 		Initial: func() *delta.JsonObject { return delta.JsonObjectOf("reports", delta.NewJsonObject(0)) },
 	})
 	if err != nil {
@@ -45,7 +45,7 @@ func statusesOf(workers, reports *delta.JsonObject) *delta.JsonObject {
 	for session, value := range workers.All() {
 		worker := objectOf(value)
 		if running, _ := worker.Value("running").(bool); !running {
-			status := delta.JsonObjectOf("running", false, "tasks", float64(0), "busy", []any{})
+			status := delta.JsonObjectOf("running", false, "tasks", float64(0), "busy", []any{}, "work", delta.NewJsonObject(0))
 			if message, ok := worker.Value("error").(string); ok && message != "" {
 				status.Set("error", message)
 			}
@@ -54,7 +54,7 @@ func statusesOf(workers, reports *delta.JsonObject) *delta.JsonObject {
 		}
 		report := objectOf(reports.Value(session))
 		if report == nil || report.Value("generation") != worker.Value("generation") {
-			statuses.Set(session, delta.JsonObjectOf("running", true, "tasks", float64(0), "busy", []any{}))
+			statuses.Set(session, delta.JsonObjectOf("running", true, "tasks", float64(0), "busy", []any{}, "work", delta.NewJsonObject(0)))
 			continue
 		}
 		status := delta.JsonObjectOf("running", true)
@@ -77,7 +77,7 @@ func reportOf(args *delta.JsonObject, generation float64) *delta.JsonObject {
 		right, _ := b.(float64)
 		return cmp.Compare(left, right)
 	})
-	report := delta.JsonObjectOf("generation", generation, "tasks", args.Value("tasks"), "busy", sorted)
+	report := delta.JsonObjectOf("generation", generation, "tasks", args.Value("tasks"), "busy", sorted, "work", args.Value("work"))
 	if usage := args.Value("usage"); usage != nil {
 		report.Set("usage", usage)
 	}
@@ -198,6 +198,44 @@ func serveSessionMetrics(facet host.FacetHost) error {
 	}), host.ServeOptions{})
 }
 
+// statusAccepts: `SessionStatus` 1: pages read statuses without `work`; a worker built then reports none (its
+// conversations show as busy without a step).
+func statusAccepts() contracts.AcceptsTable {
+	withoutWork := func(value delta.JsonValue) (delta.JsonValue, error) {
+		statuses := objectOf(value)
+		if statuses == nil {
+			return value, nil
+		}
+		out := delta.NewJsonObject(statuses.Len())
+		for session, each := range statuses.All() {
+			status := objectOf(each)
+			if status == nil {
+				out.Set(session, each)
+				continue
+			}
+			kept := delta.NewJsonObject(status.Len())
+			for key, field := range status.All() {
+				if key != "work" {
+					kept.Set(key, field)
+				}
+			}
+			out.Set(session, kept)
+		}
+		return out, nil
+	}
+	withEmptyWork := func(value delta.JsonValue) (delta.JsonValue, error) {
+		report := objectArgs(value).Clone()
+		report.Set("work", delta.NewJsonObject(0))
+		return report, nil
+	}
+	return contracts.AcceptsTable{{Name: "1", Value: contracts.VersionMappings{
+		VariantState: []contracts.Entry[[]contracts.Entry[contracts.StateMapping]]{{Name: "reader", Value: []contracts.Entry[contracts.StateMapping]{
+			{Name: "statuses", Value: contracts.StateMapping{Func: withoutWork}},
+		}}},
+		Methods: []contracts.Entry[contracts.MethodMapping]{{Name: "report", Value: contracts.MethodMapping{Args: withEmptyWork}}},
+	}}}
+}
+
 // serveSessionStatus serves SessionStatus: the owner reads every status, a guest its sessions' without the worker's
 // error text, a worker reports its own session's.
 func serveSessionStatus(facet host.FacetHost) error {
@@ -230,7 +268,7 @@ func serveSessionStatus(facet host.FacetHost) error {
 					if status == nil {
 						continue
 					}
-					entry := delta.JsonObjectOf("running", status.Value("running"), "tasks", status.Value("tasks"), "busy", status.Value("busy"))
+					entry := delta.JsonObjectOf("running", status.Value("running"), "tasks", status.Value("tasks"), "busy", status.Value("busy"), "work", status.Value("work"))
 					if usage := status.Value("usage"); usage != nil {
 						entry.Set("usage", usage)
 					}
@@ -247,7 +285,7 @@ func serveSessionStatus(facet host.FacetHost) error {
 			}}, nil
 		}
 		return contracts.Implementation{}, p2runtime.Forbidden("owners and guests only")
-	}), host.ServeOptions{})
+	}), host.ServeOptions{Accepts: statusAccepts()})
 }
 
 // Server is the status plugin's server facet.

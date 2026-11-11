@@ -587,3 +587,5 @@ plugins/views/kit/connection.ts
 plugins/views/kit/main.ts
 plugins/views/kit/text-client.ts
 test/p2/views-text.test.ts
+plugins/sessions/sidebar/subagent-state.ts
+test/p2/subagent-state.test.ts

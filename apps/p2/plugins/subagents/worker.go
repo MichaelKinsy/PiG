@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/apps/p2/plugins/subagents/contract"
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	"github.com/MichaelKinsy/PiG/chord"
@@ -57,33 +58,215 @@ func (r *childReporter) push(ctx context.Context) error {
 // reports is the worker's child reporter, for methods that push what they changed (contributed by the tools' object).
 type reports struct{ reporter atomic.Pointer[childReporter] }
 
-// childrenOf is the session's subagents and one-shot agents as the server's index lists them.
-func childrenOf(ctx context.Context, session harness.Harness) ([]any, error) {
+// childFailure is a subagent's last run failure as a child carries it.
+type childFailure struct {
+	reason string
+	detail *string
+}
+
+// seenChild is what the reports keep of a subagent between them: its newest entry, its newest message's time, its run
+// failure.
+type seenChild struct {
+	lastEntryID *durable.EntryId
+	updatedAt   *float64
+	failure     *childFailure
+}
+
+// endings counts how many times each subagent's work ended since a report last read its live document, by conversation:
+// the task graph's listener counts, a report's read takes the count it saw (an end counted meanwhile stays for the next).
+type endings struct {
+	mu     sync.Mutex
+	counts map[durable.ConversationId]int
+}
+
+func (e *endings) count(id durable.ConversationId) (int, bool) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	n, ok := e.counts[id]
+	return n, ok
+}
+
+func (e *endings) add(id durable.ConversationId) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.counts[id]++
+}
+
+// settle forgets the count a read saw, unless more ends were counted while it read.
+func (e *endings) settle(id durable.ConversationId, saw int, had bool) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if now, ok := e.counts[id]; ok == had && now == saw {
+		delete(e.counts, id)
+	}
+}
+
+func (e *endings) prune(listed map[durable.ConversationId]bool) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	for id := range e.counts {
+		if !listed[id] {
+			delete(e.counts, id)
+		}
+	}
+}
+
+// FailureSource says where a report takes a subagent's run failure from.
+type FailureSource struct {
+	// Read: the live document. Otherwise Failure is what the last report read.
+	Read    bool
+	Failure *childFailure
+}
+
+// failureSourceOf is where a report takes a subagent's run failure from, given what the last report saw of it (`known`),
+// its newest entry now and whether its work ended since. A run's failure changes only in a commit that writes an entry or
+// ends its work (a stop or a missing model can end it without an entry): with neither, and a report before, the cached
+// one holds.
+func failureSourceOf(known *seenChild, newest *durable.EntryId, ended bool) FailureSource {
+	if known == nil || ended || !sameEntry(newest, known.lastEntryID) {
+		return FailureSource{Read: true}
+	}
+	return FailureSource{Failure: known.failure}
+}
+
+func sameEntry(a, b *durable.EntryId) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return *a == *b
+}
+
+func timestampOf(message ai.Message) float64 {
+	switch message := message.(type) {
+	case ai.SystemMessage:
+		return float64(message.Timestamp)
+	case ai.UserMessage:
+		return float64(message.Timestamp)
+	case ai.AssistantMessage:
+		return float64(message.Timestamp)
+	case ai.ToolResultMessage:
+		return float64(message.Timestamp)
+	}
+	return 0
+}
+
+// newestEntries is how many of a subagent's newest entries a report reads to find its newest message.
+const newestEntries = 20
+
+// newestOf is a subagent's newest entry and when its newest message was written: its entries from the newest one seen
+// on, newest first (an idle subagent's is one entry). Without a message among them, the time seen before stays.
+func newestOf(ctx context.Context, conversation harness.Conversation, entries entriesReader, known *seenChild) (*durable.EntryId, *float64, error) {
+	var since *durable.EntryId
+	var knownTime *float64
+	if known != nil {
+		since, knownTime = known.lastEntryID, known.updatedAt
+	}
+	page, err := entries(ctx, conversation, durable.EntryQuery{MinEntryId: since}, newestEntries)
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(page) == 0 || (since != nil && page[0].Id == *since) {
+		return since, knownTime, nil
+	}
+	newest := page[0].Id
+	for _, entry := range page {
+		if len(entry.Model) > 0 {
+			at := timestampOf(entry.Model[len(entry.Model)-1])
+			return &newest, &at, nil
+		}
+	}
+	return &newest, knownTime, nil
+}
+
+// entriesReader reads a conversation's entries, newest first.
+type entriesReader func(ctx context.Context, conversation harness.Conversation, query durable.EntryQuery, limit int) ([]durable.EntryRecord, error)
+
+// childFailureOf is a live document's run failure as a child carries it.
+func childFailureOf(live *harness.LiveState) *childFailure {
+	if live == nil || live.RunFailure == nil {
+		return nil
+	}
+	return &childFailure{reason: string(live.RunFailure.Reason), detail: live.RunFailure.Detail}
+}
+
+// detailsOf is a subagent's newest entry, time and failure: its entries since the newest one seen, and its live
+// document's run failure when that can have changed (`failureSourceOf`).
+func detailsOf(ctx context.Context, session harness.Harness, id durable.ConversationId, seen map[durable.ConversationId]*seenChild, ended *endings) (lastEntryID float64, updatedAt *float64, failure *childFailure, err error) {
+	conversation, err := session.Conversation(ctx, id)
+	if err != nil || conversation == nil {
+		return 0, nil, nil, err
+	}
+	known := seen[id]
+	entries := func(ctx context.Context, c harness.Conversation, query durable.EntryQuery, limit int) ([]durable.EntryRecord, error) {
+		page, err := c.Entries(ctx, query, limit, nil)
+		if err != nil {
+			return nil, err
+		}
+		return page.Items, nil
+	}
+	newest, at, err := newestOf(ctx, conversation, entries, known)
+	if err != nil {
+		return 0, nil, nil, err
+	}
+	saw, had := ended.count(id)
+	if source := failureSourceOf(known, newest, had); !source.Read {
+		failure = source.Failure
+	} else {
+		live, err := durable.Snapshot(ctx, session, harness.LiveDoc, id)
+		if err != nil {
+			return 0, nil, nil, err
+		}
+		failure = childFailureOf(live)
+		// An end counted while the live document was read stays for the next report.
+		ended.settle(id, saw, had)
+	}
+	seen[id] = &seenChild{lastEntryID: newest, updatedAt: at, failure: failure}
+	if newest != nil {
+		lastEntryID = float64(*newest)
+	}
+	return lastEntryID, at, failure, nil
+}
+
+// childrenOf is the session's subagents and one-shot agents as the server's index lists them. `seen` holds what the last
+// report saw of each subagent, by conversation; it and `ended` are pruned to the registry's subagents.
+func childrenOf(ctx context.Context, session harness.Harness, seen map[durable.ConversationId]*seenChild, ended *endings) ([]any, error) {
 	registry, err := contract.Registry(ctx, session)
 	if err != nil {
 		return nil, err
 	}
+	listed := map[durable.ConversationId]bool{}
+	for _, name := range registry.Names() {
+		listed[registry.Agents[name].ConversationId] = true
+	}
+	for id := range seen {
+		if !listed[id] {
+			delete(seen, id)
+		}
+	}
+	ended.prune(listed)
 	children := []any{}
 	for _, name := range registry.Names() {
 		agent := registry.Agents[name]
-		var latest durable.EntryId
-		if child, err := session.Conversation(ctx, agent.ConversationId); err != nil {
+		latest, updatedAt, failure, err := detailsOf(ctx, session, agent.ConversationId, seen, ended)
+		if err != nil {
 			return nil, err
-		} else if child != nil {
-			page, err := child.Entries(ctx, durable.EntryQuery{}, 1, nil)
-			if err != nil {
-				return nil, err
-			}
-			if len(page.Items) > 0 {
-				latest = page.Items[0].Id
-			}
 		}
 		entry := delta.JsonObjectOf("name", name, "conversationId", float64(agent.ConversationId), "model", agent.Model,
 			"thinkingLevel", agent.ThinkingLevel, "tools", stringsAny(agent.Tools))
 		if agent.Location != nil {
 			entry.Set("location", locationJSON(*contract.LocationOf(agent.Location)))
 		}
-		entry.Set("lastEntryId", float64(latest))
+		entry.Set("lastEntryId", latest)
+		if updatedAt != nil {
+			entry.Set("updatedAt", *updatedAt)
+		}
+		if failure != nil {
+			shown := delta.JsonObjectOf("reason", failure.reason)
+			if failure.detail != nil {
+				shown.Set("detail", *failure.detail)
+			}
+			entry.Set("failure", shown)
+		}
 		if agent.Archived {
 			entry.Set("archived", true)
 		}
@@ -315,12 +498,14 @@ func toolsContribution(shared *reports) func(self host.StoreSelf) error {
 				return nil
 			},
 		)
+		seen := map[durable.ConversationId]*seenChild{}
+		ended := &endings{counts: map[durable.ConversationId]int{}}
 		push := &childReporter{report: func(ctx context.Context) error {
 			opened, err := session()
 			if err != nil {
 				return err
 			}
-			children, err := childrenOf(ctx, opened)
+			children, err := childrenOf(ctx, opened, seen, ended)
 			if err != nil {
 				return err
 			}
@@ -336,6 +521,37 @@ func toolsContribution(shared *reports) func(self host.StoreSelf) error {
 			return err
 		}}
 		shared.reporter.Store(push)
+		// A subagent's run can end without an entry (stopped, no model): the subagents whose work ended are counted and
+		// pushed, so the report reads their live documents. Other task changes cost a scan of the graph, no read.
+		graph := self.Follow(p2runtime.FollowDurable(func(ctx context.Context, observer durable.Observer[harness.TaskGraph]) (durable.Observation[harness.TaskGraph], error) {
+			opened, err := harnessOf()
+			if err != nil {
+				return nil, err
+			}
+			held, err := opened.Durable()
+			if err != nil {
+				return nil, err
+			}
+			return held.ObserveTaskGraph(ctx, observer)
+		}))
+		working := map[durable.ConversationId]bool{}
+		self.On(graph, func(_ chord.WatchCall[delta.JsonValue], ctx host.Ctx) *host.Handled {
+			current := workingChildren(graph.Value().(*delta.JsonObject), seen)
+			var finished []durable.ConversationId
+			for id := range working {
+				if !current[id] {
+					finished = append(finished, id)
+				}
+			}
+			working = current
+			if len(finished) == 0 {
+				return nil
+			}
+			for _, id := range finished {
+				ended.add(id)
+			}
+			return host.AwaitingCtx(ctx, func() error { return push.push(ctx) })
+		})
 		// What the agent changes on its own (a spawn, a subagent's messages moving it up the list) is pushed after each
 		// commit that touches it; methods push their own changes before they answer (`SubagentControl.archive`).
 		self.OnLive(func(ctx host.Ctx) *host.Handled {
@@ -472,4 +688,24 @@ func workerFacet() host.Facet {
 		}
 		return facet.Serve(contract.SubagentControl, host.RemoteFactory(serveControl(shared)), host.ServeOptions{})
 	})
+}
+
+// workingChildren is the subagents of `seen` with foreground work, as the task graph lists them.
+func workingChildren(graph *delta.JsonObject, seen map[durable.ConversationId]*seenChild) map[durable.ConversationId]bool {
+	working := map[durable.ConversationId]bool{}
+	nodes, _ := graph.Value("tasks").(*delta.JsonObject)
+	if nodes == nil {
+		return working
+	}
+	for _, value := range nodes.All() {
+		node, _ := value.(*delta.JsonObject)
+		if background, _ := node.Value("background").(bool); background {
+			continue
+		}
+		id, _ := node.Value("conversationId").(float64)
+		if _, ok := seen[durable.ConversationId(id)]; ok {
+			working[durable.ConversationId(id)] = true
+		}
+	}
+	return working
 }

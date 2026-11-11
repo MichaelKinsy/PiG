@@ -68,6 +68,7 @@ function SendFileDetail({ step }: { step: Step }) {
 }
 
 export const sendFileActivity: ToolActivity = {
+	brief: "Sending file",
 	describe: (step) => ({
 		label: {
 			kind: "file",

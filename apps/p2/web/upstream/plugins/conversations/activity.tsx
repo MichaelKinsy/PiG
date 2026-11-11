@@ -36,6 +36,7 @@ function ConversationsDetail({ step }: { step: Step }) {
 }
 
 export const conversationsActivity: ToolActivity = {
+	brief: "Messaging",
 	describe(step) {
 		const action = stringOf(step.tool.args.action);
 		return {

@@ -11,6 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
+	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 )
 
 func TestMain(m *testing.M) { p2test.Main(m) }
@@ -90,7 +91,16 @@ func report(tasks int, busy ...int) *delta.JsonObject {
 	for i, each := range busy {
 		list[i] = float64(each)
 	}
-	return delta.JsonObjectOf("tasks", float64(tasks), "busy", list)
+	return delta.JsonObjectOf("tasks", float64(tasks), "busy", list, "work", delta.NewJsonObject(0))
+}
+
+func workOf(t *testing.T, text string) delta.JsonValue {
+	t.Helper()
+	value, err := chordjson.Decode([]byte(text))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return value
 }
 
 func TestStatusesFollowWorkersAndTheirOwnGenerationsReports(t *testing.T) {
@@ -106,13 +116,13 @@ func TestStatusesFollowWorkersAndTheirOwnGenerationsReports(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := statuses(t, reader, func(all *delta.JsonObject) bool { return all.Len() == 3 })
-	if want := `{"running":false,"tasks":0,"busy":[]}`; marshal(t, got.Value("stopped")) != want {
+	if want := `{"running":false,"tasks":0,"busy":[],"work":{}}`; marshal(t, got.Value("stopped")) != want {
 		t.Fatalf("stopped: %s", marshal(t, got.Value("stopped")))
 	}
-	if want := `{"running":false,"tasks":0,"busy":[],"error":"boom"}`; marshal(t, got.Value("failed")) != want {
+	if want := `{"running":false,"tasks":0,"busy":[],"work":{},"error":"boom"}`; marshal(t, got.Value("failed")) != want {
 		t.Fatalf("failed: %s", marshal(t, got.Value("failed")))
 	}
-	if want := `{"running":true,"tasks":0,"busy":[]}`; marshal(t, got.Value("idle")) != want {
+	if want := `{"running":true,"tasks":0,"busy":[],"work":{}}`; marshal(t, got.Value("idle")) != want {
 		t.Fatalf("idle: %s", marshal(t, got.Value("idle")))
 	}
 
@@ -124,12 +134,14 @@ func TestStatusesFollowWorkersAndTheirOwnGenerationsReports(t *testing.T) {
 	defer reporter.Release()
 	usage := delta.JsonObjectOf("input", float64(3))
 	withUsage := report(2, 3, 1)
+	work := `{"3":{"since":1,"rounds":2,"step":{"kind":"tools","names":["read"]}}}`
+	withUsage.Set("work", workOf(t, work))
 	withUsage.Set("usage", usage)
 	if _, err := reporter.Call("report", withUsage, p2test.Background); err != nil {
 		t.Fatal(err)
 	}
 	got = statuses(t, reader, func(all *delta.JsonObject) bool { return object(all.Value("idle")).Value("tasks") == float64(2) })
-	if want := `{"running":true,"tasks":2,"busy":[1,3],"usage":{"input":3}}`; marshal(t, got.Value("idle")) != want {
+	if want := `{"running":true,"tasks":2,"busy":[1,3],"work":` + work + `,"usage":{"input":3}}`; marshal(t, got.Value("idle")) != want {
 		t.Fatalf("idle after report: %s", marshal(t, got.Value("idle")))
 	}
 
@@ -147,7 +159,7 @@ func TestStatusesFollowWorkersAndTheirOwnGenerationsReports(t *testing.T) {
 		t.Fatal(err)
 	}
 	got = statuses(t, reader, func(all *delta.JsonObject) bool { return all.Has("more") })
-	if want := `{"running":true,"tasks":0,"busy":[]}`; marshal(t, got.Value("idle")) != want {
+	if want := `{"running":true,"tasks":0,"busy":[],"work":{}}`; marshal(t, got.Value("idle")) != want {
 		t.Fatalf("a stale report showed: %s", marshal(t, got.Value("idle")))
 	}
 }
@@ -164,7 +176,7 @@ func TestGuestsSeeTheirSessionsWithoutErrorText(t *testing.T) {
 	}
 	defer reader.Release()
 	got := statuses(t, reader, func(all *delta.JsonObject) bool { return all.Len() == 1 })
-	if want := `{"running":false,"tasks":0,"busy":[]}`; marshal(t, got.Value("mine")) != want {
+	if want := `{"running":false,"tasks":0,"busy":[],"work":{}}`; marshal(t, got.Value("mine")) != want {
 		t.Fatalf("guest saw %s", marshal(t, got.Value("mine")))
 	}
 }
@@ -290,7 +302,7 @@ func TestWorkerPushesItsStatusToTheServersIndex(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := statuses(t, reader, func(all *delta.JsonObject) bool { return all.Has("s1") })
-	if want := `{"running":true,"tasks":0,"busy":[]}`; marshal(t, got.Value("s1")) != want {
+	if want := `{"running":true,"tasks":0,"busy":[],"work":{}}`; marshal(t, got.Value("s1")) != want {
 		t.Fatalf("s1 = %s", marshal(t, got.Value("s1")))
 	}
 }
