@@ -23,7 +23,7 @@ enum PiGlyph {
 			return true
 		}
 		image.isTemplate = true
-		image.accessibilityDescription = "Pi"
+		image.accessibilityDescription = "PiG"
 		return image
 	}
 }

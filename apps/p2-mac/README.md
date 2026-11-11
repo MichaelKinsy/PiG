@@ -11,8 +11,8 @@ It is AppKit with WKWebView, macOS 14 or later, and has no dependencies. The pla
 
 ```sh
 cd apps/p2-mac
-./scripts/build-app.sh            # build/Pi.app (debug, ad-hoc signed); CONFIG=release for an optimized build
-open build/Pi.app
+./scripts/build-app.sh            # build/PiG.app (debug, ad-hoc signed); CONFIG=release for an optimized build
+open build/PiG.app
 ```
 
 On first launch, choose a checkout in the menu bar item (**Choose p2 Checkout…**). It can be a PiG root or its `apps/p2`, with `p2` built there (`cd apps/p2 && go build ./cmd/p2`). The app then runs `p2 server` there.
@@ -21,11 +21,11 @@ If a p2 already answers on the port, the app adopts it instead and opens that se
 
 Local sign-in needs the server's `/owner/local/challenge` and `/owner/local/claim` routes (Pi's loopback-owner change, `7d073328e`). Against a server without them the window offers p2's own sign-in page, as in Pi's app.
 
-**Server** in the menu bar item lists the p2 servers running on this Mac, found by their loopback listeners (`p2` processes), `/health` and the process's `P2_DATA_DIR` and working directory. Choosing one (your checkout's on 8788, say) makes the app use it: it never starts or stops that server. **Run Pi from …** switches back to the app's own server.
+**Server** in the menu bar item lists the p2 servers running on this Mac, found by their loopback listeners (`p2` processes), `/health` and the process's `P2_DATA_DIR` and working directory. Choosing one (your checkout's on 8788, say) makes the app use it: it never starts or stops that server. **Run PiG from …** switches back to the app's own server.
 
 ### Settings
 
-Each setting is a user default (`defaults write com.earendil.pi <key> <value>`), and an environment variable overrides it for test runs:
+Each setting is a user default (`defaults write io.github.michaelkinsy.p2mac <key> <value>`), and an environment variable overrides it for test runs:
 
 | Default | Variable | Default value |
 |---|---|---|
@@ -38,7 +38,7 @@ Each setting is a user default (`defaults write com.earendil.pi <key> <value>`),
 
 `P2MAC_DIAG_DIR` makes every finished page load write `page-N.json` (what the page sees) and `page-N.png` (a snapshot) into that directory.
 
-The server's output goes to `~/Library/Logs/Pi/server-<port>.log`, which the menu bar item opens with **Show Server Log**.
+The server's output goes to `~/Library/Logs/PiG/server-<port>.log`, which the menu bar item opens with **Show Server Log**.
 
 ### A trial run beside a live p2
 
@@ -47,7 +47,7 @@ This run leaves your real data and port alone:
 ```sh
 mkdir -m 700 /tmp/p2mac-data
 P2MAC_CHECKOUT=~/Development/PiG/apps/p2 P2MAC_PORT=8798 P2MAC_DATA_DIR=/tmp/p2mac-data P2MAC_FAKE=1 \
-  build/Pi.app/Contents/MacOS/Pi
+  build/PiG.app/Contents/MacOS/PiG
 ```
 
 Ctrl-C quits it like the Quit command, which also stops its server. A checkout used only for running p2 needs `go build ./cmd/p2` in its `apps/p2`.
@@ -70,7 +70,7 @@ Ctrl-C quits it like the Quit command, which also stops its server. A checkout u
 - **Window** (`BrainWindowController.swift`):
   - **Links:** Cmd-click, middle-click and `target=_blank` on the brain's origin open a new window. Every other origin opens in the default browser.
   - **Native handling:** downloads go to ~/Downloads; `<input type=file>` gets a file panel; `alert`, `confirm` and `prompt` are sheets; the microphone is allowed for the brain origin only; the page reloads when the web process crashes.
-  - **Placeholder:** while there is no page, a native view shows the server's state with Start Pi or Try Again.
+  - **Placeholder:** while there is no page, a native view shows the server's state with Start PiG or Try Again.
 - **Menus** (`MainMenu.swift`): Edit (without it, copy and paste do nothing), Reload, zoom, full screen, windows.
 - **Icons** (`PiGlyph.swift`, `scripts/make-icon.swift`): the Pi logo's shape as a template image in the menu bar, and in black on a white plate as the app icon.
 

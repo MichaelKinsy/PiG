@@ -54,7 +54,7 @@ final class ChromeWebView: WKWebView {
 
 /// The page side: marks the document as shown in the app and reports the strip's interactive elements.
 enum ChromeScript {
-	static let world = WKContentWorld.world(name: "pi-chrome")
+	static let world = WKContentWorld.world(name: "pig-chrome")
 	static let handler = "piChrome"
 
 	/// Installs the script and its message handler in `controller`; `receive` gets the reported rectangles.

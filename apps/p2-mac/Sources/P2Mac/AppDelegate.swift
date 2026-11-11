@@ -109,8 +109,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 				window.setFrame(previous.frame, display: false)
 				window.setFrameTopLeftPoint(window.cascadeTopLeft(from: NSPoint(x: previous.frame.minX, y: previous.frame.maxY)))
 			} else {
-				window.setFrameAutosaveName("Pi.\(brain.id)")
-				if !window.setFrameUsingName("Pi.\(brain.id)") { window.center() }
+				window.setFrameAutosaveName("PiG.\(brain.id)")
+				if !window.setFrameUsingName("PiG.\(brain.id)") { window.center() }
 			}
 		}
 		NSApp.setActivationPolicy(.regular)
@@ -159,11 +159,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 		menu.addItem(disabled(statusLine()))
 		menu.addItem(disabled(detailLine()))
 		menu.addItem(.separator())
-		menu.addItem(item("Open Pi", #selector(openPi), key: "o"))
+		menu.addItem(item("Open PiG", #selector(openPi), key: "o"))
 		menu.addItem(.separator())
-		if server.canStart { menu.addItem(item("Start Pi", #selector(startServer))) }
-		if server.canRestart { menu.addItem(item("Restart Pi", #selector(restartServer))) }
-		if server.canStop { menu.addItem(item("Stop Pi", #selector(stopServer))) }
+		if server.canStart { menu.addItem(item("Start PiG", #selector(startServer))) }
+		if server.canRestart { menu.addItem(item("Restart PiG", #selector(restartServer))) }
+		if server.canStop { menu.addItem(item("Stop PiG", #selector(stopServer))) }
 		if config.source == .own, FileManager.default.fileExists(atPath: server.logFile.path) {
 			menu.addItem(item("Show Server Log", #selector(showLog)))
 		}
@@ -171,7 +171,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 		fillServerMenu()
 		menu.addItem(serverItem)
 		menu.addItem(.separator())
-		menu.addItem(item("Quit Pi", #selector(NSApplication.terminate(_:)), key: "q", target: NSApp))
+		menu.addItem(item("Quit PiG", #selector(NSApplication.terminate(_:)), key: "q", target: NSApp))
 	}
 
 	/// The servers to choose from: the running ones found on this Mac, and the app's own.
@@ -179,7 +179,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 		let menu = serverMenu
 		menu.removeAllItems()
 		let config = server.config
-		menu.addItem(disabled(found.isEmpty ? "No running Pi servers found" : "Running on this Mac"))
+		menu.addItem(disabled(found.isEmpty ? "No running PiG servers found" : "Running on this Mac"))
 		for found in found {
 			var title = "127.0.0.1:\(found.port) · \(abbreviate(found.dataDir.path))"
 			if let checkout = found.checkout { title += " · \(abbreviate(checkout.path))" }
@@ -190,7 +190,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 			menu.addItem(entry)
 		}
 		menu.addItem(.separator())
-		let ownTitle = config.checkout.map { "Run Pi from \(abbreviate($0.path))" } ?? "Run Pi from a Checkout"
+		let ownTitle = config.checkout.map { "Run PiG from \(abbreviate($0.path))" } ?? "Run PiG from a Checkout"
 		let own = item(ownTitle, #selector(useOwn))
 		own.state = config.source == .own ? .on : .off
 		own.isEnabled = config.checkout != nil
@@ -200,12 +200,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
 	private func statusLine() -> String {
 		switch server.phase {
-		case .checking: "Looking for Pi…"
-		case .starting: "Pi is starting…"
-		case .running: "Pi is running · On this Mac"
-		case .stopping: "Pi is stopping…"
-		case .stopped: server.config.source == .attached ? "Pi is not running" : "Pi is stopped"
-		case .failed(let message): "Pi is not running: \(message)"
+		case .checking: "Looking for PiG…"
+		case .starting: "PiG is starting…"
+		case .running: "PiG is running · On this Mac"
+		case .stopping: "PiG is stopping…"
+		case .stopped: server.config.source == .attached ? "PiG is not running" : "PiG is stopped"
+		case .failed(let message): "PiG is not running: \(message)"
 		}
 	}
 

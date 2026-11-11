@@ -5,17 +5,17 @@ import AppKit
 
 @MainActor
 enum MainMenu {
-	/// The app's main menu: Pi, File, Edit, View, Window.
+	/// The app's main menu: PiG, File, Edit, View, Window.
 	static func build() -> NSMenu {
 		let main = NSMenu()
-		main.addItem(submenu("Pi", [
-			item("About Pi", "orderFrontStandardAboutPanel:"),
+		main.addItem(submenu("PiG", [
+			item("About PiG", "orderFrontStandardAboutPanel:"),
 			.separator(),
-			item("Hide Pi", "hide:", "h"),
+			item("Hide PiG", "hide:", "h"),
 			item("Hide Others", "hideOtherApplications:", "h", [.command, .option]),
 			item("Show All", "unhideAllApplications:"),
 			.separator(),
-			item("Quit Pi", "terminate:", "q"),
+			item("Quit PiG", "terminate:", "q"),
 		]))
 		main.addItem(submenu("File", [
 			item("New Window", "newWindow:", "n", [.command, .shift]),

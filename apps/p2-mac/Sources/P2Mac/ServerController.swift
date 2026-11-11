@@ -44,9 +44,9 @@ final class ServerController {
 	init(config: ServerConfig) {
 		self.config = config
 		logFile = FileManager.default.homeDirectoryForCurrentUser
-			.appending(path: "Library/Logs/Pi/server-\(config.port).log")
+			.appending(path: "Library/Logs/PiG/server-\(config.port).log")
 		pidFile = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-			.appending(path: "Pi/server-\(config.port).pid")
+			.appending(path: "PiG/server-\(config.port).pid")
 		timer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: true) { [weak self] _ in
 			Task { @MainActor in await self?.poll() }
 		}

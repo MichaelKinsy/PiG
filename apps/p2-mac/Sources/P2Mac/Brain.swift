@@ -11,7 +11,7 @@ struct Brain: Equatable {
 
 	/// This Mac's brain, reached directly on loopback.
 	static func local(_ config: ServerConfig) -> Brain {
-		Brain(id: "local-\(config.port)", title: "Pi on this Mac", origin: config.origin)
+		Brain(id: "local-\(config.port)", title: "PiG on this Mac", origin: config.origin)
 	}
 
 	/// Each brain has a cookie store of its own, apart from Safari's and the other brains'.

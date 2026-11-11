@@ -23,7 +23,7 @@ final class BrainWindowController: NSWindowController, NSWindowDelegate, WKNavig
 		self.app = app
 		let configuration = WKWebViewConfiguration()
 		configuration.websiteDataStore = WKWebsiteDataStore(forIdentifier: brain.dataStoreID)
-		configuration.applicationNameForUserAgent = "PiMac/0.0.1"
+		configuration.applicationNameForUserAgent = "PiGMac/0.0.1"
 		configuration.preferences.isElementFullscreenEnabled = true
 		configuration.preferences.javaScriptCanOpenWindowsAutomatically = true
 		configuration.mediaTypesRequiringUserActionForPlayback = []
@@ -41,7 +41,7 @@ final class BrainWindowController: NSWindowController, NSWindowDelegate, WKNavig
 		window.title = brain.title
 		window.titleVisibility = .hidden
 		window.titlebarAppearsTransparent = true
-		let toolbar = NSToolbar(identifier: "pi-window")
+		let toolbar = NSToolbar(identifier: "pig-window")
 		toolbar.showsBaselineSeparator = false
 		window.toolbar = toolbar
 		window.toolbarStyle = .unified
@@ -179,7 +179,7 @@ final class BrainWindowController: NSWindowController, NSWindowDelegate, WKNavig
 	func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
 		if (error as NSError).code == NSURLErrorCancelled { return }
 		loaded = false
-		placeholder.show(title: "Cannot reach Pi", detail: error.localizedDescription, action: "Try Again")
+		placeholder.show(title: "Cannot reach PiG", detail: error.localizedDescription, action: "Try Again")
 	}
 
 	func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
@@ -331,20 +331,20 @@ private final class Placeholder: NSView {
 
 	func show(for server: ServerController) {
 		switch server.phase {
-		case .checking: show(title: "Looking for Pi…", detail: nil, action: nil)
-		case .starting: show(title: "Starting Pi…", detail: server.config.origin.absoluteString, action: nil)
-		case .stopping: show(title: "Stopping Pi…", detail: nil, action: nil)
+		case .checking: show(title: "Looking for PiG…", detail: nil, action: nil)
+		case .starting: show(title: "Starting PiG…", detail: server.config.origin.absoluteString, action: nil)
+		case .stopping: show(title: "Stopping PiG…", detail: nil, action: nil)
 		case .running: show(title: "Signing in…", detail: nil, action: nil)
 		case .stopped where server.config.source == .attached:
 			show(
-				title: "Pi is not running",
+				title: "PiG is not running",
 				detail: "Waiting for the server at \(server.config.origin.host!):\(server.config.port). Start it in its checkout, or choose another server in the menu bar.",
 				action: nil)
 		case .stopped:
 			server.config.checkout == nil
-				? show(title: "Pi is not running", detail: "Choose a p2 checkout in the menu bar item to run it from this app.", action: nil)
-				: show(title: "Pi is stopped", detail: nil, action: "Start Pi")
-		case .failed(let message): show(title: "Pi is not running", detail: message, action: server.canStart ? "Start Pi" : nil)
+				? show(title: "PiG is not running", detail: "Choose a p2 checkout in the menu bar item to run it from this app.", action: nil)
+				: show(title: "PiG is stopped", detail: nil, action: "Start PiG")
+		case .failed(let message): show(title: "PiG is not running", detail: message, action: server.canStart ? "Start PiG" : nil)
 		}
 	}
 

@@ -5,15 +5,15 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleExecutable</key>
-	<string>Pi</string>
+	<string>PiG</string>
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.earendil.pi</string>
+	<string>io.github.michaelkinsy.p2mac</string>
 	<key>CFBundleName</key>
-	<string>Pi</string>
+	<string>PiG</string>
 	<key>CFBundleDisplayName</key>
-	<string>Pi</string>
+	<string>PiG</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -27,7 +27,7 @@
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Pi uses the microphone for voice mode.</string>
+	<string>PiG voice mode uses the microphone.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>
