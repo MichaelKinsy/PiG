@@ -111,15 +111,23 @@
 "tui.stream_frame.allocs_growth_per_100_tokens" = 142
 
 # session: loading a persisted session, per JSONL line (TestSessionLoadPerLineAllocationGate).
-"session.load_line.allocs" = 94
-"session.load_line.bytes" = 6800
-"session.load_line.retained_bytes" = 2000
+"session.load_line.allocs" = 6.5
+"session.load_line.bytes" = 440
+"session.load_line.retained_bytes" = 96
 
 # session: one turn (two appends and one context build), and what each existing entry adds to it (TestSessionTurnAllocationGate).
-"session.turn.allocs" = 3140
-"session.turn.bytes" = 500000
-"session.turn.allocs_per_existing_entry" = 5.2
-"session.turn.bytes_per_existing_entry" = 900
+"session.turn.allocs" = 76
+"session.turn.bytes" = 23000
+"session.turn.allocs_per_existing_entry" = 0.05
+"session.turn.bytes_per_existing_entry" = 36
+"session.context_copy.allocs_per_entry" = 3.2
+"session.context_copy.bytes_per_entry" = 640
+"session.long.resume_allocs_per_line" = 12.5
+"session.long.resume_heap_bytes" = 2900000
+"session.long.first_turn_heap_bytes" = 15200000
+"session.long.turn_allocs" = 76
+"session.long.turn_allocs_growth" = 1
+"session.long.turn_bytes_per_existing_entry" = 37
 
 # coding: a later Session turn at history N, 10N, 100N (TestSessionTurnScalingExponents): allocations independent of the history, bytes linear (copies of the context slice).
 "coding.session_turn.allocs_exponent" = 0.05

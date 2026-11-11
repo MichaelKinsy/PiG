@@ -164,7 +164,7 @@ func (s *Session) residentCountForTest() int {
 	defer s.mu.RUnlock()
 	n := 0
 	for i := range s.slots {
-		if s.slots[i].entry != nil {
+		if s.resident.get(i) != nil {
 			n++
 		}
 	}

@@ -80,11 +80,14 @@ func TestSessionKeepsNoSearchTextForEntriesNobodySearched(t *testing.T) {
 	}
 }
 
-// stored is the bytes the session's own index holds for its entries: the slots, the cold parts and the compressed record blocks it holds in memory (none once they are spilled), which is
+// stored is the bytes the session's own index holds for its entries: the slots, their ids, the cold parts and the compressed record blocks it holds in memory (none once they are spilled), which is
 // everything a session that has compacted its entries away and was never searched keeps for them besides its compaction entries and the id
 // table. Search text is not counted: an eviction must leave none.
 func (s *Session) stored() float64 {
 	n := uintptr(len(s.slots))*unsafe.Sizeof(entrySlot{}) + uintptr(s.coldCount)*unsafe.Sizeof(slotCold{})
+	for _, chunk := range s.ids.chunks {
+		n += uintptr(chunk.Len())
+	}
 	for _, block := range s.blockList {
 		n += uintptr(len(block.data))
 	}

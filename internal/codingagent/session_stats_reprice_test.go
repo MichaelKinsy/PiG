@@ -19,8 +19,8 @@ func (s *Session) forEachRawLocked(fn func(raw json.RawMessage, entryType string
 	reader := recordReader{blocks: s.blockList}
 	for i := range s.slots {
 		slot := &s.slots[i]
-		if slot.entry != nil {
-			fn(slot.entry.Raw(), slot.typ())
+		if resident := s.resident.get(i); resident != nil {
+			fn(resident.Raw(), slot.typ())
 			continue
 		}
 		reader.file = records.get()

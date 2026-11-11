@@ -155,7 +155,7 @@ func sameIndex(t *testing.T, a, b *Session) bool {
 		return false
 	}
 	for i := range a.slots {
-		id := a.slots[i].id
+		id := a.idAt(i)
 		if gotSlot, got := a.slotOf(id); !got || gotSlot != b.slotOrZero(id) {
 			t.Errorf("id %q finds slot %d (%v), want %d", id, gotSlot, got, b.slotOrZero(id))
 			return false

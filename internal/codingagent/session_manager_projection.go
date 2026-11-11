@@ -61,7 +61,7 @@ func (s *Session) AppendContextEdit(targetID string, replacement *ContextEditRep
 		target = s.entryAtLocked(targetIdx)
 		if s.leafID != nil {
 			for _, idx := range s.pathIndexesLocked(*s.leafID) {
-				if s.slots[idx].id == targetID {
+				if s.idAt(int(idx)) == targetID {
 					onBranch = true
 					break
 				}

@@ -595,7 +595,7 @@ type preparedLine struct {
 	state preparedLineState
 	// base is a message's base members, and slot its slot without a cold part.
 	base SessionEntryBase
-	slot entrySlot
+	slot pendingSlot
 	// account is the accounting decode of a message, added to the stats when counted.
 	account sessionAccountingEntry
 	counted bool
@@ -689,7 +689,7 @@ func (s *Session) applyIndexLine(p *preparedLine, line []byte, off int64) error 
 			s.stats.addDecoded(p.account, p.base.Type)
 		}
 		slot := p.slot
-		s.locateHashedLocked(&slot, off, len(line), p.hash)
+		s.locateHashedLocked(&slot.entrySlot, off, len(line), p.hash)
 		if slot.role() == "assistant" {
 			slot.facts = s.storeFactsLocked(p.facts)
 		}
@@ -703,7 +703,7 @@ func (s *Session) applyIndexLine(p *preparedLine, line []byte, off int64) error 
 		}
 		s.noteNameLocked(entry.Raw(), base.Type)
 		slot := newSlot(compactionWithoutRecord(entry, line))
-		s.locateLocked(&slot, off, line)
+		s.locateLocked(&slot.entrySlot, off, line)
 		s.addSlotLocked(slot, base.ParentID, line)
 		s.leafID = leafOf(base.ID)
 	}

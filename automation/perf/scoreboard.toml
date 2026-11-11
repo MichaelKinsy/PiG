@@ -448,7 +448,8 @@ gates = [
   { ratchet = "session.load_line.bytes" },
   { ratchet = "session.load_line.retained_bytes" },
   { test = "internal/codingagent:TestCachePriceBindingWithoutMissesDoesNotReparseHistory" },
-  { branch = "perf-session", path = "internal/codingagent/session_index_test.go" },
+  { test = "internal/codingagent:TestIDIndexMatchesAMap" },
+  { test = "internal/codingagent:TestIDArenaRoundTrips" },
 ]
 
 [[metric]]
@@ -464,7 +465,8 @@ gates = [
   { ratchet = "session.turn.bytes" },
   { ratchet = "session.turn.allocs_per_existing_entry" },
   { ratchet = "session.turn.bytes_per_existing_entry" },
-  { branch = "perf-session", path = "internal/codingagent/session_branch_cache_test.go" },
+  { ratchet = "session.context_copy.allocs_per_entry" },
+  { ratchet = "session.context_copy.bytes_per_entry" },
 ]
 
 [[metric]]
@@ -476,8 +478,12 @@ owner = "perf-session"
 target = "resume RSS under 100 MB at 3M tokens; per-turn work independent of length"
 basis = "With an offset index, resume memory is the index plus the active context; the per-turn bound follows from session.turn."
 gates = [
-  { branch = "perf-session", path = "internal/codingagent/sessiongen" },
-  { missing = "resume and turn at generated 1M and 3M-token sessions: live heap, allocations and peak RSS", route = "perf-session" },
+  { ratchet = "session.long.resume_allocs_per_line" },
+  { ratchet = "session.long.resume_heap_bytes" },
+  { ratchet = "session.long.first_turn_heap_bytes" },
+  { ratchet = "session.long.turn_allocs" },
+  { ratchet = "session.long.turn_allocs_growth" },
+  { ratchet = "session.long.turn_bytes_per_existing_entry" },
 ]
 
 [[metric]]
@@ -721,10 +727,8 @@ route = "go-native-perf"
 [[resource]]
 name = "Session memory (resident entries, active branch copies, decoded message cache)"
 growth = "resident memory proportional to the session file; per-turn copies proportional to the branch"
-tests = []
+tests = ["internal/codingagent:TestSessionLongGate"]
 gates = ["session.load_line.retained_bytes", "session.turn.bytes_per_existing_entry", "process.rpc_turn.heap_live_growth_bytes"]
-missing = "resume of a generated 300 MiB session under a live-heap ceiling (perf-session's session_index_test heap bound, not in this tree)"
-route = "perf-session"
 
 [[resource]]
 name = "TUI transcript and render caches"
@@ -1005,11 +1009,11 @@ techniques = []
 route = "go-native-perf"
 
 [[plan]]
-gap = "Per-turn work grows with the session: 5 allocations and 850 bytes per existing entry per turn (session.turn); checkCompaction rebuilds the session projection and the context deep-copies its messages every turn."
-plan = "Land the perf-session lane's cached active branch, then cache the projection and the context messages per leaf and extend them on append; gate allocations per delta at turn 3,500 equal to turn 50."
-gain = "a 43,000-entry session drops from about 37 MB and 215,000 allocations per turn to the constant session.turn cost"
+gap = "A turn's allocations no longer grow with the session (about 72 at 200 entries and at 14,000, session.turn), but its bytes still grow by about 32 per existing entry: the request's context slice is copied each turn."
+plan = "Hand the model call a shared, copy-on-write view of the cached context messages instead of a copy of the slice (the transcript is immutable once appended), so the bytes per turn stop growing too."
+gain = "a 43,000-entry session drops another 1.4 MB per turn, to the constant session.turn cost"
 techniques = ["T5"]
-route = "perf-session (land), go-native-perf (projection cache, turn-3,500 gate)"
+route = "go-native-perf"
 
 [[plan]]
 gap = "Interactive start allocates about 96,000 objects and 22 MB and holds 58 MB RSS at the first frame, against print mode's 34,800 and rpi's self-reported 12 MiB at ready (process.interactive_first_frame): the model catalog materialized and deep-cloned for provider info (28,000 profiled start allocations) The lazy JSON-schema compile, the typed grammar snapshot decoder and the per-language grammar decode on first use (the start decodes 385 allocations and 2.3 MB of grammar, tui.hljs_grammar_load) have landed."
@@ -1019,11 +1023,11 @@ techniques = ["T2", "T8", "T9"]
 route = "go-native-perf"
 
 [[plan]]
-gap = "A loaded session retains about 1,840 bytes per JSONL line, about four times the line (session.load_line.retained_bytes)."
-plan = "Land perf-session's indexed loader (offset index plus bounded LRUs), then lower the ceilings to its counts."
-gain = "retained bytes per line to under 64: a session of 100,000 lines holds about 6 MB instead of about 184 MB"
+gap = "A loaded session retains about 79 bytes per JSONL line (session.load_line.retained_bytes): a 32-byte slot, a 16-byte cold part (file offset, size, hash), the id index cell and the id arena."
+plan = "Move the assistant tree facts out of the slot into a sparse paged table, derive a line's offset from its neighbour's where the file is contiguous, and drop the per-slot cold reference for file-backed sessions."
+gain = "retained bytes per line to under 64: a session of 100,000 lines holds about 6 MB"
 techniques = []
-route = "perf-session (land)"
+route = "perf-session"
 
 [[plan]]
 gap = "Streaming Markdown re-lexes the whole message on every token: 289 allocations per token averaged over a 200-token message, and the average grows by 135 for each further 100 tokens (tui.stream_frame), so one frame costs about 2.7 allocations per token already in the message: about 5,400 at token 2,000."
