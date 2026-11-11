@@ -354,6 +354,23 @@ func EvaluateOutcome(o *ScenarioOutcome) {
 		}
 	}
 
+	// no_frames_after_reply: no frame begins after the reply text in either binary's raw transcript.
+	if a.NoFramesAfterReply {
+		for _, system := range []SystemResults{o.Pig, o.Pi} {
+			for run, r := range system.Runs {
+				f := r.FinalFrame
+				switch {
+				case !f.Observed:
+					o.Failures = append(o.Failures, fmt.Sprintf("%s run %d: no_frames_after_reply needs a tmux step with final_frame", system.System, run+1))
+				case !f.Found:
+					o.Failures = append(o.Failures, fmt.Sprintf("%s run %d: the reply text %q is not in the raw transcript", system.System, run+1, f.Text))
+				case f.Trailing > 0:
+					o.Failures = append(o.Failures, fmt.Sprintf("%s run %d: %d frame(s) began after the reply text %q; bytes after it: %s", system.System, run+1, f.Trailing, f.Text, f.Tail))
+				}
+			}
+		}
+	}
+
 	// runtime_ratio_max: the performance gate.
 	// pig.median <= ratio * pi.median, when both have at least one run.
 	// Suppressed under parallel mode (CPU contention skews the

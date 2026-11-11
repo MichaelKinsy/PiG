@@ -339,7 +339,7 @@ func (m *InteractiveMode) startTurn(ctx context.Context, prompt string, images [
 					m.statusLine.SetWorking(false)
 					m.stopWorkingLoader() // belt-and-suspenders: ensure loader is removed on abort
 				}
-				m.updatePendingMessagesDisplay() // clear stale queue indicators
+				m.rebuildPendingMessages() // clear stale queue indicators
 				m.tuiInst.Render()
 			})
 			// Upstream prompt() throws before _runAgentPrompt, so a rejected
@@ -431,7 +431,6 @@ func (m *InteractiveMode) startTurn(ctx context.Context, prompt string, images [
 				m.showTurnError(err)
 			}
 		}
-		m.runOnMain(m.runCtx, func() { m.tuiInst.Render() })
 	}()
 }
 
