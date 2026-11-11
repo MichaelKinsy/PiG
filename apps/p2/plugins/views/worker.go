@@ -287,7 +287,20 @@ func serveTools(facet host.FacetHost) error {
 		if err != nil {
 			return err
 		}
-		p2runtime.ContributeKeyed(self, p2runtime.Extensions, p2runtime.Entry(extensionName, extension))
+		worker := p2runtime.WorkerOf(self)
+		session := func() string {
+			parts, err := worker()
+			if err != nil {
+				return ""
+			}
+			init, _ := parts.Init.Session()
+			return init.ID
+		}
+		rooms, err := CreateRoomExtension(roomsBackend{session: session, worker: worker})
+		if err != nil {
+			return err
+		}
+		p2runtime.ContributeKeyed(self, p2runtime.Extensions, p2runtime.Entry(extensionName, extension), p2runtime.Entry(roomsExtensionName, rooms))
 		p2runtime.ContributeKeyed(self, chatcontract.SendRouters, p2runtime.Entry("views", route(harnessOf)))
 		return nil
 	})
@@ -625,10 +638,6 @@ func serveViewState(facet host.FacetHost) error {
 						return nil, err
 					}
 					next := objectOf(args).Value("value")
-					checked, err := CheckedState(next)
-					if err != nil {
-						return nil, err
-					}
 					return nil, parts.Liveness.Call(func() error {
 						_, err := opened.Commit(ctx, func(tx durable.Tx) (any, error) {
 							_, current, err := draftOf(tx)
@@ -646,7 +655,7 @@ func serveViewState(facet host.FacetHost) error {
 							if err != nil {
 								return nil, err
 							}
-							return nil, doc.Set("value", checked)
+							return nil, SetViewState(doc, next, "other")
 						})
 						return err
 					})
@@ -690,7 +699,7 @@ func serveViewSource(facet host.FacetHost) error {
 
 // Worker is the plugin's worker facet.
 var Worker = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
-	for _, serve := range []func(host.FacetHost) error{serveTools, serveViews, serveViewState, serveViewSource} {
+	for _, serve := range []func(host.FacetHost) error{serveTools, serveViews, serveViewState, serveViewOpenings, serveViewBacking, serveViewSource} {
 		if err := serve(facet); err != nil {
 			return err
 		}

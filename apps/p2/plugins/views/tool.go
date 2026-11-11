@@ -550,19 +550,11 @@ func update(ctx context.Context, c call, api durable.ToolExecutionApi, backend B
 				}
 				next = combined
 			}
-			checked, err := CheckedState(next)
-			if err != nil {
-				return nil, err
-			}
-			value, err := jsonOf(checked)
-			if err != nil {
-				return nil, err
-			}
 			doc, err := durable.TxDoc[ViewValue](tx, ViewStateDoc, c.id, nil)
 			if err != nil {
 				return nil, err
 			}
-			return nil, doc.Set("value", value)
+			return nil, SetViewState(doc, next, "other")
 		}
 		return nil, nil
 	})

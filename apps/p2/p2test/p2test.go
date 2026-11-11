@@ -151,12 +151,17 @@ func (s *socket) AddEventListener(event link.WebSocketEvent, listener func(data 
 
 // Dial opens a WebSocket to a p2 server's `/chord` on port, sending headers (a tunnel Host, a guest cookie, a relay).
 func Dial(port int, headers map[string]string) (*websocket.Conn, error) {
+	return DialPath(port, "/chord", headers)
+}
+
+// DialPath is Dial to another path (a token link's `/chord/view?token=…`), query included.
+func DialPath(port int, path string, headers map[string]string) (*websocket.Conn, error) {
 	requestHeaders := http.Header{}
 	for name, value := range headers {
 		requestHeaders.Set(name, value)
 	}
 	dialer := websocket.Dialer{HandshakeTimeout: 10 * time.Second}
-	conn, response, err := dialer.Dial("ws://127.0.0.1:"+strconv.Itoa(port)+"/chord", requestHeaders)
+	conn, response, err := dialer.Dial("ws://127.0.0.1:"+strconv.Itoa(port)+path, requestHeaders)
 	if response != nil && response.Body != nil {
 		_ = response.Body.Close()
 	}

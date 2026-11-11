@@ -7,8 +7,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"math/rand/v2"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"unicode/utf16"
@@ -68,11 +70,18 @@ type ViewsState struct {
 	Views       []View       `json:"views"`
 	Annotations []Annotation `json:"annotations"`
 	Arrangement *Arrangement `json:"arrangement,omitempty"`
+	// Opened is each custom view's opening ID (apps/p2/docs/rooms.md), new each time it is added; a view from before has none (its
+	// opening is contract.LegacyOpening).
+	Opened map[string]string `json:"opened,omitempty"`
 }
 
 // ViewValue is one view's JSON state.
+// Revision grows with every write and By says whose it was (a view's room, or anyone else): a room writes only over the revision
+// it saw (apps/p2/docs/rooms.md).
 type ViewValue struct {
-	Value any `json:"value"`
+	Value    any     `json:"value"`
+	Revision float64 `json:"revision,omitempty"`
+	By       string  `json:"by,omitempty"`
 }
 
 // ViewsDoc is the session's views and annotations.
@@ -100,6 +109,44 @@ var ViewStateDoc = durable.DefineDocFamily(durable.DocFamilyDefinition[ViewValue
 		return info.DeltasSinceBase >= 8
 	},
 })
+
+// RoomValue is a text room's own state (apps/p2/docs/rooms.md: the text, its IDs, the editors' watermarks).
+type RoomValue struct {
+	Value any `json:"value"`
+}
+
+// ViewRoomDoc is a text room's own state, keyed by the view's ID; written only by its room through `ViewBacking`, retired with the
+// view.
+var ViewRoomDoc = durable.DefineDocFamily(durable.DocFamilyDefinition[RoomValue, any]{
+	Kind:              "p2.view-room",
+	Version:           1,
+	DocumentSemantics: durable.DocumentSemantics{Scope: durable.ScopeSession},
+	Family:            true,
+	Initial:           func(any) RoomValue { return RoomValue{} },
+	CheckpointWhen: func(_ RoomValue, _ []durable.Op, info durable.CheckpointInfo) bool {
+		return info.DeltasSinceBase >= 8
+	},
+})
+
+// SetViewState sets view state doc to value, written by by ("room" or "other"): the revision grows.
+func SetViewState(doc *delta.Object, value any, by string) error {
+	checked, err := CheckedState(value)
+	if err != nil {
+		return err
+	}
+	encoded, err := jsonOf(checked)
+	if err != nil {
+		return err
+	}
+	if err := doc.Set("value", encoded); err != nil {
+		return err
+	}
+	revision, _ := doc.Get("revision").(float64)
+	if err := doc.Set("revision", revision+1); err != nil {
+		return err
+	}
+	return doc.Set("by", by)
+}
 
 // ReadViews is the session's views and annotations as committed (empty before the first view).
 func ReadViews(ctx context.Context, reader durable.DocumentReader) (ViewsState, error) {
@@ -220,6 +267,15 @@ func OpenView(tx durable.Tx, spec ViewSpec, now float64) (View, error) {
 	}
 	if at < 0 {
 		_, err = draft.Array("views").Push(encoded)
+		// A new opening: tokens, frames and rooms of an earlier view under this ID never reach this one.
+		if err == nil {
+			opened := delta.NewJsonObject(len(state.Opened) + 1)
+			for _, key := range slices.Sorted(maps.Keys(state.Opened)) {
+				opened.Set(key, state.Opened[key])
+			}
+			opened.Set(spec.ID, newUUID())
+			err = draft.Set("opened", opened)
+		}
 	} else {
 		err = draft.Array("views").Set(at, encoded)
 	}
@@ -227,15 +283,11 @@ func OpenView(tx durable.Tx, spec ViewSpec, now float64) (View, error) {
 		return View{}, err
 	}
 	if spec.HasState {
-		value, err := CheckedState(spec.State)
-		if err != nil {
-			return View{}, err
-		}
 		doc, err := durable.TxDoc[ViewValue](tx, ViewStateDoc, spec.ID, nil)
 		if err != nil {
 			return View{}, err
 		}
-		if err := doc.Set("value", value); err != nil {
+		if err := SetViewState(doc, spec.State, "other"); err != nil {
 			return View{}, err
 		}
 	}
@@ -267,7 +319,13 @@ func RemoveView(tx durable.Tx, id string) (bool, error) {
 			}
 		}
 	}
-	return true, durable.TxRetireDoc(tx, ViewStateDoc, id, nil)
+	if _, ok := state.Opened[id]; ok {
+		draft.Object("opened").Delete(id)
+	}
+	if err := durable.TxRetireDoc(tx, ViewStateDoc, id, nil); err != nil {
+		return false, err
+	}
+	return true, durable.TxRetireDoc(tx, ViewRoomDoc, id, nil)
 }
 
 // AddAnnotation adds an annotation by author on a view of the session or the transcript; returns its ID.

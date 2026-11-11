@@ -81,6 +81,7 @@ func (GuestPrincipal) principalKind() string  { return "guest" }
 func (WorkerPrincipal) principalKind() string { return "worker" }
 func (ServerPrincipal) principalKind() string { return "server" }
 func (HostPrincipal) principalKind() string   { return "host" }
+
 // ViewMode is what a view's frame may do in its room: watch (`read`), or also send (`write`).
 type ViewMode string
 
@@ -112,7 +113,6 @@ type ViewPrincipal struct {
 }
 
 func (ViewPrincipal) principalKind() string { return "view" }
-
 
 // Host is every host's own principal (`createHost({ principal })`), upstream's HOST.
 var Host Principal = HostPrincipal{}
@@ -147,7 +147,6 @@ func RevokeLink(link string) Revocation { return delta.JsonObjectOf("link", link
 
 // ViewKey is the `view` revocation's value for one opening of a view of a session.
 func ViewKey(session, view, opening string) string { return session + "/" + view + "/" + opening }
-
 
 // RevokedBy returns the revocations that end principal's objects and links.
 func RevokedBy(principal Principal) []Revocation {

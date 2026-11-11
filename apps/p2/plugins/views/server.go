@@ -2,17 +2,22 @@ package views
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
 	"io"
 	"math"
 	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/MichaelKinsy/PiG/apps/p2/plugins/artifacts"
 	sessioncontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/sessions/contract"
 	"github.com/MichaelKinsy/PiG/apps/p2/plugins/views/contract"
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
+	"github.com/MichaelKinsy/PiG/apps/p2/web"
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
@@ -198,14 +203,37 @@ func serveSavedViews(facet host.FacetHost) error {
 	}), host.ServeOptions{})
 }
 
-// frameCSP is as the artifacts' previews: scripts, but no app origin, no frames, forms or plugins.
-const frameCSP = "default-src 'none'; script-src 'unsafe-inline' 'wasm-unsafe-eval' https:; style-src 'unsafe-inline' https:; img-src data: blob: https:; font-src data: https:; media-src data: blob: https:; connect-src https:; worker-src blob:; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; sandbox allow-scripts allow-modals allow-pointer-lock"
+// frameCSP is as the artifacts' previews: scripts, but no app origin, no frames, forms or plugins; besides https, the server's own
+// origin for the view kit's script and its socket (origin: the page's origin, `ws(s)` for the socket).
+func frameCSP(origin string) string {
+	socket := strings.Replace(origin, "http", "ws", 1)
+	return "default-src 'none'; script-src 'unsafe-inline' 'wasm-unsafe-eval' https: " + origin + "; style-src 'unsafe-inline' https:; img-src data: blob: https:; font-src data: https:; media-src data: blob: https:; connect-src https: " + socket + "; worker-src blob:; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; sandbox allow-scripts allow-modals allow-pointer-lock"
+}
+
+// kitPath is where frames load the view kit: `<path><sha256>.js`.
+const kitPath = "/view-kit/"
+
+// builtKit is the view kit's script and its name, by content.
+type builtKit struct {
+	name string
+	body []byte
+}
+
+// loadKit is the view kit, built into the binary (web/build/build.mjs compiles it as Pi's `buildBrowserScript` does).
+var loadKit = sync.OnceValues(func() (builtKit, error) {
+	body, err := web.ViewKit()
+	if err != nil {
+		return builtKit{}, fmt.Errorf("the view kit is not in the web bundle (run web/build/rebuild.sh): %w", err)
+	}
+	sum := sha256.Sum256(body)
+	return builtKit{name: hex.EncodeToString(sum[:]) + ".js", body: body}, nil
+})
 
 var headRE = regexp.MustCompile(`(?i)<head(?:\s[^>]*)?>`)
 
-// injectBridge is html with the bridge's script first in its head (or first of all without one).
-func injectBridge(html string) string {
-	script := "<script>" + viewBridgeScript + "</script>"
+// injectBridge is html with the bridge's script and the view kit's (at kit) first in its head (or first of all without one).
+func injectBridge(html, kit string) string {
+	script := "<script>" + viewBridgeScript + "</script><script src=\"" + kit + "\"></script>"
 	if head := headRE.FindStringIndex(html); head != nil {
 		return html[:head[1]] + script + html[head[1]:]
 	}
@@ -258,8 +286,12 @@ func serveFrames(facet host.FacetHost) error {
 			source := objectOf(read)
 			title, _ := source.Value("title").(string)
 			html, _ := source.Value("html").(string)
-			page := artifacts.InstrumentArtifact(p2runtime.ArtifactInfo{Name: view, Title: title, Type: p2runtime.ArtifactHTML, Version: int(version)}, injectBridge(html))
-			policy := frameCSP + "; frame-ancestors 'self'"
+			kit, err := loadKit()
+			if err != nil {
+				return err
+			}
+			page := artifacts.InstrumentArtifact(p2runtime.ArtifactInfo{Name: view, Title: title, Type: p2runtime.ArtifactHTML, Version: int(version)}, injectBridge(html, kitPath+kit.name))
+			policy := frameCSP(access.Origin.Origin) + "; frame-ancestors 'self'"
 			if access.Origin.RelayShellOrigin != "" {
 				policy += " " + access.Origin.RelayShellOrigin
 			}
@@ -277,9 +309,35 @@ func serveFrames(facet host.FacetHost) error {
 			_, err = io.WriteString(response, page)
 			return err
 		}
+		// Public: it is code, the same for everyone, loaded by frames whose opaque origin sends no credentials.
+		serveKit := func(response http.ResponseWriter, request *http.Request, _ p2runtime.RequestAccess, _ host.Ctx) error {
+			kit, err := loadKit()
+			if err != nil {
+				return err
+			}
+			if strings.TrimPrefix(request.URL.EscapedPath(), kitPath) != kit.name {
+				response.WriteHeader(http.StatusNotFound)
+				_, err := io.WriteString(response, "Not found")
+				return err
+			}
+			header := response.Header()
+			header.Set("Content-Type", "text/javascript; charset=utf-8")
+			header.Set("Content-Length", strconv.Itoa(len(kit.body)))
+			header.Set("Cache-Control", "public, max-age=31536000, immutable")
+			header.Set("Access-Control-Allow-Origin", "*")
+			header.Set("Cross-Origin-Resource-Policy", "cross-origin")
+			response.WriteHeader(http.StatusOK)
+			if request.Method == http.MethodHead {
+				return nil
+			}
+			_, err = response.Write(kit.body)
+			return err
+		}
 		p2runtime.ContributeKeyed(self, p2runtime.Routes,
 			p2runtime.Entry("GET /view-frame", p2runtime.RouteHandler(serve)),
 			p2runtime.Entry("HEAD /view-frame", p2runtime.RouteHandler(serve)),
+			p2runtime.Entry("GET "+kitPath+"*", p2runtime.RouteHandler(serveKit)),
+			p2runtime.Entry("HEAD "+kitPath+"*", p2runtime.RouteHandler(serveKit)),
 		)
 		return nil
 	})
@@ -287,7 +345,7 @@ func serveFrames(facet host.FacetHost) error {
 
 // Server is the plugin's server facet.
 var Server = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
-	for _, serve := range []func(host.FacetHost) error{serveLibrary, serveSavedViews, serveFrames} {
+	for _, serve := range []func(host.FacetHost) error{serveRooms, serveLibrary, serveSavedViews, serveFrames} {
 		if err := serve(facet); err != nil {
 			return err
 		}
