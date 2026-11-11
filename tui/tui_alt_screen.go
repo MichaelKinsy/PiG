@@ -874,7 +874,7 @@ func (t *TuiAltScreen) doRender() {
 	if t.stopped || !t.altScreenActive {
 		return
 	}
-	t.lastRenderAt = t.now()
+	t.frameBeganLocked()
 	t.updateSize()
 	columns, screenRows := t.size()
 	width := max(1, columns)
