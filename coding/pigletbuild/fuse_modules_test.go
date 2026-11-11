@@ -398,3 +398,75 @@ func fileProxyURL(dir string) string {
 	}
 	return (&url.URL{Scheme: "file", Path: path}).String()
 }
+
+// A member whose go directive is a patch form of Pig's (go 1.26.0 vs
+// go 1.26) is a newer language version in Go's ordering even though the
+// strings compare equal as semver, so the merged go.mod must raise the
+// directive.
+func TestMergeFusedModulesRaisesPigDirectiveForPatchFormMemberVersion(t *testing.T) {
+	pig, err := modfile.Parse("go.mod", []byte("module example.com/pig\n\ngo 1.26\n\nrequire example.com/dep v1.0.0\n"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	member := t.TempDir()
+	writeFixtureFile(t, filepath.Join(member, "go.mod"), "module example.com/review\n\ngo 1.26.0\n\nrequire example.com/dep v1.0.0\n")
+
+	if _, err := mergeFusedModules(pig, []fusedEntry{{Name: "review", Root: member, ModulePath: "example.com/review", Package: "example.com/review"}}); err != nil {
+		t.Fatal(err)
+	}
+
+	if pig.Go == nil || pig.Go.Version != "1.26.0" {
+		formatted, _ := pig.Format()
+		t.Fatalf("merged go.mod go directive = %s, want 1.26.0:\n%s", goDirective(formatted), formatted)
+	}
+}
+
+// A member at a newer minor version raises the directive too.
+func TestMergeFusedModulesRaisesPigDirectiveForNewerMemberVersion(t *testing.T) {
+	pig, err := modfile.Parse("go.mod", []byte("module example.com/pig\n\ngo 1.26\n\nrequire example.com/dep v1.0.0\n"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	member := t.TempDir()
+	writeFixtureFile(t, filepath.Join(member, "go.mod"), "module example.com/review\n\ngo 1.27\n\nrequire example.com/dep v1.0.0\n")
+
+	if _, err := mergeFusedModules(pig, []fusedEntry{{Name: "review", Root: member, ModulePath: "example.com/review", Package: "example.com/review"}}); err != nil {
+		t.Fatal(err)
+	}
+
+	if pig.Go == nil || pig.Go.Version != "1.27" {
+		formatted, _ := pig.Format()
+		t.Fatalf("merged go.mod go directive = %s, want 1.27:\n%s", goDirective(formatted), formatted)
+	}
+}
+
+// Pig at a newer directive than every member stays unchanged.
+func TestMergeFusedModulesKeepsNewerPigDirective(t *testing.T) {
+	pig, err := modfile.Parse("go.mod", []byte("module example.com/pig\n\ngo 1.28\n\nrequire example.com/dep v1.0.0\n"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	member := t.TempDir()
+	writeFixtureFile(t, filepath.Join(member, "go.mod"), "module example.com/review\n\ngo 1.26.0\n\nrequire example.com/dep v1.0.0\n")
+
+	if _, err := mergeFusedModules(pig, []fusedEntry{{Name: "review", Root: member, ModulePath: "example.com/review", Package: "example.com/review"}}); err != nil {
+		t.Fatal(err)
+	}
+
+	if pig.Go == nil || pig.Go.Version != "1.28" {
+		formatted, _ := pig.Format()
+		t.Fatalf("merged go.mod go directive = %s, want unchanged 1.28:\n%s", goDirective(formatted), formatted)
+	}
+}
+
+func goDirective(formatted []byte) string {
+	for line := range strings.SplitSeq(string(formatted), "\n") {
+		if rest, ok := strings.CutPrefix(strings.TrimSpace(line), "go "); ok {
+			return rest
+		}
+	}
+	return "<none>"
+}
