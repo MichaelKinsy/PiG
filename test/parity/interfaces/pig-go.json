@@ -18350,9 +18350,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(ctx context.Context, provider *ModelsProvider) (uint64, *modelsRefreshSignal)"
+        "type": "func(ctx context.Context, values context.Context, snapshot *fileReadSnapshot, provider *ModelsProvider) (uint64, *modelsRefreshSignal)"
       },
-      "shapeHash": "sha256:43cfd5379f90d7b5000ff084f41806e7330af6d45eed3fc8912b214d56ab70a6"
+      "shapeHash": "sha256:53b0f2a30aecb62a402898419ac7d3f78162d3ff87f0382a0386ee105080fe33"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#Models.checkProviderAuth",
@@ -18397,6 +18397,17 @@
         "type": "func(ctx context.Context, model *Model, setup func() (*AssistantMessageEventStream, error), observer *LazyStreamObserver) *AssistantMessageEventStream"
       },
       "shapeHash": "sha256:08a43e81114e0f02f5f8ed5504a6807f93007a6978d7756366954ca58d28cb62"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#Models.publishChained",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "Models.publishChained",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(providerID string, generation uint64, signal context.Context, publication ModelsPublication, previous chan struct{}, done chan struct{}) modelsOperationResult[bool]"
+      },
+      "shapeHash": "sha256:d220170c54c6b9a40d9f5c0654a44d2b63391b23a52a0697fb7c72ecd4c361dd"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#Models.publishProviderModels",
@@ -50464,6 +50475,17 @@
       "shapeHash": "sha256:c419ec8348439b799cb00b132055833391af55f6e8e56fc274e8146ef540ff9e"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#modelsRefresh",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "modelsRefresh",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "modelsRefresh"
+      },
+      "shapeHash": "sha256:fb617e62596dae6c93a17e68a43d499837d02fb08c54bbcc6e8372db45f3ea98"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#modelsRefreshSignal",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "modelsRefreshSignal",
@@ -50998,9 +51020,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(parent context.Context) *modelsRefreshSignal"
+        "type": "func(parent context.Context, values context.Context, snapshot *fileReadSnapshot) *modelsRefreshSignal"
       },
-      "shapeHash": "sha256:9befe5a57101f8ccf8f56af7796c4da8a3d5343d8b87b625ef1007f59fb2b73e"
+      "shapeHash": "sha256:5c2816851e9621ce65148d63ee660f8abb52aafbf0a91bca4a92b50ee4bf95f1"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#newNativeBodyIterator",
@@ -57205,6 +57227,61 @@
         "type": "providerMaxRetryDelayKey"
       },
       "shapeHash": "sha256:484c4876834dde3a75b4e8c3f0ff8edf326ac239fd7148a697239feb2ed4da10"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#providerRefresh",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "providerRefresh",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "providerRefresh"
+      },
+      "shapeHash": "sha256:fb7d19205edc98a2043858168d6986ae5b79d4b64953d3c465e8a14d00d1c01e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#providerRefresh.execute",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "providerRefresh.execute",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#providerRefresh.run",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "providerRefresh.run",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() error"
+      },
+      "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#providerRefresh.settle",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "providerRefresh.settle",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(err error)"
+      },
+      "shapeHash": "sha256:93a6c6c514b3d04f95e2b5274d3e899928348deef941bd76a022f9ea0f5ed2eb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#providerRefresh.settleCancelled",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "providerRefresh.settleCancelled",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#providerRequestOptionsKey",

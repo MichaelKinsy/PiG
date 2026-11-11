@@ -23265,7 +23265,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/models_runtime_refresh.go#Models.publishProviderModels"
+        "call:ai/models_runtime_refresh.go#Models.publishChained"
       ],
       "evidence": [
         "test:ai/models_store_inmemory_test.go#TestInMemoryModelsStoreKeepsDetachedCopiesPerProvider",
@@ -23288,10 +23288,10 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/models_runtime_refresh.go#Models.publishProviderModels"
+        "call:ai/models_runtime_refresh.go#Models.publishChained"
       ],
       "evidence": [
-        "reach:ai/models_runtime_refresh.go#Models.publishProviderModels"
+        "reach:ai/models_runtime_refresh.go#Models.publishChained"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -23309,10 +23309,10 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/models_runtime_refresh.go#Models.publishProviderModels"
+        "call:ai/models_runtime_refresh.go#Models.publishChained"
       ],
       "evidence": [
-        "reach:ai/models_runtime_refresh.go#Models.publishProviderModels"
+        "reach:ai/models_runtime_refresh.go#Models.publishChained"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -23376,7 +23376,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/models_runtime_refresh.go#Models.publishProviderModels"
+        "call:ai/models_runtime_refresh.go#Models.publishChained"
       ],
       "evidence": [
         "test:ai/radius_test.go#TestRadiusProviderExposesNoModelsWhenTheOrganizationDisabledAll",
@@ -23399,7 +23399,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/models_runtime_refresh.go#Models.publishProviderModels"
+        "call:ai/models_runtime_refresh.go#Models.publishChained"
       ],
       "evidence": [
         "test:ai/radius_test.go#TestRadiusProviderExposesNoModelsWhenTheOrganizationDisabledAll",
@@ -68898,7 +68898,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/models_runtime_refresh.go#Models.publishProviderModels"
+        "call:ai/models_runtime_refresh.go#Models.publishChained"
       ],
       "evidence": [
         "test:ai/models_store_inmemory_test.go#TestInMemoryModelsStoreKeepsDetachedCopiesPerProvider",
@@ -68921,10 +68921,10 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/models_runtime_refresh.go#Models.publishProviderModels"
+        "call:ai/models_runtime_refresh.go#Models.publishChained"
       ],
       "evidence": [
-        "reach:ai/models_runtime_refresh.go#Models.publishProviderModels"
+        "reach:ai/models_runtime_refresh.go#Models.publishChained"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -68942,10 +68942,10 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/models_runtime_refresh.go#Models.publishProviderModels"
+        "call:ai/models_runtime_refresh.go#Models.publishChained"
       ],
       "evidence": [
-        "reach:ai/models_runtime_refresh.go#Models.publishProviderModels"
+        "reach:ai/models_runtime_refresh.go#Models.publishChained"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -69009,7 +69009,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/models_runtime_refresh.go#Models.publishProviderModels"
+        "call:ai/models_runtime_refresh.go#Models.publishChained"
       ],
       "evidence": [
         "test:ai/radius_test.go#TestRadiusProviderExposesNoModelsWhenTheOrganizationDisabledAll",
@@ -69032,7 +69032,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/models_runtime_refresh.go#Models.publishProviderModels"
+        "call:ai/models_runtime_refresh.go#Models.publishChained"
       ],
       "evidence": [
         "test:ai/radius_test.go#TestRadiusProviderExposesNoModelsWhenTheOrganizationDisabledAll",
