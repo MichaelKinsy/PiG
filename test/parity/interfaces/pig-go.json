@@ -292409,6 +292409,17 @@
       "shapeHash": "sha256:546732f1d86f16724f05b6a82f2ab1617e76385c4f2a50f3c0e24d0388ab9a07"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#markPromptRejected",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "markPromptRejected",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context)"
+      },
+      "shapeHash": "sha256:ffa79b2277a97578edb7154cd76c29b32899d1eb9bc77e0c60af10883a735d63"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#markdownRetry",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "markdownRetry",
@@ -300668,6 +300679,28 @@
         "type": "func(text string, images []github.com/MichaelKinsy/PiG/ai.ImageContent) github.com/MichaelKinsy/PiG/ai.UserContentBlocks"
       },
       "shapeHash": "sha256:269ee66ed3b3507c71d6f1b405b341587d33f7b86598661a17a36224f774c098"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#promptRejected",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "promptRejected",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context) bool"
+      },
+      "shapeHash": "sha256:fc0dd2d848a6581066bfa5c671132f84e440ea0bb1dc9d4dd705548b9f82b6e3"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#promptRejection",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "promptRejection",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "promptRejection"
+      },
+      "shapeHash": "sha256:89b7feacd9914d2c6360bb016ac6eca675c46aed4a08a71c7fe105fd2fea7bb8"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#promptRejectionKey",
