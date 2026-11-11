@@ -586,20 +586,6 @@ dest = "any"
 count = 1
 
 [[hit]]
-file = "internal/codingagent/event_bridge.go"
-func = "extensionToolResult"
-call = "json.Unmarshal"
-dest = "*any"
-count = 1
-
-[[hit]]
-file = "internal/codingagent/event_bridge.go"
-func = "toolExecutionArgs"
-call = "json.Unmarshal"
-dest = "*any"
-count = 1
-
-[[hit]]
 file = "internal/codingagent/export/export.go"
 func = "FromJSONL"
 call = "json.Unmarshal"
