@@ -8279,6 +8279,54 @@
       ]
     },
     {
+      "id": "BF-308d280",
+      "title": "`chord/next/surfaces`: a locale tag whose `-u-` extension is only `true` or `yes` keeps it as Node's…",
+      "symptom": "`chord/next/surfaces`: a locale tag whose `-u-` extension is only `true` or `yes` keeps it as Node's `Intl.getCanonicalLocales` does (`en-u-true` and `en-u-yes` are attributes); the lone `true` or `yes` of another singleton is still dropped.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`chord/next/surfaces`: a locale tag whose `-u-` extension is only `true` or `yes` keeps it as Node's `Intl.getCanonicalLocales` does (`en-u-true` and `en-u-yes` are attributes); the lone `true` or `yes` of another singleton is still dropped. `TestLocaleTablesMatchIntl` covers both tags.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "308d2802ce",
+          "date": "2026-11-10"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberIsReadAgainWhenTheNextSlotEndsAfterTheResync",
+        "chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberKeepsACommitMadeWhileTheObjectOpens",
+        "chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAMethodCalledWhileTheMirrorIsReadAgainAnswersAfterItsFrames"
+      ]
+    },
+    {
+      "id": "BF-308d280-2",
+      "title": "`chord/nextnode/plugins`: a Go facet that reloads twice in a row no longer leaves the copy of its keyed…",
+      "symptom": "`chord/nextnode/plugins`: a Go facet that reloads twice in a row no longer leaves the copy of its keyed member on the slot of the first reload (the mirror stopped resyncing after it queued the reset, so an end of the next slot in between was lost), and a method called while the copy is read again answers after the frames of its commits were sent, so the plugin reads what it wrote.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`chord/nextnode/plugins`: a Go facet that reloads twice in a row no longer leaves the copy of its keyed member on the slot of the first reload (the mirror stopped resyncing after it queued the reset, so an end of the next slot in between was lost), and a method called while the copy is read again answers after the frames of its commits were sent, so the plugin reads what it wrote.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "308d2802ce",
+          "date": "2026-11-10"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberIsReadAgainWhenTheNextSlotEndsAfterTheResync",
+        "chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberKeepsACommitMadeWhileTheObjectOpens",
+        "chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAMethodCalledWhileTheMirrorIsReadAgainAnswersAfterItsFrames"
+      ]
+    },
+    {
       "id": "BF-30cdab4",
       "title": "Windows: the environment daemon's `taskkill /F /T` runs with the `SystemRoot` it resolved for its path…",
       "symptom": "Windows: the environment daemon's `taskkill /F /T` runs with the `SystemRoot` it resolved for its path (`C:\\Windows` when the variable is empty or unset) instead of inheriting an empty one, with which taskkill did not run and left the killed program's tree alive.",
@@ -18482,6 +18530,28 @@
       ]
     },
     {
+      "id": "BF-618af0a",
+      "title": "`chord/nextnode/plugins`: the directory the plugins' Node runtime is extracted to is named by the manifest…",
+      "symptom": "`chord/nextnode/plugins`: the directory the plugins' Node runtime is extracted to is named by the manifest and every file of the runtime beside it (`host.mjs`, `proxy.mjs`, `bridge.mjs`, ...), not by the manifest and `host.mjs` alone.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`chord/nextnode/plugins`: the directory the plugins' Node runtime is extracted to is named by the manifest and every file of the runtime beside it (`host.mjs`, `proxy.mjs`, `bridge.mjs`, ...), not by the manifest and `host.mjs` alone. Two builds with different `proxy.mjs` or `bridge.mjs` shared one directory under the user cache and repaired each other's files in place while a process of the other build was reading them, so a test run could start the Node host with another build's proxy (a run of the keyed-member bridge failed with `Cannot read properties of undefined (reading 'type')` from an old `proxy.mjs`).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "618af0a411",
+          "date": "2026-11-10"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_node_extract_test.go::TestTheExtractedRuntimeIsNamedByEveryFileOfTheRuntimeBesideTheManifest"
+      ]
+    },
+    {
       "id": "BF-619443a",
       "title": "MCP sign-in now rejects authorization endpoints and other OAuth metadata URLs that are not `http:` or…",
       "symptom": "MCP sign-in now rejects authorization endpoints and other OAuth metadata URLs that are not `http:` or `https:`, so a malicious server cannot make pig launch a `file:` or custom protocol URL.",
@@ -26682,6 +26752,52 @@
         "ai/openai_prompt_cache_upstream_test.go::TestOpenAICompletionsPromptCacheUpstream",
         "ai/openai_responses_prompt_cache_upstream_test.go::TestOpenAIResponsesPromptCacheKeyPolicyUpstream",
         "ai/openai_test.go::TestOpenAICompletionsEmptyTools"
+      ]
+    },
+    {
+      "id": "BF-7ddb7c1",
+      "title": "`chord/next/surfaces`: a locale tag is canonical as Node's `Intl.getCanonicalLocales` has it for the time…",
+      "symptom": "`chord/next/surfaces`: a locale tag is canonical as Node's `Intl.getCanonicalLocales` has it for the time zone aliases of six letters and more (`tz-hongkong` is `tz-hkhkg`, `tz-usnavajo` is `tz-usden`, `tz-factory` is `tz-unk`), for the languages Node aliases only when they are not written all in lower case or are the source language of a `-t-` extension (`TW` and `en-t-tw` are `ak`, `BH` is `bho`; `tw` alone stays `tw`), and for a lone `true` or `yes` in a private use or another extension (`en-x-true` is `en-x`).",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`chord/next/surfaces`: a locale tag is canonical as Node's `Intl.getCanonicalLocales` has it for the time zone aliases of six letters and more (`tz-hongkong` is `tz-hkhkg`, `tz-usnavajo` is `tz-usden`, `tz-factory` is `tz-unk`), for the languages Node aliases only when they are not written all in lower case or are the source language of a `-t-` extension (`TW` and `en-t-tw` are `ak`, `BH` is `bho`; `tw` alone stays `tw`), and for a lone `true` or `yes` in a private use or another extension (`en-x-true` is `en-x`). The generator asks Node for the zones' names and for every six letters that begin with a region, and fails when a `-t-` source language is neither an alias nor in its table. `TestLocaleTablesMatchIntl` covers these classes.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7ddb7c1a27",
+          "date": "2026-11-10"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberIsReadAgainAfterTheGoFacetReloads",
+        "chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberKeepsACommitMadeWhileTheObjectOpens"
+      ]
+    },
+    {
+      "id": "BF-7ddb7c1-2",
+      "title": "`chord/nextnode/plugins`: the copy of a Go core facet's keyed member a plugin reads (`Files.summary`) is…",
+      "symptom": "`chord/nextnode/plugins`: the copy of a Go core facet's keyed member a plugin reads (`Files.summary`) is applied in the order the Go host committed.",
+      "rootCause": "The documents are the first frame the Go side sends, the commits made while they were read follow them (before, a commit that reached the Node host in the same chunk as the documents was applied first and then retired or overwritten by them), a slot that ends while it is read is read again, and a document change refused because the object ended is not reported as a fatal error of the Node host.",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`chord/nextnode/plugins`: the copy of a Go core facet's keyed member a plugin reads (`Files.summary`) is applied in the order the Go host committed. The documents are the first frame the Go side sends, the commits made while they were read follow them (before, a commit that reached the Node host in the same chunk as the documents was applied first and then retired or overwritten by them), a slot that ends while it is read is read again, and a document change refused because the object ended is not reported as a fatal error of the Node host.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7ddb7c1a27",
+          "date": "2026-11-10"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberIsReadAgainAfterTheGoFacetReloads",
+        "chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberKeepsACommitMadeWhileTheObjectOpens"
       ]
     },
     {
@@ -35168,39 +35284,6 @@
       "commits": [
         {
           "hash": "bdaa14582e",
-          "date": "2026-11-07"
-        },
-        {
-          "hash": "5291c9268f",
-          "date": "2026-11-08"
-        },
-        {
-          "hash": "95f0f0d040",
-          "date": "2026-11-08"
-        },
-        {
-          "hash": "bdcd2b1248",
-          "date": "2026-11-08"
-        }
-      ],
-      "tests": []
-    },
-    {
-      "id": "BF-D461",
-      "title": "`Files` and `FilesFolder` are not reachable from TypeScript plugins",
-      "symptom": "Not a Pi bug.",
-      "rootCause": "the plugins' proxy facets (`plugins/node/proxy.mjs`) forward state members and methods to the Go object; a JS keyed member must be a keyed document handle or a reference's keyed member, and the proxy has neither for an object on another host. Pi has the kit and the plugins in one host, so `self.get(Files, {})` works there.",
-      "rootCauseSource": "divergence record",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D461",
-      "removeWhen": "the plugin bridge forwards a contract with a keyed member (a keyed-handle proxy between hosts), or the plugins run in the kit's host.",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "d803ffa239",
           "date": "2026-11-07"
         },
         {
@@ -56229,6 +56312,65 @@
       ]
     },
     {
+      "id": "BF-fbd59e3",
+      "title": "`chord/nextnode/plugins`, `chord/nextnode/app` (Pi `app.test.ts` \"round-trips a worker's documents, tables…",
+      "symptom": "`chord/nextnode/plugins`, `chord/nextnode/app` (Pi `app.test.ts` \"round-trips a worker's documents, tables and files\", `worker.test.ts`): a TypeScript plugin can `get` the app kit's `Files` and `FilesFolder` on the server and on a worker, as Pi's plugins can (the divergence record of this limit retires).",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`chord/nextnode/plugins`, `chord/nextnode/app` (Pi `app.test.ts` \"round-trips a worker's documents, tables and files\", `worker.test.ts`): a TypeScript plugin can `get` the app kit's `Files` and `FilesFolder` on the server and on a worker, as Pi's plugins can (the divergence record of this limit retires). The plugin bridge copies a keyed member of a Go core facet (`Files.summary`) to the plugins' Node host as a keyed document handle of the proxy object: the object goes live with every document the Go member holds, each later commit reaches the copy in the Go host's commit order, a Go facet that reloaded is read again, and a method's answer follows the commits it made, so a plugin that awaited `files.put` reads its summary. A plugin reads it as a reference's keyed member (`get`, `watch`, `at`). New Go API: `documents.KeyedSlot.Observe` and `host.ReferenceKeyed.Snapshot` (the bridge's observer and read of a keyed member).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "fbd59e3aff",
+          "date": "2026-11-10"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/app/app_workers_test.go::TestAppAWorkersDirectoryKeepsItsStoreAndFilesAcrossItsProcessesRestarts",
+        "chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberIsCopiedToThePluginsHost",
+        "chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberOfTenThousandDocumentsIsCopiedBeforeTheObjectIsLive"
+      ]
+    },
+    {
+      "id": "BF-fbd59e3-2",
+      "title": "`chord/next/surfaces` (Pi `translations.ts` `canonicalLocale`, `language.ts` `directionOf`): a locale tag is…",
+      "symptom": "`chord/next/surfaces` (Pi `translations.ts` `canonicalLocale`, `language.ts` `directionOf`): a locale tag is canonical as Node's `Intl.getCanonicalLocales` has it for the value aliases of `-u-` keywords and `-t-` fields (`ca-islamicc` is `ca-islamic-civil`, `ks-primary` is `ks-level1`, `kb-yes` is `kb`, `m0-names` is `m0-prprname`) and for the alias rules of several subtags (a language with a region or script, such as `sgn-BR`; `Qaai` is `Zinh`), so the `lang` and `dir` of a page and the locale chosen for a client no longer differ from Pi's for those tags.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`chord/next/surfaces` (Pi `translations.ts` `canonicalLocale`, `language.ts` `directionOf`): a locale tag is canonical as Node's `Intl.getCanonicalLocales` has it for the value aliases of `-u-` keywords and `-t-` fields (`ca-islamicc` is `ca-islamic-civil`, `ks-primary` is `ks-level1`, `kb-yes` is `kb`, `m0-names` is `m0-prprname`) and for the alias rules of several subtags (a language with a region or script, such as `sgn-BR`; `Qaai` is `Zinh`), so the `lang` and `dir` of a page and the locale chosen for a client no longer differ from Pi's for those tags. The tables are generated from the pinned Node by `testdata/locale_tables.mjs` and checked against its Intl.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "618af0a411",
+          "date": "2026-11-10"
+        },
+        {
+          "hash": "7ddb7c1a27",
+          "date": "2026-11-10"
+        },
+        {
+          "hash": "fbd59e3aff",
+          "date": "2026-11-10"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/app/app_workers_test.go::TestAppAWorkersDirectoryKeepsItsStoreAndFilesAcrossItsProcessesRestarts",
+        "chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberIsCopiedToThePluginsHost",
+        "chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberIsReadAgainAfterTheGoFacetReloads",
+        "chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberKeepsACommitMadeWhileTheObjectOpens",
+        "chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberOfTenThousandDocumentsIsCopiedBeforeTheObjectIsLive",
+        "chord/nextnode/plugins/plugins_node_extract_test.go::TestTheExtractedRuntimeIsNamedByEveryFileOfTheRuntimeBesideTheManifest"
+      ]
+    },
+    {
       "id": "BF-fc1703f",
       "title": "Durable's `tool_search` and Code Mode `searchTools()` rank like the coding agent's tool search: a query that…",
       "symptom": "Durable's `tool_search` and Code Mode `searchTools()` rank like the coding agent's tool search: a query that is exactly a tool's name ranks it first, a tool matching more of the query's distinct terms ranks above one matching fewer, a query term in the name outweighs any number of mentions in the description, and a tool whose whole name is in the query gets a large bonus.",
@@ -57380,11 +57522,6 @@
       "id": "D460",
       "title": "The app kit's facets are Go core facets beside the plugins' Node host",
       "entry": "BF-D460"
-    },
-    {
-      "id": "D461",
-      "title": "`Files` and `FilesFolder` are not reachable from TypeScript plugins",
-      "entry": "BF-D461"
     },
     {
       "id": "D462",
