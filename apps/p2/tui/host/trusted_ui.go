@@ -34,6 +34,9 @@ type ConsentRequest struct {
 	HasPreview bool
 	// ConfirmLabel defaults to "confirm".
 	ConfirmLabel string
+	// Ask false (`ask: false`): the launcher runs the action without the screen. Only for requests the server could make happen by itself, so asking
+	// protects nothing (a dev restart of the server the runtime came from).
+	Ask *bool
 }
 
 // Output is the terminal the trusted UI draws on.

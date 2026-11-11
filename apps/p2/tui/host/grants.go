@@ -85,7 +85,8 @@ type ConsentContext struct {
 
 // LauncherAction is one launcher action (section 3.2): K fires on the visitor's own privileged key (Key), consumed before the worker; Gesture is
 // requested by the worker but accepted only within a short time after the launcher itself saw the matching gesture in the raw input (the mouse
-// release ending a selection; one use); C is requested by the worker and runs only after local confirmation of exactly what Consent shows.
+// release ending a selection; one use); C is requested by the worker and runs only after local confirmation of exactly what Consent shows,
+// unless Consent answers Ask false (requests the server could make happen by itself).
 type LauncherAction struct {
 	Kind GrantKind
 	// Key is K's privileged key id.

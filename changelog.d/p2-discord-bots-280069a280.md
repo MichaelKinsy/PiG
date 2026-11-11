@@ -1,0 +1,3 @@
+### Changed
+
+- p2's Discord relay treats other bots as people: a bot's mention wakes Pi by the link's rules (at most 3 turns in a row started by bots per channel or thread; one notice, then silence until a person writes) and its messages are in the batches; only the link's own bot is left out. Each batch line names its author with their mention (`Name (<@id>): text`, bots `Name (bot, <@id>): text`), replies ping users but never roles or @everyone, and the agent's prompt section says how to mention. A batch while a turn runs steers it; inputs steered into one turn have one answer, posted once to the newest mention with the files of the whole turn. <!-- feat: p2-discord-bots -->

@@ -173,6 +173,7 @@ func (s ingressSessions) Turn(_ context.Context, _ string, id float64) (discordc
 	turn := s.r.must("turn", delta.JsonObjectOf("submissionId", id))
 	out := discordcontract.TurnState{State: turn.Value("state").(string), Files: []discordcontract.OfferedFile{}}
 	out.Text, _ = turn.Value("text").(string)
+	out.Answer, _ = turn.Value("answer").(float64)
 	for _, each := range list(turn.Value("files")) {
 		file := object(each)
 		out.Files = append(out.Files, discordcontract.OfferedFile{ID: file.Value("id").(string), Name: file.Value("name").(string), Size: file.Value("size").(float64)})
@@ -368,6 +369,7 @@ func TestDiscordIngressFakeProvider(t *testing.T) {
 			`your final answer of each turn is posted there as the reply`,
 			`files you offer with send_file during the turn attached`,
 			`Nothing else is posted \(not intermediate text, thinking or tool output\)`,
+			"`Ann \\(<@1234>\\): text`; write `<@1234>` to mention them",
 		} {
 			if !regexp.MustCompile(want).MatchString(said) {
 				t.Fatalf("section lacks %q: %q", want, said)
@@ -387,6 +389,22 @@ func TestDiscordIngressFakeProvider(t *testing.T) {
 		r.view(1, func(view delta.JsonValue) bool {
 			return slices.Contains(textsOf(view), "Echo: just me now") && sectionsOf(view)["discord"] == ""
 		})
+	})
+
+	t.Run("a batch while a turn runs steers it: both inputs end with the one answer", func(t *testing.T) {
+		running := r.must("deliver", r.input("discord:1100", "slow-tool", 0, ""))
+		if err := p2test.Poll(func() (bool, error) { return strings.Contains(r.command("status"), "Working: yes"), nil }, 60*time.Second, "the turn to run"); err != nil {
+			t.Fatal(err)
+		}
+		steered := r.must("deliver", r.input("discord:1101", "and this too", 0, ""))
+		one := r.ended(running.Value("submissionId"))
+		two := r.ended(steered.Value("submissionId"))
+		if one.Value("state") != "answered" || two.Value("state") != "answered" {
+			t.Fatalf("turns = %v %v", one, two)
+		}
+		if one.Value("answer") != two.Value("answer") {
+			t.Fatalf("one turn, one answer: %v %v", one.Value("answer"), two.Value("answer"))
+		}
 	})
 
 	t.Run("stop aborts the running turn and withdraws the queued inputs, as the web's Stop", func(t *testing.T) {
@@ -486,7 +504,7 @@ func TestDiscordIngressFakeProvider(t *testing.T) {
 		if len(textsOf(forked)) < 1 {
 			t.Fatal("the fork lacks the main conversation's answer")
 		}
-		delivered := r.must("deliver", r.input("discord:600", "Ada: @Pi in the thread", conversation, "Release Plan!"))
+		delivered := r.must("deliver", r.input("discord:600", "Ada (<@u1>): @Pi in the thread", conversation, "Release Plan!"))
 		if delivered.Value("conversation") != conversation {
 			t.Fatalf("conversation = %v", delivered.Value("conversation"))
 		}

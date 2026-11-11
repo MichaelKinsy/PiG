@@ -393,7 +393,7 @@ func (b *Bot) Reply(_ context.Context, channelID, messageID, text string, files 
 	if err != nil {
 		return err
 	}
-	send := &discordgo.MessageSend{Content: text, AllowedMentions: &discordgo.MessageAllowedMentions{Parse: []discordgo.AllowedMentionType{}}}
+	send := &discordgo.MessageSend{Content: text, AllowedMentions: &discordgo.MessageAllowedMentions{Parse: []discordgo.AllowedMentionType{discordgo.AllowedMentionTypeUsers}}}
 	for _, file := range files {
 		send.Files = append(send.Files, &discordgo.File{Name: file.Name, Reader: bytes.NewReader(file.Data)})
 	}

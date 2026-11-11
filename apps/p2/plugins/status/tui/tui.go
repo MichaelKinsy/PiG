@@ -543,6 +543,32 @@ var commands = p2runtime.Keyed[runtime.TuiCommand]{
 			return nil
 		},
 	}),
+	p2runtime.Entry("p2.dev.restart", runtime.TuiCommand{
+		Title: "Restart the server (dev server)", Category: "Owner", When: "owner && !overlay", Slash: &runtime.TuiCommandSlash{Name: "dev-restart"},
+		// Same dev channel as /dev-reload; the server restarts only under the `npm run dev` supervisor and says so otherwise (D473: the Go server has none).
+		// The request may drop as the server exits; the launcher then reconnects.
+		Run: func(ctx runtime.TuiContext, _ string) error {
+			go func() {
+				result := ctx.Grant("devCommand", map[string]any{"action": "restart"})
+				ctx.Post(func() {
+					text := ""
+					if result.OK {
+						if message, ok := resultMessage(result.Value); ok {
+							text = render.LineText(message)
+						}
+					}
+					if units := []rune(text); len(units) > 200 {
+						text = string(units[:200])
+					}
+					if text == "" {
+						text = "Restart requested"
+					}
+					p2tui.GrantNotice(ctx, text, result)
+				})
+			}()
+			return nil
+		},
+	}),
 	p2runtime.Entry("p2.session.info", runtime.TuiCommand{
 		Title: "Session information", Category: "Session", When: "!overlay", Slash: &runtime.TuiCommandSlash{Name: "session"},
 		Run: func(ctx runtime.TuiContext, _ string) error {

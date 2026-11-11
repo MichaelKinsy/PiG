@@ -51,6 +51,44 @@ func TestTerminalModesAdmitted7MouseOnlyByPolicyTrackedUndoneOnCleanupAndRestore
 	}
 }
 
+// Ports apps/p2/test/p2/tui-grants.test.ts "terminal modes: the kitty keyboard flags are pushed on the alternate screen and popped before leaving it".
+func TestTerminalModesTheKittyKeyboardFlagsArePushedOnTheAlternateScreenAndPoppedBeforeLeavingIt(t *testing.T) {
+	const push = "\x1b[>7u"
+	const pop = "\x1b[<u"
+	modes := host.NewTerminalModes(host.MouseOff)
+	equal := func(got, want, why string) {
+		t.Helper()
+		if got != want {
+			t.Fatalf("%s: got %q, want %q", why, got, want)
+		}
+	}
+	equal(modes.Keyboard(true), "", "the main screen has the launcher's own push")
+	_, _ = modes.Filter("\x1b[?1049h")
+	equal(modes.Keyboard(false), "", "nothing without the kitty protocol")
+	equal(modes.Keyboard(true), push, "the alternate screen")
+	equal(modes.Keyboard(true), "", "once per alternate screen")
+	// The runtime leaves the alternate screen: the pop comes first, on the screen that has the push.
+	got, _ := modes.Filter("a\x1b[?1049lb")
+	equal(got, "a"+pop+"\x1b[?1049lb", "leaving the alternate screen")
+	equal(modes.Keyboard(true), "", "the main screen again")
+	_, _ = modes.Filter("\x1b[?1049h")
+	equal(modes.Keyboard(true), push, "the next alternate screen")
+	// Suspend leaves the screen (pop), resume re-enters it and the next Keyboard pushes again.
+	if !strings.HasPrefix(modes.SuspendSequence(), pop) {
+		t.Fatal("suspend pops")
+	}
+	if !strings.HasPrefix(modes.ResumeSequence(), "\x1b[?1049h") {
+		t.Fatal("resume re-enters the alternate screen")
+	}
+	equal(modes.Keyboard(true), push, "after the resume")
+	if !strings.HasPrefix(modes.Cleanup(), pop) {
+		t.Fatal("cleanup pops")
+	}
+	if strings.Contains(modes.Cleanup(), pop) {
+		t.Fatal("popped once")
+	}
+}
+
 type recorder struct {
 	mu      sync.Mutex
 	written []string
