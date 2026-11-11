@@ -23,12 +23,15 @@ import (
 // runs `options.resolve` synchronously, inside the section that triggered it, up to its first `await`, and handles the
 // result in a later microtask: the Go call is lent that section like a method handler (Loop.Lend, DESIGN-go-layout.md
 // section 10): its synchronous part runs inside the section, which goes on once `Resolve` returned or suspended
-// (`chordctx.Suspend(ctx)`, or a host primitive that waits), and everything Pi writes after the `await` runs as one section
-// (Loop.Run) afterwards, so a `resolve` whose holds were all released meanwhile finishes and its result is handled as Pi's.
+// (`chordctx.Suspend(ctx)`, or a host primitive that waits). Everything Pi writes after the `await` runs in its continuation,
+// a microtask: a `Resolve` that returned inside the section queues it as a microtask of that section (Loop.Queue), which runs
+// before the loop takes another section, so nothing entering the loop afterwards (a Retry, a hold) meets the address still
+// `resolving`; one that parked applies it in a section of its own once it returned. Either way a `resolve` whose holds were
+// all released meanwhile finishes and its result is handled as Pi's.
 // `authorize` and `resolve` may throw in Pi: they return the error. The route calls the host's own `*path`, `*hostLink` and
 // `*chordHost` directly, as Pi's classes do. A `Link` of `link` and its `Codec` and `PartLimits` are the package's own.
 //
-// Pi's `await` continuation (the section that applies the result) runs before the next operation of the workers component's
+// The continuation of a start that parked (a worker's start) runs before the next operation of the workers component's
 // queue starts: workers.ts `#enqueue` registers the bookkeeping reaction on a start's promise first and the route's `await`
 // after it, and the next operation (the Stop, and the Retry after it, queued behind a start that failed) is a reaction on the
 // promise that bookkeeping reaction settles, one microtask later, so it finds the result applied and `resolving` cleared. The
@@ -313,8 +316,11 @@ func (r *route) resolve(routed *routed, trigger telemetry.TelemetrySpan) {
 		} else {
 			resolved, err = resolvePlugin(r.options.Resolve, routed.address, ctx)
 		}
-		signal.Return()
-		loop.Run(func() {
+		// Pi's `await` continuation is a microtask: queued while the section that began the resolve is still running (Resolve
+		// returned inside it), it runs when that section ends, before the loop takes another, so whatever enters the loop after
+		// that section finds the result applied. A resolve that parked applies it in a section of its own, as the continuation
+		// of a promise that settled later. Queued before the Signal is returned, while the lent section's goroutine owns the loop.
+		loop.Queue(func() {
 			// What the app released on this result being applied runs after it was, in this section.
 			defer applied.Apply()
 			// A Goexit after the result was handled leaves nothing to do.
@@ -322,6 +328,7 @@ func (r *route) resolve(routed *routed, trigger telemetry.TelemetrySpan) {
 				r.resolved(routed, resolved, err, span)
 			}
 		})
+		signal.Return()
 	})
 }
 
