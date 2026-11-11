@@ -1473,6 +1473,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-bbccefd](#bf-bbccefd) | A Durable value that holds a lone UTF-16 surrogate is stored as Pi stores it | PiG's own defect | All platforms | Unreleased |
 | [BF-bc24321](#bf-bc24321) | fix(mem M3): arm the idle collection at run end and run it after 500 ms | PiG's own defect | All platforms | Unreleased |
 | [BF-bc4cd62](#bf-bc4cd62) | `toPrecision` rounds a value just below a power of ten (1e-11 to 16 digits, 9.999999999999998e9 to 16 digits)… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-bc5690c](#bf-bc5690c) | A durable `Submission.Wait` or task wait whose context was cancelled while earlier commits were still… | PiG's own defect | All platforms | Unreleased |
 | [BF-bc8d37f](#bf-bc8d37f) | `FileModelsStore` roots and index keys: new live-Pi oracle… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-bcc2046](#bf-bcc2046) | A nested list whose last item is empty but for spaces after its marker is followed by an empty row before the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-bd3e8ab](#bf-bd3e8ab) | On arm64 and other CPUs with a fused multiply-add, Kimi, Radius and xAI OAuth credentials store the `expires`… | PiG's own defect | All platforms | 0.5.0 |
@@ -22149,6 +22150,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `bc4cd62404` (2026-10-10)
 - **Tests:** `internal/jsstring/toprecision_oracle_test.go::TestToPrecisionAgainstNodeCorpus`, `internal/jsstring/toprecision_oracle_test.go::TestToPrecisionKeepsTheExponentOfAValueJustBelowAPowerOfTen`
 - **Release note:** `toPrecision` rounds a value just below a power of ten (1e-11 to 16 digits, 9.999999999999998e9 to 16 digits) to the digits Node prints (`9.999999999999999e-12`, `9999999999.999998`) instead of carrying it up to the power of ten.
+
+### BF-bc5690c
+
+**A durable `Submission.Wait` or task wait whose context was cancelled while earlier commits were still…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A durable `Submission.Wait` or task wait whose context was cancelled while earlier commits were still publishing returns the cancellation cause as the error of that call; a regression test with a slow `Storage.Publishing` (Pi `d9d535b6c9e4`, #11963, #11820) pins it.
+- **Root cause:** Pi marks the waiter promise handled so Node reports no unhandledRejection. Go has none: the rejection is the error of the same Wait call, so the port is the ported test (red under a mutant of Waiters.Add), the async-contracts row and the v1.5.2+ sync ledger row.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `bc5690c60e` (2026-11-11)
+- **Tests:** `durable/harness/wait_aborted_context_test.go::TestWaitCancelledBeforeItsResultIsDeliveredReturnsTheCauseOnThatWait`
+- **Release note:** A durable `Submission.Wait` or task wait whose context was cancelled while earlier commits were still publishing returns the cancellation cause as the error of that call; a regression test with a slow `Storage.Publishing` (Pi `d9d535b6c9e4`, #11963, #11820) pins it. Pi needed a fix so Node reported no unhandled promise rejection; Go has none, so no Go source changed.
 
 ### BF-bc8d37f
 
