@@ -22,8 +22,18 @@ func (m *Models) Refresh(ctx context.Context, options ...ModelsRefreshOptions) M
 	// I/O but its file reads, so its providers restore one after another on the caller and settle in provider order, as Pi's settle at one await
 	// depth.
 	inline := !allowNetwork && ProvidersRunOnCaller(ctx)
+	// pending counts the providers whose refresh has not settled, and one for this loop until it has started them all; done closes when it reaches zero.
 	var errorsMu sync.Mutex
-	var wg sync.WaitGroup
+	pending, done := 1, make(chan struct{})
+	release := func() {
+		errorsMu.Lock()
+		pending--
+		last := pending == 0
+		errorsMu.Unlock()
+		if last {
+			close(done)
+		}
+	}
 	for _, provider := range m.GetProviders() {
 		if provider.RefreshModels == nil || (opts.Providers != nil && !slices.Contains(opts.Providers, provider.ID)) {
 			continue
@@ -48,10 +58,12 @@ func (m *Models) Refresh(ctx context.Context, options ...ModelsRefreshOptions) M
 					delete(m.refreshControllers, provider.ID)
 				}
 				m.mu.Unlock()
-				wg.Done()
+				release()
 			})
 		}
-		wg.Add(1)
+		errorsMu.Lock()
+		pending++
+		errorsMu.Unlock()
 		if signal.Err() != nil {
 			settle(context.Cause(signal))
 			continue
@@ -82,18 +94,21 @@ func (m *Models) Refresh(ctx context.Context, options ...ModelsRefreshOptions) M
 			continue
 		}
 		stop := context.AfterFunc(signal, func() { settle(context.Cause(signal)) })
-		m.goOwned(func() {
+		if !m.goOwned(func() {
 			err := run()
 			stop()
 			if signal.Err() != nil {
 				err = context.Cause(signal)
 			}
 			settle(err)
-		})
+		}) {
+			// Drain began between this refresh's admission and its start; it has cancelled the signal, which settles the provider.
+			stop()
+			settle(errModelsDraining)
+		}
 	}
+	release()
 	if !inline {
-		done := make(chan struct{})
-		m.goOwned(func() { wg.Wait(); close(done) })
 		select {
 		case <-done:
 		case <-ctx.Done():
@@ -124,15 +139,16 @@ func (m *Models) publishProviderModels(providerID string, generation uint64, sig
 	done := make(chan struct{})
 	m.publicationChains[providerID] = done
 	m.mu.Unlock()
+	release := func() {
+		m.mu.Lock()
+		if m.publicationChains[providerID] == done {
+			delete(m.publicationChains, providerID)
+		}
+		close(done)
+		m.mu.Unlock()
+	}
 	publish := func() modelsOperationResult[bool] {
-		defer func() {
-			m.mu.Lock()
-			if m.publicationChains[providerID] == done {
-				delete(m.publicationChains, providerID)
-			}
-			close(done)
-			m.mu.Unlock()
-		}()
+		defer release()
 		if previous != nil {
 			<-previous
 		}
@@ -173,7 +189,14 @@ func (m *Models) publishProviderModels(providerID string, generation uint64, sig
 		return next.value, next.err
 	}
 	result := make(chan modelsOperationResult[bool], 1)
-	m.goOwned(func() { result <- publish() })
+	if !m.goOwned(func() { result <- publish() }) {
+		// Drain has begun, so the write is not started. Later publications queue behind this one, which never runs, so it settles its place in the chain.
+		release()
+		if signal.Err() != nil {
+			return false, context.Cause(signal)
+		}
+		return false, errModelsDraining
+	}
 	if signal.Err() != nil {
 		return false, context.Cause(signal)
 	}
@@ -199,7 +222,7 @@ func (m *Models) resolveRefreshCredential(ctx context.Context, provider *ModelsP
 		}
 		// A refresh that has started survives cancellation or a superseding model refresh, so a rotated refresh token is always persisted. A newer refresh then sees the fresh credential.
 		// upstream: packages/ai/src/models.ts:resolveRefreshCredential
-		return refreshStoredOAuthCredential(ctx, m.credentials, provider.ID, oauth, func(current Credential) bool { return float64(nowMillis()) >= current.ExpiresMillis() })
+		return refreshStoredOAuthCredential(ctx, m.credentials, provider.ID, oauth, func(current Credential) bool { return float64(nowMillis()) >= current.ExpiresMillis() }, m.goOwned)
 	}
 	apiKey := provider.Auth.APIKey
 	if apiKey == nil {
