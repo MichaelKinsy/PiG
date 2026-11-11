@@ -76,7 +76,7 @@ export CGO_ENABLED=0 GOTOOLCHAIN=local
 # commit, this target and these bytes.
 # nullglob: no record is an empty list ("found 0"), not one literal unmatched pattern.
 shopt -s nullglob
-records=("$work"/home/receipts/piglets/pig-standard/*/"$VERSION"/piglet-binary/"$GOOS-$GOARCH"/*.json)
+records=("$work"/home/receipts/piglets/pig-standard/*/"${VERSION}/piglet-binary/${GOOS}-${GOARCH}"/*.json)
 shopt -u nullglob
 if [ "${#records[@]}" -ne 1 ]; then
   echo "build-pig-standard: expected one Piglet build record for $GOOS/$GOARCH under $work/home/receipts, found ${#records[@]}" >&2

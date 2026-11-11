@@ -2,6 +2,7 @@ package subprocess
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -825,7 +826,8 @@ type ShellExitInfo struct {
 // errorInfoOf is the wire error of err: its message, and the shell's exit when err is the local shell backend's timeout after the shell had exited.
 func errorInfoOf(err error) *ErrorInfo {
 	info := &ErrorInfo{Message: err.Error()}
-	if timeout, ok := err.(*tools.ShellTimeoutError); ok && timeout.ShellExit != nil {
+	var timeout *tools.ShellTimeoutError
+	if errors.As(err, &timeout) && timeout.ShellExit != nil {
 		info.ShellExit = &ShellExitInfo{ExitCode: timeout.ShellExit.ExitCode, AfterSeconds: timeout.ShellExit.AfterSeconds}
 	}
 	return info

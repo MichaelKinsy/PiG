@@ -9,6 +9,7 @@ package fusepack
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net"
 	"path/filepath"
@@ -117,7 +118,8 @@ func HostHelpers() *sdk.HostHelpers {
 			}
 			exitCode, err := subprocess.LocalExec(ctx, args, managedToolsDir(), onData)
 			if err != nil {
-				if timeout, ok := err.(*tools.ShellTimeoutError); ok && timeout.ShellExit != nil {
+				var timeout *tools.ShellTimeoutError
+				if errors.As(err, &timeout) && timeout.ShellExit != nil {
 					// The SDK cannot name the host's error type: it reads the shell's exit through a method of the error it is given.
 					return nil, shellTimeoutAfterExit{timeout}
 				}

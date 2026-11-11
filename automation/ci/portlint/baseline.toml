@@ -2911,27 +2911,9 @@ snippet = "return json.Marshal(map[string]int{\"top\": m.Top, \"right\": m.Right
 
 [[hit]]
 check = "mapkeyorder"
-file = "coding/session_extension_hooks.go"
-func = "Session.toolCallHook"
-snippet = "beforeValues, _ := json.Marshal(input)"
-
-[[hit]]
-check = "mapkeyorder"
-file = "coding/session_extension_hooks.go"
-func = "Session.toolCallHook"
-snippet = "if afterValues, err := json.Marshal(input); err == nil && (!bytes.Equal(beforeValues, afterValues) || (wireInput != nil && string(*wireInput) != before)) {"
-
-[[hit]]
-check = "mapkeyorder"
 file = "durable/durabletest/storage_conformance.go"
 func = "CreateStorageConformance"
 snippet = "encoded := must(json.Marshal(*first.Next))"
-
-[[hit]]
-check = "mapkeyorder"
-file = "internal/codingagent/compaction/compaction.go"
-func = "customMessageToLlm"
-snippet = "raw, err := json.Marshal(map[string]any{\"role\": agent.RoleUser, \"content\": custom[\"content\"]})"
 
 [[hit]]
 check = "mapkeyorder"
@@ -6759,21 +6741,9 @@ snippet = "if raw, err := json.Marshal(entry); err != nil || json.Unmarshal(raw,
 
 [[hit]]
 check = "jsonclone"
-file = "coding/session_extension_hooks.go"
-func = "sameContextMessages"
-snippet = "if json.Unmarshal(left, &leftValue) != nil || json.Unmarshal(right, &rightValue) != nil || !reflect.DeepEqual(leftValue, rightValue) {"
-
-[[hit]]
-check = "jsonclone"
 file = "coding/session_extension_replacement.go"
 func = "Session.beforeExtensionReplacement"
 snippet = "if err := json.Unmarshal(encoded, &value); err != nil {"
-
-[[hit]]
-check = "jsonclone"
-file = "coding/session_run_state.go"
-func = "extensionUserMessageContent"
-snippet = "if err := json.Unmarshal(encoded, &wire); err != nil {"
 
 [[hit]]
 check = "jsonclone"
@@ -6828,12 +6798,6 @@ check = "jsonclone"
 file = "internal/codingagent/bug_report.go"
 func = "RedactBugReportJSON"
 snippet = "decoder := json.NewDecoder(bytes.NewReader(data))"
-
-[[hit]]
-check = "jsonclone"
-file = "internal/codingagent/compaction/compaction.go"
-func = "customMessageToLlm"
-snippet = "if json.Unmarshal(raw, &decoded) != nil || decoded.User == nil {"
 
 [[hit]]
 check = "jsonclone"
