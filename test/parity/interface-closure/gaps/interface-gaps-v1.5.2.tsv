@@ -53,7 +53,6 @@ pkg:chord/app#App::property:importData	chord	child-gap	chord/nextnode/app/app.go
 pkg:chord/app#App::property:importData::call:0	chord	signature-mismatch	chord/nextnode/app/app.go#App.ImportData
 pkg:chord/app#DataImportOptions	chord	no-go-symbol	
 pkg:chord/workers#WorkersBuilt	chord	type-mismatch	chord/nextnode/workers/workers_workers.go#WorkersBuilt
-pkg:chord/workers#WorkersOptions	chord	type-mismatch	chord/nextnode/workers/workers_workers.go#WorkersOptions
 pkg:coding-agent/.#GrepOperations	coding-agent	child-gap	internal/codingagent/tools/grep.go#GrepOperations
 pkg:coding-agent/.#GrepOperations::property:readFile	coding-agent	not-exercised	internal/codingagent/tools/grep.go#GrepOperations.ReadFile
 pkg:coding-agent/.#OAuthSelectorComponent	coding-agent	child-gap	tui/oauth_selector.go#OAuthSelectorComponent
