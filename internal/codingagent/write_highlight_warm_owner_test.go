@@ -216,14 +216,16 @@ func TestWriteWarmUpDoesNotStartOnADisposedCard(t *testing.T) {
 }
 
 // A warm-up that cannot resume, and one that fails, end the warm-ups of the call; the frame that completes it highlights the
-// file itself and draws what it drew before warm-ups existed. A failure of the worker does not end the process.
+// file itself and draws what it drew before warm-ups existed. A failure of the worker does not end the process: the next frame
+// of the card raises the panic, once, where an inline warm-up raised it.
 func TestWriteWarmUpFailureEndsTheWarmUps(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
 		setup func(*warmProbe)
+		raise any
 	}{
-		{"cannot resume", func(probe *warmProbe) { probe.resumable = false }},
-		{"panics", func(probe *warmProbe) { probe.panicWith = "highlight.js failed" }},
+		{"cannot resume", func(probe *warmProbe) { probe.resumable = false }, nil},
+		{"panics", func(probe *warmProbe) { probe.panicWith = "highlight.js failed" }, "highlight.js failed"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			probe := newWarmProbe(t)
@@ -233,8 +235,16 @@ func TestWriteWarmUpFailureEndsTheWarmUps(t *testing.T) {
 			stream := newWriteStream(t, context.Background())
 			stream.draw(content[:9000], false)
 			stream.state.tasks.Wait()
-			stream.draw(content[:30000], false)
+			var raised any
+			func() {
+				defer func() { raised = recover() }()
+				stream.draw(content[:30000], false)
+			}()
+			if raised != tc.raise {
+				t.Fatalf("the next frame raised %v, want %v", raised, tc.raise)
+			}
 			stream.state.tasks.Wait()
+			stream.draw(content[:31000], false)
 			if !slices.Equal(probe.lengths, []int{9000}) {
 				t.Fatalf("warmed texts of %v bytes, want one attempt and no more", probe.lengths)
 			}
