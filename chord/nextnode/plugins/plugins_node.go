@@ -264,7 +264,7 @@ func nodeTreeHash(fsys fs.FS) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		fmt.Fprintf(sum, "\x00%s\x00%d\x00", entry.Name(), len(content))
+		sum.Write(fmt.Appendf(nil, "\x00%s\x00%d\x00", entry.Name(), len(content)))
 		sum.Write(content)
 	}
 	return hex.EncodeToString(sum.Sum(nil)), nil

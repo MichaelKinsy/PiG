@@ -355,7 +355,7 @@ func (s *TuiScope) Messages(messages *surfaces.Messages) *BoundMessages {
 // a delivery waits for every other delivery, one in Dispose included. It runs with delivery held.
 func (s *TuiScope) othersDelivering(id uint64) bool {
 	for other := range s.active {
-		if other != id && !(s.active[id] > 0 && s.disposing[other]) {
+		if other != id && (s.active[id] <= 0 || !s.disposing[other]) {
 			return true
 		}
 	}
