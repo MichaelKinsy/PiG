@@ -311951,9 +311951,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(content string, lang string) (resumable bool)"
+        "type": "func(content string, lang string) (resumable bool, failure any)"
       },
-      "shapeHash": "sha256:aaf50284064729a1c7bc799e571eac22ae3dbbd535ab507c619e7d1294452a1a"
+      "shapeHash": "sha256:af7897980e59824b558e76ece7ee3e41d9c684c349f14de179c2f6933bb6d23b"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#warmerBranch",
