@@ -1354,7 +1354,10 @@ func (m *InteractiveMode) rebuildToolSystemPrompt() {
 	if m.structuredSystemPrompt() {
 		text := prompts.BuildDefaultPrompt(prompts.FromExtensionOptions(*opts))
 		m.turnSystemPromptMu.Lock()
-		m.opts.SystemPrompt = text
+		// Init rebuilds the prompt the caller built from the same options: an equal text keeps the caller's string, so the live heap holds one copy of it.
+		if text != m.opts.SystemPrompt {
+			m.opts.SystemPrompt = text
+		}
 		m.turnSystemPromptMu.Unlock()
 	}
 }

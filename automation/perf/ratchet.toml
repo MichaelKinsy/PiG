@@ -218,10 +218,10 @@
 "binary.headless.stripped.darwin_arm64.bytes" = 27648000
 "binary.headless.stripped.windows_amd64.bytes" = 30339072
 
-# process: interactive start to the first ready frame, then Ctrl+D (test/integration TestInteractiveFirstFrameProcessGate, integration tag, tmux). The idle time between the frame and Ctrl+D adds timer work, so the margin is wider.
+# process: interactive start to the first ready frame, then Ctrl+D (test/integration TestInteractiveFirstFrameProcessGate, integration tag, tmux). The idle time between the frame and Ctrl+D adds timer work, so the margin is wider. heap_live_bytes: the test starts pig in test/integration, so the repository's AGENTS.md (59,822 B) is in the system prompt and the figure moves with that file. Measured on the Linux lab host (xd6702, tern-ci image, linux/amd64, GOMAXPROCS=1) with the prompt held once by the CLI, the Session and the interactive mode: 8 runs 2,024,080-2,025,328 B (it was 2,153,264-2,157,104 B in 24 runs of three commits with three copies); the ceiling is the largest plus 2.7%, the margin the former 2,150,000 had over its measurement of 2,093,008 B, rounded to the nearest 10 KB.
 "process.interactive_first_frame.allocs" = 22700
 "process.interactive_first_frame.bytes" = 5650000
-"process.interactive_first_frame.heap_live_bytes" = 2150000
+"process.interactive_first_frame.heap_live_bytes" = 2080000
 "process.interactive_first_frame.children_at_exit" = 0
 
 # compaction: preparing a compaction, per branch entry (TestCompactionPreparePerEntryAllocationGate).

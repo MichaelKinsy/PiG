@@ -215,6 +215,12 @@ func (s *Session) initSystemPrompt(opts SessionOptions) {
 	}
 	s.baseSystemPrompt.Store(new(ai.GetCurrentSystemPrompt([]ai.Message{ai.SystemMessage{Sections: s.baseSystemSections}})))
 	s.rebuildSystemPrompt(s.ActiveToolNames())
+	// The CLI renders the same prompt for its own use before it starts the Session; sharing its string, when the text is equal, keeps one copy of a prompt that holds the project's context files (about 65 KB with this repository's AGENTS.md) in the first frame's live heap, not two.
+	if known := opts.SystemPrompt; known != "" {
+		if current := s.baseSystemPrompt.Load(); current != nil && *current == known {
+			s.baseSystemPrompt.Store(&known)
+		}
+	}
 }
 
 // contextFromProjection is the canonical Session projection as the agent's loop context, keeping the current instruction baseline.
