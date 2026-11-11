@@ -407,6 +407,7 @@ plugins/sessions/BranchSheet.tsx
 plugins/sessions/SessionSheet.tsx
 plugins/sessions/package.json
 plugins/sessions/web.tsx
+plugins/sessions/contract.web.tsx
 plugins/sharing/package.json
 plugins/status/package.json
 plugins/subagents/activity.tsx
@@ -463,7 +464,6 @@ src/web/ArtifactPicker.tsx
 src/web/Chat.tsx
 src/web/Code.tsx
 src/web/CostPanel.tsx
-src/web/Drawer.tsx
 src/web/ElanorMarkdown.tsx
 src/web/Markdown.tsx
 src/web/ModelPicker.tsx
@@ -513,12 +513,17 @@ src/web/theme.ts
 src/web/transcript.ts
 src/web/use-chat-scroll.ts
 src/web/virtual-list.ts
+src/web/ThemeButton.tsx
+src/web/navigation-components.ts
+src/web/ErrorToast.tsx
 tsconfig.json
 plugins/terminals/protocol.ts
 plugins/terminals/wasm.d.ts
 test/p2/outbox.test.ts
 test/p2/path-label.test.ts
 test/p2/session-start.test.ts
+test/p2/sidebar-model.test.ts
+test/p2/sidebar-custom.test.ts
 plugins/conversations/contract.ts
 plugins/codemode/contract.ts
 plugins/codemode/card.ts
@@ -534,3 +539,12 @@ plugins/locations/contract.ts
 plugins/proxy-marker/contract.ts
 plugins/proxy-marker/package.json
 plugins/radius/contract.ts
+plugins/sessions/sidebar/ListPage.tsx
+plugins/sessions/sidebar/RollupSheet.tsx
+plugins/sessions/sidebar/Row.tsx
+plugins/sessions/sidebar/Sidebar.tsx
+plugins/sessions/sidebar/model.ts
+plugins/sessions/sidebar/style.css
+plugins/sessions/sidebar/custom.ts
+plugins/rollups/contract.ts
+plugins/rollups/package.json

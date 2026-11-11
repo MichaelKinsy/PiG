@@ -5,6 +5,7 @@
 package e2e_test
 
 import (
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -262,6 +263,52 @@ func TestSearchFakeProvider(t *testing.T) {
 		}
 	})
 
+	t.Run("limits a search to the given sessions before ranking and the hit limit (a sidebar list's own sessions)", func(t *testing.T) {
+		// 45 sessions whose message ranks above the listed one's: an unscoped search's 41 hits leave it out.
+		crowd := make([]string, 45)
+		for index := range crowd {
+			crowd[index] = f.create("Crowd " + strconv.Itoa(index))
+		}
+		listed := f.create("Listed")
+		for _, id := range append(append([]string{}, crowd...), listed) {
+			text := "pangolin pangolin pangolin"
+			if id == listed {
+				text = "pangolin facts, among other things"
+			}
+			f.onIndex("index", delta.JsonObjectOf("session", id, "conversation", float64(1), "messages", []any{
+				delta.JsonObjectOf("conversationId", float64(1), "entryId", float64(1), "role", "user", "timestamp", float64(time.Now().UnixMilli()), "text", text),
+			}, "through", float64(1)))
+		}
+		everywhere := listOf(f.query("pangolin").Value("messages"))
+		if len(everywhere) != 41 {
+			t.Fatalf("an unscoped search has %d hits, want 41", len(everywhere))
+		}
+		for _, each := range everywhere {
+			if object(each).Value("session") == listed {
+				t.Fatal("the unscoped search's 41 hits include the listed session")
+			}
+		}
+		within := func(query string) *delta.JsonObject {
+			results, err := f.search.Call("search", delta.JsonObjectOf("query", query, "sessions", []any{listed}), p2test.Background)
+			if err != nil {
+				t.Fatal(err)
+			}
+			return object(results)
+		}
+		if hits := listOf(within("pangolin").Value("messages")); len(hits) != 1 || object(hits[0]).Value("session") != listed {
+			t.Fatalf("scoped hits = %v, want the listed session's alone", hits)
+		}
+		// Titles too: only the listed sessions'.
+		if titles := listOf(within("crowd").Value("sessions")); len(titles) != 0 {
+			t.Fatalf("scoped titles = %v, want none", titles)
+		}
+		for _, id := range append(append([]string{}, crowd...), listed) {
+			if _, err := f.sessions.Call("archive", delta.JsonObjectOf("id", id), p2test.Background); err != nil {
+				t.Fatal(err)
+			}
+		}
+	})
+
 	t.Run("indexes subagent messages with independent cursors", func(t *testing.T) {
 		chat := f.chat(other, 1)
 		f.send(chat, "subagent", "child")
@@ -362,6 +409,45 @@ func TestSearchFakeProvider(t *testing.T) {
 		}
 		p2test.ExpectChord(t, p2runtime.WhenLive(p2test.Background, feed), data.CodeForbidden)
 	})
+}
+
+// Pi main b30d54b8a: SearchIndex.mentions answers the sessions with a message matching a query at or after `since`, each
+// with the time of its latest one (rollups' `mentions`); a query with no searchable word answers none.
+func TestSearchIndexMentionsAnswersSessionsWithTheTimeOfTheirLatestMatch(t *testing.T) {
+	p2test.NoLeakedGoroutines(t)
+	f := newSearchFixture(t, hosts.ServerOptions{})
+	first, second := f.create("First"), f.create("Second")
+	for at, id := range []string{first, second} {
+		f.onIndex("index", delta.JsonObjectOf("session", id, "conversation", float64(1), "messages", []any{
+			delta.JsonObjectOf("conversationId", float64(1), "entryId", float64(1), "role", "user", "timestamp", float64(1000*(at+1)), "text", "axolotl pond"),
+			delta.JsonObjectOf("conversationId", float64(1), "entryId", float64(2), "role", "user", "timestamp", float64(1000*(at+1)+500), "text", "axolotl again"),
+		}, "through", float64(2)))
+	}
+	mentions := func(args *delta.JsonObject) *delta.JsonObject {
+		var found delta.JsonValue
+		if _, err := f.fixture.Server.Host.Root(func(ctx host.Ctx) (any, error) {
+			index, err := ctx.Get(searchcontract.SearchIndex, delta.NewJsonObject(0), host.GetOptions{})
+			if err != nil {
+				return nil, err
+			}
+			found, err = index.Call("mentions", args, ctx)
+			return nil, err
+		}, p2test.Background, host.RootOptions{}); err != nil {
+			t.Fatal(err)
+		}
+		return object(found)
+	}
+	all := mentions(delta.JsonObjectOf("query", "axolotl"))
+	if all.Len() != 2 || all.Value(first) != float64(1500) || all.Value(second) != float64(2500) {
+		t.Fatalf("mentions = %v", all)
+	}
+	since := mentions(delta.JsonObjectOf("query", "axolotl", "since", float64(2000)))
+	if since.Len() != 1 || since.Value(second) != float64(2500) {
+		t.Fatalf("mentions since 2000 = %v", since)
+	}
+	if none := mentions(delta.JsonObjectOf("query", "!!!")); none.Len() != 0 {
+		t.Fatalf("a query without a word mentions %v", none)
+	}
 }
 
 func TestSearchAcrossRestartsServesTheIndexWithoutStartingWorkers(t *testing.T) {

@@ -290,7 +290,7 @@ var Server = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error
 		return err
 	}
 	for _, serve := range []func(host.FacetHost) error{
-		serveLocks, serveCatalog, serveArchivedStarts, serveOperations, serveMoves, serveSessions,
+		serveLocks, serveSidebarSettings, serveCatalog, serveArchivedStarts, serveOperations, serveMoves, serveSessions,
 	} {
 		if err := serve(facet); err != nil {
 			return err

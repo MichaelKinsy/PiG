@@ -268,6 +268,29 @@ func (d *DB) Messages(ctx context.Context, query string, sessions []string) ([]M
 	return hits, rows.Err()
 }
 
+// Mentions are the sessions with a message matching the MATCH expression match (see FTSQuery) at or after since, each with
+// the time of its latest one: one query over every session, never their transcripts.
+func (d *DB) Mentions(ctx context.Context, match string, since float64) (map[string]float64, []string, error) {
+	rows, err := d.db.QueryContext(ctx, `SELECT m.session, max(m.timestamp) AS at FROM message_search JOIN messages m ON m.rowid=message_search.rowid
+		WHERE message_search MATCH ? AND m.timestamp >= ? GROUP BY m.session`, match, since)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer rows.Close()
+	latest := map[string]float64{}
+	var order []string
+	for rows.Next() {
+		var session string
+		var at float64
+		if err := rows.Scan(&session, &at); err != nil {
+			return nil, nil, err
+		}
+		latest[session] = at
+		order = append(order, session)
+	}
+	return latest, order, rows.Err()
+}
+
 // ConversationMessages are the matches of the MATCH expression match (see FTSQuery) in one conversation, below entry before
 // (nil: all): session, conversation and the bound are applied before ranking and the limit, so other sessions' or later
 // entries never take a place. At most limit, best first; more when there were further matches.

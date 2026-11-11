@@ -253,3 +253,28 @@ func TestFollowOfAWatchThatEndedBeforeItsStartHasNothingToFollow(t *testing.T) {
 		t.Fatalf("seen = %v, want the source's value first", seen)
 	}
 }
+
+// Pi main 8b02b459: keptIn returns a reference still bound in a variant while it reconnects; liveIn drops it.
+func TestKeepsOutlastsADroppedConnection(t *testing.T) {
+	broken := &host.RefState{Kind: host.RefStateFailed, Cause: data.FailureCause{Kind: data.FailureBroken}}
+	transient := &host.RefState{Kind: host.RefStateFailed, Cause: data.FailureCause{Kind: data.FailureTransient}}
+	cases := []struct {
+		name    string
+		state   *host.RefState
+		variant string
+		want    bool
+	}{
+		{"loading in the variant", &host.RefState{Kind: host.RefStateLoading}, "owner", true},
+		{"live in the variant", &host.RefState{Kind: host.RefStateLive}, "owner", true},
+		{"failed transiently keeps its variant", transient, "owner", true},
+		{"failed broken", broken, "owner", false},
+		{"ended", &host.RefState{Kind: host.RefStateEnded}, "owner", false},
+		{"bound in another variant", &host.RefState{Kind: host.RefStateLive}, "guest", false},
+		{"never bound", &host.RefState{Kind: host.RefStateLoading}, "", false},
+	}
+	for _, c := range cases {
+		if got := keeps(c.state, c.variant, []string{"owner"}); got != c.want {
+			t.Errorf("%s: keeps = %v, want %v", c.name, got, c.want)
+		}
+	}
+}
