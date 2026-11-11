@@ -11175,6 +11175,34 @@
       ]
     },
     {
+      "id": "BF-3dff2c3",
+      "title": "A `write` tool call that streams a large file keeps the highlight of the whole file warm in steps of 4 KB…",
+      "symptom": "A `write` tool call that streams a large file keeps the highlight of the whole file warm in steps of 4 KB that each cost what they add, so the 99th percentile of the gap between frames while a 200 KB or 400 KB file streams in is 17 ms where it was 18-20 ms, and the CPU is not above.",
+      "rootCause": "A warm-up of the whole file of a streaming write call converted the whole text to UTF-16 units again, twice, and found the byte offset of its resume point from the start of the text, so a step cost more as the file grew and the steps were a sixteenth of the file, up to 32 KB, to keep the passes few. A step of 32 KB held the highlighter for 20-30 ms, and the frames that fell in it stretched the 99th percentile of the gap between frames.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A `write` tool call that streams a large file keeps the highlight of the whole file warm in steps of 4 KB that each cost what they add, so the 99th percentile of the gap between frames while a 200 KB or 400 KB file streams in is 17 ms where it was 18-20 ms, and the CPU is not above. The highlighter keeps the UTF-16 units of the text it has seen from one step to the next and converts only the text a step adds; the lines the card draws are those of a run over the whole file, as before.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3dff2c3bf1",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/write_highlight_warm_owner_test.go::TestWriteWarmUpsFollowTheContentInSmallSteps",
+        "tui/highlight_warm_units_test.go::TestWarmHighlightAndHighlightCodeOfOneTextDoNotShareUnits",
+        "tui/highlight_warm_units_test.go::TestWarmHighlightKeepsTheStatesOfTwoLanguagesApart",
+        "tui/highlight_warm_units_test.go::TestWarmHighlightStepsAcrossCharacterBoundariesDrawTheLinesOfAWholeRun",
+        "tui/internal/hljs/text_test.go::TestTextGrowToUnrelatedCodeConvertsItWhole",
+        "tui/internal/hljs/text_test.go::TestTextGrownThroughCutsHasTheUnitsOfAFreshConversion",
+        "tui/internal/hljs/text_test.go::TestTextSettledPartStopsBeforeAnIncompleteSequence"
+      ]
+    },
+    {
       "id": "BF-3e755ef",
       "title": "Fix in shipped code",
       "symptom": "Fix in shipped code",

@@ -312759,37 +312759,15 @@
       "shapeHash": "sha256:5a8c45560c23745d10ce7d0686f7fb3d382141366e1171cad9f0cce8fa2a1b54"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#writeWarmMaxStep",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "writeWarmMaxStep",
-      "kind": "constant",
-      "exported": false,
-      "shape": {
-        "type": "untyped int"
-      },
-      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#writeWarmMinStep",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "writeWarmMinStep",
-      "kind": "constant",
-      "exported": false,
-      "shape": {
-        "type": "untyped int"
-      },
-      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#writeWarmStep",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "writeWarmStep",
-      "kind": "function",
+      "kind": "constant",
       "exported": false,
       "shape": {
-        "type": "func(n int) int"
+        "type": "untyped int"
       },
-      "shapeHash": "sha256:a3cfb234b466ac29155f86307beddf45703bf8c262d98a97180279b3f81e8bb5"
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#writtenRecord",
@@ -375146,9 +375124,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(registry *github.com/MichaelKinsy/PiG/tui/internal/hljs.Registry, code string, lang string, t *Theme) ([]string, bool)"
+        "type": "func(registry *github.com/MichaelKinsy/PiG/tui/internal/hljs.Registry, code string, lang string, t *Theme, keepUnits bool) ([]string, bool)"
       },
-      "shapeHash": "sha256:5bd8daf9d0464bf29227950bec43e88c906ebbd463c7914e99642bbf40368f8b"
+      "shapeHash": "sha256:00a538091516ae1a41992828265e7f5e8251e559976868aeb4efcbb3268f8a51"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#highlightResumeHeld",
@@ -375267,9 +375245,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(code string, lang string, t *Theme) (found hlResume, generation int)"
+        "type": "func(code string, lang string, t *Theme, take bool) (found hlResume, generation int)"
       },
-      "shapeHash": "sha256:1e1c04594071db34f39f31de51ea369994929c3535f54e5131c8124a5ea9c3d4"
+      "shapeHash": "sha256:19fc92f2f4ddd269c20aa7061c9a8f870cf0b9929c81c6e6e751ef18d5b0a492"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#hlGeneration",
@@ -393125,6 +393103,17 @@
       "shapeHash": "sha256:d04761381ed874854b85aea73ead4bc83168c48633fbc11034760abae996e261"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#NewText",
+      "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
+      "name": "NewText",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(code string) *Text"
+      },
+      "shapeHash": "sha256:f1c04d06c9a88cba945513d6d028246e08fdd37cbd1a08df9fe4cdb49f76bd4d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#Registry",
       "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
       "name": "Registry",
@@ -393164,9 +393153,9 @@
       "kind": "function",
       "exported": true,
       "shape": {
-        "type": "func(code string, language string, ignoreIllegals bool, from ResumePoint) (html string, points []ResumePoint, err error)"
+        "type": "func(text *Text, language string, ignoreIllegals bool, from ResumePoint) (html string, points []ResumePoint, err error)"
       },
-      "shapeHash": "sha256:f7d4127931dc295ed3d7f85a515050bc117208ff75ce29a4cc2477142e00249c"
+      "shapeHash": "sha256:ab7f27011dcbc15ca212d3616ca15f6da2bf39600d73fea4570ccb84564354ef"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#Registry.Languages",
@@ -393400,6 +393389,39 @@
       "shapeHash": "sha256:c63d70b7bb33718f5893c062b6ba5c94e8743d3f189fab87c21c52609f5db540"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#Text",
+      "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
+      "name": "Text",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "Text"
+      },
+      "shapeHash": "sha256:e229e4abef045d61b226cb8b6cb0456aeb81c301354f82c33c526d400169542b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#Text.Code",
+      "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
+      "name": "Text.Code",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#Text.Grow",
+      "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
+      "name": "Text.Grow",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(code string) *Text"
+      },
+      "shapeHash": "sha256:f1c04d06c9a88cba945513d6d028246e08fdd37cbd1a08df9fe4cdb49f76bd4d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#allGrammars",
       "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
       "name": "allGrammars",
@@ -393486,6 +393508,17 @@
         "type": "func(ranges []classRange) []classRange"
       },
       "shapeHash": "sha256:c6120379c9b2fa3417b41b7154b962ba93eab58dae23bb11d891306fa0be58e6"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#appendUnits",
+      "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
+      "name": "appendUnits",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(units []rune, text string) []rune"
+      },
+      "shapeHash": "sha256:a4865e68dc08afce51632c5ea7ffbd348606f6870ca1f36de4ca29cffb0b3113"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#asciiNonWordBoundary",
@@ -396313,6 +396346,17 @@
         "type": "func(keyword string, providedScore string) float64"
       },
       "shapeHash": "sha256:2a7d486d1bd0dbff53f110c4ec235422ddb150c04172c60e53eca7e8c791cd76"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#settledLen",
+      "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
+      "name": "settledLen",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(code string) int"
+      },
+      "shapeHash": "sha256:a96c313f510d71b173fd7f00e0b1d91a5450c5e1d354e8a28ae8735b54a477de"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#skipIfhasPrecedingDot",
