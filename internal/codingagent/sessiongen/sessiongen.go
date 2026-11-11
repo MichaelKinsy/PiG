@@ -57,7 +57,7 @@ const words = "alpha beta gamma delta epsilon zeta eta theta iota kappa lambda m
 var wordList = splitWords(words)
 
 // writerBuffer is the size of the generator's output buffer.
-const writerBuffer = 64 << 10 // pig divergence (D112): a test-data generator's buffer size, not an upstream value.
+const writerBuffer = 64 << 10 // pig additive (D112): a test-data generator's buffer size, not an upstream value.
 
 func splitWords(s string) []string {
 	var out []string
