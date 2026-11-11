@@ -6,6 +6,7 @@
 //
 //	preflight run      fetch each PR's data once, decide the cheap checks, run the scans, record status and comment
 //	preflight install  put the pinned scanners of config.yaml into a bin directory
+//	preflight content  apply forbidden.yaml and mandatory.yaml to a PR's changed files (a scan config.yaml runs)
 //	preflight checks   list the checks of config.yaml
 package main
 
@@ -43,6 +44,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return runCommand(ctx, cfg, args[1:], stdout, stderr)
 	case "install":
 		return installCommand(ctx, cfg, args[1:], stdout, stderr)
+	case "content":
+		return runContent(args[1:], stdout, stderr)
 	case "checks":
 		for _, c := range cfg.Checks {
 			_, _ = fmt.Fprintf(stdout, "%-20s %s\n", c.Name, c.Stage)

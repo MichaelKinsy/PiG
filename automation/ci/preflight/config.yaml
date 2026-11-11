@@ -18,8 +18,9 @@
 #     checkout  more paths the scan reads at the head besides the changed files ("/*" is the whole tree)
 #     overlay   files copied from main over the head before the run (removed from the head when main has none), so
 #               main's code and configuration run, never the PR's
-#     run       the command and its arguments; {main} is main's tree, {bin} the directory of main's built tools,
-#               {head}, {input}, {out} (a report file) and {files} (each selected file, one argument each)
+#     run       the command and its arguments; {main} is main's tree, {bin} the directory of the scanners, {self}
+#               this program, {data} the PR's data as JSON, {head}, {input}, {out} (a report file) and {files} (each
+#               selected file, one argument each)
 #     dir       the working directory (default the run's work directory)
 #     env       extra environment variables
 #     exit      the exit codes that mean clean and the ones that mean findings; any other code is an error
@@ -35,7 +36,7 @@
 tools:
   - name: reuse
     version: 6.2.0
-    pip: automation/ci/security-tools.txt
+    pip: automation/ci/preflight/reuse-requirements.txt
   - name: gitleaks
     version: 8.30.1
     sha256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
@@ -166,16 +167,6 @@ checks:
       exit: {clean: [0], findings: [1]}
       report: {in: stdout, format: lines, pattern: '^(?P<file>[^:]+): (?P<message>.+)$'}
 
-  - name: fixtures
-    when: {always: true}
-    stage: scan
-    scan:
-      input: tree
-      run: ['{bin}/fixtureguard', -root, '{input}']
-      exit: {clean: [0], findings: [1]}
-      # Its allowlist names files outside the scanned subset as stale and exits 1 without a finding.
-      report: {in: stdout, format: lines, pattern: '^(?P<file>[^ ]+):(?P<line>\d+): (?P<message>FG\d{3}: .*)$', unread-findings: pass}
-
   - name: workflows
     when: {paths: ['.github/**']}
     stage: scan
@@ -201,24 +192,12 @@ checks:
       report: {in: stdout, format: lines, pattern: '^::\w+ file=(?P<file>[^,]+),line=(?P<line>\d+)[^:]*::(?P<message>.*)$'}
       added-lines-only: true
 
-  - name: pins
-    when: {paths: ['.go-version', '.node-version', '.upstream/pin', 'go.mod', 'go.work', 'README.md', '.devcontainer/devcontainer.json', 'automation/ci/npm-toolchain/package.json', 'automation/ci/*.version', 'automation/dev/setup.sh', 'automation/images/**', 'coding/cli/setup_command.go', 'coding/extension/host/subprocess/builder_node.go', 'docs/site/docs/*.md', 'extensions/sdk-ts/package.json', 'internal/coding/pigversion/pigversion.go', 'internal/pigdocs/content/*.md', 'test/parity/behavior-contracts.toml', 'test/parity/known-gaps.toml', '**/Dockerfile*', '**/Makefile', '**/toolchains.lock', '**/*.sh', '**/*.mk', '**/*.yml', '**/*.yaml', '**/*.toml', '**/*.env']}
+  - name: content
+    when: {always: true}
     stage: scan
     scan:
       input: changed
-      checkout: [.go-version, .node-version, automation/ci/*.version, .upstream/, go.mod, go.work, README.md, .devcontainer/, .github/workflows/, automation/ci/npm-toolchain/package.json, automation/dev/setup.sh, automation/images/, coding/cli/setup_command.go, coding/extension/host/subprocess/builder_node.go, docs/site/docs/, extensions/sdk-ts/package.json, internal/coding/pigversion/pigversion.go, internal/pigdocs/content/, test/parity/behavior-contracts.toml, test/parity/known-gaps.toml]
-      overlay: [automation/ci/check-compliance.py, automation/pin/pinlib.py]
-      run: [python3, '{head}/automation/ci/check-compliance.py', --skip, files, --skip, citation, --skip, actions, --skip, permissions, --skip, reuse, --skip, govulncheck]
+      checkout: [variables/versions.yaml, test/testdata-provenance.toml]
+      run: ['{self}', content, --data, '{data}', --head, '{head}', --out, '{out}']
       exit: {clean: [0], findings: [1]}
-      report: {in: stdout, format: lines, pattern: '^\s+- (?P<message>.+)$'}
-
-  - name: provenance
-    when: {paths: ['test/testdata-provenance.toml', '**/testdata/**', '**/*.golden', '**/*golden*.json', '**/__snapshots__/**']}
-    stage: scan
-    scan:
-      input: changed
-      checkout: ['/*']
-      run: ['{bin}/testprune', lint, -provenance]
-      dir: '{head}'
-      exit: {clean: [0], findings: [1]}
-      report: {in: stdout, format: lines, pattern: '^(?P<file>[^\s:]+): (?P<message>.+)$', ignore: '^(?:note|testprune):'}
+      report: {in: out, format: json, file: file, line: line, message: message}

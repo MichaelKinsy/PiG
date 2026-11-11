@@ -319,36 +319,41 @@ func globRegexp(glob string) (*regexp.Regexp, error) {
 	return regexp.Compile(b.String())
 }
 
-// versionFiles are the files outside automation/ci/preflight whose change on main makes every stored verdict stale: the
-// scanners' configurations and the PR template the template check reads.
-var versionFiles = []string{".gitleaks.toml", ".github/pull_request_template.md", ".github/actionlint.yaml", "REUSE.toml"}
+// versionPaths are the files and directories outside automation/ci/preflight whose change on main makes every stored
+// verdict stale: the scanners' configurations, the PR template the template check reads, and main's licenses the
+// licenses check accepts.
+var versionPaths = []string{".gitleaks.toml", ".github/pull_request_template.md", ".github/actionlint.yaml", "REUSE.toml", "LICENSES"}
 
 // preflightVersion is the SHA-256 over the pre-flight's own files in main's tree at root: everything under
-// automation/ci/preflight except acknowledged.toml, which is data, and versionFiles. A stored state with another
-// version is not reused.
+// automation/ci/preflight except acknowledged.toml, which is data, and versionPaths. A stored state with another version
+// is not reused.
 func preflightVersion(root string) (string, error) {
 	var names []string
-	dir := filepath.Join(root, "automation", "ci", "preflight")
-	err := filepath.WalkDir(dir, func(p string, e fs.DirEntry, err error) error {
-		if err != nil || e.IsDir() || e.Name() == filepath.Base(acknowledgedPath) {
-			return err
+	collect := func(dir string, required bool) error {
+		err := filepath.WalkDir(dir, func(p string, e fs.DirEntry, err error) error {
+			if err != nil || e.IsDir() || e.Name() == filepath.Base(acknowledgedPath) {
+				return err
+			}
+			names = append(names, p)
+			return nil
+		})
+		if !required && errors.Is(err, fs.ErrNotExist) {
+			return nil
 		}
-		names = append(names, p)
-		return nil
-	})
-	if err != nil {
+		return err
+	}
+	if err := collect(filepath.Join(root, "automation", "ci", "preflight"), true); err != nil {
 		return "", fmt.Errorf("pre-flight version: %w", err)
 	}
-	for _, f := range versionFiles {
-		names = append(names, filepath.Join(root, filepath.FromSlash(f)))
+	for _, p := range versionPaths {
+		if err := collect(filepath.Join(root, filepath.FromSlash(p)), false); err != nil {
+			return "", fmt.Errorf("pre-flight version: %w", err)
+		}
 	}
 	slices.Sort(names)
 	h := sha256.New()
 	for _, n := range names {
 		raw, err := os.ReadFile(n)
-		if errors.Is(err, fs.ErrNotExist) {
-			continue
-		}
 		if err != nil {
 			return "", fmt.Errorf("pre-flight version: %w", err)
 		}

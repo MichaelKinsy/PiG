@@ -88,6 +88,8 @@ type workspace struct {
 	bin   string // main's built tools and the installed scanners
 	// remote is the git host the PR's head is fetched from: https://github.com, or another host's URL.
 	remote string
+	// data is the run's data for the PR as JSON, for a scan that reads it ({data}); self is this program ({self}).
+	data, self string
 }
 
 // prepareWorkspace writes the inputs the given scans read: the added lines, a sparse checkout of the PR's head with
@@ -261,7 +263,7 @@ func runScan(ctx context.Context, c check, d *data, ws workspace, log io.Writer)
 	out := filepath.Join(ws.dir, c.Name+".report")
 	input := map[string]string{inputAdded: ws.added, inputChanged: ws.head, inputTree: ws.tree}[s.Input]
 	expand := func(arg string) string {
-		return strings.NewReplacer("{main}", ws.main, "{bin}", ws.bin, "{head}", ws.head, "{input}", input, "{out}", out).Replace(arg)
+		return strings.NewReplacer("{main}", ws.main, "{bin}", ws.bin, "{head}", ws.head, "{input}", input, "{out}", out, "{data}", ws.data, "{self}", ws.self).Replace(arg)
 	}
 	var args []string
 	for _, a := range s.Run {
@@ -546,6 +548,13 @@ func runScans(ctx context.Context, cfg config, d *data, ev *evaluation, ws works
 	}
 	if err := prepareWorkspace(ctx, d, scans, ws, log); err != nil {
 		return err
+	}
+	ws.data = filepath.Join(ws.dir, "data.json")
+	if err := writeJSON(ws.data, d); err != nil {
+		return err
+	}
+	if self, err := os.Executable(); err == nil {
+		ws.self = self
 	}
 	results := make([]outcome, len(scans))
 	var wg sync.WaitGroup

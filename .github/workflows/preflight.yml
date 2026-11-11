@@ -45,15 +45,12 @@ jobs:
         with:
           go-version-file: .go-version
           cache: false
-      - name: Build the pre-flight and main's tools, install the scanners
+      - name: Build the pre-flight and install its scanners
         shell: bash
         run: |
           set -euo pipefail
-          bin="$RUNNER_TEMP/preflight/bin"
           go build -o "$RUNNER_TEMP/preflight/preflight" ./automation/ci/preflight
-          go build -o "$bin/fixtureguard" ./automation/ci/fixtureguard
-          go build -o "$bin/testprune" ./test/parity/cmd/testprune
-          "$RUNNER_TEMP/preflight/preflight" install --bin "$bin"
+          "$RUNNER_TEMP/preflight/preflight" install --bin "$RUNNER_TEMP/preflight/bin"
       - name: Restore the PR states
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:

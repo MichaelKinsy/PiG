@@ -96,8 +96,13 @@ func TestPreflightVersionFollowsTheConfigAndNestedFiles(t *testing.T) {
 	v2, _ := preflightVersion(root)
 	write("automation/ci/preflight/nested/rule.go", "s")
 	v3, _ := preflightVersion(root)
-	if v1 == v2 || v2 == v3 {
-		t.Fatalf("versions %s %s %s: a changed config or nested file must change the version", v1, v2, v3)
+	if err := os.MkdirAll(filepath.Join(root, "LICENSES"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	write("LICENSES/MIT.txt", "mit")
+	v4, _ := preflightVersion(root)
+	if v1 == v2 || v2 == v3 || v3 == v4 {
+		t.Fatalf("versions %s %s %s %s: a changed config, nested file or main's licenses must change the version", v1, v2, v3, v4)
 	}
 	if _, err := preflightVersion(filepath.Join(root, "missing")); err == nil {
 		t.Fatal("a tree without the pre-flight gave a version")
@@ -558,5 +563,34 @@ chmod +x "$venv/bin/pip"`)
 	fakeTool(t, fakes, "python3", `echo "no venv module" >&2; exit 1`)
 	if err := install(context.Background(), cfg, "/main", filepath.Join(dir, "bin2"), "", io.Discard); err == nil || !strings.Contains(err.Error(), "no venv module") {
 		t.Fatalf("a failing python3 was not reported: %v", err)
+	}
+}
+
+func TestScanRunsThisProgram(t *testing.T) {
+	dir := t.TempDir()
+	cfg, err := loadConfig([]byte(`
+checks:
+  - name: self
+    when: {always: true}
+    stage: scan
+    scan:
+      input: added
+      run: ['{self}', '-test.run=^$']
+      exit: {clean: [0]}
+      report: {in: stdout, format: lines, pattern: '^(?P<message>FAIL.*)$'}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	d := &data{Files: []prFile{{Filename: "a", Status: "added", Patch: "@@ -0,0 +1 @@\n+x"}}}
+	ev := evaluation{Checks: map[string]verdict{"self": {Result: resultScan}}, Scans: []string{"self"}}
+	if err := runScans(context.Background(), cfg, d, &ev, workspace{dir: dir, bin: dir}, io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	if v := ev.Checks["self"]; v.Result != resultPass {
+		t.Fatalf("{self} did not run this program: %+v", v)
+	}
+	if raw, err := os.ReadFile(filepath.Join(dir, "data.json")); err != nil || !strings.Contains(string(raw), `"filename": "a"`) {
+		t.Fatalf("{data} was not written: %s %v", raw, err)
 	}
 }
