@@ -17551,6 +17551,17 @@
       "shapeHash": "sha256:cfecdc755116fa71eb3b2bdd3bd35e8bff60ec89238fe389c46963b6e90a69dd"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#Models.Drain",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "Models.Drain",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#Models.FetchDeferred",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "Models.FetchDeferred",
@@ -17870,6 +17881,17 @@
       "shapeHash": "sha256:43cfd5379f90d7b5000ff084f41806e7330af6d45eed3fc8912b214d56ab70a6"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#Models.cancelRefreshes",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "Models.cancelRefreshes",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#Models.checkProviderAuth",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "Models.checkProviderAuth",
@@ -17901,6 +17923,17 @@
         "type": "func(ctx context.Context, model *ImageModel, request ImagesContext, options ModelsImagesOptions) (AssistantImages, error)"
       },
       "shapeHash": "sha256:68cae13c3b4752da0c9cc4ffe9d2f2a6552d1fdf6a0483c0505bbb9a2fcd87c1"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#Models.goOwned",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "Models.goOwned",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(run func())"
+      },
+      "shapeHash": "sha256:87c28fd68e3dabd21bdf511cb846803397c1cdffbedec766c4ccd1769421a11b"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#Models.lazyStream",
@@ -31769,9 +31802,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func[T any](ctx context.Context, owner *sync.WaitGroup, run func() (T, error)) (T, error)"
+        "type": "func[T any](ctx context.Context, spawn func(func()), run func() (T, error)) (T, error)"
       },
-      "shapeHash": "sha256:9167387682ccd49c836c2004314ef397266f175b0ede36ed06be8cc279c0df15"
+      "shapeHash": "sha256:676deb4eb35a526176894cb6b470699304d37ee7b087795b17e576db6072b6f2"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#awaitSettled",
