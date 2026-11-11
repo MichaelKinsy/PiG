@@ -21,12 +21,12 @@ func TestAnsiToHTMLPiEscapingAndPalette(t *testing.T) {
 	}
 }
 
-// Pi tool-renderer.ts:44-55 strips SGR only and uses JavaScript String.trim's whitespace set.
+// Pi tool-renderer.ts (stripAnsiEscapes, #12052) strips SGR, other CSI, OSC and APC sequences and uses JavaScript String.trim's whitespace set.
 func TestCustomToolResultHTMLBlankLineSemantics(t *testing.T) {
 	for _, tc := range []struct{ name, edge, want string }{
 		{"BOM is whitespace", "\ufeff", `<div class="ansi-line">one</div>`},
 		{"NEL is content", "\u0085", "<div class=\"ansi-line\">\u0085</div><div class=\"ansi-line\">one</div><div class=\"ansi-line\">\u0085</div>"},
-		{"OSC is content", "\x1b]0;title\x07", "<div class=\"ansi-line\">\x1b]0;title\x07</div><div class=\"ansi-line\">one</div><div class=\"ansi-line\">\x1b]0;title\x07</div>"},
+		{"OSC is stripped", "\x1b]0;title\x07", `<div class="ansi-line">one</div>`},
 		{"SGR whitespace is trimmed", "\x1b[31m \x1b[0m", `<div class="ansi-line">one</div>`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
