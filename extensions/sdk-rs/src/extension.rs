@@ -4273,16 +4273,17 @@ mod tests {
         }
     }
 
-    // Starts an extension whose "ask" command blocks in a host input call, runs it to the pending call, and hands back the socket, the call frame and what the handler reports once the call returns: (signal aborted, first input ok, second input ok).
-    fn start_pending_ask(
-        tag: &str,
-    ) -> (
+    // What `start_pending_ask` hands back: the socket, the call frame, the handler's report, the extension's thread and the socket's path.
+    type PendingAsk = (
         UnixStream,
         Envelope,
         mpsc::Receiver<(bool, bool, bool)>,
         std::thread::JoinHandle<std::io::Result<()>>,
         std::path::PathBuf,
-    ) {
+    );
+
+    // Starts an extension whose "ask" command blocks in a host input call, runs it to the pending call, and hands back the socket, the call frame and what the handler reports once the call returns: (signal aborted, first input ok, second input ok).
+    fn start_pending_ask(tag: &str) -> PendingAsk {
         let unique = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()

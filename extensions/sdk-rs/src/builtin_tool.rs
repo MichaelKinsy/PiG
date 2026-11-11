@@ -1023,7 +1023,8 @@ pub struct LocalBashOperationsOptions {
 fn local_exec(shell: &'static str, shell_path: Option<String>) -> BashOperations {
     BashOperations {
         exec: Arc::new(move |command, cwd, options| {
-            let conn = host_helpers::running_connection().map_err(|error| crate::BashExecError::from(error.to_string()))?;
+            let conn = host_helpers::running_connection()
+                .map_err(|error| crate::BashExecError::from(error.to_string()))?;
             let execute_id = format!("x{}", conn.execute_seq.fetch_add(1, Ordering::Relaxed));
             // A throw in onData (a panic) ends the command with it, as Pi's would reject the exec.
             let failure: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
@@ -1080,7 +1081,9 @@ fn local_exec(shell: &'static str, shell_path: Option<String>) -> BashOperations
                         .map(|timeout| timeout.shell_exit);
                     let message = error.to_string();
                     return Err(match shell_exit {
-                        Some(shell_exit) => crate::BashExecError::shell_timeout(message, shell_exit),
+                        Some(shell_exit) => {
+                            crate::BashExecError::shell_timeout(message, shell_exit)
+                        }
                         None => message.into(),
                     });
                 }
@@ -1247,12 +1250,21 @@ mod tests {
     // own text) does not carry it.
     #[test]
     fn the_shell_exit_belongs_to_the_error_and_not_to_its_message() {
-        let exit = crate::protocol::ShellExit { exit_code: 7, after_seconds: 0.5 };
+        let exit = crate::protocol::ShellExit {
+            exit_code: 7,
+            after_seconds: 0.5,
+        };
         let error = crate::BashExecError::shell_timeout("timeout:2".to_string(), exit);
         let moved = std::thread::spawn(move || error.clone()).join().unwrap();
         assert_eq!(moved.clone().into_parts().1, Some(exit));
-        assert_eq!(crate::BashExecError::from(moved.to_string()).into_parts().1, None);
-        assert_eq!(crate::BashExecError::from(moved.message()).into_parts().1, None);
+        assert_eq!(
+            crate::BashExecError::from(moved.to_string()).into_parts().1,
+            None
+        );
+        assert_eq!(
+            crate::BashExecError::from(moved.message()).into_parts().1,
+            None
+        );
     }
 
     // The behavior of the tools is the shared conformance row TestConformance_BuiltinToolDelegationAcrossSDKs; these cases pin what the SDK does before and after
