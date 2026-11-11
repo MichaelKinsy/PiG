@@ -1,0 +1,3 @@
+### Fixed
+
+- p2: the first code-mode call of a session no longer fails with "Tool codemode is not available" when the first message is sent while the worker is still loading its plugins. The server routes a send to a worker that has started, before it is ready, and the Harness planned that turn's tools before the codemode plugin had contributed its tool. Pi's single event loop runs the plugin's contribution before it serves such a send; the worker now makes the chat methods and `Chat.send` wait until its plugins are loaded (a failed load or a cancelled request answers the caller with its error), without changing when scheduling resumes. <!-- fix: 8665cdf121b1b791d66ed6a0666068d5a5f89829 -->

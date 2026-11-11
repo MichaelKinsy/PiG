@@ -29171,6 +29171,34 @@
       ]
     },
     {
+      "id": "BF-8665cdf",
+      "title": "p2: the first code-mode call of a session no longer fails with \"Tool codemode is not available\" when the…",
+      "symptom": "p2: the first code-mode call of a session no longer fails with \"Tool codemode is not available\" when the first message is sent while the worker is still loading its plugins.",
+      "rootCause": "The server routes a send to a worker that has started, before it is ready. Its Submit resumes scheduling, and the reserve pass snapshots the registry to plan the first request's tools. In Pi the continuations that make the objects behind HarnessHost live (codemode contributing its tool) run before the loop serves the next IPC request, so the snapshot has them; the Go worker serves the send on its own goroutine in that gap, the snapshot lacks codemode, and the model's first codemode call fails with \"Tool codemode is not available\".",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "p2: the first code-mode call of a session no longer fails with \"Tool codemode is not available\" when the first message is sent while the worker is still loading its plugins. The server routes a send to a worker that has started, before it is ready, and the Harness planned that turn's tools before the codemode plugin had contributed its tool. Pi's single event loop runs the plugin's contribution before it serves such a send; the worker now makes the chat methods and `Chat.send` wait until its plugins are loaded (a failed load or a cancelled request answers the caller with its error), without changing when scheduling resumes.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8665cdf121",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "apps/p2/e2e/loadgate/loadgate_test.go::TestMain",
+        "apps/p2/e2e/loadgate/loadgate_test.go::TestSendRoutedBeforeTheWorkerIsLoadedOffersThePluginsTool",
+        "apps/p2/runtime/load_gate_test.go::TestLoadGateAlreadyCancelledFailsWithoutWaiting",
+        "apps/p2/runtime/load_gate_test.go::TestLoadGateCancelReturnsTheCauseToThatWaiterOnly",
+        "apps/p2/runtime/load_gate_test.go::TestLoadGateFailedLoadAnswersEveryRequestWithItsError",
+        "apps/p2/runtime/load_gate_test.go::TestLoadGateNilIsOpen",
+        "apps/p2/runtime/load_gate_test.go::TestLoadGateOpensForWaitersAndLaterRequests"
+      ]
+    },
+    {
       "id": "BF-866c7f9",
       "title": "fix(rpc): two prompts of one batch answer in request order",
       "symptom": "fix(rpc): two prompts of one batch answer in request order",

@@ -538,6 +538,8 @@ type HarnessParts struct {
 	// RequestOf takes the request that produced response, for GenerationTask's `afterResponse` hooks (api is the hook's):
 	// each response is taken once; nil when none produced it. See ModelRequest.
 	RequestOf func(ctx context.Context, api harness.HookApi, response ai.AssistantMessage) (*ModelRequest, error)
+	// Loaded opens once the worker's Load returned (see LoadGate); nil is open. Request-time users wait with AwaitLoaded.
+	Loaded *LoadGate
 }
 
 // HarnessNative is the registry of the session's Harness (the core's contribution once it is open).
@@ -1076,6 +1078,7 @@ func openHarness(self host.StoreSelf, init WorkerInit, session SessionInit, loca
 		},
 	)
 	return &HarnessParts{
+		Loaded: NewLoadGate(),
 		Durable: func() (harness.Harness, error) {
 			value, err := durableNative.Value()
 			if err != nil {

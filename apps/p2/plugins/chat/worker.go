@@ -398,6 +398,12 @@ func serveConversation(params *delta.JsonObject, self host.Self) (contracts.Impl
 			hooks, _ := p2runtime.ConversationConfigured.Table(configured)
 			env := conversationEnv{models: models(), gates: gateTable, hooks: hooks}
 			suspended(ctx)
+			// The worker's plugins are loaded before a request reaches the Harness (p2runtime.LoadGate).
+			if parts, err := harnessOf(); err == nil {
+				if err := parts.AwaitLoaded(ctx); err != nil {
+					return nil, err
+				}
+			}
 			return fn(objectOf(args), ctx, env)
 		}
 	}
@@ -989,7 +995,7 @@ func serveChat(params *delta.JsonObject, principal data.Principal, self host.Sel
 			},
 			"send": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 				return call(func() (delta.JsonValue, error) {
-					return send(objectOf(args), ctx, conversation, author(), writable, routers, chat)
+					return send(objectOf(args), ctx, conversation, author(), writable, harnessOf, routers, chat)
 				})
 			},
 			"stop": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
@@ -1094,7 +1100,7 @@ func orEmpty(list []any) []any {
 
 // send admits a participant's message: to a router that takes it, or as an ordinary input.
 func send(input *delta.JsonObject, ctx context.Context, conversation int, author p2runtime.Author, writable func(context.Context) error,
-	routers *registries.RegistryValueSource, chat *host.Reference) (delta.JsonValue, error) {
+	harnessOf func() (*p2runtime.HarnessParts, error), routers *registries.RegistryValueSource, chat *host.Reference) (delta.JsonValue, error) {
 	attachments, _ := input.Value("attachments").([]any)
 	// As Pi Mobile: a message has text or attachments.
 	if strings.TrimSpace(stringOf(input, "text")) == "" && len(attachments) == 0 {
@@ -1102,6 +1108,12 @@ func send(input *delta.JsonObject, ctx context.Context, conversation int, author
 	}
 	if err := writable(ctx); err != nil {
 		return nil, err
+	}
+	// The routers read the Harness: wait for the worker's plugins to be loaded first (p2runtime.LoadGate).
+	if parts, err := harnessOf(); err == nil {
+		if err := parts.AwaitLoaded(ctx); err != nil {
+			return nil, err
+		}
 	}
 	table, _ := chatcontract.SendRouters.Table(routers)
 	if table != nil {
