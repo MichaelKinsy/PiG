@@ -278747,6 +278747,28 @@
       "shapeHash": "sha256:913f936befaf05459942c2fadddfdaa5bbfb74855749b4aefa7d19b13d7f9943"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#builtInRenderState.releaseWarmUnits",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "builtInRenderState.releaseWarmUnits",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#builtInRenderState.releaseWarmUnitsOfAFinishedCall",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "builtInRenderState.releaseWarmUnitsOfAFinishedCall",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#builtInRenderState.runWriteWarmUps",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "builtInRenderState.runWriteWarmUps",
@@ -312105,9 +312127,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(content string, lang string) (resumable bool, failure any)"
+        "type": "func(code string, lang string) (resumable bool, failure any)"
       },
-      "shapeHash": "sha256:af7897980e59824b558e76ece7ee3e41d9c684c349f14de179c2f6933bb6d23b"
+      "shapeHash": "sha256:7aaf763dd65cdb599385fde8961787f6decc18692a87a03e4f3d8f366d8d161f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#warmerBranch",
@@ -312757,6 +312779,17 @@
         "type": "func(code string, lang string) bool"
       },
       "shapeHash": "sha256:5a8c45560c23745d10ce7d0686f7fb3d382141366e1171cad9f0cce8fa2a1b54"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#writeWarmRelease",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "writeWarmRelease",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "func(code string, lang string)"
+      },
+      "shapeHash": "sha256:9df92e0b5483b2d8f4b116529a1f0d15977a1a8b4ade3f9e979aa2ca412e38c0"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#writeWarmStep",
@@ -348155,6 +348188,17 @@
         "type": "func(metadata KittyImageMetadata)"
       },
       "shapeHash": "sha256:326434725cffcb917a12011dababa39cca57843b1d964017cd52fb077daba13e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ReleaseWarmHighlight",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ReleaseWarmHighlight",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(code string, lang string)"
+      },
+      "shapeHash": "sha256:9df92e0b5483b2d8f4b116529a1f0d15977a1a8b4ade3f9e979aa2ca412e38c0"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#RemoteSuggestionQuery",
@@ -384664,6 +384708,17 @@
         "type": "func(color RgbColor) float64"
       },
       "shapeHash": "sha256:c7518ee20e14056f885255c5238306f7a935f60e98de3e7638e4fd2f2f8525c3"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#releaseHighlightUnits",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "releaseHighlightUnits",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(code string, lang string)"
+      },
+      "shapeHash": "sha256:9df92e0b5483b2d8f4b116529a1f0d15977a1a8b4ade3f9e979aa2ca412e38c0"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#rememberSignalRestore",
