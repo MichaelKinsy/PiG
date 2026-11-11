@@ -5,6 +5,7 @@ import (
 	"weak"
 )
 
+// Ports packages/ai/src/utils/event-stream.ts (the partial and final message references EventStream.push and end publish).
 type assistantMessagePublication struct {
 	cell    weak.Pointer[assistantMessageCell]
 	cleanup runtime.Cleanup

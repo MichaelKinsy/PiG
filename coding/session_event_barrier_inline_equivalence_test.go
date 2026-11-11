@@ -84,9 +84,10 @@ func recordedDelivery(t *testing.T, executor, drain bool) (hooks, events []strin
 	session.Subscribe(func(event agent.AgentEvent) { log.add("listener", event) })
 	drained := make(chan struct{})
 	if drain {
+		eventsCh := session.Events()
 		go func() {
 			defer close(drained)
-			for event := range session.Events() {
+			for event := range eventsCh {
 				if !AcknowledgeEvent(event) {
 					// The consumer runs on its own goroutine and a streamed message observes the live stream when it is encoded, so only the sequence is deterministic here, with either executor.
 					wire.add("events", fmt.Sprintf("%T", event))

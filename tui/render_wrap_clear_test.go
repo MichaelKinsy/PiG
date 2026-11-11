@@ -46,7 +46,7 @@ func TestWideFrameRepushAtNarrowerWidthFallsBackToFullRender(t *testing.T) {
 	// phase2: width drops to 20, widget still returns WIDE frame. The wide row
 	// W0 (visible width >120) wraps at width 20 but prevLines holds it as ONE
 	// logical row.
-	ui.width = 20
+	ui.SetFixedSize(20, ui.Height())
 	ui.Render()
 	out.Reset()
 

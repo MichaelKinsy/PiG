@@ -36,3 +36,19 @@ func SetKeybindings(keybindings *KeybindingsManager) { engine.SetKeybindings(key
 
 // GetKeybindings is pi-tui's getKeybindings: the global manager, over TUIKeybindings until one is installed.
 func GetKeybindings() *KeybindingsManager { return engine.GetKeybindings() }
+
+// GetSelectPageIndex is getSelectPageIndex of pi-tui's keybindings.ts: the index a tui.select.pageUp or tui.select.pageDown key moves
+// a selection to, moved by pageSize and clamped to 0..itemCount-1 without wrapping. It reports false when data is neither key, and
+// returns 0 for a page key on an empty list, so callers must still check that the list has items before selecting.
+func GetSelectPageIndex(keybindings *KeybindingsManager, data string, selectedIndex, itemCount, pageSize int) (int, bool) {
+	direction := 0
+	switch {
+	case keybindings.Matches(data, engine.KBSelectPageUp):
+		direction = -1
+	case keybindings.Matches(data, engine.KBSelectPageDown):
+		direction = 1
+	default:
+		return 0, false
+	}
+	return max(0, min(itemCount-1, selectedIndex+direction*pageSize)), true
+}

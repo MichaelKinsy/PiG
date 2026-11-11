@@ -1,0 +1,28 @@
+# Behavior family: cli-utils
+# Pi 6d4b7443 config.ts getConfiguredSelfUpdateArgv / makeConfiguredSelfUpdateCommand (Pi 8bc94b19); test: packages/coding-agent/test/config.test.ts "configured self-update command".
+# Both sides print the same cases: PI_SELF_UPDATE_COMMAND precedence and whitespace splitting, the setting fallback, and placeholder filling in every argument.
+# Pi's pinned release (e7a0df27) predates the functions, so this compares against Pi only after the pin bump to 6d4b7443.
+# pig divergence (D39): PIG_SELF_UPDATE_COMMAND is read first; the probe clears it, so the compared behavior is Pi's.
+name = "37-configured-self-update-command"
+description = "The configured self-update command resolves and fills its placeholders as Pi's config.ts does"
+covers = ["packages/coding-agent/src/config.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/configured-self-update-pig.sh"]
+pig_go_tests = ["./internal/codingagent"]
+pi_args = ["node", "./test/parity/testdata/configured-self-update-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["CONFIGURED_ARGV", "CONFIGURED_COMMAND"]
+runs = 3

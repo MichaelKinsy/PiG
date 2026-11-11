@@ -35,4 +35,5 @@ if (oracleMode) {
   oracle.piVersion = JSON.parse(readFileSync(new URL('../package.json', 'file://' + bin), 'utf8')).version;
   writeFileSync(oraclePath, JSON.stringify(oracle, null, 2) + '\n');
 }
-process.exit(failed ? 1 : 0);
+// Exit once the pipe has taken every line: process.exit() right after console.log drops what it has not drained.
+process.stdout.write("", () => process.exit(failed ? 1 : 0));

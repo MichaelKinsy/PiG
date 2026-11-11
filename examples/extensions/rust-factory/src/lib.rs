@@ -21,7 +21,9 @@ pub fn new_extension() -> Extension {
             "required": ["text"],
         }),
         |_ctx, params: Value| match params["text"].as_str().filter(|text| !text.is_empty()) {
-            Some(text) => ToolResult::Json(json!({"content": format!("{} words", text.split_whitespace().count())})),
+            Some(text) => ToolResult::Json(
+                json!({"content": format!("{} words", text.split_whitespace().count())}),
+            ),
             None => ToolResult::Error("text is required".to_string()),
         },
     );

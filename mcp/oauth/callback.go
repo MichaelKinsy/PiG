@@ -201,15 +201,26 @@ func (s *OAuthCallbackServer) Close() error {
 
 func (s *OAuthCallbackServer) reply(w http.ResponseWriter, status int, page OAuthCallbackPage) {
 	if s.renderPage != nil {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Header().Set("Cache-Control", "no-store")
-		w.WriteHeader(status)
-		_, _ = w.Write([]byte(s.renderPage(page)))
+		replyHTML(w, status, s.renderPage(page))
 		return
 	}
+	replyPlainText(w, status, plainText(page))
+}
+
+// replyHTML sends a page the render function produced; escaping what the request supplied (the provider's error and description) is that function's job.
+func replyHTML(w http.ResponseWriter, status int, page string) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(status)
+	_, _ = w.Write([]byte(page))
+}
+
+// replyPlainText sends text that may carry what the request supplied: the provider's error description is shown as written, as Pi shows it. It is
+// served as text/plain only, never as a page, so a browser shows whatever markup it holds as text; escaping it as HTML would change the text the user reads.
+func replyPlainText(w http.ResponseWriter, status int, text string) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(status)
-	_, _ = w.Write([]byte(plainText(page)))
+	_, _ = w.Write([]byte(text))
 }
 
 func (s *OAuthCallbackServer) handle(w http.ResponseWriter, r *http.Request) {

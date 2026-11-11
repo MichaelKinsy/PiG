@@ -65,19 +65,19 @@ func TestCachedToolArgumentSchemaIsSafeForConcurrentCalls(t *testing.T) {
 	wg.Wait()
 }
 
-// The cache keeps at most argumentSchemaCacheEntries schemas and does not keep a schema above the size limit.
+// The cache keeps at most validatorCacheEntries schemas and does not keep a schema above the size limit.
 func TestToolArgumentSchemaCacheIsBounded(t *testing.T) {
-	var cache argumentSchemaCache
-	for i := range argumentSchemaCacheEntries + 40 {
+	var cache validatorCache
+	for i := range validatorCacheEntries + 40 {
 		cache.entry(json.RawMessage(fmt.Sprintf(`{"type":"object","title":"%d"}`, i)))
 	}
-	if len(cache.entries) != argumentSchemaCacheEntries || len(cache.order) != argumentSchemaCacheEntries {
+	if len(cache.entries) != validatorCacheEntries || len(cache.order) != validatorCacheEntries {
 		t.Fatalf("%d entries, %d ordered", len(cache.entries), len(cache.order))
 	}
-	if cache.entry(json.RawMessage(`{"type":"object","title":"0"}`)) == nil || len(cache.entries) != argumentSchemaCacheEntries {
+	if cache.entry(json.RawMessage(`{"type":"object","title":"0"}`)) == nil || len(cache.entries) != validatorCacheEntries {
 		t.Fatal("an evicted schema was not parsed again")
 	}
-	large := json.RawMessage(`{"type":"object","description":"` + strings.Repeat("x", argumentSchemaCacheMaxBytes) + `"}`)
+	large := json.RawMessage(`{"type":"object","description":"` + strings.Repeat("x", validatorCacheMaxBytes) + `"}`)
 	before := len(cache.entries)
 	first, second := cache.entry(large), cache.entry(large)
 	if len(cache.entries) != before || first == second {
@@ -94,7 +94,7 @@ func TestToolArgumentSchemaEvictionDoesNotChangeOutcomes(t *testing.T) {
 	for _, tc := range validateCases {
 		kept = append(kept, validateOutcome(tc.schema, tc.args))
 	}
-	for i := range argumentSchemaCacheEntries + 10 {
+	for i := range validatorCacheEntries + 10 {
 		validateOutcome(fmt.Sprintf(`{"type":"object","title":"evict %d"}`, i), `{}`)
 	}
 	for i, tc := range validateCases {
@@ -103,7 +103,7 @@ func TestToolArgumentSchemaEvictionDoesNotChangeOutcomes(t *testing.T) {
 		}
 	}
 	// The same schema padded above the size limit takes the uncached path and answers the same.
-	pad := `,"description":"` + strings.Repeat("x", argumentSchemaCacheMaxBytes) + `"}`
+	pad := `,"description":"` + strings.Repeat("x", validatorCacheMaxBytes) + `"}`
 	for i, tc := range validateCases {
 		if !strings.HasSuffix(tc.schema, "}") || tc.name == "invalid schema" {
 			continue

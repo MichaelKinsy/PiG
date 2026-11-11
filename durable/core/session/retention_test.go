@@ -174,11 +174,12 @@ func TestTheSweepRunsAsALineJobStartedByAMicrotaskOrATimer(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			retention := tc.retention
 			rig := newRetentionRig(&retention)
-			var microtasks, jobs []func()
+			var microtasks []func()
+			var jobs []func() error
 			var timerAt []float64
 			var fire func()
 			rig.s.Microtask = func(fn func()) { microtasks = append(microtasks, fn) }
-			rig.s.EnqueueSweep = func(job func()) { jobs = append(jobs, job) }
+			rig.s.EnqueueSweep = func(job func() error) { jobs = append(jobs, job) }
 			rig.s.ArmTimer = func(at float64, f func()) func() { timerAt = append(timerAt, at); fire = f; return func() {} }
 			rig.edit(t)
 			if cached, _ := rig.cached(); cached != 1 && tc.retention > 0 {
@@ -203,7 +204,9 @@ func TestTheSweepRunsAsALineJobStartedByAMicrotaskOrATimer(t *testing.T) {
 			if len(jobs) != 1 || rig.s.SweepJobs != 1 {
 				t.Fatalf("jobs %d, SweepJobs %d, want one", len(jobs), rig.s.SweepJobs)
 			}
-			jobs[0]()
+			if err := jobs[0](); err != nil {
+				t.Fatal(err)
+			}
 			if cached, idle := rig.cached(); cached != 0 || idle != 0 {
 				t.Fatalf("after the sweep job: cached %d idle %d, want none", cached, idle)
 			}
@@ -217,7 +220,7 @@ func TestAPinnedDocumentStaysCachedUntilTheLastReleaseAndIsIdleAgainAfterIt(t *t
 	zero := 0.0
 	rig := newRetentionRig(&zero)
 	rig.s.Microtask = func(fn func()) { fn() }
-	rig.s.EnqueueSweep = func(job func()) { job() }
+	rig.s.EnqueueSweep = func(job func() error) { _ = job() }
 	rig.s.ArmTimer = func(float64, func()) func() { return func() {} }
 	rig.edit(t) // retention 0: the document leaves at once
 	if cached, _ := rig.cached(); cached != 0 {
@@ -266,7 +269,7 @@ func TestAReadAfterTheRetentionWasShortenedMovesThePendingSweepUp(t *testing.T) 
 	microtasks := 0
 	rig.s.ArmTimer = func(at float64, _ func()) func() { timers = append(timers, at); return func() {} }
 	rig.s.Microtask = func(func()) { microtasks++ }
-	rig.s.EnqueueSweep = func(func()) {}
+	rig.s.EnqueueSweep = func(func() error) {}
 	rig.edit(t)
 	if len(timers) != 1 || timers[0] != 1000+600_000 {
 		t.Fatalf("timers %v, want one for the default retention", timers)

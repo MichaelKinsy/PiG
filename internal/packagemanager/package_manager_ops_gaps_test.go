@@ -76,7 +76,8 @@ func TestPackageManagerAddAndRemoveSourceInTheScopeSettings(t *testing.T) {
 		t.Fatalf("packages after a ref change = %+v, want the second entry replaced in place with its filter kept", packages)
 	}
 
-	// An equivalent local spelling is stored normalised relative to the settings directory.
+	// pig divergence (D215): adding an absolute spelling of a Package stored relative replaces the entry with the absolute path as typed, so it no longer
+	// depends on how the agent directory is spelled (#389).
 	localPkg := filepath.Join(t.TempDir(), "spelled")
 	rel, err := filepath.Rel(sm.AgentDir(), localPkg)
 	if err != nil {
@@ -88,8 +89,8 @@ func TestPackageManagerAddAndRemoveSourceInTheScopeSettings(t *testing.T) {
 	if added, err := pm.AddSourceToSettings(localPkg, false); err != nil || !added {
 		t.Fatalf("adding another spelling of a local package = %v, %v; want true", added, err)
 	}
-	if got := packageSources(sm, false); !slices.Equal(got, []string{filepath.Clean(rel)}) {
-		t.Fatalf("local package stored as %v, want the normalised relative path %q", got, filepath.Clean(rel))
+	if got := packageSources(sm, false); !slices.Equal(got, []string{localPkg}) {
+		t.Fatalf("local package stored as %v, want the absolute path as typed %q", got, localPkg)
 	}
 	if err := sm.SetPackages([]codingagent.PackageSource{{Source: "npm:left-pad"}, {Source: "git:github.com/u/other@v2", WasObject: true, Extensions: []string{"a.ts"}}}); err != nil {
 		t.Fatal(err)
@@ -391,7 +392,7 @@ func TestPackageManagerNpmInstallAndUninstallPassTheRealPathWhenTheAgentDirIsASy
 		t.Fatal(err)
 	}
 	calls, _ := os.ReadFile(log)
-	want := "install left-pad --prefix " + realRoot + " --legacy-peer-deps\nuninstall left-pad --prefix " + realRoot + " --legacy-peer-deps\n"
+	want := "install left-pad --prefix " + realRoot + " --legacy-peer-deps --no-audit --no-fund\nuninstall left-pad --prefix " + realRoot + " --legacy-peer-deps --no-audit --no-fund\n"
 	if string(calls) != want {
 		t.Fatalf("npm calls = %q, want %q: the symlinked agent directory %s must not reach --prefix", calls, want, agentLink)
 	}
@@ -456,5 +457,49 @@ func TestPackageManagerRemoveKeepsAGitCheckoutAnotherConfiguredSourceShares(t *t
 	}
 	if _, err := os.Stat(projectCheckout); !os.IsNotExist(err) {
 		t.Fatalf("the project checkout survived Remove although only a user-scope source is configured: %v", err)
+	}
+}
+
+// Ports packages/coding-agent/test/package-manager.test.ts "should warn when an npm update leaves the installed version unchanged" (Pi 0d23d534, #11571):
+// the registry reports 1.0.1 for both packages, npm upgrades only fresh-pkg, and only stale-pkg produces the warning.
+func TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses a shell script as the npm command")
+	}
+	cwd, agentDir, sm, pm := resolveFixtureWithHome(t)
+	ref, err := ParseNpmInstallRef("npm:stale-pkg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := NpmInstallRoot(cwd, agentDir, ref, false)
+	writeResolveFile(t, filepath.Join(root, "node_modules", "stale-pkg", "package.json"), `{"name":"stale-pkg","version":"1.0.0"}`)
+	freshManifest := writeResolveFile(t, filepath.Join(root, "node_modules", "fresh-pkg", "package.json"), `{"name":"fresh-pkg","version":"1.0.0"}`)
+	command := filepath.Join(t.TempDir(), "npm")
+	script := "#!/bin/sh\ncase \"$1\" in\nview) echo '\"1.0.1\"';;\ninstall) printf '%s' '{\"name\":\"fresh-pkg\",\"version\":\"1.0.1\"}' > '" + freshManifest + "';;\nesac\nexit 0\n"
+	if err := os.WriteFile(command, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := sm.SetNpmCommand([]string{command}); err != nil {
+		t.Fatal(err)
+	}
+	if err := sm.SetPackages([]codingagent.PackageSource{{Source: "npm:stale-pkg"}, {Source: "npm:fresh-pkg"}}); err != nil {
+		t.Fatal(err)
+	}
+	var events []ProgressEvent
+	pm.SetProgressCallback(func(event ProgressEvent) { events = append(events, event) })
+	if err := pm.Update(""); err != nil {
+		t.Fatal(err)
+	}
+	var warnings []ProgressEvent
+	for _, event := range events {
+		if event.Type == "progress" {
+			warnings = append(warnings, event)
+		}
+	}
+	if len(warnings) != 1 || warnings[0].Source != "npm:stale-pkg" || warnings[0].Message == nil {
+		t.Fatalf("progress events = %+v, want one warning for npm:stale-pkg", warnings)
+	}
+	if message := *warnings[0].Message; !strings.Contains(message, "is still 1.0.0") || !strings.Contains(message, "1.0.1") {
+		t.Fatalf("message = %q", message)
 	}
 }

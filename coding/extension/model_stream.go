@@ -7,6 +7,8 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
+// Ports packages/ai/src/types.ts (ProviderRequestOptions.fetch, onPayload and onResponse).
+//
 // ModelStreamRequest carries a resolved API-leaf request and connection-owned
 // callbacks. API leaves use the caller's model/auth, not the parent catalog.
 type ModelStreamRequest struct {

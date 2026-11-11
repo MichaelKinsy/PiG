@@ -20,20 +20,19 @@ func TestUpstreamSystemPromptSecondHalfExactSections(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("PIG_HOME", home)
 	docsRoot := pigdocs.DocsDir(home)
-	docs := "<docs>\nPiG documentation (read only when the user asks about pig itself, its SDK, extensions, themes, skills, or TUI):\n" +
+	docs := "<docs>\nPiG documentation (read only when the user asks about the harness itself, its SDK, extensions, themes, skills, or TUI):\n" +
 		"- Main documentation: " + filepath.Join(docsRoot, "README.md") + "\n" +
 		"- Additional docs: " + docsRoot + "\n" +
 		"- Examples: https://github.com/MichaelKinsy/PiG/tree/main/examples (extensions, custom tools, SDK)\n" +
 		"- When reading pig docs or examples, resolve docs/... under Additional docs and examples/... under Examples, not the current working directory\n" +
-		"- When asked about: extensions (docs/extensions.md, examples/extensions/), themes (docs/themes.md), skills (docs/skills.md), prompt templates (docs/prompt-templates.md), TUI components (docs/tui.md), keybindings (docs/keybindings.md), SDK integrations (docs/sdk.md), custom providers (docs/custom-provider.md), adding models (docs/models.md), pig packages (docs/packages.md), environment variables (docs/environment-variables.md), MCP servers (docs/mcp.md), codemode scripts and non-LLM models such as classifiers and image models (docs/codemode.md)\n" +
-		"- When working on pig topics, read the docs and examples, and follow .md cross-references before implementing\n" +
-		"- Always read pig .md files completely and follow links to related docs (e.g., tui.md for TUI API details)\n</docs>"
-	const toolsTail = "\n\nIn addition to the tools above, you may have access to other custom tools depending on the project.\n</tools>"
+		"- When asked about: extensions (docs/extensions.md, examples/extensions/), themes (docs/themes.md), skills (docs/skills.md), prompt templates (docs/prompt-templates.md), TUI components (docs/tui.md), keybindings (docs/keybindings.md), SDK integrations (docs/sdk.md), custom providers (docs/custom-provider.md), adding models (docs/models.md), packages (docs/packages.md), environment variables (docs/environment-variables.md), MCP servers (docs/mcp.md), codemode scripts and non-LLM models such as classifiers and image models (docs/codemode.md)\n" +
+		"- Before implementing harness changes, read the relevant docs and examples in full, following related cross-references.\n</docs>"
+	const toolsTail = "\n\nAdditional tools may be available.\n</tools>"
 	const rulesTail = "\n- Be concise in your responses\n- Show file paths clearly when working with files\n</rules>"
 	const skills = `<skills>
 The following skills provide specialized instructions for specific tasks.
 Use bash to load a skill's file when the task matches its description.
-When a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.
+Resolve relative paths against the skill's directory (parent of SKILL.md). Use absolute paths in tool calls.
 
 <available_skills>
   <skill>

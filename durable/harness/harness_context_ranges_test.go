@@ -1,5 +1,6 @@
 // Ports the task-runtime context read tests of packages/durable/test/harness-context.test.ts: "extends a task's context
-// read with only newer entries", "keeps a conversation's context read across its tasks and for the retention period
+// read with only newer entries", "finds the baseline among the entries an extended read adds" (#10904), "keeps a
+// conversation's context read across its tasks and for the retention period
 // once idle", "derives the same view from extended reads as from whole reads", "keeps returned views and kept ranges
 // apart", "freezes kept entries deeply even when storage freezes them shallowly", "does not keep a read that finishes
 // after its task ended", "drops an idle conversation's context read on a timer when nothing else runs", and "drops a
@@ -13,6 +14,7 @@ package harness
 import (
 	"context"
 	"errors"
+	"fmt"
 	"maps"
 	"reflect"
 	"slices"
@@ -23,6 +25,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/internal/detach"
 	"github.com/MichaelKinsy/PiG/durable/storage"
 )
 
@@ -31,6 +34,19 @@ import (
 type countingStorage struct {
 	durable.Storage
 	scan *scanCount
+}
+
+// copyingStorage hands out a fresh deep copy of every entry a scan returns, as upstream's structuredClone proxy does.
+type copyingStorage struct{ durable.Storage }
+
+func (s copyingStorage) ScanEntries(ctx context.Context, query durable.EntryQuery, limit int, cursor durable.Cursor) (durable.Page[durable.EntryRecord, durable.Cursor], error) {
+	page, err := s.Storage.ScanEntries(ctx, query, limit, cursor)
+	items := make([]durable.EntryRecord, len(page.Items))
+	for index, item := range page.Items {
+		items[index] = detach.Entry(item)
+	}
+	page.Items = items
+	return page, err
 }
 
 type scanCount struct {
@@ -115,9 +131,18 @@ func openCounting(t *testing.T, tasks []durable.AnyTask, settings *HarnessSettin
 	}
 	first := appendTo(user("first"))
 	for index := range 20 {
-		appendTo(assistant("old " + string(rune('a'+index))))
+		appendTo(assistant(fmt.Sprintf("old %d", index)))
 	}
 	return countingSetup{opened: opened, scan: scan, first: first, clock: clock}
+}
+
+// expectStringsFromTask is expectStrings for a task handler's goroutine: t.Fatalf there ends the handler with
+// runtime.Goexit, which the scheduler does not recover, so it would rerun the handler instead of failing the test.
+func expectStringsFromTask(t *testing.T, got, want []string) {
+	t.Helper()
+	if !slices.Equal(got, want) {
+		t.Errorf("got %q, want %q", got, want)
+	}
 }
 
 func ctxCommit(ctx context.Context, runtime stepRuntime, change func(tx durable.Tx) error) error {
@@ -190,21 +215,21 @@ func TestTaskContextRanges(t *testing.T) {
 			initial, _ := read(nil)
 			expectSame("initial", initial)
 
-			// Three new entries: the bounds probe reads one row, the extension the three new ones.
+			// Three new entries: the kept range took them as they were committed, so the read scans nothing.
 			write(durable.EntryDraft{Kind: "message", Model: []ai.Message{user("new")}})
 			write(durable.EntryDraft{Kind: "note", Data: map[string]any{"text": "display only"}})
 			write(durable.EntryDraft{Kind: "message", Model: []ai.Message{assistant("answer")}})
 			extended, rows := read(nil)
-			if rows != 4 {
-				t.Errorf("the extension scanned %d rows, want 4", rows)
+			if rows != 0 {
+				t.Errorf("the extension scanned %d rows, want 0", rows)
 			}
 			expectSame("extended", extended)
 
 			// A newer edit of an older entry applies to the extended range.
 			write(durable.EntryDraft{Kind: "edit", Edits: []durable.ContextEdit{{Target: setup.first.Id, Action: durable.EditOmit}}})
 			edited, rows := read(nil)
-			if rows != 2 {
-				t.Errorf("the edit read scanned %d rows, want 2", rows)
+			if rows != 0 {
+				t.Errorf("the edit read scanned %d rows, want 0", rows)
 			}
 			expectSame("edited", edited)
 			if slices.Contains(describeMessages(edited.Messages), "user:first") {
@@ -224,11 +249,104 @@ func TestTaskContextRanges(t *testing.T) {
 			write(durable.EntryDraft{Kind: "reset", HeadSelf: true, Model: []ai.Message{user("fresh")}})
 			reset, _ := read(nil)
 			expectSame("reset", reset)
-			expectStrings(t, describeMessages(reset.Messages), []string{"user:fresh"})
+			expectStringsFromTask(t, describeMessages(reset.Messages), []string{"user:fresh"})
 			return tkComplete(ctx, runtime)
 		})
 		setup = openCounting(t, []durable.AnyTask{reads.Erased()}, nil)
 		ctxRunTask(t, setup, reads.Erased())
+		mustClose(t, setup.opened.harness)
+	})
+
+	// harness-context.test.ts:709 (#10904) it("finds the baseline among the entries an extended read adds")
+	t.Run("finds the baseline among the entries an extended read adds", func(t *testing.T) {
+		var setup countingSetup
+		steps := tkOneStep("test.context-baseline", func(ctx context.Context, _ stepRecord, runtime stepRuntime) error {
+			root := setup.opened.root
+			ownerless := ConversationCreateOptions{Ownership: durable.ConversationOwnership{Kind: durable.ConversationOwnerless}}
+			appendTo := func(conversation durable.ConversationId, draft durable.EntryDraft) durable.EntryRecord {
+				var entry durable.EntryRecord
+				if err := ctxCommit(ctx, runtime, func(tx durable.Tx) error {
+					var err error
+					entry, err = tx.AppendEntry(conversation, draft)
+					return err
+				}); err != nil {
+					t.Error(err)
+				}
+				return entry
+			}
+			read := func(conversation Conversation) ([]string, int64) {
+				before := setup.scan.rows.Load()
+				view, err := runtime.Context(ctx, conversation.Id(), nil)
+				if err != nil {
+					t.Error(err)
+				}
+				rows := setup.scan.rows.Load() - before
+				if want := ctxContextOf(t, conversation); !reflect.DeepEqual(view, want) {
+					t.Errorf("the task's view differs from the conversation's\n got %s\nwant %s", jsonText(t, view), jsonText(t, want))
+				}
+				return describeMessages(view.Messages), rows
+			}
+			expectRows := func(what string, rows int64) {
+				t.Helper()
+				// Nothing: the kept range took the added entry as it was committed.
+				if rows != 0 {
+					t.Errorf("%s: the extended read scanned %d rows, want 0", what, rows)
+				}
+			}
+			fork := func() Conversation {
+				conversation, err := root.Fork(ctx, setup.first.Id, ownerless)
+				if err != nil {
+					t.Error(err)
+				}
+				return conversation
+			}
+
+			// The cached range has answers and no system message; the baseline arrives in a later read.
+			if messages, _ := read(root); !slices.Contains(messages[:min(1, len(messages))], "user:first") {
+				t.Errorf("first read = %v, want it to lead with user:first", messages)
+			}
+			appendTo(root.Id(), durable.EntryDraft{Kind: "pi.system", Model: []ai.Message{system(ai.PromptSection{Name: "plan", Value: new("Plan.")})}})
+			messages, rows := read(root)
+			expectRows("root", rows)
+			expectStringsFromTask(t, messages[:min(3, len(messages))], []string{"system:plan", "user:first", "assistant:old 0"})
+
+			// A system message the cached range already has keeps a later first `pi.system` entry in place.
+			forked := fork()
+			appendTo(forked.Id(), durable.EntryDraft{Kind: "message", Model: []ai.Message{assistant("answer")}})
+			appendTo(forked.Id(), durable.EntryDraft{Kind: "host.system", Model: []ai.Message{system(ai.PromptSection{Name: "note", Value: new("Note.")})}})
+			messages, _ = read(forked)
+			expectStringsFromTask(t, messages, []string{"user:first", "assistant:answer", "system:note"})
+			appendTo(forked.Id(), durable.EntryDraft{Kind: "pi.system", Model: []ai.Message{system(ai.PromptSection{Name: "note"})}})
+			messages, rows = read(forked)
+			expectRows("fork", rows)
+			expectStringsFromTask(t, messages, []string{"user:first", "assistant:answer", "system:note", "system:note"})
+
+			// An omitted system message still rules out a later baseline; the extended read keeps that.
+			omitted := fork()
+			appendTo(omitted.Id(), durable.EntryDraft{Kind: "message", Model: []ai.Message{assistant("answer")}})
+			host := appendTo(omitted.Id(), durable.EntryDraft{Kind: "host.system", Model: []ai.Message{system(ai.PromptSection{Name: "legacy", Value: new("Legacy.")})}})
+			appendTo(omitted.Id(), durable.EntryDraft{Kind: "edit", Edits: []durable.ContextEdit{{Target: host.Id, Action: durable.EditOmit}}})
+			messages, _ = read(omitted)
+			expectStringsFromTask(t, messages, []string{"user:first", "assistant:answer"})
+			appendTo(omitted.Id(), durable.EntryDraft{Kind: "pi.system", Model: []ai.Message{system(ai.PromptSection{Name: "legacy"})}})
+			messages, rows = read(omitted)
+			expectRows("omitted", rows)
+			expectStringsFromTask(t, messages, []string{"user:first", "assistant:answer", "system:legacy"})
+
+			// A first `pi.system` entry without a system message leaves no baseline for a later one to take.
+			empty := fork()
+			appendTo(empty.Id(), durable.EntryDraft{Kind: "pi.system"})
+			appendTo(empty.Id(), durable.EntryDraft{Kind: "message", Model: []ai.Message{assistant("answer")}})
+			messages, _ = read(empty)
+			expectStringsFromTask(t, messages, []string{"user:first", "assistant:answer"})
+			appendTo(empty.Id(), durable.EntryDraft{Kind: "pi.system", Model: []ai.Message{system(ai.PromptSection{Name: "s", Value: new("Delta.")})}})
+			messages, rows = read(empty)
+			expectRows("empty", rows)
+			expectStringsFromTask(t, messages, []string{"user:first", "assistant:answer", "system:s"})
+			return tkComplete(ctx, runtime)
+		})
+		setup = openCounting(t, []durable.AnyTask{steps.Erased()}, nil)
+		ctxRunTask(t, setup, steps.Erased())
 		mustClose(t, setup.opened.harness)
 	})
 
@@ -311,10 +429,10 @@ func TestTaskContextRanges(t *testing.T) {
 		pollUntil(t, func() bool { return scheduler.idleContextCount() == 1 })
 		setup.clock.advance(600_000)
 		run("expired")
-		// Bounds probes read one row each. The child scans its own new entry; the waiting parent's later invocation and
-		// the probe within the retention period scan nothing new. After it, the probe reads the whole transcript again.
+		// The Session knows the bounds, and the kept range takes each committed entry, so only a first read scans: the
+		// parent's, and the probe's after the retention period, which reads the whole transcript again.
 		got := rows.all()
-		want := map[string]int64{"parent": 22, "child": 2, "after": 1, "idle": 1, "expired": 23}
+		want := map[string]int64{"parent": 21, "child": 0, "after": 0, "idle": 0, "expired": 22}
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("rows = %v, want %v", got, want)
 		}
@@ -377,8 +495,15 @@ func TestTaskContextRanges(t *testing.T) {
 					return durable.EntryDraft{Kind: "message", Model: []ai.Message{toolResult(id)}}
 				}
 				if pick < 9 {
-					seen["system"]++
-					return durable.EntryDraft{Kind: "message", Model: []ai.Message{system(ai.PromptSection{Name: "s", Value: new(label("v"))})}}
+					// `pi.system` entries can be the baseline that leads the context (#10904).
+					kind := "message"
+					if random(2) == 0 {
+						kind = "pi.system"
+						seen["baseline system"]++
+					} else {
+						seen["system"]++
+					}
+					return durable.EntryDraft{Kind: kind, Model: []ai.Message{system(ai.PromptSection{Name: "s", Value: new(label("v"))})}}
 				}
 				if pick < 10 {
 					seen["note"]++
@@ -436,6 +561,16 @@ func TestTaskContextRanges(t *testing.T) {
 				if !same("step "+string(rune('0'+step/100))+string(rune('0'+step/10%10))+string(rune('0'+step%10)), view, err, root) {
 					return nil
 				}
+				whole := ctxContextOf(t, root)
+				var contributed []ai.Message
+				for _, contribution := range whole.Contributions {
+					contributed = append(contributed, contribution...)
+				}
+				first := slices.IndexFunc(contributed, func(message ai.Message) bool { _, ok := message.(ai.SystemMessage); return ok })
+				if first > 0 && len(whole.Messages) > 0 && reflect.DeepEqual(whole.Messages[0], contributed[first]) &&
+					slices.ContainsFunc(contributed[:first], func(message ai.Message) bool { _, ok := message.(ai.AssistantMessage); return ok }) {
+					seen["baseline past assistant"]++
+				}
 				if step%10 == 9 {
 					// Overlapping reads, one with an earlier cutoff, share the kept range.
 					at := written[random(len(written))].Id
@@ -466,7 +601,7 @@ func TestTaskContextRanges(t *testing.T) {
 		})
 		setup = openCounting(t, []durable.AnyTask{steps.Erased()}, nil)
 		ctxRunTask(t, setup, steps.Erased())
-		for _, category := range []string{"user", "assistant", "aborted", "error", "deferred", "result", "stray result", "system", "note", "omit", "replace", "head"} {
+		for _, category := range []string{"user", "assistant", "aborted", "error", "deferred", "result", "stray result", "system", "baseline system", "baseline past assistant", "note", "omit", "replace", "head"} {
 			if seen[category] == 0 {
 				t.Errorf("the transcript never had a %s entry", category)
 			}
@@ -503,9 +638,11 @@ func TestTaskContextRanges(t *testing.T) {
 				}
 			}
 			ctxRunTask(t, setup, reader.Erased())
-			want := map[string]int64{"first": 7, "second": 1}
+			// The Session knows the bounds, so a read scans only the six entries of the range, and a kept range that took no
+			// entry since needs no scan.
+			want := map[string]int64{"first": 6, "second": 0}
 			if retention == 0 {
-				want["second"] = 7
+				want["second"] = 6
 			}
 			if got := rowsOf.all(); !reflect.DeepEqual(got, want) {
 				t.Errorf("retention %d: rows = %v, want %v", retention, got, want)
@@ -591,6 +728,8 @@ func TestTaskContextRanges(t *testing.T) {
 			if err != nil {
 				return err
 			}
+			// A deep copy taken before any change, so damage that reached the kept range cannot reach the expectation too.
+			pristine := detach.ContextView(view)
 			view.Messages = view.Messages[:0]
 			view.Entries = view.Entries[:len(view.Entries)-1]
 			damageView(view)
@@ -598,7 +737,7 @@ func TestTaskContextRanges(t *testing.T) {
 			if err != nil {
 				return err
 			}
-			if want := ctxContextOf(t, setup.opened.root); !reflect.DeepEqual(again, want) {
+			if want := ctxContextOf(t, setup.opened.root); !reflect.DeepEqual(again, want) || !reflect.DeepEqual(again, pristine) {
 				t.Error("a handler's changes to its view reached a later read")
 			}
 			return tkComplete(ctx, runtime)
@@ -617,6 +756,51 @@ func TestTaskContextRanges(t *testing.T) {
 		}
 		ctxRunTask(t, setup, mutate.Erased())
 		mustClose(t, setup.opened.harness)
+	})
+
+	// harness-context.test.ts "freezes kept entries deeply even when storage freezes them shallowly": a Storage that
+	// hands out fresh copies of its records, as upstream's structuredClone proxy does, and a view whose messages the handler
+	// changes in place. A Go value cannot be frozen, so the observable is that nothing the handler changes reaches a later read.
+	t.Run("freezes kept entries deeply even when storage freezes them shallowly", func(t *testing.T) {
+		var pristine, again durable.ContextView
+		mutate := tkOneStep("test.context-shallow", func(ctx context.Context, _ stepRecord, runtime stepRuntime) error {
+			view, err := runtime.Context(ctx, runtime.ConversationId(), nil)
+			if err != nil {
+				return err
+			}
+			pristine = detach.ContextView(view)
+			damageView(view)
+			if again, err = runtime.Context(ctx, runtime.ConversationId(), nil); err != nil {
+				return err
+			}
+			return tkComplete(ctx, runtime)
+		})
+		opened := tkOpenRoot(t, []durable.AnyTask{mutate.Erased()}, tkOptions{storage: copyingStorage{Storage: storage.NewMemoryStorage()}})
+		for _, model := range []ai.Message{
+			ai.UserMessage{Content: ai.UserText("hello"), Timestamp: 1},
+			ai.AssistantMessage{Content: []ai.AssistantContentBlock{ai.TextContent{Text: "calling"}, ai.ToolCall{ID: "c1", Name: "lookup", Arguments: ai.JsonObject{"n": 1.0}}}, StopReason: ai.StopReasonToolUse, Timestamp: 2},
+		} {
+			if _, err := durable.Commit(testContext, opened.root, func(tx durable.Tx) (durable.EntryRecord, error) {
+				return tx.AppendEntry(opened.root.Id(), durable.EntryDraft{Kind: "message", Model: []ai.Message{model}})
+			}); err != nil {
+				t.Fatal(err)
+			}
+		}
+		id := tkStart(t, opened.root, mutate.Erased())
+		opened.harness.Resume()
+		if outcome := tkWaitOutcome(t, opened.harness, id); outcome.Status != durable.OutcomeCompleted {
+			t.Fatalf("task outcome %+v, want completed", outcome)
+		}
+		if len(pristine.Entries) != 2 {
+			t.Fatalf("the task read %d entries, want 2", len(pristine.Entries))
+		}
+		if !reflect.DeepEqual(again, pristine) {
+			t.Error("a handler's changes to its view reached a later read")
+		}
+		if want := ctxContextOf(t, opened.root); !reflect.DeepEqual(want, pristine) {
+			t.Error("a handler's changes to its view reached the conversation's read")
+		}
+		mustClose(t, opened.harness)
 	})
 
 	t.Run("does not keep a read that finishes after its task ended", func(t *testing.T) {
@@ -658,8 +842,8 @@ func TestTaskContextRanges(t *testing.T) {
 		}
 		close(probeStart)
 		tkWaitOutcome(t, setup.opened.harness, probeId)
-		if got, _ := rows.get(); got != 22 {
-			t.Errorf("the probe scanned %d rows, want 22", got)
+		if got, _ := rows.get(); got != 21 {
+			t.Errorf("the probe scanned %d rows, want 21", got)
 		}
 		mustClose(t, setup.opened.harness)
 	})
@@ -692,7 +876,7 @@ func TestTaskContextRanges(t *testing.T) {
 		pollUntil(t, func() bool { return scheduler.keptContextCount() == 1 && scheduler.expiryPending() })
 		pollUntil(t, func() bool { return scheduler.keptContextCount() == 0 && !scheduler.expiryPending() })
 		run("second")
-		if got, want := rowsOf.all(), map[string]int64{"first": 22, "second": 22}; !reflect.DeepEqual(got, want) {
+		if got, want := rowsOf.all(), map[string]int64{"first": 21, "second": 21}; !reflect.DeepEqual(got, want) {
 			t.Errorf("rows = %v, want %v", got, want)
 		}
 		mustClose(t, setup.opened.harness)
@@ -718,7 +902,7 @@ func TestTaskContextRanges(t *testing.T) {
 			tkWaitOutcome(t, setup.opened.harness, tkStart(t, setup.opened.root, probe))
 			waitForIdle(t, setup.opened.root)
 		}
-		if got, want := rowsOf.all(), map[string]int64{"first": 22, "second": 22}; !reflect.DeepEqual(got, want) {
+		if got, want := rowsOf.all(), map[string]int64{"first": 21, "second": 21}; !reflect.DeepEqual(got, want) {
 			t.Errorf("rows = %v, want %v", got, want)
 		}
 		mustClose(t, setup.opened.harness)
@@ -805,7 +989,7 @@ func TestExtendRangeDerivesAgainWhenAnAddedEntryChangesWhatIsDerived(t *testing.
 		return durable.EntryRecord{Id: id, Kind: "message", Model: []ai.Message{user(text)}}
 	}
 	edit := durable.EntryRecord{Id: 2, Kind: "edit", Edits: []durable.ContextEdit{{Target: 3, Action: durable.EditReplace, Messages: []ai.Message{user("edited")}}}}
-	previous := deriveRange(ContextBounds{Tail: 2}, []durable.EntryRecord{entry(1, "one"), edit})
+	previous := deriveRange(ContextBounds{Tail: 2}, []durable.EntryRecord{entry(1, "one"), edit}, false)
 	summary := durable.EntryRecord{Id: 4, Kind: "summary", Head: new(durable.EntryId(1)), Model: []ai.Message{user("summary")}}
 	for name, c := range map[string]struct {
 		added durable.EntryRecord
@@ -816,8 +1000,8 @@ func TestExtendRangeDerivesAgainWhenAnAddedEntryChangesWhatIsDerived(t *testing.
 		"a head marker":                 {summary, &summary},
 	} {
 		bounds := ContextBounds{Head: c.head, Tail: c.added.Id}
-		got := extendRange(previous, bounds, []durable.EntryRecord{c.added})
-		want := deriveRange(bounds, []durable.EntryRecord{entry(1, "one"), edit, c.added})
+		got := extendRange(previous, bounds, []durable.EntryRecord{c.added}, false)
+		want := deriveRange(bounds, []durable.EntryRecord{entry(1, "one"), edit, c.added}, false)
 		if !reflect.DeepEqual(got.view, want.view) {
 			t.Errorf("%s: extended view %s, want the whole derivation %s", name, jsonText(t, got.view), jsonText(t, want.view))
 		}

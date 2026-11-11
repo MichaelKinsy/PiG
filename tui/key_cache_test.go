@@ -18,6 +18,16 @@ func referenceMatchesKeyID(data, keyID string) bool {
 		if expectedCP == cpEscape && expectedMod != 0 {
 			return false
 		}
+		if expectedCP <= cpF1 && expectedCP >= cpF12 {
+			if expectedMod == 0 && slices.Contains(tuiKeyIDInputs()[baseKey], data) {
+				return true
+			}
+			if pk := parseCSIu(data); pk != nil {
+				return matchesKittySequence(pk, expectedCP, expectedMod)
+			}
+			pk := parseTerminalInput(data)
+			return pk != nil && matchesKittySequence(pk, expectedCP, expectedMod)
+		}
 		if pk := parseCSIu(data); pk != nil {
 			if matchesKittySequence(pk, expectedCP, expectedMod) {
 				return true
@@ -48,7 +58,7 @@ func referenceMatchesKeyID(data, keyID string) bool {
 }
 
 func keyCacheKeyIDs() []string {
-	ids := []string{"", "+", "ctrl+", "ctrl+x+y", "bogus+a", "CTRL+C", "Ctrl+Shift+Left", "escape", "ctrl+escape", "esc", "enter", "return", "shift+enter", "alt+enter", "tab", "shift+tab", "space", "backspace", "delete", "insert", "home", "end", "pageUp", "pageDown", "f1", "f12", "clear", "ctrl+alt+super+shift+a"}
+	ids := []string{"", "+", "ctrl+", "ctrl+x+y", "bogus+a", "CTRL+C", "Ctrl+Shift+Left", "escape", "ctrl+escape", "esc", "enter", "return", "shift+enter", "alt+enter", "tab", "shift+tab", "space", "backspace", "delete", "insert", "home", "end", "pageUp", "pageDown", "f1", "f12", "ctrl+f5", "shift+f4", "clear", "ctrl+alt+super+shift+a"}
 	for _, base := range []string{"a", "z", "0", "9", "up", "down", "left", "right", "[", "]", "/", "\\", "-", "=", "`", "'", ";", ","} {
 		for _, prefix := range []string{"", "ctrl+", "shift+", "alt+", "super+", "ctrl+shift+", "ctrl+alt+", "ctrl+shift+alt+super+"} {
 			ids = append(ids, prefix+base)
@@ -58,7 +68,7 @@ func keyCacheKeyIDs() []string {
 }
 
 func keyCacheInputs() []string {
-	inputs := []string{"", "a", "A", "z", "0", "\x1b", "\r", "\n", "\t", " ", "\x7f", "\x08", "\x1bOM", "\x1b\r", "\x1b[Z", "\x01", "\x03", "\x1b[A", "\x1b[a", "\x1bOa", "\x1b[2$", "\x1b[3~", "\x1b[5~", "\x1b[H", "\x1bOP", "\x1b[11~", "\x1b[24~", "é", "日本"}
+	inputs := []string{"", "a", "A", "z", "0", "\x1b", "\r", "\n", "\t", " ", "\x7f", "\x08", "\x1bOM", "\x1b\r", "\x1b[Z", "\x01", "\x03", "\x1b[A", "\x1b[a", "\x1bOa", "\x1b[2$", "\x1b[3~", "\x1b[5~", "\x1b[H", "\x1bOP", "\x1b[11~", "\x1b[24~", "\x1b[P", "\x1b[1;5P", "\x1b[15;5~", "é", "日本"}
 	for _, mod := range []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 129, 193} {
 		for _, final := range "ABCDHF" {
 			inputs = append(inputs, fmt.Sprintf("\x1b[1;%d%c", mod, final))

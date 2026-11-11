@@ -2,7 +2,8 @@
 name: Nightly race, fuzz and allocation ratchet
 
 # Whole-package -race on the packages that own concurrency, on Linux and on macOS (darwin/arm64), and every Fuzz
-# target for 30 seconds. Pull requests run only the narrow race regressions of make test-race; these runs are too long
+# target for 30 seconds, and the full products of the oracle sweeps whose covering subsets the fast tier runs (make test-oracle-sweeps-nightly).
+# Pull requests run only the narrow race regressions of make test-race; these runs are too long
 # for every change. The allocation job runs every benchmark of the hot packages once and compares allocs/op with
 # automation/ci/allocbase/baseline.toml (make alloc-baseline).
 on:
@@ -27,7 +28,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04, macos-15]
-        group: [ai, rest, host, coding, libs]
+        group: [ai, rest, host, coding, libs, hljs]
         include:
           - {os: ubuntu-24.04, group: cli, shard: 1/4}
           - {os: ubuntu-24.04, group: cli, shard: 2/4}
@@ -50,7 +51,7 @@ jobs:
           node-version-file: .node-version
           cache: npm
           cache-dependency-path: extensions/sdk-ts/package-lock.json
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.12'
       - name: Install a current bash for the shard selection script
@@ -79,10 +80,26 @@ jobs:
           echo "$bin" >> "$GITHUB_PATH"
           export PATH="$bin:$PATH"
           test "$(npm --version)" = "$npm_version"
-          # The oracle comes from the pin as in ci.yml (automation/pin/oracle.py), so a commit pin gets its own build, not a published release.
-          python3 automation/pin/pin.py install-oracle
-          ./automation/gen/mirror-upstream.sh
-          python3 automation/pin/pin.py check-oracle
+          # The step ci.yml's Linux job runs ("Prepare pinned Pi oracle"): make upstream-mirror is parity-deps (the oracle from the pin, the locked npm trees of the oracle
+          # tests in internal/typebox/testdata/npm and ai/testdata/sdk, durable/interop's, the TypeScript compiler of the interface extractor, then check-oracle) and the
+          # mirror of the pin's source. The nightly once listed these by hand, left out the npm trees, and every Pi-oracle test that imports a package from them failed with
+          # ERR_MODULE_NOT_FOUND (test/ci-images/nightly_oracle_install_test.go).
+          make upstream-mirror
+      # The Lisp SDK realization of cmd/pig's TestReplacedSession2860AcrossSDKs (cli shard 4/4) and the Lisp conformance rows fail without the pinned SBCL, as in ci.yml's Linux and macOS jobs: the same cache and install step.
+      - name: Restore the pinned SBCL
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-sbcl
+          key: sbcl-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('automation/dev/toolchains.lock', 'automation/ci/install-sbcl.sh') }}
+      - name: Install the pinned SBCL
+        # SBCL publishes no binary of the pinned release for arm64 macOS: the script builds the checksummed release source with the arm64 macOS binary row of automation/dev/toolchains.lock.
+        shell: bash
+        run: |
+          set -euo pipefail
+          prefix="$(automation/ci/install-sbcl.sh)"
+          echo "PIG_SBCL=$prefix/bin/sbcl" >> "$GITHUB_ENV"
+          echo "SBCL_HOME=$prefix/lib/sbcl" >> "$GITHUB_ENV"
+          echo "$prefix/bin" >> "$GITHUB_PATH"
       - name: Race and goroutine-leak gate
         env:
           CI: '1'
@@ -93,7 +110,9 @@ jobs:
   fuzz:
     name: Fuzz / every target 30s
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    # The targets run one after the other, 30 s of fuzzing and about 11 s of build and corpus work each (41 s measured): 47 targets are 32 minutes, so a 30 minute limit cancelled
+    # the run at the 41st on 11-05, 11-06 and 11-08. test/ci-images/nightly_fuzz_budget_test.go keeps the limit above the targets' sum as targets are added.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -115,6 +134,27 @@ jobs:
           path: '**/testdata/fuzz/**'
           if-no-files-found: ignore
 
+  oracle-sweeps:
+    name: Oracle sweeps / full products
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: true
+      # internal/pioracle runs Pi's vendored modules in Node, so the job needs the pinned Node and nothing else.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - name: Run the full oracle sweeps
+        env:
+          CI: '1'
+        run: make test-oracle-sweeps-nightly
+
   allocations:
     name: Allocation ratchet / allocs per op
     runs-on: ubuntu-24.04
@@ -127,7 +167,7 @@ jobs:
         with:
           go-version-file: .go-version
           cache: true
-      # The Node-cell, Node-host and clipboard benchmarks start node; Pi requires Node >= 22.19.0 and the runner image's Node is not pinned, so the job uses .node-version like the other Node jobs.
+      # The Node-cell, Node-host and clipboard benchmarks start node; Pi requires at least the Node floor in minimumNodeRuntimeVersion (coding/extension/host/subprocess/builder_node.go) and the runner image's Node is not pinned, so the job uses .node-version like the other Node jobs.
       # The subprocess host benchmarks start Node extension runtimes; their baseline entries were measured on the pinned Node.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -141,9 +181,7 @@ jobs:
           automation/ci/install-npm-toolchain.sh
           export PATH="$PWD/automation/ci/npm-toolchain/node_modules/.bin:$PATH"
           test "$(npm --version)" = "$npm_version"
-          python3 automation/pin/pin.py install-oracle
-          ./automation/gen/mirror-upstream.sh
-          python3 automation/pin/pin.py check-oracle
+          make upstream-mirror
       - name: Compare allocs/op with the committed baseline
         env:
           CI: '1'

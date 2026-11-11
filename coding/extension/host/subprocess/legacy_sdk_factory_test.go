@@ -49,9 +49,8 @@ func Extension() *sdk.Extension {
 // its own cell (never packed with current-SDK factories), builds against the
 // current SDK, registers, and executes.
 func TestHost_LegacySDKFactoryLoadsBesideCurrentSDKFactory(t *testing.T) {
-	keepGoBuildCaches(t)
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	isolateHome(t, home)
 	t.Setenv("PIG_HOME", filepath.Join(home, ".pig"))
 	legacy, legacyDefinition, err := ResolveExtConfigWithIdentity(writeLegacySDKAskModule(t), "ask")
 	if err != nil {

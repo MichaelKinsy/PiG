@@ -62,7 +62,7 @@ func TestContextGetSystemPromptSeesTheHandlersOwnEditAcrossSDKs(t *testing.T) {
 		}
 		assertContextReadSeesEdit(t, *loaded)
 	})
-	for _, language := range []string{"go", "python", "rust", "node"} {
+	for _, language := range []string{"go", "python", "rust", "node", "lisp"} {
 		t.Run(language, func(t *testing.T) {
 			for _, placement := range []string{"isolated", "packed"} {
 				t.Run(placement, func(t *testing.T) {
@@ -189,6 +189,20 @@ def new_extension():
  e.on_event("before_agent_start",handler)
  return e
 `, name, ctxReadEdit)
+	case "lisp":
+		path = filepath.Join(cfg.Source, name+".lisp")
+		source = fmt.Sprintf(`(defpackage %q (:use "COMMON-LISP"))
+(in-package %q)
+(defun new-extension ()
+  (let ((e (pig:make-extension %q)))
+    (pig:on e "before_agent_start"
+      (lambda (ctx data)
+        (let ((before (pig:ctx-get-system-prompt ctx)))
+          (setf (gethash "appendSystemPrompt" (pig:jget data "systemPromptOptions")) %q)
+          (let ((after (pig:ctx-get-system-prompt ctx)))
+            (pig:obj "message" (pig:obj "customType" "seen" "content" (format nil "before=~A~%%after=~A" before after) "display" :false))))))
+    e))
+`, name, name, name, ctxReadEdit)
 	case "rust":
 		path = filepath.Join(cfg.Source, "src", "lib.rs")
 		source = fmt.Sprintf(`use pig_sdk::{Extension,Schema};

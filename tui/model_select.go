@@ -10,9 +10,11 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/frontend"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
 )
 
 // ModelScope discriminates the two views of the picker.
@@ -68,6 +70,8 @@ type ModelSelectorComponent struct {
 	// refreshCancel stops the catalog refresh the selector started; Dispose calls it once.
 	refreshCancel context.CancelFunc
 	closed        bool
+	// tasks joins the refresh of a picker whose runtime has no ModelSelectorTaskOwner.
+	tasks sync.WaitGroup
 
 	// saveHint is the action hint row, which a picker without a "set as default" action drops.
 	saveHint Component
@@ -147,7 +151,7 @@ func sortModelItems(items []ModelSelectorItem, current, defaultModel string) []M
 			}
 			return 1
 		}
-		return jsstring.LocaleCompare(a.Provider, b.Provider)
+		return localecompare.Compare(a.Provider, b.Provider)
 	})
 	return out
 }
@@ -369,15 +373,19 @@ func (m *ModelSelectorComponent) Dispose() {
 	}
 }
 
-// modelSelectorPageSize is the visible rows and the rows a selection page key moves (PAGE_SIZE of Pi PR #7680's model-selector.ts).
+// Wait blocks until the catalog refresh this picker owns has ended: Dispose cancels it, it stops at its timeout, or it settles. A picker whose runtime has a ModelSelectorTaskOwner leaves that join to the owner.
+func (m *ModelSelectorComponent) Wait() { m.tasks.Wait() }
+
+// modelSelectorPageSize is the visible rows and the rows a selection page key moves (MAX_VISIBLE of model-selector.ts).
 const modelSelectorPageSize = 10
 
-// CapturesSelectPageInput reports that the selector handles tui.select.pageUp and tui.select.pageDown.
-func (m *ModelSelectorComponent) CapturesSelectPageInput() bool { return true }
+// CapturesViewportInput reports that fullscreen viewport keys go to the selector (model-selector.ts capturesViewportInput).
+func (m *ModelSelectorComponent) CapturesViewportInput() bool { return true }
 
-// HandleInput mirrors upstream model-selector.ts handleInput: it checks tui.input.tab, tui.select.up, tui.select.down, tui.select.confirm, tui.select.cancel and app.models.save in that order, and passes every other key to the search input before it reapplies the query.
+// HandleInput mirrors upstream model-selector.ts handleInput: it checks tui.input.tab, tui.select.up, tui.select.down, tui.select.pageUp and tui.select.pageDown (one page of modelSelectorPageSize rows, clamped), tui.select.confirm, tui.select.cancel and app.models.save in that order, and passes every other key to the search input before it reapplies the query.
 func (m *ModelSelectorComponent) HandleInput(data string) {
 	kb := GetTUIKeybindings()
+	pageIndex, isPage := GetSelectPageIndex(kb, data, m.cursor, len(m.filtered), modelSelectorPageSize)
 	switch {
 	case kb.Matches(data, KBInputTab):
 		if len(m.scoped) > 0 {
@@ -391,8 +399,11 @@ func (m *ModelSelectorComponent) HandleInput(data string) {
 		m.moveCursor(-1, true)
 	case kb.Matches(data, KBSelectDown):
 		m.moveCursor(1, true)
-	case pageSelectionKey(kb, data):
-		m.cursor, _ = PageSelectionIndex(kb, data, m.cursor, len(m.filtered), modelSelectorPageSize)
+	case isPage:
+		if len(m.filtered) == 0 {
+			return
+		}
+		m.cursor = pageIndex
 		m.updateList()
 	case kb.Matches(data, KBSelectConfirm):
 		m.selectHighlighted()

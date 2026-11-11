@@ -1,0 +1,15 @@
+# Tests that a commit renamed or moved away from the file a fix commit added them to, one per line:
+#   <old-file>::<OldName> <new-file>::<NewName>
+# `make bug-ledger` and `make bug-ledger-refresh` follow a fix commit's test to the new line, so the entry keeps its guard.
+# `make bug-ledger-refresh` also follows a test that moved and kept its name while exactly one file in the tree declares it;
+# `make bug-ledger` adds only the tests a line here names to the entries it keeps.
+# `make bug-ledger-check` fails on a line whose new test does not exist or whose old test is still declared.
+coding/packagecontent/glob_braces_npm_test.go::TestNpmBraceExpandBoundsAllocation internal/minimatch/braceexpansion_test.go::TestBraceExpandBoundsAllocation
+coding/packagecontent/glob_braces_npm_test.go::TestNpmBraceExpandFollowsBraceExpansion5 internal/minimatch/braceexpansion_test.go::TestBraceExpandFollowsBraceExpansion5
+coding/packagecontent/glob_braces_npm_test.go::TestNpmBraceExpandLimitsFollowBraceExpansion5 internal/minimatch/braceexpansion_test.go::TestBraceExpandLimitsFollowBraceExpansion5
+coding/packagecontent/glob_braces_npm_test.go::TestMinimatchFilterExpandsBracesAsPi coding/packagecontent/glob_filter_test.go::TestMinimatchFilterExpandsBracesAsPi
+coding/packagecontent/glob_braces_npm_test.go::TestBraceProductKeepsOnlyReachableValues internal/minimatch/braceexpansion_test.go::TestBraceProductKeepsOnlyReachableValues
+coding/packagecontent/glob_braces_npm_test.go::TestBraceProductPrunesBelowAFullyReachedLevel internal/minimatch/braceexpansion_test.go::TestBraceProductPrunesBelowAFullyReachedLevel
+coding/packagecontent/glob_braces_npm_test.go::TestBraceProductWithNoResult internal/minimatch/braceexpansion_test.go::TestBraceProductWithNoResult
+durable/core/hops_host_commit_test.go::TestAHostCommitIsAnsweredEarlyEnoughForItsCallerToResumeAtThePiJobEnd durable/core/hops_host_answer_test.go::TestAHostCommitIsAnsweredHostAnswerLeadTicksBeforeItsCallerResumes
+durable/core/session/sched_close_reserve_test.go::TestAGatedReservationCommitLandsWhenCloseSealsWhileTheStorageHoldsIt durable/core/session/sched_close_reserve_test.go::TestAReservationJobThatRunsAgainAfterACommitKeepsTheDecisionOfItsFirstRun

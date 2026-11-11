@@ -50,45 +50,49 @@ func TestConformance_OAuthTransportsMatch(t *testing.T) {
 		t.Skip("skipping OAuth conformance suite in short mode (builds subprocess fixtures)")
 	}
 
-	cases := []struct {
+	type row struct {
 		name string
 		make func(*testing.T) *harness
-	}{
+	}
+	cases := []row{
 		{"subprocess-go", makeSubprocessGoHarness},
 		{"subprocess-rust", makeSubprocessRustHarness},
 		{"subprocess-python", makeSubprocessPythonHarness},
+		{"subprocess-lisp", makeSubprocessLispHarness},
 		{"fused-go", makeFusedGoHarness},
 	}
 
-	var baseline oauthRecording
-	var baselineName string
+	record := func(t *testing.T, tc row) oauthRecording {
+		t.Helper()
+		h := tc.make(t)
+		defer func() {
+			if h.cleanup != nil {
+				h.cleanup()
+			}
+			if h.host != nil {
+				h.host.Shutdown("test done")
+			}
+		}()
+		got := captureOAuthRecording(t)
+		captureOAuthCredentialObject(t)
+		captureOAuthLargeExpiry(t)
+		return got
+	}
+	// The first row is the reference. It records it, and so does the first later row when -run leaves it out.
+	baseline := referenceRow[oauthRecording]{name: cases[0].name}
 	for i, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			h := tc.make(t)
-			t.Cleanup(func() {
-				if h.cleanup != nil {
-					h.cleanup()
-				}
-				if h.host != nil {
-					h.host.Shutdown("test done")
-				}
-			})
-			got := captureOAuthRecording(t)
-			captureOAuthCredentialObject(t)
-			captureOAuthLargeExpiry(t)
 			if i == 0 {
-				baseline = got
-				baselineName = tc.name
+				baseline.set(t, record(t, tc))
 				return
 			}
-			if baselineName == "" {
-				t.Skip("baseline subtest was filtered out by -run; run the full suite")
-			}
-			if !reflect.DeepEqual(got, baseline) {
+			want := baseline.get(t, func() oauthRecording { return record(t, cases[0]) })
+			got := record(t, tc)
+			if !reflect.DeepEqual(got, want) {
 				gb, _ := json.MarshalIndent(got, "", "  ")
-				wb, _ := json.MarshalIndent(baseline, "", "  ")
+				wb, _ := json.MarshalIndent(want, "", "  ")
 				t.Fatalf("transport %q OAuth diverged from %q baseline\n--- baseline (%s) ---\n%s\n--- got (%s) ---\n%s",
-					tc.name, baselineName, baselineName, wb, tc.name, gb)
+					tc.name, cases[0].name, cases[0].name, wb, tc.name, gb)
 			}
 		})
 	}

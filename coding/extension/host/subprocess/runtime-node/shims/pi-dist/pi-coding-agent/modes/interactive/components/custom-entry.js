@@ -1,5 +1,6 @@
 import { Box, Container, Spacer, Text } from "../../../../../pi-tui.mjs";
 import { theme } from "../theme/theme.js";
+import { keyHint, keyText } from "./keybinding-hints.js";
 /**
  * Component that renders a custom session entry from extensions.
  * The host owns transcript spacing; renderer output should provide only its content.
@@ -39,7 +40,7 @@ export class CustomEntryComponent extends Container {
         this.customComponent = undefined;
         let component;
         try {
-            component = this.renderer(this.entry, { expanded: this._expanded }, theme);
+            component = this.renderer(this.entry, { expanded: this._expanded, keyText, keyHint }, theme);
         }
         catch (error) {
             const message = error instanceof Error ? error.message : String(error);

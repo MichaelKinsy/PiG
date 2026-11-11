@@ -23,9 +23,9 @@
 expectations_from = "2026-10-10T00:00:00Z"
 
 [[golden]]
-paths = ["ai/testdata/bedrock-eventstream/golden.json"]
+paths = ["ai/providers/bedrock/testdata/bedrock-eventstream/golden.json"]
 owner = "pi"
-generator = "ai/testdata/bedrock-eventstream/probe.mjs"
+generator = "ai/providers/bedrock/testdata/bedrock-eventstream/probe.mjs"
 
 [[golden]]
 paths = ["ai/testdata/d82-w7/lazy-golden.json"]
@@ -129,6 +129,12 @@ why = "Pi has no Piglets, so the text of `pig piglet tree` (D170) is PiG's own f
 [[input]]
 paths = ["durable/core/probe/testdata/*.events", "durable/core/contracttest/binding/testdata/*.events"]
 
+# session-replaced-2860.lisp is the Lisp SDK realization of the fixture program that session-replaced-2860.{mjs,py} and the -go and -rs
+# directories realize: a test program (the bodies of Pi's 2860-replaced-session-context.test.ts cases), not expected output. Those
+# other realizations are exempt by extension; .lisp is a source language too, and it is listed here because it is not in the skip list.
+[[input]]
+paths = ["coding/cli/testdata/session-replaced-2860.lisp"]
+
 [[input]]
 paths = ["coding/cli/testdata/go.mod", "coding/cli/testdata/*/go.mod", "coding/cli/testdata/*/LICENSE", "coding/cli/testdata/*/Cargo.toml", "coding/cli/testdata/*/Cargo.lock"]
 
@@ -157,3 +163,58 @@ generator = "automation/gen/generate-sdk-vectors.mjs"
 paths = ["codemode/cloudflare/testdata/pi-golden.json"]
 owner = "pi"
 generator = "codemode/cloudflare/testdata/oracle.mjs"
+
+[[golden]]
+paths = ["chord/next/link/testdata/link_wire_golden.json"]
+owner = "pi"
+generator = "chord/next/link/testdata/link_wire.mjs"
+
+[[golden]]
+paths = ["chord/output/testdata/sanitize_escape_golden.json"]
+owner = "pi"
+generator = "chord/output/testdata/sanitize_escape_golden.mjs"
+
+[[golden]]
+paths = ["cmd/gen-models/testdata/catalog-generation/golden.sha256"]
+owner = "pi"
+generator = "test/parity/testdata/catalog-generation/equivalence.sh"
+
+[[golden]]
+paths = ["coding/extension/builtin/toolsearch/testdata/ranker_goldens.json"]
+owner = "pi"
+generator = "coding/extension/builtin/toolsearch/testdata/gen_ranker_goldens.mjs"
+
+[[golden]]
+paths = ["coding/extension/builtin/toolsearch/testdata/tokenize_goldens.json", "durable/internal/search/testdata/tokenize_goldens.json"]
+owner = "pi"
+generator = "coding/extension/builtin/toolsearch/testdata/gen_tokenize_goldens.mjs"
+
+[[golden]]
+paths = ["durable/internal/search/testdata/ranker_goldens.json"]
+owner = "pi"
+generator = "durable/internal/search/testdata/gen_ranker_goldens.mjs"
+
+[[golden]]
+paths = ["durable/toolsearch/testdata/tool_search_goldens.json"]
+owner = "pi"
+generator = "durable/toolsearch/testdata/gen_tool_search_goldens.mjs"
+
+[[golden]]
+paths = ["schema/internal/ecmaregex/testdata/golden_case.json", "schema/internal/ecmaregex/testdata/golden_property.json", "schema/internal/ecmaregex/testdata/golden_regex.json"]
+owner = "pi"
+generator = "schema/internal/ecmaregex/gen/golden.mjs"
+
+[[golden]]
+paths = ["schema/testdata/errors-golden.json"]
+owner = "pi"
+generator = "schema/testdata/gen-errors.mjs"
+
+[[golden]]
+paths = ["schema/testdata/coerce-golden.json"]
+owner = "pi"
+generator = "schema/testdata/gen-coerce-golden.mjs"
+
+[[golden]]
+paths = ["tui/testdata/utf8-decoder-oracle.json"]
+owner = "pi"
+generator = "tui/testdata/utf8-decoder-oracle.mjs"

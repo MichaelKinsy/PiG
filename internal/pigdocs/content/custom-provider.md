@@ -14,7 +14,7 @@ Provider registration is an extension capability. Keep provider-specific code ou
 | Select the provider for one agent application | Piglet `model` preference plus the provider extension |
 | Supply product credentials or endpoints | External product configuration, not portable Piglet source |
 
-See [Models](/docs/latest/models) before you create a provider extension.
+See [Models](models.md) before you create a provider extension.
 
 ## Register a provider
 
@@ -149,7 +149,7 @@ Use [upstream Pi's custom provider documentation](https://pi.dev/docs/latest/cus
 
 ## Related documentation
 
-- [Models](/docs/latest/models)
-- [Providers](/docs/latest/providers)
-- [Extensions](/docs/latest/extensions)
-- [Piglets](/docs/latest/piglets)
+- [Models](models.md)
+- [Providers](providers.md)
+- [Extensions](extensions.md)
+- [Piglets](piglets.md)

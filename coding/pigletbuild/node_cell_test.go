@@ -156,3 +156,41 @@ func TestBuildNodeCellRefusesALinkOutsideTheExtension(t *testing.T) {
 		t.Fatalf("build error = %v", err)
 	}
 }
+
+// A symbolic link that the Binary's startup extraction would refuse is refused
+// at build, with the reason, rather than shipped: its target names a directory
+// and then climbs out of it, and the named directory may itself be a link.
+func TestBuildNodeCellRefusesALinkWithAParentStepAfterAName(t *testing.T) {
+	member := filepath.Join(t.TempDir(), "narrow")
+	writeFiles(t, map[string]string{filepath.Join(member, "index.ts"): "", filepath.Join(member, "lib", "x.ts"): ""})
+	testenv.Symlink(t, "lib/../index.ts", filepath.Join(member, "alias.ts"))
+	cell := subprocess.CellSpec{Key: "packed-node:abc", Strategy: subprocess.CellStrategyPackedNode, Language: "node", Extensions: []subprocess.ExtConfig{{Name: "narrow", Source: member}}}
+	_, err := buildNodeCell(cell, t.TempDir(), Target{OS: runtime.GOOS, Arch: runtime.GOARCH})
+	if err == nil || !strings.Contains(err.Error(), "climbs after naming a directory") || !strings.Contains(err.Error(), "rewrite the target") {
+		t.Fatalf("build error = %v", err)
+	}
+}
+
+// A link that leaves the extension directory reports that, the older and
+// clearer message, whatever else about its target the startup extraction would
+// refuse: an absolute target and one that climbs past the archive root are not
+// reported as a malformed link.
+func TestBuildNodeCellNamesTheExtensionDirectoryForALinkThatLeavesIt(t *testing.T) {
+	for name, target := range map[string]func(root string) string{
+		"absolute":           func(root string) string { return filepath.Join(root, "shared", "x.ts") },
+		"past the archive":   func(string) string { return "../../x.ts" },
+		"into a sibling dir": func(string) string { return "../shared/x.ts" },
+	} {
+		t.Run(name, func(t *testing.T) {
+			root := t.TempDir()
+			member := filepath.Join(root, "narrow")
+			writeFiles(t, map[string]string{filepath.Join(member, "index.ts"): "", filepath.Join(root, "shared", "x.ts"): ""})
+			testenv.Symlink(t, target(root), filepath.Join(member, "alias.ts"))
+			cell := subprocess.CellSpec{Key: "packed-node:abc", Strategy: subprocess.CellStrategyPackedNode, Language: "node", Extensions: []subprocess.ExtConfig{{Name: "narrow", Source: member}}}
+			_, err := buildNodeCell(cell, t.TempDir(), Target{OS: runtime.GOOS, Arch: runtime.GOARCH})
+			if err == nil || !strings.Contains(err.Error(), "points outside the extension directory") {
+				t.Fatalf("build error = %v", err)
+			}
+		})
+	}
+}

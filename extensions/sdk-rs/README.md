@@ -8,7 +8,7 @@ The crate documentation (`cargo doc`; `cargo test --doc` runs the truncation exa
 
 `Context::set_working_message("")` shows an empty working label, as Pi does, and `Context::clear_working_message()` restores the default label (Pi's `setWorkingMessage()` with no argument); `clear_hidden_thinking_label()` does the same for `set_hidden_thinking_label`.
 
-`Context::set_status(key, "")` sets an empty status text, as Pi's `setStatus(key, "")` does (RPC mode writes it); `Context::clear_status(key)` is Pi's `setStatus(key, undefined)`. An empty placeholder or prefill of `input` and `editor` is the unset member (Pi's `placeholder?`, `prefill?`; a Rust `&str` cannot be undefined), so RPC mode writes no such member for it.
+`Context::set_status(key, "")` sets an empty status text, as Pi's `setStatus(key, "")` does (RPC mode writes it); `Context::clear_status(key)` is Pi's `setStatus(key, undefined)`. `Context::input(title, "")` and `Context::editor(title, "")` send an empty placeholder or prefill, as Pi's `input(title, "")` and `editor(title, "")` do (RPC mode writes `placeholder: ""` and `prefill: ""`); `input_without_placeholder(title)`, `input_without_placeholder_with_options(title, opts)` and `editor_without_prefill(title)` are Pi's `input(title)`, `input(title, undefined, opts)` and `editor(title)` (a Rust `&str` cannot be undefined), for which RPC mode writes no such member.
 
 ## Constrained sampling
 
@@ -16,7 +16,7 @@ The crate documentation (`cargo doc`; `cargo test --doc` runs the truncation exa
 
 ## Breaking changes in 0.3.0
 
-Host-backed `Context` getters return `io::Result` and never an empty value or default; Pi's `undefined` is `Option::None` (`get_session_name`, `get_session_file`, `get_leaf_id`, `get_flag`, `get_context_usage`, `get_model_info`). `get_branch` and `get_entries` return the session-log subscription failure. `ExecOptions.timeout` and `DialogOptions.timeout` are `Option<f64>`, and `ToolDefinition.constrained_sampling` is `Option<ToolConstrainedSampling>`. See the migration tables in `docs/site/docs/extensions.md`.
+Host-backed `Context` getters return `io::Result` and never an empty value or default; Pi's `undefined` is `Option::None` (`get_session_name`, `get_session_file`, `get_leaf_id`, `get_flag`, `get_context_usage`, `get_model_info`). `get_branch` and `get_entries` return the session-log subscription failure. `ExecOptions.timeout`, `ExecOptions.max_buffer` and `DialogOptions.timeout` are `Option<f64>` (`max_buffer` caps stdout and stderr together; past it the command is terminated and `ExecResult.truncated` is set), a command that ignores SIGTERM is killed five seconds later, and `ToolDefinition.constrained_sampling` is `Option<ToolConstrainedSampling>`. See the migration tables in `docs/site/docs/extensions.md`.
 
 ## Upstream 0.99.1 extension API
 
@@ -57,6 +57,10 @@ Serialize `JsString` directly with `serde_json::to_string` or `serde_json::to_ve
 ## Mouse input
 
 A `RemoteComponent` or `ViewComponent` that returns `true` from `handles_mouse` receives Pi's fullscreen mouse events in `handle_mouse(&MouseEvent)` (snake_case fields such as `screen_x`, `wheel_delta`, `click_count`; `x`/`y` local to the component), on the same serial queue as `handle_input` and with the same result meaning. Regular `tuiMode` delivers none, as in Pi. See "Mouse in custom components" in `docs/extension-authoring.md`.
+
+`captures_viewport_input(&self) -> bool` (default `false`) is Pi's `Component.capturesViewportInput`, a member of `RemoteComponent`, `ViewComponent`, `EditorComponent` and the `tui_alt_screen::Component` trait: a focused component that returns `true` takes the fullscreen viewport's keys (scroll, page) instead of the viewport. `ui.custom.render` and `ui.editor.render` frames carry the value read when the frame is drawn as `capturesViewportInput` (omitted when false), and a frame goes out when only that changed; a `TuiAltScreen` component is asked each time the host asks and answers its current value.
+
+`pig_sdk::tui::get_select_page_index(&keybindings, data, selected_index, item_count, page_size) -> Option<usize>` is pi-tui's `getSelectPageIndex`: `tui.select.pageUp` / `tui.select.pageDown` move the selection one page, clamped to the list (an empty list gives `Some(0)`); any other key gives `None`.
 
 ## Child agent sessions
 

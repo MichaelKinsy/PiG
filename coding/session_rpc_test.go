@@ -15,6 +15,7 @@ func TestSessionQueueOperationsPreserveModesAndEmitUpdates(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	_ = sess.Events()
 	defer func() {
 		if err := sess.Close(); err != nil {
 			t.Errorf("close session: %v", err)

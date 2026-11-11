@@ -35,8 +35,6 @@ type rawFrame struct {
 	ops   []durable.Op
 	// retired and end are the document frames {retired: true} and {end: true}; they carry no value.
 	retired, end bool
-	// changes are the records the commit wrote for the conversation of a view opened with changes: true.
-	changes json.RawMessage
 }
 
 // watchHub routes the core's watch frames to the watches the session opened.
@@ -50,7 +48,7 @@ type watchHub struct {
 	next    uint32
 	sinks   map[uint32]func(rawFrame)
 	early   map[uint32][]rawFrame
-	ends    []func() // SourceEnded of each open watch
+	ends    []func(watch, observer durable.WatchEnd) // end of each open watch, given the ends the Session's close makes for each kind of follower
 	bg      sync.WaitGroup
 	spawnMu sync.Mutex // guards shut; apart from mu because sinks run under mu and spawn
 	shut    bool       // closeSession ran: no further background work starts
@@ -128,7 +126,7 @@ func (h *watchHub) reserve() uint32 {
 }
 
 // bind installs the sink of an opened watch and hands it the frames held for it, in order, before any later frame.
-func (h *watchHub) bind(id uint32, advance func(rawFrame), end func()) {
+func (h *watchHub) bind(id uint32, advance func(rawFrame), end func(watch, observer durable.WatchEnd)) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	held := h.early[id]
@@ -159,16 +157,15 @@ func (h *watchHub) notice(n abi.Notice) {
 			Value json.RawMessage `json:"value"`
 			// Ops decode through chord's JSON, so an object an operation carries keeps its key order and the applier can
 			// traverse it: encoding/json would hold map[string]any objects the applier cannot enter.
-			Ops     delta.Ops       `json:"ops"`
-			Changes json.RawMessage `json:"changes"`
-			Retired bool            `json:"retired"`
-			End     bool            `json:"end"`
+			Ops     delta.Ops `json:"ops"`
+			Retired bool      `json:"retired"`
+			End     bool      `json:"end"`
 		} `json:"frame"`
 	}
 	if json.Unmarshal(n.Payload, &p) != nil || p.WatchID == nil || p.Frame == nil {
 		return
 	}
-	frame := rawFrame{value: p.Frame.Value, ops: p.Frame.Ops, changes: p.Frame.Changes, retired: p.Frame.Retired, end: p.Frame.End}
+	frame := rawFrame{value: p.Frame.Value, ops: p.Frame.Ops, retired: p.Frame.Retired, end: p.Frame.End}
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if advance, bound := h.sinks[*p.WatchID]; bound {
@@ -178,14 +175,16 @@ func (h *watchHub) notice(n abi.Notice) {
 	}
 }
 
-// closeSession ends every open watch as Session.close does (reason ended) and waits for the watch.close requests.
-func (h *watchHub) closeSession() {
+// closeSession ends every open watch and observer as Session.close does (session.CloseEnds: a watch ended, an observer failed
+// with session.ErrSessionClosedEnd, both failed with the failure that failed the Session) and waits for the watch.close requests.
+func (h *watchHub) closeSession(failure error) {
 	h.mu.Lock()
 	ends := h.ends
 	h.ends = nil
 	h.mu.Unlock()
+	watch, observer := session.CloseEnds(failure)
 	for _, end := range ends {
-		end()
+		end(watch, observer)
 	}
 	h.spawnMu.Lock()
 	h.shut = true
@@ -344,22 +343,22 @@ func watchOf[T any](ctx context.Context, m *mountSource[T]) *chord.Watch[T] {
 			watch.EndAfterDelivery()
 		case f.retired:
 			// The retirement repeats the last value the watch was given, with no ops.
-			watch.Advance(m.hub.deliveryContext(), chord.WatchChange[T]{Value: m.current(), Retired: true})
+			watch.Advance(m.hub.deliveryContext(), chord.WatchCall[T]{Kind: chord.WatchCallValue, Value: m.current(), Retired: true})
 		default:
 			if value, ok := m.advance(f); ok {
-				watch.Advance(m.hub.deliveryContext(), chord.WatchChange[T]{Value: value, Ops: f.ops})
+				watch.Advance(m.hub.deliveryContext(), chord.WatchCall[T]{Kind: chord.WatchCallValue, Value: value, Ops: f.ops})
 			}
 		}
-	}, func() { watch.SourceEnded(nil) })
+	}, func(ended, _ durable.WatchEnd) { watch.EndWith(ended) })
 	if ctx.Done() != nil {
-		watch.ObserveCancellation(ctx)
+		watch.ObserveAbort(ctx)
 	}
 	return watch
 }
 
 // watchDoc is Session.watchDoc (session.ts:268-298): the watch of a document's committed value, or nil when the document is
-// absent. Cancelling ctx before the core answers rejects with ctx's error; cancelling it after ends the watch with reason
-// cancelled.
+// absent. Cancelling ctx before the core answers rejects with ctx's error; cancelling it after ends the watch with kind
+// aborted.
 func (s *coreSession) watchDoc(ctx context.Context, token durable.AnyDocToken, args []any) (durable.WatchHandle[durable.JsonObject], error) {
 	def := token.AnyDefinition()
 	resolved, err := durable.ResolveAddress(def, args)
@@ -391,15 +390,15 @@ func (s *coreSession) ObserveDocErased(ctx context.Context, token durable.AnyDoc
 	m.hub.bind(m.id, func(f rawFrame) {
 		switch {
 		case f.end:
-			guarded.End(nil)
+			guarded.End(durable.WatchEnd{Kind: durable.WatchEnded})
 		case f.retired:
-			guarded.Advance(m.hub.deliveryContext(), durable.WatchChange[durable.JsonObject]{Value: m.current(), Retired: true})
+			guarded.Advance(m.hub.deliveryContext(), durable.WatchCall[durable.JsonObject]{Kind: durable.WatchCallValue, Value: m.current(), Retired: true})
 		default:
 			if value, ok := m.advance(f); ok {
-				guarded.Advance(m.hub.deliveryContext(), durable.WatchChange[durable.JsonObject]{Value: value, Ops: f.ops})
+				guarded.Advance(m.hub.deliveryContext(), durable.WatchCall[durable.JsonObject]{Kind: durable.WatchCallValue, Value: value, Ops: f.ops})
 			}
 		}
-	}, func() { guarded.End(nil) })
+	}, func(_, ended durable.WatchEnd) { guarded.End(ended) })
 	return session.NewObservation(m.first, guarded), nil
 }
 
@@ -414,8 +413,8 @@ func openDocWatch(ctx context.Context, s *coreSession, def *durable.AnyDocDefini
 	})
 }
 
-func (c *conversation) Watch(ctx context.Context) (harness.ConversationWatch, error) {
-	m, err := openWatch(ctx, c.s, map[string]any{"kind": "view", "conversationId": c.id}, typed[harness.ConversationView], viewReducer())
+func (c *conversation) Watch(ctx context.Context, window *harness.ConversationWindow) (harness.ConversationWatch, error) {
+	m, err := openWatch(ctx, c.s, viewTarget(c.id, window), typed[harness.ConversationView], viewReducer())
 	if err != nil || m == nil {
 		return nil, err
 	}
@@ -429,4 +428,24 @@ func (s *coreSession) WatchTaskGraph(ctx context.Context) (harness.TaskGraphWatc
 		return nil, err
 	}
 	return watchOf(ctx, m), nil
+}
+
+// viewTarget is the watch.open target of a conversation view: the window's fields as given, so the core applies Pi's defaults.
+func viewTarget(id durable.ConversationId, window *harness.ConversationWindow) map[string]any {
+	target := map[string]any{"kind": "view", "conversationId": id}
+	if window == nil {
+		return target
+	}
+	bounds := map[string]any{}
+	if window.From != nil {
+		bounds["from"] = *window.From
+	}
+	if window.Min != nil {
+		bounds["min"] = *window.Min
+	}
+	if window.Max != nil {
+		bounds["max"] = *window.Max
+	}
+	target["window"] = bounds
+	return target
 }

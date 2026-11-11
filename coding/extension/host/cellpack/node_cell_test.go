@@ -134,6 +134,138 @@ func TestExtractNodeCellRefusesMismatchedOrEscapingArchives(t *testing.T) {
 	}
 }
 
+// An archive cannot reach outside its tree by writing through a symbolic link
+// it carries. A link name is checked lexically, but the kernel resolves "z/.."
+// through the link z: with z pointing at ".", each "z/.." climbs one directory
+// more than its text says. Two such pairs let a link pass as a path inside the
+// tree while it resolves to the directory above it, and a later member under
+// that link would be written there. Members are refused when their parent
+// passes through a link, and a link target may climb only before it names
+// anything, so that no archive tree can resolve outside its root.
+func TestUntarNodeSourcesRefusesWritesThroughSymbolicLinks(t *testing.T) {
+	for name, entries := range map[string][]archiveEntry{
+		"member written through a link that resolves above the root": {
+			{name: "a/", dir: true},
+			{name: "a/b/", dir: true},
+			{name: "a/z", link: "."},
+			{name: "a/b/z", link: "."},
+			{name: "a/b/w", link: "z/../z/../.."},
+			{name: "a/b/w/evil.txt", body: "outside"},
+		},
+		"link declared before the links it climbs through": {
+			{name: "a/", dir: true},
+			{name: "a/b/", dir: true},
+			{name: "a/b/w", link: "z/../z/../.."},
+		},
+		"link target with a parent step after a name": {
+			{name: "a/", dir: true},
+			{name: "a/w", link: "b/../c"},
+		},
+		"regular member inside the root reached through a link": {
+			{name: "a/", dir: true},
+			{name: "a/z", link: "."},
+			{name: "a/z/inside.txt", body: "inside"},
+		},
+		"directory member reached through a link": {
+			{name: "a/", dir: true},
+			{name: "a/z", link: "."},
+			{name: "a/z/sub/", dir: true},
+		},
+		"link member reached through a link": {
+			{name: "a/", dir: true},
+			{name: "a/z", link: "."},
+			{name: "a/z/l", link: "../x"},
+		},
+		"member replacing a link": {
+			{name: "a/", dir: true},
+			{name: "a/z", link: "."},
+			{name: "a/z", body: "replaced"},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			data, _ := nodeArchive(t, entries...)
+			parent := t.TempDir()
+			sentinel := filepath.Join(parent, "sentinel")
+			if err := os.WriteFile(sentinel, []byte("keep"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			err := untarNodeSources(data, filepath.Join(parent, "sources"))
+			listing, readErr := os.ReadDir(parent)
+			if readErr != nil {
+				t.Fatal(readErr)
+			}
+			var names []string
+			for _, entry := range listing {
+				names = append(names, entry.Name())
+			}
+			if strings.Join(names, " ") != "sentinel sources" {
+				t.Errorf("extraction wrote outside its root: %v", names)
+			}
+			if err == nil {
+				t.Error("untarNodeSources accepted the archive")
+			}
+		})
+	}
+}
+
+// On a file system that folds case (macOS APFS by default, Windows NTFS) a link
+// is reached by every spelling of its name, so judging "does this member pass
+// through a link" from the archive's own text misses a spelling the archive did
+// not write. a/b/Z links to "a"; the folder entry a/b/z names the same link, and
+// the member a/b/z/w would be created as a/w, a link whose target
+// "../../../x" resolves above the root. The check reads the tree on disk.
+func TestUntarNodeSourcesRefusesALinkReachedByAnotherSpellingOfItsName(t *testing.T) {
+	probe := t.TempDir()
+	if err := os.WriteFile(filepath.Join(probe, "a"), nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Lstat(filepath.Join(probe, "A")); err != nil {
+		t.Skip("the file system distinguishes case, so one spelling names one entry")
+	}
+	data, _ := nodeArchive(t,
+		archiveEntry{name: "a/", dir: true},
+		archiveEntry{name: "a/b/", dir: true},
+		archiveEntry{name: "a/b/Z", link: "../"},
+		archiveEntry{name: "a/b/z/", dir: true},
+		archiveEntry{name: "a/b/z/w", link: "../../../x"},
+	)
+	parent := t.TempDir()
+	err := untarNodeSources(data, filepath.Join(parent, "sources"))
+	if err == nil {
+		t.Error("untarNodeSources accepted a member that passes through a link by another spelling of its name")
+	}
+	if link, readErr := os.Readlink(filepath.Join(parent, "sources", "a", "w")); readErr == nil {
+		t.Errorf("extraction created a/w -> %s outside the folder the archive named", link)
+	}
+}
+
+// Links that stay inside the tree keep working: a package manager's
+// node_modules link climbs out of its own directory before naming the target,
+// and a package may link to itself or to a sibling.
+func TestUntarNodeSourcesKeepsLinksThatStayInsideTheTree(t *testing.T) {
+	data, _ := nodeArchive(t,
+		archiveEntry{name: "greeter/", dir: true},
+		archiveEntry{name: "greeter/node_modules/dep/", dir: true},
+		archiveEntry{name: "greeter/node_modules/dep/index.js", body: "module.exports = 1;\n"},
+		archiveEntry{name: "greeter/node_modules/.bin/", dir: true},
+		archiveEntry{name: "greeter/node_modules/.bin/dep", link: "../dep/index.js"},
+		archiveEntry{name: "greeter/node_modules/greeter", link: "../"},
+		archiveEntry{name: "greeter/node_modules/alias", link: "./dep"},
+		archiveEntry{name: "greeter/later", link: "not-yet/there"},
+		archiveEntry{name: "greeter/not-yet/", dir: true},
+		archiveEntry{name: "greeter/not-yet/there", body: "x"},
+	)
+	root := filepath.Join(t.TempDir(), "sources")
+	if err := untarNodeSources(data, root); err != nil {
+		t.Fatal(err)
+	}
+	for _, link := range []string{"greeter/node_modules/.bin/dep", "greeter/node_modules/alias/index.js", "greeter/later"} {
+		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(link))); err != nil {
+			t.Errorf("%s does not resolve: %v", link, err)
+		}
+	}
+}
+
 // A Binary publishes its Node cell under the PiG home, as every other embedded
 // cell (3a50b7960): ConfigRoot()/piglet-binary-cells/node/<digest>, absolute
 // for a relative PIG_HOME, and under $XDG_CONFIG_HOME/pig without PIG_HOME.

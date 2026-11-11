@@ -7,12 +7,13 @@ import (
 )
 
 // json-parse.ts parseStreamingJson returns the value JSON.parse reads, an array, null, a number, a string or a boolean included, and the agent validates and stores
-// that value as the call's arguments: the model is told `root: must be object ... Received arguments: []`, and the session keeps `"arguments":[]`.
+// that value as the call's arguments: the model is told `root: expected object, got array ... Received arguments: []`, and the session keeps `"arguments":[]`.
 func TestStreamedToolArgumentsThatAreNotAnObjectAreKeptAsPiKeepsThem(t *testing.T) {
 	tool := ToolSchema{Name: "read", Parameters: map[string]any{
 		"type": "object", "properties": map[string]any{"path": map[string]any{"type": "string"}}, "required": []any{"path"},
 	}}
-	for _, text := range []string{`[]`, `null`, `5`, `"s"`, `true`, `[{"b":1,"a":2}]`} {
+	// pi-schema names the kind of the value it got: an integral number is an integer.
+	for text, kind := range map[string]string{`[]`: "array", `null`: "null", `5`: "integer", `"s"`: "string", `true`: "boolean", `[{"b":1,"a":2}]`: "array"} {
 		t.Run(text, func(t *testing.T) {
 			var call ToolCall
 			call.ID, call.Name = "c1", "read"
@@ -25,8 +26,8 @@ func TestStreamedToolArgumentsThatAreNotAnObjectAreKeptAsPiKeepsThem(t *testing.
 				t.Fatalf("ArgumentsJSON = %s, %v; want %s", arguments, err, text)
 			}
 			_, err = ValidateToolArguments(tool, call)
-			if err == nil || !strings.Contains(err.Error(), "root: must be object") || (!strings.Contains(text, "{") && !strings.Contains(err.Error(), "Received arguments:\n"+text)) {
-				t.Fatalf("validation error = %v, want root: must be object and the received value %s", err, text)
+			if err == nil || !strings.Contains(err.Error(), "  - root: expected object, got "+kind+"\n") || (!strings.Contains(text, "{") && !strings.Contains(err.Error(), "Received arguments:\n"+text)) {
+				t.Fatalf("validation error = %v, want root: expected object, got %s and the received value %s", err, kind, text)
 			}
 			if _, err := ValidateToolArgumentsJSON("read", nil, arguments); err == nil {
 				t.Fatal("the agent's validation accepted a non-object value")

@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/modes/interactive/components/radius-login-selector.ts
+
 import (
 	"bytes"
 	"encoding/json"

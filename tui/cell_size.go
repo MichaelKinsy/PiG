@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"fmt"
 	"strconv"
 
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
@@ -21,7 +20,7 @@ func (t *tuiBase) QueryCellSize() {
 	if GetCapabilities().Images == "" {
 		return
 	}
-	_, _ = fmt.Fprint(t.out, cellSizeQuery)
+	WriteToTerminal(t.out, cellSizeQuery)
 }
 
 // ConsumeCellSizeResponse reports whether data is a complete cell-size

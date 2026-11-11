@@ -47,25 +47,40 @@ func (c Chunks) Len() int {
 }
 
 // AppendHopsChunks appends the wire form of h to c, as AppendHops does, a statement at a time.
-func AppendHopsChunks(c *Chunks, h Hops) {
+func AppendHopsChunks(c *Chunks, h Hops) { appendHopsChunks(c, h, false) }
+
+// ConsumeHopsChunks is AppendHopsChunks for a caller that is done with h: each statement of h.Commits loses its parameters once it is
+// in the payload, so the collector can take them while the rest of a 20,000-task commit is still being encoded (they were the third
+// copy of each record's data, with its text and its payload bytes).
+func ConsumeHopsChunks(c *Chunks, h Hops) { appendHopsChunks(c, h, true) }
+
+func appendHopsChunks(c *Chunks, h Hops, consume bool) {
 	b := c.Tail(8)
 	b = binary.LittleEndian.AppendUint32(b, h.N)
 	c.Set(binary.LittleEndian.AppendUint32(b, h.At))
 	for i := range h.Commits {
 		commit := &h.Commits[i]
-		body := 10
+		body := 11
 		for j := range commit.Stmts {
 			body += 2 + paramsSize(commit.Stmts[j].Params)
 		}
-		b := c.Tail(14)
+		b := c.Tail(15)
 		b = binary.LittleEndian.AppendUint32(b, uint32(body))
 		b = binary.LittleEndian.AppendUint64(b, uint64(commit.Seq))
+		flags := byte(0)
+		if commit.Joined {
+			flags = commitJoined
+		}
+		b = append(b, flags)
 		c.Set(binary.LittleEndian.AppendUint16(b, uint16(len(commit.Stmts))))
 		for j := range commit.Stmts {
 			s := &commit.Stmts[j]
 			b := c.Tail(2 + paramsSize(s.Params))
 			b = binary.LittleEndian.AppendUint16(b, s.SQL)
 			c.Set(appendParams(b, s.Params))
+			if consume {
+				s.Params = nil
+			}
 		}
 	}
 }

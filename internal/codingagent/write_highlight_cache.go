@@ -43,8 +43,11 @@ func pendingLine(line string) writeHighlightLine {
 	return writeHighlightLine{text: line, pending: true}
 }
 
+// writeHighlightCode is the one place the write cache highlights code; tests replace it to see which code is highlighted.
+var writeHighlightCode = tui.HighlightCode
+
 func highlightSingleLine(line, lang string) string {
-	highlighted := tui.HighlightCode(line, lang)
+	highlighted := writeHighlightCode(line, lang)
 	if len(highlighted) == 0 {
 		return ""
 	}
@@ -84,7 +87,7 @@ func (cache *writeHighlightCache) refreshPrefix() {
 		return
 	}
 	epoch := tui.CurrentHighlightEpoch()
-	prefixHighlighted := tui.HighlightCode(strings.Join(cache.normalizedLines[:prefixCount], "\n"), cache.lang)
+	prefixHighlighted := writeHighlightCode(strings.Join(cache.normalizedLines[:prefixCount], "\n"), cache.lang)
 	for i := range prefixCount {
 		if i < len(prefixHighlighted) {
 			cache.highlightedLines[i] = highlightedLine(prefixHighlighted[i])
@@ -105,7 +108,7 @@ func rebuildWriteHighlightCacheFull(rawPath, fileContent string) *writeHighlight
 		return nil
 	}
 	normalized := normalizeWriteText(fileContent)
-	block := tui.HighlightCode(normalized, lang)
+	block := writeHighlightCode(normalized, lang)
 	lines := make([]writeHighlightLine, len(block))
 	for i, line := range block {
 		lines[i] = highlightedLine(line)
@@ -156,7 +159,8 @@ func updateWriteHighlightCacheIncremental(cache *writeHighlightCache, rawPath, f
 		cache.highlightedLines = append(cache.highlightedLines, pendingLine(segment))
 	}
 	// Once the lines grow past the leading block, the block's text no longer changes, and highlighting it again in the same
-	// epoch writes the lines it already holds.
+	// epoch writes the lines it already holds. write.ts refreshWriteHighlightPrefix reaches the same result through the row's
+	// CodeHighlighter, which returns its last lines for the same prefix, theme and grammars; prefixEpoch is that check here.
 	if lastIndex < writePartialFullHighlightLines || !cache.prefixFresh || cache.prefixEpoch != tui.CurrentHighlightEpoch() {
 		cache.refreshPrefix()
 	}

@@ -1,4 +1,4 @@
-// pi-ai's `Type` (TypeBox 1.3.27): what each constructor and guard of the first slice returns for the arguments the extensions in the npm `pi-package` scan pass, plus the
+// The `Type` of the pi-ai module extensions import (the extension view: TypeBox 1.3.27): what each constructor and guard of the first slice returns for the arguments the extensions in the npm `pi-package` scan pass, plus the
 // edges: option bags (members added after the constructor's own, a member replaced in place), key order (array-index keys first), Optional/Readonly/Immutable/Unsafe markers
 // (reported as hidden members: JSON drops them), Record key kinds, and Enum from a list and from a TypeScript-enum-like object.
 //

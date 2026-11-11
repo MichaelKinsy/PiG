@@ -1,5 +1,7 @@
 package mcpext_test
 
+// pi: packages/coding-agent/src/extensions/mcp/oauth.ts
+
 import (
 	"encoding/json"
 	"slices"

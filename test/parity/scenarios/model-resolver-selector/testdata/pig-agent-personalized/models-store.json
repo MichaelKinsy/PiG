@@ -2,7 +2,7 @@
   "openrouter": {
     "models": [
       {
-        "id": "vendor/personal-text",
+        "id": "vendor/personal-text:nitro",
         "name": "Personal Text",
         "api": "openai-completions",
         "provider": "openrouter",
@@ -14,7 +14,7 @@
         "maxTokens": 8192
       },
       {
-        "id": "vendor/personal-vision",
+        "id": "vendor/personal-vision:nitro",
         "name": "Personal Vision",
         "api": "openai-completions",
         "provider": "openrouter",

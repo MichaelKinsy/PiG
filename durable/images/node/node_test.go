@@ -17,7 +17,7 @@ import (
 )
 
 // Pi 1.2.0 packages/durable/test/images-wasm-module.test.ts:8 "createPhotonImages takes a compiled WebAssembly module, as
-// Cloudflare Workers pass it": a 1x1 GIF is returned as it is, once it decodes. The Go processors decode natively (D165), so
+// Cloudflare Workers pass it": a 1x1 GIF is returned as it is, once it decodes. The Go processors decode natively, so
 // there is no WebAssembly module to compile and pass; the GIF goes through the Cloudflare entry, which stands for the
 // module-taking createPhotonImages, and the Node entry.
 func TestTheNodeAndCloudflareProcessorsPrepareA1x1GIF(t *testing.T) {

@@ -10,21 +10,23 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"testing"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	sdk "github.com/MichaelKinsy/PiG/extensions/sdk"
+	"github.com/MichaelKinsy/PiG/internal/toolchain"
 	"github.com/MichaelKinsy/PiG/internal/typebox/engine"
 )
 
 // TestTypeEngineVectorsThroughTheHost runs every vector case the host's type engine answers (about 360 in test/parity/sdk-vectors/pi-ai/Type.json: Pick, Omit, Partial, KeyOf,
-// Mapped, Conditional, Extends, Instantiate, Cyclic, Module, Script, ...) through the Python and the Rust SDK's own `Type` members, one case at a time, against Pi's answer: the
+// Mapped, Conditional, Extends, Instantiate, Cyclic, Module, Script, ...) through the Python, Rust and Lisp SDKs' own `Type` members, one case at a time, against Pi's answer: the
 // schema's JSON text, its hidden members, the message TypeBox throws, or the JSON.stringify failure of a schema that holds a bigint. Each SDK dials this test's socket (PIG_EXT_SOCKET)
 // for every type.engine call, as an extension dials the host's, and the socket is answered by the host's handler for the call (engine.Serve, what the subprocess host runs for
 // CallTypeEngine). The Go SDK has the same cases in TestTypeEngineMembersMatchPi (fused path) and TestConformance_TypeEngineMembersAgreeAcrossSDKs covers all three SDKs through the real
-// host with one tool; this is the case-by-case proof for Rust and Python through a socket.
+// host with one tool; this is the case-by-case proof for Rust, Python and Lisp through a socket.
 func TestTypeEngineVectorsThroughTheHost(t *testing.T) {
 	if testing.Short() {
 		t.Skip("builds the Rust SDK's tests")
@@ -40,6 +42,11 @@ func TestTypeEngineVectorsThroughTheHost(t *testing.T) {
 			cmd := exec.CommandContext(ctx, python, filepath.Join("tests", "run_engine_vectors.py"))
 			cmd.Dir = filepath.Join(root, "extensions", "sdk-py")
 			cmd.Env = append(os.Environ(), "PYTHONPATH="+cmd.Dir)
+			return cmd
+		}},
+		{"lisp", func(ctx context.Context) *exec.Cmd {
+			cmd := exec.CommandContext(ctx, toolchain.SBCLExecutable(runtime.GOOS, exec.LookPath), "--noinform", "--non-interactive", "--no-sysinit", "--no-userinit", "--disable-debugger", "--load", filepath.Join("tests", "run-engine-vectors.lisp"))
+			cmd.Dir = filepath.Join(root, "extensions", "sdk-lisp")
 			return cmd
 		}},
 		{"rust", func(ctx context.Context) *exec.Cmd {

@@ -59,6 +59,8 @@ func pigConfig(t *testing.T) systemConfig {
 func pigConfigWithHome(t *testing.T, pigHome string) systemConfig {
 	t.Helper()
 	trustIntegrationProject(t, pigHome)
+	// Without a settings.json in the agent directory pig opens its first-time setup (D88), which blocks readiness.
+	seedIntegrationSettings(t, pigHome)
 	// Loaded resources follow the awaited session_start handlers; the footer paints earlier.
 	return systemConfig{
 		name:   "pig",
@@ -136,7 +138,7 @@ func launchSystem(t *testing.T, cfg systemConfig) (session string, cleanup func(
 	if err := tmuxCommand("new-session", "-d", "-s", session, "-x", "130", "-y", "36").Run(); err != nil {
 		t.Fatal(err)
 	}
-	cleanup = func() { _ = tmuxCommand("kill-session", "-t", session).Run() }
+	cleanup = func() { _ = killSession(t, session) }
 
 	// Build the launch command.
 	envPrefix := strings.Join(cfg.env, " ")

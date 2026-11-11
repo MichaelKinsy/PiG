@@ -8,9 +8,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::io::{self, Read, Write};
-use std::sync::{Arc, Mutex};
-use std::sync::mpsc;
 use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
+use std::sync::mpsc;
+use std::sync::{Arc, Mutex};
 
 #[cfg(test)]
 #[path = "surrogate_tests.rs"]
@@ -120,6 +120,9 @@ pub struct RegisterMsg {
     /// `markdown_transform` requests.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub markdown_transformer: bool,
+    /// PiG-only: the extension owns the thinking runs of assistant messages, so a hidden or zero-row run leaves no spacer rows. Omitted when false.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub owns_thinking_runs: bool,
     /// The number of tool renderer resolvers (upstream `registerToolRenderer`); the host asks them with
     /// `resolve_tool_renderers` requests.
     #[serde(default, skip_serializing_if = "is_zero_usize")]
@@ -158,7 +161,11 @@ pub struct VirtualModelDecl {
     pub provider: String,
     pub id: String,
     pub name: String,
-    #[serde(default, rename = "thinkingLevels", skip_serializing_if = "Vec::is_empty")]
+    #[serde(
+        default,
+        rename = "thinkingLevels",
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub thinking_levels: Vec<String>,
     #[serde(default, rename = "contextWindow", skip_serializing_if = "is_zero_u64")]
     pub context_window: u64,
@@ -221,30 +228,6 @@ pub struct ToolDef {
     /// The tool defines prepareArguments; the host asks with `tool_prepare_arguments` before it validates the arguments.
     #[serde(skip_serializing_if = "std::ops::Not::not", default)]
     pub prepares_arguments: bool,
-    /// `parameters` with TypeBox's `~kind` on its nodes, which the host validates arguments with (set by `Extension::tool_typed`).
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub validation_parameters: Option<Value>,
-    /// The nodes of `parameters` that carry refinements (`Type::refine`); the host asks for each predicate call with `tool_refine_arguments` while it validates the arguments.
-    #[serde(skip_serializing_if = "Vec::is_empty", default)]
-    pub refinements: Vec<RefinementDecl>,
-}
-
-/// A schema node of a tool's parameters that carries refinements: its path in the schema and how many refinements it has.
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
-pub struct RefinementDecl {
-    pub path: String,
-    pub count: usize,
-}
-
-/// The payload of `tool_refine_arguments`: run refinement `index` of the node at `path` on `value`; `with_message` asks for the error message when it fails.
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct RefineRequest {
-    pub path: String,
-    pub index: usize,
-    #[serde(default)]
-    pub value: Value,
-    #[serde(default)]
-    pub with_message: bool,
 }
 
 /// Provider-side constrained sampling request for a tool. `type` is "json_schema"
@@ -327,7 +310,7 @@ pub struct RendererDef {
     pub custom_type: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone)]
 pub struct ReadyMsg {
     #[serde(default)]
     pub cwd: String,
@@ -365,9 +348,6 @@ pub struct RequestMsg {
     /// The child agent session whose customTools define `tool` (`tool_call`, `tool_prepare_arguments`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub child_session: Option<String>,
-    /// On `tool_refine_arguments`, the refinement to run.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub refine: Option<RefineRequest>,
     pub terminal_input: Option<TerminalInputArgs>,
     /// Numbers one connection's payloads of an event name and key (`EventStream` in the host's protocol.go).
     pub stream: Option<EventStream>,
@@ -426,8 +406,6 @@ struct RawRequestMsg {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     child_session: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    refine: Option<RefineRequest>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     stream: Option<EventStream>,
 }
 
@@ -436,23 +414,63 @@ impl TryFrom<RawRequestMsg> for RequestMsg {
     fn try_from(raw: RawRequestMsg) -> Result<Self, Self::Error> {
         let mut terminal_input = None;
         let args = if raw.method == "terminal_input" {
-            terminal_input = raw.args.as_ref().map(|a| from_json_str(a.get())).transpose()?;
+            terminal_input = raw
+                .args
+                .as_ref()
+                .map(|a| from_json_str(a.get()))
+                .transpose()?;
             None
         } else {
-            raw.args.as_ref().map(|a| from_json_str(a.get())).transpose()?
+            raw.args
+                .as_ref()
+                .map(|a| from_json_str(a.get()))
+                .transpose()?
         };
-        let args_raw = if raw.method == "tool_call" { raw.args.as_ref().map(|a| a.get().to_string()) } else { None };
-        Ok(Self { method: raw.method, tool: raw.tool, event: raw.event, handler_id: raw.handler_id, tool_call_id: raw.tool_call_id, batch: raw.batch, args, child_session: raw.child_session, refine: raw.refine, terminal_input, stream: raw.stream, stream_error: None, tool_call_index: raw.tool_call_index, args_raw })
+        let args_raw = if raw.method == "tool_call" {
+            raw.args.as_ref().map(|a| a.get().to_string())
+        } else {
+            None
+        };
+        Ok(Self {
+            method: raw.method,
+            tool: raw.tool,
+            event: raw.event,
+            handler_id: raw.handler_id,
+            tool_call_id: raw.tool_call_id,
+            batch: raw.batch,
+            args,
+            child_session: raw.child_session,
+            terminal_input,
+            stream: raw.stream,
+            stream_error: None,
+            tool_call_index: raw.tool_call_index,
+            args_raw,
+        })
     }
 }
 
 impl From<RequestMsg> for RawRequestMsg {
     fn from(req: RequestMsg) -> Self {
         let args = match req.terminal_input {
-            Some(args) => Some(serde_json::value::to_raw_value(&args).expect("terminal input is JSON")),
-            None => req.args.map(|args| serde_json::value::to_raw_value(&args).expect("Value is JSON")),
+            Some(args) => {
+                Some(serde_json::value::to_raw_value(&args).expect("terminal input is JSON"))
+            }
+            None => req
+                .args
+                .map(|args| serde_json::value::to_raw_value(&args).expect("Value is JSON")),
         };
-        Self { method: req.method, tool: req.tool, event: req.event, handler_id: req.handler_id, tool_call_id: req.tool_call_id, batch: req.batch, tool_call_index: req.tool_call_index, args, child_session: req.child_session, refine: req.refine, stream: req.stream }
+        Self {
+            method: req.method,
+            tool: req.tool,
+            event: req.event,
+            handler_id: req.handler_id,
+            tool_call_id: req.tool_call_id,
+            batch: req.batch,
+            tool_call_index: req.tool_call_index,
+            args,
+            child_session: req.child_session,
+            stream: req.stream,
+        }
     }
 }
 
@@ -487,7 +505,9 @@ pub struct CustomInputArgs {
 
 // Rust queries editor text through the typed host call; it does not consume that
 // replica field. Decode it as a JS string before projecting the consumed fields.
-fn deserialize_state_replica<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<Option<Value>, D::Error> {
+fn deserialize_state_replica<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<Value>, D::Error> {
     #[derive(Deserialize)]
     struct State {
         #[serde(default, rename = "editorText")]
@@ -507,22 +527,46 @@ struct RawNotifyMsg {
 impl TryFrom<RawNotifyMsg> for NotifyMsg {
     type Error = serde_json::Error;
     fn try_from(raw: RawNotifyMsg) -> Result<Self, Self::Error> {
-        if matches!(raw.method.as_str(), "ui.custom.input" | "ui.editor.input" | "ui.editor.setText" | "ui.editor.insertText" | "ui.editor.addToHistory") {
-            let custom_input = raw.args.as_ref().map(|args| from_json_str(args.get())).transpose()?;
-            return Ok(Self { method: raw.method, args: None, custom_input });
+        if matches!(
+            raw.method.as_str(),
+            "ui.custom.input"
+                | "ui.editor.input"
+                | "ui.editor.setText"
+                | "ui.editor.insertText"
+                | "ui.editor.addToHistory"
+        ) {
+            let custom_input = raw
+                .args
+                .as_ref()
+                .map(|args| from_json_str(args.get()))
+                .transpose()?;
+            return Ok(Self {
+                method: raw.method,
+                args: None,
+                custom_input,
+            });
         }
-        let args = raw.args.map(|args| {
-            if raw.method == "state_update" {
-                #[derive(Deserialize, Serialize)]
-                struct Update {
-                    #[serde(default, deserialize_with = "deserialize_state_replica")]
-                    state: Option<Value>,
+        let args = raw
+            .args
+            .map(|args| {
+                if raw.method == "state_update" {
+                    #[derive(Deserialize, Serialize)]
+                    struct Update {
+                        #[serde(default, deserialize_with = "deserialize_state_replica")]
+                        state: Option<Value>,
+                    }
+                    let update: Update = from_json_str(args.get())?;
+                    serde_json::to_value(update)
+                } else {
+                    from_json_str(args.get())
                 }
-                let update: Update = from_json_str(args.get())?;
-                serde_json::to_value(update)
-            } else { from_json_str(args.get()) }
-        }).transpose()?;
-        Ok(Self { method: raw.method, args, custom_input: None })
+            })
+            .transpose()?;
+        Ok(Self {
+            method: raw.method,
+            args,
+            custom_input: None,
+        })
     }
 }
 
@@ -624,8 +668,12 @@ pub(crate) struct RequestParent {
 }
 
 impl RequestParent {
-    pub(crate) fn completed(&self) -> bool { self.state.load(Ordering::Acquire) == 1 }
-    pub(crate) fn cancelled(&self) -> bool { self.state.load(Ordering::Acquire) == 2 }
+    pub(crate) fn completed(&self) -> bool {
+        self.state.load(Ordering::Acquire) == 1
+    }
+    pub(crate) fn cancelled(&self) -> bool {
+        self.state.load(Ordering::Acquire) == 2
+    }
 
     /// Gives the request its place in the batch orders. The read loop calls it once, before the request's thread starts.
     pub(crate) fn attach_start(&self, start: Arc<crate::tool_start_order::ToolStart>) {
@@ -655,6 +703,8 @@ pub struct Connection {
     /// Tool renderer resolvers registered after loading.
     pub(crate) late_tool_renderers: crate::tool_render::LateToolRendererResolvers,
     pub(crate) autocomplete: crate::autocomplete::AutocompleteRegistry,
+    /// The TuiAltScreens this connection created, which the host's `tui.alt.cb` requests name.
+    pub(crate) tui_alt: crate::tui_alt_screen::TuiAltRegistry,
     pub(crate) provider_objects: std::sync::OnceLock<Arc<crate::provider::ProviderObjects>>,
     pub(crate) provider_callbacks: std::sync::OnceLock<Arc<crate::provider::ProviderCallbacks>>,
     /// Settings, MCP servers and callable tools the host replicates for synchronous getters.
@@ -688,6 +738,8 @@ pub struct Connection {
     closed: AtomicBool,
     /// Set for a connection a factory opened before `run` (host_helpers.rs): no reader thread serves it yet, so a call made on it reads the frames itself, and only the host calls the host answers before the extension registers are sent. `run` clears it when it takes the connection.
     loading: AtomicBool,
+    /// Set when a loading connection read the host's shutdown frame while a call waited: `run` then registers and ends.
+    shutdown_read: AtomicBool,
     // One thread at a time reads a frame for a loading connection's calls; it does not hold the lock while a frame is served.
     pump: Mutex<()>,
     /// What serves the requests and notifies a loading connection receives while a call waits (event_bus.rs `serve_loading`); cleared when `run` takes the connection.
@@ -696,11 +748,26 @@ pub struct Connection {
 }
 
 /// Serves a frame the host sends a loading connection that is not the answer to a call: a listener dispatch, a release.
-pub(crate) type LoadingServer = Arc<dyn Fn(&Envelope<Box<serde_json::value::RawValue>>) + Send + Sync>;
+pub(crate) type LoadingServer =
+    Arc<dyn Fn(&Envelope<Box<serde_json::value::RawValue>>) + Send + Sync>;
 
 /// The host calls the host answers while a factory runs, before the extension registers: the shared event bus and the pure helpers that read no session state (Go's loadingBusCall).
 fn loading_host_call(method: &str) -> bool {
-    method.starts_with("events.") || matches!(method, "frontmatter.parse" | "date.parse" | "diff.string" | "diff.patch" | "clipboard.copy" | "image.convertToPng" | "image.resize" | "highlight.code" | "type.engine" | "theme.load" | "builtinTool.definition")
+    method.starts_with("events.")
+        || matches!(
+            method,
+            "frontmatter.parse"
+                | "date.parse"
+                | "diff.string"
+                | "diff.patch"
+                | "clipboard.copy"
+                | "image.convertToPng"
+                | "image.resize"
+                | "highlight.code"
+                | "type.engine"
+                | "theme.load"
+                | "builtinTool.definition"
+        )
 }
 
 struct PendingCallSender {
@@ -713,16 +780,29 @@ struct PendingCallSender {
 impl Connection {
     /// Records the Host's `invalidate` notification: a captured context raises the message from its locally answered members afterwards.
     pub(crate) fn apply_invalidate(&self, args: &serde_json::Value) {
-        if let Some(message) = args.get("message").and_then(|v| v.as_str()).filter(|m| !m.is_empty()) {
-            self.stale_message.lock().unwrap().get_or_insert_with(|| message.to_string());
+        if let Some(message) = args
+            .get("message")
+            .and_then(|v| v.as_str())
+            .filter(|m| !m.is_empty())
+        {
+            self.stale_message
+                .lock()
+                .unwrap()
+                .get_or_insert_with(|| message.to_string());
         }
     }
 
     /// Installs the host's `run_signal` frame: one signal for the whole run, cancelled when the run aborts.
     pub(crate) fn apply_run_signal(&self, args: &serde_json::Value) {
-        let active = args.get("active").and_then(|v| v.as_bool()).unwrap_or(false);
+        let active = args
+            .get("active")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
         let run = args.get("run").and_then(|v| v.as_u64()).unwrap_or(0);
-        let aborted = args.get("aborted").and_then(|v| v.as_bool()).unwrap_or(false);
+        let aborted = args
+            .get("aborted")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
         let signal = {
             let mut held = self.run_signal.lock().unwrap();
             if !active {
@@ -766,6 +846,7 @@ impl Connection {
             request_parents: Mutex::new(HashMap::new()),
             closed: AtomicBool::new(false),
             loading: AtomicBool::new(false),
+            shutdown_read: AtomicBool::new(false),
             pump: Mutex::new(()),
             loading_server: Mutex::new(None),
             closed_signal: crate::provider::ProviderSignal::new(),
@@ -789,12 +870,21 @@ impl Connection {
             footer: Default::default(),
             late_tool_renderers: Default::default(),
             autocomplete: crate::autocomplete::AutocompleteRegistry::default(),
+            tui_alt: crate::tui_alt_screen::TuiAltRegistry::default(),
         }
     }
 
     pub(crate) fn arm_parent(&self, id: &str) -> Arc<RequestParent> {
-        let parent = Arc::new(RequestParent { id: id.to_owned(), state: AtomicU8::new(0), finished: AtomicBool::new(false), start: std::sync::OnceLock::new() });
-        self.request_parents.lock().unwrap().insert(id.to_owned(), parent.clone());
+        let parent = Arc::new(RequestParent {
+            id: id.to_owned(),
+            state: AtomicU8::new(0),
+            finished: AtomicBool::new(false),
+            start: std::sync::OnceLock::new(),
+        });
+        self.request_parents
+            .lock()
+            .unwrap()
+            .insert(id.to_owned(), parent.clone());
         parent
     }
 
@@ -811,19 +901,32 @@ impl Connection {
         *self.loading_server.lock().unwrap() = Some(server);
     }
 
+    /// Whether a call made while this connection loaded read the host's shutdown frame.
+    pub(crate) fn shutdown_read(&self) -> bool {
+        self.shutdown_read.load(Ordering::Acquire)
+    }
+
     /// Whether the connection is a factory's, not yet taken by `run`.
     pub(crate) fn is_loading(&self) -> bool {
         self.loading.load(Ordering::Acquire)
     }
 
     /// Reads frames, completing the calls they answer and serving the host's dispatches, until `pending`'s reply arrives. A frame is served outside the pump lock, so a listener that makes a bus call of its own (its nested emit) pumps in turn, on the same thread, and the reply of the call it interrupted is waiting for it afterwards.
-    fn pump_until(&self, pending: &PendingCall) -> io::Result<CallResultMsg<Box<serde_json::value::RawValue>>> {
+    fn pump_until(
+        &self,
+        pending: &PendingCall,
+    ) -> io::Result<CallResultMsg<Box<serde_json::value::RawValue>>> {
         loop {
             let env = {
                 let _reading = self.pump.lock().unwrap();
                 match pending.receiver.try_recv() {
                     Ok(reply) => return Ok(reply),
-                    Err(mpsc::TryRecvError::Disconnected) => return Err(io::Error::new(io::ErrorKind::ConnectionAborted, format!("host call {} cancelled", pending.method))),
+                    Err(mpsc::TryRecvError::Disconnected) => {
+                        return Err(io::Error::new(
+                            io::ErrorKind::ConnectionAborted,
+                            format!("host call {} cancelled", pending.method),
+                        ));
+                    }
                     Err(mpsc::TryRecvError::Empty) => {}
                 }
                 self.read_envelope()?
@@ -833,8 +936,16 @@ impl Connection {
             }
             if env.msg_type == "ping" {
                 if let Some(ping) = env.ping {
-                    self.write_envelope(&Envelope { msg_type: "pong".to_string(), pong: Some(PongMsg { nonce: ping.nonce }), ..Default::default() })?;
+                    self.write_envelope(&Envelope {
+                        msg_type: "pong".to_string(),
+                        pong: Some(PongMsg { nonce: ping.nonce }),
+                        ..Default::default()
+                    })?;
                 }
+                continue;
+            }
+            if env.msg_type == "shutdown" {
+                self.shutdown_read.store(true, Ordering::Release);
                 continue;
             }
             let server = self.loading_server.lock().unwrap().clone();
@@ -842,7 +953,15 @@ impl Connection {
                 Some(server) => server(&env),
                 None if env.msg_type == "request" => {
                     if let Some(id) = env.id.as_deref() {
-                        let _ = self.respond(id, None, Some(ErrorInfo { code: None, message: "the extension has not registered with the host yet".to_string() }));
+                        let _ = self.respond(
+                            id,
+                            None,
+                            Some(ErrorInfo {
+                                code: None,
+                                message: "the extension has not registered with the host yet"
+                                    .to_string(),
+                            }),
+                        );
                     }
                 }
                 None => {}
@@ -850,7 +969,9 @@ impl Connection {
         }
     }
 
-    pub(crate) fn is_closed(&self) -> bool { self.closed.load(Ordering::Acquire) }
+    pub(crate) fn is_closed(&self) -> bool {
+        self.closed.load(Ordering::Acquire)
+    }
 
     /// Ends the socket when the serve loop returns, as Go's RunWithConn closes its connection. A Context the extension keeps past its generation still holds this Connection, and the host's Retire waits for the close while the process lives on for later factory generations.
     pub(crate) fn close_transport(&self) {
@@ -924,25 +1045,56 @@ impl Connection {
         self.respond_serialized(id, result, error)
     }
 
-    pub(crate) fn respond_serialized<T: Serialize>(&self, id: &str, result: Option<T>, error: Option<ErrorInfo>) -> io::Result<()> {
+    pub(crate) fn respond_serialized<T: Serialize>(
+        &self,
+        id: &str,
+        result: Option<T>,
+        error: Option<ErrorInfo>,
+    ) -> io::Result<()> {
         #[derive(Serialize)]
-        struct Response<T> { #[serde(skip_serializing_if = "Option::is_none")] result: Option<T>, #[serde(skip_serializing_if = "Option::is_none")] error: Option<ErrorInfo> }
+        struct Response<T> {
+            #[serde(skip_serializing_if = "Option::is_none")]
+            result: Option<T>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            error: Option<ErrorInfo>,
+        }
         #[derive(Serialize)]
-        struct Reply<'a, T> { #[serde(rename = "type")] kind: &'static str, id: &'a str, response: Response<T> }
+        struct Reply<'a, T> {
+            #[serde(rename = "type")]
+            kind: &'static str,
+            id: &'a str,
+            response: Response<T>,
+        }
         // The response is encoded before the writer lock is taken: a result of hundreds of MiB takes seconds to encode, and the same lock carries the
         // heartbeat's pong, which the host answers by closing a connection that stays silent.
         let had_result = result.is_some();
-        let response = match Self::encode_frame(&Reply { kind: "response", id, response: Response { result, error } }) {
+        let response = match Self::encode_frame(&Reply {
+            kind: "response",
+            id,
+            response: Response { result, error },
+        }) {
             // The host waits for this request's response. A result that cannot be framed (past MAX_FRAME_SIZE, or not serializable) is answered with that failure, as the Node and Python SDKs answer it, rather than leaving the call to hang until it is aborted.
             Err(err) if had_result && err.kind() == io::ErrorKind::InvalidData => {
-                Self::encode_frame(&Reply { kind: "response", id, response: Response::<()> { result: None, error: Some(ErrorInfo { code: None, message: err.to_string() }) } })
+                Self::encode_frame(&Reply {
+                    kind: "response",
+                    id,
+                    response: Response::<()> {
+                        result: None,
+                        error: Some(ErrorInfo {
+                            code: None,
+                            message: err.to_string(),
+                        }),
+                    },
+                })
             }
             outcome => outcome,
         };
         let mut writer = self.writer.lock().unwrap();
         if let Some(parent) = self.request_parents.lock().unwrap().remove(id) {
             parent.finished.store(true, Ordering::Release);
-            let _ = parent.state.compare_exchange(0, 1, Ordering::AcqRel, Ordering::Acquire);
+            let _ = parent
+                .state
+                .compare_exchange(0, 1, Ordering::AcqRel, Ordering::Acquire);
         }
         // Pi's host calls belong to no request: a call the handler left running when it returned continues until it ends. A cancelled request's calls were cancelled by its cancel frame. A completed request's pending calls are no longer scoped to it, so a later cancel frame for it does not reach them.
         for pending in self.pending_calls.lock().unwrap().values_mut() {
@@ -950,11 +1102,18 @@ impl Connection {
                 pending.parent_request_id = None;
             }
         }
-        Self::write_envelope_to(&mut writer, &Envelope::<Value> {
-            msg_type: "request_state".to_string(),
-            request_state: Some(RequestStateMsg { request_id: id.to_string(), state: "completed".to_string(), reason: None }),
-            ..Default::default()
-        })?;
+        Self::write_envelope_to(
+            &mut writer,
+            &Envelope::<Value> {
+                msg_type: "request_state".to_string(),
+                request_state: Some(RequestStateMsg {
+                    request_id: id.to_string(),
+                    state: "completed".to_string(),
+                    reason: None,
+                }),
+                ..Default::default()
+            },
+        )?;
         Self::write_encoded_frame(&mut *writer, &response?)
     }
 
@@ -962,18 +1121,32 @@ impl Connection {
         self.request_state_for(None, id, state, reason)
     }
 
-    pub(crate) fn request_state_for(&self, scope: Option<&RequestParent>, id: &str, state: &str, reason: Option<&str>) -> io::Result<()> {
+    pub(crate) fn request_state_for(
+        &self,
+        scope: Option<&RequestParent>,
+        id: &str,
+        state: &str,
+        reason: Option<&str>,
+    ) -> io::Result<()> {
         let mut writer = self.writer.lock().unwrap();
-        if scope.is_some_and(|parent| parent.finished.load(Ordering::Acquire) || (parent.cancelled() && state != "progress")) || self.is_closed() { return Ok(()); }
-        Self::write_envelope_to(&mut writer, &Envelope::<Value> {
-            msg_type: "request_state".to_string(),
-            request_state: Some(RequestStateMsg {
-                request_id: id.to_string(),
-                state: state.to_string(),
-                reason: reason.map(str::to_string),
-            }),
-            ..Default::default()
-        })
+        if scope.is_some_and(|parent| {
+            parent.finished.load(Ordering::Acquire) || (parent.cancelled() && state != "progress")
+        }) || self.is_closed()
+        {
+            return Ok(());
+        }
+        Self::write_envelope_to(
+            &mut writer,
+            &Envelope::<Value> {
+                msg_type: "request_state".to_string(),
+                request_state: Some(RequestStateMsg {
+                    request_id: id.to_string(),
+                    state: state.to_string(),
+                    reason: reason.map(str::to_string),
+                }),
+                ..Default::default()
+            },
+        )
     }
 
     /// Make a blocking call to the host and wait for call_result.
@@ -994,12 +1167,24 @@ impl Connection {
         self.wait_call(pending)
     }
 
-    pub(crate) fn call_for_scope(&self, scope: Option<&RequestParent>, parent: Option<&str>, method: &str, args: Option<Value>) -> io::Result<CallResultMsg> {
+    pub(crate) fn call_for_scope(
+        &self,
+        scope: Option<&RequestParent>,
+        parent: Option<&str>,
+        method: &str,
+        args: Option<Value>,
+    ) -> io::Result<CallResultMsg> {
         let pending = self.begin_call_with_scope(scope, parent, method, args)?;
         self.wait_call(pending)
     }
 
-    pub(crate) fn call_typed<A: Serialize, R: serde::de::DeserializeOwned + Send>(&self, scope: Option<&RequestParent>, parent: Option<&str>, method: &str, args: Option<A>) -> io::Result<CallResultMsg<R>> {
+    pub(crate) fn call_typed<A: Serialize, R: serde::de::DeserializeOwned + Send>(
+        &self,
+        scope: Option<&RequestParent>,
+        parent: Option<&str>,
+        method: &str,
+        args: Option<A>,
+    ) -> io::Result<CallResultMsg<R>> {
         let pending = self.begin_call_with_scope(scope, parent, method, args)?;
         self.wait_call_typed(pending)
     }
@@ -1050,12 +1235,18 @@ impl Connection {
     ) -> io::Result<PendingCall> {
         // The host answers only a few calls before the extension registers, and a call it does not answer would wait for ever.
         if self.is_loading() && !loading_host_call(method) {
-            return Err(io::Error::new(io::ErrorKind::NotConnected, format!("{method}: the extension has not registered with the host yet")));
+            return Err(io::Error::new(
+                io::ErrorKind::NotConnected,
+                format!("{method}: the extension has not registered with the host yet"),
+            ));
         }
         let mut writer = self.writer.lock().unwrap();
         let mut pending_calls = self.pending_calls.lock().unwrap();
         if self.is_closed() || scope.is_some_and(RequestParent::cancelled) {
-            return Err(io::Error::new(io::ErrorKind::ConnectionAborted, "host call owner is cancelled or closed"));
+            return Err(io::Error::new(
+                io::ErrorKind::ConnectionAborted,
+                "host call owner is cancelled or closed",
+            ));
         }
         // pig additive (D189): a call made through a request's scope after its handler returned is deferred work, which Pi runs once its loop turns; the host holds it for that turn.
         let timer = scope.is_some_and(RequestParent::completed);
@@ -1080,10 +1271,35 @@ impl Connection {
         );
         drop(pending_calls);
         #[derive(Serialize)]
-        struct Call<'a, A> { method: &'a str, #[serde(skip_serializing_if = "Option::is_none")] args: Option<A>, #[serde(skip_serializing_if = "Option::is_none")] parent_request_id: Option<&'a str>, #[serde(skip_serializing_if = "std::ops::Not::not")] timer: bool }
+        struct Call<'a, A> {
+            method: &'a str,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            args: Option<A>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            parent_request_id: Option<&'a str>,
+            #[serde(skip_serializing_if = "std::ops::Not::not")]
+            timer: bool,
+        }
         #[derive(Serialize)]
-        struct Request<'a, A> { #[serde(rename = "type")] kind: &'static str, id: &'a str, call: Call<'a, A> }
-        if let Err(err) = Self::write_envelope_to(&mut writer, &Request { kind: "call", id: &id, call: Call { method, args, parent_request_id, timer } }) {
+        struct Request<'a, A> {
+            #[serde(rename = "type")]
+            kind: &'static str,
+            id: &'a str,
+            call: Call<'a, A>,
+        }
+        if let Err(err) = Self::write_envelope_to(
+            &mut writer,
+            &Request {
+                kind: "call",
+                id: &id,
+                call: Call {
+                    method,
+                    args,
+                    parent_request_id,
+                    timer,
+                },
+            },
+        ) {
             self.pending_calls.lock().unwrap().remove(&id);
             return Err(err);
         }
@@ -1097,7 +1313,10 @@ impl Connection {
         self.wait_call_typed(pending)
     }
 
-    pub(crate) fn wait_call_typed<R: serde::de::DeserializeOwned + Send>(&self, pending: PendingCall) -> io::Result<CallResultMsg<R>> {
+    pub(crate) fn wait_call_typed<R: serde::de::DeserializeOwned + Send>(
+        &self,
+        pending: PendingCall,
+    ) -> io::Result<CallResultMsg<R>> {
         let reply = if self.is_loading() {
             self.pump_until(&pending)?
         } else {
@@ -1108,8 +1327,15 @@ impl Connection {
                 )
             })?
         };
-        let result = reply.result.map(|raw| from_json_str(raw.get())).transpose().map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
-        Ok(CallResultMsg { result, error: reply.error })
+        let result = reply
+            .result
+            .map(|raw| from_json_str(raw.get()))
+            .transpose()
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+        Ok(CallResultMsg {
+            result,
+            error: reply.error,
+        })
     }
 
     pub(crate) fn notify(&self, method: &str, args: Option<Value>) -> io::Result<()> {
@@ -1125,7 +1351,11 @@ impl Connection {
     }
 
     /// Send a notify whose arguments serialize themselves, so [`JsString`] fields keep lone UTF-16 units that a `serde_json::Value` cannot hold.
-    pub(crate) fn notify_typed<A: Serialize>(&self, method: &str, args: Option<A>) -> io::Result<()> {
+    pub(crate) fn notify_typed<A: Serialize>(
+        &self,
+        method: &str,
+        args: Option<A>,
+    ) -> io::Result<()> {
         #[derive(Serialize)]
         struct TypedNotify<'a, A> {
             method: &'a str,
@@ -1138,7 +1368,13 @@ impl Connection {
             msg_type: &'static str,
             notify: TypedNotify<'a, A>,
         }
-        Self::write_envelope_to(&mut self.writer.lock().unwrap(), &TypedEnvelope { msg_type: "notify", notify: TypedNotify { method, args } })
+        Self::write_envelope_to(
+            &mut self.writer.lock().unwrap(),
+            &TypedEnvelope {
+                msg_type: "notify",
+                notify: TypedNotify { method, args },
+            },
+        )
     }
 
     /// Complete a pending host call. Returns true when the envelope was routed.
@@ -1158,16 +1394,24 @@ impl Connection {
             slot.settle();
         }
         let reply = env.call_result.as_ref();
-        let result = reply.and_then(|r| r.result.as_ref()).map(serde_json::value::to_raw_value).transpose();
+        let result = reply
+            .and_then(|r| r.result.as_ref())
+            .map(serde_json::value::to_raw_value)
+            .transpose();
         if let Ok(result) = result {
-            let _ = pending.sender.send(CallResultMsg { result, error: reply.and_then(|r| r.error.clone()) });
+            let _ = pending.sender.send(CallResultMsg {
+                result,
+                error: reply.and_then(|r| r.error.clone()),
+            });
         }
         true
     }
 
     pub(crate) fn cancel_pending_calls_for(&self, parent_request_id: &str) {
         if let Some(parent) = self.request_parents.lock().unwrap().get(parent_request_id) {
-            let _ = parent.state.compare_exchange(0, 2, Ordering::AcqRel, Ordering::Acquire);
+            let _ = parent
+                .state
+                .compare_exchange(0, 2, Ordering::AcqRel, Ordering::Acquire);
         }
         self.pending_calls
             .lock()
@@ -1184,12 +1428,20 @@ impl Connection {
 
     /// Push a widget update (fire-and-forget).
     pub fn push_widget(&self, key: &str, lines: Vec<String>) -> io::Result<()> {
-        self.write_widget_push(WidgetPushMsg { key: key.to_string(), lines: Some(lines), view: None })
+        self.write_widget_push(WidgetPushMsg {
+            key: key.to_string(),
+            lines: Some(lines),
+            view: None,
+        })
     }
 
     /// Push a widget's authoritative kit view (fire-and-forget, D107).
     pub(crate) fn push_widget_view(&self, key: &str, view: Value) -> io::Result<()> {
-        self.write_widget_push(WidgetPushMsg { key: key.to_string(), lines: None, view: Some(view) })
+        self.write_widget_push(WidgetPushMsg {
+            key: key.to_string(),
+            lines: None,
+            view: Some(view),
+        })
     }
 
     fn write_widget_push(&self, push: WidgetPushMsg) -> io::Result<()> {
@@ -1215,8 +1467,12 @@ const DEEP_DECODE_STACK: usize = 64 * 1024 * 1024;
 /// Runs a recursive decode on a thread with `DEEP_DECODE_STACK` bytes of stack, so the caller's own stack does not bound the depth.
 pub(crate) fn on_deep_stack<R: Send>(decode: impl FnOnce() -> R + Send) -> io::Result<R> {
     std::thread::scope(|scope| {
-        let worker = std::thread::Builder::new().stack_size(DEEP_DECODE_STACK).spawn_scoped(scope, decode)?;
-        worker.join().map_err(|_| io::Error::other("deep JSON decode panicked"))
+        let worker = std::thread::Builder::new()
+            .stack_size(DEEP_DECODE_STACK)
+            .spawn_scoped(scope, decode)?;
+        worker
+            .join()
+            .map_err(|_| io::Error::other("deep JSON decode panicked"))
     })
 }
 
@@ -1227,10 +1483,12 @@ pub(crate) fn on_deep_stack<R: Send>(decode: impl FnOnce() -> R + Send) -> io::R
 /// `string`. A frame that decodes the first time is untouched, so the lossless fields keep their units.
 fn decode_frame(buf: &[u8]) -> io::Result<Envelope<Box<serde_json::value::RawValue>>> {
     match serde_json::from_slice(buf) {
-        Err(err) if err.is_data() || err.is_syntax() => match replace_unpaired_surrogate_escapes(buf) {
-            Some(repaired) => serde_json::from_slice(&repaired),
-            None => Err(err),
-        },
+        Err(err) if err.is_data() || err.is_syntax() => {
+            match replace_unpaired_surrogate_escapes(buf) {
+                Some(repaired) => serde_json::from_slice(&repaired),
+                None => Err(err),
+            }
+        }
         result => result,
     }
     .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
@@ -1240,9 +1498,14 @@ fn decode_frame(buf: &[u8]) -> io::Result<Envelope<Box<serde_json::value::RawVal
 /// refuses nesting past 128 levels, and a refused frame ends the connection, while Pi's JavaScript parser, Go and Python take far more: the
 /// refusal is lifted up to `MAX_NESTING_DEPTH`. A number outside the `f64` range, which the deep decode can meet as well as the first one,
 /// is then rewritten as `null`.
-pub(crate) fn from_json_str<T: serde::de::DeserializeOwned + Send>(text: &str) -> serde_json::Result<T> {
+pub(crate) fn from_json_str<T: serde::de::DeserializeOwned + Send>(
+    text: &str,
+) -> serde_json::Result<T> {
     let decoded = match serde_json::from_str(text) {
-        Err(err) if err.to_string().starts_with("recursion limit exceeded") && nesting_depth(text.as_bytes()) <= MAX_NESTING_DEPTH => {
+        Err(err)
+            if err.to_string().starts_with("recursion limit exceeded")
+                && nesting_depth(text.as_bytes()) <= MAX_NESTING_DEPTH =>
+        {
             on_deep_stack(|| {
                 let mut de = serde_json::Deserializer::from_str(text);
                 de.disable_recursion_limit();
@@ -1255,10 +1518,12 @@ pub(crate) fn from_json_str<T: serde::de::DeserializeOwned + Send>(text: &str) -
         result => result,
     };
     match decoded {
-        Err(err) if err.to_string().starts_with("number out of range") => match replace_out_of_range_numbers(text) {
-            Some(repaired) => from_json_str(&repaired),
-            None => Err(err),
-        },
+        Err(err) if err.to_string().starts_with("number out of range") => {
+            match replace_out_of_range_numbers(text) {
+                Some(repaired) => from_json_str(&repaired),
+                None => Err(err),
+            }
+        }
         result => result,
     }
 }
@@ -1268,7 +1533,8 @@ pub(crate) fn from_json_str<T: serde::de::DeserializeOwned + Send>(text: &str) -
 /// A `Value` cannot hold an infinity, so the number becomes the `null` it is written as.
 fn replace_out_of_range_numbers(text: &str) -> Option<String> {
     let bytes = text.as_bytes();
-    let (mut out, mut copied, mut index, mut in_string, mut escaped) = (String::new(), 0, 0, false, false);
+    let (mut out, mut copied, mut index, mut in_string, mut escaped) =
+        (String::new(), 0, 0, false, false);
     while index < bytes.len() {
         let byte = bytes[index];
         if in_string {
@@ -1284,10 +1550,15 @@ fn replace_out_of_range_numbers(text: &str) -> Option<String> {
             index += 1;
         } else if byte == b'-' || byte.is_ascii_digit() {
             let start = index;
-            while index < bytes.len() && matches!(bytes[index], b'-' | b'+' | b'.' | b'e' | b'E' | b'0'..=b'9') {
+            while index < bytes.len()
+                && matches!(bytes[index], b'-' | b'+' | b'.' | b'e' | b'E' | b'0'..=b'9')
+            {
                 index += 1;
             }
-            if text[start..index].parse::<f64>().is_ok_and(f64::is_infinite) {
+            if text[start..index]
+                .parse::<f64>()
+                .is_ok_and(f64::is_infinite)
+            {
                 out.push_str(&text[copied..start]);
                 out.push_str("null");
                 copied = index;
@@ -1341,10 +1612,12 @@ fn hex_unit(escape: &[u8]) -> Option<u16> {
 /// string cannot hold one, so each is read as U+FFFD, as `decode_frame` does, instead of refusing the text.
 pub(crate) fn value_from_str_lossy(text: &str) -> serde_json::Result<serde_json::Value> {
     match serde_json::from_str(text) {
-        Err(err) if err.is_data() || err.is_syntax() => match replace_unpaired_surrogate_escapes(text.as_bytes()) {
-            Some(repaired) => serde_json::from_slice(&repaired),
-            None => Err(err),
-        },
+        Err(err) if err.is_data() || err.is_syntax() => {
+            match replace_unpaired_surrogate_escapes(text.as_bytes()) {
+                Some(repaired) => serde_json::from_slice(&repaired),
+                None => Err(err),
+            }
+        }
         result => result,
     }
 }
@@ -1355,7 +1628,10 @@ fn replace_unpaired_surrogate_escapes(buf: &[u8]) -> Option<Vec<u8>> {
 }
 
 /// Rewrites each `\uD800`-`\uDFFF` escape that is not half of a surrogate pair as `replacement(unit)`. Returns None when the body has none.
-pub(crate) fn rewrite_unpaired_surrogate_escapes(buf: &[u8], mut replacement: impl FnMut(u16) -> Vec<u8>) -> Option<Vec<u8>> {
+pub(crate) fn rewrite_unpaired_surrogate_escapes(
+    buf: &[u8],
+    mut replacement: impl FnMut(u16) -> Vec<u8>,
+) -> Option<Vec<u8>> {
     let mut out = Vec::with_capacity(buf.len());
     let mut changed = false;
     let mut i = 0;

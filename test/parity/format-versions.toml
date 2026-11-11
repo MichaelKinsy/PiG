@@ -71,6 +71,15 @@ classification = "release-content"
 rationale = "The CHANGELOG heading (a release name or Unreleased) that holds a bullet; in-memory bug-ledger input, not a serialized format."
 
 [[fields]]
+id = "automation/ci/divguard/dependency_sources.go#const.nodeVersionFile:go:-"
+path = "automation/ci/divguard/dependency_sources.go"
+owner = "<package>"
+field = "nodeVersionFile"
+wire_name = "-"
+classification = "external"
+rationale = "File name of the repository's Node version pin (.node-version), which a Node dependency record cites as its manifest; not a format version."
+
+[[fields]]
 id = "automation/ci/divguard/dependency_sources.go#dependencySource.Version:json:version"
 path = "automation/ci/divguard/dependency_sources.go"
 owner = "dependencySource"
@@ -206,6 +215,510 @@ classification = "upstream"
 rationale = "pi-chord PROTOCOL_VERSION (packages/chord/src/wire.ts:24), announced in hello; peers of another version close the link. Pig speaks 2 while the pinned Pi speaks 4: protocols 3 and 4 are the owner-approved 0.5.0 Chord exception finished in 0.5.1."
 
 [[fields]]
+id = "chord/next/contracts/accepts.go#AcceptedVersion.Version:go:-"
+path = "chord/next/contracts/accepts.go"
+owner = "AcceptedVersion"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/next/contracts/accepts.ts AcceptedVersion.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
+
+[[fields]]
+id = "chord/next/contracts/contract.go#Contract.Version:go:-"
+path = "chord/next/contracts/contract.go"
+owner = "Contract"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/next/contracts/contract.ts Contract.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
+
+[[fields]]
+id = "chord/next/contracts/contract.go#VersionData.Version:go:-"
+path = "chord/next/contracts/contract.go"
+owner = "VersionData"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/next/contracts/contract.ts VersionData.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
+
+[[fields]]
+id = "chord/next/contracts/declare.go#LocalDeclaration.Version:go:-"
+path = "chord/next/contracts/declare.go"
+owner = "LocalDeclaration"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/next/contracts/declare.ts LocalDeclaration.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
+
+[[fields]]
+id = "chord/next/contracts/declare.go#RemoteDeclaration.Version:go:-"
+path = "chord/next/contracts/declare.go"
+owner = "RemoteDeclaration"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/next/contracts/declare.ts RemoteDeclaration.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
+
+[[fields]]
+id = "chord/next/contracts/fingerprint.go#const.NormalFormVersion:go:-"
+path = "chord/next/contracts/fingerprint.go"
+owner = "<package>"
+field = "NormalFormVersion"
+wire_name = "-"
+classification = "upstream"
+rationale = "Exact value of NORMAL_FORM_VERSION in pinned packages/chord/src/next/contracts/fingerprint.ts: the fingerprint normal-form number hashed into every contract fingerprint; Pi owns it, a change there is a change of the fingerprint."
+
+[[fields]]
+id = "chord/next/data/errors.go#const.ProtocolVersion:go:-"
+path = "chord/next/data/errors.go"
+owner = "<package>"
+field = "ProtocolVersion"
+wire_name = "-"
+classification = "upstream"
+rationale = "Exact value of PROTOCOL_VERSION in pinned packages/chord/src/next/data/errors.ts: the data protocol number; Pi owns it."
+
+[[fields]]
+id = "chord/next/data/errors.go#const.ReasonVersion:go:-"
+path = "chord/next/data/errors.go"
+owner = "<package>"
+field = "ReasonVersion"
+wire_name = "-"
+classification = "upstream"
+rationale = "Exact literal of the `version` reason in pinned packages/chord/src/next/data/errors.ts: the reason string a stale-version handle or run carries; Pi owns it."
+
+[[fields]]
+id = "chord/next/documents/definition.go#StateDefinition.Version:go:-"
+path = "chord/next/documents/definition.go"
+owner = "StateDefinition"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/next/documents/definition.ts StateDefinition.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
+
+[[fields]]
+id = "chord/next/documents/definition.go#StateOptions.Version:go:-"
+path = "chord/next/documents/definition.go"
+owner = "StateOptions"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/next/documents/definition.ts StateOptions.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
+
+[[fields]]
+id = "chord/next/documents/handles.go#Keyed.Version:go:-"
+path = "chord/next/documents/handles.go"
+owner = "Keyed"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/next/documents/handles.ts Keyed.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
+
+[[fields]]
+id = "chord/next/documents/handles.go#Singleton.Version:go:-"
+path = "chord/next/documents/handles.go"
+owner = "Singleton"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/next/documents/handles.ts Singleton.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
+
+[[fields]]
+id = "chord/next/documents/keyed_slot.go#Access.Version:go:-"
+path = "chord/next/documents/keyed_slot.go"
+owner = "Access"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/next/documents/keyed-slot.ts Access.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
+
+[[fields]]
+id = "chord/next/documents/persistence.go#Stored.Version:go:-"
+path = "chord/next/documents/persistence.go"
+owner = "Stored"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/next/documents/persistence.ts Stored.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
+
+[[fields]]
+id = "chord/next/documents/persistence.go#StoredChange.Version:go:-"
+path = "chord/next/documents/persistence.go"
+owner = "StoredChange"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/next/documents/persistence.ts StoredChange.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
+
+[[fields]]
+id = "chord/next/documents/residency.go#Resident.Version:go:-"
+path = "chord/next/documents/residency.go"
+owner = "Resident"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/next/documents/residency.ts Resident.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
+
+[[fields]]
+id = "chord/next/host/jobs_definition.go#JobDefinition.Version:go:-"
+path = "chord/next/host/jobs_definition.go"
+owner = "JobDefinition"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/next/jobs/definition.ts JobDefinition.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
+
+[[fields]]
+id = "chord/next/host/jobs_definition.go#JobOptions.Version:go:-"
+path = "chord/next/host/jobs_definition.go"
+owner = "JobOptions"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/next/jobs/definition.ts JobOptions.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
+
+[[fields]]
+id = "chord/next/host/jobs_run.go#const.BlockedVersion:go:-"
+path = "chord/next/host/jobs_run.go"
+owner = "<package>"
+field = "BlockedVersion"
+wire_name = "-"
+classification = "upstream"
+rationale = "Exact literal of the `version` reason in pinned packages/chord/src/next/jobs/run.ts: the reason string a stale-version handle or run carries; Pi owns it."
+
+[[fields]]
+id = "chord/next/host/jobs_stored.go#StoredRun.Version:go:-"
+path = "chord/next/host/jobs_stored.go"
+owner = "StoredRun"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/next/jobs/stored.ts StoredRun.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
+
+[[fields]]
+id = "chord/next/host/remote_hold.go#holdRequest.Version:go:-"
+path = "chord/next/host/remote_hold.go"
+owner = "holdRequest"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/next/remote/hold.ts holdRequest.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
+
+[[fields]]
+id = "chord/next/link/message.go#HoldMessage.Version:go:-"
+path = "chord/next/link/message.go"
+owner = "HoldMessage"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/next/link/message.ts HoldMessage.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
+
+[[fields]]
+id = "chord/next/registries/contribution.go#RegistryContribution.Version:go:-"
+path = "chord/next/registries/contribution.go"
+owner = "RegistryContribution"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/next/registries/contribution.ts RegistryContribution.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
+
+[[fields]]
+id = "chord/next/registries/record.go#RegistryError.Version:go:-"
+path = "chord/next/registries/record.go"
+owner = "RegistryError"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/next/registries/record.ts RegistryError.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
+
+[[fields]]
+id = "chord/next/registries/registry.go#DefineRegistryOptions.Version:go:-"
+path = "chord/next/registries/registry.go"
+owner = "DefineRegistryOptions"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/next/registries/registry.ts DefineRegistryOptions.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
+
+[[fields]]
+id = "chord/next/registries/registry.go#Registry.Version:go:-"
+path = "chord/next/registries/registry.go"
+owner = "Registry"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/next/registries/registry.ts Registry.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
+
+[[fields]]
+id = "chord/next/registries/registry.go#RegistryEntry.Version:go:-"
+path = "chord/next/registries/registry.go"
+owner = "RegistryEntry"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/next/registries/registry.ts RegistryEntry.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
+
+[[fields]]
+id = "chord/next/registries/value.go#RegistryValueSource.Version:go:-"
+path = "chord/next/registries/value.go"
+owner = "RegistryValueSource"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/next/registries/value.ts RegistryValueSource.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
+
+[[fields]]
+id = "chord/next/store/catalog.go#TableRecord.Version:json:version"
+path = "chord/next/store/catalog.go"
+owner = "TableRecord"
+field = "Version"
+wire_name = "version"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/next/store/catalog.ts TableRecord.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
+
+[[fields]]
+id = "chord/next/store/columns.go#ColumnRecord.Version:json:version"
+path = "chord/next/store/columns.go"
+owner = "ColumnRecord"
+field = "Version"
+wire_name = "version"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/next/store/columns.ts ColumnRecord.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
+
+[[fields]]
+id = "chord/next/store/engine.go#DocumentBase.Version:json:version"
+path = "chord/next/store/engine.go"
+owner = "DocumentBase"
+field = "Version"
+wire_name = "version"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/next/store/engine.ts DocumentBase.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
+
+[[fields]]
+id = "chord/next/store/engine.go#DocumentContent.Version:go:-"
+path = "chord/next/store/engine.go"
+owner = "DocumentContent"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/next/store/engine.ts DocumentContent.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
+
+[[fields]]
+id = "chord/next/store/engine.go#DocumentContentAt.Version:go:-"
+path = "chord/next/store/engine.go"
+owner = "DocumentContentAt"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/next/store/engine.ts DocumentContentAt.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
+
+[[fields]]
+id = "chord/next/store/engine.go#DocumentRecord.Version:json:version"
+path = "chord/next/store/engine.go"
+owner = "DocumentRecord"
+field = "Version"
+wire_name = "version"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/next/store/engine.ts DocumentRecord.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
+
+[[fields]]
+id = "chord/next/store/engine.go#RevisionContent.Version:go:-"
+path = "chord/next/store/engine.go"
+owner = "RevisionContent"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/next/store/engine.ts RevisionContent.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
+
+[[fields]]
+id = "chord/next/store/engine.go#StoredDocument.Version:go:-"
+path = "chord/next/store/engine.go"
+owner = "StoredDocument"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/next/store/engine.ts StoredDocument.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
+
+[[fields]]
+id = "chord/next/store/json_column.go#JsonColumn.Version:go:-"
+path = "chord/next/store/json_column.go"
+owner = "JsonColumn"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/next/store/json-column.ts JsonColumn.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
+
+[[fields]]
+id = "chord/next/store/json_column.go#JsonColumnOptions.Version:go:-"
+path = "chord/next/store/json_column.go"
+owner = "JsonColumnOptions"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/next/store/json-column.ts JsonColumnOptions.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
+
+[[fields]]
+id = "chord/next/store/rows.go#const.RowVersion:go:-"
+path = "chord/next/store/rows.go"
+owner = "<package>"
+field = "RowVersion"
+wire_name = "-"
+classification = "upstream"
+rationale = "Exact value of ROW_VERSION in pinned packages/chord/src/next/store/rows.ts: the reserved row column name $v; Pi owns it."
+
+[[fields]]
+id = "chord/next/store/table.go#TableDefinition.Version:go:-"
+path = "chord/next/store/table.go"
+owner = "TableDefinition"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/next/store/table.ts TableDefinition.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
+
+[[fields]]
+id = "chord/next/store/table.go#TableOptions.Version:go:-"
+path = "chord/next/store/table.go"
+owner = "TableOptions"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/next/store/table.ts TableOptions.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
+
+[[fields]]
+id = "chord/next/store/table.go#const.TableFormVersion:go:-"
+path = "chord/next/store/table.go"
+owner = "<package>"
+field = "TableFormVersion"
+wire_name = "-"
+classification = "upstream"
+rationale = "Exact value of TABLE_FORM_VERSION in pinned packages/chord/src/next/store/table.ts: the table form number hashed into every table fingerprint; Pi owns it, a change there is a change of the fingerprint."
+
+[[fields]]
+id = "chord/next/store/table_writes.go#AlterWrite.Version:go:-"
+path = "chord/next/store/table_writes.go"
+owner = "AlterWrite"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/next/store/table-writes.ts AlterWrite.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
+
+[[fields]]
+id = "chord/next/store/table_writes.go#PutWrite.Version:go:-"
+path = "chord/next/store/table_writes.go"
+owner = "PutWrite"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/next/store/table-writes.ts PutWrite.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
+
+[[fields]]
+id = "chord/next/store/table_writes.go#TableDefinitionWrite.Version:go:-"
+path = "chord/next/store/table_writes.go"
+owner = "TableDefinitionWrite"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/next/store/table-writes.ts TableDefinitionWrite.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
+
+[[fields]]
+id = "chord/next/store/table_writes.go#UpdateWhereWrite.Version:go:-"
+path = "chord/next/store/table_writes.go"
+owner = "UpdateWhereWrite"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/next/store/table-writes.ts UpdateWhereWrite.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
+
+[[fields]]
+id = "chord/next/store/table_writes.go#UpdateWrite.Version:go:-"
+path = "chord/next/store/table_writes.go"
+owner = "UpdateWrite"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/next/store/table-writes.ts UpdateWrite.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
+
+[[fields]]
+id = "chord/next/store/table_writes.go#putWriteJSON.Version:json:version"
+path = "chord/next/store/table_writes.go"
+owner = "putWriteJSON"
+field = "Version"
+wire_name = "version"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/next/store/table-writes.ts putWriteJSON.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
+
+[[fields]]
+id = "chord/next/store/table_writes.go#tableWriteJSON.Version:json:version"
+path = "chord/next/store/table_writes.go"
+owner = "tableWriteJSON"
+field = "Version"
+wire_name = "version"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/next/store/table-writes.ts tableWriteJSON.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
+
+[[fields]]
+id = "chord/next/store/table_writes.go#updateWhereWriteJSON.Version:json:version"
+path = "chord/next/store/table_writes.go"
+owner = "updateWhereWriteJSON"
+field = "Version"
+wire_name = "version"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/next/store/table-writes.ts updateWhereWriteJSON.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
+
+[[fields]]
+id = "chord/next/store/table_writes.go#updateWriteJSON.Version:json:version"
+path = "chord/next/store/table_writes.go"
+owner = "updateWriteJSON"
+field = "Version"
+wire_name = "version"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/next/store/table-writes.ts updateWriteJSON.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
+
+[[fields]]
+id = "chord/nextnode/plugins/plugins_node.go#NodeHostError.Version:go:-"
+path = "chord/nextnode/plugins/plugins_node.go"
+owner = "NodeHostError"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "The version of the contribution a registry error names (pi-chord next/registries/record.ts RegistryError.version), carried from the Node host unchanged; Pi owns the meaning."
+
+[[fields]]
+id = "chord/nextnode/plugins/plugins_node.go#hostErrorWire.Version:json:version"
+path = "chord/nextnode/plugins/plugins_node.go"
+owner = "hostErrorWire"
+field = "Version"
+wire_name = "version"
+classification = "upstream"
+rationale = "The wire form of NodeHostError.Version as the Node host (pi-chord's own host.mjs run) sends it: the version of the contribution a registry error names; Pi owns the meaning."
+
+[[fields]]
+id = "chord/nextnode/plugins/plugins_node_contracts.go#ContractData.Version:json:version"
+path = "chord/nextnode/plugins/plugins_node_contracts.go"
+owner = "ContractData"
+field = "Version"
+wire_name = "version"
+classification = "upstream"
+rationale = "pi-chord next/contracts/contract.ts Contract.version, the version the application declares for a contract, handed to the Node host which rebuilds the contract and checks its fingerprint; the application owns it."
+
+[[fields]]
+id = "chord/nextnode/plugins/plugins_node_contracts.go#ContractDescription.Version:json:version"
+path = "chord/nextnode/plugins/plugins_node_contracts.go"
+owner = "ContractDescription"
+field = "Version"
+wire_name = "version"
+classification = "upstream"
+rationale = "pi-chord next/contracts/contract.ts Contract.version as the Node host rebuilt it from ContractData; the application owns it."
+
+[[fields]]
+id = "chord/nextnode/plugins/plugins_node_discover.go#const.versionsPerSource:go:-"
+path = "chord/nextnode/plugins/plugins_node_discover.go"
+owner = "<package>"
+field = "versionsPerSource"
+wire_name = "-"
+classification = "external"
+rationale = "A count of installed Node versions of one version manager read when discovering a Node executable, not a format version; the version managers own the installed names."
+
+[[fields]]
 id = "chord/sqlite/migrations.go#SqliteMigration.Version:go:-"
 path = "chord/sqlite/migrations.go"
 owner = "SqliteMigration"
@@ -213,24 +726,6 @@ field = "Version"
 wire_name = "-"
 classification = "upstream"
 rationale = "Chord SQLite schema migration version (packages/chord/src/sqlite/migrations.ts), the migration type pi-durable re-exports."
-
-[[fields]]
-id = "cmd/check-model-data/model_data.go#ModelDataManifest.SchemaVersion:json:schemaVersion"
-path = "cmd/check-model-data/model_data.go"
-owner = "ModelDataManifest"
-field = "SchemaVersion"
-wire_name = "schemaVersion"
-classification = "upstream"
-rationale = "Reads the exact Pi model-data manifest field from packages/ai/scripts/model-data.ts:10-15; this is not a Pig-owned format."
-
-[[fields]]
-id = "cmd/check-model-data/model_data.go#const.ModelDataSchemaVersion:go:-"
-path = "cmd/check-model-data/model_data.go"
-owner = "<package>"
-field = "ModelDataSchemaVersion"
-wire_name = "-"
-classification = "upstream"
-rationale = "Exact MODEL_DATA_SCHEMA_VERSION = 3 from packages/ai/scripts/model-data.ts:5; the checker validates the pinned upstream manifest."
 
 [[fields]]
 id = "codemode/deterministic.go#const.deterministicVersion:go:-"
@@ -998,6 +1493,15 @@ classification = "release-content"
 rationale = "Identifies the running Pig release (InstalledPigVersion) that produced the crash record, mirroring upstream core/crash-log.ts's version field."
 
 [[fields]]
+id = "internal/codingagent/interactive_changelog.go#extensionChangelogUpdate.Version:go:-"
+path = "internal/codingagent/interactive_changelog.go"
+owner = "extensionChangelogUpdate"
+field = "Version"
+wire_name = "-"
+classification = "release-content"
+rationale = "The extension package's package.json version, stored per package as Pi's interactive-mode.ts does for settings.extensionChangelogVersions; a release identity, not a format discriminator."
+
+[[fields]]
 id = "internal/codingagent/selfupdate.go#LatestPiRelease.Version:go:-"
 path = "internal/codingagent/selfupdate.go"
 owner = "LatestPiRelease"
@@ -1014,6 +1518,15 @@ field = "Version"
 wire_name = "version"
 classification = "release-content"
 rationale = "Identifies released content, a dependency constraint, or a runtime/toolchain requirement rather than selecting a Pig schema reader."
+
+[[fields]]
+id = "internal/codingagent/selfupdate_configured.go#SelfUpdateRelease.Version:go:-"
+path = "internal/codingagent/selfupdate_configured.go"
+owner = "SelfUpdateRelease"
+field = "Version"
+wire_name = "-"
+classification = "release-content"
+rationale = "The release version the signed update manifest names; it fills the {version} placeholder of the configured self-update command and selects no format."
 
 [[fields]]
 id = "internal/codingagent/session.go#const.CurrentSessionVersion:go:-"
@@ -1052,6 +1565,24 @@ classification = "upstream"
 rationale = "Exact upstream pi-evals report schemaVersion 3 (packages/evals/src/report.ts:405)."
 
 [[fields]]
+id = "internal/modelgen/modeldata/model_data.go#ModelDataManifest.SchemaVersion:json:schemaVersion"
+path = "internal/modelgen/modeldata/model_data.go"
+owner = "ModelDataManifest"
+field = "SchemaVersion"
+wire_name = "schemaVersion"
+classification = "upstream"
+rationale = "Reads the exact Pi model-data manifest field from packages/ai/scripts/model-data.ts:10-15; this is not a Pig-owned format."
+
+[[fields]]
+id = "internal/modelgen/modeldata/model_data.go#const.ModelDataSchemaVersion:go:-"
+path = "internal/modelgen/modeldata/model_data.go"
+owner = "<package>"
+field = "ModelDataSchemaVersion"
+wire_name = "-"
+classification = "upstream"
+rationale = "Exact MODEL_DATA_SCHEMA_VERSION = 3 from packages/ai/scripts/model-data.ts:5; the checker validates the pinned upstream manifest."
+
+[[fields]]
 id = "internal/nodesemver/semver.go#const.mainVersion:go:-"
 path = "internal/nodesemver/semver.go"
 owner = "<package>"
@@ -1077,6 +1608,15 @@ field = "Version"
 wire_name = "-"
 classification = "release-content"
 rationale = "Names the version of the package that npm is asked to publish. It identifies released content and selects no Pig schema reader."
+
+[[fields]]
+id = "internal/photonimage/webpdecode.go#const.errWebPLosslessVersion:go:-"
+path = "internal/photonimage/webpdecode.go"
+owner = "<package>"
+field = "errWebPLosslessVersion"
+wire_name = "-"
+classification = "external"
+rationale = "The error of the WebP lossless bitstream's 3-bit version field, whose only valid value the WebP specification fixes at 0; the external standard owns it."
 
 [[fields]]
 id = "internal/sessionentry/entry.go#SessionHeader.Version:json:version"
@@ -1455,4 +1995,3 @@ field = "unicodeTablesVersion"
 wire_name = "-"
 classification = "external"
 rationale = "Identifies the Unicode standard data and upstream get-east-asian-width dependency used to generate terminal width tables; it does not select a Pig-owned format reader."
-

@@ -2028,6 +2028,7 @@ type pendingToolCall struct {
 	thoughtSignature string // encrypted reasoning context for replay
 }
 
+// Ports packages/agent/src/agent-loop.ts (the stream consumption of streamAssistantResponse).
 // consumeStream drives one provider response into agent events. thinking is the level the request asked for; it is recorded on the final response, whichever stream function answered (upstream agent-loop.ts:408-409). Partial messages do not carry it.
 func (h *loopHost) consumeStream(ctx context.Context, stream *ai.AssistantMessageEventStream, model *ai.Model, thinking ai.ModelThinkingLevel) (*AssistantMessage, []pendingToolCall, error) {
 	thinking = recordedThinkingLevel(thinking)

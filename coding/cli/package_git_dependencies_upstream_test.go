@@ -12,7 +12,7 @@ import (
 
 var (
 	// package-manager.ts:1821-1838 (getGitDependencyInstallArgs), npm and pnpm.
-	npmPeerlessInstall  = []string{"install", "--omit=dev", "--legacy-peer-deps"}
+	npmPeerlessInstall  = []string{"install", "--omit=dev", "--legacy-peer-deps", "--no-audit", "--no-fund"}
 	pnpmPeerlessInstall = []string{"install", "--prod", "--config.auto-install-peers=false", "--config.strict-peer-dependencies=false", "--config.strict-dep-builds=false"}
 )
 
@@ -43,8 +43,8 @@ func TestPackageGitDependenciesOriginal(t *testing.T) {
 		{name: "should update git package dependencies without auto-installing peers", update: true, project: true, existing: true, install: npmPeerlessInstall},
 		// .upstream/v0.99.1/packages/coding-agent/test/package-manager.test.ts:1035
 		{name: "should repair missing git package dependencies when the checkout is already current", update: true, existing: true, dependencies: true, mode: "current", install: npmPeerlessInstall},
-		// .upstream/v0.99.1/packages/coding-agent/test/package-manager.test.ts:1063
-		{name: "should repair deleted git package dependencies when cleaning fails", update: true, existing: true, dependencies: true, mode: "clean-failure", failure: "simulated clean failure", install: npmPeerlessInstall},
+		// Pi e3da248e (earendil-works/pi#11648), past the pin: package-manager.test.ts "should install git package dependencies when cleaning fails" (was "should repair deleted git package dependencies when cleaning fails", .upstream/v0.99.1/packages/coding-agent/test/package-manager.test.ts:1063, which expected the throw).
+		{name: "should install git package dependencies when cleaning fails", update: true, existing: true, dependencies: true, mode: "clean-failure", install: npmPeerlessInstall},
 		// .upstream/v0.99.1/packages/coding-agent/test/package-manager.test.ts:1096
 		{name: "should disable peer installation through wrapped pnpm when updating git dependencies", update: true, project: true, existing: true, command: []string{"mise", "exec", "node@20", "--", "pnpm"}, install: pnpmPeerlessInstall},
 	} {

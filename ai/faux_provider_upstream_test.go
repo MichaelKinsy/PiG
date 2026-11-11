@@ -241,7 +241,7 @@ func TestFauxProviderUpstream(t *testing.T) {
 			}
 		})
 	}
-	// .upstream/v1.1.0/packages/ai/test/faux-provider.test.ts:327
+	// .upstream/v1.5.0/packages/ai/test/faux-provider.test.ts:327
 	t.Run("counts cached characters up to the first difference in the joined prompt", func(t *testing.T) {
 		p := NewFauxProvider(FauxConfig{})
 		p.SetResponses([]FauxResponseStep{fauxUpstreamText("a"), fauxUpstreamText("b"), fauxUpstreamText("c")})
@@ -388,7 +388,7 @@ func TestFauxProviderUpstream(t *testing.T) {
 	})
 }
 
-// .upstream/v1.1.0/packages/ai/test/faux-provider.test.ts:327 "counts cached characters up to the first difference in the joined prompt":
+// .upstream/v1.5.0/packages/ai/test/faux-provider.test.ts:327 "counts cached characters up to the first difference in the joined prompt":
 // the cached prefix is measured in characters of the joined prompt texts, so a first message edited after "user:hello w" keeps
 // only those 12 characters cached (4 and 3 tokens at the faux provider's 4-characters-per-token estimate).
 func TestFauxProviderCountsCachedCharactersUpToTheFirstDifference(t *testing.T) {
@@ -401,7 +401,10 @@ func TestFauxProviderCountsCachedCharactersUpToTheFirstDifference(t *testing.T) 
 	}
 
 	// Prompt texts: "user:hello world" (16 characters), then 16 + 2 + "user:next" (9) = 27.
-	complete(user("hello world"))
+	first := complete(user("hello world"))
+	if first.Usage.Input != 0 || first.Usage.CacheRead != 0 || first.Usage.CacheWrite != 4 {
+		t.Fatalf("first usage = %+v, want input 0, cacheRead 0, cacheWrite 4", first.Usage)
+	}
 	extended := complete(user("hello world"), user("next"))
 	if extended.Usage.Input != 0 || extended.Usage.CacheRead != 4 || extended.Usage.CacheWrite != 3 {
 		t.Fatalf("extended usage = %+v, want input 0, cacheRead 4, cacheWrite 3", extended.Usage)

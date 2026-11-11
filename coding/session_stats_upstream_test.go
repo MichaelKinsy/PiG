@@ -1,5 +1,8 @@
 package coding
 
+// pi: packages/coding-agent/src/core/agent-session.ts
+// pi: packages/coding-agent/src/core/usage-totals.ts
+
 import (
 	"encoding/json"
 	"reflect"
@@ -43,9 +46,10 @@ func newStatsUpstreamSession(t *testing.T) *Session {
 		t.Fatal(err)
 	}
 	done := make(chan struct{})
+	eventsCh := session.Events()
 	go func() {
 		defer close(done)
-		for event := range session.Events() {
+		for event := range eventsCh {
 			AcknowledgeEvent(event)
 		}
 	}()

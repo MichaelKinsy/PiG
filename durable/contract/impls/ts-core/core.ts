@@ -91,7 +91,15 @@ export interface RecoverInput { tasks: string[]; submissions: string[] }
 
 const INTERRUPTED = "Tool lookup was interrupted and may have partially run"
 const ATTEMPT_DELTA = `[["s",["generation"],{"attempt":1}]]`
-const TOOL_RUNNING_DELTA = `[["s",["tools",0,"status"],"running"]]`
+/** The pi.live document's version at the pin (harness/live.ts `LiveDoc`): 3, with `run.turns` and `run.first`, `trigger` for a compaction's reason. */
+const LIVE_VERSION = 3
+/** The task definitions' versions at the pin (GenerationTask in generation.ts, ToolTask in tool.ts). */
+const TASK_VERSION: Record<string, number> = { "pi.generation": 2, "pi.tool": 3 }
+/** A delta that sets pi.live's `generation` (the attempt, and the retry a failed attempt waits for). */
+const generationDelta = (generation: Rec) => `[["s",["generation"],${JSON.stringify(generation)}]]`
+const INTERRUPTED_REQUEST = (attempt: number) => `The host stopped while the model was answering, on attempt ${attempt}`
+/** settings.retry's defaults (harness/agent.ts): enabled, three retries, a base delay of 2 s that doubles with each attempt (generation.ts retryDelayMs). */
+const RETRY = { maxRetries: 3, baseDelayMs: 2000 }
 const ceil4 = (n: number) => Math.ceil(n / 4)
 
 export class CoreError extends Error {}
@@ -131,6 +139,8 @@ export class Core {
 
   private head = false
   private now = 0
+  /** The clock after a retry's sleep: Pi's virtual clock moves to the wake time and stays there, so no later commit is stamped earlier. */
+  private notBefore = 0
 
   private sidecar = false
   private persisted = 0
@@ -264,8 +274,9 @@ export class Core {
     const l = this.promptChars, prompt = ceil4(l)
     const u: Usage = { input: 0, output: ceil4(outputChars), cacheRead: 0, cacheWrite: 0, total: 0 }
     if (this.hasPrev) {
-      u.cacheRead = ceil4(this.prevChars); u.cacheWrite = ceil4(l - this.prevChars); u.input = Math.max(0, prompt - u.cacheRead)
-    } else { u.input = prompt; u.cacheWrite = prompt }
+      u.cacheRead = ceil4(this.prevChars); u.cacheWrite = Math.max(0, prompt - u.cacheRead)
+    } else u.cacheWrite = prompt
+    // Every prompt token is either read from or written to the simulated cache; input stays 0 (pi-ai f3fa8bd9).
     this.prevChars = l; this.hasPrev = true
     u.total = u.input + u.output + u.cacheRead + u.cacheWrite
     return u
@@ -295,7 +306,7 @@ export class Core {
   private task(id: number, kind: string, input: object, owner: number): Rec {
     let o = this.tasks.get(id)
     if (!o) {
-      o = { id, conversationId: this.conv, kind, version: this.head && kind === "pi.tool" ? 2 : 1, input }
+      o = { id, conversationId: this.conv, kind, version: this.head ? TASK_VERSION[kind] ?? 1 : 1, input }
       if (owner) o.owner = owner
       o.background = false; o.abortRequested = false; o.state = {}
       this.tasks.set(id, o)
@@ -305,6 +316,11 @@ export class Core {
 
   /** Replace the task's state and write the task. */
   private putTask(o: Rec, state: Rec) {
+    // A state the task commits that differs from its current one is progress: its restart count starts over, and an outcome drops it.
+    // The scheduler's change of a pending task to running with the same checkpoint is not (scheduler.ts withState, progressed).
+    const cur = o.state
+    const started = state.status === "running" && cur.status === "pending" && JSON.stringify(cur.checkpoint) === JSON.stringify(state.checkpoint)
+    if (!started) delete o.restarts
     o.state = state
     this.writeTask(o)
   }
@@ -333,7 +349,7 @@ export class Core {
     this.records.push(record)
   }
 
-  private putRevision(doc: number, seq: number, kind: string, content: string) { this.stmt(SQL_REVISION, doc, seq, kind, 1, content) }
+  private putRevision(doc: number, seq: number, kind: string, content: string) { this.stmt(SQL_REVISION, doc, seq, kind, doc === this.liveDoc ? LIVE_VERSION : 1, content) }
   private putBase(doc: number, seq: number, state: unknown) { this.stmt(SQL_DELETE_REVISIONS, doc); this.putRevision(doc, seq, "base", JSON.stringify(state)) }
 
   private gen(id: number) { return this.task(id, "pi.generation", {}, 0) }
@@ -346,18 +362,19 @@ export class Core {
   private begin() { this.commits = [] }
   private finish(effect: number, arg = 0): Step { const commits = this.commits; this.commits = []; return { commits, effect, arg } }
 
-  /** The three commits that take a pending generation to a model request. */
+  /** The two commits that take a pending generation to a model request. */
   private runGeneration() {
     const g = this.gen(this.t.gen)
     this.commit(() => this.putTask(g, { status: "running", checkpoint: { phase: "prepare", attempt: 1 } }))
     this.commit(() => this.putTask(g, { status: "running", checkpoint: this.requestCheckpoint() }))
-    this.commit(seq => { this.live.generation = { attempt: 1 }; this.putRevision(this.liveDoc, seq, "delta", ATTEMPT_DELTA) })
+    // The attempt (`generation: { attempt: 1 }`) rides with the document's next write (harness/generation.ts, PROGRESS_COMMIT): no commit of its own.
+    this.live.generation = { attempt: 1 }
   }
 
-  /** The input event. Four commits, then the model effect. */
+  /** The input event. Three commits, then the model effect. */
   submit(reqId: string, text: string, now: number): Step {
     this.begin()
-    this.now = now
+    now = this.now = Math.max(now, this.notBefore)
     const t = this.t = { active: true, reqId, user: this.alloc(), sub: this.alloc(), gen: this.alloc(), asst: 0, toolTask: 0, call: 0 }
     const rec = `{"model":[{"role":"user","content":${JSON.stringify(text)},"timestamp":${now}}],"kind":"pi.user","id":${t.user},"conversationId":${this.conv}}`
     this.addMessage(ROLE_USER, 4 + 1 + text.length, parsePlan(text))
@@ -366,7 +383,7 @@ export class Core {
       this.putEntry(t.user, rec)
       this.putSubmission()
       this.putTask(this.gen(t.gen), { status: "pending", checkpoint: { phase: "prepare", attempt: 1 } })
-      this.live.run = { taskId: t.gen, inputs: [t.sub] }
+      this.live.run = { taskId: t.gen, inputs: [t.sub], turns: 0, first: t.user }
       this.putBase(this.liveDoc, seq, this.live)
     })
     this.runGeneration()
@@ -384,7 +401,7 @@ export class Core {
     const t = this.t
     if (!t.active) throw new CoreError("no active turn")
     this.begin()
-    this.now = now
+    now = this.now = Math.max(now, this.notBefore)
     let content: string, stop: string, outChars: number
     if (call >= 0) {
       const args = `{"n":${call}}`
@@ -399,7 +416,7 @@ export class Core {
     this.recordUsage(u)
 
     t.asst = this.alloc()
-    const rec = `{"model":[{"role":"assistant","content":${content},"api":${JSON.stringify(this.api)},"provider":"faux","model":"scripted-1","usage":${usageJSON(u)},"stopReason":"${stop}","timestamp":${now}${this.head && durationMs !== undefined ? `,"durationMs":${durationMs}` : ""}}],"kind":"pi.assistant","id":${t.asst},"conversationId":${this.conv},"byTaskId":${t.gen}}`
+    const rec = `{"model":[{"role":"assistant","content":${content},"api":${JSON.stringify(this.api)},"provider":"faux","model":"scripted-1","usage":${usageJSON(u)},"stopReason":"${stop}","timestamp":${now}${this.head && durationMs !== undefined ? `,"durationMs":${durationMs},"thinkingLevel":"off"` : ""}}],"kind":"pi.assistant","id":${t.asst},"conversationId":${this.conv},"byTaskId":${t.gen}}`
     this.addMessage(ROLE_ASSISTANT, "assistant".length + 1 + outChars, 0)
 
     if (call < 0) {
@@ -423,20 +440,21 @@ export class Core {
       this.putTask(this.gen(t.gen), { status: "waiting", checkpoint: { phase: "tools", assistant: t.asst, tools: [t.toolTask], pending: [] }, on: [t.toolTask], policy: "allSettled" })
       this.putTask(this.tool(), { status: "pending", checkpoint: { phase: "call" } })
       delete this.live.generation
+      this.live.run.turns++
       this.live.tools = [{ callId: `call-${call}`, name: "lookup", taskId: t.toolTask, status: "pending" }]
       this.putBase(this.liveDoc, seq, this.live)
       this.putBase(this.usageDoc, seq, this.usage)
     })
     this.commit(() => this.putTask(this.tool(), { status: "running", checkpoint: { phase: "call" } }))
-    this.commit(seq => this.executeTool(seq))
+    this.commit(() => this.executeTool())
     return this.finish(EFFECT_TOOL, call)
   }
 
-  /** The tool task reaches its execute phase, and the live document records it running (a delta). */
-  private executeTool(seq: number) {
+  /** The tool task reaches its execute phase, and the live document holds its slot running. */
+  private executeTool() {
     this.putTask(this.tool(), { status: "running", checkpoint: { phase: "execute", arguments: { n: this.t.call }, replay: "unsafe" } })
+    // The slot's `running` status rides with the document's next write (harness/tool.ts): no delta of its own.
     this.live.tools[0].status = "running"
-    this.putRevision(this.liveDoc, seq, "delta", TOOL_RUNNING_DELTA)
   }
 
   /** Pi's recordUsage (src/harness/usage.ts): a new bucket entry is a copy of the usage, an existing one has it added. */
@@ -448,11 +466,11 @@ export class Core {
     total.cost.input += add.cost.input; total.cost.output += add.cost.output; total.cost.cacheRead += add.cost.cacheRead; total.cost.cacheWrite += add.cost.cacheWrite; total.cost.total += add.cost.total
   }
 
-  /** The tool effect's result text. Six commits, then the next model effect. */
+  /** The tool effect's result text. Five commits, then the next model effect. */
   toolResult(text: string, now: number, durationMs?: number): Step {
     if (!this.t.active) throw new CoreError("no active turn")
     this.begin()
-    this.now = now
+    now = this.now = Math.max(now, this.notBefore)
     this.settleTool(text, "completed", "", false, now, durationMs)
     this.afterTool(false)
     return this.finish(EFFECT_MODEL)
@@ -475,12 +493,13 @@ export class Core {
     })
   }
 
-  /** A generation whose tool has settled goes to its next model request: it wakes, finishes, and the next one runs prepare, request and the attempt delta. A generation persisted as running restarts first. */
+  /** A generation whose tool has settled goes to its next model request: it wakes, finishes, and the next one runs prepare and request. A generation persisted as running restarts first. */
   private afterTool(resumed: boolean) {
     const t = this.t
     const g = this.gen(t.gen)
     const running = { status: "running", checkpoint: { phase: "tools", assistant: t.asst, tools: [t.toolTask], pending: [] } }
-    if (resumed) this.commit(() => this.putTask(g, { ...running, status: "pending" }))
+    // The scheduler's open sets a running task pending with one more restart (scheduler.ts, `restarts + 1`); the wake to running keeps it.
+    if (resumed) this.commit(() => { g.state = { ...running, status: "pending" }; g.restarts = (g.restarts ?? 0) + 1; this.writeTask(g) })
     this.commit(() => this.putTask(g, running))
     const old = t.gen
     t.gen = this.alloc()
@@ -521,13 +540,41 @@ export class Core {
   // --- recovery
 
   /**
+   * Pi b3a29f11 generation.ts `interrupted`: the request of attempt n was in flight when the host stopped, so it is a failed attempt. With a retry
+   * left the generation sleeps until the backoff (a sleeping commit with the retry's checkpoint and pi.live's `generation.retry`), the wake runs
+   * the retry phase (running, then prepare of attempt n + 1 with its delta, then the request checkpoint), and the model is asked again.
+   * No partial is stored here, so convertPartial has nothing to convert.
+   */
+  private interruptedRequest(gen: Rec, cp: Rec) {
+    const attempt = cp.attempt as number
+    if (attempt > RETRY.maxRetries) throw new CoreError("recovery: an interrupted request without a retry left is outside this core's workload")
+    const until = this.now + RETRY.baseDelayMs * 2 ** (attempt - 1)
+    const retryCheckpoint = { phase: "retry", attempt, until }
+    this.commit(seq => {
+      this.live.generation = { attempt, retry: { at: until, error: INTERRUPTED_REQUEST(attempt) } }
+      this.putTask(gen, { status: "sleeping", checkpoint: retryCheckpoint, until })
+      this.putRevision(this.liveDoc, seq, "delta", generationDelta(this.live.generation as Rec))
+    })
+    // The scheduler wakes the generation once the virtual clock reaches `until`.
+    this.notBefore = until
+    this.now = Math.max(this.now, until)
+    this.commit(() => this.putTask(gen, { status: "running", checkpoint: retryCheckpoint }))
+    this.commit(seq => {
+      this.live.generation = { attempt: attempt + 1 }
+      this.putTask(gen, { status: "running", checkpoint: { phase: "prepare", attempt: attempt + 1 } })
+      this.putRevision(this.liveDoc, seq, "delta", generationDelta(this.live.generation as Rec))
+    })
+    this.commit(() => this.putTask(gen, { status: "running", checkpoint: { phase: "request", attempt: attempt + 1, model: cp.model, thinkingLevel: cp.thinkingLevel, streamOptions: cp.streamOptions, cutoff: cp.cutoff } }))
+  }
+
+  /**
    * Resumes a turn from the persisted task states the way pi-durable's recovery does: a running task is re-queued as
    * pending, then each task continues from its checkpoint phase. A tool that reached its execute phase may have run, so
    * it settles as interrupted instead of running again.
    */
   recover(input: RecoverInput, now: number): Step {
     this.begin()
-    this.now = now
+    now = this.now = Math.max(now, this.notBefore)
     let gen: Rec | undefined, tool: Rec | undefined
     for (const raw of input.tasks) {
       this.parsed.calls++; this.parsed.chars += raw.length
@@ -545,7 +592,8 @@ export class Core {
     const cp = gen.state.checkpoint ?? {}
     t.asst = cp.assistant ?? 0
 
-    const setStatus = (r: Rec, status: string) => this.commit(() => { r.state.status = status; this.writeTask(r) })
+    // A task persisted as running is pending again with one more restart (scheduler.ts open); the scheduler's start keeps the count.
+    const setStatus = (r: Rec, status: string) => this.commit(() => { r.state.status = status; if (status === "pending") r.restarts = (r.restarts ?? 0) + 1; this.writeTask(r) })
     const reset = (r: Rec) => setStatus(r, "pending")
     const run = (r: Rec) => setStatus(r, "running")
 
@@ -557,7 +605,7 @@ export class Core {
       if (tool.state.status === "running") reset(tool)
       if (tool.state.checkpoint?.phase === "call") {
         run(tool)
-        this.commit(seq => this.executeTool(seq))
+        this.commit(() => this.executeTool())
         return this.finish(EFFECT_TOOL, call)
       }
       run(tool)
@@ -579,7 +627,9 @@ export class Core {
     } else if (cp.phase === "request") {
       if (gen.state.status === "running") reset(gen)
       run(gen)
-      if (this.live.generation === undefined) this.commit(seq => { this.live.generation = { attempt: 1 }; this.putRevision(this.liveDoc, seq, "delta", ATTEMPT_DELTA) })
+      // The host stopped while this request was in flight: a failed attempt under settings.retry, not a resend (generation.ts request, interrupted).
+      if (gen.restarts !== undefined) this.interruptedRequest(gen, cp)
+      else if (this.live.generation === undefined) this.commit(seq => { this.live.generation = { attempt: 1 }; this.putRevision(this.liveDoc, seq, "delta", ATTEMPT_DELTA) })
     } else throw new CoreError("recovery: generation phase " + cp.phase + " is outside this core's workload")
     return this.finish(EFFECT_MODEL)
   }

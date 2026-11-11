@@ -29,7 +29,8 @@ module.registerHooks({
 });
 const load = (path) => import(pathToFileURL(`${packages}${path}`).href);
 const { CodemodeSandbox } = await import("@earendil-works/pi-codemode");
-const { fauxAssistantMessage, fauxText, fauxToolCall, Type } = await import("@earendil-works/pi-ai");
+const { fauxAssistantMessage, fauxText, fauxToolCall } = await import("@earendil-works/pi-ai");
+const { num, obj, opt, str } = await import("@earendil-works/pi-schema");
 const { defineTool, ToolResultEntry, ToolTask } = await import("@earendil-works/pi-durable");
 const codemode = await load("durable/src/codemode/codemode.ts");
 const { chatSetup, openChat, allEntries } = await load("durable/test/chat-support.ts");
@@ -87,7 +88,9 @@ class QueuedStorage extends ControlledStorage {
 	failNext(message) {
 		this.failure = new Error(message);
 	}
-	async commit(writes, adopt, commitContext) {
+	async commit(batches, receive, commitContext) {
+		// One call is one commit here, as the Go queuedStorage counts it: its batches' writes together.
+		const writes = batches.flat();
 		this.entered++;
 		if (this.marked) {
 			let appended = 0;
@@ -113,11 +116,11 @@ class QueuedStorage extends ControlledStorage {
 			this.failure = undefined;
 			throw failure;
 		}
-		return super.commit(writes, adopt, commitContext);
+		return super.commit(batches, receive, commitContext);
 	}
 }
 
-const Parameters = Type.Object({ text: Type.Optional(Type.String()), id: Type.Optional(Type.Number()) });
+const Parameters = obj({ text: opt(str()), id: opt(num()) }, { open: true });
 const tool = (name, execute, replay = "unsafe") => defineTool({ name, description: name, parameters: Parameters, execute, replay });
 const DONE = () => fauxAssistantMessage([fauxText("done")]);
 const script = (code) => fauxAssistantMessage([fauxToolCall("codemode", { code }, { id: "s1" })], { stopReason: "toolUse" });
@@ -508,5 +511,4 @@ for (const scenario of JSON.parse(input)) {
 		out.push({ err: error instanceof Error ? error.message : String(error) });
 	}
 }
-process.stdout.write(JSON.stringify(out));
-process.exit(0);
+process.stdout.write(JSON.stringify(out), () => process.exit(0));

@@ -1,5 +1,7 @@
 package cli
 
+// Ports packages/coding-agent/src/core/model-resolver.ts
+
 import (
 	"context"
 	"fmt"
@@ -11,6 +13,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -113,15 +116,15 @@ func agentDirForModel() string {
 func formatTokenCount(count int) string {
 	if count >= 1_000_000 {
 		m := float64(count) / 1_000_000
-		if m == float64(int(m)) {
-			return fmt.Sprintf("%dM", int(m))
+		if m == float64(int(m)) { //portlint:allow numbers count is an int and >= 1e6 (or 1e3), so count/1e6 is finite and at most 9.3e12: int() is exact, and m==float64(int(m)) is JS m%1===0 (node differential over 39062 counts incl. 2^53)
+			return fmt.Sprintf("%dM", int(m)) //portlint:allow numbers count is an int and >= 1e6 (or 1e3), so count/1e6 is finite and at most 9.3e12: int() is exact, and m==float64(int(m)) is JS m%1===0 (node differential over 39062 counts incl. 2^53)
 		}
 		return jsstring.ToFixed(m, 1) + "M"
 	}
 	if count >= 1_000 {
 		k := float64(count) / 1_000
-		if k == float64(int(k)) {
-			return fmt.Sprintf("%dK", int(k))
+		if k == float64(int(k)) { //portlint:allow numbers count is an int and >= 1e6 (or 1e3), so count/1e6 is finite and at most 9.3e12: int() is exact, and m==float64(int(m)) is JS m%1===0 (node differential over 39062 counts incl. 2^53)
+			return fmt.Sprintf("%dK", int(k)) //portlint:allow numbers count is an int and >= 1e6 (or 1e3), so count/1e6 is finite and at most 9.3e12: int() is exact, and m==float64(int(m)) is JS m%1===0 (node differential over 39062 counts incl. 2^53)
 		}
 		return jsstring.ToFixed(k, 1) + "K"
 	}
@@ -165,10 +168,10 @@ func modelListLines(entries []codingagent.ModelEntry, search string) []string {
 	}
 	entries = slices.Clone(entries)
 	slices.SortFunc(entries, func(a, b codingagent.ModelEntry) int {
-		if c := jsstring.LocaleCompare(a.ProviderID, b.ProviderID); c != 0 {
+		if c := localecompare.Compare(a.ProviderID, b.ProviderID); c != 0 {
 			return c
 		}
-		return jsstring.LocaleCompare(a.ModelID, b.ModelID)
+		return localecompare.Compare(a.ModelID, b.ModelID)
 	})
 	type row [6]string
 	rows := []row{{"provider", "model", "context", "max-out", "thinking", "images"}}

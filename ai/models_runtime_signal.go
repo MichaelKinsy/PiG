@@ -1,5 +1,7 @@
 package ai
 
+// Ports packages/ai/src/models.ts (the refresh signal: AbortSignal.any of the caller signal and the refresh controller).
+
 import (
 	"context"
 	"runtime"

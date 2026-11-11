@@ -10,6 +10,7 @@ import (
 	"os"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/ai/providers/bedrock"
 )
 
 type inputCase struct{ Name, Text string }
@@ -56,7 +57,7 @@ func probe(model, text string) json.RawMessage {
 		_, _ = io.WriteString(w, `{"message":"captured request"}`)
 	}))
 	defer server.Close()
-	provider := ai.NewBedrockProvider(model, server.URL)
+	provider := bedrock.NewBedrockProvider(model, server.URL)
 	defer func() { _ = provider.Close() }()
 	request := ai.Context{Messages: []ai.Message{
 		ai.UserMessage{Content: ai.UserText(text)},

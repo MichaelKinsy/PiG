@@ -8,9 +8,6 @@ import (
 	"slices"
 	"strings"
 
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
-
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
@@ -31,7 +28,7 @@ type FuzzyText struct{ units []uint16 }
 
 // NewFuzzyText prepares text for Match.
 func NewFuzzyText(text string) FuzzyText {
-	return FuzzyText{units: jsstring.ToUTF16(cases.Lower(language.Und).String(text))}
+	return FuzzyText{units: jsstring.ToUTF16(jsstring.ToLower(text))}
 }
 
 // FuzzyQuery is a query prepared for matching many texts: its lowercase UTF-16 units and those of its letter/digit swap.
@@ -42,7 +39,7 @@ type FuzzyQuery struct {
 
 // NewFuzzyQuery prepares query for Match.
 func NewFuzzyQuery(query string) FuzzyQuery {
-	q := cases.Lower(language.Und).String(query)
+	q := jsstring.ToLower(query)
 	prepared := FuzzyQuery{units: jsstring.ToUTF16(q)}
 	// Letter/digit half swap (e.g. user types "5opus" wanting "opus5").
 	if swapped := swapAlphaDigit(q); swapped != "" {

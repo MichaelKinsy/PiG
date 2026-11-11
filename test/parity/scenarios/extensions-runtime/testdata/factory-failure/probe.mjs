@@ -1,5 +1,5 @@
 // Pi loader.ts:238-243 guards every ExtensionAPI method before validation or effects.
-// pigAdditive adds the calls Pi has no counterpart for (onLoaded): the parity scenario compares this probe with Pi and leaves it false.
+// pigAdditive adds the calls Pi has no counterpart for (onLoaded, ownThinkingRuns): the parity scenario compares this probe with Pi and leaves it false.
 export async function probeFailedAPI(api, onLateEvent = () => {}, pigAdditive = false) {
   const calls = [
     ["on", () => api.on("factory-failure", () => {})],
@@ -40,6 +40,8 @@ export async function probeFailedAPI(api, onLateEvent = () => {}, pigAdditive = 
   ];
   // pig additive (D19): a captured onLoaded of a failed factory rejects like every other call.
   if (pigAdditive) calls.splice(5, 0, ["onLoaded", () => api.onLoaded(() => {})]);
+  // pig additive (D214): a captured ownThinkingRuns of a failed factory rejects like every other call.
+  if (pigAdditive) calls.push(["ownThinkingRuns", () => api.ownThinkingRuns(true)]);
   const results = [];
   for (const [method, call] of calls) {
     let asynchronous = false;

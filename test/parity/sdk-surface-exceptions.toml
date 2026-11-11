@@ -7,52 +7,52 @@
 
 [[exception]]
 key = "pi.sendUserMessage(options.expandPromptTemplates)"
-sdks = ["node", "go", "rust", "python"]
+sdks = ["node", "go", "rust", "python", "lisp"]
 reason = "The host SendUserMessageOptions carries deliverAs only; expandPromptTemplates would be dropped. Requires host prompt-expansion control."
 
 [[exception]]
 key = "ctx.newSession(options.setup)"
-sdks = ["node", "go", "rust", "python"]
+sdks = ["node", "go", "rust", "python", "lisp"]
 reason = "The wire has no writable replacement SessionManager callback handle. Requires replacement callback ownership in the Pi runner bridge (0.3.0), not JSON serialization of a function."
 
 [[exception]]
 key = "withSession ctx.sendUserMessage(options.expandPromptTemplates)"
-sdks = ["node", "go", "rust", "python"]
+sdks = ["node", "go", "rust", "python", "lisp"]
 reason = "The host SendUserMessageOptions carries deliverAs only; expandPromptTemplates would be dropped. Requires host prompt-expansion control."
 
 [[exception]]
 key = "ctx.ui.theme.sourceInfo"
-sdks = ["node", "go", "rust", "python"]
+sdks = ["node", "go", "rust", "python", "lisp"]
 reason = "The theme snapshot carries sourcePath but no SourceInfo. Requires theme resource provenance publication."
 
 [[exception]]
 key = "user_bash return.operations"
-sdks = ["node", "go", "rust", "python"]
+sdks = ["node", "go", "rust", "python", "lisp"]
 reason = "The wire has no host-invoked streaming BashOperations executor callback. Returning a completed result works; operations requires callback/stream ownership."
 
 [[exception]]
 key = "tool render context.lastComponent"
-sdks = ["go", "rust", "python"]
+sdks = ["go", "rust", "python", "lisp"]
 reason = "Native renderers return lines rather than Components (D56), so no previous component is returned. Card state persists separately in context.state/State."
 
 [[exception]]
 key = "provider.streamSimple"
-sdks = ["node", "go", "rust", "python"]
+sdks = ["node", "go", "rust", "python", "lisp"]
 reason = "The host cannot invoke an extension-served provider EventStream. Requires provider callback and streaming transport, not the existing host-served modelStream direction."
 
 [[exception]]
 key = "provider.refreshModels"
-sdks = ["node", "go", "rust", "python"]
+sdks = ["node", "go", "rust", "python", "lisp"]
 reason = "The provider bridge has no host-to-extension refreshModels request or publication callback handles."
 
 [[exception]]
 key = "provider.oauth.usesCallbackServer"
-sdks = ["node", "go", "rust", "python"]
+sdks = ["node", "go", "rust", "python", "lisp"]
 reason = "Deprecated and ignored by upstream 0.99.2 canonical auth flows (core/extensions/types.ts); runtimes do not forward this inert legacy metadata."
 
 [[exception]]
 key = "provider.oauth.modifyModels"
-sdks = ["node", "go", "rust", "python"]
+sdks = ["node", "go", "rust", "python", "lisp"]
 reason = "The host OAuth bridge has no credential-dependent modify-models callback request."
 
 [[exception]]

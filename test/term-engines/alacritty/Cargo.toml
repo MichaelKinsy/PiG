@@ -1,0 +1,11 @@
+[package]
+name = "pig-term-engine-alacritty"
+version = "0.0.0"
+edition = "2024"
+publish = false
+license = "MIT"
+description = "Replays the D205 terminal-engine corpus through alacritty_terminal, the engine of Alacritty and Zed"
+
+[dependencies]
+alacritty_terminal = "=0.26.0"
+serde_json = "1"

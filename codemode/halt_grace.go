@@ -9,8 +9,8 @@ import (
 )
 
 // terminationGrace is how long the interrupt flag has to stop a VM before the instance is halted. The flag stops
-// any script that reaches QuickJS's interrupt check; the halt traps the instance at its next loop iteration, which
-// stops a call that does not.
+// any script that reaches QuickJS's interrupt check; the halt traps the instance within haltPollInterval loop
+// iterations, which stops a call that does not.
 const terminationGrace = 500 * time.Millisecond
 
 // haltGuard escalates a stop to halting the instance when the script does not reach an interrupt check. It is the

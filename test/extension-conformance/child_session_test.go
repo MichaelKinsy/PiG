@@ -406,6 +406,29 @@ func TestChildAgentSessionPython(t *testing.T) {
 	}
 }
 
+// TestChildAgentSessionLisp runs the Lisp fixture (testdata/child-session-lisp) isolated and packed with a sibling.
+func TestChildAgentSessionLisp(t *testing.T) {
+	for _, isolation := range []string{"strict", "shared-ok"} {
+		t.Run(isolation, func(t *testing.T) {
+			host, services := newChildSessionHost(t)
+			root := findModuleRoot(t)
+			cfg := lispFixtureConfig(t, "child-session-lisp", childsession.Name)
+			cfg.Isolation = isolation
+			configs := []subprocess.ExtConfig{cfg}
+			if isolation == "shared-ok" {
+				peer := packedFlagFactory(t, root, "lisp", "child-session-peer", false)
+				peer.Isolation = isolation
+				configs = append(configs, peer)
+			}
+			loaded, failures := host.LoadAll(t.Context(), configs)
+			if len(failures) != 0 || len(loaded) != len(configs) {
+				t.Fatalf("load: %v", failures)
+			}
+			checkChildSession(t, services.CWD(), loaded[0])
+		})
+	}
+}
+
 func quoteJSON(s string) string {
 	b, _ := json.Marshal(s)
 	return string(b)

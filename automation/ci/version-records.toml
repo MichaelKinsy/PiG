@@ -161,6 +161,7 @@ paths = [
   "docs/site/docs/configuration.md",
   "internal/pigdocs/content/compaction.md",
   "internal/pigdocs/content/json.md",
+  "internal/pigdocs/content/mcp.md",
   "internal/pigdocs/content/rpc-commands.md",
   "docs/site/docs/extensions.md",
   "docs/site/docs/keybindings.md",
@@ -230,4 +231,37 @@ paths = [
   "docs/site/docs/rpc-commands.md",
   "docs/site/docs/slash-commands.md",
   "internal/pigdocs/content/rpc-commands.md",
+]
+
+[[record]]
+version = "1.4.0"
+reason = "Entries that record the release a change or a divergence was reviewed or fixed against. A changelog fragment, a bug-ledger entry (generated from the fix commits) and a divergence row name the Pi release the reviewer compared with. Pi 1.5.0 changes three tracked sources (branch-summarization.ts, session-manager.ts, ai/utils/version.ts), none of which a listed divergence describes, so the 1.4.0 comparison stands; rewriting history in them would claim a review that did not happen."
+paths = [
+  "docs/parity/DIVERGENCES.md",
+  "docs/parity/divergences/",
+  "docs/site/docs/bug-ledger.md",
+  "internal/pigdocs/content/divergences.md",
+]
+
+[[record]]
+version = "1.4"
+reason = "Entries that record the release a change was fixed against (see the 1.4.0 record)."
+paths = [
+  "docs/site/docs/bug-ledger.md",
+]
+
+[[record]]
+version = "0.7.0"
+reason = "D198 states what the Pi release it was reviewed against (0.7.0) validated; the bundled divergence page copies that row."
+paths = [
+  "internal/pigdocs/content/divergences.md",
+]
+
+[[record]]
+version = "1.2.0"
+reason = "Pages that date a feature to the Pi release that added it. Pi's CHANGELOG puts the -p truncation warning, the keybindings $schema and the strict theme schema in [1.2.0]; the pages are checked for any other release number against the pin."
+paths = [
+  "docs/site/docs/cli.md",
+  "docs/site/docs/keybindings.md",
+  "docs/site/docs/themes.md",
 ]

@@ -36,7 +36,7 @@ const hook = `export async function resolve(specifier, context, next) {
 }`
 register(`data:text/javascript,${encodeURIComponent(hook)}`)
 const { BACKGROUND_CONTEXT: context } = await import("@earendil-works/chord/context")
-const { Type } = await import("@earendil-works/pi-ai")
+const { num, obj } = await import("@earendil-works/pi-schema")
 const { createModels } = await import("@earendil-works/pi-ai/models")
 const { fauxAssistantMessage, fauxProvider, fauxToolCall } = await import("@earendil-works/pi-ai/providers/faux")
 const { createRegistry, defineExtension, defineTool, Harness, section } = await import("@earendil-works/pi-durable")
@@ -57,7 +57,7 @@ const respond = transcript => {
 	return "call" in step ? fauxAssistantMessage(fauxToolCall("lookup", { n: step.call }, { id: `call-${step.call}` }), { stopReason: "toolUse" }) : fauxAssistantMessage(step.answer)
 }
 faux.setResponses([respond])
-const lookup = defineTool({ name: "lookup", description: "Look up record number n", parameters: Type.Object({ n: Type.Number() }), execute: async ({ n }) => ({ output: [{ type: "text", text: payload(n) }] }) })
+const lookup = defineTool({ name: "lookup", description: "Look up record number n", parameters: obj({ n: num() }), execute: async ({ n }) => ({ output: [{ type: "text", text: payload(n) }] }) })
 const registry = createRegistry()
 registry.install(defineExtension({ name: "bench", tools: [lookup], sections: [section("preamble", () => SYSTEM, { tag: false })] }))
 

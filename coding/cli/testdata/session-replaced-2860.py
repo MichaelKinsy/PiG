@@ -62,6 +62,12 @@ def new_extension() -> pig_sdk.Extension:
                 _log("stalePi:true")
             replaced.send_user_message("reply with exactly: hello reply")
             _log(f"idle:{str(replaced.is_idle()).lower()}")
+            # Pi's `await sleep()` works in a withSession callback: the SDK's yield helper must answer on the replacement route too.
+            try:
+                replaced.sleep(0.001)
+                _log("yield:ok")
+            except Exception as error:
+                _log(f"yield:{error}")
             _log(f"model:{replaced.model}")
             _log("conversation:" + _conversation(replaced.session_manager))
 

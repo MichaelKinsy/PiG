@@ -76,6 +76,8 @@ func componentKitCells() []kitCell {
 		{name: "packed-rust", make: func(t *testing.T) *harness { return makePackedUIHarness(t, "rust") }, extName: "rust-sdk-fixture"},
 		{name: "subprocess-python", make: makeSubprocessPythonHarness, extName: "python-sdk-fixture"},
 		{name: "packed-python", make: func(t *testing.T) *harness { return makePackedUIHarness(t, "python") }, extName: "python-sdk-fixture"},
+		{name: "subprocess-lisp", make: makeSubprocessLispHarness, extName: lispFixtureName},
+		{name: "packed-lisp", make: func(t *testing.T) *harness { return makePackedUIHarness(t, "lisp") }, extName: lispFixtureName},
 		{name: "subprocess-node", make: makeSubprocessNodeHarness, extName: "node-sdk-fixture", frontend: true},
 		{name: "subprocess-node-packed", make: makeSubprocessNodePackedHarness, extName: "node-sdk-fixture", frontend: true},
 	}
@@ -227,6 +229,8 @@ type kitSession struct {
 	mouse func(event extension.RemoteMouseEvent) extension.ViewMouseResult
 	// lines returns the last lines frame; nil for inproc-go.
 	lines func() []string
+	// capturesViewportInput is the component's capturesViewportInput as its latest frame reported it; nil for inproc-go.
+	capturesViewportInput func() bool
 }
 
 // kitUI shows ui.custom calls to the row: an in-process factory's component,
@@ -289,6 +293,9 @@ func (u *kitUI) RunRemoteOverlay(_ extension.RemoteOverlayOptions, host extensio
 	session := &kitSession{rows: handle.rows, frontendView: handle.frontendView, input: host.OnInput, lines: handle.lineFrame}
 	if mouse, ok := host.(extension.RemoteOverlayMouseHost); ok {
 		session.mouse = mouse.OnMouse
+	}
+	if viewport, ok := host.(extension.RemoteOverlayViewportHost); ok {
+		session.capturesViewportInput = viewport.CapturesViewportInput
 	}
 	u.sessions <- session
 	select {

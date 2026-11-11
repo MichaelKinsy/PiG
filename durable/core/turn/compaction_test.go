@@ -33,7 +33,7 @@ func compactionRig(t *testing.T) *rig {
 		if err != nil {
 			return err
 		}
-		return turn.AddCompactionStatus(live, mustParse(t, `{"taskId":`+jv.Stringify(float64(id))+`,"reason":"manual","blocking":false,"attempt":1}`))
+		return turn.AddCompactionStatus(live, mustParse(t, `{"taskId":`+jv.Stringify(float64(id))+`,"trigger":"manual","blocking":false,"attempt":1}`))
 	})
 	return r
 }
@@ -149,6 +149,10 @@ func thresholdRig(t *testing.T, reserve, background float64) *rig {
 				return err
 			}
 		}
+		// The context ends in a message the model answers (a context that does not ends the run with nothing_to_answer).
+		if _, err := tx.AppendEntry(1, mustParse(t, `{"kind":"pi.user","model":[{"role":"user","content":"and one more question","timestamp":1}]}`)); err != nil {
+			return err
+		}
 		return nil
 	})
 	return r
@@ -196,7 +200,7 @@ func TestBackgroundThresholdCompactsBesideTheRequest(t *testing.T) {
 	if len(tasks) != 1 || strings.Contains(jv.Stringify(tasks[0]), `"owner":`) {
 		t.Fatalf("a background compaction is owned by its conversation: %v", tasks)
 	}
-	if got := r.doc(turn.LiveDef, 1); !strings.Contains(got, `"compactions":[{"taskId":`) || !strings.Contains(got, `"reason":"threshold"`) || !strings.Contains(got, `"blocking":false`) {
+	if got := r.doc(turn.LiveDef, 1); !strings.Contains(got, `"compactions":[{"taskId":`) || !strings.Contains(got, `"trigger":"threshold"`) || !strings.Contains(got, `"blocking":false`) {
 		t.Fatalf("live = %s", got)
 	}
 	if len(r.complete) != 1 {

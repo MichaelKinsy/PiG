@@ -4,24 +4,32 @@
 package core
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/durable/core/abi"
 	"github.com/MichaelKinsy/PiG/durable/core/jv"
 	"github.com/MichaelKinsy/PiG/durable/core/session"
-	"github.com/MichaelKinsy/PiG/durable/core/session/sessiontest"
 )
 
-// Session.Finish records a host transaction's ticks for the job that ends it (jobHops). A commit the settle refuses ends no
-// job: the line is freed at once, so its ticks must not stay behind for the next line job, which would take them as its own
-// change (a sweep or scan job's duration).
+// Session.Finish records a host transaction's ticks for the job that ends it (elapsed). A commit the settle refuses ends the job with
+// the error, which answers the end as a rejection, and its ticks must not stay behind for the next line job, which would take them as
+// its own change (a sweep or scan job's duration).
 func TestARefusedHostCommitLeavesNoTicksForTheNextJob(t *testing.T) {
-	mem := sessiontest.New()
-	s := session.New(mem, mem.NextID(), func() float64 { return 0 })
-	h := &handler{b: abi.NewBuilder(), sess: s, open: parsed(t, `{"storageProfile":"gate-capsql"}`), txs: map[uint32]*hostTx{}}
-	tx, err := s.Begin(session.TxScope{})
-	if err != nil {
-		t.Fatal(err)
+	h, c := lineRig(t, "gate-capsql")
+	s := h.sess
+	h.txs = map[uint32]*hostTx{}
+	ht := &hostTx{id: 1}
+	h.txs[1] = ht
+	ht.job = h.loop.LineHost(func() error {
+		tx, err := s.Begin(session.TxScope{Host: true})
+		ht.tx = tx
+		return err
+	}, func(err error) { h.txDone(ht, err) })
+	c.run(t)
+	tx := ht.tx
+	if tx == nil {
+		t.Fatal("the transaction never took the line")
 	}
 	def := &session.DocDef{Kind: "t.note", Version: 1, Scope: session.ScopeSession, History: session.HistoryLatest,
 		Initial: func(any) *jv.Object { return jv.NewObject() }}
@@ -53,10 +61,18 @@ func TestARefusedHostCommitLeavesNoTicksForTheNextJob(t *testing.T) {
 	if err := tx.SetTask(ended); err != nil {
 		t.Fatal(err)
 	}
-	ht := &hostTx{id: 1, tx: tx}
-	h.txs[1] = ht
-	if err := h.txEnd(ht, nil); err == nil {
-		t.Fatal("the commit of a conversation owned by a task it ends was not refused")
+	if err := h.txEnd(ht, nil); err != nil {
+		t.Fatal(err)
+	}
+	c.run(t)
+	rejected := false
+	for _, n := range h.b.Step().Notices {
+		if n.Kind == abi.NoticeTxResult && strings.Contains(string(n.Payload), `"rejected"`) {
+			rejected = true
+		}
+	}
+	if !rejected {
+		t.Fatal("the commit of a conversation owned by a task it ends was not refused with a rejected end")
 	}
 	if got := s.PeekTicks(); got >= 0 {
 		t.Fatalf("the refused commit left %d ticks for the next job", got)

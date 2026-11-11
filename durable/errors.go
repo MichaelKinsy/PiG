@@ -26,15 +26,17 @@ func ErrorMessage(thrown any) (message string) {
 	return fmt.Sprint(thrown)
 }
 
-// ReadAfterWrite reports that a transaction read a table after its first table write. Read every required row before
-// writing.
+// ReadAfterWrite reports that a transaction read a table after its first table write, or admitted a submission
+// (`submit(tx, draft)`) after it. Read every required row, and admit, before writing.
 type ReadAfterWrite struct {
-	Method string
+	// Operation names the call, such as "Tx.task()".
+	Operation string
 }
 
-// NewReadAfterWrite returns the error for the Tx method that read after a write.
-func NewReadAfterWrite(method string) *ReadAfterWrite {
-	e := &ReadAfterWrite{Method: method}
+// NewReadAfterWrite returns the error for the operation that read after a write; operation names the call, such as
+// "Tx.task()".
+func NewReadAfterWrite(operation string) *ReadAfterWrite {
+	e := &ReadAfterWrite{Operation: operation}
 	return e
 }
 
@@ -42,7 +44,7 @@ func NewReadAfterWrite(method string) *ReadAfterWrite {
 func (*ReadAfterWrite) Name() string { return "ReadAfterWrite" }
 
 func (e *ReadAfterWrite) Error() string {
-	return fmt.Sprintf("Tx.%s() cannot read tables after the first table write", e.Method)
+	return e.Operation + " cannot read tables after the first table write"
 }
 
 // StorageRequestError reports that a Storage read rejected an invalid request, such as an unknown conversation or a
@@ -116,4 +118,21 @@ func (*ConversationBusy) Name() string { return "ConversationBusy" }
 
 func (e *ConversationBusy) Error() string {
 	return fmt.Sprintf("Conversation %d is busy", e.ConversationId)
+}
+
+// ConversationIdle reports that an input with WhenIdle reject reached an idle conversation and was not admitted.
+type ConversationIdle struct {
+	ConversationId ConversationId
+}
+
+// NewConversationIdle returns the error for an idle conversation.
+func NewConversationIdle(conversationId ConversationId) *ConversationIdle {
+	return &ConversationIdle{ConversationId: conversationId}
+}
+
+// Name is the `name` property, "ConversationIdle".
+func (*ConversationIdle) Name() string { return "ConversationIdle" }
+
+func (e *ConversationIdle) Error() string {
+	return fmt.Sprintf("Conversation %d is idle", e.ConversationId)
 }

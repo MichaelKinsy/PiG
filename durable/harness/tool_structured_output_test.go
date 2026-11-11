@@ -47,11 +47,45 @@ func TestStructuredOutputError(t *testing.T) {
 		{"no value", structuredTool(shellLikeSchema), durable.ToolExecutionResult{}, "Tool shell returned no structuredOutput"},
 		{"no value on an error result", structuredTool(shellLikeSchema), durable.ToolExecutionResult{IsError: &yes}, ""},
 		{"mismatch", structuredTool(shellLikeSchema), durable.ToolExecutionResult{StructuredOutput: object("x", "0"), HasStructuredOutput: true},
-			"Tool shell returned structuredOutput that does not match its schema: exitCode: must be number"},
+			"Tool shell returned structuredOutput that does not match its schema: exitCode: expected number, got string"},
 		{"mismatch at the root", structuredTool(shellLikeSchema), durable.ToolExecutionResult{StructuredOutput: durable.JsonValue([]any{}), HasStructuredOutput: true},
-			"Tool shell returned structuredOutput that does not match its schema: root: must be object"},
+			"Tool shell returned structuredOutput that does not match its schema: root: expected object, got array"},
 	} {
 		if got := StructuredOutputError(tc.tool, tc.result); got != tc.want {
+			t.Errorf("%s: %q, want %q", tc.name, got, tc.want)
+		}
+	}
+}
+
+// Pi 6536f801 harness/tool.ts structuredOutputError: the schema is compiled with pi-schema (the standard formats, a
+// reference that names nothing rejects the value) and the path is the error's JSON Pointer with its escapes undone and
+// its segments joined by dots.
+func TestStructuredOutputErrorUsesPiSchema(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		schema map[string]any
+		value  any
+		want   string
+	}{
+		{"a format the schema names", map[string]any{"type": "string", "format": "date"}, "tomorrow",
+			"Tool shell returned structuredOutput that does not match its schema: root: expected format date"},
+		{"a pointer escape of a property name", map[string]any{"type": "object", "properties": map[string]any{"a/b": map[string]any{"type": "number"}}}, map[string]any{"a/b": "x"},
+			"Tool shell returned structuredOutput that does not match its schema: a/b: expected number, got string"},
+		{"a tilde in a property name", map[string]any{"type": "object", "properties": map[string]any{"a~b": map[string]any{"type": "number"}}}, map[string]any{"a~b": "x"},
+			"Tool shell returned structuredOutput that does not match its schema: a~b: expected number, got string"},
+		{"a nested path", map[string]any{"type": "object", "properties": map[string]any{"items": map[string]any{"type": "array", "items": map[string]any{"type": "integer"}}}}, map[string]any{"items": []any{1.0, "x"}},
+			"Tool shell returned structuredOutput that does not match its schema: items.1: expected integer, got string"},
+		{"a reference that names nothing", map[string]any{"type": "object", "properties": map[string]any{"a": map[string]any{"$ref": "#/$defs/missing"}}}, map[string]any{"a": 1.0},
+			"Tool shell returned structuredOutput that does not match its schema: a: unresolved reference #/$defs/missing"},
+		{"no string conversion", map[string]any{"type": "number"}, "1",
+			"Tool shell returned structuredOutput that does not match its schema: root: expected number, got string"},
+	} {
+		value, err := durable.ToJsonValue(tc.value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := StructuredOutputError(structuredTool(tc.schema), durable.ToolExecutionResult{StructuredOutput: value, HasStructuredOutput: true})
+		if got != tc.want {
 			t.Errorf("%s: %q, want %q", tc.name, got, tc.want)
 		}
 	}
@@ -80,7 +114,7 @@ func TestModelIssuedCallLosesABrokenStructuredOutputAndTheHostLearnsOfIt(t *test
 	}
 	found := false
 	for _, report := range setup.Reports.all() {
-		found = found || strings.Contains(report.Error(), "Tool shell returned structuredOutput that does not match its schema: output: must be string")
+		found = found || strings.Contains(report.Error(), "Tool shell returned structuredOutput that does not match its schema: output: expected string, got integer")
 	}
 	if !found {
 		t.Errorf("reports = %v, want the structuredOutput break", setup.Reports.all())

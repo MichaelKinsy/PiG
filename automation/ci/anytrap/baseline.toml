@@ -138,20 +138,6 @@ dest = "*any"
 count = 1
 
 [[hit]]
-file = "ai/validate.go"
-func = "parseArgumentSchema"
-call = "json.Unmarshal"
-dest = "*any"
-count = 1
-
-[[hit]]
-file = "ai/validate.go"
-func = "decodeSchemaInstance"
-call = "sdkjson.Unmarshal"
-dest = "*any"
-count = 1
-
-[[hit]]
 file = "ai/validate_arguments.go"
 func = "ValidateToolArguments"
 call = "sdkjson.Unmarshal"
@@ -251,7 +237,7 @@ count = 1
 
 [[hit]]
 file = "coding/extension/host/subprocess/autocomplete_bridge.go"
-func = "autocompleteRequest"
+func = "requestWithID"
 call = "sdkjson.Unmarshal"
 dest = "any"
 count = 1
@@ -1284,14 +1270,6 @@ call = "sdkjson.Unmarshal"
 dest = "*any"
 count = 1
 
-# once per session entry at resume/load, not per turn
-[[hit]]
-file = "internal/codingagent/session_stats_scan.go"
-func = "walkIndexProbe"
-call = "sdkjson.Unmarshal"
-dest = "any"
-count = 1
-
 # decodes into a concrete type (a type parameter T or durable.JsonValue), not an untyped interface
 [[hit]]
 file = "internal/codingagent/settings.go"
@@ -1332,7 +1310,7 @@ call = "json.Unmarshal"
 dest = "*durable.JsonValue"
 count = 2
 
-# dev/bench tooling (linux-only harness, its RPC handshake reply); missed by a scan on macOS, which skips linux-only files
+# dev/bench tooling (linux-only harness, its RPC handshake reply)
 [[hit]]
 file = "bench/sessionscale/cmd/sessionscale/run.go"
 func = "startRPC"

@@ -49,8 +49,8 @@ func TestSettingsListRenderMatchesPi(t *testing.T) {
 	}
 	many[3].Description = "The fourth setting has a description that wraps across more than one row at narrow widths."
 	sets["many"] = many
-	// Pi 1.1.0 has no select page keys; Pig pages the selection (D155, Pi PR #7680), covered by the select page key tests, so the oracle input leaves PageUp and PageDown out.
-	scripts := [][]string{{}, {"\x1b[B"}, {"\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B"}, {"\x1b[A"}, {"\x1b[A", "\x1b[A"}, {"s", "e", "t"}, {"z", "z", "z"}, {"t", "\x7f", "\x7f"}, {"n", "\x1b[B", "\x1b[B", "\x1b[A"}, {"日", "x"}, {"\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B"}}
+	// The page scripts move by one visible page with PageDown and PageUp, which settings-list.ts clamps without wrapping.
+	scripts := [][]string{{}, {"\x1b[6~", "\x1b[6~", "\x1b[5~"}, {"\x1b[6~", "\x1b[6~", "\x1b[6~", "\x1b[6~", "\x1b[6~", "\x1b[5~", "\x1b[5~"}, {"\x1b[5~"}, {"\x1b[B"}, {"\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B"}, {"\x1b[A"}, {"\x1b[A", "\x1b[A"}, {"s", "e", "t"}, {"z", "z", "z"}, {"t", "\x7f", "\x7f"}, {"n", "\x1b[B", "\x1b[B", "\x1b[A"}, {"日", "x"}, {"\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B"}}
 	var probes []settingsListOracleProbe
 	for _, name := range []string{"empty", "small", "wide", "long", "styled", "many"} {
 		for _, maxVisible := range []int{1, 3, 5, 10} {

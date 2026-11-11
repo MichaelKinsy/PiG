@@ -12,6 +12,8 @@ import (
 )
 
 // remotePaths is Node's path rules of the remote system: path.win32 or path.posix.
+//
+// Ports packages/env/src/remote-env.ts (remotePath, RemoteExecutionEnv.#resolve)
 type remotePaths struct{ windows bool }
 
 func (p remotePaths) join(parts ...string) string {
@@ -70,6 +72,7 @@ func (e *RemoteExecutionEnv) resolvePath(ctx context.Context, path string) (stri
 	case normalized == "~":
 		normalized = info.Home
 	case strings.HasPrefix(normalized, "~/") || (windows && strings.HasPrefix(normalized, `~\`)):
+		//portlint:allow utf16units remote-env.ts RemoteExecutionEnv.#resolve slices off the ASCII "~/" or "~\\" prefix HasPrefix just matched, so byte 2 is UTF-16 unit 2
 		normalized = paths.join(info.Home, normalized[2:])
 	case strings.HasPrefix(normalized, "file://"):
 		// Malformed URLs stay ordinary paths, as in Node.

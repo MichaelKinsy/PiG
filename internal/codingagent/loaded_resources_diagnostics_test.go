@@ -49,7 +49,7 @@ func diagnosticsFixtureMode(t testing.TB) *InteractiveMode {
 	return m
 }
 
-const wantDiagnosticsBlock = `[Skill conflicts]
+const wantDiagnosticsBlock = `[Skill warnings]
   "commit" collision:
     ✓ /s/a/SKILL.md
     ✗ /s/b/SKILL.md (skipped)
@@ -95,7 +95,7 @@ func renderListing(m *InteractiveMode) string {
 }
 
 // Pi interactive-mode.ts:1854-1905: with showDiagnosticsWhenQuiet, quiet
-// startup still renders [Skill conflicts], [Prompt conflicts], [Extension
+// startup still renders [Skill warnings], [Prompt conflicts], [Extension
 // issues] (load errors, command diagnostics, built-in command conflicts, then
 // shortcut diagnostics) and [Theme conflicts], in that order, through
 // formatDiagnostics; the resource listing stays hidden.
@@ -125,7 +125,7 @@ func TestShowLoadedResourcesListingThenDiagnostics(t *testing.T) {
 	m.opts.Skills = []*SkillDef{{FilePath: "/s/a/SKILL.md", Name: "commit"}}
 	m.showLoadedResources(false, false)
 	got := renderListing(m)
-	listing, _, ok := strings.Cut(got, "[Skill conflicts]")
+	listing, _, ok := strings.Cut(got, "[Skill warnings]")
 	_, wantTail, _ := strings.Cut(wantDiagnosticsBlock, "[Prompt conflicts]")
 	_, gotTail, _ := strings.Cut(got, "[Prompt conflicts]")
 	if !ok || !strings.Contains(listing, "[Skills]") || gotTail != wantTail {

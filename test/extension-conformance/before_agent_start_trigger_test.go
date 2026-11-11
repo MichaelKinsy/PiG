@@ -51,7 +51,7 @@ func TestBeforeAgentStartTriggerAcrossSDKs(t *testing.T) {
 		}
 		assertBeforeAgentStartTrigger(t, *loaded)
 	})
-	for _, language := range []string{"go", "python", "rust", "node"} {
+	for _, language := range []string{"go", "python", "rust", "node", "lisp"} {
 		t.Run(language, func(t *testing.T) {
 			for _, placement := range []string{"isolated", "packed"} {
 				t.Run(placement, func(t *testing.T) {
@@ -165,6 +165,23 @@ def new_extension():
  e.on_event("before_agent_start",handler)
  return e
 `, name)
+	case "lisp":
+		path = filepath.Join(cfg.Source, name+".lisp")
+		source = fmt.Sprintf(`(defpackage %q (:use "COMMON-LISP"))
+(in-package %q)
+(defun new-extension ()
+  (let ((e (pig:make-extension %q)))
+    (pig:on e "before_agent_start"
+      (lambda (ctx data) (declare (ignore ctx))
+        (let* ((o (pig:jget data "systemPromptOptions")) (suffix (format nil "|~A" (pig:jget data "messageType"))))
+          (if (nth-value 1 (gethash "message" data))
+              (progn (setf suffix (format nil "~A|~A|~A" suffix (pig:jref data "message" "customType") (pig:jref data "message" "content")))
+                     (unless (nth-value 1 (gethash "prompt" data)) (setf suffix (concatenate 'string suffix "|prompt-absent"))))
+              (setf suffix (format nil "~A|~A" suffix (pig:jget data "prompt"))))
+          (setf (gethash "appendSystemPrompt" o) (concatenate 'string (pig:jget o "appendSystemPrompt") suffix))
+          nil)))
+    e))
+`, name, name, name)
 	case "rust":
 		path = filepath.Join(cfg.Source, "src", "lib.rs")
 		source = fmt.Sprintf(`use pig_sdk::{Extension,Schema};

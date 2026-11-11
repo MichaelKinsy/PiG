@@ -16,13 +16,13 @@ func ValidateToolCall(tools []ToolSchema, call ToolCall) (map[string]any, error)
 			return ValidateToolArguments(tool, call)
 		}
 	}
-	// validation.ts:305 interpolates the name unescaped (`Tool "${toolCall.name}" not found`); %q would escape it.
+	// validation.ts:40 interpolates the name unescaped (`Tool "${toolCall.name}" not found`); %q would escape it.
 	return nil, fmt.Errorf("Tool \"%s\" not found", call.Name)
 }
 
-// ValidateToolArguments clones, prepares optional nulls, coerces and validates the call's arguments without changing the provider call.
+// ValidateToolArguments coerces and validates the call's arguments against the tool's JSON Schema with pi-schema, without changing the provider call (validation.ts:54-69).
 // The arguments are read in the call's member order, as Pi's are, so the received arguments of a validation error list them in that order. The schema is
-// read in its authored member order (ParametersJSON), as Pi validates tool.parameters itself (validation.ts:317-341), so its errors follow that order.
+// read in its authored member order (ParametersJSON), as Pi validates tool.parameters itself, so its errors follow that order.
 func ValidateToolArguments(tool ToolSchema, call ToolCall) (map[string]any, error) {
 	if call.ArgumentsError != "" {
 		return nil, fmt.Errorf("Invalid arguments for tool \"%s\": %s", call.Name, call.ArgumentsError)
@@ -55,7 +55,7 @@ func ValidateToolArguments(tool ToolSchema, call ToolCall) (map[string]any, erro
 	return result, nil
 }
 
-// ValidateToolArgumentsJSON validates arguments against a JSON schema and returns the validated arguments with the member order of args, which is what an agent passes to hooks and execution. An empty schema accepts any object.
+// ValidateToolArgumentsJSON validates arguments against a JSON schema (ToolSchema.ParametersJSON of a tool, or any JSON Schema text) and returns the coerced arguments as JSON.stringify writes them, in the member order of args, which is what an agent passes to hooks and execution. An empty schema accepts any object.
 func ValidateToolArgumentsJSON(toolName string, schema, args json.RawMessage) (json.RawMessage, error) {
 	return validateToolArgsSchema(toolName, schema, args)
 }

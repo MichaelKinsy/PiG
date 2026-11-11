@@ -149,7 +149,7 @@ func TestRemoteWatchOptionsModeForcesTheWatcherMode(t *testing.T) {
 		if watcher.Mode() != mode {
 			t.Errorf("forced mode %q, watcher reports %q", mode, watcher.Mode())
 		}
-		_ = watcher.Close(background)
+		_ = watcher.Stop(background)
 	}
 }
 

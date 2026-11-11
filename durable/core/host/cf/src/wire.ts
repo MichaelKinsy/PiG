@@ -4,7 +4,8 @@ import { STATUS } from "./abi.ts"
 
 export type Param = null | number | string | Uint8Array
 export type Stmt = { sql: number; params: Param[] }
-export type Commit = { seq: number; stmts: Stmt[] }
+/** `joined`: the commit belongs to the same Storage call as the commit before it in the step (ABI section 5.5); a run of joined commits is one transaction. */
+export type Commit = { seq: number; joined: boolean; stmts: Stmt[] }
 export type Read = { id: number; sql: number; params: Param[] }
 /** `origin` tags the async context the host runs a notice's listeners or an effect's handler in (ABI section 5.4); 0: none. */
 export type Notice = { kind: number; origin: number; payload: Uint8Array }
@@ -53,17 +54,19 @@ class WireReader {
     for (let i = 0; i < n; i++) out[i] = this.value()
     return out
   }
-  /** One commit: u32 length of the rest, i64 seq, u16 statement count, statements. */
+  /** One commit: u32 length of the rest, i64 seq, u8 flags (bit 0 joined), u16 statement count, statements. */
   commit(): Commit {
     const { dv } = this
     const len = dv.getUint32(this.off, true); const end = this.off + 4 + len
     const seq = Number(dv.getBigInt64(this.off + 4, true))
-    const n = dv.getUint16(this.off + 12, true)
-    this.off += 14
+    const flags = dv.getUint8(this.off + 12)
+    if ((flags & ~1) !== 0) throw new Error()
+    const n = dv.getUint16(this.off + 13, true)
+    this.off += 15
     const stmts: Stmt[] = new Array(n)
     for (let s = 0; s < n; s++) { const sql = dv.getUint16(this.off, true); this.off += 2; stmts[s] = { sql, params: this.params() } }
     if (this.off !== end) throw new Error(`commit is ${end - this.off} bytes off its length`)
-    return { seq, stmts }
+    return { seq, joined: (flags & 1) === 1, stmts }
   }
 }
 

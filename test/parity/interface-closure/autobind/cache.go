@@ -123,6 +123,7 @@ func listRepoFiles(root string) ([]string, error) {
 }
 
 func gitFiles(root string, args ...string) ([]string, error) {
+	//nolint:gosec // G204 (class a): program is literal git; args are "ls-files" plus the literal flag sets from listRepoFiles ("-co --exclude-standard", "-oi --exclude-standard --directory") and "-z".
 	cmd := exec.Command("git", append(append([]string{"ls-files"}, args...), "-z")...)
 	cmd.Dir = root
 	var out bytes.Buffer

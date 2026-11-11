@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -1599,15 +1600,18 @@ func updateString(dst *string, section ini.Section, key string) {
 // updateInt will only update the dst with the value in the section key, key
 // is present in the section.
 //
-// Down casts the INI integer value from a int64 to an int, which could be
-// different bit size depending on platform.
+// The INI integer is parsed to the platform's int size, so a value that does
+// not fit an int is an error instead of wrapping on a 32-bit platform.
 func updateInt(dst *int, section ini.Section, key string) error {
 	if !section.Has(key) {
 		return nil
 	}
 
-	v, ok := section.Int(key)
-	if !ok {
+	v, err := strconv.ParseInt(section.String(key), 0, strconv.IntSize)
+	if err != nil {
+		if errors.Is(err, strconv.ErrRange) {
+			return fmt.Errorf("invalid value %s=%s, out of range for an integer setting", key, section.String(key))
+		}
 		return fmt.Errorf("invalid value %s=%s, expect integer", key, section.String(key))
 	}
 

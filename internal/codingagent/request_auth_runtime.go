@@ -1,5 +1,7 @@
 package codingagent
 
+// Ports packages/coding-agent/src/core/model-runtime.ts
+
 // Request-auth resolution surface of upstream ModelRuntime
 // (packages/coding-agent/src/core/model-runtime.ts: getProviders, getProvider,
 // getModels, checkAuth, getAuth, listCredentials, getError, hasConfiguredAuth,

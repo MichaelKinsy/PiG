@@ -1,5 +1,11 @@
 # PiG extensions
 
+> **Differs from Pi, or easy to get wrong**
+> - Extensions load from `~/.pig/agent/extensions` and a trusted `.pig/extensions`, never from `~/.pi` (D2).
+> - Only top-level `.ts` or `.js` files, or a folder with an `index.ts` or `index.js`, load. PiG ignores a `.mjs` file without an error.
+> - An untrusted project loads nothing. With `-p` there is no prompt: pass `--approve` ([project trust](trust.md)).
+> - Pi extensions are TypeScript. In PiG, prefer Go, then Rust, then Python. Lisp is also supported.
+
 PiG extensions are external programs that add tools, commands, events,
 providers, renderers, and UI behavior. PiG hosts them through the current
 subprocess wire. A Piglet Binary can fuse a compatible Go factory, but fused
@@ -20,6 +26,7 @@ Use one standard factory for the language:
 - Rust: `pub fn new_extension() -> Extension` in `src/lib.rs`
 - Python: `def new_extension() -> Extension` in one module
 - Node: one Pi-compatible default export
+- Lisp: `pig:define-extension`, which defines `NEW-EXTENSION` (needs SBCL 2.6.9)
 
 PiG generates the runner. Go, Rust, and Python factories can share a
 language-specific runtime cell. Node factories run in isolated Node processes.
@@ -99,7 +106,14 @@ PiG collects extensions from these sources:
 explicit `-e` paths. Project discovery requires trust. Startup and `/reload`
 use the same normalized resolver.
 
-PiG does not discover `~/.pig/extensions`.
+PiG does not discover `~/.pig/extensions`. PiG never reads Pi's `~/.pi/agent/extensions` unless you select Pi's directories (D2, [config](config.md)).
+
+In `~/.pig/agent/extensions` and `.pig/extensions`, PiG loads:
+
+- each top-level `.ts` or `.js` file;
+- each folder that has an `index.ts` or `index.js`, or a `pi.extensions` manifest in its `package.json`.
+
+PiG ignores a `.mjs` file and a `.js` file in a subfolder that has no `index`. The ignored file gives no error, and `pig install <path> --validate-only` can still call it valid. An untrusted project loads nothing from `.pig/extensions`: in a print run (`-p`) there is no prompt, so pass `--approve` or trust the project first ([project trust](trust.md)).
 
 ## Scaffold
 
@@ -124,8 +138,10 @@ Create a standalone:
 pig extension init ./my-extension --lang go --isolated
 ```
 
-Supported scaffold languages are Go, Python, and Rust. The scaffold writes no
+Supported scaffold languages are Go, Python, Rust, and Lisp. The scaffold writes no
 YAML file. PiG stages the matching SDK under the active config root.
+
+For Lisp, `pig extension init ./my-extension --lang lisp` writes `my-extension.asd` and `my-extension.lisp`. The `.lisp` file calls `pig:define-extension` with `:tool`, `:command`, and `:on` forms, and it needs SBCL 2.6.9. Validate it as in the next section.
 
 ## Validation
 

@@ -38,6 +38,9 @@ func Append(dst []byte, value any) []byte {
 		return AppendString(dst, v)
 	case Raw:
 		return append(dst, v...)
+	case *Raw:
+		// A pointer converts to an interface without an allocation: a builder that reuses one buffer hands it over by address.
+		return append(dst, *v...)
 	case *Object:
 		dst = append(dst, '{')
 		if v.nIndex == 0 && v.dead == 0 {

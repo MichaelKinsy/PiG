@@ -47,7 +47,7 @@ func raExpectNil[T any](t *testing.T, value *T, err error) {
 
 func raCommit(t *testing.T, storage durable.Storage, writes ...durable.StorageWrite) durable.Seq {
 	t.Helper()
-	return raMust(storage.Commit(raCtx, writes, func(durable.Seq) {}))
+	return raMust(durabletest.CommitWrites(raCtx, storage, writes))
 }
 
 func raCreateRoot(t *testing.T, storage durable.Storage) {
@@ -229,7 +229,7 @@ func TestSqliteStorageReadApiMirrorsPisStorageContract(t *testing.T) {
 	if _, err := storage.Conversation(raCtx, child); err == nil {
 		t.Fatal("a closed storage must fail")
 	}
-	if _, err := storage.Commit(raCtx, nil, func(durable.Seq) {}); err == nil {
+	if _, err := durabletest.CommitWrites(raCtx, storage, nil); err == nil {
 		t.Fatal("a closed storage must refuse commits")
 	}
 }

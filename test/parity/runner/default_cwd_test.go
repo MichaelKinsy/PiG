@@ -7,6 +7,10 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"unicode/utf16"
+
+	"github.com/MichaelKinsy/PiG/internal/codingagent/prompts"
+	"github.com/MichaelKinsy/PiG/internal/pioracle"
 )
 
 func TestMkdirTempFixedWidth(t *testing.T) {
@@ -166,9 +170,8 @@ func TestPromptPathLengthsBalance(t *testing.T) {
 	if !filepath.IsAbs(promptPathRoot) {
 		t.Fatalf("promptPathRoot %q is not absolute; Pi would print a longer root than pig", promptPathRoot)
 	}
-	digits := strings.Repeat("0", snapshotIDDigits)
-	pigHome := filepath.Join(promptPathRoot, pigHomePrefix+digits)
-	piPackage := filepath.Join(promptPathRoot, piPackagePrefix+digits, piPackageLink)
+	pigHome := filepath.Join(promptPathRoot, pigHomePrefix+strings.Repeat("0", pigHomeIDDigits))
+	piPackage := filepath.Join(promptPathRoot, piPackagePrefix+strings.Repeat("0", snapshotIDDigits), piPackageLink)
 	pig := 2*(len(pigHome)+len("/docs")+pigBundleDirLen) + d22ConstantGap
 	pi := 3 * len(piPackage)
 	if pig != pi {
@@ -176,5 +179,30 @@ func TestPromptPathLengthsBalance(t *testing.T) {
 	}
 	if pigHomePrefix != "parity-snap-PIG_HOME-" {
 		t.Fatalf("pigHomePrefix %q must match snapshotEnvDirs naming", pigHomePrefix)
+	}
+}
+
+// The context estimate of a faux turn is chars/4 of the system message, so one character of difference between the two prompts can move a token. The runner's docs paths exist to make pig's preamble and docs section exactly as long as Pi's; TestPromptPathLengthsBalance only checks that the constants add up. This test measures the real sections at the runner's path lengths, so a wording change on either side (such as Pi 705d047c dropping four product-name spellings from its docs section) fails here and names the constant to set, rather than appearing as a one-token drift in rpc/26-rpc-session-stats-context-estimate and fullscreen/10-main-screen-compaction-settled.
+func TestPromptPathLengthsMatchRealPrompts(t *testing.T) {
+	pigHome := filepath.Join(promptPathRoot, pigHomePrefix+strings.Repeat("0", pigHomeIDDigits))
+	pigDocs := filepath.Join(pigHome, "docs") + "/" + strings.Repeat("b", pigBundleDirLen-len("/"))
+	piPackage := filepath.Join(promptPathRoot, piPackagePrefix+strings.Repeat("0", snapshotIDDigits), piPackageLink)
+
+	var pigChars int
+	for _, section := range prompts.BuildSystemPromptSections(prompts.Options{Cwd: "/tmp", PigDocsPath: pigDocs}) {
+		if section.Name == "preamble" || section.Name == "docs" {
+			pigChars += len(utf16.Encode([]rune(*section.Value)))
+		}
+	}
+	var pi struct{ Preamble, Docs string }
+	pioracle.Run(t, `
+const { buildSystemPromptSections } = await load("pi-coding-agent/core/system-prompt.js");
+const sections = buildSystemPromptSections({ cwd: "/tmp" });
+emit({ Preamble: sections.preamble, Docs: sections.docs });`, nil, &pi, "PI_PACKAGE_DIR="+piPackage)
+	piChars := len(utf16.Encode([]rune(pi.Preamble + pi.Docs)))
+
+	if pigChars != piChars {
+		t.Fatalf("pig's preamble and docs section are %d characters, Pi's are %d at the runner's docs paths: set d22ConstantGap to %d and size pigHomeIDDigits and piPackageLink so that 3*len(piPackageDir) == 2*(len(pigHome)+len(\"/docs\")+pigBundleDirLen) + d22ConstantGap",
+			pigChars, piChars, d22ConstantGap+pigChars-piChars)
 	}
 }

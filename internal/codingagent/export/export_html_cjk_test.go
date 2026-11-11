@@ -1,5 +1,7 @@
 package export
 
+// pi: packages/coding-agent/src/core/export-html/index.ts
+
 // Ports packages/coding-agent/test/export-html-cjk.test.ts (Pi 26293e74, #10154, #11168): the exported page renders emphasis next to
 // CJK punctuation and keeps CommonMark flanking rules for other text. The page's scripts run under Node, as Pi's test runs them in a VM.
 

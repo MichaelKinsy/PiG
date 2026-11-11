@@ -35,7 +35,7 @@ var tuiProbeArgs = map[string]any{
 }
 
 func TestTuiStateAcrossSDKs(t *testing.T) {
-	eachModelTypesPlacement(t, func(t *testing.T, r *modelTypesRig) {
+	eachTuiPlacement(t, func(t *testing.T, r *modelTypesRig) {
 		// The state the host published first.
 		r.setTuiState(tuiProbeTable("ctrl+y", "ctrl+j"), subprocess.TerminalCapabilitiesPayload{Images: "iterm2", TrueColor: true, Hyperlinks: true})
 		report := r.toolWith("tui_probe", tuiProbeArgs)

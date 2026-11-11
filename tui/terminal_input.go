@@ -63,7 +63,12 @@ func (p *TerminalInput) Process(data []byte) {
 	if p.closed {
 		return
 	}
-	p.route(p.buffer.ProcessTerminalBytes(data))
+	text, ok := p.buffer.decodeTerminalBytes(data)
+	if !ok {
+		// Pi: terminal.ts:281-283 runs process() per data event, and Node emits none for a read decoded to "".
+		return
+	}
+	p.route(p.buffer.ProcessString(text))
 	p.sequenceDeadline = stdinBufferDeadline(p.buffer)
 	p.armTimer()
 }

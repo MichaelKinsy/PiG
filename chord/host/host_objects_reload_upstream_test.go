@@ -18,7 +18,7 @@ import (
 // eagerInput and eagerFlags are host-objects-reload.test.ts:17-18.
 var (
 	eagerInput = tObject()
-	eagerFlags = Schema{"type": "object", "patternProperties": Schema{"^.*$": tBoolean()}}
+	eagerFlags = tTypedRecord(tBoolean())
 )
 
 // eagerSwitchV1..V3 are host-objects-reload.test.ts:19-42.

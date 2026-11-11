@@ -179,7 +179,7 @@ func writeColorSchemeNotifications(out io.Writer, enabled bool) {
 	if enabled {
 		sequence = "\x1b[?2031h"
 	}
-	_, _ = io.WriteString(out, sequence)
+	WriteToTerminal(out, sequence)
 	if writer, ok := out.(terminalWriter); ok {
 		if process, ok := writer.terminal.(*ProcessTerminal); ok {
 			process.colorSchemeReports.Store(enabled)

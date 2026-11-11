@@ -1,6 +1,6 @@
 package ai
 
-// Ports packages/ai/src/api/anthropic-messages.ts:iterateSseMessages, iterateAnthropicEvents and the for-await loop of stream().
+// Ports packages/ai/src/api/anthropic-messages.ts (iterateSseMessages, iterateAnthropicEvents and the for-await loop of stream()).
 //
 // The Go code runs on the provider's executor turn. Each JavaScript await, yield and Promise adoption that separates the body reader from the provider's loop is a suspend(): one promise reaction queued behind everything already ready. The tick order is checked against Node 24.19 and 26.7 by TestAnthropicMicrotaskTrace over coding/testdata/rpc33-observation/providers/anthropic-messages/pi.json.
 

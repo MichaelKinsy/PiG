@@ -11,10 +11,10 @@ import (
 	"os"
 	"strconv"
 	"sync"
-	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/internal/outputfiles"
 	"github.com/MichaelKinsy/PiG/internal/truncate"
+	"github.com/MichaelKinsy/PiG/internal/utf8stream"
 )
 
 // OutputSnapshot mirrors upstream OutputSnapshot.
@@ -36,7 +36,7 @@ type OutputAccumulator struct {
 	maxBytes        int
 	maxRollingBytes int
 	tempFilePrefix  string
-	decoder         utf8StreamDecoder
+	decoder         utf8stream.Decoder
 
 	// raw holds the raw bytes until the full-output file exists. Append copies a chunk into it, since the caller's slice is only lent for the call.
 	raw []byte
@@ -80,7 +80,7 @@ func newOutputAccumulator(maxLines, maxBytes int, tempFilePrefix string) *Output
 		maxRollingBytes:          max(maxBytes*2, 1),
 		tempFilePrefix:           tempFilePrefix,
 		tailStartsAtLineBoundary: true,
-		decoder:                  utf8StreamDecoder{stripBOM: true},
+		decoder:                  utf8stream.Decoder{StripBOM: true},
 	}
 }
 
@@ -190,7 +190,7 @@ func (a *OutputAccumulator) LastLineBytes() int {
 // decodeOntoTail decodes data onto the end of the tail and counts what it added.
 func (a *OutputAccumulator) decodeOntoTail(data []byte, stream bool) {
 	start := len(a.tail)
-	a.tail = a.decoder.appendDecode(a.tail, data, stream)
+	a.tail = a.decoder.AppendDecode(a.tail, data, stream)
 	text := a.tail[start:]
 	size := len(text)
 	if size == 0 {
@@ -276,160 +276,6 @@ func (a *OutputAccumulator) ensureTempFile() {
 	a.raw = nil
 }
 
-// utf8StreamDecoder mirrors the WHATWG UTF-8 decoder behind TextDecoder with
-// { stream: true }: an incomplete trailing sequence waits for the next chunk,
-// and each maximal invalid subpart becomes one U+FFFD.
-//
-// With stripBOM set it also mirrors TextDecoder's default ignoreBOM: false,
-// dropping a U+FEFF that is the stream's first code point, even when its
-// bytes arrive split across chunks. Buffer.toString (file reads) keeps the
-// BOM, so those callers leave stripBOM unset.
-type utf8StreamDecoder struct {
-	stripBOM    bool
-	started     bool
-	codePoint   rune
-	bytesSeen   int
-	bytesNeeded int
-	lower       byte
-	upper       byte
-}
-
-// decode returns the decoding of data. Well-formed UTF-8 decodes to itself, so it is copied once; anything else runs the decoder.
-func (d *utf8StreamDecoder) decode(data []byte, stream bool) string {
-	if d.bytesNeeded == 0 && utf8.Valid(data) {
-		if !d.started && len(data) > 0 {
-			d.started = true
-			if d.stripBOM && bytes.HasPrefix(data, utf8BOM) {
-				data = data[len(utf8BOM):]
-			}
-		}
-		return string(data)
-	}
-	return string(d.appendDecode(make([]byte, 0, len(data)+utf8.UTFMax), data, stream))
-}
-
-var utf8BOM = []byte("\uFEFF")
-
-// appendDecode appends the decoding of data to dst. Between characters, the well-formed prefix of a chunk that ends at a character boundary is appended
-// as it is; the decoder walks only what is left (an incomplete last character, or a chunk with an invalid sequence).
-//
-//perf:hot
-func (d *utf8StreamDecoder) appendDecode(dst, data []byte, stream bool) []byte {
-	if d.lower == 0 {
-		d.lower, d.upper = 0x80, 0xBF
-	}
-	if d.started && d.bytesNeeded == 0 {
-		if whole := len(data) - incompleteSuffix(data); utf8.Valid(data[:whole]) {
-			dst = append(dst, data[:whole]...)
-			data = data[whole:]
-		}
-	}
-	for i := 0; i < len(data); i++ {
-		c := data[i]
-		if d.bytesNeeded == 0 {
-			if d.started && c <= 0x7F {
-				// A run of ASCII after the first code point is copied whole: no BOM check applies and each byte is its own code point.
-				run := i + 1
-				for run < len(data) && data[run] <= 0x7F {
-					run++
-				}
-				dst = append(dst, data[i:run]...)
-				i = run - 1
-				continue
-			}
-			switch {
-			case c <= 0x7F:
-				dst = d.emit(dst, rune(c))
-			case c >= 0xC2 && c <= 0xDF:
-				d.bytesNeeded, d.codePoint = 1, rune(c&0x1F)
-			case c >= 0xE0 && c <= 0xEF:
-				switch c {
-				case 0xE0:
-					d.lower = 0xA0
-				case 0xED:
-					d.upper = 0x9F
-				}
-				d.bytesNeeded, d.codePoint = 2, rune(c&0x0F)
-			case c >= 0xF0 && c <= 0xF4:
-				switch c {
-				case 0xF0:
-					d.lower = 0x90
-				case 0xF4:
-					d.upper = 0x8F
-				}
-				d.bytesNeeded, d.codePoint = 3, rune(c&0x07)
-			default:
-				dst = d.emit(dst, '�')
-			}
-			continue
-		}
-		if c < d.lower || c > d.upper {
-			d.reset()
-			dst = d.emit(dst, '�')
-			i-- // reprocess this byte as the start of a new sequence
-			continue
-		}
-		d.lower, d.upper = 0x80, 0xBF
-		d.codePoint = d.codePoint<<6 | rune(c&0x3F)
-		d.bytesSeen++
-		if d.bytesSeen == d.bytesNeeded {
-			dst = d.emit(dst, d.codePoint)
-			d.reset()
-		}
-	}
-	if !stream && d.bytesNeeded != 0 {
-		d.reset()
-		dst = d.emit(dst, '�')
-	}
-	return dst
-}
-
-// emit appends a decoded code point, dropping a BOM that starts the stream when stripBOM is set.
-func (d *utf8StreamDecoder) emit(dst []byte, r rune) []byte {
-	if !d.started {
-		d.started = true
-		if d.stripBOM && r == '\uFEFF' {
-			return dst
-		}
-	}
-	return utf8.AppendRune(dst, r)
-}
-
-// incompleteSuffix is the length of the multi-byte character data ends inside of, 0 when data ends at a character boundary. A malformed ending counts
-// as complete: the caller then finds the data malformed and decodes it in full.
-func incompleteSuffix(data []byte) int {
-	for back := 1; back <= utf8.UTFMax-1 && back <= len(data); back++ {
-		c := data[len(data)-back]
-		switch {
-		case c < 0x80:
-			return 0
-		case c >= 0xC0:
-			if back < sequenceLength(c) {
-				return back
-			}
-			return 0
-		}
-	}
-	return 0
-}
-
-// sequenceLength is the byte length a UTF-8 lead byte announces.
-func sequenceLength(lead byte) int {
-	switch {
-	case lead >= 0xF0:
-		return 4
-	case lead >= 0xE0:
-		return 3
-	default:
-		return 2
-	}
-}
-
-func (d *utf8StreamDecoder) reset() {
-	d.codePoint, d.bytesSeen, d.bytesNeeded = 0, 0, 0
-	d.lower, d.upper = 0x80, 0xBF
-}
-
 // FullOutput mirrors upstream FullOutput (output-accumulator.ts): the complete
 // output for callers that can take more than the display snapshot.
 type FullOutput struct {
@@ -450,8 +296,8 @@ func (a *OutputAccumulator) ReadFullOutput(maxBytes int) (FullOutput, error) {
 	defer a.mu.Unlock()
 	a.flushTempFile()
 	if a.tempFilePath == "" {
-		decoder := utf8StreamDecoder{stripBOM: true}
-		return FullOutput{Content: decoder.decode(a.raw, false)}, nil
+		decoder := utf8stream.Decoder{StripBOM: true}
+		return FullOutput{Content: decoder.Decode(a.raw, false)}, nil
 	}
 	file, err := os.Open(a.tempFilePath)
 	if err != nil {
@@ -468,8 +314,8 @@ func (a *OutputAccumulator) ReadFullOutput(maxBytes int) (FullOutput, error) {
 		if err != nil {
 			return FullOutput{}, err
 		}
-		decoder := utf8StreamDecoder{stripBOM: true}
-		return FullOutput{Content: decoder.decode(data, false)}, nil
+		decoder := utf8stream.Decoder{StripBOM: true}
+		return FullOutput{Content: decoder.Decode(data, false)}, nil
 	}
 	headBytes := maxBytes / 2
 	tailBytes := maxBytes - headBytes
@@ -481,14 +327,14 @@ func (a *OutputAccumulator) ReadFullOutput(maxBytes int) (FullOutput, error) {
 	if _, err := file.ReadAt(tail, size-int64(tailBytes)); err != nil {
 		return FullOutput{}, err
 	}
-	headDecoder := utf8StreamDecoder{stripBOM: true}
-	headText := headDecoder.decode(head, true)
+	headDecoder := utf8stream.Decoder{StripBOM: true}
+	headText := headDecoder.Decode(head, true)
 	tailStart := 0
 	for tailStart < len(tail) && tail[tailStart]&0xc0 == 0x80 {
 		tailStart++
 	}
-	tailDecoder := utf8StreamDecoder{stripBOM: true}
-	tailText := tailDecoder.decode(tail[tailStart:], false)
+	tailDecoder := utf8stream.Decoder{StripBOM: true}
+	tailText := tailDecoder.Decode(tail[tailStart:], false)
 	omitted := size - int64(headBytes) - int64(tailBytes)
 	return FullOutput{Content: headText + "\n\n[... " + strconv.FormatInt(omitted, 10) + " bytes omitted ...]\n\n" + tailText, Truncated: true}, nil
 }

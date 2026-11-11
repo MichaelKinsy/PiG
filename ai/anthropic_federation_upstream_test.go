@@ -1,5 +1,7 @@
 package ai
 
+// pi: packages/ai/src/providers/anthropic.ts
+
 // Ports .upstream/v0.99.2/packages/ai/test/anthropic-federation.test.ts and
 // anthropic-federation-sdk.test.ts. Upstream hands the Anthropic SDK a `config` and lets the SDK exchange the
 // identity token (node_modules/@anthropic-ai/sdk@0.129.0 lib/credentials/*). PiG has no SDK, so the tests observe

@@ -2,8 +2,7 @@ package agent
 
 // transform.go: cross-provider message normalization.
 //
-// Mirrors upstream:
-//   .upstream/current/packages/ai/src/providers/transform-messages.ts
+// Ports packages/ai/src/api/transform-messages.ts (transformMessages as the agent applies it).
 //
 // transformMessages does several things that matter for multi-provider support:
 //  1. Skip errored/aborted assistant messages so the model retries from the

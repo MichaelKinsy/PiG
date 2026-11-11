@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/utils/version-check.ts
+
 import (
 	"context"
 	"crypto/sha256"

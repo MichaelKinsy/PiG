@@ -24,7 +24,7 @@ func TestScalingStreamedCodeBlockHighlight(t *testing.T) {
 		return func() {
 			for end := 24; ; end += 24 {
 				end = min(end, len(code))
-				highlightCodeLines(code[:end], "python", true)
+				highlightCodeLines(code[:end], "python")
 				if end == len(code) {
 					return
 				}

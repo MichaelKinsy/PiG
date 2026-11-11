@@ -16,7 +16,7 @@ summary = "OAuth HTTP deadlines with no upstream counterpart: Codex token post 3
 [[finding]]
 id = "GUARD-13"
 owner = "reviewed-node-default"
-summary = "Reviewed, permanent: a Node built-in default that no pinned Pi or dependency-snapshot file spells, so no `// upstream:` marker can verify it. internal/codingagent/session_selector_delete.go trashMaxBuffer = 1024*1024 is child_process.spawnSync's default maxBuffer (Node docs: 'maxBuffer ... Default: 1024 * 1024'). Pi relies on that default at packages/coding-agent/src/modes/interactive/components/session-selector.ts:659, spawnSync(\"trash\", trashArgs, { encoding: \"utf-8\" }), which passes no maxBuffer. Not a Pi divergence; it is not a candidate for removal."
+summary = "Reviewed, permanent: a Node built-in default that no pinned Pi or dependency-snapshot file spells, so no `// upstream:` marker can verify it. internal/codingagent/session_selector_delete.go trashMaxBuffer = 1024*1024 is child_process.spawnSync's default maxBuffer (Node docs: 'maxBuffer ... Default: 1024 * 1024'). Pi relies on that default at packages/coding-agent/src/modes/interactive/components/session-selector.ts:659, spawnSync(\"trash\", trashArgs, { encoding: \"utf-8\" }), which passes no maxBuffer. Not a Pi divergence; it is not a candidate for removal. The same holds for coding/extension/exec.go nodeMaxStringLength = 536870888, Node 24's buffer.constants.MAX_STRING_LENGTH (V8 String::kMaxLength, 2^29-24, 64-bit), which exec.ts reads from node:buffer to bound maxBuffer and its 256 MiB default (packages/coding-agent/src/core/exec.ts); no pinned file spells the number."
 
 [[finding]]
 id = "GUARD-14"
@@ -393,6 +393,13 @@ check = "magic-literal"
 file = "internal/codingagent/session_selector_delete.go"
 func = "trashMaxBuffer"
 snippet = "const trashMaxBuffer = 1024 * 1024"
+finding = "GUARD-13"
+
+[[hit]]
+check = "magic-literal"
+file = "coding/extension/exec.go"
+func = "nodeMaxStringLength"
+snippet = "const nodeMaxStringLength = 536870888"
 finding = "GUARD-13"
 
 [[hit]]

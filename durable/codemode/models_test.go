@@ -70,7 +70,9 @@ func modelsChat(t *testing.T) *modelsFixture {
 				return result, nil
 			}
 			inFlight := f.calls.inFlight.Add(1)
-			f.calls.maxInFlight.Store(max(f.calls.maxInFlight.Load(), inFlight))
+			// A load and a store of the maximum lose a concurrent call's higher count; the swap keeps it.
+			for seen := f.calls.maxInFlight.Load(); inFlight > seen && !f.calls.maxInFlight.CompareAndSwap(seen, inFlight); seen = f.calls.maxInFlight.Load() {
+			}
 			f.mu.Lock()
 			open, atFour := f.open, f.atFour
 			f.mu.Unlock()

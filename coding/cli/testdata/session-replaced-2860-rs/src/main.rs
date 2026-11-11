@@ -104,6 +104,11 @@ fn main() {
                 ));
                 replaced.send_user_message("reply with exactly: hello reply", "")?;
                 record(&format!("idle:{}", replaced.is_idle()?));
+                // Pi's `await sleep()` works in a withSession callback: the SDK's yield helper must answer on the replacement route too.
+                match replaced.sleep(std::time::Duration::from_millis(1)) {
+                    Ok(()) => record("yield:ok"),
+                    Err(error) => record(&format!("yield:{error}")),
+                }
                 record(&format!("model:{}", replaced.model()));
                 record(&format!("conversation:{}", conversation(replaced)));
                 Ok(())
@@ -115,7 +120,12 @@ fn main() {
         result(ctx.new_session_setup(
             json!({}),
             |manager: &pig_sdk::SetupSessionManager| {
-                let first = manager.append_custom_message_entry("seed-msg", json!("from setup"), true, Value::Null)?;
+                let first = manager.append_custom_message_entry(
+                    "seed-msg",
+                    json!("from setup"),
+                    true,
+                    Value::Null,
+                )?;
                 let second = manager.append_session_info("seeded-session")?;
                 record(&format!(
                     "setup:{}",
@@ -127,7 +137,10 @@ fn main() {
             },
             Some(Box::new(|replaced: &ReplacedSessionContext| {
                 let manager = replaced.session_manager();
-                record(&format!("seedName:{}", manager.get_session_name()?.as_str().unwrap_or_default()));
+                record(&format!(
+                    "seedName:{}",
+                    manager.get_session_name()?.as_str().unwrap_or_default()
+                ));
                 let entries = manager.get_entries()?;
                 let rows = entries
                     .as_array()
@@ -135,7 +148,13 @@ fn main() {
                         entries
                             .iter()
                             .filter(|entry| entry["type"] == "custom_message")
-                            .map(|entry| format!("{}={}", entry["customType"].as_str().unwrap_or_default(), entry["content"].as_str().unwrap_or_default()))
+                            .map(|entry| {
+                                format!(
+                                    "{}={}",
+                                    entry["customType"].as_str().unwrap_or_default(),
+                                    entry["content"].as_str().unwrap_or_default()
+                                )
+                            })
                             .collect::<Vec<_>>()
                             .join("|")
                     })
@@ -165,10 +184,12 @@ fn main() {
     ext.command("keep-it", "keep-it", |ctx, _| {
         let kept = std::sync::Arc::new(std::sync::Mutex::new(None));
         let slot = kept.clone();
-        if let Err(error) = ctx.new_session_with(json!({}), move |replaced: &ReplacedSessionContext| {
-            *slot.lock().unwrap() = Some(replaced.context().clone());
-            Ok(())
-        }) {
+        if let Err(error) =
+            ctx.new_session_with(json!({}), move |replaced: &ReplacedSessionContext| {
+                *slot.lock().unwrap() = Some(replaced.context().clone());
+                Ok(())
+            })
+        {
             return CommandResult::Error(error.to_string());
         }
         if let Some(kept) = kept.lock().unwrap().take() {

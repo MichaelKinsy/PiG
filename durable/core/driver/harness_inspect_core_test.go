@@ -140,8 +140,8 @@ func TestCoreInspectDerivesEveryLiveTasksStateWithoutRunningTaskCode(t *testing.
 	failingStarted, releaseFailing := make(chan struct{}), make(chan struct{})
 	var failingId atomic.Int64
 	failureReported := make(chan struct{}, 1)
-	h, root := openTasksWith(t, harness.HarnessOptions{OnReport: func(_ error, info durable.ReportInfo) {
-		if info.Type == durable.ReportMigrationFailed && info.Task != nil && int64(info.Task.Id) == failingId.Load() {
+	h, root := openTasksWith(t, harness.HarnessOptions{OnReport: func(report durable.Report) {
+		if report.Kind == durable.ReportMigrationFailed && report.Task != nil && int64(report.Task.Id) == failingId.Load() {
 			select {
 			case failureReported <- struct{}{}:
 			default:
@@ -206,11 +206,11 @@ func TestCoreInspectDerivesEveryLiveTasksStateWithoutRunningTaskCode(t *testing.
 	if got, want := inspectIds(paused.Tasks), []durable.TaskId{ids.gate, ids.dependent, ids.migrating, ids.noMigration, ids.failing, ids.tooOld, ids.missing}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("tasks %v, want %v", got, want)
 	}
-	expectInspectState(t, inspectStateOf(paused.Tasks, ids.gate), harness.TaskInspectionState{Kind: harness.TaskInspectionReady})
-	expectInspectState(t, inspectStateOf(paused.Tasks, ids.dependent), harness.TaskInspectionState{Kind: harness.TaskInspectionReady})
-	expectInspectState(t, inspectStateOf(paused.Tasks, ids.migrating), harness.TaskInspectionState{Kind: harness.TaskInspectionReady, Migrates: true})
+	expectInspectState(t, inspectStateOf(paused.Tasks, ids.gate), harness.TaskInspectionState{Kind: harness.TaskInspectionPending})
+	expectInspectState(t, inspectStateOf(paused.Tasks, ids.dependent), harness.TaskInspectionState{Kind: harness.TaskInspectionPending})
+	expectInspectState(t, inspectStateOf(paused.Tasks, ids.migrating), harness.TaskInspectionState{Kind: harness.TaskInspectionPending, Migrates: true})
 	// A migration that was never tried is not run to find out.
-	expectInspectState(t, inspectStateOf(paused.Tasks, ids.failing), harness.TaskInspectionState{Kind: harness.TaskInspectionReady, Migrates: true})
+	expectInspectState(t, inspectStateOf(paused.Tasks, ids.failing), harness.TaskInspectionState{Kind: harness.TaskInspectionPending, Migrates: true})
 	expectInspectState(t, inspectStateOf(paused.Tasks, ids.noMigration), harness.TaskInspectionState{Kind: harness.TaskInspectionBlocked, Reason: "migration_failed", Error: errors.New("Task test.no-migration version 2 has no migration from 1")})
 	expectInspectState(t, inspectStateOf(paused.Tasks, ids.tooOld), harness.TaskInspectionState{Kind: harness.TaskInspectionBlocked, Reason: "task_too_old"})
 	expectInspectState(t, inspectStateOf(paused.Tasks, ids.missing), harness.TaskInspectionState{Kind: harness.TaskInspectionBlocked, Reason: "missing_task"})
@@ -240,7 +240,7 @@ func TestCoreInspectDerivesEveryLiveTasksStateWithoutRunningTaskCode(t *testing.
 	}
 	// The failing migration was asked for and has not answered: the scheduler has not tried it to the end, so inspect shows it pending.
 	receiveWithin(t, failingStarted, "the failing migration to start")
-	expectInspectState(t, inspectStateOf(running.Tasks, ids.failing), harness.TaskInspectionState{Kind: harness.TaskInspectionReady, Migrates: true})
+	expectInspectState(t, inspectStateOf(running.Tasks, ids.failing), harness.TaskInspectionState{Kind: harness.TaskInspectionPending, Migrates: true})
 	close(releaseFailing)
 	receiveWithin(t, failureReported, "the scheduler to report the failed migration")
 	expectInspectState(t, inspectStateOf(inspect().Tasks, ids.failing), harness.TaskInspectionState{Kind: harness.TaskInspectionBlocked, Reason: "migration_failed", Error: errors.New("cannot migrate")})

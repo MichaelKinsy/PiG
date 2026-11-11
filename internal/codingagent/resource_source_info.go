@@ -3,12 +3,15 @@ package codingagent
 import (
 	"path/filepath"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 )
 
 // ResourceSourceInfo tracks where a loaded resource came from.
 // Mirrors upstream PathMetadata / SourceInfo flow used by resource-loader.ts
 // and interactive-mode.ts to annotate startup context and collision
 // diagnostics with package origin + scope.
+// Ports packages/coding-agent/src/core/source-info.ts
 type ResourceSourceInfo struct {
 	Path         string
 	ResourceType string // "extensions" | "skills" | "prompts" | "themes"
@@ -17,6 +20,8 @@ type ResourceSourceInfo struct {
 	Origin       string // "package" | "top-level"
 	Source       string // package source string or "local"
 	BaseDir      string // package root for package-relative shortening
+	// ChangelogPath is the changelog file of the package that supplied the resource, or "" (package-manager.ts PathMetadata.changelogPath).
+	ChangelogPath string
 }
 
 // DisplayName derives the path-based resource name used for collision grouping. A skill entry file uses its parent directory, matching Pi's default skill name.
@@ -55,6 +60,14 @@ func SyntheticPathSource(path string) string {
 		return "temporary"
 	}
 	return ""
+}
+
+// ResourcePathKey is Pi's getResourcePathKey, the key that deduplicates resource paths: a synthetic path (`builtin:<name>`, `<inline:...>`) as it is, because it names no file and its lookup is case-sensitive, and a file path by its real path in the platform's casing (resolvepath.ComparisonKey).
+func ResourcePathKey(path string) string {
+	if IsSyntheticPath(path) {
+		return path
+	}
+	return resolvepath.ComparisonKey(CanonicalizePath(path))
 }
 
 // IsSyntheticPath reports whether path names no file: `builtin:<name>` or an angle-bracket path.

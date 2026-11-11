@@ -24,6 +24,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
 	"github.com/MichaelKinsy/PiG/internal/nodefs"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
+	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 	"github.com/MichaelKinsy/PiG/internal/text"
 )
 
@@ -121,9 +122,13 @@ func GetProjectTrustOptions(cwd string, includeSessionOnly bool) []ProjectTrustO
 func HasTrustRequiringProjectResources(cwd string) bool {
 	// trust-manager.ts:187 canonicalizePath(resolvePath(process.env.HOME || homedir())): without HOME, Node's os.homedir() reads
 	// the user database. An empty home would resolve to the working directory and hide its .agents/skills.
-	userAgentsSkills := ""
+	userAgentsSkills, userHomeKey := "", ""
 	if home := cmp.Or(os.Getenv("HOME"), osHomedir()); home != "" {
-		userAgentsSkills = filepath.Join(normalizeTrustCwd(home), ".agents", "skills")
+		home = normalizeTrustCwd(home)
+		userAgentsSkills = filepath.Join(home, ".agents", "skills")
+		if resolvepath.FoldsCase() {
+			userHomeKey = resolvepath.ComparisonKey(home)
+		}
 	}
 	current := normalizeTrustCwd(cwd)
 
@@ -135,8 +140,18 @@ func HasTrustRequiringProjectResources(cwd string) bool {
 		}
 	}
 
-	for {
-		if !probe.Set(current, ".agents", "skills").Is(userAgentsSkills) && probe.Exists() {
+	for first := true; ; first = false {
+		isUserSkills := probe.Set(current, ".agents", "skills").Is(userAgentsSkills)
+		// pathsEqual(<current>/.agents/skills, <home>/.agents/skills) is current's key equal to home's, so one key is made for the walk and no level builds a path or a key of its own.
+		// The working directory is as realpath spelled it and gets the full key; every parent is filepath.Dir's, already resolved.
+		if !isUserSkills && userHomeKey != "" {
+			if first {
+				isUserSkills = resolvepath.ComparisonKey(current) == userHomeKey
+			} else {
+				isUserSkills = resolvepath.HasComparisonKey(current, userHomeKey)
+			}
+		}
+		if !isUserSkills && probe.Exists() {
 			return true
 		}
 		parent := filepath.Dir(current)
@@ -177,6 +192,22 @@ func NewProjectTrustStore(agentDir string) *ProjectTrustStore {
 		abs = agentDir
 	}
 	return &ProjectTrustStore{trustPath: filepath.Join(abs, "trust.json")}
+}
+
+// trustFileKeys are the keys of data that name path, in key order: usually one, several on Windows when the decision was saved with different casing.
+func trustFileKeys(data map[string]*bool, path string) []string {
+	if len(data) == 0 {
+		return nil
+	}
+	want := resolvepath.ComparisonKey(path)
+	var keys []string
+	for key := range data {
+		if resolvepath.ComparisonKey(key) == want {
+			keys = append(keys, key)
+		}
+	}
+	slices.Sort(keys)
+	return keys
 }
 
 func (s *ProjectTrustStore) read() (map[string]*bool, error) {
@@ -275,10 +306,15 @@ func (s *ProjectTrustStore) GetEntry(cwd string) (entry *ProjectTrustStoreEntry,
 		if readErr != nil {
 			return readErr
 		}
+		if len(data) == 0 {
+			return nil // nothing is saved, so no path has a decision, and the realpath of cwd would only name the keys to look for
+		}
 		for current := normalizeTrustCwd(cwd); ; current = filepath.Dir(current) {
-			if value, ok := data[current]; ok && value != nil {
-				entry = &ProjectTrustStoreEntry{Path: current, Decision: *value}
-				return nil
+			for _, key := range trustFileKeys(data, current) {
+				if value := data[key]; value != nil {
+					entry = &ProjectTrustStoreEntry{Path: key, Decision: *value}
+					return nil
+				}
 			}
 			parent := filepath.Dir(current)
 			if parent == current {
@@ -304,8 +340,10 @@ func (s *ProjectTrustStore) SetMany(updates []ProjectTrustUpdate) error {
 		}
 		for _, update := range updates {
 			key := normalizeTrustCwd(update.Path)
+			for _, existing := range trustFileKeys(data, key) {
+				delete(data, existing)
+			}
 			if update.Decision == nil {
-				delete(data, key)
 				continue
 			}
 			data[key] = new(*update.Decision)

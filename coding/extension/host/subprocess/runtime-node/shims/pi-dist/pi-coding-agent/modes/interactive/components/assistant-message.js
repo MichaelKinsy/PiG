@@ -1,4 +1,4 @@
-import { Container, Markdown, MouseRegion, Spacer, Text } from "../../../../../pi-tui.mjs";
+import { Container, Markdown, MouseRegion, Spacer, Text, } from "../../../../../pi-tui.mjs";
 import { getMarkdownTheme, theme } from "../theme/theme.js";
 import { createMarkdownTransform } from "./markdown-transform.js";
 const OSC133_ZONE_START = "\x1b]133;A\x07";
@@ -20,6 +20,7 @@ export class AssistantMessageComponent extends Container {
     messageId;
     timestamp;
     thinkingVisibilityOverrides = new Map();
+    markdownSlots = [];
     constructor(message, hideThinkingBlock = false, markdownTheme = getMarkdownTheme(), hiddenThinkingLabel = "Thinking...", outputPad = 1, markdownTransformers = [], messageId, timestamp) {
         super();
         this.hideThinkingBlock = hideThinkingBlock;
@@ -57,6 +58,8 @@ export class AssistantMessageComponent extends Container {
     }
     setOutputPad(padding) {
         this.outputPad = padding;
+        // Markdown takes its padding at construction.
+        this.markdownSlots = [];
         if (this.lastMessage) {
             this.updateContent(this.lastMessage);
         }
@@ -75,10 +78,26 @@ export class AssistantMessageComponent extends Container {
         this.isStreaming = isStreaming;
         // Clear content container
         this.contentContainer.clear();
-        const hasVisibleContent = message.content.some((c) => (c.type === "text" && c.text.trim()) || (c.type === "thinking" && c.thinking.trim()));
-        if (hasVisibleContent) {
-            this.contentContainer.addChild(new Spacer(1));
-        }
+        const previousSlots = this.markdownSlots;
+        this.markdownSlots = [];
+        const markdownBlock = (kind, text, create) => {
+            const slot = previousSlots[this.markdownSlots.length];
+            const markdown = slot?.kind === kind ? slot.markdown : create();
+            markdown.setText(text);
+            this.markdownSlots.push({ kind, markdown });
+            return markdown;
+        };
+        // Spacers are added lazily, right before the next visible content block. This puts a blank
+        // line before the first visible block and after each visible thinking run that is followed
+        // by more visible content, while hidden thinking runs without a label contribute nothing.
+        let needsSpacer = true;
+        const addVisibleChild = (child) => {
+            if (needsSpacer) {
+                this.contentContainer.addChild(new Spacer(1));
+                needsSpacer = false;
+            }
+            this.contentContainer.addChild(child);
+        };
         // Render content in order
         let thinkingRunIndex = 0;
         for (let i = 0; i < message.content.length; i++) {
@@ -86,9 +105,10 @@ export class AssistantMessageComponent extends Container {
             if (content.type === "text" && content.text.trim()) {
                 // Assistant text messages with no background - trim the text
                 // Set paddingY=0 to avoid extra spacing before tool executions
-                this.contentContainer.addChild(new Markdown(content.text.trim(), this.outputPad, 0, this.markdownTheme, undefined, {
-                    transform: createMarkdownTransform("assistant", this.isStreaming, this.markdownTransformers, this.messageId, this.timestamp),
-                }));
+                const text = content.text.trim();
+                addVisibleChild(markdownBlock("text", text, () => new Markdown(text, this.outputPad, 0, this.markdownTheme, undefined, {
+                    transform: createMarkdownTransform("assistant", () => this.isStreaming, this.markdownTransformers, this.messageId, this.timestamp),
+                })));
             }
             else if (content.type === "thinking") {
                 const thinkingBlocks = [];
@@ -106,22 +126,22 @@ export class AssistantMessageComponent extends Container {
                 if (thinkingBlocks.length === 0) {
                     continue;
                 }
-                // Add spacing only when another visible assistant content block follows.
-                // This avoids a superfluous blank line before separately-rendered tool execution blocks.
-                const hasVisibleContentAfter = message.content
-                    .slice(i + 1)
-                    .some((c) => (c.type === "text" && c.text.trim()) || (c.type === "thinking" && c.thinking.trim()));
                 const runIndex = thinkingRunIndex++;
                 const hidden = this.thinkingVisibilityOverrides.get(runIndex) ?? this.hideThinkingBlock;
+                // A hidden run with an empty label renders nothing, including no spacing.
+                if (hidden && !this.hiddenThinkingLabel.trim()) {
+                    continue;
+                }
+                const thinking = thinkingBlocks.join("\n\n");
                 const thinkingComponent = hidden
                     ? new Text(theme.italic(theme.fg("thinkingText", this.hiddenThinkingLabel)), this.outputPad, 0)
-                    : new Markdown(thinkingBlocks.join("\n\n"), this.outputPad, 0, this.markdownTheme, {
+                    : markdownBlock("thinking", thinking, () => new Markdown(thinking, this.outputPad, 0, this.markdownTheme, {
                         color: (text) => theme.fg("thinkingText", text),
                         italic: true,
                     }, {
-                        transform: createMarkdownTransform("assistant-thinking", this.isStreaming, this.markdownTransformers, this.messageId, this.timestamp),
-                    });
-                this.contentContainer.addChild(new MouseRegion(thinkingComponent, (event) => {
+                        transform: createMarkdownTransform("assistant-thinking", () => this.isStreaming, this.markdownTransformers, this.messageId, this.timestamp),
+                    }));
+                addVisibleChild(new MouseRegion(thinkingComponent, (event) => {
                     if (event.type !== "click" || event.button !== "left")
                         return undefined;
                     this.thinkingVisibilityOverrides.set(runIndex, !hidden);
@@ -129,9 +149,9 @@ export class AssistantMessageComponent extends Container {
                         this.updateContent(this.lastMessage);
                     return { handled: true };
                 }));
-                if (hasVisibleContentAfter) {
-                    this.contentContainer.addChild(new Spacer(1));
-                }
+                // Add spacing only when another visible assistant content block follows.
+                // This avoids a superfluous blank line before separately-rendered tool execution blocks.
+                needsSpacer = true;
             }
         }
         // Check if incomplete/failed - show after partial content.

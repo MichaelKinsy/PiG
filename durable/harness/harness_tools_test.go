@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"reflect"
 	"slices"
 	"strings"
@@ -182,6 +183,69 @@ func tlAddedNames(system ai.SystemMessage) []string {
 	return names
 }
 
+// tool-args-typebox.test.ts is type-level (expectTypeOf): in Pi, execute() and prepareArguments() are typed by the parameter schema.
+// Go's ToolRegistration.Execute and PrepareArguments take `any`, so the schema is enforced at run time: the arguments a tool
+// executes with are the validated JSON of that schema (a required path, an optional integer offset, a string array of tags).
+func TestToolArgumentsOfASchemaReachExecuteAsTheSchemaShape(t *testing.T) {
+	setup := chatSetup(t)
+	type args struct {
+		Path   string
+		Offset *int
+		Tags   []string
+	}
+	seen := &syncList[args]{}
+	parameters := map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"path":   map[string]any{"type": "string"},
+			"offset": map[string]any{"type": "integer"},
+			"tags":   map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+		},
+		"required": []any{"path", "tags"},
+	}
+	addTool(t, setup.Registry, ownTool("read", "Reads a file", parameters, func(_ context.Context, raw any, _ durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
+		object := raw.(map[string]any)
+		got := args{Path: object["path"].(string)}
+		if offset, ok := object["offset"].(float64); ok {
+			value := int(offset)
+			got.Offset = &value
+		}
+		for _, tag := range object["tags"].([]any) {
+			got.Tags = append(got.Tags, tag.(string))
+		}
+		seen.add(got)
+		return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{}}, nil
+	}, func(tool *durable.ToolRegistration) {
+		tool.PrepareArguments = func(raw any) (any, error) {
+			object := raw.(map[string]any)
+			if _, ok := object["tags"]; !ok {
+				return map[string]any{"path": object["path"], "tags": []any{}}, nil
+			}
+			return raw, nil
+		}
+	}))
+	run := tlRun(t, setup, []ai.FauxResponseStep{tlCallsStep(
+		tlCall{"read", map[string]any{"path": "a", "offset": float64(2), "tags": []any{"x", "y"}}, "full"},
+		tlCall{"read", map[string]any{"path": "b"}, "prepared"},
+		tlCall{"read", map[string]any{"path": "c", "tags": []any{}, "offset": "abc"}, "badOffset"},
+		tlCall{"read", map[string]any{"path": []any{}, "tags": []any{}}, "badPath"},
+	), tlDone()}, nil)
+	two := 2
+	want := []args{{Path: "a", Offset: &two, Tags: []string{"x", "y"}}, {Path: "b", Tags: nil}}
+	got := seen.all()
+	slices.SortFunc(got, func(a, b args) int { return strings.Compare(a.Path, b.Path) })
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("tool ran with %+v, want %+v", got, want)
+	}
+	byId := tlResultById(run.entries)
+	for _, id := range []string{"badOffset", "badPath"} {
+		if text := tlResultText(byId[id]); !strings.Contains(text, "[error]") {
+			t.Fatalf("%s result %q, want an error result for arguments the schema refuses", id, text)
+		}
+	}
+	mustClose(t, run.harness)
+}
+
 func TestToolRound(t *testing.T) {
 	// harness-tools.test.ts:82 it("runs input, tool call, tool result, and answer, and settles the input")
 	t.Run("runs input, tool call, tool result, and answer, and settles the input", func(t *testing.T) {
@@ -257,16 +321,17 @@ func TestToolRound(t *testing.T) {
 		mustClose(t, run.harness)
 	})
 
-	// harness-tools.test.ts:138 it("answers calls to tools the request did not offer without a task")
-	t.Run("answers calls to tools the request did not offer without a task", func(t *testing.T) {
+	// harness-tools.test.ts:138 it("answers calls to tools the request did not offer through a flagged tool task")
+	t.Run("answers calls to tools the request did not offer through a flagged tool task", func(t *testing.T) {
 		setup := chatSetup(t)
 		addTool(t, setup.Registry, tlTool("echo", tlNoContent))
 		run := tlRun(t, setup, []ai.FauxResponseStep{tlCallsStep(tlCall{"ghost", map[string]any{}, "c1"}, tlCall{"echo", map[string]any{}, "c2"}), tlDone()}, nil)
 		if run.status != durable.SubmissionDone {
 			t.Fatalf("status %s, want done", run.status)
 		}
-		results := tlResults(run.entries)
-		ghost, echo := results[0], results[1]
+		// Pi reads results[0], results[1] and the first result entry: a parallel round appends its results as its tool tasks finish, which Pi's single event loop makes the unoffered call's first (it never resolves a tool) and Go's concurrent tool tasks do not. The spec orders a round's results by call in the context (spec.md, context derivation step 7), so the Go test reads them by call ID.
+		byId := tlResultById(run.entries)
+		ghost, echo := byId["c1"], byId["c2"]
 		if ghost.ToolCallID != "c1" || !ghost.IsError {
 			t.Fatalf("ghost result %+v", ghost)
 		}
@@ -275,12 +340,54 @@ func TestToolRound(t *testing.T) {
 			t.Fatalf("echo result %+v", echo)
 		}
 		wantData := map[string]any{"diagnostics": []any{map[string]any{"severity": "error", "code": "tool_unavailable", "message": "Tool ghost is not available"}}}
-		if got := tlFirstToolResultEntry(t, run.entries).Data; !reflect.DeepEqual(plainObject(got), wantData) {
+		var ghostEntry durable.EntryRecord
+		for index := range run.entries {
+			if durable.ToolResultEntry.Is(&run.entries[index]) && run.entries[index].Model[0].(ai.ToolResultMessage).ToolCallID == "c1" {
+				ghostEntry = run.entries[index]
+			}
+		}
+		if got := ghostEntry.Data; !reflect.DeepEqual(plainObject(got), wantData) {
 			t.Fatalf("ghost data %v, want %v", got, wantData)
 		}
-		if count := len(tlToolTasks(tlScanTasks(t, run.harness, run.root.Id()))); count != 1 {
-			t.Fatalf("%d tool tasks, want 1", count)
+		// #11043: the unoffered call has its own task, so `afterTool` and `control` apply to it as to any call.
+		inputs := []map[string]any{}
+		for _, task := range tlToolTasks(tlScanTasks(t, run.harness, run.root.Id())) {
+			inputs = append(inputs, plainObject(task.Input))
 		}
+		if len(inputs) != 2 {
+			t.Fatalf("%d tool tasks, want 2", len(inputs))
+		}
+		flagged, plain := 0, 0
+		for _, input := range inputs {
+			if input["unoffered"] == true && input["callId"] == "c1" {
+				flagged++
+			} else if _, has := input["unoffered"]; !has {
+				plain++
+			}
+		}
+		if flagged != 1 || plain != 1 {
+			t.Fatalf("tool task inputs %v, want one flagged unoffered for c1 and one without the flag", inputs)
+		}
+		mustClose(t, run.harness)
+	})
+
+	// #11043
+	// harness-tools.test.ts:171 it("never runs a tool the request did not offer, even when the agent has it")
+	t.Run("never runs a tool the request did not offer, even when the agent has it", func(t *testing.T) {
+		setup := chatSetup(t)
+		var ran atomic.Int32
+		addTool(t, setup.Registry, tlTool("hidden", func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
+			ran.Add(1)
+			return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{}}, nil
+		}, func(tool *durable.ToolRegistration) { tool.Deferred = true }))
+		run := tlRun(t, setup, []ai.FauxResponseStep{tlCallsStep(tlCall{"hidden", map[string]any{}, "c1"}), tlDone()}, nil)
+		if run.status != durable.SubmissionDone {
+			t.Fatalf("status %s, want done", run.status)
+		}
+		if ran.Load() != 0 {
+			t.Fatalf("the tool ran %d times, want 0", ran.Load())
+		}
+		tlExpectText(t, tlResultText(tlResults(run.entries)[0]), "<harness>\n[error] Tool hidden is not available\n</harness>")
 		mustClose(t, run.harness)
 	})
 
@@ -1021,6 +1128,100 @@ func TestGenerationHooks(t *testing.T) {
 					t.Fatal("the injected message was stored")
 				}
 			}
+		}
+		mustClose(t, run.harness)
+	})
+
+	// harness-tools.test.ts:755 it("chains beforeProviderRequest over every provider request body") (Pi d280e1ff)
+	t.Run("chains beforeProviderRequest over every provider request body", func(t *testing.T) {
+		setup := chatSetup(t)
+		type seenRequest struct {
+			hook    string
+			model   string
+			payload any
+		}
+		seen := &syncList[seenRequest]{}
+		extend := func(payload any, key string) map[string]any {
+			next := maps.Clone(payload.(map[string]any))
+			next[key] = true
+			return next
+		}
+		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{BeforeProviderRequest: func(_ context.Context, request ProviderRequest, _ HookApi) (*ProviderPayload, error) {
+			seen.add(seenRequest{"first", request.Model.ProviderMeta.ProviderID + "/" + request.Model.ID, request.Payload})
+			return &ProviderPayload{Payload: extend(request.Payload, "first")}, nil
+		}})
+		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{BeforeProviderRequest: func(_ context.Context, request ProviderRequest, _ HookApi) (*ProviderPayload, error) {
+			seen.add(seenRequest{"keep", request.Model.ProviderMeta.ProviderID + "/" + request.Model.ID, request.Payload})
+			return nil, nil
+		}})
+		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{BeforeProviderRequest: func(_ context.Context, request ProviderRequest, _ HookApi) (*ProviderPayload, error) {
+			return &ProviderPayload{Payload: extend(request.Payload, "last")}, nil
+		}})
+		sent := &syncList[any]{}
+		// pi-ai builds a body per provider call, and again when it resends within one attempt.
+		respond := ai.FauxFactoryStep(func(_ ai.TranscriptContext, options ai.StreamOptions, _ *ai.FauxProviderState, model *ai.Model) (ai.AssistantMessage, error) {
+			for _, body := range []float64{1, 2} {
+				replaced, err := options.OnPayload(map[string]any{"body": body}, model)
+				if err != nil {
+					return ai.AssistantMessage{}, err
+				}
+				sent.add(replaced)
+			}
+			return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("done")}}.AssistantMessage(), nil
+		})
+		run := tlRun(t, setup, []ai.FauxResponseStep{respond}, nil)
+		if run.status != durable.SubmissionDone {
+			t.Fatalf("status %s, want done", run.status)
+		}
+		wantSent := []any{
+			map[string]any{"body": 1.0, "first": true, "last": true},
+			map[string]any{"body": 2.0, "first": true, "last": true},
+		}
+		if !reflect.DeepEqual(sent.all(), wantSent) {
+			t.Fatalf("sent %v, want %v", sent.all(), wantSent)
+		}
+		wantSeen := []seenRequest{
+			{"first", "faux/faux-1", map[string]any{"body": 1.0}},
+			{"keep", "faux/faux-1", map[string]any{"body": 1.0, "first": true}},
+			{"first", "faux/faux-1", map[string]any{"body": 2.0}},
+			{"keep", "faux/faux-1", map[string]any{"body": 2.0, "first": true}},
+		}
+		if !reflect.DeepEqual(seen.all(), wantSeen) {
+			t.Fatalf("seen %v, want %v", seen.all(), wantSeen)
+		}
+		mustClose(t, run.harness)
+	})
+
+	// harness-tools.test.ts:787 it("reports a throwing beforeProviderRequest hook and continues the chain") (Pi d280e1ff)
+	t.Run("reports a throwing beforeProviderRequest hook and continues the chain", func(t *testing.T) {
+		setup := chatSetup(t)
+		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{BeforeProviderRequest: func(context.Context, ProviderRequest, HookApi) (*ProviderPayload, error) {
+			return nil, errors.New("broken hook")
+		}}, "broken")
+		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{BeforeProviderRequest: func(_ context.Context, request ProviderRequest, _ HookApi) (*ProviderPayload, error) {
+			next := maps.Clone(request.Payload.(map[string]any))
+			next["after"] = true
+			return &ProviderPayload{Payload: next}, nil
+		}})
+		sent := &syncValue[any]{}
+		respond := ai.FauxFactoryStep(func(_ ai.TranscriptContext, options ai.StreamOptions, _ *ai.FauxProviderState, model *ai.Model) (ai.AssistantMessage, error) {
+			replaced, err := options.OnPayload(map[string]any{"body": 1.0}, model)
+			if err != nil {
+				return ai.AssistantMessage{}, err
+			}
+			sent.put(replaced)
+			return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("done")}}.AssistantMessage(), nil
+		})
+		run := tlRun(t, setup, []ai.FauxResponseStep{respond}, nil)
+		if run.status != durable.SubmissionDone {
+			t.Fatalf("status %s, want done", run.status)
+		}
+		if got, _ := sent.get(); !reflect.DeepEqual(got, map[string]any{"body": 1.0, "after": true}) {
+			t.Fatalf("sent %v, want body 1 with after", got)
+		}
+		infos := arInfosOf(setup, durable.ReportExtensionError)
+		if len(infos) != 1 || infos[0].Extension != "broken" {
+			t.Fatalf("extension_error infos = %+v, want one for broken", infos)
 		}
 		mustClose(t, run.harness)
 	})

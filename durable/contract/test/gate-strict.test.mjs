@@ -30,9 +30,9 @@ function mirror(name, edit) {
 	}
 	return { name, examples: true, candidateDir: dir, env: {} }
 }
-const e14 = { id: "E14", runner: "example", source: "packages/durable/test/examples/14-chat.ts", levels: ["store", "commit", "context", "output", "order"] }
+const e14 = { id: "E13", runner: "example", source: "packages/durable/test/examples/13-chat.ts", levels: ["store", "commit", "context", "output", "order"] }
 
-test("order level: the reference's own sources pass every level of E14", async () => {
+test("order level: the reference's own sources pass every level of E13", async () => {
 	const r = await runProgramRow(e14, mirror("mirror"), { out: join(work, "out-mirror") })
 	assert.equal(r.status, "pass", JSON.stringify(r.detail).slice(0, 600))
 })
@@ -44,7 +44,7 @@ test("negative control, order level: a submit that returns later than Pi's passe
 	assert.equal(r.detail[0].level, "order", JSON.stringify(r.detail).slice(0, 600))
 	assert.match(r.detail[0].expected[0], /^> harness\.root\(\)\.submit\(\)\.wait/)
 	// Without the order level the same candidate passes: that was the gate before the level existed.
-	const relaxed = await runProgramRow({ ...e14, id: "E14", levels: e14.levels.filter(l => l !== "order") }, slow, { out: join(work, "out-slow-relaxed") })
+	const relaxed = await runProgramRow({ ...e14, id: "E13", levels: e14.levels.filter(l => l !== "order") }, slow, { out: join(work, "out-slow-relaxed") })
 	assert.equal(relaxed.status, "pass", JSON.stringify(relaxed.detail).slice(0, 600))
 })
 
@@ -78,12 +78,12 @@ test("a row nobody can run is reported skipped with its reason (a strict run fai
 	assert.match(r.detail, /own internals/)
 })
 
-// A row that waits for the owner's API keys (E16, W4f) is reported pending with "pending-owner" and does not fail a strict run: no other
+// A row that waits for the owner's API keys (E15, W4f) is reported pending with "pending-owner" and does not fail a strict run: no other
 // lane can run it. Any other pending row still does.
 test("pending-owner rows do not fail --strict; other pending rows do", async () => {
 	const { gate } = await import("../lib/gate.mjs")
-	const results = await gate({ impl: "pi", ids: ["E16", "W4f"], out: join(work, "out-owner") })
-	assert.deepEqual(results.map(r => [r.id, r.status]).sort(), [["E16", "pending"], ["W4f", "pending"]])
+	const results = await gate({ impl: "pi", ids: ["E15", "W4f"], out: join(work, "out-owner") })
+	assert.deepEqual(results.map(r => [r.id, r.status]).sort(), [["E15", "pending"], ["W4f", "pending"]])
 	for (const r of results) assert.match(r.detail, /^pending-owner: /)
 	const { blocking } = await import("../lib/gate.mjs")
 	assert.equal(results.some(blocking), false)

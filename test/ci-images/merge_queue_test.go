@@ -116,10 +116,11 @@ func tierRows(t *testing.T) []tierRow {
 type workflowFile struct {
 	On   any
 	Jobs map[string]struct {
-		Name  string
-		If    string
-		Needs any
-		Steps []struct {
+		Name           string
+		If             string
+		Needs          any
+		TimeoutMinutes int `yaml:"timeout-minutes"`
+		Steps          []struct {
 			Name string
 			If   string
 			Uses string
@@ -304,6 +305,34 @@ func TestMergeGroupRunsTheFullPlan(t *testing.T) {
 	}
 }
 
+// prerequisitesOf returns the prerequisites on the rule line of target.
+func prerequisitesOf(makeSources, target string) []string {
+	for line := range strings.SplitSeq(makeSources, "\n") {
+		line, _, _ = strings.Cut(line, "#")
+		if name, deps, ok := strings.Cut(line, ":"); ok && name == target {
+			return strings.Fields(deps)
+		}
+	}
+	return nil
+}
+
+// recipeOf returns the recipe lines (those that start with a tab) of the rule that defines target, joined by newlines.
+func recipeOf(makeSources, target string) string {
+	var recipe []string
+	inRule := false
+	for line := range strings.SplitSeq(makeSources, "\n") {
+		if strings.HasPrefix(line, "\t") {
+			if inRule {
+				recipe = append(recipe, line)
+			}
+			continue
+		}
+		name, _, ok := strings.Cut(line, ":")
+		inRule = ok && name == target
+	}
+	return strings.Join(recipe, "\n")
+}
+
 // The light run keeps the pr rows under the same check names as the full run and never invents a shard the full run lacks.
 func TestLightPullRequestRunKeepsTheFastGatesUnderTheSameNames(t *testing.T) {
 	rows := tierRows(t)
@@ -337,8 +366,20 @@ func TestLightPullRequestRunKeepsTheFastGatesUnderTheSameNames(t *testing.T) {
 		}
 	}
 
-	// A light target runs a subset of its full-run shard: every gate is a gate of the shard, or lint-changed for lint.
-	substitute := map[string]string{"lint-changed": "lint"}
+	// A light target runs a subset of its full-run shard: every gate is a gate of the shard, or lint-changed for lint, or test-changed for test-fast-parallel (the changed packages of it, or all of it).
+	substitute := map[string]string{"lint-changed": "lint", "test-changed": "test-fast-parallel"}
+	// A light gate may also run gates the full run keeps in another named shard when the change calls for them. sdk-vectors-changed runs the SDK suites (the SDKs are not packages of the main module,
+	// so test-changed never reaches them) only when automation/ci/sdk-vectors-changed.sh sees a changed path they read; the full run runs the same suites in the toolchains shard. Each must be a gate of
+	// that full-run shard and be named by the light gate's recipe, so dropping one from ci-toolchains or from the recipe fails here instead of leaving the light run with a check the full run lacks.
+	// test-sdk-go is a prerequisite of test-go-modules, the leaf ci-toolchains runs, so it is checked through that rule.
+	runsElsewhere := map[string]struct {
+		fullTarget string
+		gates      []string
+		viaLeaf    map[string]string
+	}{
+		"sdk-vectors-changed": {"ci-toolchains", []string{"test-sdk-go", "lint-rust", "test-sdk-rs", "test-sdk-py", "test-sdk-lisp"}, map[string]string{"test-sdk-go": "test-go-modules"}},
+	}
+	makeSources := readMakeSources(t, repoRoot(t))
 	leaves := gateLeaves(t)
 	fullTargets := map[string]string{}
 	for _, entry := range full.Matrix["linux"] {
@@ -351,6 +392,28 @@ func TestLightPullRequestRunKeepsTheFastGatesUnderTheSameNames(t *testing.T) {
 			t.Errorf("light shard %s runs %s, which runs no gate", entry.Shard, entry.Target)
 		}
 		for _, gate := range lightGates {
+			if elsewhere, ok := runsElsewhere[gate]; ok {
+				recipe := recipeOf(makeSources, gate)
+				if !strings.Contains(recipe, "automation/gen/generate-sdk-vectors.mjs --check") {
+					t.Errorf("light gate %s no longer runs the generated vector check", gate)
+				}
+				for _, inner := range elsewhere.gates {
+					if !strings.Contains(recipe, inner) {
+						t.Errorf("light gate %s does not run %s", gate, inner)
+					}
+					fullLeaf := inner
+					if via, ok := elsewhere.viaLeaf[inner]; ok {
+						fullLeaf = via
+						if !slices.Contains(prerequisitesOf(makeSources, via), inner) {
+							t.Errorf("light gate %s runs %s, which %s no longer depends on", gate, inner, via)
+						}
+					}
+					if !slices.Contains(leaves(elsewhere.fullTarget), fullLeaf) {
+						t.Errorf("light gate %s runs %s, which the full run's %s does not", gate, inner, elsewhere.fullTarget)
+					}
+				}
+				continue
+			}
 			if replaced, ok := substitute[gate]; ok {
 				gate = replaced
 			}
@@ -366,12 +429,12 @@ func TestLightPullRequestRunKeepsTheFastGatesUnderTheSameNames(t *testing.T) {
 	for _, entry := range light.Matrix["linux"] {
 		lightGates = append(lightGates, leaves(entry.Target)...)
 	}
-	for _, gate := range []string{"build", "vet", "lint-changed", "lint-scenarios", "port-map-drift", "correspondence-check", "interface-gaps", "test-fast-parallel", "test-fast-sharded", "test-cli-1", "test-cli-2", "test-subprocess", "parity-fast-1"} {
+	for _, gate := range []string{"build", "vet", "lint-changed", "lint-scenarios", "port-map-drift", "correspondence-check", "interface-gaps", "test-changed", "test-fast-sharded", "test-cli-1", "test-cli-2", "test-subprocess", "parity-fast-1"} {
 		if !slices.Contains(lightGates, gate) {
 			t.Errorf("the light run does not run %s", gate)
 		}
 	}
-	for _, gate := range []string{"lint", "module-size", "test-race", "test-conformance", "test-sdk-rs", "parity-fast-2", "portmap-check-1"} {
+	for _, gate := range []string{"lint", "module-size", "test-race", "test-conformance-1", "test-conformance-2", "test-sdk-rs", "parity-fast-2", "portmap-check-1"} {
 		if slices.Contains(lightGates, gate) {
 			t.Errorf("the light run runs %s, which belongs to the merge_group run", gate)
 		}
@@ -460,7 +523,7 @@ func TestPlannerRejectsAMalformedTable(t *testing.T) {
 }
 
 // lightPlanResults are the job results of a light run that planned only the pr rows and found them green.
-var lightPlanResults = map[string]string{"FULL": "false", "RUN_NODE_RUNTIME": "false", "RUN_DURABLE_CF_HOST": "false", "NODE_RUNTIME": "skipped", "DURABLE_CF_HOST": "skipped"}
+var lightPlanResults = map[string]string{"FULL": "false", "RUN_NODE_RUNTIME": "false", "RUN_DURABLE_CF_HOST": "false", "RUN_DURABLE_CONTRACT": "false", "NODE_RUNTIME": "skipped", "DURABLE_CF_HOST": "skipped", "DURABLE_CONTRACT": "skipped"}
 
 // merge returns the union of the sets, later sets overriding earlier ones.
 func merge(sets ...map[string]string) map[string]string {
@@ -488,10 +551,10 @@ func ciResultRun(t *testing.T, set map[string]string, liveHead string) (string, 
 	values := map[string]string{
 		"EVENT": "merge_group", "PRODUCT": "true", "FULL": "true", "FULL_REQUIRED": "false",
 		"PR_NUMBER": "", "PR_HEAD_SHA": "", "REPO": "MichaelKinsy/PiG", "GH_TOKEN": "token",
-		"RUN_NODE_RUNTIME": "true", "RUN_NODE_LOADER": "true", "RUN_ANDROID": "true", "RUN_DURABLE_CF_HOST": "true",
+		"RUN_NODE_RUNTIME": "true", "RUN_NODE_LOADER": "true", "RUN_ANDROID": "true", "RUN_DURABLE_CF_HOST": "true", "RUN_DURABLE_CONTRACT": "true",
 		"CHANGES": "success", "DOCS": "skipped", "BOOKKEEPING": "success", "VERIFY": "success", "NODE_RUNTIME": "success",
 		"WINDOWS": "success", "MACOS": "success", "ANDROID": "success", "NODE_LOADER": "success",
-		"DURABLE_CF_HOST": "success", "PREFLIGHT": "success",
+		"DURABLE_CF_HOST": "success", "DURABLE_CONTRACT": "success", "PREFLIGHT": "success",
 	}
 	for name := range declared {
 		if _, ok := values[name]; !ok {
@@ -534,6 +597,7 @@ func TestCIResultRequiresEveryPlannedJob(t *testing.T) {
 		{"merge group with every job", nil, true},
 		{"merge group skipped queue-only job", map[string]string{"NODE_RUNTIME": "skipped"}, false},
 		{"merge group skipped durable host", map[string]string{"DURABLE_CF_HOST": "skipped"}, false},
+		{"merge group skipped durable contract", map[string]string{"DURABLE_CONTRACT": "skipped"}, false},
 		{"merge group failed Windows", map[string]string{"WINDOWS": "failure"}, false},
 		{"merge group that planned the light run", lightPlanResults, false},
 		{"merge group without a plan", map[string]string{"FULL": "", "RUN_NODE_RUNTIME": ""}, false},
@@ -546,7 +610,7 @@ func TestCIResultRequiresEveryPlannedJob(t *testing.T) {
 		{"light pull request whose bookkeeping failed", merge(pullRequest, lightPlanResults, map[string]string{"BOOKKEEPING": "failure"}), false},
 		{"full pull request whose bookkeeping failed and stopped the jobs behind it", merge(pullRequest, map[string]string{"BOOKKEEPING": "failure", "PREFLIGHT": "skipped", "VERIFY": "failure", "WINDOWS": "skipped", "MACOS": "skipped"}), false},
 		{"merge group whose bookkeeping was skipped", map[string]string{"BOOKKEEPING": "skipped"}, false},
-		{"docs-only merge group", map[string]string{"PRODUCT": "false", "DOCS": "success", "PREFLIGHT": "skipped", "NODE_RUNTIME": "skipped", "WINDOWS": "skipped", "MACOS": "skipped", "ANDROID": "skipped", "NODE_LOADER": "skipped", "DURABLE_CF_HOST": "skipped"}, true},
+		{"docs-only merge group", map[string]string{"PRODUCT": "false", "DOCS": "success", "PREFLIGHT": "skipped", "NODE_RUNTIME": "skipped", "WINDOWS": "skipped", "MACOS": "skipped", "ANDROID": "skipped", "NODE_LOADER": "skipped", "DURABLE_CF_HOST": "skipped", "DURABLE_CONTRACT": "skipped"}, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			output, err := ciResultRun(t, tc.set, "")
@@ -571,7 +635,7 @@ func TestLightRunCannotSatisfyCIResultWithoutAMergeQueue(t *testing.T) {
 	// Each way a light run's jobs can look green, including all of them skipped as for a change with no product files.
 	for name, set := range map[string]map[string]string{
 		"planned light, every light job green": lightPlanResults,
-		"no plan":                              {"FULL": "", "RUN_NODE_RUNTIME": "", "RUN_DURABLE_CF_HOST": ""},
+		"no plan":                              {"FULL": "", "RUN_NODE_RUNTIME": "", "RUN_DURABLE_CF_HOST": "", "RUN_DURABLE_CONTRACT": ""},
 	} {
 		if output, err := ciResultRun(t, merge(labelPR, set), "aaaa"); err == nil {
 			t.Errorf("%s: satisfied CI result\n%s", name, output)
@@ -610,7 +674,7 @@ func TestFullRunOnAnOlderHeadDoesNotCountForANewerHead(t *testing.T) {
 		t.Errorf("a run that could not read the pull request's head satisfied CI result\n%s", output)
 	}
 	// The run for the newer head is its own run: without the full plan it fails, whatever ran on the older head.
-	lightOnNew := map[string]string{"EVENT": "pull_request", "FULL_REQUIRED": "true", "PR_NUMBER": "7", "PR_HEAD_SHA": "newhead", "FULL": "false", "RUN_NODE_RUNTIME": "false", "RUN_DURABLE_CF_HOST": "false", "NODE_RUNTIME": "skipped", "DURABLE_CF_HOST": "skipped"}
+	lightOnNew := map[string]string{"EVENT": "pull_request", "FULL_REQUIRED": "true", "PR_NUMBER": "7", "PR_HEAD_SHA": "newhead", "FULL": "false", "RUN_NODE_RUNTIME": "false", "RUN_DURABLE_CF_HOST": "false", "RUN_DURABLE_CONTRACT": "false", "NODE_RUNTIME": "skipped", "DURABLE_CF_HOST": "skipped", "DURABLE_CONTRACT": "skipped"}
 	if output, err := ciResultRun(t, lightOnNew, "newhead"); err == nil {
 		t.Fatalf("a light run on newhead satisfied CI result\n%s", output)
 	}
@@ -754,29 +818,45 @@ func TestChangeClassifierReadsMergeGroups(t *testing.T) {
 }
 
 // gitleaks-action reports "event not yet supported" on merge_group and fails the job; the commits of a merge group are the pull
-// request's own, which its pull_request run scanned. TruffleHog runs in both and scans the commits the queue added.
+// request's own, which its pull_request run scanned. TruffleHog runs in both and scans the commits the queue added. The two
+// scanners are separate jobs so each has its own timeout, and the result job requires both.
 func TestSecretScanRunsInTheMergeGroup(t *testing.T) {
-	job := readWorkflow(t, "security.yml").Jobs["secret-scan"]
+	workflow := readWorkflow(t, "security.yml")
 	var gitleaks, trufflehog bool
-	for _, step := range job.Steps {
-		switch {
-		case strings.HasPrefix(step.Uses, "gitleaks/gitleaks-action@"):
-			gitleaks = true
-			if step.If != "github.event_name != 'merge_group'" {
-				t.Errorf("the Gitleaks step has if: %q, want it skipped on merge_group, which the action rejects", step.If)
-			}
-		case strings.HasPrefix(step.Uses, "trufflesecurity/trufflehog@"):
-			trufflehog = true
-			if step.If != "" {
-				t.Errorf("the TruffleHog step has if: %q, want it to run on every event", step.If)
-			}
-			if step.With["base"] != "${{ github.event.merge_group.base_sha }}" || step.With["head"] != "${{ github.event.merge_group.head_sha }}" {
-				t.Errorf("TruffleHog scans base %v head %v, want the merge group's range", step.With["base"], step.With["head"])
+	for _, name := range []string{"secret-scan-gitleaks", "secret-scan-trufflehog"} {
+		job, ok := workflow.Jobs[name]
+		if !ok {
+			t.Fatalf("security.yml has no %s job", name)
+		}
+		if !slices.Contains(needsOf(workflow.Jobs["result"].Needs), name) {
+			t.Errorf("Security result does not need %s", name)
+		}
+		for _, step := range job.Steps {
+			switch {
+			case strings.HasPrefix(step.Uses, "gitleaks/gitleaks-action@"):
+				gitleaks = true
+				if name != "secret-scan-gitleaks" {
+					t.Errorf("%s runs Gitleaks", name)
+				}
+				if step.If != "github.event_name != 'merge_group'" {
+					t.Errorf("the Gitleaks step has if: %q, want it skipped on merge_group, which the action rejects", step.If)
+				}
+			case strings.HasPrefix(step.Uses, "trufflesecurity/trufflehog@"):
+				trufflehog = true
+				if name != "secret-scan-trufflehog" {
+					t.Errorf("%s runs TruffleHog", name)
+				}
+				if step.If != "" {
+					t.Errorf("the TruffleHog step has if: %q, want it to run on every event", step.If)
+				}
+				if step.With["base"] != "${{ github.event.merge_group.base_sha }}" || step.With["head"] != "${{ github.event.merge_group.head_sha }}" {
+					t.Errorf("TruffleHog scans base %v head %v, want the merge group's range", step.With["base"], step.With["head"])
+				}
 			}
 		}
 	}
 	if !gitleaks || !trufflehog {
-		t.Fatalf("secret-scan has gitleaks = %v, trufflehog = %v", gitleaks, trufflehog)
+		t.Fatalf("secret scan jobs have gitleaks = %v, trufflehog = %v", gitleaks, trufflehog)
 	}
 }
 
@@ -786,7 +866,7 @@ func TestAgentsDocRendersTheTierTable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	singles := map[string]string{"Node extensions": "node-runtime", "Durable Cloudflare host": "durable-cf-host", "Android build": "android", "Node loader": "node-loader"}
+	singles := map[string]string{"Node extensions": "node-runtime", "Durable Cloudflare host": "durable-cf-host", "Durable contract": "durable-contract", "Android build": "android", "Node loader": "node-loader"}
 	prefixes := map[string]string{"Linux / ": "linux", "Windows ": "windows", "macOS ": "macos"}
 	documented := map[[2]string]string{}
 	for line := range strings.SplitSeq(string(data), "\n") {

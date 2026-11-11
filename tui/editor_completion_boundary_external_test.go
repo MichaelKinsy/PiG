@@ -49,6 +49,8 @@ func awaitedCompletionEditor(t testing.TB, ctx context.Context) (*tui.Editor, fu
 	}
 	flush := func() {
 		t.Helper()
+		// The owner's end of the read: the request the keys made starts here, as in the interactive loop.
+		e.FlushAutocomplete()
 		if started == consumed {
 			t.Fatal("input did not start the awaited autocomplete operation")
 		}

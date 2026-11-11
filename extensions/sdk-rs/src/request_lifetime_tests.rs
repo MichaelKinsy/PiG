@@ -81,7 +81,10 @@ fn retained_parent_uses_live_connection_after_response() {
         let call_msg = call.call.unwrap();
         let observed_parent = call_msg.parent_request_id;
         // D189: a call made through a request's scope after its handler returned is deferred work, and the host holds it for Pi's loop to turn.
-        assert!(call_msg.timer, "a call after the handler returned carries the timer mark");
+        assert!(
+            call_msg.timer,
+            "a call after the handler returned carries the timer mark"
+        );
         host.write_envelope(&Envelope {
             msg_type: "call_result".into(),
             id: call.id,
@@ -103,9 +106,11 @@ fn retained_parent_uses_live_connection_after_response() {
     assert!(connection.request_parents.lock().unwrap().is_empty());
     assert!(connection.pending_calls.lock().unwrap().is_empty());
     connection.cancel_pending_calls();
-    assert!(connection
-        .call_for_scope(Some(&parent), Some("origin"), "ui.getEditorText", None)
-        .is_err());
+    assert!(
+        connection
+            .call_for_scope(Some(&parent), Some("origin"), "ui.getEditorText", None)
+            .is_err()
+    );
 }
 
 #[test]
@@ -133,7 +138,9 @@ fn cancelled_parent_never_becomes_runtime_parent() {
     response.join().unwrap();
     assert!(parent.cancelled());
     assert!(!parent.completed());
-    assert!(connection
-        .call_for_scope(Some(&parent), Some("cancelled"), "ui.getEditorText", None)
-        .is_err());
+    assert!(
+        connection
+            .call_for_scope(Some(&parent), Some("cancelled"), "ui.getEditorText", None)
+            .is_err()
+    );
 }

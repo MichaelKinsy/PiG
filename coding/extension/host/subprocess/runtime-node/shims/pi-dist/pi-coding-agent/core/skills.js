@@ -3,8 +3,8 @@ import ignore from "../../../ignore/index.js";
 import { basename, dirname, join, relative, resolve, sep } from "path";
 import { CONFIG_DIR_NAME, getAgentDir } from "../config.js";
 import { parseFrontmatter } from "../utils/frontmatter.js";
-import { canonicalizePath, resolvePath } from "../utils/paths.js";
-import { createSyntheticSourceInfo } from "./source-info.js";
+import { isPathWithin, resolvePath } from "../utils/paths.js";
+import { createSyntheticSourceInfo, getResourcePathKey } from "./source-info.js";
 /** Max name length per spec */
 const MAX_NAME_LENGTH = 64;
 /** Max description length per spec */
@@ -287,7 +287,7 @@ export function formatSkillsForPrompt(skills, fileReadTool = "read") {
             : fileReadTool === "bash"
                 ? "Use bash to load a skill's file when the task matches its description."
                 : "Load a skill's file when the task matches its description.",
-        "When a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.",
+        "Resolve relative paths against the skill's directory (parent of SKILL.md). Use absolute paths in tool calls.",
         "",
         "<available_skills>",
     ];
@@ -326,7 +326,7 @@ export function loadSkills(options) {
         allDiagnostics.push(...result.diagnostics);
         for (const skill of result.skills) {
             // Resolve symlinks to detect duplicate files
-            const realPath = canonicalizePath(skill.filePath);
+            const realPath = getResourcePathKey(skill.filePath);
             // Skip silently if we've already loaded this exact file (via symlink)
             if (realPathSet.has(realPath)) {
                 continue;
@@ -357,19 +357,11 @@ export function loadSkills(options) {
     }
     const userSkillsDir = join(resolvedAgentDir, "skills");
     const projectSkillsDir = resolve(resolvedCwd, CONFIG_DIR_NAME, "skills");
-    const isUnderPath = (target, root) => {
-        const normalizedRoot = resolve(root);
-        if (target === normalizedRoot) {
-            return true;
-        }
-        const prefix = normalizedRoot.endsWith(sep) ? normalizedRoot : `${normalizedRoot}${sep}`;
-        return target.startsWith(prefix);
-    };
     const getSource = (resolvedPath) => {
         if (!includeDefaults) {
-            if (isUnderPath(resolvedPath, userSkillsDir))
+            if (isPathWithin(userSkillsDir, resolvedPath))
                 return "user";
-            if (isUnderPath(resolvedPath, projectSkillsDir))
+            if (isPathWithin(projectSkillsDir, resolvedPath))
                 return "project";
         }
         return "path";

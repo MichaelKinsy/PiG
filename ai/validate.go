@@ -4,150 +4,227 @@ package ai
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"maps"
-	"reflect"
-	"regexp"
-	"slices"
+	"math"
 	"strings"
 	"sync"
 
 	sdkjson "github.com/MichaelKinsy/PiG/extensions/sdk/json"
+	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
+	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
-	"github.com/MichaelKinsy/PiG/internal/typebox"
-	"github.com/MichaelKinsy/PiG/third_party/jsonschema"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/schema"
+	"github.com/MichaelKinsy/PiG/schema/formats"
 )
 
-// validateToolArgs clones, normalizes optional nulls, converts, and validates arguments.
-// The returned JSON, rather than the model's original input, is passed to hooks and execution. It keeps the member order of args, as Pi validates structuredClone of the arguments and returns it (validation.ts:317-339).
-func validateToolArgs(toolName string, schema map[string]any, args json.RawMessage) (json.RawMessage, error) {
-	if schema == nil {
-		schema = map[string]any{}
+// validateToolArgs validates arguments against a schema held as a map; see validateToolArgsSchema.
+func validateToolArgs(toolName string, parameters map[string]any, args json.RawMessage) (json.RawMessage, error) {
+	if parameters == nil {
+		parameters = map[string]any{}
 	}
-	//portlint:allow mapkeyorder a map[string]any schema records no authored member order; ValidateToolArguments passes ToolSchema.ParametersJSON and tools with an authored schema reach ValidateToolArgumentsJSON (agent/tool_execution.go:303)
-	encoded, err := json.Marshal(schema)
+	//portlint:allow mapkeyorder a map[string]any schema records no authored member order; ValidateToolArguments passes ToolSchema.ParametersJSON and tools with an authored schema reach ValidateToolArgumentsJSON (agent/tool_execution.go)
+	encoded, err := json.Marshal(parameters)
 	if err != nil {
 		return nil, err
 	}
 	return validateToolArgsSchema(toolName, encoded, args)
 }
 
-// decodeSchemaInstance decodes a JSON text into the value a schema validator checks. sdkjson keeps a lone surrogate escape as one
-// UTF-16 unit, as the structuredClone of JSON.parse's result does; encoding/json would hand the tool U+FFFD.
-func decodeSchemaInstance(text json.RawMessage) (any, error) {
-	var instance any
-	err := sdkjson.Unmarshal(text, &instance)
-	return instance, err
+// decodeJSON decodes a JSON text as JSON.parse does: objects keep JavaScript's own-key order, and the escape of a lone surrogate is that one UTF-16 unit (WTF-8 in the Go string), where encoding/json would hand the tool U+FFFD.
+func decodeJSON(text []byte) (any, error) {
+	return chordjson.DecodeUnquoting(text, jsstring.UnmarshalKeepingSurrogates[string])
 }
 
+// validateToolArgsSchema validates arguments against the JSON Schema rawSchema as Pi's validateToolArguments does: pi-schema's parse coerces them (a number sent as "42", one value for an array, null for an omitted
+// optional property), then checks the result. It returns the coerced arguments as JSON.stringify writes them, in the member order of args; when nothing changed and args is already what JSON.stringify writes
+// for them it returns args itself. A failure is Pi's message: pi-schema's errors, then the arguments received (validation.ts:54-69: parse at :59, the message at :64-68).
 func validateToolArgsSchema(toolName string, rawSchema, args json.RawMessage) (json.RawMessage, error) {
-	return validateToolArgsSchemaRefined(toolName, rawSchema, args, nil)
-}
-
-// validateToolArgsSchemaRefined is validateToolArgsSchema with the refinements of run, nil for none. Every point where Pi calls the compiled validator's Check (the coercion of a
-// non-object root, the check itself) and every Check of a subschema (optional nulls, unions) calls the refinements TypeBox would.
-func validateToolArgsSchemaRefined(toolName string, rawSchema, args json.RawMessage, run *refineRun) (json.RawMessage, error) {
-	entry := toolArgumentSchemas.entry(rawSchema)
-	// The parsed schema caches its children and its compiled form as validation reaches them, so one validation at a time uses it.
-	entry.mu.Lock()
-	defer entry.mu.Unlock()
-	schema, err := entry.parsed()
+	validator, err := toolArgumentValidators.entry(rawSchema).compiled()
 	if err != nil {
 		return nil, err
 	}
-	instance, err := decodeSchemaInstance(args)
+	instance, err := decodeJSON(args)
 	if err != nil {
-		return nil, fmt.Errorf("Validation failed for tool %q:\n  - invalid JSON: %w\n\nReceived arguments:\n%s", toolName, err, args)
+		return nil, fmt.Errorf("Validation failed for tool \"%s\":\n  - invalid JSON: %w\n\nReceived arguments:\n%s", toolName, err, args)
 	}
-	// The cached schema outlives this validation; it must not keep the arguments' objects reachable after it.
-	schema.root.refine = run
-	defer func() { schema.wrapped, schema.mutated, schema.refine = nil, false, nil }()
-	schema.normalizeOptionalNulls(instance)
-	// Pi ignores Convert's return value. Interior mutations survive; replacing the root does not.
-	schema.convert(instance)
-	compiled, err := schema.validator()
+	// Parse copies what it changes and leaves instance alone, which is Pi's structuredClone of the arguments.
+	result, err := validator.Parse(instance)
 	if err != nil {
 		return nil, err
 	}
-	coerced := instance
-	if schema.value("~skipCoercion") != true {
-		coerced = schema.coerce(instance)
+	if !result.OK {
+		return nil, validationError(toolName, result.Errors, args)
 	}
-	if !sameArgumentValue(coerced, instance) {
-		_, fromObject := instance.(map[string]any)
-		_, toObject := coerced.(map[string]any)
-		if !fromObject || !toObject {
-			if schema.passes(compiled, coerced, "", args) {
-				return schema.marshalInSourceOrder(coerced, args)
-			}
-			return schema.marshalInSourceOrder(instance, args)
-		}
-		instance = coerced
-	}
-	if !schema.passes(compiled, instance, "", args) {
-		var failures []string
-		// compile/validator.mjs Errors checks the value again before it collects errors, and returns none when that second Check passes (a predicate that answers differently).
-		if schema.root.refine == nil || !schema.passes(compiled, instance, "", args) {
-			failures = schema.argumentErrorsAt(schema.sourceOrder(instance, args), instance, "", "")
-		}
-		// TypeBox's error context keeps the first maxErrors (8) errors and drops the rest.
-		failures = failures[:min(len(failures), typeboxMaxErrors)]
-		message := strings.Join(failures, "\n")
-		if message == "" {
-			message = "Unknown validation error"
-		}
-		return nil, fmt.Errorf("Validation failed for tool \"%s\":\n%s\n\nReceived arguments:\n%s", toolName, message, prettyArguments(args))
-	}
-	// Nothing wrote to the decoded arguments, so they are JSON.parse(args); when args is already what JSON.stringify writes for that value, re-encoding it in its own member order returns args.
-	if !schema.mutated && len(schema.wrapped) == 0 && jsonstringify.IsCanonical(args) {
+	if sameValue(result.Value, instance) && jsonstringify.IsCanonical(args) {
 		return args, nil
 	}
-	return schema.marshalInSourceOrder(instance, args)
-}
-
-// passes is the compiled validator's Check of a value: the structural check, or TypeBox's Check with the refinements of the validation in progress.
-func (s *argumentSchema) passes(compiled *jsonschema.Schema, value any, pointer string, args json.RawMessage) bool {
-	if run := s.root.refine; run != nil {
-		run.order = s.sourceOrder(value, args)
-		return run.checkNode(s, value, pointer)
+	//portlint:allow numbers a capacity hint for the output buffer, never observable: Pi's validateToolArguments (validation.ts) returns the structuredClone, with no size arithmetic
+	headroom := len(args) / 8
+	capacity := len(args)
+	if capacity <= math.MaxInt-headroom { // on a 32-bit int the extra eighth is a hint to drop, not a size to wrap
+		capacity += headroom
 	}
-	return compiled.Validate(value) == nil
+	return appendStringify(make([]byte, 0, capacity), result.Value), nil
 }
 
-// typeboxMaxErrors is typebox 1.3.27 Settings.maxErrors.
-// upstream: node_modules/typebox/build/system/settings/settings.mjs:maxErrors
-const typeboxMaxErrors = 8
+// validationError is the error validateToolArguments throws for a failed validation (validation.ts:64-68).
+func validationError(toolName string, failures []schema.ValidationError, args json.RawMessage) error {
+	var message strings.Builder
+	message.WriteString(`Validation failed for tool "`)
+	message.WriteString(toolName)
+	message.WriteString("\":\n")
+	for i, failure := range failures {
+		if i > 0 {
+			message.WriteByte('\n')
+		}
+		message.WriteString("  - ")
+		message.WriteString(validationPath(failure.Path))
+		message.WriteString(": ")
+		message.WriteString(failure.Message)
+	}
+	message.WriteString("\n\nReceived arguments:\n")
+	message.WriteString(prettyArguments(args))
+	return errors.New(message.String())
+}
 
-// toolArgumentSchemas holds the parsed and compiled schema of each tool whose arguments were validated. A tool call validates against its tool's schema every time, so parsing and compiling it once per distinct schema leaves only the arguments to decode per call.
-var toolArgumentSchemas argumentSchemaCache
+// validationPath turns a pi-schema error path (a JSON Pointer) into the dotted path the model sees: `/edits/0/oldText` is `edits.0.oldText` (validation.ts:20-28: `~1` is decoded before `~0`).
+func validationPath(pointer string) string {
+	if pointer == "" {
+		return "root"
+	}
+	segments := strings.Split(pointer[1:], "/")
+	for i, segment := range segments {
+		segments[i] = strings.ReplaceAll(strings.ReplaceAll(segment, "~1", "/"), "~0", "~")
+	}
+	return strings.Join(segments, ".")
+}
+
+// prettyArguments is JSON.stringify(arguments, null, 2) of the arguments the call carries.
+func prettyArguments(raw json.RawMessage) string {
+	canonical, err := jsonstringify.Canonicalize(raw)
+	if err != nil {
+		return string(raw)
+	}
+	var pretty bytes.Buffer
+	if err := json.Indent(&pretty, canonical, "", "  "); err != nil {
+		return string(raw)
+	}
+	return pretty.String()
+}
+
+// sameValue reports whether a and b are one JSON value, as JavaScript's `===` compares containers: by identity. Parse returns the value it was given when it changes nothing.
+func sameValue(a, b any) bool {
+	switch a := a.(type) {
+	case *schema.Object:
+		other, ok := b.(*schema.Object)
+		return ok && a == other
+	case []any:
+		other, ok := b.([]any)
+		return ok && len(a) == len(other) && (len(a) == 0 || &a[0] == &other[0])
+	case nil:
+		return b == nil
+	case bool:
+		other, ok := b.(bool)
+		return ok && a == other
+	case float64:
+		other, ok := b.(float64)
+		return ok && a == other
+	case string:
+		other, ok := b.(string)
+		return ok && a == other
+	}
+	return false
+}
+
+// appendStringify appends JSON.stringify of a decoded or coerced JSON value: objects in own-key order, numbers and strings as JavaScript writes them (a lone surrogate as its \u escape).
+func appendStringify(dst []byte, value any) []byte {
+	switch value := value.(type) {
+	case nil:
+		return append(dst, "null"...)
+	case bool:
+		if value {
+			return append(dst, "true"...)
+		}
+		return append(dst, "false"...)
+	case float64:
+		return append(dst, jsnumber.JSON(value)...)
+	case string:
+		return sdkjson.AppendStringifyString(dst, value)
+	case []any:
+		dst = append(dst, '[')
+		for i, item := range value {
+			if i > 0 {
+				dst = append(dst, ',')
+			}
+			dst = appendStringify(dst, item)
+		}
+		return append(dst, ']')
+	case *schema.Object:
+		dst = append(dst, '{')
+		first := true
+		for key, member := range value.All() {
+			if !first {
+				dst = append(dst, ',')
+			}
+			first = false
+			dst = sdkjson.AppendStringifyString(dst, key)
+			dst = append(dst, ':')
+			dst = appendStringify(dst, member)
+		}
+		return append(dst, '}')
+	case map[string]any:
+		keys := chordjson.MapOwnKeys(value)
+		dst = append(dst, '{')
+		for i, key := range keys {
+			if i > 0 {
+				dst = append(dst, ',')
+			}
+			dst = sdkjson.AppendStringifyString(dst, key)
+			dst = append(dst, ':')
+			dst = appendStringify(dst, value[key])
+		}
+		return append(dst, '}')
+	}
+	return append(dst, "null"...)
+}
+
+// toolFormats is pi-schema's `formats` entry point (packages/schema/src/formats/index.ts), shared by every compiled tool schema.
+var toolFormats = sync.OnceValue(formats.Formats)
+
+// toolArgumentValidators holds the compiled validator of each tool schema whose arguments were validated. A tool call validates against its tool's schema every time, so compiling it once per distinct schema
+// leaves only the arguments to decode per call. Pi keeps one validator per schema object in a WeakMap (validation.ts:6).
+var toolArgumentValidators validatorCache
 
 const (
-	// argumentSchemaCacheEntries bounds how many distinct tool schemas stay parsed and compiled; the oldest is dropped first. A session carries a few dozen tools, so 256 holds every tool of a session with room for extension churn; a dropped schema is parsed again on its next call.
+	// validatorCacheEntries bounds how many distinct tool schemas stay compiled; the oldest is dropped first. A session carries a few dozen tools, so 256 holds every tool of a session with room for extension churn; a dropped schema is compiled again on its next call.
 	// pig additive (D112): Pi's validator cache is a WeakMap with no bound (validation.ts:6); the bound keeps a long-lived process from retaining a schema per tool definition it ever saw.
-	argumentSchemaCacheEntries = 256
-	// argumentSchemaCacheMaxBytes is the size of schema text above which a schema is validated without being kept: 1 MiB is far above any tool schema, and one oversized schema must not displace the small ones.
-	// pig additive (D112): see argumentSchemaCacheEntries.
-	argumentSchemaCacheMaxBytes = 1 << 20
+	validatorCacheEntries = 256
+	// validatorCacheMaxBytes is the size of schema text above which a schema is validated without being kept: 1 MiB is far above any tool schema, and one oversized schema must not displace the small ones.
+	// pig additive (D112): see validatorCacheEntries.
+	validatorCacheMaxBytes = 1 << 20
 )
 
-type argumentSchemaCache struct {
+// validatorCache is a bounded cache of compiled tool schemas by schema text.
+type validatorCache struct {
 	mu      sync.Mutex
-	entries map[string]*argumentSchemaEntry
+	entries map[string]*validatorEntry
 	order   []string
 }
 
-type argumentSchemaEntry struct {
-	mu     sync.Mutex
-	raw    json.RawMessage
-	schema *argumentSchema
-	err    error
-	done   bool
+// validatorEntry is one schema's compiled validator, or the error compiling it failed with (Pi throws it on every call; the compile is deterministic, so it is kept).
+type validatorEntry struct {
+	raw       json.RawMessage
+	once      sync.Once
+	validator *schema.CoercingValidator
+	err       error
 }
 
 // entry returns the cache entry for the schema text. A schema too large to cache gets an entry of its own that is not kept.
-func (cache *argumentSchemaCache) entry(raw json.RawMessage) *argumentSchemaEntry {
-	if len(raw) > argumentSchemaCacheMaxBytes {
-		return &argumentSchemaEntry{raw: raw}
+func (cache *validatorCache) entry(raw json.RawMessage) *validatorEntry {
+	if len(raw) > validatorCacheMaxBytes {
+		return &validatorEntry{raw: raw}
 	}
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
@@ -155,407 +232,29 @@ func (cache *argumentSchemaCache) entry(raw json.RawMessage) *argumentSchemaEntr
 		return found
 	}
 	if cache.entries == nil {
-		cache.entries = map[string]*argumentSchemaEntry{}
+		cache.entries = map[string]*validatorEntry{}
 	}
-	if len(cache.order) >= argumentSchemaCacheEntries {
+	if len(cache.order) >= validatorCacheEntries {
 		delete(cache.entries, cache.order[0])
 		cache.order = cache.order[1:]
 	}
 	key := string(raw)
-	created := &argumentSchemaEntry{raw: json.RawMessage(key)}
+	created := &validatorEntry{raw: json.RawMessage(key)}
 	cache.entries[key] = created
 	cache.order = append(cache.order, key)
 	return created
 }
 
-// parsed is parseArgumentSchema of the entry's schema text, computed once. The caller holds entry.mu.
-func (entry *argumentSchemaEntry) parsed() (*argumentSchema, error) {
-	if !entry.done {
-		entry.schema, entry.err = parseArgumentSchema(entry.raw)
-		entry.done = true
-	}
-	return entry.schema, entry.err
-}
-
-type argumentSchema struct {
-	doc        any
-	fields     map[string]json.RawMessage
-	keys       []string
-	children   map[string]*argumentSchema
-	compiled   *jsonschema.Schema
-	compileErr error
-	root       *argumentSchema
-	// path is the node's path in the schema, the JSON pointer segments of the keywords that lead to it ("/properties/a", "/anyOf/1", "/items"); the root's is "".
-	path string
-	// refine is the validation in progress that runs refinements (see ValidateToolArgumentsRefined), nil for every other; only the root carries it, and the caller holds entry.mu.
-	refine *refineRun
-	// matchers holds typeboxPropertyNameMatcher of each property name of a "properties" node, compiled when validation first reaches it. The caller holds entry.mu, as for children.
-	matchers map[string]func(string) bool
-	// wrapped lists the objects Convert wrapped in arrays during the validation in progress, and is empty between validations; only the root carries it, and the caller holds entry.mu.
-	wrapped []wrappedObject
-	// mutated records that the validation in progress changed a member or item of the arguments (setMember, setItem, a deleted optional null); only the root carries it, and the caller holds entry.mu.
-	mutated bool
-}
-
-// setMember writes a converted or coerced member back, noting on the root when it is not the value already there.
-func (s *argumentSchema) setMember(object map[string]any, key string, value any) {
-	if current, ok := object[key]; !ok || !sameArgumentValue(current, value) {
-		s.root.mutated = true
-	}
-	object[key] = value
-}
-
-// setItem is setMember for an array item.
-func (s *argumentSchema) setItem(items []any, i int, value any) {
-	if !sameArgumentValue(items[i], value) {
-		s.root.mutated = true
-	}
-	items[i] = value
-}
-
-func parseArgumentSchema(raw json.RawMessage) (*argumentSchema, error) {
-	s := &argumentSchema{children: map[string]*argumentSchema{}}
-	s.root = s
-	if err := json.Unmarshal(raw, &s.doc); err != nil {
-		return nil, err
-	}
-	if _, ok := s.doc.(map[string]any); !ok {
-		return s, nil
-	}
-	if err := json.Unmarshal(raw, &s.fields); err != nil {
-		return nil, err
-	}
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	if _, err := decoder.Token(); err != nil {
-		return nil, err
-	}
-	for decoder.More() {
-		key, err := decoder.Token()
+// compiled is the entry's validator, compiled on first use: pi-schema's compile with coercion, the formats, and a $ref that names nothing rejecting only the values at its place (validation.ts:14-17), so a dangling
+// definition in an MCP server's schema does not make every call of the tool fail.
+func (entry *validatorEntry) compiled() (*schema.CoercingValidator, error) {
+	entry.once.Do(func() {
+		document, err := decodeJSON(entry.raw)
 		if err != nil {
-			return nil, err
+			entry.err = fmt.Errorf("invalid tool parameters schema: %w", err)
+			return
 		}
-		s.keys = append(s.keys, key.(string))
-		var value json.RawMessage
-		if err := decoder.Decode(&value); err != nil {
-			return nil, err
-		}
-	}
-	s.keys = argumentObjectKeys(s.keys)
-	return s, nil
-}
-
-func (s *argumentSchema) child(key string) *argumentSchema {
-	if child, ok := s.children[key]; ok {
-		return child
-	}
-	raw, ok := s.fields[key]
-	if !ok {
-		return nil
-	}
-	child, err := parseArgumentSchema(raw)
-	if err != nil {
-		return nil
-	}
-	child.root = s.root
-	child.path = s.path + "/" + escapeArgumentPointer(key)
-	s.children[key] = child
-	return child
-}
-
-func (s *argumentSchema) list(key string) []*argumentSchema {
-	var raws []json.RawMessage
-	if json.Unmarshal(s.fields[key], &raws) != nil {
-		return nil
-	}
-	out := make([]*argumentSchema, 0, len(raws))
-	for i, raw := range raws {
-		cacheKey := fmt.Sprintf("%s/%d", key, i)
-		child, ok := s.children[cacheKey]
-		if !ok {
-			child, _ = parseArgumentSchema(raw)
-			child.root = s.root
-			child.path = s.path + "/" + cacheKey
-			s.children[cacheKey] = child
-		}
-		out = append(out, child)
-	}
-	return out
-}
-
-func (s *argumentSchema) value(key string) any {
-	object, _ := s.doc.(map[string]any)
-	return object[key]
-}
-
-func (s *argumentSchema) text(key string) string { value, _ := s.value(key).(string); return value }
-
-func (s *argumentSchema) types() []string {
-	if typ := s.text("type"); typ != "" {
-		return []string{typ}
-	}
-	var types []string
-	for _, value := range anySlice(s.value("type")) {
-		if typ, ok := value.(string); ok {
-			types = append(types, typ)
-		}
-	}
-	return types
-}
-
-func anySlice(value any) []any { values, _ := value.([]any); return values }
-
-func (s *argumentSchema) validator() (*jsonschema.Schema, error) {
-	if s.compiled != nil || s.compileErr != nil {
-		return s.compiled, s.compileErr
-	}
-	compiler := jsonschema.NewCompiler()
-	typebox.RegisterFormats(compiler)
-	if err := compiler.AddResource("tool.json", typebox.CompilerSchema(s.doc)); err != nil {
-		s.compileErr = err
-		return nil, err
-	}
-	s.compiled, s.compileErr = compiler.Compile("tool.json")
-	return s.compiled, s.compileErr
-}
-
-// acceptsNull is the compiled validator's Check(null): structural, or with the refinements of the validation in progress.
-func (s *argumentSchema) acceptsNull(validator *jsonschema.Schema) bool {
-	if s.root.refine != nil {
-		return s.root.refine.checkNode(s, nil, "")
-	}
-	return validator.Validate(nil) == nil
-}
-
-func (s *argumentSchema) check(value any) bool {
-	if root := s.root; root != nil && root.refine != nil {
-		return root.refine.checkNode(s, value, "")
-	}
-	validator, err := s.validator()
-	return err == nil && validator.Validate(value) == nil
-}
-
-func (s *argumentSchema) normalizeOptionalNulls(value any) {
-	if items, ok := value.([]any); ok {
-		s.eachItem(items, func(child *argumentSchema, item any) any { child.normalizeOptionalNulls(item); return item })
-		return
-	}
-	object, ok := value.(map[string]any)
-	properties := s.child("properties")
-	if !ok || properties == nil {
-		return
-	}
-	required := anySlice(s.value("required"))
-	for _, key := range properties.keys {
-		current, exists := object[key]
-		if !exists {
-			continue
-		}
-		child := properties.child(key)
-		if current == nil && !slices.Contains(required, any(key)) && child.text("$ref") == "" {
-			// Pi: getSubSchemaValidator(propertySchema)?.Check(null) === false, a Check that calls the property's refinements when it has any.
-			if validator, err := child.validator(); err == nil && !child.acceptsNull(validator) {
-				delete(object, key)
-				s.root.mutated = true
-				continue
-			}
-		}
-		child.normalizeOptionalNulls(current)
-	}
-}
-
-func (s *argumentSchema) eachItem(items []any, visit func(*argumentSchema, any) any) {
-	if tuple := s.list("items"); tuple != nil {
-		for i := range min(len(items), len(tuple)) {
-			s.setItem(items, i, visit(tuple[i], items[i]))
-		}
-	} else if item := s.child("items"); item != nil {
-		if _, ok := item.doc.(map[string]any); ok {
-			for i := range items {
-				s.setItem(items, i, visit(item, items[i]))
-			}
-		}
-	}
-}
-
-func (s *argumentSchema) coerce(value any) any {
-	for _, child := range s.list("allOf") {
-		value = child.coerce(value)
-	}
-	for _, key := range []string{"anyOf", "oneOf"} {
-		if children := s.list(key); children != nil {
-			value = coerceArgumentUnion(value, children, false)
-		}
-	}
-	types := s.types()
-	matches := len(types) > 1 && slices.ContainsFunc(types, func(typ string) bool { return matchesArgumentType(value, typ) })
-	if !matches {
-		for _, typ := range types {
-			converted := coerceArgumentPrimitive(value, typ, false)
-			if !sameArgumentValue(value, converted) {
-				value = converted
-				break
-			}
-		}
-	}
-	if slices.Contains(types, "object") {
-		s.eachProperty(value, false)
-	}
-	if slices.Contains(types, "array") {
-		if items, ok := value.([]any); ok {
-			s.eachItem(items, func(child *argumentSchema, item any) any { return child.coerce(item) })
-		}
-	}
-	return value
-}
-
-func coerceArgumentUnion(value any, children []*argumentSchema, native bool) any {
-	for _, child := range children {
-		if child.check(value) {
-			return value
-		}
-	}
-	for _, child := range children {
-		candidate := cloneArgumentValue(value)
-		if native {
-			candidate = child.convert(candidate)
-		} else {
-			candidate = child.coerce(candidate)
-		}
-		if native {
-			// TypeBox tests each converted candidate against the complete union, not just its arm.
-			if slices.ContainsFunc(children, func(arm *argumentSchema) bool { return arm.check(candidate) }) {
-				return candidate
-			}
-		} else if child.check(candidate) {
-			return candidate
-		}
-	}
-	return value
-}
-
-// typeboxPropertyNameMatcher is Guard.EntriesRegExp's new RegExp(`^${name}$`), unwrapped as TypeBox writes it (so "a|b" is ^a or b$). A name Go cannot compile matches only
-// itself; TypeBox throws there.
-func typeboxPropertyNameMatcher(name string) func(string) bool {
-	expression, err := regexp.Compile("^" + name + "$")
-	if err != nil {
-		return func(key string) bool { return key == name }
-	}
-	return expression.MatchString
-}
-
-// nameMatcher is typeboxPropertyNameMatcher(name), compiled once per schema instead of once per validated object.
-func (s *argumentSchema) nameMatcher(name string) func(string) bool {
-	if matcher, ok := s.matchers[name]; ok {
-		return matcher
-	}
-	if s.matchers == nil {
-		s.matchers = map[string]func(string) bool{}
-	}
-	matcher := typeboxPropertyNameMatcher(name)
-	s.matchers[name] = matcher
-	return matcher
-}
-
-func (s *argumentSchema) eachProperty(value any, native bool) {
-	object, ok := value.(map[string]any)
-	if !ok {
-		return
-	}
-	properties := s.child("properties")
-	defined := map[string]bool{}
-	if properties != nil && native {
-		// TypeBox FromObject (value/convert/from_object.mjs, Guard.EntriesRegExp) tests each property name as new RegExp(`^${name}$`) against every key, so a name with
-		// regular-expression characters converts the keys it matches and not necessarily itself.
-		keys := slices.Sorted(maps.Keys(object))
-		for _, name := range properties.keys {
-			defined[name] = true
-			child, matches := properties.child(name), properties.nameMatcher(name)
-			for _, key := range keys {
-				if matches(key) {
-					s.setMember(object, key, child.convert(object[key]))
-				}
-			}
-		}
-	} else if properties != nil {
-		for _, key := range properties.keys {
-			defined[key] = true
-			current, exists := object[key]
-			if !exists {
-				continue
-			}
-			child := properties.child(key)
-			if native {
-				s.setMember(object, key, child.convert(current))
-			} else {
-				s.setMember(object, key, child.coerce(current))
-			}
-		}
-	}
-	if additional := s.child("additionalProperties"); additional != nil {
-		if _, ok := additional.doc.(map[string]any); ok {
-			for _, key := range slices.Sorted(maps.Keys(object)) {
-				if native {
-					// FromAdditionalProperties converts once for every nonmatching known property.
-					if properties != nil {
-						for _, known := range properties.keys {
-							if !properties.nameMatcher(known)(key) {
-								s.setMember(object, key, additional.convert(object[key]))
-							}
-						}
-					}
-				} else if !defined[key] {
-					s.setMember(object, key, additional.coerce(object[key]))
-				}
-			}
-		}
-	}
-}
-
-func cloneArgumentValue(value any) any {
-	switch value := value.(type) {
-	case map[string]any:
-		result := make(map[string]any, len(value))
-		for key, child := range value {
-			result[key] = cloneArgumentValue(child)
-		}
-		return result
-	case []any:
-		result := make([]any, len(value))
-		for i, child := range value {
-			result[i] = cloneArgumentValue(child)
-		}
-		return result
-	default:
-		return value
-	}
-}
-
-func sameArgumentValue(left, right any) bool {
-	// JavaScript compares containers by identity; coercion mutates them in place.
-	switch left := left.(type) {
-	case map[string]any:
-		_, ok := right.(map[string]any)
-		return ok && reflect.ValueOf(left).Pointer() == reflect.ValueOf(right).Pointer()
-	case []any:
-		rightSlice, ok := right.([]any)
-		return ok && len(left) == len(rightSlice) && reflect.ValueOf(left).Pointer() == reflect.ValueOf(right).Pointer()
-	default:
-		switch right.(type) {
-		case map[string]any, []any:
-			return false
-		}
-		return left == right
-	}
-}
-
-func prettyArguments(raw json.RawMessage) string {
-	encoded, err := stringifyArgumentJSON(raw)
-	if err != nil {
-		return string(raw)
-	}
-	var pretty bytes.Buffer
-	if err := json.Indent(&pretty, encoded, "", "  "); err != nil {
-		return string(raw)
-	}
-	return pretty.String()
+		entry.validator, entry.err = schema.CompileCoercing(document, schema.CompileOptions{Formats: toolFormats(), UnresolvedRefs: schema.UnresolvedRefsReject})
+	})
+	return entry.validator, entry.err
 }

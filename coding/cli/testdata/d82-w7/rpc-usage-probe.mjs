@@ -40,6 +40,8 @@ await new Promise((resolve) => {
 		}
 		if (event.type === 'agent_settled') resolve();
 	});
+	// A CLI that closed its stdin or exited makes the write fail with EPIPE; an unhandled 'error' event would kill the probe before it says why the CLI wrote no frame, so that is left to the check below.
+	child.stdin.on('error', (error) => { if (error.code !== 'EPIPE') { console.error(`writing the prompt to the CLI failed: ${error}`); process.exit(1); } });
 	if (mode === 'rpc') child.stdin.write(JSON.stringify({ id: 'p', type: 'prompt', message: 'hi' }) + '\n');
 	else child.stdin.end();
 });

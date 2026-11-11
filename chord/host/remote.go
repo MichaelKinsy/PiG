@@ -510,7 +510,9 @@ func (binding *RemoteBinding) call(name string, args any, ctx Ctx) (any, error) 
 			// Send only what the consumer's own schema knows (the additive rule's premise; see ObjectImpl.call).
 			var sent any
 			if description.Args != nil {
-				sent = cleanArgs(binding.contract, description.Args, args)
+				if sent, err = Cleaned(description.Args, args); err != nil {
+					return
+				}
 			}
 			result = hold.channel.call(hold.id, name, sent, description.Args != nil, &RootRef{RootID: ctx.RootID(), CodeVersion: ctx.CodeVersion()}, ctx.Signal())
 		})

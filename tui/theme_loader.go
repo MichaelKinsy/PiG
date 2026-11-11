@@ -1,5 +1,7 @@
 package tui
 
+// Ports packages/coding-agent/src/modes/interactive/theme/theme.ts (loadTheme, resolveColor).
+
 // theme_loader.go: JSON theme file loading.
 //
 // Loads themes from upstream-compatible JSON files (dark.json, light.json,
@@ -127,6 +129,7 @@ func (v *ThemeColorValue) UnmarshalJSON(data []byte) error {
 	if number != math.Trunc(number) {
 		return fmt.Errorf("theme color index must be an integer: %s", data)
 	}
+	//portlint:allow numbers an index beyond int range converts to an extreme value on every architecture, which NewIndexedColor rejects as theme-schema.ts colorValue Integer 0..255 does
 	*v = ThemeColorValue{Index: int(number), IsIndex: true, isSet: true}
 	return nil
 }

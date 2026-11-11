@@ -6,6 +6,7 @@ import (
 
 	chorddelta "github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/durabletest"
 	"github.com/MichaelKinsy/PiG/durable/storage/sqlite/node"
 )
 
@@ -15,16 +16,16 @@ import (
 func TestSqliteDocumentTextKeepsKeyOrderAndLoneSurrogates(t *testing.T) {
 	const lone = "\xed\xa0\x80"
 	storage, path := createSqliteStorage(t, node.NodeSqliteStorageOptions{})
-	_ = must(storage.Commit(testContext, []durable.StorageWrite{durable.ConversationWrite{Value: durable.ConversationRecord{Id: durable.ROOT_CONVERSATION_ID}}}, func(durable.Seq) {}))
+	_ = must(durabletest.CommitWrites(testContext, storage, []durable.StorageWrite{durable.ConversationWrite{Value: durable.ConversationRecord{Id: durable.ROOT_CONVERSATION_ID}}}))
 	id := durable.DocumentId(must(storage.MintId()))
-	_ = must(storage.Commit(testContext, []durable.StorageWrite{durable.DocumentCreateWrite{
+	_ = must(durabletest.CommitWrites(testContext, storage, []durable.StorageWrite{durable.DocumentCreateWrite{
 		Record:  durable.DocumentCreate{Id: id, Kind: "text", Scope: durable.DocumentRecordScope{Kind: durable.ScopeSession}},
 		Content: durable.DocumentContent{Kind: durable.ContentBase, Version: 1, Value: chorddelta.JsonObjectOf("z", lone, "a", chorddelta.JsonObjectOf("y", 1.0, "b", 2.0))},
-	}}, func(durable.Seq) {}))
-	_ = must(storage.Commit(testContext, []durable.StorageWrite{durable.DocumentChangeWrite{
+	}}))
+	_ = must(durabletest.CommitWrites(testContext, storage, []durable.StorageWrite{durable.DocumentChangeWrite{
 		Id:      id,
 		Content: durable.DocumentContent{Kind: durable.ContentDelta, Version: 1, Ops: []durable.Op{{"s", []any{"m"}, chorddelta.JsonObjectOf("q", lone, "c", 3.0)}}},
-	}}, func(durable.Seq) {}))
+	}}))
 	mustDo(t, storage.Close(testContext))
 	stored := must(reopen(t, path).Document(testContext, id, durable.CurrentPoint))
 	if stored == nil {

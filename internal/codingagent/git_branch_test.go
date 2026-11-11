@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/core/footer-data-provider.ts
+
 import (
 	"context"
 	"os"

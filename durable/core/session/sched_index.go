@@ -20,6 +20,8 @@ type orderedSet[K comparable] struct {
 	slots int // the slots in use, live or dead
 	n     int // the keys in the set
 	dead  int
+	// front is a slot before which none is live, so First does not pass the slots of deleted keys again.
+	front int
 	// ranging counts the iterations in progress; a slot is reclaimed only while none is.
 	ranging int
 }
@@ -135,7 +137,7 @@ func (set *orderedSet[K]) Delete(key K) {
 func (set *orderedSet[K]) compact() {
 	old := set.chunks
 	indexed := set.index != nil
-	set.chunks, set.index, set.slots, set.dead = nil, nil, 0, 0
+	set.chunks, set.index, set.slots, set.dead, set.front = nil, nil, 0, 0, 0
 	for _, chunk := range old {
 		for _, item := range chunk {
 			if item.live {
@@ -168,12 +170,24 @@ func (set *orderedSet[K]) reset() {
 	set.index = nil
 	set.slots = 0
 	set.dead = 0
+	set.front = 0
 }
 
 // Clear removes every key.
 func (set *orderedSet[K]) Clear() {
 	set.reset()
 	set.n = 0
+}
+
+// First returns the oldest key, the first of Values, in amortized constant time.
+func (set *orderedSet[K]) First() (key K, ok bool) {
+	for set.front < set.slots && !set.item(set.front).live {
+		set.front++
+	}
+	if set.front == set.slots {
+		return key, false
+	}
+	return set.item(set.front).key, true
 }
 
 // Values returns the keys in insertion order.
@@ -260,6 +274,7 @@ func (s *Scheduler) walkDown(start treeNode, opts walkOptions, visit func(id ID,
 	for len(pending) > 0 {
 		at := pending[len(pending)-1]
 		pending = pending[:len(pending)-1]
+		s.recordOwned(at)
 		stopped := false
 		each := func(children *orderedSet[treeNode]) {
 			if children == nil || stopped {
@@ -400,6 +415,9 @@ func (s *Scheduler) known(node treeNode) bool {
 // nearestLiveAbove returns the nearest live task above ended ordinary work n, in the overlay's view: the one that work
 // held, if any. Work at or below a background task holds nothing above it.
 func (s *Scheduler) nearestLiveAbove(n taskNode, o *overlay) *jv.Object {
+	if s.reading {
+		s.record(IntentKey)
+	}
 	for current := n; !current.background; {
 		owner := current.owner
 		if owner == 0 {
@@ -418,7 +436,7 @@ func (s *Scheduler) nearestLiveAbove(n taskNode, o *overlay) *jv.Object {
 			rec, found = o.tasks[owner]
 		}
 		if !found {
-			rec, found = s.live.get(owner)
+			rec, found = s.liveRecord(owner)
 		}
 		if found && taskStatus(rec) != StatusTerminal {
 			return rec
@@ -495,7 +513,7 @@ func (s *Scheduler) scheduleSweep() {
 // listed node.
 func (s *Scheduler) sweep() {
 	s.dropQueue.Range(func(n treeNode) bool {
-		if _, listed := s.below[n]; listed {
+		if _, listed := s.below[n]; listed || s.pins[n] > 0 {
 			return true
 		}
 		if n.conversation {
@@ -514,6 +532,11 @@ func (s *Scheduler) sweep() {
 // task above it: one holding its outcome finalizes, an abort-marked one runs its abort handler; its waiters may run.
 func (s *Scheduler) track(prev *jv.Object, rec *jv.Object) {
 	id := mustInt(rec, "id")
+	if inv := s.invocations[id]; inv != nil {
+		inv.record = rec
+		s.checkpointMoved(inv, prev, rec)
+	}
+	s.trackActive(id, prev, rec)
 	if prev != nil && taskStatus(prev) == StatusWaiting {
 		for _, on := range idsOf(getObj(prev, "state"), "on") {
 			deleteFromSet(s.waiters, on, id)

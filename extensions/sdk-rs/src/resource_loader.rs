@@ -2,9 +2,9 @@
 
 use crate::context::Context;
 use crate::extension_runtime::ExtensionRuntime;
-use crate::graph::{callback_id, GraphCallback, GraphObject};
+use crate::graph::{GraphCallback, GraphObject, callback_id};
 use crate::settings_manager::SettingsManager;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::io;
 use std::ops::Deref;
 use std::sync::Arc;
@@ -49,7 +49,9 @@ pub struct DefaultResourceLoaderOptions<'a> {
 fn callback(context: &Context, override_fn: &Option<LoaderOverride>) -> Value {
     let wrapped: Option<GraphCallback> = override_fn.as_ref().map(|function| {
         let function = function.clone();
-        Arc::new(move |args: Vec<Value>| Ok(function(args.into_iter().next().unwrap_or(Value::Null)))) as GraphCallback
+        Arc::new(move |args: Vec<Value>| {
+            Ok(function(args.into_iter().next().unwrap_or(Value::Null)))
+        }) as GraphCallback
     });
     callback_id(context, wrapped)
 }
@@ -98,12 +100,23 @@ pub struct DefaultResourceLoader {
 
 impl DefaultResourceLoader {
     /// `new DefaultResourceLoader(options)`.
-    pub fn new(context: &Context, options: DefaultResourceLoaderOptions) -> io::Result<DefaultResourceLoader> {
-        if options.extension_factories.iter().any(|factory| matches!(factory, ExtensionFactory::Inline(_))) {
-            return Err(io::Error::other("DefaultResourceLoader option extensionFactories is not supported by the Rust SDK: an inline factory runs in this process but the child session's extensions load in the host (decision pending, gap SdkSessionGraph); use additional_extension_paths, or create_agent_session custom tools"));
+    pub fn new(
+        context: &Context,
+        options: DefaultResourceLoaderOptions,
+    ) -> io::Result<DefaultResourceLoader> {
+        if options
+            .extension_factories
+            .iter()
+            .any(|factory| matches!(factory, ExtensionFactory::Inline(_)))
+        {
+            return Err(io::Error::other(
+                "DefaultResourceLoader option extensionFactories is not supported by the Rust SDK: an inline factory runs in this process but the child session's extensions load in the host (decision pending, gap SdkSessionGraph); use additional_extension_paths, or create_agent_session custom tools",
+            ));
         }
         if options.extensions_override.is_some() {
-            return Err(io::Error::other("DefaultResourceLoader option extensionsOverride is not supported by the Rust SDK: it returns live extension objects, which live in the host (decision pending, gap SdkSessionGraph)"));
+            return Err(io::Error::other(
+                "DefaultResourceLoader option extensionsOverride is not supported by the Rust SDK: it returns live extension objects, which live in the host (decision pending, gap SdkSessionGraph)",
+            ));
         }
         let mut wire = json!({
             "cwd": options.cwd, "agentDir": options.agent_dir,
@@ -141,7 +154,9 @@ impl DefaultResourceLoader {
         if let Some(runtime) = options.runtime {
             wire["runtime"] = json!(runtime.handle());
         }
-        Ok(DefaultResourceLoader { object: GraphObject::construct(context, "DefaultResourceLoader", "new", vec![wire])? })
+        Ok(DefaultResourceLoader {
+            object: GraphObject::construct(context, "DefaultResourceLoader", "new", vec![wire])?,
+        })
     }
 
     /// The host's name for the loader, which `create_agent_session` puts on the wire.
@@ -156,40 +171,96 @@ impl DefaultResourceLoader {
 
     fn extensions_result(&self, data: Value) -> io::Result<LoadExtensionsResult> {
         let loader = self.object.handle().to_string();
-        let extensions = data["extensions"].as_array().map(|list| list.iter().map(|extension| LoadedExtension { data: extension.clone(), loader: loader.clone() }).collect()).unwrap_or_default();
+        let extensions = data["extensions"]
+            .as_array()
+            .map(|list| {
+                list.iter()
+                    .map(|extension| LoadedExtension {
+                        data: extension.clone(),
+                        loader: loader.clone(),
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
         let runtime = ExtensionRuntime::of_loader(self.object.context(), &loader)?;
-        Ok(LoadExtensionsResult { data, extensions, runtime })
+        Ok(LoadExtensionsResult {
+            data,
+            extensions,
+            runtime,
+        })
     }
     /// `{"skills", "diagnostics"}` of the last `reload`.
-    pub fn get_skills(&self) -> io::Result<Value> { self.object.call("getSkills", vec![]) }
+    pub fn get_skills(&self) -> io::Result<Value> {
+        self.object.call("getSkills", vec![])
+    }
     /// `{"prompts", "diagnostics"}` of the last `reload`.
-    pub fn get_prompts(&self) -> io::Result<Value> { self.object.call("getPrompts", vec![]) }
+    pub fn get_prompts(&self) -> io::Result<Value> {
+        self.object.call("getPrompts", vec![])
+    }
     /// `{"themes", "diagnostics"}` of the last `reload`.
-    pub fn get_themes(&self) -> io::Result<Value> { self.object.call("getThemes", vec![]) }
+    pub fn get_themes(&self) -> io::Result<Value> {
+        self.object.call("getThemes", vec![])
+    }
     /// `{"agentsFiles": [{"path", "content"}]}`: the context files of the last `reload`.
-    pub fn get_agents_files(&self) -> io::Result<Value> { self.object.call("getAgentsFiles", vec![]) }
+    pub fn get_agents_files(&self) -> io::Result<Value> {
+        self.object.call("getAgentsFiles", vec![])
+    }
     pub fn get_system_prompt(&self) -> io::Result<Option<String>> {
-        Ok(self.object.call("getSystemPrompt", vec![])?.as_str().map(str::to_string))
+        Ok(self
+            .object
+            .call("getSystemPrompt", vec![])?
+            .as_str()
+            .map(str::to_string))
     }
     /// `{"path"}` of the file the system prompt came from, null when it did not come from one.
-    pub fn get_system_prompt_source(&self) -> io::Result<Value> { self.object.call("getSystemPromptSource", vec![]) }
-    pub fn get_append_system_prompt(&self) -> io::Result<Vec<String>> {
-        Ok(self.object.call("getAppendSystemPrompt", vec![])?.as_array().map(|list| list.iter().filter_map(|text| text.as_str().map(str::to_string)).collect()).unwrap_or_default())
+    pub fn get_system_prompt_source(&self) -> io::Result<Value> {
+        self.object.call("getSystemPromptSource", vec![])
     }
-    pub fn get_append_system_prompt_sources(&self) -> io::Result<Value> { self.object.call("getAppendSystemPromptSources", vec![]) }
+    pub fn get_append_system_prompt(&self) -> io::Result<Vec<String>> {
+        Ok(self
+            .object
+            .call("getAppendSystemPrompt", vec![])?
+            .as_array()
+            .map(|list| {
+                list.iter()
+                    .filter_map(|text| text.as_str().map(str::to_string))
+                    .collect()
+            })
+            .unwrap_or_default())
+    }
+    pub fn get_append_system_prompt_sources(&self) -> io::Result<Value> {
+        self.object.call("getAppendSystemPromptSources", vec![])
+    }
     /// Adds the skills, prompt templates and themes extensions contributed: `{"skillPaths", "promptPaths", "themePaths"}`, lists of `{"path", "metadata": {"source", "scope", "origin", "baseDir"?}}`.
-    pub fn extend_resources(&self, paths: Value) -> io::Result<()> { self.object.call("extendResources", vec![paths]).map(|_| ()) }
+    pub fn extend_resources(&self, paths: Value) -> io::Result<()> {
+        self.object.call("extendResources", vec![paths]).map(|_| ())
+    }
     /// The bootstrap extension set, loaded with project settings untrusted, that project trust is decided with.
     pub fn load_project_trust_extensions(&self) -> io::Result<LoadExtensionsResult> {
-        self.extensions_result(self.object.call_async("loadProjectTrustExtensions", vec![])?)
+        self.extensions_result(
+            self.object
+                .call_async("loadProjectTrustExtensions", vec![])?,
+        )
     }
     /// Rediscovers every resource. `resolve_project_trust` takes the bootstrap extension set and answers whether the project is trusted.
-    pub fn reload(&self, resolve_project_trust: Option<Arc<dyn Fn(Value) -> bool + Send + Sync>>) -> io::Result<()> {
+    pub fn reload(
+        &self,
+        resolve_project_trust: Option<Arc<dyn Fn(Value) -> bool + Send + Sync>>,
+    ) -> io::Result<()> {
         let mut options = serde_json::Map::new();
         if let Some(resolve) = resolve_project_trust {
-            let wrapped: GraphCallback = Arc::new(move |args: Vec<Value>| Ok(json!(resolve(args.into_iter().next().unwrap_or(Value::Null)))));
-            options.insert("resolveProjectTrust".into(), callback_id(self.object.context(), Some(wrapped)));
+            let wrapped: GraphCallback = Arc::new(move |args: Vec<Value>| {
+                Ok(json!(resolve(
+                    args.into_iter().next().unwrap_or(Value::Null)
+                )))
+            });
+            options.insert(
+                "resolveProjectTrust".into(),
+                callback_id(self.object.context(), Some(wrapped)),
+            );
         }
-        self.object.call_async("reload", vec![Value::Object(options)]).map(|_| ())
+        self.object
+            .call_async("reload", vec![Value::Object(options)])
+            .map(|_| ())
     }
 }

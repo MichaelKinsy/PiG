@@ -45,6 +45,16 @@ export function isLoopbackRedirectUri(value) {
     const url = new URL(value);
     return url.protocol === "http:" && LOOPBACK_HOSTS.includes(url.hostname) && url.search === "" && url.hash === "";
 }
+/**
+ * Whether pi's Client ID Metadata Documents list a redirect URI for the loopback `callbackUrl`: they list
+ * `/callback` on localhost and 127.0.0.1, on any port. Without `callbackUrl`, pi uses such a URI.
+ */
+export function isClientMetadataDocumentCallback(callbackUrl) {
+    if (callbackUrl === undefined)
+        return true;
+    const url = new URL(callbackUrl);
+    return url.hostname !== "[::1]" && url.pathname === "/callback";
+}
 const SERVER_NAME = /^[A-Za-z0-9_-]+$/;
 /** Namespace of a server's tools: `mcp__<server>` with `-` replaced by `_`, like the tool names. */
 export function mcpNamespace(server) {
@@ -84,14 +94,14 @@ function validateOAuth(value) {
     if (value.clientName !== undefined && (typeof value.clientName !== "string" || !value.clientName.trim())) {
         return "oauth.clientName must be a non-empty string";
     }
-    if (value.clientRegistration !== undefined && value.clientRegistration !== "dcr") {
-        if (value.clientRegistration !== "cimd")
-            return 'oauth.clientRegistration must be "dcr" or "cimd"';
+    const registration = value.clientRegistration;
+    if (registration !== undefined && registration !== "auto" && registration !== "dcr") {
+        if (registration !== "cimd")
+            return 'oauth.clientRegistration must be "auto", "dcr", or "cimd"';
         if (value.clientId !== undefined || value.clientName !== undefined) {
             return 'oauth.clientRegistration "cimd" cannot be combined with oauth.clientId or oauth.clientName';
         }
-        const callback = typeof value.callbackUrl === "string" ? new URL(value.callbackUrl) : undefined;
-        if (callback && (callback.hostname === "[::1]" || callback.pathname !== "/callback")) {
+        if (!isClientMetadataDocumentCallback(typeof value.callbackUrl === "string" ? value.callbackUrl : undefined)) {
             return 'oauth.clientRegistration "cimd" requires oauth.callbackUrl on localhost or 127.0.0.1 with path /callback';
         }
     }

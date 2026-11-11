@@ -55,6 +55,12 @@ async function load(moduleDir) {
   if (typeof target === "object") target = target?.default;
   if (target === undefined && entry === ".") target = pkg.module ?? pkg.main;
   if (typeof target !== "string") throw new Error(`${name} exports no ${entry}`);
+  // Extensions import the pi-ai root through the extension view (coding-agent core/extensions/pi-ai-extension-view.ts): compat plus TypeBox's
+  // Type and a TypeBox StringEnum, which pi-ai's own entry no longer exports. The pi-ai vectors run that module.
+  if (moduleDir === "pi-ai") {
+    const view = join(packageDir("pi-coding-agent"), "dist/core/extensions/pi-ai-extension-view.js");
+    return { ns: await import(pathToFileURL(view).href), version: pkg.version };
+  }
   return { ns: await import(pathToFileURL(join(dir, target)).href), version: pkg.version };
 }
 
@@ -124,4 +130,5 @@ for (const [moduleDir, name] of caseSources()) {
     writeFileSync(path, text);
   }
 }
-process.exit(stale ? 1 : 0);
+// Exit once the pipe has taken every line: process.exit() right after console.error drops what it has not drained.
+process.stderr.write("", () => process.exit(stale ? 1 : 0));

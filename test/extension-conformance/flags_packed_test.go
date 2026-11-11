@@ -13,7 +13,7 @@ import (
 
 func TestPackedFlagValuesAcrossSDKs(t *testing.T) {
 	root := findModuleRoot(t)
-	for _, language := range []string{"go", "python", "rust"} {
+	for _, language := range []string{"go", "python", "rust", "lisp"} {
 		t.Run(language, func(t *testing.T) {
 			// These factories register only local flags and commands; each language owns its Host and config root.
 			t.Parallel()
@@ -117,6 +117,23 @@ def new_extension():
     e.command("flags", "", lambda ctx, args: ctx.notify(str(ctx.get_flag("shared")).lower(), "info"))
     return e
 `, name, pyValue))
+	case "lisp":
+		cfg.SDKName = "pig-sdk-lisp"
+		cfg.Package = name
+		cfg.Factory = "new-extension"
+		lispValue := ":false"
+		if value {
+			lispValue = "t"
+		}
+		write(filepath.Join(dir, name+".lisp"), fmt.Sprintf(`(defpackage %q (:use "COMMON-LISP"))
+(in-package %q)
+(defun new-extension ()
+  (let ((e (pig:make-extension %q)))
+    (pig:flag e "shared" :type "boolean" :default %s)
+    (pig:command e "flags" "" (lambda (ctx args) (declare (ignore args))
+                                (pig:ctx-notify ctx (if (eq (pig:ctx-get-flag ctx "shared") t) "true" "false") "info")))
+    e))
+`, name, name, name, lispValue))
 	case "rust":
 		cfg.SDKName = "pig-sdk"
 		cfg.Package = name

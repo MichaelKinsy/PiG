@@ -22,11 +22,11 @@ Every provider call passes `onPayload` and `onResponse` as `sdk.ts:349-388` does
 
 ## Replays
 
-- `ai/bedrock_observation_test.go` replays the HTTP/1 direct and result-only cases through PiG's provider at Pi's `(epoch, tick)`, and the cancel cases by events and terminal message (Pi's abort listeners run inside `controller.abort()`; PiG delivers the cancellation as an external completion).
+- `ai/providers/bedrock/bedrock_observation_test.go` replays the HTTP/1 direct and result-only cases through PiG's provider at Pi's `(epoch, tick)`, and the cancel cases by events and terminal message (Pi's abort listeners run inside `controller.abort()`; PiG delivers the cancellation as an external completion).
 - `coding/cli/rpc_bedrock_observation_test.go` runs the real binary for the 12 HTTP/1 `rpc` rows.
 - `../check.mjs` (`node check.mjs <pig> 200 bedrock-converse-stream`) is the multi-provider start-state check; `frames.mjs` builds its fixture.
-- `chain.mjs` records job positions of the AWS SDK stack alone (`chain.json`): the two constants of `ai/bedrock_stream_pipeline.go` (`bedrockClientSendPrefixHops`, `bedrockClientSendReturnHops`) and their hook variants come from it.
-- `ai/testdata/bedrock-eventstream/probe.mjs` records what the real AWS SDK and `@smithy/core` event-stream stack yields or throws for 40 byte sequences (`golden.json`); `ai/bedrock_eventstream_test.go` replays them through PiG's framing and decoding.
+- `chain.mjs` records job positions of the AWS SDK stack alone (`chain.json`): the two constants of `ai/providers/bedrock/bedrock_stream_pipeline.go` (`bedrockClientSendPrefixHops`, `bedrockClientSendReturnHops`) and their hook variants come from it.
+- `ai/providers/bedrock/testdata/bedrock-eventstream/probe.mjs` records what the real AWS SDK and `@smithy/core` event-stream stack yields or throws for 40 byte sequences (`golden.json`); `ai/providers/bedrock/bedrock_eventstream_test.go` replays them through PiG's framing and decoding.
 
 ## Findings
 

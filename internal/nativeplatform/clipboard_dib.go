@@ -1,5 +1,7 @@
 package nativeplatform
 
+// Ports packages/tui/src/native-platform.ts (the Windows helper's DIB image decoding, packages/tui/native/win32/src/win32-platform.c).
+
 import (
 	"encoding/binary"
 	"math"

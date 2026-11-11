@@ -2,6 +2,8 @@
 
 package codingagent
 
+// Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts (handleCtrlZ; the resize handler is the pig terminal wiring of the same lifecycle).
+
 import (
 	"context"
 	"os"

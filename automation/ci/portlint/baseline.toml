@@ -55,9 +55,9 @@ snippet = "output.Diagnostics = append(output.Diagnostics, details.attach(Assist
 
 [[hit]]
 check = "clock"
-file = "ai/bedrock.go"
+file = "ai/providers/bedrock/bedrock.go"
 func = "appendBedrockFailureDiagnostic"
-snippet = "AppendAssistantMessageDiagnostic(message, details.attach(AssistantMessageDiagnostic{Type: \"bedrock_response_failure\", Timestamp: time.Now().UnixMilli()}))"
+snippet = "ai.AppendAssistantMessageDiagnostic(message, details.Attach(ai.AssistantMessageDiagnostic{Type: \"bedrock_response_failure\", Timestamp: time.Now().UnixMilli()}))"
 
 [[hit]]
 check = "clock"
@@ -1231,12 +1231,6 @@ snippet = "AllowedFallbackModels                       []jsonAllowedFallbackMode
 
 [[hit]]
 check = "emptydrop"
-file = "cmd/gen-models/models_dev.go"
-func = "(decl)"
-snippet = "ThinkingLevelMap map[string]*string `json:\"thinkingLevelMap,omitempty\"`"
-
-[[hit]]
-check = "emptydrop"
 file = "coding/cli/auth_commands.go"
 func = "(decl)"
 snippet = "Diagnostics []authInspectionDiagnostic `json:\"diagnostics,omitempty\"`"
@@ -1428,12 +1422,6 @@ check = "emptydrop"
 file = "coding/extension/host/runtimecell/cache_lifecycle.go"
 func = "(decl)"
 snippet = "Errors         []string `json:\"errors,omitempty\"`"
-
-[[hit]]
-check = "emptydrop"
-file = "coding/extension/host/subprocess/editor_proxy.go"
-func = "(decl)"
-snippet = "Lines              []string `json:\"lines,omitempty\"`"
 
 [[hit]]
 check = "emptydrop"
@@ -2027,12 +2015,6 @@ snippet = "go r.drainUIPromptEvents()"
 [[hit]]
 check = "golifetime"
 file = "coding/extension/host/subprocess/host.go"
-func = "Host.adoptConn"
-snippet = "go h.handleIncoming(me, conn)"
-
-[[hit]]
-check = "golifetime"
-file = "coding/extension/host/subprocess/host.go"
 func = "Host.handleIncoming"
 snippet = "go func() {"
 
@@ -2041,12 +2023,6 @@ check = "golifetime"
 file = "coding/extension/host/subprocess/host_calls.go"
 func = "callLanes.pushCall"
 snippet = "go l.drain(lane, current)"
-
-[[hit]]
-check = "golifetime"
-file = "coding/extension/host/subprocess/packed_go.go"
-func = "Host.acceptPackedExt"
-snippet = "go h.handleIncoming(me, conn)"
 
 [[hit]]
 check = "golifetime"
@@ -2336,12 +2312,6 @@ check = "jsonescape"
 file = "cmd/gen-models/main.go"
 func = "emit"
 snippet = "compat, err := json.Marshal(r.Compat)"
-
-[[hit]]
-check = "jsonescape"
-file = "cmd/gen-models/models_dev.go"
-func = "writeModelsDevCatalog"
-snippet = "data, err = json.MarshalIndent(value, \"\", \"  \")"
 
 [[hit]]
 check = "jsonescape"
@@ -3103,12 +3073,6 @@ snippet = "if data, err := json.Marshal(d); err == nil && json.Unmarshal(data, &
 
 [[hit]]
 check = "mapkeyorder"
-file = "internal/codingagent/tools/argument_schema.go"
-func = "nativeSchemaJSON"
-snippet = "encoded, err := json.Marshal(document)"
-
-[[hit]]
-check = "mapkeyorder"
 file = "mcp/oauth/flow.go"
 func = "registrationBody"
 snippet = "return json.Marshal(fields)"
@@ -3298,12 +3262,6 @@ check = "numbers"
 file = "ai/provider_retry.go"
 func = "providerRetryDelay"
 snippet = "return time.Duration(jitteredMs) * time.Millisecond, nil"
-
-[[hit]]
-check = "numbers"
-file = "cmd/gen-models/openrouter_catalog.go"
-func = "roundCost"
-snippet = "result, _ := strconv.ParseFloat(floor.String()+\"e-6\", 64)"
 
 [[hit]]
 check = "numbers"
@@ -4051,12 +4009,6 @@ snippet = "ms = max(0, int(math.Ceil(float64(time.Until(deadline))/float64(time.
 
 [[hit]]
 check = "numbers"
-file = "tui/terminal_color_query.go"
-func = "terminalColorQueryDelay"
-snippet = "return time.Duration(milliseconds) * time.Millisecond"
-
-[[hit]]
-check = "numbers"
 file = "tui/terminal_colors.go"
 func = "ParseOscColorResponse"
 snippet = "index, _ := strconv.Atoi(match[2])"
@@ -4445,18 +4397,6 @@ snippet = "if message.Provider == \"cerebras\" && cerebrasBodylessOverflowPatter
 
 [[hit]]
 check = "providerliteral"
-file = "cmd/gen-models/reasoning.go"
-func = "applyVendorReasoning"
-snippet = "if provider == \"google-vertex\" {"
-
-[[hit]]
-check = "providerliteral"
-file = "cmd/gen-models/reasoning.go"
-func = "applyVendorReasoning"
-snippet = "if rows[i].Provider == \"openrouter\" {"
-
-[[hit]]
-check = "providerliteral"
 file = "coding/cli/auth_commands.go"
 func = "runOAuthProviderLogin"
 snippet = "if prompt.AllowEmpty && provider.ID() == \"github-copilot\" {"
@@ -4794,13 +4734,13 @@ snippet = "listener, err := net.Listen(\"unix\", socketPath)"
 
 [[hit]]
 check = "utf16units"
-file = "ai/bedrock.go"
+file = "ai/providers/bedrock/bedrock.go"
 func = "normalizeBedrockToolID"
 snippet = "if len(clean) > 64 {"
 
 [[hit]]
 check = "utf16units"
-file = "ai/bedrock.go"
+file = "ai/providers/bedrock/bedrock.go"
 func = "normalizeBedrockToolID"
 snippet = "clean = clean[:64]"
 
@@ -4899,24 +4839,6 @@ check = "utf16units"
 file = "codemode/source.go"
 func = "ParseCodemodeSource"
 snippet = "options, err := parseOptions(jsstring.Trim(trimmed[len(CodemodeOptionsPrefix):]))"
-
-[[hit]]
-check = "utf16units"
-file = "coding/extension/builtin/toolsearch/toolsearch.go"
-func = "stem"
-snippet = "case len(term) > 4 && strings.HasSuffix(term, \"ies\"):"
-
-[[hit]]
-check = "utf16units"
-file = "coding/extension/builtin/toolsearch/toolsearch.go"
-func = "stem"
-snippet = "case len(term) > 4 && pluralEnding.MatchString(term):"
-
-[[hit]]
-check = "utf16units"
-file = "coding/extension/builtin/toolsearch/toolsearch.go"
-func = "stem"
-snippet = "case len(term) > 3 && strings.HasSuffix(term, \"s\") && !strings.HasSuffix(term, \"ss\"):"
 
 [[hit]]
 check = "utf16units"
@@ -6249,12 +6171,6 @@ snippet = "ctx, cancel := context.WithCancel(context.Background())"
 
 [[hit]]
 check = "ctxbackground"
-file = "env/daemon/watch.go"
-func = "server.runWatch"
-snippet = "defer func() { _ = opened.Close(context.Background()) }()"
-
-[[hit]]
-check = "ctxbackground"
 file = "env/remote_env.go"
 func = "handle.preadStart"
 snippet = "return h.start(context.Background(), \"pread\", request, nil)"
@@ -6832,7 +6748,7 @@ snippet = "lifetime = context.Background()"
 [[hit]]
 check = "ctxbackground"
 file = "tui/editor_autocomplete_request.go"
-func = "Editor.requestNativeAutocomplete"
+func = "prepareNativeAutocomplete"
 snippet = "result := provider.GetSuggestions(context.Background(), lines, row, col, AutocompleteSuggestionOptions{Force: force})"
 
 [[hit]]

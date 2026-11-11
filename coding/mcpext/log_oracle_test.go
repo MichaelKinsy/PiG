@@ -1,5 +1,7 @@
 package mcpext
 
+// pi: packages/coding-agent/src/extensions/mcp/log.ts
+
 import (
 	"encoding/json"
 	"fmt"

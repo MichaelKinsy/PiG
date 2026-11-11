@@ -264,6 +264,26 @@ export function getSelfUpdateCommand(packageName, npmCommand, updatePackageTarge
     }
     return command;
 }
+/**
+ * The self-update command configured by the user: `PI_SELF_UPDATE_COMMAND` (whitespace-separated
+ * argv, no quoting), else the global `selfUpdateCommand` setting. Overrides install-method detection.
+ */
+export function getConfiguredSelfUpdateArgv(setting) {
+    const fromEnv = process.env.PI_SELF_UPDATE_COMMAND?.trim().split(/\s+/).filter(Boolean);
+    if (fromEnv?.length)
+        return fromEnv;
+    return setting?.length ? setting : undefined;
+}
+/** Fill the `{packageName}`, `{version}`, and `{installSpec}` placeholders of a configured self-update command. */
+export function makeConfiguredSelfUpdateCommand(argv, release) {
+    const values = {
+        packageName: release.packageName,
+        version: release.version,
+        installSpec: `${release.packageName}@${release.version}`,
+    };
+    const [command = "", ...args] = argv.map((arg) => arg.replace(/\{(packageName|version|installSpec)\}/g, (_, name) => values[name]));
+    return makeSelfUpdateCommandStep(command, args);
+}
 export function getSelfUpdateUnavailableInstruction(packageName, npmCommand, updatePackageTarget = packageName) {
     const method = detectInstallMethod();
     const target = normalizeSelfUpdatePackageTarget(updatePackageTarget);
@@ -271,11 +291,10 @@ export function getSelfUpdateUnavailableInstruction(packageName, npmCommand, upd
         return `Download from: https://github.com/earendil-works/pi/releases/latest`;
     }
     const command = getSelfUpdateCommandForMethod(method, packageName, target, npmCommand);
-    if (command) {
-        if (isManagedByGlobalPackageManager(method, packageName, npmCommand) && !isSelfUpdatePathWritable()) {
-            return `This installation is managed by a global ${method} install, but the install path is not writable. Update it yourself with: ${command.display}`;
-        }
-        return `This installation is not managed by a global ${method} install. Update it with the package manager, wrapper, or source checkout that provides it.`;
+    // Path-based detection also matches installs that only live under a package manager's directory,
+    // such as a wrapper under PNPM_HOME, so name the package manager only when it owns the install.
+    if (command && isManagedByGlobalPackageManager(method, packageName, npmCommand) && !isSelfUpdatePathWritable()) {
+        return `This installation is managed by a global ${method} install, but the install path is not writable. Update it yourself with: ${command.display}`;
     }
     return `Update ${target.installSpec} using the package manager, wrapper, or source checkout that provides this installation.`;
 }

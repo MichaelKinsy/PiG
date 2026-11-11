@@ -1,5 +1,7 @@
 package extension
 
+// Ports packages/coding-agent/src/core/extensions/types.ts (ExtensionMode).
+
 // ExtensionMode is the run mode pi is operating in, exposed to
 // extensions via Context.Mode(). Extensions guard terminal-only UI
 // (custom components, dialogs) on mode == ModeTUI.

@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"golang.org/x/sys/unix"
@@ -173,5 +174,50 @@ func TestPipesWaitDeliversEveryPipeWhenOneEndedAndAHolderKeepsTheOther(t *testin
 	}
 	if out, errText := c.text(0), c.text(1); out != "out" || errText != "err" {
 		t.Fatalf("output = %q and %q, want %q and %q", out, errText, "out", "err")
+	}
+}
+
+// Node's loop hands a child's stdout to the byte cap before its stderr when the child wrote stdout first, so a reader of a later pipe waits until an earlier
+// pipe's bytes are delivered. That also holds when the earlier reader takes them while the later one is deciding whether to wait, which is a window of
+// microseconds that only host load widens. The test plays the earlier reader from AfterPeek, the point between the later reader's two questions: on the
+// first pass it claims its turn and empties its pipe, on the third it delivers. The later reader must not return before that delivery.
+func TestAwaitTurnWaitsForAnEarlierReaderThatTakesItsBytesWhileALaterReaderDecides(t *testing.T) {
+	stdoutR, stdoutW := newPipe(t)
+	stderrR, stderrW := newPipe(t)
+	// The child wrote stdout, then stderr.
+	if _, err := stdoutW.WriteString("ab"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := stderrW.WriteString("cd"); err != nil {
+		t.Fatal(err)
+	}
+	var (
+		passes    int
+		delivered bool
+	)
+	p := &Pipes{
+		files:    []*os.File{stdoutR, stderrR},
+		stopped:  make([]atomic.Bool, 2),
+		inflight: make([]atomic.Bool, 2),
+	}
+	p.hooks = &Hooks{AfterPeek: func(earlier int) {
+		passes++
+		switch passes {
+		case 1:
+			p.inflight[earlier].Store(true)
+			if n, err := stdoutR.Read(make([]byte, 8)); err != nil || n != 2 {
+				t.Errorf("the earlier reader took %d bytes, %v; want the 2 the child wrote", n, err)
+			}
+		case 3:
+			delivered = true
+			p.inflight[earlier].Store(false)
+		}
+	}}
+	claimed, ok := p.awaitTurn(1, stderrR)
+	if !claimed || !ok {
+		t.Fatalf("awaitTurn = (%v, %v), want the turn claimed", claimed, ok)
+	}
+	if !delivered {
+		t.Fatal("the later reader claimed its turn before the earlier reader delivered the bytes it took")
 	}
 }

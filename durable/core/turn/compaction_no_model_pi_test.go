@@ -18,8 +18,8 @@ func TestCompactionWithoutAUsableModelFailsWithNoModel(t *testing.T) {
 		message string
 		failure string
 	}{
-		{"no model", nil, `"message":"No model is configured"`, `"reason":"manual","error":"No model is configured"}}`},
-		{"unknown model", &turn.ModelRef{Provider: "other", ModelID: "x"}, `"message":"Model other/x is not available"`, `"reason":"manual","error":"Model other/x is not available"}}`},
+		{"no model", nil, `"message":"No model is configured"`, `"trigger":"manual","error":"No model is configured"}}`},
+		{"unknown model", &turn.ModelRef{Provider: "other", ModelID: "x"}, `"message":"Model other/x is not available"`, `"trigger":"manual","error":"Model other/x is not available"}}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			r := compactionRig(t)

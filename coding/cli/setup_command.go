@@ -85,6 +85,7 @@ func setupTools() []setupTool {
 		{name: "cargo", purpose: "Rust extension cells", remedy: "install Rust from https://rustup.rs", find: onPath("cargo")},
 		{name: "node", purpose: "Node and TypeScript extensions", remedy: "install Node.js 22.13 or newer from https://nodejs.org", find: onPath("node")},
 		{name: python3Name(), purpose: "Python extensions", remedy: "install Python 3 from https://www.python.org/downloads/", find: onPath(python3Name())},
+		{name: sbclName(), purpose: "Lisp extensions (SBCL 2.6.9)", remedy: "install SBCL 2.6.9 from https://www.sbcl.org/platform-table.html, or set PIG_SBCL", find: onPath(sbclName())},
 		{name: "git", purpose: "git: Package sources", remedy: "install Git from https://git-scm.com/downloads", find: onPath("git")},
 	}
 }
@@ -95,6 +96,13 @@ func goRemedy(goos string) string {
 		return "pkg install golang"
 	}
 	return "pig setup go"
+}
+
+func sbclName() string {
+	if runtime.GOOS == "windows" {
+		return "sbcl.exe"
+	}
+	return "sbcl"
 }
 
 func python3Name() string {

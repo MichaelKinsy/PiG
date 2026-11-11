@@ -17,7 +17,7 @@ import (
 // Upstream's pi.events is one EventEmitter per session (packages/coding-agent/src/core/event-bus.ts:12-33): listeners run in registration order, each one's synchronous prefix finishes before emit returns, a listener's error is caught and printed as `Event handler error (<channel>):` (event-bus.ts:19-25), and the unsubscribe function removes only that listener (event-bus.ts:27). The native SDKs bridge that bus by value. The node realm is the control: it runs upstream's own semantics, and a native realm must produce the same observations wherever a payload by value can.
 
 // busNativeLanguages lists the SDKs that bridge pi.events.
-var busNativeLanguages = []string{"go", "python", "rust"}
+var busNativeLanguages = []string{"go", "python", "rust", "lisp"}
 
 var busIsolations = []string{"isolated", "shared-ok"}
 

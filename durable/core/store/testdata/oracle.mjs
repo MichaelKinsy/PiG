@@ -39,7 +39,11 @@ for (const [i, c] of script.commits.entries()) {
 }
 await storage.close(undefined)
 for (const r of results) console.log(JSON.stringify(r))
-if (mode === "write") process.exit(0)
+// Exit once the pipe has taken every line: process.exit() right after console.log drops what it has not drained.
+if (mode === "write") {
+	await new Promise(done => process.stdout.write("", done))
+	process.exit(0)
+}
 
 const TABLES = [
 	["durable_schema", "singleton"],
@@ -66,6 +70,7 @@ for (const [t] of TABLES) {
 	for (let i = 0; i < Math.max(a.length, b.length); i++) {
 		if (a[i] !== b[i]) {
 			console.log(`DIFF ${t} row ${i}\n pi:   ${a[i]}\n core: ${b[i]}`)
+			await new Promise(done => process.stdout.write("", done))
 			process.exit(1)
 		}
 	}

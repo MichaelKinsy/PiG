@@ -109,7 +109,7 @@ func TestPostLoginSelectionLosesToOwnerLoopCommands(t *testing.T) {
 				started, release := make(chan struct{}), make(chan struct{})
 				build := m.opts.ModelBuilder
 				m.opts.ModelBuilder = func(spec string) (*ai.Model, error) {
-					if spec == "openai/gpt-5.5" {
+					if spec == "openai/gpt-6.1-sol" {
 						close(started)
 						<-release
 					}
@@ -143,7 +143,7 @@ func TestPostLoginSelectionLosesToOwnerLoopCommands(t *testing.T) {
 				if m.opts.SettingsManager.GetDefaultModel() != "" {
 					t.Fatal("stale login persisted the default")
 				}
-				if strings.Contains(plainRender(m.chatContainer), "Selected gpt-5.5") {
+				if strings.Contains(plainRender(m.chatContainer), "Selected gpt-6.1-sol") {
 					t.Fatal("stale login announced selection")
 				}
 			})
@@ -165,7 +165,7 @@ func (h *blockedPostLoginHandle) SetModelOnMain(_ context.Context, model *ai.Mod
 	return h.setModel(model, []ModelMutationOptions{options}, dispatch)
 }
 func (h *blockedPostLoginHandle) setModel(model *ai.Model, options []ModelMutationOptions, dispatch func(func() error) error) error {
-	login := model.ID == "gpt-5.5"
+	login := model.ID == "gpt-6.1-sol"
 	if login && !h.afterMutation {
 		close(h.started)
 		<-h.release

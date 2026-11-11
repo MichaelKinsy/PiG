@@ -78,8 +78,9 @@ func TestTaskContextReadIsExtendedWithOnlyNewerEntries(t *testing.T) {
 			}
 		}
 		extended, rows := read("extended", nil)
-		if rows != 3 {
-			fail("extended read scanned %d entries, want the 3 new ones", rows)
+		// The kept range took the three entries as they were committed, so the read scans nothing.
+		if rows != 0 {
+			fail("extended read scanned %d entries, want none", rows)
 		}
 		same("extended", extended, whole("extended"))
 

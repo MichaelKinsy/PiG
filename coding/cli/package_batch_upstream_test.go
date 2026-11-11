@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -49,7 +50,7 @@ func TestPackageBatchedConcurrentUpdatesOriginal(t *testing.T) {
 	expectedGit := []string{"user-repo-a", "user-repo-b", "user-repo-pinned", "project-repo-a"}
 	// npm gets the real paths of the install roots (package-manager.ts getNpmInstallArgs); a temporary directory may be a symlink.
 	realUserRoot, realProjectRoot := realPathSync(t, userRoot), realPathSync(t, projectRoot)
-	expectedInstalls := [][]string{{"install", "user-old@latest", "user-unknown@latest", "--prefix", realUserRoot, "--legacy-peer-deps"}, {"install", "project-old@latest", "project-missing@latest", "--prefix", realProjectRoot, "--legacy-peer-deps"}}
+	expectedInstalls := [][]string{{"install", "user-old@latest", "user-unknown@latest", "--prefix", realUserRoot, "--legacy-peer-deps", "--no-audit", "--no-fund"}, {"install", "project-old@latest", "project-missing@latest", "--prefix", realProjectRoot, "--legacy-peer-deps", "--no-audit", "--no-fund"}}
 	var mu sync.Mutex
 	counts, active, maxActive := map[string]int{}, map[string]int{}, map[string]int{}
 	limits := map[string]int{"npm": len(expectedInstalls), "git": len(expectedGit)}
@@ -92,6 +93,26 @@ func TestPackageBatchedConcurrentUpdatesOriginal(t *testing.T) {
 			labels = append(labels, pkg.Source)
 		}
 	}
+	// Pi 0d23d534: npm install is mocked and changes nothing, so each updated package whose registry lookup succeeded (user-old and
+	// project-old) is announced as still at its old version. The upstream test does not look at progress events; these are the events
+	// package-manager.ts reportUnchangedNpmUpdates emits, which follow the completion of their batch.
+	var lifecycle, warnings []packagemanager.ProgressEvent
+	for _, event := range progress {
+		if event.Type == "progress" {
+			warnings = append(warnings, event)
+		} else {
+			lifecycle = append(lifecycle, event)
+		}
+	}
+	slices.SortFunc(warnings, func(a, b packagemanager.ProgressEvent) int { return strings.Compare(a.Source, b.Source) })
+	wantWarnings := []packagemanager.ProgressEvent{}
+	for _, name := range []string{"project-old", "user-old"} {
+		wantWarnings = append(wantWarnings, packagemanager.ProgressEvent{Type: "progress", Action: "update", Source: "npm:" + name, Message: new("npm:" + name + " is still 1.0.0 (registry reports 2.0.0); npm registry metadata may be stale, try again in a few minutes")})
+	}
+	if !reflect.DeepEqual(warnings, wantWarnings) {
+		t.Fatalf("unchanged-version warnings=%+v, want %+v", warnings, wantWarnings)
+	}
+	progress = lifecycle
 	if len(progress) != 2*len(labels) {
 		t.Fatalf("progress=%+v, want a start and completion for each batch/repository", progress)
 	}

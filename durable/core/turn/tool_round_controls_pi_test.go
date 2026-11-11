@@ -98,17 +98,28 @@ func TestToolRoundAddsTheToolsItsControlsAsk(t *testing.T) {
 	}
 }
 
-// generation.ts:618-631: the last `handoff` in call order wins; the round appends a `pi.reset` entry holding it as a user message, which cuts the context, and ends the run without another model request.
-// mutation-checked: the first handoff winning, not appending the reset, or continuing the run fails it.
-func TestToolRoundHandoffAppendsAResetAndEndsTheRun(t *testing.T) {
-	r := newRig(t)
-	toolRoundWith(t, r, controlResult(`{"handoff":"first"}`), controlResult(`{"handoff":"second"}`))
-	if len(r.requests) != 0 {
-		t.Errorf("model requests after a handoff = %d, want the run ended", len(r.requests))
-	}
-	last := lastEntry(r)
-	if !strings.Contains(last, `"kind":"pi.reset"`) || !strings.Contains(last, `"content":"second"`) || strings.Contains(last, "first") {
-		t.Errorf("last entry = %s, want a reset carrying the last handoff", last)
+// generation.ts finishToolRound (Pi 38ff99177): the last `handoff` in call order wins; the round appends a `pi.reset` entry holding it as a user message, which cuts the context, and the run continues in it with another model request; a round that also terminates ends the run after the reset.
+// mutation-checked: the first handoff winning, not appending the reset, ending the run at the handoff, or continuing a terminating round fails it.
+func TestToolRoundHandoffAppendsAResetAndContinuesTheRunUnlessItTerminates(t *testing.T) {
+	for _, tc := range []struct {
+		name         string
+		results      []string
+		wantRequests int
+	}{
+		{"handoff alone continues the run", []string{controlResult(`{"handoff":"first"}`), controlResult(`{"handoff":"second"}`)}, 1},
+		{"a terminating round ends the run after the reset", []string{controlResult(`{"handoff":"first","terminate":true}`), controlResult(`{"handoff":"second","terminate":true}`)}, 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := newRig(t)
+			toolRoundWith(t, r, tc.results...)
+			if len(r.requests) != tc.wantRequests {
+				t.Errorf("model requests after a handoff = %d, want %d", len(r.requests), tc.wantRequests)
+			}
+			reset := lastEntryOf(r, "pi.reset")
+			if !strings.Contains(reset, `"content":"second"`) || strings.Contains(reset, "first") {
+				t.Errorf("reset entry = %s, want a reset carrying the last handoff", reset)
+			}
+		})
 	}
 }
 

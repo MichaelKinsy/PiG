@@ -1,5 +1,7 @@
 package ai
 
+// Ports packages/coding-agent/src/core/auth-storage.ts
+
 // Credential-store contract for request-auth resolution. Mirrors upstream
 // packages/ai/src/auth/types.ts (CredentialStore, CredentialInfo) and the
 // coding-agent implementations in packages/coding-agent/src/core/auth-storage.ts

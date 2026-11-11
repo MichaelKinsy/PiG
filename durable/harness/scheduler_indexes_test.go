@@ -22,16 +22,18 @@ type commitCounter struct {
 	endedIn map[durable.TaskId]int
 }
 
-func (store *commitCounter) Commit(ctx context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
+func (store *commitCounter) Commit(ctx context.Context, batches [][]durable.StorageWrite, receive func(index int, seq durable.Seq)) (durable.CommitResult, error) {
 	store.mu.Lock()
-	store.commits++
-	for _, write := range writes {
-		if task, ok := write.(durable.TaskWrite); ok && task.Value.State.Status == durable.TaskTerminal {
-			store.endedIn[task.Value.Id] = store.commits
+	for _, writes := range batches {
+		store.commits++
+		for _, write := range writes {
+			if task, ok := write.(durable.TaskWrite); ok && task.Value.State.Status == durable.TaskTerminal {
+				store.endedIn[task.Value.Id] = store.commits
+			}
 		}
 	}
 	store.mu.Unlock()
-	return store.Storage.Commit(ctx, writes, adopt)
+	return store.Storage.Commit(ctx, batches, receive)
 }
 
 func (store *commitCounter) ended(id durable.TaskId) int {
@@ -59,7 +61,7 @@ func (store *conversationRead) Conversation(ctx context.Context, id durable.Conv
 }
 
 func TestSchedulerIndexes(t *testing.T) {
-	// harness-scheduler-indexes.test.ts:125 it("finalizes a chain of held owners in the commit that frees the last one")
+	// harness-scheduler-indexes.test.ts:132 it("finalizes a chain of held owners in the commit that frees the last one")
 	t.Run("finalizes a chain of held owners in the commit that frees the last one", func(t *testing.T) {
 		fixtures := newOwnFixtures()
 		store := &commitCounter{Storage: openSqlite(t, filepath.Join(t.TempDir(), "session.sqlite")), endedIn: map[durable.TaskId]int{}}
@@ -93,7 +95,7 @@ func TestSchedulerIndexes(t *testing.T) {
 		mustClose(t, opened.harness)
 	})
 
-	// harness-scheduler-indexes.test.ts:160 it("keeps a scope busy after reopen for work below an ended task whose chain is not loaded yet")
+	// harness-scheduler-indexes.test.ts:170 it("keeps a scope busy after reopen for work below an ended task whose chain is not loaded yet")
 	t.Run("keeps a scope busy after reopen for work below an ended task whose chain is not loaded yet", func(t *testing.T) {
 		fixtures := newOwnFixtures()
 		path := filepath.Join(t.TempDir(), "session.sqlite")

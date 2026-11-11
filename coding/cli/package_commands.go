@@ -268,7 +268,7 @@ func packageUsage(cmd packageCommand) string {
 func printPackageCommandHelp(cmd packageCommand) {
 	switch cmd {
 	case packageInstall:
-		fmt.Print(chalkBold("Usage:") + "\n  pig install <source> [-l] [--approve|--no-approve]\n  pig install --validate-only [--json] <source>...\n  pig install --validate-only [--json] --set <source[,source...]>\n\nInstall a package and add it to settings. With --validate-only, validate/build/start one or more packages without installing them.\n\nOptions:\n  -l, --local        Install project-locally (.pig/settings.json)\n  -a, --approve     Trust project-local files for this command\n  -na, --no-approve Ignore project-local files for this command\n  --validate-only    Validate/build/start package refs without installing them\n  --json             Emit JSON validation output with --validate-only\n  --set              Validate a comma- or whitespace-separated extension set\n\nExamples:\n  pig install npm:@foo/bar\n  pig install git:github.com/user/repo\n  pig install git:git@github.com:user/repo\n  pig install https://github.com/user/repo\n  pig install ssh://git@github.com/user/repo\n  pig install ./local/path\n  pig install ./local/path --validate-only --json\n  pig install --validate-only --json ./ext-a ./ext-b\n")
+		fmt.Print(chalkBold("Usage:") + "\n  pig install <source> [-l] [--approve|--no-approve]\n  pig install --validate-only [--json] <source>...\n  pig install --validate-only [--json]\n  pig install --validate-only [--json] --set <source[,source...]>\n\nInstall a package and add it to settings. With --validate-only, validate/build/start one or more packages without installing them; with no source, check that every configured local package path resolves.\n\nOptions:\n  -l, --local        Install project-locally (.pig/settings.json)\n  -a, --approve     Trust project-local files for this command\n  -na, --no-approve Ignore project-local files for this command\n  --validate-only    Validate/build/start package refs without installing them\n  --json             Emit JSON validation output with --validate-only\n  --set              Validate a comma- or whitespace-separated extension set\n\nExamples:\n  pig install npm:@foo/bar\n  pig install git:github.com/user/repo\n  pig install git:git@github.com:user/repo\n  pig install https://github.com/user/repo\n  pig install ssh://git@github.com/user/repo\n  pig install ./local/path\n  pig install ./local/path --validate-only --json\n  pig install --validate-only --json ./ext-a ./ext-b\n")
 	case packageRemove:
 		fmt.Print(chalkBold("Usage:") + "\n  pig remove <source> [-l] [--approve|--no-approve]\n\nRemove a package and its source from settings.\nAlias: pig uninstall <source> [-l]\n\nOptions:\n  -l, --local       Remove from project settings (.pig/settings.json)\n  -a, --approve     Trust project-local files for this command\n  -na, --no-approve Ignore project-local files for this command\n\nExamples:\n  pig remove npm:@foo/bar\n  pig uninstall npm:@foo/bar\n\n")
 	case packageUpdate:
@@ -393,7 +393,8 @@ func runPackageCommand(args []string, runtimeOptions ...packageCommandRuntimeOpt
 		fmt.Fprintln(os.Stderr, chalkDim("Usage: "+packageUsage(opts.command)))
 		return 1
 	}
-	if (opts.command == packageInstall || opts.command == packageRemove) && opts.source == "" {
+	// pig additive (D216): --validate-only with no source checks the configured local Packages.
+	if (opts.command == packageInstall || opts.command == packageRemove) && opts.source == "" && (opts.command == packageRemove || !opts.validateOnly) {
 		fmt.Fprintln(os.Stderr, chalkRed(fmt.Sprintf("Missing %s source.", opts.command)))
 		fmt.Fprintln(os.Stderr, chalkDim("Usage: "+packageUsage(opts.command)))
 		return 1
@@ -401,6 +402,11 @@ func runPackageCommand(args []string, runtimeOptions ...packageCommandRuntimeOpt
 	if opts.command == packageInstall && len(opts.sources) > 1 && !opts.validateOnly {
 		fmt.Fprintln(os.Stderr, chalkRed("Multiple install sources require --validate-only."))
 		fmt.Fprintln(os.Stderr, chalkDim("Usage: "+packageUsage(opts.command)))
+		return 1
+	}
+	// pig additive (D202): a Piglet Binary built with build.closed runs only what its signed closure lists, so it installs, removes and updates no packages.
+	if message := pigletBinaryPackageCommandRefusal(currentPigletBinary(), opts); message != "" {
+		fmt.Fprintln(os.Stderr, message)
 		return 1
 	}
 	if opts.command == packageUpdate && opts.modelsOnly {
@@ -435,6 +441,10 @@ func runPackageCommand(args []string, runtimeOptions ...packageCommandRuntimeOpt
 	switch opts.command {
 	case packageInstall:
 		installSources := append([]string(nil), opts.sources...)
+		if opts.validateOnly && len(installSources) == 0 {
+			// pig additive (D216): no source names the configured local Packages instead.
+			return validateConfiguredPackages(cwd, sm, opts.jsonOutput)
+		}
 		if opts.validateOnly {
 			// pig additive (D28): emit the validation report instead of installing.
 			return validateInstallSources(cwd, sm, installSources, opts.jsonOutput)

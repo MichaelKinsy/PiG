@@ -1,7 +1,5 @@
 package cli
 
-// pi: packages/ai/src/cli.ts
-
 import (
 	"context"
 	"encoding/json"

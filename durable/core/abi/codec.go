@@ -60,8 +60,11 @@ type Stmt struct {
 
 // Commit is one SQL transaction. Seq is the next_seq value it consumes, or -1 for a sidecar-only commit.
 type Commit struct {
-	Seq   int64
-	Stmts []Stmt
+	Seq int64
+	// Joined: the commit belongs to the same Storage call as the commit before it in the step, so the host applies the run of joined
+	// commits in one transaction (ABI section 5.5).
+	Joined bool
+	Stmts  []Stmt
 }
 
 // Read asks the host to run one query and answer it in a rows event.
@@ -194,7 +197,7 @@ func paramsSize(params []Value) int {
 func StepSize(s *Step) int {
 	n := 13
 	for i := range s.Commits {
-		n += 14
+		n += 15
 		for j := range s.Commits[i].Stmts {
 			n += 2 + paramsSize(s.Commits[i].Stmts[j].Params)
 		}
@@ -311,11 +314,19 @@ func appendStep(dst []byte, s *Step, big int, parts []Part) ([]byte, []Part) {
 	return dst, sp.parts
 }
 
-// appendCommit appends the wire form of one commit: u32 length of the rest, i64 seq, u16 statement count, statements.
+// commitJoined is bit 0 of a commit's flags.
+const commitJoined = 1
+
+// appendCommit appends the wire form of one commit: u32 length of the rest, i64 seq, u8 flags, u16 statement count, statements.
 func appendCommit(dst []byte, c *Commit) []byte {
 	lenAt := len(dst)
 	dst = append(dst, 0, 0, 0, 0)
 	dst = binary.LittleEndian.AppendUint64(dst, uint64(c.Seq))
+	flags := byte(0)
+	if c.Joined {
+		flags |= commitJoined
+	}
+	dst = append(dst, flags)
 	dst = binary.LittleEndian.AppendUint16(dst, uint16(len(c.Stmts)))
 	for j := range c.Stmts {
 		dst = binary.LittleEndian.AppendUint16(dst, c.Stmts[j].SQL)
@@ -329,6 +340,11 @@ func appendCommit(dst []byte, c *Commit) []byte {
 func (r *reader) commit() (Commit, error) {
 	body := &reader{b: r.take(int(r.u32()))}
 	c := Commit{Seq: int64(body.u64())}
+	flags := body.u8()
+	c.Joined = flags&commitJoined != 0
+	if flags&^commitJoined != 0 && body.err == nil {
+		return Commit{}, errors.New("abi: unknown commit flags")
+	}
 	n := int(body.u16())
 	for j := 0; j < n && body.err == nil; j++ {
 		c.Stmts = append(c.Stmts, Stmt{SQL: body.u16(), Params: body.params()})
@@ -354,7 +370,7 @@ type Hops struct {
 func HopsSize(h Hops) int {
 	n := 8
 	for i := range h.Commits {
-		n += 14
+		n += 15
 		for j := range h.Commits[i].Stmts {
 			n += 2 + paramsSize(h.Commits[i].Stmts[j].Params)
 		}

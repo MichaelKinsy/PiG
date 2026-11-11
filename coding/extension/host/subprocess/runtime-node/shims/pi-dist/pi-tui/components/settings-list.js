@@ -1,8 +1,9 @@
 import { fuzzyFilter } from "../fuzzy.js";
-import { getKeybindings } from "../keybindings.js";
+import { getKeybindings, getSelectPageIndex } from "../keybindings.js";
 import { truncateToWidth, visibleWidth, wrapTextWithAnsi } from "../utils.js";
 import { Input } from "./input.js";
 export class SettingsList {
+    capturesViewportInput = true;
     items;
     filteredItems;
     theme;
@@ -166,6 +167,7 @@ export class SettingsList {
         // Main list input handling
         const kb = getKeybindings();
         const displayItems = this.getDisplayItems();
+        const pageIndex = getSelectPageIndex(kb, data, this.selectedIndex, displayItems.length, this.maxVisible);
         if (kb.matches(data, "tui.select.up")) {
             if (displayItems.length === 0)
                 return;
@@ -175,6 +177,11 @@ export class SettingsList {
             if (displayItems.length === 0)
                 return;
             this.selectedIndex = this.selectedIndex === displayItems.length - 1 ? 0 : this.selectedIndex + 1;
+        }
+        else if (pageIndex !== undefined) {
+            if (displayItems.length === 0)
+                return;
+            this.selectedIndex = pageIndex;
         }
         else if (kb.matches(data, "tui.select.confirm") ||
             (data === " " && (!this.searchEnabled || this.searchInput?.getValue().length === 0))) {

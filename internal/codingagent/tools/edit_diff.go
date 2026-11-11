@@ -1,6 +1,6 @@
 // Package tools: edit-diff helpers.
 //
-// Mirrors upstream packages/coding-agent/src/core/tools/edit-diff.ts:
+// Ports packages/coding-agent/src/core/tools/edit-diff.ts:
 // line-ending detection, BOM stripping, fuzzy matching, and the
 // position-based multi-file edit application algorithm.
 package tools
@@ -269,10 +269,12 @@ func applyReplacements(content string, replacements []matchedEdit, offset int) s
 	position := 0
 	for _, r := range replacements {
 		i := r.matchIndex - offset
+		//portlint:allow utf16units matchIndex and matchLength are byte offsets from strings.Index and len over this same content (or its line spans), so the slice cuts the same text as Pi's UTF-16 offsets would
 		result.WriteString(content[position:i])
 		result.WriteString(r.newText)
 		position = i + r.matchLength
 	}
+	//portlint:allow utf16units position is a byte offset produced by the same byte-offset arithmetic as the loop above
 	result.WriteString(content[position:])
 	return result.String()
 }

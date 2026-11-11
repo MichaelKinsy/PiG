@@ -141,9 +141,10 @@ func newPipelineSession(tb testing.TB, provider pipelineProvider, extensionListe
 		tb.Fatal(err)
 	}
 	h.session = session
+	eventsCh := session.Events()
 	go func() {
 		defer close(h.drained)
-		for event := range session.Events() {
+		for event := range eventsCh {
 			AcknowledgeEvent(event)
 		}
 	}()

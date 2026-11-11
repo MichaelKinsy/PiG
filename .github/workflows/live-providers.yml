@@ -46,7 +46,7 @@ jobs:
           node-version-file: .node-version
           cache: npm
           cache-dependency-path: extensions/sdk-ts/package-lock.json
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.12'
       - name: Prepare toolchains and pinned Pi oracle
@@ -54,11 +54,14 @@ jobs:
         run: |
           set -euo pipefail
           automation/ci/install-apt-packages.sh tmux fd-find ripgrep
-          rustup toolchain install 1.97.1 --profile minimal
-          rustup default 1.97.1
+          # ci.yml names the Rust and npm pins once; read them there as nightly.yml does.
+          RUST_VERSION="$(awk '/^  RUST_VERSION:/ { print $2; exit }' .github/workflows/ci.yml)"
+          NPM_VERSION="$(awk '/^  NPM_VERSION:/ { print $2; exit }' .github/workflows/ci.yml)"
+          rustup toolchain install "$RUST_VERSION" --profile minimal
+          rustup default "$RUST_VERSION"
           automation/ci/install-npm-toolchain.sh
           export PATH="$PWD/automation/ci/npm-toolchain/node_modules/.bin:$PATH"
-          test "$(npm --version)" = 12.1.0
+          test "$(npm --version)" = "$NPM_VERSION"
           test "$(go env GOVERSION)" = "go$(tr -d '\r\n' < .go-version)"
           make upstream-mirror
       - name: Test summary aggregation
@@ -116,7 +119,7 @@ jobs:
             esac
           done
           test "${#packages[@]}" -gt 0
-          automation/ci/with-isolated-pig-home.sh go test -json -count=1 -tags 'integration live' -run "$RUN_FILTER" "${packages[@]}" | tee "$RUNNER_TEMP/live-providers.jsonl"
+          automation/ci/with-isolated-pig-home.sh go test -json -count=1 -timeout 30m -tags 'integration live' -run "$RUN_FILTER" "${packages[@]}" | tee "$RUNNER_TEMP/live-providers.jsonl"
       - name: Summarize providers that ran or skipped
         if: always()
         shell: bash

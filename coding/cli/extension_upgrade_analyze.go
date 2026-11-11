@@ -89,6 +89,7 @@ func (u *extensionUpgrader) checkRewrite(ctx context.Context, config subprocess.
 			return err
 		}
 		args := append([]string{"build", "-buildvcs=false", "-gcflags=-e", "-overlay=" + overlayPath, "-o", filepath.Join(scratch, "out")}, compile.Flags...)
+		//nolint:gosec // G204 (class b): program is the Go toolchain command that PiG's toolchain resolver or the staged cell module names; args are fixed build flags, a scratch overlay and -o path, and -modfile from the same resolver.
 		cmd := exec.CommandContext(ctx, compile.Command, append(args, compile.BuildPattern)...)
 		cmd.Dir = compile.Dir
 		cmd.Env = compile.Env

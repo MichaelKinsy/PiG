@@ -514,6 +514,44 @@ func TestLinksReview9AReleaseWhileTheRouteResolvesSettlesWaitingCallsAndForwards
 	}
 }
 
+// links-review.test.ts:314-336 "a release while the route resolves still admits the resolved worker: its references upstream
+// go live" (c09c98d7: the route's host is admitted before the second authorization and the currency check).
+func TestLinksReviewAReleaseWhileTheRouteResolvesStillAdmitsTheResolvedWorker(t *testing.T) {
+	feed := Remote("t.feed", RemoteDef{
+		Version: 1,
+		Input:   tObject(),
+		Host:    NewHostNamed("server"),
+		Variants: Fields[VariantDef]{{"main", VariantDef{
+			Methods: Fields[MethodSpec]{{"ping", Method(nil, tString())}},
+		}}},
+	})
+	c := newReviewCluster(t)
+	if err := c.server.Serve(feed, func(any, Principal, Self) (Implementation, error) {
+		return chordjson.ObjectOf("variant", "main", "ping", methodFunc(func(any, Ctx) (any, error) { return "pong", nil })), nil
+	}, ServeOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	gate := newRequestsLatch()
+	c.setResolveGate(gate)
+	raw := c.raw(map[string]any{"guest": "g"})
+	_, _ = raw.raw.Send(HoldFrame{ID: 1, At: "session:S1", Token: reviewCounter.Description, Input: map[string]any{"name": "a"}})
+	raw.settle(t)
+	// The client goes away while the worker starts: the route still hands over the worker it spawned.
+	_, _ = raw.raw.Send(ReleaseFrame{ID: 1})
+	raw.settle(t)
+	gate.open()
+	waitFor(t, "the route to resolve", func() bool { return c.worker("session:S1") != nil })
+	signal, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+	ref := requestsGet(t, c.worker("session:S1").host, feed, requestsEmpty(), &GetOptions{Signal: signal})
+	if err := ref.Ready(signal); err != nil {
+		t.Fatalf("the worker's reference upstream never went live: %v", err)
+	}
+	if got := mustCall(t, ref, "ping", nil, nil); got != "pong" {
+		t.Fatalf("ping = %v", got)
+	}
+}
+
 // links-review.test.ts:290-305 "#9 an origin disconnect removes its relayed holds and subscriptions downstream"
 func TestLinksReview9AnOriginDisconnectRemovesItsRelayedRefsAndSubscriptionsDownstream(t *testing.T) {
 	c := newReviewCluster(t)

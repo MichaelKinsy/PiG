@@ -25,6 +25,8 @@ import (
 var nodeRuntimeArchive string
 
 // extractNodeRuntime writes the runtime tree to dst. The archive is decoded only here, so warm cache keys, which use the generated digest, never read or decompress it.
+//
+// Ports packages/coding-agent/src/core/extensions/virtual-modules.ts (the modules Pi bundles for compiled runtimes are the shims this archive carries).
 func extractNodeRuntime(dst string) error {
 	return noderuntimepack.Extract(nodeRuntimeArchive, func(name string, data []byte) error {
 		target := filepath.Join(dst, filepath.FromSlash(strings.TrimPrefix(name, "runtime-node/")))

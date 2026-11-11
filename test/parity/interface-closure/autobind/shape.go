@@ -157,6 +157,9 @@ func (d *detector) callReturns(row *upstreamEntry) string {
 func (d *detector) callVerdict(row *upstreamEntry, sig *types.Signature, errUnionPinned bool) verdict {
 	chk := d.checker(row)
 	chk.errUnionPinned = errUnionPinned
+	if id := parseID(row.ID); id.Member == "" && id.Call != "" {
+		chk.neverSets = func(member string) bool { return d.factoryNeverSets(id.Pkg, id.Name, member) }
+	}
 	own := callShape{TypeParameters: row.Shape.TypeParameters, Parameters: row.Shape.Parameters, Returns: d.callReturns(row)}
 	v := chk.signature(own, sig)
 	if v.ok == yes {
@@ -244,11 +247,16 @@ func (d *detector) propNames(name string) []string {
 
 // propShapes lists the properties (name, type, optionality) of the upstream interface or class called name, in the package of the
 // row when it declares one, else the first declaration.
-func (d *detector) propShapes(pkg, name string) []propShape { return d.propShapesDepth(pkg, name, 0) }
+func (d *detector) propShapes(pkg, name string) []propShape {
+	return d.propShapesDepth(pkg, "", name, 0)
+}
 
-func (d *detector) propShapesDepth(pkg, name string, depth int) []propShape {
+func (d *detector) propShapesDepth(pkg, layer, name string, depth int) []propShape {
 	var first []propShape
 	for _, e := range d.l.entries {
+		if layer != "" && parseID(e.ID).Entry != layer && d.declaredInLayer(pkg, layer, name) {
+			continue
+		}
 		if e.Name == name && e.Role == "" && (e.Kind == "interface" || e.Kind == "class") {
 			var out []propShape
 			for _, p := range d.l.properties(e.ID) {
@@ -266,6 +274,18 @@ func (d *detector) propShapesDepth(pkg, name string, depth int) []propShape {
 		return d.sourceProps(pkg, name, depth)
 	}
 	return first
+}
+
+// declaredInLayer reports whether the ledger lists an interface or class called name in the entry layer of package pkg.
+func (d *detector) declaredInLayer(pkg, layer, name string) bool {
+	for _, e := range d.l.entries {
+		if e.Name == name && e.Role == "" && (e.Kind == "interface" || e.Kind == "class") {
+			if id := parseID(e.ID); id.Pkg == pkg && id.Entry == layer {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // sourceProps reads the members of an interface the ledger does not list from the pinned sources: its member block and the members
@@ -294,7 +314,7 @@ func (d *detector) readSourceProps(pkg, name string, depth int) []propShape {
 	for _, part := range splitTop(stripTypeNoise(*body), "&") {
 		part = strings.TrimSpace(part)
 		if !strings.HasPrefix(part, "{") {
-			inherited := d.propShapesDepth(pkg, part, depth+1)
+			inherited := d.propShapesDepth(pkg, "", part, depth+1)
 			if len(inherited) == 0 {
 				return nil
 			}

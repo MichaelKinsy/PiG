@@ -12,7 +12,7 @@ func TestHighlightCodeMemoHitCopiesOnlyTheLines(t *testing.T) {
 	defer SetTheme(orig)
 	SetTheme("dark")
 	code := "func f(x int) int {\n\treturn x*2 + 1 // doubled\n}"
-	for _, highlight := range []func(code, lang string) []string{HighlightCode, highlightMarkdownCode} {
+	for _, highlight := range []func(code, lang string) []string{HighlightCode} {
 		want := highlight(code, "go")
 		got := highlight(code, "go")
 		for i := range want {

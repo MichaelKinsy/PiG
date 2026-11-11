@@ -1,5 +1,7 @@
 package ai
 
+// pi: packages/ai/src/providers/anthropic.ts
+
 // Ports .upstream/current/packages/ai/test/anthropic-auth-token.test.ts and
 // anthropic-tool-name-normalization.test.ts as serialized-request tests. The
 // upstream tool-name suite runs against the live API; here a local server
@@ -149,6 +151,24 @@ func systemTexts(body map[string]any) []string {
 		texts = append(texts, block["text"].(string))
 	}
 	return texts
+}
+
+// anthropic-auth-token.test.ts "Anthropic auth token env": the provider's API-key resolver reads
+// ANTHROPIC_AUTH_TOKEN as a bearer Authorization header and keeps ANTHROPIC_OAUTH_TOKEN as OAuth-shaped API auth.
+func TestAnthropicAuthTokenEnvResolution(t *testing.T) {
+	t.Run("resolves ANTHROPIC_AUTH_TOKEN as a bearer Authorization header", func(t *testing.T) {
+		result := resolveAnthropicWithEnv(t, map[string]string{"ANTHROPIC_AUTH_TOKEN": "auth-token", "ANTHROPIC_OAUTH_TOKEN": "oauth-token", "ANTHROPIC_API_KEY": "api-key"})
+		if result == nil || result.Source != AnthropicAuthTokenEnv || result.Auth.APIKey != "" || len(result.Env) != 0 ||
+			len(result.Auth.Headers) != 1 || result.Auth.Headers["Authorization"] == nil || *result.Auth.Headers["Authorization"] != "Bearer auth-token" {
+			t.Fatalf("result = %+v", result)
+		}
+	})
+	t.Run("preserves ANTHROPIC_OAUTH_TOKEN as OAuth-shaped API auth", func(t *testing.T) {
+		result := resolveAnthropicWithEnv(t, map[string]string{"ANTHROPIC_OAUTH_TOKEN": "oauth-token", "ANTHROPIC_API_KEY": "api-key"})
+		if result == nil || result.Source != AnthropicOAuthTokenEnv || result.Auth.APIKey != "oauth-token" || len(result.Auth.Headers) != 0 || len(result.Env) != 0 {
+			t.Fatalf("result = %+v", result)
+		}
+	})
 }
 
 // TestAnthropicRequestAuthShapes serializes one request per auth source and

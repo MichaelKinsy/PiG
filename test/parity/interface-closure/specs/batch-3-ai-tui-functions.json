@@ -11,7 +11,7 @@
    "call:ai/auth_providers.go#builtinAPIKeyAuth"
   ],
   "evidence": [
-   "test:ai/provider_auth_upstream_test.go#TestEnvAPIKeyAuthUpstream",
+   "test:ai/env_api_key_auth_upstream_test.go#TestEnvAPIKeyAuthUpstream",
    "test:ai/providers_upstream_test.go#TestBuiltinProvidersUpstream"
   ],
   "rationale": "auth/api-key.ts envApiKeyAuth(name, envVars: readonly string[]) is EnvAPIKeyAuth(name, envVars ...string): a readonly array parameter is a variadic tail (language mechanics)."

@@ -57,8 +57,8 @@ func TestOverflowFullRenderPathsEmitRowUnchanged(t *testing.T) {
 	}{
 		{name: "initial", prefix: "\x1b[?2026h"},
 		{name: "forced", setup: func(ui *TuiMainScreen, _ *[]string) { ui.ForceFullRender() }, prefix: "\x1b[?2026h\x1b[2J\x1b[H\x1b[3J"},
-		{name: "width-change", setup: func(ui *TuiMainScreen, _ *[]string) { ui.width = 20 }, prefix: "\x1b[?2026h\x1b[2J\x1b[H\x1b[3J"},
-		{name: "height-change", setup: func(ui *TuiMainScreen, _ *[]string) { ui.height = 12 }, prefix: "\x1b[?2026h\x1b[2J\x1b[H\x1b[3J"},
+		{name: "width-change", setup: func(ui *TuiMainScreen, _ *[]string) { ui.SetFixedSize(20, ui.Height()) }, prefix: "\x1b[?2026h\x1b[2J\x1b[H\x1b[3J"},
+		{name: "height-change", setup: func(ui *TuiMainScreen, _ *[]string) { ui.SetFixedSize(ui.Width(), 12) }, prefix: "\x1b[?2026h\x1b[2J\x1b[H\x1b[3J"},
 		{name: "clear-on-shrink", setup: func(ui *TuiMainScreen, lines *[]string) {
 			ui.SetClearOnShrink(true)
 			*lines = []string{"fits", "ok", "extra"}
@@ -71,7 +71,7 @@ func TestOverflowFullRenderPathsEmitRowUnchanged(t *testing.T) {
 			lines := []string{"fits", "ok"}
 			ui, dir := newOverflowTUI(t, &out, 20, 10, &lines)
 			if tc.name == "width-change" {
-				ui.width = 60
+				ui.SetFixedSize(60, ui.Height())
 			}
 			if tc.setup != nil {
 				ui.Render()

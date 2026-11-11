@@ -16,6 +16,8 @@ func StrippedSDKError(lang string) error {
 		id, what = pigstrip.ExtensionSDKRust, "The Rust extension SDK"
 	case "python":
 		id, what = pigstrip.ExtensionSDKPython, "The Python extension SDK"
+	case "lisp":
+		id, what = pigstrip.ExtensionSDKLisp, "The Lisp extension SDK"
 	default:
 		return nil
 	}

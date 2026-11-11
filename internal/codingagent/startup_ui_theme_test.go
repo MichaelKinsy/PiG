@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/modes/interactive/theme/theme-controller.ts
+
 import (
 	"bytes"
 	"errors"
@@ -106,9 +108,10 @@ func whiteTerminalReplies() [][]byte {
 
 // upstream 0.99.1 startup-ui.ts startStartupTui and theme-controller.ts requestTerminalColors: the prompt renders at once, the replies record the terminal's colors, and none reaches the prompt as input.
 func TestStartupPromptAppliesTerminalColorsAndKeepsRepliesOutOfInput(t *testing.T) {
+	restoreTUIKeybindings(t)
 	restoreStartupTheme(t)
 	tui.SetThemeRegistry(tui.NewThemeRegistry())
-	configureStartupTheme(Settings{}, nil)
+	configureStartupTui(StartupUIOptions{})
 	terminal := &fakeStartupTerminal{replies: append(whiteTerminalReplies(), []byte("h"), []byte("i"), []byte("\r"))}
 	input := tui.NewExtensionInputComponent("Name", "", nil, nil)
 	completed, err := runStartupComponentWith(input, StartupUIOptions{Settings: Settings{}}, false, tui.NewWithOutput(startupQueryWriter{terminal}, 80, 24), terminal)
@@ -131,9 +134,10 @@ func TestStartupPromptAppliesTerminalColorsAndKeepsRepliesOutOfInput(t *testing.
 
 // upstream 0.99.1 theme-controller.ts requestTerminalColors passes onLateReply: colors that arrive after the timeout still apply.
 func TestStartupPromptAppliesColorsThatArriveAfterTheTimeout(t *testing.T) {
+	restoreTUIKeybindings(t)
 	restoreStartupTheme(t)
 	tui.SetThemeRegistry(tui.NewThemeRegistry())
-	configureStartupTheme(Settings{}, nil)
+	configureStartupTui(StartupUIOptions{})
 	selector := tui.NewExtensionSelectorComponent("Pick", []string{"a", "b"}, nil, nil)
 	terminal := &fakeStartupTerminal{}
 	done := make(chan error, 1)
@@ -163,10 +167,11 @@ func TestStartupPromptAppliesColorsThatArriveAfterTheTimeout(t *testing.T) {
 
 // upstream 0.99.1 startup-ui.ts startStartupTui queries the terminal whatever the setting is, and re-resolves the setting with the reported appearance.
 func TestStartupPromptWithFixedThemeQueriesAndKeepsTheTheme(t *testing.T) {
+	restoreTUIKeybindings(t)
 	restoreStartupTheme(t)
 	tui.SetThemeRegistry(tui.NewThemeRegistry())
 	settings := Settings{Theme: "dark"}
-	configureStartupTheme(settings, nil)
+	configureStartupTui(StartupUIOptions{Settings: settings})
 	terminal := &fakeStartupTerminal{replies: append(whiteTerminalReplies(), []byte("\r"))}
 	selector := tui.NewExtensionSelectorComponent("Pick", []string{"a"}, nil, nil)
 	if _, err := runStartupComponentWith(selector, StartupUIOptions{Settings: settings}, false, tui.NewWithOutput(startupQueryWriter{terminal}, 80, 24), terminal); err != nil {

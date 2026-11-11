@@ -1,0 +1,80 @@
+# Behavior family: interactive-rendering
+# Surface: app.message.dequeue (alt+up) while a turn streams.
+#
+# Upstream (Pi 1.5.0 interactive-mode.ts:4603-4610, 4840-4860): handleDequeue
+# calls restoreQueuedMessagesToEditor, which clears the session queue through
+# clearAllQueues (agent-session.ts clearQueue) and puts every queued steering
+# and follow-up message into the editor. The queue is then empty, so the
+# message is not delivered when the turn ends (issue #402).
+#
+# The scenario queues a steering message while TUI_LIVE_STREAM_PAUSE streams,
+# presses alt+up, and lets the turn finish. A message left in the queue would
+# be sent as a second turn, which the faux provider answers with
+# "test-faux: unhandled request".
+
+# Upstream evidence (Pi 1.4.0+b556cfe5 oracle, parity harness, 2026-11-02, 100x35 tmux, test-faux):
+#   TUI_LIVE_STREAM_PAUSE, wait LIVE-STREAM-03, "queued steer text" Enter (shows
+#   "Steering: queued steer text"), send ESC p, wait for the turn to settle.
+#   Pi shows "Restored 1 queued message to editor", puts the text in the editor
+#   and does not send it; PiG's pane was identical in 3 of 3 pairs.
+
+name = "58-alt-up-dequeues-queued-message"
+description = "Alt+Up restores a queued steering message to the editor and the turn ends without sending it"
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/core/agent-session.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=../compaction/testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=../compaction/testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "-c", "--tui-mode", "regular"]
+pi_args = ["--session-dir", "sessions", "-c", "--tui-mode", "regular"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "../compaction/testdata/compact-session"
+capture_start = "LIVE-STREAM-24"
+capture_end = "queued steer text"
+
+[[tmux.steps]]
+keys = ["TUI_LIVE_STREAM_PAUSE", "Enter"]
+wait_contains = ["LIVE-STREAM-03"]
+wait_timeout_seconds = 15
+
+[[tmux.steps]]
+keys = ["queued steer text", "Enter"]
+wait_contains = ["Steering: queued steer text"]
+wait_timeout_seconds = 15
+
+[[tmux.steps]]
+keys = ["hex:1b 70"]
+wait_contains = ["Restored 1 queued message to editor"]
+wait_timeout_seconds = 15
+
+[[tmux.steps]]
+keys = []
+wait_contains = ["LIVE-STREAM-24"]
+wait_not_contains = ["Working"]
+wait_timeout_seconds = 30
+
+[assert]
+both_reach_ready = true
+both_contain = ["LIVE-STREAM-24", "queued steer text"]
+both_not_contain = ["Steering: queued steer text", "test-faux: unhandled request", "panic:", "goroutine "]
+output_normalized_equal = true
+runs = 3
+
+# normalize-rationale: Only the Working spinner phase varies at capture time; the border, editor text, status row and transcript stay compared.
+[[assert.normalize_replace]]
+pattern = '(?m)^(── )[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]( Working ─*)$'
+with = '${1}<SPINNER>${2}'
+reason = "Capture timing selects the spinner phase; preserve the Working label and every border cell."

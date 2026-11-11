@@ -1,0 +1,323 @@
+[
+ {
+  "name": "one writer",
+  "jobs": [
+   {
+    "label": "a",
+    "kind": "write"
+   }
+  ]
+ },
+ {
+  "name": "one writer, delay 5",
+  "jobs": [
+   {
+    "label": "a",
+    "delay": 5,
+    "kind": "write"
+   }
+  ]
+ },
+ {
+  "name": "two writers queued together",
+  "jobs": [
+   {
+    "label": "a",
+    "kind": "write"
+   },
+   {
+    "label": "b",
+    "kind": "write"
+   }
+  ]
+ },
+ {
+  "name": "three writers, long second",
+  "jobs": [
+   {
+    "label": "a",
+    "kind": "write"
+   },
+   {
+    "label": "b",
+    "delay": 20,
+    "kind": "write"
+   },
+   {
+    "label": "c",
+    "kind": "write"
+   }
+  ]
+ },
+ {
+  "name": "one no-write job",
+  "jobs": [
+   {
+    "label": "a",
+    "kind": "none"
+   }
+  ]
+ },
+ {
+  "name": "no-write job then writer",
+  "jobs": [
+   {
+    "label": "a",
+    "kind": "none"
+   },
+   {
+    "label": "b",
+    "kind": "write"
+   }
+  ]
+ },
+ {
+  "name": "writer then no-write job",
+  "jobs": [
+   {
+    "label": "a",
+    "kind": "write"
+   },
+   {
+    "label": "b",
+    "kind": "none"
+   }
+  ]
+ },
+ {
+  "name": "one read job",
+  "jobs": [
+   {
+    "label": "a",
+    "kind": "read"
+   }
+  ]
+ },
+ {
+  "name": "read job then writer",
+  "jobs": [
+   {
+    "label": "a",
+    "kind": "read"
+   },
+   {
+    "label": "b",
+    "kind": "write"
+   }
+  ]
+ },
+ {
+  "name": "slow writer then fast no-write",
+  "jobs": [
+   {
+    "label": "a",
+    "delay": 10,
+    "kind": "write"
+   },
+   {
+    "label": "b",
+    "kind": "none"
+   }
+  ]
+ },
+ {
+  "name": "internal no-write job",
+  "jobs": [
+   {
+    "label": "a",
+    "kind": "none",
+    "internal": true
+   }
+  ]
+ },
+ {
+  "name": "internal no-write behind writer",
+  "jobs": [
+   {
+    "label": "a",
+    "kind": "write"
+   },
+   {
+    "label": "b",
+    "kind": "none",
+    "internal": true
+   }
+  ]
+ },
+ {
+  "name": "internal writer",
+  "jobs": [
+   {
+    "label": "a",
+    "kind": "write",
+    "internal": true
+   }
+  ]
+ },
+ {
+  "name": "throwing job",
+  "jobs": [
+   {
+    "label": "a",
+    "kind": "throw"
+   },
+   {
+    "label": "b",
+    "kind": "write"
+   }
+  ]
+ },
+ {
+  "name": "slow storage 10: four writers",
+  "storageTicks": 10,
+  "jobs": [
+   {
+    "label": "a",
+    "kind": "write"
+   },
+   {
+    "label": "b",
+    "kind": "write"
+   },
+   {
+    "label": "c",
+    "kind": "write"
+   },
+   {
+    "label": "d",
+    "kind": "write"
+   }
+  ]
+ },
+ {
+  "name": "slow storage 40: four writers",
+  "storageTicks": 40,
+  "jobs": [
+   {
+    "label": "a",
+    "kind": "write"
+   },
+   {
+    "label": "b",
+    "kind": "write"
+   },
+   {
+    "label": "c",
+    "kind": "write"
+   },
+   {
+    "label": "d",
+    "kind": "write"
+   }
+  ]
+ },
+ {
+  "name": "refusal between two publications",
+  "storageTicks": 40,
+  "refuseAt": 2,
+  "jobs": [
+   {
+    "label": "a",
+    "kind": "write"
+   },
+   {
+    "label": "b",
+    "kind": "write"
+   },
+   {
+    "label": "c",
+    "kind": "write"
+   },
+   {
+    "label": "d",
+    "kind": "write"
+   },
+   {
+    "label": "e",
+    "kind": "write"
+   }
+  ]
+ },
+ {
+  "name": "rejection after receipts",
+  "storageTicks": 40,
+  "rejectAt": 2,
+  "jobs": [
+   {
+    "label": "a",
+    "kind": "write"
+   },
+   {
+    "label": "b",
+    "kind": "write"
+   },
+   {
+    "label": "c",
+    "kind": "write"
+   },
+   {
+    "label": "d",
+    "kind": "write"
+   },
+   {
+    "label": "e",
+    "kind": "write"
+   }
+  ]
+ },
+ {
+  "name": "rejection of the first call",
+  "storageTicks": 10,
+  "rejectAt": 0,
+  "jobs": [
+   {
+    "label": "a",
+    "kind": "write"
+   },
+   {
+    "label": "b",
+    "kind": "write"
+   },
+   {
+    "label": "c",
+    "kind": "write"
+   },
+   {
+    "label": "d",
+    "kind": "write"
+   }
+  ]
+ },
+ {
+  "name": "hit on an unpublished key",
+  "storageTicks": 40,
+  "jobs": [
+   {
+    "label": "a",
+    "kind": "write"
+   },
+   {
+    "label": "b",
+    "kind": "scan-write"
+   },
+   {
+    "label": "c",
+    "kind": "write"
+   }
+  ]
+ },
+ {
+  "name": "hit behind a slow call",
+  "storageTicks": 10,
+  "jobs": [
+   {
+    "label": "a",
+    "kind": "write"
+   },
+   {
+    "label": "b",
+    "kind": "scan-write"
+   }
+  ]
+ }
+]

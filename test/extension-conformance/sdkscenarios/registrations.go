@@ -167,6 +167,25 @@ func registrations() []Scenario {
 			},
 		},
 		{
+			ID: "a-late-flag-reads-its-default-before-any-value-is-set", Group: group,
+			Pi:     "loader.ts:331-349 registerFlag stores the default as the flag's value when the flag is registered, and :374-378 getFlag returns it: a flag registered after load (here from a command handler) answers its default to the very next read, before the host or any user set a value",
+			Covers: []string{"call registerDeclaration", "call getFlag"},
+			Spec: Spec{Commands: []Command{
+				{Name: "add-flag", Description: "Adds a flag", Op: CommandLateRegister, Arg: "flag"},
+				{Name: "read-late-flag", Description: "Reads the late flag", Op: CommandFlag, Arg: "late-flag"},
+			}},
+			Steps: []Step{
+				{Op: "command", Name: "read-late-flag"},
+				{Op: "command", Name: "add-flag"},
+				{Op: "command", Name: "read-late-flag"},
+			},
+			Want: []string{
+				`command read-late-flag null`,
+				"command add-flag registered",
+				`command read-late-flag "late"`,
+			},
+		},
+		{
 			ID: "command-arguments-survive-the-wire-byte-for-byte", Group: group,
 			Pi:     "agent-session.ts/runner.ts: a command receives the text after its name exactly as typed (no trimming): non-ASCII, astral characters, U+2028/U+2029, NUL, leading and trailing spaces, markup characters and a payload above the 64 KiB frame chunk size",
 			Covers: []string{"request command"},
@@ -436,8 +455,11 @@ func registrations() []Scenario {
 			Unrepresentable: map[SDK]string{Rust: "a Rust String is valid UTF-8 and cannot hold a lone surrogate"},
 			Covers:          []string{"request tool_call"},
 			Spec:            Spec{Tools: []Tool{{Name: "bad", Description: "Returns invalid text", Behavior: ToolBadText}}},
-			Steps:           []Step{{Op: "tool", Name: "bad", Args: `{}`}},
-			Want:            []string{`tool bad result "a\xed\xa0\xbdb" error=false`},
+			Steps:           []Step{{Op: "tool-wire", Name: "bad", Args: `{}`}},
+			Want: []string{
+				`tool bad result "a\xed\xa0\xbdb" error=false`,
+				`tool bad wire carries the escape \ud83d: true, raw surrogate bytes: false`,
+			},
 		},
 		{
 			ID: "commands-and-shortcuts-run", Group: group,

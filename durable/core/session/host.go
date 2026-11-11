@@ -5,27 +5,53 @@ package session
 
 import "github.com/MichaelKinsy/PiG/durable/core/internal/delta"
 
+// HostDocValue is what HostDoc gives a host: the document's present content, or the operations since the revision the host
+// holds, and for a stored document (Loaded) the number of deltas after its base (Pi's CheckpointInfo).
+type HostDocValue struct {
+	Value           any
+	Ops             []delta.Op
+	Incremental     bool
+	Revision        DocRevision
+	Tracked         bool
+	DeltasSinceBase int
+	Loaded          bool
+}
+
 // HostDoc is Doc for a host that keeps its own draft (ABI section 8, `doc`): it acquires the document and returns the
-// value the draft starts from and, for a stored document (loaded), the number of deltas after its base (Pi's
-// CheckpointInfo). The host's
-// operations come back through SetDocOps.
-func (tx *Tx) HostDoc(def *DocDef, args DocArgs) (value any, deltasSinceBase int, loaded bool, err error) {
+// value the draft starts from. A host that keeps the values it read passes the revision it holds (the zero revision when it
+// holds none): a document the transaction has not edited then comes with its revision, and with only the operations adopted
+// since the held one when the Session still has them. The host's operations come back through SetDocOps.
+func (tx *Tx) HostDoc(def *DocDef, args DocArgs, have DocRevision, holds bool) (HostDocValue, error) {
+	var out HostDocValue
 	if _, err := tx.Doc(def, args); err != nil {
-		return nil, 0, false, err
+		return out, err
 	}
 	e := tx.latestByAddr[addressID(def.address(args))]
 	if e == nil || e.change == nil {
-		return nil, 0, false, errorf("Document %s has no open draft", def.Kind)
+		return out, errorf("Document %s has no open draft", def.Kind)
 	}
 	if e.target != nil && e.target.kind == targetLoaded {
-		deltasSinceBase, loaded = e.target.loaded.deltasSinceBase, true
+		out.DeltasSinceBase, out.Loaded = e.target.loaded.deltasSinceBase, true
+	}
+	if holds && out.Loaded && (e.draft == nil || !e.draft.Modified()) {
+		loaded := e.target.loaded
+		out.Revision, out.Tracked = DocRevision{Epoch: loaded.epoch, Adopted: e.change.BaseRevision()}, true
+		loaded.history.start(out.Revision.Adopted)
+		if have.Epoch == loaded.epoch {
+			if ops, ok := loaded.history.since(have.Adopted, out.Revision.Adopted); ok {
+				out.Ops, out.Incremental = ops, true
+				return out, nil
+			}
+		}
 	}
 	// The host's tracker continues from the draft's present content: the core's own edits (the built-in creation hook's
 	// agent copy) are already in it.
 	if e.draft != nil {
-		return e.draft.Snapshot(), deltasSinceBase, loaded, nil
+		out.Value = e.draft.Snapshot()
+	} else {
+		out.Value = e.change.BaseRoot()
 	}
-	return e.change.BaseRoot(), deltasSinceBase, loaded, nil
+	return out, nil
 }
 
 // DocEntry is the position of the document's latest entry in the transaction's documents: a host names the incarnation a

@@ -33,7 +33,7 @@ const { loadExtensionFromFactory, createExtensionRuntime } = await import(pathTo
 const { createEventBus } = await import(pathToFileURL(dist + "/core/event-bus.js").href);
 const factory = (await import(pathToFileURL(factoryPath).href)).default;
 const ext = await loadExtensionFromFactory(factory, process.cwd(), createEventBus(), createExtensionRuntime(), "<inline:1>");
-console.log([...ext.commands.values()][0].description);
+await new Promise((done) => process.stdout.write([...ext.commands.values()][0].description + "\n", done));
 process.exit(0);`
 	piOut, err := exec.Command(node, "--input-type=module", "--eval", script, dist, factory).Output()
 	if err != nil {

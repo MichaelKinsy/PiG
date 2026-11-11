@@ -14,7 +14,7 @@ import (
 func TestSystemPromptOptionsAcrossIdenticalAndPartialStatePushes(t *testing.T) {
 	t.Parallel()
 	cases := allHarnessCases()
-	for _, language := range []string{"go", "rust", "python"} {
+	for _, language := range []string{"go", "rust", "python", "lisp"} {
 		cases = append(cases, harnessCase{name: "packed-" + language, make: func(t *testing.T) *harness { return makePackedUIHarness(t, language) }})
 	}
 	first := conformanceSystemPromptOptions()
@@ -24,56 +24,66 @@ func TestSystemPromptOptionsAcrossIdenticalAndPartialStatePushes(t *testing.T) {
 	second.SelectedTools = []string{"edit"}
 	sequence := []extension.BuildSystemPromptOptions{first, first, second, second, first}
 	expected := []string{"spo_prompt=conformance-prompt spo_cwd=/probe-cwd spo_tools=read,bash", "spo_prompt=conformance-prompt spo_cwd=/probe-cwd spo_tools=read,bash", "spo_prompt=changed-prompt spo_cwd=/changed-cwd spo_tools=edit", "spo_prompt=changed-prompt spo_cwd=/changed-cwd spo_tools=edit", "spo_prompt=conformance-prompt spo_cwd=/probe-cwd spo_tools=read,bash"}
-	var reference []string
-	for _, tc := range cases {
+	// record is one row's work: its harness, the options its extension reports across the pushes, and the check against the literal every row passes.
+	record := func(t *testing.T, tc harnessCase) []string {
+		t.Helper()
+		h := tc.make(t)
+		defer func() {
+			if h.cleanup != nil {
+				h.cleanup()
+			}
+			if h.host != nil {
+				h.host.Shutdown("state push conformance complete")
+			}
+		}()
+		current := &sequence[0]
+		if h.host == nil {
+			h.runner.BindCore(extension.ExtensionActions{}, extension.ContextActions{
+				GetSystemPromptOptions: func() *extension.BuildSystemPromptOptions { return current },
+				IsProjectTrusted:       func() bool { return conformanceProjectTrusted },
+			}, nil)
+		} else {
+			h.bridge.SetHostAction("getSystemPromptOptions", func() extension.BuildSystemPromptOptions { return *current })
+		}
+		command, ok := findCommand(h.runner, "context-probe")
+		if !ok {
+			t.Fatal("context-probe missing")
+		}
+		var got []string
+		for i := range sequence {
+			current = &sequence[i]
+			cc := h.runner.CreateCommandContext()
+			ctx := extension.WithCommandContext(extension.WithContext(t.Context(), cc.Context), cc)
+			before := len(*h.notify)
+			if err := command.Handler(ctx, ""); err != nil {
+				t.Fatalf("probe %d: %v", i, err)
+			}
+			lines := (*h.notify)[before:]
+			if len(lines) != 1 {
+				t.Fatalf("probe %d notified %v", i, lines)
+			}
+			line := lines[0]
+			_, rest, _ := strings.Cut(line, " spo_prompt=")
+			fields := strings.SplitN("spo_prompt="+rest, " spo_shape=", 2)
+			got = append(got, fields[0])
+		}
+		if !reflect.DeepEqual(got, expected) {
+			t.Fatalf("options across pushes = %q, want %q", got, expected)
+		}
+		return got
+	}
+	// The in-process row is the reference. It records it, and so does the first later row when -run leaves it out.
+	reference := referenceRow[[]string]{name: cases[0].name}
+	for i, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			h := tc.make(t)
-			t.Cleanup(func() {
-				if h.cleanup != nil {
-					h.cleanup()
-				}
-				if h.host != nil {
-					h.host.Shutdown("state push conformance complete")
-				}
-			})
-			current := &sequence[0]
-			if h.host == nil {
-				h.runner.BindCore(extension.ExtensionActions{}, extension.ContextActions{
-					GetSystemPromptOptions: func() *extension.BuildSystemPromptOptions { return current },
-					IsProjectTrusted:       func() bool { return conformanceProjectTrusted },
-				}, nil)
-			} else {
-				h.bridge.SetHostAction("getSystemPromptOptions", func() extension.BuildSystemPromptOptions { return *current })
+			if i == 0 {
+				reference.set(t, record(t, tc))
+				return
 			}
-			command, ok := findCommand(h.runner, "context-probe")
-			if !ok {
-				t.Fatal("context-probe missing")
-			}
-			var got []string
-			for i := range sequence {
-				current = &sequence[i]
-				cc := h.runner.CreateCommandContext()
-				ctx := extension.WithCommandContext(extension.WithContext(t.Context(), cc.Context), cc)
-				before := len(*h.notify)
-				if err := command.Handler(ctx, ""); err != nil {
-					t.Fatalf("probe %d: %v", i, err)
-				}
-				lines := (*h.notify)[before:]
-				if len(lines) != 1 {
-					t.Fatalf("probe %d notified %v", i, lines)
-				}
-				line := lines[0]
-				_, rest, _ := strings.Cut(line, " spo_prompt=")
-				fields := strings.SplitN("spo_prompt="+rest, " spo_shape=", 2)
-				got = append(got, fields[0])
-			}
-			if !reflect.DeepEqual(got, expected) {
-				t.Fatalf("options across pushes = %q, want %q", got, expected)
-			}
-			if h.host == nil {
-				reference = got
-			} else if reference != nil && !reflect.DeepEqual(got, reference) {
-				t.Fatalf("options differ from the in-process reference: %q vs %q", got, reference)
+			want := reference.get(t, func() []string { return record(t, cases[0]) })
+			got := record(t, tc)
+			if !reflect.DeepEqual(got, want) {
+				t.Fatalf("options differ from the in-process reference: %q vs %q", got, want)
 			}
 		})
 	}
@@ -83,7 +93,7 @@ func TestSystemPromptOptionsAcrossIdenticalAndPartialStatePushes(t *testing.T) {
 func TestMessageUpdateDeliversEveryDeltaInOrderAcrossSDKs(t *testing.T) {
 	t.Parallel()
 	cases := sdkHarnessCases()
-	for _, language := range []string{"go", "rust", "python"} {
+	for _, language := range []string{"go", "rust", "python", "lisp"} {
 		cases = append(cases, harnessCase{name: "packed-" + language, make: func(t *testing.T) *harness { return makePackedUIHarness(t, language) }})
 	}
 	const deltas = 48

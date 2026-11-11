@@ -23,6 +23,7 @@ func (h *handler) capsql() *hopcost.Queue {
 		case hopcost.Gate, hopcost.GateCapsql:
 			h.q = &hopcost.Queue{}
 		}
+		h.timed = h.q != nil || h.hopProfile() == hopcost.Node
 	}
 	return h.q
 }
@@ -81,51 +82,4 @@ func (h *handler) scanThen(n int, then func()) {
 	if !h.runSteps(steps, end) {
 		end()
 	}
-}
-
-// A line job's statements contend only with the statements of an off-line scan in flight: jobs serialize on the line, a scan
-// starts when its bounds job ends (a job boundary), and a job's last statement resolves before the job does, so a scan that
-// starts at a job's end finds the queue idle. A read job that starts while no scan is in flight is therefore one hops chain,
-// and the queue is not consulted; while one is in flight the job runs stage by stage (readJobSteps).
-
-// readJobSteps is the stages of a readOnLine job on the gate queue: the reads' statements in order and the tail of the
-// run's resolution (hopcost.ReadOnLine). ok is false when the job did something other than reads (a mint, a transaction
-// callback), which keeps its single chain.
-func (h *handler) readJobSteps(st jobStats, startDelay int) ([]hopcost.Step, bool) {
-	if h.capsql() == nil || h.scans == 0 || (!st.readLine && !h.loop.Reading) || st.nreads == 0 || st.nreads > maxPlanned {
-		return nil, false
-	}
-	p := h.hopProfile()
-	var steps []hopcost.Step
-	steps = hopcost.AppendDelay(steps, startDelay)
-	sum := 0
-	for _, r := range st.reads[:st.nreads] {
-		var ok bool
-		if steps, ok = hopcost.AppendSteps(steps, p, r); !ok {
-			return nil, false
-		}
-		sum += hopcost.ReadHops(p, r)
-	}
-	if sum != st.change {
-		return nil, false
-	}
-	if st.direct {
-		steps = hopcost.Trim(steps)
-	}
-	return hopcost.AppendDelay(steps, 3), true
-}
-
-// holdReadJob parks the completion of a readOnLine job on its statements through the gate queue; n is the job's duration
-// with its start delay (holdJobNow), which the stages must sum to on an idle queue. It reports whether it parked release.
-func (h *handler) holdReadJob(st jobStats, n int, release func()) bool {
-	steps, ok := h.readJobSteps(st, n-hopcost.ReadOnLine(st.change, st.direct))
-	if !ok || hopcost.Sum(steps) != n {
-		return false
-	}
-	if n >= 2 && h.loop.EndingClient() {
-		// A host caller awaits the job's `run` promise, which settles a hop before the tail resolves (session.ts :105-115).
-		steps = hopcost.Trim(steps)
-		return h.runSteps(steps, func() { h.loop.Settle(); release() })
-	}
-	return h.runSteps(steps, release)
 }

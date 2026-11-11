@@ -14,6 +14,11 @@
 # authenticated provider after the registry's list, so it printed the whole bundled OpenRouter
 # catalog besides the two saved models. Table equality proves the two saved rows and nothing
 # else are listed, with identical context, max-out, thinking and images columns.
+#
+# PiG derives `:nitro` and `:floor` routing variants for every OpenRouter model of the current list, saved or bundled (D199), which
+# Pi never lists. The saved models here already carry a routing-variant id, so PiG derives none from them and the exact table
+# comparison stays valid; the derivation over a saved list is covered by TestSavedOpenRouterListShowsRoutingVariantsOnEveryRegistryListing
+# and TestRegistryPersonalizesTheOpenRouterCatalogThroughTheConfiguredBaseURL (internal/codingagent).
 name = "27-list-models-personalized-openrouter-catalog"
 description = "--list-models lists only the saved personalized OpenRouter catalog, not the bundled models it replaced."
 covers = [

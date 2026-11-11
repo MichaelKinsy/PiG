@@ -8,8 +8,8 @@ import (
 )
 
 func BenchmarkToolArgumentValidation(b *testing.B) {
-	readSchema := json.RawMessage(`{"~kind":"Object","type":"object","properties":{"path":{"~kind":"String","type":"string"},"offset":{"~kind":"Number","type":"number"},"limit":{"~kind":"Number","type":"number"}},"required":["path"]}`)
-	editsSchema := json.RawMessage(`{"~kind":"Object","type":"object","properties":{"edits":{"~kind":"Array","type":"array","items":{"~kind":"Object","type":"object","properties":{"oldText":{"~kind":"String","type":"string"},"newText":{"~kind":"String","type":"string"}},"required":["oldText","newText"]}}},"required":["edits"]}`)
+	readSchema := json.RawMessage(`{"type":"object","properties":{"path":{"type":"string"},"offset":{"type":"number"},"limit":{"type":"number"}},"required":["path"]}`)
+	editsSchema := json.RawMessage(`{"type":"object","properties":{"edits":{"type":"array","items":{"type":"object","properties":{"oldText":{"type":"string"},"newText":{"type":"string"}},"required":["oldText","newText"]}}},"required":["edits"]}`)
 	for _, count := range []int{1, 1000} {
 		b.Run(fmt.Sprintf("edits-%d", count), func(b *testing.B) {
 			args := json.RawMessage(`{"edits":[` + strings.TrimSuffix(strings.Repeat(`{"oldText":42,"newText":true},`, count), ",") + `]}`)

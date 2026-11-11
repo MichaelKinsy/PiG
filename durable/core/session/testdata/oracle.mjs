@@ -32,13 +32,21 @@ let clock = 1000;
 const session = createSession(storage, { now: () => clock++ });
 const commits = [];
 const origCommit = storage.commit.bind(storage);
-storage.commit = async (writes, context) => {
-	const seq = await origCommit(writes, context);
-	commits.push({ seq, writes: clone(writes) });
-	return seq;
+storage.commit = async (batches, receive, context) => {
+	// Storage.commit(batches, receive): one record per stored batch, one tick after Storage adopted it (receive returned), as
+	// the scenarios' single commits were recorded after `await origCommit(...)`.
+	return origCommit(
+		batches,
+		(index, seq) => {
+			receive(index, seq);
+			const writes = clone(batches[index]);
+			queueMicrotask(() => commits.push({ seq, writes }));
+		},
+		context,
+	);
 };
 const pubs = [];
-session.subscribeCommits((p) => pubs.push(clone({ seq: p.seq, changes: p.changes })));
+session.observeCommits({ advance: (p) => pubs.push(clone({ seq: p.seq, changes: p.changes })), end: () => {} });
 
 function walk(root, path) {
 	let t = root;

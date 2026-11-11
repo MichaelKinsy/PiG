@@ -32,16 +32,14 @@ function build(name, change) {
 const row = { id: "SC" }
 
 test("a commit that answers the wrong sequence fails the storage conformance suite", async () => {
-	const impl = { name: "sc-mutant", vitest: false, scExe: build("seq", ["return float64(seq), nil", "return float64(seq + 1), nil"]) }
+	const impl = { name: "sc-mutant", vitest: false, scExe: build("seq", ["seqs = append(seqs, float64(seq))", "seqs = append(seqs, float64(seq+1))"]) }
 	const r = await runScRow(row, impl, { out: join(work, "out-mutant") })
 	assert.equal(r.status, "fail")
 	assert.match(JSON.stringify(r.detail), /cases failed/)
 })
 
-test("the core's encoder passes the cases the store implements; the only failure is ID-space exhaustion until the store rejects it", async () => {
+test("the core's encoder passes every case of the storage conformance suite", async () => {
 	const impl = { name: "sc-native", vitest: false, scExe: build("ok") }
 	const r = await runScRow(row, impl, { out: join(work, "out-ok") })
-	if (r.status === "pass") return
-	assert.equal(r.status, "fail")
-	assert.deepEqual(r.detail.first, ["storage conformance keeps one global record ID namespace and rejects exhausted ID minting"])
+	assert.equal(r.status, "pass", JSON.stringify(r.detail))
 })

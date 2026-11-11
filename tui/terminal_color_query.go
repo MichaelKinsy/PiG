@@ -26,11 +26,13 @@ type terminalBackgroundQueries struct {
 	pendingTerminalColorQueries []*pendingTerminalColorQuery
 }
 
-func terminalColorQueryDelay(milliseconds float64) time.Duration {
+// nodeTimerDelay is the Duration Node waits for setTimeout(fn, milliseconds).
+func nodeTimerDelay(milliseconds float64) time.Duration {
 	// Node setTimeout truncates fractional delays and uses 1ms for invalid, sub-millisecond, and overflowing delays.
 	if math.IsNaN(milliseconds) || milliseconds < 1 || milliseconds > math.MaxInt32 {
 		milliseconds = 1
 	}
+	//portlint:allow numbers NaN, sub-millisecond and above-MaxInt32 values were replaced by 1 above; setTimeout truncates the rest (Node timers)
 	return time.Duration(milliseconds) * time.Millisecond
 }
 
@@ -119,7 +121,7 @@ func (t *tuiBase) queryTerminalColors(out io.Writer, options TerminalColorQueryO
 
 	// Node timers cannot run while terminal.write is on the caller's stack. Start the Go callback after writing, but retain the deadline measured before the write; a synchronous reply may already have completed the query.
 	//portlint:allow clock the wall-clock form of Pi's setTimeout(..., timeoutMs) (tui.ts:1509-1512); the TUI.now seam times renders, not terminal queries
-	deadline := time.Now().Add(terminalColorQueryDelay(options.TimeoutMs))
+	deadline := time.Now().Add(nodeTimerDelay(options.TimeoutMs))
 	_, err := io.WriteString(out, terminalColorQuery)
 	queries.mu.Lock()
 	defer queries.mu.Unlock()

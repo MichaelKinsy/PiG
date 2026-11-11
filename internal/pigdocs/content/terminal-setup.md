@@ -97,6 +97,9 @@ them.
 | PiG exits with `Rendered line N exceeds terminal width` | a component wrote a row wider than the terminal | fix the component to truncate its rows to the render width; the crash log lists every rendered row with its width |
 | colors look wrong | the terminal reports no true color | set `COLORTERM=truecolor` if the terminal supports it |
 | a stray `[?62;22c` appears | the terminal answered a capability query late | PiG consumes this answer; report it with the terminal name |
+| in fullscreen mode, rows show text that belongs elsewhere after the transcript scrolls | the terminal does not move rows inside a scroll region correctly | set `PIG_TUI_SCROLL_ROWS=0`, and report it with the terminal name |
+
+In fullscreen mode, when the transcript grows or scrolls, PiG moves the rows that only moved with a scroll region and draws only the rows that changed. Pi draws every row that changed (D205). The screen is the same, and PiG writes a fraction of the bytes to the terminal, which matters most through tmux or ssh. Set `PIG_TUI_SCROLL_ROWS=0` to draw every changed row, as Pi does.
 
 Set `PIG_RENDER_DEBUG` to any value to write render diagnostics. Use it when you
 report a display problem.

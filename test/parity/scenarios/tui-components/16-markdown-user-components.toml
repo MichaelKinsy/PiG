@@ -30,5 +30,5 @@ timeout_seconds = 60
 [assert]
 exit_code = 0
 output_equal = true
-both_contain = ['"name":"transform-cache"', '"name":"user-invalidation"', '"name":"user-builtin-transform"']
+both_contain = ['"name":"cjk-url-english-trim"', '"name":"transform-cache"', '"name":"user-invalidation"', '"name":"user-builtin-transform"']
 runs = 3

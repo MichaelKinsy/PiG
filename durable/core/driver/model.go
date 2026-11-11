@@ -3,6 +3,7 @@
 package driver
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -16,6 +17,7 @@ import (
 	"github.com/MichaelKinsy/PiG/durable/core/abi/payload"
 	"github.com/MichaelKinsy/PiG/durable/core/history"
 	"github.com/MichaelKinsy/PiG/durable/core/sqlhost"
+	"github.com/MichaelKinsy/PiG/internal/streamattachhook"
 )
 
 // maxKeptLists and maxKeptMessages bound the message lists kept for the delta form of model_context. A list is the whole
@@ -44,6 +46,9 @@ type Models struct {
 	owner  map[uint32]int64 // the conversation of a kept list that names one
 	newest map[int64]uint32 // each conversation's newest kept list
 	total  int              // messages across kept
+
+	payloads map[payloadKey]chan payloadAnswer // the provider's open onPayload calls
+	nextCall map[uint32]int                    // the next onPayload call number of each effect
 
 	ranges     map[int64]*decodedRange // the messages each conversation's last request decoded
 	rangeOrder []int64                 // the conversations of ranges, oldest request first
@@ -234,20 +239,37 @@ func (m *Models) modelContext(ctx context.Context, call *sqlhost.Call) error {
 	}
 	// generation.ts passes the invocation's signal: an extension-owned provider callback (a faux step) reads options.Signal.
 	options.Signal = ctx
+	if p.OnPayload {
+		options.OnPayload = m.onPayload(ctx, call)
+	}
 	startedAt, started := m.now(), m.mono()
 	// The decoded messages are shared with the next request of the conversation and nothing modifies them, so the provider
 	// layer need not copy the whole history for each call.
-	stream := m.models().StreamSimple(ctx, model, ai.Context{Messages: list, Frozen: true}, options)
-	// The stream is consumed to its end, also after an abort: the provider ends it on its signal with the aborted message, which
-	// the core waits for (generation.ts consumes the stream to its end and classifies afterwards). Iterating under ctx would stop at
-	// the abort and leave the core's request unanswered, and its generation's abort invocation never runs.
-	for event := range stream.Events(context.WithoutCancel(ctx)) {
-		body, err := json.Marshal(event)
-		if err != nil {
-			return fmt.Errorf("model_context %d event: %w", call.ID, err)
+	// generation.ts calls streamSimple and iterates it in one synchronous prefix, before any response I/O can complete, so the start
+	// event carries the pending, empty partial the provider built. A goroutine that attached after the
+	// stream was returned could run after the provider had published the whole response and send a start event holding the finished
+	// message. The creation and the iteration run in one stream continuation, as the Agent does (agent/agent_loop.go requestStream).
+	streamCtx := ai.WithStreamContinuations(ctx)
+	err = ai.RunStreamContinuation(streamCtx, func(observation *ai.StreamObservation) error {
+		stream := m.models().StreamSimple(streamCtx, model, ai.Context{Messages: list, Frozen: true}, options)
+		// The stream is consumed to its end, also after an abort: the provider ends it on its signal with the aborted message, which
+		// the core waits for (generation.ts consumes the stream to its end and classifies afterwards). Iterating under ctx would stop at
+		// the abort and leave the core's request unanswered, and its generation's abort invocation never runs.
+		eventsCtx := observation.Context(context.WithoutCancel(ctx))
+		streamattachhook.Attach(eventsCtx, stream)
+		for event := range stream.Events(eventsCtx) {
+			body, err := json.Marshal(event)
+			if err != nil {
+				return fmt.Errorf("model_context %d event: %w", call.ID, err)
+			}
+			body = withDuration(body, event, startedAt, started, m.mono())
+			// The event is posted as the one element of a JSON array; Join sizes its one allocation itself.
+			call.Post(abi.Event{Kind: abi.EventModelEvent, ID: call.ID, Payload: bytes.Join([][]byte{[]byte("["), body, []byte("]")}, nil)})
 		}
-		body = withDuration(body, event, startedAt, started, m.mono())
-		call.Post(abi.Event{Kind: abi.EventModelEvent, ID: call.ID, Payload: append(append(make([]byte, 0, len(body)+2), '['), append(body, ']')...)})
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 	if err := ctx.Err(); err != nil && !errors.Is(err, context.Canceled) {
 		return err

@@ -57,7 +57,7 @@ The flow in `label` mode: push; the light run reports `CI result` red with the m
 | Changed paths, Bookkeeping, Project documents, CI result, Linux verification, Prune superseded caches | always | 5 | |
 | Linux / preflight | always | 20 | Build, and vet natively, for both Windows architectures and for Android, and `go fix` |
 | Linux / test-fast-sharded | pr | 31 | |
-| Linux / test-fast | pr | 26 | |
+| Linux / test-fast | pr | 26 | Packages the pull request does not affect: it runs `make ci-test-changed`, the fast packages that `automation/ci/changed-packages.py` selects against the base branch (direct, affected and the pigfault tests of the durable driver), and the whole of `ci-test-fast` when the change touches `go.mod`, `go.sum`, `go.work` or `go.work.sum`, or a file no package test reads. The sharded, cmd/pig and extension host packages stay in their own rows. The run summary lists the selection (direct, affected, tagged, unmapped and module-wide counts and lists) and says whether the run fell back to the whole shard and why. `ci-test-changed` also runs `make sdk-vectors-changed`: when the diff touches `tui/`, an SDK, `internal/typebox/` or a vector file (`automation/ci/sdk-vectors-changed.sh`), it checks the generated Pi vectors, lints every Rust crate (`make lint-rust`: rustfmt and Clippy with warnings denied, from the `rustfmt` and `clippy` components the Linux jobs install with the pinned toolchain) and runs the Go, Rust, Python and Lisp SDK suites, which the main module's package selection never reaches. The full run runs the same suites in the toolchains shard (`ci-sdk`), and `test/ci-images` checks that each one the light gate runs is still there. |
 | Linux / test-cli-1 | pr | 15 | |
 | Linux / test-cli-2 | pr | 12 | |
 | Linux / test-subprocess | pr | 12 | |
@@ -70,15 +70,16 @@ The flow in `label` mode: push; the light run reports `CI result` red with the m
 | Android build | pr | 5 | |
 | Node loader / ubuntu-24.04, windows-latest, macos-15 | pr | 9 | |
 | Linux / parity-2 | queue | 12 | The other hermetic parity hash shard |
-| Linux / portmap-1, portmap-2, portmap-3 | queue | 44 | |
-| Linux / test-conformance | queue | 18 | Conformance of every SDK |
-| Linux / toolchains | queue | 7 | Race, integration, SDK and extension corpus gates |
+| Linux / portmap-1, portmap-2, portmap-3, portmap-4, portmap-5, portmap-6, portmap-7, portmap-8 | queue | 45 | |
+| Linux / test-conformance-1, test-conformance-2 | queue | 30 | Conformance of every SDK, in two halves of four shards |
+| Linux / toolchains | queue | 7 | Race, integration, SDK (including `make lint-rust`) and extension corpus gates |
 | Node extensions | queue | 11 | |
 | Durable Cloudflare host | queue | 25 | |
+| Durable contract / pi, wasm-tinygo, native | queue | 60 | The Durable core conformance gate (`make ci-durable-contract`), one build of the core per job; the limit is the job's, not yet a measured run time |
 | Windows cli-2 cli-5, cli-1 cli-3, cli-4 cli-7, cli-6 cli-8 | queue | 96 | |
 | Windows native-2, native-3, native-4 | queue | 56 | |
 | Windows extension-host-1, extension-host-2, extension-host-3 | queue | 35 | |
-| Windows extension-conformance-1, extension-conformance-2 | queue | 38 | |
+| Windows extension-conformance-1, extension-conformance-2, extension-conformance-3, extension-conformance-4 | queue | 122 | |
 | macOS cli-1 extension-host-3 packages, cli-2 cli-8 extension-host-2, cli-4 cli-7 extension-host-1, cli-3 cli-5 cli-6 | queue | 71 | |
 
 Minutes are runner minutes, each job rounded up to the minute, from run 39510928254 (a full pull-request run). The full run is 617 minutes in 45 jobs and the light run 204 minutes in 21 jobs, 33% of it. At the standard billing multipliers (Windows 2, macOS 10) they are 1646 and 369 minutes; standard runners are not billed in a public repository, so the cost that matters is the share of the account's concurrent job slots. The light run is shorter than the table's 204: `lint-changed` and the `checks` shard without `module-size` replace longer gates. In both light modes a change with `k` pushes costs `204k + 617` minutes (`k` light runs and one full run: the queue's, or the `ci:full` run) where it cost `617k` as `k` full pull-request runs, so a light mode pays off from the second push, and a failed full run costs another 617.

@@ -16,7 +16,7 @@ import (
 
 const maxTimeoutSeconds = 2_147_483_647 / 1000.0
 
-const bashParameters = `{"type":"object","required":["command"],"properties":{"command":{"type":"string","description":"Bash command to execute"},"timeout":{"type":"number","description":"Timeout in seconds (optional, no default timeout)"}}}`
+const bashParameters = `{"type":"object","properties":{"command":{"type":"string","description":"Bash command to execute"},"timeout":{"type":"number","description":"Timeout in seconds (optional, no default timeout)"}},"required":["command"]}`
 
 // BashToolInput is the arguments of the bash tool.
 type BashToolInput struct {
@@ -199,7 +199,7 @@ func bashFailure(ctx context.Context, execErr error, executionErr *env.Execution
 	return execErr
 }
 
-const powershellParameters = `{"type":"object","required":["command"],"properties":{"command":{"type":"string","description":"PowerShell command to execute"},"timeout":{"type":"number","description":"Timeout in seconds (optional, no default timeout)"}}}`
+const powershellParameters = `{"type":"object","properties":{"command":{"type":"string","description":"PowerShell command to execute"},"timeout":{"type":"number","description":"Timeout in seconds (optional, no default timeout)"}},"required":["command"]}`
 
 // PowerShellToolInput is the arguments of the powershell tool.
 type PowerShellToolInput = BashToolInput

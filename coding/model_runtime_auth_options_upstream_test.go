@@ -1,5 +1,7 @@
 package coding
 
+// pi: packages/coding-agent/src/core/provider-composer.ts
+
 import (
 	"context"
 	"errors"

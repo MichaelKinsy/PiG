@@ -2240,3 +2240,32 @@ func TestReviewedTypeClosesAConstructorRow(t *testing.T) {
 		t.Fatalf("an exception for another Go target applied: got %+v", d)
 	}
 }
+
+// TestAnEntryLayerRowReadsTheMembersOfItsOwnLayersInterface: chord's src/next declares names the package's own layer declares
+// too (Link: receive in one, onMessage in the other); a row of the next layer takes the next layer's members, the other rows the
+// first declaration of the package, as before.
+func TestAnEntryLayerRowReadsTheMembersOfItsOwnLayersInterface(t *testing.T) {
+	two := func([]m) []m {
+		return []m{
+			{"id": "pkg:fx/.#Port", "name": "Port", "kind": "interface", "shape": m{"type": "Port"}},
+			{"id": "pkg:fx/.#Port::property:receive", "parentId": "pkg:fx/.#Port", "role": "property", "name": "Port.receive", "kind": "property", "shape": m{"name": "receive", "type": "string"}},
+			{"id": "pkg:fx/next#Port", "name": "Port", "kind": "interface", "shape": m{"type": "Port"}},
+			{"id": "pkg:fx/next#Port::property:onMessage", "parentId": "pkg:fx/next#Port", "role": "property", "name": "Port.onMessage", "kind": "property", "shape": m{"name": "onMessage", "type": "string"}},
+		}
+	}
+	fixtureRun(t, nil, two, nil, nil)
+	names := func(shapes []propShape) []string {
+		var out []string
+		for _, s := range shapes {
+			out = append(out, s.Name)
+		}
+		return out
+	}
+	det := fixtureLast.det
+	if got := names(det.propShapesDepth("fx", nextEntry, "Port", 0)); len(got) != 1 || got[0] != "onMessage" {
+		t.Fatalf("members for a next-layer row = %v, want [onMessage]", got)
+	}
+	if got := names(det.propShapesDepth("fx", "", "Port", 0)); len(got) != 1 || got[0] != "receive" {
+		t.Fatalf("members for any other row = %v, want [receive]", got)
+	}
+}

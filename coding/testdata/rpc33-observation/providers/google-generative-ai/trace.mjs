@@ -54,4 +54,5 @@ for (const e of events) {
   else if (e.deliver) console.log(`e${e.epoch} t${e.tick} DELIVER ${e.deliver}`);
   else console.log(`e${e.epoch} t${e.tick} #${e.id}<-${e.trigger} ${e.type} ${e.frames.join(' | ')}`);
 }
-process.exit(0);
+// Exit once the pipe has taken every line: process.exit() right after console.log drops what it has not drained.
+process.stdout.write("", () => process.exit(0));

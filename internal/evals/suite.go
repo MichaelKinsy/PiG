@@ -18,15 +18,21 @@ import (
 	"time"
 )
 
-// EvalProject selects the docs or host suites (vitest.evals.config.ts projects).
+// EvalProject selects the docs, host or audit suites (vitest.evals.config.ts projects).
 type EvalProject string
 
 const (
 	// EvalProjectDocs runs the *.docs.eval.go suites; each case runs in a container per documentation variant.
 	EvalProjectDocs EvalProject = "docs"
-	// EvalProjectHost runs every other suite on this machine.
+	// EvalProjectHost runs every other suite on this machine, except the documentation audit.
 	EvalProjectHost EvalProject = "host"
+	// EvalProjectAudit runs the documentation audit on this machine; it is expensive, so the host project leaves it out.
+	EvalProjectAudit EvalProject = "audit"
 )
+
+// AuditEvalFile is the file of the documentation audit, the only suite of the audit project
+// (vitest.evals.config.ts: include ["evals/documentation-audit.eval.ts"]).
+const AuditEvalFile = "evals/documentation-audit.eval.go"
 
 // testTimeout is the per-case timeout of vitest.evals.config.ts (testTimeout and hookTimeout 300_000).
 const testTimeout = 300 * time.Second
@@ -64,6 +70,9 @@ type Suite struct {
 func (suite Suite) Project() EvalProject {
 	if strings.HasSuffix(suite.File, DocsEvalSuffix) {
 		return EvalProjectDocs
+	}
+	if suite.File == AuditEvalFile {
+		return EvalProjectAudit
 	}
 	return EvalProjectHost
 }

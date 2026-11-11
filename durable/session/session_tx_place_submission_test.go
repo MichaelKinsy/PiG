@@ -32,7 +32,7 @@ func TestSessionTransactionPlaceSubmissionIsATableWriteAndRefusedAfterSettling(t
 		}
 		_, err := tx.SubmissionByRequest(conversationId, requestId)
 		var readAfterWrite *durable.ReadAfterWrite
-		if !errors.As(err, &readAfterWrite) || readAfterWrite.Method != "submissionByRequest" || !strings.Contains(err.Error(), "Tx.submissionByRequest()") {
+		if !errors.As(err, &readAfterWrite) || readAfterWrite.Operation != "Tx.submissionByRequest()" || !strings.Contains(err.Error(), "Tx.submissionByRequest()") {
 			t.Fatalf("a read after placeSubmission = %v, want ReadAfterWrite for submissionByRequest", err)
 		}
 		return nil

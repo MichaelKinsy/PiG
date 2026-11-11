@@ -424,7 +424,7 @@ func (g *GraphResourceLoader) extendResources(args icodingagent.GraphArgs) error
 	convert := func(list []graphResourcePath) []ExtensionResourcePath {
 		out := make([]ExtensionResourcePath, len(list))
 		for i, item := range list {
-			out[i] = ExtensionResourcePath{Path: item.Path, Metadata: icodingagent.PathMetadata{Source: item.Metadata.Source, Scope: item.Metadata.Scope, Origin: item.Metadata.Origin, BaseDir: item.Metadata.BaseDir}}
+			out[i] = ExtensionResourcePath{Path: item.Path, Metadata: icodingagent.PathMetadata{Source: item.Metadata.Source, Scope: item.Metadata.Scope, Origin: item.Metadata.Origin, BaseDir: item.Metadata.BaseDir, ChangelogPath: item.Metadata.ChangelogPath}}
 		}
 		return out
 	}
@@ -438,10 +438,11 @@ func (g *GraphResourceLoader) extendResources(args icodingagent.GraphArgs) error
 type graphResourcePath struct {
 	Path     string `json:"path"`
 	Metadata struct {
-		Source  string `json:"source"`
-		Scope   string `json:"scope"`
-		Origin  string `json:"origin"`
-		BaseDir string `json:"baseDir"`
+		Source        string `json:"source"`
+		Scope         string `json:"scope"`
+		Origin        string `json:"origin"`
+		BaseDir       string `json:"baseDir"`
+		ChangelogPath string `json:"changelogPath"`
 	} `json:"metadata"`
 }
 

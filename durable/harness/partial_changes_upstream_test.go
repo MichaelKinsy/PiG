@@ -11,7 +11,6 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/chord/delta"
-	"github.com/MichaelKinsy/PiG/durable"
 )
 
 // upstream: packages/durable/test/harness-partial-changes.test.ts (#9265): partial commits reassigned the growing strings of a streamed answer, and Chord compared each one whole.
@@ -69,11 +68,10 @@ func (stream *partialStream) commit(fail bool) {
 // commitCut is a partial commit of partial with what cut took.
 func (stream *partialStream) commitCut(cut *PartialCut, partial *ai.AssistantMessage, fail bool) {
 	stream.t.Helper()
-	message, err := durable.ToJsonObject(partial)
+	message, taken, err := stream.changes.BindPartial(cut, partial)
 	if err != nil {
 		stream.t.Fatal(err)
 	}
-	taken := stream.changes.Bind(cut, message)
 	change := stream.tracker.BeginChange()
 	if err := stream.changes.Commit(change.State().Object("generation"), message, taken); err != nil {
 		stream.t.Fatal(err)

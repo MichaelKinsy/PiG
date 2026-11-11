@@ -129,7 +129,7 @@ Programs in other languages use the JSON Lines protocol directly. [RPC mode](/do
 
 Pi lets a source fork rename its command and configuration directory through a `piConfig` block in `package.json`. PiG has no such block. The command name `pig` and the `~/.pig` directory are part of the binary (D2).
 
-To ship an agent with its own name, extensions and defaults, write a [Piglet](/docs/latest/piglets). Run it with `pig --piglet <name|path>`, or build it into a native executable with `pig piglet build --format binary`. See [derivative harnesses](/docs/latest/derivative-harnesses).
+To ship an agent with its own name, extensions and defaults, write a [Piglet](/docs/latest/piglets). Run it with `pig --piglet <name|path>`, or build it into a native executable with `pig piglet build --format binary`. See [Choose how to customize PiG](/docs/latest/quickstart#choose-how-to-customize-pig). [Derivative harnesses](/docs/latest/derivative-harnesses) covers what belongs in a product built on PiG.
 
 ## Related
 

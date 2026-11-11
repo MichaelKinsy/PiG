@@ -152,7 +152,7 @@ func decodeRaw(t *testing.T, raw json.RawMessage) any {
 
 func TestMarkdownThemeAcrossSDKs(t *testing.T) {
 	cases := loadTuiVectors(t, "getMarkdownTheme")
-	eachModelTypesPlacementAfter(t, nil, printModeRig, func(t *testing.T, r *modelTypesRig) {
+	eachTuiPlacementAfter(t, nil, printModeRig, func(t *testing.T, r *modelTypesRig) {
 		for _, c := range cases {
 			var want struct {
 				Palette   json.RawMessage
@@ -194,7 +194,7 @@ func TestMarkdownThemeAcrossSDKs(t *testing.T) {
 
 func TestSelectListThemeAcrossSDKs(t *testing.T) {
 	cases := loadTuiVectors(t, "getSelectListTheme")
-	eachModelTypesPlacement(t, func(t *testing.T, r *modelTypesRig) {
+	eachTuiPlacement(t, func(t *testing.T, r *modelTypesRig) {
 		for _, c := range cases {
 			var want struct {
 				Palette json.RawMessage
@@ -214,7 +214,7 @@ func TestSelectListThemeAcrossSDKs(t *testing.T) {
 
 func TestSettingsListThemeAcrossSDKs(t *testing.T) {
 	cases := loadTuiVectors(t, "getSettingsListTheme")
-	eachModelTypesPlacement(t, func(t *testing.T, r *modelTypesRig) {
+	eachTuiPlacement(t, func(t *testing.T, r *modelTypesRig) {
 		for _, c := range cases {
 			var want struct {
 				Palette json.RawMessage
@@ -237,7 +237,7 @@ func TestSettingsListThemeAcrossSDKs(t *testing.T) {
 // sent its palette with the call.
 func TestHighlightCodeAcrossSDKs(t *testing.T) {
 	cases := loadTuiVectors(t, "highlightCode")
-	eachModelTypesPlacementAfter(t, nil, printModeRig, func(t *testing.T, r *modelTypesRig) {
+	eachTuiPlacementAfter(t, nil, printModeRig, func(t *testing.T, r *modelTypesRig) {
 		palettes := map[string]json.RawMessage{}
 		for _, c := range cases {
 			var want struct{ Palette json.RawMessage }
@@ -284,11 +284,82 @@ func TestHighlightCodeAcrossSDKs(t *testing.T) {
 	})
 }
 
+// theme.ts highlightCode (Pi 0f21a331) returns the code's lines in the mdCodeBlock color when the highlight throws, and getMarkdownTheme().highlightCode is that same
+// function. The failure the row uses is a theme with no color for a syntax token: cli-highlight's formatter calls theme.fg, which throws `Unknown theme color`. The Node
+// runtime runs Pi's own function; the host's highlighter refuses the same palette, so the call fails for the Go, Rust, Python and Lisp SDKs, and the lines each returns
+// must be Pi's catch value in the theme the SDK holds, not the unstyled code a never-made or failed call would leave.
+func TestHighlightCodeThatFailsTakesTheCodeBlockColorAcrossSDKs(t *testing.T) {
+	var installed struct {
+		Name        string
+		Foregrounds map[string]string
+		Backgrounds map[string]string
+		Mode        string
+	}
+	var full json.RawMessage
+	for _, c := range loadTuiVectors(t, "highlightCode") {
+		var want struct{ Palette json.RawMessage }
+		if err := json.Unmarshal(c.Result, &want); err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal(want.Palette, &installed); err != nil {
+			t.Fatal(err)
+		}
+		// A theme other than the host's dark one, so lines drawn with the host's theme are not the lines drawn with the one the extension holds.
+		if installed.Name != "dark" {
+			full = want.Palette
+			break
+		}
+	}
+	if full == nil {
+		t.Fatal("no vector of highlightCode ran under a theme other than dark")
+	}
+	reference, err := tui.NewThemeFromANSIPalette(installed.Name, installed.Foregrounds, installed.Backgrounds, tui.TerminalColorMode(installed.Mode))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const code = "const answer = 42;\nreturn answer"
+	var want []string
+	for line := range strings.SplitSeq(code, "\n") {
+		want = append(want, reference.Fg("mdCodeBlock", line))
+	}
+	if reflect.DeepEqual(want, strings.Split(code, "\n")) {
+		t.Fatal("the mdCodeBlock color draws nothing, so the row cannot tell a styled fallback from an unstyled one")
+	}
+	delete(installed.Foregrounds, "syntaxKeyword")
+	broken := map[string]any{"name": installed.Name, "foregrounds": installed.Foregrounds, "backgrounds": installed.Backgrounds, "mode": installed.Mode}
+	eachTuiPlacementAfter(t, nil, printModeRig, func(t *testing.T, r *modelTypesRig) {
+		subprocess.SetThemeLoader(func(name *string) any {
+			if name == nil {
+				return nil
+			}
+			return broken
+		})
+		t.Cleanup(func() { subprocess.SetThemeLoader(nil) })
+		args := map[string]any{"op": "highlight", "code": code, "lang": "javascript", "samples": []any{}}
+		if isNode(t) {
+			// Pi's global theme is the host's palette.
+			r.setTheme(broken)
+		} else {
+			// The host draws with the dark theme; the SDK installs the broken theme, which the host's highlighter refuses.
+			args["theme"] = installed.Name
+		}
+		report := r.toolWith("tui_theme_probe", args)
+		if got := asJSON(t, report["lines"]); !reflect.DeepEqual(got, asJSON(t, want)) {
+			t.Errorf("highlightCode of a failing highlight = %q\nPi %q", got, want)
+		}
+		markdown := r.toolWith("tui_theme_probe", map[string]any{"op": "markdown", "samples": []any{}, "highlight": []any{[]any{code, "javascript"}}})
+		if got, _ := markdown["highlight"].([]any); len(got) != 1 || !reflect.DeepEqual(got[0], asJSON(t, want)) {
+			t.Errorf("getMarkdownTheme().highlightCode of a failing highlight = %q\nPi %q", markdown["highlight"], want)
+		}
+		r.resetTheme(t)
+	})
+}
+
 // initTheme installs the host's theme of the name asked: the global theme every helper reads afterwards, as Pi's initTheme sets its global theme. The Node runtime's
 // global theme is Pi's own, so the row runs the Go, Rust and Python SDKs.
 func TestInitThemeAcrossSDKs(t *testing.T) {
 	cases := loadTuiVectors(t, "getMarkdownTheme")
-	eachModelTypesPlacementOf(t, []string{"go", "rust", "python"}, func(t *testing.T, r *modelTypesRig) {
+	eachTuiPlacementAfter(t, []string{"go", "rust", "python", "lisp"}, nil, func(t *testing.T, r *modelTypesRig) {
 		palettes := map[string]json.RawMessage{}
 		wants := map[string]struct{ Bold, Heading any }{}
 		for _, c := range cases {
@@ -346,7 +417,7 @@ func vectorPlatform() string {
 // keyHint and keyText read the host's keybindings and theme; the platform is the one the SDK process runs on, so a vector for another platform is run by the unit tests.
 func TestKeyHintAcrossSDKs(t *testing.T) {
 	cases := loadTuiVectors(t, "keyHint")
-	eachModelTypesPlacement(t, func(t *testing.T, r *modelTypesRig) {
+	eachTuiPlacement(t, func(t *testing.T, r *modelTypesRig) {
 		ran := 0
 		for _, c := range cases {
 			var want struct {
@@ -378,7 +449,7 @@ func TestKeyHintAcrossSDKs(t *testing.T) {
 
 func TestRawKeyHintAcrossSDKs(t *testing.T) {
 	cases := loadTuiVectors(t, "rawKeyHint")
-	eachModelTypesPlacement(t, func(t *testing.T, r *modelTypesRig) {
+	eachTuiPlacement(t, func(t *testing.T, r *modelTypesRig) {
 		ran := 0
 		for _, c := range cases {
 			var want struct {

@@ -19,6 +19,13 @@ func checkCodingAgentVendor(t *testing.T, root, file string, got []byte) {
 		}
 		return
 	}
+	if file == "dist/cli.js" {
+		// The harness is the CLI an extension starts: process.argv[1] in its process (process-identity.mjs).
+		if string(got) != "import \"../../../../harness/cli.mjs\";\n" {
+			t.Fatalf("CLI entry = %s", got)
+		}
+		return
+	}
 	parts := append([]string{"dist"}, strings.Split(file, "/")...)
 	if file == "package.json" || file == "README.md" || file == "CHANGELOG.md" || strings.HasPrefix(file, "docs/") || strings.HasPrefix(file, "examples/") {
 		parts = strings.Split(file, "/")
@@ -42,7 +49,7 @@ func checkCodingAgentVendor(t *testing.T, root, file string, got []byte) {
 			// .upstream/v0.99.1/packages/coding-agent/src/modes/interactive/theme/theme.ts:4-24 imports its colour helpers and getTerminalColorMode from the pi-tui barrel.
 			[2]string{`import { backgroundAnsi, colorToHex, colorToOklch, foregroundAnsi, getTerminalColorMode, indexedColor, mixColors, parseColor, rgbColor, styleTextWithAnsi, } from "@earendil-works/pi-tui";`, `import { backgroundAnsi, colorToHex, colorToOklch, foregroundAnsi, indexedColor, mixColors, parseColor, rgbColor, styleTextWithAnsi, } from "../../../../pi-tui/colors.js";
 import { getTerminalColorMode, } from "../../../../pi-tui/terminal-image.js";`},
-			[2]string{`import { highlight, supportsLanguage } from "../../../utils/syntax-highlight.js";`, `import { highlight, supportsLanguage } from "../../../../../syntax-highlight.mjs";`},
+			[2]string{`import { getHighlightLanguageCount, highlight, supportsLanguage } from "../../../utils/syntax-highlight.js";`, `import { getHighlightLanguageCount, highlight, supportsLanguage } from "../../../../../syntax-highlight.mjs";`},
 		)
 	case "modes/interactive/theme/system-theme.js":
 		replacements = append(replacements,

@@ -238,6 +238,7 @@ func instructions(args []string) error {
 	if err != nil {
 		return err
 	}
+	//nolint:gosec // G204 (class c): program is the VALGRIND env var (operator-set pinned valgrind; errors if unset), with os.Executable as the target and fixed flags.
 	cmd := exec.Command(valgrind, "--tool=callgrind", "--callgrind-out-file=/dev/null",
 		"--toggle-collect=*durable/core.(*Session).Step", self, "replay-native", *rec)
 	cmd.Env = append(os.Environ(), "GOMAXPROCS=1", "GOGC=400", "GODEBUG=asyncpreemptoff=1")

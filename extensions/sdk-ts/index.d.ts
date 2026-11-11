@@ -110,6 +110,18 @@ declare module "@earendil-works/pi-coding-agent" {
     /** In a tool's `execute`: `JSON.stringify` of the call's arguments, members in the model's order. */
     readonly toolInput?: string;
   }
+  // Pi c466a359 (#11360) adds ExecOptions.maxBuffer and ExecResult.truncated. PiG's host implements them and this augmentation declares them.
+  interface ExecOptions {
+    /**
+     * Combined stdout/stderr byte limit; exceeding it terminates the command with `truncated: true`.
+     * Nonnegative integer up to the runtime string limit. Default: 256 MiB, capped by that limit.
+     */
+    maxBuffer?: number;
+  }
+  interface ExecResult {
+    /** Output exceeded `maxBuffer`; stdout and stderr are incomplete and `code` is nonzero. */
+    truncated: boolean;
+  }
   interface ExtensionUIContext {
     /** Subscribe to changes of the host's theme; the handler receives `ui.theme` after it took the new palette. Returns the unsubscribe function. */
     onThemeChange(handler: (theme: Theme) => void): () => void;
@@ -125,6 +137,17 @@ declare module "@earendil-works/pi-coding-agent" {
      * leaves /sprite when the extension unloads.
      */
     registerSprite(definition: PiGSpriteDefinition): Promise<void>;
+  }
+  interface ExtensionAPI {
+    /**
+     * Declare that this extension owns the thinking runs of assistant messages,
+     * so a thinking run that is hidden or draws zero rows leaves no blank
+     * spacer rows around it. Called while the extension loads, it sets the
+     * initial value; called later, it changes it. The host ORs the flag across
+     * extensions, and it drops when the extension unloads or reloads. The last
+     * call wins. `enabled` defaults to true.
+     */
+    ownThinkingRuns(enabled?: boolean): void;
   }
 }
 

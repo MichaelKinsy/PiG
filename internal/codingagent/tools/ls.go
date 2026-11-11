@@ -16,6 +16,7 @@ import (
 	"golang.org/x/text/language"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
@@ -203,8 +204,8 @@ func lsError(message string) agent.AgentToolResult {
 
 // sortEntriesLikeLocaleCompare is upstream ls.ts:109 `entries.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))`:
 // localeCompare is ICU root collation, and Array.prototype.sort is stable. Each name is lowercased and weighed once: comparing collation
-// keys orders names as jsstring.Collator.CompareString does, which compares with collate.New(language.Und) unless a name holds U+FFFD
-// (TestLsCollationKeysOrderLikeCollator checks the two orders agree). Names holding U+FFFD sort by jsstring.Collator itself. Collators
+// keys orders names as localecompare.Collator.CompareString does, which compares with collate.New(language.Und) unless a name holds U+FFFD
+// (TestLsCollationKeysOrderLikeCollator checks the two orders agree). Names holding U+FFFD sort by localecompare.Collator itself. Collators
 // keep scratch state, so each call owns one: ls runs in parallel mode.
 func sortEntriesLikeLocaleCompare(entries []string) {
 	type sortEntry struct {
@@ -219,7 +220,7 @@ func sortEntriesLikeLocaleCompare(entries []string) {
 		replacement = replacement || strings.Contains(lower, "\uFFFD")
 	}
 	if replacement {
-		collator := jsstring.NewCollator()
+		collator := localecompare.NewCollator()
 		slices.SortStableFunc(sorted, func(a, b sortEntry) int { return collator.CompareString(a.lower, b.lower) })
 	} else {
 		collator := collate.New(language.Und)

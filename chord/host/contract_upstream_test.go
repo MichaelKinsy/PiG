@@ -18,7 +18,7 @@ var view = tObject("text", tString())
 func chatV1Def() RemoteDef {
 	return RemoteDef{
 		Version: 1,
-		Input:   tObject("session", tString(), "conversation", tNumber(Schema{"default": 0})),
+		Input:   tObject("session", tString(), "conversation", tNumber(kw("default", 0))),
 		Host:    NewHostFamily("session:", "session"),
 		Variants: Fields[VariantDef]{
 			{"viewer", VariantDef{State: Fields[Schema]{{"view", view}}}},
@@ -41,6 +41,18 @@ func mustPanicTypeError(t *testing.T, what string, run func()) {
 		}
 	}()
 	run()
+}
+
+// contract.test.ts "treats `format` as an annotation: an input with format email accepts any string".
+func TestContractsTreatFormatAsAnAnnotation(t *testing.T) {
+	mail := Local("t.mail", LocalDef{Version: 1, Input: closed(tObject("to", tString(kw("format", "email"))))})
+	got, err := Normalize(mail.Input, map[string]any{"to": "nope"}, "input")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := map[string]any{"to": "nope"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("normalized %#v, want %#v", got, want)
+	}
 }
 
 func TestContractsNormalizeInputAndOmitDefaultsFromTheIdentity(t *testing.T) {

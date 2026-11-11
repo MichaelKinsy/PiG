@@ -23,7 +23,7 @@ An extension can add models that choose a physical model for each request. See [
 
 PiG integrates with the llama.cpp router. The router discovers GGUF files and loads models on demand. The `/llama` command manages the router, and `/model` selects one of its models. See [llama.cpp](llama-cpp.md).
 
-For Ollama, LM Studio, vLLM, SGLang, and other compatible servers, [configure a compatible endpoint](#configure-a-compatible-endpoint) in `models.json`.
+For Ollama, LM Studio, vLLM, SGLang, and other compatible servers, [configure a compatible endpoint](#configure-a-compatible-endpoint) in `models.json`. [llama-swap](llama-cpp.md#llama-swap) is one of them: `/llama` manages a llama.cpp router, not llama-swap.
 
 ## Configure a compatible endpoint
 

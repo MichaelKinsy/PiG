@@ -1,5 +1,7 @@
 package extension
 
+// Ports packages/coding-agent/src/core/extensions/types.ts (HeaderFactory, FooterFactory, EditorFactory and WidgetFactory).
+
 import "github.com/MichaelKinsy/PiG/tui"
 
 // ReadonlyFooterDataProvider is the footer data an extension's footer reads (footer-data-provider.ts:385

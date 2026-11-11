@@ -17,6 +17,22 @@ type AsyncMarkdownTransform struct {
 	Queue *MarkdownTransformQueue
 }
 
+// completionDirtying returns a copy of transform whose Invalidate first marks owner dirty, then calls transform's. A completion runs on a worker goroutine, so it only sets the atomic flag that the owner's parent container reads to render it again: a component's state changes on the owner loop alone, as Pi's change on its one event loop. Completion dirties the rendered frame, not the logical transform revision. A nil transform stays nil.
+func completionDirtying(owner *invalidatable, transform *AsyncMarkdownTransform) *AsyncMarkdownTransform {
+	if transform == nil {
+		return nil
+	}
+	options := *transform
+	completed := options.Invalidate
+	options.Invalidate = func() {
+		owner.Invalidate()
+		if completed != nil {
+			completed()
+		}
+	}
+	return &options
+}
+
 type markdownTransformInput struct {
 	text     string
 	width    int

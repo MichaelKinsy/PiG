@@ -27,21 +27,22 @@ func IsNeedRead(err error) (*NeedRead, bool) {
 	return nil, false
 }
 
-// NeedGate is the error a Store returns from Commit when the host's Storage must see the writes first: the host calls the
-// user's Storage.commit with them, and the commit applies only when that resolves (a rejection fails it as Pi's
-// storage.commit rejection does). A line job that returns it keeps the line while it waits and runs again from the
-// start once the host answers; a host transaction keeps its writes and commits them when the answer arrives.
-type NeedGate struct{}
+// RefusedError wraps the error a Store's Commit returns when one of Durable's own checks refuses the batch (global IDs, document actions,
+// copy resolution), run against the state before the batch writes anything: the batch is not durable, and the batches before it in the
+// writer's call are. Any other error of Commit is an unknown outcome and fails the Session.
+type RefusedError struct{ Err error }
 
-func (e *NeedGate) Error() string { return "storage commit pending" }
+func (e *RefusedError) Error() string { return e.Err.Error() }
+func (e *RefusedError) Unwrap() error { return e.Err }
 
-// IsNeedGate reports whether err is, or wraps, a *NeedGate.
-func IsNeedGate(err error) bool {
-	if err == nil {
-		return false
-	}
-	var n *NeedGate
-	return errors.As(err, &n)
+// CommitResult is what a Storage call stored: the number of durable batches, and why the next one was refused, if one was. Adoption is the
+// error of the first stored batch the host's side of the call could not adopt (Transaction.adopt threw), AdoptionAt the batch's index in the
+// call: that batch is durable, but its publication fails with it and adopts nothing.
+type CommitResult struct {
+	Stored     int
+	Refused    error
+	Adoption   error
+	AdoptionAt int
 }
 
 // ReadRequest identifies one read of committed state the host must serve.
@@ -170,10 +171,15 @@ type Write struct {
 	Source DocCopySource
 }
 
+// callStarter is implemented by a Store whose commits of one Storage call share a transaction (Pi's Storage.commit runs its batches in one):
+// the Session tells it where a call begins, so the first commit of a call is never joined to the last of the call before it.
+type callStarter interface{ BeginCall() }
+
 // Store is the committed state a Session reads and the place it commits to.
 //
 // Every read returns a nil record for an absent one. A read the loaded state
-// cannot answer returns a *NeedRead. Commit never returns NeedRead.
+// cannot answer returns a *NeedRead. Commit never returns NeedRead. The Session reads through gatedStore, which touches the key of
+// each read first (gate.go).
 type Store interface {
 	Conversation(id ID) (*jv.Object, error)
 	ScanConversations(q ConversationQuery, limit int, after ID) (Page, error)
@@ -196,6 +202,7 @@ type Store interface {
 	ScanDocuments(scope Scope, at Point, kind string, limit int, after ID) (Page, error)
 	// Commit applies the writes as one atomic commit and returns its sequence;
 	// nextID is the Session's next unminted ID, which the store keeps as
-	// max(its stored next ID, nextID, the largest written ID + 1). Any error fails the Session.
+	// max(its stored next ID, nextID, the largest written ID + 1). A *RefusedError is a batch Durable's own checks refused; any other
+	// error fails the Session.
 	Commit(writes []Write, nextID ID) (Seq, error)
 }

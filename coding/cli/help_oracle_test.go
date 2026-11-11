@@ -72,3 +72,20 @@ func TestHelpMatchesPi(t *testing.T) {
 		}
 	}
 }
+
+// Pi 2a46c420 (#11532, docs(coding-agent): document which working directory resumed sessions use): the help says which working directory each session flag uses. TestHelpMatchesPi compares it with Pi's own help.
+func TestHelpCarriesPi2a46c420SessionFlagWording(t *testing.T) {
+	var help bytes.Buffer
+	printHelp(&help, false)
+	for _, line := range []string{
+		"  --continue, -c                 Continue the most recent session for the current directory",
+		"  --resume, -r                   Pick a session to resume",
+		"  --session <path|id>            Open a session by file path or full/partial ID",
+		"  --session-id <id>              Use the current directory's existing session with the ID, creating it otherwise",
+		"  --fork <path|id>               Fork a session by file path or full/partial ID into the current directory",
+	} {
+		if !strings.Contains(help.String(), line+"\n") {
+			t.Errorf("help lacks %q", line)
+		}
+	}
+}

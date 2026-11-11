@@ -190,7 +190,8 @@ func resolveStartupSessionSelectionIn(flags Args, launchCWD, sessionDir string) 
 		path = selection.forkPath
 	}
 	if path == "" {
-		return selection, nil
+		err := selection.checkNewSessionCWD(flags, manager, launchCWD)
+		return selection, err
 	}
 	if selection.sessionDir == "" {
 		selection.sessionDir = filepath.Dir(path)
@@ -203,7 +204,8 @@ func resolveStartupSessionSelectionIn(flags Args, launchCWD, sessionDir string) 
 	// header; a new explicit session path keeps the launch cwd. existsSync is
 	// false for any stat failure, so an unreadable path counts as new.
 	if _, err := os.Stat(path); err != nil {
-		return selection, nil
+		err := selection.checkNewSessionCWD(flags, manager, launchCWD)
+		return selection, err
 	}
 
 	sessionCWD, err := readSessionCWD(path)
@@ -227,6 +229,29 @@ func resolveStartupSessionSelectionIn(flags Args, launchCWD, sessionDir string) 
 	}
 	selection.runtimeCWD = sessionCWD
 	return selection, nil
+}
+
+// checkNewSessionCWD is main.ts:707-719 for a Session that has no file yet. SessionManager.create gives a new Session a file and the
+// launch directory as its cwd (session-manager.ts:1079-1082), and getMissingSessionCwdIssue (session-cwd.ts:14-33) reports that cwd
+// as missing when it no longer exists: print, JSON and RPC mode end with the stored-session-cwd error, and interactive mode offers
+// to continue in the current cwd. A launch directory that is gone is possible only where getcwd(3) still names it (macOS); elsewhere
+// processCwd fails first. A Session selected by an explicit path that does not exist yet is such a new Session; the runtime opens
+// it at that path.
+func (s *startupSessionSelection) checkNewSessionCWD(flags Args, manager *codingagent.SessionManager, launchCWD string) error {
+	if _, err := os.Stat(launchCWD); err == nil { //perf:ok once per startup with a new Session
+		return nil
+	}
+	path := s.resumePath
+	if path == "" {
+		created, err := manager.Create(flags.SessionID, "")
+		if err != nil {
+			return err
+		}
+		path = created.Path()
+		s.resumePath = path
+	}
+	s.missingCWD = &missingSessionCWD{sessionFile: path, storedCWD: launchCWD, fallbackCWD: launchCWD}
+	return nil
 }
 
 // canonicalProcessCWD is canonicalStartupDir of process.cwd(). On Unix, getcwd(3) (nodepath.Cwd) already returns the physical
@@ -369,11 +394,15 @@ func resolveSessionArgument(manager *codingagent.SessionManager, launchCWD, arg 
 		}
 		return resolvedSessionArgument{}, nil
 	}
-	resolved, err := findSession(func() ([]codingagent.SessionInfo, error) { return listStartupSessions(manager) }, arg)
+	// Pi main.ts resolveSessionPath: an exact ID needs only the session headers, so the full metadata listing is left to prefix matches.
+	if path := manager.FindByID(arg); path != "" {
+		return resolvedSessionArgument{path: path}, nil
+	}
+	resolved, err := findSession(func() ([]codingagent.SessionInfo, error) { return listStartupSessions(manager) }, arg, false)
 	if err != nil || resolved.path != "" {
 		return resolved, err
 	}
-	resolved, err = findSession(func() ([]codingagent.SessionInfo, error) { return manager.ListAllSessions() }, arg)
+	resolved, err = findSession(func() ([]codingagent.SessionInfo, error) { return manager.ListAllSessions() }, arg, true)
 	if err != nil {
 		return resolvedSessionArgument{}, err
 	}
@@ -384,14 +413,17 @@ func resolveSessionArgument(manager *codingagent.SessionManager, launchCWD, arg 
 	return resolved, nil
 }
 
-func findSession(loader func() ([]codingagent.SessionInfo, error), id string) (resolvedSessionArgument, error) {
+// findSession is the first session whose ID is id (when exactFirst) or starts with id, in listing order.
+func findSession(loader func() ([]codingagent.SessionInfo, error), id string, exactFirst bool) (resolvedSessionArgument, error) {
 	infos, err := loader()
 	if err != nil {
 		return resolvedSessionArgument{}, err
 	}
-	for _, info := range infos {
-		if info.ID == id {
-			return resolvedSessionArgument{path: info.Path, cwd: info.CWD}, nil
+	if exactFirst {
+		for _, info := range infos {
+			if info.ID == id {
+				return resolvedSessionArgument{path: info.Path, cwd: info.CWD}, nil
+			}
 		}
 	}
 	for _, info := range infos {

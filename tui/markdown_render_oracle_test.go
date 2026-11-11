@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os/exec"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -16,12 +17,15 @@ type markdownRenderProbe struct {
 	PaddingX int    `json:"paddingX"`
 	PaddingY int    `json:"paddingY"`
 	Widths   []int  `json:"widths"`
+	// Then is texts set one after another on the component after Text was rendered at a width; the result is the render after the last.
+	Then []string `json:"then,omitempty"`
 }
 
 // markdownRenderDocs are the documents of every markdown shape the oracle compares.
 func markdownRenderDocs() []string {
 	return []string{
 		"", "plain paragraph", "two\n\nparagraphs", "soft\nbreak and  \nhard break\\\nbackslash break",
+		"https://example.com。后面的中文 and www.example.com，后面 and https://example.com/中文?q=搜索#片段…后面", "https://example.com.，后面的中文 and https://example.com紧接着中文 and <https://example.com/中文，路径>",
 		"# H1\n## H2\n### H3\n#### H4\n##### H5\n###### H6", "Setext H1\n=========\n\nSetext H2\n---------",
 		"**bold** *italic* ***both*** ~~strike~~ `code` __under__ _it_ **bold with *nested italic* inside**",
 		"- one\n- two\n  - nested a\n  - nested b\n    - deeper\n- three", "1. first\n2. second\n   1. sub\n   2. sub\n10. tenth\n11. eleventh",
@@ -79,38 +83,26 @@ func TestMarkdownRenderMatchesPi(t *testing.T) {
 	compareMarkdownWithPi(t, markdownRenderDocs())
 }
 
+// markdownOpenLinkRepeatDoc repeats a paragraph with a bare URL before and inside a raw <a> that is still open. marked lexes
+// the second one without autolinks, and Pi renders it with the lines of the first (D220).
+const markdownOpenLinkRepeatDoc = "http://a.b and www.c.d\n\nx <a href=\"u\">open\n\nhttp://a.b and www.c.d\n\nclose</a>\n\nhttp://a.b and www.c.d"
+
 // compareMarkdownWithPi requires Markdown.render of every document to equal pi-tui's at several widths and paddings.
 func compareMarkdownWithPi(t *testing.T, docs []string) {
 	t.Helper()
 	var probes []markdownRenderProbe
 	for _, doc := range docs {
+		if doc == markdownOpenLinkRepeatDoc {
+			// pig divergence (D220): Pi renders the repeated paragraph inside the open <a> with the lines of the one before it, so this document is not compared;
+			// TestMarkdownBlockReuseDiffersFromPi pins both sides.
+			continue
+		}
 		for _, pad := range [][2]int{{0, 0}, {1, 1}, {2, 0}} {
 			probes = append(probes, markdownRenderProbe{Text: doc, PaddingX: pad[0], PaddingY: pad[1], Widths: []int{1, 2, 3, 4, 20, 40, 80}})
 		}
 	}
-	input, err := json.Marshal(probes)
-	if err != nil {
-		t.Fatal(err)
-	}
-	cmd := exec.CommandContext(t.Context(), "node", "testdata/markdown_render.mjs", pigversion.UpstreamPackageVersion)
-	cmd.Stdin = bytes.NewReader(input)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	output, err := cmd.Output()
-	if err != nil {
-		t.Fatalf("Pi oracle: %v\n%s", err, &stderr)
-	}
-	var expected [][][]string
-	if err := json.Unmarshal(output, &expected); err != nil {
-		t.Fatal(err)
-	}
-	tag := func(name string) func(string) string {
-		return func(text string) string { return "<" + name + ">" + text + "</" + name + ">" }
-	}
-	theme := MarkdownTheme{
-		Heading: tag("h"), Link: tag("a"), LinkUrl: tag("u"), Code: tag("c"), CodeBlock: tag("cb"), CodeBlockBorder: tag("cbb"),
-		Quote: tag("q"), QuoteBorder: tag("qb"), Hr: tag("hr"), ListBullet: tag("lb"), Bold: tag("b"), Italic: tag("i"), Strikethrough: tag("s"), Underline: tag("ul"),
-	}
+	expected := piMarkdownRows(t, probes)
+	theme := taggedMarkdownTheme()
 	SetCapabilities(TerminalCapabilities{TrueColor: true})
 	t.Cleanup(ResetCapabilitiesCache)
 	differing := map[string]bool{}
@@ -131,4 +123,120 @@ func compareMarkdownWithPi(t *testing.T, docs []string) {
 			t.Errorf("markdown differs from Pi: %q", doc)
 		}
 	}
+}
+
+// piMarkdownRows renders every probe with the pinned pi-tui, one list of rows per width.
+func piMarkdownRows(t *testing.T, probes []markdownRenderProbe) [][][]string {
+	t.Helper()
+	input, err := json.Marshal(probes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.CommandContext(t.Context(), "node", "testdata/markdown_render.mjs", pigversion.UpstreamPackageVersion)
+	cmd.Stdin = bytes.NewReader(input)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	output, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("Pi oracle: %v\n%s", err, &stderr)
+	}
+	var rows [][][]string
+	if err := json.Unmarshal(output, &rows); err != nil {
+		t.Fatal(err)
+	}
+	return rows
+}
+
+// taggedMarkdownTheme tags each style call with its name, as markdown_render.mjs does, so every style call is visible.
+func taggedMarkdownTheme() MarkdownTheme {
+	tag := func(name string) func(string) string {
+		return func(text string) string { return "<" + name + ">" + text + "</" + name + ">" }
+	}
+	return MarkdownTheme{
+		Heading: tag("h"), Link: tag("a"), LinkUrl: tag("u"), Code: tag("c"), CodeBlock: tag("cb"), CodeBlockBorder: tag("cbb"),
+		Quote: tag("q"), QuoteBorder: tag("qb"), Hr: tag("hr"), ListBullet: tag("lb"), Bold: tag("b"), Italic: tag("i"), Strikethrough: tag("s"), Underline: tag("ul"),
+	}
+}
+
+// TestMarkdownBlockReuseDiffersFromPi pins both sides of D220. Pi (markdown.ts:381) renders a top-level block again with
+// the lines of a block of the same source from the same render or from the previous render, so a bare URL inside a raw
+// <a> that is still open stays autolinked. marked does not autolink there, and PiG renders each block with the inline
+// state at its position. The test fails when Pi stops linking the URL (remove D220 and compare these documents with Pi
+// in TestMarkdownRenderMatchesPi) and when PiG starts to link it.
+//
+// pig divergence (D220): the expected PiG rows are what marked lexes, not what Pi 0f21a331 reuses.
+// Pi source: packages/tui/src/components/markdown.ts
+func TestMarkdownBlockReuseDiffersFromPi(t *testing.T) {
+	const linked = "<a><ul>http://a.b</ul></a>"
+	inOpenTag := func(third string) string {
+		return "http://a.b\n\nx <a href=\"u\">open\n\n" + third + "\n\nclose</a>"
+	}
+	cases := []struct {
+		name string
+		text string
+		then []string
+		row  int
+		pi   string
+		pig  string
+	}{
+		{name: "an earlier block of the same render has the same source", text: inOpenTag("http://a.b"), row: 4, pi: linked, pig: "http://a.b"},
+		{name: "a block of the previous render has the same source", text: "a\n\nhttp://a.b\n\nz", then: []string{"x <a href=\"u\">a\n\nhttp://a.b\n\nz</a>"}, row: 2, pi: linked, pig: "http://a.b"},
+		// With no earlier block of that source, Pi renders the block as PiG does.
+		{name: "no block has the same source", text: inOpenTag("http://a.c"), row: 4, pi: "http://a.c", pig: "http://a.c"},
+	}
+	probes := make([]markdownRenderProbe, len(cases), 2*len(cases)+1)
+	for i, c := range cases {
+		probes[i] = markdownRenderProbe{Text: c.text, Widths: []int{80}, Then: c.then}
+	}
+	// A fresh Pi component for the text a case ends on, which has no earlier block to reuse: the control that the rows above differ because of the earlier render.
+	fresh := make([]int, len(cases))
+	for i, c := range cases {
+		fresh[i] = -1
+		if len(c.then) > 0 {
+			fresh[i] = len(probes)
+			probes = append(probes, markdownRenderProbe{Text: c.then[len(c.then)-1], Widths: []int{80}})
+		}
+	}
+	// The document TestMarkdownRenderMatchesPi leaves out renders differently in Pi and PiG.
+	probes = append(probes, markdownRenderProbe{Text: markdownOpenLinkRepeatDoc, Widths: []int{80}})
+	expected := piMarkdownRows(t, probes)
+	theme := taggedMarkdownTheme()
+	SetCapabilities(TerminalCapabilities{TrueColor: true})
+	t.Cleanup(ResetCapabilitiesCache)
+	for i, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := strings.TrimRight(expected[i][0][c.row], " "); got != c.pi {
+				t.Errorf("Pi row %d = %q, want %q: Pi renders it differently now, so D220 may be removable", c.row, got, c.pi)
+			}
+			if f := fresh[i]; f >= 0 {
+				if got := strings.TrimRight(expected[f][0][c.row], " "); got != c.pig {
+					t.Errorf("a fresh Pi component renders row %d as %q, want %q", c.row, got, c.pig)
+				}
+				// The component that was given the text renders the fresh component's rows except the reused one; a probe that ignores the later text renders its first text and differs everywhere.
+				var differing []int
+				for row := range max(len(expected[i][0]), len(expected[f][0])) {
+					if row >= len(expected[i][0]) || row >= len(expected[f][0]) || expected[i][0][row] != expected[f][0][row] {
+						differing = append(differing, row)
+					}
+				}
+				if !slices.Equal(differing, []int{c.row}) {
+					t.Errorf("the Pi component given the later text differs from a fresh one in rows %v, want only row %d", differing, c.row)
+				}
+			}
+			md := NewMarkdownWithOptions(c.text, 0, 0, &theme, nil, nil)
+			md.Render(80)
+			for _, text := range c.then {
+				md.SetText(text)
+			}
+			if got := strings.TrimRight(md.Render(80)[c.row], " "); got != c.pig {
+				t.Errorf("PiG row %d = %q, want %q", c.row, got, c.pig)
+			}
+		})
+	}
+	t.Run("the document the comparison leaves out", func(t *testing.T) {
+		pig := NewMarkdownWithOptions(markdownOpenLinkRepeatDoc, 0, 0, &theme, nil, nil).Render(80)
+		if reflect.DeepEqual(nonNil(pig), nonNil(expected[len(probes)-1][0])) {
+			t.Error("Pi and PiG render markdownOpenLinkRepeatDoc alike: compare it in TestMarkdownRenderMatchesPi and remove D220")
+		}
+	})
 }

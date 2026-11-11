@@ -123,6 +123,8 @@ func TestMain(m *testing.M) {
 	// a test faking another platform's commands would read whatever the user
 	// last copied. Tests that exercise the native reader install a fake.
 	getNativeClipboard = func() *tui.NativeClipboard { return nil }
+	// The queued-message hint and the Up key depend on TERM_PROGRAM and TERM (D228); a test that needs a terminal sets them.
+	_ = os.Unsetenv("TERM_PROGRAM")
 	code := testenv.RunScoped(m, "pig-ca-")
 	if code == 0 {
 		// A test binary that passed must not end with goroutines blocked forever on primitives nothing can reach.

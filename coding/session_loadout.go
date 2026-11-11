@@ -175,7 +175,19 @@ func (s *Session) planToolLoadout(names []string) toolLoadoutPlan {
 	}
 	var plan toolLoadoutPlan
 	seen := map[string]struct{}{}
+	// The active tools are a set: tools that stay active keep their current order and newly active ones are appended, so reordering the same names does not change the prompt (agent-session.ts _applyToolLoadout, #11495).
+	requested := make(map[string]struct{}, len(names))
 	for _, name := range names {
+		requested[name] = struct{}{}
+	}
+	ordered := make([]string, 0, len(names))
+	for _, name := range s.ActiveToolNames() {
+		if _, ok := requested[name]; ok {
+			ordered = append(ordered, name)
+		}
+	}
+	ordered = append(ordered, names...)
+	for _, name := range ordered {
 		if _, duplicate := seen[name]; duplicate {
 			continue
 		}

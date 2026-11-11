@@ -46,7 +46,7 @@ if(args[0] === 'install') {
 			if code != 0 || stderr != "" || stdout != "Installing "+source+"...\nInstalled "+source+"\n" {
 				t.Fatalf("install: exit=%d stdout=%q stderr=%q", code, stdout, stderr)
 			}
-			requirePackageProcessCall(t, f.calls(t), "npm", []string{"install", "plain-library@7.0.0", "--prefix", realPathSync(t, root), "--legacy-peer-deps"}, "")
+			requirePackageProcessCall(t, f.calls(t), "npm", []string{"install", "plain-library@7.0.0", "--prefix", realPathSync(t, root), "--legacy-peer-deps", "--no-audit", "--no-fund"}, "")
 			if _, err := os.Stat(filepath.Join(root, "node_modules", "plain-library", "index.js.imported")); !os.IsNotExist(err) {
 				t.Fatalf("package code ran during installation: marker stat = %v", err)
 			}

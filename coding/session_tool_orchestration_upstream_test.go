@@ -118,9 +118,10 @@ func newOrchestrationSession(t *testing.T, ext extension.Extension) (*Session, v
 		t.Fatal(err)
 	}
 	done := make(chan struct{})
+	eventsCh := session.Events()
 	go func() {
 		defer close(done)
-		for event := range session.Events() {
+		for event := range eventsCh {
 			AcknowledgeEvent(event)
 		}
 	}()
@@ -293,9 +294,10 @@ func TestSessionToolOrchestrationRegistersCodemodeAndToolSearchInactiveUntilName
 			t.Fatal(err)
 		}
 		done := make(chan struct{})
+		eventsCh := session.Events()
 		go func() {
 			defer close(done)
-			for event := range session.Events() {
+			for event := range eventsCh {
 				AcknowledgeEvent(event)
 			}
 		}()

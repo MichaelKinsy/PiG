@@ -75,21 +75,30 @@ func parseEventLine(line string) (abi.Event, error) {
 				return ev, err
 			}
 			ev.Now = f
-		case "id", "phase", "skipped", "wait":
+		case "id":
 			u, err := strconv.ParseUint(val, 10, 32)
 			if err != nil {
 				return ev, err
 			}
-			switch key {
-			case "id":
-				ev.ID = uint32(u)
-			case "phase":
-				ev.Phase = uint8(u)
-			case "wait":
-				ev.WaitID = uint32(u)
-			default:
-				ev.Skipped = uint32(u)
+			ev.ID = uint32(u)
+		case "phase":
+			u, err := strconv.ParseUint(val, 10, 8)
+			if err != nil {
+				return ev, err
 			}
+			ev.Phase = uint8(u)
+		case "wait":
+			u, err := strconv.ParseUint(val, 10, 32)
+			if err != nil {
+				return ev, err
+			}
+			ev.WaitID = uint32(u)
+		case "skipped":
+			u, err := strconv.ParseUint(val, 10, 32)
+			if err != nil {
+				return ev, err
+			}
+			ev.Skipped = uint32(u)
 		default:
 			return ev, fmt.Errorf("unknown option %q", key)
 		}

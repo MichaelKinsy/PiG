@@ -1,0 +1,70 @@
+{
+ "storage": {
+  "ticks": 40
+ },
+ "cmds": [
+  {
+   "cmd": "commit",
+   "ops": [
+    {
+     "op": "rootConversation"
+    }
+   ]
+  },
+  {
+   "cmd": "open"
+  },
+  {
+   "cmd": "resume"
+  },
+  {
+   "cmd": "commits",
+   "each": [
+    [
+     {
+      "op": "appendEntry",
+      "conversationId": 1,
+      "draft": {
+       "kind": "e",
+       "data": 1
+      }
+     }
+    ],
+    [
+     {
+      "op": "createConversation"
+     }
+    ],
+    [
+     {
+      "op": "appendEntry",
+      "conversationId": 1,
+      "draft": {
+       "kind": "e",
+       "data": 1
+      }
+     }
+    ],
+    [
+     {
+      "op": "createConversation"
+     }
+    ]
+   ]
+  },
+  {
+   "cmd": "commit",
+   "ops": [
+    {
+     "op": "appendEntry",
+     "conversationId": 1,
+     "draft": {
+      "kind": "e",
+      "data": 1
+     }
+    }
+   ]
+  }
+ ],
+ "clock": "fixed"
+}

@@ -10,7 +10,8 @@ The `parser` and `util` packages compiled eleven regular expressions in package 
 2. `parser/lazy.go` and `util/lazy.go` (new): `lazyRegexp(expr)` returns a `sync.OnceValue` that compiles `expr` on its first call.
 3. `parser/raw_html.go` (`openTagRegexp`, `closeTagRegexp`), `parser/html_block.go` (`htmlBlockType1OpenRegexp` through `htmlBlockType7Regexp`) and `util/util.go` (`emailDomainRegexp`) hold `lazyRegexp` values and call them where the code used the compiled value. The expressions are unchanged.
 4. `util/unicode_case_folding.go`: `unicodeCaseFoldings` is a `sync.OnceValue` that builds the case-folding map on first use instead of in `init` (about 80 KB at process start); `util.go` calls it where the code read the map.
-5. Tests, the root package, `extension`, `renderer`, `testutil` and `go.mod` are not copied. `test/docs-drift` still uses the upstream module for its link extraction.
+5. `util/util.go`: `toValidCodePoint` turns a parsed numeric character reference above U+10FFFF into U+FFFD before the conversion to `rune` (the result is the same; no wrapped negative rune is formed).
+6. Tests, the root package, `extension`, `renderer`, `testutil` and `go.mod` are not copied. `test/docs-drift` still uses the upstream module for its link extraction.
 
 ## Updating
 

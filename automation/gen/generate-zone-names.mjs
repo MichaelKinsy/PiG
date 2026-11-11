@@ -33,7 +33,7 @@ if (process.argv[2] === "--scan") {
     }
   };
   walk(root);
-  process.stdout.write(found.sort().join("\n") + "\n");
+  await new Promise((done) => process.stdout.write(found.sort().join("\n") + "\n", done));
   process.exit(0);
 }
 

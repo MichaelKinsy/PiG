@@ -17,14 +17,15 @@ import { pathToFileURL } from "node:url";
 const [srcDir, eawDir, outDir] = process.argv.slice(2);
 if (!srcDir || !eawDir || !outDir) throw new Error("usage: gen.mjs <tui/src> <get-east-asian-width> <out>");
 
-// Pi's utils.ts imports a bare "get-east-asian-width"; stage the sources next to a node_modules holding it.
+// Pi's utils.ts imports a bare "get-east-asian-width"; stage the sources next to a node_modules holding it. The staged dist sits where the
+// installed package keeps it (node_modules/@earendil-works/pi-tui/dist).
 const stage = fs.mkdtempSync(path.join(os.tmpdir(), "pig-vectors-"));
-fs.cpSync(path.join(srcDir, "dist"), path.join(stage, "src"), { recursive: true });
+const staged = path.join(stage, "node_modules", "@earendil-works", "pi-tui", "dist");
+fs.cpSync(path.join(srcDir, "dist"), staged, { recursive: true });
 fs.writeFileSync(path.join(stage, "package.json"), '{"type":"module"}');
 const piVersion = JSON.parse(fs.readFileSync(path.join(srcDir, "package.json"), "utf8")).version;
-fs.mkdirSync(path.join(stage, "node_modules"));
 fs.symlinkSync(path.resolve(eawDir), path.join(stage, "node_modules", "get-east-asian-width"));
-const load = (name) => import(pathToFileURL(path.join(stage, "src", name.replace(/\.ts$/, ".js"))).href);
+const load = (name) => import(pathToFileURL(path.join(staged, name.replace(/\.ts$/, ".js"))).href);
 const utils = await load("utils.ts");
 const keys = await load("keys.ts");
 const fuzzy = await load("fuzzy.ts");
@@ -32,7 +33,7 @@ const colors = await load("colors.ts");
 const keybindings = await load("keybindings.ts");
 const image = await load("terminal-image.ts");
 // CURSOR_MARKER lives in tui.ts, which pulls in the whole terminal stack; read its literal from the pinned source.
-const cursorMarker = new Function(`return ${/export const CURSOR_MARKER = ("[^"]*");/.exec(fs.readFileSync(path.join(stage, "src", "tui.js"), "utf8"))[1]}`)();
+const cursorMarker = new Function(`return ${/export const CURSOR_MARKER = ("[^"]*");/.exec(fs.readFileSync(path.join(staged, "tui.js"), "utf8"))[1]}`)();
 const meta = { pi: piVersion, node: process.version, unicode: process.versions.unicode };
 
 let seed = 0x9e3779b9;

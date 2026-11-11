@@ -43,6 +43,7 @@ func RunWithHardLinksRefused(t *testing.T) bool {
 	if strings.Contains(t.Name(), "/") {
 		t.Fatalf("RunWithHardLinksRefused reruns a top-level test; %s is a subtest", t.Name())
 	}
+	//nolint:gosec // G204 (class b): program is os.Args[0], the running test binary; args are -test.run with QuoteMeta(t.Name()) and fixed test flags.
 	cmd := exec.Command(os.Args[0], "-test.run=^"+regexp.QuoteMeta(t.Name())+"$", "-test.v", "-test.count=1")
 	cmd.Env = append(os.Environ(), refuseHardLinksEnv+"=1")
 	out, err := cmd.CombinedOutput()

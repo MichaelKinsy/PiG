@@ -24,7 +24,9 @@ func TestOAuthSelectorInputMatchesPi(t *testing.T) {
 		{"z", "z", "\r"},
 		{"\n"},
 		{"\x1b[B", "x", "\x7f", "\n"},
-		// Pi 1.1.0 has no select page keys; Pig pages the selection (D155, Pi PR #7680), covered by the select page key tests, so the oracle input leaves PageUp and PageDown out.
+		// PageDown and PageUp move by the selector's eight visible rows and clamp at both ends.
+		{"\x1b[6~", "\r"},
+		{"\x1b[6~", "\x1b[5~", "\r"},
 		{"\x1b[B", "\x1b[H", "\r"},
 		{"\x1b"},
 		{"\x03"},

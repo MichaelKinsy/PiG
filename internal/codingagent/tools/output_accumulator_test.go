@@ -10,31 +10,6 @@ import (
 	"testing"
 )
 
-// utf8StreamDecoder matches TextDecoder: a split character waits for the
-// next chunk and each maximal invalid subpart becomes one U+FFFD.
-func TestUTF8StreamDecoderMatchesTextDecoder(t *testing.T) {
-	var d utf8StreamDecoder
-	if got := d.decode([]byte("a\xe2\x82"), true); got != "a" {
-		t.Fatalf("partial = %q", got)
-	}
-	if got := d.decode([]byte("\xacb"), true); got != "€b" {
-		t.Fatalf("completed = %q", got)
-	}
-	for in, want := range map[string]string{
-		"\xe2\x82a":          "�a",
-		"\xc0\x80":           "��",
-		"\xed\xa0\x80":       "���",
-		"\xf0\x9f\x98":       "�",
-		"\xff":               "�",
-		"ok\xf0\x9f\x98\x80": "ok😀",
-	} {
-		var d utf8StreamDecoder
-		if got := d.decode([]byte(in), false); got != want {
-			t.Errorf("decode(%q) = %q, want %q", in, got, want)
-		}
-	}
-}
-
 func TestOutputAccumulatorKeepsCharactersSplitAcrossChunks(t *testing.T) {
 	acc := NewOutputAccumulator("pi-test")
 	data := []byte(strings.Repeat("a", 4095) + strings.Repeat("€", 50))

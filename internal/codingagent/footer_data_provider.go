@@ -11,6 +11,8 @@ import (
 // FooterDataProvider is the data a footer reads about its surroundings (footer-data-provider.ts FooterDataProvider): the working directory and
 // the git branch of the repository bound to it, the statuses extensions set, the number of available providers, and the branch-change
 // subscribers. A footer built with NewFooterComponentForSession shares one provider with the host that feeds it.
+//
+// Ports packages/coding-agent/src/core/footer-data-provider.ts (FooterDataProvider).
 type FooterDataProvider struct {
 	mu                sync.RWMutex
 	cwd               string

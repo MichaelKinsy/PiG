@@ -69,9 +69,9 @@ func (c *CompactionSummaryMessageComponent) updateDisplay() {
 	content.Add(NewSpacer(1))
 	if c.expanded {
 		header := "**Compacted from " + tokenStr + " tokens**\n\n"
-		content.Add(NewMarkdownWithOptions(header+c.summary, 0, 0, c.markdownTheme, &DefaultTextStyle{
+		content.Add(finishedMarkdown(NewMarkdownWithOptions(header+c.summary, 0, 0, c.markdownTheme, &DefaultTextStyle{
 			Color: func(text string) string { return ActiveTheme().Fg("customMessageText", text) },
-		}, nil))
+		}, nil)))
 	} else {
 		content.Add(NewText(theme.Fg("customMessageText", "Compacted from "+tokenStr+" tokens (") +
 			theme.Fg("dim", AppKeyText("app.tools.expand", "ctrl+o")) +

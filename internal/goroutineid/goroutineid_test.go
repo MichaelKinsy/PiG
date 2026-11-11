@@ -76,6 +76,18 @@ func TestCurrentOnACoroutineEqualsItsStackHeaderID(t *testing.T) {
 	}
 }
 
+// Proving ends once the proof has seen its distinct goroutines (and is never true where Current always formats the header).
+func TestProvingEndsOnceDistinctGoroutinesHaveCalledCurrent(t *testing.T) {
+	for range 32 {
+		var done sync.WaitGroup
+		done.Go(func() { Current() })
+		done.Wait()
+	}
+	if Proving() {
+		t.Fatal("Proving() is still true after 32 distinct goroutines called Current")
+	}
+}
+
 func BenchmarkCurrent(b *testing.B) {
 	var deep func(n int)
 	deep = func(n int) {

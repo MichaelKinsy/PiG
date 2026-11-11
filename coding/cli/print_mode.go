@@ -417,7 +417,7 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 		publishedCommands.Store(new(commands))
 		if bridge != nil {
 			bridge.SetHostAction("getAllTools", func() []subprocess.ToolInfo {
-				return codingagent.ExtensionToolInfos(runner, opts.toolRegistryAllowed, opts.toolRegistryExcluded)
+				return codingagent.ExtensionToolInfosScoped(runner, opts.toolRegistryAllowed, opts.toolRegistryExcluded, current().ToolScope())
 			})
 			bridge.SetHostAction("getCommands", func() []subprocess.CommandInfo {
 				return publishedCommands.Load().slashCatalog().SubprocessCommands()
@@ -432,8 +432,6 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 		if !reloading {
 			// The system prompt names the docs bundle, and a tool call is how the model reads it.
 			session.Agent().AddBeforeToolCallHook(writeDocsBundleBeforeToolCall)
-			// Nothing reads Events; the JSON writer subscribes after session_start below.
-			session.DiscardEvents()
 		}
 		// Drive the extension session lifecycle so extensions that initialize on
 		// session_start (and clean up on session_shutdown) run in print mode too,

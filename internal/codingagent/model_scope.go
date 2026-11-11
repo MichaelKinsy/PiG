@@ -10,7 +10,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
 	"github.com/MichaelKinsy/PiG/internal/minimatch"
 )
 
@@ -86,7 +86,7 @@ func ResolveModelScopeFromModels(patterns []string, models []RuntimeModel) Resol
 				providers = append(providers, model.Provider)
 			}
 		}
-		collator := jsstring.NewCollator()
+		collator := localecompare.NewCollator()
 		slices.SortStableFunc(providers, collator.CompareString)
 		diagnostic("ambiguous", fmt.Sprintf(`Pattern "%s" matches several providers: %s. Use provider/id to choose one.`, pattern, strings.Join(providers, ", ")), pattern)
 	}

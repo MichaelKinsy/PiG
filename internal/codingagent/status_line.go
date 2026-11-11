@@ -17,6 +17,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
 	"github.com/MichaelKinsy/PiG/internal/nodepath"
 	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 	"github.com/MichaelKinsy/PiG/tui"
@@ -602,7 +603,7 @@ func footerExtensionStatuses(statuses map[string]string) []string {
 		return nil
 	}
 	keys := slices.Collect(maps.Keys(statuses))
-	collator := jsstring.NewCollator()
+	collator := localecompare.NewCollator()
 	slices.SortStableFunc(keys, func(a, b string) int { return collator.CompareString(a, b) })
 	parts := make([]string, len(keys))
 	for i, key := range keys {
@@ -715,11 +716,11 @@ func formatTokens(n int) string {
 	case n < 10_000:
 		return jsstring.ToFixed(float64(n)/1_000, 1) + "k"
 	case n < 1_000_000:
-		return strconv.Itoa(int(jsnumber.Round(float64(n)/1_000))) + "k"
+		return strconv.Itoa(int(jsnumber.Round(float64(n)/1_000))) + "k" //portlint:allow numbers n is an int in [10_000,1_000_000) (or >=10_000_000), so the rounded quotient is finite and below 2^63: int() is exact (node differential over 39062 counts incl. rounding boundaries and 2^53)
 	case n < 10_000_000:
 		return jsstring.ToFixed(float64(n)/1_000_000, 1) + "M"
 	default:
-		return strconv.Itoa(int(jsnumber.Round(float64(n)/1_000_000))) + "M"
+		return strconv.Itoa(int(jsnumber.Round(float64(n)/1_000_000))) + "M" //portlint:allow numbers n is an int in [10_000,1_000_000) (or >=10_000_000), so the rounded quotient is finite and below 2^63: int() is exact (node differential over 39062 counts incl. rounding boundaries and 2^53)
 	}
 }
 
@@ -738,13 +739,15 @@ func dim(s string) string {
 // are \x1b[1m<warning>text\x1b[39m\x1b[22m.
 func boldWarning(s string) string {
 	th := tui.ActiveTheme()
-	return "\x1b[1m" + th.Warning + s + "\x1b[39m" + tui.SGRBoldDimReset
+	return tui.ChalkBold(th.Warning + s + "\x1b[39m")
 }
 
 // stripANSI removes ANSI escape sequences (delegates to widthx.StripAnsi).
 func stripANSI(s string) string { return widthx.StripAnsi(s) }
 
 // resolveGitBranchFromPaths reads the bound HEAD, asking Git only for a reftable placeholder, as FooterDataProvider.resolveGitBranchSync does.
+//
+// Ports packages/coding-agent/src/core/footer-data-provider.ts (resolveGitBranchSync and resolveBranchWithGitSync).
 func resolveGitBranchFromPaths(paths gitPaths) string {
 	content, err := os.ReadFile(paths.headPath)
 	if err != nil {

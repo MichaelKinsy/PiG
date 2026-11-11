@@ -29,10 +29,13 @@ type runSignals struct {
 	endedAborted bool
 }
 
-// frame returns the state of signal, which is nil while no run is active, and whether held, the state a runtime holds, is a run that has since been aborted. A signal not seen before begins a run and is watched: abort runs when it is cancelled. frame must be called under the lock of the Conn the frame is for, so a newer state never overtakes an older one on the wire.
-func (r *runSignals) frame(signal context.Context, abort func(), held runSignalFrame) (heldAborted bool, frame runSignalFrame) {
+// frame returns the state of the run signal that read returns, which is nil while no run is active, and whether held, the state a runtime holds, is a run that has since been aborted. A signal not seen before begins a run and is watched: abort runs when it is cancelled.
+// A host with several runtimes (a packed cell) syncs them concurrently and they share this numbering. read runs under the numbering's lock, so a sync never applies a read that another sync has since read past: the older state would take the numbering back to a run that ended, the live run would be numbered again, and a runtime holding that run's signal would never see it aborted.
+// frame must be called under the lock of the Conn the frame is for, so a newer state never overtakes an older one on the wire.
+func (r *runSignals) frame(read func() context.Context, abort func(), held runSignalFrame) (heldAborted bool, frame runSignalFrame) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	signal := read()
 	if signal != r.current {
 		if r.stop != nil {
 			r.stop()
@@ -88,7 +91,7 @@ func (h *Host) syncRunSignal(conn *Conn) error {
 	}
 	conn.runSignal.mu.Lock()
 	defer conn.runSignal.mu.Unlock()
-	heldAborted, frame := h.runSignals.frame(h.uiBridge.RunSignal(), h.syncRunSignals, conn.runSignal.sent)
+	heldAborted, frame := h.runSignals.frame(h.uiBridge.RunSignal, h.syncRunSignals, conn.runSignal.sent)
 	if frame == conn.runSignal.sent {
 		return nil
 	}

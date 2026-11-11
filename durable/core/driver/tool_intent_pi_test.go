@@ -75,7 +75,7 @@ func TestCoreToolRecordsItsPreparedArgumentsAndDefaultReplayBeforeExecuting(t *t
 
 // tool.ts:138-154: prepareArguments's result goes to validation whatever it is (`as JsonObject`); a result that is not an object fails validation and
 // the call settles as an invalid_arguments error whose text shows the value the repair returned (validation.ts:347 `Received arguments`), the tool
-// does not execute, and the run goes on. Pi 1.1.0 validateToolArguments with arguments "x", 5, [1] and null gives the texts below (node probe).
+// does not execute, and the run goes on. pi-schema (Pi 6536f801) names the received type, so the text is `root: expected object, got <null|string|integer|array>`; Pi validateToolArguments with arguments "x", 5, [1] and null gives the texts below (node probe).
 // mutation-checked: removing the nil guard in turnhost.go checkArguments panicked the core; narrowing the prepared value to an object
 // (turnhost.go objOf, session.go a map result) shows null for "x", 5 and [1].
 func TestCoreToolRefusesANonObjectPreparedResultAsInvalidArguments(t *testing.T) {
@@ -83,11 +83,12 @@ func TestCoreToolRefusesANonObjectPreparedResultAsInvalidArguments(t *testing.T)
 		name     string
 		prepared any
 		received string
+		kind     string
 	}{
-		{"nil", nil, "null"},
-		{"string", "x", `"x"`},
-		{"number", 5, "5"},
-		{"array", []int{1}, "[\n  1\n]"},
+		{"nil", nil, "null", "null"},
+		{"string", "x", `"x"`, "string"},
+		{"number", 5, "5", "integer"},
+		{"array", []int{1}, "[\n  1\n]", "array"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			setup := chatSetup()
@@ -115,7 +116,7 @@ func TestCoreToolRefusesANonObjectPreparedResultAsInvalidArguments(t *testing.T)
 				t.Fatal("the tool executed with arguments that failed validation")
 			default:
 			}
-			want := "<harness>\n[error] Validation failed for tool \"count\":\n  - root: must be object\n\nReceived arguments:\n" + tc.received + "\n</harness>"
+			want := "<harness>\n[error] Validation failed for tool \"count\":\n  - root: expected object, got " + tc.kind + "\n\nReceived arguments:\n" + tc.received + "\n</harness>"
 			var texts []string
 			for _, entry := range chatEntries(t, root) {
 				if entry.Kind != durable.ToolResultEntry.Kind {

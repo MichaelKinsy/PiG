@@ -20,22 +20,22 @@ import (
 // The Harness drives committed observations directly (view.ts:90 and :104, events.ts:132); these cases pin the exported
 // constructor and lifecycle surface it uses.
 func TestCommittedObservationHarnessSurface(t *testing.T) {
-	t.Run("a session-bound watch delivers advanced frames and ends cancelled", func(t *testing.T) {
+	t.Run("a session-bound watch delivers advanced frames and ends aborted", func(t *testing.T) {
 		harness := open()
 		released := 0
 		watch := session.NewSessionWatch(harness.Session, []any{}, func() { released++ })
 		frames := make(chan []any, 2)
-		watch.Start(func(_ context.Context, change durable.WatchChange[[]any]) error {
+		watch.Start(func(_ context.Context, change durable.WatchCall[[]any]) error {
 			value := change.Value
 			frames <- value
 			return nil
 		})
-		watch.Advance(context.Background(), durable.WatchChange[[]any]{Value: []any{"a"}, Ops: []durable.Op{{"p", "", 0, 0, []any{"a"}}}})
+		watch.Advance(context.Background(), durable.WatchCall[[]any]{Kind: durable.WatchCallValue, Value: []any{"a"}, Ops: []durable.Op{{"p", "", 0, 0, []any{"a"}}}})
 		expectEqual(t, <-frames, []any{"a"})
-		watch.Cancel()
+		watch.Abort()
 		<-watch.Closed()
 		harness.Session.WaitDeliveries()
-		if watch.End().Reason != durable.WatchCancelled || released != 1 {
+		if watch.End().Kind != durable.WatchAborted || released != 1 {
 			t.Fatalf("end %+v released %d", watch.End(), released)
 		}
 	})
@@ -43,7 +43,7 @@ func TestCommittedObservationHarnessSurface(t *testing.T) {
 	t.Run("counts live commit subscriptions", func(t *testing.T) {
 		harness := open()
 		before := harness.Session.CommitSubscriptions()
-		unsubscribe := harness.Session.SubscribeCommits(func(context.Context, durable.CommitPublication) {})
+		unsubscribe := sessiontest.ObserveCommitsFunc(harness.Session, func(context.Context, durable.CommitPublication) {})
 		if harness.Session.CommitSubscriptions() != before+1 {
 			t.Fatal("subscribing adds one")
 		}

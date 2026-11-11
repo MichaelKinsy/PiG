@@ -28,7 +28,7 @@ const { loadAllHighlightLanguages, supportsLanguage } = await import(new URL("sh
 if (process.argv[2] === "pi") {
   const pi = await import(new URL("shims/pi-dist/pi-coding-agent/utils/syntax-highlight.js", root));
   await pi.loadAllHighlightLanguages();
-  console.log(JSON.stringify({ languages: hljs.listLanguages() }));
+  await new Promise((done) => process.stdout.write(JSON.stringify({ languages: hljs.listLanguages() }) + "\n", done));
   process.exit(0);
 }
 supportsLanguage("javascript");

@@ -1,6 +1,26 @@
-{"k":">","name":"harness.root","tick":177}
-{"k":"#","seq":1,"summary":"conversations:i document_revisions:i documents:i","tick":365,"begin":305}
-{"k":">","name":"harness.root().agent","tick":374}
-{"k":">","name":"harness.root().agent","tick":377}
-{"k":">","name":"harness.root().agent","tick":380}
-{"k":">","name":"harness.close","tick":383}
+{"k":">","name":"harness.root","tick":188}
+{"k":"#","seq":1,"summary":"conversations:i document_revisions:i documents:i","tick":406,"begin":325}
+{"k":">","name":"harness.root().submit","tick":418}
+{"k":"#","seq":2,"summary":"document_revisions:d document_revisions:i entries:i submissions:i tasks:i","tick":513,"begin":475}
+{"k":">","name":"harness.root().submit().wait","tick":527}
+{"k":"#","seq":3,"summary":"tasks:u","tick":551,"begin":534}
+{"k":"#","seq":4,"summary":"entries:i tasks:u","tick":692,"begin":669}
+{"k":"#","seq":5,"summary":"document_revisions:d document_revisions:i entries:i tasks:i tasks:u","tick":904,"begin":857}
+{"k":"#","seq":6,"summary":"tasks:u","tick":942,"begin":925}
+{"k":"#","seq":7,"summary":"tasks:u","tick":1032,"begin":1015}
+{"k":"#","seq":8,"summary":"document_revisions:i documents:i","tick":1106,"begin":1083}
+{"k":"#","seq":9,"summary":"document_revisions:d document_revisions:i entries:i tasks:u","tick":1208,"begin":1176}
+{"k":"#","seq":10,"summary":"tasks:u","tick":1266,"begin":1249}
+{"k":"#","seq":11,"summary":"document_revisions:d document_revisions:i tasks:i tasks:u","tick":1396,"begin":1364}
+{"k":"#","seq":12,"summary":"tasks:u","tick":1454,"begin":1437}
+{"k":"#","seq":13,"summary":"entries:i tasks:u","tick":1562,"begin":1539}
+{"k":"#","seq":14,"summary":"document_revisions:d document_revisions:i entries:i submissions:u tasks:u","tick":1768,"begin":1721}
+{"k":">","name":"harness.snapshot","tick":1776}
+{"k":">","name":"harness.root().submit","tick":1777}
+{"k":"#","seq":15,"summary":"document_revisions:d document_revisions:i entries:i submissions:i tasks:i","tick":1901,"begin":1863}
+{"k":">","name":"harness.root().submit().wait","tick":1915}
+{"k":"#","seq":16,"summary":"tasks:u","tick":1938,"begin":1921}
+{"k":"#","seq":17,"summary":"tasks:u","tick":2028,"begin":2011}
+{"k":"#","seq":18,"summary":"document_revisions:d document_revisions:i entries:i submissions:u tasks:u","tick":2236,"begin":2189}
+{"k":">","name":"harness.root().context","tick":2244}
+{"k":">","name":"harness.close","tick":2303}

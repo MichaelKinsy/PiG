@@ -8,6 +8,8 @@ import (
 	"slices"
 	"strconv"
 	"sync"
+
+	"github.com/MichaelKinsy/PiG/internal/allocsize"
 )
 
 // stringSplice lets any provider payload keep the encoding of its large strings across requests. rewrite copies the payload with each large string replaced by a token string; the provider marshals that small payload as it marshals the real one, and join puts each string's cached encoding where its token landed. The body is the bytes marshalRequestBody gives the real payload. pig additive (D112): see requestSpliceMinBytes.
@@ -326,7 +328,7 @@ func (s *stringSplice) rewrite(v reflect.Value) (reflect.Value, bool) {
 
 // join builds the body from the marshalled skeleton, or reports false when a token is not a whole JSON string of the skeleton.
 func (s *stringSplice) join(skeleton []byte) (*requestBody, bool) {
-	body := &requestBody{segments: make([][]byte, 0, 2*len(s.quoted)+1)}
+	body := &requestBody{segments: make([][]byte, 0, allocsize.Add(allocsize.Mul(2, len(s.quoted)), 1))}
 	rest := skeleton
 	nonce := []byte(s.nonce)
 	for {

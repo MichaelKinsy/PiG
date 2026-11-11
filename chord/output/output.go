@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"math"
+	"regexp"
 	"slices"
 	"strings"
 	"sync"
@@ -56,8 +57,15 @@ func Utf8ByteLength(content string) int {
 
 const outputNewline = 0x0a
 
-// SanitizeOutput removes control characters that break display and transcripts; tabs and newlines stay. It removes U+0000-U+0008, U+000B-U+001F, and U+FFF9-U+FFFB (output.ts:24).
+// escapeSequence is output.ts's ESCAPE_SEQUENCE: whole 7-bit escape sequences, namely strings (OSC, DCS, APC, PM, SOS) up to BEL or ST, CSI, and short `ESC x` forms. RE2's leftmost-first alternation picks the match a JavaScript regex does.
+var escapeSequence = regexp.MustCompile(`\x1b[\]PX^_][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b\[[\x30-\x3f]*[\x20-\x2f]*[\x40-\x7e]|\x1b[\x20-\x2f]*[\x30-\x7e]`)
+
+// SanitizeOutput removes escape sequences and control characters that break display and transcripts; tabs and newlines stay. After the escape sequences it removes U+0000-U+0008, U+000B-U+001F, and U+FFF9-U+FFFB (output.ts:44).
 func SanitizeOutput(text string) string {
+	// Without an ESC byte no sequence can match.
+	if strings.IndexByte(text, 0x1b) >= 0 {
+		text = escapeSequence.ReplaceAllLiteralString(text, "")
+	}
 	return strings.Map(func(r rune) rune {
 		if (r <= 0x08) || (r >= 0x0b && r <= 0x1f) || (r >= 0xfff9 && r <= 0xfffb) {
 			return -1

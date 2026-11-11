@@ -100,7 +100,7 @@
    "pkg:tui/.#RgbColor"
   ],
   "targets": [
-   "tui/theme.go#RgbColor"
+   "tui/terminal_colors.go#RgbColor"
   ],
   "struct": {
    "file": "tui/theme.go",

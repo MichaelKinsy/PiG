@@ -116,10 +116,13 @@ func gunzipTables(data []byte) (string, error) {
 }
 
 func TestSDKTablesAreCurrent(t *testing.T) {
-	for _, c := range []struct{ path, want string }{
-		{"../../extensions/sdk-py/pig_sdk/tui/_tables.py", sdkPythonTables()},
-		{"../../extensions/sdk-rs/src/tui/tables.rs", sdkRustTables()},
+	// The compressed copy of an SDK source file lives in the SDK root's .gz tree, at the file's path below the root (the bundle embeds it from there).
+	for _, c := range []struct{ root, rel, path, want string }{
+		{"../../extensions/sdk-py", "pig_sdk/tui/_tables.py", "", sdkPythonTables()},
+		{"../../extensions/sdk-rs", "src/tui/tables.rs", "", sdkRustTables()},
 	} {
+		c.path = filepath.Join(c.root, filepath.FromSlash(c.rel))
+		gzPath := filepath.Join(c.root, ".gz", filepath.FromSlash(c.rel)) + ".gz"
 		if os.Getenv("PIG_UPDATE_SDK_TUI") != "" {
 			if err := os.MkdirAll(filepath.Dir(c.path), 0o755); err != nil {
 				t.Fatal(err)
@@ -127,7 +130,10 @@ func TestSDKTablesAreCurrent(t *testing.T) {
 			if err := os.WriteFile(c.path, []byte(c.want), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			if err := os.WriteFile(c.path+".gz", gzipTables(t, c.want), 0o644); err != nil {
+			if err := os.MkdirAll(filepath.Dir(gzPath), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(gzPath, gzipTables(t, c.want), 0o644); err != nil {
 				t.Fatal(err)
 			}
 			continue
@@ -137,13 +143,13 @@ func TestSDKTablesAreCurrent(t *testing.T) {
 			t.Errorf("%s is stale: run PIG_UPDATE_SDK_TUI=1 go test ./tui/widthx -run TestSDKTablesAreCurrent", c.path)
 		}
 		// The embed carries the compressed copy: it must hold the same text, whatever compressor wrote it.
-		compressed, err := os.ReadFile(c.path + ".gz")
+		compressed, err := os.ReadFile(gzPath)
 		if err != nil {
-			t.Errorf("%s.gz is missing: run PIG_UPDATE_SDK_TUI=1 go test ./tui/widthx -run TestSDKTablesAreCurrent", c.path)
+			t.Errorf("%s is missing: run PIG_UPDATE_SDK_TUI=1 go test ./tui/widthx -run TestSDKTablesAreCurrent", gzPath)
 			continue
 		}
 		if text, err := gunzipTables(compressed); err != nil || text != c.want {
-			t.Errorf("%s.gz is stale: run PIG_UPDATE_SDK_TUI=1 go test ./tui/widthx -run TestSDKTablesAreCurrent", c.path)
+			t.Errorf("%s is stale: run PIG_UPDATE_SDK_TUI=1 go test ./tui/widthx -run TestSDKTablesAreCurrent", gzPath)
 		}
 	}
 }

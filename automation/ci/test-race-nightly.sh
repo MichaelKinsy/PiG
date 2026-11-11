@@ -6,7 +6,7 @@
 # (coding), the RPC/print/JSON modes (coding/cli) and the libraries that run goroutines of their own. automation/ci/race-packages.txt names every package and
 # its group; race-coverage.sh fails when a concurrency owner is missing from it. A package whose TestMain calls testenv.RunWithoutGoroutineLeaks also fails here
 # when its tests leak a blocked goroutine.
-# PIG_RACE_GROUP picks a share for one nightly job (ai, rest, host, coding, cli, libs; each is a job of the nightly matrix), or every package when unset.
+# PIG_RACE_GROUP picks a share for one nightly job (ai, rest, host, coding, cli, libs, hljs; each is a job of the nightly matrix), or every package when unset.
 # A path with its own go.mod runs as that module (GOWORK=off), as `make test-sdk-go` does.
 # PIG_RACE_SHARD=<k>/<n> runs shard k of n of the tests of a group that is one package (automation/ci/test-shard-pattern.sh), for the cli group.
 set -euo pipefail

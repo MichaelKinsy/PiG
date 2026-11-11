@@ -1,5 +1,7 @@
 package tools
 
+// pi: packages/coding-agent/src/core/tools/output-accumulator.ts
+
 import (
 	"encoding/hex"
 	"math/rand"

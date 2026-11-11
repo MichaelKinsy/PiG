@@ -12,5 +12,8 @@ type McpOptions struct{}
 
 func mcpEntries(Options) []Extension { return nil }
 
+// RefuseMcpConfigFiles does nothing: this build has no MCP.
+func (o *Options) RefuseMcpConfigFiles(string) {}
+
 // ConfigureMcp does nothing: this build has no MCP.
 func (o *Options) ConfigureMcp(string, string, func(string), ...func(string) error) {}

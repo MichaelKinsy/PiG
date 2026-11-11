@@ -1,13 +1,10 @@
 package tui
 
-import "slices"
-
-// PageSelectionIndex is getPageSelectionIndex of Pi PR #7680 (packages/tui/src/selection-navigation.ts): the index a
-// tui.select.pageUp or tui.select.pageDown key moves a selection to, clamped to the list without wrapping, and false
-// when data is neither key.
-//
-// pig divergence (D155): Pi 1.1.0 handles these keys in only some selection lists (Pi #7629).
-func PageSelectionIndex(kb *TUIKeybindingsManager, data string, selectedIndex, itemCount, pageSize int) (int, bool) {
+// GetSelectPageIndex is getSelectPageIndex of packages/tui/src/keybindings.ts: the index a tui.select.pageUp or
+// tui.select.pageDown key moves a selection to, moved by pageSize and clamped to 0..itemCount-1 without wrapping. It
+// reports false when data is neither key, and returns 0 for a page key on an empty list, so callers must still check
+// that the list has items before selecting.
+func GetSelectPageIndex(kb *TUIKeybindingsManager, data string, selectedIndex, itemCount, pageSize int) (int, bool) {
 	direction := 0
 	switch {
 	case kb.Matches(data, KBSelectPageUp):
@@ -20,28 +17,17 @@ func PageSelectionIndex(kb *TUIKeybindingsManager, data string, selectedIndex, i
 	return max(0, min(itemCount-1, selectedIndex+direction*pageSize)), true
 }
 
-// SelectPageInputCapturer is implemented by components whose selection handles tui.select.pageUp and
-// tui.select.pageDown. Fullscreen mode gives those keys to the focused capturer before it scrolls the viewport. Mirrors
-// Pi PR #7680's Component.capturesSelectPageInput.
-type SelectPageInputCapturer interface {
-	CapturesSelectPageInput() bool
+// ViewportInputCapturer is implemented by components that mirror Pi's optional Component.capturesViewportInput
+// (packages/tui/src/tui.ts): while focused, fullscreen viewport keys (tui.altScreen.* scrolling and prompt jumps) go to
+// the component instead of scrolling the transcript, as they do for a focused overlay. Only the focused component is
+// checked: a wrapper that forwards input to a list must report the list's value itself.
+type ViewportInputCapturer interface {
+	CapturesViewportInput() bool
 }
 
-// CapturesSelectPageInput reports whether component handles selection page keys.
-func CapturesSelectPageInput(component Component) bool {
-	capturer, ok := component.(SelectPageInputCapturer)
-	return ok && capturer.CapturesSelectPageInput()
-}
-
-// CapturesSelectPageInput reports whether any child captures selection page keys, as Pi's Container does.
-func (c *Container) CapturesSelectPageInput() bool {
-	c.mu.RLock()
-	children := append([]Component(nil), c.children...)
-	c.mu.RUnlock()
-	return slices.ContainsFunc(children, CapturesSelectPageInput)
-}
-
-// pageSelectionKey reports whether data is a selection page key.
-func pageSelectionKey(kb *TUIKeybindingsManager, data string) bool {
-	return kb.Matches(data, KBSelectPageUp) || kb.Matches(data, KBSelectPageDown)
+// CapturesViewportInput reports whether c implements ViewportInputCapturer and captures viewport input. It is false for
+// a nil component.
+func CapturesViewportInput(c Component) bool {
+	capturer, ok := c.(ViewportInputCapturer)
+	return ok && capturer.CapturesViewportInput()
 }

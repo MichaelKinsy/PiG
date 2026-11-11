@@ -25,6 +25,8 @@ func TestWords(t *testing.T) {
 		"getGifDimensions":         "get Gif Dimensions",
 		"x":                        "x",
 		"base64Url":                "base64 Url",
+		"~params":                  "params",
+		"~keyed":                   "keyed",
 	} {
 		if got := strings.Join(Words(in), " "); got != want {
 			t.Errorf("Words(%q) = %q, want %q", in, got, want)
@@ -52,8 +54,21 @@ func TestSpelling(t *testing.T) {
 		{"pollAfterMs", "PollAfterMS", NameInitialism},
 		{"OPENAI_PROMPT_CACHE_KEY_MAX_LENGTH", "openAIPromptCacheKeyMaxLength", NameUnexported},
 		{"uri", "URI", NameInitialism},
+		{"db", "DB", NameInitialism},
+		{"db", "Db", NameExact},
+		{"dbPath", "DBPath", NameInitialism},
+		{"~params", "params", NameUnexported},
+		{"~params", "Params", NameInitialism},
+		{"~keyed", "Keyed", NameInitialism},
+		{"~persist", "Persist", NameInitialism},
+		{"~columns", "Columns", NameInitialism},
+		{"~key", "Key", NameInitialism},
+		{"~key", "key", NameUnexported},
 		// A blind case and separator fold would accept these; the rule does not.
 		{"entryId", "Entryid", ""},
+		{"~key", "~Key", ""}, // the tilde is dropped, never carried into a Go name
+		{"~key", "Value", ""},
+		{"dbx", "DBx", ""},
 		{"entryId", "ENTRYID", ""},
 		{"fooBar", "Foo_Bar", ""},
 		{"timeoutMs", "Timeout", ""},

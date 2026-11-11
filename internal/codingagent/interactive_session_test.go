@@ -80,6 +80,12 @@ type sessionPair struct {
 
 func newSessionPair(t *testing.T, settings string, contextWindow int, onEvent func(*icodingagent.TestHarness, agent.AgentEvent), replies ...scriptedReply) *sessionPair {
 	t.Helper()
+	return newSessionPairWithTools(t, settings, contextWindow, onEvent, nil, replies...)
+}
+
+// newSessionPairWithTools is newSessionPair with tools the model can call.
+func newSessionPairWithTools(t *testing.T, settings string, contextWindow int, onEvent func(*icodingagent.TestHarness, agent.AgentEvent), tools []agent.AgentTool, replies ...scriptedReply) *sessionPair {
+	t.Helper()
 	home := t.TempDir()
 	t.Setenv("PIG_HOME", home)
 	agentDir := filepath.Join(home, "agent")
@@ -100,7 +106,7 @@ func newSessionPair(t *testing.T, settings string, contextWindow int, onEvent fu
 	}
 	provider := &scriptedProvider{replies: replies}
 	model := &ai.Model{ID: "faux-1", DisplayName: "faux-1", Provider: provider, Capabilities: ai.ModelCapabilities{ContextWindow: contextWindow}}
-	session, err := coding.NewSession(services, coding.SessionOptions{Model: model, SkipBuiltinTools: true})
+	session, err := coding.NewSession(services, coding.SessionOptions{Model: model, SkipBuiltinTools: true, Tools: tools})
 	if err != nil {
 		t.Fatal(err)
 	}

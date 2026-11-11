@@ -7,6 +7,7 @@ import (
 
 	chorddelta "github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/durabletest"
 	"github.com/MichaelKinsy/PiG/durable/storage/jsonl"
 )
 
@@ -78,7 +79,9 @@ func (fileSystem *joinFailingFileSystem) JoinPath(ctx context.Context, parts []s
 	return fileSystem.instrumentedEnv.JoinPath(ctx, parts)
 }
 
-// resolveFile names the failed step: `JSONL path join failed: <file error>` (:827), and a failure before any append leaves the storage usable.
+// resolveFile names the failed step: `JSONL path join failed: <file error>` (storage.ts append, :346). The batch is applied in memory by
+// then, so Pi at 6d4b7443 poisons the storage (commit(): any failure once a batch applied), with that failure as the
+// cause; a reopened storage has no record of the batch.
 func TestJsonlCommitNamesAFailedSidecarPathJoin(t *testing.T) {
 	directory := tempDirectory(t)
 	fileSystem := &joinFailingFileSystem{instrumentedEnv: newInstrumentedEnv(directory)}
@@ -86,13 +89,17 @@ func TestJsonlCommitNamesAFailedSidecarPathJoin(t *testing.T) {
 	createRoot(t, storage)
 	id := mint[durable.DocumentId](t, storage)
 	fileSystem.armed = true
-	_, err := storage.Commit(testContext, []durable.StorageWrite{durable.DocumentCreateWrite{Record: sessionDocument(id, "first"), Content: base(chorddelta.JsonObjectOf("count", 1))}}, func(durable.Seq) {})
-	if err == nil || err.Error() != "JSONL path join failed: injected join failure" {
-		t.Fatalf("commit error = %v, want JSONL path join failed: injected join failure", err)
+	_, err := durabletest.CommitWrites(testContext, storage, []durable.StorageWrite{durable.DocumentCreateWrite{Record: sessionDocument(id, "first"), Content: base(chorddelta.JsonObjectOf("count", 1))}})
+	poisoned, isPoisoned := errors.AsType[*jsonl.JsonlStoragePoisonedError](err)
+	if !isPoisoned {
+		t.Fatalf("commit error = %v, want the poisoned error", err)
 	}
-	if _, poisoned := errors.AsType[*jsonl.JsonlStoragePoisonedError](err); poisoned {
-		t.Fatal("a path join failure before any append must not poison the storage")
+	if poisoned.Cause == nil || poisoned.Cause.Error() != "JSONL path join failed: injected join failure" {
+		t.Fatalf("poison cause = %v, want JSONL path join failed: injected join failure", poisoned.Cause)
 	}
 	fileSystem.armed = false
-	commit(t, storage, durable.DocumentCreateWrite{Record: sessionDocument(id, "first"), Content: base(chorddelta.JsonObjectOf("count", 1))})
+	reopened := open(t, directory)
+	if found := must(reopened.Document(testContext, id, durable.CurrentPoint)); found != nil {
+		t.Fatal("a document whose sidecar path failed to resolve was recovered")
+	}
 }

@@ -10,7 +10,7 @@ import (
 
 // Ports packages/durable/src/tools/write.ts.
 
-const writeParameters = `{"type":"object","required":["path","content"],"properties":{"path":{"type":"string","description":"Path to the file to write (relative or absolute)"},"content":{"type":"string","description":"Content to write to the file"}}}`
+const writeParameters = `{"type":"object","properties":{"path":{"type":"string","description":"Path to the file to write (relative or absolute)"},"content":{"type":"string","description":"Content to write to the file"}},"required":["path","content"]}`
 
 // WriteToolInput is the arguments of the write tool.
 type WriteToolInput struct {

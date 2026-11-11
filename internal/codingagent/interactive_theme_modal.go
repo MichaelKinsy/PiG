@@ -34,8 +34,7 @@ func (m *InteractiveMode) consumeModalHostInput(data string) bool {
 
 // consumeModalHostInputFor is consumeModalHostInput for a selector that owns focus.
 //
-// pig divergence (D155): a focused component that captures tui.select.pageUp and tui.select.pageDown keeps those keys, so they move its
-// selection and do not scroll the transcript (Pi #7629; tui-alt-screen.ts handleViewportInput in Pi PR #7680).
+// A focused component that captures viewport input receives the viewport keys instead of the transcript (tui-alt-screen.ts shouldDeferViewportInput).
 func (m *InteractiveMode) consumeModalHostInputFor(focus tui.Component, data string) bool {
 	if m.frontendInput(data) || m.consumeTerminalThemeInput(data) {
 		return true
@@ -43,7 +42,7 @@ func (m *InteractiveMode) consumeModalHostInputFor(focus tui.Component, data str
 	if m.altScreen == nil {
 		return false
 	}
-	if kb := tui.GetTUIKeybindings(); tui.CapturesSelectPageInput(focus) && (kb.Matches(data, tui.KBSelectPageUp) || kb.Matches(data, tui.KBSelectPageDown)) {
+	if tui.CapturesViewportInput(focus) {
 		return m.altScreen.HandleFocusedSearchInput(data)
 	}
 	return m.altScreen.HandleViewportInput(data) || m.altScreen.HandleFocusedSearchInput(data)

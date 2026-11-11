@@ -9,6 +9,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
 
@@ -311,10 +312,14 @@ func distinctProviders(models []RuntimeModel) int {
 //
 // pig divergence (D199): Pi lists no OpenRouter routing variant; PiG derives the one a reference names from its base model.
 func withNamedRoutingVariants(pool []RuntimeModel, text string) []RuntimeModel {
+	// Every variant is named after a colon, so a text without one, which is nearly every text, names none and costs nothing.
+	if !strings.Contains(text, ":") {
+		return pool
+	}
 	lower := jsstring.ToLower(text)
 	var extended []RuntimeModel
 	for _, variant := range ai.OpenRouterRoutingVariants {
-		named := strings.Index(lower, ":"+variant)
+		named := indexVariantName(lower, variant)
 		if named < 0 {
 			continue
 		}
@@ -347,12 +352,28 @@ func withNamedRoutingVariants(pool []RuntimeModel, text string) []RuntimeModel {
 	return append(slices.Clip(pool), extended...)
 }
 
+// indexVariantName is the index of ":"+variant in text, or -1, without building the joined string.
+func indexVariantName(text, variant string) int {
+	for from := 0; ; {
+		colon := strings.IndexByte(text[from:], ':')
+		if colon < 0 {
+			return -1
+		}
+		colon += from
+		//portlint:allow utf16units D199 routing-variant lookup has no Pi counterpart (model-resolver.ts lists no variants); the offset only indexes back into the same Go string and is never a JS length
+		if strings.HasPrefix(text[colon+1:], variant) {
+			return colon
+		}
+		from = colon + 1
+	}
+}
+
 func fuzzyMatches(text string, models []RuntimeModel) []RuntimeModel {
 	lower := jsstring.ToLower(text)
 	var matches []RuntimeModel
 	for _, model := range models {
 		// pig divergence (D199): an OpenRouter routing variant is a partial-match candidate only when the text names it, so a partial text resolves as it does in Pi, which lists none.
-		if _, variant, ok := ai.OpenRouterRoutingVariant(model.Provider, model.ID); ok && !strings.Contains(lower, ":"+variant) {
+		if _, variant, ok := ai.OpenRouterRoutingVariant(model.Provider, model.ID); ok && indexVariantName(lower, variant) < 0 {
 			continue
 		}
 		if jsstring.LowerContains(model.ID, lower) || jsstring.LowerContains(model.Name, lower) {
@@ -414,7 +435,7 @@ func bestFuzzyMatch(matches []RuntimeModel) *RuntimeModel {
 	if len(candidates) == 0 {
 		return nil
 	}
-	collator := jsstring.NewCollator()
+	collator := localecompare.NewCollator()
 	slices.SortStableFunc(candidates, func(a, b RuntimeModel) int {
 		return collator.CompareString(b.ID, a.ID)
 	})

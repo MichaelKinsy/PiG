@@ -13,7 +13,7 @@ func TestPairReview4SuspendReturnsBeforeContinue(t *testing.T) {
 		keepAlive:       func(time.Duration) func() { return func() {} },
 		ignoreInterrupt: func() func() { return func() {} },
 		continued:       func(continued func() error, _ func()) func() { onContinue = continued; return func() {} },
-		stop:            func() {}, start: func() error { started = true; return nil }, requestRender: func() {}, kill: func(int) error { return nil },
+		stop:            func() {}, start: func() error { started = true; return nil }, requestRender: func() {}, kill: func(int) error { return nil }, foreground: func() (bool, error) { return true, nil },
 	}
 	if err := suspendTerminal(t.Context(), "linux", nil, ops); err != nil {
 		t.Fatal(err)

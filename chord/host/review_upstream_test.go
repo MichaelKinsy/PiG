@@ -21,7 +21,6 @@ import (
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
-	"github.com/MichaelKinsy/PiG/internal/typebox"
 )
 
 // ─── helpers (review.test.ts:22-51) ─────────────────────────────────────────
@@ -907,22 +906,23 @@ func TestReviewRetirementClosesDroppedResourcesBeforeReleasingDroppedRefs(t *tes
 	}
 }
 
-// review.test.ts:552 "#11 fits has no false positives for unmodelled keywords; counterexamples checked with Value.Check"
+// review.test.ts:552 "#11 fits has no false positives for unmodelled keywords; counterexamples checked with compile"
 func TestReviewFitsHasNoFalsePositivesForUnmodelledKeywords(t *testing.T) {
 	cases := []struct {
 		sub, sup Schema
 		value    any
 	}{
-		{tString(), tString(Schema{"not": Schema{"const": "x"}}), "x"},
-		{tArray(tNumber()), tArray(tNumber(), Schema{"contains": tLiteral(1)}), []any{2.0}},
-		{tObject("a", tString()), tObject("a", tString(), Schema{"additionalProperties": tNumber()}), map[string]any{"a": "s", "b": "t"}},
-		{tObject("x", tString()), tObject(Schema{"patternProperties": Schema{"^x$": tNumber()}}), map[string]any{"x": "s"}},
-		// Type.Intersect([...]) is { allOf: [...] }.
-		{tNumber(), Schema{"allOf": []any{tNumber(), tNumber(Schema{"minimum": 1})}}, 0.0},
-		{tObject("a", tString(), Schema{"additionalProperties": tNumber()}), tObject("a", tString(), "b", tOptional(tString())), map[string]any{"a": "", "b": 1.0}},
+		{tString(), tString(kw("not", kw("const", "x"))), "x"},
+		{tArray(tNumber()), tArray(tNumber(), kw("contains", tTypedLiteral(1))), []any{2.0}},
+		{tObject("a", tString()), tObject("a", tString(), kw("additionalProperties", tNumber())), map[string]any{"a": "s", "b": "t"}},
+		{tObject("x", tString()), tObject(kw("patternProperties", kw("^x$", tNumber()))), map[string]any{"x": "s"}},
+		{tNumber(), kw("allOf", []any{tNumber(), tNumber(kw("minimum", 1))}), 0.0},
+		{tObject("a", tString(), kw("additionalProperties", tNumber())), tObject("a", tString(), "b", tOptional(tString())), map[string]any{"a": "", "b": 1.0}},
 	}
 	for _, item := range cases {
-		if !typebox.Check(item.sub, item.value) || typebox.Check(item.sup, item.value) {
+		subValid, subErr := IsValid(item.sub, item.value)
+		supValid, supErr := IsValid(item.sup, item.value)
+		if subErr != nil || supErr != nil || !subValid || supValid {
 			t.Fatalf("bad counterexample %v", item.value)
 		}
 		if Fits(item.sub, item.sup) {
@@ -943,7 +943,7 @@ func TestReviewArgumentsAreStrippedToWhatTheConsumerKnowsThenToWhatTheProviderKn
 	host := CreateHost(HostOptions{Self: kindHost(), OnError: func(error) {}})
 	t.Cleanup(func() { _ = host.Close() })
 	strict := Remote("t.strict", RemoteDef{Version: 1, Input: reviewEmpty(), Host: NewHostNamed("host"), Variants: Fields[VariantDef]{{"main", VariantDef{Methods: Fields[MethodSpec]{
-		{"echo", Method(tObject("a", tString(), Schema{"additionalProperties": false}), tUnknown())},
+		{"echo", Method(tObject("a", tString(), kw("additionalProperties", false)), tUnknown())},
 	}}}}})
 	if err := host.Serve(strict, func(any, Principal, Self) (Implementation, error) {
 		return chordjson.ObjectOf("variant", "main", "echo", methodFunc(func(args any, _ Ctx) (any, error) { return args, nil })), nil

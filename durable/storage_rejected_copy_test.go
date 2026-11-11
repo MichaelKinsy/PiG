@@ -6,6 +6,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/durabletest"
 	"github.com/MichaelKinsy/PiG/durable/storage"
 )
 
@@ -39,7 +40,7 @@ func TestMemoryStorageRejectsAnUnresolvableDocumentCopyBeforeAnyEffect(t *testin
 		durable.ConversationWrite{Value: durable.ConversationRecord{Id: 2}},
 		conversationDocumentWrite(5, "doc"),
 	}
-	if _, err := memory.Commit(t.Context(), setup, func(durable.Seq) {}); err != nil {
+	if _, err := durabletest.CommitWrites(t.Context(), memory, setup); err != nil {
 		t.Fatal(err)
 	}
 	source := durable.DocumentCopySource{Id: 5, At: durable.CurrentPoint}

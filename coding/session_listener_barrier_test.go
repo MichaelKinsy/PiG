@@ -22,6 +22,7 @@ func TestSessionPublicListenersPrecedePersistenceAndTools(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	_ = s.Events()
 	t.Cleanup(func() {
 		if err := s.Close(); err != nil {
 			t.Error(err)
@@ -81,11 +82,13 @@ func BenchmarkSessionSendWithSubscriber(b *testing.B) {
 		if err != nil {
 			b.Fatal(err)
 		}
+		_ = s.Events()
 		s.Subscribe(func(agent.AgentEvent) {})
 		drained := make(chan struct{})
+		eventsCh := s.Events()
 		go func() {
 			defer close(drained)
-			for event := range s.Events() {
+			for event := range eventsCh {
 				AcknowledgeEvent(event)
 			}
 		}()

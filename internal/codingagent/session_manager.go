@@ -12,6 +12,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -26,7 +27,9 @@ import (
 // ─── SessionManager ───────────────────────────────────────────────────────────
 
 // SessionManager owns the on-disk sessions directory for a given cwd
-// and tracks the active session.
+// and tracks the active session. It carries the static half of Pi's
+// SessionManager (create, open, forkFrom, getDefaultSessionDir).
+// Ports packages/coding-agent/src/core/session-manager.ts
 type SessionManager struct {
 	cwd        string
 	sessionDir string
@@ -206,65 +209,80 @@ func (sm *SessionManager) SessionDir() string { return sm.sessionDir }
 // CWD returns the working directory.
 func (sm *SessionManager) CWD() string { return sm.cwd }
 
-// Clone extracts the chosen root-to-leaf path with resolved labels into a fresh Session. In-memory sessions stay in memory. A persisted clone is written immediately only when its path contains a user or assistant message; otherwise its first such message creates the file.
+// Clone extracts the chosen root-to-leaf path with resolved labels into a fresh Session. In-memory sessions stay in memory. A persisted clone is written immediately only when its path contains a user or assistant message; otherwise its first such message creates the file. The records of a persisted source are streamed from the source to the new file one at a time and the clone opens that file as a resume does, so the branch is never held decoded.
 func (sm *SessionManager) Clone(source *Session, leafID string) (*Session, error) {
 	if source == nil {
 		return nil, fmt.Errorf("sessionmanager: Clone: nil source")
 	}
-	chain := source.GetBranch(leafID)
-	if len(chain) == 0 {
+	plan, found := source.planBranchedSession(leafID)
+	if !found {
 		return nil, fmt.Errorf("Entry %s not found", leafID)
-	}
-
-	records, decoded, err := branchedSessionEntries(source, chain)
-	if err != nil {
-		return nil, err
 	}
 	newID, err := generateSessionID()
 	if err != nil {
 		return nil, err
 	}
 	now := time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
+	sourcePath := source.Path()
 	header := SessionHeader{
 		Type:          "session",
 		Version:       CurrentSessionVersion,
 		ID:            newID,
 		Timestamp:     now,
 		CWD:           sm.cwd,
-		ParentSession: source.path,
+		ParentSession: sourcePath,
 	}
 	headerJSON, err := marshalSessionLine(header)
 	if err != nil {
 		return nil, err
 	}
-	records = append([]json.RawMessage{headerJSON}, records...)
-	decoded = append([]FileEntry{nil}, decoded...)
-	fileEntries := make([]FileEntry, len(records))
-	for i, raw := range records {
-		if fileEntries[i] = decoded[i]; fileEntries[i] == nil {
-			fileEntries[i] = sessionentry.DecodeFileEntry(raw)
-		}
-	}
-	loaded, err := newSessionFromEntries(sm.cwd, newID, fileEntries)
-	if err != nil {
-		return nil, err
-	}
-	if source.path != "" {
+	var loaded *Session
+	if sourcePath != "" {
 		if err := MkdirSessionDir(sm.sessionDir); err != nil {
 			return nil, err
 		}
-		loaded.path = filepath.Join(sm.sessionDir, fileTimestamp(now)+"_"+newID+".jsonl")
-		loaded.sessionDir = sm.sessionDir
-		if loaded.hasConversation {
-			lines := make([][]byte, len(records))
-			for i, raw := range records {
-				lines[i] = raw
+	}
+	path := filepath.Join(sm.sessionDir, fileTimestamp(now)+"_"+newID+".jsonl")
+	if sourcePath != "" && plan.hasConversation {
+		err = writeSessionRecords(path, os.O_TRUNC, sessionWriteBuffer, func(emit func(...[]byte) error) error {
+			if err := emit(headerJSON); err != nil {
+				return err
 			}
-			if err := writeSessionLines(loaded.path, lines); err != nil {
-				return nil, err
-			}
-			loaded.flushed = true
+			return source.writeBranchedSession(plan, func(_ SessionEntry, _ *string, parts ...[]byte) error { return emit(parts...) })
+		})
+		if err != nil {
+			return nil, err
 		}
+		var empty bool
+		if loaded, empty, err = loadPersistedSession(path); err != nil {
+			return nil, err
+		}
+		if empty {
+			return nil, fmt.Errorf("Session file is not a valid pi session: %s", path)
+		}
+	} else {
+		records := []FileEntry{header}
+		err = source.writeBranchedSession(plan, func(entry SessionEntry, parent *string, parts ...[]byte) error {
+			raw := slices.Concat(parts...)
+			record := rebasedMessage(entry, parent, raw)
+			if record == nil {
+				record = sessionentry.DecodeFileEntry(raw)
+			}
+			records = append(records, record)
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+		if loaded, err = newSessionFromEntries(sm.cwd, newID, records); err != nil {
+			return nil, err
+		}
+		if sourcePath != "" {
+			loaded.path = path
+		}
+	}
+	if sourcePath != "" {
+		loaded.sessionDir = sm.sessionDir
 	}
 	sm.mu.Lock()
 	sm.current = loaded

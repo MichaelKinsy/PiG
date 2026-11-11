@@ -170,7 +170,7 @@ func TestContextDerivationMatchesPi(t *testing.T) {
 	for i, program := range programs {
 		store := storage.NewMemoryStorage()
 		line := session.CreateSession(store)
-		adapter := lineAdapter{line}
+		adapter := sessionLine{line}
 		var conversation durable.ConversationId
 		started := false
 		var ids []durable.EntryId

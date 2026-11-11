@@ -150,6 +150,45 @@ func TestWakeRecomputedAfterSleepCameDueArmsItsTimer(t *testing.T) {
 	mustClose(t, opened.harness)
 }
 
+// A reservation pass that found a sleep not yet due, followed by a wake recomputation that reads a clock at or past
+// the sleep, leaves the sleep out of the wake (it is due, so no later timer is owed) and no pass has made it a candidate:
+// the timer armed for it is disarmed, and nothing runs the task. A change that publishes right after a pass, such as the
+// reservation's own commit, reads the clock of the next millisecond and does exactly that; TestExample12Recovery hung on
+// it. The recomputation has to hand a sleep that came due to a pass instead.
+func TestWakeRecomputedAfterPassDroppedSleepThatCameDueRunsIt(t *testing.T) {
+	clock := &clockAt{}
+	clock.set(1_000)
+	timers := &hostTimers{}
+	sleeper := sleeperTask(1_500)
+	opened := tkOpenRoot(t, []durable.AnyTask{sleeper}, tkOptions{now: clock.now, setTimer: timers.set})
+	scheduler := opened.harness.(*harnessImpl).tasks
+	opened.harness.Resume()
+	id := tkStart(t, opened.root, sleeper)
+	eventually(t, func() bool {
+		record, err := opened.harness.GetTask(testContext, id)
+		return err == nil && record != nil && record.State.Status == durable.TaskSleeping && schedulerAtRest(scheduler) && len(timers.foreground(500)) > 0
+	})
+	eventually(t, func() bool {
+		scheduler.mu.Lock()
+		defer scheduler.mu.Unlock()
+		return !scheduler.wakeScheduled
+	})
+
+	// The clock reaches the sleep after the pass dropped it; the next change schedules its wake recomputation at that
+	// clock. The armed timer is never fired: the recomputation alone has to see the task through.
+	clock.set(1_500)
+	scheduler.mu.Lock()
+	scheduler.scheduleWakeLocked()
+	scheduler.mu.Unlock()
+
+	// Not WaitForTask, which resumes the scheduler and so would run the due sleep itself.
+	eventually(t, func() bool {
+		record, err := opened.harness.GetTask(testContext, id)
+		return err == nil && record != nil && record.State.Status == durable.TaskTerminal
+	})
+	mustClose(t, opened.harness)
+}
+
 func TestWakeRecomputedAfterSleepCameDueOffersItsAlarm(t *testing.T) {
 	clock := &clockAt{}
 	clock.set(1_000)

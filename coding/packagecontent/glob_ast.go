@@ -49,8 +49,8 @@ func (t triBool) or(b bool) triBool {
 	return triFalse
 }
 
-// globMaxExtglobRecursion is minimatch's default maxExtglobRecursion.
-// upstream: node_modules/minimatch/dist/esm/ast.js:maxExtglobRecursion
+// globMaxExtglobRecursion is the default maxExtglobRecursion of the minimatch bundled in Node (deps/minimatch), which Pi's fs.globSync runs.
+// upstream: node-deps/minimatch/index.js:maxExtglobRecursion
 const globMaxExtglobRecursion = 2
 
 const globExtglobTypes = "!?+*@"

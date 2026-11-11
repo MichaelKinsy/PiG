@@ -492,6 +492,42 @@ func TestCheckCoEditsLedger(t *testing.T) {
 	}
 }
 
+// A commit whose trailer cites a Pi file whose line did not change cannot be rewritten: its reviewed entry is read before the
+// citation, so the record says what the change was (no Pi line governs it) and is not left stale.
+func TestCheckCoEditsLedgerEntryOutranksTheCommitsOwnCitation(t *testing.T) {
+	piNames := map[string]bool{"a.ts": true}
+	dir := t.TempDir()
+	gitIn(t, dir, "init", "-q", "-b", "main")
+	write(t, dir, "pkg/a.go", "package pkg\n\nfunc A() string { return \"first\" }\n")
+	write(t, dir, "pkg/a_test.go", "package pkg\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) {\n\tif A() != \"first\" {\n\t\tt.Fatal(\"bad\")\n\t}\n}\n")
+	gitIn(t, dir, "add", ".")
+	gitIn(t, dir, "commit", "-q", "-m", "base")
+	base := gitIn(t, dir, "rev-parse", "HEAD")
+	write(t, dir, "pkg/a.go", "package pkg\n\nfunc A() string { return \"second\" }\n")
+	write(t, dir, "pkg/a_test.go", "package pkg\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) {\n\tif A() != \"second\" {\n\t\tt.Fatal(\"bad\")\n\t}\n}\n")
+	gitIn(t, dir, "add", ".")
+	gitIn(t, dir, "commit", "-q", "-m", "change\n\nPi-Behavior-Change: packages/x/a.ts:12")
+	tip := gitIn(t, dir, "rev-parse", "HEAD")
+	run := func(l ...reviewEntry) []string {
+		p, err := checkCoEdits(dir, base+"..HEAD", time.Time{}, piNames, l)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+	if p := run(); len(p) != 0 {
+		t.Fatalf("a cited commit is a finding: %v", p)
+	}
+	entry := reviewEntry{Path: "pkg/a_test.go", Commit: tip[:10], Class: "NOBEHAVIOR", Reason: "the cited Pi line did not change"}
+	if p := run(entry); len(p) != 0 {
+		t.Fatalf("an entry for a cited commit was refused or left stale: %v", p)
+	}
+	entry.Class = "unknown"
+	if p := run(entry); len(p) != 1 || !strings.Contains(p[0], "unknown class") {
+		t.Fatalf("an entry for a cited commit must still be validated: %v", p)
+	}
+}
+
 func TestLedgerSurvivesSquashMerge(t *testing.T) {
 	piNames := map[string]bool{"a.ts": true}
 	const src = "package pkg\n\nfunc A() string { return \"%s\" }\n"

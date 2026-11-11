@@ -1,7 +1,5 @@
 package tui
 
-// pi: packages/tui/src/layout.ts
-
 import (
 	"strings"
 	"testing"

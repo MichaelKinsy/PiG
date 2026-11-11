@@ -53,7 +53,8 @@ func bind(params []abi.Value) []any {
 	return out
 }
 
-// apply runs the commits of the current step. A trace line follows each commit once the store holds it, so a process killed
+// apply runs the commits of the current step: each in its own transaction, except that a run of joined commits (the batches of one
+// Storage call, ABI section 4.4) is one transaction. A trace line follows each commit once the store holds it, so a process killed
 // after commit k leaves the commit in the store and in the trace.
 // RecordType is the record_ids type that owns id, or "" when no committed record does.
 func (h *Host) RecordType(id int64) (string, error) {
@@ -66,11 +67,28 @@ func (h *Host) RecordType(id int64) (string, error) {
 }
 
 func (h *Host) apply() error {
-	for _, c := range h.B.Step().Commits {
-		tx, err := h.db.Begin()
-		if err != nil {
+	commits := h.B.Step().Commits
+	for i := 0; i < len(commits); {
+		j := i + 1
+		for j < len(commits) && commits[j].Joined {
+			j++
+		}
+		if err := h.applyRun(commits[i:j]); err != nil {
 			return err
 		}
+		i = j
+	}
+	return nil
+}
+
+// applyRun applies the commits of one Storage call in one transaction and traces each of them.
+func (h *Host) applyRun(run []abi.Commit) error {
+	tx, err := h.db.Begin()
+	if err != nil {
+		return err
+	}
+	recs := make([][]contracttest.Stmt, len(run))
+	for k, c := range run {
 		rec := make([]contracttest.Stmt, 0, len(c.Stmts))
 		for _, s := range c.Stmts {
 			text := h.table[s.SQL]
@@ -90,11 +108,14 @@ func (h *Host) apply() error {
 			}
 			rec = append(rec, contracttest.Stmt{SQL: text, Params: ps})
 		}
-		if err := tx.Commit(); err != nil {
-			return err
-		}
-		if h.trace != nil {
-			if err := h.trace.Commit("s0", c.Seq, rec); err != nil {
+		recs[k] = rec
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	if h.trace != nil {
+		for k, c := range run {
+			if err := h.trace.Commit("s0", c.Seq, recs[k]); err != nil {
 				return err
 			}
 		}

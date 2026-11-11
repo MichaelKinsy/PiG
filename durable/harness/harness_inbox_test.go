@@ -180,7 +180,7 @@ func assistants(t *testing.T, conversation Conversation) []durable.EntryRecord {
 	return found
 }
 
-func submit(t *testing.T, conversation Conversation, draft durable.SubmissionDraft) durable.Submission {
+func submit(t testing.TB, conversation Conversation, draft durable.SubmissionDraft) durable.Submission {
 	t.Helper()
 	return must(conversation.Submit(testContext, draft))
 }
@@ -282,31 +282,23 @@ func TestInbox(t *testing.T) {
 			yielded.resolve()
 			return nil, nil
 		}})
-		store := newControlledStorage()
-		harness, root := openChat(t, store, setup)
+		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
 		submit(t, root, inputDraft("a"))
 		first.awaitReached(t)
 		f1 := submit(t, root, inputDraft("f1"))
 		f2 := submit(t, root, inputDraft("f2"))
-		// Occupy the line, let the answer queue its boundary commit behind it, then change the mode.
-		held := store.holdCommits()
-		markerDoc := durable.DefineDoc(durable.DocDefinition[markerState]{
-			CommonDocDefinition: durable.CommonDocDefinition[markerState]{Kind: "test.marker", Version: 1, Initial: func() markerState { return markerState{} }, CheckpointWhen: func(markerState, []durable.Op, durable.CheckpointInfo) bool { return false }},
-			DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeSession},
-		})
+		// Occupy the line with a commit whose callback waits, let the answer queue its boundary commit behind it, then
+		// change the mode.
+		entered, releaseLine := deferred(), deferred()
 		occupying := make(chan error, 1)
 		go func() {
-			_, err := durable.Commit(testContext, root, func(tx durable.Tx) (struct{}, error) {
-				marker, err := durable.TxDoc[markerState](tx, markerDoc)
-				if err != nil {
-					return struct{}{}, err
-				}
-				n, _ := marker.Get("n").(float64)
-				return struct{}{}, marker.Set("n", n+1)
+			_, err := durable.Commit(testContext, root, func(durable.Tx) (struct{}, error) {
+				entered.resolve()
+				return struct{}{}, releaseLine.wait(testContext)
 			})
 			occupying <- err
 		}()
-		if err := held.entered.wait(testContext); err != nil {
+		if err := entered.wait(testContext); err != nil {
 			t.Fatal(err)
 		}
 		first.release()
@@ -315,7 +307,7 @@ func TestInbox(t *testing.T) {
 		}
 		flush()
 		setup.SetSettings(func(settings *HarnessSettings) { settings.FollowUpMode = durable.QueueAll })
-		held.release()
+		releaseLine.resolve()
 		if err := <-occupying; err != nil {
 			t.Fatal(err)
 		}
@@ -711,15 +703,15 @@ func TestInbox(t *testing.T) {
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
 		var mu sync.Mutex
 		ops := [][]durable.Op{}
-		harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
-			for _, change := range documentChanges(publication.Changes) {
+		harness.ObserveCommits(commitsObserver{advance: func(_ context.Context, publication durable.CommitPublication) {
+			for _, change := range documentValues(publication.Changes) {
 				if change.Record.Kind == "pi.inbox" && len(change.Ops) > 0 {
 					mu.Lock()
 					ops = append(ops, slices.Clone(change.Ops))
 					mu.Unlock()
 				}
 			}
-		})
+		}})
 		input := submit(t, root, inputDraft("a"))
 		first.awaitReached(t)
 		w1 := submit(t, root, writeDraft(queuedNote("w")))
@@ -976,15 +968,15 @@ func TestInbox(t *testing.T) {
 		}
 		var mu sync.Mutex
 		ops := [][]durable.Op{}
-		harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
-			for _, change := range documentChanges(publication.Changes) {
+		harness.ObserveCommits(commitsObserver{advance: func(_ context.Context, publication durable.CommitPublication) {
+			for _, change := range documentValues(publication.Changes) {
 				if change.Record.Kind == "pi.inbox" && len(change.Ops) > 0 {
 					mu.Lock()
 					ops = append(ops, slices.Clone(change.Ops))
 					mu.Unlock()
 				}
 			}
-		})
+		}})
 		must(items[1].Abort(testContext))
 		mu.Lock()
 		expectEqualJSON(t, ops, `[[["p",["items"],1,1,[]]]]`)
@@ -999,13 +991,13 @@ func TestInbox(t *testing.T) {
 		first := gatedReply("first")
 		setup.Faux.SetResponses([]ai.FauxResponseStep{first.step, fauxAnswer("second")})
 		harness, root := openChat(t, store, setup)
-		harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+		harness.ObserveCommits(commitsObserver{advance: func(_ context.Context, publication durable.CommitPublication) {
 			for _, change := range documentChanges(publication.Changes) {
-				if change.Record.Kind == "pi.inbox" {
-					store.setInbox(change.Record.Id)
+				if record := documentRecordOf(change); record.Kind == "pi.inbox" {
+					store.setInbox(record.Id)
 				}
 			}
-		})
+		}})
 		input := submit(t, root, inputDraft("a"))
 		first.awaitReached(t)
 		submit(t, root, inputDraft("f1"))
@@ -1180,8 +1172,8 @@ func TestUsage(t *testing.T) {
 		}
 		var mu sync.Mutex
 		commits := []usageCommit{}
-		harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
-			for _, change := range documentChanges(publication.Changes) {
+		harness.ObserveCommits(commitsObserver{advance: func(_ context.Context, publication durable.CommitPublication) {
+			for _, change := range documentValues(publication.Changes) {
 				if change.Record.Kind != "pi.usage" {
 					continue
 				}
@@ -1195,7 +1187,7 @@ func TestUsage(t *testing.T) {
 				commits = append(commits, usageCommit{entries: entries, ops: change.Ops})
 				mu.Unlock()
 			}
-		})
+		}})
 		must(submit(t, root, inputDraft("a")).Wait(testContext))
 		must(submit(t, root, inputDraft("b")).Wait(testContext))
 		waitFor(t, func() bool {
@@ -1222,10 +1214,6 @@ func TestUsage(t *testing.T) {
 		}
 		closeHarness(t, harness)
 	})
-}
-
-type markerState struct {
-	N float64 `json:"n"`
 }
 
 // expectSameSettlement is toEqual({...settled, id, entry: expect.any(Number)}).
@@ -1274,7 +1262,8 @@ func (store *inboxRecordingStorage) setInbox(id durable.DocumentId) {
 	store.mu.Unlock()
 }
 
-func (store *inboxRecordingStorage) Commit(ctx context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
+func (store *inboxRecordingStorage) Commit(ctx context.Context, batches [][]durable.StorageWrite, receive func(index int, seq durable.Seq)) (durable.CommitResult, error) {
+	writes := slices.Concat(batches...)
 	store.mu.Lock()
 	for _, write := range writes {
 		change, ok := write.(durable.DocumentChangeWrite)
@@ -1286,5 +1275,16 @@ func (store *inboxRecordingStorage) Commit(ctx context.Context, writes []durable
 		store.written = append(store.written, inboxWrite{Kind: string(change.Content.Kind), Empty: empty})
 	}
 	store.mu.Unlock()
-	return store.MemoryStorage.Commit(ctx, writes, adopt)
+	return store.MemoryStorage.Commit(ctx, batches, receive)
+}
+
+// documentRecordOf is the record of a document change, a retirement included.
+func documentRecordOf(change durable.DocumentCommitChange) durable.DocumentRecord {
+	switch typed := change.(type) {
+	case durable.DocumentChange:
+		return typed.Record
+	case durable.DocumentRetireChange:
+		return typed.Record
+	}
+	panic("unexpected document commit change")
 }

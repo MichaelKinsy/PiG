@@ -47,7 +47,7 @@ The published npm package is an explicit opt-in: `PIG_PARITY_PI_PUBLISHED=1 make
 | oracle | `pin.py install-oracle` | the source build; the first build of a commit freezes its provider data and dependency closure in `automation/pin/frozen/` |
 | mirror | `make upstream-mirror` | `.upstream/v<version>` |
 | inventories | `make interface-proposals`, `make test-inventory-generate` | extracted per package (`PIG_INTERFACE_EXTRACT_INCREMENTAL=1`): a package keeps its earlier extraction while the files its TypeScript program reads (its own and its reachable workspace packages' code, declarations and manifests, and the third-party files the last extraction read) are unchanged |
-| ledgers | `pin.py ledgers` | pending mapping carried from the committed pin, gap baseline (`make ledger-update` twice), deltas |
+| ledgers | `pin.py ledgers` | pending mapping carried from the committed pin, gap baseline (`make ledger-update` twice), deltas; the upstream-sync manifest is generated against the earlier pin (`from`), whose mirror `make upstream-delta` builds |
 | gaps | `make ledger-check` | the gap list |
 | tasks | | one `closure <upstream-file>` task per file with gap rows and one `delta <package>` task per package with pending upstream-sync files, in `tmp/pin-follow/<version>/tasks.tsv` |
 

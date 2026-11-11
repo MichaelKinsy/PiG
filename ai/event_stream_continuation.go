@@ -5,6 +5,7 @@ import (
 	"slices"
 )
 
+// Ports packages/ai/src/utils/event-stream.ts (the async iterator and result promise of EventStream).
 // continuationEventIterator models EventStream's async generator for one consumer loop. A buffered event awaits its yield value; a waiting iterator first awaits delivery and then awaits the yield value. The iterator owns the promises and the waiter of its current next: the consumer awaits next at once, and when it resumes every reaction of those promises has run, so the following next reuses them.
 type continuationEventIterator struct {
 	stream   *AssistantMessageEventStream

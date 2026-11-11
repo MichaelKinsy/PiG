@@ -58,18 +58,31 @@ fn probe_tmux_hyperlinks() -> bool {
             Ok(None) => std::thread::sleep(Duration::from_millis(5)),
         }
     }
-    let Ok(out) = child.wait_with_output() else { return false };
-    String::from_utf8_lossy(&out.stdout).split(',').any(|f| f.trim() == "hyperlinks")
+    let Ok(out) = child.wait_with_output() else {
+        return false;
+    };
+    String::from_utf8_lossy(&out.stdout)
+        .split(',')
+        .any(|f| f.trim() == "hyperlinks")
 }
 
-fn detect_from_environment(env: &dyn Fn(&str) -> Option<String>, windows: bool, tmux_forwards_hyperlink: &dyn Fn() -> bool) -> TerminalCapabilities {
+fn detect_from_environment(
+    env: &dyn Fn(&str) -> Option<String>,
+    windows: bool,
+    tmux_forwards_hyperlink: &dyn Fn() -> bool,
+) -> TerminalCapabilities {
     let get = |key: &str| env(key).unwrap_or_default();
     let term_program = js_lower(&get("TERM_PROGRAM"));
     let terminal_emulator = js_lower(&get("TERMINAL_EMULATOR"));
     let term = js_lower(&get("TERM"));
     let color_term = js_lower(&get("COLORTERM"));
-    let true_color_hint = color_term == "truecolor" || color_term == "24bit" || term.ends_with("-direct");
-    let caps = |images, true_color, hyperlinks| TerminalCapabilities { images, true_color, hyperlinks };
+    let true_color_hint =
+        color_term == "truecolor" || color_term == "24bit" || term.ends_with("-direct");
+    let caps = |images, true_color, hyperlinks| TerminalCapabilities {
+        images,
+        true_color,
+        hyperlinks,
+    };
     if !get("TMUX").is_empty() || term.starts_with("tmux") {
         return caps(None, true_color_hint, tmux_forwards_hyperlink());
     }
@@ -79,13 +92,19 @@ fn detect_from_environment(env: &dyn Fn(&str) -> Option<String>, windows: bool, 
     if !get("KITTY_WINDOW_ID").is_empty() || term_program == "kitty" {
         return caps(Some(ImageProtocol::Kitty), true, true);
     }
-    if term_program == "ghostty" || term.contains("ghostty") || !get("GHOSTTY_RESOURCES_DIR").is_empty() {
+    if term_program == "ghostty"
+        || term.contains("ghostty")
+        || !get("GHOSTTY_RESOURCES_DIR").is_empty()
+    {
         return caps(Some(ImageProtocol::Kitty), true, true);
     }
     if !get("WEZTERM_PANE").is_empty() || term_program == "wezterm" {
         return caps(Some(ImageProtocol::Kitty), true, true);
     }
-    if term_program == "warpterminal" || !get("WARP_SESSION_ID").is_empty() || !get("WARP_TERMINAL_SESSION_UUID").is_empty() {
+    if term_program == "warpterminal"
+        || !get("WARP_SESSION_ID").is_empty()
+        || !get("WARP_TERMINAL_SESSION_UUID").is_empty()
+    {
         return caps(Some(ImageProtocol::Kitty), true, true);
     }
     if !get("ITERM_SESSION_ID").is_empty() || term_program == "iterm.app" {
@@ -114,7 +133,11 @@ fn boolean_override(value: Option<String>) -> Option<bool> {
     }
 }
 
-pub(crate) fn detect_in(env: &dyn Fn(&str) -> Option<String>, windows: bool, tmux_forwards_hyperlink: Option<&dyn Fn() -> bool>) -> TerminalCapabilities {
+pub(crate) fn detect_in(
+    env: &dyn Fn(&str) -> Option<String>,
+    windows: bool,
+    tmux_forwards_hyperlink: Option<&dyn Fn() -> bool>,
+) -> TerminalCapabilities {
     let hyperlinks = boolean_override(env("PI_HYPERLINKS"));
     let default_probe = probe_tmux_hyperlinks;
     let probe: &dyn Fn() -> bool = tmux_forwards_hyperlink.unwrap_or(&default_probe);
@@ -140,8 +163,14 @@ pub(crate) fn detect_in(env: &dyn Fn(&str) -> Option<String>, windows: bool, tmu
 
 /// pi-tui's `detectCapabilities`: the terminal's capabilities from the environment. `PI_HYPERLINKS`, `PI_IMAGE_PROTOCOL` and
 /// `PI_TRUE_COLOR` override detection; without `tmux_forwards_hyperlink` a tmux session is probed.
-pub fn detect_capabilities(tmux_forwards_hyperlink: Option<&dyn Fn() -> bool>) -> TerminalCapabilities {
-    detect_in(&|key| std::env::var(key).ok(), cfg!(windows), tmux_forwards_hyperlink)
+pub fn detect_capabilities(
+    tmux_forwards_hyperlink: Option<&dyn Fn() -> bool>,
+) -> TerminalCapabilities {
+    detect_in(
+        &|key| std::env::var(key).ok(),
+        cfg!(windows),
+        tmux_forwards_hyperlink,
+    )
 }
 
 struct State {
@@ -149,7 +178,14 @@ struct State {
     overrides: CapabilityOverrides,
 }
 
-static STATE: Mutex<State> = Mutex::new(State { cached: None, overrides: CapabilityOverrides { images: None, true_color: None, hyperlinks: None } });
+static STATE: Mutex<State> = Mutex::new(State {
+    cached: None,
+    overrides: CapabilityOverrides {
+        images: None,
+        true_color: None,
+        hyperlinks: None,
+    },
+});
 
 fn apply_overrides(mut caps: TerminalCapabilities, o: CapabilityOverrides) -> TerminalCapabilities {
     if let Some(images) = o.images {
@@ -184,7 +220,11 @@ pub fn get_capabilities() -> TerminalCapabilities {
 /// pi-tui's `getTerminalColorMode`: truecolor when the capabilities report it, else 256 colors. `None` takes `getCapabilities()`.
 pub fn get_terminal_color_mode(capabilities: Option<TerminalCapabilities>) -> TerminalColorMode {
     let caps = capabilities.unwrap_or_else(get_capabilities);
-    if caps.true_color { TerminalColorMode::TrueColor } else { TerminalColorMode::Color256 }
+    if caps.true_color {
+        TerminalColorMode::TrueColor
+    } else {
+        TerminalColorMode::Color256
+    }
 }
 
 /// pi-tui's `resetCapabilitiesCache`.

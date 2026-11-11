@@ -167,6 +167,9 @@ _LOCK_MASK = 64 + 128
 _ESCAPE, _TAB, _ENTER, _SPACE, _BACKSPACE, _KP_ENTER = 27, 9, 13, 32, 127, 57414
 _UP, _DOWN, _RIGHT, _LEFT = -1, -2, -3, -4
 _DELETE, _INSERT, _PAGE_UP, _PAGE_DOWN, _HOME, _END = -10, -11, -12, -13, -14, -15
+_F1, _F2, _F4, _F12 = -21, -22, -24, -32
+_FUNCTION_KEY_CODES = {name: -21 - index for index, name in enumerate(f"f{n}" for n in range(1, 13))}
+_KITTY_FUNCTIONAL_PUA_START, _KITTY_FUNCTIONAL_PUA_END = 57344, 63743
 
 _FUNCTIONAL_EQUIVALENTS = {
     57399: 48, 57400: 49, 57401: 50, 57402: 51, 57403: 52, 57404: 53, 57405: 54, 57406: 55, 57407: 56, 57408: 57,
@@ -273,7 +276,11 @@ _ARROW = re.compile(r"\x1b\[1;([0-9]+)(?::([0-9]+))?([ABCD])\Z")
 _FUNC = re.compile(r"\x1b\[([0-9]+)(?:;([0-9]+))?(?::([0-9]+))?~\Z")
 _HOME_END = re.compile(r"\x1b\[1;([0-9]+)(?::([0-9]+))?([HF])\Z")
 _MODIFY_OTHER = re.compile(r"\x1b\[27;([0-9]+);([0-9]+)~\Z")
-_FUNC_CODES = {2: _INSERT, 3: _DELETE, 5: _PAGE_UP, 6: _PAGE_DOWN, 7: _HOME, 8: _END}
+_FUNC_CODES = {
+    2: _INSERT, 3: _DELETE, 5: _PAGE_UP, 6: _PAGE_DOWN, 7: _HOME, 8: _END,
+    11: -21, 12: -22, 13: -23, 14: -24, 15: -25, 17: -26, 18: -27, 19: -28, 20: -29, 21: -30, 23: -31, 24: -32,
+}  # fmt: skip
+_F_KEY = re.compile(r"\x1b\[(?:1;([0-9]+)(?::([0-9]+))?)?([PQS])\Z")
 
 
 def _parse_kitty(data: str):
@@ -296,6 +303,10 @@ def _parse_kitty(data: str):
     m = _HOME_END.match(data)
     if m:
         return (_HOME if m.group(3) == "H" else _END), None, None, _num(m.group(1)) - 1
+    m = _F_KEY.match(data)
+    if m:
+        mod_value = _num(m.group(1)) if m.group(1) else 1
+        return {"P": _F1, "Q": _F2, "S": _F4}[m.group(3)], None, None, mod_value - 1
     return None
 
 
@@ -518,9 +529,9 @@ def matches_key(data: str, key_id: str) -> bool:
         return _matches_kitty(data, code, modifier)
 
     if re.fullmatch(r"f(?:[1-9]|1[0-2])", key):
-        if modifier != 0:
-            return False
-        return _legacy(data, _LEGACY_KEY_SEQUENCES[key])
+        if modifier == 0 and _legacy(data, _LEGACY_KEY_SEQUENCES[key]):
+            return True
+        return _matches_kitty(data, _FUNCTION_KEY_CODES[key], modifier)
 
     if len(key) == 1 and ("a" <= key <= "z" or "0" <= key <= "9" or key in _SYMBOL_KEYS):
         codepoint = ord(key)
@@ -553,14 +564,14 @@ def is_key_release(data: str) -> bool:
     """Whether ``data`` is a Kitty key-release event (pi-tui's ``isKeyRelease``)."""
     if "\x1b[200~" in data:
         return False
-    return any(marker in data for marker in (":3u", ":3~", ":3A", ":3B", ":3C", ":3D", ":3H", ":3F"))
+    return any(marker in data for marker in (":3u", ":3~", ":3A", ":3B", ":3C", ":3D", ":3H", ":3F", ":3P", ":3Q", ":3S"))
 
 
 def is_key_repeat(data: str) -> bool:
     """Whether ``data`` is a Kitty key-repeat event (pi-tui's ``isKeyRepeat``)."""
     if "\x1b[200~" in data:
         return False
-    return any(marker in data for marker in (":2u", ":2~", ":2A", ":2B", ":2C", ":2D", ":2H", ":2F"))
+    return any(marker in data for marker in (":2u", ":2~", ":2A", ":2B", ":2C", ":2D", ":2H", ":2F", ":2P", ":2Q", ":2S"))
 
 
 def _format_key_name(key_name: str, modifier: float) -> str | None:
@@ -594,6 +605,8 @@ def _format_parsed_key(codepoint: float, modifier: float, base_layout_key: float
     is_known_symbol = _from_char_code(identity) in _SYMBOL_KEYS
     effective = identity if is_latin_letter or is_digit or is_known_symbol else (base_layout_key if base_layout_key is not None else identity)
     key_name = _NAMED.get(effective)
+    if key_name is None and _F12 <= effective <= _F1:
+        key_name = f"f{_F1 - int(effective) + 1}"
     if key_name is None:
         if 48 <= effective <= 57 or 97 <= effective <= 122 or _from_char_code(effective) in _SYMBOL_KEYS:
             key_name = _from_char_code(effective)
@@ -721,6 +734,8 @@ def decode_kitty_printable(data: str) -> str | None:
         effective = shifted
     effective = _normalize_functional(effective)
     if not math.isfinite(effective) or effective < 32:
+        return None
+    if _KITTY_FUNCTIONAL_PUA_START <= effective <= _KITTY_FUNCTIONAL_PUA_END:
         return None
     return _from_code_point(effective)
 

@@ -1,9 +1,5 @@
 package packagecontent
 
-// pi: packages/coding-agent/src/core/pi-manifest.ts
-
-// pi: packages/coding-agent/src/core/package-manager.ts
-
 import (
 	"errors"
 	"io/fs"
@@ -981,5 +977,39 @@ func TestDiscoverExpandsPiManifestDirectoryEntries(t *testing.T) {
 	}
 	if !slices.Equal(resources.ExtensionEntries, want) {
 		t.Fatalf("ExtensionEntries = %v, want %v", resources.ExtensionEntries, want)
+	}
+}
+
+// Pi's validateDescription limits description.length, a count of UTF-16 units, to 1024: a 600-character CJK description is 1800 bytes and valid, 513 astral characters are 1026 units and invalid.
+func TestAgentPluginsV1DescriptionLimitCountsUTF16Units(t *testing.T) {
+	cases := []struct {
+		name        string
+		description string
+		valid       bool
+	}{
+		{"cjk-600", strings.Repeat("字", 600), true},
+		{"cjk-1024", strings.Repeat("字", 1024), true},
+		{"cjk-1025", strings.Repeat("字", 1025), false},
+		{"astral-512", strings.Repeat("😀", 512), true},
+		{"astral-513", strings.Repeat("😀", 513), false},
+		{"ascii-1024", strings.Repeat("a", 1024), true},
+		{"ascii-1025", strings.Repeat("a", 1025), false},
+	}
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "plugin.json"), `{"$schema":"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json","name":"dev-flow"}`)
+	for _, c := range cases {
+		writeTestFile(t, filepath.Join(root, "skills", c.name, "SKILL.md"), "---\nname: "+c.name+"\ndescription: "+c.description+"\n---\nBody\n")
+	}
+	resources, err := Validate(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range cases {
+		dir := filepath.Join(root, "skills", c.name)
+		if c.valid {
+			assertContains(t, resources.SkillDirs, dir)
+		} else {
+			assertNotContains(t, resources.SkillDirs, dir)
+		}
 	}
 }

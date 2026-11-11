@@ -16,9 +16,11 @@ func TestDurableErrorClassesCarryNameAndCause(t *testing.T) {
 		err           interface{ Error() string }
 		name, message string
 	}{
-		{durable.NewReadAfterWrite("get"), "ReadAfterWrite", "Tx.get() cannot read tables after the first table write"},
+		{durable.NewReadAfterWrite("Tx.get()"), "ReadAfterWrite", "Tx.get() cannot read tables after the first table write"},
 		{durable.NewSessionFailed(cause), "SessionFailed", "Session failed after a storage error; close and reopen it"},
 		{durable.NewConversationBusy(7), "ConversationBusy", "Conversation 7 is busy"},
+		{durable.NewConversationIdle(7), "ConversationIdle", "Conversation 7 is idle"},
+		{durable.NewReadAfterWrite("submit(tx, draft)"), "ReadAfterWrite", "submit(tx, draft) cannot read tables after the first table write"},
 		{durableenv.NewFileError(durableenv.FileErrorNotFound, "missing", "/p", cause), "FileError", "missing"},
 		{durableenv.NewExecutionError(durableenv.ExecutionErrorTimeout, "slow", cause), "ExecutionError", "slow"},
 	}
@@ -28,7 +30,7 @@ func TestDurableErrorClassesCarryNameAndCause(t *testing.T) {
 			t.Errorf("%T: name=%q message=%q, want %q %q", c.err, named.Name(), c.err.Error(), c.name, c.message)
 		}
 	}
-	for _, err := range []error{cases[1].err.(error), cases[3].err.(error), cases[4].err.(error)} {
+	for _, err := range []error{cases[1].err.(error), cases[5].err.(error), cases[6].err.(error)} {
 		if !errors.Is(err, cause) {
 			t.Errorf("%T does not unwrap to its cause", err)
 		}

@@ -228,6 +228,34 @@ func TestObjectLiteralAlias(t *testing.T) {
 	}
 }
 
+// TestOptionalMembersAliasIsAMap (A6m): an object literal whose members are all optional with one type is a Go map of that value type
+// (Pi 6536f801 builds ThinkingLevelMap and ModelPromptCache as pi-schema objects of optional members); a struct, a map of another
+// value type, or members of different types are not judged by it.
+func TestOptionalMembersAliasIsAMap(t *testing.T) {
+	run := func(body, goType string) *decision {
+		files := map[string]string{
+			"lib/lib.go":      fxLib + aliasLib + "\n// Cache is the Go form.\ntype Cache " + goType + "\n\n// UseCache uses Cache.\nfunc UseCache() Cache { return Cache{} }\n",
+			"lib/lib_test.go": fxTest + aliasTest + "\nfunc TestCache(t *testing.T) { _ = UseCache() }\n",
+			"lib/use.go":      fxUse + "\nfunc init() { _ = UseAliases }\n",
+			".upstream/current/packages/fx/src/cache.ts": "export type Cache = " + body + ";\n",
+		}
+		reach := map[string]bool{"lib/use.go#Members": true, "lib/lib.go#UseAliases": true, "lib/lib.go#UseCache": true}
+		return fixtureRun(t, files, func([]m) []m { return []m{aliasRow("Cache")} }, reach, renameTable{"pkg:fx/.#Cache": "lib/lib.go#Cache"})["pkg:fx/.#Cache"]
+	}
+	if d := run("{ short?: number; long?: number }", "map[string]float64"); d.Gap {
+		t.Fatalf("optional members of one type are a map of that type, got %+v", d)
+	}
+	if d := run("{ short?: number; long?: number }", "map[string]string"); !d.Gap {
+		t.Fatalf("a map of another value type stays a gap, got %+v", d)
+	}
+	if d := run("{ short?: number; long: number }", "map[string]float64"); !d.Gap {
+		t.Fatalf("a required member is not a map entry, got %+v", d)
+	}
+	if d := run("{ short?: number; long?: string }", "map[string]float64"); !d.Gap {
+		t.Fatalf("members of different types are not a map, got %+v", d)
+	}
+}
+
 // TestIntersectionAlias (A7): every member of every operand is a field of the Go struct, own or promoted through an embedded struct.
 func TestIntersectionAlias(t *testing.T) {
 	rows := append(ifaceRow("Base", "id"), aliasRow("Ext"), aliasRow("Flat"))

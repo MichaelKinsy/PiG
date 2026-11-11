@@ -34,7 +34,7 @@ func nonEmptyString(opts ...Opt) *Schema { return String(append([]Opt{{"minLengt
 // schemas share it; ModelsConfigSchema does the same, so the tree holds one ProviderCompatSchema (about 750 objects) instead of
 // three. Validation and Render only read the tree.
 type modelSchemaParts struct {
-	compat, thinkingLevelMap, inputLimits, cost, promptCache, samplingParams, samplingParamsByThinkingLevel, headers *Schema
+	compat, thinkingLevelMap, inputLimits, cost, partialCost, promptCache, samplingParams, samplingParamsByThinkingLevel, headers *Schema
 }
 
 func newModelSchemaParts() modelSchemaParts {
@@ -43,6 +43,7 @@ func newModelSchemaParts() modelSchemaParts {
 		thinkingLevelMap:              ThinkingLevelMapSchema(),
 		inputLimits:                   ModelInputLimitsSchema(),
 		cost:                          ModelCostSchema(),
+		partialCost:                   PartialModelCostSchema(),
 		promptCache:                   ModelPromptCacheSchema(),
 		samplingParams:                samplingParamsField(),
 		samplingParamsByThinkingLevel: samplingParamsByThinkingLevel(),
@@ -78,7 +79,7 @@ func modelOverrideSchema(parts modelSchemaParts) *Schema {
 		Optional("thinkingLevelMap", parts.thinkingLevelMap),
 		Optional("input", Array(ModelInputModalitySchema())),
 		Optional("inputLimits", parts.inputLimits),
-		Optional("cost", Partial(parts.cost)),
+		Optional("cost", parts.partialCost),
 		Optional("promptCache", parts.promptCache),
 		Optional("contextWindow", Number(Opt{"exclusiveMinimum", 0}, D(modelContextWindowDescription))),
 		Optional("maxTokens", Number(Opt{"exclusiveMinimum", 0}, D(modelMaxTokensDescription))),

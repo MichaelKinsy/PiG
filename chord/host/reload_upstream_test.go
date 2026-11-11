@@ -22,7 +22,7 @@ import (
 // reloadGreeter is reload.test.ts:32-36 Greeter.
 var reloadGreeter = Local("t.greeter", LocalDef{
 	Version: 1,
-	Input:   tObject("id", tOptional(tString(Schema{"default": "a"}))),
+	Input:   tObject("id", tOptional(tString(kw("default", "a")))),
 	Members: Fields[any]{{"greet", Method(tString(), tString())}, {"count", tUnknown()}},
 })
 

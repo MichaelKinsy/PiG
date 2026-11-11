@@ -5,9 +5,11 @@ package coding
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -56,6 +58,50 @@ func TestBranchSummaryAmbientAuthUpstream(t *testing.T) {
 	}
 	if entry.Usage == nil || entry.Usage.Cost.Total != 0.25 {
 		t.Fatalf("summary usage = %+v, want total cost 0.25", entry.Usage)
+	}
+}
+
+// agent-session.ts:4120-4129 builds the branch summary request from _getSummarizationRequestAuth, which carries the session's thinking level
+// (269afc66): a reasoning model summarizes at that level and a model without reasoning requests none.
+func TestNavigateTreeSummaryPassesTheSessionThinkingLevel(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		maxThinking   ai.ThinkingLevel
+		level         ai.ModelThinkingLevel
+		wantReasoning ai.ThinkingLevel
+	}{
+		{"reasoning model", ai.ThinkingLevelHigh, ai.ThinkingHigh, ai.ThinkingLevelHigh},
+		{"thinking off", ai.ThinkingLevelHigh, ai.ThinkingOff, ""},
+		{"non-reasoning model", "", ai.ThinkingHigh, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := newRecoveryHarness(t, harnessOptions{emptySessionManager: true})
+			h.session.Model().Capabilities.MaxThinking = tc.maxThinking
+			if err := h.session.SetThinkingLevel(tc.level); err != nil {
+				t.Fatal(err)
+			}
+			var seen []ai.ThinkingLevel
+			h.session.Agent().SetStreamFunction(func(_ context.Context, model *ai.Model, _ ai.TranscriptContext, options ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
+				seen = append(seen, options.Thinking)
+				message := &ai.AssistantMessage{
+					Content: []ai.AssistantContentBlock{ai.TextContent{Text: "branch summary text"}},
+					API:     model.ProviderMeta.API, Provider: providerID(model), Model: model.ID,
+					StopReason: ai.StopReasonStop, Timestamp: time.Now().UnixMilli(),
+				}
+				return newSessionTestStream(ai.DoneEvent{Reason: ai.StopReasonStop, Message: message}), nil
+			})
+			target := appendTreeUser(t, h.session, "first branch")
+			appendTreeAssistant(t, h.session, "first reply")
+			appendTreeUser(t, h.session, "abandoned branch work")
+			appendTreeAssistant(t, h.session, "abandoned reply")
+
+			if _, err := h.session.NavigateTree(t.Context(), target, NavigateTreeOptions{Summarize: true}); err != nil {
+				t.Fatal(err)
+			}
+			if !slices.Equal(seen, []ai.ThinkingLevel{tc.wantReasoning}) {
+				t.Fatalf("branch summary reasoning = %q, want %q", seen, []ai.ThinkingLevel{tc.wantReasoning})
+			}
+		})
 	}
 }
 
@@ -297,5 +343,54 @@ func TestBranchSummarizationUpstream(t *testing.T) {
 			}
 			fmt.Printf("BRANCH_SUMMARY %d max=%d error=%q\n", i, provider.options[0].MaxTokens, result.Error)
 		})
+	}
+}
+
+// Pi d0fe21308 (#11680): a partial assistant reply that fails and is retried successfully is hidden from model context by a context_edit.
+// The /tree summarize request must not carry that failed attempt.
+// Pi: packages/coding-agent/src/core/compaction/branch-summarization.ts:196 (prepareBranchEntries); packages/coding-agent/src/core/agent-session.ts (navigateTree summarize).
+func TestNavigateTreeSummaryOmitsFailedRetriedAttempt(t *testing.T) {
+	h := newRecoveryHarness(t, harnessOptions{settings: `{"retry":{"enabled":true,"maxRetries":3,"baseDelayMs":1}}`},
+		func(messages []ai.Message) *ai.AssistantMessage {
+			reply := fauxError("overloaded_error")(messages)
+			reply.Content = []ai.AssistantContentBlock{ai.TextContent{Text: "FAILED_ATTEMPT"}}
+			return reply
+		},
+		fauxReply("RETRY_TEXT", ai.StopReasonStop, 0))
+	if _, err := h.session.Send(t.Context(), "Investigate login"); err != nil {
+		t.Fatal(err)
+	}
+	h.settle(t)
+	if got := h.provider.callCount(); got != 2 {
+		t.Fatalf("provider calls = %d, want failed attempt and retry", got)
+	}
+	failedIDs := messageEntryIDs(t, h, func(message *agent.AssistantMessage) bool { return assistantText(message) == "FAILED_ATTEMPT" })
+	if len(failedIDs) != 1 || !h.omittedTargets(t)[failedIDs[0]] {
+		t.Fatalf("failed attempt %v is not omitted by a context_edit: %v", failedIDs, h.omittedTargets(t))
+	}
+
+	var requests []string
+	h.session.Agent().SetStreamFunction(func(_ context.Context, model *ai.Model, request ai.TranscriptContext, _ ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
+		raw, err := json.Marshal(ai.CollapsedMessages(request))
+		if err != nil {
+			return nil, err
+		}
+		requests = append(requests, string(raw))
+		message := &ai.AssistantMessage{
+			Content: []ai.AssistantContentBlock{ai.TextContent{Text: "branch summary text"}},
+			API:     model.ProviderMeta.API, Provider: providerID(model), Model: model.ID,
+			StopReason: ai.StopReasonStop, Timestamp: time.Now().UnixMilli(),
+		}
+		return newSessionTestStream(ai.DoneEvent{Reason: ai.StopReasonStop, Message: message}), nil
+	})
+	root := h.session.Inner().GetEntries()[0].Base().ID
+	if _, err := h.session.NavigateTree(t.Context(), root, NavigateTreeOptions{Summarize: true}); err != nil {
+		t.Fatal(err)
+	}
+	if len(requests) != 1 {
+		t.Fatalf("summary requests = %d, want 1", len(requests))
+	}
+	if strings.Contains(requests[0], "FAILED_ATTEMPT") || !strings.Contains(requests[0], "RETRY_TEXT") {
+		t.Fatalf("summary request must carry only the retry text: %s", requests[0])
 	}
 }

@@ -1,0 +1,30 @@
+{"k":">","name":"harness.root","tick":188}
+{"k":"#","seq":1,"summary":"conversations:i document_revisions:i documents:i","tick":406,"begin":325}
+{"k":">","name":"harness.root().commit","tick":418}
+{"k":"#","seq":2,"summary":"document_revisions:i documents:i","tick":471,"begin":447}
+{"k":">","name":"harness.commit","tick":482}
+{"k":">","name":"harness.root().submit","tick":485}
+{"k":"!","name":"harness.root().submit","tick":500}
+{"k":"!","name":"harness.commit","tick":510}
+{"k":">","name":"harness.root().submit","tick":511}
+{"k":"#","seq":3,"summary":"document_revisions:d document_revisions:i entries:i submissions:i tasks:i","tick":613,"begin":575}
+{"k":">","name":"harness.commit","tick":627}
+{"k":">","name":"harness.root().submit","tick":639}
+{"k":"#","seq":4,"summary":"tasks:u","tick":651,"begin":634}
+{"k":"#","seq":5,"summary":"document_revisions:i submissions:i","tick":728,"begin":691}
+{"k":">","name":"harness.commit","tick":740}
+{"k":">","name":"harness.root().submit().wait","tick":756}
+{"k":"#","seq":6,"summary":"entries:i tasks:u","tick":829,"begin":806}
+{"k":"#","seq":7,"summary":"document_revisions:d document_revisions:i entries:i tasks:i tasks:u","tick":1039,"begin":992}
+{"k":"#","seq":8,"summary":"tasks:u","tick":1077,"begin":1060}
+{"k":"#","seq":9,"summary":"tasks:u","tick":1167,"begin":1150}
+{"k":"#","seq":10,"summary":"document_revisions:d document_revisions:i entries:i tasks:u","tick":1272,"begin":1240}
+{"k":"#","seq":11,"summary":"tasks:u","tick":1330,"begin":1313}
+{"k":"#","seq":12,"summary":"document_revisions:d document_revisions:i entries:i submissions:u tasks:i tasks:u","tick":1497,"begin":1444}
+{"k":"#","seq":13,"summary":"tasks:u","tick":1555,"begin":1538}
+{"k":"#","seq":14,"summary":"tasks:u","tick":1641,"begin":1624}
+{"k":"#","seq":15,"summary":"document_revisions:d document_revisions:i entries:i submissions:u tasks:u","tick":1861,"begin":1808}
+{"k":">","name":"harness.root().waitForIdle","tick":1869}
+{"k":">","name":"harness.root().entries","tick":1872}
+{"k":">","name":"harness.snapshot","tick":1923}
+{"k":">","name":"harness.close","tick":1924}

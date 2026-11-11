@@ -39,11 +39,10 @@ func NewThemeFromANSIPalette(name string, foregrounds, backgrounds map[string]st
 	return t, nil
 }
 
-// HighlightCodeFor is highlightCode of pi-coding-agent's theme.ts, or getMarkdownTheme().highlightCode when markdown is set (a failed highlight then takes the
-// mdCodeBlock color too), drawn with th rather than the active theme.
-func HighlightCodeFor(th *Theme, code, lang string, markdown bool) []string {
+// HighlightCodeFor is highlightCode of pi-coding-agent's theme.ts, which getMarkdownTheme().highlightCode is too, drawn with th rather than the active theme.
+func HighlightCodeFor(th *Theme, code, lang string) []string {
 	if th == ActiveTheme() {
-		return highlightCodeLines(code, lang, markdown)
+		return highlightCodeLines(code, lang)
 	}
-	return highlightCodeUncached(highlightRegistry(), code, lang, markdown, th)
+	return highlightCodeUncached(highlightRegistry(), code, lang, th)
 }

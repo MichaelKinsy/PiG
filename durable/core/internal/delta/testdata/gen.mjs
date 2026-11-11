@@ -105,6 +105,8 @@ if (process.env.MODE === "big") {
     const prepared = change.prepare();
     console.log(JSON.stringify({ base, steps, ops: prepared.ops, value: prepared.value }));
   }
+  // Exit once the pipe has taken every line: process.exit() right after console.log drops what it has not drained.
+  await new Promise((done) => process.stdout.write("", done));
   process.exit(0);
 }
 const out = [];

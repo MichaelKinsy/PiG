@@ -33,6 +33,7 @@ func autoQueueSession(t *testing.T, smallKeep bool) *Session {
 	if err != nil {
 		t.Fatal(err)
 	}
+	_ = s.Events()
 	t.Cleanup(func() {
 		if err := s.Close(); err != nil {
 			t.Error(err)
@@ -69,6 +70,7 @@ func TestAutoCompactionQueueUpstream(t *testing.T) {
 	// .upstream/v0.87.1/packages/coding-agent/test/agent-session-auto-compaction-queue.test.ts:59
 	t.Run("should resume after threshold compaction when only agent-level queued messages exist", func(t *testing.T) {
 		s := autoQueueSession(t, true)
+		_ = s.Events()
 		now := time.Now().UnixMilli()
 		persistQueueMessage(t, s, queueUser("message to compact", now-1000))
 		persistQueueMessage(t, s, agent.AgentMessage{Assistant: queueAssistant(s, "assistant response to compact", 100, 0, ai.StopReasonStop, now-500)})
@@ -180,6 +182,7 @@ func TestAutoCompactionQueueUpstream(t *testing.T) {
 // .upstream/v0.87.1/packages/coding-agent/test/suite/regressions/pre-prompt-compaction-no-continue.test.ts:26
 func TestPrePromptCompactionDoesNotContinueFromAssistant(t *testing.T) {
 	s := newTreeTestSessionWithSettings(t, `{"compaction":{"enabled":true,"keepRecentTokens":1,"reserveTokens":0}}`)
+	_ = s.Events()
 	reply := fauxReply("answered next prompt", ai.StopReasonStop, 0)(nil)
 	provider := &scriptedProvider{responses: []scriptedResponse{func([]ai.Message) *ai.AssistantMessage { return reply }}}
 	model := fakeModelWithProvider(provider)
@@ -228,6 +231,7 @@ func BenchmarkCheckCompactionDecision(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
+	_ = s.Events()
 	b.Cleanup(func() {
 		if err := s.Close(); err != nil {
 			b.Error(err)

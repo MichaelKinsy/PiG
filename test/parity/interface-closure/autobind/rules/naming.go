@@ -34,7 +34,7 @@ var initialisms = map[string]string{
 	"eof": "EOF", "ascii": "ASCII", "oauth": "OAuth", "jwt": "JWT", "pkce": "PKCE", "ansi": "ANSI", "osc": "OSC", "csi": "CSI", "png": "PNG",
 	"jpeg": "JPEG", "jpg": "JPG", "mime": "MIME", "ttl": "TTL", "dns": "DNS", "ram": "RAM", "os": "OS", "io": "IO", "tui": "TUI", "cli": "CLI",
 	"sdk": "SDK", "llm": "LLM", "mcp": "MCP", "rgb": "RGB", "sha": "SHA", "md": "MD",
-	"www": "WWW", "pid": "PID", "cwd": "CWD", "ms": "MS", "jsonrpc": "JSONRPC", "utc": "UTC", "js": "JS",
+	"www": "WWW", "pid": "PID", "cwd": "CWD", "ms": "MS", "jsonrpc": "JSONRPC", "utc": "UTC", "js": "JS", "db": "DB",
 	// Words Go spells with an inner capital (compound words and brand names).
 	"websocket": "WebSocket", "etag": "ETag", "webp": "WebP", "openai": "OpenAI", "uuidv7": "UUIDv7",
 	// Provider brand names the catalog constants carry (DEEPSEEK_MODELS is DeepSeekModels).
@@ -43,7 +43,8 @@ var initialisms = map[string]string{
 }
 
 // Words splits an upstream identifier into words. It splits snake_case, kebab-case and camelCase, and keeps a run of capitals together
-// until the next capital that starts a lower-case run (JSONRPCMessage is JSONRPC, Message).
+// until the next capital that starts a lower-case run (JSONRPCMessage is JSONRPC, Message). A leading '~' is not a word: it marks a
+// property that exists only to carry a type (Pi chord/next `~params`, `~key`, `~keyed`), and the Go member is spelled by its word.
 func Words(name string) []string {
 	var words []string
 	var cur []rune
@@ -56,7 +57,7 @@ func Words(name string) []string {
 	rs := []rune(name)
 	for i, r := range rs {
 		switch {
-		case r == '_' || r == '-' || r == '.' || r == ' ' || r == '$':
+		case r == '_' || r == '-' || r == '.' || r == ' ' || r == '$' || r == '~':
 			flush()
 		case unicode.IsUpper(r):
 			if len(cur) > 0 {

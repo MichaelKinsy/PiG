@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/packagemanager"
 )
 
 func runGitUpdateTest(t *testing.T, cwd string, args ...string) string {
@@ -166,5 +167,76 @@ func TestGitUpdatesUpstream(t *testing.T) {
 			t.Fatal(err)
 		}
 		assertGitUpdateHead(t, installed, second, "// v2")
+	})
+	// Pi e3da248e (earendil-works/pi#11648), past the pin: packages/coding-agent/test/git-update.test.ts "git clean failures", https://github.com/earendil-works/pi/issues/11597
+	t.Run("should install dependencies and retry the clean later when git clean fails", func(t *testing.T) {
+		cwd, remote, installed, sm := newGitUpdateFixture(t)
+		if err := os.WriteFile(filepath.Join(remote, "package.json"), []byte(`{"name":"test-extension","version":"1.0.0"}`), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		runGitUpdateTest(t, remote, "add", "package.json")
+		runGitUpdateTest(t, remote, "commit", "-m", "Add package.json")
+		newCommit := runGitUpdateTest(t, remote, "rev-parse", "HEAD")
+		realGit, err := exec.LookPath("git")
+		if err != nil {
+			t.Fatal(err)
+		}
+		bin := t.TempDir()
+		log := filepath.Join(bin, "commands.log")
+		failClean := filepath.Join(bin, "fail-clean")
+		if err := os.WriteFile(failClean, nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		writeStubScript(t, filepath.Join(bin, "git"), fmt.Sprintf("#!/bin/sh\nprintf 'git %%s\\n' \"$*\" >> %q\nif [ \"$*\" = 'clean -fdx' ] && [ -e %q ]; then exit 1; fi\nexec %q \"$@\"\n", filepath.ToSlash(log), filepath.ToSlash(failClean), filepath.ToSlash(realGit)))
+		writeStubScript(t, filepath.Join(bin, "npm"), fmt.Sprintf("#!/bin/sh\nprintf 'npm %%s\\n' \"$*\" >> %q\n", filepath.ToSlash(log)))
+		t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+		var messages []string
+		manager := packageManagerFor(cwd, sm, func(event packagemanager.ProgressEvent) {
+			if event.Type == "progress" && event.Message != nil && *event.Message != "" {
+				messages = append(messages, *event.Message)
+			}
+		})
+		marker := filepath.Join(filepath.Dir(installed), ".extension.pi-update-incomplete")
+		commands := func() string {
+			data, err := os.ReadFile(log)
+			if err != nil {
+				t.Fatal(err)
+			}
+			return string(data)
+		}
+
+		if err := manager.Update(""); err != nil {
+			t.Fatal(err)
+		}
+		if got := runGitUpdateTest(t, installed, "rev-parse", "HEAD"); got != newCommit {
+			t.Fatalf("HEAD=%s, want %s", got, newCommit)
+		}
+		first := commands()
+		if !strings.Contains(first, "git clean -fdx\n") || !strings.Contains(first, "npm install") {
+			t.Fatalf("first update commands: %s", first)
+		}
+		want := fmt.Sprintf("Could not remove all untracked files in %s (git clean -fdx failed with code 1). Files may be in use by another pi session; close it and run the update again.", installed)
+		if len(messages) != 1 || messages[0] != want {
+			t.Fatalf("progress messages=%q want %q", messages, want)
+		}
+		if _, err := os.Stat(marker); err != nil {
+			t.Fatalf("marker removed after a failed clean: %v", err)
+		}
+
+		if err := os.Remove(failClean); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Truncate(log, 0); err != nil {
+			t.Fatal(err)
+		}
+		if err := manager.Update(""); err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(commands(), "git clean -fdx\n") {
+			t.Fatalf("second update did not retry the clean: %s", commands())
+		}
+		if _, err := os.Stat(marker); !os.IsNotExist(err) {
+			t.Fatalf("marker kept after a successful clean: %v", err)
+		}
 	})
 }

@@ -37,7 +37,7 @@ func TestRuntimeHostCommitWritesTheTasksStateWithItsStagedWrites(t *testing.T) {
 	var phaseErr error
 	impl := &session.TaskImpl{Def: session.TaskDef{Name: "host", Version: 1, Initial: func(any) any { return jv.NewObject() }}}
 	impl.Phase = func(rt *session.Runtime, task *jv.Object, done func(error)) {
-		tx, current, err := rt.BeginHost()
+		tx, current, err := rt.BeginHost(0, nil)
 		if err == nil {
 			draft := jv.NewObject()
 			draft.Set("kind", "note")
@@ -104,7 +104,7 @@ func TestRuntimeBeginHostRefusesATaskThatIsNotRunning(t *testing.T) {
 	var refused error
 	impl := &session.TaskImpl{Def: session.TaskDef{Name: "host", Version: 1, Initial: func(any) any { return jv.NewObject() }}}
 	impl.Phase = func(rt *session.Runtime, task *jv.Object, done func(error)) {
-		tx, current, err := rt.BeginHost()
+		tx, current, err := rt.BeginHost(0, nil)
 		if err != nil {
 			done(err)
 			return
@@ -114,7 +114,7 @@ func TestRuntimeBeginHostRefusesATaskThatIsNotRunning(t *testing.T) {
 			done(err)
 			return
 		}
-		_, _, refused = rt.BeginHost()
+		_, _, refused = rt.BeginHost(0, nil)
 		done(nil)
 	}
 	sched := session.NewScheduler(sess, loop, session.Env{Snapshot: func() session.Snapshot { return singleTask{impl} }, Now: func() float64 { return 1000 }})

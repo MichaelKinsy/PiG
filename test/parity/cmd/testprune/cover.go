@@ -124,6 +124,7 @@ func newCoverRun(root, pkg, coverpkg, tags, workDir string, timeout time.Duratio
 		args = append(args, "-tags="+tags)
 	}
 	args = append(args, pkg)
+	//nolint:gosec // G204 (class a): program is literal go; args are fixed -test flags, -coverpkg from -covers/-pkg operator flags, and -pkg as the last positional with no `--`.
 	cmd := exec.Command("go", args...)
 	cmd.Dir = root
 	cmd.Stderr = os.Stderr
@@ -141,6 +142,7 @@ func (c *coverRun) run(out string, testArgs ...string) error {
 	}
 	defer func() { _ = os.RemoveAll(home) }()
 	args := append([]string{"-test.coverprofile=" + out, "-test.timeout=" + c.timeout.String()}, testArgs...)
+	//nolint:gosec // G204 (class b): runs the pkg.test binary that the cover run built above; args are -test.coverprofile/-test.timeout plus flag-derived test args.
 	cmd := exec.Command(c.bin, args...)
 	cmd.Dir = dir
 	cmd.Env = testEnv(home)
@@ -259,6 +261,7 @@ func runCoverDiff(root string, args []string) error {
 		if measured == "" {
 			measured = *pkg
 		}
+		//nolint:gosec // G204 (class a): program is literal go; -coverpkg from -covers/-pkg and "other" from the -also operator flag as a positional with no `--`.
 		cmd := exec.Command("go", "test", "-cover", "-coverpkg="+measured, "-coverprofile="+out, "-covermode=set", other)
 		cmd.Dir = root
 		cmd.Env = testEnv(work)

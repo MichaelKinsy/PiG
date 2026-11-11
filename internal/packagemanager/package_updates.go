@@ -51,6 +51,7 @@ func parseNpmSpec(spec string) (name, version string) {
 	return m[1], m[2]
 }
 
+// Ports packages/coding-agent/src/core/package-manager.ts (gitHasAvailableUpdate, getRemoteGitHead, getGitUpstreamRef, runGitRemoteCommand, parseNpmSpec).
 // GitHasAvailableUpdate compares local HEAD against remote HEAD via
 // `git ls-remote`. Mirrors upstream GitHasAvailableUpdate.
 func GitHasAvailableUpdate(installedPath string) bool {

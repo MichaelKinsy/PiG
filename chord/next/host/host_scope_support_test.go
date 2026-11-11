@@ -1,0 +1,171 @@
+package host
+
+import (
+	"errors"
+	"reflect"
+	"runtime"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"testing"
+	"time"
+
+	"github.com/MichaelKinsy/PiG/chord/internal/parking"
+)
+
+// Test support of host_ctx, host_root, host_routines and host_route tests: a loop with vitest's fake timers and the real
+// Loop's sections, and a fake callHost.
+
+// scopeLoop is a sectionLoop whose clock and timers are fakeLoop's (`fakeTimers()`: Date.now() and setTimeout from 0, moved
+// by Advance) and whose sections, microtasks and tasks are a real Loop's: a timer's job runs as a section, a microtask runs
+// at the end of the section that queued it, as in Pi.
+type scopeLoop struct {
+	*fakeLoop
+	real *Loop
+	// intervals fakes `setInterval` too (the host's heartbeat runs on the fake clock): a test whose `toFake` has it.
+	intervals bool
+	// awaiting and settling count this loop's tasks that end in a section of their own, until that section ran: the
+	// awaitTask tasks and the tasks of a routine settling after the deliveries in flight. A test that moves the clock waits
+	// for them between timers, as Pi's `advanceTimersByTimeAsync` awaits the microtasks between them; tasks a test holds
+	// on purpose (a gate) or that wait for a close are not among them.
+	awaiting, settling atomic.Int64
+}
+
+var _ sectionLoop = (*scopeLoop)(nil)
+
+// The starters scopeLoop.Go recognizes are named by the functions themselves, not by literals: renaming one of them
+// changes these names with it (or no longer compiles here), so the counted waits cannot silently stop waiting.
+var (
+	awaitTaskName       = strings.TrimSuffix(runtime.FuncForPC(reflect.ValueOf(awaitTask[int]).Pointer()).Name(), "[...]")
+	afterDeliveriesName = runtime.FuncForPC(reflect.ValueOf((*onRoutine).afterDeliveries).Pointer()).Name()
+)
+
+func newScopeLoop() *scopeLoop { return &scopeLoop{fakeLoop: newFakeLoop(), real: NewLoop()} }
+
+func (l *scopeLoop) Run(work func()) { l.real.Run(work) }
+
+// Go starts fn as the real loop does, counting it when the host starts it as an awaitTask or a settle task: the starter
+// is told by its function, so the host keeps no counter for the test.
+func (l *scopeLoop) Go(fn func()) {
+	var running *atomic.Int64
+	if pc, _, _, ok := runtime.Caller(1); ok {
+		switch name := runtime.FuncForPC(pc).Name(); {
+		case strings.HasPrefix(name, awaitTaskName+"["):
+			running = &l.awaiting
+		case name == afterDeliveriesName:
+			running = &l.settling
+		}
+	}
+	if running == nil {
+		l.real.Go(fn)
+		return
+	}
+	running.Add(1)
+	l.real.Go(func() {
+		defer running.Add(-1)
+		fn()
+	})
+}
+
+func (l *scopeLoop) Queue(job func())                                     { l.real.Queue(job) }
+func (l *scopeLoop) Lend(signal *parking.Signal, fn func(abandoned bool)) { l.real.Lend(signal, fn) }
+func (l *scopeLoop) barrier()                                             { l.real.Run(func() {}) }
+
+// fakeIntervals makes the loop fake `setInterval` as well (`toFake: [..., "setInterval", "clearInterval"]`).
+func (l *scopeLoop) fakeIntervals() *scopeLoop { l.intervals = true; return l }
+
+// AfterInterval implements intervalLoop: the heartbeat is on the fake clock only when the test fakes `setInterval`.
+func (l *scopeLoop) AfterInterval(d time.Duration, job func()) (Timer, bool) {
+	if !l.intervals {
+		return nil, false
+	}
+	return l.AfterFunc(d, job), true
+}
+
+func (l *scopeLoop) AfterFunc(d time.Duration, job func()) Timer {
+	return l.fakeLoop.AfterFunc(d, func() { l.real.Run(job) })
+}
+
+// scopeEventually waits for cond, which a goroutine of the code under test makes true. It polls: the code under test hands
+// off between goroutines (a watch's delivery, a task waiting for a close), and cond is the observable of that hand-off,
+// never a duration the test asserts.
+func scopeEventually(t testing.TB, what string, cond func() bool) {
+	t.Helper()
+	deadline := time.Now().Add(10 * time.Second)
+	for !cond() {
+		if time.Now().After(deadline) {
+			t.Fatalf("never happened: %s", what)
+		}
+		time.Sleep(time.Millisecond)
+	}
+}
+
+// scopeReason is an abort reason: `new Error(text)` as an abort(reason) argument.
+func scopeReason(text string) error { return errors.New(text) }
+
+// scopeCounting is an abort signal (`new AbortController().signal`) whose listeners are counted
+// (`getEventListeners(signal, "abort")`). It is its own context.Context, not one derived from the standard library's:
+// context.AfterFunc calls the AfterFunc method of a context of another implementation, which is how a listener is
+// counted, and Cause of such a context is its Err, which is the reason it was aborted with here.
+type scopeCounting struct {
+	mu        sync.Mutex
+	done      chan struct{}
+	reason    error
+	listeners map[*func()]struct{}
+}
+
+func newScopeCounting() (*scopeCounting, func(cause error)) {
+	signal := &scopeCounting{done: make(chan struct{}), listeners: map[*func()]struct{}{}}
+	return signal, signal.abort
+}
+
+func (c *scopeCounting) abort(reason error) {
+	c.mu.Lock()
+	if c.reason != nil {
+		c.mu.Unlock()
+		return
+	}
+	c.reason = reason
+	close(c.done)
+	fired := c.listeners
+	c.listeners = map[*func()]struct{}{}
+	c.mu.Unlock()
+	for listener := range fired {
+		go (*listener)()
+	}
+}
+
+func (c *scopeCounting) Deadline() (time.Time, bool) { return time.Time{}, false }
+func (c *scopeCounting) Done() <-chan struct{}       { return c.done }
+func (c *scopeCounting) Value(any) any               { return nil }
+func (c *scopeCounting) Err() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.reason
+}
+
+// AfterFunc adds a listener: it runs once on a goroutine of its own when the signal is aborted, unless stopped first.
+func (c *scopeCounting) AfterFunc(f func()) func() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.reason != nil {
+		go f()
+		return func() bool { return false }
+	}
+	listener := &f
+	c.listeners[listener] = struct{}{}
+	return func() bool {
+		c.mu.Lock()
+		defer c.mu.Unlock()
+		_, pending := c.listeners[listener]
+		delete(c.listeners, listener)
+		return pending
+	}
+}
+
+// count is `getEventListeners(signal, "abort").length`.
+func (c *scopeCounting) count() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return len(c.listeners)
+}

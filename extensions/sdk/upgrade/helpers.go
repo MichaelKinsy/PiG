@@ -65,8 +65,8 @@ func (r *helperRegistry) define(p *filePlanner, g getter, fn *types.Func) *helpe
 	signature := fn.Signature()
 	r.sdkPath = fn.Pkg().Path()
 	def := &helperDef{name: p.fresh("pigUpgrade" + g.Name), method: g.Name, pointer: g.Pointer}
-	for i := range signature.Params().Len() {
-		def.params = append(def.params, types.TypeString(signature.Params().At(i).Type(), r.qualify))
+	for v := range signature.Params().Variables() {
+		def.params = append(def.params, types.TypeString(v.Type(), r.qualify))
 	}
 	result := signature.Results().At(0).Type()
 	if g.Pointer {

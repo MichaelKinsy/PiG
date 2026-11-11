@@ -111,7 +111,7 @@ func FormatSkillsForPrompt(skills []SystemPromptSkill, fileReadTool string) stri
 	lines := []string{
 		"\n\nThe following skills provide specialized instructions for specific tasks.",
 		load,
-		"When a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.",
+		"Resolve relative paths against the skill's directory (parent of SKILL.md). Use absolute paths in tool calls.",
 		"",
 		"<available_skills>",
 	}

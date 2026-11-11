@@ -166,7 +166,7 @@ func TestHookRunnerEachPropagatesTheErrorOnceTheInvocationIsSignalled(t *testing
 	// scheduler.ts:1141: the signalled error is not reported as the hook's failure; the only report is the task's own
 	// fault, which its abort handler left without an outcome (scheduler.ts #step reports task_faulted).
 	for _, info := range opened.reports.allInfos() {
-		if info.Type != durable.ReportTaskFaulted {
+		if info.Kind != durable.ReportTaskFaulted {
 			t.Fatalf("report infos = %+v, want only task_faulted: a signalled error propagates instead", opened.reports.allInfos())
 		}
 	}

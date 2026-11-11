@@ -138,6 +138,8 @@ func Parse(input string, opts Options) (Ref, error) {
 // Identity returns the stable de-duplication identity. npm versions and Git refs
 // are deliberately excluded to match upstream package identity semantics.
 func (r Ref) Identity(baseDir string) (string, error) {
+	// A local identity keeps the spelling of its resolved path, because Piglet build records store it. Pi 1be312b4 (#10488) getPackageIdentity keys a local source by
+	// getPathComparisonKey; packagemanager.PackageSourceIdentityChecked applies resolvepath.ComparisonKey when it compares identities, so the stored string never changes.
 	switch r.Kind {
 	case KindNPM:
 		identity := "npm:" + r.NPMName

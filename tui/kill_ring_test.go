@@ -101,3 +101,68 @@ func TestKillRing_LengthAlias(t *testing.T) {
 		t.Fatalf("Length() = %d want 2", got)
 	}
 }
+
+// Ring-level port of editor.test.ts "Alt+Y cycles through kill ring after Ctrl+Y": three kills, yank the newest, then every yank-pop
+// rotates the ring once and wraps back to the newest.
+func TestKillRing_YankPopCyclesAndWraps(t *testing.T) {
+	var k KillRing
+	for _, text := range []string{"first", "second", "third"} {
+		k.Push(text, false, false)
+	}
+	if got := k.Peek(); got != "third" {
+		t.Fatalf("yank = %q, want third", got)
+	}
+	for _, want := range []string{"second", "first", "third"} {
+		k.Rotate()
+		if got := k.Peek(); got != want {
+			t.Fatalf("yank-pop = %q, want %q", got, want)
+		}
+	}
+}
+
+// Ring-level port of editor.test.ts "kill ring rotation persists after cycling": a yank-pop leaves the ring as [third, first, second],
+// so a later fresh yank sees "second".
+func TestKillRing_RotationPersists(t *testing.T) {
+	var k KillRing
+	for _, text := range []string{"first", "second", "third"} {
+		k.Push(text, false, false)
+	}
+	k.Rotate()
+	if got := k.Peek(); got != "second" {
+		t.Fatalf("after rotate = %q, want second", got)
+	}
+	if got := k.Peek(); got != "second" {
+		t.Fatalf("Peek must not consume: second Peek = %q", got)
+	}
+	k.Rotate()
+	if got := k.Peek(); got != "first" {
+		t.Fatalf("ring was not [third, first, second]: next rotate peeks %q, want first", got)
+	}
+}
+
+// Ring-level port of editor.test.ts "consecutive Ctrl+W accumulates into one kill ring entry": backward kills of "three", "two ", "one "
+// prepend into one entry.
+func TestKillRing_ConsecutiveBackwardKillsCoalesce(t *testing.T) {
+	var k KillRing
+	k.Push("three", true, false)
+	k.Push("two ", true, true)
+	k.Push("one ", true, true)
+	if got, n := k.Peek(), k.Len(); got != "one two three" || n != 1 {
+		t.Fatalf("ring = (%q, %d entries), want (\"one two three\", 1)", got, n)
+	}
+	// A non-accumulating kill starts a new entry; the next accumulating kill extends only that newest entry.
+	k.Push("x", false, false)
+	k.Push("y", false, true)
+	if got, n := k.Peek(), k.Len(); got != "xy" || n != 2 {
+		t.Fatalf("ring = (%q, %d entries), want (\"xy\", 2)", got, n)
+	}
+}
+
+// Accumulating into an empty ring creates the first entry rather than dropping the text.
+func TestKillRing_AccumulateIntoEmptyRingPushes(t *testing.T) {
+	var k KillRing
+	k.Push("solo", true, true)
+	if got, n := k.Peek(), k.Len(); got != "solo" || n != 1 {
+		t.Fatalf("ring = (%q, %d entries), want (\"solo\", 1)", got, n)
+	}
+}

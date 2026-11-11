@@ -4,12 +4,12 @@
    "pkg:coding-agent/.#ExecOptions"
   ],
   "targets": [
-   "coding/extension/opaque_types.go#ExecOptions"
+   "coding/extension/exec.go#ExecOptions"
   ],
   "properties": {
    "cwd": {
     "targets": [
-     "coding/extension/opaque_types.go#ExecOptions.CWD"
+     "coding/extension/exec.go#ExecOptions.CWD"
     ],
     "evidence": [
      "test:coding/extension/exec_test.go#TestExecCommand_CWDOverride"
@@ -18,7 +18,7 @@
    },
    "timeout": {
     "targets": [
-     "coding/extension/opaque_types.go#ExecOptions.Timeout"
+     "coding/extension/exec.go#ExecOptions.Timeout"
     ],
     "evidence": [
      "test:coding/extension/exec_test.go#TestExecCommand_Timeout",

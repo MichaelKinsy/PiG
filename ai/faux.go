@@ -19,6 +19,8 @@ import (
 	"unicode/utf16"
 	"unicode/utf8"
 	"unsafe"
+
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 const (
@@ -754,14 +756,27 @@ func (pacer *fauxPacer) fired() { pacer.executor.postExternal(pacer.resolve) }
 
 func (pacer *fauxPacer) resolveScheduled() { pacer.scheduled.resolve(struct{}{}) }
 
+// splitByTokenSize ports faux.ts splitStringByTokenSize: chunks of tokenSize*4 UTF-16 units, the token size drawn per chunk from min to max. faux.ts slices a JavaScript string, so a chunk ends between two characters; a Go string is UTF-8, so the chunk ends at the first character boundary at or after its size (the 2 units of a character outside the Basic Multilingual Plane are never split, and a lone surrogate, in its 3-byte WTF-8 form, is 1 unit). A cut at a byte offset would end chunks inside a character: the partial arguments of a tool call that such a chunk extends are not valid text, which the stream's snapshots cannot share, so every one copied and checked all the arguments again.
 func splitByTokenSize(text string, minSize, maxSize int) []string {
 	if text == "" {
 		return []string{""}
 	}
 	var chunks []string
 	for index := 0; index < len(text); {
-		size := max(1, (minSize+rand.IntN(maxSize-minSize+1))*4)
-		end := min(index+size, len(text))
+		units := max(1, (minSize+rand.IntN(maxSize-minSize+1))*4)
+		end := index
+		for units > 0 && end < len(text) {
+			if text[end] < utf8.RuneSelf {
+				// The run of ASCII bytes the chunk may take: one unit each.
+				n := jsstring.ASCIIPrefix(text[end:min(len(text), end+units)])
+				end += n
+				units -= n
+				continue
+			}
+			char, size := jsstring.DecodeRuneInString(text[end:])
+			end += size
+			units -= utf16Units(char)
+		}
 		chunks = append(chunks, text[index:end])
 		index = end
 	}

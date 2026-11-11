@@ -1,0 +1,251 @@
+package store
+
+import (
+	"fmt"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/next/contracts"
+	"github.com/MichaelKinsy/PiG/chord/next/data"
+	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
+	"github.com/MichaelKinsy/PiG/chord/sqlite"
+)
+
+// Ports packages/chord/test/next/store/table-handle.test.ts: table handles (slice 6a §7): reads outside a
+// transaction, and cells the code cannot read.
+
+func handleEdits(t *testing.T) *TableDefinition {
+	t.Helper()
+	definition, err := DefineTable("edits", TableOptions{
+		Version: 1,
+		Columns: []ColumnProp{
+			Col("id", Str()),
+			Col("path", Str()),
+			Col("at", Int()),
+			Col("done", Bool(contracts.Default(false))),
+			Col("note", Opt(Str())),
+			Col("meta", Json(contracts.Obj(contracts.Prop("a", contracts.Int())), JsonColumnOptions{Version: 1})),
+		},
+		Key:     []string{"id"},
+		Indexes: IndexRecords{{Name: "by_path", Columns: []string{"path", "at"}}},
+	})
+	if err != nil {
+		t.Fatalf("DefineTable: %v", err)
+	}
+	return definition
+}
+
+// filledHandle is a table with `count` rows e000..: path `p/<i % 3>`, at `i`.
+func filledHandle(t *testing.T, count int, owner ...*testOwner) (*ChordStore, *TableHandle, *TableDefinition) {
+	t.Helper()
+	store := memoryStore(t)
+	definition := handleEdits(t)
+	edits := tableIn(t, store, definition, owner...)
+	var staged []StagedWrite
+	changes := NewTableChanges(edits, &staged)
+	for i := range count {
+		noError(t, changes.Put(Row{
+			"id":   fmt.Sprintf("e%03d", i),
+			"path": fmt.Sprintf("p/%d", i%3),
+			"at":   int64(i),
+			"meta": delta.JsonObjectOf("a", float64(i)),
+		}))
+	}
+	if _, err := store.Commit(staged, openFence, background); err != nil {
+		t.Fatalf("Commit: %v", err)
+	}
+	return store, edits, definition
+}
+
+func TestTableHandle(t *testing.T) {
+	t.Run("reads outside a transaction", func(t *testing.T) {
+		t.Run("get takes a key object and reads committed rows as stored", func(t *testing.T) {
+			_, edits, _ := filledHandle(t, 3)
+			row, err := edits.Get(background, Row{"id": "e001"})
+			noError(t, err)
+			nexttest.RequireJSONEqual(t, row, nexttest.ParseJSON(t, `{"id":"e001","path":"p/1","at":1,"done":false,"meta":{"a":1}}`))
+			row, err = edits.Get(background, Row{"id": "nope"})
+			noError(t, err)
+			if row != nil {
+				t.Fatalf("Get(nope) = %v, want absent", row)
+			}
+			_, err = edits.Get(background, Row{"id": "e001", "path": "x"})
+			_ = rejected(t, err, data.CodeInvalid, data.ReasonArgs)
+		})
+
+		t.Run("page fetches limit + 1 for next, and the cursor continues in order with the key tie-break", func(t *testing.T) {
+			_, edits, definition := filledHandle(t, 10)
+			q := NewQuery(definition).
+				Where(func(e ColumnRefs) Condition { return Prefix(e["path"], "p/") }).
+				OrderBy(func(e ColumnRefs) *ColumnRef { return e["path"] }, "desc")
+			noError(t, q.Err())
+			label := func(row Row) string { return fmt.Sprintf("%s:%s", row["path"], row["id"]) }
+			var seen []string
+			options := PageOptions{}
+			for {
+				page, err := edits.Page(background, q, 3, options)
+				noError(t, err)
+				if len(page.Items) > 3 {
+					t.Fatalf("page has %d items", len(page.Items))
+				}
+				for _, row := range page.Items {
+					seen = append(seen, label(row))
+				}
+				if page.Next == nil {
+					break
+				}
+				options = PageOptions{After: page.Next}
+			}
+			whole, err := edits.Page(background, q, 100, PageOptions{})
+			noError(t, err)
+			var all []string
+			for _, row := range whole.Items {
+				all = append(all, label(row))
+			}
+			if !equalStrings(seen, all) {
+				t.Fatalf("paged = %v, whole = %v", seen, all)
+			}
+			if want := []string{"p/2:e008", "p/2:e005", "p/2:e002", "p/1:e007"}; !equalStrings(all[:4], want) {
+				t.Fatalf("first four = %v, want %v", all[:4], want)
+			}
+			four, err := edits.Page(background, q, 4, PageOptions{})
+			noError(t, err)
+			if four.Next == nil {
+				t.Fatalf("a page of 4 of 10 has no next")
+			}
+			everything, err := edits.Page(background, NewQuery(definition), 10, PageOptions{})
+			noError(t, err)
+			if everything.Next != nil {
+				t.Fatalf("the last page has next %q", *everything.Next)
+			}
+		})
+
+		t.Run("rows reads every page; count counts", func(t *testing.T) {
+			_, edits, definition := filledHandle(t, 250)
+			rows := edits.Rows(background, NewQuery(definition).Where(func(e ColumnRefs) Condition { return Gte(e["at"], 10) }))
+			defer rows.Close()
+			var ids []string
+			for {
+				row, ok, err := rows.Next(background)
+				noError(t, err)
+				if !ok {
+					break
+				}
+				ids = append(ids, row["id"].(string))
+			}
+			if len(ids) != 240 || ids[0] != "e010" {
+				t.Fatalf("rows = %d first %q, want 240 first e010", len(ids), ids[0])
+			}
+			count, err := edits.Count(background, NewQuery(definition).Where(func(e ColumnRefs) Condition { return Eq(e["path"], "p/0") }))
+			noError(t, err)
+			if count != 84 {
+				t.Fatalf("count(p/0) = %d, want 84", count)
+			}
+			count, err = edits.Count(background, NewQuery(definition).Where(func(e ColumnRefs) Condition { return IsNull(e["note"]) }))
+			noError(t, err)
+			if count != 250 {
+				t.Fatalf("count(note is null) = %d, want 250", count)
+			}
+		})
+
+		t.Run("refuses a query of another table, a bad limit and a foreign cursor before the backend", func(t *testing.T) {
+			_, edits, definition := filledHandle(t, 1)
+			other, err := DefineTable("other", TableOptions{Version: 1, Columns: []ColumnProp{Col("id", Str())}, Key: []string{"id"}})
+			noError(t, err)
+			_, err = edits.Page(background, NewQuery(other), 1, PageOptions{})
+			_ = rejected(t, err, data.CodeInvalid, data.ReasonArgs)
+			_, err = edits.Page(background, NewQuery(definition), 0, PageOptions{})
+			_ = rejected(t, err, data.CodeInvalid, data.ReasonArgs)
+			// Pi's `1.5` is no integer: Go's limit is an int64, so the check is the positive-integer one (designed out).
+			after := "x"
+			_, err = edits.Page(background, NewQuery(definition), 1, PageOptions{After: &after})
+			_ = rejected(t, err, data.CodeInvalid, data.ReasonArgs)
+		})
+
+		t.Run("reads go through the store's guard: refused once the store closed", func(t *testing.T) {
+			store, edits, _ := filledHandle(t, 1)
+			// table-handle.test.ts:120: the close goes through the Store interface OpenStore returns.
+			var held Store = store
+			noError(t, held.Close(background))
+			_, err := edits.Get(background, Row{"id": "e000"})
+			_ = rejected(t, err, data.CodeReleased, "")
+		})
+	})
+
+	t.Run("unreadable cells", func(t *testing.T) {
+		t.Run("a json cell of a newer version fails the owner and the read, the data intact", func(t *testing.T) {
+			owner := tableOwner()
+			store, edits, _ := filledHandle(t, 1, owner)
+			noError(t, store.Maintain(func(executor sqlite.SqliteExecutor) error {
+				return executor.Run(`UPDATE "app.store:edits" SET "meta$v" = 2`)
+			}))
+			_, err := edits.Get(background, Row{"id": "e000"})
+			_ = rejected(t, err, data.CodeUnavailable, "")
+			if len(owner.failures) != 1 {
+				t.Fatalf("owner failures = %d, want 1", len(owner.failures))
+			}
+			row, err := Read(store, func(executor sqlite.SqliteExecutor) (sqlite.SqliteRow, error) {
+				return executor.Get(`SELECT meta FROM "app.store:edits"`)
+			}, background)
+			noError(t, err)
+			if row["meta"] != `{"a":0}` {
+				t.Fatalf("meta = %v, want {\"a\":0}", row["meta"])
+			}
+		})
+	})
+
+	t.Run("the version fence of old handles (R15, slice 7b §5)", func(t *testing.T) {
+		t.Run("refuses reads through a handle older than the stored table: released/version", func(t *testing.T) {
+			store := memoryStore(t)
+			definition := handleEdits(t)
+			old := tableIn(t, store, definition)
+			v2, err := EvolveTable(definition, func(e *TableEditor) *TableEditor { return e.Rename("note", "comment") })
+			noError(t, err)
+			tableIn(t, store, v2)
+			_, err = old.Get(background, Row{"id": "e0"})
+			_ = rejected(t, err, data.CodeReleased, data.ReasonVersion)
+			_, err = old.Count(background, NewQuery(definition))
+			_ = rejected(t, err, data.CodeReleased, data.ReasonVersion)
+			if err := old.AssertVersion(); err == nil || !strings.Contains(err.Error(), "the store has version 2") {
+				t.Fatalf("AssertVersion = %v, want the store has version 2", err)
+			}
+		})
+	})
+
+	t.Run("the version fence against a migration in flight (fix round 1, Sol 8)", func(t *testing.T) {
+		t.Run("refuses an old handle's read made while the migration's commit runs, rather than issuing obsolete SQL", func(t *testing.T) {
+			v1, err := DefineTable("race", TableOptions{Version: 1, Columns: []ColumnProp{Col("id", Str()), Col("old", Str())}, Key: []string{"id"}})
+			noError(t, err)
+			v2, err := EvolveTable(v1, func(e *TableEditor) *TableEditor { return e.Rename("old", "new") })
+			noError(t, err)
+			store, hold := gatedStore(t)
+			old := tableIn(t, store, v1)
+			held := hold()
+			changing := make(chan error, 1)
+			go func() {
+				changing <- PrepareTables([]DeclaredTable{{Definition: v2, Table: "app.store:race"}}, store, openFence, "app.store", background)
+			}()
+			<-held.Entered()
+			// The read is made while the migration's commit is held: a fence that is missing would queue its SQL behind
+			// the migration, which this test would then wait for.
+			reading := make(chan error, 1)
+			go func() {
+				_, err := old.Get(background, Row{"id": "x"})
+				reading <- err
+			}()
+			var refused error
+			select {
+			case refused = <-reading:
+			case <-time.After(10 * time.Second):
+				held.Release()
+				t.Fatal("an old handle's read did not settle while the migration's commit was held")
+			}
+			held.Release()
+			noError(t, <-changing)
+			_ = rejected(t, refused, data.CodeReleased, data.ReasonVersion)
+			noError(t, store.AssertUsable())
+		})
+	})
+}

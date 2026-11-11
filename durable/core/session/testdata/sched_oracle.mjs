@@ -15,14 +15,40 @@ const clone = (v) => JSON.parse(JSON.stringify(v));
 const log = [];
 const storage = new MemoryStorage();
 let commitCount = 0; // the Harness clock advances with each applied commit, so the number of now() calls cannot matter
-const now = () => 1000 + commitCount;
+// `clock: "fixed"` stops the Harness clock where it is: a scenario whose Storage overlaps the line reads it at ticks the core does not model.
+const now = scenario.clock === "fixed" ? () => 1000 : () => 1000 + commitCount;
 const session = createSession(storage, { now });
 const origCommit = storage.commit.bind(storage);
-storage.commit = async (writes, ctx) => {
-	const seq = await origCommit(writes, ctx);
-	commitCount++;
-	log.push({ t: "commit", seq, writes: clone(writes) });
-	return seq;
+// scenario.storage shapes the Storage: `ticks` makes each call wait that many microtask passes before it stores, `refuseAt` and `rejectAt` count the
+// batches stored since the start: the batch there is refused (the call resolves with the refusal), or its call rejects, after the batches before it
+// in the call are durable.
+const shape = scenario.storage ?? {};
+const wait = async (n) => { for (let i = 0; i < n; i++) await null; };
+let storedBatches = 0;
+storage.commit = async (batches, receive, ctx) => {
+	if (shape.ticks) await wait(shape.ticks);
+	let cut = batches.length;
+	for (let i = 0; i < batches.length; i++) if (storedBatches + i === (shape.refuseAt ?? shape.rejectAt)) cut = i;
+	storedBatches += cut;
+	// Storage.commit(batches, receive): one log entry per stored batch, one tick after Storage adopted it (receive returned), as
+	// the scenarios' single commits were logged after `await origCommit(...)`.
+	const run = (prefix) =>
+		origCommit(
+			prefix,
+			(index, seq) => {
+				receive(index, seq);
+				const writes = clone(batches[index]);
+				queueMicrotask(() => {
+					commitCount++;
+					log.push({ t: "commit", seq, writes });
+				});
+			},
+			ctx,
+		);
+	if (cut === batches.length) return run(batches);
+	await run(batches.slice(0, cut));
+	if (shape.rejectAt !== undefined) throw new Error("rejected");
+	return { stored: cut, refused: new Error("refused") };
 };
 
 // ---- scripted task definitions
@@ -93,7 +119,8 @@ const registry = {
 	subscribe: (l) => { listeners.add(l); return () => listeners.delete(l); },
 };
 
-const scheduler = new TaskScheduler({
+let scheduler;
+scheduler = new TaskScheduler({
 	session, storage, registry, models: {},
 	agent: async () => ({}), settings: () => ({ contextRetentionMs: 0 }), env: async () => undefined,
 	now, writeAtClose: async () => {}, report: (e) => log.push({ t: "report", message: e.message }),
@@ -101,28 +128,40 @@ const scheduler = new TaskScheduler({
 	withdrawInputs: async (tx, id) => { log.push({ t: "withdraw", conversation: id }); },
 	conversation: async () => undefined, context: BACKGROUND_CONTEXT,
 });
+// A plain Session adds no membership keys; a Harness's adds the scheduler's. `membership: true` runs the scenario as a Harness does.
+if (scenario.membership) session.membershipKeys = (tx) => scheduler.membershipKeys(tx);
 
 const flush = async () => { for (let i = 0; i < 4; i++) await new Promise((r) => setImmediate(r)); };
 function watch(name, p) { p.then((v) => log.push({ t: name, ok: v?.state?.outcome?.status ?? true }), (e) => log.push({ t: name, error: e.message })); }
 
+const commitOps = (ops) => session.commitWith(async (tx) => {
+		for (const op of ops) {
+			switch (op.op) {
+				case "rootConversation": await tx.createRootConversation(); break;
+				case "createConversation": await tx.createConversation({ ownership: op.ownerTask ? { kind: "task", taskId: op.ownerTask } : { kind: "ownerless" } }); break;
+				case "createTask": await tx.createTask(defs[op.task], clone(op.input ?? null), { ownership: op.opts?.ownerTask ? { kind: "task", taskId: op.opts.ownerTask } : { kind: "conversation" }, ...(op.opts?.conversationId ? { conversationId: op.opts.conversationId } : {}), ...(op.opts?.background ? { background: true } : {}) }); break;
+				case "appendEntry": await tx.appendEntry(op.conversationId, clone(op.draft)); break;
+				case "createSubmission": await tx.createSubmission(clone(op.create)); break;
+				default: throw new Error("bad op " + op.op);
+			}
+		}
+	}, BACKGROUND_CONTEXT);
 for (let i = 0; i < scenario.cmds.length; i++) {
 	const cmd = scenario.cmds[i];
 	log.push({ t: "cmd", i, cmd: cmd.cmd });
 	try {
 		switch (cmd.cmd) {
 			case "commit":
-				await session.commitWith(async (tx) => {
-					for (const op of cmd.ops) {
-						switch (op.op) {
-							case "rootConversation": await tx.createRootConversation(); break;
-							case "createConversation": await tx.createConversation({ ownership: op.ownerTask ? { kind: "task", taskId: op.ownerTask } : { kind: "ownerless" } }); break;
-							case "createTask": await tx.createTask(defs[op.task], clone(op.input ?? null), { ownership: op.opts?.ownerTask ? { kind: "task", taskId: op.opts.ownerTask } : { kind: "conversation" }, ...(op.opts?.conversationId ? { conversationId: op.opts.conversationId } : {}), ...(op.opts?.background ? { background: true } : {}) }); break;
-							case "appendEntry": await tx.appendEntry(op.conversationId, clone(op.draft)); break;
-							case "createSubmission": await tx.createSubmission(clone(op.create)); break;
-							default: throw new Error("bad op " + op.op);
-						}
-					}
-				}, BACKGROUND_CONTEXT);
+				await commitOps(cmd.ops);
+				break;
+			// `commits` queues several on the line in one tick and goes on: they overlap in the Storage.
+			case "commits":
+				cmd.each.forEach((ops, j) =>
+					commitOps(ops).then(
+						() => log.push({ t: "committed", i, j }),
+						(e) => log.push({ t: "cmdError", i, j, message: e.message }),
+					),
+				);
 				break;
 			case "open": await scheduler.open(BACKGROUND_CONTEXT); break;
 			case "resume": scheduler.resume(); break;

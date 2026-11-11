@@ -366,7 +366,7 @@ var (
 // `export ... from` closure of its source).
 var libraryEntries = map[string][]string{
 	"env:.":                               {"./env"},
-	"durable:.":                           {"./durable", "./durable/harness", "./durable/session", "./durable/storage"},
+	"durable:.":                           {"./durable", "./durable/core", "./durable/core/session", "./durable/core/sqlhost", "./durable/harness", "./durable/session", "./durable/storage"},
 	"durable:./env":                       {"./durable/env"},
 	"durable:./env/node":                  {"./durable/env/node"},
 	"durable:./codemode":                  {"./durable/codemode"},
@@ -381,9 +381,11 @@ var libraryEntries = map[string][]string{
 	"durable:./storage/sqlite":            {"./durable/storage/sqlite"},
 	"durable:./storage/sqlite/node":       {"./durable/storage/sqlite/node"},
 	"durable:./storage/sqlite/cloudflare": {"./durable/storage/sqlite/cloudflare"},
-	"chord:.":                             {"./chord", "./chord/context", "./chord/delta", "./chord/host", "./durable"},
-	"chord:./context":                     {"./chord/context"},
-	"chord:./delta":                       {"./chord", "./chord/delta", "./durable"},
+	"durable:./storage/store":             {"./durable/storage/store"},
+	"chord:.":                             {"./chord", "./chord/context", "./chord/delta", "./chord/host", "./chord/next/documents", "./chord/next/host", "./durable", "./durable/core/internal/delta"},
+	"chord:./next":                        {"./chord", "./chord/next/contracts", "./chord/next/data", "./chord/next/documents", "./chord/next/host", "./chord/next/link", "./chord/next/registries", "./chord/next/state", "./chord/next/store"},
+	"chord:./context":                     {"./chord/context", "./chord/next/host"},
+	"chord:./delta":                       {"./chord", "./chord/delta", "./durable", "./durable/core/internal/delta"},
 	"chord:./node":                        {"./chord/host"},
 	"chord:./output":                      {"./chord/output"},
 	"chord:./sqlite":                      {"./chord/sqlite"},
@@ -464,6 +466,7 @@ func runProdreach(root string) ([]byte, error) {
 	for _, l := range reachLibraries {
 		args = append(args, "-library", l)
 	}
+	//nolint:gosec // G204 (class a): program is literal go; args are "run ./test/parity/cmd/prodreach -out <temp>" plus reachTags/reachLibraries/reachPatterns package-level constants.
 	cmd := exec.Command("go", append(args, reachPatterns...)...)
 	cmd.Dir = root
 	cmd.Stderr = os.Stderr

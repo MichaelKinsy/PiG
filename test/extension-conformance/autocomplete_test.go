@@ -10,6 +10,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 	"unicode/utf16"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -30,6 +31,10 @@ func autocompleteBase() *extension.AutocompleteProvider {
 			}
 			if lines[0] == "error" {
 				return nil, errors.New("base failed")
+			}
+			if lines[0] == "hostwait" {
+				// A host answer that takes longer than any SDK checkpoint window: the chain waits on the host, not on I/O of its own.
+				time.Sleep(150 * time.Millisecond)
 			}
 			items := []extension.AutocompleteItem{{Value: "keep", Label: "keep"}, {Value: "drop", Label: "drop"}}
 			if force {
@@ -125,7 +130,7 @@ func autocompleteReferenceCommand(ctx context.Context, _ string) error {
 func TestAutocompleteFactoriesAcrossSDKs(t *testing.T) {
 	t.Parallel()
 	cases := allHarnessCases()
-	for _, language := range []string{"go", "python", "rust"} {
+	for _, language := range []string{"go", "python", "rust", "lisp"} {
 		cases = append(cases, harnessCase{name: "packed-" + language, make: func(t *testing.T) *harness { return makePackedUIHarness(t, language) }})
 	}
 	for _, tc := range cases {

@@ -8,7 +8,7 @@ import (
 )
 
 // ApplyCustomSystemPromptSections overlays extension-authored sections on the base prompt in insertion order. Empty values leave the base unchanged; preamble and invalid tag names are rejected.
-// Ports packages/coding-agent/src/core/system-prompt.ts:121-186.
+// Ports packages/coding-agent/src/core/system-prompt.ts (buildSystemPromptSections custom sections, lines 121-186).
 func ApplyCustomSystemPromptSections(base, custom ai.OrderedSections) (ai.OrderedSections, error) {
 	for _, section := range custom {
 		if !validSystemPromptSectionName(section.Name) || section.Name == "preamble" {

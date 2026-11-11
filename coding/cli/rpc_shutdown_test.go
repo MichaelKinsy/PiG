@@ -503,7 +503,12 @@ func TestRPCExtensionShutdownRequestExits(t *testing.T) {
 			records := drainRPCOutput(p)
 			p.waitForExit("after ctx.shutdown()")
 			response := handledPromptResponse("quit")
-			if want := []rpcRecord{rpcShutdownStartedNotify, response}; !reflect.DeepEqual(records, want) {
+			want := []rpcRecord{rpcShutdownStartedNotify, response}
+			if impl.name == "pig" {
+				// pig divergence (D231): follows Pi main 1708b4788, where the shutdown waits for the command's prompt response.
+				want = []rpcRecord{response, rpcShutdownStartedNotify}
+			}
+			if !reflect.DeepEqual(records, want) {
 				t.Fatalf("stdout = %v, want the prompt response and the session_shutdown notification", records)
 			}
 			if events := readRPCShutdownReport(t, report); !slices.Equal(events, []string{"quit", "session_shutdown"}) {

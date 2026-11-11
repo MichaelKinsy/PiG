@@ -20,7 +20,6 @@ import (
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/session"
 	"github.com/MichaelKinsy/PiG/durable/storage"
-	sqlitenode "github.com/MichaelKinsy/PiG/durable/storage/sqlite/node"
 )
 
 type noteState struct {
@@ -286,13 +285,7 @@ func TestHarnessRootAndConversations(t *testing.T) {
 	t.Run("keeps root and conversation identity and state across reopen", func(t *testing.T) {
 		// harness-conversations.test.ts:113 it("keeps root and conversation identity and state across reopen")
 		path := sqlitePath(t)
-		openSqlite := func() durable.Storage {
-			store, err := sqlitenode.OpenNodeSqliteStorage(path, sqlitenode.NodeSqliteStorageOptions{})
-			if err != nil {
-				t.Fatal(err)
-			}
-			return store
-		}
+		openSqlite := func() durable.Storage { return openNodeSqliteStorage(t, path) }
 		harness, _ := openHarness(t, openSqlite(), []string{"read"})
 		root := mustRoot(t, harness, nil)
 		mustConfigure(t, root, AgentChange{Model: SetTo(durable.ModelRef{Provider: "anthropic", ModelId: "claude"}), Cwd: SetTo("/repo")})

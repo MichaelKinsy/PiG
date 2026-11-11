@@ -35,9 +35,9 @@ func TestTaskRuntimeGetTaskReadsOnTheSessionLineAndRefusesAnEndedInvocation(t *t
 	})
 	<-started
 	var reading *future[*durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue]]
-	queueOnLine(t, opened.harness, func() <-chan struct{} {
+	queueOnLineAdmitted(t, func(ctx context.Context) <-chan struct{} {
 		reading = async(func() (*durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue], error) {
-			return runtime.GetTask(testContext, id)
+			return runtime.GetTask(ctx, id)
 		})
 		return reading.done
 	})

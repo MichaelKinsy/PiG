@@ -10,6 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
+// Ports packages/coding-agent/src/core/package-manager.ts (applyPackageDeltaFilter, findAutoloadDeltaBase, addResource).
 // ApplyPackageAutoloadStates keeps only touched resources in first-match order, including disabled resources that shadow inherited entries (applyPackageDeltaFilter, package-manager.ts:2308-2324). A pattern minimatch cannot compile stops at its kind: the items of the kinds before it come back with a *packagecontent.PackagePatternError.
 func ApplyPackageAutoloadStates(pkg ConfiguredPackage, items []tui.ResourceItem) ([]tui.ResourceItem, error) {
 	if !IsProjectPackageDelta(pkg.Source) {

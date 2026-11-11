@@ -27,7 +27,7 @@ func TestSelectedToolsPiContract(t *testing.T) {
 		t.Fatalf("decode: %v\n%s", err, output)
 	}
 	want := map[string]observation{
-		"duplicates": {[]string{"bash", "read"}, []string{"read"}, []any{"run"}, nil},
+		"duplicates": {[]string{"read", "bash"}, []string{"read"}, []any{"run"}, nil}, // Pi b9e3eef6 keeps the active order of tools that stay active
 		"mixed":      {[]string{"bash"}, []string{"read"}, []any{"run"}, nil},
 		"null":       {[]string{"read"}, []string{"read"}, []any{}, new("Cannot read properties of null (reading 'length')")},
 		"repair":     {[]string{"write"}, []string{"read"}, []any{true, "run"}, nil},

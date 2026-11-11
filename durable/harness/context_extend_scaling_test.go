@@ -30,10 +30,10 @@ func grownRange(turns int, next *durable.EntryId) *contextRange {
 	*next = 0
 	first := []durable.EntryRecord{{Id: 1, Kind: "message", Model: []ai.Message{ai.UserMessage{Content: ai.UserText("hello"), Timestamp: 1}}}, {Id: 2, Kind: "pi.system", Model: []ai.Message{system(ai.PromptSection{Name: "s", Value: new("prompt")})}}}
 	*next = 2
-	rng := deriveRange(ContextBounds{Tail: 2}, first)
+	rng := deriveRange(ContextBounds{Tail: 2}, first, false)
 	for turn := range turns {
 		added := extendTurnEntries(next, turn)
-		rng = extendRange(rng, ContextBounds{Tail: *next}, added)
+		rng = extendRange(rng, ContextBounds{Tail: *next}, added, false)
 	}
 	return rng
 }
@@ -47,7 +47,7 @@ func extendBytesPerTurn(turns int) (bytes uint64, messages int) {
 	runtime.ReadMemStats(&before)
 	for turn := range probe {
 		added := extendTurnEntries(&next, turns+turn)
-		rng = extendRange(rng, ContextBounds{Tail: next}, added)
+		rng = extendRange(rng, ContextBounds{Tail: next}, added, false)
 		_ = rng.shared()
 	}
 	runtime.ReadMemStats(&after)
@@ -89,7 +89,7 @@ func TestContextRangeExtensionsFromOneRangeNeverWriteEachOther(t *testing.T) {
 			for turn := range 40 {
 				added := extendTurnEntries(&local, index*1000+turn)
 				all = append(all, added...)
-				rng = extendRange(rng, ContextBounds{Tail: local}, added)
+				rng = extendRange(rng, ContextBounds{Tail: local}, added, false)
 				view := rng.shared()
 				if len(view.Entries) != len(baseEntries)+len(all) {
 					t.Errorf("fork %d: %d entries", index, len(view.Entries))
@@ -102,7 +102,7 @@ func TestContextRangeExtensionsFromOneRangeNeverWriteEachOther(t *testing.T) {
 	group.Wait()
 	for index, got := range results {
 		whole := append(append([]durable.EntryRecord(nil), base.entries...), got.entries...)
-		want := deriveRange(ContextBounds{Tail: got.rng.bounds.Tail}, whole)
+		want := deriveRange(ContextBounds{Tail: got.rng.bounds.Tail}, whole, false)
 		if !reflect.DeepEqual(got.view, want.shared()) {
 			t.Fatalf("fork %d: the extended view differs from the whole derivation", index)
 		}
@@ -135,7 +135,7 @@ func TestContextRangeViewsAreReadableWhileTheRangeExtends(t *testing.T) {
 	}
 	for turn := range 400 {
 		added := extendTurnEntries(&next, turn)
-		rng = extendRange(rng, ContextBounds{Tail: next}, added)
+		rng = extendRange(rng, ContextBounds{Tail: next}, added, false)
 	}
 	group.Wait()
 }
@@ -148,7 +148,7 @@ func BenchmarkContextRangeExtend(b *testing.B) {
 			b.ReportAllocs()
 			for i := 0; b.Loop(); i++ {
 				added := extendTurnEntries(&next, turns+i)
-				rng = extendRange(rng, ContextBounds{Tail: next}, added)
+				rng = extendRange(rng, ContextBounds{Tail: next}, added, false)
 				_ = rng.shared()
 			}
 		})

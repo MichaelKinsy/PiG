@@ -20,7 +20,7 @@ Run `pig --version` again to check.
 |---|---|
 | `PIG_VERSION` | Install this release (for example `0.5.0`) instead of the latest. |
 | `PIG_INSTALL_DIR` | Directory that receives `pig`. The default is `$HOME/.local/bin`, or `$PREFIX/bin` in Termux. |
-| `PIG_HOME` | PiG's settings directory, where the install receipt goes. The default is `~/.pig`. |
+| `PIG_HOME` | PiG's settings directory, where the install receipt goes. The default is `$XDG_CONFIG_HOME/pig` when `XDG_CONFIG_HOME` is set, else `~/.pig`. |
 | `PIG_API_BASE` | The API that names the latest release. The default is `https://pi-in-go.dev/api`. |
 | `PIG_LATEST_RELEASE_URL` | The page that redirects to the latest release, used when the API does not answer. |
 | `PIG_DOWNLOAD_BASE` | The release download root. The default is the GitHub Releases download URL of this repository. |

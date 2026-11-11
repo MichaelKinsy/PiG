@@ -34,6 +34,9 @@ type RemoteOverlayOptions struct {
 	// when no legacy Title/fractions are given, an overlay is mounted
 	// component-framed with exactly upstream's showOverlay geometry.
 	Layout *OverlayLayout `json:"overlayOptions,omitempty"`
+	// Blocked mirrors upstream ui.custom()'s blocked option: while an inline component is visible the program status reports pi as
+	// blocked on it. An overlay ignores it.
+	Blocked *CustomBlocked `json:"blocked,omitempty"`
 }
 
 // OverlayLayout is the serialisable subset of upstream pi-tui
@@ -181,6 +184,16 @@ type RemoteOverlayFocusHost interface {
 	// OnFocus reports a change of the component's focus after it was mounted. Called from the goroutine that delivers its input,
 	// in order with it.
 	OnFocus(focused bool)
+}
+
+// RemoteOverlayViewportHost is an optional [RemoteOverlayHost] that publishes the component's capturesViewportInput: Pi's optional
+// Component.capturesViewportInput (packages/tui/src/tui.ts) is read from the focused component whenever a fullscreen viewport key
+// arrives, and the key goes to the component instead of scrolling the transcript while it is true.
+//
+// pig-specific: Pi's component is in-process; a remote component sends its current value with each frame.
+type RemoteOverlayViewportHost interface {
+	// CapturesViewportInput reports the capturesViewportInput of the latest frame the component sent. Safe to call from any goroutine.
+	CapturesViewportInput() bool
 }
 
 // RemoteTUI is an optional [UIContext] that drives the TUI a remote component factory receives. Pi hands showExtensionCustom's

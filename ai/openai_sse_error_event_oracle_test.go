@@ -73,8 +73,7 @@ for (const row of JSON.parse(rowsJSON)) {
 	out.push({ stop: r.stopReason, error: r.errorMessage ?? "", text: r.content.filter((b) => b.type === "text").map((b) => b.text).join(""), id: r.responseId ?? "", observed });
 	server.close();
 }
-console.log(JSON.stringify(out));
-process.exit(0);
+process.stdout.write(JSON.stringify(out) + "\n", () => process.exit(0));
 })()`
 	encodedRows, err := json.Marshal(rows)
 	if err != nil {

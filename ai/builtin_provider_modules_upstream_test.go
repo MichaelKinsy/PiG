@@ -1,5 +1,39 @@
 package ai
 
+// pi: packages/ai/src/providers/ant-ling.ts
+// pi: packages/ai/src/providers/cerebras.ts
+// pi: packages/ai/src/providers/cloudflare-ai-gateway.ts
+// pi: packages/ai/src/providers/cloudflare-workers-ai.ts
+// pi: packages/ai/src/providers/deepseek.ts
+// pi: packages/ai/src/providers/fireworks.ts
+// pi: packages/ai/src/providers/google.ts
+// pi: packages/ai/src/providers/groq.ts
+// pi: packages/ai/src/providers/huggingface.ts
+// pi: packages/ai/src/providers/kimi-coding.ts
+// pi: packages/ai/src/providers/meta.ts
+// pi: packages/ai/src/providers/minimax-cn.ts
+// pi: packages/ai/src/providers/minimax.ts
+// pi: packages/ai/src/providers/mistral.ts
+// pi: packages/ai/src/providers/moonshotai-cn.ts
+// pi: packages/ai/src/providers/moonshotai.ts
+// pi: packages/ai/src/providers/nvidia.ts
+// pi: packages/ai/src/providers/openai-codex.ts
+// pi: packages/ai/src/providers/openai.ts
+// pi: packages/ai/src/providers/opencode-go.ts
+// pi: packages/ai/src/providers/opencode.ts
+// pi: packages/ai/src/providers/qwen-token-plan-cn.ts
+// pi: packages/ai/src/providers/qwen-token-plan-individual.ts
+// pi: packages/ai/src/providers/qwen-token-plan.ts
+// pi: packages/ai/src/providers/together.ts
+// pi: packages/ai/src/providers/vercel-ai-gateway.ts
+// pi: packages/ai/src/providers/xai.ts
+// pi: packages/ai/src/providers/xiaomi-token-plan-ams.ts
+// pi: packages/ai/src/providers/xiaomi-token-plan-cn.ts
+// pi: packages/ai/src/providers/xiaomi-token-plan-sgp.ts
+// pi: packages/ai/src/providers/xiaomi.ts
+// pi: packages/ai/src/providers/zai-coding-cn.ts
+// pi: packages/ai/src/providers/zai.ts
+
 import (
 	"context"
 	"os"

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/durabletest"
 	"github.com/MichaelKinsy/PiG/durable/storage"
 )
 
@@ -16,10 +17,10 @@ func TestMemoryStorageRejectsAnUnknownTaskOrSubmissionStatus(t *testing.T) {
 	submission := durable.SubmissionWrite{Value: durable.SubmissionRecord{Id: 3, ConversationId: durable.ROOT_CONVERSATION_ID, Type: durable.SubmissionTypeWrite, Status: "bogus"}}
 	for name, write := range map[string]durable.StorageWrite{"task": task, "submission": submission} {
 		memory := storage.NewMemoryStorage()
-		if _, err := memory.Commit(context.Background(), []durable.StorageWrite{durable.ConversationWrite{Value: durable.ConversationRecord{Id: durable.ROOT_CONVERSATION_ID}}}, func(durable.Seq) {}); err != nil {
+		if _, err := durabletest.CommitWrites(context.Background(), memory, []durable.StorageWrite{durable.ConversationWrite{Value: durable.ConversationRecord{Id: durable.ROOT_CONVERSATION_ID}}}); err != nil {
 			t.Fatal(err)
 		}
-		_, err := memory.Commit(context.Background(), []durable.StorageWrite{write}, func(durable.Seq) {})
+		_, err := durabletest.CommitWrites(context.Background(), memory, []durable.StorageWrite{write})
 		if err == nil || !strings.Contains(err.Error(), "Unknown "+name+" status") {
 			t.Errorf("%s with an unknown status: %v", name, err)
 		}

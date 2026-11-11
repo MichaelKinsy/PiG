@@ -313,6 +313,11 @@ func (h *remoteEditor) EditorFrame(lines []string, width int, wantsKeyRelease bo
 	})
 }
 
+// EditorCapturesViewportInput is extension.RemoteEditorViewportHost: the component's capturesViewportInput of the frame that follows.
+func (h *remoteEditor) EditorCapturesViewportInput(captures bool) {
+	h.onLoop(func() { h.m.editor.SetRemoteCapturesViewportInput(captures) })
+}
+
 func (h *remoteEditor) EditorChanged(text, expanded string) {
 	h.onLoop(func() { h.m.editor.ApplyRemoteChange(text, expanded) })
 }
@@ -395,7 +400,7 @@ func (h *remoteEditor) EditorShortcut(data string) {
 // session_shutdown after stopping it) it writes straight to the terminal.
 func (h *remoteEditor) TerminalWrite(data string) {
 	if !h.m.remoteEditorEvents.post(h.m, func() { h.m.writeTerminal(data) }) {
-		_, _ = os.Stdout.WriteString(data)
+		tui.WriteToTerminal(os.Stdout, data)
 	}
 }
 
@@ -417,14 +422,14 @@ func (h *remoteEditor) EditorClosed() {
 // writeTerminal writes raw output to the terminal between frames.
 func (m *InteractiveMode) writeTerminal(data string) {
 	if m.tuiStopped.Load() {
-		_, _ = os.Stdout.WriteString(data)
+		tui.WriteToTerminal(os.Stdout, data)
 		return
 	}
 	if writer, ok := m.tuiInst.(interface{ WriteRaw(string) }); ok {
 		writer.WriteRaw(data)
 		return
 	}
-	_, _ = os.Stdout.WriteString(data)
+	tui.WriteToTerminal(os.Stdout, data)
 }
 
 // runOnMainOK runs fn on the owner loop and reports whether the loop took it.

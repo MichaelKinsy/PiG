@@ -660,7 +660,7 @@ func TestHostAListenerOnStateGetsTheCurrentValueAtStartAndAgainAfterAReloadRepla
 
 var hostStore = Local("t.store", LocalDef{
 	Version: 1,
-	Input:   tObject("scope", tOptional(tString(Schema{"default": "all"}))),
+	Input:   tObject("scope", tOptional(tString(kw("default", "all")))),
 	Members: Fields[any]{{"seen", Opaque("t.seen@1")}},
 })
 

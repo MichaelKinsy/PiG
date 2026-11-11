@@ -94,7 +94,7 @@ func TestRemoteWatcherTakesItsModeFromTheDaemonsEvents(t *testing.T) {
 				t.Fatal(err)
 			}
 			// The scripted daemon never answers the cancel of a watch; ending the connection settles the request.
-			defer func() { connection.Close(); _ = watcher.Close(background) }()
+			defer func() { connection.Close(); _ = watcher.Stop(background) }()
 			log.wait(t, tc.paths)
 			if got := watcher.Mode(); got != tc.want {
 				t.Fatalf("Mode() = %q, want %q", got, tc.want)
@@ -124,9 +124,9 @@ func TestRemoteWatcherReportsTheDaemonsWatchErrors(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer func() { _ = watcher.Close(background) }()
+			defer func() { _ = watcher.Stop(background) }()
 			changes := log.wait(t, 1)
-			failure, ok := changes[0].(durableenv.FileChangeError)
+			failure, ok := changes[0].(durableenv.FileChangeFailed)
 			if !ok || failure.Error == nil || failure.Error.Code != tc.code || failure.Error.Message != tc.message {
 				t.Fatalf("first change %#v, want a %s error %q", changes[0], tc.code, tc.message)
 			}
@@ -151,7 +151,7 @@ func TestRemoteWatcherDeliversAnOverflowChangeOnlyForOverflowTrue(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() { connection.Close(); _ = watcher.Close(background) }()
+	defer func() { connection.Close(); _ = watcher.Stop(background) }()
 	changes := log.wait(t, 3)
 	if _, ok := changes[0].(durableenv.FileChangeOverflow); !ok {
 		t.Fatalf("first change %#v, want overflow", changes[0])
@@ -164,10 +164,10 @@ func TestRemoteWatcherDeliversAnOverflowChangeOnlyForOverflowTrue(t *testing.T) 
 	}
 }
 
-// watch.ts open: a throwing onChange must not stop watching, and no onChange starts once the watcher is closed; an `error` event ends the watch.
-// mutation-checked: a deliver that lets the callback's panic escape, one that ignores a closed watcher, and an error event that leaves the
+// watch.ts open: a throwing onChange must not stop watching, and no onChange starts once the watcher is stopped; an `error` event ends the watch.
+// mutation-checked: a deliver that lets the callback's panic escape, one that ignores a stopped watcher, and an error event that leaves the
 // watcher open each fail it.
-func TestRemoteWatcherIsolatesAThrowingCallbackAndStopsAfterAnErrorOrClose(t *testing.T) {
+func TestRemoteWatcherIsolatesAThrowingCallbackAndStopsAfterAnErrorOrStop(t *testing.T) {
 	targets := []durableenv.WatchTarget{{Path: "/watched"}}
 
 	t.Run("a throwing callback keeps the watch delivering", func(t *testing.T) {
@@ -189,7 +189,7 @@ func TestRemoteWatcherIsolatesAThrowingCallbackAndStopsAfterAnErrorOrClose(t *te
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer func() { connection.Close(); _ = watcher.Close(background) }()
+		defer func() { connection.Close(); _ = watcher.Stop(background) }()
 		changes := log.wait(t, 1)
 		if got, ok := changes[0].(durableenv.FileChangePaths); !ok || got.Paths[0] != "/watched/b" {
 			t.Fatalf("delivered %#v after the throwing call, want the second change", changes[0])
@@ -203,10 +203,10 @@ func TestRemoteWatcherIsolatesAThrowingCallbackAndStopsAfterAnErrorOrClose(t *te
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer func() { connection.Close(); _ = watcher.Close(background) }()
+		defer func() { connection.Close(); _ = watcher.Stop(background) }()
 		log.wait(t, 1)
 		deadline := time.Now().Add(10 * time.Second)
-		for !watcher.isClosed() {
+		for !watcher.isStopped() {
 			if time.Now().After(deadline) {
 				t.Fatal("the watcher stayed open after an error event")
 			}
@@ -214,20 +214,20 @@ func TestRemoteWatcherIsolatesAThrowingCallbackAndStopsAfterAnErrorOrClose(t *te
 		}
 	})
 
-	t.Run("nothing is delivered after the watcher is closed", func(t *testing.T) {
+	t.Run("nothing is delivered after the watcher is stopped", func(t *testing.T) {
 		connection := scriptedWatchDaemon(t, targets, Json{"kind": "ready"})
 		log := &changeLog{}
 		watcher, err := OpenRemoteWatcher(background, connection, targets, log.add, RemoteWatchOptions{})
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer func() { connection.Close(); _ = watcher.Close(background) }()
+		defer func() { connection.Close(); _ = watcher.Stop(background) }()
 		watcher.stop()
 		watcher.deliver(durableenv.FileChangePaths{Paths: []string{"/watched/late"}})
 		log.mu.Lock()
 		defer log.mu.Unlock()
 		if len(log.changes) != 0 {
-			t.Fatalf("a closed watcher delivered %#v", log.changes)
+			t.Fatalf("a stopped watcher delivered %#v", log.changes)
 		}
 	})
 }

@@ -3,6 +3,7 @@ package mcp_test
 import (
 	"bytes"
 	"encoding/json"
+	"os"
 	"os/exec"
 	"slices"
 	"testing"
@@ -21,6 +22,11 @@ import (
 func TestStdioTransportPassesEveryPropertyWhoseNameHoldsAnEqualsSign(t *testing.T) {
 	command, args, _ := fixtureStdioOptions("environ")
 	env := map[string]string{fixtureEnv: "environ", "GORACE": "atexit_sleep_ms=0", "PIG_A": "one", "PIG_A=B": "two"}
+	// The fixture is this test binary. Run with coverage instrumentation, a child that has no GOCOVERDIR warns on stderr that no coverage data is
+	// emitted, and the warning would follow the environment listing. The variable goes to both spawns, so the environments still compare equal.
+	if dir := os.Getenv("GOCOVERDIR"); dir != "" {
+		env["GOCOVERDIR"] = dir
+	}
 	off := false
 	transport := mcp.NewStdioTransport(mcp.StdioTransportOptions{Command: command, Args: args, Env: env, InheritEnv: &off})
 	closed := make(chan struct{})

@@ -8,8 +8,9 @@ import (
 	"testing"
 )
 
-// Pi's RPC mode writes "" and [] where an extension passes them and omits `undefined`. A Go string cannot be undefined: SetStatus(key, "") is an empty text,
-// ClearStatus(key) is the call without one, and an empty placeholder or prefill is the unset member, left off the wire.
+// Pi's RPC mode writes "" and [] where an extension passes them and omits `undefined`. A Go string cannot be undefined: SetStatus(key, "") is an empty text and
+// ClearStatus(key) is the call without one; likewise Input and Editor write an empty placeholder or prefill as given (`input(title, "")`, `editor(title, "")`),
+// and InputWithoutPlaceholder, InputWithoutPlaceholderWithOptions and EditorWithoutPrefill are `input(title)`, `input(title, undefined, opts)` and `editor(title)`.
 func TestEmptyAndUnsetUIMembersStayDistinctOnTheWire(t *testing.T) {
 	ext := New("surface")
 	ext.Command("empties", "", func(ctx Context, _ string) error {
@@ -20,11 +21,14 @@ func TestEmptyAndUnsetUIMembersStayDistinctOnTheWire(t *testing.T) {
 		ctx.SetEditorText("")
 		_, _, _ = ctx.Select("T", []string{})
 		_, _ = ctx.Confirm("", "")
-		_, _, _ = ctx.Input("T1", "")
-		_, _, _ = ctx.Input("T2", "ph")
-		_, _, _ = ctx.InputWithOptions("T3", "", DialogOptions{Timeout: 50})
-		_, _, _ = ctx.Editor("E1", "")
-		_, _, _ = ctx.Editor("E2", "pre")
+		_, _, _ = ctx.InputWithoutPlaceholder("T1")
+		_, _, _ = ctx.Input("T2", "")
+		_, _, _ = ctx.Input("T3", "ph")
+		_, _, _ = ctx.InputWithoutPlaceholderWithOptions("T4", DialogOptions{Timeout: 50})
+		_, _, _ = ctx.InputWithOptions("T5", "", DialogOptions{Timeout: 50})
+		_, _, _ = ctx.EditorWithoutPrefill("E1")
+		_, _, _ = ctx.Editor("E2", "")
+		_, _, _ = ctx.Editor("E3", "pre")
 		return nil
 	})
 	host, _, done := surfaceHost(t, ext, nil)
@@ -46,10 +50,13 @@ func TestEmptyAndUnsetUIMembersStayDistinctOnTheWire(t *testing.T) {
 		{"ui.select", map[string]any{"title": "T", "options": []any{}}},
 		{"ui.confirm", map[string]any{"title": "", "message": ""}},
 		{"ui.input", map[string]any{"title": "T1"}},
-		{"ui.input", map[string]any{"title": "T2", "placeholder": "ph"}},
-		{"ui.input", map[string]any{"title": "T3", "opts": map[string]any{"timeout": float64(50)}}},
+		{"ui.input", map[string]any{"title": "T2", "placeholder": ""}},
+		{"ui.input", map[string]any{"title": "T3", "placeholder": "ph"}},
+		{"ui.input", map[string]any{"title": "T4", "opts": map[string]any{"timeout": float64(50)}}},
+		{"ui.input", map[string]any{"title": "T5", "placeholder": "", "opts": map[string]any{"timeout": float64(50)}}},
 		{"ui.editor", map[string]any{"title": "E1"}},
-		{"ui.editor", map[string]any{"title": "E2", "prefill": "pre"}},
+		{"ui.editor", map[string]any{"title": "E2", "prefill": ""}},
+		{"ui.editor", map[string]any{"title": "E3", "prefill": "pre"}},
 	}
 	if len(calls) != len(want) {
 		t.Fatalf("got %d calls, want %d: %+v", len(calls), len(want), calls)

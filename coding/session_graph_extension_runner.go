@@ -39,6 +39,8 @@ type GraphExtensionRunner struct {
 	boundContext callbackIDs
 	nextError    uint64
 	errorOffs    map[string]func()
+	// signal is the run the extension's getSignal reports, shared by every context the runner's functions bind.
+	signal graphSignal
 }
 
 var _ subprocess.SessionGraphObject = (*GraphExtensionRunner)(nil)
@@ -206,6 +208,36 @@ type graphScopedModel struct {
 // graphSignalState is the answer of getSignal: whether the signal has aborted.
 type graphSignalState struct {
 	Aborted bool `json:"aborted"`
+}
+
+// graphSignal is the context of the run the extension's getSignal reports. The wire answers only the state of the run (none, live, aborted), and the host tells runs apart by the context object it reads: it numbers a context it has not seen as a new run, and watches it with context.AfterFunc, which fires at once for a cancelled one and syncs again. A context made per read would turn an aborted run into a new run on every sync, without end.
+// Pi's `agent.signal` is `activeRun?.abortController.signal` (agent.ts:345-347) and `abort()` aborts that controller (agent.ts:350-352): one signal object from the start of a run to its end, cancelled in place by the abort, and none (undefined) while no run is active. So a run here is one context, from the first read that reports it live or aborted until a read reports no run, and the abort cancels it. A run that follows another with no read of "no run" between is told apart only when the first was aborted; the wire carries no run identity.
+type graphSignal struct {
+	mu     sync.Mutex
+	run    context.Context
+	cancel context.CancelFunc
+}
+
+// read asks the extension for the state of the run and returns the context of the run it answers, nil for no run or when the extension cannot answer (the held run is kept: nothing says it ended). A context whose parent is Background holds nothing to release, so a run that ends live is dropped, not cancelled: cancelling it would abort a run Pi never aborted.
+// The lock is held across the extension's answer. The extension answers on its own thread, so two reads can be in flight together and their answers come back in either order; applied out of order, a late "live" would follow an "aborted" and begin a run that nothing aborts. The answer does not re-enter the tracker: it is a request to the extension's own connection, answered on the extension's thread, and a getSignal function that read this runner's own ctx.signal would call itself in Pi too.
+func (s *graphSignal) read(ask func() (*graphSignalState, error)) context.Context {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	state, err := ask()
+	if err != nil {
+		return nil
+	}
+	if state == nil {
+		s.run, s.cancel = nil, nil
+		return nil
+	}
+	if s.run == nil || (!state.Aborted && s.run.Err() != nil) {
+		s.run, s.cancel = context.WithCancel(callbackBackground())
+	}
+	if state.Aborted {
+		s.cancel()
+	}
+	return s.run
 }
 
 // graphRendererFlags tells which render functions a tool renderer registered.

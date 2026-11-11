@@ -15,6 +15,7 @@ import (
 
 // Ports packages/ai/src/providers/images/register-builtins.ts (registerBuiltInImagesApiProviders and generateImagesOpenRouter; the lazy
 // import and its load-error AssistantImages are JavaScript module loading, which Go links at build time).
+// Ports packages/ai/src/api/openrouter-images.ts (generateImages, createClient, buildParams and parseUsage).
 
 // RegisterBuiltInImagesAPIProviders registers upstream's built-in image API
 // providers. Currently upstream ships OpenRouter image generation only.

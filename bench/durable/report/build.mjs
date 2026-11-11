@@ -65,6 +65,8 @@ for (const s of shots) {
 }
 if (bad) {
 	console.error(`${bad} layout problems`);
+	await new Promise((done) => process.stdout.write("", done));
+	await new Promise((done) => process.stderr.write("", done));
 	process.exit(1);
 }
 console.log(`png: ${readdirSync(join(out, "png")).length} files in ${out}/png`);

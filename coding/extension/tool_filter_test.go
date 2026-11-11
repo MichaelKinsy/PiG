@@ -1,6 +1,9 @@
 package extension
 
-import "testing"
+import (
+	"slices"
+	"testing"
+)
 
 // Ports packages/coding-agent/src/core/mcp-servers.ts createToolNameMatcher and the `_isAllowedTool` and `_isActivatable`
 // rules of agent-session.ts (1.0.4).
@@ -65,5 +68,29 @@ func TestToolFilterKeepsMCPToolsUnlessTheAllowlistFiltersThem(t *testing.T) {
 	}
 	if !filter.MayBeActive("bash", ToolExposureDirect, false) {
 		t.Error("a non-MCP tool may always be active")
+	}
+}
+
+// Without a scope AllowsTool is Allows for the tool's name, so stock PiG without a Piglet registers what it always did; a
+// Piglet's scope intersects with the allowlist and the denylist.
+func TestToolFilterScopeIntersects(t *testing.T) {
+	allowed := map[string]struct{}{"read": {}, "mcp__a__*": {}}
+	excluded := map[string]struct{}{"mcp__a__x": {}}
+	plain := NewToolFilter(allowed, excluded)
+	keepAdapterX := []string{"mcp__a__x", "mcp__a__z"}
+	scoped := plain.WithScope(&ToolScope{Extensions: map[string]*[]string{McpAdapterEntry: &keepAdapterX}})
+	namespace := &ToolNamespace{Name: McpNamespace("a")}
+	for _, name := range []string{"read", "bash", "mcp__a__x", "mcp__a__y", "mcp__a__z", "mcp__b__z", "read_mcp_resource"} {
+		info := ToolInfo{Name: name}
+		if IsMcpToolName(name) && name != "read_mcp_resource" {
+			info.Namespace = namespace
+		}
+		if plain.AllowsTool(info) != plain.Allows(name) {
+			t.Errorf("without a scope AllowsTool(%q) differs from Allows", name)
+		}
+		hiddenByScope := IsMcpToolName(name) && !slices.Contains(keepAdapterX, name)
+		if want := plain.Allows(name) && !hiddenByScope; scoped.AllowsTool(info) != want {
+			t.Errorf("scoped AllowsTool(%q) = %t, want %t", name, !want, want)
+		}
 	}
 }

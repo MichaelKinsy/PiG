@@ -3,6 +3,8 @@ package codingagent
 // pi: packages/coding-agent/src/utils/fs-watch.ts
 // FS_WATCH_RETRY_DELAY_MS (5000) and watchWithErrorHandler: TestFooterRetriesGitWatchersFiveSecondsAfterAsyncWatchError.
 
+// pi: packages/coding-agent/src/core/footer-data-provider.ts
+
 import (
 	"context"
 	"errors"

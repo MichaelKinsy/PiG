@@ -111,7 +111,7 @@ func (c *FirstTimeSetupComponent) update() {
 	c.Add(tui.NewPaddedText(strings.Join(piglogin.HeadLines(c.logoSprite(), t.GetColorMode()), "\n"), 1, 0, nil))
 	c.Add(tui.NewSpacer(1))
 	// pig divergence (D88): the welcome names PiG where Pi's names APP_NAME.
-	c.Add(tui.NewPaddedText(t.Fg("accent", "\x1b[1mWelcome to PiG, the minimal coding agent.\x1b[22m"), 1, 0, nil))
+	c.Add(tui.NewPaddedText(t.Fg("accent", tui.ChalkBold("Welcome to PiG, the minimal coding agent.")), 1, 0, nil))
 	c.Add(tui.NewSpacer(1))
 
 	switch c.step {
@@ -200,22 +200,6 @@ func (c *FirstTimeSetupComponent) moveSelection(delta int) {
 	c.update()
 }
 
-// CapturesSelectPageInput reports that the dialog handles tui.select.pageUp and tui.select.pageDown.
-func (c *FirstTimeSetupComponent) CapturesSelectPageInput() bool { return true }
-
-// pageSize is the option count of the current step, so a page key moves to the first or last option
-// (first-time-setup.ts getPageSize of Pi PR #7680). The sprite step also lists a choice of no sprite.
-func (c *FirstTimeSetupComponent) pageSize() int {
-	switch c.step {
-	case firstTimeSetupStepTheme:
-		return len(firstTimeSetupThemeOptions)
-	case firstTimeSetupStepSprite:
-		return len(c.sprites) + 1
-	default:
-		return len(firstTimeSetupAnalyticsOptions)
-	}
-}
-
 // HandleInput moves, advances, submits or cancels.
 func (c *FirstTimeSetupComponent) HandleInput(data string) {
 	kb := tui.GetKeybindings()
@@ -224,10 +208,6 @@ func (c *FirstTimeSetupComponent) HandleInput(data string) {
 		c.moveSelection(-1)
 	case kb.Matches(data, tui.KBSelectDown) || data == "j":
 		c.moveSelection(1)
-	case kb.Matches(data, tui.KBSelectPageUp):
-		c.moveSelection(-c.pageSize())
-	case kb.Matches(data, tui.KBSelectPageDown):
-		c.moveSelection(c.pageSize())
 	case kb.Matches(data, tui.KBSelectConfirm) || data == "\n":
 		switch c.step {
 		case firstTimeSetupStepTheme:
@@ -278,7 +258,7 @@ func ShowFirstTimeSetup(settings FirstTimeSetupSettings, opts StartupUIOptions) 
 }
 
 func showFirstTimeSetupWith(settings FirstTimeSetupSettings, opts StartupUIOptions, ui *tui.TuiMainScreen, terminal startupTerminal) (*FirstTimeSetupResult, error) {
-	configureStartupTheme(opts.Settings, opts.ThemePaths)
+	configureStartupTui(opts)
 	preview := tui.SystemThemeName
 	tui.SetThemeByName(preview)
 	var result *FirstTimeSetupResult

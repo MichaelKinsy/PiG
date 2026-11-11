@@ -18,7 +18,7 @@ func TestHighlightCode_CacheMatchesUncached(t *testing.T) {
 
 	check := func(when string) {
 		for _, s := range samples {
-			want := highlightCodeUncached(highlightRegistry(), s.code, s.lang, false, ActiveTheme())
+			want := highlightCodeUncached(highlightRegistry(), s.code, s.lang, ActiveTheme())
 			// two cached calls to exercise store-then-hit
 			for range 2 {
 				got := HighlightCode(s.code, s.lang)
@@ -56,16 +56,15 @@ func TestHighlightCodeLinesBelongToTheCaller(t *testing.T) {
 	SetTheme("dark")
 	block := "package main\n\nfunc f(x int) int {\n\treturn x*2 + 1 // doubled\n}\n\nfunc g() string {\n\treturn \"g\"\n}\n\nvar h = f(2)\n"
 	for _, c := range []struct {
-		name             string
-		highlight        func(code, lang string) []string
-		codeBlockOnError bool
-	}{{"HighlightCode", HighlightCode, false}, {"markdown highlightCode", highlightMarkdownCode, true}} {
+		name      string
+		highlight func(code, lang string) []string
+	}{{"HighlightCode", HighlightCode}} {
 		hlMu.Lock()
 		resetHighlightCacheLocked()
 		hlMu.Unlock()
 		for end := 0; end <= len(block); end += 7 {
 			code := block[:end]
-			want := highlightCodeUncached(highlightRegistry(), code, "go", c.codeBlockOnError, ActiveTheme())
+			want := highlightCodeUncached(highlightRegistry(), code, "go", ActiveTheme())
 			for call := range 2 {
 				got := c.highlight(code, "go")
 				if !slices.Equal(got, want) {

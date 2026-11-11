@@ -6,7 +6,7 @@
 // Every step is a count of a self-requeuing microtask, so the number is exact. Run by lib/run.mjs under the hooks.
 import { join } from "node:path"
 import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context"
-import { Type } from "@earendil-works/pi-ai"
+import { obj } from "@earendil-works/pi-schema"
 import { createModels } from "@earendil-works/pi-ai/models"
 import { fauxAssistantMessage, fauxProvider, fauxText, fauxToolCall } from "@earendil-works/pi-ai/providers/faux"
 import { createRegistry, defineExtension, defineTool, Harness, hook, ToolTask } from "@earendil-works/pi-durable"
@@ -16,7 +16,7 @@ let passes = 0, counting = false
 const spin = () => { if (counting) { passes++; queueMicrotask(spin) } }
 const mark = label => console.log(`${label}: ${passes}`)
 
-const parameters = Type.Object({})
+const parameters = obj({})
 const tool = defineTool({
 	name: "probe", description: "probe", parameters, replay: "safe",
 	execute: async (_args, api) => { mark(`execute ${api.callId}`); return { content: [{ type: "text", text: `ok ${api.callId}` }] } },

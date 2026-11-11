@@ -64,9 +64,10 @@ func runCompactionCatalogOperation(t *testing.T, session *Session, operation fun
 	t.Helper()
 	marker := &agent.AgentSettledEvent{}
 	done := make(chan []agent.AgentEvent, 1)
+	eventsCh := session.Events()
 	go func() {
 		var events []agent.AgentEvent
-		for event := range session.Events() {
+		for event := range eventsCh {
 			if event == marker {
 				done <- events
 				return

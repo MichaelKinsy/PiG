@@ -29,7 +29,7 @@ Use `/mcp` inside an interactive session to inspect connections, sign in, reconn
 
 ## Configure servers
 
-PiG reads user-level servers from `~/.pig/agent/mcp.json` and project servers from `.pig/mcp.json`. Project configuration is read only after [project trust](security.md#project-trust) is granted. A project entry replaces a user-level entry with the same name.
+PiG reads user-level servers from `~/.pig/agent/mcp.json` and project servers from `.pig/mcp.json`. Project configuration is read only after [project trust](/docs/latest/trust) is granted. A project entry replaces a user-level entry with the same name.
 
 A project entry without `command`, `url`, or `type` overrides only `enabled`, `exposure`, and `toolExposure` of the user-level server with the same name and keeps the rest, including `env`, `headers`, and `auth`. For example, this turns off a user-level server in one project:
 
@@ -94,10 +94,10 @@ Keep personal servers and servers with credentials in the user-level file. Use t
 | `pig mcp add <server> [options] --url <url>` | Add or replace a streamable HTTP server |
 | `pig mcp remove <server> [-l]` | Remove a server; stored OAuth credentials are kept |
 | `pig mcp list [--json]` | Connect to every enabled server and print its state, tools and errors; exits 1 on failure |
-| `pig mcp login <server> [--timeout <seconds>]` | Sign in through the browser; `--timeout` limits the whole sign-in, including requests to the authorization server (default: 300 seconds) |
-| `pig mcp logout <server>` | Delete the stored OAuth credentials |
+| `pig mcp login <server> [-l] [--timeout <seconds>]` | Sign in through the browser; `--timeout` limits the whole sign-in, including requests to the authorization server (default: 300 seconds); `-l` requires the server to be defined in the project's `.pig/mcp.json` |
+| `pig mcp logout <server> [-l]` | Delete the stored OAuth credentials |
 
-Options for `add` and `remove`: `-l`, `--local` writes `.pig/mcp.json` in the current project instead of the user-level file.
+Options for `add`, `remove`, `login`, and `logout`: `-l`, `--local` writes `.pig/mcp.json` in the current project instead of the user-level file.
 
 Options for `add`:
 
@@ -111,6 +111,7 @@ Options for `add`:
 | `--oauth-client-id <id>`, `--oauth-client-secret <secret>` | Pre-registered OAuth client; the secret can be `${NAME}` or `!command` |
 | `--oauth-callback-port <port>` | Fixed OAuth callback port |
 | `--oauth-client-name <name>` | Client name sent when registering with the OAuth server |
+| `--oauth-client-registration <mode>` | How PiG identifies itself without `--oauth-client-id`: `auto` (default), `cimd`, or `dcr` |
 | `--exposure <mode>` | `codemode` (default), `deferred`, `direct`, or `hidden` |
 | `--description <text>` | What the server offers, shown in the system prompt |
 
@@ -249,7 +250,7 @@ Remote servers that use OAuth, such as Sentry, need no credentials in `mcp.json`
 
 When the server rejects an unauthenticated connection, `/mcp` shows that it needs sign-in. Select "Sign in", run `/mcp login sentry`, or run `pig mcp login sentry`. PiG opens the authorization page and waits for approval. If the browser runs on another machine, such as over SSH, paste its redirected URL into the sign-in screen. The sign-in screens cancel with Esc at every step, a session that ends stops a running sign-in, and each request to the authorization server times out after 15 seconds. A running session uses the new credentials on its next turn.
 
-PiG registers itself with the authorization server, stores tokens in `~/.pig/agent/mcp-auth.json`, and refreshes access tokens when they expire or the server rejects them. If a server later requests additional scope, PiG asks for sign-in again and keeps the scope granted so far. Signing out deletes the stored credentials.
+PiG identifies itself to the authorization server by registering a client (or, with `clientRegistration` set to `cimd`, with Pi's Client ID Metadata Document), stores tokens in `~/.pig/agent/mcp-auth.json`, and refreshes access tokens when they expire or the server rejects them. If a server later requests additional scope, PiG asks for sign-in again and keeps the scope granted so far. Signing out deletes the stored credentials.
 
 Credentials belong to a server name and URL. Servers with the same URL under different names, such as one per account, sign in separately; servers with the same name and URL in different `mcp.json` files share one sign-in. Credentials that an earlier version stored by URL alone move to the first server that uses them.
 
@@ -282,7 +283,7 @@ PiG registers under its application name, `pig`. Some servers only accept regist
 
 The name is only sent when PiG registers a client. To register again under a new name, sign out first.
 
-Some authorization servers allow clients by their Client ID Metadata Document URL instead of registering them. Set `clientRegistration` to `cimd` to identify as Pi's document on pi.dev instead of registering:
+Some authorization servers allow clients by their Client ID Metadata Document URL instead of registering them. `clientRegistration` chooses how PiG identifies itself without `clientId`: `auto` (default), `dcr` to always register a client dynamically, or `cimd` to always use Pi's document on pi.dev. `auto` uses the document only when the application is named `pi`, the authorization server advertises support for documents and public clients, `clientName` is not set, and `callbackUrl` is `/callback` on `localhost` or `127.0.0.1` (Pi 908aa7b7 makes `auto` its default). PiG is not named `pi`, so under `auto` it registers a client, as Pi does for any rebranded build, and does not present itself as Pi's client; only `cimd` does. A client registered before stays in use while its redirect URI matches, until you sign out; `cimd` replaces it.
 
 ```json
 {
@@ -292,9 +293,9 @@ Some authorization servers allow clients by their Client ID Metadata Document UR
 }
 ```
 
-The client ID is `https://pi.dev/oauth/client.json` with the redirect URI `http://127.0.0.1:<port>/callback`. If the authorization server does not send the `iss` parameter in authorization responses (RFC 9207), PiG uses a document and redirect path specific to the MCP server instead: `https://pi.dev/oauth/<id>/client.json` with `http://127.0.0.1:<port>/callback/<id>`. The authorization server must advertise Client ID Metadata Document support and public clients, or sign-in fails. `cimd` cannot be combined with `clientId` or `clientName`, and a `callbackUrl` must use `localhost` or `127.0.0.1` with the path `/callback`.
+`pig mcp add --oauth-client-registration <mode>` sets it when adding a server. The client ID is `https://pi.dev/oauth/client.json` with the redirect URI `http://127.0.0.1:<port>/callback`. If the authorization server does not send the `iss` parameter in authorization responses (RFC 9207), PiG uses a document and redirect path specific to the MCP server instead: `https://pi.dev/oauth/<id>/client.json` with `http://127.0.0.1:<port>/callback/<id>`. The authorization server must advertise Client ID Metadata Document support and public clients, or sign-in fails. `cimd` cannot be combined with `clientId` or `clientName`, and a `callbackUrl` must use `localhost` or `127.0.0.1` with the path `/callback`.
 
-When an authorization response carries an `iss` parameter but PiG discovered no authorization server metadata, sign-in fails with an issuer mismatch error before the token request, as in Pi 1.4.0. Pi 1.1.0 skipped this check when metadata was absent.
+When an authorization response carries an `iss` parameter but PiG discovered no authorization server metadata, sign-in fails with an issuer mismatch error before the token request, as in Pi 1.5.0. Pi 1.1.0 skipped this check when metadata was absent.
 
 PiG finds the authorization server through the server's protected resource metadata (RFC 9728) and checks that the authorization server's metadata names the expected issuer (RFC 8414). Some servers advertise the wrong authorization server or none, so sign-in opens a page that does not exist. Set `authServerMetadataUrl` to the metadata document of the right authorization server:
 
@@ -343,6 +344,26 @@ Servers with `codemode` or `deferred` tools are listed in the `mcp_servers` sect
 PiG activates `codemode` when a server with `codemode` exposure connects. It activates `tool_search` for a server with `deferred` exposure. To make the model see a tool without searching, give it `direct` exposure with `toolExposure`.
 
 `--tools` does not remove MCP tools unless one of its entries starts with `mcp__`; `pig --tools read,codemode,'mcp__radius__*'` keeps only the tools of `radius`. `--exclude-tools` accepts the same patterns, and `--no-mcp` disables MCP for one run (see [Tools](cli.md#mcp-tools)).
+
+A [Piglet](/docs/latest/piglets#tool-scope) scope removes tools from the same registry. A tool that the Piglet removes is not reachable through `codemode` or `tool_search`. The code computes this table. A test keeps it equal to the code.
+
+<!-- tool-scope-table:start (generated by coding/piglet/scope_table.go; do not edit) -->
+
+Columns 2 and 3 are the tools in the registry, where `codemode` and `tool_search` can reach them. Column 4 is what the model sees at start for a server with `direct` exposure.
+
+| Case | MCP server tools in the registry | MCP resource tools in the registry | MCP server tools offered to the model | `codemode` and `tool_search` in the registry |
+|---|---|---|---|---|
+| Piglet with no `extensions:` section | all | all | all | all |
+| Piglet with `extensions:` but without `pig-mcp-adapter` | none | none | none | all |
+| Piglet with `pig-mcp-adapter` and no `tools:` | all | all | all | all |
+| Piglet with `pig-mcp-adapter` and `tools: [mcp__docs__a]` | only the tools it names | none | only the tools it names | all |
+| Piglet run with `-e builtin:codemode` and `-e builtin:tool-search`, without `pig-mcp-adapter` | none | none | none | all |
+| Stock `--tools read` | all | all | none | none |
+| Stock `--tools read,codemode,tool_search,mcp__docs__a` | only the tools it names | none | only the tools it names | all |
+| Stock `--exclude-tools mcp__docs__b` | only the tools it names | all | only the tools it names | all |
+| Stock `--no-tools` | none | none | none | none |
+
+<!-- tool-scope-table:end -->
 
 `toolExposure` overrides the server exposure for individual tools. Keys are exact server tool names or patterns where `*` matches any characters. Exact names win over patterns; among patterns, the first match wins. A server with `hidden` exposure can expose only selected tools:
 

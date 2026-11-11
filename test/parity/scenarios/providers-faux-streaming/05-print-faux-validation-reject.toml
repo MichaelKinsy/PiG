@@ -23,6 +23,6 @@ timeout_seconds = 30
 
 [assert]
 exit_code = 0
-both_contain = ['Validation failed for tool "bash":', '  - command: must be string', '"command": []']
+both_contain = ['Validation failed for tool "bash":', '  - command: expected string, got array', '"command": []']
 output_equal = true
 runs = 3

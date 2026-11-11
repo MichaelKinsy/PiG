@@ -122,3 +122,15 @@ func TestExecDeliversPiQuoteArgumentVectorsThroughTheSpawnPath(t *testing.T) {
 	}
 	check(args, quoted)
 }
+
+// sys/windows.rs on_exit_signal does nothing, since the daemon cannot catch TerminateProcess: no signal is ever delivered, and
+// stopping the delivery is harmless (a87b742f documents that a job object ends each command's own process only).
+func TestWindowsDaemonHandlesNoExitSignal(t *testing.T) {
+	signals, stop := notifyExitSignals()
+	defer stop()
+	select {
+	case number := <-signals:
+		t.Fatalf("received signal %d", number)
+	default:
+	}
+}

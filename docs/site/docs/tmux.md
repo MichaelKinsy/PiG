@@ -1,6 +1,6 @@
 # tmux Setup
 
-PiG works inside tmux, but tmux strips modifier information from certain keys by default. Without configuration, `Shift+Enter` and `Ctrl+Enter` are usually indistinguishable from plain `Enter`. The setup is the same as for Pi 1.4.0 ([Pi's tmux guide](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/tmux.md)).
+PiG works inside tmux, but tmux strips modifier information from certain keys by default. Without configuration, `Shift+Enter` and `Ctrl+Enter` are usually indistinguishable from plain `Enter`. The setup is the same as for Pi 1.5.0 ([Pi's tmux guide](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/tmux.md)).
 
 ## Recommended Configuration
 
@@ -71,3 +71,9 @@ This affects the default keybindings (`Enter` to submit, `Shift+Enter` for newli
 - A terminal emulator that supports extended keys (Ghostty, Kitty, iTerm2, WezTerm, Windows Terminal)
 
 With tmux 3.2 through 3.4, omit `extended-keys-format csi-u`; PiG still supports tmux's default xterm `modifyOtherKeys` format.
+
+## Known issues
+
+| Issue | Affects | Remedy |
+|---|---|---|
+| Text such as `c0c/0c0c/0c0c` appears in the editor at startup ([tmux#4749](https://github.com/tmux/tmux/issues/4749)) | tmux 3.6 | Upgrade tmux. Changing PiG's theme does not help. |

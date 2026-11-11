@@ -130,9 +130,10 @@ var noteTool = &durable.ToolRegistration{
 		Name:        "note",
 		Description: "Appends a line to the conversation's notes and starts a job",
 		Parameters: map[string]any{
-			"type":       "object",
-			"properties": map[string]any{"text": map[string]any{"type": "string"}},
-			"required":   []any{"text"},
+			"type":                 "object",
+			"properties":           map[string]any{"text": map[string]any{"type": "string"}},
+			"required":             []any{"text"},
+			"additionalProperties": false,
 		},
 	},
 	Execute: func(ctx context.Context, args any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
@@ -168,9 +169,10 @@ var spawnTool = &durable.ToolRegistration{
 		Name:        "spawn",
 		Description: "Runs a child conversation",
 		Parameters: map[string]any{
-			"type":       "object",
-			"properties": map[string]any{"task": map[string]any{"type": "string"}},
-			"required":   []any{"task"},
+			"type":                 "object",
+			"properties":           map[string]any{"task": map[string]any{"type": "string"}},
+			"required":             []any{"task"},
+			"additionalProperties": false,
 		},
 	},
 	Replay: durable.ReplaySafe,

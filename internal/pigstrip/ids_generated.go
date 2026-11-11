@@ -59,6 +59,7 @@ var knownIDs = map[string][]string{
 		"docs",
 		"export-html",
 		"extension-sdk-go",
+		"extension-sdk-lisp",
 		"extension-sdk-python",
 		"extension-sdk-rust",
 		"mermaid",

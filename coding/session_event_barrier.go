@@ -20,13 +20,14 @@ type sessionEventBarrier struct {
 // events. The consumer calls AcknowledgeEvent before event conversion; it must
 // not call FlushEvents from its own event callback. Cancellation and Close
 // release the wait even when no consumer is running. After Dispose the Session
-// has no listeners, so there is nothing to wait for. After DiscardEvents the
-// barrier holds once every preceding event executed.
+// has no listeners, so there is nothing to wait for. Before the first
+// Events call and after DiscardEvents the barrier holds once every preceding
+// event executed.
 func (s *Session) FlushEvents(ctx context.Context) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	if s.discardEvents.Load() && s.execMu.TryLock() {
+	if !s.eventsSubscribed.Load() && s.execMu.TryLock() {
 		// Nothing queued ahead and nothing executing: every preceding event executed.
 		idle := s.inlineReadyLocked()
 		s.execMu.Unlock()

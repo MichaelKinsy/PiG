@@ -170,3 +170,35 @@ def test_dispatch_during_load_is_served() -> None:
         _write_frame(host.conn, {"type": "ready", "ready": {"cwd": host.tmp, "width": 80}})
     finally:
         host.stop()
+
+
+# A listener served while the extension loads may unsubscribe itself; the Host then releases it with an events.release notify that can arrive before ready. The load does not fail on it, and the released listener is gone.
+# The Go SDK's test is TestEventBusReleaseDuringLoadIsServed.
+def test_release_during_load_is_served() -> None:
+    ran: list = []
+
+    def once(ctx, data) -> None:
+        unsubscribe()
+        ran.append(data)
+
+    ext = pig_sdk.Extension("bus")
+    unsubscribe = ext.events.on("ch", once)
+    host = _Host(ext)
+    try:
+        on, _ = host.call("events.on")
+        while _read_frame(host.conn)["type"] != "register":
+            pass
+        args = {"handlerId": on["handlerId"], "channel": "ch"}
+        _write_frame(host.conn, {"type": "request", "id": "d1", "request": {"method": "events.dispatch", "args": {**args, "json": "first"}}})
+        off, _ = host.call("events.off")
+        assert off["handlerId"] == on["handlerId"]
+        assert host.response()["id"] == "d1"
+        _write_frame(host.conn, {"type": "notify", "notify": {"method": "events.release", "args": {"handlerId": on["handlerId"]}}})
+        _write_frame(host.conn, {"type": "ready", "ready": {"cwd": host.tmp, "width": 80}})
+        _write_frame(host.conn, {"type": "request", "id": "d2", "request": {"method": "events.dispatch", "args": {**args, "json": "second"}}})
+        response = host.response()
+        assert response["id"] == "d2"
+        assert "Unknown event bus handler" in response["response"]["error"]["message"]
+        assert ran == ["first"]
+    finally:
+        host.stop()

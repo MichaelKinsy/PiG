@@ -1750,7 +1750,7 @@ func awaitCallback[T any](host *HostImpl, call func() (T, error)) *Promise[T] {
 	return promise
 }
 
-// resolveRoute authorizes, resolves (maybe spawns) and authorizes again; its promise settles with the synced
+// resolveRoute authorizes, resolves (maybe spawns) and admits the host, and authorizes again; its promise settles with the synced
 // connection to the host (host.ts:849-872). still (nil: always) reports whether the request is still authorized; it is
 // checked after every await. It starts on the loop, and every continuation after an await comes back to the loop.
 func (host *HostImpl) resolveRoute(route Route, hostName string, principal Principal, still func() bool) *Promise[*Connection] {
@@ -1783,27 +1783,30 @@ func (host *HostImpl) resolveRoute(route Route, hostName string, principal Princ
 			return
 		}
 		awaitCallback(host, func() (Link, error) { return route.Resolve(hostName) }).then(func(link Link, err error) {
-			if err == nil && !current() {
-				err = revoked()
-			}
 			if err != nil {
 				reject(err)
+				return
+			}
+			// Admitted before the checks: a host the route spawned for a request that is gone or refused meanwhile still runs,
+			// and its own references to this host would otherwise wait on a link nobody reads until they time out.
+			var connection *Connection
+			for _, candidate := range host.connections.Keys() {
+				if candidate.link == link {
+					connection = candidate
+					break
+				}
+			}
+			if connection == nil {
+				connection = host.addConnection(link, connectionConfig{role: "downstream", principal: route.Principal(hostName), peer: Peer{kind: KindHost, name: &hostName}})
+			}
+			if !current() {
+				reject(revoked())
 				return
 			}
 			authorize().then(func(ok bool, err error) {
 				if err := authorized(ok, err); err != nil {
 					reject(err)
 					return
-				}
-				var connection *Connection
-				for _, candidate := range host.connections.Keys() {
-					if candidate.link == link {
-						connection = candidate
-						break
-					}
-				}
-				if connection == nil {
-					connection = host.addConnection(link, connectionConfig{role: "downstream", principal: route.Principal(hostName), peer: Peer{kind: KindHost, name: &hostName}})
 				}
 				connection.whenSynced().then(func(_ struct{}, err error) {
 					if err == nil && !current() {

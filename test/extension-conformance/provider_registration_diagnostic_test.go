@@ -34,6 +34,7 @@ func TestProviderRegistrationFailureIsADiagnosticAcrossSDKs(t *testing.T) {
 		{"go-isolated", "testdata/provider-diag-go", "", false, false}, {"go-packed", "testdata/provider-diag-go", "testdata/provider-go-sibling", false, true},
 		{"python-isolated", "testdata/provider-diag-python", "", false, false}, {"python-packed", "testdata/provider-diag-python", "testdata/provider-python-sibling", false, true},
 		{"rust-isolated", "testdata/provider-diag-rust", "", false, false}, {"rust-packed", "testdata/provider-diag-rust", "testdata/provider-rust-sibling", false, true},
+		{"lisp-isolated", "testdata/provider-diag-lisp", "", false, false}, {"lisp-packed", "testdata/provider-diag-lisp", "testdata/provider-lisp-sibling", false, true},
 		{"node-isolated", "testdata/provider-diag.mjs", "", false, false}, {"node-packed", "testdata/provider-diag.mjs", "testdata/provider-sibling.mjs", false, true},
 		{"fused-go", "", "", true, false},
 	}

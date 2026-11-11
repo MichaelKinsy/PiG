@@ -35,6 +35,7 @@ func runTrampoline() {
 		os.Exit(127)
 	}
 	path, args, env := os.Args[1], os.Args[2:2+n], os.Args[2+n:]
+	//nolint:gosec // G204 (class b): path and args are PiG's own re-exec trampoline arguments, read only when PiG's private env marker is the sole environment entry and the count matches.
 	err = syscall.Exec(path, args, env)
 	fmt.Fprintf(os.Stderr, "pig: exec %s: %v\n", path, err)
 	os.Exit(127)

@@ -10,6 +10,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/nodefs"
 )
 
 // ─── Write Tool ───────────────────────────────────────────────────────────────
@@ -42,7 +43,7 @@ func (t *WriteTool) operations() WriteOperations {
 
 // writeFileString is os.WriteFile(path, []byte(content), 0o644) without copying content: File.WriteString writes the string's bytes.
 func writeFileString(path, content string) error {
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
+	f, err := nodefs.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
 	if err != nil {
 		return err
 	}

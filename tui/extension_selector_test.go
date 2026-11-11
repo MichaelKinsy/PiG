@@ -391,8 +391,8 @@ func TestExtensionSelectorComponentOptions(t *testing.T) {
 	}
 }
 
-// Pig's preview column (D2) draws only beside at least one option row, and the selector reports that it handles the page keys itself (D155).
-func TestExtensionSelectorComponentHasNoPreviewWithoutOptionsAndCapturesThePageKeys(t *testing.T) {
+// Pig's preview column (D2) draws only beside at least one option row, and the selector does not capture viewport input, as in Pi.
+func TestExtensionSelectorComponentHasNoPreviewWithoutOptionsAndDoesNotCaptureViewportInput(t *testing.T) {
 	preview := func(int) []string { return []string{"preview line"} }
 	build := func(options []string) *ExtensionSelectorComponent {
 		selector := NewExtensionSelectorComponent("Pick", options, nil, nil)
@@ -406,7 +406,7 @@ func TestExtensionSelectorComponentHasNoPreviewWithoutOptionsAndCapturesThePageK
 	if !strings.Contains(strings.Join(build([]string{"a"}).Render(120), "\n"), "preview line") {
 		t.Error("a selector with an option lost the preview")
 	}
-	if !build([]string{"a"}).CapturesSelectPageInput() {
-		t.Error("the selector must capture tui.select.pageUp and pageDown")
+	if CapturesViewportInput(build([]string{"a"})) {
+		t.Error("the selector must not capture viewport input")
 	}
 }

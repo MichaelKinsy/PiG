@@ -553,7 +553,8 @@ func TestShortenPath(t *testing.T) {
 		want string
 	}{
 		{"home itself", home, "~"},
-		{"subdir", home + "/projects/foo", "~/projects/foo"},
+		// Pi's shortenHomePath writes the rest with the platform's separator ("~\projects\foo" on Windows).
+		{"subdir", filepath.Join(home, "projects", "foo"), filepath.Join("~", "projects", "foo")},
 		{"not under home", "/tmp/bar", "/tmp/bar"},
 		{"empty", "", ""},
 	}

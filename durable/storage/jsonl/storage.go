@@ -300,6 +300,8 @@ type JsonlStorage struct {
 	stateMu     sync.Mutex
 	closed      bool
 	poisonError *JsonlStoragePoisonedError
+	// writing is closed once the commit being appended is done; its batches are in memory already (Commit).
+	writing chan struct{}
 }
 
 var _ durable.Storage = (*JsonlStorage)(nil)
@@ -338,55 +340,127 @@ type resolvedSidecar struct {
 	path    string
 }
 
-// Commit publishes every sidecar record, then the main marker, then applies the batch in memory, adopts it, and reclaims
-// sidecars whose content the batch superseded.
-func (jsonl *JsonlStorage) Commit(ctx context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
+// Commit commits batches with one append per affected file: every batch's sidecar records first, then their markers in
+// one write of main.jsonl. Each batch is checked against the state the earlier ones left, so memory applies each one as
+// it passes, and reads wait until the appends are done; the first batch refused ends the commit. A torn append of the
+// markers recovers a shorter complete prefix; any failure once a batch applied poisons the storage.
+func (jsonl *JsonlStorage) Commit(
+	ctx context.Context, batches [][]durable.StorageWrite, receive func(index int, seq durable.Seq),
+) (durable.CommitResult, error) {
 	jsonl.commitMu.Lock()
 	defer jsonl.commitMu.Unlock()
 	if err := jsonl.assertUsable(); err != nil {
-		return 0, err
+		return durable.CommitResult{}, err
 	}
-	prepared, err := jsonl.memory.PrepareCommit(writes)
+	var seqs []durable.Seq
+	var encoded []encodedCommit
+	reclamations := newOrderedFiles()
+	var refused error
+	writing := make(chan struct{})
+	jsonl.stateMu.Lock()
+	jsonl.writing = writing
+	jsonl.stateMu.Unlock()
+	err := func() error {
+		defer func() {
+			jsonl.stateMu.Lock()
+			jsonl.writing = nil
+			jsonl.stateMu.Unlock()
+			close(writing)
+		}()
+		for _, writes := range batches {
+			prepared, err := jsonl.memory.PrepareCommit(writes)
+			if err != nil {
+				refused = err
+				break
+			}
+			resolved := prepared.Writes()
+			commit, err := encodeCommit(prepared.Seq(), resolved)
+			if err != nil {
+				return jsonl.failedCommit(len(seqs), err)
+			}
+			// A sidecar an earlier batch replaces keeps what the later ones append, unless they replace it again.
+			for _, file := range commit.sidecars.names {
+				if replacement, ok := reclamations.get(file); ok {
+					content, _ := commit.sidecars.get(file)
+					reclamations.set(file, replacement+content)
+				}
+			}
+			planned := jsonl.planReclamations(resolved, commit)
+			for _, file := range planned.names {
+				content, _ := planned.get(file)
+				reclamations.set(file, content)
+			}
+			seqs = append(seqs, prepared.Apply())
+			jsonl.adoptSidecarState(resolved)
+			encoded = append(encoded, commit)
+		}
+		if len(encoded) > 0 {
+			if err := jsonl.appendCommits(ctx, encoded); err != nil {
+				return jsonl.failedCommit(len(seqs), err)
+			}
+		}
+		return nil
+	}()
 	if err != nil {
-		return 0, err
+		return durable.CommitResult{}, err
 	}
-	resolved := prepared.Writes()
-	encoded, err := encodeCommit(prepared.Seq(), resolved)
-	if err != nil {
-		return 0, err
+	// The markers are appended: the batches are durable. Reclaiming sidecars comes after the receipts.
+	for index, seq := range seqs {
+		receive(index, seq)
 	}
-	reclamations := jsonl.planReclamations(resolved, encoded)
-	sidecars := make([]resolvedSidecar, 0, len(encoded.sidecars.names))
-	for _, file := range encoded.sidecars.names {
+	jsonl.reclaimSidecars(ctx, reclamations)
+	return durable.CommitResult{Stored: len(seqs), Refused: refused}, nil
+}
+
+// failedCommit is the error of a commit that failed after stored batches applied in memory: memory runs ahead of the
+// file, so the storage is poisoned before the reads waiting on the append go on and none returns what is not stored.
+func (jsonl *JsonlStorage) failedCommit(applied int, err error) error {
+	if applied == 0 {
+		return err
+	}
+	return jsonl.poison(err)
+}
+
+// appendCommits appends the sidecar records of commits, flushed with fsync, then their markers in one write of
+// main.jsonl.
+func (jsonl *JsonlStorage) appendCommits(ctx context.Context, commits []encodedCommit) error {
+	contents := newOrderedFiles()
+	for _, commit := range commits {
+		for _, file := range commit.sidecars.names {
+			content, _ := commit.sidecars.get(file)
+			previous, _ := contents.get(file)
+			contents.set(file, previous+content)
+		}
+	}
+	sidecars := make([]resolvedSidecar, 0, len(contents.names))
+	for _, file := range contents.names {
 		path, err := jsonl.resolveFile(ctx, file)
 		if err != nil {
-			return 0, err
+			return err
 		}
-		content, _ := encoded.sidecars.get(file)
+		content, _ := contents.get(file)
 		sidecars = append(sidecars, resolvedSidecar{file: file, content: content, path: path})
 	}
-
 	for _, sidecar := range sidecars {
 		if err := jsonl.fs.AppendFile(ctx, sidecar.path, sidecar.content); err != nil {
-			return 0, jsonl.poison(errorFromFile("append to "+sidecar.file, err))
+			return jsonl.poison(errorFromFile("append to "+sidecar.file, err))
 		}
 	}
 	if jsonl.fsync {
 		for _, sidecar := range sidecars {
 			if err := jsonl.fs.FlushFile(ctx, sidecar.path); err != nil {
-				return 0, jsonl.poison(errorFromFile("flush of "+sidecar.file, err))
+				return jsonl.poison(errorFromFile("flush of "+sidecar.file, err))
 			}
 		}
 	}
-	if err := jsonl.fs.AppendFile(ctx, jsonl.mainPath, encoded.marker); err != nil {
-		return 0, jsonl.poison(errorFromFile("append to "+mainFile, err))
+	var markers strings.Builder
+	for _, commit := range commits {
+		markers.WriteString(commit.marker)
 	}
-	seq := prepared.Apply()
-	jsonl.adoptSidecarState(resolved)
-	// The marker is appended: the batch is durable. Reclaiming sidecars comes after adoption.
-	adopt(seq)
-	jsonl.reclaimSidecars(ctx, reclamations)
-	return seq, nil
+	if err := jsonl.fs.AppendFile(ctx, jsonl.mainPath, markers.String()); err != nil {
+		return jsonl.poison(errorFromFile("append to "+mainFile, err))
+	}
+	return nil
 }
 
 // MintId returns a fresh candidate from the Session-global numeric ID namespace.
@@ -400,7 +474,7 @@ func (jsonl *JsonlStorage) MintId() (int64, error) {
 
 // Conversation looks up one conversation by exact ID.
 func (jsonl *JsonlStorage) Conversation(ctx context.Context, id durable.ConversationId) (*durable.ConversationRecord, error) {
-	store, err := jsonl.store()
+	store, err := jsonl.readable(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -411,7 +485,7 @@ func (jsonl *JsonlStorage) Conversation(ctx context.Context, id durable.Conversa
 func (jsonl *JsonlStorage) ScanConversations(
 	ctx context.Context, query durable.ConversationQuery, limit int, cursor durable.Cursor,
 ) (durable.Page[durable.ConversationRecord, durable.Cursor], error) {
-	store, err := jsonl.store()
+	store, err := jsonl.readable(ctx)
 	if err != nil {
 		return durable.Page[durable.ConversationRecord, durable.Cursor]{}, err
 	}
@@ -420,7 +494,7 @@ func (jsonl *JsonlStorage) ScanConversations(
 
 // Entry looks up one global entry and the sequence of the commit that persisted it.
 func (jsonl *JsonlStorage) Entry(ctx context.Context, id durable.EntryId) (*durable.EntryAt, error) {
-	store, err := jsonl.store()
+	store, err := jsonl.readable(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -431,7 +505,7 @@ func (jsonl *JsonlStorage) Entry(ctx context.Context, id durable.EntryId) (*dura
 func (jsonl *JsonlStorage) VisibleEntry(
 	ctx context.Context, conversationId durable.ConversationId, id durable.EntryId,
 ) (*durable.EntryAt, error) {
-	store, err := jsonl.store()
+	store, err := jsonl.readable(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -442,7 +516,7 @@ func (jsonl *JsonlStorage) VisibleEntry(
 func (jsonl *JsonlStorage) FindLatestHeadMarker(
 	ctx context.Context, conversationId durable.ConversationId, atOrBeforeEntryId *durable.EntryId,
 ) (*durable.EntryRecord, error) {
-	store, err := jsonl.store()
+	store, err := jsonl.readable(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -453,7 +527,7 @@ func (jsonl *JsonlStorage) FindLatestHeadMarker(
 func (jsonl *JsonlStorage) ScanEntries(
 	ctx context.Context, query durable.EntryQuery, limit int, cursor durable.Cursor,
 ) (durable.Page[durable.EntryRecord, durable.Cursor], error) {
-	store, err := jsonl.store()
+	store, err := jsonl.readable(ctx)
 	if err != nil {
 		return durable.Page[durable.EntryRecord, durable.Cursor]{}, err
 	}
@@ -462,7 +536,7 @@ func (jsonl *JsonlStorage) ScanEntries(
 
 // Task looks up the latest complete record for one task.
 func (jsonl *JsonlStorage) Task(ctx context.Context, id durable.TaskId) (*storedTask, error) {
-	store, err := jsonl.store()
+	store, err := jsonl.readable(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -473,7 +547,7 @@ func (jsonl *JsonlStorage) Task(ctx context.Context, id durable.TaskId) (*stored
 func (jsonl *JsonlStorage) ScanTasks(
 	ctx context.Context, query durable.TaskQuery, limit int, cursor durable.Cursor,
 ) (durable.Page[storedTask, durable.Cursor], error) {
-	store, err := jsonl.store()
+	store, err := jsonl.readable(ctx)
 	if err != nil {
 		return durable.Page[storedTask, durable.Cursor]{}, err
 	}
@@ -482,7 +556,7 @@ func (jsonl *JsonlStorage) ScanTasks(
 
 // Submission looks up the latest complete record for one admitted submission.
 func (jsonl *JsonlStorage) Submission(ctx context.Context, id durable.SubmissionId) (*durable.SubmissionRecord, error) {
-	store, err := jsonl.store()
+	store, err := jsonl.readable(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -493,7 +567,7 @@ func (jsonl *JsonlStorage) Submission(ctx context.Context, id durable.Submission
 func (jsonl *JsonlStorage) ScanSubmissions(
 	ctx context.Context, query durable.SubmissionQuery, limit int, cursor durable.Cursor,
 ) (durable.Page[durable.SubmissionRecord, durable.Cursor], error) {
-	store, err := jsonl.store()
+	store, err := jsonl.readable(ctx)
 	if err != nil {
 		return durable.Page[durable.SubmissionRecord, durable.Cursor]{}, err
 	}
@@ -504,7 +578,7 @@ func (jsonl *JsonlStorage) ScanSubmissions(
 func (jsonl *JsonlStorage) SubmissionByRequest(
 	ctx context.Context, conversationId durable.ConversationId, requestId string,
 ) (*durable.SubmissionRecord, error) {
-	store, err := jsonl.store()
+	store, err := jsonl.readable(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -515,7 +589,7 @@ func (jsonl *JsonlStorage) SubmissionByRequest(
 func (jsonl *JsonlStorage) FindDocument(
 	ctx context.Context, address durable.DocumentAddress, at durable.DocumentPoint,
 ) (*durable.DocumentRecord, error) {
-	store, err := jsonl.store()
+	store, err := jsonl.readable(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -526,7 +600,7 @@ func (jsonl *JsonlStorage) FindDocument(
 func (jsonl *JsonlStorage) Document(
 	ctx context.Context, id durable.DocumentId, at durable.DocumentPoint,
 ) (*durable.StoredDocument, error) {
-	store, err := jsonl.store()
+	store, err := jsonl.readable(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -537,15 +611,18 @@ func (jsonl *JsonlStorage) Document(
 func (jsonl *JsonlStorage) ScanDocuments(
 	ctx context.Context, query durable.DocumentQuery, limit int, cursor durable.Cursor,
 ) (durable.Page[durable.DocumentRecord, durable.Cursor], error) {
-	store, err := jsonl.store()
+	store, err := jsonl.readable(ctx)
 	if err != nil {
 		return durable.Page[durable.DocumentRecord, durable.Cursor]{}, err
 	}
 	return store.ScanDocuments(ctx, query, limit, cursor)
 }
 
-// Close releases the storage; later operations fail. Repeated calls do nothing.
+// Close releases the storage; later operations fail. Repeated calls do nothing. It waits for a commit in progress, so
+// a commit never meets the closed memory between its batches.
 func (jsonl *JsonlStorage) Close(ctx context.Context) error {
+	jsonl.commitMu.Lock()
+	defer jsonl.commitMu.Unlock()
 	jsonl.stateMu.Lock()
 	if jsonl.closed {
 		jsonl.stateMu.Unlock()
@@ -1280,6 +1357,23 @@ func (jsonl *JsonlStorage) resolveFile(ctx context.Context, file string) (string
 		return "", errorFromFile("path join", err)
 	}
 	return path, nil
+}
+
+// readable is the state to read once no commit is being appended: memory runs ahead of the file while one is.
+func (jsonl *JsonlStorage) readable(ctx context.Context) (*storage.MemoryStorage, error) {
+	for {
+		jsonl.stateMu.Lock()
+		writing := jsonl.writing
+		jsonl.stateMu.Unlock()
+		if writing == nil {
+			return jsonl.store()
+		}
+		select {
+		case <-writing:
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
 }
 
 func (jsonl *JsonlStorage) store() (*storage.MemoryStorage, error) {

@@ -96,6 +96,9 @@ func TestImpactAndPlatformComeFromTheWording(t *testing.T) {
 		{"A credential file was world-readable on Linux.", "Credential or permission exposure", "Linux"},
 		{"The update fails with EPERM.", "An operation failed or was rejected", "Windows"},
 		{"The block is drawn in the wrong colors.", "Wrong display", "All platforms"},
+		{"Every frame the renderer paints allocates two fewer objects.", "Extra allocation or slower run", "All platforms"},
+		{"`/fork` builds the entries from the decoded messages again instead of decoding every record twice, which doubled the allocations.", "Extra allocation or slower run", "All platforms"},
+		{"Searching a long session in `/tree` allocates as many objects as in 0.7.0 again.", "Extra allocation or slower run", "All platforms"},
 		{"A value is kept.", "Behavior differed from Pi", "All platforms"},
 	}
 	for _, c := range cases {
@@ -104,6 +107,19 @@ func TestImpactAndPlatformComeFromTheWording(t *testing.T) {
 		}
 		if got := platformOf(c.note); got != c.platform {
 			t.Errorf("platformOf(%q) = %q, want %q", c.note, got, c.platform)
+		}
+	}
+}
+
+// A verb that gives a value an identity says nothing about what a run costs: the duplicate-session bullet allocated a new ID, it did not allocate more objects.
+func TestAnIdentityAllocationIsNotAnAllocationCost(t *testing.T) {
+	note := "Go embedding hosts can bind extension appends through `coding.Session.AppendExtensionEntry`, retaining subprocess IDs and timestamps through the native Session writer and preserving `entry_appended` semantics. Previously, calling `AppendCustomEntry` allocated a new identity instead of retaining the subprocess ID and timestamp because the public Session API lacked a way to pass them through, leaving duplicate entries in the Node session mirror."
+	if got := impactOf(note); got == "Extra allocation or slower run" {
+		t.Fatalf("impactOf labels a duplicate-session bug %q", got)
+	}
+	for _, n := range []string{"The id is allocated a new value.", "A new ID is allocated per entry.", "Memory allocation of the ID is retained."} {
+		if got := impactOf(n); got == "Extra allocation or slower run" {
+			t.Errorf("impactOf(%q) = %q", n, got)
 		}
 	}
 }
@@ -443,7 +459,7 @@ func TestTestsOfCommitNamesAnEditedTestNotATrailingHelper(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := testsOfCommit(repo{root: r.root}, idx, hash, "Fix an edge")
+	got, err := testsOfCommit(repo{root: r.root}, idx, nil, hash, "Fix an edge")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -578,6 +594,49 @@ func TestASquashLandingKeepsTheCommittedLedger(t *testing.T) {
 	}
 	if !bytes.Equal(regenerated, committed) {
 		t.Fatalf("regenerating on a squash landing changed the ledger:\n%s\nwant\n%s", regenerated, committed)
+	}
+}
+
+// Folding a fragment into CHANGELOG.md moves its bullets to a release heading. A bullet whose marker was re-pointed at the squash that replaced its fix commit would take the tests of every file the squash changes; it must keep the tests its own fix had.
+func TestAFoldedBulletRePointedAtASquashKeepsItsOwnFixsTests(t *testing.T) {
+	dev := newFixture(t)
+	release := dev.run("rev-parse", "HEAD")
+	dev.write("a.go", "package x\n")
+	dev.write("a_test.go", "package x\n\nfunc TestAFixed(t *testing.T) {}\n")
+	fix := dev.commit("a: handle empty input", "a.go", "a_test.go")
+	dev.write("other.go", "package x\n")
+	dev.write("other_test.go", "package x\n\nfunc TestSomeOtherFix(t *testing.T) {}\n")
+	dev.commit("other: a change of another fix", "other.go", "other_test.go")
+	dev.write("changelog.d/a.md", "### Fixed\n\n- Empty input no longer crashes. <!-- fix: "+fix[:10]+" -->\n")
+	dev.commit("Note the fix", "changelog.d/a.md")
+	if err := run(dev.root, "0.4.1", false, false); err != nil {
+		t.Fatal(err)
+	}
+	dev.commit("Add the ledger", "docs/bug-ledger.json", "docs/site/docs/bug-ledger.md")
+
+	pub := squash(t, dev, release)
+	landed := pub.run("rev-parse", "HEAD")
+	pub.write("CHANGELOG.md", "# Changelog\n\n## [Unreleased]\n\n## [0.4.2] - 2026-02-01\n\n### Fixed\n\n- Empty input no longer crashes. <!-- fix: "+landed[:10]+" -->\n\n## [0.4.1] - 2026-01-01\n")
+	pub.run("rm", "-q", "changelog.d/a.md")
+	pub.commit("Fold the changelog", "CHANGELOG.md")
+	if err := run(pub.root, "0.4.1", false, false); err != nil {
+		t.Fatal(err)
+	}
+	l, _, err := readCommitted(pub.root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got *Entry
+	for i := range l.Entries {
+		if l.Entries[i].Origin == "release note" {
+			got = &l.Entries[i]
+		}
+	}
+	if got == nil {
+		t.Fatalf("no release note entry in %+v", l.Entries)
+	}
+	if got.FixedIn != "0.4.2" || !slices.Equal(got.Tests, []string{"a_test.go::TestAFixed"}) || len(got.Commits) != 1 || got.Commits[0].Hash != fix[:10] {
+		t.Fatalf("entry = %+v, want fixed in 0.4.2 with only a_test.go::TestAFixed from %s", got, fix[:10])
 	}
 }
 
@@ -1657,5 +1716,237 @@ func TestARetiredDivergenceEndsTheAheadOfPiClassOfAKeptNote(t *testing.T) {
 	}
 	if twice := committedBytes(t, pub); !bytes.Equal(once, twice) {
 		t.Fatal("a second regeneration with no new commit changed the ledger")
+	}
+}
+
+// An Upgrading bullet that opens with "**Breaking (Go API):**" breaks a program that embeds PiG; the draft lists those under their own heading after the other Upgrading notes, which stay plain bullets, in the changelog and in a fragment.
+func TestReleaseNotesGroupBreakingGoAPIUpgrades(t *testing.T) {
+	r := newFixture(t)
+	r.write("CHANGELOG.md", "# Changelog\n\n## [Unreleased]\n\n## [0.5.0] - 2026-02-01\n\n### Upgrading from 0.4.x\n\n- **Breaking (Go API):** `a`: one moves.\n- Change your call.\n\n## [0.4.1] - 2026-01-01\n\n### Added\n\n- Old thing.\n")
+	r.commit("changelog", "CHANGELOG.md")
+	r.write("changelog.d/x.md", "### Upgrading\n\n- Go API `c`: an opt-in, not a break.\n- **Breaking (Go API):** `b`: two moves.\n")
+	notes, err := releaseNotes(r.root, "0.4.1", "0.5.0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"## Upgrading from 0.4.x\n\n- Change your call.\n\n### Breaking changes for Go embedders\n\n- **Breaking (Go API):** `a`: one moves.\n\n",
+		"## Upgrading\n\n- Go API `c`: an opt-in, not a break.\n\n### Breaking changes for Go embedders\n\n- **Breaking (Go API):** `b`: two moves.\n\n",
+	} {
+		if !strings.Contains(notes, want) {
+			t.Errorf("the draft lacks %q:\n%s", want, notes)
+		}
+	}
+}
+
+// A release's notes cover the changes since the release before it. Without an explicit since, the draft starts after the newest released section of CHANGELOG.md that is older than the target, so 0.6.0 prints no 0.5.x bullet, and it links the notes of the earlier releases.
+func TestReleaseNotesStartAfterThePreviousRelease(t *testing.T) {
+	r := newFixture(t)
+	r.write("CHANGELOG.md", "# Changelog\n\n## [Unreleased]\n\n## [0.5.3] - 2026-02-03\n\n### Upgrading\n\n- Change a 0.5.3 call.\n\n### Added\n\n- A 0.5.3 flag.\n\n## [0.5.0] - 2026-02-01\n\n### Upgrading from 0.4.x\n\n- Change a 0.5.0 call.\n\n### Added\n\n- A 0.5.0 flag.\n\n## [0.4.1] - 2026-01-01\n\n### Added\n\n- Old thing.\n")
+	r.commit("changelog", "CHANGELOG.md")
+	r.write("changelog.d/x.md", "### Added\n\n- A 0.6.0 flag.\n")
+	notes, err := releaseNotes(r.root, "", "0.6.0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"- A 0.6.0 flag.", "since PiG 0.5.3.", "https://github.com/MichaelKinsy/PiG/releases"} {
+		if !strings.Contains(notes, want) {
+			t.Errorf("the draft lacks %q:\n%s", want, notes)
+		}
+	}
+	for _, bad := range []string{"A 0.5.3 flag", "Change a 0.5.3 call", "A 0.5.0 flag", "Change a 0.5.0 call", "Old thing"} {
+		if strings.Contains(notes, bad) {
+			t.Errorf("the 0.6.0 draft includes %q of an earlier release:\n%s", bad, notes)
+		}
+	}
+}
+
+func TestPreviousRelease(t *testing.T) {
+	text := "## [Unreleased]\n\n## [0.5.3] - x\n\n## [0.5.10] - x\n\n## [0.6.0] - x\n\n## [0.5.0] - x\n"
+	for target, want := range map[string]string{"0.6.0": "0.5.10", "0.7.0": "0.6.0", "0.5.3": "0.5.0", "0.5.0": ""} {
+		if got := previousRelease(text, target); got != want {
+			t.Errorf("previousRelease(%q) = %q, want %q", target, got, want)
+		}
+	}
+}
+
+// movedTestsFixture is a repository whose fix commit adds TestMoved and TestRenamed to a_test.go, and whose later commit moves
+// both out of it: TestMoved keeps its name, TestRenamed becomes TestRenamedNow.
+func movedTestsFixture(t *testing.T) testRepo {
+	t.Helper()
+	fixedGitDates(t)
+	r := newFixture(t)
+	r.write("a.go", "package x\n")
+	r.write("a_test.go", "package x\n\nfunc TestMoved(t *testing.T) {}\n\nfunc TestRenamed(t *testing.T) {}\n")
+	r.commit("Fix a crash in a", "a.go", "a_test.go")
+	r.run("rm", "-q", "a_test.go")
+	r.write("pkg/b_test.go", "package pkg\n\nfunc TestMoved(t *testing.T) {}\n\nfunc TestRenamedNow(t *testing.T) {}\n")
+	r.commit("Move the tests of a", "pkg/b_test.go")
+	return r
+}
+
+func ledgerTests(t *testing.T, root string) []string {
+	t.Helper()
+	l, _, err := readCommitted(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range l.Entries {
+		if strings.Contains(e.Title, "crash in a") {
+			return e.Tests
+		}
+	}
+	t.Fatalf("no entry for the crash in a: %+v", l.Entries)
+	return nil
+}
+
+// A fix commit adds its tests to a file a later commit deletes. A test that moved keeps its name, so the one file that declares it
+// now is where the fix's test is; a refresh, which recomputes every entry from the history, keeps it instead of dropping it.
+// Before: the entry named no test, because the diff's file no longer declares it.
+func TestARefreshFollowsATestThatMovedAndKeptItsName(t *testing.T) {
+	r := movedTestsFixture(t)
+	if err := runWith(r.root, "0.4.1", false, false, true); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"pkg/b_test.go::TestMoved"}
+	if got := ledgerTests(t, r.root); !slices.Equal(got, want) {
+		t.Fatalf("tests = %v, want %v (TestRenamed has no declaration to follow)", got, want)
+	}
+}
+
+// A renamed test is mapped by a line of moved-tests.txt, and the check fails on a line that says nothing true.
+func TestMovedTestsMapARenamedTestAndTheCheckFailsOnAStaleLine(t *testing.T) {
+	r := movedTestsFixture(t)
+	r.write(movedTestsPath, "# TestRenamed became TestRenamedNow when the tests moved.\na_test.go::TestRenamed pkg/b_test.go::TestRenamedNow\n")
+	r.commit("Map the renamed test", movedTestsPath)
+	if err := runWith(r.root, "0.4.1", false, false, true); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"pkg/b_test.go::TestMoved", "pkg/b_test.go::TestRenamedNow"}
+	if got := ledgerTests(t, r.root); !slices.Equal(got, want) {
+		t.Fatalf("tests = %v, want %v", got, want)
+	}
+	r.commit("Add the ledger", jsonPath, pagePath)
+	if err := run(r.root, "0.4.1", true, true); err != nil {
+		t.Fatalf("a refreshed ledger with a true line must verify strictly: %v", err)
+	}
+
+	for _, c := range []struct{ name, line, want string }{
+		{"new test missing", "a_test.go::TestRenamed pkg/b_test.go::TestRenamedGone\n", "TestRenamedGone, which does not exist"},
+		{"old test still declared", "pkg/b_test.go::TestMoved pkg/b_test.go::TestRenamedNow\n", "still exists"},
+		{"mapped twice", "a_test.go::TestRenamed pkg/b_test.go::TestRenamedNow\na_test.go::TestRenamed pkg/b_test.go::TestMoved\n", "is mapped twice"},
+		{"malformed", "a_test.go::TestRenamed\n", "must be"},
+	} {
+		r.write(movedTestsPath, c.line)
+		err := run(r.root, "0.4.1", true, false)
+		if err == nil || !strings.Contains(err.Error(), c.want) {
+			t.Errorf("%s: check = %v, want a problem containing %q", c.name, err, c.want)
+		}
+	}
+}
+
+// A committed entry that records a test a later commit moved follows moved-tests.txt to the test it became, where it used to be
+// dropped: the rows of the lane that moved the tests reach the ledger through the generator, not through a hand edit.
+func TestRegenerationFollowsAMovedTestsLineForACommittedEntry(t *testing.T) {
+	fixedGitDates(t)
+	r := newFixture(t)
+	r.write("a.go", "package x\n")
+	r.write("a_test.go", "package x\n\nfunc TestMoved(t *testing.T) {}\n\nfunc TestRenamed(t *testing.T) {}\n")
+	r.commit("Fix a crash in a", "a.go", "a_test.go")
+	if err := run(r.root, "0.4.1", false, false); err != nil {
+		t.Fatal(err)
+	}
+	r.commit("Add the ledger", jsonPath, pagePath)
+	if got := ledgerTests(t, r.root); !slices.Equal(got, []string{"a_test.go::TestMoved", "a_test.go::TestRenamed"}) {
+		t.Fatalf("tests before the move = %v", got)
+	}
+	r.run("rm", "-q", "a_test.go")
+	r.write("pkg/b_test.go", "package pkg\n\nfunc TestMoved(t *testing.T) {}\n\nfunc TestRenamedNow(t *testing.T) {}\n")
+	r.write(movedTestsPath, "a_test.go::TestRenamed pkg/b_test.go::TestRenamedNow\n")
+	r.commit("Move the tests of a", "pkg/b_test.go", movedTestsPath)
+	if err := run(r.root, "0.4.1", false, false); err != nil {
+		t.Fatal(err)
+	}
+	// TestMoved has no line: make bug-ledger drops it as before (a refresh follows it by its name).
+	want := []string{"pkg/b_test.go::TestRenamedNow"}
+	if got := ledgerTests(t, r.root); !slices.Equal(got, want) {
+		t.Fatalf("tests after make bug-ledger = %v, want %v", got, want)
+	}
+	if err := run(r.root, "0.4.1", true, false); err != nil {
+		t.Fatalf("the regenerated ledger must verify: %v", err)
+	}
+}
+
+// An entry a squash landing keeps (its fix commits are not in this history, so its tests cannot be recomputed) follows the line too.
+func TestASquashLandingFollowsAMovedTestsLine(t *testing.T) {
+	dev := newFixture(t)
+	release := dev.run("rev-parse", "HEAD")
+	dev.write("a.go", "package x\n")
+	dev.write("a_test.go", "package x\n\nfunc TestRenamed(t *testing.T) {}\n")
+	dev.commit("Fix a crash in a", "a.go", "a_test.go")
+	if err := run(dev.root, "0.4.1", false, false); err != nil {
+		t.Fatal(err)
+	}
+	dev.commit("Add the ledger", jsonPath, pagePath)
+
+	pub := squash(t, dev, release)
+	pub.write("a_test.go", "package x\n\nfunc TestRenamedNow(t *testing.T) {}\n")
+	pub.write(movedTestsPath, "a_test.go::TestRenamed a_test.go::TestRenamedNow\n")
+	if err := run(pub.root, "0.4.1", false, false); err != nil {
+		t.Fatal(err)
+	}
+	if got := ledgerTests(t, pub.root); !slices.Equal(got, []string{"a_test.go::TestRenamedNow"}) {
+		t.Fatalf("tests = %v, want the renamed test", got)
+	}
+}
+
+// Two files that declare the name leave the move ambiguous: the ledger names no test rather than guess one.
+func TestATestNameTwoFilesDeclareIsNotGuessedAfterAMove(t *testing.T) {
+	r := movedTestsFixture(t)
+	r.write("other/c_test.go", "package other\n\nfunc TestMoved(t *testing.T) {}\n")
+	r.commit("Add another TestMoved", "other/c_test.go")
+	if err := runWith(r.root, "0.4.1", false, false, true); err != nil {
+		t.Fatal(err)
+	}
+	if got := ledgerTests(t, r.root); len(got) != 0 {
+		t.Fatalf("tests = %v, want none", got)
+	}
+}
+
+// A fix that replaces the approach of an earlier fix names it with a "see" trailer, and exempt.txt joins the earlier commit to the
+// correction. Before, the two commits had no entry to join and the build failed; the entry now carries the correction's title.
+func TestACorrectionAndTheCommitItReplacesShareTheCorrectionsEntry(t *testing.T) {
+	fixedGitDates(t)
+	r := newFixture(t)
+	r.write("b.go", "package x\n")
+	first := r.commit("Fix a crash in b by hiding it", "b.go")
+	r.write("b.go", "package x\n\n// cause\n")
+	second := r.commit("Fix a crash in b at its cause\n\nBug-Ledger: see "+first[:10], "b.go")
+	r.write("automation/ci/bugledger/exempt.txt", first[:10]+" see "+second[:10]+"\n")
+	l, err := build(r.root, "0.4.1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(l.Entries) != 1 || !strings.Contains(l.Entries[0].Title, "at its cause") {
+		t.Fatalf("entries = %+v, want one titled after the correction", l.Entries)
+	}
+	var hashes []string
+	for _, c := range l.Entries[0].Commits {
+		hashes = append(hashes, c.Hash)
+	}
+	want := []string{first[:10], second[:10]}
+	slices.Sort(hashes)
+	slices.Sort(want)
+	if !slices.Equal(hashes, want) {
+		t.Fatalf("commits = %v, want %v", hashes, want)
+	}
+	// Without the line the correction joins the entry of the commit it names, which keeps that commit's title.
+	r.write("automation/ci/bugledger/exempt.txt", "")
+	l, err = build(r.root, "0.4.1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(l.Entries) != 1 || !strings.Contains(l.Entries[0].Title, "by hiding it") {
+		t.Fatalf("entries = %+v, want one titled after the first commit", l.Entries)
 	}
 }

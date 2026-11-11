@@ -18,6 +18,7 @@ import (
 	chordcloudflare "github.com/MichaelKinsy/PiG/chord/sqlite/cloudflare"
 	chordnode "github.com/MichaelKinsy/PiG/chord/sqlite/node"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/durabletest"
 	durablesqlite "github.com/MichaelKinsy/PiG/durable/storage/sqlite"
 	durablecloudflare "github.com/MichaelKinsy/PiG/durable/storage/sqlite/cloudflare"
 )
@@ -188,15 +189,15 @@ func TestPortableSQLiteFacadeSettlement(t *testing.T) {
 		raw.ObservePrepare(connection.count)
 		storage, err := durablesqlite.Open(NewNodeSqliteDatabase(raw))
 		mustDo(t, err)
-		_, err = storage.Commit(background, []durable.StorageWrite{rootWrite()}, func(durable.Seq) {})
+		_, err = durabletest.CommitWrites(background, storage, []durable.StorageWrite{rootWrite()})
 		mustDo(t, err)
 		writes := make([]durable.StorageWrite, 0, 100)
 		for index := range 100 {
 			writes = append(writes, entryWrite(durable.EntryId(index+2), "cached"))
 		}
-		_, err = storage.Commit(background, writes, func(durable.Seq) {})
+		_, err = durabletest.CommitWrites(background, storage, writes)
 		mustDo(t, err)
-		_, err = storage.Commit(background, []durable.StorageWrite{entryWrite(102, "cached-again")}, func(durable.Seq) {})
+		_, err = durabletest.CommitWrites(background, storage, []durable.StorageWrite{entryWrite(102, "cached-again")})
 		mustDo(t, err)
 		first, err := storage.Entry(background, 2)
 		mustDo(t, err)
@@ -208,7 +209,7 @@ func TestPortableSQLiteFacadeSettlement(t *testing.T) {
 		if last == nil || last.Entry.Kind != "cached-again" {
 			t.Fatalf("entry 102 = %+v", last)
 		}
-		_, err = storage.Commit(background, []durable.StorageWrite{rootWrite()}, func(durable.Seq) {})
+		_, err = durabletest.CommitWrites(background, storage, []durable.StorageWrite{rootWrite()})
 		expectError(t, err, "ID 1 already belongs to conversation")
 		first, err = storage.Entry(background, 2)
 		mustDo(t, err)
@@ -228,7 +229,7 @@ func TestPortableSQLiteFacadeSettlement(t *testing.T) {
 			storage, err := durablesqlite.Open(database)
 			mustDo(t, err)
 			commit := start(func() (durable.Seq, error) {
-				return storage.Commit(background, []durable.StorageWrite{rootWrite()}, func(durable.Seq) {})
+				return durabletest.CommitWrites(background, storage, []durable.StorageWrite{rootWrite()})
 			})
 			synctest.Wait()
 			read := start(func() (*durable.ConversationRecord, error) {
@@ -252,7 +253,7 @@ func TestPortableSQLiteFacadeSettlement(t *testing.T) {
 			storage, err := durablesqlite.Open(database)
 			mustDo(t, err)
 			const entryId durable.EntryId = 2
-			_, err = storage.Commit(background, []durable.StorageWrite{rootWrite(), entryWrite(entryId, "probe")}, func(durable.Seq) {})
+			_, err = durabletest.CommitWrites(background, storage, []durable.StorageWrite{rootWrite(), entryWrite(entryId, "probe")})
 			mustDo(t, err)
 			// Hold the database so the admitted reads stay in flight while close begins.
 			hold := make(chan struct{})
@@ -328,7 +329,7 @@ func TestPortableSQLiteFacadeSettlement(t *testing.T) {
 
 			database.controlNextSettlement(t, settleDelay)
 			committing := start(func() (durable.Seq, error) {
-				return storage.Commit(background, []durable.StorageWrite{entryWrite(100, "settled")}, func(durable.Seq) {})
+				return durabletest.CommitWrites(background, storage, []durable.StorageWrite{entryWrite(100, "settled")})
 			})
 			synctest.Wait()
 			if committing.settled() {
@@ -345,7 +346,7 @@ func TestPortableSQLiteFacadeSettlement(t *testing.T) {
 
 			database.controlNextSettlement(t, settleReject)
 			rejected := start(func() (durable.Seq, error) {
-				return storage.Commit(background, []durable.StorageWrite{entryWrite(200, "rejected")}, func(durable.Seq) {})
+				return durabletest.CommitWrites(background, storage, []durable.StorageWrite{entryWrite(200, "rejected")})
 			})
 			synctest.Wait()
 			expectMint(t, storage, 102)
@@ -369,20 +370,20 @@ func TestPortableSQLiteFacadeSettlement(t *testing.T) {
 		for yields := range 16 {
 			storage, err := durablesqlite.Open(mustOpenMemory(t))
 			mustDo(t, err)
-			_, err = storage.Commit(background, []durable.StorageWrite{durable.DocumentCreateWrite{
+			_, err = durabletest.CommitWrites(background, storage, []durable.StorageWrite{durable.DocumentCreateWrite{
 				Record:  durable.DocumentCreate{Id: id, Kind: "replaced", Scope: durable.DocumentRecordScope{Kind: durable.ScopeSession}},
 				Content: durable.DocumentContent{Kind: durable.ContentBase, Version: 1, Value: delta.JsonObjectOf("value", 1)},
-			}}, func(durable.Seq) {})
+			}})
 			mustDo(t, err)
 			read := start(func() (*durable.StoredDocument, error) { return storage.Document(background, id, durable.CurrentPoint) })
 			for range yields {
 				yieldGoroutine()
 			}
 			replace := start(func() (durable.Seq, error) {
-				return storage.Commit(background, []durable.StorageWrite{durable.DocumentChangeWrite{
+				return durabletest.CommitWrites(background, storage, []durable.StorageWrite{durable.DocumentChangeWrite{
 					Id:      id,
 					Content: durable.DocumentContent{Kind: durable.ContentBase, Version: 1, Value: delta.JsonObjectOf("value", 2)},
-				}}, func(durable.Seq) {})
+				}})
 			})
 			stored, err := read.await()
 			mustDo(t, err)
@@ -431,7 +432,7 @@ func TestNewNodeSqliteDatabaseAdaptsADatabaseSync(t *testing.T) {
 	database := NewNodeSqliteDatabase(raw)
 	storage, err := durablesqlite.Open(database)
 	mustDo(t, err)
-	_, err = storage.Commit(background, []durable.StorageWrite{rootWrite()}, func(durable.Seq) {})
+	_, err = durabletest.CommitWrites(background, storage, []durable.StorageWrite{rootWrite()})
 	mustDo(t, err)
 	conversation, err := storage.Conversation(background, durable.ROOT_CONVERSATION_ID)
 	mustDo(t, err)

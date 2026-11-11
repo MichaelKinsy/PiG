@@ -91,8 +91,8 @@ func TestClassifierModelsUpstream(t *testing.T) {
 	})
 	for _, tc := range []struct{ provider, id, url string }{
 		{"vercel-ai-gateway", "typesafe-ai/jev", "https://ai-gateway.vercel.sh/typesafe/v1/systemone"},
-		{"opencode", "jev-1.13", "https://opencode.ai/inference/v1/systemone"},
-		{"opencode", "jev-1.13-free", "https://opencode.ai/inference/v1/systemone"},
+		{"opencode", "jev-1.13", "https://opencode.ai/inference/systemone/v1/systemone"},
+		{"opencode", "jev-1.13-free", "https://opencode.ai/inference/systemone/v1/systemone"},
 	} {
 		// .upstream/v0.99.1/packages/ai/test/classifier-models.test.ts:130
 		t.Run("routes "+tc.provider+" Jev ("+tc.id+") to its TypeSafe-compatible endpoint", func(t *testing.T) {

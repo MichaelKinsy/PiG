@@ -12,8 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/chord"
-
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
 )
@@ -32,48 +30,7 @@ func nestedTasksOf(t *testing.T, harness Harness) []anyTaskRecord {
 	return nested
 }
 
-// toolEnds collects the tool_execution_end events of a conversation from now on.
-type toolEnds struct {
-	mu   sync.Mutex
-	ends []ToolExecutionEndEvent
-	stop func()
-}
-
-func collectToolEnds(t *testing.T, harness Harness, conversationId durable.ConversationId) *toolEnds {
-	t.Helper()
-	collected := &toolEnds{}
-	stream := must(WatchEvents(testContext, harness, conversationId))
-	stream.Start(func(_ context.Context, change chord.NativeWatchChange[[]AgentEvent]) error {
-		batch := change.Value
-		collected.mu.Lock()
-		defer collected.mu.Unlock()
-		for _, event := range batch {
-			if end, ok := event.(ToolExecutionEndEvent); ok {
-				collected.ends = append(collected.ends, end)
-			}
-		}
-		return nil
-	})
-	collected.stop = func() {
-		if _, err := stream.Stop(); err != nil {
-			t.Error(err)
-		}
-	}
-	return collected
-}
-
-func (collected *toolEnds) result(callId string) *durable.NestedToolExecutionResult {
-	collected.mu.Lock()
-	defer collected.mu.Unlock()
-	for _, end := range collected.ends {
-		if end.ToolCallId == callId {
-			return end.Result
-		}
-	}
-	return nil
-}
-
-// harness-nested-tools-restart.test.ts:93 it("abandons a replay-unsafe caller's unfinished nested calls before they run again"):
+// harness-nested-tools-restart.test.ts:82 it("abandons a replay-unsafe caller's unfinished nested calls before they run again"):
 // a replay-unsafe caller (the default) that never resumed after a restart has its
 // unfinished nested calls abandoned before they run again; a call stopped before its intent, and one stopped after it,
 // settle aborted with the codes the caller reads.
@@ -131,7 +88,8 @@ func TestAReplayUnsafeCallersUnfinishedNestedCallsAreAbandonedBeforeTheyRunAgain
 	}
 
 	harness, root = openChat(t, openSqlite(t, path), setup)
-	ends := collectToolEnds(t, harness, root.Id())
+	history := viewHistory(t, harness, root.Id())
+	nested := nestedResults(harness)
 	harness.Resume()
 	sub := must(harness.Submission(testContext, id))
 	if settled := must(sub.Wait(testContext)); settled.Status != durable.SubmissionDone {
@@ -140,27 +98,29 @@ func TestAReplayUnsafeCallersUnfinishedNestedCallsAreAbandonedBeforeTheyRunAgain
 	if err := harness.WaitForIdle(testContext); err != nil {
 		t.Fatal(err)
 	}
-	ends.stop()
+	history.Detach()
 	mu.Lock()
 	gotRuns := map[string]int{"started": runs["started"], "gated": runs["gated"]}
 	mu.Unlock()
 	if gotRuns["started"] != 1 || gotRuns["gated"] != 0 {
 		t.Fatalf("runs %v, want started 1 and gated 0", gotRuns)
 	}
-	nested := nestedTasksOf(t, harness)
-	if len(nested) != 2 {
-		t.Fatalf("%d nested tasks, want 2", len(nested))
+	nestedTasks := nestedTasksOf(t, harness)
+	if len(nestedTasks) != 2 {
+		t.Fatalf("%d nested tasks, want 2", len(nestedTasks))
 	}
-	for _, task := range nested {
+	for _, task := range nestedTasks {
 		if !task.AbandonOnRestart || !task.AbortRequested || task.AbortReason != durable.AbortedByRestart ||
 			task.State.Status != durable.TaskTerminal || task.State.Outcome == nil || task.State.Outcome.Status != durable.OutcomeAborted {
 			t.Fatalf("nested task %d = %+v, want abandoned on restart, abort requested for it, terminal aborted", task.Id, task)
 		}
 	}
-	started, gate := ends.result("c1/1"), ends.result("c1/2")
-	if started == nil || gate == nil {
-		t.Fatalf("end results c1/1 %v, c1/2 %v, want both", started, gate)
+	startedResult, startedFound := nested.nestedResultOf(history.Live(), "c1/1")
+	gateResult, gateFound := nested.nestedResultOf(history.Live(), "c1/2")
+	if !startedFound || !gateFound {
+		t.Fatalf("end results c1/1 %v, c1/2 %v, want both", startedFound, gateFound)
 	}
+	started, gate := &startedResult, &gateResult
 	if details, _ := json.Marshal(started.Details); !slices.Equal(diagnosticCodes(*started), []string{"interrupted"}) || !started.IsError || started.HasStructuredOutput ||
 		!started.HasDetails || string(details) != `{"step":1}` {
 		t.Fatalf("c1/1 end result = %+v, want an interrupted error that keeps its details and no structured output", started)
@@ -179,7 +139,7 @@ func TestAReplayUnsafeCallersUnfinishedNestedCallsAreAbandonedBeforeTheyRunAgain
 	}
 }
 
-// harness-nested-tools-restart.test.ts:363 it("marks nothing when the reopened Harness never starts scheduling"): a reopened
+// harness-nested-tools-restart.test.ts:353 it("marks nothing when the reopened Harness never starts scheduling"): a reopened
 // Harness that never starts scheduling marks nothing, so an inspection-only
 // open does not abandon a caller's nested call.
 func TestAReopenedHarnessThatNeverStartsSchedulingMarksNothing(t *testing.T) {
@@ -361,6 +321,8 @@ func TestAReplaySafeCallerReattachesByDefaultAndExplicitKeysAndARerunThatCallsDi
 			}
 
 			harness, root = openChat(t, openSqlite(t, path), setup)
+			// The restarted Harness owns its SQLite store; without a Close the store's database/sql opener goroutine outlives the test.
+			t.Cleanup(func() { mustClose(t, harness) })
 			harness.Resume()
 			waiting, cancel := context.WithTimeout(testContext, 30*time.Second)
 			defer cancel()
@@ -387,7 +349,7 @@ func TestAReplaySafeCallerReattachesByDefaultAndExplicitKeysAndARerunThatCallsDi
 	}
 }
 
-// harness-nested-tools-restart.test.ts:621 it("abandons the child tasks a replay-unsafe tool created and awaited in memory"): a
+// harness-nested-tools-restart.test.ts:619 it("abandons the child tasks a replay-unsafe tool created and awaited in memory"): a
 // replay-unsafe tool that created a child task and awaited it in memory has the child
 // abandoned after a restart: its work phase never runs again and its abort handler reads the restart reason.
 func TestTheChildTasksAReplayUnsafeToolCreatedAndAwaitedInMemoryAreAbandoned(t *testing.T) {
@@ -665,7 +627,7 @@ func expectTerminalAborted(t *testing.T, harness Harness, id durable.TaskId) {
 	}
 }
 
-// harness-nested-tools-restart.test.ts:168 it("abandons the work an abandoned nested call owns, which never runs a phase again"):
+// harness-nested-tools-restart.test.ts:158 it("abandons the work an abandoned nested call owns, which never runs a phase again"):
 // the work an abandoned nested call owns is abandoned too and never runs a phase again;
 // the cascade passes the restart reason on to the abort handler.
 func TestTheWorkAnAbandonedNestedCallOwnsIsAbandonedAndNeverRunsAPhaseAgain(t *testing.T) {
@@ -734,7 +696,7 @@ func TestAnAbandonedTaskWhoseDefinitionIsMissingWaitsUntilItIsInstalledThenRunsI
 	}
 }
 
-// harness-nested-tools-restart.test.ts:300 it("orphans an abandoned task whose definition is missing once an abort is requested")
+// harness-nested-tools-restart.test.ts:290 it("orphans an abandoned task whose definition is missing once an abort is requested")
 func TestAnAbandonedTaskWhoseDefinitionIsMissingIsOrphanedOnceAnAbortIsRequested(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "session.sqlite")
 	setup := chatSetup(t)
@@ -805,7 +767,7 @@ func TestTheSlotsOfNestedCallsAnEarlierAttemptFinishedAreClearedWhenTheRerunMake
 	// The nested slots pi.live holds in the commit where the model-issued call's task ends.
 	slotsAfterCaller := -1
 	var slotsMu sync.Mutex
-	harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+	harness.ObserveCommits(commitsObserver{advance: func(_ context.Context, publication durable.CommitPublication) {
 		ended := false
 		slots := 0
 		for _, change := range publication.Changes {
@@ -814,7 +776,7 @@ func TestTheSlotsOfNestedCallsAnEarlierAttemptFinishedAreClearedWhenTheRerunMake
 				input, err := durable.FromJsonValue[ToolTaskInput](typed.Value.Input)
 				ended = ended || typed.Value.Kind == "pi.tool" && err == nil && input.Kind == ToolTaskModel && typed.Value.State.Status == durable.TaskTerminal
 			case durable.DocumentChange:
-				if typed.Record.Kind == "pi.live" && typed.Value != nil {
+				if typed.Record.Kind == "pi.live" {
 					if list, ok := typed.Value.Value("nestedTools").([]any); ok {
 						slots = len(list)
 					}
@@ -826,7 +788,7 @@ func TestTheSlotsOfNestedCallsAnEarlierAttemptFinishedAreClearedWhenTheRerunMake
 			slotsAfterCaller = slots
 			slotsMu.Unlock()
 		}
-	})
+	}})
 	harness.Resume()
 	waiting, cancel := context.WithTimeout(testContext, 30*time.Second)
 	defer cancel()

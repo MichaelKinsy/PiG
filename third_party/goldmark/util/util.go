@@ -522,6 +522,15 @@ func ToValidRune(v rune) rune {
 	return v
 }
 
+// toValidCodePoint is ToValidRune of a parsed numeric character reference: a value beyond the Unicode range is 0xFFFD, not a wrapped
+// negative rune.
+func toValidCodePoint(v uint64) rune {
+	if v > utf8.MaxRune {
+		return rune(0xFFFD)
+	}
+	return ToValidRune(rune(v))
+}
+
 // ToLinkReference converts given bytes into a valid link reference string.
 // ToLinkReference performs unicode case folding, trims leading and trailing spaces,  converts into lower
 // case and replace spaces with a single space character.
@@ -614,7 +623,7 @@ func ResolveNumericReferences(source []byte) []byte {
 							v, _ := strconv.ParseUint(BytesToReadOnlyString(source[start:i]), 16, 32)
 							cob.Write(source[n:pos])
 							n = i + 1
-							runeSize := utf8.EncodeRune(buf, ToValidRune(rune(v)))
+							runeSize := utf8.EncodeRune(buf, toValidCodePoint(v))
 							cob.Write(buf[:runeSize])
 							continue
 						}
@@ -626,7 +635,7 @@ func ResolveNumericReferences(source []byte) []byte {
 							v, _ := strconv.ParseUint(BytesToReadOnlyString(source[start:i]), 0, 32)
 							cob.Write(source[n:pos])
 							n = i + 1
-							runeSize := utf8.EncodeRune(buf, ToValidRune(rune(v)))
+							runeSize := utf8.EncodeRune(buf, toValidCodePoint(v))
 							cob.Write(buf[:runeSize])
 							continue
 						}

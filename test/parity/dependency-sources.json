@@ -36,33 +36,6 @@
     "integrity": "sha512-zu+jc1pcy4UiNThxikUr36f0Rybk9PEeCg/NE6adeWr/SKsdNO4EzZHYRDlv2YCVAfj3Odq3dESSo/jNyoBXzA=="
   },
   {
-    "reference": "node_modules/minimatch/dist/esm/assert-valid-pattern.js",
-    "manifest": "packages/coding-agent/package.json",
-    "package": "minimatch",
-    "version": "10.2.6",
-    "source": "test/parity/dependency-sources/minimatch/10.2.6/dist/esm/assert-valid-pattern.js",
-    "sha256": "90e8d3327d573b9d2391edf03dc7d50c1c0b468d720a4c0fb4a08a36ee5c50dc",
-    "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
-  },
-  {
-    "reference": "node_modules/minimatch/dist/esm/index.js",
-    "manifest": "packages/coding-agent/package.json",
-    "package": "minimatch",
-    "version": "10.2.6",
-    "source": "test/parity/dependency-sources/minimatch/10.2.6/dist/esm/index.js",
-    "sha256": "59821ec2ce0d3df968292036e5c831ad322b33e9c33a949ecbc9dfe125d165be",
-    "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
-  },
-  {
-    "reference": "node_modules/minimatch/dist/esm/ast.js",
-    "manifest": "packages/coding-agent/package.json",
-    "package": "minimatch",
-    "version": "10.2.6",
-    "source": "test/parity/dependency-sources/minimatch/10.2.6/dist/esm/ast.js",
-    "sha256": "ec35db8358a5a7333dbd6bdb1ea6bd3f03d1433297de7d615f24f7df5fba06b5",
-    "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
-  },
-  {
     "reference": "node_modules/brace-expansion/dist/esm/index.js",
     "manifest": "packages/coding-agent/package.json",
     "package": "brace-expansion",
@@ -79,5 +52,50 @@
     "source": "test/parity/dependency-sources/@smithy/core/3.33.3/dist-cjs/submodules/retry/index.js",
     "sha256": "e00b49dad152a3ff9b3b59ab990341adaf7a1213d1801fdc191982e76610feb3",
     "integrity": "sha512-CsOeKq/9kA3y6VJHt+/+VTCtBaxJ4OTFpgrjIUhPpDIKxBci1k2bJaQASF2h/ELWrulGp+t97DZ0mevfAD8idg=="
+  },
+  {
+    "reference": "node_modules/minimatch/dist/esm/assert-valid-pattern.js",
+    "manifest": "packages/coding-agent/package.json",
+    "package": "minimatch",
+    "version": "11.0.3",
+    "source": "test/parity/dependency-sources/minimatch/11.0.3/dist/esm/assert-valid-pattern.js",
+    "sha256": "90e8d3327d573b9d2391edf03dc7d50c1c0b468d720a4c0fb4a08a36ee5c50dc",
+    "integrity": "sha512-iny/40PEGkNJQ5/Pv6z3nm6FbRAby32GeZRjCUJk2WnNDbgPSTcdI+DDvLqsgBdD4cD5sMtMheqPPnehCCa8Nw=="
+  },
+  {
+    "reference": "node_modules/minimatch/dist/esm/index.js",
+    "manifest": "packages/coding-agent/package.json",
+    "package": "minimatch",
+    "version": "11.0.3",
+    "source": "test/parity/dependency-sources/minimatch/11.0.3/dist/esm/index.js",
+    "sha256": "b238ca70371b1f192817ae9516afaacb566d1df2a7a85e47c6c24f41f1707864",
+    "integrity": "sha512-iny/40PEGkNJQ5/Pv6z3nm6FbRAby32GeZRjCUJk2WnNDbgPSTcdI+DDvLqsgBdD4cD5sMtMheqPPnehCCa8Nw=="
+  },
+  {
+    "reference": "node_modules/@isaacs/nonrecursive-glob-match/dist/esm/index.js",
+    "manifest": "package-lock.json",
+    "package": "@isaacs/nonrecursive-glob-match",
+    "version": "1.0.3",
+    "source": "test/parity/dependency-sources/@isaacs/nonrecursive-glob-match/1.0.3/dist/esm/index.js",
+    "sha256": "973928f7ba6c7a0b6f4de1975f8b0a35e7f9085fca65051ab22762b340156efb",
+    "integrity": "sha512-SI7kyKHq4XXDRozw+r9GlRZkia1ZkFrpLW98r2IC2Bpr8YkFGE3fvjzmxCG0x78A++69HmDNrDvSMYBZmHGpKA=="
+  },
+  {
+    "reference": "node_modules/@isaacs/nonrecursive-glob-match/dist/esm/parse-class.js",
+    "manifest": "package-lock.json",
+    "package": "@isaacs/nonrecursive-glob-match",
+    "version": "1.0.3",
+    "source": "test/parity/dependency-sources/@isaacs/nonrecursive-glob-match/1.0.3/dist/esm/parse-class.js",
+    "sha256": "26995e1481cf6853c33a541ebf30ee198e9d3796b15441f1cfdc128e3dbd0ab5",
+    "integrity": "sha512-SI7kyKHq4XXDRozw+r9GlRZkia1ZkFrpLW98r2IC2Bpr8YkFGE3fvjzmxCG0x78A++69HmDNrDvSMYBZmHGpKA=="
+  },
+  {
+    "reference": "node-deps/minimatch/index.js",
+    "manifest": ".node-version",
+    "package": "node",
+    "version": "24.22.1",
+    "source": "test/parity/dependency-sources/node/24.22.1/deps/minimatch/index.js",
+    "sha256": "f96315be454e1579bb685f035b015aca6c33d7275f03707f74d6c82089250c30",
+    "integrity": "sha256-001773d9bd53fbd27a25efd42aa6a9693ebfe500998ca9bec635e9b6ee79bc91"
   }
 ]

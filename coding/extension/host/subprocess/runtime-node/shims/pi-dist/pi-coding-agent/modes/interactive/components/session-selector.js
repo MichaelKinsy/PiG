@@ -1,23 +1,13 @@
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { unlink } from "node:fs/promises";
-import * as os from "node:os";
 import { Container, getKeybindings, Input, Spacer, Text, truncateToWidth, visibleWidth, } from "../../../../../pi-tui.mjs";
 import { KeybindingsManager } from "../../../core/keybindings.js";
-import { canonicalizePath as _canonicalizePath } from "../../../utils/paths.js";
+import { canonicalizePath, getPathComparisonKey, shortenHomePath } from "../../../utils/paths.js";
 import { theme } from "../theme/theme.js";
 import { DynamicBorder } from "./dynamic-border.js";
 import { keyHint, keyText } from "./keybinding-hints.js";
 import { filterAndSortSessions, hasSessionName } from "./session-selector-search.js";
-function shortenPath(path) {
-    const home = os.homedir();
-    if (!path)
-        return path;
-    if (path.startsWith(home)) {
-        return `~${path.slice(home.length)}`;
-    }
-    return path;
-}
 function formatSessionDate(date) {
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
@@ -38,10 +28,9 @@ function formatSessionDate(date) {
         return `${Math.floor(diffDays / 30)}mo`;
     return `${Math.floor(diffDays / 365)}y`;
 }
-function canonicalizePath(path) {
-    if (!path)
-        return path;
-    return _canonicalizePath(path);
+/** Comparison key for a session file path; follows symlinks and ignores case on Windows. */
+function getSessionPathKey(path) {
+    return getPathComparisonKey(canonicalizePath(path));
 }
 class SessionSelectorHeader {
     scope;
@@ -167,14 +156,14 @@ class SessionSelectorHeader {
 function buildSessionTree(sessions) {
     const byPath = new Map();
     for (const session of sessions) {
-        const sessionPath = canonicalizePath(session.path) ?? session.path;
+        const sessionPath = getSessionPathKey(session.path);
         byPath.set(sessionPath, { session, children: [], latestActivity: session.modified.getTime() });
     }
     const roots = [];
     for (const session of sessions) {
-        const sessionPath = canonicalizePath(session.path) ?? session.path;
+        const sessionPath = getSessionPathKey(session.path);
         const node = byPath.get(sessionPath);
-        const parentPath = canonicalizePath(session.parentSessionPath);
+        const parentPath = session.parentSessionPath ? getSessionPathKey(session.parentSessionPath) : undefined;
         if (parentPath && byPath.has(parentPath)) {
             byPath.get(parentPath).children.push(node);
         }
@@ -241,7 +230,7 @@ class SessionList {
     keybindings;
     showPath = false;
     confirmingDeletePath = null;
-    currentSessionCanonicalPath;
+    currentSessionPathKey;
     onSelect;
     onCancel;
     onExit = () => { };
@@ -271,7 +260,7 @@ class SessionList {
         this.sortMode = sortMode;
         this.nameFilter = nameFilter;
         this.keybindings = keybindings;
-        this.currentSessionCanonicalPath = canonicalizePath(currentSessionFilePath);
+        this.currentSessionPathKey = currentSessionFilePath ? getSessionPathKey(currentSessionFilePath) : undefined;
         this.filterSessions("");
         // Handle Enter in search input - select current item
         this.searchInput.onSubmit = () => {
@@ -341,9 +330,9 @@ class SessionList {
         this.setConfirmingDeletePath(selected.session.path);
     }
     isCurrentSessionPath(path) {
-        if (!this.currentSessionCanonicalPath)
+        if (!this.currentSessionPathKey)
             return false;
-        return (canonicalizePath(path) ?? path) === this.currentSessionCanonicalPath;
+        return getSessionPathKey(path) === this.currentSessionPathKey;
     }
     invalidate() { }
     render(width) {
@@ -394,10 +383,10 @@ class SessionList {
             const msgCount = String(session.messageCount);
             let rightPart = `${msgCount} ${age}`;
             if (this.showCwd && session.cwd) {
-                rightPart = `${shortenPath(session.cwd)} ${rightPart}`;
+                rightPart = `${shortenHomePath(session.cwd)} ${rightPart}`;
             }
             if (this.showPath) {
-                rightPart = `${shortenPath(session.path)} ${rightPart}`;
+                rightPart = `${shortenHomePath(session.path)} ${rightPart}`;
             }
             // Cursor
             const cursor = isSelected ? theme.fg("accent", "› ") : "  ";
@@ -586,6 +575,9 @@ async function deleteSessionFile(sessionPath) {
  * Component that renders a session selector
  */
 export class SessionSelectorComponent extends Container {
+    get capturesViewportInput() {
+        return this.mode !== "rename";
+    }
     handleInput(data) {
         if (this.mode === "rename") {
             const kb = getKeybindings();

@@ -30,6 +30,7 @@ func TestExtensionCompactionPreservesLoneSurrogates(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	_ = s.Events()
 	t.Cleanup(func() {
 		if err := s.Close(); err != nil {
 			t.Error(err)
@@ -71,6 +72,7 @@ func TestBoundaryContextEditPreservesLoneSurrogates(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	_ = sess.Events()
 	defer func() { _ = sess.Close() }()
 	target, err := sess.inner.AppendCustomMessageEntry("note", "x"+jsstring.FromUTF16([]uint16{0xdfff}), true, nil)
 	if err != nil {

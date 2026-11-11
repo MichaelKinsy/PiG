@@ -455,6 +455,11 @@ func (m *InteractiveMode) stopInteractiveTui() {
 // processes that no longer exist and extensions would silently never clean up.
 // The caller therefore invokes this before cancelling.
 func (m *InteractiveMode) ShutdownFromSignal() {
+	m.shutdownFromSignal(true)
+}
+
+// shutdownFromSignal is ShutdownFromSignal; unwind says whether the owner loop is also asked to return from Run. A caller that ends the process itself passes false: an unwinding Run lets main exit 0 before that caller's os.Exit.
+func (m *InteractiveMode) shutdownFromSignal(unwind bool) {
 	if m == nil {
 		return
 	}
@@ -464,7 +469,9 @@ func (m *InteractiveMode) ShutdownFromSignal() {
 		return
 	}
 	m.emitQuitShutdown()
-	m.requestShutdown()
+	if unwind {
+		m.requestShutdown()
+	}
 }
 
 // handleInterruptSignal terminates the session on SIGINT, matching upstream,
@@ -476,26 +483,36 @@ func (m *InteractiveMode) ShutdownFromSignal() {
 // Exits rather than unwinding Run because the input loop may be blocked in a
 // read. Only signal-safe protocol disable and termios restoration run here; normal teardown also drains stdin, which the render loop owns.
 func (m *InteractiveMode) handleInterruptSignal() {
-	if m.suspended.Load() {
+	if !m.interruptShutdown() {
 		return
 	}
+	// The exit handler of Pi's process.exit (9df819de, #11170): a shutdown that timed out left the alternate screen and its modes on.
+	tui.RestoreTerminalOnExit()
+	tui.RestoreTerminalFromSignal()
+	BeforeExit()
+	EndSessionMarker()
+	os.Exit(130)
+}
+
+// interruptShutdown records the SIGINT and gives extensions their shutdown event, for at most a second. It reports false when a suspended session ignores the signal.
+// The owner loop is never asked to unwind: Run returning lets main exit 0 while the caller is still on its way to os.Exit(130).
+func (m *InteractiveMode) interruptShutdown() bool {
+	if m.suspended.Load() {
+		return false
+	}
 	// pig additive (D102): Pi dies on SIGINT with no trace.
-	RecordExit(m.opts.AgentDir, "received SIGINT (exit 130)")
+	RecordEnding(m.opts.AgentDir, "received SIGINT (exit 130)")
 	// pig divergence (D51): restore terminal state before exit 130.
 	done := make(chan struct{})
 	go func() {
-		m.ShutdownFromSignal()
+		m.shutdownFromSignal(false)
 		close(done)
 	}()
 	select {
 	case <-done:
 	case <-time.After(time.Second):
 	}
-	// The exit handler of Pi's process.exit (9df819de, #11170): a shutdown that timed out left the alternate screen and its modes on.
-	tui.RestoreTerminalOnExit()
-	tui.RestoreTerminalFromSignal()
-	EndSessionMarker()
-	os.Exit(130)
+	return true
 }
 
 // `/model` empty-args) and applies the chosen model.
@@ -506,6 +523,6 @@ func (m *InteractiveMode) handleInterruptSignal() {
 // in exit.log; an extension's timer can end an idle session this way.
 // pig additive (D102): Pi leaves no trace.
 func (m *InteractiveMode) requestExtensionShutdown() {
-	RecordExit(m.opts.AgentDir, "extension requested shutdown (ctx.shutdown())")
+	RecordEnding(m.opts.AgentDir, "extension requested shutdown (ctx.shutdown())")
 	m.requestShutdown()
 }

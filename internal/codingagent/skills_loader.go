@@ -11,6 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/internal/ignorerules"
 	"github.com/MichaelKinsy/PiG/internal/nodefs"
+	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 )
 
 // LoadSkillsFromDirOptions selects one skill directory and its provenance source.
@@ -156,7 +157,7 @@ func LoadSkills(options LoadSkillsOptions) (LoadSkillsResult, error) {
 	add := func(loaded LoadSkillsResult) {
 		result.Diagnostics = append(result.Diagnostics, loaded.Diagnostics...)
 		for _, skill := range loaded.Skills {
-			canonical := canonicalizePath(skill.FilePath)
+			canonical := ResourcePathKey(skill.FilePath)
 			if realPaths[canonical] {
 				continue
 			}
@@ -187,9 +188,9 @@ func LoadSkills(options LoadSkillsOptions) (LoadSkillsResult, error) {
 		}
 		source := "path"
 		if !options.IncludeDefaults {
-			if resourcePathWithin(path, userDir) {
+			if resolvepath.IsPathWithin(userDir, path) {
 				source = "user"
-			} else if resourcePathWithin(path, projectDir) {
+			} else if resolvepath.IsPathWithin(projectDir, path) {
 				source = "project"
 			}
 		}

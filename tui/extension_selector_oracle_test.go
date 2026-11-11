@@ -23,8 +23,8 @@ type extensionSelectorProbe struct {
 
 // extension-selector.ts (ExtensionSelectorComponent) against pinned Pi: every frame and the select and cancel callbacks after each key, with
 // default and rebound select keys, empty and wide options, and a description. Not compared: app.tools.expand (the tui-only key table has no
-// app actions; covered where the interactive mode installs the merged table), the select page keys (D155), the countdown and the preview column
-// (no Pi counterpart in the constructor path).
+// app actions; covered where the interactive mode installs the merged table), the countdown and the preview column (no Pi counterpart in
+// the constructor path). PageUp and PageDown are compared: Pi's selector ignores them.
 func TestExtensionSelectorMatchesPi(t *testing.T) {
 	scripts := [][]string{
 		nil,
@@ -45,6 +45,8 @@ func TestExtensionSelectorMatchesPi(t *testing.T) {
 		{"\x0e", "\x10", "\r"},
 		{"\x18"},
 		{"\x1b[B", "\x1b"},
+		{"\x1b[6~", "\x1b[B", "\x1b[5~", "\r"},
+		{"\x1b[B", "\x1b[6~", "\x1b[5~", "\x1b[6~", "\n"},
 	}
 	bindings := []map[string][]string{
 		nil,

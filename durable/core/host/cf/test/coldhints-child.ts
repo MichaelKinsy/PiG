@@ -7,7 +7,7 @@
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context"
-import { Type } from "@earendil-works/pi-ai"
+import { Type } from "typebox"
 import { createModels } from "@earendil-works/pi-ai/models"
 import { fauxAssistantMessage, fauxProvider, fauxToolCall } from "@earendil-works/pi-ai/providers/faux"
 import { compileCoreModule } from "../src/compile-hints.ts"

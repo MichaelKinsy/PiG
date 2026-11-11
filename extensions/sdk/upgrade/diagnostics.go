@@ -137,6 +137,8 @@ var (
 	usagePointerTypes   = lazyPattern(`\*int\b|\*float64\b`)
 	boolPointerArgument = lazyPattern(`^cannot use .+ as \*bool value in `)
 	credentialType      = lazyPattern(`\*\w+\.Credential\b`)
+	// highlightCodeTarget matches the SDK side of the compiler's message when a function written for the old HighlightCode is assigned to the new field: the target type, whatever the author named or left unnamed the parameters of the function.
+	highlightCodeTarget = lazyPattern(`^cannot use .+ as func\((?:code )?string, (?:lang )?string, (?:palette )?\[\]byte\) \(\[\]string, error\) value`)
 )
 
 // isArityDiagnostic reports whether message is one the compiler gives for a
@@ -189,6 +191,8 @@ func classifyDiagnostic(diagnostic Diagnostic, source FileSource, files map[stri
 		return RuleNotComparable, "ToolInfo", true
 	case (strings.Contains(message, "cannot be compared") || strings.Contains(message, "invalid map key")) && strings.Contains(message, "OAuthCredentials"):
 		return RuleNotComparable, "OAuthCredentials", true
+	case highlightCodeTarget().MatchString(message) && importsSDK(diagnostic, source, files):
+		return RuleHostHighlightCode, "HostHelpers.HighlightCode", true
 	case strings.Contains(message, "TransformHeaders") && strings.Contains(message, "ProviderStreamOptions"):
 		return RuleTransformHeaders, "ProviderStreamOptions.TransformHeaders", true
 	case credentialType().MatchString(message) && importsSDK(diagnostic, source, files):

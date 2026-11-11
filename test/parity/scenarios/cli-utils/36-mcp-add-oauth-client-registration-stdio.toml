@@ -1,0 +1,28 @@
+# Behavior family: cli-utils
+# Pi 6d4b7443 probe (packages/coding-agent/dist/cli.js, scratch agent dir): exit 1: --oauth-client-registration only applies to HTTP servers (--url).
+# Source: packages/coding-agent/src/extensions/mcp/cli.ts (--oauth-client-registration, Pi 908aa7b7), core/mcp-servers.ts:205.
+# Pi's pinned release (e7a0df27) predates the flag, so this scenario compares against Pi only after the pin bump to 6d4b7443.
+name = "36-mcp-add-oauth-client-registration-stdio"
+description = "The flag is HTTP-only."
+covers = ["packages/coding-agent/src/extensions/mcp/cli.ts", "packages/coding-agent/src/core/mcp-servers.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+
+[cli]
+args = ["mcp", "add", "x", "--oauth-client-registration", "dcr", "--", "cmd"]
+timeout_seconds = 25
+
+[assert]
+exit_code = 1
+both_contain = ["only applies to HTTP servers (--url)"]
+output_equal = true
+runs = 3
+
+# normalize-rationale: D2 changes only the command identity. Keep every other diagnostic byte.
+[[assert.normalize_replace]]
+pattern = '\bpig\b'
+with = 'pi'
+reason = "D2: PiG uses the pig executable name instead of pi."

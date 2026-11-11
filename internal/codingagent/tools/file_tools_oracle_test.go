@@ -17,7 +17,9 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 )
 
-// pi: packages/coding-agent/src/core/tools/read.ts, write.ts, ls.ts
+// pi: packages/coding-agent/src/core/tools/read.ts
+// pi: packages/coding-agent/src/core/tools/write.ts
+// pi: packages/coding-agent/src/core/tools/ls.ts
 
 // The read, write and ls tools against pinned Pi over seeded directory trees (text with LF, CRLF and no trailing newline, long lines, many lines,
 // empty files, binary content, directories, hidden and mixed-case names) and arguments (offsets and limits around every boundary, missing and

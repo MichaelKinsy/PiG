@@ -86,14 +86,23 @@ fn a_delta_frame_copies_the_payload_once() {
     let path = socket.to_str().unwrap().to_string();
     let thread = std::thread::spawn(move || ext.run_with_socket(&path));
     let (mut stream, _) = listener.accept().unwrap();
-    stream.set_read_timeout(Some(Duration::from_secs(10))).unwrap();
+    stream
+        .set_read_timeout(Some(Duration::from_secs(10)))
+        .unwrap();
     let register = read(&mut stream);
     assert_eq!(register["type"], "register");
     let handler_id = register["register"]["handlers"][0]["handler_id"].clone();
-    send(&mut stream, &json!({"type":"ready","ready":{"state":{},"width":80,"mode":"tui"}}));
+    send(
+        &mut stream,
+        &json!({"type":"ready","ready":{"state":{},"width":80,"mode":"tui"}}),
+    );
 
-    let keyframe = json!({"type":"message_update","text":"x".repeat(BASE),"nested":{"list":[1, "two"]}});
-    send(&mut stream, &json!({"type":"request","id":"k","request":{"method":"event","event":"message_update","handler_id":handler_id,"args":keyframe,"stream":{"seq":1}}}));
+    let keyframe =
+        json!({"type":"message_update","text":"x".repeat(BASE),"nested":{"list":[1, "two"]}});
+    send(
+        &mut stream,
+        &json!({"type":"request","id":"k","request":{"method":"event","event":"message_update","handler_id":handler_id,"args":keyframe,"stream":{"seq":1}}}),
+    );
     response(&mut stream, "k");
     let frames: Vec<(String, Value)> = (0..FRAMES)
         .map(|index| {
@@ -110,7 +119,10 @@ fn a_delta_frame_copies_the_payload_once() {
         response(&mut stream, id);
     }
     let allocated = ALLOCATED.load(Ordering::Relaxed) - before;
-    send(&mut stream, &json!({"type":"shutdown","shutdown":{"reason":"done"}}));
+    send(
+        &mut stream,
+        &json!({"type":"shutdown","shutdown":{"reason":"done"}}),
+    );
     thread.join().unwrap().unwrap();
     let _ = std::fs::remove_dir_all(&root);
 
@@ -118,6 +130,12 @@ fn a_delta_frame_copies_the_payload_once() {
     assert_eq!(LAST.load(Ordering::Relaxed), BASE + FRAMES * CHUNK.len());
     let delivered = DELIVERED.load(Ordering::Relaxed) - BASE;
     let copies = allocated as f64 / delivered as f64;
-    eprintln!("bytes allocated per delta frame {}, payload copies per frame {copies:.2}", allocated / FRAMES);
-    assert!(copies < 1.3, "each delta frame allocated {copies:.2} payloads ({allocated} bytes for {delivered} payload bytes), want one copy");
+    eprintln!(
+        "bytes allocated per delta frame {}, payload copies per frame {copies:.2}",
+        allocated / FRAMES
+    );
+    assert!(
+        copies < 1.3,
+        "each delta frame allocated {copies:.2} payloads ({allocated} bytes for {delivered} payload bytes), want one copy"
+    );
 }

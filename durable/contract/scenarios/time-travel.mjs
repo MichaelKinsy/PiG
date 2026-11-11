@@ -11,7 +11,7 @@
 // Run by lib/run.mjs under the hooks (the clock is virtual there; the timings read the real one).
 import { appendFileSync } from "node:fs"
 import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context"
-import { Type } from "@earendil-works/pi-ai"
+import { num, obj } from "@earendil-works/pi-schema"
 import { createModels } from "@earendil-works/pi-ai/models"
 import { fauxAssistantMessage, fauxProvider, fauxToolCall } from "@earendil-works/pi-ai/providers/faux"
 import { AgentDoc, createRegistry, defineExtension, defineTool, Harness, section } from "@earendil-works/pi-durable"
@@ -33,7 +33,7 @@ async function timed(op, work) {
 }
 
 const script = scriptedModel({ fauxProvider, fauxAssistantMessage, fauxToolCall, createModels }, { variant: "full" })
-const lookup = defineTool({ name: "lookup", description: "Look up record number n", parameters: Type.Object({ n: Type.Number() }), execute: async ({ n }) => ({ output: [{ type: "text", text: payload(n, 0) }] }) })
+const lookup = defineTool({ name: "lookup", description: "Look up record number n", parameters: obj({ n: num() }), execute: async ({ n }) => ({ output: [{ type: "text", text: payload(n, 0) }] }) })
 const registry = createRegistry()
 registry.install(defineExtension({ name: "bench", tools: [lookup], sections: [section("preamble", () => SYSTEM, { tag: false })] }))
 const harness = await timed("open", async () => Harness.open(await openNodeSqliteStorage(db), { models: script.models, registry }, context))

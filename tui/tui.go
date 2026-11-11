@@ -19,6 +19,7 @@ import (
 
 	"golang.org/x/term"
 
+	"github.com/MichaelKinsy/PiG/internal/goroutineid"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
@@ -109,6 +110,9 @@ type Container struct {
 	renderedLines  []string
 	renderedValid  bool
 	renderVersion  uint64
+	// structureGen counts the changes of the children. A render that finds it changed when its loop ends knows a child's Render changed the children
+	// (a subprocess extension's component calls the screen's addChild or removeChild, as Pi's render may), so what it built is not the children now.
+	structureGen uint64
 
 	// The window is the last uncapped render: the children then (builtKids),
 	// the number of lines children[:i+1] held (builtEnds[i]) and the revision
@@ -175,6 +179,7 @@ func NewContainer(children ...Component) *Container {
 
 func (c *Container) invalidateStructureLocked() {
 	c.renderedValid = false
+	c.structureGen++
 	c.dirty.Store(true)
 	c.notifySurface()
 }
@@ -210,10 +215,15 @@ func (c *Container) RemoveChild(comp Component) { c.Remove(comp) }
 
 func (c *Container) Add(comp Component) {
 	c.mu.Lock()
+	c.addLocked(comp)
+	c.mu.Unlock()
+}
+
+// addLocked is Add with c.mu held.
+func (c *Container) addLocked(comp Component) {
 	c.markChildrenLocked(len(c.children), 0)
 	c.children = append(c.children, comp)
 	c.invalidateStructureLocked()
-	c.mu.Unlock()
 }
 
 // InsertBefore adds comp immediately before ref and reports whether ref was a child. Pi splices into Container.children for this (interactive-mode.ts:3836-3839).
@@ -234,6 +244,11 @@ func (c *Container) InsertBefore(ref, comp Component) bool {
 func (c *Container) Remove(comp Component) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	c.removeLocked(comp)
+}
+
+// removeLocked is Remove with c.mu held.
+func (c *Container) removeLocked(comp Component) {
 	for i, ch := range c.children {
 		if ch == comp {
 			c.children = append(c.children[:i], c.children[i+1:]...)
@@ -265,11 +280,20 @@ func (c *Container) Replace(oldComp, newComp Component) bool {
 // Clear removes every child component. Used by /clear and /new.
 func (c *Container) Clear() {
 	c.mu.Lock()
+	c.clearLocked(false)
+	c.mu.Unlock()
+}
+
+// clearLocked is Clear with c.mu held. renderHeld says a render of this container is running on the calling goroutine, which still writes the cache.
+func (c *Container) clearLocked(renderHeld bool) {
 	c.children = nil
 	c.markChildrenLocked(0, 0)
-	c.childCache = nil
+	if renderHeld {
+		clear(c.childCache)
+	} else {
+		c.childCache = nil
+	}
 	c.invalidateStructureLocked()
-	c.mu.Unlock()
 }
 
 // SetChildren atomically replaces all children. The children it keeps at the start and the end keep their cached lines, which their
@@ -321,9 +345,36 @@ func (c *Container) LastTwoChildren() (Component, Component) {
 // Children returns a snapshot of the mounted child identities in insertion order. Callers can invoke child methods without holding the container lock.
 // upstream: packages/tui/src/tui.ts:Container
 func (c *Container) Children() []Component {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
+	return c.cloneChildren(false)
+}
+
+// cloneChildren is Children; held says the calling goroutine holds c.mu, as the goroutine rendering the container does while a child's Render calls back
+// into the renderer.
+func (c *Container) cloneChildren(held bool) []Component {
+	if !held {
+		c.mu.RLock()
+		defer c.mu.RUnlock()
+	}
 	return slices.Clone(c.children)
+}
+
+// pruneChildCacheLocked drops the cached lines of a component that is no longer a child, which a render that changed its own children leaves behind.
+// c.mu must be held.
+func (c *Container) pruneChildCacheLocked() {
+	if len(c.childCache) == 0 {
+		return
+	}
+	mounted := make(map[Component]struct{}, len(c.children))
+	for _, ch := range c.children {
+		if reflect.TypeOf(ch).Comparable() {
+			mounted[ch] = struct{}{}
+		}
+	}
+	for ch := range c.childCache {
+		if _, ok := mounted[ch]; !ok {
+			delete(c.childCache, ch)
+		}
+	}
 }
 
 func (c *Container) ChildCount() int {
@@ -517,10 +568,13 @@ func (c *Container) renderBorrowedLocked(width int, recycle bool) []string {
 	}
 
 	lines := c.windowBufferLocked(kept, recycle)
-	c.builtKids = slices.Grow(c.builtKids[:first], len(c.children)-first)[:len(c.children)]
-	c.builtEnds = slices.Grow(c.builtEnds[:first], len(c.children)-first)[:len(c.children)]
-	c.builtVers = slices.Grow(c.builtVers[:first], len(c.children)-first)[:len(c.children)]
-	c.builtSame = slices.Grow(c.builtSame[:first], len(c.children)-first)[:len(c.children)]
+	// A child's Render may change the children (see structureGen): the loop reads c.children live, as Pi's `for (const child of this.children)`
+	// does, and the window records the children it rendered.
+	generation := c.structureGen
+	c.builtKids = slices.Grow(c.builtKids[:first], len(c.children)-first)
+	c.builtEnds = slices.Grow(c.builtEnds[:first], len(c.children)-first)
+	c.builtVers = slices.Grow(c.builtVers[:first], len(c.children)-first)
+	c.builtSame = slices.Grow(c.builtSame[:first], len(c.children)-first)
 	for i := first; i < len(c.children); i++ {
 		ch := c.children[i]
 		var childLines []string
@@ -533,12 +587,14 @@ func (c *Container) renderBorrowedLocked(width int, recycle bool) []string {
 			childLines, version = c.renderChildLocked(ch, width)
 		}
 		lines = append(lines, childLines...)
-		c.builtKids[i], c.builtEnds[i], c.builtVers[i] = ch, len(lines), version
+		c.builtKids = append(c.builtKids, ch)
+		c.builtEnds = append(c.builtEnds, len(lines))
+		c.builtVers = append(c.builtVers, version)
 		// A child of a type that is not comparable cannot be recognized
 		// next render, so the render rebuilds from it.
-		c.builtSame[i] = reflect.TypeOf(ch).Comparable()
+		c.builtSame = append(c.builtSame, reflect.TypeOf(ch).Comparable())
 	}
-	clear(c.builtKids[len(c.children):cap(c.builtKids)])
+	clear(c.builtKids[len(c.builtKids):cap(c.builtKids)])
 	if c.windowValid {
 		c.spareLines, c.spareAgree = c.renderedLines, kept
 	}
@@ -546,7 +602,11 @@ func (c *Container) renderBorrowedLocked(width int, recycle bool) []string {
 	c.windowValid = true
 	c.renderLineHint = len(lines)
 	c.renderedLines = lines
-	c.renderedValid = true
+	// Lines built before a change of the children made during the loop are not valid for the children now: the next render compares the window with them.
+	c.renderedValid = c.structureGen == generation
+	if !c.renderedValid {
+		c.pruneChildCacheLocked()
+	}
 	c.recordLocked(kept)
 	return c.renderedLines
 }
@@ -665,13 +725,11 @@ type tuiBase struct {
 	terminal Terminal
 	// derivedTerminal is the Terminal that Terminal creates on first use for a renderer constructed without one.
 	derivedTerminal atomic.Pointer[Terminal]
-	// sizeSnapshot publishes the width and height the renderer last took (publishSize) to readers that hold neither the frame nor the owner loop: Width and Height, which the extension host calls from its own goroutines, and a fixed-size renderer's derived Terminal, which components read during a frame while t.mu is held.
+	// sizeSnapshot is the renderer's width and height (setSize). Every reader takes it through size, so the frame that updates it never races with the readers on the input, overlay and extension-host goroutines, nor with the components that read it during a frame while t.mu is held, nor with a fixed-size renderer's derived Terminal.
 	sizeSnapshot atomic.Uint64
 	// direct is the unlogged writer for what upstream sends straight to stdout; nil when nothing is logged.
 	direct             io.Writer
 	terminalBackground *terminalBackgroundQueries
-	width              int
-	height             int
 
 	fullRedrawCount atomic.Int64
 
@@ -703,7 +761,13 @@ type tuiBase struct {
 	immediateRenderRequested bool
 	renderTimer              stoppableTimer
 	// frameActive is set while a frame holds mu and renders components (lockFrame). mu is not reentrant, so RequestRender during the frame (from a component's Render, as Pi's Loader.invalidate and requestRender-on-image-load do, or from another goroutine) is recorded in frameRenderRequest and issued when the frame releases mu.
-	frameActive        atomic.Bool
+	frameActive atomic.Bool
+	// frameOwner is the goroutine that set frameActive (0 outside a frame): the goroutine running a frame holds mu and the base container's lock while it
+	// waits on a component's Render, so a call that component makes back to the renderer must run on it (TuiAltScreen.Frame). baseOwner is the goroutine
+	// that is rendering the base container, whose lock it holds across the children's Render.
+	frameOwner         atomic.Uint64
+	baseOwner          atomic.Uint64
+	frameAccess        atomic.Bool // EnableFrameAccess: the renderer records frameOwner and baseOwner
 	frameRenderRequest atomic.Uint32
 	renderGeneration   uint64
 	lastRenderAt       time.Time
@@ -878,7 +942,7 @@ func (t *tuiBase) currentOverlayVisibility(opts OverlayOptions) bool {
 	if opts.visible == nil {
 		return true
 	}
-	return opts.visible(t.width, t.height)
+	return opts.visible(t.size())
 }
 
 func (t *tuiBase) applyOverlayCommand(command overlayCommand) overlayCommandResult {
@@ -998,7 +1062,7 @@ func (h *OverlayHandle) setHidden(hidden bool) {
 }
 
 func (h *OverlayHandle) apply(command overlayCommand) {
-	h.tui.refreshOverlayVisibility(h.tui.width, h.tui.height)
+	h.tui.refreshOverlayVisibility(h.tui.size())
 	result := h.tui.applyOverlayCommand(command)
 	if result.changed {
 		if command.kind == overlayRemoveTarget {
@@ -1150,8 +1214,24 @@ func (t *tuiBase) composeFrameLines(root []string, width, height int) (lines []s
 		lines, _ = t.composeOverlaySnapshot(root, snapshot, width, height)
 		return lines, true
 	}
-	lines, _ = t.composeOverlaySnapshot(t.resolveFakeCursors(root), snapshot, width, height)
+	lines, _ = t.composeOverlaySnapshot(t.resolveFakeCursors(stripOsc133ZonePrefixes(root)), snapshot, width, height)
 	return lines, false
+}
+
+// stripOsc133ZonePrefixes returns lines without the leading OSC 133 zone marks of any line. The terminal reads 133;A as a new
+// shell prompt, which ends the program status (OSC 7501), so the main screen never writes them. lines is returned as is, with no
+// copy, when no line starts with a mark.
+func stripOsc133ZonePrefixes(lines []string) []string {
+	first := slices.IndexFunc(lines, func(line string) bool { return strings.HasPrefix(line, osc133ZoneMark) })
+	if first < 0 {
+		return lines
+	}
+	out := make([]string, len(lines))
+	copy(out, lines[:first])
+	for i := first; i < len(lines); i++ {
+		out[i] = stripOsc133ZonePrefix(lines[i])
+	}
+	return out
 }
 
 func (t *tuiBase) frameOverlaySnapshot(width, height int) overlayStateSnapshot {
@@ -1215,7 +1295,7 @@ func (t *tuiBase) overlaySnapshot() overlayStateSnapshot {
 // HideOverlay permanently removes the most recently appended mounted entry.
 // Focus and visual order do not affect this target. Mirrors upstream hideOverlay.
 func (t *tuiBase) HideOverlay() {
-	t.refreshOverlayVisibility(t.width, t.height)
+	t.refreshOverlayVisibility(t.size())
 	result := t.applyOverlayCommand(overlayCommand{kind: overlayRemoveAppendTail})
 	if result.changed {
 		t.hideTerminalCursorWithoutOverlays()
@@ -1225,15 +1305,18 @@ func (t *tuiBase) HideOverlay() {
 }
 
 // SetFocus records a non-overlay target for focus restoration.
-func (t *tuiBase) SetFocus(component Component) {
+func (t *tuiBase) SetFocus(component Component) { t.setFocus(component, false) }
+
+// setFocus is SetFocus; held says the calling goroutine holds the base container's lock.
+func (t *tuiBase) setFocus(component Component, held bool) {
 	previous := t.GetFocusedComponent()
 	t.applyOverlayCommand(overlayCommand{
 		kind: overlaySetFocusTarget, target: component,
-		previousFocusMounted: t.componentMounted(previous),
+		previousFocusMounted: t.componentMounted(previous, held),
 	})
 }
 
-func (t *tuiBase) componentMounted(target Component) bool {
+func (t *tuiBase) componentMounted(target Component, held bool) bool {
 	if target == nil {
 		return false
 	}
@@ -1243,9 +1326,7 @@ func (t *tuiBase) componentMounted(target Component) bool {
 	if overlayID != 0 {
 		return true
 	}
-	t.Container.mu.RLock()
-	roots := append([]Component(nil), t.children...)
-	t.Container.mu.RUnlock()
+	roots := t.cloneChildren(held)
 	for _, root := range roots {
 		if componentTreeContains(root, target) {
 			return true
@@ -1297,7 +1378,7 @@ func (t *tuiBase) GetFocusedComponent() Component {
 
 // ActiveOverlay refreshes overlay visibility and restores eligible focus before input dispatch. An active replacement keeps input until it changes focus, even if it is not mounted in the render tree.
 func (t *tuiBase) ActiveOverlay() Component {
-	t.refreshOverlayVisibility(t.width, t.height)
+	t.refreshOverlayVisibility(t.size())
 	t.overlayMu.Lock()
 	previous := t.overlayModel.focusedComponent()
 	t.overlayModel.prepareInput()
@@ -1315,12 +1396,15 @@ func (t *tuiBase) ActiveOverlay() Component {
 // hasOverlay; HasOverlay below intentionally reports mounted entries for the
 // renderer-switch guard.
 func (t *tuiBase) hasOverlay() bool {
-	t.refreshOverlayVisibility(t.width, t.height)
+	t.refreshOverlayVisibility(t.size())
 	t.overlayMu.Lock()
 	visible := t.overlayModel.visibleAny()
 	t.overlayMu.Unlock()
 	return visible
 }
+
+// HasVisibleOverlay is upstream hasOverlay: whether any overlay is visible.
+func (t *tuiBase) HasVisibleOverlay() bool { return t.hasOverlay() }
 
 // HasOverlay reports whether any overlay entry is mounted. The interactive
 // driver uses this for the upstream hasOverlayEntries renderer-switch guard.
@@ -1406,7 +1490,7 @@ func NewWithOutput(out io.Writer, cols, rows int) *TuiMainScreen {
 			},
 		},
 	}
-	t.setFixedDimensionsLocked(cols, rows)
+	t.setSize(cols, rows)
 	t.render = t.doRender
 	return t
 }
@@ -1486,17 +1570,14 @@ func (t *tuiBase) updateSize() {
 		return
 	}
 	if t.terminal != nil {
-		t.width, t.height = t.terminal.Columns(), t.terminal.Rows()
-		t.publishSize()
+		t.setSize(t.terminal.Columns(), t.terminal.Rows())
 		return
 	}
 	w, h, err := term.GetSize(int(os.Stdout.Fd()))
 	if err != nil {
 		w, h = 80, 24
 	}
-	t.width = w
-	t.height = h
-	t.publishSize()
+	t.setSize(w, h)
 }
 
 // SetFixedSize changes the size of a renderer built with a fixed size
@@ -1506,7 +1587,7 @@ func (t *tuiBase) SetFixedSize(cols, rows int) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if t.fixedSize {
-		t.setFixedDimensionsLocked(cols, rows)
+		t.setSize(cols, rows)
 	}
 }
 
@@ -1712,14 +1793,28 @@ const (
 // lockFrame takes mu for a frame that renders components.
 func (t *tuiBase) lockFrame() {
 	t.mu.Lock()
-	t.frameActive.Store(true)
+	t.enterFrame()
 }
 
 // unlockFrame releases mu after a frame and issues a render requested during it. frameActive clears while mu is still held: clearing it after the unlock could erase the flag of a frame another goroutine has just started, and that frame's own RequestRender would then take mu again.
 func (t *tuiBase) unlockFrame() {
-	t.frameActive.Store(false)
+	t.leaveFrame()
 	t.mu.Unlock()
 	t.issueFrameRenderRequest()
+}
+
+// enterFrame marks the calling goroutine, which holds mu, as running a frame.
+func (t *tuiBase) enterFrame() {
+	if t.frameAccess.Load() {
+		t.frameOwner.Store(goroutineid.Current())
+	}
+	t.frameActive.Store(true)
+}
+
+// leaveFrame ends enterFrame's mark; mu is still held.
+func (t *tuiBase) leaveFrame() {
+	t.frameActive.Store(false)
+	t.frameOwner.Store(0)
 }
 
 // deferFrameRenderRequest records a render request made while a frame holds mu and reports whether it did. A forced request supersedes a normal one.
@@ -2044,7 +2139,7 @@ func (t *TuiMainScreen) applyLineResetsCachedWithCursor(lines []string, cursorRo
 		} else if resolve {
 			line = widthx.ResolveFakeCursorLine(line, t.showHardwareCursor)
 		}
-		out[i] = widthx.ApplyLineReset(line)
+		out[i] = widthx.ApplyLineReset(stripOsc133ZonePrefix(line))
 		if ids := extractKittyImageIDs(out[i]); len(ids) > 0 {
 			if kittyIDs == nil {
 				kittyIDs = make(map[int][]int)
@@ -2070,13 +2165,14 @@ func (t *TuiMainScreen) doRender() {
 	t.lastRenderAt = t.now()
 
 	t.updateSize()
+	width, height := t.size()
 
 	// Collect lines from the component tree, then compose from an immutable
 	// overlay snapshot. Component rendering and visibility callbacks run with no
 	// overlay-state lock held.
 	// Resolve fake cursors before compositing so overlays and line slicing see plain SGR codes (tui-main-screen.ts doRender).
-	rootLines, rootVersion, kept := t.renderBorrowedSince(t.width, t.windowVersion)
-	newLines, unresolved := t.composeFrameLines(rootLines, t.width, t.height)
+	rootLines, rootVersion, kept := t.renderBorrowedSince(width, t.windowVersion)
+	newLines, unresolved := t.composeFrameLines(rootLines, width, height)
 	hasOverlay := t.HasOverlay()
 	// The reset cache may compare with the last frame's input when that array
 	// is unchanged: a composed array is the renderer's own, and the root
@@ -2110,10 +2206,11 @@ func (t *TuiMainScreen) doRender() {
 	// hardware terminal cursor at the end of the frame. Components that
 	// don't emit the marker fall back to the legacy behaviour where the
 	// cursor lands at the end of the last written line.
-	cursorPos, cursorRow, cursorFreeLine, hasCursorPos := findCursorPosition(newLines, t.height)
+	cursorPos, cursorRow, cursorFreeLine, hasCursorPos := findCursorPosition(newLines, height)
+	cursorFreeLine = stripOsc133ZonePrefix(cursorFreeLine)
 	if hasCursorPos && unresolved {
 		// Resolving keeps every cursor marker in place, so the marker is on the same row; the cursor-free line is the resolved one.
-		before, after, _ := strings.Cut(widthx.ResolveFakeCursorLine(newLines[cursorRow], t.showHardwareCursor), widthx.CursorMarker)
+		before, after, _ := strings.Cut(widthx.ResolveFakeCursorLine(stripOsc133ZonePrefix(newLines[cursorRow]), t.showHardwareCursor), widthx.CursorMarker)
 		cursorPos.Col, cursorFreeLine = widthx.VisibleWidth(before), before+after
 	}
 
@@ -2129,7 +2226,6 @@ func (t *TuiMainScreen) doRender() {
 		diffFrom = resetFrom
 	}
 
-	width, height := t.width, t.height
 	if height < 1 {
 		height = 1
 	}
@@ -2270,7 +2366,7 @@ func (t *TuiMainScreen) doRender() {
 			t.positionHardwareCursor(cursorPos, hasCursorPos, len(newLines))
 			return
 		}
-		buf := boundedTerminalWriter{write: func(data string) { _, _ = io.WriteString(t.out, data) }}
+		buf := boundedTerminalWriter{write: func(data string) { WriteToTerminal(t.out, data) }}
 		buf.WriteString("\x1b[?2026h")
 		buf.WriteString(buf0)
 		lineDiff := computeLineDiff(targetRow, hardwareCursorRow, viewportTop(prevViewportTop), prevViewportTop)
@@ -2338,7 +2434,7 @@ func (t *TuiMainScreen) doRender() {
 		}
 	}
 
-	buf := boundedTerminalWriter{write: func(data string) { _, _ = io.WriteString(t.out, data) }}
+	buf := boundedTerminalWriter{write: func(data string) { WriteToTerminal(t.out, data) }}
 	buf.WriteString("\x1b[?2026h")
 	buf.WriteString(t.deleteChangedKittyImages(firstChanged, lastChanged))
 
@@ -2489,7 +2585,7 @@ func (t *TuiMainScreen) fullRender(newLines []string, width, height int, clear b
 	bufLen := max(len(newLines), height)
 	viewportTop := max(0, bufLen-height)
 
-	buf := boundedTerminalWriter{write: func(data string) { _, _ = io.WriteString(t.out, data) }}
+	buf := boundedTerminalWriter{write: func(data string) { WriteToTerminal(t.out, data) }}
 	buf.WriteString("\x1b[?2026h")
 	if clear {
 		// Delete previously tracked Kitty images before wiping the screen
@@ -2555,7 +2651,7 @@ func isTermuxSession() bool {
 // the relative row delta is stable across viewport shifts.
 func (t *TuiMainScreen) positionHardwareCursor(cursorPos widthx.CursorPosition, ok bool, totalLines int) {
 	if !ok || totalLines <= 0 {
-		_, _ = fmt.Fprint(t.cursorOut(), "\x1b[?25l")
+		WriteToTerminal(t.cursorOut(), "\x1b[?25l")
 		return
 	}
 	targetRow := max(0, min(cursorPos.Row, totalLines-1))
@@ -2569,7 +2665,7 @@ func (t *TuiMainScreen) positionHardwareCursor(cursorPos widthx.CursorPosition, 
 	}
 	fmt.Fprintf(&buf, "\x1b[%dG", targetCol+1)
 	if buf.Len() > 0 {
-		_, _ = t.out.Write([]byte(buf.String()))
+		WriteToTerminal(t.out, buf.String())
 	}
 	t.hardwareCursorRow = targetRow
 	// Upstream shows or hides the cursor through terminal.showCursor/hideCursor, which bypass PI_TUI_WRITE_LOG.
@@ -2592,18 +2688,18 @@ func (t *TuiMainScreen) RepaintAll() {
 
 // HideCursor hides the terminal cursor.
 func (t *tuiBase) HideCursor() {
-	_, _ = fmt.Fprint(t.cursorOut(), "\033[?25l")
+	WriteToTerminal(t.cursorOut(), "\033[?25l")
 }
 
 // WriteRaw writes data to the terminal as is, as upstream's
 // terminal.write does for a component that drives the terminal itself.
 func (t *tuiBase) WriteRaw(data string) {
-	_, _ = io.WriteString(t.out, data)
+	WriteToTerminal(t.out, data)
 }
 
 // ShowCursor shows the terminal cursor.
 func (t *tuiBase) ShowCursor() {
-	_, _ = fmt.Fprint(t.cursorOut(), "\033[?25h")
+	WriteToTerminal(t.cursorOut(), "\033[?25h")
 }
 
 // cursorOut is where cursor visibility goes: upstream's terminal.hideCursor and showCursor write to stdout directly, not through
@@ -2708,15 +2804,15 @@ func (t *TuiMainScreen) stopWithOptionsLocked(options StopOptions) {
 		// Overwrite the inverted software cursor with a normal space so it
 		// does not leave a highlighted-cell artifact after the hardware
 		// cursor is restored on exit (mirrors upstream tui.ts stop()).
-		_, _ = fmt.Fprint(t.out, " ")
+		WriteToTerminal(t.out, " ")
 		targetRow := len(t.prevLines)
 		lineDiff := targetRow - t.hardwareCursorRow
 		if lineDiff > 0 {
-			_, _ = fmt.Fprintf(t.out, "\033[%dB", lineDiff)
+			WriteToTerminal(t.out, fmt.Sprintf("\033[%dB", lineDiff))
 		} else if lineDiff < 0 {
-			_, _ = fmt.Fprintf(t.out, "\033[%dA", -lineDiff)
+			WriteToTerminal(t.out, fmt.Sprintf("\033[%dA", -lineDiff))
 		}
-		_, _ = fmt.Fprint(t.out, "\r\n")
+		WriteToTerminal(t.out, "\r\n")
 	}
 	t.ShowCursor()
 }

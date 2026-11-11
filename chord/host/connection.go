@@ -743,16 +743,15 @@ func (connection *Connection) dropState(hold int, m string) {
 
 // dropHoldState forgets everything that waits for a hold (released, closed, or its state stopped).
 func (connection *Connection) dropHoldState(hold int) {
-	for _, key := range connection.pending.Keys() {
-		waiting, _ := connection.pending.Get(key)
+	connection.pending.DeleteFunc(func(_ string, waiting *slot) bool {
 		if waiting.hold != hold {
-			continue
+			return false
 		}
 		if !waiting.unit {
 			connection.pendingBytes -= waiting.size
 		}
-		connection.pending.Delete(key)
-	}
+		return true
+	})
 }
 
 // waiting is what waits for the peer: slots and bytes of ops (for tests and diagnostics).
@@ -793,9 +792,11 @@ func (connection *Connection) onAck(n int) {
 
 // flush sends waiting slots in creation order while the window allows.
 func (connection *Connection) flush() {
-	for connection.pending.Len() > 0 && !connection.full() {
-		key := connection.pending.keys[0]
-		waiting, _ := connection.pending.Get(key)
+	for !connection.full() {
+		key, waiting, ok := connection.pending.First()
+		if !ok {
+			return
+		}
 		connection.pending.Delete(key)
 		if waiting.unit {
 			waiting.flush()

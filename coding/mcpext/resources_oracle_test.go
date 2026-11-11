@@ -1,5 +1,7 @@
 package mcpext
 
+// pi: packages/coding-agent/src/extensions/mcp/resources.ts
+
 import (
 	"context"
 	"encoding/json"

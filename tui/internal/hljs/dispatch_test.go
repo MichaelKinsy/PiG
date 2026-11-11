@@ -4,6 +4,7 @@ import (
 	"math/bits"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"testing"
 )
 
@@ -38,55 +39,99 @@ func matchersOf(language *Mode) []*multiRegex {
 
 const dispatchProbeText = "é中😀 \u2028\t\r\n# \"'`\\${}()[]<>=+-*/%&|^~!?:;,.@_0aZ 12 x\n"
 
-// TestBranchDispatchEqualsTheJoinedExpression: at every position of every corpus sample (and of a text of punctuation and non-ASCII units), the matcher of every mode of the sample's language finds, with the dispatch, the match the joined regular expression finds: the same index, the same groups, the same branch.
-func TestBranchDispatchEqualsTheJoinedExpression(t *testing.T) {
-	r := NewRegistry()
-	r.LoadAllLanguages()
-	checked, skipped := 0, 0
+// dispatchShards is the parts the matchers of every text are split into. Each part is a top-level test of its own, so that the shard placement of automation/ci/test-shard-pattern.sh spreads the work of the family over go test processes, each under its own package timeout; the matchers of a language are the same in every registry and in the same order.
+const dispatchShards = 16
+
+// TestBranchDispatchEqualsTheJoinedExpression and its TestBranchDispatchEqualsTheJoinedExpressionShardN siblings: at every position of every corpus sample (and of a text of punctuation and non-ASCII units), the matcher of every mode of the sample's language finds, with the dispatch, the match the joined regular expression finds: the same index, the same groups, the same branch. Test number n of dispatchShards compares the matchers whose index in their language is n-1 modulo dispatchShards.
+func TestBranchDispatchEqualsTheJoinedExpression(t *testing.T)        { checkBranchDispatch(t, 0) }
+func TestBranchDispatchEqualsTheJoinedExpressionShard2(t *testing.T)  { checkBranchDispatch(t, 1) }
+func TestBranchDispatchEqualsTheJoinedExpressionShard3(t *testing.T)  { checkBranchDispatch(t, 2) }
+func TestBranchDispatchEqualsTheJoinedExpressionShard4(t *testing.T)  { checkBranchDispatch(t, 3) }
+func TestBranchDispatchEqualsTheJoinedExpressionShard5(t *testing.T)  { checkBranchDispatch(t, 4) }
+func TestBranchDispatchEqualsTheJoinedExpressionShard6(t *testing.T)  { checkBranchDispatch(t, 5) }
+func TestBranchDispatchEqualsTheJoinedExpressionShard7(t *testing.T)  { checkBranchDispatch(t, 6) }
+func TestBranchDispatchEqualsTheJoinedExpressionShard8(t *testing.T)  { checkBranchDispatch(t, 7) }
+func TestBranchDispatchEqualsTheJoinedExpressionShard9(t *testing.T)  { checkBranchDispatch(t, 8) }
+func TestBranchDispatchEqualsTheJoinedExpressionShard10(t *testing.T) { checkBranchDispatch(t, 9) }
+func TestBranchDispatchEqualsTheJoinedExpressionShard11(t *testing.T) { checkBranchDispatch(t, 10) }
+func TestBranchDispatchEqualsTheJoinedExpressionShard12(t *testing.T) { checkBranchDispatch(t, 11) }
+func TestBranchDispatchEqualsTheJoinedExpressionShard13(t *testing.T) { checkBranchDispatch(t, 12) }
+func TestBranchDispatchEqualsTheJoinedExpressionShard14(t *testing.T) { checkBranchDispatch(t, 13) }
+func TestBranchDispatchEqualsTheJoinedExpressionShard15(t *testing.T) { checkBranchDispatch(t, 14) }
+func TestBranchDispatchEqualsTheJoinedExpressionShard16(t *testing.T) { checkBranchDispatch(t, 15) }
+
+func checkBranchDispatch(t *testing.T, shard int) {
+	type job struct {
+		c    corpusSample
+		text string
+	}
+	var jobs []job
 	probed := map[string]bool{}
-	for _, c := range resumeCorpus(t) {
-		if !r.SupportsLanguage(c.Lang) {
-			continue
-		}
-		language := compileLanguage(r.getLanguage(c.Lang))
+	for _, c := range distinctSamples(t) {
 		texts := []string{c.Code}
 		if !probed[c.Lang] {
 			probed[c.Lang] = true
 			texts = append(texts, dispatchProbeText)
 		}
 		for _, text := range texts {
-			units := stringToUnits(text)
-			for _, m := range matchersOf(language) {
+			jobs = append(jobs, job{c, text})
+		}
+	}
+	var checked, skipped atomic.Int64
+	parallelEach(t, jobs, func() (func(job), func(int)) {
+		r := NewRegistry()
+		r.LoadAllLanguages()
+		matchers := map[string][]*multiRegex{}
+		return func(j job) {
+			c := j.c
+			if !r.SupportsLanguage(c.Lang) {
+				return
+			}
+			if matchers[c.Lang] == nil {
+				matchers[c.Lang] = matchersOf(compileLanguage(r.getLanguage(c.Lang)))
+			}
+			units := stringToUnits(j.text)
+			for i, m := range matchers[c.Lang] {
+				if i%dispatchShards != shard {
+					continue
+				}
 				if m.dispatch == nil {
-					skipped++
+					skipped.Add(1)
 					continue
 				}
 				// Scan the way the highlighter does: from each match to the next. Every match, and the gap before it, is compared; so is every 97th start.
-				compare := func(p int) *jsMatch {
+				compare := func(p int) (match *jsMatch, ok bool) {
 					want := m.matcherRe.exec(units, p)
 					got := m.dispatch.exec(m.matcherRe, units, p, m.matchAt-1)
-					checked++
+					checked.Add(1)
 					if (want == nil) != (got == nil) || want != nil && (want.index != got.index || !slices.Equal(want.spans, got.spans)) {
-						t.Fatalf("%s %s from %d: joined %+v, dispatch %+v\nmatcher %s", c.ID, c.Lang, p, want, got, m.matcherRe.source)
+						t.Errorf("%s %s from %d: joined %+v, dispatch %+v\nmatcher %s", c.ID, c.Lang, p, want, got, m.matcherRe.source)
+						return nil, false
 					}
-					return want
+					return want, true
 				}
 				for p := 0; p <= len(units); {
-					match := compare(p)
+					match, ok := compare(p)
+					if !ok {
+						return
+					}
 					if match == nil {
 						break
 					}
 					p = match.index + 1
 				}
 				for p := 0; p <= len(units); p += 97 {
-					compare(p)
+					if _, ok := compare(p); !ok {
+						return
+					}
 				}
 			}
-		}
-	}
-	t.Logf("%d positions compared, %d matchers without dispatch", checked, skipped)
-	if checked < 100_000 {
-		t.Fatalf("only %d positions compared", checked)
+		}, nil
+	})
+	t.Logf("shard %d of %d: %d positions compared, %d matchers without dispatch", shard+1, dispatchShards, checked.Load(), skipped.Load())
+	// The shards together compare at least 100_000 positions.
+	if !t.Failed() && checked.Load() < 100_000/dispatchShards {
+		t.Fatalf("only %d positions compared", checked.Load())
 	}
 }
 

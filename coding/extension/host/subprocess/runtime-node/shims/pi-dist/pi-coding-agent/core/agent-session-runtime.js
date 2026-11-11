@@ -1,6 +1,6 @@
 import { constants, copyFileSync, existsSync, mkdirSync } from "node:fs";
-import { basename, join, parse, resolve } from "node:path";
-import { resolvePath } from "../utils/paths.js";
+import { basename, join, parse } from "node:path";
+import { pathsEqual, resolvePath } from "../utils/paths.js";
 import { emitSessionShutdownEvent } from "./extensions/runner.js";
 import { assertSessionCwdExists } from "./session-cwd.js";
 import { SessionManager } from "./session-manager.js";
@@ -265,7 +265,7 @@ export class AgentSessionRuntime {
             mkdirSync(sessionDir, { recursive: true });
         }
         let destinationPath = join(sessionDir, basename(resolvedPath));
-        const sourceAlreadyStored = resolve(destinationPath) === resolvedPath;
+        const sourceAlreadyStored = pathsEqual(destinationPath, resolvedPath);
         if (!sourceAlreadyStored) {
             const { name, ext } = parse(destinationPath);
             let suffix = 1;

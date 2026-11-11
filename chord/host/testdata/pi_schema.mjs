@@ -5,8 +5,8 @@
 //
 // Each case holds its inputs (JSON text, so -0, 1e21 and key order survive) and what Pi's code returned for them; the Go
 // test replays the inputs through chord/host. The fits pairs are curated edge cases plus seeded random schema pairs.
-import { Type } from "../../../.upstream/current/node_modules/typebox/build/index.mjs";
-import { assertValid, canonicalIdentity, canonicalJson, fits, hash64, normalize } from "../../../.upstream/current/packages/chord/src/schema.ts";
+import { arr, bool, int, map, nul, num, obj, opt, str, union } from "../../../.upstream/current/packages/schema/src/index.ts";
+import { assertValid, canonicalIdentity, canonicalJson, cleaned, fits, hash64, normalize } from "../../../.upstream/current/packages/chord/src/schema.ts";
 
 function mulberry32(seed) {
 	let state = seed >>> 0;
@@ -175,12 +175,12 @@ const identityValues = [
 const identities = identityValues.map((value) => ({ schema: identitySchema, value, expect: canonicalIdentity(identitySchema, value) }));
 
 const fields = {
-	limit: Type.Integer({ default: 10 }),
-	mode: Type.String({ default: "fast" }),
-	name: Type.String(),
-	nested: Type.Optional(Type.Object({ on: Type.Boolean({ default: false }) })),
+	limit: int({ default: 10 }),
+	mode: str({ default: "fast" }),
+	name: str(),
+	nested: opt(obj({ on: bool({ default: false }) }, { open: true })),
 };
-const normalizeSchemas = [Type.Object(fields), Type.Object(fields, { additionalProperties: false }), Type.Object(fields, { additionalProperties: Type.Number() })];
+const normalizeSchemas = [obj(fields, { open: true }), obj(fields), { ...obj(fields, { open: true }), additionalProperties: num() }];
 const normalizeInputs = [
 	{ name: "a" },
 	{ name: "a", limit: 3, extra: 1 },
@@ -275,13 +275,99 @@ const assertions = assertSchemas.flatMap(([schema, values]) =>
 // them (the input's members in its own order, then the defaults it adds in schema order); encodings are the text
 // JSON.stringify writes for each schema, which a decoded description must write back byte for byte.
 const unsortedSchemas = [
-	Type.Object({ zed: Type.Integer({ default: 1 }), mid: Type.String({ default: "d" }), alpha: Type.String(), nest: Type.Optional(Type.Object({ yy: Type.Integer({ default: 2 }), bb: Type.Integer({ default: 3 }) })) }),
-	Type.Object({ z: Type.Optional(Type.Number()), a: Type.Array(Type.Object({ q: Type.String(), c: Type.Boolean() })), m: Type.Union([Type.String(), Type.Null()]) }, { additionalProperties: false }),
-	Type.Record(Type.String(), Type.Object({ w: Type.Number({ default: 4 }), k: Type.String({ default: "v" }) })),
+	obj({ zed: int({ default: 1 }), mid: str({ default: "d" }), alpha: str(), nest: opt(obj({ yy: int({ default: 2 }), bb: int({ default: 3 }) }, { open: true })) }, { open: true }),
+	obj({ z: opt(num()), a: arr(obj({ q: str(), c: bool() }, { open: true })), m: union([str(), nul()]) }),
+	map(obj({ w: num({ default: 4 }), k: str({ default: "v" }) }, { open: true })),
 ];
 const orderInputs = [{ alpha: "x" }, { mid: "m", alpha: "x" }, { alpha: "x", nest: {} }, { alpha: "x", nest: { bb: 9 } }, { nest: { bb: 9 }, alpha: "x", zed: 5 }];
 const orderCases = unsortedSchemas.slice(0, 1).flatMap((schema) =>
 	orderInputs.map((value) => ({ schema: JSON.parse(JSON.stringify(schema)), value, expect: normalize(schema, value, "input of thing") })),
 );
 const encodings = unsortedSchemas.map((schema) => JSON.stringify(schema));
-process.stdout.write(`${JSON.stringify({ orderCases, encodings, assertions, canonical, hashes, fits: fitsCases, identities, normalizes }, null, "\t")}\n`);
+// cleaned and normalize over pi-schema-style and TypeBox-style schemas: every unknown field dropped (open objects too),
+// defaults filled for missing values, tuples and unions, allOf of objects (TypeBox's Evaluate), records and maps. The
+// result keeps the key order of the value, then the defaults the schema adds in its own order.
+function randomCleanSchema(random, depth) {
+	const roll = random();
+	const withDefault = (schema) => (random() < 0.25 ? { ...schema, default: schema.type === "string" ? "d" : schema.type === "integer" ? 7 : schema.type === "boolean" ? true : undefined } : schema);
+	if (depth <= 0 || roll < 0.25) return JSON.parse(JSON.stringify(withDefault({ type: PICK(random, ["string", "integer", "boolean", "number", "null"]) })));
+	if (roll < 0.32) return { const: PICK(random, ["a", 1, true]), type: "string" };
+	if (roll < 0.38) return {};
+	if (roll < 0.58) {
+		const properties = {};
+		for (const key of PICK(random, [["a", "b"], ["z", "a", "m"], ["10", "x"], ["k"]])) if (random() < 0.8) properties[key] = randomCleanSchema(random, depth - 1);
+		const schema = { type: "object", properties };
+		const required = Object.keys(properties).filter(() => random() < 0.5);
+		if (required.length > 0) schema.required = required;
+		const extra = random();
+		if (extra < 0.4) schema.additionalProperties = false;
+		else if (extra < 0.55) schema.additionalProperties = randomCleanSchema(random, depth - 1);
+		else if (extra < 0.62) schema.additionalProperties = true;
+		return schema;
+	}
+	if (roll < 0.66) return { type: "object", patternProperties: { "^.*$": randomCleanSchema(random, depth - 1) } };
+	if (roll < 0.72) return { type: "object", additionalProperties: randomCleanSchema(random, depth - 1) };
+	if (roll < 0.78) return { type: "object", patternProperties: { "^x": randomCleanSchema(random, depth - 1) } };
+	if (roll < 0.86) return { type: "array", items: randomCleanSchema(random, depth - 1) };
+	if (roll < 0.9) return { type: "array", prefixItems: [randomCleanSchema(random, depth - 1), randomCleanSchema(random, depth - 1)], items: false, minItems: 2 };
+	if (roll < 0.93) return { type: "array", items: [randomCleanSchema(random, depth - 1)] };
+	if (roll < 0.97) return { anyOf: [randomCleanSchema(random, depth - 1), randomCleanSchema(random, depth - 1)] };
+	return {
+		allOf: [
+			{ type: "object", properties: { a: randomCleanSchema(random, depth - 1) }, required: ["a"] },
+			{ type: "object", properties: { b: randomCleanSchema(random, depth - 1) } },
+		],
+		...(random() < 0.5 ? { unevaluatedProperties: false } : {}),
+	};
+}
+// A value that follows the schema, with unknown fields added, fields and items left out, and now and then a value of
+// another type, so that cleaning and defaulting have work to do.
+function valueFor(random, schema, depth) {
+	if (typeof schema !== "object" || schema === null || depth <= 0 || random() < 0.06) return PICK(random, ["a", 1, true, null, [], {}]);
+	if (schema.anyOf) return valueFor(random, PICK(random, schema.anyOf), depth - 1);
+	if (schema.allOf) {
+		const merged = { type: "object", properties: {} };
+		for (const branch of schema.allOf) Object.assign(merged.properties, branch.properties);
+		return valueFor(random, merged, depth);
+	}
+	if ("const" in schema) return schema.const;
+	if (schema.type === "string") return PICK(random, ["a", "x", "d"]);
+	if (schema.type === "integer") return PICK(random, [1, 2, 7]);
+	if (schema.type === "number") return PICK(random, [1, 2.5]);
+	if (schema.type === "boolean") return PICK(random, [true, false]);
+	if (schema.type === "null") return null;
+	if (schema.type === "array") {
+		const prefix = schema.prefixItems ?? (Array.isArray(schema.items) ? schema.items : undefined);
+		if (prefix) return [...prefix.slice(0, Math.floor(random() * (prefix.length + 1))).map((item) => valueFor(random, item, depth - 1)), ...(random() < 0.4 ? ["extra", 3] : [])];
+		return Array.from({ length: Math.floor(random() * 3) }, () => valueFor(random, schema.items ?? {}, depth - 1));
+	}
+	if (schema.type === "object" || schema.properties || schema.patternProperties || schema.additionalProperties !== undefined) {
+		const value = {};
+		for (const [key, property] of Object.entries(schema.properties ?? {})) if (random() < 0.7) value[key] = valueFor(random, property, depth - 1);
+		if (schema.patternProperties) for (const [pattern, property] of Object.entries(schema.patternProperties)) if (random() < 0.8) value[pattern.startsWith("^x") ? "x1" : "r1"] = valueFor(random, property, depth - 1);
+		if (typeof schema.additionalProperties === "object") for (const key of ["u1", "u2"]) if (random() < 0.6) value[key] = valueFor(random, schema.additionalProperties, depth - 1);
+		for (const key of PICK(random, [[], ["extra"], ["u1", "10"], ["junk", "2"]])) value[key] = valueFor(random, {}, 0);
+		return value;
+	}
+	return PICK(random, ["a", 1, null, { u: 1 }, [1]]);
+}
+const cleanRandom = mulberry32(20261101);
+const cleanSchemas = [];
+for (let index = 0; index < 150; index++) cleanSchemas.push(randomCleanSchema(cleanRandom, 3));
+const cleans = [];
+const defaults = [];
+for (const schema of cleanSchemas) {
+	for (let attempt = 0; attempt < 3; attempt++) {
+		const value = valueFor(cleanRandom, schema, 4);
+		const text = JSON.stringify(schema);
+		const input = JSON.stringify(value);
+		cleans.push({ schema: text, value: input, expect: JSON.stringify(cleaned(JSON.parse(text), JSON.parse(input)) ?? null) });
+		try {
+			defaults.push({ schema: text, value: input, ok: true, expect: JSON.stringify(normalize(JSON.parse(text), JSON.parse(input), "input of thing") ?? null) });
+		} catch (error) {
+			defaults.push({ schema: text, value: input, ok: false, expect: error.message });
+		}
+	}
+}
+
+process.stdout.write(`${JSON.stringify({ orderCases, encodings, assertions, canonical, hashes, fits: fitsCases, identities, normalizes, cleans, defaults }, null, "\t")}\n`);

@@ -58,8 +58,8 @@ func NormalizeProviderError(value any) NormalizedProviderError {
 		return NormalizedProviderError{Message: SafeJsonStringify(value)}
 	}
 	result := NormalizedProviderError{Message: err.Error(), MessageCarriesBody: true}
-	// pig additive (D92): only the Bedrock provider (the AWS SDK) produces a status-carrying response error; a build without it has none.
-	if status, ok := awsResponseErrorStatus(err); ok {
+	// pig additive (D92): only a provider package that links an SDK (ai/providers/bedrock, the AWS SDK) produces a status-carrying response error; a program without it has none.
+	if status, ok := responseErrorStatus(err); ok {
 		result.Status = new(status)
 	}
 	return result

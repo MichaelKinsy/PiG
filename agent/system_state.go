@@ -36,6 +36,7 @@ func systemMessages(messages []AgentMessage) []ai.Message {
 	return systems
 }
 
+// Ports packages/agent/src/agent-loop.ts (declareToolChanges, withToolChanges).
 // declareToolChanges replaces pending tool intent with the delta from the committed transcript to the executable loadout.
 func (h *loopHost) declareToolChanges(context, pending []AgentMessage) []AgentMessage {
 	return declareToolChanges(h.tools(), context, pending)

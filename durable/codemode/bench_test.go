@@ -14,6 +14,7 @@ import (
 	cm "github.com/MichaelKinsy/PiG/codemode"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/harness"
+	"github.com/MichaelKinsy/PiG/durable/session/sessiontest"
 )
 
 // BenchmarkDurableCodeModeOverhead is the overhead of durable code mode. One model-issued call makes N calls of a trivial
@@ -117,7 +118,7 @@ func benchRun(b *testing.B, mode, shape string, n int) int64 {
 		b.Fatal(err)
 	}
 	var commits atomic.Int64
-	unsubscribe := opened.SubscribeCommits(func(context.Context, durable.CommitPublication) { commits.Add(1) })
+	unsubscribe := sessiontest.ObserveCommitsFunc(opened, func(context.Context, durable.CommitPublication) { commits.Add(1) })
 	defer unsubscribe()
 	b.StartTimer()
 	submission, err := root.Submit(testContext, durable.SubmissionDraft{Type: durable.SubmissionTypeInput, Content: ai.UserText("go")})

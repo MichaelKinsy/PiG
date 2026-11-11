@@ -54,6 +54,12 @@ func GenerateTree(w io.Writer, opts TreeOptions) error {
 		value, _ := json.Marshal(treeTexts[rng.IntN(len(treeTexts))] + fmt.Sprintf(" %d", rng.IntN(1000)))
 		return string(value)
 	}
+	// emit writes one entry's line. The JSON arguments are spliced into text whose own quotes sit around them, so each line is written with
+	// Fprintf rather than built as a string first: the values are whole JSON values (text() marshals), never the inside of a quoted string.
+	emit := func(format string, args ...any) error {
+		_, err := fmt.Fprintf(out, format+"\n", args...)
+		return err
+	}
 	for n := range opts.Entries {
 		id := fmt.Sprintf("%08x", rng.Uint32())
 		parent := leaf
@@ -64,38 +70,38 @@ func GenerateTree(w io.Writer, opts TreeOptions) error {
 		stamp := clock.Format("2006-01-02T15:04:05.000Z")
 		millis := clock.UnixMilli()
 		base := fmt.Sprintf(`"id":"%s","parentId":%s,"timestamp":"%s"`, id, parent, stamp)
-		var line string
+		var err error
 		switch kind := rng.IntN(16); {
 		case kind < 4 || n == 0:
-			line = fmt.Sprintf(`{"type":"message",%s,"message":{"role":"user","content":[{"type":"text","text":%s}],"timestamp":%d}}`, base, text(), millis)
+			err = emit(`{"type":"message",%s,"message":{"role":"user","content":[{"type":"text","text":%s}],"timestamp":%d}}`, base, text(), millis)
 		case kind < 7:
-			line = fmt.Sprintf(`{"type":"message",%s,"message":{"role":"assistant","content":[{"type":"thinking","thinking":%s},{"type":"text","text":%s},{"type":"toolCall","id":"call_%s","name":"read","arguments":{"path":%s,"limit":1e2}}],"api":"openai-completions","provider":"longsession","model":"scripted","usage":{"input":%d,"output":7,"cacheRead":0,"cacheWrite":0,"totalTokens":%d,"cost":{"input":0.5,"output":0,"cacheRead":0,"cacheWrite":0,"total":0.5}},"stopReason":"toolUse","timestamp":%d}}`, base, text(), text(), id, text(), n*10, n*10+7, millis)
+			err = emit(`{"type":"message",%s,"message":{"role":"assistant","content":[{"type":"thinking","thinking":%s},{"type":"text","text":%s},{"type":"toolCall","id":"call_%s","name":"read","arguments":{"path":%s,"limit":1e2}}],"api":"openai-completions","provider":"longsession","model":"scripted","usage":{"input":%d,"output":7,"cacheRead":0,"cacheWrite":0,"totalTokens":%d,"cost":{"input":0.5,"output":0,"cacheRead":0,"cacheWrite":0,"total":0.5}},"stopReason":"toolUse","timestamp":%d}}`, base, text(), text(), id, text(), n*10, n*10+7, millis)
 		case kind < 9:
-			line = fmt.Sprintf(`{"type":"message",%s,"message":{"role":"toolResult","toolCallId":"call_%s","toolName":"read","content":[{"type":"text","text":%s}],"details":{"extra":[1,2.50,-0]},"isError":%t,"timestamp":%d}}`, base, id, text(), rng.IntN(3) == 0, millis)
+			err = emit(`{"type":"message",%s,"message":{"role":"toolResult","toolCallId":"call_%s","toolName":"read","content":[{"type":"text","text":%s}],"details":{"extra":[1,2.50,-0]},"isError":%t,"timestamp":%d}}`, base, id, text(), rng.IntN(3) == 0, millis)
 		case kind == 9 && len(ids) > 1:
-			line = fmt.Sprintf(`{"type":"compaction",%s,"summary":%s,"firstKeptEntryId":"%s","tokensBefore":%d,"details":{"readFiles":["a.go"],"modifiedFiles":[]}}`, base, text(), ids[rng.IntN(len(ids))], 1000+n)
+			err = emit(`{"type":"compaction",%s,"summary":%s,"firstKeptEntryId":"%s","tokensBefore":%d,"details":{"readFiles":["a.go"],"modifiedFiles":[]}}`, base, text(), ids[rng.IntN(len(ids))], 1000+n)
 		case kind == 10 && len(ids) > 0:
-			line = fmt.Sprintf(`{"type":"branch_summary",%s,"fromId":"%s","summary":%s}`, base, ids[rng.IntN(len(ids))], text())
+			err = emit(`{"type":"branch_summary",%s,"fromId":"%s","summary":%s}`, base, ids[rng.IntN(len(ids))], text())
 		case kind == 11 && len(ids) > 0:
 			label := text()
 			if rng.IntN(3) == 0 {
 				label = "null"
 			}
-			line = fmt.Sprintf(`{"type":"label",%s,"targetId":"%s","label":%s}`, base, ids[rng.IntN(len(ids))], label)
+			err = emit(`{"type":"label",%s,"targetId":"%s","label":%s}`, base, ids[rng.IntN(len(ids))], label)
 		case kind == 12:
-			line = fmt.Sprintf(`{"type":"custom",%s,"customType":"probe","data":{"z":1,"a":[true,null],"s":%s}}`, base, text())
+			err = emit(`{"type":"custom",%s,"customType":"probe","data":{"z":1,"a":[true,null],"s":%s}}`, base, text())
 		case kind == 13:
-			line = fmt.Sprintf(`{"type":"custom_message",%s,"customType":"note","content":%s,"display":%t,"details":{"k":"v"}}`, base, text(), rng.IntN(2) == 0)
+			err = emit(`{"type":"custom_message",%s,"customType":"note","content":%s,"display":%t,"details":{"k":"v"}}`, base, text(), rng.IntN(2) == 0)
 		case kind == 14:
-			line = fmt.Sprintf(`{ "timestamp" : "%s", "type":"session_info","id":"%s","parentId":%s,"name":%s, "unread":"\u00e9" }`, stamp, id, parent, text())
+			err = emit(`{ "timestamp" : "%s", "type":"session_info","id":"%s","parentId":%s,"name":%s, "unread":"\u00e9" }`, stamp, id, parent, text())
 		default:
 			if rng.IntN(2) == 0 {
-				line = fmt.Sprintf(`{"type":"model_change",%s,"provider":"longsession","modelId":"scripted-%d"}`, base, rng.IntN(3))
+				err = emit(`{"type":"model_change",%s,"provider":"longsession","modelId":"scripted-%d"}`, base, rng.IntN(3))
 			} else {
-				line = fmt.Sprintf(`{"type":"thinking_level_change",%s,"thinkingLevel":"%s"}`, base, []string{"off", "low", "high"}[rng.IntN(3)])
+				err = emit(`{"type":"thinking_level_change",%s,"thinkingLevel":"%s"}`, base, []string{"off", "low", "high"}[rng.IntN(3)])
 			}
 		}
-		if _, err := out.WriteString(line + "\n"); err != nil {
+		if err != nil {
 			return err
 		}
 		ids = append(ids, id)

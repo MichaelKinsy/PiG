@@ -328,6 +328,7 @@ func runBounded(ctx context.Context, argv, env []string, dir string, out io.Writ
 		return -1, false, 0, 0, err
 	}
 	defer func() { _ = errFile.Close() }()
+	//nolint:gosec // G204 (class b): argv[0] is the bundle's own bin/pig or node/bin/node, or the literal bash; args are bundle paths and fixed flags.
 	//portlint:allow ctxmapping ctx is mapped by hand below: its Done kills the whole process group, which CommandContext (leader only) would not
 	cmd := exec.Command(argv[0], argv[1:]...)
 	cmd.Env, cmd.Dir, cmd.Stdout, cmd.Stderr = env, dir, out, errFile

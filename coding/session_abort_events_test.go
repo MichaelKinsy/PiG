@@ -48,9 +48,10 @@ func TestAbortedSessionRunKeepsAgentEndWillRetryAligned(t *testing.T) {
 		}
 		ends := make(chan agent.AgentEndEvent, 8)
 		drained := make(chan struct{})
+		eventsCh := sess.Events()
 		go func() {
 			defer close(drained)
-			for ev := range sess.Events() {
+			for ev := range eventsCh {
 				if end, ok := ev.(agent.AgentEndEvent); ok {
 					ends <- end
 				}

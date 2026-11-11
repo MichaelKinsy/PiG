@@ -51,10 +51,9 @@ type modelCatalogIndex struct {
 }
 
 type modelCatalogRequest struct {
-	kind           string // "catalog", "redirect" or "invalid"
+	kind           string // "catalog" or "invalid"
 	piVersion      *string
 	representation string
-	location       string
 	err            string
 }
 
@@ -201,10 +200,7 @@ func parseModelCatalogRequest(requestURL *url.URL, userAgent string) modelCatalo
 	if !present {
 		if match := piUserAgentRE.FindStringSubmatch(userAgent); match != nil {
 			if _, ok := parsePiVersion(match[1]); ok {
-				query.Set("pi-version", match[1])
-				redirect := *requestURL
-				redirect.RawQuery = query.Encode()
-				return modelCatalogRequest{kind: "redirect", location: redirect.String()}
+				return modelCatalogRequest{kind: "catalog", piVersion: &match[1], representation: representation}
 			}
 		}
 		return modelCatalogRequest{kind: "catalog", representation: representation}
@@ -281,10 +277,6 @@ func TestModelCatalogProtocolWithTheCurrentClient(t *testing.T) {
 		switch {
 		case provider == "":
 			w.WriteHeader(http.StatusNotFound)
-		case catalogRequest.kind == "redirect":
-			w.Header().Set("location", catalogRequest.location)
-			w.Header().Set("cache-control", "no-store")
-			w.WriteHeader(http.StatusTemporaryRedirect)
 		case catalogRequest.kind == "invalid":
 			w.WriteHeader(http.StatusBadRequest)
 			_, _ = w.Write([]byte(catalogRequest.err))
@@ -339,9 +331,9 @@ func TestModelCatalogProtocolWithTheCurrentClient(t *testing.T) {
 	}
 
 	catalogURL := "/api/models/providers/openrouter?types=chat%2Cimage%2Cclassifier"
-	// pig divergence (D65): Pi's client identifies as pi/<VERSION>, which the stand-in redirects to a URL carrying pi-version
-	// (upstream :110 expects [catalogUrl, catalogUrl&pi-version=VERSION]). PiG identifies as pig/<version>, which the catalog
-	// protocol does not recognize as Pi, so the request is answered without a redirect.
+	// Upstream expects exactly [catalogUrl] since 62752fd4c: the stand-in serves pi/<VERSION> clients the catalog for their
+	// version instead of redirecting them to a pi-version URL. PiG identifies as pig/<version> (D65), which the catalog
+	// protocol does not recognize as Pi, so the request is answered with the default catalog; still one request.
 	mu.Lock()
 	gotRequests := slices.Clone(requests)
 	mu.Unlock()
@@ -379,4 +371,32 @@ func TestModelCatalogProtocolWithTheCurrentClient(t *testing.T) {
 	if providerURL == nil || providerURL.Path != want {
 		t.Fatalf("provider request URL = %v, want path %s", providerURL, want)
 	}
+}
+
+// Ports scripts/model-catalog-protocol.test.ts "serves Pi user agents the catalog for their version" (62752fd4c).
+// The stand-in must answer a Pi User-Agent with the catalog for its version, never a redirect to a pi-version URL.
+func TestModelCatalogProtocolServesPiUserAgentsTheirVersion(t *testing.T) {
+	version := "0.84.4"
+	typed := parseModelCatalogRequest(mustParseURL(t, "https://pi.dev/api/models/providers/openrouter?types=chat%2Cimage"), "pi/0.84.4 (linux; node/v22.0.0; x64)")
+	if typed.kind != "catalog" || typed.piVersion == nil || *typed.piVersion != version || typed.representation != "typed" {
+		t.Fatalf("typed request = %+v, want catalog for %s, typed", typed, version)
+	}
+	legacy := parseModelCatalogRequest(mustParseURL(t, "https://pi.dev/api/models"), "pi/0.84.4")
+	if legacy.kind != "catalog" || legacy.piVersion == nil || *legacy.piVersion != version || legacy.representation != "legacy" {
+		t.Fatalf("legacy request = %+v, want catalog for %s, legacy", legacy, version)
+	}
+	// An explicit pi-version wins over the User-Agent version.
+	explicit := parseModelCatalogRequest(mustParseURL(t, "https://pi.dev/api/models?pi-version=0.83.0"), "pi/0.85.1 (linux; node/v22.0.0; x64)")
+	if explicit.kind != "catalog" || explicit.piVersion == nil || *explicit.piVersion != "0.83.0" || explicit.representation != "legacy" {
+		t.Fatalf("explicit request = %+v, want catalog for 0.83.0, legacy", explicit)
+	}
+}
+
+func mustParseURL(t *testing.T, raw string) *url.URL {
+	t.Helper()
+	parsed, err := url.Parse(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return parsed
 }

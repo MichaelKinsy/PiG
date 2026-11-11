@@ -10,7 +10,7 @@ import { Container, Spacer, Text } from "../../../../pi-tui.mjs";
 import { getTextOutput, replaceTabs, startToolTimer, str, toolTimerText } from "../../core/tools/render-utils.js";
 import { keyHint } from "../../modes/interactive/components/keybinding-hints.js";
 import { VisualLinePreview } from "../../modes/interactive/components/visual-truncate.js";
-import { highlightCode } from "../../modes/interactive/theme/theme.js";
+import { CodeHighlighter } from "../../modes/interactive/theme/theme.js";
 const CODE_PREVIEW_LINES = 10;
 const CALL_PREVIEW_COUNT = 8;
 const OUTPUT_PREVIEW_LINES = 5;
@@ -70,7 +70,11 @@ export const codemodeRenderers = {
         }
         component.addChild(new Text(title, 0, 0));
         if (code) {
-            const highlighted = highlightCode(replaceTabs(code.replace(/\r/g, "").trimEnd()), "javascript").join("\n");
+            const state = context.state;
+            state.scriptHighlighter ??= new CodeHighlighter();
+            const highlighted = state.scriptHighlighter
+                .highlight(replaceTabs(code.replace(/\r/g, "").trimEnd()), "javascript")
+                .join("\n");
             component.addChild(context.expanded
                 ? new Text(highlighted, 0, 0)
                 : new VisualLinePreview({

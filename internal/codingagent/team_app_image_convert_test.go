@@ -8,10 +8,15 @@ import (
 	"image/gif"
 	"image/png"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/photonimage"
 )
 
 // The upstream image-processing.test.ts fixtures exercise Photon decoding and
 // EXIF orientation. Decode the entire returned PNG, not just its IHDR header.
+// The source pixels are Photon's (image-convert.ts:encodePng decodes with PhotonImage.new_from_byteslice), which
+// photonimage.Decode gives for every format; Go's image/jpeg and golang.org/x/image/webp decode the same bytes to
+// other pixels. TestConvertToPngMatchesPiBytes compares the converted bytes with Pi's own.
 func TestImageConvertDecodedPixels(t *testing.T) {
 	t.Parallel()
 	var gifBytes bytes.Buffer
@@ -37,7 +42,7 @@ func TestImageConvertDecodedPixels(t *testing.T) {
 				t.Fatal(err)
 			}
 			original := bytes.Clone(input)
-			src, _, err := image.Decode(bytes.NewReader(input))
+			src, err := photonimage.Decode(input)
 			if err != nil {
 				t.Fatal(err)
 			}

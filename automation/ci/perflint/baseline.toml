@@ -260,7 +260,7 @@ count = 1
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
 
 [[hit]]
-file = "ai/bedrock_eventstream.go"
+file = "ai/providers/bedrock/bedrock_eventstream.go"
 func = "parseBedrockEventHeaders"
 pattern = "loop-format"
 detail = "fmt.Sprintf"
@@ -714,46 +714,6 @@ pattern = "nested-marshal"
 detail = "json.Marshal"
 count = 2
 class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
-
-[[hit]]
-file = "ai/validate.go"
-func = "argumentSchema.list"
-pattern = "loop-format"
-detail = "fmt.Sprintf"
-count = 1
-class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
-
-[[hit]]
-file = "ai/validate.go"
-func = "typeboxPropertyNameMatcher"
-pattern = "compile-in-func"
-detail = "regexp.Compile"
-count = 1
-class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
-
-[[hit]]
-file = "ai/validate_convert.go"
-func = "argumentSchema.convert"
-pattern = "compile-in-func"
-detail = "regexp.Compile"
-count = 1
-class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
-
-[[hit]]
-file = "ai/validate_errors.go"
-func = "argumentPatternMatches"
-pattern = "compile-in-func"
-detail = "regexp.Compile"
-count = 1
-class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
-
-[[hit]]
-file = "ai/validate_errors.go"
-func = "argumentSchema.argumentErrorsAt"
-pattern = "loop-format"
-detail = "fmt.Sprintf"
-count = 1
-class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
 
 [[hit]]
 file = "bench/k8s/cmd/k8sbench/render.go"
@@ -1250,14 +1210,6 @@ pattern = "nested-marshal"
 detail = "json.Marshal"
 count = 2
 class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
-
-[[hit]]
-file = "coding/cli/startup_model.go"
-func = "testFauxCLIModel"
-pattern = "env-stat"
-detail = "os.Getenv"
-count = 1
-class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
 
 [[hit]]
 file = "coding/cli/startup_session.go"
@@ -3316,14 +3268,6 @@ count = 1
 class = "cold: once per session switch or fork"
 
 [[hit]]
-file = "coding/services.go"
-func = "newConfiguredServices"
-pattern = "env-stat"
-detail = "os.Getenv"
-count = 1
-class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
-
-[[hit]]
 file = "coding/session.go"
 func = "Session.emitSynchronousSessionEvent"
 pattern = "chan-hop"
@@ -3572,22 +3516,6 @@ count = 1
 class = "hot-kept: durable store per record; needs its own byte oracle, not attempted"
 
 [[hit]]
-file = "durable/harness/events.go"
-func = "MessageChange.MarshalJSON"
-pattern = "nested-marshal"
-detail = "json.Marshal"
-count = 4
-class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
-
-[[hit]]
-file = "durable/harness/events.go"
-func = "decodeAssistant"
-pattern = "decode-own-encode"
-detail = "json.Marshal->durable.DecodeMessage"
-count = 1
-class = "hot-kept: durable store per record; needs its own byte oracle, not attempted"
-
-[[hit]]
 file = "durable/harness/task_graph.go"
 func = "TaskGraphState.MarshalJSON"
 pattern = "nested-marshal"
@@ -3639,7 +3567,7 @@ class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder com
 file = "durable/json.go"
 func = "FromJsonValue"
 pattern = "decode-own-encode"
-detail = "durable.marshalStrict->durable.decodeJsonText"
+detail = "strictjson.Marshal->durable.decodeJsonText"
 count = 2
 class = "hot-kept: durable store per record; needs its own byte oracle, not attempted"
 
@@ -3647,7 +3575,7 @@ class = "hot-kept: durable store per record; needs its own byte oracle, not atte
 file = "durable/json.go"
 func = "FromJsonValue"
 pattern = "decode-own-encode"
-detail = "durable.marshalStrict->jsstring.UnmarshalKeepingSurrogates"
+detail = "strictjson.Marshal->jsstring.UnmarshalKeepingSurrogates"
 count = 1
 class = "hot-kept: durable store per record; needs its own byte oracle, not attempted"
 
@@ -3655,7 +3583,7 @@ class = "hot-kept: durable store per record; needs its own byte oracle, not atte
 file = "durable/json.go"
 func = "ToJsonValue"
 pattern = "decode-own-encode"
-detail = "durable.marshalStrict->durable.decodeJsonText"
+detail = "strictjson.Marshal->durable.decodeJsonText"
 count = 1
 class = "hot-kept: durable store per record; needs its own byte oracle, not attempted"
 
@@ -4197,7 +4125,7 @@ class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shr
 
 [[hit]]
 file = "internal/codingagent/model_scope_line.go"
-func = "InteractiveMode.modelScopeLine"
+func = "InteractiveMode.getModelScopeNotice"
 pattern = "loop-format"
 detail = "string+="
 count = 1
@@ -4853,7 +4781,7 @@ class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shr
 
 [[hit]]
 file = "internal/codingagent/startup_ui.go"
-func = "configureStartupTheme"
+func = "configureStartupTui"
 pattern = "env-stat"
 detail = "os.Stat"
 count = 1

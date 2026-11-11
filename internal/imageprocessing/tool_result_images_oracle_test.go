@@ -1,5 +1,7 @@
 package imageprocessing
 
+// pi: packages/coding-agent/src/utils/tool-result-images.ts
+
 import (
 	"math/rand"
 	"reflect"

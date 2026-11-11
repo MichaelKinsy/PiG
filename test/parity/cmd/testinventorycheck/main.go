@@ -16,7 +16,7 @@
 //     evidence it cites resolves too;
 //   - a ported/partial file may list designedOutCases (exact inventory case ids) when
 //     only some cases are designed out; the rest stay covered by verified evidence;
-//     ids shared by two case sites are rejected, and -release-policy requires the reviewed
+//     ids shared by two case sites must be named `<id>@<line>` (the inventory line), and -release-policy requires the reviewed
 //     policy row to list the same approved ids;
 //   - every non-designed-out row citing TestNodeVendoredTuiUpstreamTests is registered
 //     in that harness, and no registered file is designed-out or unmapped;
@@ -36,6 +36,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/coding"
@@ -80,6 +81,10 @@ type mappingEntry struct {
 	// designed out inside a ported or partial file. The remaining cases are
 	// covered by the entry's verified evidence; the file itself is not designed out.
 	DesignedOutCases []string `json:"designedOutCases,omitempty"`
+	// MissingCases enumerates the upstream case IDs (exact inventory ids) a
+	// partial entry does not cover yet (AGENTS.md: a partial disposition
+	// enumerates the missing cases). Required on every partial entry, forbidden elsewhere.
+	MissingCases []string `json:"missingCases,omitempty"`
 }
 
 var (
@@ -259,6 +264,9 @@ func checkDisposition(repoRoot string, entry mappingEntry, file inventoryFile, d
 	if err := checkDesignedOutCases(entry, file); err != nil {
 		return err
 	}
+	if err := checkMissingCases(entry, file); err != nil {
+		return err
+	}
 	switch entry.Disposition {
 	case "ported", "partial":
 		if len(entry.Evidence) == 0 {
@@ -294,10 +302,45 @@ func checkDisposition(repoRoot string, entry mappingEntry, file inventoryFile, d
 	return nil
 }
 
+// checkMissingCases enforces AGENTS.md's rule that a partial disposition enumerates the missing cases: a partial
+// entry lists each upstream case it does not cover yet by exact inventory id (distinct, unambiguous, not also designed
+// out, and not every case: that entry is pending), and no other disposition may carry the list.
+func checkMissingCases(entry mappingEntry, file inventoryFile) error {
+	if entry.Disposition != "partial" {
+		if len(entry.MissingCases) > 0 {
+			return fmt.Errorf("%s entry %q lists missingCases; only partial entries enumerate missing cases", entry.Disposition, entry.Path)
+		}
+		return nil
+	}
+	if len(entry.MissingCases) == 0 {
+		return fmt.Errorf("partial entry %q must enumerate its missingCases (exact upstream case ids)", entry.Path)
+	}
+	if !unique(entry.MissingCases) {
+		return fmt.Errorf("entry %q has duplicate missingCases", entry.Path)
+	}
+	sites, err := resolveCaseSites(entry.Path, "missingCases", entry.MissingCases, file)
+	if err != nil {
+		return err
+	}
+	if len(entry.DesignedOutCases) > 0 {
+		// A designedOutCases name that fails to resolve is reported by checkDesignedOutCases.
+		designedOut, _ := resolveCaseSites(entry.Path, "designedOutCases", entry.DesignedOutCases, file)
+		for site, name := range sites {
+			if other, both := designedOut[site]; both {
+				return fmt.Errorf("entry %q lists %q as both missing and designed out (as %q)", entry.Path, name, other)
+			}
+		}
+	}
+	if len(sites) >= len(file.Cases) {
+		return fmt.Errorf("entry %q misses every upstream case; classify the file pending", entry.Path)
+	}
+	return nil
+}
+
 // checkDesignedOutCases validates a mixed closure: a ported or partial file in
 // which named upstream cases are designed out while the others stay covered by
 // verified evidence. Each id must be a distinct inventory case, the set must not
-// be the whole file (that is a designed-out entry), and it needs a rationale. An id shared by two case sites is rejected because the mapping cannot say which site is exempt.
+// be the whole file (that is a designed-out entry), and it needs a rationale. An id shared by two case sites is rejected unqualified because the mapping cannot say which site is exempt; name the site as `<id>@<line>`.
 func checkDesignedOutCases(entry mappingEntry, file inventoryFile) error {
 	if len(entry.DesignedOutCases) == 0 {
 		return nil
@@ -311,19 +354,11 @@ func checkDesignedOutCases(entry mappingEntry, file inventoryFile) error {
 	if !unique(entry.DesignedOutCases) {
 		return fmt.Errorf("entry %q has duplicate designedOutCases", entry.Path)
 	}
-	inventorySites := make(map[string]int, len(file.Cases))
-	for _, c := range file.Cases {
-		inventorySites[c.ID]++
+	sites, err := resolveCaseSites(entry.Path, "designedOutCases", entry.DesignedOutCases, file)
+	if err != nil {
+		return err
 	}
-	for _, id := range entry.DesignedOutCases {
-		switch sites := inventorySites[id]; {
-		case sites == 0:
-			return fmt.Errorf("entry %q designedOutCases names %q, which is not an upstream case of the file", entry.Path, id)
-		case sites > 1:
-			return fmt.Errorf("entry %q designedOutCases names %q, which is ambiguous: %d upstream case sites share the id", entry.Path, id, sites)
-		}
-	}
-	if len(entry.DesignedOutCases) >= len(inventorySites) {
+	if len(sites) >= len(file.Cases) {
 		return fmt.Errorf("entry %q designs out every upstream case; classify the file designed-out", entry.Path)
 	}
 	return nil
@@ -385,4 +420,50 @@ func decodeJSON(path string, target any) error {
 	decoder := json.NewDecoder(file)
 	decoder.DisallowUnknownFields()
 	return decoder.Decode(target)
+}
+
+// resolveCaseSites maps each name of a missingCases or designedOutCases list to
+// the index of exactly one inventory case site, keyed by that index. A name is
+// an exact inventory id, or `<id>@<line>` with the inventory line of one site.
+// An unqualified id shared by several sites is ambiguous, and two names for the
+// same site are duplicates.
+func resolveCaseSites(path, field string, names []string, file inventoryFile) (map[int]string, error) {
+	byID := make(map[string][]int, len(file.Cases))
+	for i, c := range file.Cases {
+		byID[c.ID] = append(byID[c.ID], i)
+	}
+	sites := make(map[int]string, len(names))
+	for _, name := range names {
+		site, err := resolveCaseSite(file, byID, name)
+		if err != nil {
+			return sites, fmt.Errorf("entry %q %s %w", path, field, err)
+		}
+		if previous, dup := sites[site]; dup {
+			return sites, fmt.Errorf("entry %q has duplicate %s: %q and %q name the same upstream case site", path, field, previous, name)
+		}
+		sites[site] = name
+	}
+	return sites, nil
+}
+
+func resolveCaseSite(file inventoryFile, byID map[string][]int, name string) (int, error) {
+	if matches := byID[name]; len(matches) == 1 {
+		return matches[0], nil
+	} else if len(matches) > 1 {
+		return 0, fmt.Errorf("names %q, which is ambiguous: %d upstream case sites share the id; name one site as %q", name, len(matches), name+"@<line>")
+	}
+	at := strings.LastIndex(name, "@")
+	if at < 0 {
+		return 0, fmt.Errorf("names %q, which is not an upstream case of the file", name)
+	}
+	line, err := strconv.Atoi(name[at+1:])
+	if err != nil || line <= 0 {
+		return 0, fmt.Errorf("names %q, which is not an upstream case of the file", name)
+	}
+	for _, i := range byID[name[:at]] {
+		if file.Cases[i].Line == line {
+			return i, nil
+		}
+	}
+	return 0, fmt.Errorf("names %q, which is not an upstream case site of the file (no case %q at line %d)", name, name[:at], line)
 }

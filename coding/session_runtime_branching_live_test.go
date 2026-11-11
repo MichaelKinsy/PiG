@@ -118,9 +118,10 @@ func liveBranchingRuntime(t *testing.T, ctx context.Context, key string, memory 
 			return CreateAgentSessionRuntimeResult{}, err
 		}
 		done := make(chan struct{})
+		eventsCh := session.Events()
 		go func() {
 			defer close(done)
-			for event := range session.Events() {
+			for event := range eventsCh {
 				AcknowledgeEvent(event)
 			}
 		}()

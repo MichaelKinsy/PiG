@@ -40,20 +40,25 @@ func TestPackageFilterMatchesAbsolutePaths(t *testing.T) {
 	}
 }
 
+// filterThrow is a pattern minimatch 11.0.3 cannot compile: assertValidPattern throws a TypeError for one over 65,536 UTF-16 units, and the 11.0.3 Matcher builds no RegExp from a segment, so no other pattern throws. (Through minimatch 10.2.6 "[[:alpha:]]-x" threw an "Invalid regular expression ... Invalid escape" SyntaxError.) Every Pi filter that throws throws this TypeError, so the filters' order is no longer visible in the message.
+var filterThrow = strings.Repeat("a", 65537)
+
+// tooLong is the message of that TypeError.
+const tooLong = "pattern is too long"
+
 // Pi's resolve() rejects when a settings array's pattern, an auto-discovered resource's override or a built-in extension's override cannot compile (package-manager.ts:933-986, 2398-2411, 2413-2575), each only once a path reaches it.
 func TestResolveRejectsSettingsPatternErrors(t *testing.T) {
 	t.Setenv("PI_OFFLINE", "1")
 	t.Setenv("PIG_OFFLINE", "1")
-	const syntax = `Invalid regular expression: /^(?!\.)[\p{L}\p{Nl}]\-`
 	for _, tc := range []struct {
 		name, settings string
 		prompt         bool
 		want           string
 	}{
-		{"a settings array pattern", `{"prompts":["prompts","[[:alpha:]]-*"]}`, true, syntax + `[^/]*?$/u: Invalid escape`},
-		{"an auto-discovered resource's override", `{"prompts":["![[:alpha:]]-x"]}`, true, syntax + `x$/u: Invalid escape`},
-		{"no auto-discovered resource", `{"prompts":["![[:alpha:]]-x"]}`, false, ""},
-		{"a built-in extension's override", `{"extensions":["![[:alpha:]]-x"]}`, false, syntax + `x$/u: Invalid escape`},
+		{"a settings array pattern", `{"prompts":["prompts","` + filterThrow + `*"]}`, true, tooLong},
+		{"an auto-discovered resource's override", `{"prompts":["!` + filterThrow + `"]}`, true, tooLong},
+		{"no auto-discovered resource", `{"prompts":["!` + filterThrow + `"]}`, false, ""},
+		{"a built-in extension's override", `{"extensions":["!` + filterThrow + `"]}`, false, tooLong},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, agentDir, _, _ := resolveFixture(t)
@@ -80,7 +85,7 @@ func TestPackageInventoryStopsAtAFilterThrow(t *testing.T) {
 	writeResolveFile(t, filepath.Join(root, "package.json"), `{"name":"p","pi":{"extensions":["extensions/missing.js"],"skills":["skills"],"prompts":["prompts/a.md","prompts/missing.md"]}}`)
 	writeResolveFile(t, filepath.Join(root, "skills", "s", "SKILL.md"), "---\nname: s\ndescription: d\n---\nBody\n")
 	writeResolveFile(t, filepath.Join(root, "prompts", "a.md"), "x\n")
-	pkg := ConfiguredPackage{Source: codingagent.PackageSource{Source: root, Skills: []string{"[[:alpha:]]-*"}}, Scope: "user"}
+	pkg := ConfiguredPackage{Source: codingagent.PackageSource{Source: root, Skills: []string{filterThrow + "*"}}, Scope: "user"}
 	items, err := CollectPackageResourceItems(root, pkg, true)
 	if err != nil {
 		t.Fatal(err)
@@ -94,21 +99,21 @@ func TestPackageInventoryStopsAtAFilterThrow(t *testing.T) {
 	}
 }
 
-// A settings array applies its patterns to the files its plain entries collect (resolveLocalEntries, package-manager.ts:2398-2411), so a "!" pattern that cannot compile throws for an entry outside the auto-discovery directory too. Probed with Pi 1.1.0 (r26): {"prompts":["../other","![[:alpha:]]-x"]} with other/b.md and no auto-discovered prompt exits 1 with the SyntaxError.
+// A settings array applies its patterns to the files its plain entries collect (resolveLocalEntries, package-manager.ts:2398-2411), so a "!" pattern that cannot compile throws for an entry outside the auto-discovery directory too. Probed with Pi 1.1.0 (r26): {"prompts":["../other","!" + filterThrow]} with other/b.md and no auto-discovered prompt exits 1 with the SyntaxError.
 func TestResolveRejectsAnExcludeOverAnEntry(t *testing.T) {
 	t.Setenv("PI_OFFLINE", "1")
 	t.Setenv("PIG_OFFLINE", "1")
 	cwd, agentDir := t.TempDir(), t.TempDir()
 	other := filepath.Join(t.TempDir(), "other")
 	writeResolveFile(t, filepath.Join(other, "b.md"), "x\n")
-	settings, err := json.Marshal(map[string][]string{"prompts": {other, "![[:alpha:]]-x"}})
+	settings, err := json.Marshal(map[string][]string{"prompts": {other, "!" + filterThrow}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	writeResolveFile(t, filepath.Join(agentDir, "settings.json"), string(settings))
 	sm := codingagent.NewSettingsManagerWithProjectTrust(cwd, agentDir, true)
 	_, err = NewPackageManager(PackageManagerOptions{CWD: cwd, SettingsManager: sm}).Resolve(nil)
-	if want := `Invalid regular expression: /^(?!\.)[\p{L}\p{Nl}]\-x$/u: Invalid escape`; err == nil || !strings.HasSuffix(err.Error(), want) {
+	if want := tooLong; err == nil || !strings.HasSuffix(err.Error(), want) {
 		t.Fatalf("Resolve = %v, want %q", err, want)
 	}
 }
@@ -117,7 +122,7 @@ func TestResolveRejectsAnExcludeOverAnEntry(t *testing.T) {
 func TestPackageInventoryMissingMemberOfAThrowingFilter(t *testing.T) {
 	root := t.TempDir()
 	writeResolveFile(t, filepath.Join(root, "package.json"), `{"name":"p","pi":{"prompts":["prompts/missing.md"],"themes":["themes/missing.json"]}}`)
-	pkg := ConfiguredPackage{Source: codingagent.PackageSource{Source: root, Prompts: []string{"[[:alpha:]]-*"}}, Scope: "user"}
+	pkg := ConfiguredPackage{Source: codingagent.PackageSource{Source: root, Prompts: []string{filterThrow + "*"}}, Scope: "user"}
 	items, err := CollectPackageResourceItems(root, pkg, true)
 	if err != nil {
 		t.Fatal(err)
@@ -137,13 +142,13 @@ func TestResolveRejectsAManifestOverrideThrow(t *testing.T) {
 	t.Setenv("PIG_OFFLINE", "1")
 	cwd, agentDir, sm, pm := resolveFixture(t)
 	root := filepath.Join(codingagent.NPMInstallRoot(cwd, agentDir, false), "node_modules", "overrideprobe")
-	writeResolveFile(t, filepath.Join(root, "package.json"), `{"name":"overrideprobe","version":"1.0.0","pi":{"prompts":["prompts/*.md","![[:alpha:]]-x"]}}`)
+	writeResolveFile(t, filepath.Join(root, "package.json"), `{"name":"overrideprobe","version":"1.0.0","pi":{"prompts":["prompts/*.md","!`+filterThrow+`"]}}`)
 	writeResolveFile(t, filepath.Join(root, "prompts", "a.md"), "x\n")
 	if err := sm.SetPackages([]codingagent.PackageSource{{Source: "npm:overrideprobe"}}); err != nil {
 		t.Fatal(err)
 	}
 	_, err := pm.Resolve(nil)
-	if want := `[\p{L}\p{Nl}]\-x$/u: Invalid escape`; err == nil || !strings.HasSuffix(err.Error(), want) {
+	if want := tooLong; err == nil || !strings.HasSuffix(err.Error(), want) {
 		t.Fatalf("Resolve = %v, want the override's SyntaxError", err)
 	}
 }
@@ -160,11 +165,11 @@ func TestResolveRejectsADeltaPatternThrow(t *testing.T) {
 	if err := sm.SetPackages([]codingagent.PackageSource{{Source: "npm:deltaprobe"}}); err != nil {
 		t.Fatal(err)
 	}
-	if err := sm.SetProjectPackages([]codingagent.PackageSource{{Source: "npm:deltaprobe", Autoload: &disabled, Prompts: []string{"[[:alpha:]]-*"}}}); err != nil {
+	if err := sm.SetProjectPackages([]codingagent.PackageSource{{Source: "npm:deltaprobe", Autoload: &disabled, Prompts: []string{filterThrow + "*"}}}); err != nil {
 		t.Fatal(err)
 	}
 	_, err := pm.Resolve(nil)
-	if want := `[\p{L}\p{Nl}]\-[^/]*?$/u: Invalid escape`; err == nil || !strings.HasSuffix(err.Error(), want) {
+	if want := tooLong; err == nil || !strings.HasSuffix(err.Error(), want) {
 		t.Fatalf("Resolve = %v, want the delta pattern's SyntaxError", err)
 	}
 }

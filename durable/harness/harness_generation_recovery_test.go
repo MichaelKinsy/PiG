@@ -165,7 +165,7 @@ func TestGenerationRecovery(t *testing.T) {
 		var mu sync.Mutex
 		watched := ""
 		seen := false
-		watch.Start(func(_ context.Context, change chord.WatchChange[durable.JsonObject]) error {
+		watch.Start(onValue(func(_ context.Context, change chord.WatchCall[durable.JsonObject]) error {
 			value := change.Value
 			generation, _ := value.Value("generation").(*delta.JsonObject)
 			message, _ := generation.Value("message").(*delta.JsonObject)
@@ -175,7 +175,7 @@ func TestGenerationRecovery(t *testing.T) {
 				mu.Unlock()
 			}
 			return nil
-		})
+		}))
 		id := submitInput(t, root, "hi").Id()
 		waitFor(t, func() bool {
 			mu.Lock()
@@ -261,7 +261,7 @@ func TestGenerationRecovery(t *testing.T) {
 			t.Fatalf("provider calls after an early wake = %d, want 1", calls)
 		}
 		expectEqualJSON(t, liveOf(t, harness, root.Id()), jsonText(t, map[string]any{
-			"run":        map[string]any{"taskId": taskId, "inputs": []any{id}},
+			"run":        map[string]any{"taskId": taskId, "inputs": []any{id}, "turns": 0, "first": arFirstUser(t, root)},
 			"generation": map[string]any{"attempt": 1, "retry": map[string]any{"at": 61_000, "error": "503 Service Unavailable"}},
 		}))
 		mu.Lock()

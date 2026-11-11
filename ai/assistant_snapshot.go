@@ -61,13 +61,18 @@ func cloneAssistantContentSharing(blocks, previous []AssistantContentBlock, stre
 			if i < len(previous) {
 				earlier, hasEarlier = previous[i].(ToolCall)
 			}
-			if value.Arguments != nil && !sharesStreamedArguments(streamed, i, value) {
+			copiedArguments := value.Arguments != nil && !sharesStreamedArguments(streamed, i, value)
+			if copiedArguments {
 				value.Arguments = cloneArgumentsFrom(value.Arguments, earlier.Arguments)
 			}
-			if hasEarlier && sameToolCall(earlier, value) {
+			switch {
+			case hasEarlier && sameToolCall(earlier, value):
 				out[i] = previous[i]
-			} else {
+			case copiedArguments:
 				out[i] = value
+			default:
+				// The call is the producer's block as it is: a boxed block is never written to, so the snapshot holds the same box.
+				out[i] = block
 			}
 		default:
 			out[i] = cloneAssistantContent([]AssistantContentBlock{block})[0]

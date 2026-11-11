@@ -2,7 +2,7 @@ package minimatch
 
 import "testing"
 
-// Hermetic guard for the port: every row is minimatch(name, pattern, {nocase, dot}) as minimatch 10.2.6 answered when the rows were generated
+// Hermetic guard for the port: every row is minimatch(name, pattern, {nocase, dot}) as minimatch 11.0.3 answered when the rows were generated
 // (the installed Pi's node_modules/minimatch, 137 patterns by three option sets). TestMatchAgainstNodeMinimatch recompares with the live package.
 var matchTable = []struct {
 	name, pattern string
@@ -189,9 +189,9 @@ var matchTable = []struct {
 	{"", "+(a|b)", false, false, false},
 	{"", "+(a|b)", true, false, false},
 	{"", "+(a|b)", false, true, false},
-	{"", "*(a)", false, false, true},
-	{"", "*(a)", true, false, true},
-	{"", "*(a)", false, true, true},
+	{"", "*(a)", false, false, false},
+	{"", "*(a)", true, false, false},
+	{"", "*(a)", false, true, false},
 	{"aaa", "*(a)", false, false, true},
 	{"aaa", "*(a)", true, false, true},
 	{"aaa", "*(a)", false, true, true},
@@ -339,9 +339,9 @@ var matchTable = []struct {
 	{"", "+(?(a)|b)", false, false, false},
 	{"", "+(?(a)|b)", true, false, false},
 	{"", "+(?(a)|b)", false, true, false},
-	{"", "*(?(a)|b)", false, false, true},
-	{"", "*(?(a)|b)", true, false, true},
-	{"", "*(?(a)|b)", false, true, true},
+	{"", "*(?(a)|b)", false, false, false},
+	{"", "*(?(a)|b)", true, false, false},
+	{"", "*(?(a)|b)", false, true, false},
 	{"a", "@(@(@(a)))", false, false, true},
 	{"a", "@(@(@(a)))", true, false, true},
 	{"a", "@(@(@(a)))", false, true, true},
@@ -423,9 +423,15 @@ var matchTable = []struct {
 	{"glm-6-air", "glm-{5,6}*", false, false, true},
 	{"glm-6-air", "glm-{5,6}*", true, false, true},
 	{"glm-6-air", "glm-{5,6}*", false, true, true},
-	{"gpt-5.5", "*\\.5", false, false, false},
-	{"gpt-5.5", "*\\.5", true, false, false},
-	{"gpt-5.5", "*\\.5", false, true, false},
+	{"gpt-5.5", "*\\.5", false, false, true},
+	{"gpt-5.5", "*\\.5", true, false, true},
+	{"gpt-5.5", "*\\.5", false, true, true},
+	// A numeric brace range is expanded in JavaScript number arithmetic, as Pi's brace-expansion 5.0.12 does (the pinned minimatch 11.0.3 with brace-expansion 5.0.12, under Node 24).
+	{"x100000000000000000000", "x{99999999999999999999..99999999999999999999}", false, false, true},
+	{"x57", "x{99999999999999999999..99999999999999999999}", false, false, false},
+	{"x9007199254740992", "x{9007199254740993..9007199254740995}", false, false, true},
+	{"x9007199254740993", "x{9007199254740993..9007199254740995}", false, false, false},
+	{"x9007199254740996", "x{9007199254740993..9007199254740995}", false, false, false},
 }
 
 func TestMatchTable(t *testing.T) {

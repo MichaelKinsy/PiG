@@ -35,7 +35,7 @@ func TestValidateToolCallPicksTheNamedToolOrFailsLikeUpstream(t *testing.T) {
 		{"second tool keeps the string", ToolCall{Name: "str", Arguments: map[string]any{"v": "7"}}, "7", ""},
 		{"unknown tool", ToolCall{Name: "missing", Arguments: map[string]any{}}, nil, `Tool "missing" not found`},
 		{"no tools", ToolCall{Name: "num"}, nil, `Tool "num" not found`},
-		// validation.ts:305 interpolates the name into a template literal; nothing is escaped.
+		// validation.ts:40 interpolates the name into a template literal; nothing is escaped.
 		{"unknown name is not escaped", ToolCall{Name: "say \"hi\"\n\\é"}, nil, "Tool \"say \"hi\"\n\\é\" not found"},
 		{"invalid arguments reach the validator", ToolCall{Name: "num", Arguments: map[string]any{"v": "x"}}, nil, "Validation failed"},
 	}

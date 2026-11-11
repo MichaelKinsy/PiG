@@ -1,4 +1,4 @@
-// Package pigsdk stages Pig's extension SDKs (Go, Python, and Rust) into the
+// Package pigsdk stages Pig's extension SDKs (Go, Python, Lisp, and Rust) into the
 // config root so out-of-tree extension builds and packed runtime cells can use
 // the API that matches the running binary.
 //
@@ -33,6 +33,7 @@
 //	<config-root>/state/pigsdk/
 //	  sdk-<hash16>/      go.mod + *.go              (Go)
 //	  sdk-py-<hash16>/   pig_sdk/__init__.py + ...  (Python)
+//	  sdk-lisp-<hash16>/ pig-sdk.asd + src/*.lisp   (Lisp)
 //	  sdk-rs-<hash16>/   Cargo.toml + src/*.rs      (Rust)
 //	each with a .pig-sdk-version content-hash marker.
 package pigsdk
@@ -69,9 +70,12 @@ const markerFile = ".pig-sdk-version"
 
 // sdkBundle describes one language's embedded SDK.
 type sdkBundle struct {
-	lang  string // "go" | "python" | "rust"
+	lang  string // "go" | "python" | "lisp" | "rust"
 	files []string
 	fsys  fs.FS
+
+	// stagedHash, when set, is the staging hash of files, computed when the bundle was generated: a compressed bundle needs no decoding to be named.
+	stagedHash string
 }
 
 type bundleHashCache struct {
@@ -81,11 +85,11 @@ type bundleHashCache struct {
 }
 
 var bundleHashes = map[string]*bundleHashCache{
-	"go": {}, "python": {}, "rust": {},
+	"go": {}, "python": {}, "lisp": {}, "rust": {},
 }
 
 // sdkBases names each language's staged directories under <config-root>/state/pigsdk: a build stages into <base>-<hash16>, and a PiG that predates per-build directories stages into <base> itself. It covers every language, embedded by this build or not, because another build sharing the config root may embed one this build strips.
-var sdkBases = [...]struct{ lang, base string }{{"go", "sdk"}, {"python", "sdk-py"}, {"rust", "sdk-rs"}}
+var sdkBases = [...]struct{ lang, base string }{{"go", "sdk"}, {"python", "sdk-py"}, {"lisp", "sdk-lisp"}, {"rust", "sdk-rs"}}
 
 // sdkBase returns lang's directory base from sdkBases.
 func sdkBase(lang string) string {
@@ -108,11 +112,11 @@ func registerBundle(lang string, bundle func() (sdkBundle, bool)) {
 	})
 }
 
-// bundles lists the embedded SDKs in staging order (go, python, rust).
+// bundles lists the embedded SDKs in staging order (go, python, lisp, rust).
 // pig additive (D92): each language's SDK lives in its sdk_<lang>_on.go shim, which a Piglet Binary compiles out with pig_strip_extension_sdk_<lang>; a stripped language is left out.
 func bundles() []sdkBundle {
-	out := make([]sdkBundle, 0, 3)
-	for _, bundle := range [...]func() (sdkBundle, bool){goBundle, pythonBundle, rustBundle} {
+	out := make([]sdkBundle, 0, 4)
+	for _, bundle := range [...]func() (sdkBundle, bool){goBundle, pythonBundle, lispBundle, rustBundle} {
 		if b, ok := bundle(); ok {
 			out = append(out, b)
 		}
@@ -165,6 +169,9 @@ func (b sdkBundle) hash() (string, error) {
 var hashBuffers = sync.Pool{New: func() any { buffer := make([]byte, 8<<10); return &buffer }}
 
 func (b sdkBundle) computeHash() (string, error) {
+	if b.stagedHash != "" {
+		return b.stagedHash, nil
+	}
 	h := sha256.New()
 	_, _ = h.Write([]byte("staging-v2\x00"))
 	buffer := hashBuffers.Get().(*[]byte)
@@ -264,10 +271,18 @@ func (b sdkBundle) sync(configRoot string) ([]string, error) {
 	return written, nil
 }
 
-// stagedName is the name a file of the bundle is staged under: an embedded name ending in .gz holds the gzip of the file without it.
-func stagedName(embedded string) string { return strings.TrimSuffix(embedded, ".gz") }
+// compressedDir is the directory of a bundle that holds the gzip of each file it embeds compressed, under the file's own path (automation/gen/embed-bundle.go): .gz/<name>.gz is the gzip of <name>. A walk of a source tree skips it as hidden.
+const compressedDir = ".gz/"
 
-// gunzip expands an embedded file that is stored compressed. The bundles compress their generated unicode tables (the Python and Rust SDKs carry them as 186 KB and 189 KB of text); staging is the one place that reads the text, and the hash of the bundle covers the compressed bytes, so a start that stages nothing does not expand them.
+// stagedName is the name a file of the bundle is staged under: an embedded name under compressedDir holds the gzip of the file under the rest of its name, without .gz.
+func stagedName(embedded string) string {
+	if rest, compressed := strings.CutPrefix(embedded, compressedDir); compressed {
+		return strings.TrimSuffix(rest, ".gz")
+	}
+	return embedded
+}
+
+// gunzip expands an embedded file that is stored compressed. The bundles compress every source file; staging is the one place that reads the text, and the hash of the bundle covers the compressed bytes, so a start that stages nothing does not expand them.
 func gunzip(data []byte) ([]byte, error) {
 	reader, err := gzip.NewReader(bytes.NewReader(data))
 	if err != nil {
@@ -382,7 +397,7 @@ func (b sdkBundle) ensure(configRoot string) (bool, error) {
 // in the running binary. This build reads only its own staged directory, so it
 // is either current or not staged yet.
 type StageStatus struct {
-	Lang     string // "go" | "python" | "rust"
+	Lang     string // "go" | "python" | "lisp" | "rust"
 	Dir      string // absolute directory this build stages the SDK in
 	Staged   bool   // a marker file exists
 	Current  bool   // the marker matches the embedded SDK
@@ -822,7 +837,7 @@ func printUsage(w io.Writer) {
 	_, _ = fmt.Fprintln(w, "")
 	_, _ = fmt.Fprintln(w, "  --all             also drop builds with no SDK fingerprint")
 	_, _ = fmt.Fprintln(w, "  --dry-run         report what would be dropped, stage nothing")
-	_, _ = fmt.Fprintln(w, "  --sdk-path [lang]     print this binary's staged SDK directory (go|python|rust, default go)")
+	_, _ = fmt.Fprintln(w, "  --sdk-path [lang]     print this binary's staged SDK directory (go|python|lisp|rust, default go)")
 	_, _ = fmt.Fprintln(w, "  --sdk-version [lang]  print an embedded SDK content hash")
 	_, _ = fmt.Fprintln(w, "")
 	_, _ = fmt.Fprintln(w, "Staged-versus-embedded status is reported by `pig diagnose`.")

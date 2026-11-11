@@ -63,6 +63,12 @@ func (d dbgExec) Run(q string, p ...sqlite.SqliteValue) error {
 	dbgRecord(q, time.Since(t))
 	return err
 }
+func (d dbgExec) RunCounted(q string, p ...sqlite.SqliteValue) (int64, error) {
+	t := time.Now()
+	n, err := d.inner.RunCounted(q, p...)
+	dbgRecord(q, time.Since(t))
+	return n, err
+}
 func (d dbgExec) Get(q string, p ...sqlite.SqliteValue) (sqlite.SqliteRow, error) {
 	t := time.Now()
 	r, err := d.inner.Get(q, p...)
@@ -147,6 +153,11 @@ func (c countingExec) Run(q string, p ...sqlite.SqliteValue) error {
 	atomic.AddInt64(&counts.Writes, 1)
 	return c.inner.Run(q, p...)
 }
+func (c countingExec) RunCounted(q string, p ...sqlite.SqliteValue) (int64, error) {
+	atomic.AddInt64(&counts.Statements, 1)
+	atomic.AddInt64(&counts.Writes, 1)
+	return c.inner.RunCounted(q, p...)
+}
 func (c countingExec) Get(q string, p ...sqlite.SqliteValue) (sqlite.SqliteRow, error) {
 	atomic.AddInt64(&counts.Statements, 1)
 	atomic.AddInt64(&counts.Reads, 1)
@@ -204,6 +215,10 @@ func (c captureExec) Exec(q string) error {
 func (c captureExec) Run(q string, p ...sqlite.SqliteValue) error {
 	captureWrites = append(captureWrites, captured{SQL: q, Params: p})
 	return c.inner.Run(q, p...)
+}
+func (c captureExec) RunCounted(q string, p ...sqlite.SqliteValue) (int64, error) {
+	captureWrites = append(captureWrites, captured{SQL: q, Params: p})
+	return c.inner.RunCounted(q, p...)
 }
 func (c captureExec) Get(q string, p ...sqlite.SqliteValue) (sqlite.SqliteRow, error) {
 	return c.inner.Get(q, p...)

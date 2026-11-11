@@ -1105,7 +1105,7 @@ func TestManifestGlobsThrowReadsOnlyThePiBlock(t *testing.T) {
 	}
 }
 
-// package-manager.ts matchesAnyPattern and node-glob decide a resource filter with minimatch (Pi 1.1.0 package-manager.ts:674-684). The expected values come from running minimatch 10.2.6 on the same pairs.
+// package-manager.ts matchesAnyPattern and node-glob decide a resource filter with minimatch (Pi 1.1.0 package-manager.ts:674-684). The expected values come from running minimatch 10.2.6 on the same pairs; minimatch 11.0.3 gives the same (TestMinimatchFilterMatchesMinimatch compares the filter with 11.0.3).
 func TestMatchGlobUsesMinimatchSyntax(t *testing.T) {
 	for _, tc := range []struct {
 		name, pattern string
@@ -1125,7 +1125,7 @@ func TestMatchGlobUsesMinimatchSyntax(t *testing.T) {
 		if err != nil {
 			t.Fatalf("newMinimatchFilter(%q): %v", tc.pattern, err)
 		}
-		if got := m.match(tc.name); got != tc.want {
+		if got := m.Match(tc.name); got != tc.want {
 			t.Errorf("minimatch(%q, %q) = %v, minimatch %v", tc.name, tc.pattern, got, tc.want)
 		}
 	}

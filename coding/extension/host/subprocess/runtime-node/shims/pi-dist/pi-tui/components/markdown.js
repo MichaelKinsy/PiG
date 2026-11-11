@@ -2,9 +2,18 @@ import { Marked, Tokenizer } from "../../../marked/lib/marked.esm.js";
 import markedCjkFriendly from "../../../marked-cjk-friendly/dist/index.js";
 import { renderLatex } from "../latex.js";
 import { getCapabilities, hyperlink, isImageLine } from "../terminal-image.js";
-import { applyBackgroundToLine, flattenLines, visibleWidth, wrapTextWithAnsi } from "../utils.js";
+import { applyBackgroundToLine, cjkPunctuationRegex, flattenLines, visibleWidth, wrapTextWithAnsi } from "../utils.js";
 const STRICT_STRIKETHROUGH_REGEX = /^(~~)(?=[^\s~])((?:\\.|[^\\])*?(?:\\.|[^\s~\\]))\1(?=[^~]|$)/;
-class StrictStrikethroughTokenizer extends Tokenizer {
+class MarkdownTokenizer extends Tokenizer {
+    url(src) {
+        const token = super.url(src);
+        if (!token)
+            return undefined;
+        // Bare URLs stop at CJK punctuation; explicit links and angle autolinks
+        // use separate tokenizers and can still contain these characters.
+        const punctuationIndex = token.raw.search(cjkPunctuationRegex);
+        return punctuationIndex < 0 ? token : super.url(token.raw.slice(0, punctuationIndex));
+    }
     del(src) {
         const match = STRICT_STRIKETHROUGH_REGEX.exec(src);
         if (!match) {
@@ -161,7 +170,7 @@ function trimPartialClosingFences(tokens) {
 }
 const markdownParser = new Marked();
 markdownParser.setOptions({
-    tokenizer: new StrictStrikethroughTokenizer(),
+    tokenizer: new MarkdownTokenizer(),
 });
 markdownParser.use({
     tokenizer: { emStrong: markedCjkFriendly().tokenizer?.emStrong },
@@ -183,6 +192,13 @@ export class Markdown {
     // about ten times the size of its source, and every message of a long transcript keeps a Markdown component. The
     // tokens survive a burst of re-renders, such as a theme preview, and are collected afterwards.
     cachedTokens;
+    // The last render's top-level blocks. While a message streams only its last block changes, so a render styles and
+    // wraps only that block. Each render keeps only the blocks it used, which drops a streamed block's earlier versions.
+    // Held weakly like the tokens: the blocks repeat the source in their keys and the code in their highlighting, and
+    // only a burst of renders, such as streaming or a resize, needs them.
+    blocks;
+    // Highlighted code of the block being rendered, only set while renderBlock runs.
+    blockHighlightedCode;
     constructor(text, paddingX, paddingY, theme, defaultTextStyle, options) {
         this.text = text;
         this.paddingX = paddingX;
@@ -193,9 +209,15 @@ export class Markdown {
     }
     setText(text) {
         this.text = text;
-        this.invalidate();
+        this.clearRenderCache();
     }
     invalidate() {
+        this.clearRenderCache();
+        // The theme may have changed, which changes every styled line and the default style's prefix.
+        this.blocks = undefined;
+        this.defaultStylePrefix = undefined;
+    }
+    clearRenderCache() {
         this.cachedText = undefined;
         this.cachedWidth = undefined;
         this.cachedLines = undefined;
@@ -210,6 +232,7 @@ export class Markdown {
         const text = this.options.transform?.(this.text, contentWidth) ?? this.text;
         // Don't render anything if there's no actual text
         if (!text || text.trim() === "") {
+            this.blocks = undefined;
             const result = [];
             // Update cache
             this.cachedText = this.text;
@@ -227,64 +250,73 @@ export class Markdown {
             trimPartialClosingFences(tokens);
             this.cachedTokens = new WeakRef({ source: normalizedText, tokens });
         }
-        // Convert tokens to styled terminal output
-        const renderedLines = [];
+        // A reference link resolves through a definition anywhere in the text, so blocks with the same source can render
+        // differently; such texts are rare in practice and render without reusing blocks.
+        const reuseBlocks = Object.keys(tokens.links).length === 0;
+        const previousBlocks = this.blocks?.deref();
+        const blocks = new Map();
+        this.blocks = new WeakRef(blocks);
+        const contentLines = [];
         for (let i = 0; i < tokens.length; i++) {
             const token = tokens[i];
-            const nextToken = tokens[i + 1];
-            const tokenLines = this.renderToken(token, contentWidth, nextToken?.type);
-            for (const tokenLine of tokenLines) {
-                renderedLines.push(tokenLine);
+            const nextTokenType = tokens[i + 1]?.type;
+            const reused = reuseBlocks ? (blocks.get(token.raw) ?? previousBlocks?.get(token.raw)) : undefined;
+            const block = reused ?? { width: -1, nextTokenType, lines: [], highlightedCode: new Map() };
+            if (block.width !== width || block.nextTokenType !== nextTokenType) {
+                this.renderBlock(block, token, nextTokenType, width, contentWidth);
             }
-        }
-        // Wrap lines (NO padding, NO background yet)
-        const wrappedLines = [];
-        for (const line of renderedLines) {
-            if (isImageLine(line)) {
-                wrappedLines.push(line);
-            }
-            else {
-                for (const wrappedLine of wrapTextWithAnsi(line, contentWidth)) {
-                    wrappedLines.push(wrappedLine);
-                }
-            }
-        }
-        // Add margins and background to each wrapped line
-        const leftMargin = " ".repeat(this.paddingX);
-        const rightMargin = " ".repeat(this.paddingX);
-        const bgFn = this.defaultTextStyle?.bgColor;
-        const contentLines = [];
-        for (const line of wrappedLines) {
-            if (isImageLine(line)) {
+            if (reuseBlocks)
+                blocks.set(token.raw, block);
+            for (const line of block.lines) {
                 contentLines.push(line);
-                continue;
-            }
-            const lineWithMargins = leftMargin + line + rightMargin;
-            if (bgFn) {
-                contentLines.push(applyBackgroundToLine(lineWithMargins, width, bgFn));
-            }
-            else {
-                // No background - just pad to width
-                const visibleLen = visibleWidth(lineWithMargins);
-                const paddingNeeded = Math.max(0, width - visibleLen);
-                contentLines.push(lineWithMargins + " ".repeat(paddingNeeded));
             }
         }
         // Add top/bottom padding (empty lines)
+        const bgFn = this.defaultTextStyle?.bgColor;
         const emptyLine = " ".repeat(width);
         const emptyLines = [];
         for (let i = 0; i < this.paddingY; i++) {
             const line = bgFn ? applyBackgroundToLine(emptyLine, width, bgFn) : emptyLine;
             emptyLines.push(line);
         }
+        flattenLines(emptyLines);
         // Combine top padding, content, and bottom padding
         const result = emptyLines.concat(contentLines, emptyLines);
-        flattenLines(result);
         // Update cache
         this.cachedText = this.text;
         this.cachedWidth = width;
         this.cachedLines = result;
         return result.length > 0 ? result : [""];
+    }
+    /** Render one top-level block to output lines: wrapped, with margins, and padded or backgrounded to the width. */
+    renderBlock(block, token, nextTokenType, width, contentWidth) {
+        this.blockHighlightedCode = block.highlightedCode;
+        const leftMargin = " ".repeat(this.paddingX);
+        const rightMargin = " ".repeat(this.paddingX);
+        const bgFn = this.defaultTextStyle?.bgColor;
+        const lines = [];
+        for (const line of this.renderToken(token, contentWidth, nextTokenType)) {
+            if (isImageLine(line)) {
+                lines.push(line);
+                continue;
+            }
+            for (const wrappedLine of wrapTextWithAnsi(line, contentWidth)) {
+                const lineWithMargins = leftMargin + wrappedLine + rightMargin;
+                if (bgFn) {
+                    lines.push(applyBackgroundToLine(lineWithMargins, width, bgFn));
+                }
+                else {
+                    // No background - just pad to width
+                    const paddingNeeded = Math.max(0, width - visibleWidth(lineWithMargins));
+                    lines.push(lineWithMargins + " ".repeat(paddingNeeded));
+                }
+            }
+        }
+        this.blockHighlightedCode = undefined;
+        flattenLines(lines);
+        block.lines = lines;
+        block.width = width;
+        block.nextTokenType = nextTokenType;
     }
     /**
      * Apply default text style to a string.
@@ -398,9 +430,13 @@ export class Markdown {
                 break;
             case "latexBlock": {
                 const latexToken = token;
-                const rendered = !latexToken.pending && this.options.renderLatex !== false
-                    ? (renderLatex(latexToken.text, { display: true }) ?? latexToken.raw.trim())
-                    : latexToken.raw.trim();
+                let rendered = !latexToken.pending && this.options.renderLatex !== false
+                    ? renderLatex(latexToken.text, { display: true })
+                    : undefined;
+                // A 2D layout cannot be wrapped row by row; fall back to the raw source when it does not fit.
+                if (rendered === undefined || rendered.split("\n").some((line) => visibleWidth(line) > width)) {
+                    rendered = latexToken.raw.trim();
+                }
                 for (const line of rendered.split("\n")) {
                     lines.push(this.applyDefaultStyle(line));
                 }
@@ -413,8 +449,13 @@ export class Markdown {
                 const indent = this.theme.codeBlockIndent ?? "  ";
                 lines.push(this.theme.codeBlockBorder(`\`\`\`${token.lang || ""}`));
                 if (this.theme.highlightCode) {
-                    const highlightedLines = this.theme.highlightCode(token.text, token.lang);
-                    for (const hlLine of highlightedLines) {
+                    const key = `${token.lang ?? ""}\0${token.text}`;
+                    let highlighted = this.blockHighlightedCode?.get(key);
+                    if (!highlighted) {
+                        highlighted = this.theme.highlightCode(token.text, token.lang);
+                        this.blockHighlightedCode?.set(key, highlighted);
+                    }
+                    for (const hlLine of highlighted) {
                         lines.push(`${indent}${hlLine}`);
                     }
                 }

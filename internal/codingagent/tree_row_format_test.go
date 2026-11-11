@@ -15,6 +15,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -296,6 +297,7 @@ func TestFormatTreeRow_AllEntryTypes(t *testing.T) {
 }
 
 func TestFormatToolCall_PerToolFormatters(t *testing.T) {
+	t.Cleanup(resolvepath.OverridePlatform("linux")) // the fixture home is POSIX; a Windows host writes the rest of a shortened path with backslashes
 	f := newTreeRowFormatter(nil)
 	f.home = "/home/me" // deterministic shortenPath fixture
 	muted := tui.ActiveTheme().Muted

@@ -277,7 +277,7 @@ collect(upstream);
 if (names.size < 8) { console.log("parsed only " + names.size + " upstream exports"); process.exit(2); }
 const mod = await import(spec);
 const missing = [...names].filter((n) => !(n in mod)).sort();
-if (missing.length) { console.log(missing.join(" ")); process.exit(1); }`
+if (missing.length) { await new Promise((done) => process.stdout.write(missing.join(" ") + "\n", done)); process.exit(1); }`
 		command := exec.Command(node, "--import", registerLoaderURL(t, runtimeRoot), "--input-type=module", "--eval", script, spec, upstream)
 		if output, err := command.CombinedOutput(); err != nil {
 			t.Errorf("%s is missing upstream exports: %v\n%s", spec, err, output)
@@ -292,12 +292,17 @@ if (missing.length) { console.log(missing.join(" ")); process.exit(1); }`
 // and the comparison would be Pig against itself. The pinned package is the oracle's source build of the pinned commit, so
 // its table has the pi-ai/models entries Pi added in 22dc6c26 (#11156) and the comparison covers them.
 func TestNodeRuntimeVirtualModulesMatchPiNamespaces(t *testing.T) {
+	assertVirtualModulesMatchPi(t, filepath.Join(findModuleRoot(t), "coding", "extension", "host", "subprocess", "runtime-node"))
+}
+
+// assertVirtualModulesMatchPi compares every namespace of Pi's VIRTUAL_MODULES with what the runtime tree at runtimeRoot serves.
+func assertVirtualModulesMatchPi(t *testing.T, runtimeRoot string) {
+	t.Helper()
 	node, err := exec.LookPath("node")
 	if err != nil {
 		t.Fatalf("node is required for the loader fixture: %v", err)
 	}
 	modRoot := findModuleRoot(t)
-	runtimeRoot := filepath.Join(modRoot, "coding", "extension", "host", "subprocess", "runtime-node")
 	pinned := filepath.Join(modRoot, "extensions", "sdk-ts", "node_modules", "@earendil-works", "pi-coding-agent", "dist", "core", "extensions", "virtual-modules.js")
 	if _, err := os.Stat(pinned); err != nil {
 		t.Fatalf("pinned Pi package missing (run npm ci in extensions/sdk-ts): %v", err)
@@ -347,7 +352,7 @@ func TestNodeRuntimeParseFrontmatterMatchesPi(t *testing.T) {
 	runtimeRoot := filepath.Join(modRoot, "coding", "extension", "host", "subprocess", "runtime-node")
 	pinned := filepath.Join(modRoot, "extensions", "sdk-ts", "node_modules", "@earendil-works", "pi-coding-agent", "dist", "utils", "frontmatter.js")
 	if _, err := os.Stat(pinned); err != nil {
-		t.Fatalf("pinned Pi package missing (run npm ci in extensions/sdk-ts): %v", err)
+		t.Fatalf("pinned Pi package missing (run make parity-deps; npm ci in extensions/sdk-ts empties the shared oracle build): %v", err)
 	}
 	script := `import { pathToFileURL } from "node:url";
 const pi = await import(pathToFileURL(process.argv[1]).href);

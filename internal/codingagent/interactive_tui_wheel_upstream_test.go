@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/modes/interactive/tui-renderer.ts
+
 import (
 	"encoding/json"
 	"io"
@@ -78,4 +80,28 @@ func TestInteractiveTuiWheelScrollLinesFromSettingsUpstream(t *testing.T) {
 			}
 		}
 	})
+}
+
+// tui-renderer.ts:38: createInteractiveTui falls back to "auto" when options.fullscreenWheelScrollLines is absent, and passes a given count through.
+func TestCreateInteractiveTuiWheelScrollLinesDefaultUpstream(t *testing.T) {
+	const wheelDown = "\x1b[<65;1;1M"
+	explicit := tui.WheelScrollLines{Lines: 7}
+	for _, tc := range []struct {
+		name string
+		opt  *tui.WheelScrollLines
+		want []int
+	}{
+		{"absent is auto", nil, []int{1}},
+		{"a given count", &explicit, []int{7}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			renderer, ok := CreateInteractiveTui(InteractiveTuiOptions{TuiMode: "fullscreen", Output: io.Discard, FullscreenWheelScrollLines: tc.opt}).(*tui.TuiAltScreen)
+			if !ok {
+				t.Fatal("fullscreen mode did not create the alternate-screen renderer")
+			}
+			if got := wheelDeltas(t, renderer, wheelDown); !slices.Equal(got, tc.want) {
+				t.Fatalf("wheel deltas = %v, want %v", got, tc.want)
+			}
+		})
+	}
 }

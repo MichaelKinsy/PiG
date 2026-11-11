@@ -81,7 +81,7 @@ func sourceChain(path string) ([]chainLink, error) {
 			return nil, fmt.Errorf("Piglet %s: %w", path, err)
 		}
 		links = append(links, chainLink{path: path, identity: identity, digest: digestPigletBytes(data), piglet: p})
-		if p.Extends == nil {
+		if p.Extends == nil || p.Extends.Source == "" {
 			break
 		}
 		path, identity, err = resolveExtendsSource(path, p.Extends.Source)
@@ -131,7 +131,7 @@ func diffPiglets(base, child *Piglet) LinkChanges {
 	c.Slots = diffNamed(fieldsJSON(base.Slots), fieldsJSON(child.Slots))
 	c.Strip = diffNamed(fieldsJSON(base.Strip), fieldsJSON(child.Strip))
 	settings := func(p *Piglet) map[string]string {
-		return fieldsJSON(map[string]any{"discovery": p.Discovery, "model": p.Model, "systemPrompt": p.SystemPrompt})
+		return fieldsJSON(map[string]any{"discovery": p.Discovery, "contextFiles": p.ContextFiles, "model": p.Model, "systemPrompt": p.SystemPrompt})
 	}
 	c.Settings = diffNamed(settings(base), settings(child))
 	return c

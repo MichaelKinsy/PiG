@@ -3,8 +3,8 @@
 //! The Provider objects of Pi's class (`getProviders`, `getProvider`, `getRegisteredNativeProvider`, `registerNativeProvider`): the Provider object this extension registers here stays in this process and the host's runtime calls it over the connection; a builtin or composed provider has no carrier (the Provider surface D78 records). `register_provider` takes a configuration without functions. `streamDeferred`, `fetchDeferred` and `cancelDeferred` are not here.
 
 use crate::context::{Context, ModelEventStream};
-use crate::graph::{callback_id, GraphCallback, GraphObject};
-use serde_json::{json, Value};
+use crate::graph::{GraphCallback, GraphObject, callback_id};
+use serde_json::{Value, json};
 use std::io;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -37,12 +37,24 @@ fn provider_arg(provider: Option<&str>) -> Value {
     provider.map_or(Value::Null, |provider| json!(provider))
 }
 
-fn never_fails(context: &Context, model: &Value, field: &str, empty: Value, outcome: io::Result<Value>) -> Value {
+fn never_fails(
+    context: &Context,
+    model: &Value,
+    field: &str,
+    empty: Value,
+    outcome: io::Result<Value>,
+) -> Value {
     match outcome {
         Ok(result) => result,
         Err(error) => {
-            let aborted = context.request_parent.as_ref().is_some_and(|parent| parent.cancelled());
-            let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_millis() as u64;
+            let aborted = context
+                .request_parent
+                .as_ref()
+                .is_some_and(|parent| parent.cancelled());
+            let timestamp = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_millis() as u64;
             let mut result = json!({
                 "api": model["api"], "provider": model["provider"], "model": model["id"],
                 "stopReason": if aborted { "aborted" } else { "error" }, "errorMessage": error.to_string(), "timestamp": timestamp
@@ -55,7 +67,10 @@ fn never_fails(context: &Context, model: &Value, field: &str, empty: Value, outc
 
 impl ModelRuntime {
     /// `ModelRuntime.create(options)`.
-    pub fn create(context: &Context, options: ModelRuntimeCreateOptions) -> io::Result<ModelRuntime> {
+    pub fn create(
+        context: &Context,
+        options: ModelRuntimeCreateOptions,
+    ) -> io::Result<ModelRuntime> {
         let mut wire = serde_json::Map::new();
         if let Some(path) = &options.auth_path {
             wire.insert("authPath".into(), json!(path));
@@ -80,7 +95,14 @@ impl ModelRuntime {
         if let Some(refresh) = options.refresh_on_create {
             wire.insert("refreshOnCreate".into(), json!(refresh));
         }
-        Ok(ModelRuntime { object: GraphObject::construct(context, "ModelRuntime", "create", vec![Value::Object(wire)])? })
+        Ok(ModelRuntime {
+            object: GraphObject::construct(
+                context,
+                "ModelRuntime",
+                "create",
+                vec![Value::Object(wire)],
+            )?,
+        })
     }
 
     pub(crate) fn context(&self) -> &Context {
@@ -97,37 +119,64 @@ impl ModelRuntime {
     }
 
     pub fn get_model(&self, provider: &str, model_id: &str) -> io::Result<Value> {
-        self.object.call("getModel", vec![json!(provider), json!(model_id)])
+        self.object
+            .call("getModel", vec![json!(provider), json!(model_id)])
     }
 
     /// A catalog chat model that is not virtual, null when there is none.
     pub fn get_physical_model(&self, provider: &str, model_id: &str) -> io::Result<Value> {
-        self.object.call("getPhysicalModel", vec![json!(provider), json!(model_id)])
+        self.object
+            .call("getPhysicalModel", vec![json!(provider), json!(model_id)])
     }
 
-    pub fn get_models_of_type(&self, model_type: &str, provider: Option<&str>) -> io::Result<Value> {
-        self.object.call("getModelsOfType", vec![json!(model_type), provider_arg(provider)])
+    pub fn get_models_of_type(
+        &self,
+        model_type: &str,
+        provider: Option<&str>,
+    ) -> io::Result<Value> {
+        self.object.call(
+            "getModelsOfType",
+            vec![json!(model_type), provider_arg(provider)],
+        )
     }
 
-    pub fn get_model_of_type(&self, model_type: &str, provider: &str, model_id: &str) -> io::Result<Value> {
-        self.object.call("getModelOfType", vec![json!(model_type), json!(provider), json!(model_id)])
+    pub fn get_model_of_type(
+        &self,
+        model_type: &str,
+        provider: &str,
+        model_id: &str,
+    ) -> io::Result<Value> {
+        self.object.call(
+            "getModelOfType",
+            vec![json!(model_type), json!(provider), json!(model_id)],
+        )
     }
 
     pub fn get_all_models(&self, provider: Option<&str>) -> io::Result<Value> {
-        self.object.call("getAllModels", vec![provider_arg(provider)])
+        self.object
+            .call("getAllModels", vec![provider_arg(provider)])
     }
 
-    pub fn get_available_of_type(&self, model_type: &str, provider: Option<&str>) -> io::Result<Value> {
-        self.object.call_async("getAvailableOfType", vec![json!(model_type), provider_arg(provider)])
+    pub fn get_available_of_type(
+        &self,
+        model_type: &str,
+        provider: Option<&str>,
+    ) -> io::Result<Value> {
+        self.object.call_async(
+            "getAvailableOfType",
+            vec![json!(model_type), provider_arg(provider)],
+        )
     }
 
     pub fn get_all_available(&self, provider: Option<&str>) -> io::Result<Value> {
-        self.object.call_async("getAllAvailable", vec![provider_arg(provider)])
+        self.object
+            .call_async("getAllAvailable", vec![provider_arg(provider)])
     }
 
     /// The available chat models after an availability refresh, or of one provider.
     pub fn get_available(&self, provider: Option<&str>) -> io::Result<Value> {
-        self.object.call_async("getAvailable", vec![provider_arg(provider)])
+        self.object
+            .call_async("getAvailable", vec![provider_arg(provider)])
     }
 
     /// The available chat models as of the last availability pass, without waiting.
@@ -136,7 +185,11 @@ impl ModelRuntime {
     }
 
     pub fn get_error(&self) -> io::Result<Option<String>> {
-        Ok(self.object.call("getError", vec![])?.as_str().map(str::to_string))
+        Ok(self
+            .object
+            .call("getError", vec![])?
+            .as_str()
+            .map(str::to_string))
     }
 
     /// `{"type", "source"?}` of the credential the provider's auth resolves to, null when it is unconfigured.
@@ -149,43 +202,72 @@ impl ModelRuntime {
     }
 
     pub fn get_registered_provider_config(&self, provider: &str) -> io::Result<Value> {
-        self.object.call("getRegisteredProviderConfig", vec![json!(provider)])
+        self.object
+            .call("getRegisteredProviderConfig", vec![json!(provider)])
     }
 
     pub fn get_compatibility_request_config(&self, model: &Value) -> io::Result<Value> {
-        self.object.call("getCompatibilityRequestConfig", vec![model.clone()])
+        self.object
+            .call("getCompatibilityRequestConfig", vec![model.clone()])
     }
 
     pub fn is_using_oauth(&self, provider: &str) -> io::Result<bool> {
-        Ok(self.object.call("isUsingOAuth", vec![json!(provider)])?.as_bool().unwrap_or(false))
+        Ok(self
+            .object
+            .call("isUsingOAuth", vec![json!(provider)])?
+            .as_bool()
+            .unwrap_or(false))
     }
 
     pub fn is_using_subscription(&self, provider: &str) -> io::Result<bool> {
-        Ok(self.object.call("isUsingSubscription", vec![json!(provider)])?.as_bool().unwrap_or(false))
+        Ok(self
+            .object
+            .call("isUsingSubscription", vec![json!(provider)])?
+            .as_bool()
+            .unwrap_or(false))
     }
 
     pub fn has_configured_auth(&self, provider: &str) -> io::Result<bool> {
-        Ok(self.object.call("hasConfiguredAuth", vec![json!(provider)])?.as_bool().unwrap_or(false))
+        Ok(self
+            .object
+            .call("hasConfiguredAuth", vec![json!(provider)])?
+            .as_bool()
+            .unwrap_or(false))
     }
 
     pub fn get_provider_auth_status(&self, provider: &str) -> io::Result<Value> {
-        self.object.call("getProviderAuthStatus", vec![json!(provider)])
+        self.object
+            .call("getProviderAuthStatus", vec![json!(provider)])
     }
 
     /// Request auth for a provider id (a string) or a model object as Pi's AuthResult (`{"auth": {...}, "env"?, "source"?}`), null when it is unconfigured. `overrides` are Pi's `apiKey`, `env` and `minOAuthValidityMs`.
-    pub fn get_auth(&self, provider_or_model: Value, overrides: Option<Value>) -> io::Result<Value> {
+    pub fn get_auth(
+        &self,
+        provider_or_model: Value,
+        overrides: Option<Value>,
+    ) -> io::Result<Value> {
         if !provider_or_model.is_string() && !provider_or_model.is_object() {
-            return Err(io::Error::new(io::ErrorKind::InvalidInput, "get_auth takes a provider id or a model object"));
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "get_auth takes a provider id or a model object",
+            ));
         }
-        self.object.call_async("getAuth", vec![provider_or_model, overrides.unwrap_or(Value::Null)])
+        self.object.call_async(
+            "getAuth",
+            vec![provider_or_model, overrides.unwrap_or(Value::Null)],
+        )
     }
 
     pub fn set_runtime_api_key(&self, provider: &str, api_key: &str) -> io::Result<()> {
-        self.object.call_async("setRuntimeApiKey", vec![json!(provider), json!(api_key)]).map(|_| ())
+        self.object
+            .call_async("setRuntimeApiKey", vec![json!(provider), json!(api_key)])
+            .map(|_| ())
     }
 
     pub fn remove_runtime_api_key(&self, provider: &str) -> io::Result<()> {
-        self.object.call_async("removeRuntimeApiKey", vec![json!(provider)]).map(|_| ())
+        self.object
+            .call_async("removeRuntimeApiKey", vec![json!(provider)])
+            .map(|_| ())
     }
 
     pub fn list_credentials(&self) -> io::Result<Value> {
@@ -203,30 +285,53 @@ impl ModelRuntime {
         get_device_id: Option<Arc<dyn Fn() -> String + Send + Sync>>,
     ) -> io::Result<Value> {
         let context = self.object.context();
-        let prompt: GraphCallback = Arc::new(move |args: Vec<Value>| prompt(args.into_iter().next().unwrap_or(Value::Null)).map(Value::String));
-        let notify: Option<GraphCallback> = notify.map(|notify| Arc::new(move |args: Vec<Value>| { notify(args.into_iter().next().unwrap_or(Value::Null)); Ok(Value::Null) }) as GraphCallback);
+        let prompt: GraphCallback = Arc::new(move |args: Vec<Value>| {
+            prompt(args.into_iter().next().unwrap_or(Value::Null)).map(Value::String)
+        });
+        let notify: Option<GraphCallback> = notify.map(|notify| {
+            Arc::new(move |args: Vec<Value>| {
+                notify(args.into_iter().next().unwrap_or(Value::Null));
+                Ok(Value::Null)
+            }) as GraphCallback
+        });
         let interaction = json!({"prompt": callback_id(context, Some(prompt)), "notify": callback_id(context, notify)});
-        let device: Option<GraphCallback> = get_device_id.map(|device| Arc::new(move |_args: Vec<Value>| Ok(Value::String(device()))) as GraphCallback);
-        let options = if agent_name.is_none() && device.is_none() { Value::Null } else { json!({"agentName": agent_name, "getDeviceId": callback_id(context, device)}) };
-        self.object.call_async("login", vec![json!(provider), json!(kind), interaction, options])
+        let device: Option<GraphCallback> = get_device_id.map(|device| {
+            Arc::new(move |_args: Vec<Value>| Ok(Value::String(device()))) as GraphCallback
+        });
+        let options = if agent_name.is_none() && device.is_none() {
+            Value::Null
+        } else {
+            json!({"agentName": agent_name, "getDeviceId": callback_id(context, device)})
+        };
+        self.object.call_async(
+            "login",
+            vec![json!(provider), json!(kind), interaction, options],
+        )
     }
 
     pub fn logout(&self, provider: &str) -> io::Result<()> {
-        self.object.call_async("logout", vec![json!(provider)]).map(|_| ())
+        self.object
+            .call_async("logout", vec![json!(provider)])
+            .map(|_| ())
     }
 
     /// `{"aborted", "errors"}`; `options` are Pi's `allowNetwork`, `providers` and `force`.
     pub fn refresh(&self, options: Option<Value>) -> io::Result<Value> {
-        self.object.call_async("refresh", vec![options.unwrap_or_else(|| json!({}))])
+        self.object
+            .call_async("refresh", vec![options.unwrap_or_else(|| json!({}))])
     }
 
     /// Registers a provider by a configuration without functions (name, baseUrl, apiKey, api, headers, authHeader, models).
     pub fn register_provider(&self, provider: &str, config: Value) -> io::Result<()> {
-        self.object.call("registerProvider", vec![json!(provider), config]).map(|_| ())
+        self.object
+            .call("registerProvider", vec![json!(provider), config])
+            .map(|_| ())
     }
 
     pub fn unregister_provider(&self, provider: &str) -> io::Result<()> {
-        self.object.call("unregisterProvider", vec![json!(provider)]).map(|_| ())
+        self.object
+            .call("unregisterProvider", vec![json!(provider)])
+            .map(|_| ())
     }
 
     /// Registers a virtual model; its route runs in this process when a request resolves the model.
@@ -237,44 +342,79 @@ impl ModelRuntime {
         let route: GraphCallback = {
             let route_model = route_model.clone();
             Arc::new(move |args: Vec<Value>| {
-                let request = serde_json::from_value(args.into_iter().next().unwrap_or(Value::Null)).map_err(|error| format!("decode the route request: {error}"))?;
+                let request =
+                    serde_json::from_value(args.into_iter().next().unwrap_or(Value::Null))
+                        .map_err(|error| format!("decode the route request: {error}"))?;
                 let routed = (route_model.route)(&context, request)?;
                 serde_json::to_value(routed).map_err(|error| error.to_string())
             })
         };
         let mut definition = declaration;
         definition["route"] = callback_id(self.object.context(), Some(route));
-        self.object.call("registerVirtualModel", vec![definition]).map(|_| ())
+        self.object
+            .call("registerVirtualModel", vec![definition])
+            .map(|_| ())
     }
 
     pub fn unregister_virtual_model(&self, provider: &str, id: &str) -> io::Result<()> {
-        self.object.call("unregisterVirtualModel", vec![json!(provider), json!(id)]).map(|_| ())
+        self.object
+            .call("unregisterVirtualModel", vec![json!(provider), json!(id)])
+            .map(|_| ())
     }
 
     /// Pi's ModelRoute (`{"model", "thinkingLevel", "state"?}`) of one request to a virtual model; `options` are `reason`, `thinkingLevel`, `failed` and `state`.
-    pub fn resolve_model(&self, model: &Value, messages: Value, options: Value) -> io::Result<Value> {
-        self.object.call_async("resolveModel", vec![model.clone(), messages, options])
+    pub fn resolve_model(
+        &self,
+        model: &Value,
+        messages: Value,
+        options: Value,
+    ) -> io::Result<Value> {
+        self.object
+            .call_async("resolveModel", vec![model.clone(), messages, options])
     }
 
     /// Never fails: a failure is a result with `stopReason` `error` or `aborted`.
     pub fn classify(&self, model: &Value, context: Value, options: Option<Value>) -> Value {
-        let outcome = self.object.call_async("classify", vec![model.clone(), context, options.unwrap_or(Value::Null)]);
+        let outcome = self.object.call_async(
+            "classify",
+            vec![model.clone(), context, options.unwrap_or(Value::Null)],
+        );
         never_fails(self.object.context(), model, "answers", json!({}), outcome)
     }
 
     /// Never fails: a failure is a result with `stopReason` `error` or `aborted`.
     pub fn generate_images(&self, model: &Value, context: Value, options: Option<Value>) -> Value {
-        let outcome = self.object.call_async("generateImages", vec![model.clone(), context, options.unwrap_or(Value::Null)]);
+        let outcome = self.object.call_async(
+            "generateImages",
+            vec![model.clone(), context, options.unwrap_or(Value::Null)],
+        );
         never_fails(self.object.context(), model, "output", json!([]), outcome)
     }
 
     /// Streams a model response through the runtime (`request` and `options` as for `ModelRegistry::stream`).
     pub fn stream(&self, model: Value, request: Value, options: Value) -> Arc<ModelEventStream> {
-        self.object.context().model_registry().stream_on_runtime(self.handle(), model, request, options, false)
+        self.object.context().model_registry().stream_on_runtime(
+            self.handle(),
+            model,
+            request,
+            options,
+            false,
+        )
     }
 
-    pub fn stream_simple(&self, model: Value, request: Value, options: Value) -> Arc<ModelEventStream> {
-        self.object.context().model_registry().stream_on_runtime(self.handle(), model, request, options, true)
+    pub fn stream_simple(
+        &self,
+        model: Value,
+        request: Value,
+        options: Value,
+    ) -> Arc<ModelEventStream> {
+        self.object.context().model_registry().stream_on_runtime(
+            self.handle(),
+            model,
+            request,
+            options,
+            true,
+        )
     }
 
     pub fn complete(&self, model: Value, request: Value, options: Value) -> Option<Value> {
@@ -288,46 +428,87 @@ impl ModelRuntime {
     /// `registerNativeProvider(provider)`: the provider's catalog, authentication and API run in this process, for this runtime.
     pub fn register_native_provider(&self, provider: Arc<crate::Provider>) -> io::Result<()> {
         let context = self.object.context();
-        let state = context.conn.provider_objects.get().ok_or_else(|| io::Error::other("Provider runtime unavailable"))?;
+        let state = context
+            .conn
+            .provider_objects
+            .get()
+            .ok_or_else(|| io::Error::other("Provider runtime unavailable"))?;
         let definition = state.register(provider).map_err(io::Error::other)?;
-        let declaration = definition.native.ok_or_else(|| io::Error::other("Provider declaration is absent"))?;
-        self.object.call("registerNativeProvider", vec![declaration]).map(|_| ())
+        let declaration = definition
+            .native
+            .ok_or_else(|| io::Error::other("Provider declaration is absent"))?;
+        self.object
+            .call("registerNativeProvider", vec![declaration])
+            .map(|_| ())
     }
 
     fn provider_object(&self, declaration: Value) -> io::Result<Arc<crate::Provider>> {
         let context = self.object.context();
-        let state = context.conn.provider_objects.get().ok_or_else(|| io::Error::other("Provider runtime unavailable"))?;
-        state.get(context.conn.clone(), declaration).map_err(io::Error::other)
+        let state = context
+            .conn
+            .provider_objects
+            .get()
+            .ok_or_else(|| io::Error::other("Provider runtime unavailable"))?;
+        state
+            .get(context.conn.clone(), declaration)
+            .map_err(io::Error::other)
     }
 
     /// `getRegisteredNativeProvider(providerName)`: the Provider object registered for the name, `None` when there is none.
-    pub fn get_registered_native_provider(&self, provider_name: &str) -> io::Result<Option<Arc<crate::Provider>>> {
-        let declaration = self.object.call("getRegisteredNativeProvider", vec![json!(provider_name)])?;
-        if declaration.is_null() { Ok(None) } else { self.provider_object(declaration).map(Some) }
+    pub fn get_registered_native_provider(
+        &self,
+        provider_name: &str,
+    ) -> io::Result<Option<Arc<crate::Provider>>> {
+        let declaration = self
+            .object
+            .call("getRegisteredNativeProvider", vec![json!(provider_name)])?;
+        if declaration.is_null() {
+            Ok(None)
+        } else {
+            self.provider_object(declaration).map(Some)
+        }
     }
 
     /// `getProvider(provider)`: the Provider object of the provider, `None` when the runtime has none by that id. A builtin or composed provider fails with the D78 error.
     pub fn get_provider(&self, provider: &str) -> io::Result<Option<Arc<crate::Provider>>> {
         let declaration = self.object.call("getProvider", vec![json!(provider)])?;
-        if declaration.is_null() { Ok(None) } else { self.provider_object(declaration).map(Some) }
+        if declaration.is_null() {
+            Ok(None)
+        } else {
+            self.provider_object(declaration).map(Some)
+        }
     }
 
     /// `getProviders()`: the Provider object of every provider of the runtime.
     pub fn get_providers(&self) -> io::Result<Vec<Arc<crate::Provider>>> {
         let declarations = self.object.call("getProviders", vec![])?;
-        declarations.as_array().into_iter().flatten().map(|declaration| self.provider_object(declaration.clone())).collect()
+        declarations
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(|declaration| self.provider_object(declaration.clone()))
+            .collect()
     }
 
     /// `runtime.getProvider(provider)?.name ?? provider` as `ModelRegistry.getProviderDisplayName` reads it, asked of the host without the Provider object a builtin provider has no carrier for.
     pub(crate) fn provider_display_name(&self, provider: &str) -> io::Result<String> {
-        Ok(self.object.call("providerName", vec![json!(provider)])?.as_str().unwrap_or(provider).to_string())
+        Ok(self
+            .object
+            .call("providerName", vec![json!(provider)])?
+            .as_str()
+            .unwrap_or(provider)
+            .to_string())
     }
 
     /// `ModelRegistry.getApiKeyAndHeaders` over this runtime (model-registry.ts:80-119): `{"ok": true, "apiKey"?, "headers"?, "baseUrl"?, "env"?}` or `{"ok": false, "error"}`; never fails.
     pub(crate) fn request_auth(&self, model: &Value) -> Value {
         let provider = model["provider"].as_str().unwrap_or_default();
         let failed = |message: String| {
-            let message = if message == "authHeader requires a resolved API key" { format!("No API key found for \"{provider}\"") } else { message };
+            let message = if message == "authHeader requires a resolved API key" {
+                format!("No API key found for \"{provider}\"")
+            } else {
+                message
+            };
             json!({"ok": false, "error": message})
         };
         let resolution = match self.get_auth(model.clone(), None) {
@@ -354,7 +535,10 @@ impl ModelRuntime {
                 out[key] = resolution["auth"][key].clone();
             }
         }
-        if resolution["auth"]["baseUrl"].as_str().is_some_and(|url| !url.is_empty()) {
+        if resolution["auth"]["baseUrl"]
+            .as_str()
+            .is_some_and(|url| !url.is_empty())
+        {
             out["baseUrl"] = resolution["auth"]["baseUrl"].clone();
         }
         if !resolution["env"].is_null() {

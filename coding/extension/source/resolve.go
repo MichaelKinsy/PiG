@@ -84,7 +84,7 @@ func Resolve(input string) (Definition, error) {
 		}
 	}
 	if len(languages) == 0 {
-		return Definition{}, fmt.Errorf("extension %s has no recognized factory or standalone source; use func Extension() *sdk.Extension, pub fn new_extension() -> Extension, def new_extension() -> Extension, a Node default export, or an exact executable", absolute)
+		return Definition{}, fmt.Errorf("extension %s has no recognized factory or standalone source; use func Extension() *sdk.Extension, pub fn new_extension() -> Extension, def new_extension() -> Extension, (defun new-extension () ...) or (pig:define-extension ...), a Node default export, or an exact executable", absolute)
 	}
 	if len(languages) > 1 {
 		return Definition{}, fmt.Errorf("extension %s contains multiple extension languages %v; select one exact language root", absolute, languages)
@@ -99,6 +99,9 @@ func Resolve(input string) (Definition, error) {
 	case "node":
 		return resolveNode(absolute)
 	default:
+		if languages[0] == "lisp" && lisp.root != nil {
+			return lisp.root(absolute)
+		}
 		return Definition{}, fmt.Errorf("extension %s has unsupported language %q", absolute, languages[0])
 	}
 }
@@ -130,6 +133,9 @@ func resolveFile(path string, info os.FileInfo) (Definition, error) {
 			return Definition{Language: "python", Form: Standalone, Root: filepath.Dir(path), Entrypoint: path}, nil
 		}
 		return Definition{}, fmt.Errorf("Python extension %s has no def new_extension() factory and is not an executable standalone", path)
+	}
+	if ext == ".lisp" && lisp.file != nil {
+		return lisp.file(path, info)
 	}
 	if info.Mode().IsRegular() && !executableMode(info) && filepath.Ext(path) != "" {
 		// Upstream imports any file a source names, so a file Node has no loader
@@ -186,6 +192,10 @@ func detectLanguages(root string) []string {
 		case ".py":
 			if !slices.Contains(languages, "python") {
 				languages = append(languages, "python")
+			}
+		case ".lisp", ".asd":
+			if !slices.Contains(languages, "lisp") {
+				languages = append(languages, "lisp")
 			}
 		case ".js", ".mjs", ".cjs", ".ts":
 			if !slices.Contains(languages, "node") {

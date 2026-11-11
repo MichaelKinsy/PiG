@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/internal/jsonparse"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
@@ -25,13 +26,12 @@ import (
 // Ports packages/mcp/src/transports/streamable-http.ts.
 
 const (
-	maxErrorBodyBytes           = 8 * 1024
-	errorMessageBodyChars       = 500
-	defaultReconnectInitialMs   = 1_000
-	defaultReconnectMaxDelayMs  = 30_000
-	defaultReconnectMaxRetries  = 5
-	sessionDeleteTimeout        = time.Second
-	responseBodyDrainLimitBytes = 64 * 1024
+	maxErrorBodyBytes          = 8 * 1024
+	errorMessageBodyChars      = 500
+	defaultReconnectInitialMs  = 1_000
+	defaultReconnectMaxDelayMs = 30_000
+	defaultReconnectMaxRetries = 5
+	sessionDeleteTimeout       = time.Second
 )
 
 // StreamableHTTPReconnectOptions control reconnection of dropped SSE streams
@@ -154,6 +154,30 @@ func discardResponse(response *http.Response) {
 	}
 }
 
+// readBodyBytes is Pi's readBodyText (streamable-http.ts, 4a8b60bc3): it reads body to its end, or until it holds more than
+// maxBytes, and closes it. A body over maxBytes is cancelled unread and reported as truncated, with only its first maxBytes
+// bytes kept, less a trailing incomplete UTF-8 sequence (decoder.decode(subarray, {stream: true}) withholds it).
+func readBodyBytes(body io.ReadCloser, maxBytes int) (data []byte, truncated bool, err error) {
+	defer func() { _ = body.Close() }()
+	data, err = io.ReadAll(io.LimitReader(body, int64(maxBytes)+1))
+	if err != nil {
+		return nil, false, err
+	}
+	if len(data) <= maxBytes {
+		return data, false, nil
+	}
+	data = data[:maxBytes]
+	for i := len(data) - 1; i >= 0 && i >= len(data)-3; i-- {
+		if utf8.RuneStart(data[i]) {
+			if !utf8.FullRune(data[i:]) {
+				data = data[:i]
+			}
+			break
+		}
+	}
+	return data, true, nil
+}
+
 func describeHTTPFailure(status int, body string) string {
 	text := jsstring.Trim(body)
 	snippet := text
@@ -190,6 +214,8 @@ type StreamableHTTPTransport struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
+	// requests counts the fetch calls in flight (see do): Close waits for them before it sends the session DELETE.
+	requests sync.WaitGroup
 
 	mu              sync.Mutex
 	started         bool
@@ -199,7 +225,8 @@ type StreamableHTTPTransport struct {
 	// lastToken is the access token of the latest request, which Close reuses instead of asking the auth provider.
 	lastToken      string
 	getStreamStart bool
-	// getStreamWritten reports that the GET stream's first request was written or failed; nil until the stream starts.
+	// getStreamWritten reports that the GET stream's first request was written (issued, for a fetch that cannot report
+	// its writes) or failed; nil until the stream starts.
 	getStreamWritten func()
 }
 
@@ -317,10 +344,14 @@ func (t *StreamableHTTPTransport) Send(ctx context.Context, message JSONRPCMessa
 	}
 	switch kind := responseContentType(response); kind {
 	case "application/json":
-		data, err := io.ReadAll(response.Body)
-		_ = response.Body.Close()
+		// pig divergence (D233): Pi 1.5.0 reads an application/json reply whole; Pi main caps it at maxMessageBytes like an SSE event (4a8b60bc3, #11335).
+		maxBytes := t.maxMessageBytes()
+		data, truncated, err := readBodyBytes(response.Body, maxBytes)
 		if err != nil {
 			return err
+		}
+		if truncated {
+			return fmt.Errorf("MCP JSON response exceeds %d bytes", maxBytes)
 		}
 		// Response.json() decodes the body as UTF-8 without its BOM, then
 		// rejects invalid JSON with JSON.parse's SyntaxError.
@@ -358,9 +389,14 @@ func (t *StreamableHTTPTransport) Send(ctx context.Context, message JSONRPCMessa
 	}
 }
 
-// Close aborts every in-flight request and stream, ends the session with a
-// DELETE when the server assigned one, and waits for the transport's
-// goroutines.
+// Close aborts every in-flight request and stream, waits for the aborted requests to leave fetch, ends the session
+// with a DELETE when the server assigned one, and waits for the transport's goroutines.
+//
+// The DELETE waits for the aborted requests because net/http can fail a request with the context error of an
+// aborted one: a response without a body (a GET stream answered 405, a 202) is handed over after its connection went
+// back to the idle pool, and a round trip that sees its context end in between closes that connection, which the
+// DELETE may already have taken from the pool. Pi's close() (streamable-http.ts) sends the DELETE right after
+// aborting, which is safe there: Node's fetch has no such cross-request failure.
 func (t *StreamableHTTPTransport) Close() error {
 	t.mu.Lock()
 	if t.closed {
@@ -369,13 +405,14 @@ func (t *StreamableHTTPTransport) Close() error {
 	}
 	t.closed = true
 	started, sessionID := t.started, t.sessionID
-	t.mu.Unlock()
+	// Under the lock, so that a request that do finds the transport closed is one whose context has ended.
 	t.cancel()
+	t.mu.Unlock()
+	t.requests.Wait()
 	if started && sessionID != "" {
 		// Best effort: the session expires on the server anyway. The auth provider may refresh tokens over the
-		// network, so it is not asked here and closing never waits for a refresh.
+		// network, so it is not asked here and closing never waits for a refresh (streamable-http.ts close, #10565).
 		ctx, cancel := context.WithTimeout(context.Background(), sessionDeleteTimeout)
-		// Best effort: the session expires on the server anyway. The auth provider may refresh tokens over the network, so it is not asked here and closing never waits for a refresh (streamable-http.ts close, #10565).
 		t.mu.Lock()
 		token := t.lastToken
 		t.mu.Unlock()
@@ -446,7 +483,12 @@ func (t *StreamableHTTPTransport) authorizedFetch(method string, extra map[strin
 			}))
 		}
 		request.Header = headers
-		response, err := t.fetch.Do(request)
+		if _, reportsWrites := t.fetch.(*http.Client); method == http.MethodGet && !reportsWrites {
+			// Another McpFetch may not report its writes: the stream's first request counts as sent once it is issued to
+			// the fetch, with its token read.
+			t.signalGetStreamWritten()
+		}
+		response, err := t.do(request)
 		if err != nil {
 			return nil, err
 		}
@@ -459,6 +501,21 @@ func (t *StreamableHTTPTransport) authorizedFetch(method string, extra map[strin
 			return nil, err
 		}
 	}
+}
+
+// do sends a request through the fetch. Close waits for the calls started before it, so that a request Close aborted
+// has left the fetch before the session DELETE enters it. A request that finds the transport closed carries an ended
+// context (see Close) and fails before it reaches a connection, so it needs no wait.
+func (t *StreamableHTTPTransport) do(request *http.Request) (*http.Response, error) {
+	t.mu.Lock()
+	if t.closed {
+		t.mu.Unlock()
+		return t.fetch.Do(request)
+	}
+	t.requests.Add(1)
+	t.mu.Unlock()
+	defer t.requests.Done()
+	return t.fetch.Do(request)
 }
 
 func (t *StreamableHTTPTransport) headers(ctx context.Context, extra map[string]string) (http.Header, string, error) {
@@ -510,13 +567,10 @@ func (t *StreamableHTTPTransport) checkResponse(response *http.Response) error {
 	if response.StatusCode >= 200 && response.StatusCode < 300 {
 		return nil
 	}
-	// response.text() decodes the body as UTF-8 without its BOM, and slice
-	// keeps MAX_ERROR_BODY_BYTES UTF-16 units, which take at most three bytes
-	// each.
-	data, _ := io.ReadAll(io.LimitReader(response.Body, int64(3*maxErrorBodyBytes+len("\uFEFF"))))
-	_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, responseBodyDrainLimitBytes))
-	_ = response.Body.Close()
-	body := jsstring.Slice(jsstring.FromUTF8(bytes.TrimPrefix(data, []byte("\uFEFF"))), 0, maxErrorBodyBytes)
+	// pig divergence (D233): Pi 1.5.0 keeps the first 8192 UTF-16 units of the whole body; Pi main reads only the first MAX_ERROR_BODY_BYTES bytes and cancels the rest (4a8b60bc3, #11335).
+	// TextDecoder decodes the kept bytes without a leading BOM; a failed read leaves an empty body.
+	data, _, _ := readBodyBytes(response.Body, maxErrorBodyBytes)
+	body := jsstring.FromUTF8(bytes.TrimPrefix(data, []byte("\uFEFF")))
 	if response.StatusCode == http.StatusUnauthorized {
 		return NewMcpAuthRequiredError(response, body)
 	}
@@ -643,13 +697,12 @@ func (t *StreamableHTTPTransport) startGetStream() {
 		t.runGetStream()
 	}()
 	// The upstream transport issues the GET request before send returns, so it reaches the server before the client's
-	// next request. A goroutine can start late: wait until the first attempt has written its request or failed. Another
-	// McpFetch may not report its writes and is not waited for.
-	if _, ok := t.fetch.(*http.Client); ok {
-		select {
-		case <-written:
-		case <-t.ctx.Done():
-		}
+	// next request and has read its token by then. A goroutine can start late: wait until the first attempt has written
+	// its request, or failed. A fetch that cannot report its writes is waited for until the request is issued to it
+	// (see authorizedFetch).
+	select {
+	case <-written:
+	case <-t.ctx.Done():
 	}
 }
 

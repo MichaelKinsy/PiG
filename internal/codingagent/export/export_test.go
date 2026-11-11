@@ -1,9 +1,5 @@
 package export
 
-// pi: packages/coding-agent/src/core/export-html/tool-renderer.ts
-
-// pi: packages/coding-agent/src/core/export-html/index.ts
-
 import (
 	"encoding/base64"
 	"encoding/json"

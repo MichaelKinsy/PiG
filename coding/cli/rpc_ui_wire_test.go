@@ -114,8 +114,8 @@ func TestRPCUIWireKeepsEmptyMembersAndOmitsUndefinedOnes(t *testing.T) {
 }
 
 // Every SDK's host call reaches the RPC writer through the UI bridge, which decodes the call's arguments. An absent member is Pi's undefined and an empty one a value,
-// all the way to the wire: a Node extension's `ui.setStatus(k, undefined)` sends no `text`, its `ui.input("T")` no `placeholder`, and the Go, Python and Rust SDKs
-// send no placeholder/prefill for an empty one (extensions/sdk withNonEmpty).
+// all the way to the wire: a Node extension's `ui.setStatus(k, undefined)` sends no `text`, its `ui.input("T")` no `placeholder`, and every SDK writes an empty
+// placeholder/prefill as given and has a spelling for the unset one (Go EditorWithoutPrefill, Rust editor_without_prefill, Python None).
 func TestRPCUIBridgeCallsKeepEmptyMembersAndOmitUnsetOnes(t *testing.T) {
 	prefix := `{"type":"extension_ui_request","id":"ID","method":`
 	cases := []struct {

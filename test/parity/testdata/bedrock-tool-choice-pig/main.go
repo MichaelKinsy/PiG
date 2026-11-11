@@ -9,6 +9,7 @@ import (
 	"os"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/ai/providers/bedrock"
 )
 
 func main() {
@@ -42,7 +43,7 @@ func run() error {
 		w.Header().Set("Content-Type", "application/vnd.amazon.eventstream")
 	}))
 	defer server.Close()
-	provider := ai.NewBedrockProvider("us.anthropic.claude-sonnet-4-5-20250929-v1:0", server.URL)
+	provider := bedrock.NewBedrockProvider("us.anthropic.claude-sonnet-4-5-20250929-v1:0", server.URL)
 	defer func() { _ = provider.Close() }()
 	for _, row := range cases {
 		var tools []ai.ToolSchema

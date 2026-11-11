@@ -58,7 +58,7 @@ func startsAsync(method string) bool {
 // holdsForLoopTurn reports whether a call the runtime marks Timer can wait for the loop's next turn: its upstream API returns nothing, so no code waits for its answer. A call whose answer the extension waits for (a dialog, a getter) runs at once.
 func holdsForLoopTurn(method string) bool {
 	switch method {
-	case "ui.notify", "ui.setStatus", "ui.setWorkingMessage", "ui.setWorkingIndicator", "ui.setWorkingVisible", "ui.setHiddenThinkingLabel",
+	case "ui.notify", "ui.setStatus", "ui.setWorkingMessage", "ui.setWorkingIndicator", "ui.setWorkingVisible", "ui.setHiddenThinkingLabel", CallOwnThinkingRuns,
 		"ui.setWidget", "ui.setFooter", "ui.setHeader", "ui.setTitle", "ui.pasteToEditor", "ui.setEditorText", "ui.setToolsExpanded",
 		"appendEntry", "sendMessage", "sendUserMessage", "setThinkingLevel", "setActiveTools", "abort":
 		return true
@@ -435,15 +435,21 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 	callCtx, endExecSignal := h.execSignal(callCtx, conn, call)
 	defer endExecSignal()
 
+	h.endSyncRunHold(conn, call)
 	var result *CallResultPayload
 	var err error
 	switch {
+	case call.Method == CallYield:
+		// The hold ended above (endSyncRunHold); the call carries nothing else.
+		result = &CallResultPayload{}
 	case me.facetBridge != nil && (call.Method == "facet.host" || call.Method == "facet.host.sync"):
 		result, err = me.facetBridge.handleCall(callCtx, call)
 	case call.Method == CallRegisterTool:
 		result, err = h.handleToolRegistration(callCtx, me, conn, call)
 	case call.Method == CallRegisterDeclaration:
 		result, err = h.handleDeclarationRegistration(callCtx, me, call)
+	case call.Method == CallOwnThinkingRuns:
+		result, err = h.handleOwnThinkingRuns(me, call)
 	case call.Method == callXrefHello || call.Method == callXrefOp:
 		result, err = h.handleXrefCall(callCtx, me, conn, callID, call)
 	case call.Method == callEventsOn || call.Method == callEventsOff || call.Method == callEventsEmit || call.Method == callEventsSettle:
@@ -525,6 +531,8 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 	case call.Method == "renderSystemPrompt" && h.uiBridge == nil:
 		// The render is a pure function of the options the call carries, so a Host with no UI bridge (an SDK session) answers it too.
 		result, err = renderSystemPromptCall(call.Args)
+	case call.Method == "isIdle" && h.syncRuns.busy():
+		result = busyIsIdleResult()
 	case h.uiBridge != nil:
 		dialogCtx := callCtx
 		// The extension's options.signal dismisses its own dialog, and only that one.
@@ -545,6 +553,9 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 	default:
 		// Every call is answered: an extension waits for its result, so a call no handler takes is an error, not silence.
 		err = fmt.Errorf("the host has no handler for %s", call.Method)
+	}
+	if call.Method == "sendMessage" && err == nil && (result == nil || result.Error == nil) {
+		h.holdAfterSend(conn, call)
 	}
 	if dialogSlot != nil {
 		dialogSlot.Run(func() { h.replyToCall(me, conn, callID, call, callCtx, result, err) })

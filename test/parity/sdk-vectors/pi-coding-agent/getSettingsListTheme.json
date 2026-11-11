@@ -1,6 +1,6 @@
 {
- "pin": "1.4.0+6c384aa3",
- "package": "pi-coding-agent@1.4.0",
+ "pin": "1.5.0",
+ "package": "pi-coding-agent@1.5.0",
  "module": "pi-coding-agent",
  "export": "getSettingsListTheme",
  "cases": [

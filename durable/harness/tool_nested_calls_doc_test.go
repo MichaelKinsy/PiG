@@ -25,7 +25,8 @@ type createdDocs struct {
 	docs []string
 }
 
-func (recorder *createdDocs) Commit(ctx context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
+func (recorder *createdDocs) Commit(ctx context.Context, batches [][]durable.StorageWrite, receive func(index int, seq durable.Seq)) (durable.CommitResult, error) {
+	writes := slices.Concat(batches...)
 	for _, write := range writes {
 		if create, ok := write.(durable.DocumentCreateWrite); ok {
 			key := "<none>"
@@ -37,10 +38,10 @@ func (recorder *createdDocs) Commit(ctx context.Context, writes []durable.Storag
 			recorder.mu.Unlock()
 		}
 	}
-	return recorder.Storage.Commit(ctx, writes, adopt)
+	return recorder.Storage.Commit(ctx, batches, receive)
 }
 
-// harness-nested-tools.test.ts:99 it("stores one document per nested call, keyed by its key, written only by that call")
+// harness-nested-tools.test.ts:102 it("stores one document per nested call, keyed by its key, written only by that call")
 func TestOneDocumentPerNestedCallKeyedByItsKey(t *testing.T) {
 	setup := chatSetup(t)
 	addTool(t, setup.Registry, echoRegistration())
@@ -69,13 +70,15 @@ func TestOneDocumentPerNestedCallKeyedByItsKey(t *testing.T) {
 		}
 	}
 	recorder.mu.Unlock()
+	// The two calls run on goroutines, which admit in no fixed order (D181): upstream's Promise.all admits them in call order.
+	slices.Sort(nested)
 	if want := []string{"pi.tool.nested-call 1", "pi.tool.nested-call named"}; !slices.Equal(nested, want) {
 		t.Fatalf("documents created for nested calls %v, want %v", nested, want)
 	}
 	mustClose(t, harness)
 }
 
-// harness-nested-tools.test.ts:134 it("rejects a nested call of an aborted caller and leaves no document for it"): a nested
+// harness-nested-tools.test.ts:137 it("rejects a nested call of an aborted caller and leaves no document for it"): a nested
 // call's admission is a commit of the calling task, so once the caller has its abort mark executeTool rejects, and no
 // nested-call document exists for the call.
 func TestANestedCallOfAnAbortedCallerRejectsAndLeavesNoDocumentForIt(t *testing.T) {

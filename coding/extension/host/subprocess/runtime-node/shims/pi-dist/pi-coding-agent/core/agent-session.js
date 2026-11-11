@@ -47,6 +47,16 @@ import { createToolDefinitionFromAgentTool } from "./tools/tool-definition-wrapp
 import { addUsageToTotals, combineUsage, createUsageTotals } from "./usage-totals.js";
 import { findLatestResponse, getBranchSelection, getVirtualModelState, isVirtualModel, VIRTUAL_MODEL_STATE_ENTRY, } from "./virtual-models.js";
 /**
+ * Stream functions that resolve auth through a given ModelRuntime themselves, such as the one
+ * createAgentSession installs. Summaries sent through them must not pass pre-resolved credentials:
+ * the runtime would take them as an explicit API key instead of the stored OAuth login (#11520).
+ */
+const runtimeStreamFunctions = new WeakMap();
+/** Mark `streamFn` as resolving auth through `modelRuntime` on its own. */
+export function markRuntimeStreamFunction(streamFn, modelRuntime) {
+    runtimeStreamFunctions.set(streamFn, modelRuntime);
+}
+/**
  * Parse a skill block from message text.
  * Returns null if the text doesn't contain a skill block.
  */
@@ -256,6 +266,9 @@ export class AgentSession {
             : { model: selectedModel, thinkingLevel: this.thinkingLevel };
         if (this.agent.streamFunction === streamSimple) {
             return { ...(await this._getRequiredRequestAuth(model, signal)), thinkingLevel };
+        }
+        if (runtimeStreamFunctions.get(this.agent.streamFunction) === this._modelRuntime) {
+            return { model, thinkingLevel };
         }
         try {
             const result = await this._modelRuntime.getAuth(model, { signal });
@@ -1171,9 +1184,14 @@ export class AgentSession {
      * the registered, non-hidden ones; they are declared to the model. Active tools with a
      * `prepareLoadout` hook can change the declared descriptions and hide declarations from
      * requests (see {@link _installHiddenDeclarationsProjection}).
+     *
+     * The active tools are a set: tools that stay active keep their current order and newly active
+     * ones are appended, so reordering the same names does not change the prompt (#11495).
      */
     _applyToolLoadout(toolNames) {
-        const tools = [...new Set(toolNames)].flatMap((name) => {
+        const requested = new Set(toolNames);
+        const kept = this.getActiveToolNames().filter((name) => requested.has(name));
+        const tools = [...new Set([...kept, ...requested])].flatMap((name) => {
             const tool = this._toolRegistry.get(name);
             return tool && this._getToolExposure(name) !== "hidden" && this._isActivatable(name) ? [tool] : [];
         });

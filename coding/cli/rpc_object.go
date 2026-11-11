@@ -1,3 +1,4 @@
+// Ports packages/coding-agent/src/modes/json-event.ts (ordered JSON object model for the wire projection).
 package cli
 
 import (

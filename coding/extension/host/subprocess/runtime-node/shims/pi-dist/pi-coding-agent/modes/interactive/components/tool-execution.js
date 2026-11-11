@@ -2,7 +2,7 @@ import { Box, Container, getCapabilities, Image, MouseRegion, Spacer, Text, } fr
 import { formatToolCallWithArgs, getTextOutput as getRenderedTextOutput } from "../../../core/tools/render-utils.js";
 import { ensurePngTranscoder } from "../../../utils/image-convert.js";
 import { theme } from "../theme/theme.js";
-import { keyHint } from "./keybinding-hints.js";
+import { keyHint, keyText } from "./keybinding-hints.js";
 const FALLBACK_PREVIEW_LINES = 10;
 export class ToolExecutionComponent extends Container {
     contentBox;
@@ -92,6 +92,8 @@ export class ToolExecutionComponent extends Container {
             isError: this.result?.isError ?? false,
             durationMs: this.isPartial ? undefined : this.result?.durationMs,
             outputPad: this.outputPad,
+            keyText,
+            keyHint,
         };
     }
     createCallFallback() {

@@ -1,5 +1,7 @@
 package ai
 
+// pi: packages/ai/src/providers/qwen-token-plan-individual.ts
+
 // Ports packages/ai/test/qwen-token-plan-models.test.ts.
 // The environment-variable case (:130) is TestEnvAPIKeysQwenIndividualReusesInternationalTokenPlanVariable in auth_env_keys_test.go.
 

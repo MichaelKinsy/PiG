@@ -740,7 +740,7 @@ func setStringFromEnvVal(dst *string, keys []string) {
 func setIntFromEnvVal(dst *int, keys []string) error {
 	for _, k := range keys {
 		if v := os.Getenv(k); len(v) > 0 {
-			i, err := strconv.ParseInt(v, 10, 64)
+			i, err := strconv.ParseInt(v, 10, strconv.IntSize)
 			if err != nil {
 				return fmt.Errorf("invalid value %s=%s, %w", k, v, err)
 			}

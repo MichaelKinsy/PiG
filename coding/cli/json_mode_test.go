@@ -371,8 +371,9 @@ func TestJSONAndRPCProductionToolEventsMatchPersistedResult(t *testing.T) {
 	type wireEvent map[string]any
 	var toolEvents []wireEvent
 	done := make(chan error, 1)
+	eventsCh := session.Events()
 	go func() {
-		for event := range session.Events() {
+		for event := range eventsCh {
 			converted, err := rpcAgentEvent(event)
 			if err != nil {
 				done <- err
@@ -450,5 +451,45 @@ func TestJSONModeNoTextRunWithoutDeltas(t *testing.T) {
 		if strings.HasPrefix(kind, "message_update") {
 			t.Fatalf("fabricated text run with no deltas: %v", got)
 		}
+	}
+}
+
+// Pi json-event.ts toJsonAssistantMessageEvent removes the cumulative `partial` snapshot from every assistant message event, and adds the
+// tool call's id and name to toolcall_start only; every other member keeps its value and order.
+func TestJSONEventDropsPartialFromEveryToolCallStreamEvent(t *testing.T) {
+	call := ai.ToolCall{ID: "call-1", Name: "read", Arguments: ai.JsonObject{"path": "main.go"}}
+	partial := &ai.AssistantMessage{Content: []ai.AssistantContentBlock{ai.TextContent{Text: "hi"}, call}}
+	tests := []struct {
+		name  string
+		event ai.AssistantMessageEvent
+		want  string
+	}{
+		{"toolcall_start", ai.ToolCallStartEvent{ContentIndex: 1, Partial: partial}, `{"type":"toolcall_start","contentIndex":1,"id":"call-1","toolName":"read"}`},
+		{"toolcall_delta", ai.ToolCallDeltaEvent{ContentIndex: 1, Delta: "{\"path\"", Partial: partial}, `{"type":"toolcall_delta","contentIndex":1,"delta":"{\"path\""}`},
+		{"toolcall_end", ai.ToolCallEndEvent{ContentIndex: 1, ToolCall: call, Partial: partial}, `{"type":"toolcall_end","contentIndex":1,"toolCall":{"type":"toolCall","id":"call-1","name":"read","arguments":{"path":"main.go"}}}`},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			events, err := rpcAgentEvent(agent.MessageUpdateEvent{
+				Message:               agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: agent.RoleAssistant}},
+				AssistantMessageEvent: test.event,
+			})
+			if err != nil || len(events) != 1 {
+				t.Fatalf("events = %#v, err = %v", events, err)
+			}
+			data, err := json.Marshal(events[0])
+			if err != nil {
+				t.Fatal(err)
+			}
+			var update struct {
+				AssistantMessageEvent json.RawMessage `json:"assistantMessageEvent"`
+			}
+			if err := json.Unmarshal(data, &update); err != nil {
+				t.Fatal(err)
+			}
+			if got := string(update.AssistantMessageEvent); got != test.want {
+				t.Fatalf("assistantMessageEvent = %s, want %s", got, test.want)
+			}
+		})
 	}
 }

@@ -71,6 +71,7 @@ func isProdGo(p string) bool {
 // expectations: a pure addition covers new behavior, a pure removal removes it.
 func scanCoEdits(root string, logArgs []string) ([]coEdit, error) {
 	args := append([]string{"-C", root, "log", "--no-merges", "-U0", "-p", "--format=@@COMMIT %H %aI %s"}, logArgs...)
+	//nolint:gosec // G204 (class a): program is literal git; logArgs starts with the -rev operator flag, placed before `--` in git log's option position.
 	cmd := exec.Command("git", args...)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {

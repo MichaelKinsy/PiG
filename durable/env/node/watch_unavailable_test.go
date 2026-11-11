@@ -30,7 +30,7 @@ func TestNodeFileWatcherReportsOverflowWhenNoNativeWatchCanBeCreated(t *testing.
 			changed <- struct{}{}
 		}
 	}))
-	defer func() { mustDo(t, watcher.Close(background)) }()
+	defer func() { mustDo(t, watcher.Stop(background)) }()
 	mu.Lock()
 	opened := append([]durableenv.FileChange(nil), changes...)
 	mu.Unlock()

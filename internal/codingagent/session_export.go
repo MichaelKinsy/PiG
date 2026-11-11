@@ -180,6 +180,11 @@ func rewriteJSONField(raw json.RawMessage, field string, value any, remove bool)
 			return out, err
 		}
 	}
+	return rewriteRecordMembers(raw, field, value, remove)
+}
+
+// rewriteRecordMembers is rewriteJSONField of a record that is not JSON.stringify's text, or does not name field once.
+func rewriteRecordMembers(raw json.RawMessage, field string, value any, remove bool) ([]byte, error) {
 	out, err := rewriteMemberJSONField(raw, field, value, remove)
 	if err != nil {
 		return nil, err
@@ -188,21 +193,41 @@ func rewriteJSONField(raw json.RawMessage, field string, value any, remove bool)
 	return jsonstringify.Canonicalize(out)
 }
 
+// replaceJSONFieldParts is replaceJSONField as the parts whose concatenation is its result: for a record that is JSON.stringify's text and names
+// field once, the record before the member's value, the value's encoding and the record after it, so a large record is written without a copy.
+// The parts share raw and are valid while raw is.
+func replaceJSONFieldParts(raw json.RawMessage, field string, value any) ([][]byte, error) {
+	if parts, ok, err := canonicalMemberParts(raw, field, value); ok || err != nil {
+		return parts[:], err
+	}
+	out, err := rewriteRecordMembers(raw, field, value, false)
+	return [][]byte{out}, err
+}
+
 // spliceCanonicalMember is replaceJSONField of a record that is JSON.stringify's text and names field once among its members: the value's
 // encoding takes the place of the member's, which is what the member-by-member rewrite and Canonicalize write for such a record (a canonical
 // object has no repeated or integer-like names, so the members keep their order and their text). ok is false for any other record.
 func spliceCanonicalMember(raw json.RawMessage, field string, value any) (out []byte, ok bool, err error) {
+	parts, ok, err := canonicalMemberParts(raw, field, value)
+	if !ok || err != nil {
+		return nil, ok, err
+	}
+	out = make([]byte, 0, len(parts[0])+len(parts[1])+len(parts[2]))
+	return append(append(append(out, parts[0]...), parts[1]...), parts[2]...), true, nil
+}
+
+// canonicalMemberParts is the record before the value of field's member, the encoding of value, and the record after the member's value, for a
+// record that is JSON.stringify's text and names field once; ok is false for any other record.
+func canonicalMemberParts(raw json.RawMessage, field string, value any) (parts [3][]byte, ok bool, err error) {
 	start, end := canonicalMemberValue(raw, field)
 	if start < 0 || !jsonstringify.IsCanonical(raw) {
-		return nil, false, nil
+		return parts, false, nil
 	}
 	replacement, err := marshalJSONLine(value)
 	if err != nil {
-		return nil, false, err
+		return parts, false, err
 	}
-	out = make([]byte, 0, len(raw)-(end-start)+len(replacement))
-	out = append(append(append(out, raw[:start]...), replacement...), raw[end:]...)
-	return out, true, nil
+	return [3][]byte{raw[:start], replacement, raw[end:]}, true, nil
 }
 
 // canonicalMemberValue returns the bounds of the value of the top-level member named field in raw, a compact JSON object, when field

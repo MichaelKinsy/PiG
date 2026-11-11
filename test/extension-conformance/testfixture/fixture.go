@@ -35,6 +35,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/kit"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/tui"
 )
 
 // kitProbe is the component kit's conformance view (D107,
@@ -106,6 +107,25 @@ func (*mouseProbe) Render(int) []string {
 }
 
 func (*mouseProbe) HandleInput(string) (sdk.RemoteComponentResult, error) {
+	return sdk.RemoteComponentResult{}, nil
+}
+
+// viewportProbe is the viewport row's component: it captures the viewport's input until it receives "t", then stops, and it closes on "q".
+type viewportProbe struct {
+	released atomic.Bool
+}
+
+func (*viewportProbe) Render(int) []string { return []string{"viewport probe"} }
+
+func (p *viewportProbe) CapturesViewportInput() bool { return !p.released.Load() }
+
+func (p *viewportProbe) HandleInput(data string) (sdk.RemoteComponentResult, error) {
+	switch data {
+	case "t":
+		p.released.Store(true)
+	case "q":
+		return sdk.RemoteComponentResult{Done: true, Value: "viewport=done"}, nil
+	}
 	return sdk.RemoteComponentResult{}, nil
 }
 
@@ -334,6 +354,12 @@ func Extension() *sdk.Extension {
 	ext.Flag("flag-string", sdk.FlagOptions{Type: sdk.FlagString, Default: "default"})
 	ext.Flag("flag-empty", sdk.FlagOptions{Type: sdk.FlagString, Default: ""})
 	ext.Flag("flag-unset", sdk.FlagOptions{Type: sdk.FlagString})
+	ext.Command("tui-alt-frame-probe", "Read a TuiAltScreen from a component's render and exercise overlay visibility", tuiAltFrameProbe)
+	ext.Command("tui-alt-children-probe", "Read TuiAltScreen children after addChild, removeChild and clear, with components of equal content", tuiAltChildrenProbe)
+	ext.Command("tui-alt-reentry-probe", "Call the frame's own members from a component's render and report that they fail", tuiAltReentryProbe)
+	ext.Command("tui-alt-go-identity-probe", "Pass component values and equal-content pointers to a TuiAltScreen", tuiAltGoIdentityProbe)
+	ext.Command("tui-alt-viewport-probe", "Mount a focused TuiAltScreen component that captures viewport input", tuiAltViewportProbe)
+	ext.Command("tui-alt-screen-probe", "Drive a TuiAltScreen over a recording terminal", tuiAltProbe)
 	ext.Command("flag-probe", "Report registered flag values", func(ctx sdk.Context, _ string) error {
 		values := []any{}
 		for _, name := range []string{"flag-true", "flag-false", "flag-string", "flag-empty", "flag-unset", "unregistered"} {
@@ -407,6 +433,23 @@ func Extension() *sdk.Extension {
 			return nil
 		}
 		ctx.Notify(fmt.Sprintf("exec-abort:killed=%t;code=%d;stdout=%s", result.Killed, result.ExitCode, strings.TrimSpace(result.Stdout)), "info")
+		return nil
+	})
+	ext.Command("exec-limits-probe", "Run a command under exec's maxBuffer and report truncation", func(ctx sdk.Context, args string) error {
+		var probe struct {
+			Command   string   `json:"command"`
+			Args      []string `json:"args"`
+			MaxBuffer *float64 `json:"maxBuffer"`
+		}
+		if err := json.Unmarshal([]byte(args), &probe); err != nil {
+			return err
+		}
+		result, err := ctx.ExecWithOptions(probe.Command, probe.Args, sdk.ExecOptions{MaxBuffer: probe.MaxBuffer})
+		if err != nil {
+			ctx.Notify("rejected:"+err.Error(), "info")
+			return nil
+		}
+		ctx.Notify(fmt.Sprintf("exec-limits:truncated=%t;killed=%t;code=%d;stdout=%s;stderr=%s", result.Truncated, result.Killed, result.ExitCode, strings.TrimSpace(result.Stdout), strings.TrimSpace(result.Stderr)), "info")
 		return nil
 	})
 	ext.Command("thinking-model", "Read the thinking level and switch the model", func(ctx sdk.Context, _ string) error {
@@ -530,6 +573,15 @@ func Extension() *sdk.Extension {
 		}
 		return []string{fmt.Sprintf("renderer:%v:expanded=%t:width=%d", message["content"], options.Expanded, width)}, nil
 	})
+	// Test fixture, Pi 9376c8d1 (#4748): KeyText and KeyHint on the message and entry options and the tool render context. The content, data and q are the keybinding id.
+	ext.MessageRenderer("keyhints-message", func(_ sdk.Context, message map[string]any, options sdk.MessageRenderOptions, _ int) ([]string, error) {
+		id, _ := message["content"].(string)
+		return []string{options.KeyText(id) + " | " + options.KeyHint(id, "to expand")}, nil
+	})
+	ext.EntryRenderer("keyhints-entry", func(_ sdk.Context, entry map[string]any, options sdk.EntryRenderOptions, _ int) ([]string, error) {
+		id, _ := entry["data"].(string)
+		return []string{options.KeyText(id) + " | " + options.KeyHint(id, "to expand")}, nil
+	})
 	ext.MessageViewRenderer("kit-message", func(sdk.Context, map[string]any, sdk.MessageRenderOptions, int) (kit.View, error) {
 		return (&kitProbe{}).View(0), nil
 	})
@@ -561,6 +613,11 @@ func Extension() *sdk.Extension {
 				return (&kitProbe{}).View(0), nil
 			}
 			return &renderers
+		case "conformance_keyhints":
+			return &sdk.ToolRenderers{Call: func(_ sdk.Context, args map[string]any, render sdk.ToolRenderContext, _ int) ([]string, error) {
+				id, _ := args["q"].(string)
+				return []string{render.KeyText(id) + " | " + render.KeyHint(id, "to expand")}, nil
+			}}
 		case "conformance_no_renderer":
 			return nil
 		case "conformance_fill":
@@ -1094,6 +1151,144 @@ func Extension() *sdk.Extension {
 		ctx.Notify(fmt.Sprintf("rw_idle_after_trigger=%t", idle), "info")
 		return nil
 	})
+	// rw_idle_busy_until_yield sends a message that starts a run, reads isIdle twice with no yield in between, waits for the run (Pi's `await ctx.waitForIdle()`), and reads once more.
+	ext.Command("rw_idle_busy_until_yield", "Read isIdle after a message that starts a run, before and after a wait for the run", func(ctx sdk.Context, _ string) error {
+		trigger := true
+		if err := ctx.SendMessage("rw-trigger", "rw-trigger", true, sdk.SendMessageOptions{TriggerTurn: &trigger}); err != nil {
+			return err
+		}
+		reads := make([]bool, 3)
+		for i := range 2 {
+			idle, err := ctx.IsIdle()
+			if err != nil {
+				return err
+			}
+			reads[i] = idle
+		}
+		if err := ctx.WaitForIdle(); err != nil {
+			return err
+		}
+		idle, err := ctx.IsIdle()
+		if err != nil {
+			return err
+		}
+		reads[2] = idle
+		ctx.Notify(fmt.Sprintf("rw_idle_busy_until_yield=sync:%t,%t;later:%t", reads[0], reads[1], reads[2]), "info")
+		return nil
+	})
+	// rw_idle_send_then_await waits for the run a message starts with no read in between, reads, and does the same for a second message with a read before the wait.
+	ext.Command("rw_idle_send_then_await", "Await the run a message starts with no read in between, then read; again for a second message", func(ctx sdk.Context, _ string) error {
+		trigger := true
+		send := func() error {
+			return ctx.SendMessage("rw-trigger", "rw-trigger", true, sdk.SendMessageOptions{TriggerTurn: &trigger})
+		}
+		if err := send(); err != nil {
+			return err
+		}
+		if err := ctx.WaitForIdle(); err != nil {
+			return err
+		}
+		awaited, err := ctx.IsIdle()
+		if err != nil {
+			return err
+		}
+		if err := send(); err != nil {
+			return err
+		}
+		second, err := ctx.IsIdle()
+		if err != nil {
+			return err
+		}
+		if err := ctx.WaitForIdle(); err != nil {
+			return err
+		}
+		again, err := ctx.IsIdle()
+		if err != nil {
+			return err
+		}
+		ctx.Notify(fmt.Sprintf("rw_idle_send_then_await=awaited:%t;second:%t;awaited-again:%t", awaited, second, again), "info")
+		return nil
+	})
+	// rw_idle_blocking blocks on something that is no host call (a sleep) after a message that starts a run, which ends meanwhile, and reads.
+	ext.Command("rw_idle_blocking", "Read isIdle after a message that starts a run and a wait that is no call", func(ctx sdk.Context, _ string) error {
+		before, err := ctx.IsIdle()
+		if err != nil {
+			return err
+		}
+		trigger := true
+		if err := ctx.SendMessage("rw-trigger", "rw-trigger", true, sdk.SendMessageOptions{TriggerTurn: &trigger}); err != nil {
+			return err
+		}
+		time.Sleep(300 * time.Millisecond)
+		after, err := ctx.IsIdle()
+		if err != nil {
+			return err
+		}
+		ctx.Notify(fmt.Sprintf("rw_idle_blocking=before:%t;after:%t", before, after), "info")
+		return nil
+	})
+	// rw_idle_yield_poll polls isIdle for the run it started with the SDK's sleep helper, which yields first, as Pi's handler awaits a timer.
+	ext.Command("rw_idle_yield_poll", "Poll isIdle for a run the handler started, sleeping with the SDK helper", func(ctx sdk.Context, _ string) error {
+		trigger := true
+		if err := ctx.SendMessage("rw-trigger", "rw-trigger", true, sdk.SendMessageOptions{TriggerTurn: &trigger}); err != nil {
+			return err
+		}
+		first, err := ctx.IsIdle()
+		if err != nil {
+			return err
+		}
+		deadline := time.Now().Add(5 * time.Second)
+		for {
+			idle, err := ctx.IsIdle()
+			if err != nil {
+				return err
+			}
+			if idle || !time.Now().Before(deadline) {
+				break
+			}
+			if err := ctx.Sleep(10 * time.Millisecond); err != nil {
+				return err
+			}
+		}
+		final, err := ctx.IsIdle()
+		if err != nil {
+			return err
+		}
+		ctx.Notify(fmt.Sprintf("rw_idle_yield_poll=first:%t;final:%t", first, final), "info")
+		return nil
+	})
+	// rw_idle_callback sends the message from a goroutine the handler waits for, as Pi's handler awaits a timer's callback that sends it.
+	ext.Command("rw_idle_callback", "Read isIdle after a message that starts a run, sent from a goroutine the handler waits for", func(ctx sdk.Context, _ string) error {
+		before, err := ctx.IsIdle()
+		if err != nil {
+			return err
+		}
+		done := make(chan error, 1)
+		go func() {
+			done <- func() error {
+				trigger := true
+				if err := ctx.SendMessage("rw-trigger", "rw-trigger", true, sdk.SendMessageOptions{TriggerTurn: &trigger}); err != nil {
+					return err
+				}
+				var sync [2]bool
+				for i := range sync {
+					if sync[i], err = ctx.IsIdle(); err != nil {
+						return err
+					}
+				}
+				if err := ctx.WaitForIdle(); err != nil {
+					return err
+				}
+				later, err := ctx.IsIdle()
+				if err != nil {
+					return err
+				}
+				ctx.Notify(fmt.Sprintf("rw_idle_callback=before:%t;sync:%t,%t;later:%t", before, sync[0], sync[1], later), "info")
+				return nil
+			}()
+		}()
+		return <-done
+	})
 	settledOnce := &atomic.Bool{}
 	ext.Command("rw_idle_in_settled", "Read isIdle after a message that starts a run, sent from an agent_settled handler", func(sdk.Context, string) error {
 		ext.OnEvent("agent_settled", func(hctx sdk.Context, _ map[string]any) (any, error) {
@@ -1114,6 +1309,37 @@ func Extension() *sdk.Extension {
 		return nil
 	})
 
+	// rw_idle_background subscribes to agent_end and, from a background goroutine the handler leaves running, polls isIdle with the handler's Context until the Session reports idle (or 3s pass), then reports the last answer. No event reaches the extension after agent_end, which fires while the run is still busy.
+	ext.Command("rw_idle_background", "Poll isIdle from a background callback after agent_end", func(sdk.Context, string) error {
+		ext.OnEvent("agent_end", func(hctx sdk.Context, _ map[string]any) (any, error) {
+			go func() {
+				idle := false
+				for deadline := time.Now().Add(3 * time.Second); !idle && time.Now().Before(deadline); time.Sleep(10 * time.Millisecond) {
+					idle, _ = hctx.IsIdle()
+				}
+				hctx.Notify(fmt.Sprintf("rw_idle_background=%t", idle), "info")
+			}()
+			return nil, nil
+		})
+		return nil
+	})
+	// rw_idle_live polls isIdle with the command's Context, with no event subscription at all, and notifies the whole sequence of answers at each change until it has seen three (idle, busy, idle), or for 10s. An answer that never changes, a constant, or one held at the last event's snapshot cannot report the three.
+	ext.Command("rw_idle_live", "Poll isIdle live and report the sequence of answers", func(ctx sdk.Context, _ string) error {
+		go func() {
+			var seen []string
+			for deadline := time.Now().Add(10 * time.Second); len(seen) < 3 && time.Now().Before(deadline); time.Sleep(10 * time.Millisecond) {
+				answer := "error"
+				if idle, err := ctx.IsIdle(); err == nil {
+					answer = strconv.FormatBool(idle)
+				}
+				if len(seen) == 0 || seen[len(seen)-1] != answer {
+					seen = append(seen, answer)
+					ctx.Notify("rw_idle_live="+strings.Join(seen, ","), "info")
+				}
+			}
+		}()
+		return nil
+	})
 	ext.Command("set_model", "Switch to the model in the arguments", func(ctx sdk.Context, args string) error {
 		ok, err := ctx.SetModel(args)
 		if err != nil {
@@ -1606,6 +1832,18 @@ func Extension() *sdk.Extension {
 		return nil
 	})
 
+	// An inline component reports blocked program status through ui.custom's blocked option (conformance TestConformance_CustomBlockedOption).
+	ext.Command("blocked-custom-probe", "Open inline custom components with and without the blocked option", func(ctx sdk.Context, _ string) error {
+		if _, err := ctx.Custom(&overlayWidthProbe{}, sdk.RemoteOverlayOptions{Blocked: &sdk.RemoteOverlayBlocked{Kind: "permission", Message: "Approve?"}}); err != nil {
+			return err
+		}
+		if _, err := ctx.Custom(&overlayWidthProbe{}, sdk.RemoteOverlayOptions{}); err != nil {
+			return err
+		}
+		ctx.Notify("blocked-custom done", "info")
+		return nil
+	})
+
 	registerKitWidgets(ext)
 	registerEditorHooks(ext)
 
@@ -1630,6 +1868,17 @@ func Extension() *sdk.Extension {
 			return err
 		}
 		ctx.Notify(fmt.Sprintf("mouse=%v", result), "info")
+		return nil
+	})
+
+	// viewport-probe opens a component that captures the viewport's input until
+	// it gets "t", and closes on "q".
+	ext.Command("viewport-probe", "Exercise a custom component's capturesViewportInput", func(ctx sdk.Context, _ string) error {
+		result, err := ctx.Custom(&viewportProbe{}, sdk.RemoteOverlayOptions{Overlay: true})
+		if err != nil {
+			return err
+		}
+		ctx.Notify(fmt.Sprintf("%v", result), "info")
 		return nil
 	})
 
@@ -2584,6 +2833,14 @@ func Extension() *sdk.Extension {
 		}
 		return nil
 	})
+	// The extension owns thinking runs from load; thinking_runs_off and thinking_runs_on change that while it runs (TestConformance_OwnThinkingRunsAcrossSDKs).
+	ext.OwnThinkingRuns(true)
+	ext.Command("thinking_runs_off", "Withdraw thinking-run ownership", func(ctx sdk.Context, _ string) error {
+		return ctx.OwnThinkingRuns(false)
+	})
+	ext.Command("thinking_runs_on", "Declare thinking-run ownership", func(ctx sdk.Context, _ string) error {
+		return ctx.OwnThinkingRuns(true)
+	})
 	// ui_forward_probe calls the UI members whose host effect a conformance row records (TestConformance_UIForwardingAgreesAcrossSDKs).
 	ext.Command("ui_forward_probe", "Call the working, paste, editor-text and tools-expanded UI members", func(ctx sdk.Context, args string) error {
 		ctx.SetWorkingMessage("Thinking hard")
@@ -2665,9 +2922,11 @@ func Extension() *sdk.Extension {
 		ctx.SetEditorText("")
 		_, _, _ = ctx.Select("T", []string{})
 		_, _ = ctx.Confirm("", "")
-		_, _, _ = ctx.Input("T1", "")
+		_, _, _ = ctx.InputWithoutPlaceholder("T1")
+		_, _, _ = ctx.Input("T2", "")
 		_, _, _ = ctx.Input("T3", "ph")
-		_, _, _ = ctx.Editor("E1", "")
+		_, _, _ = ctx.EditorWithoutPrefill("E1")
+		_, _, _ = ctx.Editor("E2", "")
 		_, _, _ = ctx.Editor("E3", "pre")
 		return nil
 	})
@@ -2705,6 +2964,28 @@ func Extension() *sdk.Extension {
 	})
 	ext.Command("editor-install-embed", "Install a custom editor that embeds the working status", func(ctx sdk.Context, args string) error {
 		return ctx.SetEditorComponent(func(base *sdk.Editor) sdk.EditorComponent { return &embeddingEditor{conformanceEditor{Editor: base}} })
+	})
+	ext.Command("editor-install-viewport", "Install a custom editor that captures viewport input until it receives t", func(ctx sdk.Context, args string) error {
+		return ctx.SetEditorComponent(func(base *sdk.Editor) sdk.EditorComponent {
+			return &viewportEditor{conformanceEditor: conformanceEditor{Editor: base}}
+		})
+	})
+	ext.Command("select-page-probe", "Report getSelectPageIndex for a key under the default keybindings", func(ctx sdk.Context, args string) error {
+		var in struct {
+			Data     string `json:"data"`
+			Selected int    `json:"selected"`
+			Count    int    `json:"count"`
+			Page     int    `json:"page"`
+		}
+		if err := json.Unmarshal([]byte(args), &in); err != nil {
+			return err
+		}
+		if index, ok := tui.GetSelectPageIndex(tui.GetKeybindings(), in.Data, in.Selected, in.Count, in.Page); ok {
+			ctx.Notify(fmt.Sprintf("select-page=%d", index), "info")
+			return nil
+		}
+		ctx.Notify("select-page=none", "info")
+		return nil
 	})
 	registerHeadlessUIProbe(ext)
 
@@ -3253,6 +3534,21 @@ func (e *conformanceEditor) SetText(text string) error {
 type embeddingEditor struct{ conformanceEditor }
 
 func (*embeddingEditor) EmbedWorkingStatus() bool { return true }
+
+// viewportEditor captures viewport input until it receives "t".
+type viewportEditor struct {
+	conformanceEditor
+	released bool
+}
+
+func (e *viewportEditor) CapturesViewportInput() bool { return !e.released }
+
+func (e *viewportEditor) HandleInput(data string) error {
+	if data == "t" {
+		e.released = true
+	}
+	return e.conformanceEditor.HandleInput(data)
+}
 
 func (e *conformanceEditor) Render(width int) ([]string, error) {
 	rows, err := e.Editor.Render(width)

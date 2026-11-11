@@ -583,6 +583,32 @@ func TestModelRegistryFindChangeIsNamed(t *testing.T) {
 	}
 }
 
+// A HostHelpers.HighlightCode written for the markdown parameter is named with its old and new shape, whatever the parameters are called or when they are unnamed; the change has no mechanical rewrite.
+func TestHostHelpersHighlightCodeChangeIsNamed(t *testing.T) {
+	for name, signature := range map[string]string{
+		"named":   "code, lang string, markdown bool, palette []byte",
+		"renamed": "text, language string, markdown bool, colors []byte",
+		"unnamed": "string, string, bool, []byte",
+		"blank":   "_, _ string, _ bool, _ []byte",
+	} {
+		t.Run(name, func(t *testing.T) {
+			result, _ := planSource(t, `var helpers = sdk.HostHelpers{
+	HighlightCode: func(`+signature+`) ([]string, error) {
+		return nil, nil
+	},
+}
+`)
+			if result.Changed() || len(result.Remaining) != 1 {
+				t.Fatalf("result = %+v", result)
+			}
+			drift := result.Remaining[0]
+			if drift.Rule != upgrade.RuleHostHighlightCode || drift.Symbol != "HostHelpers.HighlightCode" || drift.Rewrites || drift.Old != "func(string, string, bool, []byte) ([]string, error)" || drift.New != "func(string, string, []byte) ([]string, error)" || drift.Since != "0.7.0" {
+				t.Fatalf("drift = %+v", drift)
+			}
+		})
+	}
+}
+
 // A provider object written for map[string]any credentials names each changed field with its old and new shape; the change has no mechanical rewrite.
 func TestProviderCredentialChangesAreNamed(t *testing.T) {
 	result, _ := planSource(t, `var provider = sdk.Provider{

@@ -59,7 +59,7 @@ func (m *InteractiveMode) newUserMessageBlock(text string, meta messageMeta) *tu
 		}
 		return state
 	})
-	block.SetAsyncMarkdownTransform(m.asyncMarkdownTransform(nil, extension.MarkdownMessageUser, nil, retry, meta))
+	block.SetAsyncMarkdownTransform(m.asyncMarkdownTransform(nil, extension.MarkdownMessageUser, retry, meta))
 	m.userBlocks = append(m.userBlocks, block)
 	m.markdownBlocks = append(m.markdownBlocks, block)
 	return block
@@ -71,12 +71,13 @@ func (m *InteractiveMode) newAssistantMessageBlock(meta messageMeta) *tui.Assist
 		block.SetHiddenThinkingLabel(*m.hiddenThinkingLabel)
 	}
 	block.SetOutputPad(m.outputPad)
+	block.SetOwnedThinkingRuns(m.ownsThinkingRuns()) // pig additive (D214)
 	retry := &markdownRetry{m: m}
 	block.SetMarkdownTransform(m.assistantMarkdownTransform(block, extension.MarkdownMessageAssistant, retry, meta))
 	block.SetThinkingMarkdownTransform(m.assistantMarkdownTransform(block, extension.MarkdownMessageAssistantThinking, retry, meta))
 	block.SetMarkdownTransformState(m.assistantMarkdownTransformState(block, retry))
 	if m.hasAsyncMarkdownTransformers() {
-		block.SetAsyncMarkdownTransforms(m.asyncMarkdownTransform(block, extension.MarkdownMessageAssistant, block.Invalidate, retry, meta), m.asyncMarkdownTransform(block, extension.MarkdownMessageAssistantThinking, block.Invalidate, retry, meta))
+		block.SetAsyncMarkdownTransforms(m.asyncMarkdownTransform(block, extension.MarkdownMessageAssistant, retry, meta), m.asyncMarkdownTransform(block, extension.MarkdownMessageAssistantThinking, retry, meta))
 	}
 	m.markdownBlocks = append(m.markdownBlocks, block)
 	return block
@@ -128,20 +129,16 @@ func (m *InteractiveMode) hasAsyncMarkdownTransformers() bool {
 
 // Ports packages/coding-agent/src/modes/interactive/components/markdown-transform.ts.
 // asyncMarkdownTransform snapshots UI-owned inputs before starting the complete chain off-loop. New content remains unpublished until every transformer has answered.
-func (m *InteractiveMode) asyncMarkdownTransform(block *tui.AssistantMessageComponent, messageType extension.MarkdownMessageType, invalidate func(), retry *markdownRetry, meta messageMeta) *tui.AsyncMarkdownTransform {
+// Invalidate runs on the worker that completed the chain, so it only asks for a paint: the message component marks itself dirty before calling it (SetAsyncMarkdownTransform, SetAsyncMarkdownTransforms), and every change to a component stays on the owner loop.
+func (m *InteractiveMode) asyncMarkdownTransform(block *tui.AssistantMessageComponent, messageType extension.MarkdownMessageType, retry *markdownRetry, meta messageMeta) *tui.AsyncMarkdownTransform {
 	if !m.hasAsyncMarkdownTransformers() {
 		return nil
 	}
 	return &tui.AsyncMarkdownTransform{
-		Context: m.backgroundCtx,
-		Start:   m.backgroundTasks.Go,
-		Queue:   &m.markdownQueue,
-		Invalidate: func() {
-			if invalidate != nil {
-				invalidate()
-			}
-			m.requestRender()
-		},
+		Context:    m.backgroundCtx,
+		Start:      m.backgroundTasks.Go,
+		Queue:      &m.markdownQueue,
+		Invalidate: m.requestRender,
 		Prepare: func(markdown string, width int) func(context.Context) string {
 			mode, theme := m.mermaidRenderingMode(), tui.ActiveTheme()
 			transformers := []extension.MarkdownTransformer{createMermaidMarkdownTransformer(func() string { return mode }, theme)}
@@ -269,7 +266,7 @@ func (m *InteractiveMode) addCacheMissNotice(notice string) {
 // theme.bold (chalk.bold) do: each closes only its own attribute.
 func noticeFg(color, text string) string { return color + text + tui.FgClose(color) }
 
-func noticeBold(text string) string { return "\x1b[1m" + text + tui.SGRBoldDimReset }
+func noticeBold(text string) string { return tui.ChalkBold(text) }
 
 // binaryUpdateNoticeBody builds the heading+instruction line for the
 // self-update notification, mirroring upstream showNewVersionNotification:
@@ -295,9 +292,11 @@ func (m *InteractiveMode) showNewVersionNotification(release LatestPiRelease) {
 	blocks := []tui.Component{tui.NewThemedText(func() string { return binaryUpdateNoticeBody(tui.ActiveTheme(), release.Version, AppName+" update") }, 1, 0)}
 	if note != "" {
 		muted := func(text string) string { return noticeFg(t.Muted, text) }
+		noteBody := tui.NewMarkdownWithOptions(note, 1, 0, m.markdownThemeWithSettings(), &tui.DefaultTextStyle{Color: muted}, nil)
+		noteBody.FinishStreaming()
 		blocks = append(blocks,
 			tui.NewSpacer(1),
-			tui.NewMarkdownWithOptions(note, 1, 0, m.markdownThemeWithSettings(), &tui.DefaultTextStyle{Color: muted}, nil),
+			noteBody,
 			tui.NewSpacer(1),
 		)
 	}

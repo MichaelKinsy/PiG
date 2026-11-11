@@ -19,3 +19,6 @@ func editorCommand(ctx context.Context, name string, args []string) *exec.Cmd {
 	line := strings.Join(append([]string{name}, args...), " ")
 	return crossspawn.ShellCommand(ctx, line)
 }
+
+// editorSignal is always empty on Windows: a process there ends with an exit code, never a signal.
+func editorSignal(*exec.ExitError) string { return "" }

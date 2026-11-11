@@ -36,7 +36,7 @@ func newEarendilAnnouncementComponent() *earendilAnnouncementComponent {
 	image.Theme.FallbackColor = func(text string) string { return tui.ActiveTheme().Fg("muted", text) }
 	return &earendilAnnouncementComponent{Container: tui.NewContainer(
 		tui.NewDynamicBorderToken("accent"),
-		tui.NewPaddedText("\x1b[1m"+theme.Fg("accent", "pi has joined Earendil")+"\x1b[22m", 1, 0, nil),
+		tui.NewPaddedText(tui.ChalkBold(theme.Fg("accent", "pi has joined Earendil")), 1, 0, nil),
 		tui.NewSpacer(1),
 		tui.NewPaddedText(theme.Fg("muted", "Read the blog post:"), 1, 0, nil),
 		tui.NewPaddedText(theme.Fg("mdLink", "https://mariozechner.at/posts/2026-04-08-ive-sold-out/"), 1, 0, nil),

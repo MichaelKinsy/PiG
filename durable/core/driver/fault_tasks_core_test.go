@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/core/abi"
 	"github.com/MichaelKinsy/PiG/durable/core/driver"
 	"github.com/MichaelKinsy/PiG/durable/harness"
 )
@@ -29,7 +30,9 @@ import (
 //   - :745 "fails the Harness on a failed reservation commit; reopening runs the task" and :777 "fails the Harness instead of
 //     running a task again when its fault write fails": they fail one chosen commit; OpenHarnessFault's onCommit hook can
 //     hold or record a commit but not fail it, so durable/harness TestTaskScheduling ports them over ControlledStorage.
-// The ports below hold the owner goroutine in the store between a step's commits (driver.OpenHarnessFault's OnCommit hook).
+// The ports below hold the owner goroutine in the store between a step's commits (driver.OpenHarnessFault's OnCommit hook), except
+// the two close-sealing ports (:1237, :1295): since group commit (Pi e5c6182b) a stored commit no longer holds the Session line, so they
+// hold the line with a commit whose callback waits (holdLine) and leave the owner free.
 
 // harness-tasks.test.ts:1163 "stops without outcomes and starts no fresh phase or abort invocation while closing".
 func TestCoreFaultCloseStopsWithoutOutcomesAndStartsNoFreshPhaseOrAbortInvocation(t *testing.T) {
@@ -123,29 +126,15 @@ func TestCoreFaultCloseStopsWithoutOutcomesAndStartsNoFreshPhaseOrAbortInvocatio
 	}
 }
 
-// harness-tasks.test.ts:1243 "writes no fault when close seals while the step after a failed phase is queued".
+// harness-tasks.test.ts:1237 "writes no fault when close seals while the step after a failed phase is queued".
 func TestCoreFaultWritesNoFaultWhenCloseSealsWhileTheStepAfterAFailedPhaseIsQueued(t *testing.T) {
 	store := &controlledStore{}
 	var held atomic.Pointer[commitGate]
 	var harnessRef atomic.Pointer[harness.Harness]
-	queuedAtReturn := make(chan int, 1)
 	throws := defineSteps("test.close-fault", nil, map[string]func(context.Context, stepRecord, stepRuntime) error{
-		"start": func(ctx context.Context, _ stepRecord, rt stepRuntime) error {
-			gate := store.holdCommits()
-			held.Store(gate)
-			go func() {
-				_, _ = (*harnessRef.Load()).Commit(context.Background(), func(tx durable.Tx) (any, error) {
-					_, err := tx.AppendEntry(rt.ConversationId(), durable.EntryDraft{Kind: "blocker"})
-					return nil, err
-				})
-			}()
-			// The blocker is on the line before the phase's failure is: upstream's `void commit()` enqueues synchronously, and a
-			// goroutine does not, so wait until the blocker is in the store.
-			select {
-			case <-gate.entered:
-			case <-time.After(15 * time.Second):
-			}
-			queuedAtReturn <- driver.QueuedPosts(*harnessRef.Load())
+		"start": func(context.Context, stepRecord, stepRuntime) error {
+			// The step after this phase queues behind a job that holds the line (harness-tasks.test.ts:1242).
+			held.Store(holdLine(*harnessRef.Load()))
 			return errors.New("would fault")
 		},
 	})
@@ -158,12 +147,16 @@ func TestCoreFaultWritesNoFaultWhenCloseSealsWhileTheStepAfterAFailedPhaseIsQueu
 		gate = held.Load()
 	}
 	if gate == nil {
-		t.Fatal("the phase never held the store")
+		t.Fatal("the phase never held the line")
 	}
 	gate.waitEntered(t)
-	// The failed phase's completion is in the owner mailbox before close() runs, as Pi's microtask has queued the fault step.
-	waitQueuedAbove(t, h, awaitChan(t, "the handler to return", queuedAtReturn))
-	closing := closeBegun(t, h)
+	// The failed phase's completion reaches the core and the step after it is queued on the line before close() runs, as Pi's
+	// `await flush()` (:1252) lets the microtasks that queue the fault step run.
+	waitDelivered(t, h, abi.EventPhaseDone)
+	if err := driver.Flush(t.Context(), h); err != nil {
+		t.Fatal(err)
+	}
+	closing := closeBegunFree(t, h)
 	gate.release()
 	select {
 	case err := <-closing:
@@ -173,7 +166,7 @@ func TestCoreFaultWritesNoFaultWhenCloseSealsWhileTheStepAfterAFailedPhaseIsQueu
 	case <-time.After(15 * time.Second):
 		t.Fatal("Close never returned")
 	}
-	// harness-tasks.test.ts:1222: created, reserved, and written back as pending by close: no fault.
+	// harness-tasks.test.ts:1259: created, reserved, and written back as pending by close: no fault.
 	if got, want := statuses(store.taskWrites(id)), []string{"pending", "running", "pending"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("task writes %v, want %v: close wrote a fault", got, want)
 	}
@@ -375,6 +368,26 @@ func blockerCommit(h harness.Harness, rt stepRuntime, gate *commitGate) {
 	}()
 }
 
+// holdLine is harness-tasks.test.ts holdLine (:91, added by Pi e5c6182b): it holds the Session line with a Harness commit whose
+// callback waits, so the jobs queued after it start once the gate is released. Since group commit a Storage call in flight no
+// longer holds the line (a job runs until it touches a key an unpublished commit wrote), so a held store is not a held line.
+// It returns once the callback is running, so a commit queued next lines up behind it as in Pi, where the call order is the line order.
+func holdLine(h harness.Harness) *commitGate {
+	gate := &commitGate{entered: make(chan struct{}), freed: make(chan struct{})}
+	go func() {
+		_, _ = h.Commit(context.Background(), func(durable.Tx) (any, error) {
+			close(gate.entered)
+			<-gate.freed
+			return nil, nil
+		})
+	}()
+	select {
+	case <-gate.entered:
+	case <-time.After(15 * time.Second):
+	}
+	return gate
+}
+
 // harness-tasks.test.ts:622 "orders runtime commits against the step: one queued before it lands, one after it rejects": the
 // handler holds the line, queues a commit without awaiting it and returns, so the step queues behind that commit; a commit
 // queued after the handler returned lands after the step, which has ended the invocation.
@@ -428,7 +441,7 @@ func TestCoreFaultOrdersRuntimeCommitsAgainstTheStep(t *testing.T) {
 	}
 }
 
-// harness-tasks.test.ts:1297 "rejects a runtime commit that was queued on the line when close sealed it".
+// harness-tasks.test.ts:1295 "rejects a runtime commit that was queued on the line when close sealed it".
 func TestCoreFaultRejectsARuntimeCommitQueuedOnTheLineWhenCloseSealedIt(t *testing.T) {
 	store := &controlledStore{}
 	var h harness.Harness
@@ -437,14 +450,13 @@ func TestCoreFaultRejectsARuntimeCommitQueuedOnTheLineWhenCloseSealedIt(t *testi
 	onTheLine := make(chan bool, 1)
 	proceed := make(chan struct{})
 	task := oneStepTask("test.close-queued-commit", func(_ context.Context, rt stepRuntime) error {
-		gate := store.holdCommits()
+		gate := holdLine(h)
 		gateOf <- gate
-		blockerCommit(h, rt, gate)
-		n := driver.QueuedPosts(h)
+		n := driver.Delivered(h, abi.EventTx)
 		go func() {
 			queued <- rt.Commit(context.Background(), func(durable.Tx, stepRecord) (*stepNext, error) { return completedWith(nil), nil })
 		}()
-		onTheLine <- queuedAbove(h, n)
+		onTheLine <- deliveredAbove(h, abi.EventTx, n)
 		// Ignores the close signal, so the invocation is still alive when the queued commit reaches the line.
 		<-proceed
 		return nil
@@ -456,9 +468,12 @@ func TestCoreFaultRejectsARuntimeCommitQueuedOnTheLineWhenCloseSealedIt(t *testi
 	gate := awaitChan(t, "the handler to hold the line", gateOf)
 	gate.waitEntered(t)
 	if !awaitChan(t, "the runtime commit to queue", onTheLine) {
-		t.Fatal("the runtime commit never reached the owner mailbox")
+		t.Fatal("the runtime commit never reached the core")
 	}
-	closing := closeBegun(t, h)
+	if err := driver.Flush(t.Context(), h); err != nil {
+		t.Fatal(err)
+	}
+	closing := closeBegunFree(t, h)
 	gate.release()
 	if err := awaitChan(t, "the queued runtime commit", queued); err == nil || !strings.Contains(err.Error(), "Harness is closed") {
 		t.Fatalf("the queued runtime commit = %v, want Harness is closed", err)
@@ -467,7 +482,7 @@ func TestCoreFaultRejectsARuntimeCommitQueuedOnTheLineWhenCloseSealedIt(t *testi
 	if err := awaitChan(t, "close", closing); err != nil {
 		t.Fatal(err)
 	}
-	// harness-tasks.test.ts:1288: created, reserved, and written back as pending by close; the queued outcome never landed.
+	// harness-tasks.test.ts:1322: created, reserved, and written back as pending by close; the queued outcome never landed.
 	if got, want := statuses(store.taskWrites(id)), []string{"pending", "running", "pending"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("task writes %v, want %v", got, want)
 	}

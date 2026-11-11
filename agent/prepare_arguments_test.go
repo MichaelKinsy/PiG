@@ -132,3 +132,54 @@ func TestPrepareArguments_ToolWithoutHookKeepsArguments(t *testing.T) {
 		t.Fatalf("executed = %v, want %v", executed, want)
 	}
 }
+
+// agent-tool-typebox.test.ts is type-level (expectTypeOf): in Pi, execute() and prepareArguments() are typed by the parameter
+// schema. Go's AgentTool takes JSON arguments, so the schema is enforced at run time: the arguments a tool executes with are the
+// validated, prepared JSON of that schema (a required string command and an optional "fast" | "deep" mode).
+func TestAgentToolArgumentsOfASchemaReachExecuteAsTheSchemaShape(t *testing.T) {
+	type params struct {
+		Command string  `json:"command"`
+		Mode    *string `json:"mode"`
+	}
+	var executed []params
+	tool := &preparerTool{prepare: func(raw json.RawMessage) (json.RawMessage, error) { return raw, nil }}
+	tool.scriptTool = scriptTool{name: "bash", params: map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"command": map[string]any{"type": "string"},
+			"mode":    map[string]any{"anyOf": []any{map[string]any{"const": "fast"}, map[string]any{"const": "deep"}}},
+		},
+		"required": []any{"command"},
+	}, execute: func(_ context.Context, _ string, raw json.RawMessage, _ ToolUpdateCallback) (AgentToolResult, error) {
+		var got params
+		if err := json.Unmarshal(raw, &got); err != nil {
+			t.Fatalf("arguments %s do not decode into the schema's shape: %v", raw, err)
+		}
+		executed = append(executed, got)
+		return AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "ran"}}}, nil
+	}}
+	run := func(name string, args ai.JsonObject) preparedOutcome {
+		outcome, _ := RunToolCall(context.Background(), AgentToolCall{ID: name, Name: "bash", Arguments: args}, RunToolCallOptions{Tools: []AgentTool{tool}})
+		return preparedOutcome{Text: outcome.Result.Text(), IsError: outcome.IsError}
+	}
+	deep := "deep"
+	if got := run("full", ai.JsonObject{"command": "ls", "mode": "deep"}); got.IsError {
+		t.Fatalf("a call that matches the schema = %+v", got)
+	}
+	if got := run("bare", ai.JsonObject{"command": "pwd"}); got.IsError {
+		t.Fatalf("a call without the optional mode = %+v", got)
+	}
+	for name, args := range map[string]ai.JsonObject{
+		"badMode":    {"command": "ls", "mode": "slow"},
+		"noCommand":  {"mode": "fast"},
+		"badCommand": {"command": []any{}},
+	} {
+		if got := run(name, args); !got.IsError {
+			t.Fatalf("%s: arguments the schema refuses ran: %+v", name, got)
+		}
+	}
+	want := []params{{Command: "ls", Mode: &deep}, {Command: "pwd"}}
+	if !reflect.DeepEqual(executed, want) {
+		t.Fatalf("tool executed with %+v, want %+v", executed, want)
+	}
+}

@@ -17,7 +17,7 @@ import { authorizeMcp, McpOAuthAuthorizationRequiredError, McpOAuthProvider, OAu
 import lockfile from "../../../../proper-lockfile.mjs";
 import { APP_NAME, getAgentDir } from "../../config.js";
 import { FileAuthStorageBackend } from "../../core/auth-storage.js";
-import { mcpNamespace } from "../../core/mcp-servers.js";
+import { isClientMetadataDocumentCallback, mcpNamespace } from "../../core/mcp-servers.js";
 const CALLBACK_HOST = "127.0.0.1";
 const CALLBACK_PATH = "/callback";
 /** Where pi.dev serves pi's Client ID Metadata Documents: `client.json` and `<callback ID>/client.json`. */
@@ -177,15 +177,28 @@ function callbackId(serverUrl) {
     return createHash("sha256").update(url.href).digest().subarray(0, 9).toString("base64url");
 }
 /**
- * pi's Client ID Metadata Document, for `clientRegistration: "cimd"`, chosen like Codex chooses its own.
- * The configuration ensures the default callback path. Without the `iss` parameter in authorization
- * responses (RFC 9207), the redirect URI and the document are specific to the MCP server, so a response
- * cannot be mixed up with one from another authorization server (RFC 9700 section 4.4.2.2).
+ * Whether sign-in may identify with pi's Client ID Metadata Document instead of registering. `auto`
+ * registers when the user asked for a client name, the redirect URI is not one the documents list, or
+ * a rebranded build would show up as pi.
+ */
+function offersClientMetadataDocument(settings) {
+    const registration = settings.clientRegistration ?? "auto";
+    if (registration !== "auto")
+        return registration === "cimd";
+    if (settings.clientId || settings.clientName || APP_NAME !== "pi")
+        return false;
+    return isClientMetadataDocumentCallback(settings.callbackUrl);
+}
+/**
+ * pi's Client ID Metadata Document, chosen like Codex chooses its own, or `undefined` when the
+ * authorization server does not support documents for public clients. Without the `iss` parameter in
+ * authorization responses (RFC 9207), the redirect URI and the document are specific to the MCP server,
+ * so a response cannot be mixed up with one from another authorization server (RFC 9700 section 4.4.2.2).
  */
 function clientMetadataDocument(serverUrl, redirectUrl, metadata) {
     if (!metadata?.client_id_metadata_document_supported ||
         !metadata.token_endpoint_auth_methods_supported?.includes("none")) {
-        throw new Error('The authorization server does not support Client ID Metadata Documents for public clients; remove oauth.clientRegistration "cimd"');
+        return undefined;
     }
     if (metadata.authorization_response_iss_parameter_supported) {
         return { url: `${CLIENT_METADATA_BASE_URL}/client.json`, redirectUrl };
@@ -200,8 +213,14 @@ function createProvider(serverUrl, store, settings, redirectUrl, onRedirect) {
         serverUrl,
         redirectUrl,
         clientMetadata: { client_name: settings.clientName ?? APP_NAME },
-        clientMetadataDocument: settings.clientRegistration === "cimd"
-            ? (metadata) => clientMetadataDocument(serverUrl, redirectUrl, metadata)
+        clientMetadataDocument: offersClientMetadataDocument(settings)
+            ? (metadata) => {
+                const document = clientMetadataDocument(serverUrl, redirectUrl, metadata);
+                if (!document && settings.clientRegistration === "cimd") {
+                    throw new Error('The authorization server does not support Client ID Metadata Documents for public clients; remove oauth.clientRegistration "cimd"');
+                }
+                return document;
+            }
             : undefined,
         clientId: settings.clientId,
         clientSecret: settings.clientSecret,
@@ -367,20 +386,24 @@ export async function signInMcpServer(options) {
     // Reuse the port of the registered redirect URI so the registered client stays valid.
     const registered = registeredRedirectUrls(stored?.clientInformation)[0];
     const preferredPort = callbackOptions.port ?? (registered ? Number(new URL(registered).port) || undefined : undefined);
-    const cimd = settings.clientRegistration === "cimd";
+    const offersDocument = offersClientMetadataDocument(settings);
     const callback = await listenForCallback(callbackOptions, 
     // The redirect URI of a server-specific Client ID Metadata Document.
-    cimd ? [`${CALLBACK_PATH}/${callbackId(serverUrl)}`] : [], preferredPort, callbackOptions.port !== undefined);
+    offersDocument ? [`${CALLBACK_PATH}/${callbackId(serverUrl)}`] : [], preferredPort, callbackOptions.port !== undefined);
     const redirectUrl = callbackOptions.fixedRedirectUrl ?? callback.redirectUrl;
     try {
         if (stored) {
             const next = { ...stored };
             // Every sign-in gets a fresh `state` parameter.
             delete next.oauthState;
-            // A registered client cannot use another redirect URI, and its tokens belong to it. A Client ID
-            // Metadata Document is not stored, so with one, a stored client was registered before and is replaced.
+            // A registered client cannot use another redirect URI, and its tokens belong to it. `cimd` replaces a
+            // registered client; `auto` keeps it. A Client ID Metadata Document is not stored, so tokens without
+            // a stored client belong to the document.
             const keepClient = settings.clientId ||
-                (cimd ? !stored.clientInformation : registeredRedirectUrls(stored.clientInformation).includes(redirectUrl));
+                (stored.clientInformation
+                    ? settings.clientRegistration !== "cimd" &&
+                        registeredRedirectUrls(stored.clientInformation).includes(redirectUrl)
+                    : offersDocument);
             if (!keepClient) {
                 delete next.clientInformation;
                 delete next.tokens;

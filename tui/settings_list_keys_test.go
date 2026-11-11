@@ -14,7 +14,7 @@ func TestSettingsListPageAndHomeEndKeysFollowSearchState(t *testing.T) {
 	for i := range items {
 		items[i] = SettingItem{ID: fmt.Sprint(i), Label: fmt.Sprintf("Item %d", i), CurrentValue: "a", Values: []string{"a", "b"}}
 	}
-	// Pi has no PageUp and PageDown handling in settings-list.ts; Pig pages the selection (D155, Pi PR #7680), covered by TestSettingsListPageKeysMoveByAPage.
+	// Home and End are not selection keys in settings-list.ts; the page keys are covered by TestSettingsListPageKeysMoveByAPage.
 	for name, key := range map[string]string{"Home": "\x1b[H", "End": "\x1b[F"} {
 		for _, search := range []bool{true, false} {
 			sl := NewSettingsList(items, 10, GetSettingsListTheme(), nil, nil, SettingsListOptions{EnableSearch: search})

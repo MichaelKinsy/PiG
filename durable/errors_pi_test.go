@@ -27,7 +27,7 @@ func TestDurableErrorNamesMatchPi(t *testing.T) {
 }
 
 func TestDurableErrorMessagesAndCauseMatchErrorsTS(t *testing.T) {
-	if got, want := NewReadAfterWrite("get").Error(), "Tx.get() cannot read tables after the first table write"; got != want {
+	if got, want := NewReadAfterWrite("Tx.get()").Error(), "Tx.get() cannot read tables after the first table write"; got != want {
 		t.Errorf("ReadAfterWrite = %q, want %q", got, want)
 	}
 	if got, want := NewConversationBusy(12).Error(), "Conversation 12 is busy"; got != want {

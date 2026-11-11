@@ -58,7 +58,10 @@ pub struct TruncationResult {
 
 impl TruncationOptions {
     fn limits(self) -> (usize, usize) {
-        (self.max_lines.unwrap_or(DEFAULT_MAX_LINES), self.max_bytes.unwrap_or(DEFAULT_MAX_BYTES))
+        (
+            self.max_lines.unwrap_or(DEFAULT_MAX_LINES),
+            self.max_bytes.unwrap_or(DEFAULT_MAX_BYTES),
+        )
     }
 }
 
@@ -91,7 +94,13 @@ fn tenths(bytes: usize, unit: usize) -> String {
     format!("{}.{}", scaled / 10, scaled % 10)
 }
 
-fn unchanged(content: &str, total_lines: usize, total_bytes: usize, max_lines: usize, max_bytes: usize) -> TruncationResult {
+fn unchanged(
+    content: &str,
+    total_lines: usize,
+    total_bytes: usize,
+    max_lines: usize,
+    max_bytes: usize,
+) -> TruncationResult {
     TruncationResult {
         content: content.to_string(),
         truncated: false,
@@ -257,7 +266,16 @@ mod tests {
 
     #[test]
     fn format_size_rounds_half_up_like_to_fixed() {
-        let cases = [(0, "0B"), (1023, "1023B"), (1024, "1.0KB"), (1280, "1.3KB"), (1536, "1.5KB"), (1048575, "1024.0KB"), (1048576, "1.0MB"), (5505024, "5.3MB")];
+        let cases = [
+            (0, "0B"),
+            (1023, "1023B"),
+            (1024, "1.0KB"),
+            (1280, "1.3KB"),
+            (1536, "1.5KB"),
+            (1048575, "1024.0KB"),
+            (1048576, "1.0MB"),
+            (5505024, "5.3MB"),
+        ];
         for (bytes, want) in cases {
             assert_eq!(format_size(bytes), want, "format_size({bytes})");
         }
@@ -265,21 +283,65 @@ mod tests {
 
     #[test]
     fn tail_keeps_the_end_of_an_oversized_last_line() {
-        let r = truncate_tail("日本語のテキスト", TruncationOptions { max_bytes: Some(7), ..Default::default() });
-        assert_eq!((r.content.as_str(), r.last_line_partial, r.truncated_by, r.output_bytes), ("スト", true, Some(TruncatedBy::Bytes), 6));
+        let r = truncate_tail(
+            "日本語のテキスト",
+            TruncationOptions {
+                max_bytes: Some(7),
+                ..Default::default()
+            },
+        );
+        assert_eq!(
+            (
+                r.content.as_str(),
+                r.last_line_partial,
+                r.truncated_by,
+                r.output_bytes
+            ),
+            ("スト", true, Some(TruncatedBy::Bytes), 6)
+        );
     }
 
     #[test]
     fn head_never_returns_a_partial_line() {
-        let r = truncate_head("no newline at all", TruncationOptions { max_bytes: Some(4), ..Default::default() });
-        assert_eq!((r.content.as_str(), r.first_line_exceeds_limit, r.truncated_by), ("", true, Some(TruncatedBy::Bytes)));
-        let r = truncate_head("a\nb\nc\n", TruncationOptions { max_lines: Some(2), ..Default::default() });
-        assert_eq!((r.content.as_str(), r.truncated_by, r.total_lines, r.output_lines), ("a\nb", Some(TruncatedBy::Lines), 3, 2));
+        let r = truncate_head(
+            "no newline at all",
+            TruncationOptions {
+                max_bytes: Some(4),
+                ..Default::default()
+            },
+        );
+        assert_eq!(
+            (
+                r.content.as_str(),
+                r.first_line_exceeds_limit,
+                r.truncated_by
+            ),
+            ("", true, Some(TruncatedBy::Bytes))
+        );
+        let r = truncate_head(
+            "a\nb\nc\n",
+            TruncationOptions {
+                max_lines: Some(2),
+                ..Default::default()
+            },
+        );
+        assert_eq!(
+            (
+                r.content.as_str(),
+                r.truncated_by,
+                r.total_lines,
+                r.output_lines
+            ),
+            ("a\nb", Some(TruncatedBy::Lines), 3, 2)
+        );
     }
 
     #[test]
     fn line_counts_utf16_units() {
-        assert_eq!(truncate_line("😀😀😀😀", 6), ("😀😀😀... [truncated]".to_string(), true));
+        assert_eq!(
+            truncate_line("😀😀😀😀", 6),
+            ("😀😀😀... [truncated]".to_string(), true)
+        );
         assert_eq!(truncate_line("😀😀😀", 6), ("😀😀😀".to_string(), false));
     }
 }

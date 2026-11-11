@@ -75,14 +75,31 @@ func run() error {
 			if err := json.Unmarshal(tc.Value, &options); err != nil {
 				return err
 			}
-			output[key] = modelgen.GetEffortThinkingLevelMap(options)
+			output[key] = levelMap(modelgen.GetEffortThinkingLevelMap(options))
 		} else {
 			var reasoning *modelgen.OpenRouterReasoningMetadata
 			if err := json.Unmarshal(tc.Value, &reasoning); err != nil {
 				return err
 			}
-			output[key] = modelgen.GetOpenRouterThinkingLevelMap(reasoning)
+			output[key] = levelMap(modelgen.GetOpenRouterThinkingLevelMap(reasoning))
 		}
 	}
 	return json.NewEncoder(os.Stdout).Encode(output)
+}
+
+// levelMap is a thinking level map as a Go map, which the encoder prints with sorted keys as pi.mjs does (nil for undefined, printed as null).
+func levelMap(levels *modelgen.Obj) map[string]*string {
+	if levels == nil {
+		return nil
+	}
+	out := map[string]*string{}
+	for _, level := range levels.Keys() {
+		value, _ := levels.Get(level)
+		if text, ok := value.(string); ok {
+			out[level] = &text
+		} else {
+			out[level] = nil
+		}
+	}
+	return out
 }

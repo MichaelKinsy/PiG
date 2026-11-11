@@ -48,12 +48,16 @@ linters:
     # classes. Site-specific false positives should generally live beside the
     # code as `//nolint:<linter> // rationale` so reviewers see the tradeoff.
     rules:
-      # gosec: subprocess launched with variable: expected in a CLI tool
-      # that execs user-specified commands (git, node, tar, etc.)
+      # gosec G204 (subprocess launched with a variable) is ENABLED: every production site
+      # carries an inline `//nolint:gosec` naming where the program and arguments come from.
+      # Test files are excluded below; they run the fixtures they build on the developer's
+      # or CI's own machine.
       - linters: [gosec]
+        path: ".*_test\\.go"
         text: "G204:"
-      # gosec: file inclusion via variable: expected for a tool that
-      # reads user config files, session files, and extension sources
+      # gosec: file inclusion via variable. Stays excluded: a CLI that runs as the user, as
+      # Pi does, reads the files its user, config and state directory name; a path taint rule
+      # has no signal here.
       - linters: [gosec]
         text: "G304:"
       # gosec: path traversal via taint: same rationale as G304
@@ -67,8 +71,9 @@ linters:
       # intentionally, no crypto needed
       - linters: [gosec]
         text: "G404:"
-      # gosec: potential hardcoded credentials: OAuth client IDs and
-      # redirect URIs are public by design (RFC 8252 §8.4)
+      # gosec: potential hardcoded credentials. Stays excluded: it fires on env var names,
+      # token endpoint URLs and public OAuth identifiers (RFC 8252 §8.4); gitleaks and
+      # TruffleHog scan for real secrets in CI.
       - linters: [gosec]
         text: "G101:"
       # gosec: Slowloris: local-only OAuth callback server bound to

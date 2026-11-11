@@ -5,14 +5,18 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 )
 
+// The one pattern minimatch 11.0.3 cannot compile is one over 65,536 UTF-16 units (a TypeError); through 10.2.6 "[[:alpha:]]-a" threw a SyntaxError whose text named the pattern, so the order of the overrides is no longer visible in the message.
+var filterThrow = strings.Repeat("a", 65537)
+
+// tooLong is the message of that TypeError.
+const tooLong = "pattern is too long"
+
 // Pi's addAutoDiscoveredResources checks each auto-discovered resource against its settings array's overrides in this order (package-manager.ts:2413-2575): project extensions, skills, ancestor .agents skills, prompts and themes when the project is trusted, then the user ones with ~/.agents skills after the user skills. A "!" pattern minimatch cannot compile throws when the first resource reaches it, so the first resource met decides which error resolve() rejects with, and a pattern no resource reaches never throws.
 func TestAutoDiscoveredOverrideErrorsFollowPiOrder(t *testing.T) {
-	message := func(suffix string) string {
-		return `Invalid regular expression: /^(?!\.)[\p{L}\p{Nl}]\-` + suffix + `$/u: Invalid escape`
-	}
 	const skill = "---\nname: s\ndescription: d\n---\nBody\n"
 	for _, tc := range []struct {
 		name          string
@@ -21,22 +25,22 @@ func TestAutoDiscoveredOverrideErrorsFollowPiOrder(t *testing.T) {
 		files         func(root, cwd, agentDir, home string) []string
 		want          string
 	}{
-		{"an ancestor .agents skill", true, `{"skills":["![[:alpha:]]-a"]}`, `{}`, func(root, _, _, _ string) []string {
+		{"an ancestor .agents skill", true, `{"skills":["!` + filterThrow + `"]}`, `{}`, func(root, _, _, _ string) []string {
 			return []string{filepath.Join(root, ".agents", "skills", "s", "SKILL.md")}
-		}, message("a")},
-		{"a ~/.agents skill", true, `{}`, `{"skills":["![[:alpha:]]-b"]}`, func(_, _, _, home string) []string {
+		}, tooLong},
+		{"a ~/.agents skill", true, `{}`, `{"skills":["!` + filterThrow + `"]}`, func(_, _, _, home string) []string {
 			return []string{filepath.Join(home, ".agents", "skills", "s", "SKILL.md")}
-		}, message("b")},
-		{"the project before the user", true, `{"prompts":["![[:alpha:]]-a"]}`, `{"skills":["![[:alpha:]]-b"]}`, func(_, cwd, agentDir, _ string) []string {
+		}, tooLong},
+		{"the project before the user", true, `{"prompts":["!` + filterThrow + `"]}`, `{"skills":["!` + filterThrow + `"]}`, func(_, cwd, agentDir, _ string) []string {
 			return []string{filepath.Join(agentDir, "skills", "s", "SKILL.md"), filepath.Join(ProjectConfigDir(cwd), "prompts", "p.md")}
-		}, message("a")},
-		{"an untrusted project", false, `{"prompts":["![[:alpha:]]-a"]}`, `{"skills":["![[:alpha:]]-b"]}`, func(_, cwd, agentDir, _ string) []string {
+		}, tooLong},
+		{"an untrusted project", false, `{"prompts":["!` + filterThrow + `"]}`, `{"skills":["!` + filterThrow + `"]}`, func(_, cwd, agentDir, _ string) []string {
 			return []string{filepath.Join(agentDir, "skills", "s", "SKILL.md"), filepath.Join(ProjectConfigDir(cwd), "prompts", "p.md")}
-		}, message("b")},
-		{"skills before prompts", true, `{"prompts":["![[:alpha:]]-a"],"skills":["![[:alpha:]]-b"]}`, `{}`, func(root, cwd, _, _ string) []string {
+		}, tooLong},
+		{"skills before prompts", true, `{"prompts":["!` + filterThrow + `"],"skills":["!` + filterThrow + `"]}`, `{}`, func(root, cwd, _, _ string) []string {
 			return []string{filepath.Join(ProjectConfigDir(cwd), "prompts", "p.md"), filepath.Join(root, ".agents", "skills", "s", "SKILL.md")}
-		}, message("b")},
-		{"no resource reaches it", true, `{"prompts":["![[:alpha:]]-a"]}`, `{"themes":["![[:alpha:]]-b"]}`, func(string, string, string, string) []string { return nil }, ""},
+		}, tooLong},
+		{"no resource reaches it", true, `{"prompts":["!` + filterThrow + `"]}`, `{"themes":["!` + filterThrow + `"]}`, func(string, string, string, string) []string { return nil }, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
@@ -91,11 +95,11 @@ func TestAutoDiscoveredOverridesReachAnUnlistableDirectory(t *testing.T) {
 	extensions := filepath.Join(agentDir, "extensions")
 	writeOverrideFixture(t, filepath.Join(extensions, "index.ts"), "export default function() {}\n")
 	writeOverrideFixture(t, filepath.Join(agentDir, "prompts", "p.md"), "x\n")
-	writeOverrideFixture(t, filepath.Join(agentDir, "settings.json"), `{"extensions":["![[:alpha:]]-x"],"prompts":["![[:alpha:]]-y"]}`)
+	writeOverrideFixture(t, filepath.Join(agentDir, "settings.json"), `{"extensions":["!`+filterThrow+`"],"prompts":["!`+filterThrow+`"]}`)
 	denyListing(t, extensions)
 	sm := NewSettingsManagerWithProjectTrust(cwd, agentDir, false)
 	err := ValidateAutoDiscoveredOverrides(cwd, agentDir, sm, false)
-	if want := `Invalid regular expression: /^(?!\.)[\p{L}\p{Nl}]\-x$/u: Invalid escape`; err == nil || err.Error() != want {
+	if want := tooLong; err == nil || err.Error() != want {
 		t.Fatalf("error = %v, want %q", err, want)
 	}
 }

@@ -48,8 +48,17 @@ func (m *InteractiveMode) offerRadiusMcpServer(providerID, providerName string) 
 		name = "radius-mcp"
 	}
 	config, err := radiusMcpServerConfig(mcpPath, name, index >= 0, providerID)
+	// This runs on the login's goroutine, which is not the owner loop when the login was started off it; the chat container and the status line are the
+	// loop's alone (Pi's TUI is single-threaded), so every use of them goes through the loop. On the loop itself the work runs in place.
+	ctx := m.loginContext()
+	onMain := func(work func()) {
+		_ = m.runOnMainAndWait(ctx, func() error {
+			work()
+			return nil
+		})
+	}
 	if err != nil {
-		m.showError(fmt.Sprintf("Could not update %s: %v", mcpPath, err))
+		onMain(func() { m.showError(fmt.Sprintf("Could not update %s: %v", mcpPath, err)) })
 		return
 	}
 
@@ -59,15 +68,17 @@ func (m *InteractiveMode) offerRadiusMcpServer(providerID, providerName string) 
 		return
 	}
 	if _, err := mcpext.AddMcpServerConfigJSON(mcpPath, name, config); err != nil {
-		m.showError(fmt.Sprintf("Could not update %s: %v", mcpPath, err))
+		onMain(func() { m.showError(fmt.Sprintf("Could not update %s: %v", mcpPath, err)) })
 		return
 	}
 	// The MCP extension reads mcp.json when the session starts. Pi runs its /reload handler directly
 	// (interactive-mode.ts:6334 handleReloadCommand), not the slash command an extension may override.
-	if err := reloadHandler(m.buildSlashContext(m.loginContext())); err != nil {
-		m.showError(err.Error())
-	}
-	m.tuiInst.Render()
+	onMain(func() {
+		if err := reloadHandler(m.buildSlashContext(ctx)); err != nil {
+			m.showError(err.Error())
+		}
+		m.tuiInst.Render()
+	})
 }
 
 // radiusMcpServerConfig is the server entry that uses the Radius login: an existing entry keeps its members in order

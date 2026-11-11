@@ -8,6 +8,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // writeNodePiglet writes a Piglet whose only extension is a TypeScript
@@ -17,7 +19,9 @@ func writeNodePiglet(t *testing.T, root, extra string) string {
 	t.Helper()
 	writeFiles(t, map[string]string{
 		filepath.Join(root, "greeter", "lib", "echo.ts"): "export function echo(text: string): string {\n  return `NODE-BINARY-ECHO ${text}`;\n}\n",
-		filepath.Join(root, "greeter", "index.ts"): `import { writeFileSync } from "node:fs";
+		filepath.Join(root, "greeter", "index.ts"): `import { readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { echo } from "./lib/echo.ts";
 
 export default function (pi: any) {
@@ -32,11 +36,60 @@ export default function (pi: any) {
     description: "write node-mark.txt in the working directory",
     handler: async (args: string) => { writeFileSync("node-mark.txt", ` + "`NODE-MARK ${args}`" + `); },
   });
+  pi.registerCommand("node-links", {
+    description: "write node-links.txt with what each path named in args reads through the extension's links",
+    handler: async (args: string) => {
+      const here = dirname(fileURLToPath(import.meta.url));
+      writeFileSync("node-links.txt", args.split(" ").map((path) => readFileSync(join(here, path), "utf8").trim()).join("|"));
+    },
+  });
 }
 `,
 		filepath.Join(root, "nodebin.yaml"): "name: nodebin\nextensions:\n  - name: greeter\n    origins: [local:./greeter]\n" + extra,
 	})
 	return filepath.Join(root, "nodebin.yaml")
+}
+
+// nodeLinkFixtures gives the extension the link shapes package managers leave in node_modules, each reading a file that only its
+// target holds: npm's .bin links (plain and scoped) and pnpm's store, whose links go down into .pnpm/<name>@<version> and whose
+// sibling links climb out of one version's folder and down into another's. It returns the paths a command reads, in the order of
+// the values it must report.
+func nodeLinkFixtures(t *testing.T, root string) (paths []string, values []string) {
+	t.Helper()
+	member := filepath.Join(root, "greeter")
+	files := map[string]string{
+		filepath.Join(member, "node_modules", "dep", "bin", "cli.js"):                                                     "NPM-BIN",
+		filepath.Join(member, "node_modules", "@scope", "pkg", "bin.js"):                                                  "NPM-SCOPED-BIN",
+		filepath.Join(member, "node_modules", ".pnpm", "store@1.0.0", "node_modules", "store", "index.js"):                "PNPM-STORE",
+		filepath.Join(member, "node_modules", ".pnpm", "sibling@2.0.0", "node_modules", "sibling", "index.js"):            "PNPM-SIBLING",
+		filepath.Join(member, "node_modules", ".pnpm", "@scope+deep@3.0.0", "node_modules", "@scope", "deep", "index.js"): "PNPM-SCOPED",
+	}
+	writeFiles(t, files)
+	nm := filepath.Join(member, "node_modules")
+	for link, target := range map[string]string{
+		filepath.Join(nm, ".bin", "dep"):                                            "../dep/bin/cli.js",
+		filepath.Join(nm, ".bin", "scoped"):                                         "../@scope/pkg/bin.js",
+		filepath.Join(nm, "store"):                                                  ".pnpm/store@1.0.0/node_modules/store",
+		filepath.Join(nm, ".pnpm", "store@1.0.0", "node_modules", "sibling"):        "../../sibling@2.0.0/node_modules/sibling",
+		filepath.Join(nm, ".pnpm", "store@1.0.0", "node_modules", "@scope", "deep"): "../../../@scope+deep@3.0.0/node_modules/@scope/deep",
+		filepath.Join(nm, ".pnpm", "node_modules", "hoisted"):                       "../store@1.0.0/node_modules/store",
+		filepath.Join(nm, ".pnpm", "store@1.0.0", "node_modules", "self"):           "..",
+	} {
+		if err := os.MkdirAll(filepath.Dir(link), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		testenv.Symlink(t, filepath.FromSlash(target), link)
+	}
+	return []string{
+			"node_modules/.bin/dep",
+			"node_modules/.bin/scoped",
+			"node_modules/store/index.js",
+			"node_modules/.pnpm/store@1.0.0/node_modules/sibling/index.js",
+			"node_modules/.pnpm/store@1.0.0/node_modules/@scope/deep/index.js",
+			"node_modules/.pnpm/node_modules/hoisted/index.js",
+			"node_modules/.pnpm/store@1.0.0/node_modules/self/node_modules/store/index.js",
+		},
+		[]string{"NPM-BIN", "NPM-SCOPED-BIN", "PNPM-STORE", "PNPM-SIBLING", "PNPM-SCOPED", "PNPM-STORE", "PNPM-STORE"}
 }
 
 // isolateBuildHome points the build's PiG and user homes at root.
@@ -122,8 +175,13 @@ func TestPigletBinaryRunsItsNodeExtension(t *testing.T) {
 	root := t.TempDir()
 	isolateBuildHome(t, root)
 	binary := filepath.Join(root, nativeBinaryName("pig-nodebin"))
+	piglet := writeNodePiglet(t, root, "")
+	var linkPaths, linkValues []string
+	if runtime.GOOS != "windows" {
+		linkPaths, linkValues = nodeLinkFixtures(t, root)
+	}
 	var stdout, stderr strings.Builder
-	if code := runBuild([]string{writeNodePiglet(t, root, ""), "--format", "binary", "--builder", "native", "--out", binary}, &stdout, &stderr); code != 0 {
+	if code := runBuild([]string{piglet, "--format", "binary", "--builder", "native", "--out", binary}, &stdout, &stderr); code != 0 {
 		t.Fatalf("pig piglet build exit %d\nstdout:\n%s\nstderr:\n%s", code, stdout.String(), stderr.String())
 	}
 	if !strings.Contains(stderr.String(), "Checksumming embedded cells") || strings.Contains(stderr.String(), "not-embedded") {
@@ -142,6 +200,16 @@ func TestPigletBinaryRunsItsNodeExtension(t *testing.T) {
 		mark, readErr := os.ReadFile(filepath.Join(work, "node-mark.txt"))
 		if code != 0 || readErr != nil || string(mark) != "NODE-MARK from-binary" {
 			t.Fatalf("exit %d, mark %q (%v); the extension command did not run\nstdout:\n%s\nstderr:\n%s", code, mark, readErr, out, errOut)
+		}
+	})
+	t.Run("package manager links", func(t *testing.T) {
+		if len(linkPaths) == 0 {
+			t.Skip("the link fixtures are not built on Windows")
+		}
+		code, out, errOut, work := runNodeBinary(t, binary, withNode, "-p", "/node-links "+strings.Join(linkPaths, " "))
+		got, readErr := os.ReadFile(filepath.Join(work, "node-links.txt"))
+		if want := strings.Join(linkValues, "|"); code != 0 || readErr != nil || string(got) != want {
+			t.Fatalf("exit %d, node-links.txt %q (%v), want %q: the extracted tree's links do not resolve like the source's\nstdout:\n%s\nstderr:\n%s", code, got, readErr, want, out, errOut)
 		}
 	})
 	t.Run("node missing", func(t *testing.T) {

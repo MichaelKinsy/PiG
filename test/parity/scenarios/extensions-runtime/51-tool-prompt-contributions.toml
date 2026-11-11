@@ -2,6 +2,8 @@
 # system-prompt.ts:108-116,148-152 lists only active snippets and deduplicates
 # guideline bullets in active-tool order. A read override without a snippet
 # removes the built-in snippet, and a description never substitutes for it.
+# Pi b9e3eef6 (e7a0df27): setting the same tools again keeps the current active order, so the read override's bullet
+# stays first (the previous expectation put it after zeta rule); Pi and PiG print the same bytes.
 name = "51-tool-prompt-contributions"
 description = "Registered tool snippets and guidelines follow active order and override built-in metadata"
 covers = ["packages/coding-agent/src/core/agent-session.ts", "packages/coding-agent/src/core/system-prompt.ts"]
@@ -23,6 +25,6 @@ timeout_seconds = 30
 [assert]
 exit_code = 0
 output_equal = true
-both_contain = ["- zeta: Zeta summary\n- alpha: Alpha summary", "- shared\n- zeta rule\n- override read\n- alpha rule\n- Be concise in your responses"]
+both_contain = ["- zeta: Zeta summary\n- alpha: Alpha summary", "- override read\n- shared\n- zeta rule\n- alpha rule\n- Be concise in your responses"]
 both_not_contain = ["- read:", "- hidden:", "This description must not become a snippet"]
 runs = 3

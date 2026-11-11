@@ -52,16 +52,16 @@ func newExtensionEditorProbe(t *testing.T, title, prefill string, bindings map[s
 	return p
 }
 
-// extension-editor.ts:25-30 and :52-91: border, spacer, title, spacer, editor, spacer, hint, spacer, border; a description adds a spacer and a Text after the title.
+// extension-editor.ts:25-30 and :52-91: border, spacer, title, spacer, editor, external editor status text (Pi 6454d07e), spacer, hint, spacer, border; a description adds a spacer and a Text after the title.
 // Typing shows in the next render.
 func TestExtensionEditorComponentChildrenFollowUpstream(t *testing.T) {
 	c := newExtensionEditorProbe(t, "Edit", "", nil, nil)
-	if got := len(c.Children()); got != 9 {
-		t.Fatalf("children = %d, want 9", got)
+	if got := len(c.Children()); got != 10 {
+		t.Fatalf("children = %d, want 10", got)
 	}
 	withDescription := newExtensionEditorProbe(t, "Edit", "", nil, &ExtensionEditorOptions{Description: "why"})
-	if got := len(withDescription.Children()); got != 11 {
-		t.Fatalf("children with a description = %d, want 11", got)
+	if got := len(withDescription.Children()); got != 12 {
+		t.Fatalf("children with a description = %d, want 12", got)
 	}
 	before := strings.Join(c.Render(40), "\n")
 	c.HandleInput("x")
@@ -97,7 +97,7 @@ func TestExtensionEditorHandleInputTransitions(t *testing.T) {
 	t.Run("cancel wins over a remapped external editor key", func(t *testing.T) {
 		c := newExtensionEditorProbe(t, "Edit", "draft", map[string][]string{"app.editor.external": {"escape"}}, nil)
 		opened := false
-		c.SetExternalEditor(func(string, string, func(string)) { opened = true })
+		c.SetExternalEditor(func(string, string, func(string), func(string)) { opened = true })
 		c.HandleInput("\x1b")
 		if opened || !c.done || !c.cancelled || c.value != "" {
 			t.Fatalf("opened=%v done=%v cancelled=%v value=%q", opened, c.done, c.cancelled, c.value)
@@ -134,10 +134,11 @@ func TestExtensionEditorHandleInputTransitions(t *testing.T) {
 // text, leaves the dialog open after completion and asks the ui for a forced repaint (`tui.requestRender(true)`).
 // mutation-checked: dropping the command argument, the repaint or the done guard fails.
 func TestExtensionEditorExternalAction(t *testing.T) {
+	restoreTUIKeybindings(t)
 	c := newExtensionEditorProbe(t, "Edit", "first\nsecond", map[string][]string{"app.editor.external": {"ctrl+x"}}, nil)
 	var complete func(string)
 	var gotCommand string
-	c.SetExternalEditor(func(command, content string, apply func(string)) {
+	c.SetExternalEditor(func(command, content string, apply func(string), _ func(string)) {
 		gotCommand = command
 		if content != "first\nsecond" {
 			t.Errorf("content = %q", content)
@@ -165,9 +166,10 @@ func TestExtensionEditorExternalAction(t *testing.T) {
 // extension-editor.ts:134-138: after the external edit the forced repaint shows the edited text. Pi re-renders every component on requestRender(true);
 // PiG's parent containers reuse a child's cached lines until the child is invalidated, so the dialog must invalidate itself when the edit lands.
 func TestExtensionEditorExternalEditRepaintsThroughAParentContainer(t *testing.T) {
+	restoreTUIKeybindings(t)
 	c := newExtensionEditorProbe(t, "Edit", "initial text", map[string][]string{"app.editor.external": {"ctrl+x"}}, nil)
 	var complete func(string)
-	c.SetExternalEditor(func(_, _ string, apply func(string)) { complete = apply })
+	c.SetExternalEditor(func(_, _ string, apply func(string), _ func(string)) { complete = apply })
 	parent := tui.NewContainer(c.ExtensionEditorComponent)
 	rendered := func() string { return widthx.StripAnsi(strings.Join(parent.Render(60), "\n")) }
 	if before := rendered(); !strings.Contains(before, "initial text") {
@@ -294,7 +296,9 @@ func TestExtensionEditorHandleInputMatchesPi(t *testing.T) {
 	for i, probe := range probes {
 		c := newExtensionEditorProbe(t, "Probe", probe.Prefill, probe.Bindings, nil)
 		// Pi would spawn its external editor for the external key; no probe may reach it.
-		c.SetExternalEditor(func(string, string, func(string)) { t.Errorf("probe %d %+v opened the external editor", i, probe) })
+		c.SetExternalEditor(func(string, string, func(string), func(string)) {
+			t.Errorf("probe %d %+v opened the external editor", i, probe)
+		})
 		var got []editorProbeState
 		for _, key := range probe.Keys {
 			c.HandleInput(key)

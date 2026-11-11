@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -90,4 +91,32 @@ func budgetGateProblems(job string) []string {
 		problems = append(problems, "the job runs make durable-core-budget before it installs TinyGo")
 	}
 	return problems
+}
+
+// make durable-contract was red on main for releases because no job ran it: ci.yml must run it (through make ci-durable-contract,
+// which links the host's npm tree first) for each of the three builds it gates, and the CI result job must require it.
+func TestCIRunsTheDurableContractGate(t *testing.T) {
+	root := repoRoot(t)
+	workflow, err := os.ReadFile(filepath.Join(root, ".github/workflows/ci.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	job, ok := workflowJob(string(workflow), "durable-contract")
+	if !ok {
+		t.Fatal("ci.yml has no durable-contract job")
+	}
+	for _, want := range []string{"make ci-durable-contract", "DURABLE_CONTRACT_ARGS: --impls ${{ matrix.impl }}", "impl: [pi, wasm-tinygo, native]", "durable/contract/.cache"} {
+		if !strings.Contains(job, want) {
+			t.Errorf("the durable-contract job lacks %q", want)
+		}
+	}
+	if !strings.Contains(string(workflow), "expect \"Durable contract\" \"$DURABLE_CONTRACT\"") {
+		t.Error("the CI result job does not require the durable-contract job")
+	}
+	prerequisites, _ := makeDatabase(t)
+	for _, want := range []string{"durable-core-host-deps", "durable-contract"} {
+		if !slices.Contains(prerequisites["ci-durable-contract"], want) {
+			t.Errorf("ci-durable-contract must chain %s, got %v", want, prerequisites["ci-durable-contract"])
+		}
+	}
 }

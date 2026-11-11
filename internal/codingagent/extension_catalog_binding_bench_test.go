@@ -16,11 +16,23 @@ func TestModelCatalogBindingPublishesTheFinishedBindingOnce(t *testing.T) {
 		}
 	})
 	measure := func(unbatched bool) int64 {
-		return testing.Benchmark(func(b *testing.B) {
+		var failure error
+		result := testing.Benchmark(func(b *testing.B) {
 			for b.Loop() {
-				captureModelPublicationsVia(b, false, unbatched, registry.GetAllModelData, registry)
+				if _, err := captureModelPublicationsVia(b, false, unbatched, registry.GetAllModelData, registry); err != nil {
+					failure = err
+					b.Fatal(err)
+				}
 			}
-		}).AllocsPerOp()
+		})
+		// testing.Benchmark discards a failed benchmark's output and returns a zero result, which AllocsPerOp reads as zero allocations.
+		if failure != nil {
+			t.Fatalf("measuring unbatched=%t: %v", unbatched, failure)
+		}
+		if result.N == 0 {
+			t.Fatalf("measuring unbatched=%t: the benchmark ran no iterations", unbatched)
+		}
+		return result.AllocsPerOp()
 	}
 	// Batching sends one snapshot of the finished binding instead of three; each skipped snapshot assembles the registry state again.
 	unbatched, batched := measure(true), measure(false)

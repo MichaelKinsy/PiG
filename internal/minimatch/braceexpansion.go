@@ -1,353 +1,438 @@
 package minimatch
 
-// Ports brace-expansion 5.0.12 and balanced-match (the packages minimatch 10.2.6 expands braces with).
+// Ports brace-expansion 5.0.12 and balanced-match (the packages minimatch 11.0.3 expands braces with). The expansion keeps the results of a
+// brace set as lengths until the last combine, so what it holds is bounded by the results it keeps.
 
 import (
-	"strconv"
+	"math"
+	"math/rand/v2"
+	"slices"
 	"strings"
+	"sync"
 
+	"github.com/MichaelKinsy/PiG/internal/jsnumber"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
 
+// The limits of brace-expansion 5.0.12: EXPANSION_MAX is the most expansions one brace set gives; EXPANSION_MAX_LENGTH bounds the total UTF-16
+// units of one combine's results, of one sequence, or of one comma set's values; EXPANSION_MAX_DEPTH is how deep nesting is followed; and
+// EXPANSION_MAX_REWRITES is how often the "{a},b}" rewrite restarts the scan.
 const (
-	expansionMax        = 100_000
-	expansionMaxLength  = 4_000_000
-	expansionMaxDepth   = 1_000
+	expansionMax = 100_000
+	// upstream: node_modules/brace-expansion/dist/esm/index.js:EXPANSION_MAX_LENGTH
+	expansionMaxLength = 4_000_000
+	// upstream: node_modules/brace-expansion/dist/esm/index.js:EXPANSION_MAX_DEPTH
+	expansionMaxDepth = 1_000
+	// upstream: node_modules/brace-expansion/dist/esm/index.js:EXPANSION_MAX_REWRITES
 	expansionMaxRewrite = 1_000
-
-	escSlash  = "\x00SLASH0\x00"
-	escOpen   = "\x00OPEN0\x00"
-	escClose  = "\x00CLOSE0\x00"
-	escComma  = "\x00COMMA0\x00"
-	escPeriod = "\x00PERIOD0\x00"
 )
 
-type balancedMatch struct {
-	start, end int
-	pre, body  string
-	post       string
+// braceEscapes are the markers brace-expansion puts in place of an escaped brace, comma, period or backslash while it expands, and the replacers that put them in and take them out. As in brace-expansion, each marker holds a random number, so a pattern cannot spell one. They are built on first use, outside the package initialization every pig start pays.
+type braceEscapes struct {
+	slash, open, close, comma, period string
+	escape, unescape                  *strings.Replacer
 }
 
-// balanced is balanced-match's balanced(a, b, str) for single-character strings a and b.
-func balanced(a, b, str string) *balancedMatch {
-	r, ok := balancedRange(a, b, str)
+var (
+	braceEscapesInit sync.Once
+	braceEscapesSet  *braceEscapes
+)
+
+func braceEscapesOnce() *braceEscapes {
+	braceEscapesInit.Do(func() {
+		e := &braceEscapes{slash: braceMarker("SLASH"), open: braceMarker("OPEN"), close: braceMarker("CLOSE"), comma: braceMarker("COMMA"), period: braceMarker("PERIOD")}
+		e.escape = strings.NewReplacer(`\\`, e.slash, `\{`, e.open, `\}`, e.close, `\,`, e.comma, `\.`, e.period)
+		e.unescape = strings.NewReplacer(e.slash, `\`, e.open, "{", e.close, "}", e.comma, ",", e.period, ".")
+		braceEscapesSet = e
+	})
+	return braceEscapesSet
+}
+
+func braceMarker(name string) string {
+	return "\x00" + name + jsnumber.String(rand.Float64()) + "\x00"
+}
+
+// escapeBraces puts a marker in place of each escaped backslash, brace, comma and period of str.
+func escapeBraces(str string) string { return braceEscapesOnce().escape.Replace(str) }
+
+// unescapeBraces is the inverse of escapeBraces.
+func unescapeBraces(str string) string { return braceEscapesOnce().unescape.Replace(str) }
+
+// balancedBraces is balanced-match's balanced("{", "}", str): the text before, inside and after the first balanced pair.
+func balancedBraces(str string) (pre, body, post string, ok bool) {
+	start, end, ok := braceRange(str)
 	if !ok {
-		return nil
+		return "", "", "", false
 	}
-	return &balancedMatch{start: r[0], end: r[1], pre: str[:r[0]], body: str[r[0]+len(a) : r[1]], post: str[r[1]+len(b):]}
+	return str[:start], str[start+1 : end], str[end+1:], true
 }
 
-func balancedRange(a, b, str string) ([2]int, bool) {
-	ai := strings.Index(str, a)
-	bi := -1
-	if ai >= 0 {
-		if rel := strings.Index(str[ai+1:], b); rel >= 0 {
-			bi = ai + 1 + rel
+// braceRange is balanced-match's range for "{" and "}".
+func braceRange(str string) (int, int, bool) {
+	indexFrom := func(c byte, from int) int {
+		if from > len(str) {
+			return -1
 		}
+		if i := strings.IndexByte(str[from:], c); i >= 0 {
+			return from + i
+		}
+		return -1
 	}
-	i := ai
-	if ai >= 0 && bi > 0 {
-		if a == b {
-			return [2]int{ai, bi}, true
-		}
-		var begs []int
-		left := len(str)
-		right := -1
-		var result *[2]int
-		for i >= 0 && result == nil {
-			switch {
-			case i == ai:
-				begs = append(begs, i)
-				if rel := strings.Index(str[i+1:], a); rel >= 0 {
-					ai = i + 1 + rel
-				} else {
-					ai = -1
-				}
-			case len(begs) == 1:
-				r := begs[len(begs)-1]
-				begs = begs[:len(begs)-1]
-				result = &[2]int{r, bi}
-			default:
+	ai := strings.IndexByte(str, '{')
+	bi := indexFrom('}', ai+1)
+	if ai < 0 || bi <= 0 {
+		return 0, 0, false
+	}
+	var begs []int
+	left, right, haveRight := len(str), 0, false
+	for i := ai; i >= 0; {
+		switch {
+		case i == ai:
+			begs = append(begs, i)
+			ai = indexFrom('{', i+1)
+		case len(begs) == 1:
+			return begs[0], bi, true
+		default:
+			if len(begs) > 0 {
 				beg := begs[len(begs)-1]
 				begs = begs[:len(begs)-1]
 				if beg < left {
-					left = beg
-					right = bi
-				}
-				if rel := strings.Index(str[i+1:], b); rel >= 0 {
-					bi = i + 1 + rel
-				} else {
-					bi = -1
+					left, right, haveRight = beg, bi, true
 				}
 			}
-			if ai < bi && ai >= 0 {
-				i = ai
-			} else {
-				i = bi
-			}
+			bi = indexFrom('}', i+1)
 		}
-		if len(begs) > 0 && right >= 0 {
-			result = &[2]int{left, right}
-		}
-		if result != nil {
-			return *result, true
+		if ai < bi && ai >= 0 {
+			i = ai
+		} else {
+			i = bi
 		}
 	}
-	return [2]int{}, false
+	if len(begs) > 0 && haveRight {
+		return left, right, true
+	}
+	return 0, 0, false
 }
 
-func escapeBraces(str string) string {
-	str = strings.ReplaceAll(str, `\\`, escSlash)
-	str = strings.ReplaceAll(str, `\{`, escOpen)
-	str = strings.ReplaceAll(str, `\}`, escClose)
-	str = strings.ReplaceAll(str, `\,`, escComma)
-	return strings.ReplaceAll(str, `\.`, escPeriod)
-}
-
-func unescapeBraces(str string) string {
-	str = strings.ReplaceAll(str, escSlash, `\`)
-	str = strings.ReplaceAll(str, escOpen, "{")
-	str = strings.ReplaceAll(str, escClose, "}")
-	str = strings.ReplaceAll(str, escComma, ",")
-	return strings.ReplaceAll(str, escPeriod, ".")
-}
-
-// parseCommaParts is str.split(",") that keeps nested brace sections whole.
+// parseCommaParts is brace-expansion's parseCommaParts: str split at its top-level commas, a brace set staying whole. It walks the sets in turn, as 5.0.12 does, and builds the part a later set continues in one buffer, so a long run of sets costs time in proportion to its length; Node's bundled copy recurses to the same parts.
 func parseCommaParts(str string) []string {
 	var parts []string
-	carry := ""
+	var carry strings.Builder
 	for {
-		m := balanced("{", "}", str)
-		if m == nil {
+		pre, body, post, ok := balancedBraces(str)
+		if !ok {
 			tail := strings.Split(str, ",")
-			tail[0] = carry + tail[0]
+			carry.WriteString(tail[0])
+			tail[0] = carry.String()
 			return append(parts, tail...)
 		}
-		p := strings.Split(m.pre, ",")
-		p[0] = carry + p[0]
-		p[len(p)-1] += "{" + m.body + "}"
-		if len(m.post) == 0 {
-			return append(parts, p...)
+		p := strings.Split(pre, ",")
+		if len(p) > 1 {
+			carry.WriteString(p[0])
+			parts = append(parts, carry.String())
+			parts = append(parts, p[1:len(p)-1]...)
+			carry.Reset()
 		}
-		carry = p[len(p)-1]
-		p = p[:len(p)-1]
-		parts = append(parts, p...)
-		str = m.post
+		carry.WriteString(p[len(p)-1])
+		carry.WriteString("{")
+		carry.WriteString(body)
+		carry.WriteString("}")
+		if post == "" {
+			return append(parts, carry.String())
+		}
+		str = post
 	}
-}
-
-// braceExpansionExpand is expand(str) of brace-expansion.
-func braceExpansionExpand(str string) []string {
-	if str == "" {
-		return nil
-	}
-	if strings.HasPrefix(str, "{}") {
-		str = `\{\}` + str[2:]
-	}
-	expanded := expandBraces(escapeBraces(str), expansionMax, expansionMaxLength, expansionMaxDepth, 0, expansionMaxRewrite, true)
-	for i := range expanded {
-		expanded[i] = unescapeBraces(expanded[i])
-	}
-	return expanded
 }
 
 var (
 	paddedRE          = lazyregexp.New(`^-?0\d`)
 	numericSequenceRE = lazyregexp.New(`^-?\d+\.\.-?\d+(?:\.\.-?\d+)?$`)
 	alphaSequenceRE   = lazyregexp.New(`^[a-zA-Z]\.\.[a-zA-Z](?:\.\.-?\d+)?$`)
-	dollarEndRE       = lazyregexp.New(`\$$`)
 )
 
-// numeric is `!isNaN(str) ? parseInt(str, 10) : str.charCodeAt(0)`.
-func numeric(str string) int {
-	if n, err := strconv.Atoi(strings.TrimSpace(str)); err == nil && strings.TrimSpace(str) != "" {
-		return n
+// braceExpansionExpand is expand(str) of brace-expansion for a str with a brace set: it never throws, and it keeps at most EXPANSION_MAX results and EXPANSION_MAX_LENGTH units, leaves nesting deeper than EXPANSION_MAX_DEPTH and rewrites past EXPANSION_MAX_REWRITES literal, and stops a sequence at EXPANSION_MAX items.
+func braceExpansionExpand(pattern string) []string {
+	if strings.HasPrefix(pattern, "{}") {
+		pattern = `\{\}` + pattern[2:]
 	}
-	if u := toUTF16(str); len(u) > 0 {
-		return int(u[0])
+	expanded := expandBraceGroups(escapeBraces(pattern), 0, true)
+	for i, s := range expanded.items {
+		expanded.items[i] = unescapeBraces(s)
 	}
-	return 0
+	return expanded.items
 }
 
-func toUTF16(s string) []uint16 {
-	var out []uint16
-	for _, r := range s {
-		if r >= 0x10000 {
-			r -= 0x10000
-			out = append(out, uint16(0xD800+(r>>10)), uint16(0xDC00+(r&0x3FF)))
-		} else {
-			out = append(out, uint16(r))
+// braceValues are expansions with the UTF-16 length of each.
+type braceValues struct {
+	items []string
+	units []int
+}
+
+func (v *braceValues) add(s string, units int) {
+	v.items = append(v.items, s)
+	v.units = append(v.units, units)
+}
+
+func literalBraceValue(s string) braceValues {
+	return braceValues{items: []string{s}, units: []int{jsstring.Length(s)}}
+}
+
+// braceProduct is expand_'s accumulator before its last combine. No combine before the last drops a result, so the accumulator is the first count results of the product of each level's pre text and values in row-major order: result t of a level extends result t / len(values) of the level before with values[t % len(values)]. The product keeps each result's length and builds no text until the last combine, as V8 builds none when it concatenates, so a long chain of brace sets costs time in proportion to its results.
+type braceProduct struct {
+	levels []braceLevel
+	count  int
+	units  []int
+}
+
+type braceLevel struct {
+	pre    string
+	values []string
+	// count is how many of the level's results a kept result still extends.
+	count int
+}
+
+func newBraceProduct() *braceProduct {
+	return &braceProduct{count: 1, units: []int{0}}
+}
+
+// extend is a combine that drops nothing: it appends pre and values as a level, keeping the first results until EXPANSION_MAX of them or one that would take the total past EXPANSION_MAX_LENGTH units.
+func (p *braceProduct) extend(pre string, values braceValues) {
+	preUnits := jsstring.Length(pre)
+	units := make([]int, 0, min(p.count*len(values.items), expansionMax))
+	total := 0
+fill:
+	for a := range p.count {
+		for v := range values.items {
+			if len(units) >= expansionMax {
+				break fill
+			}
+			n := p.units[a] + preUnits + values.units[v]
+			if total+n > expansionMaxLength {
+				break fill
+			}
+			units = append(units, n)
+			total += n
 		}
 	}
-	return out
+	p.levels = append(p.levels, braceLevel{pre: pre, values: values.items, count: len(units)})
+	p.count, p.units = len(units), units
+	p.prune()
 }
 
-func combine(acc []string, pre string, values []string, maxN, maxLength int, dropEmpties bool) []string {
-	var out []string
-	length := 0
-	for _, a := range acc {
-		for _, v := range values {
-			if len(out) >= maxN {
+// prune keeps only the values some kept result reaches, so memory stays bounded by the results, as V8 frees the strings no result references. The first reached results of a level extend the first ceil(reached / len(values)) results of the level before, and use only its first min(reached, len(values)) values. Counts only ever shrink, and each walk carries a count down until it reaches a level already at or below it, so the levels below that one keep only what it reaches.
+func (p *braceProduct) prune() {
+	reached := p.count
+	for i := len(p.levels) - 1; i >= 0; i-- {
+		level := &p.levels[i]
+		if i < len(p.levels)-1 {
+			if reached >= level.count {
+				return
+			}
+			level.count = reached
+		}
+		if reached == 0 {
+			for j := range i + 1 {
+				p.levels[j].values, p.levels[j].count = nil, 0
+			}
+			return
+		}
+		if reached < len(level.values) {
+			// A copy, so the dropped values and their array can be freed.
+			level.values = slices.Clone(level.values[:reached])
+		}
+		reached = (reached + len(level.values) - 1) / len(level.values)
+	}
+}
+
+// textOf is result t's text.
+func (p *braceProduct) textOf(t int, index []int) string {
+	size := 0
+	for i := len(p.levels) - 1; i >= 0; i-- {
+		level := p.levels[i]
+		index[i] = t % len(level.values)
+		t /= len(level.values)
+		size += len(level.pre) + len(level.values[index[i]])
+	}
+	var b strings.Builder
+	b.Grow(size)
+	for i, level := range p.levels {
+		b.WriteString(level.pre)
+		b.WriteString(level.values[index[i]])
+	}
+	return b.String()
+}
+
+// finish is expand_'s last combine: every result + pre + values[v], in that order, until EXPANSION_MAX results or one that would take the total past EXPANSION_MAX_LENGTH units. With dropEmpties an empty result is skipped before it counts.
+func (p *braceProduct) finish(pre string, values braceValues, dropEmpties bool) braceValues {
+	if len(p.levels) == 0 && p.count == 1 && pre == "" && !dropEmpties {
+		// One empty prefix: the results are the values, which their own limits already bound.
+		return values
+	}
+	size := min(p.count*len(values.items), expansionMax)
+	out := braceValues{items: make([]string, 0, size), units: make([]int, 0, size)}
+	preUnits := jsstring.Length(pre)
+	index := make([]int, len(p.levels))
+	total := 0
+	for a := range p.count {
+		prefix, built := "", false
+		for v, value := range values.items {
+			if len(out.items) >= expansionMax {
 				return out
 			}
-			expansion := a + pre + v
-			if dropEmpties && expansion == "" {
+			n := p.units[a] + preUnits + values.units[v]
+			if dropEmpties && n == 0 {
 				continue
 			}
-			if length+len(toUTF16(expansion)) > maxLength {
+			if total+n > expansionMaxLength {
 				return out
 			}
-			out = append(out, expansion)
-			length += len(toUTF16(expansion))
+			if !built {
+				prefix, built = p.textOf(a, index), true
+			}
+			out.add(prefix+pre+value, n)
+			total += n
 		}
 	}
 	return out
 }
 
-func expandSequence(body string, isAlpha bool, maxN, maxLength int) []string {
-	n := strings.Split(body, "..")
-	var result []string
-	if len(n) < 2 {
-		return result
+// expandBraceGroups is brace-expansion 5.0.12's expand_. It consumes the top-level brace sets left to right and combines each set's values onto the prefixes so far. Empty results are dropped only at the top level and only when the first set that expands is a comma set.
+func expandBraceGroups(str string, depth int, isTop bool) braceValues {
+	if depth > expansionMaxDepth {
+		return literalBraceValue(str)
 	}
-	x, y := numeric(n[0]), numeric(n[1])
-	width := max(len(n[0]), len(n[1]))
-	incr := 1
-	if len(n) == 3 {
-		v := numeric(n[2])
-		if v < 0 {
-			v = -v
-		}
-		incr = max(v, 1)
-	}
-	reverse := y < x
-	if reverse {
-		incr = -incr
-	}
-	pad := false
-	for _, el := range n {
-		if paddedRE.MatchString(el) {
-			pad = true
-		}
-	}
-	length := 0
-	for i := x; (!reverse && i <= y || reverse && i >= y) && len(result) < maxN; i += incr {
-		var c string
-		if isAlpha {
-			c = string(rune(i))
-			if c == `\` {
-				c = ""
-			}
-		} else {
-			c = strconv.Itoa(i)
-			if pad {
-				if need := width - len(c); need > 0 {
-					z := strings.Repeat("0", need)
-					if i < 0 {
-						c = "-" + z + c[1:]
-					} else {
-						c = z + c
-					}
-				}
-			}
-		}
-		if length+len(toUTF16(c)) > maxLength {
-			break
-		}
-		result = append(result, c)
-		length += len(toUTF16(c))
-	}
-	return result
-}
-
-func expandBraces(str string, maxN, maxLength, maxDepth, depth, maxRewrites int, isTop bool) []string {
-	if depth > maxDepth {
-		return []string{str}
-	}
-	acc := []string{""}
+	acc := newBraceProduct()
+	empty := literalBraceValue("")
 	rewrites := 0
-	dropEmpties := false
-	firstGroup := true
+	dropEmpties, firstGroup := false, true
 	for {
-		m := balanced("{", "}", str)
-		if m == nil {
-			return combine(acc, str, []string{""}, maxN, maxLength, dropEmpties)
+		pre, body, post, ok := balancedBraces(str)
+		if !ok {
+			return acc.finish(str, empty, dropEmpties)
 		}
-		pre := m.pre
-		if dollarEndRE.MatchString(pre) {
-			acc = combine(acc, pre+"{"+m.body+"}", []string{""}, maxN, maxLength, dropEmpties && len(m.post) == 0)
+		if strings.HasSuffix(pre, "$") {
 			firstGroup = false
-			if len(m.post) == 0 {
-				break
+			if post == "" {
+				return acc.finish(pre+"{"+body+"}", empty, dropEmpties)
 			}
-			str = m.post
+			acc.extend(pre+"{"+body+"}", empty)
+			str = post
 			continue
 		}
-		isNumericSequence := numericSequenceRE.MatchString(m.body)
-		isAlphaSequence := alphaSequenceRE.MatchString(m.body)
-		isSequence := isNumericSequence || isAlphaSequence
-		isOptions := strings.Contains(m.body, ",")
-		if !isSequence && !isOptions {
-			if rewrites < maxRewrites && hasCommaBrace(m.post) {
+		isAlpha := alphaSequenceRE.MatchString(body)
+		isSequence := isAlpha || numericSequenceRE.MatchString(body)
+		if !isSequence && !strings.Contains(body, ",") {
+			if rewrites < expansionMaxRewrite && hasCommaBrace(post) {
 				rewrites++
-				str = m.pre + "{" + m.body + escClose + m.post
+				str = pre + "{" + body + braceEscapesOnce().close + post
 				isTop = true
 				continue
 			}
-			return combine(acc, pre+"{"+m.body+"}"+m.post, []string{""}, maxN, maxLength, dropEmpties)
+			return acc.finish(pre+"{"+body+"}"+post, empty, dropEmpties)
 		}
 		if firstGroup {
 			dropEmpties = isTop && !isSequence
 			firstGroup = false
 		}
-		var values []string
+		var values braceValues
 		if isSequence {
-			values = expandSequence(m.body, isAlphaSequence, maxN, maxLength)
+			values = braceSequence(body, isAlpha)
 		} else {
-			n := parseCommaParts(m.body)
+			n := parseCommaParts(body)
 			if len(n) == 1 {
-				inner := expandBraces(n[0], maxN, maxLength, maxDepth, depth+1, maxRewrites, false)
-				n = make([]string, len(inner))
-				for i, v := range inner {
-					n[i] = "{" + v + "}"
+				n = expandBraceGroups(n[0], depth+1, false).items
+				for i := range n {
+					n[i] = "{" + n[i] + "}"
 				}
 				if len(n) == 1 {
-					acc = combine(acc, pre+n[0], []string{""}, maxN, maxLength, dropEmpties && len(m.post) == 0)
-					if len(m.post) == 0 {
-						break
+					if post == "" {
+						return acc.finish(pre+n[0], empty, dropEmpties)
 					}
-					str = m.post
+					acc.extend(pre+n[0], empty)
+					str = post
 					continue
 				}
 			}
-			dropsEmpties := dropEmpties && len(m.post) == 0 && pre == ""
-			for _, a := range acc {
-				if a != "" {
-					dropsEmpties = false
-				}
-			}
+			// Values that combine would drop as empty are skipped here, so they do not count against EXPANSION_MAX.
+			dropsEmpties := dropEmpties && post == "" && pre == "" && !slices.ContainsFunc(acc.units, func(units int) bool { return units != 0 })
 			valuesLength := 0
-		outer:
+		parts:
 			for _, part := range n {
-				for _, v := range expandBraces(part, maxN, maxLength, maxDepth, depth+1, maxRewrites, false) {
+				expanded := expandBraceGroups(part, depth+1, false)
+				for k, v := range expanded.items {
 					if dropsEmpties && v == "" {
 						continue
 					}
-					if len(values) >= maxN || valuesLength+len(toUTF16(v)) > maxLength {
-						break outer
+					if len(values.items) >= expansionMax || valuesLength+expanded.units[k] > expansionMaxLength {
+						break parts
 					}
-					values = append(values, v)
-					valuesLength += len(toUTF16(v))
+					values.add(v, expanded.units[k])
+					valuesLength += expanded.units[k]
 				}
 			}
 		}
-		acc = combine(acc, pre, values, maxN, maxLength, dropEmpties && len(m.post) == 0)
-		if len(m.post) == 0 {
+		if post == "" {
+			return acc.finish(pre, values, dropEmpties)
+		}
+		acc.extend(pre, values)
+		str = post
+	}
+}
+
+// braceSequence is brace-expansion 5.0.12's expandSequence: numbers, padded to the wider bound when a part has a leading zero, or letters by char code with a backslash left out, stepping by the third part. It stops at EXPANSION_MAX items or EXPANSION_MAX_LENGTH units, so a step that no longer advances a JavaScript number ends there.
+func braceSequence(body string, isAlpha bool) braceValues {
+	n := strings.Split(body, "..")
+	// numeric is !isNaN(str) ? parseInt(str, 10) : str.charCodeAt(0); the parts are ASCII digits with an optional "-", or one ASCII letter.
+	numeric := func(s string) float64 {
+		if s[0] == '-' || s[0] >= '0' && s[0] <= '9' {
+			return jsnumber.Parse(s)
+		}
+		return float64(s[0])
+	}
+	x, y := numeric(n[0]), numeric(n[1])
+	width := max(len(n[0]), len(n[1]))
+	incr := 1.0
+	if len(n) == 3 {
+		incr = max(math.Abs(numeric(n[2])), 1)
+	}
+	reverse := y < x
+	if reverse {
+		incr = -incr
+	}
+	pad := slices.ContainsFunc(n, paddedRE.MatchString)
+	size := expansionMax
+	if steps := math.Abs(y-x) / math.Abs(incr); steps < float64(size) {
+		size = int(steps) + 1
+	}
+	out := braceValues{items: make([]string, 0, size), units: make([]int, 0, size)}
+	total := 0
+	for i := x; (reverse && i >= y || !reverse && i <= y) && len(out.items) < expansionMax; i += incr {
+		var c string
+		if isAlpha {
+			if c = string(rune(i)); c == `\` {
+				c = ""
+			}
+		} else {
+			c = jsnumber.String(i)
+			if pad {
+				if need := width - len(c); need > 0 {
+					zeros := strings.Repeat("0", need)
+					if i < 0 {
+						c = "-" + zeros + c[1:]
+					} else {
+						c = zeros + c
+					}
+				}
+			}
+		}
+		if total+len(c) > expansionMaxLength {
 			break
 		}
-		str = m.post
+		out.add(c, len(c))
+		total += len(c)
 	}
-	return acc
+	return out
 }
 
 // hasCommaBrace is /,(?!,).*\}/.test(post): a comma not followed by a comma, then anything and a closing brace.

@@ -75,14 +75,16 @@ type Divergence struct {
 	GoSnips     []Snippet
 }
 
+// urlIssueRe finds a Pi issue or pull request link in prose: a URL starts at the beginning of a line or after a character that cannot be part of a
+// preceding host, path or userinfo, so "https://example.org/https://github.com/..." is not a GitHub link. Group 1 is the URL.
 var (
 	divHeadRe   = regexp.MustCompile(`^## (D(\d+))\s+(.+?)\s*$`)
-	retiredRe   = regexp.MustCompile(`^- (D(\d+)) \x{2014} (.+)$`)
+	retiredRe   = regexp.MustCompile(`^- (D(\d+)): (.+)$`)
 	testNameRe  = regexp.MustCompile("`((?:Test|Fuzz|Benchmark)[A-Za-z0-9_]*)(?:/[^`]*)?`")
 	testBareRe  = regexp.MustCompile(`\b(Test[A-Z][A-Za-z0-9_]{6,})\b`)
 	scenarioRe  = regexp.MustCompile("`((?:test/parity/scenarios/)?[a-z0-9][a-z0-9-]*/[0-9a-z][0-9a-z-]*(?:\\.toml)?)`")
 	issueRe     = regexp.MustCompile(`pi-mono (?:issue |PR |pull )?#(\d+)`)
-	urlIssueRe  = regexp.MustCompile(`https://github\.com/earendil-works/pi[a-z-]*/(issues|pull)/(\d+)`)
+	urlIssueRe  = regexp.MustCompile(`(?m)(?:^|[^A-Za-z0-9._/@:-])(https://github\.com/earendil-works/pi[a-z-]*/(issues|pull)/(\d+))`)
 	removeRe    = regexp.MustCompile(`(?m)^Remove when:\s*(.+(?:\n[^\n#A-Z][^\n]*)*)`)
 	perfWords   = regexp.MustCompile(`(?i)\b(perf|performance|cache[sd]?|bounded|pooled|faster|latency|memory|coalesc\w*|allocation\w*|throughput|startup|O\(n)\b`)
 	platWords   = regexp.MustCompile(`(?i)\b(windows|macos|linux|android|termux|darwin|dacl|tmux|herdr|terminal|platform|signal|sigint|tty)\b`)
@@ -167,6 +169,15 @@ func loadDivergences(root string, bugs *BugLedger, scan *treeScan, syms *symInde
 	return order, nil
 }
 
+// piIssueURLLinks lists the Pi issue and pull request URLs a note links, in order of appearance.
+func piIssueURLLinks(text string) []Link {
+	var links []Link
+	for _, m := range urlIssueRe.FindAllStringSubmatch(text, -1) {
+		links = append(links, Link{Label: "Pi " + m[2] + " #" + m[3], URL: m[1]})
+	}
+	return links
+}
+
 func enrichDivergence(d *Divergence, known map[string]bool, bugs *BugLedger, scan *treeScan, syms *symIndex, pi *piSource, piVersion string) {
 	text := d.Raw
 	md := text
@@ -186,11 +197,10 @@ func enrichDivergence(d *Divergence, known map[string]bool, bugs *BugLedger, sca
 			d.PiIssues = append(d.PiIssues, Link{Label: "Pi #" + m[1], URL: u})
 		}
 	}
-	for _, m := range urlIssueRe.FindAllStringSubmatch(text, -1) {
-		u := m[0]
-		if !seenIssue[u] {
-			seenIssue[u] = true
-			d.PiIssues = append(d.PiIssues, Link{Label: "Pi " + m[1] + " #" + m[2], URL: u})
+	for _, link := range piIssueURLLinks(text) {
+		if !seenIssue[link.URL] {
+			seenIssue[link.URL] = true
+			d.PiIssues = append(d.PiIssues, link)
 		}
 	}
 	for _, e := range bugs.ByDivergence[d.ID] {

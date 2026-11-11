@@ -21,8 +21,9 @@ import {
   getToolListError,
   isInstallTelemetryEnabled,
   isToolModifier,
+  markRuntimeStreamFunction,
   time
-} from "./chunk-QLIWYORR.js";
+} from "./chunk-NFOIYUJ5.js";
 import {
   createBashTool,
   createCodingTools,
@@ -35,22 +36,22 @@ import {
   createReadTool,
   createWriteTool,
   withFileMutationQueue
-} from "./chunk-6HJCSATA.js";
-import "./chunk-LKHC5YTL.js";
-import "./chunk-T5YZVFVX.js";
-import "./chunk-472CZNGH.js";
+} from "./chunk-HOGQJAZD.js";
+import "./chunk-IJFG4BUL.js";
+import "./chunk-HAAXE2S5.js";
+import "./chunk-2W3FEVNE.js";
 import {
   createToolNameMatcher
-} from "./chunk-XNXPQFJN.js";
-import "./chunk-OH2Z3DNC.js";
+} from "./chunk-QWVFFAFF.js";
+import "./chunk-F2BIFG4N.js";
 import {
   VERSION,
   getAgentDir,
   resolvePath
-} from "./chunk-YXY3JV6E.js";
+} from "./chunk-JGRZB36T.js";
 import {
   __name
-} from "./chunk-SHUYVCID.js";
+} from "./chunk-FIOAHQVQ.js";
 
 // pi-dist/pi-coding-agent/core/sdk.js
 import { join } from "node:path";
@@ -257,6 +258,7 @@ async function createAgentSession(options = {}) {
     thinkingBudgets: settingsManager.getThinkingBudgets(),
     maxRetryDelayMs: settingsManager.getProviderRetrySettings().maxRetryDelayMs
   });
+  markRuntimeStreamFunction(agent.streamFunction, modelRuntime);
   if (hasExistingSession) {
     if (!hasThinkingEntry) {
       sessionManager.appendThinkingLevelChange(thinkingLevel);

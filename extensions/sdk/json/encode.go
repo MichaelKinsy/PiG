@@ -401,7 +401,7 @@ func (e *encodeState) WriteByte(c byte) error {
 // Grow makes room for n more bytes, doubling the capacity rather than growing by append's smaller steps.
 func (e *encodeState) Grow(n int) {
 	if cap(e.buf)-len(e.buf) < n {
-		grown := make([]byte, len(e.buf), 2*cap(e.buf)+n)
+		grown := make([]byte, len(e.buf), addSize(mulSize(2, cap(e.buf)), n))
 		copy(grown, e.buf)
 		e.buf = grown
 	}
@@ -910,7 +910,7 @@ FieldLoop:
 			(f.omitZero && (f.isZero == nil && fv.IsZero() || (f.isZero != nil && f.isZero(fv)))) {
 			continue
 		}
-		e.WriteByte(next)
+		_ = e.WriteByte(next)
 		next = ','
 		if opts.escapeHTML {
 			e.WriteString(f.nameEscHTML)
@@ -923,7 +923,7 @@ FieldLoop:
 	if next == '{' {
 		e.WriteString("{}")
 	} else {
-		e.WriteByte('}')
+		_ = e.WriteByte('}')
 	}
 }
 
@@ -984,7 +984,7 @@ func (me mapEncoder) encode(e *encodeState, v reflect.Value, opts encOpts) {
 		e.ptrSeen[ptr] = struct{}{}
 		defer delete(e.ptrSeen, ptr)
 	}
-	e.WriteByte('{')
+	_ = e.WriteByte('{')
 
 	// Extract and sort the keys.
 	var (
@@ -1010,13 +1010,13 @@ func (me mapEncoder) encode(e *encodeState, v reflect.Value, opts encOpts) {
 
 	for i, kv := range sv {
 		if i > 0 {
-			e.WriteByte(',')
+			_ = e.WriteByte(',')
 		}
 		e.Write(appendString(e.AvailableBuffer(), kv.ks, opts.stringEscapes()))
-		e.WriteByte(':')
+		_ = e.WriteByte(':')
 		me.elemEnc(e, kv.v, opts)
 	}
-	e.WriteByte('}')
+	_ = e.WriteByte('}')
 	e.ptrLevel--
 }
 
@@ -1094,15 +1094,15 @@ type arrayEncoder struct {
 }
 
 func (ae arrayEncoder) encode(e *encodeState, v reflect.Value, opts encOpts) {
-	e.WriteByte('[')
+	_ = e.WriteByte('[')
 	n := v.Len()
-	for i := 0; i < n; i++ {
+	for i := range n {
 		if i > 0 {
-			e.WriteByte(',')
+			_ = e.WriteByte(',')
 		}
 		ae.elemEnc(e, v.Index(i), opts)
 	}
-	e.WriteByte(']')
+	_ = e.WriteByte(']')
 }
 
 func newArrayEncoder(t reflect.Type) encoderFunc {

@@ -41,6 +41,7 @@ from ._keybindings import (
     KeybindingDefinition as KeybindingDefinition,
     KeybindingsManager as KeybindingsManager,
     get_keybindings as get_keybindings,
+    get_select_page_index as get_select_page_index,
     set_keybindings as set_keybindings,
 )
 from ._keys import (

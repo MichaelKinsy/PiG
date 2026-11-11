@@ -1,5 +1,7 @@
 package tui
 
+// Ports packages/tui/src/tui-alt-screen.ts (SGR mouse and wheel handling)
+
 import (
 	"math"
 	"os"
@@ -8,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
 	"github.com/MichaelKinsy/PiG/tui/widthx"
@@ -120,8 +123,8 @@ func parseWheelEvent(data string) (wheelEvent, bool) {
 	var button, x, y int
 	if m := altSgrMousePattern.FindStringSubmatch(data); m != nil {
 		button, x, y = atoiDigits(m[1]), atoiDigits(m[2])-1, atoiDigits(m[3])-1
-	} else if len(data) == 6 && strings.HasPrefix(data, "\x1b[M") {
-		button, x, y = int(data[3])-32, int(data[4])-33, int(data[5])-33
+	} else if units, ok := legacyMouseUnits(data); ok {
+		button, x, y = int(units[0])-32, int(units[1])-33, int(units[2])-33
 	} else {
 		return wheelEvent{}, false
 	}
@@ -138,10 +141,26 @@ func parseWheelEvent(data string) (wheelEvent, bool) {
 // isMouseSequence reports whether data is any mouse report, so unhandled
 // reports are consumed rather than typed. Mirrors upstream isMouseSequence.
 func isMouseSequence(data string) bool {
-	return altSgrMousePattern.MatchString(data) || (len(data) == 6 && strings.HasPrefix(data, "\x1b[M"))
+	return altSgrMousePattern.MatchString(data) || isLegacyMouseReport(data)
+}
+
+// legacyMouseUnits is the X10 test and decode of tui-alt-screen.ts parseWheelEvent: data.length === 6 && data.startsWith("\x1b[M"), then
+// charCodeAt(3..5). Without SGR mode 1006 a coordinate of 95 or more is a byte of 0x80 or more, which stdin.setEncoding("utf8") turns
+// into U+FFFD, so the units are counted in UTF-16 and not in bytes.
+func legacyMouseUnits(data string) (units [3]uint16, ok bool) {
+	if !strings.HasPrefix(data, "\x1b[M") || jsstring.Length(data) != 6 {
+		return units, false
+	}
+	return [3]uint16(jsstring.ToUTF16(data)[3:6]), true
+}
+
+// isLegacyMouseReport is the X10 half of tui-alt-screen.ts isMouseSequence.
+func isLegacyMouseReport(data string) bool {
+	return strings.HasPrefix(data, "\x1b[M") && jsstring.Length(data) == 6
 }
 
 func atoiDigits(s string) int {
+	//portlint:allow numbers tui-alt-screen.ts parseInt of an SGR mouse field the pattern /\d+/ captured: ASCII digits, and overflow clamps where JS keeps a float no screen has
 	n, _ := strconv.Atoi(s)
 	return n
 }
@@ -176,9 +195,8 @@ func decodeMouseButton(button int) TuiMouseButton {
 // createMouseEvent builds a screen-level event. Mirrors upstream
 // createMouseEvent.
 func (t *TuiAltScreen) createMouseEvent(eventType TuiMouseEventType, button, x, y, wheelDelta, clickCount int) TuiMouseEvent {
-	t.mu.Lock()
-	width, height := max(1, t.width), max(1, t.height)
-	t.mu.Unlock()
+	columns, rows := t.size()
+	width, height := max(1, columns), max(1, rows)
 	decoded := decodeMouseButton(button)
 	if eventType == MouseWheel {
 		decoded = MouseButtonNone
@@ -568,6 +586,7 @@ func scrollbarScrollTop(geometry ScrollbarGeometry, pointerY, grabOffset int) in
 	if maxThumbOffset == 0 {
 		return 0
 	}
+	//portlint:allow numbers tui-alt-screen.ts:1098 Math.round(thumbOffset / maxThumbOffset * maxScrollTop): maxThumbOffset == 0 returns above and the factors are non-negative, where math.Round and Math.round agree
 	return int(math.Round(float64(thumbOffset) / float64(maxThumbOffset) * float64(geometry.MaxScrollTop)))
 }
 
@@ -602,6 +621,7 @@ func (t *TuiAltScreen) handleScrollbarMouseEvent(event sgrMouseEvent, eff *mouse
 	t.lastClick = nil
 	t.setScrollbarHover(sv)
 	onThumb := event.y >= geometry.ThumbTop && event.y < geometry.ThumbTop+geometry.ThumbHeight
+	//portlint:allow numbers tui-alt-screen.ts:1138 Math.floor(thumbHeight / 2): thumbHeight is a non-negative row count, where truncation is floor
 	grabOffset := geometry.ThumbHeight / 2
 	if onThumb {
 		grabOffset = event.y - geometry.ThumbTop
@@ -644,6 +664,7 @@ func (t *TuiAltScreen) compositeScrollToEndIndicator(screen []string, layout *La
 		return screen
 	}
 	label := widthx.TruncateToWidth(t.scrollToEndIndicator(), clip.Width, "", false)
+	//portlint:allow numbers tui-alt-screen.ts:1667 Math.floor((clip.width - labelWidth) / 2): label is truncated to clip.Width, so the difference is never negative and truncation is floor
 	column := clip.X + (clip.Width-widthx.VisibleWidth(label))/2
 	rightEdge := clip.X + clip.Width
 	if geometry := GetScrollbarGeometry(box); geometry != nil {

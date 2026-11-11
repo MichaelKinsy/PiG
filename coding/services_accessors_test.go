@@ -1,7 +1,5 @@
 package coding
 
-// pi: packages/coding-agent/src/core/agent-session-services.ts
-
 import (
 	"os"
 	"path/filepath"

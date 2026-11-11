@@ -11,7 +11,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/source"
 	"github.com/MichaelKinsy/PiG/internal/changeobservers"
-	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
@@ -213,13 +213,6 @@ const (
 
 type TerminalTheme string
 
-// RgbColor preserves JavaScript numeric channels, including NaN when an overflowing channel is scaled by an infinite maximum.
-type RgbColor struct {
-	R float64
-	G float64
-	B float64
-}
-
 // GetFgAnsi returns the opening escape sequence of a foreground token; faint tokens include SGR 2, which "\x1b[22m" closes.
 // Mirrors upstream theme.getFgAnsi(tokenName).
 // Like upstream it panics with `Unknown theme color: <token>` for a token the theme does not define (theme.ts:tokenAnsi).
@@ -234,7 +227,12 @@ func (t *Theme) GetFgAnsi(token string) string {
 	return ansi
 }
 
-func unknownThemeColor(token string) error { return fmt.Errorf("Unknown theme color: %s", token) }
+// unknownThemeColorError is the Error theme.ts fg, bg, getFgAnsi and getBgAnsi throw for a token the theme does not define.
+type unknownThemeColorError struct{ token string }
+
+func (e unknownThemeColorError) Error() string { return "Unknown theme color: " + e.token }
+
+func unknownThemeColor(token string) error { return unknownThemeColorError{token} }
 
 // GetBgAnsi returns the opening escape sequence of a background token.
 // Mirrors upstream theme.getBgAnsi(tokenName).
@@ -677,7 +675,7 @@ func (r *ThemeRegistry) Names() []string {
 	names := slices.Clone(r.names)
 	r.mu.RUnlock()
 	// The system theme comes first: it is the default and adapts to every terminal. The others follow in localeCompare order (theme.ts getAvailableThemesWithPaths).
-	collator := jsstring.NewCollator()
+	collator := localecompare.NewCollator()
 	slices.SortStableFunc(names, func(a, b string) int {
 		switch {
 		case a == SystemThemeName:

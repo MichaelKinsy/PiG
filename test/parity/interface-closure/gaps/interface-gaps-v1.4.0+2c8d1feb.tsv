@@ -1,0 +1,70 @@
+pkg:chord/next#Host	chord	child-gap	chord/next/host/host_host.go#Host
+pkg:chord/next#Host::property:close	chord	not-exercised	chord/next/host/host_host.go#Host.Close
+pkg:chord/next#Host::property:close::call:0	chord	not-exercised	chord/next/host/host_host.go#Host.Close
+pkg:durable/.#CommitResult	durable	no-go-symbol	
+pkg:durable/.#GenerationHooks	durable	child-gap	durable/harness/types.go#GenerationHooks
+pkg:durable/.#GenerationHooks::property:beforeProviderRequest	durable	member-missing	durable/harness/types.go#GenerationHooks
+pkg:durable/.#GenerationHooks::property:beforeProviderRequest::call:0	durable	member-missing	durable/harness/types.go#GenerationHooks
+pkg:durable/.#MemoryStorage	durable	child-gap	durable/storage/memory.go#MemoryStorage
+pkg:durable/.#MemoryStorage::property:commit	durable	child-gap	durable/storage/memory.go#MemoryStorage.Commit
+pkg:durable/.#MemoryStorage::property:commit::call:0	durable	signature-mismatch	durable/storage/memory.go#MemoryStorage.Commit
+pkg:durable/.#Storage	durable	child-gap	durable/types.go#Storage
+pkg:durable/.#Storage::property:commit	durable	child-gap	durable/types.go#Storage.Commit
+pkg:durable/.#Storage::property:commit::call:0	durable	signature-mismatch	durable/types.go#Storage.Commit
+pkg:durable/.#Storage::property:publishing	durable	member-missing	durable/types.go#Storage
+pkg:durable/.#Tx	durable	child-gap	durable/types.go#Tx
+pkg:durable/.#Tx::property:latestEntryId	durable	member-missing	durable/types.go#Tx
+pkg:durable/.#Tx::property:latestEntryId::call:0	durable	member-missing	durable/types.go#Tx
+pkg:durable/storage/indexeddb#IndexedDbStorage	durable	no-go-symbol	
+pkg:durable/storage/indexeddb#IndexedDbStorage::property:commit	durable	child-gap	
+pkg:durable/storage/indexeddb#IndexedDbStorage::property:commit::call:0	durable	child-gap	
+pkg:durable/storage/jsonl#JsonlStorage	durable	child-gap	durable/storage/jsonl/storage.go#JsonlStorage
+pkg:durable/storage/jsonl#JsonlStorage::property:commit	durable	child-gap	durable/storage/jsonl/storage.go#JsonlStorage.Commit
+pkg:durable/storage/jsonl#JsonlStorage::property:commit::call:0	durable	signature-mismatch	durable/storage/jsonl/storage.go#JsonlStorage.Commit
+pkg:durable/storage/jsonl/node#JsonlStorage	durable	child-gap	durable/storage/jsonl/storage.go#JsonlStorage
+pkg:durable/storage/jsonl/node#JsonlStorage::property:commit	durable	child-gap	durable/storage/jsonl/storage.go#JsonlStorage.Commit
+pkg:durable/storage/jsonl/node#JsonlStorage::property:commit::call:0	durable	signature-mismatch	durable/storage/jsonl/storage.go#JsonlStorage.Commit
+pkg:durable/storage/memory#MemoryStorage	durable	child-gap	durable/storage/memory.go#MemoryStorage
+pkg:durable/storage/memory#MemoryStorage::property:commit	durable	child-gap	durable/storage/memory.go#MemoryStorage.Commit
+pkg:durable/storage/memory#MemoryStorage::property:commit::call:0	durable	signature-mismatch	durable/storage/memory.go#MemoryStorage.Commit
+pkg:durable/storage/sqlite#SqliteStorage	durable	child-gap	durable/storage/sqlite/storage.go#SqliteStorage
+pkg:durable/storage/sqlite#SqliteStorage::property:commit	durable	child-gap	durable/storage/sqlite/storage.go#SqliteStorage.Commit
+pkg:durable/storage/sqlite#SqliteStorage::property:commit::call:0	durable	signature-mismatch	durable/storage/sqlite/storage.go#SqliteStorage.Commit
+pkg:durable/storage/store#StoreStorage	durable	no-go-symbol	
+pkg:durable/storage/store#StoreStorage::property:close	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:close::call:0	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:commit	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:commit::call:0	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:conversation	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:conversation::call:0	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:document	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:document::call:0	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:entry	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:entry::call:0	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:entry::call:1	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:findDocument	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:findDocument::call:0	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:findLatestHeadMarker	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:findLatestHeadMarker::call:0	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:mintId	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:mintId::call:0	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:publishing	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:publishing::call:0	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:scanConversations	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:scanConversations::call:0	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:scanDocuments	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:scanDocuments::call:0	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:scanEntries	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:scanEntries::call:0	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:scanSubmissions	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:scanSubmissions::call:0	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:scanTasks	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:scanTasks::call:0	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:submission	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:submission::call:0	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:submissionByRequest	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:submissionByRequest::call:0	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:task	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:task::call:0	durable	child-gap	
+pkg:durable/testing#commitWrites	durable	no-go-symbol	
+pkg:durable/testing#commitWrites::call:0	durable	child-gap	

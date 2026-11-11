@@ -20,8 +20,8 @@ import (
 func subagentExtension() *durable.Extension {
 	var subagent *durable.Extension
 	var schema ai.ToolSchema
-	// Declared order matters (the reference's TypeBox schema is {type, required, properties}); see the lookup tool in main.go.
-	if err := json.Unmarshal([]byte(`{"name":"subagent","description":"Delegate a self-contained task to a subagent and get its answer back.","parameters":{"type":"object","required":["task"],"properties":{"task":{"type":"string"}}}}`), &schema); err != nil {
+	// Declared order matters (pi-schema's obj is {type, properties, required, additionalProperties}); see the lookup tool in main.go.
+	if err := json.Unmarshal([]byte(`{"name":"subagent","description":"Delegate a self-contained task to a subagent and get its answer back.","parameters":{"type":"object","properties":{"task":{"type":"string"}},"required":["task"],"additionalProperties":false}}`), &schema); err != nil {
 		panic(err)
 	}
 	subagent = &durable.Extension{Name: "subagent", Tools: []*durable.ToolRegistration{{

@@ -1,3 +1,5 @@
+// Ports packages/coding-agent/src/utils/image-convert.ts convertImageBytesToPng: EXIF-oriented decode then PNG encode in place of Photon.
+
 package imageprocessing
 
 // ConvertImageBytesToPng applies EXIF orientation before encoding PNG, as

@@ -9,7 +9,7 @@ use crate::child_session::{AgentSession, SessionStartEvent};
 use crate::context::Context;
 use crate::extension_runner::{CancelledResult, SetupCallback};
 use crate::session_manager_class::{NewSessionOptions, SessionManager};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::fs::OpenOptions;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -38,7 +38,11 @@ pub struct CreateAgentSessionRuntimeFactoryOptions {
 }
 
 /// Pi's `CreateAgentSessionRuntimeFactory`: it builds the services for the effective cwd, resolves the session options against them and creates the `AgentSession` over `options.session_manager`.
-pub type CreateAgentSessionRuntimeFactory = Arc<dyn Fn(CreateAgentSessionRuntimeFactoryOptions) -> io::Result<CreateAgentSessionRuntimeResult> + Send + Sync>;
+pub type CreateAgentSessionRuntimeFactory = Arc<
+    dyn Fn(CreateAgentSessionRuntimeFactoryOptions) -> io::Result<CreateAgentSessionRuntimeResult>
+        + Send
+        + Sync,
+>;
 
 /// The second argument of Pi's `createAgentSessionRuntime`.
 pub struct CreateAgentSessionRuntimeOptions {
@@ -72,8 +76,16 @@ pub struct MissingSessionCwdError {
 
 impl std::fmt::Display for MissingSessionCwdError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let file = if self.session_file.is_empty() { String::new() } else { format!("\nSession file: {}", self.session_file) };
-        write!(f, "Stored session working directory does not exist: {}{}\nCurrent working directory: {}", self.session_cwd, file, self.fallback_cwd)
+        let file = if self.session_file.is_empty() {
+            String::new()
+        } else {
+            format!("\nSession file: {}", self.session_file)
+        };
+        write!(
+            f,
+            "Stored session working directory does not exist: {}{}\nCurrent working directory: {}",
+            self.session_cwd, file, self.fallback_cwd
+        )
     }
 }
 
@@ -130,7 +142,10 @@ pub struct AgentSessionRuntime {
 }
 
 fn text(value: &Value) -> Option<String> {
-    value.as_str().filter(|text| !text.is_empty()).map(str::to_string)
+    value
+        .as_str()
+        .filter(|text| !text.is_empty())
+        .map(str::to_string)
 }
 
 fn session_file(manager: &SessionManager) -> io::Result<Option<String>> {
@@ -138,10 +153,16 @@ fn session_file(manager: &SessionManager) -> io::Result<Option<String>> {
 }
 
 fn assert_session_cwd_exists(manager: &SessionManager, fallback_cwd: &str) -> io::Result<()> {
-    let Some(file) = session_file(manager)? else { return Ok(()) };
+    let Some(file) = session_file(manager)? else {
+        return Ok(());
+    };
     let cwd = manager.get_cwd()?.as_str().unwrap_or_default().to_string();
     if !cwd.is_empty() && !Path::new(&cwd).exists() {
-        return Err(io::Error::other(MissingSessionCwdError { session_file: file, session_cwd: cwd, fallback_cwd: fallback_cwd.to_string() }));
+        return Err(io::Error::other(MissingSessionCwdError {
+            session_file: file,
+            session_cwd: cwd,
+            fallback_cwd: fallback_cwd.to_string(),
+        }));
     }
     Ok(())
 }
@@ -149,7 +170,11 @@ fn assert_session_cwd_exists(manager: &SessionManager, fallback_cwd: &str) -> io
 fn user_message_text(content: &Value) -> String {
     match content {
         Value::String(text) => text.clone(),
-        Value::Array(parts) => parts.iter().filter(|part| part["type"] == "text").filter_map(|part| part["text"].as_str()).collect(),
+        Value::Array(parts) => parts
+            .iter()
+            .filter(|part| part["type"] == "text")
+            .filter_map(|part| part["text"].as_str())
+            .collect(),
         _ => String::new(),
     }
 }
@@ -158,20 +183,33 @@ fn resolve_path(input: &str) -> io::Result<PathBuf> {
     let trimmed = input.trim();
     let expanded = match trimmed.strip_prefix('~') {
         Some(rest) if rest.is_empty() || rest.starts_with('/') => {
-            let home = std::env::var_os("HOME").ok_or_else(|| io::Error::other("the home directory is not set"))?;
+            let home = std::env::var_os("HOME")
+                .ok_or_else(|| io::Error::other("the home directory is not set"))?;
             PathBuf::from(home).join(rest.trim_start_matches('/'))
         }
         _ => PathBuf::from(trimmed),
     };
-    if expanded.is_absolute() { Ok(expanded) } else { Ok(std::env::current_dir()?.join(expanded)) }
+    if expanded.is_absolute() {
+        Ok(expanded)
+    } else {
+        Ok(std::env::current_dir()?.join(expanded))
+    }
 }
 
 fn reject_with_session(with_session: &Option<RuntimeWithSession>) -> io::Result<()> {
-    if with_session.is_some() { Err(io::Error::other(WITH_SESSION)) } else { Ok(()) }
+    if with_session.is_some() {
+        Err(io::Error::other(WITH_SESSION))
+    } else {
+        Ok(())
+    }
 }
 
 /// `createAgentSessionRuntime(createRuntime, options)`: it builds the initial runtime from the factory and keeps the factory for the replacements.
-pub fn create_agent_session_runtime(context: &Context, create_runtime: CreateAgentSessionRuntimeFactory, options: CreateAgentSessionRuntimeOptions) -> io::Result<AgentSessionRuntime> {
+pub fn create_agent_session_runtime(
+    context: &Context,
+    create_runtime: CreateAgentSessionRuntimeFactory,
+    options: CreateAgentSessionRuntimeOptions,
+) -> io::Result<AgentSessionRuntime> {
     assert_session_cwd_exists(&options.session_manager, &options.cwd)?;
     let result = create_runtime(CreateAgentSessionRuntimeFactoryOptions {
         cwd: options.cwd,
@@ -243,7 +281,11 @@ impl AgentSessionRuntime {
         Ok(emitted && result["cancel"] == true)
     }
 
-    fn emit_before_switch(&self, reason: &str, target_session_file: Option<&str>) -> io::Result<bool> {
+    fn emit_before_switch(
+        &self,
+        reason: &str,
+        target_session_file: Option<&str>,
+    ) -> io::Result<bool> {
         let mut event = json!({"type": "session_before_switch", "reason": reason});
         if let Some(target) = target_session_file.filter(|target| !target.is_empty()) {
             event["targetSessionFile"] = json!(target);
@@ -279,12 +321,21 @@ impl AgentSessionRuntime {
         }
     }
 
-    fn replace(&self, cwd: String, manager: Arc<SessionManager>, reason: &str, previous_session_file: Option<String>) -> io::Result<()> {
+    fn replace(
+        &self,
+        cwd: String,
+        manager: Arc<SessionManager>,
+        reason: &str,
+        previous_session_file: Option<String>,
+    ) -> io::Result<()> {
         let result = (self.create)(CreateAgentSessionRuntimeFactoryOptions {
             cwd,
             agent_dir: self.services().agent_dir.clone(),
             session_manager: manager,
-            session_start_event: Some(SessionStartEvent { reason: reason.to_string(), previous_session_file }),
+            session_start_event: Some(SessionStartEvent {
+                reason: reason.to_string(),
+                previous_session_file,
+            }),
         })?;
         self.apply(result);
         Ok(())
@@ -295,13 +346,22 @@ impl AgentSessionRuntime {
     }
 
     /// `switchSession(sessionPath, options?)`.
-    pub fn switch_session(&self, session_path: &str, options: SwitchSessionRuntimeOptions) -> io::Result<CancelledResult> {
+    pub fn switch_session(
+        &self,
+        session_path: &str,
+        options: SwitchSessionRuntimeOptions,
+    ) -> io::Result<CancelledResult> {
         reject_with_session(&options.with_session)?;
         if self.emit_before_switch("resume", Some(session_path))? {
             return Ok(CancelledResult { cancelled: true });
         }
         let previous = self.current_session_file()?;
-        let manager = Arc::new(SessionManager::open(&self.context, session_path, None, options.cwd_override.as_deref())?);
+        let manager = Arc::new(SessionManager::open(
+            &self.context,
+            session_path,
+            None,
+            options.cwd_override.as_deref(),
+        )?);
         assert_session_cwd_exists(&manager, &self.cwd())?;
         self.teardown_current("resume", session_file(&manager)?.as_deref())?;
         let cwd = manager.get_cwd()?.as_str().unwrap_or_default().to_string();
@@ -318,7 +378,11 @@ impl AgentSessionRuntime {
         }
         let current = self.session().session_manager()?;
         let previous = session_file(&current)?;
-        let session_dir = current.get_session_dir()?.as_str().unwrap_or_default().to_string();
+        let session_dir = current
+            .get_session_dir()?
+            .as_str()
+            .unwrap_or_default()
+            .to_string();
         let cwd = self.cwd();
         let manager = Arc::new(if current.is_persisted()?.as_bool().unwrap_or(false) {
             SessionManager::create(&self.context, &cwd, Some(&session_dir), None)?
@@ -326,7 +390,10 @@ impl AgentSessionRuntime {
             SessionManager::in_memory(&self.context, Some(&cwd), None, None)?
         });
         if let Some(parent) = &options.parent_session {
-            manager.new_session(Some(&NewSessionOptions { id: None, parent_session: Some(parent.clone()) }))?;
+            manager.new_session(Some(&NewSessionOptions {
+                id: None,
+                parent_session: Some(parent.clone()),
+            }))?;
         }
         self.teardown_current("new", session_file(&manager)?.as_deref())?;
         self.replace(cwd, manager, "new", previous)?;
@@ -341,9 +408,17 @@ impl AgentSessionRuntime {
     /// `fork(entryId, options?)`.
     pub fn fork(&self, entry_id: &str, options: ForkRuntimeOptions) -> io::Result<ForkResult> {
         reject_with_session(&options.with_session)?;
-        let position = options.position.clone().unwrap_or_else(|| "before".to_string());
-        if self.emit_before(json!({"type": "session_before_fork", "entryId": entry_id, "position": position}))? {
-            return Ok(ForkResult { cancelled: true, selected_text: None });
+        let position = options
+            .position
+            .clone()
+            .unwrap_or_else(|| "before".to_string());
+        if self.emit_before(
+            json!({"type": "session_before_fork", "entryId": entry_id, "position": position}),
+        )? {
+            return Ok(ForkResult {
+                cancelled: true,
+                selected_text: None,
+            });
         }
         let current = Arc::new(self.session().session_manager()?);
         let entry = current.get_entry(entry_id)?;
@@ -364,22 +439,48 @@ impl AgentSessionRuntime {
         let finish = |manager: Arc<SessionManager>, cwd: String| -> io::Result<ForkResult> {
             self.replace(cwd, manager, "fork", previous.clone())?;
             self.finish_session_replacement()?;
-            Ok(ForkResult { cancelled: false, selected_text: selected_text.clone() })
+            Ok(ForkResult {
+                cancelled: false,
+                selected_text: selected_text.clone(),
+            })
         };
         let cwd = self.cwd();
         if current.is_persisted()?.as_bool().unwrap_or(false) {
-            let Some(current_file) = previous.clone() else { return Err(io::Error::other("Persisted session is missing a session file")) };
-            let session_dir = current.get_session_dir()?.as_str().unwrap_or_default().to_string();
+            let Some(current_file) = previous.clone() else {
+                return Err(io::Error::other(
+                    "Persisted session is missing a session file",
+                ));
+            };
+            let session_dir = current
+                .get_session_dir()?
+                .as_str()
+                .unwrap_or_default()
+                .to_string();
             let Some(leaf) = target_leaf_id else {
-                let manager = Arc::new(SessionManager::create(&self.context, &cwd, Some(&session_dir), None)?);
-                manager.new_session(Some(&NewSessionOptions { id: None, parent_session: Some(current_file) }))?;
+                let manager = Arc::new(SessionManager::create(
+                    &self.context,
+                    &cwd,
+                    Some(&session_dir),
+                    None,
+                )?);
+                manager.new_session(Some(&NewSessionOptions {
+                    id: None,
+                    parent_session: Some(current_file),
+                }))?;
                 self.teardown_current("fork", session_file(&manager)?.as_deref())?;
                 return finish(manager, cwd);
             };
             if !Path::new(&current_file).exists() {
-                return Err(io::Error::other("This session has not been saved yet. Send a message before cloning or forking it."));
+                return Err(io::Error::other(
+                    "This session has not been saved yet. Send a message before cloning or forking it.",
+                ));
             }
-            let manager = Arc::new(SessionManager::open(&self.context, &current_file, Some(&session_dir), None)?);
+            let manager = Arc::new(SessionManager::open(
+                &self.context,
+                &current_file,
+                Some(&session_dir),
+                None,
+            )?);
             if text(&manager.create_branched_session(&leaf)?).is_none() {
                 return Err(io::Error::other("Failed to create forked session"));
             }
@@ -390,7 +491,15 @@ impl AgentSessionRuntime {
         self.teardown_current("fork", session_file(&current)?.as_deref())?;
         match target_leaf_id {
             None => {
-                current.new_session(previous.clone().map(|parent| NewSessionOptions { id: None, parent_session: Some(parent) }).as_ref())?;
+                current.new_session(
+                    previous
+                        .clone()
+                        .map(|parent| NewSessionOptions {
+                            id: None,
+                            parent_session: Some(parent),
+                        })
+                        .as_ref(),
+                )?;
             }
             Some(leaf) => {
                 current.create_branched_session(&leaf)?;
@@ -400,20 +509,40 @@ impl AgentSessionRuntime {
     }
 
     /// `importFromJsonl(inputPath, cwdOverride?)`: it copies the session file into the current session directory (unless it is already there) and switches to it. The file's absence is a `SessionImportFileNotFoundError` (the source of the returned error).
-    pub fn import_from_jsonl(&self, input_path: &str, cwd_override: Option<&str>) -> io::Result<CancelledResult> {
+    pub fn import_from_jsonl(
+        &self,
+        input_path: &str,
+        cwd_override: Option<&str>,
+    ) -> io::Result<CancelledResult> {
         let resolved = resolve_path(input_path)?;
         if !resolved.exists() {
-            return Err(io::Error::other(SessionImportFileNotFoundError { file_path: resolved.to_string_lossy().into_owned() }));
+            return Err(io::Error::other(SessionImportFileNotFoundError {
+                file_path: resolved.to_string_lossy().into_owned(),
+            }));
         }
-        let session_dir = self.session().session_manager()?.get_session_dir()?.as_str().unwrap_or_default().to_string();
+        let session_dir = self
+            .session()
+            .session_manager()?
+            .get_session_dir()?
+            .as_str()
+            .unwrap_or_default()
+            .to_string();
         if !Path::new(&session_dir).exists() {
             std::fs::create_dir_all(&session_dir)?;
         }
-        let mut destination = Path::new(&session_dir).join(resolved.file_name().unwrap_or_default());
+        let mut destination =
+            Path::new(&session_dir).join(resolved.file_name().unwrap_or_default());
         let already_stored = destination == resolved;
         if !already_stored {
-            let stem = destination.file_stem().unwrap_or_default().to_string_lossy().into_owned();
-            let ext = destination.extension().map(|ext| format!(".{}", ext.to_string_lossy())).unwrap_or_default();
+            let stem = destination
+                .file_stem()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .into_owned();
+            let ext = destination
+                .extension()
+                .map(|ext| format!(".{}", ext.to_string_lossy()))
+                .unwrap_or_default();
             let mut suffix = 1;
             while destination.exists() {
                 destination = Path::new(&session_dir).join(format!("{stem}-{suffix}{ext}"));
@@ -427,10 +556,18 @@ impl AgentSessionRuntime {
         let previous = self.current_session_file()?;
         if !already_stored {
             let mut source = std::fs::File::open(&resolved)?;
-            let mut target = OpenOptions::new().write(true).create_new(true).open(&destination)?;
+            let mut target = OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&destination)?;
             io::copy(&mut source, &mut target)?;
         }
-        let manager = Arc::new(SessionManager::open(&self.context, &destination_text, Some(&session_dir), cwd_override)?);
+        let manager = Arc::new(SessionManager::open(
+            &self.context,
+            &destination_text,
+            Some(&session_dir),
+            cwd_override,
+        )?);
         assert_session_cwd_exists(&manager, &self.cwd())?;
         self.teardown_current("resume", session_file(&manager)?.as_deref())?;
         let cwd = manager.get_cwd()?.as_str().unwrap_or_default().to_string();

@@ -8,6 +8,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -229,5 +230,26 @@ func startWait(t *testing.T, server *oauth.OAuthCallbackServer, state string, pa
 		}
 		result := <-done
 		return result.callback, result.err
+	}
+}
+
+// The default page shows the provider's error_description as written, as Pi does, so it is served as text/plain and never as a page: a script payload comes back byte for byte under that type, while a rendered page (RenderPage) is the HTML one.
+func TestOAuthCallbackServerPlainTextShowsMarkupAsTextNotAsAPage(t *testing.T) {
+	const payload = `<script>alert(1)</script>"'&`
+	server, err := oauth.ListenOAuthCallbackServer(oauth.OAuthCallbackServerOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = server.Close() }()
+	wait := startWait(t, server, "s1")
+	status, header, body := callbackGet(t, server.RedirectURL+"?state=s1&error=access_denied&error_description="+url.QueryEscape(payload))
+	if status != 200 || body != "Authorization failed. You may close this window.\n\n"+payload {
+		t.Fatalf("plain page = %d %q", status, body)
+	}
+	if header.Get("Content-Type") != "text/plain; charset=utf-8" {
+		t.Fatalf("content type = %q, want text/plain", header.Get("Content-Type"))
+	}
+	if _, err := wait(); err == nil || err.Error() != payload {
+		t.Fatalf("wait error = %v", err)
 	}
 }

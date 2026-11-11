@@ -70,3 +70,27 @@ func TestOutputOracle(t *testing.T) {
 		t.Fatalf("corpus covers %d bounds, %d buffers, %d snapshots", bounds, buffers, snapshots)
 	}
 }
+
+// Pi main 50d9f823 (#11604) packages/chord/test/output.test.ts "removes whole ANSI escape sequences, not only their ESC bytes":
+// the durable core's SanitizeOutput and OutputBuffer remove whole escape sequences, also those split across chunks.
+func TestSanitizeOutputRemovesWholeEscapeSequences(t *testing.T) {
+	for input, want := range map[string]string{
+		"\x1b[31mERROR\x1b[0m\n":                                      "ERROR\n",
+		"\x1b[1;38;5;208mx\x1b[?25l\x1b[2K\x1b(By\x1b7z":              "xyz",
+		"\x1b]8;;https://pi.dev\alink\x1b]8;;\x1b\\ \x1b]0;title\aok": "link ok",
+		"a\x1b]no end": "ano end",
+		"a\x1b":        "a",
+		"\x1b\x1b[1mb": "b",
+	} {
+		if got := SanitizeOutput(input); got != want {
+			t.Errorf("SanitizeOutput(%q) = %q, want %q", input, got, want)
+		}
+	}
+	buffer := NewOutputBuffer(OutputLimits{Retain: "tail", MaxBytes: 1024, MaxLines: 100})
+	for _, chunk := range []string{"\x1b[3", "1mERROR\x1b[0", "m\n"} {
+		buffer.PushString(chunk, nil)
+	}
+	if got := buffer.Snapshot().Text; got != "ERROR\n" {
+		t.Errorf("snapshot text = %q, want %q", got, "ERROR\n")
+	}
+}

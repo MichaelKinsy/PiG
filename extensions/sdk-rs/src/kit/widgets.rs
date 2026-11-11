@@ -4,7 +4,7 @@
 //! coding-agent's `BorderedLoader` and message components. Each is a
 //! [`Node`](super::Node) through [`Widget`].
 
-use super::{put, put_opt, put_nonempty, Encoder, Node};
+use super::{Encoder, Node, put, put_nonempty, put_opt};
 use serde_json::{Map, Value};
 
 /// A widget node of the kit.
@@ -63,7 +63,12 @@ impl Widget {
         }
     }
 
-    pub(super) fn encode(&self, enc: &mut Encoder, map: &mut Map<String, Value>, depth: usize) -> Result<(), String> {
+    pub(super) fn encode(
+        &self,
+        enc: &mut Encoder,
+        map: &mut Map<String, Value>,
+        depth: usize,
+    ) -> Result<(), String> {
         let _ = (&enc, depth);
         match self {
             Widget::BranchSummary(n) => {
@@ -136,7 +141,11 @@ impl Widget {
                     put(map, "disableSubmit", true);
                 }
                 if !n.history.is_empty() {
-                    put(map, "history", Value::Array(n.history.iter().map(|h| Value::String(h.clone())).collect()));
+                    put(
+                        map,
+                        "history",
+                        Value::Array(n.history.iter().map(|h| Value::String(h.clone())).collect()),
+                    );
                 }
                 if let Some(a) = &n.autocomplete {
                     put(map, "autocomplete", a.wire());
@@ -144,7 +153,11 @@ impl Widget {
             }
             Widget::ScrollView(n) => {
                 put(map, "id", n.id.as_str());
-                put(map, "children", enc.children(std::slice::from_ref(&*n.child), depth)?);
+                put(
+                    map,
+                    "children",
+                    enc.children(std::slice::from_ref(&*n.child), depth)?,
+                );
                 put_nonempty(map, "follow", &n.follow);
                 if n.primary {
                     put(map, "primary", true);
@@ -158,10 +171,18 @@ impl Widget {
             }
             Widget::MouseRegion(n) => {
                 put(map, "id", n.id.as_str());
-                put(map, "children", enc.children(std::slice::from_ref(&*n.child), depth)?);
+                put(
+                    map,
+                    "children",
+                    enc.children(std::slice::from_ref(&*n.child), depth)?,
+                );
                 let mut region = Map::new();
                 if !n.types.is_empty() {
-                    put(&mut region, "types", Value::Array(n.types.iter().map(|t| Value::String(t.clone())).collect()));
+                    put(
+                        &mut region,
+                        "types",
+                        Value::Array(n.types.iter().map(|t| Value::String(t.clone())).collect()),
+                    );
                 }
                 put_opt(&mut region, "handled", &n.handled);
                 if n.capture {
@@ -172,8 +193,7 @@ impl Widget {
                 }
                 put_opt(&mut region, "render", &n.render);
                 put(map, "region", Value::Object(region));
-            }
-            // widget-encode
+            } // widget-encode
         }
         Ok(())
     }
@@ -197,7 +217,10 @@ pub struct Cursor {
 impl Cursor {
     pub(super) fn from_wire(value: &Value) -> Option<Cursor> {
         let field = |key: &str| value.get(key).and_then(Value::as_u64).map(|n| n as usize);
-        Some(Cursor { line: field("line")?, col: field("col")? })
+        Some(Cursor {
+            line: field("line")?,
+            col: field("col")?,
+        })
     }
 }
 
@@ -224,7 +247,13 @@ impl Mouse {
     pub(super) fn from_wire(value: &Value) -> Option<Mouse> {
         let int = |key: &str| value.get(key).and_then(Value::as_i64).unwrap_or(0);
         let flag = |key: &str| value.get(key).and_then(Value::as_bool).unwrap_or(false);
-        let text = |key: &str| value.get(key).and_then(Value::as_str).unwrap_or("").to_string();
+        let text = |key: &str| {
+            value
+                .get(key)
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .to_string()
+        };
         value.get("type")?;
         Some(Mouse {
             kind: text("type"),
@@ -261,7 +290,12 @@ pub struct BranchSummary {
 impl BranchSummary {
     /// A collapsed summary with upstream's outputPad 1.
     pub fn new(summary: impl Into<String>) -> Self {
-        Self { id: None, summary: summary.into(), output_pad: 1, expanded: false }
+        Self {
+            id: None,
+            summary: summary.into(),
+            output_pad: 1,
+            expanded: false,
+        }
     }
 
     /// Keeps the host component across frames.
@@ -300,7 +334,13 @@ impl CompactionSummary {
     /// A collapsed summary of a context of `tokens_before` tokens with
     /// upstream's outputPad 1.
     pub fn new(summary: impl Into<String>, tokens_before: u64) -> Self {
-        Self { id: None, summary: summary.into(), tokens_before, output_pad: 1, expanded: false }
+        Self {
+            id: None,
+            summary: summary.into(),
+            tokens_before,
+            output_pad: 1,
+            expanded: false,
+        }
     }
 
     /// Keeps the host component across frames.
@@ -339,7 +379,13 @@ impl SkillInvocation {
     /// A collapsed invocation of the skill `name` with `content`, with
     /// upstream's outputPad 1.
     pub fn new(name: impl Into<String>, content: impl Into<String>) -> Self {
-        Self { id: None, name: name.into(), content: content.into(), output_pad: 1, expanded: false }
+        Self {
+            id: None,
+            name: name.into(),
+            content: content.into(),
+            output_pad: 1,
+            expanded: false,
+        }
     }
 
     /// Keeps the host component across frames.
@@ -378,7 +424,13 @@ impl CustomMessage {
     /// A message of `custom_type` with `text` (a content array's text blocks
     /// joined with newlines) and upstream's outputPad 1.
     pub fn new(custom_type: impl Into<String>, text: impl Into<String>) -> Self {
-        Self { id: None, custom_type: custom_type.into(), text: text.into(), output_pad: 1, expanded: false }
+        Self {
+            id: None,
+            custom_type: custom_type.into(),
+            text: text.into(),
+            output_pad: 1,
+            expanded: false,
+        }
     }
 
     /// Keeps the host component across frames.
@@ -414,7 +466,10 @@ impl CancellableLoader {
     /// A cancellable loader named `id` (required, unique within the view) with
     /// the loader's arguments.
     pub fn new(id: impl Into<String>, loader: super::Loader) -> Self {
-        Self { id: id.into(), loader }
+        Self {
+            id: id.into(),
+            loader,
+        }
     }
 }
 
@@ -431,7 +486,6 @@ fn put_loader(map: &mut Map<String, Value>, n: &super::Loader) {
     }
     put_opt(map, "frame", &n.frame);
 }
-
 
 /// Coding-agent's `BorderedLoader(tui, theme, message, {cancellable})`: a
 /// loader between two borders with, when cancellable (the default), a cancel
@@ -450,7 +504,12 @@ impl BorderedLoader {
     /// A cancellable loader named `id` (required, unique within the view)
     /// showing `message`.
     pub fn new(id: impl Into<String>, message: impl Into<String>) -> Self {
-        Self { id: id.into(), message: message.into(), cancellable: true, frame: None }
+        Self {
+            id: id.into(),
+            message: message.into(),
+            cancellable: true,
+            frame: None,
+        }
     }
 
     /// Upstream's `{cancellable}` option.
@@ -486,7 +545,13 @@ impl Input {
     /// An empty input named `id` (required, unique within the view) with
     /// upstream's defaults.
     pub fn new(id: impl Into<String>) -> Self {
-        Self { id: id.into(), value: String::new(), prompt: None, placeholder: String::new(), placeholder_color: None }
+        Self {
+            id: id.into(),
+            value: String::new(),
+            prompt: None,
+            placeholder: String::new(),
+            placeholder_color: None,
+        }
     }
 
     /// `setValue`'s argument, applied when it differs from the value the
@@ -611,7 +676,11 @@ pub struct SlashCommand {
 
 impl SlashCommand {
     pub fn new(name: impl Into<String>) -> Self {
-        Self { name: name.into(), description: String::new(), argument_hint: String::new() }
+        Self {
+            name: name.into(),
+            description: String::new(),
+            argument_hint: String::new(),
+        }
     }
 
     pub fn description(mut self, description: impl Into<String>) -> Self {
@@ -637,7 +706,10 @@ pub struct Autocomplete {
 
 impl Autocomplete {
     pub fn new(commands: impl IntoIterator<Item = SlashCommand>) -> Self {
-        Self { commands: commands.into_iter().collect(), base_path: String::new() }
+        Self {
+            commands: commands.into_iter().collect(),
+            base_path: String::new(),
+        }
     }
 
     /// The directory path completion starts from.
@@ -779,7 +851,15 @@ impl MouseRegion {
     /// A region named `id` (required, unique within the view) over `child`
     /// that handles every event.
     pub fn new(id: impl Into<String>, child: impl Into<Node>) -> Self {
-        Self { id: id.into(), child: Box::new(child.into()), types: Vec::new(), handled: None, capture: false, focus: false, render: None }
+        Self {
+            id: id.into(),
+            child: Box::new(child.into()),
+            types: Vec::new(),
+            handled: None,
+            capture: false,
+            focus: false,
+            render: None,
+        }
     }
 
     /// The event types the handler answers: `"press"`, `"release"`, `"click"`,

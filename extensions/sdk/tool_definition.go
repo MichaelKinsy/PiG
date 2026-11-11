@@ -2,11 +2,7 @@
 
 package sdk
 
-import (
-	"fmt"
-
-	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
-)
+import "fmt"
 
 // ToolConstrainedSampling is Pi's tool-level false-or-configuration union
 // (ToolDefinition.constrainedSampling). A [ConstrainedSampling] value or
@@ -127,14 +123,6 @@ func (e *Extension) RegisterTool(def ToolDefinition) {
 
 func (e *Extension) registerTool(decl toolDef, handler ToolFunc, prepare ToolPrepareArgumentsFunc, renderers ToolRenderers) {
 	e.validateToolSchema(decl.Name, decl.Parameters)
-	decl.refineSites = refinementSites(map[string]any(decl.Parameters))
-	if countRefinements(map[string]any(decl.Parameters)) != countSiteRefinements(decl.refineSites) {
-		panic(fmt.Errorf(`Tool "%s" registered by extension "%s" has a refinement under a schema keyword whose refinements the host does not run (it runs them under properties, patternProperties, additionalProperties, items, prefixItems, additionalItems, allOf, anyOf, oneOf, not, if, then, else and $defs).`, decl.Name, e.name))
-	}
-	decl.Refinements = refinementDecls(decl.refineSites)
-	if raw, ok := decl.Parameters[schemaValidationKey].(json.RawMessage); ok {
-		decl.ValidationParameters = raw
-	}
 	e.toolMu.Lock()
 	defer e.toolMu.Unlock()
 	if renderers.Shell == ToolRenderShellSelf {

@@ -25,8 +25,8 @@ func TestHighlightMemoKeepsOnlyTheNewestPrefixOfAStreamedBlock(t *testing.T) {
 		md.Render(100)
 	}
 	final := strings.TrimSuffix(code.String(), "\n")
-	want := highlightCodeUncached(highlightRegistry(), final, "go", true, ActiveTheme())
-	got := highlightMarkdownCode(final, "go")
+	want := highlightCodeUncached(highlightRegistry(), final, "go", ActiveTheme())
+	got := HighlightCode(final, "go")
 	if strings.Join(got, "\n") != strings.Join(want, "\n") {
 		t.Fatal("the memo's highlight differs from the uncached highlight")
 	}

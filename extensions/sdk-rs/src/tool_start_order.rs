@@ -94,7 +94,12 @@ pub(crate) struct ToolStartOrder {
 impl ToolStartOrder {
     #[cfg(test)]
     fn with_parked(parked: impl Fn() + Send + Sync + 'static) -> Self {
-        Self { shared: Arc::new(Shared { parked: Some(Arc::new(parked)), ..Default::default() }) }
+        Self {
+            shared: Arc::new(Shared {
+                parked: Some(Arc::new(parked)),
+                ..Default::default()
+            }),
+        }
     }
 
     /// Take the next place in this order, held by no registry. The gate tests use it; the read loop goes through `ToolBatches`.
@@ -149,7 +154,10 @@ impl ToolBatches {
         let mut batches = self.batches.lock().unwrap();
         let entry = batches.entry(batch.to_string()).or_default();
         entry.live += 1;
-        Some(entry.order.reserve_leased(Some(Lease { batches: self.batches.clone(), batch: batch.to_string() })))
+        Some(entry.order.reserve_leased(Some(Lease {
+            batches: self.batches.clone(),
+            batch: batch.to_string(),
+        })))
     }
 
     /// The number of batches that have a request that did not end.
@@ -221,15 +229,16 @@ impl ToolStart {
         self.pass_dialog();
         let (first, slot) = {
             let _places = self.order.places.lock().unwrap();
-            (!self.ended.swap(true, Ordering::AcqRel), self.slot.get().cloned())
+            (
+                !self.ended.swap(true, Ordering::AcqRel),
+                self.slot.get().cloned(),
+            )
         };
         if let Some(slot) = slot {
             slot.close();
         }
-        if first {
-            if let Some(lease) = &self.lease {
-                lease.release();
-            }
+        if first && let Some(lease) = &self.lease {
+            lease.release();
         }
     }
 
@@ -240,7 +249,11 @@ impl ToolStart {
         if self.ended.load(Ordering::Acquire) {
             return None;
         }
-        Some(self.slot.get_or_init(|| Arc::new(SettleSlot::new(self.order.clone(), self.id))).clone())
+        Some(
+            self.slot
+                .get_or_init(|| Arc::new(SettleSlot::new(self.order.clone(), self.id)))
+                .clone(),
+        )
     }
 
     /// The handler reached an await: a handler the reader settled gives its place in the response order up.
@@ -263,11 +276,16 @@ impl ToolStart {
         let waiting = {
             let mut places = self.order.places.lock().unwrap();
             // A request that is not queued passed its place already; the first one in the queue is the one whose turn it is.
-            let Some(at) = places.dialogs.iter().position(|place| place.id == self.id) else { return };
+            let Some(at) = places.dialogs.iter().position(|place| place.id == self.id) else {
+                return;
+            };
             if at == 0 {
                 return;
             }
-            places.dialogs[at].waiting.insert(Arc::new(Latch::default())).clone()
+            places.dialogs[at]
+                .waiting
+                .insert(Arc::new(Latch::default()))
+                .clone()
         };
         self.order.park();
         waiting.wait();
@@ -283,12 +301,18 @@ impl ToolStart {
     /// request that ends while an earlier one still runs is not held by it. It is idempotent.
     fn pass_dialog(&self) {
         let mut places = self.order.places.lock().unwrap();
-        let Some(at) = places.dialogs.iter().position(|place| place.id == self.id) else { return };
+        let Some(at) = places.dialogs.iter().position(|place| place.id == self.id) else {
+            return;
+        };
         // A second thread of this request may wait for the place it gives up.
         if let Some(waiting) = places.dialogs.remove(at).and_then(|own| own.waiting) {
             waiting.set();
         }
-        if let Some(waiting) = places.dialogs.front_mut().and_then(|head| head.waiting.take()) {
+        if let Some(waiting) = places
+            .dialogs
+            .front_mut()
+            .and_then(|head| head.waiting.take())
+        {
             waiting.set();
         }
     }
@@ -305,7 +329,10 @@ impl ToolStart {
 
 /// Whether a host call opens a dialog the user answers.
 pub(crate) fn is_dialog_method(method: &str) -> bool {
-    matches!(method, "ui.select" | "ui.confirm" | "ui.input" | "ui.editor" | "ui.custom")
+    matches!(
+        method,
+        "ui.select" | "ui.confirm" | "ui.input" | "ui.editor" | "ui.custom"
+    )
 }
 
 /// Orders actions by the order their slots settled: a slot settles when the reader reads the answer its handler waits for, and its
@@ -327,7 +354,12 @@ pub(crate) struct SettleSlot {
 
 impl SettleSlot {
     fn new(order: Arc<Shared>, id: u64) -> Self {
-        Self { order, id, settled: AtomicBool::new(false), finished: AtomicBool::new(false) }
+        Self {
+            order,
+            id,
+            settled: AtomicBool::new(false),
+            finished: AtomicBool::new(false),
+        }
     }
 
     /// Gives the slot its place after every slot that settled before. The reader calls it before it hands the answer to the waiting
@@ -363,7 +395,10 @@ impl SettleSlot {
         {
             let gate = &self.order.gate;
             let mut settled = gate.settled.lock().unwrap();
-            while self.settled.load(Ordering::Relaxed) && !self.finished.load(Ordering::Relaxed) && settled.front() != Some(&self.id) {
+            while self.settled.load(Ordering::Relaxed)
+                && !self.finished.load(Ordering::Relaxed)
+                && settled.front() != Some(&self.id)
+            {
                 self.order.park();
                 settled = gate.turn.wait(settled).unwrap();
             }
@@ -403,14 +438,22 @@ mod tests {
     }
 
     fn held(name: &str, began: &mpsc::Receiver<()>) {
-        assert!(began.recv_timeout(Duration::from_millis(50)).is_err(), "{name} began before the requests ahead of it");
+        assert!(
+            began.recv_timeout(Duration::from_millis(50)).is_err(),
+            "{name} began before the requests ahead of it"
+        );
     }
 
     // agent-loop.ts:619-647: a request's handler waits for the earlier requests' handlers to be invoked, whatever order the threads run in.
     #[test]
     fn a_later_request_waits_for_every_earlier_one_to_begin() {
         let order = ToolStartOrder::default();
-        let (first, second, third, fourth) = (order.reserve(), order.reserve(), order.reserve(), order.reserve());
+        let (first, second, third, fourth) = (
+            order.reserve(),
+            order.reserve(),
+            order.reserve(),
+            order.reserve(),
+        );
         let fourth_began = begun(fourth);
         let third_began = begun(third);
         held("fourth", &fourth_began);
@@ -419,8 +462,12 @@ mod tests {
         // The first request began, but the second did not: the third still waits for it.
         held("third", &third_began);
         second.begin();
-        third_began.recv_timeout(Duration::from_secs(5)).expect("third began");
-        fourth_began.recv_timeout(Duration::from_secs(5)).expect("fourth began");
+        third_began
+            .recv_timeout(Duration::from_secs(5))
+            .expect("third began");
+        fourth_began
+            .recv_timeout(Duration::from_secs(5))
+            .expect("fourth began");
     }
 
     #[test]
@@ -432,8 +479,12 @@ mod tests {
         held("next", &next_began);
         lost.release();
         lost.release();
-        next_began.recv_timeout(Duration::from_secs(5)).expect("next began");
-        last_began.recv_timeout(Duration::from_secs(5)).expect("last began");
+        next_began
+            .recv_timeout(Duration::from_secs(5))
+            .expect("next began");
+        last_began
+            .recv_timeout(Duration::from_secs(5))
+            .expect("last began");
     }
 
     // A request whose thread ends without its handler still keeps the order of the requests ahead of it: the next handler waits for them.
@@ -451,8 +502,12 @@ mod tests {
         held("after", &after_began);
         held("skipped", &skipped_ended);
         ahead.begin();
-        skipped_ended.recv_timeout(Duration::from_secs(5)).expect("skipped ended");
-        after_began.recv_timeout(Duration::from_secs(5)).expect("after began");
+        skipped_ended
+            .recv_timeout(Duration::from_secs(5))
+            .expect("skipped ended");
+        after_began
+            .recv_timeout(Duration::from_secs(5))
+            .expect("after began");
     }
 
     // The gate tests below use no timing: the order's `parked` hook tells a test when a caller started to wait for an earlier one.
@@ -484,7 +539,9 @@ mod tests {
     }
 
     fn wait_parked(parked: &mpsc::Receiver<()>) {
-        parked.recv_timeout(Duration::from_secs(5)).expect("a caller started to wait");
+        parked
+            .recv_timeout(Duration::from_secs(5))
+            .expect("a caller started to wait");
     }
 
     fn join(threads: Vec<thread::JoinHandle<()>>) {
@@ -506,7 +563,7 @@ mod tests {
             let (start, rec) = (starts[i].clone(), rec.clone());
             threads.push(thread::spawn(move || {
                 start.before_call();
-                rec.add(&["a", "b", "c"][i]);
+                rec.add(["a", "b", "c"][i]);
                 start.after_call();
                 // A second dialog of the same request does not wait again.
                 start.before_call();
@@ -519,10 +576,18 @@ mod tests {
         wait_parked(&parked);
         open(1);
         wait_parked(&parked);
-        assert!(rec.list().is_empty(), "dialogs {:?} opened before the first request's", rec.list());
+        assert!(
+            rec.list().is_empty(),
+            "dialogs {:?} opened before the first request's",
+            rec.list()
+        );
         open(0);
         join(threads);
-        assert_eq!(rec.list(), ["a", "b", "c"], "dialogs opened out of call order");
+        assert_eq!(
+            rec.list(),
+            ["a", "b", "c"],
+            "dialogs opened out of call order"
+        );
     }
 
     // A request that ends without a dialog hands its place on, also one that failed before its handler ran.
@@ -569,9 +634,14 @@ mod tests {
             third.after_call();
             done_tx.send(()).unwrap();
         });
-        done.recv_timeout(Duration::from_secs(5)).expect("a later call waited for the dialog place of a request whose exec is in flight");
+        done.recv_timeout(Duration::from_secs(5)).expect(
+            "a later call waited for the dialog place of a request whose exec is in flight",
+        );
         later.join().unwrap();
-        assert!(parked.try_recv().is_err(), "a later call parked behind a request whose exec is in flight");
+        assert!(
+            parked.try_recv().is_err(),
+            "a later call parked behind a request whose exec is in flight"
+        );
         // `first`'s own dialog, after its exec, does not wait again.
         first.before_call();
         first.after_call();
@@ -597,7 +667,10 @@ mod tests {
         // `head` neither began nor ended, and `lost` is released at once, twice.
         lost.release();
         lost.release();
-        assert!(rec.list().is_empty(), "the dialog opened before the head request passed its place");
+        assert!(
+            rec.list().is_empty(),
+            "the dialog opened before the head request passed its place"
+        );
         head.end();
         dialog.join().unwrap();
         assert_eq!(rec.list(), ["last"]);
@@ -624,10 +697,18 @@ mod tests {
         wait_parked(&parked);
         threads.push(respond("third", &third));
         wait_parked(&parked);
-        assert!(rec.list().is_empty(), "responses {:?} were written before the handler answered first", rec.list());
+        assert!(
+            rec.list().is_empty(),
+            "responses {:?} were written before the handler answered first",
+            rec.list()
+        );
         threads.push(respond("second", &second));
         join(threads);
-        assert_eq!(rec.list(), ["second", "third", "first"], "responses did not follow the order of the answers");
+        assert_eq!(
+            rec.list(),
+            ["second", "third", "first"],
+            "responses did not follow the order of the answers"
+        );
     }
 
     // A handler that went on to another host call lets the ones behind it respond.
@@ -683,7 +764,9 @@ mod tests {
         let (first, second) = (order.reserve(), order.reserve());
         first.response_slot().unwrap().settle();
         second.response_slot().unwrap().settle();
-        let failed = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| first.respond(|| panic!("response failed"))));
+        let failed = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            first.respond(|| panic!("response failed"))
+        }));
         assert!(failed.is_err());
         let rec = Recorder::default();
         second.respond(|| rec.add("second"));
@@ -710,7 +793,10 @@ mod tests {
         let order = ToolStartOrder::default();
         let (_head, ended, later) = (order.reserve(), order.reserve(), order.reserve());
         ended.release();
-        assert!(ended.response_slot().is_none(), "a request that ended made a response slot");
+        assert!(
+            ended.response_slot().is_none(),
+            "a request that ended made a response slot"
+        );
         let (done, finished) = mpsc::channel();
         let retained = ended.clone();
         thread::spawn(move || {
@@ -718,7 +804,9 @@ mod tests {
             retained.after_call();
             let _ = done.send(());
         });
-        finished.recv_timeout(Duration::from_secs(5)).expect("the dialog of an ended request waited for a place it passed");
+        finished
+            .recv_timeout(Duration::from_secs(5))
+            .expect("the dialog of an ended request waited for a place it passed");
         later.response_slot().unwrap().settle();
         let rec = Recorder::default();
         later.respond(|| rec.add("later"));
@@ -741,7 +829,10 @@ mod tests {
     fn the_requests_of_two_batches_do_not_gate_each_other() {
         let batches = ToolBatches::default();
         let long = batches.reserve(Some("A")).unwrap();
-        let (first, second) = (batches.reserve(Some("B")).unwrap(), batches.reserve(Some("B")).unwrap());
+        let (first, second) = (
+            batches.reserve(Some("B")).unwrap(),
+            batches.reserve(Some("B")).unwrap(),
+        );
         let later = batches.reserve(Some("A")).unwrap();
         assert_eq!(batches.in_flight(), 2);
         let (b_first, b_second) = (first.clone(), second.clone());
@@ -758,7 +849,9 @@ mod tests {
         let began = begun(later);
         held("a later request of batch A", &began);
         long.begin();
-        began.recv_timeout(Duration::from_secs(5)).expect("the later request of batch A began");
+        began
+            .recv_timeout(Duration::from_secs(5))
+            .expect("the later request of batch A began");
     }
 
     // A request without a batch id (a sequential batch, a nested call) takes part in no order: it has no place to wait in or to hold.
@@ -774,7 +867,10 @@ mod tests {
     #[test]
     fn a_batchs_order_is_dropped_when_its_last_request_ended() {
         let batches = ToolBatches::default();
-        let (first, second) = (batches.reserve(Some("A")).unwrap(), batches.reserve(Some("A")).unwrap());
+        let (first, second) = (
+            batches.reserve(Some("A")).unwrap(),
+            batches.reserve(Some("A")).unwrap(),
+        );
         let other = batches.reserve(Some("B")).unwrap();
         assert_eq!(batches.in_flight(), 2);
         // A request that ends twice counts once.

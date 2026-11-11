@@ -9,8 +9,14 @@ import (
 
 func TestOpenRouterReasoningPayloadsUpstream(t *testing.T) {
 	mandatory := ThinkingLevelMap{}
-	for level, value := range modelgen.GetOpenRouterThinkingLevelMap(&modelgen.OpenRouterReasoningMetadata{Mandatory: true, SupportedEfforts: []*string{new("max"), new("high"), new("low")}}) {
-		mandatory[ModelThinkingLevel(level)] = value
+	levels := modelgen.GetOpenRouterThinkingLevelMap(&modelgen.OpenRouterReasoningMetadata{Mandatory: true, SupportedEfforts: []*string{new("max"), new("high"), new("low")}})
+	for _, level := range levels.Keys() {
+		value, _ := levels.Get(level)
+		if text, ok := value.(string); ok {
+			mandatory[ModelThinkingLevel(level)] = &text
+		} else {
+			mandatory[ModelThinkingLevel(level)] = nil
+		}
 	}
 	for _, tc := range []struct {
 		name    string
@@ -18,11 +24,11 @@ func TestOpenRouterReasoningPayloadsUpstream(t *testing.T) {
 		level   ModelThinkingLevel
 		want    any
 	}{
-		// .upstream/v0.87.1/packages/ai/test/openrouter-reasoning-options.test.ts:95
+		// upstream: packages/ai/test/openrouter-reasoning-options.test.ts:95
 		{"omits reasoning when a background call does not request it", mandatory, "", nil},
-		// .upstream/v0.87.1/packages/ai/test/openrouter-reasoning-options.test.ts:99
+		// upstream: packages/ai/test/openrouter-reasoning-options.test.ts:99
 		{"still sends an explicitly selected supported effort", mandatory, ThinkingLow, map[string]any{"effort": "low"}},
-		// .upstream/v0.87.1/packages/ai/test/openrouter-reasoning-options.test.ts:105
+		// upstream: packages/ai/test/openrouter-reasoning-options.test.ts:105
 		{"continues to explicitly disable reasoning for optional models", nil, "", map[string]any{"effort": "none"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

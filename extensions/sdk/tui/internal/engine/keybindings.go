@@ -14,6 +14,7 @@ import (
 	"os"
 	"runtime"
 	"slices"
+	"strconv"
 	"sync"
 	"sync/atomic"
 )
@@ -510,7 +511,7 @@ func (m *TUIKeybindingsManager) GetResolvedBindings() KeybindingsConfig {
 // supported (matching upstream's legacy-first approach for component input).
 // It is built on first use, not on every start.
 var tuiKeyIDInputs = sync.OnceValue(func() map[string][]string {
-	return map[string][]string{
+	inputs := map[string][]string{
 		// Special keys
 		"esc":       {"\x1b"},
 		"escape":    {"\x1b"},
@@ -537,62 +538,6 @@ var tuiKeyIDInputs = sync.OnceValue(func() map[string][]string {
 		"shift+enter": {"\n", "\x1b\r", "\x1b\n", "\x1b[13;2u", "\x1b[13;2~", "\x1b[27;2;13~"},
 		"shift+tab":   {"\x1b[Z"},
 		"shift+clear": {"\x1b[e"},
-
-		// Ctrl+letter: legacy byte + Kitty CSI-u + xterm modifyOtherKeys mode 2
-		"ctrl+a": {"\x01", "\x1b[97;5u", "\x1b[27;5;97~"},
-		"ctrl+b": {"\x02", "\x1b[98;5u", "\x1b[27;5;98~"},
-		"ctrl+c": {"\x03", "\x1b[99;5u", "\x1b[27;5;99~"},
-		"ctrl+d": {"\x04", "\x1b[100;5u", "\x1b[27;5;100~"},
-		"ctrl+e": {"\x05", "\x1b[101;5u", "\x1b[27;5;101~"},
-		"ctrl+f": {"\x06", "\x1b[102;5u", "\x1b[27;5;102~"},
-		"ctrl+g": {"\x07", "\x1b[103;5u", "\x1b[27;5;103~"},
-		// ctrl+j: CSI-u form only. The legacy byte \x0a is already claimed by
-		// shift+enter (both insert a newline). Upstream 0.80.0 added ctrl+j as a
-		// newline binding; this covers the kitty / modifyOtherKeys sequences.
-		"ctrl+j": {"\x1b[106;5u", "\x1b[27;5;106~"},
-		"ctrl+k": {"\x0b", "\x1b[107;5u", "\x1b[27;5;107~"},
-		"ctrl+l": {"\x0c", "\x1b[108;5u", "\x1b[27;5;108~"},
-		"ctrl+n": {"\x0e", "\x1b[110;5u", "\x1b[27;5;110~"},
-		"ctrl+o": {"\x0f", "\x1b[111;5u", "\x1b[27;5;111~"},
-		"ctrl+p": {"\x10", "\x1b[112;5u", "\x1b[27;5;112~"},
-		"ctrl+r": {"\x12", "\x1b[114;5u", "\x1b[27;5;114~"},
-		"ctrl+s": {"\x13", "\x1b[115;5u", "\x1b[27;5;115~"},
-		"ctrl+t": {"\x14", "\x1b[116;5u", "\x1b[27;5;116~"},
-		"ctrl+u": {"\x15", "\x1b[117;5u", "\x1b[27;5;117~"},
-		"ctrl+v": {"\x16", "\x1b[118;5u", "\x1b[27;5;118~"},
-		"ctrl+w": {"\x17", "\x1b[119;5u", "\x1b[27;5;119~"},
-		"ctrl+x": {"\x18", "\x1b[120;5u", "\x1b[27;5;120~"},
-		"ctrl+y": {"\x19", "\x1b[121;5u", "\x1b[27;5;121~"},
-		"ctrl+z": {"\x1a", "\x1b[122;5u", "\x1b[27;5;122~"},
-
-		// Ctrl+Shift+letter: Kitty CSI-u + xterm modifyOtherKeys mode 2
-		// modifier 6 = Shift(1) + Ctrl(4) + 1 = 6
-		"ctrl+shift+a": {"\x1b[97;6u", "\x1b[27;6;97~"},
-		"ctrl+shift+b": {"\x1b[98;6u", "\x1b[27;6;98~"},
-		"ctrl+shift+c": {"\x1b[99;6u", "\x1b[27;6;99~"},
-		"ctrl+shift+d": {"\x1b[100;6u", "\x1b[27;6;100~"},
-		"ctrl+shift+e": {"\x1b[101;6u", "\x1b[27;6;101~"},
-		"ctrl+shift+f": {"\x1b[102;6u", "\x1b[27;6;102~"},
-		"ctrl+shift+g": {"\x1b[103;6u", "\x1b[27;6;103~"},
-		"ctrl+shift+h": {"\x1b[104;6u", "\x1b[27;6;104~"},
-		"ctrl+shift+i": {"\x1b[105;6u", "\x1b[27;6;105~"},
-		"ctrl+shift+j": {"\x1b[106;6u", "\x1b[27;6;106~"},
-		"ctrl+shift+k": {"\x1b[107;6u", "\x1b[27;6;107~"},
-		"ctrl+shift+l": {"\x1b[108;6u", "\x1b[27;6;108~"},
-		"ctrl+shift+m": {"\x1b[109;6u", "\x1b[27;6;109~"},
-		"ctrl+shift+n": {"\x1b[110;6u", "\x1b[27;6;110~"},
-		"ctrl+shift+o": {"\x1b[111;6u", "\x1b[27;6;111~"},
-		"ctrl+shift+p": {"\x1b[112;6u", "\x1b[27;6;112~"},
-		"ctrl+shift+q": {"\x1b[113;6u", "\x1b[27;6;113~"},
-		"ctrl+shift+r": {"\x1b[114;6u", "\x1b[27;6;114~"},
-		"ctrl+shift+s": {"\x1b[115;6u", "\x1b[27;6;115~"},
-		"ctrl+shift+t": {"\x1b[116;6u", "\x1b[27;6;116~"},
-		"ctrl+shift+u": {"\x1b[117;6u", "\x1b[27;6;117~"},
-		"ctrl+shift+v": {"\x1b[118;6u", "\x1b[27;6;118~"},
-		"ctrl+shift+w": {"\x1b[119;6u", "\x1b[27;6;119~"},
-		"ctrl+shift+x": {"\x1b[120;6u", "\x1b[27;6;120~"},
-		"ctrl+shift+y": {"\x1b[121;6u", "\x1b[27;6;121~"},
-		"ctrl+shift+z": {"\x1b[122;6u", "\x1b[27;6;122~"},
 
 		// Ctrl+symbol
 		"ctrl+]": {"\x1d"},
@@ -637,6 +582,23 @@ var tuiKeyIDInputs = sync.OnceValue(func() map[string][]string {
 		"f11": {"\x1b[23~"},
 		"f12": {"\x1b[24~"},
 	}
+	for letter := 'a'; letter <= 'z'; letter++ {
+		code := strconv.Itoa(int(letter))
+		name := string(letter)
+		// Ctrl+letter: legacy byte + Kitty CSI-u + xterm modifyOtherKeys mode 2. ctrl+h, ctrl+i, ctrl+m and ctrl+q have no entry: their legacy
+		// bytes are backspace, tab, enter and flow control. ctrl+j: CSI-u form only. The legacy byte \x0a is already claimed by shift+enter
+		// (both insert a newline). Upstream 0.80.0 added ctrl+j as a newline binding; this covers the kitty / modifyOtherKeys sequences.
+		switch letter {
+		case 'h', 'i', 'm', 'q':
+		case 'j':
+			inputs["ctrl+"+name] = []string{"\x1b[" + code + ";5u", "\x1b[27;5;" + code + "~"}
+		default:
+			inputs["ctrl+"+name] = []string{string(letter - 'a' + 1), "\x1b[" + code + ";5u", "\x1b[27;5;" + code + "~"}
+		}
+		// Ctrl+Shift+letter: Kitty CSI-u + xterm modifyOtherKeys mode 2; modifier 6 = Shift(1) + Ctrl(4) + 1.
+		inputs["ctrl+shift+"+name] = []string{"\x1b[" + code + ";6u", "\x1b[27;6;" + code + "~"}
+	}
+	return inputs
 })
 
 // MatchesKeyID checks if raw terminal data matches a key identifier string
@@ -650,7 +612,7 @@ func MatchesKeyID(data, keyID string) bool {
 // like "ctrl+c", "alt+backspace", "ctrl+shift+left", etc.
 //
 // Dynamically representable keys use the protocol- and mode-aware matcher.
-// Function keys and clear fall back to their legacy sequence tables.
+// clear falls back to its legacy sequence table.
 func matchesKeyID(data, keyID string) bool {
 	info := lookupKeyID(keyID)
 	if !info.parsed {
@@ -660,12 +622,12 @@ func matchesKeyID(data, keyID string) bool {
 		return matchesKeyInfo(data, info)
 	}
 
-	// Function keys and clear have no CSI-u codepoint in Pi's key vocabulary,
-	// so they retain their legacy lookup. Every dynamically representable key
-	// goes through the mode-aware matcher above; consulting this table first
-	// would make ambiguous legacy bytes match the wrong key while Kitty mode is
-	// active. keys.ts matchesKey: a function key matches only without a
-	// modifier, and clear also with exactly shift or ctrl (lookupKeyID).
+	// clear has no Kitty codepoint in Pi's key vocabulary, so it keeps its
+	// legacy lookup. Every dynamically representable key goes through the
+	// mode-aware matcher above; consulting this table first would make
+	// ambiguous legacy bytes match the wrong key while Kitty mode is active.
+	// keys.ts matchesKey: clear matches without a modifier and with exactly
+	// shift or ctrl (lookupKeyID).
 	if !info.legacyOK {
 		return false
 	}

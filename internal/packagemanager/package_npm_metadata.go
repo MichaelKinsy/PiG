@@ -117,19 +117,35 @@ func newerNpmVersion(target, installed string) (bool, error) {
 	return targetVersion.Compare(installedVersion) > 0, nil
 }
 
-func shouldUpdateNpmSource(cwd string, sm *codingagent.SettingsManager, source sourceref.Ref, local bool) bool {
-	installedPath := filepath.Join(NpmInstallRoot(cwd, sm.AgentDir(), source, local), "node_modules", filepath.FromSlash(source.NPMName))
-	installed := ReadInstalledNpmVersion(installedPath)
+// npmUpdateCheck is the result of package-manager.ts shouldUpdateNpmSource: the decision, the version installed before the update and
+// the newer version the registry reported (empty when the lookup failed).
+type npmUpdateCheck struct {
+	shouldUpdate     bool
+	installedVersion string
+	targetVersion    string
+}
+
+func shouldUpdateNpmSource(cwd string, sm *codingagent.SettingsManager, source sourceref.Ref, local bool) npmUpdateCheck {
+	installed := ReadInstalledNpmVersion(npmInstalledPath(cwd, sm, source, local))
 	if installed == "" {
-		return true
+		return npmUpdateCheck{shouldUpdate: true}
 	}
 	latest, err := GetLatestNpmVersion(cwd, sm, source, local)
 	if err != nil {
 		// upstream: packages/coding-agent/src/core/package-manager.ts:shouldUpdateNpmSource
-		return true
+		return npmUpdateCheck{shouldUpdate: true, installedVersion: installed}
 	}
 	newer, err := newerNpmVersion(latest, installed)
-	return err != nil || newer
+	if err != nil {
+		// gt() throws inside the try block: the catch keeps the installed version and drops the target.
+		return npmUpdateCheck{shouldUpdate: true, installedVersion: installed}
+	}
+	return npmUpdateCheck{shouldUpdate: newer, installedVersion: installed, targetVersion: latest}
+}
+
+// npmInstalledPath is package-manager.ts getManagedNpmInstallPath: the managed directory of an installed npm package.
+func npmInstalledPath(cwd string, sm *codingagent.SettingsManager, source sourceref.Ref, local bool) string {
+	return filepath.Join(NpmInstallRoot(cwd, sm.AgentDir(), source, local), "node_modules", filepath.FromSlash(source.NPMName))
 }
 
 func npmHasAvailableUpdate(cwd string, sm *codingagent.SettingsManager, source sourceref.Ref, installedPath string, local bool) bool {

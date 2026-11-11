@@ -24,6 +24,9 @@ func mcpEntries(options Options) []Extension {
 	return []Extension{{Name: "mcp", Replaceable: true, Factory: mcpext.CreateMcpExtension(mcp)}}
 }
 
+// RefuseMcpConfigFiles makes the MCP extension start no server from `mcp.json` and report message instead. An empty message accepts them.
+func (o *Options) RefuseMcpConfigFiles(message string) { o.Mcp.RefuseConfigFiles = message }
+
 // ConfigureMcp sets where the MCP extension reads `mcp.json` and keeps its credentials and log (the agent directory and the
 // per-project configuration directory name), how it opens an OAuth authorization URL, and, when given, how it copies one.
 func (o *Options) ConfigureMcp(agentDir, configDirName string, openURL func(url string), copyToClipboard ...func(text string) error) {

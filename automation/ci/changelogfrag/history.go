@@ -46,6 +46,7 @@ type history struct {
 func (h *history) git(args ...string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), gitTimeout)
 	defer cancel()
+	//nolint:gosec // G204 (class a): program is literal git; args are callers' fixed subcommands and hex SHAs matched by fixMarker or nameSHA, with -C from the changelog dir flag.
 	cmd := exec.CommandContext(ctx, "git", append([]string{"-C", h.dir}, args...)...)
 	var out, errb bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &out, &errb

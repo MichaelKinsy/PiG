@@ -24,7 +24,7 @@ func canonical(l *Ledger) {
 }
 
 // keepPrior replaces each generated entry by the committed entry of the same bug when that entry records its fix commits. Regenerating then
-// leaves the entries of other branches as they are, including their commit lists, which differ between clones of different ages, except that a recorded test the tree no longer has is dropped. An entry
+// leaves the entries of other branches as they are, including their commit lists, which differ between clones of different ages, except that a recorded test the tree no longer has follows moved-tests.txt to where it went, or is dropped when no line says. An entry
 // with no commit yet is generated again, so it picks up its commit once it exists.
 //
 // The same bug is the committed entry with the generated entry's identity that shares a fix commit with it. Many commit entries share one
@@ -35,7 +35,7 @@ func canonical(l *Ledger) {
 // a bug the history no longer has and is dropped; a generated entry that no committed entry claims is new and keeps its generated form.
 // Only an entry whose identity is the bug itself (a release note or a divergence, whose commit list legitimately differs between clones) also
 // takes the committed entry of its identity that no other generated entry claimed when they share no commit.
-func keepPrior(l *Ledger, prior []Entry, root string) {
+func keepPrior(l *Ledger, prior []Entry, root string, moved movedTests) {
 	type committed struct {
 		entry Entry
 		taken bool
@@ -43,11 +43,7 @@ func keepPrior(l *Ledger, prior []Entry, root string) {
 	have := map[string][]*committed{}
 	for _, p := range prior {
 		if len(p.Commits) > 0 {
-			// A test a port retired or renamed since the entry was committed no longer names anything.
-			p.Tests = slices.DeleteFunc(slices.Clone(p.Tests), func(t string) bool { return !testExists(root, t) })
-			if p.Tests == nil {
-				p.Tests = []string{}
-			}
+			p.Tests = recordedTests(root, moved, p.Tests)
 			k := identity(p)
 			have[k] = append(have[k], &committed{entry: p})
 		}

@@ -264,6 +264,7 @@ func Prepare(cmd *exec.Cmd) { Current().Prepare(cmd) }
 // Command is exec.Command for a command that starts through the linker when
 // the running process needs it.
 func Command(name string, args ...string) *exec.Cmd {
+	//nolint:gosec // G204 (class b): generic wrapper that adds the linker prefix: each caller passes its own program, mostly PiG's resolved Go, node, cargo or sbcl toolchain, the installed pig, or a literal git or tmux.
 	cmd := exec.Command(name, args...)
 	Prepare(cmd)
 	return cmd
@@ -272,6 +273,7 @@ func Command(name string, args ...string) *exec.Cmd {
 // CommandContext is exec.CommandContext for a command that starts through the
 // linker when the running process needs it.
 func CommandContext(ctx context.Context, name string, args ...string) *exec.Cmd {
+	//nolint:gosec // G204 (class b): generic wrapper that adds the linker prefix: each caller passes its own program, mostly PiG's resolved Go, node, cargo or sbcl toolchain, the installed pig, or a literal git or tmux.
 	cmd := exec.CommandContext(ctx, name, args...)
 	Prepare(cmd)
 	return cmd

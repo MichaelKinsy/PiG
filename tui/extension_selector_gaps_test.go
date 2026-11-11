@@ -74,6 +74,7 @@ func TestExtensionSelectorComponentNavigationSelectionAndCompletion(t *testing.T
 		pg[i] = string(rune('a' + i))
 	}
 	p := NewExtensionSelectorComponent("Pick", pg, nil, nil)
+	p.HandleInput("j")
 	p.HandleInput("\x1b[6~")
 	pageMarked := func() string {
 		for line := range strings.SplitSeq(stripANSI(strings.Join(p.Render(60), "\n")), "\n") {
@@ -83,12 +84,12 @@ func TestExtensionSelectorComponentNavigationSelectionAndCompletion(t *testing.T
 		}
 		return ""
 	}
-	if p.SelectedIndex() != 8 || pageMarked() != "→ i" {
-		t.Fatalf("page down moved to %d, marked %q; want 8 (i)", p.SelectedIndex(), pageMarked())
+	if p.SelectedIndex() != 1 || pageMarked() != "→ b" {
+		t.Fatalf("page down moved to %d, marked %q; want it ignored at 1 (b)", p.SelectedIndex(), pageMarked())
 	}
 	p.HandleInput("\x1b[5~")
-	if p.SelectedIndex() != 0 || pageMarked() != "→ a" {
-		t.Fatalf("page up moved to %d, marked %q", p.SelectedIndex(), pageMarked())
+	if p.SelectedIndex() != 1 || pageMarked() != "→ b" {
+		t.Fatalf("page up moved to %d, marked %q; want it ignored at 1 (b)", p.SelectedIndex(), pageMarked())
 	}
 }
 

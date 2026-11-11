@@ -1,6 +1,6 @@
 # Keybindings
 
-PiG reads keybindings from `~/.pig/agent/keybindings.json`. The file is optional. If it is absent, PiG uses the defaults in this page. The action names and defaults are those of Pi 1.4.0 ([Pi's keybindings reference](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/keybindings.md)).
+PiG reads keybindings from `~/.pig/agent/keybindings.json`. The file is optional. If it is absent, PiG uses the defaults in this page. The action names and defaults are those of Pi 1.5.0 ([Pi's keybindings reference](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/keybindings.md)).
 
 Each entry maps one action to one key or a list of keys. To change a binding, write the action name and the keys you want:
 
@@ -13,7 +13,7 @@ Each entry maps one action to one key or a list of keys. To change a binding, wr
 
 A binding in the file replaces the default for that action. It does not add to it. Bindings you do not name keep their defaults. Set an action to `[]` to leave the action with no key.
 
-For validation and completion in your editor, add `"$schema": "https://pi.dev/schemas/keybindings.schema.json"` to the file. PiG ignores the `$schema` key when it loads the bindings. Pi 1.4.0 added this schema.
+For validation and completion in your editor, add `"$schema": "https://pi.dev/schemas/keybindings.schema.json"` to the file. PiG ignores the `$schema` key when it loads the bindings. Pi 1.2.0 added this schema.
 
 Set `PIG_CODING_AGENT_DIR` to read the file from a different directory. After you edit the file, run `/reload` to apply the change to the running session.
 
@@ -88,6 +88,13 @@ The keys below are the macOS defaults. Platform differences are listed after the
 | `app.message.copy` | `ctrl+x` | Copy the selected message in `/tree`. In fullscreen mode with `fullscreenCopyOnSelect` set to `false`, copy the active selection. Otherwise copy the last assistant message. On OAuth sign-in screens, copy the sign-in URL |
 | `app.message.dequeue` | `alt+up` | Restore queued messages |
 | `app.message.followUp` | `alt+enter` | Queue follow-up message |
+
+macOS Terminal.app sends Option+Up as plain Up in its default profile, so `app.message.dequeue` (`alt+up`) never arrives there. Pi treats that Up as history recall: the queued message appears in the editor as a copy, stays queued, and is still sent. PiG differs in two ways (D228):
+
+- In Terminal.app (`TERM_PROGRAM=Apple_Terminal`), when the editor is empty, a message is queued and `app.message.dequeue` is bound to `alt+up`, plain Up runs `app.message.dequeue`. The queued-message hint then names `Up`. In every other state Up keeps Pi's behavior.
+- Everywhere else, when Up recalls history while a message is queued, PiG shows one dim line under the editor, once per run: `That's a copy. The queued message still sends. <key> edits the queue.` Here `<key>` is the key bound to `app.message.dequeue`. In tmux, over ssh, or in a terminal PiG does not know, the line also says how to map Option+Up to `\033[1;3A` in Terminal Settings > Profiles > Keyboard. Do not enable "Use Option as Meta key" for this: it makes Option+Up send Esc and then Up, and Esc aborts the turn.
+
+Both differences apply to PiG's own editor only. An extension's custom editor keeps Pi's Up (D228).
 
 Clipboard image helper commands reject stdout larger than 50 MiB. PiG cancels and joins an oversized helper instead of retaining its output. Unsupported image formats such as BMP are converted to PNG; a failed conversion produces no image.
 
@@ -192,11 +199,11 @@ During initial theme detection and managed-tool setup, submitting keeps the text
 | `tui.select.confirm` | `enter` | Confirm selection |
 | `tui.select.cancel` | `escape`, `ctrl+c` | Cancel selection |
 
-PiG moves the selection by one visible page on PageUp and PageDown in every selection list: select and settings lists, the open autocomplete list, and the model, session, tree, OAuth, scoped-models, config, trust and extension selectors. The transcript behind an open list does not scroll. Pi 1.4.0 scrolls the fullscreen transcript on these keys while a selector is open, and lists without a page action ignore them (D155, [Pi #7629](https://github.com/earendil-works/pi/issues/7629)). An extension overlay cannot capture the page keys yet, so they still scroll the transcript there.
+PiG pages like Pi 1.5.0: PageUp and PageDown move the selection by one visible page in the select and settings lists, the open autocomplete list, and the model, session, tree, user-message, OAuth, scoped-models, llama.cpp and `/mcp` selectors, and the fullscreen transcript behind such a list does not scroll. The config selector also pages, but, as in Pi, it does not keep the fullscreen transcript from scrolling on those keys. The extension selector, the trust selector and the first-time setup dialog have no page keys and ignore them ([Pi #7629](https://github.com/earendil-works/pi/issues/7629)).
 
 ### Fullscreen transcript
 
-These actions apply when `tuiMode` is `fullscreen`. They take precedence over editor actions that use the same key.
+These actions apply when `tuiMode` is `fullscreen`. They take precedence over editor actions that use the same key. While an overlay or a scrollable list such as autocomplete, `/settings`, or the model selector has focus, the scrolling and prompt-jump actions go to it instead of the transcript, so `tui.select.pageUp` and `tui.select.pageDown` move the list selection. Transcript search actions keep working.
 
 | Action | Default key | Effect |
 |---|---|---|
@@ -235,6 +242,8 @@ Some actions use a different key on each platform, because the terminal or the o
 
 On native Windows, `app.suspend` has no default because Windows terminals do not support Unix job control. If you assign it, PiG shows a status message instead of suspending.
 
+After `ctrl+z`, `bg` leaves the session stopped: PiG does not take the terminal back from the shell, and `fg` returns to it. Pi restarts its UI on `bg` and stops when its first terminal call fails (divergence D227).
+
 ## Actions with no default key
 
 These actions exist but have no key until you assign one. Reach them with their slash command, or bind them in `keybindings.json`.
@@ -260,7 +269,7 @@ The key names are:
 
 A `super` binding needs a terminal that reports the modifier on its own, usually through the Kitty keyboard protocol.
 
-A shifted symbol such as `+` matches the character the key produces, so `ctrl++` responds under the Kitty keyboard protocol and modifyOtherKeys. Pi 1.1.0 did not match these bindings; Pi 1.4.0 does.
+A shifted symbol such as `+` matches the character the key produces, so `ctrl++` responds under the Kitty keyboard protocol and modifyOtherKeys. Pi 1.1.0 did not match these bindings; Pi 1.5.0 does.
 
 Terminals do not all report the same keys. If a binding does not respond, the terminal usually consumed the key before PiG saw it. See [terminal setup](/docs/latest/terminal-setup).
 

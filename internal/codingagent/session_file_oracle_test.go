@@ -72,6 +72,8 @@ emit(input.map((p) => { const entries = mod.loadEntriesFromFile(p); return { ent
 	}
 }
 
+// pi: packages/coding-agent/src/core/session-manager.ts
+
 // TestDefaultSessionDirMatchesPi compares the directory name getDefaultSessionDir of Pi 1.0.4 derives from a cwd with GetDefaultSessionDirPath.
 func TestDefaultSessionDirMatchesPi(t *testing.T) {
 	agentDir := t.TempDir()

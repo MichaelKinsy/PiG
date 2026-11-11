@@ -153,9 +153,11 @@ func renderFooter(ctx context.Context, run evals.AgentRun, agentDir, sessionPath
 	if !extensions {
 		args = append(args, "--no-extensions")
 	}
+	//nolint:gosec // G204 (class a): program is literal tmux; args are a generated session name, the workspace, env pairs, and the pig binary run.PigPath as the pane command with --session and --model.
 	if out, err := exec.CommandContext(ctx, "tmux", args...).CombinedOutput(); err != nil {
 		return "", fmt.Errorf("tmux new-session: %w: %s", err, out)
 	}
+	//nolint:gosec // G204 (class a): program is literal tmux; kill-session on a generated session name.
 	defer func() { _ = exec.Command("tmux", "kill-session", "-t", name).Run() }()
 	var pane string
 	deadline := time.Now().Add(30 * time.Second)
@@ -165,6 +167,7 @@ func renderFooter(ctx context.Context, run evals.AgentRun, agentDir, sessionPath
 			return "", ctx.Err()
 		case <-time.After(100 * time.Millisecond):
 		}
+		//nolint:gosec // G204 (class a): program is literal tmux; capture-pane on a generated session name.
 		out, err := exec.CommandContext(ctx, "tmux", "capture-pane", "-p", "-t", name).Output()
 		if err != nil {
 			return pane, fmt.Errorf("pig exited before rendering the footer: %w", err)
@@ -172,6 +175,7 @@ func renderFooter(ctx context.Context, run evals.AgentRun, agentDir, sessionPath
 		if pane = string(out); ready.MatchString(pane) {
 			// Let the footer settle: a later render may replace the status.
 			time.Sleep(300 * time.Millisecond)
+			//nolint:gosec // G204 (class a): program is literal tmux; capture-pane on a generated session name, after the settle wait.
 			out, err = exec.CommandContext(ctx, "tmux", "capture-pane", "-p", "-t", name).Output()
 			return string(out), err
 		}

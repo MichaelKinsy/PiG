@@ -155,4 +155,4 @@ Publish the Packages before the Piglet that names them, as above. In the Piglet 
 
 ## Additive
 
-Publishing to npm has no Pi counterpart. Pi's package workflow is plain `npm publish` with the `pi-package` keyword ([Pi's packages reference](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/packages.md)), and PiG keeps that working unchanged. `pig package publish --to npm` and `pig piglet publish --to npm` are PiG additions (D18). The PiG repository records them in `docs/additive-features.md`.
+Publishing to npm has no Pi counterpart. Pi's package workflow is plain `npm publish` with the `pi-package` keyword ([Pi's packages reference](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/packages.md)), and PiG keeps that working unchanged. `pig package publish --to npm` and `pig piglet publish --to npm` are PiG additions (D18). The PiG repository records them in `docs/additive-features.md`.

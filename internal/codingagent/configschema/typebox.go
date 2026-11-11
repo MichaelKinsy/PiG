@@ -83,15 +83,6 @@ func Literal(value any, opts ...Opt) *Schema {
 	return withOpts(node(Opt{"type", kind}, Opt{"const", value}), opts)
 }
 
-// Enum is Type.Enum over a list of string values.
-func Enum(values []string, opts ...Opt) *Schema {
-	list := make([]any, len(values))
-	for i, v := range values {
-		list[i] = v
-	}
-	return withOpts(node(Opt{"enum", list}), opts)
-}
-
 // Union is Type.Union.
 func Union(alternatives []*Schema, opts ...Opt) *Schema {
 	list := make([]any, len(alternatives))
@@ -129,28 +120,6 @@ func Object(props []Prop, opts ...Opt) *Schema {
 	}
 	s.kv = append(s.kv, Opt{"properties", properties})
 	return withOpts(s, opts)
-}
-
-// RecordOf is Type.Record over the string literals keys: an object with one required property per key.
-func RecordOf(keys []string, value *Schema, opts ...Opt) *Schema {
-	props := make([]Prop, len(keys))
-	for i, k := range keys {
-		props[i] = P(k, value)
-	}
-	return Object(props, opts...)
-}
-
-// Partial is Type.Partial of an object: no property is required.
-func Partial(s *Schema, opts ...Opt) *Schema {
-	out := s.clone()
-	kept := out.kv[:0]
-	for _, o := range out.kv {
-		if o.K != "required" {
-			kept = append(kept, o)
-		}
-	}
-	out.kv = kept
-	return withOpts(out, opts)
 }
 
 // Ref is a local reference to a $defs entry; annotations follow the $ref like the generator's output.

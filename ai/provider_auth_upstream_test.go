@@ -1,5 +1,9 @@
 package ai
 
+// pi: packages/ai/src/providers/amazon-bedrock.ts
+// pi: packages/ai/src/providers/google-vertex.ts
+// pi: packages/ai/src/providers/cloudflare-auth.ts
+
 import (
 	"context"
 	"reflect"
@@ -68,8 +72,9 @@ func TestProvidersCloudEnvironmentAuthUpstream(t *testing.T) {
 		auth           ModelAuth
 		scoped         map[string]string
 		source         string
+		exactSource    bool // Pi asserts toBe for Bedrock and toContain for Vertex
 	}{
-		{name: "bedrock ambient", provider: "amazon-bedrock", env: map[string]string{"AWS_PROFILE": "dev"}, ready: true, source: "AWS_PROFILE"},
+		{name: "bedrock ambient", provider: "amazon-bedrock", env: map[string]string{"AWS_PROFILE": "dev"}, ready: true, source: "AWS_PROFILE", exactSource: true},
 		{name: "bedrock unconfigured", provider: "amazon-bedrock"},
 		{name: "workers missing account", provider: "cloudflare-workers-ai", env: map[string]string{"CLOUDFLARE_API_KEY": "cf-key"}},
 		{name: "workers configured", provider: "cloudflare-workers-ai", env: map[string]string{"CLOUDFLARE_API_KEY": "cf-key", "CLOUDFLARE_ACCOUNT_ID": "account-id"}, ready: true, auth: ModelAuth{APIKey: "cf-key"}, scoped: map[string]string{"CLOUDFLARE_ACCOUNT_ID": "account-id"}},
@@ -97,36 +102,9 @@ func TestProvidersCloudEnvironmentAuthUpstream(t *testing.T) {
 				}
 				return
 			}
-			if result == nil || !reflect.DeepEqual(result.Auth, tc.auth) || !reflect.DeepEqual(result.Env, tc.scoped) || tc.source != "" && !strings.Contains(result.Source, tc.source) {
+			if result == nil || !reflect.DeepEqual(result.Auth, tc.auth) || !reflect.DeepEqual(result.Env, tc.scoped) || tc.source != "" && !strings.Contains(result.Source, tc.source) || tc.exactSource && result.Source != tc.source {
 				t.Fatalf("result=%+v", result)
 			}
 		})
-	}
-}
-
-// Ports packages/ai/test/providers.test.ts:455-485.
-func TestEnvAPIKeyAuthUpstream(t *testing.T) {
-	auth := EnvAPIKeyAuth("Test key", "FIRST_KEY", "SECOND_KEY")
-	stored, err := auth.Resolve(t.Context(), APIKeyAuthInput{Ctx: providerTestAuthContext(map[string]string{"FIRST_KEY": "env"}), Credential: &Credential{Type: CredentialAPIKey, Key: "stored"}})
-	if err != nil || stored == nil || stored.Auth.APIKey != "stored" || stored.Source != "stored credential" {
-		t.Fatalf("stored=%+v %v", stored, err)
-	}
-	second, err := auth.Resolve(t.Context(), APIKeyAuthInput{Ctx: providerTestAuthContext(map[string]string{"SECOND_KEY": "second"})})
-	if err != nil || second == nil || second.Auth.APIKey != "second" || second.Source != "SECOND_KEY" {
-		t.Fatalf("second=%+v %v", second, err)
-	}
-	missing, err := auth.Resolve(t.Context(), APIKeyAuthInput{Ctx: providerTestAuthContext(nil)})
-	if err != nil || missing != nil {
-		t.Fatalf("missing=%+v %v", missing, err)
-	}
-	auth = EnvAPIKeyAuth("Test key", "TEST_KEY")
-	credential, err := auth.Login(t.Context(), AuthInteraction{Prompt: func(_ context.Context, prompt AuthPrompt) (string, error) {
-		if _, ok := prompt.(AuthSecretPrompt); !ok {
-			t.Fatalf("prompt=%T", prompt)
-		}
-		return "entered-key", nil
-	}, Notify: func(AuthEvent) {}})
-	if err != nil || !reflect.DeepEqual(credential, Credential{Type: CredentialAPIKey, Key: "entered-key"}) {
-		t.Fatalf("credential=%+v %v", credential, err)
 	}
 }

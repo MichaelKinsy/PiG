@@ -93,12 +93,13 @@ build:
 | `model` | Set a provider, model, context, or thinking preference. |
 | `systemPrompt` | Select one inline or file-based system prompt. |
 | `discovery` | Permit or reject ambient workspace and user Resources. |
+| `contextFiles` | Set `trusted-only` to load no project `AGENTS.md` or `CLAUDE.md` until the project is trusted. |
 | `secrets` | Declare logical secret requirements without storing values. |
 | `agentEnv` | Require an image, Dev Container, or typed environment source. |
 | `slots` | Replace a part of PiG with a fused Go member. `frontend` is the only slot (D91); see [Piglet Binaries](piglet-binaries.md#frontend-members). |
 | `strip` | Strip built-in tools, slash commands, built-in extensions, model APIs, and features; a Piglet Binary compiles most of them out (D92). |
 | `release` | Set release identity. |
-| `build` | Set portable Binary target, output, and realization requirements, and whether the Binary [accepts overlay Piglets](piglet-binaries.md#accept-overlay-piglets) (`allowOverlays`, D202). |
+| `build` | Set portable Binary target, output, and realization requirements, and whether the Binary is [closed](piglet-binaries.md#accept-overlay-piglets) (`closed`, D202). A Binary accepts overlay Piglets unless it is closed. |
 
 ## Model selection
 
@@ -224,6 +225,20 @@ extends:
       tools: [bash]
 ```
 
+A Piglet Binary that is not built with `build.closed: true` accepts a Piglet selected at launch as a child of its own Piglet. In that Piglet an `extends` block may omit `source`: it then extends the Binary and carries only `remove` and `allowWiden`. Stock pig refuses such a Piglet by name, because it has no Binary to extend.
+
+```yaml
+name: tern-lite
+extends:
+  allowWiden: true
+  remove:
+    slots: [frontend]
+    strip:
+      tools: [bash]
+```
+
+An overlay can re-enable a `stripped(runtime)` entry (a tool, a command, `themes`, `skills`, `prompt-templates`). It cannot re-enable a `stripped(binary)` entry, because a build tag left that code out of the Binary. See [Accept overlay Piglets](piglet-binaries.md#accept-overlay-piglets).
+
 `pig piglet show` lists the changed slots in one `Slots` section, each named by its manifest path. A keep-mode list shows its kept IDs above the expanded rows:
 
 ```text
@@ -268,6 +283,16 @@ discovery:
 Explicit entries always load when their origins resolve. An entry whose origins do not resolve is an extension load error: PiG reports each one and exits with status 1, as it does for any extension that fails to load. Like an explicit `-e` path, a Piglet entry still loads with `-ne`, so fix or remove the entry to start. In an active Piglet, omitted or empty discovery lists mean no ambient Resources of that type. Bare Stock PiG keeps its normal discovery behavior.
 
 Use explicit discovery policy to prevent installed or workspace Resources from changing an application unexpectedly.
+
+## Context files
+
+By default, PiG loads `AGENTS.md` and `CLAUDE.md` files from the agent directory, the working directory and every parent directory, whether or not the project is trusted. A Piglet can change this:
+
+```yaml
+contextFiles: trusted-only
+```
+
+With `trusted-only`, a project that has a context file needs a trust decision. Until the project is trusted, PiG loads only the context file in the agent directory and the one in your home directory. PiG prints a notice that names each file it skipped. `contextFiles: all` is the default. A Piglet that extends a `trusted-only` Piglet and sets `all` widens its base, so it needs `allowWiden`.
 
 ## Origins
 
@@ -537,7 +562,7 @@ In the interactive screen, `/piglet` prints the active Piglet and its source:
 
 Checked in the provider request.
 
-**The system prompt is replaced.** Without a Piglet, the system prompt starts `You are an expert coding assistant operating inside pig, a coding agent harness.` With this Piglet it starts with your text, followed by the working directory (`<cwd>/home/you/project</cwd>`). The Piglet's text is the prompt: it does not add to PiG's. Leave `systemPrompt` out to keep PiG's.
+**The system prompt is replaced.** Without a Piglet, the system prompt starts `You are a coding assistant running inside pig, a coding agent harness.` With this Piglet it starts with your text, followed by the working directory (`<cwd>/home/you/project</cwd>`). The Piglet's text is the prompt: it does not add to PiG's. Leave `systemPrompt` out to keep PiG's.
 
 **`tools` is a ceiling, not a list to turn on.** A Piglet's `tools` limits which built-in tools can be active. It does not activate any. The active set still starts from the default (`read`, `bash`, `edit`, `write`) or from your `defaultTools` setting or `--tools` option, and the Piglet removes everything outside its list. With `tools: [read, grep, find, ls]` the model received only `read`, because `bash`, `edit` and `write` are outside the ceiling and `grep`, `find` and `ls` are not in the default set:
 

@@ -16,6 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/third_party/awssdk/service/bedrockruntime"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/ai/providers/bedrock"
 )
 
 // probeRequest is one provider request: the transcript context and the
@@ -394,7 +395,7 @@ func probeMistral() any {
 func probeBedrock() any {
 	server, cap := captureServer()
 	defer server.Close()
-	provider := ai.NewBedrockProviderWithName("anthropic.claude-3-5-sonnet-20241022-v2:0", "Claude 3.5 Sonnet", server.URL)
+	provider := bedrock.NewBedrockProviderWithName("anthropic.claude-3-5-sonnet-20241022-v2:0", "Claude 3.5 Sonnet", server.URL)
 	return runProbe(provider, cap, true)
 }
 

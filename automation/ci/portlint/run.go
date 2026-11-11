@@ -3,6 +3,7 @@
 package main
 
 import (
+	"cmp"
 	"fmt"
 	"go/ast"
 	"go/token"
@@ -10,6 +11,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/checker"
@@ -95,19 +97,95 @@ func scanAll(root, tags string, patterns []string) ([]Hit, error) {
 	return hits, nil
 }
 
-// scan loads the packages with their tests and runs every analyzer.
+// batchSize is how many packages, each with its test variants, are loaded and analyzed together, and scanWorkers how many batches run at once. The checks need every syntax tree and type table of the package they run on, and nothing from the others, so a batch's trees are garbage once it is done. Loading the whole module at once held every tree at the same time, about 12 GB at its peak; a batch alone leaves most of the CPUs idle while it waits for its slowest package.
+var (
+	batchSize   = 40
+	scanWorkers = 2
+)
+
+// scan loads the packages with their tests, a batch at a time, and runs every analyzer.
 func scan(root, tags string, patterns []string) ([]Hit, error) {
-	cfg := &packages.Config{
-		Mode:  packages.LoadAllSyntax,
-		Dir:   root,
-		Tests: true,
-	}
+	var flags []string
 	if tags != "" {
-		cfg.BuildFlags = []string{"-tags=" + tags}
+		flags = []string{"-tags=" + tags}
 	}
-	pkgs, err := packages.Load(cfg, patterns...)
+	// The module's packages are listed without parsing or type-checking anything; each batch then loads its own.
+	listed, err := packages.Load(&packages.Config{Mode: packages.NeedName, Dir: root, BuildFlags: flags}, patterns...)
 	if err != nil {
 		return nil, err
+	}
+	paths := make([]string, 0, len(listed))
+	for _, p := range listed {
+		paths = append(paths, cmp.Or(p.PkgPath, p.ID))
+	}
+	slices.Sort(paths)
+	paths = slices.Compact(paths)
+	var analyzers []*analysis.Analyzer
+	for _, c := range checks.All() {
+		analyzers = append(analyzers, c.Analyzer)
+	}
+	s := &batchScan{root: root, analyzers: analyzers, seen: map[string]bool{}, lines: map[string][]string{}}
+	var wg sync.WaitGroup
+	slots := make(chan struct{}, scanWorkers)
+	for batch := range slices.Chunk(paths, batchSize) {
+		slots <- struct{}{}
+		if s.failed() {
+			break
+		}
+		wg.Go(func() {
+			defer func() { <-slots }()
+			cfg := &packages.Config{
+				Mode:       packages.LoadSyntax,
+				Dir:        root,
+				Tests:      true,
+				BuildFlags: flags,
+			}
+			s.fail(s.scanBatch(cfg, batch, tags == ""))
+		})
+	}
+	wg.Wait()
+	if s.err != nil {
+		return nil, s.err
+	}
+	slices.SortFunc(s.hits, func(a, b Hit) int {
+		return strings.Compare(fmt.Sprintf("%s|%s|%08d|%s", a.Check, a.File, a.Line, a.Message), fmt.Sprintf("%s|%s|%08d|%s", b.Check, b.File, b.Line, b.Message))
+	})
+	return s.hits, nil
+}
+
+// batchScan accumulates the findings of every batch of one scan.
+type batchScan struct {
+	root      string
+	analyzers []*analysis.Analyzer
+
+	mu    sync.Mutex
+	err   error
+	seen  map[string]bool
+	lines map[string][]string
+	hits  []Hit
+}
+
+// fail records the first error of a batch.
+func (s *batchScan) fail(err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.err == nil {
+		s.err = err
+	}
+}
+
+// failed reports whether a batch has failed, so no later batch needs loading.
+func (s *batchScan) failed() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.err != nil
+}
+
+// scanBatch loads the packages at paths with their tests and appends the findings of every analyzer to s.hits.
+func (s *batchScan) scanBatch(cfg *packages.Config, paths []string, mustLoad bool) error {
+	pkgs, err := packages.Load(cfg, paths...)
+	if err != nil {
+		return err
 	}
 	var loadErrs []string
 	var clean []*packages.Package
@@ -120,28 +198,22 @@ func scan(root, tags string, patterns []string) ([]Hit, error) {
 		}
 	}
 	// The default build must load cleanly. A tagged build compiles only part of a package set that is built with other tags too, so its broken packages are left to the default pass.
-	if len(loadErrs) > 0 && tags == "" {
-		return nil, fmt.Errorf("load: %s", strings.Join(loadErrs[:min(5, len(loadErrs))], "; "))
+	if len(loadErrs) > 0 && mustLoad {
+		return fmt.Errorf("load: %s", strings.Join(loadErrs[:min(5, len(loadErrs))], "; "))
 	}
-	pkgs = clean
-	var analyzers []*analysis.Analyzer
-	for _, c := range checks.All() {
-		analyzers = append(analyzers, c.Analyzer)
-	}
-	graph, err := checker.Analyze(analyzers, pkgs, nil)
+	graph, err := checker.Analyze(s.analyzers, clean, nil)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	seen := map[string]bool{}
-	var hits []Hit
-	lines := map[string][]string{}
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	for _, act := range graph.Roots {
 		if act.Err != nil {
-			return nil, fmt.Errorf("%s on %s: %w", act.Analyzer.Name, act.Package.PkgPath, act.Err)
+			return fmt.Errorf("%s on %s: %w", act.Analyzer.Name, act.Package.PkgPath, act.Err)
 		}
 		for _, d := range act.Diagnostics {
 			pos := act.Package.Fset.Position(d.Pos)
-			rel, err := filepath.Rel(root, pos.Filename)
+			rel, err := filepath.Rel(s.root, pos.Filename)
 			if err != nil || strings.HasPrefix(rel, "..") {
 				continue
 			}
@@ -151,30 +223,27 @@ func scan(root, tags string, patterns []string) ([]Hit, error) {
 				continue
 			}
 			id := fmt.Sprintf("%s|%s:%d|%s", d.Category, rel, pos.Line, d.Message)
-			if seen[id] {
+			if s.seen[id] {
 				continue
 			}
-			seen[id] = true
-			src, ok := lines[pos.Filename]
+			s.seen[id] = true
+			src, ok := s.lines[pos.Filename]
 			if !ok {
 				data, _ := os.ReadFile(pos.Filename)
 				src = strings.Split(string(data), "\n")
-				lines[pos.Filename] = src
+				s.lines[pos.Filename] = src
 			}
 			snippet := ""
 			if pos.Line-1 < len(src) {
 				snippet = strings.TrimSpace(src[pos.Line-1])
 			}
-			hits = append(hits, Hit{
+			s.hits = append(s.hits, Hit{
 				Check: d.Category, File: rel, Line: pos.Line, Func: enclosingFunc(act.Package, d.Pos),
 				Snippet: snippet, Message: d.Message,
 			})
 		}
 	}
-	slices.SortFunc(hits, func(a, b Hit) int {
-		return strings.Compare(fmt.Sprintf("%s|%s|%08d|%s", a.Check, a.File, a.Line, a.Message), fmt.Sprintf("%s|%s|%08d|%s", b.Check, b.File, b.Line, b.Message))
-	})
-	return hits, nil
+	return nil
 }
 
 // enclosingFunc names the declaration containing pos: Recv.Name or Name.

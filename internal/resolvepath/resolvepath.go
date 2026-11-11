@@ -138,9 +138,17 @@ func ResolveTrimmed(input, baseDir string) (string, error) {
 }
 
 // ResolvePackagePath uses the package manager's HOME || homedir() tilde expansion and trims the input, without changing normalization of baseDir.
+// Ports packages/coding-agent/src/core/package-manager.ts (resolvePath, resolvePathFromBase).
 // Ports packages/coding-agent/src/core/package-manager.ts:221-223,2145-2151.
 func ResolvePackagePath(input, baseDir string) (string, error) {
 	return resolve(Trim(input), baseDir, os.Getenv("HOME"))
+}
+
+// IsAbsolutePackagePath reports whether a Package path names its location without a base directory: after the package manager's trim and tilde
+// and file:// URL expansion it is absolute, so it resolves to the same place from any settings directory. A path that does not expand is not absolute.
+func IsAbsolutePackagePath(input string) bool {
+	normalized, err := normalize(Trim(input), os.Getenv("HOME"))
+	return err == nil && normalized != "" && nodepath.IsAbsolute(normalized)
 }
 
 // Trim applies String.prototype.trim, including BOM but excluding NEL.

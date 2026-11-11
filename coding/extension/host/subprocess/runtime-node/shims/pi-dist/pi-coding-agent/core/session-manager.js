@@ -6,7 +6,7 @@ import { basename, join, resolve } from "path";
 import { createInterface } from "readline";
 import { StringDecoder } from "string_decoder";
 import { APP_NAME, getAgentDir as getDefaultAgentDir, getSessionsDir } from "../config.js";
-import { normalizePath, resolvePath } from "../utils/paths.js";
+import { normalizePath, pathsEqual, resolvePath } from "../utils/paths.js";
 import { createBranchSummaryMessage, createCompactionSummaryMessage, createCustomMessage, } from "./messages.js";
 export const CURRENT_SESSION_VERSION = 3;
 function createSessionId() {
@@ -232,7 +232,8 @@ export function buildContextEntries(entries, leafId, byId) {
  * If leafId is provided, walks from that entry to root.
  * Handles compaction and branch summaries along the path.
  */
-function projectContextEntry(entry, edit) {
+/** Project one entry into model-visible messages, applying its latest context edit if any. */
+export function projectContextEntry(entry, edit) {
     const messages = sessionEntryToContextMessages(entry);
     if (!edit)
         return messages;
@@ -439,7 +440,7 @@ function getSessionHeaderCwd(header) {
     return typeof cwd === "string" ? cwd : undefined;
 }
 function sessionCwdMatches(cwd, resolvedCwd) {
-    return cwd !== undefined && cwd !== "" && resolvePath(cwd) === resolvedCwd;
+    return cwd !== undefined && cwd !== "" && pathsEqual(resolvePath(cwd), resolvedCwd);
 }
 /** Exported for testing */
 export function findMostRecentSession(sessionDir, cwd) {
@@ -774,7 +775,7 @@ export class SessionManager {
         return this.sessionDir;
     }
     usesDefaultSessionDir() {
-        return this.sessionDir === getDefaultSessionDirPath(this.cwd);
+        return pathsEqual(this.sessionDir, getDefaultSessionDirPath(this.cwd));
     }
     getSessionId() {
         return this.sessionId;
@@ -813,10 +814,21 @@ export class SessionManager {
         }
     }
     _appendEntry(entry) {
+        const previousLeafId = this.leafId;
         this.fileEntries.push(entry);
         this.byId.set(entry.id, entry);
         this.leafId = entry.id;
-        this._persist(entry);
+        try {
+            this._persist(entry);
+        }
+        catch (error) {
+            // Keep memory in line with the file: an entry that was not written must not become the
+            // parent of later entries, or the file would hold entries pointing to a missing parent.
+            this.fileEntries.pop();
+            this.byId.delete(entry.id);
+            this.leafId = previousLeafId;
+            throw error;
+        }
     }
     /** Append a message as child of current leaf, then advance leaf. Returns entry id.
      * Does not allow writing CompactionSummaryMessage and BranchSummaryMessage directly.
@@ -1353,7 +1365,7 @@ export class SessionManager {
      */
     static continueRecent(cwd, sessionDir) {
         const dir = sessionDir ? normalizePath(sessionDir) : getDefaultSessionDir(cwd);
-        const filterCwd = sessionDir !== undefined && dir !== getDefaultSessionDirPath(cwd);
+        const filterCwd = sessionDir !== undefined && !pathsEqual(dir, getDefaultSessionDirPath(cwd));
         const mostRecent = findMostRecentSession(dir, filterCwd ? cwd : undefined);
         if (mostRecent) {
             return new SessionManager(cwd, dir, mostRecent, true);
@@ -1427,7 +1439,7 @@ export class SessionManager {
      */
     static findById(cwd, id, sessionDir) {
         const dir = sessionDir ? normalizePath(sessionDir) : getDefaultSessionDir(cwd);
-        const filterCwd = sessionDir !== undefined && dir !== getDefaultSessionDirPath(cwd);
+        const filterCwd = sessionDir !== undefined && !pathsEqual(dir, getDefaultSessionDirPath(cwd));
         const resolvedCwd = resolvePath(cwd);
         try {
             for (const file of readdirSync(dir)) {
@@ -1455,7 +1467,7 @@ export class SessionManager {
      */
     static async list(cwd, sessionDir, onProgress, signal) {
         const dir = sessionDir ? normalizePath(sessionDir) : getDefaultSessionDir(cwd);
-        const filterCwd = sessionDir !== undefined && dir !== getDefaultSessionDirPath(cwd);
+        const filterCwd = sessionDir !== undefined && !pathsEqual(dir, getDefaultSessionDirPath(cwd));
         const resolvedCwd = resolvePath(cwd);
         const includeSession = (session) => !filterCwd || sessionCwdMatches(session.cwd, resolvedCwd);
         const progress = onProgress

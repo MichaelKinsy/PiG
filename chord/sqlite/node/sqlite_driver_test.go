@@ -14,6 +14,7 @@ import (
 	"testing/synctest"
 
 	chordsqlite "github.com/MichaelKinsy/PiG/chord/sqlite"
+	"github.com/MichaelKinsy/PiG/chord/sqlite/sqlitetest"
 )
 
 // future is a call started without waiting for it, the counterpart of an unawaited Promise.
@@ -76,6 +77,24 @@ func values(rows []chordsqlite.SqliteRow) []int64 {
 
 // Pi source: packages/chord/src/sqlite/node.ts
 func TestNodeSqliteDriver(t *testing.T) {
+	// packages/chord/test/sqlite/node.test.ts (Pi 8025c414) "reports the rows a statement changed, without index writes"
+	t.Run("reports the rows a statement changed, without index writes", func(t *testing.T) {
+		database := mustOpenMemory(t)
+		defer func() { mustDo(t, database.Close()) }()
+		changes, err := sqlitetest.RunChanges(database)
+		mustDo(t, err)
+		if !maps.Equal(changes, sqlitetest.RunChangesExpected) {
+			t.Fatalf("changes = %v, want %v", changes, sqlitetest.RunChangesExpected)
+		}
+		var inTransaction int64
+		mustDo(t, database.Transaction(func(handle chordsqlite.SqliteExecutor) (err error) {
+			inTransaction, err = handle.RunCounted("INSERT INTO changes_probe VALUES (?, ?, ?)", "t", "t/1", 1)
+			return err
+		}))
+		if inTransaction != 1 {
+			t.Fatalf("changes in a transaction = %d, want 1", inTransaction)
+		}
+	})
 
 	// packages/chord/test/sqlite/node.test.ts (moved from packages/durable/test/sqlite-facade.test.ts in Pi c268154c):112 "commits work done through the transaction handle and closes idempotently"
 	t.Run("commits work done through the transaction handle and closes idempotently", func(t *testing.T) {

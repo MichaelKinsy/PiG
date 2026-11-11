@@ -3,11 +3,28 @@ package testfixture
 import (
 	"fmt"
 	"sync/atomic"
+	"time"
 
 	sdk "github.com/MichaelKinsy/PiG/extensions/sdk"
 )
 
 func registerAutocompleteFixture(ext *sdk.Extension) {
+	ext.Command("autocomplete-settle-register", "Register a provider whose answer settles or awaits real I/O", func(ctx sdk.Context, _ string) error {
+		return ctx.AddAutocompleteProvider(func(_ sdk.Context, current *sdk.AutocompleteProvider) (*sdk.AutocompleteProvider, error) {
+			return &sdk.AutocompleteProvider{
+				GetSuggestions: func(ctx sdk.Context, lines []string, line, col int, force bool) (*sdk.AutocompleteSuggestions, error) {
+					if _, err := current.GetSuggestions(ctx, lines, line, col, force); err != nil {
+						return nil, err
+					}
+					if lines[0] == "slow" {
+						time.Sleep(400 * time.Millisecond)
+					}
+					return &sdk.AutocompleteSuggestions{Prefix: lines[0], Items: []sdk.AutocompleteItem{{Value: lines[0], Label: "settled:" + lines[0]}}}, nil
+				},
+				ApplyCompletion: current.ApplyCompletion,
+			}, nil
+		})
+	})
 	ext.Command("autocomplete-register", "Register retained provider wrappers", func(ctx sdk.Context, _ string) error {
 		for _, tag := range []string{"A", "B"} {
 			err := ctx.AddAutocompleteProvider(func(ctx sdk.Context, current *sdk.AutocompleteProvider) (*sdk.AutocompleteProvider, error) {

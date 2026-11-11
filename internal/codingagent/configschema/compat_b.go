@@ -1,13 +1,13 @@
 package configschema
 
-// Mirrors packages/ai/src/providers/compat-schema.ts (second part: Anthropic, Bedrock, Mistral and the merged provider schema).
+// Mirrors packages/ai/src/providers/compat-schema.ts, built with pi-schema builders (second part: Anthropic, Bedrock, Mistral and the merged provider schema).
 
 func AnthropicMessagesCompatSchema() *Schema {
-	return Object([]Prop{
+	return OpenObject([]Prop{
 		Optional("supportsEagerToolInputStreaming", Boolean(D("Whether the provider accepts per-tool eager_input_streaming. When false, the Anthropic provider omits tools[].eager_input_streaming and sends the legacy fine-grained-tool-streaming-2025-05-14 beta header for tool-enabled requests."), Default(true))),
 		optionalCompatBoolean("supportsLongCacheRetention", D("Whether the provider supports Anthropic long cache retention through cache_control.ttl."), Default(true)),
 		optionalCompatBoolean("sendSessionAffinityHeaders", D("Whether to send x-session-affinity from options.sessionId when caching is enabled. Required for providers like Fireworks that use session affinity for prompt cache routing; requests to the same replica maximize cache hits. Default: true for OpenRouter endpoints, false otherwise.")),
-		Optional("sessionAffinityFormat", Literal("openrouter", D("Session-affinity format. openrouter sends x-session-id; when unset, sends x-session-affinity."))),
+		Optional("sessionAffinityFormat", StringLiteral("openrouter", D("Session-affinity format. openrouter sends x-session-id; when unset, sends x-session-affinity."))),
 		Optional("supportsCacheControlOnTools", Boolean(D("Whether the provider supports Anthropic-style cache_control markers on tool definitions. When false, cache_control is omitted from tool parameters. Some Anthropic-compatible providers, such as Fireworks, do not support this field on tools and may reject or ignore it."), Default(true))),
 		Optional("supportsTemperature", Boolean(D("Whether the model accepts the Anthropic temperature request field. Claude Opus 4.7+ rejects non-default values."), Default(true))),
 		Optional("forceAdaptiveThinking", Boolean(D("Whether to force adaptive thinking (thinking.type: adaptive plus output_config.effort) regardless of model ID. Built-in models that require adaptive thinking set this in generated metadata. Custom Anthropic-compatible providers can set this to true for any model whose upstream requires the adaptive format. Set false to opt out on overridden built-in models."), Default(false))),
@@ -21,21 +21,21 @@ func AnthropicMessagesCompatSchema() *Schema {
 }
 
 func BedrockCompatSchema() *Schema {
-	return Object([]Prop{
+	return OpenObject([]Prop{
 		optionalCompatBoolean("supportsStrictMode", D("Whether the model supports Bedrock strict tool schemas."), Default(false)),
 	}, D("Compatibility settings for Amazon Bedrock models."), Opt{"additionalProperties", true})
 }
 
 func MistralConversationsCompatSchema() *Schema {
-	return Object([]Prop{
+	return OpenObject([]Prop{
 		optionalCompatBoolean("supportsMidConvoSystemMessages", D("Whether the exact model accepts system messages after the conversation has started. When false, later system messages are folded into the leading system message."), Default(false)),
 	}, D("Compatibility settings for the Mistral chat API."), Opt{"additionalProperties", true})
 }
 
 // SystemOneCompatSchema is compat-schema.ts SystemOneCompatSchema.
 func SystemOneCompatSchema() *Schema {
-	return Object([]Prop{
-		Optional("imageInput", Union([]*Schema{Literal("assets"), Literal("images"), Literal("state-image-urls")}, D(`How the service takes classifier images. "assets" sends TypeSafe's assets map (PNG and JPEG) and references the images from the state, as TypeSafe and Jev on Workers AI expect. "images" sends Clef's images list of data URLs (PNG, JPEG, and WebP, at most four), as Clef on Workers AI expects. "state-image-urls" places image_url parts before the state, as OpenRouter expects; OpenRouter drops assets without an error. Auto-detected from the provider, baseUrl, and model ID. Classifier models read it from the provider-level compat; models and modelOverrides entries apply to chat models only.`))),
+	return OpenObject([]Prop{
+		Optional("imageInput", Union([]*Schema{StringLiteral("assets"), StringLiteral("images"), StringLiteral("state-image-urls")}, D(`How the service takes classifier images. "assets" sends TypeSafe's assets map (PNG and JPEG) and references the images from the state, as TypeSafe and Jev on Workers AI expect. "images" sends Clef's images list of data URLs (PNG, JPEG, and WebP, at most four), as Clef on Workers AI expects. "state-image-urls" places image_url parts before the state, as OpenRouter expects; OpenRouter drops assets without an error. Auto-detected from the provider, baseUrl, and model ID. Classifier models read it from the provider-level compat; models and modelOverrides entries apply to chat models only.`))),
 		optionalCompatBoolean("sendImageOptInHeader", D("Whether requests with images send the TypeSafe-Danger-Zone-Images: true header, which TypeSafe's own API requires for its experimental image input. Defaults to true for the typesafe-system-one API unless the model is detected as OpenRouter.")),
 	}, D("Compatibility settings for System One classifier APIs."), Opt{"additionalProperties", true})
 }
@@ -86,7 +86,7 @@ func ProviderCompatSchema() *Schema {
 			panic("duplicate compatibility schema property requires an override: " + name)
 		}
 	}
-	return Object(merged, D("Provider and model compatibility overrides."), Opt{"additionalProperties", true})
+	return OpenObject(merged, D("Provider and model compatibility overrides."), Opt{"additionalProperties", true})
 }
 
 func overrideNames(props []Prop) map[string]bool {

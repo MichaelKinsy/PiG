@@ -55,7 +55,7 @@ func TestPromptOptionEditsAcrossSDKs(t *testing.T) {
 		}
 		assertPromptOptionEdits(t, *loaded)
 	})
-	for _, language := range []string{"go", "python", "rust", "node"} {
+	for _, language := range []string{"go", "python", "rust", "node", "lisp"} {
 		t.Run(language, func(t *testing.T) {
 			for _, placement := range []string{"isolated", "packed"} {
 				t.Run(placement, func(t *testing.T) {
@@ -168,6 +168,22 @@ def new_extension():
  e.on_event("before_agent_start",handler)
  return e
 `, name)
+	case "lisp":
+		path = filepath.Join(cfg.Source, name+".lisp")
+		source = fmt.Sprintf(`(defpackage %q (:use "COMMON-LISP"))
+(in-package %q)
+(defun new-extension ()
+  (let ((e (pig:make-extension %q)))
+    (pig:on e "before_agent_start"
+      (lambda (ctx data) (declare (ignore ctx))
+        (let ((o (pig:jget data "systemPromptOptions")))
+          (setf (gethash "read" (pig:jget o "toolSnippets")) "edited read snippet")
+          (setf (gethash "read" (pig:jget o "toolGuidelines")) (vector "edited guideline"))
+          (setf (gethash "appendSystemPrompt" o) (concatenate 'string (pig:jget o "appendSystemPrompt") " + edited append"))
+          (when (equal (pig:jget data "prompt") "error") (error "options failure"))
+          nil)))
+    e))
+`, name, name, name)
 	case "rust":
 		path = filepath.Join(cfg.Source, "src", "lib.rs")
 		source = fmt.Sprintf(`use pig_sdk::{Extension,Schema};

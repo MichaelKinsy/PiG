@@ -31,10 +31,7 @@ func TestWrappedRegisteredToolSchemaPrepareAndReservationFollowTheDefinition(t *
 		}
 		return string(provider.ArgumentSchema())
 	}
-	t.Run("argument schema prefers the validation schema, then the parameters, then an empty object", func(t *testing.T) {
-		if got := schemaOf(wrap(t, extension.ToolDefinition{Parameters: json.RawMessage(`{"type":"object","properties":{"a":{}}}`), ValidationParameters: json.RawMessage(`{"type":"object","properties":{"b":{}}}`)})); got != `{"type":"object","properties":{"b":{}}}` {
-			t.Errorf("with both schemas: %s", got)
-		}
+	t.Run("argument schema is the parameters, then an empty object", func(t *testing.T) {
 		if got := schemaOf(wrap(t, extension.ToolDefinition{Parameters: json.RawMessage(`{"type":"object","properties":{"a":{}}}`)})); got != `{"type":"object","properties":{"a":{}}}` {
 			t.Errorf("with parameters only: %s", got)
 		}

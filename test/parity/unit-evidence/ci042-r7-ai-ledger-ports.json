@@ -1,12 +1,13 @@
 [
  {
-  "upstream": "packages/ai/src/utils/typebox-helpers.ts",
+  "upstream": "packages/ai/src/utils/string-enum.ts",
   "package": "./ai",
   "tests": [
-   "TestStringEnumBuildsPiSchema"
+   "TestStringEnumWritesTheMembersInPiOrder",
+   "TestStringEnumSharesTheCallersValues"
   ],
-  "upstream_reference": "packages/ai/src/utils/typebox-helpers.ts",
-  "mutation": "ai/typebox_helpers.go: replace '\"type\": \"string\"' with '\"type\": \"mutant\"'; compiling go test -overlay -run exact test -count=1 fails TestStringEnumBuildsPiSchema."
+  "upstream_reference": "packages/ai/src/utils/string-enum.ts",
+  "mutation": "ai/string_enum.go: replace 'chordjson.ObjectOf(\"type\", \"string\", \"enum\", values)' with 'chordjson.ObjectOf(\"type\", \"mutant\", \"enum\", values)'; compiling go test -overlay -run exact test -count=1 fails TestStringEnumWritesTheMembersInPiOrder."
  },
  {
   "upstream": "packages/ai/src/api/cloudflare-ai-binding.ts",

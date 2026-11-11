@@ -37,6 +37,8 @@ Run `make generate` from the repository root after changing exported Go API, CLI
 | `model-catalogs` | Text and image model catalogs |
 | `help-text` | `coding/cli/help_upstream.txt` |
 | `knowledge-graph` | Knowledge-graph pages, JSON-LD, Mermaid, and the troubleshooting docs mirror |
+| `additive-list` | The agent docs page `additive-features.md` |
+| `docs-bundle` | The shared pages of the agent docs bundle, `glossary.md` (site and bundle), and the customize chooser blocks |
 
 Review and commit the output. Never hand-edit generated files. `make generate` does not change reviewed mappings, dispositions, or evidence. A contract review failure still needs review; regeneration cannot accept a port. It ignores transient parity results for deterministic coverage. Use `make coverage RESULTS=<path>` separately to include a measured run.
 
@@ -83,9 +85,10 @@ The automation writes only where the environment allows. Set these when the defa
 | `test-shard-pattern.sh` | Prints the `go test -run` pattern for one shard of a package's tests. `make test-cli` and the Windows `cli-1` to `cli-8` jobs run `cmd/pig` in these shards, each shard in its own parallel job, `go test` process and timeout. |
 | `test-fixtures.sh` | Builds the Go and Rust extension fixtures tests load. |
 | `test-race.sh` | Race and goroutine-leak gate for the TUI concurrency model. |
-| `test-race-nightly.sh` | Whole-package `-race` on every package `race-packages.txt` lists (the agent loop, provider streams, TUI, the extension hosts and SDK module, the session core, the RPC/print/JSON modes, the concurrency libraries), one nightly matrix job per group (`PIG_RACE_GROUP`: `ai`, `rest`, `host`, `coding`, `cli`, `libs`; `PIG_RACE_SHARD=k/n` runs one shard of the single-package `cli` group). Behind `make test-race-nightly` and the nightly workflow. |
+| `test-race-nightly.sh` | Whole-package `-race` on every package `race-packages.txt` lists (the agent loop, provider streams, TUI, the extension hosts and SDK module, the session core, the RPC/print/JSON modes, the concurrency libraries, the highlight.js port), one nightly matrix job per group (`PIG_RACE_GROUP`: `ai`, `rest`, `host`, `coding`, `cli`, `libs`, `hljs`; `PIG_RACE_SHARD=k/n` runs one shard of the single-package `cli` group). Behind `make test-race-nightly` and the nightly workflow. |
 | `race-packages.txt`, `race-coverage.sh` | The list of concurrency packages with the nightly group of each (or `exempt` and a reason), and the gate (`make race-coverage`, part of `check-core` and `ci-drift`) that fails when a package that starts goroutines or timers and has tests is in none. |
 | `fuzz-nightly.sh` | Runs every `Fuzz` target for `PIG_FUZZ_TIME` (default 30s) with `PIG_FUZZ_PARALLEL` workers (default 4); a package whose targets cannot be listed fails the run. Behind `make fuzz-nightly` and the nightly workflow. |
+| `make test-oracle-sweeps-nightly` | Runs the full product of the Pi-oracle sweeps whose fast-tier test runs a covering subset (`PIG_IMAGE_ORACLE_SWEEP=full`: `TestProcessImagePNGMatchesPi`, 7952 cases). The nightly workflow's `Oracle sweeps` job runs it. |
 | `integration-tests.sh` | The tmux integration tier, split by category. |
 | `qc-smoke.sh` | Smoke checks against a freshly built pig. Behind `make qc`. |
 | `parity-resource-limits.sh` | Chooses parity concurrency from CPU and memory. Probed only by targets that schedule parity. |
@@ -93,13 +96,14 @@ The automation writes only where the environment allows. Set these when the defa
 | `check-divergence-consistency.sh` | Every ledger entry has a source marker and every marker has an entry. |
 | `check-divergence-quality.py` | Divergence and additive records are current, enforceable contracts. |
 | `divguard/` | Divergence guard (`make divergence-guard`): syntactic checks for invented limits and timeouts, dropped events, swallowed errors and success on unknown stop reasons, ratcheted by `divguard/baseline.toml`. |
+| `fixtureguard/` | Fixture guard (`make fixture-guard`): refuses test fixtures that look like verbatim provider captures (long encrypted or signature values, billing rows, real-looking ids and timestamps, reasoning text, non-placeholder home paths); reviewed false positives are listed in `fixtureguard/allowlist.go`. Setting `PIG_PRIVATE_TERMS_FILE` to a file outside the repository (one term per line) also fails on any match, printing only file:line and the term's line number. |
 | `portlint/` | Porting anti-pattern analyzers (`make port-lint`): `go/analysis` passes for JS-to-Go semantic drift, goroutine and request lifetime, error identity and test isolation, ratcheted by `portlint/baseline.toml`. |
 | `check-divergence-delta.sh` | A release adds no divergence without its per-entry justification. |
 | `check-coverage-delta.sh`, `check-coverage-drift.py` | Parity coverage did not regress, and `test/parity/coverage.md` and the badge match `docs/parity/PORT_MAP.md`. |
 | `check-public-claims.py` | Public prose makes no claim the evidence contradicts: overclaim phrases, unrecorded governance claims, Pi versions other than the pin, and porting or verification figures that differ from the AGENTS.md coverage block. Runs in `make docs-drift`; pass delivery or blog drafts as extra arguments to audit them too. |
 | `check-generated.sh` | Compares generated bytes and names both the aggregate and specific repair commands. |
 | `check-port-map-drift.py` | `docs/parity/PORT_MAP.md` accounts for every upstream source file. |
-| `check-dco.sh` | Every commit in a pull request carries a DCO sign-off. |
+| `check-dco.sh` | Every commit in a pull request carries a DCO sign-off, or a later commit by the same author retroactively signs it off (format in the script header and `.github/CONTRIBUTING.md`; `dco-identities.txt` maps one person's identities). `test_check_dco.py` covers it against disposable repositories. |
 | `check-npm-lock-integrity.py` | npm lockfiles pin integrity hashes. |
 | `npm-locked.py` | Installs locked npm dependencies when manifest content changes; refuses replacement through a shared symlink. With `PIG_NODE_MODULES_STORE` set, installs each manifest once per host under that directory and links `node_modules` to it. |
 | `build-ci-image.sh`, `seed-ci-image-bases.sh` | Build and seed the CI container images in `images/`. |
@@ -120,6 +124,8 @@ The automation writes only where the environment allows. Set these when the defa
 | `generate-model-catalogs.sh` | Regenerates model catalogs from the pinned published Pi package. |
 | `gen-help.sh` | Renders Pi's own `--help` with PiG's identity. |
 | `gen-knowledge-graph.py` | Renders `docs/knowledge-graph/pig.graph.json` into its published forms. |
+| `gen-docs-bundle.py` | Copies the shared site pages into the agent docs bundle with bundle-local links, as `internal/pigdocs/bundle-manifest.json` directs. Renders `glossary.md` from `docs/project/CONTEXT.md` and the customize chooser from `docs/site/fragments/`. `--check` fails on a stale or unclassified page. |
+| `gen-additive-list.py` | Renders `docs/additive-features.md` into the agent docs page `additive-features.md`, filtered by each record's `Audience:` line. |
 | `vendor-pi-dist.sh`, `vendor-typebox.sh` | Vendor the pinned Pi release's pure modules, the third-party packages they import, and TypeBox for the Node extension runtime. |
 
 ## release

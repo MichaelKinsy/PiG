@@ -23,7 +23,7 @@ func TestRemoteWatcherDoublesItsReconnectDelayAfterEachLostAttempt(t *testing.T)
 	delays := make(chan time.Duration, 16)
 	previous := reconnectTimer
 	reconnectTimer = func(delay time.Duration) *time.Timer {
-		// The loop keeps reconnecting until Close; extra delays past the buffer are dropped so the loop never blocks on the test.
+		// The loop keeps reconnecting until Stop; extra delays past the buffer are dropped so the loop never blocks on the test.
 		select {
 		case delays <- delay:
 		default:
@@ -49,7 +49,7 @@ func TestRemoteWatcherDoublesItsReconnectDelayAfterEachLostAttempt(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() { connection.Close(); _ = watcher.Close(background) }()
+	defer func() { connection.Close(); _ = watcher.Stop(background) }()
 	connection.Start(background, "stop", Json{}, RequestOptions{}) // the daemon exits on this frame, so the established watch is lost and reconnects
 
 	want := []time.Duration{time.Second, 2 * time.Second, 4 * time.Second, 8 * time.Second, 16 * time.Second, 30 * time.Second, 30 * time.Second}

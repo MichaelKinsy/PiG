@@ -1330,6 +1330,8 @@ var Text = class {
     this.customBgFn = customBgFn;
   }
   setText(text) {
+    if (text === this.text)
+      return;
     this.text = text;
     this.cachedText = void 0;
     this.cachedWidth = void 0;
@@ -1637,7 +1639,7 @@ function findWordForward(text, cursor, options) {
 __name(findWordForward, "findWordForward");
 
 // pi-dist/pi-tui/components/select-list.js
-import { getKeybindings as getKeybindings2 } from "../keybindings.js";
+import { getKeybindings as getKeybindings2, getSelectPageIndex } from "../keybindings.js";
 import { truncateToWidth, visibleWidth as visibleWidth3 } from "../utils.js";
 var DEFAULT_PRIMARY_COLUMN_WIDTH = 32;
 var PRIMARY_COLUMN_GAP = 2;
@@ -1648,6 +1650,7 @@ var SelectList = class {
   static {
     __name(this, "SelectList");
   }
+  capturesViewportInput = true;
   items = [];
   filteredItems = [];
   selectedIndex = 0;
@@ -1737,11 +1740,17 @@ var SelectList = class {
   }
   handleInput(keyData) {
     const kb = getKeybindings2();
+    const pageIndex = getSelectPageIndex(kb, keyData, this.selectedIndex, this.filteredItems.length, this.maxVisible);
     if (kb.matches(keyData, "tui.select.up")) {
       this.selectedIndex = this.selectedIndex === 0 ? this.filteredItems.length - 1 : this.selectedIndex - 1;
       this.notifySelectionChange();
     } else if (kb.matches(keyData, "tui.select.down")) {
       this.selectedIndex = this.selectedIndex === this.filteredItems.length - 1 ? 0 : this.selectedIndex + 1;
+      this.notifySelectionChange();
+    } else if (pageIndex !== void 0) {
+      if (this.filteredItems.length === 0 || pageIndex === this.selectedIndex)
+        return;
+      this.selectedIndex = pageIndex;
       this.notifySelectionChange();
     } else if (kb.matches(keyData, "tui.select.confirm")) {
       const selectedItem = this.filteredItems[this.selectedIndex];
@@ -1987,6 +1996,10 @@ var Editor = class {
   };
   /** Focusable interface - set by TUI when focus changes */
   focused = false;
+  /** The open autocomplete menu receives fullscreen viewport keys, such as PageUp/PageDown. */
+  get capturesViewportInput() {
+    return this.autocompleteState !== null;
+  }
   tui;
   theme;
   paddingX = 0;
@@ -2336,7 +2349,7 @@ var Editor = class {
         this.cancelAutocomplete();
         return;
       }
-      if (kb.matches(data, "tui.select.up") || kb.matches(data, "tui.select.down")) {
+      if (kb.matches(data, "tui.select.up") || kb.matches(data, "tui.select.down") || kb.matches(data, "tui.select.pageUp") || kb.matches(data, "tui.select.pageDown")) {
         this.autocompleteList.handleInput(data);
         return;
       }
@@ -5553,11 +5566,18 @@ __name(renderLatex, "renderLatex");
 
 // pi-dist/pi-tui/components/markdown.js
 import { getCapabilities as getCapabilities2, hyperlink, isImageLine } from "../terminal-image.js";
-import { applyBackgroundToLine as applyBackgroundToLine2, flattenLines as flattenLines3, visibleWidth as visibleWidth8, wrapTextWithAnsi as wrapTextWithAnsi2 } from "../utils.js";
+import { applyBackgroundToLine as applyBackgroundToLine2, cjkPunctuationRegex, flattenLines as flattenLines3, visibleWidth as visibleWidth8, wrapTextWithAnsi as wrapTextWithAnsi2 } from "../utils.js";
 var STRICT_STRIKETHROUGH_REGEX = /^(~~)(?=[^\s~])((?:\\.|[^\\])*?(?:\\.|[^\s~\\]))\1(?=[^~]|$)/;
-var StrictStrikethroughTokenizer = class extends Tokenizer {
+var MarkdownTokenizer = class extends Tokenizer {
   static {
-    __name(this, "StrictStrikethroughTokenizer");
+    __name(this, "MarkdownTokenizer");
+  }
+  url(src) {
+    const token = super.url(src);
+    if (!token)
+      return void 0;
+    const punctuationIndex = token.raw.search(cjkPunctuationRegex);
+    return punctuationIndex < 0 ? token : super.url(token.raw.slice(0, punctuationIndex));
   }
   del(src) {
     const match = STRICT_STRIKETHROUGH_REGEX.exec(src);
@@ -5705,7 +5725,7 @@ function trimPartialClosingFences(tokens) {
 __name(trimPartialClosingFences, "trimPartialClosingFences");
 var markdownParser = new Marked();
 markdownParser.setOptions({
-  tokenizer: new StrictStrikethroughTokenizer()
+  tokenizer: new MarkdownTokenizer()
 });
 markdownParser.use({
   tokenizer: { emStrong: markedCjkFriendly().tokenizer?.emStrong },
@@ -5732,6 +5752,13 @@ var Markdown = class {
   // about ten times the size of its source, and every message of a long transcript keeps a Markdown component. The
   // tokens survive a burst of re-renders, such as a theme preview, and are collected afterwards.
   cachedTokens;
+  // The last render's top-level blocks. While a message streams only its last block changes, so a render styles and
+  // wraps only that block. Each render keeps only the blocks it used, which drops a streamed block's earlier versions.
+  // Held weakly like the tokens: the blocks repeat the source in their keys and the code in their highlighting, and
+  // only a burst of renders, such as streaming or a resize, needs them.
+  blocks;
+  // Highlighted code of the block being rendered, only set while renderBlock runs.
+  blockHighlightedCode;
   constructor(text, paddingX, paddingY, theme, defaultTextStyle, options) {
     this.text = text;
     this.paddingX = paddingX;
@@ -5742,9 +5769,14 @@ var Markdown = class {
   }
   setText(text) {
     this.text = text;
-    this.invalidate();
+    this.clearRenderCache();
   }
   invalidate() {
+    this.clearRenderCache();
+    this.blocks = void 0;
+    this.defaultStylePrefix = void 0;
+  }
+  clearRenderCache() {
     this.cachedText = void 0;
     this.cachedWidth = void 0;
     this.cachedLines = void 0;
@@ -5756,6 +5788,7 @@ var Markdown = class {
     const contentWidth = Math.max(1, width - this.paddingX * 2);
     const text = this.options.transform?.(this.text, contentWidth) ?? this.text;
     if (!text || text.trim() === "") {
+      this.blocks = void 0;
       const result2 = [];
       this.cachedText = this.text;
       this.cachedWidth = width;
@@ -5770,55 +5803,66 @@ var Markdown = class {
       trimPartialClosingFences(tokens);
       this.cachedTokens = new WeakRef({ source: normalizedText, tokens });
     }
-    const renderedLines = [];
+    const reuseBlocks = Object.keys(tokens.links).length === 0;
+    const previousBlocks = this.blocks?.deref();
+    const blocks = /* @__PURE__ */ new Map();
+    this.blocks = new WeakRef(blocks);
+    const contentLines = [];
     for (let i = 0; i < tokens.length; i++) {
       const token = tokens[i];
-      const nextToken = tokens[i + 1];
-      const tokenLines = this.renderToken(token, contentWidth, nextToken?.type);
-      for (const tokenLine of tokenLines) {
-        renderedLines.push(tokenLine);
+      const nextTokenType = tokens[i + 1]?.type;
+      const reused = reuseBlocks ? blocks.get(token.raw) ?? previousBlocks?.get(token.raw) : void 0;
+      const block = reused ?? { width: -1, nextTokenType, lines: [], highlightedCode: /* @__PURE__ */ new Map() };
+      if (block.width !== width || block.nextTokenType !== nextTokenType) {
+        this.renderBlock(block, token, nextTokenType, width, contentWidth);
       }
-    }
-    const wrappedLines = [];
-    for (const line of renderedLines) {
-      if (isImageLine(line)) {
-        wrappedLines.push(line);
-      } else {
-        for (const wrappedLine of wrapTextWithAnsi2(line, contentWidth)) {
-          wrappedLines.push(wrappedLine);
-        }
-      }
-    }
-    const leftMargin = " ".repeat(this.paddingX);
-    const rightMargin = " ".repeat(this.paddingX);
-    const bgFn = this.defaultTextStyle?.bgColor;
-    const contentLines = [];
-    for (const line of wrappedLines) {
-      if (isImageLine(line)) {
+      if (reuseBlocks)
+        blocks.set(token.raw, block);
+      for (const line of block.lines) {
         contentLines.push(line);
-        continue;
-      }
-      const lineWithMargins = leftMargin + line + rightMargin;
-      if (bgFn) {
-        contentLines.push(applyBackgroundToLine2(lineWithMargins, width, bgFn));
-      } else {
-        const visibleLen = visibleWidth8(lineWithMargins);
-        const paddingNeeded = Math.max(0, width - visibleLen);
-        contentLines.push(lineWithMargins + " ".repeat(paddingNeeded));
       }
     }
+    const bgFn = this.defaultTextStyle?.bgColor;
     const emptyLine = " ".repeat(width);
     const emptyLines = [];
     for (let i = 0; i < this.paddingY; i++) {
       const line = bgFn ? applyBackgroundToLine2(emptyLine, width, bgFn) : emptyLine;
       emptyLines.push(line);
     }
+    flattenLines3(emptyLines);
     const result = emptyLines.concat(contentLines, emptyLines);
-    flattenLines3(result);
     this.cachedText = this.text;
     this.cachedWidth = width;
     this.cachedLines = result;
     return result.length > 0 ? result : [""];
+  }
+  /** Render one top-level block to output lines: wrapped, with margins, and padded or backgrounded to the width. */
+  renderBlock(block, token, nextTokenType, width, contentWidth) {
+    this.blockHighlightedCode = block.highlightedCode;
+    const leftMargin = " ".repeat(this.paddingX);
+    const rightMargin = " ".repeat(this.paddingX);
+    const bgFn = this.defaultTextStyle?.bgColor;
+    const lines = [];
+    for (const line of this.renderToken(token, contentWidth, nextTokenType)) {
+      if (isImageLine(line)) {
+        lines.push(line);
+        continue;
+      }
+      for (const wrappedLine of wrapTextWithAnsi2(line, contentWidth)) {
+        const lineWithMargins = leftMargin + wrappedLine + rightMargin;
+        if (bgFn) {
+          lines.push(applyBackgroundToLine2(lineWithMargins, width, bgFn));
+        } else {
+          const paddingNeeded = Math.max(0, width - visibleWidth8(lineWithMargins));
+          lines.push(lineWithMargins + " ".repeat(paddingNeeded));
+        }
+      }
+    }
+    this.blockHighlightedCode = void 0;
+    flattenLines3(lines);
+    block.lines = lines;
+    block.width = width;
+    block.nextTokenType = nextTokenType;
   }
   /**
    * Apply default text style to a string.
@@ -5925,7 +5969,10 @@ var Markdown = class {
         break;
       case "latexBlock": {
         const latexToken = token;
-        const rendered = !latexToken.pending && this.options.renderLatex !== false ? renderLatex(latexToken.text, { display: true }) ?? latexToken.raw.trim() : latexToken.raw.trim();
+        let rendered = !latexToken.pending && this.options.renderLatex !== false ? renderLatex(latexToken.text, { display: true }) : void 0;
+        if (rendered === void 0 || rendered.split("\n").some((line) => visibleWidth8(line) > width)) {
+          rendered = latexToken.raw.trim();
+        }
         for (const line of rendered.split("\n")) {
           lines.push(this.applyDefaultStyle(line));
         }
@@ -5938,8 +5985,13 @@ var Markdown = class {
         const indent = this.theme.codeBlockIndent ?? "  ";
         lines.push(this.theme.codeBlockBorder(`\`\`\`${token.lang || ""}`));
         if (this.theme.highlightCode) {
-          const highlightedLines = this.theme.highlightCode(token.text, token.lang);
-          for (const hlLine of highlightedLines) {
+          const key = `${token.lang ?? ""}\0${token.text}`;
+          let highlighted = this.blockHighlightedCode?.get(key);
+          if (!highlighted) {
+            highlighted = this.theme.highlightCode(token.text, token.lang);
+            this.blockHighlightedCode?.set(key, highlighted);
+          }
+          for (const hlLine of highlighted) {
             lines.push(`${indent}${hlLine}`);
           }
         } else {
@@ -6546,12 +6598,13 @@ var ScrollView = class extends Container2 {
 };
 
 // pi-dist/pi-tui/components/settings-list.js
-import { getKeybindings as getKeybindings5 } from "../keybindings.js";
+import { getKeybindings as getKeybindings5, getSelectPageIndex as getSelectPageIndex2 } from "../keybindings.js";
 import { truncateToWidth as truncateToWidth4, visibleWidth as visibleWidth9, wrapTextWithAnsi as wrapTextWithAnsi3 } from "../utils.js";
 var SettingsList = class {
   static {
     __name(this, "SettingsList");
   }
+  capturesViewportInput = true;
   items;
   filteredItems;
   theme;
@@ -6702,6 +6755,7 @@ var SettingsList = class {
     }
     const kb = getKeybindings5();
     const displayItems = this.getDisplayItems();
+    const pageIndex = getSelectPageIndex2(kb, data, this.selectedIndex, displayItems.length, this.maxVisible);
     if (kb.matches(data, "tui.select.up")) {
       if (displayItems.length === 0)
         return;
@@ -6710,6 +6764,10 @@ var SettingsList = class {
       if (displayItems.length === 0)
         return;
       this.selectedIndex = this.selectedIndex === displayItems.length - 1 ? 0 : this.selectedIndex + 1;
+    } else if (pageIndex !== void 0) {
+      if (displayItems.length === 0)
+        return;
+      this.selectedIndex = pageIndex;
     } else if (kb.matches(data, "tui.select.confirm") || data === " " && (!this.searchEnabled || this.searchInput?.getValue().length === 0)) {
       this.activateItem();
     } else if (kb.matches(data, "tui.select.cancel")) {
@@ -6869,7 +6927,7 @@ var VStack = class extends Stack {
 };
 
 // pi-dist/pi-tui/index.js
-import { getKeybindings as getKeybindings8, KeybindingsManager, setKeybindings, TUI_KEYBINDINGS } from "../keybindings.js";
+import { getKeybindings as getKeybindings8, getSelectPageIndex as getSelectPageIndex3, KeybindingsManager, setKeybindings, TUI_KEYBINDINGS } from "../keybindings.js";
 import { decodeKittyPrintable as decodeKittyPrintable2, isKeyRelease as isKeyRelease2, isKeyRepeat, isKittyProtocolActive, Key, matchesKey as matchesKey2, parseKey, setKittyProtocolActive as setKittyProtocolActive2 } from "../keys.js";
 import { getNativeClipboard } from "../native-platform.js";
 
@@ -7280,9 +7338,14 @@ function refreshTerminalDimensions() {
   }
 }
 __name(refreshTerminalDimensions, "refreshTerminalDimensions");
+function isNativeShiftEnterCandidate(data) {
+  return data === "\r" || data === "\x1B\r";
+}
+__name(isNativeShiftEnterCandidate, "isNativeShiftEnterCandidate");
 function normalizeNativeShiftEnterInput(data, shouldDetectNativeShiftEnter, isShiftPressed) {
-  if (shouldDetectNativeShiftEnter && data === "\r" && isShiftPressed)
+  if (shouldDetectNativeShiftEnter && isNativeShiftEnterCandidate(data) && isShiftPressed) {
     return NATIVE_SHIFT_ENTER_SEQUENCE;
+  }
   return data;
 }
 __name(normalizeNativeShiftEnterInput, "normalizeNativeShiftEnterInput");
@@ -7506,7 +7569,7 @@ var ProcessTerminal = class {
   forwardInputSequence(sequence) {
     if (!this.inputHandler)
       return;
-    const shouldDetectNativeShiftEnter = sequence === "\r" && (isAppleTerminalSession() || process.platform === "win32");
+    const shouldDetectNativeShiftEnter = isNativeShiftEnterCandidate(sequence) && (isAppleTerminalSession() || process.platform === "win32");
     const input = normalizeNativeShiftEnterInput(sequence, shouldDetectNativeShiftEnter, shouldDetectNativeShiftEnter && isNativeModifierPressed("shift"));
     this.inputHandler(input);
   }
@@ -8880,7 +8943,10 @@ var TuiAltScreen = class extends TuiBase {
   flash(message, durationMs) {
     this.flashes.flash(message, durationMs);
   }
-  shouldDeferViewportInputToOverlay() {
+  /** Focused overlays and components that capture viewport input receive viewport keys instead of the transcript. */
+  shouldDeferViewportInput() {
+    if (this.getFocusedComponent()?.capturesViewportInput)
+      return true;
     return this.isOverlayFocused() && this.activeSearch?.overlay?.isFocused() !== true;
   }
   clearComponentMouseGesture() {
@@ -8962,7 +9028,7 @@ var TuiAltScreen = class extends TuiBase {
         return { consume: true };
       }
     }
-    if (this.shouldDeferViewportInputToOverlay())
+    if (this.shouldDeferViewportInput())
       return void 0;
     if (keybindings.matches(data, "tui.altScreen.pageUp")) {
       if (!isRelease) {
@@ -9892,6 +9958,7 @@ import * as path2 from "node:path";
 import { deleteKittyImage as deleteKittyImage2, isImageLine as isImageLine4 } from "../terminal-image.js";
 import { TuiBase as TuiBase2 } from "../tui.js";
 import { visibleWidth as visibleWidth14 } from "../utils.js";
+var OSC133_ZONE_PREFIX3 = /^(?:\x1b\]133;[ABC](?:\x07|\x1b\\))+/;
 var KITTY_SEQUENCE_PREFIX = "\x1B_G";
 var MAX_RENDER_WRITE_CHARS = 1024 * 1024;
 var BoundedTerminalWriter = class {
@@ -10111,7 +10178,7 @@ var TuiMainScreen = class extends TuiBase2 {
       const targetScreenRow = targetRow - viewportTop;
       return targetScreenRow - currentScreenRow;
     }, "computeLineDiff");
-    let newLines = this.resolveFakeCursors(this.render(width));
+    let newLines = this.resolveFakeCursors(this.render(width).map((line) => line.replace(OSC133_ZONE_PREFIX3, "")));
     if (this.hasOverlayEntries) {
       newLines = this.compositeOverlays(newLines, width, height);
     }
@@ -10493,6 +10560,7 @@ export {
   getNativeClipboard,
   getOsc8LinkAtColumn2 as getOsc8LinkAtColumn,
   getPngDimensions2 as getPngDimensions,
+  getSelectPageIndex3 as getSelectPageIndex,
   getTerminalColorMode,
   getWebpDimensions,
   hyperlink2 as hyperlink,

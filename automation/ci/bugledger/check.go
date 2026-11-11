@@ -79,6 +79,7 @@ func verify(root string, generated *Ledger, genJSON []byte, genPage string, stri
 			problems = append(problems, fmt.Sprintf("entry %s has no fix commit", e.ID))
 		}
 	}
+	problems = append(problems, checkMovedTests(root)...)
 	page, err := os.ReadFile(filepath.Join(root, pagePath))
 	if err != nil {
 		problems = append(problems, fmt.Sprintf("%s: %v", pagePath, err))

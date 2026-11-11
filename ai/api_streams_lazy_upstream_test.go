@@ -3,7 +3,6 @@
 package ai
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -30,13 +29,6 @@ func recordingEndpoint(t *testing.T) (*httptest.Server, func() observedRequest) 
 	}))
 	t.Cleanup(srv.Close)
 	return srv, func() observedRequest { return seen }
-}
-
-// codexToken is an API key the codex API accepts: openai-codex-responses.ts extractAccountId reads the ChatGPT account id from the JWT claim.
-func codexToken() string {
-	payload, _ := json.Marshal(map[string]any{"https://api.openai.com/auth": map[string]any{"chatgpt_account_id": "acct_test"}})
-	enc := base64.RawURLEncoding.EncodeToString
-	return enc([]byte(`{"alg":"none"}`)) + "." + enc(payload) + "." + enc([]byte("sig"))
 }
 
 // Ports the entry points of packages/ai/src/api/{anthropic-messages,azure-openai-responses,bedrock-converse-stream,google-generative-ai,google-vertex,mistral-conversations,openai-codex-responses,openai-completions,openai-responses}.lazy.ts:

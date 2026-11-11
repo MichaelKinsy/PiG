@@ -1,7 +1,5 @@
 package ai
 
-// pi: packages/ai/src/auth/oauth/load.ts
-
 import (
 	"context"
 	"encoding/json"

@@ -92,8 +92,9 @@ func TestCacheWarmingReplaysTheExactProviderPayload(t *testing.T) {
 	}
 	defer func() { _ = sess.Close() }()
 	appended := make(chan json.RawMessage, 1)
+	eventsCh := sess.Events()
 	go func() {
-		for event := range sess.Events() {
+		for event := range eventsCh {
 			if entry, ok := event.(agent.EntryAppendedEvent); ok {
 				appended <- entry.Entry
 			}

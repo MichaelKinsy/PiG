@@ -16,11 +16,18 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
+const stdoutCleanlinessChildEnv = "PIG_TEST_STDOUT_CLEANLINESS_ARGS"
+
 // Upstream 0.99.1 changes only how its harness starts the CLI: `--import` receives the source resolver as a file URL (pathToFileURL) instead of a path
-// (.upstream/v0.99.1/packages/coding-agent/test/stdout-cleanliness.test.ts:11-12). The Go test starts the compiled binary and has no Node loader flag, so that substitution has no Go
+// (.upstream/v0.99.1/packages/coding-agent/test/stdout-cleanliness.test.ts:11-12). The Go test starts Main in a child of the test binary and has no Node loader flag, so that substitution has no Go
 // counterpart: the inputs and expectations of every case are unchanged.
 func TestStdoutCleanlinessUpstream(t *testing.T) {
-	bin := buildPigBinaryForSignalTest(t)
+	// The child is this test binary running Main, the entry point cmd/pig/main.go calls (Pi's cli.ts calls main(process.argv.slice(2))); it
+	// exits through Main, so the testing framework prints nothing to the stdout under test.
+	if args, ok := os.LookupEnv(stdoutCleanlinessChildEnv); ok {
+		Main(strings.Split(args, "\x1f"), nil)
+		return
+	}
 	node, err := exec.LookPath("node")
 	if err != nil {
 		t.Fatal(err)
@@ -62,9 +69,9 @@ func TestStdoutCleanlinessUpstream(t *testing.T) {
 			}
 			ctx, cancel := context.WithTimeout(t.Context(), testbudget.Wait(t))
 			defer cancel()
-			cmd := exec.CommandContext(ctx, bin, tc.args...)
+			cmd := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestStdoutCleanlinessUpstream$")
 			cmd.Dir = project
-			cmd.Env = append(os.Environ(), "PIG_HOME="+filepath.Join(root, "home"), codingagent.ENV_AGENT_DIR+"="+agentDir, "PIG_OFFLINE=", "PI_OFFLINE=", "PI_SKIP_VERSION_CHECK=1", "PIG_SKIP_VERSION_CHECK=1")
+			cmd.Env = append(os.Environ(), stdoutCleanlinessChildEnv+"="+strings.Join(tc.args, "\x1f"), "PIG_HOME="+filepath.Join(root, "home"), codingagent.ENV_AGENT_DIR+"="+agentDir, "PIG_OFFLINE=", "PI_OFFLINE=", "PI_SKIP_VERSION_CHECK=1", "PIG_SKIP_VERSION_CHECK=1")
 			var stdout, stderr strings.Builder
 			cmd.Stdout = &stdout
 			cmd.Stderr = &stderr

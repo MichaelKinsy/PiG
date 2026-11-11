@@ -138,6 +138,8 @@ func createAgentSessionOver(options CreateAgentSessionFromServicesOptions, resou
 	if err != nil {
 		return CreateAgentSessionResult{}, err
 	}
+	// sdk.ts: this stream resolves auth through modelRuntime, so summaries must not pre-resolve it (#11520).
+	session.runtimeStream = true
 	if options.SessionStartEvent != nil {
 		session.sessionStartEvent = *options.SessionStartEvent
 	}

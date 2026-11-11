@@ -50,5 +50,13 @@
    "model": "bound: the provider binds the request's model when it builds the request: ai/provider_stream_event.go:23 wraps StreamOptions.OnProviderStreamEvent(ctx, data, model) into the builder's one-argument callback, so the model Pi passes is the same request model"
   },
   "reason": "Pi ai/src/types.ts:200 onProviderStreamEvent(data, model), which openai-responses-shared.ts:111 reuses. Go's OpenAIResponsesStreamOptions.OnProviderStreamEvent func(data any) error (ai/openai_responses.go:1455) receives the data; the model is bound per request (ai/provider_stream_event.go:23). Recorded as folded behaviour (LEAD-RULINGS-1520 unblock-types 5)."
+ },
+ "coding-agent:KeybindingHints": {
+  "go": [
+   "coding/extension/tool.go#ToolRenderContext",
+   "coding/extension/renderer.go#MessageRenderOptions",
+   "coding/extension/renderer.go#EntryRenderOptions"
+  ],
+  "reason": "Pi coding-agent/src/core/extensions/types.ts:152 KeybindingHints (keyText, keyHint) is the base interface that ToolRenderContext (:487), MessageRenderOptions (:1555) and EntryRenderOptions (:1573) extend, so each carries its two members. Go has no interface inheritance of members: coding/extension/keybinding_hints.go gives each of the three Go types KeyText and KeyHint methods with the same body (tui.ActionKeyText, tui.KeyHint), so the three declarations hold the members of the one upstream type. Pi 9376c8d1 (#4748); TestKeybindingHintsAcrossSDKs (test/extension-conformance/keybinding_hints_test.go) prints keyText and keyHint on every render surface of every SDK."
  }
 }

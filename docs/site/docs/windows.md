@@ -1,6 +1,6 @@
 # Windows setup
 
-PiG supports source builds on Windows. Do not treat Windows as release-supported until native release verification passes for the published artifact. The command environment follows Pi 1.4.0 ([Pi's Windows guide](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/windows.md)).
+PiG supports source builds on Windows. Do not treat Windows as release-supported until native release verification passes for the published artifact. The command environment follows Pi 1.5.0 ([Pi's Windows guide](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/windows.md)).
 
 ## Build from source
 
@@ -121,6 +121,22 @@ JSON uses backslashes for escape sequences. When you write a Windows path with b
 
 See [Shell aliases](/docs/latest/shell-aliases) for a command prefix and the complete shell-resolution behavior.
 
+## Choose a terminal
+
+Windows terminals run PiG through a console host (conhost). Some bundle an up-to-date copy; others use the older one built into Windows, which has bugs that affect PiG.
+
+We recommend [Windows Terminal](https://aka.ms/terminal). It always ships an up-to-date conhost, and PiG is best tested with it.
+
+Last updated: October 2026.
+
+| Terminal | Conhost | Status |
+|---|---|---|
+| [Windows Terminal](https://aka.ms/terminal) | Bundled, current | Recommended |
+| [VS Code](https://code.visualstudio.com), [Tabby](https://tabby.sh), [WezTerm](https://wezterm.org) nightly | Bundled, current | Works |
+| [Alacritty](https://alacritty.org) | Built-in, unless `conpty.dll` and `OpenConsole.exe` from Windows Terminal are next to `alacritty.exe` | Works only with those files |
+| WezTerm 20240203 and older | Bundled, old | [Known issues](#known-issues) |
+| Classic console (`cmd.exe` or PowerShell without Windows Terminal), mintty (Git Bash), ConEmu, Cmder, [Hyper](https://hyper.is), Windows OpenSSH | Built-in | [Known issues](#known-issues) |
+
 ## Configure Windows Terminal
 
 Use Windows Terminal or another terminal that supports the required input and ANSI behavior.
@@ -157,3 +173,14 @@ Run the Windows-native unit and integration gates before claiming support for an
 ## Upstream Pi
 
 See [upstream Pi's Windows documentation](https://pi.dev/docs/latest/windows) when you need the TypeScript reference implementation.
+
+## Known issues
+
+These issues come from conhost. Microsoft has fixed them in its source, but has not said when the built-in conhost will get the fixes.
+
+| Issue | Affects | Remedy |
+|---|---|---|
+| Switching from fullscreen to regular mode, or `Ctrl+G` from fullscreen, crashes the session ([#9186](https://github.com/earendil-works/pi/issues/9186), [microsoft/terminal#17515](https://github.com/microsoft/terminal/issues/17515)) | Built-in conhost | Use a terminal with a current conhost, or start PiG with `--tui-mode regular` |
+| Text such as `;0;rgb:0000/0000/0000` appears in the prompt, and BEL opens the external editor ([#10256](https://github.com/earendil-works/pi/issues/10256)) | Built-in conhost behind another terminal: mintty, Windows OpenSSH | Use a terminal with a current conhost |
+| Fragments such as `79` or `55` appear in the prompt ([#10717](https://github.com/earendil-works/pi/issues/10717)) | WezTerm 20240203 | Use WezTerm nightly |
+| In regular mode, each keystroke redraws the input line on a new row ([#6300](https://github.com/earendil-works/pi/issues/6300)) | Built-in conhost, classic console | Use fullscreen mode (the default), or a terminal with a current conhost |

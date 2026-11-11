@@ -43,12 +43,12 @@ func TestGraphWatchCommitCostDoesNotGrowWithLiveTasks(t *testing.T) {
 	}
 }
 
-// An entry commit of an open view allocates the same at 2,000 entries as at 8,000.
-func TestViewWatchCommitCostDoesNotGrowWithEntries(t *testing.T) {
+// An entry commit of an open view allocates the same with a window of 2,000 entries as with one of 8,000.
+func TestViewWatchCommitCostDoesNotGrowWithTheWindow(t *testing.T) {
 	cost := func(n int) uint64 {
-		w := &viewWatch{conv: 1, docs: map[string]viewDoc{}}
+		w := &viewWatch{conv: 1, min: n / 2, max: n, docs: map[string]viewDoc{}}
 		for i := range n {
-			w.entries = append(w.entries, viewEntry{id: float64(i + 1)})
+			w.ids = append(w.ids, float64(i+1))
 		}
 		next := n + 1
 		commit := func() {
@@ -56,7 +56,7 @@ func TestViewWatchCommitCostDoesNotGrowWithEntries(t *testing.T) {
 			next++
 			w.advance(&session.Publication{Changes: []session.Change{{Kind: session.ChangeTable, Table: session.WriteEntry, Record: rec}}})
 		}
-		commit() // the first append grows the slice; the rest are amortized
+		commit() // the first append drops the oldest down to min; the rest are amortized
 		return allocated(func() {
 			for range 20 {
 				commit()
@@ -64,8 +64,8 @@ func TestViewWatchCommitCostDoesNotGrowWithEntries(t *testing.T) {
 		})
 	}
 	small, large := cost(2000), cost(8000)
-	t.Logf("20 entry commits: 2000 entries %d B, 8000 entries %d B", small, large)
+	t.Logf("20 entry commits: a window of 2000 entries %d B, of 8000 entries %d B", small, large)
 	if float64(large) > 1.5*float64(small) {
-		t.Fatalf("4x the entries allocates %.1fx the bytes per commit", float64(large)/float64(small))
+		t.Fatalf("4x the window allocates %.1fx the bytes per commit", float64(large)/float64(small))
 	}
 }

@@ -79,6 +79,8 @@ export class SelectSubmenu extends Container {
             const kb = getKeybindings();
             const isNav = kb.matches(data, "tui.select.up") ||
                 kb.matches(data, "tui.select.down") ||
+                kb.matches(data, "tui.select.pageUp") ||
+                kb.matches(data, "tui.select.pageDown") ||
                 kb.matches(data, "tui.select.confirm") ||
                 kb.matches(data, "tui.select.cancel");
             if (isNav) {

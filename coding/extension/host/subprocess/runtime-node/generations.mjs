@@ -1,6 +1,6 @@
 import net from "node:net";
 import { flushCompileCache } from "node:module";
-import { resolve } from "node:path";
+import { posix, resolve, win32 } from "node:path";
 import { createInterface } from "node:readline";
 import { importExtension } from "./jiti-loader.mjs";
 import { reevaluateEdited } from "./loader.mjs";
@@ -14,6 +14,16 @@ import { runWithRuntime } from "./state.mjs";
 const pathEscapes = { "%25": "%", "%09": "\t", "%0A": "\n", "%0D": "\r" };
 function decodePath(value) {
   return value?.replace(/%(?:25|09|0A|0D)/g, (escape) => pathEscapes[escape]);
+}
+
+// Ports packages/coding-agent/src/utils/paths.ts getPathComparisonKey and pathsEqual (Pi 1be312b4, #11588): the platform's resolved path, lower-cased on Windows only because Windows paths are case-insensitive; the platform is read at call time so a test can simulate Windows. Comparison only, never for display or filesystem access.
+function getPathComparisonKey(path) {
+  const pathApi = process.platform === "win32" ? win32 : posix;
+  const resolvedPath = pathApi.resolve(path);
+  return pathApi === win32 ? resolvedPath.toLowerCase() : resolvedPath;
+}
+function pathsEqual(left, right) {
+  return getPathComparisonKey(left) === getPathComparisonKey(right);
 }
 
 export class Generations {
@@ -45,7 +55,7 @@ export class Generations {
   prepareCache({ reload = "0", cwd }) {
     const resolved = cwd ? resolve(cwd) : this.cacheCwd;
     const reloadStarts = reload !== "0" && reload !== this.reloadPass;
-    if (reloadStarts || (this.cacheCwd !== undefined && resolved !== undefined && resolved !== this.cacheCwd)) this.factories.clear();
+    if (reloadStarts || (this.cacheCwd !== undefined && resolved !== undefined && !pathsEqual(this.cacheCwd, resolved))) this.factories.clear();
     if (reloadStarts) {
       this.reloadPass = reload;
       reevaluateEdited(reload);

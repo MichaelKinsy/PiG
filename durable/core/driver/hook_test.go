@@ -188,3 +188,30 @@ func TestAPanickingHookIsAThrownOutcome(t *testing.T) {
 		t.Fatalf("hook_done = outcome %d %s", ev.Phase, ev.Payload)
 	}
 }
+
+// Pi source: packages/durable/src/harness/generation.ts (finish, the afterRun answer) and durable/core/host/PROTOCOL.md (hook afterRun).
+// The answer carries `rejected` only when a request was rejected, and then as the full list: an empty list is not sent, and a
+// one-element list is not dropped (an always-written `[]` fails the first row, a never-written member the second; an `omitempty` tag
+// writes the same bytes as the conditional encoding, so the portlint emptydrop check is what keeps that tag out).
+// mutation-checked: writing `rejected` always, or never, fails it
+func TestAfterRunAnswersCarryRejectedOnlyWhenARequestWasRejected(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		asked harness.RunEndTasks
+		want  string
+	}{
+		{"none asked", harness.RunEndTasks{}, `{"tasks":[]}`},
+		{"a request without a definition", harness.RunEndTasks{Tasks: []harness.RunEndTask{{}}},
+			`{"tasks":[],"rejected":[{"name":"Error","message":"An afterRun hook asked for a task without a definition"}]}`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			handler := &harness.GenerationHooks{AfterRun: func(context.Context, harness.RunSummary, harness.HookApi) (*harness.RunEndTasks, error) {
+				return &tc.asked, nil
+			}}
+			ev := hookRun(t, "afterRun", map[int]any{0: handler}, `{"run":{"reason":"answer","answer":1,"last":1,"first":1}}`)
+			if ev.Phase != abi.OutcomeResult || string(ev.Payload) != tc.want {
+				t.Fatalf("hook_done = outcome %d %s, want %s", ev.Phase, ev.Payload, tc.want)
+			}
+		})
+	}
+}

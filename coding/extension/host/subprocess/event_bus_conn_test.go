@@ -342,7 +342,7 @@ func TestHostEventBusClosedConnectionForgetsRetainedSubscriptions(t *testing.T) 
 	if env := readFramed(t, peer); env.CallResult == nil || env.CallResult.Error != nil {
 		t.Fatalf("events.on = %+v", env)
 	}
-	retained := func() int { return reflect.ValueOf(h.Runtime()).Elem().FieldByName("eventBusUnsubscribers").Len() }
+	retained := func() int { return int(reflect.ValueOf(h.Runtime()).Elem().FieldByName("eventBusRetained").Int()) }
 	if retained() != 1 {
 		t.Fatalf("retained after events.on = %d, want 1", retained())
 	}

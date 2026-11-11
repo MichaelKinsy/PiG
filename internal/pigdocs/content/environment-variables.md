@@ -10,7 +10,7 @@ Variables named `PI_*` are read for compatibility with upstream Pi. Directory va
 
 | Variable | Effect |
 |---|---|
-| `PIG_HOME` | Configuration root. Default `~/.pig` |
+| `PIG_HOME` | Configuration root. Default `$XDG_CONFIG_HOME/pig` when `XDG_CONFIG_HOME` is set, else `~/.pig`. An empty value is ignored |
 | `XDG_CONFIG_HOME` | When `PIG_HOME` is not set, the configuration root is `$XDG_CONFIG_HOME/pig` |
 | `PIG_CODING_AGENT_DIR` | Agent directory alone in default mode. Default `$PIG_HOME/agent` |
 | `PIG_USE_PI_DIRS` | Exact value `1` selects Pi's agent directory and project `.pi` resources (D2). Off by default |
@@ -24,6 +24,7 @@ In default mode, `PIG_HOME` moves settings, keybindings, sessions, trust decisio
 |---|---|
 | `PIG_OFFLINE`, `PI_OFFLINE` | Do not check for package updates or refresh dynamic model catalogs such as Radius. Accepts `1`, `true` or `yes`; any `PI_OFFLINE` value stops the catalog refresh |
 | `PIG_UPDATE_URL` | Release manifest used by `pig update` |
+| `PIG_SELF_UPDATE_COMMAND` / `PI_SELF_UPDATE_COMMAND` | Command `pig update` runs to update PiG itself, split on whitespace (no quoting), with `{packageName}`, `{version}` and `{installSpec}` placeholders. `PIG_SELF_UPDATE_COMMAND` is read first and either takes precedence over the `selfUpdateCommand` setting. |
 | `PIG_UPDATE_TRUST_ROOT` | Public key that signs the release manifest |
 | `PI_SKIP_VERSION_CHECK` | Do not check for a newer PiG release at startup. Any non-empty value disables the check, as in Pi. `pig update` still checks |
 | `PI_OAUTH_CALLBACK_HOST` | Host the OAuth callback listens on |
@@ -111,6 +112,7 @@ Each has a setting that does the same thing. A `terminal.hyperlinks`,
 |---|---|
 | `PIG_PIGLET_NAME` | Piglet to run |
 | `PIG_PIGLET_PATH` | Directories searched for piglets |
+| `PIG_ACTIVE_PIGLET_SOURCE` | A session sets it for its tools: the path of the Piglet it runs, or the name of a Piglet Binary. `pig status`, `pig diagnose` and `pig piglet show` read it. Setting it does not select a Piglet. |
 | `PIG_SDK_GO_ROOT` | Go SDK used when building an extension |
 | `PIG_SDK_PY_ROOT` | Python SDK used when building an extension |
 | `PIG_SDK_RS_ROOT` | Rust SDK used when building an extension |

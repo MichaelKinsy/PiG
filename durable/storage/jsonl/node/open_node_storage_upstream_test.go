@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/durabletest"
 	"github.com/MichaelKinsy/PiG/durable/storage/jsonl"
 )
 
@@ -33,10 +34,10 @@ func TestOpenNodeJsonlStorageResolvesAgainstTheOpenTimeWorkingDirectoryAndPersis
 		Id: taskID, ConversationId: durable.ROOT_CONVERSATION_ID, Kind: "test.task", Version: 1,
 		State: durable.TaskState[durable.JsonValue, durable.JsonValue]{Status: durable.TaskPending, Checkpoint: &checkpoint},
 	}
-	if _, err := storage.Commit(t.Context(), []durable.StorageWrite{
+	if _, err := durabletest.CommitWrites(t.Context(), storage, []durable.StorageWrite{
 		durable.ConversationWrite{Value: durable.ConversationRecord{Id: durable.ROOT_CONVERSATION_ID}},
 		durable.TaskWrite{Value: task},
-	}, func(durable.Seq) {}); err != nil {
+	}); err != nil {
 		t.Fatal(err)
 	}
 	if err := storage.Close(t.Context()); err != nil {

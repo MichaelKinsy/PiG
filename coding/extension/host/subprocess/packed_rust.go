@@ -37,12 +37,13 @@ func rustStartCell(cell *runtimecell.RustPackedCell) (*runtimecell.GoPackedCell,
 		return nil, newLoadError("packed-rust-cell", "resolve", "missing_cell", fmt.Errorf("nil packed Rust cell"))
 	}
 	start := &runtimecell.GoPackedCell{
-		Key:        cell.Key,
-		Hash:       cell.Hash,
-		CacheDir:   cell.CacheDir,
-		BinaryPath: cell.BinaryPath,
-		Cached:     cell.Cached,
-		Extensions: make([]runtimecell.GoExtension, 0, len(cell.Extensions)),
+		Key:           cell.Key,
+		Hash:          cell.Hash,
+		CacheDir:      cell.CacheDir,
+		BinaryPath:    cell.BinaryPath,
+		Cached:        cell.Cached,
+		BuildDuration: cell.BuildDuration,
+		Extensions:    make([]runtimecell.GoExtension, 0, len(cell.Extensions)),
 	}
 	for _, ext := range cell.Extensions {
 		start.Extensions = append(start.Extensions, runtimecell.GoExtension{Name: ext.Name, Root: ext.Root})

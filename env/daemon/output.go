@@ -110,23 +110,15 @@ func (o *output) run(writer io.Writer) {
 				frame, unsent = next.frame, next.unsent
 			case o.closed:
 				o.mu.Unlock()
-				_ = buffered.Flush()
 				return
 			default:
-				// Nothing queued: whatever is buffered goes out before waiting.
-				o.mu.Unlock()
-				if buffered.Flush() != nil {
-					o.close()
-					return
-				}
-				o.mu.Lock()
-				if len(o.control) == 0 && len(o.bulk) == 0 && !o.closed {
-					o.queued.Wait()
-				}
+				o.queued.Wait()
 			}
 		}
 		o.mu.Unlock()
-		failed := WriteFrame(buffered, frame) != nil
+		// Each frame is flushed as Pi's writer flushes it (output.rs, frame.rs write_frame): a frame that arrives while the
+		// pipe is full waits behind the one frame being written, not behind a buffer of queued bulk output.
+		failed := WriteFrame(buffered, frame) != nil || buffered.Flush() != nil
 		if unsent != nil {
 			unsent.Add(-1)
 		}

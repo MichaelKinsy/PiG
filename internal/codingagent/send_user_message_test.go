@@ -288,6 +288,7 @@ func assertRequestUserContent(t *testing.T, request capturedStreamRequest, wantT
 // flag and performs teardown. Invoking the captured action from a separate
 // goroutine mirrors the host dispatch.
 func TestSubprocessShutdownHostActionRequestsExitViaOwnerLoop(t *testing.T) {
+	freshEnding(t)
 	spy := &stopSpyRenderer{TuiAltScreen: tui.NewTuiAltScreenWithOutput(io.Discard, 80, 24, tui.TuiAltScreenOptions{})}
 	model := &ai.Model{ID: "m", DisplayName: "m", Capabilities: ai.ModelCapabilities{ContextWindow: 8000}}
 	agentDir := t.TempDir()

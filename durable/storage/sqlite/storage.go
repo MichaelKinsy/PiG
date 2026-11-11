@@ -350,73 +350,109 @@ func metadataNextId(metadata SqliteRow) (int64, error) {
 	return int64(value), nil
 }
 
-// Commit atomically persists one batch, adopts it, and returns its sequence.
-func (storage *SqliteStorage) Commit(_ context.Context, batch []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
-	if err := storage.assertOpen(); err != nil {
-		return 0, err
-	}
-	batch = writes.Values(batch)
-	actions, err := prepareDocumentActions(batch)
+// databaseCalls records whether a database call of a batch's checks failed.
+type databaseCalls struct{ failed bool }
+
+// watchedExecutor is an executor that sets calls.failed when one of its calls returns an error: a failing check is
+// then the database's, not one of Durable's own.
+type watchedExecutor struct {
+	executor SqliteExecutor
+	calls    *databaseCalls
+}
+
+func (watched watchedExecutor) watch(err error) error {
 	if err != nil {
-		return 0, err
+		watched.calls.failed = true
 	}
-	candidateNextId := storage.candidateNextId(batch)
-	var committedSeq durable.Seq
-	var committedEntries []committedEntry
-	if hasEntryWrite(batch) {
+	return err
+}
+
+func (watched watchedExecutor) Exec(sql string) error {
+	return watched.watch(watched.executor.Exec(sql))
+}
+
+func (watched watchedExecutor) Run(sql string, params ...SqliteValue) error {
+	return watched.watch(watched.executor.Run(sql, params...))
+}
+
+func (watched watchedExecutor) RunCounted(sql string, params ...SqliteValue) (int64, error) {
+	count, err := watched.executor.RunCounted(sql, params...)
+	return count, watched.watch(err)
+}
+
+func (watched watchedExecutor) Get(sql string, params ...SqliteValue) (SqliteRow, error) {
+	row, err := watched.executor.Get(sql, params...)
+	return row, watched.watch(err)
+}
+
+func (watched watchedExecutor) All(sql string, params ...SqliteValue) ([]SqliteRow, error) {
+	rows, err := watched.executor.All(sql, params...)
+	return rows, watched.watch(err)
+}
+
+// Commit commits batches in one SQL transaction, each with its own seq. Each batch is checked before it writes
+// anything, against the state the earlier ones left, and the first one refused ends the commit: the transaction commits
+// the ones before it. No savepoints, which Durable Objects do not allow: the checks run before the writes instead.
+func (storage *SqliteStorage) Commit(
+	_ context.Context, batches [][]durable.StorageWrite, receive func(index int, seq durable.Seq),
+) (durable.CommitResult, error) {
+	if err := storage.assertOpen(); err != nil {
+		return durable.CommitResult{}, err
+	}
+	if slices.ContainsFunc(batches, hasEntryWrite) {
 		storage.retained.mu.Lock()
 		defer storage.retained.mu.Unlock()
 	}
-	err = storage.db.Transaction(func(transaction SqliteExecutor) error {
-		metadata, err := transaction.Get("SELECT next_id, next_seq FROM " + storage.schema.Tables.DurableMetadata + " WHERE singleton = 1")
-		if err != nil {
-			return err
-		}
-		if metadata == nil {
-			return errors.New("Durable SQLite metadata is missing")
-		}
-		nextSeq, err := rowInt(metadata, "next_seq")
-		if err != nil {
-			return err
-		}
-		storedNextId, err := metadataNextId(metadata)
-		if err != nil {
-			return err
-		}
-		seq := durable.Seq(nextSeq)
-		if err := storage.checkGlobalIds(transaction, batch); err != nil {
-			return err
-		}
-		if err := storage.checkDocumentActions(transaction, actions); err != nil {
-			return err
-		}
+	var seqs []durable.Seq
+	var committedEntries []committedEntry
+	var refused error
+	candidateNextId := storage.candidateNextId(nil)
+	err := storage.db.Transaction(func(transaction SqliteExecutor) error {
+		seqs = seqs[:0]
 		committedEntries = committedEntries[:0]
-		for _, write := range batch {
-			entryText, err := storage.applyTableWrite(transaction, write, seq)
+		refused = nil
+		candidateNextId = storage.candidateNextId(nil)
+		storedNextId, nextSeq, err := storage.readMetadata(transaction)
+		if err != nil {
+			return err
+		}
+		next := nextSeq
+		// Whether a database call of a batch's checks failed: then the failure is an unknown outcome, not a refusal.
+		calls := &databaseCalls{}
+		checked := watchedExecutor{executor: transaction, calls: calls}
+		for _, batch := range batches {
+			batch = writes.Values(batch)
+			// Only Durable's own checks refuse a batch, before it wrote anything: the ones before it stand. A failure of
+			// the database fails the call, and rolls back the batches before it with the transaction.
+			calls.failed = false
+			actions, err := prepareDocumentActions(batch)
+			if err == nil {
+				err = storage.checkBatch(checked, batch, actions)
+			}
+			if err != nil {
+				if calls.failed {
+					return err
+				}
+				refused = err
+				break
+			}
+			seq := durable.Seq(next)
+			next++
+			entries, err := storage.applyBatch(transaction, batch, actions, seq)
 			if err != nil {
 				return err
 			}
-			if entryText != "" {
-				committedEntries = append(committedEntries, committedEntry{
-					conversationId: write.(durable.EntryWrite).Value.ConversationId, text: entryText,
-				})
-			}
+			committedEntries = append(committedEntries, entries...)
+			seqs = append(seqs, seq)
+			candidateNextId = max(candidateNextId, storage.candidateNextId(batch))
 		}
-		if err := storage.applyDocumentActions(transaction, actions, seq); err != nil {
-			return err
+		if len(seqs) > 0 {
+			return storage.writeMetadata(transaction, max(storedNextId, candidateNextId), next)
 		}
-		if err := transaction.Run(
-			"UPDATE "+storage.schema.Tables.DurableMetadata+" SET next_id = ?, next_seq = ? WHERE singleton = 1",
-			strconv.FormatInt(max(storedNextId, candidateNextId), 10),
-			int64(seq)+1,
-		); err != nil {
-			return err
-		}
-		committedSeq = seq
 		return nil
 	})
 	if err != nil {
-		return 0, err
+		return durable.CommitResult{}, err
 	}
 	storage.mu.Lock()
 	storage.nextId = max(storage.nextId, candidateNextId)
@@ -424,9 +460,66 @@ func (storage *SqliteStorage) Commit(_ context.Context, batch []durable.StorageW
 	if len(committedEntries) > 0 {
 		storage.retained.retainCommitted(committedEntries)
 	}
-	// COMMIT returned: the batch is durable.
-	adopt(committedSeq)
-	return committedSeq, nil
+	// COMMIT returned: the stored batches are durable.
+	for index, seq := range seqs {
+		receive(index, seq)
+	}
+	return durable.CommitResult{Stored: len(seqs), Refused: refused}, nil
+}
+
+// readMetadata reads next_id and next_seq.
+func (storage *SqliteStorage) readMetadata(executor SqliteExecutor) (nextId, nextSeq int64, err error) {
+	metadata, err := executor.Get("SELECT next_id, next_seq FROM " + storage.schema.Tables.DurableMetadata + " WHERE singleton = 1")
+	if err != nil {
+		return 0, 0, err
+	}
+	if metadata == nil {
+		return 0, 0, errors.New("Durable SQLite metadata is missing")
+	}
+	if nextSeq, err = rowInt(metadata, "next_seq"); err != nil {
+		return 0, 0, err
+	}
+	if nextId, err = metadataNextId(metadata); err != nil {
+		return 0, 0, err
+	}
+	return nextId, nextSeq, nil
+}
+
+func (storage *SqliteStorage) writeMetadata(executor SqliteExecutor, nextId, nextSeq int64) error {
+	return executor.Run(
+		"UPDATE "+storage.schema.Tables.DurableMetadata+" SET next_id = ?, next_seq = ? WHERE singleton = 1",
+		strconv.FormatInt(nextId, 10), nextSeq,
+	)
+}
+
+// checkBatch is Durable's own checks of one batch, copy resolution included, before it writes anything.
+func (storage *SqliteStorage) checkBatch(executor SqliteExecutor, batch []durable.StorageWrite, actions *documentActions) error {
+	if err := storage.checkGlobalIds(executor, batch); err != nil {
+		return err
+	}
+	if err := storage.checkDocumentActions(executor, actions); err != nil {
+		return err
+	}
+	return storage.resolveCopies(executor, actions)
+}
+
+// applyBatch writes one checked batch at seq and returns the entries it stored.
+func (storage *SqliteStorage) applyBatch(
+	executor SqliteExecutor, batch []durable.StorageWrite, actions *documentActions, seq durable.Seq,
+) ([]committedEntry, error) {
+	var entries []committedEntry
+	for _, write := range batch {
+		entryText, err := storage.applyTableWrite(executor, write, seq)
+		if err != nil {
+			return nil, err
+		}
+		if entryText != "" {
+			entries = append(entries, committedEntry{
+				conversationId: write.(durable.EntryWrite).Value.ConversationId, text: entryText,
+			})
+		}
+	}
+	return entries, storage.applyDocumentActions(executor, actions, seq)
 }
 
 // MintId returns a fresh candidate from the Session-global numeric ID namespace.
@@ -1483,16 +1576,27 @@ func copyMatches(source durable.DocumentRecord, create durable.DocumentCreate) b
 		source.Fork == create.Fork
 }
 
+// resolveCopies resolves each copy to a base of its source's state before this batch, which may not change the source.
+func (storage *SqliteStorage) resolveCopies(executor SqliteExecutor, actions *documentActions) error {
+	for _, id := range actions.order {
+		action := actions.actions[id]
+		if action.copy == nil {
+			continue
+		}
+		content, err := storage.resolveCopy(executor, id, *action.create, *action.copy)
+		if err != nil {
+			return err
+		}
+		action.content = content
+	}
+	return nil
+}
+
 func (storage *SqliteStorage) applyDocumentActions(executor SqliteExecutor, actions *documentActions, seq durable.Seq) error {
 	for _, id := range actions.order {
 		action := actions.actions[id]
+		// Copies are resolved to their content by resolveCopies.
 		content := action.content
-		if action.copy != nil {
-			var err error
-			if content, err = storage.resolveCopy(executor, id, *action.create, *action.copy); err != nil {
-				return err
-			}
-		}
 		var record durable.DocumentRecord
 		if action.create != nil {
 			record = durable.DocumentRecord{

@@ -12,8 +12,8 @@ import (
 
 // Recovery (CONTRACT 3.8): a restart loses every volatile effect; the committed state decides what resumes.
 
-// TestRecoverResendsAnUnansweredRequest: a model request that never answered is sent again after a restart, and the
-// answer commits once.
+// TestRecoverResendsAnUnansweredRequest: a model request that never answered is a failed attempt after a restart (Pi b3a29f11,
+// spec section 8.3): it is sent again once the retry backoff ends, and the answer commits once.
 func TestRecoverResendsAnUnansweredRequest(t *testing.T) {
 	r := newRig(t)
 	conv, _ := r.start("hi")
@@ -23,8 +23,12 @@ func TestRecoverResendsAnUnansweredRequest(t *testing.T) {
 	}
 	first := viewText(r.requests[0].req.Context.(turn.ViewContext).View)
 	r.restart()
+	if len(r.requests) != 0 {
+		t.Fatalf("requests after the restart = %d, want none during the backoff (reports %v)", len(r.requests), r.reports)
+	}
+	r.advance(2000)
 	if len(r.requests) != 1 {
-		t.Fatalf("requests after the restart = %d (reports %v)", len(r.requests), r.reports)
+		t.Fatalf("requests after the backoff = %d (reports %v)", len(r.requests), r.reports)
 	}
 	if got := viewText(r.requests[0].req.Context.(turn.ViewContext).View); got != first {
 		t.Fatalf("resent context differs:\n%s\n%s", first, got)
@@ -101,6 +105,32 @@ func TestRecoverRunningTool(t *testing.T) {
 	}
 }
 
+// TestRecoverPartialNeverStoredLeavesNoAbortedEntry: a stream that crashed before its first store leaves no aborted entry, and the
+// request is sent again (harness-deferred-progress.test.ts "leaves no aborted entry for a stream that crashed before its first store").
+func TestRecoverPartialNeverStoredLeavesNoAbortedEntry(t *testing.T) {
+	r := newRig(t)
+	conv, _ := r.start("hi")
+	r.resume()
+	r.requests[0].onPartial(mustRaw(t, `{"role":"assistant","content":[{"type":"text","text":"half an ans"}],"stopReason":"stop"}`))
+	r.run()
+	r.advance(100)
+	if live := r.doc(turn.LiveDef, conv); !strings.Contains(live, "half an ans") {
+		t.Fatalf("memory lacks the partial: %s", live)
+	}
+	r.restart()
+	if got := lastEntryOf(r, "pi.assistant"); got != "" {
+		t.Fatalf("a partial that was never stored became an entry: %s", got)
+	}
+	// The request the host died during is a charged attempt (generation.ts:236 interrupted): the next one waits for the retry backoff.
+	if len(r.requests) != 0 {
+		t.Fatalf("the interrupted request was sent again on open: requests = %d", len(r.requests))
+	}
+	r.advance(2000)
+	if len(r.requests) != 1 {
+		t.Fatalf("requests = %d after the backoff", len(r.requests))
+	}
+}
+
 func lastEntryOf(r *rig, kind string) string {
 	var out string
 	for _, e := range r.entries(1) {
@@ -112,7 +142,7 @@ func lastEntryOf(r *rig, kind string) string {
 }
 
 // TestRecoverPartialBecomesAnAbortedEntry: a restart with a streamed partial in pi.live keeps the text as an aborted
-// assistant entry (convertPartial) and sends the request again.
+// assistant entry (convertPartial) and sends the request again once the retry backoff of the charged attempt ends.
 func TestRecoverPartialBecomesAnAbortedEntry(t *testing.T) {
 	r := newRig(t)
 	conv, _ := r.start("hi")
@@ -123,11 +153,14 @@ func TestRecoverPartialBecomesAnAbortedEntry(t *testing.T) {
 	if live := r.doc(turn.LiveDef, conv); !strings.Contains(live, "half an ans") {
 		t.Fatalf("partial not committed: %s", live)
 	}
+	// Held in memory until persistWithinMs: a crash before then loses it (spec section 8.2).
+	r.advance(1000)
 	r.restart()
 	got := lastEntryOf(r, "pi.assistant")
 	if !strings.Contains(got, "half an ans") || !strings.Contains(got, `"stopReason":"aborted"`) {
 		t.Fatalf("partial entry = %s (reports %v)", got, r.reports)
 	}
+	r.advance(2000)
 	if len(r.requests) != 1 {
 		t.Fatalf("requests = %d", len(r.requests))
 	}

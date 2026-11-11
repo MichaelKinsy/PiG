@@ -182,7 +182,10 @@ type InteractiveMode struct {
 	widgetSeq            uint64
 	bridgeWidgetSeqs     map[*subprocess.PushProxy]bridgeWidgetSeq
 	widgetContainerBelow *tui.Container
-	editor               *tui.Editor
+	// queueCopyTip is the one-time line under the editor after Up recalled history while a message was queued (D228), nil when not shown; widgetMu guards it. queueCopyTipShown is set once it was shown in this process run and only the input loop touches it.
+	queueCopyTip      tui.Component
+	queueCopyTipShown bool
+	editor            *tui.Editor
 	// customEditor is Pi's CustomEditor over editor, with the app handlers bound; inputCtx and inputErr carry the key being handled to those handlers.
 	customEditor        *CustomEditor
 	inputCtx            context.Context
@@ -363,6 +366,10 @@ type InteractiveMode struct {
 	// idleCollectPending is set while that wait runs; typed input restarts it.
 	idleCollectPending atomic.Bool
 	idleCollector      idleHeapCollector
+	// switchHeapRelease is set while a heap release after a Session replacement or tree navigation is queued or running.
+	switchHeapRelease atomic.Bool
+	// switchHeapReleases counts the releases requested after a Session replacement or tree navigation, coalesced ones included.
+	switchHeapReleases atomic.Int64
 
 	branchSummaryCancel context.CancelFunc
 
@@ -602,8 +609,10 @@ type InteractiveMode struct {
 	assistantBlocks []*tui.AssistantMessageComponent
 	// hiddenThinkingLabel is the extension-set label for hidden thinking runs; nil selects the default and a pointer to the empty string is an empty label (Pi's label ?? default).
 	hiddenThinkingLabel *string
-	userBlocks          []*tui.UserMessageComponent
-	outputPad           int
+	// stopThinkingRuns ends the observation of the current runner's thinking-run ownership (bindThinkingRuns); pig additive (D214).
+	stopThinkingRuns func()
+	userBlocks       []*tui.UserMessageComponent
+	outputPad        int
 
 	// layout is the main-screen render root used for editor-slot swaps.
 	layout *tui.Container
@@ -1200,6 +1209,10 @@ type InteractiveModeOptions struct {
 	// getSystemPromptSource and getAppendSystemPromptSources report them.
 	SystemPromptSourcePaths []string
 
+	// ContextFilesTrustedOnly marks a run that withholds an untrusted project's context files, and that warns of them.
+	// pig additive (D211).
+	ContextFilesTrustedOnly bool
+
 	// ReplacementResources returns the cwd-bound options of the build that owns session.
 	ReplacementResources func(session InteractiveSessionHandle) InteractiveReplacement
 
@@ -1475,7 +1488,7 @@ func (m *InteractiveMode) Run(ctx context.Context) (err error) {
 	// sees the error that handler returns; a crash has its own record.
 	defer func() {
 		if err != nil && !errors.Is(err, ErrInteractiveCrashed) {
-			RecordExit(m.opts.AgentDir, interactiveExitReason(err))
+			RecordEnding(m.opts.AgentDir, interactiveExitReason(err))
 		}
 	}()
 	// Registered before the deferred TUI teardown so it runs last, after the terminal has been restored. Mirrors
@@ -1511,6 +1524,32 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	}
 	m.runEnded.Store(false)
 	m.runCtx = ctx
+	// SIGINT is taken before anything draws, as Pi's init() registers its signal handlers first (interactive-mode.ts:974-977): a screen on the
+	// terminal means the handler is in place. Installed after the first render, a SIGINT sent to a session that had already drawn got Go's
+	// default action: the process died by the signal with no exit.log line.
+	// Upstream registers no general SIGINT handler, so an external SIGINT
+	// terminates pi (interactive-mode.ts registers SIGTERM, plus SIGHUP off
+	// win32, and takes SIGINT only to ignore it while suspended). Terminate
+	// too, but hand the terminal back first: Node's default handler does not,
+	// so `kill -INT` leaves pi's user with ISIG off and a dead Ctrl+C at the
+	// shell. Ctrl+C itself never arrives here, because pig holds the terminal
+	// in raw mode and the keymap consumes \x03.
+	intCh := make(chan os.Signal, 1)
+	signal.Notify(intCh, syscall.SIGINT)
+	m.onStop(func() error { signal.Stop(intCh); return nil })
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-intCh:
+				m.handleInterruptSignal()
+			}
+		}
+	}()
+
+	removeWriteErrorHandler := m.exitOnDeadTerminalWrite()
+	m.onStop(func() error { removeWriteErrorHandler(); return nil })
 	m.backgroundCtx, m.backgroundCancel = context.WithCancel(ctx)
 	m.onStop(func() error {
 		m.backgroundCancel()
@@ -1525,8 +1564,11 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	mark := m.startupMark()
 	m.initStartupTheme()
 	mark("theme-detected")
-	if line := m.modelScopeLine(); line != "" {
-		_, _ = fmt.Fprintln(os.Stdout, line)
+	// Fullscreen renders on the alternate screen, so stdout text would stay in the shell after exit; its header shows the notice.
+	if m.opts.TuiMode != "fullscreen" {
+		if notice := m.getModelScopeNotice(); notice != "" {
+			tui.WriteToTerminal(os.Stdout, notice+"\n")
+		}
 	}
 
 	// Set up TUI. Fullscreen mode uses the alternate-screen renderer; both
@@ -1618,6 +1660,8 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	m.editor.SetAutocomplete(m.buildAutocompleteProvider())
 	m.applyEditorMaxVisible()
 	m.statusLine = m.newFooter() // timings rebound after agent constructed
+	m.thinkingLevel = m.sessionThinkingLevel()
+	m.editor.ThinkingLevel = m.thinkingLevel
 	m.statusLine.SetCwd(m.opts.CWD)
 	// Set auto-compact indicator from settings (nil == true default).
 	autoCompact := m.opts.Settings.Compaction == nil ||
@@ -1710,6 +1754,7 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 
 	// Wire the extension runner. May be nil; event_bridge.go helpers are nil-safe.
 	m.newRunner = m.opts.ExtensionRunner
+	m.bindThinkingRuns()
 	m.installRuntimeHooks()
 	// The rebind owner installs UI/actions before dispatching session_start.
 
@@ -1798,9 +1843,13 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	// fresh install and an update with new changelog entries.
 	// Mirrors upstream getChangelogForDisplay + showStartupNoticesIfNeeded
 	// (interactive-mode.ts:816-843, 487-522, 1265-1307).
-	if m.opts.SettingsManager != nil && m.opts.AppVersion != "" && m.opts.ResumePath == "" {
-		if newEntries := startupChangelog(m.opts.SettingsManager, m.opts.AppVersion); len(newEntries) > 0 {
-			m.showStartupChangelog(newEntries)
+	if m.opts.SettingsManager != nil && m.opts.ResumePath == "" {
+		var newEntries []ChangelogEntry
+		if m.opts.AppVersion != "" {
+			newEntries = startupChangelog(m.opts.SettingsManager, m.opts.AppVersion)
+		}
+		if extensionUpdates := m.getExtensionChangelogUpdates(); len(newEntries) > 0 || len(extensionUpdates) > 0 {
+			m.showStartupChangelog(newEntries, extensionUpdates)
 			m.tuiInst.Render()
 		}
 	}
@@ -1868,27 +1917,6 @@ func (m *InteractiveMode) run(ctx context.Context) error {
 	go m.tickSpinner(ctx)
 
 	m.startGitBranchWatcher(ctx)
-
-	// Upstream registers no general SIGINT handler, so an external SIGINT
-	// terminates pi (interactive-mode.ts registers SIGTERM, plus SIGHUP off
-	// win32, and takes SIGINT only to ignore it while suspended). Terminate
-	// too, but hand the terminal back first: Node's default handler does not,
-	// so `kill -INT` leaves pi's user with ISIG off and a dead Ctrl+C at the
-	// shell. Ctrl+C itself never arrives here, because pig holds the terminal
-	// in raw mode and the keymap consumes \x03.
-	intCh := make(chan os.Signal, 1)
-	signal.Notify(intCh, syscall.SIGINT)
-	m.onStop(func() error { signal.Stop(intCh); return nil })
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-intCh:
-				m.handleInterruptSignal()
-			}
-		}
-	}()
 
 	// Terminal resize re-render. The TUI re-queries term.GetSize on every
 	// Render() but renders only fire on input/stream/flash events, so a resize

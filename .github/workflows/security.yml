@@ -66,7 +66,7 @@ jobs:
             test/parity/interface-extractor/package-lock.json
             automation/images/ci-parity/package-lock.json
             automation/images/npm-runtime/package-lock.json
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.12'
       - name: Install source-analysis tools
@@ -86,19 +86,45 @@ jobs:
           go tool staticcheck -checks='SA*' $(go list ./... | grep -v '/third_party/')
       - name: Audit npm lock files
         shell: bash
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
         run: |
           set -u
           mkdir -p evidence
+          # A high or critical finding blocks on push to main, on the schedule, and on a manual run.
+          # On a pull request or merge group it blocks only when the change touches an npm manifest or
+          # lock file; otherwise it warns, so an advisory published for an untouched dependency does
+          # not stop an unrelated change.
+          block=true
+          if [ "$EVENT" = pull_request ] || [ "$EVENT" = merge_group ]; then
+            block=false
+            if git diff --name-only "$BASE_SHA" "$HEAD_SHA" | grep -Eq '(^|/)(package-lock\.json|pnpm-lock\.yaml|package\.json)$'; then
+              block=true
+            fi
+          fi
+          echo "npm audit blocks: $block (event $EVENT)"
           status=0
-          for directory in test/parity/interface-extractor automation/images/ci-parity automation/images/npm-runtime; do
+          # Shipped or product-path manifests gate on high and critical.
+          for directory in extensions/sdk-ts durable/core/host/cf test/parity/interface-extractor automation/images/ci-parity; do
             name=${directory//\//-}
-            if ! npm audit --prefix "$directory" --omit=dev --json > "evidence/npm-audit-$name.json"; then
-              echo "::warning file=$directory/package-lock.json::npm audit reported findings; review the uploaded evidence"
-              status=1
+            if ! npm audit --prefix "$directory" --omit=dev --audit-level=high --json > "evidence/npm-audit-$name.json"; then
+              if [ "$block" = true ]; then
+                echo "::error file=$directory/package-lock.json::npm audit reported high or critical findings"
+                status=1
+              else
+                echo "::warning file=$directory/package-lock.json::npm audit reported high or critical findings; no npm manifest changed, so this does not block"
+              fi
             fi
           done
-          echo "npmAuditFindings=$status" >> "$GITHUB_OUTPUT"
-          exit 0
+          # Advisory: the CI image npm runtime. Its only finding is in the dependencies that npm
+          # itself bundles, which an override cannot reach. It never ships in a product.
+          directory=automation/images/npm-runtime
+          if ! npm audit --prefix "$directory" --omit=dev --json > "evidence/npm-audit-${directory//\//-}.json"; then
+            echo "::warning file=$directory/package-lock.json::npm audit reported findings in the CI npm runtime; review the uploaded evidence"
+          fi
+          exit "$status"
       - name: Analyze Python SDK
         run: |
           ruff check extensions/sdk-py
@@ -153,8 +179,10 @@ jobs:
           path: evidence/
           retention-days: 30
 
-  secret-scan:
-    name: Secret scanning
+  # Gitleaks (the whole history) and TruffleHog (the pull request range) each take several minutes, so they run as two jobs in
+  # parallel, each under its own timeout.
+  secret-scan-gitleaks:
+    name: Secret scanning (Gitleaks)
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -162,6 +190,13 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      # fetch-depth 0 also fetches every branch and tag of the repository, and gitleaks without --log-opts scans every ref. A scheduled
+      # or push run on main would then report commits that exist only on pushed fix/* and release/* branches. Keep the checked-out
+      # commit (a pull request's merge commit, or the ref the event names) and drop the other refs: the scan covers the history that
+      # commit reaches, which is the history the event is about.
+      - name: Scan only the checked-out history
+        shell: bash
+        run: git for-each-ref --format='delete %(refname)' refs/remotes refs/tags | git update-ref --no-deref --stdin
       # gitleaks-action supports only push, pull_request, workflow_dispatch and schedule; on merge_group it exits with an
       # error. The commits a merge group adds are the queued pull request's own, which the pull_request run scanned.
       - name: Gitleaks
@@ -169,10 +204,20 @@ jobs:
         uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  secret-scan-trufflehog:
+    name: Secret scanning (TruffleHog)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
       # base and head are empty outside a merge group, which keeps the action's per-event range there; in a merge group
       # they scan the commits the queue added to the base branch.
       - name: TruffleHog verified findings
-        uses: trufflesecurity/trufflehog@e76dff8a7e57d6df0c60ad8cbf5d5cba505a8fc9 # v3.99.2
+        uses: trufflesecurity/trufflehog@31ce31ee1abbcc7dc8eee5764c17121c3044c8b2 # v3.99.7
         with:
           path: ./
           base: ${{ github.event.merge_group.base_sha }}
@@ -243,21 +288,21 @@ jobs:
         with:
           go-version-file: .go-version
           cache: true
-      - uses: github/codeql-action/init@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0
+      - uses: github/codeql-action/init@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
           config: ${{ matrix.config }}
       - if: matrix.build-mode == 'manual'
         run: go build ./...
-      - uses: github/codeql-action/analyze@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0
+      - uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         with:
           category: /language:${{ matrix.language }}
 
   result:
     name: Security result
     # The one required check for this workflow; see CI result in ci.yml.
-    needs: [changes, source-assurance, secret-scan, dependency-review, codeql]
+    needs: [changes, source-assurance, secret-scan-gitleaks, secret-scan-trufflehog, dependency-review, codeql]
     if: ${{ always() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -269,7 +314,8 @@ jobs:
           PRODUCT: ${{ needs.changes.outputs.product }}
           CHANGES: ${{ needs.changes.result }}
           SOURCE: ${{ needs.source-assurance.result }}
-          SECRETS: ${{ needs.secret-scan.result }}
+          GITLEAKS: ${{ needs.secret-scan-gitleaks.result }}
+          TRUFFLEHOG: ${{ needs.secret-scan-trufflehog.result }}
           REVIEW: ${{ needs.dependency-review.result }}
           CODEQL: ${{ needs.codeql.result }}
         shell: bash
@@ -291,7 +337,8 @@ jobs:
           { [ "$PRIVATE" = true ] || [ "$product_skip" = true ]; } && codeql_skip=true
           expect "Changed paths" "$CHANGES" false
           expect "Source assurance" "$SOURCE" "$product_skip"
-          expect "Secret scanning" "$SECRETS" false
+          expect "Secret scanning (Gitleaks)" "$GITLEAKS" false
+          expect "Secret scanning (TruffleHog)" "$TRUFFLEHOG" false
           expect "Dependency review" "$REVIEW" "$review_skip"
           expect "CodeQL" "$CODEQL" "$codeql_skip"
           exit "$status"

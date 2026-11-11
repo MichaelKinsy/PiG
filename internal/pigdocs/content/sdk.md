@@ -177,7 +177,7 @@ Start PiG in RPC mode when the caller needs a language-neutral process boundary:
 pig --mode rpc
 ```
 
-See [RPC mode](/docs/latest/rpc).
+See [RPC mode](rpc.md).
 
 ## TypeScript extension declarations
 
@@ -199,7 +199,7 @@ See the [upstream Pi SDK documentation](https://pi.dev/docs/latest/sdk) when you
 
 ## Related documentation
 
-- [Extensions](/docs/latest/extensions)
-- [Piglets](/docs/latest/piglets)
-- [Derivative harnesses](/docs/latest/derivative-harnesses)
-- [RPC mode](/docs/latest/rpc)
+- [Extensions](extensions.md)
+- [Piglets](piglets.md)
+- [Extend and modify PiG](extend-pig.md)
+- [RPC mode](rpc.md)

@@ -33,11 +33,11 @@ ready_pattern_pig = "Warning: No models available."
 ready_pattern_pi = "Warning: No models available."
 ready_timeout_seconds = 25
 capture_start = "/mo\n────────────────────────────────────────────────────────────────────────────────────────────────────"
-capture_end = "  import         Import and resume a session from a JSONL file"
+capture_end = "  import         Import a JSONL session, preserving its ID and working directory"
 
 [[tmux.steps]]
 keys = ["/", "m", "o"]
-wait_contains = ["→ model", "  import         Import and resume a session from a JSONL file"]
+wait_contains = ["→ model", "  import         Import a JSONL session, preserving its ID and working directory"]
 wait_timeout_seconds = 5
 settle_seconds = 1
 

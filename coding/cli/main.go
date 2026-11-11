@@ -58,6 +58,7 @@ import (
 	piglet "github.com/MichaelKinsy/PiG/coding/piglet"
 	"github.com/MichaelKinsy/PiG/coding/pigletbuild/binarypiglet"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/codingagent/prompts"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/timings"
 	"github.com/MichaelKinsy/PiG/internal/frontendpack"
 	"github.com/MichaelKinsy/PiG/internal/gcpolicy"
@@ -296,14 +297,23 @@ func runningPigletBinary() pigletBinary {
 }
 
 // pigletBinaryOverlayRefusal returns the refusal for a Piglet requested from a Piglet Binary that does not accept
-// overlays, or "" when the run may go on. A Piglet Binary is bound to one immutable composition unless its Piglet set
-// build.allowOverlays (D202); otherwise running another Piglet is out of scope, so it names the Binary and points at the
-// setting and at raw pig.
+// overlays, or "" when the run may go on. A Piglet Binary is bound to one immutable composition when its Piglet set
+// build.closed (D202); then running another Piglet is out of scope, so it names the Binary and points at the setting and at
+// raw pig.
 func pigletBinaryOverlayRefusal(flags map[string]any, binary pigletBinary) string {
 	if !binary.Is || !pigletWasRequested(flags) || binary.OverlayBase() != nil {
 		return ""
 	}
-	return fmt.Sprintf("pig: this Piglet Binary (%s) runs only its built-in Piglet and does not accept --piglet overlays (nor PIG_PIGLET_PATH or PIG_PIGLET_NAME); build its Piglet with build.allowOverlays: true to accept them, or run the Piglet with stock pig (pig --piglet <name|path>)", binary.Name())
+	return fmt.Sprintf("pig: this Piglet Binary (%s) was built with build.closed: true, so it runs only its built-in Piglet and does not accept --piglet overlays (nor PIG_PIGLET_PATH or PIG_PIGLET_NAME); rebuild its Piglet without build.closed to accept them, or run the Piglet with stock pig (pig --piglet <name|path>)", binary.Name())
+}
+
+// pigletBinarySystemPromptRefusal returns the refusal for --system-prompt on a Piglet Binary, or "" when the run may go on. A Piglet
+// Binary built with build.closed (D202) keeps its baseline system prompt; every other Piglet Binary takes the flag as stock pig does.
+func pigletBinarySystemPromptRefusal(baked, acceptsOverlays bool, systemPrompt string) string {
+	if !baked || acceptsOverlays || systemPrompt == "" {
+		return ""
+	}
+	return "pig: this Piglet Binary was built with build.closed: true, so its baseline system prompt cannot be replaced; use --append-system-prompt for an additive prompt"
 }
 
 // enforcePigletBinaryScope fails closed when a Piglet Binary is asked to run a
@@ -374,8 +384,7 @@ func resolvePigletOn(unknownFlags map[string]any, trustOverride *bool, binary pi
 			if err == nil {
 				pigletPath = resolved
 			} else if base != nil {
-				// An overlay that does not resolve never falls back to the Binary's own Piglet silently.
-				fmt.Fprintf(os.Stderr, "warning: piglet %q: %v\n", name, err)
+				// An overlay that does not resolve never falls back to the Binary's own Piglet; the caller reports the Piglet as not loaded, as for stock pig.
 				return nil, false
 			}
 		}
@@ -480,6 +489,57 @@ func pigletExtensionFailurePath(p *piglet.Piglet) string {
 	return p.Name
 }
 
+// undoBinaryStrip removes the runtime strip entries the Binary recorded from its baked Piglet at startup; entries a strip build
+// tag compiled out stay, since their shims recorded them first.
+var undoBinaryStrip = func() {}
+
+// droppedBinaryMembers names the extensions compiled into the Binary (fused, or embedded as prebuilt cells) that an overlay
+// removed with extends.remove.extensions, so the Binary does not start them. It is process-fixed like pigstrip's state and nil
+// unless an overlay was resolved.
+//
+// pig additive (D202): an overlay removes a baked member as an extends child removes an inherited one.
+var droppedBinaryMembers map[string]bool
+
+// setDroppedBinaryMembers records which compiled-in extensions the active Piglet no longer declares, when it is an overlay.
+func setDroppedBinaryMembers(p *piglet.Piglet) {
+	droppedBinaryMembers = nil
+	if p == nil {
+		return
+	}
+	if _, overlay := p.OverlayOf(); !overlay {
+		return
+	}
+	kept := make(map[string]bool, len(p.Extensions))
+	for _, ext := range p.Extensions {
+		kept[ext.Name] = true
+	}
+	drop := func(name string) {
+		if !kept[name] {
+			if droppedBinaryMembers == nil {
+				droppedBinaryMembers = map[string]bool{}
+			}
+			droppedBinaryMembers[name] = true
+		}
+	}
+	for _, cfg := range fusepack.FusedConfigs() {
+		drop(cfg.Name)
+	}
+	for _, cell := range cellpack.LoadedCells() {
+		for _, ext := range cell.Extensions {
+			drop(ext.Name)
+		}
+	}
+}
+
+// overlayRemovedFrontend reports whether the active Piglet is an overlay that removed the frontend the Binary compiled in.
+func overlayRemovedFrontend(p *piglet.Piglet) bool {
+	if p == nil {
+		return false
+	}
+	_, overlay := p.OverlayOf()
+	return overlay && !p.HasFrontend()
+}
+
 func fusedConfigsForPiglet(p *piglet.Piglet) []subprocess.ExtConfig {
 	if p == nil || len(p.Extensions) == 0 {
 		return nil
@@ -492,6 +552,21 @@ func fusedConfigsForPiglet(p *piglet.Piglet) []subprocess.ExtConfig {
 	for _, cfg := range fusepack.FusedConfigs() {
 		if _, ok := wanted[cfg.Name]; ok {
 			out = append(out, cfg)
+		}
+	}
+	return out
+}
+
+// withoutDroppedMembers removes the members an overlay removed from the embedded cells, and the cells left with none.
+func withoutDroppedMembers(cells []subprocess.EmbeddedCell) []subprocess.EmbeddedCell {
+	if len(droppedBinaryMembers) == 0 {
+		return cells
+	}
+	out := make([]subprocess.EmbeddedCell, 0, len(cells))
+	for _, cell := range cells {
+		cell.Extensions = slices.DeleteFunc(slices.Clone(cell.Extensions), func(ext subprocess.EmbeddedExtension) bool { return droppedBinaryMembers[ext.Name] })
+		if len(cell.Extensions) > 0 {
+			out = append(out, cell)
 		}
 	}
 	return out
@@ -617,10 +692,18 @@ type MainOptions struct {
 	ExtensionFactories []extension.InlineExtension
 }
 
+// processCwd is process.cwd(). It is a variable so that a test can make the working directory fail the way Pi's deleted-cwd.test.ts
+// stubs process.cwd().
+var processCwd = nodepath.Cwd
+
 // Main runs the pig command line for args, the arguments after the program name, as Pi's main(args, options) does (main.ts:573). The default and experimental executables call it with args and no options.
 func Main(args []string, options *MainOptions) {
 	// pig additive (D174): at most procpolicy.Cap Ps unless the environment sets GOMAXPROCS; set before anything reads the width.
 	procpolicy.Apply()
+	// Upstream's theme.bold, italic, underline, inverse and strikethrough are chalk calls: they draw only when chalk's stdout color level is above zero.
+	tui.SetChalkModifiers(chalkStdoutColor())
+	// The pig command serves the test-only test-faux provider under PIG_TEST_FAUX=1; an embedder that leaves the call out does not link it.
+	coding.EnableTestFauxProvider()
 	// upstream: packages/coding-agent/src/main.ts:574 resetTimings(); PI_TIMING=1 prints the report before the mode runs.
 	timings.ResetTimings()
 	// main.ts:575: the built-in extensions, then the program's own.
@@ -668,7 +751,7 @@ func Main(args []string, options *MainOptions) {
 	if binarypiglet.IsPigletBinary() {
 		if p := binarypiglet.Default(); p != nil {
 			pigstrip.SetPiglet(p.Name)
-			p.Strip.Record()
+			undoBinaryStrip = p.Strip.Record()
 		}
 	}
 
@@ -682,6 +765,18 @@ func Main(args []string, options *MainOptions) {
 	// Windows start after the auth command.
 	if runtime.GOOS == "windows" {
 		codingagent.CleanupWindowsSelfUpdateQuarantine(codingagent.GetPackageDir())
+	}
+	// main.ts:594-605 process.cwd(): the physical directory, not os.Getwd's $PWD, which may reach it through a symlink. A deleted working
+	// directory is reported in one line before any command, --version and --help included (88ffcdc7, #11511); any other failure is
+	// reported as it is.
+	initialCWD, err := processCwd()
+	if errors.Is(err, fs.ErrNotExist) {
+		printCLIError("The current working directory no longer exists. Change to an existing directory and try again.")
+		exitProcess(1)
+	}
+	if err != nil {
+		printCLIError("get cwd: %v", err)
+		exitProcess(1)
 	}
 	if len(args) > 0 {
 		if code := runLoginCommand(args); code >= 0 {
@@ -746,6 +841,12 @@ func Main(args []string, options *MainOptions) {
 	if flags.Version {
 		fmt.Println(cliVersionString())
 		exitProcess(0)
+	}
+
+	// pig additive (D202): a Piglet Binary built with build.closed runs only the extensions its signed closure lists.
+	if message := pigletBinaryExtensionFlagRefusal(currentPigletBinary(), flags.Extensions); message != "" {
+		fmt.Fprintln(os.Stderr, message)
+		exitProcess(1)
 	}
 
 	// A Piglet Binary embeds prebuilt cells and may link fused extensions. Register
@@ -841,13 +942,6 @@ func Main(args []string, options *MainOptions) {
 		}
 	}
 
-	// main.ts:593 process.cwd(): the physical directory, not os.Getwd's $PWD, which may reach it through a symlink.
-	initialCWD, err := nodepath.Cwd()
-	if err != nil {
-		printCLIError("get cwd: %v", err)
-		exitProcess(1)
-	}
-
 	// Set up context with signal handling.
 	//
 	// SIGTERM and SIGHUP dispose the runtime before cancelling. Print/JSON
@@ -882,8 +976,14 @@ func Main(args []string, options *MainOptions) {
 	var activePigletBaked bool
 	enforcePigletBinaryScope(flags.UnknownFlags)
 	activePiglet, activePigletBaked = resolvePiglet(flags.UnknownFlags, flags.ProjectTrustOverride)
-	if activePigletBaked && flags.SystemPrompt != "" {
-		fmt.Fprintln(os.Stderr, "pig: a Piglet Binary's baseline system prompt cannot be replaced; use --append-system-prompt for an additive prompt")
+	exportActivePigletSource(activePiglet, activePigletBaked)
+	// pig additive (D23): an active Piglet adds the Piglets topic to the docs section of the system prompt.
+	prompts.SetPigletDocsTopic(activePiglet != nil)
+	// pig additive (D202): a Piglet Binary that is not built closed takes --system-prompt as stock pig does, so the flag replaces the
+	// Piglet's own prompt; a closed Piglet Binary keeps its baseline.
+	activePigletOpen := activePigletBaked && runningPigletBinary().OverlayBase() != nil
+	if message := pigletBinarySystemPromptRefusal(activePigletBaked, activePigletOpen, flags.SystemPrompt); message != "" {
+		fmt.Fprintln(os.Stderr, message)
 		exitProcess(1)
 	}
 	if activePiglet == nil && pigletWasRequested(flags.UnknownFlags) {
@@ -899,6 +999,11 @@ func Main(args []string, options *MainOptions) {
 		exitProcess(exitCode)
 	}
 	inlinePigletSystemPrompt(activePiglet)
+	setDroppedBinaryMembers(activePiglet)
+	if _, overlay := activePiglet.OverlayOf(); overlay {
+		// The overlay's strip list replaces the one the Binary recorded at startup, so a runtime entry the overlay removed is enabled.
+		undoBinaryStrip()
+	}
 	applyPigletStrip(activePiglet, &flags)
 	if activePiglet != nil && (activePiglet.AgentEnv == nil || piglet.ActiveAgentEnvironmentIdentity() != "") {
 		resolvedSecrets, err := piglet.ResolveRequiredSecrets(ctx, activePiglet)
@@ -1071,12 +1176,14 @@ func Main(args []string, options *MainOptions) {
 		sessionName = ""
 	}
 	flags.Name = sessionName
+	// pig additive (D211): the active Piglet decides whether an untrusted project loads its context files.
+	flags.ContextFilesTrustedOnly = activePiglet.WithholdsUntrustedContextFiles()
 	timings.Time("createSessionManager")
 	// The builder is Pi's createRuntime closure: every mode builds its first Session
 	// and every replacement Session from the same process-fixed inputs.
 	builder := &cliRuntimeBuilder{
 		mode: processAppMode(flags), flags: flags, agentDir: agentDir, launchCWD: initialCWD,
-		activePiglet: activePiglet, activePigletBaked: activePigletBaked,
+		activePiglet: activePiglet, activePigletBaked: activePigletBaked, activePigletOpen: activePigletOpen,
 		shadowedPiglet:  piglet.ShadowedWorkspacePiglet(requestedPigletName(flags.UnknownFlags), flags.ProjectTrustOverride),
 		settingsManager: startupSettingsManager, settingsDiagnostics: startupSettingsDiagnostics,
 		startupUIOptions: startupUIOpts, trustStore: codingagent.NewProjectTrustStore(agentDir),
@@ -1235,6 +1342,12 @@ func Main(args []string, options *MainOptions) {
 	agentToolNames := build.AgentToolNames
 	allowed, activeBuiltin, excludedTools, skipBuiltinTools := build.Allowed, build.ActiveBuiltin, build.ExcludedTools, build.SkipBuiltinTools
 	projectCtxFiles, resolvedPrompts := build.ContextFiles, build.ResolvedPrompts
+	// pig additive (D211): print, JSON and RPC runs have no transcript to hold the notice, so it goes to stderr.
+	if runMode != appModeInteractive && !loadsProjectContextFiles(flags, projectTrusted) && !flags.NoContextFiles {
+		if withheld := codingagent.WithheldProjectContextFiles(build.CWD, agentDir); len(withheld) > 0 {
+			fmt.Fprintln(os.Stderr, codingagent.ContextFilesWithheldMessage(withheld))
+		}
+	}
 	systemPrompt, systemPromptOptions := build.SystemPrompt, build.SystemPromptOptions
 	// No agent-defined beforeToolCall hooks: agent persona system is
 	// a pig-extension concern, not built into core.
@@ -1429,7 +1542,8 @@ func Main(args []string, options *MainOptions) {
 		InitialMessages:        extraMessages,
 		AppVersion:             UpstreamPackageVersion,
 		// pig additive (D91): a Piglet Binary's fused frontend member.
-		Frontend: frontendpack.Selected(),
+		// pig additive (D202): an overlay that removes the frontend slot starts the Binary without it.
+		Frontend: frontendpack.SelectedIf(!overlayRemovedFrontend(activePiglet)),
 		PackageUpdateChecker: func() []string {
 			updates := packagemanager.NewPackageManager(packagemanager.PackageManagerOptions{CWD: cwd, SettingsManager: services.SettingsManager()}).CheckForAvailableUpdates()
 			names := make([]string, 0, len(updates))
@@ -1451,6 +1565,7 @@ func Main(args []string, options *MainOptions) {
 		SkillPaths:                 skillInputs,
 		NoSkills:                   flags.NoSkills,
 		ContextFiles:               projectCtxFiles,
+		ContextFilesTrustedOnly:    flags.ContextFilesTrustedOnly,
 		SystemPromptSourcePaths:    resolvedPrompts.sourcePaths,
 		SessionHandle:              codingSess,
 		ResumePath:                 displayResumePath,

@@ -44,12 +44,6 @@ var (
 	}
 )
 
-// D80: PiG's /settings lists one more row than Pi, "Mask secret input" (docs/parity/DIVERGENCES.md D80), so its position counter ends in /33 where Pi's ends in /32.
-var d80SettingsCount = harness.Normalizer{
-	Pattern: `\((\d+)/33\)`, With: "(${1}/32)", Kinds: []harness.Kind{harness.PiG},
-	Reason: "D80: PiG's /settings has the extra row \"Mask secret input\"; Pi lists 32 rows",
-}
-
 // After a branch summary or a failed turn the footer has no provider usage to show and estimates the context from the request text, system prompt included; the two products' system prompts differ in length, so the percentage can differ by a rounding step.
 var estimatedFooterPercent = harness.Normalizer{
 	Pattern: `\d+\.\d%/128k`, With: "N%/128k",

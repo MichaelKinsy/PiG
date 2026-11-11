@@ -33,6 +33,7 @@ type ExecCommand struct{ Dir string }
 // Execute implements Command. A command that cannot start is an error; one that ends without an exit status counts as
 // status 1.
 func (command ExecCommand) Execute(ctx context.Context, name string, args []string, capture bool) (int, string, error) {
+	//nolint:gosec // G204 (class a): generic ExecCommand.Execute whose name is literal docker from its callers; args are computed image names and paths.
 	process := exec.CommandContext(ctx, name, args...)
 	process.Dir = command.Dir
 	process.Stderr = os.Stderr

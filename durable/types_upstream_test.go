@@ -303,7 +303,7 @@ func TestTypesUpstreamExclusivityLiteralsEncodeAsPiObjects(t *testing.T) {
 func TestCommitChangeUnionsKeepPiDiscriminatorsAndMembership(t *testing.T) {
 	source := DocumentCopySource{Id: 7, At: DocumentPoint{Seq: 3}}
 	tables := []TableCommitChange{ConversationWrite{}, EntryWrite{}, TaskWrite{}, SubmissionWrite{}}
-	documents := []DocumentCommitChange{DocumentChange{}, DocumentCopyChange{Source: source}}
+	documents := []DocumentCommitChange{DocumentChange{}, DocumentRetireChange{}, DocumentCopyChange{Source: source}}
 	var want = []string{"conversation", "entry", "task", "submission"}
 	for i, change := range tables {
 		if got := CommitChangeType(change); got != want[i] {
@@ -314,7 +314,7 @@ func TestCommitChangeUnionsKeepPiDiscriminatorsAndMembership(t *testing.T) {
 		}
 	}
 	for i, change := range documents {
-		if got, want := CommitChangeType(change), []string{"document", "document.copy"}[i]; got != want {
+		if got, want := CommitChangeType(change), []string{"document", "document", "document.copy"}[i]; got != want {
 			t.Errorf("document change %d type = %q, want %q", i, got, want)
 		}
 	}
@@ -330,7 +330,7 @@ func TestCommitChangeUnionsKeepPiDiscriminatorsAndMembership(t *testing.T) {
 	if copyWrite := writes["document.copy"].(DocumentCopyWrite); copyWrite.Source != source {
 		t.Fatalf("copy source lost: %+v", copyWrite)
 	}
-	if copyChange := documents[1].(DocumentCopyChange); copyChange.Source != source {
+	if copyChange := documents[2].(DocumentCopyChange); copyChange.Source != source {
 		t.Fatalf("copy change source lost: %+v", copyChange)
 	}
 }

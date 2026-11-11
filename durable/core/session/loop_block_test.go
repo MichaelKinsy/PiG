@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/durable/core/session"
+	"github.com/MichaelKinsy/PiG/durable/core/session/sessiontest"
 )
 
 // A line job waits while something outside the Loop holds the Session line, runs after Kick, and a job queued behind it
@@ -23,7 +24,7 @@ func TestLoopLineJobsWaitForAnExternalHolder(t *testing.T) {
 	if err := loop.Run(); err != nil {
 		t.Fatal(err)
 	}
-	if got := fmt.Sprint(order); got != "[a a done b]" {
+	if got := fmt.Sprint(order); got != "[a b a done]" {
 		t.Fatalf("order %s", got)
 	}
 	if !loop.Idle() {
@@ -48,37 +49,35 @@ func TestLoopBlockedAfterQueueingStopsTheJob(t *testing.T) {
 	}
 }
 
-// dcore-trace A1: a held job's completion waits for its release. A job queued while it is held (a host call reaching
-// Pi's line during the job) runs before the held job's continuation, which queues its own job behind it.
-func TestLoopHeldJobCompletesAfterReleaseAndKeepsLineOrder(t *testing.T) {
-	var release func()
-	loop := &session.Loop{Hold: func(r func()) bool {
-		if release != nil {
-			return false
-		}
-		release = r
-		return true
-	}}
+// A job whose work has not returned holds the line: a job queued meanwhile (a host call reaching Pi's line during the job) starts when the
+// line is released, LineRelease ticks after the work returns, which is before the held job's caller resumes (its outcome is delivered two
+// ticks after that), and the job the caller queues on resuming comes behind it.
+func TestLoopHeldJobReleasesTheLineBeforeItsCallerResumes(t *testing.T) {
+	loop := &session.Loop{Elapsed: func(session.Ended) (int, int) { return 0, 3 }}
 	var order []string
 	loop.Line(func() error { order = append(order, "reserve"); return nil }, func(error) {
 		order = append(order, "reserve done")
 		loop.Line(func() error { order = append(order, "step"); return nil }, nil)
 	})
-	if err := loop.Run(); err != nil || release == nil {
-		t.Fatalf("the job was not held: %v %v", err, order)
-	}
-	if loop.Idle() {
-		t.Fatal("a held job keeps the loop busy")
-	}
-	loop.Line(func() error { order = append(order, "follow-up"); return nil }, nil)
-	if err := loop.Run(); err != nil || fmt.Sprint(order) != "[reserve]" {
-		t.Fatalf("a job queued during the hold ran early: %v %v", err, order)
-	}
-	release()
 	if err := loop.Run(); err != nil {
 		t.Fatal(err)
 	}
-	if got := fmt.Sprint(order); got != "[reserve reserve done follow-up step]" {
+	if !loop.Idle() {
+		t.Fatal("everything ran")
+	}
+	loop = &session.Loop{Elapsed: func(session.Ended) (int, int) { return 0, 3 }}
+	order = nil
+	loop.Line(func() error { order = append(order, "reserve"); return nil }, func(error) {
+		order = append(order, "reserve done")
+		loop.Line(func() error { order = append(order, "step"); return nil }, nil)
+	})
+	loop.Defer(func() {
+		loop.Line(func() error { order = append(order, "follow-up"); return nil }, nil)
+	})
+	if err := loop.Run(); err != nil {
+		t.Fatal(err)
+	}
+	if got := fmt.Sprint(order); got != "[reserve follow-up reserve done step]" {
 		t.Fatalf("order %s", got)
 	}
 }
@@ -105,20 +104,34 @@ func TestLoopAdmitRejectsAtEnqueue(t *testing.T) {
 	}
 }
 
-// A job that returns a NeedGate keeps the line while the host's Storage works: a later job and a bare job (a host
-// transaction's turn) wait behind it, microtasks outside the line keep running, and Ungate runs the job again from the
-// start, after which the queued jobs run in order.
-func TestLoopGatedJobHoldsTheLineAndRunsAgain(t *testing.T) {
-	loop := &session.Loop{}
+// A maintain job is the Session's own upkeep (session.ts #maintain): it asserts nothing, so it runs after admission closed.
+func TestLoopMaintainJobRunsAfterAdmissionClosed(t *testing.T) {
+	loop := &session.Loop{Admit: func() error { return fmt.Errorf("closed") }}
+	ran := false
+	loop.LineMaintain(func() error { ran = true; return nil })
+	if err := loop.Run(); err != nil {
+		t.Fatal(err)
+	}
+	if !ran {
+		t.Fatal("the maintain job was dropped by the admission check")
+	}
+}
+
+// A job that touches a key an unpublished commit writes keeps the line while it waits for the commit's publication: a later job and a bare job
+// (a host transaction's turn) wait behind it, microtasks outside the line keep running, and the job runs again from the start once the part is
+// published, after which the queued jobs run in order.
+func TestLoopJobThatWaitsForAPublicationHoldsTheLineAndRunsAgain(t *testing.T) {
+	mem := sessiontest.New()
+	sess := session.New(mem, mem.NextID(), func() float64 { return 1 })
+	loop := bound(sess)
+	loop.StoreTicks = func([][]session.Write) (int, int, int) { return 0, 0, 20 }
 	var order []string
+	sess.Writer().Admit(&session.Part{Writes: []session.Write{{Kind: session.WriteConversation, Record: obj("id", 1.0)}}, Keys: []string{"conv:1"}})
 	runs := 0
 	loop.Line(func() error {
 		runs++
 		order = append(order, fmt.Sprint("a", runs))
-		if runs == 1 {
-			return &session.NeedGate{}
-		}
-		return nil
+		return sess.Touch("conv:1")
 	}, func(error) { order = append(order, "a done") })
 	loop.Line(func() error { order = append(order, "b"); return nil }, nil)
 	loop.LineBare(func() error { order = append(order, "tx"); return nil })
@@ -126,17 +139,46 @@ func TestLoopGatedJobHoldsTheLineAndRunsAgain(t *testing.T) {
 	if err := loop.Run(); err != nil {
 		t.Fatal(err)
 	}
-	if got := fmt.Sprint(order); got != "[a1 micro]" || !loop.Busy() {
-		t.Fatalf("a gated line runs only what is off the line: %s", got)
+	if got := fmt.Sprint(order); got != "[a1 micro a2 b a done tx]" {
+		t.Fatalf("order %s", got)
 	}
-	loop.Ungate()
+	if !loop.Idle() {
+		t.Fatal("the loop is idle after the part was published")
+	}
+}
+
+// A host job takes its turn on the line like any job, holds it while the host's callback runs, and goes on as a job whose body ran in the core
+// once the host ends it: its outcome is delivered after the jobs before it, and a job queued behind it starts LineRelease ticks after the end.
+func TestLoopHostJobHoldsTheLineUntilTheHostEndsIt(t *testing.T) {
+	loop := &session.Loop{}
+	var order []string
+	host := loop.LineHost(func() error { order = append(order, "grant"); return nil }, func(err error) { order = append(order, fmt.Sprint("host done ", err)) })
+	loop.Line(func() error { order = append(order, "b"); return nil }, nil)
 	if err := loop.Run(); err != nil {
 		t.Fatal(err)
 	}
-	if got := fmt.Sprint(order); got != "[a1 micro a2 a done b tx]" {
+	if got := fmt.Sprint(order); got != "[grant]" || loop.Idle() {
+		t.Fatalf("a host job holds the line until its end: %s", got)
+	}
+	host.End(nil)
+	if err := loop.Run(); err != nil {
+		t.Fatal(err)
+	}
+	if got := fmt.Sprint(order); got != "[grant b host done <nil>]" {
 		t.Fatalf("order %s", got)
 	}
-	if loop.Busy() {
-		t.Fatal("the loop is idle after the gate was answered")
+}
+
+// A host job whose transaction was abandoned while it waited takes nothing and has no outcome: the job behind it runs.
+func TestLoopHostJobNotGrantedTakesNothing(t *testing.T) {
+	loop := &session.Loop{}
+	var order []string
+	loop.LineHost(func() error { return session.ErrHostNotGranted }, func(err error) { order = append(order, "never") })
+	loop.Line(func() error { order = append(order, "b"); return nil }, nil)
+	if err := loop.Run(); err != nil {
+		t.Fatal(err)
+	}
+	if fmt.Sprint(order) != "[b]" || !loop.Idle() {
+		t.Fatalf("order %v idle %v", order, loop.Idle())
 	}
 }

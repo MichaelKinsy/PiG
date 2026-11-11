@@ -13,6 +13,8 @@ import (
 	"fmt"
 	"net"
 	"os"
+
+	"github.com/MichaelKinsy/PiG/schema"
 )
 
 // Environment names the variables the harness sets for the extension process.
@@ -33,8 +35,9 @@ type Tool struct {
 	Label       string `json:"label,omitempty"`
 	Description string `json:"description"`
 	// PromptSnippet is the tool's line in the system prompt's tool list (defineTool promptSnippet).
-	PromptSnippet string         `json:"promptSnippet,omitempty"`
-	Parameters    map[string]any `json:"parameters"`
+	PromptSnippet string `json:"promptSnippet,omitempty"`
+	// Parameters is the tool's JSON Schema as its author wrote it: the members keep their order across the spec file.
+	Parameters schema.Schema `json:"parameters"`
 	// ConstrainedSampling is the tool's constrainedSampling request, nil when absent.
 	ConstrainedSampling *ConstrainedSampling `json:"constrainedSampling,omitempty"`
 }

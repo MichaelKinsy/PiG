@@ -4,12 +4,14 @@ package sqlhost
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
+	"slices"
 	"sync"
 	"time"
 
@@ -171,7 +173,10 @@ type Options struct {
 	OnCommitted func(c abi.Commit, sql []string)
 }
 
-// Host is one core session and its SQLite connection.
+// Host is one core session and its SQLite connection: the native Go host of one Session, which the SQLite engine drives through
+// the core ABI. Host.Close is Session.close; the rest of the Session's behavior is the core's, not this host's.
+//
+// Ports packages/durable/src/session/session.ts
 type Host struct {
 	opts   Options
 	box    *mailbox
@@ -195,10 +200,16 @@ type Host struct {
 	// ID ever started, which grew with every effect of the handle's life.
 	lastEffect int64
 	running    map[uint32]context.CancelFunc
+	chains     int // the open hops chains: a macrotask waits for them (owner goroutine only)
 	// sentSettings is the settings JSON the core last received (open or a registry event); owner goroutine only.
 	sentSettings []byte
 	timers       map[uint32]func()
-	ranges       *history.Store // the transcript a model_context range segment derives from
+	// due is the armed timers of a deterministic clock (TimerLead > 0), guarded by dueMu: the goroutine of whichever timer fires
+	// first delivers every timer due by its deadline, in (deadline, creation) order (fireDue).
+	dueMu  sync.Mutex
+	due    []*dueTimer
+	dueSeq uint64
+	ranges *history.Store // the transcript a model_context range segment derives from
 	// sent is each conversation's last model_context range (rangeContext), which the next one extends; rangeLineages numbers
 	// the arrays it hands out (MessageRange.Lineage).
 	sent          map[int64]*sentRange
@@ -678,6 +689,7 @@ func owned(data []byte, chunked bool) []byte {
 func (h *Host) startHops(id uint32, c abi.Hops) {
 	var dropped bool
 	h.running[id] = func() { dropped = true }
+	h.chains++
 	left := c.N
 	var hop func(error)
 	hop = func(dead error) {
@@ -688,6 +700,7 @@ func (h *Host) startHops(id uint32, c abi.Hops) {
 		}
 		if dropped || dead != nil || h.Err() != nil {
 			delete(h.running, id)
+			h.chains--
 			return
 		}
 		if left--; left > 0 {
@@ -695,6 +708,7 @@ func (h *Host) startHops(id uint32, c abi.Hops) {
 				// The chain's statements land after hop At, where the core emitted them in the step of a hopped event.
 				if err := h.applyCommits(c.Commits); err != nil {
 					delete(h.running, id)
+					h.chains--
 					_ = h.fatal(FatalCommitFailed, err)
 					return
 				}
@@ -703,9 +717,35 @@ func (h *Host) startHops(id uint32, c abi.Hops) {
 			return
 		}
 		delete(h.running, id)
+		h.chains--
 		_ = h.deliver(abi.Event{Kind: abi.EventHopped, ID: id}, false)
 	}
 	h.box.put(hop)
+}
+
+// startMacrotask runs a macrotask effect (ABI section 5.5): a hopped event once the owner's microtasks drained, the hops chains and
+// the work the handlers posted meanwhile included. The mailbox is the owner's FIFO, so the macrotask queues behind what is queued
+// and runs again at the tail while a chain is still open.
+func (h *Host) startMacrotask(id uint32) {
+	var dropped bool
+	h.running[id] = func() { dropped = true }
+	var run func(error)
+	run = func(dead error) {
+		if dead == nil && h.opts.Settle != nil {
+			h.opts.Settle()
+		}
+		if dropped || dead != nil || h.Err() != nil {
+			delete(h.running, id)
+			return
+		}
+		if h.chains > 0 {
+			h.box.put(run)
+			return
+		}
+		delete(h.running, id)
+		_ = h.deliver(abi.Event{Kind: abi.EventHopped, ID: id}, false)
+	}
+	h.box.put(run)
 }
 
 func (h *Host) read(reads []abi.Read) ([]abi.ReadRows, error) {
@@ -737,25 +777,38 @@ func (h *Host) read(reads []abi.Read) ([]abi.ReadRows, error) {
 	return answers, nil
 }
 
+// applyCommits applies the commits of a step in order, each in its own transaction, except that a run of joined commits (the batches of
+// one Storage call, ABI section 4.4) is one transaction: all of its commits or none.
 func (h *Host) applyCommits(commits []abi.Commit) error {
-	for _, c := range commits {
+	for i := 0; i < len(commits); {
+		j := i + 1
+		for j < len(commits) && commits[j].Joined {
+			j++
+		}
+		run := commits[i:j]
 		if h.opts.OnCommit != nil {
-			h.opts.OnCommit(c, h.opts.SQL)
+			for _, c := range run {
+				h.opts.OnCommit(c, h.opts.SQL)
+			}
 		}
-		if err := h.applyCommit(c); err != nil {
+		if err := h.applyRun(run); err != nil {
 			return err
 		}
-		if err := h.observeRanges(c); err != nil {
-			return err
+		for _, c := range run {
+			if err := h.observeRanges(c); err != nil {
+				return err
+			}
+			if h.opts.OnCommitted != nil {
+				h.opts.OnCommitted(c, h.opts.SQL)
+			}
 		}
-		if h.opts.OnCommitted != nil {
-			h.opts.OnCommitted(c, h.opts.SQL)
-		}
+		i = j
 	}
 	return nil
 }
 
-func (h *Host) applyCommit(c abi.Commit) (err error) {
+// applyRun applies the commits of one Storage call in one transaction.
+func (h *Host) applyRun(run []abi.Commit) (err error) {
 	db := h.opts.DB
 	if err := db.Begin(h.ctx); err != nil {
 		return err
@@ -767,23 +820,27 @@ func (h *Host) applyCommit(c abi.Commit) (err error) {
 			}
 		}
 	}()
-	for _, s := range c.Stmts {
-		if int(s.SQL) >= len(h.opts.SQL) {
-			return fmt.Errorf("statement %d: %w", s.SQL, errNoStatement)
+	statements := 0
+	for _, c := range run {
+		for _, s := range c.Stmts {
+			if int(s.SQL) >= len(h.opts.SQL) {
+				return fmt.Errorf("statement %d: %w", s.SQL, errNoStatement)
+			}
+			text := h.opts.SQL[s.SQL]
+			n, rerr := db.Run(h.ctx, text, s.Params)
+			if rerr != nil {
+				return rerr
+			}
+			if isGuard(text) && n != 1 {
+				return fmt.Errorf("single-writer guard: the durable_metadata update changed %d rows, not 1", n)
+			}
 		}
-		text := h.opts.SQL[s.SQL]
-		n, rerr := db.Run(h.ctx, text, s.Params)
-		if rerr != nil {
-			return rerr
-		}
-		if isGuard(text) && n != 1 {
-			return fmt.Errorf("single-writer guard: the durable_metadata update changed %d rows, not 1", n)
-		}
+		statements += len(c.Stmts)
 	}
 	if err := db.Commit(h.ctx); err != nil {
 		return err
 	}
-	h.count(func(k *Counters) { k.Commits++; k.Statements += len(c.Stmts) })
+	h.count(func(k *Counters) { k.Commits += len(run); k.Statements += statements })
 	return nil
 }
 
@@ -865,6 +922,9 @@ func (h *Host) start(e abi.Effect) {
 		}
 		h.startHops(e.ID, hops)
 		return
+	case abi.EffectMacrotask:
+		h.startMacrotask(e.ID)
+		return
 	}
 	handler := h.opts.Handlers[e.Kind]
 	if handler == nil {
@@ -930,7 +990,7 @@ func (h *Host) setTimer(id uint32, at float64, background bool) {
 	if stop, ok := h.timers[id]; ok {
 		stop()
 	}
-	wait := max(time.Duration((at-h.opts.Clock())*float64(time.Millisecond)), 0)
+	wait := timerDelay(at, h.opts.Clock())
 	if wait > h.opts.TimerLead {
 		wait -= h.opts.TimerLead
 	}
@@ -940,21 +1000,79 @@ func (h *Host) setTimer(id uint32, at float64, background bool) {
 		if h.opts.TimerFired != nil {
 			h.opts.TimerFired(at)
 		}
-		h.enqueue(func(dead error) {
+		// A timer is a macrotask: it runs once the microtasks of the step before it drained, the hops chains it started included.
+		var run func(dead error)
+		run = func(dead error) {
+			if dead == nil && h.chains > 0 {
+				h.box.put(run)
+				return
+			}
 			delete(h.timers, id)
 			if dead == nil {
 				_ = h.deliver(abi.Event{Kind: abi.EventTimer, ID: id}, false)
 			}
-		})
+		}
+		h.enqueue(run)
 	}
-	if h.opts.SetTimer != nil {
-		if stop := h.opts.SetTimer(fire, float64(wait)/float64(time.Millisecond), background); stop != nil {
-			h.timers[id] = stop
+	arm := func(fire func()) func() {
+		if h.opts.SetTimer != nil {
+			return h.opts.SetTimer(fire, float64(wait)/float64(time.Millisecond), background)
+		}
+		t := time.AfterFunc(wait, fire)
+		return func() { t.Stop() }
+	}
+	if h.opts.TimerLead > 0 {
+		d := &dueTimer{at: at, fire: fire}
+		h.dueMu.Lock()
+		h.dueSeq++
+		d.seq = h.dueSeq
+		h.due = append(h.due, d)
+		h.dueMu.Unlock()
+		if stop := arm(func() { h.fireDue(d) }); stop != nil {
+			h.timers[id] = func() {
+				stop()
+				h.dueMu.Lock()
+				h.due = slices.DeleteFunc(h.due, func(x *dueTimer) bool { return x == d })
+				h.dueMu.Unlock()
+			}
 		}
 		return
 	}
-	t := time.AfterFunc(wait, fire)
-	h.timers[id] = func() { t.Stop() }
+	if stop := arm(fire); stop != nil {
+		h.timers[id] = stop
+	}
+}
+
+// dueTimer is a timer of a deterministic clock: its deadline, its creation number and what delivers it.
+type dueTimer struct {
+	at   float64
+	seq  uint64
+	fire func()
+}
+
+// fireDue delivers the timers due by the deadline of d, d's own among them unless an earlier firing delivered it, in the order of
+// the reference's virtual timers: by deadline, then by creation. Timers with one deadline fire on goroutines of their own, whose
+// order the Go runtime does not fix.
+func (h *Host) fireDue(d *dueTimer) {
+	h.dueMu.Lock()
+	var run []*dueTimer
+	h.due = slices.DeleteFunc(h.due, func(x *dueTimer) bool {
+		if x.at > d.at {
+			return false
+		}
+		run = append(run, x)
+		return true
+	})
+	h.dueMu.Unlock()
+	slices.SortFunc(run, func(a, b *dueTimer) int {
+		if c := cmp.Compare(a.at, b.at); c != 0 {
+			return c
+		}
+		return cmp.Compare(a.seq, b.seq)
+	})
+	for _, x := range run {
+		x.fire()
+	}
 }
 
 // Close seals the session: the core receives close and cancels its effects, then the host cancels what remains, waits for

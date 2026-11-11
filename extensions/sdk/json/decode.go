@@ -1258,14 +1258,14 @@ func unquoteBytes(s []byte) (t []byte, ok bool) {
 		return s, true
 	}
 
-	b := make([]byte, len(s)+2*utf8.UTFMax)
+	b := make([]byte, addSize(len(s), 2*utf8.UTFMax))
 	w := copy(b, s[0:r])
 	for r < len(s) {
 		// Out of room? Can only happen if s is full of
 		// malformed UTF-8 and we're replacing each
 		// byte with RuneError.
 		if w >= len(b)-2*utf8.UTFMax {
-			nb := make([]byte, (len(b)+utf8.UTFMax)*2)
+			nb := make([]byte, mulSize(addSize(len(b), utf8.UTFMax), 2))
 			copy(nb, b[0:w])
 			b = nb
 		}

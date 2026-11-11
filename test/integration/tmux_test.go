@@ -65,7 +65,7 @@ func TestTmuxSessionsHaveSeparateHomes(t *testing.T) {
 		if out, err := tmuxCommand("new-session", "-d", "-s", session, "sleep 30").CombinedOutput(); err != nil {
 			t.Fatalf("create pane: %v: %s", err, out)
 		}
-		t.Cleanup(func() { _ = tmuxCommand("kill-session", "-t", session).Run() })
+		t.Cleanup(func() { _ = killSession(t, session) })
 		for _, key := range []string{"HOME", "PIG_HOME"} {
 			out, err := tmuxCommand("show-environment", "-t", session, key).Output()
 			if err != nil {
@@ -86,6 +86,30 @@ func TestTmuxSessionsHaveSeparateHomes(t *testing.T) {
 			if strings.TrimSpace(string(out)) != key+"=" {
 				t.Fatalf("pane inherits ambient agent state: %s", out)
 			}
+		}
+	}
+}
+
+// TestHarnessCleanupSessionsEndThroughKillSession keeps a test from ending a tmux session with a bare kill-session. That call returns before the pane's processes have exited, so pig's hangup shutdown can write into a directory the test is removing (TestExt_StartupWithoutConfig). killSession and harness.kill wait for them. Only the harness helpers (harness_test.go) and TestMain's keeper session (main_test.go, which has no *testing.T to report a failed wait) call kill-session directly.
+func TestHarnessCleanupSessionsEndThroughKillSession(t *testing.T) {
+	rawKill := `"kill` + `-session"`
+	files, err := filepath.Glob("*_test.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(files) == 0 {
+		t.Fatal("no test files found in the package directory")
+	}
+	for _, file := range files {
+		if file == "harness_test.go" || file == "main_test.go" {
+			continue
+		}
+		data, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(string(data), rawKill) {
+			t.Errorf("%s ends a tmux session with a bare kill-session; use killSession, which waits for the pane's processes to exit", file)
 		}
 	}
 }

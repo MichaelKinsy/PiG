@@ -45,8 +45,8 @@ RUN apk update \
 FROM toolchain-base AS pi-oracle
 # PI_VERSION must equal the pin's package version and PI_COMMIT the pin's commit when the pin is a commit
 # (empty for a release tag); `make pin-sync` writes both and make compliance checks them.
-ARG PI_VERSION=1.4.0
-ARG PI_COMMIT=6c384aa30f619d7b28963f2bab24d8dacbe73cb6
+ARG PI_VERSION=1.5.0
+ARG PI_COMMIT=
 COPY automation/images/ci-parity/package.json automation/images/ci-parity/package-lock.json /opt/pig/pi/
 RUN test -z "${PI_COMMIT}" || { echo "this image installs the published Pi ${PI_VERSION}; it cannot be the build of Pi commit ${PI_COMMIT} yet (a commit pin needs the oracle built from source, automation/pin/oracle.py)" >&2; exit 1; } \
   && npm ci --prefix /opt/pig/pi --omit=dev --ignore-scripts --no-audit --no-fund \
@@ -67,8 +67,10 @@ COPY automation/images/npm-runtime/package.json automation/images/npm-runtime/pa
 RUN npm ci --prefix /opt/pig/npm --omit=dev --ignore-scripts --no-audit --no-fund \
   && rm -rf \
     /opt/pig/npm/node_modules/npm/node_modules/brace-expansion \
+    /opt/pig/npm/node_modules/npm/node_modules/glob \
     /opt/pig/npm/node_modules/npm/node_modules/http-cache-semantics \
     /opt/pig/npm/node_modules/npm/node_modules/ip-address \
+    /opt/pig/npm/node_modules/npm/node_modules/minimatch \
     /opt/pig/npm/node_modules/npm/node_modules/postcss-selector-parser \
     /opt/pig/npm/node_modules/npm/node_modules/tar \
     /opt/pig/npm/node_modules/npm/node_modules/undici \

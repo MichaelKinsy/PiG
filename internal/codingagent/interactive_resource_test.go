@@ -22,7 +22,7 @@ func TestResourceCollisionDiagnostics_SkillIncludesSourceInfo(t *testing.T) {
 	m.opts.Skills = []*SkillDef{{Name: "demo", FilePath: winner}}
 	m.opts.SkillDiagnostics = []extension.ResourceDiagnostic{collisionDiagnostic("skill", "demo", winner, loser)}
 	m.showLoadedResources(false, true)
-	want := "[Skill conflicts]\n  \"demo\" collision:\n    ✓ npm:pkg-a (user) skills/demo/SKILL.md\n    ✗ /pkg-b/skills/demo/SKILL.md (skipped)"
+	want := "[Skill warnings]\n  \"demo\" collision:\n    ✓ npm:pkg-a (user) skills/demo/SKILL.md\n    ✗ /pkg-b/skills/demo/SKILL.md (skipped)"
 	if got := strings.ReplaceAll(renderListing(m), `\`, "/"); got != want {
 		t.Fatalf("diagnostics =\n%s\nwant\n%s", got, want)
 	}

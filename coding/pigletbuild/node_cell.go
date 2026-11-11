@@ -15,6 +15,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/cellpack"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
+	"github.com/MichaelKinsy/PiG/internal/archivepath"
 )
 
 // buildNodeCell packs the sources of a Node cell's members into one tar
@@ -142,7 +143,8 @@ func writeArchiveFile(writer *tar.Writer, name, source string, info fs.FileInfo)
 // writeArchiveLink keeps a symbolic link whose relative target stays inside
 // the member's directory or names the directory itself, such as a package
 // manager's node_modules link or a package's link to itself. A link that
-// leaves the directory cannot be embedded.
+// leaves the directory, or that the extraction at startup would refuse
+// (archivepath.CheckLink), cannot be embedded.
 func writeArchiveLink(writer *tar.Writer, name, root, current string) error {
 	target, err := os.Readlink(current)
 	if err != nil {
@@ -154,6 +156,9 @@ func writeArchiveLink(writer *tar.Writer, name, root, current string) error {
 	resolved := path.Join(path.Dir(name), slashTarget)
 	if filepath.IsAbs(target) || (resolved != member && !strings.HasPrefix(resolved, member+"/")) {
 		return fmt.Errorf("symbolic link %s points outside the extension directory %s; the Piglet Binary embeds only that directory", current, root)
+	}
+	if err := archivepath.CheckLink(name, slashTarget); err != nil {
+		return fmt.Errorf("symbolic link %s: %w", current, err)
 	}
 	return writer.WriteHeader(&tar.Header{Typeflag: tar.TypeSymlink, Name: name, Linkname: slashTarget, Mode: 0o777, Format: tar.FormatPAX})
 }

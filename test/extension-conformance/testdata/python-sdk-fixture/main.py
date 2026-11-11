@@ -4,6 +4,7 @@ from __future__ import annotations
 import dataclasses
 import json
 import pathlib
+import re
 import struct
 import sys
 import threading
@@ -85,6 +86,23 @@ class MouseProbe:
         )
         if event.type == "click":
             return pig_sdk.RemoteComponentResult(done=True, value=",".join(self.log))
+        return pig_sdk.RemoteComponentResult()
+
+
+class ViewportProbe:
+    """Captures viewport input until it receives "t", then stops; closes on "q"."""
+
+    def __init__(self) -> None:
+        self.captures_viewport_input = True
+
+    def render(self, _width: int) -> list[str]:
+        return ["viewport probe"]
+
+    def handle_input(self, data: str) -> pig_sdk.RemoteComponentResult:
+        if data == "t":
+            self.captures_viewport_input = False
+        if data == "q":
+            return pig_sdk.RemoteComponentResult(done=True, value="viewport=done")
         return pig_sdk.RemoteComponentResult()
 
 
@@ -581,7 +599,7 @@ def new_extension() -> pig_sdk.Extension:
         "recordPattern": T.string({"description": T.record_pattern(T.record(s, n))}),
         "enumKeyRecord": T.record(T.enum(["x", "y"]), n),
     }, {"additionalProperties": False}), lambda ctx, args: "ok")
-    # refine-probe (TestConformance_RefinedToolArgumentsAgreeAcrossSDKs): the schema of the "probe" cases of validateToolArguments.json; every predicate and message function logs its call.
+    # refine-probe (TestConformance_RefinedToolArgumentsAreNotRefined): the schema of the probe tool; every predicate and message function logs its call, and the test asserts the log stays empty (Pi 1.4.0+b556cfe5 never runs a refinement).
     refine_log: list = []
 
     def checked(tag, check):
@@ -714,6 +732,26 @@ def new_extension() -> pig_sdk.Extension:
     ext.command("editor-install-eager", "Install a custom editor that calls super in its factory", eager_editor)
     ext.command("editor-install-embed", "Install a custom editor that embeds the working status", lambda ctx, _args: ctx.set_editor_component(EmbeddingEditor))
     ext.command("editor-install", "Install a custom editor component", lambda ctx, _args: ctx.set_editor_component(ConformanceEditor))
+
+    class ViewportEditor(ConformanceEditor):
+        """Captures viewport input until it receives "t", then stops; every other key goes to super like ConformanceEditor."""
+
+        captures_viewport_input = True
+
+        def handle_input(self, data):
+            if data == "t":
+                self.captures_viewport_input = False
+                return
+            super().handle_input(data)
+
+    ext.command("editor-install-viewport", "Install a custom editor that captures viewport input until it receives t", lambda ctx, _args: ctx.set_editor_component(ViewportEditor))
+
+    def select_page_probe(ctx, args):
+        a = json.loads(args)
+        index = pig_sdk.tui.get_select_page_index(pig_sdk.tui.get_keybindings(), a["data"], a["selected"], a["count"], a["page"])
+        ctx.notify("select-page=%s" % ("none" if index is None else index), "info")
+
+    ext.command("select-page-probe", "Report getSelectPageIndex for a key", select_page_probe)
 
     # headless-ui-probe hands the SDK footer, header and custom component closures; its argument is a file every closure appends a marker to when it runs (TestConformance_HeadlessModesNeverRunUIClosures).
     def headless_ui_probe(ctx, path):
@@ -1233,6 +1271,11 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("ui_forward_probe", "Call the working, paste, editor-text and tools-expanded UI members", ui_forward_probe)
 
+    # The extension owns the thinking runs from load; thinking_runs_off/on flip the flag through the runtime entry point (the conformance row reads the host's aggregated flag).
+    ext.own_thinking_runs(True)
+    ext.command("thinking_runs_off", "Clear the owns-thinking-runs flag", lambda ctx, _args: ctx.own_thinking_runs(False))
+    ext.command("thinking_runs_on", "Set the owns-thinking-runs flag", lambda ctx, _args: ctx.own_thinking_runs(True))
+
     # dialog-stack-probe opens its dialogs at the same time, each from its own thread, and reports each one's answer as it settles (TestConformance_ConcurrentDialogsAgreeAcrossSDKs). "pair" is a select A and a confirm B; "mix" is a select S, a confirm C, an input I and an editor E.
     def dialog_stack_probe(ctx, scenario):
         def chosen(result):
@@ -1355,6 +1398,21 @@ def new_extension() -> pig_sdk.Extension:
             ctx.notify(f"rejected:{error}", "info")
 
     ext.command("exec-abort-probe", "Abort a running exec through its signal", exec_abort_probe)
+
+    def exec_limits_probe(ctx, args):
+        probe = json.loads(args)
+        try:
+            options = {"max_buffer": probe["maxBuffer"]} if "maxBuffer" in probe else {}
+            result = ctx.exec(probe["command"], probe["args"], **options)
+            ctx.notify(
+                f"exec-limits:truncated={str(result.truncated).lower()};killed={str(result.killed).lower()};code={result.exit_code}"
+                f";stdout={result.stdout.strip()};stderr={result.stderr.strip()}",
+                "info",
+            )
+        except RuntimeError as error:
+            ctx.notify(f"rejected:{error}", "info")
+
+    ext.command("exec-limits-probe", "Run a command with a max_buffer and report truncation", exec_limits_probe)
 
     def language_probe(ctx, args):
         ctx.notify("language:%s:end" % json.dumps({"lang": pig_sdk.get_language_from_path(json.loads(args)["path"])}, separators=(",", ":")), "info")
@@ -1558,6 +1616,12 @@ def new_extension() -> pig_sdk.Extension:
             % (message.get("content", ""), str(bool(options.get("expanded"))).lower(), width)
         ],
     )
+    # Test fixture, Pi 9376c8d1 (#4748): key_text and key_hint on the message and entry options and the tool render context. The content, data and q are the keybinding id.
+    def hints_of(hints, keybinding):
+        return "%s | %s" % (hints.key_text(keybinding), hints.key_hint(keybinding, "to expand"))
+
+    ext.message_renderer("keyhints-message", lambda _ctx, message, options, _width: [hints_of(options, message.get("content", ""))])
+    ext.entry_renderer("keyhints-entry", lambda _ctx, entry, options, _width: [hints_of(options, entry.get("data", ""))])
     ext.message_view_renderer("kit-message", lambda _ctx, _message, _options, _width: kit_probe_view())
     ext.entry_view_renderer("kit-entry", lambda _ctx, _entry, _options, _width: kit_probe_view())
     def transform_markdown(markdown, context):
@@ -1587,6 +1651,8 @@ def new_extension() -> pig_sdk.Extension:
             renderers.call_view = lambda _ctx, _args, _render, _width: kit_probe_view()
             renderers.result_view = lambda _ctx, _result, _options, _render, _width: kit_probe_view()
             return renderers
+        if tool == "conformance_keyhints":
+            return pig_sdk.ToolRenderers(render_call=lambda _ctx, args, render, _width: [hints_of(render, args.get("q", ""))])
         if tool == "conformance_no_renderer":
             return None
         if tool == "conformance_fill":
@@ -2137,6 +2203,60 @@ def new_extension() -> pig_sdk.Extension:
         ctx.notify("rw_idle_after_trigger=%s" % str(ctx.is_idle()).lower(), "info")
 
     ext.command("rw_idle_after_trigger", "Read isIdle after a message that starts a run", rw_idle_after_trigger)
+
+    def rw_idle_busy_until_yield(ctx: pig_sdk.Context, _args: str) -> None:
+        ctx.send_message("rw-trigger", "rw-trigger", True, True)
+        sync = [str(ctx.is_idle()).lower(), str(ctx.is_idle()).lower()]
+        ctx.wait_for_idle()
+        later = str(ctx.is_idle()).lower()
+        ctx.notify("rw_idle_busy_until_yield=sync:%s;later:%s" % (",".join(sync), later), "info")
+
+    ext.command("rw_idle_busy_until_yield", "Read isIdle after a message that starts a run, before and after a wait for the run", rw_idle_busy_until_yield)
+
+    def rw_idle_send_then_await(ctx: pig_sdk.Context, _args: str) -> None:
+        ctx.send_message("rw-trigger", "rw-trigger", True, True)
+        ctx.wait_for_idle()
+        awaited = str(ctx.is_idle()).lower()
+        ctx.send_message("rw-trigger", "rw-trigger", True, True)
+        second = str(ctx.is_idle()).lower()
+        ctx.wait_for_idle()
+        ctx.notify("rw_idle_send_then_await=awaited:%s;second:%s;awaited-again:%s" % (awaited, second, str(ctx.is_idle()).lower()), "info")
+
+    ext.command("rw_idle_send_then_await", "Await the run a message starts with no read in between, then read; again for a second message", rw_idle_send_then_await)
+
+    def rw_idle_blocking(ctx: pig_sdk.Context, _args: str) -> None:
+        before = str(ctx.is_idle()).lower()
+        ctx.send_message("rw-trigger", "rw-trigger", True, True)
+        time.sleep(0.3)
+        ctx.notify("rw_idle_blocking=before:%s;after:%s" % (before, str(ctx.is_idle()).lower()), "info")
+
+    ext.command("rw_idle_blocking", "Read isIdle after a message that starts a run and a wait that is no call", rw_idle_blocking)
+
+    def rw_idle_yield_poll(ctx: pig_sdk.Context, _args: str) -> None:
+        ctx.send_message("rw-trigger", "rw-trigger", True, True)
+        first = ctx.is_idle()
+        deadline = time.monotonic() + 5
+        while not ctx.is_idle() and time.monotonic() < deadline:
+            ctx.sleep(0.01)
+        final = ctx.is_idle()
+        ctx.notify("rw_idle_yield_poll=first:%s;final:%s" % (str(first).lower(), str(final).lower()), "info")
+
+    ext.command("rw_idle_yield_poll", "Poll isIdle after a message that starts a run, waiting with the SDK's yielding sleep", rw_idle_yield_poll)
+
+    def rw_idle_callback(ctx: pig_sdk.Context, _args: str) -> None:
+        before = str(ctx.is_idle()).lower()
+
+        def callback():
+            ctx.send_message("rw-trigger", "rw-trigger", True, True)
+            sync = [str(ctx.is_idle()).lower(), str(ctx.is_idle()).lower()]
+            ctx.wait_for_idle()
+            ctx.notify("rw_idle_callback=before:%s;sync:%s;later:%s" % (before, ",".join(sync), str(ctx.is_idle()).lower()), "info")
+
+        thread = threading.Thread(target=callback, daemon=True)
+        thread.start()
+        thread.join()
+
+    ext.command("rw_idle_callback", "Read isIdle after a message that starts a run, sent from a thread the handler waits for", rw_idle_callback)
     rw_settled_once = []
 
     def rw_idle_in_settled(ctx: pig_sdk.Context, _args: str) -> None:
@@ -2150,6 +2270,38 @@ def new_extension() -> pig_sdk.Extension:
         ext.on_event("agent_settled", settled)
 
     ext.command("rw_idle_in_settled", "Read isIdle after a message that starts a run, sent from an agent_settled handler", rw_idle_in_settled)
+
+    def rw_idle_background(ctx: pig_sdk.Context, _args: str) -> None:
+        def agent_end(hctx, _data):
+            def poll():
+                idle = False
+                deadline = time.monotonic() + 3
+                while not idle and time.monotonic() < deadline:
+                    idle = hctx.is_idle()
+                    if not idle:
+                        time.sleep(0.01)
+                hctx.notify("rw_idle_background=%s" % str(idle).lower(), "info")
+
+            threading.Thread(target=poll, daemon=True).start()
+
+        ext.on_event("agent_end", agent_end)
+
+    ext.command("rw_idle_background", "Poll isIdle from a background callback after agent_end", rw_idle_background)
+
+    def rw_idle_live(ctx: pig_sdk.Context, _args: str) -> None:
+        def poll():
+            seen = []
+            deadline = time.monotonic() + 10
+            while len(seen) < 3 and time.monotonic() < deadline:
+                answer = str(ctx.is_idle()).lower()
+                if not seen or seen[-1] != answer:
+                    seen.append(answer)
+                    ctx.notify("rw_idle_live=" + ",".join(seen), "info")
+                time.sleep(0.01)
+
+        threading.Thread(target=poll, daemon=True).start()
+
+    ext.command("rw_idle_live", "Poll isIdle live and report the sequence of answers", rw_idle_live)
 
     def set_model(ctx: pig_sdk.Context, args: str) -> None:
         ok, error = ctx.set_model(args)
@@ -2321,6 +2473,21 @@ def new_extension() -> pig_sdk.Extension:
             ctx.notify("registered:" + tag, "info")
 
     ext.command("autocomplete-register", "Register retained provider wrappers", autocomplete_register)
+    def autocomplete_settle_register(ctx, args):
+        def factory(ctx, current):
+            class Settling:
+                trigger_characters = []
+                def get_suggestions(self, ctx, lines, line, col, force=False):
+                    current.get_suggestions(ctx, lines, line, col, force)
+                    if lines[0] == "slow":
+                        time.sleep(0.4)
+                    return {"items": [{"value": lines[0], "label": "settled:" + lines[0]}], "prefix": lines[0]}
+                def apply_completion(self, ctx, lines, line, col, item, prefix):
+                    return current.apply_completion(ctx, lines, line, col, item, prefix)
+            return Settling()
+        ctx.add_autocomplete_provider(factory)
+
+    ext.command("autocomplete-settle-register", "Register a provider whose answer settles or awaits real I/O", autocomplete_settle_register)
     def signal_probe(ctx: pig_sdk.Context, args: str) -> None:
         signal = ctx.signal
         ctx.notify("signal:" + ("none" if signal is None else "aborted" if signal.is_set() else "live"), "info")
@@ -2483,6 +2650,14 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("mouse-probe", "Exercise extension mouse input", mouse_probe)
 
+    # viewport-probe opens a component that captures viewport input until it
+    # receives "t", and closes on "q".
+    def viewport_probe(ctx: pig_sdk.Context, _args: str) -> None:
+        result = ctx.custom(ViewportProbe(), {"overlay": True})
+        ctx.notify(f"{'' if result is None else result}", "info")
+
+    ext.command("viewport-probe", "Exercise capturesViewportInput", viewport_probe)
+
     # kit-surfaces shows the kit probe's tree on every other view surface
     # (D107, spec §10): a pushed widget, the header, the footer and a tool
     # result. The message renderer "kit-message" draws it too.
@@ -2639,6 +2814,13 @@ def new_extension() -> pig_sdk.Extension:
         ctx.notify(f"overlay-width default={default_width} percent={percent_width}", "info")
 
     ext.command("overlay-width-probe", "Report the width overlay components render at", overlay_width_probe)
+
+    def blocked_custom_probe(ctx: pig_sdk.Context, _args: str) -> None:
+        ctx.custom(OverlayWidthProbe(), {"blocked": {"kind": "permission", "message": "Approve?"}})
+        ctx.custom(OverlayWidthProbe())
+        ctx.notify("blocked-custom done", "info")
+
+    ext.command("blocked-custom-probe", "Open inline custom components with and without the blocked option", blocked_custom_probe)
 
     def project_trust_error(_ctx: pig_sdk.Context, _data: dict[str, object]) -> dict[str, object]:
         raise RuntimeError("trust-boom")
@@ -2895,6 +3077,11 @@ def new_extension() -> pig_sdk.Extension:
     _register_conformance_oauth_large(ext)
     _register_state_push_probe(ext)
     _register_signal_abort(ext)
+    _register_tui_alt_screen_probe(ext)
+    _register_tui_alt_frame_probe(ext)
+    _register_tui_alt_viewport_probe(ext)
+    _register_tui_alt_children_probe(ext)
+    _register_tui_alt_reentry_probe(ext)
     return ext
 
 
@@ -3054,6 +3241,423 @@ def _register_signal_abort(ext: pig_sdk.Extension) -> None:
         ctx.notify("abort:" + state(held) + ":" + state(ctx.signal), "info")
 
     ext.command("signal-abort", "Abort the run and report ctx.signal", signal_abort)
+
+
+class _AltTerminal:
+    """A recording pig_sdk.Terminal: 20x6, no kitty protocol; start keeps the callbacks, write appends to the log."""
+
+    columns = 20
+    rows = 6
+    kitty_protocol_active = False
+
+    def __init__(self) -> None:
+        self.log: list[str] = []
+        self.on_input = None
+        self.on_resize = None
+        self.started = False
+
+    def start(self, on_input, on_resize) -> None:
+        self.on_input, self.on_resize, self.started = on_input, on_resize, True
+        self.log.append("start")
+
+    def stop(self) -> None:
+        self.started = False
+        self.log.append("stop")
+
+    def drain_input(self, max_ms=None, idle_ms=None) -> None:
+        pass
+
+    def write(self, data: str) -> None:
+        self.log.append(data)
+
+    def move_by(self, lines: int) -> None:
+        pass
+
+    def hide_cursor(self) -> None:
+        pass
+
+    def show_cursor(self) -> None:
+        pass
+
+    def clear_line(self) -> None:
+        pass
+
+    def clear_from_cursor(self) -> None:
+        pass
+
+    def clear_screen(self) -> None:
+        pass
+
+    def set_title(self, title: str) -> None:
+        pass
+
+    def set_progress(self, active: bool) -> None:
+        pass
+
+    def set_program_status(self, status) -> None:
+        pass
+
+
+class _AltLines:
+    """A plain component: render(width) returns fn(width)."""
+
+    def __init__(self, fn) -> None:
+        self.fn = fn
+
+    def render(self, width: int) -> list[str]:
+        return self.fn(width)
+
+    def invalidate(self) -> None:
+        pass
+
+
+class _AltFocusable(_AltLines):
+    """A Focusable component that records its input."""
+
+    def __init__(self, inputs: list[str]) -> None:
+        super().__init__(lambda _w: ["foc"])
+        self.focused = False
+        self.inputs = inputs
+
+    def handle_input(self, data: str) -> None:
+        self.inputs.append(data)
+
+
+_ALT_ANSI = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]|\x1b\]8;;[^\x07\x1b]*(?:\x07|\x1b\\)?")
+
+
+def _register_tui_alt_screen_probe(ext: pig_sdk.Extension) -> None:
+    """Drive the 46 members of pig_sdk.TuiAltScreen over a recording terminal and report one line of facts. Every SDK fixture runs the same steps
+    as the Pi oracle probe (Pi's own TuiAltScreen) and must print its exact text."""
+
+    def b(value: bool) -> str:
+        return "true" if value else "false"
+
+    def tui_alt_screen_probe(ctx: pig_sdk.Context, _args: str) -> None:
+        term = _AltTerminal()
+        screen = pig_sdk.TuiAltScreen(ctx, term, False, None, pig_sdk.TuiAltScreenOptions(mouse=False, wheel_scroll_lines=3, copy_on_select=True))
+        doc = _AltLines(lambda w: [f"row {i + 1} w={w}" for i in range(12)])
+        screen.add_child(doc)
+        if screen.viewport_tui is not True:
+            raise AssertionError("TuiAltScreen.viewport_tui must be True")
+        facts = [f"mode={screen.mode}", f"children={len(screen.children)}", f"terminal={b(screen.terminal is term)}"]
+        screen.start()
+        screen.render_now()
+
+        def sl() -> list[str]:
+            return [_ALT_ANSI.sub("", line).rstrip() for line in screen.get_screen_lines()]
+
+        facts += [
+            f"viewport={screen.viewport_top}/{b(screen.is_following_output)}", f"first={sl()[0]}", f"last={sl()[5]}", f"redraws={b(screen.full_redraws > 0)}",
+            f"entered={b(any(chunk.find(chr(27) + '[?1049h') >= 0 for chunk in term.log))}",
+        ]
+        screen.scroll_by(-2)
+        screen.render_now()
+        facts.append(f"up={screen.viewport_top}/{b(screen.is_following_output)}")
+        screen.scroll_to_top()
+        screen.render_now()
+        facts += [f"top={screen.viewport_top}/{b(screen.is_following_output)}", f"topfirst={sl()[0]}"]
+        screen.scroll_to_bottom()
+        screen.render_now()
+        facts.append(f"bottom={screen.viewport_top}/{b(screen.is_following_output)}")
+        screen.flash("hello", 500)
+        screen.render_now()
+        facts.append(f"flash={b(any('hello' in line for line in sl()))}")
+        over = _AltLines(lambda _w: ["OVER"])
+        handle = screen.show_overlay(over, {"width": 8, "anchor": "center"})
+        screen.render_now()
+        bounds = handle.get_bounds()
+        facts.append(f"overlay={b(screen.has_overlay())}/{b(screen.has_overlay_entries)}/{b(handle.is_focused())}/{bounds['width'] if bounds else 'undefined'}")
+        handle.set_hidden(True)
+        facts.append(f"hidden={b(handle.is_hidden())}")
+        handle.set_hidden(False)
+        screen.hide_overlay()
+        facts.append(f"afterHide={b(screen.has_overlay())}/{b(screen.has_overlay_entries)}")
+        inputs: list[str] = []
+        foc = _AltFocusable(inputs)
+        screen.set_focus(foc)
+        facts.append(f"focus={b(screen.get_focused_component() is foc)}/{b(foc.focused)}")
+        term.on_input("k")
+
+        def listener(data: str):
+            return {"consume": True} if data == "c" else None
+
+        remove = screen.add_input_listener(listener)
+        term.on_input("c")
+        remove()
+        term.on_input("c")
+        screen.add_input_listener(listener)
+        screen.remove_input_listener(listener)
+        facts.append("inputs=" + ",".join(inputs))
+        debug: list[int] = []
+        screen.on_debug = lambda: debug.append(1)
+        term.on_input("\x1b[100;6u")
+        facts.append(f"debug={len(debug)}")
+        screen.set_show_hardware_cursor(True)
+        screen.set_clear_on_shrink(True)
+        facts.append(f"flags={b(screen.get_show_hardware_cursor())}/{b(screen.get_clear_on_shrink())}")
+        screen.set_wheel_scroll_lines(2)
+        screen.set_copy_on_select(False)
+        facts.append(f"copy={b(screen.get_copy_on_select())}/{b(screen.has_active_selection())}/{b(screen.copy_active_selection_to_clipboard())}")
+        screen.reset_text_selection()
+        schemes: list[str] = []
+        screen.on_terminal_color_scheme_change(schemes.append)
+        screen.set_terminal_color_scheme_notifications(True)
+        term.on_input("\x1b[?997;1n")
+        term.on_input("\x1b[?997;2n")
+        facts.append("schemes=" + ",".join(schemes))
+        facts.append("colors=" + json.dumps(screen.query_terminal_colors(20), separators=(",", ":")))
+        mouse = screen.handle_mouse(pig_sdk.MouseEvent(type="wheel", button="none", width=20, height=6, wheel_delta=1))
+        facts.append("mouse=" + json.dumps(mouse, separators=(",", ":")))
+        facts.append("render=" + "|".join(screen.render(10)[:2]))
+        screen.invalidate()
+        screen.request_render()
+        root = _AltLines(lambda _w: ["ROOT"])
+        screen.set_layout_root(root)
+        screen.render_now()
+        facts.append(f"root={b(sl()[0].startswith('ROOT'))}")
+        screen.set_layout_root(None)
+        screen.remove_child(doc)
+        facts.append(f"removed={len(screen.children)}")
+        screen.add_child(doc)
+        screen.clear()
+        facts.append(f"cleared={len(screen.children)}")
+        screen.stop()
+        facts.append(f"stopped={b(not term.started)}")
+        ctx.notify("tui-alt: " + "; ".join(facts), "info")
+
+    ext.command("tui-alt-screen-probe", "Drive every TuiAltScreen member over a recording terminal", tui_alt_screen_probe)
+
+
+class _AltCounted(_AltLines):
+    """A plain component that counts its invalidate calls."""
+
+    def __init__(self, fn) -> None:
+        super().__init__(fn)
+        self.invalidated = 0
+
+    def invalidate(self) -> None:
+        self.invalidated += 1
+
+
+class _AltViewport(_AltLines):
+    """A tui.alt component that captures viewport input."""
+
+    captures_viewport_input = True
+
+
+def _register_tui_alt_frame_probe(ext: pig_sdk.Extension) -> None:
+    """Read the screen from inside a component's render, and drive an overlay's visible callback, over a recording terminal. Every SDK fixture runs the
+    same steps as the Pi oracle probe and must print its exact text."""
+
+    def b(value: bool) -> str:
+        return "true" if value else "false"
+
+    def tui_alt_frame_probe(ctx: pig_sdk.Context, _args: str) -> None:
+        term = _AltTerminal()
+        screen = pig_sdk.TuiAltScreen(ctx, term, False, None, pig_sdk.TuiAltScreenOptions(mouse=False))
+        seen: list[str] = []
+
+        def render_doc(_width: int) -> list[str]:
+            seen.append(
+                f"{screen.viewport_top}/{b(screen.is_following_output)}/{len(screen.get_screen_lines())}/{b(screen.has_active_selection())}"
+                f"/{b(screen.has_overlay())}/{b(screen.get_show_hardware_cursor())}"
+            )
+            return [f"row {i + 1}" for i in range(12)]
+
+        doc = _AltCounted(render_doc)
+        screen.add_child(doc)
+        screen.start()
+        screen.render_now()
+        screen.render_now()
+        facts = [f"frame1={seen[0]}", f"frame2={seen[-1]}"]
+        widths: list[str] = []
+        over = _AltCounted(lambda _w: ["OVER"])
+
+        def visible_on(width: int, height: int) -> bool:
+            widths.append(f"{width}x{height}")
+            return width >= 20
+
+        hide_on = screen.show_overlay(over, {"width": 8, "visible": visible_on})
+        screen.render_now()
+        facts.append(f"visibleOn={b(screen.has_overlay())}/{b(screen.has_overlay_entries)}/{b('20x6' in widths)}")
+        hide_on.hide()
+        hide_off = screen.show_overlay(_AltCounted(lambda _w: ["X"]), {"visible": lambda _w, _h: False})
+        facts.append(f"visibleOff={b(screen.has_overlay())}/{b(screen.has_overlay_entries)}")
+        hide_off.hide()
+        hide_two = screen.show_overlay(over, {"width": 8})
+        doc.invalidated = over.invalidated = 0
+        screen.invalidate()
+        facts.append(f"invalidate={b(doc.invalidated > 0)}/{b(over.invalidated > 0)}")
+        hide_two.hide()
+        mut_log: list[str] = []
+        armed = False
+        extra = _AltCounted(lambda _w: ["EXTRA"])
+        target = _AltCounted(lambda _w: ["TARGET"])
+        popup = _AltCounted(lambda _w: ["POP"])
+
+        def flags() -> str:
+            return f"{b(screen.get_show_hardware_cursor())}/{b(screen.get_clear_on_shrink())}/{b(screen.get_copy_on_select())}"
+
+        def render_mut(_width: int) -> list[str]:
+            nonlocal armed
+            if not armed:
+                return ["MUT"]
+            armed = False
+            r = [f"flags={flags()}"]
+            screen.set_show_hardware_cursor(True)
+            screen.set_clear_on_shrink(True)
+            screen.set_copy_on_select(False)
+            r.append(f"set={flags()}")
+            screen.add_child(extra)
+            r.append(f"add={len(screen.children)}")
+            screen.remove_child(extra)
+            r.append(f"remove={len(screen.children)}")
+            screen.set_focus(target)
+            r.append(f"focus={b(screen.get_focused_component() is target)}")
+            first: list[str] = []
+
+            def visible_popup(_w: int, _h: int) -> bool:
+                if not first:
+                    first.append(b(screen.get_show_hardware_cursor()))
+                return True
+
+            h = screen.show_overlay(popup, {"width": 8, "visible": visible_popup})
+            r.append(f"overlay={b(screen.has_overlay())}/{b(screen.has_overlay_entries)}/{b(h.is_focused())}/{first[0] if first else 'undefined'}")
+            h.hide()
+            r.append(f"hidden={b(screen.has_overlay_entries)}")
+            screen.scroll_by(-2)
+            r.append(f"scroll={screen.viewport_top}/{b(screen.is_following_output)}")
+            mut.invalidated = 0
+            screen.invalidate()
+            r.append(f"invalidate={b(mut.invalidated > 0)}")
+            r.append(f"lines={len(screen.get_screen_lines())}")
+            mut_log.append(",".join(r))
+            return ["MUT"]
+
+        mut = _AltCounted(render_mut)
+        screen.add_child(mut)
+        screen.render_now()
+        armed = True
+        screen.render_now()
+        facts.append(f"mutate={'|'.join(mut_log)}")
+        facts.append(f"after={flags()}/{len(screen.children)}")
+        screen.stop()
+        ctx.notify("tui-alt-frame: " + "; ".join(facts), "info")
+
+    ext.command("tui-alt-frame-probe", "Read the screen from a component's render and drive an overlay's visible callback", tui_alt_frame_probe)
+
+
+@dataclasses.dataclass
+class _AltSame:
+    """Components of equal fields: value equality would conflate them, identity must not."""
+
+    text: str = "same"
+
+    def render(self, _width: int) -> list[str]:
+        return [self.text]
+
+    def invalidate(self) -> None:
+        pass
+
+
+def _register_tui_alt_viewport_probe(ext: pig_sdk.Extension) -> None:
+    """Mount a focused component with captures_viewport_input on a screen, then idle until the context ends."""
+
+    def tui_alt_viewport_probe(ctx: pig_sdk.Context, _args: str) -> None:
+        term = _AltTerminal()
+        screen = pig_sdk.TuiAltScreen(ctx, term, False, None, pig_sdk.TuiAltScreenOptions(mouse=False))
+        component = _AltViewport(lambda _w: ["viewport"])
+        screen.add_child(component)
+        screen.set_focus(component)
+        screen.start()
+        try:
+            (ctx.signal or pig_sdk.ProviderSignal()).wait(60)
+        finally:
+            screen.stop()
+
+    ext.command("tui-alt-viewport-probe", "Mount a viewport-capturing component on a TuiAltScreen and idle", tui_alt_viewport_probe)
+
+
+def _register_tui_alt_children_probe(ext: pig_sdk.Extension) -> None:
+    """TuiAltScreen.children after add_child, remove_child and clear, with components of equal content (D207: a copy, so each read follows the call that changed the list)."""
+
+    def tui_alt_children_probe(ctx: pig_sdk.Context, _args: str) -> None:
+        term = _AltTerminal()
+        screen = pig_sdk.TuiAltScreen(ctx, term, False, None, pig_sdk.TuiAltScreenOptions(mouse=False))
+        a, b_, c = _AltSame(), _AltSame(), _AltSame()
+
+        def name(k: Any) -> str:
+            return "a" if k is a else "b" if k is b_ else "c" if k is c else "?"
+
+        def order() -> str:
+            return "".join(name(k) for k in screen.children) or "-"
+
+        facts = [f"empty={order()}"]
+        screen.add_child(a)
+        screen.add_child(b_)
+        screen.add_child(c)
+        facts.append(f"added={order()}")
+        screen.remove_child(b_)
+        facts.append(f"removeB={order()}")
+        screen.remove_child(b_)
+        facts.append(f"removeAbsent={order()}")
+        screen.add_child(a)
+        facts.append(f"duplicate={order()}")
+        screen.remove_child(a)
+        facts.append(f"removeFirst={order()}")
+        screen.add_child(b_)
+        facts.append(f"readd={order()}")
+        facts.append(f"render={'|'.join(screen.render(10))}")
+        screen.set_focus(b_)
+        facts.append(f"focus={name(screen.get_focused_component())}")
+        screen.clear()
+        facts.append(f"cleared={order()}")
+        ctx.notify("tui-alt-children: " + "; ".join(facts), "info")
+
+    ext.command("tui-alt-children-probe", "Read TuiAltScreen children after addChild, removeChild and clear, with components of equal content", tui_alt_children_probe)
+
+
+def _register_tui_alt_reentry_probe(ext: pig_sdk.Extension) -> None:
+    """Call the frame's own members from a component's render: the six that cannot run there fail, the screen goes on working."""
+
+    def tui_alt_reentry_probe(ctx: pig_sdk.Context, _args: str) -> None:
+        term = _AltTerminal()
+        screen = pig_sdk.TuiAltScreen(ctx, term, False, None, pig_sdk.TuiAltScreenOptions(mouse=False))
+        facts: list[str] = []
+        armed = False
+
+        def attempt(call) -> str:
+            try:
+                call()
+            except Exception as error:  # noqa: BLE001
+                return "err" if "cannot run while a component renders" in str(error) else "other"
+            return "ok"
+
+        def render_doc(_width: int) -> list[str]:
+            nonlocal armed
+            if armed:
+                armed = False
+                facts.append(f"render={attempt(lambda: screen.render(10))}")
+                facts.append(f"renderNow={attempt(lambda: screen.render_now(False))}")
+                facts.append(f"start={attempt(screen.start)}")
+                facts.append(f"stop={attempt(lambda: screen.stop(False))}")
+                facts.append(f"copy={attempt(screen.copy_active_selection_to_clipboard)}")
+                facts.append(f"colors={attempt(lambda: screen.query_terminal_colors(20))}")
+                screen.set_show_hardware_cursor(True)
+                facts.append(f"after={str(screen.get_show_hardware_cursor()).lower()}")
+            return ["l1", "l2", "l3"]
+
+        doc = _AltLines(render_doc)
+        screen.add_child(doc)
+        screen.start()
+        screen.render_now()
+        armed = True
+        screen.render_now()
+        screen.stop(False)
+        ctx.notify("tui-alt-reentry: " + "; ".join(facts), "info")
+
+    ext.command("tui-alt-reentry-probe", "Call the frame's own members from a component's render and report that they fail", tui_alt_reentry_probe)
 
 
 if __name__ == "__main__":

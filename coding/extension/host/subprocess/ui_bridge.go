@@ -14,6 +14,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
+	"github.com/MichaelKinsy/PiG/internal/streamattachhook"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -61,6 +62,10 @@ type UIBridge struct {
 	// "<extName>:<key>" so render/close notifications from the TS
 	// shim runtime can be routed back to the originating overlay.
 	customOverlays map[string]extension.RemoteOverlayHandle
+	// tuiAltState holds the *tuiAltRegistry of the TuiAltScreens extensions constructed (CallTuiAlt), created by the first call that needs it (tuiAlt). It is
+	// an atomic.Value so that UIBridge, which every program links, does not name the renderer's types: they stay out of a program that never calls
+	// EnableTuiAltScreens.
+	tuiAltState atomic.Value
 
 	// extConns holds the per-extension socket connection so the
 	// bridge can forward overlay input notifications back to the
@@ -69,6 +74,7 @@ type UIBridge struct {
 	autocompleteReferences map[string]autocompleteReference
 	autocompleteOrigins    map[weak.Pointer[extension.AutocompleteProvider]]autocompleteOrigin
 	autocompleteQueries    map[autocompleteQueryKey]*autocompleteQuery
+	autocompleteSuggests   map[string]func()
 
 	// editor is the extension editor component installed last
 	// (ctx.ui.setEditorComponent), and editorsByConn each connection's
@@ -1408,6 +1414,8 @@ func (b *UIBridge) handleCall(ctx context.Context, extName string, owner *Conn, 
 		return b.handleInput(ctx, ui, call.Args)
 	case CallUICustomControl:
 		return b.handleCustomControl(ctx, extName, owner, call.Args)
+	case CallTuiAlt:
+		return b.callTuiAlt(owner, call.ParentRequestID, call.Args)
 	case CallUICustomShowOverlay:
 		return b.handleCustomShowOverlay(ctx, extName, owner, ui, call.Args)
 	case CallUICustomHideOverlay:
@@ -1466,7 +1474,7 @@ func (b *UIBridge) handleCall(ctx context.Context, extName string, owner *Conn, 
 	case "ui.addAutocompleteProvider":
 		return b.handleAddAutocompleteProvider(ctx, extName, owner, ui, call.Args)
 	case "ui.autocomplete.invoke":
-		return b.handleAutocompleteInvoke(ctx, owner, call.Args)
+		return b.handleAutocompleteInvoke(ctx, owner, call.ParentRequestID, call.Args)
 	case "ui.autocomplete.cancel":
 		return b.handleAutocompleteCancel(owner, call.Args)
 	case "ui.autocomplete.current":
@@ -1812,6 +1820,7 @@ func (b *UIBridge) clearExtension(extName string, owner *Conn, ownerOnly bool) {
 		handle.Close(nil)
 	}
 	b.clearEditorConn(extName, owner, ownerOnly)
+	b.clearTuiAlt(extName, owner, ownerOnly)
 }
 
 // SetModelCatalog installs equivalent value and JSON projections atomically. Publication uses the encoder without changing the value getter or its notification boundary. Replacing the getter through SetHostAction or SetActions clears the encoder.
@@ -2158,6 +2167,7 @@ func (b *UIBridge) HandleNotifyFrom(extName string, owner *Conn, n *NotifyPayloa
 		}
 		proxy := handle.(*overlayProxy)
 		proxy.mouse.Store(p.Mouse)
+		proxy.capturesViewportInput.Store(p.CapturesViewportInput)
 		if len(p.View) > 0 && string(p.View) != "null" {
 			proxy.UpdateViewFrame(owner, p.Key, p.View, p.Lines, p.Width, p.Seq, width)
 			return
@@ -2839,6 +2849,7 @@ func (b *UIBridge) handleCustom(ctx context.Context, extName string, owner *Conn
 			HeightFraction: p.HeightFraction,
 			Overlay:        p.Overlay,
 			Layout:         p.OverlayOptions,
+			Blocked:        p.Blocked,
 		},
 		host,
 		func(h extension.RemoteOverlayHandle) {
@@ -2886,6 +2897,17 @@ func (h *customOverlayHost) OnMouse(event extension.RemoteMouseEvent) extension.
 	return h.bridge.sendCustomMouse(h.extName, h.owner, h.key, event)
 }
 
+// CapturesViewportInput is the component's capturesViewportInput as its latest frame reported it; see [extension.RemoteOverlayViewportHost].
+func (h *customOverlayHost) CapturesViewportInput() bool {
+	h.bridge.mu.RLock()
+	handle, ok := h.bridge.customOverlays[customOverlayOwnerPrefix(h.extName, h.owner)+h.key]
+	h.bridge.mu.RUnlock()
+	if !ok {
+		return false
+	}
+	return handle.(*overlayProxy).capturesViewportInput.Load()
+}
+
 // OnFocus publishes a change of the component's focus; see [extension.RemoteOverlayFocusHost].
 func (h *customOverlayHost) OnFocus(focused bool) {
 	h.bridge.sendCustomFocus(h.extName, h.owner, h.key, focused)
@@ -2913,6 +2935,8 @@ type overlayProxy struct {
 	hasView   bool
 	// mouse reports that the latest frame's component takes the mouse.
 	mouse atomic.Bool
+	// capturesViewportInput is the capturesViewportInput the latest frame carried.
+	capturesViewportInput atomic.Bool
 }
 
 func newOverlayProxy() *overlayProxy {
@@ -4378,21 +4402,31 @@ func (b *UIBridge) handleModelStream(ctx context.Context, owner *Conn, actions *
 		delete(b.modelStreams, key)
 		b.modelStreamMu.Unlock()
 	}()
-	stream, err := streamModel(providerCtx, request.Model, decodedRequest)
-	if err != nil {
+	// The extension's `streamSimple(...)` and `for await` run in one synchronous prefix in Pi, before any response I/O can complete, so the start event carries the pending, empty partial the provider built. A goroutine that attached after the stream was created could run after the provider had published the whole response and forward a start event holding the finished message. The creation and the iteration run in one stream continuation, as the Agent does (agent/agent_loop.go requestStream).
+	streamCtx := ai.WithStreamContinuations(providerCtx)
+	var stream *ai.AssistantMessageEventStream
+	if err := ai.RunStreamContinuation(streamCtx, func(observation *ai.StreamObservation) error {
+		var err error
+		if stream, err = streamModel(streamCtx, request.Model, decodedRequest); err != nil {
+			return err
+		}
+		// Stream creation is the synchronous prefix. Event delivery and final
+		// result collection complete independently of later calls in the lane.
+		extension.CallInitiated(ctx)
+		eventsCtx := observation.Context(ctx)
+		streamattachhook.Attach(eventsCtx, stream)
+		for event := range stream.Events(eventsCtx) {
+			notifyArgs, err := json.Marshal(map[string]any{"streamId": request.StreamID, "event": event})
+			if err != nil {
+				return fmt.Errorf("marshal model stream event: %w", err)
+			}
+			if err := owner.sendAndWait(ctx, &Envelope{Type: MsgNotify, Notify: &NotifyPayload{Method: "model_stream_event", Args: notifyArgs}}); err != nil {
+				return err
+			}
+		}
+		return nil
+	}); err != nil {
 		return nil, err
-	}
-	// Stream creation is the synchronous prefix. Event delivery and final
-	// result collection complete independently of later calls in the lane.
-	extension.CallInitiated(ctx)
-	for event := range stream.Events(ctx) {
-		notifyArgs, err := json.Marshal(map[string]any{"streamId": request.StreamID, "event": event})
-		if err != nil {
-			return nil, fmt.Errorf("marshal model stream event: %w", err)
-		}
-		if err := owner.sendAndWait(ctx, &Envelope{Type: MsgNotify, Notify: &NotifyPayload{Method: "model_stream_event", Args: notifyArgs}}); err != nil {
-			return nil, err
-		}
 	}
 	result, err := json.Marshal(stream.Result())
 	if err != nil {

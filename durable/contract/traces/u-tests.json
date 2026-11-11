@@ -1,6 +1,12 @@
 [
   { "row": "U-harness-ownership", "file": "harness-ownership.test.ts", "test": "marks work admitted after reopen below a cancelled owner whose edge was not loaded" },
-  { "row": "U-harness-ownership", "file": "harness-ownership.test.ts", "test": "rejects a handle operation queued on the line when the invocation ends before it runs" },
+  { "row": "U-harness-ownership", "file": "harness-ownership.test.ts", "test": "runs a handle operation queued behind the abort mark before the mark's publication, and the cascade aborts it" },
   { "row": "U-harness-tasks", "file": "harness-tasks.test.ts", "test": "signals and joins the run before returning, then runs the abort handler" },
-  { "row": "U-harness-tasks", "file": "harness-tasks.test.ts", "test": "starts no next phase when close seals during a step that decided to continue" }
+  { "row": "U-harness-tasks", "file": "harness-tasks.test.ts", "test": "starts no next phase when close seals during a step that decided to continue" },
+  { "row": "U-harness-group-commit", "file": "harness-group-commit.test.ts", "test": "holds a live owner whose end races a creation below its ended tasks: live P, ended B and A, empty C" },
+  { "row": "U-harness-group-commit", "file": "harness-group-commit.test.ts", "test": "ends a child before its next phase when its owner's abort mark is unpublished at its step" },
+  { "row": "U-harness-group-commit", "file": "harness-group-commit.test.ts", "test": "refuses the second of two opposite waits admitted behind each other" },
+  { "row": "U-harness-group-commit", "file": "harness-group-commit.test.ts", "test": "finds the submission an unpublished commit admitted with the same request ID" },
+  { "row": "U-harness-group-commit", "file": "harness-group-commit.test.ts", "test": "runs a wait continuation of one commit before the next commit of the same call is published" },
+  { "row": "U-harness-group-commit", "file": "harness-group-commit.test.ts", "test": "signals an invocation when it closes during a call in flight, and stores that call before Storage closes" }
 ]

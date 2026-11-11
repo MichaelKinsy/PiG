@@ -15,6 +15,10 @@ import (
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
+// pi: packages/coding-agent/src/core/usage-totals.ts
+// pi: packages/coding-agent/src/core/cache-stats.ts
+// pi: packages/coding-agent/src/core/agent-session.ts
+
 // agent-session.ts getSessionStats, usage-totals.ts getUsageCostBreakdown, cache-stats.ts computeCacheWaste and footer.ts formatTokens against
 // pinned Pi, over generated session entries (messages, tool results, usage entries, compactions and branch summaries with and without usage), and
 // Number.toLocaleString against formatNumber, which /session prints.

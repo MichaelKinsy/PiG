@@ -3,8 +3,6 @@ package extension
 import (
 	"context"
 	"encoding/json"
-
-	"github.com/MichaelKinsy/PiG/ai"
 )
 
 // ToolRenderResultOptions mirrors upstream ToolRenderResultOptions.
@@ -40,7 +38,11 @@ type ToolRenderContext struct {
 	// Card identifies the tool card being rendered. Go mechanic (not a
 	// divergence): a renderer that runs in an extension process keeps State
 	// and its last component there, so the host names the card they belong
-	// to; upstream passes the card's objects themselves.
+	// to; upstream passes the card's objects themselves. The host frees the
+	// extension-side state of a card once no component its renderers returned
+	// is reachable, so a caller that goes on rendering a card keeps those
+	// components, as upstream's card keeps callRendererComponent and
+	// resultRendererComponent (tool-execution.ts).
 	Card string `json:"-"`
 }
 
@@ -94,10 +96,6 @@ type ToolRenderers struct {
 // resolvers, then the registered tool, would use. A nil result means none.
 // upstream: types.ts ToolRendererResolver
 type ToolRendererResolver = func(toolName string, next func() *ToolRenderers) *ToolRenderers
-
-// ToolRefineFunc runs one refinement of a tool's parameter schema (TypeBox Type.Refine): refinement index of the node at path on value, and, when withMessage is set and it fails,
-// its error function. A returned error is the refinement throwing. ctx ends with the tool call.
-type ToolRefineFunc = func(ctx context.Context, path string, index int, value any, withMessage bool) (ai.RefineOutcome, error)
 
 // ToolPrepareArgumentsFunc mirrors upstream ToolDefinition.prepareArguments.
 type ToolPrepareArgumentsFunc = func(args json.RawMessage) (json.RawMessage, error)
@@ -175,14 +173,10 @@ type ToolDefinition struct {
 	ConstrainedSampling json.RawMessage          `json:"constrainedSampling,omitempty"`
 	RenderShell         ToolRenderShell          `json:"renderShell,omitempty"`
 	PrepareArguments    ToolPrepareArgumentsFunc `json:"-"`
-	// RefinementSites lists the nodes of Parameters that carry refinements (Type.Refine) and RefineArguments runs them: the argument validator calls it for each predicate call
-	// TypeBox makes (ai.ValidateToolArgumentsRefined). Both are empty for a tool without refinements, which then validates exactly as before.
-	RefinementSites []ai.RefinementSite  `json:"-"`
-	RefineArguments ToolRefineFunc       `json:"-"`
-	ExecutionMode   ToolExecutionMode    `json:"executionMode,omitempty"`
-	Execute         ToolExecuteFunc      `json:"-"`
-	RenderCall      ToolRenderCallFunc   `json:"-"`
-	RenderResult    ToolRenderResultFunc `json:"-"`
+	ExecutionMode       ToolExecutionMode        `json:"executionMode,omitempty"`
+	Execute             ToolExecuteFunc          `json:"-"`
+	RenderCall          ToolRenderCallFunc       `json:"-"`
+	RenderResult        ToolRenderResultFunc     `json:"-"`
 	// DefaultActive is whether registering the tool activates it. Default: true
 	// for direct and model-only tools; other exposures are never activated on
 	// registration. A tool with DefaultActive false is activated by naming it in
@@ -214,8 +208,6 @@ type ToolDefinition struct {
 	// sets it for a tool built from Pi's create<Tool>ToolDefinition, whose
 	// renderers are that built-in tool's (D73).
 	BuiltInRenderers string `json:"-"`
-	// ValidationParameters is the host-only representation of non-enumerable TypeBox metadata.
-	ValidationParameters json.RawMessage `json:"-"`
 	// OutputSchema is the schema of the structured result. upstream: types.ts:585
 	OutputSchema json.RawMessage `json:"outputSchema,omitempty"`
 	// Exposure is how the model reaches the tool. Default: direct. upstream: types.ts:590

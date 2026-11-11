@@ -26,7 +26,11 @@ impl BeforeAgentStartEvent {
             object.remove("systemPrompt");
             object.remove("systemPromptOptions");
         }
-        Self { ctx: ctx.clone(), payload, state }
+        Self {
+            ctx: ctx.clone(),
+            payload,
+            state,
+        }
     }
 
     /// The event as the host sent it, without `systemPrompt` and `systemPromptOptions`, which change as handlers edit the options:

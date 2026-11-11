@@ -227,62 +227,89 @@ type systemRule struct {
 	level string
 }
 
+// systemPanels are the surfaces other tokens are drawn on, in the order their rules come.
+var systemPanels = []string{"userMessageBg", "toolPendingBg", "toolSuccessBg", "toolErrorBg", "selectedBg", "searchMatchBg", "customMessageBg"}
+
+// The surfaces a rule's token is drawn on. A rule's on slice is shared by the rules that name it and is never written.
 var (
-	systemToolPanels    = []string{"toolPendingBg", "toolSuccessBg", "toolErrorBg"}
-	systemMessagePanels = []string{"userMessageBg", "customMessageBg"}
-	systemPanels        = []string{"userMessageBg", "toolPendingBg", "toolSuccessBg", "toolErrorBg", "selectedBg", "searchMatchBg", "customMessageBg"}
-	systemThinking      = []string{"thinkingOff", "thinkingMinimal", "thinkingLow", "thinkingMedium", "thinkingHigh", "thinkingXhigh", "thinkingMax"}
-	systemThinkingLevel = []string{"thinking0", "thinking1", "thinking2", "thinking3", "thinking4", "thinking5", "thinking6"}
+	systemOnBackground                   = []string{"background"}
+	systemOnSelected                     = []string{"selectedBg"}
+	systemOnUserMessage                  = []string{"userMessageBg"}
+	systemOnSearchMatch                  = []string{"searchMatchBg"}
+	systemOnScrollbarTrack               = []string{"scrollbarTrack"}
+	systemOnTools                        = []string{"toolPendingBg", "toolSuccessBg", "toolErrorBg"}
+	systemOnCustomMessageTools           = []string{"customMessageBg", "toolPendingBg", "toolSuccessBg", "toolErrorBg"}
+	systemOnBackgroundTools              = []string{"background", "toolPendingBg", "toolSuccessBg", "toolErrorBg"}
+	systemOnBackgroundMessages           = []string{"background", "userMessageBg", "customMessageBg"}
+	systemOnBackgroundMessagesTools      = []string{"background", "userMessageBg", "customMessageBg", "toolPendingBg", "toolSuccessBg", "toolErrorBg"}
+	systemOnBackgroundSelectedTools      = []string{"background", "selectedBg", "toolPendingBg", "toolSuccessBg", "toolErrorBg"}
+	systemOnBackgroundSelectedCustom     = []string{"background", "selectedBg", "customMessageBg", "toolPendingBg", "toolSuccessBg", "toolErrorBg"}
+	systemOnBackgroundCustomSelectedTool = []string{"background", "customMessageBg", "selectedBg", "toolPendingBg", "toolSuccessBg", "toolErrorBg"}
 )
 
-func systemEach(tokens []string, on []string, level string) []systemRule {
-	rules := make([]systemRule, len(tokens))
-	for i, token := range tokens {
-		rules[i] = systemRule{token, on, level}
-	}
-	return rules
+// systemRuleTable is the contrast rules in the order their tokens are solved from: a package-level composite of constants, so the linker lays it
+// out as data and no code builds it.
+var systemRuleTable = [...]systemRule{
+	{"userMessageBg", systemOnBackground, "panel"},
+	{"toolPendingBg", systemOnBackground, "panel"},
+	{"toolSuccessBg", systemOnBackground, "panel"},
+	{"toolErrorBg", systemOnBackground, "panel"},
+	{"selectedBg", systemOnBackground, "panel"},
+	{"searchMatchBg", systemOnBackground, "panel"},
+	{"customMessageBg", systemOnBackground, "panel"},
+	{"text", systemOnBackground, "text"},
+	{"text", systemOnSelected, "textOnPanel"},
+	{"userMessageText", systemOnUserMessage, "textOnPanel"},
+	{"toolTitle", systemOnTools, "textOnPanel"},
+	{"accent", systemOnBackgroundSelectedTools, "readable"},
+	{"success", systemOnBackgroundSelectedTools, "readable"},
+	{"error", systemOnBackgroundSelectedTools, "readable"},
+	{"warning", systemOnBackgroundSelectedTools, "readable"},
+	{"muted", systemOnBackgroundSelectedCustom, "readable"},
+	{"dim", systemOnBackgroundSelectedCustom, "subtle"},
+	{"thinkingText", systemOnBackground, "readable"},
+	{"customMessageText", systemOnCustomMessageTools, "readable"},
+	{"customMessageLabel", systemOnBackgroundCustomSelectedTool, "readable"},
+	{"toolOutput", systemOnBackgroundTools, "readable"},
+	{"mdHeading", systemOnBackgroundMessages, "readable"},
+	{"mdLink", systemOnBackgroundMessages, "readable"},
+	{"mdLinkUrl", systemOnBackgroundMessages, "readable"},
+	{"mdCode", systemOnBackgroundMessages, "readable"},
+	{"mdQuote", systemOnBackgroundMessages, "readable"},
+	{"mdCodeBlockBorder", systemOnBackgroundMessages, "readable"},
+	{"mdListBullet", systemOnBackgroundMessages, "readable"},
+	{"mdCodeBlock", systemOnBackgroundMessagesTools, "readable"},
+	{"toolDiffAdded", systemOnBackgroundTools, "readable"},
+	{"toolDiffRemoved", systemOnBackgroundTools, "readable"},
+	{"toolDiffContext", systemOnBackgroundTools, "readable"},
+	{"syntaxComment", systemOnBackgroundMessagesTools, "readable"},
+	{"syntaxKeyword", systemOnBackgroundMessagesTools, "readable"},
+	{"syntaxFunction", systemOnBackgroundMessagesTools, "readable"},
+	{"syntaxVariable", systemOnBackgroundMessagesTools, "readable"},
+	{"syntaxString", systemOnBackgroundMessagesTools, "readable"},
+	{"syntaxNumber", systemOnBackgroundMessagesTools, "readable"},
+	{"syntaxType", systemOnBackgroundMessagesTools, "readable"},
+	{"syntaxOperator", systemOnBackgroundMessagesTools, "readable"},
+	{"syntaxPunctuation", systemOnBackgroundMessagesTools, "readable"},
+	{"searchMatchText", systemOnSearchMatch, "readable"},
+	{"bashMode", systemOnBackground, "readable"},
+	{"border", systemOnBackground, "readable"},
+	{"borderAccent", systemOnBackground, "readable"},
+	{"borderMuted", systemOnBackground, "subtle"},
+	{"mdQuoteBorder", systemOnBackgroundMessagesTools, "readable"},
+	{"mdHr", systemOnBackgroundMessagesTools, "readable"},
+	{"scrollbarTrack", systemOnBackground, "track"},
+	{"scrollbarThumb", systemOnScrollbarTrack, "thumb"},
+	{"thinkingOff", systemOnBackground, "thinking0"},
+	{"thinkingMinimal", systemOnBackground, "thinking1"},
+	{"thinkingLow", systemOnBackground, "thinking2"},
+	{"thinkingMedium", systemOnBackground, "thinking3"},
+	{"thinkingHigh", systemOnBackground, "thinking4"},
+	{"thinkingXhigh", systemOnBackground, "thinking5"},
+	{"thinkingMax", systemOnBackground, "thinking6"},
 }
 
-func systemConcat(parts ...[]string) []string {
-	var joined []string
-	for _, part := range parts {
-		joined = append(joined, part...)
-	}
-	return joined
-}
-
-var systemRules = sync.OnceValue(func() []systemRule {
-	background := []string{"background"}
-	var rules []systemRule
-	add := func(more ...systemRule) { rules = append(rules, more...) }
-	add(systemEach(systemPanels, background, "panel")...)
-	add(systemRule{"text", background, "text"})
-	add(systemRule{"text", []string{"selectedBg"}, "textOnPanel"})
-	add(systemRule{"userMessageText", []string{"userMessageBg"}, "textOnPanel"})
-	add(systemRule{"toolTitle", systemToolPanels, "textOnPanel"})
-	add(systemEach([]string{"accent", "success", "error", "warning"}, systemConcat(background, []string{"selectedBg"}, systemToolPanels), "readable")...)
-	add(systemRule{"muted", systemConcat(background, []string{"selectedBg", "customMessageBg"}, systemToolPanels), "readable"})
-	add(systemRule{"dim", systemConcat(background, []string{"selectedBg", "customMessageBg"}, systemToolPanels), "subtle"})
-	add(systemRule{"thinkingText", background, "readable"})
-	add(systemRule{"customMessageText", systemConcat([]string{"customMessageBg"}, systemToolPanels), "readable"})
-	add(systemRule{"customMessageLabel", systemConcat(background, []string{"customMessageBg", "selectedBg"}, systemToolPanels), "readable"})
-	add(systemRule{"toolOutput", systemConcat(background, systemToolPanels), "readable"})
-	add(systemEach([]string{"mdHeading", "mdLink", "mdLinkUrl", "mdCode", "mdQuote", "mdCodeBlockBorder", "mdListBullet"}, systemConcat(background, systemMessagePanels), "readable")...)
-	add(systemRule{"mdCodeBlock", systemConcat(background, systemMessagePanels, systemToolPanels), "readable"})
-	add(systemEach([]string{"toolDiffAdded", "toolDiffRemoved", "toolDiffContext"}, systemConcat(background, systemToolPanels), "readable")...)
-	add(systemEach([]string{"syntaxComment", "syntaxKeyword", "syntaxFunction", "syntaxVariable", "syntaxString", "syntaxNumber", "syntaxType", "syntaxOperator", "syntaxPunctuation"},
-		systemConcat(background, systemMessagePanels, systemToolPanels), "readable")...)
-	add(systemRule{"searchMatchText", []string{"searchMatchBg"}, "readable"})
-	add(systemEach([]string{"bashMode", "border", "borderAccent"}, background, "readable")...)
-	add(systemRule{"borderMuted", background, "subtle"})
-	add(systemEach([]string{"mdQuoteBorder", "mdHr"}, systemConcat(background, systemMessagePanels, systemToolPanels), "readable")...)
-	add(systemRule{"scrollbarTrack", background, "track"})
-	add(systemRule{"scrollbarThumb", []string{"scrollbarTrack"}, "thumb"})
-	for index, token := range systemThinking {
-		add(systemRule{token, background, systemThinkingLevel[index]})
-	}
-	return rules
-})
+func systemRules() []systemRule { return systemRuleTable[:] }
 
 // systemReadableFloor is the level relaxation compresses stronger levels toward before weakening all levels.
 func systemReadableFloor(appearance TerminalTheme) string {

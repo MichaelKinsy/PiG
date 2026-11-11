@@ -1,5 +1,7 @@
 package widthx
 
+// Ports packages/tui/src/utils.ts (graphemeWidth and the grapheme and word class lookups)
+
 // pi_width.go ports upstream pi-tui's per-grapheme width and grapheme
 // segmentation (packages/tui/src/utils.ts graphemeWidth + Intl.Segmenter)
 // onto tables generated from the same data Pi uses at runtime
@@ -260,6 +262,7 @@ func GraphemeWidth(seg string) int {
 	allTSM, allZW, count := true, true, 0
 	for rest := seg; rest != ""; {
 		r, size := jsstring.DecodeRuneInString(rest)
+		//portlint:allow utf16units utils.ts graphemeWidth iterates the segment by code point (for..of): size is the byte size of the rune just decoded, not a UTF-16 offset
 		rest = rest[size:]
 		p := props(r)
 		if p&pTSM == 0 {
@@ -299,6 +302,7 @@ func GraphemeWidth(seg string) int {
 	followsMark := false
 	for rest := base[n:]; rest != ""; {
 		c, size := jsstring.DecodeRuneInString(rest)
+		//portlint:allow utf16units utils.ts graphemeWidth iterates the segment by code point (for..of): size is the byte size of the rune just decoded, not a UTF-16 offset
 		rest = rest[size:]
 		p := props(c)
 		switch {
@@ -329,6 +333,7 @@ func couldBeEmoji(seg string) bool {
 	units := 0
 	for rest := seg; rest != ""; {
 		r, size := jsstring.DecodeRuneInString(rest)
+		//portlint:allow utf16units utils.ts graphemeWidth iterates the segment by code point (for..of): size is the byte size of the rune just decoded, not a UTF-16 offset
 		rest = rest[size:]
 		if r == 0xFE0F {
 			return true

@@ -1,5 +1,5 @@
 // Regenerates models-argument-errors.pi-1.1.0.json with Pi's executeCodemode over the catalog of
-// TestModelsGlobalArgumentErrorsMatchPi. Run from the repository root after `npm ci` in extensions/sdk-ts:
+// TestModelsGlobalArgumentErrorsMatchPi. Run from the repository root after `make parity-deps`:
 //
 //   node coding/extension/builtin/codemode/testdata/models-argument-errors.pi.mjs > coding/extension/builtin/codemode/testdata/models-argument-errors.pi-1.1.0.json
 import { readFileSync } from "node:fs";

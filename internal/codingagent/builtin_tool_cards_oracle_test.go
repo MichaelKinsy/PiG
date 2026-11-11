@@ -1,5 +1,21 @@
 package codingagent
 
+// pi: packages/coding-agent/src/core/tools/renderers/read.ts
+
+// pi: packages/coding-agent/src/core/tools/renderers/write.ts
+
+// pi: packages/coding-agent/src/core/tools/renderers/edit.ts
+
+// pi: packages/coding-agent/src/core/tools/renderers/bash.ts
+
+// pi: packages/coding-agent/src/core/tools/renderers/grep.ts
+
+// pi: packages/coding-agent/src/core/tools/renderers/find.ts
+
+// pi: packages/coding-agent/src/core/tools/renderers/ls.ts
+
+// pi: packages/coding-agent/src/core/tools/renderers/index.ts
+
 import (
 	"bytes"
 	"context"
@@ -52,6 +68,9 @@ type toolCardProbe struct {
 	// ElapsedMs is how far the card clock moves between the start event and the result: both sides fix the clock
 	// (toolTimerNow, Date.now()) so the bash card's Elapsed and Took rows show this span, not the scheduler's.
 	ElapsedMs int64 `json:"elapsedMs"`
+	// NoDefinition draws a grep, find or ls card from the built-in renderers by tool name (withBuiltInRenderers), as for a call whose
+	// tool has no registered definition; the Pi oracle never sees it.
+	NoDefinition bool `json:"-"`
 }
 
 func cardText(text string) []map[string]any { return []map[string]any{{"type": "text", "text": text}} }
@@ -64,9 +83,44 @@ func TestBuiltinToolCardsMatchPi(t *testing.T) {
 	compareToolCards(t, probes, names)
 }
 
+// Cards for files in a language highlight.js registers only in its full load (README.md is markdown) and in one it never registers (schema.graphql: the mdCodeBlock color for an unsupported language, which the card
+// draws on either side of the load). Interactive mode's init runs that load within moments of a session starting, and the rest of a test process inherits it once any test starts a mode. The load is a one-way latch
+// in Pi and PiG alike, so this test loads PiG's before the oracle runs, as a test ahead of it in the process would: it fails on any ordering where the Pi side drew without the languages the PiG side had.
+func TestBuiltinToolCardsMatchPiAfterTheHighlightLanguageLoad(t *testing.T) {
+	tui.LoadAllHighlightLanguages()
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := "# heading\n  indented\n\ttabbed\n\x1b[31mred\x1b[0m\n{ \"k\": [1, 2] }\n```go\npackage main\n```"
+	var probes []toolCardProbe
+	var names []string
+	for _, path := range []string{"README.md", "schema.graphql"} {
+		for _, tool := range []string{"read", "write"} {
+			args := map[string]any{"path": path}
+			result := &toolCardResult{Content: cardText(body)}
+			if tool == "write" {
+				args["content"] = body
+				result = &toolCardResult{Content: cardText("Successfully wrote 80 bytes to " + path)}
+			}
+			for _, theme := range []string{"dark", "light"} {
+				for _, expanded := range []bool{false, true} {
+					probes = append(probes, toolCardProbe{Tool: tool, Args: args, Result: result, Expanded: expanded, Width: 80, Theme: theme, CWD: cwd})
+					names = append(names, fmt.Sprintf("%s %s theme=%s expanded=%v", tool, path, theme, expanded))
+				}
+			}
+		}
+	}
+	compareToolCards(t, probes, names)
+}
+
 // compareToolCards renders each probe with Pi and with Pig and reports the first rows that differ.
 func compareToolCards(t *testing.T, probes []toolCardProbe, names []string) {
 	t.Helper()
+	// Both sides draw with every highlight.js language registered, as a session does once its startup load is done. The load is a one-way latch,
+	// so a test that ran earlier in the process (a mode's init, TestLoadRemainingHighlightLanguages...) may already have tripped it, and a load
+	// still running on a stopped mode's task finishes under this test. Waiting for it here makes the state the same on every run; the oracle loads Pi's.
+	tui.LoadAllHighlightLanguages()
 	input, err := json.Marshal(probes)
 	if err != nil {
 		t.Fatal(err)
@@ -136,6 +190,54 @@ func TestBuiltinEditCallPreviewMatchesPi(t *testing.T) {
 			}
 		}
 	}
+	// renderResult of a failed edit draws nothing when its error text is the one the preview already shows, and the error text otherwise.
+	failedEdits := map[string]any{"path": "preview.txt", "edits": []any{map[string]any{"oldText": "absent text", "newText": "x"}}}
+	previewMessage := "Could not find the exact text in preview.txt. The old text must match exactly including all whitespace and newlines."
+	for name, text := range map[string]string{"same as the preview error": previewMessage, "other than the preview error": previewMessage + " Different."} {
+		for _, theme := range []string{"dark", "light"} {
+			probes = append(probes, toolCardProbe{Tool: "edit", Args: failedEdits, Result: &toolCardResult{Content: cardText(text), IsError: true}, Width: 80, Theme: theme, CWD: dir, Settle: true})
+			names = append(names, fmt.Sprintf("edit failed result %s theme=%s", name, theme))
+		}
+	}
+	compareToolCards(t, probes, names)
+}
+
+// createAllToolRenderers (renderers/index.ts) keys grep, find and ls to their renderCall and renderResult: a card for such a tool with
+// no definition of its own draws the same rows Pi's definitions draw, header and result body.
+func TestBuiltinToolCardsByNameMatchPi(t *testing.T) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var probes []toolCardProbe
+	var names []string
+	rows := func(n int, prefix string) string {
+		out := make([]string, n)
+		for i := range out {
+			out[i] = fmt.Sprintf("%s %d", prefix, i+1)
+		}
+		return strings.Join(out, "\n")
+	}
+	type card struct {
+		name, tool string
+		args       map[string]any
+		result     *toolCardResult
+	}
+	for _, c := range []card{
+		{"grep pending", "grep", map[string]any{"pattern": "needle", "path": "src"}, nil},
+		{"grep ok", "grep", map[string]any{"pattern": "needle", "glob": "*.go", "limit": 100}, &toolCardResult{Content: cardText(rows(30, "src/a.go:1: needle"))}},
+		{"find pending", "find", map[string]any{"pattern": "*.go", "path": "src"}, nil},
+		{"find ok", "find", map[string]any{"pattern": "*.go", "path": "src", "limit": 50}, &toolCardResult{Content: cardText(rows(25, "src/f")), Details: map[string]any{"resultLimitReached": 1000}}},
+		{"ls pending", "ls", map[string]any{"path": "src", "limit": 10}, nil},
+		{"ls ok", "ls", map[string]any{"path": "src", "limit": 10}, &toolCardResult{Content: cardText(rows(25, "entry")), Details: map[string]any{"entryLimitReached": 500}}},
+	} {
+		for _, theme := range []string{"dark", "light"} {
+			for _, expanded := range []bool{false, true} {
+				probes = append(probes, toolCardProbe{Tool: c.tool, Args: c.args, Result: c.result, Expanded: expanded, Width: 80, Theme: theme, CWD: cwd, NoDefinition: true})
+				names = append(names, fmt.Sprintf("%s by name theme=%s expanded=%v", c.name, theme, expanded))
+			}
+		}
+	}
 	compareToolCards(t, probes, names)
 }
 
@@ -151,6 +253,8 @@ func TestBuiltinToolCardsProbeDump(t *testing.T) {
 
 // TestBuiltinToolCardsParity prints Pig's rows, one JSON line per probe, for the tools/24 parity scenario.
 func TestBuiltinToolCardsParity(t *testing.T) {
+	// The Pi side of the scenario (builtin_tool_cards.mjs) loads every highlight.js language before it draws, as compareToolCards does for the Go oracle tests.
+	tui.LoadAllHighlightLanguages()
 	probes, _ := builtinToolCardProbes(t)
 	for _, rows := range renderBuiltinToolCards(t, probes) {
 		var line strings.Builder
@@ -181,7 +285,7 @@ func builtinToolCardProbes(t *testing.T) ([]toolCardProbe, []string) {
 	var names []string
 	add := func(name, tool string, args map[string]any, result *toolCardResult) {
 		// Pi's bash tool reports an empty partial result as soon as it starts (bash.ts:318-319), which is what shows the elapsed time.
-		partial := result == nil && tool == "bash"
+		partial := result == nil && (tool == "bash" || tool == "powershell")
 		if partial {
 			result = &toolCardResult{Content: cardText("")[:0]}
 		}
@@ -211,6 +315,13 @@ func builtinToolCardProbes(t *testing.T) ([]toolCardProbe, []string) {
 	add("bash error", "bash", map[string]any{"command": "false"}, &toolCardResult{Content: cardText("boom\n\nCommand exited with code 1"), IsError: true})
 	add("bash timeout arg", "bash", map[string]any{"command": "sleep 1", "timeout": 5}, &toolCardResult{Content: cardText("")})
 	add("bash truncated", "bash", map[string]any{"command": "yes"}, &toolCardResult{Content: cardText(lines(5, "y")), Details: map[string]any{"truncation": truncated, "fullOutputPath": "/tmp/full.log"}})
+	// createAllToolRenderers keys powershell to createShellRenderers("PS>"): the same card with the other prompt.
+	add("powershell pending", "powershell", map[string]any{"command": "Get-ChildItem"}, nil)
+	add("powershell ok", "powershell", map[string]any{"command": "Get-Date"}, &toolCardResult{Content: cardText("Monday")})
+	add("powershell long", "powershell", map[string]any{"command": "1..40"}, &toolCardResult{Content: cardText(lines(40, "n"))})
+	add("powershell error", "powershell", map[string]any{"command": "throw"}, &toolCardResult{Content: cardText("boom\n\nCommand exited with code 1"), IsError: true})
+	add("powershell timeout arg", "powershell", map[string]any{"command": "Start-Sleep 1", "timeout": 5}, &toolCardResult{Content: cardText("")})
+	add("powershell truncated", "powershell", map[string]any{"command": "yes"}, &toolCardResult{Content: cardText(lines(5, "y")), Details: map[string]any{"truncation": truncated, "fullOutputPath": "/tmp/full.log"}})
 	add("grep ok", "grep", map[string]any{"pattern": "needle", "path": "src"}, &toolCardResult{Content: cardText(lines(4, "src/a.go:1: needle"))})
 	add("grep long", "grep", map[string]any{"pattern": "needle", "glob": "*.go", "limit": 100}, &toolCardResult{Content: cardText(lines(30, "m"))})
 	add("grep limit", "grep", map[string]any{"pattern": "x"}, &toolCardResult{Content: cardText(lines(5, "g")), Details: map[string]any{"matchLimitReached": 100, "linesTruncated": true}})
@@ -317,9 +428,9 @@ func renderBuiltinToolCards(t *testing.T, probes []toolCardProbe) [][]string {
 		tui.SetTheme(probe.Theme)
 		installCardBindings(t, probe)
 		raw, _ := json.Marshal(probe.Args)
-		// A session registers bash, grep, find and ls as tool definitions; bindToolCard gives read, write and edit their built-in definitions.
+		// A session registers bash, powershell, grep, find and ls as tool definitions; bindToolCard gives read, write and edit their built-in definitions.
 		var definition *extension.ToolDefinition
-		if slices.Contains([]string{"bash", "grep", "find", "ls"}, probe.Tool) {
+		if !probe.NoDefinition && slices.Contains([]string{"bash", "powershell", "grep", "find", "ls"}, probe.Tool) {
 			base := baseToolDefinition(probe.Tool)
 			definition = &base
 		}
@@ -333,6 +444,18 @@ func renderBuiltinToolCards(t *testing.T, probes []toolCardProbe) [][]string {
 		f.mode.handleAgentEvent(agent.ToolExecutionStartEvent{ToolCallID: f.id, ToolName: f.name, Args: raw})
 		if probe.Settle {
 			f.card.SetArgsComplete()
+			// As the Pi probe does, wait for the preview before the result lands. A result drawn first would start the preview inside the event handler,
+			// and its request could arrive before the drain below, which then waits for a repaint that already happened.
+			select {
+			case <-watcher.requests:
+			default:
+			}
+			f.card.Render(probe.Width)
+			select {
+			case <-watcher.requests:
+			case <-waitCtx.Done():
+				t.Fatalf("probe %d: the edit preview never asked for a repaint: %v", i, context.Cause(waitCtx))
+			}
 		}
 		cardClock.Store(toolCardClockStart + probe.ElapsedMs)
 		if r := probe.Result; r != nil {
@@ -358,22 +481,7 @@ func renderBuiltinToolCards(t *testing.T, probes []toolCardProbe) [][]string {
 			f.card.SetShowImages(false)
 		}
 		f.card.SetExpanded(probe.Expanded)
-		if watcher != nil {
-			// Every request so far came from this goroutine. The first draw below starts the preview, whose request is the next one.
-			select {
-			case <-watcher.requests:
-			default:
-			}
-		}
 		out[i] = f.card.Render(probe.Width)
-		if watcher != nil {
-			select {
-			case <-watcher.requests:
-			case <-waitCtx.Done():
-				t.Fatalf("probe %d: the edit preview never asked for a repaint: %v", i, context.Cause(waitCtx))
-			}
-			out[i] = f.card.Render(probe.Width)
-		}
 		if probe.Result == nil || probe.Partial {
 			// A running bash card ticks its elapsed time until a final result renders (Pi's bash.ts setInterval); finish the card so its ticker does not outlive the test.
 			t.Cleanup(func() {
@@ -403,7 +511,7 @@ func TestBuiltinToolCardsRandomMatchPi(t *testing.T) {
 		}
 		return strings.Join(out, "\n")
 	}
-	tools := []string{"read", "write", "edit", "bash", "grep", "find", "ls"}
+	tools := []string{"read", "write", "edit", "bash", "powershell", "grep", "find", "ls"}
 	var probes []toolCardProbe
 	var names []string
 	for i := range 500 {
@@ -449,7 +557,7 @@ func TestBuiltinToolCardsRandomMatchPi(t *testing.T) {
 				result.Details = details
 			}
 		}
-		partial := result == nil && tool == "bash"
+		partial := result == nil && (tool == "bash" || tool == "powershell")
 		if partial {
 			result = &toolCardResult{Content: cardText("")[:0]}
 		}
@@ -477,8 +585,10 @@ func rebindExpandCards(probes []toolCardProbe, names []string) ([]toolCardProbe,
 }
 
 // installCardBindings installs the interactive mode's merged tui and app table with the probe's user bindings, which the hints read.
+// The process-wide keybindings are restored when the test ends, so a rebound expand key does not reach later tests.
 func installCardBindings(t *testing.T, probe toolCardProbe) {
 	t.Helper()
+	restoreTUIKeybindings(t)
 	userBindings := map[string][]KeyID{}
 	for action, keys := range probe.Bindings {
 		userBindings[action] = []KeyID{}

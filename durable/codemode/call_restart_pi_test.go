@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -176,7 +177,8 @@ func (s *queuedStorage) markedCommits() any {
 	return append([]string{}, s.pushes...)
 }
 
-func (s *queuedStorage) Commit(ctx context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
+func (s *queuedStorage) Commit(ctx context.Context, batches [][]durable.StorageWrite, receive func(index int, seq durable.Seq)) (durable.CommitResult, error) {
+	writes := slices.Concat(batches...)
 	s.mu.Lock()
 	s.entered++
 	if s.marked {
@@ -194,10 +196,10 @@ func (s *queuedStorage) Commit(ctx context.Context, writes []durable.StorageWrit
 		select {
 		case err := <-turn:
 			if err != nil {
-				return 0, err
+				return durable.CommitResult{}, err
 			}
 		case <-ctx.Done():
-			return 0, context.Cause(ctx)
+			return durable.CommitResult{}, context.Cause(ctx)
 		}
 	}
 	s.mu.Lock()
@@ -205,9 +207,9 @@ func (s *queuedStorage) Commit(ctx context.Context, writes []durable.StorageWrit
 	s.failure = nil
 	s.mu.Unlock()
 	if failure != nil {
-		return 0, failure
+		return durable.CommitResult{}, failure
 	}
-	return s.MemoryStorage.Commit(ctx, writes, adopt)
+	return s.MemoryStorage.Commit(ctx, batches, receive)
 }
 
 // gatedSandbox is the fixture's sandbox with what the VM reports and the call's request to stop it held on request
@@ -380,9 +382,9 @@ func (r *restartRun) open(rearm, unblock bool) {
 	}
 	opened, err := harness.OpenHarness(testContext, r.storage, harness.HarnessOptions{
 		Models: r.f.setup.models, Registry: r.f.setup.registry, Now: r.clock.now,
-		OnReport: func(err error, _ durable.ReportInfo) {
+		OnReport: func(report durable.Report) {
 			r.mu.Lock()
-			r.reports = append(r.reports, err.Error())
+			r.reports = append(r.reports, report.Error.Error())
 			r.mu.Unlock()
 		},
 	})
@@ -787,18 +789,25 @@ func (r *restartRun) step(step restartStep) {
 }
 
 // runRestartScenarios runs each scenario under Pi and under PiG and compares what they observed.
-func runRestartScenarios(t *testing.T, scenarios []restartScenario) {
+// piRestartOracleCmd is Pi's restart oracle over the scenarios, not yet run; stderr collects what it says.
+func piRestartOracleCmd(t *testing.T, scenarios []restartScenario) (cmd *exec.Cmd, stderr *bytes.Buffer) {
 	t.Helper()
 	root := testenv.ModuleRoot(t)
 	input, err := json.Marshal(scenarios)
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.CommandContext(t.Context(), "node", "--disable-warning=ExperimentalWarning", "testdata/codemode_restart_oracle.mjs", filepath.Join(root, ".upstream", "current", "packages"))
+	cmd = exec.CommandContext(t.Context(), "node", "--disable-warning=ExperimentalWarning", "testdata/codemode_restart_oracle.mjs", filepath.Join(root, ".upstream", "current", "packages"))
 	cmd.Env = append(cmd.Environ(), "PI_INTEROP_DIR="+filepath.Join(root, "durable", "interop")+"/")
 	cmd.Stdin = bytes.NewReader(input)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
+	stderr = new(bytes.Buffer)
+	cmd.Stderr = stderr
+	return cmd, stderr
+}
+
+func runRestartScenarios(t *testing.T, scenarios []restartScenario) {
+	t.Helper()
+	cmd, stderr := piRestartOracleCmd(t, scenarios)
 	output, err := cmd.Output()
 	if err != nil {
 		t.Fatalf("Pi's restart oracle: %v\n%s", err, stderr.String())

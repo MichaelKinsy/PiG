@@ -1,0 +1,152 @@
+{
+ "storage": {
+  "ticks": 40
+ },
+ "tasks": {
+  "work": {
+   "name": "t.work",
+   "version": 1,
+   "phases": {
+    "start": [
+     {
+      "await": "g"
+     },
+     {
+      "commit": {
+       "next": {
+        "status": "terminal",
+        "outcome": {
+         "status": "completed"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "abort": []
+  },
+  "waitB": {
+   "name": "t.waitb",
+   "version": 1,
+   "phases": {
+    "start": [
+     {
+      "waitForTask": 3
+     },
+     {
+      "log": "woke B"
+     },
+     {
+      "commit": {
+       "next": {
+        "status": "terminal",
+        "outcome": {
+         "status": "completed"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "abort": []
+  },
+  "waitC": {
+   "name": "t.waitc",
+   "version": 1,
+   "phases": {
+    "start": [
+     {
+      "waitForTask": 4
+     },
+     {
+      "log": "woke C"
+     },
+     {
+      "commit": {
+       "next": {
+        "status": "terminal",
+        "outcome": {
+         "status": "completed"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "abort": []
+  }
+ },
+ "cmds": [
+  {
+   "cmd": "commit",
+   "ops": [
+    {
+     "op": "rootConversation"
+    }
+   ]
+  },
+  {
+   "cmd": "open"
+  },
+  {
+   "cmd": "resume"
+  },
+  {
+   "cmd": "commit",
+   "ops": [
+    {
+     "op": "createTask",
+     "task": "work",
+     "opts": {
+      "conversationId": 1
+     }
+    },
+    {
+     "op": "createTask",
+     "task": "work",
+     "opts": {
+      "conversationId": 1
+     }
+    },
+    {
+     "op": "createTask",
+     "task": "work",
+     "opts": {
+      "conversationId": 1
+     }
+    },
+    {
+     "op": "createTask",
+     "task": "waitB",
+     "opts": {
+      "conversationId": 1
+     }
+    },
+    {
+     "op": "createTask",
+     "task": "waitC",
+     "opts": {
+      "conversationId": 1
+     }
+    }
+   ]
+  },
+  {
+   "cmd": "waitForTask",
+   "id": 3
+  },
+  {
+   "cmd": "waitForTask",
+   "id": 4
+  },
+  {
+   "cmd": "release",
+   "gate": "g"
+  },
+  {
+   "cmd": "waitForIdle",
+   "conv": 1
+  }
+ ],
+ "clock": "fixed"
+}

@@ -170,6 +170,7 @@ func PackageResourceItemsFromInventory(root string, pkg ConfiguredPackage, resou
 }
 
 // packageFilterEnabled is applyPackageFilter's choice among a kind's files: no filter enables every file, an empty one none, and patterns those applyPatterns keeps (package-manager.ts:2280-2306).
+// Ports packages/coding-agent/src/core/package-manager.ts (applyPackageFilter).
 func packageFilterEnabled(files, patterns []string, root string, kind packagecontent.Kind) (map[string]bool, error) {
 	enabled := make(map[string]bool, len(files))
 	if patterns == nil {

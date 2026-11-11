@@ -1,5 +1,5 @@
 // Run Pi's pi.live draft helpers (packages/durable/src/harness/live.ts endRun, addCompactionStatus, removeCompactionStatus, toolSlot, finishSlot, clearProgress, compactionStatus; generation.ts handOver via a load hook) on a tracked document (chord delta track) over programs from stdin.
-// Program: {live, steps: [{op: "endRun", task, settlement} | {op: "addCompaction", status} | {op: "removeCompaction", task} | {op: "finishSlot", task, entry?} | {op: "clearProgress", task} | {op: "handOver", from, to} | {op: "setAttempt", task, attempt}]}.
+// Program: {live, steps: [{op: "endRun", task, end} | {op: "addCompaction", status} | {op: "removeCompaction", task} | {op: "finishSlot", task, entry?} | {op: "clearProgress", task} | {op: "handOver", from, to} | {op: "setAttempt", task, attempt}]}.
 // stdout: per program {settled: [[submission, settlement]], ops, value} after preparing the change.
 // usage: node live_oracle.mjs <packages dir>   (PI_INTEROP_DIR: a directory whose node_modules holds @earendil-works/pi-ai)
 import module from "node:module";
@@ -30,7 +30,7 @@ for (const program of JSON.parse(input)) {
 	const tx = { settleSubmission: (id, settlement) => settled.push([id, settlement]) };
 	for (const step of program.steps) {
 		switch (step.op) {
-			case "endRun": live.endRun(tx, state, step.task, step.settlement); break;
+			case "endRun": live.endRun(tx, state, step.task, step.end); break;
 			case "addCompaction": live.addCompactionStatus(state, step.status); break;
 			case "removeCompaction": live.removeCompactionStatus(state, step.task); break;
 			// Pi 1.2.0 finishSlot(slot) takes no entry (live.ts:201); a model-issued call's caller sets it after (tool.ts:624-625).

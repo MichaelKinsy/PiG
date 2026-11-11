@@ -11,6 +11,7 @@ import (
 	cm "github.com/MichaelKinsy/PiG/codemode"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
 )
 
 // Namespace is a group of tools named by a common prefix, such as an MCP server's `mcp__github__`.
@@ -191,7 +192,7 @@ func Section(tools []*durable.ToolRegistration, namespaces []Namespace, budget i
 		case b.namespace == nil:
 			return 1
 		}
-		return jsstring.LocaleCompare(a.namespace.Name, b.namespace.Name)
+		return localecompare.Compare(a.namespace.Name, b.namespace.Name)
 	})
 	shown := selectCatalog(ordered, budget)
 

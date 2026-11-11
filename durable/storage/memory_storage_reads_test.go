@@ -9,6 +9,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/durabletest"
 	"github.com/MichaelKinsy/PiG/durable/storage"
 )
 
@@ -46,7 +47,7 @@ func TestMemoryStorageReadsCommittedRecordsAndFailsAfterClose(t *testing.T) {
 		State: durable.TaskState[durable.JsonValue, durable.JsonValue]{Status: durable.TaskPending, Checkpoint: &checkpoint},
 	}
 	submission := durable.SubmissionRecord{Id: submissionId, ConversationId: root, RequestId: &requestId, Type: durable.SubmissionTypeWrite, Status: durable.SubmissionDone, Entry: &entryId}
-	seq, err := memory.Commit(ctx, []durable.StorageWrite{
+	seq, err := durabletest.CommitWrites(ctx, memory, []durable.StorageWrite{
 		durable.ConversationWrite{Value: durable.ConversationRecord{Id: root}},
 		durable.EntryWrite{Value: durable.EntryRecord{Id: entryId, ConversationId: root, Kind: "plain", Data: map[string]any{"n": 1}}},
 		durable.EntryWrite{Value: durable.EntryRecord{Id: headId, ConversationId: root, Kind: "marker", Head: &entryId}},
@@ -56,7 +57,7 @@ func TestMemoryStorageReadsCommittedRecordsAndFailsAfterClose(t *testing.T) {
 			Record:  durable.DocumentCreate{Id: documentId, Kind: "memory.family", Key: &key, Scope: durable.DocumentRecordScope{Kind: durable.ScopeSession}},
 			Content: durable.DocumentContent{Kind: durable.ContentBase, Version: 1, Value: delta.JsonObjectOf("v", 1)},
 		},
-	}, func(durable.Seq) {})
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,7 +143,7 @@ func TestMemoryStorageReadsCommittedRecordsAndFailsAfterClose(t *testing.T) {
 	if _, err := memory.Entry(ctx, entryId); err == nil {
 		t.Error("Entry after Close must fail")
 	}
-	if _, err := memory.Commit(ctx, nil, func(durable.Seq) {}); err == nil {
+	if _, err := durabletest.CommitWrites(ctx, memory, nil); err == nil {
 		t.Error("Commit after Close must fail")
 	}
 }
@@ -170,7 +171,7 @@ func TestMemoryStorageVisibleEntryFollowsConversationAncestry(t *testing.T) {
 	entry := func(conversation durable.ConversationId, id durable.EntryId) durable.StorageWrite {
 		return durable.EntryWrite{Value: durable.EntryRecord{Id: id, ConversationId: conversation, Kind: "plain", Data: map[string]any{"n": int64(id)}}}
 	}
-	if _, err := store.Commit(ctx, []durable.StorageWrite{
+	if _, err := durabletest.CommitWrites(ctx, store, []durable.StorageWrite{
 		durable.ConversationWrite{Value: durable.ConversationRecord{Id: root}},
 		entry(root, forked),
 		entry(root, afterFork),
@@ -178,7 +179,7 @@ func TestMemoryStorageVisibleEntryFollowsConversationAncestry(t *testing.T) {
 		durable.ConversationWrite{Value: durable.ConversationRecord{Id: sibling, Parent: &durable.ConversationParent{ConversationId: root, At: afterFork}}},
 		entry(child, childOwn),
 		entry(sibling, siblingOwn),
-	}, func(durable.Seq) {}); err != nil {
+	}); err != nil {
 		t.Fatal(err)
 	}
 	for _, tc := range []struct {

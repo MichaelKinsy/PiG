@@ -14,6 +14,7 @@ import (
 var toolchains = map[string]struct{ binary, install string }{
 	"go":   {"go", "run `pig setup go` to install a verified Go toolchain, or install Go 1.26 or newer from https://go.dev/dl/"},
 	"rust": {"cargo", "install Rust from https://rustup.rs (or via mise/asdf/brew)"},
+	"lisp": {"sbcl", "install Steel Bank Common Lisp 2.6.9 with core compression (see docs/extension-authoring.md, Lisp), or set PIG_SBCL to its executable"},
 }
 
 // explainMissingToolchain converts a failure to launch a language toolchain

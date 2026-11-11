@@ -44,6 +44,7 @@
     },
     "tools": {
       "type": "array",
+      "description": "Built-in tools the Piglet keeps. The list limits the tools; it does not activate them. A run activates only the default active tools (read, bash, edit, write) that the list keeps.",
       "items": {
         "type": "string",
         "enum": [
@@ -70,6 +71,14 @@
     },
     "discovery": {
       "$ref": "#/$defs/discovery"
+    },
+    "contextFiles": {
+      "type": "string",
+      "enum": [
+        "all",
+        "trusted-only"
+      ],
+      "description": "Which project context files (AGENTS.md, CLAUDE.md) load. all is Pi's behaviour. trusted-only withholds the project's context files until the project is trusted, and makes a project that has one need a trust decision."
     },
     "agentEnv": {
       "$ref": "#/$defs/agentEnvironment"
@@ -154,9 +163,6 @@
     "extendsSpec": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "source"
-      ],
       "properties": {
         "source": {
           "type": "string",
@@ -332,6 +338,7 @@
         "docs",
         "export-html",
         "extension-sdk-go",
+        "extension-sdk-lisp",
         "extension-sdk-python",
         "extension-sdk-rust",
         "mermaid",
@@ -654,7 +661,7 @@
             "fused"
           ]
         },
-        "allowOverlays": {
+        "closed": {
           "type": "boolean"
         }
       }

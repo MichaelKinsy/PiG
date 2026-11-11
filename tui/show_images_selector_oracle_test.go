@@ -39,7 +39,9 @@ func TestShowImagesSelectorMatchesPi(t *testing.T) {
 		{"\x1b"},
 		{"\x03"},
 		{"y"},
-		// Pi 1.1.0 has no select page keys; Pig pages the selection (D155, Pi PR #7680), covered by the select page key tests, so the oracle input leaves PageUp and PageDown out.
+		// PageDown and PageUp clamp the two-item SelectList without wrapping.
+		{"\x1b[6~", "\r"},
+		{"\x1b[6~", "\x1b[5~", "\r"},
 		{"\x1b[H", "\x1b[F", "\r"},
 		{"\x1b[B", "x", "\r", "\x1b"},
 		{"\x13"},

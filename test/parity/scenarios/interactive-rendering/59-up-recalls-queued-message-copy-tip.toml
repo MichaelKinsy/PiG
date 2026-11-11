@@ -1,0 +1,88 @@
+# Behavior family: interactive-rendering
+# Surface: plain Up (ESC [ A) in an empty editor while a steering message is queued, outside Terminal.app.
+#
+# Upstream (Pi 1.5.0 interactive-mode.ts:3097 and :4696; editor.ts handleInput cursorUp): plain Up with an empty editor
+# recalls prompt history. The queued message stays queued, so the recalled text is a copy and the message is still sent
+# after the tool (issue #402). Terminals that send Option+Up as plain Up (macOS Terminal.app's default profile) reach
+# this path.
+#
+# pig divergence (D228): when Up recalls history while a message is queued, PiG shows one dim tip line under the editor,
+# at most once per process run: "↳ That's a copy. The queued message still sends. <dequeue key> edits the queue." With
+# TERM_PROGRAM=tmux, which may be Terminal.app behind tmux, the tip also names the Terminal.app key mapping.
+#
+# The scenario queues "queued steer text" during the 5 s pause of TUI "Run: tui live tool pause", presses plain Up and
+# compares the screen from the pending row to the footer. Pi and PiG both recall the text into the editor and keep the
+# queue row; the only difference is the tip, which normalize_replace removes (nothing else is normalized apart from the
+# spinner phase).
+
+# Upstream evidence (Pi 1.5.0 source build f9a26365 oracle, parity harness on a Linux amd64 host in the CI image, 2026-11-02, 100x35 tmux, test-faux,
+# TERM_PROGRAM=tmux): "Run: tui live tool pause", wait LIVE-TOOL-08, "queued steer text" Enter (shows "Steering: queued steer text"),
+# send hex 1b 5b 41. Pi's pane from the Steering row to the footer, spinner phase aside: the Steering row, "↳ Alt+Up to edit all queued
+# messages", a blank row, "── ⠴ Working ──", the editor holding "queued steer text", the closing border, the cwd row and the stats row
+# (no row under the editor). PiG's pane is the same plus two dim rows under the editor: "↳ That's a copy. The queued message still sends.
+# Alt+Up edits the queue. If this is Terminal.app," and "map Option+Up to \033[1;3A in Terminal Settings > Profiles > Keyboard.".
+# Against a PiG build of 0d8500283a the scenario fails: the tip is absent (pig_contains) and the visible wait for it times out.
+
+name = "59-up-recalls-queued-message-copy-tip"
+description = "Plain Up with an empty editor and a queued steering message recalls history as in Pi; PiG adds one copy tip under the editor"
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/tui/src/components/editor.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=../compaction/testdata/pig-agent", "TERM_PROGRAM=tmux"]
+pi = ["PI_CODING_AGENT_DIR=../compaction/testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1", "TERM_PROGRAM=tmux"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "-c", "--tui-mode", "regular"]
+pi_args = ["--session-dir", "sessions", "-c", "--tui-mode", "regular"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "../compaction/testdata/compact-session"
+capture_start = "Steering: queued steer text"
+capture_end = "(auto)"
+
+[[tmux.steps]]
+keys = ["Run: tui live tool pause", "Enter"]
+wait_contains = ["LIVE-TOOL-08"]
+wait_timeout_seconds = 20
+
+[[tmux.steps]]
+keys = ["queued steer text", "Enter"]
+wait_contains = ["Steering: queued steer text"]
+wait_timeout_seconds = 15
+
+[[tmux.steps]]
+keys = ["hex:1b 5b 41"]
+# The recalled text is a second "queued steer text" on screen in both binaries; the tip row is PiG's. The Working spinner animates, so the pane never rests: the capture follows the waits at once, mid-pause of the tool.
+wait_contains = ["queued steer text"]
+wait_visible_contains_pig = ["That's a copy."]
+wait_timeout_seconds = 15
+
+[assert]
+both_reach_ready = true
+both_contain = ["Steering: queued steer text"]
+pig_contains = ["↳ That's a copy. The queued message still sends."]
+both_not_contain = ["Restored 1 queued message", "panic:", "goroutine "]
+output_normalized_equal = true
+runs = 3
+
+# normalize-rationale: Capture timing selects the Working spinner phase; the border, editor text, status row and transcript stay compared.
+[[assert.normalize_replace]]
+pattern = '(?m)^(── )[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]( Working ─*)$'
+with = '${1}<SPINNER>${2}'
+reason = "Capture timing selects the spinner phase; preserve the Working label and every border cell."
+
+# normalize-rationale: divergence D228 adds the copy tip under the editor in PiG. The raw pig_contains assertion above requires the tip; this rule removes only its rows (the tip and its wrapped mapping hint), so any other row difference stays visible.
+[[assert.normalize_replace]]
+pattern = '(?m)^ ↳ That.s a copy\. The queued message still sends\. .*\n(?: .*\n)*? ?.*Profiles > Keyboard\.[ \t]*\n'
+with = ''
+reason = "D228 adds the one-time copy tip, wrapped over two rows because it ends with the Terminal.app mapping hint under TERM_PROGRAM=tmux."

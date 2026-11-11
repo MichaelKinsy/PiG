@@ -14,13 +14,16 @@ func goAPIType() reflect.Type {
 
 // allowedDivergences names methods on extension.API that have NO direct
 // upstream counterpart (camelCase → PascalCase or `on("...")` → `On*`).
-// Each entry MUST have a corresponding row in docs/parity/DIVERGENCES.md.
+// Each entry MUST have a corresponding row in docs/parity/DIVERGENCES.md, or an additive-feature record in
+// docs/additive-features.md when the method is an owner-approved addition rather than a changed behavior.
 //
 // Note: upstream's `events: EventBus` property is picked up by the parser
 // as a method (via propertyRE), so `Events` is already in upstream's
 // Pascal-cased set: the property→method shape (D1) is a NAME-shape
 // divergence visible in the API source, not an extra method here.
-var allowedDivergences = map[string]string{}
+var allowedDivergences = map[string]string{
+	"OwnThinkingRuns": "additive feature D214 (docs/additive-features.md): pi.ownThinkingRuns(enabled) lets a separate-process extension drop the blank rows around a thinking run it draws itself; Pi's extensions patch AssistantMessageComponent.updateContent in the host process instead (assistant-message.ts updateContent). The same method exists in every SDK and TestConformance_OwnThinkingRunsAcrossSDKs guards it",
+}
 
 // goOverloads names the Go methods that split one upstream method with several call signatures: Go has no overloads.
 // The value is the upstream method (PascalCase) the Go method is a signature of; it is a language mechanic, not a

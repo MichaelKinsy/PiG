@@ -68,7 +68,7 @@ func TestEditorRenderUnderTheRendererLockReadsCurrentRowsWithoutBlocking(t *test
 				t.Fatalf("40 rows: %d text rows rendered, want 12", got)
 			}
 			r.base.mu.Lock()
-			r.base.setFixedDimensionsLocked(80, 20)
+			r.base.setSize(80, 20)
 			returnsWithin(t, "Editor.Render under the renderer lock after a resize", func() { lines = editor.Render(80) })
 			r.base.mu.Unlock()
 			if got := editorTextRows(lines); got != 6 {

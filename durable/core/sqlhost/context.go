@@ -118,7 +118,12 @@ func (h *Host) answerContext(text string, params []abi.Value) ([][]abi.Value, er
 	}
 	out = append(out, `],"tokens":`...)
 	out = jv.AppendNumber(out, tokens)
-	return [][]abi.Value{{abi.Blob(append(out, '}'))}}, nil
+	if v.OwesAnswer() {
+		out = append(out, `,"owes":true}`...)
+	} else {
+		out = append(out, `,"owes":false}`...)
+	}
+	return [][]abi.Value{{abi.Blob(out)}}, nil
 }
 
 // ContextView answers a context read the core names instead of building (ABI section 8.1, `{"$context":{conversationId, tail}}`):

@@ -273,27 +273,28 @@ make async-contracts` or `make verify` from `docs/parity/PORT_MAP.md` and `test/
   port. Everything else is invariant rule, not progress narrative.
 -->
 
-**Porting:** 636 / 638 intended-portable entries ✅ (99.7%); **Verification:** 632 behavioral (99.4%), 4 untested.
-Raw PORT_MAP rows: 713. Breakdown: 75 n/a (designed out) · 2 🟡 partial. See docs/parity/DIVERGENCES.md for the documented exceptions.
+**Porting:** 910 / 929 intended-portable entries ✅ (98.0%); **Verification:** 837 behavioral (92.0%), 73 untested.
+Raw PORT_MAP rows: 1032. Breakdown: 103 n/a (designed out) · 19 🟡 partial. See docs/parity/DIVERGENCES.md for the documented exceptions.
 
 | package | src files | n/a | intended | ✅ | 🟡 | ⬜ | ported | behavioral |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | `agent` | 6 | 1 | 5 | 5 | 0 | 0 | 100.0% | 100.0% |
-| `ai` | 210 | 22 | 188 | 187 | 1 | 0 | 99.5% | 98.9% |
-| `chord` | 41 | 5 | 36 | 36 | 0 | 0 | 100.0% | 97.2% |
+| `ai` | 265 | 22 | 243 | 243 | 0 | 0 | 100.0% | 98.8% |
+| `chord` | 247 | 28 | 219 | 213 | 6 | 0 | 97.3% | 86.9% |
 | `codemode` | 17 | 4 | 13 | 13 | 0 | 0 | 100.0% | 100.0% |
-| `coding-agent` | 254 | 27 | 227 | 227 | 0 | 0 | 100.0% | 100.0% |
-| `durable` | 85 | 9 | 76 | 76 | 0 | 0 | 100.0% | 98.7% |
+| `coding-agent` | 256 | 27 | 229 | 228 | 1 | 0 | 99.6% | 99.6% |
+| `durable` | 97 | 10 | 87 | 76 | 11 | 0 | 87.4% | 98.7% |
 | `env` | 23 | 3 | 20 | 19 | 1 | 0 | 95.0% | 100.0% |
-| `evals` | 5 | 0 | 5 | 5 | 0 | 0 | 100.0% | 100.0% |
+| `evals` | 6 | 0 | 6 | 6 | 0 | 0 | 100.0% | 100.0% |
 | `mcp` | 18 | 3 | 15 | 15 | 0 | 0 | 100.0% | 100.0% |
+| `schema` | 43 | 3 | 40 | 40 | 0 | 0 | 100.0% | 0.0% |
 | `telemetry` | 8 | 1 | 7 | 7 | 0 | 0 | 100.0% | 100.0% |
-| `tui` | 46 | 0 | 46 | 46 | 0 | 0 | 100.0% | 100.0% |
+| `tui` | 46 | 1 | 45 | 45 | 0 | 0 | 100.0% | 100.0% |
 
-- **Four core packages (agent, ai, coding-agent, tui):** 465 / 466 intended-portable files ✅ (99.8%) from 516 rows; 463 behavioral (99.6%), 0 weak-only, 2 untested.
-- **Shipped surface (agent, ai, codemode, coding-agent, mcp, telemetry, tui; coding-agent without ):** 500 / 501 intended-portable files ✅ (99.8%) from 559 rows; 498 behavioral (99.6%), 0 weak-only, 2 untested.
-- **Whole monorepo (11 packages):** 636 / 638 intended-portable files ✅ (99.7%) from 713 rows; 632 behavioral (99.4%), 0 weak-only, 4 untested.
-- **Interface closure:** 13447 of 13450 semantic interface IDs closed (226 designed-out, 3 pending, 13221 ported). A file-level ✅ does not close an interface ID.
+- **Four core packages (agent, ai, coding-agent, tui):** 521 / 522 intended-portable files ✅ (99.8%) from 573 rows; 517 behavioral (99.2%), 0 weak-only, 4 untested.
+- **Shipped surface (agent, ai, codemode, coding-agent, mcp, schema, telemetry, tui; coding-agent without ):** 596 / 597 intended-portable files ✅ (99.8%) from 659 rows; 552 behavioral (92.6%), 0 weak-only, 44 untested.
+- **Whole monorepo (12 packages):** 910 / 929 intended-portable files ✅ (98.0%) from 1032 rows; 837 behavioral (92.0%), 0 weak-only, 73 untested.
+- **Interface closure:** 14466 of 14469 semantic interface IDs closed (395 designed-out, 3 pending, 14071 ported). A file-level ✅ does not close an interface ID.
 
 Behavioral evidence includes paired scenarios and reviewed mutation-proven unit tests; the family table below counts paired scenarios only.
 Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registration-only, 1 smoke-only.
@@ -303,17 +304,17 @@ Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registrati
 | `_top` | 1 | 1 | 0 | 0 | 0 | 1 | not run |
 | `ai-sdk` | 3 | 3 | 0 | 0 | 0 | 90 | not run |
 | `autocomplete` | 14 | 14 | 0 | 0 | 0 | 5 | not run |
-| `cli-utils` | 33 | 33 | 0 | 0 | 0 | 15 | not run |
+| `cli-utils` | 38 | 38 | 0 | 0 | 0 | 17 | not run |
 | `clipboard-images` | 7 | 7 | 0 | 0 | 2 | 11 | not run |
 | `compaction` | 15 | 15 | 0 | 0 | 0 | 10 | not run |
 | `export-html` | 7 | 7 | 0 | 0 | 0 | 2 | not run |
 | `extension-host` | 1 | 1 | 0 | 0 | 0 | 2 | not run |
 | `extensions-runtime` | 143 | 142 | 0 | 1 | 0 | 63 | not run |
 | `footer` | 12 | 12 | 0 | 0 | 0 | 9 | not run |
-| `fullscreen` | 13 | 13 | 0 | 0 | 0 | 10 | not run |
-| `interactive-rendering` | 68 | 67 | 1 | 0 | 0 | 37 | not run |
+| `fullscreen` | 14 | 14 | 0 | 0 | 0 | 11 | not run |
+| `interactive-rendering` | 73 | 72 | 1 | 0 | 0 | 37 | not run |
 | `json` | 14 | 14 | 0 | 0 | 0 | 10 | not run |
-| `model-resolver-selector` | 27 | 27 | 0 | 0 | 0 | 16 | not run |
+| `model-resolver-selector` | 28 | 28 | 0 | 0 | 0 | 16 | not run |
 | `model-runtime-store-catalog` | 25 | 25 | 0 | 0 | 0 | 24 | not run |
 | `oauth` | 32 | 32 | 0 | 0 | 0 | 19 | not run |
 | `print` | 13 | 13 | 0 | 0 | 0 | 9 | not run |
@@ -324,7 +325,7 @@ Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registrati
 | `selectors` | 14 | 14 | 0 | 0 | 1 | 15 | not run |
 | `session` | 43 | 43 | 0 | 0 | 0 | 19 | not run |
 | `settings` | 16 | 16 | 0 | 0 | 0 | 21 | not run |
-| `slash-commands` | 28 | 27 | 1 | 0 | 0 | 20 | not run |
+| `slash-commands` | 29 | 28 | 1 | 0 | 0 | 21 | not run |
 | `startup` | 19 | 18 | 1 | 0 | 0 | 10 | not run |
 | `tools` | 32 | 32 | 0 | 0 | 0 | 35 | not run |
 | `tree` | 9 | 8 | 1 | 0 | 0 | 9 | not run |
@@ -487,7 +488,7 @@ A divergence is allowed only when it is user-visible or interop-relevant and can
 - `// pig divergence (D<N>): ...` at each call site;
 - parity coverage or an explicit parity allowance.
 
-Each record is one file, `docs/parity/divergences/D<N>.md`: an active record is a `## D<N> <title>` section, a retired record is one `- D<N> — ...` line. Edit that file only. `make divergences` generates `docs/parity/DIVERGENCES.md` from the files, and a lane does not commit the generated ledger; the merger regenerates it (`TestDivergenceLedgerEqualsItsRecordFiles` fails when they differ).
+Each record is one file, `docs/parity/divergences/D<N>.md`: an active record is a `## D<N> <title>` section, a retired record is one `- D<N>: ...` line. Edit that file only. `make divergences` generates `docs/parity/DIVERGENCES.md` from the files, and a lane does not commit the generated ledger; the merger regenerates it (`TestDivergenceLedgerEqualsItsRecordFiles` fails when they differ).
 
 `make divergence-guard` (part of `make check`) catches divergences nobody recorded. It flags, in the agent, ai, coding, internal/codingagent, tui and cmd/pig packages: duration and cap literals with no upstream counterpart (`magic-literal`), event sends that race a context-done case (`cancel-drop-send`), non-blocking sends that drop their value (`default-drop-send`), decode errors skipped inside loops (`stream-parse-continue`), unknown or missing stop reasons mapped to success (`stop-reason-success`), SSE fields parsed outside `ai/sse.go` (`hand-rolled-sse`), `recover()` that discards the panic (`bare-recover`), discarded persistence errors (`discarded-io-error`), hooks that proceed when their handler fails (`hook-fail-open`), errors classified by status-code substrings (`error-status-substring`), and agent `Send`/`Continue` outside `coding/session*.go` (`agent-run-outside-session`). `bare-recover` scans every non-test Go file in the repository, not only those packages. A hit passes only with a `// pig divergence (D<N>): ...` marker on its line or the line above, or, when Pi really does the same, `// upstream: <file>:<symbol>` there; the file must exist in `.upstream/current` or be a SHA-256-verified dependency snapshot whose exact version matches a dependency pin in that mirror (`test/parity/dependency-sources.json`; see `docs/parity/dependency-source-proof.md`), the symbol must appear in it, and for a literal the value must appear too. A literal whose value appears in an upstream file that `docs/parity/PORT_MAP.md` maps to the Go file also passes. Every current hit is listed in `automation/ci/divguard/baseline.toml` with its finding and owning slice. The gate compares the scan with that file in both directions: a new hit fails, and so does an entry whose hit is gone, so a fix deletes its entries in the same change. It does not compare the file with its previous version, so keeping it shrink-only is a review rule: never add an entry for new code. A green guard shows these patterns are absent or accounted for, not that the code matches Pi; allow markers prove only that the cited file and symbol exist (and, for literals, that the value appears there).
 
@@ -560,7 +561,7 @@ Code and interface style:
   an explicit user-owned blocker. Passing unrelated gates does not close it.
 
 Go style:
-- Build, CI, release-candidate, security-analysis, and documented setup commands use Go 1.27.3.
+- Build, CI, release-candidate, security-analysis, and documented setup commands use the Go version in `.go-version`, the single source. Do not write the version number in this file.
 - `.go-version` is the one Go pin. Workflows, scripts, images, the devcontainer, and the `toolchain` lines of `go.mod` and `go.work` name that release and no other. A script reads `.go-version` instead of repeating the number. Moving the pin changes `.go-version` and its recorded copies in one change; `make compliance` and `TestGoVersionPolicy` fail on any other release. Dated measurement records keep the release they ran on.
 - Maintained modules declare Go 1.26 or 1.26.0 as their language floor unless a concrete language requirement is approved. Do not raise a `go` directive merely to match the build toolchain.
 - Use language features available at the module floor. Prefer applicable modern standard-library APIs such as `slices.Sort`, `slices.SortFunc`, `cmp.Compare`, `maps.Copy`, `slices.Sorted(maps.Keys(m))`, `strings.Cut`, `CutPrefix`, `SplitSeq`, `for i := range n`, `wg.Go`, `min`, and `max`.

@@ -53,6 +53,7 @@ jobs:
       macos: ${{ steps.plan.outputs.macos }}
       run-node-runtime: ${{ steps.plan.outputs.run-node-runtime }}
       run-durable-cf-host: ${{ steps.plan.outputs.run-durable-cf-host }}
+      run-durable-contract: ${{ steps.plan.outputs.run-durable-contract }}
       run-android: ${{ steps.plan.outputs.run-android }}
       run-node-loader: ${{ steps.plan.outputs.run-node-loader }}
     steps:
@@ -140,6 +141,8 @@ jobs:
           restore-keys: |
             gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-
       # Dependabot commits carry no Signed-off-by trailer; the maintainer's signed-off squash merge records the DCO for them.
+      - name: Test the sign-off check
+        run: python3 -B -m unittest automation/ci/test_check_dco.py
       - name: Check commit sign-offs
         if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'
         env:
@@ -320,7 +323,7 @@ jobs:
             test/parity/interface-extractor/package-lock.json
             automation/images/ci-parity/package-lock.json
             automation/images/npm-runtime/package-lock.json
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         id: python
         with:
           python-version: '3.12'
@@ -332,6 +335,14 @@ jobs:
         with:
           path: ~/.cache/pig-sdk-py
           key: sdk-py-${{ runner.os }}-${{ steps.python.outputs.python-version }}-${{ hashFiles('extensions/sdk-py/requirements-dev.txt') }}
+      # make test-term-engines builds libvterm, the Rust engine runners and the pyte venv under $PIG_CACHE_HOME/pig-term-engines (~/.cache here), each
+      # in a directory named for the lock or pin that produced it, so this key changes exactly when something there would be rebuilt.
+      - name: Restore the terminal-engine builds
+        if: matrix.shard == 'toolchains'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-term-engines
+          key: term-engines-${{ runner.os }}-${{ runner.arch }}-${{ steps.python.outputs.python-version }}-${{ env.RUST_VERSION }}-${{ hashFiles('test/term-engines/alacritty/Cargo.lock', 'test/term-engines/alacritty/Cargo.toml', 'test/term-engines/alacritty/src/**', 'test/term-engines/wezterm/Cargo.lock', 'test/term-engines/wezterm/Cargo.toml', 'test/term-engines/wezterm/src/**', 'test/term-engines/libvterm/run.c', 'test/term-engines/pyte/requirements.txt', 'automation/dev/toolchains.lock', 'automation/ci/test-term-engines.sh') }}
       # An unresponsive package mirror fails this step within its timeout instead of holding the job.
       - name: Install native test packages
         shell: bash
@@ -344,8 +355,26 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          rustup toolchain install "$RUST_VERSION" --profile minimal
+          # rustfmt and clippy: make lint-rust (ci-sdk) checks every Rust crate with them.
+          rustup toolchain install "$RUST_VERSION" --profile minimal --component rustfmt --component clippy
           rustup default "$RUST_VERSION"
+      # The pinned SBCL (automation/dev/toolchains.lock) builds and runs Lisp extension images; the conformance rows, make test-sdk-lisp and the portmap shards (portmap-check requires it through test-prereqs)
+      # fail without it. install-sbcl.sh installs the checksummed official binary, and the cache keeps the prefix for the pin.
+      - name: Restore the pinned SBCL
+        if: startsWith(matrix.shard, 'test-') || startsWith(matrix.shard, 'portmap-') || matrix.shard == 'toolchains'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-sbcl
+          key: sbcl-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('automation/dev/toolchains.lock', 'automation/ci/install-sbcl.sh') }}
+      - name: Install the pinned SBCL
+        if: startsWith(matrix.shard, 'test-') || startsWith(matrix.shard, 'portmap-') || matrix.shard == 'toolchains'
+        shell: bash
+        run: |
+          set -euo pipefail
+          prefix="$(automation/ci/install-sbcl.sh)"
+          echo "PIG_SBCL=$prefix/bin/sbcl" >> "$GITHUB_ENV"
+          echo "SBCL_HOME=$prefix/lib/sbcl" >> "$GITHUB_ENV"
+          echo "$prefix/bin" >> "$GITHUB_PATH"
       - name: Install pinned npm
         shell: bash
         run: |
@@ -372,6 +401,7 @@ jobs:
           test "$(node --version)" = "v$(cat .node-version)"
           test "$(npm --version)" = "$NPM_VERSION"
           test "$(rustc --version | cut -d' ' -f2)" = "$RUST_VERSION"
+          if [ -n "${PIG_SBCL:-}" ]; then test "$("$PIG_SBCL" --version)" = "SBCL $(awk -F'\t' '!/^#/ && $1=="sbcl-source" {print $2}' automation/dev/toolchains.lock)"; fi
           python3 automation/pin/pin.py check-oracle
       # Rust SDK dependencies and Pi's env daemon build into persistent targets (internal/testenv.SharedCargoTargetDir) named for a hash of their lockfiles, so a lock change selects a new directory and a hit skips the compile. The key also hashes automation/ci/test-warm.sh, the list of targets: actions/cache saves only on a key miss, so a target the script gains needs a new key to reach the cache.
       - name: Restore the Cargo registry and test targets
@@ -426,8 +456,14 @@ jobs:
           TARGET: ${{ matrix.target }}
           # ci-build-pr lints the changed files against the base branch (a pull request run has the base as a remote ref only).
           LINT_BASE: origin/main
+          # ci-test-changed (the light run's test-fast) selects the packages the pull request changed against its base branch.
+          TEST_BASE: origin/${{ github.base_ref || 'main' }}
           # A shard that groups several gates runs every one of them and fails if any failed.
           MAKEFLAGS: -k
+          # The fast group's package pool (automation/ci/test-grouped.sh, default 12) is 1.5 packages per CPU of a 4-CPU runner.
+          # go test's 10-minute limit bounds a package's wall time, not its CPU time, and at 12 the slowest packages (imageprocessing,
+          # codingagent/tools, photonimage, pigletbuild) reach 555-600 s; at 6 the pool takes the same total time and they finish in 333-387 s.
+          TEST_FAST_PARALLEL: 6
         run: make "$TARGET"
       - name: Save the golangci-lint cache
         if: ${{ !cancelled() && matrix.shard == 'build' && steps.lintcache.outputs.cache-hit != 'true' }}
@@ -596,7 +632,7 @@ jobs:
         with:
           path: ~/.cache/pig-dev/pi-builds
           key: pi-oracle-${{ runner.os }}-${{ hashFiles('.upstream/pin', 'automation/pin/frozen/**', 'automation/pin/*.py', '.node-version', 'automation/ci/npm-toolchain/package-lock.json') }}
-      # TinyGo 0.42.0 (the tinygo row of automation/dev/toolchains.lock, digest-checked) builds the codemode module and the
+      # TinyGo (the tinygo row of automation/dev/toolchains.lock, digest-checked) builds the codemode module and the
       # TinyGo pass's core; the Pi reference the conformance tests read is the checkout durable/contract/PIN names.
       - name: Restore TinyGo and the Pi reference
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -605,11 +641,13 @@ jobs:
             ~/.cache/pig-dev/tinygo
             durable/contract/.cache
           key: durable-cf-host-${{ runner.os }}-${{ hashFiles('automation/dev/toolchains.lock', 'durable/contract/PIN') }}
+      # The assignment is its own command so a failed install fails this step: inside echo "TINYGO=$(...)" its status is lost, TINYGO is empty, and
+      # the next step reports "tinygo not found" (Error 127) for what was a download failure.
       - name: Install the pinned TinyGo
         shell: bash
-        run: echo "TINYGO=$(sh durable/core/budget/tinygo-install.sh)" >> "$GITHUB_ENV"
-      # durable-core-host-check: durable-contract-setup, durable-core-host-deps (the pinned Pi build, then the locked npm tree), then check.sh: tsc and the
-      # whole suite against the core built with Go and with TinyGo.
+        run: tinygo=$(sh durable/core/budget/tinygo-install.sh) && echo "TINYGO=$tinygo" >> "$GITHUB_ENV"
+      # durable-core-host-check: durable-contract-setup, durable-core-host-deps (the pinned Pi build, then the locked npm tree), upstream-mirror (the pin's source
+      # mirror the examples type-check reads), then check.sh: tsc and the whole suite against the core built with Go and with TinyGo.
       - name: Typecheck and test the Cloudflare host
         shell: bash
         run: automation/ci/with-isolated-pig-home.sh make durable-core-host-check
@@ -618,6 +656,66 @@ jobs:
       - name: Check the Durable core budget
         shell: bash
         run: automation/ci/with-isolated-pig-home.sh make durable-core-budget
+
+  durable-contract:
+    name: Durable contract / ${{ matrix.impl }}
+    needs: [changes, bookkeeping]
+    if: needs.changes.outputs.product == 'true' && needs.changes.outputs.run-durable-contract == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        # make durable-contract runs every corpus row against Pi and one build of the core: pi is the control (the reference
+        # against itself), wasm-tinygo the shipped Wasm build, native the same source natively. Three jobs keep each inside its
+        # limit; each recomputes the reference captures it compares with.
+        impl: [pi, wasm-tinygo, native]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: true
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - name: Install pinned npm
+        shell: bash
+        run: |
+          set -euo pipefail
+          automation/ci/install-npm-toolchain.sh
+          bin="$PWD/automation/ci/npm-toolchain/node_modules/.bin"
+          echo "$bin" >> "$GITHUB_PATH"
+          export PATH="$bin:$PATH"
+          test "$(npm --version)" = "$NPM_VERSION"
+      # The same Pi oracle build, TinyGo and reference checkout as the Cloudflare host job; the cache keys are shared with it, so
+      # whichever job runs first warms the other.
+      - name: Restore the Pi oracle build
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-dev/pi-builds
+          key: pi-oracle-${{ runner.os }}-${{ hashFiles('.upstream/pin', 'automation/pin/frozen/**', 'automation/pin/*.py', '.node-version', 'automation/ci/npm-toolchain/package-lock.json') }}
+      - name: Restore TinyGo and the Pi reference
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cache/pig-dev/tinygo
+            durable/contract/.cache
+          key: durable-cf-host-${{ runner.os }}-${{ hashFiles('automation/dev/toolchains.lock', 'durable/contract/PIN') }}
+      # The assignment is its own command so a failed install fails this step: inside echo "TINYGO=$(...)" its status is lost, TINYGO is empty, and
+      # the next step reports "tinygo not found" (Error 127) for what was a download failure.
+      - name: Install the pinned TinyGo
+        shell: bash
+        run: tinygo=$(sh durable/core/budget/tinygo-install.sh) && echo "TINYGO=$tinygo" >> "$GITHUB_ENV"
+      # durable-contract: durable-contract-setup (the Pi reference and its npm tree), durable-core-host-deps for the host, then
+      # cd durable/contract && node cli/contract.mjs all --impls <impl>: every row, per-lane table, exit 1 on a row that differs.
+      - name: Run the Durable core conformance gate
+        shell: bash
+        env:
+          DURABLE_CONTRACT_ARGS: --impls ${{ matrix.impl }} -j 4
+        run: automation/ci/with-isolated-pig-home.sh make ci-durable-contract
 
   verify:
     name: Linux verification
@@ -699,7 +797,7 @@ jobs:
           cache-dependency-path: |
             extensions/sdk-ts/package-lock.json
             test/parity/interface-extractor/package-lock.json
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.12'
       - name: Select the qualified Rust toolchain
@@ -780,6 +878,11 @@ jobs:
           '{"id":"state","type":"get_state"}' | & .\bin\pig.exe --mode rpc --model test-faux/faux-1 --no-session --no-extensions | Out-File -Encoding utf8 (Join-Path $acceptanceRoot 'rpc.jsonl')
           if ($LASTEXITCODE -ne 0) { throw "Windows RPC smoke failed" }
           if ((Get-Content -Raw (Join-Path $acceptanceRoot 'rpc.jsonl')) -notmatch '"type":"response"') { throw "Windows RPC response missing" }
+      - name: Install the pinned SBCL
+        # The Lisp SDK rows run in the extension jobs and in cmd/pig's TestReplacedSession2860AcrossSDKs, which starts every SDK's realization and fails without sbcl; SBCL's official Windows installer is checked against the lock's SHA-256.
+        if: startsWith(matrix.shard, 'extension-') || startsWith(matrix.shard, 'cli-')
+        shell: pwsh
+        run: ./automation/ci/install-sbcl.ps1 -GithubEnv
       - name: Test every package with Windows tests
         # The extension-host shard runs the extension host packages, and the
         # cli-N shards run cmd/pig in shards. The package
@@ -821,7 +924,7 @@ jobs:
           set -euo pipefail
           case "$EXTENSION_SHARD" in
             extension-host-*) package=./coding/extension/host/subprocess shards=3 ;;
-            extension-conformance-*) package=./test/extension-conformance shards=2 ;;
+            extension-conformance-*) package=./test/extension-conformance shards=4 ;;
             *) echo "unexpected shard $EXTENSION_SHARD" >&2; exit 1 ;;
           esac
           run=$(automation/ci/test-shard-pattern.sh "${EXTENSION_SHARD##*-}" "$shards" "$package")
@@ -878,7 +981,7 @@ jobs:
     needs: [changes, preflight]
     if: needs.changes.outputs.product == 'true'
     runs-on: macos-15
-    timeout-minutes: 60
+    timeout-minutes: 40
     env:
       # brew install would otherwise update every tap first and clean up afterwards.
       HOMEBREW_NO_AUTO_UPDATE: '1'
@@ -912,7 +1015,7 @@ jobs:
           cache-dependency-path: |
             extensions/sdk-ts/package-lock.json
             test/parity/interface-extractor/package-lock.json
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.12'
       - name: Select the qualified Rust toolchain
@@ -923,6 +1026,20 @@ jobs:
           rustup toolchain install "$RUST_VERSION" --profile minimal
           rustup default "$RUST_VERSION"
           test "$(rustc --version | cut -d' ' -f2)" = "$RUST_VERSION"
+      - name: Restore the pinned SBCL
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-sbcl
+          key: sbcl-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('automation/dev/toolchains.lock', 'automation/ci/install-sbcl.sh') }}
+      - name: Install the pinned SBCL
+        # SBCL publishes no binary of the pinned release for arm64 macOS: the script builds the checksummed release source with the arm64 macOS binary row of automation/dev/toolchains.lock.
+        shell: bash
+        run: |
+          set -euo pipefail
+          prefix="$(automation/ci/install-sbcl.sh)"
+          echo "PIG_SBCL=$prefix/bin/sbcl" >> "$GITHUB_ENV"
+          echo "SBCL_HOME=$prefix/lib/sbcl" >> "$GITHUB_ENV"
+          echo "$prefix/bin" >> "$GITHUB_PATH"
       - name: Restore the Pi oracle build
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -976,6 +1093,27 @@ jobs:
           ./bin/pig --version
           # The ai package has about 2700 top-level tests and needs more than go test's default 10 minutes here: Linux splits it in two processes (automation/ci/test-grouped.sh) and Windows runs it alone under this timeout.
           go test -timeout 30m ./ai ./internal/codingagent/tools ./internal/nativeplatform ./tui
+      - name: Test stop and continue on macOS
+        # A stopped and continued process gets EINTR from the termios ioctl on macOS only (#397), so the real-pty tests of the foreground check and raw mode, the suspend and dead-terminal
+        # tests of the interactive mode, and scenario 61 (Ctrl+Z, bg, fg against the pinned Pi in tmux) run here as well.
+        if: matrix.shard == 'native'
+        env:
+          # The PiG binary under test is the one built above; the pinned Pi is the source-built oracle that install-oracle linked into extensions/sdk-ts.
+          PIG_PARITY_PIG_BIN: ${{ github.workspace }}/bin/pig
+          PIG_PARITY_PI_BIN: ${{ github.workspace }}/extensions/sdk-ts/node_modules/.bin/pi
+        run: |
+          set -euo pipefail
+          # The scenario's job-control shell must be a current bash: macOS ships 3.2, whose interactive script shell leaves the job in a background process group, so the program stops at its first terminal call.
+          # Only the bash keg goes on PATH (the Homebrew bin directory also holds the image's default node and npm).
+          brew install tmux bash
+          export PATH="$(brew --prefix bash)/bin:$PATH"
+          go test -count=1 -v -timeout 20m -run 'TestStdinInForeground|TestRawModeEntryFromABackgroundGroupSurvivesTheStopAndFg|TestEnterRawModeRetriesAnInterruptedTermiosIoctl|TestRestoreTerminalFromSignalRetriesAnInterruptedIoctl' ./tui
+          go test -count=1 -v -timeout 20m -run 'TestSuspend|TestWriteToAHungUpTerminalExits129|TestRemoteEditorTerminalWrite|TestForegroundCheckFailingWithEIOTakesTheDeadTerminalExit' ./internal/codingagent
+          # A failed scenario leaves the pane and the streams of both programs in its artifacts directory: print them, they are the only evidence of a macOS-only failure.
+          go test -tags=parity -count=1 -v -timeout 20m -run '^TestParity$/^61-suspend-background-resume$' ./test/parity/runner -args -pig-parity.results="$RUNNER_TEMP/parity-61.json" || {
+            find test/parity/artifacts -type f | while read -r f; do echo "::group::$f"; head -c 6000 "$f"; echo; echo "::endgroup::"; done
+            exit 1
+          }
       # A unit that fails does not stop the job: every unit of the job runs, and the step fails if any unit failed.
       - name: Test cmd/pig shards ${{ matrix.shard }}
         # Each cli-N unit runs shard N of automation/ci/test-shard-pattern.sh, as make test-cli runs the shards on Linux: each in its own go test process and timeout.
@@ -1063,7 +1201,7 @@ jobs:
     # is label) a pull request's result fails unless this run is the full run
     # on the pull request's current head, so a head that only the light run
     # tested can never satisfy the required check.
-    needs: [changes, bookkeeping, docs, preflight, verify, node-runtime, windows, macos, android, node-loader, durable-cf-host]
+    needs: [changes, bookkeeping, docs, preflight, verify, node-runtime, windows, macos, android, node-loader, durable-cf-host, durable-contract]
     if: ${{ always() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -1085,6 +1223,7 @@ jobs:
           RUN_NODE_LOADER: ${{ needs.changes.outputs.run-node-loader }}
           RUN_ANDROID: ${{ needs.changes.outputs.run-android }}
           RUN_DURABLE_CF_HOST: ${{ needs.changes.outputs.run-durable-cf-host }}
+          RUN_DURABLE_CONTRACT: ${{ needs.changes.outputs.run-durable-contract }}
           CHANGES: ${{ needs.changes.result }}
           DOCS: ${{ needs.docs.result }}
           BOOKKEEPING: ${{ needs.bookkeeping.result }}
@@ -1095,6 +1234,7 @@ jobs:
           ANDROID: ${{ needs.android.result }}
           NODE_LOADER: ${{ needs.node-loader.result }}
           DURABLE_CF_HOST: ${{ needs.durable-cf-host.result }}
+          DURABLE_CONTRACT: ${{ needs.durable-contract.result }}
           PREFLIGHT: ${{ needs.preflight.result }}
         shell: bash
         run: |
@@ -1148,4 +1288,5 @@ jobs:
           expect "Android" "$ANDROID" "$(skip_unless_planned "$RUN_ANDROID")"
           expect "Node loader" "$NODE_LOADER" "$(skip_unless_planned "$RUN_NODE_LOADER")"
           expect "Durable Cloudflare host" "$DURABLE_CF_HOST" "$(skip_unless_planned "$RUN_DURABLE_CF_HOST")"
+          expect "Durable contract" "$DURABLE_CONTRACT" "$(skip_unless_planned "$RUN_DURABLE_CONTRACT")"
           exit "$status"

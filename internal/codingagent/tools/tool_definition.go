@@ -12,7 +12,6 @@ import (
 	"encoding/json"
 
 	"github.com/MichaelKinsy/PiG/agent"
-	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/prompts"
 )
@@ -46,9 +45,6 @@ func ToolDefinitionFromAgentTool(tool agent.AgentTool) (extension.ToolDefinition
 	}
 	if preparer, ok := tool.(agent.ArgumentPreparer); ok {
 		definition.PrepareArguments = preparer.PrepareArguments
-	}
-	if refiner, ok := tool.(ai.Refiner); ok && len(refiner.RefinementSites()) > 0 {
-		definition.RefinementSites, definition.RefineArguments = refiner.RefinementSites(), refiner.Refine
 	}
 	if provider, ok := tool.(agent.OutputSchemaProvider); ok {
 		definition.OutputSchema = provider.OutputSchema()

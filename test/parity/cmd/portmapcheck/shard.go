@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-// maxShards bounds the shard count a -shard flag may name; CI plans three.
+// maxShards bounds the shard count a -shard flag may name; CI plans eight (PORTMAP_SHARDS).
 const maxShards = 64
 
 // shardSpec selects one of total shards; total 0 means every row. index is zero-based.

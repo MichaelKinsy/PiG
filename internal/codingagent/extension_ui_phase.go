@@ -1,5 +1,7 @@
 package codingagent
 
+// Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts (session start, before-switch and before-fork extension UI phase).
+
 import (
 	"context"
 	"encoding/json"

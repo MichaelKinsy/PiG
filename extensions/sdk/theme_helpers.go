@@ -26,7 +26,7 @@ type MarkdownTheme struct {
 	Italic          func(text string) string
 	Underline       func(text string) string
 	Strikethrough   func(text string) string
-	// HighlightCode is getMarkdownTheme().highlightCode: [HighlightCode], with the mdCodeBlock color for a highlight that fails.
+	// HighlightCode is getMarkdownTheme().highlightCode, which is [HighlightCode].
 	HighlightCode func(code, lang string) []string
 }
 
@@ -75,7 +75,7 @@ func GetMarkdownTheme() MarkdownTheme {
 		Italic:          func(text string) string { return currentHostTheme().Italic(text) },
 		Underline:       func(text string) string { return currentHostTheme().Underline(text) },
 		Strikethrough:   func(text string) string { return currentHostTheme().Strikethrough(text) },
-		HighlightCode:   func(code, lang string) []string { return highlightCode(code, lang, true) },
+		HighlightCode:   HighlightCode,
 	}
 }
 
@@ -113,22 +113,17 @@ func GetSettingsListTheme() SettingsListTheme {
 }
 
 // HighlightCode is pi-coding-agent's highlightCode: code highlighted for lang with the global theme, one string per line. Code in a language the host's highlight.js does
-// not support, or with no language, takes the mdCodeBlock color; code highlight.js fails on stays unstyled. The host's highlighter runs it; a host that cannot be reached
-// leaves the code unstyled, as a failed highlight does.
-func HighlightCode(code, lang string) []string { return highlightCode(code, lang, false) }
-
-func highlightCode(code, lang string, markdown bool) []string {
+// not support, or with no language, takes the mdCodeBlock color, and so does code highlight.js fails on, as Pi's catch returns. The host's highlighter runs it; a host
+// that cannot be reached fails the highlight.
+func HighlightCode(code, lang string) []string {
 	if lang == "" {
 		// No language: Pi highlights nothing, whatever the host would answer.
 		return codeBlockLines(code)
 	}
-	if lines, err := highlightCodeLines(code, lang, markdown); err == nil {
+	if lines, err := highlightCodeLines(code, lang); err == nil {
 		return lines
 	}
-	if markdown {
-		return codeBlockLines(code)
-	}
-	return strings.Split(code, "\n")
+	return codeBlockLines(code)
 }
 
 // codeBlockLines is the code's lines in the mdCodeBlock color, which Pi gives code it does not highlight.

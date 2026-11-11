@@ -14,9 +14,9 @@ import (
 
 // All returns every suite in file order.
 func All() []evals.Suite {
-	return []evals.Suite{
-		DocumentationAudit(), CustomProvider(), Extensions(), Models(), OpenAIProvider(), Smoke(), TUI(),
-	}
+	suites := []evals.Suite{DocumentationAudit(), CustomProvider(), Extensions(), Models(), OpenAIProvider()}
+	suites = append(suites, PromptTemplates()...)
+	return append(suites, Smoke(), TUI())
 }
 
 // documentationHarness is createPiDocumentationEvalHarness bound to output; it runs inside the container sandbox.

@@ -183,41 +183,6 @@ cite = "packages/coding-agent/src/modes/interactive/components/user-message.ts:2
 reason = "Pi 64627838b (#11270) gives the user and assistant message components the trailing optional `messageId` and `timestamp` constructor parameters (user-message.ts:26-27, the assistant component likewise), undefined for a live message; the Go constructors take the two strings, empty for undefined, so the existing constructions pass \"\", \"\" and expect the same rendering."
 
 [[entry]]
-path = "durable/core/driver/harness_tasks_port2_core_test.go"
-commit = "830ecbc364e8fd29c17be6fed8970589576adf45"
-class = "CITE"
-cite = "packages/chord/src/watch.ts:157"
-reason = "Pi 92ab53602 names the end of a watch whose source closed `ended` (chord watch.ts:11, :157), where the Session closing used to end it `session_closed`; the expected end reason of the watch left open when the Session closes is `ended`."
-
-[[entry]]
-path = "durable/core/driver/watch_test.go"
-commit = "830ecbc364e8fd29c17be6fed8970589576adf45"
-class = "CITE"
-cite = "packages/chord/src/watch.ts:157"
-reason = "Pi 92ab53602 ends the watches a closing Session leaves open as `ended` (chord watch.ts:11, :157) instead of `session_closed`, and replaces Session.documentState, Conversation.ViewState and Harness.TaskGraph by watches (session.ts watchDoc, task-graph.ts watchTaskGraph): the tests that read a replicated state's Value and Dispose it read the watch's Value and Stop it, and the end reason expected is `ended`."
-
-[[entry]]
-path = "durable/harness/harness_listener_errors_test.go"
-commit = "830ecbc364e8fd29c17be6fed8970589576adf45"
-class = "CITE"
-cite = "packages/chord/src/watch.ts:157"
-reason = "Pi 92ab53602 ends the watch of a closing source `ended` (chord watch.ts:11, :157) instead of `session_closed`, and the task graph is observed through a watch with an explicit SourceEnded event instead of CloseSession; the expected end reasons change, and the case of the replicated states' observers is removed with the states themselves (Harness.TaskGraph and Conversation.ViewState no longer exist in Pi)."
-
-[[entry]]
-path = "durable/harness/harness_tasks_scheduling_test.go"
-commit = "830ecbc364e8fd29c17be6fed8970589576adf45"
-class = "CITE"
-cite = "packages/chord/src/watch.ts:157"
-reason = "Pi 92ab53602 names the end of a watch whose source closed `ended` (chord watch.ts:11, :157), where the Session closing used to end it `session_closed`; the expected end reason of the watch left open when the Session closes is `ended`."
-
-[[entry]]
-path = "durable/session/observation_internal_test.go"
-commit = "830ecbc364e8fd29c17be6fed8970589576adf45"
-class = "CITE"
-cite = "packages/durable/test/session-watches.test.ts:781"
-reason = "Pi 92ab53602 removes the replicated-state source attachments (the two attachment tests that isolate a listener failure and reset delivering are deleted with them) and gives the Session committed watches that end with an explicit source event and drop every reference into the Session once ended (session-watches.test.ts:781 \"retains neither its Session nor its listener once stopped, while still referenced\"; chord watch.ts:153-158 for the end). The added tests expect what the watch delivers and ends with on a null value, on retirement and when stopped (the retirement ending was superseded within this batch by the followed address of 8b0caefc, see the ledger entries of 832ba8ca17)."
-
-[[entry]]
 path = "ai/openrouter_cost_test.go"
 commit = "a9015090a506009d6d0354e68a229e39717d665a"
 class = "CITE"
@@ -400,18 +365,609 @@ cite = "packages/coding-agent/src/core/client-identity.ts:14"
 reason = "Pi adc5fa9f80 and 04a93bad8f make the session's client identity carry the attribution only while install telemetry is enabled (client-identity.ts:14: `attribution: isInstallTelemetryEnabled(settingsManager) ? PI_ATTRIBUTION : null`) and apply it through the ai package's request options (identity.ts:107, getAttributionHeaders) instead of a provider wrapper of the coding package: the model's provider type is the request-options provider, and the test of the install-telemetry gate on the wrapper is replaced by the identity's own gate."
 
 [[entry]]
-path = "coding/session_extension_hooks_test.go"
-commit = "dcc5ef43ee75a3d4110b5159424fa0ab4d016428"
+path = "durable/core/turn/live_test.go"
+commit = "42fc4e620ef0b4ccf6a3c4a7b1a1818a98955298"
 class = "CITE"
-cite = "packages/ai/src/utils/identity.ts:130"
-reason = "Pi adc5fa9f80 and 04a93bad8f send the OpenCode session header through getOpenCodeSessionHeaders (identity.ts:130) from the ai package, instead of the attribution wrapper's x-opencode-client header, so the before-provider-headers hook (sdk.ts transformHeaders) sees x-opencode-session, and the hook that deletes a header deletes that one."
+cite = "packages/durable/src/harness/live.ts:179"
+reason = "Pi f3255de7 makes endRun record `runFailure` in pi.live when a run ends without an answer (live.ts:179-212) and keeps it until a later run starts: the core's EndRun, and the run ends of its generation, now leave `{runFailure: {taskId, inputs, reason, detail?}}` where pi.live was empty, so the turn tests expect that document after an aborted, faulted, orphaned or model-error run and after the compactions of a failed run end."
 
 [[entry]]
-path = "durable/harness/harness_tools_models_test.go"
-commit = "dcc5ef43ee75a3d4110b5159424fa0ab4d016428"
+path = "durable/core/view_test.go"
+commit = "42fc4e620ef0b4ccf6a3c4a7b1a1818a98955298"
 class = "CITE"
-cite = "packages/durable/src/harness/harness.ts:193"
-reason = "Pi adc5fa9f80 and 04a93bad8f give the Harness a view of the host's Models that adds the Harness identity, withClientIdentity (harness.ts:193-197 currentModels; identity.ts:154), shared by the tools and the hooks (harness-tools.test.ts: seen[0] is seen[1]): the models a tool reads are no longer the host's own value, so the test expects a view that lists the same models and returns the same model for faux/faux-1."
+cite = "packages/durable/src/harness/view.ts:358"
+reason = "Pi f3255de7 makes ConversationView.entries a window over the transcript (view.ts advance, :358-396): an entry is appended wherever it was written, a head marker included, and past the window's max the oldest leave in one splice with a set of `before`, so the core's view frames carry those ops where a head marker used to replace the entries before its head."
+
+[[entry]]
+path = "internal/jsstring/localecompare/localecompare_test.go"
+commit = "40b9b1829f2cc3afb197746fa40d7412d31e6cf5"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The commit moves the root-locale collator from internal/jsstring into internal/jsstring/localecompare and renames LocaleCompare to Compare, so the three changed lines are the oracle tests' calls and failure messages (got := Compare(a, b) against the Node localeCompare answer, and the Errorf that names the function). The expected values are Node's own localeCompare results computed in each test, and they are unchanged: no Pi line moves, the ordering stays the one Pi's localeCompare call sites get."
+
+[[entry]]
+path = "coding/extension/pigsdk/strip_test.go"
+commit = "2eec1d23fb5778618c8cdd80dcce6905738c645c"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The multi-language extension SDK bridges are PiG-only (docs/additive-features.md D19), so no Pi line governs them. The commit adds the Lisp SDK as a fourth strippable SDK language: the strip test gains its Lisp row, and the count of SDKs left unstripped after stripping one language is three where it was two. The expectation follows the number of SDK languages the build carries."
+
+[[entry]]
+path = "durable/core/sweep_test.go"
+commit = "1fa0792e5db2dae1fd5dc5b523188e35d98c96b9"
+class = "CITE"
+cite = "packages/durable/src/session/session.ts:736"
+reason = "Pi 6c2fd73b0 adds `held`, the number of documents with held changes, to documentCacheSizes (session.ts:722-737), so the core's doc-cache notice carries `\"held\":0` after `sweeps`, and a sweep job is the async function `#enqueue` runs and whose rejection is caught (session.ts:777-781), so the core's EnqueueSweep job returns an error."
+
+[[entry]]
+path = "durable/core/turn/generation_test.go"
+commit = "1fa0792e5db2dae1fd5dc5b523188e35d98c96b9"
+class = "CITE"
+cite = "packages/durable/src/harness/live.ts:143"
+reason = "Pi 6c2fd73b0 commits a streamed partial with PROGRESS_COMMIT, a deferred commit (live.ts:138-143, generation.ts:484): memory has each partial at once and Storage the folded ops of them all within persistWithinMs. The partial test expects no stored commit when the second partial arrives, memory holding it, and one stored commit at the deadline whose last op appends the new text."
+
+[[entry]]
+path = "durable/core/turn/tool_round_controls_pi_test.go"
+commit = "d94328677410f7437d3bc0371fcf84e0b9b323d0"
+class = "CITE"
+cite = "packages/durable/src/harness/generation.ts:729"
+reason = "Pi 38ff99177 makes finishToolRound append the last handoff's reset (generation.ts:728-739) and end the run only when the round also terminates (generation.ts:741-744); otherwise the run continues at the postTools boundary in the reset's context. The handoff test expects another model request after a handoff alone and none after a terminating round, with the reset entry carrying the last handoff."
+
+[[entry]]
+path = "durable/core/view_test.go"
+commit = "121ba35041cbdd862404532e67e864b4fee5fe3f"
+class = "CITE"
+cite = "packages/durable/src/harness/view.ts:114"
+reason = "Pi f3255de7's resolveWindow throws a RangeError for a window bound that is not an integer or a max below min (view.ts:114-121): the core rejects such a window as a Rejection named RangeError, which the host rebuilds as the RangeError, where it returned a plain error. The test asserts the rejection's name and message."
+
+[[entry]]
+path = "coding/piglet/scope_mcp_test.go"
+commit = "227a4c1bff5e42573122263bf2a3ca8caceccf9d"
+class = "CITE"
+cite = "packages/coding-agent/src/core/agent-session.ts:1557"
+reason = "A Piglet's tool scope now bounds the Session's tool registry as Pi's _isAllowedTool bounds it for --tools and --exclude-tools (agent-session.ts:1557-1561, 3571-3574). codemode and tool_search are ordinary tools that reach what the registry keeps, so the table no longer expects them hidden when no MCP tool stays visible; the MCP resource tools follow the pig-mcp-adapter entry by name."
+
+[[entry]]
+path = "coding/extension/tool_filter_test.go"
+commit = "f322041adf29d06ebac9dc58733d32c8b3a881d4"
+class = "CITE"
+cite = "packages/coding-agent/src/core/agent-session.ts:1557"
+reason = "The test is this range's own test of the Piglet scope in the registry filter (ToolFilter.WithScope, AllowsTool), written against Pi's _isAllowedTool intersection (agent-session.ts:1557-1561, 3571-3574); the commit replaces the predicate form of the scope with the data form the filter holds, and the expectations are the same intersection."
+
+[[entry]]
+path = "coding/session_tool_scope_test.go"
+commit = "f322041adf29d06ebac9dc58733d32c8b3a881d4"
+class = "CITE"
+cite = "packages/coding-agent/src/core/agent-session.ts:1557"
+reason = "The test is this range's own test that the Session registry admits the intersection of --tools/--exclude-tools and the Piglet scope (Pi's _isAllowedTool, agent-session.ts:1557-1561, 3571-3574); the commit replaces the predicate form of the scope with the data form, and the expectations are the same intersection."
+
+[[entry]]
+path = "coding/piglet/overlay_test.go"
+commit = "f71fa007f7d83c87156bb2a8cb64182a35f85871"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Overlay Piglets on a Piglet Binary are PiG-additive (D202) and have no Pi counterpart, so no Pi line governs the test. The owner approved the D202 redesign on 2026-10-28: an overlay merges as an extends child of the Binary's baked Piglet, and only what the Binary compiled in is refused (setting a frontend, re-enabling a build-tag strip, naming a fused or embedded member again with origins). TestOverlayRefusesWhatChangesTheBinary moves from the old refusal list (baked extension or skill replaced or removed, systemPrompt set, ceilings widened, runtime strips re-enabled) to those three refusals, each message naming the field, the Binary and the reason; the newly allowed cases have their own tests in the same commit range."
+
+[[entry]]
+path = "internal/codingagent/prompts/piglet_topic_test.go"
+commit = "568a15b72e1efa79ef7cc8d15e33dff8531352de"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The Piglets topic of the docs section is PiG-additive (D23): Pi has no Piglets, so no Pi line governs the test. The commit adds the bundle page piglet-strip.md to the topic text, so the expected topic string names two pages. Pi's own topics (system-prompt.ts:166-169) and the stock prompt bytes are unchanged, and the test still asserts that the stock section never names the Piglet docs."
+
+[[entry]]
+path = "coding/cli/introspection_truth_test.go"
+commit = "6ea3ba872073f71d456b85ccdc86a45a062f5a55"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The test file was added on this branch in the commit before. `pig status` and its Piglet inventory are PiG-additive (D41, D209) and have no Pi counterpart. This commit changes one expectation of the new file: a Piglet Binary named by PIG_ACTIVE_PIGLET_SOURCE is no longer assumed closed, because only the Binary itself knows whether it accepts overlays (D202), so status names the Binary and applies no discovery when it is another executable. TestStatusActivePigletBinaryExcludesEveryAmbientExtensionAndSkill became TestStatusNamesAPigletBinaryItCannotApply."
+
+[[entry]]
+path = "coding/cli/piglet_overlay_test.go"
+commit = "eb562ce1a8ad6fb5b1316c74110981cd57de2ddf"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Piglet Binary overlays are PiG-original (a Piglet Binary has no Pi counterpart), so no Pi line governs the test. The commit replaces the opt-in build.allowOverlays with the opt-out build.closed (D202), so a Binary accepts overlays by default and the test's fixture, expected refusal text and accepting/refusing roles swap: the closed Binary now names build.closed, and the default Binary accepts what it refused."
+
+[[entry]]
+path = "coding/piglet/overlay_test.go"
+commit = "eb562ce1a8ad6fb5b1316c74110981cd57de2ddf"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Piglet Binary overlays are PiG-original (a Piglet Binary has no Pi counterpart), so no Pi line governs the test. The commit replaces the opt-in build.allowOverlays with the opt-out build.closed (D202), so a Binary accepts overlays by default and the test's fixture, expected refusal text and accepting/refusing roles swap: the closed Binary now names build.closed, and the default Binary accepts what it refused."
+
+[[entry]]
+path = "coding/pigletbuild/overlay_binary_test.go"
+commit = "eb562ce1a8ad6fb5b1316c74110981cd57de2ddf"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Piglet Binary overlays are PiG-original (a Piglet Binary has no Pi counterpart), so no Pi line governs the test. The commit replaces the opt-in build.allowOverlays with the opt-out build.closed (D202), so a Binary accepts overlays by default and the test's fixture, expected refusal text and accepting/refusing roles swap: the closed Binary now names build.closed, and the default Binary accepts what it refused."
+
+[[entry]]
+path = "coding/pigletbuild/overlay_build_test.go"
+commit = "eb562ce1a8ad6fb5b1316c74110981cd57de2ddf"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Piglet Binary overlays are PiG-original (a Piglet Binary has no Pi counterpart), so no Pi line governs the test. The commit replaces the opt-in build.allowOverlays with the opt-out build.closed (D202), so a Binary accepts overlays by default and the test's fixture, expected refusal text and accepting/refusing roles swap: the closed Binary now names build.closed, and the default Binary accepts what it refused."
+
+[[entry]]
+path = "chord/next/host/host_backoff_test.go"
+commit = "b9a7f94c508033078d114203a2d5d2236403b6ce"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The commit renames the test's helper identifiers (Backoff, NewBackoff, Failed, Waiting, Until, Skip, Ended, Delete, Clear to the unexported backoff, newBackoff, failed, waiting, until, skip, ended, delete, clear) after chord/next/DESIGN-go-layout.md section 2 made Pi's internal classes unexported. No expected value changes: the windows, delays and counts asserted are those of packages/chord/test/next/host/backoff.test.ts."
+
+[[entry]]
+path = "internal/photonimage/decode_routing_test.go"
+commit = "6445df7c9d"
+class = "CITE"
+cite = "packages/coding-agent/src/utils/image-convert.ts:11"
+reason = "Pi decodes every PNG it reads with Photon's `PhotonImage.new_from_byteslice` (image-convert.ts:11, and image-resize-core.ts, clipboard-image.ts, the durable images/index.ts), whose png crate accepts and refuses other files than Go's image/png: PNG joins the formats whose Go decoder no production code may register or call (the banned list gains image/png, so the sample of the self-test has six uses: its blank png import and its blank webp import)."
+
+[[entry]]
+path = "coding/cli/package_commands_test.go"
+commit = "7e160533d7ded8fa84cc825e12797e8b987ce6d6"
+class = "DIVERGENCE"
+cite = "D215"
+reason = "TestNormalizePackageSourceForSettings_UsesScopeBase pinned Pi's relative record for an absolute input (package-manager.ts normalizePackageSourceForSettings). D215 stores a path typed absolute as typed (#389), so the absolute cases now expect the typed path and the relative case keeps Pi's expectation."
+
+[[entry]]
+path = "chord/next/host/host_activity_test.go"
+commit = "0b76ae5e5feed52171c3a8bda3cc0edf9f38e33f"
+class = "CITE"
+cite = "packages/chord/test/next/host/activity.test.ts:67"
+reason = "The red commit expected a later watch of the activity to read references:1 for a host whose test holds one reference of its own to a local object. Pi's activity counts only holds that arrive over links and are served here, never the host's own references: activity.test.ts:67 (and :93) expects references: 0 with the counter got by host.get on the same host, and :111 expects only calls: 1 in the test this one mirrors. The expected text is now references 0, calls 1, as Pi's."
+
+[[entry]]
+path = "chord/next/host/host_attempt_test.go"
+commit = "0b76ae5e5feed52171c3a8bda3cc0edf9f38e33f"
+class = "CITE"
+cite = "packages/chord/test/next/host/attempt.test.ts:419"
+reason = "The flagged lines are one failure message and the description of a wait. The drain test still asserts what Pi asserts at attempt.test.ts:419-420, calls 0 and no references held by the stuck handler after the close timeout; the Go form waits for it (until) because the teardown that releases them is a task, where the red commit read it right after the clock moved. No expected value differs from Pi's."
+
+[[entry]]
+path = "chord/next/host/host_examples_test.go"
+commit = "0b76ae5e5feed52171c3a8bda3cc0edf9f38e33f"
+class = "CITE"
+cite = "packages/chord/test/next/host/native.test.ts:199"
+reason = "The changed expectations are the Go form of Pi's examples (test/next/examples/*.ts, which run the host and print what it reports) corrected to what Pi's host does. 06-natives: a close that threw while the host closes is returned by host.close as an AggregateError and not reported; only a close past its timeout is (native.ts:118-122; native.test.ts:199-200 expects the aggregate), so close_failed leaves the reported list. 07 and 11: an activation failure's message carries the object, `example.mirror(1): no mirror configured`, as object.test.ts:187 and :201 expect `app.svc(1): bug` and `app.svc(1): offline`. 14-flow-control.ts:93: a paused tab's end of the link holds what arrives, so the tab shows no characters (0, and an empty text for the slow tab of the relay) where the red commit expected the window's first two appends. The remaining flagged lines are descriptions of waits (the run rerun, the router with /files, the mirror's failed state)."
+
+[[entry]]
+path = "chord/next/host/host_keyed_members_test.go"
+commit = "0b76ae5e5feed52171c3a8bda3cc0edf9f38e33f"
+class = "CITE"
+cite = "packages/chord/test/next/host/reference-keys.test.ts:340"
+reason = "reference-keys.test.ts:340 (Pi 6d4b7443 moved keyed-members.test.ts:333 there) expects the late pin on provider a to be gone (pinsOf(providers.a) undefined) once the viewer and the aborted get are released; the red commit's Go test read the pins once and expected none, and now waits until the release, which the object's teardown makes on a task. The expected value (no pin) is Pi's."
+
+[[entry]]
+path = "chord/next/host/host_keyed_slot_host_test.go"
+commit = "0b76ae5e5feed52171c3a8bda3cc0edf9f38e33f"
+class = "CITE"
+cite = "packages/chord/test/next/documents/keyed-slot.test.ts:162"
+reason = "The host halves of keyed-slot.test.ts assert what it does: a migration that throws `cannot migrate` rejects the get with a message containing it (:160), reports object_failed twice (:162) and leaves the reference failed broken (:163); at(key) outside the factory throws `valid only in the factory` (:351); a plugin's `plugin says no` is the rejection and one object_failed (:703-705). The red commit's Go expectations compared the same texts and kinds by exact match or by a count of reports; the changed lines compare the same values on the report kinds, the panic text and the rejection (a substring where Pi's message is expect.stringContaining), so none of them differs from Pi's."
+
+[[entry]]
+path = "chord/next/host/host_object_test.go"
+commit = "0b76ae5e5feed52171c3a8bda3cc0edf9f38e33f"
+class = "CITE"
+cite = "packages/chord/test/next/host/object.test.ts:193"
+reason = "The red commit's Go test expected the factory of a broken failure to have run 4 times after the last get; Pi's test (object.test.ts:177-193) expects bug toHaveBeenCalledTimes(3): the 2 of :190 (the core's activation at load and the first get's) and the third get of the ended object. The first value was wrong against Pi, now 3. The other changed lines move the clock through advanceSettled."
+
+[[entry]]
+path = "chord/next/host/host_reference_test.go"
+commit = "0b76ae5e5feed52171c3a8bda3cc0edf9f38e33f"
+class = "CITE"
+cite = "packages/chord/test/next/host/reference.test.ts:177"
+reason = "The flat-memory test keeps Pi's threshold, a growth under 500,000 bytes over 10,000 calls (reference.test.ts:177); it now fails only when two rounds in a row grow past it, because the Go heap carries the garbage of other tests' background work in one round, which a leak (about 350 B per call, reference.test.ts:176) shows in both; the failure message names both rounds. The keyed-state test waits for the first view's teardown (a task) before asserting that the shared source stays and is then dropped, as reference.test.ts:491-496 expects after its flushed()."
+
+[[entry]]
+path = "chord/next/host/host_revocation_test.go"
+commit = "0b76ae5e5feed52171c3a8bda3cc0edf9f38e33f"
+class = "CITE"
+cite = "packages/chord/test/next/host/revocation.test.ts:262"
+reason = "revocation.test.ts:262 expects the parent to have received no message (kinds() empty) for a hold sent before its revoke while the host waits for load: gone, never bound; the Go test now sends both messages in one turn on the host's microtask queue (as Pi's peer does) and only the failure message differs. The live states of the relayed tab (revocation.test.ts:431 and :450) are now awaited, because a Go link delivers on tasks of its own; the values expected are Pi's."
+
+[[entry]]
+path = "chord/next/host/host_route_test.go"
+commit = "0b76ae5e5feed52171c3a8bda3cc0edf9f38e33f"
+class = "CITE"
+cite = "packages/chord/test/next/host/route.test.ts:210"
+reason = "route.test.ts:210 expects the third resolve (toHaveLength(3)) after the second drop; the Go test waits for it (a Go link settles on tasks the clock does not wait for) and then for the reference live on its worker, with the same expected count. The other flagged strings are descriptions of waits; the resolver's context value is expected as in route.test.ts:373, compared on a slice under a mutex."
+
+[[entry]]
+path = "chord/next/host/host_routines_test.go"
+commit = "0b76ae5e5feed52171c3a8bda3cc0edf9f38e33f"
+class = "CITE"
+cite = "packages/chord/test/next/host/routines.test.ts:386"
+reason = "routines.test.ts:386 expects no timer left once the item is released (the retry timer cleared with the object's end, :383-386); the Go test waits until the watch's abort has cleared it, where the red commit read the count at once. The sleeping handler of onLive sleeps 60 s as routines.test.ts:923 does, written as a continuation instead of a parked task. The expected values are Pi's."
+
+[[entry]]
+path = "chord/next/host/remote_host_link_test.go"
+commit = "0b76ae5e5feed52171c3a8bda3cc0edf9f38e33f"
+class = "CITE"
+cite = "packages/chord/test/next/remote/host-link.test.ts:135"
+reason = "host-link.test.ts:135 expects the worker to receive an ack without origin and an ack of origin 1, one for each of the two holds' messages, each acknowledged by its consumer. The red commit's Go test counted two received messages after a sync; the changed lines read the acks in order (each one's origin), once for the two `bound` messages and once for the two `state` messages, and wait for the count 5 of both references, as the test of :111-135 reads them after transported()."
+
+[[entry]]
+path = "chord/internal/parking/stall_test.go"
+commit = "73a0b7e6f90076013d5a254c7e196f20d38f46ce"
+class = "NOBEHAVIOR"
+reason = "Go only, no Pi counterpart: the stall report of a section that waits for its handler. The test now guards a goroutine that waits on a Signal with Guard, so the report's stacks name the waiter as parking.(*Signal).Wait (the wait it calls, no longer the report's own); its other expected values are unchanged."
+
+[[entry]]
+path = "schema/internal/ecmaregex/golden_test.go"
+commit = "14c930470b86a72372bb7af9ae24d577aa603629"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "ecmaregex is the ECMAScript regular-expression engine PiG needs under packages/schema/src/shared.ts and formats/typebox/regex.ts; V8 is the oracle and no Pi test line governs it. The commit extends the golden replay, not any Pi behavior: it also compares V8's SyntaxError message of every invalid row, reads the golden's match results from a packed bit string, decodes lone surrogates as WTF-8, skips the pinned known gaps, and names the Go and Unicode versions in every failure. The expected values that changed are the golden's row format and counts, regenerated under Node 24.22.1."
+
+[[entry]]
+path = "schema/formats/oracle_test.go"
+commit = "1de91268b66ee9f62f8e82f3b2edf178e89bcb17"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The test replays rows of Pi's own formats (packages/schema/src/formats/index.ts) generated under Node 24. The commit moves the generator out of the test comment into testdata/gen, adds rows with lone surrogates (decoded as WTF-8 instead of U+FFFD, the repo's JS-string convention), and raises the row-count floor from the corpus it now replays; no Pi behavior changes, the new rows' expectations are Pi's results."
+
+[[entry]]
+path = "chord/nextnode/workers/workers_fleet_test.go"
+commit = "f59f4016039310a105a789060419985ed07c795a"
+class = "CITE"
+cite = "packages/chord/test/next-node/workers/support.ts:138"
+reason = "Pi's fixture plugin writes `label.ts` (`export const label = <JSON>;`) into the copy's notes plugin (support.ts:138); the Go fleet's fixture plugin did write a file named `label`. The commit gives it Pi's file name, content and package files; the one expected value it changes is that file name, now Pi's."
+
+[[entry]]
+path = "chord/nextnode/workers/workers_workers_test.go"
+commit = "f59f4016039310a105a789060419985ed07c795a"
+class = "NOBEHAVIOR"
+reason = "Go only: the expected value is Pi's (workers.test.ts:35 expects `starting` after the hold). A Go worker may be running before a poll of the state sees it, so the test reads the first status from the state's own frames instead of polling."
+
+[[entry]]
+path = "chord/nextnode/plugins/plugins_endtoend_test.go"
+commit = "afb14da124492fad80b73f5f5e8abc07915b47dc"
+class = "CITE"
+cite = "packages/chord/src/next-node/workers/main.ts:114"
+reason = "The Node host is the child of the Go side, as Pi's forked worker connects to its parent (main.ts:114) and the server routes the worker's kind to it (workers.ts:98; plugins.test.ts's end to end `server.route(Worker, ...)`). The end-to-end case is Pi's: one observing server host holds Notes over the route, and the broken edit's reference state is compared with Pi's `toEqual({ kind: \"live\" })` (a whole RefState, not its kind), with failures recorded as `{ failed }` like `valuesOf`; the expected values follow."
+
+[[entry]]
+path = "chord/nextnode/plugins/plugins_examples_test.go"
+commit = "afb14da124492fad80b73f5f5e8abc07915b47dc"
+class = "CITE"
+cite = "packages/chord/test/next/examples/36-plugin-failures/main.ts:139"
+reason = "Example 36 step 4 asserts what Pi's script prints and the first port left unchecked: the status reference's kinds `loading` then `live` (main.ts:139) and the final greeter reload's report (`plugins: changed @example/greeter`, `objects: example.greeting swapped`, `failed @example/weather: ...`, main.ts:151). The example 35 case reads notes and the server's types through one observing server host that routes both Node hosts."
+
+[[entry]]
+path = "chord/nextnode/plugins/plugins_node_test.go"
+commit = "afb14da124492fad80b73f5f5e8abc07915b47dc"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The Node subprocess is PiG-original (no Pi file: Pi's workers fork the same shape). The expectation that changed is the load's refusal text: RuntimeLoad has no Parent any more (the host is the child of the Go side), so only the Peer is required (`a Peer is required`). The other edits add cases (link attach, heartbeat, fatal ordering, extraction repair) and check the manifest against the pin."
+
+[[entry]]
+path = "chord/nextnode/plugins/plugins_runtime_test.go"
+commit = "fed839c88739bd28e7e351c297edac660bc7b21f"
+class = "CITE"
+cite = "packages/chord/src/next/host/host.ts:124"
+reason = "Pi's `activation_failed` carries a `failure` (a FailureCause), not an `error` (host.ts:124): the Node host's background reports now keep every field of their kind, so the persisted-document case reads the activation failure's cause (`Failure.Error`, `Failure.Kind`) where the first port flattened it into `Err`."
+
+[[entry]]
+path = "chord/nextnode/workers/workers_fixture_worker_test.go"
+commit = "8fead2d31cb1638ad113f7df3f8f1a5d8a0b773a"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Go only, no Pi line changed: the expected results are Pi's (workers.test.ts, support.ts, worker.ts). The fixture worker's host topology follows the plugins component, whose evaluation runs in a Node subprocess (docs/plan/chord-plugins-node-evaluator.md): the core facet is the module testdata/core.mjs (Pi's worker.ts core as JavaScript), the worker's Go host is a relay routed to the NodeHost, the app's busy counts are read through a remote view and the worker's own hold on it is declared, and Control.localCalls (called by the worker itself) reports the messages sent to the server between its two lines, expected 0 as before."
+
+[[entry]]
+path = "chord/nextnode/workers/workers_fleet_test.go"
+commit = "8fead2d31cb1638ad113f7df3f8f1a5d8a0b773a"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Go only, no Pi line changed: the fleet's plugins component builds Pi's fixture plugin (testdata/plugins/notes: worker.ts, label.ts, package.json, byte for byte) with the real esbuild build instead of a stand-in Builder and Evaluator, which the plugins component no longer has; the expected labels and reports are Pi's."
+
+[[entry]]
+path = "chord/next/host/host_host_test.go"
+commit = "a9c9939258e09cac35f06716f16d712eed3c6e16"
+class = "NOBEHAVIOR"
+reason = "Go language mechanic, no Pi behavior changed: context.Context moved from after the params to the first parameter of Host.Get, Hold and Registry (interface-ledger rule S1, Go convention). The changed lines are call arguments in a new order (background first); every expected value, error text and ordering the tests assert is as before."
+
+[[entry]]
+path = "chord/next/host/host_reference_test.go"
+commit = "a9c9939258e09cac35f06716f16d712eed3c6e16"
+class = "NOBEHAVIOR"
+reason = "Go language mechanic, no Pi behavior changed: context.Context moved from after the params to the first parameter of Host.Get, Hold and Registry (interface-ledger rule S1, Go convention). The changed lines are call arguments in a new order (background first); every expected value, error text and ordering the tests assert is as before."
+
+[[entry]]
+path = "internal/minimatch/minimatch_oracle_test.go"
+commit = "fffc16ae0a59ad1a839a70e260c6a8ecd6905dba"
+class = "CITE"
+cite = "packages/coding-agent/src/core/package-manager.ts:728"
+reason = "Pi b4c2e92a moves the coding agent's minimatch dependency from 10.2.6 to 11.0.3 (packages/coding-agent/package.json:59; package-manager.ts:728 matches with it). The oracle test compares internal/minimatch with the installed minimatch, so its expected values are the 11.0.3 results: an empty path portion matches only an empty pattern portion, case folds by Unicode simple case folding, and only a pattern over 65,536 units throws."
+
+[[entry]]
+path = "durable/core/driver/upgrade_in_place_core_test.go"
+commit = "caa5070223561fe78b68864daca314e726814a94"
+class = "CITE"
+cite = "packages/durable/src/storage/sqlite/migrations.ts:91"
+reason = "Pi 1.4.0 writes schema version 2 (migrations.ts:91, 'Version 2 adds the sleeping task status', the tasks table rebuilt in place), so an older store upgrades in place with no backup file. The test expects the upgraded store at SupportedSchemaVersion and no .schema-1.bak, where D188 made PiG refuse and back up."
+
+[[entry]]
+path = "extensions/sdk-py/bundle_test.go"
+commit = "e27a975dc1c7d51b2e985f36f20e0f400e5c47f4"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The SDK bundle layout is PiG-original packaging, which Pi does not have, so no Pi line governs it. The commit moves each gzip copy of a bundled SDK file under the bundle's hidden .gz directory (.gz/<name>.gz) so source-tree walks skip it; the staged files, their bytes and the staged-SDK digests are unchanged, and the test asserts only the new embedded name."
+
+[[entry]]
+path = "ai/catalog_options_upstream_test.go"
+commit = "e4f8e357736b7eae9f16439a3ebd49daa6add1bf"
+class = "CITE"
+cite = "packages/ai/scripts/model-data.ts:1"
+reason = "Pi 44f6851b (#9534: scripts/generate-models.ts and scripts/openrouter-catalog.ts) deletes packages/ai/test/openrouter-cache-control-models.test.ts:12 (the commit's Pi-Behavior-Change trailer) and sends the OpenRouter ~anthropic/claude-*-latest aliases through the Anthropic Messages API with adaptive thinking, like the versioned Claude models. The Go port of that test now pins the new behavior (TestOpenRouterAnthropicLatestAliasesUseMessages), recorded under D217."
+
+[[entry]]
+path = "coding/extension/host/subprocess/runtime_node_send_idle_test.go"
+commit = "2323d94ce79cad45512f3e1bafe9e4e1cde84608"
+class = "CITE"
+cite = "packages/coding-agent/src/core/agent-session.ts:2404"
+reason = "Pi's sendCustomMessage with triggerTurn awaits _startRun (agent-session.ts:2404), which sets _isAgentRunActive before its first await (1895), so ctx.isIdle() is busy in every extension until the sending handler awaits or returns. The Host now holds that answer for every extension, so the test's handler reports its reads through setSessionName and covers a read by another extension while the sender has not yet yielded, and no longer polls a result file."
+
+[[entry]]
+path = "cmd/gen-models/emit_shares_test.go"
+commit = "875a364a714c18b5bcb69e5509f0f61b2e829531"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The expected text is the layout of the Go catalog file cmd/gen-models emits (PiG-original): the header, thinking-level, sampling and prompt-cache maps are built from pair lists the linker lays out instead of one map literal per model. The generated rows of every model, and the catalog Pi's build produces, are unchanged: regenerating from the pinned Pi build reproduces the committed file."
+
+[[entry]]
+path = "internal/minimatch/braceexpansion_test.go"
+commit = "875a364a714c18b5bcb69e5509f0f61b2e829531"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The test moved with the brace-expansion port from coding/packagecontent (glob_braces_npm_test.go) to internal/minimatch, which now has the single port; the recorded rows of Pi's npm minimatch are the same and only the called function is renamed (npmBraceExpand to braceExpand)."
+
+[[entry]]
+path = "schema/coerce_upstream_test.go"
+commit = "ac69278d213589e83736077a8396df4fddc9f757"
+class = "CITE"
+cite = "packages/schema/src/explain.ts:105"
+reason = "Pi 6536f801 (explain.ts walkRef, :105-130) keeps the errors of a $ref target per errors() call and reports a reference that names nothing as `unresolved reference <ref>` (keyword $ref), so Pi's coerce tests explain the depth-40 recursive union and assert that exact message; the Go test asserts both once explain.go ports walkRef."
+
+[[entry]]
+path = "coding/session_tool_validation_test.go"
+commit = "78e838b4cd342b3de4dafcfb94ef25ccd757af4c"
+class = "CITE"
+cite = "packages/ai/src/utils/validation.ts:59"
+reason = "Pi 6536f801 validates tool arguments as plain JSON Schema (validation.ts:59 parse of tool.parameters): TypeBox refinements are not run, so the argument schema of a tool is its parameters and a tool binding carries no separate validation parameters."
+
+[[entry]]
+path = "internal/codingagent/tools/argument_schema_test.go"
+commit = "3d980815b1ee3dbb3161ea830554cb30a57c33e2"
+class = "CITE"
+cite = "packages/ai/src/utils/validation.ts:15"
+reason = "Pi 6536f801 compiles every tool schema with pi-schema (validation.ts:15, formats, coerce: true, unresolvedRefs: reject): the declared parameters of a built-in tool are the plain JSON the validator reads (no ~kind marks), so the cached argument schema equals the declared parameters."
+
+[[entry]]
+path = "durable/harness/tool_structured_output_test.go"
+commit = "30940806a9688959174fb1b02b8b50d6cf8de24e"
+class = "CITE"
+cite = "packages/durable/src/harness/tool.ts:790"
+reason = "Pi 6536f801 checks a structured output with pi-schema (tool.ts:790 compile with formats and unresolvedRefs: reject), so invalid_structured_output messages carry pi-schema's wording (`expected number, got string`) instead of TypeBox's."
+
+[[entry]]
+path = "durable/tools/read_structured_output_test.go"
+commit = "30940806a9688959174fb1b02b8b50d6cf8de24e"
+class = "CITE"
+cite = "packages/durable/src/tools/read.ts:51"
+reason = "Pi 6536f801 builds the read tool's structured output schema with pi-schema (read.ts:51: obj({ type: lit(\"image\"), ... }, { open: true })), whose literal is a bare {\"const\":\"image\"}; the Go declaration emits the same JSON."
+
+[[entry]]
+path = "chord/delta/text_tails_test.go"
+commit = "e33dbb0ad0a613f339125390bd966dff79f1eadc"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The commit makes the tracker's weak text buffers observable to the test: the expected texts of each commit are now built apart from the tracker's strings (strings.Clone of an independently concatenated text), so a buffer the tracker reuses cannot change what the test expects. The values Pi's tracker.ts produces (every revision and op keeps its text while later appends grow the same buffer) are unchanged."
+
+[[entry]]
+path = "chord/nextnode/plugins/plugins_node_test.go"
+commit = "e0f6bd3215"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The commit's Pi-Behavior-Change trailer cites packages/chord/src/next-node/workers/main.ts:114, Pi's eager `new ParentLink(ipcLink(...))`, and Pi did not change that line: it is the line the Node host departs from. No Pi line governs the expectation change. The Node host connects its parent link at the first use of NodeHost.Link (an additive Go integration of the Node subprocess, not Pi behavior), so a host nothing attaches has no heartbeat and stays alive until Close, where the tests expected the heartbeat to end it. The tests' expectations moved to that behavior, and the test that pins it is headed \"Not Pi's\"."
+
+[[entry]]
+path = "chord/nextnode/plugins/plugins_node_discover_test.go"
+commit = "3b9bd165af"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Pi evaluates plugins in its own process and has no Node to find. The expectations moved with PiG's own Node discovery (an additive Go integration of the Node subprocess): a too-old error names where the newest Node was found, and Volta's and mise's install directories, not their shims, are the candidates."
+
+[[entry]]
+path = "chord/nextnode/plugins/plugins_node_start_test.go"
+commit = "3b9bd165af"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Pi evaluates plugins in its own process and has no Node to find. The expectations moved with PiG's own Node discovery (an additive Go integration of the Node subprocess): a too-old error names where the newest Node was found, and Volta's and mise's install directories, not their shims, are the candidates."
+
+[[entry]]
+path = "chord/nextnode/compression_test.go"
+commit = "ff5017db9e8dbbeef61da454b37d8e552500f19f"
+class = "CITE"
+cite = "packages/chord/src/next-node/compression.ts:17"
+reason = "Pi passes Math.max(1, Math.min(limit, buffer.MAX_LENGTH)) to inflateRawSync as maxOutputLength (compression.ts:17): Math.min and Math.max return NaN for a NaN limit, Node takes its default maximum for a NaN maxOutputLength, and the check `inflated.byteLength > limit` (:18) is false against NaN, so Pi returns the bytes. The NaN-limit expectation was corrupt and is the bytes."
+
+[[entry]]
+path = "durable/storage/jsonl/reclamation_planning_test.go"
+commit = "b2b58d7fed3a746f4f3aff3969fd72aa8a7ad49b"
+class = "CITE"
+cite = "packages/durable/src/storage/jsonl/storage.ts:324-325,346"
+reason = "Pi e5c6182b makes JsonlStorage.commit store several batches (storage.ts:285-325): memory runs ahead of the file once a batch applied, so any failure after that (a sidecar path join failing included) poisons the storage with that failure as the cause instead of leaving it usable; a reopened storage has no record of the batch. The path-join test expects the poisoned error and the absent document."
+
+[[entry]]
+path = "durable/harness/context_extend_test.go"
+commit = "b2b58d7fed3a746f4f3aff3969fd72aa8a7ad49b"
+class = "CITE"
+cite = "packages/durable/test/harness-context.test.ts:452"
+reason = "Pi e5c6182b group commit lets the Session know each committed entry, so a task's kept context range takes the entries as they were committed: harness-context.test.ts:452 expects the extended read to scan 0 rows (expect(extended.rows).toBe(0)); the earlier Go test expected the 3 new ones. The expected value (0) is Pi's."
+
+[[entry]]
+path = "durable/harness/harness_context_ranges_test.go"
+commit = "b2b58d7fed3a746f4f3aff3969fd72aa8a7ad49b"
+class = "CITE"
+cite = "packages/durable/test/harness-context.test.ts:452,458,736,746"
+reason = "Pi e5c6182b: the kept range takes each committed entry and the Session knows the bounds, so only a first read scans: harness-context.test.ts:452 and :458 expect the extension and the edit read to scan 0 rows, :736 and :746 the repeated reads 0. The earlier Go counts (4, 2) were the pre-group-commit scans. The expected values (0) are Pi's."
+
+[[entry]]
+path = "durable/harness/harness_deferred_progress_upstream_test.go"
+commit = "b2b58d7fed3a746f4f3aff3969fd72aa8a7ad49b"
+class = "CITE"
+cite = "packages/durable/test/harness-deferred-progress.test.ts:164-165"
+reason = "Pi defers a generation attempt like the partials (harness-deferred-progress.test.ts:164: the attempt is presentation, deferred: none of it was stored; :165 expects the stored live document has no generation). The earlier Go test expected the stored attempt 1. The expected value (none stored) is Pi's."
+
+[[entry]]
+path = "durable/harness/harness_idle_scopes_test.go"
+commit = "b2b58d7fed3a746f4f3aff3969fd72aa8a7ad49b"
+class = "CITE"
+cite = "packages/durable/test/harness-idle-scopes.test.ts:184"
+reason = "New port of harness-idle-scopes.test.ts (Pi 35dfa757): the file is added in this commit, and its expected values are Pi's (:184, :189 and the cases between), checked against a full recompute of the idle state."
+
+[[entry]]
+path = "durable/harness/harness_live_deltas_test.go"
+commit = "b2b58d7fed3a746f4f3aff3969fd72aa8a7ad49b"
+class = "CITE"
+cite = "packages/durable/test/harness-live-deltas.test.ts:117"
+reason = "Pi observeCommits (harness-live-deltas.test.ts:117, :341, :384) sees a held (deferred) pi.live operation as part of the stored commit that takes it, first; the Go test collects the same operations through observeStoredLiveOps. The expected operations are Pi's."
+
+[[entry]]
+path = "durable/harness/harness_restart_failure_test.go"
+commit = "b2b58d7fed3a746f4f3aff3969fd72aa8a7ad49b"
+class = "CITE"
+cite = "packages/durable/test/harness-restart-failure.test.ts:775-776"
+reason = "Pi e5c6182b: harness-restart-failure.test.ts:775-776 expects the retention checks of a generation round to be at most 49 per round (group commit coalesces some reconcile passes), no lower bound; the Go test keeps Pi's upper bound and drops the lower one that counted the pre-group-commit passes."
+
+[[entry]]
+path = "durable/harness/harness_task_graph_test.go"
+commit = "b2b58d7fed3a746f4f3aff3969fd72aa8a7ad49b"
+class = "CITE"
+cite = "packages/durable/test/harness-task-graph.test.ts:387"
+reason = "Pi e5c6182b publishes a commit after Storage stored it, not inside the adopt: harness-task-graph.test.ts:387 expects [\"graph adopting=false\", \"view adopting=false\"] (the test is renamed 'at the publication of the one commit that changes both', :368). The earlier Go test expected adopting=true. The expected value (false) is Pi's."
+
+[[entry]]
+path = "durable/session/session_adoption_test.go"
+commit = "b2b58d7fed3a746f4f3aff3969fd72aa8a7ad49b"
+class = "CITE"
+cite = "packages/durable/test/session-adoption.test.ts:47"
+reason = "Pi e5c6182b: Storage.commit takes batches and a receive callback that gives the Session's durability receipt (session-adoption.test.ts:47, :57); the Session adopts and publishes once Storage resolved. The Go test follows the same order logs. The expected order is Pi's."
+
+[[entry]]
+path = "coding/extension/host/subprocess/host_helpers_highlight_test.go"
+commit = "97995f7e9dcd1676c40922423fe87afe01b8b15f"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/theme/theme.ts:952"
+reason = "Pi 0f21a331 makes getMarkdownTheme().highlightCode equal highlightCode and styles a failed highlight with mdCodeBlock (theme.ts:952): the host call highlight.code and the SDK helpers lose their markdown flag, so the expected values of the calls that passed it (HighlightCodeLines, highlightCodeUncached, hlFindResume, highlightCodeLines) lose that argument and the markdown column of the digest comparison is the same result."
+
+[[entry]]
+path = "tui/component_themes_test.go"
+commit = "97995f7e9dcd1676c40922423fe87afe01b8b15f"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/theme/theme.ts:952"
+reason = "Pi 0f21a331 makes getMarkdownTheme().highlightCode equal highlightCode and styles a failed highlight with mdCodeBlock (theme.ts:952): the host call highlight.code and the SDK helpers lose their markdown flag, so the expected values of the calls that passed it (HighlightCodeLines, highlightCodeUncached, hlFindResume, highlightCodeLines) lose that argument and the markdown column of the digest comparison is the same result."
+
+[[entry]]
+path = "tui/highlight_cache_bytes_test.go"
+commit = "97995f7e9dcd1676c40922423fe87afe01b8b15f"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/theme/theme.ts:952"
+reason = "Pi 0f21a331 makes getMarkdownTheme().highlightCode equal highlightCode and styles a failed highlight with mdCodeBlock (theme.ts:952): the host call highlight.code and the SDK helpers lose their markdown flag, so the expected values of the calls that passed it (HighlightCodeLines, highlightCodeUncached, hlFindResume, highlightCodeLines) lose that argument and the markdown column of the digest comparison is the same result."
+
+[[entry]]
+path = "tui/highlight_test.go"
+commit = "97995f7e9dcd1676c40922423fe87afe01b8b15f"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/theme/theme.ts:952"
+reason = "Pi 0f21a331 makes getMarkdownTheme().highlightCode equal highlightCode and styles a failed highlight with mdCodeBlock (theme.ts:952): the host call highlight.code and the SDK helpers lose their markdown flag, so the expected values of the calls that passed it (HighlightCodeLines, highlightCodeUncached, hlFindResume, highlightCodeLines) lose that argument and the markdown column of the digest comparison is the same result."
+
+[[entry]]
+path = "internal/codingagent/session_clone_export_alloc_test.go"
+commit = "761f5a208c95d475896b10bb47f8ed0cb04d2563"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The changed literal is the failure message of an allocation ceiling, not an expectation: the ceiling (6.0 allocated bytes per source byte of the branch) and the assertion are unchanged. Pi holds every entry decoded and has no such test. The commit makes SessionManager.Clone stream each record from the source to the clone's file and open that file as a resume does, instead of rewriting every record member by member, canonicalizing it and decoding it again, so the message no longer names the cost that exceeded the ceiling."
+
+[[entry]]
+path = "durable/core/driver/harness_provider_request_core_test.go"
+commit = "e6e85cd392"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Pi's onPayload answer is whatever JSON.parse read; PiG's core driver hands the providers that answer as validated JSON text (a json.RawMessage, which the providers already take through payloadReplacement) instead of a decoded any, so it keeps the member order the chain wrote. Only the Go representation the test compares changed (sent holds the chain's text, not decoded maps); no Pi behavior changed."
+
+[[entry]]
+path = "ai/anthropic_federation_number_oracle_test.go"
+commit = "a6031910443edc527eff04f199b11bc4e099e215"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The test's expectation is unchanged: it still compares jsnumber.FromJSON with Number(JSON.parse(text)) on the same inputs. The commit deletes the one-line jsNumberFromJSON alias, so the test calls internal/jsnumber.FromJSON directly and its failure messages and comment name that function; the comment also drops the \"inf\" example, which was never accepted (the infinite result was rejected by the finiteness check)."
+
+[[entry]]
+path = "test/parity/cmd/upstreamdelta/main_test.go"
+commit = "0c8f09f42d"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "PiG's own audit tool, not a port of a Pi test: the carry test went with the carry of reviewed rows (a manifest now audits against the exact earlier pin, so no row survives a pin move unchanged), and a new test requires the from mirror to exist. No Pi behavior is involved."
+
+[[entry]]
+path = "tui/terminal_foreground_pty_test.go"
+commit = "f33e07a23f"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The two expected values are the hung-up-terminal answer of TestStdinInForegroundFollowsTheTerminalProcessGroup, a test this unreleased branch added for D227 (Pi has no foreground check and no test of it). ENOTTY, a terminal that is not the controlling terminal, now answers foreground like Pi's unconditional restart instead of an error, so the hung-up case accepts EIO (Linux) or the no-controlling-terminal answer. No shipped Pi behavior and no existing test changed."
+
+[[entry]]
+path = "internal/codingagent/code_highlighter_rows_test.go"
+commit = "2932ec2a1ac5f16beff647f9fd4ab841da877947"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "No Pi behavior changed and no PiG behavior changed. The commit adds only the writeHighlightCode seam in write_highlight_cache.go (a variable initialised to tui.HighlightCode, used at the three places the write cache highlights code) and replaces the streaming test's assertion: it compared cached line strings by value, which cannot fail because highlighting is deterministic. It now records what the cache highlights, as Pi's test spies on its highlight function (code-highlighter.test.ts:54-71, a test file): the 60-line update highlights exactly the changed last line. The mutants that re-highlight the leading 50 lines or rebuild the whole cache on every update fail it."
+
+[[entry]]
+path = "ai/openai_completions_strict_require_test.go"
+commit = "a1582c46c8f448e211a3b20970b3cdc1577fa6da"
+class = "CITE"
+cite = "packages/ai/src/api/openai-completions.ts:1500"
+reason = "Pi sends the tool parameters of a strict sampling tool as getJsonSchemaToolParameters returns them (openai-completions.ts:1500), in the key order of the decoded schema: type, properties, required. The expected request body of the plain-tool case now lists the keys in that order; the fixture builds the tool from JSON so it records the key order a decoded tool does."
+
+[[entry]]
+path = "mcp/review_regression_test.go"
+commit = "d4e641bde31d36a083dc85ef274e7d0854b45998"
+class = "DIVERGENCE"
+cite = "D233"
+reason = "D233 ports Pi main 4a8b60bc3 ahead of the 1.5.0 pin: an HTTP error body keeps its first 8192 bytes (MAX_ERROR_BODY_BYTES) instead of the whole decoded body, so the expected error text of the regression test is that excerpt. Pi main checks the same expectations in its readBodyText tests, ported in streamable_http_body_cap_pi_test.go."
+
+[[entry]]
+path = "automation/ci/divsplit/divsplit_test.go"
+commit = "d0d03879fef7f39c73e9b440fa79aa202669a3e5"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Release hygiene, no behavior change: the retired-divergence record format is now `- D<N>: text`, so the test fixtures use that format together with the parser change; no Pi behavior is involved."
+
+[[entry]]
+path = "internal/codingagent/exit_ending_test.go"
+commit = "c680df851c4349559df4868954a0675ad02fcaee"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "exit.log is PiG-only (D102, additive): Pi leaves no trace at an exit, so no Pi line governs these tests. The file is new on this branch; 3d3f4215ac added it for a first design in which a dead-terminal exit waited up to 500 ms for a SIGHUP to claim the line. The commit under review drops that wait, because it delayed the exit against Pi, and makes a second emergency exit block forever as Pi's never-returning emergencyTerminalExit does. The expectations move with that rule: the wait-for-claim and claim-after-the-bound tests are gone, a loser of the claim returns only after the owner's line is on disk, a second emergency exit never returns, and a crash exit yields to a running one. Pi's exit status (129) and terminal restore are unchanged; the tests pin one exit.log line and exit 129."
+
+[[entry]]
+path = "chord/next/host/host_reference_keys_test.go"
+commit = "b478485936430504d20b2c167683b20ff6ab3891"
+class = "CITE"
+cite = "packages/chord/src/next/host/reference-keys.ts:55"
+reason = "Pi hold (reference-keys.ts:55) returns the key source once the pin settles and does not fail with the pin failure: a failed pin shows on the key, which never had a value. The unit test of the failing pin now expects that not_ready key, the result Pi shows to its caller."
+
+[[entry]]
+path = "internal/testenv/tempscope_test.go"
+commit = "599e3ddb3157cf09ae67c58c0fa659612c2edac6"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "A test-helper expectation for the isolated home: Go telemetry is switched off there so no sidecar writes into a removed home. No Pi behavior is involved."
 
 [[entry]]
 path = "coding/cli/rpc_listen_test.go"

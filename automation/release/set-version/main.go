@@ -152,6 +152,9 @@ func prepare(root string, opt options) (*plan, error) {
 	if err := p.updateSDKVersions(opt.version); err != nil {
 		return nil, err
 	}
+	if err := p.updateReadmeExample(opt.version); err != nil {
+		return nil, err
+	}
 	const standard = "piglets/standard/pig-standard.yaml"
 	data, err = p.read(standard)
 	if err != nil {
@@ -179,6 +182,29 @@ func prepare(root string, opt options) (*plan, error) {
 	_ = w.Close()
 	p.after["CHANGELOG.md.gz"] = gz.Bytes() // embed.go embeds the compressed changelog
 	return p, nil
+}
+
+// readmeVersionExample is the README sentence that shows the composite `pig --version` value. Its Pi half is the pin's, which
+// automation/pin/pin.py rewrites (readme in pin.py matches the same sentence); its PiG half is the release, which this command writes.
+// test/docs-drift TestProseNamesTheCurrentPin fails the sentence when either half disagrees with internal/coding/pigversion.
+var readmeVersionExample = regexp.MustCompile("(prints PiG's version as `<PiG release>\\+<Pi release>`, for example `)\\d+\\.\\d+\\.\\d+(\\+[^`]+`)")
+
+// updateReadmeExample writes version into the README's `pig --version` example. An absent README is skipped, so a checkout that does not
+// carry one is unaffected; a README without the sentence is an error, because the drift check would then fail the release.
+func (p *plan) updateReadmeExample(version string) error {
+	const readme = "README.md"
+	data, err := p.read(readme)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if len(readmeVersionExample.FindAll(data, -1)) != 1 {
+		return fmt.Errorf("%s: expected one `pig --version` example to update", readme)
+	}
+	p.after[readme] = readmeVersionExample.ReplaceAll(data, []byte("${1}"+version+"${2}"))
+	return nil
 }
 
 func (p *plan) updateModules() error {
@@ -357,6 +383,7 @@ func checkConsistency(root string, output io.Writer) error {
 		{"test", "./test/gomodule", "-count=1"},
 		{"test", "./internal/codingagent", "-run", "^TestParseChangelog_RealFile$", "-count=1"},
 	} {
+		//nolint:gosec // G204 (class a): program is literal go; args come from checkConsistency's fixed test lists and the root flag.
 		cmd := exec.Command("go", args...)
 		cmd.Dir, cmd.Stdout, cmd.Stderr = root, output, output
 		if err := cmd.Run(); err != nil {

@@ -225,22 +225,24 @@ func TestNpmPackageManifestGlobThrowRejectsResolution(t *testing.T) {
 
 // Pi's resolve() applies the settings arrays' patterns with minimatch and checks every auto-discovered resource and built-in extension against their "!" entries (package-manager.ts:933-986, 718-737). A pattern minimatch cannot compile throws when a path first reaches it, so an earlier pattern that already matches every path keeps it from being compiled, and a project setting that decides a built-in keeps the user one from being read for it. Probed with Pi 1.1.0 (with --approve for the project cases): each case either rejects with this SyntaxError or starts.
 func TestSettingsPatternErrorsFollowPi(t *testing.T) {
-	const want = `Invalid regular expression: /^(?!\.)[\p{L}\p{Nl}]\-x$/u: Invalid escape`
+	// minimatch 11.0.3 throws only for a pattern over 65,536 UTF-16 units; through 10.2.6 "[[:alpha:]]-x" threw a SyntaxError.
+	const want = "pattern is too long"
+	filterThrow := strings.Repeat("a", 65537)
 	for _, tc := range []struct {
 		name          string
 		prompts       []string
 		user, project string
 		fails         bool
 	}{
-		{"auto-discovered prompt reaches the exclude", []string{"a"}, `{"prompts":["![[:alpha:]]-x"]}`, "", true},
-		{"an earlier exclude matches every prompt", []string{"a"}, `{"prompts":["!a.md","![[:alpha:]]-x"]}`, "", false},
-		{"a prompt the earlier exclude misses", []string{"a", "b"}, `{"prompts":["!a.md","![[:alpha:]]-x"]}`, "", true},
-		{"a built-in extension reaches the exclude", nil, `{"extensions":["![[:alpha:]]-x"]}`, "", true},
-		{"the project setting decides every built-in", nil, `{"extensions":["![[:alpha:]]-x"]}`, `{"extensions":["!builtin:*"]}`, false},
-		{"the project setting decides no built-in", nil, `{"extensions":["![[:alpha:]]-x"]}`, `{"extensions":["!nothing-here"]}`, true},
+		{"auto-discovered prompt reaches the exclude", []string{"a"}, `{"prompts":["!` + filterThrow + `"]}`, "", true},
+		{"an earlier exclude matches every prompt", []string{"a"}, `{"prompts":["!a.md","!` + filterThrow + `"]}`, "", false},
+		{"a prompt the earlier exclude misses", []string{"a", "b"}, `{"prompts":["!a.md","!` + filterThrow + `"]}`, "", true},
+		{"a built-in extension reaches the exclude", nil, `{"extensions":["!` + filterThrow + `"]}`, "", true},
+		{"the project setting decides every built-in", nil, `{"extensions":["!` + filterThrow + `"]}`, `{"extensions":["!builtin:*"]}`, false},
+		{"the project setting decides no built-in", nil, `{"extensions":["!` + filterThrow + `"]}`, `{"extensions":["!nothing-here"]}`, true},
 		// An entry with "*" or "?" is a pattern over the files the plain entries collect (splitPatterns, resolveLocalEntries).
-		{"an include pattern over the collected files", []string{"a"}, `{"prompts":["prompts","[[:alpha:]]-*"]}`, "", true},
-		{"an entry without a glob character is a path", []string{"a"}, `{"prompts":["prompts","[[:alpha:]]-x"]}`, "", false},
+		{"an include pattern over the collected files", []string{"a"}, `{"prompts":["prompts","` + filterThrow + `*"]}`, "", true},
+		{"an entry without a glob character is a path", []string{"a"}, `{"prompts":["prompts","` + filterThrow + `"]}`, "", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			cwd, agentDir := t.TempDir(), t.TempDir()
@@ -253,12 +255,8 @@ func TestSettingsPatternErrorsFollowPi(t *testing.T) {
 			}
 			sm := codingagent.NewSettingsManagerWithProjectTrust(cwd, agentDir, true)
 			err := validateConfiguredResourceEntries(cwd, agentDir, sm, true)
-			message := want
-			if strings.HasSuffix(tc.user, `-*"]}`) {
-				message = `Invalid regular expression: /^(?!\.)[\p{L}\p{Nl}]\-[^/]*?$/u: Invalid escape`
-			}
-			if tc.fails && (err == nil || err.Error() != message) || !tc.fails && err != nil {
-				t.Fatalf("error = %v, want failure %t (%q)", err, tc.fails, message)
+			if tc.fails && (err == nil || err.Error() != want) || !tc.fails && err != nil {
+				t.Fatalf("error = %v, want failure %t (%q)", err, tc.fails, want)
 			}
 		})
 	}

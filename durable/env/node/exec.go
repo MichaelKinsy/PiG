@@ -179,6 +179,7 @@ func (run *shellRun) start(spec spawnSpec, cwd string) (*exec.Cmd, *os.File, *os
 		closeAll(stdoutRead, stdoutWrite)
 		return nil, nil, nil, nil, spawnError(err)
 	}
+	//nolint:gosec // G204 (class d): program and args come from the env exec caller: the configured shell with the command string for a bash tool call (model-supplied, as Pi's bash executor), or the typed argv an extension passes.
 	cmd := exec.Command(spec.program, spec.args...)
 	cmd.Dir = cwd
 	nodespawn.SetEnvProperties(cmd, getShellEnv(run.env.shellEnv, run.options.Env, run.options.InheritEnv))

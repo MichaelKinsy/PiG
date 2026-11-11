@@ -7,6 +7,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 )
 
+// Ports packages/coding-agent/src/core/resource-loader.ts (DefaultResourceLoader.reload for a CLI build).
 func reloadResourceSnapshotProvider(cwd, agentDir string, sm *codingagent.SettingsManager, flags Args, skillScopes *[]string) func() codingagent.ReloadResourceSnapshot {
 	return func() codingagent.ReloadResourceSnapshot {
 		if err := validateConfiguredResourceEntries(cwd, agentDir, sm, sm.IsProjectTrusted()); err != nil {
@@ -22,7 +23,7 @@ func reloadResourceSnapshotProvider(cwd, agentDir string, sm *codingagent.Settin
 		// One walk of the ancestor .agents/skills directories serves the skills and their source infos, as Pi's resolve() makes one.
 		skillScan := codingagent.NewAgentsSkillScan(cwd)
 		skillPaths := collectSkillInputsIn(skillScan, cwd, agentDir, sm, flags, skillScopes)
-		contextFiles := loadContextFiles(cwd, agentDir, flags.NoContextFiles)
+		contextFiles := loadContextFiles(cwd, agentDir, flags.NoContextFiles, loadsProjectContextFiles(flags, sm.IsProjectTrusted()))
 		infos := resourceSourceInfosIn(skillScan, cwd, agentDir, sm, flags, extConfigs)
 		return codingagent.ReloadResourceSnapshot{
 			PromptPaths:             promptPaths,

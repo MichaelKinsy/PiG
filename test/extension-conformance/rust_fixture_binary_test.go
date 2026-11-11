@@ -24,12 +24,12 @@ func TestBuildFixtureCopyKeepsTheProgramOfThisRun(t *testing.T) {
 		}
 	}
 	root := t.TempDir()
-	mine, err := buildFixtureCopy(t.Context(), target, filepath.Join(root, testExecutableName("mine")), builds("this checkout's fixture"))
+	mine, err := buildFixtureCopy(t.Context(), target, "rust-sdk-fixture", filepath.Join(root, testExecutableName("mine")), builds("this checkout's fixture"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	// Another checkout builds into the shared target while this run goes on.
-	theirs, err := buildFixtureCopy(t.Context(), target, filepath.Join(root, testExecutableName("theirs")), builds("another checkout's fixture"))
+	theirs, err := buildFixtureCopy(t.Context(), target, "rust-sdk-fixture", filepath.Join(root, testExecutableName("theirs")), builds("another checkout's fixture"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,14 +63,14 @@ func TestBuildFixtureCopyKeepsTheProgramOfThisRun(t *testing.T) {
 func TestBuildFixtureCopyReportsAFailedBuildAndFreesTheLock(t *testing.T) {
 	target := filepath.Join(t.TempDir(), "target")
 	dst := filepath.Join(t.TempDir(), "fixture")
-	if _, err := buildFixtureCopy(t.Context(), target, dst, func(context.Context) error { return os.ErrInvalid }); err == nil {
+	if _, err := buildFixtureCopy(t.Context(), target, "rust-sdk-fixture", dst, func(context.Context) error { return os.ErrInvalid }); err == nil {
 		t.Fatal("a failed build was reported as built")
 	}
 	if _, err := os.Stat(dst); err == nil {
 		t.Fatal("a failed build left a program to start")
 	}
 	shared := filepath.Join(target, "release", testExecutableName("rust-sdk-fixture"))
-	if _, err := buildFixtureCopy(t.Context(), target, dst, func(context.Context) error {
+	if _, err := buildFixtureCopy(t.Context(), target, "rust-sdk-fixture", dst, func(context.Context) error {
 		if err := os.MkdirAll(filepath.Dir(shared), 0o755); err != nil {
 			return err
 		}

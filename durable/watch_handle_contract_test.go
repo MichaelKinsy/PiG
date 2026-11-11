@@ -91,7 +91,7 @@ func TestWatchHandleContract(t *testing.T) {
 		var mu sync.Mutex
 		var delivered []any
 		inline := true
-		handle.Start(func(_ context.Context, change durable.WatchChange[durable.JsonObject]) error {
+		handle.Start(func(_ context.Context, change durable.WatchCall[durable.JsonObject]) error {
 			value := change.Value
 			mu.Lock()
 			defer mu.Unlock()
@@ -114,10 +114,10 @@ func TestWatchHandleContract(t *testing.T) {
 		}
 		first, _ := handle.Stop()
 		second, _ := handle.Stop()
-		if first != second || first.Reason != durable.WatchStopped {
+		if first != second || first.Kind != durable.WatchStopped {
 			t.Fatalf("stop = %+v then %+v, want the same stopped result", first, second)
 		}
-		if end := waitClosed(handle); end.Reason != durable.WatchStopped {
+		if end := waitClosed(handle); end.Kind != durable.WatchStopped {
 			t.Fatalf("closed with %+v, want stopped", end)
 		}
 		set(harness, 2)
@@ -143,7 +143,7 @@ func TestWatchHandleContract(t *testing.T) {
 		var mu sync.Mutex
 		var delivered []string
 		inStart := true
-		handle.Start(func(_ context.Context, change durable.WatchChange[durable.JsonObject]) error {
+		handle.Start(func(_ context.Context, change durable.WatchCall[durable.JsonObject]) error {
 			value := change.Value
 			mu.Lock()
 			defer mu.Unlock()
@@ -168,7 +168,7 @@ func TestWatchHandleContract(t *testing.T) {
 
 	t.Run("accepts one start and none after stop", func(t *testing.T) {
 		harness := open()
-		listener := func(_ context.Context, change durable.WatchChange[durable.JsonObject]) error { return nil }
+		listener := func(_ context.Context, change durable.WatchCall[durable.JsonObject]) error { return nil }
 		started := watch(harness)
 		started.Start(listener)
 		panics("already started", func() { started.Start(listener) })
@@ -181,12 +181,12 @@ func TestWatchHandleContract(t *testing.T) {
 	t.Run("ends only the watch whose listener failed", func(t *testing.T) {
 		harness := open()
 		failed, healthy := watch(harness), watch(harness)
-		failed.Start(func(_ context.Context, change durable.WatchChange[durable.JsonObject]) error {
+		failed.Start(func(_ context.Context, change durable.WatchCall[durable.JsonObject]) error {
 			return errors.New("listener failed")
 		})
 		var mu sync.Mutex
 		calls := 0
-		healthy.Start(func(_ context.Context, change durable.WatchChange[durable.JsonObject]) error {
+		healthy.Start(func(_ context.Context, change durable.WatchCall[durable.JsonObject]) error {
 			mu.Lock()
 			calls++
 			mu.Unlock()
@@ -194,7 +194,7 @@ func TestWatchHandleContract(t *testing.T) {
 		})
 		set(harness, 1)
 		end := waitClosed(failed)
-		if end.Reason != durable.WatchListenerError || end.Error == nil || end.Error.Error() != "listener failed" {
+		if end.Kind != durable.WatchListenerError || end.Error == nil || end.Error.Error() != "listener failed" {
 			t.Fatalf("end = %+v, want listener_error carrying the listener's error", end)
 		}
 		harness.Session.WaitDeliveries()

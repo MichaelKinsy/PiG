@@ -192,7 +192,7 @@ func TestPlacementAHostRefusesAHoldItsOwnContractPlacesElsewhereAndARelayOneWhos
 
 // placement.test.ts "the host comes from the normalized input: unknown fields and defaults do not change it"
 func TestPlacementTheHostComesFromTheNormalizedInputUnknownFieldsAndDefaultsDoNotChangeIt(t *testing.T) {
-	doc := placementContract("t.doc-default", NewHostFamily("session:", "session"), tObject("session", tString(Schema{"default": "S1"})))
+	doc := placementContract("t.doc-default", NewHostFamily("session:", "session"), tObject("session", tString(kw("default", "S1"))))
 	c := placementClusterOf(t)
 	mustServe(t, c.s1, doc, func(any, Principal, Self) (Implementation, error) { return placementWhere("session:S1"), nil }, ServeOptions{})
 	// An untyped caller leaves the field out: the default places it.

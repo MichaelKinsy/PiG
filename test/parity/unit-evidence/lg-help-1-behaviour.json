@@ -1376,7 +1376,7 @@
     "tests": [
       "TestNewSessionSelectorComponentLoaderReceivesTheSignalAndProgressCallback",
       "TestNewSessionSelectorComponentOptionsAndCurrentSessionPath",
-      "TestPR7680SessionSelectionStaysValidWhenPagingBeforeTheLoad",
+      "TestSessionSelectorCapturesSelectionPageKeys",
       "TestSessionSelectorConstructorCallbacksMatchUpstream",
       "TestSessionSelectorConstructorEnterCallsOnSelectAndAbortsLoads",
       "TestSessionSelectorConstructorEscapeCallsOnCancel",
@@ -1551,7 +1551,7 @@
     "upstream_reference": "armin.ts:62-80 ArminComponent constructor(ui)"
   },
   {
-    "mutation": "tui/extension_selector.go: 43 mutants over the Pi-shaped constructor (options, callbacks, title, description, countdown wiring, hint, children), updateList/rowText, handleInput (expand, up/down, k/j, confirm, newline, cancel, done guard, invalidate), Cancel, expiry and Dispose. Survivors of the existing non-oracle tests (description, selected/other row colours, newline confirm, expand callback guard, invalidate after input, expiry after an answer, countdown render request) are killed by tui/extension_selector_pi_semantics_test.go. The Pig-only preview column (D2) and page keys (D155) are not mutated here. TestExtensionDialogsMatchPiBindingsAndPalette and TestExtensionDialogCountdownMatchesPi (node oracles) fail on this host and are not counted",
+    "mutation": "tui/extension_selector.go: 43 mutants over the Pi-shaped constructor (options, callbacks, title, description, countdown wiring, hint, children), updateList/rowText, handleInput (expand, up/down, k/j, confirm, newline, cancel, done guard, invalidate), Cancel, expiry and Dispose. Survivors of the existing non-oracle tests (description, selected/other row colours, newline confirm, expand callback guard, invalidate after input, expiry after an answer, countdown render request) are killed by tui/extension_selector_pi_semantics_test.go. The Pig-only preview column (D2) is not mutated here. TestExtensionDialogsMatchPiBindingsAndPalette and TestExtensionDialogCountdownMatchesPi (node oracles) fail on this host and are not counted",
     "package": "./tui",
     "tests": [
       "TestExtensionDialogsOwnTheirCountdown",
@@ -1787,7 +1787,7 @@
     "upstream_reference": "system-one-shared.ts SystemOneWireRequest, SystemOneTransport, classifySystemOne (wire request, usage before answers, abort-aware stop reason, timestamp: Date.now())"
   },
   {
-    "mutation": "env/watch.go: 10 operator mutants; env/remote_env.go: 72 operator mutants (every unique line with a comparison). Survivors killed by new tests: watcher Close not awaiting the request (TestRemoteWatcherCloseReturnsOnlyAfterTheWatchRequestHasFinished), the exec timeout bounds (<= 0 and the maximum), and the skipped endsWithNewline/newline counts. Survivors left, all unobservable through the public API with the daemon: the 2 GiB and 2^53 constants (a file of exactly that size), the read and write pipeline depth and chunk-boundary comparisons (L110, L129, L576, L598, L723, L745, L754: only the request count changes, not the bytes), L378 buffered-reader empty check, L534/L537 stat kind and size limit, L734/L757 first-write-error bookkeeping; not proven equivalent.",
+    "mutation": "env/watch.go: 10 operator mutants; env/remote_env.go: 72 operator mutants (every unique line with a comparison). Survivors killed by new tests: watcher Close not awaiting the request (TestRemoteWatcherStopReturnsOnlyAfterTheWatchRequestHasFinished), the exec timeout bounds (<= 0 and the maximum), and the skipped endsWithNewline/newline counts. Survivors left, all unobservable through the public API with the daemon: the 2 GiB and 2^53 constants (a file of exactly that size), the read and write pipeline depth and chunk-boundary comparisons (L110, L129, L576, L598, L723, L745, L754: only the request count changes, not the bytes), L378 buffered-reader empty check, L534/L537 stat kind and size limit, L734/L757 first-write-error bookkeeping; not proven equivalent.",
     "package": "./env",
     "tests": [
       "TestExecFailureOfATimeoutWithoutATimeout",
@@ -1805,10 +1805,10 @@
       "TestRemoteExecutionEnvShellEnvReachesInheritingCommands",
       "TestRemoteExecutionEnvShellPathRunsStringCommands",
       "TestRemoteWatchOptionsModeForcesTheWatcherMode",
-      "TestRemoteWatcherCloseReturnsOnlyAfterTheWatchRequestHasFinished",
-      "TestRemoteWatcherCloseWakesAPendingReconnect",
+      "TestRemoteWatcherStopReturnsOnlyAfterTheWatchRequestHasFinished",
+      "TestRemoteWatcherStopWakesAPendingReconnect",
       "TestRemoteWatcherDeliversAnOverflowChangeOnlyForOverflowTrue",
-      "TestRemoteWatcherIsolatesAThrowingCallbackAndStopsAfterAnErrorOrClose",
+      "TestRemoteWatcherIsolatesAThrowingCallbackAndStopsAfterAnErrorOrStop",
       "TestRemoteWatcherOpensAgainAfterALostConnectionAndReportsOverflow",
       "TestRemoteWatcherOutlivesTheContextThatOpenedIt",
       "TestRemoteWatcherReportsTheDaemonsWatchErrors",
@@ -2398,11 +2398,11 @@
     "upstream_reference": "line-scan.ts LineScanner (range validation, begin/endFirstLine/endSelection, byte-order-mark handling, Finish)"
   },
   {
-    "mutation": "FileWatcher implemented by nodeFileWatcher (durable/env/node/watch.go Mode, Close, stop): 6 mutants; 5 killed by existing tests (idempotence gate inverted, stop() dropped, TryLock inverted, Mode constant, closed flag unset); Close not waiting on the rescan in progress survived and is killed by the new TestFileWatcherCloseWaitsForTheRescanInProgress.",
+    "mutation": "FileWatcher implemented by nodeFileWatcher (durable/env/node/watch.go Mode, Close, stop): 6 mutants; 5 killed by existing tests (idempotence gate inverted, stop() dropped, TryLock inverted, Mode constant, closed flag unset); Close not waiting on the rescan in progress survived and is killed by the new TestFileWatcherStopWaitsForTheRescanInProgress.",
     "package": "./durable/env/node",
     "tests": [
-      "TestFileWatcherCloseIsIdempotentAndEndsReporting",
-      "TestFileWatcherCloseWaitsForTheRescanInProgress",
+      "TestFileWatcherStopIsIdempotentAndEndsReporting",
+      "TestFileWatcherStopWaitsForTheRescanInProgress",
       "TestNodeWatchOptionsForceTheModeAndSetThePollInterval",
       "TestWatcherDeliversOnlyWhileOpenAndSurvivesAThrowingCallback"
     ],
@@ -2430,7 +2430,7 @@
       "TestGenerationWithoutAUsableModelFailsTheRunWithNoModel",
       "TestToolRoundEndsTheRunOnlyWhenEveryCallAsksToTerminate",
       "TestToolRoundAddsTheToolsItsControlsAsk",
-      "TestToolRoundHandoffAppendsAResetAndEndsTheRun",
+      "TestToolRoundHandoffAppendsAResetAndContinuesTheRunUnlessItTerminates",
       "TestSequentialToolRoundLinksEachLaterCallToItsSlotBeforeDecidingToTerminate"
     ],
     "upstream": "packages/durable/src/harness/generation.ts",
@@ -2455,17 +2455,6 @@
     ],
     "upstream": "packages/chord/src/output.ts",
     "upstream_reference": "output.ts Progress (:310-384: #schedule :350-359, #flush :361-383; moved from durable harness/output.ts by Pi 4a5d3729); usage.ts addUsage; generation.ts appendAssistant"
-  },
-  {
-    "mutation": "SnapshotEvent (durable/harness/events.go snapshotOf, queuedItems): 13 hand mutants (empty-list defaults of tools/compactions/inbox, agent/usage defaults and their present branches, generation retry/deferred/message, run inputs, queued mode); 12 killed by the Pi-oracle TestTranslateEventsMatchPi and TestAgentEvents, 1 (run inputs dropped) is a build failure. The autobind type-mismatch of the flip row is union-versus-struct shape only: the Go struct carries every field of the Pi type.",
-    "package": "./durable/harness",
-    "tests": [
-      "TestTranslateEventsMatchPi",
-      "TestAgentEvents",
-      "TestCompactionEventsAndLiveStatus"
-    ],
-    "upstream": "packages/durable/src/harness/events.ts",
-    "upstream_reference": "events.ts SnapshotEvent (:35-52), snapshotOf (:117-130), queued (:132-134)"
   },
   {
     "mutation": "ai/transcript.go lines 185-330 (the generic TranscriptMessages consumers): 11 operator mutants (genop.py), all killed by the Pi-oracle replay test and the named tests (L311 by a panic).",

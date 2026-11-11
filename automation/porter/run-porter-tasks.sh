@@ -102,7 +102,7 @@ while IFS=$'\t' read -r kind scope rows; do
   model_args=()
   [ -z "${PIG_PORTER_MODEL:-}" ] || model_args=("PORTER_ARGS=--model $PIG_PORTER_MODEL")
   # The task must not read this loop's task list through stdin: its pig did once, and the loop ended after one task.
-  timeout "$TIMEOUT" make porter-task TASK="$kind $scope" "${model_args[@]}" > "$LOGS/$name.log" 2>&1 < /dev/null
+  timeout "$TIMEOUT" make porter-task TASK="$kind $scope" ${model_args[@]+"${model_args[@]}"} > "$LOGS/$name.log" 2>&1 < /dev/null
   rc=$?
   git diff --stat > "$LOGS/$name.diffstat" 2>&1
   echo "$(date -u +%FT%TZ) PORTER end [${PIG_PORTER_REF:-pin}] rc=$rc secs=$(( $(date +%s) - start )) $kind $scope" >> "$RUNLOG"

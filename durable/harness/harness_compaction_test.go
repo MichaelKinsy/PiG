@@ -5,8 +5,8 @@ package harness
 import (
 	"context"
 	"errors"
-	"math"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"slices"
 	"strings"
@@ -19,6 +19,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/session"
 	"github.com/MichaelKinsy/PiG/durable/storage"
 )
 
@@ -669,11 +670,12 @@ func TestManualCompaction(t *testing.T) {
 		gate.resolve()
 		expectSettled(t, must(input.Wait(testContext)), durable.SubmissionDone, "")
 		// The continuation request starts with the new baseline, then the summary, ahead of the kept tool call (#10904).
-		if _, ok := chat.faux.lastAgentRequest().messages[0].(ai.SystemMessage); !ok {
+		continuation := chat.faux.lastAgentRequest().messages
+		if _, ok := continuation[0].(ai.SystemMessage); !ok {
 			t.Fatalf("continuation does not start with the baseline")
 		}
-		if first := firstUserText(chat.faux.lastAgentRequest().messages); !strings.Contains(first, "<summary>\nSUMMARY\n</summary>") {
-			t.Fatalf("continuation starts with %q", first)
+		if second := userText(continuation[1]); !strings.Contains(second, "<summary>\nSUMMARY\n</summary>") {
+			t.Fatalf("continuation[1] = %q, want the summary", second)
 		}
 		expectEqualJSON(t, lastN(chat.kinds(t), 4), `["pi.tool-result","pi.compaction","pi.system","pi.assistant"]`)
 		chat.close(t)
@@ -1256,7 +1258,7 @@ func TestBackgroundThresholdCompaction(t *testing.T) {
 		if task.Owner != nil {
 			t.Fatalf("owner = %v, want undefined", *task.Owner)
 		}
-		expectEqualJSON(t, chat.live(t).Compactions, jsonText(t, []any{map[string]any{"taskId": task.Id, "reason": "threshold", "blocking": false, "attempt": 1}}))
+		expectEqualJSON(t, chat.live(t).Compactions, jsonText(t, []any{map[string]any{"taskId": task.Id, "trigger": "threshold", "blocking": false, "attempt": 1}}))
 		// Background work: neither conversation idle nor Esc waits for or stops it.
 		if err := chat.root.WaitForIdle(testContext); err != nil {
 			t.Fatal(err)
@@ -1369,7 +1371,7 @@ func TestBlockingThresholdCompaction(t *testing.T) {
 		generation := chat.live(t).Run.TaskId
 		expectMatch(t, child, jsonText(t, map[string]any{"owner": generation, "background": false, "input": map[string]any{"reason": "threshold"}}))
 		expectMatch(t, must(chat.harness.GetTask(testContext, generation)).State, jsonText(t, map[string]any{"status": "waiting", "on": []any{child.Id}, "checkpoint": map[string]any{"phase": "prepare", "attempt": 1, "compacted": child.Id, "threshold": true}}))
-		expectEqualJSON(t, chat.live(t).Compactions, jsonText(t, []any{map[string]any{"taskId": child.Id, "reason": "threshold", "blocking": true, "attempt": 1}}))
+		expectEqualJSON(t, chat.live(t).Compactions, jsonText(t, []any{map[string]any{"taskId": child.Id, "trigger": "threshold", "blocking": true, "attempt": 1}}))
 		// Nothing was appended before the wait.
 		if kinds := chat.kinds(t); kinds[len(kinds)-1] != "pi.user" {
 			t.Fatalf("kinds = %v", kinds)
@@ -1461,7 +1463,7 @@ func TestBlockingThresholdCompaction(t *testing.T) {
 		if state.Compactions != nil {
 			t.Fatalf("compactions = %s", jsonText(t, state.Compactions))
 		}
-		if failure := state.CompactionFailure; failure == nil || failure.Reason != "threshold" || failure.Error != "Summarization failed: bad request" {
+		if failure := state.CompactionFailure; failure == nil || failure.Trigger != "threshold" || failure.Error != "Summarization failed: bad request" {
 			t.Fatalf("compactionFailure = %+v", failure)
 		}
 		chat.close(t)
@@ -1501,18 +1503,7 @@ func TestBlockingThresholdCompaction(t *testing.T) {
 		chat.setPolicy(blockingPolicy())
 		reached := deferred()
 		chat.faux.pushSummary(scriptGated(deferred(), scriptSummary(), reached))
-		var mu sync.Mutex
-		types := []string{}
-		stream := must(WatchEvents(testContext, chat.harness, chat.root.Id()))
-		stream.Start(func(_ context.Context, change chord.NativeWatchChange[[]AgentEvent]) error {
-			batch := change.Value
-			mu.Lock()
-			for _, event := range batch {
-				types = append(types, event.EventType())
-			}
-			mu.Unlock()
-			return nil
-		})
+		views := viewHistory(t, chat.harness, chat.root.Id())
 		input := submitInput(t, chat.root, sized("u4", 200))
 		awaitGate(t, reached)
 		child := chat.compactionTasks(t)[0]
@@ -1521,18 +1512,16 @@ func TestBlockingThresholdCompaction(t *testing.T) {
 		}
 		expectSettled(t, must(input.Wait(testContext)), durable.SubmissionUnanswered, "aborted")
 		expectMatch(t, must(chat.harness.GetTask(testContext, child.Id)).State, `{"outcome":{"status":"aborted"}}`)
-		waitFor(t, func() bool {
-			mu.Lock()
-			defer mu.Unlock()
-			return slices.Contains(types, "run_end")
-		})
-		mu.Lock()
-		end, run := slices.Index(types, "compaction_end"), slices.Index(types, "run_end")
-		mu.Unlock()
-		if end < 0 || end >= run {
-			t.Fatalf("events = %v", types)
+		views.Detach()
+		// The compaction's status leaves before the run ends.
+		states := views.Live()
+		busy := slices.IndexFunc(states, func(state LiveState) bool { return state.Compactions != nil })
+		compactionEnd := liveIndexAfter(states, busy, func(state LiveState) bool { return state.Compactions == nil })
+		runEnd := liveIndexAfter(states, busy, func(state LiveState) bool { return state.Run == nil })
+		if busy <= 0 || compactionEnd < 0 || runEnd < 0 || compactionEnd >= runEnd {
+			t.Fatalf("busy %d, compaction end %d, run end %d", busy, compactionEnd, runEnd)
 		}
-		must(stream.Stop())
+		expectMatch(t, states[runEnd].RunFailure, jsonText(t, map[string]any{"inputs": []durable.SubmissionId{input.Id()}, "reason": "aborted"}))
 		chat.close(t)
 	})
 
@@ -1596,16 +1585,21 @@ func TestOverflowCompaction(t *testing.T) {
 			t.Fatalf("attempt = %d, want 1", attempt)
 		}
 		expectEqualJSON(t, lastN(chat.kinds(t), 5), `["pi.user","pi.assistant","pi.compaction","pi.system","pi.assistant"]`)
+		compactions := []durable.EntryRecord{}
 		for _, record := range allEntries(t, chat.root) {
 			if record.Kind == "pi.compaction" {
-				expectMatch(t, record, `{"data":{"reason":"overflow"}}`)
+				compactions = append(compactions, record)
 			}
 		}
+		if len(compactions) == 0 {
+			t.Fatal("no pi.compaction entry")
+		}
+		expectMatch(t, compactions[0], `{"data":{"reason":"overflow"}}`)
 		retry := chat.faux.lastAgentRequest().messages
 		if _, ok := retry[0].(ai.SystemMessage); !ok {
 			t.Fatalf("retry does not start with the baseline")
 		}
-		if !strings.Contains(firstUserText(retry), "SUMMARY") || slices.ContainsFunc(retry, func(message ai.Message) bool {
+		if !strings.Contains(userText(retry[1]), "SUMMARY") || slices.ContainsFunc(retry, func(message ai.Message) bool {
 			assistant, ok := message.(ai.AssistantMessage)
 			return ok && assistant.StopReason == ai.StopReasonError
 		}) {
@@ -1859,9 +1853,14 @@ func TestCompactionInteractions(t *testing.T) {
 		if slices.Contains(chat.kinds(t), "pi.compaction") {
 			t.Fatal("the parent was compacted")
 		}
-		// The fork's view keeps the parent entries the summary kept.
-		watch := must(fork.Watch(testContext))
-		expectEqualJSON(t, watch.Value().Entries, jsonText(t, view.Entries))
+		// The fork's view shows the parent entries in ID order, the summary after them, its head on a parent entry.
+		watch := must(fork.Watch(testContext, nil))
+		viewEntries := watch.Value().Entries
+		expectEqualJSON(t, viewEntries, jsonText(t, allEntries(t, fork)))
+		expectEqualJSON(t, viewEntries[len(viewEntries)-1], jsonText(t, view.Head))
+		if !slices.ContainsFunc(viewEntries, func(entry durable.EntryRecord) bool { return entry.Id == u3.Id }) {
+			t.Fatal("the fork's view does not show the parent entry the summary kept")
+		}
 		must(watch.Stop())
 		chat.close(t)
 	})
@@ -1958,110 +1957,80 @@ func TestCompactionInteractions(t *testing.T) {
 			t.Fatal("a faulted compaction stayed listed")
 		}
 		// settleSchedulerOutcome records the fault (live.ts:251-254).
-		if failure := state.CompactionFailure; failure == nil || failure.Reason != "manual" || failure.Error != "models broke" {
+		if failure := state.CompactionFailure; failure == nil || failure.Trigger != "manual" || failure.Error != "models broke" {
 			t.Fatalf("compactionFailure = %+v", failure)
 		}
 		chat.close(t)
 	})
 }
 
-// eventValue is an event as upstream's plain object: its fields and its type.
-func eventValue(t *testing.T, event AgentEvent) map[string]any {
-	t.Helper()
-	value := must(jsonValue(jsonText(t, event))).(map[string]any)
-	value["type"] = event.EventType()
-	return value
-}
-
-func TestCompactionEventsAndLiveStatus(t *testing.T) {
-	t.Run("reports start and end, and the retry backoff in a late joiner's snapshot", func(t *testing.T) {
-		// upstream: packages/durable/test/harness-compaction.test.ts:1487
+func TestCompactionLiveStatus(t *testing.T) {
+	t.Run("lists a compaction from start to end, with its retry backoff in a late joiner's view", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1570
 		chat := openCompaction(t)
 		chat.history(t)
 		chat.setup.SetSettings(func(settings *HarnessSettings) {
 			settings.Retry = &RetryPolicyPatch{Enabled: new(true), MaxRetries: new(2), BaseDelayMs: new(60_000)}
 		})
-		var mu sync.Mutex
-		events := []AgentEvent{}
-		stream := must(WatchEvents(testContext, chat.harness, chat.root.Id()))
-		stream.Start(func(_ context.Context, change chord.NativeWatchChange[[]AgentEvent]) error {
-			batch := change.Value
-			mu.Lock()
-			events = append(events, batch...)
-			mu.Unlock()
-			return nil
-		})
+		views := viewHistory(t, chat.harness, chat.root.Id())
 		chat.faux.pushSummary(scriptFailure("overloaded"))
 		id := chat.compact(t, nil)
 		waitFor(t, func() bool {
 			compactions := chat.live(t).Compactions
 			return len(compactions) > 0 && compactions[0].Retry != nil
 		})
-		late := must(WatchEvents(testContext, chat.harness, chat.root.Id()))
-		expectLike(t, late.Snapshot.Compactions, jsonText(t, []any{map[string]any{"taskId": id, "reason": "manual", "blocking": false, "attempt": 1, "retry": map[string]any{"at": "$number", "error": "overloaded"}}}))
+		late := must(chat.root.Watch(testContext, nil))
+		expectLike(t, liveValue(t, late.Value()).Compactions, jsonText(t, []any{map[string]any{"taskId": id, "trigger": "manual", "blocking": false, "attempt": 1, "retry": map[string]any{"at": "$number", "error": "overloaded"}}}))
 		must(late.Stop())
 		must(chat.harness.AbortTask(testContext, id))
-		compactionEvents := func() []map[string]any {
-			mu.Lock()
-			defer mu.Unlock()
-			values := []map[string]any{}
-			for _, event := range events {
-				if strings.HasPrefix(event.EventType(), "compaction_") {
-					values = append(values, eventValue(t, event))
-				}
-			}
-			return values
+		waitFor(t, func() bool { return chat.live(t).Compactions == nil })
+		views.Detach()
+		var listed []CompactionStatus
+		for _, state := range views.Live() {
+			listed = append(listed, state.Compactions...)
 		}
-		waitFor(t, func() bool {
-			return slices.ContainsFunc(compactionEvents(), func(value map[string]any) bool { return value["type"] == "compaction_end" })
-		})
-		expectEqualJSON(t, compactionEvents(), jsonText(t, []any{
-			map[string]any{"type": "compaction_start", "taskId": id, "reason": "manual", "blocking": false},
-			map[string]any{"type": "compaction_end", "taskId": id, "reason": "manual"},
-		}))
-		must(stream.Stop())
+		expectEqualJSON(t, listed[0], jsonText(t, map[string]any{"taskId": id, "trigger": "manual", "blocking": false, "attempt": 1}))
+		// An abort is not a failure.
+		states := views.Live()
+		if failure := states[len(states)-1].CompactionFailure; failure != nil {
+			t.Fatalf("compactionFailure = %+v", failure)
+		}
 		chat.close(t)
 	})
 
-	t.Run("records a failure in pi.live, the snapshot, and compaction_end until a summary is produced", func(t *testing.T) {
-		// upstream: packages/durable/test/harness-compaction.test.ts:1007
+	t.Run("records a failure in pi.live, in the commit that ends the compaction, until a summary is produced", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1009
 		chat := openCompaction(t, compactionOptions{contextWindow: 2000})
 		chat.history(t)
 		chat.setPolicy(backgroundPolicy())
-		var mu sync.Mutex
-		events := []AgentEvent{}
-		stream := must(WatchEvents(testContext, chat.harness, chat.root.Id()))
-		stream.Start(func(_ context.Context, change chord.NativeWatchChange[[]AgentEvent]) error {
-			batch := change.Value
-			mu.Lock()
-			events = append(events, batch...)
-			mu.Unlock()
-			return nil
-		})
-		ends := func(taskId *durable.TaskId) []map[string]any {
-			mu.Lock()
-			defer mu.Unlock()
-			values := []map[string]any{}
-			for _, event := range events {
-				if end, ok := event.(CompactionEndEvent); ok && (taskId == nil || end.TaskId == *taskId) {
-					values = append(values, eventValue(t, event))
-				}
-			}
-			return values
-		}
+		views := viewHistory(t, chat.harness, chat.root.Id())
 		chat.faux.pushSummary(scriptFailure("bad request"))
 		chat.turn(t, sized("u4", 100), sized("a4", 100))
-		waitFor(t, func() bool { return len(ends(nil)) > 0 })
+		waitFor(t, func() bool { return chat.live(t).CompactionFailure != nil })
 		recorded := chat.live(t).CompactionFailure
-		if recorded == nil || recorded.Reason != "threshold" || recorded.Error != "Summarization failed: bad request" {
+		if recorded.Trigger != "threshold" || recorded.Error != "Summarization failed: bad request" {
 			t.Fatalf("compactionFailure = %+v", recorded)
 		}
-		expectEqualJSON(t, ends(nil)[0], jsonText(t, map[string]any{"type": "compaction_end", "taskId": recorded.TaskId, "reason": "threshold", "error": "Summarization failed: bad request"}))
-		reopened := must(WatchEvents(testContext, chat.harness, chat.root.Id()))
-		expectEqualJSON(t, reopened.Snapshot.CompactionFailure, jsonText(t, recorded))
-		expectEqualJSON(t, eventValue(t, reopened.Snapshot)["compactionFailure"], jsonText(t, recorded))
-		must(reopened.Stop())
-		// A compaction that produces a summary removes the failure, and ends without an error.
+		// The value that drops the compaction's status records its failure.
+		ended := func(taskId durable.TaskId) LiveState {
+			t.Helper()
+			listsTask := func(state LiveState) bool {
+				return slices.ContainsFunc(state.Compactions, func(status CompactionStatus) bool { return status.TaskId == taskId })
+			}
+			states := views.Live()
+			listed := slices.IndexFunc(states, listsTask)
+			index := liveIndexAfter(states, listed, func(state LiveState) bool { return !listsTask(state) })
+			if index < 0 {
+				t.Fatalf("no value ends the compaction of task %d", taskId)
+			}
+			return states[index]
+		}
+		expectEqualJSON(t, ended(recorded.TaskId).CompactionFailure, jsonText(t, recorded))
+		// A late watch starts with it.
+		late := must(chat.root.Watch(testContext, nil))
+		expectEqualJSON(t, liveValue(t, late.Value()).CompactionFailure, jsonText(t, recorded))
+		must(late.Stop())
+		// A compaction that produces a summary removes the failure in the commit that ends it.
 		chat.setPolicy(manualPolicy())
 		chat.faux.pushSummary(scriptSummary())
 		manual := chat.compact(t, nil)
@@ -2071,11 +2040,10 @@ func TestCompactionEventsAndLiveStatus(t *testing.T) {
 		if failure := chat.live(t).CompactionFailure; failure != nil {
 			t.Fatalf("compactionFailure after a summary = %+v", failure)
 		}
-		waitFor(t, func() bool { return len(ends(&manual)) > 0 })
-		if _, present := ends(&manual)[0]["error"]; present {
-			t.Fatalf("a completed compaction ended with an error: %v", ends(&manual)[0])
+		if failure := ended(manual).CompactionFailure; failure != nil {
+			t.Fatalf("the commit that ended the compaction kept the failure: %+v", failure)
 		}
-		must(stream.Stop())
+		views.Detach()
 		chat.close(t)
 	})
 
@@ -2087,7 +2055,7 @@ func TestCompactionEventsAndLiveStatus(t *testing.T) {
 		chat.faux.pushSummary(scriptFailure("bad request"))
 		chat.outcome(t, chat.compact(t, nil))
 		recorded := chat.live(t).CompactionFailure
-		if recorded == nil || recorded.Reason != "manual" || recorded.Error != "Summarization failed: bad request" {
+		if recorded == nil || recorded.Trigger != "manual" || recorded.Error != "Summarization failed: bad request" {
 			t.Fatalf("compactionFailure = %+v", recorded)
 		}
 		// Aborting is not a failure, and does not clear the earlier one.
@@ -2263,6 +2231,10 @@ func TestCompactionRecovery(t *testing.T) {
 			values := []any{}
 			for _, message := range messages {
 				value := must(jsonValue(jsonText(t, message))).(map[string]any)
+				// The resent request carries a numeric timestamp (expect.any(Number) upstream); it is the only difference.
+				if _, ok := value["timestamp"].(float64); !ok {
+					t.Fatalf("message %s has no numeric timestamp", jsonText(t, message))
+				}
 				delete(value, "timestamp")
 				values = append(values, value)
 			}
@@ -2473,20 +2445,29 @@ func TestCompactionAndTheInbox(t *testing.T) {
 		chat.close(t)
 	})
 
-	t.Run("keeps the kept entries mounted in the conversation view", func(t *testing.T) {
-		// upstream: packages/durable/test/harness-compaction.test.ts:1799
+	t.Run("appends the summary to the conversation view in place, its head on a kept entry", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1893
 		chat := openCompaction(t)
 		chat.history(t)
-		watch := must(chat.root.Watch(testContext))
+		watch := must(chat.root.Watch(testContext, nil))
+		before := watch.Value().Entries
 		// A started watch keeps its value current.
-		watch.Start(func(context.Context, chord.WatchChange[ConversationView]) error { return nil })
+		watch.Start(func(context.Context, chord.WatchCall[ConversationView]) error { return nil })
 		chat.faux.pushSummary(scriptSummary())
 		chat.outcome(t, chat.compact(t, nil))
 		waitFor(t, func() bool {
 			entries := watch.Value().Entries
-			return len(entries) > 0 && entries[0].Kind == "pi.compaction"
+			return len(entries) > 0 && entries[len(entries)-1].Kind == "pi.compaction"
 		})
-		expectEqualJSON(t, watch.Value().Entries, jsonText(t, must(chat.root.Context(testContext, nil)).Entries))
+		// Nothing leaves the window: the summary is appended where it was written.
+		entries := watch.Value().Entries
+		expectEqualJSON(t, entries[:len(before)], jsonText(t, before))
+		expectEqualJSON(t, entries, jsonText(t, allEntries(t, chat.root)))
+		head := must(chat.root.Context(testContext, nil)).Head
+		expectEqualJSON(t, entries[len(entries)-1], jsonText(t, head))
+		if !slices.ContainsFunc(entries, func(entry durable.EntryRecord) bool { return head.Head != nil && entry.Id == *head.Head }) {
+			t.Fatal("the summary's head is not an entry of the view")
+		}
 		must(watch.Stop())
 		chat.close(t)
 	})
@@ -2574,39 +2555,32 @@ func TestCompactionEdgeCases(t *testing.T) {
 	})
 
 	t.Run("fails the run when its blocking compaction faults, and records the fault", func(t *testing.T) {
-		// upstream: packages/durable/test/harness-compaction.test.ts:1954
-		chat := openCompaction(t, compactionOptions{contextWindow: 1000})
+		// upstream: packages/durable/test/harness-compaction.test.ts:1979
+		// Upstream replaces Models.completeSimple with a function that throws; here CompleteSimple of the Harness's models
+		// panics, which the scheduler turns into a task fault as an uncaught throw faults a task upstream.
+		setup := chatSetup(t, ai.FauxConfig{Models: []ai.FauxModelDefinition{{ID: "faux-1", ContextWindow: 1000, MaxTokens: 900}}})
+		models := &throwingModels{Models: setup.Models}
+		setup.HarnessModels = models
+		chat := openCompaction(t, compactionOptions{setup: setup})
 		chat.history(t)
 		chat.setPolicy(blockingPolicy())
-		// Upstream replaces Models.completeSimple with a throwing function. Go's CompleteSimple has no throw path, so the
-		// summarization answers a value that is not strict JSON and the compaction's commit faults the task instead.
-		original := *chat.setup.Faux.Provider()
-		withProvider(chat.setup, func(provider *ai.ModelsProvider) {
-			provider.StreamSimple = func(ctx context.Context, model *ai.Model, request ai.TranscriptContext, options ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
-				if isSummaryRequest(request.Messages()) {
-					final := fauxMessage("SUMMARY", ai.StopReasonStop)
-					final.Usage.Cost.Total = math.NaN()
-					return streamOf(fauxMessage("", ai.StopReasonPending), 0, final), nil
-				}
-				return original.StreamSimple(ctx, model, request, options)
-			}
-		})
+		models.throw(errors.New("no credentials"))
 		requests := len(chat.faux.agentRequestsCopy())
 		settled := must(submitInput(t, chat.root, sized("u4", 200)).Wait(testContext))
-		chat.setup.Models.SetProvider(&original)
+		models.throw(nil)
 		expectSettled(t, settled, durable.SubmissionUnanswered, "model_error")
-		state := chat.live(t)
-		if state.Compactions != nil || slices.Contains(chat.kinds(t), "pi.compaction") {
-			t.Fatal("a faulted compaction left a summary or a status")
+		expectEqualJSON(t, settled.Detail, jsonText(t, "Compaction failed: no credentials"))
+		if slices.Contains(chat.kinds(t), "pi.compaction") {
+			t.Fatal("a faulted compaction left a summary")
 		}
-		// The fault's message is the commit's strict-JSON rejection; Pi's is the thrown "no credentials". Either way the run's detail
-		// and pi.live.compactionFailure carry the same fault message.
-		const fault = "Value contains a non-finite number and is not strict JSON"
+		state := chat.live(t)
+		if state.Compactions != nil {
+			t.Fatalf("a faulted compaction stayed listed: %+v", state.Compactions)
+		}
 		failure := state.CompactionFailure
-		if failure == nil || failure.Reason != "threshold" || failure.Error != fault {
+		if failure == nil || failure.Trigger != "threshold" || failure.Error != "no credentials" {
 			t.Fatalf("compactionFailure = %+v", failure)
 		}
-		expectEqualJSON(t, settled.Detail, jsonText(t, "Compaction failed: "+fault))
 		if got := len(chat.faux.agentRequestsCopy()); got != requests {
 			t.Fatalf("agent requests = %d, want %d", got, requests)
 		}
@@ -2655,80 +2629,70 @@ func TestCompactionEdgeCases(t *testing.T) {
 	})
 }
 
-// eventLog collects event types, or batches of them, from a stream.
-type eventLog struct {
-	mu      sync.Mutex
-	batches [][]string
+// throwingModels is Models whose CompleteSimple panics with the error set by throw, as Pi's replaced completeSimple throws.
+type throwingModels struct {
+	*ai.Models
+	thrown atomic.Pointer[error]
 }
 
-func watchEventLog(t *testing.T, chat *compactionChat) (*eventLog, *AgentEventStream) {
-	t.Helper()
-	log := &eventLog{}
-	stream := must(WatchEvents(testContext, chat.harness, chat.root.Id()))
-	stream.Start(func(_ context.Context, change chord.NativeWatchChange[[]AgentEvent]) error {
-		batch := change.Value
-		types := []string{}
-		for _, event := range batch {
-			types = append(types, event.EventType())
-		}
-		log.mu.Lock()
-		log.batches = append(log.batches, types)
-		log.mu.Unlock()
-		return nil
-	})
-	return log, stream
-}
-
-func (log *eventLog) flat() []string {
-	log.mu.Lock()
-	defer log.mu.Unlock()
-	types := []string{}
-	for _, batch := range log.batches {
-		types = append(types, batch...)
+func (models *throwingModels) throw(err error) {
+	if err == nil {
+		models.thrown.Store(nil)
+		return
 	}
-	return types
+	models.thrown.Store(&err)
 }
 
-func (log *eventLog) batchWith(eventType string) []string {
-	log.mu.Lock()
-	defer log.mu.Unlock()
-	for _, batch := range log.batches {
-		if slices.Contains(batch, eventType) {
-			return slices.Clone(batch)
-		}
+func (models *throwingModels) CompleteSimple(ctx context.Context, model *ai.Model, request ai.Context, options ...ai.StreamOptions) *ai.AssistantMessage {
+	if err := models.thrown.Load(); err != nil {
+		panic(*err)
 	}
-	return nil
+	return models.Models.CompleteSimple(ctx, model, request, options...)
 }
 
 func TestCompactionEdgeCasesLater(t *testing.T) {
-	t.Run("orders the events of a summary placed at once", func(t *testing.T) {
-		// upstream: packages/durable/test/harness-compaction.test.ts:1926
+	t.Run("places a summary at once in the commit that ends its compaction", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:2033
 		chat := openCompaction(t)
 		chat.history(t)
-		log, stream := watchEventLog(t, chat)
+		views := viewHistory(t, chat.harness, chat.root.Id())
 		chat.faux.pushSummary(scriptSummary())
 		chat.outcome(t, chat.compact(t, nil))
-		waitFor(t, func() bool { return slices.Contains(log.flat(), "compaction_end") })
-		events := log.flat()
-		end := slices.Index(events, "compaction_end")
-		expectEqualJSON(t, events[end-2:end+3], `["message_start","message_end","compaction_end","submission","usage_changed"]`)
-		must(stream.Stop())
+		views.Detach()
+		all := views.All()
+		states := views.Live()
+		listed := slices.IndexFunc(states, func(state LiveState) bool { return state.Compactions != nil })
+		ended := liveIndexAfter(states, listed, func(state LiveState) bool { return state.Compactions == nil })
+		if listed < 0 || ended < 1 {
+			t.Fatalf("listed %d, ended %d", listed, ended)
+		}
+		var kinds []string
+		for _, entry := range all[ended].Entries[len(all[ended-1].Entries):] {
+			kinds = append(kinds, entry.Kind)
+		}
+		expectEqualJSON(t, kinds, `["pi.compaction"]`)
 		chat.close(t)
 	})
 
-	t.Run("puts compaction_start last in the batch of the preparation commit", func(t *testing.T) {
-		// upstream: packages/durable/test/harness-compaction.test.ts:1944
+	t.Run("lists a background compaction in the preparation commit, with the entries it appends", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:2049
 		chat := openCompaction(t, compactionOptions{contextWindow: 2000})
 		chat.history(t)
 		chat.setPolicy(backgroundPolicy())
-		log, stream := watchEventLog(t, chat)
+		views := viewHistory(t, chat.harness, chat.root.Id())
 		// A new section makes the preparation commit append a system entry next to the compaction's status.
 		addSection(t, chat.setup.Registry, "extra", text("extra"))
 		chat.faux.pushSummary(scriptGated(deferred(), scriptSummary(), nil))
 		chat.turn(t, sized("u4", 100), "a4")
-		waitFor(t, func() bool { return log.batchWith("compaction_start") != nil })
-		expectEqualJSON(t, log.batchWith("compaction_start"), `["message_start","message_end","compaction_start"]`)
-		must(stream.Stop())
+		waitFor(t, func() bool { return chat.live(t).Compactions != nil })
+		views.Detach()
+		all := views.All()
+		started := slices.IndexFunc(views.Live(), func(state LiveState) bool { return state.Compactions != nil })
+		var kinds []string
+		for _, entry := range all[started].Entries[len(all[started-1].Entries):] {
+			kinds = append(kinds, entry.Kind)
+		}
+		expectEqualJSON(t, kinds, `["pi.system"]`)
 		must(chat.harness.AbortTask(testContext, chat.compactionTasks(t)[0].Id))
 		chat.close(t)
 	})
@@ -2816,7 +2780,7 @@ func TestCompactionEdgeCasesLater(t *testing.T) {
 		})
 		id := chat.compact(t, nil)
 		<-chat.harness.Closed()
-		if end := chat.harness.End(); end.Reason != durable.SessionEndFailed || !errors.Is(end.Error, failure) {
+		if end := chat.harness.End(); end.Kind != durable.SessionEndFailed || !errors.Is(end.Error, failure) {
 			t.Fatalf("end %+v, want failed with the storage error", end)
 		}
 		// Nothing of the failed commit landed: the task is still live, without usage, entry, or submission.
@@ -2827,7 +2791,9 @@ func TestCompactionEdgeCasesLater(t *testing.T) {
 		if task := must(store.Task(testContext, id)); task == nil || task.State.Status == durable.TaskTerminal {
 			t.Fatalf("task = %s, want live", jsonText(t, task))
 		}
-		reopened := openCompaction(t, compactionOptions{storage: store})
+		// Upstream reopens with openChat and no resume(): the live compaction task must not run again here.
+		reopenedHarness, reopenedRoot := openChat(t, store, chat.setup)
+		reopened := &compactionChat{harness: reopenedHarness, root: reopenedRoot, setup: chat.setup, faux: chat.faux}
 		if usage(reopened.harness, reopened.root) != before || slices.Contains(reopened.kinds(t), "pi.compaction") {
 			t.Fatal("a failed classifying commit left usage or a summary")
 		}
@@ -3005,9 +2971,9 @@ func TestCompactionPinning(t *testing.T) {
 		chat.faux.pushSummary(scriptGated(deferred(), scriptSummary(), reached))
 		id := chat.compact(t, nil)
 		awaitGate(t, reached)
-		stream := must(WatchEvents(testContext, chat.harness, chat.root.Id()))
-		expectEqualJSON(t, stream.Snapshot.Compactions, jsonText(t, []any{map[string]any{"taskId": id, "reason": "manual", "blocking": false, "attempt": 1}}))
-		must(stream.Stop())
+		watch := must(chat.root.Watch(testContext, nil))
+		expectEqualJSON(t, liveValue(t, watch.Value()).Compactions, jsonText(t, []any{map[string]any{"taskId": id, "trigger": "manual", "blocking": false, "attempt": 1}}))
+		must(watch.Stop())
 		must(chat.harness.AbortTask(testContext, id))
 		chat.close(t)
 	})
@@ -3083,13 +3049,12 @@ func TestBlockedCompaction(t *testing.T) {
 			if err != nil {
 				return 0, err
 			}
-			return taskId, setJSON(live, "compactions", []CompactionStatus{{TaskId: taskId, Reason: "manual", Blocking: false, Attempt: 1}})
+			return taskId, setJSON(live, "compactions", []CompactionStatus{{TaskId: taskId, Trigger: "manual", Blocking: false, Attempt: 1}})
 		})
 		closeHarness(t, harness)
 		harness, root = openChat(t, openSqlite(t, path), setup)
 		harness.Resume()
 		chat := &compactionChat{harness: harness, root: root, setup: setup, faux: newScript(setup)}
-		log, stream := watchEventLog(t, chat)
 		inspection := must(chat.harness.Inspect(testContext))
 		index := slices.IndexFunc(inspection.Tasks, func(task TaskInspection) bool { return task.Record.Id == id })
 		if state := inspection.Tasks[index].State; state.Kind != TaskInspectionBlocked || state.Reason != "task_too_old" || state.Error != nil {
@@ -3100,8 +3065,7 @@ func TestBlockedCompaction(t *testing.T) {
 		if chat.live(t).Compactions != nil {
 			t.Fatal("an orphaned compaction stayed listed")
 		}
-		waitFor(t, func() bool { return slices.Contains(log.flat(), "compaction_end") })
-		must(stream.Stop())
+		expectEqualJSON(t, chat.live(t).CompactionFailure, jsonText(t, map[string]any{"taskId": id, "trigger": "manual", "error": "task_too_old"}))
 		chat.close(t)
 	})
 }
@@ -3227,5 +3191,165 @@ func TestPerModelCompactionOverrides(t *testing.T) {
 			t.Fatalf("kept %q, want %q", texts, want)
 		}
 		chat.close(t)
+	})
+}
+
+// liveV1 is pi.live as version 1 wrote it: a compaction's trigger was its `reason`.
+type liveV1 struct {
+	Run               *liveV2Run         `json:"run,omitempty"`
+	Compactions       []liveV1Compaction `json:"compactions,omitempty"`
+	CompactionFailure *liveV1Failure     `json:"compactionFailure,omitempty"`
+}
+
+type liveV1Compaction struct {
+	TaskId   durable.TaskId `json:"taskId"`
+	Reason   string         `json:"reason"`
+	Blocking bool           `json:"blocking"`
+	Attempt  int            `json:"attempt"`
+}
+
+type liveV1Failure struct {
+	TaskId durable.TaskId `json:"taskId"`
+	Reason string         `json:"reason"`
+	Error  string         `json:"error"`
+}
+
+// liveV2 is pi.live as version 2 wrote it before run.turns: a run without a turn count.
+type liveV2 struct {
+	Run         *liveV2Run         `json:"run,omitempty"`
+	Compactions []CompactionStatus `json:"compactions,omitempty"`
+}
+
+type liveV2Run struct {
+	TaskId durable.TaskId         `json:"taskId"`
+	Inputs []durable.SubmissionId `json:"inputs"`
+	Turns  *int                   `json:"turns,omitempty"`
+}
+
+func TestPiLiveMigrations(t *testing.T) {
+	t.Run("reads a version 1 value with each compaction's `reason` as `trigger`, and stores it migrated on its next write", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts "pi.live version 2"
+		store := storage.NewMemoryStorage()
+		line := session.CreateSession(store)
+		LiveV1 := durable.DefineDoc(durable.DocDefinition[liveV1]{
+			CommonDocDefinition: durable.CommonDocDefinition[liveV1]{
+				Kind:           "pi.live",
+				Version:        1,
+				Initial:        func() liveV1 { return liveV1{} },
+				CheckpointWhen: func(liveV1, []durable.Op, durable.CheckpointInfo) bool { return false },
+			},
+			DocumentSemantics: durable.NewLatestConversationSemantics(durable.ForkInitial).DocumentSemantics,
+		})
+		conversationId := must(durable.Commit(testContext, line, func(tx durable.Tx) (durable.ConversationId, error) {
+			record, err := tx.CreateConversation(durable.CreateConversationOptions{Ownership: ownerless})
+			return record.Id, err
+		}))
+		must(durable.Commit(testContext, line, func(tx durable.Tx) (struct{}, error) {
+			live, err := docDraft(tx, LiveV1, conversationId)
+			if err != nil {
+				return struct{}{}, err
+			}
+			if err := setJSON(live, "run", liveV2Run{TaskId: 9, Inputs: []durable.SubmissionId{4}}); err != nil {
+				return struct{}{}, err
+			}
+			if err := setJSON(live, "compactions", []liveV1Compaction{{TaskId: 7, Reason: "threshold", Blocking: true, Attempt: 2}}); err != nil {
+				return struct{}{}, err
+			}
+			return struct{}{}, setJSON(live, "compactionFailure", liveV1Failure{TaskId: 5, Reason: "manual", Error: "no model"})
+		}))
+		// The version 2 token reloads the stored value and migrates it.
+		stored := func() *durable.StoredDocument {
+			record := must(store.FindDocument(testContext, durable.DocumentAddress{Kind: "pi.live", Scope: durable.DocumentRecordScope{Kind: durable.ScopeConversation, ConversationId: conversationId}}, durable.CurrentPoint))
+			return must(store.Document(testContext, record.Id, durable.CurrentPoint))
+		}
+		raw := must(line.SnapshotErased(testContext, LiveDoc, conversationId))
+		read := must(durable.FromJsonValue[LiveState](raw))
+		migrated := LiveState{
+			// A run in flight across the upgrade counts its turns from 0 (#11043).
+			Run:               &LiveRun{TaskId: 9, Inputs: []durable.SubmissionId{4}, Turns: 0},
+			Compactions:       []CompactionStatus{{TaskId: 7, Trigger: "threshold", Blocking: true, Attempt: 2}},
+			CompactionFailure: &CompactionFailure{TaskId: 5, Trigger: "manual", Error: "no model"},
+		}
+		if !reflect.DeepEqual(read, migrated) {
+			t.Fatalf("read = %+v", read)
+		}
+		first := raw.Value("compactions").([]any)[0].(durable.JsonObject)
+		if keys := first.Keys(); !slices.Equal(keys, []string{"taskId", "trigger", "blocking", "attempt"}) {
+			t.Fatalf("keys = %v", keys)
+		}
+		// A read migrates in memory only: Storage keeps the version 1 value.
+		before := stored()
+		expectMatch(t, before.Value, `{"compactions":[{"reason":"threshold"}],"compactionFailure":{"reason":"manual"}}`)
+		if before.Version != 1 {
+			t.Fatalf("version = %d", before.Version)
+		}
+		must(durable.Commit(testContext, line, func(tx durable.Tx) (struct{}, error) {
+			live, err := docDraft(tx, LiveDoc, conversationId)
+			if err != nil {
+				return struct{}{}, err
+			}
+			return struct{}{}, live.Array("compactions").Object(0).Set("attempt", float64(3))
+		}))
+		after := stored()
+		expectMatch(t, after.Value, `{"compactions":[{"trigger":"threshold","attempt":3}],"compactionFailure":{"trigger":"manual"}}`)
+		if after.Version != 3 {
+			t.Fatalf("version = %d", after.Version)
+		}
+		if err := line.Close(testContext); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	// #11043: an unreleased build stored version 2 without `run.turns`; a run in flight then counted NaN turns.
+	t.Run("gives a version 2 run without turns a count of 0", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts "pi.live migrations"
+		store := storage.NewMemoryStorage()
+		line := session.CreateSession(store)
+		LiveV2 := durable.DefineDoc(durable.DocDefinition[liveV2]{
+			CommonDocDefinition: durable.CommonDocDefinition[liveV2]{
+				Kind:           "pi.live",
+				Version:        2,
+				Initial:        func() liveV2 { return liveV2{} },
+				CheckpointWhen: func(liveV2, []durable.Op, durable.CheckpointInfo) bool { return false },
+			},
+			DocumentSemantics: durable.NewLatestConversationSemantics(durable.ForkInitial).DocumentSemantics,
+		})
+		conversationId := must(durable.Commit(testContext, line, func(tx durable.Tx) (durable.ConversationId, error) {
+			record, err := tx.CreateConversation(durable.CreateConversationOptions{Ownership: ownerless})
+			return record.Id, err
+		}))
+		must(durable.Commit(testContext, line, func(tx durable.Tx) (struct{}, error) {
+			live, err := docDraft(tx, LiveV2, conversationId)
+			if err != nil {
+				return struct{}{}, err
+			}
+			if err := setJSON(live, "run", liveV2Run{TaskId: 9, Inputs: []durable.SubmissionId{4}}); err != nil {
+				return struct{}{}, err
+			}
+			return struct{}{}, setJSON(live, "compactions", []CompactionStatus{{TaskId: 7, Trigger: "threshold", Blocking: true, Attempt: 2}})
+		}))
+		read := must(durable.Snapshot(testContext, line, LiveDoc, conversationId))
+		want := LiveState{
+			Run:         &LiveRun{TaskId: 9, Inputs: []durable.SubmissionId{4}, Turns: 0},
+			Compactions: []CompactionStatus{{TaskId: 7, Trigger: "threshold", Blocking: true, Attempt: 2}},
+		}
+		if !reflect.DeepEqual(read, &want) {
+			t.Fatalf("read = %s", jsonText(t, read))
+		}
+		// A version 2 run that has a count keeps it.
+		three := 3
+		must(durable.Commit(testContext, line, func(tx durable.Tx) (struct{}, error) {
+			live, err := docDraft(tx, LiveV2, conversationId)
+			if err != nil {
+				return struct{}{}, err
+			}
+			return struct{}{}, setJSON(live, "run", liveV2Run{TaskId: 9, Inputs: []durable.SubmissionId{4}, Turns: &three})
+		}))
+		if run := must(durable.Snapshot(testContext, line, LiveDoc, conversationId)).Run; run == nil || run.Turns != 3 {
+			t.Fatalf("run = %s, want turns 3", jsonText(t, run))
+		}
+		if err := line.Close(testContext); err != nil {
+			t.Fatal(err)
+		}
 	})
 }

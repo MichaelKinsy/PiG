@@ -1047,7 +1047,7 @@ func (p *googleProvider) Stream(ctx context.Context, transcript TranscriptContex
 	noContents := len(req.Contents) == 0
 	if opts.OnPayload != nil {
 		payload := req.parameters(requestModel)
-		next, payloadErr := opts.OnPayload(payload, &Model{ID: p.cfg.Model, ProviderMeta: ProviderMetadata{ProviderID: p.cfg.ProviderID}})
+		next, payloadErr := opts.OnPayload(payload, providerEventModel(p.cfg.ModelMetadata, cmp.Or(p.cfg.api, APIGoogleGenerativeAI), p.cfg.ProviderID, p.cfg.Model))
 		if payloadErr != nil {
 			return nil, fmt.Errorf("google: onPayload: %w", payloadErr)
 		}

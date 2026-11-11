@@ -14,8 +14,8 @@ import (
 
 func TestSnapshotQueuedBehindACommitThatPoisonsTheSessionRejectsWithoutReadingStorage(t *testing.T) {
 	harness := createWatchHarness(t)
-	err, lookedUp := settleQueuedBehindPoisoningCommit(t, harness, func() error {
-		_, err := harness.Session.SnapshotErased(context.Background(), absentWatchDoc)
+	err, lookedUp := settleQueuedBehindPoisoningCommit(t, harness, func(ctx context.Context) error {
+		_, err := harness.Session.SnapshotErased(ctx, absentWatchDoc)
 		return err
 	})
 	expectErrorContains(t, err, "Session failed after a storage error")
@@ -27,8 +27,8 @@ func TestSnapshotQueuedBehindACommitThatPoisonsTheSessionRejectsWithoutReadingSt
 func TestSnapshotAsOfQueuedBehindACommitThatPoisonsTheSessionRejects(t *testing.T) {
 	harness := createWatchHarness(t)
 	conversation := createConversation(t, harness)
-	err, _ := settleQueuedBehindPoisoningCommit(t, harness, func() error {
-		_, err := harness.Session.SnapshotAsOfErased(context.Background(), rewindableLiveDoc, durable.EntryId(1), conversation)
+	err, _ := settleQueuedBehindPoisoningCommit(t, harness, func(ctx context.Context) error {
+		_, err := harness.Session.SnapshotAsOfErased(ctx, rewindableLiveDoc, durable.EntryId(1), conversation)
 		return err
 	})
 	expectErrorContains(t, err, "Session failed after a storage error")

@@ -23,7 +23,7 @@ import (
 // Deferred progress commits (ProgressCommit): the partial answer and tool output reach watches at once and Storage at the next
 // commit that reads or writes pi.live or within settings.progress.persistWithinMs. Crashes are simulated by failing the
 // Harness: from that moment nothing more reaches Storage, as when the process dies; the reopened Harness resumes from what was
-// stored. Ports packages/durable/test/harness-deferred-progress.test.ts (Pi 1.4.0+6c2fd73b).
+// stored. Ports packages/durable/test/harness-deferred-progress.test.ts (Pi v1.5.0).
 
 func longText() string { return strings.Repeat("streamed ", 400) }
 
@@ -54,6 +54,8 @@ func slowProgressSetup(t *testing.T, persistWithinMs float64) *chatState {
 	setup := chatSetup(t, ai.FauxConfig{TokensPerSecond: 80, TokenSize: &ai.FauxTokenSize{Min: &four, Max: &four}})
 	setup.SetSettings(func(settings *HarnessSettings) {
 		settings.Progress = &ProgressPolicyPatch{PersistWithinMs: &persistWithinMs}
+		// A request a crash interrupted is a failed attempt (#11139): retry at once.
+		settings.Retry = &RetryPolicyPatch{Enabled: new(true), MaxRetries: new(5), BaseDelayMs: new(1)}
 	})
 	return setup
 }
@@ -103,9 +105,9 @@ func openProgress(t *testing.T, storage *controlledStorage, setup *chatState) *p
 func memoryPartials(t *testing.T, harness Harness) *textLog {
 	t.Helper()
 	log := &textLog{}
-	observeCommits(harness, func(_ context.Context, publication session.ObservedCommit) {
-		for _, change := range documentChanges(publication.Changes) {
-			if change.Record.Kind != "pi.live" || change.Value == nil {
+	followCommits(harness, func(_ context.Context, publication session.ObservedCommit) {
+		for _, change := range documentValues(publication.Changes) {
+			if change.Record.Kind != "pi.live" {
 				continue
 			}
 			live, err := durable.FromJsonValue[LiveState](change.Value)
@@ -229,28 +231,29 @@ func TestDeferredGenerationPartials(t *testing.T) {
 		must0(t, run.harness.Close(testContext))
 	})
 
-	t.Run("converts what was stored into the aborted entry after a crash, and resends", func(t *testing.T) {
+	t.Run("converts what was stored into the aborted entry after a crash, and retries the charged attempt", func(t *testing.T) {
 		storage := newControlledStorage()
 		setup := slowProgressSetup(t, 150)
 		setup.Faux.SetResponses([]ai.FauxResponseStep{fauxAnswer(longText())})
 		run := openProgress(t, storage, setup)
-		// A replica fed by SubscribeCommits alone, as a replication feed would be.
+		// A replica fed by ObserveCommits alone, as a replication feed would be.
 		var replicaMu sync.Mutex
 		var replica durable.JsonValue = storedLiveValue(t, storage, run.root.Id())
-		run.harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
-			for _, change := range documentChanges(publication.Changes) {
+		run.harness.ObserveCommits(commitsObserver{advance: func(_ context.Context, publication durable.CommitPublication) {
+			for _, change := range documentValues(publication.Changes) {
 				if change.Record.Kind != "pi.live" {
 					continue
 				}
 				replicaMu.Lock()
-				if replica == nil || (len(change.Ops) == 0 && change.Value != nil) {
+				// A creation carries no ops in Go (DocumentChange.Ops), so its Value is the replica's base; every later change replays its ops.
+				if replica == nil {
 					replica = change.Value
 				} else {
 					replica = must(delta.ApplyImmutable(replica, change.Ops))
 				}
 				replicaMu.Unlock()
 			}
-		})
+		}})
 		submission := submitInput(t, run.root, "hi")
 		waitForLong(t, func() bool { return storedTextLength(t, storage, run.root.Id()) > 40 })
 		inMemory := run.memory.last()
@@ -284,9 +287,10 @@ func TestDeferredGenerationPartials(t *testing.T) {
 		submission := submitInput(t, run.root, "hi")
 		waitForLong(t, func() bool { return run.memory.lastLength() > 40 })
 		crash(t, run.harness)
+		// The attempt is presentation, deferred like the partials: none of it was stored.
 		live := storedLive(t, storage, run.root.Id())
-		if live == nil || live.Generation == nil || live.Generation.Attempt != 1 {
-			t.Fatalf("stored pi.live = %+v, want generation attempt 1", live)
+		if live != nil && live.Generation != nil {
+			t.Fatalf("stored pi.live = %+v, want no generation", live)
 		}
 		if _, ok := storedText(t, live); ok {
 			t.Fatal("a partial was stored")
@@ -359,26 +363,6 @@ func TestDeferredGenerationPartials(t *testing.T) {
 			t.Fatalf("first answer = %+v, want the closed partial, aborted", got)
 		}
 		must0(t, reopened.harness.Close(testContext))
-	})
-
-	t.Run("never counts partial commits as progress of a task cut off again and again", func(t *testing.T) {
-		storage := newControlledStorage()
-		setup := slowProgressSetup(t, 50)
-		run := openProgress(t, storage, setup)
-		setup.Faux.SetResponses([]ai.FauxResponseStep{fauxAnswer(longText())})
-		submitInput(t, run.root, "hi")
-		waitFor(t, func() bool { live := liveOf(t, run.harness, run.root.Id()); return live != nil && live.Run != nil })
-		id := liveOf(t, run.harness, run.root.Id()).Run.TaskId
-		for crashes := 1; crashes <= 2; crashes++ {
-			waitForLong(t, func() bool { return storedTextLength(t, storage, run.root.Id()) > 40 })
-			crash(t, run.harness)
-			setup.Faux.SetResponses([]ai.FauxResponseStep{fauxAnswer(longText())})
-			run = openProgress(t, storage, setup)
-			if record := must(run.harness.GetTask(testContext, id)); record.Restarts != crashes {
-				t.Fatalf("after %d crashes the task counts %d restarts", crashes, record.Restarts)
-			}
-		}
-		must0(t, run.harness.Close(testContext))
 	})
 }
 
@@ -475,6 +459,51 @@ func workStep() ai.FauxResponseStep {
 }
 
 func TestDeferredToolOutput(t *testing.T) {
+	// #11139: a generation's request is charged at once after a crash, so its partials never stream with a count; a
+	// replay-safe tool reruns and streams its output with one.
+	t.Run("never counts progress commits as progress of a task cut off again and again", func(t *testing.T) {
+		storage := newControlledStorage()
+		setup := slowProgressSetup(t, 50)
+		var mu sync.Mutex
+		runs := 0
+		addTool(t, setup.Registry, DefineTool(durable.ToolRegistration{
+			ToolSchema: ai.ToolSchema{Name: "work", Description: "work", Parameters: emptyObjectSchema()},
+			Replay:     durable.ToolReplay("safe"),
+			Execute: func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
+				mu.Lock()
+				runs++
+				run := runs
+				mu.Unlock()
+				for line := 0; ctx.Err() == nil; line++ {
+					api.Output("run " + itoaString(run) + " line " + itoaString(line) + "\n")
+					time.Sleep(20 * time.Millisecond)
+				}
+				return durable.ToolExecutionResult{}, context.Cause(ctx)
+			},
+		}))
+		setup.Faux.SetResponses([]ai.FauxResponseStep{workStep()})
+		run := openProgress(t, storage, setup)
+		submitInput(t, run.root, "go")
+		for crashes := 1; crashes <= 2; crashes++ {
+			// This run stored output of its own, a progress commit, before it was cut off.
+			waitForLong(t, func() bool {
+				output, _ := storedToolOutput(t, storage, run.root.Id())
+				return strings.HasPrefix(output, "run "+itoaString(crashes)+" ")
+			})
+			crash(t, run.harness)
+			run = openProgress(t, storage, setup)
+			kind := "pi.tool"
+			tool := must(durable.Commit(testContext, run.harness, func(tx durable.Tx) (durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue], error) {
+				page, err := tx.ScanTasks(durable.TaskQuery{Kind: &kind}, 1, nil)
+				return page.Items[0], err
+			}))
+			if tool.Restarts != crashes {
+				t.Fatalf("after %d crashes the tool task counts %d restarts", crashes, tool.Restarts)
+			}
+		}
+		must0(t, run.harness.Close(testContext))
+	})
+
 	t.Run("answers a tool without replay that crashed with the output stored by then", func(t *testing.T) {
 		storage := newControlledStorage()
 		setup := slowProgressSetup(t, 150)
@@ -643,30 +672,36 @@ func TestReadingPiLiveInACommitStoresTheHeldPartial(t *testing.T) {
 
 func TestACompactionCutOffByACrashRerunsFromItsCheckpoint(t *testing.T) {
 	storage := newControlledStorage()
-	chat := openCompaction(t, compactionOptions{storage: storage})
-	chat.history(t)
+	setup := chatSetup(t)
+	setup.SetSettings(func(settings *HarnessSettings) { settings.Compaction = manualPolicy() })
 	summarizing := deferred()
-	chat.faux.pushSummary(func(request scriptRequest) (ai.FauxResponse, error) {
-		summarizing.resolve()
-		return ai.FauxResponse{}, abortedBy(request.options.Signal)
+	words := strings.Repeat("word ", 100)
+	setup.Faux.SetResponses([]ai.FauxResponseStep{
+		fauxAnswer("a1 " + words), fauxAnswer("a2 " + words), fauxAnswer("a3 " + words),
+		ai.FauxFactoryStep(func(_ ai.TranscriptContext, options ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.AssistantMessage, error) {
+			summarizing.resolve()
+			return ai.AssistantMessage{}, abortedBy(options.Signal)
+		}),
 	})
-	id := chat.compact(t, nil)
+	run := openProgress(t, storage, setup)
+	for _, label := range []string{"u1", "u2", "u3"} {
+		must(submitInput(t, run.root, label+" "+words).Wait(testContext))
+	}
+	id := must(run.root.Compact(testContext, nil))
 	<-summarizing.done
-	crash(t, chat.harness)
+	crash(t, run.harness)
 
-	chat.faux.pushSummary(scriptSummary())
-	storage.Reopen()
-	reopened, root := openChat(t, storage, chat.setup)
-	reopened.Resume()
-	record := must(reopened.WaitForTask(testContext, id))
+	setup.Faux.SetResponses([]ai.FauxResponseStep{fauxAnswer("SUMMARY")})
+	reopened := openProgress(t, storage, setup)
+	record := must(reopened.harness.WaitForTask(testContext, id))
 	if record.State.Outcome == nil || record.State.Outcome.Status != durable.OutcomeCompleted {
 		t.Fatalf("the compaction ended %+v, want completed", record.State.Outcome)
 	}
-	waitFor(t, func() bool { return slices.Contains(entryKinds(allEntries(t, root)), "pi.compaction") })
-	if live := liveOf(t, reopened, root.Id()); live == nil || !reflect.DeepEqual(*live, LiveState{}) {
+	waitFor(t, func() bool { return slices.Contains(entryKinds(allEntries(t, reopened.root)), "pi.compaction") })
+	if live := liveOf(t, reopened.harness, reopened.root.Id()); live == nil || !reflect.DeepEqual(*live, LiveState{}) {
 		t.Fatalf("pi.live = %+v, want empty", live)
 	}
-	must0(t, reopened.Close(testContext))
+	must0(t, reopened.harness.Close(testContext))
 }
 
 func TestAHeldDeferredPollIsResumedAfterACrash(t *testing.T) {

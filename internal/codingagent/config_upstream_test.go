@@ -372,3 +372,100 @@ func TestConfigReadOnlyPackageRootRejectsSelfUpdateOriginal(t *testing.T) {
 	}
 	fmt.Println("CONFIG_READONLY command=absent hint=not-writable")
 }
+
+// .upstream/current/packages/coding-agent/test/config.test.ts "configured self-update command" (Pi 8bc94b19). PiG reads
+// PIG_SELF_UPDATE_COMMAND before PI_SELF_UPDATE_COMMAND (D39); the cases clear the former so Pi's variable is exercised.
+func clearConfiguredSelfUpdateEnv(t *testing.T) {
+	t.Helper()
+	t.Setenv("PIG_SELF_UPDATE_COMMAND", "")
+	t.Setenv("PI_SELF_UPDATE_COMMAND", "")
+}
+
+func TestConfigConfiguredSelfUpdateCommandPrefersEnvAndSplitsOnWhitespace(t *testing.T) {
+	clearConfiguredSelfUpdateEnv(t)
+	t.Setenv("PI_SELF_UPDATE_COMMAND", "  nub   upgrade {installSpec} ")
+	if got, want := ConfiguredSelfUpdateArgv([]string{"mise", "upgrade"}), []string{"nub", "upgrade", "{installSpec}"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("argv=%q want=%q", got, want)
+	}
+}
+
+func TestConfigConfiguredSelfUpdateCommandPrefersPigEnvOverPiEnv(t *testing.T) {
+	clearConfiguredSelfUpdateEnv(t)
+	t.Setenv("PIG_SELF_UPDATE_COMMAND", "own-tool update")
+	t.Setenv("PI_SELF_UPDATE_COMMAND", "nub upgrade")
+	if got, want := ConfiguredSelfUpdateArgv(nil), []string{"own-tool", "update"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("argv=%q want=%q", got, want)
+	}
+}
+
+func TestConfigConfiguredSelfUpdateCommandUsesTheSettingWhenEnvIsUnsetOrBlank(t *testing.T) {
+	clearConfiguredSelfUpdateEnv(t)
+	t.Setenv("PI_SELF_UPDATE_COMMAND", " ")
+	if got, want := ConfiguredSelfUpdateArgv([]string{"mise", "upgrade", "npm:{packageName}"}), []string{"mise", "upgrade", "npm:{packageName}"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("argv=%q want=%q", got, want)
+	}
+	if got := ConfiguredSelfUpdateArgv([]string{}); got != nil {
+		t.Fatalf("empty setting: %q, want none", got)
+	}
+	if got := ConfiguredSelfUpdateArgv(nil); got != nil {
+		t.Fatalf("absent setting: %q, want none", got)
+	}
+}
+
+func TestConfigConfiguredSelfUpdateCommandFillsPlaceholdersInEveryArgument(t *testing.T) {
+	got := MakeConfiguredSelfUpdateCommand(
+		[]string{"wrapper", "install", "{installSpec}", "--name={packageName}", "--version", "{version}", "{unknown}"},
+		SelfUpdateRelease{PackageName: "@earendil-works/pi-coding-agent", Version: "1.2.3"})
+	want := &SelfUpdateCommand{
+		Command: "wrapper",
+		Args:    []string{"install", "@earendil-works/pi-coding-agent@1.2.3", "--name=@earendil-works/pi-coding-agent", "--version", "1.2.3", "{unknown}"},
+		Display: "wrapper install @earendil-works/pi-coding-agent@1.2.3 --name=@earendil-works/pi-coding-agent --version 1.2.3 {unknown}",
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %+v want %+v", got, want)
+	}
+}
+
+// Probe for test/parity/scenarios/cli-utils/37-configured-self-update-command.toml: the same cases, printed as
+// testdata/configured-self-update-pi.mjs prints them from Pi's config.ts.
+func TestConfiguredSelfUpdateParityProbe(t *testing.T) {
+	clearConfiguredSelfUpdateEnv(t)
+	emit := func(name, env string, setSetting bool, setting []string) {
+		t.Setenv("PI_SELF_UPDATE_COMMAND", env) // registers the restore
+		if env == "" {
+			// The Pi probe deletes the variable for these cases.
+			if err := os.Unsetenv("PI_SELF_UPDATE_COMMAND"); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if !setSetting {
+			setting = nil
+		}
+		argv := ConfiguredSelfUpdateArgv(setting)
+		data, err := json.Marshal(struct {
+			Case string   `json:"case"`
+			Argv []string `json:"argv"`
+		}{name, argv})
+		if err != nil {
+			t.Fatal(err)
+		}
+		fmt.Println("CONFIGURED_ARGV " + string(data))
+	}
+	emit("env wins and splits on whitespace", "  nub   upgrade {installSpec} ", true, []string{"mise", "upgrade"})
+	emit("blank env uses the setting", " ", true, []string{"mise", "upgrade", "npm:{packageName}"})
+	emit("unset env uses the setting", "", true, []string{"mise", "upgrade"})
+	emit("empty setting is unset", "", true, []string{})
+	emit("absent setting is unset", "", false, nil)
+	command := MakeConfiguredSelfUpdateCommand(
+		[]string{"wrapper", "install", "{installSpec}", "--name={packageName}", "--version", "{version}", "{unknown}"},
+		SelfUpdateRelease{PackageName: "@earendil-works/pi-coding-agent", Version: "1.2.3"})
+	data, err := json.Marshal(struct {
+		Command string   `json:"command"`
+		Args    []string `json:"args"`
+		Display string   `json:"display"`
+	}{command.Command, command.Args, command.Display})
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println("CONFIGURED_COMMAND " + string(data))
+}

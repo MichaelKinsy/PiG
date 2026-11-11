@@ -1,13 +1,13 @@
 package configschema
 
-// Mirrors packages/ai/src/providers/compat-schema.ts (first part: shared fields, routing and the OpenAI schemas).
+// Mirrors packages/ai/src/providers/compat-schema.ts, built with pi-schema builders (first part: shared fields, routing and the OpenAI schemas).
 
 func sessionAffinityFormat(opts ...Opt) *Schema {
-	return Union([]*Schema{Literal("openai"), Literal("openai-nosession"), Literal("openrouter")}, opts...)
+	return Union([]*Schema{StringLiteral("openai"), StringLiteral("openai-nosession"), StringLiteral("openrouter")}, opts...)
 }
 
 func thinkingTokenBudgetField(opts ...Opt) *Schema {
-	return Union([]*Schema{Literal("thinking_token_budget"), Literal("thinking_budget"), Literal("thinking_budget_tokens")}, opts...)
+	return Union([]*Schema{StringLiteral("thinking_token_budget"), StringLiteral("thinking_budget"), StringLiteral("thinking_budget_tokens")}, opts...)
 }
 
 func SessionAffinityFormatSchema() *Schema {
@@ -21,7 +21,7 @@ func ThinkingTokenBudgetFieldSchema() *Schema {
 func literals(values ...string) []*Schema {
 	out := make([]*Schema, len(values))
 	for i, v := range values {
-		out[i] = Literal(v)
+		out[i] = StringLiteral(v)
 	}
 	return out
 }
@@ -29,7 +29,7 @@ func literals(values ...string) []*Schema {
 func ChatTemplateKwargValueSchema() *Schema {
 	return Union([]*Schema{
 		String(), Number(), Boolean(), Null(),
-		Object([]Prop{
+		OpenObject([]Prop{
 			P("$var", Union(literals("thinking.enabled", "thinking.effort", "thinking.budget"))),
 			Optional("omitWhenOff", Boolean()),
 		}),
@@ -37,7 +37,7 @@ func ChatTemplateKwargValueSchema() *Schema {
 }
 
 func percentileCutoffs(metric string) *Schema {
-	return Object([]Prop{
+	return OpenObject([]Prop{
 		Optional("p50", Number(D(metric+" at the 50th percentile."))),
 		Optional("p75", Number(D(metric+" at the 75th percentile."))),
 		Optional("p90", Number(D(metric+" at the 90th percentile."))),
@@ -56,11 +56,11 @@ func priceUnion(description string) *Schema {
 }
 
 func OpenRouterRoutingSchema() *Schema {
-	sortObject := Object([]Prop{
+	sortObject := OpenObject([]Prop{
 		Optional("by", String(D(`The sorting metric, such as "price", "throughput", or "latency".`))),
 		Optional("partition", Union([]*Schema{String(), Null()}, D(`Partitioning strategy: "model" or "none".`), Default("model"))),
 	})
-	return Object([]Prop{
+	return OpenObject([]Prop{
 		Optional("allow_fallbacks", Boolean(D("Whether to allow backup providers to serve requests."), Default(true))),
 		Optional("require_parameters", Boolean(D("Whether to filter providers to only those that support all parameters in the request."), Default(false))),
 		Optional("data_collection", Union(literals("deny", "allow"), D(`Data collection setting. "allow": allow providers that may store or train on data. "deny": only use providers that do not collect user data.`), Default("allow"))),
@@ -71,7 +71,7 @@ func OpenRouterRoutingSchema() *Schema {
 		Optional("ignore", Array(String(), D("List of provider names or slugs to skip for this request."))),
 		Optional("quantizations", Array(String(), D(`A list of quantization levels to filter providers by, for example ["fp16", "bf16", "fp8", "fp6", "int8", "int4", "fp4", "fp32"].`))),
 		Optional("sort", Union([]*Schema{String(), sortObject}, D(`Sorting strategy. Can be a string such as "price", "throughput", or "latency", or an object.`))),
-		Optional("max_price", Object([]Prop{
+		Optional("max_price", OpenObject([]Prop{
 			Optional("prompt", priceUnion("Price per million prompt tokens.")),
 			Optional("completion", priceUnion("Price per million completion tokens.")),
 			Optional("image", priceUnion("Price per image.")),
@@ -84,14 +84,14 @@ func OpenRouterRoutingSchema() *Schema {
 }
 
 func VercelGatewayRoutingSchema() *Schema {
-	return Object([]Prop{
+	return OpenObject([]Prop{
 		Optional("only", Array(String(), D(`List of provider slugs to exclusively use for this request, for example ["bedrock", "anthropic"].`))),
 		Optional("order", Array(String(), D(`List of provider slugs to try in order, for example ["anthropic", "openai"].`))),
 	}, D("Vercel AI Gateway routing preferences. Controls which upstream providers the gateway routes requests to. See https://vercel.com/docs/ai-gateway/models-and-providers/provider-options."))
 }
 
 func AnthropicAllowedFallbackModelSchema() *Schema {
-	return Object([]Prop{
+	return OpenObject([]Prop{
 		P("provider", String(Opt{"minLength", 1})),
 		P("model", String(Opt{"minLength", 1})),
 		P("cost", ModelCostSchema()),
@@ -100,7 +100,7 @@ func AnthropicAllowedFallbackModelSchema() *Schema {
 
 func OpenAICompletionsCompatSchema() *Schema {
 	kwargs := ChatTemplateKwargValueSchema()
-	return Object([]Prop{
+	return OpenObject([]Prop{
 		Optional("supportsStore", Boolean(D("Whether the provider supports the store field. Default: auto-detected from URL."))),
 		optionalCompatBoolean("supportsDeveloperRole", D("Whether the provider supports the developer role instead of system. Default: auto-detected from URL.")),
 		Optional("supportsReasoningEffort", Boolean(D("Whether the provider supports reasoning_effort. Default: auto-detected from URL."))),
@@ -113,8 +113,8 @@ func OpenAICompletionsCompatSchema() *Schema {
 		Optional("requiresReasoningContentOnAssistantMessages", Boolean(D("Whether all replayed assistant messages must include an empty reasoning_content field when reasoning is enabled. Default: auto-detected from URL."))),
 		Optional("thinkingFormat", Union(literals("openai", "openrouter", "deepseek", "together", "baseten", "zai", "qwen", "chat-template", "qwen-chat-template", "string-thinking", "ant-ling"),
 			D(`Format for reasoning or thinking parameters. When omitted, Pi auto-detects the format from the provider URL. "openai" uses reasoning_effort, "openrouter" uses reasoning.effort, "deepseek" uses thinking.type plus reasoning_effort when supported, "together" uses reasoning.enabled plus reasoning_effort when supported, "baseten" uses configurable chat_template_args plus reasoning_effort when supported, "zai" uses thinking.type, "qwen" uses top-level enable_thinking, "qwen-chat-template" uses chat_template_kwargs.enable_thinking and preserve_thinking, "chat-template" uses configurable chat_template_kwargs, "string-thinking" uses top-level thinking, and "ant-ling" uses reasoning.effort only when the mapped effort is non-null.`))),
-		Optional("chatTemplateKwargs", Record(kwargs, D(`Kwargs sent as chat_template_kwargs when thinkingFormat is "chat-template". Use $var with "thinking.enabled", "thinking.effort", or "thinking.budget" for pi-controlled values.`))),
-		Optional("chatTemplateArgs", Record(kwargs, D(`Arguments sent as chat_template_args when thinkingFormat is "baseten". Use $var with "thinking.enabled", "thinking.effort", or "thinking.budget" for pi-controlled values.`))),
+		Optional("chatTemplateKwargs", StringRecord(kwargs, D(`Kwargs sent as chat_template_kwargs when thinkingFormat is "chat-template". Use $var with "thinking.enabled", "thinking.effort", or "thinking.budget" for pi-controlled values.`))),
+		Optional("chatTemplateArgs", StringRecord(kwargs, D(`Arguments sent as chat_template_args when thinkingFormat is "baseten". Use $var with "thinking.enabled", "thinking.effort", or "thinking.budget" for pi-controlled values.`))),
 		Optional("openRouterRouting", OpenRouterRoutingSchema()),
 		Optional("vercelGatewayRouting", VercelGatewayRoutingSchema()),
 		Optional("zaiToolStream", Boolean(D("Whether z.ai supports top-level tool_stream for streaming tool call deltas."), Default(false))),
@@ -124,7 +124,7 @@ func OpenAICompletionsCompatSchema() *Schema {
 		optionalCompatBoolean("supportsMidConvoSystemMessages", D("Whether the exact model accepts system or developer messages after the conversation has started. When false, later system messages are folded into the leading system message. The generated catalog enables this for verified models."), Default(false)),
 		Optional("supportsMidConvoToolAdditions", Boolean(D("Whether system messages can introduce additional tools mid-conversation. Requires supportsMidConvoSystemMessages. The generated catalog enables this for capable models."), Default(false))),
 		optionalCompatBoolean("supportsStrictMode", D("Whether the provider supports the strict field in tool definitions. Generated capable models enable it explicitly."), Default(false)),
-		Optional("cacheControlFormat", Literal("anthropic", D("Cache control convention for prompt caching. Anthropic applies cache_control markers to the system prompt, last tool definition, and last user, assistant, or tool-result text content."))),
+		Optional("cacheControlFormat", StringLiteral("anthropic", D("Cache control convention for prompt caching. Anthropic applies cache_control markers to the system prompt, last tool definition, and last user, assistant, or tool-result text content."))),
 		optionalCompatBoolean("sendSessionAffinityHeaders", D("Whether to send session-affinity data from options.sessionId. Default: true for OpenRouter endpoints, false otherwise.")),
 		optionalSessionAffinityFormat(D("Session-affinity header format. openai sends session_id, x-client-request-id, and x-session-affinity; openai-nosession sends x-client-request-id and x-session-affinity; openrouter sends x-session-id. Does not affect prompt_cache_key. Default: auto-detected.")),
 		optionalCompatBoolean("supportsLongCacheRetention", D(`Whether the provider supports long prompt cache retention (prompt_cache_retention: "24h" or Anthropic-style cache_control.ttl: "1h", depending on format). Default: auto-detected from provider and URL.`)),
@@ -133,7 +133,7 @@ func OpenAICompletionsCompatSchema() *Schema {
 }
 
 func OpenAIResponsesCompatSchema() *Schema {
-	return Object([]Prop{
+	return OpenObject([]Prop{
 		optionalCompatBoolean("supportsDeveloperRole", D("Whether the provider supports the developer role instead of system."), Default(true)),
 		optionalCompatBoolean("supportsMidConvoSystemMessages", D("Whether the exact model accepts developer or system messages after the conversation has started. When false, later system messages are folded into the leading system message. The generated catalog enables this for verified models."), Default(false)),
 		optionalSessionAffinityFormat(D("Session-affinity header format. openai sends session_id and x-client-request-id; openai-nosession sends x-client-request-id; openrouter sends x-session-id. Does not affect prompt_cache_key. Default: auto-detected.")),

@@ -30,10 +30,17 @@ pub fn session_entry_to_context_messages(entry: &Value) -> io::Result<Vec<Value>
     match entry.get("type").and_then(Value::as_str) {
         Some("message") => {
             let message = match entry.get("message") {
-                None | Some(Value::Null) => return Err(io::Error::new(io::ErrorKind::InvalidData, "TypeError: Cannot read properties of undefined (reading 'role')")),
+                None | Some(Value::Null) => {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        "TypeError: Cannot read properties of undefined (reading 'role')",
+                    ));
+                }
                 Some(message) => message,
             };
-            let Value::Object(object) = message else { return Ok(vec![message.clone()]) };
+            let Value::Object(object) = message else {
+                return Ok(vec![message.clone()]);
+            };
             if object.get("content").is_none_or(Value::is_null) {
                 let content = match object.get("role").and_then(Value::as_str) {
                     Some("system") => Some(json!("")),
@@ -54,7 +61,14 @@ pub fn session_entry_to_context_messages(entry: &Value) -> io::Result<Vec<Value>
             if let Some(custom_type) = entry.get("customType") {
                 message.insert("customType".into(), custom_type.clone());
             }
-            message.insert("content".into(), entry.get("content").filter(|content| !content.is_null()).cloned().unwrap_or_else(|| json!([])));
+            message.insert(
+                "content".into(),
+                entry
+                    .get("content")
+                    .filter(|content| !content.is_null())
+                    .cloned()
+                    .unwrap_or_else(|| json!([])),
+            );
             for key in ["display", "details"] {
                 if let Some(value) = entry.get(key) {
                     message.insert(key.into(), value.clone());
@@ -64,7 +78,13 @@ pub fn session_entry_to_context_messages(entry: &Value) -> io::Result<Vec<Value>
             Ok(vec![Value::Object(message)])
         }
         Some("branch_summary") => {
-            let Some(summary) = entry.get("summary").and_then(Value::as_str).filter(|summary| !summary.is_empty()) else { return Ok(Vec::new()) };
+            let Some(summary) = entry
+                .get("summary")
+                .and_then(Value::as_str)
+                .filter(|summary| !summary.is_empty())
+            else {
+                return Ok(Vec::new());
+            };
             let mut message = Map::new();
             message.insert("role".into(), json!("branchSummary"));
             message.insert("summary".into(), json!(summary));
@@ -77,7 +97,10 @@ pub fn session_entry_to_context_messages(entry: &Value) -> io::Result<Vec<Value>
         Some("compaction") => {
             let mut summary = Map::new();
             summary.insert("role".into(), json!("compactionSummary"));
-            summary.insert("summary".into(), entry.get("summary").cloned().unwrap_or(Value::Null));
+            summary.insert(
+                "summary".into(),
+                entry.get("summary").cloned().unwrap_or(Value::Null),
+            );
             if let Some(tokens) = entry.get("tokensBefore") {
                 summary.insert("tokensBefore".into(), tokens.clone());
             }

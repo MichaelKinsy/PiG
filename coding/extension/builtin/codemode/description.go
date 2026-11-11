@@ -24,6 +24,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
 )
 
 // ToolName is the name of the tool.
@@ -172,9 +173,9 @@ func selectCatalog(groups []*catalogGroup, budget *int) map[string]bool {
 }
 
 // CreateDescription is the model-facing description: the intro, one line per script global (with `models` when
-// options.Models is set), the shared MCP types when listed tools need them, and one section per listed tool, grouped by
-// namespace. Deferred tools are never listed and do not affect the description at all, so it stays the same while MCP
-// servers connect or change their tools. Tool sections are limited to the inline budget.
+// options.Models is set), and one section per listed tool, grouped by namespace. Deferred tools are never listed and do
+// not affect the description at all, so it stays the same while tools are registered late (for example by MCP servers
+// that connect). Tool sections are limited to the inline budget.
 func CreateDescription(tools []extension.AgentTool, options DescriptionOptions) (string, error) {
 	var declarations []sandbox.Tool
 	for _, tool := range callableTools(tools) {
@@ -221,7 +222,7 @@ func CreateDescription(tools []extension.AgentTool, options DescriptionOptions) 
 		case b.namespace == nil:
 			return 1
 		}
-		return jsstring.LocaleCompare(a.namespace.Name, b.namespace.Name)
+		return localecompare.Compare(a.namespace.Name, b.namespace.Name)
 	})
 	shown := selectCatalog(ordered, options.InlineBudget)
 

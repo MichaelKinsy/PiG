@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/env"
 	envnode "github.com/MichaelKinsy/PiG/durable/env/node"
+	"github.com/MichaelKinsy/PiG/durable/tools"
 )
 
 const tinyPNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
@@ -169,6 +171,55 @@ func TestDurableCodeModeOutputAndToolSearch(t *testing.T) {
 		content, err := os.ReadFile(saved[1])
 		if err != nil || base64.StdEncoding.EncodeToString(content) != tinyPNG {
 			t.Errorf("saved image: %v, %v", content, err)
+		}
+		hasImage := false
+		for _, item := range run.content {
+			if _, ok := item.(ai.ImageContent); ok {
+				hasImage = true
+			}
+		}
+		if !hasImage {
+			t.Error("the result has no image")
+		}
+	})
+
+	// Pi main 04414839 (#11015) packages/durable/test/codemode.test.ts "resolves the built-in read with an image's block, which image() shows, and with a text file's text"
+	t.Run("resolves the built-in read with an image's block, which image() shows, and with a text file's text", func(t *testing.T) {
+		files := t.TempDir()
+		png, err := base64.StdEncoding.DecodeString(tinyPNG)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(files, "pixel.png"), png, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(files, "note.txt"), []byte("hello"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		chat := codemodeChat(t)
+		addTool(t, chat.setup.registry, tools.CreateReadTool(nil))
+		quoted := func(name string) string {
+			encoded, err := json.Marshal(filepath.Join(files, name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			return string(encoded)
+		}
+		run := runScript(t, `const picture = await tools.read({ path: `+quoted("pixel.png")+` });
+			text([picture.type, picture.mimeType, picture.data.length].join(" "));
+			image(picture);
+			text(await tools.read({ path: `+quoted("note.txt")+` }));`, chat)
+		if run.isError {
+			t.Fatalf("the script failed: %q", run.text)
+		}
+		if !strings.Contains(run.text, "image image/png "+strconv.Itoa(len(tinyPNG))) {
+			t.Errorf("no image block in %q", run.text)
+		}
+		if !regexp.MustCompile(`\[Image saved to \S+ \(image/png, \d+ bytes\)\]`).MatchString(run.text) {
+			t.Errorf("no saved image in %q", run.text)
+		}
+		if !strings.Contains(run.text, "hello") {
+			t.Errorf("no text of the file in %q", run.text)
 		}
 		hasImage := false
 		for _, item := range run.content {

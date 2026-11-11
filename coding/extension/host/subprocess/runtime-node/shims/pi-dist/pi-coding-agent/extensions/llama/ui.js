@@ -1,7 +1,8 @@
-import { Container, fuzzyFilter, Input, SelectList, Spacer, Text, truncateToWidth, visibleWidth, } from "../../../../pi-tui.mjs";
+import { Container, fuzzyFilter, getSelectPageIndex, Input, SelectList, Spacer, Text, truncateToWidth, visibleWidth, } from "../../../../pi-tui.mjs";
 import { DynamicBorder } from "../../modes/interactive/components/dynamic-border.js";
 import { keyHint } from "../../modes/interactive/components/keybinding-hints.js";
 const DOWNLOAD_VALUE = "\0download";
+const SEARCH_MAX_VISIBLE = 10;
 function contextLabel(model) {
     const context = model.meta?.n_ctx ?? model.meta?.n_ctx_train;
     if (context)
@@ -58,6 +59,7 @@ function compactCount(value) {
     return String(value);
 }
 class HuggingFaceSearch extends Container {
+    capturesViewportInput = true;
     tui;
     theme;
     keybindings;
@@ -98,9 +100,8 @@ class HuggingFaceSearch extends Container {
     }
     updateResults() {
         this.resultsContainer.clear();
-        const maxVisible = 10;
-        const start = Math.max(0, Math.min(this.selectedIndex - Math.floor(maxVisible / 2), this.filteredResults.length - maxVisible));
-        const end = Math.min(start + maxVisible, this.filteredResults.length);
+        const start = Math.max(0, Math.min(this.selectedIndex - Math.floor(SEARCH_MAX_VISIBLE / 2), this.filteredResults.length - SEARCH_MAX_VISIBLE));
+        const end = Math.min(start + SEARCH_MAX_VISIBLE, this.filteredResults.length);
         for (let index = start; index < end; index++) {
             const model = this.filteredResults[index];
             if (!model)
@@ -203,6 +204,14 @@ class HuggingFaceSearch extends Container {
             }
             return;
         }
+        const pageIndex = getSelectPageIndex(this.keybindings, data, this.selectedIndex, this.filteredResults.length, SEARCH_MAX_VISIBLE);
+        if (pageIndex !== undefined) {
+            if (this.filteredResults.length > 0) {
+                this.selectedIndex = pageIndex;
+                this.updateResults();
+            }
+            return;
+        }
         if (this.keybindings.matches(data, "tui.select.confirm")) {
             const exact = /^[^/\s]+\/[^:\s]+(?::[^\s:]+)?$/u.test(this.query) ? this.query : undefined;
             const selected = exact ?? this.filteredResults[this.selectedIndex]?.id;
@@ -247,6 +256,9 @@ class LlamaView {
         this._focused = value;
         if (this.inputTarget)
             this.inputTarget.focused = value;
+    }
+    get capturesViewportInput() {
+        return this.inputHandler?.capturesViewportInput === true;
     }
     setContent(content, inputHandler, inputTarget) {
         if (this.inputTarget)

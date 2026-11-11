@@ -260,6 +260,16 @@ func (r *withSessionRoute) run(conn *Conn, callID string, call *CallPayload, mar
 		r.runMessage(conn, callID, call)
 		return
 	}
+	if call.Method == CallYield {
+		// The explicit yield of a thread-based SDK (a callback's `await sleep()` in Pi). No send holds the Session on this route (holdAfterSend is
+		// bypassed), so there is no hold to end and nothing to forward: the call answers empty.
+		_, release := conn.hostCallContext(call.ParentRequestID, callID)
+		release()
+		if callID != "" {
+			_ = conn.Send(&Envelope{Type: MsgCallResult, ID: callID, CallResult: &CallResultPayload{}})
+		}
+		return
+	}
 	if r.target == nil || r.member == nil {
 		_, release := conn.hostCallContext(call.ParentRequestID, callID)
 		release()

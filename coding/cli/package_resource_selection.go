@@ -6,6 +6,7 @@ import (
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
+// Ports packages/coding-agent/src/core/package-manager.ts (resourcePrecedenceRank).
 // Ports .upstream/v0.99.1/packages/coding-agent/src/core/package-manager.ts:190-198 (resourcePrecedenceRank).
 func resourcePrecedenceRank(item tui.ResourceItem) int {
 	// Built-in extensions load after file and package extensions, whichever scope enables them.

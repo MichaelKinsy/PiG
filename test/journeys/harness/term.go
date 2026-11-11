@@ -70,7 +70,7 @@ func StartTerminal(o TermOpts) (*Terminal, error) {
 		return nil, err
 	}
 	conf := filepath.Join(t.root, "tmux.conf")
-	confText := "set -g remain-on-exit on\nset -g window-size manual\nset -g history-limit 200000\nset -g extended-keys on\n"
+	confText := "set -g remain-on-exit on\nset -g history-limit 200000\nset -g extended-keys on\n"
 	if err := os.WriteFile(conf, []byte(confText), 0o600); err != nil {
 		return nil, err
 	}
@@ -92,10 +92,18 @@ func StartTerminal(o TermOpts) (*Terminal, error) {
 		return nil, err
 	}
 	base := []string{"-L", t.sock, "-f", conf}
+	//nolint:gosec // G204 (class a): program is literal tmux; new-session with fixed flags, a generated session name, and the launcher script path in t.root.
 	out, err := exec.Command("tmux", append(append([]string(nil), base...), "new-session", "-d", "-s", t.session, "-x", strconv.Itoa(o.Width), "-y", strconv.Itoa(o.Height), "sh", launcher)...).CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("tmux new-session: %w: %s", err, out)
 	}
+	// window-size manual keeps the size new-session gave the window when the control client attaches. It is set on the running server: tmux 3.3 to 3.6a exit on it in a config file, before the first session exists, while 3.2 to 3.8 accept it afterwards. tmux 3.2a then recomputes the window at its 80x24 default, so the size is set again.
+	size := []string{"set-option", "-g", "window-size", "manual", ";", "resize-window", "-t", t.session, "-x", strconv.Itoa(o.Width), "-y", strconv.Itoa(o.Height)}
+	//nolint:gosec // G204 (class a): program is literal tmux; set-option and resize-window with fixed flags and the generated session name.
+	if out, err := exec.Command("tmux", append(append([]string(nil), base...), size...)...).CombinedOutput(); err != nil {
+		return nil, fmt.Errorf("tmux window-size manual: %w: %s", err, out)
+	}
+	//nolint:gosec // G204 (class a): program is literal tmux; control-mode attach to the generated session name.
 	t.ctl = exec.Command("tmux", append(append([]string(nil), base...), "-C", "attach", "-t", t.session)...)
 	t.stdin, err = t.ctl.StdinPipe()
 	if err != nil {
@@ -112,6 +120,7 @@ func StartTerminal(o TermOpts) (*Terminal, error) {
 	// The first %begin/%end pair answers the attach itself.
 	go func() { // exit watcher: blocks on tmux wait-for, an event, not a poll.
 		defer close(t.waitDone)
+		//nolint:gosec // G204 (class a): program is literal tmux; wait-for exited on a test-generated socket (-L).
 		_ = exec.Command("tmux", "-L", t.sock, "wait-for", "exited").Run()
 		close(t.exited)
 		t.bump()
@@ -342,6 +351,7 @@ func (t *Terminal) Close() {
 			_ = signalPID(pid, 9)
 		}
 	}
+	//nolint:gosec // G204 (class a): program is literal tmux; kill-session on the harness-generated socket and session.
 	_ = exec.Command("tmux", "-L", t.sock, "kill-session", "-t", t.session).Run()
 	_ = t.stdin.Close()
 	done := make(chan struct{})
@@ -357,6 +367,7 @@ func (t *Terminal) Close() {
 	case <-t.exited:
 	default:
 		// release the watcher blocked in wait-for
+		//nolint:gosec // G204 (class a): program is literal tmux; wait-for -S exited on the generated socket.
 		_ = exec.Command("tmux", "-L", t.sock, "wait-for", "-S", "exited").Run()
 	}
 }

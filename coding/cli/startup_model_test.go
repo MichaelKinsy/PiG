@@ -135,7 +135,7 @@ func TestFindInitialModelMatchesUpstream(t *testing.T) {
 	savedDeepSeek := codingagent.RuntimeModel{Provider: "deepseek", ID: "deepseek-v4-flash"}
 	localDeepSeek := codingagent.RuntimeModel{Provider: "spark-two", ID: "deepseek-v4-flash"}
 	anthropicDefault := codingagent.RuntimeModel{Provider: "anthropic", ID: "claude-opus-4-8"}
-	openAIDefault := codingagent.RuntimeModel{Provider: "openai", ID: "gpt-5.5"}
+	openAIDefault := codingagent.RuntimeModel{Provider: "openai", ID: "gpt-6.1-sol"}
 	for _, tc := range []struct {
 		name            string
 		models          []codingagent.RuntimeModel
@@ -253,8 +253,8 @@ func TestSelectStartupModelUsesStoredLoginProvider(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if selected.Model == nil || selected.Model.ProviderMeta.ProviderID != "openai" || selected.Model.ID != "gpt-5.5" {
-		t.Fatalf("model = %+v, want openai/gpt-5.5", selected.Model)
+	if selected.Model == nil || selected.Model.ProviderMeta.ProviderID != "openai" || selected.Model.ID != "gpt-6.1-sol" {
+		t.Fatalf("model = %+v, want openai/gpt-6.1-sol", selected.Model)
 	}
 }
 

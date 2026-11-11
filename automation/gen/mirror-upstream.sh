@@ -20,11 +20,15 @@
 #   ./automation/gen/mirror-upstream.sh
 #   ./automation/gen/mirror-upstream.sh --force
 #   ./automation/gen/mirror-upstream.sh --version v0.70.5
+#   ./automation/gen/mirror-upstream.sh --version v1.4.0+b556cfe5 --sources-only
 #   ./automation/gen/mirror-upstream.sh --prune
 #   ./automation/gen/mirror-upstream.sh --help
 #
 # --version materializes an additional release for comparison. It does not
-# change the pin.
+# change the pin. A version with a +<commit> suffix is the commit build an
+# earlier commit pin named in the ledgers. --sources-only skips the generated
+# provider data the comparison does not read (`make upstream-delta` mirrors the
+# exact earlier pin this way).
 #
 # Requires: curl, tar, git
 # Optional: GH_PUBLIC_TOKEN
@@ -88,7 +92,7 @@ verify_mirror_tree() {
   local directory="$1"
   local source_count
   [[ -f "$directory/packages/coding-agent/src/core/extensions/types.ts" ]] || return 1
-  [[ -f "$directory/packages/ai/src/providers/data/amazon-bedrock.json" ]] || return 1
+  [[ "$SOURCES_ONLY" -eq 1 || -f "$directory/packages/ai/src/providers/data/amazon-bedrock.json" ]] || return 1
   source_count=$(find "$directory/packages" -path '*/src/*' -name '*.ts' 2>/dev/null | wc -l | tr -d ' ')
   (( source_count >= 200 ))
 }
@@ -98,7 +102,7 @@ verify_mirror_tree() {
 hydrate_provider_data() {
   local directory="$1" version="$2" candidate package_version matches
   local target="$directory/packages/ai/src/providers/data"
-  [[ -f "$target/amazon-bedrock.json" ]] && return 0
+  [[ "$SOURCES_ONLY" -eq 1 || -f "$target/amazon-bedrock.json" ]] && return 0
   for candidate in \
     "${PIG_PUBLISHED_AI_DATA:-}" \
     "${PI_PACKAGE_ROOT:-}/node_modules/@earendil-works/pi-ai/dist/providers/data" \
@@ -132,14 +136,18 @@ link_build_modules() {
 
 FORCE=0
 PRUNE=0
+SOURCES_ONLY=0
 OVERRIDE_TAG=""
+COMMIT_BUILD=0
+BUILD_TARBALL=""
 while (( $# )); do
   case "$1" in
     --force) FORCE=1 ;;
     --prune) PRUNE=1 ;;
+    --sources-only) SOURCES_ONLY=1 ;;
     --version)
       shift
-      [[ $# -gt 0 ]] || { echo "--version requires a tag (e.g. v0.70.5)" >&2; exit 2; }
+      [[ $# -gt 0 ]] || { echo "--version requires a tag (e.g. v0.70.5) or a commit build (e.g. v1.4.0+b556cfe5)" >&2; exit 2; }
       OVERRIDE_TAG="$1"
       ;;
     -h|--help) sed -n '2,42p' "$0"; exit 0 ;;
@@ -162,7 +170,27 @@ if [[ -n "$OVERRIDE_TAG" ]]; then
   TARGET_NAME="$TARGET_TAG"
   TARGET_VERSION="${TARGET_TAG#v}"
   PACKAGE_VERSION="$TARGET_VERSION"
-  RESOLVED_COMMIT=$(resolve_tag_commit "$TARGET_TAG") || exit 1
+  if [[ "$TARGET_VERSION" == *+* ]]; then
+    # A commit build, as the ledgers name an earlier commit pin (1.4.0+b556cfe5): the mirror of exactly that commit, as
+    # the pin's own mirror is, under the ledger version's directory.
+    COMMIT_BUILD=1
+    # An extracted mirror names its commit in its provenance marker: use that, so a run with the mirror in place makes no
+    # request. Only a missing mirror (or --force) resolves the commit and fetches the tarball.
+    RESOLVED_COMMIT=""
+    marker="${MIRROR_ROOT}/${TARGET_TAG}/.pig-upstream-source.json"
+    if [[ "$FORCE" -eq 0 && -f "$marker" ]]; then
+      RESOLVED_COMMIT=$(sed -n 's/^ *"commit": *"\([0-9a-f]\{40\}\)".*$/\1/p' "$marker")
+      [[ "$RESOLVED_COMMIT" == "${TARGET_VERSION#*+}"* ]] || RESOLVED_COMMIT=""
+      PACKAGE_VERSION="${TARGET_VERSION%%+*}"
+    fi
+    if [[ -z "$RESOLVED_COMMIT" ]]; then
+      read -r RESOLVED_COMMIT PACKAGE_VERSION BUILD_TARBALL < <(python3 "$REPO_ROOT/automation/pin/pin.py" mirror-spec "$TARGET_VERSION") || exit 1
+    fi
+    valid_commit "$RESOLVED_COMMIT" || { echo "error: ${TARGET_VERSION} did not resolve to a commit" >&2; exit 1; }
+    TARGET_TAG="$RESOLVED_COMMIT"
+  else
+    RESOLVED_COMMIT=$(resolve_tag_commit "$TARGET_TAG") || exit 1
+  fi
 else
   TARGET_TAG=$(pin_get tag)
   TARGET_NAME=$(pin_get mirror_dir)
@@ -221,7 +249,9 @@ if [[ -d "$TARGET_DIR" && "$FORCE" -eq 0 ]]; then
 fi
 
 # Reuse or download the exact public tarball of the tag or commit.
-if [[ -n "$OVERRIDE_TAG" ]]; then
+if [[ "$COMMIT_BUILD" -eq 1 ]]; then
+  TARBALL="$BUILD_TARBALL"
+elif [[ -n "$OVERRIDE_TAG" ]]; then
   TARBALL="${TARBALL_DIR}/${TARGET_TAG}.tar.gz"
   if [[ ! -f "$TARBALL" ]]; then
     echo "→ fetching tarball for ${TARGET_TAG}"

@@ -474,7 +474,10 @@ export class TuiAltScreen extends TuiBase {
     flash(message, durationMs) {
         this.flashes.flash(message, durationMs);
     }
-    shouldDeferViewportInputToOverlay() {
+    /** Focused overlays and components that capture viewport input receive viewport keys instead of the transcript. */
+    shouldDeferViewportInput() {
+        if (this.getFocusedComponent()?.capturesViewportInput)
+            return true;
         return this.isOverlayFocused() && this.activeSearch?.overlay?.isFocused() !== true;
     }
     clearComponentMouseGesture() {
@@ -557,7 +560,7 @@ export class TuiAltScreen extends TuiBase {
                 return { consume: true };
             }
         }
-        if (this.shouldDeferViewportInputToOverlay())
+        if (this.shouldDeferViewportInput())
             return undefined;
         if (keybindings.matches(data, "tui.altScreen.pageUp")) {
             if (!isRelease) {

@@ -97,14 +97,14 @@ func snapshotEnvDirs(t *testing.T, sourcePath string, envVars []string, preserve
 		// Create ephemeral copy.
 		// PIG_HOME holds pig's documentation bundle, whose path the system
 		// prompt carries; see "Documentation paths in the system prompt".
-		root := os.TempDir()
+		root, digits := os.TempDir(), snapshotIDDigits
 		if k == "PIG_HOME" {
 			if err := checkPromptPathRoot(); err != nil {
 				t.Fatal(err)
 			}
-			root = promptPathRoot
+			root, digits = promptPathRoot, pigHomeIDDigits
 		}
-		tmp, err := mkdirFixed(root, fmt.Sprintf("parity-snap-%s-", k))
+		tmp, err := mkdirFixedDigits(root, fmt.Sprintf("parity-snap-%s-", k), digits)
 		if err != nil {
 			t.Fatalf("snapshot: mkdirtemp for %s: %v", k, err)
 		}

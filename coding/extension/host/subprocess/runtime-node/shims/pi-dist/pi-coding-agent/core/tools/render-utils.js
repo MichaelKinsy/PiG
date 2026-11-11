@@ -1,17 +1,12 @@
-import * as os from "node:os";
 import { pathToFileURL } from "node:url";
 import { getCapabilities, getImageDimensions, hyperlink, imageFallback } from "../../../../pi-tui.mjs";
 import { stripAnsi } from "../../utils/ansi.js";
-import { resolvePath } from "../../utils/paths.js";
+import { resolvePath, shortenHomePath } from "../../utils/paths.js";
 import { sanitizeBinaryOutput } from "../../utils/shell.js";
 export function shortenPath(path) {
     if (typeof path !== "string")
         return "";
-    const home = os.homedir();
-    if (path.startsWith(home)) {
-        return `~${path.slice(home.length)}`;
-    }
-    return path;
+    return shortenHomePath(path);
 }
 export function linkPath(styledText, rawPath, cwd) {
     if (!getCapabilities().hyperlinks)

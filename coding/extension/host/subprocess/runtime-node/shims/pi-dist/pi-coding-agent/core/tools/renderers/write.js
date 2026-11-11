@@ -7,10 +7,15 @@
  */
 import { Container, Text } from "../../../../../pi-tui.mjs";
 import { keyHint } from "../../../modes/interactive/components/keybinding-hints.js";
-import { getLanguageFromPath, highlightCode } from "../../../modes/interactive/theme/theme.js";
+import { CodeHighlighter, getLanguageFromPath, highlightCode, } from "../../../modes/interactive/theme/theme.js";
 import { normalizeDisplayText, renderToolPath, replaceTabs, str } from "../render-utils.js";
 class WriteCallRenderComponent extends Text {
+    // Line by line highlighting of a call whose content is still streaming.
     cache;
+    // A streamed call highlights its first lines on every delta, which stop changing once the file is longer, and a
+    // complete call highlights the whole file on every update and expand toggle. Either way the row reuses the last
+    // highlighting; it also holds the only copy of a complete call's displayed source.
+    highlighter = new CodeHighlighter();
     constructor() {
         super("", 0, 0);
     }
@@ -20,12 +25,12 @@ function highlightSingleLine(line, lang) {
     const highlighted = highlightCode(line, lang);
     return highlighted[0] ?? "";
 }
-function refreshWriteHighlightPrefix(cache) {
+function refreshWriteHighlightPrefix(cache, highlighter) {
     const prefixCount = Math.min(WRITE_PARTIAL_FULL_HIGHLIGHT_LINES, cache.normalizedLines.length);
     if (prefixCount === 0)
         return;
     const prefixSource = cache.normalizedLines.slice(0, prefixCount).join("\n");
-    const prefixHighlighted = highlightCode(prefixSource, cache.lang);
+    const prefixHighlighted = highlighter.highlight(prefixSource, cache.lang);
     for (let i = 0; i < prefixCount; i++) {
         cache.highlightedLines[i] =
             prefixHighlighted[i] ?? highlightSingleLine(cache.normalizedLines[i] ?? "", cache.lang);
@@ -45,16 +50,15 @@ function rebuildWriteHighlightCacheFull(rawPath, fileContent) {
         highlightedLines: highlightCode(normalized, lang),
     };
 }
-function updateWriteHighlightCacheIncremental(cache, rawPath, fileContent) {
+function updateWriteHighlightCacheIncremental(cache, rawPath, fileContent, highlighter) {
     const lang = rawPath ? getLanguageFromPath(rawPath) : undefined;
     if (!lang)
         return undefined;
     if (!cache)
         return rebuildWriteHighlightCacheFull(rawPath, fileContent);
-    if (cache.lang !== lang || cache.rawPath !== rawPath)
+    if (cache.lang !== lang || cache.rawPath !== rawPath || !fileContent.startsWith(cache.rawContent)) {
         return rebuildWriteHighlightCacheFull(rawPath, fileContent);
-    if (!fileContent.startsWith(cache.rawContent))
-        return rebuildWriteHighlightCacheFull(rawPath, fileContent);
+    }
     if (fileContent.length === cache.rawContent.length)
         return cache;
     const deltaRaw = fileContent.slice(cache.rawContent.length);
@@ -73,7 +77,7 @@ function updateWriteHighlightCacheIncremental(cache, rawPath, fileContent) {
         cache.normalizedLines.push(segments[i]);
         cache.highlightedLines.push(highlightSingleLine(segments[i], cache.lang));
     }
-    refreshWriteHighlightPrefix(cache);
+    refreshWriteHighlightPrefix(cache, highlighter);
     return cache;
 }
 function trimTrailingEmptyLines(lines) {
@@ -83,7 +87,7 @@ function trimTrailingEmptyLines(lines) {
     }
     return lines.slice(0, end);
 }
-function formatWriteCall(args, options, theme, cache, cwd) {
+function formatWriteCall(args, options, theme, cache, highlighter, cwd) {
     const rawPath = str(args?.file_path ?? args?.path);
     const fileContent = str(args?.content);
     const pathDisplay = renderToolPath(rawPath, theme, cwd);
@@ -94,7 +98,7 @@ function formatWriteCall(args, options, theme, cache, cwd) {
     else if (fileContent) {
         const lang = rawPath ? getLanguageFromPath(rawPath) : undefined;
         const renderedLines = lang
-            ? (cache?.highlightedLines ?? highlightCode(replaceTabs(normalizeDisplayText(fileContent)), lang))
+            ? (cache?.highlightedLines ?? highlighter.highlight(replaceTabs(normalizeDisplayText(fileContent)), lang))
             : normalizeDisplayText(fileContent).split("\n");
         const lines = trimTrailingEmptyLines(renderedLines);
         const totalLines = lines.length;
@@ -127,15 +131,11 @@ export const writeRenderers = {
         const rawPath = str(renderArgs?.file_path ?? renderArgs?.path);
         const fileContent = str(renderArgs?.content);
         const component = context.lastComponent ?? new WriteCallRenderComponent();
-        if (fileContent !== null) {
-            component.cache = context.argsComplete
-                ? rebuildWriteHighlightCacheFull(rawPath, fileContent)
-                : updateWriteHighlightCacheIncremental(component.cache, rawPath, fileContent);
-        }
-        else {
-            component.cache = undefined;
-        }
-        component.setText(formatWriteCall(renderArgs, { expanded: context.expanded, isPartial: context.isPartial }, theme, component.cache, context.cwd));
+        component.cache =
+            fileContent !== null && !context.argsComplete
+                ? updateWriteHighlightCacheIncremental(component.cache, rawPath, fileContent, component.highlighter)
+                : undefined;
+        component.setText(formatWriteCall(renderArgs, { expanded: context.expanded, isPartial: context.isPartial }, theme, component.cache, component.highlighter, context.cwd));
         return component;
     },
     renderResult(result, _options, theme, context) {

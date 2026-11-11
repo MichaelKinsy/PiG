@@ -22,7 +22,9 @@ func TestStorageRequestErrorAndSessionFailedMatchPi(t *testing.T) {
 		{"class": "SessionFailed", "cause": map[string]any{"name": "TypeError", "message": "x is not a function"}},
 		{"class": "SessionFailed", "cause": "undefined"},
 		{"class": "ConversationBusy", "id": 7},
-		{"class": "ReadAfterWrite", "method": "scan"},
+		{"class": "ReadAfterWrite", "operation": "Tx.scan()"},
+		{"class": "ReadAfterWrite", "operation": "submit(tx, draft)"},
+		{"class": "ConversationIdle", "id": 7},
 		{"class": "ReadOnlySession", "what": "a commit with writes"},
 		{"class": "ReadOnlySession", "what": "running tasks"},
 	}
@@ -59,13 +61,16 @@ func TestStorageRequestErrorAndSessionFailedMatchPi(t *testing.T) {
 		NewSessionFailed(errors.New("x is not a function")),
 		NewSessionFailed(nil),
 		NewConversationBusy(7),
-		NewReadAfterWrite("scan"),
+		NewReadAfterWrite("Tx.scan()"),
+		NewReadAfterWrite("submit(tx, draft)"),
+		NewConversationIdle(7),
 		NewReadOnlySession("a commit with writes"),
 		NewReadOnlySession("running tasks"),
 	}
 	names := []interface{ Name() string }{
 		NewStorageRequestError(""), NewStorageRequestError(""), NewStorageRequestError(""),
 		NewSessionFailed(nil), NewSessionFailed(nil), NewSessionFailed(nil), NewConversationBusy(7), NewReadAfterWrite("scan"),
+		NewReadAfterWrite(""), NewConversationIdle(7),
 		NewReadOnlySession(""), NewReadOnlySession(""),
 	}
 	for i, err := range got {

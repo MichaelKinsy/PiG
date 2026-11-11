@@ -53,6 +53,7 @@ func (u *UserMessageComponent) rebuild() {
 	if u.inner == nil {
 		background := &DefaultTextStyle{BgColor: func(text string) string { return UserMessageBgOpen() + text + BgClose() }}
 		u.inner = NewMarkdownWithOptions(u.content, u.outputPad, 1, u.markdownTheme, background, &MarkdownOptions{PreserveOrderedListMarkers: true, PreserveBackslashEscapes: true, Transform: u.transform})
+		u.inner.FinishStreaming()
 		u.Add(u.inner)
 	} else {
 		u.inner.paddingX = u.outputPad
@@ -80,19 +81,7 @@ func (u *UserMessageComponent) SetMarkdownTransformState(fn func() string) {
 
 // SetAsyncMarkdownTransform installs an off-loop rewrite that completes before the message content is painted.
 func (u *UserMessageComponent) SetAsyncMarkdownTransform(transform *AsyncMarkdownTransform) {
-	if transform != nil {
-		options := *transform
-		completed := options.Invalidate
-		options.Invalidate = func() {
-			// Completion dirties the rendered frame, not the logical transform revision.
-			u.Container.Invalidate()
-			if completed != nil {
-				completed()
-			}
-		}
-		transform = &options
-	}
-	u.inner.AsyncTransform = transform
+	u.inner.AsyncTransform = completionDirtying(&u.invalidatable, transform)
 	u.Invalidate()
 }
 

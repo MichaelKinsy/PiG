@@ -32,10 +32,17 @@ const stampsOf = (cache: Map<string, unknown>) => stampsByCache.get(cache) ?? st
 
 const cacheOf = (client: CoreClient) => latestSnapshots.get(client) ?? latestSnapshots.set(client, new Map()).get(client)!
 
+/**
+ * The cache holds a value weakly: a read returns the latest value's very object only while a caller still holds it, which is the only time the
+ * identity can be seen, and a document the core evicted (retention 0) leaves nothing of its revision here (session.ts holds none).
+ */
+const held = (value: unknown): unknown => typeof value === "object" && value !== null ? new WeakRef(value) : value
+const latest = (cache: Map<string, unknown>, key: string): unknown => { const entry = cache.get(key); return entry instanceof WeakRef ? entry.deref() : entry }
+
 const remember = (cache: Map<string, unknown>, key: string, value: unknown) => {
   stampsOf(cache).set(key, ++clock)
   cache.delete(key)
-  cache.set(key, value)
+  cache.set(key, held(value))
   if (cache.size > SNAPSHOT_CACHE_LIMIT) cache.delete(cache.keys().next().value as string)
 }
 
@@ -43,7 +50,7 @@ const remember = (cache: Map<string, unknown>, key: string, value: unknown) => {
 export function shareSnapshot(client: CoreClient, address: unknown, def: { kind?: unknown } | undefined, value: unknown): unknown {
   const cache = cacheOf(client)
   const key = JSON.stringify([address, def?.kind])
-  const kept = cache.has(key) ? shareStructure(cache.get(key), value) : value
+  const kept = cache.has(key) ? shareStructure(latest(cache, key), value) : value
   remember(cache, key, kept)
   return kept
 }
@@ -53,13 +60,19 @@ export function rememberSnapshot(client: CoreClient, address: unknown, def: { ki
   const key = JSON.stringify([address, def?.kind])
   const cache = cacheOf(client)
   // The latest value when the frame's is the same content (a commit this host wrote already made its revision the latest, and a migration's base leaves it): the document keeps its revision object.
-  if (cache.has(key) && sameContent(cache.get(key), value)) return
+  if (cache.has(key) && sameContent(latest(cache, key), value)) return
   remember(cache, key, value)
 }
 
 
 /** Pi's unloadDocuments: the next read loads the document again. */
 export function forgetSnapshots(client: CoreClient): void { latestSnapshots.delete(client); trackers.delete(client) }
+
+/** The core's cache dropped these documents (by address): the trackers kept over their values go too. */
+export function forgetTrackers(client: CoreClient, addresses: readonly string[]): void {
+  const kept = trackers.get(client)
+  if (kept !== undefined) for (const address of addresses) kept.delete(address)
+}
 
 /** The point in the sequence of remembered values; a commit takes it when it writes a document. */
 export function snapshotStamp(client: CoreClient): number { void client; return clock }
@@ -157,8 +170,8 @@ export function substituteWrite(client: CoreClient, write: DocumentWrite): void 
 }
 
 /** A document change of a commit publication is the staged revision: its value and operations are the Storage write's and the next snapshot's. */
-export function substitutePublished(client: CoreClient, change: { type?: string; record?: DocumentWrite["record"] & { id?: number }; value?: unknown; ops?: unknown }): void {
-  if (change.type !== "document" || change.record === undefined || change.value === null || change.value === undefined) return
+export function substitutePublished(client: CoreClient, change: { type?: string; kind?: string; record?: DocumentWrite["record"] & { id?: number }; value?: unknown; ops?: unknown }): void {
+  if (change.type !== "document" || change.kind !== "change" || change.record === undefined || change.value === undefined) return
   const revision = revisionOf(client, change.record)
   if (revision === undefined) return
   if (sameContent(change.value, revision.value)) change.value = revision.value

@@ -86,13 +86,22 @@ func cleanSnapshotRoot(root string) (string, error) {
 // mkdirFixed creates a new directory under root named prefix followed by
 // snapshotIDDigits random decimal digits.
 func mkdirFixed(root, prefix string) (string, error) {
+	return mkdirFixedDigits(root, prefix, snapshotIDDigits)
+}
+
+// mkdirFixedDigits creates a new directory under root named prefix followed by digits random decimal digits.
+func mkdirFixedDigits(root, prefix string, digits int) (string, error) {
 	// On Windows promptPathRoot is \t on the temp directory's drive, which
 	// exists only once a run creates it.
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		return "", err
 	}
+	limit := uint64(1)
+	for range digits {
+		limit *= 10
+	}
 	for range 100 {
-		name := fmt.Sprintf("%s%0*d", prefix, snapshotIDDigits, rand.Uint64N(10_000_000_000))
+		name := fmt.Sprintf("%s%0*d", prefix, digits, rand.Uint64N(limit))
 		dir := filepath.Join(root, name)
 		err := os.Mkdir(dir, 0o700)
 		if err == nil {
@@ -119,8 +128,15 @@ func mkdirFixed(root, prefix string) (string, error) {
 //	3*len(piPackageDir) == 2*(len(pigHome)+len("/docs")+pigBundleDirLen) + d22ConstantGap
 //
 // d22ConstantGap is how many more characters pig's fixed docs and preamble
-// text has than Pi's, measured against Pi 0.87.1. TestPromptPathLengthsBalance
-// checks the arithmetic; the rpc get_session_stats scenario checks the
+// text has than Pi's: pig's examples location is a 54-character URL where
+// Pi's README, docs and examples paths each end in a suffix that pig's docs
+// directory and URL do not repeat (40 characters net), and "pig" replaces
+// "pi" in the preamble, the docs heading and the path-resolution sentence
+// (3 characters). Three package directories must equal two pig directories
+// plus that gap, so pigHomeIDDigits is the one free length that makes the
+// equation solvable in whole characters. TestPromptPathLengthsBalance checks
+// the arithmetic, TestPromptPathLengthsMatchRealPrompts measures it against
+// the real prompts, and the rpc get_session_stats scenario checks the
 // estimate itself.
 //
 // promptPathRoot is /tmp on Unix. Pi prints PI_PACKAGE_DIR resolved to an
@@ -145,11 +161,13 @@ func checkPromptPathRoot() error {
 }
 
 const (
-	pigHomePrefix   = "parity-snap-PIG_HOME-"
+	pigHomePrefix = "parity-snap-PIG_HOME-"
+	// pigHomeIDDigits is the random suffix width of pig's PIG_HOME snapshot, which no comparison masks, so it is free to differ from snapshotIDDigits.
+	pigHomeIDDigits = snapshotIDDigits + 2
 	piPackagePrefix = "parity-pi-pkg-"
 	// piPackageLink is padded so that Pi's three package paths are as long as pig's two docs paths, which name the docs bundle directory.
 	piPackageLink  = "pi-coding-pkg-with-bundle-pad"
-	d22ConstantGap = 47
+	d22ConstantGap = 43
 	// pigBundleDirLen is len("/bundle-") plus the 16 hex digits of the content hash that names pig's docs bundle directory (internal/pigdocs).
 	pigBundleDirLen = len("/bundle-") + 16
 )
@@ -180,6 +198,7 @@ func initSnapshotGitBranch(ctx context.Context, dir, branch string) error {
 		{"init", "--quiet", dir},
 		{"-C", dir, "symbolic-ref", "HEAD", "refs/heads/" + branch},
 	} {
+		//nolint:gosec // G204 (class a): program is literal git; args are fixed "init --quiet <tmp>" and "-C <tmp> symbolic-ref HEAD refs/heads/<branch>", where the branch is prefixed by "refs/heads/".
 		if out, err := exec.CommandContext(ctx, "git", args...).CombinedOutput(); err != nil {
 			return fmt.Errorf("git %s: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(string(out)))
 		}

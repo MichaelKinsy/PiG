@@ -303,14 +303,14 @@
   },
   {
     "upstream": "packages/ai/scripts/hydrate-model-catalog.ts",
-    "package": "./cmd/check-model-data",
+    "package": "./internal/modelgen/modeldata",
     "tests": [
       "TestHydrateModelCatalogUpstream",
       "TestGroupProviderModelDataRejectsDuplicates",
       "TestHydrateModelCatalogStampsTheEpochGeneratedAt"
     ],
     "upstream_reference": "packages/ai/test/model-data-validation.test.ts:82- (published model catalog hydration: deterministic output, grouping by API keyed type:id, validate-only keeps data, incomplete catalogs and invalid api/provider/cost keep the current data); packages/ai/scripts/hydrate-model-catalog.ts; groupProviderModelData in packages/ai/scripts/model-data.ts",
-    "mutation": "cmd/check-model-data/hydrate.go: `if validateOnly { ⏎ \t\treturn nil ⏎ \t}` -> `if false { ⏎ \t\treturn nil ⏎ \t}` (TestHydrateModelCatalogUpstream, TestHydrateModelCatalogUpstream/validates_without_replacing_existing_data FAIL); cmd/check-model-data/hydrate.go: `|| len(raws) == 0 {` -> `{` (TestHydrateModelCatalogUpstream, TestHydrateModelCatalogUpstream/rejects_incomplete_catalogs_without_replacing_existing_data:_{\"test-provider\":[]} FAIL); cmd/check-model-data/hydrate.go: `if seen[identity] {` -> `if false {` (TestGroupProviderModelDataRejectsDuplicates FAIL); cmd/check-model-data/hydrate.go: `identity := model.Type + \":\" + model.ID` -> `identity := model.ID` (TestHydrateModelCatalogUpstream, TestHydrateModelCatalogUpstream/hydrates_a_clean_checkout_deterministically_without_changing_generated_TypeScript, TestHydrateModelCatalogUpstream/groups_models_by_API_and_keys_them_by_type_and_id FAIL); cmd/check-model-data/hydrate.go: `\"1970-01-01T00:00:00.000Z\"` -> `\"1970-01-01T00:00:01.000Z\"` (TestHydrateModelCatalogStampsTheEpochGeneratedAt FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+    "mutation": "internal/modelgen/modeldata/hydrate.go: `if validateOnly { ⏎ \t\treturn nil ⏎ \t}` -> `if false { ⏎ \t\treturn nil ⏎ \t}` (TestHydrateModelCatalogUpstream, TestHydrateModelCatalogUpstream/validates_without_replacing_existing_data FAIL); internal/modelgen/modeldata/hydrate.go: `|| len(raws) == 0 {` -> `{` (TestHydrateModelCatalogUpstream, TestHydrateModelCatalogUpstream/rejects_incomplete_catalogs_without_replacing_existing_data:_{\"test-provider\":[]} FAIL); internal/modelgen/modeldata/hydrate.go: `if seen[identity] {` -> `if false {` (TestGroupProviderModelDataRejectsDuplicates FAIL); internal/modelgen/modeldata/hydrate.go: `identity := model.Type + \":\" + model.ID` -> `identity := model.ID` (TestHydrateModelCatalogUpstream, TestHydrateModelCatalogUpstream/hydrates_a_clean_checkout_deterministically_without_changing_generated_TypeScript, TestHydrateModelCatalogUpstream/groups_models_by_API_and_keys_them_by_type_and_id FAIL); internal/modelgen/modeldata/hydrate.go: `\"1970-01-01T00:00:00.000Z\"` -> `\"1970-01-01T00:00:01.000Z\"` (TestHydrateModelCatalogStampsTheEpochGeneratedAt FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
   },
   {
     "upstream": "packages/ai/src/auth/oauth/callback-server.ts",

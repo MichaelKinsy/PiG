@@ -26,10 +26,7 @@ func shortenPath(path string) string {
 	if err != nil || home == "" {
 		return path
 	}
-	if strings.HasPrefix(path, home) {
-		return "~" + path[len(home):]
-	}
-	return path
+	return resolvepath.ShortenHomePath(path, home)
 }
 
 // linkPath wraps styledText in an OSC-8 hyperlink targeting the file://
@@ -82,6 +79,9 @@ func renderToolPathArg(rawPath string, ok bool, cwd, emptyFallback string) strin
 func boldText(s string) string {
 	if s == "" {
 		return ""
+	}
+	if chalkModifiersOff.Load() {
+		return s
 	}
 	const open = "\x1b[1m"
 	s = strings.ReplaceAll(s, SGRBoldDimReset, open)

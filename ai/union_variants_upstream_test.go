@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-// piLiteralList returns the string literals of `export const <name> = [...]` or the Type.Literal members of `function <name>(...)` in a Pi
+// piLiteralList returns the string literals of `export const <name> = [...]` or the stringLiteral members of `function <name>(...) { return union([...` (pi-schema builders) in a Pi
 // ai/src/providers schema module, in source order, with the spread of an earlier list expanded.
 func piLiteralList(t *testing.T, file, name string) []string {
 	t.Helper()
@@ -21,7 +21,7 @@ func piLiteralList(t *testing.T, file, name string) []string {
 	var body string
 	if m := regexp.MustCompile(`(?s)export const ` + name + ` = \[(.*?)\] as const;`).FindStringSubmatch(src); m != nil {
 		body = m[1]
-	} else if m := regexp.MustCompile(`(?s)function ` + name + `\(.*?\{\s*return Type\.Union\(\[(.*?)\]`).FindStringSubmatch(src); m != nil {
+	} else if m := regexp.MustCompile(`(?s)function ` + name + `\(.*?\{\s*return union\(\[(.*?)\]`).FindStringSubmatch(src); m != nil {
 		body = m[1]
 	} else {
 		t.Fatalf("%s: no list named %s", file, name)
@@ -34,8 +34,8 @@ func piLiteralList(t *testing.T, file, name string) []string {
 			out = append(out, piLiteralList(t, file, strings.TrimPrefix(item, "..."))...)
 		case strings.HasPrefix(item, `"`):
 			out = append(out, strings.Trim(item, `"`))
-		case strings.HasPrefix(item, "Type.Literal("):
-			out = append(out, strings.Trim(strings.TrimSuffix(strings.TrimPrefix(item, "Type.Literal("), ")"), `"`))
+		case strings.HasPrefix(item, "stringLiteral("):
+			out = append(out, strings.Trim(strings.TrimSuffix(strings.TrimPrefix(item, "stringLiteral("), ")"), `"`))
 		}
 	}
 	return out

@@ -24,7 +24,7 @@ export { VStack, } from "./components/v-stack.js";
 // Fuzzy matching
 export { fuzzyFilter, fuzzyMatch } from "./fuzzy.js";
 // Keybindings
-export { getKeybindings, KeybindingsManager, setKeybindings, TUI_KEYBINDINGS, } from "./keybindings.js";
+export { getKeybindings, getSelectPageIndex, KeybindingsManager, setKeybindings, TUI_KEYBINDINGS, } from "./keybindings.js";
 // Keyboard input handling
 export { decodeKittyPrintable, isKeyRelease, isKeyRepeat, isKittyProtocolActive, Key, matchesKey, parseKey, setKittyProtocolActive, } from "./keys.js";
 // LaTeX rendering

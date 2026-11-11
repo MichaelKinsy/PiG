@@ -110,7 +110,7 @@ func TestLive_InteractiveTwoTurnsPersistThenResume(t *testing.T) {
 		t.Skip("tmux not on PATH")
 	}
 	session := "pig-live-" + randID()
-	defer func() { _ = tmuxCommand("kill-session", "-t", session).Run() }()
+	defer func() { _ = killSession(t, session) }()
 
 	if out, err := tmuxCommand("new-session", "-d", "-s", session, "-x", "130", "-y", "36").CombinedOutput(); err != nil {
 		t.Fatalf("tmux new-session: %v\n%s", err, out)
@@ -220,7 +220,7 @@ func TestLive_InteractiveTwoTurnsPersistThenResume(t *testing.T) {
 	// resumed-N-messages and that asking for the token works again
 	// without restating it.
 	resumeSession := "pig-live-resume-" + randID()
-	defer func() { _ = tmuxCommand("kill-session", "-t", resumeSession).Run() }()
+	defer func() { _ = killSession(t, resumeSession) }()
 	if out, err := tmuxCommand("new-session", "-d", "-s", resumeSession, "-x", "130", "-y", "36").CombinedOutput(); err != nil {
 		t.Fatalf("tmux: %v\n%s", err, out)
 	}

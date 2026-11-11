@@ -50,6 +50,7 @@ func TestCompactionExtensionReasonsUpstream(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			s := autoQueueSession(t, true)
+			_ = s.Events()
 			p := &scriptedProvider{responses: []scriptedResponse{fauxReply("one", ai.StopReasonStop, 0), fauxReply("two", ai.StopReasonStop, 0)}}
 			model := fakeModelWithProvider(p)
 			model.ID = "faux-1"

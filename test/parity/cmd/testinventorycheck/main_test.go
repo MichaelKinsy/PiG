@@ -254,23 +254,99 @@ func TestCheckMixedClosure(t *testing.T) {
 	}
 }
 
-// TestCheckRejectsAmbiguousDesignedOutCase proves a case id shared by two source
-// sites (packages/ai/test/total-tokens.test.ts:726 and :777 upstream) cannot be
-// designed out: the schema names ids, so it cannot say which site is exempt.
-func TestCheckRejectsAmbiguousDesignedOutCase(t *testing.T) {
-	inv, m, evidence, div := mixedClosure()
-	inv.Files[0].Cases = append(inv.Files[0].Cases, inv.Files[0].Cases[0])
-	inv.Files[0].Cases[2].Line = 30
-	root, invPath, mapPath := writeRepo(t, inv, m, evidence, div)
-	err := check(invPath, mapPath, "docs/parity/DIVERGENCES.md", root, false)
-	if err == nil || !strings.Contains(err.Error(), "ambiguous") {
-		t.Fatalf("error %v does not reject the ambiguous id", err)
+// TestCheckSiteQualifiedDesignedOutCase proves a case id shared by two source
+// sites (packages/ai/test/total-tokens.test.ts:726 and :777 upstream) is named
+// `<id>@<line>`; the bare id stays ambiguous.
+func TestCheckSiteQualifiedDesignedOutCase(t *testing.T) {
+	cases := []struct {
+		name string
+		list []string
+		want string
+	}{
+		{"qualified duplicate accepted", []string{"official › runs@10"}, ""},
+		{"qualified second site accepted", []string{"official › runs@30"}, ""},
+		{"both sites qualified accepted", []string{"official › runs@10", "official › runs@30"}, ""},
+		{"qualified unshared id accepted", []string{"analytics › ported@20"}, ""},
+		{"unshared id stays designable", []string{"analytics › ported"}, ""},
+		{"unqualified duplicate rejected", []string{"official › runs"}, "official › runs@<line>"},
+		{"wrong line rejected", []string{"official › runs@11"}, "not an upstream case site"},
+		{"unknown id with line rejected", []string{"official › typo@10"}, "not an upstream case site"},
+		{"non-numeric line rejected", []string{"official › runs@x"}, "not an upstream case"},
+		{"same site qualified twice rejected", []string{"official › runs@10", "official › runs@10"}, "duplicate designedOutCases"},
+		{"same site qualified and unqualified rejected", []string{"analytics › ported", "analytics › ported@20"}, "same upstream case site"},
+		{"qualified list covering every site rejected", []string{"official › runs@10", "official › runs@30", "analytics › ported@20"}, "classify the file designed-out"},
 	}
-	// The unshared case of the same file stays designable.
-	m.Entries[0].DesignedOutCases = []string{"analytics › ported"}
-	root, invPath, mapPath = writeRepo(t, inv, m, evidence, div)
-	if err := check(invPath, mapPath, "docs/parity/DIVERGENCES.md", root, false); err != nil {
-		t.Fatalf("unshared id rejected: %v", err)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			inv, m, evidence, div := mixedClosure()
+			inv.Files[0].Cases = append(inv.Files[0].Cases, inv.Files[0].Cases[0])
+			inv.Files[0].Cases[2].Line = 30
+			m.Entries[0].DesignedOutCases = tc.list
+			root, invPath, mapPath := writeRepo(t, inv, m, evidence, div)
+			err := check(invPath, mapPath, "docs/parity/DIVERGENCES.md", root, false)
+			if tc.want == "" {
+				if err != nil {
+					t.Fatalf("rejected: %v", err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("error %v does not contain %q", err, tc.want)
+			}
+		})
+	}
+}
+
+// TestCheckSiteQualifiedMissingCase proves missingCases takes the same
+// `<id>@<line>` names for an id that two inventory sites share.
+func TestCheckSiteQualifiedMissingCase(t *testing.T) {
+	cases := []struct {
+		name string
+		list []string
+		out  []string
+		want string
+	}{
+		{"qualified duplicate accepted", []string{"analytics › ported@20"}, nil, ""},
+		{"qualified second site accepted", []string{"analytics › ported@30"}, nil, ""},
+		{"both sites qualified accepted", []string{"analytics › ported@20", "analytics › ported@30"}, nil, ""},
+		{"unqualified duplicate rejected", []string{"analytics › ported"}, nil, "analytics › ported@<line>"},
+		{"wrong line rejected", []string{"analytics › ported@21"}, nil, "not an upstream case site"},
+		{"same site qualified twice rejected", []string{"analytics › ported@20", "analytics › ported@20"}, nil, "duplicate missingCases"},
+		{"same site bare and qualified rejected", []string{"analytics › ported", "analytics › ported@20"}, nil, "analytics › ported@<line>"},
+		{"qualified list covering every site rejected", []string{"official › runs", "analytics › ported@20", "analytics › ported@30"}, nil, "classify the file pending"},
+		{"site both missing and designed out rejected", []string{"analytics › ported@20"}, []string{"analytics › ported@20"}, "both missing and designed out"},
+		{"other site designed out accepted", []string{"analytics › ported@20"}, []string{"analytics › ported@30"}, ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			inv, m, evidence, div := partialEntry()
+			inv.Files[0].Cases = append(inv.Files[0].Cases, inv.Files[0].Cases[1])
+			inv.Files[0].Cases[2].Line = 30
+			m.Entries[0].MissingCases = tc.list
+			m.Entries[0].DesignedOutCases = tc.out
+			root, invPath, mapPath := writeRepo(t, inv, m, evidence, div)
+			err := check(invPath, mapPath, "docs/parity/DIVERGENCES.md", root, false)
+			if tc.want == "" {
+				if err != nil {
+					t.Fatalf("rejected: %v", err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("error %v does not contain %q", err, tc.want)
+			}
+		})
+	}
+}
+
+// TestReleasePolicyAcceptsSiteQualifiedDesignedOutCases proves the policy list
+// and the mapping list compare as strings, qualified suffix included.
+func TestReleasePolicyAcceptsSiteQualifiedDesignedOutCases(t *testing.T) {
+	_, m, policy := designedOutPolicy()
+	m.Entries[0].DesignedOutCases = []string{"official › runs@10"}
+	policy.Entries[0].DesignedOutCases = []string{"official › runs@10"}
+	if err := validateDesignedOutApproval(policy.Entries[0], m.Entries[0]); err != nil {
+		t.Fatalf("agreeing qualified lists rejected: %v", err)
 	}
 }
 
@@ -534,5 +610,71 @@ func TestCarryMappingKeepsOnlyEntriesWhoseUpstreamTestIsUnchanged(t *testing.T) 
 	}}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("carried mapping = %+v\nwant %+v", got, want)
+	}
+}
+
+// partialEntry returns a partial file with two upstream cases: "official › runs"
+// is covered by the evidence, "analytics › ported" is the one that is missing.
+func partialEntry() (inventory, mapping, map[string]string, string) {
+	inv, m, evidence, div := mixedClosure()
+	m.Entries[0].DesignedOutCases = nil
+	m.Entries[0].Disposition = "partial"
+	m.Entries[0].Rationale = "the analytics case needs the exporter, which is not ported"
+	m.Entries[0].MissingCases = []string{"analytics › ported"}
+	return inv, m, evidence, div
+}
+
+// TestCheckPartialEnumeratesMissingCases proves AGENTS.md's rule that a partial
+// disposition enumerates the missing cases: a partial entry without a list, with
+// an unknown, duplicate, ambiguous or designed-out id, or naming every case is
+// rejected, and the list is refused on any other disposition.
+func TestCheckPartialEnumeratesMissingCases(t *testing.T) {
+	cases := []struct {
+		name   string
+		mutate func(*inventory, *mapping)
+		want   string
+	}{
+		{"accepts a partial entry that names its missing case", func(*inventory, *mapping) {}, ""},
+		{"partial without missingCases", func(_ *inventory, m *mapping) {
+			m.Entries[0].MissingCases = nil
+		}, "enumerate its missingCases"},
+		{"partial with an empty list", func(_ *inventory, m *mapping) {
+			m.Entries[0].MissingCases = []string{}
+		}, "enumerate its missingCases"},
+		{"unknown case id", func(_ *inventory, m *mapping) {
+			m.Entries[0].MissingCases = []string{"analytics › typo"}
+		}, "not an upstream case"},
+		{"duplicate case id", func(_ *inventory, m *mapping) {
+			m.Entries[0].MissingCases = []string{"analytics › ported", "analytics › ported"}
+		}, "duplicate missingCases"},
+		{"every case missing", func(_ *inventory, m *mapping) {
+			m.Entries[0].MissingCases = []string{"official › runs", "analytics › ported"}
+		}, "classify the file pending"},
+		{"a case that is also designed out", func(_ *inventory, m *mapping) {
+			m.Entries[0].DesignedOutCases = []string{"analytics › ported"}
+		}, "both missing and designed out"},
+		{"ambiguous case id", func(inv *inventory, _ *mapping) {
+			inv.Files[0].Cases = append(inv.Files[0].Cases, inv.Files[0].Cases[1])
+		}, "ambiguous"},
+		{"missingCases on a ported entry", func(_ *inventory, m *mapping) {
+			m.Entries[0].Disposition = "ported"
+		}, "only partial entries"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			inv, m, evidence, div := partialEntry()
+			tc.mutate(&inv, &m)
+			root, invPath, mapPath := writeRepo(t, inv, m, evidence, div)
+			err := check(invPath, mapPath, "docs/parity/DIVERGENCES.md", root, false)
+			if tc.want == "" {
+				if err != nil {
+					t.Fatalf("partial entry with missingCases rejected: %v", err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("error %v does not contain %q", err, tc.want)
+			}
+		})
 	}
 }

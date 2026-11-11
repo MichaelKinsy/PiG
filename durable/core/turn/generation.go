@@ -26,15 +26,25 @@ const (
 	phaseRetry   = "retry"
 	phasePoll    = "poll"
 	phaseTools   = "tools"
+	// phaseFinish: the run answered, its answer is committed and its inputs settled, and it keeps `pi.live.run` while `afterRun` hooks are
+	// asked for tasks (spec section 8.3). A crash here asks them again: nothing was created yet.
+	phaseFinish = "finish"
+	// phaseDrain: waiting on the tasks `afterRun` hooks asked for, which the generation owns; then the run ends.
+	phaseDrain = "drain"
 )
 
-// GenerationDef is the pi.generation definition: first checkpoint {phase: "prepare", attempt: 1}.
+// GenerationDef is the pi.generation definition: first checkpoint {phase: "prepare", attempt: 1}. Version 2 leaves calls to tools not
+// offered in a sequential round's `pending`, flagged `unoffered` in their slots. A version 1 Harness would start their tool tasks
+// unflagged, resolving the name, so it leaves version 2 blocked instead. A version 1 checkpoint has no such calls and is kept as it is.
 // Read-only: assigned once at initialization.
 var GenerationDef = &session.TaskDef{
 	Name:    KindGeneration,
-	Version: 1,
+	Version: 2,
 	Initial: func(any) any { return jobj("phase", phasePrepare, "attempt", 1.0) },
 }
+
+// migrateGeneration keeps a version 1 generation as it is.
+func migrateGeneration(input, checkpoint any, _ int) (any, any, error) { return input, checkpoint, nil }
 
 // jobj builds an ordered object from alternating keys and values.
 func jobj(kv ...any) *jv.Object {
@@ -100,7 +110,7 @@ type Generation struct{ Host *Host }
 
 // Impl returns the executable definition registered in the registry.
 func (g *Generation) Impl() *session.TaskImpl {
-	return &session.TaskImpl{Def: *GenerationDef, Phase: g.phase, Abort: g.abort, AbortReturnHops: abortReturnHops}
+	return &session.TaskImpl{Def: *GenerationDef, Migrate: migrateGeneration, Phase: g.phase, Abort: g.abort, AbortReturnHops: abortReturnHops}
 }
 
 // run carries what the phases of one invocation share.
@@ -118,6 +128,10 @@ type run struct {
 	phaseAgent *Agent
 	// hookIndex is the index of the hook handler eachHookRaw is calling, which names the extension of a failure.
 	hookIndex int
+	// task is the task record of the invocation, which carries the restart count the phases check.
+	task *jv.Object
+	// ending is how a generation attempt that crashes cut off ends.
+	ending attemptEnding
 }
 
 func (g *Generation) newRun(rt *session.Runtime, done func(error)) *run {
@@ -131,6 +145,7 @@ func (r *run) fail(err error) { r.done(err) }
 
 func (g *Generation) phase(rt *session.Runtime, task *jv.Object, done func(error)) {
 	r := g.newRun(rt, done)
+	r.task = task
 	cp := checkpointOf(task)
 	switch str(cp, "phase") {
 	case phasePrepare:
@@ -143,6 +158,10 @@ func (g *Generation) phase(rt *session.Runtime, task *jv.Object, done func(error
 		r.poll(cp)
 	case phaseTools:
 		r.tools(cp)
+	case phaseFinish:
+		r.finish(cp)
+	case phaseDrain:
+		r.drain(cp)
 	default:
 		done(errors.New("Generation phase " + str(cp, "phase") + " is unknown"))
 	}
@@ -151,6 +170,19 @@ func (g *Generation) phase(rt *session.Runtime, task *jv.Object, done func(error
 // commitState runs change in a task commit and ends the phase.
 func (r *run) commit(change func(tx *session.Tx, current *jv.Object) (*jv.Object, error), then func()) {
 	r.rt.Commit(change, func(err error) {
+		if err != nil {
+			r.fail(err)
+			return
+		}
+		then()
+	})
+}
+
+// commitProgress runs change in a task commit stored like progress (PROGRESS_COMMIT): a commit that changes only documents is held
+// in memory and stored with the next commit, and one that appends an entry is stored at once. change stages writes and leaves the
+// task as it is.
+func (r *run) commitProgress(change func(tx *session.Tx) error, then func()) {
+	r.rt.CommitDeferred(func(tx *session.Tx, _ *jv.Object) (*jv.Object, error) { return nil, change(tx) }, func(err error) {
 		if err != nil {
 			r.fail(err)
 			return
@@ -206,8 +238,9 @@ func systemMessagesOf(v *history.View) []*jv.Object {
 	return out
 }
 
-func modelErrorOutcome(text string) *jv.Object {
-	return jobj("status", "failed", "error", jobj("message", text, "detail", jobj("reason", "model_error")))
+// failedTerminal is the terminal state of a task that failed with message and detail {reason}.
+func failedTerminal(message, reason string) *jv.Object {
+	return jobj("status", "terminal", "outcome", jobj("status", "failed", "error", jobj("message", message, "detail", jobj("reason", reason))))
 }
 
 // failModelError settles the run's inputs unanswered with model_error and fails with text.
@@ -221,10 +254,10 @@ func (r *run) failModelError(text string) {
 		if err != nil {
 			return nil, err
 		}
-		if err := r.endFailedRun(tx, live, failed, jobj("status", "unanswered", "reason", "model_error", "detail", text)); err != nil {
+		if err := r.endFailedRun(tx, live, failed, UnansweredWith("model_error", text)); err != nil {
 			return nil, err
 		}
-		return jobj("status", "terminal", "outcome", modelErrorOutcome(text)), nil
+		return failedTerminal(text, "model_error"), nil
 	})
 }
 
@@ -243,20 +276,22 @@ func (r *run) failNoModel(ref *ModelRef) {
 		if err != nil {
 			return nil, err
 		}
-		if err := r.endFailedRun(tx, live, failed, jobj("status", "unanswered", "reason", "no_model")); err != nil {
+		if err := r.endFailedRun(tx, live, failed, RunEnd{Reason: "no_model", Detail: message, HasDetail: true, Settlement: jobj("status", "unanswered", "reason", "no_model")}); err != nil {
 			return nil, err
 		}
-		return jobj("status", "terminal", "outcome", jobj("status", "failed", "error", jobj("message", message, "detail", jobj("reason", "no_model")))), nil
+		return failedTerminal(message, "no_model"), nil
 	})
 }
 
 // appendAssistant appends a provider result and adds its usage to pi.usage in the same commit: every built-in writer of
 // assistant entries goes through here, so the usage ledger stays complete.
 func appendAssistant(tx *session.Tx, conv ID, message *jv.Object) (*jv.Object, error) {
+	// generation.ts appendAssistant: `await recordUsage(...)`, an async function whose caller resumes one tick after it returns.
 	if usage := objField(message, "usage"); usage != nil {
 		if err := recordUsageTx(tx, conv, UsageModels, str(message, "provider")+"/"+str(message, "model"), usage); err != nil {
 			return nil, err
 		}
+		tx.Await(1)
 	}
 	entry, err := tx.AppendEntry(conv, entryDraft(KindAssistant, jobj("model", []any{message})))
 	if err != nil {
@@ -287,8 +322,8 @@ func applyBoundary(tx *session.Tx, boundary *inbox.Boundary, final bool, now flo
 }
 
 // awaitStartRun is `await startRun(...)` (generation.ts :535, :633, :639): the caller resumes one tick after the async function returns.
-func awaitStartRun(tx *session.Tx, conv ID, live *delta.Obj, inputs []ID) error {
-	if err := startRun(tx, conv, live, inputs); err != nil {
+func awaitStartRun(tx *session.Tx, conv ID, live *delta.Obj, run inbox.RunStart, keepFailure bool) error {
+	if err := startRun(tx, conv, live, run, keepFailure); err != nil {
 		return err
 	}
 	tx.Await(1)
@@ -312,8 +347,12 @@ func convertPartial(tx *session.Tx, live *delta.Obj, conv ID) error {
 	}
 	message := jv.Clone(partial).(*jv.Object)
 	message.Set("stopReason", "aborted")
-	_, err := appendAssistant(tx, conv, message)
-	return err
+	if _, err := appendAssistant(tx, conv, message); err != nil {
+		return err
+	}
+	// convertPartial is async and its caller awaits it: the caller resumes a tick after it returns (generation.ts convertPartial).
+	tx.Await(1)
+	return nil
 }
 
 // createCompaction creates a compaction task with its status in this commit. owner is the generation that waits for it (a
@@ -334,7 +373,7 @@ func CreateCompaction(tx *session.Tx, conv ID, input *jv.Object, owner ID) (ID, 
 	if err != nil {
 		return 0, err
 	}
-	status := jobj("taskId", float64(taskID), "reason", reason, "blocking", owner != 0, "attempt", 1.0)
+	status := jobj("taskId", float64(taskID), "trigger", reason, "blocking", owner != 0, "attempt", 1.0)
 	return taskID, AddCompactionStatus(live, status)
 }
 
@@ -361,6 +400,10 @@ var ProviderDef = &session.DocDef{
 // ---- prepare ---------------------------------------------------------------------------------------------------
 
 func (r *run) prepare(cp *jv.Object) {
+	if r.cutOffTooOften(r.task) {
+		r.endCutOff(cp)
+		return
+	}
 	r.agent(func(agent *Agent) { r.prepareWith(cp, agent) })
 }
 
@@ -381,7 +424,7 @@ func (r *run) prepareWith(cp *jv.Object, agent *Agent) {
 	overflowText, hasOverflow := stringField(cp, "overflow")
 	proceed := func() { r.prepareRequest(agent, settings, window, attempt, compacted) }
 	if compacted != 0 && hasOverflow {
-		r.rt.Outcomes([]ID{compacted}, func(outcomes []*jv.Object, err error) {
+		r.outcomes([]ID{compacted}, func(outcomes []*jv.Object, err error) {
 			if err != nil {
 				r.fail(err)
 				return
@@ -401,7 +444,7 @@ func (r *run) prepareWith(cp *jv.Object, agent *Agent) {
 	// A threshold compaction that found nothing to compact or was declined leaves a request that may still fit. One that failed
 	// left a context it judged too large: sending it would at best leave no room for the answer.
 	if threshold, _ := cp.Get("threshold"); compacted != 0 && threshold == true {
-		r.rt.Outcomes([]ID{compacted}, func(outcomes []*jv.Object, err error) {
+		r.outcomes([]ID{compacted}, func(outcomes []*jv.Object, err error) {
 			if err != nil {
 				r.fail(err)
 				return
@@ -428,9 +471,34 @@ func compactionFailureText(outcome *jv.Object) string {
 	return "Compaction was aborted"
 }
 
+// failNothingToAnswer ends the run without a request: its context has nothing the model would answer.
+func (r *run) failNothingToAnswer() {
+	message := "The conversation has nothing to answer"
+	r.commitDone(func(tx *session.Tx, _ *jv.Object) (*jv.Object, error) {
+		failed, err := r.prepareFailure(tx)
+		if err != nil {
+			return nil, err
+		}
+		live, err := tx.Doc(LiveDef, session.DocArgs{Owner: r.conv})
+		if err != nil {
+			return nil, err
+		}
+		if err := r.endFailedRun(tx, live, failed, Unanswered("nothing_to_answer")); err != nil {
+			return nil, err
+		}
+		return failedTerminal(message, "nothing_to_answer"), nil
+	})
+}
+
 func (r *run) prepareRequest(agent *Agent, settings Settings, window, attempt float64, compacted ID) {
 	h := r.g.Host
 	r.requestContext(0, func(view RequestContext) {
+		// The model owes an answer only to a context ending in a user message or tool results; system messages say nothing it answers.
+		// Otherwise, as for a continue after an answer or in an empty conversation, end the run before any request.
+		if !view.OwesAnswer() {
+			r.failNothingToAnswer()
+			return
+		}
 		pv := view.PromptView()
 		shown := ReplaySections(pv.Messages)
 		h.Render(r.conv, r.rt.TaskID(), agent, shown, r.rt.Signal(), func(desired *Sections, err error) {
@@ -464,13 +532,10 @@ func (r *run) prepareRequest(agent *Agent, settings Settings, window, attempt fl
 				return
 			}
 			r.commitDone(func(tx *session.Tx, _ *jv.Object) (*jv.Object, error) {
-				page, err := tx.ScanEntries(session.EntryQuery{ConversationID: r.conv}, 1, 0)
+				// The context ends in a message the model answers, so the conversation has an entry.
+				cutoff, err := tx.LatestEntryID(r.conv)
 				if err != nil {
 					return nil, err
-				}
-				var cutoff ID
-				if len(page.Items) > 0 {
-					cutoff = idField(page.Items[0], "id")
 				}
 				for _, e := range entries {
 					rec, err := tx.AppendEntry(r.conv, entryDraft(KindSystem, e))
@@ -478,9 +543,6 @@ func (r *run) prepareRequest(agent *Agent, settings Settings, window, attempt fl
 						return nil, err
 					}
 					cutoff = idField(rec, "id")
-				}
-				if cutoff == 0 {
-					return nil, errors.New("Conversation " + itoa(int64(r.conv)) + " has no entries to send")
 				}
 				// Checked in this commit, so a compaction admitted during preparation counts.
 				if threshold == history.ThresholdBackground {

@@ -31,6 +31,7 @@ func shellWithoutTimeout(ctx context.Context, payload string) (string, bool) {
 }
 
 func TestMain(m *testing.M) {
+	EnableTestFauxProvider()
 	if runtime.GOOS != "windows" {
 		configvalue.SetExecutorForTest(shellWithoutTimeout)
 	}

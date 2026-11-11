@@ -7,6 +7,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/evals"
@@ -34,6 +35,8 @@ func TestSuitesMatchPisEvalInventory(t *testing.T) {
 		"Create and use a tool extension > creates, reloads, and invokes the extension @ extensions.docs.eval.go",
 		"Add model to existing provider > adds the model without replacing existing models @ models.docs.eval.go",
 		"Add OpenAI-compatible provider > configures a provider that works through Pi @ openai-provider.docs.eval.go",
+		"Create a project prompt template > creates, reloads, and invokes /current-time @ prompt-templates.docs.eval.go",
+		"Create a user prompt template > creates, reloads, and invokes /current-time @ prompt-templates.docs.eval.go",
 		"Customize the interactive context footer > replaces numeric context usage with a progress bar @ tui.docs.eval.go",
 	}
 	if len(docs) != len(wantDocs) {
@@ -45,24 +48,28 @@ func TestSuitesMatchPisEvalInventory(t *testing.T) {
 		}
 	}
 
+	// vitest.evals.config.ts keeps the expensive audit out of the host project: it runs as its own `audit` project.
 	var host []string
 	for _, test := range runner.List(evals.Selection{Project: evals.EvalProjectHost}) {
 		host = append(host, test.Name)
 	}
-	wantHost := []string{
+	wantHost := []string{"Answer a basic prompt > returns the expected answer"}
+	if !slices.Equal(host, wantHost) {
+		t.Errorf("host cases = %v, want %v", host, wantHost)
+	}
+
+	var audit []string
+	for _, test := range runner.List(evals.Selection{Project: evals.EvalProjectAudit}) {
+		audit = append(audit, test.Name)
+	}
+	wantAudit := []string{
 		"Audit documentation against implementation > a.md matches the implementation",
 		"Audit documentation against implementation > B.md matches the implementation",
 		"Audit documentation against implementation > models.md matches the implementation",
 		"Audit documentation against implementation > sub/b.md matches the implementation",
-		"Answer a basic prompt > returns the expected answer",
 	}
-	if len(host) != len(wantHost) {
-		t.Fatalf("host cases = %v", host)
-	}
-	for i := range wantHost {
-		if host[i] != wantHost[i] {
-			t.Errorf("host case %d = %q, want %q", i, host[i], wantHost[i])
-		}
+	if !slices.Equal(audit, wantAudit) {
+		t.Errorf("audit cases = %v, want %v", audit, wantAudit)
 	}
 }
 

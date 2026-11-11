@@ -38,7 +38,7 @@ var (
 	byName  = map[string]class{}
 	adj     = map[class]map[class]struct{}{}
 	seen    = map[edge]string{} // first stack that created the edge
-	holding = map[int64][]held{}
+	holding = map[uint64][]held{}
 	reports = map[string]bool{}
 
 	instAdj    = map[uintptr]map[uintptr]struct{}{}
@@ -75,7 +75,7 @@ func classNamed(site string, skip int) class {
 	return c
 }
 
-func goid() int64 { return int64(goroutineid.Current()) }
+func goid() uint64 { return goroutineid.Current() }
 
 func shortStack(skip int) string {
 	pcs := make([]uintptr, 12)
@@ -268,7 +268,7 @@ func acquired(inst uintptr, cls class) {
 	mu.Unlock()
 }
 
-func released(inst uintptr, g int64) {
+func released(inst uintptr, g uint64) {
 	mu.Lock()
 	hs := holding[g]
 	for i, h := range slices.Backward(hs) {
@@ -289,7 +289,7 @@ func released(inst uintptr, g int64) {
 type Mutex struct {
 	mu     sync.Mutex
 	cls    atomic.Uint32
-	holder atomic.Int64
+	holder atomic.Uint64
 	ident  atomic.Pointer[sentinel]
 }
 
@@ -346,7 +346,7 @@ func (m *Mutex) Unlock() {
 type RWMutex struct {
 	mu     sync.RWMutex
 	cls    atomic.Uint32
-	holder atomic.Int64 // writer goroutine
+	holder atomic.Uint64 // writer goroutine
 	ident  atomic.Pointer[sentinel]
 }
 

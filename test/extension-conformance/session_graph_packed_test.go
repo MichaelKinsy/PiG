@@ -11,7 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/test/extension-conformance/testfixture/sessiongraph"
 )
 
-// sessionGraphPackedSDKs are the session-graph fixtures of the Go, Rust and Python SDKs loaded into a shared cell next to a second extension of their language, so that the extension under test shares its runtime process with another. A cell is shared only by extensions of one dependency set, so the fixture and its companion are built from the same manifest.
+// sessionGraphPackedSDKs are the session-graph fixtures of the Go, Rust, Python and Lisp SDKs loaded into a shared cell next to a second extension of their language, so that the extension under test shares its runtime process with another. A cell is shared only by extensions of one dependency set, so the fixture and its companion are built from the same manifest.
 func sessionGraphPackedSDKs() map[string]sessionGraphLoader {
 	pack := func(language string, build func(t testing.TB, root string) (fixture, companion subprocess.ExtConfig)) sessionGraphLoader {
 		return func(t testing.TB, r *sessionGraphRig) {
@@ -94,6 +94,9 @@ func sessionGraphPackedSDKs() map[string]sessionGraphLoader {
 			fixture.ContentHash = "python-session-graph-packed-" + fmt.Sprint(len(sessionGraphPython))
 			write(t, map[string]string{filepath.Join(fixture.Source, fixture.Package+".py"): sessionGraphPython})
 			return fixture, packedFlagFactory(t, root, "python", "packed-companion", false)
+		}),
+		"lisp-packed": pack("lisp", func(t testing.TB, root string) (subprocess.ExtConfig, subprocess.ExtConfig) {
+			return sessionGraphLispConfig(t), packedFlagFactory(t, root, "lisp", "packed-companion", false)
 		}),
 	}
 }

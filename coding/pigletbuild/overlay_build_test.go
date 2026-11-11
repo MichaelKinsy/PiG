@@ -10,14 +10,14 @@ import (
 )
 
 // The container builder bakes the localized Piglet inside the container, so the localized Piglet must carry
-// build.allowOverlays (D202) and nothing else of build.
-func TestContainerLocalizedPigletKeepsAllowOverlays(t *testing.T) {
+// build.closed (D202) and nothing else of build.
+func TestContainerLocalizedPigletKeepsClosed(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
 		build string
 		want  bool
 	}{
-		{"set", "build:\n  allowOverlays: true\n  outputName: pig-x\n  targets: [linux/amd64]\n", true},
+		{"set", "build:\n  closed: true\n  outputName: pig-x\n  targets: [linux/amd64]\n", true},
 		{"unset", "build:\n  outputName: pig-x\n", false},
 		{"no build", "", false},
 	} {
@@ -34,8 +34,8 @@ func TestContainerLocalizedPigletKeepsAllowOverlays(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got := strings.Contains(string(localized), "allowOverlays: true"); got != tc.want {
-				t.Fatalf("localized Piglet carries allowOverlays = %t, want %t:\n%s", got, tc.want, localized)
+			if got := strings.Contains(string(localized), "closed: true"); got != tc.want {
+				t.Fatalf("localized Piglet carries closed = %t, want %t:\n%s", got, tc.want, localized)
 			}
 			if strings.Contains(string(localized), "outputName") || strings.Contains(string(localized), "targets") {
 				t.Fatalf("localized Piglet kept other build settings:\n%s", localized)

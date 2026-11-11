@@ -161,6 +161,7 @@ func TestRegistrySessionFacadesAcrossSDKs(t *testing.T) {
 				b.ForgetProviderRegistration("conformance-oauth")
 				b.ForgetProviderRegistration("conformance-oauth-object")
 				b.ForgetProviderRegistration("conformance-oauth-large")
+				b.ForgetProviderRegistration("conformance-oauth-callbacks")
 				b.SetHostAction("getModelRegistryState", registryProbeState)
 				b.SetHostAction("getProviderAuth", func(_ context.Context, provider string) (map[string]any, error) {
 					if provider == "missing" {

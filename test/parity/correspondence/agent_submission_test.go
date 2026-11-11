@@ -105,3 +105,23 @@ func TestAgentBundleSubmissionRejectsUnknownFieldsAndEscapingOutput(t *testing.T
 		t.Fatalf("nil submission error = %v", err)
 	}
 }
+
+// A packet's target revision comes from a file the agent works from. A revision that begins with a dash is a git option
+// (`git show --output=<file>` writes the file), so it must be refused before git runs.
+func TestTranslationOriginalHashesRefuseOptionLikeRevision(t *testing.T) {
+	root := t.TempDir()
+	written := filepath.Join(root, "written")
+	submission := &AgentBundleSubmission{
+		Packet: &AgentWorkPacket{Target: SourceIdentity{Revision: "--output=" + written}},
+		Translator: &TranslatorBundle{Translations: []TranslationProposal{{
+			ProductionEdits: []TranslationEdit{{Path: "x.go"}},
+		}}},
+	}
+	err := validateTranslationOriginalHashes(root, submission)
+	if err == nil || !strings.Contains(err.Error(), "revision") {
+		t.Fatalf("validateTranslationOriginalHashes() = %v, want a revision error", err)
+	}
+	if _, statErr := os.Stat(written + ":x.go"); statErr == nil {
+		t.Fatal("git show wrote a file named by the packet revision")
+	}
+}

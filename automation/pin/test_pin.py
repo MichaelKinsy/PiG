@@ -259,6 +259,98 @@ class TarballTests(unittest.TestCase):
         self.assertEqual(open_at_download, [], "the mkstemp descriptor is still open while curl writes and os.replace renames")
 
 
+class UpstreamDeltaMirrorTests(unittest.TestCase):
+    """`make upstream-delta` audits against the exact earlier pin its manifest names, whose mirror it builds."""
+
+    def test_sync_from_is_the_earlier_pin_of_the_pins_manifest(self):
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, root, True)
+        (root / "test/parity/upstream-sync").mkdir(parents=True)
+        (root / "test/parity/upstream-sync" / f"v{COMMIT.version}.toml").write_text(f'from = "1.0.0+aaaaaaaa"\nto = "{COMMIT.version}"\n')
+        out = io.StringIO()
+        with (
+            mock.patch.object(pin_tool, "ROOT", root),
+            mock.patch.object(pinlib, "effective", lambda: (COMMIT, False)),
+            contextlib.redirect_stdout(out),
+        ):
+            pin_tool.cmd_sync_from(None)
+        self.assertEqual(out.getvalue().strip(), "1.0.0+aaaaaaaa")
+
+    def test_a_missing_manifest_is_an_error_not_an_empty_from(self):
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, root, True)
+        with mock.patch.object(pin_tool, "ROOT", root), mock.patch.object(pinlib, "effective", lambda: (COMMIT, False)):
+            with self.assertRaises(pinlib.PinError):
+                pin_tool.cmd_sync_from(None)
+
+    def test_mirror_spec_names_a_commit_build_only(self):
+        for version in ("1.4.0", "1.4.0+zzzz"):
+            with self.subTest(version=version), self.assertRaises(pinlib.PinError):
+                pin_tool.cmd_mirror_spec(mock.Mock(version=version))
+
+    def test_mirror_spec_checks_the_tarball_is_the_named_build(self):
+        commit = "b556cfe5" + "0" * 32
+        with (
+            mock.patch.object(pinlib, "full_commit", lambda short: commit),
+            mock.patch.object(pinlib, "tarball", lambda ref, tag: Path("/cache/x.tar.gz")),
+            mock.patch.object(pinlib, "tarball_identity", lambda path: (commit, "1.3.0")),
+        ):
+            with self.assertRaises(pinlib.PinError):
+                pin_tool.cmd_mirror_spec(mock.Mock(version="1.4.0+b556cfe5"))
+        out = io.StringIO()
+        with (
+            mock.patch.object(pinlib, "full_commit", lambda short: commit),
+            mock.patch.object(pinlib, "tarball", lambda ref, tag: Path("/cache/x.tar.gz")),
+            mock.patch.object(pinlib, "tarball_identity", lambda path: (commit, "1.4.0")),
+            contextlib.redirect_stdout(out),
+        ):
+            pin_tool.cmd_mirror_spec(mock.Mock(version="1.4.0+b556cfe5"))
+        self.assertEqual(out.getvalue().split(), [commit, "1.4.0", "/cache/x.tar.gz"])
+
+    def test_the_make_target_builds_the_from_mirror_before_the_audit(self):
+        recipe = (pinlib.ROOT / "automation/make/parity.mk").read_text(encoding="utf-8")
+        target = recipe[recipe.index("\nupstream-delta:"):]
+        target = target[: target.index("\n\n")]
+        self.assertLess(target.index("mirror-upstream.sh --version"), target.index("upstreamdelta"))
+        self.assertIn("sync-from", target)
+
+    def test_a_cached_tarball_expands_a_short_commit_without_a_request(self):
+        cache = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, cache, True)
+        commit = "b556cfe5" + "0" * 32
+        (cache / "checkouts/github.com" / pinlib.UPSTREAM_REPO / "tarballs").mkdir(parents=True)
+        (cache / "checkouts/github.com" / pinlib.UPSTREAM_REPO / "tarballs" / f"{commit}.tar.gz").write_bytes(b"")
+        with (
+            mock.patch.dict(os.environ, {"XDG_CACHE_HOME": str(cache)}),
+            mock.patch.object(pinlib.subprocess, "run", side_effect=AssertionError("asked the network")),
+        ):
+            self.assertEqual(pinlib.full_commit("b556cfe5"), commit)
+
+    def test_an_extracted_from_mirror_is_reused_without_a_request(self):
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, root, True)
+        for rel in ("automation/gen/mirror-upstream.sh", "automation/pin/pin.py", "automation/pin/pinlib.py", "automation/pin/oracle.py"):
+            (root / rel).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy(pinlib.ROOT / rel, root / rel)
+        commit = "b556cfe5" + "0" * 32
+        mirror = root / ".upstream" / "v1.4.0+b556cfe5"
+        (mirror / "packages/coding-agent/src/core/extensions").mkdir(parents=True)
+        (mirror / "packages/coding-agent/src/core/extensions/types.ts").write_text("")
+        for n in range(200):
+            (mirror / f"packages/coding-agent/src/f{n}.ts").write_text("")
+        (mirror / ".pig-upstream-source.json").write_text(json.dumps({"version": "1.4.0+b556cfe5", "tag": commit, "commit": commit}, indent=2) + "\n")
+        shims = root / "shims"
+        shims.mkdir()
+        shim = shims / "curl"
+        shim.write_text("#!/bin/sh\necho curl called >&2\nexit 22\n")
+        shim.chmod(0o755)
+        env = {**os.environ, "PATH": f"{shims}{os.pathsep}{os.environ['PATH']}", "XDG_CACHE_HOME": str(root / "cache"), "CI": "1"}
+        done = subprocess.run(["bash", str(root / "automation/gen/mirror-upstream.sh"), "--version", "v1.4.0+b556cfe5", "--sources-only"], env=env, capture_output=True, text=True, timeout=120)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertIn("already mirrored", done.stdout)
+        self.assertNotIn("curl called", done.stderr)
+
+
 class SourceBuildTests(unittest.TestCase):
     def source(self):
         root = Path(tempfile.mkdtemp())
@@ -360,6 +452,7 @@ class SharedStoreTests(unittest.TestCase):
 
     def setUp(self):
         self.store = Path(tempfile.mkdtemp())
+        self.addCleanup(lambda: (oracle.thaw(self.store), shutil.rmtree(self.store, ignore_errors=True)))
         self.builds = 0
         self.build_delay = 0.0
         self.probe = lambda: None
@@ -483,6 +576,58 @@ class SharedStoreTests(unittest.TestCase):
         self.assertEqual(len(set(results)), 1)
         self.assertEqual(self.label_of(results[0]), "first")
 
+    def test_a_cached_build_without_the_oracle_package_is_rebuilt_not_reused(self):
+        held = oracle.ensure(COMMIT)
+        oracle.thaw(held.parent)
+        shutil.rmtree(held)
+        held.mkdir()
+        rebuilt = oracle.ensure(COMMIT)
+        self.assertNotEqual(rebuilt.resolve(), held.resolve())
+        self.assertEqual(self.label_of(rebuilt), "first")
+        self.assertTrue((rebuilt / "@earendil-works" / "pi-coding-agent" / "cli.js").is_file())
+        self.assertEqual(self.builds, 2)
+
+    def test_a_cached_build_of_another_package_version_is_rebuilt_not_reused(self):
+        held = oracle.ensure(COMMIT)
+        manifest = held / "@earendil-works" / "pi-coding-agent" / "package.json"
+        manifest.write_text(json.dumps({**json.loads(manifest.read_text()), "version": "0.0.1"}))
+        rebuilt = oracle.ensure(COMMIT)
+        self.assertNotEqual(rebuilt.resolve(), held.resolve())
+        self.assertEqual(json.loads((rebuilt / "@earendil-works" / "pi-coding-agent" / "package.json").read_text())["version"], "1.1.0")
+        self.assertEqual(self.builds, 2)
+
+    @unittest.skipIf(os.name == "nt", "a directory's mode is not enforced on Windows")
+    def test_a_published_oracle_has_no_writable_directory(self):
+        held = oracle.ensure(COMMIT)
+        writable = [str(d) for d, _n, _f in os.walk(held) if os.stat(d).st_mode & 0o222]
+        self.assertEqual(writable, [], "an npm ci through extensions/sdk-ts/node_modules could empty the shared build")
+
+    @unittest.skipIf(os.name == "nt" or os.geteuid() == 0, "root ignores a directory's mode")
+    def test_emptying_a_published_oracle_the_way_npm_ci_does_fails_and_leaves_it_whole(self):
+        held = oracle.ensure(COMMIT)
+        for name in os.listdir(held):  # npm ci removes each entry of node_modules, recursively
+            with self.assertRaises(PermissionError):
+                shutil.rmtree(held / name)
+        self.assertEqual(self.label_of(held), "first")
+        self.assertEqual(oracle.ensure(COMMIT), held, "the whole build must still be the one reused")
+        self.assertEqual(self.builds, 1)
+
+    def test_a_thawed_build_can_be_deleted(self):
+        held = oracle.ensure(COMMIT)
+        oracle.thaw(held.parent)
+        shutil.rmtree(held.parent)
+        self.assertFalse(held.parent.exists())
+
+    def test_a_build_that_installs_no_oracle_package_fails_and_publishes_nothing(self):
+        def empty_install(_closure, _packed, flat):
+            (flat / "node_modules").mkdir(parents=True)
+
+        with mock.patch.object(oracle, "install_closure", empty_install):
+            with self.assertRaises(FileNotFoundError):
+                oracle.ensure(COMMIT)
+        self.assertEqual(list(self.store.rglob("*.ref")), [], "an empty build must not be published")
+        self.assertEqual(list(self.store.rglob(oracle.STAMP)), [])
+
     def test_a_forced_rebuild_publishes_a_new_directory_and_keeps_the_held_one(self):
         held = oracle.ensure(COMMIT)
         rebuilt = oracle.ensure(COMMIT, force=True)
@@ -527,6 +672,13 @@ class SharedStoreTests(unittest.TestCase):
 
 
 
+class PiVersionTests(unittest.TestCase):
+    def test_a_missing_oracle_package_is_a_pin_error_that_names_the_remedy(self):
+        with tempfile.TemporaryDirectory() as empty:
+            with self.assertRaisesRegex(pinlib.PinError, "make parity-deps"):
+                oracle.pi_version(Path(empty))
+
+
 def make_tree(root: Path, packages: dict[str, str]) -> Path:
     """A node_modules tree from {lock key: name@version}."""
     for key, ident in packages.items():
@@ -556,6 +708,29 @@ class ClosureTests(unittest.TestCase):
         closure = oracle.published_closure(self.published_lock(), "1.1.0")
         self.assertEqual(sorted(closure["packages"]), ["", self.AGENT, self.AGENT + "/node_modules/@earendil-works/pi-ai", self.AGENT + "/node_modules/openai"])
         self.assertEqual(closure["packages"][""]["devDependencies"], {oracle.AGENT: "1.1.0"})
+
+    def test_freezing_a_closure_builds_unbuilt_source_before_it_packs(self):
+        # A pack of source without dist has another integrity than the oracle's build, so a closure frozen from it fails `npm ci` with EINTEGRITY.
+        calls = []
+
+        def extract(_pin, destination):
+            (destination / "packages" / "coding-agent").mkdir(parents=True)
+            calls.append("extract")
+
+        def build(_pin, source):
+            (source / "packages" / "coding-agent" / "dist").mkdir()
+            calls.append("build")
+
+        def pack(*_a):
+            calls.append("pack")
+            raise pinlib.PinError("packed")
+
+        with tempfile.TemporaryDirectory() as home:
+            with mock.patch.object(oracle, "published", lambda *_a: None), mock.patch.object(oracle, "entry", lambda _pin: Path(home)), \
+                    mock.patch.object(oracle, "extract_source", extract), mock.patch.object(oracle, "build_source", build), mock.patch.object(oracle, "pack", pack):
+                with self.assertRaisesRegex(pinlib.PinError, "packed"):
+                    oracle.freeze_closure(TAG, Path("published-lock.json"))
+        self.assertEqual(calls, ["extract", "build", "pack"])
 
     def test_a_lock_of_another_install_is_not_a_closure(self):
         with self.assertRaisesRegex(pinlib.PinError, "not the lock of an install"):
@@ -667,7 +842,7 @@ class ClosureTests(unittest.TestCase):
         self.assertIsNotNone(lock, f"no frozen durable closure for {pin.commit}: durable/interop would run the published pi-durable, not a build of the pin")
         top = lock["packages"][""]["devDependencies"]
         self.assertLessEqual(set(oracle.INTEROP), set(top))
-        self.assertIn("typebox", top, "pi-durable's source imports typebox: the Go tests that import it resolve it from durable/interop/node_modules")
+        self.assertIn("diff", top, "pi-durable's source imports diff: it resolves it from the top of durable/interop/node_modules")
         for name in oracle.INTEROP:
             item = lock["packages"]["node_modules/" + name]
             self.assertTrue(item["resolved"].startswith(oracle.PACK_PREFIX), f"{name} must come from the pin's pack: {item['resolved']}")

@@ -52,11 +52,13 @@ func exemptions(root string) (map[string]string, error) {
 }
 
 type builder struct {
-	r       repo
-	root    string
-	since   string
-	base    string
-	idx     testIndex
+	r     repo
+	root  string
+	since string
+	base  string
+	idx   testIndex
+	// moved maps the tests a fix commit adds to where a later commit moved or renamed them; see moved-tests.txt.
+	moved   movedTests
 	order   map[string]int
 	entries []*Entry
 	rank    map[*Entry]int
@@ -89,11 +91,8 @@ func (b *builder) inherit(match func(Entry) bool) *Entry {
 		}
 		e := p
 		e.Commits = slices.Clone(p.Commits)
-		// A test the tree no longer declares (a port that renamed or retired it) cannot be recomputed from history either, so the entry drops it instead of failing the check on a guard that was replaced.
-		e.Tests = slices.DeleteFunc(slices.Clone(p.Tests), func(t string) bool { return !testExists(b.r.root, t) })
-		if e.Tests == nil {
-			e.Tests = []string{}
-		}
+		// A test the tree no longer declares (a port that renamed or retired it) cannot be recomputed from history either, so the entry follows moved-tests.txt to the test it became, or drops it instead of failing the check on a guard that was replaced.
+		e.Tests = recordedTests(b.r.root, b.moved, p.Tests)
 		return &e
 	}
 	return nil
@@ -142,7 +141,7 @@ func (b *builder) testsOf(entry *Entry, hash, message string) ([]string, error) 
 	if t, ok := b.tests[hash]; ok {
 		return slices.Clone(t), nil
 	}
-	t, err := testsOfCommit(b.r, b.idx, hash, message)
+	t, err := testsOfCommit(b.r, b.idx, b.moved, hash, message)
 	if err != nil {
 		return nil, err
 	}
@@ -220,6 +219,9 @@ func build(root, since string) (*Ledger, error) {
 	}
 	b := &builder{r: r, root: root, since: since, base: base, rank: map[*Entry]int{}, kept: map[*Entry]bool{}, anchor: map[*Entry]string{}, tests: map[string][]string{}, files: map[string]int{}, lanes: map[string][]laneCommit{}}
 	if b.idx, err = buildTestIndex(root); err != nil {
+		return nil, err
+	}
+	if b.moved, err = loadMovedTests(root); err != nil {
 		return nil, err
 	}
 	if prior, _, err := readCommitted(root); err == nil {
@@ -416,12 +418,22 @@ func (b *builder) releaseNoteEntries(cur []bullet, first map[string]intro) error
 		}
 	}
 	for _, bl := range uniq {
-		if e := b.inherit(func(p Entry) bool {
+		kept := b.inherit(func(p Entry) bool {
 			return p.Origin == "release note" && p.Note == bl.Text && p.FixedIn == bl.Version
-		}); e != nil {
-			b.entries = append(b.entries, e)
-			b.kept[e] = true
-			b.rank[e] = keptRank(e)
+		})
+		// The fold of a fragment into CHANGELOG.md moves the bullet from "Unreleased" to its release, and a marker re-pointed at the squash that replaced the fix commits names a commit of dozens of files. Neither the squash nor the new version says which tests guard this fix, so the entry the fragment had keeps its own.
+		if kept == nil && bl.Version != "Unreleased" {
+			kept = b.inherit(func(p Entry) bool {
+				return p.Origin == "release note" && p.Note == bl.Text && p.FixedIn == "Unreleased"
+			})
+			if kept != nil {
+				kept.FixedIn = bl.Version
+			}
+		}
+		if kept != nil {
+			b.entries = append(b.entries, kept)
+			b.kept[kept] = true
+			b.rank[kept] = keptRank(kept)
 			continue
 		}
 		e := &Entry{Note: bl.Text, Origin: "release note", FixedIn: bl.Version, Commits: []Commit{}, Tests: []string{}}
@@ -885,7 +897,7 @@ func (b *builder) commitEntries() (map[string]int, error) {
 			counts[strings.TrimSpace(category)]++
 			continue
 		}
-		if target, ok := seeTrailer(msg); ok {
+		if target, ok := seeTrailer(msg); ok && !b.supersedes(exempt, target, c.hash) {
 			links = append(links, link{target, c.hash})
 			continue
 		}
@@ -970,6 +982,20 @@ func exemptReason(exempt map[string]string, hash, msg string) string {
 		}
 	}
 	return ""
+}
+
+// supersedes reports whether the commit hash corrects the commit target its "Bug-Ledger: see" trailer names, and exempt.txt joins target to hash in return ("<target> see <hash>"). Two commits that name each other have no entry to join, so the correction, which says what the fix is, becomes the entry and the earlier commit joins it: an entry is not titled by an approach the correction replaced.
+func (b *builder) supersedes(exempt map[string]string, target, hash string) bool {
+	full, ok := b.r.resolve(target)
+	if !ok {
+		return false
+	}
+	for prefix, reason := range exempt {
+		if followed, ok := strings.CutPrefix(reason, "see "); ok && strings.HasPrefix(full, prefix) && strings.HasPrefix(hash, strings.TrimSpace(followed)) {
+			return true
+		}
+	}
+	return false
 }
 
 // seeTrailer returns the commit a "Bug-Ledger: see <commit>" trailer names.

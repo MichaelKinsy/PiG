@@ -12,6 +12,7 @@ export { openCapture }
 
 const piUrl = rel => pathToFileURL(`${process.env.CONTRACT_PI_SOURCE}/packages/durable/src/${rel}`).href + "?real"
 const { SqliteStorage } = await import(piUrl("storage/sqlite/storage.ts"))
+export const { SQLITE_MIGRATIONS } = await import(piUrl("storage/sqlite/migrations.ts"))
 
 // Profile `node` (CONTRACT_STORAGE_PROFILE): the reference's own Node adapter over a capsql DatabaseSync (hooks/resolve.mjs), the hops of a product adapter.
 const nodeAdapter = process.env.CONTRACT_STORAGE_PROFILE === "node" ? await import(piUrl("storage/sqlite/node.ts")) : undefined
@@ -23,7 +24,8 @@ function lazy(open) {
 	ready.catch(() => {})
 	return new Proxy({}, {
 		get: (_, prop) => {
-			if (prop === "then") return undefined
+			// `then` keeps the proxy from being taken for a promise; `publishing` is an optional method of Storage that SqliteStorage does not have.
+			if (prop === "then" || prop === "publishing") return undefined
 			return async (...args) => { const storage = await ready; return storage[prop](...args) }
 		},
 	})

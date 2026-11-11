@@ -2,7 +2,6 @@ package extension
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
@@ -224,28 +223,6 @@ type KeybindingsManager = *tui.TUIKeybindingsManager
 // BashResult mirrors core/bash-executor.BashResult. A native result must contain exitCode; its nil value represents undefined, not JSON null. A nil optional fullOutputPath is also undefined. Pre-encoded JSON retains its own null values.
 type BashResult = any
 
-// ExecOptions configures a shell command execution.
-//
-// upstream: core/exec.ts ExecOptions
-type ExecOptions struct {
-	// Timeout in milliseconds. Pi's timeout is a JavaScript number: a positive value starts a timer and anything else starts none.
-	Timeout float64 `json:"timeout,omitempty"`
-	// CWD overrides the working directory. Empty uses the extension's CWD.
-	CWD string `json:"cwd,omitempty"`
-	// Signal is upstream's options.signal: when it is done the command ends as when ExecCommand's own context ends, with SIGTERM to the command alone. It does not cross the wire; a subprocess extension's signal reaches the host as the call's own cancellation.
-	Signal AbortSignal `json:"-"`
-}
-
-// ExecResult is the outcome of a shell command execution.
-//
-// upstream: core/exec.ts ExecResult
-type ExecResult struct {
-	Stdout string `json:"stdout"`
-	Stderr string `json:"stderr"`
-	Code   int    `json:"code"`
-	Killed bool   `json:"killed"`
-}
-
 // TreePreparation is types.ts TreePreparation: what a session_before_tree handler receives about the navigation. EntriesToSummarize
 // holds the SessionEntry values the navigation abandons.
 type TreePreparation struct {
@@ -262,74 +239,9 @@ type TreePreparation struct {
 	Label string `json:"label,omitempty"`
 }
 
-// ─── Per-tool input values ────────────────────────────────────────────────
+// ─── Per-tool result details ──────────────────────────────────────────────
 
-// These types mirror the tool-specific input values of upstream core/tools.
-// Tool result details with concrete wire shapes are defined in events.go.
-
-// BashToolInput is upstream's BashToolInput (bash.ts bashSchema).
-type BashToolInput struct {
-	Command string   `json:"command"`
-	Timeout *float64 `json:"timeout,omitempty"`
-	// Extra holds members the schema does not declare; upstream's input is a plain object that keeps them.
-	Extra map[string]json.RawMessage `json:"-"`
-}
-
-// PowerShellToolInput is the bash input shape (upstream powershell.ts).
-type PowerShellToolInput = BashToolInput
-
-// ReadToolInput is upstream's ReadToolInput (read.ts readSchema).
-type ReadToolInput struct {
-	Path   string   `json:"path"`
-	Offset *float64 `json:"offset,omitempty"`
-	Limit  *float64 `json:"limit,omitempty"`
-	// Extra holds members the schema does not declare; upstream's input is a plain object that keeps them.
-	Extra map[string]json.RawMessage `json:"-"`
-}
-
-// EditToolInput is upstream's EditToolInput (edit.ts editSchema).
-type EditToolInput struct {
-	Path  string                `json:"path"`
-	Edits []EditToolInputChange `json:"edits"`
-	// Extra holds members the schema does not declare; upstream's input is a plain object that keeps them.
-	Extra map[string]json.RawMessage `json:"-"`
-}
-
-// EditToolInputChange is one targeted replacement of an EditToolInput (edit.ts replaceEditSchema).
-type EditToolInputChange struct {
-	OldText string `json:"oldText"`
-	NewText string `json:"newText"`
-}
-
-// WriteToolInput is upstream's WriteToolInput (write.ts writeSchema).
-type WriteToolInput struct {
-	Path    string `json:"path"`
-	Content string `json:"content"`
-	// Extra holds members the schema does not declare; upstream's input is a plain object that keeps them.
-	Extra map[string]json.RawMessage `json:"-"`
-}
-
-// GrepToolInput is upstream's GrepToolInput (grep.ts grepSchema).
-type GrepToolInput struct {
-	Pattern    string   `json:"pattern"`
-	Path       *string  `json:"path,omitempty"`
-	Glob       *string  `json:"glob,omitempty"`
-	IgnoreCase *bool    `json:"ignoreCase,omitempty"`
-	Literal    *bool    `json:"literal,omitempty"`
-	Context    *float64 `json:"context,omitempty"`
-	Limit      *float64 `json:"limit,omitempty"`
-	// Extra holds members the schema does not declare; upstream's input is a plain object that keeps them.
-	Extra map[string]json.RawMessage `json:"-"`
-}
-
-// LsToolInput is upstream's LsToolInput (ls.ts lsSchema).
-type LsToolInput struct {
-	Path  *string  `json:"path,omitempty"`
-	Limit *float64 `json:"limit,omitempty"`
-	// Extra holds members the schema does not declare; upstream's input is a plain object that keeps them.
-	Extra map[string]json.RawMessage `json:"-"`
-}
-
+// The tool-specific input values of upstream core/tools are in tool_inputs.go.
 // Per-tool result Details structs (BashToolDetails, ReadToolDetails,
 // GrepToolDetails, FindToolDetails, LsToolDetails) and the shared
 // TruncationResult wire shape are defined in events.go next to the typed
@@ -369,6 +281,7 @@ type AutocompleteSuggestions struct {
 }
 
 // SlashCommandInfo mirrors core/slash-commands.SlashCommandInfo, one entry of getCommands: an extension command, prompt template or skill.
+// Ports packages/coding-agent/src/core/slash-commands.ts (SlashCommandInfo).
 type SlashCommandInfo struct {
 	Name        string `json:"name"`
 	Description string `json:"description,omitempty"`

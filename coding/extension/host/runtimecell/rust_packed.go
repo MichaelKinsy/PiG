@@ -333,6 +333,25 @@ func copyRustSDKLockfile(sdkRoot, cellDir string) error {
 	return nil
 }
 
+// WriteRustWarmCell writes a Rust cell crate with no extensions into dir: the manifest and the lock copy a real cell gets,
+// and an empty main. Building it fills a Cargo target with the units every cell of that SDK shares, pig-sdk included
+// (Cargo keys a path dependency's unit on its path), so make test-warm seeds the cell's own unit and not a lookalike.
+func WriteRustWarmCell(dir, sdkRoot string) error {
+	if err := os.MkdirAll(filepath.Join(dir, "src"), 0o755); err != nil {
+		return fmt.Errorf("create Rust warm cell: %w", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "Cargo.toml"), []byte(renderRustCargoToml(nil, sdkRoot, "pig-warm-cell")), 0o644); err != nil {
+		return fmt.Errorf("write warm cell Cargo.toml: %w", err)
+	}
+	if err := copyRustSDKLockfile(sdkRoot, dir); err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(dir, "src", "main.rs"), []byte("fn main() {}\n"), 0o644); err != nil {
+		return fmt.Errorf("write warm cell main.rs: %w", err)
+	}
+	return nil
+}
+
 func renderRustCargoToml(extensions []RustExtension, sdkRoot, packageName string) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "[package]\nname = %q\nversion = \"0.0.0\"\nedition = \"2024\"\n\n[dependencies]\n", packageName)

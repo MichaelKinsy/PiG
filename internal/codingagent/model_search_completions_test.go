@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/modes/interactive/model-search.ts
+
 import (
 	"testing"
 

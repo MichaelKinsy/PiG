@@ -1,0 +1,5 @@
+# Identities that belong to one person, for check-dco.sh: a commit may be signed
+# off retroactively by a later commit whose author is any identity on its line.
+# One person per line, identities joined by " = ". Blank lines and "#" lines are
+# ignored.
+Michael Kinsy <54590707+MichaelKinsy@users.noreply.github.com> = Michael Kinsy <michael.kinsy@hpe.com>

@@ -1,3 +1,4 @@
+// Ports packages/coding-agent/src/modes/rpc/rpc-mode.ts (the extension UI context: dialog requests and extension_ui_response handling).
 package cli
 
 import (
@@ -37,6 +38,7 @@ func (r rpcUIResponse) cancelled() bool {
 	case '"':
 		return string(raw) != `""`
 	case '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+		//portlint:allow numbers raw is a valid JSON number token, which ParseFloat reads as JSON.parse does; overflow is ±Inf (truthy in JS too) and -0 is falsy in both (rpc-mode.ts response.cancelled)
 		number, _ := strconv.ParseFloat(string(raw), 64)
 		return number != 0
 	}

@@ -6,10 +6,10 @@ import {
   loadMcpConfig,
   openBrowser,
   updateMcpServerConfig
-} from "./chunk-N6HXWYKG.js";
+} from "./chunk-AMP26ZF4.js";
 import {
   ArminComponent
-} from "./chunk-S7TFHYGY.js";
+} from "./chunk-DJM4CGTU.js";
 import {
   AgentSession,
   BUG_REPORT_CUSTOM_ENTRY_TYPE,
@@ -79,6 +79,8 @@ import {
   getLastAssistantUsage,
   getLatestCompactionEntry,
   getMissingSessionCwdIssue,
+  getResourcePathKey,
+  getSourcePackageKey,
   isBashToolResult,
   isBuiltinExtension,
   isEditToolResult,
@@ -123,7 +125,7 @@ import {
   wrapRegisteredTools,
   writeBugReportArchive,
   writeRawStdout
-} from "./chunk-QLIWYORR.js";
+} from "./chunk-NFOIYUJ5.js";
 import {
   convertToPng,
   createBashToolDefinition,
@@ -158,19 +160,19 @@ import {
   resolveReadPath,
   withFileMutationQueue,
   writeRenderers
-} from "./chunk-6HJCSATA.js";
+} from "./chunk-HOGQJAZD.js";
 import {
   CODEMODE_TOOL_NAME,
   TOOL_SEARCH_TOOL_NAME,
   createCodemodeToolDefinition,
   createToolSearchToolDefinition
-} from "./chunk-NF6AG2GL.js";
+} from "./chunk-T2257LV5.js";
 import {
   SETTINGS_DEFAULTS,
   addUsageToTotals,
   createUsageTotals,
   getUsageCostBreakdown
-} from "./chunk-LKHC5YTL.js";
+} from "./chunk-IJFG4BUL.js";
 import {
   DEFAULT_MAX_BYTES,
   DEFAULT_MAX_LINES,
@@ -187,7 +189,7 @@ import {
   truncateTail,
   truncateToVisualLines,
   writeOutputFile
-} from "./chunk-T5YZVFVX.js";
+} from "./chunk-HAAXE2S5.js";
 import {
   SYSTEM_THEME_NAME,
   THEME_TOKENS,
@@ -221,7 +223,7 @@ import {
   setThemeJsonValidator,
   stopThemeWatcher,
   theme
-} from "./chunk-472CZNGH.js";
+} from "./chunk-2W3FEVNE.js";
 import {
   AuthStorage,
   LIST_MCP_RESOURCES_TOOL,
@@ -232,12 +234,12 @@ import {
   mcpNamespace,
   raceWithAbortSignal,
   readStoredCredential
-} from "./chunk-XNXPQFJN.js";
+} from "./chunk-QWVFFAFF.js";
 import {
   getPowerShellConfig,
   getShellConfig,
   killTrackedDetachedChildren
-} from "./chunk-OH2Z3DNC.js";
+} from "./chunk-F2BIFG4N.js";
 import {
   APP_NAME,
   APP_TITLE,
@@ -255,27 +257,31 @@ import {
   getBinDir,
   getBundledInteractiveAssetPath,
   getChangelogPath,
+  getConfiguredSelfUpdateArgv,
   getCwdRelativePath,
   getDebugLogPath,
   getDocsPath,
   getExamplesPath,
   getPackageDir,
+  getPathComparisonKey,
   getReadmePath,
   getSelfUpdateCommand,
   getSelfUpdateUnavailableInstruction,
   getSettingsPath,
   getShareViewerUrl,
   isLocalPath,
+  makeConfiguredSelfUpdateCommand,
   normalizePath,
   resolvePath,
+  shortenHomePath,
   spawnProcess,
   spawnProcessSync,
   stripBom,
   waitForChildProcess
-} from "./chunk-YXY3JV6E.js";
+} from "./chunk-JGRZB36T.js";
 import {
   __name
-} from "./chunk-SHUYVCID.js";
+} from "./chunk-FIOAHQVQ.js";
 
 // pi-dist/pi-coding-agent/index.js
 import {
@@ -828,7 +834,7 @@ function createMcpResourceToolDefinitions(options) {
 __name(createMcpResourceToolDefinitions, "createMcpResourceToolDefinitions");
 
 // pi-dist/pi-coding-agent/extensions/mcp/runtime.lazy.js
-var loadMcpRuntime = /* @__PURE__ */ __name(() => import("./chunk-XROSFU7A.js"), "loadMcpRuntime");
+var loadMcpRuntime = /* @__PURE__ */ __name(() => import("./chunk-F5WWHNNS.js"), "loadMcpRuntime");
 
 // pi-dist/pi-coding-agent/extensions/mcp/ui.js
 import { Container as Container3, Input, SelectList, Spacer as Spacer2, Text as Text3, truncateToWidth, visibleWidth } from "../../../pi-tui.mjs";
@@ -849,6 +855,7 @@ function runClipboardCommand(command, args, options) {
   return new Promise((resolve7) => {
     const child = spawn(command, args, {
       stdio: ["pipe", options?.input === void 0 ? "pipe" : "ignore", "ignore"],
+      cwd: "/",
       detached: process.platform !== "win32",
       windowsHide: true
     });
@@ -1128,6 +1135,9 @@ var McpManagerView = class {
     if (this.inputTarget)
       this.inputTarget.focused = value;
   }
+  get capturesViewportInput() {
+    return this.inputHandler?.capturesViewportInput === true;
+  }
   setContent(content, inputHandler, inputTarget) {
     if (this.inputTarget)
       this.inputTarget.focused = false;
@@ -1162,9 +1172,11 @@ var McpManagerView = class {
         const footer = `${keyHint("tui.select.confirm", menu.confirmLabel)} \u2022 ${keyHint("tui.select.cancel", menu.cancelLabel)}`;
         if (menu.items.length === 0) {
           body.push(new Text3(this.theme.fg("muted", menu.empty ?? "Nothing to show."), 1, 0));
-          this.setContent(frame(this.theme, menu.title, body, keyHint("tui.select.cancel", menu.cancelLabel)), (data) => {
-            if (this.keybindings.matches(data, "tui.select.cancel"))
-              finish(void 0);
+          this.setContent(frame(this.theme, menu.title, body, keyHint("tui.select.cancel", menu.cancelLabel)), {
+            handleInput: /* @__PURE__ */ __name((data) => {
+              if (this.keybindings.matches(data, "tui.select.cancel"))
+                finish(void 0);
+            }, "handleInput")
           });
           return;
         }
@@ -1179,7 +1191,7 @@ var McpManagerView = class {
         list.onSelect = (item) => finish(item.value);
         list.onCancel = () => finish(void 0);
         body.push(list);
-        this.setContent(frame(this.theme, menu.title, body, footer), (data) => list.handleInput(data));
+        this.setContent(frame(this.theme, menu.title, body, footer), list);
       }, "render");
       render2();
       unsubscribe = subscribe?.(() => {
@@ -1194,9 +1206,11 @@ var McpManagerView = class {
       this.setContent(frame(this.theme, title, body));
       return;
     }
-    this.setContent(frame(this.theme, title, body, keyHint("tui.select.cancel", "cancel")), (data) => {
-      if (this.keybindings.matches(data, "tui.select.cancel"))
-        onCancel();
+    this.setContent(frame(this.theme, title, body, keyHint("tui.select.cancel", "cancel")), {
+      handleInput: /* @__PURE__ */ __name((data) => {
+        if (this.keybindings.matches(data, "tui.select.cancel"))
+          onCancel();
+      }, "handleInput")
     });
   }
   redirectUrl(title, authorizationUrl, signal) {
@@ -1225,27 +1239,29 @@ var McpManagerView = class {
         new Text3(this.theme.fg("muted", "If the browser runs on another machine, paste the URL it was redirected to:"), 1, 0),
         input2
       ];
-      this.setContent(frame(this.theme, title, body, `${keyHint("tui.select.confirm", "submit")} \u2022 ${keyHint("tui.select.cancel", "cancel")}`), (data) => {
-        if (this.keybindings.matches(data, "tui.select.confirm")) {
-          const value = input2.getValue().trim();
-          if (value)
-            finish(value);
-          return;
-        }
-        if (this.keybindings.matches(data, "tui.select.cancel")) {
-          finish(void 0);
-          return;
-        }
-        if (this.keybindings.matches(data, "app.message.copy")) {
-          void link.copy();
-          return;
-        }
-        input2.handleInput(data);
+      this.setContent(frame(this.theme, title, body, `${keyHint("tui.select.confirm", "submit")} \u2022 ${keyHint("tui.select.cancel", "cancel")}`), {
+        handleInput: /* @__PURE__ */ __name((data) => {
+          if (this.keybindings.matches(data, "tui.select.confirm")) {
+            const value = input2.getValue().trim();
+            if (value)
+              finish(value);
+            return;
+          }
+          if (this.keybindings.matches(data, "tui.select.cancel")) {
+            finish(void 0);
+            return;
+          }
+          if (this.keybindings.matches(data, "app.message.copy")) {
+            void link.copy();
+            return;
+          }
+          input2.handleInput(data);
+        }, "handleInput")
       }, input2);
     });
   }
   handleInput(data) {
-    this.inputHandler?.(data);
+    this.inputHandler?.handleInput?.(data);
     this.tui.requestRender();
   }
   render(width) {
@@ -3734,7 +3750,6 @@ import { setKeybindings as setKeybindings2 } from "../../../pi-tui.mjs";
 import { spawnSync } from "node:child_process";
 import { existsSync as existsSync3 } from "node:fs";
 import { unlink } from "node:fs/promises";
-import * as os from "node:os";
 import { Container as Container7, getKeybindings as getKeybindings4, Input as Input3, Spacer as Spacer6, Text as Text7, truncateToWidth as truncateToWidth2, visibleWidth as visibleWidth2 } from "../../../pi-tui.mjs";
 
 // pi-dist/pi-coding-agent/modes/interactive/components/session-selector-search.js
@@ -3945,16 +3960,6 @@ function filterAndSortSessions(sessions, query, sortMode, nameFilter = "all") {
 __name(filterAndSortSessions, "filterAndSortSessions");
 
 // pi-dist/pi-coding-agent/modes/interactive/components/session-selector.js
-function shortenPath(path5) {
-  const home = os.homedir();
-  if (!path5)
-    return path5;
-  if (path5.startsWith(home)) {
-    return `~${path5.slice(home.length)}`;
-  }
-  return path5;
-}
-__name(shortenPath, "shortenPath");
 function formatSessionDate(date) {
   const now = /* @__PURE__ */ new Date();
   const diffMs = now.getTime() - date.getTime();
@@ -3976,12 +3981,10 @@ function formatSessionDate(date) {
   return `${Math.floor(diffDays / 365)}y`;
 }
 __name(formatSessionDate, "formatSessionDate");
-function canonicalizePath2(path5) {
-  if (!path5)
-    return path5;
-  return canonicalizePath(path5);
+function getSessionPathKey(path5) {
+  return getPathComparisonKey(canonicalizePath(path5));
 }
-__name(canonicalizePath2, "canonicalizePath");
+__name(getSessionPathKey, "getSessionPathKey");
 var SessionSelectorHeader = class {
   static {
     __name(this, "SessionSelectorHeader");
@@ -4100,14 +4103,14 @@ var SessionSelectorHeader = class {
 function buildSessionTree(sessions) {
   const byPath = /* @__PURE__ */ new Map();
   for (const session of sessions) {
-    const sessionPath = canonicalizePath2(session.path) ?? session.path;
+    const sessionPath = getSessionPathKey(session.path);
     byPath.set(sessionPath, { session, children: [], latestActivity: session.modified.getTime() });
   }
   const roots = [];
   for (const session of sessions) {
-    const sessionPath = canonicalizePath2(session.path) ?? session.path;
+    const sessionPath = getSessionPathKey(session.path);
     const node = byPath.get(sessionPath);
-    const parentPath = canonicalizePath2(session.parentSessionPath);
+    const parentPath = session.parentSessionPath ? getSessionPathKey(session.parentSessionPath) : void 0;
     if (parentPath && byPath.has(parentPath)) {
       byPath.get(parentPath).children.push(node);
     } else {
@@ -4170,7 +4173,7 @@ var SessionList = class {
   keybindings;
   showPath = false;
   confirmingDeletePath = null;
-  currentSessionCanonicalPath;
+  currentSessionPathKey;
   onSelect;
   onCancel;
   onExit = /* @__PURE__ */ __name(() => {
@@ -4202,7 +4205,7 @@ var SessionList = class {
     this.sortMode = sortMode;
     this.nameFilter = nameFilter;
     this.keybindings = keybindings;
-    this.currentSessionCanonicalPath = canonicalizePath2(currentSessionFilePath);
+    this.currentSessionPathKey = currentSessionFilePath ? getSessionPathKey(currentSessionFilePath) : void 0;
     this.filterSessions("");
     this.searchInput.onSubmit = () => {
       if (this.filteredSessions[this.selectedIndex]) {
@@ -4266,9 +4269,9 @@ var SessionList = class {
     this.setConfirmingDeletePath(selected.session.path);
   }
   isCurrentSessionPath(path5) {
-    if (!this.currentSessionCanonicalPath)
+    if (!this.currentSessionPathKey)
       return false;
-    return (canonicalizePath2(path5) ?? path5) === this.currentSessionCanonicalPath;
+    return getSessionPathKey(path5) === this.currentSessionPathKey;
   }
   invalidate() {
   }
@@ -4309,10 +4312,10 @@ var SessionList = class {
       const msgCount = String(session.messageCount);
       let rightPart = `${msgCount} ${age}`;
       if (this.showCwd && session.cwd) {
-        rightPart = `${shortenPath(session.cwd)} ${rightPart}`;
+        rightPart = `${shortenHomePath(session.cwd)} ${rightPart}`;
       }
       if (this.showPath) {
-        rightPart = `${shortenPath(session.path)} ${rightPart}`;
+        rightPart = `${shortenHomePath(session.path)} ${rightPart}`;
       }
       const cursor = isSelected ? theme.fg("accent", "\u203A ") : "  ";
       const prefixWidth = visibleWidth2(prefix);
@@ -4467,6 +4470,9 @@ __name(deleteSessionFile, "deleteSessionFile");
 var SessionSelectorComponent = class extends Container7 {
   static {
     __name(this, "SessionSelectorComponent");
+  }
+  get capturesViewportInput() {
+    return this.mode !== "rename";
   }
   handleInput(data) {
     if (this.mode === "rename") {
@@ -4812,7 +4818,7 @@ async function resolveProjectTrusted(options) {
     return options.trustOverride;
   }
   if (!hasTrustRequiringProjectResources(options.cwd)) {
-    return true;
+    return options.trustStore.get(options.cwd) ?? true;
   }
   if (options.extensionsResult) {
     const { result, errors } = await emitProjectTrustEvent(options.extensionsResult, { type: "project_trust", cwd: options.cwd }, options.projectTrustContext);
@@ -5189,7 +5195,7 @@ var LlamaClient = class {
 
 // pi-dist/pi-coding-agent/extensions/llama/huggingface.js
 import { readFile as readFile2 } from "node:fs/promises";
-import { homedir as homedir2 } from "node:os";
+import { homedir } from "node:os";
 import { join as join4 } from "node:path";
 var DEFAULT_HUGGING_FACE_URL = "https://huggingface.co";
 var QUANTIZATION_PATTERN = /(?:^|[-_.])((?:UD-)?(?:IQ\d(?:_[A-Z0-9]+)+|Q\d(?:_[A-Z0-9]+)+|BF16|F16|F32|MXFP\d(?:_[A-Z0-9]+)*))$/iu;
@@ -5223,7 +5229,7 @@ async function findHuggingFaceToken(env = process.env) {
     env.HF_TOKEN_PATH,
     env.HF_HOME ? join4(env.HF_HOME, "token") : void 0,
     env.XDG_CACHE_HOME ? join4(env.XDG_CACHE_HOME, "huggingface", "token") : void 0,
-    join4(homedir2(), ".cache", "huggingface", "token")
+    join4(homedir(), ".cache", "huggingface", "token")
   ].filter((path5) => Boolean(path5));
   for (const path5 of new Set(paths)) {
     const token = await readToken(path5);
@@ -5560,8 +5566,9 @@ function createLlamaProvider() {
 __name(createLlamaProvider, "createLlamaProvider");
 
 // pi-dist/pi-coding-agent/extensions/llama/ui.js
-import { Container as Container8, fuzzyFilter as fuzzyFilter2, Input as Input4, SelectList as SelectList2, Spacer as Spacer7, Text as Text8, truncateToWidth as truncateToWidth3, visibleWidth as visibleWidth3 } from "../../../pi-tui.mjs";
+import { Container as Container8, fuzzyFilter as fuzzyFilter2, getSelectPageIndex, Input as Input4, SelectList as SelectList2, Spacer as Spacer7, Text as Text8, truncateToWidth as truncateToWidth3, visibleWidth as visibleWidth3 } from "../../../pi-tui.mjs";
 var DOWNLOAD_VALUE = "\0download";
+var SEARCH_MAX_VISIBLE = 10;
 function contextLabel(model) {
   const context = model.meta?.n_ctx ?? model.meta?.n_ctx_train;
   if (context)
@@ -5626,6 +5633,7 @@ var HuggingFaceSearch = class extends Container8 {
   static {
     __name(this, "HuggingFaceSearch");
   }
+  capturesViewportInput = true;
   tui;
   theme;
   keybindings;
@@ -5666,9 +5674,8 @@ var HuggingFaceSearch = class extends Container8 {
   }
   updateResults() {
     this.resultsContainer.clear();
-    const maxVisible = 10;
-    const start = Math.max(0, Math.min(this.selectedIndex - Math.floor(maxVisible / 2), this.filteredResults.length - maxVisible));
-    const end = Math.min(start + maxVisible, this.filteredResults.length);
+    const start = Math.max(0, Math.min(this.selectedIndex - Math.floor(SEARCH_MAX_VISIBLE / 2), this.filteredResults.length - SEARCH_MAX_VISIBLE));
+    const end = Math.min(start + SEARCH_MAX_VISIBLE, this.filteredResults.length);
     for (let index = start; index < end; index++) {
       const model = this.filteredResults[index];
       if (!model)
@@ -5765,6 +5772,14 @@ var HuggingFaceSearch = class extends Container8 {
       }
       return;
     }
+    const pageIndex = getSelectPageIndex(this.keybindings, data, this.selectedIndex, this.filteredResults.length, SEARCH_MAX_VISIBLE);
+    if (pageIndex !== void 0) {
+      if (this.filteredResults.length > 0) {
+        this.selectedIndex = pageIndex;
+        this.updateResults();
+      }
+      return;
+    }
     if (this.keybindings.matches(data, "tui.select.confirm")) {
       const exact = /^[^/\s]+\/[^:\s]+(?::[^\s:]+)?$/u.test(this.query) ? this.query : void 0;
       const selected = exact ?? this.filteredResults[this.selectedIndex]?.id;
@@ -5812,6 +5827,9 @@ var LlamaView = class {
     this._focused = value;
     if (this.inputTarget)
       this.inputTarget.focused = value;
+  }
+  get capturesViewportInput() {
+    return this.inputHandler?.capturesViewportInput === true;
   }
   setContent(content, inputHandler, inputTarget) {
     if (this.inputTarget)
@@ -6212,7 +6230,7 @@ var builtInExtensions = [
 ];
 
 // pi-dist/pi-coding-agent/extensions/mcp/cli.lazy.js
-var loadMcpCommand = /* @__PURE__ */ __name(() => import("./chunk-T2RT6V7W.js"), "loadMcpCommand");
+var loadMcpCommand = /* @__PURE__ */ __name(() => import("./chunk-3M37CNA2.js"), "loadMcpCommand");
 
 // pi-dist/pi-coding-agent/migrations.js
 import chalk4 from "../../../chalk/source/index.js";
@@ -6438,7 +6456,7 @@ __name(runMigrations, "runMigrations");
 // pi-dist/pi-coding-agent/modes/interactive/interactive-mode.js
 import * as crypto2 from "node:crypto";
 import * as fs3 from "node:fs";
-import * as os3 from "node:os";
+import * as os2 from "node:os";
 import * as path4 from "node:path";
 import { isRetryableAssistantError } from "../../pi-ai/sdk-bundle/compat.js";
 import * as TuiLayouts from "../../../pi-tui.mjs";
@@ -6662,7 +6680,7 @@ var BUILTIN_SLASH_COMMANDS = [
   { name: "thinking", description: "Set thinking level", argumentHint: "<level>" },
   { name: "scoped-models", description: "Enable/disable models for Ctrl+P cycling" },
   { name: "export", description: "Export session (HTML default, or specify path: .html/.jsonl)" },
-  { name: "import", description: "Import and resume a session from a JSONL file" },
+  { name: "import", description: "Import a JSONL session, preserving its ID and working directory" },
   { name: "share", description: "Share session via a Radius artifact or a GitHub gist" },
   { name: "bug", description: "Report a bug to the Pi developers", argumentHint: "<description>" },
   { name: "copy", description: "Copy last agent message to clipboard" },
@@ -6677,7 +6695,7 @@ var BUILTIN_SLASH_COMMANDS = [
   { name: "logout", description: "Remove provider authentication" },
   { name: "new", description: "Start a new session" },
   { name: "compact", description: "Manually compact the session context" },
-  { name: "resume", description: "Resume a different session" },
+  { name: "resume", description: "Resume another session" },
   { name: "reload", description: "Reload keybindings, extensions, skills, prompts, themes, and context files" },
   { name: "quit", description: `Quit ${APP_NAME}` }
 ];
@@ -7287,16 +7305,22 @@ async function editInExternalEditor(options) {
     process.stdout.write(`Launching external editor: ${options.command}
 Pi will resume when the editor exits.
 `);
-    const exitCode = await new Promise((resolve7) => {
+    const exit = await new Promise((resolve7) => {
       const child = spawn2(editor, [...editorArgs, filePath], {
         stdio: "inherit",
         shell: process.platform === "win32"
       });
       child.on("error", () => resolve7(null));
-      child.on("close", (code) => resolve7(code));
+      child.on("close", (code, signal) => resolve7(code ?? signal));
     });
-    if (exitCode !== 0) {
-      return { status: "failed" };
+    if (exit === null) {
+      return { status: "failed", message: `Failed to launch external editor: ${options.command}` };
+    }
+    if (exit !== 0) {
+      return {
+        status: "failed",
+        message: `External editor exited with ${typeof exit === "number" ? `code ${exit}` : exit}; prompt unchanged`
+      };
     }
     return { status: "complete", content: stripBom(readFileSync7(filePath, "utf-8")).replace(/\n$/, "") };
   } finally {
@@ -7319,6 +7343,8 @@ var ExtensionEditorComponent = class extends Container10 {
   tui;
   keybindings;
   externalEditorCommand;
+  /** Shows external editor failures; renders nothing while empty. */
+  externalEditorStatus = new Text10("", 1, 0);
   _focused = false;
   get focused() {
     return this._focused;
@@ -7351,6 +7377,7 @@ var ExtensionEditorComponent = class extends Container10 {
       this.onSubmitCallback(text);
     };
     this.addChild(this.editor);
+    this.addChild(this.externalEditorStatus);
     this.addChild(new Spacer9(1));
     const hint = keyHint("tui.select.confirm", "submit") + "  " + keyHint("tui.input.newLine", "newline") + "  " + keyHint("tui.select.cancel", "cancel") + `  ${keyHint("app.editor.external", "external editor")}`;
     this.addChild(new Text10(hint, 1, 0));
@@ -7377,6 +7404,7 @@ var ExtensionEditorComponent = class extends Container10 {
         command: this.externalEditorCommand,
         content
       });
+      this.externalEditorStatus.setText(result.status === "failed" ? theme.fg("warning", result.message) : "");
       if (result.status === "complete") {
         this.editor.setText(result.content);
       }
@@ -7391,7 +7419,7 @@ var ExtensionEditorComponent = class extends Container10 {
 import { spawn as spawn3, spawnSync as spawnSync2 } from "node:child_process";
 import * as crypto from "node:crypto";
 import * as fs from "node:fs";
-import * as os2 from "node:os";
+import * as os from "node:os";
 import * as path2 from "node:path";
 import { DEFAULT_RADIUS_GATEWAY as DEFAULT_RADIUS_GATEWAY2 } from "../../pi-ai/providers/radius-config.js";
 import { hyperlink as hyperlink2 } from "../../../pi-tui.mjs";
@@ -7420,7 +7448,7 @@ function exportSessionForShare(filePath, session) {
 }
 __name(exportSessionForShare, "exportSessionForShare");
 async function shareSession(context) {
-  const tempDir = fs.mkdtempSync(path2.join(os2.tmpdir(), "pi-share-"));
+  const tempDir = fs.mkdtempSync(path2.join(os.tmpdir(), "pi-share-"));
   const jsonlFile = path2.join(tempDir, "session.jsonl");
   const htmlFile = path2.join(tempDir, "session.html");
   try {
@@ -7820,7 +7848,7 @@ import { Container as Container11, Markdown, MouseRegion, Spacer as Spacer10, Te
 
 // pi-dist/pi-coding-agent/modes/interactive/components/markdown-transform.js
 function createMarkdownTransform(messageType, isStreaming, transformers, messageId, timestamp) {
-  return (markdown, availableWidth) => applyMarkdownTransformers(markdown, { messageType, isStreaming, availableWidth, messageId, timestamp }, transformers);
+  return (markdown, availableWidth) => applyMarkdownTransformers(markdown, { messageType, isStreaming: isStreaming(), availableWidth, messageId, timestamp }, transformers);
 }
 __name(createMarkdownTransform, "createMarkdownTransform");
 function applyMarkdownTransformers(markdown, context, transformers) {
@@ -7858,6 +7886,7 @@ var AssistantMessageComponent = class extends Container11 {
   messageId;
   timestamp;
   thinkingVisibilityOverrides = /* @__PURE__ */ new Map();
+  markdownSlots = [];
   constructor(message, hideThinkingBlock = false, markdownTheme = getMarkdownTheme(), hiddenThinkingLabel = "Thinking...", outputPad = 1, markdownTransformers = [], messageId, timestamp) {
     super();
     this.hideThinkingBlock = hideThinkingBlock;
@@ -7894,6 +7923,7 @@ var AssistantMessageComponent = class extends Container11 {
   }
   setOutputPad(padding) {
     this.outputPad = padding;
+    this.markdownSlots = [];
     if (this.lastMessage) {
       this.updateContent(this.lastMessage);
     }
@@ -7911,17 +7941,31 @@ var AssistantMessageComponent = class extends Container11 {
     this.lastMessage = message;
     this.isStreaming = isStreaming;
     this.contentContainer.clear();
-    const hasVisibleContent = message.content.some((c2) => c2.type === "text" && c2.text.trim() || c2.type === "thinking" && c2.thinking.trim());
-    if (hasVisibleContent) {
-      this.contentContainer.addChild(new Spacer10(1));
-    }
+    const previousSlots = this.markdownSlots;
+    this.markdownSlots = [];
+    const markdownBlock = /* @__PURE__ */ __name((kind, text, create) => {
+      const slot = previousSlots[this.markdownSlots.length];
+      const markdown = slot?.kind === kind ? slot.markdown : create();
+      markdown.setText(text);
+      this.markdownSlots.push({ kind, markdown });
+      return markdown;
+    }, "markdownBlock");
+    let needsSpacer = true;
+    const addVisibleChild = /* @__PURE__ */ __name((child) => {
+      if (needsSpacer) {
+        this.contentContainer.addChild(new Spacer10(1));
+        needsSpacer = false;
+      }
+      this.contentContainer.addChild(child);
+    }, "addVisibleChild");
     let thinkingRunIndex = 0;
     for (let i = 0; i < message.content.length; i++) {
       const content = message.content[i];
       if (content.type === "text" && content.text.trim()) {
-        this.contentContainer.addChild(new Markdown(content.text.trim(), this.outputPad, 0, this.markdownTheme, void 0, {
-          transform: createMarkdownTransform("assistant", this.isStreaming, this.markdownTransformers, this.messageId, this.timestamp)
-        }));
+        const text = content.text.trim();
+        addVisibleChild(markdownBlock("text", text, () => new Markdown(text, this.outputPad, 0, this.markdownTheme, void 0, {
+          transform: createMarkdownTransform("assistant", () => this.isStreaming, this.markdownTransformers, this.messageId, this.timestamp)
+        })));
       } else if (content.type === "thinking") {
         const thinkingBlocks = [];
         for (; i < message.content.length; i++) {
@@ -7929,25 +7973,28 @@ var AssistantMessageComponent = class extends Container11 {
           if (thinkingContent.type !== "thinking") {
             break;
           }
-          const thinking = thinkingContent.thinking.trim();
-          if (thinking) {
-            thinkingBlocks.push(thinking);
+          const thinking2 = thinkingContent.thinking.trim();
+          if (thinking2) {
+            thinkingBlocks.push(thinking2);
           }
         }
         i--;
         if (thinkingBlocks.length === 0) {
           continue;
         }
-        const hasVisibleContentAfter = message.content.slice(i + 1).some((c2) => c2.type === "text" && c2.text.trim() || c2.type === "thinking" && c2.thinking.trim());
         const runIndex = thinkingRunIndex++;
         const hidden = this.thinkingVisibilityOverrides.get(runIndex) ?? this.hideThinkingBlock;
-        const thinkingComponent = hidden ? new Text11(theme.italic(theme.fg("thinkingText", this.hiddenThinkingLabel)), this.outputPad, 0) : new Markdown(thinkingBlocks.join("\n\n"), this.outputPad, 0, this.markdownTheme, {
+        if (hidden && !this.hiddenThinkingLabel.trim()) {
+          continue;
+        }
+        const thinking = thinkingBlocks.join("\n\n");
+        const thinkingComponent = hidden ? new Text11(theme.italic(theme.fg("thinkingText", this.hiddenThinkingLabel)), this.outputPad, 0) : markdownBlock("thinking", thinking, () => new Markdown(thinking, this.outputPad, 0, this.markdownTheme, {
           color: /* @__PURE__ */ __name((text) => theme.fg("thinkingText", text), "color"),
           italic: true
         }, {
-          transform: createMarkdownTransform("assistant-thinking", this.isStreaming, this.markdownTransformers, this.messageId, this.timestamp)
-        });
-        this.contentContainer.addChild(new MouseRegion(thinkingComponent, (event) => {
+          transform: createMarkdownTransform("assistant-thinking", () => this.isStreaming, this.markdownTransformers, this.messageId, this.timestamp)
+        }));
+        addVisibleChild(new MouseRegion(thinkingComponent, (event) => {
           if (event.type !== "click" || event.button !== "left")
             return void 0;
           this.thinkingVisibilityOverrides.set(runIndex, !hidden);
@@ -7955,9 +8002,7 @@ var AssistantMessageComponent = class extends Container11 {
             this.updateContent(this.lastMessage);
           return { handled: true };
         }));
-        if (hasVisibleContentAfter) {
-          this.contentContainer.addChild(new Spacer10(1));
-        }
+        needsSpacer = true;
       }
     }
     const hasToolCalls = message.content.some((c2) => c2.type === "toolCall");
@@ -8288,6 +8333,10 @@ var CustomEditor = class extends Editor2 {
     if (this.onExtensionShortcut?.(data)) {
       return;
     }
+    if (this.isShowingAutocomplete() && (this.keybindings.matches(data, "tui.select.pageUp") || this.keybindings.matches(data, "tui.select.pageDown"))) {
+      super.handleInput(data);
+      return;
+    }
     if (this.keybindings.matches(data, "app.clipboard.pasteImage")) {
       this.onPasteImage?.();
       return;
@@ -8365,7 +8414,7 @@ var CustomEntryComponent = class extends Container15 {
     this.customComponent = void 0;
     let component;
     try {
-      component = this.renderer(this.entry, { expanded: this._expanded }, theme);
+      component = this.renderer(this.entry, { expanded: this._expanded, keyText, keyHint }, theme);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       const box = new Box3(this.outputPad, 1, (text) => theme.bg("customMessageBg", text));
@@ -8428,7 +8477,7 @@ var CustomMessageComponent = class extends Container16 {
     this.removeChild(this.box);
     if (this.customRenderer) {
       try {
-        const component = this.customRenderer(this.message, { expanded: this._expanded, outputPad: this.outputPad }, theme);
+        const component = this.customRenderer(this.message, { expanded: this._expanded, outputPad: this.outputPad, keyText, keyHint }, theme);
         if (component) {
           this.customComponent = component;
           this.addChild(component);
@@ -8504,7 +8553,7 @@ function playEasterEgg3d(tui, egg) {
   if (tui.hasOverlay())
     return true;
   const screen = tui.getScreenLines();
-  import("./chunk-6VZPGKDV.js").then((module) => module.playEasterEgg3d(tui, screen, egg), () => {
+  import("./chunk-VFDVIQFD.js").then((module) => module.playEasterEgg3d(tui, screen, egg), () => {
   });
   return true;
 }
@@ -9048,7 +9097,7 @@ __name(createMermaidMarkdownTransformer, "createMermaidMarkdownTransformer");
 
 // pi-dist/pi-coding-agent/modes/interactive/components/model-selector.js
 import { modelsAreEqual } from "../../pi-ai/sdk-bundle/index.js";
-import { Container as Container19, fuzzyFilter as fuzzyFilter3, getKeybindings as getKeybindings7, Input as Input6, Spacer as Spacer18, Text as Text19 } from "../../../pi-tui.mjs";
+import { Container as Container19, fuzzyFilter as fuzzyFilter3, getKeybindings as getKeybindings7, getSelectPageIndex as getSelectPageIndex2, Input as Input6, Spacer as Spacer18, Text as Text19 } from "../../../pi-tui.mjs";
 
 // pi-dist/pi-coding-agent/modes/interactive/model-catalog-refresh.js
 var ModelCatalogRefreshCoordinator = class {
@@ -9114,10 +9163,12 @@ function getModelSelectorSearchText(item) {
 __name(getModelSelectorSearchText, "getModelSelectorSearchText");
 
 // pi-dist/pi-coding-agent/modes/interactive/components/model-selector.js
+var MAX_VISIBLE = 10;
 var ModelSelectorComponent = class extends Container19 {
   static {
     __name(this, "ModelSelectorComponent");
   }
+  capturesViewportInput = true;
   searchInput;
   // Focusable implementation - propagate to searchInput for IME cursor positioning
   _focused = false;
@@ -9339,9 +9390,8 @@ var ModelSelectorComponent = class extends Container19 {
   }
   updateList() {
     this.listContainer.clear();
-    const maxVisible = 10;
-    const startIndex = Math.max(0, Math.min(this.selectedIndex - Math.floor(maxVisible / 2), this.filteredModels.length - maxVisible));
-    const endIndex = Math.min(startIndex + maxVisible, this.filteredModels.length);
+    const startIndex = Math.max(0, Math.min(this.selectedIndex - Math.floor(MAX_VISIBLE / 2), this.filteredModels.length - MAX_VISIBLE));
+    const endIndex = Math.min(startIndex + MAX_VISIBLE, this.filteredModels.length);
     for (let i = startIndex; i < endIndex; i++) {
       const item = this.filteredModels[i];
       if (!item)
@@ -9382,6 +9432,7 @@ var ModelSelectorComponent = class extends Container19 {
   }
   handleInput(keyData) {
     const kb = getKeybindings7();
+    const pageIndex = getSelectPageIndex2(kb, keyData, this.selectedIndex, this.filteredModels.length, MAX_VISIBLE);
     if (kb.matches(keyData, "tui.input.tab")) {
       if (this.scopedModelItems.length > 0) {
         const nextScope = this.scope === "all" ? "scoped" : "all";
@@ -9401,6 +9452,11 @@ var ModelSelectorComponent = class extends Container19 {
       if (this.filteredModels.length === 0)
         return;
       this.selectedIndex = this.selectedIndex === this.filteredModels.length - 1 ? 0 : this.selectedIndex + 1;
+      this.updateList();
+    } else if (pageIndex !== void 0) {
+      if (this.filteredModels.length === 0)
+        return;
+      this.selectedIndex = pageIndex;
       this.updateList();
     } else if (kb.matches(keyData, "tui.select.confirm")) {
       const selectedModel = this.filteredModels[this.selectedIndex];
@@ -9431,7 +9487,7 @@ var ModelSelectorComponent = class extends Container19 {
 };
 
 // pi-dist/pi-coding-agent/modes/interactive/components/oauth-selector.js
-import { Container as Container20, fuzzyFilter as fuzzyFilter4, getKeybindings as getKeybindings8, Input as Input7, Spacer as Spacer19, TruncatedText as TruncatedText2 } from "../../../pi-tui.mjs";
+import { Container as Container20, fuzzyFilter as fuzzyFilter4, getKeybindings as getKeybindings8, getSelectPageIndex as getSelectPageIndex3, Input as Input7, Spacer as Spacer19, TruncatedText as TruncatedText2 } from "../../../pi-tui.mjs";
 function formatAuthSelectorProviderType(authType, subscription) {
   if (authType === "api_key")
     return "API key";
@@ -9452,10 +9508,12 @@ function formatAuthSelectorProviderStatus(provider) {
   return theme.fg("success", ` \u2713 ${source}`);
 }
 __name(formatAuthSelectorProviderStatus, "formatAuthSelectorProviderStatus");
+var MAX_VISIBLE2 = 8;
 var OAuthSelectorComponent = class extends Container20 {
   static {
     __name(this, "OAuthSelectorComponent");
   }
+  capturesViewportInput = true;
   searchInput;
   // Focusable implementation - propagate to search input for IME cursor positioning
   _focused = false;
@@ -9512,9 +9570,8 @@ var OAuthSelectorComponent = class extends Container20 {
   }
   updateList() {
     this.listContainer.clear();
-    const maxVisible = 8;
-    const startIndex = Math.max(0, Math.min(this.selectedIndex - Math.floor(maxVisible / 2), this.filteredProviders.length - maxVisible));
-    const endIndex = Math.min(startIndex + maxVisible, this.filteredProviders.length);
+    const startIndex = Math.max(0, Math.min(this.selectedIndex - Math.floor(MAX_VISIBLE2 / 2), this.filteredProviders.length - MAX_VISIBLE2));
+    const endIndex = Math.min(startIndex + MAX_VISIBLE2, this.filteredProviders.length);
     for (let i = startIndex; i < endIndex; i++) {
       const provider = this.filteredProviders[i];
       if (!provider)
@@ -9544,6 +9601,7 @@ var OAuthSelectorComponent = class extends Container20 {
   }
   handleInput(keyData) {
     const kb = getKeybindings8();
+    const pageIndex = getSelectPageIndex3(kb, keyData, this.selectedIndex, this.filteredProviders.length, MAX_VISIBLE2);
     if (kb.matches(keyData, "tui.select.up")) {
       if (this.filteredProviders.length === 0)
         return;
@@ -9553,6 +9611,11 @@ var OAuthSelectorComponent = class extends Container20 {
       if (this.filteredProviders.length === 0)
         return;
       this.selectedIndex = Math.min(this.filteredProviders.length - 1, this.selectedIndex + 1);
+      this.updateList();
+    } else if (pageIndex !== void 0) {
+      if (this.filteredProviders.length === 0)
+        return;
+      this.selectedIndex = pageIndex;
       this.updateList();
     } else if (kb.matches(keyData, "tui.select.confirm")) {
       const selectedProvider = this.filteredProviders[this.selectedIndex];
@@ -9669,7 +9732,7 @@ function createLoginMenuSelector(tui, title, options, radiusOption, onSelect, on
 __name(createLoginMenuSelector, "createLoginMenuSelector");
 
 // pi-dist/pi-coding-agent/modes/interactive/components/scoped-models-selector.js
-import { Container as Container21, fuzzyFilter as fuzzyFilter5, getKeybindings as getKeybindings9, Input as Input8, Key as Key2, matchesKey, Spacer as Spacer20, Text as Text21 } from "../../../pi-tui.mjs";
+import { Container as Container21, fuzzyFilter as fuzzyFilter5, getKeybindings as getKeybindings9, getSelectPageIndex as getSelectPageIndex4, Input as Input8, Key as Key2, matchesKey, Spacer as Spacer20, Text as Text21 } from "../../../pi-tui.mjs";
 function isEnabled2(enabledIds, id) {
   return enabledIds === null || enabledIds.includes(id);
 }
@@ -9733,6 +9796,7 @@ var ScopedModelsSelectorComponent = class extends Container21 {
   static {
     __name(this, "ScopedModelsSelectorComponent");
   }
+  capturesViewportInput = true;
   modelsById = /* @__PURE__ */ new Map();
   allIds = [];
   enabledIds = null;
@@ -9882,6 +9946,14 @@ var ScopedModelsSelectorComponent = class extends Container21 {
       if (this.filteredItems.length === 0)
         return;
       this.selectedIndex = this.selectedIndex === this.filteredItems.length - 1 ? 0 : this.selectedIndex + 1;
+      this.updateList();
+      return;
+    }
+    const pageIndex = getSelectPageIndex4(kb, data, this.selectedIndex, this.filteredItems.length, this.maxVisible);
+    if (pageIndex !== void 0) {
+      if (this.filteredItems.length === 0)
+        return;
+      this.selectedIndex = pageIndex;
       this.updateList();
       return;
     }
@@ -10043,7 +10115,7 @@ var SelectSubmenu = class extends Container22 {
   handleInput(data) {
     if (this.searchInput) {
       const kb = getKeybindings10();
-      const isNav = kb.matches(data, "tui.select.up") || kb.matches(data, "tui.select.down") || kb.matches(data, "tui.select.confirm") || kb.matches(data, "tui.select.cancel");
+      const isNav = kb.matches(data, "tui.select.up") || kb.matches(data, "tui.select.down") || kb.matches(data, "tui.select.pageUp") || kb.matches(data, "tui.select.pageDown") || kb.matches(data, "tui.select.confirm") || kb.matches(data, "tui.select.cancel");
       if (isNav) {
         this.selectList.handleInput(data);
       } else {
@@ -11197,7 +11269,9 @@ var ToolExecutionComponent = class extends Container26 {
       showImages: this.showImages,
       isError: this.result?.isError ?? false,
       durationMs: this.isPartial ? void 0 : this.result?.durationMs,
-      outputPad: this.outputPad
+      outputPad: this.outputPad,
+      keyText,
+      keyHint
     };
   }
   createCallFallback() {
@@ -12099,23 +12173,18 @@ var TreeList = class {
     return false;
   }
   formatToolCall(name, args) {
-    const shortenPath2 = /* @__PURE__ */ __name((p) => {
-      const home = process.env.HOME || process.env.USERPROFILE || "";
-      if (home && p.startsWith(home))
-        return `~${p.slice(home.length)}`;
-      return p;
-    }, "shortenPath");
+    const shortenPath = /* @__PURE__ */ __name((p) => shortenHomePath(p, process.env.HOME || process.env.USERPROFILE || ""), "shortenPath");
     switch (name) {
       case "read": {
-        const path5 = shortenPath2(String(args.path || args.file_path || ""));
+        const path5 = shortenPath(String(args.path || args.file_path || ""));
         return `[read: ${path5}${formatReadLineRange(args.offset, args.limit)}]`;
       }
       case "write": {
-        const path5 = shortenPath2(String(args.path || args.file_path || ""));
+        const path5 = shortenPath(String(args.path || args.file_path || ""));
         return `[write: ${path5}]`;
       }
       case "edit": {
-        const path5 = shortenPath2(String(args.path || args.file_path || ""));
+        const path5 = shortenPath(String(args.path || args.file_path || ""));
         return `[edit: ${path5}]`;
       }
       case "bash": {
@@ -12125,16 +12194,16 @@ var TreeList = class {
       }
       case "grep": {
         const pattern = String(args.pattern || "");
-        const path5 = shortenPath2(String(args.path || "."));
+        const path5 = shortenPath(String(args.path || "."));
         return `[grep: /${pattern}/ in ${path5}]`;
       }
       case "find": {
         const pattern = String(args.pattern || "");
-        const path5 = shortenPath2(String(args.path || "."));
+        const path5 = shortenPath(String(args.path || "."));
         return `[find: ${pattern} in ${path5}]`;
       }
       case "ls": {
-        const path5 = shortenPath2(String(args.path || "."));
+        const path5 = shortenPath(String(args.path || "."));
         return `[ls: ${path5}]`;
       }
       default: {
@@ -12504,6 +12573,9 @@ var TreeSelectorComponent = class extends Container27 {
     this.treeContainer.clear();
     this.treeContainer.addChild(this.treeList);
   }
+  get capturesViewportInput() {
+    return this.labelInput === null;
+  }
   handleInput(keyData) {
     if (this.labelInput) {
       this.labelInput.handleInput(keyData);
@@ -12636,7 +12708,7 @@ var UserMessageComponent = class extends Container29 {
     }, {
       preserveOrderedListMarkers: true,
       preserveBackslashEscapes: true,
-      transform: createMarkdownTransform("user", false, this.markdownTransformers, this.messageId, this.timestamp)
+      transform: createMarkdownTransform("user", () => false, this.markdownTransformers, this.messageId, this.timestamp)
     }));
   }
   render(width) {
@@ -12651,11 +12723,12 @@ var UserMessageComponent = class extends Container29 {
 };
 
 // pi-dist/pi-coding-agent/modes/interactive/components/user-message-selector.js
-import { Container as Container30, getKeybindings as getKeybindings14, Spacer as Spacer27, Text as Text30, truncateToWidth as truncateToWidth7 } from "../../../pi-tui.mjs";
+import { Container as Container30, getKeybindings as getKeybindings14, getSelectPageIndex as getSelectPageIndex5, Spacer as Spacer27, Text as Text30, truncateToWidth as truncateToWidth7 } from "../../../pi-tui.mjs";
 var UserMessageList = class {
   static {
     __name(this, "UserMessageList");
   }
+  capturesViewportInput = true;
   messages = [];
   selectedIndex = 0;
   onSelect;
@@ -12700,10 +12773,15 @@ var UserMessageList = class {
   }
   handleInput(keyData) {
     const kb = getKeybindings14();
+    const pageIndex = getSelectPageIndex5(kb, keyData, this.selectedIndex, this.messages.length, this.maxVisible);
     if (kb.matches(keyData, "tui.select.up")) {
       this.selectedIndex = this.selectedIndex === 0 ? this.messages.length - 1 : this.selectedIndex - 1;
     } else if (kb.matches(keyData, "tui.select.down")) {
       this.selectedIndex = this.selectedIndex === this.messages.length - 1 ? 0 : this.selectedIndex + 1;
+    } else if (pageIndex !== void 0) {
+      if (this.messages.length === 0)
+        return;
+      this.selectedIndex = pageIndex;
     } else if (kb.matches(keyData, "tui.select.confirm")) {
       const selected = this.messages[this.selectedIndex];
       if (selected && this.onSelect) {
@@ -13099,6 +13177,7 @@ var InteractiveMode = class _InteractiveMode {
   lastSigintTime = 0;
   lastEscapeTime = 0;
   changelogMarkdown = void 0;
+  extensionChangelogUpdates = [];
   startupNoticesShown = false;
   anthropicSubscriptionWarningShown = false;
   // Status line tracking (for mutating immediately-sequential status updates)
@@ -13370,23 +13449,40 @@ var InteractiveMode = class _InteractiveMode {
       return;
     }
     this.startupNoticesShown = true;
-    if (!this.changelogMarkdown) {
+    if (!this.changelogMarkdown && this.extensionChangelogUpdates.length === 0) {
       return;
     }
     if (this.chatContainer.children.length > 0) {
       this.chatContainer.addChild(new Spacer28(1));
     }
     this.chatContainer.addChild(new DynamicBorder());
-    if (this.settingsManager.getCollapseChangelog()) {
-      const versionMatch = this.changelogMarkdown.match(/##\s+\[?(\d+\.\d+\.\d+)\]?/);
-      const latestVersion = versionMatch ? versionMatch[1] : this.version;
-      const condensedText = `Updated to v${latestVersion}. Use ${theme.bold("/changelog")} to view full changelog.`;
-      this.chatContainer.addChild(new Text31(condensedText, 1, 0));
-    } else {
-      this.chatContainer.addChild(new ThemedText(() => theme.bold(theme.fg("accent", "What's New")), 1, 0));
-      this.chatContainer.addChild(new Spacer28(1));
-      this.chatContainer.addChild(new Markdown7(this.changelogMarkdown.trim(), 1, 0, this.getMarkdownThemeWithSettings()));
-      this.chatContainer.addChild(new Spacer28(1));
+    if (this.changelogMarkdown) {
+      if (this.settingsManager.getCollapseChangelog()) {
+        const versionMatch = this.changelogMarkdown.match(/##\s+\[?(\d+\.\d+\.\d+)\]?/);
+        const latestVersion = versionMatch ? versionMatch[1] : this.version;
+        const condensedText = `Updated to v${latestVersion}. Use ${theme.bold("/changelog")} to view full changelog.`;
+        this.chatContainer.addChild(new Text31(condensedText, 1, 0));
+      } else {
+        this.chatContainer.addChild(new ThemedText(() => theme.bold(theme.fg("accent", "What's New")), 1, 0));
+        this.chatContainer.addChild(new Spacer28(1));
+        this.chatContainer.addChild(new Markdown7(this.changelogMarkdown.trim(), 1, 0, this.getMarkdownThemeWithSettings()));
+        this.chatContainer.addChild(new Spacer28(1));
+      }
+    }
+    if (this.extensionChangelogUpdates.length > 0) {
+      if (this.changelogMarkdown) {
+        this.chatContainer.addChild(new Spacer28(1));
+      }
+      if (this.settingsManager.getCollapseChangelog()) {
+        const condensedText = this.extensionChangelogUpdates.map((update) => `Updated ${update.name} to v${update.version}.`).join("\n");
+        this.chatContainer.addChild(new Text31(condensedText, 1, 0));
+      } else {
+        this.chatContainer.addChild(new ThemedText(() => theme.bold(theme.fg("accent", "Extension Updates")), 1, 0));
+        this.chatContainer.addChild(new Spacer28(1));
+        const markdown = this.extensionChangelogUpdates.map((update) => update.markdown).join("\n\n");
+        this.chatContainer.addChild(new Markdown7(markdown, 1, 0, this.getMarkdownThemeWithSettings()));
+        this.chatContainer.addChild(new Spacer28(1));
+      }
     }
     this.chatContainer.addChild(new DynamicBorder());
   }
@@ -13462,14 +13558,11 @@ var InteractiveMode = class _InteractiveMode {
       return;
     this.registerSignalHandlers();
     this.changelogMarkdown = this.getChangelogForDisplay();
-    if (this.session.scopedModels.length > 0 && this.shouldShowStartupDetails()) {
-      const modelList = this.session.scopedModels.map((sm) => {
-        const thinkingStr = sm.thinkingLevel ? `:${sm.thinkingLevel}` : "";
-        return `${sm.model.id}${thinkingStr}`;
-      }).join(", ");
-      const cycleKeys = this.keybindings.getKeys("app.model.cycleForward");
-      const cycleHint = cycleKeys.length > 0 ? theme.fg("muted", ` (${formatKeyText(cycleKeys.join("/"), { capitalize: true })} to cycle)`) : "";
-      console.log(theme.fg("dim", `Model scope: ${modelList}${cycleHint}`));
+    this.extensionChangelogUpdates = this.getExtensionChangelogUpdates();
+    if (this.renderer.mode !== "fullscreen") {
+      const modelScopeNotice = this.getModelScopeNotice();
+      if (modelScopeNotice)
+        console.log(modelScopeNotice);
     }
     this.renderWidgets();
     const viewport = createChatViewport({
@@ -13563,6 +13656,8 @@ ${onboarding()}`, this.getStartupExpansionState(), 1, 0);
       this.builtInHeader = new Text31("", 0, 0);
       this.headerContainer.addChild(this.builtInHeader);
     }
+    if (this.renderer.mode === "fullscreen")
+      this.showFullscreenModelScopeNotice();
     this.ui.requestRender();
     const [fdPath] = await Promise.all([
       ensureTool("fd", (status) => this.showManagedToolStatus(status)),
@@ -13768,6 +13863,51 @@ ${onboarding()}`, this.getStartupExpansionState(), 1, 0);
     }
     return void 0;
   }
+  getExtensionChangelogUpdates() {
+    if (this.session.state.messages.length > 0) {
+      return [];
+    }
+    const seenKeys = /* @__PURE__ */ new Set();
+    const updates = [];
+    for (const { sourceInfo } of this.session.resourceLoader.getExtensions().extensions) {
+      if (sourceInfo.origin !== "package" || !sourceInfo.baseDir || !sourceInfo.changelogPath) {
+        continue;
+      }
+      const key = getSourcePackageKey(sourceInfo);
+      if (seenKeys.has(key)) {
+        continue;
+      }
+      seenKeys.add(key);
+      const pkg = this.readPackageJson(sourceInfo.baseDir);
+      if (!pkg?.version) {
+        continue;
+      }
+      const lastVersion = this.settingsManager.getExtensionChangelogVersion(key);
+      if (!lastVersion) {
+        this.settingsManager.setExtensionChangelogVersion(key, pkg.version);
+        continue;
+      }
+      const newEntries = getNewEntries(parseChangelog(sourceInfo.changelogPath), lastVersion);
+      if (newEntries.length > 0) {
+        this.settingsManager.setExtensionChangelogVersion(key, pkg.version);
+        const name = pkg.name || sourceInfo.source;
+        const markdown = newEntries.map((entry) => entry.content.replace(/^##\s+/, `## ${name} `)).join("\n\n").trim();
+        updates.push({ name, version: pkg.version, markdown });
+      }
+    }
+    return updates;
+  }
+  readPackageJson(packageRoot) {
+    try {
+      const pkg = JSON.parse(stripBom(fs3.readFileSync(path4.join(packageRoot, "package.json"), "utf-8")));
+      return {
+        name: typeof pkg.name === "string" ? pkg.name : void 0,
+        version: typeof pkg.version === "string" ? pkg.version : void 0
+      };
+    } catch {
+      return void 0;
+    }
+  }
   reportInstallTelemetry(version) {
     if (process.env.PI_OFFLINE) {
       return;
@@ -13792,12 +13932,7 @@ ${onboarding()}`, this.getStartupExpansionState(), 1, 0);
   // Extension System
   // =========================================================================
   formatDisplayPath(p) {
-    const home = os3.homedir();
-    let result = p;
-    if (result.startsWith(home)) {
-      result = `~${result.slice(home.length)}`;
-    }
-    return result;
+    return shortenHomePath(p);
   }
   formatExtensionDisplayPath(path5) {
     let result = this.formatDisplayPath(path5);
@@ -13821,6 +13956,23 @@ ${onboarding()}`, this.getStartupExpansionState(), 1, 0);
     return this.options.verbose === true || this.settingsManager.getQuietStartup() !== true;
   }
   /** Startup details (model scope, loaded resources). Hidden by quietStartup: true or "header". */
+  getModelScopeNotice() {
+    if (this.session.scopedModels.length === 0 || !this.shouldShowStartupDetails())
+      return void 0;
+    const modelList = this.session.scopedModels.map((sm) => {
+      const thinkingStr = sm.thinkingLevel ? `:${sm.thinkingLevel}` : "";
+      return `${sm.model.id}${thinkingStr}`;
+    }).join(", ");
+    const cycleKeys = this.keybindings.getKeys("app.model.cycleForward");
+    const cycleHint = cycleKeys.length > 0 ? theme.fg("muted", ` (${formatKeyText(cycleKeys.join("/"), { capitalize: true })} to cycle)`) : "";
+    return theme.fg("dim", `Model scope: ${modelList}${cycleHint}`);
+  }
+  showFullscreenModelScopeNotice() {
+    if (!this.getModelScopeNotice())
+      return;
+    this.headerContainer.addChild(new ThemedText(() => this.getModelScopeNotice() ?? "", 1, 0));
+    this.headerContainer.addChild(new Spacer28(1));
+  }
   shouldShowStartupDetails() {
     return this.options.verbose === true || this.settingsManager.getQuietStartup() === false;
   }
@@ -14172,7 +14324,7 @@ ${expandedBody()}`, this.getStartupExpansionState(), 0, 0);
       const skillDiagnostics = skillsResult.diagnostics;
       if (skillDiagnostics.length > 0) {
         const warningLines = /* @__PURE__ */ __name(() => this.formatDiagnostics(skillDiagnostics, sourceInfos), "warningLines");
-        this.loadedResourcesContainer.addChild(new ThemedText(() => `${theme.fg("warning", "[Skill conflicts]")}
+        this.loadedResourcesContainer.addChild(new ThemedText(() => `${theme.fg("warning", "[Skill warnings]")}
 ${warningLines()}`, 0, 0));
         this.loadedResourcesContainer.addChild(new Spacer28(1));
       }
@@ -14917,8 +15069,11 @@ ${message}`, ["Yes", "No"], opts, {
   setCustomEditorComponent(factory) {
     this.editorComponentFactory = factory;
     const currentText = this.editor.getText();
-    this.disposeActiveSelector();
-    this.editorContainer.clear();
+    const dialogOpen = this.extensionDialogs.length > 0;
+    if (!dialogOpen) {
+      this.disposeActiveSelector();
+      this.editorContainer.clear();
+    }
     if (factory) {
       const newEditor = factory(this.ui, getEditorTheme(), this.keybindings);
       newEditor.onSubmit = this.defaultEditor.onSubmit;
@@ -14959,7 +15114,8 @@ ${message}`, ["Yes", "No"], opts, {
       this.defaultEditor.setText(currentText);
       this.editor = this.defaultEditor;
     }
-    this.editorContainer.addChild(this.editor);
+    if (!dialogOpen)
+      this.editorContainer.addChild(this.editor);
     if (this.activeStatusIndicator) {
       this.statusContainer.clear();
       this.activeWorkingIndicatorEmbedded = this.setEditorWorkingStatusIndicator(this.activeStatusIndicator);
@@ -14967,7 +15123,8 @@ ${message}`, ["Yes", "No"], opts, {
         this.statusContainer.addChild(this.activeStatusIndicator);
       }
     }
-    this.ui.setFocus(this.editor);
+    if (!dialogOpen)
+      this.ui.setFocus(this.editor);
     this.ui.requestRender();
   }
   /**
@@ -15026,7 +15183,7 @@ ${message}`, ["Yes", "No"], opts, {
           overlayHandle = this.ui.showOverlay(c2, resolveOptions());
           options?.onHandle?.(overlayHandle);
         } else {
-          this.pushExtensionDialog(c2);
+          this.pushExtensionDialog(c2, options?.blocked);
         }
       }).catch((err) => {
         if (closed)
@@ -15146,7 +15303,7 @@ ${message}`, ["Yes", "No"], opts, {
       }
       const image = await readClipboardImage();
       if (image) {
-        const tmpDir = os3.tmpdir();
+        const tmpDir = os2.tmpdir();
         const ext = extensionForImageMimeType(image.mimeType) ?? "png";
         const fileName = `pi-clipboard-${crypto2.randomUUID()}.${ext}`;
         const filePath = path4.join(tmpDir, fileName);
@@ -16308,6 +16465,8 @@ ${this.crashReportInstructions()}`);
       });
       if (result.status === "complete") {
         this.editor.setText(result.content);
+      } else {
+        this.showStatus(result.message);
       }
     } finally {
       this.ui.start();
@@ -19724,7 +19883,7 @@ ${otherErrors.join("\n")}`;
 __name(validateThemeJson, "validateThemeJson");
 
 // pi-dist/pi-coding-agent/package-manager-cli.js
-import { existsSync as existsSync8, mkdirSync as mkdirSync5, mkdtempSync as mkdtempSync3, readdirSync as readdirSync2, readFileSync as readFileSync10, renameSync as renameSync3, rmSync as rmSync6, writeFileSync as writeFileSync6 } from "node:fs";
+import { existsSync as existsSync8, mkdirSync as mkdirSync5, mkdtempSync as mkdtempSync3, readdirSync as readdirSync2, readFileSync as readFileSync11, renameSync as renameSync3, rmSync as rmSync6, writeFileSync as writeFileSync6 } from "node:fs";
 import { join as join14, resolve as resolve6 } from "node:path";
 import { Markdown as Markdown8 } from "../../../pi-tui.mjs";
 import chalk6 from "../../../chalk/source/index.js";
@@ -19734,7 +19893,6 @@ import lockfile from "../../../proper-lockfile.mjs";
 import { ProcessTerminal as ProcessTerminal3, TuiMainScreen as TuiMainScreen4 } from "../../../pi-tui.mjs";
 
 // pi-dist/pi-coding-agent/modes/interactive/components/config-selector.js
-import { homedir as homedir4 } from "node:os";
 import { basename as basename2, dirname as dirname4, join as join12, relative as relative3 } from "node:path";
 import { Container as Container32, getKeybindings as getKeybindings15, Input as Input12, matchesKey as matchesKey3, Spacer as Spacer29, truncateToWidth as truncateToWidth8, visibleWidth as visibleWidth8 } from "../../../pi-tui.mjs";
 var RESOURCE_TYPES = ["extensions", "skills", "prompts", "themes"];
@@ -19745,16 +19903,7 @@ var RESOURCE_TYPE_LABELS = {
   themes: "Themes"
 };
 function formatBaseDir(baseDir) {
-  const homeDir = homedir4();
-  let displayPath;
-  if (baseDir === homeDir) {
-    displayPath = "~";
-  } else if (baseDir.startsWith(homeDir)) {
-    const rest = baseDir.slice(homeDir.length);
-    displayPath = `~${rest.replace(/\\/g, "/")}`;
-  } else {
-    displayPath = baseDir.replace(/\\/g, "/");
-  }
+  const displayPath = shortenHomePath(baseDir).replace(/\\/g, "/");
   return displayPath.endsWith("/") ? displayPath : `${displayPath}/`;
 }
 __name(formatBaseDir, "formatBaseDir");
@@ -20377,7 +20526,7 @@ var ResourceList = class {
     return entry.startsWith("!") || entry.startsWith("+") || entry.startsWith("-") ? entry.slice(1) : entry;
   }
   getResourceItemKey(item) {
-    return `${item.resourceType}:${canonicalizePath(item.path)}`;
+    return `${item.resourceType}:${getResourcePathKey(item.path)}`;
   }
   getItemScope(item) {
     return item.metadata.scope === "project" ? "project" : "user";
@@ -20569,7 +20718,7 @@ function getActiveManagedInstallRoot() {
     return void 0;
   const markerPath = join14(managedRoot, MANAGED_INSTALL_MARKER);
   try {
-    const marker = JSON.parse(stripBom(readFileSync10(markerPath, "utf8")));
+    const marker = JSON.parse(stripBom(readFileSync11(markerPath, "utf8")));
     if (marker.kind !== "pi-managed-install" || marker.schemaVersion !== 1 || marker.layout !== "releases-v1") {
       throw new Error();
     }
@@ -21078,6 +21227,7 @@ __name(refreshModelCatalogs2, "refreshModelCatalogs");
 function printSelfUpdateUnavailable(npmCommand, updatePackageTarget = PACKAGE_NAME) {
   console.error(`error: ${APP_NAME} cannot self-update this installation.`);
   console.error(getSelfUpdateUnavailableInstruction(PACKAGE_NAME, npmCommand, updatePackageTarget));
+  console.error(`To make \`${APP_NAME} update\` run your own update command, set PI_SELF_UPDATE_COMMAND or the selfUpdateCommand setting.`);
   const entrypoint = process.argv[1];
   if (entrypoint) {
     console.error("");
@@ -21161,6 +21311,38 @@ async function runSelfUpdate(command) {
   }
 }
 __name(runSelfUpdate, "runSelfUpdate");
+async function runConfiguredSelfUpdate(argv, plan) {
+  const command = makeConfiguredSelfUpdateCommand(argv, plan);
+  if (plan.note) {
+    printSelfUpdateNote(plan.note);
+  }
+  try {
+    await runSelfUpdate(command);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown self-update command error";
+    console.error(chalk6.red(`Error: ${message}`));
+    process.exitCode = 1;
+    return;
+  }
+  const change = detectInstallChange();
+  const installedVersion = change?.kind === "updated" && change.version === plan.version ? change.version : readVersionOnPath();
+  if (installedVersion === plan.version) {
+    console.log(chalk6.green(`Updated ${APP_NAME} from ${VERSION} to ${plan.version}`));
+    return;
+  }
+  console.log(chalk6.yellow(`Ran ${command.display}, but \`${APP_NAME} --version\` reports ${installedVersion ?? "no version"}, not ${plan.version}.`));
+}
+__name(runConfiguredSelfUpdate, "runConfiguredSelfUpdate");
+function readVersionOnPath() {
+  const { PI_PACKAGE_DIR: _, ...env } = process.env;
+  const result = spawnProcessSync(APP_NAME, ["--version"], {
+    encoding: "utf-8",
+    stdio: ["ignore", "pipe", "pipe"],
+    env
+  });
+  return result.status === 0 ? result.stdout.trim() || void 0 : void 0;
+}
+__name(readVersionOnPath, "readVersionOnPath");
 function prepareWindowsNpmSelfUpdate() {
   if (process.platform !== "win32") {
     return;
@@ -21359,6 +21541,9 @@ async function handlePackageCommand(args, runtimeOptions = {}) {
     if (event.type === "start") {
       process.stdout.write(chalk6.dim(`${event.message}
 `));
+    } else if (event.type === "progress" && event.message) {
+      process.stdout.write(chalk6.yellow(`${event.message}
+`));
     }
   });
   try {
@@ -21423,7 +21608,8 @@ async function handlePackageCommand(args, runtimeOptions = {}) {
           }
         }
         if (updateTargetIncludesSelf(target)) {
-          const managedInstallRoot = getActiveManagedInstallRoot();
+          const configuredSelfUpdateArgv = getConfiguredSelfUpdateArgv(settingsManager.getGlobalSettings().selfUpdateCommand);
+          const managedInstallRoot = configuredSelfUpdateArgv ? void 0 : getActiveManagedInstallRoot();
           if (managedInstallRoot && options.force) {
             console.error(chalk6.red(`Managed ${APP_NAME} installations do not support --force; rerun the installer to repair this installation.`));
             process.exitCode = 1;
@@ -21431,6 +21617,10 @@ async function handlePackageCommand(args, runtimeOptions = {}) {
           }
           const selfUpdatePlan = await getSelfUpdatePlan(options.force);
           if (!selfUpdatePlan.shouldRun) {
+            return true;
+          }
+          if (configuredSelfUpdateArgv) {
+            await runConfiguredSelfUpdate(configuredSelfUpdateArgv, selfUpdatePlan);
             return true;
           }
           if (managedInstallRoot) {
@@ -21905,7 +22095,15 @@ async function main(args, options) {
     cleanupWindowsSelfUpdateQuarantine(getPackageDir());
   }
   cleanupManagedInstall();
-  const cwd = process.cwd();
+  let cwd;
+  try {
+    cwd = process.cwd();
+  } catch (error) {
+    if (error.code !== "ENOENT")
+      throw error;
+    console.error(chalk7.red("Error: The current working directory no longer exists. Change to an existing directory and try again."));
+    process.exit(1);
+  }
   const agentDir = getAgentDir();
   const bootstrapSettingsManager = SettingsManager.create(cwd, agentDir, { projectTrusted: false });
   applyHttpProxySettings(bootstrapSettingsManager.getGlobalSettings().httpProxy);
@@ -22016,7 +22214,7 @@ async function main(args, options) {
     const cachedProjectTrust = projectTrustByCwd.get(cwd2);
     const hasTrustRequiringResources = hasTrustRequiringProjectResources(cwd2);
     const shouldResolveProjectTrust = parsed.projectTrustOverride === void 0 && cachedProjectTrust === void 0 && hasTrustRequiringResources;
-    const projectTrusted = shouldResolveProjectTrust ? false : cachedProjectTrust ?? parsed.projectTrustOverride ?? (!hasTrustRequiringResources || trustStore.get(cwd2) === true);
+    const projectTrusted = shouldResolveProjectTrust ? false : cachedProjectTrust ?? parsed.projectTrustOverride ?? trustStore.get(cwd2) ?? !hasTrustRequiringResources;
     const runtimeSettingsManager = SettingsManager.create(cwd2, agentDir2, { projectTrusted });
     const services2 = await createAgentSessionServices({
       cwd: cwd2,

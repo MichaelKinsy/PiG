@@ -36,7 +36,7 @@ step := status, commits[], reads[], notices[], effects[]
 Host loop invariants:
 
 1. Never call the core re-entrantly (not from inside a commit, read or notice handler).
-2. Apply every commit of a step, in order, each in its own transaction (DO `transactionSync`; Node `BEGIN IMMEDIATE`/`COMMIT`; Go `*sql.Tx`). Any commit failure is fatal to the handle (section 4.6).
+2. Apply every commit of a step, in order, each in its own transaction (DO `transactionSync`; Node `BEGIN IMMEDIATE`/`COMMIT`; Go `*sql.Tx`), except that a run of commits marked `joined` (section 4.4) is one Storage call and one transaction: all of its commits or none, one `next_seq` per commit. Any commit failure is fatal to the handle (section 4.6).
 3. A step with reads has no effects. The host applies its commits, in order, before it runs its reads, then runs every read and answers all of them in one `rows` event before delivering any other event. A core never adds a commit after a read in one step. Cold open uses this for Pi's schema prelude (`applySqliteMigrations`, `src/storage/sqlite/migrations.ts`): the open step commits `CREATE TABLE IF NOT EXISTS durable_schema` and reads the version (a missing row reads as version 0; the `INSERT OR IGNORE` of the row opens the migration commit, so every row of a new database is written in one transaction, as in Pi's commit 0; unlike Pi, the empty `durable_schema` table is created in the transaction before it, and a store left with that table and no row reads as version 0 and is migrated on the next open), so the core finds its schema by identifier, never by a table name held as data, and an adapter that renames Pi's tables in the SQL text (a table prefix) renames every name the core relies on.
 4. Deliver notices after the step's commits are applied.
 5. Start effects only after the step's commits are applied. In a DO the output gate additionally holds outbound network until those writes are durable.
@@ -111,7 +111,7 @@ A DO host binds `text` as a JS string (`TextDecoder`), `blob` as an `ArrayBuffer
 ```text
 step    := u32 size, u8 status, u16 nCommits, u16 nReads, u16 nNotices, u16 nEffects,
            commit*, read*, notice*, effect*, order, [status != 0: u32 len, error JSON]
-commit  := u32 len, i64 seq, u16 nStmts, stmt*
+commit  := u32 len, i64 seq, u8 flags, u16 nStmts, stmt*
 stmt    := u16 sqlId, u8 nParams, value*
 read    := u32 readId, u16 sqlId, u8 nParams, value*
 notice  := u8 kind, u32 origin, u32 len, payload
@@ -120,7 +120,7 @@ order   := u16 n, (u8 region, u16 index)*      n is 0 (all notices, then all eff
 status  := 0 ok | 1 rejected (no state changed; error is Pi's error name and message) | 2 fatal (discard the handle)
 ```
 
-`seq` is the `next_seq` value the commit consumes, or `-1` for a sidecar-only commit; hosts use it for traces and assertions only.
+`seq` is the `next_seq` value the commit consumes, or `-1` for a sidecar-only commit; hosts use it for traces and assertions only. `flags` bit 0 (`joined`): the commit belongs to the same Storage call as the commit before it in the step (section 5.5), so the host applies the run of joined commits in one transaction; all other bits are 0.
 
 ### 4.5 Rows (answer to reads)
 
@@ -142,8 +142,8 @@ Payload layouts; "JSON" is UTF-8 JSON.
 |---|---|---|---|
 | 1 | `open` | JSON: harness options the core needs (settings, agent defaults, models catalogue entries in use, registry snapshot: extension order, tool schemas and replay policies, sections, task definitions' names and versions), `core_id` expectation, sidecar mode | answered by a step that commits the schema prelude and reads the schema version (section 3, invariant 3) |
 | 2 | `rows` | section 4.5 | only after a read step |
-| 3 | `submit` | JSON `{conversationId, type, content or entry, requestId, whenBusy}` | §6 admission |
-| 4 | `model_event` | `u32 effectId`, JSON array of pi-ai `AssistantMessageEvent` | context plane; batching allowed; the final `done`/`error` event carries the final message |
+| 3 | `submit` | JSON `{conversationId, type (input, write or continue), content or entry, requestId, whenBusy, whenIdle}` | §6 admission; the transaction op `submit`, the `afterRun` hook, the `entries` api op and the context summary's `owes` are in host/PROTOCOL.md (Pi 7e15f960..e7a0df27 additions) |
+| 4 | `model_event` | `u32 effectId`, JSON array of pi-ai `AssistantMessageEvent` | context plane; batching allowed; a generation request (`onPayload: true`) also receives `{type:"payload", call, payload}` elements, the provider's request body, answered by the host-answered `hook` `modelPayload` (host/PROTOCOL.md); the final `done`/`error` event carries the final message |
 | 5 | `model_bytes` | `u32 effectId`, `u8 phase` (0 response head JSON, 1 body chunk, 2 end, 3 transport error JSON), bytes | wire plane |
 | 6 | `tool_progress` | `u32 effectId`, `u8 kind` (0 output chunk, 1 details JSON, 2 diagnostic JSON), `u32 skipped` (`ShellOutputSkip.bytes`), `u32 waitId` (kind 1 only; 0 otherwise), bytes; when `skipped` is non-zero the bytes start with `u32 metaLength` and the JSON `{bytes, newlines, endsWithNewline}` (the full `ShellOutputSkip`), then the chunk | throttled into `pi.live` by the core; a details update answers with a `progress_ack` notice once the commit that includes it is applied, because Pi's `api.details()` resolves only then (`src/harness/tool.ts:211-216`, `output.ts:292`) |
 | 7 | `tool_done` | `u32 effectId`, `u8 outcome` (0 result, 1 thrown), JSON | §8.4 |
@@ -155,7 +155,7 @@ Payload layouts; "JSON" is UTF-8 JSON.
 | 13 | `registry` | JSON registry snapshot | extension reload (§7.5) |
 | 14 | `api` | `u32 requestId`, JSON | Harness reads that need core state (context view, usage, task graph); answered by an `api_result` notice |
 | 15 | `close` | none | seals admission (§5.1); the step cancels effects; the handle may then be freed |
-| 16 | `inspect` | JSON query | test plane: context view and fingerprint, index dump, memory; never mutates |
+| 16 | `inspect` | JSON query | test plane: context view and fingerprint, index dump, memory, `lineSizes` and `idleState` (answered in the step that carries them, so a synchronous getter of the host reads them); never mutates |
 | 17 | `resume` | none | the host's `Harness.resume()`: scheduling that waits for the first progress-asking call (Pi `harness.ts` `resume`) starts; idempotent |
 | 18 | `hopped` | `u32 effectId` | the `hops` chain ran its hops (section 5.3); the core runs the work parked on it |
 | 19 | `seal` | none | `Harness.close()` was called: the core does what Pi's close listeners do synchronously (`session.ts:352-366`, scheduler `#seal`: closing flag, every invocation's signal) and keeps running admitted work; the terminal `close` (15) follows once caller transactions have ended. A close() called from user code inside a step job (the registry reader at `scheduler.ts:955`) reaches the core before the job's next answer |
@@ -187,6 +187,20 @@ The ABI carries this as an **origin**, a `u32` the host assigns to the async con
 
 The host keeps a snapshot until the core says it holds no work for it. The core counts what holds an origin: an event from its arrival to the end of its step (and while it waits for rows), a queued line job, a started effect until its completion, a hops chain until its `hopped`, and the microtasks a parked Loop keeps across steps. An origin whose count is zero at the end of a step without reads goes to the host in that step's `origin_free` notice (kind 10, last in the step's order); a step that is rejected or fatal carries none, and the host drops the origin of the event that produced it. A reopened core (section 4.6) resumes in the context of the host's first `open`, and a request fed again keeps its caller's.
 
+### 5.5 Group commit: the Storage call, publication, macrotasks
+
+Pi's Session (`session.ts`, `writer.ts`, `docs/group-commit.md`) holds the line through a job's callback, settlement and admission only. A writer sends every part admitted while no call is in flight as one `Storage.commit(batches, receive, context)`, off the line, and publishes the received parts in line order, a macrotask apart. The core is that writer; a host gives it time (hops, macrotasks) and Storage.
+
+**The core's own store.** The batches of one call are in one step: the core runs them in order, each its own commit with its own `seq`, and marks every commit after the first `joined` (section 4.4). A host applies the run in one transaction (the call's one backend transaction; per batch: `next_seq` read, checks, apply, advance, as pi-durable's SQLite `commit`). The core validates each batch against the state the earlier ones left before it emits it and stops at the first batch its own checks refuse, so a run holds exactly the durable prefix and the host never sees a refusal. The step that holds the run is the step of the tick at which Pi's Storage receipts (`receive`) come; the call's resumption and the publications follow in later steps.
+
+**Publication.** The `published` notice (section 7) of each part is emitted by the step that publishes it, in line order. The parts of one call are published in different steps: after a part the core queues a `macrotask` effect (kind 15) and publishes the next part in the step of its `hopped` event. A host therefore delivers the notice of part A (the listeners, the waits it resolves and their continuations) before it sends `hopped` for the macrotask, as Pi's `setImmediate` runs after the microtasks A's publication queued, and before part B is published. The host queues the macrotask when it processes the effect, not later, so macrotasks queued by the core run in the order it queued them relative to the host's own. A host with no macrotask queue (the native Go host) sends `hopped` once every open hops chain ran and every notice of the step was delivered. `cancel` drops an open macrotask; `hopped` is event 18 and `hop` answers it like a chain's.
+
+**Storage the host was given** (`open.storageGate`, host/PROTOCOL.md "Storage gate"). The core's writer asks it through the host-answered hook `storageCommit {batches}` (`batches` is Pi's `StorageWrite[][]`, one array per batch in line order): the host calls `storage.commit(batches, receive, context)`. `receive(index, seq)` is the api op `receive {index, seq}`, sent synchronously from inside the call, once per durable batch in order; the core applies batch `index` to its store in that step (one commit, not joined, whose sequence must be the Storage's `seq`: a receipt that disagrees is fatal to the handle) and keeps the receipt. The Storage the host was given is the durable store, so the core's statements of the batch are what make it durable; the host computes the sequences it receives as the store's `next_seq` plus the batch's index. The hook answer is the call's result: outcome 0 with `{stored, refused?}` (`refused` is `{name, message}`) or outcome 1, the rejection (receipts already sent stand). The writer resumes from the answer, in the tick it arrives: it publishes the received parts, then the refusal fails the Session at its part, a rejection after receipts publishes the received parts first (group-commit.md 3.4). A call that resolves without a receipt for a stored batch fails the Session with `Storage committed without adopting the batch`.
+
+`open.storageGate` may also list `publishing`: the core then publishes a part inside the Storage's own scope, `storage.publishing(publish, context)` (types.ts `Storage.publishing`). The core sends the host-answered hook `storagePublishing {}` before it publishes each part; the host calls `storage.publishing(publish, context)` where `publish()` sends the api op `publish {}` synchronously and processes the answering step (its notices) before it returns. The core publishes the part in the step of `publish {}`, and the next only after it. The hook's answer ends the call: a throw before `publish` was called, or a second call, fails the Session.
+
+**Reads of the host.** A line job of the core touches its keys itself (session/keys.go). A host-side read that Pi gates and the host serves itself (`getTask`, `submission` on the host connection) first asks the api op `touch {keys}`: the core runs one read job on the line that touches each key (`{kind: "task" | "conversation" | "entry" | "submission", id}`, `{kind: "request", conversationId, requestId}`, `{kind: "entries", conversationId}`, `{kind: "all"}`) and answers `{ok: null}` when the job's outcome is delivered; the host reads after the answer, so the read sees every commit the touched keys wait for. A transaction operation (section 8) whose key an unpublished part writes is answered after that part's publication.
+
 ## 6. Effects
 
 | kind | name | payload | host action |
@@ -205,6 +219,7 @@ The host keeps a snapshot until the core says it holds no work for it. The core 
 | 12 | `deferred` | JSON `{op: "fetch" or "cancel", model, handle}` | call `models.fetchDeferred()` or `models.cancelDeferred()` (§8.3 `poll`, `src/harness/generation.ts:229,259`); the message or acknowledgement returns as `hook_done` |
 | 13 | `callback` | JSON `{name, txId, payload}` | run host code that Pi calls inside an open commit callback, with the §8 channel bound to `txId`: `HarnessOptions.conversationCreated` (`src/harness/types.ts:457`), a conversation's `init`, and an extension document definition's `initial`, `migrate` or `checkpointWhen` (`src/documents.ts:87-89`). The commit stays open until `hook_done`; built-in document definitions are core code and never use this effect |
 | 14 | `hops` | `u32 n` (`n >= 1`), `u32 at`, `commit*` | a chain of `n` microtask hops, with the commits it applies after hop `at` (section 5.3); the effect ID names it; the host sends `hopped` after the nth |
+| 15 | `macrotask` | none | a macrotask hop (section 5.5): the host queues one macrotask when it processes the effect (`setImmediate`, else a `MessageChannel` message) and sends `hopped` for the effect ID from it |
 
 ## 7. Notices
 
@@ -213,13 +228,14 @@ The host keeps a snapshot until the core says it holds no work for it. The core 
 | 1 | `published` | JSON: committed document ops by document, appended entry IDs, task status changes, submission settlements; drives `Submission.wait`, watches and Chord clients (§9) |
 | 2 | `api_result` | `u32 requestId`, JSON |
 | 3 | `tx_result` | `u32 txId`, JSON (`ready`, `waiting` for the line, an op's result, or `rejected` with Pi's error) |
-| 4 | `report` | JSON for `HarnessOptions.onReport` |
+| 4 | `report` | JSON `{name, message, info, span?}` for `HarnessOptions.onReport`: `info` is the `ReportInfo` of the `Report`, tagged by `kind` (`task_error`, `task_faulted`, `task_interrupted`, `task_outdated`, `migration_failed`, `extension_error`, `host_error`, `listener_error`, `storage_failed`); a `task_outdated` `reason` is `missing_task`, `task_too_old` or `migration_failed` |
 | 5 | `sidecar` | JSON `{conversationId, rows}`: the core wrote a sidecar chunk in this step's commits (diagnostics only) |
 | 6 | `progress_ack` | `u32 waitId`, `u8 outcome` (0 committed, 1 rejected), JSON error when rejected: settles the promise of a tool's `api.details()` |
-| 7 | `doc_cache` | JSON `{cached, idle, attached, sweeps}`: the core's document cache sizes, published after a step in which they changed; the host's synchronous `documentCacheSizes` replicates them (`attached` counts the incarnations a document watch pins) |
-| 8 | `index_sizes` | JSON `{live, settled, edges, below, roots, unloaded, dropQueue}`: a `harness`-mode core's scheduler ownership index sizes, published after a step in which they changed; the host's synchronous `SCHEDULER_INDEX_SIZES` getter replicates them |
+| 7 | `doc_cache` | JSON `{cached, idle, attached, sweeps, held, taskDocuments, tails}`: the core's document cache sizes, published after a step in which they changed; the host's synchronous `documentCacheSizes` replicates them (`attached` counts the incarnations a document watch or a held document pins; `held` the incarnations with changes a deferred commit holds in memory, section 8.2; `taskDocuments` the live tasks whose documents the Session indexes, `tails` the conversations whose newest entry it keeps) |
+| 8 | `index_sizes` | JSON `{live, settled, edges, below, roots, unloaded, dropQueue, pins}`: a `harness`-mode core's scheduler ownership index sizes, published after a step in which they changed; the host's synchronous `SCHEDULER_INDEX_SIZES` getter replicates them |
 | 9 | `wake` | JSON `{active, at?}`: the `Harness.wake()` value of a `harness`-mode core whose `open` payload sets `onWake`, published after each recomputation (`HarnessOptions.onWake`); the host delivers a changed value to its callback, and again after a throw, so it keeps the last value it delivered. With `onWake` the core arms no timer for sleeping tasks: the host arms its own alarm from `at` |
 | 10 | `origin_free` | `u32 n`, then `n` × `u32 origin` | the origins the core holds no work for any more (section 5.4): the host drops their async contexts. The host consumes it; it reaches no listener |
+| 11 | `telemetry` | JSON op: `entry`, `submission`, `checkpoint`, `replay`, `tool`, `end` or `active` (core/telemetry.go lists the fields): what the host records of Pi's telemetry (`DURABLE_TELEMETRY_SCHEMA`, src/harness/telemetry.ts). Spans are the host's: a call's Context span goes to the core as `span` (with its carrier `trace`) on `submit` and tx `begin`, a phase's span is the answer of the `phaseSpan` hook, and a `report` or `published` notice and a host effect name the span they belong to as `span` |
 
 Sidecar writes, including the `CREATE TABLE IF NOT EXISTS` on first use, are ordinary commits on `pig_*` statements outside Pi's `next_seq` sequence; their `seq` is `-1` (ADR D6).
 
@@ -227,7 +243,7 @@ Sidecar writes, including the `CREATE TABLE IF NOT EXISTS` on first use, are ord
 
 `runtime.commit(tx => ...)`, `session.commit(...)` and other host-side commits use one protocol:
 
-1. `tx {op: "begin", invocation?, conversationId?}` → `tx_result ready` with a `txId`, or `waiting` when the Session line is held; the host awaits the `ready` notice that a later step delivers.
+1. `tx {op: "begin", invocation?, conversationId?, persistence?}` → `tx_result ready` with a `txId`, or `waiting` when the Session line is held; the host awaits the `ready` notice that a later step delivers.
 2. `tx {op: ..., ...}` for each `Tx` operation (`conversation`, `doc`, `appendEntry`, `createTask`, `placeSubmission`, `settleSubmission`, `entry`, ...). Document mutations travel as Chord `Op[]` produced by the host's draft proxy. The core enforces `ReadAfterWrite` and every other §4 rule and answers each op with `tx_result`.
 3. `tx {op: "end", state?}` with the callback's returned next task state, or `{op: "abort", error}` → a step carrying the commit, or `rejected`.
 
@@ -245,7 +261,7 @@ Host code reaches the core only through these channels. Every method of the faca
 | `waitForTask`, `watchDoc` and other observations | `api` request; the core answers when the awaited state is published, and `published` notices drive watches |
 | `createTask` | `tx` with a single `createTask` op; the host computes the definition's `initial(input)` before sending it |
 | `sleepUntil(until, checkpoint)` | `api` request; the core commits the task's sleeping state (`checkpoint` is its next state) and answers once it is committed; the task then holds no invocation, and its wake is a durable `timer` (class 1), or a `wake` notice when the host took `onWake` |
-| `Harness.wake()`, `Harness.retryTask(taskId)` | `api` request answered by `api_result` (`wake`: at once; `retryTask`: once the parked task's restart count is cleared and scheduling is enabled) |
+| `Harness.wake()` | `api` request answered by `api_result` (at once) |
 | `output`, `diagnostic`, `details` | `tool_progress` (`details` waits for `progress_ack`) |
 | `env` | the `env` effect, issued by the core before `execute` (§8.4) |
 | `report` | handled in the host; the core's own reports arrive as `report` notices |
@@ -261,7 +277,7 @@ An `api` event is `u32 requestId` then JSON `{op, ...args}`. The answer is an `a
 | `memo.put` | taskId, name, candidate | the durable winner | after the memo's commit is applied |
 | `snapshot` | doc | the document state or null | at once |
 | `snapshotAsOf` | doc, at | the document state at entry `at` (Pi's `snapshotAsOf(doc, at)`) or null | at once |
-| `watch.open` | doc, view (`{kind:"view", conversationId}`) or graph target, watchId | the first frame | at once; later frames arrive as `published` notices carrying watchId |
+| `watch.open` | doc, view (`{kind:"view", conversationId, window?: {from?, min?, max?}}`) or graph target, watchId | the first frame | at once; later frames arrive as `published` notices carrying watchId |
 | `watch.close` | watchId | null | at once |
 | `getTask` | taskId | the task record or null | at once |
 | `waitForTask` | taskId | the settled receipt | when the task is terminal and published |
@@ -274,11 +290,14 @@ An `api` event is `u32 requestId` then JSON `{op, ...args}`. The answer is an `a
 | `context` | conversationId, at | the ContextView `{head?, entries, contributions, messages}`, or `{"$context":{conversationId, head, tail}}` for a conversation with a visible entry: the core does not build a long context, it names it (the same bounds a `model_context` range names, §10.2) and the host that serves the read derives the ContextView from storage with pi-durable's range algorithm and resolves the request with it. A conversation without a visible entry answers the empty view | at once |
 | `conversation` | conversationId | the conversation handle data or null | at once |
 | `agent` | conversationId | the resolved agent | at once |
-| `sleepUntil` | taskId, until, checkpoint | null | once the sleep is committed (the task's sleeping state, `checkpoint` its next state); the task then holds no invocation |
+| `sleepUntil` | taskId, until (a number; NaN and the infinities as the strings `"NaN"`, `"Infinity"`, `"-Infinity"`, which the scheduler rejects), checkpoint | null | once the sleep is committed (the task's sleeping state, `checkpoint` its next state); the task then holds no invocation |
 | `wake` | none | `{active, at?}`, the Harness's wake | at once; a `harness`-mode core only |
-| `retryTask` | taskId | null | once a parked task's restart count is cleared and scheduling is enabled; an error for an unknown task |
 | `usage` | none | the UsageState of the Session | at once |
 | `taskGraph` | none | the TaskGraph | at once |
+| `receive` | index, seq | null | at once: the Storage's durability receipt of batch `index` of the Storage call in flight (section 5.5) |
+| `publish` | none | null | at once: the Storage's publishing scope runs the publication of the part in flight (section 5.5) |
+| `touch` | keys | null | when the read job that touches the keys has delivered its outcome (section 5.5, reads of the host) |
+| `cancel` | `request` | null | at once: aborts the signal of the unanswered `submit` or `abort` event `request` that was sent `cancellable` (a line job that started ignores it; PROTOCOL.md) |
 
 `HarnessOptions.onReport` and `TaskRuntime.report` stay in the host; `commit` and `createTask` use the `tx` channel.
 

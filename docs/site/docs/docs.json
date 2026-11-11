@@ -19,6 +19,7 @@
     "extensions.md": "adapted-pi",
     "first-extension.md": "pig-authored",
     "first-run.md": "pig-authored",
+    "glossary.md": "pig-authored",
     "how-pig-works.md": "adapted-pi",
     "index.md": "pig-authored",
     "install-troubleshooting.md": "pig-authored",
@@ -32,6 +33,7 @@
     "nvidia-rtx-llama-cpp.md": "adapted-pi",
     "packages.md": "adapted-pi",
     "piglet-binaries.md": "pig-authored",
+    "piglet-lifecycle.md": "pig-authored",
     "piglets.md": "pig-authored",
     "publishing.md": "pig-authored",
     "prompt-templates.md": "adapted-pi",
@@ -55,6 +57,7 @@
     "tmux.md": "adapted-pi",
     "tui.md": "adapted-pi",
     "typescript-runtimes.md": "pig-authored",
+    "trust.md": "pig-authored",
     "usage.md": "adapted-pi",
     "usecase-clean-spreadsheet.md": "pig-authored",
     "usecase-draft-document.md": "pig-authored",
@@ -144,6 +147,10 @@
             {
               "title": "Run PiG Safely",
               "path": "security.md"
+            },
+            {
+              "title": "Control Project Trust",
+              "path": "trust.md"
             },
             {
               "title": "Isolate PiG",
@@ -316,8 +323,16 @@
           "path": "concepts.md"
         },
         {
+          "title": "Glossary",
+          "path": "glossary.md"
+        },
+        {
           "title": "Piglets",
           "path": "piglets.md"
+        },
+        {
+          "title": "Piglet Lifecycle",
+          "path": "piglet-lifecycle.md"
         },
         {
           "title": "Piglet Binaries",

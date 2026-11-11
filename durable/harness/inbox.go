@@ -96,9 +96,11 @@ type Boundary struct {
 	Head *durable.EntryId
 }
 
-// BoundaryResult holds the selected user items, in ID order, and whether a head "self" write (a reset) was placed.
+// BoundaryResult holds the selected user items, in ID order, the first entry the boundary placed, a write's or a user
+// item's (a run it starts begins there, LiveRun.First), and whether a head "self" write (a reset) was placed.
 type BoundaryResult struct {
 	Users []durable.SubmissionId
+	First *durable.EntryId
 	Reset bool
 }
 
@@ -168,6 +170,7 @@ func ApplyBoundary(tx durable.Tx, boundary *Boundary, at BoundaryAt, now float64
 	slices.Sort(users)
 
 	// AppendEntry copies the drafts' values; the items are removed only afterwards.
+	var first *durable.EntryId
 	for _, index := range writes {
 		item := items[index]
 		var draft durable.EntryDraft
@@ -194,6 +197,10 @@ func ApplyBoundary(tx durable.Tx, boundary *Boundary, at BoundaryAt, now float64
 		if err := tx.PlaceSubmission(item.Id, entry.Id); err != nil {
 			return BoundaryResult{}, err
 		}
+		if first == nil {
+			id := entry.Id
+			first = &id
+		}
 	}
 	placed := []durable.SubmissionId{}
 	for _, index := range users {
@@ -217,6 +224,10 @@ func ApplyBoundary(tx durable.Tx, boundary *Boundary, at BoundaryAt, now float64
 			return BoundaryResult{}, err
 		}
 		placed = append(placed, item.Id)
+		if first == nil {
+			id := entry.Id
+			first = &id
+		}
 	}
 	removed := append(slices.Clone(writes), users...)
 	slices.SortFunc(removed, func(a, b int) int { return b - a })
@@ -226,7 +237,7 @@ func ApplyBoundary(tx durable.Tx, boundary *Boundary, at BoundaryAt, now float64
 			return BoundaryResult{}, err
 		}
 	}
-	return BoundaryResult{Users: placed, Reset: reset}, nil
+	return BoundaryResult{Users: placed, First: first, Reset: reset}, nil
 }
 
 // IsDisplayOnly reports whether a write is display-only: it has no model, head or edits (a present one counts, even if

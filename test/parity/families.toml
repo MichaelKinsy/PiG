@@ -324,6 +324,7 @@ description = "Remaining CLI parsing, startup picker, package-command, and utili
 includes = [
   "packages/evals/src/",
   "packages/telemetry/src/",
+  "packages/schema/src/",
   "packages/ai/src/cli.ts",
   "packages/coding-agent/src/cli/args.ts",
   "packages/coding-agent/src/cli/file-processor.ts",

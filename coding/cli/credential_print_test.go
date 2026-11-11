@@ -1,6 +1,7 @@
 package cli
 
 // pi: packages/coding-agent/src/cli/credential-print.ts
+// pi: packages/coding-agent/src/main.ts
 
 // Ports upstream packages/coding-agent/test/credential-print.test.ts and adds
 // command-level coverage for output form, exit codes, and secret exposure.

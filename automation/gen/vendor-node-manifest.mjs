@@ -4,6 +4,7 @@ import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, relative } from "node:path";
 import { identityPatches, patchIdentity } from "./pi-identity-patches.mjs";
+import { packageRoots } from "./pi-package-roots.mjs";
 
 const [shims, agent, output = join(shims, "vendor-manifest.json")] = process.argv.slice(2);
 // Pi 1.0.2 publishes no npm-shrinkwrap.json; the sdk-ts lock (install-strategy=shallow) records every package under
@@ -40,10 +41,19 @@ for (const [name, pkg] of piPackages) {
     }
     let source = join(pkg, "dist", rel);
     if (name === "pi-tui" && rel.startsWith("native/")) source = join(pkg, rel);
+    if (rel === "package.json" && name !== "pi-coding-agent") source = join(pkg, rel);
     if (name === "pi-coding-agent" && (rel === "package.json" || rel === "README.md" || rel === "CHANGELOG.md" || rel.startsWith("docs/") || rel.startsWith("examples/"))) source = join(pkg, rel);
     if (!existsSync(source)) {
       if (name === "pi-coding-agent" && rel === "dist/index.js") {
         record(output, undefined, pkg, "absolute SDK entry -> owned session adapter");
+        continue;
+      }
+      if (packageRoots[name]?.[rel]) {
+        record(output, undefined, pkg, "package root entry -> the runtime module that serves the package");
+        continue;
+      }
+      if (name === "pi-coding-agent" && rel === "dist/cli.js") {
+        record(output, undefined, pkg, "CLI entry -> the extension harness");
         continue;
       }
       throw new Error(`No pinned source for ${output}`);

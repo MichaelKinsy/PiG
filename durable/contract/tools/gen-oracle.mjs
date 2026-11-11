@@ -11,7 +11,6 @@ import { mkdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { pathToFileURL } from "node:url"
 import { diffRevisions } from "@earendil-works/chord/delta"
-import { Type } from "@earendil-works/pi-ai"
 import { validateToolArguments } from "@earendil-works/pi-ai/utils/validation"
 
 const outDir = process.argv[2]
@@ -105,8 +104,8 @@ write("chord.jsonl", chordRows)
 
 // ---- args: validateToolArguments with a TypeBox schema and with a plain JSON schema.
 const tools = {
-	lookup: { name: "lookup", description: "d", parameters: Type.Object({ n: Type.Number() }) },
-	edit: { name: "edit", description: "d", parameters: Type.Object({ path: Type.String(), count: Type.Optional(Type.Integer()), flag: Type.Optional(Type.Boolean()), tags: Type.Optional(Type.Array(Type.String())) }) },
+	lookup: { name: "lookup", description: "d", parameters: { type: "object", properties: { n: { type: "number" } }, required: ["n"] } },
+	edit: { name: "edit", description: "d", parameters: { type: "object", properties: { path: { type: "string" }, count: { type: "integer" }, flag: { type: "boolean" }, tags: { type: "array", items: { type: "string" } } }, required: ["path"] } },
 	plain: { name: "plain", description: "d", parameters: { type: "object", properties: { b: { type: "number" }, a: { type: "string" }, ok: { type: "boolean" }, list: { type: "array", items: { type: "integer" } } }, required: ["a"] } },
 }
 const goodValue = p => (p.type === "number" || p.type === "integer" ? int(1000) : p.type === "boolean" ? rnd() < 0.5 : p.type === "array" ? Array.from({ length: int(3) }, () => (p.items?.type === "integer" ? int(9) : "t")) : "text" + int(9))

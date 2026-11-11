@@ -52,7 +52,7 @@ type Options struct {
 type Guard struct {
 	o     Options
 	mu    sync.Mutex
-	what  string
+	req   request
 	since time.Time
 	busy  bool
 	stop  chan struct{}
@@ -96,10 +96,36 @@ func Start(o Options) *Guard {
 // Stop ends the watcher. A second call does nothing.
 func (g *Guard) Stop() { g.once.Do(func() { close(g.stop) }) }
 
+// request is the running request a report names: a label, or the fields of a corenative request, which are formatted only when a
+// report needs them (a Sprintf per request allocated on every crossing of the native core).
+type request struct {
+	label   string
+	typed   bool
+	op      uint8
+	handle  uint32
+	kind    uint8
+	payload int
+}
+
+func (r request) String() string {
+	if r.typed {
+		return fmt.Sprintf("op %d handle %d kind %d (%d payload bytes)", r.op, r.handle, r.kind, r.payload)
+	}
+	return r.label
+}
+
 // Begin marks a request as running; End marks it done. Only a running request is timed.
 func (g *Guard) Begin(what string) {
 	g.mu.Lock()
-	g.what, g.since, g.busy = what, time.Now(), true
+	g.req, g.since, g.busy = request{label: what}, time.Now(), true
+	g.mu.Unlock()
+}
+
+// BeginRequest is Begin for the request of the native core's pipe protocol (op, handle, event kind, payload length); a report names it
+// as "op %d handle %d kind %d (%d payload bytes)".
+func (g *Guard) BeginRequest(op uint8, handle uint32, kind uint8, payload int) {
+	g.mu.Lock()
+	g.req, g.since, g.busy = request{typed: true, op: op, handle: handle, kind: kind, payload: payload}, time.Now(), true
 	g.mu.Unlock()
 }
 
@@ -131,10 +157,10 @@ func (g *Guard) watch() {
 			}
 		}
 		g.mu.Lock()
-		busy, since, what := g.busy, g.since, g.what
+		busy, since, what := g.busy, g.since, g.req
 		g.mu.Unlock()
 		if g.o.Step > 0 && busy && time.Since(since) > g.o.Step {
-			g.trip(ExitBound, fmt.Sprintf("request %s ran %s without returning, over the %s bound (heap %d MiB)", what, time.Since(since).Round(time.Millisecond), g.o.Step, heldBytes()>>20), true)
+			g.trip(ExitBound, fmt.Sprintf("request %s ran %s without returning, over the %s bound (heap %d MiB)", what.String(), time.Since(since).Round(time.Millisecond), g.o.Step, heldBytes()>>20), true)
 			return
 		}
 	}
@@ -146,7 +172,7 @@ func (g *Guard) request() string {
 	if !g.busy {
 		return "no request running"
 	}
-	return "request " + g.what
+	return "request " + g.req.String()
 }
 
 func (g *Guard) trip(code int, why string, stacks bool) {

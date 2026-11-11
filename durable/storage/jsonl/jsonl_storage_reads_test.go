@@ -7,6 +7,7 @@ import (
 
 	chorddelta "github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/durabletest"
 )
 
 // Pi storage/jsonl/storage.ts:277-380 (commit, conversation, scanConversations, entry, findLatestHeadMarker, scanEntries, task,
@@ -46,7 +47,7 @@ func TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose(t *test
 		State: durable.TaskState[durable.JsonValue, durable.JsonValue]{Status: durable.TaskPending, Checkpoint: &checkpoint},
 	}
 	submission := durable.SubmissionRecord{Id: submissionId, ConversationId: root, RequestId: &requestId, Type: durable.SubmissionTypeWrite, Status: durable.SubmissionDone, Entry: &entryId}
-	seq, err := jsonlStore.Commit(ctx, []durable.StorageWrite{
+	seq, err := durabletest.CommitWrites(ctx, jsonlStore, []durable.StorageWrite{
 		durable.ConversationWrite{Value: durable.ConversationRecord{Id: root}},
 		durable.EntryWrite{Value: durable.EntryRecord{Id: entryId, ConversationId: root, Kind: "plain", Data: map[string]any{"n": 1}}},
 		durable.EntryWrite{Value: durable.EntryRecord{Id: headId, ConversationId: root, Kind: "marker", Head: &entryId}},
@@ -56,7 +57,7 @@ func TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose(t *test
 			Record:  durable.DocumentCreate{Id: documentId, Kind: "jsonl.family", Key: &key, Scope: durable.DocumentRecordScope{Kind: durable.ScopeSession}},
 			Content: durable.DocumentContent{Kind: durable.ContentBase, Version: 1, Value: chorddelta.JsonObjectOf("v", 1)},
 		},
-	}, func(durable.Seq) {})
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -157,7 +158,7 @@ func TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose(t *test
 	if _, err := jsonlStore.Entry(ctx, entryId); err == nil {
 		t.Error("Entry after Close must fail")
 	}
-	if _, err := jsonlStore.Commit(ctx, nil, func(durable.Seq) {}); err == nil {
+	if _, err := durabletest.CommitWrites(ctx, jsonlStore, nil); err == nil {
 		t.Error("Commit after Close must fail")
 	}
 }
@@ -188,7 +189,7 @@ func TestJsonlStorageVisibleEntryFollowsConversationAncestry(t *testing.T) {
 	entry := func(conversation durable.ConversationId, id durable.EntryId) durable.StorageWrite {
 		return durable.EntryWrite{Value: durable.EntryRecord{Id: id, ConversationId: conversation, Kind: "plain", Data: map[string]any{"n": int64(id)}}}
 	}
-	if _, err := store.Commit(ctx, []durable.StorageWrite{
+	if _, err := durabletest.CommitWrites(ctx, store, []durable.StorageWrite{
 		durable.ConversationWrite{Value: durable.ConversationRecord{Id: root}},
 		entry(root, forked),
 		entry(root, afterFork),
@@ -196,7 +197,7 @@ func TestJsonlStorageVisibleEntryFollowsConversationAncestry(t *testing.T) {
 		durable.ConversationWrite{Value: durable.ConversationRecord{Id: sibling, Parent: &durable.ConversationParent{ConversationId: root, At: afterFork}}},
 		entry(child, childOwn),
 		entry(sibling, siblingOwn),
-	}, func(durable.Seq) {}); err != nil {
+	}); err != nil {
 		t.Fatal(err)
 	}
 	for _, tc := range []struct {

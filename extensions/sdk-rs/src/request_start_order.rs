@@ -50,13 +50,19 @@ pub(crate) mod parked {
 
     pub(super) fn note() {
         if let Some(name) = std::thread::current().name() {
-            names().lock().unwrap_or_else(PoisonError::into_inner).insert(name.to_string());
+            names()
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .insert(name.to_string());
         }
     }
 
     /// Whether the thread called `thread_name` parked behind an earlier place.
     pub(crate) fn contains(thread_name: &str) -> bool {
-        names().lock().unwrap_or_else(PoisonError::into_inner).contains(thread_name)
+        names()
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .contains(thread_name)
     }
 }
 
@@ -125,14 +131,22 @@ mod tests {
     }
 
     fn held(name: &str, began: &mpsc::Receiver<()>) {
-        assert!(began.recv_timeout(Duration::from_millis(50)).is_err(), "{name} began before the requests ahead of it");
+        assert!(
+            began.recv_timeout(Duration::from_millis(50)).is_err(),
+            "{name} began before the requests ahead of it"
+        );
     }
 
     // agent-loop.ts:619-647: a request's handler waits for the earlier requests' handlers to be invoked, whatever order the threads run in.
     #[test]
     fn a_later_request_waits_for_every_earlier_one_to_begin() {
         let order = RequestStartOrder::default();
-        let (first, second, third, fourth) = (order.reserve(), order.reserve(), order.reserve(), order.reserve());
+        let (first, second, third, fourth) = (
+            order.reserve(),
+            order.reserve(),
+            order.reserve(),
+            order.reserve(),
+        );
         let fourth_began = begun(fourth);
         let third_began = begun(third);
         held("fourth", &fourth_began);
@@ -141,8 +155,12 @@ mod tests {
         // The first request began, but the second did not: the third still waits for it.
         held("third", &third_began);
         second.begin();
-        third_began.recv_timeout(Duration::from_secs(5)).expect("third began");
-        fourth_began.recv_timeout(Duration::from_secs(5)).expect("fourth began");
+        third_began
+            .recv_timeout(Duration::from_secs(5))
+            .expect("third began");
+        fourth_began
+            .recv_timeout(Duration::from_secs(5))
+            .expect("fourth began");
     }
 
     #[test]
@@ -154,8 +172,12 @@ mod tests {
         held("next", &next_began);
         lost.release();
         lost.release();
-        next_began.recv_timeout(Duration::from_secs(5)).expect("next began");
-        last_began.recv_timeout(Duration::from_secs(5)).expect("last began");
+        next_began
+            .recv_timeout(Duration::from_secs(5))
+            .expect("next began");
+        last_began
+            .recv_timeout(Duration::from_secs(5))
+            .expect("last began");
     }
 
     // A request whose thread ends without its handler still keeps the order of the requests ahead of it: the next handler waits for them.
@@ -173,8 +195,12 @@ mod tests {
         held("after", &after_began);
         held("skipped", &skipped_ended);
         ahead.begin();
-        skipped_ended.recv_timeout(Duration::from_secs(5)).expect("skipped ended");
-        after_began.recv_timeout(Duration::from_secs(5)).expect("after began");
+        skipped_ended
+            .recv_timeout(Duration::from_secs(5))
+            .expect("skipped ended");
+        after_began
+            .recv_timeout(Duration::from_secs(5))
+            .expect("after began");
     }
 
     // runner.ts:1096-1125 and agent-loop.ts:619-647: the requests that run extension code take a place; renders, provider streams and completions do not.
@@ -183,7 +209,13 @@ mod tests {
         for method in ["tool_call", "event", "command"] {
             assert!(starts_in_arrival_order(method), "{method}");
         }
-        for method in ["provider_stream", "render_tool", "tool_prepare_arguments", "autocomplete.suggest", "user_bash_exec"] {
+        for method in [
+            "provider_stream",
+            "render_tool",
+            "tool_prepare_arguments",
+            "autocomplete.suggest",
+            "user_bash_exec",
+        ] {
             assert!(!starts_in_arrival_order(method), "{method}");
         }
     }

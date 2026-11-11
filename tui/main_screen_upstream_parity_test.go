@@ -298,12 +298,12 @@ func TestMainScreenFramesMatchPi084LogicalHistory(t *testing.T) {
 	render("editor-shrink", false)
 
 	width = 48
-	pig.width = width
+	pig.SetFixedSize(width, pig.Height())
 	pigTerminal.resize(width, height)
 	piTerminal.resize(width, height)
 	render("width-change", false)
 	height = 8
-	pig.height = height
+	pig.SetFixedSize(pig.Width(), height)
 	pigTerminal.resize(width, height)
 	piTerminal.resize(width, height)
 	render("height-change", false)

@@ -390,11 +390,14 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 
 	// Long-running tool, for tests that must signal or abort a run while a
 	// tool is still executing. The marker file lets a test wait until the tool
-	// is actually running instead of guessing a delay.
+	// is actually running instead of guessing a delay. The shell creates the
+	// marker with a redirection, not a child like touch: a test that kills the
+	// call's process group at the marker would otherwise find a child that
+	// had already exited, unreaped by the killed shell, among what it adopts.
 	if strings.Contains(lastText, "Run: sleep for a while") {
 		return "tool", "", []testFauxToolCall{{
 			Name: "bash",
-			Args: map[string]any{"command": "touch " + TestFauxToolStartedMarker + "; sleep 45"},
+			Args: map[string]any{"command": ": > " + TestFauxToolStartedMarker + "; sleep 45"},
 		}}
 	}
 

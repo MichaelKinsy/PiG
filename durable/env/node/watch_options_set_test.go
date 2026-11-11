@@ -26,7 +26,7 @@ func TestNodeWatchMaxDirectoriesZeroRefusesEveryDirectory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("an unset limit is the default 10,000 directories: %v", err)
 	}
-	_ = watcher.Close(background)
+	_ = watcher.Stop(background)
 }
 
 // Pi node-watch.ts:163 takes `options.pollIntervalMs ?? DEFAULT_POLL_MS` and passes it to setTimeout (:230-233). Node runs a
@@ -58,6 +58,6 @@ func TestNodeTimerDelayFollowsSetTimeout(t *testing.T) {
 		if watcher.pollInterval != c.want {
 			t.Errorf("poll interval for %+v = %v, want %v", c.options, watcher.pollInterval, c.want)
 		}
-		_ = watcher.Close(background)
+		_ = watcher.Stop(background)
 	}
 }

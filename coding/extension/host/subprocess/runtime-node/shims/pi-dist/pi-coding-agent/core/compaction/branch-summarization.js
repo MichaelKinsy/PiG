@@ -6,6 +6,7 @@
  */
 import { contentText, normalizeContext } from "../../../pi-ai/sdk-bundle/index.js";
 import { convertToLlm, createBranchSummaryMessage, createCompactionSummaryMessage, createCustomMessage, } from "../messages.js";
+import { projectContextEntry, } from "../session-manager.js";
 import { completeSummarization, estimateTokens, getSummarizationFailure } from "./compaction.js";
 import { computeFileLists, createFileOps, extractFileOpsFromMessage, formatFileOperations, SUMMARIZATION_SYSTEM_PROMPT, serializeConversation, } from "./utils.js";
 // ============================================================================
@@ -60,14 +61,16 @@ export function collectEntriesForBranchSummary(session, oldLeafId, targetId) {
  * Extract AgentMessage from a session entry.
  * Similar to getMessageFromEntry in compaction.ts but also handles compaction entries.
  */
-function getMessageFromEntry(entry) {
+function getMessageFromEntry(entry, edit) {
     switch (entry.type) {
         case "message":
             // Skip tool results - context is in assistant's tool call
             if (entry.message.role === "toolResult")
                 return undefined;
-            return entry.message;
+            return edit ? projectContextEntry(entry, edit)[0] : entry.message;
         case "custom_message":
+            if (edit)
+                return projectContextEntry(entry, edit)[0];
             return createCustomMessage(entry.customType, entry.content, entry.display, entry.details, entry.timestamp);
         case "branch_summary":
             return createBranchSummaryMessage(entry.summary, entry.fromId, entry.timestamp);
@@ -117,10 +120,16 @@ export function prepareBranchEntries(entries, tokenBudget = 0) {
             }
         }
     }
+    // Context edits hide or replace earlier entries in model context; honor the latest edit per target.
+    const edits = new Map();
+    for (const entry of entries) {
+        if (entry.type === "context_edit")
+            edits.set(entry.targetId, entry);
+    }
     // Second pass: walk from newest to oldest, adding messages until token budget
     for (let i = entries.length - 1; i >= 0; i--) {
         const entry = entries[i];
-        const message = getMessageFromEntry(entry);
+        const message = getMessageFromEntry(entry, edits.get(entry.id));
         if (!message)
             continue;
         // Extract file ops from assistant messages (tool calls)
@@ -185,7 +194,7 @@ Keep each section concise. Preserve exact file paths, function names, and error 
  * @param options - Generation options
  */
 export async function generateBranchSummary(entries, options) {
-    const { model, apiKey, headers, env, signal, customInstructions, replaceInstructions, reserveTokens = 16384, streamFn, retry, callbacks, } = options;
+    const { model, apiKey, headers, env, signal, thinkingLevel, customInstructions, replaceInstructions, reserveTokens = 16384, streamFn, retry, callbacks, } = options;
     // Token budget = context window minus reserved space for prompt + response
     const contextWindow = model.contextWindow || 128000;
     const tokenBudget = contextWindow - reserveTokens;
@@ -222,6 +231,9 @@ export async function generateBranchSummary(entries, options) {
     // so transient stream drops reuse the configured retry policy.
     const context = normalizeContext({ systemPrompt: SUMMARIZATION_SYSTEM_PROMPT, messages: summarizationMessages });
     const requestOptions = { apiKey, headers, env, signal };
+    if (model.reasoning && thinkingLevel && thinkingLevel !== "off") {
+        requestOptions.reasoning = thinkingLevel;
+    }
     const response = await completeSummarization(model, context, requestOptions, streamFn, retry, callbacks);
     // Check if aborted or errored
     if (response.stopReason === "aborted") {

@@ -14,25 +14,26 @@ process.emitWarning = () => {};
 
 // Specifiers Pi's extension loader serves from its own bundle
 // (core/extensions/virtual-modules.ts). Pi resolves the pi-ai root to its
-// compat entry point, so both names share one shim here. pi-ai/models is its own entry (shims/pi-ai-models.mjs). The pi-ai/oauth entry
+// extension view (compat entry point plus TypeBox's Type and StringEnum), so both names share one shim here. pi-ai/models is its own entry (shims/pi-ai-models.mjs). The pi-ai/oauth entry
 // point is type-only; pi-ai/providers/all and pi-agent-core are Pi's own modules.
 export const shims = new Map([
-  ["@mariozechner/pi-coding-agent", new URL("./shims/pi-coding-agent.mjs", import.meta.url).href],
-  ["@earendil-works/pi-coding-agent", new URL("./shims/pi-coding-agent.mjs", import.meta.url).href],
-  ["@mariozechner/pi-tui", new URL("./shims/pi-tui.mjs", import.meta.url).href],
-  ["@earendil-works/pi-tui", new URL("./shims/pi-tui.mjs", import.meta.url).href],
-  ["@mariozechner/pi-agent-core", new URL("./shims/pi-agent-core.mjs", import.meta.url).href],
-  ["@earendil-works/pi-agent-core", new URL("./shims/pi-agent-core.mjs", import.meta.url).href],
-  ["@mariozechner/pi-ai", new URL("./shims/pi-ai.mjs", import.meta.url).href],
-  ["@earendil-works/pi-ai", new URL("./shims/pi-ai.mjs", import.meta.url).href],
-  ["@mariozechner/pi-ai/compat", new URL("./shims/pi-ai.mjs", import.meta.url).href],
-  ["@earendil-works/pi-ai/compat", new URL("./shims/pi-ai.mjs", import.meta.url).href],
-  ["@mariozechner/pi-ai/models", new URL("./shims/pi-ai-models.mjs", import.meta.url).href],
-  ["@earendil-works/pi-ai/models", new URL("./shims/pi-ai-models.mjs", import.meta.url).href],
-  ["@mariozechner/pi-ai/oauth", new URL("./shims/pi-ai-oauth.mjs", import.meta.url).href],
-  ["@earendil-works/pi-ai/oauth", new URL("./shims/pi-ai-oauth.mjs", import.meta.url).href],
-  ["@mariozechner/pi-ai/providers/all", new URL("./shims/pi-dist/pi-ai/sdk-bundle/providers.js", import.meta.url).href],
-  ["@earendil-works/pi-ai/providers/all", new URL("./shims/pi-dist/pi-ai/sdk-bundle/providers.js", import.meta.url).href],
+  // Pi's package.json "exports" names ./dist/index.js, so an extension that resolves the package (import.meta.resolve) and goes two directories up reaches the package root and finds the CLI at <root>/dist/cli.js (pi-open-agents resolvePiEntryPoint). The vendored package root, which getPackageDir() reports, has that layout: dist/index.js re-exports the barrel and dist/cli.js starts the harness.
+  ["@mariozechner/pi-coding-agent", new URL("./shims/pi-dist/pi-coding-agent/dist/index.js", import.meta.url).href],
+  ["@earendil-works/pi-coding-agent", new URL("./shims/pi-dist/pi-coding-agent/dist/index.js", import.meta.url).href],
+  ["@mariozechner/pi-tui", new URL("./shims/pi-dist/pi-tui/dist/index.js", import.meta.url).href],
+  ["@earendil-works/pi-tui", new URL("./shims/pi-dist/pi-tui/dist/index.js", import.meta.url).href],
+  ["@mariozechner/pi-agent-core", new URL("./shims/pi-dist/pi-agent-core/dist/index.js", import.meta.url).href],
+  ["@earendil-works/pi-agent-core", new URL("./shims/pi-dist/pi-agent-core/dist/index.js", import.meta.url).href],
+  ["@mariozechner/pi-ai", new URL("./shims/pi-dist/pi-ai/dist/index.js", import.meta.url).href],
+  ["@earendil-works/pi-ai", new URL("./shims/pi-dist/pi-ai/dist/index.js", import.meta.url).href],
+  ["@mariozechner/pi-ai/compat", new URL("./shims/pi-dist/pi-ai/dist/index.js", import.meta.url).href],
+  ["@earendil-works/pi-ai/compat", new URL("./shims/pi-dist/pi-ai/dist/index.js", import.meta.url).href],
+  ["@mariozechner/pi-ai/models", new URL("./shims/pi-dist/pi-ai/dist/models.js", import.meta.url).href],
+  ["@earendil-works/pi-ai/models", new URL("./shims/pi-dist/pi-ai/dist/models.js", import.meta.url).href],
+  ["@mariozechner/pi-ai/oauth", new URL("./shims/pi-dist/pi-ai/dist/oauth.js", import.meta.url).href],
+  ["@earendil-works/pi-ai/oauth", new URL("./shims/pi-dist/pi-ai/dist/oauth.js", import.meta.url).href],
+  ["@mariozechner/pi-ai/providers/all", new URL("./shims/pi-dist/pi-ai/dist/providers/all.js", import.meta.url).href],
+  ["@earendil-works/pi-ai/providers/all", new URL("./shims/pi-dist/pi-ai/dist/providers/all.js", import.meta.url).href],
   // Pi aliases these to the TypeBox it ships; shims/typebox*.mjs bundle the
   // same pinned release (automation/gen/vendor-typebox.sh).
   ["typebox", new URL("./shims/typebox.mjs", import.meta.url).href],

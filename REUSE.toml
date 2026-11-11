@@ -169,6 +169,32 @@ precedence = "override"
 SPDX-FileCopyrightText = "Copyright (c) 2025 Mario Zechner"
 SPDX-License-Identifier = "MIT"
 
+# Verbatim copies of Pi's chord sources and the two packages they run on (pi-schema, pi-telemetry), run by the Node subprocess of the plugins
+# component (automation/gen/vendor-chord-plugins-node.sh).
+[[annotations]]
+path = "chord/nextnode/plugins/node/pi/chord/**"
+precedence = "override"
+SPDX-FileCopyrightText = "Copyright (c) 2025 Mario Zechner"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "chord/nextnode/plugins/node/pi/node_modules/@earendil-works/pi-telemetry/**"
+precedence = "override"
+SPDX-FileCopyrightText = "Copyright (c) 2025 Mario Zechner"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "chord/nextnode/plugins/node/pi/schema/**"
+precedence = "override"
+SPDX-FileCopyrightText = "Copyright (c) 2025 Mario Zechner"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "chord/nextnode/plugins/node/pi/schema/LICENSES/typebox-LICENSE"
+precedence = "override"
+SPDX-FileCopyrightText = "Copyright (c) 2017-2026 Haydn Paterson"
+SPDX-License-Identifier = "MIT"
+
 # The unmodified ES module build of yaml 2.9.0, the YAML library Pi uses.
 [[annotations]]
 path = "coding/extension/host/subprocess/runtime-node/shims/yaml/**"
@@ -333,6 +359,18 @@ SPDX-FileCopyrightText = "minimatch contributors"
 SPDX-License-Identifier = "BlueOak-1.0.0"
 
 [[annotations]]
+path = "test/parity/dependency-sources/@isaacs/**"
+precedence = "override"
+SPDX-FileCopyrightText = "nonrecursive-glob-match contributors"
+SPDX-License-Identifier = "BlueOak-1.0.0"
+
+[[annotations]]
+path = "test/parity/dependency-sources/node/**"
+precedence = "override"
+SPDX-FileCopyrightText = "minimatch contributors"
+SPDX-License-Identifier = "BlueOak-1.0.0"
+
+[[annotations]]
 path = "test/parity/dependency-sources/brace-expansion/**"
 precedence = "override"
 SPDX-FileCopyrightText = "Copyright Julian Gruber <julian@juliangruber.com>"
@@ -433,6 +471,53 @@ precedence = "closest"
 SPDX-FileCopyrightText = "Copyright (c) 2025 Mario Zechner"
 SPDX-License-Identifier = "MIT"
 
+# schema is a Go port of Pi's packages/schema. Its format checks are translated
+# from TypeBox 1.3.27 (MIT); the test suite and meta-schemas under testdata are
+# the JSON Schema organization's files, unmodified.
+[[annotations]]
+path = "schema/**"
+precedence = "closest"
+SPDX-FileCopyrightText = [
+  "Copyright Michael Kinsy",
+  "Copyright (c) 2025 Mario Zechner",
+]
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = [
+  "schema/formats/typebox_*.go",
+  "schema/formats/internal/idna/**",
+]
+precedence = "closest"
+SPDX-FileCopyrightText = [
+  "Copyright Michael Kinsy",
+  "Copyright (c) 2017-2026 Haydn Paterson",
+]
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "schema/testdata/json-schema-test-suite/**"
+precedence = "closest"
+SPDX-FileCopyrightText = "Copyright (c) 2012 Julian Berman"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "schema/testdata/meta-schemas/**"
+precedence = "closest"
+SPDX-FileCopyrightText = "Copyright the JSON Schema organization"
+SPDX-License-Identifier = "BSD-3-Clause"
+
+# The schema-switch fixtures of Chord v2 (chord/next/host/testdata/schema-switch) are Pi's test files, byte for byte
+# (packages/chord/test/next/schema at b556cfe5): the recorded fingerprints and the stored SQLite store and archive.
+[[annotations]]
+path = "chord/next/host/testdata/schema-switch/**"
+precedence = "closest"
+SPDX-FileCopyrightText = [
+  "Copyright Michael Kinsy",
+  "Copyright (c) 2025 Mario Zechner",
+]
+SPDX-License-Identifier = "MIT"
+
 # PiG fork of santhosh-tekuri/jsonschema v6.0.2 (third_party/jsonschema/FORK.md).
 [[annotations]]
 path = "third_party/jsonschema/**"
@@ -454,3 +539,45 @@ precedence = "closest"
 SPDX-FileCopyrightText = "Copyright (C) 2014-2019 Matt Butcher and Matt Farina"
 SPDX-License-Identifier = "MIT"
 
+
+# Test bitmaps of the image-rs repository (tests/images/bmp, v0.24.9), several of them files of Jason Summers' BMP Suite (public domain),
+# which the Photon BMP decoder corpus reads (internal/photonimage/testdata/bmp-real).
+[[annotations]]
+path = "internal/photonimage/testdata/bmp-real/**"
+precedence = "closest"
+SPDX-FileCopyrightText = "The image-rs Developers"
+SPDX-License-Identifier = "MIT OR Apache-2.0"
+
+# Test GIF files of the image-rs repository (tests/images/gif, v0.24.9) and of the Go repository (src/image/testdata, in the go directory), which the Photon GIF
+# decoder corpus reads (internal/photonimage/testdata/gif-real).
+[[annotations]]
+path = "internal/photonimage/testdata/gif-real/*.gif"
+precedence = "closest"
+SPDX-FileCopyrightText = "The image-rs Developers"
+SPDX-License-Identifier = "MIT OR Apache-2.0"
+
+[[annotations]]
+path = "internal/photonimage/testdata/gif-real/go/*.gif"
+precedence = "closest"
+SPDX-FileCopyrightText = "The Go Authors"
+SPDX-License-Identifier = "BSD-3-Clause"
+
+# The PNG files of the Photon PNG decoder corpus (internal/photonimage/testdata/png-real): PngSuite by Willem van Schaik, the PNG test files of the
+# image-rs repository (tests/images/png, v0.24.9) and those of the Go repository (src/image/png/testdata and src/image/testdata).
+[[annotations]]
+path = "internal/photonimage/testdata/png-real/pngsuite/**"
+precedence = "closest"
+SPDX-FileCopyrightText = "Willem van Schaik, 1996, 2011"
+SPDX-License-Identifier = "LicenseRef-PngSuite"
+
+[[annotations]]
+path = "internal/photonimage/testdata/png-real/image-rs/*.png"
+precedence = "closest"
+SPDX-FileCopyrightText = "The image-rs Developers"
+SPDX-License-Identifier = "MIT OR Apache-2.0"
+
+[[annotations]]
+path = "internal/photonimage/testdata/png-real/go/*.png"
+precedence = "closest"
+SPDX-FileCopyrightText = "The Go Authors"
+SPDX-License-Identifier = "BSD-3-Clause"

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"math/bits"
 	"os"
 	"slices"
@@ -162,22 +163,31 @@ type slotKind struct {
 }
 
 // slotKinds interns slot kinds for the process: a slot keeps a four-byte code where two unique handles took sixteen bytes. The kinds of a
-// session are its entry types and the roles and apis of its messages, so the table stays as small as the distinct combinations seen.
+// session are its entry types and the roles and apis of its messages, so the table stays as small as the distinct combinations seen. codes
+// is replaced, never written, so looking up a kind boxes nothing.
 var slotKinds struct {
-	codes sync.Map // slotKind -> uint32
+	codes atomic.Pointer[map[slotKind]uint32]
 	mu    sync.Mutex
 	table atomic.Pointer[[]slotKind]
 }
 
 // internSlotKind returns the code of kind.
 func internSlotKind(kind slotKind) uint32 {
-	if code, ok := slotKinds.codes.Load(kind); ok {
-		return code.(uint32)
+	if codes := slotKinds.codes.Load(); codes != nil {
+		if code, ok := (*codes)[kind]; ok {
+			return code
+		}
 	}
 	slotKinds.mu.Lock()
 	defer slotKinds.mu.Unlock()
-	if code, ok := slotKinds.codes.Load(kind); ok {
-		return code.(uint32)
+	var codes map[slotKind]uint32
+	if old := slotKinds.codes.Load(); old != nil {
+		if code, ok := (*old)[kind]; ok {
+			return code
+		}
+		codes = maps.Clone(*old)
+	} else {
+		codes = map[slotKind]uint32{}
 	}
 	var table []slotKind
 	if old := slotKinds.table.Load(); old != nil {
@@ -186,7 +196,8 @@ func internSlotKind(kind slotKind) uint32 {
 	table = append(slices.Clip(table), kind)
 	code := uint32(len(table) - 1)
 	slotKinds.table.Store(&table)
-	slotKinds.codes.Store(kind, code)
+	codes[kind] = code
+	slotKinds.codes.Store(&codes)
 	return code
 }
 
@@ -307,10 +318,9 @@ func messageKindOf(entry SessionEntry) (messageKind, bool) {
 	return rawMessageKind(entry.Raw())
 }
 
-// messageKindFrom is rawMessageKind from an already decoded role and raw api.
+// messageKindFrom is rawMessageKind from an already decoded role and raw api. An api that is not a string reads as "".
 func messageKindFrom(role string, rawAPI json.RawMessage) (messageKind, bool) {
-	var api string
-	_ = json.Unmarshal(rawAPI, &api)
+	api, _ := decodeJSONString(rawAPI)
 	return messageKind{role: role, api: api}, true
 }
 
@@ -479,19 +489,17 @@ func (s *Session) readSlotsLocked(indexes []int32) []SessionEntry {
 			}
 			var entry SessionEntry
 			var record []byte
-			var ok, owned bool
+			var ok bool
 			if cold := s.coldPart(slot); cold.block == 0 && file != nil && cold.off >= 0 {
-				// Records close together share one read; the record is a slice of that buffer, which the decoded entry may keep.
-				record, owned = run.record(file, s, indexes, order, k)
-				ok = owned
+				// Records close together share one read, and the record is a slice of that buffer. The decoded entry keeps its record, so the
+				// entry gets its own copy: a slice would pin the whole read, the gaps between the records included, while the entry is resident.
+				record, ok = run.record(file, s, indexes, order, k)
 			}
 			if !ok {
 				record, ok = reader.record(s.coldPart(slot))
 			}
 			if ok {
-				if !owned {
-					record = bytes.Clone(record)
-				}
+				record = bytes.Clone(record) // the lone reader's buffer is valid only until its next call
 				// An indexed line is never a header (the load skips records of type "session"), so it decodes as DecodeFileEntry decodes it.
 				if decoded := sessionentry.DecodeSessionEntry(record); decoded.Base().ID == slot.id && decoded.Base().Type == slot.typ() {
 					entry = decoded

@@ -12,6 +12,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/session"
+	"github.com/MichaelKinsy/PiG/durable/session/sessiontest"
 	"github.com/MichaelKinsy/PiG/durable/storage"
 )
 
@@ -141,7 +142,7 @@ func TestAFailedStorageCallFailsTheSession(t *testing.T) {
 		expectSessionFailed(t, readGuardedTask(kernel, ctx), "disk gone")
 		expectSessionFailed(t, tryCommit(kernel, func(durable.Tx) error { return nil }), "disk gone")
 		<-kernel.Closed()
-		if end := kernel.End(); end.Reason != durable.SessionEndFailed || !errors.Is(end.Error, disk) {
+		if end := kernel.End(); end.Kind != durable.SessionEndFailed || !errors.Is(end.Error, disk) {
 			t.Fatalf("end = %+v, want failed with the first error", end)
 		}
 		if reported := reports.all(); len(reported) != 1 || !errors.Is(reported[0], disk) {
@@ -233,7 +234,7 @@ func TestAFailedStorageCallFailsTheSession(t *testing.T) {
 		if early {
 			t.Fatal("the backend closed while a Storage call was underway")
 		}
-		if end := kernel.End(); end.Reason != durable.SessionEndFailed || !errors.Is(end.Error, disk) {
+		if end := kernel.End(); end.Kind != durable.SessionEndFailed || !errors.Is(end.Error, disk) {
 			t.Fatalf("end = %+v", end)
 		}
 	})
@@ -256,7 +257,7 @@ func TestAFailedStorageCallFailsTheSession(t *testing.T) {
 			t.Fatalf("close returned %v, want the close error", err)
 		}
 		<-kernel.Closed()
-		if end := kernel.End(); end.Reason != durable.SessionEndFailed || !errors.Is(end.Error, closeErr) {
+		if end := kernel.End(); end.Kind != durable.SessionEndFailed || !errors.Is(end.Error, closeErr) {
 			t.Fatalf("end = %+v, want failed with the close error", end)
 		}
 		if reported := reports.all(); len(reported) != 1 || !errors.Is(reported[0], closeErr) {
@@ -276,7 +277,7 @@ func TestAFailedStorageCallFailsTheSession(t *testing.T) {
 		kernel, _, reports := openScripted(t)
 		must(t, kernel.Close(ctx))
 		<-kernel.Closed()
-		if end := kernel.End(); end.Reason != durable.SessionEndClosed || end.Error != nil {
+		if end := kernel.End(); end.Kind != durable.SessionEndClosed || end.Error != nil {
 			t.Fatalf("end = %+v, want closed", end)
 		}
 		if len(reports.all()) != 0 {
@@ -290,8 +291,8 @@ func TestListenersOfAFailingPublication(t *testing.T) {
 	t.Run("an internal listener's failure fails the Session; the host's still run", func(t *testing.T) {
 		kernel, _, reports := openScripted(t)
 		var host int
-		kernel.SubscribeCommits(func(context.Context, durable.CommitPublication) { host++ })
-		kernel.ObserveCommits(func(context.Context, session.ObservedCommit) { panic(errors.New("bookkeeping failed")) })
+		sessiontest.ObserveCommitsFunc(kernel, func(context.Context, durable.CommitPublication) { host++ })
+		kernel.FollowCommits(func(context.Context, session.ObservedCommit) { panic(errors.New("bookkeeping failed")) })
 		err := commitOne(func() error {
 			return tryCommit(kernel, func(tx durable.Tx) error {
 				_, err := tx.CreateConversation(ownerless())
@@ -316,8 +317,8 @@ func TestListenersOfAFailingPublication(t *testing.T) {
 	t.Run("a host listener's panic is reported and the others still run; the Session stays healthy", func(t *testing.T) {
 		kernel, _, reports := openScripted(t)
 		var after int
-		kernel.SubscribeCommits(func(context.Context, durable.CommitPublication) { panic("listener failed") })
-		kernel.SubscribeCommits(func(context.Context, durable.CommitPublication) { after++ })
+		sessiontest.ObserveCommitsFunc(kernel, func(context.Context, durable.CommitPublication) { panic("listener failed") })
+		sessiontest.ObserveCommitsFunc(kernel, func(context.Context, durable.CommitPublication) { after++ })
 		must(t, tryCommit(kernel, func(tx durable.Tx) error {
 			_, err := tx.CreateConversation(ownerless())
 			return err

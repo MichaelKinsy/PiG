@@ -41,11 +41,18 @@ const (
 	soakP99GrossMS = 2000.0
 	// soakGoroutineGrowth is how many goroutines the host may hold after the traffic beyond what it held before it.
 	soakGoroutineGrowth = 8
-	// soakHeapGrowthBytes is how much live host heap the traffic may leave behind.
+	// soakHeapGrowthBytes caps how much live host heap the traffic may leave behind, however long the run.
 	soakHeapGrowthBytes = 32 << 20
-	// soakRSSGrowthBytes and soakRSSGrowthFraction bound the extension process memory: its resident size in the last quarter of the run may exceed its size in the third quarter by the larger of the two.
+	// soakHeapBaseBytes and soakHeapPerCallBytes bound the live host heap that n calls may leave behind to soakHeapBaseBytes+n*soakHeapPerCallBytes. The base covers what a run adds once (pooled frame buffers, runtime thread structures); the per-call part covers the test's own latency record. A host that keeps a record of each call it serves is caught at any machine speed, where a limit fixed in bytes lets the extra calls of a faster machine carry the same retention across it.
+	soakHeapBaseBytes    = 4 << 20
+	soakHeapPerCallBytes = 128
+	// soakRSSGrowthBytes and soakRSSGrowthFraction bound the memory of an extension process that cannot report its live memory: its resident size in the last quarter of the run may exceed its size in the third quarter by the larger of the two.
 	soakRSSGrowthBytes    = 24 << 20
 	soakRSSGrowthFraction = 0.35
+	// soakLiveGrowthBytes bounds the live memory of an extension process that reports it (soakMemory): after a full collection it may hold this much more at the end of the traffic than it held at the middle of the run. A clean Node extension moved by -0.2 to +0.2 MiB over the second half in every loaded run measured; a leak shows in it from about soakLiveGrowthBytes divided by the calls of the second half, a few hundred bytes per call.
+	soakLiveGrowthBytes = 1 << 20
+	// soakLiveMemoryCommand is the command of an extension that reports its live memory after a collection.
+	soakLiveMemoryCommand = "live-memory"
 )
 
 type soakOp struct {
@@ -154,6 +161,18 @@ func soakOps() []soakOp {
 	}
 }
 
+// soakPick draws an operation, each with its weight's share of the draws.
+func soakPick(rng *rand.Rand, ops []soakOp, totalWeight int) soakOp {
+	pick := rng.IntN(totalWeight)
+	for _, candidate := range ops {
+		if pick < candidate.weight {
+			return candidate
+		}
+		pick -= candidate.weight
+	}
+	panic("soak: the weights of the operations do not sum to totalWeight")
+}
+
 func soakSpec() sdkscenarios.Spec {
 	spec := sdkscenarios.Spec{
 		Tools: []sdkscenarios.Tool{
@@ -168,6 +187,15 @@ func soakSpec() sdkscenarios.Spec {
 	}
 	for name, arg := range map[string]string{"q-idle": "idle", "q-prompt": "system-prompt", "q-tools": "all-tools"} {
 		spec.Commands = append(spec.Commands, sdkscenarios.Command{Name: name, Description: "Query " + arg, Op: sdkscenarios.CommandQuery, Arg: arg})
+	}
+	return spec
+}
+
+// soakSpecFor is soakSpec for sdk's driver: an SDK that can report its live memory gets the command that does.
+func soakSpecFor(sdk sdkscenarios.SDK) sdkscenarios.Spec {
+	spec := soakSpec()
+	if sdk == sdkscenarios.Node {
+		spec.Commands = append(spec.Commands, sdkscenarios.Command{Name: soakLiveMemoryCommand, Description: "Collect garbage and report live memory", Op: sdkscenarios.CommandLiveMemory})
 	}
 	return spec
 }
@@ -252,7 +280,7 @@ func TestExtensionSoak(t *testing.T) {
 	}
 	for _, sdk := range sdkscenarios.SDKs {
 		t.Run(string(sdk), func(t *testing.T) {
-			rig := newScenarioRig(t, sdk, sdkscenarios.Scenario{Spec: soakSpec()})
+			rig := newScenarioRig(t, sdk, sdkscenarios.Scenario{Spec: soakSpecFor(sdk)})
 			if len(rig.loadFailure) != 0 {
 				t.Fatalf("load: %v", rig.loadFailure)
 			}
@@ -278,15 +306,7 @@ func TestExtensionSoak(t *testing.T) {
 				wg.Go(func() {
 					w := &soakWorker{rig: rig, rng: rand.New(rand.NewPCG(seed, uint64(worker+1))), dir: t.TempDir()}
 					for time.Now().Before(deadline) {
-						pick := w.rng.IntN(totalWeight)
-						var op soakOp
-						for _, candidate := range ops {
-							if pick < candidate.weight {
-								op = candidate
-								break
-							}
-							pick -= candidate.weight
-						}
+						op := soakPick(w.rng, ops, totalWeight)
 						ctx, cancel := context.WithTimeout(t.Context(), soakCallGrace)
 						start := time.Now()
 						err := op.run(ctx, w)
@@ -302,19 +322,12 @@ func TestExtensionSoak(t *testing.T) {
 					}
 				})
 			}
-			// Sample the extension process memory through the run.
-			var samples []int64
+			// Watch the extension process memory through the run.
+			memory := newSoakMemory(rig, t.TempDir())
 			sampler := make(chan struct{})
 			go func() {
 				defer close(sampler)
-				ticker := time.NewTicker(250 * time.Millisecond)
-				defer ticker.Stop()
-				for time.Now().Before(deadline) {
-					<-ticker.C
-					if rss, _ := descendantRSS(); rss > 0 {
-						samples = append(samples, rss)
-					}
-				}
+				memory.watch(t.Context(), deadline)
 			}()
 			wg.Wait()
 			<-sampler
@@ -345,23 +358,11 @@ func TestExtensionSoak(t *testing.T) {
 			}
 			var after runtime.MemStats
 			runtime.ReadMemStats(&after)
-			if growth := int64(after.HeapAlloc) - int64(before.HeapAlloc); growth > soakHeapGrowthBytes {
-				t.Errorf("live host heap grew by %d bytes (limit %d, seed %d)", growth, soakHeapGrowthBytes, seed)
+			if growth, limit := int64(after.HeapAlloc)-int64(before.HeapAlloc), min(soakHeapGrowthBytes, soakHeapBaseBytes+soakHeapPerCallBytes*calls.Load()); growth > limit {
+				t.Errorf("live host heap grew by %d bytes over %d calls (limit %d, seed %d)", growth, calls.Load(), limit, seed)
 			}
-			var series []string
-			for i := 0; i < len(samples); i += max(1, len(samples)/12) {
-				series = append(series, fmt.Sprintf("%.0f", float64(samples[i])/(1<<20)))
-			}
-			t.Logf("extension process resident MiB over the run: %s", strings.Join(series, " "))
-			if len(samples) >= 8 {
-				// A runtime's heap ramps up while it warms (Node's takes minutes), so the slope is read over the second half: the third quarter of the samples against the last.
-				quarter := len(samples) / 4
-				mid, late := mean(samples[2*quarter:3*quarter]), mean(samples[len(samples)-quarter:])
-				limit := max(float64(soakRSSGrowthBytes), mid*soakRSSGrowthFraction)
-				t.Logf("extension process resident size: %.1f MiB in the third quarter, %.1f MiB in the last", mid/(1<<20), late/(1<<20))
-				if late-mid > limit {
-					t.Errorf("extension process grew from %.1f to %.1f MiB over the second half (limit +%.1f MiB, seed %d)", mid/(1<<20), late/(1<<20), limit/(1<<20), seed)
-				}
+			if growth := memory.verdict(t.Context(), t, seed); growth != "" {
+				t.Error(growth)
 			}
 
 			rig.host.Shutdown("soak done")

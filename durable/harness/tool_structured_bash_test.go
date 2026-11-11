@@ -26,7 +26,7 @@ func structuredJSON(t *testing.T, value any) string {
 	return string(encoded)
 }
 
-// harness-structured-output.test.ts:370 it("gives callers of bash its retained output and exit code, also for a nonzero exit")
+// harness-structured-output.test.ts:364 it("gives callers of bash its retained output and exit code, also for a nonzero exit")
 func TestCallersOfBashGetItsRetainedOutputAndExitCodeAlsoForANonzeroExit(t *testing.T) {
 	setup := newCodingSetup()
 	if err := setup.registry.Install(&durable.Extension{Name: "bash", Tools: []*durable.ToolRegistration{tools.CreateBashTool(nil)}}); err != nil {

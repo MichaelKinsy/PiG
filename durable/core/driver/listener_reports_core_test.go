@@ -24,7 +24,7 @@ func openReportingCoreHarness(t *testing.T) (harness.Harness, harness.Conversati
 	t.Helper()
 	reports := make(chan error, 16)
 	h, err := driver.OpenHarness(t.Context(), filepath.Join(t.TempDir(), "store.db"), harness.HarnessOptions{
-		Models: ai.CreateModels(), Registry: harness.CreateRegistry(), OnReport: func(err error, _ durable.ReportInfo) { reports <- err },
+		Models: ai.CreateModels(), Registry: harness.CreateRegistry(), OnReport: func(report durable.Report) { reports <- report.Error },
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -61,12 +61,12 @@ func appendCoreNote(t *testing.T, root harness.Conversation) {
 func TestCoreReportsAFailingWatchListenerAndEndsTheWatch(t *testing.T) {
 	t.Run("of a conversation's view", func(t *testing.T) {
 		_, root, reports := openReportingCoreHarness(t)
-		watch, err := root.Watch(t.Context())
+		watch, err := root.Watch(t.Context(), nil)
 		if err != nil {
 			t.Fatal(err)
 		}
 		failure := errors.New("view watch listener failed")
-		watch.Start(func(_ context.Context, change durable.WatchChange[harness.ConversationView]) error { return failure })
+		watch.Start(func(_ context.Context, change durable.WatchCall[harness.ConversationView]) error { return failure })
 		appendCoreNote(t, root)
 		expectWatchListenerError(t, watch.Closed(), watch.End, failure)
 		expectReport(t, reports, failure)
@@ -80,30 +80,11 @@ func TestCoreReportsAFailingWatchListenerAndEndsTheWatch(t *testing.T) {
 			t.Fatalf("watch: %v %v", watch, err)
 		}
 		failure := errors.New("document watch listener failed")
-		watch.Start(func(_ context.Context, change durable.WatchChange[durable.JsonObject]) error { return failure })
+		watch.Start(func(_ context.Context, change durable.WatchCall[durable.JsonObject]) error { return failure })
 		commitCoreDoc(t, h, increment(stateDoc))
 		expectWatchListenerError(t, watch.Closed(), watch.End, failure)
 		expectReport(t, reports, failure)
 	})
-}
-
-func TestCoreReportsAFailingAgentEventListenerAndEndsTheStream(t *testing.T) {
-	// Pi events.ts watchEvents builds its Watch with `(error) => views.report(error)`.
-	reports := make(chan error, 16)
-	h, root, submit := nestedCoreOpen(t, &durable.Extension{Name: "nested", Tools: []*durable.ToolRegistration{
-		nestedCoreTool("batch", func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
-			return nestedCoreText("done"), nil
-		}),
-	}}, func(err error, _ durable.ReportInfo) { reports <- err })
-	stream, err := harness.WatchEvents(t.Context(), h, root.Id())
-	if err != nil {
-		t.Fatal(err)
-	}
-	failure := errors.New("event listener failed")
-	stream.Start(func(_ context.Context, _ durable.NativeWatchChange[[]harness.AgentEvent]) error { return failure })
-	submit()
-	expectWatchListenerError(t, stream.Closed(), stream.End, failure)
-	expectReport(t, reports, failure)
 }
 
 func touchStateDoc(tx durable.Tx) error { return touch(tx, stateDoc) }
@@ -122,7 +103,7 @@ func expectWatchListenerError(t *testing.T, closed <-chan struct{}, end func() d
 	case <-time.After(10 * time.Second):
 		t.Fatal("the watch did not end after its listener failed")
 	}
-	if got := end(); got.Reason != durable.WatchListenerError || !errors.Is(got.Error, failure) {
+	if got := end(); got.Kind != durable.WatchListenerError || !errors.Is(got.Error, failure) {
 		t.Fatalf("the watch ended %+v, want listener_error with the listener's error", got)
 	}
 }

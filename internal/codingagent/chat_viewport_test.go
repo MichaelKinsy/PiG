@@ -64,3 +64,28 @@ func TestCreateChatViewportPinsDockUnderTranscript(t *testing.T) {
 		t.Fatal("the transcript must be the primary scroll view")
 	}
 }
+
+// The interactive mode mounts the viewport through buildChatViewport, which hands createChatViewport the fullscreenScrollbar setting: with
+// none the transcript scrollbar is upstream's "auto", and the setting overrides it, the pair test/chat-viewport.test.ts proves for the factory.
+func TestBuildChatViewportDefaultsScrollbarToAutoAndAcceptsTheSetting(t *testing.T) {
+	build := func(scrollbar string) *tui.ScrollView {
+		m := &InteractiveMode{
+			opts:                     InteractiveModeOptions{Settings: Settings{FullscreenScrollbar: scrollbar}},
+			extHeader:                newSpecialLinesComponent(func() {}),
+			chatContainer:            tui.NewContainer(),
+			pendingMessagesContainer: tui.NewContainer(),
+			statusContainer:          tui.NewContainer(),
+			widgetContainer:          tui.NewContainer(),
+			editorContainer:          tui.NewContainer(),
+			extFooter:                newSpecialLinesComponent(func() {}),
+			statusLine:               NewFooterComponent(nil, "", nil),
+		}
+		return m.buildChatViewport().Transcript
+	}
+	if got := build("").Scrollbar(); got != "auto" {
+		t.Fatalf("default transcript scrollbar = %q, want auto", got)
+	}
+	if got := build("hidden").Scrollbar(); got != "hidden" {
+		t.Fatalf("fullscreenScrollbar hidden gave transcript scrollbar %q, want hidden", got)
+	}
+}

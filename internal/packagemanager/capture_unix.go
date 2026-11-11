@@ -10,6 +10,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+// Ports packages/coding-agent/src/core/package-manager.ts (spawnCaptureCommand, runCommandCapture child termination and exit status).
 // Node child.kill() defaults to SIGTERM and leaves settlement to the close event.
 func TerminatePackageCapture(process *os.Process) {
 	_ = process.Signal(syscall.SIGTERM)

@@ -24,8 +24,10 @@ func editorTheme() tui.EditorTheme {
 // (tui, editorTheme, keybindings) and puts it in the editor's place with the editor's text and callbacks. It runs on the owner loop;
 // [ExtUIContext.SetEditorComponent] has recorded the factory already, as Pi's setCustomEditorComponent does first.
 func (m *InteractiveMode) setCustomEditorComponent(factory extension.EditorFactory) {
-	// interactive-mode.ts:2861
-	m.disposeActiveSelector()
+	// interactive-mode.ts:2842-2847 An open extension dialog keeps the editor slot, so the selector shown over it stays active.
+	if len(m.extensionDialogs) == 0 {
+		m.disposeActiveSelector()
+	}
 	if factory == nil {
 		m.setRemoteEditor(nil)
 		return

@@ -76,6 +76,16 @@ func CreateTask[I, S, R, H any](tx Tx, task Task[I, S, R, H], input I, options T
 	return tx.CreateTaskErased(task.Erased(), encoded, options)
 }
 
+// ToolCreateTask is ToolExecutionApi.createTask (harness/types.ts:289): it creates the typed task in one commit in the calling
+// conversation through CreateTaskErased, which a Go interface method uses because a method cannot take type parameters.
+func ToolCreateTask[I, S, R, H any](ctx context.Context, api ToolExecutionApi, task Task[I, S, R, H], input I, options TaskOptions) (TaskId, error) {
+	encoded, err := ToJsonValue(input)
+	if err != nil {
+		return 0, err
+	}
+	return api.CreateTaskErased(ctx, task.Erased(), encoded, options)
+}
+
 func eraseTaskDefinition[I, S, R, H any](definition *TaskDefinition[I, S, R, H]) *AnyTaskDefinition {
 	erased := &AnyTaskDefinition{
 		Name:    definition.Name,

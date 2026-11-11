@@ -42,54 +42,91 @@ type KeybindingsManager struct {
 	merged *tui.TUIKeybindingsManager
 }
 
-// appKeybindingDefinitionsFor returns the app.* rows of upstream KEYBINDINGS
-// (core/keybindings.ts) for one platform column.
-func appKeybindingDefinitionsFor(platform tui.KeybindingPlatform) map[string]KeybindingDefinition {
-	return map[string]KeybindingDefinition{
-		"app.interrupt":                 {DefaultKeys: []KeyID{"escape"}, Description: "Cancel or abort"},
-		"app.clear":                     {DefaultKeys: []KeyID{"ctrl+c"}, Description: "Clear editor"},
-		"app.exit":                      {DefaultKeys: []KeyID{"ctrl+d"}, Description: "Exit when editor is empty"},
-		"app.suspend":                   {DefaultKeys: tui.PlatformKeys{Other: []KeyID{"ctrl+z"}, Win32: []KeyID{}}.For(platform), Description: "Suspend to background"},
-		"app.thinking.cycle":            {DefaultKeys: []KeyID{"shift+tab"}, Description: "Cycle thinking level"},
-		"app.thinking.save":             {DefaultKeys: []KeyID{"ctrl+s"}, Description: "Save thinking level"},
-		"app.model.cycleForward":        {DefaultKeys: []KeyID{"ctrl+p"}, Description: "Cycle to next model"},
-		"app.model.cycleBackward":       {DefaultKeys: tui.PlatformKeys{Other: []KeyID{"shift+ctrl+p"}, Windows: []KeyID{"alt+p"}}.For(platform), Description: "Cycle to previous model"},
-		"app.model.select":              {DefaultKeys: []KeyID{"ctrl+l"}, Description: "Open model selector"},
-		"app.tools.expand":              {DefaultKeys: []KeyID{"ctrl+o"}, Description: "Toggle tool output"},
-		"app.thinking.toggle":           {DefaultKeys: []KeyID{"ctrl+t"}, Description: "Toggle thinking blocks"},
-		"app.session.toggleNamedFilter": {DefaultKeys: []KeyID{"ctrl+n"}, Description: "Toggle named session filter"},
-		"app.editor.external":           {DefaultKeys: []KeyID{"ctrl+g"}, Description: "Open external editor"},
-		"app.message.followUp":          {DefaultKeys: tui.PlatformKeys{Other: []KeyID{"alt+enter"}, Windows: []KeyID{"ctrl+q"}}.For(platform), Description: "Queue follow-up message"},
-		"app.message.copy":              {DefaultKeys: []KeyID{"ctrl+x"}, Description: "Copy selection or last assistant message"},
-		"app.message.dequeue":           {DefaultKeys: tui.PlatformKeys{Other: []KeyID{"alt+up"}, Windows: []KeyID{"alt+q"}}.For(platform), Description: "Restore queued messages"},
-		"app.clipboard.pasteImage":      {DefaultKeys: tui.PlatformKeys{Other: []KeyID{"ctrl+v"}, Windows: []KeyID{"alt+v"}}.For(platform), Description: "Paste files on macOS, images, or text from clipboard"},
-		"app.session.new":               {DefaultKeys: nil, Description: "Start a new session"},
-		"app.session.tree":              {DefaultKeys: nil, Description: "Open session tree"},
-		"app.session.fork":              {DefaultKeys: nil, Description: "Fork current session"},
-		"app.session.resume":            {DefaultKeys: nil, Description: "Resume a session"},
-		"app.tree.foldOrUp":             {DefaultKeys: tui.PlatformKeys{Other: []KeyID{"ctrl+left", "alt+left"}, Darwin: []KeyID{"alt+left", "ctrl+left"}}.For(platform), Description: "Fold tree branch or move up"},
-		"app.tree.unfoldOrDown":         {DefaultKeys: tui.PlatformKeys{Other: []KeyID{"ctrl+right", "alt+right"}, Darwin: []KeyID{"alt+right", "ctrl+right"}}.For(platform), Description: "Unfold tree branch or move down"},
-		"app.tree.editLabel":            {DefaultKeys: []KeyID{"shift+l"}, Description: "Edit tree label"},
-		"app.tree.toggleLabelTimestamp": {DefaultKeys: []KeyID{"shift+t"}, Description: "Toggle tree label timestamps"},
-		"app.session.togglePath":        {DefaultKeys: []KeyID{"ctrl+p"}, Description: "Toggle session path display"},
-		"app.session.toggleSort":        {DefaultKeys: []KeyID{"ctrl+s"}, Description: "Toggle session sort mode"},
-		"app.session.rename":            {DefaultKeys: []KeyID{"ctrl+r"}, Description: "Rename session"},
-		"app.session.delete":            {DefaultKeys: []KeyID{"ctrl+d"}, Description: "Delete session"},
-		"app.session.deleteNoninvasive": {DefaultKeys: []KeyID{"ctrl+backspace"}, Description: "Delete session when query is empty"},
-		"app.models.save":               {DefaultKeys: []KeyID{"ctrl+s"}, Description: "Save model selection"},
-		"app.models.enableAll":          {DefaultKeys: []KeyID{"ctrl+a"}, Description: "Enable all models"},
-		"app.models.clearAll":           {DefaultKeys: []KeyID{"ctrl+x"}, Description: "Clear all models"},
-		"app.models.toggleProvider":     {DefaultKeys: []KeyID{"ctrl+p"}, Description: "Toggle all models for provider"},
-		"app.models.reorderUp":          {DefaultKeys: []KeyID{"alt+up"}, Description: "Move model up in order"},
-		"app.models.reorderDown":        {DefaultKeys: []KeyID{"alt+down"}, Description: "Move model down in order"},
-		"app.tree.filter.default":       {DefaultKeys: []KeyID{"ctrl+d"}, Description: "Tree filter: default view"},
-		"app.tree.filter.noTools":       {DefaultKeys: []KeyID{"ctrl+t"}, Description: "Tree filter: hide tool results"},
-		"app.tree.filter.userOnly":      {DefaultKeys: []KeyID{"ctrl+u"}, Description: "Tree filter: user messages only"},
-		"app.tree.filter.labeledOnly":   {DefaultKeys: []KeyID{"ctrl+l"}, Description: "Tree filter: labeled entries only"},
-		"app.tree.filter.all":           {DefaultKeys: []KeyID{"ctrl+a"}, Description: "Tree filter: show all entries"},
-		"app.tree.filter.cycleForward":  {DefaultKeys: []KeyID{"ctrl+o"}, Description: "Tree filter: cycle forward"},
-		"app.tree.filter.cycleBackward": {DefaultKeys: []KeyID{"shift+ctrl+o"}, Description: "Tree filter: cycle backward"},
+// appKeybindingRow is one row of the app.* definition table. A row with platform set takes its keys from it; the rest take keys, and a row with
+// neither has no default key (nil).
+type appKeybindingRow struct {
+	id          string
+	description string
+	keys        []KeyID
+	platform    *tui.PlatformKeys
+}
+
+func (r *appKeybindingRow) keysFor(platform tui.KeybindingPlatform) []KeyID {
+	if r.platform != nil {
+		return r.platform.For(platform)
 	}
+	return r.keys
+}
+
+// appKeybindingRows are the app.* rows of upstream KEYBINDINGS (core/keybindings.ts), each with its keys by platform column. Like tui's table it is
+// a package-level composite of constants, so the linker emits it as data: a map literal of slice literals is code for every row.
+var appKeybindingRows = [...]appKeybindingRow{
+	{id: "app.interrupt", description: "Cancel or abort", keys: []KeyID{"escape"}},
+	{id: "app.clear", description: "Clear editor", keys: []KeyID{"ctrl+c"}},
+	{id: "app.exit", description: "Exit when editor is empty", keys: []KeyID{"ctrl+d"}},
+	{id: "app.suspend", description: "Suspend to background", platform: &tui.PlatformKeys{Other: []KeyID{"ctrl+z"}, Win32: []KeyID{}}},
+	{id: "app.thinking.cycle", description: "Cycle thinking level", keys: []KeyID{"shift+tab"}},
+	{id: "app.thinking.save", description: "Save thinking level", keys: []KeyID{"ctrl+s"}},
+	{id: "app.model.cycleForward", description: "Cycle to next model", keys: []KeyID{"ctrl+p"}},
+	{id: "app.model.cycleBackward", description: "Cycle to previous model", platform: &tui.PlatformKeys{Other: []KeyID{"shift+ctrl+p"}, Windows: []KeyID{"alt+p"}}},
+	{id: "app.model.select", description: "Open model selector", keys: []KeyID{"ctrl+l"}},
+	{id: "app.tools.expand", description: "Toggle tool output", keys: []KeyID{"ctrl+o"}},
+	{id: "app.thinking.toggle", description: "Toggle thinking blocks", keys: []KeyID{"ctrl+t"}},
+	{id: "app.session.toggleNamedFilter", description: "Toggle named session filter", keys: []KeyID{"ctrl+n"}},
+	{id: "app.editor.external", description: "Open external editor", keys: []KeyID{"ctrl+g"}},
+	{id: "app.message.followUp", description: "Queue follow-up message", platform: &tui.PlatformKeys{Other: []KeyID{"alt+enter"}, Windows: []KeyID{"ctrl+q"}}},
+	{id: "app.message.copy", description: "Copy selection or last assistant message", keys: []KeyID{"ctrl+x"}},
+	{id: "app.message.dequeue", description: "Restore queued messages", platform: &tui.PlatformKeys{Other: []KeyID{"alt+up"}, Windows: []KeyID{"alt+q"}}},
+	{id: "app.clipboard.pasteImage", description: "Paste files on macOS, images, or text from clipboard", platform: &tui.PlatformKeys{Other: []KeyID{"ctrl+v"}, Windows: []KeyID{"alt+v"}}},
+	{id: "app.session.new", description: "Start a new session"},
+	{id: "app.session.tree", description: "Open session tree"},
+	{id: "app.session.fork", description: "Fork current session"},
+	{id: "app.session.resume", description: "Resume a session"},
+	{id: "app.tree.foldOrUp", description: "Fold tree branch or move up", platform: &tui.PlatformKeys{Other: []KeyID{"ctrl+left", "alt+left"}, Darwin: []KeyID{"alt+left", "ctrl+left"}}},
+	{id: "app.tree.unfoldOrDown", description: "Unfold tree branch or move down", platform: &tui.PlatformKeys{Other: []KeyID{"ctrl+right", "alt+right"}, Darwin: []KeyID{"alt+right", "ctrl+right"}}},
+	{id: "app.tree.editLabel", description: "Edit tree label", keys: []KeyID{"shift+l"}},
+	{id: "app.tree.toggleLabelTimestamp", description: "Toggle tree label timestamps", keys: []KeyID{"shift+t"}},
+	{id: "app.session.togglePath", description: "Toggle session path display", keys: []KeyID{"ctrl+p"}},
+	{id: "app.session.toggleSort", description: "Toggle session sort mode", keys: []KeyID{"ctrl+s"}},
+	{id: "app.session.rename", description: "Rename session", keys: []KeyID{"ctrl+r"}},
+	{id: "app.session.delete", description: "Delete session", keys: []KeyID{"ctrl+d"}},
+	{id: "app.session.deleteNoninvasive", description: "Delete session when query is empty", keys: []KeyID{"ctrl+backspace"}},
+	{id: "app.models.save", description: "Save model selection", keys: []KeyID{"ctrl+s"}},
+	{id: "app.models.enableAll", description: "Enable all models", keys: []KeyID{"ctrl+a"}},
+	{id: "app.models.clearAll", description: "Clear all models", keys: []KeyID{"ctrl+x"}},
+	{id: "app.models.toggleProvider", description: "Toggle all models for provider", keys: []KeyID{"ctrl+p"}},
+	{id: "app.models.reorderUp", description: "Move model up in order", keys: []KeyID{"alt+up"}},
+	{id: "app.models.reorderDown", description: "Move model down in order", keys: []KeyID{"alt+down"}},
+	{id: "app.tree.filter.default", description: "Tree filter: default view", keys: []KeyID{"ctrl+d"}},
+	{id: "app.tree.filter.noTools", description: "Tree filter: hide tool results", keys: []KeyID{"ctrl+t"}},
+	{id: "app.tree.filter.userOnly", description: "Tree filter: user messages only", keys: []KeyID{"ctrl+u"}},
+	{id: "app.tree.filter.labeledOnly", description: "Tree filter: labeled entries only", keys: []KeyID{"ctrl+l"}},
+	{id: "app.tree.filter.all", description: "Tree filter: show all entries", keys: []KeyID{"ctrl+a"}},
+	{id: "app.tree.filter.cycleForward", description: "Tree filter: cycle forward", keys: []KeyID{"ctrl+o"}},
+	{id: "app.tree.filter.cycleBackward", description: "Tree filter: cycle backward", keys: []KeyID{"shift+ctrl+o"}},
+}
+
+// appKeybindingDefinitionsFor returns the app.* rows of upstream KEYBINDINGS (core/keybindings.ts) for one platform column. Every call returns a
+// fresh map. The default keys of all rows are copied into one array, each row owning a capacity-limited slice of it; a row with no key slice has
+// nil, and one whose slice is empty has an empty one, as upstream's `[]`.
+func appKeybindingDefinitionsFor(platform tui.KeybindingPlatform) map[string]KeybindingDefinition {
+	total := 0
+	for i := range appKeybindingRows {
+		total += len(appKeybindingRows[i].keysFor(platform))
+	}
+	keys := make([]KeyID, 0, total)
+	definitions := make(map[string]KeybindingDefinition, len(appKeybindingRows))
+	for i := range appKeybindingRows {
+		row := &appKeybindingRows[i]
+		definition := KeybindingDefinition{Description: row.description}
+		if rowKeys := row.keysFor(platform); rowKeys != nil {
+			start := len(keys)
+			keys = append(keys, rowKeys...)
+			definition.DefaultKeys = keys[start:len(keys):len(keys)]
+		}
+		definitions[row.id] = definition
+	}
+	return definitions
 }
 
 var appKeybindingDefinitions = appKeybindingDefinitionsFor(tui.HostKeybindingPlatform())

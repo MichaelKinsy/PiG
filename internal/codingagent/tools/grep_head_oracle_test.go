@@ -15,7 +15,8 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 )
 
-// pi: packages/coding-agent/src/core/tools/grep.ts:176-299
+// pi: packages/coding-agent/src/core/tools/grep.ts
+// The ported code is grep.ts:176-299 (the head join and the line truncation).
 
 // grep with context formats limit x (2*context+1) lines and keeps the first 50KB. PiG measures the lines past those 50KB instead of building them (#9276); the text, the truncation details, the match-limit notice and linesTruncated, which a cut line far past the head still sets, must equal Pi's.
 func TestGrepContextOutputMatchesPi(t *testing.T) {

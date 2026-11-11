@@ -3,6 +3,7 @@
 package coding
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"math"
@@ -1024,4 +1025,47 @@ func TestUpstreamCodemodeModels(t *testing.T) {
 			t.Errorf("usage = %+v, want none", result.Usage)
 		}
 	})
+}
+
+// Ports .upstream/current/packages/coding-agent/test/suite/agent-session-codemode.test.ts "summarizes union and multi-line output
+// types instead of inlining them" (Pi f6ee9ce9, #11501).
+func TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes(t *testing.T) {
+	outputTool := func(name, outputSchema string) extension.RegisteredTool {
+		return extension.RegisteredTool{Definition: extension.ToolDefinition{
+			Name: name, Label: name, Description: name + " tool",
+			Parameters:   json.RawMessage(`{"type":"object","properties":{}}`),
+			OutputSchema: json.RawMessage(outputSchema),
+			Execute: func(context.Context, string, json.RawMessage, extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
+				return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{}, Details: map[string]any{}}, nil
+			},
+		}}
+	}
+	process := outputTool("process", `{"anyOf":[`+
+		`{"type":"object","properties":{"action":{"const":"start","type":"string"},"process":{"type":"object","properties":{"id":{"description":"Process id","type":"string"},"pid":{"type":"integer"}},"required":["id","pid"]}},"required":["action","process"]},`+
+		`{"type":"object","properties":{"action":{"const":"list","type":"string"},"processes":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string"}},"required":["id"]}},"truncated":{"type":"boolean"}},"required":["action","processes"]}]}`)
+	entries := outputTool("entries", `{"type":"array","items":{"type":"object","properties":{"id":{"type":"string"},"size":{"type":"integer"}},"required":["id","size"]}}`)
+	count := outputTool("count", `{"type":"number"}`)
+	h := newCodemodeHarness(t, codemodeHarnessOptions{goExtensions: []extension.Extension{{
+		Name: "outputs", Path: "<inline:outputs>", ResolvedPath: "<inline:outputs>",
+		Tools:     map[string]extension.RegisteredTool{"process": process, "entries": entries, "count": count},
+		ToolOrder: []string{"process", "entries", "count"},
+	}}, activeTools: []string{"codemode"}})
+	h.session.SetActiveToolsByName([]string{"process", "entries", "count", "codemode"})
+	description := func(name string) string {
+		for _, tool := range h.session.Tools() {
+			if tool.Name() == name {
+				return tool.Schema().Description
+			}
+		}
+		return ""
+	}
+	for name, want := range map[string]string{
+		"process": "process tool\n\nCodemode: `tools.process(args)` resolves to `{ action: \"start\", process } | { action: \"list\", processes, truncated? }`.",
+		"entries": "entries tool\n\nCodemode: `tools.entries(args)` resolves to a value; `await describeTool(\"entries\")` shows its type.",
+		"count":   "count tool\n\nCodemode: `tools.count(args)` resolves to `number`.",
+	} {
+		if got := description(name); got != want {
+			t.Errorf("description(%s) = %q, want %q", name, got, want)
+		}
+	}
 }

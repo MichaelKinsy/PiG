@@ -56,10 +56,24 @@ updates:
         patterns: ["*"]
     open-pull-requests-limit: 5
 
+  - package-ecosystem: pip
+    directory: /test/term-engines/pyte
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 3
+      semver-major-days: 14
+    groups:
+      python:
+        patterns: ["*"]
+    open-pull-requests-limit: 5
+
   - package-ecosystem: cargo
     directories:
       - /extensions/sdk-rs
       - /examples/extensions/rust-factory
+      - /test/term-engines/alacritty
+      - /test/term-engines/wezterm
     schedule:
       interval: monthly
     cooldown:
@@ -67,6 +81,24 @@ updates:
       semver-major-days: 14
     groups:
       rust:
+        patterns: ["*"]
+    open-pull-requests-limit: 5
+
+  # The evaluator images' base-image digests (internal/evals/docker/Dockerfile). The Go release in the golang tag is the one
+  # .go-version pin (make compliance rejects any other), so version bumps of golang are ignored here and only a rebuilt tag's
+  # new digest is proposed; the Go pin moves with .go-version.
+  - package-ecosystem: docker
+    directory: /internal/evals/docker
+    schedule:
+      interval: monthly
+    ignore:
+      - dependency-name: golang
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
+          - "version-update:semver-patch"
+    groups:
+      docker:
         patterns: ["*"]
     open-pull-requests-limit: 5
 
@@ -87,6 +119,7 @@ updates:
       - /extensions/sdk-ts
       - /automation/images/ci-parity
       - /test/parity/interface-extractor
+      - /test/term-engines/xterm
       - /automation/ci/npm-toolchain
     schedule:
       interval: monthly

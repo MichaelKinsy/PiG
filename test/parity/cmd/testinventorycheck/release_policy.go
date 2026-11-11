@@ -73,6 +73,7 @@ func verifyCommittedBaseline(repoRoot, mappingPath, publicMainRef string, policy
 	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 		return fmt.Errorf("release mapping must be inside repository root")
 	}
+	//nolint:gosec // G204 (class a): program is literal git; commit is policy.BaselineCommit, which is hex-validated before use.
 	tree, err := exec.CommandContext(context.Background(), "git", "-C", root, "ls-tree", "-r", "--name-only", policy.BaselineCommit).Output()
 	if err != nil {
 		return fmt.Errorf("read committed test baseline %s (fetch this commit; do not lower the baseline): %w", policy.BaselineCommit, err)
@@ -84,6 +85,7 @@ func verifyCommittedBaseline(repoRoot, mappingPath, publicMainRef string, policy
 	if err != nil {
 		return fmt.Errorf("committed test baseline %s: %w", policy.BaselineCommit, err)
 	}
+	//nolint:gosec // G204 (class a): program is literal git; args are the hex-validated baseline commit ":" anchor path taken from ls-tree output.
 	data, err := exec.CommandContext(context.Background(), "git", "-C", root, "show", policy.BaselineCommit+":"+anchor).Output()
 	if err != nil {
 		return fmt.Errorf("read committed test baseline %s (fetch this commit; do not lower the baseline): %w", policy.BaselineCommit, err)
@@ -126,6 +128,7 @@ func requireReachableFromPublicMain(root, commit, publicMainRef string) error {
 	if publicMainRef == "" || strings.HasPrefix(publicMainRef, "-") {
 		return fmt.Errorf("public main ref %q must name a Git revision", publicMainRef)
 	}
+	//nolint:gosec // G204 (class a): program is literal git; commit is hex-validated and publicMainRef (from -public-main-ref) is rejected if it starts with "-".
 	output, err := exec.CommandContext(context.Background(), "git", "-C", root, "merge-base", "--is-ancestor", commit, publicMainRef).CombinedOutput()
 	if err == nil {
 		return nil

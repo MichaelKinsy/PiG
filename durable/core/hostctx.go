@@ -31,6 +31,8 @@ type hostSummary struct {
 	entries []turn.PromptEntry
 	system  []*jv.Object
 	tokens  float64
+	// owes: the model owes an answer to the context (its last message that is not a system message is a user message or tool results).
+	owes bool
 }
 
 // hostContext is the context of one conversation through one entry, held by the host.
@@ -102,6 +104,7 @@ func (h *handler) hostContextOf(conv, tail, headID, headFrom int64, wantTokens b
 		}
 	}
 	c.summary.tokens = numOf(o, "tokens")
+	c.summary.owes, _ = boolOf(o, "owes")
 	c.tokensRead = wantTokens
 	return c, true
 }
@@ -120,6 +123,9 @@ func (c *hostContext) Bounds() (head, tail int64) { return c.headID, c.tail }
 
 // SystemMessages implements turn.RequestContext.
 func (c *hostContext) SystemMessages() []*jv.Object { return c.summary.system }
+
+// OwesAnswer implements turn.RequestContext.
+func (c *hostContext) OwesAnswer() bool { return c.summary.owes }
 
 // Messages implements turn.RequestContext: the messages are the host's, so a hook that wants them asks for them.
 func (c *hostContext) Messages() []*jv.Object {

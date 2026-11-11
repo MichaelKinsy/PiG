@@ -78,17 +78,29 @@ type Markdown struct {
 	inlines, nextInlines map[inlineKey]inlineRendering
 	inlinesContext       inlineContext
 	inlinesOn            bool
+	// highlights holds the highlighted lines of the last render's code blocks, keyed by language and code, as markdown.ts
+	// keeps the highlighting of each top-level block it renders. The theme's highlighter runs for a block only when the
+	// code is new, so a streamed answer keeps the highlighting of its earlier blocks, and a resize or a spacing change
+	// keeps it for a block that renders again. A render keeps only what it used, which drops a streamed block's earlier
+	// versions. A change of highlightsEpoch (a theme change or a loaded grammar) and Invalidate clear it, SetText does
+	// not. highlightsOn is set while a render of a document that is not a quote or list item fills it; the code of a
+	// quote or list item is kept by the document.
+	highlights, nextHighlights map[highlightKey][]string
+	highlightsEpoch            HighlightEpoch
+	highlightsOn               bool
 	// resume is what the last render kept to resume the next one of a longer text from (markdown_resume.go).
 	resume *resumeState
 	// finished reports that the text no longer streams: a render keeps none of the memos above, which only serve
-	// the next render of a longer or equal text (FinishStreaming).
+	// the next render of a longer or equal text (FinishStreaming). markdown.ts holds its rendered blocks in a WeakRef,
+	// which a JavaScript job keeps alive until it ends; a Go collector cycle clears one between two deltas, so a Markdown
+	// holds them until it finishes instead.
 	finished bool
 }
 
-// FinishStreaming drops the memos a streamed render keeps for the next delta (the wraps, the inline renderings and
-// the resume point) and keeps none from later renders. The rows are the same with or without them. A text not drawn
-// since its last change keeps them for that one render, which resumes from them and then drops them: the frame after
-// message_end draws the last delta as the frames before it drew theirs, instead of the whole answer again.
+// FinishStreaming drops the memos a streamed render keeps for the next delta (the wraps, the inline renderings, the
+// highlighted code and the resume point) and keeps none from later renders. The rows are the same with or without them.
+// A text not drawn since its last change keeps them for that one render, which resumes from them and then drops them: the
+// frame after message_end draws the last delta as the frames before it drew theirs, instead of the whole answer again.
 func (m *Markdown) FinishStreaming() {
 	m.finished = true
 	if m.cachedLines != nil && m.cachedContent == m.Content && m.cachedRevision == m.revision.Load() {
@@ -96,8 +108,15 @@ func (m *Markdown) FinishStreaming() {
 	}
 }
 
+// finishedMarkdown is m for a text that never streams: a user, summary or skill message is whole when it is built.
+func finishedMarkdown(m *Markdown) *Markdown {
+	m.FinishStreaming()
+	return m
+}
+
 func (m *Markdown) dropStreamingMemos() {
 	m.wraps, m.nextWraps, m.inlines, m.nextInlines, m.resume = nil, nil, nil, nil, nil
+	m.highlights, m.nextHighlights = nil, nil
 }
 
 // inlineContext is everything besides the text and the lexer state that an inline rendering in the default style reads.
@@ -161,6 +180,7 @@ func NewMarkdown(content string) *Markdown {
 // Invalidate reruns the display transform and parser on the next render, even when the source text is unchanged.
 func (m *Markdown) Invalidate() {
 	clear(m.inlines)
+	clear(m.highlights)
 	m.resume = nil
 	m.textChanged()
 }
@@ -277,6 +297,57 @@ func (m *Markdown) endInlines() {
 	m.inlines, m.nextInlines = m.nextInlines, m.inlines
 }
 
+// startHighlights starts reusing the last render's highlighted code for a document rendered in its own style. The code of
+// a quote or list item renders through a child of the document and is kept by the document (highlightCode).
+func (m *Markdown) startHighlights() {
+	if m.styleContext != nil || m.styleOwner != nil {
+		return
+	}
+	if epoch := CurrentHighlightEpoch(); epoch != m.highlightsEpoch {
+		clear(m.highlights)
+		m.highlightsEpoch = epoch
+	}
+	if m.nextHighlights == nil {
+		m.nextHighlights = map[highlightKey][]string{}
+	}
+	m.highlightsOn = true
+}
+
+// endHighlights keeps this render's highlighted code only, so the memo holds one render's code blocks.
+func (m *Markdown) endHighlights() {
+	if !m.highlightsOn {
+		return
+	}
+	m.highlightsOn = false
+	clear(m.highlights)
+	m.highlights, m.nextHighlights = m.nextHighlights, m.highlights
+}
+
+// highlightKey names a highlighted code block: its language and code.
+type highlightKey struct{ lang, code string }
+
+// highlightCode is the theme's highlighted lines of a code block, run for code the last render did not highlight. The
+// lines are shared with later renders, so a caller does not modify them.
+func (m *Markdown) highlightCode(highlight func(code, lang string) []string, lang, code string) []string {
+	memo := m
+	if m.styleOwner != nil {
+		memo = m.styleOwner
+	}
+	if !memo.highlightsOn {
+		return highlight(code, lang)
+	}
+	key := highlightKey{lang: lang, code: code}
+	lines, ok := memo.nextHighlights[key]
+	if !ok {
+		lines, ok = memo.highlights[key]
+	}
+	if !ok {
+		lines = highlight(code, lang)
+	}
+	memo.nextHighlights[key] = lines
+	return lines
+}
+
 // renderInline is the inline rendering of text with style.
 var renderInline = (*Markdown).renderInlineMarkdown
 
@@ -331,6 +402,7 @@ func (m *Markdown) renderDocument(content string, width, contentWidth int) []str
 	state.startDocument()
 	m.inlineState = state
 	m.startInlines()
+	m.startHighlights()
 	key, resumable := m.resumeKey(width, contentWidth)
 	previous := m.resume
 	m.resume = nil
@@ -351,6 +423,7 @@ func (m *Markdown) renderDocument(content string, width, contentWidth int) []str
 		}
 	}
 	m.endInlines()
+	m.endHighlights()
 	m.inlineState = nil
 	state.release()
 	rows, starts := run.rows, run.rowStart
@@ -445,6 +518,7 @@ func (m *Markdown) renderContent(content string, width int) []string {
 // renderBlocks renders the blocks of content. A top-level render passes rec to record the points a later render of a longer text resumes from, and from to start at one: content is then the text from that point's line (base is its line number), and the state of the loop is the point's.
 // It returns the rendered lines before the end-of-text spacing rules (loopOut), those lines after them (final) and how many leading lines of final are loopOut's.
 func (m *Markdown) renderBlocks(content string, width int, from *resumePoint, rec *resumeRecorder) (loopOut, final []string, finalBase int) {
+	// pig divergence (D220): every block renders with the inline lexer state at its position. Pi 0f21a331 reuses the lines of a block of the same source from this render or the previous one (markdown.ts:381), so it autolinks a bare URL inside a still-open <a>, which marked does not.
 	lines := strings.Split(content, "\n")
 	source := &markdownBlockSource{lines: lines, lazy: m.lazyLines, indented: m.lazyIndented, breaks: m.lazyBreaks}
 	base := 0
@@ -602,7 +676,7 @@ func (m *Markdown) renderBlocks(content string, width int, from *resumePoint, re
 			if tok, ok := tokenizeBlockLatex(remaining); ok {
 				block := widthx.JSTrim(tok.raw)
 				if m.latexEnabled() {
-					block = renderBlockLatex(tok)
+					block = renderBlockLatex(tok, width)
 				}
 				for bl := range strings.SplitSeq(block, "\n") {
 					emit(m.applyDefaultStyle(bl))
@@ -1554,7 +1628,7 @@ func (m *Markdown) renderCodeBlock(lang string, lines []string) []string {
 	out := []string{theme.CodeBlockBorder("```" + lang)}
 	text := strings.Join(lines, "\n")
 	if theme.HighlightCode != nil {
-		for _, line := range theme.HighlightCode(text, lang) {
+		for _, line := range m.highlightCode(theme.HighlightCode, lang, text) {
 			out = append(out, indent+line)
 		}
 	} else {

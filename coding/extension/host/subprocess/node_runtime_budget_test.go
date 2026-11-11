@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// The reviewed archive budget is independent of machine speed and allocator scheduling. It allows headroom above the approximately 4.6 MB measured bundle; raising it requires new binary-size and startup evidence.
+// The reviewed archive budget is independent of machine speed and allocator scheduling. The owner raised it from 4,700,000 to 4,750,000 bytes because the vendored pi-dist grew at the pin (the embedded runtime measured 4,719,013 bytes); raising it again requires new binary-size and startup evidence.
 func TestNodeRuntimeArchiveSizeBudget(t *testing.T) {
 	data, err := os.ReadFile("../../../../automation/perf/startup-budgets.json")
 	if err != nil {

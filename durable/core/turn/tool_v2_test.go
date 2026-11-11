@@ -19,8 +19,8 @@ func TestToolTaskRecordIsAVersion2ModelCall(t *testing.T) {
 	if len(tools) != 1 {
 		t.Fatalf("tool tasks = %d", len(tools))
 	}
-	if version, _ := tools[0].Get("version"); version != float64(2) {
-		t.Errorf("pi.tool version = %v, want 2", version)
+	if version, _ := tools[0].Get("version"); version != float64(3) {
+		t.Errorf("pi.tool version = %v, want 3", version)
 	}
 	input, _ := tools[0].Get("input")
 	if got := jv.Stringify(input); !strings.HasPrefix(got, `{"kind":"model","assistant":`) || !strings.HasSuffix(got, `"callId":"call_1"}`) {

@@ -3,38 +3,104 @@ package hljs
 import (
 	"encoding/json"
 	"os"
+	"runtime"
+	"slices"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"unicode/utf8"
 )
 
+// corpusSample is one code sample of the highlight.js oracle corpus.
+type corpusSample struct{ ID, Lang, Code string }
+
 // resumeCorpus is the highlight.js oracle corpus: one code sample per language case.
-func resumeCorpus(t *testing.T) []struct{ ID, Lang, Code string } {
+func resumeCorpus(t *testing.T) []corpusSample {
 	t.Helper()
 	data, err := os.ReadFile("testdata/corpus.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	var corpus []struct{ ID, Lang, Code string }
+	var corpus []corpusSample
 	if err := json.Unmarshal(data, &corpus); err != nil {
 		t.Fatal(err)
 	}
 	return corpus
 }
 
-// TestHighlightResumableEqualsAFreshRun: for every corpus sample cut at many prefixes, the HTML before a resume point of the prefix's run joined with the HTML of a resumed run over the whole code is the HTML of a fresh run over the whole code.
-func TestHighlightResumableEqualsAFreshRun(t *testing.T) {
-	r := NewRegistry()
-	r.LoadAllLanguages()
-	checked, resumed := 0, 0
+// parallelEach applies to every item, in order of items, the function a worker made by newWorker returns, on one worker per CPU, never more than there are items. A worker owns the state newWorker builds, a Registry that serializes its calls among them, so workers share none; finish, when it is not nil, runs on a worker that has no item left, with the number of items it took. The work functions report a failure with t.Errorf, never t.Fatalf: they do not run on the test goroutine.
+func parallelEach[T any](t *testing.T, items []T, newWorker func() (do func(T), finish func(took int))) {
+	t.Helper()
+	work := make(chan T, len(items))
+	for _, item := range items {
+		work <- item
+	}
+	close(work)
+	var wg sync.WaitGroup
+	for range min(runtime.GOMAXPROCS(0), len(items)) {
+		wg.Go(func() {
+			do, finish := newWorker()
+			took := 0
+			for item := range work {
+				if t.Failed() {
+					return
+				}
+				do(item)
+				took++
+			}
+			if finish != nil {
+				finish(took)
+			}
+		})
+	}
+	wg.Wait()
+}
+
+// distinctSamples is the corpus samples with one code of each language, the longest first: a resumed run is quadratic in the length of its sample, so the work of a few samples decides the elapsed time. Two samples of one language and one code (the detect and markup cases of a language share many) are one input to every check, which is a function of the language and the code alone.
+func distinctSamples(t *testing.T) []corpusSample {
+	t.Helper()
+	type input struct{ lang, code string }
+	seen := map[input]bool{}
+	var samples []corpusSample
 	for _, c := range resumeCorpus(t) {
-		if !r.SupportsLanguage(c.Lang) {
-			continue
+		if !seen[input{c.Lang, c.Code}] {
+			seen[input{c.Lang, c.Code}] = true
+			samples = append(samples, c)
 		}
+	}
+	slices.SortStableFunc(samples, func(a, b corpusSample) int { return len(b.Code) - len(a.Code) })
+	return samples
+}
+
+// eachSupportedSample calls check for every distinct sample of a language the registry supports.
+func eachSupportedSample(t *testing.T, check func(r *Registry, c corpusSample)) {
+	t.Helper()
+	parallelEach(t, distinctSamples(t), func() (func(corpusSample), func(int)) {
+		r := NewRegistry()
+		r.LoadAllLanguages()
+		return func(c corpusSample) {
+			if r.SupportsLanguage(c.Lang) {
+				check(r, c)
+			}
+		}, nil
+	})
+}
+
+// TestHighlightResumableEqualsAFreshRun: for every corpus sample cut at many prefixes, the HTML before a resume point of the prefix's run joined with the HTML of a resumed run over the whole code is the HTML of a fresh run over the whole code. A resumed run is decided by the point's byte offset and iteration count alone, so each distinct pair is resumed once and every cut that offers it compares its own HTML before the point with that run.
+func TestHighlightResumableEqualsAFreshRun(t *testing.T) {
+	type pointKey struct{ byteOff, iterations int }
+	type resumedRun struct {
+		suffix string
+		ok     bool
+	}
+	var checked, resumed, distinct atomic.Int64
+	eachSupportedSample(t, func(r *Registry, c corpusSample) {
 		want, err := r.Highlight(c.Code, c.Lang, true)
 		if err != nil {
-			continue
+			return
 		}
+		runs := map[pointKey]resumedRun{}
 		step := max(1, len(c.Code)/16)
 		for cut := step; cut <= len(c.Code); cut += step {
 			for cut < len(c.Code) && !utf8.RuneStart(c.Code[cut]) {
@@ -43,27 +109,37 @@ func TestHighlightResumableEqualsAFreshRun(t *testing.T) {
 			prefix := c.Code[:cut]
 			prefixHTML, points, err := r.HighlightResumable(prefix, c.Lang, true, ResumePoint{})
 			if err != nil {
-				t.Fatalf("%s: %v", c.ID, err)
+				t.Errorf("%s: %v", c.ID, err)
+				return
 			}
 			if plain, _ := r.Highlight(prefix, c.Lang, true); plain != prefixHTML {
-				t.Fatalf("%s: recording changed the HTML of a fresh run", c.ID)
+				t.Errorf("%s: recording changed the HTML of a fresh run", c.ID)
+				return
 			}
 			for _, p := range points {
-				checked++
-				suffix, _, err := r.HighlightResumable(c.Code, c.Lang, true, p)
-				if err != nil {
+				checked.Add(1)
+				key := pointKey{p.Byte, p.Iterations}
+				run, seen := runs[key]
+				if !seen {
+					suffix, _, err := r.HighlightResumable(c.Code, c.Lang, true, p)
+					run = resumedRun{suffix, err == nil}
+					runs[key] = run
+					distinct.Add(1)
+				}
+				if !run.ok {
 					continue
 				}
-				resumed++
-				if got := prefixHTML[:p.HTML] + suffix; got != want {
-					t.Fatalf("%s: resuming at byte %d of a %d-byte prefix of %d changed the HTML\nwant %q\n got %q", c.ID, p.Byte, cut, len(c.Code), want, got)
+				resumed.Add(1)
+				if got := prefixHTML[:p.HTML] + run.suffix; got != want {
+					t.Errorf("%s: resuming at byte %d of a %d-byte prefix of %d changed the HTML\nwant %q\n got %q", c.ID, p.Byte, cut, len(c.Code), want, got)
+					return
 				}
 			}
 		}
-	}
-	t.Logf("%d resume points checked, %d resumed", checked, resumed)
-	if resumed < 500 {
-		t.Fatalf("only %d resumed runs: the corpus no longer exercises resumption", resumed)
+	})
+	t.Logf("%d resume points checked, %d resumed, %d distinct runs", checked.Load(), resumed.Load(), distinct.Load())
+	if !t.Failed() && resumed.Load() < 500 {
+		t.Fatalf("only %d resumed runs: the corpus no longer exercises resumption", resumed.Load())
 	}
 }
 
@@ -150,33 +226,30 @@ func TestPatternReach(t *testing.T) {
 
 // TestResumedRunCountsTheIterationsOfAWholeRun: highlight.js throws once its scan iterations exceed highlightJSIterationLimit and three times the match index, so a run resumed at a checkpoint must count the iterations before it. For every checkpoint of every corpus sample, the resumed run ends with the iteration count of the whole run.
 func TestResumedRunCountsTheIterationsOfAWholeRun(t *testing.T) {
-	r := NewRegistry()
-	r.LoadAllLanguages()
-	checked := 0
-	for _, c := range resumeCorpus(t) {
-		if !r.SupportsLanguage(c.Lang) {
-			continue
-		}
+	var checked atomic.Int64
+	eachSupportedSample(t, func(r *Registry, c corpusSample) {
 		units := stringToUnits(c.Code)
 		whole := r.highlightFrom(c.Lang, units, true, nil, checkpoint{}, true)
 		if whole.failed {
-			continue
+			return
 		}
 		for _, point := range whole.checkpoints {
 			resumed := r.highlightFrom(c.Lang, units, true, nil, point, false)
 			if resumed.failed {
-				t.Fatalf("%s: the run resumed at unit %d failed", c.ID, point.unit)
+				t.Errorf("%s: the run resumed at unit %d failed", c.ID, point.unit)
+				return
 			}
 			if resumed.iterations != whole.iterations {
-				t.Fatalf("%s: the run resumed at unit %d counted %d iterations, the whole run %d", c.ID, point.unit, resumed.iterations, whole.iterations)
+				t.Errorf("%s: the run resumed at unit %d counted %d iterations, the whole run %d", c.ID, point.unit, resumed.iterations, whole.iterations)
+				return
 			}
-			checked++
+			checked.Add(1)
 		}
+	})
+	if !t.Failed() && checked.Load() < 1000 {
+		t.Fatalf("only %d checkpoints checked", checked.Load())
 	}
-	if checked < 1000 {
-		t.Fatalf("only %d checkpoints checked", checked)
-	}
-	t.Logf("%d checkpoints checked", checked)
+	t.Logf("%d checkpoints checked", checked.Load())
 }
 
 // TestResumeLimitHoldsBackPointsLaterTextDecides covers the margins of resumeLimit with texts a later character changes. Apache's `[` after a line break changes how the line before it reads, so a point needs reach.lines+1 line breaks after it; QML's `{` or `:` after blank lines changes how the name before them reads, through a pattern that repeats white space, so a point needs a character other than white space after it. Every point a prefix offers, resumed over the prefix with that character after it, equals a whole run.

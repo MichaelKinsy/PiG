@@ -39,7 +39,7 @@ wait_contains = ["drop files to attach"]
 
 [assert]
 both_reach_ready = true
-both_contain = ["suite/listed.md", "second/SKILL.md", "/root", "/nested", "/skip-keep", "[Skill conflicts]", '"same" collision:', "✓ git:github.com/pig-parity/glob-collisions (user) second/SKILL.md", "first/SKILL.md (skipped)"]
+both_contain = ["suite/listed.md", "second/SKILL.md", "/root", "/nested", "/skip-keep", "[Skill warnings]", '"same" collision:', "✓ git:github.com/pig-parity/glob-collisions (user) second/SKILL.md", "first/SKILL.md (skipped)"]
 both_not_contain = ["excluded", "/skip,", "/.hidden", "ambiguous"]
 escaped_output_equal = true
 runs = 3

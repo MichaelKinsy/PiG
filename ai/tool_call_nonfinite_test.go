@@ -247,8 +247,7 @@ for (const { start, pieces } of rows) {
 	out.push({ started, partials, final: JSON.stringify(r.content[0]?.arguments), stop: r.stopReason });
 	server.close();
 }
-console.log(JSON.stringify(out));
-process.exit(0);
+process.stdout.write(JSON.stringify(out) + "\n", () => process.exit(0));
 })()`
 	cmd := exec.CommandContext(t.Context(), "node", "-e", script, piCodingAgentPackage(t))
 	cmd.Stdin = strings.NewReader(string(encodedRows))

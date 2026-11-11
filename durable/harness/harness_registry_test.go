@@ -271,7 +271,7 @@ func TestAgentResolution(t *testing.T) {
 	mustInstall(t, registry, coding, skills, reviewer)
 	snapshot := registry.Snapshot()
 
-	// harness-registry.test.ts:164 it("selects the default, an array, or the default edited by add and remove")
+	// harness-registry.test.ts:165 it("selects the default, an array, or the default edited by add and remove")
 	t.Run("selects the default, an array, or the default edited by add and remove", func(t *testing.T) {
 		expectStrings(t, extensionNamesOf(resolveWith(nil, snapshot, nil, nil).Extensions), []string{"coding", "skills", "reviewer"})
 		settings := &HarnessSettings{Extensions: []*durable.Extension{coding, skills}}
@@ -289,7 +289,7 @@ func TestAgentResolution(t *testing.T) {
 		}
 	})
 
-	// harness-registry.test.ts:180 it("skips uninstalled names and resolves them again once they are installed")
+	// harness-registry.test.ts:181 it("skips uninstalled names and resolves them again once they are installed")
 	t.Run("skips uninstalled names and resolves them again once they are installed", func(t *testing.T) {
 		local := CreateRegistry()
 		mustInstall(t, local, coding)
@@ -299,7 +299,7 @@ func TestAgentResolution(t *testing.T) {
 		expectStrings(t, extensionNamesOf(resolveWith(state, local.Snapshot(), nil, nil).Extensions), []string{"coding", "skills"})
 	})
 
-	// harness-registry.test.ts:189 it("replaces same-name tools in place, wraps the winner, then applies the filter")
+	// harness-registry.test.ts:190 it("replaces same-name tools in place, wraps the winner, then applies the filter")
 	t.Run("replaces same-name tools in place, wraps the winner, then applies the filter", func(t *testing.T) {
 		local := CreateRegistry()
 		venvBash := registryTool("bash", func(tool *durable.ToolRegistration) { tool.Description = "venv bash" })
@@ -346,7 +346,7 @@ func TestAgentResolution(t *testing.T) {
 		expectStrings(t, toolNamesOf(removed.Tools), []string{"read", "edit"})
 	})
 
-	// harness-registry.test.ts:223 it("drops a tool or section whose wrapper throws or renames it and reports the failure")
+	// harness-registry.test.ts:224 it("drops a tool or section whose wrapper throws or renames it and reports the failure")
 	t.Run("drops a tool or section whose wrapper throws or renames it and reports the failure", func(t *testing.T) {
 		local := CreateRegistry()
 		broken := new(durable.Extension{
@@ -377,7 +377,7 @@ func TestAgentResolution(t *testing.T) {
 		expectStrings(t, messages, []string{"wrapper failed", "Wrapper renamed edit to renamed", "section wrapper failed"})
 	})
 
-	// harness-registry.test.ts:250 it("orders sections by extension, replaces same keys in place, and renders instructions last and unwrapped")
+	// harness-registry.test.ts:251 it("orders sections by extension, replaces same keys in place, and renders instructions last and unwrapped")
 	t.Run("orders sections by extension, replaces same keys in place, and renders instructions last and unwrapped", func(t *testing.T) {
 		local := CreateRegistry()
 		override := new(durable.Extension{
@@ -420,7 +420,7 @@ func TestAgentResolution(t *testing.T) {
 		}
 	})
 
-	// harness-registry.test.ts:279 it("collects hooks of the selected extensions in extension order and applies field defaults")
+	// harness-registry.test.ts:280 it("collects hooks of the selected extensions in extension order and applies field defaults")
 	t.Run("collects hooks of the selected extensions in extension order and applies field defaults", func(t *testing.T) {
 		local := CreateRegistry()
 		first := &ToolHooks{BeforeTool: func(context.Context, ToolHookCall, HookApi) (*BeforeToolResult, error) { return nil, nil }}

@@ -33,8 +33,9 @@ var evidenceBuilds, mutantReplays atomic.Int64
 //
 // Each run is `<binary> -test.run ^(names)$`, the same selection and the same coverage profile `go test -run -coverprofile` produced.
 
-// evidenceTimeout is go test's default per-binary timeout, which the test binaries previously ran under.
-const evidenceTimeout = "10m0s"
+// evidenceTimeout bounds one evidence run: every test a row names, in one binary. The extension-conformance row names 104 tests that
+// run sequentially, 11 to 13 minutes unloaded, so the budget is 30 minutes.
+const evidenceTimeout = "30m0s"
 
 // cachedEntry returns the green record cached under digest, if any.
 func cachedEntry(root, digest string) (coverageEntry, bool) {
@@ -71,7 +72,10 @@ type evidenceUnit struct {
 
 // proveByEvidence applies rule 3 (and the red-proof of a marker row) to every proven row of this shard: a row stays proven only with a
 // green record that executes its mapped cited files and, for a marker row, a killed mutant.
-func proveByEvidence(root string, res []result, mutants map[string][]mutant) {
+//
+// It returns an error when a build, an evidence run or a mutant replay failed for infrastructure reasons (infraFailure): a full disk or a
+// dead compiler says nothing about a row, so it is reported as itself and never as an unproven row.
+func proveByEvidence(root string, res []result, mutants map[string][]mutant) error {
 	started := time.Now()
 	dg := newDigester(root)
 	var units []*evidenceUnit
@@ -84,12 +88,18 @@ func proveByEvidence(root string, res []result, mutants map[string][]mutant) {
 		units = append(units, u)
 	}
 	stats := runMissing(root, res, units)
+	if len(stats.infra) > 0 {
+		// The mutant replays would hit the same full disk or dead toolchain: stop at the first phase that failed.
+		return infraError(stats.infra)
+	}
 
 	// The verdict of each row, and the mutant replays of the marker rows, run under the same worker limit as the evidence runs.
 	slots := make(chan struct{}, workers())
+	replays := newReplayCaches()
 	var wg sync.WaitGroup
 	var mutantTime time.Duration
 	var mu sync.Mutex
+	infra := stats.infra
 	for _, u := range units {
 		wg.Go(func() {
 			r := &res[u.row]
@@ -103,11 +113,19 @@ func proveByEvidence(root string, res []result, mutants map[string][]mutant) {
 			}
 			slots <- struct{}{}
 			t0 := time.Now()
-			why := mutantProblem(root, *r, mutants[r.Row.Pi])
+			why, broke := mutantProblem(root, *r, mutants[r.Row.Pi], replays)
 			<-slots
 			mu.Lock()
 			mutantTime += time.Since(t0)
+			if broke != "" {
+				infra = append(infra, r.Row.Pi+": "+broke)
+			}
 			mu.Unlock()
+			if broke != "" {
+				r.Proven = false
+				r.Reasons = append(r.Reasons, "INFRASTRUCTURE: "+broke)
+				return
+			}
 			if why != "" {
 				r.Proven = false
 				r.Reasons = append(r.Reasons, why)
@@ -118,6 +136,7 @@ func proveByEvidence(root string, res []result, mutants map[string][]mutant) {
 		})
 	}
 	wg.Wait()
+	replays.close()
 	cached := 0
 	for _, u := range units {
 		if u.cached {
@@ -133,6 +152,17 @@ func proveByEvidence(root string, res []result, mutants map[string][]mutant) {
 	for _, s := range stats.heaviestDirs(8) {
 		fmt.Fprintf(os.Stderr, "portmap:   package %s\n", s)
 	}
+	return infraError(infra)
+}
+
+// infraError reports infrastructure failures as themselves: the check failed to run, which is not a finding about any PORT_MAP row.
+func infraError(infra []string) error {
+	if len(infra) == 0 {
+		return nil
+	}
+	infra = slices.Clone(infra)
+	slices.Sort(infra)
+	return fmt.Errorf("infrastructure failure, not a PORT_MAP finding (%d): %s", len(infra), strings.Join(infra, "; "))
 }
 
 // workers is how many evidence builds and runs go at once: half the CPUs this process may use. runtime.GOMAXPROCS(0) honors a
@@ -147,6 +177,8 @@ type group struct {
 	failed  bool
 	covered map[string]int
 	took    time.Duration
+	// infra is why the run failed when the machine, not a test, failed it.
+	infra string
 }
 
 // dirJob is the test binary of one evidence package and the runs it serves.
@@ -165,6 +197,8 @@ type evidenceStats struct {
 	times        []time.Duration
 	// perDir is the time each evidence package's builds and runs took, to see which package bounds a shard.
 	perDir map[string]time.Duration
+	// infra lists the builds and runs that failed for a reason that says nothing about the tests (infraFailure).
+	infra []string
 }
 
 // heaviestDirs names the n evidence packages that took longest to build and run.
@@ -272,10 +306,15 @@ func runMissing(root string, res []result, units []*evidenceUnit) *evidenceStats
 			bin := filepath.Join(scratch, "evidence.test")
 			slots <- struct{}{}
 			t0 := time.Now()
-			ok := buildTestBinary(root, job, bin)
+			ok, broke := buildTestBinary(root, job, bin)
 			<-slots
 			note("build", job.dir, job.dir, time.Since(t0))
 			if !ok {
+				if broke != "" {
+					mu.Lock()
+					stats.infra = append(stats.infra, "building the evidence tests of "+job.dir+": "+broke)
+					mu.Unlock()
+				}
 				failGroups(job)
 				return
 			}
@@ -287,6 +326,11 @@ func runMissing(root string, res []result, units []*evidenceUnit) *evidenceStats
 					t0 := time.Now()
 					runGroup(root, bin, scratch, g)
 					g.took = time.Since(t0)
+					if g.infra != "" {
+						mu.Lock()
+						stats.infra = append(stats.infra, "running the evidence tests of "+g.dir+": "+g.infra)
+						mu.Unlock()
+					}
 					note("run", g.dir, g.dir+" ("+strconv.Itoa(len(g.names))+" tests)", g.took)
 				})
 			}
@@ -320,25 +364,26 @@ func failGroups(job *dirJob) {
 }
 
 // buildTestBinary compiles the evidence package's tests with every cited package of its rows instrumented.
-func buildTestBinary(root string, job *dirJob, bin string) bool {
+func buildTestBinary(root string, job *dirJob, bin string) (ok bool, infra string) {
 	pkgs := make([]string, 0, len(job.pkgs))
 	for p := range job.pkgs {
 		pkgs = append(pkgs, p)
 	}
 	sort.Strings(pkgs)
 	evidenceBuilds.Add(1)
+	//nolint:gosec // G204 (class a): program is literal go; args are fixed flags, coverpkg from repo package paths, "./"+job.dir, and a temp output path.
 	cmd := exec.Command("go", "test", "-c", "-coverpkg="+strings.Join(pkgs, ","), "-o", bin, "./"+job.dir)
 	cmd.Dir = root
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "portmap: building the evidence tests of %s failed: %v\n%s\n", job.dir, err, lastLines(out, 40))
-		return false
+		return false, infraFailure(string(out), err)
 	}
 	if _, err := os.Stat(bin); err != nil {
 		fmt.Fprintf(os.Stderr, "portmap: %s has no test files\n", job.dir)
-		return false
+		return false, ""
 	}
-	return true
+	return true, ""
 }
 
 // runGroup runs the named tests of one package and records the statements they executed in each instrumented file.
@@ -357,6 +402,7 @@ func runGroup(root, bin, scratchRoot string, g *group) {
 		g.failed = true
 		return
 	}
+	//nolint:gosec // G204 (class b): runs the bin built by go test -c just above; args are fixed -test.* flags and test names parsed from repo test files.
 	cmd := exec.Command(bin, "-test.count=1", "-test.timeout="+evidenceTimeout, "-test.paniconexit0", "-test.gocoverdir="+coverDir,
 		"-test.run=^("+strings.Join(g.names, "|")+")$", "-test.coverprofile="+profile)
 	cmd.Dir = filepath.Join(root, g.dir)
@@ -365,6 +411,7 @@ func runGroup(root, bin, scratchRoot string, g *group) {
 	if out, err := cmd.CombinedOutput(); err != nil {
 		fmt.Fprintf(os.Stderr, "portmap: evidence tests of %s failed: %v\n%s\n", g.dir, err, failureReport(root, g.dir, out))
 		g.failed = true
+		g.infra = infraFailure(string(out), err)
 		return
 	}
 	prof, err := os.ReadFile(profile)

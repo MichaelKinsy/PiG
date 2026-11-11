@@ -1,5 +1,7 @@
 package coding
 
+// Ports packages/coding-agent/src/core/sdk.ts (the CacheWarmer each session gets, the streamFn that restarts it, and buildRequestOptions).
+
 import (
 	"context"
 	"encoding/json"

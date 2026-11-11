@@ -33,8 +33,8 @@ func jsonText(t *testing.T, value any) string {
 }
 
 var (
-	itemSchema  = Schema{"type": "object", "properties": Schema{"id": Schema{"type": "number"}, "label": Schema{"type": "string"}}, "required": []any{"id", "label"}}
-	itemsSchema = Schema{"type": "object", "properties": Schema{"items": Schema{"type": "array", "items": itemSchema}, "count": Schema{"type": "number"}}, "required": []any{"items", "count"}}
+	itemSchema  = kw("type", "object", "properties", kw("id", kw("type", "number"), "label", kw("type", "string")), "required", []any{"id", "label"})
+	itemsSchema = kw("type", "object", "properties", kw("items", kw("type", "array", "items", itemSchema), "count", kw("type", "number")), "required", []any{"items", "count"})
 )
 
 // state.test.ts:75-97 "publishes snapshots then exact ops; derivations follow": a draft change publishes only the
@@ -109,7 +109,7 @@ func TestCellChangePublishesUnboxedOpsAndDerivationsFollow(t *testing.T) {
 // state.test.ts:99-130 "supports primitive cells and value-returning changes": a primitive change publishes one r op.
 func TestCellChangeValuePrimitivePublishesReplace(t *testing.T) {
 	options, _ := collectReports(t)
-	n, err := NewCell[any]("n", Schema{"type": "number"}, 0.0, allowWrites, options)
+	n, err := NewCell[any]("n", kw("type", "number"), 0.0, allowWrites, options)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,7 +135,7 @@ func TestCellChangeValuePrimitivePublishesReplace(t *testing.T) {
 // state.test.ts:132-150 "rejects a returned value that does not fit the schema, even outside dev mode" (cell.ts:161).
 func TestCellChangeValueValidatesReturnedValueOutsideDev(t *testing.T) {
 	options, _ := collectReports(t)
-	list, err := NewCell[any]("list", Schema{"type": "array", "items": Schema{"type": "number"}}, []any{}, allowWrites, options)
+	list, err := NewCell[any]("list", kw("type", "array", "items", kw("type", "number")), []any{}, allowWrites, options)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,7 +153,7 @@ func TestCellChangeValueValidatesReturnedValueOutsideDev(t *testing.T) {
 
 // state.test.ts:152-173 "validates initial values always and writes only in dev mode" (cell.ts:91-97, :138).
 func TestCellValidatesInitialAlwaysAndWritesInDevMode(t *testing.T) {
-	_, err := NewCell[any]("x", Schema{"type": "object", "properties": Schema{"n": Schema{"type": "number"}}}, delta.JsonObjectOf("n", "no"), allowWrites, SourceOptions{})
+	_, err := NewCell[any]("x", kw("type", "object", "properties", kw("n", kw("type", "number"))), delta.JsonObjectOf("n", "no"), allowWrites, SourceOptions{})
 	var chordError *ChordError
 	if !errors.As(err, &chordError) || chordError.Code != CodeInvalid || chordError.Reason != "state" {
 		t.Fatalf("err = %v", err)
@@ -179,7 +179,7 @@ func TestCellValidatesInitialAlwaysAndWritesInDevMode(t *testing.T) {
 // cell.ts:153, :184 and state.test.ts:175-193: the write guard runs first and its refusal leaves the cell unchanged.
 func TestCellWriteGuardRefusesWrites(t *testing.T) {
 	refusal := Invalid("read_only", "state x is read-only here", nil)
-	cell, _ := NewCell[any]("x", Schema{"type": "number"}, 1.0, func(Ctx) error { return refusal }, SourceOptions{})
+	cell, _ := NewCell[any]("x", kw("type", "number"), 1.0, func(Ctx) error { return refusal }, SourceOptions{})
 	if err := cell.Replace(cellTestCtx{}, 2.0, CellReplaceOptions{}); err != refusal {
 		t.Fatalf("replace err = %v", err)
 	}
@@ -194,7 +194,7 @@ func TestCellWriteGuardRefusesWrites(t *testing.T) {
 // state.test.ts:242-282 "re-entrant writes publish in adoption order; derivations never go stale" (publish.ts:1-8).
 func TestCellReentrantWritesPublishInAdoptionOrder(t *testing.T) {
 	options, _ := collectReports(t)
-	n, _ := NewCell[any]("n", Schema{"type": "number"}, 0.0, allowWrites, options)
+	n, _ := NewCell[any]("n", kw("type", "number"), 0.0, allowWrites, options)
 	d, _ := NewDerived("d", Sources{n}, func(values ...any) any { return values[0].(float64) * 2 }, options)
 	if err := d.Attach(nil); err != nil {
 		t.Fatal(err)
@@ -238,7 +238,7 @@ func TestCellReentrantWritesPublishInAdoptionOrder(t *testing.T) {
 // diff is true), otherwise one r op; an equal value publishes nothing.
 func TestCellReplaceDiffSelection(t *testing.T) {
 	shared := delta.JsonObjectOf("a", 1.0)
-	cell, _ := NewCell[any]("s", Schema{}, delta.JsonObjectOf("keep", shared, "n", 1.0), allowWrites, SourceOptions{})
+	cell, _ := NewCell[any]("s", kw(), delta.JsonObjectOf("keep", shared, "n", 1.0), allowWrites, SourceOptions{})
 	var ops []string
 	cell.Events(func(event StateEvent[any]) {
 		if event.Type == StateEventOps {
@@ -266,19 +266,19 @@ func TestCellReplaceDiffSelection(t *testing.T) {
 
 // cell.ts:192-199: reset installs value and schema without validation and publishes a reset event.
 func TestCellResetPublishesReset(t *testing.T) {
-	cell, _ := NewCell[any]("r", Schema{"type": "number"}, 1.0, allowWrites, SourceOptions{Dev: true})
+	cell, _ := NewCell[any]("r", kw("type", "number"), 1.0, allowWrites, SourceOptions{Dev: true})
 	var events []string
 	cell.Events(func(event StateEvent[any]) {
 		events = append(events, string(event.Type)+jsonText(t, event.Ops)+jsonText(t, event.Value))
 	})
-	next := Schema{"type": "string"}
+	next := kw("type", "string")
 	if err := cell.Reset("one", next); err != nil {
 		t.Fatal(err)
 	}
 	if !slices.Equal(events, []string{"snapnull1", `resetnull"one"`}) {
 		t.Fatalf("events = %v", events)
 	}
-	if cell.Schema["type"] != "string" || cell.Value() != "one" {
+	if cell.Schema.Value("type") != "string" || cell.Value() != "one" {
 		t.Fatalf("schema = %v, value = %v", cell.Schema, cell.Value())
 	}
 }
@@ -287,7 +287,7 @@ func TestCellResetPublishesReset(t *testing.T) {
 // and the writer still succeeds.
 func TestCellFanoutSkipsUnsubscribedAndReportsPanics(t *testing.T) {
 	options, reports := collectReports(t)
-	cell, _ := NewCell[any]("f", Schema{}, 0.0, allowWrites, options)
+	cell, _ := NewCell[any]("f", kw(), 0.0, allowWrites, options)
 	var late []any
 	var unsubscribeLate func()
 	cell.Subscribe(func(value any) {
@@ -316,7 +316,7 @@ func TestCellFanoutSkipsUnsubscribedAndReportsPanics(t *testing.T) {
 // throwing derivation is reported by refresh.
 func TestDerivedFollowsExternalReadable(t *testing.T) {
 	options, reports := collectReports(t)
-	external, _ := NewCell[any]("ext", Schema{}, 1.0, allowWrites, options)
+	external, _ := NewCell[any]("ext", kw(), 1.0, allowWrites, options)
 	source := readableOnly{external}
 	d, _ := NewDerived("d", Sources{source}, func(values ...any) any {
 		if values[0] == 3.0 {
@@ -358,7 +358,7 @@ func (r readableOnly) Events(listener func(StateEvent[any])) func() { return r.c
 func TestCellDependentChainAndExposedSchemas(t *testing.T) {
 	options, _ := collectReports(t)
 	options.Dev = true
-	c, _ := NewCell[any]("c", Schema{"type": "number"}, 1.0, allowWrites, options)
+	c, _ := NewCell[any]("c", kw("type", "number"), 1.0, allowWrites, options)
 	first, _ := NewDerived("first", Sources{c}, func(values ...any) any { return values[0].(float64) + 1 }, options)
 	second, _ := NewDerived("second", Sources{first, c}, func(values ...any) any {
 		return values[0].(float64) * values[1].(float64)
@@ -383,13 +383,13 @@ func TestCellDependentChainAndExposedSchemas(t *testing.T) {
 	if first.Value() != 4.0 || second.Value() != 12.0 || !slices.Equal(seen, []string{"2", "12"}) {
 		t.Fatalf("first = %v, second = %v, seen = %v", first.Value(), second.Value(), seen)
 	}
-	second.Schemas = []Schema{{"type": "number", "maximum": 20}}
+	second.Schemas = []Schema{kw("type", "number", "maximum", 20)}
 	err := c.Replace(cellTestCtx{}, 5.0, CellReplaceOptions{})
 	var chordError *ChordError
 	if !errors.As(err, &chordError) || chordError.Reason != "state" || c.Value() != 3.0 || second.Value() != 12.0 {
 		t.Fatalf("err = %v, c = %v, second = %v", err, c.Value(), second.Value())
 	}
-	c.Schemas = []Schema{{"type": "number", "maximum": 2}}
+	c.Schemas = []Schema{kw("type", "number", "maximum", 2)}
 	if err := c.Replace(cellTestCtx{}, 3.5, CellReplaceOptions{}); !IsChordError(err, CodeInvalid) || c.Key != "c" {
 		t.Fatalf("own exposed schema not checked: %v", err)
 	}

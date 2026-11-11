@@ -6,8 +6,8 @@
 // Go standard library plus golang.org/x/image in place of Photon:
 //  1. Decode + apply EXIF orientation once.
 //  2. If needed, resize to fit within 2000x2000.
-//  3. Try PNG first, then JPEG quality steps until the base64 payload fits
-//     under 4.5 MB.
+//  3. Try the smaller of PNG and JPEG at the configured quality, then lower
+//     JPEG quality steps, until the base64 payload fits under 4.5 MB.
 //  4. If still too large, shrink dimensions by 25% and retry.
 package imageprocessing
 
@@ -19,23 +19,17 @@ import (
 	"fmt"
 	"image"
 	"image/draw"
-	_ "image/gif" // decoder for the GIF entry of the supported-format allowlist
-	"image/jpeg"  // decoder for JPEG plus the JPEG re-encoder
-	"image/png"   // decoder for PNG plus the PNG re-encoder
 	"io"
 	"math"
 	"os"
 	"slices"
 	"strings"
 
-	_ "golang.org/x/image/bmp" // decoder for the BMP entry of the supported-format allowlist
-	xdraw "golang.org/x/image/draw"
-	_ "golang.org/x/image/webp" // decoder for the WebP entry of the supported-format allowlist
-
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/nodebase64"
+	"github.com/MichaelKinsy/PiG/internal/photonimage"
 )
 
 const (
@@ -441,9 +435,8 @@ const (
 )
 
 // decodeAutoOriented decodes an image with DecodeImage and applies its EXIF orientation tag,
-// mirroring upstream Photon decode plus applyExifOrientation. Only the formats
-// whose decoders this package links are decodable; see
-// DetectSupportedImageMimeType.
+// mirroring upstream Photon decode plus applyExifOrientation. What decodes is
+// what photonimage.Decode decodes: PNG, JPEG, GIF, WebP, BMP and TIFF.
 func decodeAutoOriented(data []byte) (image.Image, error) {
 	img, err := DecodeImage(data)
 	if err != nil {
@@ -608,8 +601,8 @@ func fixOrientation(img image.Image, o exifOrientation) image.Image {
 
 // remapPixels builds a dstW×dstH NRGBA image whose pixel (x,y) is the source
 // pixel named by src, expressed in source coordinates relative to the source
-// bounds origin. NRGBA output keeps alpha non-premultiplied so imageHasAlpha
-// reads the same channel the encoders write.
+// bounds origin. NRGBA output keeps alpha non-premultiplied, the channel
+// the encoders write.
 func remapPixels(img image.Image, dstW, dstH int, src func(x, y int) (int, int)) *image.NRGBA {
 	srcNRGBA := toNRGBA(img)
 	dst := image.NewNRGBA(image.Rect(0, 0, dstW, dstH))
@@ -636,12 +629,10 @@ func toNRGBA(img image.Image) *image.NRGBA {
 	return out
 }
 
-// resizeImage scales img to width×height with the CatmullRom kernel, the
-// highest-quality resampler in golang.org/x/image/draw.
+// resizeImage scales img to width×height as Photon's resize does with SamplingFilter.Lanczos3 (image-resize-core.ts tryEncodings), with
+// Photon's own pixels (photonimage.ResizeLanczos3).
 func resizeImage(img image.Image, width, height int) *image.NRGBA {
-	dst := image.NewNRGBA(image.Rect(0, 0, width, height))
-	xdraw.CatmullRom.Scale(dst, dst.Bounds(), img, img.Bounds(), xdraw.Src, nil)
-	return dst
+	return photonimage.ResizeLanczos3(toNRGBA(img), width, height)
 }
 
 type encodedCandidate struct {
@@ -652,56 +643,39 @@ type encodedCandidate struct {
 
 var pngSignature = []byte{0x89, 'P', 'N', 'G', 0x0d, 0x0a, 0x1a, 0x0a}
 
-func imageHasAlpha(img image.Image) bool {
-	switch m := img.(type) {
-	case *image.RGBA:
-		for i := 3; i < len(m.Pix); i += 4 {
-			if m.Pix[i] != 0xff {
-				return true
-			}
-		}
-		return false
-	case *image.NRGBA:
-		for i := 3; i < len(m.Pix); i += 4 {
-			if m.Pix[i] != 0xff {
-				return true
-			}
-		}
-		return false
-	case *image.RGBA64, *image.NRGBA64:
-		return true
-	}
-	bounds := img.Bounds()
-	for y := bounds.Min.Y; y < bounds.Max.Y; y += 16 {
-		for x := bounds.Min.X; x < bounds.Max.X; x += 16 {
-			_, _, _, a := img.At(x, y).RGBA()
-			if a < 0xffff {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-// firstFittingCandidate encodes img as PNG, then as JPEG at each quality in order, and returns the first whose base64 size is below
-// maxBytes. Later encodings are never made once one fits, because upstream also takes the first fitting candidate and the rest
-// only cost time (a JPEG encode of a large image is the most expensive step of a resize). A failed JPEG encode is skipped; a failed PNG
+// firstFittingCandidate encodes img as PNG and as JPEG at the configured quality (jpegQualities[0]) and returns the first of these two
+// whose base64 size is below maxBytes, the smaller of the two first; only when neither fits does it try the lower JPEG qualities, in
+// order (image-resize-core.ts tryEncodings, e7a0df27, #11551). Later encodings are never made once one fits, because the rest only
+// cost time (a JPEG encode of a large image is the most expensive step of a resize). A failed JPEG encode is skipped; a failed PNG
 // encode is an error.
 func firstFittingCandidate(img image.Image, jpegQualities []int, maxBytes int) (encodedCandidate, bool, error) {
 	pngBytes, err := encodePNG(img)
 	if err != nil {
 		return encodedCandidate{}, false, fmt.Errorf("image: encode png: %w", err)
 	}
-	candidate := encodedCandidate{Data: pngBytes, EncodedSize: encodedSizeBase64(pngBytes), MIME: "image/png"}
-	if candidate.EncodedSize < maxBytes {
-		return candidate, true, nil
+	pngCandidate := encodedCandidate{Data: pngBytes, EncodedSize: encodedSizeBase64(pngBytes), MIME: "image/png"}
+	preferred := []encodedCandidate{pngCandidate}
+	if len(jpegQualities) > 0 {
+		if jpegBytes, err := encodeJPEG(img, jpegQualities[0]); err == nil {
+			jpegCandidate := encodedCandidate{Data: jpegBytes, EncodedSize: encodedSizeBase64(jpegBytes), MIME: "image/jpeg"}
+			if jpegCandidate.EncodedSize < pngCandidate.EncodedSize {
+				preferred = []encodedCandidate{jpegCandidate, pngCandidate}
+			} else {
+				preferred = append(preferred, jpegCandidate)
+			}
+		}
 	}
-	for _, quality := range jpegQualities {
+	for _, candidate := range preferred {
+		if candidate.EncodedSize < maxBytes {
+			return candidate, true, nil
+		}
+	}
+	for _, quality := range jpegQualities[min(1, len(jpegQualities)):] {
 		jpegBytes, err := encodeJPEG(img, quality)
 		if err != nil {
 			continue
 		}
-		candidate = encodedCandidate{Data: jpegBytes, EncodedSize: encodedSizeBase64(jpegBytes), MIME: "image/jpeg"}
+		candidate := encodedCandidate{Data: jpegBytes, EncodedSize: encodedSizeBase64(jpegBytes), MIME: "image/jpeg"}
 		if candidate.EncodedSize < maxBytes {
 			return candidate, true, nil
 		}
@@ -736,21 +710,16 @@ func encodedSizeBase64(data []byte) int {
 	return base64.StdEncoding.EncodedLen(len(data))
 }
 
+// encodePNG is the PNG Photon's `get_bytes()` writes for img (see photonimage.EncodePNG): its size decides whether the PNG or the JPEG
+// candidate of a resize is the smaller one, so it must be Photon's.
 func encodePNG(img image.Image) ([]byte, error) {
-	var buf bytes.Buffer
-	enc := png.Encoder{CompressionLevel: png.DefaultCompression}
-	if err := enc.Encode(&buf, img); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
+	return photonimage.EncodePNG(toNRGBA(img))
 }
 
+// encodeJPEG is the JPEG Photon's `get_bytes_jpeg(quality)` writes for img, alpha channel dropped (see photonimage.EncodeJPEG): its size
+// decides whether the PNG or the JPEG candidate of a resize is the smaller one, so it must be Photon's. quality is Photon's `u8`.
 func encodeJPEG(img image.Image, quality int) ([]byte, error) {
-	var buf bytes.Buffer
-	if err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: quality}); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
+	return photonimage.EncodeJPEG(toNRGBA(img), uint8(quality))
 }
 
 // detectFormat sniffs the source format from magic bytes. Returns

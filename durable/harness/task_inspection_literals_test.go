@@ -7,7 +7,7 @@ import "testing"
 func TestTaskInspectionLiteralsMatchPi(t *testing.T) {
 	kinds := map[TaskInspectionKind]string{
 		TaskInspectionRunning:    "running",
-		TaskInspectionReady:      "ready",
+		TaskInspectionPending:    "pending",
 		TaskInspectionWaiting:    "waiting",
 		TaskInspectionCompleting: "completing",
 		TaskInspectionBlocked:    "blocked",

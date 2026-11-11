@@ -39,6 +39,7 @@ func runSuspendSignalOrderChild(t *testing.T) {
 		start:           func() error { fmt.Println("resumed"); return nil },
 		requestRender:   func() { fmt.Println("render:true") },
 		kill:            func(int) error { fmt.Println("armed"); return nil },
+		foreground:      func() (bool, error) { return true, nil },
 	}); err != nil {
 		t.Fatal(err)
 	}

@@ -1,4 +1,4 @@
-// Ports upstream `AnsiCodeTracker` (utils.ts:302).
+// Ports packages/tui/src/utils.ts (AnsiCodeTracker, utils.ts:302).
 //
 // Tracks active SGR attributes and OSC 8 hyperlink state so styling can be
 // preserved across line breaks (wrapTextWithAnsi) and across overlay splices
@@ -33,6 +33,7 @@ func (t *AnsiCodeTracker) Process(code string) {
 		// Preserve the original terminator (BEL \x07 or ST \x1b\\) because
 		// some terminals (e.g. Apple Terminal) only make BEL-terminated links
 		// clickable. Re-opening wrapped lines must use the same terminator.
+		//portlint:allow utf16units utils.ts AnsiCodeTracker.process: code starts with the ASCII "\x1b]8;" that HasPrefix just matched, so its byte length is its unit length
 		body := code[len("\x1b]8;"):]
 		var terminator, closeTerminator string
 		switch {
@@ -93,6 +94,7 @@ func (t *AnsiCodeTracker) Process(code string) {
 			i++
 			continue
 		}
+		//portlint:allow numbers utils.ts AnsiCodeTracker.process parseInt(part, 10) over the [\d;]* SGR parameters: a part is empty or ASCII digits; Atoi's only extra failure is overflow, which no SGR code matches either way
 		c, err := strconv.Atoi(part)
 		if err != nil {
 			i++
@@ -252,7 +254,7 @@ func (t *AnsiCodeTracker) HasActiveCodes() bool {
 }
 
 // LineEndReset returns the escape string needed at end-of-line to prevent
-// underline from bleeding into padding and to close any active OSC 8
+// underline and strikethrough from bleeding into padding and to close any active OSC 8
 // hyperlink. The hyperlink is re-opened at the start of the next line via
 // ActiveCodes(). Returns "" if no reset is needed.
 //
@@ -261,6 +263,9 @@ func (t *AnsiCodeTracker) LineEndReset() string {
 	var b strings.Builder
 	if t.underline {
 		b.WriteString("\x1b[24m")
+	}
+	if t.strike {
+		b.WriteString("\x1b[29m")
 	}
 	if t.activeHyperlinkOpen != "" {
 		b.WriteString(t.activeHyperlinkClose)

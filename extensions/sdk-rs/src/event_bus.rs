@@ -71,7 +71,10 @@ impl BusRegistry {
                 continue;
             }
             sub_state.sent = true;
-            out.push(LiveOp { handler_id: sub.id.clone(), channel: sub.channel.clone() });
+            out.push(LiveOp {
+                handler_id: sub.id.clone(),
+                channel: sub.channel.clone(),
+            });
         }
         out
     }
@@ -91,15 +94,40 @@ impl BusRegistry {
                 "request" => {
                     let Some(id) = env.id.as_deref() else { return };
                     let request = env.request.as_ref();
-                    let error = if request.is_some_and(|request| request.method == "events.dispatch") {
-                        let ctx = Context::for_factory(conn.clone(), registry.clone());
-                        registry.dispatch(&ctx, request.and_then(|request| request.args.as_ref()).unwrap_or(&Value::Null)).err()
-                    } else {
-                        Some(format!("{}: the extension has not registered with the host yet", request.map_or("", |request| request.method.as_str())))
-                    };
-                    let _ = conn.respond(id, None, error.map(|message| crate::protocol::ErrorInfo { code: None, message }));
+                    let error =
+                        if request.is_some_and(|request| request.method == "events.dispatch") {
+                            let ctx = Context::for_factory(conn.clone(), registry.clone());
+                            registry
+                                .dispatch(
+                                    &ctx,
+                                    request
+                                        .and_then(|request| request.args.as_ref())
+                                        .unwrap_or(&Value::Null),
+                                )
+                                .err()
+                        } else {
+                            Some(format!(
+                                "{}: the extension has not registered with the host yet",
+                                request.map_or("", |request| request.method.as_str())
+                            ))
+                        };
+                    let _ = conn.respond(
+                        id,
+                        None,
+                        error.map(|message| crate::protocol::ErrorInfo {
+                            code: None,
+                            message,
+                        }),
+                    );
                 }
-                "notify" if env.notify.as_ref().is_some_and(|notify| notify.method == "events.release") => registry.release(env.notify.as_ref().and_then(|notify| notify.args.as_ref())),
+                "notify"
+                    if env
+                        .notify
+                        .as_ref()
+                        .is_some_and(|notify| notify.method == "events.release") =>
+                {
+                    registry.release(env.notify.as_ref().and_then(|notify| notify.args.as_ref()))
+                }
                 _ => {}
             }
         })
@@ -112,9 +140,15 @@ impl BusRegistry {
     }
 
     pub(crate) fn release(&self, args: Option<&Value>) {
-        let Some(id) = args.and_then(|args| args["handlerId"].as_str()) else { return };
+        let Some(id) = args.and_then(|args| args["handlerId"].as_str()) else {
+            return;
+        };
         let mut state = self.state.lock().unwrap();
-        if state.subs.get(id).is_some_and(|sub| sub.state.lock().unwrap().off) {
+        if state
+            .subs
+            .get(id)
+            .is_some_and(|sub| sub.state.lock().unwrap().off)
+        {
             state.subs.remove(id);
         }
     }
@@ -137,7 +171,11 @@ impl BusRegistry {
             Err(payload) => Err(payload
                 .downcast_ref::<String>()
                 .cloned()
-                .or_else(|| payload.downcast_ref::<&str>().map(|message| (*message).to_string()))
+                .or_else(|| {
+                    payload
+                        .downcast_ref::<&str>()
+                        .map(|message| (*message).to_string())
+                })
                 .unwrap_or_else(|| "extension handler panicked".to_string())),
         }
     }
@@ -176,7 +214,7 @@ impl EventBus {
     fn call(&self, method: &str, args: Value) -> io::Result<Option<Value>> {
         let result = match &self.ctx {
             Some(ctx) => ctx.call_wire(method, Some(args))?,
-            None => self.connection()?.call(method, Some(args))?
+            None => self.connection()?.call(method, Some(args))?,
         };
         if let Some(err) = result.error {
             return Err(io::Error::other(crate::context::host_error_message(err)));
@@ -197,7 +235,11 @@ impl EventBus {
             handler: Arc::new(handler),
             state: Mutex::new(SubState::default()),
         });
-        let subscription = Subscription { registry: self.registry.clone(), sub: sub.clone(), done: Arc::new(AtomicBool::new(false)) };
+        let subscription = Subscription {
+            registry: self.registry.clone(),
+            sub: sub.clone(),
+            done: Arc::new(AtomicBool::new(false)),
+        };
         {
             let mut state = self.registry.state.lock().unwrap();
             state.subs.insert(sub.id.clone(), sub.clone());
@@ -224,8 +266,16 @@ impl EventBus {
             }
         }
         sub.state.lock().unwrap().sent = true;
-        if let Err(err) = self.call("events.on", json!({"channel": channel, "handlerId": subscription.sub.id, "value": true})) {
-            self.registry.state.lock().unwrap().subs.remove(&subscription.sub.id);
+        if let Err(err) = self.call(
+            "events.on",
+            json!({"channel": channel, "handlerId": subscription.sub.id, "value": true}),
+        ) {
+            self.registry
+                .state
+                .lock()
+                .unwrap()
+                .subs
+                .remove(&subscription.sub.id);
             return Err(err);
         }
         Ok(subscription)
@@ -235,9 +285,14 @@ impl EventBus {
     ///
     /// Called through [`Extension::events`](crate::Extension::events) while the factory runs (before the extension runs), it does what Pi's synchronous emit does in a factory: the Host delivers it to every listener it holds, in registration order, the listeners of the extensions loaded before this one and then this extension's own, which [`on`](Self::on) registered with it at once; each finishes before `emit` returns, and an emit on `"error"` that nobody hears fails. The first factory-time bus call connects to the Host (as `parse_frontmatter` does) and `run` reuses the connection: a factory that runs with no Host (no `PIG_EXT_SOCKET`, as in a unit test) gets an error. A listener the factory's emit runs has a [`Context`] with no session state yet (its `cwd` and `mode` are empty), and until the extension registers the only host calls it can make are `pi.events` ones and the parse helpers (`parse_frontmatter`, `parse_date`). Use [`Extension::on_loaded`](crate::Extension::on_loaded) for work that needs the live session.
     pub fn emit(&self, channel: &str, data: Value) -> io::Result<()> {
-        let outcome = self.call("events.emit", json!({"channel": channel, "value": true, "json": data}))?;
+        let outcome = self.call(
+            "events.emit",
+            json!({"channel": channel, "value": true, "json": data}),
+        )?;
         if outcome.is_some_and(|outcome| outcome["unhandledError"] == Value::Bool(true)) {
-            return Err(io::Error::other(format!("pi.events.emit {channel:?}: unhandled error event: {data}")));
+            return Err(io::Error::other(format!(
+                "pi.events.emit {channel:?}: unhandled error event: {data}"
+            )));
         }
         Ok(())
     }
@@ -261,7 +316,10 @@ impl Subscription {
         if sent {
             let bus = EventBus::new(self.registry.clone(), None);
             if let Err(err) = bus.call("events.off", json!({"handlerId": self.sub.id})) {
-                eprintln!("extension: pi.events unsubscribe {:?}: {err}", self.sub.channel);
+                eprintln!(
+                    "extension: pi.events unsubscribe {:?}: {err}",
+                    self.sub.channel
+                );
             }
         }
     }

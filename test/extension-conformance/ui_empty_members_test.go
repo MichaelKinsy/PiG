@@ -86,9 +86,9 @@ var (
 // input/editor with or without a placeholder/prefill are all different requests. Every SDK's spelling of each reaches the host UI as the same call, in call order, with the host
 // in RPC mode. The probe's values are empty strings and lists, which no SDK's default for a call it never makes can equal.
 //
-// A native SDK has no undefined string: Go and Rust spell an unset placeholder or prefill as the empty string (a language mechanic, not a divergence), so
-// their empty placeholder is the unset one and their T2/E2 calls do not exist. Node and Python tell the two apart (undefined / None), and write "" as given. Go,
-// Python and Rust remove a status with ClearStatus / clear_status, Node with setStatus(k, undefined).
+// No SDK may fold the two together: a language with no undefined string spells the unset member as a second method (Go InputWithoutPlaceholder and
+// EditorWithoutPrefill, Rust input_without_placeholder and editor_without_prefill), Python as None, Lisp as an omitted keyword, Node as undefined, and each writes
+// "" as given. Go, Python and Rust remove a status with ClearStatus / clear_status, Node with setStatus(k, undefined).
 func TestConformance_UIEmptyMembersAgreeAcrossSDKs(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
@@ -109,7 +109,6 @@ func TestConformance_UIEmptyMembersAgreeAcrossSDKs(t *testing.T) {
 			ui := &emptyMembersUI{recordingUI: h.ui}
 			h.bridge.SetUIContext(ui)
 			h.bridge.SetNotifyFunc(ui.Notify)
-			tellsEmptyFromUnset := strings.Contains(tc.name, "node") || strings.Contains(tc.name, "python")
 			want := []string{
 				`status:"k":""`,
 				`status:"k":<unset>`,
@@ -120,15 +119,12 @@ func TestConformance_UIEmptyMembersAgreeAcrossSDKs(t *testing.T) {
 				`select:"T":[]`,
 				`confirm:"":""`,
 				`input:"T1":<unset>`,
+				`input:"T2":""`,
+				`input:"T3":"ph"`,
+				`editor:"E1":<unset>`,
+				`editor:"E2":""`,
+				`editor:"E3":"pre"`,
 			}
-			if tellsEmptyFromUnset {
-				want = append(want, `input:"T2":""`)
-			}
-			want = append(want, `input:"T3":"ph"`, `editor:"E1":<unset>`)
-			if tellsEmptyFromUnset {
-				want = append(want, `editor:"E2":""`)
-			}
-			want = append(want, `editor:"E3":"pre"`)
 			if !h.runner.ExecuteCommand(context.Background(), "ui_wire_empties_probe", "") {
 				t.Fatal("fixture has no ui_wire_empties_probe command")
 			}

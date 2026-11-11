@@ -3,6 +3,7 @@ package harness
 import (
 	"fmt"
 	"math/rand/v2"
+	"slices"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -46,6 +47,8 @@ type checkpointCase struct {
 	}
 	base      any
 	reference func(durable.JsonObject) (bool, error)
+	// depth is how many members down a random operation reaches at most; 0 is 4.
+	depth int
 }
 
 func checkpointCases() []checkpointCase {
@@ -65,13 +68,23 @@ func checkpointCases() []checkpointCase {
 	idle := LiveState{Tools: []ToolSlot{slot(0, ToolSlotDone)}, NestedTools: []NestedToolSlot{nested(0, ToolSlotDone)}}
 	_ = idle
 	usage := UsageState{Models: map[string]ai.Usage{"p/m": {Input: 1, Output: 2}, "p/n": {Input: 3}}, Tools: map[string]ai.Usage{"echo": {Input: 5}}}
+	partial := LiveState{Generation: &LiveGeneration{Attempt: 1, Message: &ai.AssistantMessage{
+		Content: []ai.AssistantContentBlock{
+			ai.TextContent{Text: "streamed text", TextSignature: "sig"},
+			ai.ThinkingContent{Thinking: "thought", ThinkingSignature: "tsig"},
+			ai.ToolCall{ID: "c1", Name: "write", Arguments: ai.JsonObject{"path": "a.ts", "content": "body", "nested": map[string]any{"list": []any{"x", "y"}}}},
+			ai.TextContent{Text: "second"},
+		},
+		API: "faux", Provider: "faux", Model: "faux-1", ResponseID: "r1", Usage: ai.Usage{Input: 1, Output: 2, TotalTokens: 3}, StopReason: ai.StopReasonToolUse, Timestamp: 5,
+	}}, Tools: []ToolSlot{slot(0, ToolSlotDone)}}
 	return []checkpointCase{
-		{"pi.live", LiveDoc, live, referenceCheckpoint(referenceLive)},
-		{"pi.live idle", LiveDoc, idle, referenceCheckpoint(referenceLive)},
-		{"pi.inbox", InboxDoc, InboxState{Items: []InboxItem{{Id: 1, Mode: InboxFollowUp, Content: "hi"}, {Id: 2, Mode: InboxWrite}}}, referenceCheckpoint(func(value InboxState) bool { return len(value.Items) == 0 })},
-		{"pi.usage", UsageDoc, usage, referenceCheckpoint(func(UsageState) bool { return true })},
-		{"pi.agent", AgentDoc, AgentState{ThinkingLevel: "high"}, referenceCheckpoint(func(AgentState) bool { return true })},
-		{"pi.provider", ProviderDoc, ProviderState{SessionId: "s"}, referenceCheckpoint(func(ProviderState) bool { return true })},
+		{"pi.live", LiveDoc, live, referenceCheckpoint(referenceLive), 0},
+		{"pi.live partial", LiveDoc, partial, referenceCheckpoint(referenceLive), 8},
+		{"pi.live idle", LiveDoc, idle, referenceCheckpoint(referenceLive), 0},
+		{"pi.inbox", InboxDoc, InboxState{Items: []InboxItem{{Id: 1, Mode: InboxFollowUp, Content: "hi"}, {Id: 2, Mode: InboxWrite}}}, referenceCheckpoint(func(value InboxState) bool { return len(value.Items) == 0 }), 0},
+		{"pi.usage", UsageDoc, usage, referenceCheckpoint(func(UsageState) bool { return true }), 0},
+		{"pi.agent", AgentDoc, AgentState{ThinkingLevel: "high"}, referenceCheckpoint(func(AgentState) bool { return true }), 0},
+		{"pi.provider", ProviderDoc, ProviderState{SessionId: "s"}, referenceCheckpoint(func(ProviderState) bool { return true }), 0},
 	}
 }
 
@@ -118,8 +131,8 @@ func randomPath(rng *rand.Rand, value any, depth int) ([]any, any) {
 	return path, node
 }
 
-func randomOp(rng *rand.Rand, current any) delta.Op {
-	depth := 1 + rng.IntN(4)
+func randomOp(rng *rand.Rand, current any, depthLimit int) delta.Op {
+	depth := 1 + rng.IntN(depthLimit)
 	path, node := randomPath(rng, current, depth)
 	if len(path) == 0 {
 		return nil
@@ -185,7 +198,7 @@ func TestRawCheckpointPredicatesFailLikeTheTypedDecode(t *testing.T) {
 			var ops []delta.Op
 			applied := working
 			for range 1 + rng.IntN(4) {
-				op := randomOp(rng, applied)
+				op := randomOp(rng, applied, max(c.depth, 4))
 				if op == nil {
 					continue
 				}
@@ -218,5 +231,81 @@ func TestRawCheckpointPredicatesFailLikeTheTypedDecode(t *testing.T) {
 		if wellFormed < 100 || malformed < 100 {
 			t.Fatalf("%s: generator reached %d well-formed and %d malformed values; want at least 100 of each", c.name, wellFormed, malformed)
 		}
+	}
+}
+
+// The operations a streamed partial makes, and the ones that break its decode, are checked against the whole value's decode: an append to
+// text, thinking or an argument is not decoded, and every other operation inside the message decodes the touched blocks and members alone.
+func TestRawCheckpointPredicateChecksTheOperationsInsideAPartialMessage(t *testing.T) {
+	var partial checkpointCase
+	for _, c := range checkpointCases() {
+		if c.name == "pi.live partial" {
+			partial = c
+		}
+	}
+	base, err := durable.ToJsonObject(partial.base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	message := []any{"generation", "message"}
+	at := func(rest ...any) []any { return append(slices.Clone(message), rest...) }
+	cases := []struct {
+		name string
+		ops  []delta.Op
+	}{
+		{"append to a text", []delta.Op{{"a", at("content", 0, "text"), " more"}}},
+		{"append to a thinking", []delta.Op{{"a", at("content", float64(1), "thinking"), " more"}}},
+		{"append to an argument", []delta.Op{{"a", at("content", 2, "arguments", "content"), " more"}}},
+		{"append to a string in the arguments", []delta.Op{{"a", at("content", 2, "arguments", "path"), "yy"}}},
+		{"set an argument in a list", []delta.Op{{"s", at("content", 2, "arguments", "nested", "list", 1), "yy"}}},
+		{"append to the type of a block", []delta.Op{{"a", at("content", 0, "type"), "s"}}},
+		{"append to the signature of a text", []delta.Op{{"a", at("content", 0, "textSignature"), "s"}}},
+		{"append to the provider", []delta.Op{{"a", at("provider"), "s"}}},
+		{"set a text to a number", []delta.Op{{"s", at("content", 0, "text"), float64(5)}}},
+		{"set a text to a number after an append", []delta.Op{{"a", at("content", 0, "text"), "!"}, {"s", at("content", 0, "text"), float64(5)}}},
+		{"set the arguments to a string", []delta.Op{{"s", at("content", 2, "arguments"), "text"}}},
+		{"set the arguments to a number", []delta.Op{{"s", at("content", 2, "arguments"), float64(1)}}},
+		{"set the id of a call to a number", []delta.Op{{"s", at("content", 2, "id"), float64(1)}}},
+		{"set a block to a string", []delta.Op{{"s", at("content", 3), "text"}}},
+		{"set a block of an unknown type", []delta.Op{{"s", at("content", 3), delta.JsonObjectOf("type", "image", "data", "d", "mimeType", "m")}}},
+		{"set a block of another type", []delta.Op{{"s", at("content", 3), delta.JsonObjectOf("type", "text", "text", "ok")}}},
+		{"set the type of a block", []delta.Op{{"s", at("content", 3, "type"), "bogus"}}},
+		{"delete a member of a block", []delta.Op{{"d", at("content", 0, "text")}}},
+		{"delete the type of a block", []delta.Op{{"d", at("content", 0, "type")}}},
+		{"delete a block", []delta.Op{{"d", at("content", 1)}}},
+		{"delete the content", []delta.Op{{"d", at("content")}}},
+		{"set the content to a string", []delta.Op{{"s", at("content"), "x"}}},
+		{"splice a block in", []delta.Op{{"p", at("content"), float64(1), float64(0), []any{delta.JsonObjectOf("type", "text", "text", "new")}}}},
+		{"splice a bad block in", []delta.Op{{"p", at("content"), float64(1), float64(0), []any{float64(3)}}}},
+		{"set a usage member to a string", []delta.Op{{"s", at("usage", "input"), "many"}}},
+		{"set a usage member", []delta.Op{{"s", at("usage", "input"), float64(9)}}},
+		{"set the stop reason to a number", []delta.Op{{"s", at("stopReason"), float64(1)}}},
+		{"set the timestamp to a string", []delta.Op{{"s", at("timestamp"), "now"}}},
+		{"append with a block set before", []delta.Op{{"s", at("content", 3), delta.JsonObjectOf("type", "text", "text", "n")}, {"a", at("content", 3, "text"), "!"}}},
+		{"set the message to a string", []delta.Op{{"s", message, "text"}}},
+		{"set the generation to a number", []delta.Op{{"s", []any{"generation"}, float64(1)}}},
+		{"append and set a usage member to a string", []delta.Op{{"a", at("content", 0, "text"), "!"}, {"s", at("usage", "output"), "x"}}},
+	}
+	definition := partial.definable.AnyDefinition()
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			working, err := delta.CloneJSON(base)
+			if err != nil {
+				t.Fatal(err)
+			}
+			final, err := delta.Apply(working, c.ops)
+			if err != nil {
+				t.Fatalf("the operations do not apply: %v", err)
+			}
+			object, ok := final.(durable.JsonObject)
+			if !ok {
+				t.Fatalf("applied to %T", final)
+			}
+			wantBase, wantErr := partial.reference(object)
+			gotBase, gotErr := definition.CheckpointWhen(object, c.ops, durable.CheckpointInfo{})
+			if (wantErr == nil) != (gotErr == nil) || (wantErr != nil && wantErr.Error() != gotErr.Error()) || (wantErr == nil && wantBase != gotBase) {
+				t.Fatalf("reference (%v, %v), erased (%v, %v)", wantBase, wantErr, gotBase, gotErr)
+			}
+		})
 	}
 }

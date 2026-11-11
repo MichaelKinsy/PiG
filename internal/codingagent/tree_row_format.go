@@ -29,6 +29,7 @@ import (
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -416,10 +417,7 @@ func (f *treeRowFormatter) formatToolCall(call ai.ToolCall) string {
 
 // shortenPath replaces $HOME prefix with "~" (tree-selector.ts:851).
 func (f *treeRowFormatter) shortenPath(p string) string {
-	if f.home != "" && strings.HasPrefix(p, f.home) {
-		return "~" + p[len(f.home):]
-	}
-	return p
+	return resolvepath.ShortenHomePath(p, f.home)
 }
 
 // strArg returns the first string-valued arg matching any of `keys`,

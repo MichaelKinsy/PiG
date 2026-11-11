@@ -48,7 +48,7 @@ func newPostLoginTestMode(t *testing.T) *InteractiveMode {
 // one path, selecting and persisting the provider default only from unknown.
 func TestAPIKeyLoginSelectsProviderDefault(t *testing.T) {
 	for _, tc := range []struct{ provider, name, model string }{
-		{"openai", "OpenAI", "gpt-5.5"},
+		{"openai", "OpenAI", "gpt-6.1-sol"},
 		{"anthropic", "Anthropic", "claude-opus-4-8"},
 	} {
 		t.Run(tc.provider, func(t *testing.T) {

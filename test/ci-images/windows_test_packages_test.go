@@ -4,6 +4,7 @@ package ciimages
 
 import (
 	"fmt"
+	"go/build"
 	"io/fs"
 	"maps"
 	"os"
@@ -20,10 +21,11 @@ import (
 
 const modulePath = "github.com/MichaelKinsy/PiG"
 
-// windowsOnlyTestPackages walks the root module for test files that only a
-// Windows build selects: a _windows_test.go name or a "//go:build windows" or
-// "//go:build !unix" line. A file whose constraint also needs a custom tag (integration, parity)
-// is not selected by a default go test and is left out.
+// windowsOnlyTestPackages walks the root module for test files that a Windows
+// build selects and a Linux build does not: a _windows_test.go name, or a build
+// constraint such as "windows", "!unix" or "!unix || darwin". A file whose
+// constraint also needs a custom tag (integration, parity) is not selected by a
+// default go test and is left out.
 func windowsOnlyTestPackages(t *testing.T, root string) []string {
 	t.Helper()
 	packages := map[string]bool{}
@@ -47,10 +49,7 @@ func windowsOnlyTestPackages(t *testing.T, root string) []string {
 		if !strings.HasSuffix(name, "_test.go") {
 			return nil
 		}
-		constraint := buildConstraint(t, file)
-		// "!unix" selects the file on Windows and on no Linux or macOS build.
-		windowsOnly := constraint == "windows" || constraint == "!unix" || strings.HasSuffix(name, "_windows_test.go") && (constraint == "" || constraint == "windows")
-		if windowsOnly {
+		if selectedByGOOS(t, "windows", file) && !selectedByGOOS(t, "linux", file) {
 			rel, err := filepath.Rel(root, filepath.Dir(file))
 			if err != nil {
 				return err
@@ -65,22 +64,20 @@ func windowsOnlyTestPackages(t *testing.T, root string) []string {
 	return slices.Sorted(maps.Keys(packages))
 }
 
-func buildConstraint(t *testing.T, file string) string {
+// selectedByGOOS reports whether a default go test build for goos compiles
+// file: the toolchain's file-name and build-constraint rules with no custom tag.
+func selectedByGOOS(t *testing.T, goos, file string) bool {
 	t.Helper()
-	data, err := os.ReadFile(file)
+	ctx := build.Default
+	ctx.GOOS = goos
+	if goos == "windows" {
+		ctx.CgoEnabled = false
+	}
+	ok, err := ctx.MatchFile(filepath.Dir(file), filepath.Base(file))
 	if err != nil {
 		t.Fatal(err)
 	}
-	for line := range strings.Lines(string(data)) {
-		line = strings.TrimSpace(line)
-		if constraint, ok := strings.CutPrefix(line, "//go:build "); ok {
-			return strings.TrimSpace(constraint)
-		}
-		if strings.HasPrefix(line, "package ") {
-			break
-		}
-	}
-	return ""
+	return ok
 }
 
 func runWindowsTestPackages(t *testing.T, env ...string) (string, error) {
@@ -142,7 +139,7 @@ func TestWindowsShardsTestEverySelectedPackage(t *testing.T) {
 	for shard := 1; shard <= shards; shard++ {
 		wantUnits = append(wantUnits, "cli-"+strconv.Itoa(shard))
 	}
-	wantUnits = append(wantUnits, "extension-host-1", "extension-host-2", "extension-host-3", "extension-conformance-1", "extension-conformance-2")
+	wantUnits = append(wantUnits, "extension-host-1", "extension-host-2", "extension-host-3", "extension-conformance-1", "extension-conformance-2", "extension-conformance-3", "extension-conformance-4")
 	var gotUnits []string
 	for _, entry := range planFor(t, "merge_group", "").shards("windows") {
 		units := strings.Fields(entry)
@@ -235,8 +232,8 @@ func TestWindowsShardsTestEverySelectedPackage(t *testing.T) {
 	if !droppedCLI {
 		t.Errorf("native shards test %s whole as well as in its shards", cliPkg)
 	}
-	// The two jobs of each extension pair split the package's tests with test-shard-pattern.sh, so each test runs once.
-	for _, want := range []string{`extension-host-*) package=./coding/extension/host/subprocess shards=3`, `extension-conformance-*) package=./test/extension-conformance shards=2`, `test-shard-pattern.sh "${EXTENSION_SHARD##*-}" "$shards" "$package"`} {
+	// The jobs of each extension package split its tests with test-shard-pattern.sh, so each test runs once.
+	for _, want := range []string{`extension-host-*) package=./coding/extension/host/subprocess shards=3`, `extension-conformance-*) package=./test/extension-conformance shards=4`, `test-shard-pattern.sh "${EXTENSION_SHARD##*-}" "$shards" "$package"`} {
 		found := false
 		for _, step := range job.Steps {
 			if strings.Contains(step.Run, want) && step.If == "startsWith(matrix.shard, 'extension-')" {

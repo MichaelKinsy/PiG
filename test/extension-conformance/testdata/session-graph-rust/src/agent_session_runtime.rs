@@ -1,11 +1,15 @@
 //! The agent_session_runtime script of the session graph rows: createAgentSessionRuntime and AgentSessionRuntime through every replacement method, as testdata/agent-session-runtime.mjs does with Pi's own classes; the report is Pi's own run's.
 
 use pig_sdk::{
-    create_agent_session_from_services, create_agent_session_runtime, create_agent_session_services, CreateAgentSessionFromServicesOptions, CreateAgentSessionRuntimeFactoryOptions, CreateAgentSessionRuntimeOptions,
-    CreateAgentSessionRuntimeResult, CreateAgentSessionServicesOptions, ForkResult, ForkRuntimeOptions, ModelRuntime, ModelRuntimeCreateOptions, NewSessionRuntimeOptions, SessionManager, SettingsManager,
-    DefaultResourceLoaderOptions, Context, CancelledResult,
+    CancelledResult, Context, CreateAgentSessionFromServicesOptions,
+    CreateAgentSessionRuntimeFactoryOptions, CreateAgentSessionRuntimeOptions,
+    CreateAgentSessionRuntimeResult, CreateAgentSessionServicesOptions,
+    DefaultResourceLoaderOptions, ForkResult, ForkRuntimeOptions, ModelRuntime,
+    ModelRuntimeCreateOptions, NewSessionRuntimeOptions, SessionManager, SettingsManager,
+    create_agent_session_from_services, create_agent_session_runtime,
+    create_agent_session_services,
 };
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 use std::io;
 use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -25,7 +29,11 @@ fn error_of<T>(result: io::Result<T>) -> String {
 fn entry_text(message: &Value) -> String {
     match &message["content"] {
         Value::String(content) => content.clone(),
-        Value::Array(blocks) => blocks.iter().filter(|block| block["type"] == "text").map(|block| text(&block["text"]).to_string()).collect(),
+        Value::Array(blocks) => blocks
+            .iter()
+            .filter(|block| block["type"] == "text")
+            .map(|block| text(&block["text"]).to_string())
+            .collect(),
         _ => String::new(),
     }
 }
@@ -39,14 +47,32 @@ fn fork_view(result: &ForkResult) -> Value {
 }
 
 pub fn agent_session_runtime_script(ctx: &Context, args: &Value) -> io::Result<Value> {
-    let (cwd, agent_dir, root) = (text(&args["cwd"]), text(&args["agentDir"]), text(&args["root"]));
+    let (cwd, agent_dir, root) = (
+        text(&args["cwd"]),
+        text(&args["agentDir"]),
+        text(&args["root"]),
+    );
     let mut r = Map::new();
     let rt = Arc::new(ModelRuntime::create(
         ctx,
-        ModelRuntimeCreateOptions { auth_path: Some(text(&args["mrAuth"]).into()), models_path: Some(text(&args["mrModels"]).into()), models_store_path: Some(text(&args["mrStore"]).into()), ..Default::default() },
+        ModelRuntimeCreateOptions {
+            auth_path: Some(text(&args["mrAuth"]).into()),
+            models_path: Some(text(&args["mrModels"]).into()),
+            models_store_path: Some(text(&args["mrStore"]).into()),
+            ..Default::default()
+        },
     )?);
-    let settings = Arc::new(SettingsManager::in_memory(ctx, Some(json!({"compaction": {"enabled": false}, "retry": {"enabled": false}, "defaultProvider": "mr-local", "defaultModel": "m1"})), None)?);
-    let session_dir = Path::new(root).join("runtime-sessions").to_string_lossy().into_owned();
+    let settings = Arc::new(SettingsManager::in_memory(
+        ctx,
+        Some(
+            json!({"compaction": {"enabled": false}, "retry": {"enabled": false}, "defaultProvider": "mr-local", "defaultModel": "m1"}),
+        ),
+        None,
+    )?);
+    let session_dir = Path::new(root)
+        .join("runtime-sessions")
+        .to_string_lossy()
+        .into_owned();
     let log_file = Path::new(cwd).join("runtime-events.log");
     let cancel_file = Path::new(cwd).join("cancel-next");
     std::fs::create_dir_all(cwd)?;
@@ -101,7 +127,16 @@ pub fn agent_session_runtime_script(ctx: &Context, args: &Value) -> io::Result<V
     };
     let manager = Arc::new(SessionManager::create(ctx, cwd, Some(&session_dir), None)?);
     let run_file = text(&manager.get_session_file()?).to_string();
-    let runtime = create_agent_session_runtime(ctx, factory, CreateAgentSessionRuntimeOptions { cwd: cwd.into(), agent_dir: agent_dir.into(), session_manager: manager.clone(), session_start_event: None })?;
+    let runtime = create_agent_session_runtime(
+        ctx,
+        factory,
+        CreateAgentSessionRuntimeOptions {
+            cwd: cwd.into(),
+            agent_dir: agent_dir.into(),
+            session_manager: manager.clone(),
+            session_start_event: None,
+        },
+    )?;
     let rebinds = Arc::new(AtomicUsize::new(0));
     let invalidations = Arc::new(AtomicUsize::new(0));
     {
@@ -126,8 +161,24 @@ pub fn agent_session_runtime_script(ctx: &Context, args: &Value) -> io::Result<V
         }
         Ok(fresh)
     };
-    let kinds = |manager: &SessionManager| -> io::Result<Vec<Value>> { Ok(manager.get_entries()?.as_array().cloned().unwrap_or_default().iter().map(|entry| entry["type"].clone()).collect()) };
-    let roles = || -> io::Result<Vec<Value>> { Ok(runtime.session().messages()?.iter().map(|message| message["role"].clone()).collect()) };
+    let kinds = |manager: &SessionManager| -> io::Result<Vec<Value>> {
+        Ok(manager
+            .get_entries()?
+            .as_array()
+            .cloned()
+            .unwrap_or_default()
+            .iter()
+            .map(|entry| entry["type"].clone())
+            .collect())
+    };
+    let roles = || -> io::Result<Vec<Value>> {
+        Ok(runtime
+            .session()
+            .messages()?
+            .iter()
+            .map(|message| message["role"].clone())
+            .collect())
+    };
     let user_entry = |text_wanted: &str| -> io::Result<Value> {
         Ok(current()?
             .get_entries()?
@@ -135,7 +186,11 @@ pub fn agent_session_runtime_script(ctx: &Context, args: &Value) -> io::Result<V
             .cloned()
             .unwrap_or_default()
             .into_iter()
-            .find(|entry| entry["type"] == "message" && entry["message"]["role"] == "user" && entry_text(&entry["message"]) == text_wanted)
+            .find(|entry| {
+                entry["type"] == "message"
+                    && entry["message"]["role"] == "user"
+                    && entry_text(&entry["message"]) == text_wanted
+            })
             .unwrap_or(Value::Null))
     };
     let assistant_id = || -> io::Result<String> {
@@ -155,7 +210,9 @@ pub fn agent_session_runtime_script(ctx: &Context, args: &Value) -> io::Result<V
         std::fs::remove_file(&cancel_file)?;
         result
     };
-    let parent_is = |file: &str| -> io::Result<bool> { Ok(current()?.get_header()?["parentSession"] == json!(file)) };
+    let parent_is = |file: &str| -> io::Result<bool> {
+        Ok(current()?.get_header()?["parentSession"] == json!(file))
+    };
     let initial_manager = current()?;
     r.insert(
         "initial".into(),
@@ -165,7 +222,10 @@ pub fn agent_session_runtime_script(ctx: &Context, args: &Value) -> io::Result<V
         }),
     );
     runtime.session().prompt("one")?;
-    r.insert("prompted".into(), json!({"kinds": kinds(&current()?)?, "persisted": Path::new(&run_file).exists()}));
+    r.insert(
+        "prompted".into(),
+        json!({"kinds": kinds(&current()?)?, "persisted": Path::new(&run_file).exists()}),
+    );
 
     // newSession.
     let mut cancelled_new = CancelledResult::default();
@@ -203,7 +263,10 @@ pub fn agent_session_runtime_script(ctx: &Context, args: &Value) -> io::Result<V
         cancelled_fork = runtime.fork(&two_id, ForkRuntimeOptions::default())?;
         Ok(())
     })?;
-    r.insert("forkCancelled".into(), json!({"result": fork_view(&cancelled_fork), "sameSession": !is_new(&current()?)?}));
+    r.insert(
+        "forkCancelled".into(),
+        json!({"result": fork_view(&cancelled_fork), "sameSession": !is_new(&current()?)?}),
+    );
     let forked = runtime.fork(&two_id, ForkRuntimeOptions::default())?;
     let fresh = is_new(&current()?)?;
     r.insert(
@@ -214,9 +277,18 @@ pub fn agent_session_runtime_script(ctx: &Context, args: &Value) -> io::Result<V
         }),
     );
     runtime.session().prompt("three")?;
-    let forked_at = runtime.fork(&assistant_id()?, ForkRuntimeOptions { position: Some("at".into()), with_session: None })?;
+    let forked_at = runtime.fork(
+        &assistant_id()?,
+        ForkRuntimeOptions {
+            position: Some("at".into()),
+            with_session: None,
+        },
+    )?;
     let fresh = is_new(&current()?)?;
-    r.insert("forkAt".into(), json!({"result": fork_view(&forked_at), "fresh": fresh, "roles": roles()?}));
+    r.insert(
+        "forkAt".into(),
+        json!({"result": fork_view(&forked_at), "fresh": fresh, "roles": roles()?}),
+    );
     r.insert(
         "forkErrors".into(),
         json!({
@@ -231,7 +303,10 @@ pub fn agent_session_runtime_script(ctx: &Context, args: &Value) -> io::Result<V
         cancelled_switch = runtime.switch_session(&run_file, Default::default())?;
         Ok(())
     })?;
-    r.insert("switchCancelled".into(), json!({"result": cancelled_switch, "sameSession": !is_new(&current()?)?}));
+    r.insert(
+        "switchCancelled".into(),
+        json!({"result": cancelled_switch, "sameSession": !is_new(&current()?)?}),
+    );
     let switched = runtime.switch_session(&run_file, Default::default())?;
     let switched_file = text(&current()?.get_session_file()?).to_string();
     r.insert(
@@ -267,12 +342,39 @@ pub fn agent_session_runtime_script(ctx: &Context, args: &Value) -> io::Result<V
     // A direct refresh of the live session (the runtime's own after a setup is the one the report shows); Pi's run reads nothing from it, so it adds nothing to the report.
     runtime.session().refresh_context()?;
     runtime.dispose()?;
-    let reasons: Vec<String> = calls.lock().unwrap().iter().map(|call| format!("{}{}", if call["reason"].is_null() { "null".to_string() } else { text(&call["reason"]).to_string() }, if call["previous"] == true { "+previous" } else { "" })).collect();
+    let reasons: Vec<String> = calls
+        .lock()
+        .unwrap()
+        .iter()
+        .map(|call| {
+            format!(
+                "{}{}",
+                if call["reason"].is_null() {
+                    "null".to_string()
+                } else {
+                    text(&call["reason"]).to_string()
+                },
+                if call["previous"] == true {
+                    "+previous"
+                } else {
+                    ""
+                }
+            )
+        })
+        .collect();
     r.insert(
         "counts".into(),
         json!({"rebinds": rebinds.load(Ordering::SeqCst), "invalidations": invalidations.load(Ordering::SeqCst), "factoryCalls": calls.lock().unwrap().len(), "reasons": reasons}),
     );
     let logged = std::fs::read_to_string(&log_file)?;
-    r.insert("events".into(), json!(logged.trim_end_matches('\n').split('\n').collect::<Vec<_>>()));
+    r.insert(
+        "events".into(),
+        json!(
+            logged
+                .trim_end_matches('\n')
+                .split('\n')
+                .collect::<Vec<_>>()
+        ),
+    );
     Ok(Value::Object(r))
 }

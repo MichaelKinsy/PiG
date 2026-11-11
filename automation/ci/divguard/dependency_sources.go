@@ -20,6 +20,12 @@ var exactDependencyVersion = regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9
 // dependencyLockfile is the mirror's root lockfile. It pins a dependency that no package manifest declares, such as a transitive SDK package Pi's build bundles.
 const dependencyLockfile = "package-lock.json"
 
+// nodeRuntimePrefix starts the reference of a source file Node ships in its own tree (deps/minimatch behind fs.globSync), which no npm package pins. It cannot be mistaken for a node_modules reference.
+const nodeRuntimePrefix = "node-deps/"
+
+// nodeVersionFile pins the Node release PiG's parity oracle runs; a record for Node's own source cites it as its manifest.
+const nodeVersionFile = ".node-version"
+
 // dependencyManifest reports a manifest a dependency proof may cite: a workspace package.json, or the root lockfile.
 func dependencyManifest(manifest string) bool {
 	return manifest == dependencyLockfile || strings.HasPrefix(manifest, "packages/") && path.Clean(manifest) == manifest && path.Base(manifest) == "package.json"
@@ -62,42 +68,32 @@ func (u *upstreamIndex) loadDependencySources(root string) (returnErr error) {
 	u.dependencies = map[string]string{}
 	for _, record := range records {
 		prefix := "node_modules/" + record.Package + "/"
-		if record.Package == "" || !exactDependencyVersion.MatchString(record.Version) || !strings.HasPrefix(record.Reference, prefix) || path.Clean(record.Reference) != record.Reference || !strings.HasPrefix(record.Source, "test/parity/dependency-sources/") || path.Clean(record.Source) != record.Source || !dependencyManifest(record.Manifest) {
+		nodeRuntime := record.Package == "node" && record.Manifest == nodeVersionFile
+		if nodeRuntime {
+			prefix = nodeRuntimePrefix
+		}
+		if record.Package == "" || !exactDependencyVersion.MatchString(record.Version) || !strings.HasPrefix(record.Reference, prefix) || path.Clean(record.Reference) != record.Reference || !strings.HasPrefix(record.Source, "test/parity/dependency-sources/") || path.Clean(record.Source) != record.Source || (!nodeRuntime && !dependencyManifest(record.Manifest)) {
 			return fmt.Errorf("invalid dependency source record: %s", record.Reference)
 		}
 		if _, exists := u.dependencies[record.Reference]; exists {
 			return fmt.Errorf("duplicate dependency source: %s", record.Reference)
 		}
-		integrity, ok := strings.CutPrefix(record.Integrity, "sha512-")
-		decoded, decodeErr := base64.StdEncoding.DecodeString(integrity)
-		if !ok || decodeErr != nil || len(decoded) != 64 {
-			return fmt.Errorf("invalid package integrity: %s", record.Reference)
-		}
-		manifest, err := u.content(record.Manifest)
-		if err != nil {
-			return err
-		}
-		var declaration struct {
-			Dependencies map[string]string `json:"dependencies"`
-			Packages     map[string]struct {
-				Version   string `json:"version"`
-				Integrity string `json:"integrity"`
-			} `json:"packages"`
-		}
-		if err := json.Unmarshal([]byte(manifest), &declaration); err != nil {
-			return err
-		}
-		pinned := declaration.Dependencies[record.Package]
-		if record.Manifest == dependencyLockfile {
-			// A transitive dependency is pinned by the lockfile entry Pi's build resolved, which also fixes the archive integrity.
-			locked := declaration.Packages["node_modules/"+record.Package]
-			if locked.Integrity != record.Integrity {
-				return fmt.Errorf("dependency proof for %s requires integrity %s in %s; found %q", record.Package, record.Integrity, record.Manifest, locked.Integrity)
+		if nodeRuntime {
+			// Node's source is verified against the digest of the release archive it shipped in (nodejs.org SHASUMS256.txt), and the record must name the Node release PiG pins.
+			archive, ok := strings.CutPrefix(record.Integrity, "sha256-")
+			decoded, decodeErr := hex.DecodeString(archive)
+			if !ok || decodeErr != nil || len(decoded) != sha256.Size {
+				return fmt.Errorf("invalid Node release archive digest: %s", record.Reference)
 			}
-			pinned = locked.Version
-		}
-		if pinned != record.Version {
-			return fmt.Errorf("dependency proof for %s requires exact %s pin in %s; found %q", record.Package, record.Version, record.Manifest, pinned)
+			pin, err := bounded.ReadFile(nodeVersionFile)
+			if err != nil {
+				return err
+			}
+			if pinned := strings.TrimSpace(string(pin)); pinned != record.Version {
+				return fmt.Errorf("dependency proof for Node source requires exact %s pin in %s; found %q", record.Version, nodeVersionFile, pinned)
+			}
+		} else if err := u.verifyNpmPin(record); err != nil {
+			return err
 		}
 		text, err := bounded.ReadFile(filepath.FromSlash(record.Source))
 		if err != nil {
@@ -108,6 +104,42 @@ func (u *upstreamIndex) loadDependencySources(root string) (returnErr error) {
 			return fmt.Errorf("dependency source digest mismatch: %s", record.Reference)
 		}
 		u.dependencies[record.Reference] = string(text)
+	}
+	return nil
+}
+
+// verifyNpmPin checks an npm record's archive integrity and its exact pin in the cited manifest or the lockfile entry.
+func (u *upstreamIndex) verifyNpmPin(record dependencySource) error {
+	integrity, ok := strings.CutPrefix(record.Integrity, "sha512-")
+	decoded, decodeErr := base64.StdEncoding.DecodeString(integrity)
+	if !ok || decodeErr != nil || len(decoded) != 64 {
+		return fmt.Errorf("invalid package integrity: %s", record.Reference)
+	}
+	manifest, err := u.content(record.Manifest)
+	if err != nil {
+		return err
+	}
+	var declaration struct {
+		Dependencies map[string]string `json:"dependencies"`
+		Packages     map[string]struct {
+			Version   string `json:"version"`
+			Integrity string `json:"integrity"`
+		} `json:"packages"`
+	}
+	if err := json.Unmarshal([]byte(manifest), &declaration); err != nil {
+		return err
+	}
+	pinned := declaration.Dependencies[record.Package]
+	if record.Manifest == dependencyLockfile {
+		// A transitive dependency is pinned by the lockfile entry Pi's build resolved, which also fixes the archive integrity.
+		locked := declaration.Packages["node_modules/"+record.Package]
+		if locked.Integrity != record.Integrity {
+			return fmt.Errorf("dependency proof for %s requires integrity %s in %s; found %q", record.Package, record.Integrity, record.Manifest, locked.Integrity)
+		}
+		pinned = locked.Version
+	}
+	if pinned != record.Version {
+		return fmt.Errorf("dependency proof for %s requires exact %s pin in %s; found %q", record.Package, record.Version, record.Manifest, pinned)
 	}
 	return nil
 }

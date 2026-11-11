@@ -8,6 +8,9 @@
 // pig-specific: upstream's interactive-mode.ts creates these inline;
 // pig needs a separate type because the UIContext interface lives in
 // coding/extension/ and the TUI lives in internal/.
+//
+// Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts (createExtensionUIContext).
+// Ports packages/coding-agent/src/modes/interactive/components/extension-selector.ts (dialogTimeout: the timeout option that starts the selector's countdown).
 
 package codingagent
 
@@ -15,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"os"
 	"reflect"
 	"slices"
 	"sync"
@@ -271,10 +273,13 @@ func dialogTimeout(opts extension.ExtensionUIDialogOptions) time.Duration {
 	// The countdown shows whole seconds; a timeout beyond Duration's range
 	// counts down from its largest.
 	longest := time.Duration(math.MaxInt64) - time.Second
+	//portlint:allow numbers clamp of a timeout beyond Duration's range (about 292 years); CountdownTimer has no such bound but the countdown cannot reach it either
 	if timeout >= float64(longest/time.Millisecond) {
 		return longest
 	}
-	return time.Duration(timeout * float64(time.Millisecond))
+	// A fraction of a nanosecond past a whole second still counts the next second down (Math.ceil(timeoutMs / 1000)).
+	//portlint:allow numbers timeout is below longest here, so the product is within Duration's range and ceiled; the countdown shows whole seconds
+	return time.Duration(math.Ceil(timeout * float64(time.Millisecond)))
 }
 
 func (u *ExtUIContext) runDialog(
@@ -432,8 +437,8 @@ func (u *ExtUIContext) Editor(ctx context.Context, title, prefill string) (strin
 		func() { done, cancelled = true, true },
 		nil, u.m.externalEditorCommand())
 	ed.SetFocused(true)
-	ed.SetExternalEditor(func(command, content string, apply func(string)) {
-		u.m.openExternalEditorBuffer(ctx, command, content, apply)
+	ed.SetExternalEditor(func(command, content string, apply func(string), report func(string)) {
+		u.m.openExternalEditorBuffer(ctx, command, content, apply, report)
 	})
 	return u.runDialog(ctx, ed, ed.HandleInput, func() (string, bool, bool) {
 		return value, done, cancelled
@@ -687,7 +692,7 @@ func (m *InteractiveMode) setBuiltInHeader(expanded bool) {
 
 func (u *ExtUIContext) SetTitle(title string) {
 	if u.m.tuiInst != nil {
-		_, _ = fmt.Fprintf(os.Stdout, "\033]0;%s\007", title)
+		u.m.tuiInst.Terminal().SetTitle(title)
 	}
 }
 
@@ -714,7 +719,7 @@ func (u *ExtUIContext) RunRemoteOverlay(opts extension.RemoteOverlayOptions, hos
 			// rather than being wrapped in a second modal shell (interactive-mode.ts pushExtensionDialog).
 			// upstream: showExtensionCustom restoreEditor puts back the editor text saved when the component opened.
 			savedText := u.m.editor.Text()
-			entry := &extensionDialog{component: overlay}
+			entry := &extensionDialog{component: overlay, blocked: blockedStatusOf(opts.Blocked)}
 			u.m.pushExtensionDialog(entry)
 			cleanup = func() {
 				u.m.removeExtensionDialog(entry)
@@ -844,6 +849,9 @@ func (u *ExtUIContext) newRemoteOverlay(host extension.RemoteOverlayHost) *custo
 		overlay.SetOnInput(host.OnInput)
 		if mouse, ok := host.(extension.RemoteOverlayMouseHost); ok {
 			overlay.SetOnMouse(mouse.OnMouse)
+		}
+		if viewport, ok := host.(extension.RemoteOverlayViewportHost); ok {
+			overlay.SetCapturesViewportInput(viewport.CapturesViewportInput)
 		}
 	}
 	overlay.onFocus = func(focused bool) { overlay.setInputActive(u.m, focused) }

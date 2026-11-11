@@ -17,9 +17,15 @@
 linux | portmap-1 | queue
 linux | portmap-2 | queue
 linux | portmap-3 | queue
+linux | portmap-4 | queue
+linux | portmap-5 | queue
+linux | portmap-6 | queue
+linux | portmap-7 | queue
+linux | portmap-8 | queue
 linux | test-fast-sharded | pr
-linux | test-fast | pr
-linux | test-conformance | queue
+linux | test-fast | pr | ci-test-changed
+linux | test-conformance-1 | queue
+linux | test-conformance-2 | queue
 linux | build | pr | ci-build-pr
 linux | test-cli-1 | pr
 linux | test-cli-2 | pr
@@ -34,10 +40,12 @@ windows | cli-1 cli-3 | queue
 windows | cli-4 cli-7 | queue
 windows | cli-6 cli-8 | queue
 windows | extension-conformance-2 | queue
+windows | extension-conformance-4 | queue
 windows | native-3 | queue
 windows | native-2 | queue
 windows | native-1 | pr
 windows | extension-conformance-1 | queue
+windows | extension-conformance-3 | queue
 windows | extension-host-1 | queue
 windows | native-4 | queue
 windows | extension-host-2 | queue
@@ -50,5 +58,6 @@ macos | cli-3 cli-5 cli-6 | queue
 # Jobs that are not a matrix: the shard column is "-".
 single | node-runtime | queue
 single | durable-cf-host | queue
+single | durable-contract | queue
 single | android | pr
 single | node-loader | pr

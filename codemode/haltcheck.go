@@ -8,30 +8,41 @@ import (
 )
 
 // haltExport names the mutable i32 global instrumentHalt adds to the module: a non-zero value makes the guest trap at
-// its next loop iteration.
+// its next halt poll, at most haltPollInterval loop iterations away.
 const haltExport = "pig_halt"
 
-const (
-	sectionImport = 2
-	sectionGlobal = 6
-	sectionExport = 7
-	sectionCode   = 10
-)
+// haltPollInterval is how many loop iterations pass between two polls. A poll leaves the guest for Go (see
+// instrumentHalt), so it is rare enough to cost nothing and frequent enough to stop a guest within microseconds.
+const haltPollInterval = 1024
 
-// haltGlobal is a mutable i32 global initialised to zero.
-var haltGlobal = []byte{0x7f, 0x01, 0x41, 0x00, 0x0b}
+const (
+	sectionType     = 1
+	sectionImport   = 2
+	sectionFunction = 3
+	sectionMemory   = 5
+	sectionGlobal   = 6
+	sectionExport   = 7
+	sectionCode     = 10
+)
 
 type wasmSection struct {
 	id      byte
 	payload []byte
 }
 
-// instrumentHalt returns wasm with a halt check at the head of every loop: `global.get $pig_halt; if; unreachable;
-// end`, with $pig_halt exported as haltExport. The check is a load and a branch in the compiled code.
+// instrumentHalt returns wasm with a halt poll at the head of every loop, and $pig_halt exported as haltExport. Each
+// loop head counts down a tick global; every haltPollInterval iterations it calls a function the rewrite appends,
+// which resets the tick, leaves the guest for Go with `memory.grow 0` and traps with `unreachable` if $pig_halt is
+// set. The check on the way is a decrement and a branch in the compiled code.
 //
-// A running guest cannot be stopped from outside, and the check wazero emits for WithCloseOnContextDone calls back
-// into Go on every loop iteration, which made QuickJS about four times slower and the native loops of its string
-// functions slower still. This check gives the hard stop (execution.go, terminationGrace) without that cost.
+// The call into Go is what makes the guest stoppable. Go can stop the world (every garbage collection does) only at
+// a Go call, and compiled guest code never calls Go inside a loop: a stop-the-world waits for the loop, nothing else
+// runs, not even the timer that would set the halt, and a loop that never ends holds the whole process. Pi stops the
+// same loop with worker.terminate() from the main thread, which the worker cannot block. With the poll, a pending
+// stop-the-world or preemption takes effect within haltPollInterval iterations.
+//
+// The check wazero emits for WithCloseOnContextDone also calls Go, but on every loop iteration, which made QuickJS
+// about four times slower and the native loops of its string functions slower still.
 func instrumentHalt(wasm []byte) ([]byte, error) {
 	if len(wasm) < 8 || string(wasm[:8]) != "\x00asm\x01\x00\x00\x00" {
 		return nil, errors.New("not a version 1 wasm module")
@@ -60,19 +71,33 @@ func instrumentHalt(wasm []byte) ([]byte, error) {
 		}
 		return -1
 	}
-	importedGlobals := uint32(0)
+	var imports importCounts
 	if at := index(sectionImport); at >= 0 {
 		var err error
-		if importedGlobals, err = countGlobalImports(sections[at].payload); err != nil {
+		if imports, err = countImports(sections[at].payload); err != nil {
 			return nil, fmt.Errorf("import section: %w", err)
 		}
 	}
-	exportAt := index(sectionExport)
-	if exportAt < 0 {
-		return nil, errors.New("the module has no export section")
+	typeAt, functionAt, exportAt, codeAt := index(sectionType), index(sectionFunction), index(sectionExport), index(sectionCode)
+	if typeAt < 0 || functionAt < 0 || exportAt < 0 || codeAt < 0 {
+		return nil, errors.New("the module lacks a type, function, export or code section")
 	}
 
-	// The new global comes last, so no existing global index moves.
+	// Everything new comes last in its index space, so no existing index moves.
+	typeCount, rest, err := readU32(sections[typeAt].payload, 0)
+	if err != nil {
+		return nil, fmt.Errorf("type section: %w", err)
+	}
+	sections[typeAt].payload = append(appendU32(nil, typeCount+1), sections[typeAt].payload[rest:]...)
+	sections[typeAt].payload = append(sections[typeAt].payload, 0x60, 0x00, 0x00)
+
+	functionCount, rest, err := readU32(sections[functionAt].payload, 0)
+	if err != nil {
+		return nil, fmt.Errorf("function section: %w", err)
+	}
+	pollIndex := imports.functions + functionCount
+	sections[functionAt].payload = appendU32(append(appendU32(nil, functionCount+1), sections[functionAt].payload[rest:]...), typeCount)
+
 	definedGlobals := uint32(0)
 	if at := index(sectionGlobal); at >= 0 {
 		count, rest, err := readU32(sections[at].payload, 0)
@@ -80,19 +105,39 @@ func instrumentHalt(wasm []byte) ([]byte, error) {
 			return nil, fmt.Errorf("global section: %w", err)
 		}
 		definedGlobals = count
-		payload := appendU32(nil, count+1)
-		payload = append(payload, sections[at].payload[rest:]...)
-		payload = append(payload, haltGlobal...)
-		sections[at].payload = payload
-	} else {
-		// Section ids ascend, so the global section goes right before the export section.
-		sections = append(sections, wasmSection{})
-		copy(sections[exportAt+1:], sections[exportAt:])
-		sections[exportAt] = wasmSection{sectionGlobal, append(appendU32(nil, 1), haltGlobal...)}
-		exportAt++
+		sections[at].payload = append(appendU32(nil, count+2), sections[at].payload[rest:]...)
 	}
-	haltIndex := importedGlobals + definedGlobals
+	haltIndex := imports.globals + definedGlobals
+	tickIndex := haltIndex + 1
+	globals := append(mutableI32Global(0), mutableI32Global(haltPollInterval)...)
+	if at := index(sectionGlobal); at >= 0 {
+		sections[at].payload = append(sections[at].payload, globals...)
+	} else {
+		sections = insertSectionBefore(sections, wasmSection{sectionGlobal, append(appendU32(nil, 2), globals...)}, sectionExport)
+	}
 
+	// The poll needs a memory to grow by zero pages; a module without one gets an empty one it never touches.
+	hasMemory := imports.memories > 0
+	if at := index(sectionMemory); at >= 0 {
+		count, _, err := readU32(sections[at].payload, 0)
+		if err != nil {
+			return nil, fmt.Errorf("memory section: %w", err)
+		}
+		hasMemory = hasMemory || count > 0
+	}
+	if !hasMemory {
+		if at := index(sectionMemory); at >= 0 {
+			sections[at].payload = []byte{0x01, 0x00, 0x00}
+		} else {
+			before := byte(sectionExport)
+			if index(sectionGlobal) >= 0 {
+				before = sectionGlobal
+			}
+			sections = insertSectionBefore(sections, wasmSection{sectionMemory, []byte{0x01, 0x00, 0x00}}, before)
+		}
+	}
+
+	exportAt = index(sectionExport)
 	count, rest, err := readU32(sections[exportAt].payload, 0)
 	if err != nil {
 		return nil, fmt.Errorf("export section: %w", err)
@@ -104,10 +149,9 @@ func instrumentHalt(wasm []byte) ([]byte, error) {
 	payload = append(payload, 0x03)
 	sections[exportAt].payload = appendU32(payload, haltIndex)
 
-	if at := index(sectionCode); at >= 0 {
-		if sections[at].payload, err = instrumentCode(sections[at].payload, haltIndex); err != nil {
-			return nil, fmt.Errorf("code section: %w", err)
-		}
+	codeAt = index(sectionCode)
+	if sections[codeAt].payload, err = instrumentCode(sections[codeAt].payload, haltPoll{halt: haltIndex, tick: tickIndex, call: pollIndex}); err != nil {
+		return nil, fmt.Errorf("code section: %w", err)
 	}
 
 	out := append([]byte{}, wasm[:8]...)
@@ -119,37 +163,77 @@ func instrumentHalt(wasm []byte) ([]byte, error) {
 	return out, nil
 }
 
-// countGlobalImports counts the global imports of an import section; they precede the module's own globals in the
-// global index space.
-func countGlobalImports(payload []byte) (uint32, error) {
+// haltPoll holds the indices the loop check and the poll function refer to.
+type haltPoll struct{ halt, tick, call uint32 }
+
+// mutableI32Global encodes a mutable i32 global initialised to value.
+func mutableI32Global(value int32) []byte {
+	return appendI32(append([]byte{}, 0x7f, 0x01, 0x41), value, 0x0b)
+}
+
+// appendI32 appends value as a signed LEB128 followed by tail.
+func appendI32(b []byte, value int32, tail ...byte) []byte {
+	for {
+		c := byte(value & 0x7f)
+		value >>= 7
+		if (value == 0 && c&0x40 == 0) || (value == -1 && c&0x40 != 0) {
+			return append(append(b, c), tail...)
+		}
+		b = append(b, c|0x80)
+	}
+}
+
+// insertSectionBefore puts s right before the first section with id before, or at the end.
+func insertSectionBefore(sections []wasmSection, s wasmSection, before byte) []wasmSection {
+	at := len(sections)
+	for i, o := range sections {
+		if o.id == before {
+			at = i
+			break
+		}
+	}
+	sections = append(sections, wasmSection{})
+	copy(sections[at+1:], sections[at:])
+	sections[at] = s
+	return sections
+}
+
+// importCounts counts the imports of each kind the rewrite must index past: imports precede the module's own
+// functions and globals in their index spaces.
+type importCounts struct{ functions, memories, globals uint32 }
+
+// countImports counts the imports of an import section.
+func countImports(payload []byte) (importCounts, error) {
+	var counts importCounts
 	count, pos, err := readU32(payload, 0)
 	if err != nil {
-		return 0, err
+		return counts, err
 	}
-	var globals uint32
 	for range count {
 		// module name, field name, then the kind and its descriptor
 		for range 2 {
 			n, next, err := readU32(payload, pos)
 			if err != nil {
-				return 0, err
+				return counts, err
 			}
 			pos = next + int(n)
 		}
 		if pos >= len(payload) {
-			return 0, errors.New("truncated import")
+			return counts, errors.New("truncated import")
 		}
 		kind := payload[pos]
 		pos++
 		switch kind {
 		case 0: // function: type index
+			counts.functions++
 			_, pos, err = readU32(payload, pos)
 		case 1: // table: reference type, limits
 			pos, err = skipLimits(payload, pos+1)
 		case 2: // memory: limits
+			counts.memories++
 			pos, err = skipLimits(payload, pos)
 		case 3: // global: value type, mutability
-			globals++
+			counts.globals++
 			pos += 2
 		case 4: // tag: attribute, type index
 			_, pos, err = readU32(payload, pos+1)
@@ -157,10 +241,10 @@ func countGlobalImports(payload []byte) (uint32, error) {
 			err = fmt.Errorf("unknown import kind %#x", kind)
 		}
 		if err != nil {
-			return 0, err
+			return counts, err
 		}
 	}
-	return globals, nil
+	return counts, nil
 }
 
 // skipLimits returns the position after a limits record: flags, minimum and, when flag bit 0 is set, maximum.
@@ -178,14 +262,32 @@ func skipLimits(b []byte, pos int) (int, error) {
 	return pos, err
 }
 
-// instrumentCode inserts the halt check after every loop header of a code section.
-func instrumentCode(payload []byte, haltIndex uint32) ([]byte, error) {
+// instrumentCode inserts the halt poll after every loop header of a code section and appends the poll function.
+func instrumentCode(payload []byte, poll haltPoll) ([]byte, error) {
 	count, pos, err := readU32(payload, 0)
 	if err != nil {
 		return nil, err
 	}
-	check := append(append([]byte{0x23}, appendU32(nil, haltIndex)...), 0x04, 0x40, 0x00, 0x0b)
-	out := appendU32(make([]byte, 0, len(payload)+len(payload)/16), count)
+	// global.get tick; i32.const 1; i32.sub; global.set tick; global.get tick; i32.eqz; if; call poll; end
+	check := []byte{0x23}
+	check = appendU32(check, poll.tick)
+	check = append(check, 0x41, 0x01, 0x6b, 0x24)
+	check = appendU32(check, poll.tick)
+	check = append(check, 0x23)
+	check = appendU32(check, poll.tick)
+	check = append(check, 0x45, 0x04, 0x40, 0x10)
+	check = appendU32(check, poll.call)
+	check = append(check, 0x0b)
+
+	// The poll function: reset the tick, memory.grow 0 (an exit into Go), then trap if the halt global is set.
+	body := []byte{0x00, 0x41}
+	body = appendI32(body, haltPollInterval, 0x24)
+	body = appendU32(body, poll.tick)
+	body = append(body, 0x41, 0x00, 0x40, 0x00, 0x1a, 0x23)
+	body = appendU32(body, poll.halt)
+	body = append(body, 0x04, 0x40, 0x00, 0x0b, 0x0b)
+
+	out := appendU32(make([]byte, 0, len(payload)+len(payload)/8), count+1)
 	for i := range count {
 		size, bodyAt, err := readU32(payload, pos)
 		if err != nil {
@@ -194,18 +296,19 @@ func instrumentCode(payload []byte, haltIndex uint32) ([]byte, error) {
 		if uint64(bodyAt)+uint64(size) > uint64(len(payload)) {
 			return nil, fmt.Errorf("function %d extends past the section", i)
 		}
-		body, err := instrumentBody(payload[bodyAt:bodyAt+int(size)], check)
+		instrumented, err := instrumentBody(payload[bodyAt:bodyAt+int(size)], check)
 		if err != nil {
 			return nil, fmt.Errorf("function %d: %w", i, err)
 		}
-		out = appendU32(out, uint32(len(body)))
-		out = append(out, body...)
+		out = appendU32(out, uint32(len(instrumented)))
+		out = append(out, instrumented...)
 		pos = bodyAt + int(size)
 	}
 	if pos != len(payload) {
 		return nil, errors.New("bytes after the last function")
 	}
-	return out, nil
+	out = appendU32(out, uint32(len(body)))
+	return append(out, body...), nil
 }
 
 // instrumentBody copies one function body, inserting check after each loop opcode and its block type.

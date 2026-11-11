@@ -1,0 +1,27 @@
+{
+	"source": "durable/contract/scenarios/gated-ticks.mjs",
+	"pin": "b556cfe5b0300a91f39c7bc5369a65a25fb7fcd5",
+	"profiles": {
+		"gate": {
+			"runtime.commit (async, no writes)": 16,
+			"runtime.commit (sync, no writes)": 16,
+			"runtime.commit (entry)": 51,
+			"runtime.commit (child task)": 61,
+			"runtime.commit (next state)": 45
+		},
+		"gate-capsql": {
+			"runtime.commit (async, no writes)": 16,
+			"runtime.commit (sync, no writes)": 16,
+			"runtime.commit (entry)": 47,
+			"runtime.commit (child task)": 57,
+			"runtime.commit (next state)": 43
+		},
+		"node": {
+			"runtime.commit (async, no writes)": 16,
+			"runtime.commit (sync, no writes)": 16,
+			"runtime.commit (entry)": 48,
+			"runtime.commit (child task)": 58,
+			"runtime.commit (next state)": 44
+		}
+	}
+}

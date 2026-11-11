@@ -1,5 +1,7 @@
 package tools
 
+// pi: packages/coding-agent/src/core/tools/grep.ts
+
 import (
 	"bytes"
 	"context"

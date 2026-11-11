@@ -129,7 +129,9 @@ func describeFields(schema json.RawMessage, depth int) (string, bool) {
 			optional = ""
 		}
 		field := name + optional
-		if depth > 0 {
+		if constValue, ok := constOf(values[i]); ok {
+			field = strings.Join([]string{field, constValue}, ": ")
+		} else if depth > 0 {
 			if nested, ok := describeFields(values[i], depth-1); ok {
 				field = strings.Join([]string{field, nested}, ": ")
 			}
@@ -139,11 +141,28 @@ func describeFields(schema json.RawMessage, depth int) (string, bool) {
 	return "{ " + strings.Join(fields, ", ") + " }", true
 }
 
+// constOf is the JSON text of a field schema's `const`, which describeFields shows in place of the field's fields:
+// `{ action: "start", id }`. It reports false for a schema without `const`.
+func constOf(schema json.RawMessage) (string, bool) {
+	object := objectOf(schema)
+	if object == nil {
+		return "", false
+	}
+	value, ok := object.Get("const")
+	if !ok {
+		return "", false
+	}
+	// objectOf canonicalizes its input, so the member is already JSON.stringify of the parsed value.
+	return string(value), true
+}
+
 // describeOutput is what a script call resolves to, in one line: `a string`, the field names of an object (see
-// describeFields), or the rendered type for anything else.
+// describeFields), the field names of each object in a union (see describeUnionFields), the rendered type when it fits on one
+// line, or a pointer to describeTool() for anything longer. The full type of a large schema would otherwise be sent with every
+// request (#11501).
 //
 // Ports packages/coding-agent/src/extensions/codemode/tool.ts (describeOutput).
-func describeOutput(schema json.RawMessage) (string, error) {
+func describeOutput(name string, schema json.RawMessage) (string, error) {
 	rendered, err := sandbox.RenderToolOutputType(schema)
 	if err != nil {
 		return "", err
@@ -151,21 +170,57 @@ func describeOutput(schema json.RawMessage) (string, error) {
 	if rendered == "string" {
 		return "a string", nil
 	}
-	if fields, ok := describeFields(schema, 1); ok {
+	fields, ok := describeFields(schema, 1)
+	if !ok {
+		fields, ok = describeUnionFields(schema)
+	}
+	if ok {
 		return "`" + fields + "`", nil
 	}
-	return "`" + jsWhitespace.ReplaceAllString(rendered, " ") + "`", nil
+	if !strings.Contains(rendered, "\n") {
+		return "`" + rendered + "`", nil
+	}
+	quoted, err := jsstring.MarshalJSON(name)
+	if err != nil {
+		return "", err
+	}
+	return "a value; `await describeTool(" + string(quoted) + ")` shows its type", nil
 }
 
-// jsWhitespace is JavaScript's `\s+`.
-var jsWhitespace = lazyregexp.New(`[\t\n\v\f\r \x{a0}\x{1680}\x{2000}-\x{200a}\x{2028}\x{2029}\x{202f}\x{205f}\x{3000}\x{feff}]+`)
+// describeUnionFields is the field names of each variant of an `anyOf`/`oneOf` whose variants are all objects, joined by ` | `.
+// It reports false for other schemas.
+//
+// Ports packages/coding-agent/src/extensions/codemode/tool.ts (describeUnionFields).
+func describeUnionFields(schema json.RawMessage) (string, bool) {
+	object := objectOf(schema)
+	if object == nil {
+		return "", false
+	}
+	variants, ok := object.Get("anyOf")
+	if !ok || variants == nil {
+		variants, ok = object.Get("oneOf")
+	}
+	var values []json.RawMessage
+	if !ok || jsonKind(variants) != '[' || json.Unmarshal(variants, &values) != nil || len(values) == 0 {
+		return "", false
+	}
+	described := make([]string, len(values))
+	for i, variant := range values {
+		fields, ok := describeFields(variant, 0)
+		if !ok {
+			return "", false
+		}
+		described[i] = fields
+	}
+	return strings.Join(described, " | "), true
+}
 
 // describeScriptCall is a declared tool's description followed by how scripts call it and what the call resolves to.
 // The arguments are the tool's declared parameters, so they are not repeated.
 //
 // Ports packages/coding-agent/src/extensions/codemode/tool.ts (describeScriptCall).
 func describeScriptCall(tool extension.AgentTool) (string, error) {
-	output, err := describeOutput(toDeclaration(tool, nil).OutputSchema)
+	output, err := describeOutput(tool.Name, toDeclaration(tool, nil).OutputSchema)
 	if err != nil {
 		return "", err
 	}

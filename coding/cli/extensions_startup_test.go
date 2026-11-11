@@ -111,7 +111,9 @@ export default function(pi) {
 				}
 				pid, err := strconv.Atoi(string(pidBytes))
 				if err != nil {
-					t.Fatal(err)
+					// The factory writes the pid before its marker line, so an unparsable pid file after the marker was read is unexplained: keep what a later sighting needs.
+					markerNow, _ := os.ReadFile(marker)
+					t.Fatalf("pid file %q: %v\nmarker when first read: %q\nmarker now: %q\nrun output:\n%s", pidBytes, err, observed, markerNow, output)
 				}
 				// The entrypoint SIGKILLs its extension processes and exits without waiting for them. Wait for the exit itself: the process may still be dying because the kernel has not yet run it, or be a zombie its new parent has not reaped; both are gone for the user.
 				if err := waitProcessExit(testbudget.Context(t), pid); err != nil {

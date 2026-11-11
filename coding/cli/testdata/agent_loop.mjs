@@ -5,7 +5,8 @@ const root = realpathSync(new URL("../../../extensions/sdk-ts/node_modules/@eare
 if (JSON.parse(readFileSync(root + "package.json", "utf8")).version !== process.argv[2]) throw new Error("Wrong Pi oracle version");
 const modules = root + "node_modules/@earendil-works/";
 const { agentLoop } = await import(pathToFileURL(modules + "pi-agent-core/dist/index.js"));
-const { Type } = await import(pathToFileURL(modules + "pi-ai/dist/index.js"));
+// pi-ai's main entry no longer exports TypeBox's Type; extensions get the coding agent's own TypeBox, resolved from its package.
+const { Type } = await import(pathToFileURL(root + "node_modules/typebox/build/index.mjs"));
 const { toJsonEvent } = await import(pathToFileURL(root + "dist/modes/json-event.js"));
 const { createAssistantMessageEventStream } = await import(pathToFileURL(modules + "pi-ai/dist/utils/event-stream.js"));
 let input = "";

@@ -14,6 +14,8 @@ export type ContextSummary = {
   system: readonly unknown[]
   /** compaction.ts estimateContext(view, []): the usage of the newest measured assistant message plus estimates of the messages after it. */
   tokens: number
+  /** Whether the model owes an answer to the context: its last message that is not a system message is a user message or tool results. */
+  owes: boolean
 }
 
 /** compaction.ts estimateContext without extra messages. */
@@ -63,6 +65,12 @@ export const CONTEXT_RELEASE = "SELECT pig_context_release(?)"
 
 const enc = new TextEncoder()
 
+/** Whether the model owes an answer to the messages: the last one that is not a system message is a user message or tool results (generation.ts prepare). */
+function owesAnswer(messages: readonly { readonly role: string }[]): boolean {
+  const last = messages.findLast((message) => message.role !== "system")
+  return last?.role === "user" || last?.role === "toolResult"
+}
+
 /** The rows of a context read, or undefined when `text` is not one. Parameters are those of store/lazy.go SQLContextSummary, SQLContextMessages and SQLContextRelease. */
 export function answerContextRead(contexts: ContextReader, text: string, params: readonly (null | number | string | Uint8Array)[]): unknown[][] | undefined {
   const n = (i: number) => params[i] as number
@@ -84,6 +92,7 @@ export function answerContextRead(contexts: ContextReader, text: string, params:
         ...(view.head === undefined ? {} : { entries: view.entries.map((entry): [number, string] => [entry.id, entry.kind]) }),
         system: view.messages.filter((message) => message.role === "system"),
         tokens: n(4) === 1 ? estimateContext(view as unknown as Parameters<typeof estimateContext>[0]) : 0,
+        owes: owesAnswer(view.messages),
       }
       return [[enc.encode(JSON.stringify(summary))]]
     }

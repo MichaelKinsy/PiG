@@ -7,7 +7,7 @@
 //
 //	{"id":1,"op":"open","path":"/x/store.sqlite"}     the file pi-durable already created (schema, metadata); cold-opens the store
 //	{"id":2,"op":"mint"}                              -> {"id":2,"ok":<id>}
-//	{"id":3,"op":"commit","writes":[StorageWrite...]} -> {"id":3,"ok":<seq>}
+//	{"id":3,"op":"commit","batches":[[StorageWrite...]...]} -> {"id":3,"ok":{"seqs":[<seq>...],"refused":{"name","message"}?}}
 //	{"id":4,"op":"close"}                             checkpoints the WAL and exits
 //
 // A failure answers {"id":n,"error":{"name":"Error","message":...}}, with the message SqliteStorage would throw.
@@ -81,7 +81,7 @@ func (s *server) handle(line []byte) (reply string, done bool) {
 		}
 		result = float64(s.st.MintID())
 	case "commit":
-		result, err = s.commit(get(req, "writes").([]any))
+		result, err = s.commit(get(req, "batches").([]any))
 	case "close":
 		if s.h != nil {
 			err = s.h.Close()
@@ -123,33 +123,123 @@ func (s *server) open(path string) (any, error) {
 	return nil, nil
 }
 
-// commit stages one StorageWrite batch in the order the suite gives it and commits it.
-func (s *server) commit(writes []any) (any, error) {
-	if err := s.checkIDs(writes); err != nil {
-		return nil, err
+// commit is Storage.commit(batches): each batch one commit with its own seq, checked against the state the earlier ones left, all of them one
+// transaction for the host (the commits are joined, ABI section 4.4). It stops at the first batch the ID checks refuse; the batches before it are
+// durable, and the answer carries its refusal.
+func (s *server) commit(batches []any) (any, error) {
+	var refused error
+	claimed := map[int64]string{}
+	stored := batches
+	for i, b := range batches {
+		if err := s.checkBatch(b.([]any), claimed); err != nil {
+			refused, stored = err, batches[:i]
+			break
+		}
 	}
-	var seq int64
+	var seqs []any
 	err := s.h.Run(s.st, func() error {
-		tx := s.st.Begin()
-		for _, w := range writes {
-			if err := stage(tx, w.(*jv.Object)); err != nil {
+		seqs = seqs[:0]
+		for i, b := range stored {
+			tx := s.st.Begin()
+			for _, w := range b.([]any) {
+				if err := stage(tx, w.(*jv.Object)); err != nil {
+					return err
+				}
+			}
+			seq, err := s.st.Commit(s.h.B, tx)
+			if err != nil {
 				return err
 			}
+			if i > 0 {
+				s.h.B.JoinLast()
+			}
+			seqs = append(seqs, float64(seq))
 		}
-		var err error
-		seq, err = s.st.Commit(s.h.B, tx)
-		return err
+		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
-	return float64(seq), nil
+	out := jv.NewObjectCap(2)
+	out.Set("seqs", append([]any(nil), seqs...))
+	if refused != nil {
+		e := jv.NewObjectCap(2)
+		e.Set("name", "Error")
+		e.Set("message", refused.Error())
+		out.Set("refused", e)
+	}
+	return out, nil
+}
+
+// checkBatch is the checks of Storage.commit that need nothing but the batch and the committed record IDs: the global IDs
+// (checkIDs) and the document actions of the batch (checkDocuments).
+func (s *server) checkBatch(writes []any, claimed map[int64]string) error {
+	if err := s.checkIDs(writes, claimed); err != nil {
+		return err
+	}
+	return checkDocuments(writes)
+}
+
+// checkDocuments is prepareDocumentActions and the copy rule of checkDocumentActions (storage.ts): a document has one
+// content command and one retire in a batch, and a copy's source is not touched by the batch that copies it.
+func checkDocuments(writes []any) error {
+	type action struct {
+		content, retire bool
+		source          int64 // the copied document, when the batch copies it
+	}
+	actions := map[int64]*action{}
+	var order []int64
+	for _, item := range writes {
+		w := item.(*jv.Object)
+		kind := get(w, "type").(string)
+		var rid int64
+		switch kind {
+		case "document.create", "document.copy":
+			rid = id(get(get(w, "record").(*jv.Object), "id"))
+		case "document.change", "document.retire":
+			rid = id(get(w, "id"))
+		default:
+			continue
+		}
+		a := actions[rid]
+		if a == nil {
+			a = &action{}
+			actions[rid] = a
+			order = append(order, rid)
+		}
+		switch kind {
+		case "document.create", "document.copy":
+			if a.content {
+				return errors.New("Document " + strconv.FormatInt(rid, 10) + " has more than one content command")
+			}
+			a.content = true
+			if kind == "document.copy" {
+				a.source = id(get(get(w, "source").(*jv.Object), "id"))
+			}
+		case "document.change":
+			if a.content {
+				return errors.New("Document " + strconv.FormatInt(rid, 10) + " has more than one content command")
+			}
+			a.content = true
+		case "document.retire":
+			if a.retire {
+				return errors.New("Document " + strconv.FormatInt(rid, 10) + " is retired more than once")
+			}
+			a.retire = true
+		}
+	}
+	for _, rid := range order {
+		if source := actions[rid].source; source != 0 && actions[source] != nil {
+			return errors.New("Document copy " + strconv.FormatInt(rid, 10) + " source is changed in the copy batch")
+		}
+	}
+	return nil
 }
 
 // checkIDs is checkGlobalIds (storage.ts) against the committed record_ids: one namespace for every record. The core
 // mints its own IDs, so its write encoder never reads that table; the suite writes explicit IDs. A conversation, entry
 // or document ID must be new; a task or submission ID may repeat its own type.
-func (s *server) checkIDs(writes []any) error {
+func (s *server) checkIDs(writes []any, claimed map[int64]string) error {
 	for _, item := range writes {
 		w := item.(*jv.Object)
 		kind := get(w, "type").(string)
@@ -166,10 +256,14 @@ func (s *server) checkIDs(writes []any) error {
 		if err != nil {
 			return err
 		}
+		if earlier := claimed[id(rid)]; known == "" {
+			known = earlier
+		}
 		own, _, _ := strings.Cut(kind, ".")
 		if known != "" && (own != "task" && own != "submission" || known != own) {
 			return errors.New("ID " + strconv.FormatInt(id(rid), 10) + " already belongs to " + known)
 		}
+		claimed[id(rid)] = own
 	}
 	return nil
 }

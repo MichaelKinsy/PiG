@@ -38,7 +38,7 @@ export class UserMessageComponent extends Container {
         }, {
             preserveOrderedListMarkers: true,
             preserveBackslashEscapes: true,
-            transform: createMarkdownTransform("user", false, this.markdownTransformers, this.messageId, this.timestamp),
+            transform: createMarkdownTransform("user", () => false, this.markdownTransformers, this.messageId, this.timestamp),
         }));
     }
     render(width) {

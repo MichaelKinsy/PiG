@@ -321,9 +321,9 @@ func TestCoreTaskReadsCommittedDocumentsAndContextThroughTheRuntimeAndForwardsCl
 	var reports []string
 	h, root := openTasksWith(t, harness.HarnessOptions{
 		Now: func() float64 { return 1234 },
-		OnReport: func(err error, _ durable.ReportInfo) {
+		OnReport: func(report durable.Report) {
 			reportsMu.Lock()
-			reports = append(reports, err.Error())
+			reports = append(reports, report.Error.Error())
 			reportsMu.Unlock()
 		},
 	}, reader.Erased())
@@ -600,7 +600,7 @@ func TestCoreCloseSealsAdmissionBeforeSignallingHandlersAndStopsWatchesBeforeJoi
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	if watchEnd.Reason != durable.WatchEnded {
+	if watchEnd.Kind != durable.WatchEnded {
 		t.Fatalf("watch ended %+v, want ended", watchEnd)
 	}
 }

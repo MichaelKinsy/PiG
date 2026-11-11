@@ -10,9 +10,9 @@ import (
 	sdk "github.com/MichaelKinsy/PiG/extensions/sdk"
 )
 
-// The tool "refine-probe" (TestConformance_RefinedToolArgumentsAgreeAcrossSDKs): a refined string, an optional refined integer, a union whose branches are refined strings, an optional
-// string that throws, and a refined root, the schema of the "probe" cases of test/parity/sdk-vectors/pi-ai/validateToolArguments.json. Every predicate and message function logs its call
-// ("check:len", "error:lenmsg") so the test can compare the order of the calls with Pi's. The command refine_log reports and clears the log.
+// The tool "refine-probe" (TestConformance_RefinedToolArgumentsAreNotRefined): a refined string, an optional refined integer, a union whose branches are refined strings, an optional
+// string that throws, and a refined root. Pi (1.4.0+b556cfe5) never runs a refinement while it validates a tool's arguments, so every predicate and message function logs its call
+// ("check:len", "error:lenmsg") and the test asserts the log stays empty. The command refine_log reports and clears the log.
 var (
 	refineLogMu sync.Mutex
 	refineLog   []string

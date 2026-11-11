@@ -27,6 +27,7 @@ var vectorTestDirs = map[string]struct {
 	"go":     {"extensions/sdk", func(p string) bool { return strings.HasSuffix(p, "_test.go") }},
 	"rust":   {"extensions/sdk-rs", func(p string) bool { return strings.HasSuffix(p, ".rs") && strings.Contains(p, "test") }},
 	"python": {"extensions/sdk-py/tests", func(p string) bool { return strings.HasSuffix(p, ".py") }},
+	"lisp":   {"extensions/sdk-lisp/tests", func(p string) bool { return strings.HasSuffix(p, ".lisp") }},
 }
 
 // loadVectorCorpus concatenates the SDK's test files that read Pi-generated

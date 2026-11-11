@@ -365,7 +365,7 @@ func TestSessionDocumentMigrations(t *testing.T) {
 		// An observer of the older shape.
 		watch := watchDoc(t, harness, ctx, old)
 		frames := &watchRecorder{}
-		watch.Start(func(_ context.Context, change durable.WatchChange[obj]) error {
+		watch.Start(func(_ context.Context, change durable.WatchCall[obj]) error {
 			value, ops := change.Value, change.Ops
 			frames.record(value, ops)
 			return nil
@@ -375,7 +375,7 @@ func TestSessionDocumentMigrations(t *testing.T) {
 		// An observer of the new shape: the migration changes nothing it sees.
 		currentWatch := watchDoc(t, harness, ctx, current)
 		currentFrames := &watchRecorder{}
-		currentWatch.Start(func(_ context.Context, change durable.WatchChange[obj]) error {
+		currentWatch.Start(func(_ context.Context, change durable.WatchCall[obj]) error {
 			value, ops := change.Value, change.Ops
 			currentFrames.record(value, ops)
 			return nil
@@ -392,7 +392,7 @@ func TestSessionDocumentMigrations(t *testing.T) {
 		}
 		// The migration-only base is published, so the older-shape watch receives the new value as a root replacement.
 		documents := sessiontest.DocumentChanges(harness.Publications.Last())
-		if len(documents) != 1 || *documents[0].Version != 3 || len(documents[0].Ops) != 0 {
+		if len(documents) != 1 || documents[0].Version != 3 || len(documents[0].Ops) != 0 {
 			t.Fatal("one migration-only publication")
 		}
 		expectEqual(t, documents[0].Value, delta.JsonObjectOf("count", 4))
@@ -698,7 +698,7 @@ func TestSessionTrackerCacheAcrossDefinitionVersions(t *testing.T) {
 		touch(t, harness, cacheV1Doc)
 		watch := watchDoc(t, harness, ctx, cacheV1Doc)
 		delivered := make(chan []durable.Op, 1)
-		watch.Start(func(_ context.Context, change durable.WatchChange[obj]) error {
+		watch.Start(func(_ context.Context, change durable.WatchCall[obj]) error {
 			ops := change.Ops
 			delivered <- ops
 			return nil

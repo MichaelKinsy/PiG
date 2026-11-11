@@ -1,6 +1,6 @@
 # Command line
 
-This page lists the `pig` command-line verbs and subcommands, and the `pig docs` commands for the embedded reference bundle. [Command line by example](/docs/latest/cli-examples) runs the common ones and shows their output. PiG follows the command line of Pi 1.4.0 ([Pi's command line reference](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/cli.md)). Run `pig --help` or append `--help` to a command for the exact interface of the installed binary.
+This page lists the `pig` command-line verbs and subcommands, and the `pig docs` commands for the embedded reference bundle. [Command line by example](/docs/latest/cli-examples) runs the common ones and shows their output. PiG follows the command line of Pi 1.5.0 ([Pi's command line reference](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/cli.md)). Run `pig --help` or append `--help` to a command for the exact interface of the installed binary.
 
 ## CLI verbs
 
@@ -11,7 +11,7 @@ pig [options] [prompt]
 | Verb | Purpose |
 |---|---|
 | `pig` | Start interactive TUI in current directory. |
-| `pig --print <prompt>`, `pig -p <prompt>` | One-shot: send prompt, print response, exit. When the model stops at its output token limit, PiG prints the partial text, writes `Response was truncated: the model reached its output token limit.` to stderr and exits 1. Pi 1.4.0 added this; Pi 1.1.0 exited 0 without a warning. |
+| `pig --print <prompt>`, `pig -p <prompt>` | One-shot: send prompt, print response, exit. When the model stops at its output token limit, PiG prints the partial text, writes `Response was truncated: the model reached its output token limit.` to stderr and exits 1. Pi 1.2.0 added this; Pi 1.1.0 exited 0 without a warning. |
 | `pig --mode json <prompt>` | One-shot: write JSONL events to stdout, then exit. See [JSON event stream](json.md). |
 | `pig --model <provider/model>` | Override model for this run. |
 | `pig -e <path>` (repeatable) | Load an extension file or directory, or a built-in extension such as `builtin:mcp`. |
@@ -39,8 +39,9 @@ Product distributions may contribute additional top-level or nested command path
 | `pig remove <source> [-l]` | Remove a package from settings. `pig uninstall` is an alias. |
 | `pig update [self\|pig\|<source>] [--self\|--extensions\|--models\|--all] [--extension <source>] [--force]` | Bare `pig update` updates the pig binary, as `pi update` does. `<source>` (or `--extension <source>`) updates one package, `--extensions` updates every package, `--models` refreshes the model catalogs, and `--all` updates packages and then pig. `--force` reinstalls pig even when it is the latest version. |
 | `pig install <path> --validate-only [--json]` | Validate without installing; emits structured diagnostics. |
+| `pig install --validate-only [--json]` | With no source, check that every configured local Package path resolves; exit 1 and name each missing one (D216). |
 | `pig install --validate-only --set "<p1>,<p2>"` | Validate a piglet-style extension set. |
-| `pig extension init <path> [--name <matching-name>] [--lang go\|python\|rust] [--login] [--isolated] [--force] [--json]` | Scaffold an extension that resolves the staged SDK offline (Go default). `--login` scaffolds a Go login factory with standard PiG art. |
+| `pig extension init <path> [--name <matching-name>] [--lang go\|python\|rust\|lisp] [--login] [--isolated] [--force] [--json]` | Scaffold an extension that resolves the staged SDK offline (Go default). `--login` scaffolds a Go login factory with standard PiG art. |
 | `pig extension upgrade [<name\|path>...] [--all] [--dry-run] [--summary]` | Rewrite Go extensions written for an older SDK with the SDK's tested rules: back up, show a diff, rebuild, report per extension (D109). See [Upgrade a Go extension](extensions.md#upgrade-a-go-extension-written-for-an-older-sdk). |
 | `pig extension preview-login <path>` | Start exactly one extension and render the login set during `session_start`; no model session starts. |
 | `pig extensions cache stats [--json]` | Inspect extension and runtime-cell cache classifications without changing use metadata. |
@@ -51,7 +52,7 @@ Product distributions may contribute additional top-level or nested command path
 | `pig package list [--json]` | Inspect configured Package state without starting runtimes. |
 | `pig package validate <dir> [--json]` | Validate ordinary Package source and Resource membership without installing. |
 | `pig package publish [<dir>] --to npm [--yes] [--tag <dist-tag>] [--access public\|restricted] [--otp <code>]` | Optional sugar over `npm publish` for a Package: validate it, check the catalog fields and that `name@version` is free, show npm's dry run, and publish only with `--yes`. PiG never handles an npm token. |
-| `pig status [--json]` | Side-effect-free Package/Resource/Piglet health and canonical path overview; invalid state exits non-zero. |
+| `pig status [--json]` | Side-effect-free Package/Resource/Piglet health and canonical path overview; invalid state exits non-zero. It shows the project trust decision, marks resources that a run ignores (`ignored: untrusted` or `ignored: piglet-discovery`), and gives a skill or theme that the loader rejects a `health` text and `enabled: false`. |
 | `pig login --list [--json]` | List generic built-in and contributed authentication targets without reading credentials. |
 | `pig piglet list\|show\|validate\|schema\|add\|pull\|update\|publish\|remove\|prune\|build\|keygen\|verify\|tree\|lineage\|trust` | Current Piglet source, signed release distribution, inspection, build, and Binary-signing surface (D18). Owned verbs use full words. |
 | `pig piglet build <name> --format script --out <path\|->` | Write an explicit source-bound entry script: a POSIX shell script, or a cmd.exe batch file on Windows (D69). Creates no PiG state or records. |
@@ -70,7 +71,7 @@ Product distributions may contribute additional top-level or nested command path
 | `pig mcp add\|remove\|list\|login\|logout` | Configure and check MCP servers without starting a session. See [MCP servers](mcp.md#mcp-commands). |
 | `pig docs [sync\|path\|list\|show <name>]` | Materialize and read the documentation bundled with Stock PiG. |
 
-`pig install` accepts one source. Missing sources and unknown options show the ordinary single-source usage. Use `pig install --help` for the separate multi-source `--validate-only` forms (D28).
+`pig install` accepts one source. Missing sources and unknown options show the ordinary single-source usage, except that `--validate-only` with no source checks the configured local Packages (D216). Use `pig install --help` for the separate multi-source `--validate-only` forms (D28).
 
 ## Options
 
@@ -82,10 +83,10 @@ These options apply to `pig [options] [prompt]`. Run `pig --help` for the full l
 | `--thinking <level>` | Set the thinking level: `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, or `max`. |
 | `--system-prompt <text>` | Replace the system prompt. |
 | `--append-system-prompt <text>` | Append text or a file's contents to the system prompt. Repeat it to append more. |
-| `--continue`, `-c` | Continue the previous session. |
-| `--resume`, `-r` | Select a session to resume. |
-| `--session <path\|id>` | Use a session file or a partial session UUID. |
-| `--fork <path\|id>` | Fork a session file or partial UUID into a new session. |
+| `--continue`, `-c` | Continue the most recent session for the current directory. |
+| `--resume`, `-r` | Pick a session to resume. |
+| `--session <path\|id>` | Open a session by file path or full/partial ID. |
+| `--fork <path\|id>` | Fork a session by file path or full/partial ID into the current directory. |
 | `--session-dir <dir>` | Directory for session storage and lookup. |
 | `--no-session` | Do not save the session. |
 | `--listen <path>` | Serve one RPC session per connection on the Unix socket at path; requires `--mode rpc` (D205). Every session's instance of an extension runs in one process per extension, so module-level state is shared between sessions; exact standalone extensions and quarantined cells keep their own process. |
@@ -105,8 +106,8 @@ These options apply to `pig [options] [prompt]`. Run `pig --help` for the full l
 | `--approve`, `-a` | Trust project-local files for this run. |
 | `--no-approve`, `-na` | Ignore project-local files for this run. |
 | `--offline` | Turn off startup network operations, as `PI_OFFLINE=1` does. |
-| `--no-stdin` | Ignore piped stdin. Use it when the process that starts PiG leaves the stdin pipe open and never closes it. Without it, PiG waits for end of input, as Pi does. Pi 1.4.0 has no such option and treats `--no-stdin` as an unknown extension flag (D150, [Pi #10415](https://github.com/earendil-works/pi/issues/10415)). |
-| `--piglet <name\|path>` | Run a named Piglet or the Piglet file at a path. A Piglet Binary refuses it unless its Piglet set `build.allowOverlays`, which lays the selected Piglet over the Binary's own ([Accept overlay Piglets](/docs/latest/piglet-binaries#accept-overlay-piglets)). See [Piglets](/docs/latest/piglets). |
+| `--no-stdin` | Ignore piped stdin. Use it when the process that starts PiG leaves the stdin pipe open and never closes it. Without it, PiG waits for end of input, as Pi does. Pi 1.5.0 has no such option and treats `--no-stdin` as an unknown extension flag (D150, [Pi #10415](https://github.com/earendil-works/pi/issues/10415)). |
+| `--piglet <name\|path>` | Run a named Piglet or the Piglet file at a path. A Piglet Binary lays the selected Piglet over its own, unless it was built with `build.closed: true`, which makes it refuse the option ([Accept overlay Piglets](/docs/latest/piglet-binaries#accept-overlay-piglets)). See [Piglets](/docs/latest/piglets). |
 
 Extensions can register their own options, such as `--plan` from a plan-mode extension.
 
@@ -173,6 +174,18 @@ To keep the default set without one tool, exclude it:
 ```bash
 pig --exclude-tools bash
 ```
+
+## Custom update command
+
+When a wrapper or another package manager provides PiG, set `PI_SELF_UPDATE_COMMAND` (or `PIG_SELF_UPDATE_COMMAND`) so `pig update` runs its update command:
+
+```sh
+export PI_SELF_UPDATE_COMMAND="mise use -g npm:{packageName}@{version}"
+```
+
+`pig update` checks the signed release manifest first and runs the command only when the release is newer (or with `--force`), after printing the release note. `{packageName}`, `{version}` and `{installSpec}` (`{packageName}@{version}`) come from that release. The value is split on whitespace. For arguments with spaces, use the `selfUpdateCommand` setting in `~/.pig/agent/settings.json`, an argv array such as `["nix", "profile", "upgrade", "pig"]`. A project's settings file is never read for it.
+
+The configured command is your explicit choice of the one owner of the update. It replaces PiG's own tier selection (standalone replace, package manager, immutable Piglet Binary, container image) and never falls through to one of them. Without an update source there is no release to fill the placeholders from, so the command does not run. Exit code 0 does not prove an update: `pig update` prints `Updated pig from X to Y` when `pig --version` reports Y (from the replaced executable, else from `PATH`), and otherwise warns with the version it found.
 
 ## `pig docs`
 

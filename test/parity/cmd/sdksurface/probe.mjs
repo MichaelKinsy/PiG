@@ -95,7 +95,9 @@ function jsFiles(dir) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const path = join(dir, entry.name);
     if (entry.isDirectory()) files.push(...jsFiles(path));
-    else if (entry.name.endsWith(".js")) files.push(path);
+    // cli.js files are bin entries that run on import (the harness entry exits
+    // without PIG_HARNESS_BINARY; pi-ai's prints usage); they export nothing.
+    else if (entry.name.endsWith(".js") && entry.name !== "cli.js") files.push(path);
   }
   return files;
 }

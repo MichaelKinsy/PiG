@@ -36,17 +36,31 @@ struct Host {
 
 impl Host {
     fn start(ext: Extension) -> Host {
-        let root = std::env::temp_dir().join(format!("pig-user-bash-{}-{}", std::process::id(), NEXT.fetch_add(1, Ordering::Relaxed)));
+        let root = std::env::temp_dir().join(format!(
+            "pig-user-bash-{}-{}",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        ));
         std::fs::create_dir(&root).unwrap();
         let socket = root.join("sock");
         let listener = UnixListener::bind(&socket).unwrap();
         let thread = std::thread::spawn(move || ext.run_with_socket(socket.to_str().unwrap()));
         let (mut stream, _) = listener.accept().unwrap();
-        stream.set_read_timeout(Some(Duration::from_secs(10))).unwrap();
+        stream
+            .set_read_timeout(Some(Duration::from_secs(10)))
+            .unwrap();
         let register = read(&mut stream);
         assert_eq!(register["type"], "register");
-        send(&mut stream, &json!({"type":"ready","ready":{"state":{},"width":80,"mode":"tui"}}));
-        Host { stream, thread: Some(thread), root, register }
+        send(
+            &mut stream,
+            &json!({"type":"ready","ready":{"state":{},"width":80,"mode":"tui"}}),
+        );
+        Host {
+            stream,
+            thread: Some(thread),
+            root,
+            register,
+        }
     }
 
     fn next(&mut self) -> Value {
@@ -73,7 +87,10 @@ impl Host {
     }
 
     fn finish(mut self) {
-        send(&mut self.stream, &json!({"type":"shutdown","shutdown":{"reason":"done"}}));
+        send(
+            &mut self.stream,
+            &json!({"type":"shutdown","shutdown":{"reason":"done"}}),
+        );
         self.thread.take().unwrap().join().unwrap().unwrap();
     }
 }
@@ -88,7 +105,16 @@ impl Drop for Host {
     }
 }
 
-fn operations() -> (BashOperations, Arc<Mutex<Option<(Option<f64>, Option<std::collections::HashMap<String, String>>)>>>) {
+type SeenExec = Arc<
+    Mutex<
+        Option<(
+            Option<f64>,
+            Option<std::collections::HashMap<String, String>>,
+        )>,
+    >,
+>;
+
+fn operations() -> (BashOperations, SeenExec) {
     let seen = Arc::new(Mutex::new(None));
     let recorded = seen.clone();
     let operations = BashOperations {
@@ -107,7 +133,12 @@ fn operations() -> (BashOperations, Arc<Mutex<Option<(Option<f64>, Option<std::c
 }
 
 fn exec(host: &mut Host, id: &str, command: &str) -> (Vec<Value>, Value) {
-    host.request(id, "user_bash_exec", "bash-1", json!({"command": command, "cwd": "/w", "timeout": 1.5, "env": {"K": "V"}}));
+    host.request(
+        id,
+        "user_bash_exec",
+        "bash-1",
+        json!({"command": command, "cwd": "/w", "timeout": 1.5, "env": {"K": "V"}}),
+    );
     let mut updates = Vec::new();
     loop {
         let frame = host.next();
@@ -125,26 +156,58 @@ fn operations_stay_in_the_extension_until_the_host_releases_them() {
     let (operations, seen) = operations();
     let mut ext = Extension::new("user-bash");
     let held = Arc::new(Mutex::new(Some(operations)));
-    ext.on_event("user_bash", move |ctx, _data| held.lock().unwrap().take().map(|operations| ctx.bash_operations(operations)));
+    ext.on_event("user_bash", move |ctx, _data| {
+        held.lock()
+            .unwrap()
+            .take()
+            .map(|operations| ctx.bash_operations(operations))
+    });
     let mut host = Host::start(ext);
-    let handler_id = host.register["register"]["handlers"][0]["handler_id"].as_u64().unwrap();
+    let handler_id = host.register["register"]["handlers"][0]["handler_id"]
+        .as_u64()
+        .unwrap();
     send(
         &mut host.stream,
         &json!({"type":"request","id":"u1","request":{"method":"event","event":"user_bash","handler_id":handler_id,"args":{"type":"user_bash","command":"x","excludeFromContext":false,"cwd":"/w"}}}),
     );
     let reply = host.response("u1");
-    assert_eq!(reply["result"], json!({"operations": {"handle": "bash-1"}}), "{reply}");
+    assert_eq!(
+        reply["result"],
+        json!({"operations": {"handle": "bash-1"}}),
+        "{reply}"
+    );
 
     let (updates, answer) = exec(&mut host, "e1", "run");
     assert_eq!(answer["result"], json!({"exitCode": 5}));
-    assert_eq!(updates.iter().map(|update| update["result"]["data"].as_str().unwrap().to_string()).collect::<Vec<_>>(), vec!["b25l", "/wA="]);
+    assert_eq!(
+        updates
+            .iter()
+            .map(|update| update["result"]["data"].as_str().unwrap().to_string())
+            .collect::<Vec<_>>(),
+        vec!["b25l", "/wA="]
+    );
     assert!(updates.iter().all(|update| update["request_id"] == "e1"));
     let (timeout, env) = seen.lock().unwrap().clone().unwrap();
-    assert_eq!((timeout, env.unwrap().get("K").cloned()), (Some(1.5), Some("V".to_string())));
-    assert_eq!(exec(&mut host, "e2", "none").1["result"], json!({"exitCode": null}));
-    assert_eq!(exec(&mut host, "e3", "reject").1["error"]["message"], "rejected: /w");
+    assert_eq!(
+        (timeout, env.unwrap().get("K").cloned()),
+        (Some(1.5), Some("V".to_string()))
+    );
+    assert_eq!(
+        exec(&mut host, "e2", "none").1["result"],
+        json!({"exitCode": null})
+    );
+    assert_eq!(
+        exec(&mut host, "e3", "reject").1["error"]["message"],
+        "rejected: /w"
+    );
 
-    send(&mut host.stream, &json!({"type":"notify","notify":{"method":"bash_operations_release","args":{"handle":"bash-1"}}}));
-    assert_eq!(exec(&mut host, "e4", "run").1["error"]["message"], "unknown bash operations: bash-1");
+    send(
+        &mut host.stream,
+        &json!({"type":"notify","notify":{"method":"bash_operations_release","args":{"handle":"bash-1"}}}),
+    );
+    assert_eq!(
+        exec(&mut host, "e4", "run").1["error"]["message"],
+        "unknown bash operations: bash-1"
+    );
     host.finish();
 }

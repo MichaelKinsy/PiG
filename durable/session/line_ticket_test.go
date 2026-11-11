@@ -42,7 +42,7 @@ func TestReleasedLineTicketStillWaitsForTheJobAheadOfIt(t *testing.T) {
 	inside := make(chan struct{})
 	ahead := make(chan error, 1)
 	go func() {
-		_, err := harness.Session.ReadOnLine(func() (any, error) {
+		_, err := harness.Session.ReadOnLine(func(durable.Storage) (any, error) {
 			close(inside)
 			<-hold
 			released.Store(true)

@@ -410,6 +410,11 @@ func streamSessionFileBatched(path string, batching lineBatching) (*Session, err
 	if restoreErr != nil {
 		return nil, restoreErr
 	}
+	if s.leafID != nil {
+		// Detach the leaf from the field the lines wrote it to: the session keeps no pointer into itself.
+		leaf := *s.leafID
+		s.leafID = &leaf
+	}
 	s.hasConversation = s.stats.stats.UserMessages > 0 || s.stats.stats.AssistantMessages > 0
 	s.path, s.flushed, s.backing, s.snapshot, kept = path, true, path, snapshot, true
 	s.setBranchLocked()
@@ -487,7 +492,7 @@ func forEachPreparedLine(r io.Reader, batching lineBatching, visit func(line []b
 			return true
 		}
 		err := forEachJSONLLineOffset(r, func(line []byte, off int64) error {
-			batch.add(line, off)
+			batch.add(line, off, batching.batchBytes)
 			if len(batch.buf) >= batching.batchBytes && !send() {
 				return errIndexStopped
 			}
@@ -542,7 +547,12 @@ type batchLine struct {
 	off        int64
 }
 
-func (b *lineBatch) add(line []byte, off int64) {
+// add copies line into the batch, which forEachPreparedLine ends once it holds batchBytes, so it is sized for that and the line that crosses it in one allocation
+// rather than grown by doubling, which allocates about three times the bytes a batch holds for every batch not reused.
+func (b *lineBatch) add(line []byte, off int64, batchBytes int) {
+	if cap(b.buf)-len(b.buf) < len(line) {
+		b.buf = slices.Grow(b.buf, max(batchBytes, len(b.buf))+len(line)-len(b.buf))
+	}
 	start := len(b.buf)
 	b.buf = append(b.buf, line...)
 	b.lines = append(b.lines, batchLine{start: start, end: len(b.buf), off: off})
@@ -550,8 +560,16 @@ func (b *lineBatch) add(line []byte, off int64) {
 
 func (b *lineBatch) prepare() {
 	b.prepared = slices.Grow(b.prepared[:0], len(b.lines))[:len(b.lines)]
+	previous := ""
 	for k, line := range b.lines {
-		b.prepared[k] = prepareIndexLine(b.buf[line.start:line.end])
+		p := &b.prepared[k]
+		*p = prepareIndexLineAfter(b.buf[line.start:line.end], previous)
+		switch p.state {
+		case lineMessage:
+			previous = p.base.ID
+		case lineEntry:
+			previous = p.entry.Base().ID
+		}
 	}
 }
 
@@ -561,9 +579,13 @@ func (b *lineBatch) reset() {
 }
 
 // indexLine adds the record of one line after the header as newSessionFromEntries adds a decoded record. A message or custom message is not
-// kept decoded; setBranchLocked reads back the ones the active context needs.
+// kept decoded; setBranchLocked reads back the ones the active context needs. The leaf is the id of the line before it.
 func (s *Session) indexLine(line []byte, off int64) error {
-	prepared := prepareIndexLine(line)
+	previous := ""
+	if s.leafID != nil {
+		previous = *s.leafID
+	}
+	prepared := prepareIndexLineAfter(line, previous)
 	return s.applyIndexLine(&prepared, line, off)
 }
 
@@ -594,15 +616,22 @@ const (
 
 // prepareIndexLine reads what indexing line needs from the line alone. One decode serves the base members and the accounting when both
 // decode; otherwise each decodes on its own, as the full load does.
-func prepareIndexLine(line []byte) preparedLine {
+func prepareIndexLine(line []byte) preparedLine { return prepareIndexLineAfter(line, "") }
+
+// prepareIndexLineAfter is prepareIndexLine for a line that follows the line whose id is previous (see walkIndexProbeAfter).
+func prepareIndexLineAfter(line []byte, previous string) preparedLine {
 	if !jsonvalid.Valid(line) {
 		// JSON.parse throws on the line, so the load skips it.
 		return preparedLine{}
 	}
-	probe, ok := walkIndexProbe(line)
+	probe, ok := walkIndexProbeAfter(line, previous)
 	var err error
 	if !ok {
-		err = json.Unmarshal(line, &probe)
+		// The decoder takes the probe's address, so it decodes into a probe of its own: probe itself stays off the heap for the lines the walk reads.
+		var decoded indexProbe
+		if err = json.Unmarshal(line, &decoded); err == nil {
+			probe = decoded
+		}
 	}
 	if err == nil && (probe.Type == "message" || probe.Type == "custom_message") {
 		if timestamp, ok := rawJSONString(probe.Timestamp); ok {
@@ -665,7 +694,7 @@ func (s *Session) applyIndexLine(p *preparedLine, line []byte, off int64) error 
 			slot.facts = s.storeFactsLocked(p.facts)
 		}
 		s.noteTimestampLocked(s.appendSlotLocked(slot, p.base.ParentID, line), p.base.Timestamp)
-		s.leafID = leafOf(p.base.ID)
+		s.setLeafInPlace(p.base.ID)
 	case lineEntry:
 		entry := p.entry
 		base := entry.Base()
@@ -679,6 +708,17 @@ func (s *Session) applyIndexLine(p *preparedLine, line []byte, off int64) error 
 		s.leafID = leafOf(base.ID)
 	}
 	return nil
+}
+
+// setLeafInPlace is s.leafID = leafOf(id) without allocating the leaf: the pointer is to s.leafStore, which the next line overwrites. It is
+// for indexing a file, whose load ends by detaching leafID (streamSessionFileBatched); nothing holds the leaf before then.
+func (s *Session) setLeafInPlace(id string) {
+	if sessionentry.IsNull(id) {
+		s.leafID = nil
+		return
+	}
+	s.leafStore = id
+	s.leafID = &s.leafStore
 }
 
 // accountsRecord reports whether the session accounting reads a record of entryType (sessionAccountingAccumulator.addDecoded); a record of
@@ -706,9 +746,8 @@ func rawJSONString(raw json.RawMessage) (string, bool) {
 	if len(raw) == 0 || string(raw) == "null" {
 		return "", true
 	}
-	var value string
-	if raw[0] != '"' || json.Unmarshal(raw, &value) != nil {
+	if raw[0] != '"' {
 		return "", false
 	}
-	return value, true
+	return decodeJSONString(raw)
 }

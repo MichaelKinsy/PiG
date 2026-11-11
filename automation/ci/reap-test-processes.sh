@@ -8,18 +8,28 @@ scratch=${1:?usage: reap-test-processes.sh <scratch-dir>}
 use_ps=${REAP_USE_PS:-}
 [[ -d /proc/self ]] || use_ps=1
 
+# Bash 3.2 has no associative arrays; the ancestor set is tiny, so keep a list.
+keep_pids=()
+is_kept() {
+  local wanted=$1 pid
+  if [[ ${#keep_pids[@]} -gt 0 ]]; then
+    for pid in "${keep_pids[@]}"; do [[ "$pid" == "$wanted" ]] && return 0; done
+  fi
+  return 1
+}
+
 if [[ -n "$use_ps" ]]; then
   # Exclude this script and every ancestor: their environment may name the scratch directory too.
-  declare -A keep=()
   pid=$$
-  while [[ -n "$pid" && "$pid" != 0 && -z "${keep[$pid]:-}" ]]; do
-    keep[$pid]=1
+  while [[ -n "$pid" && "$pid" != 0 ]]; do
+    is_kept "$pid" && break
+    keep_pids+=("$pid")
     pid=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ' || true)
   done
   leaked=()
   # ps -E appends the environment to the command; -ww lifts the width limit so TMPDIR is not cut off.
   while read -r pid args; do
-    [[ -n "${keep[$pid]:-}" ]] && continue
+    is_kept "$pid" && continue
     [[ " $args " == *" TMPDIR=$scratch "* || " $args" == *" TMPDIR=$scratch/"* ]] || continue
     [[ "$args" == *"** telemetry **"* ]] && continue
     leaked+=("$pid ${args:0:200}")
@@ -34,20 +44,21 @@ if [[ -n "$use_ps" ]]; then
 fi
 
 # Exclude this script and every ancestor: they run with the caller's environment, which may name the scratch directory.
-declare -A keep=()
 pid=$$
 while [[ -n "$pid" && "$pid" != 0 ]]; do
-  keep[$pid]=1
+  is_kept "$pid" && break
+  keep_pids+=("$pid")
   pid=$(awk '/^PPid:/ {print $2}' "/proc/$pid/status" 2>/dev/null || true)
 done
 
 leaked=()
 # One grep over every readable environment finds the candidates; the loop then checks each exactly.
-mapfile -t candidates < <(grep -lsz -F "TMPDIR=$scratch" /proc/[0-9]*/environ 2>/dev/null || true)
-for file in "${candidates[@]}"; do
+candidates=()
+while IFS= read -r file; do candidates+=("$file"); done < <(grep -lsz -F "TMPDIR=$scratch" /proc/[0-9]*/environ 2>/dev/null || true)
+for file in ${candidates[@]+"${candidates[@]}"}; do
   dir=${file%/environ}
   pid=${dir#/proc/}
-  [[ -n "${keep[$pid]:-}" ]] && continue
+  is_kept "$pid" && continue
   [[ -O "$dir" ]] || continue
   env=$( { tr '\0' '\n' <"$dir/environ"; } 2>/dev/null) || continue
   tmpdir=$(sed -n 's/^TMPDIR=//p' <<<"$env" | head -1)

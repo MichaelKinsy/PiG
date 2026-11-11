@@ -1,0 +1,1344 @@
+[
+ {
+  "upstream": "packages/ai/catalog/build.ts",
+  "package": "./internal/modelgen",
+  "tests": [
+   "TestBuildCatalogKeepsDefinitionOrderAndDedupesByFirstID"
+  ],
+  "upstream_reference": "packages/ai/catalog/build.ts",
+  "mutation": "internal/modelgen/build.go: `if seen[model.Str(\"id\")] {` -> `if false {` (TestBuildCatalogKeepsDefinitionOrderAndDedupesByFirstID FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/build.ts",
+  "package": "./internal/modelgen",
+  "tests": [
+   "TestBuildCatalogCompatDefaultsSitUnderModelCompat"
+  ],
+  "upstream_reference": "packages/ai/catalog/build.ts",
+  "mutation": "internal/modelgen/build.go: `Spread(entry(model), model.Object(\"compat\"))` -> `Spread(model.Object(\"compat\"), entry(model))` (TestBuildCatalogCompatDefaultsSitUnderModelCompat FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/build.ts",
+  "package": "./internal/modelgen",
+  "tests": [
+   "TestBuildCatalogRunsFamilyRulesBeforeFinalizeAndFinalizeBeforeEmptyCompatDeletion"
+  ],
+  "upstream_reference": "packages/ai/catalog/build.ts",
+  "mutation": "internal/modelgen/build.go: `compat != nil && compat.Len() == 0` guarded by `false &&` (TestBuildCatalogRunsFamilyRulesBeforeFinalizeAndFinalizeBeforeEmptyCompatDeletion FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/build.ts",
+  "package": "./internal/modelgen",
+  "tests": [
+   "TestBuildCatalogAddsImageResizeDefaults"
+  ],
+  "upstream_reference": "packages/ai/catalog/build.ts",
+  "mutation": "internal/modelgen/build.go: `\"maxWidth\", 2000` -> `\"maxWidth\", 2001` (TestBuildCatalogAddsImageResizeDefaults FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/build.ts",
+  "package": "./internal/modelgen",
+  "tests": [
+   "TestModelsDevModelsMapsToolCapableChatModelsAndRecordsSources"
+  ],
+  "upstream_reference": "packages/ai/catalog/build.ts",
+  "mutation": "internal/modelgen/build.go: sendsNativeEffort drops `openai-responses` from the native-effort APIs (TestModelsDevModelsMapsToolCapableChatModelsAndRecordsSources FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/define.ts",
+  "package": "./internal/modelgen",
+  "tests": [
+   "TestDefineWithInputLimitsAndAddMissingMatchPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/define.ts",
+  "mutation": "internal/modelgen/define.go: WithInputLimits `if !model.Includes(\"input\", \"image\") {` -> `if false {` (TestDefineWithInputLimitsAndAddMissingMatchPi FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/define.ts",
+  "package": "./internal/modelgen",
+  "tests": [
+   "TestDefineWithInputLimitsAndAddMissingMatchPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/define.ts",
+  "mutation": "internal/modelgen/define.go: AddMissing `if !listed {` -> `if listed {` (TestDefineWithInputLimitsAndAddMissingMatchPi FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/define.ts",
+  "package": "./internal/modelgen",
+  "tests": [
+   "TestDefineModelsDevModelsOptionsMatchPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/define.ts",
+  "mutation": "internal/modelgen/define.go: `if options.SkipDeprecated && source.Status == \"deprecated\" {` -> `if false {` (TestDefineModelsDevModelsOptionsMatchPi FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/define.ts",
+  "package": "./internal/modelgen",
+  "tests": [
+   "TestDefineModelsDevModelsOptionsMatchPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/define.ts",
+  "mutation": "internal/modelgen/define.go: `firstNonZero(source.ContextWindow, options.DefaultContextWindow, 4096)` -> `firstNonZero(options.DefaultContextWindow, source.ContextWindow, 4096)` (TestDefineModelsDevModelsOptionsMatchPi FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/define.ts",
+  "package": "./internal/modelgen",
+  "tests": [
+   "TestDefineModelsDevModelsOptionsMatchPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/define.ts",
+  "mutation": "internal/modelgen/define.go: `if options.Protocol != \"\" && !hasProtocol(source, options.Protocol) {` -> `if false {` (TestDefineModelsDevModelsOptionsMatchPi FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/define.ts",
+  "package": "./internal/modelgen",
+  "tests": [
+   "TestObjCloneIsDeep",
+   "TestProviderModelsReturnsClonesBeforeSharedRules"
+  ],
+  "upstream_reference": "packages/ai/catalog/define.ts",
+  "mutation": "internal/modelgen/obj.go: cloneValue `case *Obj: return v.Clone()` -> `return v` (TestObjCloneIsDeep and TestProviderModelsReturnsClonesBeforeSharedRules FAIL)"
+ },
+ {
+  "upstream": "packages/ai/catalog/define.ts",
+  "package": "./internal/modelgen",
+  "tests": [
+   "TestObjIntegerLikeKeysComeFirstAscending"
+  ],
+  "upstream_reference": "packages/ai/catalog/define.ts",
+  "mutation": "internal/modelgen/obj.go: isArrayIndex `n < math.MaxUint32` -> `n <= math.MaxUint32` (TestObjIntegerLikeKeysComeFirstAscending FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/families/anthropic.ts",
+  "package": "./internal/modelgen",
+  "tests": [
+   "TestEnableClaudeMidConvoEffort"
+  ],
+  "upstream_reference": "packages/ai/catalog/families/anthropic.ts",
+  "mutation": "internal/modelgen/family_anthropic.go: claudeDateSuffix `-\\d{8}$` -> `-\\d{7}$` (TestEnableClaudeMidConvoEffort FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/families/anthropic.ts",
+  "package": "./internal/modelgen",
+  "tests": [
+   "TestFamilyAnthropicSonnet46HasMaxEffortOnlyAndAdaptiveThinking"
+  ],
+  "upstream_reference": "packages/ai/catalog/families/anthropic.ts",
+  "mutation": "internal/modelgen/family_anthropic.go: maxEffortOnly drops `\"sonnet-4.6\"` (TestFamilyAnthropicSonnet46HasMaxEffortOnlyAndAdaptiveThinking FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/families/deepseek.ts",
+  "package": "./internal/modelgen",
+  "tests": [
+   "TestApplyDeepSeekRules"
+  ],
+  "upstream_reference": "packages/ai/catalog/families/deepseek.ts",
+  "mutation": "internal/modelgen/family_deepseek.go: azureDeepSeekV4ThinkingLevelMap drops `\"max\", nil` (TestApplyDeepSeekRules FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/families/deepseek.ts",
+  "package": "./internal/modelgen",
+  "tests": [
+   "TestApplyDeepSeekRules"
+  ],
+  "upstream_reference": "packages/ai/catalog/families/deepseek.ts",
+  "mutation": "internal/modelgen/family_deepseek.go: nativeEffortProviders drops `\"opencode\": true` (TestApplyDeepSeekRules FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/families/google.ts",
+  "package": "./internal/modelgen",
+  "tests": [
+   "TestGoogleThinkingLevels"
+  ],
+  "upstream_reference": "packages/ai/catalog/families/google.ts",
+  "mutation": "internal/modelgen/family_google.go: gemma4 regexp `gemma-?4` -> `gemma4` (TestGoogleThinkingLevels FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/families/kimi.ts",
+  "package": "./internal/modelgen",
+  "tests": [
+   "TestKimiTables"
+  ],
+  "upstream_reference": "packages/ai/catalog/families/kimi.ts",
+  "mutation": "internal/modelgen/family_kimi.go: KimiOpenAICompat `\"thinkingFormat\", \"deepseek\"` -> `\"openai\"` (TestKimiTables FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/families/openai.ts",
+  "package": "./internal/modelgen",
+  "tests": [
+   "TestOpenAILongContextPricing"
+  ],
+  "upstream_reference": "packages/ai/catalog/families/openai.ts",
+  "mutation": "internal/modelgen/family_openai.go: `RoundCost(cost.Num(\"output\")*1.5)` -> `*2` (TestOpenAILongContextPricing FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/families/openai.ts",
+  "package": "./internal/modelgen",
+  "tests": [
+   "TestFamilyOpenAITablesMatchPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/families/openai.ts",
+  "mutation": "internal/modelgen/family_openai.go: `\"gpt-6.1-terra\": rates(1, 5, 0.05, 1.25)` -> `1.26` (TestFamilyOpenAITablesMatchPi FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/generate.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestGeneratorFlagValidation"
+  ],
+  "upstream_reference": "packages/ai/catalog/generate.ts",
+  "mutation": "cmd/gen-models/generate.go: `if options.jsonOnly && options.dataOutputDir != \"\" {` -> `if false {` (TestGeneratorFlagValidation FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/generate.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestGeneratorOrdersModelsLikeLocaleCompareAndObjectKeys"
+  ],
+  "upstream_reference": "packages/ai/catalog/generate.ts",
+  "mutation": "cmd/gen-models/generate.go: byID `slices.SortStableFunc(ids, localecompare.Compare)` -> strings.Compare comparator (TestGeneratorOrdersModelsLikeLocaleCompareAndObjectKeys and TestCatalogGenerationMatchesPi FAIL)"
+ },
+ {
+  "upstream": "packages/ai/catalog/generate.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/generate.ts",
+  "mutation": "cmd/gen-models/generate.go: provider kept when `len(catalog.Chat)+len(catalog.Image)+len(catalog.Classifier) > 0` -> `len(catalog.Chat) > 0` (TestCatalogGenerationMatchesPi FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/generate.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestGeneratorDataOnlyRegeneratesTheProvidersInTheDataDirectory"
+  ],
+  "upstream_reference": "packages/ai/catalog/generate.ts",
+  "mutation": "cmd/gen-models/generate.go: data-only provider ids `readDataProviderIDs(options.dataOutputDir)` -> all sortedProviderIDs (TestGeneratorDataOnlyRegeneratesTheProvidersInTheDataDirectory FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/generate.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestGeneratorJSONOutputTree"
+  ],
+  "upstream_reference": "packages/ai/catalog/generate.ts",
+  "mutation": "cmd/gen-models/generate.go: `id+\".all.json\"` -> `id+\".all2.json\"` (TestGeneratorJSONOutputTree FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/generate.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestGeneratorWritesValidModelDataDirectory"
+  ],
+  "upstream_reference": "packages/ai/catalog/generate.ts",
+  "mutation": "cmd/gen-models/generate.go: data-file `if options.pretty {` -> `if false {` (TestGeneratorWritesValidModelDataDirectory FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/generate.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestGeneratorPrintsModelStatistics"
+  ],
+  "upstream_reference": "packages/ai/catalog/generate.ts",
+  "mutation": "cmd/gen-models/generate.go: `if model.Bool(\"reasoning\") {` -> `if !model.Bool(\"reasoning\") {` (TestGeneratorPrintsModelStatistics FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/generate.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestGeneratorRecordAndReplay"
+  ],
+  "upstream_reference": "packages/ai/catalog/generate.ts",
+  "mutation": "cmd/gen-models/fixtures.go: replay index key `entry.URL` -> `entry.URL+\"x\"` (TestGeneratorRecordAndReplay FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/generate.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestGeneratorRecordAndReplay"
+  ],
+  "upstream_reference": "packages/ai/catalog/generate.ts",
+  "mutation": "cmd/gen-models/fixtures.go: recorded file name `strconv.Itoa(len(transport.index)) + \".body\"` -> `\"0.body\"` (TestGeneratorRecordAndReplay FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/generate.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestGeneratorModeDispatchRejectsMixedAndMissingModes"
+  ],
+  "upstream_reference": "packages/ai/catalog/generate.ts",
+  "mutation": "cmd/gen-models/main.go: the -src exclusivity `if *strict || ... || *replay != \"\" {` -> `if false {` (TestGeneratorModeDispatchRejectsMixedAndMissingModes FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/generate.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestGeneratorWritesValidModelDataDirectory"
+  ],
+  "upstream_reference": "packages/ai/catalog/generate.ts",
+  "mutation": "cmd/gen-models/main.go: generation dispatch condition drops `*dataOutput != \"\" ||` (TestGeneratorWritesValidModelDataDirectory, TestGeneratorDataOnlyRegeneratesTheProvidersInTheDataDirectory, TestGenerateModelsStrict FAIL)"
+ },
+ {
+  "upstream": "packages/ai/catalog/sources/index.ts",
+  "package": "./internal/modelgen",
+  "tests": [
+   "TestLoadCatalogSourcesFetchesNvidiaWhenModelsDevListsIt"
+  ],
+  "upstream_reference": "packages/ai/catalog/sources/index.ts",
+  "mutation": "internal/modelgen/sources.go: NormalizeNvidiaModelID `strings.ToLower(modelID)` -> `modelID` (TestLoadCatalogSourcesFetchesNvidiaWhenModelsDevListsIt FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/sources/index.ts",
+  "package": "./internal/modelgen",
+  "tests": [
+   "TestLoadCatalogSourcesStrictNeedsImageModels"
+  ],
+  "upstream_reference": "packages/ai/catalog/sources/index.ts",
+  "mutation": "internal/modelgen/sources.go: `if strict && len(sources.OpenRouter.Images) == 0 {` -> `if false {` (TestLoadCatalogSourcesStrictNeedsImageModels FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/sources/index.ts",
+  "package": "./internal/modelgen",
+  "tests": [
+   "TestLoadCatalogSourcesFailures"
+  ],
+  "upstream_reference": "packages/ai/catalog/sources/index.ts",
+  "mutation": "internal/modelgen/sources.go: `return nil, errors.New(\"Radius API returned no models\")` -> `return models, nil` (TestLoadCatalogSourcesFailures FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/sources/index.ts",
+  "package": "./internal/modelgen",
+  "tests": [
+   "TestLoadCatalogSourcesStatusBoundaryAndRadiusBodyTruncation"
+  ],
+  "upstream_reference": "packages/ai/catalog/sources/index.ts",
+  "mutation": "internal/modelgen/sources.go: fetchJSON `StatusCode > 299` -> `> 300` (TestLoadCatalogSourcesStatusBoundaryAndRadiusBodyTruncation FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/sources/index.ts",
+  "package": "./internal/modelgen",
+  "tests": [
+   "TestLoadCatalogSourcesStatusBoundaryAndRadiusBodyTruncation"
+  ],
+  "upstream_reference": "packages/ai/src/providers/radius-config.ts truncateHttpBody",
+  "mutation": "internal/modelgen/sources.go: `ownedSlice(trimmed, 512)` -> `511` (TestLoadCatalogSourcesStatusBoundaryAndRadiusBodyTruncation FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/sources/models-dev.ts",
+  "package": "./internal/modelgen",
+  "tests": [
+   "TestModelsDevCacheWritePerTTLPicksFirstValue"
+  ],
+  "upstream_reference": "packages/ai/catalog/sources/models-dev.ts",
+  "mutation": "internal/modelgen/models_dev.go: firstPrice `keys[0]` -> `keys[len(keys)-1]` (TestModelsDevCacheWritePerTTLPicksFirstValue FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/sources/models-dev.ts",
+  "package": "./internal/modelgen",
+  "tests": [
+   "TestNormalizeModelsDevModel"
+  ],
+  "upstream_reference": "packages/ai/catalog/sources/models-dev.ts",
+  "mutation": "internal/modelgen/models_dev.go: `strings.HasPrefix(modality, \"image/\")` -> `\"images/\"` (TestNormalizeModelsDevModel FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/sources/models-dev.ts",
+  "package": "./internal/modelgen",
+  "tests": [
+   "TestModelsDevChatModelsKeepsOnlyChatTypeInOrder"
+  ],
+  "upstream_reference": "packages/ai/catalog/sources/models-dev.ts",
+  "mutation": "internal/modelgen/models_dev.go: `model.member(\"type\") != \"chat\"` -> `== \"\"` (TestModelsDevChatModelsKeepsOnlyChatTypeInOrder FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/sources/models-dev.ts",
+  "package": "./internal/modelgen",
+  "tests": [
+   "TestModelsDevCostTiers"
+  ],
+  "upstream_reference": "packages/ai/catalog/sources/models-dev.ts",
+  "mutation": "internal/modelgen/models_dev.go: tier `orElse(tier.Input, base[0])` -> `base[1]` (TestModelsDevCostTiers FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/sources/vercel-ai-gateway.ts",
+  "package": "./internal/modelgen",
+  "tests": [
+   "TestBuildAiGatewayCatalogConvertsChatAndEvaluationModels"
+  ],
+  "upstream_reference": "packages/ai/catalog/sources/vercel-ai-gateway.ts",
+  "mutation": "internal/modelgen/source_vercel.go: `if !model.Includes(\"tags\", \"tool-use\") {` -> `if false {` (TestBuildAiGatewayCatalogConvertsChatAndEvaluationModels FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/sources/vercel-ai-gateway.ts",
+  "package": "./internal/modelgen",
+  "tests": [
+   "TestGetAiGatewayCost"
+  ],
+  "upstream_reference": "packages/ai/catalog/sources/vercel-ai-gateway.ts",
+  "mutation": "internal/modelgen/source_vercel.go: cacheWrite reads `input_cache_read` instead of `input_cache_write` (TestGetAiGatewayCost FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/sources/vercel-ai-gateway.ts",
+  "package": "./internal/modelgen",
+  "tests": [
+   "TestGetAiGatewayCost"
+  ],
+  "upstream_reference": "packages/ai/catalog/sources/vercel-ai-gateway.ts",
+  "mutation": "internal/modelgen/source_vercel.go: tier `inputTokensAbove` `start-1` -> `start` (TestGetAiGatewayCost FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/sources/vercel-ai-gateway.ts",
+  "package": "./internal/modelgen",
+  "tests": [
+   "TestBuildAiGatewayCatalogConvertsChatAndEvaluationModels"
+  ],
+  "upstream_reference": "packages/ai/catalog/sources/vercel-ai-gateway.ts",
+  "mutation": "internal/modelgen/source_vercel.go: `O(\"allowEmptySignature\", true)` -> `false` (TestBuildAiGatewayCatalogConvertsChatAndEvaluationModels FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/README.md",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestModelgenReadmeDocumentsTheGeneratorAsBuilt"
+  ],
+  "upstream_reference": "internal/modelgen/README.md vs cmd/gen-models flags, Makefile targets and equivalence.sh",
+  "mutation": "internal/modelgen/README.md: `-data-output <dir>` -> `-data-out <dir>` (TestModelgenReadmeDocumentsTheGeneratorAsBuilt FAILS); also adding an undefined `-fancy` flag, renaming the build.go layout row, and `equivalence.sh golden` -> `goldn` each FAIL it"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/amazon-bedrock.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/amazon-bedrock.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/amazon_bedrock.go: `bedrock-runtime.eu-central-1` -> `bedrock-runtime.eu-west-1` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/amazon-bedrock.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/amazon-bedrock.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/amazon_bedrock.go: `O(\"images\", O(\"maxPerMessage\", 20))` -> `O(\"images\", O(\"maxPerMessage\", 21))` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/amazon-bedrock.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/amazon-bedrock.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/amazon_bedrock.go: `result.Set(\"compat\", O(\"supportsStrictMode\", true))` -> `result.Set(\"compat\", O(\"supportsStrictMode\", false))` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/ant-ling.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/ant-ling.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/ant_ling.go: `antLingModel(\"Ling-2.6-flash\", \"Ling 2.6 Flash\", false, O(\"input\", 0.01` -> `antLingModel(\"Ling-2.6-flash\", \"Ling 2.6 Flash\", false, O(\"input\", 0.02` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/ant-ling.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/ant-ling.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/ant_ling.go: `\"high\", \"high\", \"xhigh\", \"xhigh\"` -> `\"high\", \"high\", \"xhigh\", \"high\"` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/ant-ling.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/ant-ling.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/ant_ling.go: `\"supportsStrictMode\", true,` -> `\"supportsStrictMode\", false,` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/anthropic.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/anthropic.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/anthropic.go: `O(\"short\", 300, \"long\", 3600)` -> `O(\"short\", 300, \"long\", 3601)` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/anthropic.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/anthropic.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/anthropic.go: `MergeCompat(model, O(\"supportsStrictTools\", true))` -> `MergeCompat(model, O(\"supportsStrictTools\", false))` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/anthropic.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/anthropic.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/anthropic.go: `if model.Num(\"contextWindow\") == 200000 {` -> `if model.Num(\"contextWindow\") == 200001 {` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/azure.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/azure.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/azure.go: `\"gpt-5.4\":       1050000` -> `\"gpt-5.4\":       1050001` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/azure.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/azure.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/azure.go: `\"supportsMidConvoSystemMessages\", true,` -> `\"supportsMidConvoSystemMessages\", false,` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/azure.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/azure.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/azure.go: `FixedCompat(O(\"supportsStrictMode\", true))` -> `FixedCompat(O(\"supportsStrictMode\", false))` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/baseten.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/baseten.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/baseten.go: `id == \"zai-org/GLM-5.2-Fast\"` -> `id == \"zai-org/GLM-5.2-Fastx\"` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/baseten.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/baseten.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/baseten.go: `if !isGlm52 && source.ImageInput` -> `if source.ImageInput` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/baseten.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/baseten.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/baseten.go: `BaseURL:           \"https://inference.baseten.co/v1\"` -> `BaseURL:           \"https://inference.baseten.co/v2\"` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/cerebras.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/cerebras.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/cerebras.go: `BaseURL: \"https://api.cerebras.ai/v1\"` -> `BaseURL: \"https://api.cerebras.ai/v2\"` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/cerebras.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/cerebras.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/cerebras.go: `\"supportsStore\", false, \"supportsDeveloperRole\", false` -> `\"supportsStore\", true, \"supportsDeveloperRole\", false` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/cerebras.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/cerebras.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/cerebras.go: `\"supportsStore\", false, \"supportsDeveloperRole\", false` -> `\"supportsStore\", false, \"supportsDeveloperRole\", true` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/cloudflare-ai-gateway.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/cloudflare-ai-gateway.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/cloudflare_ai_gateway.go: `/openai\"` -> `/openaix\"` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/cloudflare-ai-gateway.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/cloudflare-ai-gateway.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/cloudflare_ai_gateway.go: `result.Set(\"cost\", WithOpenAILongContextPricing(standardCost))` -> `result.Set(\"cost\", standardCost)` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/cloudflare-ai-gateway.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/cloudflare-ai-gateway.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/cloudflare_ai_gateway.go: `\"supportsReasoningEffort\", false,` -> `\"supportsReasoningEffort\", true,` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/cloudflare-workers-ai.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/cloudflare-workers-ai.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/cloudflare_workers_ai.go: `\"Clef\", 0.24, 65536, \"images\"` -> `\"Clef\", 0.25, 65536, \"images\"` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/cloudflare-workers-ai.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/cloudflare-workers-ai.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/cloudflare_workers_ai.go: `\"cloudflare-workers-ai-system-one\"` -> `\"cloudflare-workers-ai-system-onex\"` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/cloudflare-workers-ai.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/cloudflare-workers-ai.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/cloudflare_workers_ai.go: `\"typesafe/jev-1.14.0\", \"Jev 1.14\"` -> `\"typesafe/jev-1.14.0\", \"Jev 1.15\"` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/deepseek.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/deepseek.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/deepseek.go: `\"cost\", O(\"input\", 0.3, \"output\", 1.2` -> `\"cost\", O(\"input\", 0.31, \"output\", 1.2` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/deepseek.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/deepseek.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/deepseek.go: `\"name\", \"DeepSeek V4.1 Flash\"` -> `\"name\", \"DeepSeek V4 Flash\"` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/deepseek.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/deepseek.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/deepseek.go: `MergeCompat(model, O(\"supportsMidConvoSystemMessages\", true))` -> `MergeCompat(model, O(\"supportsMidConvoSystemMessages\", false))` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/fireworks.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/fireworks.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/fireworks.go: `\"https://api.fireworks.ai/inference/v1\"` -> `\"https://api.fireworks.ai/inference/v2\"` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/fireworks.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/fireworks.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/fireworks.go: `MergeThinking(model, O(\"medium\", nil))` -> `MergeThinking(model, O(\"medium\", \"medium\"))` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/fireworks.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/fireworks.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/fireworks.go: `BaseURL: \"https://api.fireworks.ai/inference\",` -> `BaseURL: \"https://api.fireworks.ai/inferencex\",` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/github-copilot.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/github-copilot.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/github_copilot.go: `\"User-Agent\", \"GitHubCopilotChat/0.35.0\"` -> `\"User-Agent\", \"GitHubCopilotChat/0.36.0\"` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/github-copilot.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/github-copilot.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/github_copilot.go: `MergeCompat(model, O(\"supportsEagerToolInputStreaming\", false))` -> `MergeCompat(model, O(\"supportsEagerToolInputStreaming\", true))` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/github-copilot.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/github-copilot.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/github_copilot.go: `\"Editor-Version\", \"vscode/1.107.0\"` -> `\"Editor-Version\", \"vscode/1.108.0\"` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/google-vertex.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/google-vertex.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/google_vertex.go: `cacheRead = 0.03` -> `cacheRead = 0.04` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/google-vertex.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/google-vertex.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/google_vertex.go: `\"https://{location}-aiplatform.googleapis.com\"` -> `\"https://{location}-aiplatform.googleapis.net\"` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/google-vertex.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/google-vertex.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/google_vertex.go: `\"cacheWrite\", 0,` -> `\"cacheWrite\", 1,` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/google.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/google.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/google.go: `\"gemini-flash-latest\":      \"gemini-3.5-flash\"` -> `\"gemini-flash-latest\":      \"gemini-3.1-flash-lite\"` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/google.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/google.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/google.go: `O(\"maxRequestBytes\", 20*1024*1024,` -> `O(\"maxRequestBytes\", 21*1024*1024,` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/google.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/google.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/google.go: `result.Set(\"input\", Strings(\"text\", \"image\"))` -> `result.Set(\"input\", Strings(\"text\"))` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/groq.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/groq.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/groq.go: `\"high\", \"default\"` -> `\"high\", \"high\"` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/groq.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/groq.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/groq.go: `id\") == \"qwen/qwen3.6-27b\"` -> `id\") == \"qwen/qwen3.6-27bx\"` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/groq.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/groq.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/groq.go: `FixedCompat(O(\"supportsStrictMode\", true))` -> `FixedCompat(O(\"supportsStrictMode\", false))` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/huggingface.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/huggingface.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/huggingface.go: `BaseURL: \"https://router.huggingface.co/v1\"` -> `BaseURL: \"https://router.huggingface.co/v2\"` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/huggingface.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/huggingface.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/huggingface.go: `O(\"supportsDeveloperRole\", false)` -> `O(\"supportsDeveloperRole\", true)` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/huggingface.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/huggingface.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/huggingface.go: `FixedCompat(O(\"supportsStrictMode\", true))` -> `FixedCompat(O(\"supportsStrictMode\", false))` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/meta.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/meta.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/meta.go: `BaseURL: \"https://api.meta.ai/v1\"` -> `BaseURL: \"https://api.meta.ai/v2\"` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/meta.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/meta.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/meta.go: `API: \"openai-responses\"` -> `API: \"openai-completions\"` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/meta.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/meta.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/meta.go: `ModelsDevModels(ctx, \"meta\"` -> `ModelsDevModels(ctx, \"metax\"` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/kimi-coding.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/kimi-coding.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/kimi_coding.go: `return O(\"input\", 2, \"output\", 10, \"cacheRead\", 0.2, \"cacheWrite\", 0)` -> `return O(\"input\", 2, \"output\", 11, \"cacheRead\", 0.2, \"cacheWrite\", 0)` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/kimi-coding.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/kimi-coding.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/kimi_coding.go: `isK3Style := source.HasEffortOption()` -> `isK3Style := false` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/kimi-coding.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/kimi-coding.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/kimi_coding.go: `if value := implied.Num(key); value != 0 && value == value {` -> `if value := implied.Num(key); false {` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/minimax-cn.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/minimax-cn.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/minimax_cn.go: `\"https://api.minimaxi.com/anthropic\"` -> `\"https://api.minimaxi.com/anthropicx\"` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/minimax-cn.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/minimax-cn.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/minimax_cn.go: `minimaxModels(ctx, \"minimax-cn\"` -> `minimaxModels(ctx, \"minimax\"` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/minimax.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/minimax.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/minimax.go: `\"https://api.minimax.io/anthropic\"` -> `\"https://api.minimax.io/anthropicx\"` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/minimax.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/minimax.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/minimax.go: `\"MiniMax-M2\", \"MiniMax-M2.1\", \"MiniMax-M2.5\", \"MiniMax-M2.5-highspeed\"` -> `\"MiniMax-M2\", \"MiniMax-M2.1\", \"MiniMax-M2.5\"` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/minimax.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/minimax.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/minimax.go: `ModelsDevModels(ctx, source,` -> `ModelsDevModels(ctx, \"minimax\",` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/mistral.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/mistral.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/mistral.go: `RoundCost(*source.Cost.Input * 0.1)` -> `RoundCost(*source.Cost.Input * 0.2)` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/mistral.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/mistral.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/mistral.go: `\"name\", \"Mistral Medium 3.5\"` -> `\"name\", \"Mistral Medium 3.6\"` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/mistral.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/mistral.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/mistral.go: `} else if googleOr(source.Cost.Input, 0) != 0 {` -> `} else if false {` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/moonshotai-cn.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/moonshotai-cn.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/moonshotai_cn.go: `\"https://api.moonshot.cn/v1\"` -> `\"https://api.moonshot.cn/v2\"` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/moonshotai-cn.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/moonshotai-cn.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/moonshotai_cn.go: `moonshotModels(ctx, \"moonshotai-cn\"` -> `moonshotModels(ctx, \"moonshotai\"` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/moonshotai-cn.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/moonshotai-cn.ts run by Pi's own generator (packages/ai/catalog/generate.ts) over the pruned recorded upstream responses; cmd/gen-models/testdata/catalog-generation/golden.sha256 holds the sha256 of every file Pi wrote",
+  "mutation": "internal/modelgen/providers/moonshotai_cn.go: `Finalize: finalizeMoonshotModel,` -> `Finalize: nil,` (TestCatalogGenerationMatchesPi FAILS: generated file sha256 differs from Pi's)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/index.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/index.ts (provider list and order) as run by Pi's generator (packages/ai/catalog/generate.ts); cmd/gen-models/testdata/catalog-generation/golden.sha256",
+  "mutation": "internal/modelgen/providers/index.go: the `groq(),` line is deleted from All() (TestCatalogGenerationMatchesPi FAILS: groq files not generated)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/index.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/index.ts (provider list and order) as run by Pi's generator (packages/ai/catalog/generate.ts); cmd/gen-models/testdata/catalog-generation/golden.sha256",
+  "mutation": "internal/modelgen/providers/index.go: the `meta(),` line is deleted from All() (TestCatalogGenerationMatchesPi FAILS: meta files not generated)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/moonshotai.ts",
+  "package": "./internal/modelgen/providers",
+  "tests": [
+   "TestProvBMoonshotai"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/moonshotai.ts (no upstream test for provider definitions; expected values derived from the TypeScript definition; evidence_provB*_test.go table over the registered definition)",
+  "mutation": "internal/modelgen/providers/moonshotai.go: `\"reasoning\", isKimiK3 || source.Reasoning` -> `\"reasoning\", source.Reasoning` (TestProvBMoonshotai FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/moonshotai.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/moonshotai.ts (no upstream test for provider definitions; expected values derived from the TypeScript definition; Pi generator output sha256 golden, cmd/gen-models/testdata/catalog-generation)",
+  "mutation": "internal/modelgen/providers/moonshotai.go: `\"supportsStore\", false,\\n\\t\\t\"supportsDeveloperRole\", false,\\n\\t\\t\"supportsReasoningEffort\", false,\\n\\t\\t\"maxTokensField\", \"max_tokens\",\\n\\t)` -> `\"supportsDeveloperRole\", false,\\n\\t\\t\"supportsStore\", false,\\n\\t\\t\"supportsReasoningEffort\", false,\\n\\t\\t\"maxTokensField\", \"max_tokens\",\\n\\t)` (TestCatalogGenerationMatchesPi FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/nvidia.ts",
+  "package": "./internal/modelgen/providers",
+  "tests": [
+   "TestProvBNvidia"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/nvidia.ts (no upstream test for provider definitions; expected values derived from the TypeScript definition; evidence_provB*_test.go table over the registered definition)",
+  "mutation": "internal/modelgen/providers/nvidia.go: `!source.TextInput || !source.TextOutput` -> `!source.TextInput` (TestProvBNvidia FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/nvidia.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/nvidia.ts (no upstream test for provider definitions; expected values derived from the TypeScript definition; Pi generator output sha256 golden, cmd/gen-models/testdata/catalog-generation)",
+  "mutation": "internal/modelgen/providers/nvidia.go: `\"NVCF-POLL-SECONDS\", \"3600\"` -> `\"NVCF-POLL-SECONDS\", \"60\"` (TestCatalogGenerationMatchesPi FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/openai.ts",
+  "package": "./internal/modelgen/providers",
+  "tests": [
+   "TestProvBOpenAI"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/openai.ts (no upstream test for provider definitions; expected values derived from the TypeScript definition; evidence_provB*_test.go table over the registered definition)",
+  "mutation": "internal/modelgen/providers/openai.go: `ids := map[string]bool{\"gpt-5.4-pro\": true, \"gpt-5.5-pro\": true}` -> `ids := map[string]bool{\"gpt-5.5-pro\": true}` (TestProvBOpenAI FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/openai.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/openai.ts (no upstream test for provider definitions; expected values derived from the TypeScript definition; Pi generator output sha256 golden, cmd/gen-models/testdata/catalog-generation)",
+  "mutation": "internal/modelgen/providers/openai.go: `map[string]bool{\"gpt-5.6\": true}` -> `map[string]bool{\"gpt-5.6x\": true}` (TestCatalogGenerationMatchesPi FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/openai-codex.ts",
+  "package": "./internal/modelgen/providers",
+  "tests": [
+   "TestProvBOpenAICodex"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/openai-codex.ts (no upstream test for provider definitions; expected values derived from the TypeScript definition; evidence_provB*_test.go table over the registered definition)",
+  "mutation": "internal/modelgen/providers/openai_codex.go: `{\"gpt-6.1-sol\", \"GPT-6.1 Sol\", 500000}` -> `{\"gpt-6.1-sol\", \"GPT-6.1 Sol\", 400000}` (TestProvBOpenAICodex FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/openai-codex.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/openai-codex.ts (no upstream test for provider definitions; expected values derived from the TypeScript definition; Pi generator output sha256 golden, cmd/gen-models/testdata/catalog-generation)",
+  "mutation": "internal/modelgen/providers/openai_codex.go: `{\"gpt-6.1-sol\", \"GPT-6.1 Sol\", 500000}` -> `{\"gpt-6.1-sol\", \"GPT-6.1 Sol\", 400000}` (TestCatalogGenerationMatchesPi FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/opencode.ts",
+  "package": "./internal/modelgen/providers",
+  "tests": [
+   "TestProvBOpencode"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/opencode.ts (no upstream test for provider definitions; expected values derived from the TypeScript definition; evidence_provB*_test.go table over the registered definition)",
+  "mutation": "internal/modelgen/providers/opencode.go: `[]string{\"responses\", \"messages\", \"generate-content\", \"chat-completions\"}` -> `[]string{\"chat-completions\", \"messages\", \"generate-content\", \"responses\"}` (TestProvBOpencode FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/opencode.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/opencode.ts (no upstream test for provider definitions; expected values derived from the TypeScript definition; Pi generator output sha256 golden, cmd/gen-models/testdata/catalog-generation)",
+  "mutation": "internal/modelgen/providers/opencode.go: `O(\"supportsStore\", false, \"supportsDeveloperRole\", false, \"supportsStrictMode\", true)` -> `O(\"supportsStore\", false, \"supportsDeveloperRole\", false, \"supportsStrictMode\", false)` (TestCatalogGenerationMatchesPi FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/opencode-go.ts",
+  "package": "./internal/modelgen/providers",
+  "tests": [
+   "TestProvBOpencodeGo"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/opencode-go.ts (no upstream test for provider definitions; expected values derived from the TypeScript definition; evidence_provB*_test.go table over the registered definition)",
+  "mutation": "internal/modelgen/providers/opencode_go.go: `Compat: ApiCompatDefaults{\"openai-completions\": FixedCompat(opencodeCompletionsCompat())},` -> `` (TestProvBOpencodeGo FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/opencode-go.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/opencode-go.ts (no upstream test for provider definitions; expected values derived from the TypeScript definition; Pi generator output sha256 golden, cmd/gen-models/testdata/catalog-generation)",
+  "mutation": "internal/modelgen/providers/opencode_go.go: `Compat: ApiCompatDefaults{\"openai-completions\": FixedCompat(opencodeCompletionsCompat())},` -> `` (TestCatalogGenerationMatchesPi FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/openrouter.ts",
+  "package": "./internal/modelgen/providers",
+  "tests": [
+   "TestProvBOpenRouter"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/openrouter.ts (no upstream test for provider definitions; expected values derived from the TypeScript definition; evidence_provB*_test.go table over the registered definition)",
+  "mutation": "internal/modelgen/providers/openrouter.go: ``^~?anthropic/`` -> ``^anthropic/`` (TestProvBOpenRouter FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/openrouter.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/openrouter.ts (no upstream test for provider definitions; expected values derived from the TypeScript definition; Pi generator output sha256 golden, cmd/gen-models/testdata/catalog-generation)",
+  "mutation": "internal/modelgen/providers/openrouter.go: `model.Set(\"maxTokens\", KimiK3MaxTokens)` -> `model.Set(\"maxTokens\", 1)` (TestCatalogGenerationMatchesPi FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/qwen-token-plan.ts",
+  "package": "./internal/modelgen/providers",
+  "tests": [
+   "TestProvBQwenTokenPlans"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/qwen-token-plan.ts (no upstream test for provider definitions; expected values derived from the TypeScript definition; evidence_provB*_test.go table over the registered definition)",
+  "mutation": "internal/modelgen/providers/qwen_token_plan.go: `\"alibaba-token-plan\", interationalBaseURL, nil)` -> `\"alibaba-token-plan-cn\", interationalBaseURL, nil)` (TestProvBQwenTokenPlans FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/qwen-token-plan.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/qwen-token-plan.ts (no upstream test for provider definitions; expected values derived from the TypeScript definition; Pi generator output sha256 golden, cmd/gen-models/testdata/catalog-generation)",
+  "mutation": "internal/modelgen/providers/qwen_token_plan.go: `\"thinkingFormat\", \"qwen\",` -> `\"thinkingFormat\", \"openai\",` (TestCatalogGenerationMatchesPi FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/qwen-token-plan-cn.ts",
+  "package": "./internal/modelgen/providers",
+  "tests": [
+   "TestProvBQwenTokenPlans"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/qwen-token-plan-cn.ts (no upstream test for provider definitions; expected values derived from the TypeScript definition; evidence_provB*_test.go table over the registered definition)",
+  "mutation": "internal/modelgen/providers/qwen_token_plan_cn.go: `\"alibaba-token-plan-cn\"` -> `\"alibaba-token-plan\"` (TestProvBQwenTokenPlans FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/qwen-token-plan-cn.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/qwen-token-plan-cn.ts (no upstream test for provider definitions; expected values derived from the TypeScript definition; Pi generator output sha256 golden, cmd/gen-models/testdata/catalog-generation)",
+  "mutation": "internal/modelgen/providers/qwen_token_plan_cn.go: `cn-beijing` -> `cn-shanghai` (TestCatalogGenerationMatchesPi FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/qwen-token-plan-individual.ts",
+  "package": "./internal/modelgen/providers",
+  "tests": [
+   "TestProvBQwenTokenPlans"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/qwen-token-plan-individual.ts (no upstream test for provider definitions; expected values derived from the TypeScript definition; evidence_provB*_test.go table over the registered definition)",
+  "mutation": "internal/modelgen/providers/qwen_token_plan_individual.go: `\"qwen3.6-flash\",` -> `\"qwen3.6-flashx\",` (TestProvBQwenTokenPlans FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/qwen-token-plan-individual.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/qwen-token-plan-individual.ts (no upstream test for provider definitions; expected values derived from the TypeScript definition; Pi generator output sha256 golden, cmd/gen-models/testdata/catalog-generation)",
+  "mutation": "internal/modelgen/providers/qwen_token_plan_individual.go: `\"qwen3.6-flash\",` -> `\"qwen3.6-flashx\",` (TestCatalogGenerationMatchesPi FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/radius.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/radius.ts (no upstream test for provider definitions; expected values derived from the TypeScript definition; Pi generator output sha256 golden, cmd/gen-models/testdata/catalog-generation)",
+  "mutation": "internal/modelgen/providers/radius.go: `for _, model := range ctx.Sources.Radius {` -> `for _, model := range ctx.Sources.Radius[1:] {` (TestCatalogGenerationMatchesPi FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/together.ts",
+  "package": "./internal/modelgen/providers",
+  "tests": [
+   "TestProvBTogether"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/together.ts (no upstream test for provider definitions; expected values derived from the TypeScript definition; evidence_provB*_test.go table over the registered definition)",
+  "mutation": "internal/modelgen/providers/together.go: `O(\"off\", nil, \"minimal\", nil),` -> `O(\"off\", nil),` (TestProvBTogether FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/together.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/together.ts (no upstream test for provider definitions; expected values derived from the TypeScript definition; Pi generator output sha256 golden, cmd/gen-models/testdata/catalog-generation)",
+  "mutation": "internal/modelgen/providers/together.go: `\"https://api.together.ai/v1\"` -> `\"https://api.together.xyz/v1\"` (TestCatalogGenerationMatchesPi FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/typesafe.ts",
+  "package": "./internal/modelgen/providers",
+  "tests": [
+   "TestProvBTypesafe"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/typesafe.ts (no upstream test for provider definitions; expected values derived from the TypeScript definition; evidence_provB*_test.go table over the registered definition)",
+  "mutation": "internal/modelgen/providers/typesafe.go: `contextWindow = 64000` -> `contextWindow = 32000` (TestProvBTypesafe FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/typesafe.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/typesafe.ts (no upstream test for provider definitions; expected values derived from the TypeScript definition; Pi generator output sha256 golden, cmd/gen-models/testdata/catalog-generation)",
+  "mutation": "internal/modelgen/providers/typesafe.go: `\"contextWindow\", contextWindow,` -> `\"contextWindow\", 1000,` (TestCatalogGenerationMatchesPi FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/vercel-ai-gateway.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/vercel-ai-gateway.ts (no upstream test for provider definitions; expected values derived from the TypeScript definition; Pi generator output sha256 golden, cmd/gen-models/testdata/catalog-generation)",
+  "mutation": "internal/modelgen/providers/vercel_ai_gateway.go: `models[i] = Spread(model, O(\"maxTokens\", KimiK3MaxTokens))` -> `models[i] = model` (TestCatalogGenerationMatchesPi FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/xai.ts",
+  "package": "./internal/modelgen/providers",
+  "tests": [
+   "TestProvBXai"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/xai.ts (no upstream test for provider definitions; expected values derived from the TypeScript definition; evidence_provB*_test.go table over the registered definition)",
+  "mutation": "internal/modelgen/providers/xai.go: `Compat:  O(\"supportsLongCacheRetention\", false),` -> `Compat:  O(\"supportsLongCacheRetention\", true),` (TestProvBXai FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/xai.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/xai.ts (no upstream test for provider definitions; expected values derived from the TypeScript definition; Pi generator output sha256 golden, cmd/gen-models/testdata/catalog-generation)",
+  "mutation": "internal/modelgen/providers/xai.go: `return !xaiExcludedModelIDs[source.ID]` -> `return true` (TestCatalogGenerationMatchesPi FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/xiaomi.ts",
+  "package": "./internal/modelgen/providers",
+  "tests": [
+   "TestProvBXiaomi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/xiaomi.ts (no upstream test for provider definitions; expected values derived from the TypeScript definition; evidence_provB*_test.go table over the registered definition)",
+  "mutation": "internal/modelgen/providers/xiaomi.go: `if !model.Bool(\"reasoning\") {` -> `if false {` (TestProvBXiaomi FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/xiaomi.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/xiaomi.ts (no upstream test for provider definitions; expected values derived from the TypeScript definition; Pi generator output sha256 golden, cmd/gen-models/testdata/catalog-generation)",
+  "mutation": "internal/modelgen/providers/xiaomi.go: `\"requiresReasoningContentOnAssistantMessages\", true,` -> `\"requiresReasoningContentOnAssistantMessages\", false,` (TestCatalogGenerationMatchesPi FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/xiaomi-token-plan-ams.ts",
+  "package": "./internal/modelgen/providers",
+  "tests": [
+   "TestProvBXiaomi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/xiaomi-token-plan-ams.ts (no upstream test for provider definitions; expected values derived from the TypeScript definition; evidence_provB*_test.go table over the registered definition)",
+  "mutation": "internal/modelgen/providers/xiaomi_token_plan_ams.go: `https://token-plan-ams.xiaomimimo.com/v1` -> `https://token-plan-ams.xiaomimimo.com/v2` (TestProvBXiaomi FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/xiaomi-token-plan-ams.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/xiaomi-token-plan-ams.ts (no upstream test for provider definitions; expected values derived from the TypeScript definition; Pi generator output sha256 golden, cmd/gen-models/testdata/catalog-generation)",
+  "mutation": "internal/modelgen/providers/xiaomi_token_plan_ams.go: `https://token-plan-ams.xiaomimimo.com/v1` -> `https://token-plan-ams.xiaomimimo.com/v2` (TestCatalogGenerationMatchesPi FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/xiaomi-token-plan-cn.ts",
+  "package": "./internal/modelgen/providers",
+  "tests": [
+   "TestProvBXiaomi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/xiaomi-token-plan-cn.ts (no upstream test for provider definitions; expected values derived from the TypeScript definition; evidence_provB*_test.go table over the registered definition)",
+  "mutation": "internal/modelgen/providers/xiaomi_token_plan_cn.go: `https://token-plan-cn.xiaomimimo.com/v1` -> `https://token-plan-cn.xiaomimimo.com/v2` (TestProvBXiaomi FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/xiaomi-token-plan-cn.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/xiaomi-token-plan-cn.ts (no upstream test for provider definitions; expected values derived from the TypeScript definition; Pi generator output sha256 golden, cmd/gen-models/testdata/catalog-generation)",
+  "mutation": "internal/modelgen/providers/xiaomi_token_plan_cn.go: `https://token-plan-cn.xiaomimimo.com/v1` -> `https://token-plan-cn.xiaomimimo.com/v2` (TestCatalogGenerationMatchesPi FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/xiaomi-token-plan-sgp.ts",
+  "package": "./internal/modelgen/providers",
+  "tests": [
+   "TestProvBXiaomi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/xiaomi-token-plan-sgp.ts (no upstream test for provider definitions; expected values derived from the TypeScript definition; evidence_provB*_test.go table over the registered definition)",
+  "mutation": "internal/modelgen/providers/xiaomi_token_plan_sgp.go: `https://token-plan-sgp.xiaomimimo.com/v1` -> `https://token-plan-sgp.xiaomimimo.com/v2` (TestProvBXiaomi FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/xiaomi-token-plan-sgp.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/xiaomi-token-plan-sgp.ts (no upstream test for provider definitions; expected values derived from the TypeScript definition; Pi generator output sha256 golden, cmd/gen-models/testdata/catalog-generation)",
+  "mutation": "internal/modelgen/providers/xiaomi_token_plan_sgp.go: `https://token-plan-sgp.xiaomimimo.com/v1` -> `https://token-plan-sgp.xiaomimimo.com/v2` (TestCatalogGenerationMatchesPi FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/zai.ts",
+  "package": "./internal/modelgen/providers",
+  "tests": [
+   "TestProvBZai"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/zai.ts (no upstream test for provider definitions; expected values derived from the TypeScript definition; evidence_provB*_test.go table over the registered definition)",
+  "mutation": "internal/modelgen/providers/zai.go: `{\"glm-4.5\": true, \"glm-4.5-air\": true, \"glm-4.5-flash\": true, \"glm-4.5v\": true}` -> `{\"glm-4.5x\": true, \"glm-4.5-air\": true, \"glm-4.5-flash\": true, \"glm-4.5v\": true}` (TestProvBZai FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/zai.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/zai.ts (no upstream test for provider definitions; expected values derived from the TypeScript definition; Pi generator output sha256 golden, cmd/gen-models/testdata/catalog-generation)",
+  "mutation": "internal/modelgen/providers/zai.go: `thinkingLevelMap.Set(\"off\", \"none\")` -> `thinkingLevelMap.Set(\"off\", \"off\")` (TestCatalogGenerationMatchesPi FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/zai-coding-cn.ts",
+  "package": "./internal/modelgen/providers",
+  "tests": [
+   "TestProvBZai"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/zai-coding-cn.ts (no upstream test for provider definitions; expected values derived from the TypeScript definition; evidence_provB*_test.go table over the registered definition)",
+  "mutation": "internal/modelgen/providers/zai_coding_cn.go: `https://open.bigmodel.cn/api/coding/paas/v4` -> `https://open.bigmodel.cn/api/paas/v4` (TestProvBZai FAILS)"
+ },
+ {
+  "upstream": "packages/ai/catalog/providers/zai-coding-cn.ts",
+  "package": "./cmd/gen-models",
+  "tests": [
+   "TestCatalogGenerationMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/catalog/providers/zai-coding-cn.ts (no upstream test for provider definitions; expected values derived from the TypeScript definition; Pi generator output sha256 golden, cmd/gen-models/testdata/catalog-generation)",
+  "mutation": "internal/modelgen/providers/zai_coding_cn.go: `https://open.bigmodel.cn/api/coding/paas/v4` -> `https://open.bigmodel.cn/api/paas/v4` (TestCatalogGenerationMatchesPi FAILS)"
+ }
+]

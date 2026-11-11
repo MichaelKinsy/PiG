@@ -1,10 +1,11 @@
 import { adoptPiProcessIdentity } from "./process-identity.mjs";
 import { Generations } from "./generations.mjs";
+import { exitAfterStderr } from "./exit-after-stderr.mjs";
 
 const entry = process.argv[2];
 if (!entry) {
-  console.error("usage: node cli.mjs <extension-entry>");
-  process.exit(1);
+  exitAfterStderr("usage: node cli.mjs <extension-entry>");
+  await new Promise(() => {});
 }
 
 adoptPiProcessIdentity();
@@ -20,6 +21,5 @@ if (!(await generations.admit(first))) process.exit(1);
 export const served = generations.serve(process.stdin).catch(failServe);
 
 function failServe(error) {
-  console.error(error);
-  process.exit(1);
+  exitAfterStderr(error);
 }

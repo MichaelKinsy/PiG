@@ -13,7 +13,12 @@ func TestDirectSimpleAuthenticationReachesRealConverters(t *testing.T) {
 			model := &Model{ID: "test-model", ProviderMeta: ProviderMetadata{API: api, ProviderID: "test-provider", BaseURL: "https://example.invalid"}, Capabilities: ModelCapabilities{ContextWindow: 10000, MaxOutputTokens: 1000}}
 			sentinel := errors.New("captured")
 			called := false
-			stream, err := StreamSimple(t.Context(), model, NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("Hi")}}}), StreamOptions{APIKey: "request-key", OnPayload: func(any, *Model) (any, error) { called = true; return nil, sentinel }})
+			// openai-codex-responses.ts extractAccountId throws before onPayload for a key that is not a ChatGPT token.
+			apiKey := "request-key"
+			if api == APIOpenAICodexResponses {
+				apiKey = codexToken()
+			}
+			stream, err := StreamSimple(t.Context(), model, NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("Hi")}}}), StreamOptions{APIKey: apiKey, OnPayload: func(any, *Model) (any, error) { called = true; return nil, sentinel }})
 			if api == APIAnthropicMessages {
 				// packages/ai/src/api/anthropic-messages.ts:521-539,817-830: setup rejection returns the initialized assistant through one terminal error event, before start.
 				if err != nil || stream == nil {

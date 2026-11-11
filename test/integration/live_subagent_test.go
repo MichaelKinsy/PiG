@@ -64,13 +64,13 @@ func newGopiSession(t *testing.T) *pigSession {
 				t:       t,
 				session: session,
 				workDir: cwd,
-				cleanup: func() { _ = tmuxCommand("kill-session", "-t", session).Run() },
+				cleanup: func() { _ = killSession(t, session) },
 			}
 		}
 		time.Sleep(300 * time.Millisecond)
 	}
 	out, _ := tmuxCommand("capture-pane", "-t", session, "-p").Output()
-	_ = tmuxCommand("kill-session", "-t", session).Run()
+	_ = killSession(t, session)
 	t.Fatalf("pig failed to start within 20s:\n%s", string(out))
 	return nil
 }

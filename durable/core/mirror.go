@@ -646,14 +646,14 @@ func (m *mirror) materialize(id session.ID, at session.Point) (*session.StoredDo
 		baseAt--
 	}
 	if baseAt < 0 {
-		return nil, errors.New("Document " + strconv.FormatInt(int64(id), 10) + " is missing a required base")
+		return nil, idError("Document ", id, " is missing a required base", "")
 	}
 	base := revs[baseAt]
 	var value any = base.value
 	var batch []delta.Op
 	for _, r := range revs[baseAt+1:] {
 		if r.base || r.version != base.version {
-			return nil, errors.New("Document " + strconv.FormatInt(int64(id), 10) + " crosses a stored version boundary without a base")
+			return nil, idError("Document ", id, " crosses a stored version boundary without a base", "")
 		}
 		batch = append(batch, r.ops...)
 	}
@@ -822,22 +822,22 @@ func (m *mirror) checkGlobalIDs(writes []session.Write) error {
 		existing, earlier := m.recordType(id), claimed[id]
 		if table == "conversation" || table == "entry" || table == "document" {
 			if existing != "" {
-				return errors.New("ID " + strconv.FormatInt(int64(id), 10) + " already belongs to " + existing)
+				return idError("ID ", id, " already belongs to ", existing)
 			}
 			if earlier != "" {
-				return errors.New("ID " + strconv.FormatInt(int64(id), 10) + " is written more than once")
+				return idError("ID ", id, " is written more than once", "")
 			}
 			if table == "entry" && id < m.storedBelow() {
 				// The stored-entry bound (mirror_lazy.go releaseApplied) relies on each commit writing higher IDs than the
 				// commits before it.
-				return errors.New("core: entry ID " + strconv.FormatInt(int64(id), 10) + " is below the stored-entry bound")
+				return idError("core: entry ID ", id, " is below the stored-entry bound", "")
 			}
 		} else {
 			if existing != "" && existing != table {
-				return errors.New("ID " + strconv.FormatInt(int64(id), 10) + " already belongs to " + existing)
+				return idError("ID ", id, " already belongs to ", existing)
 			}
 			if earlier != "" && earlier != table {
-				return errors.New("ID " + strconv.FormatInt(int64(id), 10) + " is written as two record types")
+				return idError("ID ", id, " is written as two record types", "")
 			}
 		}
 		claimed[id] = table
@@ -873,19 +873,19 @@ func (m *mirror) prepareDocActions(writes []session.Write) (map[session.ID]*mirr
 		switch w.Kind {
 		case session.WriteDocCreate:
 			if a.create != nil || a.content != nil {
-				return nil, nil, errors.New("Document " + strconv.FormatInt(int64(id), 10) + " has more than one content command")
+				return nil, nil, idError("Document ", id, " has more than one content command", "")
 			}
 			cw := w
 			a.create, a.content = w.Record, &cw
 		case session.WriteDocChange:
 			if a.content != nil {
-				return nil, nil, errors.New("Document " + strconv.FormatInt(int64(id), 10) + " has more than one content command")
+				return nil, nil, idError("Document ", id, " has more than one content command", "")
 			}
 			cw := w
 			a.content = &cw
 		case session.WriteDocRetire:
 			if a.retire {
-				return nil, nil, errors.New("Document " + strconv.FormatInt(int64(id), 10) + " is retired more than once")
+				return nil, nil, idError("Document ", id, " is retired more than once", "")
 			}
 			a.retire = true
 		}
@@ -906,20 +906,20 @@ func (m *mirror) checkDocActions(actions map[session.ID]*mirrorAction, order []s
 			return errors.New("Unknown document: " + strconv.FormatInt(int64(id), 10))
 		}
 		if a.create != nil && existing != nil {
-			return errors.New("Document " + strconv.FormatInt(int64(id), 10) + " already exists")
+			return idError("Document ", id, " already exists", "")
 		}
 		if existing != nil && existing.record.Has("retiredAt") {
-			return errors.New("Document " + strconv.FormatInt(int64(id), 10) + " is retired")
+			return idError("Document ", id, " is retired", "")
 		}
 		if a.content != nil && a.create != nil && a.content.Value == nil {
 			return errors.New("Fork source document cannot be read")
 		}
 		if a.content != nil && !a.content.Base {
 			if existing == nil || len(existing.revisions) == 0 {
-				return errors.New("Document " + strconv.FormatInt(int64(id), 10) + " delta has no base")
+				return idError("Document ", id, " delta has no base", "")
 			}
 			if prev := existing.revisions[len(existing.revisions)-1]; prev.version != a.content.Version {
-				return errors.New("Document " + strconv.FormatInt(int64(id), 10) + " version transition requires a base")
+				return idError("Document ", id, " version transition requires a base", "")
 			}
 		}
 		var key string
@@ -1112,4 +1112,9 @@ func (m *mirror) checkCopies(writes []session.Write) error {
 		}
 	}
 	return nil
+}
+
+// idError is the message of a record ID's failure: head, the ID, mid, tail. One site for the many failures a commit's checks raise.
+func idError(head string, id int64, mid, tail string) error {
+	return errors.New(head + strconv.FormatInt(id, 10) + mid + tail)
 }

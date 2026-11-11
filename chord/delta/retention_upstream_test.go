@@ -355,7 +355,7 @@ func TestDeltaTrackerRetentionAcrossGCJobs(t *testing.T) {
 			mustNoErr(t, change.State().Set("value", float64(index)))
 			change.Abort()
 		}
-		if live := len(tracker.owner.contexts); live > 256 {
+		if live := len(tracker.owner.competitors); live > 256 {
 			t.Fatalf("the tracker still registers %d aborted changes", live)
 		}
 		replace(t, tracker, jsonObject(t, `{"value":1}`))
@@ -388,7 +388,7 @@ func TestDeltaTrackerRetentionAcrossGCJobs(t *testing.T) {
 		for range 10_000 {
 			commit()
 		}
-		if live := len(tracker.owner.contexts); live > 256 {
+		if live := len(tracker.owner.competitors); live > 256 {
 			t.Fatalf("the tracker still registers %d adopted changes", live)
 		}
 		// The text itself grows 4 bytes per change; every earlier revision is released, and the allowance is Pi's 48 bytes.
@@ -400,6 +400,59 @@ func TestDeltaTrackerRetentionAcrossGCJobs(t *testing.T) {
 		if len(text) != 4*11_000 {
 			t.Fatalf("text has %d bytes, want %d", len(text), 4*11_000)
 		}
+	})
+
+	t.Run("validates abandoned-draft-released retention semantics", func(t *testing.T) {
+		// retention.worker.ts "abandoned-draft-released": the tracker holds its most recent open draft strongly; one dropped without settling stays until the tracker's next change or adoption, which releases it.
+		rootOf := func(value float64) *JsonObject { return JsonObjectOf("value", value, "payload", nil) }
+		abandon := func(tracker *Tracker) weak.Pointer[node] {
+			change := tracker.BeginChange()
+			mustNoErr(t, change.State().Set("payload", JsonObjectOf("rows", valueRows(50_000))))
+			return weak.Make(draftNode(change.State().Object("payload").Array("rows").ref))
+		}
+		byChange := Track(rootOf(0))
+		first := abandon(byChange)
+		assertRetained(t, first, "the tracker holds its latest open draft")
+		next := byChange.BeginChange()
+		collect(t, first, "a draft the tracker's next change demoted")
+		// A chain of abandoned drafts keeps only the latest.
+		next.Abort()
+		chain := make([]weak.Pointer[node], 20)
+		for index := range chain {
+			chain[index] = abandon(byChange)
+		}
+		for _, reference := range chain[:len(chain)-1] {
+			collect(t, reference, "an abandoned draft older than the latest")
+		}
+		assertRetained(t, chain[len(chain)-1], "the tracker holds its latest open draft")
+		replace(t, byChange, rootOf(1))
+		collect(t, chain[len(chain)-1], "the latest abandoned draft after an adoption")
+
+		byAdopt := Track(rootOf(0))
+		dropped := abandon(byAdopt)
+		replace(t, byAdopt, rootOf(1))
+		collect(t, dropped, "an abandoned draft after an adoption")
+		expectJSONText(t, byAdopt.Value(), `{"value":1,"payload":null}`)
+	})
+
+	t.Run("validates tracker-with-open-draft retention semantics", func(t *testing.T) {
+		// retention.worker.ts "tracker-with-open-draft": changes a caller retains do not keep their tracker alive.
+		var retainedSettledChanges []*Change
+		reference := func() weak.Pointer[Tracker] {
+			tracker := Track(JsonObjectOf("value", 0.0, "rows", valueRows(50_000)))
+			change := tracker.BeginChange()
+			mustNoErr(t, change.State().Array("rows").Object(0).Set("value", -1.0))
+			retainedSettledChanges = append(retainedSettledChanges, change)
+			competitor := tracker.BeginChange()
+			mustNoErr(t, competitor.State().Set("value", 1.0))
+			retainedSettledChanges = append(retainedSettledChanges, competitor)
+			return weak.Make(tracker)
+		}()
+		collect(t, reference, "a tracker whose open changes are retained")
+		if len(retainedSettledChanges) != 2 {
+			t.Fatal("the retained changes were dropped")
+		}
+		runtime.KeepAlive(retainedSettledChanges)
 	})
 }
 
@@ -414,14 +467,16 @@ func itoa(value int) string {
 	return string(digits)
 }
 
-// upstream: packages/chord/src/delta/tracker.ts:216 (#contexts = new Set<WeakRef<OverlayContext>>()): the tracker holds an open change weakly, so a change the caller drops without settling it is reclaimed with its draft before any adoption.
-func TestTrackerReleasesADroppedOpenChange(t *testing.T) {
+// upstream: packages/chord/src/delta/tracker.ts (#open, #competitors; a9228305): the tracker holds its most recent open change strongly and moves it into the weak registry when the next change opens, so a change the caller drops without settling it is reclaimed with its draft once another change opens.
+func TestTrackerReleasesADroppedOpenChangeWhenTheNextOpens(t *testing.T) {
 	tracker := Track(jsonObject(t, `{"payload":null}`))
 	reference := func() weak.Pointer[node] {
 		change := tracker.BeginChange()
 		mustNoErr(t, change.State().Set("payload", JsonObjectOf("rows", valueRows(50_000))))
 		return weak.Make(draftNode(change.State().Object("payload").Array("rows").ref))
 	}()
+	next := tracker.BeginChange()
 	collect(t, reference, "a dropped open change")
+	next.Abort()
 	expectJSONText(t, tracker.Value(), `{"payload":null}`)
 }

@@ -1,5 +1,6 @@
 // Storage handles for Harness.open: a synchronous SQL surface (ABI section 3) plus how to close it. The Durable Object host
 // passes `doStorage(ctx.storage)`; Node programs pass MemoryStorage or openNodeSqliteStorage.
+import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context"
 import { doStore } from "../store-do.ts"
 import { apply as applyOps } from "@earendil-works/chord/delta"
 import { zeroCounters, type Store } from "../store.ts"
@@ -35,9 +36,12 @@ export abstract class SqlStorage implements Storage {
   abstract readonly profile: StorageProfile
   protected store?: Store & { close(): void }
   protected closed = false
+  /** The core session that applies the direct commits (storage-direct.ts), kept open across them. */
+  private direct?: import("./storage-direct.ts").DirectCommits
   protected abstract openStore(): Promise<Store & { close(): void }>
   async open() { return this.store ??= await this.openStore() }
-  close() { this.closed = true; this.store?.close() }
+  /** Pi's `Storage.close(context): Promise<void>`, idempotent as SqliteStorage.close is. */
+  async close(_context?: unknown): Promise<void> { if (this.closed) return; this.closed = true; this.direct?.close(); this.store?.close() }
   /** Pi's Storage reads over the committed rows (storage-reads.ts); every one rejects once the storage is closed, as MemoryStorage's does. */
   private async reads(): Promise<StorageReads> {
     if (this.closed) throw new Error(`${this.constructor.name} is closed`)
@@ -53,19 +57,28 @@ export abstract class SqlStorage implements Storage {
   async submission(id: number, _context?: unknown) { return (await this.reads()).submission(id) }
   async scanSubmissions(query: Parameters<StorageReads["scanSubmissions"]>[0], limit: number, cursor: Parameters<StorageReads["scanSubmissions"]>[2], _context?: unknown) { return (await this.reads()).scanSubmissions(query, limit, cursor) }
   async submissionByRequest(conversationId: number, requestId: string, _context?: unknown) { return (await this.reads()).submissionByRequest(conversationId, requestId) }
-  /** Commits the Harness's core hands to the Storage's own `commit` first (the gate): the call is a no-op, the core applies them afterwards. */
+  /** Commits the Harness's core hands to the Storage's own `commit` first (the gate): the call adopts at once, the core applies them in that call. */
   gating = 0
   /**
-   * Pi's `Storage.commit`. Under the Storage gate (PROTOCOL.md) it is a no-op the overriding subclasses call through `super.commit`: the
-   * core applies the commit itself once the call resolves. Called directly (a test seeding a store before a Harness opens it) it
-   * applies the writes through the core in storage mode (storage-direct.ts).
+   * Pi's `Storage.commit(batches, receive, context)`: `receive(index, seq)` is called once per durable batch, in order, synchronously, and the call then
+   * resolves with the number of durable batches and the refusal, if any. Under the Storage gate (PROTOCOL.md) the core applies each batch itself at
+   * its receipt, so the batches are made durable there and this call receives the sequences they consume; the overriding subclasses call through `super.commit`. Called directly (a test
+   * seeding a store before a Harness opens it) it applies the writes through the core in storage mode (storage-direct.ts).
    */
-  async commit(writes: readonly unknown[], _context?: unknown): Promise<number> {
+  async commit(batches: readonly (readonly unknown[])[], receive: (index: number, seq: number) => void, _context?: unknown): Promise<{ stored: number; refused?: unknown }> {
     const store = await this.open()
-    if (this.gating === 0) return (await import("./storage-direct.ts")).directCommit(store, writes)
-    // The commit being gated takes the store's next sequence number (CONTRACT section 3.1: a commit's seq is the next_seq it consumes);
-    // a store the core has not initialized yet (an open that failed first) is at its first.
-    try { return Number(store.all("SELECT next_seq FROM durable_metadata", [])[0]?.[0] ?? 1) } catch { return 1 }
+    if (this.gating === 0) {
+      const { seqs, refused } = await (this.direct ??= new (await import("./storage-direct.ts")).DirectCommits(store)).commit(batches)
+      seqs.forEach((seq, index) => receive(index, seq))
+      return refused === undefined ? { stored: seqs.length } : { stored: seqs.length, refused }
+    }
+    // The call being gated is made durable by the core's own commits, one per batch, each taking the store's next sequence number (CONTRACT
+    // section 3.1: a commit's seq is the next_seq it consumes), so batch `index` has next_seq + index; a store the core has not initialized
+    // yet (an open that failed first) is at its first.
+    let next = 1
+    try { next = Number(store.all("SELECT next_seq FROM durable_metadata", [])[0]?.[0] ?? 1) } catch { /* the core has not created the schema yet */ }
+    batches.forEach((_, index) => receive(index, next + index))
+    return { stored: batches.length }
   }
   private minted = 0
   /** Pi's `Storage.mintId`: a fresh candidate from the Session-global ID namespace (above every ID the store has claimed). */
@@ -111,7 +124,7 @@ export class MemoryStorage extends SqlStorage {
     return nodeStore(":memory:", { wal: false })
   }
   /** memory.ts close: the Storage stops answering, and what it committed survives for a reopen (a test's `reopen()` clears `closed`); the database is released with the object. */
-  override close() { this.closed = true }
+  override async close(_context?: unknown): Promise<void> { this.closed = true }
 }
 
 /** A SQLite file (node:sqlite): the store pi-durable's `openNodeSqliteStorage` opens. Its `commit` and reads are Pi's Storage methods, so a caller can wrap them. */
@@ -137,8 +150,30 @@ export function openNodeJsonlStorage(directory: string): Storage {
 }
 
 /** The Pi `Storage` methods a caller's Storage object replaces: a subclass of MemoryStorage (or an assignment on a node SQLite storage) that overrides one, or a proxy that wraps it. `commit` is gated by the core (PROTOCOL.md, "Storage gate"). */
-const PI_STORAGE_METHODS = ["commit", "mintId", "conversation", "scanConversations", "entry", "findLatestHeadMarker", "scanEntries", "task", "scanTasks", "submission", "submissionByRequest", "scanSubmissions", "findDocument", "document", "scanDocuments"] as const
+const PI_STORAGE_METHODS = ["commit", "publishing", "mintId", "conversation", "scanConversations", "entry", "findLatestHeadMarker", "scanEntries", "task", "scanTasks", "submission", "submissionByRequest", "scanSubmissions", "findDocument", "document", "scanDocuments"] as const
 export function overriddenMethods(storage: object): string[] {
   if (!(storage instanceof SqlStorage) && typeof (storage as { commit?: unknown }).commit !== "function") return []
   return PI_STORAGE_METHODS.filter(name => (storage as Record<string, unknown>)[name] !== undefined && (storage as Record<string, unknown>)[name] !== (SqlStorage.prototype as unknown as Record<string, unknown>)[name])
+}
+
+/**
+ * A Pi Storage this host does not implement (pi-durable's own `JsonlStorage` or `IndexedDbStorage` object passed to `Harness.open` or
+ * `SessionImpl`): the core keeps its state in a private SQL store and every Storage method goes to the caller's object. Each commit takes
+ * the Storage gate (PROTOCOL.md): the object's `commit(writes, adopt, context)` adopts the batch and the core applies it inside the
+ * adoption, so the object must start empty, as the core's store does. An object that already holds records is refused: the core would not
+ * see them.
+ */
+export async function adaptStorage(storage: Storage | object): Promise<Storage> {
+  if (typeof (storage as Partial<Storage>).open === "function") return storage as Storage
+  const foreign = storage as Record<string, (...args: unknown[]) => unknown> & { close?(context?: unknown): unknown }
+  if (await foreign.conversation!.call(foreign, 1, BACKGROUND_CONTEXT) !== undefined) throw new Error("Harness.open: a Storage this host does not implement must start empty: the core keeps its own state")
+  class Adapted extends MemoryStorage {
+    seal() { this.closed = true }
+  }
+  const adapted = new Adapted()
+  const target = adapted as unknown as Record<string, unknown>
+  // `publishing` is optional (types.ts Storage): a Storage without it publishes in the writer's own scope.
+  for (const name of PI_STORAGE_METHODS) if (foreign[name] !== undefined) target[name] = (...args: unknown[]) => foreign[name]!.apply(foreign, args)
+  adapted.close = async (context?: unknown) => { adapted.seal(); await foreign.close?.call(foreign, context) }
+  return adapted
 }

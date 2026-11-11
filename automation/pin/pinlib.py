@@ -156,9 +156,15 @@ def ls_remote(ref: str) -> str:
 
 
 def full_commit(ref: str) -> str:
-    """Expand a short commit through the GitHub API (a full commit needs no request)."""
+    """Expand a short commit: a full commit needs no request, nor does one whose tarball is cached (a prefix naming a single
+    cached tarball); only an unknown short commit asks the GitHub API."""
     if FULL_RE.match(ref):
         return ref
+    if HEX_RE.match(ref):
+        cached = {path.name[: -len(".tar.gz")] for path in (cache_dir() / "tarballs").glob(f"{ref}*.tar.gz")}
+        cached = {name for name in cached if FULL_RE.match(name)}
+        if len(cached) == 1:
+            return cached.pop()
     url = f"https://api.github.com/repos/{UPSTREAM_REPO}/commits/{ref}"
     out = subprocess.run(["curl", "-sSfL", "-H", "Accept: application/vnd.github.sha", *_auth_args(), url], check=True, capture_output=True, text=True, timeout=60).stdout.strip()
     if not FULL_RE.match(out):

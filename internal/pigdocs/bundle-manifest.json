@@ -1,0 +1,247 @@
+{
+  "site_url": "https://pi-in-go.dev/docs/latest",
+  "repo_url": "https://github.com/MichaelKinsy/PiG",
+  "pages": [
+    {
+      "site": "json.md",
+      "bundle": "json.md"
+    },
+    {
+      "site": "llama-cpp.md",
+      "bundle": "llama-cpp.md"
+    },
+    {
+      "site": "rpc-commands.md",
+      "bundle": "rpc-commands.md"
+    },
+    {
+      "site": "rpc-extension-ui.md",
+      "bundle": "rpc-extension-ui.md"
+    },
+    {
+      "site": "session-format.md",
+      "bundle": "session-format.md"
+    },
+    {
+      "site": "usage.md",
+      "bundle": "usage.md"
+    },
+    {
+      "site": "cli-integration.md",
+      "bundle": "cli-integration.md"
+    },
+    {
+      "site": "message-types.md",
+      "bundle": "message-types.md"
+    },
+    {
+      "site": "virtual-models.md",
+      "bundle": "virtual-models.md"
+    },
+    {
+      "site": "rpc.md",
+      "bundle": "rpc.md"
+    },
+    {
+      "site": "publishing.md",
+      "bundle": "publishing.md"
+    },
+    {
+      "site": "codemode.md",
+      "bundle": "codemode.md"
+    },
+    {
+      "site": "mcp.md",
+      "bundle": "mcp.md"
+    },
+    {
+      "site": "security.md",
+      "bundle": "security.md"
+    },
+    {
+      "site": "compaction.md",
+      "bundle": "compaction.md"
+    },
+    {
+      "site": "how-pig-works.md",
+      "bundle": "how-pig-works.md"
+    },
+    {
+      "site": "trust.md",
+      "bundle": "trust.md"
+    },
+    {
+      "site": "piglet-lifecycle.md",
+      "bundle": "piglet-lifecycle.md"
+    }
+  ],
+  "slug_map": {
+    "cli.md": "commands.md",
+    "slash-commands.md": "commands.md",
+    "configuration.md": "config.md",
+    "piglet-binaries.md": "piglets.md"
+  },
+  "link_map": {
+    "../../parity/DIVERGENCES.md": "divergences.md"
+  },
+  "glossary": {
+    "source": "docs/project/CONTEXT.md",
+    "site": "glossary.md",
+    "bundle": "glossary.md",
+    "where": {
+      "Pi": [
+        "The upstream project. Docs for Pi behavior that PiG keeps cite it.",
+        "[Overview](/docs/latest/)"
+      ],
+      "PiG": [
+        "The `pig` executable and every page of this documentation.",
+        "[How PiG works](/docs/latest/how-pig-works)"
+      ],
+      "Stock PiG": [
+        "The plain `pig` binary you install. It activates no Piglet by itself.",
+        "[PiG concepts](/docs/latest/concepts)"
+      ],
+      "Resource": [
+        "`pig piglet show` lists the Resources a Piglet selects. Packages carry them.",
+        "[PiG concepts](/docs/latest/concepts)"
+      ],
+      "Package": [
+        "`pig install` and `pig list`.",
+        "[Packages](/docs/latest/packages)"
+      ],
+      "Plugin": [
+        "A package for other agent harnesses that PiG can read.",
+        "[Packages](/docs/latest/packages)"
+      ],
+      "Piglet": [
+        "`pig piglet` commands and the `--piglet` flag.",
+        "[Piglets](/docs/latest/piglets)"
+      ],
+      "Piglet release": [
+        "The record a Piglet build writes. `pig piglet verify` checks it.",
+        "[Piglet lifecycle](/docs/latest/piglet-lifecycle)"
+      ],
+      "Piglet Binary": [
+        "`pig piglet build --format binary` writes one.",
+        "[Piglet Binaries](/docs/latest/piglet-binaries)"
+      ],
+      "PiG Standard": [
+        "The curated Piglet that ships in `piglets/standard/`. You select it.",
+        "[Piglets](/docs/latest/piglets)"
+      ],
+      "Pig Porter": [
+        "A maintainer workbench in `piglets/porter/`. You do not need it to use PiG.",
+        "[Pig Porter README](https://github.com/MichaelKinsy/PiG/blob/main/piglets/porter/README.md)"
+      ],
+      "Divergence": [
+        "The \"Differs from Pi\" boxes and the numbered D entries.",
+        "[Divergences](https://github.com/MichaelKinsy/PiG/blob/main/docs/parity/DIVERGENCES.md)"
+      ],
+      "Evidence": [
+        "The quality and release records of the repository. A user does not need it.",
+        "[Repository quality](https://github.com/MichaelKinsy/PiG/blob/main/docs/project/repository-quality.md)"
+      ],
+      "Transcript": [
+        "The context PiG sends to a model, in the Session file and in the Go SDK.",
+        "[Message types](/docs/latest/message-types)"
+      ],
+      "Provider": [
+        "The model service behind a model name.",
+        "[Custom providers](/docs/latest/custom-provider)"
+      ],
+      "Event Stream": [
+        "The ordered events a Provider returns. This is not the JSON mode event stream, which is the CLI output.",
+        "[JSON event stream mode](/docs/latest/json)"
+      ],
+      "Model Runtime": [
+        "The one model path that the TUI, print, JSON and RPC modes share.",
+        "[How PiG works](/docs/latest/how-pig-works)"
+      ],
+      "Main Screen": [
+        "The terminal area that shows the conversation. Scrollback stays intact.",
+        "[TUI components](/docs/latest/tui)"
+      ],
+      "Extension Host": [
+        "The process model behind extensions: isolated, packed, or fused.",
+        "[Extensions](/docs/latest/extensions)"
+      ],
+      "Piglet Image": [
+        "Planned. `pig piglet build --format image` fails today.",
+        "[Piglet lifecycle](/docs/latest/piglet-lifecycle)"
+      ]
+    }
+  },
+  "blocks": [
+    {
+      "name": "customize-chooser",
+      "fragment": "docs/site/fragments/customize-chooser.md",
+      "targets": [
+        {
+          "file": "docs/site/docs/quickstart.md",
+          "bundle": false
+        },
+        {
+          "file": "internal/pigdocs/content/extend-pig.md",
+          "bundle": true
+        }
+      ]
+    }
+  ],
+  "agent_only": [
+    "README.md",
+    "built-in-extensions.md",
+    "commands.md",
+    "config.md",
+    "divergences.md",
+    "events.md",
+    "extend-pig.md",
+    "extension-api.md",
+    "install.md",
+    "onboarding.md",
+    "piglet-strip.md",
+    "runtime-cells.md"
+  ],
+  "other_generators": [
+    "knowledge-graph.md",
+    "troubleshooting.md",
+    "additive-features.md"
+  ],
+  "deferred_pairs": [
+    "applied-use-cases.md",
+    "concepts.md",
+    "custom-provider.md",
+    "environment-variables.md",
+    "extensions.md",
+    "keybindings.md",
+    "models.md",
+    "packages.md",
+    "piglets.md",
+    "prompt-templates.md",
+    "providers.md",
+    "sdk.md",
+    "sessions.md",
+    "settings.md",
+    "skills.md",
+    "terminal-setup.md",
+    "themes.md",
+    "tui.md"
+  ],
+  "anchor_map": {
+    "piglets.md#strip-built-ins": "piglet-strip.md",
+    "piglets.md#validate-and-register": "piglets.md#commands",
+    "piglets.md#build-outputs": "piglets.md#commands",
+    "piglet-binaries.md": "piglets.md#piglet-binary",
+    "piglet-binaries.md#accept-overlay-piglets": "piglets.md#accept-overlay-piglets",
+    "piglet-binaries.md#sign-a-binary": "piglets.md#sign-and-verify-a-piglet-binary",
+    "piglet-binaries.md#publish-to-github-releases": "piglets.md#monorepo-publication-and-named-binary-updates",
+    "piglet-binaries.md#pull-a-published-binary": "piglets.md#monorepo-publication-and-named-binary-updates",
+    "quickstart.md#choose-how-to-customize-pig": "extend-pig.md#the-ladder",
+    "derivative-harnesses.md": "built-in-extensions.md#stock-pig-and-pig-standard"
+  },
+  "site_only": [
+    "containerization",
+    "extensions",
+    "nvidia-rtx-llama-cpp",
+    "piglet-binaries"
+  ]
+}

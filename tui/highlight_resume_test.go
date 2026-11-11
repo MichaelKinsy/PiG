@@ -42,7 +42,7 @@ func TestStreamedHighlightEqualsAWholeRun(t *testing.T) {
 				end++
 			}
 			code := c.Code[:end]
-			if base, _ := hlFindResume(code, c.Lang, true, theme); base.prefix != "" {
+			if base, _ := hlFindResume(code, c.Lang, theme); base.prefix != "" {
 				resumed++
 				// A point follows at least one scan iteration; its count is where the resumed run continues counting.
 				if base.iterations == 0 {
@@ -50,8 +50,8 @@ func TestStreamedHighlightEqualsAWholeRun(t *testing.T) {
 				}
 			}
 			steps++
-			got := highlightCodeLines(code, c.Lang, true)
-			want := highlightCodeUncached(highlightRegistry(), code, c.Lang, true, theme)
+			got := highlightCodeLines(code, c.Lang)
+			want := highlightCodeUncached(highlightRegistry(), code, c.Lang, theme)
 			if !slices.Equal(got, want) {
 				t.Fatalf("%s (%s) at %d of %d bytes:\n got %q\nwant %q", c.ID, c.Lang, end, len(c.Code), got, want)
 			}
@@ -99,8 +99,8 @@ func TestStreamedHighlightKeepsBlocksAndThemesApart(t *testing.T) {
 				for end < len(block) && !utf8.RuneStart(block[end]) {
 					end++
 				}
-				got := highlightCodeLines(block[:end], lang, true)
-				want := highlightCodeUncached(highlightRegistry(), block[:end], lang, true, ActiveTheme())
+				got := highlightCodeLines(block[:end], lang)
+				want := highlightCodeUncached(highlightRegistry(), block[:end], lang, ActiveTheme())
 				if !slices.Equal(got, want) {
 					t.Fatalf("%s step %d theme %s:\n got %q\nwant %q", lang, step, ActiveTheme().Name, got, want)
 				}

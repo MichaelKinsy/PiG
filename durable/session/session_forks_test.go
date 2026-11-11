@@ -280,7 +280,7 @@ func TestSessionConversationDocumentForks(t *testing.T) {
 			t.Fatal("a creation base consults no checkpoint predicate")
 		}
 		documents := sessiontest.DocumentChanges(harness.Publications.Last())
-		if len(documents) != 1 || *documents[0].Version != 2 {
+		if len(documents) != 1 || documents[0].Version != 2 {
 			t.Fatal("one version-2 creation publication")
 		}
 		expectEqual(t, snapshot(t, harness.Session, v2, child.Id), delta.JsonObjectOf("count", 9, "migrated", true))
@@ -498,7 +498,7 @@ func TestSessionConversationDocumentForks(t *testing.T) {
 		}
 		// The failed Session closed its Storage; reopened, it holds nothing of the batch.
 		<-harness.Session.Closed()
-		if end := harness.Session.End(); end.Reason != durable.SessionEndFailed || end.Error != rejection { //nolint:errorlint // identity: toEqual({ reason: "failed", error: rejection })
+		if end := harness.Session.End(); end.Kind != durable.SessionEndFailed || end.Error != rejection { //nolint:errorlint // identity: toEqual({ reason: "failed", error: rejection })
 			t.Fatalf("end = %+v, want failed with the storage error", end)
 		}
 		harness.Storage.Reopen()

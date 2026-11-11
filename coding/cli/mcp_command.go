@@ -21,6 +21,11 @@ func runMcpCommand(args []string) int {
 	if len(args) == 0 || args[0] != "mcp" {
 		return -1
 	}
+	// pig additive (D202): a Piglet Binary built with build.closed starts only the servers its closure lists, so it adds none.
+	if message := pigletBinaryMcpRefusal(currentPigletBinary(), args); message != "" {
+		fmt.Fprintln(os.Stderr, message)
+		return 1
+	}
 	cwd, err := os.Getwd()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "pig mcp:", err)

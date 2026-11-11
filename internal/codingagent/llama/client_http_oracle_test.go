@@ -75,6 +75,11 @@ func TestLlamaClientRequestsMatchPi(t *testing.T) {
 	index := 0
 	var requests []string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/running" {
+			// After a 404 from load or unload the port asks whether the server is llama-swap (D212); Pi never does. The answer is not llama-swap's, so every probe keeps Pi's text, and the probe is not one of the probes under test.
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
 		body, _ := io.ReadAll(r.Body)
 		mu.Lock()
 		p := probes[index]

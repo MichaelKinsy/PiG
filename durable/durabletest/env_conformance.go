@@ -165,7 +165,7 @@ func (helpers watchHelpers) absolute(path string) string {
 func watching(executionEnv env.ExecutionEnv, targets []env.WatchTarget, run func(helpers watchHelpers)) {
 	log := &watchLog{}
 	watcher := must(executionEnv.Watch(conformanceContext, targets, log.add))
-	defer func() { _ = watcher.Close(conformanceContext) }()
+	defer func() { _ = watcher.Stop(conformanceContext) }()
 	run(watchHelpers{executionEnv: executionEnv, log: log})
 }
 
@@ -510,12 +510,12 @@ func CreateEnvConformance(options EnvConformanceOptions) []EnvConformanceCase {
 			})
 		}),
 
-		watchCase("watch stops reporting once closed", func(executionEnv env.ExecutionEnv) {
+		watchCase("watch stops reporting once stopped", func(executionEnv env.ExecutionEnv) {
 			log := &watchLog{}
 			watcher := must(executionEnv.Watch(ctx, []env.WatchTarget{{Path: "file.txt"}}, log.add))
 			assert.Ok(watcher.Mode() == env.WatchNative || watcher.Mode() == env.WatchPolling, "watcher reports its mode")
-			check(watcher.Close(ctx))
-			check(watcher.Close(ctx))
+			check(watcher.Stop(ctx))
+			check(watcher.Stop(ctx))
 			check(executionEnv.WriteFile(ctx, "file.txt", "x"))
 			time.Sleep(300 * time.Millisecond)
 			assert.StrictEqual(len(log.all()), 0)

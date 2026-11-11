@@ -9,12 +9,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
-	"path"
 	"path/filepath"
-	"strings"
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell"
+	"github.com/MichaelKinsy/PiG/internal/archivepath"
 )
 
 // pig additive (D18): a Piglet Binary carries its TypeScript and JavaScript
@@ -60,10 +60,24 @@ func extractNodeCell(data []byte, c CellEntry, dest string) error {
 // untarNodeSources unpacks a Node cell archive into root. It accepts only
 // directories, regular files, and relative symbolic links that stay inside
 // root, so an archive cannot write or point outside its own tree.
+//
+// Link names are text, but the kernel resolves them against the tree being
+// written: "z/.." climbs one directory more than it reads when z is a link to
+// ".". So no entry may be located through a link the archive wrote, judged on
+// disk (requireRealFolders) because a file system may fold one name onto
+// another (case, Unicode normalization), a link target climbs only before it
+// names anything (archivepath.CheckLink), and every write goes through an
+// os.Root, which refuses any resolution that leaves root.
 func untarNodeSources(data []byte, root string) error {
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		return err
 	}
+	tree, err := os.OpenRoot(root)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tree.Close() }()
+	real := map[string]struct{}{}
 	reader := tar.NewReader(bytes.NewReader(data))
 	for {
 		header, err := reader.Next()
@@ -73,25 +87,28 @@ func untarNodeSources(data []byte, root string) error {
 		if err != nil {
 			return err
 		}
-		name, err := archiveMemberPath(header.Name)
+		name, err := archivepath.Member(header.Name)
 		if err != nil {
 			return err
 		}
-		target := filepath.Join(root, filepath.FromSlash(name))
+		if err := requireRealFolders(tree, real, name, header.Typeflag == tar.TypeDir); err != nil {
+			return fmt.Errorf("archive entry %s: %w", header.Name, err)
+		}
+		local := filepath.FromSlash(name)
 		switch header.Typeflag {
 		case tar.TypeDir:
-			if err := os.MkdirAll(target, 0o755); err != nil {
+			if err := tree.MkdirAll(local, 0o755); err != nil {
 				return err
 			}
 		case tar.TypeReg:
-			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+			if err := tree.MkdirAll(filepath.Dir(local), 0o755); err != nil {
 				return err
 			}
 			mode := os.FileMode(0o644)
 			if header.Mode&0o111 != 0 {
 				mode = 0o755
 			}
-			file, err := os.OpenFile(target, os.O_WRONLY|os.O_CREATE|os.O_EXCL, mode)
+			file, err := tree.OpenFile(local, os.O_WRONLY|os.O_CREATE|os.O_EXCL, mode)
 			if err != nil {
 				return err
 			}
@@ -100,18 +117,13 @@ func untarNodeSources(data []byte, root string) error {
 				return err
 			}
 		case tar.TypeSymlink:
-			//portlint:allow pathseparators tar member and link names are slash paths by the tar format, not host paths
-			if path.IsAbs(header.Linkname) || strings.Contains(header.Linkname, `\`) {
-				return fmt.Errorf("archive link %s has a non-relative target %q", header.Name, header.Linkname)
-			}
-			//portlint:allow pathseparators tar member and link names are slash paths by the tar format, not host paths
-			if _, err := archiveMemberPath(path.Join(path.Dir(name), header.Linkname)); err != nil {
-				return fmt.Errorf("archive link %s points outside its sources: %w", header.Name, err)
-			}
-			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+			if err := archivepath.CheckLink(name, header.Linkname); err != nil {
 				return err
 			}
-			if err := os.Symlink(filepath.FromSlash(header.Linkname), target); err != nil {
+			if err := tree.MkdirAll(filepath.Dir(local), 0o755); err != nil {
+				return err
+			}
+			if err := tree.Symlink(filepath.FromSlash(header.Linkname), local); err != nil {
 				return err
 			}
 		default:
@@ -120,14 +132,37 @@ func untarNodeSources(data []byte, root string) error {
 	}
 }
 
-// archiveMemberPath returns name as a clean relative slash path inside the
-// archive root, or an error when it is absolute or escapes the root.
-func archiveMemberPath(name string) (string, error) {
-	//portlint:allow pathseparators tar member and link names are slash paths by the tar format, not host paths
-	clean := path.Clean(name)
-	//portlint:allow pathseparators tar member and link names are slash paths by the tar format, not host paths
-	if name == "" || path.IsAbs(name) || strings.Contains(name, `\`) || clean == "." || clean == ".." || strings.HasPrefix(clean, "../") {
-		return "", fmt.Errorf("archive path %q is not inside the archive", name)
+// requireRealFolders refuses an entry located through a symbolic link: it
+// Lstats each folder on the way to name (and name itself for a folder entry,
+// which MkdirAll would accept as an existing link to a folder), nearest to the
+// root first so each Lstat resolves through folders already confirmed real.
+// Folders that do not exist yet are the extraction's to create. real holds the
+// folders confirmed so far, which stay real: a folder cannot become a link.
+func requireRealFolders(tree *os.Root, real map[string]struct{}, name string, includeName bool) error {
+	for end := 0; end <= len(name); end++ {
+		atSeparator := end < len(name) && name[end] == '/'
+		atName := end == len(name) && includeName
+		if !atSeparator && !atName {
+			continue
+		}
+		folder := name[:end]
+		if _, ok := real[folder]; ok {
+			continue
+		}
+		info, err := tree.Lstat(filepath.FromSlash(folder)) //perf:ok once per distinct folder of a Node cell archive being unpacked at install, memoised in real
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		switch {
+		case info.Mode()&fs.ModeSymlink != 0:
+			return fmt.Errorf("is located through the link %s", folder)
+		case !info.IsDir():
+			return fmt.Errorf("is located under %s, which is not a folder", folder)
+		}
+		real[folder] = struct{}{}
 	}
-	return clean, nil
+	return nil
 }

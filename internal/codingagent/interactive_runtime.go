@@ -181,6 +181,7 @@ func (m *InteractiveMode) applyReplacement(session InteractiveSessionHandle, r I
 	m.opts.ReloadResourceProvider = r.ReloadResources
 	m.opts.ExtensionRunner = r.ExtensionRunner
 	m.newRunner = r.ExtensionRunner
+	m.bindThinkingRuns()
 	event := r.SessionStartEvent
 	m.opts.SessionStartEvent = &event
 	m.opts.BuiltinExtensions = r.BuiltinExtensions

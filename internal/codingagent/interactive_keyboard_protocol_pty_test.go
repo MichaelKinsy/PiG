@@ -260,7 +260,7 @@ func TestKeyboardProtocolDriverChild(t *testing.T) {
 	// restart runs as an owner-loop task after it exits. The child has no owner
 	// loop, so it runs that task here.
 	edited := make(chan struct{})
-	m.openExternalEditorBuffer(t.Context(), m.externalEditorCommand(), "draft", func(string) { close(edited) })
+	m.openExternalEditorBuffer(t.Context(), m.externalEditorCommand(), "draft", func(string) { close(edited) }, nil)
 	mark("editor")
 	select {
 	case task := <-m.uiTaskCh:

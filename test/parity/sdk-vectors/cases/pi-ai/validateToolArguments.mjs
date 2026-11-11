@@ -1,141 +1,84 @@
-// pi-ai's validateToolArguments for tools whose parameters carry TypeBox refinements (Type.Refine). Pi calls each refinement while TypeBox validates: Check (Compile's generated code)
-// stops at the first failing keyword or refinement, anyOf tries its branches in order and takes the first that passes, and when Check fails, Errors runs again, every check of a node
-// whose keywords reported no error, with error(value) for each failure. A predicate that throws ends validateToolArguments with its message.
-//
-// An argument is [tool, toolCall] with tool.parameters in the DSL of Type.mjs. The answer is {"error": message} or {"args": validated arguments}, "calls" is the order the predicates and
-// message functions were called in (each function's tag labels its call: "check:len", "error:lenmsg"), and "schema" and "sites" are the schema's JSON and the nodes that carry refinements
-// ({path, refinements: [{check: spec, error: spec}]}), and "validation" is the form the schema is registered for validation in (see validationParameters), which the host's own traversal is
-// tested with.
-import { calls, predicateFor, resolve, specOf } from "./Type.mjs";
-
-const t = (name, ...args) => ({ $call: name, args });
-const fn = (name, spec = {}) => ({ $fn: name, ...spec });
-const S = t("String"), N = t("Number"), I = t("Integer"), B = t("Boolean");
-const opt = (x) => t("Optional", x);
-const refine = (type, check, error) => (error ? t("Refine", type, check, error) : t("Refine", type, check));
-
-// The tool the conformance fixtures register in every SDK (TestConformance_RefinedToolArgumentsAgreeAcrossSDKs): a refined string, an optional refined integer, a union whose
-// branches are refined strings, an optional string that throws, and a refined root.
-const probe = t(
-  "Refine",
-  t("Object", {
-    name: refine(S, fn("lengthAtLeast", { n: 3, tag: "len" }), fn("text", { text: "name is too short", tag: "lenmsg" })),
-    qty: opt(refine(I, fn("even", { tag: "even" }), fn("textWithValue", { prefix: "qty must be even, got ", tag: "evenmsg" }))),
-    pick: t("Union", [
-      refine(S, fn("equals", { value: "a", tag: "u1" }), fn("text", { text: "not a", tag: "u1m" })),
-      refine(S, fn("equals", { value: "b", tag: "u2" }), fn("text", { text: "not b", tag: "u2m" })),
-    ]),
-    boom: opt(refine(S, fn("throws", { message: "kaboom", tag: "boom" }))),
-  }),
-  fn("always", { tag: "root" }),
-  fn("text", { text: "root refused", tag: "rootmsg" }),
-);
+// pi-ai's validateToolArguments (Pi b556cfe5): pi-schema compiles the tool's JSON Schema with coercion, the arguments are coerced (parse) and checked, and a failure is the errors of pi-schema, then the arguments received.
+// An argument is [tool, toolCall]; tool.parameters is plain JSON Schema (a TypeBox or pi-schema builder value is that JSON). Type.Refine refinements, codecs and the other TypeBox constructs outside JSON Schema do not apply.
+// The answer is the validated arguments, or the error message. ai/validate_vectors_test.go reads these vectors.
+const tool = (parameters, name = "echo") => ({ name, description: "d", parameters });
+const call = (args, name = "echo") => ({ type: "toolCall", id: "c1", name, arguments: args });
+const value = (type, extra = {}) => ({ type: "object", properties: { value: type ? { type, ...extra } : extra }, required: ["value"] });
 
 const cases = [];
-const add = (name, parameters, args, toolName = "probe") => cases.push({ name, args: [{ name: toolName, parameters }, { type: "toolCall", id: "c1", name: toolName, arguments: args }] });
+const add = (name, parameters, args, toolName = "echo") => cases.push({ name, args: [tool(parameters, toolName), call(args, toolName)] });
 
-// the conformance fixture's tool
-add("probe: everything passes", probe, { name: "abcd", qty: 4, pick: "a" });
-add("probe: no optional members", probe, { name: "abc", pick: "b" });
-add("probe: first union branch fails, the second rescues", probe, { name: "abc", pick: "b", qty: 2 });
-add("probe: a refinement fails", probe, { name: "ab", pick: "a" });
-add("probe: an optional refinement fails with the value in its message", probe, { name: "abc", qty: 3, pick: "a" });
-add("probe: every union branch fails", probe, { name: "abc", pick: "c" });
-add("probe: two refinements fail", probe, { name: "ab", qty: 5, pick: "a" });
-add("probe: all three fail", probe, { name: "x", qty: 1, pick: "z" });
-add("probe: a structural error beside a refined member", probe, { name: "abc", pick: 5 });
-add("probe: a missing required member is not refined", probe, { pick: "a" });
-add("probe: an optional null is dropped before it is refined", probe, { name: "abc", qty: null, pick: "a" });
-add("probe: a string coerced to an integer is refined as the integer", probe, { name: "abc", qty: "4", pick: "a" });
-add("probe: a predicate that throws", probe, { name: "abc", pick: "a", boom: "x" });
-add("probe: a predicate that would throw is not reached after a failure above it", probe, { name: "ab", pick: "a", boom: "x" });
+// packages/ai/test/validation.test.ts: the coercions of plain JSON schemas, like TypeBox schemas
+for (const [type, input] of [["number", "42"], ["number", true], ["number", null], ["integer", "42"], ["integer", "42.1"], ["boolean", "true"], ["boolean", "false"], ["boolean", 1], ["boolean", 0], ["boolean", "1"], ["boolean", "0"],
+  ["string", null], ["string", true], ["null", ""], ["null", 0], ["null", false], ["null", "null"]]) {
+  add(`${type} from ${JSON.stringify(input)}`, value(type), { value: input });
+}
+add("an array of numbers from one value", value("array", { items: { type: "number" } }), { value: "7" });
+add("a number or string keeps the string", value(undefined, { type: ["number", "string"] }), { value: "1" });
+add("a boolean or number takes the number", value(undefined, { type: ["boolean", "number"] }), { value: "1" });
+add("a nullable union arm keeps null", value(undefined, { anyOf: [{ type: "number" }, { type: "null" }] }), { value: null });
+add("a nullable union arm converts the number", value(undefined, { anyOf: [{ type: "number" }, { type: "null" }] }), { value: "42" });
+add("a nullable oneOf arm keeps null", value(undefined, { oneOf: [{ type: "number" }, { type: "null" }] }), { value: null });
+add("a nullable array keeps null", value(undefined, { type: ["array", "null"], items: { type: "string" } }), { value: null });
+add("a referenced nullable optional keeps null", { type: "object", properties: { value: { $ref: "#/$defs/value" } }, $defs: { value: { anyOf: [{ type: "number" }, { type: "null" }] } } }, { value: null });
+add("an optional null is omitted", { type: "object", properties: { path: { type: "string" }, offset: { type: "number" }, nullable: { anyOf: [{ type: "string" }, { type: "null" }] }, metadata: { type: "object", properties: { enabled: { type: "boolean" } } } }, required: ["path", "metadata"] },
+  { path: "file.txt", offset: null, nullable: null, metadata: { enabled: null } });
+for (const [type, input] of [["boolean", "yes"], ["number", "abc"], ["null", "nil"], ["integer", "4x"]]) add(`${type} rejects ${JSON.stringify(input)}`, value(type), { value: input });
+add("errors, then the arguments received", value("number"), { value: "many" });
+add("a missing required property is reported at the property", value("string"), {});
+add("two errors in the schema's member order", { type: "object", properties: { zeta: { type: "string" }, alpha: { type: "string" } } }, { alpha: [1], zeta: [2] });
+add("the received arguments keep the call's member order", { type: "object", properties: { path: { type: "string" } }, required: ["path"] }, { zeta: 1, alpha: { y: 2, b: 3 } });
 
-// the tool the packed conformance cells register (TestConformance_PackedRefinedToolArgumentsAcrossSDKs): one refined property
-const packedParameters = t("Object", { a: refine(S, fn("lengthAtLeast", { n: 3, tag: "p" }), fn("text", { text: "a is too short", tag: "pm" })) });
-add("packed: a refined property passes", packedParameters, { a: "abc" }, "t");
-add("packed: a refined property fails", packedParameters, { a: "x" }, "t");
+// the shapes of the built-in tools
+const read = { type: "object", required: ["path"], properties: { path: { type: "string" }, offset: { type: "number" }, limit: { type: "number" } } };
+add("read: valid", read, { path: "a.txt", offset: 2, limit: 10 }, "read");
+add("read: numeric strings and a null optional", read, { path: "a.txt", offset: "2", limit: null }, "read");
+add("read: extra properties pass untouched", read, { path: "a.txt", extra: { n: "10" } }, "read");
+add("read: path missing", read, { offset: 1 }, "read");
+add("read: path a number", read, { path: 12 }, "read");
+add("read: path a list", read, { path: ["a"] }, "read");
+const edit = { type: "object", required: ["path", "edits"], properties: { path: { type: "string" }, edits: { type: "array", items: { type: "object", required: ["oldText", "newText"], properties: { oldText: { type: "string" }, newText: { type: "string" } } } } } };
+add("edit: one edit", edit, { path: "f", edits: [{ oldText: "a", newText: "b" }] }, "edit");
+add("edit: one edit as an object", edit, { path: "f", edits: { oldText: "a", newText: "b" } }, "edit");
+add("edit: wrong types inside edits", edit, { path: "f", edits: [{ oldText: 1, newText: null }, { oldText: "x" }] }, "edit");
+add("edit: edits a string", edit, { path: "f", edits: "x" }, "edit");
 
-// traversal
-add("two refinements on one node: the first fails, the second is not called by Check", refine(refine(S, fn("never", { tag: "r1" }), fn("text", { text: "one", tag: "m1" })), fn("never", { tag: "r2" }), fn("text", { text: "two", tag: "m2" })), "x", "t");
-add("two refinements on one node: both pass", refine(refine(S, fn("always", { tag: "r1" })), fn("always", { tag: "r2" })), "x", "t");
-add("a refinement whose node has a structural error is not called", refine(S, fn("never", { tag: "r" })), 5, "t");
-add("a root refinement on an object", refine(t("Object", { a: S }), fn("never", { tag: "root" }), fn("text", { text: "no object", tag: "m" })), { a: "x" }, "t");
-add("array items: the first failing item stops Check, Errors visits every item", t("Object", { xs: t("Array", refine(I, fn("even", { tag: "e" }), fn("textWithValue", { prefix: "odd ", tag: "m" }))) }), { xs: [2, 3, 5, 4] }, "t");
-add("array items all pass", t("Object", { xs: t("Array", refine(I, fn("even", { tag: "e" }))) }), { xs: [2, 4] }, "t");
-add("a refinement on the array itself", t("Object", { xs: refine(t("Array", I), fn("never", { tag: "arr" }), fn("text", { text: "bad list", tag: "m" })) }), { xs: [1] }, "t");
-add("nested objects", t("Object", { a: t("Object", { b: refine(S, fn("never", { tag: "b" }), fn("text", { text: "deep", tag: "m" })) }) }), { a: { b: "x" } }, "t");
-add("a parent refinement runs only when the children report no error", refine(t("Object", { a: refine(S, fn("never", { tag: "child" }), fn("text", { text: "child", tag: "cm" })) }), fn("never", { tag: "parent" }), fn("text", { text: "parent", tag: "pm" })), { a: "x" }, "t");
-add("sibling properties: the first failing property stops Check", t("Object", { a: refine(S, fn("never", { tag: "a" }), fn("text", { text: "a bad", tag: "am" })), b: refine(S, fn("never", { tag: "b" }), fn("text", { text: "b bad", tag: "bm" })) }), { a: "x", b: "y" }, "t");
-add("sibling properties: Errors reports both", t("Object", { a: refine(S, fn("always", { tag: "a" })), b: refine(S, fn("never", { tag: "b" }), fn("text", { text: "b bad", tag: "bm" })) }), { a: "x", b: "y" }, "t");
-add("anyOf: the first branch passes, the others are not called", t("Object", { v: t("Union", [refine(S, fn("always", { tag: "u1" })), refine(S, fn("never", { tag: "u2" }))]) }), { v: "x" }, "t");
-add("anyOf: all branches fail, Errors words every branch", t("Object", { v: t("Union", [refine(S, fn("never", { tag: "u1" }), fn("text", { text: "first", tag: "m1" })), refine(S, fn("never", { tag: "u2" }), fn("text", { text: "second", tag: "m2" }))]) }), { v: "x" }, "t");
-add("anyOf: a branch of another type is not refined", t("Object", { v: t("Union", [refine(I, fn("never", { tag: "u1" })), refine(S, fn("always", { tag: "u2" }))]) }), { v: "x" }, "t");
-add("anyOf inside anyOf", t("Object", { v: t("Union", [t("Union", [refine(S, fn("never", { tag: "i1" }), fn("text", { text: "i1", tag: "m1" })), refine(S, fn("never", { tag: "i2" }), fn("text", { text: "i2", tag: "m2" }))]), refine(S, fn("always", { tag: "o2" }))]) }), { v: "x" }, "t");
-add("anyOf inside anyOf: the inner rescues", t("Object", { v: t("Union", [t("Union", [refine(S, fn("never", { tag: "i1" })), refine(S, fn("always", { tag: "i2" }))]), refine(S, fn("never", { tag: "o2" }))]) }), { v: "x" }, "t");
-add("anyOf of objects with refined members", t("Object", { v: t("Union", [t("Object", { k: t("Literal", "a"), n: refine(I, fn("even", { tag: "n1" })) }), t("Object", { k: t("Literal", "b"), n: refine(I, fn("greaterThan", { n: 10, tag: "n2" }), fn("text", { text: "n too small", tag: "m2" })) })]) }), { v: { k: "b", n: 3 } }, "t");
-add("allOf: every part is checked, in order", t("Intersect", [t("Object", { a: refine(S, fn("always", { tag: "a" })) }), t("Object", { b: refine(S, fn("never", { tag: "b" }), fn("text", { text: "b bad", tag: "bm" })) })]), { a: "x", b: "y" }, "t");
-add("allOf: the first part fails, the second is not called by Check", t("Intersect", [t("Object", { a: refine(S, fn("never", { tag: "a" }), fn("text", { text: "a bad", tag: "am" })) }), t("Object", { b: refine(S, fn("always", { tag: "b" })) })]), { a: "x", b: "y" }, "t");
-add("record values", t("Object", { m: t("Record", S, refine(I, fn("even", { tag: "v" }), fn("textWithValue", { prefix: "odd ", tag: "m" }))) }), { m: { x: 2, y: 3, z: 4 } }, "t");
-add("record values all pass", t("Object", { m: t("Record", S, refine(I, fn("even", { tag: "v" }))) }), { m: { x: 2, y: 4 } }, "t");
-add("a refined optional member that is absent is not called", t("Object", { a: opt(refine(S, fn("never", { tag: "a" }))) }), {}, "t");
-add("a refined Unknown receives null where the property is optional", t("Object", { a: opt(refine(t("Unknown"), fn("never", { tag: "a" }), fn("text", { text: "unknown bad", tag: "m" }))) }), { a: null }, "t");
-add("a throw: the check throws an Error", t("Object", { a: refine(S, fn("throws", { message: "boom", tag: "a" })) }), { a: "x" }, "t");
-add("a throw: the check throws a string", t("Object", { a: refine(S, fn("throwsText", { message: "thrown text", tag: "a" })) }), { a: "x" }, "t");
-add("a throw: the error function throws", t("Object", { a: refine(S, fn("never", { tag: "a" }), fn("errorThrows", { message: "message boom", tag: "m" })) }), { a: "x" }, "t");
-add("a throw in a union branch that Check does not reach", t("Object", { v: t("Union", [refine(S, fn("always", { tag: "u1" })), refine(S, fn("throws", { message: "never reached", tag: "u2" }))]) }), { v: "x" }, "t");
-add("a throw in the second union branch after the first fails", t("Object", { v: t("Union", [refine(S, fn("never", { tag: "u1" })), refine(S, fn("throws", { message: "second branch", tag: "u2" }))]) }), { v: "x" }, "t");
-add("more than eight errors: Errors stops at capacity", t("Object", Object.fromEntries(["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"].map((k) => [k, refine(S, fn("never", { tag: k }), fn("text", { text: `bad ${k}`, tag: `m${k}` }))]))), Object.fromEntries(["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"].map((k) => [k, "x"])), "t");
-add("a refinement under an if/then/else", t("Object", { a: S }, { if: { properties: { a: { const: "x" } } }, then: refine(t("Object", {}), fn("never", { tag: "then" }), fn("text", { text: "then bad", tag: "m" })), else: t("Object", {}) }), { a: "x" }, "t");
+// unicode and lone surrogates
+add("a string with a lone surrogate", value("string"), { value: "a\ud800b" });
+add("a lone surrogate as a number", value("number"), { value: "\ud800" });
+add("astral characters count once for minLength", value("string", { minLength: 2 }), { value: "😀" });
+add("a lone surrogate counts once for maxLength", value("string", { maxLength: 1 }), { value: "\ud800A" });
+
+// pi-schema keywords and references
+add("a $ref that names nothing rejects only its value", { type: "object", properties: { t: { $ref: "#/definitions/Missing" } } }, { t: 1 });
+add("a $ref that names nothing, absent", { type: "object", properties: { t: { $ref: "#/definitions/Missing" } } }, {});
+add("an external $ref", { type: "object", properties: { t: { $ref: "https://example.com/schemas/t.json" } } }, { t: 1 });
+add("definitions of draft 7", { $schema: "http://json-schema.org/draft-07/schema#", type: "object", required: ["t"], properties: { t: { $ref: "#/definitions/T" } }, definitions: { T: { type: "object", required: ["path"], properties: { path: { type: "string" } } } } }, { t: { path: 42 } });
+add("a recursive reference", { type: "object", properties: { root: { $ref: "#/$defs/N" } }, $defs: { N: { type: "object", properties: { c: { type: "array", items: { $ref: "#/$defs/N" } }, v: { type: "integer" } } } } }, { root: { v: "2", c: [{ v: "3", c: [] }] } });
+add("a recursive union", { type: "object", properties: { t: { $ref: "#/$defs/Tree" } }, $defs: { Tree: { anyOf: [{ type: "string" }, { type: "array", items: { $ref: "#/$defs/Tree" } }] } } }, { t: [5, ["a"]] });
+add("the url format", value("string", { format: "url" }), { value: "not a url" });
+add("the json-pointer-uri-fragment format", value("string", { format: "json-pointer-uri-fragment" }), { value: "#/a/b" });
+add("an unknown format passes", value("string", { format: "made-up" }), { value: "x" });
+add("an enum lists its values", value("string", { enum: ["a", "b", "c"] }), { value: "z" });
+add("an enum of 30 values lists 20", value("string", { enum: Array.from({ length: 30 }, (_, i) => `v${i}`) }), { value: "z" });
+add("oneOf matching two alternatives", value(undefined, { oneOf: [{ type: "string" }, { type: "string", maxLength: 5 }] }), { value: "abc" });
+add("anyOf converts the first alternative that accepts", value(undefined, { anyOf: [{ type: "integer" }, { type: "boolean" }] }), { value: "3" });
+add("patternProperties convert the matching members", { type: "object", patternProperties: { "^n_": { type: "integer" } } }, { n_a: "1", other: "2" });
+add("additionalProperties convert only the undeclared members", { type: "object", properties: { amount: { type: "number" } }, additionalProperties: { type: "integer" } }, { amount: "3.5", extra: "7" });
+add("property names are names, not patterns", { type: "object", properties: { "a.b": { type: "integer" }, axb: { type: "string" } } }, { "a.b": "4", axb: "5.8" });
+add("a boolean schema", { type: "object", properties: { a: true, b: false } }, { b: 1 });
+add("unknown keywords are ignored", { type: "object", "~kind": "Object", properties: { n: { "~kind": "Number", type: "number" } } }, { n: "5" });
+add("an invalid pattern throws at compile", { type: "object", properties: { s: { type: "string", pattern: "[" } } }, { s: "y" });
+add("a deep recursive union without exponential work", { type: "object", properties: { s: { $ref: "#/$defs/S" } }, $defs: { S: { anyOf: [{ type: "object", additionalProperties: { $ref: "#/$defs/S" }, required: ["a"] }, { type: "object", additionalProperties: { $ref: "#/$defs/S" }, required: ["b"] }] } } },
+  { s: Array.from({ length: 40 }).reduce((v) => ({ c: v }), { x: 1 }) });
+
+// root values
+add("a root null", { type: "object", properties: {} }, null);
+add("a root list", { type: "object", properties: {} }, []);
+add("a root string", { type: "string" }, "x");
+add("an empty schema", {}, { a: 1 });
+// formatValidationPath (validation.ts:21-28) decodes `~1` before `~0`: the property "a~1" is the pointer /a~01, which reads back as "a~1"; decoding `~0` first would read it as "a/".
+add("a property named a~1 is reported under its own name", { type: "object", properties: { "a~1": { type: "string" } } }, { "a~1": [1] });
+add("a property named a/b is reported under its own name", { type: "object", properties: { "a/b": { type: "string" } } }, { "a/b": [1] });
+add("a property named ~01 under a property named ~1", { type: "object", properties: { "~1": { type: "object", properties: { "~01": { type: "string" } } } } }, { "~1": { "~01": [1] } });
 export { cases };
-
-// refinement sites of a resolved schema, by the host's paths ("/properties/a", "/anyOf/1", "/items", ...)
-const WITH_MEMBERS = ["properties", "patternProperties", "dependentSchemas", "dependencies", "$defs", "definitions"];
-const WITH_LIST = ["allOf", "anyOf", "oneOf", "prefixItems", "items"];
-const WITH_CHILD = ["additionalProperties", "additionalItems", "contains", "propertyNames", "not", "if", "then", "else", "items", "unevaluatedItems", "unevaluatedProperties"];
-const pointer = (key) => key.replaceAll("~", "~0").replaceAll("/", "~1");
-function sitesOf(schema) {
-  const sites = [];
-  const visit = (node, path) => {
-    if (!node || typeof node !== "object" || Array.isArray(node)) return;
-    const list = node["~refine"];
-    if (Array.isArray(list) && list.length > 0) sites.push({ path, refinements: list.map((r) => ({ check: specOf.get(r.check), error: r.error && specOf.has(r.error) ? specOf.get(r.error) : null })) });
-    for (const key of Object.keys(node)) {
-      const value = node[key];
-      if (WITH_MEMBERS.includes(key) && value && typeof value === "object") for (const name of Object.keys(value)) visit(value[name], `${path}/${key}/${pointer(name)}`);
-      else if (WITH_LIST.includes(key) && Array.isArray(value)) value.forEach((member, index) => visit(member, `${path}/${key}/${index}`));
-      else if (WITH_CHILD.includes(key)) visit(value, `${path}/${key}`);
-    }
-  };
-  visit(schema, "");
-  return sites;
-}
-
-// The parameters as the Node runtime sends them for validation (runtime.mjs toolDeclaration validation_parameters): the JSON with TypeBox's ~kind on every node, and for an Intersect,
-// Enum or TemplateLiteral node the evaluated schema as ~convert, which the host's port of Value.Convert reads. An SDK sends the same form for a schema built with Type.
-function validationParameters(Type, parameters) {
-  return JSON.parse(JSON.stringify(parameters, (_key, value) => {
-    if (value && typeof value === "object" && !Array.isArray(value) && value["~kind"]) {
-      const copy = { ...value, "~kind": value["~kind"] };
-      if (["Intersect", "Enum", "TemplateLiteral"].includes(value["~kind"])) copy["~convert"] = Type.Evaluate(value["~kind"] === "Intersect" ? Type.Instantiate({}, value) : value);
-      return copy;
-    }
-    return value;
-  }));
-}
-
-export const call = async function (validateToolArguments, tool, toolCall) {
-  const { Type } = await this.load("pi-ai");
-  const parameters = resolve(Type, tool.parameters);
-  calls.length = 0;
-  const out = {};
-  try {
-    out.args = JSON.parse(JSON.stringify(validateToolArguments({ name: tool.name, description: "d", parameters }, toolCall)));
-  } catch (error) {
-    out.error = error instanceof Error ? error.message : String(error);
-  }
-  out.calls = [...calls];
-  out.schema = JSON.stringify(parameters);
-  out.validation = JSON.stringify(validationParameters(Type, parameters));
-  out.sites = sitesOf(parameters);
-  return out;
-};

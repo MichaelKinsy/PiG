@@ -251,12 +251,11 @@ impl ProviderObjects {
             .to_owned();
         let id = decl["id"].as_str().ok_or("missing Provider id")?.to_owned();
         let mut proxies = self.proxies.lock().unwrap();
-        if let Some((current, weak)) = proxies.get(&id) {
-            if current == &handle {
-                if let Some(provider) = weak.upgrade() {
-                    return Ok(provider);
-                }
-            }
+        if let Some((current, weak)) = proxies.get(&id)
+            && current == &handle
+            && let Some(provider) = weak.upgrade()
+        {
+            return Ok(provider);
         }
         let lease = Arc::new(Lease {
             conn: conn.clone(),
@@ -508,9 +507,11 @@ impl ProviderObjects {
                             })?))
                         }),
                     );
-                    let mut params=json!({"credential":input.credential,"stored":input.stored,"allowNetwork":input.allow_network,"force":input.force});
-                    if let Some(base_url)=&input.base_url{params["baseUrl"]=json!(base_url);}
-                    proxy.invoke("refreshModels",params,callbacks,input.signal)?;
+                    let mut params = json!({"credential":input.credential,"stored":input.stored,"allowNetwork":input.allow_network,"force":input.force});
+                    if let Some(base_url) = &input.base_url {
+                        params["baseUrl"] = json!(base_url);
+                    }
+                    proxy.invoke("refreshModels", params, callbacks, input.signal)?;
                     Ok(())
                 }))
             } else {

@@ -5,7 +5,7 @@
 // before it is created, and the sub-agent finds the child conversation its tool call made. The model is a function of the
 // transcript only. Run by lib/run.mjs under the hooks:  crash-conversation.mjs --db <store.sqlite>
 import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context"
-import { Type } from "@earendil-works/pi-ai"
+import { num, obj, str } from "@earendil-works/pi-schema"
 import { createModels } from "@earendil-works/pi-ai/models"
 import { fauxAssistantMessage, fauxProvider, fauxToolCall } from "@earendil-works/pi-ai/providers/faux"
 import { AssistantEntry, configure, createRegistry, defineExtension, defineTool, Harness, LiveDoc } from "@earendil-works/pi-durable"
@@ -56,7 +56,7 @@ faux.setResponses([respond])
 const lookup = defineTool({
 	name: "lookup",
 	description: "Look up record number n",
-	parameters: Type.Object({ n: Type.Number() }),
+	parameters: obj({ n: num() }),
 	execute: async ({ n }) => ({ output: [{ type: "text", text: `record ${n}: ${"x".repeat(1000)}` }] }),
 })
 // The foreground sub-agent of example 22 and durable-bench W4e: the child conversation is owned by the tool call's task, and a
@@ -66,7 +66,7 @@ const Subagent = defineExtension({
 	tools: [defineTool({
 		name: "subagent",
 		description: "Delegate a self-contained task to a subagent and get its answer back.",
-		parameters: Type.Object({ task: Type.String() }),
+		parameters: obj({ task: str() }),
 		replay: "safe",
 		execute: async (args, api, callContext) => {
 			const child = await api.commit(async tx => {
