@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"context"
+	"slices"
 	"sync"
 	"time"
 
@@ -105,6 +106,28 @@ func FollowJSON[T any](source chord.Watchable[T], fn func(T)) (stop func()) {
 
 // StatusOf is the reference's state kind now.
 func StatusOf(ref HeldRef) host.RefStateKind { return ref.State().Value().Kind }
+
+// KeptIn is ref if it was last bound in one of variants and can still bind again (loading, live or failed transiently),
+// else nil. For reads that should outlast a dropped connection: a reference held over a link keeps its variant and its
+// members' last values while the link is down. Calls need a live reference (liveIn).
+func KeptIn(ref *host.Reference, variants ...string) *host.Reference {
+	if ref == nil {
+		return nil
+	}
+	variant, bound, _ := ref.Variant()
+	if !bound || !keeps(ref.State().Value(), variant, variants) {
+		return nil
+	}
+	return ref
+}
+
+// keeps is KeptIn's rule on a state: neither ended nor broken, and bound in one of variants.
+func keeps(state *host.RefState, variant string, variants []string) bool {
+	if state.Kind == host.RefStateEnded || (state.Kind == host.RefStateFailed && state.Cause.Kind == data.FailureBroken) {
+		return false
+	}
+	return slices.Contains(variants, variant)
+}
 
 // WhenLive blocks until ref is live, and returns the error when it ends or fails broken (asking again cannot help). A
 // transient failure keeps waiting: the reference retries. It returns ctx's error when ctx ends first.
