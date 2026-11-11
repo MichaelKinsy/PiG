@@ -35666,6 +35666,31 @@
       ]
     },
     {
+      "id": "BF-D618",
+      "title": "A start repaints after the highlight grammar load only when a highlight lookup made before it could have…",
+      "symptom": "none; Pi's repaint after the load is intended. (Pi-Bolt omits the frame too.)",
+      "rootCause": "the frame carries no row, yet it restarts any consumer's output-quiet wait, and it costs a render pass on the pinned core right after start. Measured on xd670 (core 103, interactive session, 15 rounds): wall 519 ms to 483 ms with CPU unchanged (Pi-Bolt 500 ms). The bytes PiG omits are bytes that do not change the terminal's state: the cursor is already at that row and hidden.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D618",
+      "removeWhen": "Pi's renderer writes nothing for a render request that changes no row and moves no cursor, or the owner withdraws the approval.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "8a032281fd",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/highlight_languages_load_test.go::TestLoadRemainingHighlightLanguagesPostsNoRepaintWhenNoLookupDiffers",
+        "internal/codingagent/highlight_languages_load_test.go::TestLoadRemainingHighlightLanguagesRepaintsOnTheOwnerLoop",
+        "tui/internal/hljs/load_reports_test.go::TestLoadAllLanguagesReportsEarlierLookupsThatDiffer"
+      ]
+    },
+    {
       "id": "BF-a076a50",
       "title": "A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…",
       "symptom": "The time the connection had spent idle in the pool was deducted from the next request's timeout.",
@@ -57769,6 +57794,11 @@
       "id": "D616",
       "title": "An npm tarball is extracted with `tar` told the archive and the destination relative to the pack directory…",
       "entry": "BF-5043738"
+    },
+    {
+      "id": "D618",
+      "title": "A start repaints after the highlight grammar load only when a highlight lookup made before it could have…",
+      "entry": "BF-D618"
     }
   ],
   "exemptCommits": {
