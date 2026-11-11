@@ -8588,6 +8588,29 @@
       ]
     },
     {
+      "id": "BF-3fe5b20",
+      "title": "A `-p`, `--mode json` or `--mode rpc` run over a large session no longer sometimes keeps the Go GC target of…",
+      "symptom": "A `-p`, `--mode json` or `--mode rpc` run over a large session no longer sometimes keeps the Go GC target of 400 past 64 MiB live heap.",
+      "rootCause": "A cleanup runs when the sweeper reaches the sentinel's span, and a sentinel allocated while a collection marks survives that collection, so the collection that found a large heap could be skipped and the target stayed at 400. TestPrintModeGCTargetFallsBackOnLargeHeap failed in CI run 42725996591 (exit at percent 400, RSS 1.57x); on xd670 with 4 CPUs and 3 busy loops it failed 6 of 80 runs at and 0 of 80 with this change.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A `-p`, `--mode json` or `--mode rpc` run over a large session no longer sometimes keeps the Go GC target of 400 past 64 MiB live heap. The check that returns to the default 100 waited for a cleanup after each collection, and that cleanup could run late or miss the collection that found the large heap; on a 66 MB session about 1 run in 13 under CPU load exited at target 400 with a peak RSS 1.37-1.80x that of `GOGC=100`. A goroutine now reads the live heap every 5 ms (every second while no collection finishes), so the fallback fires once a read finds the latest finished collection's live heap above 64 MiB. A later collection can replace that value before the next read, so a read can miss a short-lived peak, but the fallback no longer waits on a cleanup. Output is unchanged.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3fe5b201f0",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "internal/gcpolicy/gcpolicy_test.go::TestApplyFallsBackAboveTheLiveHeapLimit",
+        "test/perfgate/print_tools_test.go::TestPrintModeGCTargetFallsBackOnLargeHeap"
+      ]
+    },
+    {
       "id": "BF-4027b34",
       "title": "A finished code-mode execution no longer keeps its closed VM reachable through its stopped halt-grace timer…",
       "symptom": "A finished code-mode execution no longer keeps its closed VM reachable through its stopped halt-grace timer, which stays in an idle scheduler's timer heap until that scheduler next runs.",
@@ -12343,6 +12366,31 @@
         "tui/key_csiu_text_test.go::TestTextInputIgnoresModifyOtherKeysText",
         "tui/scoped_models_list_test.go::TestScopedModels_SearchAcceptsKittyAndPasteInput",
         "tui/select_list_oracle_test.go::TestSelectListInputMatchesPi"
+      ]
+    },
+    {
+      "id": "BF-56b0e0f",
+      "title": "On Linux, the native X11 clipboard reads a `DISPLAY` that starts with `/` or `unix:` as a socket path with an…",
+      "symptom": "On Linux, the native X11 clipboard reads a `DISPLAY` that starts with `/` or `unix:` as a socket path with an optional screen (`/tmp/.X11-unix/X0.1`, `unix:/tmp/.X11-unix/X0`), as libxcb 1.16 and later do.",
+      "rootCause": "Fix-Commit:",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "Linux",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "On Linux, the native X11 clipboard reads a `DISPLAY` that starts with `/` or `unix:` as a socket path with an optional screen (`/tmp/.X11-unix/X0.1`, `unix:/tmp/.X11-unix/X0`), as libxcb 1.16 and later do. A socket path now connects where it failed before, and `DISPLAY=unix:0` no longer names display 0 by itself. As libxcb 1.16 does (xcb_util.c `_xcb_parse_display_path_to_socket` and `_xcb_open`), the text after `unix:` is a path that must exist once any `.N` screen suffix is removed (`unix:relative-socket.1` needs `relative-socket`), and only an absolute path is dialed directly: a relative path that exists (`unix:relative-socket`, or `unix:0` with a file named `0` in the working directory) dials display 0's socket, `/tmp/.X11-unix/X0`, and one that does not exist fails. Pi's addon links the host's libxcb, so hosts with libxcb 1.15 or earlier read these displays differently.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "56b0e0f8e2",
+          "date": "2026-11-11",
+          "pr": "424"
+        }
+      ],
+      "tests": [
+        "internal/nativeplatform/clipboard_x11_display_range_linux_test.go::TestX11DisplayNumbersParseAsXcbDoes",
+        "internal/nativeplatform/clipboard_x11_display_range_linux_test.go::TestX11DisplaySpellingsConnectAsPiDoes",
+        "internal/nativeplatform/clipboard_x11_display_range_linux_test.go::TestX11SocketPathDisplaysParseAsXcbDoes"
       ]
     },
     {
@@ -21269,30 +21317,6 @@
       ]
     },
     {
-      "id": "BF-7b6510e",
-      "title": "On Linux, the native X11 clipboard reads a `DISPLAY` that starts with `/` or `unix:` as a socket path with an…",
-      "symptom": "On Linux, the native X11 clipboard reads a `DISPLAY` that starts with `/` or `unix:` as a socket path with an optional screen (`/tmp/.X11-unix/X0.1`, `unix:/tmp/.X11-unix/X0`), as libxcb 1.16 and later do.",
-      "rootCause": "Pi's Linux clipboard addon links libxcb.so.1 and calls xcb_connect, so the host's libxcb decides how DISPLAY is read. libxcb 1.16 (by Demi Marie Obenour, a mitigation for CVE-2020-25697) made a display that starts with \"/\" or \"unix:\" always a socket path with an optional screen of 1 to 9 first digit, and no longer a host:number display. PiG still read \"unix:\u003cnumber\u003e\" as a local display, so DISPLAY=unix:0.-1 connected where libxcb 1.16 and 1.17 fail, and a display such as /tmp/.X11-unix/X0 failed where they connect.",
-      "rootCauseSource": "commit",
-      "userImpact": "An operation failed or was rejected",
-      "platform": "Linux",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "On Linux, the native X11 clipboard reads a `DISPLAY` that starts with `/` or `unix:` as a socket path with an optional screen (`/tmp/.X11-unix/X0.1`, `unix:/tmp/.X11-unix/X0`), as libxcb 1.16 and later do. A socket path now connects where it failed before, and `DISPLAY=unix:0` no longer names display 0 by itself. As libxcb 1.16 does (xcb_util.c `_xcb_parse_display_path_to_socket` and `_xcb_open`), the text after `unix:` is a path that must exist, and only an absolute path is dialed directly: a relative path that exists (`unix:relative-socket`, or `unix:0` with a file named `0` in the working directory) dials display 0's socket, `/tmp/.X11-unix/X0`, and one that does not exist fails. Pi's addon links the host's libxcb, so hosts with libxcb 1.15 or earlier read these displays differently.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "7b6510e674",
-          "date": "2026-11-08"
-        }
-      ],
-      "tests": [
-        "internal/nativeplatform/clipboard_x11_display_range_linux_test.go::TestX11DisplayNumbersParseAsXcbDoes",
-        "internal/nativeplatform/clipboard_x11_display_range_linux_test.go::TestX11DisplaySpellingsConnectAsPiDoes",
-        "internal/nativeplatform/clipboard_x11_display_range_linux_test.go::TestX11SocketPathDisplaysParseAsXcbDoes"
-      ]
-    },
-    {
       "id": "BF-7b92429",
       "title": "`find` and `grep` trim like JavaScript: `FindTool` trimmed each fd output line with `strings.TrimSpace` where…",
       "symptom": "`find` and `grep` trim like JavaScript: `FindTool` trimmed each fd output line with `strings.TrimSpace` where find.ts:270 uses `String.prototype.trim`, so a file whose name ends with U+FEFF lost nothing in Pi but a name ending in U+0085 lost it in PiG (and the reverse).",
@@ -27040,29 +27064,6 @@
         "coding/session_tool_registry_port_test.go::TestAllowedToolsStartActiveInTheirOrder",
         "coding/session_tool_registry_port_test.go::TestReloadKeepsTheActiveToolOrder",
         "test/parity/scenarios/rpc/45-rpc-tools-flag-order.toml"
-      ]
-    },
-    {
-      "id": "BF-95db124",
-      "title": "A `-p`, `--mode json` or `--mode rpc` run over a large session no longer sometimes keeps the Go GC target of…",
-      "symptom": "A `-p`, `--mode json` or `--mode rpc` run over a large session no longer sometimes keeps the Go GC target of 400 past 64 MiB live heap.",
-      "rootCause": "A cleanup runs when the sweeper reaches the sentinel's span, and a sentinel allocated while a collection marks survives that collection, so the collection that found a large heap could be skipped and the target stayed at 400. TestPrintModeGCTargetFallsBackOnLargeHeap failed in CI run 42725996591 (exit at percent 400, RSS 1.57x); on xd670 with 4 CPUs and 3 busy loops it failed 6 of 80 runs at and 0 of 80 with this change.",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "A `-p`, `--mode json` or `--mode rpc` run over a large session no longer sometimes keeps the Go GC target of 400 past 64 MiB live heap. The check that returns to the default 100 waited for a cleanup after each collection, and that cleanup could run late or miss the collection that found the large heap; on a 66 MB session about 1 run in 13 under CPU load exited at target 400 with a peak RSS 1.37-1.80x that of `GOGC=100`. A goroutine now reads the live heap every 5 ms (every second while no collection finishes), so the fallback fires after the first collection that finds more than 64 MiB live. Output is unchanged.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "3fe5b201f0",
-          "date": "2026-11-09"
-        }
-      ],
-      "tests": [
-        "internal/gcpolicy/gcpolicy_test.go::TestApplyFallsBackAboveTheLiveHeapLimit",
-        "test/perfgate/print_tools_test.go::TestPrintModeGCTargetFallsBackOnLargeHeap"
       ]
     },
     {
