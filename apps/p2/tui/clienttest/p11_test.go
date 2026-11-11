@@ -384,6 +384,11 @@ func TestOwnerDiagnosticsNoticesOnceNoticesDismissesLogsFollowsSourcesWorkerRetr
 		t.Fatalf("grant = %v", got)
 	}
 	tuitest.Poll(t, noticeText(s.Fixture, "Reloaded chat, status"))
+	s.run("p2.dev.restart")
+	tuitest.Poll(t, func() bool { return g.count() == 2 })
+	if got := g.at(1); got[0] != "devCommand" || !equalPayload(got[1], map[string]any{"action": "restart"}) {
+		t.Fatalf("grant = %v", got)
+	}
 }
 
 func equalPayload(got, want any) bool {
@@ -394,7 +399,7 @@ func TestGuestsNeverAcquireOwnerObjectsAndCannotOpenOwnerPanels(t *testing.T) {
 	c := &calls{}
 	stubs, _ := ownerStubs(c)
 	s := newP11(t, p11Options{calls: c, server: stubs, facets: ownerFacets(), role: "guest"})
-	for _, id := range []string{"p2.logs", "p2.notices", "p2.worker.retry", "p2.dev.reload", "p2.envs", "p2.ports", "p2.devices", "p2.share"} {
+	for _, id := range []string{"p2.logs", "p2.notices", "p2.worker.retry", "p2.dev.reload", "p2.dev.restart", "p2.envs", "p2.ports", "p2.devices", "p2.share"} {
 		if s.run(id) {
 			t.Fatalf("%s is owner-only", id)
 		}

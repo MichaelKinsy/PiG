@@ -349,10 +349,11 @@ func TestExternalEditorAndSuspendLendTheTerminalDevCommandAndSignOutAreOwnerActi
 	address := mustURL(server.URL)
 	live := host.LauncherActions(host.LauncherActionOptions{URL: address, Credentials: host.Credentials{Cookie: "owner=c"}, Role: "owner"})
 	dev := actionC(t, live["devCommand"])
-	if consentOf(dev, map[string]any{"action": "reload"}, address) == nil ||
-		consentOf(dev, map[string]any{"action": "restart"}, address) != nil ||
-		consentOf(dev, map[string]any{"action": "reload", "plugins": []any{"x"}}, address) != nil {
-		t.Fatal("devCommand consent")
+	restart := consentOf(dev, map[string]any{"action": "restart"}, address)
+	if consentOf(dev, map[string]any{"action": "reload"}, address) == nil || restart == nil || !strings.Contains(restart.Action, "Restart the server") ||
+		restart.Ask == nil || *restart.Ask || consentOf(dev, map[string]any{"action": "reload", "plugins": []any{"x"}}, address) != nil ||
+		consentOf(dev, map[string]any{"action": "stop"}, address) != nil {
+		t.Fatalf("devCommand consent (restart %+v)", restart)
 	}
 	value, err := dev.Run(map[string]any{"action": "reload"}, context_(nil).ActionContext)
 	if err != nil || !reflect.DeepEqual(value, map[string]any{"message": "Reloaded: chat"}) {
@@ -372,7 +373,26 @@ func TestExternalEditorAndSuspendLendTheTerminalDevCommandAndSignOutAreOwnerActi
 	if !reflect.DeepEqual(requests, want) {
 		t.Fatalf("requests = %+v", requests)
 	}
+	// A restart may drop the request as the server exits: requested, not failed. A reload that drops still fails.
+	dropped := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		conn, _, err := w.(http.Hijacker).Hijack()
+		if err == nil {
+			_ = conn.Close()
+		}
+	}))
+	t.Cleanup(dropped.Close)
+	droppedDev := actionC(t, host.LauncherActions(host.LauncherActionOptions{URL: mustURL(dropped.URL), Credentials: host.Credentials{Cookie: "owner=c"}, Role: "owner"})["devCommand"])
+	value, err = droppedDev.Run(map[string]any{"action": "restart"}, context_(nil).ActionContext)
+	if err != nil || !reflect.DeepEqual(value, map[string]any{"message": "Restart requested; reconnecting…"}) {
+		t.Fatalf("a dropped restart: %v %v", value, err)
+	}
+	if _, err := droppedDev.Run(map[string]any{"action": "reload"}, context_(nil).ActionContext); err == nil {
+		t.Fatal("a dropped reload fails")
+	}
 	guest := host.LauncherActions(host.LauncherActionOptions{URL: serverURL, Credentials: host.Credentials{Cookie: "g"}, Role: "guest"})
+	if consentOf(actionC(t, guest["devCommand"]), map[string]any{"action": "restart"}, serverURL) != nil {
+		t.Fatal("a guest got a restart")
+	}
 	if consentOf(actionC(t, guest["devCommand"]), map[string]any{"action": "reload"}, serverURL) != nil || consentOf(actionC(t, guest["signOut"]), map[string]any{"all": true}, serverURL) != nil {
 		t.Fatal("a guest got an owner action")
 	}

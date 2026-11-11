@@ -12,7 +12,8 @@ import (
 
 // Ports the command parsing of apps/p2/src/runtime/dev-protocol.ts (`parseDevCommand`) and apps/p2/src/hosts/dev-channel.ts
 // (`readDevCommand`) behind `/__p2_dev`. Dev mode itself (the watcher, the supervisor, hot reload) is designed out (D473:
-// compiled-in plugins), so every command answers as a server started without `P2_DEV=1` does: "Dev mode is not enabled".
+// compiled-in plugins), so every command answers as a server started without `P2_DEV=1` does: "Dev mode is not enabled". Pi 9192f7cce answers a supervised restart with 202 before the supervisor stops the server; with no supervisor
+// (and no restart) that branch never exists here.
 
 // DevCommand is `{action: "reload", plugins?}` or `{action: "restart"}`.
 type DevCommand struct {

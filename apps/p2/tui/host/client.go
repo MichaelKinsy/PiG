@@ -674,7 +674,7 @@ func (c *Client) consent(name string, payload any) tuiruntime.GrantResult {
 	}
 	shown := *request
 	shown.Facts = facts
-	confirmed := c.ui.Confirm(shown)
+	confirmed := (request.Ask != nil && !*request.Ask) || c.ui.Confirm(shown)
 	if !confirmed || c.grants.Valid(grant.ID, c.rt, "") == nil {
 		if confirmed {
 			return denied("cancelled")

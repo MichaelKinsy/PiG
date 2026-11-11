@@ -65,6 +65,19 @@ func TestIsolationCActionsNeedLocalConfirmationKActionsFireOnlyOnTheirKeyWorkerI
 						return "done", nil
 					},
 				},
+				"test.unasked": {
+					Kind: host.GrantC,
+					Consent: func(any, host.ConsentContext) *host.ConsentRequest {
+						ask := false
+						return &host.ConsentRequest{Action: "Restart the server", Ask: &ask}
+					},
+					Run: func(any, host.ActionContext) (any, error) {
+						mu.Lock()
+						ran = append(ran, "unasked")
+						mu.Unlock()
+						return "restarted", nil
+					},
+				},
 				"test.key": {
 					Kind: host.GrantK, Key: "app.message.copy",
 					RunKey: func(ctx host.ActionContext) error {
@@ -160,6 +173,14 @@ func TestIsolationCActionsNeedLocalConfirmationKActionsFireOnlyOnTheirKeyWorkerI
 	l.terminal.SendInput("y")
 	if got := awaitAnswer(t, answer); got.Error != "cancelled" || count(&ran) != 1 {
 		t.Fatalf("navigated: %+v ran %v", got, ran)
+	}
+	// Ask false runs at once, without the screen.
+	l.terminal.clear()
+	if got := awaitAnswer(t, l.grant("test.unasked", map[string]any{})); !got.OK || got.Value != "restarted" {
+		t.Fatalf("unasked: %+v", got)
+	}
+	if !slices.Equal(ran[1:], []string{"unasked"}) || strings.Contains(l.terminal.written(), "Action: Restart the server") {
+		t.Fatalf("unasked ran %v, screen %q", ran, l.terminal.written())
 	}
 	// Unknown actions are denied without any UI.
 	if got := awaitAnswer(t, l.grant("unknown.action", map[string]any{})); got.Error != "denied" {
