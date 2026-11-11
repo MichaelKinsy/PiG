@@ -654,7 +654,7 @@ func (s *serverState) dispatch(response http.ResponseWriter, request *http.Reque
 	// (same-origin, or without browser site headers). Not for another site's page: an image there loading p2's icon would
 	// tell it a p2 runs at that address (on localhost above all).
 	if s.web != nil && IsPublicFile(path) && get && !ForeignBrowserRequest(request) {
-		s.web.Handle(response, request)
+		s.web.Handle(response, request, "")
 		return nil
 	}
 	// The chosen PiG sprite, a public file like the icons (see SpriteAssetPath).
@@ -733,7 +733,7 @@ func (s *serverState) dispatch(response http.ResponseWriter, request *http.Reque
 	guest, isGuest := principal.(p2runtime.GuestPrincipal)
 	if p2runtime.IsOwner(principal) || (isGuest && s.web != nil && s.web.GuestMayLoad(request, guest)) {
 		if s.web != nil {
-			s.web.Handle(response, request)
+			s.web.Handle(response, request, access.Origin.RelayShellOrigin)
 			return nil
 		}
 		response.Header().Set("Content-Type", "text/plain")

@@ -44,10 +44,18 @@ func guestPage(path string, guest p2runtime.GuestPrincipal) bool {
 	return shared
 }
 
+// escapeAttribute escapes a value for a double-quoted HTML attribute (`escapeAttribute`).
+var escapeAttribute = strings.NewReplacer("&", "&amp;", `"`, "&quot;", "<", "&lt;", ">", "&gt;")
+
 // webPage is the app page. The inline style and theme script run before any CSS so the first paint has the right
 // background; the bundle's stylesheet follows them, so its rules win. The module script runs after parsing, wherever it
 // stands.
-func webPage(nonce string, manifest web.Manifest, brand web.Brand, sprite *spriteHub) string {
+func webPage(nonce string, manifest web.Manifest, brand web.Brand, sprite *spriteHub, shellOrigin string) string {
+	// The Radius shell that frames a relayed page, named for the shell bridge (src/web/shell-bridge.ts), which posts only to it.
+	shell := ""
+	if shellOrigin != "" {
+		shell = "\n\t\t<!-- The Radius shell framing this page (src/web/shell-bridge.ts). -->\n\t\t<meta name=\"p2-shell-origin\" content=\"" + escapeAttribute.Replace(shellOrigin) + "\" />"
+	}
 	style := ""
 	if manifest.Style != nil {
 		style = "\n\t\t<link rel=\"stylesheet\" href=\"" + *manifest.Style + "\" />"
@@ -75,7 +83,7 @@ func webPage(nonce string, manifest web.Manifest, brand web.Brand, sprite *sprit
 		<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
 		<meta name="apple-mobile-web-app-title" content="` + brand.Name + `" />
 		<meta name="mobile-web-app-capable" content="yes" />
-		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-capable" content="yes" />` + shell + `
 		<title>` + brand.Name + `</title>
 		<style>
 			:root {
@@ -148,8 +156,9 @@ func sendText(response http.ResponseWriter, status int, text string) {
 	_, _ = response.Write([]byte(text))
 }
 
-// Handle serves request: the app page, the manifest, a bundle file or a public file, else 404.
-func (w *Web) Handle(response http.ResponseWriter, request *http.Request) {
+// Handle serves request: the app page, the manifest, a bundle file or a public file, else 404. shellOrigin is the Radius
+// shell that frames a relayed request (`RequestOrigin.RelayShellOrigin`), named in app pages for the shell bridge.
+func (w *Web) Handle(response http.ResponseWriter, request *http.Request, shellOrigin string) {
 	path := request.URL.EscapedPath()
 	head := request.Method == http.MethodHead
 	if request.Method != http.MethodGet && !head {
@@ -165,7 +174,7 @@ func (w *Web) Handle(response http.ResponseWriter, request *http.Request) {
 	if path == "/" || pagePath.MatchString(path) {
 		header.Set("Content-Type", "text/html; charset=utf-8")
 		response.WriteHeader(http.StatusOK)
-		write([]byte(webPage(w.Nonce, w.Bundle.Manifest(), w.Bundle.Brand, w.Sprite)))
+		write([]byte(webPage(w.Nonce, w.Bundle.Manifest(), w.Bundle.Brand, w.Sprite, shellOrigin)))
 		return
 	}
 	if path == web.ManifestPath {

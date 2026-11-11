@@ -383,6 +383,20 @@ func TestRadiusRelayedArtifactPreviewsMaySitBelowTheRadiusShellsFrame(t *testing
 	}
 }
 
+// Pi main 12256825a (apps/p2/test/p2/radius.test.ts, "the relayed app page names the Radius shell that frames it"): the shell bridge
+// (src/web/shell-bridge.ts) posts only to the origin the page names.
+func TestRadiusRelayedAppPageNamesTheRadiusShellThatFramesIt(t *testing.T) {
+	p2test.NoLeakedGoroutines(t)
+	f := radiusFixture(t, nil, radiustest.Options{})
+	id := f.open("/s/0b0e6f1c-1d2e-4f00-9a7a-3c1e2f1a0b0c", radiusOpen{})
+	if status := f.radius.Response(id)["status"]; status != float64(200) {
+		t.Fatalf("status = %v", status)
+	}
+	if page, want := string(f.radius.Body(id)), `<meta name="p2-shell-origin" content="https://radius.earendil.com" />`; !strings.Contains(page, want) {
+		t.Fatalf("the page lacks %s:\n%s", want, page)
+	}
+}
+
 func TestRadiusAdmitsPeopleSessionsAreSharedWithByEmailAcrossOrganizations(t *testing.T) {
 	p2test.NoLeakedGoroutines(t)
 	f := radiusFixture(t, nil, radiustest.Options{})
@@ -429,7 +443,7 @@ func TestRadiusAdmitsPeopleSessionsAreSharedWithByEmailAcrossOrganizations(t *te
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := "https://radius.earendil.com/pi/brains/org_1/" + config.ServerID + "?path=%2Fs%2F" + first; url != want {
+	if want := "https://radius.earendil.com/pi/org_1/" + config.ServerID + "/s/" + first; url != want {
 		t.Fatalf("peopleUrl = %v, want %s", url, want)
 	}
 	radiustest.Wait(t, "Radius learns the email", 10*time.Second, func() bool {
