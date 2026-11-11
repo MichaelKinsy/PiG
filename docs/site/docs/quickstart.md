@@ -19,7 +19,7 @@ PiG doesn't run on iPhone, iPad, or iSH. Use `ssh` to connect to a computer that
 
 ## Requirements
 
-You need these tools only to build PiG from source. Build the `pig` executable with Go 1.27.3. Go 1.27 release binaries for macOS require macOS 13 or later.
+You need these tools only to build PiG from source. Build the `pig` executable with Go 1.27.4. Go 1.27 release binaries for macOS require macOS 13 or later.
 
 The complete verification suite also uses:
 
