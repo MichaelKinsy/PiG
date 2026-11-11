@@ -225,7 +225,7 @@ func (m *InteractiveMode) toolDefinitionRenderers(definition extension.ToolRende
 	if definition.RenderResult != nil {
 		var last extension.Component
 		renderers.Result = func(input tui.ToolRenderInput) (tui.Component, bool) {
-			result, ok := toolResultOf(card().ResultValue())
+			result, ok := toolResultForRenderer(card().ResultValue(), definition.RenderResult)
 			if !ok {
 				result = agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: card().Output}}, IsError: input.IsError}
 			}

@@ -93,3 +93,49 @@ func TestToolCardKeepsStructuredContentItCannotDerive(t *testing.T) {
 		}
 	}
 }
+
+// The built-in read renderer never reads the structured content, so a card that holds a read result without it hands that renderer the
+// result as it is, and does not encode the file text again for each draw; any other renderer receives the structured content the tool returned.
+func TestReadCardResultForTheBuiltInRendererIsNotRebuilt(t *testing.T) {
+	text := strings.Repeat("a line of the file with \"quotes\" and a \\ backslash\n", 2000)
+	content := []ai.ToolResultMessageContent{ai.TextContent{Text: text}}
+	structured, _ := tools.RebuildStructuredContent("read", content)
+	held := retainToolResult("read", agent.AgentToolResult{Content: content, StructuredContent: structured})
+	if _, ok := held.(retainedToolResult); !ok {
+		t.Fatalf("a read result with the structured content it derives is retained as %T", held)
+	}
+
+	if allocs := testing.AllocsPerRun(20, func() {
+		got, ok := toolResultForRenderer(held, readRenderResult)
+		if !ok || len(got.Content) != 1 {
+			t.Fatalf("the built-in renderer's result = %#v, %v", got, ok)
+		}
+	}); allocs != 0 {
+		t.Fatalf("handing the built-in read renderer a retained result allocates %v times, want 0", allocs)
+	}
+
+	custom := func(extension.AgentToolResult, extension.ToolRenderResultOptions, extension.Theme, extension.ToolRenderContext) extension.Component {
+		return nil
+	}
+	got, ok := toolResultForRenderer(held, custom)
+	if !ok || string(got.StructuredContent) != string(structured) {
+		t.Fatalf("an extension renderer's result has structured content %q, want the tool's", got.StructuredContent)
+	}
+	if got, ok := toolResultForRenderer(held, nil); !ok || string(got.StructuredContent) != string(structured) {
+		t.Fatalf("a card with no result renderer gives structured content %q, want the tool's", got.StructuredContent)
+	}
+}
+
+// A card retaining a finished read result compares its structured content without encoding the file text into a copy of it.
+func TestRetainToolResultDoesNotRebuildTheStructuredContent(t *testing.T) {
+	text := strings.Repeat("a line of the file with \"quotes\" and a \\ backslash\n", 2000)
+	content := []ai.ToolResultMessageContent{ai.TextContent{Text: text}}
+	structured, _ := tools.RebuildStructuredContent("read", content)
+	if allocs := testing.AllocsPerRun(20, func() {
+		if _, ok := retainToolResult("read", agent.AgentToolResult{Content: content, StructuredContent: structured}).(retainedToolResult); !ok {
+			t.Fatal("the result was not retained without its structured content")
+		}
+	}); allocs > 2 {
+		t.Fatalf("retaining a read result allocates %v times, want the card's value only", allocs)
+	}
+}
