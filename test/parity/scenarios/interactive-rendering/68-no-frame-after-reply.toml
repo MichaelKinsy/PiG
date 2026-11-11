@@ -51,5 +51,6 @@ quiet_milliseconds = 400
 [assert]
 both_reach_ready = true
 both_not_contain = ["unknown command", "panic:", "goroutine "]
+output_normalized_equal = true
 no_frames_after_reply = true
 runs = 3
