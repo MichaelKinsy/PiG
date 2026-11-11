@@ -148,7 +148,7 @@ func (builder *assistantStreamBuilder) textBlockDelta(contentIndex int, delta st
 	block := builder.partial.Content[contentIndex].(TextContent)
 	block.Text = builder.appendContent(contentIndex, block.Text, delta)
 	builder.partial.Content[contentIndex] = block
-	builder.push(TextDeltaEvent{ContentIndex: contentIndex, Delta: delta, Partial: builder.partial})
+	builder.pushView(TextDeltaEvent{ContentIndex: contentIndex, Delta: delta, Partial: builder.publishedView()})
 }
 
 func (builder *assistantStreamBuilder) textBlockEnd(contentIndex int, content, signature string) {
@@ -176,7 +176,7 @@ func (builder *assistantStreamBuilder) thinkingBlockDelta(contentIndex int, delt
 	block := builder.partial.Content[contentIndex].(ThinkingContent)
 	block.Thinking = builder.appendContent(contentIndex, block.Thinking, delta)
 	builder.partial.Content[contentIndex] = block
-	builder.push(ThinkingDeltaEvent{ContentIndex: contentIndex, Delta: delta, Partial: builder.partial})
+	builder.pushView(ThinkingDeltaEvent{ContentIndex: contentIndex, Delta: delta, Partial: builder.publishedView()})
 }
 
 func (builder *assistantStreamBuilder) thinkingBlockSignature(contentIndex int, signature string) {
@@ -214,7 +214,7 @@ func (builder *assistantStreamBuilder) textDelta(delta string) {
 	block := builder.partial.Content[builder.activeText].(TextContent)
 	block.Text = builder.appendContent(builder.activeText, block.Text, delta)
 	builder.partial.Content[builder.activeText] = block
-	builder.push(TextDeltaEvent{ContentIndex: builder.activeText, Delta: delta, Partial: builder.partial})
+	builder.pushView(TextDeltaEvent{ContentIndex: builder.activeText, Delta: delta, Partial: builder.publishedView()})
 }
 
 func (builder *assistantStreamBuilder) textSignature(signature string) {
@@ -259,7 +259,7 @@ func (builder *assistantStreamBuilder) thinkingDelta(delta string, redacted bool
 	block.Thinking = builder.appendContent(builder.activeThinking, block.Thinking, delta)
 	block.Redacted = block.Redacted || redacted
 	builder.partial.Content[builder.activeThinking] = block
-	builder.push(ThinkingDeltaEvent{ContentIndex: builder.activeThinking, Delta: delta, Partial: builder.partial})
+	builder.pushView(ThinkingDeltaEvent{ContentIndex: builder.activeThinking, Delta: delta, Partial: builder.publishedView()})
 }
 
 func (builder *assistantStreamBuilder) thinkingSignature(signature string) {
@@ -329,7 +329,7 @@ func (builder *assistantStreamBuilder) toolCallDelta(delta streamToolCallDelta) 
 		builder.showStreamedArguments(state.contentIndex, &block, state.args, arguments, order)
 	}
 	builder.partial.Content[state.contentIndex] = block
-	builder.push(ToolCallDeltaEvent{ContentIndex: state.contentIndex, Delta: delta.argumentsDelta, Partial: builder.partial})
+	builder.pushView(ToolCallDeltaEvent{ContentIndex: state.contentIndex, Delta: delta.argumentsDelta, Partial: builder.publishedView()})
 }
 
 // convertToCustomToolCall makes the open call at index a custom (grammar) tool call with the empty input of custom, when it is
@@ -378,7 +378,7 @@ func (builder *assistantStreamBuilder) showStreamedArguments(contentIndex int, c
 // pushToolCallDelta pushes a toolcall_delta event for the call at index, whose arguments the caller already updated.
 func (builder *assistantStreamBuilder) pushToolCallDelta(index int, delta string) {
 	if state := builder.toolCalls[index]; state != nil {
-		builder.push(ToolCallDeltaEvent{ContentIndex: state.contentIndex, Delta: delta, Partial: builder.partial})
+		builder.pushView(ToolCallDeltaEvent{ContentIndex: state.contentIndex, Delta: delta, Partial: builder.publishedView()})
 	}
 }
 
@@ -651,17 +651,28 @@ func (builder *assistantStreamBuilder) publish() *AssistantMessage {
 	return builder.cell.view()
 }
 
-func (builder *assistantStreamBuilder) push(event AssistantMessageEvent) {
+// publishedView publishes the partial and returns the message an event of this push carries as its partial.
+func (builder *assistantStreamBuilder) publishedView() *AssistantMessage {
 	view := builder.publish()
 	if builder.partialCopy != nil {
 		view = builder.partialCopy(view)
 	}
+	return view
+}
+
+func (builder *assistantStreamBuilder) push(event AssistantMessageEvent) {
+	view := builder.publishedView()
 	event = mapAssistantEventPartial(event, func(message *AssistantMessage) *AssistantMessage {
 		if message == builder.partial {
 			return view
 		}
 		return message
 	})
+	builder.pushView(event)
+}
+
+// pushView pushes an event whose partial is already the published view, so the event is boxed once. A delta pushes this way: it takes publishedView first and builds its event around the result.
+func (builder *assistantStreamBuilder) pushView(event AssistantMessageEvent) {
 	if err := builder.stream.Push(event); err != nil {
 		builder.failInvariant(err)
 	}

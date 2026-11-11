@@ -12,8 +12,17 @@ type tslibPromise struct {
 	locked  bool
 }
 
+// tslibPromiseCell is a promise and its settlement state in one allocation.
+type tslibPromiseCell struct {
+	promise tslibPromise
+	settled continuationPromise[tslibSettled]
+}
+
 func newTslibPromise(executor *continuationExecutor) *tslibPromise {
-	return &tslibPromise{settled: newContinuationPromise[tslibSettled](executor)}
+	cell := &tslibPromiseCell{}
+	cell.settled.executor = executor
+	cell.promise.settled = &cell.settled
+	return &cell.promise
 }
 
 func (promise *tslibPromise) executor() *continuationExecutor { return promise.settled.executor }

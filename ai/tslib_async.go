@@ -43,12 +43,18 @@ type tslibResume struct {
 	err   error
 }
 
+// tslibRequest is one queued next, throw or return call; promise is what the call returned.
 type tslibRequest struct {
 	kind    tslibResumeKind
 	value   any
 	err     error
-	resolve func(any)
-	reject  func(error)
+	promise *tslibPromise
+}
+
+// tslibRequestCell is a request and the promise it settles in one allocation.
+type tslibRequestCell struct {
+	tslibPromiseCell
+	request tslibRequest
 }
 
 // tslibReturnSignal unwinds a generator body for gen.return(value) so its deferred finally blocks run.
@@ -65,6 +71,8 @@ type tslibYield struct {
 	yield   func(any) bool
 	in      tslibResume
 	aborted bool
+	// awaited is the __await wrapper of the one await the body has outstanding: the driver reads it before it resumes the body.
+	awaited tslibAwaited
 }
 
 type tslibGeneratorState int
@@ -86,11 +94,22 @@ type tslibAsyncGenerator struct {
 	state    tslibGeneratorState
 	retValue any
 	retErr   error
+	// awaiting is the already fulfilled promise of Promise.resolve(v) for the generator's outstanding await of a value that is not a promise. A generator has at most one await outstanding: the queue holds its requests until the body yields a value, so the cell is free again when the awaiting reaction runs.
+	awaiting continuationPromise[tslibSettled]
+	// onAwaited is the fulfill and reject reactions of that await, bound once.
+	onAwaited func(tslibSettled)
 }
 
 // newTslibAsyncGenerator is `__asyncGenerator(this, arguments, function* () { body })`. Like the inner generator, body does not start until the first next() request.
 func newTslibAsyncGenerator(executor *continuationExecutor, body func(*tslibYield) (any, error)) *tslibAsyncIterator {
 	g := &tslibAsyncGenerator{executor: executor, body: body}
+	g.onAwaited = func(settled tslibSettled) {
+		if settled.err != nil {
+			_ = g.resume(tslibResumeThrow, nil, settled.err)
+			return
+		}
+		_ = g.resume(tslibResumeNext, settled.value, nil)
+	}
 	i := &tslibAsyncIterator{generator: g}
 	i.next = g.verb(tslibResumeNext)
 	throwVerb := g.verb(tslibResumeThrow)
@@ -108,8 +127,11 @@ func newTslibAsyncGenerator(executor *continuationExecutor, body func(*tslibYiel
 // verb is tslib's verb(n) (index.mjs:7439): the returned function queues a request and starts it when the queue was empty.
 func (g *tslibAsyncGenerator) verb(kind tslibResumeKind) func(any) *tslibPromise {
 	return func(value any) *tslibPromise {
-		promise := newTslibPromise(g.executor)
-		request := &tslibRequest{kind: kind, resolve: promise.resolve, reject: promise.reject}
+		cell := &tslibRequestCell{}
+		cell.settled.executor = g.executor
+		cell.promise.settled = &cell.settled
+		request := &cell.request
+		request.kind, request.promise = kind, &cell.promise
 		if kind == tslibResumeThrow {
 			request.err, _ = value.(error)
 		} else {
@@ -119,7 +141,7 @@ func (g *tslibAsyncGenerator) verb(kind tslibResumeKind) func(any) *tslibPromise
 		if len(g.queue) == 1 {
 			_ = g.resume(kind, request.value, request.err)
 		}
-		return promise
+		return request.promise
 	}
 }
 
@@ -132,7 +154,7 @@ func (g *tslibAsyncGenerator) resume(kind tslibResumeKind, value any, err error)
 	}
 	result, thrown := g.call(tslibResume{kind: kind, value: value, err: err})
 	if thrown != nil {
-		g.settle(func(request *tslibRequest) { request.reject(thrown) })
+		g.settle(tslibIterResult{}, thrown)
 		return nil
 	}
 	g.step(result)
@@ -142,21 +164,31 @@ func (g *tslibAsyncGenerator) resume(kind tslibResumeKind, value any, err error)
 // step is tslib's step(r) (index.mjs:7441): an __await result is awaited with Promise.resolve(v).then(fulfill, reject); anything else settles the head request.
 func (g *tslibAsyncGenerator) step(result tslibIterResult) {
 	if awaited, ok := result.value.(*tslibAwaited); ok {
-		tslibPromiseResolve(g.executor, awaited.v).then(func(value any) (any, error) {
-			return nil, g.resume(tslibResumeNext, value, nil)
-		}, func(err error) (any, error) {
-			return nil, g.resume(tslibResumeThrow, nil, err)
-		})
+		// Promise.resolve(v).then(fulfill, reject): a promise is awaited as it is, any other value as an already fulfilled one. The derived promise of then is never observed, so it is not made.
+		if promise, ok := awaited.v.(*tslibPromise); ok {
+			promise.settled.onResolved(g.onAwaited)
+			return
+		}
+		g.awaiting = continuationPromise[tslibSettled]{executor: g.executor, resolved: true, value: tslibSettled{value: awaited.v}}
+		g.awaiting.onResolved(g.onAwaited)
 		return
 	}
-	g.settle(func(request *tslibRequest) { request.resolve(result) })
+	g.settle(result, nil)
 }
 
 // settle is tslib's settle(f, v) (index.mjs:7444): settle the head request, drop it, and synchronously resume the next queued request.
-func (g *tslibAsyncGenerator) settle(settle func(*tslibRequest)) {
-	settle(g.queue[0])
-	g.queue[0] = nil
-	g.queue = g.queue[1:]
+func (g *tslibAsyncGenerator) settle(result tslibIterResult, thrown error) {
+	request := g.queue[0]
+	if thrown != nil {
+		request.promise.reject(thrown)
+	} else {
+		request.promise.resolve(result)
+	}
+	// The queue shifts down in place, so the next request appends into the array this one left.
+	last := len(g.queue) - 1
+	copy(g.queue, g.queue[1:])
+	g.queue[last] = nil
+	g.queue = g.queue[:last]
 	if len(g.queue) > 0 {
 		next := g.queue[0]
 		_ = g.resume(next.kind, next.value, next.err)
@@ -248,7 +280,10 @@ func (y *tslibYield) suspend(out any) (any, error) {
 }
 
 // Await is `yield __await(v)`. It returns the fulfilled value, or the rejection as an error thrown at the yield.
-func (y *tslibYield) Await(v any) (any, error) { return y.suspend(&tslibAwaited{v: v}) }
+func (y *tslibYield) Await(v any) (any, error) {
+	y.awaited.v = v
+	return y.suspend(&y.awaited)
+}
 
 // Yield is a plain `yield v`. It returns the next() argument, or the error a throw() request injects. A return() request unwinds the body so deferred finally blocks run.
 func (y *tslibYield) Yield(v any) (any, error) { return y.suspend(v) }

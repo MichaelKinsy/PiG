@@ -127,8 +127,11 @@ func (s *AssistantMessageEventStream) push(event AssistantMessageEvent, replacem
 		s.queue = append(s.queue, event)
 	} else {
 		waiter := s.waiters[0]
-		s.waiters[0] = nil
-		s.waiters = s.waiters[1:]
+		// The waiter list is shifted down in place, so a consumer that registers again appends into the array it left and the list never reallocates per event.
+		last := len(s.waiters) - 1
+		copy(s.waiters, s.waiters[1:])
+		s.waiters[last] = nil
+		s.waiters = s.waiters[:last]
 		if continuation := waiter.deliver(eventDelivery{event: event}); continuation != nil {
 			continuations = append(continuations, continuation)
 		}

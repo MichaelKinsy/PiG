@@ -237,14 +237,17 @@ func findMistralEventBoundary(buffer []byte) (index, length int) {
 
 // parseMistralEvent is mistral-conversations.ts:491-506: the `data:` lines of one record, each with its leading whitespace trimmed, joined by "\n" and trimmed, are JSON unless they are empty or [DONE]. event is nil for a record with no data.
 func parseMistralEvent(raw string) (event json.RawMessage, done bool, err error) {
-	var data []string
-	for _, line := range splitMistralLines(raw) {
-		// upstream: packages/ai/src/api/mistral-conversations.ts:parseMistralEvent
-		if rest, ok := strings.CutPrefix(line, "data:"); ok {
-			data = append(data, strings.TrimLeft(rest, mistralJSWhitespace))
+	text, single := mistralSingleLineData(raw)
+	if !single {
+		var data []string
+		for _, line := range splitMistralLines(raw) {
+			// upstream: packages/ai/src/api/mistral-conversations.ts:parseMistralEvent
+			if rest, ok := strings.CutPrefix(line, "data:"); ok {
+				data = append(data, strings.TrimLeft(rest, mistralJSWhitespace))
+			}
 		}
+		text = strings.Trim(strings.Join(data, "\n"), mistralJSWhitespace)
 	}
-	text := strings.Trim(strings.Join(data, "\n"), mistralJSWhitespace)
 	if text == "" {
 		return nil, false, nil
 	}
@@ -257,11 +260,61 @@ func parseMistralEvent(raw string) (event json.RawMessage, done bool, err error)
 		}
 		return nil, false, fmt.Errorf("invalid Mistral streaming event JSON: %s", text)
 	}
+	// An ordinary record is an object whose last "choices" member is an array; a walk of its members tells without decoding them. A record the walk cannot judge (a non-object, or a member name with an escape) is decoded.
+	if array, walked := mistralChoicesIsArray(text); walked {
+		if !array {
+			return nil, false, errors.New("Invalid Mistral streaming event")
+		}
+		// text is a copy of the record that nothing else holds, so its bytes serve as the event.
+		return json.RawMessage(jsonwire.Bytes(text)), false, nil
+	}
 	var record map[string]json.RawMessage
 	if json.Unmarshal(jsonwire.Bytes(text), &record) != nil || !strings.HasPrefix(string(record["choices"]), "[") {
 		return nil, false, errors.New("Invalid Mistral streaming event")
 	}
 	return json.RawMessage(text), false, nil
+}
+
+// mistralSingleLineData is parseMistralEvent's text for a record of one line, which has at most one data line to join. single is false for a record of several lines.
+func mistralSingleLineData(raw string) (text string, single bool) {
+	if strings.ContainsAny(raw, "\r\n") {
+		return "", false
+	}
+	rest, ok := strings.CutPrefix(raw, "data:")
+	if !ok {
+		return "", true
+	}
+	return strings.Trim(strings.TrimLeft(rest, mistralJSWhitespace), mistralJSWhitespace), true
+}
+
+// mistralChoicesIsArray reports whether the last top-level "choices" member of the valid JSON object text is an array, as decoding it into a map of raw members would find. walked is false when text is not an object or a member name holds an escape, which the walk does not unescape.
+func mistralChoicesIsArray(text string) (array, walked bool) {
+	i := anthropicSkipSpace(text, 0)
+	if i >= len(text) || text[i] != '{' {
+		return false, false
+	}
+	for i = anthropicSkipSpace(text, i+1); i < len(text) && text[i] == '"'; {
+		end, escaped := anthropicStringEnd(text, i)
+		if escaped {
+			return false, false
+		}
+		key := text[i+1 : end-1]
+		i = anthropicSkipSpace(text, end)
+		if i >= len(text) || text[i] != ':' {
+			return false, false
+		}
+		start := anthropicSkipSpace(text, i+1)
+		i = anthropicValueEnd(text, start)
+		if key == "choices" {
+			array = start < len(text) && text[start] == '['
+		}
+		i = anthropicSkipSpace(text, i)
+		if i >= len(text) || text[i] != ',' {
+			break
+		}
+		i = anthropicSkipSpace(text, i+1)
+	}
+	return array, true
 }
 
 // splitMistralLines is `raw.split(/\r\n|\r|\n/u)`.
@@ -291,7 +344,10 @@ type mistralTextDecoder struct {
 }
 
 func (decoder *mistralTextDecoder) decode(chunk []byte) string {
-	data := append(append([]byte(nil), decoder.pending...), chunk...)
+	data := chunk
+	if len(decoder.pending) > 0 {
+		data = append(append([]byte(nil), decoder.pending...), chunk...)
+	}
 	decoder.pending = nil
 	if hold := mistralIncompleteUTF8Suffix(data); hold > 0 {
 		decoder.pending = append([]byte(nil), data[len(data)-hold:]...)
@@ -307,6 +363,14 @@ func (decoder *mistralTextDecoder) flush() string {
 }
 
 func (decoder *mistralTextDecoder) finish(data []byte) string {
+	if utf8.Valid(data) {
+		// Well-formed text decodes to itself, less one leading byte order mark, in one copy.
+		if len(data) > 0 && !decoder.started {
+			decoder.started = true
+			data = bytes.TrimPrefix(data, utf8BOM)
+		}
+		return string(data)
+	}
 	var text strings.Builder
 	for len(data) > 0 {
 		r, size := utf8.DecodeRune(data)

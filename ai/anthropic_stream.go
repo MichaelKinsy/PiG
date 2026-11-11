@@ -50,7 +50,20 @@ var errAnthropicRequestAborted = errors.New("Request was aborted")
 type anthropicSSEState struct {
 	event string
 	data  []string
-	raw   []string
+	// arena holds the lines of the records of one chunk; the lines of the record being read start at rawStart. A flushed record owns its lines as a slice of the arena that nothing appends to, and the arena is replaced, never reused, when it has no room (reserveLines).
+	arena    []string
+	rawStart int
+}
+
+// reserveLines makes room in the arena for n more lines, so the records of a chunk take one allocation of lines between them.
+func (state *anthropicSSEState) reserveLines(n int) {
+	if cap(state.arena)-len(state.arena) >= n {
+		return
+	}
+	pending := len(state.arena) - state.rawStart
+	arena := make([]string, pending, pending+n)
+	copy(arena, state.arena[state.rawStart:])
+	state.arena, state.rawStart = arena, 0
 }
 
 // flush is flushSseEvent.
@@ -58,9 +71,12 @@ func (state *anthropicSSEState) flush() (serverSentEvent, bool) {
 	if state.event == "" && len(state.data) == 0 {
 		return serverSentEvent{}, false
 	}
-	// state.raw is cleared below, so the event owns it; copying it would only allocate.
-	event := serverSentEvent{Event: state.event, Data: strings.Join(state.data, "\n"), Raw: state.raw}
-	state.event, state.data, state.raw = "", nil, nil
+	end := len(state.arena)
+	event := serverSentEvent{Event: state.event, Data: strings.Join(state.data, "\n"), Raw: state.arena[state.rawStart:end:end]}
+	state.rawStart = end
+	state.event = ""
+	clear(state.data)
+	state.data = state.data[:0]
 	return event, true
 }
 
@@ -69,7 +85,7 @@ func (state *anthropicSSEState) decode(line string) (serverSentEvent, bool) {
 	if line == "" {
 		return state.flush()
 	}
-	state.raw = append(state.raw, line)
+	state.arena = append(state.arena, line)
 	if strings.HasPrefix(line, ":") {
 		return serverSentEvent{}, false
 	}
@@ -218,6 +234,8 @@ func (reader *anthropicSSEReader) drainLines(final bool) {
 	if last := bytes.LastIndexAny(search[reader.scanned:], "\r\n"); last >= 0 {
 		consumed := reader.scanned + last + 1
 		segment := string(buffer[:consumed])
+		// Every line of the segment, and the unterminated one of a final chunk, goes into the state's arena.
+		reader.state.reserveLines(strings.Count(segment, "\n") + strings.Count(segment, "\r") + 2)
 		if remainder := buffer[consumed:]; len(remainder) > 0 || cap(buffer) <= anthropicLineBufferReuse {
 			reader.buffer = append(reader.buffer[:0], remainder...)
 		} else {

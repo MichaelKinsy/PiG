@@ -499,7 +499,11 @@ func cloneAssistantContentWith(blocks []AssistantContentBlock, cloneArguments fu
 	if blocks == nil {
 		return nil
 	}
-	out := make([]AssistantContentBlock, len(blocks))
+	return cloneAssistantContentInto(make([]AssistantContentBlock, len(blocks)), blocks, cloneArguments)
+}
+
+// cloneAssistantContentInto fills out, which has len(blocks) elements, with the copy cloneAssistantContentWith makes, and returns it.
+func cloneAssistantContentInto(out, blocks []AssistantContentBlock, cloneArguments func(any) any) []AssistantContentBlock {
 	for i, block := range blocks {
 		switch value := block.(type) {
 		case TextContent, ThinkingContent:
