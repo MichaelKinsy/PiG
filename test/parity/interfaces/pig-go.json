@@ -144877,6 +144877,28 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#commandOnlyCall",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "commandOnlyCall",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(method string) bool"
+      },
+      "shapeHash": "sha256:d60ece4b65b59f6c1c650107e0968b4f85db0c9923a48e6c67869ebcdc977bf9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#commandOnlyCallError",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "commandOnlyCallError",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(method string) *ErrorInfo"
+      },
+      "shapeHash": "sha256:a9845c12c0b9d1061b398c1a77f8240e431801a79f7e51f6271531e5d5b070c6"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#comparableEventPartial",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "comparableEventPartial",
@@ -221677,6 +221699,17 @@
         "type": "func() (context.Context, bool)"
       },
       "shapeHash": "sha256:6dec3649b34259166c46a1d2af8a813c014b036df76de170df99ea8209c17f91"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#requestParent.markCommand",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "requestParent.markCommand",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#requestParent.report",

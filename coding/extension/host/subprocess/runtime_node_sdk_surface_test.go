@@ -24,7 +24,7 @@ import assert from "node:assert/strict";
 import net from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Runtime, requestSignal } from %q;
+import { Runtime, addCommandContextMembers, requestSignal } from %q;
 
 // register: promptSnippet travels as prompt_snippet.
 const sock = process.platform === "win32"
@@ -59,6 +59,7 @@ assert.equal(register.tools[0].label, "Snippet");
 registering.conn.socket.destroy();
 
 const runtime = new Runtime("/ext/surface.mjs");
+addCommandContextMembers(runtime.ctx, runtime.ctx);
 const fired = [];
 runtime.fireAndForget = (method, args) => { fired.push([method, args]); };
 const calls = [];
