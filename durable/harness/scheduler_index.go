@@ -445,6 +445,7 @@ func (s *TaskScheduler) sweepLocked() {
 			s.roots.Delete(durable.ConversationId(node.id))
 		} else if _, live := s.live[durable.TaskId(node.id)]; !live {
 			delete(s.settled, durable.TaskId(node.id))
+			delete(s.scopeAbove, durable.TaskId(node.id))
 			s.unloaded.Delete(durable.TaskId(node.id))
 		}
 		return true
@@ -606,7 +607,7 @@ func (s *TaskScheduler) relistLocked(start treeNode) {
 }
 
 // schedulerIndexSizes are the sizes of the scheduler's ownership indexes, for tests that bound its memory.
-type schedulerIndexSizes struct{ live, settled, edges, below, roots, unloaded, dropQueue, pins int }
+type schedulerIndexSizes struct{ live, settled, scopeAbove, edges, below, roots, unloaded, dropQueue, pins int }
 
 func (s *TaskScheduler) indexSizes() schedulerIndexSizes {
 	s.mu.Lock()
@@ -615,5 +616,5 @@ func (s *TaskScheduler) indexSizes() schedulerIndexSizes {
 	for _, children := range s.below {
 		below += children.Len()
 	}
-	return schedulerIndexSizes{live: len(s.live), settled: len(s.settled), edges: len(s.edges), below: below, roots: s.roots.Len(), unloaded: s.unloaded.Len(), dropQueue: s.dropQueue.Len(), pins: len(s.pins)}
+	return schedulerIndexSizes{live: len(s.live), settled: len(s.settled), scopeAbove: len(s.scopeAbove), edges: len(s.edges), below: below, roots: s.roots.Len(), unloaded: s.unloaded.Len(), dropQueue: s.dropQueue.Len(), pins: len(s.pins)}
 }

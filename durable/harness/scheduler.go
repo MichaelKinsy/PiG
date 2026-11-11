@@ -330,7 +330,10 @@ type TaskScheduler struct {
 	failedMigrations map[durable.TaskId]failedMigration
 	edges            map[durable.ConversationId]*durable.TaskId
 	settled          map[durable.TaskId]taskNode
-	failFastChecks   map[durable.TaskId]bool
+	// scopeAbove holds, for a task a walk up passed, the conversation its chain of owner tasks ends in (conversationAboveLocked):
+	// owners never change, so it holds until the sweep forgets the task, as settled does.
+	scopeAbove     map[durable.TaskId]durable.ConversationId
+	failFastChecks map[durable.TaskId]bool
 	// abandoned holds the live tasks with AbandonOnRestart found at open, from an earlier Harness. The first reservation
 	// pass abort-marks them with reason restart, so nothing of them or below them runs a phase again.
 	abandoned *orderedSet[durable.TaskId]
@@ -461,6 +464,7 @@ func NewTaskScheduler(options TaskSchedulerOptions) *TaskScheduler {
 		failedMigrations:    map[durable.TaskId]failedMigration{},
 		edges:               map[durable.ConversationId]*durable.TaskId{},
 		settled:             map[durable.TaskId]taskNode{},
+		scopeAbove:          map[durable.TaskId]durable.ConversationId{},
 		failFastChecks:      map[durable.TaskId]bool{},
 		abandoned:           newOrderedSet[durable.TaskId](),
 		liveOrder:           newOrderedSet[durable.TaskId](),
@@ -1048,7 +1052,6 @@ func (s *TaskScheduler) observe(publication session.ObservedCommit) {
 	var terminal []anyTaskRecord
 	// The conversations whose idleness the commit's task changes can change; nil when a chain is not known.
 	dirty := map[durable.ConversationId]struct{}{}
-	walkedUp := map[durable.TaskId]struct{}{}
 	// Edges first, so the tasks a commit creates in a new conversation hang from it.
 	for _, change := range publication.Changes {
 		if write, ok := change.(durable.ConversationWrite); ok {
@@ -1076,7 +1079,7 @@ func (s *TaskScheduler) observe(publication session.ObservedCommit) {
 		// Idleness counts live tasks, so only a task that became live or ended can change it, and the inactivity of kept
 		// contexts also a task that parked or woke. Collected before sweepLocked, which may forget the chain of a task that
 		// ended.
-		if liveness := !hadPrevious || record.State.Status == durable.TaskTerminal || parked(previous) != parked(record); liveness && dirty != nil && !s.addScopesAboveLocked(record, dirty, walkedUp) {
+		if liveness := !hadPrevious || record.State.Status == durable.TaskTerminal || parked(previous) != parked(record); liveness && dirty != nil && !s.addScopesAboveLocked(record, dirty) {
 			dirty = nil
 		}
 		if record.State.Status == durable.TaskTerminal {
