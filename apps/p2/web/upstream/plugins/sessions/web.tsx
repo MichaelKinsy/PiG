@@ -15,12 +15,15 @@ import {
 } from "@p2/app/v1";
 import {
 	closeLayers,
-	conversationRoute,
 	MoreIcon,
+	NEW_SESSION,
 	navigate,
 	openLayer,
+	openNewSession,
 	openPage,
+	PiLogo,
 	rememberMains,
+	Slot,
 	SlotList,
 	Slots,
 	shortPath,
@@ -41,6 +44,7 @@ import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 
 import { Envs } from "../envs/contract.ts";
 import { directoryPickerLayer } from "../envs/contract.web.tsx";
 import { Projects, placeOn } from "../projects/contract.ts";
+import { SidebarRollups } from "../rollups/contract.ts";
 import { Search, type SearchResults, SessionReads } from "../search/contract.ts";
 import { SessionStatus } from "../status/contract.ts";
 import { Subagents } from "../subagents/contract.ts";
@@ -49,8 +53,11 @@ import { BranchSheet } from "./BranchSheet.tsx";
 import { type Operation, type Session, Sessions, SidebarSettings, type SidebarWindow } from "./contract.ts";
 import { type DrawerRows, DrawerRowsContext } from "./contract.web.tsx";
 import { SessionSheet } from "./SessionSheet.tsx";
+import { customKey, customRollup } from "./sidebar/custom.ts";
 import { ListPage } from "./sidebar/ListPage.tsx";
 import {
+	ARCHIVE,
+	glyphsOf,
 	listPageOf,
 	moved,
 	type NewTarget,
@@ -64,7 +71,7 @@ import {
 	type Wanting,
 	wantingOf,
 } from "./sidebar/model.ts";
-import { RollupSheet } from "./sidebar/RollupSheet.tsx";
+import { type CodeSource, RollupSheet } from "./sidebar/RollupSheet.tsx";
 import { SidebarView, useNow } from "./sidebar/Sidebar.tsx";
 
 const subscribeVisibility = (listener: () => void) => {
@@ -74,8 +81,8 @@ const subscribeVisibility = (listener: () => void) => {
 /** Whether the page is shown (not a background tab or a hidden app). */
 const usePageVisible = () => useSyncExternalStore(subscribeVisibility, () => document.visibilityState === "visible");
 
-/** Entries above the rollups, e.g. the Familiar's. */
-const head = <SlotList prefix="drawer-head" />;
+/** The owner's sidebar header start: the Pi logo, unless a plugin puts its own there (the Familiar's). */
+const brand = <Slot name="drawer-brand" fallback={<PiLogo compact />} />;
 /** Icon buttons at the footer's end, before the theme switch (`sidebar-actions:<name>`, e.g. the Settings gear). */
 const actions = <SlotList prefix="sidebar-actions" />;
 
@@ -265,7 +272,14 @@ function useSidebarData() {
 			}),
 		[guessSettings, settingsHeld],
 	);
-	const rollups = useMemo(() => ordered(ROLLUPS, settings.order), [settings.order]);
+	// Rollups made from code (plugins/rollups), before the Archive until the owner moves them.
+	const rollupsHeld = useObject(SidebarRollups, owner ? {} : undefined);
+	const entries = useReadable(keptIn(rollupsHeld, "owner")?.rollups);
+	const rollups = useMemo(() => {
+		const custom = (entries ?? []).map(customRollup);
+		const archive = ROLLUPS.filter((rollup) => rollup.key === ARCHIVE);
+		return ordered([...ROLLUPS.filter((rollup) => rollup.key !== ARCHIVE), ...custom, ...archive], settings.order);
+	}, [entries, settings.order]);
 	const now = useNow();
 	const view = useMemo(
 		() => ({ windows: settings.windows, collapsed: settings.collapsed, now, open: route.session }),
@@ -321,6 +335,8 @@ function useSidebarData() {
 		settings,
 		changeSettings,
 		rollups,
+		rollupsHeld,
+		entries,
 		view,
 		onOpen,
 		onRestore,
@@ -339,8 +355,10 @@ function Sidebar() {
 	const data = useSidebarData();
 	const { route, catalog, owner, fail, list, edit, rows, answers, reads, marks, search, settings, changeSettings } =
 		data;
-	const { rollups, context, view, onOpen, onRestore } = data;
-	// Sessions a `drawer-head` entry shows (the Familiar's) are left out of the rollups.
+	const { rollups, rollupsHeld, entries, context, view, onOpen, onRestore } = data;
+	// Project glyphs for groups and the sessions of flat lists; the owner's only (guests read no projects).
+	const glyphs = useMemo(() => (owner ? glyphsOf(context) : undefined), [owner, context]);
+	// Sessions a plugin's sidebar entry shows (the Familiar's, in `drawer-brand`) are left out of the rollups.
 	const [apart, setApart] = useState<Readonly<Record<string, readonly string[]>>>({});
 	const listApart = useCallback(
 		(key: string, ids: readonly string[]) => setApart((current) => ({ ...current, [key]: ids })),
@@ -424,7 +442,7 @@ function Sidebar() {
 	const { setChoice, setLocation, setJoin } = useNewSessionState();
 	const focusNew = useCallback(() => {
 		setChoice(undefined);
-		navigate({});
+		openNewSession();
 		setTimeout(() => document.querySelector<HTMLTextAreaElement>(".composer textarea")?.focus(), 50);
 	}, [setChoice]);
 	const onNew = useCallback(() => {
@@ -484,18 +502,44 @@ function Sidebar() {
 				rollups,
 				context,
 				view,
-				// A project's list waits for the projects too: before them it would say the list is gone.
-				loading: (page) => !list || (page.startsWith("project:") && projects === undefined),
+				// A project's list waits for the projects too, a rollup made from code for the rollups: before them it would
+				// say the list is gone.
+				loading: (page) =>
+					!list ||
+					(page.startsWith("project:") && projects === undefined) ||
+					(page.startsWith("rollup:") && entries === undefined),
 				connected,
 				onOpen,
 				onRestore,
 				...(onSearch ? { onSearch } : {}),
 				...(ownerNewIn ? { onNewIn: ownerNewIn } : {}),
 			}),
-		[rolledUp, rollups, context, view, list, projects, connected, onOpen, onRestore, onSearch, ownerNewIn],
+		[rolledUp, rollups, context, view, list, projects, entries, connected, onOpen, onRestore, onSearch, ownerNewIn],
 	);
 	const rollupSheet = useSheet("sidebar-rollup");
 	const optionsOf = rollupSheet && sections.find((section) => section.key === rollupSheet.locator);
+	const [refreshing, setRefreshing] = useState<string>();
+	/** The options of a rollup made from code: its refresh, last check and failure, and Refresh now while connected. */
+	const codeOf = (key: string): CodeSource | undefined => {
+		const entry = entries?.find((each) => customKey(each.definition.key) === key);
+		if (!entry) return undefined;
+		const live = liveIn(rollupsHeld, "owner");
+		const refresh = () => {
+			if (!live) return;
+			setRefreshing(key);
+			void live
+				.refresh({ key: entry.definition.key }, BACKGROUND_CONTEXT)
+				.catch(fail)
+				.finally(() => setRefreshing(undefined));
+		};
+		return {
+			refresh: entry.definition.refresh,
+			checkedAt: entry.checkedAt,
+			error: entry.error,
+			refreshing: refreshing === key,
+			...(live ? { onRefresh: refresh } : {}),
+		};
+	};
 	/** A rollup's options: its window, and moving it among the rollups. */
 	const rollupActions = (key: string) => {
 		const at = rollups.findIndex((rollup) => rollup.key === key);
@@ -518,7 +562,8 @@ function Sidebar() {
 				sections={sections}
 				now={view.now}
 				page={route.page}
-				head={head}
+				newSession={route.newSession === true}
+				brand={brand}
 				guest={guest}
 				activeId={route.session}
 				conversationId={route.conversation}
@@ -529,6 +574,7 @@ function Sidebar() {
 				onRestore={onRestore}
 				onNew={onNew}
 				onNewIn={ownerNewIn}
+				glyphs={glyphs}
 				onOptions={owner ? onOptions : undefined}
 				onCollapse={owner ? onCollapse : undefined}
 				onPage={openPage}
@@ -539,6 +585,8 @@ function Sidebar() {
 				<RollupSheet
 					key={optionsOf.key}
 					section={optionsOf}
+					code={codeOf(optionsOf.key)}
+					now={view.now}
 					{...rollupActions(optionsOf.key)}
 					onClose={closeLayers}
 				/>
@@ -575,7 +623,7 @@ function Sidebar() {
 					}
 					onArchive={() => {
 						closeLayers();
-						void nav.replace(conversationRoute(route, undefined));
+						void nav.replace(NEW_SESSION);
 						edit({ id: viewed.id, change: { archivedAt: Date.now() } }, () =>
 							catalog.archive({ id: viewed.id }, BACKGROUND_CONTEXT),
 						);
