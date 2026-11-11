@@ -1187,6 +1187,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-bd3e8ab-2](#bf-bd3e8ab-2) | On arm64 and other CPUs with a fused multiply-add, the cache-warming expected savings (shown by `/session`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-bda636e](#bf-bda636e) | The pi-env daemon left its stdin and stdout non-blocking for whoever shared them when it ended by SIGTERM or… | PiG's own defect | All platforms | Unreleased |
 | [BF-bdb7ad8](#bf-bdb7ad8) | A single server-sent-event line larger than 32 MiB (for example a base64 image chunk) no longer fails the… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-bddbf4c](#bf-bddbf4c) | A Piglet whose `discovery.extensions` leaves out `user` no longer runs the user's extensions before a project… | PiG's own defect | All platforms | Unreleased |
 | [BF-be2920a](#bf-be2920a) | A tool with JSON-schema constrained sampling `strict: "require"` now fails an OpenAI Chat Completions request… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-be6803c](#bf-be6803c) | The /tree "Summarize branch?" selector and "Custom summarization instructions" editor, the /import… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-beeb36a](#bf-beeb36a) | Running with no home directory now fails the way Pi's package manager does, instead of reading the project's… | PiG's own defect | All platforms | 0.7.0 |
@@ -17795,6 +17796,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `bdb7ad8292` (2026-10-09), `c715193fab` (2026-10-09)
 - **Tests:** `ai/sse_long_line_test.go::TestSSEDecoderAcceptsALineLargerThan32MiB`, `ai/sse_long_line_test.go::TestSSEDecoderBoundsALine`, `ai/sse_long_line_test.go::TestSSELineLimitIsNodesMaxStringLength`
 - **Release note:** A single server-sent-event line larger than 32 MiB (for example a base64 image chunk) no longer fails the stream with `token too long` on the providers that use PiG's SSE decoder. A line is now bounded where Pi's runtime bounds it, at Node's maximum string length (512 MiB), so a server that never ends a line cannot exhaust memory (D134).
+
+### BF-bddbf4c
+
+**A Piglet whose `discovery.extensions` leaves out `user` no longer runs the user's extensions before a project…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Piglet whose `discovery.extensions` leaves out `user` no longer runs the user's extensions before a project trust decision.
+- **Root cause:** A Piglet with discovery.extensions: [] ran the user's extension factories anyway, and a closed Piglet Binary without the Node runtime failed to start. The pass now reads ambientScopes(false): ["user"] for stock pig, as Pi does; the Piglet's trusted scopes otherwise; none for a closed Binary.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `bddbf4c888` (2026-11-10)
+- **Tests:** `coding/cli/piglet_pretrust_discovery_test.go::TestPreTrustPassFollowsPigletDiscovery`
+- **Release note:** A Piglet whose `discovery.extensions` leaves out `user` no longer runs the user's extensions before a project trust decision. When the project had config that needs one (for example `.pig/mcp.json`), the pre-trust pass loaded `~/.pig/agent/extensions` with a fixed user scope, so an ambient extension's factory ran in a Piglet that discovers none (it did not join the session), and a closed Piglet Binary built without the Node runtime failed to start. The pre-trust pass now reads the scopes the Piglet's discovery allows for an untrusted project; stock pig still loads user extensions there, as Pi does.
 
 ### BF-be2920a
 
