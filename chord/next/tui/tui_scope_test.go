@@ -24,7 +24,7 @@ var (
 	Notes = mustContract(contracts.Local("test.notes", contracts.LocalDeclaration{
 		Params:  contracts.Params{},
 		Version: 1,
-		Members: []contracts.LocalEntry{contracts.Mem("text", contracts.Str()), contracts.Mem("write", contracts.NewMethod(contracts.Str()))},
+		Members: []contracts.LocalEntry{contracts.Mem("text", contracts.Str()), contracts.Mem("write", contracts.NewMethod(contracts.Str())), contracts.Mem("written", contracts.Event(contracts.Str()))},
 	}))
 	Panels = mustRegistry("test.panels")
 )
@@ -59,13 +59,18 @@ func newHost(t testing.TB) host.Host {
 	facet := host.DefineFacet(func(fh host.FacetHost, self host.FacetSelf) error {
 		err := fh.Serve(Notes, func(_ *delta.JsonObject, object host.Self) (contracts.Implementation, error) {
 			text := object.Writable("first")
+			written := object.Events()
 			return contracts.Implementation{Members: contracts.VariantImplementation{
+				Events: map[string]contracts.EventMember[delta.JsonValue]{"written": written},
 				State: map[string]chord.Watchable[delta.JsonValue]{
 					"text": object.Derive([]any{text}, func(values []any) (delta.JsonValue, error) { return values[0], nil }),
 				},
 				Methods: map[string]contracts.MethodFunction{
 					"write": func(next delta.JsonValue, _ context.Context) (delta.JsonValue, error) {
-						return nil, text.Set(next)
+						if err := text.Set(next); err != nil {
+							return nil, err
+						}
+						return nil, written.Emit(next)
 					},
 				},
 			}}, nil
@@ -186,6 +191,52 @@ func TestScopeHoldsFollowsAndCallsChangedOnEveryChangeReleasingEverythingAtDispo
 	scope.redraw()
 	if got := changes.Load(); got != after {
 		t.Errorf("changed called after dispose: %d -> %d", after, got)
+	}
+}
+
+// Ports 'a scope's event subscriptions (decision "Events: fire-and-forget members") › call the listener for each event,
+// never changed by themselves, until dispose'.
+func TestScopeEventSubscriptionsCallTheListenerForEachEventNeverChangedByThemselvesUntilDispose(t *testing.T) {
+	h := newHost(t)
+	var changes atomic.Int64
+	scope := scopeOn(h, func() { changes.Add(1) })
+	notes, err := scope.Hold(Notes, delta.NewJsonObject(0))
+	if err != nil {
+		t.Fatal(err)
+	}
+	until(t, func() bool { return notes.State().Value().Kind == host.RefStateLive })
+	var mu sync.Mutex
+	var seen []string
+	scope.On(notes.Events("written"), func(e contracts.EventDelivery[delta.JsonValue]) {
+		mu.Lock()
+		defer mu.Unlock()
+		seen = append(seen, e.Value.(string))
+	})
+	count := func() int { mu.Lock(); defer mu.Unlock(); return len(seen) }
+	settle(&changes)
+	before := changes.Load()
+	if _, err := notes.Call("write", "a", bg); err != nil {
+		t.Fatal(err)
+	}
+	until(t, func() bool { return count() == 1 })
+	// The event called its listener only (the text is not followed here: nothing else changed).
+	settle(&changes)
+	if got := changes.Load(); got != before {
+		t.Fatalf("changed called %d times, want %d", got, before)
+	}
+	scope.Dispose()
+	again, err := h.Get(bg, Notes, delta.NewJsonObject(0), host.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := again.Call("write", "b", bg); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(5 * time.Millisecond)
+	mu.Lock()
+	defer mu.Unlock()
+	if len(seen) != 1 || seen[0] != "a" {
+		t.Fatalf("seen = %v, want [a]", seen)
 	}
 }
 
