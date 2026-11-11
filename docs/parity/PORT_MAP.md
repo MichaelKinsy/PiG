@@ -840,7 +840,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/store/step.ts` | `chord/next/store/step.go` | ✅ |
 | `packages/chord/src/store/writes.ts` | `(type-only: the StoreWrite union; chord/next/store/writes.go StoreWrite interface)` | n/a |
 | `packages/chord/src/documents/address-source.ts` | `chord/next/documents/address_source.go` | ✅ |
-| `packages/chord/src/documents/definition.ts` | `chord/next/documents/definition.go` | ✅ |
+| `packages/chord/src/documents/definition.ts` | `chord/next/documents/definition.go` Missing: the interface ledger keeps the StateDefinition ledger row and StateDefinition::property:host pending (type-mismatch T12: Pi 1.5.2's `host: KindShape | undefined` is the Go *contracts.HostKind, which the ledger's type rules cannot match to KindShape; the member itself is ported, DefineState's keyedBy and StateDefinition.Host are covered by TestDefineStateKeysByADeclaredHostKindKeyedWithTheKindAsItsHostAnUndeclaredKindIsRefused), so the ledger does not derive the row | 🟡 |
 | `packages/chord/src/documents/documents.ts` | `chord/next/documents/documents.go` | ✅ |
 | `packages/chord/src/documents/fence.ts` | `chord/next/documents/fence.go` | ✅ |
 | `packages/chord/src/documents/handles.ts` | `chord/next/documents/handles.go` | ✅ |
@@ -961,12 +961,12 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/node/workers/lock.ts` | `chord/nextnode/workers/workers_lock.go, workers_lock_unix.go` (the Windows named-pipe variant workers_lock_windows is built only on Windows and is run by the native Windows CI job) | ✅ |
 | `packages/chord/src/node/workers/main.ts` | `chord/nextnode/workers/workers_main.go` | ✅ |
 | `packages/chord/src/node/workers/process.ts` | `chord/nextnode/workers/workers_process.go, workers_process_unix.go, workers_channel.go, workers_channel_unix.go` (the Windows variants workers_process_windows and workers_channel_windows are built only on Windows and are run by the native Windows CI job) | ✅ |
-| `packages/chord/src/node/workers/workers.ts` | `chord/nextnode/workers/workers_workers.go` | ✅ |
+| `packages/chord/src/node/workers/workers.ts` | `chord/nextnode/workers/workers_workers.go` Missing: the interface ledger keeps WorkersBuilt pending (type-mismatch U5: Pi's `{ kind: "failed"; error: unknown }` union member has no field named `error` in the Go struct, whose `Err` carries it); the build and its result are covered by the worker base tests (workers_base_held_linux_test.go), but the ledger does not derive the row | 🟡 |
 | `packages/chord/src/host/old-work.ts` | `chord/next/host/host_old_work.go` | ✅ |
 | `packages/chord/src/host/readiness.ts` | `chord/next/host/host_readiness.go` | ✅ |
 | `packages/chord/src/host/reload-cycle.ts` | `chord/next/host/host_reload_cycle.go` | ✅ |
 | `packages/chord/src/host/unbound-clock.ts` | `chord/next/host/host_unbound_clock.go` | ✅ |
-| `packages/chord/src/node/app/app.ts` | `chord/nextnode/app/app.go, chord/nextnode/app/app_bases.go (App.BasesBuilt and App.BaseWatched), chord/nextnode/plugins/plugins_node_host_data.go, chord/nextnode/plugins/node/host.mjs (exportHostData, importHostData, deleteHostData control requests)` | ✅ |
+| `packages/chord/src/node/app/app.ts` | `chord/nextnode/app/app.go, chord/nextnode/app/app_bases.go (App.BasesBuilt and App.BaseWatched), chord/nextnode/plugins/node/host.mjs (exportHostData, importHostData, deleteHostData control requests; their Go side is a pig divergence with no Pi file, D462)` | ✅ |
 | `packages/chord/src/node/app/archive.ts` | `chord/nextnode/app/archive.go` | ✅ |
 | `packages/chord/src/node/app/blobs.ts` | `chord/nextnode/app/blobs.go` | ✅ |
 | `packages/chord/src/node/app/data.ts` | `chord/nextnode/app/data.go, host_data.mjs` | ✅ |
@@ -1062,7 +1062,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/web/styles.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/styles.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 | `packages/chord/src/web/themes.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/themes.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 | `packages/chord/src/host/host-data.ts` | `chord/next/host/host_host_data.go` | ✅ |
-| `packages/chord/src/store/host-column.ts` | `chord/next/store/host_column.go` | ✅ |
+| `packages/chord/src/store/host-column.ts` | `chord/next/store/host_column.go, chord/next/store/columns.go (ColumnSchema.Host, the Go form of Pi's HostColumnSchema.host)` | ✅ |
 | `packages/chord/src/store/host-data.ts` | `chord/next/store/host_data.go` | ✅ |
 | `packages/chord/src/store/import-migration.ts` | `chord/next/store/import_migration.go` | ✅ |
 
