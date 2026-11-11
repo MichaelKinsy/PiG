@@ -3,7 +3,6 @@ package harness
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -26,9 +25,12 @@ import (
 // scan.
 const madeNestedCalls = "pi.tool.madeNestedCalls"
 
-// NestedCallState is one nested call of a running tool: its task, and once it ended, its result.
+// NestedCallState is one key of a running tool: a nested call, its task and once it ended its result, or a task created
+// under the key (CreateTaskErased with a Key). A member without Kind, written before keyed tasks, is a nested call's.
 type NestedCallState struct {
-	// TaskId is absent only inside the commit that creates the call; a creation that fails leaves no member.
+	// Kind is "nested" or "task"; absent in members written before keyed tasks.
+	Kind string `json:"kind,omitempty"`
+	// TaskId is absent only inside the commit that creates the member; a creation that fails leaves no member.
 	TaskId *durable.TaskId `json:"taskId,omitempty"`
 	// Result is exactly what ExecuteTool returns; absent while running, and for a call the scheduler faulted or orphaned.
 	Result *durable.NestedToolExecutionResult `json:"result,omitempty"`
@@ -156,11 +158,13 @@ func (caller runtimeCaller) CommitFenced(ctx context.Context, change func(tx dur
 // NestedCalls is the nested-call state of one running tool call: the default key sequence and the admissions its cleanup
 // awaits. A call's admissions are awaited at cleanup, and none starts after it.
 type NestedCalls struct {
-	callId   string
-	resumes  bool
-	mu       sync.Mutex
-	sequence int
-	ended    bool
+	callId  string
+	resumes bool
+	// afterWake is set for a run after a wake: a position may then mean another call, so a call needs an explicit key.
+	afterWake bool
+	mu        sync.Mutex
+	sequence  int
+	ended     bool
 	// admissions counts the nested calls being admitted.
 	admissions sync.WaitGroup
 	// last is closed once the previous call's admission has reached the Session line (or that call ended): the next call
@@ -200,8 +204,18 @@ func (n *NestedCalls) End() {
 	n.admissions.Wait()
 }
 
-// Execute calls another tool as a nested call (tool.ts executeTool).
+// Execute calls another tool as a nested call and waits for its result (tool.ts executeTool).
 func (n *NestedCalls) Execute(ctx context.Context, caller NestedCaller, name string, args map[string]any, options ...durable.NestedCallOptions) (durable.NestedToolExecutionResult, error) {
+	nested, err := n.ExecuteNoWait(ctx, caller, name, args, options...)
+	if err != nil {
+		return durable.NestedToolExecutionResult{}, err
+	}
+	return nested.Result(ctx)
+}
+
+// ExecuteNoWait is Execute with wait false (tool.ts executeTool): it returns once the nested call is started or found,
+// with a handle to its task and its result.
+func (n *NestedCalls) ExecuteNoWait(ctx context.Context, caller NestedCaller, name string, args map[string]any, options ...durable.NestedCallOptions) (durable.NestedToolCall, error) {
 	var option durable.NestedCallOptions
 	if len(options) > 0 {
 		option = options[0]
@@ -210,15 +224,18 @@ func (n *NestedCalls) Execute(ctx context.Context, caller NestedCaller, name str
 	if n.ended {
 		n.mu.Unlock()
 		// executeTool is async upstream: assertLive is a rejection of the returned promise, not a synchronous throw.
-		return durable.NestedToolExecutionResult{}, fmt.Errorf("Tool call %s has settled", n.callId)
+		return durable.NestedToolCall{}, fmt.Errorf("Tool call %s has settled", n.callId)
 	}
 	var key string
 	if option.Key != nil {
 		key = *option.Key
 		if err := checkNestedKey(key); err != nil {
 			n.mu.Unlock()
-			return durable.NestedToolExecutionResult{}, err
+			return durable.NestedToolCall{}, err
 		}
+	} else if n.afterWake {
+		n.mu.Unlock()
+		return durable.NestedToolCall{}, fmt.Errorf("Tool call %s needs explicit keys after a wake", n.callId)
 	} else {
 		n.sequence++
 		key = strconv.Itoa(n.sequence)
@@ -256,21 +273,23 @@ func (n *NestedCalls) Execute(ctx context.Context, caller NestedCaller, name str
 	release.Do(func() { close(turn) })
 	n.admissions.Done()
 	if err != nil {
-		return durable.NestedToolExecutionResult{}, err
+		return durable.NestedToolCall{}, err
 	}
-	settled, err := caller.WaitForTask(ctx, id)
-	if err != nil {
-		return durable.NestedToolExecutionResult{}, err
-	}
-	stored, err := durable.Snapshot[NestedCallState](ctx, caller, NestedCallDoc, caller.TaskId(), key)
-	if err != nil {
-		return durable.NestedToolExecutionResult{}, err
-	}
-	// A copy the tool may change; a nested call the scheduler faulted or orphaned stored none.
-	if stored == nil || stored.Result == nil {
-		return fallbackResult(id, name, settled.State.Outcome), nil
-	}
-	return *stored.Result, nil
+	return durable.NestedToolCall{TaskId: id, Result: func(resultCtx context.Context) (durable.NestedToolExecutionResult, error) {
+		settled, err := caller.WaitForTask(resultCtx, id)
+		if err != nil {
+			return durable.NestedToolExecutionResult{}, err
+		}
+		stored, err := durable.Snapshot[NestedCallState](resultCtx, caller, NestedCallDoc, caller.TaskId(), key)
+		if err != nil {
+			return durable.NestedToolExecutionResult{}, err
+		}
+		// A copy the tool may change; a nested call the scheduler faulted or orphaned stored none.
+		if stored == nil || stored.Result == nil {
+			return fallbackResult(id, name, settled.State.Outcome), nil
+		}
+		return *stored.Result, nil
+	}}, nil
 }
 
 // ExecuteTool calls another tool as a nested call.
@@ -281,7 +300,7 @@ func (api *toolApi) ExecuteTool(ctx context.Context, name string, args map[strin
 // ExecuteToolNoWait is ExecuteTool with wait false: it returns once the nested call is started or found, with a handle
 // to its result.
 func (api *toolApi) ExecuteToolNoWait(ctx context.Context, name string, args map[string]any, options ...durable.NestedCallOptions) (durable.NestedToolCall, error) {
-	return durable.NestedToolCall{}, errors.New("ExecuteToolNoWait: interim, replaced by the tool slice")
+	return api.nested.ExecuteNoWait(ctx, runtimeCaller{api.runtime}, name, args, options...)
 }
 
 // checkNestedKey rejects explicit keys that are empty, have a slash, are "__proto__", or are positive integers: keys are
@@ -335,14 +354,17 @@ func startNestedCall(ctx context.Context, runtime NestedCaller, parentCallId, na
 			return err
 		}
 		if existing, found := state.Get("taskId").(float64); found {
-			record, err := tx.Task(durable.TaskId(existing))
-			if err != nil {
-				return err
-			}
 			same := false
-			if record != nil {
-				if input, err := durable.FromJsonValue[ToolTaskInput](record.Input); err == nil {
-					same = input.Kind == ToolTaskNested && input.Call != nil && input.Call.Name == name && sameArguments(input.Call.Arguments, arguments)
+			// A key a keyed task holds is no nested call's.
+			if state.Get("kind") != "task" {
+				record, err := tx.Task(durable.TaskId(existing))
+				if err != nil {
+					return err
+				}
+				if record != nil {
+					if input, err := durable.FromJsonValue[ToolTaskInput](record.Input); err == nil {
+						same = input.Kind == ToolTaskNested && input.Call != nil && input.Call.Name == name && sameArguments(input.Call.Arguments, arguments)
+					}
 				}
 			}
 			if !same {
@@ -361,6 +383,9 @@ func startNestedCall(ctx context.Context, runtime NestedCaller, parentCallId, na
 			AbandonOnRestart: &abandonOnRestart,
 		})
 		if err != nil {
+			return err
+		}
+		if err := state.Set("kind", "nested"); err != nil {
 			return err
 		}
 		if err := state.Set("taskId", float64(created)); err != nil {

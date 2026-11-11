@@ -33,7 +33,7 @@ func (s *coreSession) Inspect(ctx context.Context) (harness.HarnessInspection, e
 				Kind     harness.TaskInspectionKind `json:"kind"`
 				Migrates bool                       `json:"migrates"`
 				On       []durable.TaskId           `json:"on"`
-				Until    float64                    `json:"until"`
+				Until    *float64                   `json:"until"`
 				Reason   string                     `json:"reason"`
 				Error    *CoreError                 `json:"error"`
 			} `json:"state"`

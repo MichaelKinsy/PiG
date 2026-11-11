@@ -19,6 +19,7 @@ import (
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/storage"
 	"github.com/MichaelKinsy/PiG/internal/lineadmission"
+	"github.com/MichaelKinsy/PiG/schema"
 )
 
 // idleGates are the gates and read signals of the tasks of one test, by name.
@@ -69,6 +70,44 @@ func idleWork(gates *idleGates) durable.AnyTask {
 		return tkComplete(ctx, runtime)
 	}).Erased()
 }
+
+var idleWake = durable.DefineSignal(durable.SignalDefinition[struct{}]{Name: "test.idle.wake", Version: 1, Schema: schema.Obj(schema.Properties{})})
+
+type idleParkerInput struct {
+	Read int64 `json:"read"`
+}
+
+type (
+	idleParkerRuntime = durable.TaskRuntime[idleParkerInput, stepState, durable.JsonValue, any]
+	idleParkerRecord  = durable.RunningTask[idleParkerInput, stepState, durable.JsonValue]
+)
+
+// idleParker reads the context of conversation `read`, then parks on `idleWake` until a delivery, and completes.
+var idleParker = durable.DefineTask(durable.TaskDefinition[idleParkerInput, stepState, durable.JsonValue, any]{
+	Name:    "test.idle.parker",
+	Version: 1,
+	Initial: func(idleParkerInput) stepState { return stepState{Phase: "run"} },
+	Phases: map[string]durable.PhaseHandler[idleParkerInput, stepState, durable.JsonValue, any]{
+		"run": func(ctx context.Context, task idleParkerRecord, runtime idleParkerRuntime) error {
+			if _, err := runtime.Context(ctx, durable.ConversationId(task.Input.Read), nil); err != nil {
+				return err
+			}
+			return runtime.Commit(ctx, func(durable.Tx, idleParkerRecord) (*durable.NextTaskState[stepState, durable.JsonValue], error) {
+				return &durable.NextTaskState[stepState, durable.JsonValue]{Status: durable.TaskSleeping, Checkpoint: &stepState{Phase: "woke"}, Signals: []durable.SignalKey{idleWake.Key("go")}}, nil
+			})
+		},
+		"woke": func(ctx context.Context, _ idleParkerRecord, runtime idleParkerRuntime) error {
+			return runtime.Commit(ctx, func(durable.Tx, idleParkerRecord) (*durable.NextTaskState[stepState, durable.JsonValue], error) {
+				return completed[stepState, durable.JsonValue](nil), nil
+			})
+		},
+	},
+	Abort: func(ctx context.Context, _ idleParkerRecord, runtime idleParkerRuntime) error {
+		return runtime.Commit(ctx, func(durable.Tx, idleParkerRecord) (*durable.NextTaskState[stepState, durable.JsonValue], error) {
+			return abortedWith[stepState, durable.JsonValue]("test"), nil
+		})
+	},
+})
 
 type idleEnvOptions struct {
 	clock     *testClock
@@ -124,7 +163,7 @@ func openIdle(t *testing.T, options idleEnvOptions) *idleEnv {
 			return func() { timer.Stop() }
 		}
 	}
-	opened := tkOpenRoot(t, []durable.AnyTask{env.work}, tk)
+	opened := tkOpenRoot(t, []durable.AnyTask{env.work, idleParker.Erased()}, tk)
 	env.harness, env.root = opened.harness, opened.root
 	env.scheduler = opened.harness.(*harnessImpl).tasks
 	if !options.paused {
@@ -497,6 +536,35 @@ func TestIdleWaitersByScope(t *testing.T) {
 }
 
 func TestIdleKeptContextRanges(t *testing.T) {
+	t.Run("count a conversation whose live work is all parked as inactive, and as busy once it runs again", func(t *testing.T) {
+		env := openIdle(t, idleEnvOptions{})
+		x := env.conversation(2)
+		parker, err := durable.Commit(testContext, x, func(tx durable.Tx) (durable.TaskId, error) {
+			return durable.CreateTask(tx, idleParker, idleParkerInput{Read: int64(x.Id())}, durable.TaskOptions{Ownership: conversationOwned, ConversationId: new(x.Id())})
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		pollUntil(t, func() bool { return tkTaskRecord(t, env.harness, parker).State.Status == durable.TaskSleeping })
+		env.quiet()
+		// Not idle, as a wait for idleness says, but inactive: its context ages like an idle one's.
+		if settledAfterFlush(t, func() error { return x.WaitForIdle(testContext) }) {
+			t.Fatal("a wait for idleness settled while a task sleeps")
+		}
+		env.expectState(SchedulerIdleState{Contexts: 1, IdleContexts: 1, IdleMismatches: 0}, "contexts idleContexts idleMismatches")
+		running := env.start("running", x, 0)
+		env.quiet()
+		env.expectState(SchedulerIdleState{Contexts: 1, IdleContexts: 0, IdleMismatches: 0}, "contexts idleContexts idleMismatches")
+		env.end("running", running)
+		if result, err := Signal(testContext, env.harness, parker, idleWake, "go", struct{}{}); err != nil || result != durable.SignalDelivered {
+			t.Fatalf("delivery: %s %v", result, err)
+		}
+		if _, err := env.harness.WaitForTask(testContext, parker); err != nil {
+			t.Fatal(err)
+		}
+		env.close()
+	})
+
 	t.Run("settles a run end whose sweep drops the chain without a check of every scope", func(t *testing.T) {
 		env := openIdle(t, idleEnvOptions{})
 		type tree struct {

@@ -174,12 +174,12 @@ func (h *Hooks) afterRun(ctx context.Context, call *sqlhost.Call, p hookEffect) 
 	reject := func(err error) { rejected = append(rejected, rejectedWire{"Error", err.Error()}) }
 	for _, request := range asked.Tasks {
 		if request.Task.Definition == nil {
-			reject(errors.New("An afterRun hook asked for a task without a definition"))
+			reject(errors.New("A hook asked for a task without a definition"))
 			continue
 		}
 		name := request.Task.Definition.Name
 		if strings.HasPrefix(name, "pi.") {
-			reject(fmt.Errorf("An afterRun hook cannot start the built-in task %s", name))
+			reject(fmt.Errorf("A hook cannot start the built-in task %s", name))
 			continue
 		}
 		var installed durable.AnyTask
@@ -337,9 +337,17 @@ func runHook(ctx context.Context, p hookEffect, target any, api harness.HookApi,
 		if out == nil || err != nil {
 			return nil, err
 		}
-		return struct {
-			Continue durable.UserInput `json:"continue"`
-		}{out.Continue}, nil
+		switch result := out.(type) {
+		case *harness.YieldContinue:
+			return struct {
+				Continue durable.UserInput `json:"continue"`
+			}{result.Continue}, nil
+		case *harness.YieldTasks:
+			// The host cannot ask the core to run an onYield task: its row shapes are a pin bump (CONTRACT.md section 8).
+			return nil, notInPin("onYield tasks")
+		default:
+			return nil, fmt.Errorf("hook onYield returned a %T", out)
+		}
 	case "afterTools":
 		hooks, ok := target.(*harness.GenerationHooks)
 		if !ok {
@@ -355,7 +363,15 @@ func runHook(ctx context.Context, p hookEffect, target any, api harness.HookApi,
 		if hooks.AfterTools == nil {
 			return nil, nil
 		}
-		return nil, hooks.AfterTools(ctx, in.Assistant, in.Results, api)
+		asked, err := hooks.AfterTools(ctx, in.Assistant, in.Results, api)
+		if err != nil {
+			return nil, err
+		}
+		if asked != nil && len(asked.Tasks) > 0 {
+			// The generation's afterTools phase is a pin bump (CONTRACT.md section 8): no task of it can start.
+			return nil, notInPin("afterTools tasks")
+		}
+		return nil, nil
 	case "beforeTool":
 		hooks, ok := target.(*harness.ToolHooks)
 		if !ok {
@@ -374,6 +390,10 @@ func runHook(ctx context.Context, p hookEffect, target any, api harness.HookApi,
 		out, err := hooks.BeforeTool(ctx, hookCall(in.Call, in.Parent), api)
 		if out == nil || err != nil {
 			return nil, err
+		}
+		if out.Block == nil && out.Sleep != nil {
+			// A gate's sleep parks the call at its gates, which the core's tool task cannot do (CONTRACT.md section 8); Block wins over Sleep.
+			return nil, notInPin("beforeTool sleep")
 		}
 		// A pointer keeps an explicit empty arguments object: the hook replaced the arguments with {}.
 		var arguments *map[string]any
@@ -407,6 +427,9 @@ func runHook(ctx context.Context, p hookEffect, target any, api harness.HookApi,
 		out, err := hooks.AfterTool(ctx, hookCall(in.Call, in.Parent), result, api)
 		if out == nil || err != nil {
 			return nil, err
+		}
+		if out.Park != nil {
+			return nil, notInPin("an afterTool result with a park")
 		}
 		body, err := encodeToolResult(*out)
 		return json.RawMessage(body), err

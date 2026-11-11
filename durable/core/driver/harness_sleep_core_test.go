@@ -351,7 +351,7 @@ func TestSleepingTasks(t *testing.T) {
 			}
 			pollUntil(t, "the sleeping inspection", func() bool {
 				state, ok := inspected()
-				return ok && state.Kind == harness.TaskInspectionSleeping && state.Until == 2000
+				return ok && state.Kind == harness.TaskInspectionSleeping && state.Until != nil && *state.Until == 2000
 			})
 			pollUntil(t, "the graph showing the sleep", func() bool {
 				node, ok := graph.Value().Tasks[strconv.FormatInt(int64(id), 10)]

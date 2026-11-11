@@ -819,7 +819,9 @@ func ResolveAgent(state *AgentState, snapshot durable.RegistrySnapshot, settings
 			switch wrap := wrap.(type) {
 			case durable.ToolWrap:
 				if wrap.Wrap != nil {
-					applyWrap(composed, wrap.Tool, wrap.Wrap, func(tool *durable.ToolRegistration) string { return tool.Name }, wrapReport)
+					applyWrap(composed, wrap.Tool, func(tool *durable.ToolRegistration) *durable.ToolRegistration {
+						return wrapComposite(tool, wrap.Wrap)
+					}, func(tool *durable.ToolRegistration) string { return tool.Name }, wrapReport)
 				}
 			case durable.SectionWrap:
 				if wrap.Wrap != nil {
