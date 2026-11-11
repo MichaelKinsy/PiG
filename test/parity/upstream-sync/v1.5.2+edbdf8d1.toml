@@ -1,0 +1,30 @@
+from = "1.5.2+473515f9"
+to = "1.5.2+edbdf8d1"
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/find.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/tools/find_leading_dot_slash_port_test.go#TestFindIgnoresLeadingDotSlashInPattern"]
+rationale = "bbfc6c7ce (#12044): fd's full paths never contain \"/./\", so a pattern starting with \"./\" found nothing; the tool drops every leading \"./\" after the Windows separator normalisation and before choosing --full-path. newFindFdInvocation does the same, and Pi's three patterns and the \"./*.json\" case are ported."
+
+[[files]]
+path = "packages/tui/src/components/markdown.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/markdown_image_hard_break_port_test.go#TestMarkdownKeepsHardBreaksAfterInlineImageAsSeparateRows"]
+rationale = "5b4d7d3df (#12045): an image line skips wrapping, so rows joined to it by hard breaks drew over the image; the line is split at \"\\n\" before layout and each piece is laid out as its own row. markdown_resume.go layoutRows does the same, and Pi's test is ported."
+
+[[files]]
+path = "packages/coding-agent/package.json"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "4cfea9786 (#12046) adds bun build's --compile-autoload-package-json to the build:binary script so Pi's Bun-compiled standalone binary resolves extension dependencies through package.json main/exports. PiG ships no Bun-compiled pi binary: its extension runtime runs on Node, which resolves main/exports natively."
+
+[[files]]
+path = "scripts/build-binaries.sh"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "4cfea9786 (#12046): the same --compile-autoload-package-json flag on Pi's release binary builds; PiG builds no Bun-compiled pi binary (Go binary, Node extension runtime)."
