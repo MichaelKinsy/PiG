@@ -1497,13 +1497,13 @@ func anthSystemBlocks(systemPrompt string, isOAuthToken bool, cc *anthCacheContr
 }
 
 // supportsMessageThreads reports whether the endpoint supports message threads. Gateways that drop unknown request fields would silently turn a
-// continue into a request without the earlier conversation, so the default is limited to Anthropic's own endpoint (anthropic-messages.ts
+// continue into a request without the earlier conversation, so the default is limited to Anthropic's own endpoint, whatever the provider id (anthropic-messages.ts
 // getAnthropicCompat). Widen or remove this restriction once proxies generally forward the thread field.
 func (p *anthropicProvider) supportsMessageThreads(model *Model) bool {
 	if compat := model.ProviderMeta.Compat; compat != nil && compat.SupportsMessageThreads != nil {
 		return *compat.SupportsMessageThreads
 	}
-	return p.cfg.ProviderID == "anthropic" && strings.Contains(p.cfg.BaseURL, "api.anthropic.com")
+	return strings.Contains(p.cfg.BaseURL, "api.anthropic.com")
 }
 
 // anthropicCompatFlag reads an opt-in model compat flag (default false).
