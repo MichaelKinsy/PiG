@@ -214,15 +214,9 @@ func matchTerms(name string, text []byte, lineAt func(int) int, p params) []find
 	}
 	var found []finding
 	search := func(b []byte, at func(int) int) {
-		lower := bytes.ToLower(b)
 		for _, t := range terms {
-			for off := 0; ; {
-				i := bytes.Index(lower[off:], t.lower)
-				if i < 0 {
-					break
-				}
-				found = append(found, finding{file: name, line: at(off + i), message: fmt.Sprintf("term at line %d of the terms file", t.line)})
-				off += i + len(t.lower)
+			for _, m := range t.re.FindAllIndex(b, -1) {
+				found = append(found, finding{file: name, line: at(m[0]), message: fmt.Sprintf("term at line %d of the terms file", t.line)})
 			}
 		}
 	}
@@ -235,8 +229,8 @@ func matchTerms(name string, text []byte, lineAt func(int) int, p params) []find
 }
 
 type term struct {
-	line  int
-	lower []byte
+	line int
+	re   *regexp.Regexp // the term, case-insensitively
 }
 
 func loadTerms(file string) ([]term, error) {
@@ -256,7 +250,7 @@ func loadTerms(file string) ([]term, error) {
 		if len([]rune(line)) < 3 {
 			return nil, errors.New("private terms: line " + strconv.Itoa(i+1) + " is shorter than 3 characters")
 		}
-		terms = append(terms, term{line: i + 1, lower: bytes.ToLower([]byte(line))})
+		terms = append(terms, term{line: i + 1, re: regexp.MustCompile("(?i)" + regexp.QuoteMeta(line))})
 	}
 	return terms, nil
 }

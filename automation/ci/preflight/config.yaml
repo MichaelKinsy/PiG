@@ -11,14 +11,15 @@
 #   reads    (cheap) the data sources the rule reads: pull, files, commits, compare-main, depends-on, dependency-graph
 #   rule     (cheap) the built-in rule (rules.go) and its parameters under with:
 #   scan     (scan) the tool run:
-#     input     added: the lines the PR adds, one file each, under {input}
+#     input     added: the lines the PR adds, one file each, under {input}; a file GitHub shows no patch for (binary or
+#                      too large) whole from the head. Line numbers are reported as the head's.
 #               changed: the changed files at the PR's head, under {head}, listed as {files}
 #               tree: a repository holding only the changed files, at {input}
 #     select    a regular expression the changed files must match to be scanned; none matching passes the check
 #     checkout  more paths the scan reads at the head besides the changed files ("/*" is the whole tree)
 #     overlay   files copied from main over the head before the run (removed from the head when main has none), so
 #               main's code and configuration run, never the PR's
-#     run       the command and its arguments; {main} is main's tree, {bin} the directory of the scanners, {self}
+#     run       the command and its arguments (put -- before {files}, so a file name is never read as an option); {main} is main's tree, {bin} the directory of the scanners, {self}
 #               this program, {data} the PR's data as JSON, {head}, {input}, {out} (a report file) and {files} (each
 #               selected file, one argument each)
 #     dir       the working directory (default the run's work directory)
@@ -31,7 +32,17 @@
 #               unless report unread-findings: pass says the tool exits so for something else.
 #     added-lines-only  keep only findings on lines the PR adds: a finding on an untouched line is main's
 #
-# A check's stored verdict is reused while its definition here, the engine and its inputs are unchanged.
+#   main     the files in main's tree the verdict depends on (globs; a directory with everything in it). A scan's
+#            overlay counts too.
+#   alert    posted once as a comment of its own, mentioning the PR's author, when the check fails; again only after
+#            it passed in between
+#   revision raise it to decide the check again where nothing else here changed
+#
+# A check's stored verdict is reused while its definition here, its main files, engine-revision and its inputs are
+# unchanged. Raise engine-revision when a change to the engine's code changes what a stored verdict means; a new
+# scanner or image version decides nothing again.
+
+engine-revision: 1
 
 tools:
   - name: reuse
@@ -111,6 +122,7 @@ checks:
     stage: cheap
     reads: [pull, commits, files]
     rule: test-expectation
+    main: [docs/parity/PORT_MAP.md, 'test/parity/interfaces/test-mapping-v*.json', 'test/parity/upstream-sync/*.toml']
     with:
       inventories: [docs/parity/PORT_MAP.md, 'test/parity/interfaces/test-mapping-v*.json', 'test/parity/upstream-sync/*.toml']
 
@@ -126,6 +138,7 @@ checks:
     stage: cheap
     reads: [files]
     rule: license-notices
+    main: [LICENSES]
     with:
       notice-files: ['LICENSES/**', NOTICE, THIRD_PARTY_NOTICES.md, REUSE.toml, '**/FORK.md']
       code-files: '\.(?:go|sh|py|ts|mts|js|mjs|rs|lisp|c|h|ps1)$'
@@ -140,9 +153,13 @@ checks:
   - name: gitleaks
     when: {always: true}
     stage: scan
+    alert: 'a secret was found in this PR. Revoke it now, then remove it from the branch history (rewrite and force-push; a later commit that deletes it is not enough). A false positive goes in automation/ci/preflight/acknowledged.toml.'
+    main: [.gitleaks.toml]
     scan:
       input: added
-      run: [gitleaks, dir, '{input}', --config, '{main}/.gitleaks.toml', --gitleaks-ignore-path, '{main}', --no-banner, --redact, --exit-code, '3', --report-format, json, --report-path, '{out}']
+      # --ignore-gitleaks-allow: an inline allow in the PR is not trusted; a real false positive goes in
+      # acknowledged.toml. --max-archive-depth looks inside archives a PR adds.
+      run: [gitleaks, dir, '{input}', --config, '{main}/.gitleaks.toml', --gitleaks-ignore-path, '{main}', --ignore-gitleaks-allow, --max-archive-depth, '3', --no-banner, --redact, --exit-code, '3', --report-format, json, --report-path, '{out}']
       # Exit 3 means leaks; gitleaks exits 1 on its own errors.
       exit: {clean: [0], findings: [3]}
       report: {in: out, format: json, file: File, line: StartLine, message: RuleID}
@@ -150,6 +167,7 @@ checks:
   - name: trufflehog
     when: {always: true}
     stage: scan
+    alert: 'a secret was found in this PR. Revoke it now, then remove it from the branch history (rewrite and force-push; a later commit that deletes it is not enough). A false positive goes in automation/ci/preflight/acknowledged.toml.'
     scan:
       input: added
       run: [trufflehog, filesystem, '{input}', --only-verified, --fail, --json, --no-update]
@@ -162,7 +180,19 @@ checks:
     scan:
       input: changed
       checkout: [REUSE.toml, LICENSES/, .reuse/]
-      run: [reuse, lint-file, '{files}']
+      run: [reuse, lint-file, --, '{files}']
+      dir: '{head}'
+      exit: {clean: [0], findings: [1]}
+      report: {in: stdout, format: lines, pattern: '^(?P<file>[^:]+): (?P<message>.+)$'}
+
+  # A change to the REUSE configuration or the licences can make any file of the tree non-compliant.
+  - name: reuse-tree
+    when: {paths: [REUSE.toml, 'LICENSES/**', '.reuse/**']}
+    stage: scan
+    scan:
+      input: changed
+      checkout: ['/*']
+      run: [reuse, lint, --lines]
       dir: '{head}'
       exit: {clean: [0], findings: [1]}
       report: {in: stdout, format: lines, pattern: '^(?P<file>[^:]+): (?P<message>.+)$'}
@@ -174,7 +204,7 @@ checks:
       input: changed
       select: '^\.github/workflows/.*\.ya?ml$'
       overlay: [.github/actionlint.yaml]
-      run: [actionlint, -format, '{{json .}}', '{files}']
+      run: [actionlint, -format, '{{json .}}', --, '{files}']
       dir: '{head}'
       exit: {clean: [0], findings: [1]}
       report: {in: stdout, format: json, file: filepath, line: line, message: message}
@@ -186,7 +216,7 @@ checks:
     scan:
       input: changed
       select: '^\.github/workflows/.*\.ya?ml$'
-      run: [zizmor, --offline, --no-config, --format, github, '{files}']
+      run: [zizmor, --offline, --no-config, --format, github, --, '{files}']
       dir: '{head}'
       exit: {clean: [0], findings: [10, 11, 12, 13, 14]}
       report: {in: stdout, format: lines, pattern: '^::\w+ file=(?P<file>[^,]+),line=(?P<line>\d+)[^:]*::(?P<message>.*)$'}
@@ -195,6 +225,7 @@ checks:
   - name: content
     when: {always: true}
     stage: scan
+    main: [automation/ci/preflight/forbidden.yaml, automation/ci/preflight/mandatory.yaml]
     scan:
       input: changed
       checkout: [variables/versions.yaml, test/testdata-provenance.toml]

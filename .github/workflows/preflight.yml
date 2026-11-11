@@ -4,7 +4,9 @@ name: Pre-flight
 # The cheap checks every open PR must pass before heavy CI: once an hour, one runner, every open PR, a few at a time
 # (`preflight run`; what it checks is declared in automation/ci/preflight/config.yaml). It always runs main's code and configuration, never a PR's: schedule and dispatch
 # check out the default branch. Each PR gets a "preflight" commit status and one comment the next run updates. A PR
-# whose head and base did not change since its last run costs one API call; its state is kept in the cache.
+# whose head and base did not change since its last run costs one API call; its state is kept in the cache. A run
+# fully checks at most 20 PRs, the longest waiting first, and starts none after 25 of its 30 minutes; the rest wait
+# for the next run.
 on:
   schedule:
     - cron: '17 * * * *'
@@ -70,9 +72,10 @@ jobs:
           if [ "${DRY_RUN:-}" = true ]; then extra+=(--dry-run); fi
           "$RUNNER_TEMP/preflight/preflight" run --repo "$GITHUB_REPOSITORY" --root "$GITHUB_WORKSPACE" \
             --bin "$RUNNER_TEMP/preflight/bin" --states "$RUNNER_TEMP/preflight/states" --work "$RUNNER_TEMP/preflight/work" \
-            --prs "${PRS:-}" "${extra[@]}"
+            --prs "${PRS:-}" --budget 20 --time-budget 25m "${extra[@]}"
+      # Always, also after a failure or a timeout: the states of the PRs that were recorded must not be lost.
       - name: Save the PR states
-        if: ${{ !cancelled() }}
+        if: ${{ always() }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.temp }}/preflight/states

@@ -45,23 +45,17 @@ func TestDecideMode(t *testing.T) {
 		prev       *state
 		version    string
 		head, base string
-		cmp        *comparison
 		mode       string
-		mainMoved  bool
 	}{
-		{"no state", nil, "v", "h1", "b1", nil, modeFull, false},
-		{"pre-flight changed", prev, "w", "h1", "b1", nil, modeFull, false},
-		{"same head and base", prev, "v", "h1", "b1", nil, modeReuse, false},
-		{"main moved only", prev, "v", "h1", "b2", nil, modeDelta, true},
-		{"new commits", prev, "v", "h2", "b1", &comparison{Status: "ahead", AheadBy: 1}, modeDelta, false},
-		{"new commits and main moved", prev, "v", "h2", "b2", &comparison{Status: "ahead", AheadBy: 2}, modeDelta, true},
-		{"force-push", prev, "v", "h2", "b1", &comparison{Status: "diverged"}, modeFull, false},
-		{"old head gone", prev, "v", "h2", "b1", nil, modeFull, false},
+		{"no state", nil, "v", "h1", "b1", modeFull},
+		{"engine changed", prev, "w", "h1", "b1", modeFull},
+		{"same head and base", prev, "v", "h1", "b1", modeReuse},
+		{"main moved", prev, "v", "h1", "b2", modeFull},
+		{"new head", prev, "v", "h2", "b1", modeFull},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			mode, reason, moved := decideMode(tc.prev, tc.version, tc.head, tc.base, tc.cmp)
-			if mode != tc.mode || moved != tc.mainMoved || reason == "" {
-				t.Fatalf("mode %q moved %v reason %q, want %q moved %v", mode, moved, reason, tc.mode, tc.mainMoved)
+			if mode, reason := decideMode(tc.prev, tc.version, tc.head, tc.base); mode != tc.mode || reason == "" {
+				t.Fatalf("mode %q reason %q, want %q", mode, reason, tc.mode)
 			}
 		})
 	}
@@ -145,8 +139,9 @@ func TestGetRetriesTransientFailures(t *testing.T) {
 	}
 }
 
-func TestDefaultRetryDelays(t *testing.T) {
-	want := []time.Duration{2 * time.Second, 4 * time.Second, 6 * time.Second}
+// TestMain holds the delays themselves; this holds that a new API client takes them.
+func TestNewAPIUsesTheDefaultRetryDelays(t *testing.T) {
+	want := defaultRetryDelays
 	if got := newAPI("x", "").retryDelays; !slices.Equal(got, want) {
 		t.Fatalf("retry delays %v, want %v", got, want)
 	}
@@ -210,7 +205,7 @@ func TestGetRefusesANextPageOutsideTheBase(t *testing.T) {
 	}
 }
 
-func TestFetchDeltaAndWaveTwo(t *testing.T) {
+func TestFetchWaveTwo(t *testing.T) {
 	saved := mergeableRetryDelay
 	mergeableRetryDelay = time.Millisecond
 	t.Cleanup(func() { mergeableRetryDelay = saved })
@@ -230,8 +225,6 @@ func TestFetchDeltaAndWaveTwo(t *testing.T) {
 			_, _ = io.WriteString(w, `[{"sha":"old"},{"sha":"new"}]`)
 		case "/repos/o/r/compare/main...new":
 			_, _ = io.WriteString(w, `{"status":"diverged","ahead_by":2,"behind_by":1}`)
-		case "/repos/o/r/compare/old...new":
-			_, _ = io.WriteString(w, `{"status":"ahead","ahead_by":1,"files":[{"filename":"go.sum"}]}`)
 		case "/repos/o/r/pulls/5":
 			_, _ = io.WriteString(w, `{"number":5,"state":"closed","merged":true}`)
 		case "/repos/o/r/dependency-graph/compare/b...new":
@@ -253,8 +246,8 @@ func TestFetchDeltaAndWaveTwo(t *testing.T) {
 		t.Fatal(err)
 	}
 	switch {
-	case d.Mode != modeDelta || d.MainMoved || !slices.Equal(d.Delta, []string{"go.sum"}):
-		t.Fatalf("mode %s moved %v delta %v", d.Mode, d.MainMoved, d.Delta)
+	case d.Mode != modeFull:
+		t.Fatalf("mode %s", d.Mode)
 	case d.DependsOn == nil || !d.DependsOn.Merged:
 		t.Fatalf("depends on %+v", d.DependsOn)
 	case len(d.Dependencies) != 1:
@@ -269,10 +262,16 @@ func TestFetchDeltaAndWaveTwo(t *testing.T) {
 		t.Fatalf("relevant %v", d.Relevant)
 	}
 
-	// A previous head that no longer exists (a force-push) is a full run.
-	prev.Head = "gone"
-	d, err = fetchWith(t, cfg, fetchOptions{apiBase: server.URL, repo: "o/r", pr: 7, version: "v", previous: prev}, io.Discard)
-	if err != nil || d.Mode != modeFull || !strings.Contains(d.Reason, "force-push") {
-		t.Fatalf("mode %s %q, err %v", d.Mode, d.Reason, err)
+	// The same head and base reuse the previous run with one call.
+	prev.Head = "new"
+	calls := 0
+	counted := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		_, _ = io.WriteString(w, `{"number":7,"head":{"sha":"new"},"base":{"sha":"b","ref":"main"}}`)
+	}))
+	defer counted.Close()
+	d, err = fetchWith(t, cfg, fetchOptions{apiBase: counted.URL, repo: "o/r", pr: 7, version: "v", previous: prev}, io.Discard)
+	if err != nil || d.Mode != modeReuse || calls != 1 {
+		t.Fatalf("mode %s, %d call(s), err %v", d.Mode, calls, err)
 	}
 }

@@ -225,7 +225,7 @@ func TestRuleUpToDate(t *testing.T) {
 		{"behind", base(3, new(true)), resultFail, "3 commit(s) behind main"},
 		{"conflict", base(0, new(false)), resultFail, "conflicts with main"},
 		{"both", base(2, new(false)), resultFail, "behind main; rebase on it; conflicts"},
-		{"not computed", base(0, nil), resultError, "run again"},
+		{"not computed", base(0, nil), resultPending, "the next run decides it"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if o := ruleUpToDate(tc.d, nil, nil); o.result != tc.result || !strings.Contains(o.reason, tc.reason) {
@@ -389,7 +389,7 @@ func TestRuleParamsRejected(t *testing.T) {
 		{"no-advisories without severities", `{name: a, when: {always: true}, stage: cheap, reads: [dependency-graph], rule: no-advisories}`, "severities"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := loadConfig([]byte("checks: [" + tc.check + "]"))
+			_, err := loadConfig([]byte("engine-revision: 1\nchecks: [" + tc.check + "]"))
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("error = %v, want one containing %q", err, tc.want)
 			}

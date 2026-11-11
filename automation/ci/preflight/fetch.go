@@ -20,9 +20,19 @@ import (
 // state is what a run leaves for the next run of the same PR.
 type state struct {
 	Version string             `json:"version"`
+	Engine  int                `json:"engine"`
 	Head    string             `json:"head"`
 	Base    string             `json:"base"`
 	Checks  map[string]verdict `json:"checks"`
+	// Sent is the SHA-256 of the status and comment last sent; an equal one is not sent again.
+	Sent string `json:"sent,omitempty"`
+	// Comment is the id of the pre-flight's comment on the PR, so a run updates it without listing the comments.
+	Comment int64 `json:"comment,omitempty"`
+	// Checked is when the PR was last run; the PR checked longest ago goes first.
+	Checked time.Time `json:"checked"`
+	// Alerted are the checks whose alert was posted; a check leaves the list when it passes, and alerts again when
+	// it fails again.
+	Alerted []string `json:"alerted,omitempty"`
 }
 
 // verdict is one check's outcome and the hash of the inputs it was decided on. Warnings do not fail the check; they are
@@ -49,25 +59,24 @@ type warning struct {
 // Modes of a run.
 const (
 	modeFull  = "full"
-	modeDelta = "delta"
 	modeReuse = "reuse"
+	// modeDeferred is a PR the run's budget left for the next run.
+	modeDeferred = "deferred"
 )
 
 // data is everything fetch collects for one PR; evaluate decides every check from it alone.
 type data struct {
-	Repo      string `json:"repo"`
-	PR        int    `json:"pr"`
-	Version   string `json:"version"`
-	Mode      string `json:"mode"`
-	Reason    string `json:"reason"`
-	MainMoved bool   `json:"main_moved"`
+	Repo    string `json:"repo"`
+	PR      int    `json:"pr"`
+	Version string `json:"version"`
+	Mode    string `json:"mode"`
+	Reason  string `json:"reason"`
 	// Limit names a GitHub REST limit the PR exceeds; the PR fails with it instead of being judged on truncated data.
 	Limit        string             `json:"limit,omitempty"`
 	Pull         pull               `json:"pull"`
 	Files        []prFile           `json:"files"`
 	Commits      []prCommit         `json:"commits"`
 	CompareMain  comparison         `json:"compare_main"`
-	Delta        []string           `json:"delta,omitempty"`
 	DependsOn    *pull              `json:"depends_on,omitempty"`
 	Dependencies []dependencyChange `json:"dependencies,omitempty"`
 	Relevant     []string           `json:"relevant"`
@@ -111,28 +120,25 @@ func parseDependsOn(body string) (number int, ok bool) {
 	return 0, false
 }
 
-// decideMode compares this run with the previous state. cmpPrevious is the compare of the previous head with the new one,
-// nil when the previous head no longer exists.
-func decideMode(prev *state, version, head, base string, cmpPrevious *comparison) (mode, reason string, mainMoved bool) {
+// decideMode compares this run with the previous state: the same head and base under the same version reuse every
+// verdict; anything else decides every check again, each reusing its own verdict while its definition and inputs are
+// unchanged.
+func decideMode(prev *state, version, head, base string) (mode, reason string) {
 	switch {
 	case prev == nil:
-		return modeFull, "no previous state", false
+		return modeFull, "no previous state"
 	case prev.Version != version:
-		return modeFull, "the pre-flight changed since the previous run", false
+		return modeFull, "the pre-flight changed since the previous run"
+	case prev.Head != head || prev.Base != base:
+		return modeFull, "the head or main moved since the previous run"
 	}
-	mainMoved = base != prev.Base
-	switch {
-	case head == prev.Head && !mainMoved:
-		return modeReuse, "same head and base as the previous run", false
-	case head == prev.Head:
-		return modeDelta, "main moved, the head did not", true
-	case cmpPrevious == nil:
-		return modeFull, "the previous head no longer exists (force-push or rebase)", mainMoved
-	case cmpPrevious.Status == "ahead":
-		return modeDelta, fmt.Sprintf("%d new commit(s) since the previous run", cmpPrevious.AheadBy), mainMoved
-	default:
-		return modeFull, "history rewritten since the previous run (compare status " + cmpPrevious.Status + ")", mainMoved
+	for _, v := range prev.Checks {
+		// An error or a pending check may come out otherwise next time; a scan a failed cheap check held back may not.
+		if v.Result == resultError || v.Result == resultPending {
+			return modeFull, "the previous run left a check undecided"
+		}
 	}
+	return modeReuse, "same head and base as the previous run"
 }
 
 type fetchOptions struct {
@@ -142,6 +148,8 @@ type fetchOptions struct {
 	pr       int
 	version  string
 	previous *state
+	// admit is asked before a PR that is not reused is fetched further; false defers it to the next run.
+	admit func() bool
 }
 
 func fetch(ctx context.Context, cfg config, o fetchOptions, log io.Writer) (*data, error) {
@@ -160,8 +168,14 @@ func fetch(ctx context.Context, cfg config, o fetchOptions, log io.Writer) (*dat
 		d.Limit = fmt.Sprintf("%d changed files, more than the %d the API lists", d.Pull.ChangedFiles, maxFiles)
 	}
 	head, base := d.Pull.Head.SHA, d.Pull.Base.SHA
-	if p := o.previous; p != nil && p.Version == o.version && p.Head == head && p.Base == base {
-		d.Mode, d.Reason = modeReuse, "same head and base as the previous run"
+	d.Mode, d.Reason = decideMode(o.previous, o.version, head, base)
+	if d.Mode != modeReuse && o.admit != nil && !o.admit() {
+		d.Mode, d.Reason = modeDeferred, "the run's budget is spent; the next run takes it"
+		logf(log, "::endgroup::")
+		logf(log, "mode %s: %s", d.Mode, d.Reason)
+		return d, nil
+	}
+	if d.Mode == modeReuse {
 		logf(log, "pull #%d head %s base %s: unchanged", o.pr, short(head), short(base))
 		logf(log, "::endgroup::")
 		logf(log, "mode %s: %s", d.Mode, d.Reason)
@@ -169,10 +183,8 @@ func fetch(ctx context.Context, cfg config, o fetchOptions, log io.Writer) (*dat
 		return d, nil
 	}
 	var (
-		wg          sync.WaitGroup
-		mu          sync.Mutex
-		cmpPrevious *comparison
-		previousErr error
+		wg sync.WaitGroup
+		mu sync.Mutex
 	)
 	// Each source is fetched and retried on its own; one that still fails is recorded and the others go on.
 	wg.Go(func() {
@@ -190,32 +202,10 @@ func fetch(ctx context.Context, cfg config, o fetchOptions, log io.Writer) (*dat
 			d.failed(&mu, log, "compare-main", err)
 		}
 	})
-	if p := o.previous; p != nil && p.Head != "" && p.Head != head {
-		wg.Go(func() {
-			var c comparison
-			err := a.get(ctx, fmt.Sprintf("%s/compare/%s...%s", prefix, p.Head, head), &c, false)
-			switch {
-			case err == nil:
-				cmpPrevious = &c
-			case !isNotFound(err):
-				previousErr = err
-				d.failed(&mu, log, "compare-previous", err)
-			}
-		})
-	}
 	wg.Wait()
 	logf(log, "pull #%d head %s base %s (%s): %d commit(s), %d file(s), behind main by %d", o.pr, short(head), short(base), d.Pull.Base.Ref, len(d.Commits), len(d.Files), d.CompareMain.BehindBy)
 	logf(log, "::endgroup::")
 
-	d.Mode, d.Reason, d.MainMoved = decideMode(o.previous, o.version, head, base, cmpPrevious)
-	if previousErr != nil {
-		d.Mode, d.Reason = modeFull, "the compare with the previous head failed"
-	}
-	if cmpPrevious != nil && d.Mode == modeDelta {
-		for _, f := range cmpPrevious.Files {
-			d.Delta = append(d.Delta, f.Filename)
-		}
-	}
 	logf(log, "mode %s: %s", d.Mode, d.Reason)
 
 	changed := make([]string, 0, len(d.Files))

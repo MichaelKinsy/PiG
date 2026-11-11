@@ -13,6 +13,7 @@ import (
 	"slices"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -35,6 +36,27 @@ type runOptions struct {
 	dryRun bool
 	// forceScans runs the scans even when a cheap check failed.
 	forceScans bool
+	// budget is how many PRs a run fully checks; a PR it reuses does not count. Zero is no limit.
+	budget int
+	// timeBudget is how long a run starts PRs; the ones running then finish. Zero is no limit.
+	timeBudget time.Duration
+}
+
+// longestWaiting orders PRs by when they were last checked, never checked first, then by number.
+func longestWaiting(prs []int, states string) []int {
+	checked := map[int]time.Time{}
+	for _, pr := range prs {
+		if st := readState(filepath.Join(states, strconv.Itoa(pr)+".json")); st != nil {
+			checked[pr] = st.Checked
+		}
+	}
+	slices.SortStableFunc(prs, func(a, b int) int {
+		if c := checked[a].Compare(checked[b]); c != 0 {
+			return c
+		}
+		return a - b
+	})
+	return prs
 }
 
 func readState(path string) *state {
@@ -51,18 +73,29 @@ func readState(path string) *state {
 
 // runPR runs the whole pre-flight for one PR and returns its result. An error means the pre-flight itself could not
 // run for it.
-func runPR(ctx context.Context, cfg config, env *ruleEnv, o runOptions, version string, pr int, log io.Writer) (string, error) {
+func runPR(ctx context.Context, cfg config, env *ruleEnv, o runOptions, version string, pr int, admit func() bool, log io.Writer) (string, error) {
 	statePath := filepath.Join(o.states, strconv.Itoa(pr)+".json")
-	d, err := fetch(ctx, cfg, fetchOptions{apiBase: o.apiBase, token: o.token, repo: o.repo, pr: pr, version: version, previous: readState(statePath)}, log)
+	d, err := fetch(ctx, cfg, fetchOptions{apiBase: o.apiBase, token: o.token, repo: o.repo, pr: pr, version: version, previous: readState(statePath), admit: admit}, log)
 	if err != nil {
 		return resultError, err
+	}
+	if d.Mode == modeDeferred {
+		return resultDeferred, nil
+	}
+	ws := workspace{dir: filepath.Join(o.work, strconv.Itoa(pr)), main: o.root, bin: o.bin, remote: o.gitBase, token: o.token}
+	if d.Pull.Mergeable == nil && d.Mode != modeReuse {
+		if m, err := mergeTree(ctx, ws, d); err != nil {
+			logf(log, "mergeable: git merge-tree could not tell: %v", err)
+		} else {
+			d.Pull.Mergeable = &m
+			logf(log, "mergeable from git merge-tree: %v", m)
+		}
 	}
 	ev := evaluate(cfg, d, env)
 	if len(ev.Scans) > 0 && d.Mode != modeReuse {
 		if ev.cheapFailed(cfg) && !o.forceScans {
 			logf(log, "scans skipped: a cheap check failed")
 		} else {
-			ws := workspace{dir: filepath.Join(o.work, strconv.Itoa(pr)), main: o.root, bin: o.bin, remote: o.gitBase}
 			if err := runScans(ctx, cfg, d, &ev, ws, log); err != nil {
 				for _, name := range ev.Scans {
 					v := ev.Checks[name]
@@ -83,7 +116,7 @@ func runPR(ctx context.Context, cfg config, env *ruleEnv, o runOptions, version 
 // runBatch runs the pre-flight over every PR of the run, o.jobs at a time, each PR's log printed as one group when it
 // is done. It returns an error only when the pre-flight could not run for some PR; failing PRs are its normal output.
 func runBatch(ctx context.Context, cfg config, o runOptions, out io.Writer) error {
-	version, err := preflightVersion(o.root)
+	version, err := bindMain(&cfg, o.root)
 	if err != nil {
 		return err
 	}
@@ -102,9 +135,14 @@ func runBatch(ctx context.Context, cfg config, o runOptions, out io.Writer) erro
 		for _, p := range open {
 			prs = append(prs, p.Number)
 		}
-		slices.Sort(prs)
+		prs = longestWaiting(prs, o.states)
 	}
 	logf(out, "pre-flight %s over %d PR(s) of %s, %d at a time", short(version), len(prs), o.repo, o.jobs)
+	deadline := time.Now().Add(o.timeBudget)
+	var admitted atomic.Int32
+	admit := func() bool {
+		return o.budget <= 0 || int(admitted.Add(1)) <= o.budget
+	}
 	env := &ruleEnv{root: o.root}
 	type done struct {
 		pr     int
@@ -121,7 +159,12 @@ func runBatch(ctx context.Context, cfg config, o runOptions, out io.Writer) erro
 			for i := range next {
 				r := &done{pr: prs[i]}
 				start := time.Now()
-				r.result, r.err = runPR(ctx, cfg, env, o, version, r.pr, &r.log)
+				if o.timeBudget > 0 && !start.Before(deadline) {
+					r.result = resultDeferred
+					logf(&r.log, "the run's time budget of %s is spent; the next run takes it", o.timeBudget)
+				} else {
+					r.result, r.err = runPR(ctx, cfg, env, o, version, r.pr, admit, &r.log)
+				}
 				r.took = time.Since(start)
 				results[i] = r
 			}
@@ -142,8 +185,15 @@ func runBatch(ctx context.Context, cfg config, o runOptions, out io.Writer) erro
 		}
 		logf(out, "::endgroup::")
 	}
+	deferred := 0
 	for _, r := range results {
 		logf(out, "PR #%d: %s", r.pr, r.result)
+		if r.result == resultDeferred {
+			deferred++
+		}
+	}
+	if deferred > 0 {
+		logf(out, "::notice title=pre-flight::%d PR(s) deferred to the next run by the budget", deferred)
 	}
 	if failedToRun > 0 {
 		return fmt.Errorf("the pre-flight could not run for %d PR(s)", failedToRun)

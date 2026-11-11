@@ -321,7 +321,7 @@ func changedText(d *data, head string) ([]textFile, error) {
 		if f.Status == "removed" {
 			continue
 		}
-		if f.Patch != "" || head == "" {
+		if !f.whole() || head == "" {
 			out = append(out, textFile{name: f.Filename, lines: addedNumbered(f.Patch)})
 			continue
 		}

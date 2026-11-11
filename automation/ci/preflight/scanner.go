@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -67,11 +68,11 @@ func selectedFiles(d *data, s *scanSpec) []prFile {
 	return out
 }
 
-// scanInputHash is the SHA-256 of what a scan decides on: its definition, the engine's version, and the name, blob and
+// scanInputHash is the SHA-256 of what a scan decides on: its definition and the name, blob and
 // patch of every file it reads. An equal hash reuses the stored verdict.
-func scanInputHash(c check, version string, files []prFile) string {
+func scanInputHash(c check, files []prFile) string {
 	h := sha256.New()
-	_, _ = fmt.Fprintf(h, "%s\x00%s\x00", c.definition, version)
+	_, _ = fmt.Fprintf(h, "%s\x00", c.definition)
 	for _, f := range files {
 		_, _ = fmt.Fprintf(h, "%s\x00%s\x00%d\x00%s\x00", f.Filename, f.SHA, len(f.Patch), f.Patch)
 	}
@@ -88,6 +89,8 @@ type workspace struct {
 	bin   string // main's built tools and the installed scanners
 	// remote is the git host the PR's head is fetched from: https://github.com, or another host's URL.
 	remote string
+	// token authenticates the fetch of the head, through the environment, never on the command line.
+	token string
 	// data is the run's data for the PR as JSON, for a scan that reads it ({data}); self is this program ({self}).
 	data, self string
 }
@@ -110,13 +113,18 @@ func prepareWorkspace(ctx context.Context, d *data, scans []check, ws workspace,
 		}
 		overlays = append(overlays, c.Scan.Overlay...)
 	}
-	var changedFiles []string
+	var changedFiles, whole []string
 	for _, f := range d.Files {
 		if f.Status == "removed" {
 			continue
 		}
 		changedFiles = append(changedFiles, f.Filename)
 		if !need[inputAdded] {
+			continue
+		}
+		if f.whole() {
+			whole = append(whole, f.Filename)
+			need["head"] = true
 			continue
 		}
 		target, err := inside(ws.added, f.Filename)
@@ -153,7 +161,7 @@ func prepareWorkspace(ctx context.Context, d *data, scans []check, ws workspace,
 		steps = [][]string{steps[0], {"-C", ws.head, "fetch", "-q", "--depth=1", remote, ref}, steps[3]}
 	}
 	for _, args := range steps {
-		if out, err := git(ctx, args...); err != nil {
+		if out, err := gitAuth(ctx, ws.token, args...); err != nil {
 			return fmt.Errorf("git %s: %w\n%s", strings.Join(args, " "), err, out)
 		}
 	}
@@ -170,25 +178,12 @@ func prepareWorkspace(ctx context.Context, d *data, scans []check, ws workspace,
 			return err
 		}
 	}
+	if err := copyFromHead(ws.head, ws.added, whole); err != nil {
+		return err
+	}
 	if need[inputTree] {
-		if err := os.MkdirAll(ws.tree, 0o755); err != nil {
+		if err := copyFromHead(ws.head, ws.tree, changedFiles); err != nil {
 			return err
-		}
-		for _, f := range changedFiles {
-			raw, err := os.ReadFile(filepath.Join(ws.head, filepath.FromSlash(f)))
-			if err != nil {
-				return err
-			}
-			target, err := inside(ws.tree, f)
-			if err != nil {
-				return err
-			}
-			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
-				return err
-			}
-			if err := os.WriteFile(target, raw, 0o600); err != nil {
-				return err
-			}
 		}
 		for _, args := range [][]string{{"-C", ws.tree, "init", "-q"}, {"-C", ws.tree, "add", "-A"}} {
 			if out, err := git(ctx, args...); err != nil {
@@ -224,6 +219,57 @@ func overlay(mainRoot, head, rel string) error {
 func git(ctx context.Context, args ...string) (string, error) {
 	//nolint:gosec // G204: the program is literal git; the arguments are this run's directories, the PR's repository and ref, and paths of the PR.
 	out, err := exec.CommandContext(ctx, "git", args...).CombinedOutput()
+	return string(out), err
+}
+
+// mergeTree asks git whether the PR's head merges into its base branch without conflicts, for when GitHub has not
+// computed mergeable yet. It fetches only the two commits' history (--filter=tree:0); git merge-tree fetches the
+// trees and blobs it needs.
+func mergeTree(ctx context.Context, ws workspace, d *data) (bool, error) {
+	dir := filepath.Join(ws.dir, "merge")
+	remote := strings.TrimSuffix(ws.remote, "/") + "/" + d.Repo
+	steps := [][]string{
+		{"init", "-q", dir},
+		{"-C", dir, "remote", "add", "origin", remote},
+		{"-C", dir, "fetch", "-q", "--filter=tree:0", "origin", fmt.Sprintf("+refs/pull/%d/head:refs/preflight/head", d.PR), "+refs/heads/" + d.Pull.Base.Ref + ":refs/preflight/base"},
+	}
+	if err := os.RemoveAll(dir); err != nil {
+		return false, err
+	}
+	for _, args := range steps {
+		if out, err := gitAuth(ctx, ws.token, args...); err != nil {
+			return false, fmt.Errorf("git %s: %w\n%s", strings.Join(args, " "), err, out)
+		}
+	}
+	got, err := git(ctx, "-C", dir, "rev-parse", "refs/preflight/head")
+	if err != nil {
+		return false, err
+	}
+	if got = strings.TrimSpace(got); got != d.Pull.Head.SHA {
+		return false, fmt.Errorf("the PR's head is at %s, the evaluated head is %s", short(got), short(d.Pull.Head.SHA))
+	}
+	out, err := gitAuth(ctx, ws.token, "-C", dir, "merge-tree", "--write-tree", "--quiet", "refs/preflight/base", "refs/preflight/head")
+	var exitErr *exec.ExitError
+	switch {
+	case err == nil:
+		return true, nil
+	case errors.As(err, &exitErr) && exitErr.ExitCode() == 1:
+		return false, nil
+	default:
+		return false, fmt.Errorf("git merge-tree: %w\n%s", err, out)
+	}
+}
+
+// gitAuth runs git with the token as an HTTP authorization header, passed in the environment (GIT_CONFIG_*), so it
+// never shows on a command line or in an error.
+func gitAuth(ctx context.Context, token string, args ...string) (string, error) {
+	//nolint:gosec // G204: as git above.
+	cmd := exec.CommandContext(ctx, "git", args...)
+	if token != "" {
+		basic := base64.StdEncoding.EncodeToString([]byte("x-access-token:" + token))
+		cmd.Env = append(os.Environ(), "GIT_CONFIG_COUNT=1", "GIT_CONFIG_KEY_0=http.extraHeader", "GIT_CONFIG_VALUE_0=Authorization: Basic "+basic)
+	}
+	out, err := cmd.CombinedOutput()
 	return string(out), err
 }
 
@@ -327,6 +373,9 @@ func runScan(ctx context.Context, c check, d *data, ws workspace, log io.Writer)
 	for i := range found {
 		found[i].file = relativeTo(found[i].file, roots)
 	}
+	if s.Input == inputAdded {
+		toHeadLines(found, d)
+	}
 	if slices.Contains(s.Exit.Findings, code) && len(found) == 0 && s.Report.UnreadFindings != "pass" {
 		return outcome{result: resultError, reason: fmt.Sprintf("%s exited %d for findings, but none could be read from its report: %s", args[0], code, firstLines(stderr.String()+stdout.String(), 3))}
 	}
@@ -373,17 +422,55 @@ func relativeTo(file string, roots []string) string {
 	return strings.TrimPrefix(filepath.ToSlash(clean), "./")
 }
 
+// copyFromHead copies files of the checked-out head into dir, at the same paths.
+func copyFromHead(head, dir string, files []string) error {
+	for _, f := range files {
+		raw, err := os.ReadFile(filepath.Join(head, filepath.FromSlash(f)))
+		if err != nil {
+			return err
+		}
+		target, err := inside(dir, f)
+		if err != nil {
+			return err
+		}
+		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+			return err
+		}
+		if err := os.WriteFile(target, raw, 0o600); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// toHeadLines turns the line numbers of findings in the added-lines files into the lines of the head they were taken
+// from. A file read whole keeps its numbers.
+func toHeadLines(found []finding, d *data) {
+	added := map[string][]numberedLine{}
+	for _, f := range d.Files {
+		if !f.whole() {
+			added[f.Filename] = addedNumbered(f.Patch)
+		}
+	}
+	for i, f := range found {
+		if lines, ok := added[f.file]; ok && f.line >= 1 && f.line <= len(lines) {
+			found[i].line = lines[f.line-1].n
+		}
+	}
+}
+
 // onAddedLines keeps the findings on lines the PR adds and the findings that name no line.
 func onAddedLines(found []finding, d *data) []finding {
-	added := map[string]bool{}
+	added, whole := map[string]bool{}, map[string]bool{}
 	for _, f := range d.Files {
+		whole[f.Filename] = f.whole()
 		for _, l := range addedNumbered(f.Patch) {
 			added[fmt.Sprintf("%s:%d", f.Filename, l.n)] = true
 		}
 	}
 	var keep []finding
 	for _, f := range found {
-		if f.line == 0 || added[fmt.Sprintf("%s:%d", f.file, f.line)] {
+		if f.line == 0 || whole[f.file] || added[fmt.Sprintf("%s:%d", f.file, f.line)] {
 			keep = append(keep, f)
 		}
 	}

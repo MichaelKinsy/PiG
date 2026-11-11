@@ -20,6 +20,10 @@ const (
 	resultFail  = "fail"
 	resultScan  = "scan"
 	resultError = "error"
+	// resultPending is a check the data cannot decide yet; the next run decides it.
+	resultPending = "pending"
+	// resultDeferred is a PR the run's budget left for the next run.
+	resultDeferred = "deferred"
 )
 
 // outcome is what a rule decides: a result, the reason a reader acts on, and warnings that do not fail the check but
@@ -280,7 +284,7 @@ func ruleUpToDate(d *data, _ params, _ *ruleEnv) outcome {
 	}
 	switch m := d.Pull.Mergeable; {
 	case m == nil:
-		return outcome{result: resultError, reason: "GitHub has not computed whether the PR can merge; run again"}
+		return outcome{result: resultPending, reason: "neither GitHub nor git merge-tree could tell whether the PR can merge yet; the next run decides it"}
 	case !*m:
 		problems = append(problems, "conflicts with "+d.Pull.Base.Ref)
 	}

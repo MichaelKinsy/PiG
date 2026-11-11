@@ -223,6 +223,10 @@ func TestLastMatcherEdges(t *testing.T) {
 	if len(matchTerms("f", start, lineOf(start), params{"env": "PRIVATE"})) != 1 {
 		t.Error("a term at the very start was missed")
 	}
+	twice := []byte("abc\nnone\nABC")
+	if got := matchTerms("f", twice, lineOf(twice), params{"env": "PRIVATE"}); len(got) != 2 || got[1].line != 3 {
+		t.Errorf("a term on two lines: %+v", got)
+	}
 	// Several values and ids on one line keep their streams apart.
 	line := []byte(`{"index":1,"delta":"a"},{"index":2,"delta":"b"},{"index":1,"delta":"c"}`)
 	var streams []string

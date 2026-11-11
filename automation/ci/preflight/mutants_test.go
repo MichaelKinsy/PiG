@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -58,9 +59,9 @@ func TestApplyAcknowledgedMatchesEveryField(t *testing.T) {
 func TestConfigEdges(t *testing.T) {
 	cheap := `{name: a, when: {always: true}, stage: cheap, reads: [pull], rule: up-to-date}`
 	for _, tc := range []struct{ name, yaml, want string }{
-		{"the bad tool is named by its place", "tools: [{name: x, version: '1', pip: r}, {name: y, version: '1'}]\nchecks: [" + cheap + "]", "tool 2"},
-		{"the nameless check is named by its place", "checks: [" + cheap + ", {when: {always: true}, stage: cheap, reads: [pull], rule: up-to-date}]", "check 2 has no name"},
-		{"an empty checkout path", "checks: [{name: a, when: {always: true}, stage: scan, scan: {input: added, run: [x], checkout: [''], exit: {clean: [0]}, report: {in: stdout, format: lines, pattern: '(?P<message>.+)'}}}]", "must be relative"},
+		{"the bad tool is named by its place", "engine-revision: 1\ntools: [{name: x, version: '1', pip: r}, {name: y, version: '1'}]\nchecks: [" + cheap + "]", "tool 2"},
+		{"the nameless check is named by its place", "engine-revision: 1\nchecks: [" + cheap + ", {when: {always: true}, stage: cheap, reads: [pull], rule: up-to-date}]", "check 2 has no name"},
+		{"an empty checkout path", "engine-revision: 1\nchecks: [{name: a, when: {always: true}, stage: scan, scan: {input: added, run: [x], checkout: [''], exit: {clean: [0]}, report: {in: stdout, format: lines, pattern: '(?P<message>.+)'}}}]", "must be relative"},
 	} {
 		if _, err := loadConfig([]byte(tc.yaml)); err == nil || !strings.Contains(err.Error(), tc.want) {
 			t.Errorf("%s: %v", tc.name, err)
@@ -77,58 +78,130 @@ func TestConfigEdges(t *testing.T) {
 	}
 }
 
-func TestPreflightVersionFollowsTheConfigAndNestedFiles(t *testing.T) {
+func TestBindMainIsPerCheck(t *testing.T) {
 	root := t.TempDir()
-	dir := filepath.Join(root, "automation", "ci", "preflight", "nested")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		t.Fatal(err)
-	}
 	write := func(p, text string) {
 		t.Helper()
+		if err := os.MkdirAll(filepath.Dir(filepath.Join(root, p)), 0o755); err != nil {
+			t.Fatal(err)
+		}
 		if err := os.WriteFile(filepath.Join(root, p), []byte(text), 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}
-	write("automation/ci/preflight/config.yaml", "a")
-	write("automation/ci/preflight/nested/rule.go", "r")
-	v1, _ := preflightVersion(root)
-	write("automation/ci/preflight/config.yaml", "b")
-	v2, _ := preflightVersion(root)
-	write("automation/ci/preflight/nested/rule.go", "s")
-	v3, _ := preflightVersion(root)
-	if err := os.MkdirAll(filepath.Join(root, "LICENSES"), 0o755); err != nil {
+	const yaml = `
+engine-revision: 1
+checks:
+  - {name: licenses, when: {always: true}, stage: cheap, reads: [files], rule: up-to-date, main: [LICENSES]}
+  - {name: rules, when: {always: true}, stage: cheap, reads: [files], rule: up-to-date, main: ['r/*.toml', r/a.toml]}
+  - name: lint
+    when: {always: true}
+    stage: scan
+    scan: {input: changed, overlay: [lint.yaml], run: [x], exit: {clean: [0]}, report: {in: stdout, format: lines, pattern: '(?P<message>.+)'}}
+`
+	bind := func(text string) (string, map[string]string) {
+		t.Helper()
+		cfg, err := loadConfig([]byte(text))
+		if err != nil {
+			t.Fatal(err)
+		}
+		version, err := bindMain(&cfg, root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defs := map[string]string{}
+		for _, c := range cfg.Checks {
+			defs[c.Name] = c.definition
+		}
+		return version, defs
+	}
+	changed := func(a, b map[string]string) []string {
+		var names []string
+		for n := range a {
+			if a[n] != b[n] {
+				names = append(names, n)
+			}
+		}
+		slices.Sort(names)
+		return names
+	}
+	v0, d0 := bind(yaml)
+	write("LICENSES/sub/MIT.txt", "mit")
+	v1, d1 := bind(yaml)
+	write("r/a.toml", "a")
+	_, d2 := bind(yaml)
+	write("lint.yaml", "l")
+	_, d3 := bind(yaml)
+	write("unrelated.txt", "u")
+	v4, d4 := bind(yaml)
+	cfg, _ := loadConfig([]byte(yaml))
+	first, _ := bindMain(&cfg, root)
+	if again, _ := bindMain(&cfg, root); again != first || again != v4 {
+		t.Error("binding twice changed the version")
+	}
+	switch {
+	case !slices.Equal(changed(d0, d1), []string{"licenses"}):
+		t.Errorf("a nested licence file changed %v", changed(d0, d1))
+	case !slices.Equal(changed(d1, d2), []string{"rules"}):
+		t.Errorf("a globbed file changed %v", changed(d1, d2))
+	case !slices.Equal(changed(d2, d3), []string{"lint"}):
+		t.Errorf("an overlay changed %v", changed(d2, d3))
+	case len(changed(d3, d4)) != 0:
+		t.Errorf("an unrelated file changed %v", changed(d3, d4))
+	case v0 == v1:
+		t.Error("a changed definition kept the run's version")
+	}
+	if v, _ := bind(strings.Replace(yaml, "engine-revision: 1", "engine-revision: 2", 1)); v == v4 {
+		t.Error("another engine revision kept the run's version")
+	}
+	if _, d := bind(strings.Replace(yaml, "main: [LICENSES]}", "main: [LICENSES], revision: 2}", 1)); !slices.Equal(changed(d4, d), []string{"licenses"}) {
+		t.Errorf("a revision changed %v", changed(d4, d))
+	}
+	cfg, _ = loadConfig([]byte(strings.Replace(yaml, "'r/*.toml'", "'r/[.toml'", 1)))
+	if _, err := bindMain(&cfg, root); err == nil || !strings.Contains(err.Error(), "check rules") {
+		t.Fatalf("a bad glob: %v", err)
+	}
+	write("locked/f", "x")
+	if err := os.Chmod(filepath.Join(root, "locked", "f"), 0); err != nil {
 		t.Fatal(err)
 	}
-	write("LICENSES/MIT.txt", "mit")
-	v4, _ := preflightVersion(root)
-	if v1 == v2 || v2 == v3 || v3 == v4 {
-		t.Fatalf("versions %s %s %s %s: a changed config, nested file or main's licenses must change the version", v1, v2, v3, v4)
+	cfg, _ = loadConfig([]byte(strings.Replace(yaml, "main: [LICENSES]", "main: [locked]", 1)))
+	if _, err := bindMain(&cfg, root); err == nil || !strings.Contains(err.Error(), "check licenses") {
+		t.Fatalf("an unreadable file: %v", err)
 	}
-	if _, err := preflightVersion(filepath.Join(root, "missing")); err == nil {
-		t.Fatal("a tree without the pre-flight gave a version")
+	if err := os.Chmod(filepath.Join(root, "locked"), 0); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(filepath.Join(root, "locked"), 0o755) })
+	if _, err := bindMain(&cfg, root); err == nil {
+		t.Fatal("an unreadable directory gave no error")
 	}
 }
 
-func TestEvaluateIgnoresAStateOfAnotherVersion(t *testing.T) {
+func TestEvaluateIgnoresAStateOfAnotherEngine(t *testing.T) {
 	cfg, err := loadConfig([]byte(engineConfig))
 	if err != nil {
 		t.Fatal(err)
 	}
-	d := &data{Version: "v2", Mode: modeReuse, Relevant: []string{"template"}, Previous: &state{Version: "v1", Checks: map[string]verdict{"template": {Result: resultPass, Input: "x"}}}}
+	d := &data{Version: "v2", Mode: modeFull, Relevant: []string{"template"}, Previous: &state{Version: "v1", Engine: 1}}
 	d.Pull.Body = "no template"
-	ev := evaluate(cfg, d, &ruleEnv{})
-	if ev.Checks["template"].Result != resultFail {
-		t.Fatalf("a state of another pre-flight version was reused: %+v", ev.Checks["template"])
+	d.Previous.Checks = map[string]verdict{"template": {Result: resultPass, Input: cheapInputHash(d, cfg.Checks[0])}}
+	if ev := evaluate(cfg, d, &ruleEnv{}); ev.Checks["template"].Result != resultPass || ev.Engine != 1 {
+		t.Fatalf("an equal input hash under another run version did not reuse the check's verdict: %+v", ev)
 	}
-	// A full run with a state of the same version still decides every check whose input changed.
-	d.Mode = modeFull
-	d.Previous.Version = "v2"
+	d.Previous.Engine = 0
 	if ev := evaluate(cfg, d, &ruleEnv{}); ev.Checks["template"].Result != resultFail {
-		t.Fatalf("a full run copied the stored verdicts: %+v", ev.Checks["template"])
+		t.Fatalf("a verdict of another engine revision was reused: %+v", ev.Checks["template"])
 	}
-	d.Previous.Checks["template"] = verdict{Result: resultPass, Input: cheapInputHash(d, cfg.Checks[0])}
-	if ev := evaluate(cfg, d, &ruleEnv{}); ev.Checks["template"].Result != resultPass {
-		t.Fatalf("an equal input hash did not reuse the stored verdict: %+v", ev.Checks["template"])
+	d.Mode = modeReuse
+	if ev := evaluate(cfg, d, &ruleEnv{}); ev.Checks["template"].Result != resultFail {
+		t.Fatalf("a reuse of another engine revision's state: %+v", ev.Checks["template"])
+	}
+	// A full run decides a check whose input changed.
+	d.Mode, d.Previous.Engine = modeFull, 1
+	d.Previous.Checks["template"] = verdict{Result: resultPass, Input: "other"}
+	if ev := evaluate(cfg, d, &ruleEnv{}); ev.Checks["template"].Result != resultFail {
+		t.Fatalf("a full run copied a stale verdict: %+v", ev.Checks["template"])
 	}
 }
 
@@ -186,7 +259,7 @@ func TestFetchLimitsAndRenames(t *testing.T) {
 				_ = json.NewEncoder(w).Encode(map[string]any{"number": 1, "mergeable": true, "commits": tc.commits, "changed_files": tc.files, "head": map[string]string{"sha": "h"}, "base": map[string]string{"sha": "b", "ref": "main"}})
 			case "/repos/o/r/pulls/1/files":
 				_, _ = io.WriteString(w, `[{"filename":"docs/w.yml","previous_filename":".github/workflows/w.yml","status":"renamed"}]`)
-			case "/repos/o/r/compare/old...h", "/repos/o/r/compare/main...h":
+			case "/repos/o/r/compare/main...h":
 				_, _ = io.WriteString(w, `{"status":"diverged","files":[{"filename":"z"}]}`)
 			default:
 				_, _ = io.WriteString(w, `[]`)
@@ -199,9 +272,6 @@ func TestFetchLimitsAndRenames(t *testing.T) {
 		}
 		if (tc.limit == "" && d.Limit != "") || !strings.Contains(d.Limit, tc.limit) {
 			t.Errorf("%d commits, %d files: limit %q, want %q", tc.commits, tc.files, d.Limit, tc.limit)
-		}
-		if len(d.Delta) != 0 {
-			t.Errorf("a full run kept a delta: %v", d.Delta)
 		}
 		if !strings.Contains(strings.Join(d.Relevant, " "), "workflows") {
 			t.Errorf("a workflow moved out of .github did not make the workflow checks relevant: %v", d.Relevant)
@@ -423,7 +493,7 @@ func TestRunPRWithoutScansSaysNothingAboutSkipping(t *testing.T) {
 	dir := t.TempDir()
 	var log strings.Builder
 	o := runOptions{apiBase: server.URL, token: "t", repo: "o/r", root: dir, bin: dir, states: dir, work: dir, dryRun: true}
-	if result, err := runPR(context.Background(), cfg, &ruleEnv{root: dir}, o, "v", 1, &log); err != nil || result != resultFail || strings.Contains(log.String(), "scans skipped") {
+	if result, err := runPR(context.Background(), cfg, &ruleEnv{root: dir}, o, "v", 1, nil, &log); err != nil || result != resultFail || strings.Contains(log.String(), "scans skipped") {
 		t.Fatalf("result %s, err %v, log:\n%s", result, err, log.String())
 	}
 }
@@ -529,9 +599,14 @@ func TestRecordWritesTheStepSummary(t *testing.T) {
 func TestRunCommandReportsABatchThatCannotStart(t *testing.T) {
 	t.Setenv("GITHUB_TOKEN", "t")
 	dir := t.TempDir()
+	// A main file a check depends on that cannot be read stops the run before any API call.
+	if err := os.Mkdir(filepath.Join(dir, "LICENSES"), 0); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(filepath.Join(dir, "LICENSES"), 0o755) })
 	var out, errOut strings.Builder
 	code := run([]string{"run", "--repo", "o/r", "--root", dir, "--bin", dir, "--states", dir, "--work", dir}, &out, &errOut)
-	if code != 2 || !strings.Contains(errOut.String(), "pre-flight version") {
+	if code != 2 || !strings.Contains(errOut.String(), "check licenses") {
 		t.Fatalf("exit %d: %s", code, errOut.String())
 	}
 }
@@ -569,6 +644,7 @@ chmod +x "$venv/bin/pip"`)
 func TestScanRunsThisProgram(t *testing.T) {
 	dir := t.TempDir()
 	cfg, err := loadConfig([]byte(`
+engine-revision: 1
 checks:
   - name: self
     when: {always: true}

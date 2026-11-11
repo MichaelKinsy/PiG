@@ -99,6 +99,8 @@ func runCommand(ctx context.Context, cfg config, args []string, stdout, stderr i
 	fs.IntVar(&o.jobs, "jobs", 4, "PRs checked at once")
 	fs.BoolVar(&o.dryRun, "dry-run", false, "set no status and post no comment")
 	fs.BoolVar(&o.forceScans, "force-scans", false, "run the scans even when a cheap check failed")
+	fs.IntVar(&o.budget, "budget", 20, "PRs fully checked per run, the longest waiting first; reused PRs do not count; 0 is no limit")
+	fs.DurationVar(&o.timeBudget, "time-budget", 0, "start no PR after this long; 0 is no limit")
 	prs := fs.String("prs", "", "PR numbers, space- or comma-separated; empty runs every open PR")
 	if err := fs.Parse(args); err != nil {
 		return 2

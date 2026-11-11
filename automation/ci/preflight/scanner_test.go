@@ -155,14 +155,14 @@ func TestRunScan(t *testing.T) {
 		reason string
 	}{
 		{"clean", `exit 0`, nil, resultPass, "clean (2 file(s))"},
-		{"finding on an added line", `echo "a.go:2: leak"; exit 1`, nil, resultFail, "a.go:2 leak"},
-		{"files and placeholders reach the tool", `echo "$@" >&2; [ "$1" = "a.go" ] && [ "$2" = ".github/workflows/ci.yml" ] && [ "$3" = "MAIN" ] || { echo "x:1: args $*"; exit 1; }`, func(s *scanSpec) { s.Run = []string{"fake", "{files}", "{main}"} }, resultPass, "clean"},
+		{"a finding in the added lines is reported at its head line", `echo "a.go:1: leak"; exit 1`, nil, resultFail, "a.go:2 leak"},
+		{"files and placeholders reach the tool", `echo "$@" >&2; [ "$1" = "--" ] && [ "$2" = "a.go" ] && [ "$3" = ".github/workflows/ci.yml" ] && [ "$4" = "MAIN" ] || { echo "x:1: args $*"; exit 1; }`, func(s *scanSpec) { s.Run = []string{"fake", "--", "{files}", "{main}"} }, resultPass, "clean"},
 		{"findings exit without a readable finding is an error", `echo "something went wrong"; exit 1`, nil, resultError, "none could be read"},
 		{"unread findings may pass when declared", `exit 1`, func(s *scanSpec) { s.Report.UnreadFindings = "pass" }, resultPass, "no finding"},
 		{"an unknown exit code is an error", `echo boom >&2; exit 7`, nil, resultError, "exited 7: boom"},
-		{"only added lines count", `echo "a.go:1: old problem"; exit 1`, func(s *scanSpec) { s.AddedLinesOnly = true }, resultPass, "none on a line the PR adds"},
+		{"only added lines count", `echo "a.go:1: old problem"; exit 1`, func(s *scanSpec) { s.Input, s.AddedLinesOnly = inputChanged, true }, resultPass, "none on a line the PR adds"},
 		{"select with no match passes", `exit 1`, func(s *scanSpec) { s.Select = `\.rs$` }, resultPass, "no file it scans changed"},
-		{"select narrows the files", `[ "$#" -eq 1 ] && [ "$1" = ".github/workflows/ci.yml" ] || { echo "x:1: got $*"; exit 1; }`, func(s *scanSpec) { s.Select = `^\.github/`; s.Run = []string{"fake", "{files}"} }, resultPass, "clean (1 file(s))"},
+		{"select narrows the files", `[ "$#" -eq 2 ] && [ "$2" = ".github/workflows/ci.yml" ] || { echo "x:1: got $*"; exit 1; }`, func(s *scanSpec) { s.Select = `^\.github/`; s.Run = []string{"fake", "--", "{files}"} }, resultPass, "clean (1 file(s))"},
 		{"the report file is read when declared", `printf '[{"m":"from the file","f":"a.go","l":2}]' > "$1"; exit 1`, func(s *scanSpec) {
 			s.Run = []string{"fake", "{out}"}
 			s.Report = reportSpec{In: "out", Format: "json", File: "f", Line: "l", Message: "m"}
@@ -172,7 +172,7 @@ func TestRunScan(t *testing.T) {
 			dir := t.TempDir()
 			ws := workspace{dir: dir, main: "MAIN", bin: filepath.Join(dir, "bin"), added: filepath.Join(dir, "added")}
 			fakeTool(t, ws.bin, "fake", tc.script)
-			s := scanSpec{Input: inputAdded, Run: []string{"fake", "{files}"}, Exit: exitCodes{Clean: []int{0}, Findings: []int{1}}, Report: lines}
+			s := scanSpec{Input: inputAdded, Run: []string{"fake", "--", "{files}"}, Exit: exitCodes{Clean: []int{0}, Findings: []int{1}}, Report: lines}
 			if tc.spec != nil {
 				tc.spec(&s)
 			}
@@ -219,17 +219,19 @@ func TestPrepareWorkspaceAddedLines(t *testing.T) {
 func TestScanInputHash(t *testing.T) {
 	c := scanCheck(t, scanSpec{Input: inputAdded, Run: []string{"x"}, Exit: exitCodes{Clean: []int{0}}, Report: reportSpec{In: "stdout", Format: "lines", Pattern: `(?P<message>.+)`}})
 	files := []prFile{{Filename: "a", SHA: "1", Patch: "+x"}}
-	base := scanInputHash(c, "v1", files)
+	base := scanInputHash(c, files)
+	other := c
+	other.definition += "x"
 	for name, other := range map[string]string{
-		"another version": scanInputHash(c, "v2", files),
-		"another blob":    scanInputHash(c, "v1", []prFile{{Filename: "a", SHA: "2", Patch: "+x"}}),
-		"another patch":   scanInputHash(c, "v1", []prFile{{Filename: "a", SHA: "1", Patch: "+y"}}),
+		"another definition": scanInputHash(other, files),
+		"another blob":       scanInputHash(c, []prFile{{Filename: "a", SHA: "2", Patch: "+x"}}),
+		"another patch":      scanInputHash(c, []prFile{{Filename: "a", SHA: "1", Patch: "+y"}}),
 	} {
 		if other == base {
 			t.Errorf("%s gives the same hash", name)
 		}
 	}
-	if scanInputHash(c, "v1", files) != base {
+	if scanInputHash(c, files) != base {
 		t.Error("the hash is not stable")
 	}
 }
@@ -360,5 +362,166 @@ func TestPrepareWorkspaceWholeTreeAndSeveralFiles(t *testing.T) {
 		if _, err := os.Stat(filepath.Join(ws.head, "other", "untouched.go")); (err == nil) != tc.untouched {
 			t.Errorf("%s: an untouched file checked out = %v, want %v", name, err == nil, tc.untouched)
 		}
+	}
+}
+
+func TestAddedInputReadsUnpatchedFilesWhole(t *testing.T) {
+	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+	remote := t.TempDir()
+	head := gitRepo(t, remote, map[string]string{"blob.bin": "key\x00AKIA", "a.go": "one\ntwo", "moved.go": "same"})
+	dir := t.TempDir()
+	ws := workspace{dir: dir, added: filepath.Join(dir, "added"), head: filepath.Join(dir, "head"), remote: "file://" + remote}
+	d := &data{Repo: "o/r", PR: 1, Files: []prFile{
+		{Filename: "blob.bin", Status: "added"},
+		{Filename: "a.go", Status: "modified", Patch: "@@ -1 +1,2 @@\n one\n+two"},
+		{Filename: "moved.go", Status: "renamed", PreviousFilename: "old.go"},
+	}}
+	d.Pull.Head.SHA = head
+	scans := []check{scanCheck(t, scanSpec{Input: inputAdded, Run: []string{"x"}, Exit: exitCodes{Clean: []int{0}}, Report: reportSpec{In: "stdout", Format: "lines", Pattern: `(?P<message>.+)`}})}
+	if err := prepareWorkspace(context.Background(), d, scans, ws, io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	if raw, err := os.ReadFile(filepath.Join(ws.added, "blob.bin")); err != nil || string(raw) != "key\x00AKIA" {
+		t.Fatalf("a file without a patch: %q %v", raw, err)
+	}
+	if raw, _ := os.ReadFile(filepath.Join(ws.added, "a.go")); string(raw) != "two\n" {
+		t.Fatalf("a patched file: %q", raw)
+	}
+	if raw, _ := os.ReadFile(filepath.Join(ws.added, "moved.go")); string(raw) != "\n" {
+		t.Fatalf("a rename without a change was read whole: %q", raw)
+	}
+	found := []finding{{file: "blob.bin", line: 1}, {file: "a.go", line: 1}, {file: "a.go", line: 9}, {file: "other", line: 1}, {file: "a.go"}}
+	toHeadLines(found, d)
+	if found[0].line != 1 || found[1].line != 2 || found[2].line != 9 || found[3].line != 1 || found[4].line != 0 {
+		t.Fatalf("head lines %+v", found)
+	}
+	kept := onAddedLines([]finding{{file: "blob.bin", line: 7}, {file: "a.go", line: 1}, {file: "a.go", line: 2}}, d)
+	if len(kept) != 2 || kept[0].file != "blob.bin" || kept[1].line != 2 {
+		t.Fatalf("kept %+v", kept)
+	}
+	// A file that cannot be read from the head fails the workspace.
+	d.Files = append(d.Files, prFile{Filename: "missing.bin", Status: "added"})
+	if err := os.RemoveAll(ws.head); err != nil {
+		t.Fatal(err)
+	}
+	if err := prepareWorkspace(context.Background(), d, scans, ws, io.Discard); err == nil {
+		t.Fatal("a file without a patch missing at the head was not reported")
+	}
+}
+
+func TestWhole(t *testing.T) {
+	for _, tc := range []struct {
+		f    prFile
+		want bool
+	}{
+		{prFile{Status: "added"}, true},
+		{prFile{Status: "modified", Patch: "@@"}, false},
+		{prFile{Status: "removed"}, false},
+		{prFile{Status: "renamed"}, false},
+		{prFile{Status: "renamed", Changes: 2}, true},
+	} {
+		if tc.f.whole() != tc.want {
+			t.Errorf("%+v: whole %v", tc.f, !tc.want)
+		}
+	}
+}
+
+func TestGitAuthPassesTheTokenInTheEnvironment(t *testing.T) {
+	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+	out, err := gitAuth(context.Background(), "tok", "config", "--get", "http.extraHeader")
+	if err != nil || strings.TrimSpace(out) != "Authorization: Basic eC1hY2Nlc3MtdG9rZW46dG9r" {
+		t.Fatalf("with a token: %q %v", out, err)
+	}
+	if out, err := gitAuth(context.Background(), "", "config", "--get", "http.extraHeader"); err == nil {
+		t.Fatalf("without a token a header was set: %q", out)
+	}
+}
+
+func TestMergeTree(t *testing.T) {
+	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+	remote := t.TempDir()
+	repo := filepath.Join(remote, "o", "r")
+	run := func(args ...string) string {
+		t.Helper()
+		out, err := git(context.Background(), append([]string{"-C", repo, "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false"}, args...)...)
+		if err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+		return strings.TrimSpace(out)
+	}
+	commit := func(file, text string) string {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(repo, file), []byte(text), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		run("add", "-A")
+		run("commit", "-q", "-m", file)
+		return run("rev-parse", "HEAD")
+	}
+	if err := os.MkdirAll(repo, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	run("init", "-q", "-b", "main")
+	run("config", "uploadpack.allowFilter", "true")
+	root := commit("f", "a")
+	run("checkout", "-q", "-b", "conflict")
+	conflict := commit("f", "b")
+	run("checkout", "-q", "-b", "clean", root)
+	clean := commit("g", "x")
+	run("checkout", "-q", "main")
+	commit("f", "c")
+	run("update-ref", "refs/pull/1/head", conflict)
+	run("update-ref", "refs/pull/2/head", clean)
+
+	ws := workspace{dir: t.TempDir(), remote: "file://" + remote}
+	d := &data{Repo: "o/r"}
+	d.Pull.Base.Ref = "main"
+	for _, tc := range []struct {
+		pr   int
+		head string
+		want bool
+	}{{1, conflict, false}, {2, clean, true}} {
+		d.PR, d.Pull.Head.SHA = tc.pr, tc.head
+		if m, err := mergeTree(context.Background(), ws, d); err != nil || m != tc.want {
+			t.Errorf("PR #%d: mergeable %v, err %v", tc.pr, m, err)
+		}
+	}
+	d.PR, d.Pull.Head.SHA = 2, conflict
+	if _, err := mergeTree(context.Background(), ws, d); err == nil || !strings.Contains(err.Error(), "evaluated head") {
+		t.Errorf("a moved head: %v", err)
+	}
+	d.PR = 9
+	if _, err := mergeTree(context.Background(), ws, d); err == nil || !strings.Contains(err.Error(), "git -C") {
+		t.Errorf("a PR without a head ref: %v", err)
+	}
+}
+
+func TestPendingResult(t *testing.T) {
+	cfg := config{Checks: []check{{Name: "up-to-date"}, {Name: "other"}}}
+	ev := evaluation{Checks: map[string]verdict{"up-to-date": {Result: resultPending}, "other": {Result: resultPass}}}
+	ev.finish()
+	if state, description := statusFor(cfg, ev); ev.Result != resultPending || state != "pending" || description != "waits for the next run: up-to-date" {
+		t.Fatalf("%s: %s %q", ev.Result, state, description)
+	}
+	ev.Checks["scan"] = verdict{Result: resultScan}
+	if ev.finish(); ev.Result != resultScan {
+		t.Fatalf("a scan to run and a pending check: %s", ev.Result)
+	}
+	ev.Checks["other"] = verdict{Result: resultFail}
+	if ev.finish(); ev.Result != resultFail {
+		t.Fatalf("a failure beside a pending check: %s", ev.Result)
+	}
+	for _, r := range []string{resultError, resultPending} {
+		prev := &state{Version: "v", Head: "h", Base: "b", Checks: map[string]verdict{"a": {Result: resultPass}, "b": {Result: r}}}
+		if mode, _ := decideMode(prev, "v", "h", "b"); mode != modeFull {
+			t.Errorf("a previous %s was reused", r)
+		}
+	}
+	prev := &state{Version: "v", Head: "h", Base: "b", Checks: map[string]verdict{"a": {Result: resultFail}, "b": {Result: resultScan}}}
+	if mode, _ := decideMode(prev, "v", "h", "b"); mode != modeReuse {
+		t.Error("scans held back by a failed check were decided again")
 	}
 }

@@ -84,16 +84,29 @@ type check struct {
 	Rule  string         `yaml:"rule" json:"rule,omitempty"`
 	With  map[string]any `yaml:"with" json:"with,omitempty"`
 	Scan  *scanSpec      `yaml:"scan" json:"scan,omitempty"`
+	// Main lists the files in main's tree the check's verdict depends on (globs; a directory counts with everything
+	// in it); a scan's overlay counts too. Their content is part of the definition.
+	Main []string `yaml:"main" json:"main,omitempty"`
+	// Revision is raised by hand to decide the check again where nothing else here changed.
+	Revision int `yaml:"revision" json:"revision,omitempty"`
+	// Alert, when the check fails, is posted once as a comment of its own that mentions the PR's author: for a finding
+	// a summary table must not leave to be noticed, such as a secret.
+	Alert string `yaml:"alert" json:"alert,omitempty"`
 
 	patterns []*regexp.Regexp
-	// definition is the SHA-256 of the check's declaration, part of every input hash: editing a check here decides it
-	// again.
+	// declared is the SHA-256 of the check's declaration here.
+	declared string
+	// definition is the SHA-256 of the check's declaration and, once bindMain ran, of its main files: part of every
+	// input hash, so editing a check or a file it reads decides that check again and no other.
 	definition string
 }
 
 type config struct {
-	Tools  []tool  `yaml:"tools"`
-	Checks []check `yaml:"checks"`
+	// EngineRevision is raised by hand when the engine's code changes what a stored verdict means; it decides every
+	// check again. A new scanner or image version does not.
+	EngineRevision int     `yaml:"engine-revision"`
+	Tools          []tool  `yaml:"tools"`
+	Checks         []check `yaml:"checks"`
 }
 
 // Stages of a check.
@@ -121,6 +134,9 @@ func loadConfig(data []byte) (config, error) {
 	decoder.KnownFields(true)
 	if err := decoder.Decode(&cfg); err != nil {
 		return config{}, fmt.Errorf("config: %w", err)
+	}
+	if cfg.EngineRevision < 1 {
+		return config{}, errors.New("config: engine-revision must be 1 or more")
 	}
 	if len(cfg.Checks) == 0 {
 		return config{}, errors.New("config: no checks")
@@ -208,7 +224,8 @@ func (c *check) validate() error {
 		return err
 	}
 	sum := sha256.Sum256(raw)
-	c.definition = hex.EncodeToString(sum[:])
+	c.declared = hex.EncodeToString(sum[:])
+	c.definition = c.declared
 	return nil
 }
 
@@ -218,6 +235,9 @@ func (s *scanSpec) validate() error {
 	}
 	if len(s.Run) == 0 {
 		return errors.New("scan run is empty")
+	}
+	if i := slices.Index(s.Run, "{files}"); i >= 0 && (i == 0 || s.Run[i-1] != "--") {
+		return errors.New("scan run needs -- before {files}, so a file name is never read as an option")
 	}
 	if len(s.Exit.Clean) == 0 {
 		return errors.New("scan exit needs the clean codes")
@@ -297,69 +317,68 @@ func globRegexp(glob string) (*regexp.Regexp, error) {
 	if glob == "" || strings.HasPrefix(glob, "/") {
 		return nil, fmt.Errorf("path pattern %q must be relative and non-empty", glob)
 	}
-	var b strings.Builder
-	b.WriteString("^")
-	for i := 0; i < len(glob); i++ {
-		switch ch := glob[i]; {
-		case strings.HasPrefix(glob[i:], "**/"):
-			b.WriteString("(?:.*/)?")
-			i += 2
-		case strings.HasPrefix(glob[i:], "**"):
-			b.WriteString(".*")
-			i++
-		case ch == '*':
-			b.WriteString("[^/]*")
-		case ch == '?':
-			b.WriteString("[^/]")
-		default:
-			b.WriteString(regexp.QuoteMeta(string(ch)))
-		}
-	}
-	b.WriteString("$")
-	return regexp.Compile(b.String())
+	// QuoteMeta escapes * and ?; the replacer then turns the escaped wildcards into patterns, trying them in argument
+	// order at each place, so **/ wins over ** and ** over *.
+	return regexp.Compile("^" + globReplacer.Replace(regexp.QuoteMeta(glob)) + "$")
 }
 
-// versionPaths are the files and directories outside automation/ci/preflight whose change on main makes every stored
-// verdict stale: the scanners' configurations, the PR template the template check reads, and main's licenses the
-// licenses check accepts.
-var versionPaths = []string{".gitleaks.toml", ".github/pull_request_template.md", ".github/actionlint.yaml", "REUSE.toml", "LICENSES"}
+var globReplacer = strings.NewReplacer(`\*\*/`, "(?:.*/)?", `\*\*`, ".*", `\*`, "[^/]*", `\?`, "[^/]")
 
-// preflightVersion is the SHA-256 over the pre-flight's own files in main's tree at root: everything under
-// automation/ci/preflight except acknowledged.toml, which is data, and versionPaths. A stored state with another version
-// is not reused.
-func preflightVersion(root string) (string, error) {
-	var names []string
-	collect := func(dir string, required bool) error {
-		err := filepath.WalkDir(dir, func(p string, e fs.DirEntry, err error) error {
-			if err != nil || e.IsDir() || e.Name() == filepath.Base(acknowledgedPath) {
-				return err
-			}
-			names = append(names, p)
-			return nil
-		})
-		if !required && errors.Is(err, fs.ErrNotExist) {
-			return nil
+// bindMain adds the content of each check's main files in main's tree at root to its definition and returns the run's
+// version: the engine revision with every definition. A state of the same version and the same head and base is
+// reused whole; otherwise each check keeps its stored verdict while its own definition and inputs are unchanged.
+func bindMain(cfg *config, root string) (string, error) {
+	run := sha256.New()
+	_, _ = fmt.Fprintf(run, "engine %d\x00", cfg.EngineRevision) // a hash.Hash never fails to write
+	for i := range cfg.Checks {
+		c := &cfg.Checks[i]
+		paths := slices.Clone(c.Main)
+		if c.Scan != nil {
+			paths = append(paths, c.Scan.Overlay...)
 		}
-		return err
+		names, err := mainNames(root, paths)
+		if err != nil {
+			return "", fmt.Errorf("check %s: %w", c.Name, err)
+		}
+		h := sha256.New()
+		_, _ = h.Write([]byte(c.declared))
+		for _, n := range names {
+			raw, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(n)))
+			if err != nil {
+				return "", fmt.Errorf("check %s: %w", c.Name, err)
+			}
+			_, _ = fmt.Fprintf(h, "\x00%s\x00%d\x00", n, len(raw))
+			_, _ = h.Write(raw)
+		}
+		c.definition = hex.EncodeToString(h.Sum(nil))
+		_, _ = fmt.Fprintf(run, "%s\x00%s\x00", c.Name, c.definition)
 	}
-	if err := collect(filepath.Join(root, "automation", "ci", "preflight"), true); err != nil {
-		return "", fmt.Errorf("pre-flight version: %w", err)
-	}
-	for _, p := range versionPaths {
-		if err := collect(filepath.Join(root, filepath.FromSlash(p)), false); err != nil {
-			return "", fmt.Errorf("pre-flight version: %w", err)
+	return hex.EncodeToString(run.Sum(nil)), nil
+}
+
+// mainNames expands globs and directories under root to the sorted slash paths of the files in them; a path that
+// matches nothing counts as absent, so adding it later changes the hash.
+func mainNames(root string, paths []string) ([]string, error) {
+	var names []string
+	for _, p := range paths {
+		matches, err := filepath.Glob(filepath.Join(root, filepath.FromSlash(p)))
+		if err != nil {
+			return nil, err
+		}
+		for _, m := range matches {
+			err := filepath.WalkDir(m, func(f string, e fs.DirEntry, err error) error {
+				if err != nil || e.IsDir() {
+					return err
+				}
+				rel, _ := filepath.Rel(root, f)
+				names = append(names, filepath.ToSlash(rel))
+				return nil
+			})
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 	slices.Sort(names)
-	h := sha256.New()
-	for _, n := range names {
-		raw, err := os.ReadFile(n)
-		if err != nil {
-			return "", fmt.Errorf("pre-flight version: %w", err)
-		}
-		rel, _ := filepath.Rel(root, n)
-		_, _ = fmt.Fprintf(h, "%s\x00%d\x00", filepath.ToSlash(rel), len(raw)) // a hash.Hash never fails to write
-		_, _ = h.Write(raw)
-	}
-	return hex.EncodeToString(h.Sum(nil)), nil
+	return slices.Compact(names), nil
 }

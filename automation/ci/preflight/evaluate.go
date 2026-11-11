@@ -19,6 +19,7 @@ type evaluation struct {
 	Head    string             `json:"head"`
 	Base    string             `json:"base"`
 	Version string             `json:"version"`
+	Engine  int                `json:"engine"`
 	Result  string             `json:"result"`
 	Checks  map[string]verdict `json:"checks"`
 	// Scans are the checks a scan still has to decide.
@@ -44,10 +45,10 @@ func sourceValue(d *data, name string) any {
 	return nil
 }
 
-// cheapInputHash is the SHA-256 of a cheap check's definition, the engine's version and every source it reads, so an
-// unchanged input and rule reuse the stored verdict and any change decides it again.
+// cheapInputHash is the SHA-256 of a cheap check's definition and every source it reads, so an unchanged input and rule
+// reuse the stored verdict and any change decides it again.
 func cheapInputHash(d *data, c check) string {
-	parts := map[string]any{"definition": c.definition, "version": d.Version}
+	parts := map[string]any{"definition": c.definition}
 	for _, s := range c.Reads {
 		parts[s] = sourceValue(d, s)
 	}
@@ -62,9 +63,9 @@ func cheapInputHash(d *data, c check) string {
 // evaluate decides every cheap check from the data and marks the scans still to run. A check no changed file makes
 // relevant passes; a check whose input hash equals the stored one keeps its stored pass or fail.
 func evaluate(cfg config, d *data, env *ruleEnv) evaluation {
-	ev := evaluation{Repo: d.Repo, PR: d.PR, Head: d.Pull.Head.SHA, Base: d.Pull.Base.SHA, Version: d.Version, Checks: map[string]verdict{}}
+	ev := evaluation{Repo: d.Repo, PR: d.PR, Head: d.Pull.Head.SHA, Base: d.Pull.Base.SHA, Version: d.Version, Engine: cfg.EngineRevision, Checks: map[string]verdict{}}
 	var prev map[string]verdict
-	if d.Previous != nil && d.Previous.Version == d.Version {
+	if d.Previous != nil && d.Previous.Engine == cfg.EngineRevision {
 		prev = d.Previous.Checks
 	}
 	if d.Mode == modeReuse && prev != nil {
@@ -77,7 +78,7 @@ func evaluate(cfg config, d *data, env *ruleEnv) evaluation {
 		if c.Stage == stageCheap {
 			v.Input = cheapInputHash(d, c)
 		} else {
-			v.Input = scanInputHash(c, d.Version, selectedFiles(d, c.Scan))
+			v.Input = scanInputHash(c, selectedFiles(d, c.Scan))
 		}
 		stored, had := prev[c.Name]
 		switch {
@@ -120,10 +121,12 @@ func decide(d *data, c check, env *ruleEnv) outcome {
 	return builtinRules[c.Rule].run(d, params(c.With), env)
 }
 
-// finish derives the overall result: fail when any check failed or errored, scan while scans remain, else pass.
+// finish derives the overall result: fail when any check failed or errored, scan while scans remain, pending while a
+// check waits for the next run, else pass.
 func (ev *evaluation) finish() {
 	ev.Scans = nil
 	ev.Result = resultPass
+	pending := false
 	names := make([]string, 0, len(ev.Checks))
 	for n := range ev.Checks {
 		names = append(names, n)
@@ -135,10 +138,16 @@ func (ev *evaluation) finish() {
 			ev.Result = resultFail
 		case resultScan:
 			ev.Scans = append(ev.Scans, n)
+		case resultPending:
+			pending = true
 		}
 	}
-	if ev.Result == resultPass && len(ev.Scans) > 0 {
+	switch {
+	case ev.Result != resultPass:
+	case len(ev.Scans) > 0:
 		ev.Result = resultScan
+	case pending:
+		ev.Result = resultPending
 	}
 }
 
@@ -150,7 +159,7 @@ func (ev evaluation) cheapFailed(cfg config) bool {
 	})
 }
 
-var resultMark = map[string]string{resultPass: "PASS ", resultFail: "FAIL ", resultScan: "SCAN ", resultError: "ERROR"}
+var resultMark = map[string]string{resultPass: "PASS ", resultFail: "FAIL ", resultScan: "SCAN ", resultError: "ERROR", resultPending: "WAIT "}
 
 // report prints one line per check in config order, the warnings, the entries that would acknowledge them, and the
 // GitHub annotations.

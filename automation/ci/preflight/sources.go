@@ -216,7 +216,10 @@ type pull struct {
 	Mergeable    *bool  `json:"mergeable"`
 	Commits      int    `json:"commits"`
 	ChangedFiles int    `json:"changed_files"`
-	Head         struct {
+	User         struct {
+		Login string `json:"login"`
+	} `json:"user"`
+	Head struct {
 		SHA string `json:"sha"`
 	} `json:"head"`
 	Base struct {
@@ -232,6 +235,13 @@ type prFile struct {
 	SHA              string `json:"sha"`
 	Patch            string `json:"patch,omitempty"`
 	PreviousFilename string `json:"previous_filename,omitempty"`
+	Changes          int    `json:"changes"`
+}
+
+// whole reports a file whose new content GitHub shows no patch for (a binary file, or a diff too large to show): a
+// scan of the added lines reads it whole from the head. A rename without a change adds nothing.
+func (f prFile) whole() bool {
+	return f.Patch == "" && f.Status != "removed" && (f.Status != "renamed" || f.Changes > 0)
 }
 
 // prCommit is one entry of pulls/<n>/commits.
