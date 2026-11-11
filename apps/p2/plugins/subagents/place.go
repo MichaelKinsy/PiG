@@ -283,7 +283,7 @@ func enableScriptTools(ctx context.Context, session harness.Harness, names []str
 			if err != nil {
 				return nil, err
 			}
-			if _, ok := state.Get("tools").([]any); !ok {
+			if _, ok := state.Get("tools").(*delta.Array); !ok {
 				continue
 			}
 			tools := state.Array("tools")

@@ -52634,6 +52634,28 @@
       ]
     },
     {
+      "id": "BF-e7ad444",
+      "title": "p2: a subagent with code mode gets the tools of an MCP server that connects after it was spawned…",
+      "symptom": "p2: a subagent with code mode gets the tools of an MCP server that connects after it was spawned (`enableScriptTools` tested the agent state's tool list with the wrong type and never added them), so its scripts can call them.",
+      "rootCause": "Ports Pi (reported(name, after)) and the Pi case it fixes, \"reaches MCP tools installed after the spawn\", which the Go suite had left pending. Ported red: enableScriptTools tested the stored tools field as []any, but the document returns *delta.Array, so it skipped every agent and never added the tools; the script failed with \"tools.mcp__files__echo does not exist\".",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "p2: a subagent with code mode gets the tools of an MCP server that connects after it was spawned (`enableScriptTools` tested the agent state's tool list with the wrong type and never added them), so its scripts can call them.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e7ad444950",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "apps/p2/e2e/subagents_test.go::TestSubagentsWithCodeMode"
+      ]
+    },
+    {
       "id": "BF-e7b494a",
       "title": "Fix in shipped code",
       "symptom": "Fix in shipped code",
