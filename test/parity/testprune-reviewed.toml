@@ -1801,3 +1801,108 @@ commit = "a94dde31ede8ff7cf29ae7ba2d7c5b0b392b2c55"
 class = "CITE"
 cite = "packages/ai/src/providers/radius.ts:28"
 reason = "Pi's radius.ts builds the baseline model list once (radius.ts:28-30) and getModels returns it, so PiG's baseline is a view of the catalog and the isolation guarantee is pinned where a caller sees it: writing through every collection of the models GetModels returns changes neither the generated catalog nor the next call. The test is renamed and its reference comparison clones the views first (commit 315fa0fd9, squashed into this commit with the rest of fix/pin8-drift)."
+
+[[entry]]
+path = "chord/nextnode/app/app_bases_linux_test.go"
+commit = "ea821d5245666917e0db74f589563100c851a582"
+class = "CITE"
+cite = "packages/chord/src/node/app/app.ts:958"
+reason = "Pi's `#close` (app.ts:955-968) ends with HTTP, workers, host, store, the plugins' watcher and the data directory's lock, and its doc comment states that the bases' builds are not waited for and what they finish after the close is dropped. The commit moves PiG's Close to those steps (the builds stay owned tasks that App.Wait joins), so the tests that expected the close to wait for a build stalled on a read (and to return the context's error once it ended) expect it to return at once with no error, the build still stalled, its late result dropped, and Wait to return nil once the build ended."
+
+[[entry]]
+path = "chord/nextnode/app/app_bases_workers_linux_test.go"
+commit = "ea821d5245666917e0db74f589563100c851a582"
+class = "CITE"
+cite = "packages/chord/src/node/app/app.ts:958"
+reason = "The same Pi `#close` (app.ts:955-968: the builds of the bases are not waited for, what they finish after the close is dropped) governs a worker base's build held on a pipe: the close returns at once with no error and every step done (the data directory's lock released), where the test expected it to wait for the build and to return the context's error when its context ended; App.Wait joins the build."
+
+[[entry]]
+path = "chord/nextnode/surfaces/surfaces_build_linux_test.go"
+commit = "ea821d5245666917e0db74f589563100c851a582"
+class = "CITE"
+cite = "packages/chord/src/node/app/app.ts:958"
+reason = "Pi's SurfaceBuild (surface-build.ts:77) has no close that joins its build, and the app's `#close` (app.ts:955-968) does not wait for the bases' builds: closing a surface returns without waiting for the build in flight. The tests move from a close that joined the build (returning once it ended, or the context's error) to a close that returns with the build still held and a wait (Go's ownership of the goroutine, no Pi counterpart) that returns once it ended or the context's error."
+
+[[entry]]
+path = "chord/nextnode/surfaces/surfaces_build_test.go"
+commit = "ea821d5245666917e0db74f589563100c851a582"
+class = "CITE"
+cite = "packages/chord/src/node/app/app.ts:958"
+reason = "The same change of close semantics as the linux surface tests (Pi's `#close`, app.ts:955-968, does not wait for the bases' builds): the surface's close no longer returns an error or joins, so the two assertions on a surface closed before its build started, and after a failed outcome, call close then wait and expect nil from wait."
+
+[[entry]]
+path = "chord/nextnode/app/app_export_test.go"
+commit = "fbd59e3affd443ce6b6d75ffdefc9a8ec4f40672"
+class = "CITE"
+cite = "packages/chord/test/node/app/app.test.ts:895"
+reason = "Pi's test \"round-trips a worker's documents, tables and files\" puts the file through the plugin (`notes.attach(\"a file of p1\")`, app.test.ts:895) and reads it from the copy (`copy.file(file)`, app.test.ts:907). The commit bridges a Go core facet's keyed members so a TS plugin can get the app kit's `Files` (D461 retires), so the PiG test stops seeding the worker's directory with Go's filesOf and reading the copy's directory with it, and attaches through the plugin and reads through the copy's `file` as Pi's test does."
+
+[[entry]]
+path = "chord/nextnode/app/app_workers_test.go"
+commit = "fbd59e3affd443ce6b6d75ffdefc9a8ec4f40672"
+class = "CITE"
+cite = "packages/chord/test/node/app/app.test.ts:895"
+reason = "The notes plugin of the tests now uses the kit's `Files` as in Pi's app test (`attach` at app.test.ts:895, `file` at app.test.ts:907, the data directory's modes at app.test.ts:131-133), so the test that a worker's directory keeps its store and files across its process's restarts attaches a file, expects the `files` directory and one blob beside `store.sqlite` with the modes 0700 and 0600, reads the file again after a restart and finds p1's id unknown at p2."
+
+[[entry]]
+path = "chord/nextnode/plugins/plugins_node_bridged_keyed_test.go"
+commit = "fbd59e3affd443ce6b6d75ffdefc9a8ec4f40672"
+class = "CITE"
+cite = "packages/chord/src/host/reference.ts:843"
+reason = "The commit replaces the test that a bridged facet refuses a contract with a keyed member by tests that a keyed member of a Go core facet reaches the plugins as a copy of the Go object's documents; their oracle is Pi's ReferenceKeyed (reference.ts:843: `get` waits while loading and answers the document or `undefined`, `at(key)` is `initial()` while the key is absent, a root replacement when it is created, and follows each change), and the app test's files round trip (app.test.ts:895), so the expectations list the documents the plugin reads instead of the refusal."
+
+[[entry]]
+path = "chord/nextnode/plugins/plugins_node_bridged_keyed_test.go"
+commit = "308d2802ce59017fabd606be8c7599e48f234828"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The bridge of a Go keyed member to the Node host is PiG-original (the test's header: not upstream's; Pi's ReferenceKeyed, reference.ts:843, is the oracle of what the plugin reads and is unchanged). The commit makes the mirror clear its resyncing with its reset and a method's answer wait for the frames its commits made during a resync read, so the opening-commit test stops the Node process while the commits are made and the frames sent and asserts the two reads directly where it polled for them with `eventually`: the expected values `new` and `two` are the ones the test expected before."
+
+[[entry]]
+path = "chord/nextnode/plugins/plugins_install_tar_test.go"
+commit = "4812c0127bc6c2049a5c417ebc419edc355ea7bb"
+class = "DIVERGENCE"
+cite = "D616"
+reason = "D616 records that PiG's installPlugin names the npm tarball and now the destination relative to the pack directory (`./<tarball>` and `../package`), where Pi passes absolute paths (install.ts:248-249), so GNU tar of Git for Windows does not read `-C C:\\...` against its working directory; the test's fake tar records both arguments and refuses an absolute destination, and expects `../package` as the destination."
+
+[[entry]]
+path = "ai/strict_tool_limit_upstream_test.go"
+commit = "2343418dc1a81408e287d77bef36a31c1ffb424c"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The commit exports the three helpers the interface ledger maps (IsStrictToolLimitErrorMessage, MarkStrictToolLimitsExceeded, HasExceededStrictToolLimits) so the tests call the mapped wrappers; the changed lines are the identifiers of the calls and the failure message's function name, and every expected value of the tests (the message cases, the remembered and cleaned-up sessions, the cap of 10,000) is as before."
+
+[[entry]]
+path = "chord/nextnode/app/app_export_host_test.go"
+commit = "5b7ccd1dc0b52417d29dfdcb45c0601c02fbb17c"
+class = "CITE"
+cite = "packages/chord/src/node/app/app.ts:835"
+reason = "Pi's importData takes its options optionally (`options.existing ?? \"refuse\"`, app.ts:835; the parameter is optional at app.ts:293), so ImportData's options become optional and the calls of the test drop the empty DataImportOptions; the new test of the Go host's definite failure expects the import to end as Pi's undo flow leaves a refused one (app.ts:865-891): the old directory back, the new one gone, the NodeHost's data of the address as before."
+
+[[entry]]
+path = "chord/nextnode/app/app_export_host_test.go"
+commit = "e7ea66b9cf3216114123b2fcdc6669f888567902"
+class = "CITE"
+cite = "packages/chord/test/node/app/app.test.ts:987"
+reason = "Pi's test replaces `importHostData` and `deleteHostData` of the host and expects the import to refuse or undo around the server's commit (app.test.ts:987-1019). The commit puts the NodeHost's host data part behind the app's nodeData seam, so the test's refusing wrapper fails the NodeHost's operations (`refusingNode`) instead of the Go host's `ServerHostData` facet, the meta reference is the NodeHost's (Pi's `app.host.get`, one host, D462), and the expected count is the three asks of the NodeHost's part."
+
+[[entry]]
+path = "chord/nextnode/app/archive_upstream_test.go"
+commit = "ef70d995b603a073cb2976a48d6c02fb1d6f112c"
+class = "CITE"
+cite = "packages/chord/src/node/app/archive.ts:20"
+reason = "Pi 8a5da3ce6 raises the archive format to 2 (archive.ts:20, `server.archive` beside `store.archive`), and its archive test (archive.test.ts:18, :22) packs a manifest of format 2 with the server's host data part (`host: \"doc|1\"`): the ported test's manifest is format 2, its archives carry the server's part (and the Go host's `kit-server.archive`, D462), and the unpacked result lists the staged parts."
+
+[[entry]]
+path = "internal/codingagent/session_cwd_pi_test.go"
+commit = "7ecacae312a0e75c215dd7dddbc658ab8dbfcfa2"
+class = "CITE"
+cite = "packages/coding-agent/src/core/session-cwd.ts:41"
+reason = "Pi 4ea883792 (#11975) makes formatMissingSessionCwdPrompt return `Session cwd does not exist: ${issue.sessionCwd}` (session-cwd.ts:41), the choices being Continue, Fork and Cancel (session-cwd.ts:48-54), so the expected prompt is that line where it was the two-paragraph text with the current cwd."
+
+[[entry]]
+path = "internal/codingagent/slash_session_handlers_test.go"
+commit = "7ecacae312a0e75c215dd7dddbc658ab8dbfcfa2"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/interactive-mode.ts:2907"
+reason = "Pi's promptForMissingSessionCwd (interactive-mode.ts:2907) offers Continue, Fork and Cancel with the labels of session-cwd.ts:52-53 for /import as for /resume: the import handler's prompt is the one-line prompt of session-cwd.ts:41 with those three options, the answer that declined is Cancel, and the Fork answer switches to a fork of the source in the current cwd with no second import."
