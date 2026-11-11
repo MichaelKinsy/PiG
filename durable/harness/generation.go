@@ -1261,7 +1261,9 @@ func answer(ctx context.Context, runtime generationRuntime, message ai.Assistant
 		if err != nil {
 			return err
 		}
-		continuation = result
+		if decided, ok := result.(*YieldContinue); ok {
+			continuation = decided
+		}
 		return nil
 	}); err != nil {
 		return err
@@ -1642,7 +1644,8 @@ func finishToolRound(ctx context.Context, runtime generationRuntime, assistant d
 		if hooks == nil || hooks.AfterTools == nil {
 			return nil
 		}
-		return hooks.AfterTools(ctx, assistant, results, runtime)
+		_, err := hooks.AfterTools(ctx, assistant, results, runtime)
+		return err
 	}); err != nil {
 		return err
 	}

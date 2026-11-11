@@ -199,7 +199,7 @@ func TestCoreRegistryRunsTheHooksOfTheSelectedExtensionsInSelectionOrder(t *test
 	}
 	a := &durable.Extension{Name: "a", Tools: []*durable.ToolRegistration{bash}, Hooks: []durable.HookRegistration{
 		harness.Hook(harness.ToolTask, beforeTool("a")),
-		harness.Hook(harness.GenerationTask, &harness.GenerationHooks{OnYield: func(context.Context, ai.AssistantMessage, harness.HookApi) (*harness.YieldContinue, error) {
+		harness.Hook(harness.GenerationTask, &harness.GenerationHooks{OnYield: func(context.Context, ai.AssistantMessage, harness.HookApi) (harness.YieldResult, error) {
 			log.add("onYield a")
 			return nil, nil
 		}}),

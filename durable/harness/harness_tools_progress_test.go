@@ -397,7 +397,7 @@ func TestToolProgressAndLifetime(t *testing.T) {
 		watched := &syncValue[durable.WatchHandle[durable.JsonObject]]{}
 		addTool(t, setup.Registry, tlTool("detach", func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			// The child's definition is not registered, so it stays pending.
-			child, err := api.CreateTaskErased(ctx, never.Erased(), delta.NewJsonObject(0), durable.TaskOptions{Ownership: conversationOwned})
+			child, err := api.CreateTaskErased(ctx, never.Erased(), delta.NewJsonObject(0), durable.ToolTaskOptions{TaskOptions: durable.TaskOptions{Ownership: conversationOwned}})
 			if err != nil {
 				return durable.ToolExecutionResult{}, err
 			}

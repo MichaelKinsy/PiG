@@ -549,12 +549,12 @@ type SubmissionRecord struct {
 	RequestId *string `json:"requestId,omitempty"`
 	// Notify is the task to deliver SubmissionSettled to under Key when the submission settles; nil when absent.
 	Notify *SubmissionNotify `json:"notify,omitempty"`
-	Type      SubmissionType   `json:"type"`
-	Status    SubmissionStatus `json:"status"`
-	Entry     *EntryId         `json:"entry,omitempty"`
-	Answer    *EntryId         `json:"answer,omitempty"`
-	Reason    *string          `json:"reason,omitempty"`
-	Detail    JsonValue        `json:"detail,omitempty"`
+	Type   SubmissionType    `json:"type"`
+	Status SubmissionStatus  `json:"status"`
+	Entry  *EntryId          `json:"entry,omitempty"`
+	Answer *EntryId          `json:"answer,omitempty"`
+	Reason *string           `json:"reason,omitempty"`
+	Detail JsonValue         `json:"detail,omitempty"`
 }
 
 // SubmissionSettlement is the terminal status staged for a submission; identity, type, and entry come from its

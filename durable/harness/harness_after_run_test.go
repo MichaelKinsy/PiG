@@ -657,7 +657,7 @@ func TestAfterRun(t *testing.T) {
 		state := arProbeOf()
 		arInstall(t, setup, state)
 		var yields atomic.Int32
-		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{OnYield: func(context.Context, ai.AssistantMessage, HookApi) (*YieldContinue, error) {
+		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{OnYield: func(context.Context, ai.AssistantMessage, HookApi) (YieldResult, error) {
 			if yields.Add(1) <= 2 {
 				return &YieldContinue{Continue: ai.UserText("again")}, nil
 			}
@@ -677,7 +677,7 @@ func TestAfterRun(t *testing.T) {
 		second := arProbeOf()
 		arInstall(t, dropped, second)
 		var root2 syncValue[Conversation]
-		addHooks(t, dropped.Registry, GenerationTask.Erased(), &GenerationHooks{OnYield: func(context.Context, ai.AssistantMessage, HookApi) (*YieldContinue, error) {
+		addHooks(t, dropped.Registry, GenerationTask.Erased(), &GenerationHooks{OnYield: func(context.Context, ai.AssistantMessage, HookApi) (YieldResult, error) {
 			if len(second.askedList()) > 0 {
 				return nil, nil
 			}
@@ -1276,7 +1276,7 @@ func TestAfterRun(t *testing.T) {
 		var root syncValue[Conversation]
 		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{
 			// As a run started before `first` existed.
-			OnYield: func(context.Context, ai.AssistantMessage, HookApi) (*YieldContinue, error) {
+			OnYield: func(context.Context, ai.AssistantMessage, HookApi) (YieldResult, error) {
 				conversation, _ := root.get()
 				changeLive(t, conversation, func(live *delta.Object) error {
 					live.Object("run").Delete("first")

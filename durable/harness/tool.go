@@ -716,6 +716,10 @@ type toolApi struct {
 	ended    atomic.Bool
 	tool     *durable.ToolRegistration
 	nested   *NestedCalls
+	// wake, checkpoint and hasCheckpoint are what a run after a park starts from (spec suspendable §4.2).
+	wake          *durable.WakeReason
+	checkpoint    durable.JsonValue
+	hasCheckpoint bool
 }
 
 var _ durable.ToolExecutionApi = (*toolApi)(nil)
@@ -732,6 +736,17 @@ func (api *toolApi) TaskId() durable.TaskId { return api.runtime.TaskId() }
 func (api *toolApi) ConversationId() durable.ConversationId { return api.runtime.ConversationId() }
 
 func (api *toolApi) CallId() string { return api.call.ID }
+
+// Wake is why this run started after a park; nil on a fresh call, and in Cancel.
+func (api *toolApi) Wake() *durable.WakeReason { return api.wake }
+
+// Checkpoint is what the call last parked with; ok is false on a fresh call or after a park without one.
+func (api *toolApi) Checkpoint() (durable.JsonValue, bool) { return api.checkpoint, api.hasCheckpoint }
+
+// ReadSignalErased is a signal key's committed state in this call's task.
+func (api *toolApi) ReadSignalErased(ctx context.Context, token durable.AnySignalSource, key string) (*durable.ErasedSignalState, error) {
+	return api.runtime.ReadSignalErased(ctx, token, key)
+}
 
 func (api *toolApi) Registry() durable.RegistrySnapshot { return api.runtime.Registry() }
 
@@ -845,7 +860,8 @@ func (api *toolApi) MemoCandidate(ctx context.Context, name string, candidate du
 }
 
 // CreateTaskErased creates a task in its own commit; the conversation is the tool task's own default.
-func (api *toolApi) CreateTaskErased(ctx context.Context, task durable.AnyTask, input durable.JsonValue, options durable.TaskOptions) (durable.TaskId, error) {
+func (api *toolApi) CreateTaskErased(ctx context.Context, task durable.AnyTask, input durable.JsonValue, toolOptions durable.ToolTaskOptions) (durable.TaskId, error) {
+	options := toolOptions.TaskOptions
 	options.ConversationId = nil
 	// A caller that can rerun reattaches to its child tasks after a restart; any other caller never resumes, so they are
 	// abandoned (TaskOptions.AbandonOnRestart) unless the options say otherwise (tool.ts:338).

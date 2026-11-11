@@ -923,9 +923,9 @@ func TestToolResults(t *testing.T) {
 			results   []durable.EntryId
 		}
 		observed := &syncList[observation]{}
-		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{AfterTools: func(_ context.Context, assistant durable.EntryId, results []durable.EntryId, _ HookApi) error {
+		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{AfterTools: func(_ context.Context, assistant durable.EntryId, results []durable.EntryId, _ HookApi) (*HookTasks, error) {
 			observed.add(observation{assistant, results})
-			return nil
+			return nil, nil
 		}})
 		run := tlRun(t, setup, []ai.FauxResponseStep{tlCallsStep(tlCall{"echo", map[string]any{}, "c1"}), tlDone()}, nil)
 		result := tlResults(run.entries)[0]
@@ -1097,7 +1097,7 @@ func TestGenerationHooks(t *testing.T) {
 			return nil
 		}})
 		var yields atomic.Int32
-		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{OnYield: func(context.Context, ai.AssistantMessage, HookApi) (*YieldContinue, error) {
+		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{OnYield: func(context.Context, ai.AssistantMessage, HookApi) (YieldResult, error) {
 			if yields.Add(1) == 1 {
 				return &YieldContinue{Continue: ai.UserContentBlocks{ai.TextContent{Text: "keep going"}}}, nil
 			}
@@ -1233,7 +1233,7 @@ func TestGenerationHooks(t *testing.T) {
 		harnessRef := &syncValue[Harness]{}
 		input := &syncValue[durable.SubmissionId]{}
 		statusAtSecondRequest := &syncValue[durable.SubmissionStatus]{}
-		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{OnYield: func(context.Context, ai.AssistantMessage, HookApi) (*YieldContinue, error) {
+		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{OnYield: func(context.Context, ai.AssistantMessage, HookApi) (YieldResult, error) {
 			if yields.Add(1) == 1 {
 				return &YieldContinue{Continue: ai.UserText("again")}, nil
 			}
@@ -1303,13 +1303,13 @@ func TestGenerationHooks(t *testing.T) {
 			return nil
 		}})
 		var yields atomic.Int32
-		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{OnYield: func(context.Context, ai.AssistantMessage, HookApi) (*YieldContinue, error) {
+		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{OnYield: func(context.Context, ai.AssistantMessage, HookApi) (YieldResult, error) {
 			if yields.Add(1) == 1 {
 				return &YieldContinue{Continue: ai.UserText("first")}, nil
 			}
 			return nil, nil
 		}})
-		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{OnYield: func(context.Context, ai.AssistantMessage, HookApi) (*YieldContinue, error) {
+		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{OnYield: func(context.Context, ai.AssistantMessage, HookApi) (YieldResult, error) {
 			called.add("second onYield")
 			count := 0
 			for _, name := range called.all() {
@@ -1450,7 +1450,7 @@ func TestToolExecutionApi(t *testing.T) {
 			seen.add(first)
 			seen.add(second)
 			input, _ := durable.ToJsonValue(childInput{N: 21})
-			id, err := api.CreateTaskErased(testContext, child.Erased(), input, durable.TaskOptions{Ownership: conversationOwned})
+			id, err := api.CreateTaskErased(testContext, child.Erased(), input, durable.ToolTaskOptions{TaskOptions: durable.TaskOptions{Ownership: conversationOwned}})
 			if err != nil {
 				return durable.ToolExecutionResult{}, err
 			}

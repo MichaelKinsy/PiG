@@ -70,7 +70,7 @@ type specNames struct {
 	renderSkills      func() *string
 	isDangerous       func(call ai.ToolCall) bool
 	writes            func(call ai.ToolCall) bool
-	requestSecondPass func(ctx context.Context, answer ai.AssistantMessage, api harness.HookApi) (*harness.YieldContinue, error)
+	requestSecondPass func(ctx context.Context, answer ai.AssistantMessage, api harness.HookApi) (harness.YieldResult, error)
 	metrics           interface{ record(name string, ms int64) }
 	answerText        func(ctx context.Context, api durable.ToolExecutionApi, entry durable.EntryId) (string, error)
 	manager           interface {

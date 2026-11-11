@@ -2335,7 +2335,7 @@ func (s *TaskScheduler) inspectTaskLocked(record anyTaskRecord, snapshot durable
 		return TaskInspectionState{Kind: TaskInspectionWaiting, On: on}
 	}
 	if s.notDueLocked(record) {
-		return TaskInspectionState{Kind: TaskInspectionSleeping, Until: *record.State.Until}
+		return TaskInspectionState{Kind: TaskInspectionSleeping, Until: record.State.Until}
 	}
 	found := s.fitLocked(record.Id, record.Version, snapshot.Task(record.Kind))
 	if found.reason != "" {
@@ -3275,6 +3275,21 @@ func (runtime *taskRuntime) Memo(ctx context.Context, name string) (durable.Json
 	}
 	value, found := record.Memos[name]
 	return value, found, nil
+}
+
+// ReadSignalErased is a signal key's committed state in this task: the live record's memos, the value migrated to the
+// token's version (readSignal of scheduler.ts).
+func (runtime *taskRuntime) ReadSignalErased(ctx context.Context, token durable.AnySignalSource, key string) (*durable.ErasedSignalState, error) {
+	if err := runtime.check(); err != nil {
+		return nil, err
+	}
+	runtime.scheduler.mu.Lock()
+	record, ok := runtime.scheduler.live[runtime.invocation.taskId]
+	runtime.scheduler.mu.Unlock()
+	if !ok {
+		return nil, nil
+	}
+	return durable.ReadSignalMemo(record.Memos, token, key)
 }
 
 func (runtime *taskRuntime) MemoCandidate(ctx context.Context, name string, candidate durable.JsonValue) (durable.JsonValue, error) {

@@ -3,6 +3,7 @@ package harness
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -275,6 +276,12 @@ func (n *NestedCalls) Execute(ctx context.Context, caller NestedCaller, name str
 // ExecuteTool calls another tool as a nested call.
 func (api *toolApi) ExecuteTool(ctx context.Context, name string, args map[string]any, options ...durable.NestedCallOptions) (durable.NestedToolExecutionResult, error) {
 	return api.nested.Execute(ctx, runtimeCaller{api.runtime}, name, args, options...)
+}
+
+// ExecuteToolNoWait is ExecuteTool with wait false: it returns once the nested call is started or found, with a handle
+// to its result.
+func (api *toolApi) ExecuteToolNoWait(ctx context.Context, name string, args map[string]any, options ...durable.NestedCallOptions) (durable.NestedToolCall, error) {
+	return durable.NestedToolCall{}, errors.New("ExecuteToolNoWait: interim, replaced by the tool slice")
 }
 
 // checkNestedKey rejects explicit keys that are empty, have a slash, are "__proto__", or are positive integers: keys are
