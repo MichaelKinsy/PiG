@@ -196,6 +196,21 @@ func TestAddressKeys(t *testing.T) {
 		}
 	})
 
+	t.Run("read an int part as Pi's Number(part) does (host-kind.ts addressOfKey): hex, padding and an empty part", func(t *testing.T) {
+		for _, c := range []struct {
+			part string
+			want float64
+		}{{"0x10", 16}, {" 7 ", 7}, {"", 0}, {"1e2", 100}} {
+			key := "shard|eu|" + c.part
+			want := c.want
+			got, err := contracts.AddressOfKey(shard, key)
+			wantNoError(t, err)
+			if n, _ := got.Params.Get("n"); n != want {
+				t.Fatalf("AddressOfKey(%q) n = %v, want %v", key, n, want)
+			}
+		}
+	})
+
 	t.Run("of a value are computed from its params, refused for anything that is not an address of the kind", func(t *testing.T) {
 		if key, ok := contracts.KeyOfAddress(session, session.Address(delta.JsonObjectOf("id", "S1"))); !ok || key != "session|S1" {
 			t.Fatalf("key = %q, %v", key, ok)

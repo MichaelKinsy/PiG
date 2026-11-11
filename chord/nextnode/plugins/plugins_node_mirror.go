@@ -86,7 +86,7 @@ func (m *bridgedMirror) observe(key string, value *documents.JsonObject, dropped
 			return
 		}
 		m.mu.Unlock()
-		go m.resync()
+		go m.resync(m.life)
 		return
 	}
 	m.mu.Unlock()
@@ -191,13 +191,15 @@ func (m *bridgedMirror) read(ctx context.Context) (ok bool, err error) {
 	}
 	runMirrorSnapshotHook()
 	m.mu.Lock()
-	defer m.mu.Unlock()
 	if m.dropped || m.stopped {
 		m.pending = nil
 		m.endRead()
-		go stop()
+		m.mu.Unlock()
+		// stop removes the observer, which takes m.mu: it runs outside it, and on this goroutine, so no goroutine outlives the read.
+		stop()
 		return false, nil
 	}
+	defer m.mu.Unlock()
 	m.endRead()
 	m.resyncing = false
 	m.stopSlot = stop
@@ -211,12 +213,13 @@ func (m *bridgedMirror) read(ctx context.Context) (ok bool, err error) {
 // endRead ends the read in progress; m.mu is held.
 func (m *bridgedMirror) endRead() {
 	m.reading = false
+	//portlint:allow doubleclose endRead runs with m.mu held and clears readEnd with the close; read, the only caller, runs one at a time (the creation read, then resync, which m.resyncing keeps single)
 	close(m.readEnd)
 	m.readEnd = nil
 }
 
-// resync reads the reference's keyed member again after its slot ended and sends it as a replacement.
-func (m *bridgedMirror) resync() {
+// resync reads the reference's keyed member again after its slot ended and sends it as a replacement, until life ends.
+func (m *bridgedMirror) resync(life context.Context) {
 	m.mu.Lock()
 	if m.stopped || m.resyncing {
 		m.mu.Unlock()
@@ -229,8 +232,14 @@ func (m *bridgedMirror) resync() {
 		m.resyncing = false
 		m.mu.Unlock()
 	}
+	var retry *time.Timer
+	defer func() {
+		if retry != nil {
+			retry.Stop()
+		}
+	}()
 	for {
-		ok, err := m.read(m.life)
+		ok, err := m.read(life)
 		if ok {
 			// read cleared resyncing with the reset queued: a drop after that starts the next resync.
 			runMirrorResyncedHook()
@@ -239,7 +248,7 @@ func (m *bridgedMirror) resync() {
 		m.mu.Lock()
 		stopped := m.stopped
 		m.mu.Unlock()
-		if stopped || m.life.Err() != nil {
+		if stopped || life.Err() != nil {
 			giveUp()
 			return
 		}
@@ -247,11 +256,16 @@ func (m *bridgedMirror) resync() {
 			// The slot read ended meanwhile: read the next at once.
 			continue
 		}
+		if retry == nil {
+			retry = time.NewTimer(resyncDelay)
+		} else {
+			retry.Reset(resyncDelay)
+		}
 		select {
-		case <-m.life.Done():
+		case <-life.Done():
 			giveUp()
 			return
-		case <-time.After(resyncDelay):
+		case <-retry.C:
 		}
 	}
 }
