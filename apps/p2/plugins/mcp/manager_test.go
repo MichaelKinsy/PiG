@@ -3,6 +3,7 @@
 package mcp
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -62,7 +63,7 @@ func expectJSON(t *testing.T, got, want any) {
 	t.Helper()
 	a, _ := json.Marshal(got)
 	b, _ := json.Marshal(want)
-	if string(a) != string(b) {
+	if !bytes.Equal(a, b) {
 		t.Fatalf("got %s, want %s", a, b)
 	}
 }
@@ -295,9 +296,9 @@ func TestGenerationsOnlyTheRunningCurrentOneSetsAndCallsAnOlderViewsEndLeavesThe
 	pid := whoami(t, older, one, "files").Pid
 	// The session's worker restarts: generation 2 runs now.
 	newer := h.worker("s1", 2)
-	p2test.ExpectChord(t, older.setLocations(one), data.CodeForbidden)
+	_ = p2test.ExpectChord(t, older.setLocations(one), data.CodeForbidden)
 	_, err := older.callTool(one, "files", "echo", nil)
-	p2test.ExpectChord(t, err, data.CodeForbidden)
+	_ = p2test.ExpectChord(t, err, data.CodeForbidden)
 	noError(t, newer.setLocations(one))
 	expectEqual(t, instanceList(newer.until("servers", isUp("files")))[0].Value("id"), instance.Value("id"))
 	expectEqual(t, whoami(t, newer, one, "files").Pid, pid)
@@ -330,7 +331,7 @@ func TestGenerationsOnlyTheRunningCurrentOneSetsAndCallsAnOlderViewsEndLeavesThe
 	wg.Wait()
 	expectJSON(t, leaseCwds(h, "s9"), []string{cwdOf(one)})
 	_, err = h.manager.Call("setLocations", caller(3, one), p2test.Background)
-	p2test.ExpectChord(t, err, data.CodeForbidden)
+	_ = p2test.ExpectChord(t, err, data.CodeForbidden)
 	_, err = h.manager.Call("setLocations", caller(4), p2test.Background)
 	noError(t, err)
 }
@@ -357,7 +358,7 @@ func TestAWorkerAskingBeforeItsStartIsPublishedWaitsThenItSetsOrANewerGeneration
 	refused := make(chan error, 1)
 	go func() { refused <- late.setLocations(one) }()
 	h.running("s2", 2)
-	p2test.ExpectChord(t, <-refused, data.CodeForbidden)
+	_ = p2test.ExpectChord(t, <-refused, data.CodeForbidden)
 	// Releasing the reference ends a waiting call.
 	gone := h.worker("s3", 1, workerOptions{stale: true})
 	waiting := make(chan error, 1)
@@ -429,7 +430,7 @@ func TestAnotherIncarnationOfTheSameGenerationTakesTheLeaseTheFirstOnesCallsAreR
 	second := h.worker("s1", 2)
 	noError(t, second.setLocations(one))
 	_, err := first.callTool(one, "files", "echo", echoArgs("x"))
-	p2test.ExpectChord(t, err, data.CodeForbidden)
+	_ = p2test.ExpectChord(t, err, data.CodeForbidden)
 	expectEqual(t, text(t, second, one, "files", "echo", echoArgs("x")), "echo: x")
 }
 
@@ -746,7 +747,7 @@ func TestGuestsGetNoMCPServers(t *testing.T) {
 	defer ref.Release()
 	failure, err := p2test.FailureOf(ref)
 	noError(t, err)
-	p2test.ExpectChord(t, failure, data.CodeForbidden)
+	_ = p2test.ExpectChord(t, failure, data.CodeForbidden)
 }
 
 var _ = time.Second
@@ -791,20 +792,33 @@ func TestAToolCallInTheManagerDoesNotHoldTheHostsLoopAndLeaseChangesRacingTheHos
 			h := newMcpHost(t, func(log string) map[string]any { return map[string]any{"files": stdioEntry(t, log, nil)} })
 			one := h.at("one")
 			var calls sync.WaitGroup
+			// committed closes when the first setLocations has been answered: its lease is in. A watch on the leases cannot stand for it, because a caller that is quick releases its lease before the watch exists and the value is empty again.
+			committed := make(chan struct{})
+			var firstCommit sync.Once
 			for caller := 0; caller < 8; caller++ {
 				session := fmt.Sprintf("s%d", caller)
 				calls.Add(1)
 				go func() {
 					defer calls.Done()
 					for generation := 1; generation <= 4; generation++ {
-						_, _ = h.manager.Call("setLocations", delta.JsonObjectOf("session", session, "generation", float64(generation), "incarnation", "i", "locations", []any{one}), p2test.Background)
+						if _, err := h.manager.Call("setLocations", delta.JsonObjectOf("session", session, "generation", float64(generation), "incarnation", "i", "locations", []any{one}), p2test.Background); err == nil {
+							firstCommit.Do(func() { close(committed) })
+						}
 					}
 					_, _ = h.manager.Call("releaseLeases", delta.JsonObjectOf("session", session, "generation", float64(4)), p2test.Background)
 				}()
 			}
+			allAnswered := make(chan struct{})
+			go func() { calls.Wait(); close(allAnswered) }()
 			// The host ends as the first lease commits: the callers that committed read the placement for their reconcile at once.
-			if _, err := p2test.Until(h.manager.Member("leases"), func(value delta.JsonValue) bool { return len(value.([]any)) > 0 }, 0); err != nil {
-				t.Fatal(err)
+			select {
+			case <-committed:
+			case <-allAnswered:
+				select {
+				case <-committed:
+				default:
+					t.Fatal("no setLocations was answered")
+				}
 			}
 			h.shutdown()
 			calls.Wait()
