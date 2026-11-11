@@ -203344,8 +203344,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/tools/read_streaming_test.go#TestReadStreamingKeepsMemoryBoundedForA200MBLine",
-        "test:internal/codingagent/tools/read_streaming_test.go#TestReadStreamingStopsConsumingTheStreamWhenAborted",
-        "test:internal/codingagent/tools/read_streaming_test.go#TestReadStreamingDecodesChunkSplitCharactersAndInvalidUTF8LikeBufferToString"
+        "test:internal/codingagent/tools/read_streaming_test.go#TestReadStreamingRejectsWhenAbortedWhileOpeningTheFile",
+        "test:internal/codingagent/tools/read_streaming_test.go#TestReadStreamingStopsConsumingTheStreamWhenAborted"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
