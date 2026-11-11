@@ -34,6 +34,8 @@ type fakeGitHub struct {
 	tipDown bool
 	// unknown answers mergeable null, as GitHub does before it computed it.
 	unknown bool
+	// big are PRs with more commits than the API lists.
+	big map[int]bool
 	// issues are the repository's issues by number; issuesDown makes writing one fail.
 	issues     map[int]*fakeIssue
 	issuesDown bool
@@ -108,7 +110,7 @@ func (g *fakeGitHub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			mergeable = nil
 		}
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"number": pr, "state": "open", "body": g.bodies[pr], "mergeable": mergeable, "commits": 1, "changed_files": 1,
+			"number": pr, "state": "open", "body": g.bodies[pr], "mergeable": mergeable, "commits": map[bool]int{true: maxCommits + 1, false: 1}[g.big[pr]], "changed_files": 1,
 			"head": map[string]string{"sha": fmt.Sprintf("head%d", pr)}, "base": map[string]string{"sha": "old-base", "ref": "main"},
 		})
 	case rest == "/files":
@@ -575,5 +577,38 @@ func TestRunBatchWithoutOpenPRs(t *testing.T) {
 	var out strings.Builder
 	if hs, err := runBatch(context.Background(), cfg, runOptions{apiBase: server.URL, token: "t", repo: "o/r", root: dir, bin: dir, work: dir, bot: defaultBot}, &out); err != nil || len(hs) != 0 {
 		t.Fatalf("no open PR: %v %v, log:\n%s", hs, err, out.String())
+	}
+}
+
+func TestATooLargePRCostsOneCall(t *testing.T) {
+	cfg, err := loadConfig([]byte(strings.SplitN(engineConfig, "  - name: marker", 2)[0] + `
+  - name: up-to-date
+    when: {always: true}
+    stage: cheap
+    reads: [pull, compare-main]
+    rule: up-to-date
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	g := newFakeGitHub(map[int]string{1: "Fix: no", 2: "Fix: no"})
+	g.big = map[int]bool{1: true}
+	g.unknown = true
+	server := httptest.NewServer(g)
+	defer server.Close()
+	dir := t.TempDir()
+	o := runOptions{apiBase: server.URL, gitBase: "file://" + filepath.Join(dir, "none"), token: "t", repo: "o/r", root: dir, bin: dir, work: filepath.Join(dir, "work"), jobs: 1, budget: 1, dryRun: true}
+	var out strings.Builder
+	hs, err := runBatch(context.Background(), cfg, o, &out)
+	if err != nil || len(deferredPRs(hs)) != 0 {
+		t.Fatalf("handled %+v, err %v, log:\n%s", hs, err, out.String())
+	}
+	for _, want := range []string{"pull #1 head head1: too large for the pre-flight (251 commits, more than the 250 the API lists), nothing more fetched", "PR #1: fail", "PR #2: pending"} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("log lacks %q:\n%s", want, out.String())
+		}
+	}
+	if g.hits["GET /repos/o/r/pulls/1/files"] != 0 || g.hits["GET /repos/o/r/pulls/1/commits"] != 0 || strings.Count(out.String(), "mergeable: git merge-tree") != 1 {
+		t.Fatalf("a too-large PR was fetched further or merged: %v\n%s", g.hits, out.String())
 	}
 }

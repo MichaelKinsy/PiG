@@ -252,7 +252,9 @@ func TestFetchLimitsAndRenames(t *testing.T) {
 		commits, files int
 		limit          string
 	}{{250, 3000, ""}, {251, 1, "251 commits"}, {1, 3001, "3001 changed files"}} {
+		calls := 0
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			calls++
 			switch r.URL.Path {
 			case "/repos/o/r/pulls/1":
 				_ = json.NewEncoder(w).Encode(map[string]any{"number": 1, "mergeable": true, "commits": tc.commits, "changed_files": tc.files, "head": map[string]string{"sha": "h"}, "base": map[string]string{"sha": "b", "ref": "main"}})
@@ -271,6 +273,13 @@ func TestFetchLimitsAndRenames(t *testing.T) {
 		}
 		if (tc.limit == "" && d.Limit != "") || !strings.Contains(d.Limit, tc.limit) {
 			t.Errorf("%d commits, %d files: limit %q, want %q", tc.commits, tc.files, d.Limit, tc.limit)
+		}
+		if tc.limit != "" {
+			// Too large: it fails on its size, so nothing past the pull itself is fetched.
+			if calls != 1 {
+				t.Errorf("%d commits, %d files: %d call(s), want 1", tc.commits, tc.files, calls)
+			}
+			continue
 		}
 		if !strings.Contains(strings.Join(d.Relevant, " "), "workflows") {
 			t.Errorf("a workflow moved out of .github did not make the workflow checks relevant: %v", d.Relevant)

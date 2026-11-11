@@ -102,7 +102,7 @@ func runCommand(ctx context.Context, cfg config, args []string, stdout, stderr i
 	fs.IntVar(&o.jobs, "jobs", 4, "PRs checked at once")
 	fs.BoolVar(&o.dryRun, "dry-run", false, "set no status and post no comment")
 	fs.BoolVar(&o.forceScans, "force-scans", false, "run the scans even when a cheap check failed")
-	fs.IntVar(&o.budget, "budget", 20, "PRs a job fully checks before it leaves the rest to next jobs (see --next); reused PRs do not count; 0 is no limit")
+	fs.IntVar(&o.budget, "budget", 200, "PRs a job fully checks before it leaves the rest to next jobs (see --next); reused PRs do not count; 0 is no limit")
 	fs.DurationVar(&o.timeBudget, "time-budget", 0, "start no PR after this long; 0 is no limit")
 	fs.StringVar(&o.bot, "bot", defaultBot, "the account the pre-flight comments as; only its comment holds a PR's state")
 	handledPath := fs.String("handled", "", "write what the job did with each PR to this file, for the verify job")

@@ -64,7 +64,7 @@ func runPR(ctx context.Context, cfg config, env *ruleEnv, o runOptions, version 
 		return resultDeferred, head, nil
 	}
 	ws := workspace{dir: filepath.Join(o.work, strconv.Itoa(p.pr)), main: o.root, bin: o.bin, remote: o.gitBase, token: o.token}
-	if d.Pull.Mergeable == nil && d.Mode != modeReuse {
+	if d.Pull.Mergeable == nil && d.Mode != modeReuse && d.Limit == "" {
 		if m, err := mergeTree(ctx, ws, d); err != nil {
 			logf(log, "mergeable: git merge-tree could not tell: %v", err)
 		} else {

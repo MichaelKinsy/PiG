@@ -230,6 +230,12 @@ func fetch(ctx context.Context, cfg config, o fetchOptions, log io.Writer) (*dat
 	}
 	d.BaseTip = base
 	d.Mode, d.Reason = decideMode(o.previous, o.version, head, base, bodyHash(d.Pull.Body))
+	if d.Limit != "" && d.Mode != modeReuse {
+		// The PR fails on its size whatever its files say: nothing more is fetched, and it costs no budget.
+		logf(log, "pull #%d head %s: too large for the pre-flight (%s), nothing more fetched", o.pr, short(head), d.Limit)
+		logf(log, "mode %s: %s", d.Mode, d.Reason)
+		return d, nil
+	}
 	if d.Mode != modeReuse && o.admit != nil && !o.admit() {
 		d.Mode, d.Reason = modeDeferred, "the run's budget is spent; a next job takes it"
 		logf(log, "mode %s: %s", d.Mode, d.Reason)

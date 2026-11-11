@@ -5,8 +5,9 @@ name: Pre-flight
 # run`; what it checks is declared in automation/ci/preflight/config.yaml). It always runs main's code and
 # configuration, never a PR's: schedule and dispatch check out the default branch. Each PR gets a "preflight" commit
 # status and one comment, which also holds the PR's state for the next run; a PR whose head, main and description did
-# not change since its last run costs two API calls and is not written. The first job fully checks at most 20 PRs,
-# in number order; the PRs beyond go to next jobs, 20 each, at the same time. A PR failing its checks is normal and
+# not change since its last run costs two API calls and is not written. The first job fully checks at most 200 PRs,
+# in number order; the PRs beyond go to next jobs, 200 each, at the same time. (Measured on a runner: 40 PRs with
+# every scan took under two minutes; a job takes about 50 s to start, so a next job only pays off past a few hundred.) A PR failing its checks is normal and
 # keeps the run green. The verify job then checks that every PR of the run got its status and comment; when one did
 # not, the pre-flight itself fell short: it keeps one issue open that says which, and fails the run.
 on:
@@ -81,7 +82,7 @@ jobs:
           fi
           "$RUNNER_TEMP/preflight/preflight" run --repo "${REPO:-$GITHUB_REPOSITORY}" --root "$GITHUB_WORKSPACE" \
             --bin "$RUNNER_TEMP/preflight/bin" --work "$RUNNER_TEMP/preflight/work" \
-            --prs "${PRS:-}" --budget 20 --time-budget 25m --next "$RUNNER_TEMP/preflight/next.json" \
+            --prs "${PRS:-}" --budget 200 --time-budget 25m --next "$RUNNER_TEMP/preflight/next.json" \
             --handled "$RUNNER_TEMP/preflight/handled.json" "${extra[@]}"
           status=$?
           # The deferred PRs get their jobs also when some PR could not run.
@@ -98,7 +99,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 1
 
-  # The PRs the first job's budget left: 20 per job, at the same time.
+  # The PRs the first job's budget left: 200 per job, at the same time.
   more:
     name: Pre-flight (PRs ${{ matrix.prs }})
     needs: preflight
