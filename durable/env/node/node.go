@@ -361,6 +361,9 @@ func fileInfoFromStats(path string, stats fs.FileInfo) (durableenv.FileInfo, err
 	}, nil
 }
 
+// testHookBeforeListLstat runs before ListDir lstats an entry, so a test can remove the entry as another process would between readdir and lstat.
+var testHookBeforeListLstat func(entryPath string)
+
 // ListDir lists direct children in directory order without following
 // symlinks; unsupported file types are omitted.
 func (env *NodeExecutionEnv) ListDir(ctx context.Context, path string) ([]durableenv.FileInfo, error) {
@@ -378,8 +381,15 @@ func (env *NodeExecutionEnv) ListDir(ctx context.Context, path string) ([]durabl
 			return nil, err
 		}
 		entryPath := filepath.Join(resolved, name)
+		if testHookBeforeListLstat != nil {
+			testHookBeforeListLstat(entryPath)
+		}
 		stats, err := os.Lstat(entryPath)
 		if err != nil {
+			// Removed between enumeration and lstat: not part of the listing any more.
+			if errnoCode(err) == "ENOENT" {
+				continue
+			}
 			return nil, toFileError(err, fsCall{syscall: "lstat", path: entryPath})
 		}
 		if info, err := fileInfoFromStats(entryPath, stats); err == nil {

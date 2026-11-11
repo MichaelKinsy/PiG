@@ -370,11 +370,19 @@ func TestRemoteExecutionEnvAgainstNodeExecutionEnv(t *testing.T) {
 			mustDo(os.WriteFile(roots[1]+"/"+string(name), []byte("x"), 0o600))
 		}
 		ctx := context.Background()
-		// Node decodes the names with replacement characters and lstats them under that name, so listDir fails with
-		// ENOENT for them and a directory reader skips them. (The local NodeExecutionEnv of PiG lists the raw names, so
+		// Node decodes the names with replacement characters and lstats them under that name, which fails with ENOENT, so listDir (Pi
+		// 75ca6e7d0, #12055) and a directory reader both leave them out. (The local NodeExecutionEnv of PiG lists the raw names, so
 		// this case states Node's results instead of comparing with it.)
-		if _, err := remote.ListDir(ctx, "."); errorCodeOf(err) != "not_found" {
-			t.Fatalf("listDir code %s, want not_found", errorCodeOf(err))
+		entries, err := remote.ListDir(ctx, ".")
+		if err != nil {
+			t.Fatalf("listDir: %v", err)
+		}
+		var names []string
+		for _, entry := range entries {
+			names = append(names, entry.Name)
+		}
+		if want := []string{"b", "z", "é"}; !slices.Equal(names, want) {
+			t.Fatalf("listDir names %q, want %q", names, want)
 		}
 		reader := must(remote.OpenDirReader(ctx, "."))
 		defer func() { _ = reader.Close(ctx) }()
