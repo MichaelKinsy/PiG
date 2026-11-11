@@ -52297,6 +52297,30 @@
       ]
     },
     {
+      "id": "BF-e624350",
+      "title": "p2: a worker's first turn no longer starts without a tool that a plugin contributed just before it",
+      "symptom": "p2: a worker's first turn no longer starts without a tool that a plugin contributed just before it.",
+      "rootCause": "Subscribe now attaches Pi's synchronous observers (RegistryValueSource.Observe, native-source.ts observe), which record the composition and wake the listener inside the batch that composed, and refreshes once from the values read after they are attached (what composed since the registry was made).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "p2: a worker's first turn no longer starts without a tool that a plugin contributed just before it. The registry the worker hands to Durable recorded each composition of the extensions and their switches on a watch's delivery goroutine, after the batch that composed it and once the host's loop was free, so a turn that took its snapshot in between (under load, with code mode listing its tools) missed the agent tool or an MCP server's tools, or kept one that the `codemode` setting had just switched off. As in Pi, the batch that composed records the composition, through a synchronous observer.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e6243507db",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "apps/p2/runtime/durable_registry_test.go::TestDurableRegistrySnapshotLeavesOutAnExtensionAsSoonAsTheBatchThatSwitchedItOffNotifiedItsObservers",
+        "apps/p2/runtime/durable_registry_test.go::TestDurableRegistrySnapshotListsAContributionAsSoonAsTheBatchThatComposedItNotifiedItsObservers",
+        "apps/p2/runtime/durable_registry_test.go::TestDurableRegistrySnapshotListsAContributionMadeBeforeItWasSubscribedTo"
+      ]
+    },
+    {
       "id": "BF-e63c61c",
       "title": "fix(interactive): pump the owner loop while model selection awaits extensions (#208) (#209)",
       "symptom": "fix(interactive): pump the owner loop while model selection awaits extensions (#208) (#209)",

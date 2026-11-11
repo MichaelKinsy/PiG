@@ -10,7 +10,9 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/chord"
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
+	"github.com/MichaelKinsy/PiG/chord/next/state"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/harness"
 	"github.com/MichaelKinsy/PiG/durable/toolsearch"
@@ -235,9 +237,14 @@ type durableRegistry struct {
 
 	// composition is the registries' last composition seen: both values and the switched-off names. Snapshot reads it
 	// without the host's loop, which a section may hold while it waits for the scheduler's lock (Snapshot is called
-	// under that lock). A composition refreshes it, in the batch that composed: a Snapshot taken between a registry's change and
-	// its follower's refresh reads the composition before (the scheduler subscribes first, so a change wakes it after the refresh).
+	// under that lock). Pi reads the registries' values where it takes the snapshot (`extensions.value`), which is the
+	// composition of the last batch that composed: here that batch records it (Subscribe's observers run inside it), so a
+	// Snapshot taken after the batch, by anyone who saw its effect, reads the composition it made.
 	composition atomic.Pointer[composed]
+	// writing orders the writes of composition (an observer in its batch, a subscription's refresh) and counts the
+	// compositions observed: generation.
+	writing    sync.Mutex
+	generation uint64
 
 	mu        sync.Mutex
 	snapshots map[*KeyedTable[*P2Extension]]map[string]durable.RegistrySnapshot
@@ -253,15 +260,16 @@ type composed struct {
 // read is the registries' values now, a section of the host's loop.
 func (r *durableRegistry) read() *composed {
 	table, _ := r.extensions.Value().(*KeyedTable[*P2Extension])
-	off, _ := r.disabled()
+	off := disabledIn(r.switches.Value())
 	return &composed{table: table, off: off, key: strings.Join(off, "\n")}
 }
 
-func (r *durableRegistry) disabled() ([]string, error) {
-	table, ok := r.switches.Value().(*KeyedTable[*bool])
+// disabledIn is the names switched off in the switches' composition: sorted.
+func disabledIn(value any) []string {
+	table, ok := value.(*KeyedTable[*bool])
 	var off []string
 	if !ok {
-		return off, nil
+		return off
 	}
 	for _, name := range table.Keys() {
 		if on, _ := table.Get(name); on != nil && !*on {
@@ -269,7 +277,31 @@ func (r *durableRegistry) disabled() ([]string, error) {
 		}
 	}
 	sort.Strings(off)
-	return off, nil
+	return off
+}
+
+// observed records a composition of one registry, inside the batch that made it: update makes the composition from the
+// last one.
+func (r *durableRegistry) observed(update func(last *composed) *composed) {
+	r.writing.Lock()
+	defer r.writing.Unlock()
+	r.generation++
+	r.composition.Store(update(r.composition.Load()))
+}
+
+// refresh records the registries' values now, unless a composition was observed while it read them: that one is newer.
+// The values it reads are those of the last batch that composed before the read, so a composition after the read is
+// observed.
+func (r *durableRegistry) refresh() {
+	r.writing.Lock()
+	seen := r.generation
+	r.writing.Unlock()
+	now := r.read()
+	r.writing.Lock()
+	defer r.writing.Unlock()
+	if r.generation == seen {
+		r.composition.Store(now)
+	}
 }
 
 func (r *durableRegistry) Snapshot() durable.RegistrySnapshot {
@@ -318,16 +350,52 @@ func (r *durableRegistry) Snapshot() durable.RegistrySnapshot {
 	return snapshot
 }
 
-// Subscribe calls listener at each composition of either registry (a failed composition keeps the last snapshot: nothing to
-// reconsider).
+// Subscribe calls listener at each composition of either registry, inside the batch that composed (a failed composition
+// keeps the last snapshot: nothing to reconsider), after the Snapshot reads it. As Pi's observe, it starts at the value
+// the registries have and calls for later compositions only. It panics with the error Observe returns, where Pi's observe
+// throws: a value with no composition to start at.
 func (r *durableRegistry) Subscribe(listener func()) func() {
-	stops := []func(){
-		Follow[any](chord.NativeWatchable[any](r.extensions), func(any) { r.composition.Store(r.read()); listener() }),
-		Follow[any](chord.NativeWatchable[any](r.switches), func(any) { r.composition.Store(r.read()); listener() }),
+	ctx := chordctx.Background()
+	extensions, err := r.extensions.Observe(&compositionObserver{record: func(value any) {
+		table, _ := value.(*KeyedTable[*P2Extension])
+		r.observed(func(last *composed) *composed { return &composed{table: table, off: last.off, key: last.key} })
+	}, wake: listener}, ctx)
+	if err != nil {
+		panic(err)
 	}
+	switches, err := r.switches.Observe(&compositionObserver{record: func(value any) {
+		off := disabledIn(value)
+		r.observed(func(last *composed) *composed {
+			return &composed{table: last.table, off: off, key: strings.Join(off, "\n")}
+		})
+	}, wake: listener}, ctx)
+	if err != nil {
+		extensions.Detach()
+		panic(err)
+	}
+	// What composed since the registry was made, before the observers were attached.
+	r.refresh()
 	return func() {
-		for _, stop := range stops {
-			stop()
-		}
+		extensions.Detach()
+		switches.Detach()
 	}
 }
+
+// compositionObserver records each composed value of a registry and wakes its listener. It is used as a pointer: the source
+// finds an observer to detach by comparing interfaces, which panics on a struct holding a func.
+type compositionObserver struct {
+	record func(value any)
+	wake   func()
+}
+
+func (observer *compositionObserver) Advance(call chord.NativeWatchCall[any], _ context.Context) {
+	if call.Kind != chord.WatchCallValue {
+		return
+	}
+	observer.record(call.Value)
+	observer.wake()
+}
+
+func (*compositionObserver) End(chord.WatchEnd) {}
+
+var _ state.NativeObserver[any] = (*compositionObserver)(nil)
