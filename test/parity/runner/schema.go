@@ -275,7 +275,7 @@ type AssertSpec struct {
 	// NoFramesAfterReply requires, for every run of both binaries, that no frame begins after the last occurrence of a final_frame text in the raw
 	// transcript: the frame that carries the end of a reply ends the stream (Pi's agent_end requests one frame; agent_settled requests none).
 	NoFramesAfterReply bool `toml:"no_frames_after_reply"`
-	Runs             int  `toml:"runs"`
+	Runs               int  `toml:"runs"`
 
 	// ChangelogHeadersComplete compares all rendered release headers with each binary's own document, in reverse source order (D22).
 	ChangelogHeadersComplete bool `toml:"changelog_headers_complete"`

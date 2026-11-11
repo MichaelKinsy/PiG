@@ -2232,7 +2232,8 @@ fn main() {
     // event_session_actions_on keeps the handler's context; event_session_actions_stored calls the actions through it after the handler's request ended.
     let kept_event_ctx: Arc<Mutex<Option<pig_sdk::Context>>> = Arc::new(Mutex::new(None));
     let report_session_actions = |ctx: &pig_sdk::Context| {
-        let describe = |name: &str, result: std::io::Result<Option<serde_json::Value>>| match result {
+        let describe = |name: &str, result: std::io::Result<Option<serde_json::Value>>| match result
+        {
             Ok(_) => format!("{name}=allowed"),
             Err(err) if err.to_string().contains("is not a function") => {
                 format!("{name}=rejected")
@@ -2242,8 +2243,14 @@ fn main() {
         [
             describe("new", ctx.new_session(serde_json::json!({}))),
             describe("fork", ctx.fork("entry", serde_json::json!({}))),
-            describe("navigate", ctx.navigate_tree("entry", serde_json::json!({}))),
-            describe("switch", ctx.switch_session("/s.jsonl", serde_json::json!({}))),
+            describe(
+                "navigate",
+                ctx.navigate_tree("entry", serde_json::json!({})),
+            ),
+            describe(
+                "switch",
+                ctx.switch_session("/s.jsonl", serde_json::json!({})),
+            ),
             describe("reload", ctx.reload().map(|()| None)),
         ]
         .join(",")
@@ -2277,8 +2284,15 @@ fn main() {
         "event_session_actions_stored",
         "Call the session actions through the context an event handler kept",
         move |ctx, _| {
-            let kept = kept_event_ctx.lock().unwrap().clone().expect("no event context was kept");
-            ctx.notify(&format!("stored_actions:{}", report_session_actions(&kept)), "info");
+            let kept = kept_event_ctx
+                .lock()
+                .unwrap()
+                .clone()
+                .expect("no event context was kept");
+            ctx.notify(
+                &format!("stored_actions:{}", report_session_actions(&kept)),
+                "info",
+            );
             CommandResult::Ok
         },
     );

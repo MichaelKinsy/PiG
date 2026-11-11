@@ -177,7 +177,7 @@ node "$root/automation/gen/vendor-pi-session-seams.mjs" "$agent" "$dist/pi-codin
 node "$root/automation/gen/vendor-pi-startup-seams.mjs" "$dist/pi-coding-agent"
 # PiG's product identity for Pi's outbound identity literals and hosted endpoints (D26); the same values the Go host sends.
 node "$root/automation/gen/pi-identity-patches.mjs" "$dist"
-# Post-v1.5.2 Pi fixes the 0.8.0 list carries (llama.cpp port, Kitty redraw, Markdown image breaks, find ./, OSC 8 export, restored MCP tools); each entry fails the run when Pi's source changed under it.
+# Post-release Pi fixes the recorded backport list carries (llama.cpp port, Kitty redraw, Markdown image breaks, find ./, OSC 8 export, restored MCP tools); each entry fails the run when Pi's source changed under it.
 node "$root/automation/gen/pi-post-release-backports.mjs" "$dist"
 rm -rf "$shims/cross-spawn"
 node "$root/automation/gen/vendor-node-dependencies.mjs" "$agent/node_modules/cross-spawn/package.json" "$shims/cross-spawn"
