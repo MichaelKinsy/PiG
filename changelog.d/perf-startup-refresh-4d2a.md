@@ -1,0 +1,3 @@
+### Changed
+
+- Startup refreshes the built-in provider catalogs with fewer allocations: one file-read snapshot lookup and one value-only parent context per refresh instead of one per credential and models-store read of each of the 168 providers, one job object per provider instead of five closures, and no per-signal method value or publication closure. RPC start (`process.rpc_startup`) falls from 13,416 to 12,460 allocations and 1.81 MB to 1.77 MB; print mode (`process.print`) from 15,527 to 14,732 allocations and 2.12 MB to 2.10 MB (go1.27.4, GOMAXPROCS=1, test/perfgate). The ceilings move down to 13,000 / 1.85 MB and 15,300 / 2.2 MB. Output and behavior are unchanged.

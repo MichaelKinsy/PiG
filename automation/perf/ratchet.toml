@@ -145,8 +145,8 @@
 "extension.dispatch.host_wakes" = 2.5
 
 # process: whole-process counts from PIG_PROFILE=metrics under GOMAXPROCS=1 (test/perfgate). Allocation counts vary a few percent with goroutine interleaving; the ceilings carry that margin.
-"process.print.allocs" = 17000
-"process.print.bytes" = 2280000
+"process.print.allocs" = 15300
+"process.print.bytes" = 2200000
 "process.print.gc_cycles" = 2
 "process.print.heap_live_bytes" = 1100000
 "process.print.max_rss_bytes" = 50000000
@@ -154,8 +154,8 @@
 "process.print.fds_left_open" = 2
 "process.print.children_at_exit" = 0
 "process.print.temp_entries_at_exit" = 0
-"process.rpc_startup.allocs" = 14700
-"process.rpc_startup.bytes" = 1960000
+"process.rpc_startup.allocs" = 13000
+"process.rpc_startup.bytes" = 1850000
 "process.rpc_startup.children_at_exit" = 0
 "process.rpc_startup.temp_entries_at_exit" = 0
 "process.rpc_turn.allocs" = 3150

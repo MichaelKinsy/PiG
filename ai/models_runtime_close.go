@@ -15,14 +15,14 @@ func (m *Models) Close() {
 }
 
 // beginProviderRefresh rejects a stale provider snapshot before allocating a new generation.
-func (m *Models) beginProviderRefresh(ctx context.Context, provider *ModelsProvider) (uint64, *modelsRefreshSignal) {
+func (m *Models) beginProviderRefresh(ctx, values context.Context, snapshot *fileReadSnapshot, provider *ModelsProvider) (uint64, *modelsRefreshSignal) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.providers[provider.ID] != provider {
 		return 0, nil
 	}
 	generation := m.supersedeProviderRefreshLocked(provider.ID)
-	signal := newModelsRefreshSignal(ctx)
+	signal := newModelsRefreshSignal(ctx, values, snapshot)
 	m.refreshControllers[provider.ID] = signal
 	return generation, signal
 }

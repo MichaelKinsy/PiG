@@ -15,6 +15,9 @@ type modelsRefreshSignal struct {
 	context.Context
 	cancel context.CancelCauseFunc
 	parent context.Context
+	// snapshot is the file-read snapshot parent carries, looked up once per Refresh: a Value call down the chain of WithoutCancel wrappers
+	// a signal sits on allocates one wrapper copy per layer, and every credential and models-store read of the refresh asks for it.
+	snapshot *fileReadSnapshot
 }
 
 func (signal *modelsRefreshSignal) syncParent() {
@@ -29,14 +32,22 @@ func (signal *modelsRefreshSignal) Done() <-chan struct{} {
 }
 func (signal *modelsRefreshSignal) Value(key any) any {
 	signal.syncParent()
+	if key == (fileReadSnapshotKey{}) {
+		if signal.snapshot == nil {
+			return nil
+		}
+		return signal.snapshot
+	}
 	return signal.Context.Value(key)
 }
 
 func (signal *modelsRefreshSignal) Deadline() (time.Time, bool) { return signal.parent.Deadline() }
 
-func newModelsRefreshSignal(parent context.Context) *modelsRefreshSignal {
-	ctx, cancel := context.WithCancelCause(context.WithoutCancel(parent))
-	signal := &modelsRefreshSignal{Context: ctx, cancel: cancel, parent: parent}
+// newModelsRefreshSignal derives a signal from parent. values is context.WithoutCancel(parent), shared by every signal of one Refresh, and
+// snapshot is parent's file-read snapshot (nil when it carries none).
+func newModelsRefreshSignal(parent, values context.Context, snapshot *fileReadSnapshot) *modelsRefreshSignal {
+	ctx, cancel := context.WithCancelCause(values)
+	signal := &modelsRefreshSignal{Context: ctx, cancel: cancel, parent: parent, snapshot: snapshot}
 	if parent.Err() != nil {
 		cancel(context.Cause(parent))
 		return signal
@@ -51,12 +62,13 @@ func newModelsRefreshSignal(parent context.Context) *modelsRefreshSignal {
 		forwarder = &refreshForwarder{done: done, signals: map[uint64]weak.Pointer[modelsRefreshSignal]{}}
 		refreshForwarders.byDone[done] = forwarder
 		forwarder.stop = context.AfterFunc(parent, forwarder.fire)
+		forwarder.releaseFn = forwarder.release // one method value per forwarder, not one per signal
 	}
 	forwarder.next++
 	id := forwarder.next
 	forwarder.signals[id] = weak.Make(signal)
 	refreshForwarders.Unlock()
-	runtime.AddCleanup(signal, forwarder.release, id)
+	runtime.AddCleanup(signal, forwarder.releaseFn, id)
 	return signal
 }
 
@@ -68,10 +80,11 @@ var refreshForwarders = struct {
 
 // refreshForwarder lives while its caller is not cancelled and a signal it forwards to is reachable. Its fields are guarded by refreshForwarders.
 type refreshForwarder struct {
-	done    <-chan struct{}
-	stop    func() bool
-	next    uint64
-	signals map[uint64]weak.Pointer[modelsRefreshSignal] // nil once fired
+	done      <-chan struct{}
+	stop      func() bool
+	releaseFn func(uint64)
+	next      uint64
+	signals   map[uint64]weak.Pointer[modelsRefreshSignal] // nil once fired
 }
 
 func (forwarder *refreshForwarder) fire() {
