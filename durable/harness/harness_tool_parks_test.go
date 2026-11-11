@@ -52,6 +52,9 @@ func tpOpen(t *testing.T, setup *chatState, store ...durable.Storage) (Harness, 
 	}
 	harness, root := openChat(t, chosen, setup)
 	harness.Resume()
+	// A test that fails before its own close leaves the Harness and its parked tools running for the rest of the package;
+	// Close is idempotent, so the close a test makes itself comes first.
+	t.Cleanup(func() { _ = harness.Close(testContext) })
 	return harness, root
 }
 
@@ -1016,4 +1019,22 @@ func TestToolParksWrappers(t *testing.T) {
 		}
 		mustClose(t, harness)
 	})
+}
+
+// tpOpen closes its Harness when the test ends, so a test that fails before its own close leaves no Harness, run, or parked
+// tool alive for the rest of the package.
+func TestTpOpenClosesItsHarnessWhenTheTestEnds(t *testing.T) {
+	var opened Harness
+	t.Run("ends with a run in flight and no close", func(t *testing.T) {
+		setup := chatSetup(t)
+		answer := unanswered()
+		setup.Faux.SetResponses([]ai.FauxResponseStep{answer.step})
+		harness, root := tpOpen(t, setup)
+		opened = harness
+		ownSubmit(t, root, ownInput("go"))
+		waitFor(t, func() bool { return closedChannel(answer.reached) })
+	})
+	if err := opened.(*harnessImpl).checkOpen(); err == nil {
+		t.Fatal("the Harness of a finished test is still open")
+	}
 }

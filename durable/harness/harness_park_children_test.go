@@ -142,6 +142,11 @@ func TestParkChildrenNestedCallsWithoutWaiting(t *testing.T) {
 		parked := tcParkedNested(t, harness, 2)
 		tpIdle(t, harness)
 		tpSignal(t, harness, parked["c1/b"], "done", "bee")
+		// Pi's single thread runs b's wake before the next line. Go runs the two research tasks and the parent on goroutines of
+		// their own, and the parent's slot shows waiting from its first park until the wake run starts, so the status alone
+		// holds at once and lets a's signal overtake b's wake: the runs then report a's end first, or both ends in one wake.
+		// Wait for the wake run, then for the park after it.
+		waitFor(t, func() bool { return len(wakes.all()) == 2 })
 		waitFor(t, func() bool {
 			slot := tpSlot(t, harness)
 			return slot != nil && slot.Status == ToolSlotWaiting
