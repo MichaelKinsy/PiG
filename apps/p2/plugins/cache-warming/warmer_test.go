@@ -292,16 +292,115 @@ func TestTheNextResponseReplacesTheRunCloseStopsIt(t *testing.T) {
 	})
 }
 
-// Pi arms its timer with setTimeout, which fires a delay beyond 2^31-1 ms after a millisecond (Node's TimeoutOverflowWarning):
-// a models.json promptCache lifetime of more than 27 days refreshes at once.
-func TestALifetimeBeyondSetTimeoutsRangeRefreshesAfterAMillisecond(t *testing.T) {
+// clampMs is Node's setTimeout maximum, 2^31-1 ms: the longest delay the warmers arm a refresh with.
+const clampMs = 2147483647
+
+// longLifetime is a run whose models.json promptCache lifetime (3,000,000 s, about 34.7 days) makes pi-ai's refresh delay
+// (90% of it) longer than setTimeout takes.
+func longLifetime(t *testing.T) *rig {
+	t.Helper()
+	h := setup(t, ModeIdle)
+	h.request.Model.PromptCache = ai.ModelPromptCache{"short": 3_000_000}
+	h.start(600_000, ai.StopReasonToolUse, nil)
+	if alive, _ := h.host.state(); alive != 1 {
+		t.Fatalf("alive = %d, want 1: the long lifetime started no run", alive)
+	}
+	return h
+}
+
+// Pi arms its timer with setTimeout, which turns a delay beyond 2^31-1 ms into 1 ms (Node's TimeoutOverflowWarning) and so
+// sends paid refreshes back to back (D612). The warmers clamp the delay: no refresh before the clamp expires, and none after
+// it either, as the hour's window has closed by then.
+func TestALifetimeBeyondSetTimeoutsRangeSendsNoRefreshAndStopsAtTheClamp(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		h := setup(t, ModeIdle)
-		h.request.Model.PromptCache = ai.ModelPromptCache{"short": 3_000_000}
-		h.start(600_000, ai.StopReasonToolUse, nil)
-		advance(2 * time.Millisecond)
-		if h.models.refreshes() == 0 {
-			t.Fatal("no refresh after a millisecond")
+		h := longLifetime(t)
+		advance(time.Second)
+		if h.models.refreshes() != 0 {
+			t.Fatalf("refreshes after 1 s = %d, want 0", h.models.refreshes())
+		}
+		advance(clampMs*time.Millisecond - time.Second - time.Millisecond)
+		if h.models.refreshes() != 0 {
+			t.Fatalf("refreshes before the clamp expires = %d, want 0", h.models.refreshes())
+		}
+		if alive, _ := h.host.state(); alive != 1 {
+			t.Fatalf("alive before the clamp expires = %d, want 1", alive)
+		}
+		advance(time.Millisecond)
+		if h.models.refreshes() != 0 {
+			t.Fatalf("refreshes at the clamp = %d, want 0 (the run is past its age cap)", h.models.refreshes())
+		}
+		if alive, _ := h.host.state(); alive != 0 {
+			t.Fatalf("alive after the clamp = %d, want 0", alive)
+		}
+		advance(clampMs * time.Millisecond)
+		if h.models.refreshes() != 0 {
+			t.Fatalf("refreshes after the run stopped = %d, want 0", h.models.refreshes())
+		}
+	})
+}
+
+// The clamp touches only a delay beyond 2^31-1 ms: every delay at or below it fires at that delay, as Pi's setTimeout does
+// (Node 24: 2147483646 and 2147483647 stay, 2147483648 becomes 1 ms), and a longer one fires at the clamp, not after 1 ms. A
+// refresh the host calls pointless stops the run when the timer fires, which is how this sees the firing.
+func TestTheClampLeavesEveryDelayAtOrBelowSetTimeoutsMaximumAlone(t *testing.T) {
+	for _, delayMs := range []float64{300_000, 2147483646, 2147483647, 2147483648, 3e12} {
+		want := time.Duration(min(delayMs, clampMs)) * time.Millisecond
+		synctest.Test(t, func(t *testing.T) {
+			h := setup(t, ModeIdle)
+			h.host.phase = nil
+			ctx, cancel := context.WithCancel(context.Background())
+			started := &run{request: h.request, models: h.models, delayMs: delayMs, startedAt: time.Now().UnixMilli(), ctx: ctx, cancel: cancel}
+			h.warmers.mu.Lock()
+			h.warmers.runs[conversation] = started
+			h.warmers.host.KeepAlive(1)
+			h.warmers.armLocked(conversation, started)
+			h.warmers.mu.Unlock()
+			advance(want - time.Millisecond)
+			if alive, _ := h.host.state(); alive != 1 {
+				t.Fatalf("delay %v ms: the timer fired before %v", delayMs, want)
+			}
+			advance(time.Millisecond)
+			if alive, _ := h.host.state(); alive != 0 {
+				t.Fatalf("delay %v ms: the timer did not fire at %v", delayMs, want)
+			}
+		})
+	}
+}
+
+func TestALifetimeBeyondSetTimeoutsRangeStopEndsTheRun(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := longLifetime(t)
+		advance(time.Second)
+		if h.models.refreshes() != 0 {
+			t.Fatalf("refreshes after 1 s = %d, want 0", h.models.refreshes())
+		}
+		advance(24*24*time.Hour - time.Second)
+		h.warmers.Stop(conversation)
+		if alive, _ := h.host.state(); alive != 0 {
+			t.Fatalf("alive after Stop = %d, want 0", alive)
+		}
+		advance(clampMs * time.Millisecond)
+		if h.models.refreshes() != 0 {
+			t.Fatalf("refreshes after Stop = %d, want 0", h.models.refreshes())
+		}
+	})
+}
+
+func TestALifetimeBeyondSetTimeoutsRangeCloseEndsTheRun(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := longLifetime(t)
+		advance(time.Second)
+		if h.models.refreshes() != 0 {
+			t.Fatalf("refreshes after 1 s = %d, want 0", h.models.refreshes())
+		}
+		advance(24*24*time.Hour - time.Second)
+		h.warmers.Close()
+		if alive, _ := h.host.state(); alive != 0 {
+			t.Fatalf("alive after Close = %d, want 0", alive)
+		}
+		advance(clampMs * time.Millisecond)
+		if h.models.refreshes() != 0 {
+			t.Fatalf("refreshes after Close = %d, want 0", h.models.refreshes())
 		}
 	})
 }

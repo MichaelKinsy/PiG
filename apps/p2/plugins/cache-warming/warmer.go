@@ -112,16 +112,18 @@ func (w *ConversationWarmers) Start(conversationID durable.ConversationId, messa
 	w.armLocked(conversationID, started)
 }
 
-// maxTimeoutMs is the longest delay Node's setTimeout takes: a longer one fires after a millisecond (with a warning).
+// maxTimeoutMs is the longest delay Node's setTimeout takes: Pi turns a longer one into a millisecond (with a warning).
 const maxTimeoutMs = 2147483647
 
-// armLocked schedules started's next refresh, with setTimeout's delay: a lifetime (models.json promptCache) beyond 2^31-1 ms
-// arms a refresh after a millisecond, as Pi's does.
+// armLocked schedules started's next refresh. A lifetime (models.json promptCache) whose refresh delay is beyond 2^31-1 ms
+// arms the timer for 2^31-1 ms: it fires past the hour's window, wanted says no, and the run stops without a request.
 func (w *ConversationWarmers) armLocked(conversationID durable.ConversationId, started *run) {
-	delay := time.Duration(started.delayMs * float64(time.Millisecond))
-	if started.delayMs > maxTimeoutMs {
-		delay = time.Millisecond
+	delayMs := started.delayMs
+	// pig divergence (D612): clamp the arm delay to 2^31-1 ms; Pi's setTimeout turns a longer delay into 1 ms.
+	if delayMs > maxTimeoutMs {
+		delayMs = maxTimeoutMs
 	}
+	delay := time.Duration(delayMs * float64(time.Millisecond))
 	timer := time.AfterFunc(delay, func() {
 		w.mu.Lock()
 		if w.closed || w.runs[conversationID] != started {
