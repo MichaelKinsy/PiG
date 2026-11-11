@@ -407,8 +407,8 @@ func (tag localeTag) sortedExtensions() localeTag {
 		}
 		if len(extension) > 2 {
 			merged[extension[:1]] = append(merged[extension[:1]], strings.Split(extension[2:], "-")...)
-		} else {
-			merged[extension[:1]] = merged[extension[:1]]
+		} else if _, present := merged[extension[:1]]; !present {
+			merged[extension[:1]] = nil
 		}
 	}
 	keys := make([]string, 0, len(merged))
