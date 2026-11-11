@@ -380,6 +380,7 @@ gates = [
   { test = "coding/extension/host/subprocess:TestToolCallSubprocessHandlersShareTheEventEncodingUntilAnInputEdit" },
   { test = "coding/extension/host/subprocess:TestKeptProjectionEncodesAsTheWholePreview" },
   { test = "coding:TestBoundaryPreviewHandsGoHandlersCopiesOfTheSessionsMessages" },
+  { test = "internal/boundarywire:TestJoinedSharesTheEncodingOfTheSameParts" },
 ]
 
 [[metric]]
@@ -430,7 +431,29 @@ gates = [
   { ratchet = "extension.dispatch.host_wakes" },
   { test = "coding/extension/host/subprocess:TestNodeProviderSocketFrameCopyIsLinear" },
   { test = "coding/extension/host/subprocess:TestFrameBufferReuseKeepsLengthAndSkipsOversizedFrames" },
+  { test = "coding/extension/host/subprocess:TestParseResponseFrameAgreesWithTheFullDecode" },
+  { test = "coding/extension/host/subprocess:TestRequestIDsAreUniqueAcrossChunks" },
+  { test = "coding/extension/host/subprocess:TestResponseChannelsNeverCrossRequests" },
   { missing = "crossings per agent turn per loaded extension (frames each way) in isolated and packed cells", route = "go-native-perf" },
+]
+
+[[metric]]
+id = "extension.message_update"
+area = "extensions"
+title = "One streamed message_update dispatched to a subscribing TypeScript extension, host side, per update and subscriber (an RPC turn over a 24-delta faux stream with 1 and 4 subscribers, less the same turn with agent_end subscribers)"
+impact = 5
+owner = "go-native-perf"
+target = "under 50 allocations and 4 KB per update and subscriber at four subscribers"
+basis = "Pi hands every handler the same objects, so a host that encodes an unchanged payload once and pushes only changed state pays, per subscriber, one small frame and its reply: the state the extension already holds is not read, encoded and compared again before each of 2,000 deltas."
+gates = [
+  { ratchet = "process.rpc_message_update_ext1.allocs" },
+  { ratchet = "process.rpc_message_update_ext1.bytes" },
+  { ratchet = "process.rpc_message_update_ext4.allocs" },
+  { ratchet = "process.rpc_message_update_ext4.bytes" },
+  { test = "coding:TestRunSystemPromptFollowsEveryInput" },
+  { test = "coding:TestRunSystemPromptIsNotRebuiltForUnchangedInputs" },
+  { test = "coding:TestSystemPromptOptionsKeyTracksTheBaseOptions" },
+  { test = "coding/extension/host/subprocess:TestSnapshotEncodesSystemPromptOptionsOncePerKey" },
 ]
 
 # ---------------------------------------------------------------- sessions

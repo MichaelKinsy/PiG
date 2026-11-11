@@ -2,7 +2,6 @@ package subprocess
 
 import (
 	"context"
-	"slices"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
@@ -80,14 +79,19 @@ type boundaryTailWire struct {
 	CanContinue     bool                     `json:"canContinue"`
 }
 
-func (w boundaryContextWire) MarshalJSON() ([]byte, error) { return w.appendJSON(nil) }
+func (w boundaryContextWire) MarshalJSON() ([]byte, error) {
+	projected, tail, err := w.encodedHalves()
+	if err != nil {
+		return nil, err
+	}
+	return joinContextHalves(make([]byte, 0, len(projected)+len(tail)), projected, tail), nil
+}
 
-// appendJSON appends the preview's encoding to dst.
-func (w boundaryContextWire) appendJSON(dst []byte) ([]byte, error) {
+// encodedHalves returns the encoding of the preview's projected part, shared by the dispatch's handlers, and of the rest of the preview, which is encoded for every handler.
+func (w boundaryContextWire) encodedHalves() (projected, tail []byte, err error) {
 	projected, ok := w.cache.Encoded(w.preview)
 	if !ok {
 		var encoded []byte
-		var err error
 		if encodings, sources, kept := w.cache.Kept(w.preview); kept {
 			encoded, err = encodeKeptProjection(encodings, sources, w.preview)
 		} else if sources, recorded := w.cache.Sources(w.preview); recorded {
@@ -100,20 +104,20 @@ func (w boundaryContextWire) appendJSON(dst []byte) ([]byte, error) {
 			encoded, err = json.Marshal(boundaryProjectedWire[extension.ProjectedSessionEntry]{w.preview.ContextEntries, w.preview.ContextMessages, w.preview.LLMMessages})
 		}
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		projected = encoded
 		w.cache.Store(w.preview, projected)
 	}
-	tail, err := json.Marshal(boundaryTailWire{w.preview.PendingMessages, w.preview.CanContinue})
-	if err != nil {
-		return nil, err
-	}
-	// Both halves are objects: join {projected...} and {tail...} into one.
-	dst = slices.Grow(dst, len(projected)+len(tail))
+	tail, err = json.Marshal(boundaryTailWire{w.preview.PendingMessages, w.preview.CanContinue})
+	return projected, tail, err
+}
+
+// joinContextHalves appends the two objects' members as one object: {projected...} and {tail...} join into {projected...,tail...}.
+func joinContextHalves(dst, projected, tail []byte) []byte {
 	dst = append(dst, projected[:len(projected)-1]...)
 	dst = append(dst, ',')
-	return append(dst, tail[1:]...), nil
+	return append(dst, tail[1:]...)
 }
 
 // marshalEventWire returns json.Marshal(wire). A boundary event's context, the part that grows with the session, is appended as it is encoded instead of passing through the encoder again: it is json.Marshal output already, compact and escaped, so the encoder's compaction of a Marshaler's output would copy it unchanged.
@@ -154,13 +158,23 @@ func marshalEventWire(wire any) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	// {head..., "context": context}
-	out := headJSON[:len(headJSON)-1]
-	out = append(out, `,"context":`...)
-	if out, err = context.appendJSON(out); err != nil {
+	projected, tail, err := context.encodedHalves()
+	if err != nil {
 		return nil, err
 	}
-	return append(out, '}'), nil
+	// The handlers of one dispatch that are handed the same members share one encoding of the event: it is a function of the three parts.
+	if out, ok := context.cache.Joined(headJSON, projected, tail); ok {
+		return out, nil
+	}
+	// {head..., "context": context}
+	const contextMember = `,"context":`
+	out := make([]byte, 0, len(headJSON)-1+len(contextMember)+len(projected)+len(tail)+1)
+	out = append(out, headJSON[:len(headJSON)-1]...)
+	out = append(out, contextMember...)
+	out = joinContextHalves(out, projected, tail)
+	out = append(out, '}')
+	context.cache.StoreJoined(headJSON, projected, tail, out)
+	return out, nil
 }
 
 // encodeKeptProjection encodes the projected part of preview as json.Marshal encodes boundaryProjectedWire[projectedEntryWire], from the encodings of its messages and records kept from the session's previous dispatch: only what is new to the history is encoded.

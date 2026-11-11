@@ -42,6 +42,12 @@ type UIBridge struct {
 		version uint64
 		encoded json.RawMessage
 	}
+	// optionsCache memoizes the encoded system prompt options for the identity GetSystemPromptOptionsKey last reported.
+	optionsCache struct {
+		key     any
+		encoded json.RawMessage
+		valid   bool
+	}
 	// modelCache memoizes the active model's encoded metadata for the model identity GetModelKey last reported.
 	modelCache struct {
 		key     any
@@ -339,6 +345,9 @@ type HostCallbacks struct {
 	// build the system prompt. Backs ctx.getSystemPromptOptions().
 	// upstream: runner.ts:653 (createCommandContext getSystemPromptOptions)
 	GetSystemPromptOptions func() extension.BuildSystemPromptOptions
+
+	// GetSystemPromptOptionsKey returns the identity of the options GetSystemPromptOptions returns: they are a pure function of an options object the host replaces when they change and never writes after, so a state push encodes them again only when the key changes. Nil means every push encodes them.
+	GetSystemPromptOptionsKey func() any
 
 	// GetModelInfo returns the active model's object (extension.ModelObject), or nil without a model.
 	// upstream: runner.ts:609 (model getter on ExtensionContext)
@@ -691,11 +700,43 @@ func (b *UIBridge) Snapshot(flagNames []string, cursor int, wantSessionLog bool)
 	// ExtensionCommandContext.getSystemPromptOptions (types.ts:355) is
 	// synchronous upstream, so the Node runtime answers it from state.
 	if actions.GetSystemPromptOptions != nil {
-		if encoded, err := json.Marshal(actions.GetSystemPromptOptions()); err == nil {
+		if encoded, ok := b.systemPromptOptionsWire(actions); ok {
 			state.SystemPromptOptions = encoded
 		}
 	}
 	return state
+}
+
+// systemPromptOptionsWire is the encoded system prompt options for a state push, made once for an options object when the host names its identity and it has not changed since the last push.
+func (b *UIBridge) systemPromptOptionsWire(actions *HostCallbacks) (json.RawMessage, bool) {
+	if actions.GetSystemPromptOptionsKey == nil {
+		encoded, err := json.Marshal(actions.GetSystemPromptOptions())
+		return encoded, err == nil
+	}
+	key := actions.GetSystemPromptOptionsKey()
+	if key == nil {
+		encoded, err := json.Marshal(actions.GetSystemPromptOptions())
+		return encoded, err == nil
+	}
+	b.mu.Lock()
+	if b.optionsCache.valid && b.optionsCache.key == key {
+		encoded := b.optionsCache.encoded
+		b.mu.Unlock()
+		return encoded, true
+	}
+	b.mu.Unlock()
+	encoded, err := json.Marshal(actions.GetSystemPromptOptions())
+	if err != nil {
+		return nil, false
+	}
+	// The Session can replace its options between the two reads; an encoding is kept only for a key that held across them.
+	if actions.GetSystemPromptOptionsKey() != key {
+		return encoded, true
+	}
+	b.mu.Lock()
+	b.optionsCache.key, b.optionsCache.encoded, b.optionsCache.valid = key, encoded, true
+	b.mu.Unlock()
+	return encoded, true
 }
 
 // messageEntries returns the message entries persisted since cursor and the cursor after them.
@@ -1206,6 +1247,10 @@ func (b *UIBridge) SetHostAction(key string, fn any) {
 		b.actions.GetSystemPrompt = fn.(func() string)
 	case "getSystemPromptOptions":
 		b.actions.GetSystemPromptOptions = fn.(func() extension.BuildSystemPromptOptions)
+		b.optionsCache.valid = false
+	case "getSystemPromptOptionsKey":
+		b.actions.GetSystemPromptOptionsKey = fn.(func() any)
+		b.optionsCache.valid = false
 	case "exec":
 		switch f := fn.(type) {
 		case func(context.Context, string, []string, *extension.ExecOptions) (extension.ExecResult, error):

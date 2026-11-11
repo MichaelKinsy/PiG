@@ -277,6 +277,13 @@ func BindSessionExtensionActions(runner *inproc.Runner, bridge *subprocess.UIBri
 	bridge.SetHostAction("getSystemPromptOptions", func() extension.BuildSystemPromptOptions {
 		return *sessionContext.GetSystemPromptOptions()
 	})
+	// The base options are replaced whenever what they derive from changes, and the generation names each replacement.
+	bridge.SetHostAction("getSystemPromptOptionsKey", func() any {
+		if sess := current(); sess != nil {
+			return systemPromptOptionsKey{session: sess, generation: sess.systemPromptOptionsGen.Load()}
+		}
+		return nil
+	})
 	// Pi binds setModel, setThinkingLevel, isProjectTrusted and compact to the Session in every mode (agent-session.ts:3343-3349, 3355, 3369-3379 _bindExtensionCore).
 	bridge.SetHostAction("setModel", func(ctx context.Context, spec string) (bool, error) {
 		extension.CallInitiated(ctx)

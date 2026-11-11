@@ -8,6 +8,7 @@
 package boundarywire
 
 import (
+	"bytes"
 	"context"
 	"reflect"
 	"sync"
@@ -67,6 +68,13 @@ type Cache struct {
 	shared    bool
 	// encodings, when set, keeps the encodings of the session's messages from one dispatch to the next.
 	encodings *Encodings
+	// joined is the encoding of the whole event last made from the parts head, projected and tail.
+	joined joinedEvent
+}
+
+// joinedEvent is an event's encoding with the parts it was made from.
+type joinedEvent struct {
+	head, projected, tail, out []byte
 }
 
 type cacheContextKey struct{}
@@ -239,4 +247,28 @@ func (c *Cache) Store(preview extension.BoundaryContextPreview, wire []byte) {
 		return
 	}
 	c.wire, c.wireKey, c.hasWire = wire, c.key, true
+}
+
+// Joined returns the encoding of the event stored for the same head, projected part and tail: the same bytes for head and tail, and the projected part this cache handed out. A nil Cache has none.
+func (c *Cache) Joined(head, projected, tail []byte) ([]byte, bool) {
+	if c == nil {
+		return nil, false
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	j := &c.joined
+	if j.out == nil || len(projected) == 0 || len(j.projected) != len(projected) || &j.projected[0] != &projected[0] || !bytes.Equal(j.head, head) || !bytes.Equal(j.tail, tail) {
+		return nil, false
+	}
+	return j.out, true
+}
+
+// StoreJoined keeps out, the encoding of the event made from head, projected and tail, and the parts. The caller modifies none of them afterwards.
+func (c *Cache) StoreJoined(head, projected, tail, out []byte) {
+	if c == nil {
+		return
+	}
+	c.mu.Lock()
+	c.joined = joinedEvent{head: head, projected: projected, tail: tail, out: out}
+	c.mu.Unlock()
 }
