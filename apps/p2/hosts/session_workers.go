@@ -18,6 +18,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/workers"
 )
 
@@ -35,6 +36,12 @@ const SessionPrefix = "session:"
 
 // workerKind is the facet kind of the session workers' plugins.
 const workerKind = "worker"
+
+// buildsNothing is the plugins component's Builder (Pi passes build.BuildFacet): p2 has no plugin roots, so the component never
+// builds, and a build asked for would have no source to read, because the plugins are compiled in (D473).
+func buildsNothing(model.Plugin, string, model.BuildOptions, context.Context) (model.BuiltFacet, error) {
+	return model.BuiltFacet{}, errors.New("p2 builds no plugin source: its plugins are compiled in (D473)")
+}
 
 // Crash restarts: how many p2 makes of a session's worker within crashWindow; the next crash waits for Retry.
 const (
@@ -163,7 +170,7 @@ func NewSessionWorkers(options SessionWorkersOptions, ctx context.Context) (*Ses
 		idle = 5 * time.Minute
 	}
 	// No roots: the set of scripts is empty and nothing is built or started (the workers' plugins are compiled in).
-	w.plugins = plugins.CreatePlugins(plugins.PluginsOptions{Kinds: []plugins.KindDefinition{{Name: workerKind}}}, ctx)
+	w.plugins = plugins.CreatePlugins(plugins.PluginsOptions{Build: buildsNothing, Kinds: []plugins.KindEntry{{Name: workerKind}}}, ctx)
 	w.workers, err = workers.CreateWorkers(w.retries, p2runtime.SessionKind, workers.WorkersOptions{
 		Kind:     workerKind,
 		Entry:    options.Entry,
@@ -251,7 +258,7 @@ func (w *SessionWorkers) Generation(session string) int {
 }
 
 func (w *SessionWorkers) stateObject() *delta.JsonObject {
-	value, _ := w.workers.State().Value()
+	value := w.workers.State().Value()
 	object, _ := value.(*delta.JsonObject)
 	return object
 }

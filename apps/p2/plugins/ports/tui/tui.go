@@ -160,13 +160,13 @@ func openPorts(ctx runtime.TuiContext, args string) error {
 	}
 	read := chordtui.WatchMember(scope, ref.Member("forwards"))
 	// Adding, closing and the public switch show at once; a refused one rolls back with its error.
-	forwards, changing, _ := chordtui.Optimistic(scope, func() []forward {
+	forwards, changing, _ := p2tui.Optimistic(scope, func() []forward {
 		value, _ := read()
 		return forwardsOf(value)
 	}, applyPort)
 	change := func(g guess, call func() error) {
 		go func() {
-			err := changing(g, func() error {
+			err := p2tui.AddCall(changing, g, func() error {
 				// `/ports open` runs before the list arrived: the call waits for the reference.
 				if err := p2runtime.WhenLive(context.Background(), ref); err != nil {
 					return err

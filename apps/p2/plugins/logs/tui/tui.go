@@ -57,7 +57,7 @@ type NoticeWatch struct {
 	stopFollow func()
 	// shown is the notices as shown (those dismissed while their calls are in flight left out), dismissing how to dismiss one.
 	shown      func() []Notice
-	dismissing chordtui.OptimisticAdd[int]
+	dismissing p2tui.OptimisticAdd[int]
 	received   []Notice
 	seen       map[int]bool
 	first      bool
@@ -79,7 +79,7 @@ func (w *NoticeWatch) changed() {
 	}
 	scope := chordtui.NewTuiScope(context.Background(), w.runtime.Host, w.runtime.Ctx.RequestRender)
 	w.scope = scope
-	w.shown, w.dismissing, _ = chordtui.Optimistic(scope, func() []Notice { return w.received }, func(notices []Notice, id int) []Notice {
+	w.shown, w.dismissing, _ = p2tui.Optimistic(scope, func() []Notice { return w.received }, func(notices []Notice, id int) []Notice {
 		var kept []Notice
 		for _, notice := range notices {
 			if notice.ID != id {
@@ -117,7 +117,7 @@ func (w *NoticeWatch) Dismiss(id int) {
 		return
 	}
 	go func() {
-		err := dismissing(id, func() error {
+		err := p2tui.AddCall(dismissing, id, func() error {
 			_, err := service.Call("dismiss", delta.JsonObjectOf("id", float64(id)), context.Background())
 			return err
 		})
