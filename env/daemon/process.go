@@ -145,6 +145,8 @@ func (s *server) runProcess(id uint32, request *processRequest, ctl *control) (O
 		}
 	}
 	names := [2]string{"stdout", "stderr"}
+	// Like a full pipe: a program that writes faster than the link waits.
+	gate := newGate(s.out)
 	var helpers sync.WaitGroup
 	for stream, pipe := range [2]*os.File{program.stdout, program.stderr} {
 		helpers.Go(func() {
@@ -152,9 +154,9 @@ func (s *server) runProcess(id uint32, request *processRequest, ctl *control) (O
 			for {
 				count, err := pipe.Read(buffer)
 				if count > 0 {
-					delivered := send(programMessage{kind: programData, stream: stream, data: append([]byte(nil), buffer[:count]...)})
-					// Like a full pipe: a program that writes faster than the link waits.
-					s.out.waitForRoom(done)
+					delivered := gate.pass(done, func() bool {
+						return send(programMessage{kind: programData, stream: stream, data: append([]byte(nil), buffer[:count]...)})
+					})
 					if !delivered {
 						return
 					}
@@ -211,10 +213,15 @@ func (s *server) runProcess(id uint32, request *processRequest, ctl *control) (O
 	for !exited || !ended[0] || !ended[1] {
 		var grace <-chan time.Time
 		if !idle.IsZero() {
-			// A descendant may hold the pipes open after the program exited; stop waiting for it.
 			remaining := time.Until(idle)
 			if remaining <= 0 {
-				break
+				if !gate.isHeld() {
+					// A descendant may hold the pipes open after the program exited; stop waiting for it.
+					break
+				}
+				// Silence while the link holds a reader up is not the end of the output: the pipe may hold more.
+				idle = time.Now().Add(processExitGrace)
+				remaining = processExitGrace
 			}
 			grace = graceTimer.arm(remaining)
 		}
