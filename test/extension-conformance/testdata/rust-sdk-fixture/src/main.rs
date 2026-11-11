@@ -2229,6 +2229,59 @@ fn main() {
             CommandResult::Ok
         },
     );
+    // event_session_actions_on keeps the handler's context; event_session_actions_stored calls the actions through it after the handler's request ended.
+    let kept_event_ctx: Arc<Mutex<Option<pig_sdk::Context>>> = Arc::new(Mutex::new(None));
+    let report_session_actions = |ctx: &pig_sdk::Context| {
+        let describe = |name: &str, result: std::io::Result<Option<serde_json::Value>>| match result {
+            Ok(_) => format!("{name}=allowed"),
+            Err(err) if err.to_string().contains("is not a function") => {
+                format!("{name}=rejected")
+            }
+            Err(err) => format!("{name}=error:{err}"),
+        };
+        [
+            describe("new", ctx.new_session(serde_json::json!({}))),
+            describe("fork", ctx.fork("entry", serde_json::json!({}))),
+            describe("navigate", ctx.navigate_tree("entry", serde_json::json!({}))),
+            describe("switch", ctx.switch_session("/s.jsonl", serde_json::json!({}))),
+            describe("reload", ctx.reload().map(|()| None)),
+        ]
+        .join(",")
+    };
+    let event_session_actions_subscriber = ext.event_subscriber();
+    let event_session_actions_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> =
+        Arc::new(Mutex::new(Vec::new()));
+    let kept_on_event = kept_event_ctx.clone();
+    ext.command(
+        "event_session_actions_on",
+        "Subscribe to the event named by the argument with a handler that calls the session actions",
+        move |_ctx, args| {
+            let kept = kept_on_event.clone();
+            let subscription = subscribe(
+                &event_session_actions_subscriber,
+                args.trim(),
+                move |ctx, _data| {
+                    *kept.lock().unwrap() = Some(ctx.clone());
+                    ctx.notify(&format!("event_actions:{}", report_session_actions(ctx)), "info");
+                    Ok(None)
+                },
+            );
+            event_session_actions_subscriptions
+                .lock()
+                .unwrap()
+                .push(subscription);
+            CommandResult::Ok
+        },
+    );
+    ext.command(
+        "event_session_actions_stored",
+        "Call the session actions through the context an event handler kept",
+        move |ctx, _| {
+            let kept = kept_event_ctx.lock().unwrap().clone().expect("no event context was kept");
+            ctx.notify(&format!("stored_actions:{}", report_session_actions(&kept)), "info");
+            CommandResult::Ok
+        },
+    );
     ext.command(
         "session_actions_unbound",
         "Report what unbound session actions answer",
