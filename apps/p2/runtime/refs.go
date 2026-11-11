@@ -28,35 +28,82 @@ type HeldRef interface {
 }
 
 // follow calls fn with the current value at once, then, once the watch is up, with the watch's value when it is not the
-// one fn has, and with each change, until the returned stop. watch starts one watch of the source and returns its value
-// and a function installing the listener (it never delivers inline).
-func follow[T any](current func() T, watch func(ctx context.Context) (value T, start func(deliver func(T)), err error), fn func(T)) (stop func()) {
+// one fn has, and with each change, until the returned stop. watch starts one watch of the source and returns its value,
+// a function installing the listener (it never delivers inline) and the channel closed when the watch terminates.
+//
+// Forced Go difference: Pi makes the watch's value and starts it in one turn, so a source that ends there is never between
+// them. Here the source can end (a reference's state ends with its watches stopped, dropping the frames still pending)
+// between fn's last value and the watch's end, and no later call would bring the value it ended with: follow hands over the
+// source's value when its watch terminated before stop.
+func follow[T any](current func() T, watch func(ctx context.Context) (value T, start func(deliver func(T)), closed <-chan struct{}, err error), fn func(T)) (stop func()) {
 	//portlint:allow ctxbackground the follow owns this context for its life: the returned stop cancels it
 	ctx, cancel := context.WithCancel(context.Background())
 	// The value it has now, at once (a bound member, a registry's value), as a UI renders it before the watch is up.
 	last := current()
 	fn(last)
+	// calling serializes fn: the listener's calls and the hand-over of the source's last value. The goroutine takes it
+	// unless stop cancelled it, so a listener that calls stop never waits for it.
+	calling := make(chan struct{}, 1)
+	delivered := last
 	var done sync.WaitGroup
 	done.Add(1)
 	go func() {
 		defer done.Done()
-		value, start, err := watch(ctx)
-		if err != nil || ctx.Err() != nil {
+		// handOver is the source's value when its watch is gone (ended with its source, or refused for it): a reference
+		// that ended after fn's last value has the ended state as its value now and no change will bring it.
+		handOver := func() {
+			select {
+			case calling <- struct{}{}:
+			case <-ctx.Done():
+				return
+			}
+			defer func() { <-calling }()
+			if ctx.Err() != nil {
+				return
+			}
+			if now := current(); !state.Identical(now, delivered) {
+				delivered = now
+				fn(now)
+			}
+		}
+		value, start, closed, err := watch(ctx)
+		if err != nil {
+			handOver()
+			return
+		}
+		if ctx.Err() != nil {
 			return
 		}
 		// A watch starts at its value and brings later changes only.
 		if !state.Identical(value, last) {
+			calling <- struct{}{}
+			delivered = value
 			fn(value)
+			<-calling
 		}
 		// The watch ends with its source (a holder released the reference it follows, or stop cancelled ctx) between its
-		// making and this start: there is nothing left to follow.
-		chord.StartUnlessEnded(func() {
+		// making and this start: there is nothing left to follow but the value it ended with.
+		if !chord.StartUnlessEnded(func() {
 			start(func(change T) {
+				if ctx.Err() != nil {
+					return
+				}
+				calling <- struct{}{}
+				defer func() { <-calling }()
 				if ctx.Err() == nil {
+					delivered = change
 					fn(change)
 				}
 			})
-		})
+		}) {
+			handOver()
+			return
+		}
+		select {
+		case <-closed:
+			handOver()
+		case <-ctx.Done():
+		}
 	}()
 	return func() {
 		cancel()
@@ -68,11 +115,11 @@ func follow[T any](current func() T, watch func(ctx context.Context) (value T, s
 // change, until the returned stop. A source that ends (its reference released) only stops calling. The source is a
 // native watchable (a reference's state, a registry's value, a bound member).
 func Follow[T any](source chord.NativeWatchable[T], fn func(T)) (stop func()) {
-	return follow(source.Value, func(ctx context.Context) (T, func(func(T)), error) {
+	return follow(source.Value, func(ctx context.Context) (T, func(func(T)), <-chan struct{}, error) {
 		handle, err := source.Watch(ctx)
 		if err != nil {
 			var zero T
-			return zero, nil, err
+			return zero, nil, nil, err
 		}
 		return handle.Value(), func(deliver func(T)) {
 			handle.Start(func(_ context.Context, call chord.NativeWatchCall[T]) error {
@@ -81,17 +128,17 @@ func Follow[T any](source chord.NativeWatchable[T], fn func(T)) (stop func()) {
 				}
 				return nil
 			})
-		}, nil
+		}, handle.Closed(), nil
 	}, fn)
 }
 
 // FollowJSON is Follow for a JSON watchable (a state member of a held reference).
 func FollowJSON[T any](source chord.Watchable[T], fn func(T)) (stop func()) {
-	return follow(source.Value, func(ctx context.Context) (T, func(func(T)), error) {
+	return follow(source.Value, func(ctx context.Context) (T, func(func(T)), <-chan struct{}, error) {
 		handle, err := source.Watch(ctx)
 		if err != nil {
 			var zero T
-			return zero, nil, err
+			return zero, nil, nil, err
 		}
 		return handle.Value(), func(deliver func(T)) {
 			handle.Start(func(_ context.Context, call chord.WatchCall[T]) error {
@@ -100,7 +147,7 @@ func FollowJSON[T any](source chord.Watchable[T], fn func(T)) (stop func()) {
 				}
 				return nil
 			})
-		}, nil
+		}, handle.Closed(), nil
 	}, fn)
 }
 

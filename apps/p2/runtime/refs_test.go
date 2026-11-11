@@ -254,6 +254,51 @@ func TestFollowOfAWatchThatEndedBeforeItsStartHasNothingToFollow(t *testing.T) {
 	}
 }
 
+// endingSource is a NativeWatchable whose reference ends after follow made its watch and before follow started it: the watch
+// holds the value it was made at, the source's value is the ended one, and the watch is stopped when follow starts it.
+type endingSource struct {
+	mu      sync.Mutex
+	value   int
+	started chan struct{}
+}
+
+func (s *endingSource) Value() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.value
+}
+
+func (s *endingSource) Watch(context.Context) (chord.NativeWatchHandle[int], error) {
+	s.mu.Lock()
+	made := s.value
+	// The reference ends: its state is the ended one and its watches stop.
+	s.value = made + 1
+	s.mu.Unlock()
+	watch := chord.NewNativeWatch(made, func() {}, func(error) {}, nil)
+	_, _ = watch.Stop()
+	return startNotice{NativeWatchHandle: watch, started: s.started}, nil
+}
+
+// A reference that ends between follow's watch and its start is followed to its end: the ended state is the source's value
+// then and no change will bring it, so follow hands it over (a held reference's FailureOf waited 20 s for it).
+func TestFollowOfAWatchThatEndedBeforeItsStartDeliversTheValueItEndedWith(t *testing.T) {
+	var seen []int
+	var mu sync.Mutex
+	started := make(chan struct{})
+	stop := Follow[int](&endingSource{value: 7, started: started}, func(value int) {
+		mu.Lock()
+		defer mu.Unlock()
+		seen = append(seen, value)
+	})
+	defer stop()
+	<-started
+	eventually(t, "the value the source ended with", func() bool {
+		mu.Lock()
+		defer mu.Unlock()
+		return len(seen) == 2 && seen[0] == 7 && seen[1] == 8
+	})
+}
+
 // Pi main 8b02b459: keptIn returns a reference still bound in a variant while it reconnects; liveIn drops it.
 func TestKeepsOutlastsADroppedConnection(t *testing.T) {
 	broken := &host.RefState{Kind: host.RefStateFailed, Cause: data.FailureCause{Kind: data.FailureBroken}}
