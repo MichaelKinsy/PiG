@@ -1,6 +1,6 @@
 package host
 
-// pi: packages/chord/test/next/examples/11-linger-and-retry.ts
+// pi: packages/chord/test/examples/11-linger-and-retry.ts
 
 import (
 	"context"

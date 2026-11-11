@@ -9,7 +9,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// Ports packages/chord/src/next/store/engine.ts
+// Ports packages/chord/src/store/engine.ts
 //
 // The documents engine (S13, slice 6a §8, slice 6b §1.5): one record per incarnation of an address, revisions made of
 // bases and deltas, a history rule per record (R1); its writes inside the commit step, checked by the writes

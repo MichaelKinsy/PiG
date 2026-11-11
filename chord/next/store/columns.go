@@ -11,7 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// Ports packages/chord/src/next/store/columns.ts
+// Ports packages/chord/src/store/columns.ts
 //
 // Table columns (decisions "Flat columns", "Nullable columns and the `set` form", "Restricted names"): the
 // restricted subset of L1's helpers a table's `columns` take (`Str Int Num Bool`, `Opt(...)` of them, `Json(...)`,

@@ -271,8 +271,8 @@ func TestStartupChangelogRunsTheChangelogMarkdownTransformers(t *testing.T) {
 		extensions []extension.Extension
 		want       string
 	}{
-		{"changelog opt-in", []extension.Extension{{MarkdownTransformer: replaceWarning, MarkdownMessageTypes: []extension.MarkdownMessageType{extension.MarkdownMessageChangelog}}}, "WARN"},
-		{"default types", []extension.Extension{{MarkdownTransformer: replaceWarning}}, ":warning:"},
+		{"changelog opt-in", []extension.Extension{{MarkdownTransformer: extension.NewMarkdownTransformerRegistration(replaceWarning, []extension.MarkdownMessageType{extension.MarkdownMessageChangelog})}}, "WARN"},
+		{"default types", []extension.Extension{{MarkdownTransformer: extension.NewMarkdownTransformerRegistration(replaceWarning, nil)}}, ":warning:"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			mode := &InteractiveMode{

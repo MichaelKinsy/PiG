@@ -7,6 +7,9 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"io/fs"
+	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -71,6 +74,48 @@ func TestWalkRejectsMalformedBlobs(t *testing.T) {
 	} {
 		if err := Walk(blob, func(string, []byte) error { return nil }); err == nil {
 			t.Errorf("%s: walked", name)
+		}
+	}
+}
+
+// A root-module SDK directory carries its sources and one frame, sdk.zst, and nothing else packed: the gzip twins (.gz/) and the tar (sdk.tgz) that earlier bundle formats wrote are read by no bundle, are not written by packsdk, and count against the module zip (automation/release/module-size-budget.txt). A modify/delete conflict in a merge of a branch that had dropped them kept them once (about 460 KB). Every directory under extensions/ that holds a packsdk bundle_pack.go, and internal/gosdkbundle, is checked, so a later SDK is covered without editing this test. The nested extensions/sdk module keeps its own .gz twins, which its published version embeds, and has no bundle_pack.go.
+func TestPackedSDKDirectoriesHoldNoSupersededBundleFormat(t *testing.T) {
+	packs, err := filepath.Glob(filepath.Join("..", "..", "extensions", "*", "bundle_pack.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	gosdk, err := filepath.Glob(filepath.Join("..", "gosdkbundle", "bundle_pack.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	packs = append(packs, gosdk...)
+	if len(packs) < 4 {
+		t.Fatalf("found %v: want the Go, Lisp, Python and Rust SDK bundle_pack.go files at least, or the check would pass on nothing", packs)
+	}
+	for _, pack := range packs {
+		root := filepath.Dir(pack)
+		err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			name := entry.Name()
+			if entry.IsDir() {
+				if name == "target" || name == "__pycache__" || name == "node_modules" {
+					return filepath.SkipDir
+				}
+				if name == ".gz" {
+					t.Errorf("%s: superseded gzip twin directory; the bundle is sdk.zst alone", path)
+					return filepath.SkipDir
+				}
+				return nil
+			}
+			if strings.HasSuffix(name, ".tgz") || strings.HasSuffix(name, ".tar.gz") {
+				t.Errorf("%s: superseded tar bundle; the bundle is sdk.zst alone", path)
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
 		}
 	}
 }

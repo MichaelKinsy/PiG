@@ -156,9 +156,8 @@ func TestSshConnectionReportsItsRemoteWhileAStartIsDetecting(t *testing.T) {
 	marker := filepath.Join(directory, "started")
 	program := filepath.Join(directory, "ssh")
 	writeProgram(t, program, "#!/bin/sh\n: > '"+marker+"'\nexec sleep 30\n")
-	connection, remote := sshConnectionPair(SshConnectOptions{SshTarget: SshTarget{
-		Host: "h", Ssh: &program, KnownHostsFile: filepath.Join(directory, "known_hosts"), HostKeyAlias: "pi-env-test",
-	}})
+	connection, remote := sshConnectionPair(SshConnectOptions{
+		Host: "h", Ssh: &program, KnownHostsFile: filepath.Join(directory, "known_hosts"), HostKeyAlias: "pi-env-test"})
 	started := make(chan error, 1)
 	go func() {
 		_, err := connection.Info(background)

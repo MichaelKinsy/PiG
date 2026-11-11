@@ -5,7 +5,8 @@
 import { admitWrites, adoptTables } from "./table-identity.ts"
 import { forgetColdLoads, trackColdLoads } from "./coldload.ts"
 import { BACKGROUND_CONTEXT, awaitWithContext, withoutAbortSignal } from "@earendil-works/chord/context"
-import type { Context, WatchEnd } from "@earendil-works/chord"
+import type { Context } from "@earendil-works/chord/context"
+import type { WatchEnd } from "@earendil-works/chord/watch"
 import { lazyValue, Revision } from "./valuechain.ts"
 import type { ConversationId, ConversationWindow, Report, ReportInfo, SessionEnd } from "@earendil-works/pi-durable"
 import { EVENT, NOTICE } from "../abi.ts"
@@ -340,9 +341,11 @@ export class Harness {
           try { onWake(wake); last = wake } catch (error) { report({ kind: "host_error", callback: "onWake", error }) }
         }
       }
-      const runtimeHostApi = { client, agent: (id: number, context: Context) => harness.resolveAgent(id, undefined, context), watchDoc: (token: any, ...args: unknown[]) => harness.watchDoc(token, ...args), documentState: (token: any, ...args: unknown[]) => harness.documentState(token, ...args), conversation: async (id: number, binding: InvocationBinding, context: Context) => { const found = await harness.conversation(id, context); return found && boundConversation(found, binding) } }
+      // The agent each conversation's last resolveAgent hook answered: generation.ts hands the agent it resolved to the sections it renders (PromptInput.agent), so a section effect reads it here, in the tick it starts, where resolving it again is a Session read Pi does not make.
+      const resolvedAgents = new Map<number, unknown>()
+      const runtimeHostApi = { client, agent: (id: number, context: Context) => harness.resolveAgent(id, undefined, context), watchDoc: (token: any, ...args: unknown[]) => harness.watchDoc(token, ...args), conversation: async (id: number, binding: InvocationBinding, context: Context) => { const found = await harness.conversation(id, context); return found && boundConversation(found, binding) } }
       const runtime: EffectRuntime = {
-        client, registry, get models() { return currentModels() }, env: options.env, report: (error, info, context) => harness.report(error, info as ReportInfo, context), now: options.now,
+        client, registry, get models() { return currentModels() }, env: options.env, report: (error, info, context) => harness.report(error, info as ReportInfo, context), now: options.now, resolvedAgent: id => resolvedAgents.get(id),
         hostApi: runtimeHostApi,
         readTarget: () => self.harness,
         spanContext: (span, base) => harness.telemetry.spanContext(span, base),
@@ -363,7 +366,11 @@ export class Harness {
           // The span of a phase invocation (telemetry.ts): started when the core asks, answered with its handle and carrier.
           phaseSpan: (payload: Parameters<HarnessTelemetry["phaseSpan"]>[0]) => harness.telemetry.phaseSpan(payload),
           registrySnapshot: () => registry.snapshot(),
-          resolveAgent: (payload, _context, effect) => agentJSON(resolveAgent(payload.state, options.registry.snapshot(), harness.settings, reportWrap(effect.conversationId as ConversationId)), o => registry.id(o)),
+          resolveAgent: (payload, _context, effect) => {
+            const agent = resolveAgent(payload.state, options.registry.snapshot(), harness.settings, reportWrap(effect.conversationId as ConversationId))
+            resolvedAgents.set(effect.conversationId as number, agent)
+            return agentJSON(agent, o => registry.id(o))
+          },
           // harness/tool.ts prepare and validate: the arguments, or {error} with the text of what the repair or validation threw.
           prepareArguments: payload => {
             const tool = registry.tool(payload.toolName, payload.handler) as any
@@ -940,11 +947,6 @@ export class Harness {
   // session.ts snapshot, snapshotAsOf: assertUsable first, so a closed or failed Session rejects whatever the document cache holds.
   snapshot = (...args: unknown[]) => { try { this.assertReadable() } catch (error) { return Promise.reject(error) }; return (documentReader(this.client).snapshot as (...a: unknown[]) => unknown)(...args) }
   snapshotAsOf = (...args: unknown[]) => { try { this.assertReadable() } catch (error) { return Promise.reject(error) }; return (documentReader(this.client).snapshotAsOf as (...a: unknown[]) => unknown)(...args) }
-  /** `documentState(token, ...owner, [key], context)`: disposable read-only Chord state of the committed document, or undefined when absent. */
-  documentState(token: AnyDocToken, ...args: unknown[]) {
-    const { address, nextArgument } = resolveAddress(token.definition, args)
-    return this.watches.state({ kind: "doc", address: wireAddress(address), def: wireDefinition(token.definition) }, args[nextArgument] as Context)
-  }
   /** `observeDoc(token, ...owner, [key], observer, context)`: a synchronous Observer of one document address, or undefined when absent. */
   observeDoc(token: AnyDocToken, ...args: unknown[]) {
     // Not async, as session.ts observeDoc: a throw (a closed or failed Session, a missing scope ID) still rejects.
@@ -1063,7 +1065,6 @@ export class Harness {
     return settled ? promise : this.client.awaitWait(promise, context)
   }
   async usage(context: Context) { return awaitWithContext(this.client.api("usage"), context) }
-  taskGraph(context: Context) { return this.watches.state({ kind: "graph" }, context) }
   watchTaskGraph(context: Context) { return this.watches.watch({ kind: "graph" }, context) }
   /** `observeTaskGraph(observer, context)`: a synchronous Observer of the task graph (harness.ts observeTaskGraph). */
   async observeTaskGraph(observer: Observer<unknown>, context: Context) {
@@ -1080,8 +1081,7 @@ export class Harness {
     return this.watches.attach({ kind: "view", conversationId, ...(window === undefined ? {} : { window }) }, context, make)
   }
 
-  /** The view state and watch of one conversation. */
-  conversationState(conversationId: number, context: Context) { return this.watches.state({ kind: "view", conversationId }, context) }
+  /** The watch of one conversation. */
   watchConversation(conversationId: number, context: Context, window?: ConversationWindow) { return this.watches.watch({ kind: "view", conversationId, ...(window === undefined ? {} : { window }) }, context) }
 
   /** Resolve when the ordinary ownership scope of `conversationId` (or of every ownerless conversation) has no live non-background task. */
@@ -1248,7 +1248,6 @@ export class Conversation {
     await this.harness.idle(this.id, context)
   }
   waitForIdle(context: Context) { return this.harness.waitIdle(this.id, context) }
-  viewState(context: Context) { return this.harness.conversationState(this.id, context) }
   watch(context: Context, window?: ConversationWindow) { return this.harness.watchConversation(this.id, context, window) }
 }
 

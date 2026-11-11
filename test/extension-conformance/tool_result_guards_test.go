@@ -24,8 +24,8 @@ func TestConformance_ToolResultGuardsAgreeAcrossSDKs(t *testing.T) {
 	emit := func(t *testing.T, runner *inproc.Runner, tool string) {
 		t.Helper()
 		if _, err := runner.EmitToolResult(context.Background(), extension.CustomToolResultEvent{
-			ToolResultEventBase: extension.ToolResultEventBase{Type: "tool_result", ToolCallID: "c1", Input: map[string]any{}, Content: []any{}},
-			ToolName:            tool,
+			Type: "tool_result", ToolCallID: "c1", Input: map[string]any{}, Content: []any{},
+			ToolName: tool,
 		}); err != nil {
 			t.Fatalf("emit %s: %v", tool, err)
 		}

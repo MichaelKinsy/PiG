@@ -8,9 +8,9 @@ import (
 )
 
 func treeSelectorTestNodes() []TreeNode {
-	return []TreeNode{&editableTreeTestNode{fakeNodeWithBranchLabel: fakeNodeWithBranchLabel{fakeNode: fakeNode{id: "a", label: "first", kids: []TreeNode{
-		&fakeNode{id: "b", label: "second", kids: []TreeNode{&editableTreeTestNode{fakeNodeWithBranchLabel: fakeNodeWithBranchLabel{fakeNode: fakeNode{id: "c", label: "third"}}}}},
-	}}}}}
+	return []TreeNode{&editableTreeTestNode{id: "a", label: "first", kids: []TreeNode{
+		&fakeNode{id: "b", label: "second", kids: []TreeNode{&editableTreeTestNode{id: "c", label: "third"}}},
+	}}}
 }
 
 // tree-selector.ts constructor: the window is max(5, floor(terminalHeight / 2)) rows, and currentLeafId / initialSelectedId choose the

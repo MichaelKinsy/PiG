@@ -130,7 +130,7 @@ func buildLayoutOracle(spec *layoutOracleSpec, scrolls *[]*ScrollView, calls *[]
 	}
 	var children []StackChild
 	for _, c := range spec.Children {
-		children = append(children, StackEntry{Component: buildLayoutOracle(c.Spec, scrolls, calls, nextRows), StackEntryOptions: StackEntryOptions{Basis: c.Basis, Grow: c.Grow, Shrink: c.Shrink, MinSize: c.MinSize, MaxSize: c.MaxSize}})
+		children = append(children, StackEntry{Component: buildLayoutOracle(c.Spec, scrolls, calls, nextRows), Basis: c.Basis, Grow: c.Grow, Shrink: c.Shrink, MinSize: c.MinSize, MaxSize: c.MaxSize})
 	}
 	options := StackOptions{Gap: spec.Gap, Align: spec.Align}
 	if spec.T == "h" {

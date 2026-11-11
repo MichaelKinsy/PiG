@@ -20,8 +20,8 @@ func newScrollTranscriptAltScreen(messages int) (*TuiAltScreen, *ScrollView) {
 	document := NewContainer(NewText("transcript header"), chat)
 	transcript := NewScrollView(document, ScrollViewOptions{Follow: "end", Primary: true, Overscroll: "chain", Scrollbar: "auto"})
 	root := NewVStack([]StackEntry{
-		{Component: transcript, StackEntryOptions: StackEntryOptions{Basis: new(0), Grow: new(1), Shrink: new(1), MinSize: new(1)}},
-		{Component: NewText("\x1b[2m> editor dock\x1b[0m"), StackEntryOptions: StackEntryOptions{Grow: new(0), Shrink: new(1), MinSize: new(1)}},
+		{Component: transcript, Basis: new(0), Grow: new(1), Shrink: new(1), MinSize: new(1)},
+		{Component: NewText("\x1b[2m> editor dock\x1b[0m"), Grow: new(0), Shrink: new(1), MinSize: new(1)},
 	}, StackOptions{})
 	tui := newAltScreenForTest(nil, 120, 40, TuiAltScreenOptions{})
 	tui.out = io.Discard
@@ -66,8 +66,8 @@ func BenchmarkAltScreenStreamingFrameLongTranscript(b *testing.B) {
 			transcript := NewScrollView(document, ScrollViewOptions{Follow: "end", Primary: true, Overscroll: "chain", Scrollbar: "auto"})
 			b.Cleanup(transcript.Dispose)
 			root := NewVStack([]StackEntry{
-				{Component: transcript, StackEntryOptions: StackEntryOptions{Basis: new(0), Grow: new(1), Shrink: new(1), MinSize: new(1)}},
-				{Component: NewText("\x1b[2m> editor dock\x1b[0m"), StackEntryOptions: StackEntryOptions{Grow: new(0), Shrink: new(1), MinSize: new(1)}},
+				{Component: transcript, Basis: new(0), Grow: new(1), Shrink: new(1), MinSize: new(1)},
+				{Component: NewText("\x1b[2m> editor dock\x1b[0m"), Grow: new(0), Shrink: new(1), MinSize: new(1)},
 			}, StackOptions{})
 			tui := newAltScreenForTest(nil, 200, 50, TuiAltScreenOptions{})
 			tui.out = io.Discard

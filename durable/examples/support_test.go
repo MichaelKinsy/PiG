@@ -23,8 +23,8 @@ type notes struct {
 
 // notesDoc is the conversation-scoped, rewindable `example.notes` document of examples 01 to 04.
 var notesDoc = durable.DefineDoc(durable.DocDefinition[notes]{
-	CommonDocDefinition: durable.CommonDocDefinition[notes]{Kind: "example.notes", Version: 1, Initial: func() notes { return notes{} }, CheckpointWhen: func(notes, []durable.Op, durable.CheckpointInfo) bool { return false }},
-	DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryRewindable, Fork: durable.ForkAsOf},
+	Kind: "example.notes", Version: 1, Initial: func() notes { return notes{} }, CheckpointWhen: func(notes, []durable.Op, durable.CheckpointInfo) bool { return false },
+	Scope: durable.ScopeConversation, History: durable.HistoryRewindable, Fork: durable.ForkAsOf,
 })
 
 var ownerless = durable.CreateConversationOptions{Ownership: durable.ConversationOwnership{Kind: durable.ConversationOwnerless}}

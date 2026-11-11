@@ -25,7 +25,7 @@ func TestClientRequestTimeoutPrecedenceIsRequestThenClientThenDefault(t *testing
 		t.Run(tc.name, func(t *testing.T) {
 			clock := &fakeClock{}
 			clientTransport, server := createServer(t)
-			client := mcp.NewClient(mcp.ClientOptions{Implementation: mcp.Implementation{Name: "c", Version: "1"}, RequestTimeoutMs: tc.client})
+			client := mcp.NewClient(mcp.ClientOptions{Name: "c", Version: "1", RequestTimeoutMs: tc.client})
 			mcp.SetClientAfterFuncForTest(client, clock.AfterFunc)
 			if _, err := client.Connect(t.Context(), clientTransport); err != nil {
 				t.Fatal(err)

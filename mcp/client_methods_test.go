@@ -155,7 +155,7 @@ func TestClientListResourceTemplatesPageSendsTheCursorAndReturnsOnePage(t *testi
 // packages/mcp/src/client.ts:154 `readonly options: Readonly<McpClientOptions>`, set from the constructor options at client.ts:172.
 // packages/mcp/src/client.ts:154: McpClient.options is the frozen configuration it was built with.
 func TestClientOptionsReturnsTheConfiguration(t *testing.T) {
-	client := mcp.NewClient(mcp.ClientOptions{Implementation: mcp.Implementation{Name: "n", Version: "v"}, ProtocolVersion: "2025-06-18", RequestTimeoutMs: 123})
+	client := mcp.NewClient(mcp.ClientOptions{Name: "n", Version: "v", ProtocolVersion: "2025-06-18", RequestTimeoutMs: 123})
 	got := client.Options()
 	if got.Name != "n" || got.Version != "v" || got.ProtocolVersion != "2025-06-18" || got.RequestTimeoutMs != 123 {
 		t.Fatalf("options = %+v", got)

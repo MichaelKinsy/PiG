@@ -1,8 +1,11 @@
 package surfaces
 
 import (
+	"context"
 	"fmt"
+	"maps"
 	"reflect"
+	"slices"
 
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 )
@@ -79,6 +82,13 @@ func DefineMessages(namespace string, catalogs ...LocaleCatalog) (*Messages, err
 		return nil, fmt.Errorf("%s: defineMessages needs a catalog", namespace)
 	}
 	m.first = m.own[order[0]]
+	// Pi types every catalog by the first (CatalogShape, a compile error): the same intention at the declaration, where a
+	// catalog with another key set, or a text where the first has a function, is refused.
+	for _, locale := range order[1:] {
+		if err := matchesFirst(m.first, m.own[locale]); err != nil {
+			return nil, fmt.Errorf("%s: the %s catalog %w", namespace, locale, err)
+		}
+	}
 	for _, locale := range order {
 		m.Translations = append(m.Translations, Translation{Namespace: namespace, Locale: locale, Messages: m.own[locale]})
 	}
@@ -91,8 +101,50 @@ func (m *Messages) T(key string, args ...any) (string, error) { return m.In(nil)
 // Render renders a message as data in the first catalog.
 func (m *Messages) Render(message MessageData) string { return m.In(nil).Render(message) }
 
-// Message is the message key with its arguments as data, for state that clients render.
+// matchesFirst is nil when catalog has the keys of first, no other, each a text where first's is and a function where
+// first's is (the signatures are Go's untyped args).
+func matchesFirst(first, catalog Catalog) error {
+	for _, key := range slices.Sorted(maps.Keys(first)) {
+		other, has := catalog[key]
+		if !has {
+			return fmt.Errorf("lacks the key %q of the first", key)
+		}
+		_, firstText := first[key].(string)
+		_, otherText := other.(string)
+		if firstText != otherText {
+			return fmt.Errorf("has a text and a function for the key %q where the first has the other", key)
+		}
+	}
+	for _, key := range slices.Sorted(maps.Keys(catalog)) {
+		if _, has := first[key]; !has {
+			return fmt.Errorf("has the key %q the first lacks", key)
+		}
+	}
+	return nil
+}
+
+// isMessageParam is whether value is a MessageParam: plain JSON that crosses a link (a text, a number, a boolean or null).
+func isMessageParam(value any) bool {
+	switch value.(type) {
+	case nil, string, bool, int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64:
+		return true
+	}
+	return false
+}
+
+// Message is the message key with its arguments as data, for state that clients render. Pi types it at compile time (DataKeys:
+// a key of the catalog whose arguments are all MessageParams); a Go call that breaks that, a key the first catalog lacks or an
+// argument that is no plain data (a time.Time would not cross a link), panics, as a constructor does where TypeScript rejects
+// the call at compile time.
 func (m *Messages) Message(key string, params ...any) MessageData {
+	if _, ok := m.first[key]; !ok {
+		panic(fmt.Sprintf("%s: %q is not a message", m.Namespace, key))
+	}
+	for i, param := range params {
+		if !isMessageParam(param) {
+			panic(fmt.Sprintf("%s: the argument %d of message %q is %T, no plain data that crosses a link", m.Namespace, i, key, param))
+		}
+	}
 	return MessageData{Namespace: m.Namespace, Key: key, Params: append([]any{}, params...)}
 }
 
@@ -106,6 +158,10 @@ type Translator struct {
 func (m *Messages) In(language *Language) *Translator {
 	return &Translator{messages: m, language: language}
 }
+
+// InScope is `t` in the current language of ctx (Pi's `t` outside `in`: the language of the render under way, the first
+// catalog outside one).
+func (m *Messages) InScope(ctx context.Context) *Translator { return m.In(CurrentLanguage(ctx)) }
 
 // T renders the message key with its arguments: down the language's chain, at each locale the host's contributed
 // catalog, then the plugin's own; else the first catalog. A key the first catalog lacks is an error.

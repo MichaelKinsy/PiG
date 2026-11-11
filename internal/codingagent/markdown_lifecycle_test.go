@@ -23,7 +23,7 @@ func TestMarkdownModeClearRemovesQueuedBodies(t *testing.T) {
 		var mu sync.Mutex
 		var calls []string
 		m := &InteractiveMode{backgroundCtx: ctx, chatContainer: tui.NewContainer(), tuiInst: tui.NewWithOutput(io.Discard, 80, 24)}
-		m.newRunner = inproc.NewRunner([]extension.Extension{{MarkdownTransformer: func(text string, c extension.MarkdownTransformContext) string {
+		m.newRunner = inproc.NewRunner([]extension.Extension{{MarkdownTransformer: extension.NewMarkdownTransformerRegistration(func(text string, c extension.MarkdownTransformContext) string {
 			mu.Lock()
 			calls = append(calls, text)
 			mu.Unlock()
@@ -35,7 +35,7 @@ func TestMarkdownModeClearRemovesQueuedBodies(t *testing.T) {
 				}
 			}
 			return "complete " + text
-		}}}, "")
+		}, nil)}}, "")
 		m.chatContainer.Add(m.newUserMessageBlock("active", messageMeta{}))
 		m.chatContainer.Render(80)
 		<-started
@@ -62,11 +62,11 @@ func TestMarkdownModeShutdownCancelsInvocationLifetime(t *testing.T) {
 		defer cancel()
 		started := make(chan struct{})
 		m := &InteractiveMode{backgroundCtx: ctx, tuiInst: tui.NewWithOutput(io.Discard, 80, 24)}
-		m.newRunner = inproc.NewRunner([]extension.Extension{{MarkdownTransformer: func(text string, c extension.MarkdownTransformContext) string {
+		m.newRunner = inproc.NewRunner([]extension.Extension{{MarkdownTransformer: extension.NewMarkdownTransformerRegistration(func(text string, c extension.MarkdownTransformContext) string {
 			close(started)
 			<-c.Context.Done()
 			return "late"
-		}}}, "")
+		}, nil)}}, "")
 		block := m.newAssistantMessageBlock(messageMeta{})
 		block.SetContent([]tui.AssistantSegment{{Text: "original"}})
 		block.Render(80)

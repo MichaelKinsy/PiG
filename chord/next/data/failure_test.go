@@ -12,7 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// Ports packages/chord/test/next/data/failure.test.ts.
+// Ports packages/chord/test/data/failure.test.ts.
 
 func TestFailureCauses(t *testing.T) {
 	t.Run("a value thrown by an open is transient unless marked broken", func(t *testing.T) {

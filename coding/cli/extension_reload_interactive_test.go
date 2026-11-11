@@ -21,7 +21,7 @@ func TestExtensionReloadResolvesInInteractiveMode(t *testing.T) {
 		t.Skip("builds the pig binary and extensions")
 	}
 	binary := buildPigBinaryForSignalTest(t)
-	for _, language := range []string{"node", "go"} {
+	for _, language := range []string{"node", "go", "python", "rust", "lisp"} {
 		t.Run(language, func(t *testing.T) {
 			extension := writeReloadProbe(t, language)
 			home, cwd, sessionDir := t.TempDir(), t.TempDir(), t.TempDir()

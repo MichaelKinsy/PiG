@@ -96,6 +96,11 @@ type mappingEntry struct {
 	AsyncContract     string            `json:"asyncContract"`
 	Divergence        string            `json:"divergence"`
 	Rationale         string            `json:"rationale"`
+	// Protects, PigTest and WhyNot are the intention check (AGENTS.md, Upstream test parity) that a designed-out or divergence row
+	// about a test helper carries; the ledger generator copies them from the reviewed decision and enforces their presence.
+	Protects string `json:"protects,omitempty"`
+	PigTest  string `json:"pigTest,omitempty"`
+	WhyNot   string `json:"whyNot,omitempty"`
 }
 
 type behaviorLedger struct {

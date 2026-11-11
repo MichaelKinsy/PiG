@@ -184,7 +184,7 @@ func (osFiles) ReadTextFile(_ context.Context, path string) (string, error) {
 func (osFiles) ReadBinaryFile(_ context.Context, path string) ([]byte, error) {
 	return os.ReadFile(path)
 }
-func (osFiles) OpenBinaryReader(_ context.Context, path string) (SyncFileReader, error) {
+func (osFiles) OpenBinaryReader(_ context.Context, path string, _ *OpenBinaryReaderOptions) (SyncFileReader, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, err

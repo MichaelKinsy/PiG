@@ -13,7 +13,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// Ports packages/chord/src/next/store/applier.ts
+// Ports packages/chord/src/store/applier.ts
 //
 // The applier (slice 6a §13, slice 6b §1.6): recorded writes applied as they were recorded, inside a backend
 // transaction, checked against the store's own records (a trust boundary: archives, a replica's batches). One code

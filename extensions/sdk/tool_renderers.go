@@ -36,8 +36,19 @@ type ToolRenderContext struct {
 	OutputPad int
 	// DurationMs is the recorded execution time of a final result in milliseconds. Absent while the result is partial and for results stored without one. upstream: ToolRenderContext.durationMs
 	DurationMs *int64
-	State      map[string]any
-	Invalidate func()
+	// LastComponent is what the renderer of this phase (call or result) of this card returned on its previous run, as upstream's
+	// ToolRenderContext.lastComponent is the component the renderer returned before. A renderer that returns lines or a [kit.View]
+	// returns no component object, so the lines or the view stand in for it. Nil on the card's first run of the phase and after a run
+	// that returned an error (upstream forgets the component a throwing renderer left).
+	LastComponent *ToolRenderComponent
+	State         map[string]any
+	Invalidate    func()
+}
+
+// ToolRenderComponent is what a tool renderer returned: View when the renderer is a view form, else Lines.
+type ToolRenderComponent struct {
+	Lines []string
+	View  *kit.View
 }
 
 // ToolRenderResult is the result upstream renderResult receives: text and
@@ -122,6 +133,8 @@ func (e *Extension) SetToolRenderers(name string, renderers ToolRenderers) {
 type toolRenderCard struct {
 	mu    sync.Mutex
 	state map[string]any
+	// call and result are the last output of each phase's renderer (ToolRenderContext.LastComponent).
+	call, result *ToolRenderComponent
 }
 
 type renderToolRequest struct {
@@ -201,25 +214,39 @@ func (e *Extension) renderTool(ctx Context, name string, raw json.RawMessage) (t
 		if request.Result != nil {
 			result = *request.Result
 		}
+		render.LastComponent = card.result
 		switch {
 		case renderers.ResultView != nil:
 			view, err := renderers.ResultView(ctx, result, request.Options, render, request.Width)
+			card.result = remember(&ToolRenderComponent{View: &view}, err)
 			return toolRenderOutput{view: &view}, err
 		case renderers.Result != nil:
 			lines, err := renderers.Result(ctx, result, request.Options, render, request.Width)
+			card.result = remember(&ToolRenderComponent{Lines: lines}, err)
 			return toolRenderOutput{lines: lines}, err
 		}
 		return toolRenderOutput{}, errors.New("tool " + name + " has no result renderer")
 	}
+	render.LastComponent = card.call
 	switch {
 	case renderers.CallView != nil:
 		view, err := renderers.CallView(ctx, request.Args, render, request.Width)
+		card.call = remember(&ToolRenderComponent{View: &view}, err)
 		return toolRenderOutput{view: &view}, err
 	case renderers.Call != nil:
 		lines, err := renderers.Call(ctx, request.Args, render, request.Width)
+		card.call = remember(&ToolRenderComponent{Lines: lines}, err)
 		return toolRenderOutput{lines: lines}, err
 	}
 	return toolRenderOutput{}, errors.New("tool " + name + " has no call renderer")
+}
+
+// remember is the component a card keeps for its next run: none after an error, as upstream clears the slot of a throwing renderer.
+func remember(component *ToolRenderComponent, err error) *ToolRenderComponent {
+	if err != nil {
+		return nil
+	}
+	return component
 }
 
 // releaseToolRenderCard drops the state of a tool card the host no longer

@@ -74,8 +74,8 @@ type runState struct {
 // that returns it without a VM.
 var RunDoc = durable.DefineDoc(durable.DocDefinition[runState]{
 	// The document retires with its task.
-	CommonDocDefinition: durable.CommonDocDefinition[runState]{Kind: "pi.codemode.run", Version: 1, Initial: func() runState { return runState{} }, CheckpointWhen: func(runState, []durable.Op, durable.CheckpointInfo) bool { return false }},
-	DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeTask},
+	Kind: "pi.codemode.run", Version: 1, Initial: func() runState { return runState{} }, CheckpointWhen: func(runState, []durable.Op, durable.CheckpointInfo) bool { return false },
+	Scope: durable.ScopeTask,
 })
 
 // outcomeJSON is an Outcome as the journal stores it: a global's outcome, which nothing else stores.
@@ -116,8 +116,8 @@ type journalState struct {
 // global's outcome.
 var JournalDoc = durable.DefineDoc(durable.DocDefinition[journalState]{
 	// The document retires with its task.
-	CommonDocDefinition: durable.CommonDocDefinition[journalState]{Kind: "pi.codemode.journal", Version: 1, Initial: func() journalState { return journalState{Entries: []journalEntry{}} }, CheckpointWhen: func(journalState, []durable.Op, durable.CheckpointInfo) bool { return false }},
-	DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeTask},
+	Kind: "pi.codemode.journal", Version: 1, Initial: func() journalState { return journalState{Entries: []journalEntry{}} }, CheckpointWhen: func(journalState, []durable.Op, durable.CheckpointInfo) bool { return false },
+	Scope: durable.ScopeTask,
 })
 
 // StoreState is what scripts keep with `store()` and read with `load()`.
@@ -128,9 +128,9 @@ type StoreState struct {
 // StoreDoc is the pi.codemode.store document of a conversation: rewindable and copied as of the fork point, so a fork
 // sees the values as they were when its entry was committed.
 var StoreDoc = durable.DefineDoc(durable.DocDefinition[StoreState]{
-	CommonDocDefinition: durable.CommonDocDefinition[StoreState]{Kind: "pi.codemode.store", Version: 1, Initial: func() StoreState { return StoreState{Values: map[string]json.RawMessage{}} }, CheckpointWhen: func(_ StoreState, _ []durable.Op, info durable.CheckpointInfo) bool {
+	Kind: "pi.codemode.store", Version: 1, Initial: func() StoreState { return StoreState{Values: map[string]json.RawMessage{}} }, CheckpointWhen: func(_ StoreState, _ []durable.Op, info durable.CheckpointInfo) bool {
 		return info.DeltasSinceBase >= 64
-	}},
+	},
 	DocumentSemantics: durable.NewRewindableConversationSemantics(durable.ForkAsOf).DocumentSemantics,
 })
 

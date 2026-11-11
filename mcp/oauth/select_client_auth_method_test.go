@@ -9,8 +9,8 @@ import "testing"
 func TestSelectClientAuthMethodFollowsPisLadder(t *testing.T) {
 	secret := OAuthClientInformationMixed{ClientSecret: "s"}
 	hint := func(method, secretValue string) OAuthClientInformationMixed {
-		info := OAuthClientInformationMixed{ClientSecret: secretValue}
-		info.TokenEndpointAuthMethod = method
+		info := OAuthClientInformationMixed{ClientSecret: secretValue,
+			TokenEndpointAuthMethod: method}
 		return info
 	}
 	for _, tc := range []struct {

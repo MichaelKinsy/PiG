@@ -254,7 +254,24 @@
    #:agent-session-bind-extensions #:agent-session-state #:agent-session-messages #:agent-session-refresh-context
    #:agent-session-session-manager #:agent-session-subscribe #:agent-session-dispose
    #:agent-session-session-id #:agent-session-session-file #:agent-session-model #:agent-session-thinking-level
-   #:agent-session-active-tools #:agent-session-system-prompt #:agent-session-model-fallback-message #:agent-session-extension-errors
+   #:agent-session-system-prompt #:agent-session-active-tools #:agent-session-model-fallback-message #:agent-session-extension-errors
+    #:agent-session-current-session-id #:agent-session-current-session-file #:agent-session-current-model #:agent-session-current-thinking-level
+    #:agent-session-current-system-prompt #:agent-session-streaming-p #:agent-session-idle-p #:agent-session-compacting-p #:agent-session-retrying-p #:agent-session-bash-running-p
+    #:agent-session-has-pending-bash-messages-p #:agent-session-retry-attempt #:agent-session-pending-message-count #:agent-session-session-name
+    #:agent-session-routed-model #:agent-session-scoped-models #:agent-session-steering-mode #:agent-session-follow-up-mode
+    #:agent-session-auto-compaction-enabled-p #:agent-session-auto-retry-enabled-p #:agent-session-supports-thinking-p
+    #:agent-session-get-available-thinking-levels #:agent-session-get-last-assistant-text #:agent-session-get-active-tool-names
+    #:agent-session-get-callable-tool-names #:agent-session-get-steering-messages #:agent-session-get-follow-up-messages #:agent-session-get-all-tools
+    #:agent-session-get-tool-definition #:agent-session-get-context-usage #:agent-session-get-session-stats
+    #:agent-session-get-user-messages-for-forking #:agent-session-prompt-templates #:agent-session-cache-warming-status
+    #:agent-session-has-extension-handlers-p #:agent-session-cycle-model #:agent-session-set-thinking-level #:agent-session-cycle-thinking-level
+    #:agent-session-set-scoped-models #:agent-session-set-active-tools-by-name #:agent-session-set-steering-mode #:agent-session-set-follow-up-mode
+    #:agent-session-set-auto-compaction-enabled #:agent-session-set-auto-retry-enabled #:agent-session-set-cache-warming-mode
+    #:agent-session-set-session-name #:agent-session-clear-queue #:agent-session-abort-bash #:agent-session-abort-branch-summary
+    #:agent-session-abort-compaction #:agent-session-abort-retry #:agent-session-record-bash-result #:agent-session-export-to-jsonl
+    #:agent-session-set-model #:agent-session-wait-for-idle #:agent-session-reload #:agent-session-compact #:agent-session-navigate-tree
+    #:agent-session-execute-bash #:agent-session-export-to-html #:agent-session-summarize-for-bug-report #:agent-session-send-custom-message
+    #:agent-session-send-user-message
    #:agent-session-services #:make-agent-session-services #:agent-session-services-cwd #:agent-session-services-agent-dir
    #:agent-session-services-model-runtime #:agent-session-services-settings-manager #:agent-session-services-resource-loader
    #:agent-session-services-diagnostics #:create-agent-session-services #:create-agent-session-from-services
@@ -312,7 +329,8 @@
    #:oauth-credential-store-credential-status #:oauth-credential-store-store-credentials
    #:oauth-credential-store-delete-credentials #:oauth-provider #:make-oauth-provider #:oauth-provider-p #:oauth-provider-name
    #:oauth-provider-login #:oauth-provider-refresh-token #:oauth-provider-get-api-key #:oauth-provider-credential-store
-   #:oauth-provider-is-subscription #:virtual-model #:make-virtual-model #:virtual-model-p #:virtual-model-provider
+   #:oauth-provider-is-subscription #:oauth-provider-modify-models #:oauth-provider-uses-callback-server
+   #:virtual-model #:make-virtual-model #:virtual-model-p #:virtual-model-provider
    #:virtual-model-id #:virtual-model-name #:virtual-model-route #:virtual-model-thinking-levels #:virtual-model-context-window
    #:virtual-model-max-tokens #:virtual-model-input #:tool-renderers #:make-tool-renderers #:tool-renderers-p
    #:tool-renderers-render-call #:tool-renderers-render-result #:tool-renderers-render-shell #:tool-renderers-call-view
@@ -320,7 +338,7 @@
    #:tool-render-context-args #:tool-render-context-tool-call-id #:tool-render-context-cwd #:tool-render-context-execution-started
    #:tool-render-context-args-complete #:tool-render-context-is-partial #:tool-render-context-expanded
    #:tool-render-context-show-images #:tool-render-context-is-error #:tool-render-context-output-pad
-   #:tool-render-context-duration-ms #:tool-render-context-state #:tool-render-context-invalidate
+   #:tool-render-context-duration-ms #:tool-render-context-last-component #:tool-render-context-state #:tool-render-context-invalidate
    #:tool-render-context-key-text #:tool-render-context-key-hint #:message-render-options-key-text #:message-render-options-key-hint
    #:entry-render-options-key-text #:entry-render-options-key-hint #:login-definition
    #:make-login-definition #:login-definition-p #:login-definition-brand #:login-definition-hero #:login-definition-mascot

@@ -32,9 +32,11 @@ func scalingFile(t *testing.T, dir string, lines int) string {
 func TestScalingTools(t *testing.T) {
 	rg := requireRG(t)
 	// grep takes limit x (2*context+1) lines from ripgrep and keeps its output only up to the 50KB cap (grep.ts, Pi 8da141c2a, #9276), so with the file fixed the memory does not grow with the context.
+	// Both sizes must lie past the cap: below it the output, and with it the bytes allocated, grow with the context until the cap is reached (n=100 gave 92KB and n=1000 204KB, a slope of 0.347 against the tolerance of 0.35), and how many context lines rg
+	// has written when the tool kills it after the limit can depend on the load, so a size under the cap sits within 0.003 of the tolerance.
 	bigDir := t.TempDir()
 	scalingFile(t, bigDir, 20000)
-	testscaling.Check(t, testscaling.Case{Name: "grep 100 matches with context n in a 20,000-line file", Size: 100, Bound: testscaling.Constant, Prepare: func(n int) func() {
+	testscaling.Check(t, testscaling.Case{Name: "grep 100 matches with context n in a 20,000-line file", Size: 2000, Bound: testscaling.Constant, Prepare: func(n int) func() {
 		args, _ := json.Marshal(map[string]any{"pattern": "match", "context": n, "limit": 100})
 		tool := &GrepTool{CWD: bigDir, RgPath: rg}
 		return func() {

@@ -62,7 +62,7 @@ func TestRequestBodySegmentsReachTheServerThroughVectoredWrites(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			response.Body.Close()
+			_ = response.Body.Close()
 			if length != len(whole) || got != sha256.Sum256(whole) {
 				t.Fatalf("the server received %d bytes, want %d with the same content", length, len(whole))
 			}
@@ -76,7 +76,7 @@ func TestIdleTimeoutConnReadFrom(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer listener.Close()
+	defer func() { _ = listener.Close() }()
 	received := make(chan []byte, 1)
 	go func() {
 		conn, err := listener.Accept()
@@ -84,7 +84,7 @@ func TestIdleTimeoutConnReadFrom(t *testing.T) {
 			received <- nil
 			return
 		}
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 		data, _ := io.ReadAll(conn)
 		received <- data
 	}()
@@ -103,7 +103,7 @@ func TestIdleTimeoutConnReadFrom(t *testing.T) {
 	if n, err := conn.ReadFrom(strings.NewReader(plain)); err != nil || n != int64(len(plain)) {
 		t.Fatalf("ReadFrom of a plain reader = %d, %v", n, err)
 	}
-	conn.Close()
+	_ = conn.Close()
 	if data := <-received; !bytes.Equal(data, append(whole, plain...)) {
 		t.Fatalf("the peer received %d bytes, want %d", len(data), len(whole)+len(plain))
 	}
@@ -118,7 +118,7 @@ func TestIdleTimeoutConnReadFromStopsAtTheDeclaredLength(t *testing.T) {
 		_, _ = io.Copy(io.Discard, server)
 	}()
 	defer func() {
-		client.Close()
+		_ = client.Close()
 		<-drained
 	}()
 	conn := newIdleTimeoutConn(client, "pipe")
@@ -203,7 +203,7 @@ func TestRequestBodiesOtherThanSegmentsReachTheServerUnchanged(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			response.Body.Close()
+			_ = response.Body.Close()
 			if length != len(data) || got != sha256.Sum256(data) {
 				t.Fatalf("the server received %d bytes, want %d with the same content", length, len(data))
 			}

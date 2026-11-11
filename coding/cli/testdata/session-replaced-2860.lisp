@@ -87,6 +87,16 @@
                                                    (pig:ctx-send-user-message replaced "reply with exactly: fork reply")
                                                    (log-line (concatenate 'string "conversation:" (conversation (pig:ctx-session-manager replaced)))))))))
     (pig:command
+     ext "expand-it" "expand-it"
+     ;; types.ts:463-473: the replacement context's sendUserMessage takes expandPromptTemplates; true expands the prompt template, false and no option send the text as typed.
+     (lambda (ctx args)
+       (declare (ignore args))
+       (pig:ctx-new-session ctx :with-session (lambda (replaced)
+                                                (pig:ctx-send-user-message replaced "/echo Alice" :expand-prompt-templates t)
+                                                (pig:ctx-send-user-message replaced "/echo reply with exactly: Bob" :expand-prompt-templates :false)
+                                                (pig:ctx-send-user-message replaced "/echo reply with exactly: Carol")
+                                                (log-line (concatenate 'string "conversation:" (conversation (pig:ctx-session-manager replaced))))))))
+    (pig:command
      ext "mark" "mark"
      (lambda (ctx name)
        (let ((marks (read-marks)))

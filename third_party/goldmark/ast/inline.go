@@ -481,9 +481,7 @@ func (n *Link) Kind() NodeKind {
 // NewLink returns a new Link node.
 func NewLink() *Link {
 	c := &Link{
-		baseLink: baseLink{
-			BaseInline: BaseInline{},
-		},
+		BaseInline: BaseInline{},
 	}
 	return c
 }
@@ -526,9 +524,7 @@ func (n *Image) Kind() NodeKind {
 // NewImage returns a new Image node.
 func NewImage(link *Link) *Image {
 	c := &Image{
-		baseLink: baseLink{
-			BaseInline: BaseInline{},
-		},
+		BaseInline: BaseInline{},
 	}
 	c.Destination = link.Destination
 	c.Title = link.Title

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"slices"
@@ -112,5 +113,27 @@ func TestAppAWorkersDirectoryKeepsItsStoreAndFilesAcrossItsProcessesRestarts(t *
 	defer again.Release()
 	if got := member(t, again, "text"); got != "kept" {
 		t.Fatalf("text after a restart = %v", got)
+	}
+}
+
+// The module a worker writes for its HostData holds the start's secret token: it is there while the worker runs (the NodeHost loads
+// it), mode 0600, and gone once the worker ended.
+func TestAppAWorkersHostDataModuleHoldingItsTokenIsPrivateWhileItRunsAndGoneAfterItsEnd(t *testing.T) {
+	s := startTestApp(t, map[string]map[string]string{"notes": notesPlugin}, projectOptions(t))
+	p1 := holdNotes(t, s, "p1")
+	defer p1.Release()
+	module := filepath.Join(s.dataDir, "workers", "project", "project%7Cp1", ".host-data.mjs")
+	info, err := os.Stat(module)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode().Perm() != 0o600 {
+		t.Fatalf("mode = %o", info.Mode().Perm())
+	}
+	if err := s.app.Workers["project"].Stop(project.Address(delta.JsonObjectOf("id", "p1")), background); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(module); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("the module of an ended worker: %v", err)
 	}
 }

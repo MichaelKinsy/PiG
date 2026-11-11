@@ -19,7 +19,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 )
 
-// Ports the host rows of packages/chord/test/next/bench/links.ts: remote objects over one memory link (slices 3a, 3b), per
+// Ports the host rows of packages/chord/test/bench/links.ts: remote objects over one memory link (slices 3a, 3b), per
 // codec side by side: compute (hold to live, commit-to-frame end to end), memory (retained per hold), drops (3b:
 // reconnects re-holding 1 and 100 references, 1,000 calls parked while the link is down) and calls. The codec rows (wire
 // bytes, encode and decode time and allocations per message) are chord/next/link/bench_test.go. Payloads are modelled on

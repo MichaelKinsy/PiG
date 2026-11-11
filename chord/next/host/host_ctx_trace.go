@@ -11,7 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports the `ctx.trace` of packages/chord/src/next/host/ctx.ts: a child span of the handler's and a child ctx under it.
+// Ports the `ctx.trace` of packages/chord/src/host/ctx.ts: a child span of the handler's and a child ctx under it.
 
 // traceable is a ctx that makes its child under a span: the same kind of ctx (a job's has its id and state), and its
 // host's `chord.host`.

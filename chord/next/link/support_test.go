@@ -12,7 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 )
 
-// Helpers shared by the link tests: the port of the parts of packages/chord/test/next/support.ts they use
+// Helpers shared by the link tests: the port of the parts of packages/chord/test/support.ts they use
 // (forEachCodec, RawPeer's role, transported).
 
 var background = chordctx.Background()

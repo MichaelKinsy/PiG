@@ -9,7 +9,7 @@ import (
 	chordtelemetry "github.com/MichaelKinsy/PiG/chord/next/telemetry"
 )
 
-// Ports packages/chord/src/next/jobs/stored.ts
+// Ports packages/chord/src/jobs/stored.ts
 //
 // A persisted run's record (slice 6b §4.1, D5): the document each unsettled run of a persisted job keeps in its
 // object's store (namespace `chord.jobs`, kind the job name, key the run id), and the conversion of an outcome to and

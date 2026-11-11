@@ -129,6 +129,7 @@ func (f *FilterableList) SetCursor(idx int) {
 	if idx >= 0 && idx < len(f.filtered) {
 		f.cursor = idx
 		f.fixScroll()
+		f.Invalidate()
 	}
 }
 
@@ -196,7 +197,7 @@ func (f *FilterableList) HandleMouse(event TuiMouseEvent) *TuiMouseDispatchResul
 	if f.EnableSearch {
 		if event.Y == 0 {
 			if event.Type == MousePress && event.Button == MouseButtonLeft {
-				return &TuiMouseDispatchResult{TuiMouseEventResult: TuiMouseEventResult{Handled: true, Focus: true}}
+				return &TuiMouseDispatchResult{Handled: true, Focus: true}
 			}
 			return nil
 		}
@@ -219,7 +220,7 @@ func (f *FilterableList) HandleMouse(event TuiMouseEvent) *TuiMouseDispatchResul
 		if changed {
 			f.Invalidate()
 		}
-		return &TuiMouseDispatchResult{TuiMouseEventResult: TuiMouseEventResult{Handled: true, Render: new(changed)}}
+		return &TuiMouseDispatchResult{Handled: true, Render: new(changed)}
 	}
 	if event.Button != MouseButtonLeft || (event.Type != MousePress && event.Type != MouseClick) {
 		return nil
@@ -238,7 +239,7 @@ func (f *FilterableList) HandleMouse(event TuiMouseEvent) *TuiMouseDispatchResul
 		f.mousePressedIndex = itemIndex
 		f.cursor = itemIndex
 		f.Invalidate()
-		return &TuiMouseDispatchResult{TuiMouseEventResult: TuiMouseEventResult{Handled: true, Focus: true}}
+		return &TuiMouseDispatchResult{Handled: true, Focus: true}
 	}
 	clickedIndex := itemIndex
 	if f.mousePressedIndex >= 0 {
@@ -252,7 +253,7 @@ func (f *FilterableList) HandleMouse(event TuiMouseEvent) *TuiMouseDispatchResul
 		f.onSelect(f.selectedIndex)
 	}
 	f.Invalidate()
-	return &TuiMouseDispatchResult{TuiMouseEventResult: TuiMouseEventResult{Handled: true}}
+	return &TuiMouseDispatchResult{Handled: true}
 }
 
 // renderItem renders a single row. Mirrors upstream select-list.ts renderItem:

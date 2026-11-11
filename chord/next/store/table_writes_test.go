@@ -10,8 +10,8 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/sqlite"
 )
 
-// pi: packages/chord/src/next/store/table-writes.ts
-// Ports packages/chord/test/next/store/table-writes.test.ts: table writes (slice 6a §6, §9): schema writes, row writes
+// pi: packages/chord/src/store/table-writes.ts
+// Ports packages/chord/test/store/table-writes.test.ts: table writes (slice 6a §6, §9): schema writes, row writes
 // as the outbox records them, and alter writes.
 
 const writesTable = "app.store:edits"

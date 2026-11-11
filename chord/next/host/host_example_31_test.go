@@ -1,6 +1,6 @@
 package host
 
-// pi: packages/chord/test/next/examples/31-parked-dependencies.ts
+// pi: packages/chord/test/examples/31-parked-dependencies.ts
 
 import (
 	"context"

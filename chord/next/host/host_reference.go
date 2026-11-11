@@ -17,7 +17,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/src/next/host/reference.ts
+// Ports packages/chord/src/host/reference.ts
 //
 // References (§7): what `get` and `hold` return, built from the contract's members, and its binding to the object:
 // counted as a reference, it follows the object's state, parks calls while loading, keeps the per-reference watches and

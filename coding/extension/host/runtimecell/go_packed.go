@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"go/parser"
 	"go/token"
+	"go/version"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -497,7 +498,7 @@ func installedPigSourceRoots() []string {
 
 func renderGoMod(extensions []GoExtension, sdkRoot string) string {
 	var b strings.Builder
-	b.WriteString("module pig.generated/packed-cell\n\ngo 1.26.0\n\n")
+	fmt.Fprintf(&b, "module pig.generated/packed-cell\n\ngo %s\n\n", goDirectiveFor(extensions))
 	fmt.Fprintf(&b, "require github.com/MichaelKinsy/PiG/extensions/sdk %s // indirect\n", sdkVersionFor(extensions))
 	legacySDK := requiresLegacyGoSDK(extensions)
 	if legacySDK {
@@ -585,6 +586,35 @@ func goModuleRoots(extensions []GoExtension) []string {
 	}
 	slices.Sort(roots)
 	return slices.Compact(roots)
+}
+
+// packedCellGoFloor is the language floor of the generated module: the extension SDK's.
+const packedCellGoFloor = "1.26.0"
+
+// goDirectiveFor returns the go directive of the generated module: the SDK floor, or the highest directive an extension module or
+// workspace module declares. The go command rejects a main module that declares less than a module it requires ("updates to go.mod
+// needed"), and a module that requires the root PiG module, as the Porter extension does, declares the root's floor.
+func goDirectiveFor(extensions []GoExtension) string {
+	floor := packedCellGoFloor
+	for _, root := range goModuleRoots(extensions) {
+		data, err := os.ReadFile(filepath.Join(root, "go.mod"))
+		if err != nil {
+			continue
+		}
+		file, err := modfile.ParseLax(filepath.Join(root, "go.mod"), data, nil)
+		if err != nil || file.Go == nil {
+			continue
+		}
+		declared := file.Go.Version
+		if lang := "go" + declared; strings.Contains(declared, ".") && version.Lang(lang) == lang { // a language version ("go1.27"), not a release, a candidate or a beta
+			//perf:ok one append per extension module at registration, a handful of modules, cold path
+			declared += ".0" // "1.27" and "1.27.0" name the same language version; the generated module spells it the second way
+		}
+		if version.Compare("go"+declared, "go"+floor) > 0 {
+			floor = declared
+		}
+	}
+	return floor
 }
 
 func sdkVersionFor(extensions []GoExtension) string {

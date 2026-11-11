@@ -99,9 +99,9 @@ export default function (pi) {
 				t.Helper()
 				calls++
 				if _, err := inproc.NewRunner(current, root).EmitToolCall(t.Context(), extension.CustomToolCallEvent{
-					ToolCallEventBase: extension.ToolCallEventBase{Type: "tool_call", ToolCallID: fmt.Sprint("call-", calls)},
-					ToolName:          "fixture",
-					Input:             map[string]any{},
+					Type: "tool_call", ToolCallID: fmt.Sprint("call-", calls),
+					ToolName: "fixture",
+					Input:    map[string]any{},
 				}); err != nil {
 					t.Fatal(err)
 				}
@@ -230,9 +230,9 @@ export default function (pi) {
 		t.Helper()
 		calls++
 		if _, err := inproc.NewRunner(current, root).EmitToolCall(t.Context(), extension.CustomToolCallEvent{
-			ToolCallEventBase: extension.ToolCallEventBase{Type: "tool_call", ToolCallID: fmt.Sprint("call-", calls)},
-			ToolName:          "fixture",
-			Input:             map[string]any{},
+			Type: "tool_call", ToolCallID: fmt.Sprint("call-", calls),
+			ToolName: "fixture",
+			Input:    map[string]any{},
 		}); err != nil {
 			t.Fatal(err)
 		}
@@ -427,9 +427,9 @@ func (f *esmReloadFixture) emit() map[string][]string {
 	f.t.Helper()
 	f.calls++
 	if _, err := inproc.NewRunner(f.current, f.root).EmitToolCall(f.t.Context(), extension.CustomToolCallEvent{
-		ToolCallEventBase: extension.ToolCallEventBase{Type: "tool_call", ToolCallID: fmt.Sprint("call-", f.calls)},
-		ToolName:          "fixture",
-		Input:             map[string]any{},
+		Type: "tool_call", ToolCallID: fmt.Sprint("call-", f.calls),
+		ToolName: "fixture",
+		Input:    map[string]any{},
 	}); err != nil {
 		f.t.Fatal(err)
 	}

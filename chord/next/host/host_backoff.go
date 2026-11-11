@@ -2,7 +2,7 @@ package host
 
 import "time"
 
-// Ports packages/chord/src/next/host/backoff.ts. Retry backoff per identity (§6): after a transient failure an identity
+// Ports packages/chord/src/host/backoff.ts. Retry backoff per identity (§6): after a transient failure an identity
 // waits 1 s, doubling up to 60 s. The entries hold no object, so a failed object is collected after its last reference
 // while its window still runs.
 

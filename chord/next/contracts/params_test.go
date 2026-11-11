@@ -6,8 +6,8 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 )
 
-// pi: packages/chord/src/next/contracts/params.ts
-// Ports packages/chord/test/next/contracts/params.test.ts. The type-level half of each case ("in the types") is
+// pi: packages/chord/src/contracts/params.ts
+// Ports packages/chord/test/contracts/params.test.ts. The type-level half of each case ("in the types") is
 // designed out: the Go declaration takes Schema values, so the policy is the runtime check alone.
 
 func paramsVariants() contracts.VariantEntry {

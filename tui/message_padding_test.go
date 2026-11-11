@@ -9,7 +9,7 @@ import (
 
 // Pi 1.1.0's custom-message.ts:90 sets the default box's horizontal padding to outputPad on every rebuild (1.0.4 kept Box(1,1)).
 func TestCustomMessageDefaultBoxFollowsOutputPad(t *testing.T) {
-	c := NewCustomMessageComponent(&CustomMessage{CustomType: "notice", Content: "custom"}, nil, nil, 1)
+	c := NewCustomMessageComponent(&CustomMessage{CustomType: "notice", Content: "custom"}, nil, nil, 1, nil, "", "")
 	before := c.Render(40)
 	c.SetOutputPad(0)
 	after := c.Render(40)

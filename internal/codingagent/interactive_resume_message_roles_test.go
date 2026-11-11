@@ -40,12 +40,12 @@ func TestResumedSessionRendersCustomAndSummaryMessageRoles(t *testing.T) {
 
 			theme := m.markdownThemeWithSettings()
 			want := [][]string{
-				tui.NewCustomMessageComponent(&tui.CustomMessage{CustomType: "note", Content: "shown note"}, nil, theme, 1).Render(80),
+				tui.NewCustomMessageComponent(&tui.CustomMessage{CustomType: "note", Content: "shown note"}, nil, theme, 1, nil, "", "").Render(80),
 				tui.NewSpacer(1).Render(80),
-				tui.NewCompactionSummaryMessageComponent(tui.CompactionSummaryMessage{Summary: "compacted earlier work", TokensBefore: 12345}, theme, 1).Render(80),
+				tui.NewCompactionSummaryMessageComponent(tui.CompactionSummaryMessage{Summary: "compacted earlier work", TokensBefore: 12345}, theme, 1, nil, "", "").Render(80),
 				tui.NewSpacer(1).Render(80),
-				tui.NewBranchSummaryMessageComponent(tui.BranchSummaryMessage{Summary: "the abandoned branch"}, theme, 1).Render(80),
-				tui.NewCustomMessageComponent(&tui.CustomMessage{CustomType: "blocks", Content: []any{map[string]any{"type": "text", "text": "block one"}, map[string]any{"type": "text", "text": "block two"}}}, nil, theme, 1).Render(80),
+				tui.NewBranchSummaryMessageComponent(tui.BranchSummaryMessage{Summary: "the abandoned branch"}, theme, 1, nil, "", "").Render(80),
+				tui.NewCustomMessageComponent(&tui.CustomMessage{CustomType: "blocks", Content: []any{map[string]any{"type": "text", "text": "block one"}, map[string]any{"type": "text", "text": "block two"}}}, nil, theme, 1, nil, "", "").Render(80),
 			}
 			children := m.chatContainer.Children()
 			if len(children) < len(want) {

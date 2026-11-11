@@ -19,7 +19,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// Ports packages/chord/test/next/host/ref-state.test.ts. The own tests of referenceState (on a batch, with the state the
+// Ports packages/chord/test/host/ref-state.test.ts. The own tests of referenceState (on a batch, with the state the
 // reference would read (`() => this.refState`) as a variable of the test) come first, each naming the case whose `ref.state`
 // behavior it checks; the TestRefState... tests that run a host (`ref.state` of a local reference and of a remote one, and the
 // reads and calls that follow the state) are upstream's cases on a real host.

@@ -10,7 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 )
 
-// Ports packages/chord/src/next/data/args.ts: a provider's binding (its dispatch table per accepted version) and the
+// Ports packages/chord/src/data/args.ts: a provider's binding (its dispatch table per accepted version) and the
 // per-call argument check.
 //
 // Go forced differences: Provider<C> and CheckedArgs<C, M> are generic over a contract's static types (ArgsOf,

@@ -39,6 +39,12 @@ func current() uint64 {
 // proving reports whether the offset is still being proved.
 func proving() bool { return offsetState.Load() == 0 }
 
+// token is the calling goroutine's record address, which identifies it while it runs.
+func token() uintptr { return gptr() }
+
+// gptr returns the address of the calling goroutine's runtime record (goroutineid_amd64.s, goroutineid_arm64.s).
+func gptr() uintptr
+
 // goidAt returns the word at offset in the calling goroutine's runtime record (goroutineid_amd64.s, goroutineid_arm64.s). An
 // offset beyond the record reads memory that is not the record's, so only the proof's scan and the offset it proves reach it.
 func goidAt(offset uintptr) uint64

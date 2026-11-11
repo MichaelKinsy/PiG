@@ -9,7 +9,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord"
 )
 
-// Ports packages/chord/src/next/state/native-source.ts (NativeObserver, NativeObservation, NativeStart, NativeSource,
+// Ports packages/chord/src/state/native-source.ts (NativeObserver, NativeObservation, NativeStart, NativeSource,
 // FollowedSource). Native sources (W4, slice 8 §2): in-process values that change, compared by identity (a writable, a
 // registry's composed value, ref.state). Derives and registry tables depend on them and the batch marks them; the
 // followed ones (writables, registry values) give their watches and observers one call per batch that changed them.

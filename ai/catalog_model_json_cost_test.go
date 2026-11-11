@@ -16,7 +16,7 @@ func builtinCatalogEncodeCost(t *testing.T) (allocated, retained uint64) {
 	for i := range GeneratedModels {
 		models[i] = GeneratedModels[i].ToModel()
 	}
-	catalogRecordBaselines.Clear()
+	clearCatalogRecordBaselines()
 	runtime.GC()
 	runtime.GC()
 	var before, after, final runtime.MemStats

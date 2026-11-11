@@ -393,7 +393,7 @@ func TestLabelTimestampToggleRendersTime(t *testing.T) {
 	wantHHMM := fmt.Sprintf("%02d:%02d", now.Hour(), now.Minute())
 
 	root := &fakeNode{id: "r", kids: []TreeNode{
-		&fakeNodeTS{fakeNode: fakeNode{id: "x", label: "[important] some-content"}, ts: tsStr},
+		&fakeNodeTS{id: "x", label: "[important] some-content", ts: tsStr},
 	}}
 	ts := NewTreeSelectorComponent("", root)
 

@@ -656,7 +656,7 @@ func pathToFileURLFor(path string, windows bool) string { return nodeurl.PathToF
 
 func (c *Connection) connectOnce(ctx context.Context) (*mcp.Client, error) {
 	client := mcp.NewClient(mcp.ClientOptions{
-		Implementation:   mcp.Implementation{Name: c.clientName, Version: c.clientVersion},
+		Name: c.clientName, Version: c.clientVersion,
 		RequestTimeoutMs: int(c.Timeout().Milliseconds()),
 		Roots:            []mcp.Root{{URI: pathToFileURL(c.cwd), Name: filepath.Base(c.cwd)}},
 	})

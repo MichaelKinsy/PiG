@@ -67,7 +67,11 @@ const (
 	RuleDialogResults       = "dialog-results-are-json-values"
 	RuleHostHighlightCode   = "host-helpers-highlight-code-no-markdown"
 	RuleGrepReadFile        = "grep-operations-read-file-removed"
+	RuleMarkdownTransformer = "markdown-transformer-options"
 )
+
+// markdownTransformerSymbol names the changed method as apidiff reports it.
+const markdownTransformerSymbol = "(*Extension).MarkdownTransformer"
 
 // getter is one Context method that gained an error result. Params is the
 // parameter list and Old and New are the result lists, as Go writes them.
@@ -272,6 +276,14 @@ func Rules() []Rule {
 			Remedy:   "Delete the member. Grep takes its context lines from ripgrep and never read a matched file, so nothing called it. The rewrite deletes the ReadFile entry of a GrepOperations literal; a call of ops.ReadFile has no replacement and goes with the code that made it.",
 			Changes: []Change{
 				{Symbol: grepReadFileSymbol, Old: "func(string) (string, error)", New: "removed", Since: "0.8.0"},
+			},
+		},
+		{
+			ID:      RuleMarkdownTransformer,
+			Summary: "Extension.MarkdownTransformer takes the MarkdownTransformerOptions that choose the surfaces",
+			Remedy:  "A call `ext.MarkdownTransformer(fn)` still compiles and keeps the default surfaces (user, assistant and thinking messages). To transform custom, summary or changelog messages pass `sdk.MarkdownTransformerOptions{MessageTypes: ...}` as the second argument. Only a use of the method as a value (a variable, a field or an interface whose method has the one-parameter signature) fails to compile: give it the signature func(sdk.MarkdownTransformerFunc, ...sdk.MarkdownTransformerOptions).",
+			Changes: []Change{
+				{Symbol: markdownTransformerSymbol, Old: "func(MarkdownTransformerFunc)", New: "func(MarkdownTransformerFunc, ...MarkdownTransformerOptions)", Since: "0.8.0"},
 			},
 		},
 	}

@@ -22,6 +22,7 @@
  "ai:ThinkingConfig": "ai.geminiThinkingConfig",
  "ai:TranscriptMessages": "[]ai.Message",
  "ai:URL": "string",
+ "chord:Principal": "delta.JsonObject",
  "chord:TSchema": "host.Schema",
  "coding-agent:AgentMessage": "extension.AgentMessage",
  "coding-agent:AgentToolUpdateCallback": "extension.AgentToolUpdateCallback",

@@ -120,11 +120,11 @@ func TestThemeTokenSitesRenderLightTheme(t *testing.T) {
 		}
 	}
 
-	compaction := strings.Join(NewCompactionSummaryMessageComponent(CompactionSummaryMessage{Summary: "summary", TokensBefore: 1000}, nil, 1).Render(40), "\n")
+	compaction := strings.Join(NewCompactionSummaryMessageComponent(CompactionSummaryMessage{Summary: "summary", TokensBefore: 1000}, nil, 1, nil, "", "").Render(40), "\n")
 	if !strings.Contains(compaction, customLabel+"\x1b[1m[compaction]") {
 		t.Errorf("compaction label missing %q in %q", customLabel+"\x1b[1m[compaction]", compaction)
 	}
-	branch := strings.Join(NewBranchSummaryMessageComponent(BranchSummaryMessage{Summary: "summary"}, nil, 1).Render(40), "\n")
+	branch := strings.Join(NewBranchSummaryMessageComponent(BranchSummaryMessage{Summary: "summary"}, nil, 1, nil, "", "").Render(40), "\n")
 	if !strings.Contains(branch, customLabel+"\x1b[1m[branch]") {
 		t.Errorf("branch label missing %q in %q", customLabel+"\x1b[1m[branch]", branch)
 	}

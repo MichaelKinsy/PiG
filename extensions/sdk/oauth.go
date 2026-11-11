@@ -12,6 +12,7 @@ const (
 	methodOAuthLogin             = "oauth_login"
 	methodOAuthRefresh           = "oauth_refresh"
 	methodOAuthGetAPIKey         = "oauth_get_api_key"
+	methodOAuthModifyModels      = "oauth_modify_models"
 	methodOAuthCredentialStatus  = "oauth_credential_status"
 	methodOAuthStoreCredentials  = "oauth_store_credentials"
 	methodOAuthDeleteCredentials = "oauth_delete_credentials"
@@ -120,6 +121,13 @@ type OAuthProvider struct {
 	// when absent the access token is used directly.
 	GetAPIKey func(creds OAuthCredentials) string
 
+	// ModifyModels is Pi's legacy synchronous credential-dependent model projection (oauth.modifyModels, types.ts:2034): the host passes the provider's chat models as Pi's model
+	// objects and the stored OAuth credential, and the models it returns replace them (the other model types pass through). Optional. An error is the model listing's error.
+	ModifyModels func(models []map[string]any, creds OAuthCredentials) ([]map[string]any, error)
+
+	// UsesCallbackServer is Pi's deprecated flag, retained for source compatibility: canonical auth flows ignore it (types.ts:2026), so it changes nothing.
+	UsesCallbackServer bool
+
 	// CredentialStore, when set, makes the provider own credential persistence.
 	CredentialStore OAuthCredentialStore
 }
@@ -129,11 +137,16 @@ type OAuthProvider struct {
 type providerOAuthConfig struct {
 	Name               string `json:"name"`
 	IsSubscription     bool   `json:"isSubscription,omitempty"`
+	UsesCallbackServer bool   `json:"usesCallbackServer,omitempty"`
 	HasLogin           bool   `json:"has_login"`
 	HasRefresh         bool   `json:"has_refresh"`
 	HasGetAPIKey       bool   `json:"has_get_api_key"`
 	HasModifyModels    bool   `json:"has_modify_models,omitempty"`
 	HasCredentialStore bool   `json:"has_credential_store,omitempty"`
+}
+
+type oauthModifyModelsResult struct {
+	Models []map[string]any `json:"models"`
 }
 
 type oauthAPIKeyResult struct {
@@ -251,6 +264,8 @@ func oauthConfigFor(name string, provider *OAuthProvider) providerOAuthConfig {
 		HasLogin:           provider.Login != nil,
 		HasRefresh:         provider.RefreshToken != nil,
 		HasGetAPIKey:       provider.GetAPIKey != nil,
+		HasModifyModels:    provider.ModifyModels != nil,
+		UsesCallbackServer: provider.UsesCallbackServer,
 		HasCredentialStore: provider.CredentialStore != nil,
 	}
 }
@@ -287,6 +302,24 @@ func (e *Extension) dispatchOAuth(id string, req *requestMsg) {
 			key = provider.GetAPIKey(decodeCreds(req.Args))
 		}
 		_ = e.conn.respond(id, oauthAPIKeyResult{APIKey: key}, nil)
+	case methodOAuthModifyModels:
+		if provider.ModifyModels == nil {
+			_ = e.conn.respond(id, nil, errors.New("provider does not support modifyModels"))
+			return
+		}
+		var args struct {
+			Models      []map[string]any `json:"models"`
+			Credentials json.RawMessage  `json:"credentials"`
+		}
+		if err := json.Unmarshal(req.Args, &args); err != nil {
+			_ = e.conn.respond(id, nil, err)
+			return
+		}
+		models, err := provider.ModifyModels(args.Models, decodeCreds(args.Credentials))
+		if models == nil && err == nil {
+			models = []map[string]any{}
+		}
+		_ = e.conn.respond(id, oauthModifyModelsResult{Models: models}, err)
 
 	case methodOAuthCredentialStatus:
 		store, ok := e.oauthStore(id, provider)

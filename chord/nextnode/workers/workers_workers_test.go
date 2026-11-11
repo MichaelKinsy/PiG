@@ -20,11 +20,11 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
-	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
-// pi: packages/chord/src/next-node/workers/workers.ts
-// Ports packages/chord/test/next-node/workers/workers.test.ts (the parts that need no rollout, and no blocked worker): starts
+// pi: packages/chord/src/node/workers/workers.ts
+// Ports packages/chord/test/node/workers/workers.test.ts (the parts that need no rollout, and no blocked worker): starts
 // on demand (the link made at the fork, `started` on `connect`, the start timer covering only the start), failures that
 // stay (a crash, a `fatal`, a failed start: no fork for a new hold, holders `failed { waiting }`) until `retry` or a
 // rollout, a running worker's lost link recovered from once a minute (workers_blocked_unix_test.go), idle stops and `busy`,
@@ -282,6 +282,39 @@ func TestStopSuspendsWhileHeldHoldersFailWaitingSuspendedNothingStartsForgottenW
 		t.Fatalf("starts = %v", starts)
 	}
 	again.Release()
+}
+
+// Forgotten is how an app ends the per-address bookkeeping it made at Start: called once, for the address, when it has no worker, no
+// operation and no failure left: not while its worker runs, not while the address is failed.
+func TestForgottenRunsOnceWhenTheAddressHasNothingLeftNotWhileItsWorkerRuns(t *testing.T) {
+	f := newFleet(t, fleetOptions{})
+	held := f.get(fixtureNotes, "F1")
+	if got := f.forgotten.all(); len(got) != 0 {
+		t.Fatalf("forgotten while the worker runs = %v", got)
+	}
+	if err := f.workers.Stop(session("F1"), background); err != nil {
+		t.Fatal(err)
+	}
+	until(t, func() bool { return len(f.forgotten.all()) > 0 })
+	held.Release()
+	if err := f.workers.Close(background); err != nil {
+		t.Fatal(err)
+	}
+	if got := f.forgotten.all(); !reflect.DeepEqual(got, []string{"session|F1"}) {
+		t.Fatalf("forgotten = %v, want once", got)
+	}
+}
+
+func TestForgottenDoesNotRunForAnAddressThatFailedUntilItsFailureEnds(t *testing.T) {
+	f := newFleet(t, fleetOptions{start: func(contracts.Address, context.Context) (delta.JsonValue, error) {
+		return nil, errors.New("no start")
+	}})
+	held := f.hold(fixtureNotes, "F2")
+	defer held.Release()
+	until(t, func() bool { return f.stateOf("F2") != nil && f.stateOf("F2").Status == WorkerFailed })
+	if got := f.forgotten.all(); len(got) != 0 {
+		t.Fatalf("forgotten while failed = %v", got)
+	}
 }
 
 func TestStopAStopDuringAStartWaitsForItThenStopsAStartDuringAStopWaitsForItsExit(t *testing.T) {
@@ -763,7 +796,9 @@ func forkedFrom(f *fleet) string {
 }
 
 // TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTheCodeTheBaseWasBuiltWith runs `it("a worker started after an
-// edit of the entry's imported source runs the code the base was built with")`.
+// edit of the entry's imported source runs the code the base was built with")`. `inputs` (packages/chord/src/node/workers/workers.ts:256,
+// workers.test.ts:75) lists the files the base was built from, so that an edit of any of them is detected: here, with a Go worker's base
+// being one copy of its executable (D600), the entry with its bytes' hash.
 func TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTheCodeTheBaseWasBuiltWith(t *testing.T) {
 	entry := copiedEntry(t)
 	f := newFleet(t, fleetOptions{entry: entry, env: map[string]string{fixtureReportExecutable: "1"}})
@@ -775,8 +810,11 @@ func TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTheCodeT
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want, ok := built.Inputs[resolved]; built.Err != nil || !ok || len(built.Inputs) != 1 || want != plugins.ContentHash(mustRead(t, entry)) {
+	if want, ok := built.Inputs[resolved]; built.Err != nil || !ok || len(built.Inputs) != 1 || want != model.ContentHash(mustRead(t, entry)) {
 		t.Fatalf("build = %+v, want the entry with its bytes' hash", built)
+	}
+	if inputs := f.workers.Inputs(); len(inputs) != 1 || inputs[resolved] != built.Inputs[resolved] {
+		t.Fatalf("Inputs() = %v, want the files the base was built from: %v", inputs, built.Inputs)
 	}
 	// Half way through an edit: the program on disk is no longer one that runs.
 	if err := os.Remove(entry); err != nil {

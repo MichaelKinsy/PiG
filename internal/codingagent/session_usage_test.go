@@ -102,15 +102,15 @@ func TestOnlyCacheWarmUsageRefreshesCacheComparison(t *testing.T) {
 		t.Helper()
 		session := NewSession("cache-refresh", "/tmp")
 		turn1 := MessageEntry{
-			SessionEntryBase: SessionEntryBase{Type: "message", ID: "x", Timestamp: "1970-01-01T00:00:00Z"},
+			Type: "message", ID: "x", Timestamp: "1970-01-01T00:00:00Z",
 			Message: agent.AgentMessage{Assistant: &agent.AssistantMessage{
 				Role: "assistant", Provider: "test", ModelID: "test-model", Timestamp: 0,
 				Usage: &ai.Usage{Output: 10, CacheWrite: 100_000, Cost: ai.UsageCost{CacheWrite: 0.375}},
 			}},
 		}
 		usage := UsageEntry{
-			SessionEntryBase: SessionEntryBase{Type: "usage", ID: "usage-" + kind, Timestamp: time.UnixMilli(500_000).UTC().Format(time.RFC3339Nano)},
-			Kind:             kind, Provider: "test", Model: "test-model",
+			Type: "usage", ID: "usage-" + kind, Timestamp: time.UnixMilli(500_000).UTC().Format(time.RFC3339Nano),
+			Kind: kind, Provider: "test", Model: "test-model",
 			Usage: ai.Usage{CacheRead: 100_000, TotalTokens: 100_000},
 		}
 		for _, entry := range []any{turn1, usage} {

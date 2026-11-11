@@ -10,7 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 )
 
-// Ports packages/chord/src/next/host/revocation.ts. Revocation keys (§4, R10, R11): what `revokedBy` says revokes a
+// Ports packages/chord/src/host/revocation.ts. Revocation keys (§4, R10, R11): what `revokedBy` says revokes a
 // principal, as canonical JSON, computed once per principal object.
 
 // RevokedBy is what revokes a principal: the app's typed values, the same function on every host. A returned error is

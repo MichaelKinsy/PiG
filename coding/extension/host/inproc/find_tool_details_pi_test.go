@@ -36,7 +36,7 @@ func TestEmitToolResult_FindDetailsKeepTheTypedVariantOnlyWhenTheyFit(t *testing
 				return nil, nil
 			}}
 			r := inproc.NewRunner([]extension.Extension{first, second}, t.TempDir())
-			if _, err := r.EmitToolResult(context.Background(), extension.FindToolResultEvent{ToolResultEventBase: extension.ToolResultEventBase{Type: "tool_result"}, ToolName: "find"}); err != nil {
+			if _, err := r.EmitToolResult(context.Background(), extension.FindToolResultEvent{Type: "tool_result", ToolName: "find"}); err != nil {
 				t.Fatal(err)
 			}
 			if !tc.wantTyped {

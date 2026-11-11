@@ -554,10 +554,8 @@ func TestSubprocessEventPatching(t *testing.T) {
 	r := inproc.NewRunner([]extension.Extension{*loaded}, ".")
 
 	tr, err := r.EmitToolResult(ctx, extension.BashToolResultEvent{
-		ToolResultEventBase: extension.ToolResultEventBase{
-			Type:    "tool_result",
-			Content: []any{map[string]any{"type": "text", "text": "raw output"}},
-		},
+		Type:     "tool_result",
+		Content:  []any{map[string]any{"type": "text", "text": "raw output"}},
 		ToolName: "bash",
 	})
 	if err != nil {

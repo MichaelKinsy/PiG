@@ -26,7 +26,6 @@ func handleInputHook(t *testing.T, h extension.RemoteEditorHost, data string, ho
 // the hook, without running the action, and runs the action itself for every other key.
 func TestDelegatedEditorHandleInputAnswersTheComponentsHooks(t *testing.T) {
 	m, _ := newCustomEditorDispatchMode(t)
-	m.uiTaskCh = make(chan func(), 64)
 	m.editor.Focused = true
 	fake := &fakeDelegatedEditor{}
 	m.setRemoteEditor(fake)
@@ -71,7 +70,6 @@ func TestDelegatedEditorHandleInputAnswersTheComponentsHooks(t *testing.T) {
 // A component that sets its own onExtensionShortcut replaces the host's, which Pi copies only to a component without one.
 func TestDelegatedEditorHandleInputSkipsTheHostShortcutsForAComponentWithItsOwn(t *testing.T) {
 	m, _ := newCustomEditorDispatchMode(t)
-	m.uiTaskCh = make(chan func(), 64)
 	m.editor.Focused = true
 	var consulted []string
 	m.extensionShortcutListener = func(data string) bool { consulted = append(consulted, data); return false }
@@ -88,7 +86,6 @@ func TestDelegatedEditorHandleInputSkipsTheHostShortcutsForAComponentWithItsOwn(
 // The inherited members of Pi's Editor that a custom component reads and sets reach the host's editor.
 func TestDelegatedEditorBaseExposesTheEditorsSettings(t *testing.T) {
 	m, _ := newCustomEditorDispatchMode(t)
-	m.uiTaskCh = make(chan func(), 64)
 	m.editor.Focused = true
 	fake := &fakeDelegatedEditor{}
 	m.setRemoteEditor(fake)
@@ -132,7 +129,6 @@ func TestDelegatedEditorBaseExposesTheEditorsSettings(t *testing.T) {
 // Pi's TUI invalidates every component when the theme changes; the host passes it on to a component that listens.
 func TestRemoteEditorPassesAThemeChangeToTheComponent(t *testing.T) {
 	m, _ := newCustomEditorDispatchMode(t)
-	m.uiTaskCh = make(chan func(), 64)
 	m.editor.Focused = true
 	fake := &invalidatingDelegatedEditor{}
 	m.setRemoteEditor(fake)

@@ -23,7 +23,6 @@ func newThemeDispatchMode(t *testing.T) (*InteractiveMode, context.Context) {
 	restoreStartupTheme(t)
 	m, ctx := newCustomEditorDispatchMode(t)
 	m.installRenderDispatcher()
-	m.uiTaskCh = make(chan func(), 64)
 	m.backgroundCtx, m.runCtx = ctx, ctx
 	m.themeState.output = io.Discard
 	t.Cleanup(func() { m.disposeTheme(); m.backgroundTasks.Wait() })

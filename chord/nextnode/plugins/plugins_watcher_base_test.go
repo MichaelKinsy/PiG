@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
 // Ports the cases of packages/chord/test/node/plugins/watcher.test.ts "base code compared with what the running bases read
@@ -48,11 +50,11 @@ func (f *watcherFixture) joinComparisons() {
 	})
 }
 
-func (f *watcherFixture) recordBase(inputs BaseInputs) {
+func (f *watcherFixture) recordBase(inputs model.BaseInputs) {
 	f.run(func() { f.watcher.recordBase(inputs) })
 }
 
-func hashOf(text string) string { return ContentHash([]byte(text)) }
+func hashOf(text string) string { return model.ContentHash([]byte(text)) }
 
 func write(t *testing.T, path, text string) {
 	t.Helper()
@@ -66,7 +68,7 @@ func TestTheWatchersMarksComparesARecordedBaseFileNotItsSiblingsNeverUnderNodeMo
 	_, f := based(t, nil)
 	elsewhere := realOf(t, tempRoot(t))
 	writeFiles(t, elsewhere, map[string]string{"entry.ts": "", "sibling.ts": "", "node_modules/react/index.js": ""})
-	f.recordBase(BaseInputs{
+	f.recordBase(model.BaseInputs{
 		filepath.Join(elsewhere, "entry.ts"):                          hashOf(""),
 		filepath.Join(elsewhere, "node_modules", "react", "index.js"): hashOf(""),
 	})
@@ -134,7 +136,7 @@ func TestTheBaseMarkFindsAnEditMadeBetweenABaseBuildAndItsWatchWithNoLaterEvent(
 	_, f := based(t, nil)
 	elsewhere := realOf(t, tempRoot(t))
 	writeFiles(t, elsewhere, map[string]string{"entry.ts": "edited after the build"})
-	f.recordBase(BaseInputs{filepath.Join(elsewhere, "entry.ts"): hashOf("as built")})
+	f.recordBase(model.BaseInputs{filepath.Join(elsewhere, "entry.ts"): hashOf("as built")})
 	f.baseIs(true)
 }
 
@@ -146,7 +148,7 @@ func TestARecordedBaseAfterTheCloseWatchesNothing(t *testing.T) {
 	records := 0
 	f.run(func() { records = len(f.watcher.records) })
 	f.close()
-	f.recordBase(BaseInputs{filepath.Join(elsewhere, "entry.ts"): hashOf("as built")})
+	f.recordBase(model.BaseInputs{filepath.Join(elsewhere, "entry.ts"): hashOf("as built")})
 	if f.marks().Base {
 		t.Fatal("base set by a record that arrived after the close")
 	}
@@ -194,7 +196,7 @@ func TestTheBaseMarkFollowsAnAncestorOfARecordedFileMovedAwayAndItsSubtreeMadeAg
 	root := realOf(t, tempRoot(t))
 	file := filepath.Join(root, "parent", "child", "entry.ts")
 	writeFiles(t, filepath.Join(root, "parent", "child"), map[string]string{"entry.ts": "v1"})
-	f.recordBase(BaseInputs{file: hashOf("v1")})
+	f.recordBase(model.BaseInputs{file: hashOf("v1")})
 	f.settled()
 	if f.marks().Base {
 		t.Fatal("base set at the record")
@@ -224,7 +226,7 @@ func TestTheBaseMarkRenewsTheWatchOfAnAncestorRemovedAndMadeAgainWhileTheRecorde
 		t.Fatal(err)
 	}
 	file := filepath.Join(root, "a", "b", "x.ts")
-	f.recordBase(BaseInputs{file: hashOf("as built")})
+	f.recordBase(model.BaseInputs{file: hashOf("as built")})
 	f.baseIs(true)
 	if err := os.RemoveAll(filepath.Join(root, "a")); err != nil {
 		t.Fatal(err)
@@ -245,8 +247,8 @@ func TestTheBaseMarkKeepsAFileTwoBasesReadWithDifferentBytesMarkedWhateverItHold
 	elsewhere := realOf(t, tempRoot(t))
 	file := filepath.Join(elsewhere, "shared.ts")
 	writeFiles(t, elsewhere, map[string]string{"shared.ts": "first"})
-	f.recordBase(BaseInputs{file: hashOf("first")})
-	f.recordBase(BaseInputs{file: hashOf("second")})
+	f.recordBase(model.BaseInputs{file: hashOf("first")})
+	f.recordBase(model.BaseInputs{file: hashOf("second")})
 	f.baseIs(true)
 	write(t, file, "second")
 	f.settled()
@@ -260,7 +262,7 @@ func TestTheBaseMarkKeepsAFileTwoBasesReadWithDifferentBytesMarkedWhateverItHold
 func TestTheBaseMarkReadsRecordedFilesOnBoundedGoroutinesThatEndWithTheWatcher(t *testing.T) {
 	base, f := based(t, nil)
 	files := map[string]string{}
-	inputs := BaseInputs{}
+	inputs := model.BaseInputs{}
 	for i := range 200 {
 		name := "f" + strconv.Itoa(i) + ".ts"
 		files[name] = "export {};"
@@ -272,8 +274,8 @@ func TestTheBaseMarkReadsRecordedFilesOnBoundedGoroutinesThatEndWithTheWatcher(t
 		f.watcher.recordBase(inputs)
 		started = f.watcher.comparers
 	})
-	if started == 0 || started > maxComparers {
-		t.Fatalf("%d goroutines reading %d files, want 1 to %d", started, len(inputs), maxComparers)
+	if started == 0 || started > model.MaxComparers {
+		t.Fatalf("%d goroutines reading %d files, want 1 to %d", started, len(inputs), model.MaxComparers)
 	}
 	f.joinComparisons()
 	if f.marks().Base {
@@ -302,7 +304,7 @@ func TestRecordBaseSettlesOnceItsFirstComparisonsEnded(t *testing.T) {
 	writeFiles(t, elsewhere, map[string]string{"a.ts": "v2", "b.ts": "same"})
 	var done <-chan struct{}
 	f.run(func() {
-		done = f.watcher.recordBase(BaseInputs{
+		done = f.watcher.recordBase(model.BaseInputs{
 			filepath.Join(elsewhere, "a.ts"): hashOf("v1"),
 			filepath.Join(elsewhere, "b.ts"): hashOf("same"),
 		})
@@ -315,14 +317,14 @@ func TestRecordBaseSettlesOnceItsFirstComparisonsEnded(t *testing.T) {
 	if !f.marks().Base {
 		t.Fatal("base is not set once the record's comparisons ended, a.ts differs from it")
 	}
-	f.run(func() { done = f.watcher.recordBase(BaseInputs{}) })
+	f.run(func() { done = f.watcher.recordBase(model.BaseInputs{}) })
 	select {
 	case <-done:
 	default:
 		t.Fatal("an empty record did not settle at once")
 	}
 	f.run(func() { f.watcher.close() })
-	f.run(func() { done = f.watcher.recordBase(BaseInputs{filepath.Join(elsewhere, "a.ts"): hashOf("v2")}) })
+	f.run(func() { done = f.watcher.recordBase(model.BaseInputs{filepath.Join(elsewhere, "a.ts"): hashOf("v2")}) })
 	select {
 	case <-done:
 	default:

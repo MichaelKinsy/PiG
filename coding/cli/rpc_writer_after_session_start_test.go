@@ -21,8 +21,9 @@ func TestRPCWritesNothingSessionStartEmittedBeforeTheWriterSubscribesInEverySDK(
 		t.Fatal(err)
 	}
 	fixtures := filepath.Join(root, "test", "parity", "testdata", "writer-start")
-	for _, sdk := range []string{"node", "go", "python", "rust"} {
+	for _, sdk := range []string{"node", "go", "python", "rust", "lisp"} {
 		t.Run(sdk, func(t *testing.T) {
+			requireSDKFixtureToolchain(t, sdk)
 			home := t.TempDir()
 			p := startRPCProcessAt(t, t.TempDir(), []string{
 				"PIG_HOME=" + home, "PIG_CODING_AGENT_DIR=" + filepath.Join(home, "agent"), "PIG_TEST_FAUX=1",

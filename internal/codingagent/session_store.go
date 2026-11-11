@@ -507,7 +507,7 @@ func (s *Session) readSlotsLocked(indexes []int32) []SessionEntry {
 			}
 			if entry == nil {
 				s.staleReads.Add(1)
-				entry = RawEntry{SessionEntryBase: SessionEntryBase{Type: slot.typ(), ID: slot.id, ParentID: s.parentPtrLocked(int(indexes[k]))}}
+				entry = RawEntry{Type: slot.typ(), ID: slot.id, ParentID: s.parentPtrLocked(int(indexes[k]))}
 			}
 			out[k] = entry
 		}
@@ -1104,7 +1104,7 @@ func searchTextOf(typ string, raw []byte) string {
 		body, ok = scanSearchBody(raw)
 	}
 	if !ok {
-		body = treeSearchBody(RawEntry{SessionEntryBase: SessionEntryBase{Type: typ}}, raw)
+		body = treeSearchBody(RawEntry{Type: typ}, raw)
 	}
 	return jsstring.ToLower(body.text)
 }

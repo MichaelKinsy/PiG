@@ -19,6 +19,16 @@ SPDX-FileCopyrightText = [
 ]
 SPDX-License-Identifier = "MIT"
 
+# The Chord tutorial adapts Pi's tutorial (packages/chord/docs/tutorial/book.md); PiG-authored revisions retain the same MIT license.
+[[annotations]]
+path = "docs/chord/**"
+precedence = "closest"
+SPDX-FileCopyrightText = [
+  "Copyright Michael Kinsy",
+  "Copyright (c) 2025 Mario Zechner",
+]
+SPDX-License-Identifier = "MIT"
+
 # The project banner contains an adapted Go gopher. The remaining composition
 # is PiG-authored artwork.
 [[annotations]]
@@ -257,7 +267,8 @@ SPDX-License-Identifier = "MIT AND PSF-2.0"
 # automation/gen/import-highlight-corpus.mjs, and Pi's output for them.
 [[annotations]]
 path = [
-  "tui/internal/hljs/grammars_*.json.gz",
+  "tui/internal/hljs/grammars_eager.json.gz",
+  "tui/internal/hljs/grammars_all.json.zst",
   "tui/internal/hljs/testdata/corpus.json",
   "tui/internal/hljs/testdata/oracle.json.gz",
 ]
@@ -454,7 +465,7 @@ SPDX-License-Identifier = "MIT AND Unicode-3.0 AND LicenseRef-ICU-CJK AND Licens
 
 # The QuickJS WebAssembly module and the codemode prelude are Pi's, embedded byte for byte.
 [[annotations]]
-path = ["codemode/assets/quickjs.wasm", "codemode/assets/quickjs.wasm.gz"]
+path = ["codemode/assets/quickjs.wasm", "codemode/assets/quickjs.wasm.zst"]
 precedence = "closest"
 SPDX-FileCopyrightText = [
   "Copyright (c) 2026 Vercel, Inc.",
@@ -508,7 +519,7 @@ SPDX-FileCopyrightText = "Copyright the JSON Schema organization"
 SPDX-License-Identifier = "BSD-3-Clause"
 
 # The schema-switch fixtures of Chord v2 (chord/next/host/testdata/schema-switch) are Pi's test files, byte for byte
-# (packages/chord/test/next/schema at b556cfe5): the recorded fingerprints and the stored SQLite store and archive.
+# (packages/chord/test/schema at b556cfe5): the recorded fingerprints and the stored SQLite store and archive.
 [[annotations]]
 path = "chord/next/host/testdata/schema-switch/**"
 precedence = "closest"
@@ -517,6 +528,13 @@ SPDX-FileCopyrightText = [
   "Copyright (c) 2025 Mario Zechner",
 ]
 SPDX-License-Identifier = "MIT"
+
+# PiG fork of the modernc.org/sqlite v1.62.0 driver layer (third_party/sqlite/FORK.md).
+[[annotations]]
+path = "third_party/sqlite/**"
+precedence = "closest"
+SPDX-FileCopyrightText = "Copyright (c) 2017 The Sqlite Authors"
+SPDX-License-Identifier = "BSD-3-Clause"
 
 # PiG fork of santhosh-tekuri/jsonschema v6.0.2 (third_party/jsonschema/FORK.md).
 [[annotations]]

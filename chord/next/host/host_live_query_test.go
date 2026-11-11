@@ -15,6 +15,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/sqlite"
 )
 
+// pi: packages/chord/src/store/live-query.ts
 // Ports packages/chord/test/store/live-query.test.ts (Pi main 2439933cf, 8889e623d): live queries over an object's own
 // tables (decision "Live queries over an object's own tables"): `self.query(table, q, limit)` runs before its object goes
 // live, again in the commit step of every commit of the object that writes its table, and publishes the diff in that
@@ -179,6 +180,7 @@ func lqJSON(t *testing.T, value any) string {
 	return string(out)
 }
 
+// Cites packages/chord/src/host/attempt.ts:161 (StoreSelf.query: a live query over a table the factory declared).
 func TestLiveQueryActivationRunsTheQueryBeforeTheObjectGoesLiveOverTheRowsAlreadyStored(t *testing.T) {
 	chordStore := memoryStore(t)
 	first := newBoard(t, chordStore, 3, nil)

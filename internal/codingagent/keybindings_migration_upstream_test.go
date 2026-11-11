@@ -16,6 +16,7 @@ import (
 )
 
 func TestUpstreamKeybindingsMigration(t *testing.T) {
+	restoreTUIKeybindings(t)
 	for _, tc := range []struct{ name, input, want string }{
 		// Ports packages/coding-agent/test/keybindings-migration.test.ts:25.
 		{"rewrites old key names to namespaced ids", `{"cursorUp":["up","ctrl+p"],"expandTools":"ctrl+x"}`, "{\n  \"tui.editor.cursorUp\": [\n    \"up\",\n    \"ctrl+p\"\n  ],\n  \"app.tools.expand\": \"ctrl+x\"\n}\n"},

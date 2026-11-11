@@ -13,12 +13,10 @@ import (
 )
 
 var reportTask = EvalTask{
-	DiscoveredEvalCase: DiscoveredEvalCase{
-		File:     "evals/example.docs.eval.ts",
-		FullName: "Example workflow > handles the case",
-		EvalSet:  "Example workflow",
-		CaseID:   "handles the case",
-	},
+	File:      "evals/example.docs.eval.ts",
+	FullName:  "Example workflow > handles the case",
+	EvalSet:   "Example workflow",
+	CaseID:    "handles the case",
 	Variant:   "without_docs",
 	Model:     "fixture/model",
 	RunNumber: 1,

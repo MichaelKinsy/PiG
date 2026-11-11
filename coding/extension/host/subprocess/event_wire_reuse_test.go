@@ -260,7 +260,7 @@ func TestToolCallSubprocessHandlersShareTheEventEncodingUntilAnInputEdit(t *test
 	}
 	runner, peers, oracle, reused := eventWireDispatch(t, "tool_call", steps)
 	wire := json.RawMessage(`{"command":"original"}`)
-	event := extension.CustomToolCallEvent{ToolCallEventBase: extension.ToolCallEventBase{Type: "tool_call", ToolCallID: "call", WireInput: &wire}, ToolName: "bash", Input: map[string]any{"command": "original"}}
+	event := extension.CustomToolCallEvent{Type: "tool_call", ToolCallID: "call", WireInput: &wire, ToolName: "bash", Input: map[string]any{"command": "original"}}
 	if _, err := runner.EmitToolCall(t.Context(), event); err != nil {
 		t.Fatal(err)
 	}

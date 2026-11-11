@@ -10,7 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// Ports packages/chord/src/next/host/facet.ts. Facets (§16): a plugin's setup for one host, typed by the app's principal
+// Ports packages/chord/src/host/facet.ts. Facets (§16): a plugin's setup for one host, typed by the app's principal
 // type. A setup only declares: the types and registries it serves, its contributions to registries (slice 8) and the
 // host's presence lists; it has no documents, routines or natives, so a facet cannot fail after `load`.
 //

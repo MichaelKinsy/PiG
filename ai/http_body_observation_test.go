@@ -10,7 +10,7 @@ import (
 
 // recordedRead is a read, owned by the calling goroutine, whose network-wait announcements are counted instead of suspending a read coroutine.
 func recordedRead(announced *int) *bodyReadOperation {
-	return &bodyReadOperation{owner: goroutineid.Current(), yield: func(signal bodyReadSignal) bool {
+	return &bodyReadOperation{owner: goroutineid.Token(), yield: func(signal bodyReadSignal) bool {
 		if signal.pending {
 			*announced++
 		}

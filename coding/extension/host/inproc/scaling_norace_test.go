@@ -85,7 +85,7 @@ func TestRunnerLookupScalingGate(t *testing.T) {
 
 // One event reaches every extension's handler: dispatching tool_call to N handlers allocates in proportion to N.
 func TestRunnerEventDispatchScalingGate(t *testing.T) {
-	event := extension.CustomToolCallEvent{ToolCallEventBase: extension.ToolCallEventBase{Type: "tool_call", ToolCallID: "c1"}, ToolName: "bash"}
+	event := extension.CustomToolCallEvent{Type: "tool_call", ToolCallID: "c1", ToolName: "bash"}
 	perfgate.CheckScaling(t, "extension.runner_dispatch", extensionSizes, func(count int) func() {
 		runner := inproc.NewRunner(loadedExtensions(count), ".")
 		return func() {

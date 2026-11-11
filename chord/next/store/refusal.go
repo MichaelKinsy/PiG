@@ -7,7 +7,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 )
 
-// Ports packages/chord/src/next/store/refusal.ts
+// Ports packages/chord/src/store/refusal.ts
 //
 // A refused commit as Chord's owners take it (slice 6b D4, §1.4): the store rejects a step it rolled back with the
 // step's own error, unchanged (Durable's Storage semantics); Chord classifies it: an `int` column's `CHECK` (a

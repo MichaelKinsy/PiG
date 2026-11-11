@@ -150,7 +150,9 @@ test("replay: the statements of a reference trace, replayed onto the fixture, re
 	assert.equal(diffStores(a, r.store), undefined)
 	cleanA()
 	// A statement that differs shows up in the replayed changes.
-	const mutated = native.map(l => (l.t === "commit" && l.seq === 476 ? { ...l, stmts: l.stmts.map(s => (s.p.some(p => typeof p === "string" && p.includes('"kind":"pi.')) ? { ...s, p: s.p.map(p => (typeof p === "string" ? p.replace('"kind":"pi.', '"kind":"xx.') : p)) } : s)) } : l))
+	// Pi writes a row's record as one cell of a JSON-array parameter (INSERT ... SELECT json_extract(...) FROM json_each(?)), so the record's own quotes are escaped there.
+	const kind = /\\?"kind\\?":\\?"pi\./
+	const mutated = native.map(l => (l.t === "commit" && l.seq === 476 ? { ...l, stmts: l.stmts.map(s => (s.p.some(p => typeof p === "string" && kind.test(p)) ? { ...s, p: s.p.map(p => (typeof p === "string" ? p.replace(kind, m => m.replace("pi.", "xx.")) : p)) } : s)) } : l))
 	assert.notEqual(diffCommits(trace, replay(mutated, fixture, join(out, "replayed-bad")).trace), undefined)
 })
 

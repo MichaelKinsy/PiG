@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 
+	_ "modernc.org/sqlite"
+
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
@@ -50,13 +52,13 @@ type sessions struct {
 }
 
 var notesDoc = durable.DefineDoc(durable.DocDefinition[notes]{
-	CommonDocDefinition: durable.CommonDocDefinition[notes]{Kind: "app.notes", Version: 1, Initial: func() notes { return notes{Lines: []string{}} }, CheckpointWhen: func(notes, []durable.Op, durable.CheckpointInfo) bool { return false }},
-	DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkCurrent},
+	Kind: "app.notes", Version: 1, Initial: func() notes { return notes{Lines: []string{}} }, CheckpointWhen: func(notes, []durable.Op, durable.CheckpointInfo) bool { return false },
+	Scope: durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkCurrent,
 })
 
 var sessionsDoc = durable.DefineDoc(durable.DocDefinition[sessions]{
-	CommonDocDefinition: durable.CommonDocDefinition[sessions]{Kind: "app.sessions", Version: 1, Initial: func() sessions { return sessions{Items: map[string]any{}} }, CheckpointWhen: func(sessions, []durable.Op, durable.CheckpointInfo) bool { return false }},
-	DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeSession},
+	Kind: "app.sessions", Version: 1, Initial: func() sessions { return sessions{Items: map[string]any{}} }, CheckpointWhen: func(sessions, []durable.Op, durable.CheckpointInfo) bool { return false },
+	Scope: durable.ScopeSession,
 })
 
 type plan struct {
@@ -68,16 +70,16 @@ type blob struct {
 }
 
 var planDoc = durable.DefineDoc(durable.DocDefinition[plan]{
-	CommonDocDefinition: durable.CommonDocDefinition[plan]{Kind: "app.plan", Version: 1, Initial: func() plan { return plan{Steps: []string{}} }, CheckpointWhen: func(plan, []durable.Op, durable.CheckpointInfo) bool { return false }},
-	DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryRewindable, Fork: durable.ForkAsOf},
+	Kind: "app.plan", Version: 1, Initial: func() plan { return plan{Steps: []string{}} }, CheckpointWhen: func(plan, []durable.Op, durable.CheckpointInfo) bool { return false },
+	Scope: durable.ScopeConversation, History: durable.HistoryRewindable, Fork: durable.ForkAsOf,
 })
 
 var blobDoc = durable.DefineDocFamily(durable.DocFamilyDefinition[blob, blob]{
 	Family: true,
 	Kind:   "app.blob", Version: 1,
-	DocumentSemantics: durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkCurrent},
-	Initial:           func(seed blob) blob { return blob{Content: seed.Content} },
-	CheckpointWhen:    func(blob, []durable.Op, durable.CheckpointInfo) bool { return false },
+	Scope: durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkCurrent,
+	Initial:        func(seed blob) blob { return blob{Content: seed.Content} },
+	CheckpointWhen: func(blob, []durable.Op, durable.CheckpointInfo) bool { return false },
 })
 
 type jobState struct {
@@ -126,15 +128,13 @@ var job = durable.DefineTask(durable.TaskDefinition[durable.JsonObject, jobState
 })
 
 var noteTool = &durable.ToolRegistration{
-	ToolSchema: ai.ToolSchema{
-		Name:        "note",
-		Description: "Appends a line to the conversation's notes and starts a job",
-		Parameters: map[string]any{
-			"type":                 "object",
-			"properties":           map[string]any{"text": map[string]any{"type": "string"}},
-			"required":             []any{"text"},
-			"additionalProperties": false,
-		},
+	Name:        "note",
+	Description: "Appends a line to the conversation's notes and starts a job",
+	Parameters: map[string]any{
+		"type":                 "object",
+		"properties":           map[string]any{"text": map[string]any{"type": "string"}},
+		"required":             []any{"text"},
+		"additionalProperties": false,
 	},
 	Execute: func(ctx context.Context, args any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 		text, _ := args.(map[string]any)["text"].(string)
@@ -165,15 +165,13 @@ var noteTool = &durable.ToolRegistration{
 
 // spawnTool runs a child conversation owned by its own task and returns the child's answer.
 var spawnTool = &durable.ToolRegistration{
-	ToolSchema: ai.ToolSchema{
-		Name:        "spawn",
-		Description: "Runs a child conversation",
-		Parameters: map[string]any{
-			"type":                 "object",
-			"properties":           map[string]any{"task": map[string]any{"type": "string"}},
-			"required":             []any{"task"},
-			"additionalProperties": false,
-		},
+	Name:        "spawn",
+	Description: "Runs a child conversation",
+	Parameters: map[string]any{
+		"type":                 "object",
+		"properties":           map[string]any{"task": map[string]any{"type": "string"}},
+		"required":             []any{"task"},
+		"additionalProperties": false,
 	},
 	Replay: durable.ReplaySafe,
 	Execute: func(ctx context.Context, args any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {

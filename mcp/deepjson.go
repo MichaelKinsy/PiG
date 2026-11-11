@@ -24,24 +24,24 @@ type deepRestorer interface {
 var rawMessageType = reflect.TypeFor[json.RawMessage]()
 
 // deepFallback takes the result of json.Unmarshal(data, v) and, when that failed, reads the text again past encoding/json's nesting limit. Callers
-// write `deepFallback(json.Unmarshal(data, v), data, v)`, so the decode runs in the caller's frame; the wrapper is small enough to inline, and the
+// write `deepFallback(json.Unmarshal(data, &v), data, &v, func(b []byte) error { return json.Unmarshal(b, &v) })`, the closure decoding the shallow text into the same destination, so the decode runs in the caller's frame; the wrapper is small enough to inline, and the
 // fallback is out of line.
-func deepFallback(err error, data []byte, v any) error {
+func deepFallback(err error, data []byte, v any, decode func([]byte) error) error {
 	if err == nil {
 		return nil
 	}
-	return unmarshalDeep(data, v, err)
+	return unmarshalDeep(data, v, decode, err)
 }
 
 // unmarshalDeep is the fallback of deepFallback, kept out of line.
 //
 //go:noinline
-func unmarshalDeep(data []byte, v any, err error) error {
+func unmarshalDeep(data []byte, v any, decode func([]byte) error, err error) error {
 	shallow, spans, key, ok := elideDeep(data)
 	if !ok || len(spans) == 0 {
 		return err
 	}
-	if json.Unmarshal(shallow, v) != nil {
+	if decode(shallow) != nil {
 		return err
 	}
 	prefix := []byte(`{"` + key + `":`)

@@ -24,8 +24,8 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// pi: packages/chord/src/next/host/attempt.ts
-// Ports packages/chord/test/next/host/attempt.test.ts: attempts (§6, §13, §14, §15): the failure kinds of an activation, the
+// pi: packages/chord/src/host/attempt.ts
+// Ports packages/chord/test/host/attempt.test.ts: attempts (§6, §13, §14, §15): the failure kinds of an activation, the
 // ending of an attempt (the seal fence, the drain), declarations, calls, remote variants, tables and eager migrations,
 // and attempts parked on their dependencies. Every case runs a real host; the cases Pi runs under `fakeTimers()` run on
 // the scopeLoop of host_scope_support_test.go (the clock moves only through advanceHost). A handler or an opener that Pi
@@ -1006,7 +1006,7 @@ func storeImplementation() contracts.Implementation {
 	return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{"n": constant(1.0)}}}
 }
 
-// Ports packages/chord/test/next/host/attempt.test.ts:645 ("a fresh table is created at activation at its version, with
+// Ports packages/chord/test/host/attempt.test.ts:645 ("a fresh table is created at activation at its version, with
 // its indexes, in one commit"): the factory declares the table with `self.table(Edits)` (attempt.test.ts:650, StoreSelf.Table).
 func TestAttemptTablesAFreshTableIsCreatedAtActivationAtItsVersionWithItsIndexesInOneCommit(t *testing.T) {
 	chordStore := memoryStore(t, true)
@@ -1163,7 +1163,7 @@ func leftPad(i int) string {
 // evolved is version 2 adding `note`, whose rows runs each per row first.
 func evolved(t testing.TB, each func(id string) error) *store.TableDefinition {
 	t.Helper()
-	definition, err := store.EvolveTable(editsV1(t), func(e *store.TableEditor) *store.TableEditor {
+	definition, err := store.EvolveTable(editsV1(t), func(e *store.TableEditor) store.TableTailEditor {
 		return e.Add("note", store.Opt(store.Str())).Rows(func(row store.Row) (any, error) {
 			if err := each(row["id"].(string)); err != nil {
 				return nil, err

@@ -88,7 +88,7 @@ func TestDefinitionsRequireACheckpointPolicy(t *testing.T) {
 	initial := func() obj { return delta.JsonObjectOf("count", 0) }
 	t.Run("defineDoc", func(t *testing.T) {
 		expectPanic(t, "Document t.no-policy checkpointWhen is required", func() {
-			durable.DefineDoc(durable.DocDefinition[obj]{CommonDocDefinition: durable.CommonDocDefinition[obj]{Kind: "t.no-policy", Version: 1, Initial: initial}, DocumentSemantics: sessionScope})
+			durable.DefineDoc(durable.DocDefinition[obj]{Kind: "t.no-policy", Version: 1, Initial: initial, DocumentSemantics: sessionScope})
 		})
 	})
 	t.Run("defineDocFamily", func(t *testing.T) {
@@ -97,8 +97,8 @@ func TestDefinitionsRequireACheckpointPolicy(t *testing.T) {
 		})
 	})
 	t.Run("CheckpointWhenRaw alone satisfies it", func(t *testing.T) {
-		token := durable.DefineDoc(durable.DocDefinition[obj]{CommonDocDefinition: durable.CommonDocDefinition[obj]{Kind: "t.raw-policy", Version: 1, Initial: initial,
-			CheckpointWhenRaw: func(durable.JsonObject, []durable.Op, durable.CheckpointInfo) bool { return true }}, DocumentSemantics: sessionScope})
+		token := durable.DefineDoc(durable.DocDefinition[obj]{Kind: "t.raw-policy", Version: 1, Initial: initial,
+			CheckpointWhenRaw: func(durable.JsonObject, []durable.Op, durable.CheckpointInfo) bool { return true }, DocumentSemantics: sessionScope})
 		if token.AnyDefinition().CheckpointWhen == nil {
 			t.Fatal("the erased definition has no predicate")
 		}

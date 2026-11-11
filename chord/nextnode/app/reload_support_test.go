@@ -32,7 +32,7 @@ import (
 
 // reloadTimeouts are the hosts' timeouts of the suite's apps (the server's and the workers'): a call outliving a restart's drain is cut
 // off after 1 s, an object's close takes at most 2 s, a call waits at most 5 s for its object to go live.
-var reloadTimeouts = AppTimeouts{Close: 2 * time.Second, Ready: 5 * time.Second, ReloadDrain: time.Second}
+var reloadTimeouts = AppTimeouts{CloseTimeout: 2 * time.Second, ReadyTimeout: 5 * time.Second, ReloadDrainTimeout: time.Second}
 
 // reloadWait bounds every wait of the suite on the page, the latches and the marks.
 const reloadWait = 30 * time.Second
@@ -221,7 +221,7 @@ func (s started) removeAndApply(t testing.TB, dir string) plugins.RolloutResult 
 }
 
 // dirty is whether plugin dir is still marked dirty.
-func (s started) dirty() []string { return s.app.Plugins.Marks().Dirty }
+func (s started) dirty() []string { return s.app.Plugins.Component.Marks().Dirty }
 
 // rolloutFailures are the plugins a rollout's hosts kept on their old code, as `<step>/<host>: <plugin>`, and hosts that failed.
 func rolloutFailures(result plugins.RolloutResult) []string {

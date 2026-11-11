@@ -18,7 +18,7 @@ import (
 // turnTool is a tool `name` whose execution runs execute.
 func turnTool(name string, execute func(ctx context.Context, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error), replay ...durable.ToolReplay) *durable.ToolRegistration {
 	registration := durable.ToolRegistration{
-		ToolSchema: ai.ToolSchema{Name: name, Description: name, Parameters: map[string]any{"type": "object", "properties": map[string]any{}}},
+		Name: name, Description: name, Parameters: map[string]any{"type": "object", "properties": map[string]any{}},
 		Execute: func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			return execute(ctx, api)
 		},

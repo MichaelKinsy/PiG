@@ -1,6 +1,7 @@
 package surfaces
 
 import (
+	"context"
 	"slices"
 	"strings"
 )
@@ -122,3 +123,19 @@ func baseLanguage(locale string) string {
 
 // rtlScripts are the scripts written right to left (ISO 15924), as `Intl.Locale` maximizes a tag's script.
 var rtlScripts = []string{"Adlm", "Arab", "Hebr", "Mand", "Nkoo", "Rohg", "Samr", "Syrc", "Thaa", "Yezi"}
+
+type renderScopeKey struct{}
+
+// InLanguage runs render with language as the current language of the context it is given (Pi's inLanguage: the render
+// scope). Pi's scope is a module variable the render sets and restores; Go's is the context (D450), so there is nothing
+// to restore: ctx is untouched when render returns or panics, and a nested InLanguage on the context render was given
+// leaves the outer scope as it was. A nil language is a render with no current language.
+func InLanguage[T any](ctx context.Context, language *Language, render func(context.Context) T) T {
+	return render(context.WithValue(ctx, renderScopeKey{}, language))
+}
+
+// CurrentLanguage is the language of the render ctx belongs to (Pi's currentLanguage), nil outside one.
+func CurrentLanguage(ctx context.Context) *Language {
+	language, _ := ctx.Value(renderScopeKey{}).(*Language)
+	return language
+}

@@ -39,8 +39,8 @@ func TestMessageEntryRecordKeepsNoSpareCapacity(t *testing.T) {
 	}
 	parent := "0a1b2c3d"
 	for _, tc := range cases {
-		raw, err := marshalSessionLine(MessageEntry{SessionEntryBase: SessionEntryBase{Type: "message", ID: "4e5f6a7b", ParentID: &parent,
-			Timestamp: "2026-10-13T08:00:00.000Z"}, Message: tc.msg})
+		raw, err := marshalSessionLine(MessageEntry{Type: "message", ID: "4e5f6a7b", ParentID: &parent,
+			Timestamp: "2026-10-13T08:00:00.000Z", Message: tc.msg})
 		if err != nil {
 			t.Fatal(err)
 		}

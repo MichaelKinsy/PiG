@@ -12,7 +12,6 @@ import (
 func newWidgetMode(t *testing.T) (*InteractiveMode, *ExtUIContext) {
 	t.Helper()
 	m, _ := newCustomEditorDispatchMode(t)
-	m.uiTaskCh = make(chan func(), 64)
 	m.widgetContainer = tui.NewContainer(tui.NewSpacer(1))
 	m.widgetContainerBelow = tui.NewContainer()
 	return m, &ExtUIContext{m: m}

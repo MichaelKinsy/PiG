@@ -1,5 +1,7 @@
 package cli
 
+// pi: packages/coding-agent/src/cli/auth-logout.ts
+
 // Ports packages/coding-agent/test/auth-logout.test.ts
 
 import (

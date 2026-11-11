@@ -14,8 +14,8 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 )
 
-// pi: packages/chord/src/next/host/adapted.ts
-// Ports packages/chord/test/next/host/adapted.test.ts (Q10, §22, slice 7b §7): consumers bound at an older version a provider
+// pi: packages/chord/src/host/adapted.ts
+// Ports packages/chord/test/host/adapted.test.ts (Q10, §22, slice 7b §7): consumers bound at an older version a provider
 // accepts read its state mapped (diffs per commit), call it with mapped arguments and results or its replacement of a
 // removed method, read keyed members mapped per key, and are refused a member the provider refuses. Every describe of the
 // file is ported, in its order; the helpers are in host_adapted_support_test.go.
@@ -345,7 +345,7 @@ func TestReloadAdaptedMembersFollowTheProvidersTopologyRebuildsAnExistingAdapted
 
 // Mirrors "reload: adapted members publish one coherent frame (fix round 1) › does not publish the new mapping applied to the old attempt's state".
 //
-// Pi: packages/chord/test/next/host/adapted.test.ts:282 (does not publish the new mapping applied to the old attempt's state)
+// Pi: packages/chord/test/host/adapted.test.ts:282 (does not publish the new mapping applied to the old attempt's state)
 func TestReloadAdaptedMembersPublishOneCoherentFrameDoesNotPublishTheNewMappingAppliedToTheOldAttemptsState(t *testing.T) {
 	v1 := adaptedLocal("astra.atomic", contracts.Mem("n", contracts.Int()))
 	v2 := adaptedEvolve(v1, func(e *contracts.LocalEditor) *contracts.LocalEditor { return e.State("n", contracts.Int()) })
@@ -370,7 +370,7 @@ func TestReloadAdaptedMembersPublishOneCoherentFrameDoesNotPublishTheNewMappingA
 
 // Mirrors "› never computes a new accepted-version mapping over the old provider shape".
 //
-// Pi: packages/chord/test/next/host/adapted.test.ts:306 (never computes a new accepted-version mapping over the old provider shape)
+// Pi: packages/chord/test/host/adapted.test.ts:306 (never computes a new accepted-version mapping over the old provider shape)
 func TestReloadAdaptedMembersPublishOneCoherentFrameNeverComputesANewAcceptedVersionMappingOverTheOldProviderShape(t *testing.T) {
 	v1 := adaptedLocal("sol.mapping-publication", contracts.Mem("x", contracts.Int()))
 	v2 := adaptedEvolve(v1, func(e *contracts.LocalEditor) *contracts.LocalEditor { return e.State("x", adaptedObjOf("n")) })

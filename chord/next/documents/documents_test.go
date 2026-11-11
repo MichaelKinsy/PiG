@@ -10,8 +10,8 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 )
 
-// Ports packages/chord/test/next/documents/documents.test.ts
-// pi: packages/chord/src/next/documents/documents.ts
+// Ports packages/chord/test/documents/documents.test.ts
+// pi: packages/chord/src/documents/documents.ts
 //
 // Pi serves a `local("app.owner")` through a createHost host and reads the handles from `self.state`; the Go harness
 // object is that object (label "app.owner(1)"), `reference.release()` is object.End().

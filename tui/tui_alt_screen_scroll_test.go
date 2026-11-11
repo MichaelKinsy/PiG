@@ -334,7 +334,7 @@ func TestAltScreenDoesNotScrollAnImageRowThatStays(t *testing.T) {
 		}
 		dock := &scrollTestLines{lines: []string{"dock"}}
 		root := NewVStack([]StackEntry{
-			{Component: NewScrollView(lines, ScrollViewOptions{Follow: "end", Primary: true}), StackEntryOptions: StackEntryOptions{Basis: new(0), Grow: new(1), Shrink: new(1), MinSize: new(1)}},
+			{Component: NewScrollView(lines, ScrollViewOptions{Follow: "end", Primary: true}), Basis: new(0), Grow: new(1), Shrink: new(1), MinSize: new(1)},
 			{Component: &scrollTestLines{lines: []string{pinned}}},
 			{Component: dock},
 		}, StackOptions{})

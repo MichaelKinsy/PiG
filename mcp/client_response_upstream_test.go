@@ -16,7 +16,7 @@ func TestClientHandleResponseResolvesResultAndRejectsErrorResponse(t *testing.T)
 	server.setHandler("custom/fail", func(mcp.JSONRPCMessage) (any, error) {
 		return nil, &mcp.McpError{Code: -32000, Message: "boom", Data: json.RawMessage(`{"why":"because"}`)}
 	})
-	client := mcp.NewClient(mcp.ClientOptions{Implementation: mcp.Implementation{Name: "test-client", Version: "2.0.0"}})
+	client := mcp.NewClient(mcp.ClientOptions{Name: "test-client", Version: "2.0.0"})
 	if _, err := client.Connect(t.Context(), clientTransport); err != nil {
 		t.Fatal(err)
 	}

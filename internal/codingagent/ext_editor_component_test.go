@@ -47,7 +47,6 @@ func (e *factoryEditor) HandleInput(data string) {
 // factory. A nil factory restores the default editor.
 func TestExtUIContextEditorFactoryBuildsTheComponentThatTakesTheEditorsPlace(t *testing.T) {
 	m, _ := newCustomEditorDispatchMode(t)
-	m.uiTaskCh = make(chan func(), 64)
 	m.editor.Focused = true
 	m.editor.SetText("carried")
 	var submitted []string
@@ -112,7 +111,6 @@ func TestExtUIContextEditorFactoryBuildsTheComponentThatTakesTheEditorsPlace(t *
 // tui.requestRender when a timer changes it shows the change without a key). The host editor renders the installed component at the row's width.
 func TestExtUIContextEditorFactoryComponentRendersOnEveryPassAtTheRowsWidth(t *testing.T) {
 	m, _ := newCustomEditorDispatchMode(t)
-	m.uiTaskCh = make(chan func(), 64)
 	m.editor.Focused = true
 	ui := &ExtUIContext{m: m}
 	component := &factoryEditor{}

@@ -71,6 +71,8 @@ func (s *WebSurface) Built() *SurfaceBuilt { return s.building.built() }
 // WebPrefix is where the web surface's files live (Pi's `WEB_PREFIX`).
 const WebPrefix = "/_chord/web/"
 
+// pig divergence (D608): Pi's `webSurface` awaits the build; this returns at once and Build builds after the listen.
+//
 // NewWebSurface is the web surface on server: its facet serves the page and the surface's files once Build built the base bundle
 // (503 when it failed). The build is not started here.
 func NewWebSurface(server host.Host, options WebSurfaceOptions) *WebSurface {

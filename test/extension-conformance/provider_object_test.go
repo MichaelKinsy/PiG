@@ -16,7 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
-	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 	"github.com/MichaelKinsy/PiG/test/extension-conformance/testfixture/providerobject"
 )
 
@@ -251,7 +251,11 @@ func providerPeer(t *testing.T, root string, native subprocess.ExtConfig) subpro
 	case "go":
 		peer.ModulePath = "example.com/provider-peer"
 		peer.Package = peer.ModulePath
-		write("go.mod", fmt.Sprintf("module %s\n\ngo 1.26.0\nrequire github.com/MichaelKinsy/PiG/extensions/sdk v%s\nreplace github.com/MichaelKinsy/PiG/extensions/sdk => %s\n", peer.ModulePath, pigversion.PigVersion, filepath.ToSlash(filepath.Join(root, "extensions/sdk"))))
+		sdkVersion, err := testenv.RootSDKRequirement(root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		write("go.mod", fmt.Sprintf("module %s\n\ngo 1.26.0\nrequire github.com/MichaelKinsy/PiG/extensions/sdk %s\nreplace github.com/MichaelKinsy/PiG/extensions/sdk => %s\n", peer.ModulePath, sdkVersion, filepath.ToSlash(filepath.Join(root, "extensions/sdk"))))
 		write("extension.go", "package peer\nimport sdk \"github.com/MichaelKinsy/PiG/extensions/sdk\"\nfunc Extension()*sdk.Extension{return sdk.New(\"provider-peer\")}\n")
 	case "python":
 		peer.Package = "provider_peer"

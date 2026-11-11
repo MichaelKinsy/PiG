@@ -15,7 +15,7 @@ import (
 
 // Benchmark of the HTTP component (slice 10 §7): a route's overhead per request against a plain net/http handler (keep-alive
 // round trips), and `bytes` throughput for a 100 MiB file (`FileResponse`) against io.Copy of the open file. Ports
-// packages/chord/test/next/bench/http.ts (Pi: median µs per request over bursts, MiB/s of one download; Go: the standard
+// packages/chord/test/bench/http.ts (Pi: median µs per request over bursts, MiB/s of one download; Go: the standard
 // benchmark loop and b.SetBytes). Run by hand, not in CI:
 //
 //	go test ./chord/nextnode/http -run '^$' -bench . -benchtime 2000x

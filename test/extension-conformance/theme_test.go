@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/coding/source"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/tui"
 )
@@ -227,9 +228,14 @@ func TestThemeQueriesAcrossSDKs(t *testing.T) {
 		t.Cleanup(func() { tui.SetTerminalColors(tui.TerminalColors{}) })
 		tui.SetTerminalColors(tui.TerminalColors{})
 		custom := conformanceTheme(t, tui.TerminalColorMode256)
-		themes := map[string]*tui.Theme{"custom file theme, 256 colors": custom, "built-in system theme": tui.NewThemeRegistry().Get(tui.SystemThemeName)}
+		// What Pi's resource loader sets on a theme file under the agent's themes directory (core/source-info.ts SourceInfo): the file, a local source, user scope, a top-level origin and the theme's directory.
+		custom.SourceInfo = &source.SourceInfo{Path: custom.SourcePath, Source: "local", Scope: "user", Origin: "top-level", BaseDir: filepath.Dir(custom.SourcePath)}
+		pkgTheme := conformanceTheme(t, tui.TerminalColorMode256)
+		pkgRoot := filepath.Dir(filepath.Dir(pkgTheme.SourcePath))
+		pkgTheme.SourceInfo = &source.SourceInfo{Path: pkgTheme.SourcePath, Source: "npm:@acme/themes", Scope: "user", Origin: "package", BaseDir: pkgRoot, ChangelogPath: filepath.Join(pkgRoot, "CHANGELOG.md")}
+		themes := map[string]*tui.Theme{"custom file theme, 256 colors": custom, "package theme, 256 colors": pkgTheme, "built-in system theme": tui.NewThemeRegistry().Get(tui.SystemThemeName)}
 		// The palette's modifiers flag is the host's chalk level (theme.bold draws nothing at level 0); the row sets it so both outcomes are compared whatever the test's stdout is.
-		modifiers := map[string]bool{"custom file theme, 256 colors": true, "built-in system theme": false}
+		modifiers := map[string]bool{"custom file theme, 256 colors": true, "package theme, 256 colors": true, "built-in system theme": false}
 		for name, theme := range themes {
 			if theme == nil {
 				t.Fatalf("%s: no theme", name)
@@ -328,8 +334,26 @@ func TestThemeQueriesAcrossSDKs(t *testing.T) {
 			if !reflect.DeepEqual(got["sourceInfo"], wantInfo) {
 				t.Errorf("%s: sourceInfo = %v, want %v", name, got["sourceInfo"], wantInfo)
 			}
-			if name == "custom file theme, 256 colors" && wantSource == nil {
-				t.Errorf("the custom theme has no source path, so the row proves nothing")
+			switch name {
+			case "custom file theme, 256 colors":
+				if wantSource == nil {
+					t.Errorf("the custom theme has no source path, so the row proves nothing")
+				}
+				// The expected object is written out here, not derived from theme.SourceInfo, so an SDK that drops the field or any member of it fails (nil == nil proves nothing).
+				literal := map[string]any{"path": theme.SourcePath, "source": "local", "scope": "user", "origin": "top-level", "baseDir": filepath.Dir(theme.SourcePath)}
+				if !reflect.DeepEqual(wantInfo, literal) {
+					t.Errorf("the custom theme's SourceInfo = %v, want %v", wantInfo, literal)
+				}
+			case "package theme, 256 colors":
+				// A theme a package supplies carries the package's changelog (package-manager.ts:2421-2425 createSourceInfo with the PathMetadata's changelogPath): the Go and Rust typed field, and the Node, Python and Lisp passthrough, are pinned by an expected object written out here.
+				literal := map[string]any{"path": theme.SourcePath, "source": "npm:@acme/themes", "scope": "user", "origin": "package", "baseDir": filepath.Dir(filepath.Dir(theme.SourcePath)), "changelogPath": filepath.Join(filepath.Dir(filepath.Dir(theme.SourcePath)), "CHANGELOG.md")}
+				if !reflect.DeepEqual(wantInfo, literal) {
+					t.Errorf("the package theme's SourceInfo = %v, want %v", wantInfo, literal)
+				}
+			default:
+				if wantInfo != nil {
+					t.Errorf("%s: the built-in theme carries sourceInfo %v, want none", name, wantInfo)
+				}
 			}
 		}
 	})

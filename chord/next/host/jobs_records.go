@@ -14,7 +14,7 @@ import (
 	chordtelemetry "github.com/MichaelKinsy/PiG/chord/next/telemetry"
 )
 
-// Ports packages/chord/src/next/jobs/records.ts
+// Ports packages/chord/src/jobs/records.ts
 //
 // A job's records on its object (§15, slice 6a §1.2, slice 6b §4): its runs by id and by key, the active count, the run
 // state documents, `running` and the runs waiting for a live attempt, across the object's attempts. Records and state

@@ -172,10 +172,23 @@ type conformanceLinesComponent struct {
 // conformanceWidthComponent renders one line naming the width it is drawn at.
 type conformanceWidthComponent struct {
 	line func(width int) string
+	// drawn is the line Render returned last: what a later run of the card's renderer reads as lastComponent.
+	drawn string
 }
 
-func (c *conformanceWidthComponent) Render(width int) []string { return []string{c.line(width)} }
-func (*conformanceWidthComponent) Invalidate()                 {}
+func (c *conformanceWidthComponent) Render(width int) []string {
+	c.drawn = c.line(width)
+	return []string{c.drawn}
+}
+
+// lastDrawn is the line the component the card's renderer returned before drew, or "none" on the card's first run: Pi's ToolRenderContext.lastComponent.
+func lastDrawn(previous extension.Component) string {
+	if component, ok := previous.(*conformanceWidthComponent); ok && component.drawn != "" {
+		return component.drawn
+	}
+	return "none"
+}
+func (*conformanceWidthComponent) Invalidate() {}
 
 func (c *conformanceLinesComponent) Render(int) []string { return append([]string(nil), c.lines...) }
 func (*conformanceLinesComponent) Invalidate()           {}
@@ -189,82 +202,86 @@ func TestConformance_TransportsMatch(t *testing.T) {
 
 	cases := allHarnessCases()
 
-	var baseline recording
-	var baselineName string
+	// record is one row's work: the row's harness, its recording and the checks every row passes.
+	record := func(t *testing.T, tc harnessCase) recording {
+		t.Helper()
+		h := tc.make(t)
+		defer func() {
+			if h.cleanup != nil {
+				h.cleanup()
+			}
+			if h.host != nil {
+				h.host.Shutdown("test done")
+			}
+		}()
+		got := captureRecording(t, h)
+		// Pi hands extensions the collection-complete options (system-prompt.ts:37-64): every empty collection is present. An SDK or host that drops empty collections reports "absent".
+		const wantShape = "spo_shape=selectedTools:array:2,toolSnippets:object:0,toolGuidelines:object:1,promptGuidelines:array:0,appendSystemPrompt:string:0,sections:object:0,contextFiles:array:0,skills:array:1"
+		if !strings.Contains(got.ContextProbe, wantShape) {
+			t.Fatalf("%s: context probe = %q, want it to contain %q", tc.name, got.ContextProbe, wantShape)
+		}
+		// packages/coding-agent/src/core/extensions/types.ts:1692-1715 (ExtensionAPI.sendMessage, sendUserMessage, appendEntry, setSessionName): each
+		// call reaches the host with the arguments the extension passed, in every SDK, not only the same as the baseline transport's recording.
+		for _, wantAction := range []string{
+			"sendMessage:notice:hello-custom:steer:true",
+			"sendMessage:notice:default:unset:unset",
+			"sendMessage:notice:no-turn:unset:false",
+			"sendUserMessage:hello-user:followUp",
+			"setSessionName:conformance-session",
+			"appendEntry:conformance-entry:hello-entry",
+		} {
+			if !slices.Contains(got.ActionCalls, wantAction) {
+				t.Errorf("%s: host action %q was not recorded; got %v", tc.name, wantAction, got.ActionCalls)
+			}
+		}
+		// packages/coding-agent/src/core/extensions/types.ts:1676-1682 (ExtensionAPI.registerMessageRenderer, registerEntryRenderer): the renderer an extension
+		// registers for a custom type draws the host's message and entry at width 72 in every SDK.
+		if want := []string{"renderer:hello:expanded=true:width=72"}; !slices.Equal(got.MessageRenderer, want) {
+			t.Errorf("%s: registerMessageRenderer lines = %q, want %q", tc.name, got.MessageRenderer, want)
+		}
+		if want := []string{"entryrenderer:hi-entry:expanded=true:width=72"}; !slices.Equal(got.EntryRenderer, want) {
+			t.Errorf("%s: registerEntryRenderer lines = %q, want %q", tc.name, got.EntryRenderer, want)
+		}
+		// packages/coding-agent/src/core/extensions/types.ts:735-789 (pi.on session_start, session_shutdown, session_info_changed, session_before_compact,
+		// session_compact, session_compact_failed) and :680 (pi.on project_trust), :994 (pi.on agent_before_settle), :1006-1014 (pi.on ui_prompt_start, ui_prompt_end):
+		// each SDK's handler receives the event the host emitted with its payload fields, so the recording is the literal below and not only the baseline's.
+		wantSessionEvents := []string{
+			"session_start:startup:info", "session_shutdown:quit:info", "session_info_changed:conformance-session:info",
+			"session_before_compact:threshold:true:info", "session_compact:threshold:true:true:info",
+			"session_compact_failed:overflow:recovery failed:false:false:true:info", "turn_end:assistant-entry:tool-entry:info",
+		}
+		if !slices.Equal(got.SessionEventNotify, wantSessionEvents) {
+			t.Errorf("%s: session events = %q, want %q", tc.name, got.SessionEventNotify, wantSessionEvents)
+		}
+		if !strings.HasPrefix(got.AgentBeforeSettle, "agent_before_settle:completed:") {
+			t.Errorf("%s: agent_before_settle = %q", tc.name, got.AgentBeforeSettle)
+		}
+		if got.ProjectTrustDecision != "yes" {
+			t.Errorf("%s: project_trust decision = %q, want yes", tc.name, got.ProjectTrustDecision)
+		}
+		for _, promptEvent := range []string{"ui_prompt:ui_prompt_start:ui_prompt:select:Pick:info", "ui_prompt:ui_prompt_end:ui_prompt:select:Pick:info"} {
+			if !slices.Contains(got.UIPromptEvents, promptEvent) {
+				t.Errorf("%s: ui_prompt events lack %q: %q", tc.name, promptEvent, got.UIPromptEvents)
+			}
+		}
+		return got
+	}
+
+	// The first row is the reference. It records it, and so does the first later row when -run leaves it out.
+	baseline := referenceRow[recording]{name: cases[0].name}
 	for i, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			h := tc.make(t)
-			t.Cleanup(func() {
-				if h.cleanup != nil {
-					h.cleanup()
-				}
-				if h.host != nil {
-					h.host.Shutdown("test done")
-				}
-			})
-			got := captureRecording(t, h)
-			// Pi hands extensions the collection-complete options (system-prompt.ts:37-64): every empty collection is present. An SDK or host that drops empty collections reports "absent".
-			const wantShape = "spo_shape=selectedTools:array:2,toolSnippets:object:0,toolGuidelines:object:1,promptGuidelines:array:0,appendSystemPrompt:string:0,sections:object:0,contextFiles:array:0,skills:array:1"
-			if !strings.Contains(got.ContextProbe, wantShape) {
-				t.Fatalf("%s: context probe = %q, want it to contain %q", tc.name, got.ContextProbe, wantShape)
-			}
-			// packages/coding-agent/src/core/extensions/types.ts:1692-1715 (ExtensionAPI.sendMessage, sendUserMessage, appendEntry, setSessionName): each
-			// call reaches the host with the arguments the extension passed, in every SDK, not only the same as the baseline transport's recording.
-			for _, wantAction := range []string{
-				"sendMessage:notice:hello-custom:steer:true",
-				"sendMessage:notice:default:unset:unset",
-				"sendMessage:notice:no-turn:unset:false",
-				"sendUserMessage:hello-user:followUp",
-				"setSessionName:conformance-session",
-				"appendEntry:conformance-entry:hello-entry",
-			} {
-				if !slices.Contains(got.ActionCalls, wantAction) {
-					t.Errorf("%s: host action %q was not recorded; got %v", tc.name, wantAction, got.ActionCalls)
-				}
-			}
-			// packages/coding-agent/src/core/extensions/types.ts:1676-1682 (ExtensionAPI.registerMessageRenderer, registerEntryRenderer): the renderer an extension
-			// registers for a custom type draws the host's message and entry at width 72 in every SDK.
-			if want := []string{"renderer:hello:expanded=true:width=72"}; !slices.Equal(got.MessageRenderer, want) {
-				t.Errorf("%s: registerMessageRenderer lines = %q, want %q", tc.name, got.MessageRenderer, want)
-			}
-			if want := []string{"entryrenderer:hi-entry:expanded=true:width=72"}; !slices.Equal(got.EntryRenderer, want) {
-				t.Errorf("%s: registerEntryRenderer lines = %q, want %q", tc.name, got.EntryRenderer, want)
-			}
-			// packages/coding-agent/src/core/extensions/types.ts:735-789 (pi.on session_start, session_shutdown, session_info_changed, session_before_compact,
-			// session_compact, session_compact_failed) and :680 (pi.on project_trust), :994 (pi.on agent_before_settle), :1006-1014 (pi.on ui_prompt_start, ui_prompt_end):
-			// each SDK's handler receives the event the host emitted with its payload fields, so the recording is the literal below and not only the baseline's.
-			wantSessionEvents := []string{
-				"session_start:startup:info", "session_shutdown:quit:info", "session_info_changed:conformance-session:info",
-				"session_before_compact:threshold:true:info", "session_compact:threshold:true:true:info",
-				"session_compact_failed:overflow:recovery failed:false:false:true:info", "turn_end:assistant-entry:tool-entry:info",
-			}
-			if !slices.Equal(got.SessionEventNotify, wantSessionEvents) {
-				t.Errorf("%s: session events = %q, want %q", tc.name, got.SessionEventNotify, wantSessionEvents)
-			}
-			if !strings.HasPrefix(got.AgentBeforeSettle, "agent_before_settle:completed:") {
-				t.Errorf("%s: agent_before_settle = %q", tc.name, got.AgentBeforeSettle)
-			}
-			if got.ProjectTrustDecision != "yes" {
-				t.Errorf("%s: project_trust decision = %q, want yes", tc.name, got.ProjectTrustDecision)
-			}
-			for _, promptEvent := range []string{"ui_prompt:ui_prompt_start:ui_prompt:select:Pick:info", "ui_prompt:ui_prompt_end:ui_prompt:select:Pick:info"} {
-				if !slices.Contains(got.UIPromptEvents, promptEvent) {
-					t.Errorf("%s: ui_prompt events lack %q: %q", tc.name, promptEvent, got.UIPromptEvents)
-				}
-			}
 			if i == 0 {
-				baseline = got
-				baselineName = tc.name
+				baseline.set(t, record(t, tc))
 				return
 			}
-			if baselineName == "" {
-				t.Skip("baseline subtest was filtered out by -run; run the full suite")
-			}
-			if !reflect.DeepEqual(got, baseline) {
+			want := baseline.get(t, func() recording { return record(t, cases[0]) })
+			got := record(t, tc)
+			if !reflect.DeepEqual(got, want) {
 				gb, _ := json.MarshalIndent(got, "", "  ")
-				wb, _ := json.MarshalIndent(baseline, "", "  ")
+				wb, _ := json.MarshalIndent(want, "", "  ")
 				t.Fatalf("transport %q diverged from %q baseline\n--- baseline (%s) ---\n%s\n--- got (%s) ---\n%s",
-					tc.name, baselineName, baselineName, wb, tc.name, gb)
+					tc.name, cases[0].name, cases[0].name, wb, tc.name, gb)
 			}
 		})
 	}
@@ -830,7 +847,7 @@ func captureRecording(t *testing.T, h *harness) recording {
 	*h.notify = nil
 	var boundaryErrors []*extension.ExtensionError
 	removeBoundaryListener := h.runner.AddErrorListener(func(err *extension.ExtensionError) { boundaryErrors = append(boundaryErrors, err) })
-	boundary, err := h.runner.EmitBoundary(ctx, &extension.AgentBeforeSettleEvent{Type: "agent_before_settle", BoundaryState: extension.BoundaryState{Outcome: extension.AgentActivityCompleted}},
+	boundary, err := h.runner.EmitBoundary(ctx, &extension.AgentBeforeSettleEvent{Type: "agent_before_settle", Outcome: extension.AgentActivityCompleted},
 		func(entries []extension.SessionBoundaryDraft) (extension.BoundaryContextPreview, error) {
 			return extension.BoundaryContextPreview{
 				ContextEntries: make([]extension.ProjectedSessionEntry, len(entries)),
@@ -991,25 +1008,43 @@ func captureRecording(t *testing.T, h *harness) recording {
 		// A value no SDK defaults to: an SDK that drops the field renders duration=none.
 		DurationMs: new(int64(4200)),
 	}
+	probeResult := agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "out"}}, Details: map[string]any{"k": "v"}}
+	isProbeLine := func(line string) bool { return strings.HasPrefix(line, "toolrender:") }
 	renderCall, ok := renderProbe.RenderCall(json.RawMessage(`{"topic":"alpha"}`), nil, renderContext).(interface{ Render(int) []string })
 	if !ok {
 		t.Fatal("renderCall did not return a component")
 	}
-	var toolRenderer []string
-	waitFor(t, func() bool {
-		lines := renderCall.Render(72)
-		return len(lines) == 1 && lines[0] == "toolrender:call:alpha:partial=false:calls=1:width=72"
-	})
-	toolRenderer = append(toolRenderer, renderCall.Render(72)...)
-	renderResult, ok := renderProbe.RenderResult(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "out"}}, Details: map[string]any{"k": "v"}}, extension.ToolRenderResultOptions{Expanded: true}, nil, renderContext).(interface{ Render(int) []string })
+	callLine := expectRenderedLine(t, renderCall, isProbeLine, "toolrender:call:alpha:partial=false:calls=1:width=72:last=none")
+	toolRenderer := []string{callLine}
+	renderResult, ok := renderProbe.RenderResult(probeResult, extension.ToolRenderResultOptions{Expanded: true}, nil, renderContext).(interface{ Render(int) []string })
 	if !ok {
 		t.Fatal("renderResult did not return a component")
 	}
-	waitFor(t, func() bool {
-		lines := renderResult.Render(72)
-		return len(lines) == 1 && lines[0] == "toolrender:result:out:v:expanded=true:calls=1:width=72:duration=4200"
-	})
-	toolRenderer = append(toolRenderer, renderResult.Render(72)...)
+	resultLine := expectRenderedLine(t, renderResult, isProbeLine, "toolrender:result:out:v:expanded=true:calls=1:width=72:duration=4200:last=none")
+	toolRenderer = append(toolRenderer, resultLine)
+
+	// ToolRenderContext.lastComponent: a second run of each phase on the same card receives what that phase's renderer returned on the first
+	// (tool-execution.ts hands the card's callRendererComponent and resultRendererComponent back). Each last= is a line no SDK's fallback (an
+	// absent component reads "none") produces, and the call and result slots are separate: a swapped slot reads the other phase's line. The second
+	// runs change an input (expanded, topic) so that their own line is told from the first run's, which the same component still shows until the
+	// answer arrives; a wrong last= then fails with both lines at once.
+	renderContext.LastComponent = renderResult.(extension.Component)
+	renderResultAgain, ok := renderProbe.RenderResult(probeResult, extension.ToolRenderResultOptions{Expanded: false}, nil, renderContext).(interface{ Render(int) []string })
+	if !ok {
+		t.Fatal("second renderResult did not return a component")
+	}
+	resultAgain := expectRenderedLine(t, renderResultAgain, func(line string) bool { return strings.Contains(line, ":expanded=false:") },
+		"toolrender:result:out:v:expanded=false:calls=1:width=72:duration=4200:last="+resultLine)
+	toolRenderer = append(toolRenderer, resultAgain)
+	renderContext.LastComponent = renderCall.(extension.Component)
+	renderCallAgain, ok := renderProbe.RenderCall(json.RawMessage(`{"topic":"beta"}`), nil, renderContext).(interface{ Render(int) []string })
+	if !ok {
+		t.Fatal("second renderCall did not return a component")
+	}
+	callAgain := expectRenderedLine(t, renderCallAgain, func(line string) bool { return strings.HasPrefix(line, "toolrender:call:beta:") },
+		"toolrender:call:beta:partial=false:calls=2:width=72:last="+callLine)
+	toolRenderer = append(toolRenderer, callAgain)
+	renderContext.LastComponent = nil
 
 	argumentCompletions := commandArgumentCompletions(t, h.runner, "complete_probe", " a", "zz")
 
@@ -1260,10 +1295,9 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 				return &conformanceLinesComponent{lines: []string{fmt.Sprintf("entryrenderer:%v:expanded=%t:width=72", entry.Data, options.Expanded)}}
 			},
 		},
-		MarkdownTransformer: func(markdown string, context extension.MarkdownTransformContext) string {
+		MarkdownTransformer: extension.NewMarkdownTransformerRegistration(func(markdown string, context extension.MarkdownTransformContext) string {
 			return fmt.Sprintf("md:%s:%s:streaming=%t:width=%d", markdown, context.MessageType, context.IsStreaming, context.AvailableWidth)
-		},
-		MarkdownMessageTypes: []extension.MarkdownMessageType{extension.MarkdownMessageUser, extension.MarkdownMessageAssistant, extension.MarkdownMessageAssistantThinking, extension.MarkdownMessageCustom, extension.MarkdownMessageSummary, extension.MarkdownMessageChangelog},
+		}, []extension.MarkdownMessageType{extension.MarkdownMessageUser, extension.MarkdownMessageAssistant, extension.MarkdownMessageAssistantThinking, extension.MarkdownMessageCustom, extension.MarkdownMessageSummary, extension.MarkdownMessageChangelog}),
 		ToolRenderers: []extension.ToolRendererResolver{func(tool string, next func() *extension.ToolRenderers) *extension.ToolRenderers {
 			line := func(prefix string) extension.ToolRenderCallFunc {
 				return func(args json.RawMessage, _ extension.Theme, _ extension.ToolRenderContext) extension.Component {
@@ -1312,20 +1346,22 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 						state["calls"] = calls + 1
 						var input map[string]any
 						_ = json.Unmarshal(args, &input)
+						last := lastDrawn(render.LastComponent)
 						return &conformanceWidthComponent{line: func(width int) string {
-							return fmt.Sprintf("toolrender:call:%v:partial=%t:calls=%d:width=%d", input["topic"], render.IsPartial, calls+1, width)
+							return fmt.Sprintf("toolrender:call:%v:partial=%t:calls=%d:width=%d:last=%s", input["topic"], render.IsPartial, calls+1, width, last)
 						}}
 					},
 					RenderResult: func(result extension.AgentToolResult, options extension.ToolRenderResultOptions, _ extension.Theme, render extension.ToolRenderContext) extension.Component {
 						value := result
 						details, _ := value.Details.(map[string]any)
 						calls := render.State.(map[string]any)["calls"]
+						last := lastDrawn(render.LastComponent)
 						return &conformanceWidthComponent{line: func(width int) string {
 							duration := "none"
 							if render.DurationMs != nil {
 								duration = fmt.Sprint(*render.DurationMs)
 							}
-							return fmt.Sprintf("toolrender:result:%v:%v:expanded=%t:calls=%v:width=%d:duration=%s", value.Text(), details["k"], options.Expanded, calls, width, duration)
+							return fmt.Sprintf("toolrender:result:%v:%v:expanded=%t:calls=%v:width=%d:duration=%s:last=%s", value.Text(), details["k"], options.Expanded, calls, width, duration, last)
 						}}
 					},
 				},
@@ -1916,7 +1952,15 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 							return err
 						}
 					}
-					return recordUserContent(actions, content, "followUp")
+					return recordUserContent(actions, content, "followUp", nil)
+				},
+			},
+			"send_user_message_expand": {
+				Name:        "send_user_message_expand",
+				Description: "Send a user message with expandPromptTemplates set to the argument",
+				Handler: func(_ context.Context, args string) error {
+					expand := args == "true"
+					return recordUserContent(actions, "expand-user", "followUp", &expand)
 				},
 			},
 			"set_session_name": {
@@ -3211,7 +3255,7 @@ func conformanceActions(actions *[]string) *subprocess.HostCallbacks {
 			return nil
 		},
 		SendUserMessage: func(content any, opts subprocess.SendUserMessageOptions) error {
-			return recordUserContent(actions, content, opts.DeliverAs)
+			return recordUserContent(actions, content, opts.DeliverAs, opts.ExpandPromptTemplates)
 		},
 		SetSessionName: func(name string) error {
 			*actions = append(*actions, "setSessionName:"+name)
@@ -3530,6 +3574,25 @@ func awaitCondition(ctx context.Context, cond func() bool) bool {
 // waitFor waits until pred holds. An extension's work only gets slower when
 // the machine is loaded, so the wait ends at the test's hang bound
 // (testbudget), never at a fixed wall-clock deadline.
+// expectRenderedLine waits until the component has drawn a line that arrived accepts, then compares that line with want: a wrong value fails with
+// both lines at once, not as a wait that ran out. It returns the line.
+func expectRenderedLine(t *testing.T, component interface{ Render(int) []string }, arrived func(line string) bool, want string) string {
+	t.Helper()
+	var got string
+	waitFor(t, func() bool {
+		lines := component.Render(72)
+		if len(lines) != 1 || !arrived(lines[0]) {
+			return false
+		}
+		got = lines[0]
+		return true
+	})
+	if got != want {
+		t.Fatalf("rendered line:\n got %q\nwant %q", got, want)
+	}
+	return got
+}
+
 func waitFor(t *testing.T, pred func() bool) {
 	t.Helper()
 	if !awaitCondition(testbudget.Context(t), pred) {

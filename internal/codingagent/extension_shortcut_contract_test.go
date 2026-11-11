@@ -244,6 +244,7 @@ func TestExtensionShortcutHandlerDoesNotBlockInput(t *testing.T) {
 // getShortcuts takes the effective keybinding configuration: a key the user binds to a reserved action stops being an extension shortcut, and a reserved default key the
 // user rebinds elsewhere is free for extensions (interactive-mode.ts setupExtensionShortcuts passes this.keybindings.getEffectiveConfig()).
 func TestExtensionShortcutsFollowRemappedKeybindings(t *testing.T) {
+	restoreTUIKeybindings(t)
 	const shiftCtrlX, ctrlL = "\x1b[120;6u", "\f"
 	ok := shortcutOracleBehavior{Kind: "ok"}
 	setup := func(t *testing.T, user map[string][]KeyID) (*InteractiveMode, *shortcutRun) {

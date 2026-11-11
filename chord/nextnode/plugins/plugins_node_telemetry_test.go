@@ -3,9 +3,11 @@ package plugins
 import (
 	"reflect"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
@@ -251,5 +253,38 @@ func TestTelemetryASpanOpenWhenTheProcessEndsEndsWithAnErrorStatus(t *testing.T)
 	})
 	if status := pluginSpans(recorder)[0].Status; status.Status != telemetry.SpanStatusCodeError {
 		t.Fatalf("status = %+v, want an error", status)
+	}
+}
+
+// host.ts `principalAttributes`: the hook of the app's host gives the attributes of the spans the host records for a principal's
+// work. The Node host calls the Go function synchronously (RuntimeLoad.PrincipalAttributes), so a span the host records for a
+// request carries what the app's hook said of the request's principal.
+func TestTelemetryThePrincipalAttributesHookOfTheAppStampsTheHostsSpans(t *testing.T) {
+	recorder := telemetry.NewInMemoryTelemetryContext()
+	var asked atomic.Int32
+	_, p := cbStart(t, cbTelemetryOps, func(load *RuntimeLoad) {
+		load.Telemetry = recorder
+		load.PrincipalAttributes = func(principal data.Principal) telemetry.SpanAttributes {
+			asked.Add(1)
+			return telemetry.SpanAttributes{telemetry.Attr("app.principal", "kind:"+principal.Value("kind").(string)), telemetry.Attr("omitted", nil)}
+		}
+	})
+	p.must("work", nil)
+	if asked.Load() == 0 {
+		t.Fatal("the hook was never asked")
+	}
+	stamped := false
+	for _, span := range recorder.GetSpans() {
+		for _, attribute := range span.Attributes {
+			if attribute.Name == "omitted" {
+				t.Fatalf("%s carries an attribute whose value is undefined", span.Name)
+			}
+			if attribute.Name == "app.principal" && strings.HasPrefix(span.Name, "chord.") {
+				stamped = true
+			}
+		}
+	}
+	if !stamped {
+		t.Fatalf("no chord.* span carries the hook's attributes: %v", recorder.GetSpans())
 	}
 }

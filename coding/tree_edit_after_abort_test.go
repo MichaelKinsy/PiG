@@ -56,7 +56,7 @@ func TestNavigateToUserMessageAfterAbortLoadsEditor(t *testing.T) {
 	// Locate the user "Proceed" entry and confirm the leaf is the aborted
 	// assistant (its child), i.e. the user message is NOT the leaf.
 	var userID string
-	for _, e := range sess.inner.GetEntries() {
+	for _, e := range sess.inner.Load().GetEntries() {
 		if me, ok := e.(icodingagent.MessageEntry); ok && me.Message.User != nil {
 			userID = e.Base().ID
 		}

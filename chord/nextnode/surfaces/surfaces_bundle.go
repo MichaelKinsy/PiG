@@ -13,7 +13,8 @@ import (
 
 	"github.com/evanw/esbuild/pkg/api"
 
-	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/build"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
 // Ports packages/chord/src/node/surfaces/bundle.ts. Base bundles (slice 11 §1, decision "Slice 11, P3"): a client kind's base
@@ -36,7 +37,7 @@ type BaseBundle struct {
 	// Style is the stylesheet's path; empty when the bundle imports no CSS.
 	Style  string
 	Files  map[string]ServedFile
-	Inputs plugins.BaseInputs
+	Inputs model.BaseInputs
 }
 
 // BasePlatform is where a base bundle runs.
@@ -55,7 +56,7 @@ const (
 // with none. It fails with esbuild's messages.
 func BuildBase(entry string, platform BasePlatform, prefix string, conditions []string) (*BaseBundle, error) {
 	browser := platform == PlatformBrowser
-	recorder := plugins.NewRecorder()
+	recorder := build.NewRecorder()
 	resolving := conditions
 	if resolving == nil {
 		resolving = ProcessConditions(nil, os.Getenv("NODE_OPTIONS"))

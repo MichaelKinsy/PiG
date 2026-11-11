@@ -15,7 +15,7 @@ func TestToolExecutionApiGetTask(t *testing.T) {
 	chat := openCompaction(t)
 	var own *durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue]
 	var missing *durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue]
-	addTool(t, chat.setup.Registry, new(durable.ToolRegistration{ToolSchema: ai.ToolSchema{Name: "probe", Description: "probe", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}}, Execute: func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
+	addTool(t, chat.setup.Registry, new(durable.ToolRegistration{Name: "probe", Description: "probe", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}, Execute: func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 		var err error
 		if own, err = api.GetTask(ctx, api.TaskId()); err != nil {
 			return durable.ToolExecutionResult{}, err
@@ -50,7 +50,7 @@ func TestToolExecutionApiMemoReadsTheDurableMemoOfTheToolTask(t *testing.T) {
 	chat := openCompaction(t)
 	var before, after, winner durable.JsonValue
 	var presentBefore, presentAfter bool
-	addTool(t, chat.setup.Registry, new(durable.ToolRegistration{ToolSchema: ai.ToolSchema{Name: "memo", Description: "memo", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}}, Execute: func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
+	addTool(t, chat.setup.Registry, new(durable.ToolRegistration{Name: "memo", Description: "memo", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}, Execute: func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 		var err error
 		if before, presentBefore, err = api.Memo(ctx, "pick"); err != nil {
 			return durable.ToolExecutionResult{}, err

@@ -50,14 +50,12 @@ func TestTheTaskGraphAdvancesFromPublicationsWhileTheBlockedReasonsRefresh(t *te
 		t.Fatal(err)
 	}
 	var wait sync.WaitGroup
-	wait.Add(1)
-	go func() {
-		defer wait.Done()
+	wait.Go(func() {
 		for range refreshes {
 			blocked.Store(!blocked.Load())
 			refresh()
 		}
-	}()
+	})
 	for range commits {
 		if _, err := line.CommitWith(ctx, func(tx *session.Transaction) (any, error) {
 			_, err := tx.CreateTaskErased(graphProbeTask.Erased(), float64(1), durable.TaskOptions{Ownership: durable.TaskOwnership{Kind: durable.TaskOwnedByConversation}, ConversationId: &conversation})

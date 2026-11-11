@@ -12,7 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/src/next/host/root.ts. Root scopes (slice 8 §4, D3, design §8): `host.root(fn, context,
+// Ports packages/chord/src/host/root.ts. Root scopes (slice 8 §4, D3, design §8): `host.root(fn, context,
 // options?)`, a call context for code outside objects (a Durable tool, a CLI), sealed when `fn` settles, when `context`
 // aborts and when the host closes: its signal aborted, its `ctx.get` refused `released`, every reference it took
 // released.

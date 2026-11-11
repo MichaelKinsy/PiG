@@ -1,1 +1,5 @@
+packages/chord/src/tui/channel.ts
+packages/chord/src/tui/frames.ts
+packages/chord/src/web/scripts.ts
+packages/chord/src/web/styles.ts
 packages/coding-agent/src/index.ts

@@ -93,12 +93,10 @@ func (s *Session) AppendContextEdit(targetID string, replacement *ContextEditRep
 		return "", err
 	}
 	entry := ContextEditEntry{
-		SessionEntryBase: SessionEntryBase{
-			Type:      "context_edit",
-			ID:        id,
-			ParentID:  s.GetLeafID(),
-			Timestamp: RFC3339NowNano(),
-		},
+		Type:        "context_edit",
+		ID:          id,
+		ParentID:    s.GetLeafID(),
+		Timestamp:   RFC3339NowNano(),
 		TargetID:    targetID,
 		Replacement: replacement,
 	}

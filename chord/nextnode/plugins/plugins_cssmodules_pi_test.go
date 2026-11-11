@@ -9,6 +9,8 @@ import (
 	"encoding/json"
 	"os"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/build"
 )
 
 // cssModuleGolden is one CSS module with what Pi's own `scopeCssModule` (c23b9ec1, esbuild 0.28.2) gave for it, scoped as
@@ -53,7 +55,7 @@ func cssModuleGoldens(t *testing.T) []cssModuleGolden {
 // scopedOf is the CSS module css scoped as plugin "p" at `/d/x.module.css`: its stylesheet and its mapping as the facet's
 // module embeds it, or the failure's text.
 func scopedOf(evaluator *mappingEvaluator, css string) (sheet, mapping, failure string) {
-	scoped, err := scopeCSSModule("p", "/d", "/d/x.module.css", css, evaluator, context.Background())
+	scoped, err := build.ScopeCSSModule("p", "/d", "/d/x.module.css", css, evaluator, context.Background())
 	if err != nil {
 		return "", "", err.Error()
 	}
@@ -106,7 +108,9 @@ const cssModuleHandCases = 23
 // ScopeCSSModule on its own starts a Node of its own for the one module and ends it.
 func TestScopeCSSModuleStartsANodeOfItsOwnForTheOneModule(t *testing.T) {
 	golden := cssModuleGoldens(t)[0]
-	scoped, err := ScopeCSSModule("p", "/d", "/d/x.module.css", golden.CSS, NodeOptions{}, context.Background())
+	own := newMappingEvaluator(NodeOptions{})
+	defer own.close()
+	scoped, err := build.ScopeCSSModule("p", "/d", "/d/x.module.css", golden.CSS, own, context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}

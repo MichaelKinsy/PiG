@@ -12,10 +12,12 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	json "github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
+	"github.com/MichaelKinsy/PiG/internal/jsonwire"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 )
 
@@ -61,7 +63,14 @@ func (m AgentMessage) Clone() AgentMessage {
 // MarshalJSON observes retained streaming messages at the serialization boundary.
 func (m AssistantMessage) MarshalJSON() ([]byte, error) {
 	type plain AssistantMessage
-	return json.Marshal((*plain)(m.Observe()))
+	encoded, err := json.Marshal((*plain)(m.Observe()))
+	if err != nil {
+		return nil, err
+	}
+	if jsonwire.MayHaveJSForms(encoded) {
+		return json.AppendJSNormalized(encoded[:0], encoded)
+	}
+	return encoded, nil
 }
 
 // AppendStringify appends the JSON.stringify text of MarshalJSON's output to dst (json.StringifyAppender).
@@ -80,16 +89,27 @@ func (m ToolResultMessage) AppendStringify(dst []byte) ([]byte, error) {
 	return AgentMessage{ToolResult: &m}.AppendStringify(dst)
 }
 
-// MarshalJSON emits the upstream flat role-discriminated AgentMessage union. User strings and text blocks retain their JavaScript UTF-16 units.
+// MarshalJSON emits the upstream flat role-discriminated AgentMessage union. User strings and text blocks retain their JavaScript UTF-16 units. A negative zero is written as 0 and an ill-formed UTF-8 byte as the replacement character, as JSON.stringify writes them.
 func (m AgentMessage) MarshalJSON() ([]byte, error) {
 	value, err := m.wire(true)
 	if err != nil {
 		return nil, err
 	}
 	if text, ok := value.(json.RawMessage); ok {
-		return text, nil
+		if !jsonwire.MayHaveJSForms(text) {
+			return text, nil
+		}
+		return json.AppendJSNormalized(text[:0], text)
 	}
-	return json.Marshal(value)
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return nil, err
+	}
+	// JSON.stringify writes a negative zero as 0 and an ill-formed byte as the replacement character, as MarshalJSONTo does.
+	if jsonwire.MayHaveJSForms(encoded) {
+		return json.AppendJSNormalized(encoded[:0], encoded)
+	}
+	return encoded, nil
 }
 
 // AppendStringify appends the JSON.stringify text of MarshalJSON's output to dst (json.StringifyAppender), encoding the message's members
@@ -1012,11 +1032,20 @@ func unmarshalAgentContent(data []byte) ([]ai.ContentBlock, error) {
 	return content, nil
 }
 
+// messageEdits counts the calls of ReplaceMessageInPlace. See MessageEdits.
+var messageEdits atomic.Uint64
+
+// MessageEdits returns how many times ReplaceMessageInPlace has been called in this process. A cache of anything derived from a message's fields (internal/boundarywire.Encodings) compares it before it serves an entry: an in-place edit changes a message that keeps its address, so the address no longer names the same content.
+func MessageEdits() uint64 {
+	return messageEdits.Load()
+}
+
 // ReplaceMessageInPlace overwrites target with replacement through the
 // pointers the agent's transcript, the event and persistence share
 // (agent-session.ts _replaceMessageInPlace). A replacement of another shape is
 // ignored.
 func ReplaceMessageInPlace(target, replacement AgentMessage) {
+	messageEdits.Add(1)
 	switch {
 	case target.System != nil && replacement.System != nil:
 		*target.System = *replacement.System

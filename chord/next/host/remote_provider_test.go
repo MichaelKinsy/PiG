@@ -23,9 +23,9 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// pi: packages/chord/src/next/remote/provider.ts
+// pi: packages/chord/src/remote/provider.ts
 
-// Ports packages/chord/test/next/remote/provider.test.ts: the provider side of a link, driven by a raw consumer peer.
+// Ports packages/chord/test/remote/provider.test.ts: the provider side of a link, driven by a raw consumer peer.
 
 // holdSpec is what a `hold` message names of a type: its name, version and fingerprint (Pi spreads the contract and the
 // override).

@@ -165,6 +165,9 @@ func themeQueries(theme sdk.UITheme, args map[string]any) any {
 		if info.BaseDir != "" {
 			fields["baseDir"] = info.BaseDir
 		}
+		if info.ChangelogPath != "" {
+			fields["changelogPath"] = info.ChangelogPath
+		}
 		sourceInfo = fields
 	}
 	return map[string]any{

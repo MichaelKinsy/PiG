@@ -23,6 +23,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/coding/pigidentity"
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
+	"github.com/MichaelKinsy/PiG/internal/jsonwire"
 )
 
 // ─── Config ──────────────────────────────────────────────────────────────────
@@ -2051,7 +2052,7 @@ func processResponsesStream(ctx context.Context, decoder providerSSEDecoder, bui
 
 		// processResponsesStream awaits the observer with any parsed value and then reads `event.type` (openai-responses-shared.ts:599-601): a null
 		// throws there, and a number, string, boolean or array matches no branch.
-		if top := strings.TrimLeft(data, " \t\r\n"); !codex && top != "" && top[0] != '{' && json.Valid([]byte(top)) {
+		if top := strings.TrimLeft(data, " \t\r\n"); !codex && top != "" && top[0] != '{' && jsonwire.Valid(top) {
 			if err := builder.observeProviderEvent([]byte(data)); err != nil {
 				builder.failUnfinished(StopReasonError, err)
 				return

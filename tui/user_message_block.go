@@ -72,6 +72,10 @@ func (u *UserMessageComponent) SetMarkdownTransform(transform func(string, int) 
 // Invalidate also invalidates the child Markdown transform state so display transformers run again.
 func (u *UserMessageComponent) Invalidate() { u.Container.Invalidate(); u.inner.Invalidate() }
 
+// IsDirty reports the message's own invalidation, which every mutator calls, and not Container.IsDirty's scan beneath it (see
+// AssistantMessageComponent.IsDirty).
+func (u *UserMessageComponent) IsDirty() bool { return u.invalidatable.IsDirty() }
+
 // SetMarkdownTransformState declares the external state the installed
 // transform reads, for the Markdown render cache key.
 func (u *UserMessageComponent) SetMarkdownTransformState(fn func() string) {

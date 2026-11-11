@@ -233,14 +233,12 @@ func (d *altScreenDocument) Invalidate() {
 func newTuiAltScreen(out io.Writer, showHardwareCursor bool, options TuiAltScreenOptions) *TuiAltScreen {
 	copyOnSelect := options.CopyOnSelect == nil || *options.CopyOnSelect
 	t := &TuiAltScreen{
-		tuiBase: tuiBase{
-			out:                stdoutWriter(out),
-			terminalBackground: &terminalBackgroundQueries{},
-			showHardwareCursor: showHardwareCursor,
-			now:                time.Now,
-			afterFunc: func(d time.Duration, fn func()) stoppableTimer {
-				return time.AfterFunc(d, fn)
-			},
+		out:                stdoutWriter(out),
+		terminalBackground: &terminalBackgroundQueries{},
+		showHardwareCursor: showHardwareCursor,
+		now:                time.Now,
+		afterFunc: func(d time.Duration, fn func()) stoppableTimer {
+			return time.AfterFunc(d, fn)
 		},
 		uploadedKittyImages: map[int]cachedKittyImage{},
 		wheelScroll:         NewWheelScrollAccelerator(options.WheelScrollLines),

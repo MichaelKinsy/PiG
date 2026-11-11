@@ -327,11 +327,11 @@ func TestAPIOnToolMembersKeepHandlersWhoseResultsTheRunnerReturns(t *testing.T) 
 			return &result, err
 		}},
 	}}}, t.TempDir())
-	call, err := runner.EmitToolCall(t.Context(), extension.CustomToolCallEvent{ToolCallEventBase: extension.ToolCallEventBase{Type: "tool_call", ToolCallID: "c1"}, ToolName: "bash"})
+	call, err := runner.EmitToolCall(t.Context(), extension.CustomToolCallEvent{Type: "tool_call", ToolCallID: "c1", ToolName: "bash"})
 	if err != nil || call == nil || !call.Block || call.Reason != "denied" {
 		t.Fatalf("tool_call result = %+v, %v", call, err)
 	}
-	result, err := runner.EmitToolResult(t.Context(), extension.BashToolResultEvent{ToolResultEventBase: extension.ToolResultEventBase{Type: "tool_result", ToolCallID: "c1"}, ToolName: "bash"})
+	result, err := runner.EmitToolResult(t.Context(), extension.BashToolResultEvent{Type: "tool_result", ToolCallID: "c1", ToolName: "bash"})
 	if err != nil || result == nil || result.IsError == nil || !*result.IsError {
 		t.Fatalf("tool_result result = %+v, %v", result, err)
 	}
@@ -435,7 +435,7 @@ func TestAPIOnAgentBeforeSettleMemberKeepsAHandlerWhoseBoundaryResultTheRunnerAp
 			return fake.OnAgentBeforeSettleHandlers[0](context.Background(), args[0].(*extension.AgentBeforeSettleEvent))
 		}},
 	}}}, t.TempDir())
-	result, err := runner.EmitBoundary(context.Background(), &extension.AgentBeforeSettleEvent{Type: "agent_before_settle", BoundaryState: extension.BoundaryState{Outcome: extension.AgentActivityCompleted}},
+	result, err := runner.EmitBoundary(context.Background(), &extension.AgentBeforeSettleEvent{Type: "agent_before_settle", Outcome: extension.AgentActivityCompleted},
 		func(entries []extension.SessionBoundaryDraft) (extension.BoundaryContextPreview, error) {
 			return extension.BoundaryContextPreview{ContextEntries: make([]extension.ProjectedSessionEntry, len(entries))}, nil
 		})
@@ -469,7 +469,7 @@ func TestExtensionHandlerTypesTheHandlerTheRunnerRunsPerEvent(t *testing.T) {
 			return &result, err
 		}
 	}
-	event := extension.CustomToolCallEvent{ToolCallEventBase: extension.ToolCallEventBase{Type: "tool_call", ToolCallID: "c1"}, ToolName: "bash"}
+	event := extension.CustomToolCallEvent{Type: "tool_call", ToolCallID: "c1", ToolName: "bash"}
 	runner := NewRunner([]extension.Extension{{Path: "typed", Handlers: map[string][]extension.HandlerFn{"tool_call": {adapt(blocking)}}}}, t.TempDir())
 	call, err := runner.EmitToolCall(t.Context(), event)
 	if err != nil || call == nil || !call.Block || call.Reason != "denied bash" {
@@ -494,7 +494,7 @@ func TestRunnerEmitToolCallStopsAtTheFirstBlockingHandler(t *testing.T) {
 			return &result, nil
 		}
 	}
-	event := extension.CustomToolCallEvent{ToolCallEventBase: extension.ToolCallEventBase{Type: "tool_call", ToolCallID: "c1"}, ToolName: "bash"}
+	event := extension.CustomToolCallEvent{Type: "tool_call", ToolCallID: "c1", ToolName: "bash"}
 	run := func(handlers ...extension.HandlerFn) *extension.ToolCallEventResult {
 		t.Helper()
 		ran = nil

@@ -9,7 +9,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// Ports packages/chord/src/next/store/table.ts
+// Ports packages/chord/src/store/table.ts
 //
 // Table definitions (slice 6a §5, §9; decisions "Flat columns", "Restricted names", "Index definitions are
 // recorded"): `DefineTable(name, TableOptions{Version, Columns, Key, Indexes})`, checked and materialized once at

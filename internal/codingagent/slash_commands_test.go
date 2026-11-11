@@ -575,8 +575,8 @@ func TestSessionHandlerMessageCounting(t *testing.T) {
 			Message agent.AgentMessage `json:"message"`
 		}
 		e := wireEntry{
-			SessionEntryBase: SessionEntryBase{Type: "message", ID: "x"},
-			Message:          message,
+			Type: "message", ID: "x",
+			Message: message,
 		}
 		raw, err := json.Marshal(e)
 		if err != nil {
@@ -648,7 +648,7 @@ func TestSessionHandlerUsesAllEntryUsage(t *testing.T) {
 	sess := NewSession("stats-session", "/tmp")
 	appendMessage := func(id string, message agent.AgentMessage) {
 		t.Helper()
-		entry := MessageEntry{SessionEntryBase: SessionEntryBase{Type: "message", ID: id, ParentID: sess.GetLeafID(), Timestamp: "2025-01-01T00:00:00Z"}, Message: message}
+		entry := MessageEntry{Type: "message", ID: id, ParentID: sess.GetLeafID(), Timestamp: "2025-01-01T00:00:00Z", Message: message}
 		if err := sess.AppendEntry(entry); err != nil {
 			t.Fatal(err)
 		}
@@ -695,7 +695,7 @@ func TestSessionHandlerRepeatedCallAllocationsDoNotScaleWithEntries(t *testing.T
 		t.Helper()
 		sess := NewSession("stats-session", "/tmp")
 		for i := range entries {
-			entry := MessageEntry{SessionEntryBase: SessionEntryBase{Type: "message", ID: fmt.Sprintf("u%d", i), Timestamp: "2025-01-01T00:00:00Z"}, Message: agent.AgentMessage{User: &agent.UserMessage{Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: strings.Repeat("x", 1024)}}}}}
+			entry := MessageEntry{Type: "message", ID: fmt.Sprintf("u%d", i), Timestamp: "2025-01-01T00:00:00Z", Message: agent.AgentMessage{User: &agent.UserMessage{Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: strings.Repeat("x", 1024)}}}}}
 			if err := sess.AppendEntry(entry); err != nil {
 				t.Fatal(err)
 			}

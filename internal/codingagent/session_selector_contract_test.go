@@ -176,9 +176,9 @@ func runSessionContracts(t *testing.T, cases []sessionContractCase) []sessionCon
 			c.pending.Progress = []sessionProgress{}
 		}
 		probes[i] = sessionContractProbe{
-			sessionOracleProbe: sessionOracleProbe{Theme: theme, Width: width, Current: fx[0], All: fx[1], CurrentPath: c.currentPath, Rename: !c.noRename, Bindings: c.bindings, Keys: append([]string{}, c.keys...)},
-			GlobalBindings:     c.global,
-			Pending:            c.pending,
+			Theme: theme, Width: width, Current: fx[0], All: fx[1], CurrentPath: c.currentPath, Rename: !c.noRename, Bindings: c.bindings, Keys: append([]string{}, c.keys...),
+			GlobalBindings: c.global,
+			Pending:        c.pending,
 		}
 	}
 	input, err := json.Marshal(probes)
@@ -628,6 +628,7 @@ func TestSessionSelectorComponentHandleInputContractsMatchPi(t *testing.T) {
 // TestSessionSelectorKeybindingSourcesMatchPi pins which keybinding manager Pi consults for each action: app.session.toggleNamedFilter comes from
 // the manager passed to the component, every other action from the process-wide manager that the hints also read.
 func TestSessionSelectorKeybindingSourcesMatchPi(t *testing.T) {
+	restoreTUIKeybindings(t)
 	type action struct {
 		id, defaultKey string
 		acted          func(t *testing.T, tr sessionContractTrace)

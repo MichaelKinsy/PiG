@@ -17,6 +17,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/internal/jsonparse"
+	"github.com/MichaelKinsy/PiG/internal/jsonwire"
 )
 
 // mistralChunkReader is `reader.read()` on the response body's ReadableStreamDefaultReader (mistral-conversations.ts:455). A chunk is one value the stream delivers; io.EOF with no data is `{ done: true }`. A body whose reads are observed models the microtasks of the read inside ReadChunk.
@@ -250,14 +251,14 @@ func parseMistralEvent(raw string) (event json.RawMessage, done bool, err error)
 	if text == "[DONE]" {
 		return nil, true, nil
 	}
-	if !json.Valid([]byte(text)) {
+	if !jsonwire.Valid(text) {
 		if err := jsonparse.Validate([]byte(text)); err != nil {
 			return nil, false, err
 		}
 		return nil, false, fmt.Errorf("invalid Mistral streaming event JSON: %s", text)
 	}
 	var record map[string]json.RawMessage
-	if json.Unmarshal([]byte(text), &record) != nil || !strings.HasPrefix(string(record["choices"]), "[") {
+	if json.Unmarshal(jsonwire.Bytes(text), &record) != nil || !strings.HasPrefix(string(record["choices"]), "[") {
 		return nil, false, errors.New("Invalid Mistral streaming event")
 	}
 	return json.RawMessage(text), false, nil

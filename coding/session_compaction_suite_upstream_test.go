@@ -31,7 +31,7 @@ func suiteCompactionSeed(t *testing.T, s *Session) {
 func suiteCompactions(t *testing.T, s *Session) []icodingagent.CompactionEntry {
 	t.Helper()
 	var result []icodingagent.CompactionEntry
-	for _, entry := range s.inner.GetEntries() {
+	for _, entry := range s.inner.Load().GetEntries() {
 		if entry.Base().Type == "compaction" {
 			var value icodingagent.CompactionEntry
 			if err := json.Unmarshal(entry.Raw(), &value); err != nil {

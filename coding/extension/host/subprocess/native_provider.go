@@ -396,23 +396,26 @@ func (h *Host) handleProviderPublication(ctx context.Context, conn *Conn, call *
 	if err := json.Unmarshal(call.Args, &args); err != nil {
 		return nil, err
 	}
-	h.mu.Lock()
-	p := h.nativeProviders[conn][args.Provider]
-	if p == nil {
-		for _, candidate := range h.nativeProviderHandles {
-			if candidate.conn == conn && candidate.declaration.Key == args.Provider {
-				p = candidate
-				break
+	publish, isConfigRefresh := h.configRefreshPublication(conn, call.ParentRequestID)
+	if !isConfigRefresh {
+		h.mu.Lock()
+		p := h.nativeProviders[conn][args.Provider]
+		if p == nil {
+			for _, candidate := range h.nativeProviderHandles {
+				if candidate.conn == conn && candidate.declaration.Key == args.Provider {
+					p = candidate
+					break
+				}
 			}
 		}
+		h.mu.Unlock()
+		if p == nil {
+			return nil, errors.New("native provider owner is not registered")
+		}
+		p.mu.Lock()
+		publish = p.publications[call.ParentRequestID]
+		p.mu.Unlock()
 	}
-	h.mu.Unlock()
-	if p == nil {
-		return nil, errors.New("native provider owner is not registered")
-	}
-	p.mu.Lock()
-	publish := p.publications[call.ParentRequestID]
-	p.mu.Unlock()
 	if publish == nil {
 		return nil, errors.New("native provider callback has no active request")
 	}

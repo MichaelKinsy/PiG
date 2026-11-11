@@ -468,7 +468,7 @@ func TestReHoldsCarryTheCarrierOnlyOnAReferencesFirstHoldAReHoldAfterAReconnectI
 	flushOwn(rel)
 	var current link.Link = rel.TabLink
 	var pair []*link.MemoryLink
-	for range 3 {
+	for round := range 3 {
 		current.Close()
 		// The close reaches the tab's end too before it connects again (Pi's `await transported()` flushes every memory link).
 		transported(pair...)
@@ -481,6 +481,11 @@ func TestReHoldsCarryTheCarrierOnlyOnAReferencesFirstHoldAReHoldAfterAReconnectI
 			transported(a, b)
 			flushOwn(rel)
 		}
+		// The re-hold binds on its reference's own task once the link is up again, which these flushes do not wait for; a link
+		// closed before it did ends the hold `ended` instead of `bound`, and a span read before it ended has no outcome yet.
+		scopeEventually(t, "the re-hold to bind", func() bool {
+			return len(spansNamed(recorder, "chord.hold")) == round+2 && allSettled(recorder, "chord.hold")
+		})
 	}
 	load := spanWhere(t, recorder, "page load", nil)
 	holds := spansNamed(recorder, "chord.hold")

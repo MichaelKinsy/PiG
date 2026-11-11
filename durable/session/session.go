@@ -590,7 +590,7 @@ func (session *SessionImpl) kickDeliver() {
 	// The delivery goroutine ends by itself once the head of the fence is not ready; the fence's own state tells when none runs.
 	session.fenceMu.Unlock()
 	//portlint:allow golifetime deliverLoop is the drain of Pi's #fence chain (session.ts:1630-1641): it clears session.delivering and broadcasts idle when the head is not ready, which awaitDeliveriesIdle and awaitFenceEmpty (Close) wait for
-	go session.deliverLoop()
+	go session.deliverLoop() //portlint:allow asyncorder session.ts:1630-1641 #fence chains the outcomes in line order; deliverLoop releases them in that order and awaitDeliveriesIdle joins it
 }
 
 // deliverLoop is the delivery goroutine: it releases the callers of the jobs at the head of the fence, in line order, as long as
@@ -711,7 +711,7 @@ func maintain[T any](session *SessionImpl, work func(index int) (T, error)) (T, 
 func (session *SessionImpl) enqueueDetached(job func(index int)) {
 	s, _ := session.admitSlot(false, false)
 	//portlint:allow golifetime the job is a line job: it runs once the earlier jobs settled and releases its slot (onLine), which every later job and Close wait for, as Pi's #tail promise chain does (session.ts:258)
-	go func() {
+	go func() { //portlint:allow asyncorder session.ts:258 #tail chains the line: admitSlot took this job's position above, and onLine runs it after the earlier jobs settled, in admission order
 		_, _ = onLine(session, s, func(index int) (struct{}, error) {
 			job(index)
 			return struct{}{}, nil

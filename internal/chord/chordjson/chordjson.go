@@ -3,6 +3,8 @@
 // A JSON value is nil, bool, float64, string, []any, or *Object, an object that keeps JavaScript's property order. Decode and Stored produce that representation. Copy also accepts Go values of other numeric kinds, normalized to float64, and a Go map[string]any, which has no property order: its keys are copied in OwnKeys order with the other keys ascending. JavaScript's undefined, sparse arrays, accessors, symbols, prototypes and class instances have no Go counterpart: a Go value either is one of those shapes or is not strict JSON.
 package chordjson
 
+// Ports packages/chord/src/json.ts
+
 import (
 	"cmp"
 	"encoding/json"
@@ -184,6 +186,7 @@ func isArrayIndexKey(key string) bool {
 	if key == "0" {
 		return true
 	}
+	//portlint:allow utf16units a key longer than 10 bytes cannot be an array index: more than 10 ASCII digits exceeds 2^32-2, and any non-ASCII byte makes the digit loop below reject it, so the byte length changes no answer
 	if key == "" || key[0] == '0' || len(key) > 10 {
 		return false
 	}
@@ -192,6 +195,7 @@ func isArrayIndexKey(key string) bool {
 			return false
 		}
 	}
+	//portlint:allow numbers key is 1-10 ASCII digits without a leading zero here (the loop above rejected anything else), so ParseUint accepts exactly what JS's canonical array-index test does
 	number, err := strconv.ParseUint(key, 10, 64)
 	return err == nil && number <= 1<<32-2
 }

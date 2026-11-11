@@ -23,7 +23,7 @@ func TestHarnessLeavesNoGoroutineBehindAfterAChatTurnWithAToolCall(t *testing.T)
 	setup := chatSetup(t)
 	store := storage.NewMemoryStorage()
 	addTool(t, setup.Registry, DefineTool(durable.ToolRegistration{
-		ToolSchema: ai.ToolSchema{Name: "echo", Description: "echo", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}},
+		Name: "echo", Description: "echo", Parameters: map[string]any{"type": "object", "properties": map[string]any{}},
 		Execute: func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{}}, nil
 		},

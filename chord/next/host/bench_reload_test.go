@@ -12,7 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/documents"
 )
 
-// Ports packages/chord/test/next/bench/reload.ts: `host.reload` (slice 7b §11): one plugin of 20 reloaded on a host with
+// Ports packages/chord/test/bench/reload.ts: `host.reload` (slice 7b §11): one plugin of 20 reloaded on a host with
 // 1,000 live objects, as a pure swap and as a native restart. Per case: the reload's time until it returns (staging, commit,
 // every fate started and every swap checked: the metric `resolve-ns/reload`), the time until every object of the plugin is
 // live again (ns/op), and the heap retained after the reloads against after the first (`heap-bytes-above-first`: old

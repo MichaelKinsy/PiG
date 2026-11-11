@@ -9,7 +9,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// Ports packages/chord/test/next/store/text.test.ts: text rules (slice 6a §5): code point order, stored text (lone
+// Ports packages/chord/test/store/text.test.ts: text rules (slice 6a §5): code point order, stored text (lone
 // surrogates replaced, NUL refused), prefix bounds.
 
 func TestCompareText(t *testing.T) {

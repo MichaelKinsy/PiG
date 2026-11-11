@@ -74,17 +74,17 @@ func TestOutputPad(t *testing.T) {
 			return card
 		}},
 		{"compaction summary", func(outputPad int) outputPaddedComponent {
-			component := tui.NewCompactionSummaryMessageComponent(tui.CompactionSummaryMessage{Summary: "summary", TokensBefore: 10}, nil, 1)
+			component := tui.NewCompactionSummaryMessageComponent(tui.CompactionSummaryMessage{Summary: "summary", TokensBefore: 10}, nil, 1, nil, "", "")
 			component.SetOutputPad(outputPad)
 			return component
 		}},
 		{"branch summary", func(outputPad int) outputPaddedComponent {
-			component := tui.NewBranchSummaryMessageComponent(tui.BranchSummaryMessage{Summary: "summary"}, nil, 1)
+			component := tui.NewBranchSummaryMessageComponent(tui.BranchSummaryMessage{Summary: "summary"}, nil, 1, nil, "", "")
 			component.SetOutputPad(outputPad)
 			return component
 		}},
 		{"skill invocation", func(outputPad int) outputPaddedComponent {
-			component := tui.NewSkillInvocationMessageComponent(tui.ParsedSkillBlock{Name: "skill", Content: "body"}, nil, 1)
+			component := tui.NewSkillInvocationMessageComponent(tui.ParsedSkillBlock{Name: "skill", Content: "body"}, nil, 1, nil, "", "")
 			component.SetOutputPad(outputPad)
 			return component
 		}},
@@ -153,7 +153,7 @@ func TestApplyOutputPadUpdatesBlocksInPlace(t *testing.T) {
 	queuedBash.SetComplete(&exitCode, false, nil, "")
 	card := newToolCardForTest("custom_tool", "")
 	card.SetResult("ok", false, 0)
-	summary := tui.NewCompactionSummaryMessageComponent(tui.CompactionSummaryMessage{Summary: "summary", TokensBefore: 10}, nil, 1)
+	summary := tui.NewCompactionSummaryMessageComponent(tui.CompactionSummaryMessage{Summary: "summary", TokensBefore: 10}, nil, 1, nil, "", "")
 
 	chat, pending := tui.NewContainer(), tui.NewContainer()
 	for _, component := range []tui.Component{bash, card, summary} {
@@ -180,5 +180,38 @@ func TestApplyOutputPadUpdatesBlocksInPlace(t *testing.T) {
 		if lines := outputPadLines(component); slices.ContainsFunc(lines, func(line string) bool { return !strings.HasPrefix(line, " ") }) {
 			t.Fatalf("%s rows at outputPad 1 = %q, want every row inset", name, lines)
 		}
+	}
+}
+
+// The chat container serves a child it holds from its render cache until the child reports a change, so a card whose SetOutputPad changes its own Box padding
+// must tell its parent: the next frame of the chat after applyOutputPad (Settings > output padding) has to draw each card as a card built at the new padding does, as
+// Pi's Container.render, which renders every child every frame, does.
+func TestApplyOutputPadReachesTheCardsTheChatContainerCaches(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		create func(outputPad int) outputPaddedComponent
+	}{
+		{"branch summary", func(outputPad int) outputPaddedComponent {
+			return tui.NewBranchSummaryMessageComponent(tui.BranchSummaryMessage{Summary: "branch summary"}, nil, outputPad, nil, "", "")
+		}},
+		{"compaction summary", func(outputPad int) outputPaddedComponent {
+			return tui.NewCompactionSummaryMessageComponent(tui.CompactionSummaryMessage{Summary: "compaction summary", TokensBefore: 10}, nil, outputPad, nil, "", "")
+		}},
+		{"skill invocation", func(outputPad int) outputPaddedComponent {
+			return tui.NewSkillInvocationMessageComponent(tui.ParsedSkillBlock{Name: "skill", Content: "skill body"}, nil, outputPad, nil, "", "")
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			chat := tui.NewContainer(tc.create(1))
+			m := &InteractiveMode{chatContainer: chat, tuiInst: tui.NewWithOutput(io.Discard, 80, 24), outputPad: 1}
+			chat.Render(60)
+			chat.Render(60) // a settled frame, which is what a container trusts the card's own invalidation after
+			m.outputPad = 4
+			m.applyOutputPad()
+			got, want := slices.Clone(chat.Render(60)), tc.create(4).Render(60)
+			if !slices.Equal(got, want) {
+				t.Fatalf("the chat after applyOutputPad(4) draws\n%q\nbut a card built at outputPad 4 draws\n%q", got, want)
+			}
+		})
 	}
 }

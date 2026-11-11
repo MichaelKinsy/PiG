@@ -12,7 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/sqlite"
 )
 
-// Ports packages/chord/src/next/store/table-migration.ts
+// Ports packages/chord/src/store/table-migration.ts
 //
 // Declared tables brought to their version at activation (slice 6a §9): a table the store does not have is created
 // at the newest version with its indexes (no replay); an older one is migrated eagerly, one version at a time, in

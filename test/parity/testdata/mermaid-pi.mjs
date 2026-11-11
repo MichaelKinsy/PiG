@@ -6,7 +6,7 @@
 // source, {input, kind, art} where art is null (render returned null) or
 // {plain, width, warnings, classDefs, styled, ansi, ansiAlt}, where ansi / ansiAlt are
 // toAnsi(art) with the default theme and with an all-roles theme. Regenerate goldens:
-//   node test/parity/testdata/mermaid-pi.mjs internal/mermaid/testdata/corpus.txt > internal/mermaid/testdata/render-golden.jsonl
+//   node test/parity/testdata/mermaid-pi.mjs internal/mermaid/testdata/corpus.txt | gzip -9n > internal/mermaid/testdata/render-golden.jsonl.gz
 // See mermaid-oracle.mjs for how the package is located.
 import { readFileSync } from "node:fs";
 import { importLovely } from "./mermaid-oracle.mjs";

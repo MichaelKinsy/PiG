@@ -22,7 +22,7 @@ func TestCustomMessageComponentProvidesOutputPadToCustomRenderersUpstream(t *tes
 		return NewPaddedText("custom", options.OutputPad, 0, nil)
 	}
 	message := &CustomMessage{CustomType: "test", Content: "custom"}
-	var component *CustomMessageComponent = NewCustomMessageComponent(message, renderer, nil, 1)
+	var component *CustomMessageComponent = NewCustomMessageComponent(message, renderer, nil, 1, nil, "", "")
 
 	if want := []MessageRenderOptions{{Expanded: false, OutputPad: 1}}; !reflect.DeepEqual(optionsSeen, want) {
 		t.Fatalf("options seen = %v, want %v", optionsSeen, want)

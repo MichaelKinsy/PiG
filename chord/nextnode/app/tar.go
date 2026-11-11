@@ -106,6 +106,7 @@ func tarHeader(path string, size int64) ([]byte, error) {
 	}{
 		{100, 8, "0000644"}, {108, 8, "0000000"}, {116, 8, "0000000"},
 		{124, 12, leftPad(strconv.FormatInt(size, 8), 11)},
+		//portlint:allow clock the package has no clock seam (its one func() time.Time field, App.processStart, is the program start for an edit check); tar.ts writes the header mtime as Math.floor(Date.now() / 1000) (tar.ts:58)
 		{136, 12, leftPad(strconv.FormatInt(time.Now().Unix(), 8), 11)},
 	} {
 		if err := tarField(block, field.offset, field.length, field.text); err != nil {

@@ -72,10 +72,10 @@ func TestModelsDeferredResolvedRequestOptionsUpstream(t *testing.T) {
 	models := CreateModels(CreateModelsOptions{})
 	models.SetProvider(provider)
 	handle := DeferredHandle{Provider: "deferred-provider", ModelID: "model-a", API: "api-a", ID: "response-1"}
-	result := models.FetchDeferred(t.Context(), model, handle, DeferredFetchOptions{Wait: new(50.0), StreamOptions: StreamOptions{TimeoutMs: new(100), APIKey: "request-key", Headers: ProviderHeaders{"X-Request": new("request"), "x-shared": new("request")}, Env: ProviderEnv{"REQUEST_ONLY": "request", "SHARED": "request"}, TransformHeaders: func(_ context.Context, headers ProviderHeaders) (ProviderHeaders, error) {
+	result := models.FetchDeferred(t.Context(), model, handle, DeferredFetchOptions{Wait: new(50.0), TimeoutMs: new(100), APIKey: "request-key", Headers: ProviderHeaders{"X-Request": new("request"), "x-shared": new("request")}, Env: ProviderEnv{"REQUEST_ONLY": "request", "SHARED": "request"}, TransformHeaders: func(_ context.Context, headers ProviderHeaders) (ProviderHeaders, error) {
 		headers["X-Transformed"] = new("yes")
 		return headers, nil
-	}}})
+	}})
 	if result.StopReason != StopReasonStop {
 		t.Fatal(result.ErrorMessage)
 	}

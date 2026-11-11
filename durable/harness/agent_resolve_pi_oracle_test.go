@@ -14,7 +14,6 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
@@ -168,7 +167,7 @@ func TestResolveAgentMatchesPi(t *testing.T) {
 		for e, source := range spec.Extensions {
 			extension := &durable.Extension{Name: source.Name}
 			for _, tool := range source.Tools {
-				extension.Tools = append(extension.Tools, &durable.ToolRegistration{ToolSchema: ai.ToolSchema{Name: tool["name"], Description: tool["description"]}})
+				extension.Tools = append(extension.Tools, &durable.ToolRegistration{Name: tool["name"], Description: tool["description"]})
 			}
 			for _, section := range source.Sections {
 				key := section["key"]

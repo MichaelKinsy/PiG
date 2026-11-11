@@ -1,6 +1,6 @@
 package plugins
 
-// pi: packages/chord/src/next-node/plugins/evaluate.ts
+// pi: packages/chord/src/node/plugins/evaluate.ts
 
 import (
 	"errors"
@@ -11,9 +11,11 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/chord/next/host"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/build"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
-// Ports packages/chord/test/next-node/plugins/evaluate.test.ts: plugins written as Pi's tests write them are built by the real
+// Ports packages/chord/test/node/plugins/evaluate.test.ts: plugins written as Pi's tests write them are built by the real
 // BuildFacet and evaluated by Pi's own evaluateFacet, which runs in the Node subprocess. A case that reads a JavaScript
 // object of the evaluated facet (`facet.made instanceof ChordError`, `facet.values`) or calls evaluateFacet directly reads it
 // through the probe (plugins_probe_test.go): an op that calls `evaluate.evaluateFacet(built, { hostPackages, plugin })` with
@@ -25,7 +27,7 @@ var evaluateHostPackages = []string{"@earendil-works/chord", "esm-host", "cjs-ho
 
 // evaluateOpsPrelude is the probe ops shared by the evaluate and the stack tests. `packages` is Pi's `HOSTS` (hosts: "all"),
 // support.ts's `HOST_PACKAGES` ("chord") or `{}` ("none"); `run` is `evaluateFacet(script, { hostPackages, plugin })`;
-// `collected` is `expectCollected` and `settle` is `settledHeap` (test/next/support.ts) with the process's `gc`.
+// `collected` is `expectCollected` and `settle` is `settledHeap` (test/support.ts) with the process's `gc`.
 const evaluateOpsPrelude = `
 	packages: async (a) => {
 		if (a.hosts === "none") return {};
@@ -171,7 +173,7 @@ func evaluateProbe(t *testing.T, ops string, execArgv ...string) *probe {
 // packages are hostPackages) and returns the script with its plugin.
 func evaluateBuilt(t *testing.T, root, name, kind string, hostPackages []string) PluginScript {
 	t.Helper()
-	discovery, err := DiscoverPlugins([]PluginRoot{{Path: root}}, DiscoveryOptions{Kinds: kinds}, background)
+	discovery, err := model.DiscoverPlugins([]model.PluginRoot{{Path: root}}, model.DiscoveryOptions{Kinds: kinds}, background)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -179,11 +181,11 @@ func evaluateBuilt(t *testing.T, root, name, kind string, hostPackages []string)
 		if plugin.Name != name {
 			continue
 		}
-		built, err := BuildFacet(plugin, kind, BuildOptions{HostPackages: hostPackages, Platform: PlatformNode, Plugins: discovery.Plugins}, background)
+		built, err := build.BuildFacet(plugin, kind, model.BuildOptions{HostPackages: hostPackages, Platform: model.PlatformNode, Plugins: discovery.Plugins}, background)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if built.Kind == BuiltFacetFailed {
+		if built.Kind == model.BuiltFacetFailed {
 			t.Fatal(strings.Join(built.Errors, "\n"))
 		}
 		return PluginScript{Plugin: plugin, Built: built}
@@ -352,7 +354,7 @@ func TestEvaluateRefusesPluginFileInASingleFilePluginItHasNoDirectoryOfItsOwn(t 
 // of the app's API, Chord itself, and builtins in a single-file plugin (each read through the probe's `evaluateFacet`).
 func TestEvaluateAComputedRequireRefusesWhatTheBuildRefusesAnotherVersionOfTheAppsAPIChordItselfAndBuiltinsInASingleFilePlugin(t *testing.T) {
 	root := tempRoot(t)
-	api := &AppApi{Name: "@acme/app", Versions: []string{"v3", "v2"}}
+	api := &model.AppApi{Name: "@acme/app", Versions: []string{"v3", "v2"}}
 	packages := map[string]any{"@acme/app/v3": map[string]any{"value": 3}, "@acme/app/v2": map[string]any{"value": 2}, "@earendil-works/chord": map[string]any{}}
 	hostPackages := []string{"@acme/app/v3", "@acme/app/v2", "@earendil-works/chord"}
 	join := func(parts ...string) string {
@@ -374,7 +376,7 @@ func TestEvaluateAComputedRequireRefusesWhatTheBuildRefusesAnotherVersionOfTheAp
 	p := evaluateProbe(t, evaluateOps)
 	evaluated := func(name string, methods ...string) map[string]any {
 		t.Helper()
-		discovery, err := DiscoverPlugins([]PluginRoot{{Path: root}}, DiscoveryOptions{Kinds: kinds}, background)
+		discovery, err := model.DiscoverPlugins([]model.PluginRoot{{Path: root}}, model.DiscoveryOptions{Kinds: kinds}, background)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -382,11 +384,11 @@ func TestEvaluateAComputedRequireRefusesWhatTheBuildRefusesAnotherVersionOfTheAp
 			if plugin.Name != name {
 				continue
 			}
-			built, err := BuildFacet(plugin, "worker", BuildOptions{HostPackages: hostPackages, Platform: PlatformNode, Api: api, Kinds: kinds, Plugins: discovery.Plugins}, background)
+			built, err := build.BuildFacet(plugin, "worker", model.BuildOptions{HostPackages: hostPackages, Platform: model.PlatformNode, Api: api, Kinds: kinds, Plugins: discovery.Plugins}, background)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if built.Kind == BuiltFacetFailed {
+			if built.Kind == model.BuiltFacetFailed {
 				t.Fatal(strings.Join(built.Errors, "\n"))
 			}
 			args := evaluateArgs(t, PluginScript{Plugin: plugin, Built: built}, "none")
