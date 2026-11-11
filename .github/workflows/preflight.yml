@@ -1,0 +1,89 @@
+# SPDX-License-Identifier: MIT
+name: Pre-flight
+
+# The cheap checks every open PR must pass before heavy CI: once an hour, one runner, every open PR, a few at a time
+# (automation/ci/preflight/batch.sh). It always runs main's code and configuration, never a PR's: schedule and dispatch
+# check out the default branch. Each PR gets a "preflight" commit status and one comment the next run updates. A PR
+# whose head and base did not change since its last run costs one API call; its state is kept in the cache.
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+    inputs:
+      prs:
+        description: PR numbers, space-separated; empty runs every open PR
+        required: false
+        default: ''
+        type: string
+      dry-run:
+        description: Read only; set no status and post no comment
+        required: false
+        default: false
+        type: boolean
+
+permissions: {}
+
+# One run at a time, so two runs never write the same PR's comment or state; a run waits for the one before it.
+concurrency:
+  group: preflight
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    name: Pre-flight
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      statuses: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - name: Install the scanners
+        shell: bash
+        run: |
+          set -euo pipefail
+          automation/ci/preflight/install-tools.sh "$RUNNER_TEMP/preflight/bin"
+          echo "$RUNNER_TEMP/preflight/bin" >> "$GITHUB_PATH"
+      - name: Build the pre-flight from main
+        shell: bash
+        run: |
+          set -euo pipefail
+          bin="$RUNNER_TEMP/preflight/bin"
+          go build -o "$bin/preflight" ./automation/ci/preflight
+          go build -o "$bin/fixtureguard" ./automation/ci/fixtureguard
+          go build -o "$bin/testprune" ./test/parity/cmd/testprune
+      - name: Restore the PR states
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/preflight/states
+          key: preflight-states-${{ github.run_id }}
+          restore-keys: |
+            preflight-states-
+      - name: Run the pre-flight over the PRs
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PRS: ${{ inputs.prs }}
+          DRY_RUN: ${{ inputs.dry-run }}
+        run: |
+          set -euo pipefail
+          read -r -a prs <<< "${PRS:-}"
+          for pr in "${prs[@]}"; do
+            [[ "$pr" =~ ^[1-9][0-9]*$ ]] || { echo "::error::'$pr' is not a PR number"; exit 2; }
+          done
+          export PREFLIGHT_ROOT="$GITHUB_WORKSPACE" PREFLIGHT_BIN_DIR="$RUNNER_TEMP/preflight/bin"
+          if [ "${DRY_RUN:-}" = true ]; then export PREFLIGHT_DRY_RUN=1; fi
+          automation/ci/preflight/batch.sh "$GITHUB_REPOSITORY" "$RUNNER_TEMP/preflight/states" "$RUNNER_TEMP/preflight/runs" "${prs[@]}"
+      - name: Save the PR states
+        if: ${{ !cancelled() }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/preflight/states
+          key: preflight-states-${{ github.run_id }}
