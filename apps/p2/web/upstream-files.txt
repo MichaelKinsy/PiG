@@ -480,6 +480,7 @@ src/web/activity/ActivitySheet.tsx
 src/web/activity/Detail.tsx
 src/web/activity/Label.tsx
 src/web/activity/Results.tsx
+src/web/activity/ThoughtSlot.tsx
 src/web/activity/activity.css
 src/web/activity/api.ts
 src/web/activity/icons.tsx
@@ -524,6 +525,7 @@ src/web/ErrorToast.tsx
 tsconfig.json
 plugins/terminals/protocol.ts
 plugins/terminals/wasm.d.ts
+test/p2/activity-model.test.ts
 test/p2/outbox.test.ts
 test/p2/path-label.test.ts
 test/p2/session-start.test.ts

@@ -17,3 +17,8 @@ func TestPathLabelRunsPisTests(t *testing.T) {
 func TestSidebarModelRunsPisTests(t *testing.T) {
 	oracle.RunNodeTests(t, "test/p2/sidebar-model.test.ts")
 }
+
+// Pi main 555e9755: the chat's turns and the working wheel's thought (src/web/activity/model.ts).
+func TestActivityModelRunsPisTests(t *testing.T) {
+	oracle.RunNodeTests(t, "test/p2/activity-model.test.ts")
+}
