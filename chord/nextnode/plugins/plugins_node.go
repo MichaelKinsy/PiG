@@ -557,6 +557,10 @@ type NodeHost struct {
 	closeTimeout time.Duration
 	closeBegun   chan struct{}
 	closeOnce    sync.Once
+	// startAfter starts the timers of Close's kill deadlines: it returns the channel a deadline passes on and the timer's stop.
+	// It is afterTimer, which wall time runs; a test replaces it to order a deadline against the process's answer, since how
+	// long a process takes to answer a Close is not the test's to choose.
+	startAfter func(d time.Duration) (<-chan time.Time, func())
 	// killReason is why the Go side killed the process, if it did (NodeExit.Reason).
 	killReason string
 	// killed is whether Process.Kill ended it: Windows has no signal in an exit status, and Node reports a process its
@@ -662,7 +666,7 @@ func startNode(options NodeOptions, ctx context.Context) (*NodeHost, error) {
 	}()
 
 	life, endLife := context.WithCancel(context.WithoutCancel(ctx))
-	h := &NodeHost{options: options, life: life, endLife: endLife, started: make(chan struct{}), reaped: make(chan struct{}), exited: make(chan struct{}), closeBegun: make(chan struct{}), closeTimeout: defaultCloseTimeout, pending: map[int]*nodeCall{}}
+	h := &NodeHost{options: options, life: life, endLife: endLife, started: make(chan struct{}), reaped: make(chan struct{}), exited: make(chan struct{}), closeBegun: make(chan struct{}), closeTimeout: defaultCloseTimeout, startAfter: afterTimer, pending: map[int]*nodeCall{}}
 	output := options.OnOutput
 	if output == nil {
 		output = func(stream NodeStream, chunk []byte) {
@@ -1086,9 +1090,16 @@ func (w *hostErrorWire) decode() NodeHostError {
 	return out
 }
 
+// afterTimer is NodeHost.startAfter's: a timer of wall time.
+func afterTimer(d time.Duration) (<-chan time.Time, func()) {
+	timer := time.NewTimer(d)
+	return timer.C, func() { timer.Stop() }
+}
+
 // Close asks the process to close its host and exit, and waits for it. A process that does not answer within the stop grace
 // is killed, as is one still running its close after its closeTimeout and the grace, or when ctx ends. It returns the exit
-// that was a crash, if the process ended that way before.
+// that was a crash, if the process ended that way before. The grace runs from the `close` the process was sent: an answer that
+// comes later than that, because the process was stalled or starved, is no answer within it.
 func (h *NodeHost) Close(ctx context.Context) error {
 	if err := h.refuseSyncCallback(ctx); err != nil {
 		return err
@@ -1105,8 +1116,8 @@ func (h *NodeHost) Close(ctx context.Context) error {
 	h.mu.Unlock()
 	_ = h.port.Load().control(map[string]any{"op": "close"})
 	grace := h.stopGrace()
-	deadline := time.NewTimer(grace)
-	defer deadline.Stop()
+	deadline, stop := h.startAfter(grace)
+	defer func() { stop() }()
 	begun := h.closeBegun
 	for {
 		select {
@@ -1115,8 +1126,9 @@ func (h *NodeHost) Close(ctx context.Context) error {
 		case <-begun:
 			// The host is running its close, which ends with the app's store: it has its closeTimeout, then the grace.
 			begun = nil
-			deadline.Reset(h.closeTimeout + grace)
-		case <-deadline.C:
+			stop()
+			deadline, stop = h.startAfter(h.closeTimeout + grace)
+		case <-deadline:
 			h.kill()
 			<-h.exited
 			return h.Err()
