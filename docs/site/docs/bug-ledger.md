@@ -1170,6 +1170,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-b99457f](#bf-b99457f) | `tool_search` and codemode tool search match Chinese, Japanese and Korean queries: each such character is a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b9db06c](#bf-b9db06c) | fix(subprocess): keep a user_bash operations object alive while its exec runs | PiG's own defect | All platforms | Unreleased |
 | [BF-b9de6a2](#bf-b9de6a2) | The provider bridge (`pig` `--provider-bridge`), the Durable core's `model_context` effect and an extension… | PiG's own defect | All platforms | Unreleased |
+| [BF-ba5e8ab](#bf-ba5e8ab) | Shutting down a Session no longer leaves a provider's model refresh, or an auth check it had abandoned… | PiG's own defect | Windows | Unreleased |
 | [BF-ba80002](#bf-ba80002) | fix(chord/nextnode/plugins): a process the Go side killed ends with SIGKILL on Windows too | PiG's own defect | Windows | Unreleased |
 | [BF-ba8b6b7](#bf-ba8b6b7) | `/logout` reads stored credentials with Pi's 15-second signal, so an unreadable `auth.json` reports "Could… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ba9c37b](#bf-ba9c37b) | Starting `pig` no longer waits for the daily cleanup of the extension cache | PiG's own defect | All platforms | 0.5.0 |
@@ -17562,6 +17563,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `b9de6a2def` (2026-11-09), `cbbb5ed7cb` (2026-11-09)
 - **Tests:** `coding/cli/provider_bridge_test.go::TestProviderBridgeStartIsSerializedBeforeTheResponseFillsItsPartial`, `coding/extension/host/subprocess/model_stream_attach_test.go::TestModelStreamForwardsStartBeforeTheResponseFillsItsPartial`, `durable/core/driver/model_test.go::TestModelContextSendsStartBeforeTheResponseFillsItsPartial`, `durable/harness/observe_response_test.go::TestObserveResponseSkipsTheStartEventWhoseProviderPartialHasNoContentYet`
 - **Release note:** The provider bridge (`pig` `--provider-bridge`), the Durable core's `model_context` effect and an extension host's `modelStream` call now send a `start` event whose partial is the pending, empty message the provider built, as Pi does (the durable generation task reads the same pending partial but skips content-less partials before its observer, so it publishes no start partial): Pi attaches its consumer before any response I/O can complete. Each created the provider's stream and read it from an ordinary goroutine, so under load the goroutine could start reading after the provider had filled the shared partial, and a `start` event reached the wire carrying the finished message (`toolUse`, the whole content and the final usage) where Pi sends `stopReason: "pending"` and no content. Each now creates the stream and reads it inside one stream continuation, as the Agent does; event content, order, cancellation and errors are unchanged.
+
+### BF-ba5e8ab
+
+**Shutting down a Session no longer leaves a provider's model refresh, or an auth check it had abandoned…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Shutting down a Session no longer leaves a provider's model refresh, or an auth check it had abandoned, running against the agent directory.
+- **Root cause:** CloseModelTasks cancelled the native collection's refreshes and then joined its operations on a detached goroutine (`go models.Close()`), so a provider's refreshModels, its store write, or an auth check the caller had abandoned kept running after Close returned, so its owner could remove the agent directory under it. Windows cannot delete a directory while a file in it is being written or held open, and TestModelPickerGeminiAuthAndCatalog failed on Windows CI with "TempDir RemoveAll cleanup: The directory is not empty". That failure was not reproduced; the Linux evidence is TestModelSelectorNativeProviderRefreshDoesNotOutliveShutdown, which shows the provider's refresh still running after…
+- **User impact:** An operation failed or was rejected
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `ba5e8abb4e` (2026-11-11)
+- **Tests:** `ai/models_runtime_drain_test.go::TestModelsDrainJoinsAbandonedRefreshButNotLogin`, `internal/codingagent/model_availability_read_context_test.go::TestAvailabilityReadContextOnlyWithoutExtensionProviders`, `internal/codingagent/model_picker_parity_test.go::TestModelPickerGeminiAuthAndCatalog`, `internal/codingagent/model_selector_native_refresh_owned_test.go::TestModelSelectorNativeProviderRefreshDoesNotOutliveShutdown`
+- **Release note:** Shutting down a Session no longer leaves a provider's model refresh, or an auth check it had abandoned, running against the agent directory. Closing the registry's model tasks cancelled the native model collection's refreshes but joined their work on a detached goroutine, so the refresh could still be writing its catalog after `Close` returned and the owner removed the directory (which on Windows cannot delete a directory whose file is still being written). `ai.Models` gains `Drain`, which cancels active refreshes and waits for the work the collection runs for its own queries (a provider's refresh and its store write, auth resolution and checks, availability) but not for a caller's login or stream, and `CloseModelTasks` calls it before returning.
 
 ### BF-ba80002
 
