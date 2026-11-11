@@ -37542,6 +37542,28 @@
       "tests": []
     },
     {
+      "id": "BF-ac7ebbf",
+      "title": "The find tool no longer returns no results for patterns that start with `./`, such as `./src/*.ts`; the…",
+      "symptom": "The find tool no longer returns no results for patterns that start with `./`, such as `./src/*.ts`; the leading `./` is dropped, as under Pi (upstream #12020).",
+      "rootCause": "fd's full paths never contain /./, so ./src/*.ts found nothing. Drop the leading ./ before choosing full-path matching, as upstream does. Ported test: TestFindIgnoresLeadingDotSlashInPattern.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The find tool no longer returns no results for patterns that start with `./`, such as `./src/*.ts`; the leading `./` is dropped, as under Pi (upstream #12020).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ac7ebbf1a5",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/tools/find_leading_dot_slash_port_test.go::TestFindIgnoresLeadingDotSlashInPattern"
+      ]
+    },
+    {
       "id": "BF-ac8664c",
       "title": "Fix in shipped code",
       "symptom": "Fix in shipped code",
@@ -45352,6 +45374,28 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-d7dd9c5",
+      "title": "Text after a multi-row inline image in Markdown no longer draws over the image when the image rows were…",
+      "symptom": "Text after a multi-row inline image in Markdown no longer draws over the image when the image rows were joined with hard line breaks; the rows stay separate, as under Pi (upstream #12017).",
+      "rootCause": "Image lines skip wrapping, so rows joined to an image by hard breaks drew over it. Split such a line into rows before layout, as upstream does. Ported test: TestMarkdownKeepsHardBreaksAfterInlineImageAsSeparateRows.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Text after a multi-row inline image in Markdown no longer draws over the image when the image rows were joined with hard line breaks; the rows stay separate, as under Pi (upstream #12017).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d7dd9c5a19",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "tui/markdown_image_hard_break_port_test.go::TestMarkdownKeepsHardBreaksAfterInlineImageAsSeparateRows"
+      ]
     },
     {
       "id": "BF-d7fbf00",
