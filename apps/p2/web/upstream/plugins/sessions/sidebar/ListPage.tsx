@@ -10,6 +10,7 @@ import {
 	requestReveal,
 	SearchIcon,
 	SideNavigation,
+	Slot,
 	useScrollMemory,
 } from "@p2/app/v1/web";
 import { useEffect, useRef, useState } from "react";
@@ -152,6 +153,7 @@ export function ListPage({
 			<header className="topbar">
 				<button type="button" className="icon-button menu sidebar-open" onClick={openSidebar} aria-label="Sessions">
 					<MenuIcon />
+					<Slot name="menu-badge" />
 				</button>
 				<div className="title">
 					<h1>{data?.name ?? "Sessions"}</h1>
