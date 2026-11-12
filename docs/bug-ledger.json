@@ -1711,6 +1711,31 @@
       ]
     },
     {
+      "id": "BF-09bbe00",
+      "title": "A compaction, branch summary or bug report summary no longer fails with \"Summarization failed: 401…",
+      "symptom": "A compaction, branch summary or bug report summary no longer fails with \"Summarization failed: 401 Unauthorized\" when the short-lived token it started with (a GitHub Copilot API token lives about 30 minutes) expires before its last request: after a retry's backoff, or on a later chunk.",
+      "rootCause": "A compaction, branch summary or bug report on a Session the CLI builds pinned the credential it resolved when it started into every request it made, so a retry after a backoff, or a later chunk, sent a derived token (GitHub Copilot's lives about 30 minutes) after it had expired and got the provider's 401: \"Auto-compaction failed: Summarization failed: 401 Unauthorized\".",
+      "rootCauseSource": "commit",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A compaction, branch summary or bug report summary no longer fails with \"Summarization failed: 401 Unauthorized\" when the short-lived token it started with (a GitHub Copilot API token lives about 30 minutes) expires before its last request: after a retry's backoff, or on a later chunk. A Session started from the command line resolved its credentials once, when the summary began, and sent that token with every request of it. Each request now resolves its own credentials when it is sent, as a turn does and as Pi's sessions do.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "09bbe00000",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "coding/session_summary_auth_refresh_test.go::TestAutoCompactionSurfacesRefreshFailureOnce",
+        "coding/session_summary_auth_refresh_test.go::TestCompactionResolvesCredentialWhenItStartsFreshAndExpired",
+        "coding/session_summary_auth_refresh_test.go::TestSummarizationRequestResolvesNoCredentialForARuntimeSession",
+        "coding/session_summary_auth_refresh_test.go::TestSummaryAttemptsEachSendAFreshCredentialAfterExpiry"
+      ]
+    },
+    {
       "id": "BF-0a0d27d",
       "title": "The training run's socket was in the build's work directory, whose path under a deep agent directory can…",
       "symptom": "The training run's socket was in the build's work directory, whose path under a deep agent directory can exceed what a Unix socket address holds (108 bytes); every training run of such a build failed to listen, was logged and skipped, and the build's function order lacked each extension's startup.",

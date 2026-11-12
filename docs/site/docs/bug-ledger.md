@@ -80,6 +80,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-0950d13](#bf-0950d13) | Chord: `FormatNumber` and `FormatTime` format in ICU's root locale when neither the tag nor the platform… | PiG's own defect | All platforms | Unreleased |
 | [BF-09587d2](#bf-09587d2) | Chord: the surfaces' and bases' build goroutines are joined by `App.Wait` | PiG's own defect | All platforms | Unreleased |
 | [BF-098e33d](#bf-098e33d) | Extension `ctx.ui.theme.fg`, `bg` and `getBgAnsi` throw `Unknown theme color: <token>` in every SDK for a… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-09bbe00](#bf-09bbe00) | A compaction, branch summary or bug report summary no longer fails with "Summarization failed: 401… | PiG's own defect | All platforms | Unreleased |
 | [BF-0a0d27d](#bf-0a0d27d) | The training run's socket was in the build's work directory, whose path under a deep agent directory can… | PiG's own defect | All platforms | Unreleased |
 | [BF-0a3094a](#bf-0a3094a) | fix(codingagent): hold the exit record's owner with a channel, not a replaceable write function | PiG's own defect | All platforms | Unreleased |
 | [BF-0a3e8ce](#bf-0a3e8ce) | In print and JSON mode, SIGTERM or SIGHUP no longer hangs when a Go, Python or Rust extension's… | PiG's own defect | All platforms | 0.5.0 |
@@ -2880,6 +2881,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `38b0f0c036` (2026-10-05), `098e33da91` (2026-10-06), `70d13f2863` (2026-10-06)
 - **Tests:** `extensions/sdk/surface_parity_test.go::TestHasUIAndUIThemeFollowReplicatedState`, `extensions/sdk/ui_theme_style_test.go::TestUIThemeFgAndBgPanicForAnUnknownToken`, `test/extension-conformance/theme_test.go::TestThemeFaintForegroundAcrossSDKs`, `tui/highlight_test.go::TestCliHighlightThemeColorsSubstitutionsWithTheTextColor`, `tui/highlight_test.go::TestHighlightCode_ColorsEachLineOfPythonDocstringsIndependently`, `tui/syntax_highlight_upstream_test.go::TestSyntaxHighlightInterpolationEndsWithTheString`, `tui/syntax_highlight_upstream_test.go::TestSyntaxHighlightInterpolationTakesTheTextColor`, `tui/theme_unknown_token_test.go::TestThemeTextAttributeMethodsWrapInChalkPairs` and 1 more in docs/bug-ledger.json
 - **Release note:** Extension `ctx.ui.theme.fg`, `bg` and `getBgAnsi` throw `Unknown theme color: <token>` in every SDK for a token the palette lacks, as Pi's theme does; a theme with no palette still leaves text unstyled.
+
+### BF-09bbe00
+
+**A compaction, branch summary or bug report summary no longer fails with "Summarization failed: 401…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A compaction, branch summary or bug report summary no longer fails with "Summarization failed: 401 Unauthorized" when the short-lived token it started with (a GitHub Copilot API token lives about 30 minutes) expires before its last request: after a retry's backoff, or on a later chunk.
+- **Root cause:** A compaction, branch summary or bug report on a Session the CLI builds pinned the credential it resolved when it started into every request it made, so a retry after a backoff, or a later chunk, sent a derived token (GitHub Copilot's lives about 30 minutes) after it had expired and got the provider's 401: "Auto-compaction failed: Summarization failed: 401 Unauthorized".
+- **User impact:** Credential or permission exposure
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `09bbe00000` (2026-11-11)
+- **Tests:** `coding/session_summary_auth_refresh_test.go::TestAutoCompactionSurfacesRefreshFailureOnce`, `coding/session_summary_auth_refresh_test.go::TestCompactionResolvesCredentialWhenItStartsFreshAndExpired`, `coding/session_summary_auth_refresh_test.go::TestSummarizationRequestResolvesNoCredentialForARuntimeSession`, `coding/session_summary_auth_refresh_test.go::TestSummaryAttemptsEachSendAFreshCredentialAfterExpiry`
+- **Release note:** A compaction, branch summary or bug report summary no longer fails with "Summarization failed: 401 Unauthorized" when the short-lived token it started with (a GitHub Copilot API token lives about 30 minutes) expires before its last request: after a retry's backoff, or on a later chunk. A Session started from the command line resolved its credentials once, when the summary began, and sent that token with every request of it. Each request now resolves its own credentials when it is sent, as a turn does and as Pi's sessions do.
 
 ### BF-0a0d27d
 
