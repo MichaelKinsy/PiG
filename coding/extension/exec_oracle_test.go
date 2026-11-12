@@ -186,7 +186,7 @@ func (c codeCounts) String() string {
 	return strings.Join(parts, ", ")
 }
 
-// execSocketResetScript is the maxBuffer script whose codes in Pi are those of a socket pair, which PiG does not give a command (D631):
+// execSocketResetScript is the maxBuffer script whose codes in Pi are those of a socket pair, which PiG does not give a command:
 // yes is the command itself and writes its stdout. Node's stdio are socket pairs, and the first write to a socket whose peer closed with unread data
 // fails with ECONNRESET and no SIGPIPE, so yes goes on to report "yes: standard output: Connection reset by peer" on stderr: it exits 1 when it gets
 // that far, the SIGTERM ends it while it reports (143), or the report meets the closed stderr (141). The write of a pipe raises SIGPIPE at once, so
@@ -195,6 +195,7 @@ func (c codeCounts) String() string {
 // JavaScript between Pi's close and its signal is not yet compiled; of 1200 runs with stderr in a file, Pi's 16 that ended 1 all held that report and
 // 664 of its 920 that ended 143 held its beginning. PiG: 141 in 3571 of 3600 and 143 in 29, never 1. `exec yes >&2` and `yes; echo done` do not
 // show it: there the write that meets the reset is followed by one that meets SIGPIPE, in the same process or in sh.
+// pig divergence (D631): ExecCommand gives the command pipes, so the code Pi reports most for this script is not asked of PiG.
 const execSocketResetScript = "exec yes"
 
 // truncatedCodeFaults compares the codes PiG and Pi reported for the truncated runs of one script (its rows differ only in the cap, which the first
