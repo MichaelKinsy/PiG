@@ -3715,14 +3715,15 @@ Parity allowance: the frame count differs from Pi's on a streaming call (3,278 a
 
 ## D631 A command run by `pi.exec` or the bash tool gets pipes for its output, where Pi gives it socket pairs
 
-What: Pi starts a command with Node's `spawn` and `stdio: ["ignore", "pipe", "pipe"]` (`packages/coding-agent/src/core/exec.ts:58-62`; the bash tool spawns the same way). On Linux and macOS libuv makes each such "pipe" a Unix socket pair (`uv_socketpair` in `uv__process_init_stdio`), so the command's stdout and stderr are sockets. PiG gives the command the write end of a pipe (`childwait.NewPipe`, `os.Pipe` on Unix). A command can tell the two apart, and three effects were measured (Linux container of the lane image, dash as `sh`, Pi 1.5.2 with the post-release backports, 96-CPU host xd6702):
+What: Pi starts a command with Node's `spawn` and `stdio: ["ignore", "pipe", "pipe"]` (`packages/coding-agent/src/core/exec.ts:58-62`; the bash tool spawns the same way). On Linux and macOS libuv makes each such "pipe" a Unix socket pair (`uv_socketpair` in `uv__process_init_stdio`), so the command's stdout and stderr are sockets. PiG gives the command the write end of a pipe (`childwait.NewPipe`, `os.Pipe` on Unix). A command can tell the two apart, and two effects were measured (Linux container of the lane image, dash as `sh`, Pi 1.5.2 with the post-release backports, 96-CPU host xd6702):
 
 1. Reopening its own output. `sh -c 'echo x > /dev/stdout'` through `execCommand`: Pi resolves code 2, stdout empty, stderr `sh: 1: cannot create /dev/stdout: No such device or address` (a socket cannot be opened through `/proc/self/fd/1`, ENXIO); PiG resolves code 0, stdout `x`. Every run, both sides. The same holds for `/dev/stderr` and `/proc/self/fd/N`, so for `tee /dev/stderr`.
 2. The code of a command cut off at `maxBuffer` while it writes stdout. When the reader closes a socket that still holds unread data, the writer's next write fails once with ECONNRESET and raises no SIGPIPE; a pipe raises SIGPIPE at once. `sh -c 'exec yes'` over the cap: in Pi `yes` goes on to report `yes: standard output: Connection reset by peer` and exits 1 when it gets that far, is ended by Pi's SIGTERM while it reports (143), or its report meets the closed stderr (141). Pi's code was 1 in 257 of 3600 runs (7%) inside one Node process of 34800 calls and in 167 and 159 of 360 runs (46%, 44%) inside Node processes of 240 calls; of 1200 runs with stderr in a file, the 16 that ended 1 all held the full report and 664 of the 920 that ended 143 held its beginning. PiG's code was 141 in 3571 of 3600 runs and 143 in 29: never 1, and no report.
-3. Reopening its own input, bash tool only. `pi.exec` gives the command no stdin on either side (`"ignore"`, `/dev/null`). The bash tool gives it one only when the shell takes the command from stdin (`packages/coding-agent/src/core/tools/bash.ts:129`), and Node's is then a socket pair too. Measured once with Node's `spawn` and a `"pipe"` stdin: `stat -L -c %F /proc/self/fd/0` prints `socket` and `cat /dev/stdin` fails with `cat: /dev/stdin: No such device or address`; through a pipe, which is what PiG's bash tool gives the shell, the same command prints `fifo` and reads the input. Neither bash tool was run for this effect and no test locks it yet.
 
 Not measured: macOS. Expected there, as a guess: `/dev/stdout` is `/dev/fd/1`, which duplicates the descriptor instead of opening the file again, so effect 1 should not appear, and a write to a Unix socket whose peer closed gives EPIPE with SIGPIPE, so effect 2 should not appear either. Windows has named pipes on both sides and is not part of this record.
 
+
+Measured at the Node level, not tested through the tools: `pi.exec` gives the command no stdin on either side (`"ignore"`, `/dev/null`). The bash tool gives it one only when the shell takes the command from stdin (`packages/coding-agent/src/core/tools/bash.ts:129`), and Node's is then a socket pair too. Measured once with Node's `spawn` and a `"pipe"` stdin: `stat -L -c %F /proc/self/fd/0` prints `socket` and `cat /dev/stdin` fails with `cat: /dev/stdin: No such device or address`; through a pipe, which is what PiG's bash tool gives the shell, the same command prints `fifo` and reads the input. It is not one of this record's effects until a test on each side holds it.
 
 Why: a faithful port would make commands that work on Linux fail (`> /dev/stdout`, `tee /dev/stderr`), which no PiG user gains from. The cost of keeping pipes is that a command which fails under Pi for that reason succeeds under PiG, and that an exit code 1 which Pi shows in a share of cut-off runs never appears.
 
@@ -3730,9 +3731,9 @@ Pi bug: none. The socket pair is libuv's choice for every Node child; Pi does no
 
 Scope: `coding/extension` (`ExecCommand`, both output pipes) and `internal/codingagent/tools` (the bash tool's output pipe). Unix only.
 
-Owner decision: proposed, not yet approved by the owner. The alternative put to him is to port socket pairs for `pi.exec` and the bash tool on Unix.
+Owner decision: approved. The owner said "proceed with recommendations" (2026-11-12T23:22:43Z, owner decisions of 0.8.0), and the recommendation recorded there for this item is "D631 exec/bash child stdio: KEEP PIPES, record D631 as a numbered divergence with both effects locked by tests against the Pi oracle."
 
-SCRUTINIZED:pending-owner
+SCRUTINIZED:approved 2026-11-12
 
 Remove when: PiG gives the commands of `pi.exec` and the bash tool socket pairs on Unix (stdin included where the bash tool gives one), or Node gives its children pipes.
 
