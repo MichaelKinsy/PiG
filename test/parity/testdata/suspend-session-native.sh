@@ -6,7 +6,8 @@ if [[ $kind == pig ]]; then
   binary=${PIG_PARITY_PIG_BIN:-${PIG_BIN:?set PIG_PARITY_PIG_BIN or PIG_BIN}}
   args=(--no-extensions --model test-faux/faux-1)
 else
-  binary=${PIG_PARITY_PI_BIN:-$(command -v pi)}
+  binary=${PIG_PARITY_PI_BIN:-$(command -v pi || true)}
+  [[ -n $binary ]] || { printf 'suspend-session-native.sh: no Pi oracle: set PIG_PARITY_PI_BIN or put pi on PATH\n' >&2; exit 1; }
   pinned=$(sed -n 's/^const UpstreamPackageVersion = "\([^"]*\)"$/\1/p' "$root/internal/coding/pigversion/pigversion.go")
   [[ -n $pinned && $("$binary" --version) == "$pinned" ]] || { printf 'expected pinned Pi %s\n' "$pinned" >&2; exit 1; }
   args=(--no-extensions -e "$root/test/parity/testdata/test-faux-provider.ts" --model test-faux/faux-1)
