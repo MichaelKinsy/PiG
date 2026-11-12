@@ -1,6 +1,0 @@
-pkg:durable/.#GenerationHooks	durable	child-gap	durable/harness/types.go#GenerationHooks
-pkg:durable/.#GenerationHooks::property:afterTools	durable	child-gap	durable/harness/types.go#GenerationHooks.AfterTools
-pkg:durable/.#GenerationHooks::property:afterTools::call:0	durable	signature-mismatch	durable/harness/types.go#GenerationHooks.AfterTools
-pkg:durable/.#GenerationHooks::property:onYield	durable	child-gap	durable/harness/types.go#GenerationHooks.OnYield
-pkg:durable/.#GenerationHooks::property:onYield::call:0	durable	undecidable	durable/harness/types.go#GenerationHooks.OnYield
-pkg:durable/.#RunEndTask	durable	no-go-symbol	

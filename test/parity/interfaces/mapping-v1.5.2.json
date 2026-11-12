@@ -236777,8 +236777,26 @@
     },
     {
       "id": "pkg:durable/.#GenerationHooks",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0309ee4e1eaf7ab64e47a7f8f7bfe978c1bd027e72cdafaf8d6c25de013145a1"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:0309ee4e1eaf7ab64e47a7f8f7bfe978c1bd027e72cdafaf8d6c25de013145a1",
+      "rationale": "Derived by the interface gap detector: GenerationHooks is Go durable/harness/types.go#GenerationHooks (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/harness/types.go#GenerationHooks"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/harness/generation.go#answer"
+      ],
+      "evidence": [
+        "test:durable/core/driver/harness_lanec_core_test.go#TestCoreRunsTheTasksAnAfterRunHookAsksFor",
+        "test:durable/core/driver/harness_lifecycle_core_test.go#TestCoreHarnessCloseJoinsAToolAndAHookThatIgnoreTheirSignal",
+        "test:durable/core/driver/harness_provider_request_core_test.go#TestCoreHarnessChainsBeforeProviderRequestOverEveryProviderRequestBody"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/.#GenerationHooks::property:afterResponse",
@@ -236872,13 +236890,39 @@
     },
     {
       "id": "pkg:durable/.#GenerationHooks::property:afterTools",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e7ee991e43fad12d76f6642b638978b194de5cb74e84eaef6107ffcbb3011ae9"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:e7ee991e43fad12d76f6642b638978b194de5cb74e84eaef6107ffcbb3011ae9",
+      "rationale": "Derived by the interface gap detector: GenerationHooks::property:afterTools is Go durable/harness/types.go#GenerationHooks.AfterTools (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/harness/types.go#GenerationHooks.AfterTools"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/harness/generation.go#finishToolRound"
+      ],
+      "evidence": [
+        "test:durable/core/driver/hook_test.go#TestHooksReturnTheResultObjectOfEachHook",
+        "test:durable/core/driver/suspendable_pin_core_test.go#TestCoreHarnessAfterToolsWithoutTasksIsNotAPinError",
+        "test:durable/core/driver/suspendable_pin_core_test.go#TestCoreHarnessHookResultsOfSuspendableWorkAreReportedWithThePinError"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/.#GenerationHooks::property:afterTools::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:368a016d49ef90e1a4da4c4dae1454bb4f29fd04f265ab0ae3789b8a69c40213"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:368a016d49ef90e1a4da4c4dae1454bb4f29fd04f265ab0ae3789b8a69c40213",
+      "rationale": "Carried ahead of the pin: Pi 1.5.2 (packages/durable/src/harness/types.ts:1017) declares `afterTools(assistant: EntryId, results: readonly EntryId[], api: HookApi, context: Context): void | Promise<void>`; Pi 473515f9c (packages/durable/src/harness/types.ts:1116-1121) replaces it with `afterTools(assistant, results, api, context): HookResult<{ readonly tasks: readonly HookTask[] }>`: the hook returns the tasks it asks for, which run as the generation's children before the round ends, and one that completes with `AfterToolsDecision` (`{ terminate?: true }`, types.ts:1154) ends the run as a round whose calls all asked to terminate. PiG implements the successor, not the pin's shape: GenerationHooks.AfterTools returns (*HookTasks, error) (durable/harness/types.go), read by generationAfterToolsHandler (durable/harness/generation.go). Tests: TestAfterToolsTasks, TestHookTasksRecovery. Evidence of the upstream change: test/parity/upstream-sync/v1.5.2+473515f9.toml rows packages/durable/src/harness/generation.ts and define.ts. The declarations are quoted from the Pi source at 473515f9c (the frozen automation/pin/frozen/473515f9c297c75cf2c3ebb3ba027049ed836d27.* files hold its npm and provider-data closure, not its declarations). This row closes when the pin reaches 473515f9c; the decision is then dropped.",
+      "pigTargets": [
+        "durable/harness/types.go#GenerationHooks.AfterTools"
+      ],
+      "evidence": [
+        "test:durable/harness/harness_hook_tasks_test.go#TestAfterToolsTasks",
+        "test:durable/harness/harness_hook_tasks_test.go#TestHookTasksRecovery"
+      ]
     },
     {
       "id": "pkg:durable/.#GenerationHooks::property:beforeProviderRequest",
@@ -236968,13 +237012,38 @@
     },
     {
       "id": "pkg:durable/.#GenerationHooks::property:onYield",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:a01d3cde70d52b96ba28861db1502b7ec3190667297b4453ceacdd76002b0b55"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:a01d3cde70d52b96ba28861db1502b7ec3190667297b4453ceacdd76002b0b55",
+      "rationale": "Derived by the interface gap detector: GenerationHooks::property:onYield is Go durable/harness/types.go#GenerationHooks.OnYield (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/harness/types.go#GenerationHooks.OnYield"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/harness/generation.go#answer"
+      ],
+      "evidence": [
+        "test:durable/core/driver/hook_test.go#TestHooksReturnTheResultObjectOfEachHook",
+        "test:durable/core/driver/suspendable_pin_core_test.go#TestCoreHarnessAfterToolsWithoutTasksIsNotAPinError",
+        "test:durable/core/driver/suspendable_pin_core_test.go#TestCoreHarnessHookResultsOfSuspendableWorkAreReportedWithThePinError"
+      ]
     },
     {
       "id": "pkg:durable/.#GenerationHooks::property:onYield::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e6737dec4447f26d89087860d028528e8ec5afbaf7c7f82a4b03783d3d213e3d"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:e6737dec4447f26d89087860d028528e8ec5afbaf7c7f82a4b03783d3d213e3d",
+      "rationale": "Carried ahead of the pin: Pi 1.5.2 (packages/durable/src/harness/types.ts:1015) declares `onYield(answer: AssistantMessage, api: HookApi, context: Context): HookResult<{ readonly continue: UserInput }>`; Pi 473515f9c (packages/durable/src/harness/types.ts:1105-1109) replaces it with `HookResult<{ readonly continue: UserInput } | { readonly tasks: readonly HookTask[] }>`: `continue` appends a user message and continues the run, `tasks` decide whether the answer stands (the run's inputs stay open, `LiveRun.yield`; the first task in creation order that completes with a `YieldDecision` holding `continue`, types.ts:1151, provides the continuation). PiG implements the successor, not the pin's shape: GenerationHooks.OnYield returns (YieldResult, error), YieldResult being *YieldContinue or *YieldTasks (durable/harness/types.go), read by generationYieldHandler (durable/harness/generation.go). Tests: TestOnYieldTasks, TestHookTasksRecovery. Evidence of the upstream change: test/parity/upstream-sync/v1.5.2+473515f9.toml rows packages/durable/src/harness/generation.ts and live.ts. The declarations are quoted from the Pi source at 473515f9c (the frozen automation/pin/frozen/473515f9c297c75cf2c3ebb3ba027049ed836d27.* files hold its npm and provider-data closure, not its declarations). This row closes when the pin reaches 473515f9c; the decision is then dropped.",
+      "pigTargets": [
+        "durable/harness/types.go#GenerationHooks.OnYield"
+      ],
+      "evidence": [
+        "test:durable/harness/harness_hook_tasks_test.go#TestOnYieldTasks",
+        "test:durable/harness/harness_hook_tasks_test.go#TestHookTasksRecovery"
+      ]
     },
     {
       "id": "pkg:durable/.#GenerationInput",
@@ -240354,8 +240423,15 @@
     },
     {
       "id": "pkg:durable/.#RunEndTask",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:6a2b00b83856c9fdbaf530dc242096947b4231a9a2039ce4bccdd5e27a81690d"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:6a2b00b83856c9fdbaf530dc242096947b4231a9a2039ce4bccdd5e27a81690d",
+      "rationale": "Carried ahead of the pin: Pi 1.5.2 (packages/durable/src/harness/types.ts:1044) declares `export type RunEndTask = { readonly task: AnyTask; readonly input: JsonValue }` and builds it with `runEndTask()` (define.ts:43); Pi 473515f9c renames both: `export type HookTask = { readonly task: AnyTask; readonly input: JsonValue }` (types.ts:1148) and `hookTask()` (define.ts:48), because afterTools and onYield now ask for tasks as well as afterRun. PiG implements the successor name, not the pin's: durable/harness/types.go HookTask and durable/harness/define.go HookTaskOf (RunEndTask no longer exists in Go). Test: TestAfterToolsTasks. Evidence of the upstream rename: test/parity/upstream-sync/v1.5.2+473515f9.toml row packages/durable/src/harness/define.ts. The declarations are quoted from the Pi source at 473515f9c (the frozen automation/pin/frozen/473515f9c297c75cf2c3ebb3ba027049ed836d27.* files hold its npm and provider-data closure, not its declarations). This row closes when the pin reaches 473515f9c; the decision is then dropped.",
+      "pigTargets": [
+        "durable/harness/types.go#HookTask"
+      ],
+      "evidence": [
+        "test:durable/harness/harness_hook_tasks_test.go#TestAfterToolsTasks"
+      ]
     },
     {
       "id": "pkg:durable/.#runEndTask::call:0",
