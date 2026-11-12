@@ -19,11 +19,27 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
-// The parts of a JSON or RPC run that differ between two runs of the same command: the session's id, alone and in its file's name, and the times.
-var screenWriterRunVarying = regexp.MustCompile(`[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}|\d{4}-\d{2}-\d{2}T\d{2}[:-]\d{2}[:-]\d{2}[.-]\d{3}Z|"timestamp":\d+`)
+// The parts of a JSON or RPC run that differ between two runs of the same command: the session's id, alone and in its file's name, and the times:
+// when a message was made, and how long a turn took (durationMs, which the faux model's reply makes 0 in most runs and 1 in some).
+var screenWriterRunVarying = regexp.MustCompile(`[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}|\d{4}-\d{2}-\d{2}T\d{2}[:-]\d{2}[:-]\d{2}[.-]\d{3}Z|"timestamp":\d+|"durationMs":\d+`)
 
 // A function of the screen writer in an allocation profile's string table: one of internal/screenwriter, or one of the tui's named for it.
 var screenWriterFunction = regexp.MustCompile(`github\.com/MichaelKinsy/PiG/(?:internal/screenwriter\.[\w.()*]+|[\w/]+\.[\w.()*]*ScreenWriter[\w.()*]*)`)
+
+// Two runs of one command differ in their times and in nothing else that screenWriterRunVarying has to cover. The two lines are an RPC
+// run's end of the assistant's message as two runs of the same command wrote it while the machine was busy: the first run's turn took
+// 1 ms and five of the eleven after it 0 ms, and TestNoScreenWriterOutsideInteractiveMode/rpc compared the durations.
+func TestScreenWriterRunVaryingCoversTheTimes(t *testing.T) {
+	const first = `{"type":"message_end","message":{"role":"assistant","stopReason":"stop","timestamp":1794513125383,"durationMs":1,"thinkingLevel":"off"}}`
+	const later = `{"type":"message_end","message":{"role":"assistant","stopReason":"stop","timestamp":1794513129017,"durationMs":0,"thinkingLevel":"off"}}`
+	a, b := screenWriterRunVarying.ReplaceAllString(first, "<varies>"), screenWriterRunVarying.ReplaceAllString(later, "<varies>")
+	if a != b {
+		t.Errorf("two runs that differ only in their times compare as different:\n%s\n%s", a, b)
+	}
+	if !strings.Contains(a, `"stopReason":"stop"`) || !strings.Contains(a, `"thinkingLevel":"off"`) {
+		t.Errorf("more than the times is left out of the comparison: %s", a)
+	}
+}
 
 // The screen writer (D624) is built when an interactive run starts and never before, and the built binary shows it: under every value of
 // PIG_TUI_SCREEN_WRITER and of terminal.screenWriter, `pig --version` and a print, a JSON and an RPC run write the same bytes (but for
