@@ -145,6 +145,10 @@ func New(options Options) *Writer {
 // Stats returns the counts so far.
 func (w *Writer) Stats() Stats { return w.stats }
 
+// Active reports whether the writer translates frames now: the alternate screen is shown. It is one atomic load and may be called
+// without the terminal's output lock.
+func (w *Writer) Active() bool { return w.active.Load() }
+
 const (
 	syncBegin = "\x1b[?2026h"
 	syncEnd   = "\x1b[?2026l"

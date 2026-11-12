@@ -283,6 +283,30 @@ func TestScreenWriterSwitch(t *testing.T) {
 	}
 }
 
+// ScreenWriterActive follows the alternate screen on a terminal that has a screen writer and is false on one without.
+func TestScreenWriterActive(t *testing.T) {
+	for value, has := range map[string]bool{"1": true, "": false} {
+		t.Run("value="+value, func(t *testing.T) {
+			t.Setenv(screenWriterEnv, value)
+			var out bytes.Buffer
+			terminal := NewProcessTerminalWithOutput(nil, nil, &out)
+			if terminal.ScreenWriterActive() {
+				t.Errorf("active before the alternate screen is shown")
+			}
+			for _, data := range swStarted() {
+				terminal.Write(data)
+			}
+			if got := terminal.ScreenWriterActive(); got != has {
+				t.Errorf("active on the alternate screen = %v, want %v", got, has)
+			}
+			terminal.Write(swLeave)
+			if terminal.ScreenWriterActive() {
+				t.Errorf("active after the alternate screen was left")
+			}
+		})
+	}
+}
+
 // PIG_TUI_SCREEN_WRITER_LOG records every write of a terminal with the writer on as it came and as it went on.
 func TestScreenWriterLogRecordsEveryWrite(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "writes.bin")

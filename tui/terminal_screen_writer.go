@@ -84,6 +84,12 @@ func (l *screenWriterLog) append(kind byte, in, out string) {
 	_, _ = l.file.Write(l.buf)
 }
 
+// ScreenWriterActive reports whether the terminal's frames pass through the screen writer (D624) now: the terminal has one and the
+// alternate screen is shown. It is one atomic load and takes no lock, so a render loop may ask before every frame.
+func (t *ProcessTerminal) ScreenWriterActive() bool {
+	return t.screen != nil && t.screen.Active()
+}
+
 // screenWriterWrittenPast tells the screen writer of every terminal that writes to out about data, which went to out past it.
 func screenWriterWrittenPast(out io.Writer, data string) {
 	writers := screenWriters.Load()
