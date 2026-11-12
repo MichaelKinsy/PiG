@@ -466,10 +466,12 @@ type Host struct {
 	// detection is independent of and typically faster than the
 	// packed-process-level watcher).
 	packedProcesses map[string]*packedProcessState
-	// watchedPacked holds every started packed process until its watcher
-	// has released its cache usage lease. Reload stops a replaced process
-	// without waiting for it, so Shutdown drains these as well as the
-	// processes of the extensions still registered.
+	// watchedPacked holds every started packed process state until its
+	// watcher ends: when the process has ended and the watcher has released
+	// its cache usage lease, or, for a state a reload released while its
+	// process runs on for the next state, when the state is released. Reload
+	// stops a replaced process without waiting for it, so Shutdown drains
+	// these as well as the processes of the extensions still registered.
 	watchedPacked map[*packedProcessState]struct{}
 
 	lastReload *ReloadReport
@@ -3386,6 +3388,8 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 		me.waitErr = cmd.Wait()
 		stderrLog.closeWriter()
 		_ = processTree.Close()
+		// The log of a process that outlived a connection goes here, once: no connection loop waits for the process (letGo).
+		stderrLog.processExited()
 		if me.cacheLease != nil {
 			_ = me.cacheLease.Release()
 			me.cacheLease = nil
@@ -4790,13 +4794,18 @@ func (h *Host) goHandleIncoming(me *managedExt, conn *Conn) {
 func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 	// Capture this generation before an automatic restart replaces the managed extension's process fields.
 	log, exited := me.stderrLog, me.exited()
+	// The log goes when the process has ended and this loop has reported what it has to. A reload keeps the process of an unchanged
+	// extension and runs its factory again over a new connection, so this loop can end long before the process does: it leaves the
+	// removal to the goroutine that reaps the process and does not wait for it.
+	if exited != nil {
+		log.hold()
+	}
 	defer func() {
-		if log != nil {
-			if exited != nil {
-				<-exited
-			}
+		if exited == nil {
 			log.remove()
+			return
 		}
+		log.letGo()
 	}()
 	lanes := newCallLanes()
 	if !me.hostsNodeRuntime() {
