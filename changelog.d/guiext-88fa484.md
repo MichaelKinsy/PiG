@@ -1,3 +1,0 @@
-### Added
-
-- Extensions mount views in the client: `ui.view.mount`, `update`, `hide`, `show`, `finish`, `remove` and `state`, answered by one `ui.view.intent` handler, in the Go, Node, Python, Rust and Lisp SDKs. A mount names a slot, a kit view, the intents its nodes may raise (a closed argument and answer shape, an optional timeout and cancel) and bounded images. The host replicates what the client draws as `state.uiAbilities`; an update that carries a stale epoch or revision is refused. One conformance row, `TestConformance_UIViewMounts`, runs the same seven cases against every SDK. <!-- fix: 88fa484 -->
