@@ -51,10 +51,10 @@ windows | native-4 | queue
 windows | extension-host-2 | queue
 windows | extension-host-3 | queue
 macos | native | queue
-macos | cli-1 extension-host-3 packages | queue
-macos | cli-2 cli-8 extension-host-2 | queue
-macos | cli-4 cli-7 extension-host-1 | queue
-macos | cli-3 cli-5 cli-6 | queue
+macos | cli-4 cli-6 cli-7 extension-host-1 | queue
+macos | cli-2 cli-8 extension-host-2 packages | queue
+macos | extension-host-3 | queue
+macos | cli-1 cli-3 cli-5 | queue
 # Jobs that are not a matrix: the shard column is "-".
 single | node-runtime | queue
 single | durable-cf-host | queue

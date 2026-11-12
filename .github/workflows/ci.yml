@@ -1307,6 +1307,11 @@ jobs:
       matrix:
         # GitHub runs at most five macOS jobs at a time, so the units are packed into five jobs (longest first, from
         # measured run times) and run in one wave. Each unit still runs in its own go test process and timeout.
+        # The times are go test's own seconds in run 43302835411, where a job spent 4 to 5 more minutes on its setup and on
+        # compiling: cli-1 559, cli-2 567, cli-3 506, cli-4 432 (each the first unit of its job), cli-5 239, cli-6 223,
+        # cli-7 217, cli-8 174, extension-host-1 507, extension-host-2 407, extension-host-3 1323, packages 204.
+        # extension-host-3 has a job to itself, 27 of the 40 minutes: after cli-1 and before packages it ran into the limit.
+        # The other three jobs hold 1379, 1352 and 1304 s of tests, 26 to 28 minutes with the setup.
         # native: the smoke run of the packages with macOS-specific code.
         # cli-1 to cli-8: the eight cmd/pig shards that make test-cli runs on Linux (automation/ci/test-shard-pattern.sh).
         # extension-host-1 to extension-host-3: the subprocess extension host tests, split in three.

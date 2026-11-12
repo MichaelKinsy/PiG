@@ -4,7 +4,7 @@ set -uo pipefail
 
 # Runs the macOS test units of one kind that a grouped macOS job holds, each in its own go test process and timeout, as
 # separate jobs did. Every unit runs even when an earlier one fails; the script fails if any unit failed.
-#   UNITS='cli-1 extension-host-3 packages' macos-units.sh cli|extension-host|packages
+#   UNITS='cli-2 cli-8 extension-host-2 packages' macos-units.sh cli|extension-host|packages
 # Units: cli-1 to cli-8 (the cmd/pig shards of make test-cli), extension-host-1 to extension-host-3, packages.
 
 kind=${1:?usage: UNITS=... macos-units.sh cli|extension-host|packages}
