@@ -56,12 +56,18 @@ type response struct {
 }
 
 func retrying(ctx context.Context, delays []time.Duration, log io.Writer, label string, send func() (response, error)) (response, error) {
+	return retryingWhen(ctx, delays, log, label, true, send)
+}
+
+// retryingWhen repeats a request the server did not take (HTTP 429) and, when the request is repeatable, one that
+// failed with a network error or a 5xx: after those the server may have done what was asked.
+func retryingWhen(ctx context.Context, delays []time.Duration, log io.Writer, label string, repeatable bool, send func() (response, error)) (response, error) {
 	for attempt := 0; ; attempt++ {
 		r, err := send()
 		if err == nil && succeeded(r.status) {
 			return r, nil
 		}
-		transient := err != nil || r.status == http.StatusTooManyRequests || r.status >= 500
+		transient := err == nil && r.status == http.StatusTooManyRequests || repeatable && (err != nil || r.status >= 500)
 		if err == nil {
 			err = &httpError{status: r.status, body: strings.TrimSpace(string(r.body))}
 		}
@@ -109,8 +115,9 @@ func exchange(ctx context.Context, client *http.Client, method, target, token st
 	return response{status: resp.StatusCode, header: resp.Header, body: raw}, nil
 }
 
+// A POST creates a status or a comment, so it is not repeatable; a GET reads and a PATCH sets a comment's whole body.
 func (a *api) call(ctx context.Context, method, target, label string, body []byte, limit int64) (response, error) {
-	return retrying(ctx, a.retryDelays, a.log, label, func() (response, error) {
+	return retryingWhen(ctx, a.retryDelays, a.log, label, method != http.MethodPost, func() (response, error) {
 		a.mu.Lock()
 		a.calls++
 		a.mu.Unlock()
