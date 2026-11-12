@@ -78,6 +78,11 @@ type FrameWithinRequester interface {
 	RequestRenderWithin(delay time.Duration)
 }
 
+// FrameWithinCanceler is a TUI that can drop the frame RequestRenderWithin asked for.
+type FrameWithinCanceler interface {
+	CancelRenderWithin()
+}
+
 // requestStepRender asks the Loader's TUI for the frame of an animation step: within StepFrameDelay when the TUI draws changes within a time, at once otherwise (Pi-Bolt loader.ts updateDisplay(frameDelayMs)). The caller must not hold l.mu.
 func (l *Loader) requestStepRender(interval time.Duration) {
 	if l.ui == nil {

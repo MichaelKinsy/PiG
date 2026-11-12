@@ -2022,6 +2022,19 @@ func (t *tuiBase) RequestRenderWithin(delay time.Duration) {
 	t.mu.Unlock()
 }
 
+// CancelRenderWithin drops the frame RequestRenderWithin asked for, when no frame has drawn the change yet: a spinner that was removed has no step left to draw, and a frame it asked for would come after the frame that removed it.
+//
+// pig divergence (D619): Pi-Bolt's Loader.stop() leaves the requestRenderWithin timer armed.
+func (t *tuiBase) CancelRenderWithin() {
+	t.mu.Lock()
+	if t.deferredRenderTimer != nil {
+		t.deferredRenderTimer.Stop()
+		t.deferredRenderTimer = nil
+		t.deferredRenderGeneration++
+	}
+	t.mu.Unlock()
+}
+
 func (t *tuiBase) runDeferredRender(generation uint64) {
 	t.mu.Lock()
 	if generation != t.deferredRenderGeneration || t.deferredRenderTimer == nil {

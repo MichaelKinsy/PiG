@@ -64,3 +64,28 @@ func TestStatusTickDrawsAtOnceOnATUIThatCannotWait(t *testing.T) {
 		t.Fatalf("the tick drew %d frames at once, want 1", ui.renders-before)
 	}
 }
+
+// cancelRecordingTUI counts the cancels of a waiting step frame.
+type cancelRecordingTUI struct {
+	stepRecordingTUI
+	cancels int
+}
+
+func (r *cancelRecordingTUI) CancelRenderWithin() { r.cancels++ }
+
+// An indicator removed while the frame of its step waits must take that frame with it: it would be drawn after the frame that removed the indicator, a frame after the end of the reply (D619, scenario 68).
+func TestRemovingTheIndicatorCancelsItsWaitingStepFrame(t *testing.T) {
+	m := statusBorderMode(t, false)
+	ui := &cancelRecordingTUI{stepRecordingTUI: stepRecordingTUI{TUI: m.tuiInst}}
+	m.tuiInst = ui
+	m.isIdle = true
+	m.handleAgentEvent(agent.CompactionStartEvent{Reason: "manual"})
+	m.tickStatusIndicators(m.statusLastFrame.Add(80 * time.Millisecond))
+	if len(ui.within) != 1 {
+		t.Fatalf("the tick asked within %v, want one request", ui.within)
+	}
+	m.clearStatusIndicator("")
+	if ui.cancels != 1 {
+		t.Fatalf("removing the indicator cancelled %d waiting step frames, want 1", ui.cancels)
+	}
+}
