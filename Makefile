@@ -797,18 +797,20 @@ upstream-mirror: parity-deps ## Mirror the pinned Pi source into .upstream/curre
 	@./automation/gen/mirror-upstream.sh
 
 # Oracle tests of Pi work the Go port carries ahead of the committed pin: Pi 473515f9c, suspendable work (signals, tool parks, hook tasks, the
-# generation at task version 3). The pin's own mirror has none of it, so these tests (durable/harness/suspendable_oracle_test.go and the scripted-session
-# comparisons of durable/interop, which skip through skipWithoutSuspendableWork) skip there and run here, with the effective pin overridden to that commit (PI_UPSTREAM_REF; its frozen closure is automation/pin/frozen/<commit>.*). Drop the
-# target, the variables and the skip when a pin bump reaches 473515f9c.
-CARRIED_ORACLE_REF := 473515f9c297c75cf2c3ebb3ba027049ed836d27
-CARRIED_ORACLE_TESTS := ^(TestAdmitSubmissionMatchesPiOnSeededPrograms|TestAdmitInputEntryMatchesPiOnSeededPrograms|TestWakeRecordMemosMatchPi)$$
+# generation at task version 3), and Pi 5e24c6b1f, code mode namespaces declared by extensions (Extension.namespace). The pin's own mirror has
+# none of it, so these tests (durable/harness/suspendable_oracle_test.go and the scripted-session comparisons of durable/interop, which skip
+# through skipWithoutSuspendableWork; durable/codemode namespaceOracleSkip) skip there and run here, with the effective pin overridden to the later
+# commit, which contains the earlier (PI_UPSTREAM_REF; its frozen closure is automation/pin/frozen/<commit>.*). Drop the target, the variables and the
+# skips when a pin bump reaches 5e24c6b1f.
+CARRIED_ORACLE_REF := 5e24c6b1f9b5e3049ec07b2101a105b11d1d1b4f
+CARRIED_ORACLE_TESTS := ^(TestAdmitSubmissionMatchesPiOnSeededPrograms|TestAdmitInputEntryMatchesPiOnSeededPrograms|TestWakeRecordMemosMatchPi|TestDescribeMatchesPiOnSeededToolSets|TestCodemodeDeclarationsMatchPi)$$
 CARRIED_INTEROP_TESTS := ^(TestScriptedSessionStoresMatchPiDurable|TestSecondScriptedSessionStoresMatchPiDurable|TestScriptedSessionsViewIdentically|TestScriptedSessionJsonlFilesMatchPiDurable|TestUnawaitedJobCommittedAfterTheAnswerChangesOnlyOrder)$$
 
-test-carried-oracles: ## Run the oracle tests of Pi work carried ahead of the pin (suspendable work, Pi 473515f9c) against that Pi build
+test-carried-oracles: ## Run the oracle tests of Pi work carried ahead of the pin (suspendable work, Pi 473515f9c; code mode namespaces, Pi 5e24c6b1f) against that Pi build
 	@$(MAKE) --no-print-directory PI_UPSTREAM_REF=$(CARRIED_ORACLE_REF) carried-oracles-run
 
 carried-oracles-run: upstream-mirror
-	go test -count=1 -run '$(CARRIED_ORACLE_TESTS)' ./durable/harness
+	go test -count=1 -run '$(CARRIED_ORACLE_TESTS)' ./durable/harness ./durable/codemode
 	go test -count=1 -run '$(CARRIED_INTEROP_TESTS)' ./durable/interop
 .PHONY: test-carried-oracles carried-oracles-run
 

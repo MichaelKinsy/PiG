@@ -8908,8 +8908,8 @@
       "evidence": [
         "durable/codemode/describe_test.go",
         "durable/codemode/describe_test.go#TestDescribeKeepsTheToolDescriptionTheSameForEveryConversation",
-        "durable/codemode/describe_test.go#TestDescribeListsWhatFitsTheBudgetEveryNamespaceBeforeAnyIsCompleteAndSaysWhatIsLeftOut",
-        "durable/codemode/describe_test.go#TestDescribeRendersTheSectionFromTheConversationsCallableToolsIntoTheSystemPrompt"
+        "durable/codemode/describe_test.go#TestDescribeListsWhatFitsTheBudgetEveryNamespaceBeforeAnyIsCompleteWithNoCountsInHeadings",
+        "durable/codemode/describe_test.go#TestDescribeRendersTheSectionFromTheConversationsExtensionsAndCallableToolsIntoTheSystemPrompt"
       ],
       "rationale": "Pi v1.5.0 re-record: every case runs in durable/codemode/describe_test.go: the stable tool description, declarations grouped by namespace, the budget rounds, the longest namespace prefix, the cheapest-first catalog selection, the rendered system prompt section and a default with its authored member order."
     },

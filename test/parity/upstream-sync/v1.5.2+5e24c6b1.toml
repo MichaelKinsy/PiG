@@ -1,0 +1,72 @@
+from = "1.5.2+822b37a2"
+to = "1.5.2+5e24c6b1"
+
+[[files]]
+path = "packages/durable/src/harness/types.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/codemode/describe_test.go#TestDescribePutsAToolInItsExtensionsNamespaceTheFirstExtensionNamingAToolWins"]
+rationale = "5e24c6b1f: ToolNamespace {name, description, instructions?} and Extension.namespace. durable/harness_types.go declares ToolNamespace and Extension.Namespace; Instructions is a string, empty for absent."
+
+[[files]]
+path = "packages/durable/src/codemode/describe.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/codemode/describe_test.go#TestDescribeListsUngroupedToolsFirstThenEachNamespacesHeadingAndDescriptionThenItsDeclarations", "test:durable/codemode/describe_test.go#TestDescribeListsANamespaceWithoutToolsAndNothingWithoutToolsAndNamespaces", "test:durable/codemode/describe_test.go#TestDescribeKeepsTheSectionIdenticalBeforeAndAfterANamespacesDeferredToolsAppear", "test:durable/codemode/describe_test.go#TestDescribeListsWhatFitsTheBudgetEveryNamespaceBeforeAnyIsCompleteWithNoCountsInHeadings", "test:durable/codemode/describe_pi_oracle_test.go#TestDescribeMatchesPiOnSeededToolSets"]
+rationale = "5e24c6b1f: CodemodeNamespace and namespaceOf are removed; namespacesOf maps each tool to its extension's namespace (the first extension naming a tool wins) and declaredNamespaces lists the declared ones by name; codemodeSection lists ungrouped tools first, then every selected extension's namespace as `## name` and its description (also with no tools, no counts), with the one `Some tools are not listed` line at the top. describe.go does the same (NamespacesOf, declaredNamespaces, Section); the oracle test compares the section over seeded extension sets, nesting duplicate namespace names and tools several extensions name, and NamespacesOf, with Pi at 5e24c6b1f (make test-carried-oracles)."
+
+[[files]]
+path = "packages/durable/src/codemode/codemode.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/codemode/output_tool_test.go#TestDurableCodeModeOutputAndToolSearch", "test:durable/codemode/codemode_pi_oracle_test.go#TestCodemodeDeclarationsMatchPi"]
+rationale = "5e24c6b1f: CodemodeToolOptions.namespaces is removed; the start data's namespaces are the ones the selected extensions declare (also one without tools), each with the callable tools of its extensions, and the section renders from the agent's extensions. tool.go and call.go do the same; the searchTools/describeNamespace case of codemode.test.ts is ported with a namespace declared by an extension, one with instructions and one without tools."
+
+[[files]]
+path = "packages/durable/src/codemode/index.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "5e24c6b1f: the barrel stops exporting CodemodeNamespace and exports namespacesOf; Go has no barrel (NamespacesOf is exported from durable/codemode)."
+
+[[files]]
+path = "packages/durable/src/index.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "5e24c6b1f: the barrel exports ToolNamespace; Go imports the package."
+
+[[files]]
+path = "packages/durable/test/codemode-describe.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/codemode/describe_test.go#TestDescribeRendersTheSectionFromTheConversationsExtensionsAndCallableToolsIntoTheSystemPrompt", "test:durable/codemode/describe_test.go#TestDescribePutsAToolInItsExtensionsNamespaceTheFirstExtensionNamingAToolWins"]
+rationale = "5e24c6b1f: every case ported (the longest-prefix case is removed with the prefix namespaces)."
+
+[[files]]
+path = "packages/durable/test/codemode.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/codemode/output_tool_test.go#TestDurableCodeModeOutputAndToolSearch"]
+rationale = "5e24c6b1f: the searchTools/describeTool/describeNamespace case with a namespace declared by an extension; codemodeChat loses its namespaces parameter (codemodeChatWith takes ToolOptions without them)."
+
+[[files]]
+path = "packages/durable/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "5e24c6b1f: Pi's README sentence on declaring a namespace on the extension; PiG documents it in the changelog fragment and the Go doc comments."
+
+[[files]]
+path = "packages/durable/docs/spec.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "5e24c6b1f: Pi's spec text of the section; the Go port follows it in describe.go."
+
+[[files]]
+path = "packages/durable/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "5e24c6b1f: Pi's changelog entry; PiG's is changelog.d/followmain9-5e24c6b1f.md."

@@ -1112,7 +1112,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/durable/src/harness/task-graph.ts` | `durable/harness/task_graph.go` | ✅ |
 | `packages/durable/src/harness/tool.ts` | `durable/harness/tool.go`, `durable/harness/tool_nested.go` | ✅ |
 | `packages/durable/src/harness/transcript.ts` | `durable/harness/transcript.go` | ✅ |
-| `packages/durable/src/harness/types.ts` | `durable/harness/types.go`, `durable/harness_types.go`, `durable/harness/agent.go`, `durable/tasks.go`, `durable/harness/registry.go` | ✅ |
+| `packages/durable/src/harness/types.ts` | `durable/harness/types.go`, `durable/harness_types.go`, `durable/harness/agent.go`, `durable/tasks.go`, `durable/harness/registry.go; Pi 5e24c6b1: ToolNamespace and Extension.Namespace (durable/harness_types.go)` | ✅ |
 | `packages/durable/src/harness/usage.ts` | `durable/harness/usage.go` | ✅ |
 | `packages/durable/src/harness/util.ts` | `durable/harness/util.go` | ✅ |
 | `packages/durable/src/harness/view.ts` | `durable/harness/view.go` | ✅ |
@@ -1175,8 +1175,8 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/durable/src/tools/write.ts` | `durable/tools/write.go` | ✅ |
 | `packages/durable/src/truncate.ts` | `durable/truncate.go` | ✅ |
 | `packages/durable/src/types.ts` | `durable/types.go`, `durable/documents.go`, `durable/entries.go`, `durable/tasks.go` | ✅ |
-| `packages/durable/src/codemode/codemode.ts` | `durable/codemode/tool.go (createCodemodeTool, createCodemodeExtension); durable/codemode/docs.go (the documents and stored shapes); durable/codemode/call.go (CodemodeCall)` | ✅ |
-| `packages/durable/src/codemode/describe.ts` | `durable/codemode/describe.go` | ✅ |
+| `packages/durable/src/codemode/codemode.ts` | `durable/codemode/tool.go (createCodemodeTool, createCodemodeExtension); durable/codemode/docs.go (the documents and stored shapes); durable/codemode/call.go (CodemodeCall); Pi 5e24c6b1: ToolOptions.Namespaces removed; the start data lists the namespaces the selected extensions declare (call.go), the section renders from Agent.Extensions (tool.go)` | ✅ |
+| `packages/durable/src/codemode/describe.ts` | `durable/codemode/describe.go; Pi 5e24c6b1: NamespacesOf and declaredNamespaces replace Namespace and namespaceOf (prefix namespaces removed); Section takes the selected extensions and lists each declared namespace as `## <name>` and its description` | ✅ |
 | `packages/durable/src/codemode/index.ts` | `(barrel re-exports; Go has no barrel exports)` | n/a |
 | `packages/durable/src/codemode/models.ts` | `durable/codemode/models.go` | ✅ |
 | `packages/durable/src/codemode/output.ts` | `durable/codemode/output.go` | ✅ |

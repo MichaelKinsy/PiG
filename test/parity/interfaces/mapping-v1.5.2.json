@@ -236615,7 +236615,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/codemode/tool.go#CreateExtension"
+        "call:durable/codemode/describe.go#NamespacesOf"
       ],
       "evidence": [
         "test:durable/codemode/codemode_pi_oracle_test.go#TestCodemodeDeclarationsMatchPi",
@@ -236725,7 +236725,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/codemode/tool.go#CreateExtension"
+        "call:durable/codemode/describe.go#NamespacesOf"
       ],
       "evidence": [
         "test:durable/harness/agent_resolve_pi_oracle_test.go#TestResolveAgentMatchesPi",
@@ -239608,7 +239608,7 @@
       "evidence": [
         "test:durable/harness/registry_reader_upstream_test.go#TestRegistryReaderSnapshotsAreImmutableAndSubscribersSeeEachPublication",
         "test:durable/codemode/codemode_test.go#TestDurableCodeMode",
-        "test:durable/codemode/describe_test.go#TestDescribeRendersTheSectionFromTheConversationsCallableToolsIntoTheSystemPrompt"
+        "test:durable/codemode/describe_test.go#TestDescribeRendersTheSectionFromTheConversationsExtensionsAndCallableToolsIntoTheSystemPrompt"
       ]
     },
     {
@@ -248010,25 +248010,9 @@
     },
     {
       "id": "pkg:durable/codemode#CodemodeNamespace",
-      "disposition": "ported",
+      "disposition": "designed-out",
       "upstreamShapeHash": "sha256:3e3787e2ad54e4e945d9b47f3ee523de813cec8996424ec442e4707f80705d84",
-      "rationale": "Derived by the interface gap detector: CodemodeNamespace is Go durable/codemode/describe.go#Namespace (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
-      "pigTargets": [
-        "durable/codemode/describe.go#Namespace"
-      ],
-      "layers": {
-        "behavior": "complete",
-        "production": "complete",
-        "shape": "complete"
-      },
-      "production": [
-        "call:durable/codemode/call.go#call.execute"
-      ],
-      "evidence": [
-        "test:durable/codemode/describe_pi_oracle_test.go#TestDescribeMatchesPiOnSeededToolSets",
-        "test:durable/codemode/call_replay_pi_test.go#TestDescribeNamespaceListsEveryToolOfItsNamespaceAndMatchesItByIdentifier",
-        "test:durable/codemode/describe_test.go#TestDescribeListsCallableToolsAsDeclarationsGroupedByNamespace"
-      ]
+      "rationale": "Pi packages/durable/src/codemode/describe.ts CodemodeNamespace (Pi 1.5.2): a prefix namespace of code mode tools. Pi 5e24c6b1f (after the pin) removes it with no fallback: a namespace is declared by an extension (ToolNamespace on Extension.namespace), so PiG removed its Namespace type with prefix grouping (durable/codemode/describe.go, durable/harness_types.go ToolNamespace). The row goes with the next pin bump."
     },
     {
       "id": "pkg:durable/codemode#CodemodeNestedCall",
@@ -248118,25 +248102,9 @@
     },
     {
       "id": "pkg:durable/codemode#CodemodeToolOptions",
-      "disposition": "ported",
+      "disposition": "designed-out",
       "upstreamShapeHash": "sha256:6444ff0d87a73cd15ecda0bba5ca0b0134848dda3a6cad1fdcb4089706937c60",
-      "rationale": "Derived by the interface gap detector: CodemodeToolOptions is Go durable/codemode/tool.go#ToolOptions (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
-      "pigTargets": [
-        "durable/codemode/tool.go#ToolOptions"
-      ],
-      "layers": {
-        "behavior": "complete",
-        "production": "complete",
-        "shape": "complete"
-      },
-      "production": [
-        "call:durable/codemode/call.go#call.callGlobal"
-      ],
-      "evidence": [
-        "test:durable/codemode/codemode_pi_oracle_test.go#TestCodemodeDeclarationsMatchPi",
-        "test:durable/codemode/tool_declarations_pi_oracle_test.go#TestToolDeclarationsMatchPi",
-        "test:durable/codemode/call_replay_pi_test.go#TestDescribeNamespaceListsEveryToolOfItsNamespaceAndMatchesItByIdentifier"
-      ]
+      "rationale": "Pi packages/durable/src/codemode/codemode.ts CodemodeToolOptions (Pi 1.5.2): its namespaces option carried the prefix namespaces. Pi 5e24c6b1f (after the pin) removes the option with no fallback; PiG's codemode.ToolOptions has no Namespaces field for the same reason (durable/codemode/tool.go). The other options are unchanged. The row goes with the next pin bump."
     },
     {
       "id": "pkg:durable/codemode#createCodemodeExtension",
@@ -248156,7 +248124,7 @@
       ],
       "evidence": [
         "test:durable/codemode/codemode_pi_oracle_test.go#TestCodemodeDeclarationsMatchPi",
-        "test:durable/codemode/describe_test.go#TestDescribeRendersTheSectionFromTheConversationsCallableToolsIntoTheSystemPrompt",
+        "test:durable/codemode/describe_test.go#TestDescribeRendersTheSectionFromTheConversationsExtensionsAndCallableToolsIntoTheSystemPrompt",
         "test:durable/codemode/imports_test.go#TestTheCodeModeExtensionLoadsWithoutPiCodemodesWasmRuntime"
       ]
     },
@@ -248178,7 +248146,7 @@
       ],
       "evidence": [
         "test:durable/codemode/codemode_pi_oracle_test.go#TestCodemodeDeclarationsMatchPi",
-        "test:durable/codemode/describe_test.go#TestDescribeRendersTheSectionFromTheConversationsCallableToolsIntoTheSystemPrompt",
+        "test:durable/codemode/describe_test.go#TestDescribeRendersTheSectionFromTheConversationsExtensionsAndCallableToolsIntoTheSystemPrompt",
         "test:durable/codemode/imports_test.go#TestTheCodeModeExtensionLoadsWithoutPiCodemodesWasmRuntime"
       ]
     },
