@@ -143,7 +143,10 @@ func viewEventNotifies(h *harness) []string {
 // change and when the last client leaves; it receives the client's own slot order and mount limit, which no fallback
 // produces, and the replica already holds them (same=true). A mount made in the handler reaches the client with no
 // command run: a client that attaches to an idle session is shown the extension's view. No client is none; a client
-// that draws no slot is a record with no slots. The host does not wait for the handler: while it blocks, the client's
+// that draws no slot is a record with no slots. With several clients attached the value is the merge of their abilities,
+// and the handler runs when the merge changes: a client that attaches or leaves without changing it causes no event.
+// The clients here attach in process (Registry.Attach), as a Go embedder's does; a wire client attaches to the same
+// registry (the rpc tests of coding/cli). The host does not wait for the handler: while it blocks, the client's
 // abilities call returns and the extension answers a command. A session no client attached to ran no handler.
 func TestConformance_UIViewAbilitiesEvent(t *testing.T) {
 	if testing.Short() {
@@ -176,7 +179,7 @@ func TestConformance_UIViewAbilitiesEvent(t *testing.T) {
 
 			count := func(want string) int {
 				n := 0
-				for _, got := range viewEventNotifies(h) {
+				for _, got := range viewNotifies(h) {
 					if got == want {
 						n++
 					}
@@ -196,12 +199,37 @@ func TestConformance_UIViewAbilitiesEvent(t *testing.T) {
 				t.Fatalf("the client that attached to the idle session was delivered %+v, want the mount fixture-arrived-11", got)
 			}
 
+			// Several clients: the extension sees the merge of their abilities, the value ViewAbilities returns, and the
+			// watcher runs when that value changes and not otherwise. A second client that draws another slot and takes
+			// more mounts changes it; a third that states what the first states does not; the second leaving changes it
+			// back; the third leaving does not. The host sends a runtime its state before every request, so the extension's
+			// answer to a command follows the snapshot of what is attached at the command: a watcher that ran for a client
+			// that changed nothing is queued by then, ahead of the event of the next change, and the report compared below
+			// holds it.
+			replica := func(want string, n int) {
+				t.Helper()
+				runConformanceCommand(t, h, "ui_view_abilities")
+				pollUntilConformance(t, "the extension never reported "+want, func() bool { return count(want) >= n })
+			}
+			const both = "view-abilities:mounts=20,argbytes=77,slots=status+panel+header,nodes=text+box,markdown=false"
+			second := attachViewClient(t, views, tc.extName, watchAbilities(20, uiview.SlotPanel, uiview.SlotHeader))
+			waitEvent("view-event:slots=status+panel+header,mounts=20,same=true", 1)
+			waitEvent("view-arrived:invalid", 1)
+			replica(both, 1)
+			third := attachViewClient(t, views, tc.extName, watchAbilities(11, uiview.SlotStatus, uiview.SlotPanel))
+			replica(both, 2)
+			second.att.Detach()
+			waitEvent("view-event:slots=status+panel,mounts=11,same=true", 2)
+			waitEvent("view-arrived:invalid", 2)
+			third.att.Detach()
+			replica("view-abilities:mounts=11,argbytes=77,slots=status+panel,nodes=text+box,markdown=false", 1)
+
 			// The abilities change.
 			if err := client.att.UpdateAbilities(watchAbilities(12, uiview.SlotStatus, uiview.SlotPanel)); err != nil {
 				t.Fatal(err)
 			}
 			waitEvent("view-event:slots=status+panel,mounts=12,same=true", 1)
-			waitEvent("view-arrived:invalid", 1)
+			waitEvent("view-arrived:invalid", 3)
 
 			// A handler that blocks delays neither the client's call nor the extension's requests.
 			runConformanceCommand(t, h, "ui_view_block")
@@ -228,20 +256,24 @@ func TestConformance_UIViewAbilitiesEvent(t *testing.T) {
 			}
 			runConformanceCommand(t, h, "ui_view_release")
 			waitEvent("view-event:slots=status+panel,mounts=13,same=true", 1)
-			waitEvent("view-arrived:invalid", 2)
+			waitEvent("view-arrived:invalid", 4)
 
 			// The last client leaves; then a client that draws no slot is not "no client".
 			client.att.Detach()
 			waitEvent("view-event:none", 1)
 			bare := attachViewClient(t, views, tc.extName, watchAbilities(5))
 			waitEvent("view-event:slots=,mounts=5,same=true", 1)
-			waitEvent("view-arrived:invalid", 3)
+			waitEvent("view-arrived:invalid", 5)
 			bare.att.Detach()
 			waitEvent("view-event:none", 2)
 
 			want := []string{
 				"view-event:slots=status+panel,mounts=11,same=true",
 				"view-arrived:live",
+				"view-event:slots=status+panel+header,mounts=20,same=true",
+				"view-arrived:invalid",
+				"view-event:slots=status+panel,mounts=11,same=true",
+				"view-arrived:invalid",
 				"view-event:slots=status+panel,mounts=12,same=true",
 				"view-arrived:invalid",
 				"view-event-blocked",
@@ -257,7 +289,7 @@ func TestConformance_UIViewAbilitiesEvent(t *testing.T) {
 				t.Fatalf("the watcher reported\n  %q\nwant\n  %q", got, want)
 			}
 			runConformanceCommand(t, h, "ui_view_events")
-			waitViewNotify(t, h, "view-events:6")
+			waitViewNotify(t, h, "view-events:8")
 		})
 	}
 }
