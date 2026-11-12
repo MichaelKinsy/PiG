@@ -851,7 +851,7 @@ func TestTheWorkersBuildSaysHowItEndedItsKindBuiltWithItsInputsOrFailedWithItsEr
 	if !isFailed || failed.Kind() != "failed" || failed.Error == nil || !strings.Contains(failed.Error.Error(), "the worker entry cannot be started") {
 		t.Fatalf("build = %+v, want the failed variant (kind %q) with its error", broken.workers.Build(), "failed")
 	}
-	if again, isFailed := broken.workers.Built().(WorkersBuiltFailed); !isFailed || again.Error != failed.Error {
+	if again, isFailed := broken.workers.Built().(WorkersBuiltFailed); !isFailed || !errors.Is(again.Error, failed.Error) {
 		t.Fatalf("Built() = %+v, want the same failed variant", broken.workers.Built())
 	}
 	if inputs := broken.workers.Inputs(); inputs != nil {

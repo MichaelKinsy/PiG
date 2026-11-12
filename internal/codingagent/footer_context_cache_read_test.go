@@ -15,7 +15,7 @@ func TestFooterContextUsageOfACacheReadDominatedTurn(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
 		window int
-		unkown bool
+		unknown bool
 		want   string
 	}{
 		{"window known", 1_000_000, false, "29.6%/1.0M (auto)"},
@@ -25,7 +25,7 @@ func TestFooterContextUsageOfACacheReadDominatedTurn(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			status := NewFooterComponent(&ai.Model{Capabilities: ai.ModelCapabilities{ContextWindow: tc.window}}, "", nil)
 			status.SetTurnContextUsage(usage)
-			if tc.unkown {
+			if tc.unknown {
 				status.SetContextUsage(nil, tc.window)
 			}
 			if got := stripANSI(strings.Join(status.Render(120), "\n")); !strings.Contains(got, tc.want) {

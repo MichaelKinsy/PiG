@@ -125,7 +125,7 @@ func TestLineWrapCacheWidthAndResetServeNothing(t *testing.T) {
 	if got, want := cache.Wrap(text, 12, finishRow), wantWrapped(text, 12, finishRow); !slices.Equal(got, want) {
 		t.Fatalf("width change: got %q want %q", got, want)
 	}
-	flip := func(row string) string { return strings.ToUpper(row) }
+	flip := strings.ToUpper
 	cache.Reset()
 	if got, want := cache.Wrap(text, 12, flip), wantWrapped(text, 12, flip); !slices.Equal(got, want) {
 		t.Fatalf("after Reset: got %q want %q", got, want)
