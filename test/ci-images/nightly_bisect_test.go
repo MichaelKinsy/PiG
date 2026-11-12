@@ -185,3 +185,28 @@ func TestWaitPreflightSkipsOnlyWhenTheDefaultBranchLacksTheWorkflow(t *testing.T
 		t.Errorf("main with the workflow and a passed status failed: %v", err)
 	}
 }
+
+// A rerun keeps the run id, and the earlier attempt's CI run stays listed on its deleted branch. The probe branch
+// carries the attempt as well, so the probe's lookup by branch finds only the run it dispatched.
+func TestNightlyBisectProbeBranchIsUniquePerRunAttempt(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join(repoRoot(t), ".github", "workflows", "nightly-bisect.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var tags []string
+	for line := range strings.SplitSeq(string(data), "\n") {
+		if name, value, ok := strings.Cut(strings.TrimSpace(line), ":"); ok && name == "BISECT_TAG" {
+			tags = append(tags, strings.TrimSpace(value))
+		}
+	}
+	if len(tags) != 1 || tags[0] != "${{ github.run_id }}-${{ github.run_attempt }}" {
+		t.Fatalf("BISECT_TAG is %q, want the run id and the run attempt", tags)
+	}
+	probe, err := os.ReadFile(filepath.Join(repoRoot(t), "automation", "ci", "nightly-probe.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(probe), `branch="bisect/${BISECT_TAG:?run tag}-${sha:0:12}"`) {
+		t.Fatal("nightly-probe.sh no longer names its branch after BISECT_TAG")
+	}
+}

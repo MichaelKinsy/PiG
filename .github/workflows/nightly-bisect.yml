@@ -83,7 +83,8 @@ jobs:
         env:
           GOOD: ${{ steps.range.outputs.good }}
           BAD: ${{ steps.range.outputs.bad }}
-          BISECT_TAG: ${{ github.run_id }}
+          # A rerun keeps the run id; the attempt keeps its probe branches apart from the earlier attempt's.
+          BISECT_TAG: ${{ github.run_id }}-${{ github.run_attempt }}
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
