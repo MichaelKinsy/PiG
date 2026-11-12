@@ -98,7 +98,14 @@ func isViewCall(method string) bool {
 	return false
 }
 
+// reservedViewPlugin is the plugin name of the host's own mounts of chord surfaces (internal/chordview).
+const reservedViewPlugin = "chord"
+
 func (b *UIBridge) handleViewCall(extName string, call *CallPayload) (*CallResultPayload, error) {
+	// pig additive (D614): the plugin name chord is the host's; an extension of that name mounts nothing.
+	if extName == reservedViewPlugin {
+		return viewError(&uiview.Error{Code: uiview.CodeInvalid, Message: "the plugin name " + reservedViewPlugin + " is reserved for the host"})
+	}
 	if len(bytes.TrimSpace(call.Args)) == 0 {
 		return nil, errors.New(call.Method + ": missing arguments")
 	}
