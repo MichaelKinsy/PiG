@@ -294,11 +294,9 @@ func TestSynchronizedUpdatesTrustedIn(t *testing.T) {
 		"Warp by session uuid":     {"TERM": "xterm-256color", "WARP_TERMINAL_SESSION_UUID": "1"},
 		"iTerm2 by session":        {"TERM": "xterm-256color", "ITERM_SESSION_ID": "w0t0p0"},
 		"iTerm2 by program":        {"TERM": "xterm-256color", "TERM_PROGRAM": "iTerm.app"},
-		"Windows Terminal":         {"TERM": "xterm-256color", "WT_SESSION": "1"},
 		"Alacritty by TERM":        {"TERM": "alacritty"},
 		"Alacritty by window id":   {"TERM": "xterm-256color", "ALACRITTY_WINDOW_ID": "1"},
 		"Alacritty by program":     {"TERM": "xterm-256color", "TERM_PROGRAM": "alacritty"},
-		"VS Code terminal":         {"TERM": "xterm-256color", "TERM_PROGRAM": "vscode"},
 	}
 	trusted := func(env map[string]string) bool {
 		return synchronizedUpdatesTrustedIn(func(name string) string { return env[name] })
@@ -336,6 +334,8 @@ func TestSynchronizedUpdatesTrustedIn(t *testing.T) {
 		"xterm-256color alone":      {"TERM": "xterm-256color"},
 		"xterm-256color, truecolor": {"TERM": "xterm-256color", "COLORTERM": "truecolor"},
 		"Apple Terminal":            {"TERM": "xterm-256color", "TERM_PROGRAM": "Apple_Terminal"},
+		"Windows Terminal":          {"TERM": "xterm-256color", "WT_SESSION": "1"},
+		"VS Code terminal":          {"TERM": "xterm-256color", "TERM_PROGRAM": "vscode", "TERM_PROGRAM_VERSION": "1.99.0"},
 		"GNOME Terminal (VTE)":      {"TERM": "xterm-256color", "VTE_VERSION": "7600"},
 		"Linux console":             {"TERM": "linux"},
 		"xterm":                     {"TERM": "xterm", "XTERM_VERSION": "XTerm(390)"},
@@ -347,5 +347,66 @@ func TestSynchronizedUpdatesTrustedIn(t *testing.T) {
 		if trusted(env) {
 			t.Errorf("%s: trusted, want Pi's interval", name)
 		}
+	}
+}
+
+// A frame whose interval has already passed is armed with no delay under the adaptive policy, as under Pi's: the first frame of a run on a screen that was idle, and the first frame after the policy turns on in the middle of a stream.
+func TestFrameWhoseIntervalHasPassedIsArmedWithNoDelay(t *testing.T) {
+	for _, open := range []bool{false, true} {
+		s := newPacingScreen(t)
+		s.frame(time.Millisecond, 0)
+		s.gate.Store(open)
+		s.at = s.at.Add(500 * time.Millisecond)
+		s.ui.requestRender(false)
+		if got := s.lastDelay(); got != 0 {
+			t.Errorf("gate open=%v: the first frame after an idle screen waits %v, want no delay", open, got)
+		}
+	}
+
+	// The last frame began 12 ms ago at Pi's interval. With the gate closed the next one waits Pi's 4 ms; once the gate is open the adaptive interval of 10 ms has passed.
+	for _, tc := range []struct {
+		open bool
+		want time.Duration
+	}{{false, 4 * time.Millisecond}, {true, 0}} {
+		s := newPacingScreen(t)
+		s.gate.Store(false)
+		s.frame(time.Millisecond, 0)
+		s.at = s.at.Add(11 * time.Millisecond)
+		s.gate.Store(tc.open)
+		s.ui.requestRender(false)
+		if got := s.lastDelay(); got != tc.want {
+			t.Errorf("gate open=%v: a frame asked for 12 ms after the last one began waits %v, want %v", tc.open, got, tc.want)
+		}
+	}
+}
+
+// The loop that keeps the frame deadline itself is handed a deadline that has already come for such a frame, so its timer ticks at once.
+func TestOwnerDeadlineOfAFrameWhoseAdaptiveIntervalHasPassedIsNow(t *testing.T) {
+	s := newPacingScreen(t)
+	s.gate.Store(false)
+	s.frame(time.Millisecond, 0)
+	var due []time.Time
+	s.ui.SetRenderDeadline(func(d time.Time) { due = append(due, d) })
+	s.at = s.at.Add(11 * time.Millisecond)
+	s.gate.Store(true)
+	s.ui.requestRender(false)
+	if len(due) == 0 || !due[len(due)-1].Equal(s.at) {
+		t.Fatalf("deadlines handed to the owner = %v, want the last one now, %v", due, s.at)
+	}
+}
+
+// A frame already pending when the policy turns on keeps the deadline Pi's interval gave it: the one timer armed for it draws it, no sooner and no later.
+func TestPendingFrameKeepsItsDeadlineWhenThePolicyTurnsOn(t *testing.T) {
+	s := newPacingScreen(t)
+	s.gate.Store(false)
+	s.frame(time.Millisecond, 0)
+	s.at = s.at.Add(time.Millisecond)
+	s.ui.requestRender(false)
+	armed := len(s.delays)
+	s.gate.Store(true)
+	s.at = s.at.Add(3 * time.Millisecond)
+	s.ui.requestRender(false)
+	if len(s.delays) != armed || s.lastDelay() != 14*time.Millisecond {
+		t.Fatalf("timers armed %v, want the one of 14 ms and no other", s.delays[armed-1:])
 	}
 }
