@@ -549,7 +549,7 @@ func intentArgument(shape uiview.Shape, value *string, item string) (json.RawMes
 			return nil, false
 		}
 	}
-	arg, err := json.Marshal(members)
+	arg, err := json.Marshal(members) //portlint:allow mapkeyorder pig additive (D614), no Pi counterpart: the argument has at most the members item and value, and the registry and the extension read it as an object
 	return arg, err == nil
 }
 

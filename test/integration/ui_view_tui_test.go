@@ -280,11 +280,12 @@ func TestUIViewMountThenUnmountIsTheSessionThatNeverMounted(t *testing.T) {
 				if !strings.Contains(never.session, "20+22") {
 					t.Errorf("the session file lacks the prompt:\n%s", never.session)
 				}
-				if !bytes.Equal(never.raw, control.raw) {
+				switch {
+				case !bytes.Equal(never.raw, control.raw):
 					t.Logf("two sessions that never mounted wrote different bytes for the same keys (%d and %d): the byte comparison is not stable here", len(never.raw), len(control.raw))
-				} else if !bytes.Equal(mounted.raw, never.raw) {
+				case !bytes.Equal(mounted.raw, never.raw):
 					t.Errorf("the bytes written for the same keys differ.\n--- mounted and ended ---\n%q\n--- never mounted ---\n%q", mounted.raw, never.raw)
-				} else if len(never.raw) == 0 {
+				case len(never.raw) == 0:
 					t.Error("no bytes were recorded: the comparison proves nothing")
 				}
 			})
