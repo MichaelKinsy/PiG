@@ -31,12 +31,6 @@ snippet = "go sess.forwardAgentEvents()"
 
 [[hit]]
 check = "asyncorder"
-file = "internal/codingagent/model_tasks.go"
-func = "ModelRegistry.CloseModelTasks"
-snippet = "go models.Close()"
-
-[[hit]]
-check = "asyncorder"
 file = "mcp/client.go"
 func = "Client.startRequest"
 snippet = "go func() {"
@@ -2131,12 +2125,6 @@ check = "golifetime"
 file = "internal/codingagent/llama/ui.go"
 func = "RunWithProgress"
 snippet = "select {"
-
-[[hit]]
-check = "golifetime"
-file = "internal/codingagent/model_tasks.go"
-func = "ModelRegistry.CloseModelTasks"
-snippet = "go models.Close()"
 
 [[hit]]
 check = "golifetime"

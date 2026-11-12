@@ -438,6 +438,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-5689853](#bf-5689853) | `pig piglet build` produced a dynamically linked Piglet Binary unless `CGO_ENABLED=0` was set, so a Binary… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-56a0400](#bf-56a0400) | Single-line inputs (login prompts, search boxes) ignore xterm modifyOtherKeys text sequences, as Pi's Input… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-56b0e0f](#bf-56b0e0f) | On Linux, the native X11 clipboard reads a `DISPLAY` that starts with `/` or `unix:` as a socket path with an… | PiG's own defect | Linux | Unreleased |
+| [BF-56b0e0f-2](#bf-56b0e0f-2) | fix(nativeplatform): parse X11 displays that start with / or unix: as libxcb 1.16 does (#424) | PiG's own defect | All platforms | Unreleased |
 | [BF-56f1d3c](#bf-56f1d3c) | A family document member accepts a typed Go value as its seed, as `CreateTask` input and snapshots already do | PiG's own defect | All platforms | 0.5.0 |
 | [BF-56f1d3c-2](#bf-56f1d3c-2) | `Submission.Wait`, `WaitForTask` and the idle waits return after every commit subscriber has run for the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-570c037](#bf-570c037) | `pig install <path> --validate-only` called a `.mjs` file, or a directory with only `index.mjs`, a valid… | PiG's own defect | All platforms | 0.7.0 |
@@ -1024,6 +1025,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-9d64980](#bf-9d64980) | fix(coding): provider order and availability of virtual models follow Pi | PiG's own defect | All platforms | Unreleased |
 | [BF-9dc3adc](#bf-9dc3adc) | fix(chord/nextnode/plugins): the proxies' requests to Go and the callbacks' calls have names of their own on… | PiG's own defect | All platforms | Unreleased |
 | [BF-9df8c5c](#bf-9df8c5c) | `--session <id>` and `--fork <id>` with an exact session ID now read only the session headers of the… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-9e95660](#bf-9e95660) | A compaction, branch summary or bug report summary no longer fails with "Summarization failed: 401… | PiG's own defect | All platforms | Unreleased |
 | [BF-9eda512](#bf-9eda512) | The Go Durable SDK's scheduler no longer resolves the Harness settings for the context a run itself reads… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-9f4702c](#bf-9f4702c) | A failed extension shortcut handler is now reported as `Error: Shortcut handler error: …` in the error… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-9faf2de](#bf-9faf2de) | Chord's workers on macOS and the BSDs: a worker killed by a signal (the grace's or the start timer's SIGKILL)… | A fix Pi shipped that PiG ported | macOS | Unreleased |
@@ -1119,6 +1121,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-af1fe1a](#bf-af1fe1a) | Cycling models in the interactive UI goes through the Session as in Pi: the new model persists as the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-af36fe8](#bf-af36fe8) | A streamed tool call whose arguments are valid JSON but not an object (`[]`, `null`, `5`, `"s"`) keeps them… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-af66ca5](#bf-af66ca5) | The CI image version-literal test no longer reports the Pi part of an image tag (`1.4.0.b3a29f11`, written by… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-af74c53](#bf-af74c53) | Draining a model collection while it refreshes no longer starts provider work after the drain began, and a… | PiG's own defect | All platforms | Unreleased |
 | [BF-afa1dd5](#bf-afa1dd5) | Amazon Bedrock `requestMetadata` keeps its keys' insertion order on the wire, as Pi's AWS SDK writes the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-afa1dd5-2](#bf-afa1dd5-2) | `make port-lint` has three more checks: `regexpinfunc` (a constant pattern compiled inside a function)… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-afb14da](#bf-afb14da) | fix(chord/nextnode/plugins): the Node host is the child of the Go side, as Pi's forked worker is of its server | PiG's own defect | All platforms | Unreleased |
@@ -1171,6 +1174,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-b99457f](#bf-b99457f) | `tool_search` and codemode tool search match Chinese, Japanese and Korean queries: each such character is a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b9db06c](#bf-b9db06c) | fix(subprocess): keep a user_bash operations object alive while its exec runs | PiG's own defect | All platforms | Unreleased |
 | [BF-b9de6a2](#bf-b9de6a2) | The provider bridge (`pig` `--provider-bridge`), the Durable core's `model_context` effect and an extension… | PiG's own defect | All platforms | Unreleased |
+| [BF-ba5e8ab](#bf-ba5e8ab) | Shutting down a Session no longer leaves a provider's model refresh, or an auth check it had abandoned… | PiG's own defect | Windows | Unreleased |
 | [BF-ba80002](#bf-ba80002) | fix(chord/nextnode/plugins): a process the Go side killed ends with SIGKILL on Windows too | PiG's own defect | Windows | Unreleased |
 | [BF-ba8b6b7](#bf-ba8b6b7) | `/logout` reads stored credentials with Pi's 15-second signal, so an unreadable `auth.json` reports "Could… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ba9c37b](#bf-ba9c37b) | Starting `pig` no longer waits for the daily cleanup of the extension cache | PiG's own defect | All platforms | 0.5.0 |
@@ -7397,6 +7401,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `56b0e0f8e2` (2026-11-11, #424)
 - **Tests:** `internal/nativeplatform/clipboard_x11_display_range_linux_test.go::TestX11DisplayNumbersParseAsXcbDoes`, `internal/nativeplatform/clipboard_x11_display_range_linux_test.go::TestX11DisplaySpellingsConnectAsPiDoes`, `internal/nativeplatform/clipboard_x11_display_range_linux_test.go::TestX11SocketPathDisplaysParseAsXcbDoes`
 - **Release note:** On Linux, the native X11 clipboard reads a `DISPLAY` that starts with `/` or `unix:` as a socket path with an optional screen (`/tmp/.X11-unix/X0.1`, `unix:/tmp/.X11-unix/X0`), as libxcb 1.16 and later do. A socket path now connects where it failed before, and `DISPLAY=unix:0` no longer names display 0 by itself. As libxcb 1.16 does (xcb_util.c `_xcb_parse_display_path_to_socket` and `_xcb_open`), the text after `unix:` is a path that must exist once any `.N` screen suffix is removed (`unix:relative-socket.1` needs `relative-socket`), and only an absolute path is dialed directly: a relative path that exists (`unix:relative-socket`, or `unix:0` with a file named `0` in the working directory) dials display 0's socket, `/tmp/.X11-unix/X0`, and one that does not exist fails. Pi's addon links the host's libxcb, so hosts with libxcb 1.15 or earlier read these displays differently.
+
+### BF-56b0e0f-2
+
+**fix(nativeplatform): parse X11 displays that start with / or unix: as libxcb 1.16 does (#424)**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(nativeplatform): parse X11 displays that start with / or unix: as libxcb 1.16 does (#424)
+- **Root cause:** Fix-Commit:
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `56b0e0f8e2` (2026-11-11, #424)
+- **Tests:** `internal/nativeplatform/clipboard_x11_display_range_linux_test.go::TestX11DisplayNumbersParseAsXcbDoes`, `internal/nativeplatform/clipboard_x11_display_range_linux_test.go::TestX11DisplaySpellingsConnectAsPiDoes`, `internal/nativeplatform/clipboard_x11_display_range_linux_test.go::TestX11SocketPathDisplaysParseAsXcbDoes`
 
 ### BF-56f1d3c
 
@@ -15532,6 +15549,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `coding/cli/startup_session_exact_id_norace_test.go::TestScalingResolveExactSessionIDWithSessionSize`, `coding/cli/startup_session_exact_id_test.go::TestResolveSessionArgumentRows`
 - **Release note:** `--session <id>` and `--fork <id>` with an exact session ID now read only the session headers of the project's session directory, as Pi does, and list sessions only to match an ID prefix or to search other projects. Resolving an exact ID no longer decodes every session first: with 20 sessions of 1000 messages it allocated 21.7 MB, growing with the sessions, and it now allocates a size-independent amount.
 
+### BF-9e95660
+
+**A compaction, branch summary or bug report summary no longer fails with "Summarization failed: 401…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A compaction, branch summary or bug report summary no longer fails with "Summarization failed: 401 Unauthorized" when the short-lived token it started with (a GitHub Copilot API token lives about 30 minutes) expires before its last request: after a retry's backoff, or on a later chunk.
+- **Root cause:** A compaction, branch summary or bug report on a Session the CLI builds pinned the credential it resolved when it started into every request it made, so a retry after a backoff, or a later chunk, sent a derived token (GitHub Copilot's lives about 30 minutes) after it had expired and got the provider's 401: "Auto-compaction failed: Summarization failed: 401 Unauthorized".
+- **User impact:** Credential or permission exposure
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `9e95660e7d` (2026-11-11)
+- **Tests:** `coding/session_summary_auth_refresh_test.go::TestAutoCompactionSurfacesRefreshFailureOnce`, `coding/session_summary_auth_refresh_test.go::TestCompactionResolvesCredentialWhenItStartsFreshAndExpired`, `coding/session_summary_auth_refresh_test.go::TestSummarizationRequestResolvesNoCredentialForARuntimeSession`, `coding/session_summary_auth_refresh_test.go::TestSummaryAttemptsEachSendAFreshCredentialAfterExpiry`
+- **Release note:** A compaction, branch summary or bug report summary no longer fails with "Summarization failed: 401 Unauthorized" when the short-lived token it started with (a GitHub Copilot API token lives about 30 minutes) expires before its last request: after a retry's backoff, or on a later chunk. A Session started from the command line resolved its credentials once, when the summary began, and sent that token with every request of it. Each request now resolves its own credentials when it is sent, as a turn does and as Pi's sessions do.
+
 ### BF-9eda512
 
 **The Go Durable SDK's scheduler no longer resolves the Harness settings for the context a run itself reads…**
@@ -16861,6 +16892,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `test/ci-images/version_literals_test.go::TestBuildAutomationNamesNoUnrecordedVersionLiteral`
 - **Release note:** The CI image version-literal test no longer reports the Pi part of an image tag (`1.4.0.b3a29f11`, written by `make pin-sync` and checked by `make pin-check`) as a hard-coded version when the pinned commit starts with a letter.
 
+### BF-af74c53
+
+**Draining a model collection while it refreshes no longer starts provider work after the drain began, and a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Draining a model collection while it refreshes no longer starts provider work after the drain began, and a streaming request's blocked auth callback no longer holds the drain.
+- **Root cause:** Drain took its snapshot of the collection's owned work without stopping the collection from admitting more. A refresh loop with providers still queued kept starting them after Drain began, and any owned worker added while Drain waited (or at a zero count) raced the WaitGroup. Drain now sets a draining flag under the lock that admission takes, so work is admitted before it or not at all: the refresh loop starts no further provider, a late publication writes nothing, and the loop's own settle wait is a counter instead of one more owned goroutine.
+- **User impact:** Credential or permission exposure
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `af74c5323b` (2026-11-11)
+- **Tests:** `ai/models_runtime_drain_test.go::TestModelsDrainDoesNotWaitForAStreamsAuthCallback`, `ai/models_runtime_drain_test.go::TestModelsDrainJoinsTheCredentialWriteOfACancelledStream`, `ai/models_runtime_drain_test.go::TestModelsPublicationAfterDrainWritesNothing`, `ai/models_runtime_drain_test.go::TestModelsRefreshLoopStartsNoQueuedProviderAfterDrainBegan`, `ai/models_runtime_drain_test.go::TestModelsRefreshStartsNoProviderWorkOnceDrainBegan`
+- **Release note:** Draining a model collection while it refreshes no longer starts provider work after the drain began, and a streaming request's blocked auth callback no longer holds the drain. `ai.Models.Drain` now stops the collection admitting owned work under the lock the work is admitted under, so a refresh with providers still queued starts none of them, a publication made afterwards writes nothing, and no worker is added to the group the drain is waiting on. A stream's auth callbacks run outside the work `Drain` joins, as a login's do, while the credential write of a stored OAuth refresh, which a cancelled stream leaves running, is joined.
+
 ### BF-afa1dd5
 
 **Amazon Bedrock `requestMetadata` keeps its keys' insertion order on the wire, as Pi's AWS SDK writes the…**
@@ -17577,6 +17622,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `b9de6a2def` (2026-11-09), `cbbb5ed7cb` (2026-11-09)
 - **Tests:** `coding/cli/provider_bridge_test.go::TestProviderBridgeStartIsSerializedBeforeTheResponseFillsItsPartial`, `coding/extension/host/subprocess/model_stream_attach_test.go::TestModelStreamForwardsStartBeforeTheResponseFillsItsPartial`, `durable/core/driver/model_test.go::TestModelContextSendsStartBeforeTheResponseFillsItsPartial`, `durable/harness/observe_response_test.go::TestObserveResponseSkipsTheStartEventWhoseProviderPartialHasNoContentYet`
 - **Release note:** The provider bridge (`pig` `--provider-bridge`), the Durable core's `model_context` effect and an extension host's `modelStream` call now send a `start` event whose partial is the pending, empty message the provider built, as Pi does (the durable generation task reads the same pending partial but skips content-less partials before its observer, so it publishes no start partial): Pi attaches its consumer before any response I/O can complete. Each created the provider's stream and read it from an ordinary goroutine, so under load the goroutine could start reading after the provider had filled the shared partial, and a `start` event reached the wire carrying the finished message (`toolUse`, the whole content and the final usage) where Pi sends `stopReason: "pending"` and no content. Each now creates the stream and reads it inside one stream continuation, as the Agent does; event content, order, cancellation and errors are unchanged.
+
+### BF-ba5e8ab
+
+**Shutting down a Session no longer leaves a provider's model refresh, or an auth check it had abandoned…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Shutting down a Session no longer leaves a provider's model refresh, or an auth check it had abandoned, running against the agent directory.
+- **Root cause:** CloseModelTasks cancelled the native collection's refreshes and then joined its operations on a detached goroutine (`go models.Close()`), so a provider's refreshModels, its store write, or an auth check the caller had abandoned kept running after Close returned, so its owner could remove the agent directory under it. Windows cannot delete a directory while a file in it is being written or held open, and TestModelPickerGeminiAuthAndCatalog failed on Windows CI with "TempDir RemoveAll cleanup: The directory is not empty". That failure was not reproduced; the Linux evidence is TestModelSelectorNativeProviderRefreshDoesNotOutliveShutdown, which shows the provider's refresh still running after…
+- **User impact:** An operation failed or was rejected
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `ba5e8abb4e` (2026-11-11)
+- **Tests:** `ai/models_runtime_drain_test.go::TestModelsDrainJoinsAbandonedRefreshButNotLogin`, `internal/codingagent/model_availability_read_context_test.go::TestAvailabilityReadContextOnlyWithoutExtensionProviders`, `internal/codingagent/model_picker_parity_test.go::TestModelPickerGeminiAuthAndCatalog`, `internal/codingagent/model_selector_native_refresh_owned_test.go::TestModelSelectorNativeProviderRefreshDoesNotOutliveShutdown`
+- **Release note:** Shutting down a Session no longer leaves a provider's model refresh, or an auth check it had abandoned, running against the agent directory. Closing the registry's model tasks cancelled the native model collection's refreshes but joined their work on a detached goroutine, so the refresh could still be writing its catalog after `Close` returned and the owner removed the directory (which on Windows cannot delete a directory whose file is still being written). `ai.Models` gains `Drain`, which cancels active refreshes and waits for the work the collection runs for its own queries (a provider's refresh and its store write, auth resolution and checks, availability) but not for a caller's login or stream, and `CloseModelTasks` calls it before returning.
 
 ### BF-ba80002
 
