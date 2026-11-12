@@ -501,3 +501,61 @@ func TestPageKeepsTypedTextAcrossUpdates(t *testing.T) {
 		t.Errorf("after the node was removed: gone, the new node's value, same element, focused = %s, want %s", got, want)
 	}
 }
+
+// TestPageShowsPanelsAsTabsAndSideBySide checks the panels of two extensions: each has a tab, both are drawn side by
+// side until the user asks for tabs, then only the chosen one is shown; an update reaches the panel that is not shown
+// and does not change the choice; choosing its tab shows it, with the update.
+func TestPageShowsPanelsAsTabsAndSideBySide(t *testing.T) {
+	browser, send := openFixtures(t)
+	view := func(text string) string {
+		return `{"view":{"root":{"kind":"text","text":"` + text + `"}}}`
+	}
+	send(`/fx-a mount ` + view("trough 1"))
+	send(`/fx-b mount ` + view("pen 1"))
+	browser.Wait(`document.querySelector('[data-key="fx-a"]') !== null && document.querySelector('[data-key="fx-b"]') !== null`)
+	state := `(() => {
+		const a = document.querySelector('[data-key="fx-a"]'), b = document.querySelector('[data-key="fx-b"]');
+		const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
+		const tabs = [...document.querySelectorAll('[role=tab]')];
+		return JSON.stringify({
+			tabs: tabs.map((tab) => tab.textContent + (tab.getAttribute("aria-selected") === "true" ? "*" : "")).join(),
+			shown: [a, b].map((el) => el.getClientRects().length > 0).join(),
+			beside: ra.width > 0 && rb.width > 0 && Math.abs(ra.top - rb.top) < 1 && ra.right <= rb.left,
+			text: [a, b].map((el) => el.querySelector(".text").textContent).join(),
+		});
+	})()`
+	if got, want := browser.String(state), `{"tabs":"fx-a,fx-b*","shown":"true,true","beside":true,"text":"trough 1,pen 1"}`; got != want {
+		t.Fatalf("two panels are\n  %s\nwant\n  %s", got, want)
+	}
+	// The user asks for tabs: the chosen panel alone is shown.
+	browser.Run(`document.getElementById("side").click()`)
+	if got, want := browser.String(state), `{"tabs":"fx-a,fx-b*","shown":"false,true","beside":false,"text":"trough 1,pen 1"}`; got != want {
+		t.Errorf("as tabs, the panels are\n  %s\nwant\n  %s", got, want)
+	}
+	// An update of the panel that is not shown is drawn in it and leaves the choice alone.
+	send(`/fx-a update ` + view("trough 2"))
+	browser.Wait(`document.querySelector('[data-key="fx-a"] .text').textContent === "trough 2"`)
+	if got, want := browser.String(state), `{"tabs":"fx-a,fx-b*","shown":"false,true","beside":false,"text":"trough 2,pen 1"}`; got != want {
+		t.Errorf("after an update of the panel behind, the panels are\n  %s\nwant\n  %s", got, want)
+	}
+	// The user chooses the other tab, by pointer and then back by keyboard.
+	browser.Run(`document.querySelector('[role=tab]').click()`)
+	if got, want := browser.String(state), `{"tabs":"fx-a*,fx-b","shown":"true,false","beside":false,"text":"trough 2,pen 1"}`; got != want {
+		t.Errorf("after choosing the first tab, the panels are\n  %s\nwant\n  %s", got, want)
+	}
+	// The extension hides the chosen panel: its tab goes and the other panel is shown. Shown again, it is chosen.
+	send(`/fx-a hide`)
+	browser.Wait(`document.querySelector('[data-key="fx-a"]').hidden`)
+	if got, want := browser.String(`[...document.querySelectorAll('[role=tab]')].map((tab) => tab.hidden).join() + "/" + (document.querySelector('[data-key="fx-b"]').getClientRects().length > 0)`), `true,false/true`; got != want {
+		t.Errorf("after the extension hid the chosen panel: tabs hidden / other panel shown = %s, want %s", got, want)
+	}
+	send(`/fx-a show`)
+	browser.Wait(`!document.querySelector('[data-key="fx-a"]').hidden`)
+	if got, want := browser.String(state), `{"tabs":"fx-a*,fx-b","shown":"true,false","beside":false,"text":"trough 2,pen 1"}`; got != want {
+		t.Errorf("after the extension showed the panel again, the panels are\n  %s\nwant\n  %s", got, want)
+	}
+	browser.Run(`document.querySelector('[role=tab][aria-selected=true]').dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }))`)
+	if got, want := browser.String(state+` + "/" + document.activeElement.textContent`), `{"tabs":"fx-a,fx-b*","shown":"false,true","beside":false,"text":"trough 2,pen 1"}/fx-b`; got != want {
+		t.Errorf("after ArrowRight on the tab, the panels are\n  %s\nwant\n  %s", got, want)
+	}
+}

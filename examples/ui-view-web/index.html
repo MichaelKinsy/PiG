@@ -6,8 +6,9 @@
 <title>PiG plugin views</title>
 <style>
   :root { color-scheme: light dark; font: 15px/1.45 system-ui, sans-serif; }
-  body { margin: 0; display: flex; justify-content: center; }
-  main { width: min(52rem, 100%); min-height: 100vh; display: flex; flex-direction: column; gap: .5rem; padding: .75rem; box-sizing: border-box; }
+  body { margin: 0; display: flex; justify-content: center; flex-wrap: wrap; }
+  [hidden] { display: none !important; }
+  main { flex: 1 1 24rem; max-width: 52rem; min-height: 100vh; display: flex; flex-direction: column; gap: .5rem; padding: .75rem; box-sizing: border-box; }
   section[data-slot] { display: flex; flex-direction: column; gap: .5rem; }
   section[data-slot]:empty { display: none; }
   #chat { flex: 1; display: flex; flex-direction: column; gap: .5rem; overflow-y: auto; }
@@ -15,6 +16,15 @@
   .line.user { align-self: flex-end; background: color-mix(in srgb, Highlight 25%, Canvas); }
   .line.note { font-size: .85em; opacity: .75; }
   .mount { border: 1px solid color-mix(in srgb, CanvasText 25%, Canvas); border-radius: .5rem; padding: .6rem; }
+  /* The panels stand beside the chat: side by side, or one at a time under their tabs (client.js: showPanels). */
+  #panels { flex: 1 1 28rem; min-width: 0; display: flex; flex-direction: column; gap: .5rem; padding: .75rem; box-sizing: border-box; }
+  #panels > nav { display: flex; gap: .5rem; align-items: center; }
+  #panels [role=tablist] { flex: 1; display: flex; gap: .25rem; flex-wrap: wrap; }
+  #panels [role=tab] { border: 1px solid var(--pig-border); border-radius: .4rem; background: none; padding: .15rem .6rem; }
+  #panels [role=tab][aria-selected=true] { background: var(--pig-selectedBg); }
+  #panels > section { flex-direction: row; flex-wrap: wrap; align-items: flex-start; }
+  #panels .mount { flex: 1 1 12rem; min-width: 0; box-sizing: border-box; }
+  #panels .mount.behind { display: none; }
   .mount > header { display: flex; gap: .5rem; align-items: center; font-size: .8em; opacity: .75; margin-bottom: .4rem; }
   .mount > header span { flex: 1; }
   .mount > footer { font-size: .8em; opacity: .75; margin-top: .4rem; min-height: 1.2em; }
@@ -69,7 +79,6 @@
     <section data-slot="message"></section>
     <section data-slot="entry"></section>
     <section data-slot="tool-card"></section>
-    <section data-slot="panel"></section>
   </div>
   <section data-slot="widget-above"></section>
   <form id="prompt"><input name="message" autocomplete="off" aria-label="Message" placeholder="Message, or a /command of an extension"><button>Send</button></form>
@@ -78,6 +87,10 @@
   <section data-slot="footer"></section>
   <div id="state" role="status">connecting</div>
 </main>
+<aside id="panels" aria-label="Panels" hidden>
+  <nav><div role="tablist" aria-label="Panels"></div><button id="side" aria-pressed="true">Side by side</button></nav>
+  <section data-slot="panel"></section>
+</aside>
 <section data-slot="notify"></section>
 <section data-slot="dialog"></section>
 <section data-slot="overlay"></section>

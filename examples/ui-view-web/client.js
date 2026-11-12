@@ -104,16 +104,73 @@ async function attach() {
   adopt(reply.data);
 }
 
+// The panel mounts stand beside the chat, each with a tab. A view has no title in the contract, so a tab is labelled
+// with the mount's key (and its plugin when two panels share a key). `chosen` is the panel the user chose; a panel
+// newly mounted or shown again by its extension is chosen. Side by side, every panel is drawn; as tabs, the chosen
+// one. A panel behind another is still drawn into, so it is current when the user chooses it.
+const panels = { root: document.getElementById("panels"), tabs: document.querySelector("#panels [role=tablist]"), side: document.getElementById("side"), chosen: "" };
+
+function showPanels() {
+  const open = [...mounts].filter(([, mount]) => mount.tab && mount.snapshot.state !== "hidden");
+  if (!open.some(([key]) => key === panels.chosen)) panels.chosen = open.at(-1)?.[0] ?? "";
+  const side = panels.side.getAttribute("aria-pressed") === "true";
+  panels.root.hidden = open.length === 0;
+  panels.tabs.parentElement.hidden = open.length < 2;
+  for (const [key, mount] of mounts) {
+    if (!mount.tab) continue;
+    const { plugin, mount: { key: name } } = mount.snapshot;
+    mount.tab.textContent = open.some(([other, m]) => other !== key && m.snapshot.mount.key === name) ? `${plugin} / ${name}` : name;
+    mount.tab.hidden = mount.snapshot.state === "hidden";
+    mount.tab.setAttribute("aria-selected", String(key === panels.chosen));
+    mount.tab.tabIndex = key === panels.chosen ? 0 : -1;
+    mount.element.classList.toggle("behind", !side && key !== panels.chosen);
+  }
+}
+
+// tab makes the tab of a panel mount: a click chooses the panel, the arrow keys move along the tabs.
+function tab(key, mount) {
+  const el = document.createElement("button");
+  el.setAttribute("role", "tab");
+  el.id = `${mount.prefix}tab`;
+  el.title = `${mount.snapshot.plugin} / ${mount.snapshot.mount.key}`;
+  mount.element.id = `${mount.prefix}panel`;
+  el.setAttribute("aria-controls", mount.element.id);
+  el.addEventListener("click", () => {
+    panels.chosen = key;
+    showPanels();
+    mount.element.scrollIntoView({ block: "nearest" });
+  });
+  el.addEventListener("keydown", (event) => {
+    const step = { ArrowRight: 1, ArrowLeft: -1 }[event.key];
+    if (!step) return;
+    event.preventDefault();
+    const tabs = [...panels.tabs.children].filter((other) => !other.hidden);
+    const next = tabs[(tabs.indexOf(el) + step + tabs.length) % tabs.length];
+    next.click();
+    next.focus();
+  });
+  panels.tabs.append(el);
+  return el;
+}
+
+panels.side.addEventListener("click", () => {
+  panels.side.setAttribute("aria-pressed", String(panels.side.getAttribute("aria-pressed") !== "true"));
+  showPanels();
+});
+
 function drop(key, mount, restore = true) {
   const focused = mount.element.contains(document.activeElement);
   mount.element.remove();
+  mount.tab?.remove();
   mounts.delete(key);
+  showPanels();
   if (focused && restore) mount.restore?.focus();
 }
 
 function apply(snapshot) {
   const key = `${snapshot.plugin}\n${snapshot.mount.key}`;
   const held = mounts.get(key);
+  if (held?.tab && held.snapshot.state === "hidden" && snapshot.state !== "hidden") panels.chosen = key;
   if (["finished", "removed", "broken"].includes(snapshot.state)) {
     if (held) drop(key, held);
     const why = snapshot.reason ? ` (${snapshot.reason})` : "";
@@ -123,6 +180,7 @@ function apply(snapshot) {
     // The same content: nothing is drawn.
     held.snapshot = snapshot;
     held.element.hidden = snapshot.state === "hidden";
+    showPanels();
   } else {
     draw(key, snapshot, held);
   }
@@ -146,6 +204,10 @@ function draw(key, snapshot, held) {
     mount.body = text("view", "");
     mount.footer = document.createElement("footer");
     mount.element.append(mount.head, mount.body, mount.footer);
+    if (snapshot.slot === "panel") {
+      mount.tab = tab(key, mount);
+      panels.chosen = key;
+    }
   }
   mount.element.hidden = snapshot.state === "hidden";
   mount.head.firstChild.textContent = `${snapshot.plugin} / ${snapshot.mount.key}${snapshot.degraded ? " (degraded)" : ""}`;
@@ -178,6 +240,7 @@ function draw(key, snapshot, held) {
   applyA11y(mount);
   if (!held) document.querySelector(`section[data-slot="${snapshot.slot}"]`).append(mount.element);
   mounts.set(key, mount);
+  showPanels(); // before the focus moves: an element that is not shown takes none
   // The focus stays on the element that had it; when that element was drawn again, on the one with its id.
   const target = focused?.isConnected ? focused : focused?.id ? document.getElementById(focused.id) : null;
   if (target && document.activeElement !== target) {
