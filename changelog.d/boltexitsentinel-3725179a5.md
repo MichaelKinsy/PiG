@@ -1,0 +1,3 @@
+### Changed
+
+- Quitting the interactive session no longer waits 50 ms for the terminal to go quiet. The exit now stops everything that makes the terminal send input (key protocols, bracketed paste, mouse, focus, light/dark reports), asks the terminal one question (DA1) and waits for the answer, which proves the terminal handled all of it, so the wait is one terminal round trip and follows a slow link instead of a timer. Mouse and focus reports are stopped before the wait, not after it. Where the terminal did not answer DA1 at startup, the exit waits as before. A key typed within the last 50 ms before the process exits now reaches the shell where it used to be discarded (D622).
