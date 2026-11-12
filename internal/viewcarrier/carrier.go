@@ -274,6 +274,7 @@ func (c *Carrier) attach(id json.RawMessage, raw []byte, reply Reply) {
 	}
 	a := &attachment{c: c, host: host, reg: reg, hold: 1}
 	a.wake = sync.NewCond(&c.mu)
+	//portlint:allow ctxbackground this context is the attachment's own lifetime: its end stops the writer, and no command's context outlives an attachment
 	a.ctx, a.stop = context.WithCancel(context.Background())
 	t, rs, err := reg.Attach(*cmd.Abilities, a.sink)
 	if err != nil {
@@ -394,6 +395,7 @@ func (c *Carrier) intent(id json.RawMessage, raw []byte, reply Reply) {
 		reply(success(id, CommandIntent, uiview.Result{Outcome: uiview.OutcomeStale, Error: "attachment ended"}), nil)
 		return
 	}
+	//portlint:allow ctxbackground an intent outlives the command that raised it: the request cancel by id ends it, and the attachment's end settles it
 	ctx, cancel := context.WithCancel(context.Background())
 	key := string(id)
 	c.mu.Lock()

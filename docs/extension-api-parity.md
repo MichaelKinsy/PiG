@@ -52,6 +52,8 @@ A Go embedder attaches a client with two imports: `github.com/MichaelKinsy/PiG/c
 
 Regression evidence: `TestDeliveriesAreNumberedInOperationOrder`, `TestRefusedDeliveryOpensAGapUntilResync`, `TestMissedSequenceNumberIsRepairedByResync`, `TestIntentUnderAnEndedAttachmentIsStale`, `TestDetachWaitsForADeliveryInProgress` and `TestUpdateAbilitiesRedeliversOnlyWhatChanged` in `coding/uiview`, run under the race detector.
 
+A client in another process holds an attachment through RPC mode's lines: the `ui_view` carrier maps each call above onto one message and keeps the same order, gap and end rules. Its messages, bounds and error codes are in [ui-view-carrier.md](ui-view-carrier.md).
+
 ### Retained Context host-call lifetime
 
 Normal completion retires a request parent before its response is published, without invalidating a retained Context's original connection. Active requests retain parent cancellation; cancelled origins and retired connections never become unparented live calls. Writer ordering serializes parent selection and normal completion. Pending calls resolve or cancel rather than retaining an absent parent. `TestConformance_TerminalInput` retains the original Context across current, empty/reset and replacement UI values in every SDK and isolated/packed/fused realization. The request-lifetime unit tests cover cancellation, racing publication, worker-start failure and disconnect, and scenario48 compares the actual Host/SDK caller with Pi. See `docs/parity/retained-context-lifetime.md`. Host guards, Provider child leases and Markdown callback body completion remain separate.
