@@ -3,6 +3,7 @@
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -67,9 +68,9 @@ class PublicationTest(unittest.TestCase):
     def publish(self):
         self.run_command("git", "push", "-q", str(self.remote), "refs/tags/" + TAG)
 
-    def gate(self):
+    def gate(self, *extra):
         before = [(self.root / name).read_bytes() for name in ("go.mod", "go.sum")]
-        result = subprocess.run([sys.executable, str(SCRIPT), "--root", str(self.root), "--remote", str(self.remote)],
+        result = subprocess.run([sys.executable, str(SCRIPT), "--root", str(self.root), "--remote", str(self.remote), *extra],
                                 env=self.env, capture_output=True, text=True, timeout=90)
         self.assertEqual(before, [(self.root / name).read_bytes() for name in ("go.mod", "go.sum")])
         return result
@@ -86,6 +87,33 @@ class PublicationTest(unittest.TestCase):
         result = self.gate()
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("Go download and committed checksums verified", result.stdout)
+
+    def slow_download_path(self, seconds):
+        """A PATH whose go sleeps before `go mod download`, as a download does while the public proxy has not served a new pin."""
+        directory = self.base / "slow-go"
+        directory.mkdir(exist_ok=True)
+        real = shutil.which("go", path=self.env.get("PATH"))
+        wrapper = directory / "go"
+        wrapper.write_text(f'#!/bin/sh\nif [ "$1" = mod ] && [ "$2" = download ]; then sleep {seconds}; fi\nexec "{real}" "$@"\n')
+        wrapper.chmod(0o755)
+        return str(directory) + os.pathsep + self.env.get("PATH", "")
+
+    def test_slow_download_inside_the_limit_passes(self):
+        self.publish()
+        self.env["PATH"] = self.slow_download_path(2)
+        result = self.gate("--download-timeout", "30")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("Go download and committed checksums verified", result.stdout)
+
+    def test_slow_download_beyond_the_limit_fails_and_names_the_proxy_delay(self):
+        self.publish()
+        self.env["PATH"] = self.slow_download_path(8)
+        result = self.gate("--download-timeout", "2")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(f"go mod download {MODULE}@{VERSION} did not finish within 2 s", result.stderr)
+        self.assertIn("proxy.golang.org", result.stderr)
+        self.assertIn("30 minutes", result.stderr)
+        self.assertIn("/@v/" + VERSION + ".info", result.stderr)
 
     def test_published_tag_with_unavailable_download_does_not_use_cached_module(self):
         self.publish()
