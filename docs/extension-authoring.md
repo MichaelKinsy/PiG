@@ -626,6 +626,29 @@ there are any.
 
 Every bound is the host's: one past it fails with code `invalid` in every SDK. `docs/additive-features.md` D614 lists the bounds.
 
+### Views in the terminal
+
+The TUI is a client when the active Piglet sets `viewClient: terminal` (PiG Standard does). Stock PiG attaches no client, so
+check the abilities and keep a fallback such as a widget or a notice.
+
+| Slot | Where the TUI draws it | Rows | Focus |
+|---|---|---|---|
+| `widget-above` | above the editor, after the widgets | at most 10 | no |
+| `widget-below` | below the editor, after the widgets | at most 10 | no |
+| `panel` | the rows directly above the editor | at most half the terminal | yes |
+
+- The TUI draws every D107 node kind except `image`, at the terminal's width. It states its size as claims: `size.columns`,
+  and `size.rows` for each slot. Use them in `alternatives` (`atLeast`) to send a layout that fits; `client.kind` is `terminal`.
+- A view taller than its slot is cut, the last row reads `... (view truncated)`, and `ViewDiagnostics` returns a `limit` notice.
+- A panel takes the focus when one of its `focus` records has `request: "mount"`, when the user presses F6, or on a click in
+  fullscreen mode. Escape returns the focus to the editor. Name the node that takes the keys in the view's `focus`.
+- Bind an intent to a node with `nodeKey`. Choosing a select-list item, changing a settings-list value, submitting an input or
+  an editor and clicking a mouse-region raise it. Declare the argument as an object with a `value` property (the item's value,
+  the new setting value or the submitted text) and, for a settings-list, an `item` property (the setting's id), or as a scalar
+  that takes the value. The TUI offers no control for an intent without a `nodeKey`; `ViewDiagnostics` says so.
+- One intent per mount runs at a time. Redraw the view from the handler to show what it did; an activation made before your
+  answer arrived is dropped.
+
 Conformance: `TestConformance_UIViewMounts` and `TestConformance_UIViewExtras` run the same probes in every SDK against the host, and
 `docs/additive-features.md` D614 lists the records.
 

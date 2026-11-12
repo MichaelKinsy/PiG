@@ -46,6 +46,8 @@ type viewTestLoop struct {
 	focused   *viewMount
 	elsewhere bool
 	notices   []string
+	// onNotice runs when the client writes a notice, before it is recorded.
+	onNotice  func()
 	size      viewSize
 	listeners []*tui.TuiInputListener
 }
@@ -94,8 +96,13 @@ func (l *viewTestLoop) ui() viewClientUI {
 			}
 		},
 		interrupts: func(data string) bool { return data == "\x1b" },
-		notify:     func(message, level string) { l.notices = append(l.notices, level+": "+message) },
-		size:       func() viewSize { return l.size },
+		notify: func(message, level string) {
+			if l.onNotice != nil {
+				l.onNotice()
+			}
+			l.notices = append(l.notices, level+": "+message)
+		},
+		size: func() viewSize { return l.size },
 	}
 }
 
@@ -450,6 +457,54 @@ func TestViewClientRaisesAnIntentFromAKeyAndOrdersItsAnswer(t *testing.T) {
 	}
 	if len(f.loop.notices) != 0 {
 		t.Fatalf("a settled intent wrote %q", f.loop.notices)
+	}
+}
+
+// pig additive (D614): what a handler mounts or updates before it answers is applied before the answer: when the
+// refusal's warning is written, the mount the handler made is already the client's.
+func TestViewClientAppliesAHandlersDeliveriesBeforeItsResult(t *testing.T) {
+	f := newViewFixture(t)
+	f.host.invoke = func(context.Context, uiview.Invocation) (uiview.Result, error) {
+		if _, err := f.host.reg.Mount("ext", uiview.MountArgs{Key: "side", Slot: uiview.SlotWidgetAbove, Content: uiview.Content{View: viewText("made by the handler")}}); err != nil {
+			t.Errorf("the handler's mount: %v", err)
+		}
+		return uiview.Result{Outcome: uiview.OutcomeRefused, Error: "no"}, nil
+	}
+	f.mount("p", uiview.SlotPanel, uiview.Content{View: viewList("choose"), Intents: []uiview.IntentDecl{viewPickIntent}, Focus: []uiview.Focus{{Node: "pick", Request: "mount"}}})
+	held := -1
+	f.loop.onNotice = func() { held = len(f.client.mounts) }
+	f.loop.drawn()[0].HandleInput("\r")
+	f.awaitResult()
+	f.loop.run()
+	if len(f.loop.notices) != 1 || held != 2 {
+		t.Fatalf("notices %q; the client held %d mounts when the result was applied, want the handler's too (2)", f.loop.notices, held)
+	}
+}
+
+// pig additive (D614): a hole in the delivery numbers means the client missed one, and it resyncs: a removal it never
+// received is applied all the same.
+func TestViewClientResyncsAfterAMissedDelivery(t *testing.T) {
+	f := newViewFixture(t)
+	a := f.mount("a", uiview.SlotWidgetAbove, uiview.Content{View: viewText("a1")})
+	b := f.mount("b", uiview.SlotWidgetAbove, uiview.Content{View: viewText("b1")})
+	if _, err := f.host.reg.Transition("ext", "remove", uiview.RefArgs{Mount: b}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.host.reg.Update("ext", uiview.UpdateArgs{Mount: a, Content: uiview.Content{View: viewText("a2")}}); err != nil {
+		t.Fatal(err)
+	}
+	f.client.mu.Lock()
+	if len(f.client.queue) != 2 || f.client.queue[0].delivery.Snapshot.State != uiview.StateRemoved {
+		f.client.mu.Unlock()
+		t.Fatalf("setup: the queue does not hold the removal and the update")
+	}
+	f.client.queue = f.client.queue[1:]
+	f.client.deliveries--
+	f.client.mu.Unlock()
+	f.loop.run()
+	drawn := f.loop.drawn()
+	if len(drawn) != 1 || viewRows(drawn[0]) != "a2" || len(f.client.mounts) != 1 {
+		t.Fatalf("after a missed removal the client draws %d mounts and holds %d", len(drawn), len(f.client.mounts))
 	}
 }
 
