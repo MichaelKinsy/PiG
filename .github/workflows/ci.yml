@@ -1365,6 +1365,22 @@ jobs:
           rustup toolchain install "$RUST_VERSION" --profile minimal
           rustup default "$RUST_VERSION"
           test "$(rustc --version | cut -d' ' -f2)" = "$RUST_VERSION"
+      # The cmd/pig, extension host and env tests build the Rust SDK cells and Pi's env daemon into persistent targets (internal/testenv.SharedCargoTargetDir), as on Linux; the user cache
+      # directory is ~/Library/Caches here. Without this cache every job compiled the SDK's dependencies cold, once for each package it tests (84 s on a 4-CPU Linux host for the first Rust
+      # cell of the extension host). A target is named for a hash of its lockfiles and of the checkout's absolute path, which a hosted runner keeps from run to run, so a restored target is
+      # the one the tests look for. The key is the Linux one with the runner's architecture.
+      - name: Restore the Cargo registry and test targets
+        id: cache-the-cargo-registry-and-test-targets
+        if: matrix.shard != 'native'
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/Library/Caches/pig-dev/cargo-target
+          key: cargo-${{ runner.os }}-${{ runner.arch }}-${{ env.RUST_VERSION }}-${{ hashFiles('extensions/sdk-rs/Cargo.lock', 'extensions/sdk-rs/Cargo.toml', 'automation/ci/test-warm.sh') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-${{ runner.arch }}-${{ env.RUST_VERSION }}-
       - name: Restore the pinned SBCL
         id: cache-pinned-sbcl
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -1473,6 +1489,17 @@ jobs:
         env:
           UNITS: ${{ matrix.shard }}
         run: automation/ci/macos-units.sh packages
+      # No step fills the targets before the tests here (Linux runs make test-warm), so the job that saves must have built every target the macOS jobs use: the job with the packages unit
+      # (the env daemon) also holds cmd/pig and extension host units (test/ci-images checks that), and it saves only when every step passed. Any other job would pin an incomplete set to the key.
+      - name: Save the Cargo registry and test targets
+        if: ${{ env.CACHE_SAVE == 'true' && contains(matrix.shard, 'packages') && steps.cache-the-cargo-registry-and-test-targets.outcome == 'success' && steps.cache-the-cargo-registry-and-test-targets.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/Library/Caches/pig-dev/cargo-target
+          key: cargo-${{ runner.os }}-${{ runner.arch }}-${{ env.RUST_VERSION }}-${{ hashFiles('extensions/sdk-rs/Cargo.lock', 'extensions/sdk-rs/Cargo.toml', 'automation/ci/test-warm.sh') }}
       - name: Save the npm cache
         if: ${{ env.CACHE_SAVE == 'true' && steps.cache-npm.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
