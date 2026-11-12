@@ -329,3 +329,25 @@ func TestWithFinalCaptures_KeepsTheUncroppedLabelWhenAnotherCaptureFailsToCrop(t
 		t.Fatalf("artifact name %q lacks the not-asserted label", name)
 	}
 }
+
+func TestWithFinalCaptures_ACropFailureIsReportedAlongsideAnOperationFailure(t *testing.T) {
+	cfg := TmuxDriverConfig{CaptureStart: "BEGIN"}
+	use := captureUse{plain: true}
+	plain, escaped, cropErr := cropCaptures(cfg, use, "banner", "esc banner")
+	operationErr := errors.New("step 2: wait_contains \"ready\" timed out")
+	got := withFinalCaptures(Result{Err: operationErr}, "scn", "pig", cfg, use, plain, escaped, cropErr)
+	if !errors.Is(got.Err, operationErr) {
+		t.Fatalf("the operation failure is hidden: %v", got.Err)
+	}
+	if !strings.Contains(got.Err.Error(), `"BEGIN" not found`) || !strings.Contains(got.Err.Error(), "final capture") {
+		t.Fatalf("the crop failure is hidden: %v", got.Err)
+	}
+	if got.Output != "banner" {
+		t.Fatalf("capture %q, want the whole capture kept for diagnosis", got.Output)
+	}
+	// With no operation failure the crop failure stands alone.
+	alone := withFinalCaptures(Result{}, "scn", "pig", cfg, use, plain, escaped, cropErr)
+	if alone.Err == nil || strings.Contains(alone.Err.Error(), "timed out") {
+		t.Fatalf("got %v, want only the crop failure", alone.Err)
+	}
+}
