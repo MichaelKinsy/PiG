@@ -746,6 +746,16 @@ def link_interop(modules: Path) -> None:
     link.symlink_to(modules)
 
 
+def unlink_interop() -> bool:
+    """Remove durable/interop/node_modules when it is the link to a commit pin's durable oracle in the build store (`link_interop`), so the
+    locked release of a tag pin installs in the checkout: npm-locked.py refuses to install through a link. Anything else stays."""
+    link = ROOT / "durable" / "interop" / "node_modules"
+    if not link.is_symlink() or store().resolve() not in Path(os.path.realpath(link)).parents:
+        return False
+    link.unlink()
+    return True
+
+
 def top_level_packages(modules: Path) -> list[str]:
     """The package names at the top of an npm tree (`@scope/name` for a scoped one), without npm's dot entries."""
     names = []

@@ -859,8 +859,11 @@ model-catalogs: parity-deps ## Regenerate model catalogs from the pinned publish
 interface-deps: ## Install the locked TypeScript compiler used by parity inventories
 	@python3 automation/ci/npm-locked.py test/parity/interface-extractor
 
+# A commit pin run (PI_UPSTREAM_REF, as in test-carried-oracles) leaves durable/interop/node_modules as a link to its durable oracle. npm-locked.py
+# refuses to install through a link, so the tag branch removes that link first (pin.py unlink-interop); without it no target that needs these
+# packages (parity-deps, upstream-mirror, the test groups) runs again in that tree.
 durable-interop-deps: ## Install the Pi Durable packages the cross-runtime tests run on Node: the locked release of a tag pin, a build of the commit of a commit pin
-	@if [ "$$($(PIN_TOOL) get kind)" = tag ]; then python3 automation/ci/npm-locked.py durable/interop; else $(PIN_TOOL) install-oracle; fi
+	@if [ "$$($(PIN_TOOL) get kind)" = tag ]; then $(PIN_TOOL) unlink-interop && python3 automation/ci/npm-locked.py durable/interop; else $(PIN_TOOL) install-oracle; fi
 
 durable-core-host-deps: durable-interop-deps ## Install the locked npm tree of the Durable core's Cloudflare host, with Pi's packages from the pinned build (the release itself for a tag pin)
 	@python3 automation/ci/npm-locked.py durable/core/host/cf

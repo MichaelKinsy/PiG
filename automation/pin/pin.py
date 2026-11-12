@@ -502,6 +502,14 @@ def cmd_freeze_closure(args: argparse.Namespace) -> None:
     print(f"freeze-closure: wrote {oracle.freeze_closure(pin, lock)}")
 
 
+def cmd_unlink_interop(_: argparse.Namespace) -> None:
+    """Before a tag pin's locked install: drop the durable/interop link a commit pin run (make test-carried-oracles) left."""
+    import oracle
+
+    if oracle.unlink_interop():
+        print("unlink-interop: removed the durable/interop/node_modules link to a commit pin's durable oracle; the locked release installs in its place")
+
+
 def cmd_link_mirror(_: argparse.Namespace) -> None:
     import oracle
 
@@ -593,6 +601,7 @@ def main() -> None:
         host.add_argument("host", help="the host directory (with its package.json and locked npm tree), relative to the repository")
         host.set_defaults(fn=fn)
     sub_.add_parser("link-mirror").set_defaults(fn=cmd_link_mirror)
+    sub_.add_parser("unlink-interop").set_defaults(fn=cmd_unlink_interop)
     ledgers = sub_.add_parser("ledgers")
     ledgers.add_argument("--from", dest="previous")
     ledgers.add_argument("--force", action="store_true")

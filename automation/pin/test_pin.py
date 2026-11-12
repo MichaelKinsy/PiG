@@ -1277,6 +1277,48 @@ class CarryTests(unittest.TestCase):
         self.assertGreater(len(self.calls), first)
 
 
+class InteropLinkTests(unittest.TestCase):
+    """A commit pin run (make test-carried-oracles) links durable/interop/node_modules to its durable oracle in the build store. The next
+    run at the tag pin installs the locked release there, and npm-locked.py refuses to install through a link: `make durable-interop-deps`,
+    and with it parity-deps and upstream-mirror, failed in that tree until the link was removed by hand."""
+
+    def setUp(self):
+        self.root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
+        self.saved = oracle.ROOT
+        oracle.ROOT = self.root
+        self.link = self.root / "durable" / "interop" / "node_modules"
+        self.link.parent.mkdir(parents=True)
+        self.store = self.root / "pi-builds"
+        environ = mock.patch.dict(os.environ, {"PIG_PI_BUILD_STORE": str(self.store)})
+        environ.start()
+        self.addCleanup(environ.stop)
+
+    def tearDown(self):
+        oracle.ROOT = self.saved
+
+    def test_the_link_to_a_commit_pins_durable_oracle_is_removed_and_the_oracle_stays(self):
+        modules = self.store / ("5" * 40) / "durable-oracle" / "node_modules"
+        (modules / "@earendil-works" / "pi-durable").mkdir(parents=True)
+        oracle.link_interop(modules)
+        self.assertTrue(self.link.is_symlink())
+        self.assertTrue(oracle.unlink_interop())
+        self.assertFalse(self.link.is_symlink() or self.link.exists())
+        self.assertTrue((modules / "@earendil-works" / "pi-durable").is_dir())
+        self.assertFalse(oracle.unlink_interop())  # nothing is left to remove
+
+    def test_an_installed_tree_and_a_link_outside_the_build_store_stay(self):
+        (self.link / "@earendil-works").mkdir(parents=True)
+        self.assertFalse(oracle.unlink_interop())
+        self.assertTrue((self.link / "@earendil-works").is_dir())
+        shutil.rmtree(self.link)
+        elsewhere = self.root / "owning-checkout" / "node_modules"
+        elsewhere.mkdir(parents=True)
+        self.link.symlink_to(elsewhere)
+        self.assertFalse(oracle.unlink_interop())
+        self.assertEqual(Path(os.path.realpath(self.link)), elsewhere.resolve())
+
+
 class MirrorLinkTests(unittest.TestCase):
     """link-mirror gives the pin's read-only mirror the dependencies of the pinned source build, so a Node oracle script
     that imports the mirrored source (chord/src/schema.ts imports typebox) resolves them."""
