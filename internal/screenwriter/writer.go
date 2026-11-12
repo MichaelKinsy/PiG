@@ -25,6 +25,7 @@
 //
 // What tmux keeps of a line is modelled by the screens of the tests (gridterm) and checked against tmux itself: the lines of tmux
 // 3.4 and 3.6 are recorded there, and where the tests find a tmux they ask that one (3.4 in the Linux container the tests run in).
+// CI sets PIG_GRIDTERM_TMUX_REQUIRED on its Linux job: there the test that asks tmux fails where it would otherwise be skipped.
 //
 // Frames are translated only while autowrap is known to be off: a write turned it off (CSI ? 7 l) and none since turned it on,
 // switched to or from an alternate screen, restored saved modes or reset the terminal. With autowrap on tmux stores a row's text

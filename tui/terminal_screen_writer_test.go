@@ -336,6 +336,7 @@ func TestScreenWriterLogRecordsEveryWrite(t *testing.T) {
 		t.Fatal(err)
 	}
 	var in, sent strings.Builder
+	translated := 0
 	for n := 0; ; n++ {
 		kind, i, o, rest, ok := screenwriter.NextRecord(log)
 		if !ok {
@@ -349,6 +350,9 @@ func TestScreenWriterLogRecordsEveryWrite(t *testing.T) {
 		}
 		in.Write(i)
 		sent.Write(o)
+		if kind == screenwriter.RecordFrame && !bytes.Equal(o, i) {
+			translated++
+		}
 		log = rest
 	}
 	if in.String() != strings.Join(inputs, "") {
@@ -356,6 +360,9 @@ func TestScreenWriterLogRecordsEveryWrite(t *testing.T) {
 	}
 	if sent.String() != out.String() {
 		t.Errorf("the log's outputs are %q, the terminal was sent %q", sent.String(), out.String())
+	}
+	if translated == 0 {
+		t.Errorf("no frame in the log was translated: the log would be the same without the writer")
 	}
 }
 
@@ -431,6 +438,9 @@ func TestScreenWriterAlternateScreenEnterAndLeave(t *testing.T) {
 		t.Errorf("the text before the screen differs")
 	}
 	sameScreens(t, "enter and leave", reference, writer)
+	if stats := writer.term.screen.Load().Stats(); stats.Translated == 0 {
+		t.Errorf("the writer translated no frame: %+v", stats)
+	}
 }
 
 // An exit: the renderer leaves the screen, the terminal stops and drains; the exit restore of an exit that skipped them. Whatever
@@ -543,6 +553,9 @@ func TestScreenWriterSuspendAndResume(t *testing.T) {
 	if got, want := afterLast(writer.transcript(), swLeave), afterLast(reference.transcript(), swLeave); got != want {
 		t.Errorf("after the last screen the writer sent %q, the renderers' bytes %q", got, want)
 	}
+	if stats := writer.term.screen.Load().Stats(); stats.Translated == 0 {
+		t.Errorf("the writer translated no frame: %+v", stats)
+	}
 }
 
 // A resize between frames: the terminal's screen is no longer the one the writer kept. Nothing is written for the old size after
@@ -577,6 +590,9 @@ func TestScreenWriterResizeBetweenFrames(t *testing.T) {
 		t.Errorf("after the resize and before the repaint the writer sent %q", got)
 	}
 	sameScreens(t, "resize between frames", reference, writer)
+	if stats := writer.term.screen.Load().Stats(); stats.Translated == 0 {
+		t.Errorf("the writer translated no frame: %+v", stats)
+	}
 }
 
 // Kitty and iTerm2 image rows are sent as they came, and the frames after them show the same screen.
@@ -616,6 +632,9 @@ func TestScreenWriterWritesPastTheTerminal(t *testing.T) {
 	}
 	reference, writer := swBoth(t, 40, 10, script)
 	sameScreens(t, "write past the terminal", reference, writer)
+	if stats := writer.term.screen.Load().Stats(); stats.Translated == 0 {
+		t.Errorf("the writer translated no frame: %+v", stats)
+	}
 	for _, s := range []*swScreen{reference, writer} {
 		if row := s.screens(0)[0].Row(1); row != "two" {
 			t.Errorf("row 2 shows %q after the frames rewrote it", row)

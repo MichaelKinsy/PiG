@@ -312,6 +312,9 @@ func TestAShorterRowKeepsNoCellOfTheLongerRow(t *testing.T) {
 					t.Errorf("after %q, sent as %q: %s", write, out, diff)
 				}
 			}
+			if w.Stats().Translated == 0 {
+				t.Errorf("the writer translated no frame")
+			}
 		})
 	}
 }
@@ -364,6 +367,9 @@ func TestWriterMakesNoSequenceOfItsOwn(t *testing.T) {
 				t.Fatalf("%s: the writer sent %q, which is not in the frame %q", name, seq, write)
 			}
 		}
+		if w.Stats().Translated == 0 {
+			t.Errorf("%s: the writer translated no frame: it sent nothing of its own to look at", name)
+		}
 	}
 }
 
@@ -411,6 +417,9 @@ func TestRecordedStreamsShowTheSameScreens(t *testing.T) {
 		stats := w.Stats()
 		t.Logf("%s: %d writes, %d frames: %d translated, %d not written, %d repaints and %d without a rule sent as they came, %d settle writes; %d bytes in, %d out (%.1f %%)",
 			name, len(writes), stats.Frames, stats.Translated, stats.Unchanged, stats.Repaints, stats.Unread, stats.Settles, stats.BytesIn, stats.BytesOut, 100*float64(stats.BytesOut)/float64(stats.BytesIn))
+		if stats.Translated == 0 {
+			t.Errorf("%s: the writer translated no frame: the screens are the same because the bytes are", name)
+		}
 		// The streams hold nothing the frame grammar does not cover: the repaints of the start (the first of them under a pen not yet known).
 		if stats.Unread != 0 || stats.Repaints > 4 || stats.BytesOut > stats.BytesIn {
 			t.Errorf("%s: %d of %d frames have no rule, %d are repaints, and %d bytes were written for %d: the writer does not take the renderers' frames, or writes more than they do", name, stats.Unread, stats.Frames, stats.Repaints, stats.BytesOut, stats.BytesIn)
@@ -640,7 +649,9 @@ func TestOutsideTheAlternateScreenEveryByteIsSentAsItCame(t *testing.T) {
 	}
 	w.Translate("\x1b[?1049h\x1b[?7l")
 	w.Translate(frame(line(1, "one")))
-	w.Translate(frame(line(1, "one!")))
+	if got, in := w.Translate(frame(line(1, "one!"))), frame(line(1, "one!")); got == in || w.Stats().Translated == 0 {
+		t.Fatalf("in the alternate screen the frame was sent as it came (%d translated): nothing below would test the writer", w.Stats().Translated)
+	}
 	exit := "\x1b[?25h\x1b[?2004l\x1b[?1049l"
 	if got := w.Translate(exit); got != exit {
 		t.Fatalf("the exit was sent as %q", got)

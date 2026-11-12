@@ -325,7 +325,9 @@ var neutralOSC = [...]string{"0;", "1;", "2;", "4;", "7;", "9;", "10;", "11;", "
 // position or the scroll region: everything that is not in the tables above, a query, a keyboard-protocol sequence or a keypad mode.
 // wrap is what the write leaves known of autowrap: +1 when it is off after it (CSI ? 7 l came last), -1 when it is not known to be
 // off (autowrap turned on; a switch to or from an alternate screen, modes 47, 1047 and 1049; saved private modes restored; a reset
-// of the terminal, DECSTR or RIS), 0 when the write says nothing of it.
+// of the terminal, DECSTR or RIS), 0 when the write says nothing of it. Only those sequences change autowrap, and outside reads each
+// of them wherever it stands in a write. What it does not recognise is passed through whole and is none of them: it makes the
+// writer forget the rows, and leaves what is known of autowrap as it was.
 func outside(data string, shown bool) (screen bool, cursor int, forget bool, wrap int) {
 	screen = shown
 	for i := 0; i < len(data); {

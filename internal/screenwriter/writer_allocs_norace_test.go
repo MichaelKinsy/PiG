@@ -30,6 +30,9 @@ func TestTranslateDoesNotAllocate(t *testing.T) {
 		if allocs := testing.AllocsPerRun(5, replay); allocs != 0 {
 			t.Errorf("%s: %v allocations for %d writes, want 0", name, allocs, len(writes))
 		}
+		if w.Stats().Translated == 0 {
+			t.Errorf("%s: the writer translated no frame: nothing that could allocate ran", name)
+		}
 	}
 }
 

@@ -39,8 +39,9 @@ func TestOutsideReportsAutowrap(t *testing.T) {
 }
 
 // Frames are translated only while autowrap is known to be off. Whatever makes it unknown, the frames after it are sent as they
-// came, and the screens stay the renderers'. The fullscreen renderer's stop turns autowrap on in a synchronized update of its own,
-// before the write that leaves the alternate screen: a frame that came between the two would be sent as it came.
+// came, and the screens stay the renderers'. The fullscreen renderer's stop turns autowrap on in a synchronized update of its own
+// and leaves the alternate screen in its next write, so no frame is written between the two; the case here is the hypothetical one
+// of a frame that came between them.
 func TestFramesAreTranslatedOnlyWhileAutowrapIsKnownToBeOff(t *testing.T) {
 	const cols, rows = 20, 5
 	const enter = "\x1b[?1049h\x1b[?7l"
@@ -54,7 +55,7 @@ func TestFramesAreTranslatedOnlyWhileAutowrapIsKnownToBeOff(t *testing.T) {
 		{"nothing written before the frames", nil, false},
 		{"the alternate screen entered and nothing said of autowrap", []string{"\x1b[?1049h"}, false},
 		{"autowrap turned on", []string{enter, "\x1b[?7h"}, false},
-		{"autowrap turned on in a synchronized update, as the renderer's stop does", []string{enter, stop}, false},
+		{"hypothetical: the renderer's stop turned autowrap on and the alternate screen is still shown", []string{enter, stop}, false},
 		{"the terminal reset", []string{enter, "\x1bc"}, false},
 		{"the terminal reset softly", []string{enter, "\x1b[!p"}, false},
 		{"saved modes restored", []string{enter, "\x1b[?7r"}, false},
@@ -102,6 +103,45 @@ func TestFramesAreTranslatedOnlyWhileAutowrapIsKnownToBeOff(t *testing.T) {
 				t.Errorf("the alternate screen is not shown, and of 5 frames %d were sent as they came", asItCame)
 			}
 		})
+	}
+}
+
+// Every sequence that changes autowrap is read where it stands between sequences the writer does not recognise, in a write that
+// passes through the writer and in one that passes it by: the frames after it are sent as they came. The unrecognised sequences
+// alone change nothing of what is known of autowrap: the frames after them are translated, their rows written whole first.
+func TestAutowrapIsReadAmongUnrecognisedSequences(t *testing.T) {
+	const cols, rows = 20, 5
+	const enter = "\x1b[?1049h\x1b[?7l"
+	// A kitty graphics command, a media-copy sequence and a device control string: none is in the writer's tables.
+	before, after := "\x1b_Ga=d\x1b\\"+"\x1b[5i", "\x1bP1$r0m\x1b\\"+"\x1b[4i"
+	frames := func(w *Writer) (asItCame int) {
+		for i := range 5 {
+			in := frame(line(2, fmt.Sprintf("count %d", i)+strings.Repeat(" ", cols-7)))
+			if w.Translate(in) == in {
+				asItCame++
+			}
+		}
+		return asItCame
+	}
+	for _, past := range []bool{false, true} {
+		for _, sequence := range []string{"", "\x1b[?7h", "\x1b[?1049l\x1b[?1049h", "\x1b[?47h", "\x1b[?1047l", "\x1b[?7r", "\x1b[?r", "\x1b[!p", "\x1bc"} {
+			w := New(Options{Size: func() (int, int) { return cols, rows }, Settle: -1})
+			w.Translate(enter)
+			w.Translate(frame("\x1b[2J", line(1, "")))
+			w.Translate(frame("\x1b[2J", line(1, "")))
+			if write := before + sequence + after; past {
+				w.Outside(write)
+			} else if out := w.Translate(write); out != write {
+				t.Fatalf("%q was sent as %q", write, out)
+			}
+			asItCame, stats := frames(w), w.Stats()
+			switch {
+			case sequence == "" && (stats.Wrapping != 0 || stats.Translated == 0):
+				t.Errorf("past the writer %v: after unrecognised sequences alone, of 5 frames %d were translated and %d sent as they came for autowrap", past, stats.Translated, stats.Wrapping)
+			case sequence != "" && (asItCame != 5 || stats.Translated != 0):
+				t.Errorf("past the writer %v: after %q among unrecognised sequences, of 5 frames %d were sent as they came and %d translated", past, sequence, asItCame, stats.Translated)
+			}
+		}
 	}
 }
 

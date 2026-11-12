@@ -74,6 +74,21 @@ func copyBytes(to, from int) {
 	}
 }
 
+// tmuxRequired is the environment variable that makes TestLinesAreWhatTmuxShows fail where it would be skipped. CI sets it on the
+// jobs that must ask tmux itself (.github/workflows/ci.yml).
+const tmuxRequired = "PIG_GRIDTERM_TMUX_REQUIRED"
+
+// tmuxStartsNoServer reports whether out is what tmux prints when it cannot start a server or the server's first pane: the socket
+// cannot be made or reached, the server ends at once, or no pseudo-terminal can be had for the pane.
+func tmuxStartsNoServer(out string) bool {
+	for _, message := range []string{"error creating", "error connecting to", "server exited", "fork failed"} {
+		if strings.Contains(out, message) {
+			return true
+		}
+	}
+	return false
+}
+
 // tmuxCommand runs tmux on the test's own server, the one whose socket is the file socket.
 func tmuxCommand(socket string, args ...string) (string, error) {
 	cmd := exec.Command("tmux", append([]string{"-S", socket, "-f", "/dev/null"}, args...)...)
@@ -109,14 +124,23 @@ func cellsShown(capture string) []int {
 // The test logs the tmux version. A tmux whose lines are the grid's passes, whether its version is recorded or not. One whose lines
 // differ fails, and the failure names the version, the first step that differs and what to do next. With PIG_GRIDTERM_RECORD set
 // the lines are written to testdata as that version's record, also when they differ. Without tmux, or where tmux can start no
-// server, the test is skipped with a notice: TestLinesAreWhatTmuxRecorded compares the records everywhere.
+// server (tmuxStartsNoServer), the test is skipped with a notice, and TestLinesAreWhatTmuxRecorded compares the records
+// everywhere; with PIG_GRIDTERM_TMUX_REQUIRED set, as CI sets it where the test must run, it fails instead. Any other error of
+// tmux is a failure.
 func TestLinesAreWhatTmuxShows(t *testing.T) {
+	skip := func(format string, args ...any) {
+		t.Helper()
+		if os.Getenv(tmuxRequired) != "" {
+			t.Fatalf(tmuxRequired+" is set, and the lines tmux itself shows were not asked for: "+format, args...)
+		}
+		t.Skipf(format+"; TestLinesAreWhatTmuxRecorded compares the recorded lines", args...)
+	}
 	if _, err := exec.LookPath("tmux"); err != nil {
-		t.Skip("no tmux in PATH: the lines tmux itself shows are not asked for here; TestLinesAreWhatTmuxRecorded compares the recorded ones")
+		skip("no tmux in PATH")
 	}
 	versionOut, err := exec.Command("tmux", "-V").Output()
 	if err != nil {
-		t.Skipf("tmux -V: %v", err)
+		t.Fatalf("tmux -V: %v", err)
 	}
 	version := strings.TrimPrefix(strings.TrimSpace(string(versionOut)), "tmux ")
 	t.Logf("tmux %s", version)
@@ -124,13 +148,16 @@ func TestLinesAreWhatTmuxShows(t *testing.T) {
 	// tmux does with the file. The directory is in /tmp and not in t.TempDir(): a socket's path has to fit in about a hundred bytes.
 	socketDir, err := os.MkdirTemp("/tmp", "pig-gridterm-")
 	if err != nil {
-		t.Skipf("no directory for the tmux server's socket: %v", err)
+		t.Fatalf("no directory for the tmux server's socket: %v", err)
 	}
 	t.Cleanup(func() { _ = os.RemoveAll(socketDir) })
 	socket := filepath.Join(socketDir, "tmux")
 	// The server ends with its last session: this one keeps it up between two cases, and its end is the server's.
 	if out, err := tmuxCommand(socket, "new-session", "-d", "-s", "hold", "-x", "80", "-y", "24", "sleep 900"); err != nil {
-		t.Skipf("tmux %s starts no server here, so its lines are not asked for: %v: %s", version, err, out)
+		if !tmuxStartsNoServer(out) {
+			t.Fatalf("tmux %s: new-session: %v: %s", version, err, out)
+		}
+		skip("tmux %s starts no server here: %v: %s", version, err, strings.TrimSpace(out))
 	}
 	t.Cleanup(func() { _, _ = tmuxCommand(socket, "kill-session", "-t", "hold") })
 	must := func(args ...string) string {

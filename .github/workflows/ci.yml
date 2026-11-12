@@ -608,6 +608,9 @@ jobs:
           # go test's 10-minute limit bounds a package's wall time, not its CPU time, and at 12 the slowest packages (imageprocessing,
           # codingagent/tools, photonimage, pigletbuild) reach 555-600 s; at 6 the pool takes the same total time and they finish in 333-387 s.
           TEST_FAST_PARALLEL: 6
+          # The screen writer's rule for writing a row in place rests on the lines tmux keeps (D624). internal/screenwriter/gridterm asks
+          # the tmux this job installed for them; with this set that test fails where it would be skipped (no tmux, or no tmux server).
+          PIG_GRIDTERM_TMUX_REQUIRED: '1'
         run: make "$TARGET"
       - name: Save the golangci-lint cache
         if: ${{ !cancelled() && matrix.shard == 'build' && steps.lintcache.outputs.cache-hit != 'true' && env.CACHE_SAVE == 'true' }}

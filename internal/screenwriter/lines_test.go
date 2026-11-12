@@ -64,6 +64,9 @@ func TestRecordedMenuReturnLeavesTheRenderersLines(t *testing.T) {
 		}
 	}
 	t.Logf("of what the writer sent then the screens say: %q", seen)
+	if w.Stats().Translated == 0 {
+		t.Errorf("the writer translated no frame of the run")
+	}
 	if records != 21 {
 		t.Errorf("%d records, want the run's 21", records)
 	}
@@ -230,6 +233,9 @@ func TestAClusterOfUncertainWidthKeepsItsPlace(t *testing.T) {
 		if d := pair.Step(write, out); d != "" {
 			t.Errorf("after %q, sent as %q: %s", write, out, d)
 		}
+	}
+	if w.Stats().Translated == 0 {
+		t.Errorf("the writer translated no frame")
 	}
 }
 
