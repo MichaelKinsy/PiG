@@ -1876,7 +1876,11 @@ function addCommandContextMembers(target, context) {
       this.runtime.extensionRuntime.assertActive();
       return this.runtime.callReplacement("switchSession", { sessionPath }, options?.withSession);
     },
-    reload() { this.runtime.extensionRuntime.assertActive(); return this.runtime.call("reload", {}); },
+    reload() {
+      this.runtime.extensionRuntime.assertActive();
+      // pig additive (D19): Pi's loop runs the reload and the continuation of the command that awaited it in one chain of microtasks (agent-session.ts:3815-3861), so the host reads no input until that command answers or awaits again. A command that awaits after the reload reports it at the loop's next turn (reportCommandYield).
+      return this.runtime.call("reload", {}).finally(() => this.runtime.reportCommandYield());
+    },
   };
   for (const [name, member] of Object.entries(members)) {
     Object.defineProperty(target, name, { value: member.bind(context), writable: true, enumerable: true, configurable: true });
@@ -5475,6 +5479,8 @@ export class Runtime {
           // The host also hears in print and JSON mode when the handler's window closes: Pi's run, held still while a signal's disposal runs synchronously, goes on from that turn of its loop.
           if (shutdownOwner?.id === id && shutdownOwner.quit && (this.contextValues.mode === "rpc" || PROMPT_END_MODES.has(this.contextValues.mode))) armRequestWindow(shutdownOwner);
           if (request.event === "agent_settled") this.armSettleTailWindow(id, ctx);
+          // pig additive (D19): Pi's reload awaits its session_shutdown, session_start and resources_discover handlers in one chain of microtasks unless a handler waits on a timer or I/O, during which Pi reads stdin (agent-session.ts:3815-3861). The host holds stdin through the reload, so such a handler reports its wait as a settle-tail handler does.
+          if ((request.event === "session_shutdown" || request.event === "session_start" || request.event === "resources_discover") && event?.reason === "reload") this.armSettleTailWindow(id, ctx);
           // Calling an async handler executes its synchronous prefix before returning its Promise. Unawaited notifications admit the next caller at that boundary; Pi emits session_info_changed and thinking_level_select with `void runner.emit` (agent-session.ts:2629, 3946).
           if (request.event === "ui_prompt_start" || request.event === "ui_prompt_end" || request.event === "session_info_changed" || request.event === "thinking_level_select") {
             this.conn.requestState(id, "blocked", "external_io");

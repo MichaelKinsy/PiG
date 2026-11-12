@@ -232,6 +232,8 @@ type Conn struct {
 	// provisionalBlocks holds the requests whose runtime reported blocked on a host call that the read loop has not yet seen: the suspension is reported once the call frame names the call, because a waitForIdle that finds the Session idle suspends nothing (settleBlockedCall).
 	provisionalBlocks  map[string]struct{}
 	suspensionsSettled chan struct{}
+	// callerSettlements holds, by request, the work a call's handler left for the settlement of the request that awaits the call (afterCallerSettles).
+	callerSettlements map[string][]func()
 	// eventLoopTurns holds the channel of each RequestEventLoopTurn awaiting its NotifyEventLoopTurned, by turn number; lastEventLoopTurn numbers them.
 	eventLoopTurns    map[uint64]chan struct{}
 	lastEventLoopTurn uint64
@@ -876,6 +878,7 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 		delete(c.requestStates, env.ID)
 		delete(c.suspendedRequests, env.ID)
 		c.stateMu.Unlock()
+		c.settleCallers(env.ID)
 		if hold := ackHoldOf(ctx); hold != nil {
 			hold.release()
 		}
@@ -1311,7 +1314,7 @@ func (c *Conn) readLoop(ctx context.Context) {
 					hold.announce()
 				}
 			case env.RequestState.State == "blocked" || env.RequestState.State == "suspended":
-				c.reportRequestPhase(env.RequestState.RequestID, invocation.Suspended)
+				c.reportSuspended(env.RequestState.RequestID)
 			case env.RequestState.State == "progress":
 				c.stateMu.Lock()
 				delete(c.provisionalBlocks, env.RequestState.RequestID)
@@ -1446,7 +1449,7 @@ func (c *Conn) reportProvisionalBlocks(call *CallPayload) {
 	}
 	c.stateMu.Unlock()
 	for _, id := range report {
-		c.reportRequestPhase(id, invocation.Suspended)
+		c.reportSuspended(id)
 	}
 }
 
@@ -1457,7 +1460,7 @@ func (c *Conn) settleBlockedCall(requestID string, waits bool) {
 	delete(c.provisionalBlocks, requestID)
 	c.stateMu.Unlock()
 	if provisional && waits {
-		c.reportRequestPhase(requestID, invocation.Suspended)
+		c.reportSuspended(requestID)
 	}
 }
 
@@ -1477,6 +1480,57 @@ func (c *Conn) reportRequestPhase(requestID string, report func(context.Context)
 	c.stateMu.Unlock()
 	if ok && sink.ctx != nil {
 		report(sink.ctx)
+	}
+}
+
+// reportSuspended reports that the request's handler awaits: to the RunPhase bound to its context, and to the work a call left for that handler's settlement.
+func (c *Conn) reportSuspended(requestID string) {
+	c.reportRequestPhase(requestID, invocation.Suspended)
+	c.settleCallers(requestID)
+}
+
+// afterCallerSettles leaves fns to run once the handler of requestID, which awaits a call the host is about to answer, has gone on from the answer to its next await or its end. Pi runs that continuation in the microtasks of the call's settlement. A RunPhase that follows resumptions takes the work, because it knows when the request's result is published; otherwise the work runs at the handler's next suspension report or when the request ends. The work of a request that is no longer in flight is returned, for the caller to run once it has answered the call.
+func (c *Conn) afterCallerSettles(requestID string, fns []func()) (left []func()) {
+	if len(fns) == 0 {
+		return nil
+	}
+	c.stateMu.Lock()
+	sink, ok := c.requestStates[requestID]
+	c.stateMu.Unlock()
+	if !ok {
+		return fns
+	}
+	if sink.ctx != nil {
+		for _, fn := range fns {
+			if !invocation.AfterResumption(sink.ctx, fn) {
+				left = append(left, fn)
+			}
+		}
+		fns, left = left, nil
+	}
+	if len(fns) == 0 {
+		return nil
+	}
+	c.stateMu.Lock()
+	defer c.stateMu.Unlock()
+	if _, ok := c.requestStates[requestID]; !ok {
+		return fns
+	}
+	if c.callerSettlements == nil {
+		c.callerSettlements = make(map[string][]func())
+	}
+	c.callerSettlements[requestID] = append(c.callerSettlements[requestID], fns...)
+	return nil
+}
+
+// settleCallers runs the work left for the settlement of requestID's handler.
+func (c *Conn) settleCallers(requestID string) {
+	c.stateMu.Lock()
+	fns := c.callerSettlements[requestID]
+	delete(c.callerSettlements, requestID)
+	c.stateMu.Unlock()
+	for _, fn := range fns {
+		fn()
 	}
 }
 

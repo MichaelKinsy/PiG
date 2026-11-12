@@ -2378,7 +2378,7 @@ func (h *Host) SetCommandSuspendHandler(fn func(suspended int)) {
 }
 
 // pig additive (D19): Pi has no window count because it exits only after the microtasks of the commands it read; the host counts them for runtimes that are other processes.
-// tailFlight is one in-flight agent_before_settle or agent_settled handler request.
+// tailFlight is one in-flight handler request of a chain Pi awaits without reading stdin: an agent_before_settle or agent_settled handler, or a handler of a reload (reloadChainEvent).
 type tailFlight struct {
 	node      bool
 	suspended bool
@@ -2447,7 +2447,7 @@ func (h *Host) notifySettleTail() {
 }
 
 // pig additive (D19): Pi reads stdin while a settle-tail handler waits on a timer or I/O; only the host sees that wait in a runtime that is another process.
-// SetSettleTailHandler installs the process-owner callback that receives how many in-flight agent_before_settle and agent_settled handlers wait on something during which Pi's event loop reads stdin: a Node handler whose window closed unresponded and, after EndInput, a still-running handler of a runtime with no microtask continuation. The callback runs on host goroutines and must not block.
+// SetSettleTailHandler installs the process-owner callback that receives how many in-flight agent_before_settle and agent_settled handlers, and handlers of a reload (reloadChainEvent), wait on something during which Pi's event loop reads stdin: a Node handler whose window closed unresponded and, after EndInput, a still-running handler of a runtime with no microtask continuation. The callback runs on host goroutines and must not block.
 func (h *Host) SetSettleTailHandler(fn func(suspended int)) {
 	h.commandFlightMu.Lock()
 	h.settleTailHandler = fn
@@ -4519,6 +4519,22 @@ func beforeEventSignal(event any) context.Context {
 	return nil
 }
 
+// reloadChainEvent reports whether args carry an event Pi's reload awaits in its chain: session_shutdown, session_start or resources_discover with reason reload.
+func reloadChainEvent(args []any) bool {
+	if len(args) == 0 {
+		return false
+	}
+	switch event := args[0].(type) {
+	case extension.SessionShutdownEvent:
+		return event.Reason == "reload"
+	case extension.SessionStartEvent:
+		return event.Reason == "reload"
+	case extension.ResourcesDiscoverEvent:
+		return event.Reason == "reload"
+	}
+	return false
+}
+
 // makeEventHandler returns a HandlerFn that dispatches events over the socket.
 //
 //pig:hotpath
@@ -4575,10 +4591,19 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 			eventWire.StoreArgs(argsJSON)
 		}
 		// The event and session state are read here, in the handler's synchronous prefix. Only the wait for the extension process is a suspension.
+		// An agent_before_settle or agent_settled handler runs on the tail from agent_end to agent_settled, and a session_shutdown, session_start or resources_discover handler with reason reload runs inside Pi's reload (agent-session.ts:3815-3861): Pi awaits each in a chain of microtasks, so its loop reads stdin there only while such a handler waits on a timer or I/O.
+		var tail *tailFlight
+		if event == "agent_before_settle" || event == "agent_settled" || reloadChainEvent(args) {
+			tail = me.host.beginTailFlight(me)
+			defer me.host.endTailFlight(tail)
+		}
 		if event == "session_shutdown" {
 			dispatch := parent
 			parent = withRequestSuspension(parent, func(suspended bool) {
 				if suspended {
+					if tail != nil {
+						me.host.setTailSuspended(tail)
+					}
 					me.host.setQuitHandlerSuspended()
 					handleryield.Report(dispatch)
 				}
@@ -4592,18 +4617,18 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 				})
 			}
 		}
-		if event == "agent_before_settle" || event == "agent_settled" {
-			flight := me.host.beginTailFlight(me)
-			defer me.host.endTailFlight(flight)
-			// The response never waits for the report: the stdin gate only opens on it.
-			parent = withRequestSuspension(parent, func(suspended bool) {
-				if suspended {
-					me.host.setTailSuspended(flight)
-				}
-			}, func() bool { return false })
-			if !flight.node {
+		if tail != nil {
+			if event != "session_shutdown" {
+				// The response never waits for the report: the stdin gate only opens on it.
+				parent = withRequestSuspension(parent, func(suspended bool) {
+					if suspended {
+						me.host.setTailSuspended(tail)
+					}
+				}, func() bool { return false })
+			}
+			if !tail.node {
 				// pig divergence (D86): a handler of a runtime that cannot report its waits is waiting once it outlives the quantum.
-				parent = withRequestQuantum(parent, func() { me.host.setTailSuspended(flight) })
+				parent = withRequestQuantum(parent, func() { me.host.setTailSuspended(tail) })
 			}
 		} else if event == "input" && !me.hostsNodeRuntime() && invocation.Bound(parent) {
 			// pig divergence (D86): an input handler, whose caller waits for its first suspension (rpcAwaitHandler), is suspended once it outlives the quantum. No other event carries the option: the others' callers wait for the handler's completion in Pi too.

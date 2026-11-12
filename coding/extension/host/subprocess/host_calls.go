@@ -404,6 +404,11 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 	if mark != nil {
 		callCtx = extension.WithCallInitiation(callCtx, mark)
 	}
+	// The handler of such a call leaves work for the settlement of the handler that awaits it (extension.AfterCallerSettles); the answer hands it on.
+	var afterCaller []func()
+	if settlesCaller(call.Method) {
+		callCtx = extension.WithCallerSettlement(callCtx, func(fn func()) { afterCaller = append(afterCaller, fn) })
+	}
 	// pig additive (D232): a runtime releases its bus listeners (events.off, after its lazy xref.hello) when the invalidate notification arrives, and Pi's unsubscribe never throws; refusing them would end a process other Hosts share.
 	if message := h.staleMessage.Load(); message != nil && (h.cells == nil || (call.Method != callEventsOff && call.Method != callXrefHello)) {
 		if callID != "" {
@@ -573,7 +578,17 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 		dialogSlot.Run(func() { h.replyToCall(me, conn, callID, call, callCtx, result, err) })
 		return
 	}
+	// The work is registered before the answer is written, so the caller's first report after it is not missed.
+	afterCaller = conn.afterCallerSettles(call.ParentRequestID, afterCaller)
 	h.replyToCall(me, conn, callID, call, callCtx, result, err)
+	for _, fn := range afterCaller {
+		fn()
+	}
+}
+
+// settlesCaller reports whether the handler of method leaves work for the settlement of the code that awaits it. Pi's reload is one chain of awaits that ends in the continuation of the command that awaited it (agent-session.ts:3815-3861, rpc-mode.ts:345-347), and RPC mode reads no input inside that chain.
+func settlesCaller(method string) bool {
+	return method == "reload"
 }
 
 // publishesStateBeforeResult reports whether the host sends the caller its state before the result of method. Pi's Session writes are

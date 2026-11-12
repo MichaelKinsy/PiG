@@ -663,6 +663,16 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 	})
 	// rpc-mode.ts:341-343: ctx.reload() runs session.reload() and then rebinds the Session's extensions.
 	rt.SetReload(func(ctx context.Context, session *coding.Session) error {
+		// Pi's loop reads no stdin chunk from the reload's first await to the continuation of the command that awaited it (rpcSettleGate): the hold ends once that command's handler has gone on from the reload to its response or its next await.
+		release := host.settle.holdReload()
+		defer extension.AfterCallerSettles(ctx, release)
+		// The handler awaits the reload from here. Pi dispatches every line of an input chunk before any await resumes (rpc-mode.ts:832-834), so the rest of the batch that carried the command runs first, on the extensions the reload replaces.
+		invocation.Acknowledge(ctx)
+		select {
+		case <-responses.Idle():
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 		previous := session.ExtensionRunner()
 		if err := session.Reload(ctx); err != nil {
 			// A reload that failed after session_shutdown left the old runner stale; its extension processes reject later calls with its message too.
