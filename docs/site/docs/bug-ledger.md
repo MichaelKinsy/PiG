@@ -182,6 +182,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-1a893bc](#bf-1a893bc) | fix(durable/core): report task_interrupted from the runtime's commit path for every task (Pi scheduler.ts) | PiG's own defect | All platforms | Unreleased |
 | [BF-1aaf60f](#bf-1aaf60f) | Rendered diffs keep the indentation shared by a removed and an added line when text is inserted at the start… | PiG's own defect | All platforms | Unreleased |
 | [BF-1b5540a](#bf-1b5540a) | `client.Client.Disconnect` takes the reason string as Pi's `Client.disconnect(reason)` does (it was an… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-1b699a5](#bf-1b699a5) | extensions: a session leaked one goroutine and the state of the replaced generation (about 14 KiB for an… | PiG's own defect | All platforms | Unreleased |
 | [BF-1b9718b](#bf-1b9718b) | fix(photonimage): register the lossless decoders Decode falls back to and decode test sources with Photon | PiG's own defect | All platforms | Unreleased |
 | [BF-1be8228](#bf-1be8228) | `listDir` of the local and remote execution environments leaves out an entry removed between enumeration and… | PiG's own defect | All platforms | Unreleased |
 | [BF-1c1887a](#bf-1c1887a) | Closing a Chord host no longer hangs when a hold arrives over a link that closes at the same time | PiG's own defect | Windows | 0.7.0 |
@@ -4301,6 +4302,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `1b5540aec7` (2026-10-07)
 - **Tests:** `durable/storage/jsonl/jsonl_storage_reads_test.go::TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose`, `durable/tools/bash_input_test.go::TestBashToolInputIsTheBashSchemaArguments`
 - **Release note:** `client.Client.Disconnect` takes the reason string as Pi's `Client.disconnect(reason)` does (it was an `error`); the connection fails with a `DisconnectedError` carrying it.
+
+### BF-1b699a5
+
+**extensions: a session leaked one goroutine and the state of the replaced generation (about 14 KiB for an…**
+
+- **Source:** PiG's own defect
+- **Symptom:** extensions: a session leaked one goroutine and the state of the replaced generation (about 14 KiB for an extension in its own process, about 30 KiB for a cell of two) for every `/reload` of an unchanged subprocess extension, until the extension's process ended.
+- **Root cause:** A reload keeps the process of an unchanged extension and runs its factory again in it. Each generation it replaced left one goroutine that waited for that process to exit, holding the generation's state: the connection loop of a Node extension in its own process (it waited before it removed the stderr log), and the watcher of a packed cell's process state (Node, Go, Python, Rust and Lisp cells). A session that reloaded n times held n of them, about 14 KiB each for an isolated extension, until the process ended. They also removed the stderr log the moment the process died, before the crash report of the running generation kept it, so the report of a process that had been reloaded did not…
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1b699a5442` (2026-11-12)
+- **Tests:** None recorded.
+- **Release note:** extensions: a session leaked one goroutine and the state of the replaced generation (about 14 KiB for an extension in its own process, about 30 KiB for a cell of two) for every `/reload` of an unchanged subprocess extension, until the extension's process ended. A reload keeps that process and runs the extension's factory in it again; each generation it replaced kept a goroutine that waited for the process to exit. The same goroutines removed the extension's stderr log the moment the process died, so the crash notice of a process that had been reloaded did not name its log. The end of a process is now handled once: over a hundred reloads the host's goroutines do not grow and its live heap stays within 512 KiB, for every SDK (Node, Go, Python, Rust, Lisp), isolated and packed, and the crash notice names the log as it does for a process that was never reloaded. Present in releases 0.3.0 to 0.7.0.
 
 ### BF-1b9718b
 
