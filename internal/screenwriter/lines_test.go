@@ -81,7 +81,22 @@ func TestRecordedMenuReturnLeavesTheRenderersLines(t *testing.T) {
 // their first cell, become blanks or empty; a region scrolls up or down; the screen is repainted, at the same size or another; the
 // settle write comes. The screens are narrow, so that text crosses a quarter and a half of the width, where tmux's lines step,
 // all the time.
-func TestRandomFramesLeaveTheRenderersLines(t *testing.T) {
+func TestRandomFramesLeaveTheRenderersLines(t *testing.T) { randomFrames(t, false) }
+
+// The same frames with image rows under an overlay among them: an image is drawn over two rows, an overlay's text covers those
+// rows, and the overlay is closed and the image drawn again, each in a frame as the alternate screen writes it for a Kitty terminal
+// (the placements deleted, every row erased, the text rows, and last the image's row) or for iTerm2 (the screen erased, then every
+// row, the image's with the cursor moved up to the image's first row). The writer sends such a frame as it came. The frames
+// between them change rows as before, the rows the image covers among them, without drawing the image again: the screens keep an
+// image in the cells it covers (gridterm), where the erase of a row takes the image from the row's cells, so a row the frame
+// erased and the writer wrote in place would show.
+func TestRandomFramesWithImageRowsUnderAnOverlayLeaveTheRenderersLines(t *testing.T) {
+	randomFrames(t, true)
+}
+
+// randomFrames is the test of random frames, with or without frames that draw an image and cover it with an overlay. Without them
+// the frames are the ones they were before the images were added: no other number is drawn.
+func randomFrames(t *testing.T, images bool) {
 	type piece struct {
 		text  string
 		width int
@@ -95,7 +110,13 @@ func TestRandomFramesLeaveTheRenderersLines(t *testing.T) {
 		}
 		return n
 	}
+	const (
+		kittyImage = "\x1b_Ga=T,f=100,q=2,C=1,c=3,r=2,i=7;AAAA\x1b\\"
+		itermImage = "\x1b[1A\x1b]1337;File=inline=1;width=3;height=2:AAAA\x07"
+		unplace    = "\x1b_Ga=d,d=a,q=2\x1b\\"
+	)
 	frames, inPlace, whole, failed := 0, 0, 0, 0
+	drawn, covered, closed := 0, 0, 0
 	for seed := range uint64(300) {
 		rng := rand.New(rand.NewPCG(seed, 11))
 		cols, rows := 16+4*rng.IntN(4), 5+rng.IntN(3)
@@ -106,9 +127,9 @@ func TestRandomFramesLeaveTheRenderersLines(t *testing.T) {
 		}
 		// texts are the rows' texts, nil for a row without one; resetFirst is whether a row's padding follows a reset.
 		texts, resetFirst := make([][]piece, rows), make([]bool, rows)
-		render := func(r int) string {
+		content := func(r int) string {
 			if texts[r] == nil {
-				return line(r+1, "")
+				return ""
 			}
 			var b strings.Builder
 			for _, p := range texts[r] {
@@ -118,70 +139,131 @@ func TestRandomFramesLeaveTheRenderersLines(t *testing.T) {
 				b.WriteString("\x1b[0m")
 			}
 			b.WriteString(strings.Repeat(" ", cols-width(texts[r])))
-			return line(r+1, b.String())
+			return b.String()
+		}
+		render := func(r int) string { return line(r+1, content(r)) }
+		// The image covers three columns from left on of the rows top and top+1, -1 when none is drawn; under is whether an
+		// overlay covers them; kitty is the terminal the frames that draw it are written for. The row that holds the image's
+		// sequence (top for Kitty, whose images reach down from it; top+1 for iTerm2) has no text; the other keeps its own.
+		top, left, under, kitty := -1, 0, false, false
+		// imageFrame is the frame that draws the screen with the image, or without it under the overlay.
+		imageFrame := func(image bool) []string {
+			var parts []string
+			if !kitty {
+				parts = append(parts, "\x1b[2J")
+				for r := range rows {
+					if image && r == top+1 {
+						parts = append(parts, line(r+1, strings.Repeat(" ", left)+itermImage))
+					} else {
+						parts = append(parts, render(r))
+					}
+				}
+				return parts
+			}
+			parts = append(parts, unplace)
+			for r := range rows {
+				parts = append(parts, at(r+1, 1)+"\x1b[2K")
+			}
+			for r := range rows {
+				if texts[r] != nil {
+					parts = append(parts, at(r+1, 1)+content(r)+reset)
+				}
+			}
+			if image {
+				parts = append(parts, at(top+1, 1)+strings.Repeat(" ", left)+kittyImage+reset)
+			}
+			return parts
 		}
 		for step := 0; step < 100 && failed < 10; step++ {
 			var parts []string
-			switch k := rng.IntN(40); {
-			case k < 2:
-				if k == 0 {
-					cols, rows = 16+4*rng.IntN(4), 5+rng.IntN(3)
-					pair.Resize(cols, rows)
-					texts, resetFirst = make([][]piece, rows), make([]bool, rows)
-				}
-				parts = append(parts, "\x1b[2J")
-				for r := range rows {
-					parts = append(parts, render(r))
-				}
-			case k < 7:
-				top := rng.IntN(rows - 1)
-				bottom := top + 1 + rng.IntN(rows-1-top)
-				region := fmt.Sprintf("\x1b[%d;%dr", top+1, bottom+1)
-				if rng.IntN(2) == 0 {
-					parts = append(parts, region+at(bottom+1, 1)+"\n\x1b[r")
-					copy(texts[top:bottom], texts[top+1:bottom+1])
-					copy(resetFirst[top:bottom], resetFirst[top+1:bottom+1])
-					texts[bottom] = nil
-				} else {
-					parts = append(parts, region+at(top+1, 1)+"\x1bM\x1b[r")
-					copy(texts[top+1:bottom+1], texts[top:bottom])
-					copy(resetFirst[top+1:bottom+1], resetFirst[top:bottom])
-					texts[top] = nil
+			asItCame := false
+			if images {
+				switch k := rng.IntN(10); {
+				case top < 0 && k < 2:
+					top, left, under, kitty = rng.IntN(rows-1), rng.IntN(cols-3), false, rng.IntN(2) == 0
+					if kitty {
+						texts[top] = nil
+					} else {
+						texts[top+1] = nil
+					}
+					parts, asItCame = imageFrame(true), true
+					drawn++
+				case top >= 0 && !under && k < 2:
+					under = true
+					texts[top], texts[top+1] = []piece{{"bc", 2}}, []piece{{"def", 3}, {"x", 1}}
+					parts, asItCame = imageFrame(false), true
+					covered++
+				case under && k < 3:
+					under = false
+					texts[top], texts[top+1] = nil, nil
+					parts, asItCame = imageFrame(true), true
+					closed++
 				}
 			}
-			for range 1 + rng.IntN(3) {
-				r := rng.IntN(rows)
-				text := texts[r]
-				switch k := rng.IntN(14); {
-				case text == nil:
-					texts[r], resetFirst[r] = []piece{pieces[rng.IntN(len(pieces))]}, rng.IntN(2) == 0
-				case k == 0:
-					texts[r] = nil
-				case k == 1 || len(text) == 0:
-					texts[r] = []piece{{" ", 1}}
-				case k == 2:
-					texts[r] = text[:rng.IntN(len(text))]
-				case k == 3:
-					if p := pieces[rng.IntN(len(pieces))]; width(text)+p.width <= cols {
-						texts[r] = append([]piece{p}, text...)
+			if !asItCame {
+				switch k := rng.IntN(40); {
+				case k < 2:
+					if k == 0 {
+						cols, rows = 16+4*rng.IntN(4), 5+rng.IntN(3)
+						pair.Resize(cols, rows)
+						texts, resetFirst = make([][]piece, rows), make([]bool, rows)
+					}
+					top, under = -1, false
+					parts = append(parts, "\x1b[2J")
+					for r := range rows {
+						parts = append(parts, render(r))
 					}
 				case k < 7:
-					i := rng.IntN(len(text))
-					for {
-						if p := pieces[rng.IntN(len(pieces))]; p.width == text[i].width {
-							text[i] = p
-							break
-						}
-					}
-				case k == 7:
-				default:
-					for range 1 + rng.IntN(3) {
-						if p := pieces[rng.IntN(len(pieces))]; width(texts[r])+p.width <= cols {
-							texts[r] = append(texts[r], p)
-						}
+					top, under = -1, false
+					first := rng.IntN(rows - 1)
+					bottom := first + 1 + rng.IntN(rows-1-first)
+					region := fmt.Sprintf("\x1b[%d;%dr", first+1, bottom+1)
+					if rng.IntN(2) == 0 {
+						parts = append(parts, region+at(bottom+1, 1)+"\n\x1b[r")
+						copy(texts[first:bottom], texts[first+1:bottom+1])
+						copy(resetFirst[first:bottom], resetFirst[first+1:bottom+1])
+						texts[bottom] = nil
+					} else {
+						parts = append(parts, region+at(first+1, 1)+"\x1bM\x1b[r")
+						copy(texts[first+1:bottom+1], texts[first:bottom])
+						copy(resetFirst[first+1:bottom+1], resetFirst[first:bottom])
+						texts[first] = nil
 					}
 				}
-				parts = append(parts, render(r))
+				for range 1 + rng.IntN(3) {
+					r := rng.IntN(rows)
+					text := texts[r]
+					switch k := rng.IntN(14); {
+					case text == nil:
+						texts[r], resetFirst[r] = []piece{pieces[rng.IntN(len(pieces))]}, rng.IntN(2) == 0
+					case k == 0:
+						texts[r] = nil
+					case k == 1 || len(text) == 0:
+						texts[r] = []piece{{" ", 1}}
+					case k == 2:
+						texts[r] = text[:rng.IntN(len(text))]
+					case k == 3:
+						if p := pieces[rng.IntN(len(pieces))]; width(text)+p.width <= cols {
+							texts[r] = append([]piece{p}, text...)
+						}
+					case k < 7:
+						i := rng.IntN(len(text))
+						for {
+							if p := pieces[rng.IntN(len(pieces))]; p.width == text[i].width {
+								text[i] = p
+								break
+							}
+						}
+					case k == 7:
+					default:
+						for range 1 + rng.IntN(3) {
+							if p := pieces[rng.IntN(len(pieces))]; width(texts[r])+p.width <= cols {
+								texts[r] = append(texts[r], p)
+							}
+						}
+					}
+					parts = append(parts, render(r))
+				}
 			}
 			parts = append(parts, at(1+rng.IntN(rows), 1+rng.IntN(cols)))
 			if rng.IntN(2) == 0 {
@@ -195,6 +277,11 @@ func TestRandomFramesLeaveTheRenderersLines(t *testing.T) {
 			if out != in {
 				inPlace += len(rowInPlace.FindAllString(out, -1))
 				whole += strings.Count(out, "\x1b[2K")
+			}
+			if asItCame && out != in {
+				t.Errorf("seed %d step %d: a frame that draws or removes an image was not sent as it came\n  frame  %q\n  writer %q", seed, step, in, out)
+				failed++
+				break
 			}
 			if d := pair.Step(in, out); d != "" {
 				t.Errorf("seed %d step %d, %d by %d: %s\n  frame  %q\n  writer %q", seed, step, cols, rows, d, in, out)
@@ -212,6 +299,9 @@ func TestRandomFramesLeaveTheRenderersLines(t *testing.T) {
 	}
 	if inPlace < frames/10 || whole < frames/10 {
 		t.Errorf("of %d frames' rows the writer wrote %d in place and %d whole: the frames do not exercise both", frames, inPlace, whole)
+	}
+	if images && (drawn < 300 || covered < 300 || closed < 300) {
+		t.Errorf("of %d frames %d drew an image, %d put an overlay over one and %d closed it: the frames do not exercise the images", frames, drawn, covered, closed)
 	}
 }
 
@@ -243,6 +333,12 @@ func TestAClusterOfUncertainWidthKeepsItsPlace(t *testing.T) {
 // the next frames leave the lines the renderers' bytes leave, and a forgotten row is written whole. A row known to be blank, after
 // a repaint or scrolled in, is written in place: the frame's erase of it frees nothing. A row written while the pen is not known
 // (the first after another size or after the alternate screen is entered again) is written as the frame wrote it and stays unknown.
+//
+// An image's rows under an overlay: the frame that draws an image, the one that puts an overlay over its rows and the one that
+// draws it again when the overlay is closed are sent as they came (kittyFrame, itermFrame: the frames the alternate screen writes
+// for a Kitty terminal and for iTerm2). After a frame that holds an image no row is known: the next frames write their rows whole,
+// the erase included, and only then in place. So a row the image covers loses the image's cells with the writer as without it,
+// in a terminal that keeps an image in the cells it covers (the screens do: gridterm).
 func TestEveryChangeOfARowKeepsItsLineOrForgetsTheRow(t *testing.T) {
 	const erase = "\x1b[2K"
 	// pad is a text row as the renderers write it: the text, and blanks to the screen's width.
@@ -250,6 +346,41 @@ func TestEveryChangeOfARowKeepsItsLineOrForgetsTheRow(t *testing.T) {
 	type step struct {
 		write string // a write, "settle" for the settle write, or "resize" for a screen of 30 by 6
 		whole int    // the rows the writer writes whole for it; -1 when the write is sent as it came
+	}
+	const kitty, iterm, unplace = "\x1b_Ga=T,f=100,q=2,C=1,c=4,r=3,i=7;AAAA\x1b\\", "\x1b]1337;File=inline=1;width=4;height=3:AAAA\x07", "\x1b_Ga=d,d=a,q=2\x1b\\"
+	// kittyFrame is a frame of rows 1 ("top"), 3 (side), 4 (the overlay's text, when there is one) and 5 (after) as the alternate
+	// screen writes it when an image is drawn or removed on a Kitty terminal: the placements deleted, every row erased, the text
+	// rows, and last the image's row, from which the image covers columns 11 to 14 of rows 2 to 4.
+	kittyFrame := func(image bool, side, overlay, after string) string {
+		parts := []string{unplace}
+		for row := 1; row <= 6; row++ {
+			parts = append(parts, at(row, 1)+erase)
+		}
+		parts = append(parts, at(1, 1)+pad("top", 20)+reset, at(3, 1)+pad(side, 20)+reset)
+		if overlay != "" {
+			parts = append(parts, at(4, 1)+pad(overlay, 20)+reset)
+		}
+		parts = append(parts, at(5, 1)+pad(after, 20)+reset)
+		if image {
+			parts = append(parts, at(2, 1)+strings.Repeat(" ", 10)+kitty+reset)
+		}
+		return frame(parts...)
+	}
+	// itermFrame is the same screen as the alternate screen writes it for iTerm2: the screen erased, then every row, the image's
+	// (row 4) with the cursor moved up to the image's first row.
+	itermFrame := func(image bool, side, overlay, after string) string {
+		rows := []string{pad("top", 20), "", pad(side, 20), "", pad(after, 20)}
+		if overlay != "" {
+			rows[3] = pad(overlay, 20)
+		}
+		if image {
+			rows[3] = strings.Repeat(" ", 10) + "\x1b[2A" + iterm
+		}
+		parts := []string{"\x1b[2J"}
+		for i, text := range rows {
+			parts = append(parts, line(i+1, text))
+		}
+		return frame(parts...)
 	}
 	for _, c := range []struct {
 		name  string
@@ -302,6 +433,38 @@ func TestEveryChangeOfARowKeepsItsLineOrForgetsTheRow(t *testing.T) {
 			{frame(line(2, pad("count 3 and more", 20))), 0},
 			{frame(line(2, pad("count", 20))), 1},
 			{"settle", 0},
+		}},
+		{"a Kitty image's rows under an overlay", []step{
+			{frame(line(1, pad("top", 20)), line(3, pad("side", 20)), line(5, pad("after", 20))), 0},
+			{kittyFrame(true, "side", "", "after"), -1},
+			// No row is known after the image's frame. Row 3, which the image covers beside its text, is written as the frame
+			// wrote it while the pen is not known: its erase takes the image from the row's cells, as the frame's does. It is
+			// written whole once more, and then in place.
+			{frame(line(3, pad("side!", 20))), 1},
+			{frame(line(3, pad("side!!", 20))), 1},
+			{frame(line(3, pad("side!!!", 20))), 0},
+			// The overlay over the image's rows: the placements go, and no row is known again.
+			{kittyFrame(false, "side!!!", " PANEL", "after"), -1},
+			{frame(line(1, pad("top", 20)), line(4, pad(" PANEL!", 20))), 2},
+			{frame(line(4, pad(" PANEL!!", 20))), 0},
+			// The overlay is closed and the image drawn again.
+			{kittyFrame(true, "side!!!", "", "after"), -1},
+			{frame(line(1, pad("top", 20)), line(3, pad("side!!!!", 20))), 2},
+			{frame(line(3, pad("side!!!!!", 20))), 0},
+		}},
+		{"an iTerm2 image's rows under an overlay", []step{
+			{frame(line(1, pad("top", 20)), line(3, pad("side", 20)), line(5, pad("after", 20))), 0},
+			{itermFrame(true, "side", "", "after"), -1},
+			{frame(line(3, pad("side!", 20))), 1},
+			{frame(line(3, pad("side!!", 20))), 1},
+			{frame(line(3, pad("side!!!", 20))), 0},
+			// The overlay's frame holds no image: it is a repaint, which erases the screen and leaves every row known.
+			{itermFrame(false, "side!!!", " PANEL", "after"), -1},
+			{frame(line(1, pad("top", 20)), line(4, pad(" PANEL!", 20))), 0},
+			{frame(line(4, pad(" PANEL!!", 20))), 0},
+			{itermFrame(true, "side!!!", "", "after"), -1},
+			{frame(line(1, pad("top", 20)), line(3, pad("side!!!!", 20))), 2},
+			{frame(line(3, pad("side!!!!!", 20))), 0},
 		}},
 	} {
 		t.Run(c.name, func(t *testing.T) {

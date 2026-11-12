@@ -45,9 +45,11 @@ type pen struct {
 }
 
 type cell struct {
-	text  string
-	pen   pen
-	link  string
+	text string
+	pen  pen
+	link string
+	// image is the image drawn over the cell in a terminal that keeps an image in the cells it covers, "" for none (cover).
+	image string
 	state uint8 // 0 erased, 1 written, 2 the right half of the wide cluster to its left
 }
 
@@ -402,6 +404,79 @@ func (v *Terminal) csi(private byte, list string, final byte) {
 	}
 }
 
+// inlineImage is how an iTerm2 inline image starts, after the OSC's introducer.
+const inlineImage = "1337;File="
+
+// cover marks the cols by rows cells from the cursor on as covered by image. The marks are those of a terminal that keeps an image in
+// the cells it covers (WezTerm, xterm.js's image addon, iTerm2 for its own images): there an erase or a write of a cell takes the image
+// from it, so a row one stream erases and writes and the other writes in place shows other cells. A terminal that keeps images on a
+// layer of their own (Kitty, Ghostty) changes them only on a graphics command, an erase of the screen and a scroll, none of which a
+// writer under the terminal may change. The cursor stays where it is, as in tmux, which shows no image and keeps no cell for one.
+func (v *Terminal) cover(image string, cols, rows int) {
+	if cols <= 0 || rows <= 0 {
+		v.unknown["image without a size in cells"]++
+		return
+	}
+	for r := v.row; r < min(v.row+rows, v.rows); r++ {
+		for c := v.col; c < min(v.col+cols, v.cols); c++ {
+			v.grid[r][c].image = image
+		}
+	}
+}
+
+// graphics is a Kitty graphics command, the APC's text after its G: an image shown (a=T) or placed (a=p) covers c by r cells from the
+// cursor on, and a delete (a=d) uncovers every cell (d=a, d=A, or no d) or the cells of the image it names (d=i, d=I).
+func (v *Terminal) graphics(command string) {
+	controls, _, _ := strings.Cut(command, ";")
+	keys := map[string]string{}
+	for pair := range strings.SplitSeq(controls, ",") {
+		if key, value, ok := strings.Cut(pair, "="); ok {
+			keys[key] = value
+		}
+	}
+	number := func(key string) int {
+		n, _ := strconv.Atoi(keys[key])
+		return n
+	}
+	switch keys["a"] {
+	case "T", "p":
+		v.cover("kitty "+keys["i"], number("c"), number("r"))
+	case "d":
+		which := ""
+		switch keys["d"] {
+		case "", "a", "A":
+		case "i", "I":
+			which = "kitty " + keys["i"]
+		default:
+			v.unknown["image delete "+keys["d"]]++
+			return
+		}
+		for r := range v.grid {
+			for c := range v.grid[r] {
+				if which == "" || v.grid[r][c].image == which {
+					v.grid[r][c].image = ""
+				}
+			}
+		}
+	}
+}
+
+// inline is an iTerm2 inline image, the OSC's text after File=: with a width and a height in cells it covers that many cells from the
+// cursor on.
+func (v *Terminal) inline(arguments string) {
+	arguments, _, _ = strings.Cut(arguments, ":")
+	cols, rows := 0, 0
+	for pair := range strings.SplitSeq(arguments, ";") {
+		switch key, value, _ := strings.Cut(pair, "="); key {
+		case "width":
+			cols, _ = strconv.Atoi(value)
+		case "height":
+			rows, _ = strconv.Atoi(value)
+		}
+	}
+	v.cover("iterm2", cols, rows)
+}
+
 // Write is the terminal receiving s. The cells keep a copy: s may be a buffer its writer uses again.
 func (v *Terminal) Write(s string) {
 	s = strings.Clone(s)
@@ -436,13 +511,16 @@ func (v *Terminal) Write(s string) {
 				for j < len(s) && s[j] != 0x07 && (s[j] != 0x1b || j+1 >= len(s) || s[j+1] != '\\') {
 					j++
 				}
-				if body := s[i+2 : j]; strings.HasPrefix(body, "8;") {
+				switch body := s[i+2 : j]; {
+				case strings.HasPrefix(body, "8;"):
 					if k := strings.IndexByte(body[2:], ';'); k >= 0 {
 						v.link = body[2:]
 						if body[2+k+1:] == "" {
 							v.link = ""
 						}
 					}
+				case strings.HasPrefix(body, inlineImage):
+					v.inline(body[len(inlineImage):])
 				}
 				if j < len(s) && s[j] == 0x1b {
 					j++
@@ -453,7 +531,11 @@ func (v *Terminal) Write(s string) {
 				for j+1 < len(s) && (s[j] != 0x1b || s[j+1] != '\\') {
 					j++
 				}
-				v.unknown["string "+s[i+1:i+2]]++
+				if body := s[i+2 : j]; s[i+1] == '_' && strings.HasPrefix(body, "G") {
+					v.graphics(body[1:])
+				} else {
+					v.unknown["string "+s[i+1:i+2]]++
+				}
 				i = j + 2
 			case 'M':
 				v.reverseIndex()

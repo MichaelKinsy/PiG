@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/screenwriter"
 	"github.com/MichaelKinsy/PiG/internal/screenwriter/gridterm"
@@ -188,3 +189,88 @@ const (
 	screenWriterPisFrames = 6338
 	screenWriterPisUnread = 2831
 )
+
+// An image's rows under an overlay, in the frames the alternate screen itself writes for them: a transcript with an image three
+// rows high, an overlay shown over the image's rows, changed while it is shown and closed again, and text below the image that
+// changes between them; on a Kitty terminal and on iTerm2, with the rows that moved scrolled and with Pi's bytes. For a Kitty
+// terminal every frame that changes a row the image covers deletes the placements and draws the image again; for iTerm2 only the
+// frame that draws the image's own row holds it, and the overlay's rows are ordinary frames. The writer sends
+// every write that holds an image or deletes one as it came and translates frames between them, and after every frame and after
+// the settle write the screens show the same cells with and without it, on every width model: the cells an image covers among
+// them, which gridterm keeps as a terminal does that stores an image in the cells it covers (there the erase of a row takes the
+// image from the row's cells, so a row the frame erased and the writer wrote in place would show).
+func TestScreenWriterImageRowsUnderAnOverlay(t *testing.T) {
+	for _, protocol := range []ImageProtocol{ImageProtocolKitty, ImageProtocolITerm2} {
+		for _, scrollRows := range []bool{true, false} {
+			t.Run(fmt.Sprint(protocol, "/scroll=", scrollRows), func(t *testing.T) {
+				t.Setenv("PIG_TUI_SCROLL_ROWS", map[bool]string{true: "", false: "0"}[scrollRows])
+				t.Setenv("TERM", "xterm-256color")
+				SetCapabilities(TerminalCapabilities{Images: protocol, TrueColor: true})
+				t.Cleanup(ResetCapabilitiesCache)
+				const cols, rows = 40, 12
+				text := &termLines{lines: []string{"top", EncodeKitty("AAAA", 4, 3, 11586, false), "", "", "after"}}
+				if protocol == ImageProtocolITerm2 {
+					text.lines = []string{"top", "", "", "\x1b[2A" + EncodeITerm2("AAAA", ITerm2Options{Width: 4, Height: 3}), "after"}
+				}
+				var out strings.Builder
+				ui := NewTuiAltScreenWithOutput(&out, cols, rows, TuiAltScreenOptions{})
+				ui.afterFunc = func(time.Duration, func()) stoppableTimer { return stoppedOracleTimer{} }
+				ui.Add(text)
+				ui.Start()
+				t.Cleanup(ui.Stop)
+				replay := newScreenWriterReplay(t.Name(), cols, rows)
+				images := 0
+				// frame draws a frame, gives its writes to the writer and compares the screens, then once more after the settle write.
+				frame := func(what string) {
+					t.Helper()
+					ui.Render()
+					written := out.String()
+					out.Reset()
+					var sent strings.Builder
+					for _, write := range gridterm.SplitWrites(written) {
+						translated := replay.writer.Translate(write)
+						if IsImageLine(write) {
+							images++
+							if translated != write {
+								t.Errorf("%s: a write that holds an image was not sent as it came\n  renderer wrote %q\n  writer wrote   %q", what, write, translated)
+							}
+						}
+						sent.WriteString(translated)
+					}
+					if d := replay.pair.Step(written, sent.String()); d != "" {
+						t.Errorf("%s: %s\n  renderer wrote %q\n  writer wrote   %q", what, d, written, sent.String())
+					}
+					if d := replay.pair.Step("", replay.writer.Settled()); d != "" {
+						t.Errorf("%s: the settle write changed the screen: %s", what, d)
+					}
+				}
+				last := func() *string { return &text.lines[len(text.lines)-1] }
+				frame("the image")
+				text.lines = append(text.lines, "", "a line below the image")
+				frame("a line below the image")
+				*last() += " grows"
+				frame("the line below grows")
+				overlay := &termLines{lines: []string{"+----------+", "| PANEL    |", "+----------+"}}
+				handle := ui.ShowOverlay(overlay, OverlaySpec{Row: &OverlayValue{Value: 1}, Col: &OverlayValue{Value: 1}, Width: &OverlayValue{Value: 12}}.Options())
+				frame("an overlay over the image's rows")
+				overlay.lines[1] = "| PANEL!   |"
+				frame("the overlay changes")
+				*last() += " and grows"
+				frame("the line below grows under the overlay")
+				*last() += " again"
+				frame("the line below grows under the overlay again")
+				handle.Hide()
+				frame("the overlay is closed")
+				for _, after := range []string{"after!", "after!!", "after!!!"} {
+					text.lines[4] = after
+					frame("the row below the image changes to " + after)
+				}
+				stats := replay.writer.Stats()
+				t.Logf("%d writes held an image; the writer's frames: %+v; what the screens have no rule for: %v", images, stats, replay.pair.Reference().Unknown())
+				if images < 1 || stats.Translated < 4 {
+					t.Errorf("%d writes held an image and the writer translated %d frames: the frames do not exercise an image under an overlay", images, stats.Translated)
+				}
+			})
+		}
+	}
+}
