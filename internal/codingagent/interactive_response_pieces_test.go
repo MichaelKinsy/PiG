@@ -14,8 +14,9 @@ import (
 )
 
 // A response that arrives in one piece is one task of Pi's loop, and the owner loop keeps one message_update per part of the message until
-// the task closes (collectEvent). The same response paced by a timer is one task per chunk, so every message_update is applied. Both leave
-// the same transcript: thinking, text, the cards of two tool calls in their order with their arguments and results, and the last answer.
+// the task closes (collectEvent). The same response paced by a timer is one task per chunk, so every message_update is applied, most of them
+// as tasks of one update that carry no markers. Both leave the same transcript: thinking, text, the cards of two tool calls in their order
+// with their arguments and results, and the last answer.
 func TestInteractiveResponseInOnePieceLeavesTheTranscriptOfItsChunks(t *testing.T) {
 	file := filepath.Join(t.TempDir(), "notes.txt")
 	if err := os.WriteFile(file, []byte("FILE-LINE-ONE\nFILE-LINE-TWO\n"), 0o644); err != nil {
@@ -37,13 +38,20 @@ func TestInteractiveResponseInOnePieceLeavesTheTranscriptOfItsChunks(t *testing.
 				}}),
 			})
 			_, opts := replySessionOn(t, provider)
+			marked := false
 			h := icodingagent.NewTestHarnessWithOutput(t, opts, func(_ *icodingagent.TestHarness, ev agent.AgentEvent) {
 				if _, ok := ev.(agent.MessageUpdateEvent); ok {
 					updates++
+					if !marked {
+						// A message_update outside the markers is a task of its own.
+						tasks++
+					}
 				}
 				if marker, ok := ev.(interface{ EventRegion() (open, bounds bool) }); ok {
-					if open, bounds := marker.EventRegion(); open && bounds {
-						tasks++
+					if open, bounds := marker.EventRegion(); bounds {
+						if marked = open; open {
+							tasks++
+						}
 					}
 				}
 			}, &writeLog{})

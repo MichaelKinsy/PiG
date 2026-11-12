@@ -3,6 +3,7 @@ package coding
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/internal/jsloop"
@@ -35,11 +36,22 @@ func (b *sessionEventBarrier) EventRegion() (open, bounds bool) {
 
 // sessionEventRegions puts the bounds of the tasks of Pi's event loop that a run executes (jsloop.Task) on Events, in order with the run's events, for a consumer that must not act between two events of one task. The interactive mode is that consumer: its frame is a timer callback in Pi (packages/tui/src/tui.ts requestRender), which cannot run inside a task, so it applies the events of a region together when the closing marker arrives.
 //
+// A task that publishes one message_update and nothing else has no bounds to keep: the event goes on Events as it is, with no marker. That is the task of a provider that delivers one chunk at a time, and two markers for each chunk would wake the consumer three times where it woke once. To know that the update stays alone, the task keeps it back until it publishes another event, which sends the opening marker and the update ahead of that event, or ends, which sends the update alone. A task that begins with any other event is marked from that event on, so only a message_update ever waits, and only for the rest of the turn of the loop that published it.
+//
 // Only a run started through RunAgentPrompt with a context that asks for its tasks (jsloop.WithTasks) reports them: every other run publishes exactly the events it published before. Listeners and extensions are not involved: they receive each event when it happens.
 type sessionEventRegions struct {
 	task *jsloop.Task
 	// opened and closed are the two markers, reused: a marker of a region carries no state of its own.
 	opened, closed *sessionEventBarrier
+	// pending is set from the beginning of a task until everything its end puts on Events is there. While it is clear an event of the run is published without a look at the rest.
+	pending atomic.Bool
+	// mu orders what a task puts on Events: its events, from the run (publishAgentEvent), and what its end sends, from whichever goroutine ends it (publishEventRegion).
+	mu sync.Mutex
+	// running is what the Task last reported.
+	running bool
+	// held is the message_update a running task published first and keeps back; marked says the task's opening marker is on Events.
+	held   agent.AgentEvent
+	marked bool
 }
 
 func (r *sessionEventRegions) init(s *Session) {
@@ -59,14 +71,56 @@ func (r *sessionEventRegions) runContext(ctx context.Context) context.Context {
 // endEventTask ends the task of Pi's loop that the run executes, if any, before the Session awaits an extension handler: Pi's loop turns while a handler awaits, so what precedes the handler is drawn while it runs.
 func (s *Session) endEventTask() { s.eventRegions.task.End() }
 
-// publishEventRegion puts the marker that opens or closes an event region on Events, behind every event already published and ahead of the next. As emitPublishedEvent does, the caller sends it itself when nothing is queued ahead and Events has room, and queues it otherwise: it may hold the stream turn, so it never waits for the consumer here. Nothing is sent while no consumer called Events.
-func (s *Session) publishEventRegion(open bool) {
-	if !s.eventsSubscribed.Load() {
+// publishAgentEvent publishes an event of the Agent on Events (emitPublishedEvent), in its place among the bounds of the task that runs, if one does (sessionEventRegions).
+func (s *Session) publishAgentEvent(ev agent.AgentEvent) {
+	r := &s.eventRegions
+	if !r.pending.Load() {
+		s.emitPublishedEvent(ev)
 		return
 	}
-	marker := s.eventRegions.closed
-	if open {
-		marker = s.eventRegions.opened
+	r.mu.Lock()
+	if r.running && !r.marked {
+		if _, update := ev.(agent.MessageUpdateEvent); update && r.held == nil {
+			r.held = ev
+			r.mu.Unlock()
+			return
+		}
+		r.marked = true
+		s.sendEventRegionMarker(r.opened)
+		if held := r.held; held != nil {
+			r.held = nil
+			s.emitPublishedEvent(held)
+		}
+	}
+	s.emitPublishedEvent(ev)
+	r.mu.Unlock()
+}
+
+// publishEventRegion is the Task's observer. The beginning of a task sends nothing: its first event decides (publishAgentEvent). The end sends the message_update the task kept back, alone, or the closing marker of a task that was marked.
+func (s *Session) publishEventRegion(running bool) {
+	r := &s.eventRegions
+	r.mu.Lock()
+	r.running = running
+	if running {
+		r.pending.Store(true)
+		r.mu.Unlock()
+		return
+	}
+	if held := r.held; held != nil {
+		r.held = nil
+		s.emitPublishedEvent(held)
+	} else if r.marked {
+		r.marked = false
+		s.sendEventRegionMarker(r.closed)
+	}
+	r.pending.Store(false)
+	r.mu.Unlock()
+}
+
+// sendEventRegionMarker puts a marker on Events, behind every event already published and ahead of the next. As emitPublishedEvent does, the caller sends it itself when nothing is queued ahead and Events has room, and queues it otherwise: it may hold the stream turn, so it never waits for the consumer here. Nothing is sent while no consumer called Events.
+func (s *Session) sendEventRegionMarker(marker *sessionEventBarrier) {
+	if !s.eventsSubscribed.Load() {
+		return
 	}
 	if s.execMu.TryLock() {
 		if s.inlineReadyLocked() && cap(s.events) > len(s.events) {

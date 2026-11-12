@@ -88,8 +88,8 @@ func (s *Session) handleAgentEvent(ctx context.Context, event agent.AgentEvent) 
 	if end, ok := event.(agent.MessageEndEvent); ok {
 		persistErr = s.persistMessage(end.Message)
 	}
-	// Publish after persistence but before pending custom messages. Later Agent subscribers observe the completed Session transaction.
-	s.emitPublishedEvent(event)
+	// Publish after persistence but before pending custom messages. Later Agent subscribers observe the completed Session transaction. A run that reports its tasks publishes within their bounds (publishAgentEvent).
+	s.publishAgentEvent(event)
 	if persistErr != nil {
 		return persistErr
 	}

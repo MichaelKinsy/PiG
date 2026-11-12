@@ -192,7 +192,13 @@ func TestInteractiveDrawsTheReplyWhileAnExtensionHandlerWaits(t *testing.T) {
 // a consumer of Events received ("E:", with "E:{" and "E:}" for the markers that bound a task).
 func sessionEventLog(t *testing.T, ask func(ctx context.Context, session *coding.Session) error) []string {
 	t.Helper()
-	session, _ := replySession(t)
+	return sessionEventLogOn(t, replyProvider{}, ask)
+}
+
+// sessionEventLogOn is sessionEventLog for a Session on provider.
+func sessionEventLogOn(t *testing.T, provider ai.Provider, ask func(ctx context.Context, session *coding.Session) error) []string {
+	t.Helper()
+	session, _ := replySessionOn(t, provider)
 	var mu sync.Mutex
 	var log []string
 	add := func(entry string) {
