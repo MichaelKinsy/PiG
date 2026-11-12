@@ -105,6 +105,11 @@ func readOutputParts(content []ai.ToolResultMessageContent) (text string, image 
 func readStructuredContent(content []ai.ToolResultMessageContent) json.RawMessage {
 	text, image, haveImage := readOutputParts(content)
 	if !haveImage {
+		// A large text's encoding is the one the session entry and the request that carry the text use, made once (ai.QuotedPlainText); the
+		// structured content is that slice itself, which nothing writes to.
+		if quoted, ok := ai.QuotedPlainText(text); ok {
+			return quoted
+		}
 		return appendEncodedString(make([]byte, 0, encodedStringLen(text)), text)
 	}
 	const imageMembers = `{"type":"image","data":,"mimeType":,"note":}`
@@ -131,6 +136,10 @@ func StructuredContentMatches(toolName string, content []ai.ToolResultMessageCon
 	}
 	if len(structured) < len(`""`) || structured[0] != '"' || structured[len(structured)-1] != '"' {
 		return false
+	}
+	if quoted, ok := ai.QuotedPlainText(text); ok {
+		// The tool's structured content is the shared encoding itself, which a card that retains the result compares by its address.
+		return len(quoted) == len(structured) && (&quoted[0] == &structured[0] || bytes.Equal(quoted, structured))
 	}
 	rest := structured[1 : len(structured)-1]
 	// A chunk of text holds at most six bytes of encoding for each byte, and its quotes.

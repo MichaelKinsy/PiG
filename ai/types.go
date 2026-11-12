@@ -80,6 +80,19 @@ func (content TextContent) MarshalJSON() ([]byte, error) {
 
 // AppendStringify appends the JSON.stringify text of MarshalJSON's output to dst (sdkjson.StringifyAppender).
 func (content TextContent) AppendStringify(dst []byte) ([]byte, error) {
+	// A large text's encoding is the one the request cache keeps for the request that sends it (and for the tool that made it, QuotedPlainText),
+	// so it is escaped once for all of them. The members follow appendContent's: type, text, and textSignature unless it is empty.
+	if len(content.Text) >= requestSpliceMinBytes {
+		if quoted, ok := requestStrings.quoteValidEarly(content.Text); ok {
+			dst = append(dst, `{"type":"text","text":`...)
+			dst = append(dst, quoted...)
+			if content.TextSignature != "" {
+				dst = append(dst, `,"textSignature":`...)
+				dst = sdkjson.AppendStringifyString(dst, content.TextSignature)
+			}
+			return append(dst, '}'), nil
+		}
+	}
 	return appendContent(dst, content.contentType(), content.wire())
 }
 
