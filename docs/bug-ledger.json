@@ -19542,6 +19542,28 @@
       ]
     },
     {
+      "id": "BF-6334aa7",
+      "title": "A Piglet frontend that draws the run no longer has the session resume line (`To resume this session: ...`)…",
+      "symptom": "A Piglet frontend that draws the run no longer has the session resume line (`To resume this session: ...`) written over or under its exit screen: the host writes nothing to the terminal after the frontend closes.",
+      "rootCause": "printResumeHint wrote the session resume line after a frontend session had closed, so it landed under the frontend exit screen. Pi has no frontend member and prints the hint to stdout after stop() (interactive-mode.ts:4508-4511); the host now writes nothing after a frontend closes, and the ANSI path is unchanged.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Piglet frontend that draws the run no longer has the session resume line (`To resume this session: ...`) written over or under its exit screen: the host writes nothing to the terminal after the frontend closes. The ANSI renderer prints the hint exactly as before, and a run that fell back from the frontend to the ANSI renderer still prints it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6334aa7405",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/interactive_exit_hint_test.go::TestFrontendExitWritesNoResumeHint"
+      ]
+    },
+    {
       "id": "BF-63b4fc8",
       "title": "`NodeExecutionEnv.Watch` gives a directory replaced at the same path a new watcher, reports changes to the…",
       "symptom": "`NodeExecutionEnv.Watch` gives a directory replaced at the same path a new watcher, reports changes to the file a symbolic-link target points to, no longer lets a non-recursive target stop an overlapping recursive target from covering subdirectories, and installs no watcher once closed.",

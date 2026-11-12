@@ -226959,6 +226959,17 @@
       "shapeHash": "sha256:65661ac6011e65a15217169fb8ba238dd466000dc0bbf4c8944143f51d0a8593"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/frontend#Wheel",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/frontend",
+      "name": "Wheel",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "Wheel"
+      },
+      "shapeHash": "sha256:6d48fd7803180a64a638662ca7512e91be11db6110e45e5bc14ab14f0ea869e1"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/frontend#Working",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk/frontend",
       "name": "Working",
@@ -367308,6 +367319,17 @@
       "shapeHash": "sha256:d7c677d9ada70cf8271efff252875ad7277df0425d684d26fa7fb0a0b8a13f24"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.Wheel",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiSurface.Wheel",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(wheel github.com/MichaelKinsy/PiG/extensions/sdk/frontend.Wheel)"
+      },
+      "shapeHash": "sha256:d3d5941c2132d01da8d6a381c0bdf512ceb722d90e1e946999a884539eecc00a"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.Width",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiSurface.Width",
@@ -367680,6 +367702,17 @@
         "type": "func()"
       },
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.extensionCell",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiSurface.extensionCell",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(click github.com/MichaelKinsy/PiG/extensions/sdk/frontend.Click) (target mouseTarget, cell viewCell, named bool, reached bool)"
+      },
+      "shapeHash": "sha256:1a52de0a063c5e1fde978b51155d69764c13988475cd18c90b0dc53c957b0798"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.extensionMouseTarget",
@@ -382783,6 +382816,17 @@
         "type": "mouseTarget"
       },
       "shapeHash": "sha256:551d07fe348d0454e4cc1194a4921f363d6f33637d22f1fa1578677bac0ed18a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#mouseTarget.event",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "mouseTarget.event",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(row int, column int) TuiMouseEvent"
+      },
+      "shapeHash": "sha256:792905301edb6db04fd84f12c5441a298db44a744fd0f64a6214dc3d3f2381ff"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#moveFocusFlag",

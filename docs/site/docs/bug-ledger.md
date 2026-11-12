@@ -703,6 +703,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-62f0353](#bf-62f0353) | Every frame the renderer paints allocates two fewer objects: the cursor's hide and show copied their escape… | PiG's own defect | All platforms | Unreleased |
 | [BF-6323c8e](#bf-6323c8e) | fix(ai): a Bedrock model outside the catalog is a bedrock-converse-stream model of amazon-bedrock, so its own… | PiG's own defect | All platforms | Unreleased |
 | [BF-633152d](#bf-633152d) | Starting a Go extension no longer fails with `hash <dir> after its build: open …/release/deps/rmeta…: no… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-6334aa7](#bf-6334aa7) | A Piglet frontend that draws the run no longer has the session resume line (`To resume this session: ...`)… | PiG's own defect | All platforms | Unreleased |
 | [BF-63b4fc8](#bf-63b4fc8) | `NodeExecutionEnv.Watch` gives a directory replaced at the same path a new watcher, reports changes to the… | A fix Pi shipped that PiG ported | macOS | 0.5.0 |
 | [BF-63bb0b7](#bf-63bb0b7) | `pig extension upgrade` now rewrites a `Context` getter call that is the only argument of a variadic call… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6445df7](#bf-6445df7) | PNG images are now decoded the way Pi decodes them, pixel for pixel and error for error on every file of the… | PiG's own defect | All platforms | 0.7.0 |
@@ -11472,6 +11473,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `633152df76` (2026-10-24, #307)
 - **Tests:** `coding/extension/host/runtimecell/vanished_dir_test.go::TestHashGoModuleFailsWhenADeniedDirectoryStillExistsAtTheEnd`, `coding/extension/host/runtimecell/vanished_dir_test.go::TestHashGoModuleIgnoresConcurrentChurnOfUntaggedDirectories`, `coding/extension/host/runtimecell/vanished_dir_test.go::TestVanishTrackerClassification`, `coding/extension/host/runtimecell/vanished_dir_test.go::TestVanishTrackerVerifiesDeniedDirectoriesAtTheEnd`, `coding/extension/host/runtimecell/vanished_dir_windows_test.go::TestDirectoryVanishedOnWindowsDeletionCodes`, `coding/extension/host/runtimecell/vanished_dir_windows_test.go::TestVanishTrackerOnWindowsVerifiesDoubleAccessDenied`, `coding/extension/host/subprocess/hash_build_output_test.go::TestHashSourceDirFailsClosedOnUnreadableSourceFile`, `coding/extension/host/subprocess/hash_build_output_test.go::TestHashSourceDirIgnoresConcurrentChurnInReplacedModule` and 1 more in docs/bug-ledger.json
 - **Release note:** Starting a Go extension no longer fails with `hash <dir> after its build: open …/release/deps/rmeta…: no such file or directory` when a Cargo build runs in a directory its `go.mod` replaces. The source hash that guards a build against an edit made while it ran walked every replaced module in full, including a Cargo target directory not named `target`, and a temp directory rustc deleted between the listing and the read failed the whole hash. The walk now skips a tree marked with a `CACHEDIR.TAG` signature, as Cargo marks every target directory it creates, and a directory that vanishes mid-walk, as the packed-cell hash already did. A source file that cannot be read still fails the hash.
+
+### BF-6334aa7
+
+**A Piglet frontend that draws the run no longer has the session resume line (`To resume this session: ...`)…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Piglet frontend that draws the run no longer has the session resume line (`To resume this session: ...`) written over or under its exit screen: the host writes nothing to the terminal after the frontend closes.
+- **Root cause:** printResumeHint wrote the session resume line after a frontend session had closed, so it landed under the frontend exit screen. Pi has no frontend member and prints the hint to stdout after stop() (interactive-mode.ts:4508-4511); the host now writes nothing after a frontend closes, and the ANSI path is unchanged.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6334aa7405` (2026-11-11)
+- **Tests:** `internal/codingagent/interactive_exit_hint_test.go::TestFrontendExitWritesNoResumeHint`
+- **Release note:** A Piglet frontend that draws the run no longer has the session resume line (`To resume this session: ...`) written over or under its exit screen: the host writes nothing to the terminal after the frontend closes. The ANSI renderer prints the hint exactly as before, and a run that fell back from the frontend to the ANSI renderer still prints it.
 
 ### BF-63b4fc8
 
