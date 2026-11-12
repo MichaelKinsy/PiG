@@ -1,7 +1,7 @@
 // Copy Pi's own chord sources the client surfaces run (the page's and the terminal's runtimes, the React bindings: chord/nextnode/surfaces/client/pi) and write
 // the manifest that records the Pi commit and the hash of every copied file.
 //
-//   node vendor-chord-surfaces-client.mjs <pi tree root> <pi commit> <pi-telemetry package dir> <out node dir> <pin commit>
+//   node vendor-chord-surfaces-client.mjs <pi tree root> <pi commit> <pi-telemetry package dir> <out node dir> <pin commit> [<carried commits, comma-separated>]
 //
 // The manifest records the pin the copy was made against; when the copied commit is not the pin's, it names that commit as
 // `catchup` (the commit the manifest may differ from the pin by: the Go test accepts exactly it, while the pin stays put).
@@ -20,7 +20,9 @@ import { stripTypeScriptTypes } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve, sep } from "node:path";
 
-const [piTree, commit, telemetryDir, outDir, pin] = process.argv.slice(2);
+const [piTree, commit, telemetryDir, outDir, pin, carriedList = ""] = process.argv.slice(2);
+// The Pi commits cherry-picked onto `commit` to make the tree (automation/gen/vendor-chord-surfaces-client.sh, PI_CARRIED): recorded in the manifest.
+const carried = carriedList === "" ? [] : carriedList.split(",");
 if (pin === undefined) throw new Error("usage: vendor-chord-surfaces-client.mjs <pi tree> <commit> <pi-telemetry> <out> <pin>");
 
 const ENTRIES = [
@@ -180,6 +182,7 @@ const manifest = {
 	commit,
 	pin,
 	...(commit === pin ? {} : { catchup: commit }),
+	...(carried.length === 0 ? {} : { carried }),
 	piSchema: JSON.parse(readFileSync(join(schemaDir, "package.json"), "utf8")).version,
 	piTelemetry: JSON.parse(readFileSync(join(telemetryDir, "package.json"), "utf8")).version,
 	react: reactVersions,

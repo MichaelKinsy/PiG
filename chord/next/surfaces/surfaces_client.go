@@ -101,7 +101,10 @@ type ClientOptions struct {
 	// Telemetry makes the host's telemetry adapter (nil: none); incarnation names the host's run (it is read at the adapter's
 	// first span, after the host was made).
 	Telemetry func(incarnation func() string) telemetry.TelemetryContext
-	OnError   func(err ClientError)
+	// Follow is whether the client follows the scripts object (new sets applied, another base Outdated, the server's base asked
+	// before each reconnect): yes by default (nil); false for a static client (a page built offline and served elsewhere).
+	Follow  *bool
+	OnError func(err ClientError)
 }
 
 // Client is a running client: its host, once its plugins are loaded, and its Stop.
@@ -154,16 +157,24 @@ func StartClient(options ClientOptions) (*Client, error) {
 		left[each.Plugin] = true
 	}
 	u := newUpdates(h, loaded, left, options, ctx, cancel)
-	loop := connect(h, options, ctx, func(state ConnectionState) {
-		if state == Connected {
+	follow := options.Follow == nil || *options.Follow
+	// A static client asks no base: it never learns it is outdated.
+	serverBase := options.ServerBase
+	if !follow {
+		serverBase = func(context.Context) (*string, error) { return nil, nil }
+	}
+	loop := connect(h, options, ctx, serverBase, func(state ConnectionState) {
+		if follow && state == Connected {
 			u.reconnected()
 		}
 	})
-	if err := u.follow(); err != nil {
-		loop.Stop()
-		u.stop()
-		_ = h.Close(ctx)
-		return nil, err
+	if follow {
+		if err := u.follow(); err != nil {
+			loop.Stop()
+			u.stop()
+			_ = h.Close(ctx)
+			return nil, err
+		}
 	}
 	return &Client{Host: h, connect: loop, updates: u}, nil
 }
@@ -177,7 +188,7 @@ func (c *Client) Stop(ctx context.Context) error {
 
 // connect keeps h's parent link to the server, asking ServerBase and CanRetry before every reconnect; onState hears each state
 // after the app's OnConnection.
-func connect(h host.Host, options ClientOptions, ctx context.Context, onState func(ConnectionState)) *Connection {
+func connect(h host.Host, options ClientOptions, ctx context.Context, serverBase func(context.Context) (*string, error), onState func(ConnectionState)) *Connection {
 	return KeepConnected(LoopOptions{
 		Open: func(events SocketEvents) LoopLink {
 			// The loop and the host both follow the link's close; a link has one close listener.
@@ -196,7 +207,7 @@ func connect(h host.Host, options ClientOptions, ctx context.Context, onState fu
 			onState(state)
 		},
 		CanRetry: func(ctx context.Context) (bool, error) {
-			base, err := options.ServerBase(ctx)
+			base, err := serverBase(ctx)
 			if err != nil {
 				return false, err
 			}

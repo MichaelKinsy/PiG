@@ -1,6 +1,9 @@
 {
 	"commit": "b4afdddf44e059c67ccf5097e5317d913521b470",
 	"pin": "b4afdddf44e059c67ccf5097e5317d913521b470",
+	"carried": [
+		"22fe46c7b889bb469017e00f621ec1f2779d7809"
+	],
 	"piSchema": "1.5.2",
 	"piTelemetry": "1.5.2",
 	"react": {
@@ -683,7 +686,7 @@
 		},
 		{
 			"path": "pi/chord/src/surfaces/client.ts",
-			"sha256": "969b4a518ee8863d9724a76bb5962b9161f5b400e5365f8539fcedb16e8d46b5"
+			"sha256": "d1c31e9b00067b42b245902d80285c71620cbd46407d6858d5de6e1fdceb31ed"
 		},
 		{
 			"path": "pi/chord/src/surfaces/connection.ts",
@@ -815,7 +818,7 @@
 		},
 		{
 			"path": "pi/chord/src/web/page.ts",
-			"sha256": "b88c73fdd7e04f1870a10ac02b1603a33dee243d2534a7c0df551c41acbacb97"
+			"sha256": "08288a51b47b13a5b000ea0b386f29ef57125dda3b7564375c090091b727e68e"
 		},
 		{
 			"path": "pi/chord/src/web/scripts.ts",
@@ -859,7 +862,7 @@
 		},
 		{
 			"path": "pi/chord/test/node/fixtures/web/main.ts",
-			"sha256": "448892d0573543f1e1ae3002a3d85ad7c52afb68b96edca02076a1b508b275ed"
+			"sha256": "cca539a535957ac709be3832c4c374e1f71a4fe036b2450b574a71c08b286ffd"
 		},
 		{
 			"path": "pi/chord/test/node/fixtures/web/telemetry.ts",

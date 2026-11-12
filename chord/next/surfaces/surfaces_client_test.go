@@ -133,6 +133,7 @@ type clientSetup struct {
 	outdated int
 	sockets  []socket
 	base     string
+	asked    []string
 	finished bool
 }
 
@@ -166,6 +167,8 @@ type more struct {
 	onTimer func(ms int64)
 	// fetching is called with each script entry the client fetches, before the fetch answers.
 	fetching func(entry ScriptEntry)
+	// follow is the client's Follow option (nil: the default).
+	follow *bool
 }
 
 // setup is a server serving WebScripts with initial, and a client started against it with available to fetch; failing fetches
@@ -270,10 +273,12 @@ func setup(t *testing.T, initial []RegisteredScript, available []RegisteredScrip
 			s.mu.Lock()
 			defer s.mu.Unlock()
 			base := s.base
+			s.asked = append(s.asked, base)
 			return &base, nil
 		},
 		Outdated:    func() { s.mu.Lock(); s.outdated++; s.mu.Unlock() },
 		Styles:      opt.styles,
+		Follow:      opt.follow,
 		Environment: env,
 		OnError:     func(e ClientError) { s.mu.Lock(); s.errs = append(s.errs, e); s.mu.Unlock() },
 	})
@@ -407,6 +412,41 @@ func TestStartClientReportsAHostFailureAsAHostError(t *testing.T) {
 		}
 	}
 	t.Fatalf("no routine_failed host error among %+v", s.errs)
+}
+
+func TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne(t *testing.T) {
+	static := false
+	one := script("notes", "d1", "one")
+	s := setup(t, []RegisteredScript{one}, []RegisteredScript{script("notes", "d2", "two")}, more{follow: &static})
+	s.publish(t, setOf("B1", script("notes", "d2", "two")))
+	s.publish(t, setOf("B2"))
+	time.Sleep(100 * time.Millisecond)
+	if f, o := s.fetchedNow(), s.outdatedCount(); len(f) != 0 || o != 0 {
+		t.Fatalf("fetched = %v, outdated = %d, want none", f, o)
+	}
+	g := text(t, s.client.Host, greeting)
+	if got := valueOf(g); got != "one" {
+		t.Fatalf("greeting = %q", got)
+	}
+	g.Release()
+	s.finish(t)
+}
+
+func TestAStaticClientReconnectsWithoutAskingTheServersBase(t *testing.T) {
+	static := false
+	s := setup(t, nil, nil, more{follow: &static})
+	s.mu.Lock()
+	s.base = "B2"
+	s.mu.Unlock()
+	s.socket(0).link.Close()
+	until(t, func() bool { return s.socketCount() == 2 })
+	s.mu.Lock()
+	asked := slices.Clone(s.asked)
+	s.mu.Unlock()
+	if len(asked) != 0 || s.outdatedCount() != 0 {
+		t.Fatalf("asked = %v, outdated = %d, want none", asked, s.outdatedCount())
+	}
+	s.finish(t)
 }
 
 func TestFetchesOnlyChangedScriptsReloadsTheHostKeepsAnUnchangedPluginsFacet(t *testing.T) {

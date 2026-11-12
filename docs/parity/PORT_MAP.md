@@ -966,7 +966,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/host/readiness.ts` | `chord/next/host/host_readiness.go` | ✅ |
 | `packages/chord/src/host/reload-cycle.ts` | `chord/next/host/host_reload_cycle.go` | ✅ |
 | `packages/chord/src/host/unbound-clock.ts` | `chord/next/host/host_unbound_clock.go` | ✅ |
-| `packages/chord/src/node/app/app.ts` | `chord/nextnode/app/app.go, chord/nextnode/app/app_bases.go (App.BasesBuilt and App.BaseWatched), chord/nextnode/plugins/node/host.mjs (exportHostData, importHostData, deleteHostData control requests; their Go side is a pig divergence with no Pi file, D462)` | ✅ |
+| `packages/chord/src/node/app/app.ts` | `chord/nextnode/app/app.go, chord/nextnode/app/app_bases.go (App.BasesBuilt and App.BaseWatched), chord/nextnode/plugins/node/host.mjs (exportHostData, importHostData, deleteHostData control requests; their Go side is a pig divergence with no Pi file, D462); Pi 22fe46c7b: AppWeb's fields are unchanged (chord/nextnode/app/app_surfaces.go)` | ✅ |
 | `packages/chord/src/node/app/archive.ts` | `chord/nextnode/app/archive.go` | ✅ |
 | `packages/chord/src/node/app/blobs.ts` | `chord/nextnode/app/blobs.go` | ✅ |
 | `packages/chord/src/node/app/data.ts` | `chord/nextnode/app/data.go, host_data.mjs` | ✅ |
@@ -999,7 +999,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/node/surfaces/published.ts` | `chord/nextnode/surfaces/surfaces_published.go` (PublishedScripts: set retention, build-failure carry-over, digests, source maps, assets and the rollout Step; chord/nextnode/surfaces/surfaces_published_test.go) | ✅ |
 | `packages/chord/src/node/surfaces/served.ts` | `chord/nextnode/surfaces/surfaces_served.go` | ✅ |
 | `packages/chord/src/node/surfaces/tui.ts` | `chord/nextnode/surfaces/surfaces_tui.go` | ✅ |
-| `packages/chord/src/node/surfaces/web.ts` | `chord/nextnode/surfaces/surfaces_web.go` | ✅ |
+| `packages/chord/src/node/surfaces/web.ts` | `chord/nextnode/surfaces/surfaces_web.go; Pi 22fe46c7b: WebSurfaceOptions.Routes (false: no routes), WebSurface.File, PageAssets and Base, PageBootstrap` | ✅ |
 | `packages/chord/src/node/tui/actions.ts` | `chord/nextnode/tui/tui_actions.go` | ✅ |
 | `packages/chord/src/node/tui/credentials.ts` | `chord/nextnode/tui/tui_credentials.go` | ✅ |
 | `packages/chord/src/node/tui/filter.ts` | `chord/nextnode/tui/tui_filter.go` | ✅ |
@@ -1015,7 +1015,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/store/live-query.ts` | `chord/next/store/live_query.go` | ✅ |
 | `packages/chord/src/surfaces/active-language.ts` | `chord/next/surfaces/surfaces_active_language.go`, `chord/next/surfaces/surfaces_page_state.go` | ✅ |
 | `packages/chord/src/surfaces/active-theme.ts` | `chord/next/surfaces/surfaces_active_theme.go` | ✅ |
-| `packages/chord/src/surfaces/client.ts` | `chord/next/surfaces/surfaces_client.go` | ✅ |
+| `packages/chord/src/surfaces/client.ts` | `chord/next/surfaces/surfaces_client.go; Pi 22fe46c7b: ClientOptions.Follow (false: a static client)`, `chord/nextnode/surfaces/client/pi/chord/src/surfaces/client.ts` (vendored byte-for-byte for the browser, D601; derived tree: manifest `carried`) | ✅ |
 | `packages/chord/src/surfaces/connection.ts` | `chord/next/surfaces/surfaces_connection.go` | ✅ |
 | `packages/chord/src/surfaces/format.ts` | `chord/next/surfaces/surfaces_format.go` (FormatNumber; FormatTime in chord/next/surfaces/intl_time.go over the generated Intl tables, D464, D465, D466; packages/chord/test/surfaces/format.test.ts in surfaces_format_test.go, differential tests intl_drift_test.go) | ✅ |
 | `packages/chord/src/surfaces/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
@@ -1057,7 +1057,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/web/environment.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/environment.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 | `packages/chord/src/web/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
 | `packages/chord/src/web/language.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/language.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
-| `packages/chord/src/web/page.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/page.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
+| `packages/chord/src/web/page.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/page.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go; vendored from the derived tree pin + Pi 22fe46c7b, manifest `carried`) | ✅ |
 | `packages/chord/src/web/scripts.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/scripts.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 | `packages/chord/src/web/styles.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/styles.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 | `packages/chord/src/web/themes.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/themes.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |

@@ -1,0 +1,107 @@
+from = "1.5.2+5e24c6b1"
+to = "1.5.2+22fe46c7"
+
+[[files]]
+path = "packages/chord/src/node/surfaces/web.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/app_surfaces_test.go#TestAnAppServingTheSurfaceItselfRoutesFalseContributesNoRoutesAndGivesTheFilesThePagesAssetsAndTheBaseHash"]
+rationale = "22fe46c7b: webSurface(server, { routes: false }) contributes no Http routes and gives file(path), pageAssets() and base() for an app with an HTTP stack of its own; pageBootstrap is exported. surfaces_web.go does the same: WebSurfaceOptions.Routes is a *bool (nil: routes; Pi's union of the page options or `routes: false` is one struct whose Page, Paths and Public a false Routes ignores), WebSurface.File, PageAssets and Base take the request's context and wait for the build as the routes do (PageAssets is nil and Base empty when the build failed, 503 for File), and PageBootstrap is the exported bootstrap."
+
+[[files]]
+path = "packages/chord/src/node/surfaces/index.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "22fe46c7b: the barrel exports buildBase, BasePlatform, pageBootstrap and WebRoutesOptions; Go has no barrel (BuildBase and BasePlatform were exported already, PageBootstrap is exported by this port, WebRoutesOptions is WebSurfaceOptions' own fields)."
+
+[[files]]
+path = "packages/chord/src/node/app/app.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "22fe46c7b: AppWeb is the kit's web options as `Pick<WebSurfaceOptions, entry | conditions> & Omit<WebRoutesOptions, routes>` (a type-level change, so the union of WebSurfaceOptions keeps the page options). chord/nextnode/app AppWeb already is exactly Entry, Page, Paths, Public and Conditions."
+
+[[files]]
+path = "packages/chord/src/surfaces/client.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne", "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientReconnectsWithoutAskingTheServersBase"]
+rationale = "22fe46c7b: ClientOptions.follow (default true; false for a static client built offline and served elsewhere): such a client neither follows the scripts object, nor applies a set, nor asks the server's base before a reconnect, so it is never outdated. surfaces_client.go has ClientOptions.Follow as a *bool (nil: follow) and StartClient does the same. The browser runs Pi's client.ts vendored byte-for-byte (see web/page.ts)."
+
+[[files]]
+path = "packages/chord/src/web/page.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/surfaces/client_manifest_test.go#TestClientVendoredFilesAreExactlyTheManifests", "test:chord/nextnode/app/app_web_browser_test.go#TestAPageWritesNoThemeOnRootWithThemesFalseSoTheAppsOwnVariablesStand"]
+rationale = "22fe46c7b: startPage({ themes: false }) provides no Themes and writes nothing on :root; startPage({ follow: false }) is a static page. page.ts, surfaces/client.ts and the web fixture are vendored byte-for-byte. The vendored closure is made from a derived Pi tree: the pin b4afdddf plus this commit cherry-picked (manifest `carried`), because a plain re-vendor at 22fe46c7b would also vendor Pi 8d30e6306 (events), which this port does not carry; PR #464 (events) re-vendors the whole closure at a later commit and the derived tree is then obsolete. The browser case needs Chromium (skipped without)."
+
+[[files]]
+path = "packages/chord/src/node/surfaces/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "22fe46c7b: Pi's README text of the routes-less surface; PiG documents it in the Go doc comments of WebSurfaceOptions, WebSurface.File, PageAssets and Base and in the changelog fragment."
+
+[[files]]
+path = "packages/chord/src/surfaces/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "22fe46c7b: Pi's README sentence on a static client; PiG documents ClientOptions.Follow in its doc comment."
+
+[[files]]
+path = "packages/chord/src/web/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "22fe46c7b: Pi's README text of startPage's themes and follow options, which run in the vendored page.ts."
+
+[[files]]
+path = "packages/chord/docs/decisions.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "22fe46c7b: Pi's decision \"Surfaces for an app with its own HTTP stack and styling\"; the Go port follows it."
+
+[[files]]
+path = "packages/chord/docs/design.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "22fe46c7b: Pi's design note (section 23) on the same."
+
+[[files]]
+path = "packages/chord/test/surfaces/client.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne", "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientReconnectsWithoutAskingTheServersBase"]
+rationale = "22fe46c7b: the two cases of \"a static client (follow: false)\" ported with the setup's follow option and its record of the server's base asked; red before the change (the client applied the set, was outdated, and asked the base)."
+
+[[files]]
+path = "packages/chord/test/node/surfaces/web.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/app_surfaces_test.go#TestAnAppServingTheSurfaceItselfRoutesFalseContributesNoRoutesAndGivesTheFilesThePagesAssetsAndTheBaseHash"]
+rationale = "22fe46c7b: the case of \"an app serving the surface itself (routes: false)\" ported over the HTTP component's Fetch."
+
+[[files]]
+path = "packages/chord/test/node/web/page.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/app_web_browser_test.go#TestAPageWritesNoThemeOnRootWithThemesFalseSoTheAppsOwnVariablesStand"]
+rationale = "22fe46c7b: \"writes no theme on :root with themes: false\" over Chromium (skipped without one)."
+
+[[files]]
+path = "packages/chord/test/node/web/support.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/app_web_browser_test.go#TestAPageWritesNoThemeOnRootWithThemesFalseSoTheAppsOwnVariablesStand"]
+rationale = "22fe46c7b: versionedEntry takes the literal options start() is called with (app_web_support_test.go versionedEntry, variadic)."
+
+[[files]]
+path = "packages/chord/test/node/fixtures/web/main.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/surfaces/client_manifest_test.go#TestClientVendoredFilesAreExactlyTheManifests"]
+rationale = "22fe46c7b: start(options) passes startPage's options (themes: false) on; vendored byte-for-byte with the page runtime (derived tree, see web/page.ts)."
