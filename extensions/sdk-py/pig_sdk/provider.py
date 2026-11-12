@@ -330,7 +330,10 @@ def dispatch_operation(extension, ctx, request):
         refresh = (extension._provider_operations.get(provider) or {}).get("refreshModels")
         if refresh is None:
             raise RuntimeError(f"Provider {provider} has no refreshModels")
-        callback = lambda method, params: ctx._call("provider.callback", {"provider": provider, "method": method, "params": params}).get("result")
+
+        def callback(method, params):
+            return ctx._call("provider.callback", {"provider": provider, "method": method, "params": params}).get("result")
+
         return refresh(refresh_context(extension, callback, args.get("context") or {}, ctx._cancelled))
     if kind not in ("images", "classifiers"):
         raise RuntimeError(f"Unknown provider operation {kind!r}")
