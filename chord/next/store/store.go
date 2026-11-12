@@ -53,9 +53,11 @@ type Store interface {
 	// first Next until the iteration ends, fails, is closed or its context aborts.
 	Export(ctx context.Context) (*StoreExport, error)
 	// OnCommitted calls listener with the new LastSeq after commits are durable and adopted (a commit, a group, a series,
-	// an applied batch): on a goroutine of its own, never inside a commit or under the store's lock, once for however many
-	// commits it covers, one call at a time and in order. A listener that panics is removed and its panic handed to onError
-	// as an error, never to the commit. Commits a listener makes are announced like any other. It returns its removal.
+	// an applied batch): on a goroutine the store owns, never inside a commit or under the store's lock, once for however
+	// many commits it covers, one call at a time and in order. A listener that panics is removed and its panic handed to
+	// onError as an error, never to the commit. Commits a listener makes are announced like any other. Close waits for
+	// the announcement of the last commit before it closes the backend: no listener is called once Close returned, and
+	// a listener must not wait for Close. It returns its removal.
 	OnCommitted(listener func(lastSeq int64), onError func(error)) (remove func())
 	// Close closes the store: waits for a running commit step, rejects queued commits and reads `released`, closes the
 	// backend. Idempotent, also after `storage_failed`; ctx ends only this caller's wait (the close goes on).
@@ -321,11 +323,13 @@ type ChordStore struct {
 	// held is the ends of the exports holding the queue or waiting for it, which closing the store calls.
 	held map[*heldEnd]struct{}
 	// committedListeners are the OnCommitted listeners by registration number, and announcing is whether an announcement
-	// is queued (one per delivery, with the last lastSeq); deliver serializes the deliveries, as one microtask at a time.
+	// is queued (one per delivery, with the last lastSeq); deliver serializes the deliveries, as one microtask at a time;
+	// announcements are the delivery goroutines, which Close waits for.
 	committedListeners map[int]committedListener
 	nextListener       int
 	announcing         bool
 	deliver            sync.Mutex
+	announcements      sync.WaitGroup
 	// announced is the versions migrations of tables announced (AnnounceTable), by SQL name, until their last commit.
 	announced map[string]int
 }
@@ -356,7 +360,8 @@ func (store *ChordStore) OnCommitted(listener func(lastSeq int64), onError func(
 }
 
 // committed announces the new lastSeq to the OnCommitted listeners in one delivery, however many commits it covers
-// (Pi's one microtask). It must run without mu held, after the commit's memory was taken.
+// (Pi's one microtask, `queueMicrotask` in `#committed`): a goroutine of the store's announcements, which finishClose
+// waits for. It must run without mu held, after the commit's memory was taken.
 func (store *ChordStore) committed() {
 	store.mu.Lock()
 	if store.announcing || len(store.committedListeners) == 0 {
@@ -365,7 +370,7 @@ func (store *ChordStore) committed() {
 	}
 	store.announcing = true
 	store.mu.Unlock()
-	go func() {
+	store.announcements.Go(func() {
 		store.deliver.Lock()
 		defer store.deliver.Unlock()
 		store.mu.Lock()
@@ -389,7 +394,7 @@ func (store *ChordStore) committed() {
 				entry.onError(err)
 			}
 		}
-	}()
+	})
 }
 
 // announce calls a listener; a panic is Pi's throw: its error (a panicked error value itself).
@@ -828,6 +833,9 @@ func (store *ChordStore) finishClose(started *closing, tail <-chan struct{}) {
 	if drained != nil {
 		<-drained
 	}
+	// The announcement of the last commit is delivered before the backend closes (Pi's microtask runs before the close's
+	// first await returns).
+	store.announcements.Wait()
 	started.err = store.db.Close()
 }
 
