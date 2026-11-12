@@ -232,7 +232,7 @@ func (w *CacheWarmer) Start(request CacheWarmRequest, isCurrent func() bool) {
 // only for a request that is warmed, so a request that warming skips (mode off, a request that cannot be replayed, no cache
 // lifetime) takes nothing.
 //
-// pig additive: Pi's isCurrent closes over the session's message array itself (sdk.ts streamFn); the Go session compares against a
+// Pi's isCurrent closes over the session's message array itself (sdk.ts streamFn); the Go session compares against a
 // copy of its messages (Session.cacheContextIsCurrent), which a skipped request has no use for.
 func (w *CacheWarmer) StartCapturing(request CacheWarmRequest, capture func() func() bool) {
 	w.mu.Lock()
