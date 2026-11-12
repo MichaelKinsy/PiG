@@ -6,10 +6,6 @@ export default function uiDemo(pi) {
   const colors = ["red", "green", "blue"];
   const model = { color: "red", name: "", taps: 0, wrap: "on", notes: "" };
   let mount;
-  let ui;
-  // The view changes after the intent was answered: a mount that changes while its intent is being answered settles
-  // the intent stale.
-  const after = (change) => setTimeout(() => change().catch((err) => ui.notify(`ui-demo: ${err.code ?? err.message}`, "error")), 0);
 
   const view = () => ({
     root: {
@@ -51,7 +47,6 @@ export default function uiDemo(pi) {
   pi.registerCommand("ui-demo", {
     description: "Mount the plugin UI demo panel",
     handler: async (_args, ctx) => {
-      ui = ctx.ui;
       try {
         mount = (await ctx.ui.mountView({ key: "demo", slot: "panel", ...content() })).mount;
       } catch (err) {
@@ -60,7 +55,9 @@ export default function uiDemo(pi) {
     },
   });
 
-  pi.onViewIntent(async (inv) => {
+  // The handler changes its state and redraws its own mount before it answers. An update the answering handler makes
+  // belongs to the answer: the intent settles done, and the client is written the new view before the intent's reply.
+  pi.onViewIntent(async (inv, ctx) => {
     let answer;
     if (inv.intent === "demo.pick" && colors.includes(inv.arg.value)) model.color = inv.arg.value;
     else if (inv.intent === "demo.rename") model.name = inv.arg.value;
@@ -68,12 +65,10 @@ export default function uiDemo(pi) {
     else if (inv.intent === "demo.pref" && inv.arg.item === "wrap") model.wrap = inv.arg.value;
     else if (inv.intent === "demo.note") model.notes = inv.arg.value;
     else if (inv.intent === "demo.close") {
-      after(() => ui.finishView(mount, { color: model.color, taps: model.taps }));
+      await ctx.ui.finishView(mount, { color: model.color, taps: model.taps });
       return { outcome: "done" };
     } else return { outcome: "refused", error: `no such choice for ${inv.intent}` };
-    after(async () => {
-      mount = (await ui.updateView(mount, content())).mount;
-    });
+    mount = (await ctx.ui.updateView(mount, content())).mount;
     return { outcome: "done", answer };
   });
 }

@@ -45,6 +45,8 @@ type Views struct {
 	refs   map[string]uiview.Ref
 	shown  map[string]string
 	closed bool
+	// unfollow ends Follow.
+	unfollow func()
 }
 
 // Show returns the panels of surfaces in r. Nothing is mounted until Refresh.
@@ -52,10 +54,24 @@ func Show(r *uiview.Registry, surfaces []Surface) *Views {
 	return &Views{r: r, surfaces: surfaces, done: make(chan struct{}), refs: map[string]uiview.Ref{}, shown: map[string]string{}}
 }
 
-// ShowApp mounts the panels of a's surfaces in r and updates them once a's bases were built. While no client draws
-// panels the mounts fail unsupported, as every mount does; a later Refresh makes them.
+// Follow refreshes the panels whenever the abilities of the registry's clients change, until Close: a client that
+// attaches after the surfaces were shown is sent their panels without anyone calling Refresh. The plugin name chord has
+// no extension process, so this is the host's form of the SDKs' abilities event.
+func (v *Views) Follow() {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	if v.closed || v.unfollow != nil {
+		return
+	}
+	v.unfollow = v.r.OnAbilities(func() { _ = v.Refresh() })
+}
+
+// ShowApp mounts the panels of a's surfaces in r, updates them once a's bases were built, and follows the registry's
+// clients. While no client draws panels the mounts fail unsupported, as every mount does; they are made when a client
+// that draws panels attaches.
 func ShowApp(r *uiview.Registry, a *app.App) *Views {
 	v := Show(r, Surfaces(a))
+	v.Follow()
 	_ = v.Refresh()
 	go func() {
 		select {
@@ -166,6 +182,9 @@ func (v *Views) Close() {
 	}
 	v.closed = true
 	close(v.done)
+	if v.unfollow != nil {
+		v.unfollow()
+	}
 	for _, ref := range v.refs {
 		_, _ = v.r.Finish(Plugin, uiview.FinishArgs{Mount: ref})
 	}

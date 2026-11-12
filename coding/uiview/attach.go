@@ -79,7 +79,7 @@ func (r *Registry) Attach(a ClientAbilities, sink Sink) (*Attachment, Resync, *E
 	r.atts = append(r.atts, t)
 	r.merged = mergeAbilities(r.atts)
 	rs := r.resync(t)
-	fn := r.onAbility
+	fn := r.abilityWatchers()
 	r.mu.Unlock()
 	if fn != nil {
 		fn()
@@ -159,7 +159,7 @@ func (t *Attachment) UpdateAbilities(a ClientAbilities) *Error {
 			t.deliver(k, s)
 		}
 	}
-	fn := r.onAbility
+	fn := r.abilityWatchers()
 	r.mu.Unlock()
 	if fn != nil {
 		fn()
@@ -181,7 +181,7 @@ func (t *Attachment) Detach() {
 	if r.solo == t {
 		r.solo = nil
 	}
-	fn := r.onAbility
+	fn := r.abilityWatchers()
 	r.mu.Unlock()
 	t.end()
 	if fn != nil {

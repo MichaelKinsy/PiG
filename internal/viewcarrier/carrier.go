@@ -141,6 +141,11 @@ type attachment struct {
 	reports []report
 	// flight counts the events handed to the output that have not reached the client yet.
 	flight, flightBytes int
+	// put numbers the events and gap lines queued for the client. done is the number up to which each of them was handed
+	// to the output or dropped by a resync, and dropped the number a resync dropped up to while the writer was handing a
+	// batch over (writing), so a reply can wait for the events that were queued before it.
+	put, done, dropped uint64
+	writing            bool
 	// hold is above zero while a reply that must precede the queued events is unwritten.
 	hold    int
 	gapOwed bool
@@ -417,6 +422,9 @@ func (c *Carrier) intent(id json.RawMessage, raw []byte, reply Reply) {
 			c.mu.Unlock()
 		}
 		cancel()
+		// What the handler changed while it answered is delivered before its answer: the client holds the new view when it
+		// learns how the intent ended.
+		a.written()
 		reply(success(id, CommandIntent, res), nil)
 	})
 }
@@ -554,23 +562,42 @@ func (a *attachment) sink(d uiview.Delivery) bool {
 		return false
 	}
 	if !ok {
-		a.gapOwed, a.gapSeq = true, d.Seq
-		a.wake.Broadcast()
+		a.oweGap(d.Seq)
 		return false
 	}
 	if len(a.queue)+a.flight >= maxQueueEvents || a.bytes+a.flightBytes+len(line) > maxQueueBytes {
 		// The registry numbered this delivery, so it is the last number made.
-		a.gapOwed, a.gapSeq = true, d.Seq
-		a.wake.Broadcast()
+		a.oweGap(d.Seq)
 		return false
 	}
 	a.queue = append(a.queue, queued{d.Seq, line})
+	a.put++
 	a.bytes += len(line)
 	if why != nil {
 		a.reports = append(a.reports, report{d.Snapshot.Plugin, d.Snapshot.Mount, *why})
 	}
 	a.wake.Broadcast()
 	return true
+}
+
+// oweGap queues the gap line of the refused delivery seq. The caller holds the mutex.
+func (a *attachment) oweGap(seq uint64) {
+	if !a.gapOwed {
+		a.put++
+	}
+	a.gapOwed, a.gapSeq = true, seq
+	a.wake.Broadcast()
+}
+
+// written returns once every event and gap line queued before the call was handed to the connection's output or
+// dropped by a resync, or the attachment ended.
+func (a *attachment) written() {
+	c := a.c
+	c.mu.Lock()
+	for target := a.put; !a.ended && a.done < target; {
+		a.wake.Wait()
+	}
+	c.mu.Unlock()
 }
 
 // pump is the attachment's one writer: it hands the queued events to the connection's output in order, then the gap
@@ -589,6 +616,8 @@ func (a *attachment) pump() {
 		batch, reports, gap, gapSeq := a.queue, a.reports, a.gapOwed, a.gapSeq
 		a.flight, a.flightBytes = len(batch), a.bytes
 		a.queue, a.reports, a.bytes, a.gapOwed = nil, nil, 0, false
+		taken := a.put
+		a.writing = true
 		c.mu.Unlock()
 		for _, q := range batch {
 			c.tr.Write(q.line)
@@ -596,6 +625,11 @@ func (a *attachment) pump() {
 		if gap {
 			c.tr.Write(gapLine(a.t.Generation(), gapSeq))
 		}
+		c.mu.Lock()
+		a.writing = false
+		a.done = max(taken, a.dropped)
+		a.wake.Broadcast()
+		c.mu.Unlock()
 		a.tell(reports)
 		c.tr.Flushed(a.ctx)
 		c.mu.Lock()
@@ -618,6 +652,11 @@ func (a *attachment) holdEvents(drop bool) {
 	a.hold++
 	if drop {
 		a.queue, a.reports, a.bytes, a.gapOwed = nil, nil, 0, false
+		a.dropped = a.put
+		if !a.writing {
+			a.done = a.put
+		}
+		a.wake.Broadcast()
 	}
 	a.c.mu.Unlock()
 }

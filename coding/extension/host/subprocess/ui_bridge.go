@@ -199,6 +199,8 @@ type UIBridge struct {
 	}
 	// views is the D614 plugin UI mount registry.
 	views *uiview.Registry
+	// viewAnswers maps each unanswered ui.view.intent request (viewAnswer) to its intent's ticket.
+	viewAnswers sync.Map
 
 	// notifyFunc renders notifications via the TUI chat area.
 	// Set by InteractiveMode after TUI creation.

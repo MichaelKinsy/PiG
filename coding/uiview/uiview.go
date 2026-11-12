@@ -135,18 +135,22 @@ type Content struct {
 	Focus []Focus `json:"focus,omitempty"`
 }
 
-// MountArgs is the ui.view.mount record.
+// MountArgs is the ui.view.mount record. Answering is not a member of the record: a transport sets it to the ticket of
+// the intent whose handler made the call (see [Registry.Invoke]).
 type MountArgs struct {
 	Key    string  `json:"key"`
 	Slot   Slot    `json:"slot"`
 	Target *Target `json:"target,omitempty"`
 	Content
+	Answering string `json:"-"`
 }
 
-// UpdateArgs is the ui.view.update record: a full replacement of the content of the named revision.
+// UpdateArgs is the ui.view.update record: a full replacement of the content of the named revision. Answering is not a
+// member of the record: a transport sets it to the ticket of the intent whose handler made the call.
 type UpdateArgs struct {
 	Mount Ref `json:"mount"`
 	Content
+	Answering string `json:"-"`
 }
 
 // RefArgs is the record of hide, show and remove. Rev is not compared.
@@ -478,6 +482,13 @@ type mount struct {
 
 type ownerKey struct{ plugin, key string }
 
+// flight is one intent whose answer is awaited. ref is the mount ref the answer is valid for: the ref the intent was
+// raised on, moved forward by each change of the ref that the answering handler itself made.
+type flight struct {
+	k   ownerKey
+	ref Ref
+}
+
 // Registry holds every plugin's mounts. The zero value is not usable; use [New].
 type Registry struct {
 	mu        sync.Mutex
@@ -485,11 +496,18 @@ type Registry struct {
 	ticket    uint64
 	gen       uint64
 	mounts    map[ownerKey]*mount
+	flights   map[string]*flight
 	atts      []*Attachment
 	solo      *Attachment
 	merged    *ClientAbilities
-	onAbility func()
+	onAbility []abilityWatcher
+	watchID   uint64
 	kindOK    func(string) bool
+}
+
+type abilityWatcher struct {
+	id uint64
+	fn func()
 }
 
 // Options configure a registry.
@@ -500,14 +518,37 @@ type Options struct {
 
 // New returns an empty registry with no client attached: nothing can be mounted until a client attaches.
 func New(o Options) *Registry {
-	return &Registry{mounts: map[ownerKey]*mount{}, kindOK: o.KnownKind}
+	return &Registry{mounts: map[ownerKey]*mount{}, flights: map[string]*flight{}, kindOK: o.KnownKind}
 }
 
-// OnAbilities registers fn, called after the abilities changed and outside the lock, so a transport can replicate them.
-func (r *Registry) OnAbilities(fn func()) {
+// OnAbilities registers fn, called after the abilities changed and outside the lock: a transport replicates them, and
+// host code that mounts for itself mounts when a client arrives. Every registered function is called, in registration
+// order, on the goroutine that changed the abilities. The returned function removes fn.
+func (r *Registry) OnAbilities(fn func()) (remove func()) {
 	r.mu.Lock()
-	r.onAbility = fn
+	r.watchID++
+	id := r.watchID
+	r.onAbility = append(r.onAbility, abilityWatcher{id, fn})
 	r.mu.Unlock()
+	return func() {
+		r.mu.Lock()
+		r.onAbility = slices.DeleteFunc(r.onAbility, func(w abilityWatcher) bool { return w.id == id })
+		r.mu.Unlock()
+	}
+}
+
+// abilityWatchers returns one call of every function registered with OnAbilities now, or nil when there is none. The
+// caller holds the lock and makes the call after it released it.
+func (r *Registry) abilityWatchers() func() {
+	if len(r.onAbility) == 0 {
+		return nil
+	}
+	watchers := slices.Clone(r.onAbility)
+	return func() {
+		for _, w := range watchers {
+			w.fn()
+		}
+	}
 }
 
 // SetAbilities is the one-client form of [Registry.Attach]: it attaches a client that takes no deliveries, replaces its
@@ -524,7 +565,7 @@ func (r *Registry) SetAbilities(a *ClientAbilities) *Error {
 		}
 		r.mu.Lock()
 		r.solo = nil
-		fn := r.onAbility
+		fn := r.abilityWatchers()
 		r.mu.Unlock()
 		if solo == nil && fn != nil {
 			fn()
@@ -779,7 +820,8 @@ func (r *Registry) Mount(plugin string, a MountArgs) (Status, *Error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	k := ownerKey{plugin, a.Key}
-	if old := r.mounts[k]; old != nil && !old.snap.State.terminal() {
+	old := r.mounts[k]
+	if old != nil && !old.snap.State.terminal() {
 		return Status{}, fail(CodeInvalid, "key %q is already mounted", a.Key)
 	}
 	live := 0
@@ -803,8 +845,20 @@ func (r *Registry) Mount(plugin string, a MountArgs) (Status, *Error) {
 	m.snap = Snapshot{Plugin: plugin, Slot: a.Slot, Target: a.Target, Content: a.Content,
 		Mount: Ref{Key: a.Key, Epoch: r.epoch, Rev: 1}, State: StateLive}
 	r.mounts[k] = m
+	if old != nil {
+		r.answering(a.Answering, k, old.snap.Mount, m.snap.Mount)
+	}
 	r.publish(k, m)
 	return m.snap.Status, nil
+}
+
+// answering moves the ref the answer of the intent ticket is valid for from one ref of its mount to the next, when that
+// intent is in flight on k and the mount was still at the ref the answer was valid for. A ticket that names no intent in
+// flight (none, or one that settled) moves nothing. The caller holds the lock.
+func (r *Registry) answering(ticket string, k ownerKey, from, to Ref) {
+	if f := r.flights[ticket]; f != nil && f.k == k && f.ref == from {
+		f.ref = to
+	}
 }
 
 func (r *Registry) find(plugin, key string, epoch uint64) (*mount, *Error) {
@@ -848,8 +902,11 @@ func (r *Registry) Update(plugin string, a UpdateArgs) (Status, *Error) {
 		return m.snap.Status, m.rejected("update", err)
 	}
 	m.snap.Content, m.cands, m.fb, m.digests = a.Content, cands, fb, nil
+	from := m.snap.Mount
 	m.snap.Mount.Rev++
-	r.publish(ownerKey{plugin, a.Mount.Key}, m)
+	k := ownerKey{plugin, a.Mount.Key}
+	r.answering(a.Answering, k, from, m.snap.Mount)
+	r.publish(k, m)
 	return m.snap.Status, nil
 }
 
@@ -957,8 +1014,12 @@ func (r *Registry) noteIntent(k ownerKey, epoch uint64, intent string, res Resul
 // Invoke raises an intent on a mount and returns its final result. The intent is checked against the mount's declaration
 // first: an unknown intent or an argument outside its shape is refused without reaching the plugin. The result is the
 // first of the plugin's answer, the timeout, and ctx ending. A cancellable intent's handler is cancelled when the
-// timeout or ctx ends it; an answer that arrives afterwards is dropped. An answer for a mount that changed in the
-// meantime is stale. Every result but done and cancelled leaves a notice on the mount.
+// timeout or ctx ends it; an answer that arrives afterwards is dropped. An answer is stale when the mount's ref is not
+// the one the answer is valid for. That is the ref the intent was raised on, moved forward by each update, and each
+// mount of the key again, that the answering handler itself made: a transport marks such a call with the intent's ticket
+// ([UpdateArgs] and [MountArgs], Answering). A change of the ref by any other hand, the plugin's own background work and
+// another intent's handler included, makes the answer stale. Hide, show, finish, remove and a break change no ref, so
+// they make no answer stale. Every result but done and cancelled leaves a notice on the mount.
 func (r *Registry) Invoke(ctx context.Context, plugin string, ref Ref, nodeKey, intent string, arg json.RawMessage, inv Invoker) Result {
 	k := ownerKey{plugin, ref.Key}
 	r.mu.Lock()
@@ -1002,7 +1063,14 @@ func (r *Registry) Invoke(ctx context.Context, plugin string, ref Ref, nodeKey, 
 	r.ticket++
 	ticket := "t" + strconv.FormatUint(r.ticket, 10)
 	snapRef := m.snap.Mount
+	f := &flight{k: k, ref: snapRef}
+	r.flights[ticket] = f
 	r.mu.Unlock()
+	defer func() {
+		r.mu.Lock()
+		delete(r.flights, ticket)
+		r.mu.Unlock()
+	}()
 
 	cctx, stop := context.WithTimeout(ctx, time.Duration(d.TimeoutMs)*time.Millisecond)
 	defer stop()
@@ -1024,7 +1092,7 @@ func (r *Registry) Invoke(ctx context.Context, plugin string, ref Ref, nodeKey, 
 	noted := func(res Result) Result {
 		r.mu.Lock()
 		defer r.mu.Unlock()
-		return r.noteIntent(k, snapRef.Epoch, intent, res)
+		return r.noteIntent(k, f.ref.Epoch, intent, res)
 	}
 	ended := func() Result {
 		if ctx.Err() != nil {
@@ -1048,7 +1116,7 @@ func (r *Registry) Invoke(ctx context.Context, plugin string, ref Ref, nodeKey, 
 		}
 		r.mu.Lock()
 		cur := r.mounts[k]
-		changed := cur == nil || cur.snap.Mount != snapRef
+		changed := cur == nil || cur.snap.Mount != f.ref
 		r.mu.Unlock()
 		if changed {
 			return noted(Result{Ticket: ticket, Outcome: OutcomeStale, Error: "mount changed while the plugin answered"})
