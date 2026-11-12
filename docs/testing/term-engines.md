@@ -16,7 +16,7 @@ The cursor's position is compared only while it is shown (a hidden cursor's posi
 
 ## The screen writer's variants (D624)
 
-The corpus also holds two more variants of every scenario: **C** is what the screen writer (`internal/screenwriter`, `PIG_TUI_SCREEN_WRITER=1`) sends for the frames of A, and **D** what it sends for the frames of B, step for step (the writer's output for one frame is the step's bytes; a step the writer does not write is an empty step; every seventh step ends with the settle write). `test/term-engines` requires every engine to show the same screen after every step of C as of A, and of D as of B, in all scenarios including the `known-*` ones: the writer's bytes must leave a terminal showing what the bytes it was given leave. The corpus also holds the two recorded benchmark steps (`race-md20000`, `race-write50`, 160 by 48, A and B the same stream).
+The corpus also holds two more variants of every scenario: **C** is what the screen writer (`internal/screenwriter`) sends for the frames of A, and **D** what it sends for the frames of B, step for step (the writer's output for one frame is the step's bytes; a step the writer does not write is an empty step; every seventh step ends with the settle write). `test/term-engines` requires every engine to show the same screen after every step of C as of A, and of D as of B, in all scenarios including the `known-*` ones: the writer's bytes must leave a terminal showing what the bytes it was given leave. The corpus also holds the two recorded benchmark steps (`race-md20000`, `race-write50`, 160 by 48, A and B the same stream).
 
 ## Formats
 
