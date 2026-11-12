@@ -8358,7 +8358,7 @@
         "integrity": "sha512-2tWPSnV3qzfiDIY3aWluBag3vC++Vs+VsXt/UquSU5onPMohPih72FUhIhaqmDdMYubOgB3Byl9uF4Vk40JLvQ=="
       },
       "source": "dist/providers/compat-schema.js",
-      "sourceSha256": "962a8e5cb874fb8ecbf713665c2bfd2ce937456e47dbec115a97f3e709a68df9",
+      "sourceSha256": "6d6ffae7ec48f17c4080df8607b4aa00a2b16183e02d9613ffd0608ae81c1734",
       "sha256": "aaf10bdd5ccfdc1c4b49e77a85f9025fe81f7fb4bf060fcbb8e0f79b3b21a320",
       "rewrite": "module specifiers"
     },
@@ -10671,7 +10671,7 @@
         "integrity": "sha512-mUWI04rqF1Vd/m1q+Ps1XeWsTXEVvRUnsmRa83I3Dzua0Tx5bYS93imeqtIfrXf7PkkaR6ERz+AuQhIJlom5yA=="
       },
       "source": "dist/core/agent-session.js",
-      "sourceSha256": "ee756f6f74afe9f8930ebf216c95334605d913a275a0eec2c9702f101baef3c3",
+      "sourceSha256": "ba18cf5a12009fe855dbd81b545711e689add46464622b35554f14c9047265dc",
       "sha256": "c54603ec64635716944f19e11fdbe6d9a1c63b354ba6614c5cb01ca30add911d",
       "rewrite": "module specifiers"
     },
@@ -10878,9 +10878,8 @@
         "integrity": "sha512-mUWI04rqF1Vd/m1q+Ps1XeWsTXEVvRUnsmRa83I3Dzua0Tx5bYS93imeqtIfrXf7PkkaR6ERz+AuQhIJlom5yA=="
       },
       "source": "dist/core/export-html/ansi-to-html.js",
-      "sourceSha256": "44e5fd3585104e5e8cc0c7bea91a10efa7cb7e3b5bc5e2fb9090d5be4419df14",
-      "sha256": "2dc633c9b7924f6ca637abb006f68dbb00e28215c4cf1f64b1e0e6abc41920a8",
-      "rewrite": "module specifiers"
+      "sourceSha256": "2dc633c9b7924f6ca637abb006f68dbb00e28215c4cf1f64b1e0e6abc41920a8",
+      "sha256": "2dc633c9b7924f6ca637abb006f68dbb00e28215c4cf1f64b1e0e6abc41920a8"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/export-html/index.js",
@@ -10923,9 +10922,8 @@
         "integrity": "sha512-mUWI04rqF1Vd/m1q+Ps1XeWsTXEVvRUnsmRa83I3Dzua0Tx5bYS93imeqtIfrXf7PkkaR6ERz+AuQhIJlom5yA=="
       },
       "source": "dist/core/export-html/template.js",
-      "sourceSha256": "14fbe96123a82ee0f3efdd9f9634dd316c59810509fdbd8c5a5f41f3918c07a4",
-      "sha256": "f04404c88e557a24c84d3e938d9f6b0521e2127c68ba401cc328315e59719417",
-      "rewrite": "module specifiers"
+      "sourceSha256": "f04404c88e557a24c84d3e938d9f6b0521e2127c68ba401cc328315e59719417",
+      "sha256": "f04404c88e557a24c84d3e938d9f6b0521e2127c68ba401cc328315e59719417"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/export-html/tool-renderer.js",
@@ -10935,9 +10933,8 @@
         "integrity": "sha512-mUWI04rqF1Vd/m1q+Ps1XeWsTXEVvRUnsmRa83I3Dzua0Tx5bYS93imeqtIfrXf7PkkaR6ERz+AuQhIJlom5yA=="
       },
       "source": "dist/core/export-html/tool-renderer.js",
-      "sourceSha256": "447a90e3ba59d0a661635c74faddb8547f2d7c0ddf1f688f7ff6c09c2c8480b9",
-      "sha256": "696f4987fec62b6721181832bef33cc9943bc95de727dbd4fd4589fc8e901c81",
-      "rewrite": "module specifiers"
+      "sourceSha256": "696f4987fec62b6721181832bef33cc9943bc95de727dbd4fd4589fc8e901c81",
+      "sha256": "696f4987fec62b6721181832bef33cc9943bc95de727dbd4fd4589fc8e901c81"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/extensions/index.js",
@@ -11559,7 +11556,7 @@
         "integrity": "sha512-mUWI04rqF1Vd/m1q+Ps1XeWsTXEVvRUnsmRa83I3Dzua0Tx5bYS93imeqtIfrXf7PkkaR6ERz+AuQhIJlom5yA=="
       },
       "source": "dist/core/tools/find.js",
-      "sourceSha256": "f0f0e41ca6f97b29cc7284489d3902f324e9058005ee5f66c6e38a62bc49774d",
+      "sourceSha256": "cb1b0def378bb8d9756cc97deb9ae76e999163d0f35b17a9c6f4289f323f407b",
       "sha256": "2260b1eb39af786fc1c68b4ac70aa2d0f1261a0a68b4510b44f777a5f905c59c",
       "rewrite": "module specifiers"
     },
@@ -12079,9 +12076,8 @@
         "integrity": "sha512-mUWI04rqF1Vd/m1q+Ps1XeWsTXEVvRUnsmRa83I3Dzua0Tx5bYS93imeqtIfrXf7PkkaR6ERz+AuQhIJlom5yA=="
       },
       "source": "docs/models-configuration.md",
-      "sourceSha256": "1761b36835cf37fbeb7adc9ebb1cb88d190145f69a6d507ad5d4349f17f908a6",
-      "sha256": "3d87888507009fb61d10020d1f6576f0cf9f59d8d2e8f48b6cc69337bdeb8e54",
-      "rewrite": "module specifiers"
+      "sourceSha256": "3d87888507009fb61d10020d1f6576f0cf9f59d8d2e8f48b6cc69337bdeb8e54",
+      "sha256": "3d87888507009fb61d10020d1f6576f0cf9f59d8d2e8f48b6cc69337bdeb8e54"
     },
     {
       "path": "pi-dist/pi-coding-agent/docs/models.md",
@@ -13899,7 +13895,7 @@
         "integrity": "sha512-mUWI04rqF1Vd/m1q+Ps1XeWsTXEVvRUnsmRa83I3Dzua0Tx5bYS93imeqtIfrXf7PkkaR6ERz+AuQhIJlom5yA=="
       },
       "source": "dist/extensions/llama/provider.js",
-      "sourceSha256": "3e724240b4bb0542bacb185d4fcd24a6d91bd1ef85c8eb0a4e41dd33142e697d",
+      "sourceSha256": "424c62c717a7b84a2aa83f121dc1971c8c8ff40e4eddede2e838391b1caa0d2d",
       "sha256": "c8fbe58fdc8735e29c9ce17e5a5b47819230b65b94c037fbbd69c20353d5bd12",
       "rewrite": "module specifiers"
     },
@@ -16121,7 +16117,7 @@
         "integrity": "sha512-WK8ih+c88GWizaB79y7Pq3PV7ySf5VI1pZ1i/6aBBjDOAiG2EE3ojKjl+pxQqLfyQGnzHYu4VfakOBJgumuoyw=="
       },
       "source": "dist/components/markdown.js",
-      "sourceSha256": "409a6c0f8d7d94c1e724ae81f82226d8d0cf8af8c3445dd4457bc36cdd2c7f36",
+      "sourceSha256": "81c360401ca6dbd84867225682640746e54d43db284a7848de51481f3e21958c",
       "sha256": "d719a818b7f6a5c1e42edad48c168dcba39b5d9965cd03005efb923883c3601b",
       "rewrite": "module specifiers"
     },
@@ -16670,7 +16666,7 @@
         "integrity": "sha512-WK8ih+c88GWizaB79y7Pq3PV7ySf5VI1pZ1i/6aBBjDOAiG2EE3ojKjl+pxQqLfyQGnzHYu4VfakOBJgumuoyw=="
       },
       "source": "dist/tui-alt-screen.js",
-      "sourceSha256": "d068b05b69e795ea62cded62a2450ec835f40ab57644c23fa1450268c03e8407",
+      "sourceSha256": "526b67043949906726d3384f2ea6ae22716c295b3965386469ef044b33be79d2",
       "sha256": "7b114930a3b3b6e994f243fdc899fe999647f884477a9d2674e56403af416cd0",
       "rewrite": "module specifiers"
     },
