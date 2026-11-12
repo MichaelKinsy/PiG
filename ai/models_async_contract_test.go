@@ -3,6 +3,7 @@ package ai
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -61,6 +62,21 @@ func TestModelsLoginWithAnAbortedSignalSettlesWithItsReasonBeforeAnyOtherCheck(t
 	}
 	if _, err := models.LoginProvider(ctx, provider, CredentialOAuth, AuthInteraction{}); !errors.Is(err, reason) {
 		t.Fatalf("LoginProvider = %v, want the signal's reason before the flow", err)
+	}
+}
+
+// models.ts login (:810-816): `signal.throwIfAborted()` precedes the `does not support <type> login` check, so an aborted login of a provider that has no such
+// login settles with the signal's reason. LoginProvider is that body for a provider the caller composed itself, without the lookup.
+func TestModelsLoginProviderWithAnAbortedSignalSettlesWithItsReasonBeforeTheLoginMethodCheck(t *testing.T) {
+	reason := errors.New("operator interrupt")
+	ctx, cancel := context.WithCancelCause(t.Context())
+	cancel(reason)
+	models, _, provider := oauthModels(loginNeverRuns)
+	if _, err := models.LoginProvider(ctx, provider, CredentialAPIKey, AuthInteraction{}); !errors.Is(err, reason) {
+		t.Fatalf("LoginProvider(api key login the provider lacks) = %v, want the signal's reason", err)
+	}
+	if _, err := models.LoginProvider(t.Context(), provider, CredentialAPIKey, AuthInteraction{}); err == nil || !strings.Contains(err.Error(), " does not support ") {
+		t.Fatalf("LoginProvider with a live signal = %v, want the unsupported login error", err)
 	}
 }
 
@@ -308,6 +324,65 @@ func TestModelsGenerateImagesTransformHeadersIsAwaitedWithTheSignalAndItsRejecti
 			}
 		})
 	})
+}
+
+// models.ts classify (:1039-1058) is the try/catch of generateImages around auth and classification: the signal reaches the provider, the failure that follows an
+// abort is an `aborted` result and any other failure an `error` result, each carrying the failure's message.
+func TestModelsClassifyAbortedSignalReachesTheProviderAndEndsAborted(t *testing.T) {
+	model := classifierTestModel("p1", "m")
+	newModels := func(classify func(context.Context) error) *Models {
+		models := CreateModels()
+		models.SetProvider(CreateProvider(CreateProviderOptions{ID: "p1", Models: []AnyModel{model}, Auth: typedNoAuth(), Classifiers: ProviderClassifierMap{"test-classifier": {
+			Classify: func(ctx context.Context, _ *ClassifierModel, _ ClassifierContext, _ ClassifierOptions) (ClassifierResult, error) {
+				return ClassifierResult{}, classify(ctx)
+			}}}}))
+		return models
+	}
+	t.Run("abort", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			models := newModels(func(ctx context.Context) error {
+				<-ctx.Done()
+				return errors.New("the request failed")
+			})
+			ctx, cancel := context.WithCancel(t.Context())
+			done := make(chan ClassifierResult, 1)
+			go func() { done <- models.Classify(ctx, model, classifierTestContext()) }()
+			synctest.Wait()
+			cancel()
+			select {
+			case result := <-done:
+				if result.StopReason != ClassifierStopReasonAborted || result.ErrorMessage != "the request failed" {
+					t.Fatalf("result = %+v, want an aborted result carrying the failure", result)
+				}
+			case <-time.After(time.Minute):
+				t.Fatal("the provider never saw the abort")
+			}
+		})
+	})
+	t.Run("failure under a live signal", func(t *testing.T) {
+		result := newModels(func(context.Context) error { return errors.New("the request failed") }).Classify(t.Context(), model, classifierTestContext())
+		if result.StopReason != ClassifierStopReasonError || result.ErrorMessage != "the request failed" {
+			t.Fatalf("result = %+v, want an error result carrying the failure", result)
+		}
+	})
+}
+
+// models.ts login (:817): `method.login({ ...interaction, signal }, options)`: the flow gets the caller's options and a signal that follows the caller's.
+func TestModelsLoginHandsTheFlowTheCallersOptionsAndSignal(t *testing.T) {
+	type flowKey struct{}
+	var got LoginOptions
+	var value any
+	models, _, _ := oauthModels(func(ctx context.Context, _ AuthInteraction, options LoginOptions) (Credential, error) {
+		got, value = options, ctx.Value(flowKey{})
+		return oauthCredential(), nil
+	})
+	ctx := context.WithValue(t.Context(), flowKey{}, "the caller's")
+	if _, err := models.Login(ctx, "p", CredentialOAuth, AuthInteraction{}, LoginOptions{AgentName: new("agent"), GetDeviceID: func() string { return "device" }}); err != nil {
+		t.Fatal(err)
+	}
+	if got.AgentName == nil || *got.AgentName != "agent" || got.GetDeviceID == nil || got.GetDeviceID() != "device" || value != "the caller's" {
+		t.Fatalf("the flow got options %+v and context value %v, want the caller's options and context", got, value)
+	}
 }
 
 // models.ts getAllAvailable: the operation is raced with the signal, so an abort settles it while a provider's auth check is still pending.
