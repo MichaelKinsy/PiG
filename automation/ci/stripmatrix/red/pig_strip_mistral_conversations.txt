@@ -1,0 +1,45 @@
+# Tests of ./ai/ that fail in a build with pig_strip_mistral_conversations. One per line: the test, then why.
+# make piglet-strip-matrix fails when one of them passes (remove its line) and when a test not listed here fails.
+TestCompatAPIStreamsMatchPi compares the stripped API with the Pi oracle
+TestContextOverflowMatrixUpstream expects a result of the stripped API and gets the strip error
+TestCrossProviderHandoffUpstream hands a transcript to and from the stripped API's provider
+TestEmptyMessagesUpstream expects a result of the stripped API and gets the strip error
+TestFetchOptionUpstream counts a request of the stripped API
+TestImageToolResultMatrixUpstream expects a result of the stripped API and gets the strip error
+TestListModelsAllocatesOnlyFilteredCatalog expects the full catalog with the stripped provider's models
+TestLookupBuiltInProvider expects the stripped API in the built-in registry
+TestMistralMessagesPayloadMatchesPi compares the stripped API with the Pi oracle
+TestMistralPayloadModeAndEffortMatchPi compares the stripped API with the Pi oracle
+TestMistralRawPromptModeOptionIsSentIndependentlyOfReasoningControls expects a result of the stripped API and gets the strip error
+TestMistralReasoningEffortFallsBackToHighForAnUnmappedLevel expects a result of the stripped API and gets the strip error
+TestMistralReasoningModeUpstream expects a result of the stripped API and gets the strip error
+TestMistralResponseMatchesPi compares the stripped API with the Pi oracle
+TestMistralStreamSimpleSendsOnlyTheDerivedReasoningControls expects a result of the stripped API and gets the strip error
+TestMistralTranscriptPayloadMatchesPi compares the stripped API with the Pi oracle
+TestOpenRouterRoutingVariantsMirrorTheirBaseEntries expects the full catalog with the stripped provider's models
+TestProviderAbortMatchesPi compares the stripped API with the Pi oracle
+TestProviderCatalogExportsMatchPinnedData expects the full catalog with the stripped provider's models
+TestProviderDefaultUserAgent builds a provider of the stripped API for a table row
+TestProviderErrorResponseEventsMatchPi compares the stripped API with the Pi oracle
+TestProviderIdentityHeadersMatchPi compares the stripped API with the Pi oracle
+TestProviderIdentityUserAgents builds a provider of the stripped API for a table row
+TestProviderPayloadHookReceivesModelAPIAndPayload builds a provider of the stripped API for a table row
+TestProviderRequestBodiesWriteCharactersAsJSONStringifyDoes expects a result of the stripped API and gets the strip error
+TestProviderRequestBodiesWriteMarkupLiterally expects a request of the stripped API
+TestProviderRequestHeadersMatchPi compares the stripped API with the Pi oracle
+TestProviderRequestsLeaveAFrozenTranscriptUnchanged expects a request of the stripped API
+TestProviderRetryMatchesPi compares the stripped API with the Pi oracle
+TestProviderUsageCostMatchesUpstream builds a provider of the stripped API for a table row
+TestProviderUserAgentOverridePrecedence builds a provider of the stripped API for a table row
+TestRepairToolFlowReachesEveryProviderPayload expects a request of the stripped API
+TestRequestBuildAllocationsAreLinearInTheHistory builds a provider of the stripped API for a table row
+TestRequestBuildDoesNotCopyWhatItDoesNotSend builds a provider of the stripped API for a table row
+TestRequestBuildLeavesTheTranscriptUnchanged builds a provider of the stripped API for a table row
+TestResponseIDUpstream builds a provider of the stripped API for a table row
+TestStreamUpstream builds a provider of the stripped API for a table row
+TestTokensOnAbortUpstream builds a provider of the stripped API for a table row
+TestToolCallWithoutResultUpstream builds a provider of the stripped API for a table row
+TestToolSchemaKeepsAuthoredOrderInProviderRequests expects the full catalog with the stripped provider's models
+TestTotalTokensUpstream builds a provider of the stripped API for a table row
+TestUnicodeSurrogateUpstream builds a provider of the stripped API for a table row
+TestUntypedSchemaNodesFallBackFromStrictInTheRequestPort expects a request of the stripped API

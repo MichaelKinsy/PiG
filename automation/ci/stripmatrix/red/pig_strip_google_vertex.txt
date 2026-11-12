@@ -1,0 +1,25 @@
+# Tests of ./ai/ that fail in a build with pig_strip_google_vertex. One per line: the test, then why.
+# make piglet-strip-matrix fails when one of them passes (remove its line) and when a test not listed here fails.
+TestGoogleRequestPreservesEmptyText builds a provider of the stripped API for a table row
+TestGoogleVertexPayloadMatchesPi compares the stripped API with the Pi oracle
+TestGoogleVertexResponseMatchesPi compares the stripped API with the Pi oracle
+TestListModelsAllocatesOnlyFilteredCatalog expects the full catalog with the stripped provider's models
+TestLookupBuiltInProvider expects the stripped API in the built-in registry
+TestOpenRouterRoutingVariantsMirrorTheirBaseEntries expects the full catalog with the stripped provider's models
+TestProviderCatalogExportsMatchPinnedData expects the full catalog with the stripped provider's models
+TestProviderDefaultUserAgent builds a provider of the stripped API for a table row
+TestProviderErrorResponseEventsMatchPi compares the stripped API with the Pi oracle
+TestProviderIdentityHeadersMatchPi compares the stripped API with the Pi oracle
+TestProviderIdentityUserAgents builds a provider of the stripped API for a table row
+TestProviderPayloadHookReceivesModelAPIAndPayload builds a provider of the stripped API for a table row
+TestProviderRequestHeadersMatchPi compares the stripped API with the Pi oracle
+TestProviderRequestsLeaveAFrozenTranscriptUnchanged expects a request of the stripped API
+TestProviderRetryMatchesPi compares the stripped API with the Pi oracle
+TestProviderStreamEventsUpstream builds a provider of the stripped API for a table row
+TestRepairToolFlowReachesEveryProviderPayload expects a request of the stripped API
+TestRequestBuildDoesNotCopyWhatItDoesNotSend builds a provider of the stripped API for a table row
+TestRequestBuildLeavesTheTranscriptUnchanged builds a provider of the stripped API for a table row
+TestResponseIDUpstream builds a provider of the stripped API for a table row
+TestResponseOracleCountsOnlyTheProbeClientsRequests compares the stripped API with the Pi oracle
+TestStreamUpstream builds a provider of the stripped API for a table row
+TestUntypedSchemaNodesFallBackFromStrictInTheRequestPort expects a request of the stripped API

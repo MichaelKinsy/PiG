@@ -1,0 +1,21 @@
+# Tests of ./ai/ that fail in a build with pig_strip_bedrock_converse_stream. One per line: the test, then why.
+# make piglet-strip-matrix fails when one of them passes (remove its line) and when a test not listed here fails.
+TestBedrockProviderConstructs expects the stripped API in the built-in registry
+TestBedrockStreamSimpleThinkingBudgetsMatchPi expects a result of the stripped API and gets the strip error
+TestContextOverflowMatrixUpstream builds a provider of the stripped API for a table row
+TestCrossProviderHandoffUpstream hands a transcript to and from the stripped API's provider
+TestEmptyMessagesUpstream builds a provider of the stripped API for a table row
+TestImageToolResultMatrixUpstream builds a provider of the stripped API for a table row
+TestListModelsAllocatesOnlyFilteredCatalog expects the full catalog with the stripped provider's models
+TestLookupBuiltInProvider expects the stripped API in the built-in registry
+TestOpenRouterRoutingVariantsMirrorTheirBaseEntries expects the full catalog with the stripped provider's models
+TestProviderCatalogExportsMatchPinnedData expects the full catalog with the stripped provider's models
+TestProviderRequestsLeaveAFrozenTranscriptUnchanged expects a request of the stripped API
+TestRepairToolFlowReachesEveryProviderPayload expects a request of the stripped API
+TestRequestBuildLeavesTheTranscriptUnchanged builds a provider of the stripped API for a table row
+TestStreamUpstream builds a provider of the stripped API for a table row
+TestTokensOnAbortUpstream builds a provider of the stripped API for a table row
+TestToolCallWithoutResultUpstream builds a provider of the stripped API for a table row
+TestTotalTokensUpstream builds a provider of the stripped API for a table row
+TestUnicodeSurrogateUpstream builds a provider of the stripped API for a table row
+TestUntypedSchemaNodesFallBackFromStrictInTheRequestPort expects a request of the stripped API

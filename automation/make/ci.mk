@@ -49,7 +49,7 @@ parity-fast-2:
 # module-size's install proof is the one drift gate the light pull-request run leaves to the full run.
 ci-drift: ci-drift-pr module-size
 ci-drift-pr: port-lint any-trap perf-lint
-ci-contracts: correspondence-check porter-check interface-inventory interface-inventory-test interface-go-drift interface-recommendations-drift interface-mapping-quality interface-delta interface-gaps behavior-contracts test-inventory-drift test-inventory test-porting-release format-version-inventory sdk-surface-drift sdk-apidiff piglet-strip-build
+ci-contracts: correspondence-check porter-check interface-inventory interface-inventory-test interface-go-drift interface-recommendations-drift interface-mapping-quality interface-delta interface-gaps behavior-contracts test-inventory-drift test-inventory test-porting-release format-version-inventory sdk-surface-drift sdk-apidiff piglet-strip-build piglet-strip-matrix
 ci-closure: closure-check
 # The Durable core conformance gate in CI: the host's npm tree linked to the pinned Pi build first (durable-contract only checks out the reference); the job picks one build with DURABLE_CONTRACT_ARGS="--impls <pi|wasm-tinygo|native> -j 4".
 ci-durable-contract: durable-core-host-deps durable-contract
