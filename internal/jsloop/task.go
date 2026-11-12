@@ -52,7 +52,7 @@ func (t *Task) Park() {
 	t.mu.Unlock()
 }
 
-// Tail says the response ended and the loop goes on to its end events without awaiting anything: a task runs until End.
+// Tail says the reader handled the last event of the response, so the loop goes on to its end events without awaiting anything: a task runs until End.
 func (t *Task) Tail() {
 	if t == nil {
 		return
@@ -116,7 +116,7 @@ func TaskFrom(ctx context.Context) *Task {
 	return task
 }
 
-// WithTaskReader returns ctx naming the iteration it is given to as the run's reader of a response: that iteration begins a task at each event it takes and parks it when nothing is ready. Only the run's own reader carries it, so a stream that forwards another reports nothing.
+// WithTaskReader returns ctx naming the iteration it is given to as the run's reader of a response: that iteration begins a task at each event it takes, parks it when nothing is ready, and after the response's last event leaves it running for the loop's end events (Tail). Only the run's own reader carries it, so a stream that forwards another reports nothing.
 func WithTaskReader(ctx context.Context, task *Task) context.Context {
 	return context.WithValue(ctx, taskReaderKey{}, task)
 }

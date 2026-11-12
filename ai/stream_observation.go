@@ -356,7 +356,7 @@ func (stream *AssistantMessageEventStream) observeEvents(ctx context.Context, ma
 			iterator := newContinuationEventIterator(ctx, stream, executor)
 			defer iterator.close()
 			owner := currentGoroutineID()
-			// The run's own reader reports the tasks of Pi's loop (jsloop.Task). A task runs from the event the reader takes and ends once every ready reaction has run, which is where the reader would wait for the provider. One process.nextTick-class reaction per task ends it: Node runs such a callback after the microtasks of the task and before the next I/O completion.
+			// The run's own reader reports the tasks of Pi's loop (jsloop.Task). A task runs from the event the reader takes and ends once every ready reaction has run, which is where the reader would wait for the provider. One process.nextTick-class reaction per task ends it: Node runs such a callback after the microtasks of the task and before the next I/O completion. Once the reader has handled the response's last event, the loop's end events follow in the same task (agent-loop.ts emits them back to back, awaiting nothing), so the task then runs on until the loop ends it (Tail).
 			task := jsloop.TaskReaderFrom(ctx)
 			parking := false
 			var park func()
@@ -387,7 +387,16 @@ func (stream *AssistantMessageEventStream) observeEvents(ctx context.Context, ma
 				executor.mu.Unlock()
 				more := func() bool {
 					defer observation.end()
-					return yield(observation, stream.deliver(delivery.event, materialize))
+					event := stream.deliver(delivery.event, materialize)
+					more := yield(observation, event)
+					if task != nil {
+						switch event.(type) {
+						case DoneEvent, ErrorEvent:
+							// Before the observation ends: no reaction that parks the task runs between the reader's last event and the loop's end events.
+							task.Tail()
+						}
+					}
+					return more
 				}()
 				if !more {
 					return
