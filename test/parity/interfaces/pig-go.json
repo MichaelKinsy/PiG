@@ -14682,6 +14682,17 @@
       "shapeHash": "sha256:1cf29f7a927d2fd4b02e321f026a474ce4c5058f9917d2349bcc4b036c02cb68"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#GeneratedModel.openRouterVariantNamed",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "GeneratedModel.openRouterVariantNamed",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(id string, name string) GeneratedModel"
+      },
+      "shapeHash": "sha256:308d8b7701423be8174709157cade2fc8345bbc8315aede082051f7345d180e9"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#GeneratedModelDataGeneratedAt",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "GeneratedModelDataGeneratedAt",
@@ -15582,6 +15593,17 @@
         "type": "func[M RoleMessage](messages TranscriptMessages[M]) bool"
       },
       "shapeHash": "sha256:4375723729665945a2bf7a10c86db58b0292173f1387e20e894e4ebf12e14a76"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#HeldOpenRouterVariant",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "HeldOpenRouterVariant",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(base *GeneratedModel, variant string) *GeneratedModel"
+      },
+      "shapeHash": "sha256:8d6c86eab0137e9dbf6ee12a3e02179505055d5ee937d5ca15cf1587ae0e4b63"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#HttpBodyReadOwner",
@@ -17089,6 +17111,28 @@
         "type": "func() []string"
       },
       "shapeHash": "sha256:9f921b0d645d262778fe26bdf2928fddc34adea94eefae075778b323fc6302de"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#ListedOpenRouterModel",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "ListedOpenRouterModel",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "ListedOpenRouterModel"
+      },
+      "shapeHash": "sha256:e5e7b73332bd7f8e7e241bd16f049afc5a8cd6b279fec21733ad0068695f4eed"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#ListedOpenRouterModel.VariantName",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "ListedOpenRouterModel.VariantName",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#LlamaCppAnswerFromProbabilities",
@@ -20633,6 +20677,17 @@
       "shapeHash": "sha256:125070c223929106fd144dabf043466b7f995341646a078285bf5baacd61fb37"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#OpenRouterListing",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "OpenRouterListing",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(models []GeneratedModel) []ListedOpenRouterModel"
+      },
+      "shapeHash": "sha256:9d4efb4cb86ad86b74422722be0d705d1c746baf0bde570ea531e413a74872ed"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#OpenRouterModel",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "OpenRouterModel",
@@ -20840,6 +20895,17 @@
         "type": "OpenRouterTopProvider"
       },
       "shapeHash": "sha256:a23a6fe557609f18600e6a45853a7f6fbf87d9da29db23b446c0b5ac978e4673"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#OpenRouterVariantIdentity",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "OpenRouterVariantIdentity",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(baseID string, baseName string, variant string) (id string, name string)"
+      },
+      "shapeHash": "sha256:7f018384bad141c0cd589a4e1ba865ef53a24916cbbf908cc90ec985e70e5c2c"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#OpenaiCodexProvider",
@@ -33613,6 +33679,17 @@
       "shapeHash": "sha256:542f8896ecba70e2532ef8d95aca0afce5366fa40010a9954539c1b81becf91d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#bundledOpenRouter",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "bundledOpenRouter",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "func() []GeneratedModel"
+      },
+      "shapeHash": "sha256:829aba3127e93e4cc588545a8420c008891afa74904df97dda5edb5efcac08e9"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#bundledOpenRouterModels",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "bundledOpenRouterModels",
@@ -39905,6 +39982,17 @@
       "shapeHash": "sha256:41278520d3cb6c0e84ccebeed8217006697dbd52501b02538165b377f33b59aa"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#deriveOpenRouterVariantLocked",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "deriveOpenRouterVariantLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(base *GeneratedModel, variant string, from *int) GeneratedModel"
+      },
+      "shapeHash": "sha256:e66ca387a8b91483410ffd137743a367dece4c86fe7bc948f247df8aef105ea1"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#derivedVariant",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "derivedVariant",
@@ -39944,9 +40032,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "struct{sync.RWMutex; bundle sync/atomic.Pointer[openRouterBundle]; byKey map[derivedVariantKey]*derivedVariant; bySpec map[string]*GeneratedModel}"
+        "type": "struct{sync.RWMutex; listing sync/atomic.Pointer[openRouterListing]; bundle sync/atomic.Pointer[openRouterBundle]; byKey map[derivedVariantKey]*derivedVariant; bySpec map[string]*GeneratedModel}"
       },
-      "shapeHash": "sha256:1347113de85cead009618d073a4522243b9b06c07264eb99fb4ee8909b2b571d"
+      "shapeHash": "sha256:83bb6b695f40992077c28e825a29f8808bc8e7c29543210eafffb65aa73e4589"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#detectOpenAICompletionsCompat",
@@ -43777,6 +43865,17 @@
       "shapeHash": "sha256:ba701221d407af47664e28b8d0c0ec29fc2b2598f036555f9a7b1ed2d645875b"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#heldOpenRouterListing",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "heldOpenRouterListing",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() *openRouterListing"
+      },
+      "shapeHash": "sha256:695cfb022e87c6829a45c68d26671f48f5c32327c0759561565a534ab7dc4391"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#heldOpenRouterVariantLocked",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "heldOpenRouterVariantLocked",
@@ -43852,6 +43951,17 @@
         "type": "func(left any, right any) bool"
       },
       "shapeHash": "sha256:ba2bf78bd55ab960b319ddaf6dbf1ab8629ae315dce981623ecada46d33b6edb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#identifyOpenRouterListing",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "identifyOpenRouterListing",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(models []GeneratedModel, identity func(base *GeneratedModel, variant string) (id string, name string)) []ListedOpenRouterModel"
+      },
+      "shapeHash": "sha256:3d868ef3940c6b1e1355fae9ef23ee61bf8fb89363c0866a013312215410c569"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#identityCatalog",
@@ -55008,6 +55118,17 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#openRouterBases",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "openRouterBases",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(models []GeneratedModel) int"
+      },
+      "shapeHash": "sha256:809785b6ae37dd8703dad6a9bb2ad643924a124a232a0faae23ccf2480b4b771"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#openRouterBundle",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "openRouterBundle",
@@ -55094,6 +55215,28 @@
         "type": "openRouterImagesUsage"
       },
       "shapeHash": "sha256:94db5c00cd98e632abdf65aa7712693eec2e0b70f37347d3da78954ab240efc7"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#openRouterListing",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "openRouterListing",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "openRouterListing"
+      },
+      "shapeHash": "sha256:53f2ab8973292752257698047d6ac8c84fbf31aaeed18512783e29457a5fdd34"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#openRouterListing.name",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "openRouterListing.name",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(base *GeneratedModel, variant string, from *int) (id string, name string, ok bool)"
+      },
+      "shapeHash": "sha256:475b9c12ff899e1d71d115ed38c53a6a717dd0f57bca406a05a61b3ce532cee5"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#openRouterLoginTimeout",
@@ -55545,6 +55688,17 @@
         "type": "func(buf *[32]byte) int"
       },
       "shapeHash": "sha256:2dfd215036b14c3898ddd16ce618fec9fa6ba141357d49869e3171fbf3801867"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#openRouterVariantID",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "openRouterVariantID",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(baseID string, variant string) string"
+      },
+      "shapeHash": "sha256:84c8d05b0fcc3ce806c0ebcd750b290ea663a1da8cd5d27f1c7b35f7231d48f1"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#operationContext",
@@ -65082,6 +65236,17 @@
         "type": "func() (string, error)"
       },
       "shapeHash": "sha256:60c06af2ab8dbe05a093fcda297ca37ab0155078bcee1a108937479e218ba9ff"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#walkOpenRouterListing",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "walkOpenRouterListing",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(models []GeneratedModel, visit func(i int, variant string))"
+      },
+      "shapeHash": "sha256:1792dc7e0112885eddec70e3acf0af3aead1389376bec87f7f099fc3be8382eb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#walkPlan",
@@ -263425,6 +263590,39 @@
       "shapeHash": "sha256:f05f6effc6db054d76d1ccf6ab73b376134409002587bf679dde298c1ed24699"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ModelDataSource.Entry",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "ModelDataSource.Entry",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() *github.com/MichaelKinsy/PiG/ai.GeneratedModel"
+      },
+      "shapeHash": "sha256:528c08b71afe23798ac5c52a46f48aef22cfd252444f99d842501efc8db0c9c9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ModelDataSource.ID",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "ModelDataSource.ID",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ModelDataSource.Name",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "ModelDataSource.Name",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ModelEntry",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "ModelEntry",
@@ -279881,6 +280079,17 @@
       "shapeHash": "sha256:906c73ddda1c5a72c808ed6c1f19f9d4fdd5e5b5fc239ea9eebedc63bded159e"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#builtinChatCatalogIdentity",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "builtinChatCatalogIdentity",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "builtinChatCatalogIdentity"
+      },
+      "shapeHash": "sha256:2fe76e2a31003ec52825bedc04e44a0ed41f9d8fd0cdedb6b88a3d88c485dd71"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#builtinChatCatalogListed",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "builtinChatCatalogListed",
@@ -279890,6 +280099,17 @@
         "type": "func(id string) []github.com/MichaelKinsy/PiG/ai.GeneratedModel"
       },
       "shapeHash": "sha256:906c73ddda1c5a72c808ed6c1f19f9d4fdd5e5b5fc239ea9eebedc63bded159e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#builtinChatCatalogListing",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "builtinChatCatalogListing",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(id string) (catalog []github.com/MichaelKinsy/PiG/ai.GeneratedModel, listing []github.com/MichaelKinsy/PiG/ai.ListedOpenRouterModel)"
+      },
+      "shapeHash": "sha256:910af3617f3ad399b58f8b734e3006a089a6736ac303baaafbf8c3b1a9aee16f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#builtinChatCatalogs",
