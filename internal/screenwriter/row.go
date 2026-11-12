@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"math/bits"
+	"slices"
 	"sort"
 	"unicode"
 	"unicode/utf8"
@@ -70,7 +71,7 @@ func (r *row) blankAt(i int) bool {
 
 // ink is how many cells the row has through its last one that is not a blank under the default pen.
 func (r *row) ink() int {
-	for i := len(r.cells) - 1; i >= 0; i-- {
+	for i := range slices.Backward(r.cells) {
 		if !r.blankAt(i) {
 			return i + 1
 		}
