@@ -142,7 +142,7 @@ func TestExecCommandStartsTheTimeoutAfterTheSpawnAsPiDoes(t *testing.T) {
 				continue
 			}
 			t.Logf("%s: a PATH of %d entries: spawn took %v, the call resolved %v after it returned", s.name, entries, got.search, got.afterSpawn)
-			if want := (execOutcome{Killed: true}); got.outcome != want {
+			if want := (execOutcome{Code: 143, Killed: true}); got.outcome != want {
 				t.Errorf("%s: %+v, want %+v", s.name, got.outcome, want)
 			}
 			if got.afterSpawn < limit-s.early {
