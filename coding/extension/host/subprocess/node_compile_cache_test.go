@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-// Pi's published CLI enables Node's source-validated compile cache before loading its bundle. PiG enables it at virtual-library import, after the first Jiti transform, and preserves source edits even when file size/mtime are unchanged.
+// Pi's published CLI enables Node's source-validated compile cache before loading its bundle. PiG enables it at virtual-library import, after the first Jiti transform, while its cache directory is empty or missing, and at process start once an earlier run has populated it; either way it preserves source edits even when file size/mtime are unchanged.
 func TestNodeCompileCacheStartsAtLibraryImportAndChecksSourceBytes(t *testing.T) {
 	root := filepath.Join(findModuleRoot(t), "coding", "extension", "host", "subprocess", "runtime-node")
 	dir := t.TempDir()
@@ -36,7 +36,8 @@ registerHooks({load(url,context,next){
  return next(url,context);
 }});
 const {importExtension}=await import(pathToFileURL(join(process.argv[1],"jiti-loader.mjs")));
-assert.equal(getCompileCacheDir(),undefined);
+const populated=process.argv[4]!=="first";
+assert.equal(getCompileCacheDir()!==undefined,populated,"the cache starts with the runtime exactly when an earlier run populated it");
 assert.deepEqual((await importExtension(process.argv[2]))(),["cache"]);
 assert.equal(babel,process.argv[4]==="first","Jiti transform cache reuse changed");
 assert.ok(getCompileCacheDir()?.startsWith(join(process.env.PIG_HOME,"cache","node-compile")));
