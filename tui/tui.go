@@ -1759,8 +1759,14 @@ func (t *tuiBase) RunDueRender() {
 
 // armFrameLocked arms the frame of generation, an immediate one or a throttled
 // one, to run after d: on the SetRenderDeadline owner when there is one,
-// otherwise on a timer goroutine.
+// otherwise on a timer goroutine. It stands where Pi calls setTimeout, and
+// Node runs a timer after the whole milliseconds of its delay ("Non-integer
+// delays are truncated to an integer", Node's timers documentation; Node
+// 24.22.2 waits 14.1 ms for a delay of 14.6 as for one of 14). Pi hands it
+// `16 - elapsed` with its fraction (tui.ts scheduleRender), so Pi's frames
+// are between 15 and 16 ms apart; the fraction of d is cut here the same way.
 func (t *tuiBase) armFrameLocked(d time.Duration, immediate bool, generation uint64) stoppableTimer {
+	d = d.Truncate(time.Millisecond)
 	if t.frameDueWake == nil {
 		if immediate {
 			return t.afterFunc(d, func() { t.runImmediateRender(generation) })
