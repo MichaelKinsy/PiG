@@ -7,6 +7,7 @@ import (
 	"flag"
 	"os"
 	"os/signal"
+	"regexp"
 	"runtime"
 	"strings"
 	"syscall"
@@ -60,6 +61,9 @@ func execLimitsProbe(t *testing.T, stream, text string, maxBuffer *float64) stri
 	}
 	return string(encoded)
 }
+
+// execLimitsTruncatedCode matches the codes a truncated command can report.
+var execLimitsTruncatedCode = regexp.MustCompile(`code=(?:1|137|141|143);`)
 
 // Pi's pi.exec(command, args, { maxBuffer }) caps stdout and stderr together (core/exec.ts, c466a359): output over the cap ends the command,
 // the character the cap cuts is dropped whole, and the result carries truncated, killed and a nonzero code. An invalid cap rejects the
@@ -120,8 +124,9 @@ func TestExecLimitsAcrossSDKs(t *testing.T) {
 			if len(*h.notify) == 1 {
 				got = strings.TrimSuffix((*h.notify)[0], ":info")
 			}
-			// The probes print the code as it is; a truncated result's code is only known to be nonzero.
-			got = strings.Replace(got, "code=1", "code=nonzero", 1)
+			// The probes print the code as it is; a truncated result's code is only known to be nonzero: 1 when the command exits, 141
+			// or 143 when a signal ends it, 137 when the force kill ends one that ignores SIGTERM (Pi a83b75a07 reports 128 + the signal).
+			got = execLimitsTruncatedCode.ReplaceAllString(got, "code=nonzero;")
 			if strings.HasPrefix(row.want, "rejected:") {
 				if !strings.HasPrefix(got, "rejected:") || !strings.Contains(got, "maxBuffer must be an integer between 0 and") {
 					t.Errorf("%s: outcome = %q, want a rejection naming the maxBuffer range", row.name, *h.notify)
