@@ -226,6 +226,7 @@ func settledReads(t *testing.T, opened harness.Harness) map[string]any {
 }
 
 func TestUnawaitedJobCommittedAfterTheAnswerChangesOnlyOrder(t *testing.T) {
+	skipWithoutSuspendableWork(t)
 	dir := t.TempDir()
 	piStore := filepath.Join(dir, "pi.sqlite")
 	nodeWith(t, []string{"PIG_INTEROP_UNAWAITED_JOB=1"}, "scenario2.mjs", piStore)
