@@ -20,8 +20,10 @@ import (
 
 // loadExtensionFiles is the default [DefaultResourceLoaderOptions.LoadExtensions]. The paths are the additional extension paths, then, unless
 // NoExtensions, the enabled extensions of the Packages and settings, merged without duplicates (resource-loader.ts:566-575). A `builtin:` path of a
-// disabled built-in extension is dropped (:576-579); another `builtin:` path is an error, because this loader has no built-in extensions
-// (:722-727). A Package whose package.json lists host-provided packages under dependencies adds a warning (:581, :66-93). A local additional
+// disabled built-in extension is dropped (:576-579). A `builtin:<name>` path names a built-in extension (`-e builtin:<name>`), which the loader
+// reports as an error when it has none of that name (:722-727); pig additive: it also names a member fused into this Piglet Binary
+// ([subprocess.RunsFused]), which loads through the fused resolver into the load's Host like a file extension, so a child session built with
+// the path gets the Binary's member that its parent has. A Pi built-in of the same name wins. A Package whose package.json lists host-provided packages under dependencies adds a warning (:581, :66-93). A local additional
 // path that does not exist is an error of the result (resource-loader.ts:545-551). The loader keeps the Extension Host of the load until the next load or Close.
 func (l *DefaultResourceLoader) loadExtensionFiles(ctx context.Context, request ExtensionLoadRequest) (LoadExtensionsResult, error) {
 	manager := packagemanager.NewPackageManager(packagemanager.PackageManagerOptions{CWD: l.cwd, SettingsManager: l.settings})
@@ -71,10 +73,20 @@ func (l *DefaultResourceLoader) loadExtensionFiles(ctx context.Context, request 
 		return LoadExtensionsResult{}, fmt.Errorf("coding: %w", err)
 	}
 	var filePaths, builtinPaths []string
+	fusedPaths := map[string]bool{}
+	piBuiltins := extensionset.BuiltinNames(l.options.ExtensionFactories)
 	for _, path := range paths {
-		if strings.HasPrefix(path, icodingagent.BuiltinPathPrefix) {
+		fused := false
+		if config, ok := fusedMemberConfig(path); ok {
+			fused = !slices.Contains(piBuiltins, config.Name)
+		}
+		switch {
+		case fused:
+			filePaths = append(filePaths, path)
+			fusedPaths[path] = true
+		case strings.HasPrefix(path, icodingagent.BuiltinPathPrefix):
 			builtinPaths = append(builtinPaths, path)
-		} else {
+		default:
 			filePaths = append(filePaths, path)
 		}
 	}
@@ -140,7 +152,7 @@ func (l *DefaultResourceLoader) loadExtensionFiles(ctx context.Context, request 
 			switch {
 			case strings.HasPrefix(ext.Path, "<inline:"):
 				preInline = append(preInline, ext)
-			case strings.HasPrefix(ext.Path, icodingagent.BuiltinPathPrefix):
+			case strings.HasPrefix(ext.Path, icodingagent.BuiltinPathPrefix) && !fusedPaths[ext.Path]:
 				preloaded[ext.Path] = ext
 			}
 		}

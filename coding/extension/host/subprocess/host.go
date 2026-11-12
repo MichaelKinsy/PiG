@@ -243,7 +243,8 @@ func extensionSourcePaths(config ExtConfig) (path, resolvedPath string) {
 		path = config.Path
 	}
 	resolvedPath = path
-	if absolute, err := filepath.Abs(path); err == nil && path != "" {
+	// A `builtin:<name>` path names no file (source-info.ts BUILTIN_PATH_PREFIX): a fused member selected by one keeps it as its resolved path.
+	if absolute, err := filepath.Abs(path); err == nil && path != "" && !strings.HasPrefix(path, "builtin:") {
 		resolvedPath = absolute
 	}
 	return path, resolvedPath

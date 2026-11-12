@@ -319,6 +319,8 @@ Costs:
 
 Fused behavior must match source subprocess behavior. Fusion is a delivery optimization, not a second extension API.
 
+A child session that an extension creates loads none of the Binary's fused members by default, as it loads no extension it was not given a path for. To give it one, the extension lists `builtin:<member>` in the child's `additionalExtensionPaths` (Go `AdditionalExtensionPaths`), the form Pi uses for a built-in extension. The member loads once through the same fused path, `resources.extensionNames` selects it by member name, and a child of that child gets it only if it lists the path again, so a member that creates children does not load itself in each of them. A Binary that fuses no such member rejects the path as an unknown built-in extension, as Pi does.
+
 ## Fused members with external Go modules
 
 A fused extension or frontend member may require Go modules beyond the PiG SDK. The build links them into the Binary through PiG's own module, without writing into the PiG source tree:

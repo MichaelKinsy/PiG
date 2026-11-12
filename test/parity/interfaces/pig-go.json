@@ -82463,6 +82463,17 @@
       "shapeHash": "sha256:7c6573495df4888fd0c1b3968bbaed608cd43dd3922d5d198f52218434c775ff"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#fusedMemberConfig",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "fusedMemberConfig",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(path string) (github.com/MichaelKinsy/PiG/coding/extension/host/subprocess.ExtConfig, bool)"
+      },
+      "shapeHash": "sha256:74d91725861bed60176ac30f7cf8768b9bda3cb073807a4445c9cbbd9f878d63"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#generatedCompactionData",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "generatedCompactionData",
