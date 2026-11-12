@@ -104,7 +104,7 @@ func TestRecordSendsOnlyChangesAndAlertsOnce(t *testing.T) {
 		return d.Previous
 	}
 	st := step()
-	if len(g.alerts) != 1 || g.alerts[0] != "@dev revoke it\n\nsecrets on `h1`: 1 finding(s): a:1 key" || st == nil || !slices.Equal(st.Alerted, []string{"secrets"}) || len(g.statuses) != 1 {
+	if len(g.alerts) != 1 || g.alerts[0] != "@dev revoke it\n\nsecrets on `h1`: 1 finding(s): a:1 key\n\n<!-- pig-preflight-alert secrets h1 -->" || st == nil || !slices.Equal(st.Alerted, []string{"secrets"}) || len(g.statuses) != 1 {
 		t.Fatalf("first run: alerts %q, state %+v, statuses %v", g.alerts, st, g.statuses)
 	}
 	if !strings.HasPrefix(g.comments[1], commentMarker) || !strings.Contains(g.comments[1], "❌ fail") {

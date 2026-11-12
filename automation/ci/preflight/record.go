@@ -107,7 +107,9 @@ func appendFile(path, text string) error {
 	return errors.Join(err, f.Close())
 }
 
-func alertsFor(cfg config, ev evaluation, prev *state) (due []check, alerted []string) {
+// alertsFor returns the alerts to post and the checks that count as alerted. An alert is due when its check fails, the
+// previous state does not list it, and no alert comment for the check and this head is on the PR.
+func alertsFor(cfg config, ev evaluation, prev *state, posted []string) (due []check, alerted []string) {
 	var before []string
 	if prev != nil {
 		before = prev.Alerted
@@ -117,7 +119,7 @@ func alertsFor(cfg config, ev evaluation, prev *state) (due []check, alerted []s
 			continue
 		}
 		alerted = append(alerted, c.Name)
-		if !slices.Contains(before, c.Name) {
+		if !slices.Contains(before, c.Name) && !slices.Contains(posted, alertMark(c.Name, ev.Head)) {
 			due = append(due, c)
 		}
 	}
@@ -125,7 +127,7 @@ func alertsFor(cfg config, ev evaluation, prev *state) (due []check, alerted []s
 }
 
 func alertBody(c check, d *data, ev evaluation) string {
-	return fmt.Sprintf("@%s %s\n\n%s on `%s`: %s", d.Pull.User.Login, c.Alert, c.Name, short(ev.Head), ev.Checks[c.Name].Reason)
+	return fmt.Sprintf("@%s %s\n\n%s on `%s`: %s\n\n%s", d.Pull.User.Login, c.Alert, c.Name, short(ev.Head), ev.Checks[c.Name].Reason, alertMark(c.Name, ev.Head))
 }
 
 func record(ctx context.Context, cfg config, d *data, ev evaluation, o recordOptions, log io.Writer) error {
@@ -152,7 +154,7 @@ func newRecording(cfg config, d *data, ev evaluation, comment prComment) recordi
 	r := recording{d: d, ev: ev, report: markdown(cfg, d, ev), commentID: comment.ID}
 	r.status, r.description = statusFor(cfg, ev)
 	st := state{Version: ev.Version, Engine: ev.Engine, Head: ev.Head, Base: ev.Base, Checks: ev.Checks, Body: bodyHash(d.Pull.Body), Status: r.status + " " + r.description}
-	r.due, st.Alerted = alertsFor(cfg, ev, d.Previous)
+	r.due, st.Alerted = alertsFor(cfg, ev, d.Previous, comment.Alerts)
 	prev := d.Previous
 	r.setStatus = prev == nil || prev.Head != st.Head || prev.Status != st.Status
 	r.body, r.bodyErr = commentBody(cfg, d, ev, r.report, st)
