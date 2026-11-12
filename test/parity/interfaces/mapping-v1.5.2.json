@@ -104732,7 +104732,7 @@
       "evidence": [
         "test:chord/next/link/oracle_test.go#TestWireFormatsMatchPi",
         "test:chord/next/host/host_channel_test.go#TestACodecMismatchFailsTheFirstHelloAsAProtocolErrorNamingTheExpectedCodec",
-        "test:chord/next/host/host_link_deliveries_test.go#TestDeliveryAwaiterIsTakenOnceBeforeTheHostSendsOnTheLinkOrListensToIt"
+        "test:chord/next/host/host_example_67_test.go#TestExample67Events"
       ]
     },
     {
@@ -112050,8 +112050,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_14_test.go#TestExample14FlowControl",
-        "test:chord/next/host/host_telemetry_test.go#TestReHoldsCarryTheCarrierOnlyOnAReferencesFirstHoldAReHoldAfterAReconnectIsAFreshRootLinkedToIt",
-        "test:chord/next/link/channel_test.go#TestInOrderHandling"
+        "test:chord/next/host/host_example_67_test.go#TestExample67Events",
+        "test:chord/next/host/host_telemetry_test.go#TestReHoldsCarryTheCarrierOnlyOnAReferencesFirstHoldAReHoldAfterAReconnectIsAFreshRootLinkedToIt"
       ]
     },
     {
@@ -116489,7 +116489,7 @@
       "evidence": [
         "test:chord/next/host/host_routines_test.go#TestOnTypesTheirHandlerByTheSourcesKindOpsAndRetiredForAJSONWatchableTheValueAloneForANativeOne",
         "test:chord/next/host/host_example_18_test.go#TestExample18Routines",
-        "test:chord/next/host/host_host_test.go#TestHostStartupAcrossHostsWakesAParkedChainOverThreeHostsInOrder"
+        "test:chord/next/host/host_example_67_test.go#TestExample67Events"
       ]
     },
     {
@@ -116559,8 +116559,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_18_test.go#TestExample18Routines",
-        "test:chord/next/host/host_host_test.go#TestHostStartupAcrossHostsWakesAParkedChainOverThreeHostsInOrder",
-        "test:chord/next/host/host_object_reload_test.go#TestReloadARestartStopsItsRoutinesAtOnceTheirCallsDrainBeforeTheNewOnesStart"
+        "test:chord/next/host/host_example_67_test.go#TestExample67Events",
+        "test:chord/next/host/host_host_test.go#TestHostStartupAcrossHostsWakesAParkedChainOverThreeHostsInOrder"
       ]
     },
     {
@@ -116581,8 +116581,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_18_test.go#TestExample18Routines",
-        "test:chord/next/host/host_host_test.go#TestHostStartupAcrossHostsWakesAParkedChainOverThreeHostsInOrder",
-        "test:chord/next/host/host_object_reload_test.go#TestReloadARestartStopsItsRoutinesAtOnceTheirCallsDrainBeforeTheNewOnesStart"
+        "test:chord/next/host/host_example_67_test.go#TestExample67Events",
+        "test:chord/next/host/host_host_test.go#TestHostStartupAcrossHostsWakesAParkedChainOverThreeHostsInOrder"
       ]
     },
     {
@@ -117112,8 +117112,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_18_test.go#TestExample18Routines",
-        "test:chord/next/host/host_host_test.go#TestHostStartupAcrossHostsWakesAParkedChainOverThreeHostsInOrder",
-        "test:chord/next/host/host_object_reload_test.go#TestReloadARestartStopsItsRoutinesAtOnceTheirCallsDrainBeforeTheNewOnesStart"
+        "test:chord/next/host/host_example_67_test.go#TestExample67Events",
+        "test:chord/next/host/host_host_test.go#TestHostStartupAcrossHostsWakesAParkedChainOverThreeHostsInOrder"
       ]
     },
     {
@@ -117134,8 +117134,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_18_test.go#TestExample18Routines",
-        "test:chord/next/host/host_host_test.go#TestHostStartupAcrossHostsWakesAParkedChainOverThreeHostsInOrder",
-        "test:chord/next/host/host_object_reload_test.go#TestReloadARestartStopsItsRoutinesAtOnceTheirCallsDrainBeforeTheNewOnesStart"
+        "test:chord/next/host/host_example_67_test.go#TestExample67Events",
+        "test:chord/next/host/host_host_test.go#TestHostStartupAcrossHostsWakesAParkedChainOverThreeHostsInOrder"
       ]
     },
     {
@@ -119412,8 +119412,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_18_test.go#TestExample18Routines",
-        "test:chord/next/host/host_host_test.go#TestHostStartupAcrossHostsWakesAParkedChainOverThreeHostsInOrder",
-        "test:chord/next/host/host_object_reload_test.go#TestReloadARestartStopsItsRoutinesAtOnceTheirCallsDrainBeforeTheNewOnesStart"
+        "test:chord/next/host/host_example_67_test.go#TestExample67Events",
+        "test:chord/next/host/host_host_test.go#TestHostStartupAcrossHostsWakesAParkedChainOverThreeHostsInOrder"
       ]
     },
     {
@@ -119434,8 +119434,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_18_test.go#TestExample18Routines",
-        "test:chord/next/host/host_host_test.go#TestHostStartupAcrossHostsWakesAParkedChainOverThreeHostsInOrder",
-        "test:chord/next/host/host_object_reload_test.go#TestReloadARestartStopsItsRoutinesAtOnceTheirCallsDrainBeforeTheNewOnesStart"
+        "test:chord/next/host/host_example_67_test.go#TestExample67Events",
+        "test:chord/next/host/host_host_test.go#TestHostStartupAcrossHostsWakesAParkedChainOverThreeHostsInOrder"
       ]
     },
     {

@@ -1001,6 +1001,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-7c59949](#bf-7c59949) | fix(codingagent): session selector keeps Pi's out-of-range selected index | PiG's own defect | All platforms | Unreleased |
 | [BF-7c848e3](#bf-7c848e3) | A Zhipu/Z.ai usage limit (HTTP 429 with error code `1308`, which resets after hours) is no longer retried, in… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-7c936f9](#bf-7c936f9) | The Lisp SDK reads a Windows path as one: `with-file-mutation-queue` no longer sends the host the working… | PiG's own defect | Windows | 0.7.0 |
+| [BF-7c9ce6f](#bf-7c9ce6f) | Chord: a contract with an event member that crosses between a Go host and a Node host as data is rebuilt with… | PiG's own defect | All platforms | Unreleased |
 | [BF-7cca5ee](#bf-7cca5ee) | A Node extension can default-import TypeBox (`import Type from "typebox"`, and likewise `typebox/value`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7d0621f](#bf-7d0621f) | fix(extension): keep Pi's three-parameter EmitBeforeAgentStart (prompt, images, options); a custom run's… | PiG's own defect | All platforms | Unreleased |
 | [BF-7d798ce](#bf-7d798ce) | fix(testenv): the shared Cargo target is keyed by the absolute path of the SDK as well as its lock | PiG's own defect | All platforms | Unreleased |
@@ -15626,6 +15627,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `7c936f9107` (2026-11-04)
 - **Tests:** None recorded.
 - **Release note:** The Lisp SDK reads a Windows path as one: `with-file-mutation-queue` no longer sends the host the working directory followed by a drive-lettered path, which shared no queue with the host or another SDK, and `agent-session-runtime-import-from-jsonl` finds a session file given by its Windows path instead of looking for `/D:\...\D:\...`.
+
+### BF-7c9ce6f
+
+**Chord: a contract with an event member that crosses between a Go host and a Node host as data is rebuilt with…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Chord: a contract with an event member that crosses between a Go host and a Node host as data is rebuilt with its event member; it was rebuilt as a method and refused with a fingerprint mismatch.
+- **Root cause:** node/contracts.mjs rebuilt every member that is neither state nor keyed as a method, so a contract with an event member that crossed as data was described with another fingerprint and refused with a fingerprint mismatch. It now rebuilds `{ event }` with Pi's `event(schema)` (a remote variant's `events`), and the Node host describes the type with the Go contract's fingerprint.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6c41c55932` (2026-11-12), `7c9ce6f31f` (2026-11-12), `d197f36cf3` (2026-11-12)
+- **Tests:** `chord/next/host/bench_events_test.go::TestBenchEventsMessageBytesAndEncodesPerEmit`, `chord/next/host/host_example_67_test.go::TestExample67Events`, `chord/next/host/remote_consumer_events_test.go::TestConsumerEvents`, `chord/next/host/remote_events_order_window_test.go::TestAnEventAckForMessagesNeverSentOrCountedTwiceIsIgnoredAndOpensNoSlot`, `chord/next/host/remote_events_order_window_test.go::TestEventsKeepTheirOrderAgainstACallsResultOnOneLink`, `chord/next/host/remote_events_order_window_test.go::TestTheDefaultCallWindowRuns10000ConcurrentCallsAndClosesTheLinkAtThe10001st`, `chord/next/host/remote_events_order_window_test.go::TestTheDefaultEventWindowSendsThe32ndUnacknowledgedMessageAndDropsThe33rd`, `chord/nextnode/app/app_web_browser_test.go::TestReactBindingsCallTheLatestListenerOfUseEventsFollowItsMemberAndStopAtUnmount` and 7 more in docs/bug-ledger.json
+- **Release note:** Chord: a contract with an event member that crosses between a Go host and a Node host as data is rebuilt with its event member; it was rebuilt as a method and refused with a fingerprint mismatch. Until events are delivered across the plugins bridge, `NodeHost.Get`, `NodeHost.Hold` and a bridged Go core facet fail for a type with an event member with an error that says events do not cross the plugins bridge.
 
 ### BF-7cca5ee
 
