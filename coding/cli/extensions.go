@@ -82,6 +82,14 @@ func processAppMode(flags Args) appMode {
 		term.IsTerminal(int(os.Stdin.Fd())), term.IsTerminal(int(os.Stdout.Fd())))
 }
 
+// applyScreenWriterMode leaves print, JSON and RPC mode without a screen writer. Interactive mode applies the terminal.screenWriter setting itself.
+func applyScreenWriterMode(mode appMode) {
+	if mode != appModeInteractive {
+		// pig divergence (D624): only interactive mode shows a screen, so in the other modes no terminal has a screen writer, whatever PIG_TUI_SCREEN_WRITER says.
+		tui.NoScreenWriter()
+	}
+}
+
 // extensionMode maps the app mode to the extension run mode exposed as
 // ctx.mode, with "interactive" rendered as ModeTUI.
 func (m appMode) extensionMode() extension.ExtensionMode {

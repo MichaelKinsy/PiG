@@ -1414,6 +1414,8 @@ func NewInteractiveMode(runtimeHost InteractiveRuntime, options InteractiveModeO
 	// Mirrors the upstream InteractiveMode constructor's
 	// setCapabilityOverrides(settingsManager.getTerminalCapabilityOverrides()).
 	tui.SetCapabilityOverrides(opts.Settings.GetTerminalCapabilityOverrides())
+	// pig divergence (D624): terminal.screenWriter is applied here, once, before a renderer exists and so before the alternate screen is entered; a settings change or a reload acts at the next start. The merged settings carry the global file's value, because a project file cannot set the key.
+	tui.SetScreenWriter(opts.Settings.GetTerminalScreenWriter() == TerminalScreenWriterWriter)
 	ensurePngTranscoder(nil)
 	// Pi's constructor uses options.tuiMode ?? settingsManager.getTuiMode().
 	if opts.TuiMode == "" {

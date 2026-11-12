@@ -68,6 +68,8 @@ const altScreenOracleStartMarker = "<terminal.start>\x1b[?25l"
 // components returned at that step's size. Scrolling the rows that moved (D205) writes other bytes than Pi, so it is off here.
 func TestAltScreenFramesMatchPiOracle(t *testing.T) {
 	t.Setenv("PIG_TUI_SCROLL_ROWS", "0")
+	// Pi's bytes are compared, so this is byte mode: the screen writer (D624) sends other bytes for the same screen. It sits under ProcessTerminal.write, which these renderers, writing to their own buffer, do not pass; the variable holds for one that does.
+	t.Setenv("PIG_TUI_SCREEN_WRITER", "pi")
 	checkAltScreenOracle(t, false)
 }
 
@@ -81,6 +83,8 @@ func TestAltScreenScrolledFramesShowPisScreens(t *testing.T) {
 // step of every scenario of the pinned Pi's fixture writes exactly the bytes Pi's step wrote, as escaped_output_equal compares them.
 // PIG_TUI_SCROLL_ROWS=0 in a terminal that would scroll does the same.
 func TestAltScreenScrollFallsBackToPisBytes(t *testing.T) {
+	// Byte mode, as in TestAltScreenFramesMatchPiOracle: Pi's bytes are compared.
+	t.Setenv("PIG_TUI_SCREEN_WRITER", "pi")
 	for _, tc := range []struct {
 		name string
 		env  map[string]string

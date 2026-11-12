@@ -744,6 +744,52 @@ func TestStopEndsTheSettleTimer(t *testing.T) {
 	}
 }
 
+// Drop ends the writer: every later write comes back as it was given, a frame that changes nothing included; Active is false on
+// the alternate screen too; no row waits for a settle write; and nothing more is recorded.
+func TestDropSendsEveryWriteAsItCame(t *testing.T) {
+	records := 0
+	locks := 0
+	w := New(Options{
+		Size:   func() (int, int) { return 20, 5 },
+		Settle: -1,
+		Lock:   func() { locks++ },
+		Unlock: func() { locks-- },
+		Record: func(byte, string, string) { records++ },
+	})
+	for _, data := range gridterm.SplitWrites(started) {
+		w.Translate(data)
+	}
+	w.Translate(frame(line(2, "hello world")))
+	if got := w.Translate(frame(line(2, "hello world!"))); got == frame(line(2, "hello world!")) {
+		t.Fatalf("before Drop the writer sent the frame as it came: the test needs a partial write")
+	}
+	if !w.Active() {
+		t.Fatalf("not active on the alternate screen before Drop")
+	}
+	w.Drop()
+	if locks != 0 {
+		t.Fatalf("Drop left the terminal's lock held %d times", locks)
+	}
+	if w.Active() {
+		t.Errorf("active after Drop")
+	}
+	if got := w.Settled(); got != "" {
+		t.Errorf("a settle write after Drop: %q", got)
+	}
+	before := records
+	for _, data := range []string{frame(line(2, "hello world!")), frame(line(2, "hello world!")), "\x1b[?1049l", "\x1b[?1049h", frame(line(1, "again"))} {
+		if got := w.Translate(data); got != data {
+			t.Errorf("after Drop %q was sent as %q", data, got)
+		}
+		if w.Active() {
+			t.Errorf("active after Drop and %q", data)
+		}
+	}
+	if records != before {
+		t.Errorf("%d writes recorded after Drop", records-before)
+	}
+}
+
 // The records of a log read back as they were appended.
 func TestRecords(t *testing.T) {
 	var log []byte

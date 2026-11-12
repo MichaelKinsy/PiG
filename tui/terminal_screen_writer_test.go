@@ -66,7 +66,7 @@ type swSize struct{ at, cols, rows int }
 // after each read when slow is set.
 func newSWScreen(t *testing.T, writer bool, cols, rows int, chunk int, pause time.Duration) *swScreen {
 	t.Helper()
-	t.Setenv(screenWriterEnv, map[bool]string{true: "1"}[writer])
+	t.Setenv(screenWriterEnv, map[bool]string{true: "1", false: "pi"}[writer])
 	t.Setenv(screenWriterLogEnv, "")
 	master, slave := openTestPTY(t)
 	if err := unix.IoctlSetWinsize(int(master.Fd()), unix.TIOCSWINSZ, &unix.Winsize{Row: uint16(rows), Col: uint16(cols)}); err != nil {
@@ -258,26 +258,35 @@ func (s *swScreen) play(steps []swStep) {
 	}
 }
 
-// The switch is the exact value 1; every other value, and the variable unset, leaves the terminal sending the renderers' bytes.
+// A set PIG_TUI_SCREEN_WRITER decides: pi and 0 are byte mode, in which the terminal is sent exactly what is written; every other
+// value is the writer, whatever the setting says. Unset or empty, the setting decides, and the writer, its default, while none was applied.
 func TestScreenWriterSwitch(t *testing.T) {
-	for value, want := range map[string]bool{"": false, "1": true, "0": false, "true": false, "yes": false, "pi": false, " 1": false} {
-		t.Run("value="+value, func(t *testing.T) {
-			t.Setenv(screenWriterEnv, value)
+	for _, c := range []struct {
+		value  string
+		choice int32
+		want   bool
+	}{
+		{"", screenWriterUnset, true}, {"", screenWriterOn, true}, {"", screenWriterOff, false},
+		{"pi", screenWriterUnset, false}, {"pi", screenWriterOn, false}, {"0", screenWriterOn, false}, {"0", screenWriterOff, false},
+		{"1", screenWriterUnset, true}, {"1", screenWriterOff, true}, {"writer", screenWriterOff, true},
+		{"true", screenWriterOff, true}, {"yes", screenWriterOff, true}, {" 1", screenWriterOff, true}, {"PI", screenWriterOff, true}, {"off", screenWriterOff, true},
+		{"1", screenWriterNone, false}, {"", screenWriterNone, false},
+	} {
+		t.Run(fmt.Sprintf("value=%s/choice=%d", c.value, c.choice), func(t *testing.T) {
+			t.Setenv(screenWriterEnv, c.value)
+			setScreenWriterChoice(t, c.choice)
 			var out bytes.Buffer
 			terminal := NewProcessTerminalWithOutput(nil, nil, &out)
-			if (terminal.screen != nil) != want {
-				t.Fatalf("screen writer present = %v, want %v", terminal.screen != nil, want)
-			}
-			if want {
-				return
+			if (terminal.screen != nil) != c.want {
+				t.Fatalf("screen writer present = %v, want %v", terminal.screen != nil, c.want)
 			}
 			var wrote strings.Builder
 			for _, data := range append(swStarted(), swFrame(swLine(1, "one")), swFrame(swLine(1, "one")), "\x1b[?1049l") {
 				terminal.Write(data)
 				wrote.WriteString(data)
 			}
-			if out.String() != wrote.String() {
-				t.Errorf("with the writer off the terminal was sent %q, want exactly %q", out.String(), wrote.String())
+			if same := out.String() == wrote.String(); same == c.want {
+				t.Errorf("the terminal was sent exactly what was written = %v, want %v (%q)", same, !c.want, out.String())
 			}
 		})
 	}
@@ -285,7 +294,7 @@ func TestScreenWriterSwitch(t *testing.T) {
 
 // ScreenWriterActive follows the alternate screen on a terminal that has a screen writer and is false on one without.
 func TestScreenWriterActive(t *testing.T) {
-	for value, has := range map[string]bool{"1": true, "": false} {
+	for value, has := range map[string]bool{"1": true, "pi": false} {
 		t.Run("value="+value, func(t *testing.T) {
 			t.Setenv(screenWriterEnv, value)
 			var out bytes.Buffer

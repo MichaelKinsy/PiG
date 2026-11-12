@@ -23,7 +23,7 @@
 //
 // Before the alternate screen is entered and after it is left every byte is sent as it came.
 //
-// pig additive (D624): tui.ProcessTerminal puts a Writer under its write only when PIG_TUI_SCREEN_WRITER=1 (tui/terminal_screen_writer.go).
+// pig divergence (D624): tui.ProcessTerminal puts a Writer under its write unless PIG_TUI_SCREEN_WRITER or the terminal.screenWriter setting selects Pi's bytes (tui/terminal_screen_writer.go).
 package screenwriter
 
 import (
@@ -104,6 +104,7 @@ type Writer struct {
 
 	active     atomic.Bool // the alternate screen is shown
 	past       atomic.Bool // a write that may have changed the screen reached the terminal past the writer
+	dropped    atomic.Bool // Drop was called: every write is sent as it came
 	cols, high int
 	rows       []row
 	scratch    row
@@ -146,7 +147,7 @@ func New(options Options) *Writer {
 // Stats returns the counts so far.
 func (w *Writer) Stats() Stats { return w.stats }
 
-// Active reports whether the writer translates frames now: the alternate screen is shown. It is one atomic load and may be called
+// Active reports whether the writer translates frames now: the alternate screen is shown and the writer was not dropped. It is one atomic load and may be called
 // without the terminal's output lock.
 func (w *Writer) Active() bool { return w.active.Load() }
 
@@ -158,6 +159,9 @@ const (
 // Translate is what the terminal is sent for data, a write of a renderer or of anything else that writes through the terminal: data
 // itself, the bytes that change the screen as data does, or nothing. The result is valid until the next call.
 func (w *Writer) Translate(data string) string {
+	if w.dropped.Load() {
+		return data
+	}
 	if !w.active.Load() || len(data) < len(syncBegin)+len(syncEnd) || !strings.HasPrefix(data, syncBegin) || !strings.HasSuffix(data, syncEnd) {
 		w.other(data)
 		if w.record != nil {
@@ -615,11 +619,29 @@ func (w *Writer) Stop() {
 		w.lock()
 		defer w.unlock()
 	}
+	w.stopTimer()
+}
+
+// stopTimer cancels the settle timer for good. The terminal's output lock is held.
+func (w *Writer) stopTimer() {
 	w.stopped = true
 	w.armed = false
 	if w.timer != nil {
 		w.timer.Stop()
 	}
+}
+
+// Drop ends the writer for good: when it returns every later write is sent as it came, Active is false, and no settle write comes
+// (one already under way has been written). The terminal then gets the renderers' bytes as a terminal without a writer does. Call
+// it without the terminal's output lock.
+func (w *Writer) Drop() {
+	if w.lock != nil {
+		w.lock()
+		defer w.unlock()
+	}
+	w.dropped.Store(true)
+	w.active.Store(false)
+	w.stopTimer()
 }
 
 // settleFire is the settle timer: it writes the settle write once no frame was written for the settle time.

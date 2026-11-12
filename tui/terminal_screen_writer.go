@@ -13,27 +13,92 @@ import (
 )
 
 // The screen writer (D624, internal/screenwriter) sits under ProcessTerminal.write: the renderers, the terminal's own control writes
-// and PI_TUI_WRITE_LOG are above it and see the bytes they always wrote. PIG_TUI_SCREEN_WRITER=1 turns it on; unset, or any other
-// value, the terminal is sent the renderers' bytes as they are. PIG_TUI_SCREEN_WRITER_LOG names a file that receives, with the writer
-// on, every write as it came and as it was sent on (screenwriter.NextRecord reads it): what the parity suite compares screen by screen.
+// and PI_TUI_WRITE_LOG are above it and see the bytes they always wrote. Without it the terminal is sent the renderers' bytes as they
+// are: byte mode, Pi's bytes. PIG_TUI_SCREEN_WRITER decides when it is set: `pi` or `0` is byte mode, any other value is the writer.
+// Unset or empty, the terminal.screenWriter setting decides once interactive mode has applied it (SetScreenWriter); until then a
+// terminal is built with the writer, the default, because a writer can be dropped from a terminal that exists and cannot be added
+// to one. PIG_TUI_SCREEN_WRITER_LOG names a file that receives, with the writer on, every write as it came
+// and as it was sent on (screenwriter.NextRecord reads it): what the parity suite compares screen by screen.
 const (
 	screenWriterEnv    = "PIG_TUI_SCREEN_WRITER"
 	screenWriterLogEnv = "PIG_TUI_SCREEN_WRITER_LOG"
 )
 
-// screenWriters are the screen writers of the terminals that have one, each with the file its terminal writes to, for the writes
-// that go to that file past the terminal.
-var screenWriters atomic.Pointer[[]screenWriterOutput]
+// What the process has been told about the screen writer. The environment outranks the setting; nothing outranks screenWriterNone.
+const (
+	screenWriterUnset int32 = iota // nothing applied yet: the writer, the setting's default
+	screenWriterOn                 // terminal.screenWriter is "writer"
+	screenWriterOff                // terminal.screenWriter is "pi"
+	screenWriterNone               // the process shows no screen (NoScreenWriter)
+)
+
+// screenWriterChoice is what the process has been told, and screenWriters are the screen writers of the terminals that write to a
+// file, each with that file, for the writes that go to the file past the terminal. screenWriterMu orders a choice with the
+// terminals built meanwhile; the list is read without it.
+var (
+	screenWriterMu     sync.Mutex
+	screenWriterChoice int32
+	screenWriters      atomic.Pointer[[]screenWriterOutput]
+)
 
 type screenWriterOutput struct {
 	file   *os.File
 	writer *screenwriter.Writer
 }
 
-// newTerminalScreenWriter is the screen writer under t's write, nil unless the environment asks for one.
+// screenWriterWanted reports whether a terminal gets a screen writer under choice in the environment getenv reads.
+func screenWriterWanted(getenv func(string) string, choice int32) bool {
+	if choice == screenWriterNone {
+		return false
+	}
+	// pig divergence (D624): fullscreen frames go through the screen writer, which sends only what changes the screen; Pi writes every row a frame holds. PIG_TUI_SCREEN_WRITER=pi and terminal.screenWriter "pi" select Pi's bytes.
+	switch getenv(screenWriterEnv) {
+	case "pi", "0":
+		return false
+	case "":
+		return choice != screenWriterOff
+	}
+	return true
+}
+
+// SetScreenWriter applies the terminal.screenWriter setting to the process: writer is whether it selects the screen writer. A
+// terminal built afterwards follows it. With writer false the terminals built so far that write to a file, the process's terminal
+// among them, lose their screen writer for good: they are sent the renderers' bytes from their next write on. PIG_TUI_SCREEN_WRITER,
+// when set, decides alone and the call changes nothing. The setting is read once, at the start of interactive mode, before the
+// alternate screen is entered, so no screen sees both kinds of frame.
+func SetScreenWriter(writer bool) {
+	choice := screenWriterOff
+	if writer {
+		choice = screenWriterOn
+	}
+	chooseScreenWriter(choice)
+}
+
+// NoScreenWriter is for a process that shows no screen (print, JSON and RPC mode): no terminal has a screen writer, whatever the
+// environment and the setting say.
+func NoScreenWriter() {
+	chooseScreenWriter(screenWriterNone)
+}
+
+func chooseScreenWriter(choice int32) {
+	screenWriterMu.Lock()
+	defer screenWriterMu.Unlock()
+	screenWriterChoice = choice
+	if screenWriterWanted(os.Getenv, choice) {
+		return
+	}
+	if writers := screenWriters.Swap(nil); writers != nil {
+		for _, entry := range *writers {
+			entry.writer.Drop()
+		}
+	}
+}
+
+// newTerminalScreenWriter is the screen writer under t's write, nil when the environment or the setting selects byte mode.
 func newTerminalScreenWriter(t *ProcessTerminal, getenv func(string) string) *screenwriter.Writer {
-	// pig additive (D624): with PIG_TUI_SCREEN_WRITER=1 the terminal is sent only what changes the screen; unset it is sent Pi's bytes.
-	if getenv(screenWriterEnv) != "1" {
+	screenWriterMu.Lock()
+	defer screenWriterMu.Unlock()
+	if !screenWriterWanted(getenv, screenWriterChoice) {
 		return nil
 	}
 	options := screenwriter.Options{
@@ -48,44 +113,49 @@ func newTerminalScreenWriter(t *ProcessTerminal, getenv func(string) string) *sc
 		},
 	}
 	if path := getenv(screenWriterLogEnv); path != "" {
-		if file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600); err == nil {
-			log := &screenWriterLog{file: file}
-			options.Record = log.append
-		}
+		log := &screenWriterLog{path: path}
+		options.Record = log.append
 	}
 	writer := screenwriter.New(options)
 	if file, ok := t.out.(*os.File); ok {
-		for {
-			old := screenWriters.Load()
-			var list []screenWriterOutput
-			if old != nil {
-				list = append(list, *old...)
-			}
-			list = append(list, screenWriterOutput{file, writer})
-			if screenWriters.CompareAndSwap(old, &list) {
-				break
-			}
+		var list []screenWriterOutput
+		if old := screenWriters.Load(); old != nil {
+			list = append(list, *old...)
 		}
+		list = append(list, screenWriterOutput{file, writer})
+		screenWriters.Store(&list)
 	}
 	return writer
 }
 
-// screenWriterLog appends the screen writer's records to a file, one write a record.
+// screenWriterLog appends the screen writer's records to a file, one write a record. The file is opened by the first record, so a
+// writer that reads no write leaves no file.
 type screenWriterLog struct {
-	mu   sync.Mutex
-	file *os.File
-	buf  []byte
+	mu     sync.Mutex
+	path   string
+	file   *os.File
+	failed bool
+	buf    []byte
 }
 
 func (l *screenWriterLog) append(kind byte, in, out string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
+	if l.file == nil && !l.failed {
+		file, err := os.OpenFile(l.path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
+		l.file, l.failed = file, err != nil
+	}
+	if l.file == nil {
+		return
+	}
 	l.buf = screenwriter.AppendRecord(l.buf[:0], kind, in, out)
 	_, _ = l.file.Write(l.buf)
 }
 
-// ScreenWriterActive reports whether the terminal's frames pass through the screen writer (D624) now: the terminal has one and the
-// alternate screen is shown. It is one atomic load and takes no lock, so a render loop may ask before every frame.
+// ScreenWriterActive reports whether the terminal's frames pass through the screen writer (D624) now: the terminal has one, it was
+// not dropped, and the alternate screen is shown. It takes no lock, so a render loop may ask before every frame: t.screen is set
+// once, by the constructor, before the terminal is shared, and dropping the writer changes the writer, not the field; what is read
+// of the writer is one atomic load.
 func (t *ProcessTerminal) ScreenWriterActive() bool {
 	return t.screen != nil && t.screen.Active()
 }
