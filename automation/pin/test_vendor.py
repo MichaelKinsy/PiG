@@ -5,11 +5,13 @@ import hashlib
 import io
 import json
 import shutil
+import subprocess
 import sys
 import tarfile
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import pinlib  # noqa: E402
@@ -161,6 +163,135 @@ class RebuildTests(Fixture):
         problems = self.rebuild(packs)
         self.assertEqual(len(problems), 1)
         self.assertIn("members package/package.json", problems[0])
+
+
+class InstalledTests(Fixture):
+    """vendor.check_installed: a consumer's node_modules is the pin's only as a real directory installed from the vendored packs. The carried
+    oracle run once linked durable/interop/node_modules to another Pi commit's tree, and the gates after it read that Pi."""
+
+    def install(self) -> Path:
+        modules = self.root / vendor.INTEROP / "node_modules"
+        packages = {}
+        for file, meta in self.manifest["packs"].items():
+            for member, (_mode, data) in vendor.members((self.root / PACKS / file).read_bytes()).items():
+                target = modules / meta["name"] / member[len("package/"):]
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(data)
+            packages["node_modules/" + meta["name"]] = {"version": meta["version"], "resolved": rel_spec(vendor.INTEROP, file), "integrity": meta["integrity"]}
+        self.hidden = modules / ".package-lock.json"
+        write(self.hidden, json.dumps({"packages": packages}))
+        return modules
+
+    def problems(self) -> str:
+        return "\n".join(vendor.check_installed(vendor.INTEROP, self.root))
+
+    def test_an_install_of_the_vendored_packs_is_green(self):
+        self.install()
+        self.assertEqual(self.problems(), "")
+
+    def test_a_link_to_another_tree_is_red_even_when_that_tree_is_an_install_of_the_packs(self):
+        modules = self.install()
+        elsewhere = self.root / "elsewhere"
+        modules.rename(elsewhere)
+        modules.symlink_to(elsewhere, target_is_directory=True)
+        self.assertIn("is a link to", self.problems())
+
+    def test_a_package_installed_from_other_bytes_is_red(self):
+        self.install()
+        lock = json.loads(self.hidden.read_text())
+        lock["packages"]["node_modules/" + vendor.DURABLE]["integrity"] = "sha512-of-another-commit"
+        write(self.hidden, json.dumps(lock))
+        self.assertIn("was installed from", self.problems())
+
+    def test_an_installed_file_that_differs_from_its_pack_is_red(self):
+        modules = self.install()
+        (modules / vendor.DURABLE / "package.json").write_text("{}")
+        (modules / vendor.DURABLE / "extra.js").write_text("")
+        self.assertIn("differs from", self.problems())
+        self.assertIn("extra.js, package.json", self.problems())
+
+    def test_a_missing_install_is_red(self):
+        self.assertIn("holds no npm install", self.problems())
+
+
+def listing(root: Path) -> list[tuple[str, str]]:
+    return sorted((p.relative_to(root).as_posix(), "link" if p.is_symlink() else "dir" if p.is_dir() else hashlib.sha256(p.read_bytes()).hexdigest()) for p in root.rglob("*"))
+
+
+class OverrideTreeTests(Fixture):
+    """vendor.override_tree: the tree of a run at another Pi commit is built in the build store, appears only when it is finished, and the
+    repository is never written, so no run can leave the repository's own Pi pointing at the other commit."""
+
+    def setUp(self):
+        super().setUp()
+        import oracle
+
+        self.store = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.store, ignore_errors=True)
+        self.source = self.store / COMMIT / "build-1" / "src"
+        (self.source / "packages" / "durable" / "src").mkdir(parents=True)
+        self.installs = 0
+        self.fail = False
+
+        def write_packs(pin, directory):
+            shutil.copytree(self.root / PACKS, directory)
+            return self.manifest, self.by_name
+
+        def run(command, **options):
+            self.installs += 1
+            if self.fail:
+                raise subprocess.CalledProcessError(1, command)
+            (Path(options["cwd"]) / "node_modules").mkdir()
+
+        for patch in (
+            mock.patch.object(oracle, "entry", lambda pin: self.store / pin.commit),
+            mock.patch.object(vendor, "source_of", lambda pin: self.source),
+            mock.patch.object(vendor, "write_packs", write_packs),
+            mock.patch.object(vendor, "rewrite_consumer", lambda *arguments: None),
+            mock.patch.object(vendor.subprocess, "run", run),
+        ):
+            patch.start()
+            self.addCleanup(patch.stop)
+
+    def trees(self) -> list[str]:
+        return sorted(p.name for p in (self.store / COMMIT).iterdir() if p.name.startswith("durable-"))
+
+    def test_the_tree_holds_the_source_packages_the_packs_and_the_install(self):
+        tree = vendor.override_tree(PIN, self.root)
+        self.assertEqual(tree.parent, self.store / COMMIT)
+        self.assertEqual((tree / "packages").resolve(), (self.source / "packages").resolve())
+        self.assertEqual(json.loads((tree / PACKS / vendor.MANIFEST).read_text())["commit"], COMMIT)
+        self.assertTrue((tree / vendor.INTEROP / "node_modules").is_dir())
+        self.assertTrue((tree / vendor.INTEROP / "package-lock.json").is_file())
+        self.assertEqual((tree / vendor.READY).read_text(), COMMIT + "\n")
+
+    def test_the_repository_is_not_written(self):
+        before = listing(self.root)
+        vendor.override_tree(PIN, self.root)
+        self.assertEqual(listing(self.root), before)
+
+    def test_a_finished_tree_is_built_once(self):
+        self.assertEqual(vendor.override_tree(PIN, self.root), vendor.override_tree(PIN, self.root))
+        self.assertEqual(self.installs, 1)
+
+    def test_a_build_that_stops_leaves_no_tree_and_the_repository_as_it_was(self):
+        before = listing(self.root)
+        self.fail = True
+        with self.assertRaises(subprocess.CalledProcessError):
+            vendor.override_tree(PIN, self.root)
+        self.assertEqual(self.trees(), [])
+        self.assertEqual(listing(self.root), before)
+        self.fail = False
+        self.assertTrue((vendor.override_tree(PIN, self.root) / vendor.READY).is_file())
+
+    def test_another_interop_lock_or_source_build_is_another_tree(self):
+        first = vendor.override_tree(PIN, self.root)
+        lock = self.root / vendor.INTEROP / "package-lock.json"
+        lock.write_text(lock.read_text() + "\n")
+        second = vendor.override_tree(PIN, self.root)
+        self.source = self.store / COMMIT / "build-2" / "src"
+        (self.source / "packages").mkdir(parents=True)
+        self.assertEqual(len({first, second, vendor.override_tree(PIN, self.root)}), 3)
 
 
 if __name__ == "__main__":

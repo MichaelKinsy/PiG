@@ -6,13 +6,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"os/exec"
-	"path/filepath"
 	"reflect"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/toolsearch"
-	"github.com/MichaelKinsy/PiG/internal/testenv"
+	"github.com/MichaelKinsy/PiG/internal/pioracle"
 )
 
 // TestToolDeclarationsMatchPi runs Pi's code mode tool, tool_search tool and model tools (built with pi-schema's builders
@@ -20,9 +19,8 @@ import (
 // text (so the member order is compared too, because the declaration is part of the provider request) and the structured
 // output schema a program that calls the tool receives, as a value (a Go map has no member order).
 func TestToolDeclarationsMatchPi(t *testing.T) {
-	root := testenv.ModuleRoot(t)
-	cmd := exec.CommandContext(t.Context(), "node", "--disable-warning=ExperimentalWarning", "testdata/tool_declarations_oracle.mjs", filepath.Join(root, ".upstream", "current", "packages"))
-	cmd.Env = append(cmd.Environ(), "PI_INTEROP_DIR="+filepath.Join(root, "durable", "interop")+"/")
+	cmd := exec.CommandContext(t.Context(), "node", "--disable-warning=ExperimentalWarning", "testdata/tool_declarations_oracle.mjs", pioracle.Packages(t))
+	cmd.Env = append(cmd.Environ(), "PI_INTEROP_DIR="+pioracle.Project(t))
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	output, err := cmd.Output()

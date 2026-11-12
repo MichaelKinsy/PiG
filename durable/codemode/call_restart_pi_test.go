@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
-	"path/filepath"
 	"reflect"
 	"slices"
 	"strconv"
@@ -24,7 +23,7 @@ import (
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/harness"
 	"github.com/MichaelKinsy/PiG/durable/storage"
-	"github.com/MichaelKinsy/PiG/internal/testenv"
+	"github.com/MichaelKinsy/PiG/internal/pioracle"
 )
 
 // A restart scenario is a script and the steps a host takes around it: start it, wait for what it reaches, close the
@@ -792,13 +791,12 @@ func (r *restartRun) step(step restartStep) {
 // piRestartOracleCmd is Pi's restart oracle over the scenarios, not yet run; stderr collects what it says.
 func piRestartOracleCmd(t *testing.T, scenarios []restartScenario) (cmd *exec.Cmd, stderr *bytes.Buffer) {
 	t.Helper()
-	root := testenv.ModuleRoot(t)
 	input, err := json.Marshal(scenarios)
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmd = exec.CommandContext(t.Context(), "node", "--disable-warning=ExperimentalWarning", "testdata/codemode_restart_oracle.mjs", filepath.Join(root, ".upstream", "current", "packages"))
-	cmd.Env = append(cmd.Environ(), "PI_INTEROP_DIR="+filepath.Join(root, "durable", "interop")+"/")
+	cmd = exec.CommandContext(t.Context(), "node", "--disable-warning=ExperimentalWarning", "testdata/codemode_restart_oracle.mjs", pioracle.Packages(t))
+	cmd.Env = append(cmd.Environ(), "PI_INTEROP_DIR="+pioracle.Project(t))
 	cmd.Stdin = bytes.NewReader(input)
 	stderr = new(bytes.Buffer)
 	cmd.Stderr = stderr

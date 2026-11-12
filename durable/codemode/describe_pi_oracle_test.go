@@ -16,7 +16,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
-	"github.com/MichaelKinsy/PiG/internal/testenv"
+	"github.com/MichaelKinsy/PiG/internal/pioracle"
 )
 
 // Pi's codemodeDescription, namespacesOf, sampleOf and codemodeSection (describe.ts, imported as-is under Node, with Pi's
@@ -201,13 +201,13 @@ func randomExtensions(rng *rand.Rand, tools []json.RawMessage) []describeExt {
 
 // namespaceOracleSkip skips a test that needs Pi's code mode namespaces declared by extensions (Pi 5e24c6b1f, after the committed
 // pin 1.5.2): the pin's mirror has describe.ts with prefix namespaces and cannot answer. `make test-carried-oracles` runs the test
-// with the effective pin overridden to that commit; a pin that reaches the commit runs it in every run, and this skip, the make
-// target's entry and CARRIED_ORACLE_* go with that pin bump (the skip is the one pioracle.Bin gives an oracle that is not built).
+// against the tree of that commit (pioracle.OverrideTreeEnv), where a tree without the work fails it (pioracle.SkipAtPin); a pin
+// that reaches the commit runs it in every run, and this skip, the make target's entry and CARRIED_ORACLE_* go with that pin bump.
 func namespaceOracleSkip(t testing.TB) {
 	t.Helper()
-	source, err := os.ReadFile(filepath.Join(testenv.ModuleRoot(t), ".upstream", "current", "packages", "durable", "src", "codemode", "describe.ts"))
+	source, err := os.ReadFile(filepath.Join(pioracle.Packages(t), "durable", "src", "codemode", "describe.ts"))
 	if err != nil || !strings.Contains(string(source), "export function namespacesOf(") {
-		t.Skip("the pin's Pi mirror has prefix namespaces (Pi 5e24c6b1f declares them in extensions, after the committed pin): run make test-carried-oracles")
+		pioracle.SkipAtPin(t, "the pin's Pi mirror has prefix namespaces (Pi 5e24c6b1f declares them in extensions, after the committed pin): run make test-carried-oracles")
 	}
 }
 
@@ -218,9 +218,8 @@ func askDescribePi(t *testing.T, ops []describeOp) []describeAnswer {
 	if err != nil {
 		t.Fatal(err)
 	}
-	root := testenv.ModuleRoot(t)
-	cmd := exec.CommandContext(t.Context(), "node", "--disable-warning=ExperimentalWarning", "testdata/describe_oracle.mjs", filepath.Join(root, ".upstream", "current", "packages"))
-	cmd.Env = append(cmd.Environ(), "PI_INTEROP_DIR="+filepath.Join(root, "durable", "interop")+"/")
+	cmd := exec.CommandContext(t.Context(), "node", "--disable-warning=ExperimentalWarning", "testdata/describe_oracle.mjs", pioracle.Packages(t))
+	cmd.Env = append(cmd.Environ(), "PI_INTEROP_DIR="+pioracle.Project(t))
 	cmd.Stdin = bytes.NewReader(input)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr

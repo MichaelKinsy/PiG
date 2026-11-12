@@ -11,6 +11,9 @@ overrides whose locks carry each pack's sha512.
                       and package-lock.json
   vendor.py check     offline gate: manifest and packs at the pin, no consumer reaches a Pi package through the registry
   vendor.py check --rebuild   also pack the pinned build again and require the vendored bytes (members and gzip) to equal it
+
+check_installed is the same gate on a consumer's node_modules, and override_tree builds, outside the repository, the packs and
+the install of another Pi commit for a run that compares with it (make test-carried-oracles).
 """
 from __future__ import annotations
 
@@ -199,6 +202,43 @@ def check(pin: Pin, root: Path = ROOT) -> list[str]:
     return problems
 
 
+def check_installed(consumer: str, root: Path = ROOT) -> list[str]:
+    """The problems of a consumer's node_modules as an install of the vendored packs (empty when it is one): a real directory,
+    not a link to another tree; every Pi package in it recorded by npm with its pack's version and sha512; and the files of
+    each equal to the pack's members."""
+    manifest = read_manifest(root)
+    packs = {meta["name"]: (file, meta) for file, meta in manifest["packs"].items()}
+    modules = root / consumer / "node_modules"
+    if modules.is_symlink():
+        return [f"{consumer}/node_modules is a link to {os.readlink(modules)}, not an install of the vendored packs"]
+    hidden = modules / ".package-lock.json"
+    if not hidden.is_file():
+        return [f"{consumer}/node_modules holds no npm install"]
+    problems = []
+    seen = set()
+    for key, entry in sorted(json.loads(hidden.read_text(encoding="utf-8")).get("packages", {}).items()):
+        name = key.rpartition("node_modules/")[2]
+        if not PI_PACKAGE.match(name):
+            continue
+        seen.add(name)
+        if name not in packs:
+            problems.append(f"{consumer}/{key} is a Pi package the vendored set does not hold")
+            continue
+        file, meta = packs[name]
+        if entry.get("integrity") != meta["integrity"] or entry.get("version") != meta["version"]:
+            problems.append(f"{consumer}/{key} was installed from {entry.get('resolved')!r} {entry.get('integrity')!r}, not from {PACKS / file} {meta['integrity']}")
+            continue
+        directory = root / consumer / key
+        shipped = {n[len("package/"):]: data for n, (_mode, data) in members((root / PACKS / file).read_bytes()).items()}
+        have = {p.relative_to(directory).as_posix(): p for p in directory.rglob("*") if p.is_file() and "node_modules" not in p.relative_to(directory).parts}
+        differing = [rel for rel in sorted(set(shipped) | set(have)) if rel not in have or rel not in shipped or have[rel].read_bytes() != shipped[rel]]
+        if differing:
+            problems.append(f"{consumer}/{key} differs from {PACKS / file}: {', '.join(differing[:10])}")
+    if DURABLE not in seen:
+        problems.append(f"{consumer}/node_modules holds no {DURABLE}")
+    return problems
+
+
 def source_of(pin: Pin) -> Path:
     import oracle
 
@@ -244,9 +284,9 @@ def write_json(path: Path, data: dict) -> None:
     path.write_text(json.dumps(data, indent="\t", ensure_ascii=False) + "\n", encoding="utf-8")
 
 
-def sync(pin: Pin, root: Path = ROOT) -> None:
+def write_packs(pin: Pin, directory: Path) -> tuple[dict, dict[str, str]]:
+    """Pack the pinned build into directory with its LICENSE and manifest.json; returns the manifest and the pack file of each package."""
     source = source_of(pin)
-    directory = root / PACKS
     directory.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory() as scratch:
         fresh = pack_pinned(pin, Path(scratch) / "packs")
@@ -269,10 +309,58 @@ def sync(pin: Pin, root: Path = ROOT) -> None:
         "packs": packs,
     }
     write_json(directory / MANIFEST, manifest)
-    by_name = {meta["name"]: file for file, meta in packs.items()}
+    return manifest, {meta["name"]: file for file, meta in packs.items()}
+
+
+def sync(pin: Pin, root: Path = ROOT) -> None:
+    manifest, by_name = write_packs(pin, root / PACKS)
     for consumer in CONSUMERS:
         rewrite_consumer(root, consumer, manifest, by_name)
+    packs = manifest["packs"]
     print(f"vendor: {len(packs)} packs of Pi {pin.version} in {PACKS} ({sum(m['bytes'] for m in packs.values())} bytes)")
+
+
+# --- the tree of a PI_UPSTREAM_REF override ---------------------------------------------------------------------
+
+INTEROP = "durable/interop"
+READY = ".ready"
+
+
+def override_tree(pin: Pin, root: Path = ROOT) -> Path:
+    """The tree the oracle tests of a run at another Pi commit read in place of the repository's own Pi (internal/pioracle,
+    PIG_PI_OVERRIDE_TREE): `packages`, a link to the packages of the commit's source build; third_party/pi-packs, the packs of
+    that build; and durable/interop, a copy of the repository's manifest and lock pointed at those packs, with its installed
+    node_modules. The tree is under the commit's entry of the build store, one per source build and interop lock. It is built
+    in a scratch directory and gets its name by one rename, so a build that stops part-way leaves no tree, and nothing in the
+    repository is written."""
+    import oracle
+
+    source = source_of(pin)
+    digest = hashlib.sha256(source.parent.name.encode())
+    for name in ("package.json", "package-lock.json"):
+        digest.update((root / INTEROP / name).read_bytes())
+    tree = oracle.entry(pin) / f"durable-{digest.hexdigest()[:12]}"
+    if (tree / READY).is_file():
+        return tree
+    work = Path(tempfile.mkdtemp(prefix=tree.name + ".", dir=tree.parent))
+    try:
+        manifest, by_name = write_packs(pin, work / PACKS)
+        (work / INTEROP).mkdir(parents=True)
+        for name in ("package.json", "package-lock.json"):
+            shutil.copyfile(root / INTEROP / name, work / INTEROP / name)
+        rewrite_consumer(work, INTEROP, manifest, by_name)
+        subprocess.run([shutil.which("npm") or "npm", "ci", *NPM_FLAGS], cwd=work / INTEROP, check=True, timeout=1800)
+        (work / "packages").symlink_to(source / "packages", target_is_directory=True)
+        (work / READY).write_text(pin.commit + "\n", encoding="utf-8")
+        work.chmod(0o755)
+        try:
+            work.rename(tree)
+        except OSError:
+            if not (tree / READY).is_file():  # only another builder of the same tree may hold the name
+                raise
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+    return tree
 
 
 def rewrite_consumer(root: Path, consumer: str, manifest: dict, by_name: dict[str, str]) -> None:
