@@ -28,8 +28,9 @@ func knownViewKind(kind string) bool {
 func (b *UIBridge) Views() *uiview.Registry { return b.views }
 
 // SetClientAbilities attaches a client that draws plugin mounts, or detaches it with nil, and replicates the abilities to
-// every extension.
-func (b *UIBridge) SetClientAbilities(a *uiview.ClientAbilities) { b.views.SetAbilities(a) }
+// every extension. It is the one-client form; a client that takes deliveries, or one of several, attaches through
+// Views().Attach. Abilities whose claims or drawing limits are outside the record are refused with code invalid.
+func (b *UIBridge) SetClientAbilities(a *uiview.ClientAbilities) *uiview.Error { return b.views.SetAbilities(a) }
 
 // ViewsSessionReplaced ends every mount, as the session they belong to was replaced.
 func (b *UIBridge) ViewsSessionReplaced() { b.views.Break("", uiview.ReasonSessionReplaced) }
@@ -46,6 +47,17 @@ func (b *UIBridge) InvokeViewIntent(ctx context.Context, extension string, ref u
 		return uiview.Result{Outcome: uiview.OutcomeRefused, Error: "extension is not connected"}
 	}
 	return b.views.Invoke(ctx, extension, ref, nodeKey, intent, arg, viewInvoker{conn})
+}
+
+// InvokeViewIntentFrom raises an intent for the client that holds attachment t. Once t ended the result is stale.
+func (b *UIBridge) InvokeViewIntentFrom(ctx context.Context, t *uiview.Attachment, extension string, ref uiview.Ref, nodeKey, intent string, arg json.RawMessage) uiview.Result {
+	b.mu.RLock()
+	conn := b.extConns[extension]
+	b.mu.RUnlock()
+	if conn == nil {
+		return uiview.Result{Outcome: uiview.OutcomeRefused, Error: "extension is not connected"}
+	}
+	return t.Invoke(ctx, extension, ref, nodeKey, intent, arg, viewInvoker{conn})
 }
 
 // viewInvoker carries intents over the owning extension's connection.
@@ -78,7 +90,7 @@ func viewStatus(st uiview.Status) (*CallResultPayload, error) {
 // isViewCall reports whether method is one of the ui.view.* mount calls.
 func isViewCall(method string) bool {
 	switch method {
-	case CallUIViewMount, CallUIViewUpdate, CallUIViewHide, CallUIViewShow, CallUIViewFinish, CallUIViewRemove, CallUIViewState:
+	case CallUIViewMount, CallUIViewUpdate, CallUIViewHide, CallUIViewShow, CallUIViewFinish, CallUIViewRemove, CallUIViewState, CallUIViewDiagnostics:
 		return true
 	}
 	return false
@@ -119,6 +131,30 @@ func (b *UIBridge) handleViewCall(extName string, call *CallPayload) (*CallResul
 			return viewError(err)
 		}
 		return viewStatus(st)
+	case CallUIViewFinish:
+		a, err := uiview.DecodeFinish(call.Args)
+		if err != nil {
+			return viewError(err)
+		}
+		st, err := b.views.Finish(extName, a)
+		if err != nil {
+			return viewError(err)
+		}
+		return viewStatus(st)
+	case CallUIViewDiagnostics:
+		a, err := uiview.DecodeState(call.Args)
+		if err != nil {
+			return viewError(err)
+		}
+		d, err := b.views.Diagnostics(extName, a)
+		if err != nil {
+			return viewError(err)
+		}
+		raw, jerr := json.Marshal(d)
+		if jerr != nil {
+			return nil, jerr
+		}
+		return &CallResultPayload{Result: raw}, nil
 	}
 	a, err := uiview.DecodeRef(call.Args)
 	if err != nil {

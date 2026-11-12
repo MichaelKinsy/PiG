@@ -1078,6 +1078,8 @@ const (
 	CallUIViewFinish = "ui.view.finish"
 	CallUIViewRemove = "ui.view.remove"
 	CallUIViewState  = "ui.view.state"
+	// CallUIViewDiagnostics returns the notices of a mount: what the host rejected or ended and what a client could not draw.
+	CallUIViewDiagnostics = "ui.view.diagnostics"
 	// RequestUIViewIntent (host→ext) raises one intent of a mount and expects {outcome: done|refused|failed, answer?, error?}.
 	// A cancellable intent that times out or is cancelled by its caller is cancelled through the request's ordinary cancel frame.
 	RequestUIViewIntent = "ui.view.intent"

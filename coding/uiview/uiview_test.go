@@ -331,7 +331,9 @@ func TestSubscribersSeeFullSnapshotsInOrder(t *testing.T) {
 	r := New(Options{})
 	r.SetAbilities(abilities())
 	var got []Snapshot
-	r.Subscribe(func(e Event) { got = append(got, e.Snapshot) })
+	if _, _, err := r.Attach(*abilities(), func(d Delivery) bool { got = append(got, d.Snapshot); return true }); err != nil {
+		t.Fatal(err)
+	}
 	st, _ := r.Mount("p", mountArgs(t, "k", "one"))
 	_, _ = r.Update("p", updateArgs(t, st.Mount, "two"))
 	_, _ = r.Transition("p", "finish", RefArgs{Mount: st.Mount})
