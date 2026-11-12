@@ -27,7 +27,7 @@
     },
     {
       "source": "test/parity/runner/driver_tmux.go",
-      "sha256": "cfe607f8e6c9e968129f3ff230445087fa76685ebfeb8097b017d1efce1649b2",
+      "sha256": "e1f687c9863ad927b4d05e73be417241d97a4a9e0d34eee9260a967a5c09e0a1",
       "reason": "Terminal state capture is not a byte-stream assertion. A scenario explicitly selects viewport or retained history and its crop. History capture uses session-local maximum retention without changing pane size or shared defaults; required anchors and source-derived assertions reject incomplete history. Readiness and new-output barriers are synchronization, not behavioral coverage. The final capture is taken only from a still screen (the plain captures around the escaped one are equal, within the last step budget), and a capture_start absent from a capture a comparator reads, still absent when that budget ends, fails the run instead of comparing the whole screen. A capture no comparator reads is kept whole, not cropped."
     },
     {
@@ -4637,8 +4637,8 @@
         {
           "kind": "terminal_crop",
           "configuration": {
-            "capture_start": "reply with exactly: FRAMETAILOK",
-            "capture_end": "FRAMETAILOK"
+            "capture_start": "queued-after-compaction-ok",
+            "capture_end": "queued-after-compaction-ok"
           },
           "reason": "Owned visible surface: No frame begins after the frame that carries the end of a reply, in the raw terminal stream.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
