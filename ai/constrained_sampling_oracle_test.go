@@ -12,8 +12,6 @@ import (
 	"reflect"
 	"strings"
 	"testing"
-
-	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // samplingStep is one call on a grammar input buffer: kind "append" adds Text as a delta, "close" closes with Text as the complete input, and "closeNone" closes with none.
@@ -178,16 +176,17 @@ func sameSampling(t *testing.T, label string, got json.RawMessage, gotUndef bool
 	return reflect.DeepEqual(a, b)
 }
 
-// Pi's constrained-sampling.ts runs unchanged in Node on the same tools: the strict conversion (value and rejection message), the strict/grammar resolution for each support and strictness combination, and the streamed
-// grammar-input deltas.
+// Pi's constrained-sampling.js runs unchanged in Node on the same tools: the strict conversion (value and rejection message), the strict/grammar resolution for each support and strictness combination, and the streamed
+// grammar-input deltas. The module is the installed oracle's compiled file, Pi v1.5.2 plus the post-release fixes the release line carries
+// (automation/gen/pi-post-release-backports.mjs): the source mirror stays the pinned release, whose makeJsonSchemaNodeStrict still accepts a node without a type (Pi 406e719a6bff, #12049).
 func TestConstrainedSamplingMatchesPi(t *testing.T) {
 	probes := samplingProbes()
 	payload, err := json.Marshal(probes)
 	if err != nil {
 		t.Fatal(err)
 	}
-	src := filepath.Join(testenv.ModuleRoot(t), ".upstream", "current", "packages", "ai", "src", "api", "constrained-sampling.ts")
-	cmd := exec.CommandContext(t.Context(), "node", "--disable-warning=ExperimentalWarning", "testdata/constrained_sampling.mjs", src)
+	src := filepath.Join(piCodingAgentPackage(t), "node_modules", "@earendil-works", "pi-ai", "dist", "api", "constrained-sampling.js")
+	cmd := exec.CommandContext(t.Context(), "node", "testdata/constrained_sampling.mjs", src)
 	cmd.Stdin = bytes.NewReader(payload)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr

@@ -1,5 +1,5 @@
-// Run Pi's constrained-sampling.ts (imported as-is, types stripped) over probes from stdin.
-// usage: node constrained_sampling.mjs <constrained-sampling.ts>
+// Run Pi's constrained-sampling module (the installed oracle's compiled constrained-sampling.js) over probes from stdin.
+// usage: node constrained_sampling.mjs <constrained-sampling.js>
 // {op: "strict"|"resolveStrict"|"grammar"|"input"|"delta", tool, supports, check, args, steps}. Results: {ok: value} or {err: message}; undefined is {ok: null, undef: true}.
 import { pathToFileURL } from "node:url";
 const sampling = await import(pathToFileURL(process.argv[2]).href);
