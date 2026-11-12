@@ -23138,6 +23138,32 @@
       "tests": []
     },
     {
+      "id": "BF-69427f2",
+      "title": "A tool that requires strict JSON-schema sampling and has a schema node without a type (such as `items: {}`…",
+      "symptom": "A tool that requires strict JSON-schema sampling and has a schema node without a type (such as `items: {}`, an unknown or any value, or a bare `const`) is now refused with a clear local error, and one that only prefers strict sampling is sent without strict mode, where before the provider rejected the request with an HTTP 400 error; a node with only an `enum` stays strict, as under Pi (upstream #12049).",
+      "rootCause": "OpenAI strict mode rejects a schema node without a type, such as items: {}, Type.Unknown(), Type.Any() or a bare const. Pi makes makeJsonSchemaNodeStrict throw for a node with no type, anyOf or enum, so a strict \"prefer\" tool is sent without strict mode and a \"require\" tool fails locally with a clear message. A node with only an enum stays strict.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A tool that requires strict JSON-schema sampling and has a schema node without a type (such as `items: {}`, an unknown or any value, or a bare `const`) is now refused with a clear local error, and one that only prefers strict sampling is sent without strict mode, where before the provider rejected the request with an HTTP 400 error; a node with only an `enum` stays strict, as under Pi (upstream #12049).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "69427f2277",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "ai/constrained_sampling_oracle_test.go::TestConstrainedSamplingMatchesPi",
+        "ai/constrained_sampling_upstream_test.go::TestConstrainedSamplingKeepsStrictForEnumOnlySchemasUpstream",
+        "ai/constrained_sampling_upstream_test.go::TestConstrainedSamplingUnsupportedSchemasUpstream",
+        "ai/strict_untyped_nodes_port_test.go::TestUntypedSchemaNodesFallBackFromStrictInTheRequestPort",
+        "coding/session_untyped_strict_tool_port_test.go::TestSessionSendsAStrictPreferToolWithAnUntypedNodeWithoutStrictPort"
+      ]
+    },
+    {
       "id": "BF-69899c5",
       "title": "A session entry whose write to the session file fails (a full disk, a busy or timed-out network drive) is no…",
       "symptom": "The next entry pointed to the lost one, and resuming the session dropped the history before the gap, including the first system message that declares the tools.",
@@ -34496,6 +34522,39 @@
         "coding/extension/host/runtimecell/build_failure_report_test.go::TestRustBuildFailureNamesAKilledBuildAndHowLongItRan",
         "coding/extension/host/runtimecell/build_failure_report_test.go::TestRustBuildFailureSummarizesRustcDiagnostic",
         "coding/extension/host/runtimecell/rust_packed_test.go::TestBuildRustPackedCellReportsHowAKilledCargoEnded"
+      ]
+    },
+    {
+      "id": "BF-9b5c69f",
+      "title": "A turn that ends with a provider error reading `Connection closed.`, such as a gateway cutting a stream with…",
+      "symptom": "A turn that ends with a provider error reading `Connection closed.`, such as a gateway cutting a stream with an `api_error` event, is now retried automatically like other dropped connections, instead of stopping with the error; the same applies to the agent proxy's `Connection closed by proxy server before the response completed` error, in the extension SDKs' `isRetryableAssistantError`, and for durable agents (upstream #12093).",
+      "rootCause": "Some gateways end a stream mid-response with {\"type\":\"error\",\"error\":{\"type\":\"api_error\",\"message\":\"Connection closed.\"}}. isRetryableAssistantError did not match that text, so the turn stopped with an error and no automatic retry, while \"Connection lost\" and \"socket connection was closed\" were retried.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A turn that ends with a provider error reading `Connection closed.`, such as a gateway cutting a stream with an `api_error` event, is now retried automatically like other dropped connections, instead of stopping with the error; the same applies to the agent proxy's `Connection closed by proxy server before the response completed` error, in the extension SDKs' `isRetryableAssistantError`, and for durable agents (upstream #12093).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "9b5c69fa11",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "ai/assistant_retry_classifier_oracle_test.go::TestIsRetryableAssistantErrorMatchesPiOracle",
+        "ai/assistant_retry_test.go::TestIsRetryableAssistantErrorClassification",
+        "ai/provider_closed_connection_test.go::TestProviderServerSocketCloseIsRetryable",
+        "ai/provider_closed_connection_test.go::TestProviderStreamErrorEventReadingConnectionClosedIsRetryable",
+        "ai/provider_closed_connection_test.go::TestRetryAssistantCallOverAGatewayClosedConnection",
+        "coding/session_connection_closed_retry_test.go::TestSessionAbortRetryDuringAClosedConnectionBackoff",
+        "coding/session_connection_closed_retry_test.go::TestSessionRetriesAGatewayClosedConnectionOnce",
+        "coding/session_connection_closed_retry_test.go::TestSessionRetriesAServerSocketClosedBeforeTheAnswer",
+        "coding/session_connection_closed_retry_test.go::TestSessionSurfacesAGatewayClosedConnectionAfterTheConfiguredRetries",
+        "durable/core/turn/classify_carried_test.go::TestConnectionClosedIsRetryable",
+        "durable/core/turn/classify_carried_test.go::TestStreamCutShortMidReplyIsRetryable",
+        "extensions/sdk/pi_ai_helpers_test.go::TestConnectionClosedIsRetryable"
       ]
     },
     {
@@ -55858,6 +55917,31 @@
         "chord/delta/own_key_order_test.go::TestDiffRevisionsVisitsArrayIndexKeysFirstInNumericOrder",
         "internal/chord/chordjson/own_key_order_test.go::TestCopyFollowsPisKeyOrderAndMessages",
         "internal/evals/report_oracle_test.go::TestEvalReportMatchesPiOnSeededDesigns"
+      ]
+    },
+    {
+      "id": "BF-f803eca",
+      "title": "The bash tool no longer returns no output, with a footer like `[Showing lines 3-2 of 2]`, when a command's…",
+      "symptom": "The bash tool no longer returns no output, with a footer like `[Showing lines 3-2 of 2]`, when a command's output ends in one line longer than about 100KB, such as a `grep` match in a minified file; it shows the end of that line, as Pi does (upstream #12092).",
+      "rootCause": "When a command printed a short line and then one line longer than about 100KB, the bash tool returned no output and a footer like \"[Showing lines 3-2 of 2 (50.0KB limit)]\". The accumulator's retained tail was only the end of that line, clipping dropped its partial first line, and nothing was left. snapshotText now returns the unclipped tail in that case, so the truncation shows the last 50.0KB of the line with the partial-line notice, as Pi does.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The bash tool no longer returns no output, with a footer like `[Showing lines 3-2 of 2]`, when a command's output ends in one line longer than about 100KB, such as a `grep` match in a minified file; it shows the end of that line, as Pi does (upstream #12092).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f803ecabe1",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/tools/details_parity_test.go::TestBuiltinToolDetailsParityProbe",
+        "internal/codingagent/tools/output_accumulator_long_last_line_port_test.go::TestBashToolShowsTheEndOfAnOverLongLastLineAfterAShortLine",
+        "internal/codingagent/tools/output_accumulator_long_last_line_port_test.go::TestOutputAccumulatorKeepsTheEndOfAnOverLongLastLine",
+        "internal/codingagent/tools/output_accumulator_oracle_test.go::TestOutputAccumulatorMatchesPi"
       ]
     },
     {
