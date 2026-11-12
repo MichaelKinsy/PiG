@@ -76,8 +76,8 @@ func WriteFailureArtifacts(t *testing.T, root string, o *ScenarioOutcome, pig, p
 		_ = write("pig.raw.stdout", o.Pig.Runs[pigRun].RawOutput)
 		_ = write("pig.stderr", o.Pig.Runs[pigRun].Stderr)
 		_ = write("pig.artifact", o.Pig.Runs[pigRun].Artifact)
-		_ = write("pig.stdout", o.Pig.Runs[pigRun].Output)
-		_ = write("pig.escaped", o.Pig.Runs[pigRun].Escaped)
+		_ = write(captureArtifactName("pig.stdout", o.Pig.Runs[pigRun].PlainUncropped), o.Pig.Runs[pigRun].Output)
+		_ = write(captureArtifactName("pig.escaped", o.Pig.Runs[pigRun].EscapedUncropped), o.Pig.Runs[pigRun].Escaped)
 	}
 	if piRun >= 0 {
 		if source := o.Pi.Runs[piRun].ChangelogSource; source != "" {
@@ -88,8 +88,8 @@ func WriteFailureArtifacts(t *testing.T, root string, o *ScenarioOutcome, pig, p
 		_ = write("pi.raw.stdout", o.Pi.Runs[piRun].RawOutput)
 		_ = write("pi.stderr", o.Pi.Runs[piRun].Stderr)
 		_ = write("pi.artifact", o.Pi.Runs[piRun].Artifact)
-		_ = write("pi.stdout", o.Pi.Runs[piRun].Output)
-		_ = write("pi.escaped", o.Pi.Runs[piRun].Escaped)
+		_ = write(captureArtifactName("pi.stdout", o.Pi.Runs[piRun].PlainUncropped), o.Pi.Runs[piRun].Output)
+		_ = write(captureArtifactName("pi.escaped", o.Pi.Runs[piRun].EscapedUncropped), o.Pi.Runs[piRun].Escaped)
 	}
 	if pigRun >= 0 && piRun >= 0 {
 		_ = write("diff.txt", LineDiff(o.Pig.Runs[pigRun].Output, o.Pi.Runs[piRun].Output))

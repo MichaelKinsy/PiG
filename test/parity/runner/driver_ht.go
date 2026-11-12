@@ -260,16 +260,20 @@ func (htDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scenar
 	escaped = stripHTCursorLine(escaped)
 
 	// Apply crop using CaptureStart/CaptureEnd patterns (same as tmux driver).
-	plain, escaped, err := cropCaptures(cfg, raw, escaped)
+	use := scenarioCaptureUse(sc)
+	plain, escaped, err := cropCaptures(cfg, use, raw, escaped)
 	if err != nil {
 		return Result{Err: fmt.Errorf("scenario %s (%s), final capture: %w", sc.Name, bin.Label, err)}
 	}
+	plainUncropped, escapedUncropped := uncroppedKinds(cfg, use)
 
 	return Result{
-		Output:    strings.TrimRight(plain, "\n"),
-		Escaped:   strings.TrimRight(escaped, "\n"),
-		RuntimeMs: elapsed,
-		ReadyOK:   true,
+		Output:           strings.TrimRight(plain, "\n"),
+		Escaped:          strings.TrimRight(escaped, "\n"),
+		PlainUncropped:   plainUncropped,
+		EscapedUncropped: escapedUncropped,
+		RuntimeMs:        elapsed,
+		ReadyOK:          true,
 	}
 }
 

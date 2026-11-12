@@ -289,12 +289,13 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 		}
 	}
 
-	pane, escaped, err := capturePanePair(ctx, session, cfg)
+	use := scenarioCaptureUse(sc)
+	pane, escaped, err := capturePanePair(ctx, session, cfg, use)
 	if errors.Is(err, errScreenNeverStable) {
 		return Result{
 			RuntimeMs: elapsed,
 			ReadyOK:   readyOK,
-			Err:       fmt.Errorf("scenario %s (%s), %s: %w", sc.Name, bin.Label, finalCaptureLabel(cfg), err),
+			Err:       finalCaptureError(sc.Name, bin.Label, cfg, err),
 		}
 	}
 	if err != nil {
@@ -304,7 +305,8 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 			Err:       fmt.Errorf("capture-pane: %w (%s)", err, tmuxServerReport(ctx, session)),
 		}
 	}
-	pane, escaped, cropErr := cropCaptures(cfg, pane, escaped)
+	pane, escaped, cropErr := cropCaptures(cfg, use, pane, escaped)
+	plainUncropped, escapedUncropped := uncroppedKinds(cfg, use)
 	if !readyOK && paneMatchesCaptureSurface(pane, cfg) {
 		readyOK = true
 	}
@@ -326,18 +328,20 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 	}
 
 	result = Result{
-		ChangelogSource: changelogSource,
-		Output:          pane,
-		Escaped:         escaped,
-		ExitCode:        exitCode,
-		RuntimeMs:       elapsed,
-		ReadyOK:         readyOK,
-		Err:             operationErr,
-		FrameWatch:      frames,
-		FinalFrame:      finalFrame,
+		ChangelogSource:  changelogSource,
+		Output:           pane,
+		Escaped:          escaped,
+		PlainUncropped:   plainUncropped && cropErr == nil,
+		EscapedUncropped: escapedUncropped && cropErr == nil,
+		ExitCode:         exitCode,
+		RuntimeMs:        elapsed,
+		ReadyOK:          readyOK,
+		Err:              operationErr,
+		FrameWatch:       frames,
+		FinalFrame:       finalFrame,
 	}
 	if result.Err == nil && cropErr != nil {
-		result.Err = fmt.Errorf("scenario %s (%s), %s: %w", sc.Name, bin.Label, finalCaptureLabel(cfg), cropErr)
+		result.Err = finalCaptureError(sc.Name, bin.Label, cfg, cropErr)
 	}
 	// Coverage-only: Go integration coverage flushes on a clean process exit, but
 	// an interactive pig sits at its prompt and is SIGKILLed at teardown, losing
@@ -838,15 +842,24 @@ func capturePaneArgs(session string, escaped bool, cfg TmuxDriverConfig) []strin
 	return append(args, "-t", session, "-p")
 }
 
-// capturePanePair takes the final capture of the pane: the plain and the escaped screen, uncropped, of one still frame (see captureStablePair).
-func capturePanePair(ctx context.Context, session string, cfg TmuxDriverConfig) (string, string, error) {
-	read := func(escaped bool) (string, error) {
+// tmuxPaneReader reads the pane of session as the final capture does: plain or with escape sequences.
+func tmuxPaneReader(ctx context.Context, session string, cfg TmuxDriverConfig) paneReader {
+	return func(escaped bool) (string, error) {
 		//nolint:gosec // G204 (class a): program is literal tmux; args are fixed capture-pane (plain or escaped) with a harness-generated session.
 		out, err := exec.CommandContext(ctx, "tmux", tmuxArgs(capturePaneArgs(session, escaped, cfg)...)...).Output()
 		return string(out), err
 	}
+}
+
+// capturePanePair takes the final capture of the pane: the plain and the escaped screen, uncropped, of one still frame (see captureStablePair).
+func capturePanePair(ctx context.Context, session string, cfg TmuxDriverConfig, use captureUse) (string, string, error) {
+	return capturePairFrom(ctx, tmuxPaneReader(ctx, session, cfg), cfg, use)
+}
+
+// capturePairFrom is capturePanePair for a given reader of the pane.
+func capturePairFrom(ctx context.Context, read paneReader, cfg TmuxDriverConfig, use captureUse) (string, string, error) {
 	cropsCleanly := func(plain, escaped string) bool {
-		_, _, err := cropCaptures(cfg, plain, escaped)
+		_, _, err := cropCaptures(cfg, use, plain, escaped)
 		return err == nil
 	}
 	return captureStablePair(ctx, read, cropsCleanly, finalCaptureBudget(cfg), tmuxQuiescencePoll)

@@ -98,24 +98,67 @@ func paneDiffSummary(before, after string) string {
 	return fmt.Sprintf("%d of %d lines differ; first at line %d: %q, then %q", differing, total, first, firstBefore, firstAfter)
 }
 
-// cropCaptures crops the plain and the escaped capture to the scenario's capture markers. A capture_start that is not in a capture fails, naming the capture and the marker; the captures come back uncropped so the run's output still shows what the screen held.
-func cropCaptures(cfg TmuxDriverConfig, plain, escaped string) (string, string, error) {
-	if cfg.CaptureStart == "" && cfg.CaptureEnd == "" && cfg.CaptureEndRegex == "" {
+// captureUse says which of a scenario's final captures a comparator reads.
+type captureUse struct{ plain, escaped bool }
+
+// scenarioCaptureUse derives from the scenario's assertions which capture kinds are compared. The escaped capture is read by escaped_output_equal only. The plain capture is read by the output comparators, the contains and regex assertions (a divergence block's contains lists included), the JSON comparator and the changelog header check.
+func scenarioCaptureUse(sc *Scenario) captureUse {
+	a := sc.Assert
+	plain := a.OutputEqual || a.OutputNormalizedEqual || a.OutputLayoutEqual || a.JSONOutputEqual || a.ChangelogHeadersComplete ||
+		len(a.BothContain)+len(a.BothNotContain)+len(a.PigContains)+len(a.PigNotContain)+len(a.PiContains)+len(a.PiNotContain)+len(a.BothMatchRegex) > 0 ||
+		len(sc.Diverge.PigContains)+len(sc.Diverge.PiContains) > 0
+	return captureUse{plain: plain, escaped: a.EscapedOutputEqual}
+}
+
+// cropsCaptures reports whether the scenario configures a crop at all.
+func (cfg TmuxDriverConfig) cropsCaptures() bool {
+	return cfg.CaptureStart != "" || cfg.CaptureEnd != "" || cfg.CaptureEndRegex != ""
+}
+
+// cropCaptures crops the captures a comparator reads to the scenario's capture markers. A capture_start that is not in such a capture fails, naming the capture and the marker; the captures come back uncropped so the run's artifacts still show what the screen held. A capture no comparator reads is not cropped: a missing marker there cannot change any verdict, and the capture is kept whole (the driver marks it uncropped in the artifact name) rather than cropped to something else.
+func cropCaptures(cfg TmuxDriverConfig, use captureUse, plain, escaped string) (string, string, error) {
+	if !cfg.cropsCaptures() {
 		return plain, escaped, nil
 	}
-	croppedPlain, plainErr := cropCapture(plain, cfg.CaptureStart, cfg.CaptureEnd, cfg.CaptureEndRegex, cfg.CaptureStartLast)
-	croppedEscaped, escapedErr := cropCapture(escaped, cfg.CaptureStart, cfg.CaptureEnd, cfg.CaptureEndRegex, cfg.CaptureStartLast)
 	var errs []error
-	if plainErr != nil {
-		errs = append(errs, fmt.Errorf("plain capture: %w", plainErr))
+	croppedPlain, croppedEscaped := plain, escaped
+	if use.plain {
+		var err error
+		if croppedPlain, err = cropCapture(plain, cfg.CaptureStart, cfg.CaptureEnd, cfg.CaptureEndRegex, cfg.CaptureStartLast); err != nil {
+			errs = append(errs, fmt.Errorf("plain capture: %w", err))
+		}
 	}
-	if escapedErr != nil {
-		errs = append(errs, fmt.Errorf("escaped capture: %w", escapedErr))
+	if use.escaped {
+		var err error
+		if croppedEscaped, err = cropCapture(escaped, cfg.CaptureStart, cfg.CaptureEnd, cfg.CaptureEndRegex, cfg.CaptureStartLast); err != nil {
+			errs = append(errs, fmt.Errorf("escaped capture: %w", err))
+		}
 	}
 	if len(errs) > 0 {
 		return plain, escaped, errors.Join(errs...)
 	}
 	return croppedPlain, croppedEscaped, nil
+}
+
+// uncroppedKinds says which captures cropCaptures left whole because no comparator reads them while the scenario crops the others.
+func uncroppedKinds(cfg TmuxDriverConfig, use captureUse) (plain, escaped bool) {
+	if !cfg.cropsCaptures() {
+		return false, false
+	}
+	return !use.plain, !use.escaped
+}
+
+// finalCaptureError names the scenario, the binary and the final capture in a failure of that capture.
+func finalCaptureError(scenario, binary string, cfg TmuxDriverConfig, err error) error {
+	return fmt.Errorf("scenario %s (%s), %s: %w", scenario, binary, finalCaptureLabel(cfg), err)
+}
+
+// captureArtifactName is the artifact file name of a capture: the plain name, or one that says the capture is not asserted and not cropped.
+func captureArtifactName(name string, uncropped bool) string {
+	if uncropped {
+		return name + ".not-asserted-uncropped"
+	}
+	return name
 }
 
 // finalCaptureLabel names the point of a scenario at which the final capture is taken, for error messages.
