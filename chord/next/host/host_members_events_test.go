@@ -71,8 +71,7 @@ func TestEventMembersFailTheObjectBrokenForAnImplementationThatIsNeitherItsOwnSo
 		if err == nil || err.Error() != want {
 			t.Fatalf("n=%d: err = %v, want %q", n, err, want)
 		}
-		var chordErr *data.ChordError
-		if !errors.As(err, &chordErr) {
+		if _, ok := errors.AsType[*data.ChordError](err); !ok {
 			t.Fatalf("n=%d: err is %T", n, err)
 		}
 	}
