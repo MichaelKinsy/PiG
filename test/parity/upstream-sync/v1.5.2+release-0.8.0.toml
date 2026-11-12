@@ -124,7 +124,7 @@ rationale = "Pi b3c2e4a6bef8 (#12001): the NVIDIA RTX guide drops --port 8080 fr
 path = "packages/coding-agent/docs/extensions.md"
 change = "modified"
 disposition = "n/a"
-rationale = "Pi b3c2e4a6bef8 (#12001): example snippets change localhost:8080 to localhost:9931; PiG ships no mirror of this Pi file and its extension docs carry other examples."
+rationale = "Pi b3c2e4a6bef8 (#12001): example snippets change localhost:8080 to localhost:9931; PiG ships no mirror of this Pi file and its extension docs carry other examples. Pi a83b75a07 (#12089) also adds a sentence to its pi.exec section (a command a signal ended reports 128 + the signal number as code); the vendored copy carries it through automation/gen/pi-post-release-backports.mjs and the pi.exec documentation of PiG names the same rule in coding/extension/exec.go."
 
 [[files]]
 path = "packages/coding-agent/test/config-schemas.test.ts"
@@ -193,3 +193,17 @@ change = "modified"
 disposition = "ported"
 evidence = ["test:ai/assistant_retry_test.go#TestIsRetryableAssistantErrorClassification", "test:ai/assistant_retry_classifier_oracle_test.go#TestIsRetryableAssistantErrorMatchesPiOracle"]
 rationale = "Pi 9b88b94e2 (#12064): the case \"matches gateway wording for a closed connection\" is a row of TestIsRetryableAssistantErrorClassification with the same payload and expectation, and the oracle test's corpus runs it through Pi's classifier."
+
+[[files]]
+path = "packages/coding-agent/src/core/exec.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/extension/exec_signal_code_unix_test.go#TestExecCommandReportsSIGTERMForATimeout", "test:coding/extension/exec_signal_code_unix_test.go#TestExecCommandReportsSIGTERMForAnAbort", "test:coding/extension/exec_signal_code_unix_test.go#TestExecCommandReportsTheSignalOfACommandKilledByAnother", "test:coding/extension/exec_oracle_test.go#TestExecCommandMatchesPi", "test:test/extension-conformance/exec_abort_test.go#TestExecAbortAcrossSDKs"]
+rationale = "a83b75a07 (#12089, fixes #12088): execCommand mapped a missing exit code to 0 (`code ?? 0`), so a command that a signal ended, by a timeout, an abort, a crash or an outside kill, read as success. It reports 128 + the signal number as a shell does (143 for SIGTERM, 137 for SIGKILL), and 1 with neither a code nor a signal; killed and truncated are unchanged. ExecCommand (coding/extension/exec.go, exitCode in exec_unix.go and exec_windows.go) does the same: on Windows a child that terminate ended reports 143, the signal libuv records for it. The parity oracle and the vendored pi-dist carry the change (automation/gen/pi-post-release-backports.mjs): TestExecCommandMatchesPi compares the exit code of a command that kills itself with SIGKILL, SIGTERM or SIGHUP, a timeout, a pre-aborted signal and a child that ignores SIGTERM with Pi's; TestExecAbortAcrossSDKs runs the extension abort through every SDK, isolated and packed, and expects code 143."
+
+[[files]]
+path = "packages/coding-agent/test/exec.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/extension/exec_signal_code_unix_test.go#TestExecCommandReportsSIGTERMForATimeout", "test:coding/extension/exec_signal_code_unix_test.go#TestExecCommandReportsSIGTERMForAnAbort", "test:coding/extension/exec_signal_code_unix_test.go#TestExecCommandReportsTheSignalOfACommandKilledByAnother"]
+rationale = "a83b75a07 (#12089): the three signal-terminated cases, a timeout (143), an abort (143) and a command that kills itself with SIGKILL (137, killed false), are ported with the same inputs and results; Pi skips them on Windows, where PiG's TestExecCommand_Timeout and TestExecCommandTimeoutSignalsOnlyTheLeader expect 143 for a child the kill ended."
