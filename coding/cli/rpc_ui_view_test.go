@@ -38,8 +38,7 @@ func newRPCLines(t *testing.T, in io.WriteCloser, out io.Reader, stderr *lockedB
 		defer close(c.lines)
 		r := bufio.NewReaderSize(out, 1<<16)
 		for {
-			c.gate.Lock()
-			c.gate.Unlock() //nolint:staticcheck // the gate only holds the reader back
+			c.passGate()
 			line, err := r.ReadString('\n')
 			if line != "" {
 				c.lines <- strings.TrimSuffix(line, "\n")
@@ -426,4 +425,10 @@ func TestRPCUIViewCarrierOverBothTransports(t *testing.T) {
 			c.end()
 		})
 	}
+}
+
+// passGate returns once the gate is free: the reader goroutine stops here while the test holds the gate.
+func (c *rpcLines) passGate() {
+	c.gate.Lock()
+	defer c.gate.Unlock()
 }
