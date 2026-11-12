@@ -226,8 +226,20 @@ func overlay(mainRoot, head, rel string) error {
 
 func git(ctx context.Context, args ...string) (string, error) {
 	//nolint:gosec // G204: the program is literal git; the arguments are this run's directories, the PR's repository and ref, and paths of the PR.
-	out, err := exec.CommandContext(ctx, "git", args...).CombinedOutput()
+	cmd := exec.CommandContext(ctx, "git", args...)
+	cmd.Env = childEnv()
+	out, err := cmd.CombinedOutput()
 	return string(out), err
+}
+
+// childEnv is the environment of every program the pre-flight starts: its own without the variables whose name ends in
+// _TOKEN. Those are the token the run itself holds (GITHUB_TOKEN, GH_TOKEN) and the job's other credentials
+// (ACTIONS_RUNTIME_TOKEN, ACTIONS_ID_TOKEN_REQUEST_TOKEN). The programs read what a PR wrote, and none of them needs one.
+func childEnv() []string {
+	return slices.DeleteFunc(os.Environ(), func(kv string) bool {
+		name, _, _ := strings.Cut(kv, "=")
+		return strings.HasSuffix(strings.ToUpper(name), "_TOKEN")
+	})
 }
 
 func mergeTree(ctx context.Context, ws workspace, d *data) (bool, error) {
@@ -263,14 +275,15 @@ func mergeTree(ctx context.Context, ws workspace, d *data) (bool, error) {
 	}
 }
 
-// The token goes in the environment, never on a command line, and only for the remote's host.
+// The token goes in the environment, never on a command line, and only as the header git sends to the remote's host.
 func gitAuth(ctx context.Context, remote, token string, args ...string) (string, error) {
 	//nolint:gosec // G204: as git above.
 	cmd := exec.CommandContext(ctx, "git", args...)
+	cmd.Env = childEnv()
 	if u, err := url.Parse(remote); err == nil && token != "" && (u.Scheme == "https" || u.Scheme == "http") && u.Host != "" {
 		basic := base64.StdEncoding.EncodeToString([]byte("x-access-token:" + token))
 		key := "http." + u.Scheme + "://" + u.Host + "/.extraHeader"
-		cmd.Env = append(os.Environ(), "GIT_CONFIG_COUNT=1", "GIT_CONFIG_KEY_0="+key, "GIT_CONFIG_VALUE_0=Authorization: Basic "+basic)
+		cmd.Env = append(cmd.Env, "GIT_CONFIG_COUNT=1", "GIT_CONFIG_KEY_0="+key, "GIT_CONFIG_VALUE_0=Authorization: Basic "+basic)
 	}
 	out, err := cmd.CombinedOutput()
 	return string(out), err
@@ -362,7 +375,7 @@ func scanCommand(ctx context.Context, s *scanSpec, files []prFile, ws workspace,
 	if s.Dir != "" {
 		cmd.Dir = expand(s.Dir)
 	}
-	cmd.Env = append(os.Environ(), "PATH="+ws.bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	cmd.Env = append(childEnv(), "PATH="+ws.bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 	for k, v := range s.Env {
 		cmd.Env = append(cmd.Env, k+"="+expand(v))
 	}

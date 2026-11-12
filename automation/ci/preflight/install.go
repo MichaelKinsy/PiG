@@ -109,7 +109,9 @@ func installPip(ctx context.Context, t tool, root, bin string) error {
 	}
 	for _, args := range steps {
 		//nolint:gosec // G204: python3 and the venv's pip with the hash-locked requirements file of main.
-		if out, err := exec.CommandContext(ctx, args[0], args[1:]...).CombinedOutput(); err != nil {
+		cmd := exec.CommandContext(ctx, args[0], args[1:]...)
+		cmd.Env = childEnv()
+		if out, err := cmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("%s: %w\n%s", args[0], err, out)
 		}
 	}
