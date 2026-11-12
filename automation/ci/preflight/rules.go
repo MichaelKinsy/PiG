@@ -541,9 +541,11 @@ func ruleNoAdvisories(d *data, p params, _ *ruleEnv) outcome {
 }
 
 var (
+	// REUSE-IgnoreStart
 	spdxLicenseRE = regexp.MustCompile(`SPDX-License-Identifier:\s*([^\n*]+?)\s*(?:\*/|-->|$)`)
 	licenseIDRE   = regexp.MustCompile(`[A-Za-z0-9][A-Za-z0-9.+-]*`)
 	copyrightRE   = regexp.MustCompile(`(?i)\b(?:SPDX-FileCopyrightText:|Copyright\s+(?:\(c\)|©|\d{4}))`)
+	// REUSE-IgnoreEnd
 	licenseTextRE = regexp.MustCompile(`(?i)Licensed under the Apache License|GNU (?:Lesser |Affero )?General Public License|Mozilla Public License|Eclipse Public License|Creative Commons|Redistribution and use in source and binary forms|Permission is hereby granted, free of charge`)
 )
 

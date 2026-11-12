@@ -59,14 +59,18 @@ func TestRuleLicenseNotices(t *testing.T) {
 	p := params{"notice-files": []any{"THIRD_PARTY_NOTICES.md"}, "code-files": `\.go$`}
 	d := &data{Files: []prFile{
 		{Filename: "a/new.go", Status: "added", Patch: "@@ -0,0 +1,2 @@\n+package a\n+// Copyright (c) 2020 Someone Else"},
+		// REUSE-IgnoreStart
 		{Filename: "b/ok.go", Status: "added", Patch: "@@ -0,0 +1,2 @@\n+// SPDX-License-Identifier: Apache-2.0 AND MIT\n+package b"},
+		// REUSE-IgnoreEnd
 		{Filename: "THIRD_PARTY_NOTICES.md", Status: "modified", Patch: "@@ -1 +1,2 @@\n x\n+GNU General Public License"},
 	}}
 	o := ruleLicenseNotices(d, p, env)
 	if o.result != resultPass || len(o.warnings) != 2 {
 		t.Fatalf("outcome %+v, want a pass with a copyright and a missing-header warning", o)
 	}
+	// REUSE-IgnoreStart
 	d.Files = append(d.Files, prFile{Filename: "c/gpl.go", Status: "added", Patch: "@@ -0,0 +1 @@\n+// SPDX-License-Identifier: GPL-3.0-only"})
+	// REUSE-IgnoreEnd
 	if o := ruleLicenseNotices(d, p, env); o.result != resultFail || !strings.Contains(o.reason, "c/gpl.go:1 declares GPL-3.0-only") {
 		t.Fatalf("outcome %+v, want a fail naming GPL-3.0-only", o)
 	}
@@ -513,7 +517,9 @@ func TestRuleLicenseNoticesEdges(t *testing.T) {
 	}
 	r, p := shippedRule(t, "licenses")
 	env := &ruleEnv{root: root}
+	// REUSE-IgnoreStart
 	expression := prFile{Filename: "x.go", Status: "added", Patch: "@@ -0,0 +1 @@\n+// SPDX-License-Identifier: MIT AND GPL-3.0-only"}
+	// REUSE-IgnoreEnd
 	if o := r.run(&data{Files: []prFile{expression}}, p, env); o.result != resultFail || !strings.Contains(o.reason, "GPL-3.0-only") {
 		t.Errorf("the license after AND was not checked: %+v", o)
 	}
