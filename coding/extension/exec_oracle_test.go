@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 
@@ -151,13 +152,13 @@ func pigExecOutcome(ctx context.Context, scenario execScenario) execOutcome {
 	return normalized
 }
 
-// truncatedCodeClass maps the three codes the race above gives a truncated command to one.
-func truncatedCodeClass(code int) int {
-	switch code {
-	case 141, 143:
-		return 1
-	}
-	return code
+// truncatedCodesAgree reports whether a truncated result of PiG and one of Pi carry codes that the two sides may reach for the same command. A
+// truncated result is never 0, and what it is depends on what reaches the child first: its exit after the pipes close (1), a SIGPIPE its own write
+// meets (141, Pi's `yes`) or the SIGTERM exec.ts sends (143, a83b75a07 reports a signal as 128 + its number). Pi closes the pipes and signals the
+// child a few microseconds later, so its runs show all three; PiG signals first (exec.go), so its runs show 1 and 143 and never 141. Measured on
+// the 87 maxBuffer rows of execScenarios, 400 runs each (200 on one worker, 200 on eight), truncated results: Pi 1 x9219, 141 x5355, 143 x4626; PiG 1 x8316, 143 x10884, 141 x0.
+func truncatedCodesAgree(pig, pi int) bool {
+	return slices.Contains([]int{1, 143}, pig) && slices.Contains([]int{1, 141, 143}, pi)
 }
 
 // execOracleScript is testdata/exec.mjs, which a test that changes its working
@@ -207,7 +208,7 @@ func runPiExec(ctx context.Context, scenarios []execScenario) ([]execOutcome, er
 
 // Timeouts under 2 ms and above 2^31 run as a 1 ms timer in Node and race the child, and so do timeouts of a few hundred milliseconds on a loaded host, so they are not generated; ExecOptions.cwd is applied by the extension API in Pi, not by execCommand, so it is not compared here.
 //
-// execCommand (core/exec.ts) against pinned Pi over about 150 real commands: exit codes (including 256, which wraps, and a signal-killed child that resolves as 0), stdout and stderr (wide text, invalid UTF-8, 300KB, output after a backgrounded child), a timeout that fires after a sleep, one that is not reached, one that follows the first output and one that SIGTERM does not obey (execTimerScenarios), a timeout of 1e9 milliseconds, none, zero or negative, and the killed flag it sets, a pre-aborted signal, a child that ignores SIGTERM, a working directory that exists, is overridden or is missing, a program that cannot start (code 1), an empty or NUL-bearing command, argument or directory, and a directory as the command; the result or the error code and message agree.
+// execCommand (core/exec.ts) against pinned Pi over about 150 real commands: exit codes (including 256, which wraps, and a signal-killed child that resolves as 128 + the signal number), stdout and stderr (wide text, invalid UTF-8, 300KB, output after a backgrounded child), a timeout that fires after a sleep, one that is not reached, one that follows the first output and one that SIGTERM does not obey (execTimerScenarios), a timeout of 1e9 milliseconds, none, zero or negative, and the killed flag it sets, a pre-aborted signal, a child that ignores SIGTERM, a working directory that exists, is overridden or is missing, a program that cannot start (code 1), an empty or NUL-bearing command, argument or directory, and a directory as the command; the result or the error code and message agree.
 func TestExecCommandMatchesPi(t *testing.T) {
 	dir := t.TempDir()
 	scenarios := execScenarios(dir)
@@ -223,11 +224,9 @@ func TestExecCommandMatchesPi(t *testing.T) {
 		normalized := pigExecOutcome(ctx, scenario)
 		raw, _ := json.Marshal(normalized)
 		want := expected[i]
-		// A truncated result is never 0, and what it is depends on what reaches the child first: the exit that its closed pipe brings (1), a
-		// SIGPIPE its own write meets (141, `yes`) or the SIGTERM exec.ts sends (143). Since a83b75a07 reports a signal as 128 + its number, Pi's
-		// own runs show all three for the same scenario, so a truncated result passes on either side with any of them.
-		if normalized.Truncated && want.Truncated {
-			normalized.Code, want.Code = truncatedCodeClass(normalized.Code), truncatedCodeClass(want.Code)
+		// The codes a truncated result may carry are a race between the exit, SIGPIPE and SIGTERM: see truncatedCodesAgree.
+		if normalized.Truncated && want.Truncated && truncatedCodesAgree(normalized.Code, want.Code) {
+			normalized.Code, want.Code = 1, 1
 		}
 		if normalized.Thrown != "" && want.Thrown != "" {
 			// Pi's message starts with the Node error code; Pig reports Node's message text.
