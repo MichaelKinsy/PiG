@@ -22,10 +22,30 @@ func (p *fakePane) read(bool) (string, error) {
 	return p.screens[i], nil
 }
 
+// fakeClock is a clock a test drives: time moves only when the capture waits, by the wait it asked for.
+type fakeClock struct {
+	t     time.Time
+	waits int
+}
+
+func (c *fakeClock) clock() captureClock {
+	return captureClock{
+		now: func() time.Time { return c.t },
+		wait: func(ctx context.Context, d time.Duration) error {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			c.waits++
+			c.t = c.t.Add(d)
+			return nil
+		},
+	}
+}
+
 func TestCaptureStablePair_TakesAnUnstablePairAgain(t *testing.T) {
 	// Round one: the plain captures around the escaped one differ (the screen moved). Round two: all still.
 	pane := &fakePane{screens: []string{"old frame", "escaped one", "new frame", "new frame", "escaped two", "new frame"}}
-	plain, escaped, err := captureStablePair(context.Background(), pane.read, nil, time.Minute, time.Millisecond)
+	plain, escaped, err := captureStablePair(context.Background(), (&fakeClock{}).clock(), pane.read, nil, time.Minute, time.Millisecond)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +59,7 @@ func TestCaptureStablePair_TakesAnUnstablePairAgain(t *testing.T) {
 
 func TestCaptureStablePair_StableScreenIsOneRound(t *testing.T) {
 	pane := &fakePane{screens: []string{"still", "escaped", "still"}}
-	plain, escaped, err := captureStablePair(context.Background(), pane.read, nil, time.Minute, time.Millisecond)
+	plain, escaped, err := captureStablePair(context.Background(), (&fakeClock{}).clock(), pane.read, nil, time.Minute, time.Millisecond)
 	if err != nil || plain != "still" || escaped != "escaped" || pane.reads != 3 {
 		t.Fatalf("plain=%q escaped=%q reads=%d err=%v, want one round of three captures", plain, escaped, pane.reads, err)
 	}
@@ -52,7 +72,11 @@ func TestCaptureStablePair_NeverStableFailsWithTheDiff(t *testing.T) {
 		// Within every round of three reads the first and the third differ.
 		return "row one\nrow two " + strings.Repeat("x", flip/3), nil
 	}
-	_, _, err := captureStablePair(context.Background(), read, nil, 30*time.Millisecond, time.Millisecond)
+	clock := &fakeClock{}
+	_, _, err := captureStablePair(context.Background(), clock.clock(), read, nil, 30*time.Millisecond, time.Millisecond)
+	if clock.waits != 30 {
+		t.Fatalf("waited %d times, want 30 polls of 1ms to spend the 30ms budget", clock.waits)
+	}
 	if err == nil {
 		t.Fatal("a screen that never stops changing was accepted")
 	}
@@ -70,7 +94,11 @@ func hasStart(plain, escaped string) bool {
 func TestCaptureStablePair_StillButIncompletePairIsTakenAgain(t *testing.T) {
 	// Round one holds still but lacks the start row (a writer stopped mid-burst); round two is whole.
 	pane := &fakePane{screens: []string{"banner", "esc banner", "banner", "BEGIN\nbody", "esc BEGIN\nbody", "BEGIN\nbody"}}
-	plain, escaped, err := captureStablePair(context.Background(), pane.read, hasStart, time.Minute, time.Millisecond)
+	clock := &fakeClock{}
+	plain, escaped, err := captureStablePair(context.Background(), clock.clock(), pane.read, hasStart, time.Minute, time.Millisecond)
+	if clock.waits != 1 {
+		t.Fatalf("waited %d times, want exactly one poll between the incomplete round and the whole one", clock.waits)
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +109,12 @@ func TestCaptureStablePair_StillButIncompletePairIsTakenAgain(t *testing.T) {
 
 func TestCaptureStablePair_IncompleteToTheEndReturnsThePairForTheCropToFail(t *testing.T) {
 	pane := &fakePane{screens: []string{"banner", "esc banner", "banner"}}
-	plain, escaped, err := captureStablePair(context.Background(), pane.read, hasStart, 20*time.Millisecond, time.Millisecond)
+	clock := &fakeClock{}
+	plain, escaped, err := captureStablePair(context.Background(), clock.clock(), pane.read, hasStart, 20*time.Millisecond, time.Millisecond)
+	if clock.waits != 20 || pane.reads != 3*21 {
+		// The budget is spent by the explicit clock only: 20 polls of 1ms, then the round that finds the deadline reached.
+		t.Fatalf("waited %d times and read %d times, want 20 polls and 21 rounds of three reads", clock.waits, pane.reads)
+	}
 	if err != nil || plain != "banner" || escaped != "banner" {
 		// The fake repeats its last screen, so the last round's escaped capture reads "banner".
 		t.Fatalf("plain=%q escaped=%q err=%v, want the still pair back without an error", plain, escaped, err)
@@ -94,7 +127,7 @@ func TestCaptureStablePair_IncompleteToTheEndReturnsThePairForTheCropToFail(t *t
 
 func TestCaptureStablePair_ReadErrorIsReturned(t *testing.T) {
 	boom := errors.New("tmux gone")
-	_, _, err := captureStablePair(context.Background(), func(bool) (string, error) { return "", boom }, nil, time.Minute, time.Millisecond)
+	_, _, err := captureStablePair(context.Background(), (&fakeClock{}).clock(), func(bool) (string, error) { return "", boom }, nil, time.Minute, time.Millisecond)
 	if !errors.Is(err, boom) {
 		t.Fatalf("got %v, want the read error", err)
 	}
@@ -105,7 +138,7 @@ func TestCaptureStablePair_CancelledContextStopsTheWait(t *testing.T) {
 	cancel()
 	flip := 0
 	read := func(bool) (string, error) { flip++; return strings.Repeat("x", flip), nil }
-	_, _, err := captureStablePair(ctx, read, nil, time.Minute, time.Hour)
+	_, _, err := captureStablePair(ctx, (&fakeClock{}).clock(), read, nil, time.Minute, time.Hour)
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("got %v, want context.Canceled", err)
 	}
@@ -272,5 +305,49 @@ func TestCaptureArtifactName_LabelsAnUncroppedCapture(t *testing.T) {
 	}
 	if got := captureArtifactName("pig.escaped", true); got != "pig.escaped.not-asserted-uncropped" {
 		t.Fatalf("got %q", got)
+	}
+}
+
+func TestWithFinalCaptures_KeepsTheUncroppedLabelWhenAnotherCaptureFailsToCrop(t *testing.T) {
+	cfg := TmuxDriverConfig{CaptureStart: "BEGIN"}
+	use := captureUse{escaped: true} // only the escaped capture is compared; the plain one is kept whole
+	plain, escaped, cropErr := cropCaptures(cfg, use, "banner", "esc banner")
+	if cropErr == nil {
+		t.Fatal("the escaped capture lacks the start marker and must fail to crop")
+	}
+	got := withFinalCaptures(Result{}, "scn", "pig", cfg, use, plain, escaped, cropErr)
+	if !got.PlainUncropped || got.EscapedUncropped {
+		t.Fatalf("PlainUncropped=%v EscapedUncropped=%v, want the unasserted plain capture labelled and the failed asserted one not", got.PlainUncropped, got.EscapedUncropped)
+	}
+	if got.Output != "banner" || got.Escaped != "esc banner" {
+		t.Fatalf("captures %q, %q: a failed crop must keep both whole for diagnosis", got.Output, got.Escaped)
+	}
+	if got.Err == nil || !strings.Contains(got.Err.Error(), `"BEGIN" not found`) {
+		t.Fatalf("got %v, want the crop failure", got.Err)
+	}
+	if name := captureArtifactName("pig.stdout", got.PlainUncropped); name != "pig.stdout.not-asserted-uncropped" {
+		t.Fatalf("artifact name %q lacks the not-asserted label", name)
+	}
+}
+
+func TestWithFinalCaptures_ACropFailureIsReportedAlongsideAnOperationFailure(t *testing.T) {
+	cfg := TmuxDriverConfig{CaptureStart: "BEGIN"}
+	use := captureUse{plain: true}
+	plain, escaped, cropErr := cropCaptures(cfg, use, "banner", "esc banner")
+	operationErr := errors.New("step 2: wait_contains \"ready\" timed out")
+	got := withFinalCaptures(Result{Err: operationErr}, "scn", "pig", cfg, use, plain, escaped, cropErr)
+	if !errors.Is(got.Err, operationErr) {
+		t.Fatalf("the operation failure is hidden: %v", got.Err)
+	}
+	if !strings.Contains(got.Err.Error(), `"BEGIN" not found`) || !strings.Contains(got.Err.Error(), "final capture") {
+		t.Fatalf("the crop failure is hidden: %v", got.Err)
+	}
+	if got.Output != "banner" {
+		t.Fatalf("capture %q, want the whole capture kept for diagnosis", got.Output)
+	}
+	// With no operation failure the crop failure stands alone.
+	alone := withFinalCaptures(Result{}, "scn", "pig", cfg, use, plain, escaped, cropErr)
+	if alone.Err == nil || strings.Contains(alone.Err.Error(), "timed out") {
+		t.Fatalf("got %v, want only the crop failure", alone.Err)
 	}
 }
