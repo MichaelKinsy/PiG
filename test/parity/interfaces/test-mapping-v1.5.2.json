@@ -3118,7 +3118,7 @@
     },
     {
       "path": "packages/chord/test/node/app/app.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:8120747bdf457587ef9f8dfabba9acf30a5490724162af381b81cd8f529da30a",
       "evidence": [
         "chord/nextnode/app/app_test.go",
@@ -3133,10 +3133,7 @@
         "chord/nextnode/app/app_export_host_test.go",
         "chord/nextnode/plugins/plugins_watcher_base_test.go"
       ],
-      "missingCases": [
-        "base code › closes without waiting for a scan of its own code stalled on a read"
-      ],
-      "rationale": "33 of the 34 upstream cases run in the evidence files. starting and closing (9) run in app_test.go (the type-level half of 'starts without worker kinds and without principal.worker' is a compile error in Pi; Go refuses worker kinds without a worker principal at start, which the case asserts); workers (2) in app_workers_test.go and app_changes_test.go; applying changes one after another and installs in app_changes_test.go; base code (9) in app_executable_test.go (the server's own code is its executable, D603: cases that start with no base given), app_bases_scan_test.go (answers before the scan finished; a record edited right after the start), app_changes_test.go (marks base for a change of base files, a worker kind's entry, not a rewrite with the same bytes) and, for 'settles baseWatched only once the base bundles' records were compared', plugins_watcher_base_test.go TestRecordBaseSettlesOnceItsFirstComparisonsEnded; bases built after the listen (5) in app_bases_linux_test.go, app_bases_workers_linux_test.go and app_bases_test.go (a worker kind's base is its executable's copy, D600); the seven 'export and import per address' cases in app_export_test.go (running worker, the worker's data object, the lock, a failed address, the round trip with its refusals) and app_export_host_test.go (the server's records and rows of the address copied, refused, replaced and deleted with it, and the order around the server's commit). The server's data is two parts (D462: the NodeHost's `server.archive` and the Go host's `kit-server.archive`), so the two export cases run against the NodeHost's part (Pi's TypeScript host reached through the process's control requests) and the Go host's part together, and the import's one server commit is two commits in Go. The one case not ported: Pi's close does not wait for a build or scan; the Go close waits for the bases' builds and the scan (a forced Go lifetime difference stated in app_bases_scan_test.go and app_bases_test.go, tests there assert Go's wait and its abandonment when the context ends) and no numbered divergence records it yet, so the case stays missing until it is numbered and designed out."
+      "rationale": "34 of the 34 upstream cases run in the evidence files. starting and closing (9) run in app_test.go (the type-level half of 'starts without worker kinds and without principal.worker' is a compile error in Pi; Go refuses worker kinds without a worker principal at start, which the case asserts); workers (2) in app_workers_test.go and app_changes_test.go; applying changes one after another and installs in app_changes_test.go; base code (9) in app_executable_test.go (the server's own code is its executable, D603: cases that start with no base given), app_bases_scan_test.go (answers before the scan finished; a record edited right after the start), app_changes_test.go (marks base for a change of base files, a worker kind's entry, not a rewrite with the same bytes) and, for 'settles baseWatched only once the base bundles' records were compared', plugins_watcher_base_test.go TestRecordBaseSettlesOnceItsFirstComparisonsEnded; bases built after the listen (5) in app_bases_linux_test.go, app_bases_workers_linux_test.go and app_bases_test.go (a worker kind's base is its executable's copy, D600); the seven 'export and import per address' cases in app_export_test.go (running worker, the worker's data object, the lock, a failed address, the round trip with its refusals) and app_export_host_test.go (the server's records and rows of the address copied, refused, replaced and deleted with it, and the order around the server's commit). The server's data is two parts (D462: the NodeHost's `server.archive` and the Go host's `kit-server.archive`), so the two export cases run against the NodeHost's part (Pi's TypeScript host reached through the process's control requests) and the Go host's part together, and the import's one server commit is two commits in Go. The close case, 'closes without waiting for a scan of its own code stalled on a read', is TestAppClosesWithoutWaitingForAScanOfItsOwnCodeStalledOnAReadItsLateResultIsDropped in app_bases_scan_test.go (Pi holds the scan on a named pipe its start script imports; the Go server's own code is its executable, so the test holds the step that names it: the close returns while the scan is held, HTTP answers no more, the late result is dropped, nothing is reported or recorded). App.Close does not wait for a build or a scan, as Pi's does not; App.Wait joins them and is Go's own lifetime ownership."
     },
     {
       "path": "packages/chord/test/node/app/archive.test.ts",
@@ -3850,8 +3847,28 @@
     },
     {
       "path": "packages/chord/test/registries/value.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:436da249ba10692849cf4bb68a40cb992a42bb5241a78880087fc31f284e1f27"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:436da249ba10692849cf4bb68a40cb992a42bb5241a78880087fc31f284e1f27",
+      "evidence": [
+        "chord/next/registries/value_test.go#TestOlderReaders",
+        "chord/next/registries/value_test.go#TestReaders",
+        "chord/next/registries/value_test.go#TestValuesMemory",
+        "chord/next/registries/value_test.go#TestObserve",
+        "chord/next/registries/value_test.go#TestAReloadsNewValueAdapter",
+        "chord/next/host/host_registry_readers_test.go#TestOlderReadersGetTheCompositionMappedBackWithAcceptsOldValueOncePerComposition",
+        "chord/next/host/host_registry_readers_test.go#TestOlderReadersWithoutAValueMappingAndForAReaderNewerThanTheProviderParkReadersFailedWaitingContractMismatch",
+        "chord/next/host/host_registry_readers_test.go#TestOlderReadersDropAnOlderReadersLastGoodMappingAfterAContributorItWasBuiltFromFailedLive",
+        "chord/next/host/host_registry_readers_test.go#TestOlderReadersNeverHandOutAMappedNativeWhoseContributorFailedAndClosedItSol",
+        "chord/next/host/host_registry_readers_test.go#TestReadersActivateOnceTheRegistryHasAValueAReaderOfARegistryNobodyServesParksFailedWaitingLoadWaitsForNothing",
+        "chord/next/host/host_registry_readers_test.go#TestReadersAReaderParkedOnAFirstComposeThatThrewGoesOnAtTheFirstGoodComposition",
+        "chord/next/host/host_registry_readers_test.go#TestReadersHostRegistryWaitsThroughNoValueUntilAFirstGoodCompositionWokenByItItsWaitThenGone",
+        "chord/next/host/host_registry_readers_test.go#TestReadersOnceLiveALaterThrowingComposeChangesNothingForTheReaderItsValueKeepsTheLastGoodOne",
+        "chord/next/host/host_registry_readers_test.go#TestReadersMemoryAnEndedReaderIsCollectedWhileTheRegistryLivesItsDeriveAndItsReadLeaveTheValue",
+        "chord/next/host/host_registry_readers_test.go#TestValuesMemoryDropsAnOlderVersionsMappingOnceItsLastReaderEndedSol",
+        "chord/next/host/host_registry_readers_test.go#TestValuesMemoryKeepsNoOldCompositionOnceItsReadersStoppedWaitingAndNobodyFollowsItOpus",
+        "chord/next/host/host_registry_readers_test.go#TestValuesMemoryAValueAnAppKeepsAfterHostCloseKeepsNoClosedHostAndReadsItsLastCompositionSolAstra"
+      ],
+      "rationale": "The 16 upstream cases, one Go test each with the upstream case name in the test name or its subtest. older readers (S2): mapped back once per composition, no value mapping and a reader newer than the provider (contract_mismatch), a contributor that failed live, a mapped native whose contributor failed and closed it, an undefined composition and a failed mapping that heals; readers (S3): activation and the waiting failure, a first compose that threw, host.registry waiting through no value, a later throwing compose keeping the last good one; readers' memory: an ended reader is collected; values' memory: an older version's mapping, no old composition once its readers stopped waiting, and a value kept after `host.close` (the record half in registries/value_test.go TestValuesMemory; the host half, TestValuesMemoryAValueAnAppKeepsAfterHostClose..., asserts Pi's inputs: the observation ends with the host and its context's cancellation adds nothing, the closed host is collected while the value is kept, and the value reads its last composition 7; it failed before RegistryValueSource released its batch on Close); observe (a synchronous call inside the batch, the abort of its context, detach, the end with the host) and a reload's new value adapter in registries/value_test.go."
     },
     {
       "path": "packages/chord/test/remote/calls.test.ts",
@@ -9371,6 +9388,7 @@
       "upstreamTestHash": "sha256:64f6a318f5d6aee865438ef9fd595d7f65c5f81a29d0c5011b84d06d8fbf124f",
       "evidence": [
         "durable/harness/registry_reader_host_test.go",
+        "durable/harness/registry_reader_observation_test.go",
         "durable/harness/registry_reader_test.go"
       ],
       "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
@@ -9838,7 +9856,8 @@
       "evidence": [
         "durable/core/group_commit_test.go",
         "durable/core/session/writer_fanout_test.go",
-        "durable/session/group_commit_support_test.go"
+        "durable/session/group_commit_support_test.go",
+        "durable/session/writer_paths_internal_test.go"
       ],
       "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
     },
