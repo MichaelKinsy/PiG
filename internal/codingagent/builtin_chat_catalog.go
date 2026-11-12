@@ -77,8 +77,9 @@ func builtinChatCatalog(id string) []ai.GeneratedModel {
 }
 
 // builtinChatCatalogListed is builtinChatCatalog for a caller that lists the catalog's models: the bundled catalog of OpenRouter also holds each
-// model's routing variants, derived once from the bundled models (ai.WithOpenRouterRoutingVariants) the first time the list is read, so a caller that
-// only resolves a model or counts the catalog (builtinChatCatalog) builds none. The list is shared, and read-only like builtinChatCatalog's.
+// model's routing variants, derived once from the bundled models (ai.SharedOpenRouterRoutingVariants) the first time the list is read, so a caller that
+// only resolves a model or counts the catalog (builtinChatCatalog) builds none. The list is shared, and read-only like builtinChatCatalog's: when no
+// OpenRouter model is stripped it is the list ai holds, whose entries are the ones ai.LookupModel returns.
 //
 // pig divergence (D199): Pi lists no OpenRouter routing variant; PiG derives them from the bundled models instead of storing them.
 func builtinChatCatalogListed(id string) []ai.GeneratedModel {
@@ -93,7 +94,7 @@ func builtinChatCatalogListed(id string) []ai.GeneratedModel {
 	if listed != nil {
 		return listed
 	}
-	listed = ai.WithOpenRouterRoutingVariants(catalog)
+	listed = ai.SharedOpenRouterRoutingVariants(catalog)
 	listed = listed[:len(listed):len(listed)]
 	catalogs.mu.Lock()
 	defer catalogs.mu.Unlock()
