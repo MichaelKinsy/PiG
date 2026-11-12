@@ -123518,7 +123518,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
-        "test:chord/nextnode/app/app_surfaces_test.go#TestAppRunsTheWebAndTheTerminalSurfacesWithTheirOwnBaseBundles"
+        "test:chord/nextnode/app/app_surfaces_test.go#TestAppRunsTheWebAndTheTerminalSurfacesWithTheirOwnBaseBundles",
+        "test:chord/nextnode/app/app_surfaces_test.go#TestAppSurfacesBuildTheirBasesThroughAGivenTsconfigsPathsPi53af02378"
       ]
     },
     {
@@ -123647,9 +123648,9 @@
         "call:chord/nextnode/app/app.go#App.start"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_surfaces_test.go#TestAppSurfacesBuildTheirBasesThroughAGivenTsconfigsPathsPi53af02378",
         "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientAnswersEightRequestsAtOnceRefusesMoreAndIgnoresSIGUSR1OpusE10E8",
-        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientDrawsItsPromptInItsOwnColoursAndIgnoresKeysTypedBeforeItAppearedOpusE4",
-        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientEndsOnCtrlCWhileItsPromptIsOpenWhateverTheSandboxAsksOpusE11"
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientDrawsItsPromptInItsOwnColoursAndIgnoresKeysTypedBeforeItAppearedOpusE4"
       ]
     },
     {
@@ -133011,8 +133012,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/surfaces/surfaces_bundle_test.go#TestAssetsCollectsTheFontsAndImagesTheBasesStylesheetNamesAsFilesUnderAssetsNamedByTheirContent",
-        "test:chord/nextnode/surfaces/surfaces_bundle_test.go#TestConditionsResolvesWithTheGivenConditionsTheSourceAsInputNotDistEachWithItsBytesHash",
-        "test:chord/nextnode/surfaces/surfaces_bundle_test.go#TestConditionsKeepsABrowserBuildsModuleConditionAndBrowserFieldWithCustomConditions"
+        "test:chord/nextnode/surfaces/surfaces_bundle_test.go#TestConditionsResolvesThroughAGivenTsconfigsPathsAPackageExportingOnlyAnUnbuiltDistElseIgnoresTsconfigsPi53af02378",
+        "test:chord/nextnode/surfaces/surfaces_bundle_test.go#TestConditionsResolvesWithTheGivenConditionsTheSourceAsInputNotDistEachWithItsBytesHash"
       ]
     },
     {
