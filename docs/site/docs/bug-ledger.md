@@ -1958,6 +1958,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-f43fb00](#bf-f43fb00) | A collapsed paste in the editor draft keeps its content when an extension installs or removes an editor, when… | PiG's own defect | All platforms | Unreleased |
 | [BF-f474c30](#bf-f474c30) | fix(evals): drop an unused import from the prompt-template eval | PiG's own defect | All platforms | Unreleased |
 | [BF-f4a8f71](#bf-f4a8f71) | A program that embeds PiG and never reads session events no longer hangs | PiG's own defect | All platforms | 0.7.0 |
+| [BF-f4cc20b](#bf-f4cc20b) | The pi-env daemon ended by SIGTERM, SIGINT or SIGHUP could end with status 1 and a stray `pi-env: read… | PiG's own defect | macOS | Unreleased |
 | [BF-f4d85f8](#bf-f4d85f8) | A large file written through a tool call no longer slows down as it streams: each streamed piece of the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f4daf25](#bf-f4daf25) | fix(chord): drop principal_same.go: follow/pi-main ported samePrincipal into principal.go | PiG's own defect | All platforms | Unreleased |
 | [BF-f589900](#bf-f589900) | fix(tui): delete D155; PageUp and PageDown paging follows Pi | PiG's own defect | All platforms | Unreleased |
@@ -28925,6 +28926,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `f4a8f71a23` (2026-10-31)
 - **Tests:** `coding/session_events_subscription_test.go::TestCloneEventsAreSubscribedSeparately`, `coding/session_events_subscription_test.go::TestDiscardEventsAfterEventsStopsDelivery`, `coding/session_events_subscription_test.go::TestEventsBeforeSendDeliversEveryEventInOrder`, `coding/session_events_subscription_test.go::TestEventsCalledDuringTurnDeliversSuffixInOrder`, `coding/session_events_subscription_test.go::TestEventsCalledLateMissesEarlierEventsOnly`, `coding/session_events_subscription_test.go::TestRuntimeSessionWithoutEventsReaderSendReturns`, `coding/session_test.go::TestSendBlocksWhenEventsConsumerStopsReadingThenUnblocks`
 - **Release note:** A program that embeds PiG and never reads session events no longer hangs. A `Session` sent every event to its `Events()` channel from the start, so `Send` stopped once a reply produced more events than the channel's buffer holds (about 128), and the quick start in the `coding` package documentation and `examples/sdk` did exactly that. Events now go to the channel only after `Events()` is first called, as Pi notifies only the listeners it has: before that call nothing is buffered and nothing waits. A program that reads events calls `Events()` before `Send` and passes each event to `coding.AcknowledgeEvent`, and it still receives every event in order; an event sent before the call is not replayed, and a slow reader still slows the turn. A session made by `Clone` starts without a reader, like a forked Pi session, and `DiscardEvents()` stops delivery for a reader that quits.
+
+### BF-f4cc20b
+
+**The pi-env daemon ended by SIGTERM, SIGINT or SIGHUP could end with status 1 and a stray `pi-env: read…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The pi-env daemon ended by SIGTERM, SIGINT or SIGHUP could end with status 1 and a stray `pi-env: read /dev/stdin: file already closed` instead of 128 plus the signal number (143 for SIGTERM).
+- **Root cause:** TestDaemonGivesBackBlockingStdioOnEveryExit/SIGTERM failed on a macOS runner with "exit code 1, want 143" (daemon_stdio_mode_test.go:129). The 143 is the daemon's own os.Exit(128 + number) in Serve's signal goroutine (server.go, since); it is not computed by the exec path (durable/env/node/exec.go exitCode, pty_unix.go wait), which maps a child ended by a signal and is a different function. The product is wrong, not the test.
+- **User impact:** An operation failed or was rejected
+- **Platform:** macOS
+- **Fixed in:** Unreleased
+- **Fix commits:** `f4cc20bae4` (2026-11-12)
+- **Tests:** `agent/testmain_leak_test.go::TestMain`, `env/daemon/server_unix_test.go::TestServeDoesNotReturnWhileTheSignalExitEndsTheProcess`, `env/daemon_stdio_mode_test.go::TestDaemonGivesBackBlockingStdioOnEveryExit`
+- **Release note:** The pi-env daemon ended by SIGTERM, SIGINT or SIGHUP could end with status 1 and a stray `pi-env: read /dev/stdin: file already closed` instead of 128 plus the signal number (143 for SIGTERM). The signal exit gives the daemon's stdin back by closing the descriptor the serving loop is reading; the loop returned that read error to `main`, which ended the process with status 1 whenever it got there before the signal exit did (a loaded or slow-to-wake host, macOS most often). The signal exit now claims the process first, and the serving loop waits for it to end it.
 
 ### BF-f4d85f8
 
