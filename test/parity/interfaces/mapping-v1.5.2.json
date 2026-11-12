@@ -15031,7 +15031,7 @@
         "public-api:ai/faux.go#FauxModelDefinition.Input"
       ],
       "evidence": [
-        "test:ai/faux_model_definitions_test.go#TestFauxModelDefinitionsApplyPiDefaultsAndOverrides"
+        "test:test/extension-conformance/set_model_object_before_agent_start_test.go#TestSetModelObjectFromBeforeAgentStartAcrossSDKs"
       ]
     },
     {
@@ -59774,7 +59774,7 @@
         "public-api:ai/faux.go#FauxModelDefinition.Input"
       ],
       "evidence": [
-        "test:ai/faux_model_definitions_test.go#TestFauxModelDefinitionsApplyPiDefaultsAndOverrides"
+        "test:test/extension-conformance/set_model_object_before_agent_start_test.go#TestSetModelObjectFromBeforeAgentStartAcrossSDKs"
       ]
     },
     {
@@ -61843,7 +61843,7 @@
       "evidence": [
         "test:test/extension-conformance/api_session_state_test.go#TestConformance_ExtensionAPISetModel",
         "test:test/extension-conformance/api_session_state_test.go#TestConformance_ExtensionAPIThinkingLevel",
-        "test:test/extension-conformance/state_model_switch_test.go#TestModelChangedWithoutACallReachesTheNextHandlerAcrossSDKs"
+        "test:test/extension-conformance/set_model_object_node_test.go#TestSetModelKeepsTheObjectNode"
       ]
     },
     {
@@ -61865,7 +61865,7 @@
       "evidence": [
         "test:test/extension-conformance/api_session_state_test.go#TestConformance_ExtensionAPISetModel",
         "test:test/extension-conformance/api_session_state_test.go#TestConformance_ExtensionAPIThinkingLevel",
-        "test:test/extension-conformance/state_model_switch_test.go#TestModelChangedWithoutACallReachesTheNextHandlerAcrossSDKs"
+        "test:test/extension-conformance/set_model_object_node_test.go#TestSetModelKeepsTheObjectNode"
       ]
     },
     {
@@ -88438,7 +88438,7 @@
       "evidence": [
         "test:test/extension-conformance/api_session_state_test.go#TestConformance_ExtensionAPISetModel",
         "test:test/extension-conformance/api_session_state_test.go#TestConformance_ExtensionAPIThinkingLevel",
-        "test:test/extension-conformance/state_model_switch_test.go#TestModelChangedWithoutACallReachesTheNextHandlerAcrossSDKs"
+        "test:test/extension-conformance/set_model_object_node_test.go#TestSetModelKeepsTheObjectNode"
       ]
     },
     {
@@ -88460,7 +88460,7 @@
       "evidence": [
         "test:test/extension-conformance/api_session_state_test.go#TestConformance_ExtensionAPISetModel",
         "test:test/extension-conformance/api_session_state_test.go#TestConformance_ExtensionAPIThinkingLevel",
-        "test:test/extension-conformance/state_model_switch_test.go#TestModelChangedWithoutACallReachesTheNextHandlerAcrossSDKs"
+        "test:test/extension-conformance/set_model_object_node_test.go#TestSetModelKeepsTheObjectNode"
       ]
     },
     {
@@ -92274,7 +92274,7 @@
         "public-api:ai/faux.go#FauxModelDefinition.Input"
       ],
       "evidence": [
-        "test:ai/faux_model_definitions_test.go#TestFauxModelDefinitionsApplyPiDefaultsAndOverrides"
+        "test:test/extension-conformance/set_model_object_before_agent_start_test.go#TestSetModelObjectFromBeforeAgentStartAcrossSDKs"
       ]
     },
     {
