@@ -1,12 +1,16 @@
 // Command asynccheck proves that every upstream source file with Promise/async
-// behavior has an explicit cross-language disposition and durable evidence.
+// behavior has an explicit cross-language disposition and durable evidence, and
+// that each evidence entry names a test, scenario or document that is in the tree.
 package main
 
 import (
 	"bytes"
+	"cmp"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -74,12 +78,14 @@ func main() {
 	}
 	problems := validateManifest(manifest, paths, *repoRoot)
 	if len(problems) > 0 {
-		for _, problem := range problems {
-			fmt.Fprintln(os.Stderr, "async-contracts:", problem)
-		}
+		report(os.Stderr, problems)
 		os.Exit(1)
 	}
-	fmt.Printf("async-contracts: clean (%d async/Promise source files audited at %s)\n", len(paths), manifest.Version)
+	entries := 0
+	for _, audit := range manifest.Files {
+		entries += len(audit.Evidence)
+	}
+	fmt.Printf("async-contracts: clean (%d async/Promise source files audited at %s, %d evidence entries resolved)\n", len(paths), manifest.Version, entries)
 }
 
 func discoverAsyncSources(root string) ([]string, error) {
@@ -142,83 +148,98 @@ func isTestPath(path string) bool {
 	return strings.Contains(slashPath, "/test/") || strings.Contains(slashPath, "/tests/") || strings.Contains(slashPath, "/__tests__/")
 }
 
-func validateManifest(manifest asyncManifest, paths []string, repoRoot string) []string {
+// A problem is one violation of the ledger's rules. Its class is what the gate counts by.
+type problem struct {
+	Class string
+	Text  string
+}
+
+// classRow is a row that is missing, stale, duplicated, pending, or without the contract, evidence or rationale its
+// disposition needs. The classes of an evidence entry are in evidence.go.
+const classRow = "row"
+
+func rowProblem(format string, args ...any) problem {
+	return problem{Class: classRow, Text: fmt.Sprintf(format, args...)}
+}
+
+// report prints every violation with its class, then the count per class.
+func report(w io.Writer, problems []problem) {
+	counts := map[string]int{}
+	for _, p := range problems {
+		fmt.Fprintf(w, "async-contracts: [%s] %s\n", p.Class, p.Text)
+		counts[p.Class]++
+	}
+	perClass := make([]string, 0, len(counts))
+	for _, class := range slices.Sorted(maps.Keys(counts)) {
+		perClass = append(perClass, fmt.Sprintf("%s=%d", class, counts[class]))
+	}
+	noun := "violations"
+	if len(problems) == 1 {
+		noun = "violation"
+	}
+	fmt.Fprintf(w, "async-contracts: %d %s: %s\n", len(problems), noun, strings.Join(perClass, " "))
+}
+
+func validateManifest(manifest asyncManifest, paths []string, repoRoot string) []problem {
 	if manifest.Version != coding.UpstreamVersion {
-		return []string{fmt.Sprintf("manifest version %q does not match coding.UpstreamVersion %q", manifest.Version, coding.UpstreamVersion)}
+		return []problem{rowProblem("manifest version %q does not match coding.UpstreamVersion %q", manifest.Version, coding.UpstreamVersion)}
 	}
 	expected := make(map[string]struct{}, len(paths))
 	for _, path := range paths {
 		expected[path] = struct{}{}
 	}
 	seen := make(map[string]struct{}, len(manifest.Files))
-	var problems []string
+	evidence := newEvidenceChecker(repoRoot)
+	var problems []problem
 	for _, audit := range manifest.Files {
 		if _, duplicate := seen[audit.Path]; duplicate {
-			problems = append(problems, fmt.Sprintf("duplicate file audit %s", audit.Path))
+			problems = append(problems, rowProblem("duplicate file audit %s", audit.Path))
 			continue
 		}
 		seen[audit.Path] = struct{}{}
 		if _, exists := expected[audit.Path]; !exists {
-			problems = append(problems, fmt.Sprintf("stale file audit %s", audit.Path))
+			problems = append(problems, rowProblem("stale file audit %s", audit.Path))
 			continue
 		}
-		problems = append(problems, validateAudit(audit, repoRoot)...)
+		problems = append(problems, validateAudit(audit, evidence)...)
 	}
 	for _, path := range paths {
 		if _, exists := seen[path]; !exists {
-			problems = append(problems, fmt.Sprintf("missing file audit %s", path))
+			problems = append(problems, rowProblem("missing file audit %s", path))
 		}
 	}
-	slices.Sort(problems)
+	slices.SortFunc(problems, func(a, b problem) int {
+		return cmp.Or(cmp.Compare(a.Text, b.Text), cmp.Compare(a.Class, b.Class))
+	})
 	return problems
 }
 
-func validateAudit(audit asyncAudit, repoRoot string) []string {
-	var problems []string
+func validateAudit(audit asyncAudit, evidence *evidenceChecker) []problem {
+	var problems []problem
 	switch audit.Disposition {
 	case "translated":
 		if len(audit.Contracts) == 0 {
-			problems = append(problems, fmt.Sprintf("%s translated without an async contract", audit.Path))
+			problems = append(problems, rowProblem("%s translated without an async contract", audit.Path))
 		}
 		if len(audit.Evidence) == 0 {
-			problems = append(problems, fmt.Sprintf("%s translated without evidence", audit.Path))
+			problems = append(problems, rowProblem("%s translated without evidence", audit.Path))
 		}
 	case "designed-out", "deferred", "no-runtime-async":
 		if strings.TrimSpace(audit.Rationale) == "" {
-			problems = append(problems, fmt.Sprintf("%s disposition %q requires a rationale", audit.Path, audit.Disposition))
+			problems = append(problems, rowProblem("%s disposition %q requires a rationale", audit.Path, audit.Disposition))
 		}
 	case "pending":
-		problems = append(problems, fmt.Sprintf("%s remains pending", audit.Path))
+		problems = append(problems, rowProblem("%s remains pending", audit.Path))
 	default:
-		problems = append(problems, fmt.Sprintf("%s has unknown disposition %q", audit.Path, audit.Disposition))
+		problems = append(problems, rowProblem("%s has unknown disposition %q", audit.Path, audit.Disposition))
 	}
 	for _, contract := range audit.Contracts {
 		if _, ok := allowedContracts[contract]; !ok {
-			problems = append(problems, fmt.Sprintf("%s has unknown async contract %q", audit.Path, contract))
+			problems = append(problems, rowProblem("%s has unknown async contract %q", audit.Path, contract))
 		}
 	}
-	for _, evidence := range audit.Evidence {
-		kind, path, ok := strings.Cut(evidence, ":")
-		if !ok || (kind != "scenario" && kind != "test" && kind != "probe") {
-			problems = append(problems, fmt.Sprintf("%s has invalid evidence %q", audit.Path, evidence))
-			continue
-		}
-		path, _, _ = strings.Cut(path, "#")
-		fullPath := filepath.Join(repoRoot, filepath.FromSlash(path))
-		if _, err := os.Stat(fullPath); err != nil {
-			problems = append(problems, fmt.Sprintf("%s evidence %q: %v", audit.Path, evidence, err))
-			continue
-		}
-		if kind == "scenario" {
-			var scenario struct {
-				Covers []string `toml:"covers"`
-			}
-			if _, err := toml.DecodeFile(fullPath, &scenario); err != nil {
-				problems = append(problems, fmt.Sprintf("%s scenario evidence %q: %v", audit.Path, evidence, err))
-			} else if !slices.Contains(scenario.Covers, audit.Path) {
-				problems = append(problems, fmt.Sprintf("%s scenario evidence %q does not cover the audited path", audit.Path, evidence))
-			}
-		}
+	for _, entry := range audit.Evidence {
+		problems = append(problems, evidence.check(audit.Path, entry)...)
 	}
 	return problems
 }
