@@ -675,6 +675,8 @@ type InteractiveMode struct {
 	// owner loop selects to run the due frame.
 	frameTimer   *time.Timer
 	renderWakeCh <-chan time.Time
+	// frameDue is the deadline of the throttled frame the renderer armed and the loop has not run yet, in Unix nanoseconds, and 0 when there is none (armFrameTimer, runScheduledRender).
+	frameDue atomic.Int64
 
 	// Extension errors reported from any goroutine wait here until the main
 	// loop shows them; extensionErrorWakeCh (capacity 1) wakes the loop.
@@ -780,9 +782,11 @@ func (m *InteractiveMode) installRenderDispatcher() {
 // disarms it. The renderer calls it under its lock, so calls arrive in order.
 func (m *InteractiveMode) armFrameTimer(due time.Time) {
 	if due.IsZero() {
+		m.frameDue.Store(0)
 		m.frameTimer.Stop()
 		return
 	}
+	m.frameDue.Store(due.UnixNano())
 	m.frameTimer.Reset(max(time.Until(due), 0))
 }
 
@@ -794,6 +798,10 @@ func (m *InteractiveMode) runScheduledRender() {
 		return
 	}
 	m.tuiInst.RunDueRender()
+	if due := m.frameDue.Load(); due != 0 && time.Now().UnixNano() >= due {
+		// RunDueRender ran the frame of that deadline; a frame requested while it ran has a later one.
+		m.frameDue.CompareAndSwap(due, 0)
+	}
 	m.wakeSpinner()
 }
 

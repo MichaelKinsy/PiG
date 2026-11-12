@@ -333,6 +333,7 @@ func (m *InteractiveMode) startTurn(ctx context.Context, prompt string, images [
 			// runCtx so cleanup still applies after an aborted turn; it is
 			// dropped only when the whole session is shutting down.
 			m.runOnMain(m.runCtx, func() {
+				turnEnd := m.beginTurnEnd()
 				if m.runGen == gen {
 					m.isIdle = true
 					m.idleCollectArmed.Store(true) // pig additive (D172): arm the idle collection at run end
@@ -341,7 +342,7 @@ func (m *InteractiveMode) startTurn(ctx context.Context, prompt string, images [
 					m.stopWorkingLoader() // belt-and-suspenders: ensure loader is removed on abort
 				}
 				m.rebuildPendingMessages() // clear stale queue indicators
-				m.tuiInst.Render()
+				m.paintTurnEnd(turnEnd)
 			})
 			// Upstream prompt() throws before _runAgentPrompt, so a rejected
 			// prompt has no agent_settled.
