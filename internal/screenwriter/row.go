@@ -381,15 +381,6 @@ func (r *row) parse(line string, old *row, cols, room int, symbols *symbolWidths
 	return shared, same, true
 }
 
-// copyOf makes r what src is: the row another row shows.
-func (r *row) copyOf(src *row, cols, room int) {
-	r.buffers(cols, len(src.line), room)
-	r.cells = append(r.cells[:0], src.cells...)
-	r.pens = append(r.pens[:0], src.pens...)
-	r.line = append(r.line[:0], src.line...)
-	r.width, r.endPen, r.uncertain = src.width, src.endPen, src.uncertain
-}
-
 // commonPrefix is how many bytes a and b share at their start.
 func commonPrefix(a, b []byte) int {
 	n, limit := 0, min(len(a), len(b))

@@ -204,6 +204,10 @@ const (
 	attrOverline
 )
 
+// sgrAttrs is the attribute SGR 1-9 sets, by the parameter, and SGR 23-29 clears, by the parameter less 20; 0 where the parameter is
+// outside the set applySGR reads (6 and 26, the rapid blink).
+var sgrAttrs = [10]uint16{1: attrBold, 2: attrDim, 3: attrItalic, 4: attrUnderline, 5: attrBlink, 7: attrInverse, 8: attrHidden, 9: attrStrike}
+
 // applySGR applies the parameters of one SGR sequence and reports false for a form outside the set every terminal reads alike: the
 // semicolon forms of 0-9, 22-29, 30-39, 40-49, 53, 55, 90-97, 100-107, 38;5;n, 38;2;r;g;b and the same two for 48. A colon form, an
 // underline color or style (58, 4:n) and a double underline (21) are not in it.
@@ -237,36 +241,18 @@ func (p *pen) applySGR(params string) bool {
 		switch {
 		case v == 0:
 			*p = pen{}
-		case v == 1:
-			p.attrs |= attrBold
-		case v == 2:
-			p.attrs |= attrDim
-		case v == 3:
-			p.attrs |= attrItalic
-		case v == 4:
-			p.attrs |= attrUnderline
-		case v == 5:
-			p.attrs |= attrBlink
-		case v == 7:
-			p.attrs |= attrInverse
-		case v == 8:
-			p.attrs |= attrHidden
-		case v == 9:
-			p.attrs |= attrStrike
+		case v < 10:
+			if sgrAttrs[v] == 0 {
+				return false
+			}
+			p.attrs |= sgrAttrs[v]
 		case v == 22:
 			p.attrs &^= attrBold | attrDim
-		case v == 23:
-			p.attrs &^= attrItalic
-		case v == 24:
-			p.attrs &^= attrUnderline
-		case v == 25:
-			p.attrs &^= attrBlink
-		case v == 27:
-			p.attrs &^= attrInverse
-		case v == 28:
-			p.attrs &^= attrHidden
-		case v == 29:
-			p.attrs &^= attrStrike
+		case v > 22 && v < 30:
+			if sgrAttrs[v-20] == 0 {
+				return false
+			}
+			p.attrs &^= sgrAttrs[v-20]
 		case v == 53:
 			p.attrs |= attrOverline
 		case v == 55:
@@ -303,16 +289,21 @@ func (p *pen) applySGR(params string) bool {
 	return true
 }
 
-// neutralMode reports whether mode is a private mode that changes nothing the writer keeps of the screen: cursor keys, autowrap (no
-// row the writer writes ends past the row the frame wrote; outside reports what a write says of it, and frames are translated only
-// while it is known to be off), cursor blink, mouse reporting and its encodings, focus
-// reports, bracketed paste, synchronized updates, grapheme clustering reports, color-scheme reports and in-band resize.
-func neutralMode(mode string) bool {
-	switch mode {
-	case "1", "7", "12", "1000", "1002", "1003", "1004", "1005", "1006", "1015", "1016", "2004", "2026", "2027", "2031", "2048":
-		return true
+// modeNumber is the number of a private mode written in digits without a leading zero, as the renderers and the terminals' own
+// replies write it; -1 for every other form, which outside does not recognise.
+func modeNumber(mode string) int {
+	if mode == "" || mode[0] == '0' || len(mode) > 4 {
+		return -1
 	}
-	return false
+	n := 0
+	for i := 0; i < len(mode); i++ {
+		digit := mode[i] - '0'
+		if digit > 9 {
+			return -1
+		}
+		n = n*10 + int(digit)
+	}
+	return n
 }
 
 // neutralOSC are the operating-system commands that change nothing the writer keeps: titles, the palette and the default colors (a
@@ -322,7 +313,7 @@ var neutralOSC = [...]string{"0;", "1;", "2;", "4;", "7;", "9;", "10;", "11;", "
 
 // outside classifies a write that is not a frame. screen is whether the alternate screen is shown after it (shown before it), cursor is
 // +1 or -1 when it shows or hides the cursor, and forget is whether it holds anything that may change the cells, the pen, the cursor's
-// position or the scroll region: everything that is not in the tables above, a query, a keyboard-protocol sequence or a keypad mode.
+// position or the scroll region: everything that is neither in the table above nor among the private modes named below, a query, a keyboard-protocol sequence or a keypad mode.
 // wrap is what the write leaves known of autowrap: +1 when it is off after it (CSI ? 7 l came last), -1 when it is not known to be
 // off (autowrap turned on; a switch to or from an alternate screen, modes 47, 1047 and 1049; saved private modes restored; a reset
 // of the terminal, DECSTR or RIS), 0 when the write says nothing of it. Only those sequences change autowrap, and outside reads each
@@ -339,26 +330,33 @@ func outside(data string, shown bool) (screen bool, cursor int, forget bool, wra
 			final := seq[len(seq)-1]
 			switch {
 			case len(seq) > 3 && seq[2] == '?' && (final == 'h' || final == 'l'):
-				for mode := range strings.SplitSeq(seq[3:len(seq)-1], ";") {
-					switch {
-					case mode == "1049":
+				for rest, more := seq[3:len(seq)-1], true; more; {
+					var mode string
+					mode, rest, more = strings.Cut(rest, ";")
+					switch modeNumber(mode) {
+					case 1049:
 						screen = final == 'h'
 						forget = true
 						wrap = -1
-					case mode == "47" || mode == "1047":
+					case 47, 1047:
 						forget = true
 						wrap = -1
-					case mode == "7":
+					case 7:
+						// No row the writer writes ends past the row the frame wrote; frames are translated only while autowrap is known to be off.
 						wrap = -1
 						if final == 'l' {
 							wrap = 1
 						}
-					case mode == "25":
+					case 25:
 						cursor = -1
 						if final == 'h' {
 							cursor = 1
 						}
-					case !neutralMode(mode):
+					case 1, 12, 1000, 1002, 1003, 1004, 1005, 1006, 1015, 1016, 2004, 2026, 2027, 2031, 2048:
+						// The private modes that change nothing the writer keeps of the screen: cursor keys, cursor blink, mouse reporting
+						// and its encodings, focus reports, bracketed paste, synchronized updates, grapheme clustering reports,
+						// color-scheme reports and in-band resize.
+					default:
 						forget = true
 					}
 				}

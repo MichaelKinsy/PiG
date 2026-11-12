@@ -464,18 +464,20 @@ func (w *Writer) shows(line string, index int) *row {
 
 // scroll moves the rows of the scroll region by one: up for a line feed at its bottom, down for a reverse index at its top.
 func (w *Writer) scroll(up bool) {
-	clean := w.penKnown && w.pen == pen{}
-	if up {
-		first := w.rows[w.top]
-		copy(w.rows[w.top:w.bot], w.rows[w.top+1:w.bot+1])
-		w.rows[w.bot] = first
-		w.rows[w.bot].blank(clean)
-	} else {
-		last := w.rows[w.bot]
-		copy(w.rows[w.top+1:w.bot+1], w.rows[w.top:w.bot])
-		w.rows[w.top] = last
-		w.rows[w.top].blank(clean)
+	// The row that leaves the region gives its buffers to the row that comes in, blank, at the region's other end.
+	region := w.rows[w.top : w.bot+1]
+	in := len(region) - 1
+	if !up {
+		in = 0
 	}
+	spare := region[len(region)-1-in]
+	if up {
+		copy(region, region[1:])
+	} else {
+		copy(region[1:], region)
+	}
+	region[in] = spare
+	region[in].blank(w.penKnown && w.pen == pen{})
 }
 
 // frame applies the body of a synchronized update to the screen kept and, unless whole, puts into out what makes the terminal show
@@ -592,11 +594,11 @@ func (w *Writer) frame(body string, whole bool) bool {
 		return false
 	}
 	if visSet && (!w.visKnown || vis != w.visible) {
+		seq := "\x1b[?25l"
 		if vis {
-			w.out = append(w.out, "\x1b[?25h"...)
-		} else {
-			w.out = append(w.out, "\x1b[?25l"...)
+			seq = "\x1b[?25h"
 		}
+		w.out = append(w.out, seq...)
 		w.visible, w.visKnown = vis, true
 	}
 	return true
@@ -621,20 +623,18 @@ func (w *Writer) row(index int, line string, whole, positioned bool) bool {
 		if len(line) > w.room {
 			w.room = len(line) + len(line)/2
 		}
-		if moved := w.shows(line, index); moved != nil {
-			// The line is one another row shows (the renderers moved it): its cells are that row's.
-			t.copyOf(moved, w.cols, w.room)
-			plain = true
-		} else {
-			shared, same, plain = t.parse(line, r, w.cols, w.room, &w.symbols)
+		// A line another row shows (the renderers moved it) has that row's cells: they are taken from it, and say nothing of what
+		// the line shares with the row it is written to.
+		moved := w.shows(line, index)
+		if moved == nil {
+			moved = r
+		}
+		if shared, same, plain = t.parse(line, moved, w.cols, w.room, &w.symbols); moved != r {
+			shared, same = 0, 0
 		}
 	}
 	switch {
-	case whole && plain:
-		w.rows[index], w.scratch = *t, *r
-		w.rows[index].known, w.rows[index].partial = true, false
-		w.pen = w.rows[index].endPen
-	case whole:
+	case whole && !plain:
 		r.known, r.partial = false, false
 		w.penAfter(line)
 	case !plain:
@@ -652,15 +652,18 @@ func (w *Writer) row(index int, line string, whole, positioned bool) bool {
 			w.aPen = w.pen
 		}
 	default:
-		// A row the frame rewrote and the writer did not write whole waits for the settle write, whether or not a part of it was written.
-		partial := r.known && positioned && w.writeDiff(index, r, t, shared, same)
-		if !partial {
-			w.writeWhole(index, t)
+		// A frame that erases the screen is sent as it came: nothing is written for its rows. A row another frame rewrote and the
+		// writer did not write whole waits for the settle write, whether or not a part of it was written.
+		partial := false
+		if !whole {
+			if partial = r.known && positioned && w.writeDiff(index, r, t, shared, same); !partial {
+				w.writeWhole(index, t)
+			}
 		}
-		w.rows[index], w.scratch = *t, *r
-		w.rows[index].known, w.rows[index].partial = true, partial
+		*r, *t = *t, *r
+		r.known, r.partial = true, partial
 		w.anyPartial = w.anyPartial || partial
-		w.pen = w.rows[index].endPen
+		w.pen = r.endPen
 	}
 	return true
 }
