@@ -20,6 +20,37 @@ func TestZhipuUsageLimit1308IsNotRetryable(t *testing.T) {
 	}
 }
 
+// Pi 9b88b94e2 packages/ai/test/retry.test.ts:106 (#12064): a gateway ends the stream with an Anthropic-style api_error event reading
+// "Connection closed."; the agent proxy's own message for a stream that hit EOF before a done or error event matches too.
+// The quota/limit pattern is still checked first.
+func TestConnectionClosedIsRetryable(t *testing.T) {
+	for _, tc := range []struct {
+		text string
+		want bool
+	}{
+		{`{"type":"error","error":{"type":"api_error","message":"Connection closed."}}`, true},
+		{"Connection closed by proxy server before the response completed", true},
+		{"Connection closed.", true},
+		{"connection_closed", true},
+		{`{"type":"error","error":{"type":"api_error","message":"Connection closed. insufficient_quota"}}`, false},
+		{"The connection was closed by the user", false},
+	} {
+		message := jobj("role", "assistant", "stopReason", "error", "errorMessage", tc.text)
+		if got := IsRetryableAssistantError(message); got != tc.want {
+			t.Errorf("IsRetryableAssistantError(%q) = %v, want %v", tc.text, got, tc.want)
+		}
+	}
+}
+
+// Pi 566344046 packages/ai/test/retry.test.ts:100 (#11879): the Magpie gateway relaying a dropped upstream Anthropic stream. The generated
+// pattern list gained the entry when it was regenerated for #12064.
+func TestStreamCutShortMidReplyIsRetryable(t *testing.T) {
+	message := jobj("role", "assistant", "stopReason", "error", "errorMessage", "Claude Code's stream from Anthropic was cut short after the reply had begun")
+	if !IsRetryableAssistantError(message) {
+		t.Error("a stream cut short after the reply had begun is not retryable")
+	}
+}
+
 // Pi d3398f82 (#11492, #11494): LiteLLM's pre-call check ContextWindowExceededError is a context overflow.
 // The pattern is pinned here by hand.
 func TestLiteLLMContextWindowExceededIsOverflow(t *testing.T) {

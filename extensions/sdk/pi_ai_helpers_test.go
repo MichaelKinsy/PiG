@@ -294,6 +294,20 @@ func TestZhipuUsageLimit1308IsNotRetryable(t *testing.T) {
 	}
 }
 
+// Pi 9b88b94e2 packages/ai/test/retry.test.ts:106 (#12064): a gateway ends the stream with an Anthropic-style api_error event reading "Connection closed.".
+func TestConnectionClosedIsRetryable(t *testing.T) {
+	for text, want := range map[string]bool{
+		`{"type":"error","error":{"type":"api_error","message":"Connection closed."}}`:                    true,
+		"Connection closed by proxy server before the response completed":                                 true,
+		`{"type":"error","error":{"type":"api_error","message":"Connection closed. insufficient_quota"}}`: false,
+		"The connection was closed by the user":                                                           false,
+	} {
+		if got := IsRetryableAssistantError(map[string]any{"role": "assistant", "stopReason": "error", "errorMessage": text}); got != want {
+			t.Errorf("IsRetryableAssistantError(%q) = %v, want %v", text, got, want)
+		}
+	}
+}
+
 func TestEnvAPIKeyAuthMatchesThePinnedPackage(t *testing.T) {
 	_, golden := loadGolden(t)
 	for _, c := range golden.Cases {
