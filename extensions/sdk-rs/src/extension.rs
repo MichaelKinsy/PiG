@@ -2081,6 +2081,10 @@ impl Extension {
                         event_replicas.apply(&mut req);
                         conn.request_state(&id, "started", None)?;
                         let cancel = RequestCancel::new();
+                        if req.signal_aborted {
+                            // session_before_compact / session_before_tree dispatched after the event's signal aborted: the request starts cancelled, as a cancel frame queued ahead of it would (runner.ts emit awaits the handler with event.signal aborted), so is_cancelled() is true on the handler's first line.
+                            cancel.cancel("context canceled".to_string());
+                        }
                         active_requests
                             .lock()
                             .unwrap()
@@ -2155,6 +2159,7 @@ impl Extension {
                                     let error = ErrorInfo {
                                         code: Some("handler_panic".to_string()),
                                         message,
+                                        shell_exit: None,
                                     };
                                     let respond = || {
                                         let _ = conn.respond(&id, None, Some(error));
@@ -2189,6 +2194,7 @@ impl Extension {
                                 Some(ErrorInfo {
                                     code: Some("handler_start".to_string()),
                                     message: format!("start extension handler: {err}"),
+                                    shell_exit: None,
                                 }),
                             );
                         }
@@ -2202,7 +2208,11 @@ impl Extension {
                         .filter(|id| !id.is_empty())
                         .or(env.id.as_deref())
                         .unwrap_or("");
-                    conn.cancel_pending_calls_for(request_id);
+                    // A signal-only cancel (session_before_compact / session_before_tree: Pi's abort fires event.signal and nothing else) aborts the signal the handler holds and cancels no host call: the handler's calls, pending and later, are answered and its reply is delivered. An ordinary cancel ends the request and its calls.
+                    let signal_only = env.cancel.as_ref().is_some_and(|c| c.signal_only);
+                    if !signal_only {
+                        conn.cancel_pending_calls_for(request_id);
+                    }
                     if let Some(cancel) = active_requests.lock().unwrap().get(request_id) {
                         let reason = env
                             .cancel
@@ -2558,6 +2568,7 @@ impl Extension {
                 Some(ErrorInfo {
                     code: None,
                     message: format!("unknown oauth provider: {}", name),
+                    shell_exit: None,
                 }),
             );
             return;
@@ -2565,6 +2576,7 @@ impl Extension {
         let err = |msg: String| ErrorInfo {
             code: None,
             message: msg,
+            shell_exit: None,
         };
         match req.method.as_str() {
             "oauth_login" => {
@@ -2722,6 +2734,7 @@ impl Extension {
                 Some(ErrorInfo {
                     code: None,
                     message,
+                    shell_exit: None,
                 }),
             );
             return;
@@ -2739,6 +2752,7 @@ impl Extension {
                         Some(ErrorInfo {
                             code: None,
                             message: err.to_string(),
+                            shell_exit: None,
                         }),
                     ),
                 };
@@ -2758,6 +2772,7 @@ impl Extension {
                         Some(ErrorInfo {
                             code: None,
                             message,
+                            shell_exit: None,
                         }),
                     ),
                 };
@@ -2775,6 +2790,7 @@ impl Extension {
                         Some(ErrorInfo {
                             code: None,
                             message,
+                            shell_exit: None,
                         }),
                     ),
                 };
@@ -2797,6 +2813,7 @@ impl Extension {
                         Some(ErrorInfo {
                             code: None,
                             message,
+                            shell_exit: None,
                         }),
                     ),
                 };
@@ -2817,6 +2834,7 @@ impl Extension {
                             Some(ErrorInfo {
                                 code: None,
                                 message,
+                                shell_exit: None,
                             }),
                         );
                     }
@@ -2836,6 +2854,7 @@ impl Extension {
                             Some(ErrorInfo {
                                 code: None,
                                 message,
+                                shell_exit: None,
                             }),
                         );
                     }
@@ -2860,17 +2879,19 @@ impl Extension {
                         },
                     )
                 })
-                .unwrap_or_else(|_| Err("bash operations panicked".to_string()));
+                .unwrap_or_else(|_| Err("bash operations panicked".into()));
                 match result {
                     Ok(value) => {
                         let _ = conn.respond(id, Some(value), None);
                     }
-                    Err(message) => {
+                    Err(error) => {
+                        let (message, shell_exit) = error.into_parts();
                         let _ = conn.respond(
                             id,
                             None,
                             Some(ErrorInfo {
                                 code: None,
+                                shell_exit,
                                 message,
                             }),
                         );
@@ -2937,6 +2958,7 @@ impl Extension {
                             Some(ErrorInfo {
                                 code: None,
                                 message,
+                                shell_exit: None,
                             }),
                         );
                     }
@@ -2974,6 +2996,7 @@ impl Extension {
                 let error = failure.map(|message| ErrorInfo {
                     code: None,
                     message,
+                    shell_exit: None,
                 });
                 let _ = conn.respond(id, None, error);
             }
@@ -3008,6 +3031,7 @@ impl Extension {
                             Some(ErrorInfo {
                                 code: None,
                                 message,
+                                shell_exit: None,
                             }),
                         );
                     }
@@ -3050,6 +3074,7 @@ impl Extension {
                             Some(ErrorInfo {
                                 code: None,
                                 message,
+                                shell_exit: None,
                             }),
                         );
                     }
@@ -3087,6 +3112,7 @@ impl Extension {
                             Some(ErrorInfo {
                                 code: None,
                                 message,
+                                shell_exit: None,
                             }),
                         );
                     }
@@ -3128,6 +3154,7 @@ impl Extension {
                             Some(ErrorInfo {
                                 code: None,
                                 message,
+                                shell_exit: None,
                             }),
                         );
                     }
@@ -3142,6 +3169,7 @@ impl Extension {
                     .map(|message| ErrorInfo {
                         code: None,
                         message,
+                        shell_exit: None,
                     });
                 let _ = conn.respond(id, None, error);
             }
@@ -3193,6 +3221,7 @@ impl Extension {
                             Some(ErrorInfo {
                                 code: None,
                                 message,
+                                shell_exit: None,
                             }),
                         );
                     }
@@ -3300,6 +3329,7 @@ impl Extension {
                                 Some(ErrorInfo {
                                     code: None,
                                     message: s,
+                                    shell_exit: None,
                                 }),
                             );
                         }
@@ -3316,6 +3346,7 @@ impl Extension {
                         Some(ErrorInfo {
                             code: None,
                             message: format!("unknown tool: {}", tool_name),
+                            shell_exit: None,
                         }),
                     );
                 }
@@ -3329,6 +3360,7 @@ impl Extension {
                         Some(ErrorInfo {
                             code: None,
                             message,
+                            shell_exit: None,
                         }),
                     ),
                 };
@@ -3364,6 +3396,7 @@ impl Extension {
                                 Some(ErrorInfo {
                                     code: None,
                                     message: s,
+                                    shell_exit: None,
                                 }),
                             );
                         }
@@ -3375,6 +3408,7 @@ impl Extension {
                         Some(ErrorInfo {
                             code: None,
                             message: format!("unknown command: {}", cmd_name),
+                            shell_exit: None,
                         }),
                     );
                 }
@@ -3387,6 +3421,7 @@ impl Extension {
                         Some(ErrorInfo {
                             code: None,
                             message: message.clone(),
+                            shell_exit: None,
                         }),
                     );
                     return;
@@ -3465,6 +3500,7 @@ impl Extension {
                         Some(ErrorInfo {
                             code: None,
                             message,
+                            shell_exit: None,
                         }),
                     ),
                 };
@@ -3553,6 +3589,7 @@ impl Extension {
                                 Some(ErrorInfo {
                                     code: None,
                                     message: s,
+                                    shell_exit: None,
                                 }),
                             );
                         }
@@ -3564,6 +3601,7 @@ impl Extension {
                         Some(ErrorInfo {
                             code: None,
                             message: format!("unknown shortcut: {}", shortcut_key),
+                            shell_exit: None,
                         }),
                     );
                 }
@@ -3612,6 +3650,7 @@ impl Extension {
                                 Some(ErrorInfo {
                                     code: None,
                                     message,
+                                    shell_exit: None,
                                 }),
                             );
                         }
@@ -3623,6 +3662,7 @@ impl Extension {
                         Some(ErrorInfo {
                             code: None,
                             message: format!("unknown renderer: {}", custom_type),
+                            shell_exit: None,
                         }),
                     );
                 }
@@ -3641,6 +3681,7 @@ impl Extension {
                         Some(ErrorInfo {
                             code: None,
                             message: format!("command {} has no getArgumentCompletions", cmd_name),
+                            shell_exit: None,
                         }),
                     );
                 }
@@ -3660,6 +3701,7 @@ impl Extension {
                             Some(ErrorInfo {
                                 code: None,
                                 message: "tool renderer resolver panicked".to_string(),
+                                shell_exit: None,
                             }),
                         );
                     }
@@ -3683,6 +3725,7 @@ impl Extension {
                             Some(ErrorInfo {
                                 code: None,
                                 message,
+                                shell_exit: None,
                             }),
                         );
                     }
@@ -3753,6 +3796,7 @@ impl Extension {
                                 Some(ErrorInfo {
                                     code: None,
                                     message,
+                                    shell_exit: None,
                                 }),
                             );
                         }
@@ -3764,6 +3808,7 @@ impl Extension {
                         Some(ErrorInfo {
                             code: None,
                             message: format!("unknown entry renderer: {}", custom_type),
+                            shell_exit: None,
                         }),
                     );
                 }
@@ -3775,6 +3820,7 @@ impl Extension {
                     Some(ErrorInfo {
                         code: None,
                         message: format!("unknown method: {}", req.method),
+                        shell_exit: None,
                     }),
                 );
             }
@@ -4081,6 +4127,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("r1".to_string()),
                 request: Some(RequestMsg {
+                    signal_aborted: false,
                     child_session: None,
                     terminal_input: None,
                     stream: None,
@@ -4168,6 +4215,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("req-1".to_string()),
                 request: Some(RequestMsg {
+                    signal_aborted: false,
                     child_session: None,
                     terminal_input: None,
                     stream: None,
@@ -4196,6 +4244,7 @@ mod tests {
                 cancel: Some(crate::protocol::CancelMsg {
                     request_id: "req-1".to_string(),
                     reason: "test cancel".to_string(),
+                    signal_only: false,
                 }),
                 ..Default::default()
             },
@@ -4208,6 +4257,184 @@ mod tests {
         assert_eq!(response.msg_type, "response");
         assert_eq!(response.id.as_deref(), Some("req-1"));
         assert!(response.response.unwrap().error.is_some());
+        write_env(
+            &mut stream,
+            &Envelope {
+                msg_type: "shutdown".to_string(),
+                ..Default::default()
+            },
+        );
+        handle.join().unwrap().unwrap();
+        let _ = std::fs::remove_file(sock);
+    }
+
+    fn cancel_env(request_id: &str, reason: &str, signal_only: bool) -> Envelope {
+        Envelope {
+            msg_type: "cancel".to_string(),
+            id: Some(request_id.to_string()),
+            cancel: Some(crate::protocol::CancelMsg {
+                request_id: request_id.to_string(),
+                reason: reason.to_string(),
+                signal_only,
+            }),
+            ..Default::default()
+        }
+    }
+
+    // What `start_pending_ask` hands back: the socket, the call frame, the handler's report, the extension's thread and the socket's path.
+    type PendingAsk = (
+        UnixStream,
+        Envelope,
+        mpsc::Receiver<(bool, bool, bool)>,
+        std::thread::JoinHandle<std::io::Result<()>>,
+        std::path::PathBuf,
+    );
+
+    // Starts an extension whose "ask" command blocks in a host input call, runs it to the pending call, and hands back the socket, the call frame and what the handler reports once the call returns: (signal aborted, first input ok, second input ok).
+    fn start_pending_ask(tag: &str) -> PendingAsk {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let sock = std::env::temp_dir().join(format!("pig-sdk-rs-{tag}-{unique}.sock"));
+        let _ = std::fs::remove_file(&sock);
+        let listener = UnixListener::bind(&sock).unwrap();
+        let (report_tx, report_rx) = mpsc::channel();
+        let mut ext = Extension::new("cancel-kinds");
+        ext.command("ask", "wait for input", move |ctx, _args| {
+            let first = ctx.input("Question", "Answer").is_ok();
+            let aborted = ctx.is_cancelled();
+            let second = ctx.input("Again", "Answer").is_ok();
+            let _ = report_tx.send((aborted, first, second));
+            CommandResult::Ok
+        });
+        let sock_for_ext = sock.clone();
+        let handle =
+            std::thread::spawn(move || ext.run_with_socket(sock_for_ext.to_str().unwrap()));
+        let (mut stream, _) = listener.accept().unwrap();
+        assert_eq!(read_env(&mut stream).msg_type, "register");
+        write_env(
+            &mut stream,
+            &Envelope {
+                msg_type: "ready".to_string(),
+                ready: Some(ReadyMsg {
+                    cwd: "/tmp".to_string(),
+                    mode: "tui".to_string(),
+                    width: 80,
+                    height: 24,
+                    source_info: None,
+                    state: None,
+                }),
+                ..Default::default()
+            },
+        );
+        write_env(
+            &mut stream,
+            &Envelope {
+                msg_type: "request".to_string(),
+                id: Some("req-ask".to_string()),
+                request: Some(RequestMsg {
+                    signal_aborted: false,
+                    child_session: None,
+                    terminal_input: None,
+                    stream: None,
+                    stream_error: None,
+                    args_error: None,
+                    deep_args: false,
+                    tool_call_index: None,
+                    args_raw: None,
+                    method: "command".to_string(),
+                    tool: Some("ask".to_string()),
+                    event: None,
+                    handler_id: 0,
+                    tool_call_id: None,
+                    batch: None,
+                    args: None,
+                }),
+                ..Default::default()
+            },
+        );
+        let call = read_env(&mut stream);
+        assert_eq!(call.msg_type, "call");
+        assert_eq!(
+            call.call.as_ref().unwrap().parent_request_id.as_deref(),
+            Some("req-ask")
+        );
+        (stream, call, report_rx, handle, sock)
+    }
+
+    fn answer_call(stream: &mut UnixStream, call: &Envelope) {
+        write_env(
+            stream,
+            &Envelope {
+                msg_type: "call_result".to_string(),
+                id: call.id.clone(),
+                call_result: Some(crate::protocol::CallResultMsg {
+                    result: Some(serde_json::json!({"text":"ok","ok":true})),
+                    error: None,
+                }),
+                ..Default::default()
+            },
+        );
+    }
+
+    fn ping_pong(stream: &mut UnixStream, nonce: &str) {
+        write_env(
+            stream,
+            &Envelope {
+                msg_type: "ping".to_string(),
+                ping: Some(crate::protocol::PingMsg {
+                    nonce: nonce.to_string(),
+                }),
+                ..Default::default()
+            },
+        );
+        assert_eq!(read_env(stream).pong.unwrap().nonce, nonce);
+    }
+
+    #[test]
+    fn signal_only_cancel_aborts_the_signal_and_leaves_host_calls_running() {
+        let (mut stream, call, report_rx, handle, sock) = start_pending_ask("signal-only");
+        write_env(&mut stream, &cancel_env("req-ask", "signal only", true));
+        // The pong follows the cancel in the read loop, so the cancel is handled before the call is answered.
+        ping_pong(&mut stream, "after-signal-only");
+        answer_call(&mut stream, &call);
+        // The handler's second call is not refused: the host sees it and answers it.
+        let second = read_env(&mut stream);
+        assert_eq!(second.msg_type, "call");
+        answer_call(&mut stream, &second);
+        assert_eq!(
+            report_rx.recv_timeout(Duration::from_secs(2)).unwrap(),
+            (true, true, true)
+        );
+        let response = read_env(&mut stream);
+        assert_eq!(response.msg_type, "response");
+        assert_eq!(response.id.as_deref(), Some("req-ask"));
+        assert!(response.response.unwrap().error.is_none());
+        write_env(
+            &mut stream,
+            &Envelope {
+                msg_type: "shutdown".to_string(),
+                ..Default::default()
+            },
+        );
+        handle.join().unwrap().unwrap();
+        let _ = std::fs::remove_file(sock);
+    }
+
+    #[test]
+    fn ordinary_cancel_after_signal_only_cancel_ends_the_request_and_its_host_calls() {
+        let (mut stream, _call, report_rx, handle, sock) = start_pending_ask("ordinary-after");
+        write_env(&mut stream, &cancel_env("req-ask", "signal only", true));
+        write_env(&mut stream, &cancel_env("req-ask", "ordinary", false));
+        // The pending call fails and the later call is refused: the next frame is the response, not a second call.
+        assert_eq!(
+            report_rx.recv_timeout(Duration::from_secs(2)).unwrap(),
+            (true, false, false)
+        );
+        let response = read_env(&mut stream);
+        assert_eq!(response.msg_type, "response");
+        assert_eq!(response.id.as_deref(), Some("req-ask"));
         write_env(
             &mut stream,
             &Envelope {
@@ -4370,6 +4597,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("login-1".to_string()),
                 request: Some(RequestMsg {
+                    signal_aborted: false,
                     child_session: None,
                     terminal_input: None,
                     stream: None,
@@ -4441,6 +4669,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("key-1".to_string()),
                 request: Some(RequestMsg {
+                    signal_aborted: false,
                     child_session: None,
                     terminal_input: None,
                     stream: None,
@@ -4470,6 +4699,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("ref-1".to_string()),
                 request: Some(RequestMsg {
+                    signal_aborted: false,
                     child_session: None,
                     terminal_input: None,
                     stream: None,
@@ -4500,6 +4730,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("store-1".to_string()),
                 request: Some(RequestMsg {
+                    signal_aborted: false,
                     child_session: None,
                     terminal_input: None,
                     stream: None,
@@ -4527,6 +4758,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("status-1".to_string()),
                 request: Some(RequestMsg {
+                    signal_aborted: false,
                     child_session: None,
                     terminal_input: None,
                     stream: None,
@@ -4624,6 +4856,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("req-state".to_string()),
                 request: Some(RequestMsg {
+                    signal_aborted: false,
                     child_session: None,
                     terminal_input: None,
                     stream: None,
@@ -4661,6 +4894,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("req-user".to_string()),
                 request: Some(RequestMsg {
+                    signal_aborted: false,
                     child_session: None,
                     terminal_input: None,
                     stream: None,
@@ -4734,6 +4968,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("req-title".to_string()),
                 request: Some(RequestMsg {
+                    signal_aborted: false,
                     child_session: None,
                     terminal_input: None,
                     stream: None,
@@ -4796,6 +5031,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("req-panic".to_string()),
                 request: Some(RequestMsg {
+                    signal_aborted: false,
                     child_session: None,
                     terminal_input: None,
                     stream: None,
@@ -4880,6 +5116,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("req-label".to_string()),
                 request: Some(RequestMsg {
+                    signal_aborted: false,
                     child_session: None,
                     terminal_input: None,
                     stream: None,
@@ -4912,6 +5149,7 @@ mod tests {
                             error: Some(crate::protocol::ErrorInfo {
                                 code: None,
                                 message: "Entry missing-entry not found".to_string(),
+                                shell_exit: None,
                             }),
                         }),
                         ..Default::default()
@@ -4947,6 +5185,7 @@ mod tests {
             msg_type: "request".to_string(),
             id: Some(id.to_string()),
             request: Some(RequestMsg {
+                signal_aborted: false,
                 child_session: None,
                 terminal_input: None,
                 stream: None,

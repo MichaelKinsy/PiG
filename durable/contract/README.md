@@ -1,10 +1,10 @@
 # Durable core conformance gate
 
-The gate every lane of the Durable core uses ([CONTRACT.md](../../docs/plan/durable-core/CONTRACT.md) sections 5-7). It runs the corpus (E00-E37, U, SC, I, W1-W4, X1, H) against pi-durable at the pinned reference commit (`PIN` `main`, Pi main `c23b9ec1` (1.5.0 + main), the commit PiG pins) and against a candidate, and compares the two at the store, commit, context, output and order levels (order: the scenario's API calls and the commits in one sequence, CONTRACT 5.8). One Pi commit is one row of `commit` lines, so a difference names the first divergent commit seq, the table, the column and whether the text differs in value, key order or number format.
+The gate every lane of the Durable core uses ([CONTRACT.md](../../docs/plan/durable-core/CONTRACT.md) sections 5-7). It runs the corpus (E00-E37, U, SC, I, W1-W4, X1, H) against pi-durable at the pinned reference commit (`PIN` `main`, Pi v1.5.2 `b4afdddf`, the commit PiG pins) and against a candidate, and compares the two at the store, commit, context, output and order levels (order: the scenario's API calls and the commits in one sequence, CONTRACT 5.8). One Pi commit is one row of `commit` lines, so a difference names the first divergent commit seq, the table, the column and whether the text differs in value, key order or number format.
 
 ## References
 
-`PIN` names the reference: `main` is Pi main `c23b9ec1` (1.5.0 + main) (the commit PiG pins), the reference of every E, U, SC, I, W, X, H and F row (the tick rows F-ticks-*, F-split-* and `tools/gen-hopticks.mjs` included); the candidate runs over the same checkout. `release` names v1.0.4, whose stores the R rows read.
+`PIN` names the reference: `main` is Pi v1.5.2 `b4afdddf` (the commit PiG pins), the reference of every E, U, SC, I, W, X, H and F row (the tick rows F-ticks-*, F-split-* and `tools/gen-hopticks.mjs` included); the candidate runs over the same checkout. `release` names v1.0.4, whose stores the R rows read.
 
 ## Run it
 
@@ -125,6 +125,10 @@ Running a row alone removes the load that made a slow candidate miss Pi's budget
 ## Measured divergences (`measured_test`, `measured_failure`, `measured_divergence`)
 
 A U row may state the measured value of an approved divergence in a test of the reference's own file. `measured_test` names the test (a prefix of its full name), `measured_failure` the text the candidate's failure carries, and `measured_divergence` the divergence whose record (`docs/parity/divergences/D<N>.md`, `SCRUTINIZED:approved`) the corpus check requires. The row passes only when the candidate fails that test with that failure: a pass fails the row (the divergence is over; delete the fields and the record), and any other failure fails it like every other test. The control never takes it. `U-harness-restart-failure` carries D206: Pi's test counts 49 reads of `extensions` for a round, and the core's host reads them 6 times (`expected 6 to be 49`).
+
+## Skipped tests (`skip_tests`)
+
+A ready U row may name tests the candidate cannot run yet, by exact full name (`skip_tests`), with the row's `reason`: the owner's written exception, generated from `SKIP_TESTS` in `tools/gen-corpus.mjs`. The row passes only when every other test of the file passes and the named tests are the only failures; the row's detail lists them under `skipped by name`. A name the reference no longer passes (renamed or removed), or one the candidate now passes, fails the row, so the exception cannot go stale unseen. The control never skips. `U-harness-tasks` skips the two Pi #11892 tests that release a held publication from inside a monkeypatched `session.touch` (0.8.0).
 
 ## Count budgets (`cli/counts.mjs`)
 

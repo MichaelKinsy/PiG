@@ -37,7 +37,7 @@ for (const [index, probe] of input.entries()) {
     }
     return new Response("not found", { status: 404 });
   };
-  const model = { id: "qwen", name: "qwen", api: "llama-cpp-classify", provider: "llama.cpp", baseUrl: "http://llama-prompt-" + index + ".test:8080/v1", input: ["text"], contextWindow: 32768 };
+  const model = { id: "qwen", name: "qwen", api: "llama-cpp-classify", provider: "llama.cpp", baseUrl: "http://llama-prompt-" + index + ".test:9931/v1", input: ["text"], contextWindow: 32768 };
   const context = { state: { message: probe.message }, questions: { pick: { type: "choice", instructions: "Pick", criteria: { a: "", b: "" } } } };
   const result = await classify(model, context, { fetch });
   // Go's encoder writes U+2028 and U+2029 as escapes; JSON.stringify writes them raw.
@@ -103,7 +103,7 @@ func goLlamaPrompt(t *testing.T, index int, probe llamaPromptProbe) string {
 		}
 		return clsText(404, "not found", nil), nil
 	})
-	model := ClassifierModel{ID: "qwen", Name: "qwen", API: "llama-cpp-classify", Provider: "llama.cpp", BaseURL: fmt.Sprintf("http://llama-prompt-%d.test:8080/v1", index), Input: []string{"text"}, ContextWindow: 32768}
+	model := ClassifierModel{ID: "qwen", Name: "qwen", API: "llama-cpp-classify", Provider: "llama.cpp", BaseURL: fmt.Sprintf("http://llama-prompt-%d.test:9931/v1", index), Input: []string{"text"}, ContextWindow: 32768}
 	request := ClassifierContext{State: JsonObject{"message": probe.Message}, Questions: ClassifierQuestions{{ID: "pick", Question: ClassifierChoiceQuestion{Instructions: "Pick", Criteria: clsChoices("a", "", "b", "")}}}}
 	result := ClassifyLlamaCpp(t.Context(), model, request, ClassifierOptions{Fetch: fetch})
 	line, err := marshalJSONValue([]any{template, prompt, result.ErrorMessage})

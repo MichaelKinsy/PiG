@@ -48,8 +48,8 @@ type BridgedFacet struct {
 	// Host is the Go host that loaded the facet: the objects of Contracts live there, and a proxy object holds one by
 	// `Host.Get`.
 	Host host.Host
-	// Contracts are the local types the Go core facet serves that plugins use. A contract with a keyed member is refused: a
-	// keyed member is the document handle of its object and cannot be forwarded.
+	// Contracts are the local types the Go core facet serves that plugins use. A keyed member is copied to the Node host
+	// (plugins_node_mirror.go).
 	Contracts []*contracts.Contract
 	// Failed is why the Go core facet failed on the Go host, nil when it loaded or reloaded. The proxy is then shipped as a
 	// failed facet: the Node host keeps the proxy it has loaded (none at startup) and, by Pi's closure rule, the plugins that
@@ -64,7 +64,7 @@ type bridgedWire struct {
 }
 
 // validBridged checks the facets and returns their names' set: names are unique, a facet that has not failed has a host and
-// contracts that are local and without keyed members.
+// contracts that are local.
 func validBridged(facets []BridgedFacet) error {
 	names := map[string]bool{}
 	for _, facet := range facets {
@@ -88,10 +88,6 @@ func validBridged(facets []BridgedFacet) error {
 			}
 			if declared.Kind != contracts.KindLocal {
 				return fmt.Errorf("plugins: bridged facet %q: %s is a remote type; only local types are bridged", facet.Name, declared.Name)
-			}
-			current := declared.Versions[len(declared.Versions)-1].Variants.Value(contracts.LocalVariant)
-			if current.Keyed.Len() > 0 {
-				return fmt.Errorf("plugins: bridged facet %q: %s has the keyed member %q, which cannot be forwarded", facet.Name, declared.Name, current.Keyed.Keys()[0])
 			}
 		}
 	}
@@ -199,6 +195,7 @@ type bridgedServing struct {
 	references map[int]*host.Reference
 	watches    map[int]chord.WatchHandle[delta.JsonValue]
 	running    map[int]context.CancelFunc
+	mirrors    map[int]*bridgedMirror
 }
 
 // serving is the Go side's state for the Node host's requests, made when the first arrives: its context ends with the
@@ -209,6 +206,7 @@ func (h *NodeHost) serving() *bridgedServing {
 	if h.bridge.served == nil {
 		served := &bridgedServing{
 			life: h.life, references: map[int]*host.Reference{}, watches: map[int]chord.WatchHandle[delta.JsonValue]{}, running: map[int]context.CancelFunc{},
+			mirrors: map[int]*bridgedMirror{},
 		}
 		h.bridge.served = served
 		//portlint:allow golifetime ends with the process: the context of every request the Node host made ends with it
@@ -229,6 +227,7 @@ func (served *bridgedServing) releaseAll() {
 	served.references = map[int]*host.Reference{}
 	served.watches = map[int]chord.WatchHandle[delta.JsonValue]{}
 	served.mu.Unlock()
+	served.endMirrors(func(*bridgedMirror) bool { return true })
 	for _, watch := range watches {
 		_, _ = watch.Stop()
 	}
@@ -237,12 +236,12 @@ func (served *bridgedServing) releaseAll() {
 	}
 }
 
-// bridgedEvent handles an event of the Node host that is a request to the Go host (`get`, `watch`, `bridgeCall`: each
-// answered), or a notification of it (`unwatch`, `release`, `abort`). It runs on the goroutine that reads the channel: the
+// bridgedEvent handles an event of the Node host that is a request to the Go host (`get`, `watch`, `mirror`, `bridgeCall`: each
+// answered), or a notification of it (`unwatch`, `unmirror`, `release`, `abort`). It runs on the goroutine that reads the channel: the
 // work of a request runs on a goroutine of its own, so a request never delays another or the reading.
 func (h *NodeHost) bridgedEvent(event string, payload []byte) {
 	switch event {
-	case "get", "watch", "bridgeCall":
+	case "get", "watch", "mirror", "bridgeCall":
 		var request struct {
 			ID     int             `json:"id"`
 			Facet  string          `json:"facet"`
@@ -253,6 +252,7 @@ func (h *NodeHost) bridgedEvent(event string, payload []byte) {
 			Method string          `json:"method"`
 			Args   json.RawMessage `json:"args"`
 			Watch  int             `json:"watch"`
+			Mirror int             `json:"mirror"`
 		}
 		if err := json.Unmarshal(payload, &request); err != nil {
 			return
@@ -278,6 +278,8 @@ func (h *NodeHost) bridgedEvent(event string, payload []byte) {
 				result, err = h.bridgedGet(ctx, request.Facet, request.Type, request.Params)
 			case "watch":
 				result, start, err = h.bridgedWatch(ctx, request.Handle, request.Member, request.Watch)
+			case "mirror":
+				result, start, err = h.bridgedMirrorOf(ctx, request.Handle, request.Member, request.Mirror)
 			case "bridgeCall":
 				result, err = h.bridgedCall(ctx, request.Handle, request.Method, request.Args)
 			}
@@ -313,8 +315,17 @@ func (h *NodeHost) bridgedEvent(event string, payload []byte) {
 		delete(serving.references, message.Handle)
 		serving.mu.Unlock()
 		if reference != nil {
+			h.serving().endMirrors(func(m *bridgedMirror) bool { return m.handle == message.Handle })
 			reference.Release()
 		}
+	case "unmirror":
+		var message struct {
+			Mirror int `json:"mirror"`
+		}
+		if err := json.Unmarshal(payload, &message); err != nil {
+			return
+		}
+		h.serving().endMirrors(func(m *bridgedMirror) bool { return m.id == message.Mirror })
 	case "unwatch":
 		var message struct {
 			Watch int `json:"watch"`
@@ -503,6 +514,10 @@ func (h *NodeHost) bridgedCall(ctx context.Context, handle int, method string, a
 	}
 	result, err := reference.Call(method, decoded, ctx)
 	if err != nil {
+		return nil, err
+	}
+	// The commits of the call reached the copies of the reference's keyed members before its answer is sent.
+	if err := h.serving().flushMirrors(ctx, handle); err != nil {
 		return nil, err
 	}
 	return map[string]any{"result": wireEncode(result)}, nil

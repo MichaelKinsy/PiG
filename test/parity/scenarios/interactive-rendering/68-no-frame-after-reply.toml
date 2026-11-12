@@ -1,0 +1,56 @@
+# Behavior family: interactive-rendering
+# Surface: the byte stream after a reply ends. The frame that carries the end of the reply is the last frame of the stream.
+#
+# Upstream evidence (pi v1.5.2, npm @earendil-works/pi-coding-agent, 2026-11-11, pty capture of five fake-model prompts at 120x40 on xd670): interactive-mode.ts
+# handleEvent "agent_end" removes the working indicator and calls this.ui.requestRender() once; "agent_settled" only checks for a requested shutdown. The
+# render (tui-alt-screen.ts doRender) writes one CSI ? 2026 h ... CSI ? 2026 l frame, and the capture shows no further frame in the 400 ms after the frame
+# that holds the reply's last row (the frames before it are 16-20 ms apart, the throttle).
+# Owner finding (BoltRace 1.2.1, interactive wall time 581 vs 512 ms): PiG wrote three more frames after it, each 29 bytes that only moved and hid the cursor:
+# two direct renders at the end of the turn (updatePendingMessagesDisplay and the turn's final flush) and one RequestRender from agent_settled 16 ms later. Every
+# settled-screen scenario passed, because those frames repaint the rows the terminal already shows.
+# The scenario reads the raw transcript (tmux pipe-pane) and counts frames that begin after the last occurrence of the reply text, in both binaries.
+# Mutation runs: restoring the RequestRender in handleAgentEvent's AgentSettledEvent case, and restoring the turn's final flush, each fail the pig run with
+# "N frame(s) began after the reply text".
+
+name = "68-no-frame-after-reply"
+description = "No frame begins after the frame that carries the end of a reply, in the raw terminal stream."
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/tui/src/tui.ts",
+  "packages/tui/src/tui-alt-screen.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "reply with exactly: FRAMETAILOK"
+capture_end = "FRAMETAILOK"
+
+[[tmux.steps]]
+keys = ["reply with exactly: FRAMETAILOK", "Enter"]
+settle_seconds = 1
+wait_contains = ["FRAMETAILOK"]
+wait_timeout_seconds = 10
+[tmux.steps.final_frame]
+text = "FRAMETAILOK"
+quiet_milliseconds = 400
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+output_normalized_equal = true
+no_frames_after_reply = true
+runs = 3

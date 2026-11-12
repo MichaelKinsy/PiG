@@ -1,0 +1,3 @@
+### Changed
+
+- A spinner step no longer draws a frame of its own while a reply or a tool call is streaming in: the step asks for its frame within 40 ms (or half its interval, if shorter), and a frame the stream asks for in that time draws it. Pi draws one frame per step, which is about one frame in five of a streaming write call. In a tmux pane, where each frame costs the tmux server a read, a parse and a redraw, this saves the server about a fifth of its frames on the `write:50` cell of the Pi-Bolt `tmux_load.py` harness. The settled screen and every other frame are unchanged; a step that no frame draws within the time is still drawn by a frame of its own, and a loader that is not on a PiG renderer asks at once as before. Recorded as D619.

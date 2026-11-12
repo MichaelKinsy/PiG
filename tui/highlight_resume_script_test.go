@@ -48,7 +48,7 @@ func TestStreamedScriptHighlightEqualsAWholeRun(t *testing.T) {
 				for end < len(code) && !utf8.RuneStart(code[end]) {
 					end++
 				}
-				if base, _ := hlFindResume(code[:end], lang, theme); base.prefix != "" {
+				if base, _ := hlFindResume(code[:end], lang, theme, false); base.prefix != "" {
 					resumed++
 				}
 				steps++

@@ -142,6 +142,7 @@ func expectSame(t *testing.T, what string, first, second any) {
 }
 
 func TestScriptedSessionStoresMatchPiDurable(t *testing.T) {
+	skipWithoutSuspendableWork(t)
 	dir := t.TempDir()
 	piStore, goStore := filepath.Join(dir, "pi.sqlite"), filepath.Join(dir, "go.sqlite")
 	node(t, "scenario.mjs", piStore)
@@ -150,6 +151,7 @@ func TestScriptedSessionStoresMatchPiDurable(t *testing.T) {
 }
 
 func TestSecondScriptedSessionStoresMatchPiDurable(t *testing.T) {
+	skipWithoutSuspendableWork(t)
 	dir := t.TempDir()
 	piStore, goStore := filepath.Join(dir, "pi.sqlite"), filepath.Join(dir, "go.sqlite")
 	node(t, "scenario2.mjs", piStore)
@@ -172,6 +174,7 @@ var storages = []struct{ name, file string }{{"sqlite", "pocket.sqlite"}, {"json
 // TestScriptedSessionsViewIdentically runs each script by each runtime on each storage and compares what the Harness
 // API shows. The SQLite tests above compare the rows themselves.
 func TestScriptedSessionsViewIdentically(t *testing.T) {
+	skipWithoutSuspendableWork(t)
 	for _, storage := range storages {
 		for _, scenario := range scenarios {
 			t.Run(storage.name+"/"+scenario.name, func(t *testing.T) {
@@ -221,6 +224,7 @@ func jsonlDump(t *testing.T, dir string) any {
 // TestScriptedSessionJsonlFilesMatchPiDurable compares the JSONL files themselves: the same names, and the same
 // records in the same order, as JSON values.
 func TestScriptedSessionJsonlFilesMatchPiDurable(t *testing.T) {
+	skipWithoutSuspendableWork(t)
 	for _, scenario := range scenarios {
 		t.Run(scenario.name, func(t *testing.T) {
 			dir := t.TempDir()

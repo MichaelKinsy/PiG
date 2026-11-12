@@ -13,6 +13,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/MichaelKinsy/PiG/chord"
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -42,15 +44,14 @@ import (
 // (the start-data object, sessions, the owner link, pairing, files), and gives the app the controls it needs: the owner link,
 // `ApplyChanges`, export and import per address.
 //
-// Forced Go differences (D460, D461, D462, D603). The plugins run in a Node subprocess (docs/plan/chord-plugins-node-evaluator.md): the kit's
+// Forced Go differences (D460, D462). The plugins run in a Node subprocess (docs/plan/chord-plugins-node-evaluator.md): the kit's
 // facets are Go core facets on the server's Go host, the server's plugins' host is the NodeHost the server host delegates to (D605: the remote types placed on the server that no Go facet serves go over its link),
-// and the local types plugins use (AppInfo, Sessions) reach the Go facets through plugins.BridgedFacet (D460). `Files` and
-// `FilesFolder` are not bridged: `Files` has a keyed member (`summary`) and the bridge refuses keyed members, so a TS plugin cannot
-// get a host's files; Go code gets them directly (D461). The server's host and the plugins' NodeHost are two hosts with a store each
+// and the local types plugins use (AppInfo, Sessions) reach the Go facets through plugins.BridgedFacet (D460); so do `Files` and `FilesFolder`, `Files`'
+// keyed member `summary` as a copy the Node host keeps of the Go object's documents. The server's host and the plugins' NodeHost are two hosts with a store each
 // (D462). The server's own code is its executable, recorded after the listen (`BaseWatched`) where Pi compares the static import graph
 // of its start script; one changed since the process started is marked as a base change until a restart (`editedSinceStart`); one under the Go build cache (`go run`, `go test`) is never compared, as Pi skips an entry under `node_modules`;
 // one that cannot be read is reported as `server_scan` and the server runs on. A start script's lazy optional imports have no Go form
-// (D603).
+// (language mechanics: an executable has no import graph).
 // `startServer`'s generic principal parameter is designed out. `principal.worker` is a function that may be nil only without
 // worker kinds.
 //
@@ -215,7 +216,7 @@ type AppOptions struct {
 	Limits AppLimits
 	// Install is how installs run npm.
 	Install plugins.InstallOptions
-	// Facets are facets the server host loads beside the kit's own (D456): the Go form of what Pi's app does with a facet that has
+	// Facets are facets the server host loads beside the kit's own (language mechanics): the Go form of what Pi's app does with a facet that has
 	// settings (`ephemeralLoginFacet()`, `inviteFacet()`, `defineUsers(...)`), which it re-exports through its API's server module
 	// and loads with a one-line plugin. A plugin directory is TypeScript the Node plugin host evaluates and cannot import a Go
 	// facet. Each is named; its name must not be one of the kit's (`chord.…`).
@@ -240,8 +241,6 @@ type AppOptions struct {
 
 	// executable is the server's own code: os.Executable unless a test names another.
 	executable func() (string, error)
-	// draining is called when the close begins to wait for the builds (drainBuilds), the steps before it done: a test's mark of that point.
-	draining func()
 	// processStart is when the process started, for the executable's edit since then: the program's start unless a test names another.
 	processStart func() time.Time
 }
@@ -345,6 +344,8 @@ type App struct {
 	Plugins AppPlugins
 	// Node is the server's plugins' host (the NodeHost the server host accepted the link of).
 	Node *plugins.NodeHost
+	// nodeData is Node's host data operations (the seam of the tests).
+	nodeData nodeHostData
 	// DataDir is the data directory.
 	DataDir string
 	// Web is the web surface, when the app has one: its base bundle's hash once built (BasesBuilt).
@@ -371,7 +372,7 @@ type App struct {
 	closed  error
 	// closing is set when the close starts: what runs after the start (the bases' builds, the scan) stops reporting there.
 	closing atomic.Bool
-	// basesStarted is set once startBases started the goroutine baseWatched is closed by: the close waits for it (drainBuilds).
+	// basesStarted is set once startBases started the goroutine basesBuilt and baseWatched are closed by: Wait joins it.
 	basesStarted atomic.Bool
 	// basesBuilt and baseWatched are BasesBuilt's and BaseWatched's channels, closed by the build after the listen (startBases).
 	basesBuilt, baseWatched chan struct{}
@@ -410,7 +411,7 @@ func StartServer(options AppOptions, ctx context.Context) (*App, error) {
 	}
 	app := &App{basesBuilt: make(chan struct{}), baseWatched: make(chan struct{}), ended: make(chan struct{}), Workers: map[string]*workers.Workers{}, DataDir: opened.layout.DataDir, OwnerTokenFile: opened.layout.OwnerToken, store: opened.store, lock: opened.lock, options: options}
 	if err := app.start(opened, ctx); err != nil {
-		return nil, errors.Join(err, app.Close(ctx))
+		return nil, errors.Join(err, app.Close(ctx), app.Wait(ctx))
 	}
 	return app, nil
 }
@@ -491,7 +492,7 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	}
 	httpOptions := chordhttp.HttpOptions{
 		Listen: listen,
-		Links: &chordhttp.LinksOptions{Path: "/chord", OptionsFunc: a.linksAfterTheBases, Opened: func(request chordhttp.HttpRequest, _ data.Principal) (func(), error) {
+		Links: &chordhttp.LinksOptions{Path: "/chord", Opened: func(request chordhttp.HttpRequest, _ data.Principal) (func(), error) {
 			return sessions.Opened(request), nil
 		}},
 		OnError: func(err chordhttp.HttpError) { a.report(AppErrorHTTP, err) },
@@ -556,7 +557,6 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 		{Name: "chord.app.sessions", Facet: sessions.Facet},
 		{Name: "chord.app.owner", Facet: OwnerFacet(link, owner)},
 		{Name: "chord.app.pairing", Facet: PairingFacet(NewPairings(PairingLimits{MaxPending: limits.PendingPairings, PerAddress: limits.PairingsPerAddress}), owner)},
-		// pig divergence (D461): Files is a Go facet the plugins' NodeHost cannot get (the bridge refuses its keyed member); Pi's plugins `self.get(Files, {})`.
 		{Name: "chord.app.files", Facet: FilesFacet(filepath.Join(opened.layout.Server, "files"), options.Files, limits.Uploads)},
 		{Name: "chord.themes", Facet: surfaces.ThemesFacet()},
 		{Name: "chord.themes.choice", Facet: themeChoice},
@@ -646,10 +646,12 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 		Bridged: []plugins.BridgedFacet{
 			{Name: "chord.app.info", Host: h, Contracts: []*contracts.Contract{AppInfo}},
 			{Name: "chord.app.sessions", Host: h, Contracts: []*contracts.Contract{Sessions}},
+			{Name: "chord.app.files", Host: h, Contracts: []*contracts.Contract{Files, FilesFolder}},
 		},
 	}, ctx)
 	// A required root's plugin failing returns the loaded host with the *PluginError: the app owns it and closes it.
 	a.Node = node
+	a.nodeData = node
 	if err != nil {
 		return err
 	}
@@ -836,7 +838,7 @@ func (a *App) workersOf(kind AppWorkerKind, layout AppLayout, hosts *workerHosts
 			return delta.JsonObjectOf("kit", kit.json(), "app", app), nil
 		},
 		Lock: func(address contracts.Address) (string, error) {
-			return workerLock(options.Name, dataDir, address), nil
+			return workerLock(options.Name, dataDir, address.Key), nil
 		},
 		IdleMs:    idle,
 		Plugins:   a.Plugins.Component,
@@ -845,9 +847,27 @@ func (a *App) workersOf(kind AppWorkerKind, layout AppLayout, hosts *workerHosts
 	}, ctx)
 }
 
-// workerLock is the process lock of the worker at address: its worker holds it while it runs, an export or import meanwhile.
-func workerLock(name, dataDir string, address contracts.Address) string {
-	return name + ":" + dataDir + ":" + address.Key
+// unknownOutcome is whether a host data commit's rejection leaves its outcome unknown: the store stopped after or during `COMMIT`
+// (`unavailable/storage_failed`), so the commit may stand. The NodeHost's rejection is a *plugins.NodeError holding the ChordError.
+func unknownOutcome(err error) bool {
+	chord, ok := data.IsChordError(err)
+	if node, isNode := errors.AsType[*plugins.NodeError](err); !ok && isNode && node.Chord != nil {
+		chord, ok = node.Chord, true
+	}
+	return ok && chord.Code == data.CodeUnavailable && chord.Reason == data.ReasonStorageFailed
+}
+
+// nodeHostData is the host data operations of the NodeHost, the host of the server's plugins (*plugins.NodeHost; D462): the seam where
+// Pi's test replaces the host's `importHostData` and `deleteHostData`.
+type nodeHostData interface {
+	ExportHostData(address contracts.Address, path string, ctx context.Context) error
+	ImportHostData(address contracts.Address, path, existing string, ctx context.Context) error
+	DeleteHostData(address contracts.Address, ctx context.Context) error
+}
+
+// workerLock is the process lock of the worker with key: its worker holds it while it runs, an export or import meanwhile.
+func workerLock(name, dataDir, key string) string {
+	return name + ":" + dataDir + ":" + key
 }
 
 // linkHost is the host of the owner link for the address listened on: loopback for a wildcard, an IPv6 address in brackets.
@@ -920,10 +940,10 @@ func running(found *workers.Workers, address contracts.Address) bool {
 	return status == string(workers.WorkerRunning)
 }
 
-// ExportData writes the data the worker at address created (its store and finished files) as an archive at path, stopping nothing: a
-// running worker packs its own store at one consistent point; without one the server packs it under the worker's lock (no worker starts
-// meanwhile).
-func (a *App) ExportData(address contracts.Address, path string, ctx context.Context) error {
+// ExportData writes the data of the worker at address (its store and finished files, and the server's records and rows belonging to
+// the address) as an archive at path, stopping nothing: a running worker packs its own store at one consistent point; without one the
+// server packs it under the worker's lock (no worker starts meanwhile).
+func (a *App) ExportData(address contracts.Address, path string, ctx context.Context) (err error) {
 	found, err := a.workersFor(address)
 	if err != nil {
 		return err
@@ -933,17 +953,41 @@ func (a *App) ExportData(address contracts.Address, path string, ctx context.Con
 	if err != nil {
 		return err
 	}
+	// The server's parts first, staged beside the archive: the worker or PackData packs them with the rest.
+	staging, err := os.MkdirTemp(filepath.Dir(target), ".chord-server-")
+	if err != nil {
+		return err
+	}
+	defer func() { err = errors.Join(err, os.RemoveAll(staging)) }()
+	// pig divergence (D462): the server's data is the NodeHost's part (`server.archive`) and the Go host's (`kit-server.archive`).
+	server, kitServer := filepath.Join(staging, "server.archive"), filepath.Join(staging, "kit-server.archive")
+	if err := a.nodeData.ExportHostData(address, server, ctx); err != nil {
+		return err
+	}
+	export, err := a.Host.ExportHostData(address, ctx)
+	if err != nil {
+		return err
+	}
+	if err := writeParts(ctx, export, kitServer); err != nil {
+		return err
+	}
+	return a.exportWorker(found, address, manifest, server, kitServer, target, ctx)
+}
+
+// exportWorker packs the worker's data with the server's parts server and kitServer at target, by the running worker or under its
+// lock.
+func (a *App) exportWorker(found *workers.Workers, address contracts.Address, manifest ArchiveManifest, server, kitServer, target string, ctx context.Context) error {
 	// Running: the worker packs its own store. Else the lock, unless a worker starts first: then ask it.
 	for attempt := 1; ; attempt++ {
 		if running(found, address) {
-			return a.exportRunning(address, manifest, target, ctx)
+			return a.exportRunning(address, manifest, server, kitServer, target, ctx)
 		}
 		lock, err := a.workerLock(address, ctx)
 		if err != nil {
 			return err
 		}
 		if lock != nil {
-			return errors.Join(PackData(ctx, WorkerDirectory(a.DataDir, address), manifest, target), lock.Release())
+			return errors.Join(PackData(ctx, WorkerDirectory(a.DataDir, address), manifest, server, kitServer, target), lock.Release())
 		}
 		if attempt == 5 {
 			return fmt.Errorf("exportData: the worker at %s keeps starting; try again", address.Key)
@@ -951,7 +995,7 @@ func (a *App) ExportData(address contracts.Address, path string, ctx context.Con
 	}
 }
 
-func (a *App) exportRunning(address contracts.Address, manifest ArchiveManifest, target string, ctx context.Context) error {
+func (a *App) exportRunning(address contracts.Address, manifest ArchiveManifest, server, kitServer, target string, ctx context.Context) error {
 	reference, err := a.Host.Get(ctx, HostData, delta.JsonObjectOf("address", AddressParam(address)), host.GetOptions{})
 	if err != nil {
 		return err
@@ -964,17 +1008,34 @@ func (a *App) exportRunning(address contracts.Address, manifest ArchiveManifest,
 	if err != nil {
 		return err
 	}
-	_, err = reference.Call("exportTo", delta.JsonObjectOf("path", target, "manifest", string(text)), ctx)
+	_, err = reference.Call("exportTo", delta.JsonObjectOf("path", target, "manifest", string(text), "server", server, "kitServer", kitServer), ctx)
 	return err
 }
 
-// ImportData makes the data of address (which must have none yet: nothing is overwritten) from the archive at archive, under the
-// worker's lock; its next hold starts it.
-func (a *App) ImportData(archive string, address contracts.Address, ctx context.Context) error {
+// DataImportOptions is what ImportData takes besides the archive and the address.
+type DataImportOptions struct {
+	// Existing is what happens when the address has data: store.ExistingRefuse (the default, also ""), or store.ExistingReplace.
+	Existing string
+}
+
+// ImportData makes the data of address from the archive at archive (an archive of an address of its kind; another address is a copy:
+// the server's host cells and keys are rewritten), under the worker's lock; its next hold starts it. An address with data (a directory,
+// server records or rows) is refused, unless options.Existing is "replace": then its data is replaced. A refused or definitely failed
+// import is undone (the old directory back, nothing new left, the NodeHost's commit undone if the Go host's failed after it: its import
+// deleted, or with replace the old part put back); one whose server commit has an unknown outcome (`storage_failed`), or whose
+// NodeHost rollback failed, undoes nothing: the new directory stays in place and the old one aside, and the error says so.
+func (a *App) ImportData(archive string, address contracts.Address, ctx context.Context, options ...DataImportOptions) error {
 	if _, err := a.workersFor(address); err != nil {
 		return err
 	}
 	name, limits := a.options.Name, a.options.Limits
+	existing := ""
+	if len(options) > 0 {
+		existing = options[0].Existing
+	}
+	if existing == "" {
+		existing = store.ExistingRefuse
+	}
 	accept := func(manifest ArchiveManifest) error {
 		// A trust boundary: an archive from anywhere.
 		if manifest.Format != ArchiveFormat {
@@ -983,29 +1044,209 @@ func (a *App) ImportData(archive string, address contracts.Address, ctx context.
 		if manifest.App != name {
 			return fmt.Errorf("importData: an archive of %q, not %q", manifest.App, name)
 		}
+		if manifest.Address.Kind != address.Kind {
+			return fmt.Errorf("importData: an archive of a %s, not a %s", manifest.Address.Kind, address.Kind)
+		}
 		return nil
 	}
+	dir := WorkerDirectory(a.DataDir, address)
+	source, err := filepath.Abs(archive)
+	if err != nil {
+		return err
+	}
+	return a.underLock(address, "importData", "has data (its worker runs)", ctx, func() error {
+		if existing == store.ExistingRefuse && Exists(dir) {
+			return fmt.Errorf("importData: %s exists already (an address is imported once)", dir)
+		}
+		// (1) Unpacked whole into staging: nothing changed yet.
+		staging, server, kitServer, err := UnpackStaging(ctx, source, filepath.Dir(dir), accept, ImportLimits{Bytes: limits.ImportBytes, Entries: limits.ImportEntries})
+		if err != nil {
+			return err
+		}
+		aside := ""
+		if existing == store.ExistingReplace && Exists(dir) {
+			aside = dir + ".aside-" + uuid.NewString()
+		}
+		placed := false
+		undo := func() error {
+			target := staging
+			if placed {
+				target = dir
+			}
+			err := os.RemoveAll(target)
+			if aside != "" && Exists(aside) {
+				err = errors.Join(err, os.Rename(aside, dir))
+			}
+			return err
+		}
+		// pig divergence (D462): a replace keeps the NodeHost's old part of the address to put it back when the Go host's commit fails after it.
+		old, forget, err := a.nodeOldPart(address, existing, filepath.Dir(dir), ctx)
+		defer forget()
+		if err != nil {
+			return errors.Join(err, undo())
+		}
+		// (2) The old directory aside, (3) the new one in place, (4) the server's parts, the commits, last.
+		committed, err := a.placeAndCommit(dir, staging, aside, server, kitServer, address, existing, &placed, ctx)
+		if err != nil {
+			if unknownOutcome(err) {
+				// It may have committed: undoing could pair the old directory with the new server data.
+				return a.unknownImport(address, aside, err)
+			}
+			if committed {
+				// The NodeHost's commit stood and the Go host's definitely failed: it is undone, so the import is refused as a whole.
+				if rolled := a.rollbackNode(address, existing, old, ctx); rolled != nil {
+					return a.rollbackFailed(address, aside, err, rolled)
+				}
+			}
+			return errors.Join(err, undo())
+		}
+		// Committed: what is left over is harmless, so these never fail the import.
+		_ = os.Remove(filepath.Join(dir, "server.archive"))
+		_ = os.Remove(filepath.Join(dir, "kit-server.archive"))
+		if aside != "" {
+			_ = os.RemoveAll(aside)
+		}
+		return nil
+	})
+}
+
+// nodeOldPart is the NodeHost's part of address before an import, as a JSONL file in a new directory in parent when the import
+// replaces (the file to put back: "" otherwise); forget removes the directory.
+//
+// pig divergence (D462): Pi's one commit needs no such part.
+func (a *App) nodeOldPart(address contracts.Address, existing, parent string, ctx context.Context) (old string, forget func(), err error) {
+	forget = func() {}
+	if existing != store.ExistingReplace {
+		return "", forget, nil
+	}
+	staging, err := os.MkdirTemp(parent, ".chord-undo-")
+	if err != nil {
+		return "", forget, err
+	}
+	forget = func() { _ = os.RemoveAll(staging) }
+	old = filepath.Join(staging, "server.archive")
+	return old, forget, a.nodeData.ExportHostData(address, old, ctx)
+}
+
+// rollbackNode undoes the NodeHost's committed import of address: what a refused import put is deleted, a replace puts the old part
+// back (old). It runs whatever became of ctx: the caller's abort must not leave the two stores apart.
+//
+// pig divergence (D462): the NodeHost's commit is separate from the Go host's.
+func (a *App) rollbackNode(address contracts.Address, existing, old string, ctx context.Context) error {
+	ctx = context.WithoutCancel(ctx)
+	if existing == store.ExistingReplace {
+		return a.nodeData.ImportHostData(address, old, store.ExistingReplace, ctx)
+	}
+	return a.nodeData.DeleteHostData(address, ctx)
+}
+
+// placeAndCommit is steps 2 to 4 of ImportData: the old directory aside, the new one in place, then the server's parts (the NodeHost's
+// first, then the Go host's: two commits, D462). committed is whether the first commit succeeded before err.
+//
+// pig divergence (D462): the server's part is two commits (the NodeHost's store, then the Go host's), where Pi's `importHostData` is one.
+func (a *App) placeAndCommit(dir, staging, aside, server, kitServer string, address contracts.Address, existing string, placed *bool, ctx context.Context) (committed bool, err error) {
+	if aside != "" {
+		if err := os.Rename(dir, aside); err != nil {
+			return false, err
+		}
+	}
+	if err := os.Rename(staging, dir); err != nil {
+		return false, err
+	}
+	*placed = true
+	if err := a.nodeData.ImportHostData(address, filepath.Join(dir, "server.archive"), existing, ctx); err != nil {
+		return false, err
+	}
+	if kitServer == "" {
+		// No part of the Go host's: its data of the address is replaced by nothing (a replace removes the address's data), or refused if it has any.
+		if existing == store.ExistingReplace {
+			_, err := a.Host.DeleteHostData(address, ctx)
+			return true, err
+		}
+		// Refuse: Pi's one `importHostData` refuses an address that has data in the store whatever the archive holds, so the Go host's
+		// refusal is asked of an import of an empty part of the address (it changes nothing when the address has none).
+		empty := store.SlicePartSource([]any{&store.ManifestPart{Format: store.ArchiveFormat, Schema: store.StoreSchema, NextID: 1, Host: &address.Key}, &store.EndPart{}})
+		_, err := a.Host.ImportHostData(empty, ctx, store.HostImportOptions{Address: &address, Existing: existing})
+		return true, err
+	}
+	file, err := os.Open(filepath.Join(dir, "kit-server.archive"))
+	if err != nil {
+		return true, err
+	}
+	defer func() { _ = file.Close() }()
+	_, err = a.Host.ImportHostData(store.DecodeJsonl(&fileBytes{file: file}), ctx, store.HostImportOptions{Address: &address, Existing: existing})
+	return true, err
+}
+
+// unknownImportError is the error of an import that undid nothing: the server's commit has an unknown outcome (or the rollback of the
+// NodeHost's commit failed). Cause is the commit's rejection (Pi's `cause`); it is not part of the message.
+type unknownImportError struct {
+	message string
+	cause   error
+}
+
+func (err *unknownImportError) Error() string { return err.message }
+func (err *unknownImportError) Unwrap() error { return err.cause }
+
+// rollbackFailed is the unknownImportError of an import whose Go host commit failed after the NodeHost's and whose NodeHost rollback
+// failed too: both errors are its cause.
+func (a *App) rollbackFailed(address contracts.Address, aside string, cause, rollback error) error {
+	return &unknownImportError{fmt.Sprintf("importData: %s: the server host's commit failed after the plugins' store committed, and restoring the plugins' store failed; nothing was undone (%s). %s.", address.Key, whereAfterImport(aside), importAgain), errors.Join(cause, rollback)}
+}
+
+func whereAfterImport(aside string) string {
+	where := "the new directory is in place"
+	if aside != "" {
+		where += ", the old one at " + aside
+	}
+	return where
+}
+
+const importAgain = `Run the import again with existing: "replace"`
+
+// unknownImport is the unknownImportError of the import of address.
+func (a *App) unknownImport(address contracts.Address, aside string, cause error) error {
+	return &unknownImportError{fmt.Sprintf("importData: %s: the server's commit has an unknown outcome; nothing was undone (%s). %s once the server's store is back.", address.Key, whereAfterImport(aside), importAgain), cause}
+}
+
+// DeleteData deletes the data of address (its worker's directory and the server's records and rows belonging to it) under the worker's
+// lock; refused while its worker runs.
+func (a *App) DeleteData(address contracts.Address, ctx context.Context) error {
+	if _, err := a.workersFor(address); err != nil {
+		return err
+	}
+	dir := WorkerDirectory(a.DataDir, address)
+	return a.underLock(address, "deleteData", "runs; stop its worker first", ctx, func() error {
+		// The server's parts first (the commits); a crash before the directory goes leaves it orphaned (nothing refers to it) and a
+		// repeated DeleteData removes it.
+		// pig divergence (D462): two commits (the NodeHost's store, then the Go host's), where Pi's `deleteHostData` is one.
+		if err := a.nodeData.DeleteHostData(address, ctx); err != nil {
+			return err
+		}
+		if _, err := a.Host.DeleteHostData(address, ctx); err != nil {
+			return err
+		}
+		return os.RemoveAll(dir)
+	})
+}
+
+// underLock runs work under the worker's lock of address (refused while its worker runs: `<what>: <key> <held>`).
+func (a *App) underLock(address contracts.Address, what, held string, ctx context.Context, work func() error) error {
 	lock, err := a.workerLock(address, ctx)
 	if err != nil {
 		return err
 	}
-	// A worker holds it: it runs, so the address has data, and nothing is overwritten.
 	if lock == nil {
-		return fmt.Errorf("importData: %s has data (its worker runs)", address.Key)
+		return fmt.Errorf("%s: %s %s", what, address.Key, held)
 	}
-	source, err := filepath.Abs(archive)
-	if err != nil {
-		return errors.Join(err, lock.Release())
-	}
-	unpacked := UnpackData(ctx, source, WorkerDirectory(a.DataDir, address), accept, ImportLimits{Bytes: limits.ImportBytes, Entries: limits.ImportEntries})
-	return errors.Join(unpacked, lock.Release())
+	return errors.Join(work(), lock.Release())
 }
 
 // workerLock is the process lock of the worker at address (the one its worker takes at start), or nil while held.
 func (a *App) workerLock(address contracts.Address, ctx context.Context) (*workers.ProcessLockHandle, error) {
 	waited, cancel := context.WithTimeout(ctx, addressLock)
 	defer cancel()
-	lock, err := workers.ProcessLock(workerLock(a.options.Name, a.DataDir, address), waited)
+	lock, err := workers.ProcessLock(workerLock(a.options.Name, a.DataDir, address.Key), waited)
 	if err != nil {
 		if waited.Err() != nil && ctx.Err() == nil {
 			return nil, nil
@@ -1017,12 +1258,12 @@ func (a *App) workerLock(address contracts.Address, ctx context.Context) (*worke
 
 // Close closes the HTTP component, the workers (in the options' order), the host, the store, the plugins' watcher and the data
 // directory's lock: in that order (HTTP first: it drains requests the host's close would seal). As Pi's `#close`, the first step that
-// fails ends the close there (the later steps do not run) and is what Close returns, to every caller: the first caller runs the
-// steps, the later ones wait for it and get its result (a later Close with a longer ctx does not resume what the first ended).
-// Pi's `#close` does not wait for the bases' builds and the surfaces' (a forced Go lifetime difference): the Go close waits for them
-// (drainBuilds) between the plugins' watcher and the lock's release, until ctx ends, so the lock is held while a build runs and only
-// a build abandoned at ctx's end runs without it. The lock is released when the drain ends, whatever it ended with; after a failed
-// step the drain still runs and the lock stays held, as after Pi's rejected chain.
+// fails ends the close there (the later steps do not run, the lock stays held) and is what Close returns, to every caller: the first
+// caller runs the steps, the later ones wait for it and get its result (a later Close with a longer ctx does not resume what the
+// first ended). As Pi's, it does not wait for the bases' builds, the surfaces' builds or the scan of the server's own code: what they
+// finish after the close is dropped (a build that ends later finds the app closing and reports and publishes nothing), and the lock
+// is released while they may still run (they write nothing under the data directory). A surface build not started by then never
+// starts.
 func (a *App) Close(ctx context.Context) error {
 	if !a.closing.Swap(true) {
 		close(a.ended)
@@ -1031,31 +1272,13 @@ func (a *App) Close(ctx context.Context) error {
 	return a.closed
 }
 
-// closeSteps is Pi's `#close`: each step awaited, the first failure returned; the builds are joined (drainBuilds) before the lock's
-// release.
-func (a *App) closeSteps(ctx context.Context) error {
-	if err := a.closeResources(ctx); err != nil {
-		_ = a.drainBuilds(ctx)
-		return err
-	}
-	drained := a.drainBuilds(ctx)
-	if released := a.lock.Release(); released != nil {
-		return errors.Join(drained, released)
-	}
-	return drained
-}
-
-// drainBuilds waits for the goroutines the app started after the listen: each surface's build (one not started never starts), then
-// the bases' (startBases: it builds each base and records the base code), until ctx ends (its error then; the goroutines are left
-// to finish, what they do after the close began being dropped). It runs after the close's steps, the data directory's lock still held:
-// a build that finishes meanwhile finds the host closed (its publication fails) and the watcher closed (a record arriving after the
-// close watches nothing).
-func (a *App) drainBuilds(ctx context.Context) error {
-	if a.options.draining != nil {
-		a.options.draining()
-	}
+// Wait returns once every build and scan the app started ended: each surface's build, the bases' builds and the scan of the server's
+// own code (BaseWatched closed), or with ctx's error when ctx ends first (the tasks are left to finish). Go's lifetime ownership of
+// what Pi leaves as unawaited promises: Pi has no counterpart, and Close does not call it. It returns nil at once when none started.
+// What the tasks finish after the app closed is dropped, as it is by Close.
+func (a *App) Wait(ctx context.Context) error {
 	for _, each := range a.surfaces {
-		if err := each.close(ctx); err != nil {
+		if err := each.wait(ctx); err != nil {
 			return err
 		}
 	}
@@ -1073,6 +1296,17 @@ func (a *App) drainBuilds(ctx context.Context) error {
 	case <-ctx.Done():
 		return ctx.Err()
 	}
+}
+
+// closeSteps is Pi's `#close`: each step awaited, the first failure returned, the lock released last.
+func (a *App) closeSteps(ctx context.Context) error {
+	for _, each := range a.surfaces {
+		each.close()
+	}
+	if err := a.closeResources(ctx); err != nil {
+		return err
+	}
+	return a.lock.Release()
 }
 
 // closeResources is the steps of Pi's `#close` but the lock's release: the first failure ends them there.

@@ -19,7 +19,7 @@ import (
 // base bundle means this client's code is outdated, which the app answers by starting over (a page reloads). The surface
 // specifics (how a socket opens, how a script is fetched, what is outdated, the stylesheets) are given.
 //
-// Forced Go differences (D551): the callbacks that are promises in Pi (`fetchScript`, `serverBase`, `canRetry`,
+// Forced Go differences (language mechanics: Go's context and goroutines for Pi's promises and one JavaScript thread): the callbacks that are promises in Pi (`fetchScript`, `serverBase`, `canRetry`,
 // `styles.prepare`) take the client's context and block; the loop's, a watch's and an update's events run on goroutines of
 // their own, one update at a time, in order. A watch's listener queues the update and waits for it, as Pi's `await this.#queue(...)`
 // does (the watch delivers the next set after the call returned); the reload the update makes waits on the host's own publications,

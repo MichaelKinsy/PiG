@@ -137,3 +137,34 @@ func TestTableChanges(t *testing.T) {
 		})
 	})
 }
+
+func TestTheTxGetOverlayOfAHostColumn(t *testing.T) {
+	t.Run("reads the committed row and its own writes with the address, compares the stored key in a when", func(t *testing.T) {
+		session := hostColKind(t, "session")
+		pins := qDefine(t, "pins", TableOptions{
+			Version: 1,
+			Columns: []ColumnProp{Col("id", Str()), Col("session", Host(session)), Col("n", Int(contracts.Default(0)))},
+			Key:     []string{"id"},
+		})
+		store := memoryStore(t)
+		handle := tableIn(t, store, pins)
+		var seed []StagedWrite
+		S1 := hostColAddress(session, "S1")
+		noError(t, NewTableChanges(handle, &seed).Put(Row{"id": "p1", "session": S1}))
+		if _, err := store.Commit(seed, openFence, background); err != nil {
+			t.Fatalf("Commit: %v", err)
+		}
+		changes := NewTableChanges(handle, &[]StagedWrite{})
+		noError(t, changes.Update(Row{"id": "p1"}, func(p ColumnRefs) SetOf {
+			return SetOf{Assign("n", When(Eq(p["session"], S1), 5, 0))}
+		}))
+		row, err := changes.Get(Row{"id": "p1"}, background)
+		noError(t, err)
+		qEqual(t, row, Row{"id": "p1", "session": S1, "n": int64(5)})
+		S2 := hostColAddress(session, "S2")
+		noError(t, changes.Put(Row{"id": "p2", "session": S2}))
+		row, err = changes.Get(Row{"id": "p2"}, background)
+		noError(t, err)
+		qEqual(t, row, Row{"id": "p2", "session": S2, "n": int64(0)})
+	})
+}

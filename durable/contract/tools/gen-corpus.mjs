@@ -104,7 +104,7 @@ emit(
 	"# status: ready (a runner exists and the reference capture is deterministic), pending (no candidate can run it yet, with the",
 	"# reason and the owner; `--strict` fails on it), skipped (nobody can run it here, with the reason).",
 	"",
-	"[pin]", `reference = ${q("earendil-works/pi")}`, `commit = ${q("c23b9ec1ef12a63573d739d4c294f81a377b7d57")}`, `release = ${q("1.0.4")}`,
+	"[pin]", `reference = ${q("earendil-works/pi")}`, `commit = ${q("b4afdddf44e059c67ccf5097e5317d913521b470")}`, `release = ${q("1.0.4")}`,
 )
 for (const f of readdirSync(join(pi, "packages/durable/test/examples")).filter(f => /^\d\d-.*\.ts$/.test(f)).sort()) {
 	const name = f.replace(/\.ts$/, "")
@@ -180,11 +180,23 @@ const REAL_TIME = {
 // A row's measured value of an approved divergence (gate.mjs reads measured_*): the candidate fails the test with this failure, and only with it.
 // No divergence is measured at present.
 const MEASURED = {}
+// Tests of a ready row the owner chose to skip by name (gate.mjs runVitestRow reads skip_tests and the row's reason): the row passes when every
+// other test passes and these are the only failures; a name that passes in the candidate, or is gone from the reference, fails the row.
+// Owner decision A (2026-11-11), 0.8.0: the pin-bump lane after 0.8.0 owns making these two tests run.
+const SKIP_TESTS = {
+	"harness-tasks": {
+		tests: [
+			"task scheduling finalizes a holder whose last child is published while a finalize pass plans other holders",
+			"task scheduling runs a waiter whose last dependency is published while a reservation pass plans",
+		],
+		reason: "Pi 1.5.2's two #11892 tests release a held publication from inside a monkeypatched session.touch, which Pi's TaskScheduler calls once per key of every decision region. Here scheduler decision regions run inside the Go core, and the facade's harness.touch is reached only by line jobs, so the patched touch is never called. The scheduling fix itself is ported and unit-tested in durable/core/session/sched_candidates_test.go (TestAPassKeepsTheCandidateMadeWhilePlanning, TestAPassDoesNotReturnACandidateThatEndedOrHoldsMeanwhile, TestAPassListsATaskMadeACandidateAgainOnce, TestAJobRunAgainKeepsTheCandidatesItTook); running these two tests needs a core-to-host report of the keys each region reads, owner decision, post-0.8.0.",
+	},
+}
 for (const f of readdirSync(join(pi, "packages/durable/test")).filter(f => f.endsWith(".test.ts")).sort()) {
 	const name = f.replace(/\.test\.ts$/, "")
 	const status = NOT_THE_CORE[name] ? [`status = "skipped"`, `reason = ${q(NOT_THE_CORE[name])}`] : LATER[name] ? [`status = "pending"`, `reason = ${q(LATER[name])}`] : [`status = "ready"`]
 	emit("[[scenario]]", `id = ${q("U-" + name)}`, `family = "upstream-test"`, `runner = "vitest"`, `source = ${q("packages/durable/test/" + f)}`, `sha256 = ${q(sha("packages/durable/test/" + f))}`,
-		`owner = ${q("dcore-" + U[name])}`, `levels = ["tests"]`, ...status, ...(REAL_TIME[name] ?? []), ...(MEASURED[name] ?? []))
+		`owner = ${q("dcore-" + U[name])}`, `levels = ["tests"]`, ...status, ...(SKIP_TESTS[name] ? [`skip_tests = ${JSON.stringify(SKIP_TESTS[name].tests)}`, `reason = ${q(SKIP_TESTS[name].reason)}`] : []), ...(REAL_TIME[name] ?? []), ...(MEASURED[name] ?? []))
 }
 emit("[[scenario]]", `id = "SC"`, `family = "storage-conformance"`, `runner = "storage-conformance"`, `source = "packages/durable/src/testing/storage-conformance.ts"`, `sha256 = ${q(sha("packages/durable/src/testing/storage-conformance.ts"))}`,
 	`owner = "dcore-store"`, `about = "the core's write encoder wrapped as a Storage passes the upstream storage conformance suite (CONTRACT 3.10): the suite registered by memory-storage, jsonl-storage, sqlite-storage, sqlite-cloudflare, sqlite-facade and indexeddb-storage"`, `levels = ["tests"]`,

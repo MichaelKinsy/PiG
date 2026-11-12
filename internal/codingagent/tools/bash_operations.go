@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/exec"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -322,17 +323,32 @@ func startTrackedShell(cmd *exec.Cmd) error {
 var (
 	testHookBeforeStdioRead   func()
 	testHookStdioGraceExpired func()
-	// testHookStdioGraceTimer replaces the wall-clock grace; it runs once the shell has exited, as Wait begins.
-	testHookStdioGraceTimer func() childwait.IdleTimer
-	testHookAfterShellStart func()
+	testHookAfterShellStart   func()
 )
+
+// stdioGraceTimer replaces the wall-clock grace of a command's pipes; it runs once the shell has exited, as Wait begins. It is atomic because the seam is
+// set from a test while other tests in the process run commands. Nil outside tests.
+var stdioGraceTimer atomic.Pointer[func() childwait.IdleTimer]
+
+// SetStdioGraceTimerForTest replaces the wall-clock timer that measures the grace Pi's waitForChildProcess and childwait.Wait allow a descendant that holds the
+// pipes after the shell has exited (EXIT_STDIO_GRACE_MS, 100 ms), so a test decides when the grace elapses instead of racing a writer against host load, as Pi's
+// own #5303 test does with virtual time. It returns the function that restores the previous timer. It is for tests only; a process that never calls it runs
+// the wall-clock grace.
+func SetStdioGraceTimerForTest(timer func() childwait.IdleTimer) (restore func()) {
+	previous := stdioGraceTimer.Swap(&timer)
+	return func() { stdioGraceTimer.Store(previous) }
+}
 
 // testStdioHooks is nil outside tests, so a command's pipes carry no hooks.
 func testStdioHooks() *childwait.Hooks {
-	if testHookBeforeStdioRead == nil && testHookStdioGraceExpired == nil && testHookStdioGraceTimer == nil {
+	var graceTimer func() childwait.IdleTimer
+	if timer := stdioGraceTimer.Load(); timer != nil {
+		graceTimer = *timer
+	}
+	if testHookBeforeStdioRead == nil && testHookStdioGraceExpired == nil && graceTimer == nil {
 		return nil
 	}
-	return &childwait.Hooks{BeforeRead: testHookBeforeStdioRead, GraceExpired: testHookStdioGraceExpired, GraceTimer: testHookStdioGraceTimer}
+	return &childwait.Hooks{BeforeRead: testHookBeforeStdioRead, GraceExpired: testHookStdioGraceExpired, GraceTimer: graceTimer}
 }
 
 // testHookTimeoutTimer replaces the wall-clock timer that arms a command's timeout, so a test can fire the timeout once the command has done

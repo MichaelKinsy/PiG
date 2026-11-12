@@ -35,7 +35,7 @@ import (
 // process ends the terminal is given back (fix round 3, Opus E8, E10, E11). During a prompt Ctrl-C ends the client: its keys are
 // the launcher's; and three Ctrl-C within a second always end it (Opus R2).
 //
-// Forced Go differences (D602). Pi's launcher is one JavaScript thread; this one is a loop goroutine running the events (input,
+// Forced Go differences (language mechanics: goroutines where Pi has one JavaScript thread). Pi's launcher is one JavaScript thread; this one is a loop goroutine running the events (input,
 // resizes, the sandbox's messages, the sockets') one at a time, so its state needs no locks; what blocks (downloads, prompts,
 // actions) runs on goroutines of its own that return to the loop through `sync`. `exited` is a channel carrying the exit code.
 // The terminal given back when the process exits without `finish` (Pi's `process.once("exit")`) has no Go form: a Go program

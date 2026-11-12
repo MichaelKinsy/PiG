@@ -363,7 +363,8 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 		}
 		h.xref.unhold(conn, callID)
 	}
-	if callCtx.Err() != nil {
+	// A nested tool call made after its request's signal aborted (a tool_call's abort cancels no call but the nested tool calls) runs with that aborted signal, as Pi's nested call does with the outer tool's: its extension is not told to cancel it, so a dropped call would never be answered.
+	if callCtx.Err() != nil && !conn.parentAbortedOnly(call.ParentRequestID) {
 		refuseReferences()
 		return
 	}
@@ -608,7 +609,7 @@ func (h *Host) replyToCall(me *managedExt, conn *Conn, callID string, call *Call
 		_ = conn.Send(&Envelope{
 			Type:       MsgCallResult,
 			ID:         callID,
-			CallResult: &CallResultPayload{Error: &ErrorInfo{Message: err.Error()}},
+			CallResult: &CallResultPayload{Error: errorInfoOf(err)},
 		})
 		return
 	}

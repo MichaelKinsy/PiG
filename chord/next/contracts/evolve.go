@@ -167,15 +167,19 @@ func (e *LocalEditor) RemoveMethod(member string) *LocalEditor {
 	return e
 }
 
-// Keyed changes keyed member member's schema (slice 7b: an older consumer reads each key mapped, or is refused).
-func (e *LocalEditor) Keyed(member string, schema Schema) *LocalEditor {
-	e.d.run(func() error { return e.d.keyed(LocalVariant, member, schema) })
+// Keyed changes keyed member member's schema, keyed by string or, with key, by addresses of that host kind (slice 7b:
+// an older consumer reads each key mapped, or is refused; a changed key kind only refused). TypeScript's two overloads
+// are the optional key; more than one panics.
+func (e *LocalEditor) Keyed(member string, schema Schema, key ...*HostKind) *LocalEditor {
+	kind := keyOption("Keyed", key)
+	e.d.run(func() error { return e.d.keyed(LocalVariant, member, schema, kind) })
 	return e
 }
 
-// AddKeyed adds a keyed member.
-func (e *LocalEditor) AddKeyed(member string, schema Schema) *LocalEditor {
-	e.d.run(func() error { return e.d.addKeyed(LocalVariant, member, schema) })
+// AddKeyed adds a keyed member, keyed by string or, with key, by addresses of that host kind.
+func (e *LocalEditor) AddKeyed(member string, schema Schema, key ...*HostKind) *LocalEditor {
+	kind := keyOption("AddKeyed", key)
+	e.d.run(func() error { return e.d.addKeyed(LocalVariant, member, schema, kind) })
 	return e
 }
 
@@ -276,7 +280,7 @@ func (d *draft) addMethod(variant, member string, args, result Schema) error {
 	return d.checked()
 }
 
-func (d *draft) keyed(variant, member string, schema Schema) error {
+func (d *draft) keyed(variant, member string, schema Schema, key *HostKind) error {
 	found, err := d.variant(variant)
 	if err != nil {
 		return err
@@ -284,14 +288,14 @@ func (d *draft) keyed(variant, member string, schema Schema) error {
 	if !found.Keyed.Has(member) {
 		return fail("%s: no such keyed member", d.memberPath(variant, member, MemberKindKeyed))
 	}
-	return d.putKeyed(variant, member, schema)
+	return d.putKeyed(variant, member, schema, key)
 }
 
-func (d *draft) addKeyed(variant, member string, schema Schema) error {
+func (d *draft) addKeyed(variant, member string, schema Schema, key *HostKind) error {
 	if err := d.refuseDeclared(variant, member, MemberKindKeyed); err != nil {
 		return err
 	}
-	return d.putKeyed(variant, member, schema)
+	return d.putKeyed(variant, member, schema, key)
 }
 
 func (d *draft) removeKeyed(variant, member string) error {
@@ -328,8 +332,8 @@ func (d *draft) putState(variant, member string, schema Schema) error {
 	return d.checked()
 }
 
-func (d *draft) putKeyed(variant, member string, schema Schema) error {
-	snapshot, err := SnapshotSchema(schema, d.memberPath(variant, member, MemberKindKeyed))
+func (d *draft) putKeyed(variant, member string, schema Schema, key *HostKind) error {
+	snapshot, err := keyedSnapshot(schema, key, d.memberPath(variant, member, MemberKindKeyed))
 	if err != nil {
 		return err
 	}

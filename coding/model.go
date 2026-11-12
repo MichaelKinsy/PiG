@@ -70,9 +70,11 @@ func buildModel(spec string, svcs *AgentSessionServices, apiKey string) (*ai.Mod
 		}
 		return model, nil
 	}
-	generated, hasGenerated := lookupGeneratedModel(providerID, modelID)
 	var entry icodingagent.ModelEntry
-	if hasGenerated {
+	if remote, found := registry.ResolveRemoteCatalogModel(providerID, modelID); found {
+		// The remote catalog's record is the model's catalog entry, as ModelRuntime.getModel returns it (sdk.ts:224-229): a model only the remote catalog carries has no bundled record.
+		entry = remote
+	} else if generated, hasGenerated := lookupGeneratedModel(providerID, modelID); hasGenerated {
 		entry = registry.ResolveGeneratedModel(providerID, modelID, generated)
 	} else {
 		entry, _ = registry.Resolve(providerID, modelID)

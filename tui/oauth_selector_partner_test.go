@@ -17,7 +17,7 @@ func TestOAuthSelectorShowsTheBrandStyleOnlyOnTheSelectedPartnerRow(t *testing.T
 		{ID: "radius", Name: "Radius", AuthType: "oauth"},
 		{ID: "openrouter", Name: "OpenRouter", AuthType: "api_key"},
 	}
-	selector := NewOAuthSelectorComponentAnimated(func() {}, "login", providers, func(string, string) {}, func() {}, "")
+	selector := NewOAuthSelectorComponentAnimated("login", providers, func(string, string) {}, func() {}, "", renderFuncTUI{f: func() {}})
 	defer selector.Dispose()
 
 	output := strings.Join(selector.Render(120), "\n")
@@ -87,15 +87,15 @@ func TestOAuthSelectorAnimatesAPartnerRowUntilDisposed(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		var disposed atomic.Bool
 		var requests atomic.Int64
-		selector := NewOAuthSelectorComponentAnimated(func() {
+		selector := NewOAuthSelectorComponentAnimated("login", []OAuthProvider{
+			{ID: "radius", Name: "Radius", AuthType: "oauth"},
+			{ID: "anthropic", Name: "Anthropic", AuthType: "api_key"},
+		}, func(string, string) {}, func() {}, "", renderFuncTUI{f: func() {
 			requests.Add(1)
 			if disposed.Load() {
 				t.Error("a render was requested after Dispose returned")
 			}
-		}, "login", []OAuthProvider{
-			{ID: "radius", Name: "Radius", AuthType: "oauth"},
-			{ID: "anthropic", Name: "Anthropic", AuthType: "api_key"},
-		}, func(string, string) {}, func() {}, "")
+		}})
 		selector.Render(120)
 		time.Sleep(3 * BrandAnimationFrame)
 		synctest.Wait()
@@ -180,3 +180,11 @@ func TestStartBrandAnimationRequestsFramesOnlyWhileAnimating(t *testing.T) {
 		stop()
 	})
 }
+
+// renderFuncTUI is a TUI whose RequestRender calls f; the selector calls nothing else on it.
+type renderFuncTUI struct {
+	TUI
+	f func()
+}
+
+func (r renderFuncTUI) RequestRender(...bool) { r.f() }

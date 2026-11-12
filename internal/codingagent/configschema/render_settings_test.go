@@ -3,9 +3,9 @@ package configschema_test
 // pi: packages/coding-agent/src/core/settings-schema.ts
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/upstreammirror"
 )
 
 // Pi's settings-schema.ts builds the settings.json schema; scripts/generate-schemas.ts renders it to schemas/settings.schema.json. This
@@ -15,7 +15,7 @@ import (
 // part of TestRenderedSchemasAreByteEqualToTheUpstreamMirror, kept on its own so it speaks for settings-schema.ts alone.
 func TestRenderedSettingsSchemaIsByteEqualToTheUpstreamMirror(t *testing.T) {
 	const artifact = "schemas/settings.schema.json"
-	want, err := os.ReadFile(filepath.Join(repoRoot(t), ".upstream", "current", "packages", "coding-agent", filepath.FromSlash(artifact)))
+	want, err := upstreammirror.ReadPicked(repoRoot(t), "packages/coding-agent/"+artifact)
 	if err != nil {
 		t.Fatal(err)
 	}

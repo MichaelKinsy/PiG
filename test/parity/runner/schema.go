@@ -186,6 +186,17 @@ type TmuxStep struct {
 	WaitTimeoutSeconds     int `toml:"wait_timeout_seconds"`
 	// FrameWatch samples the visible pane from before the step's keys until the step's waits end and counts the samples it forbids.
 	FrameWatch *TmuxFrameWatch `toml:"frame_watch"`
+	// FinalFrame reads the raw terminal transcript after the step's waits, for no_frames_after_reply.
+	FinalFrame *TmuxFinalFrame `toml:"final_frame"`
+}
+
+// TmuxFinalFrame names the text of a reply the step ends on. The visible pane keeps what the program last drew, so a settled-screen comparison cannot
+// see a frame that repaints the same rows; the raw transcript can.
+type TmuxFinalFrame struct {
+	// Text is a reply text that appears once, unbroken by escape sequences.
+	Text string `toml:"text"`
+	// QuietMilliseconds is how long to wait for a late frame before reading the transcript (default 300).
+	QuietMilliseconds int `toml:"quiet_milliseconds"`
 }
 
 // TmuxFrameWatch names a frame a step must never put on screen. The terminal keeps what the program last drew, so a frame the program
@@ -261,7 +272,16 @@ type AssertSpec struct {
 	// PigNoStaleFrames requires every pig run's frame_watch steps to have sampled enough panes and found no forbidden one. It is pig-only for a
 	// scenario whose operation Pi awaits without holding the frame (an extension handler that awaits), so Pi's samples are not asserted.
 	PigNoStaleFrames bool `toml:"pig_no_stale_frames"`
-	Runs             int  `toml:"runs"`
+	// NoFramesAfterReply requires, for every run of both binaries, that no frame begins after the last occurrence of a final_frame text in the raw
+	// transcript: the frame that carries the end of a reply ends the stream (Pi's agent_end requests one frame; agent_settled requests none).
+	NoFramesAfterReply bool `toml:"no_frames_after_reply"`
+	// FinalFrameCursorOnlyPig and FinalFrameCursorOnlyPi pin, for every run of that binary, the exact number of cursor-only frames (CSI ? 2026 h,
+	// CSI <row>;1 H, CSI ? 25 l, CSI ? 2026 l: a render that repaints nothing) that begin after the last occurrence of a final_frame text. Both
+	// binaries write other frames there while the terminal answers their start-up queries, so a scenario that records a numbered divergence over
+	// a repaint pins the one frame kind the divergence is about (D618) and not the whole stream.
+	FinalFrameCursorOnlyPig *int `toml:"final_frame_cursor_only_pig"`
+	FinalFrameCursorOnlyPi  *int `toml:"final_frame_cursor_only_pi"`
+	Runs                    int  `toml:"runs"`
 
 	// ChangelogHeadersComplete compares all rendered release headers with each binary's own document, in reverse source order (D22).
 	ChangelogHeadersComplete bool `toml:"changelog_headers_complete"`

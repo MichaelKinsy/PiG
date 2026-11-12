@@ -50,12 +50,14 @@ const (
 )
 
 // keyedBinding is what a keyed member is: a keyed document handle's slot (kind own, slot), or another object's keyed
-// member re-exposed through a reference (kind reexposed, binding and member).
+// member re-exposed through a reference (kind reexposed, binding, member and key).
 type keyedBinding struct {
 	kind    keyedBindingKind
 	slot    *documents.KeyedSlot
 	binding *binding
 	member  string
+	// key is the host kind the re-exposed member is keyed by; empty for string keys.
+	key string
 }
 
 // implementationMember is one member of what a factory returned.
@@ -161,13 +163,34 @@ func checkMembers(
 		}
 		checked.state.Set(member, source)
 	}
-	for _, member := range variant.Keyed.Keys() {
+	for member, declared := range variant.Keyed.All() {
 		resolved, err := resolveKeyed(given.own(member))
 		if err != nil {
 			return nil, err
 		}
 		if resolved == nil {
 			return nil, errors.New(member + ": a keyed member is a keyed document handle")
+		}
+		// Declaration policy: the handle's keys are the member's (strings, or addresses of its host kind).
+		keys := resolved.key
+		if resolved.kind == keyedOwn {
+			keys = ""
+			if host := resolved.slot.Definition().Current().Host; host != nil {
+				keys = host.Kind
+			}
+		}
+		declaredKey := ""
+		if declared.Key != nil {
+			declaredKey = declared.Key.Kind
+		}
+		if keys != declaredKey {
+			what := func(kind string) string {
+				if kind == "" {
+					return "string keys"
+				}
+				return "addresses of " + kind
+			}
+			return nil, fmt.Errorf("%s: declared with %s, implemented with %s", member, what(declaredKey), what(keys))
 		}
 		checked.keyed.Set(member, resolved)
 	}

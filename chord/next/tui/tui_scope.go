@@ -3,7 +3,7 @@
 // "Slice 11, P9"; p2's `TuiScope`): it holds references, follows watchables and registries, calls one `changed` callback
 // (the app's redraw) on every change, and releases everything at Dispose.
 //
-// Forced Go differences from upstream (D452):
+// Forced Go differences from upstream (language mechanics):
 //   - Methods cannot have type parameters and Go has no union of the watchable shapes Pi's `watch` takes: Watch is
 //     three functions by source shape (WatchMember, WatchNative, WatchJSON), Registry a function of the token's types,
 //     and Optimistic a function of the reader's and the action's.
@@ -16,7 +16,9 @@
 package tui
 
 import (
+	"bytes"
 	"context"
+	"runtime"
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/chord"
@@ -43,12 +45,23 @@ type TuiScope struct {
 
 	mu       sync.Mutex
 	releases []func()
+
+	// Deliveries of `changed` in flight, by the goroutine running each (a count, as a `changed` may nest), and the goroutines
+	// in Dispose. Pi's scope is one thread, so `changed` never runs while or after `dispose` does, and a `changed` may call
+	// `dispose`, which stops later deliveries; here Dispose waits for the deliveries running on other goroutines and not for
+	// its own (a `changed` that disposes its own scope returns normally).
+	delivery  sync.Mutex
+	ended     *sync.Cond
+	active    map[uint64]int
+	disposing map[uint64]bool
 }
 
 // NewTuiScope is a scope on host whose every change calls changed, until Dispose or ctx ends.
 func NewTuiScope(ctx context.Context, h host.Host, changed func()) *TuiScope {
 	ctx, cancel := context.WithCancel(ctx)
-	return &TuiScope{host: h, changed: changed, ctx: ctx, cancel: cancel}
+	s := &TuiScope{host: h, changed: changed, ctx: ctx, cancel: cancel, active: map[uint64]int{}, disposing: map[uint64]bool{}}
+	s.ended = sync.NewCond(&s.delivery)
+	return s
 }
 
 // disposed says Dispose ran.
@@ -56,9 +69,38 @@ func (s *TuiScope) disposed() bool { return s.ctx.Err() != nil }
 
 // redraw calls changed unless the scope is disposed.
 func (s *TuiScope) redraw() {
-	if !s.disposed() {
-		s.changed()
+	id := goroutineID()
+	s.delivery.Lock()
+	if s.disposed() {
+		s.delivery.Unlock()
+		return
 	}
+	s.active[id]++
+	s.delivery.Unlock()
+	defer func() {
+		s.delivery.Lock()
+		if s.active[id]--; s.active[id] == 0 {
+			delete(s.active, id)
+		}
+		s.ended.Broadcast()
+		s.delivery.Unlock()
+	}()
+	s.changed()
+}
+
+// goroutineID is the running goroutine's number (the first line of its stack: "goroutine N [").
+func goroutineID() uint64 {
+	var buf [32]byte
+	line := buf[:runtime.Stack(buf[:], false)]
+	line = bytes.TrimPrefix(line, []byte("goroutine "))
+	var id uint64
+	for _, c := range line {
+		if c < '0' || c > '9' {
+			break
+		}
+		id = id*10 + uint64(c-'0')
+	}
+	return id
 }
 
 func (s *TuiScope) release(release func()) {
@@ -87,7 +129,7 @@ func follow[T any](s *TuiScope, value func() (T, error), start func(ctx context.
 			// Disposed (or the source ended) before the watch started: nothing to follow.
 			return
 		}
-		// The watch ends in Dispose itself, not through its context's cancellation (D452): a Go context's AfterFunc
+		// The watch ends in Dispose itself, not through its context's cancellation (language mechanics): a Go context's AfterFunc
 		// runs on a goroutine of its own, so the watch would still end while the host closes.
 		s.release(func() { _, _ = stop() })
 		if s.disposed() {
@@ -95,7 +137,7 @@ func follow[T any](s *TuiScope, value func() (T, error), start func(ctx context.
 			return
 		}
 		// A holder that released its own reference ended the watch already: nothing to follow (Pi's watch.start throws "Watch is
-		// stopped" there, an unhandled rejection that ends a Node process; D452).
+		// stopped" there, an unhandled rejection that ends a Node process; Go has no unhandled rejection).
 		if !chord.StartUnlessEnded(func() { started(func() { s.redraw() }) }) {
 			return
 		}
@@ -279,7 +321,7 @@ func sameActions[A any](a, b []A) bool {
 func PageState[T any](s *TuiScope, key string, initial T) surfaces.PageState[T] {
 	state := surfaces.PageStateOf(s.host, key, initial)
 	// A closure of its own: two scopes may share one changed.
-	s.release(state.Subscribe(func() { s.changed() }))
+	s.release(state.Subscribe(func() { s.redraw() }))
 	return state
 }
 
@@ -304,13 +346,35 @@ func (b *BoundMessages) Render(message surfaces.MessageData) string {
 // changed until Dispose.
 func (s *TuiScope) Messages(messages *surfaces.Messages) *BoundMessages {
 	language := surfaces.HostLanguage(s.host)
-	s.release(language.Subscribe(func() { s.changed() }))
+	s.release(language.Subscribe(func() { s.redraw() }))
 	return &BoundMessages{messages: messages, language: language}
 }
 
-// Dispose releases every reference and ends every watch; changed is not called after it.
+// othersDelivering says a delivery runs on a goroutine other than id that Dispose on id must wait for: any, unless id is itself
+// delivering and the other is in Dispose too (two `changed` that dispose their scope would wait for each other). A caller outside
+// a delivery waits for every other delivery, one in Dispose included. It runs with delivery held.
+func (s *TuiScope) othersDelivering(id uint64) bool {
+	for other := range s.active {
+		if other != id && (s.active[id] <= 0 || !s.disposing[other]) {
+			return true
+		}
+	}
+	return false
+}
+
+// Dispose releases every reference and ends every watch; changed is not called after it. It blocks until a `changed` running on
+// another goroutine returned (a `changed` of this scope, on the calling goroutine, may call it: it only stops later deliveries).
 func (s *TuiScope) Dispose() {
 	s.cancel()
+	// A delivery on another goroutine, already past the check, ends before Dispose goes on; none starts after it.
+	id := goroutineID()
+	s.delivery.Lock()
+	s.disposing[id] = true
+	for s.othersDelivering(id) {
+		s.ended.Wait()
+	}
+	delete(s.disposing, id)
+	s.delivery.Unlock()
 	s.mu.Lock()
 	releases := s.releases
 	s.releases = nil

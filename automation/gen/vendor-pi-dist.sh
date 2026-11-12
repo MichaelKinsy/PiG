@@ -42,10 +42,11 @@ copy() {
   done
 }
 
+# The installed oracle already carries the post-release backports (automation/pin/oracle.py applies them when it builds the oracle), so the copies below inherit them: verify before anything is deleted, never apply them a second time.
+node "$root/automation/gen/pi-post-release-backports.mjs" --verify-packages "pi-ai=$ai" "pi-coding-agent=$agent" "pi-tui=$tui" || { echo "vendor-pi-dist: the installed Pi does not carry the post-release backports exactly once; run make parity-deps (pin.py install-oracle --force)" >&2; exit 1; }
+
 # The oracle builds are read-only, and cp keeps their modes: make what an earlier run copied owner-writable so rm can remove it.
-for stale in "$dist" "$shims/yaml" "$shims/get-east-asian-width" "$shims/partial-json" "$shims/marked" "$shims/marked-cjk-friendly" "$shims/highlight.js" "$shims/jiti" "$shims/ignore" "$shims/diff"; do
-  if [ -e "$stale" ]; then chmod -R u+w "$stale"; fi
-done
+if [ -e "$shims" ]; then chmod -R u+w "$shims"; fi # every copy, including the third-party packages the dependency vendoring wrote
 rm -rf "$dist" "$shims/yaml" "$shims/get-east-asian-width" "$shims/partial-json" "$shims/marked" "$shims/marked-cjk-friendly" "$shims/highlight.js" "$shims/jiti" "$shims/ignore" "$shims/diff"
 mkdir -p "$dist" "$shims/yaml" "$shims/get-east-asian-width" "$shims/partial-json/dist" "$shims/marked/lib" "$shims/marked-cjk-friendly/dist" "$shims/highlight.js" "$shims/jiti" "$shims/ignore" "$shims/diff"
 printf '{\n  "type": "module"\n}\n' >"$dist/package.json"
@@ -244,8 +245,8 @@ node "$root/automation/gen/bundle-pi-sdk.mjs" "$shims"
 node "$root/automation/gen/vendor-pi-package-roots.mjs" "$shims" "$agent"
 node "$root/automation/gen/vendor-node-manifest.mjs" "$shims" "$agent"
 
-# Leave the copies owner-writable too, so the next run (and a checkout cleanup) can remove them; u+w changes no content.
-chmod -R u+w "$dist" "$shims/yaml" "$shims/get-east-asian-width" "$shims/partial-json" "$shims/marked" "$shims/marked-cjk-friendly" "$shims/highlight.js" "$shims/jiti" "$shims/ignore" "$shims/diff"
+# Leave every copy owner-writable, so the next run (and a checkout cleanup) can remove it; u+w changes no content.
+chmod -R u+w "$shims"
 
 version() { node -p "require('$1/package.json').version"; }
 echo "vendored Pi $(version "$agent") dist modules, yaml $(version "$yaml"), get-east-asian-width $(version "$eaw"), partial-json $(version "$pjson"), marked $(version "$marked"), marked-cjk-friendly $(version "$markedCjk"), highlight.js $(version "$hljs"), jiti $(version "$jiti"), ignore $(version "$ignore") and diff $(version "$jsdiff") into $shims"

@@ -1,0 +1,62 @@
+# Behavior family: interactive-rendering
+# Surface: the byte stream of a fresh start, after the frame that carries the footer. Pi loads the remaining highlight.js grammars once its first frame is
+# out and then invalidates and requests a render (interactive-mode.ts init: loadAllHighlightLanguages().then(...)); the tui writes a frame for every render
+# request even when no row changed (tui-alt-screen.ts doRender has no early return for unchanged lines), so Pi writes one more frame: a cursor-only
+# CSI ? 2026 h, CSI <row>;1 H, CSI ? 25 l, CSI ? 2026 l (29 bytes) that repaints nothing.
+# pig divergence (D618): PiG repaints after the load only when a highlight lookup made before it could have answered differently (an unregistered name,
+# an auto-detection or a listing over the languages registered so far). A fresh start made none, so PiG writes nothing after its first frame.
+# Upstream evidence (pi v1.5.2, npm @earendil-works/pi-coding-agent, 2026-11-11, pty capture on xd670): one 29-byte cursor-only frame about 97 ms after the
+# startup frames. PiG before D618 wrote the same frame about 30 ms after its startup frames (BoltTurn trace of loadRemainingHighlightLanguages).
+# Both binaries also write frames after the footer's text while the terminal answers their start-up queries (OSC 10/11/4 and DA1, which tmux answers):
+# the colors apply, the logo row is rewritten (a frame that is not cursor-only), and further renders find no changed row. The number and order of
+# those frames follow the replies' timing, and Pi coalesces some of them, so the stream after the text is not pinned. What is stable, measured on
+# xd670 over 8 consecutive runs of each binary: Pi writes exactly one cursor-only frame after the text; PiG with D618 writes exactly one; PiG
+# before D618 wrote exactly two (BoltTurn2 measurement, 8 of 8 runs). The extra frame was the repaint after the grammar load. So the scenario pins
+# the count of cursor-only frames after the text, per binary, which is the one frame kind D618 is about and independent of the reply timing; a
+# mutation that restores the unconditional repaint in loadRemainingHighlightLanguages makes PiG's count 2 and fails. The scenario cannot show
+# which of Pi's frames comes from its grammar load (the harness has no direct pty driver and the cursor-only frames are byte-identical); that
+# attribution is the pty capture in the evidence above, and the direct tests of the repaint decision in internal/codingagent and tui/internal/hljs.
+
+# lint-known-gap: no equality comparator. The start screen carries each product's own banner (PiG's logo and "PiG can explain..." hint against Pi's
+# name), which no recorded normalization covers; this scenario asserts the byte stream after the footer's text, and the settled screens are compared
+# by the family's scenarios that follow a start with a prompt (68-no-frame-after-reply and the others).
+
+name = "69-startup-frames-after-grammar-load"
+description = "A fresh start writes the same number of cursor-only frames after the footer's text as Pi (D618: PiG skips the grammar-load repaint, so PiG writes one and not two)."
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/tui/src/tui-alt-screen.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+
+[[tmux.steps]]
+keys = []
+settle_seconds = 1
+wait_visible_contains = ["(auto)"]
+wait_timeout_seconds = 10
+[tmux.steps.final_frame]
+text = "(auto)"
+quiet_milliseconds = 2000
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+final_frame_cursor_only_pig = 1
+final_frame_cursor_only_pi = 1
+runs = 3

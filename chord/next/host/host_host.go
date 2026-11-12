@@ -262,6 +262,19 @@ type Host interface {
 	// context is sealed: its signal aborted, `ctx.Get` refused `released`, every reference it took released; an abort returns
 	// at once. `host.Close` seals the open ones; after it, Root returns `released`.
 	Root(fn func(ctx Ctx) (any, error), ctx context.Context, options RootOptions) (any, error)
+	// ExportHostData is the records and rows of this host's store belonging to address (host-keyed documents, `host(...)`
+	// cells) as a store archive with `host` in its manifest, holding the store's commit queue while it is read. It returns
+	// `invalid/args` without a store.
+	ExportHostData(address contracts.Address, ctx context.Context) (*store.StoreExport, error)
+	// ImportHostData imports a host's data archive (ExportHostData's) into this host's store in one commit, under
+	// options.Address (a copy) or the archive's; data of that address refused, or replaced with Existing "replace";
+	// older tables' rows migrated through their owners' histories. One operation at a time; activations wait while one
+	// runs; the live owners' lines are held and what they hold of the address is adopted in one batch (spec
+	// `docs/host-keyed/spec.md` §5). It returns `invalid/args` without a store, for a refused archive or existing data;
+	// `released` once ctx aborted before the commit was admitted.
+	ImportHostData(parts store.PartSource, ctx context.Context, options store.HostImportOptions) (store.HostDataCounts, error)
+	// DeleteHostData deletes the records and rows belonging to address in one commit, coordinated as ImportHostData.
+	DeleteHostData(address contracts.Address, ctx context.Context) (store.HostDataCounts, error)
 	// Close closes its links, seals its root scopes, then ends every object at once, then drains and closes them one by one,
 	// the last to go live first (reason `close`). It returns an error joining the closes that failed.
 	Close(ctx context.Context) error
@@ -408,6 +421,8 @@ type chordHost struct {
 	compression link.Compression
 	// store is the host's store, if it has one.
 	store *store.ChordStore
+	// hostData is its host data gate: host data operations one at a time, activations' load phases kept out while one runs.
+	hostData *hostDataGate
 	// unplaced are remote references failed for a part past a link's limits: on no link's path (no reconnect holds them,
 	// no route resolves for them) until `ref.retry()` places them anew; ended at `close` like the others.
 	unplaced *path
@@ -529,6 +544,7 @@ func createHost(options HostOptions) (*chordHost, error) {
 	h.unplaced = newPath(func(pathEvent) {})
 	h.destination = newDestination(h.address, h.routes, h.parent, func(name string) bool { return h.served(name) != nil })
 	h.roots = newRootScopes(h)
+	h.hostData = newHostDataGate(events)
 	if options.Store != nil {
 		// Chord's own: `openStore` made it.
 		chordStore, ok := options.Store.(*store.ChordStore)
@@ -1090,6 +1106,67 @@ func (h *chordHost) counted(ctx context.Context) context.Context {
 		return ctx
 	}
 	return chordctx.WithTelemetry(ctx, h.counting)
+}
+
+// ExportHostData implements Host.
+func (h *chordHost) ExportHostData(address contracts.Address, ctx context.Context) (*store.StoreExport, error) {
+	site, err := h.dataSite("exportHostData")
+	if err != nil {
+		return nil, err
+	}
+	return store.ExportHostData(site.store, address, ctx)
+}
+
+// ImportHostData implements Host. It blocks.
+func (h *chordHost) ImportHostData(parts store.PartSource, ctx context.Context, options store.HostImportOptions) (store.HostDataCounts, error) {
+	site, err := h.dataSite("importHostData")
+	if err != nil {
+		return store.HostDataCounts{}, err
+	}
+	parking.Park(ctx)
+	return importInto(site, parts, ctx, options)
+}
+
+// DeleteHostData implements Host. It blocks.
+func (h *chordHost) DeleteHostData(address contracts.Address, ctx context.Context) (store.HostDataCounts, error) {
+	site, err := h.dataSite("deleteHostData")
+	if err != nil {
+		return store.HostDataCounts{}, err
+	}
+	parking.Park(ctx)
+	return deleteFrom(site, address, ctx)
+}
+
+// dataSite is what a host data operation needs of this host; `invalid/args` without a store, `invalid/reentrant` inside a
+// batch.
+func (h *chordHost) dataSite(what string) (hostDataSite, error) {
+	var err error
+	h.enter(func() { err = h.batch.AssertOutside(what) })
+	if err != nil {
+		return hostDataSite{}, err
+	}
+	if h.store == nil {
+		return hostDataSite{}, data.Invalid(data.ReasonArgs, what+": the host has no store")
+	}
+	return hostDataSite{
+		store:   h.store,
+		batch:   h.batch,
+		gate:    h.hostData,
+		enter:   h.enter,
+		objects: h.objectList,
+		activate: func(owner string, ctx context.Context) (func(), error) {
+			var entry *served
+			h.enter(func() { entry = h.served(owner) })
+			if entry == nil || entry.kind != servedLocal {
+				return nil, nil
+			}
+			reference, err := h.Get(ctx, entry.contract, delta.NewJsonObject(0), GetOptions{})
+			if err != nil {
+				return nil, err
+			}
+			return reference.Release, nil
+		},
+	}, nil
 }
 
 // Serves implements Host.

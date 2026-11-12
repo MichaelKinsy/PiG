@@ -88,6 +88,8 @@ Every active divergence must have:
 
 - D242: Reload is rejected while the session is running or compacting. Retired by the upstream pin: Pi main c3b938e3e (`packages/coding-agent/src/core/agent-session.ts` `reload`, #9222) rejects it the same way, with the same messages. `TestSessionReloadRejectedWhileRunningOrCompacting` and `TestRefusedReloadDuringARunningToolKeepsTheExtensionHostLive` cover it, and the scenario `reload-rejected-while-running-reaches-the-caller-unchanged` keeps the message identical in every SDK. The ID remains reserved.
 
+- D243: A bash or PowerShell timeout after the shell already exited reports the shell's exit code. Retired by the pin `1.5.1`, which contains Pi 06aa6563e (fix(coding-agent): report the shell exit code when bash times out after the shell exited, #11813): the pinned Pi's `ShellTimeoutError` carries the shell's exit code and run time, and the bash tool says `The shell exited with code C after S seconds, but background processes it started kept writing output until the timeout.`, as the local shell backend's `*ShellTimeoutError` and the shell tool do, so the two call-site markers are gone. The Go, Rust, Python and Lisp SDKs' `CreateLocalBashOperations` and `CreateLocalPowerShellOperations` carry the same: the `builtinTool.localExec` error reply and the SDK's `user_bash_exec` error response hold Pi's `shellExit` (`ErrorInfo.shellExit`), and the error an exec returns unchanged from the local operations, on whatever thread or task, makes the bash tool say the sentence, while an error wrapped around it or built with its message gives the plain timeout, as Pi's class check does. `TestBashTimeoutAfterShellExit11613` and the shell-exit cases of `TestConformance_BuiltinToolDelegationAcrossSDKs` hold the behavior.
+
 - D244: A user bash result whose earlier output was discarded is reported as truncated. Retired by the pin `1.5.1`, which contains Pi 66c655677 (fix(coding-agent): track discarded user bash output, #10165): the pinned Pi's `executeBashWithOperations` records a discarded chunk and reports `truncated: true` for a result whose head the rolling window dropped, as `ExecuteBashWithOperations` does, so the call-site marker and the oracle's `droppedFromWindow` allowance are gone and `TestExecuteBashWithOperationsMatchesPi` compares the results as they are. `TestExecuteBashWithOperationsReportsDiscardedChunks10164` and `TestBashExecutionToTextNamesTheLogOfDiscardedOutput` hold the behavior.
 
 - D245: The last-seen changelog version is read as its leading major.minor.patch; an unreadable one shows nothing and records the current version. Retired by the pin `1.5.1`, which contains Pi 9a1953961 (fix(coding-agent): ignore prerelease suffix of last seen changelog version, #11753): the pinned Pi's `getNewEntries` reads the leading `major.minor.patch` of the recorded version and returns undefined for an unreadable one, as `GetNewEntries` does, so the call-site markers and the oracle tests' `pinnedReadsLastSeenLikeD245` skip are gone. `TestGetNewEntriesIgnoresPrereleaseAndBuildSuffixes`, `TestRecordChangelogVersionRecordsCurrentVersionForUnreadableLastSeen`, `TestExtensionChangelogUpdatesUpstream`, `TestChangelogMatchesPiOracle` and the random changelog oracle hold the behavior.
@@ -1620,13 +1622,13 @@ Pi bug: Pi awaits an aborted extension tool call without a limit, so a tool that
 
 Why: an extension tool runs in another process. A tool that never settles would hold the agent loop, and with it the Session, until the process ends, and the user has no way to recover the Session.
 
-Scope: only an extension tool call (`tool_call`) of the subprocess host, which covers every SDK in its own process, packed, and fused. A tool that settles within the grace period, built-in tools, in-process extensions, provider streams and `user_bash` operations keep Pi's behavior and are not waived. A call whose context has already ended when it reaches the host is not sent to the extension: the host returns the context's error, where Pi runs the example with the aborted signal (subagent-extension.test.ts "returns aborted task details when the signal is already aborted" expects five aborted task results). The example's own handling of an already aborted signal is therefore not reached; `TestSubagentExampleChildLifecycle` asserts that no child starts.
+Scope: only an extension tool call (`tool_call`) of the subprocess host, which covers every SDK in its own process, packed, and fused. A tool that settles within the grace period, built-in tools, in-process extensions, provider streams and `user_bash` operations keep Pi's behavior and are not waived. A call whose context has already ended when it reaches the host is not sent to the extension: the host returns the context's error, where Pi runs the example with the aborted signal (subagent-extension.test.ts "returns aborted task details when the signal is already aborted" expects five aborted task results). The example's own handling of an already aborted signal is therefore not reached; `TestSubagentExampleChildLifecycle` asserts that no child starts. The abort cancels nothing but the tool's signal, as Pi's does (`agent-loop.ts:817-853`): the host sends a signal-only cancel (`CancelPayload.signal_only`), so the tool's pending and later host calls (dialogs, notifications, session reads, `exec`) are answered, and only its nested tool calls (`executeTool`, built-in tool `execute` and `localExec` called under the request) take the abort, as the signal they run with (`runner.ts:979-981`, `options.signal ?? signal`). What the tool still awaits when the grace period ends is cancelled then: that is the whole of this divergence for a tool that awaits a host call, which Pi would await indefinitely.
 
 Owner decision: 2026-10-09, owner Michael Kinsy, ruling on robust-ext F6 (option A, refined: grace period, then `Operation aborted`, the same rule for every SDK).
 
 Call-site markers: `coding/extension/host/subprocess/conn.go` (`ToolAbortGrace`, the `tool_call` branch of `Conn.request`).
 
-Evidence: `TestAbortedToolCallSettlesCooperativelyOrFailsAfterTheGrace` in `coding/extension/host/subprocess/tool_abort_grace_test.go` (a Node tool that rejects on abort keeps its message, one that resolves keeps its result, one that hangs fails with `Operation aborted` no sooner than the grace period, isolated and packed) and `TestConformance_AbortedToolSettlesWithinTheGrace` in `test/extension-conformance/tool_abort_grace_test.go` (Go, Node, Rust and Python in their own processes and packed, and fused Go). Both fail when the host stops waiting at the cancel, with `context canceled` in place of the tool's own answer. `TestRPCAbortedExtensionToolSettlesAndFreesTheSession` in `coding/cli/rpc_tool_abort_grace_test.go` drives the Session path in RPC mode: the hanging tool's `tool_execution_end` carries `Operation aborted` no sooner than the grace period, the abort answers after the run settles, and the next prompt runs a cooperative tool whose own thrown message is its result before the grace period ends.
+Evidence: `TestAbortedToolCallSettlesCooperativelyOrFailsAfterTheGrace` in `coding/extension/host/subprocess/tool_abort_grace_test.go` (a Node tool that rejects on abort keeps its message, one that resolves keeps its result, one that hangs fails with `Operation aborted` no sooner than the grace period, isolated and packed) and `TestConformance_AbortedToolSettlesWithinTheGrace` in `test/extension-conformance/tool_abort_grace_test.go` (Go, Node, Rust and Python in their own processes and packed, and fused Go). Both fail when the host stops waiting at the cancel, with `context canceled` in place of the tool's own answer. `TestRPCAbortedExtensionToolSettlesAndFreesTheSession` in `coding/cli/rpc_tool_abort_grace_test.go` drives the Session path in RPC mode: the hanging tool's `tool_execution_end` carries `Operation aborted` no sooner than the grace period, the abort answers after the run settles, and the next prompt runs a cooperative tool whose own thrown message is its result before the grace period ends. `TestToolAbortKeepsTheToolsHostCalls` in `test/extension-conformance/tool_signal_only_test.go` (every SDK, isolated, packed and fused: a dialog pending at the abort and one opened after it are answered and the tool's signal reads aborted, a nested `abort_tool` sees the abort, and the dialog a tool still awaits at the grace's end is cancelled then) and `TestToolCallAbortCancelsSignalOnlyAndSparesItsHostCalls` and `TestToolCallInactivityCancelStaysOrdinary` in `coding/extension/host/subprocess/tool_abort_signal_only_test.go` (the cancel frame is signal-only, nested calls end, other calls are spared, the ordinary cancel follows at the grace's end, the inactivity cancel stays ordinary).
 
 Parity allowance: no paired scenario runs a tool that ignores its signal, because Pi never finishes that run. The cooperative case is compared through the conformance row above.
 
@@ -3073,28 +3075,6 @@ Evidence: `TestGraphGetSignalIsOneObjectForARunAndItsAbort`. A two-live-runs tes
 
 Pre-existing: yes (an earlier variant made a new context per read). Found by RevCtxAbort on 2026-11-04.
 
-## D243 The SDK local bash operations lose the shell's exit code on a timeout after the shell exited
-
-What: Pi 1.5.2 (06aa6563e, #11813, fixing #11613) makes `createLocalBashOperations().exec` reject with a `ShellTimeoutError` whose `shellExit` holds the shell's exit code and the seconds it ran when the shell exited before the deadline, and the bash tool then says `The shell exited with code C after S seconds, but background processes it started kept writing output until the timeout.` (`bash.ts:100-105,179,408-411`). PiG's own tools match that: `*ShellTimeoutError` keeps `timeout:<seconds>` as its message and carries `ShellExit`. The Go, Rust, Python and Lisp SDKs' `CreateLocalBashOperations` (and the PowerShell variant, and a fused extension's `LocalExec`) reach the host over `builtinTool.localExec`; `handleBuiltinToolLocalExec` returns the bare error, so the reply carries only `timeout:<seconds>`. An extension that wraps those operations in a bash tool and rethrows loses the shell's exit code, and its bash tool prints the plain timeout message where Pi's adds the sentence. The Node SDK runs Pi's own code and matches.
-
-Why: The `builtinTool.localExec` wire reply has no field for the shell exit, and the SDKs have no equivalent of `ShellTimeoutError`. Carrying it needs a wire change and an equivalent error type in every non-Node SDK, which is not done yet. This is the narrowing of the previous D243 record, which the owner approved for the same SDK exception (owner approval for 0.7.1 covered this scope); the pin retired the in-process part and the SDK path is the unchanged remainder, not a new difference.
-
-Pi bug: none; this is the Pi 1.5.2 behavior (`bash.ts:100-105,179,408-411`) that the SDK path does not yet reproduce.
-
-Scope: only the SDKs' local bash and PowerShell operations over `builtinTool.localExec` when the shell exited before the deadline and a background process kept the pipes open. Nothing else changes: the host's own bash and PowerShell tools, custom operations that throw `timeout:N`, and the Node SDK.
-
-Owner decision: approved by owner Michael Kinsy for 0.7.1 (scope proposal `handoffs/0.7.1/SCOPE-PROPOSAL.md`, row S1.), for the same SDK scope; narrowing it after the pin retired the in-process part is not a new difference.
-
-SCRUTINIZED:approved
-
-Remove when: the `builtinTool.localExec` reply carries the shell exit (`shellExit`) and the Go, Rust, Python and Lisp SDKs raise the equivalent of `ShellTimeoutError` from `CreateLocalBashOperations`. Then the call-site markers and this record go.
-
-Call-site markers: `coding/extension/host/subprocess/host_builtin_tool.go` (`handleBuiltinToolLocalExec`), `CreateLocalBashOperations` in `extensions/sdk/builtin_tool.go`, `extensions/sdk-rs/src/builtin_tool.rs`, `extensions/sdk-py/pig_sdk/builtin_tool.py` and `extensions/sdk-lisp/src/builtin-tool.lisp`.
-
-Evidence: `TestBashTimeoutAfterShellExit11613` (`internal/codingagent/tools/bash_timeout_shell_exit_unix_test.go`) locks the in-process behavior the SDK path should reach.
-
-Parity allowance: none needed; Pi has no test of the SDK `createLocalBashOperations` timeout through a host wire, and the Node SDK's behavior is Pi's own code.
-
 ## D266 An image block with an empty `mimeType` is named `image/unknown` in tool cards, where Pi names it with the empty string
 
 What: `getTextOutput` (`packages/coding-agent/src/core/tools/render-utils.ts`) draws a fallback line for each image block the terminal does not show, naming it `img.mimeType ?? "image/unknown"`. A block with no `mimeType` prints `[Image: [image/unknown]]` in Pi and PiG alike. A block whose `mimeType` is the empty string prints `[Image: []]` in Pi and `[Image: [image/unknown]]` in PiG. `ai.ImageContent.MimeType` is a plain string, so PiG treats an empty type as an absent one. The same call in Pi guards the image dimensions with a truthiness test (`img.data && img.mimeType`), which already treats `""` as no type. The difference shows in every card that draws `getTextOutput`: the bash, read, write, grep, find, ls, MCP and codemode result cards.
@@ -3352,31 +3332,13 @@ Parity allowance: none needed beyond the evidence above.
 
 SCRUTINIZED:approved 2026-11-08
 
-## D461 `Files` and `FilesFolder` are not reachable from TypeScript plugins
-
-What: `Files` has a keyed member (`summary`), and the plugin bridge refuses contracts with keyed members, so a TS plugin cannot `get` a host's files; Go code can. The bridge could forward it only by mirroring the Go documents into a non-persisted keyed document handle of the proxy object (a JS keyed member is a document handle or a reference's keyed member; the Go reference's `Keyed.Get/Watch` exist, the proxy side does not), which means an invented key-pin protocol between two hosts; not done.
-
-Why: the plugins' proxy facets (`plugins/node/proxy.mjs`) forward state members and methods to the Go object; a JS keyed member must be a keyed document handle or a reference's keyed member, and the proxy has neither for an object on another host. Pi has the kit and the plugins in one host, so `self.get(Files, {})` works there.
-
-Scope: `chord/nextnode/app` (the Files facet), `chord/nextnode/plugins` (the bridge refuses a contract with a keyed member at start). Observable: a TypeScript plugin loses Pi's public `chord/app/files` API (`Files`, `FilesFolder`); Go code and the kit's own routes keep them. Pi's own p2 plugins call `self.get(Files, {})`; PiG's p2 lane ports them to Go, so p2 itself is not affected.
-
-Pi bug: Not a Pi bug.
-
-Owner decision: accepted for 0.8.0 by the owner (Michael Kinsy) on 2026-11-08, OWNER-DECISIONS #19: the limitation stands.
-
-Remove when: the plugin bridge forwards a contract with a keyed member (a keyed-handle proxy between hosts), or the plugins run in the kit's host.
-
-Call-site markers: `chord/nextnode/app/app.go` (`start`), `chord/nextnode/app/worker.go` (`runWorker`).
-
-Evidence: `plugins_node_bridged_keyed_test.go` (the refusal); `files_test.go` (the facet from Go).
-
-Parity allowance: none needed beyond the evidence above.
-
-SCRUTINIZED:approved 2026-11-08 (accepted limitation for 0.8.0)
-
 ## D462 The server and each worker have two stores, not one
 
 What: Pi's host has one store and one commit queue. PiG has two hosts per server or worker (the Go host, the plugins' NodeHost), and a store has one writer (a singleton meta row: `last_seq`, `next_id`), so each has its own: the kit's (`kit.sqlite`, `store.sqlite` on a server) and the plugins' (`store.sqlite`, `plugins.sqlite` on a server). Nothing commits across them. Archives carry an optional `kit.archive` beside `store.archive`. A running worker's export (`PackRunning`) takes the kit's commit queue (its export's first part), then has SQLite copy the plugins' file at one instant (`VACUUM INTO` over a read-only connection, a read transaction the NodeHost's writes do not disturb) and exports the copy, so the two archives are one point; the kit's writes wait for its archive, the plugins' writes proceed meanwhile and are not in the archive. Pi holds its one store's commit queue. The copy costs the plugins' store's size in temporary space beside the archive.
+
+Host data (amended 2026-11-10 for Pi 1.5.2's host-keyed data, which Pi's `exportData`, `importData` and `deleteData` carry in one `server.archive` of the server's one store): `server.archive` holds the NodeHost's part in Pi's shape (the records and rows its objects keep belonging to the address, `exportHostData`'s archive; the NodeHost runs Pi's `Host.exportHostData`, `importHostData` and `deleteHostData` for the Go side through three control requests of its process, `plugins_node_host_data.go`) and an optional `kit-server.archive` holds the Go host's part, the same two-entry scheme as `kit.archive`. `importData` commits the NodeHost's part and then the Go host's (two commits; nothing commits across the stores). A definite failure before either committed, or of the NodeHost's commit, undoes the new directory and restores the old one as Pi's flow does. A definite failure of the Go host's commit after the NodeHost's committed is undone the same way once the NodeHost's commit is: a refused import's part is deleted again (`NodeHost.DeleteHostData` of the address), and with `existing: "replace"` the NodeHost's old part, exported before the import, is put back (`ImportHostData` with `replace`), so the end state is the one Pi's undo leaves. If that rollback fails too, nothing is undone (the new directory in place, the old one aside) and the rejection carries both errors; an unknown outcome (`unavailable/storage_failed`) of either commit undoes nothing either and says so with Pi's text. With `existing: "replace"` and no `kit-server.archive`, the Go host's data of the address is deleted. `deleteData` deletes both parts. A running worker's or a stopped one's export writes both parts before it packs the rest.
+
+Host data archive interop: Pi's `unpackEntries` refuses `kit-server.archive` as it refuses `kit.archive`, so Pi cannot import a PiG archive that has one; a Pi-made `server.archive` lands in the NodeHost's store and the Go host's part stays empty.
 
 Archive interop, both directions (accepted incompatibilities; owner to decide whether to build a converter): PiG to Pi: Pi's `unpackEntries` refuses any entry besides the manifest, `store.archive` and `files/`, so Pi cannot import a PiG app-kit archive that has `kit.archive`. Pi to PiG: a Pi archive's single `store.archive` holds the kit's Files tables beside the plugins' records and is imported into the plugins' store; the Go Files facet reads the kit store, which stays empty, so the files arrive (`files/`) but their index does not. [INFERENCE: the second direction is read from the code, not run with a Pi-made archive.] Options if the owner wants interop: split the kit-owned tables into `kit.sqlite` on import, or export a single Pi-compatible archive.
 
@@ -3388,13 +3350,13 @@ Owner decision: approved by the owner (Michael Kinsy) on 2026-11-08, OWNER-DECIS
 
 Remove when: the plugins run in the server's (or worker's) own host process with one store, or one store file can be shared by two hosts.
 
-Call-site markers: `chord/nextnode/app/app.go` (`openServer`), `chord/nextnode/app/worker.go` (`runWorker`), `chord/nextnode/app/archive.go` (`PackRunning`).
+Call-site markers: `chord/nextnode/app/app.go` (`openServer`, `ExportData`, `ImportData`, `DeleteData`), `chord/nextnode/app/worker.go` (`runWorker`), `chord/nextnode/app/archive.go` (`PackRunning`, `PackData`, `UnpackStaging`), `chord/nextnode/plugins/plugins_node_host_data.go` (`NodeHost.ExportHostData`, `ImportHostData`, `DeleteHostData`).
 
-Evidence: `app_export_test.go`, `archive_upstream_test.go` (PiG round trip only), `data_export_test.go` (both stores written during 8 exports: each archive holds exactly the rows its manifest counts, and the plugins' ticks are the kit's or one more).
+Evidence: `app_export_test.go`, `archive_upstream_test.go` (PiG round trip only), `data_export_test.go` (both stores written during 8 exports: each archive holds exactly the rows its manifest counts, and the plugins' ticks are the kit's or one more), `app_export_host_test.go` (the two-part host data: a round trip, a failure between the two commits, the delete of both).
 
 Parity allowance: none needed beyond the evidence above.
 
-SCRUTINIZED:approved 2026-11-08
+SCRUTINIZED:approved 2026-11-08, amended 2026-11-10 for Pi 1.5.2 host data, extends OWNER-DECISIONS #19
 
 ## D464 FormatNumber and FormatTime take closed option types and return errors (P1-3)
 
@@ -3661,13 +3623,13 @@ Parity allowance: none beyond the forms above.
 
 Remove when: PiG gets an in-process evaluator of plugins or Pi evaluates plugins out of process.
 
-## D616 An npm tarball is extracted with `tar` told the archive relative to the pack directory, where Pi passes its absolute path
+## D616 An npm tarball is extracted with `tar` told the archive and the destination relative to the pack directory, where Pi passes their absolute paths
 
-What: Pi's `installPlugin` packs an npm package into a temporary directory and extracts it with `run("tar", ["-xzf", join(packed, basename(tarball.filename)), "--strip-components=1", "-C", dir], packed, ...)` (`packages/chord/src/node/plugins/install.ts:248-249`): the archive is an absolute path. GNU tar reads an archive name with a colon before its first slash as `host:file`, so on Windows with the `tar` of Git for Windows ahead of `System32\tar.exe` (bsdtar) in PATH, `C:\...\pack-x\pkg-1.0.0.tgz` is the file `...` on a host named `C` and the extraction fails with `tar (child): Cannot connect to C: resolve failed`. PiG's `unpack` runs tar in the pack directory already (as Pi does) and names the archive `./<basename>`, which both tars read as a local file; every other argument is Pi's.
+What: Pi's `installPlugin` packs an npm package into a temporary directory and extracts it with `run("tar", ["-xzf", join(packed, basename(tarball.filename)), "--strip-components=1", "-C", dir], packed, ...)` (`packages/chord/src/node/plugins/install.ts:248-249`): the archive and the destination are absolute paths. GNU tar reads an archive name with a colon before its first slash as `host:file`, so on Windows with the `tar` of Git for Windows ahead of `System32\tar.exe` (bsdtar) in PATH, `C:\...\pack-x\pkg-1.0.0.tgz` is the file `...` on a host named `C` and the extraction fails with `tar (child): Cannot connect to C: resolve failed`. PiG's `unpack` runs tar in the pack directory already (as Pi does) and names the archive `./<basename>`, which both tars read as a local file; every other argument is Pi's.
 
 Why: a plugin install from npm that fails on a common Windows PATH (Git Bash first) for a reason of argument shape only is worse than Pi's behavior and costs nothing to avoid; on POSIX and with bsdtar the extraction is the same.
 
-Pi bug: With GNU tar of Git for Windows in PATH Pi's `installPlugin` of an npm package fails on Windows; to be filed upstream with the repro (`installPlugin` with an `npm` source on Windows from Git Bash).
+Pi bug: With GNU tar of Git for Windows in PATH Pi's `installPlugin` of an npm package fails on Windows (the archive, then the destination); to be filed upstream with the repro (`installPlugin` with an `npm` source on Windows from Git Bash).
 
 Scope: `chord/nextnode/plugins` (`unpack`).
 
@@ -3675,7 +3637,7 @@ Owner decision: owner approved 2026-11-10 (for 0.8.0).
 
 SCRUTINIZED:approved 2026-11-10
 
-Remove when: Pi's install names the archive relative to the pack directory.
+Remove when: Pi's install names the archive and the destination relative to the pack directory.
 
 Call-site markers: `chord/nextnode/plugins/plugins_install.go` (`unpack`).
 
@@ -3704,3 +3666,49 @@ Call-site markers: `coding/extension/host/subprocess/command_only_calls.go` (`co
 Evidence: `test/extension-conformance/session_actions_event_context_test.go` (`TestConformance_CommandOnlySessionActionsRefusedFromEventContext`: a `session_start` handler's calls and a stored event context's calls after its request ended, in every SDK and realization; Node's `typeof` and TypeError), and `coding/extension/host/subprocess/command_only_calls_test.go`.
 
 Parity allowance: observable only to an extension in the Go, Python, Rust or Lisp SDK that calls a command-only session action through a context Pi's types forbid it on.
+
+## D618 A start repaints after the highlight grammar load only when a highlight lookup made before it could have answered differently
+
+What: Pi's `init` loads the remaining highlight.js grammars after the startup frame and then calls `invalidate()` and `requestRender()` (`packages/coding-agent/src/modes/interactive/interactive-mode.ts`, `loadAllHighlightLanguages().then(...)`). Pi's renderer writes a frame for every render request even when no row changed (`packages/tui/src/tui-alt-screen.ts` `doRender` has no early return for unchanged lines), so a fresh start writes one more frame about 100 ms after the first: a 29-byte cursor-only frame (`CSI ? 2026 h`, `CSI <row>;1 H`, `CSI ? 25 l`, `CSI ? 2026 l`) that repaints nothing. PiG's `loadRemainingHighlightLanguages` repaints only when `tui.LoadAllHighlightLanguages` reports that a highlight lookup made before the load answers differently now: a language name the startup grammars do not register (including a name no language has), an auto-detection over the languages registered so far, or a listing of them. A start that drew no code block (the usual start) made none, so PiG writes nothing after its first frame. A screen that did draw such code is repainted as in Pi, so highlighted code still picks up the remaining grammars.
+
+Why: the frame carries no row, yet it restarts any consumer's output-quiet wait, and it costs a render pass on the pinned core right after start. Measured on xd670 (core 103, interactive session, 15 rounds): wall 519 ms to 483 ms with CPU unchanged (Pi-Bolt 500 ms). The bytes PiG omits are bytes that do not change the terminal's state: the cursor is already at that row and hidden.
+
+Pi bug: none; Pi's repaint after the load is intended. (Pi-Bolt omits the frame too.)
+
+Scope: `tui` (`LoadAllHighlightLanguages`), `tui/internal/hljs` (`Registry.LoadAllLanguages` and the lookups that record a miss), `internal/codingagent` (`loadRemainingHighlightLanguages`). A Piglet Binary built with `pig_strip_syntax_highlight` loads no grammar and, as before, has nothing to repaint.
+
+Owner decision: owner approved 2026-11-11.
+
+SCRUTINIZED:approved 2026-11-11
+
+Remove when: Pi's renderer writes nothing for a render request that changes no row and moves no cursor, or the owner withdraws the approval.
+
+Call-site markers: `internal/codingagent/interactive.go` (`loadRemainingHighlightLanguages`), `tui/highlight.go` (`LoadAllHighlightLanguages`), `tui/internal/hljs/registry.go` (`LoadAllLanguages`).
+
+Evidence: `TestLoadRemainingHighlightLanguagesRepaintsOnTheOwnerLoop`, `TestLoadRemainingHighlightLanguagesPostsNoRepaintWhenNoLookupDiffers` (`internal/codingagent/highlight_languages_load_test.go`), `TestLoadAllLanguagesReportsEarlierLookupsThatDiffer` (`tui/internal/hljs/load_reports_test.go`), and parity scenario `interactive-rendering/69-startup-frames-after-grammar-load`, which captures the raw start of both binaries in tmux and pins the number of cursor-only frames after the footer's text: Pi 1 and PiG 1, where PiG before D618 wrote 2 (21 consecutive runs of each binary, and the pre-D618 build failing the scenario). Both binaries write other frames there while tmux answers their start-up color queries, so the stream is not pinned beyond that count.
+
+Parity allowance: scenario 69 (`final_frame_cursor_only_pig = 1`, `final_frame_cursor_only_pi = 1`) pins the count of cursor-only frames after the footer's text; the settled screens are compared as in the family's other scenarios.
+
+## D619 A status-indicator or Loader animation step asks for its frame within min(40 ms, interval/2), where Pi asks for it at once
+
+What: Pi's `Loader` (`packages/tui/src/components/loader.ts`) calls `ui.requestRender()` on every animation step (`setInterval` every 80 ms for the default spinner), so a step that falls between the frames a streaming reply asks for is drawn as a frame of its own, up to 16 ms after the last frame. PiG's interactive mode drew every status-indicator tick with an immediate `Render()` (so also off the 16 ms throttle, often 3-8 ms after the stream's last frame); the mode and `Loader` now ask for the step's frame through `RequestRenderWithin(min(40 ms, interval/2))` when the TUI has one: any frame drawn in that time draws the step and the timer is dropped; only when none is does the timer ask for a frame (`RequestRender`, with the same 16 ms throttle). Every other change to the loader (start, message, indicator, invalidate) still asks for a frame at once. A request made while a frame is running asks for the next frame at once, as `RequestRender` does. The final screen, the order of what is drawn and the 80 ms step cadence are Pi's; a step is drawn at most 40 ms plus the frame throttle after its tick, and a step that a streaming frame has already drawn adds no frame.
+
+Removing the status indicator drops the step frame that still waits (`CancelRenderWithin`), so no frame follows the one that removed it; Pi-Bolt's `Loader.stop()` leaves its timer armed.
+
+Why: while a reply or a tool call streams in, Pi draws a frame every 16-20 ms and the spinner step adds a frame of its own every 80 ms, about one frame in five. In a tmux pane every frame is a read, a parse and a redraw for the tmux server; on the `write:50` cell of the Pi-Bolt `tmux_load.py` harness (65 s, 160x48 pane) PiG wrote 4,066 frames to the pane (Pi 1.5.2: 3,951) where Pi-Bolt, which has this change (`TUI.requestRenderWithin`, `STEP_FRAME_DELAY_MS`), wrote 3,262; with it PiG writes 3,278. The frames dropped carry only a glyph of the spinner that the next frame draws anyway.
+
+Pi bug: none; Pi's frame per step is correct, only costlier.
+
+Scope: `tui` (`tuiBase.RequestRenderWithin`, `Loader`, `Loader.TickStep`) and `internal/codingagent` (`tickStatusIndicators`, `renderStatusStep`). `TuiMainScreen`, `TuiAltScreen` and `TuiSurface` take part; a TUI without `RequestRenderWithin` keeps Pi's request at once.
+
+Owner decision: owner approved 2026-11-11 (for 0.8.0).
+
+SCRUTINIZED:approved 2026-11-11
+
+Remove when: Pi's `Loader` draws a step within a time, or the owner withdraws the change.
+
+Call-site markers: `tui/loader.go` (`requestStepRender`), `tui/tui.go` (`RequestRenderWithin`, `CancelRenderWithin`), `internal/codingagent/interactive_layout.go` (`renderStatusStep`), `internal/codingagent/interactive_status.go` (`clearStatusIndicator`).
+
+Evidence: `tui/render_within_test.go` (`TestRequestRenderWithinAsksForAFrameOnlyWhenNoneIsDrawn`, `TestFrameDrawnWithinTheDelayCarriesTheChange`, `TestRequestRenderWithinIsCoveredByAFrameAlreadyAskedFor`, `TestRequestRenderWithinDuringAFrameAsksForTheNextFrame`, `TestLoaderAnimationStepAsksForItsFrameWithin`, `TestLoaderTickStepAsksForNoFrame`, `TestCancelRenderWithinDropsTheWaitingStepFrame`) and `internal/codingagent/status_tick_within_test.go` (`TestStatusTickAsksForItsFrameWithinTheStepDelay`, `TestStatusTickDrawsAtOnceOnATUIThatCannotWait`, `TestRemovingTheIndicatorCancelsItsWaitingStepFrame`).
+
+Parity allowance: the frame count differs from Pi's on a streaming call (3,278 against 3,951 frames in 66 s of the `write:50` cell) and the final screen is identical; the frames of a spinner step that another frame draws are not written; the settled screen and every frame a request other than a spinner step asks for are Pi's.

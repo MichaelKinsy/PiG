@@ -203,16 +203,10 @@ var (
 	clickSpanID   = regexp.MustCompile(`^browser:[0-9a-f-]{36}:\d+$`)
 )
 
-// clickNotesPlugin is the notes plugin with the contract the page fixture (web/telemetry.ts) declares again, whose Notes also has
-// Pi's `attach` and `file`: a TS plugin cannot get a worker's `Files` (D461), so the two are served as stubs the click never calls;
-// the contract's fingerprint must equal the page's.
+// clickNotesPlugin is the notes plugin, whose Notes has Pi's `attach` and `file` as the contract the page fixture (web/telemetry.ts)
+// declares again: the contract's fingerprint must equal the page's.
 func clickNotesPlugin() map[string]string {
-	worker := strings.Replace(notesPlugin["worker.ts"], "visit: method(str(), int()) } } } });\nconst Text", "visit: method(str(), int()), attach: method(str(), str()), file: method(str(), str()) } } } });\nconst Text", 1)
-	worker = strings.Replace(worker, "visit: (page, ctx) => store.visit(page, ctx),\n\t\t} };", "visit: (page, ctx) => store.visit(page, ctx),\n\t\t\tattach: async () => \"\",\n\t\t\tfile: async () => \"\",\n\t\t} };", 1)
-	if worker == notesPlugin["worker.ts"] || !strings.Contains(worker, "attach: async") || !strings.Contains(worker, "attach: method") {
-		panic("clickNotesPlugin: the notes plugin changed")
-	}
-	return map[string]string{"worker.ts": worker}
+	return notesPlugin
 }
 
 func TestAPageRecordsAClickAsTheRootOfOneTraceThroughTheServerIntoTheWorkerStoredByTheServer(t *testing.T) {

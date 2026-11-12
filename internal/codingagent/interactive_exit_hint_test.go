@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/extensions/sdk/frontend"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -97,4 +98,55 @@ func TestInteractiveQuitPrintsOneHintAfterTerminalRestore(t *testing.T) {
 			}
 		})
 	}
+}
+
+// exitScreenSession draws its exit screen to the terminal when it closes.
+type exitScreenSession struct{ *fakeFrontendSession }
+
+func (s exitScreenSession) Close() error {
+	fmt.Print("<frontend exit screen>\n")
+	return s.fakeFrontendSession.Close()
+}
+
+// pig additive (D91): Pi has no frontend member. A frontend that owns the
+// screen owns its exit screen, so the host writes no resume hint after it.
+func TestFrontendExitWritesNoResumeHint(t *testing.T) {
+	setStdoutTTY(t, true)
+	t.Setenv("FORCE_COLOR", "1")
+	session, err := tempSessionMgr(t).Create("exit-frontend", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := session.AppendMessage(mkAssistantMsg("finished")); err != nil {
+		t.Fatal(err)
+	}
+	fe := &fakeFrontend{session: &fakeFrontendSession{}}
+	m := newUnmountedSwitchTuiProbe(t, InteractiveModeOptions{
+		Frontend: &exitScreenFrontend{fakeFrontend: fe}, TuiMode: "regular", CWD: t.TempDir(),
+		SessionHandle: &recordingCompactHandle{inner: session},
+	}, io.Discard)
+	m.rendererOut = nil
+	m.openFrontend()
+	if m.surface == nil {
+		t.Fatal("no surface renderer")
+	}
+	m.rawRestore = func() { fmt.Print("<cooked>\n") }
+	got := captureStdout(t, func() {
+		if err := m.finishInteractiveShutdown(); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if want := "<frontend exit screen>\n<cooked>\n"; got != want {
+		t.Errorf("terminal output = %q, want only the frontend exit screen then cooked restore %q", got, want)
+	}
+}
+
+type exitScreenFrontend struct{ *fakeFrontend }
+
+func (f *exitScreenFrontend) Open(env frontend.Env) (frontend.Session, error) {
+	s, err := f.fakeFrontend.Open(env)
+	if err != nil {
+		return nil, err
+	}
+	return exitScreenSession{s.(*fakeFrontendSession)}, nil
 }

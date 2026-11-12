@@ -11,7 +11,7 @@ import (
 
 // Ports packages/chord/src/surfaces/page-state.ts. Values a client host keeps for its UI by key, beside its plugins,
 // so a component of a reloaded plugin finds what it had. Same-host values of any kind, never on the wire; gone with the
-// host (D451: the store of a host is dropped by a runtime cleanup when the host is collected, upstream's WeakMap).
+// host (language mechanics: the store of a host is dropped by a runtime cleanup when the host is collected, where upstream uses a WeakMap).
 
 // PageState is one key's value in a host's page state. Its functions are bound values.
 type PageState[T any] struct {
@@ -141,7 +141,7 @@ func PageStateOf[T any](h host.Host, key string, initial T) PageState[T] {
 		loaded, stored = pageStates.LoadOrStore(owner, fresh)
 		if !stored {
 			// The entry goes with its host: the cleanup runs after the host is unreachable, and removes only the entry it was
-			// made with (D451).
+			// made with (language mechanics: a runtime cleanup replaces the WeakMap).
 			runtime.AddCleanup(pointer, func(entry pageStateEntry) { pageStates.CompareAndDelete(entry.key, entry.states) }, pageStateEntry{owner, fresh})
 		}
 	}

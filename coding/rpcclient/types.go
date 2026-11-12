@@ -2,6 +2,8 @@ package rpcclient
 
 import (
 	"encoding/json"
+
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // RpcClientOptions mirrors upstream RpcClientOptions. CliPath names the pig
@@ -127,7 +129,7 @@ type Model struct {
 func (m *Model) UnmarshalJSON(data []byte) error {
 	type plain Model
 	var decoded plain
-	if err := json.Unmarshal(data, &decoded); err != nil {
+	if err := jsstring.UnmarshalKeepingSurrogates(data, &decoded); err != nil {
 		return err
 	}
 	*m = Model(decoded)
@@ -233,7 +235,7 @@ type SessionEntry struct {
 func (e *SessionEntry) UnmarshalJSON(data []byte) error {
 	type plain SessionEntry
 	var decoded plain
-	if err := json.Unmarshal(data, &decoded); err != nil {
+	if err := jsstring.UnmarshalKeepingSurrogates(data, &decoded); err != nil {
 		return err
 	}
 	*e = SessionEntry(decoded)
@@ -260,7 +262,7 @@ type AgentMessage struct {
 func (m *AgentMessage) UnmarshalJSON(data []byte) error {
 	type plain AgentMessage
 	var decoded plain
-	if err := json.Unmarshal(data, &decoded); err != nil {
+	if err := jsstring.UnmarshalKeepingSurrogates(data, &decoded); err != nil {
 		return err
 	}
 	*m = AgentMessage(decoded)

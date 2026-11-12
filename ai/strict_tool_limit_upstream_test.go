@@ -38,8 +38,8 @@ func TestIsStrictToolLimitErrorMessage(t *testing.T) {
 		{"Too many strict tools", false},
 		{"", false},
 	} {
-		if got := isStrictToolLimitErrorMessage(tc.message); got != tc.want {
-			t.Errorf("isStrictToolLimitErrorMessage(%q) = %t, want %t", tc.message, got, tc.want)
+		if got := IsStrictToolLimitErrorMessage(tc.message); got != tc.want {
+			t.Errorf("IsStrictToolLimitErrorMessage(%q) = %t, want %t", tc.message, got, tc.want)
 		}
 	}
 }
@@ -47,22 +47,22 @@ func TestIsStrictToolLimitErrorMessage(t *testing.T) {
 // Pi 45344bd3a (packages/ai/test/strict-tool-limits.test.ts).
 func TestStrictToolLimitSessionsRememberedUntilCleanup(t *testing.T) {
 	t.Cleanup(func() { _ = CleanupSessionResources("") })
-	markStrictToolLimitsExceeded("a")
-	markStrictToolLimitsExceeded("b")
-	markStrictToolLimitsExceeded("")
-	if !hasExceededStrictToolLimits("a") || hasExceededStrictToolLimits("c") || hasExceededStrictToolLimits("") {
+	MarkStrictToolLimitsExceeded("a")
+	MarkStrictToolLimitsExceeded("b")
+	MarkStrictToolLimitsExceeded("")
+	if !HasExceededStrictToolLimits("a") || HasExceededStrictToolLimits("c") || HasExceededStrictToolLimits("") {
 		t.Fatal("marked sessions are not remembered exactly")
 	}
 	if err := CleanupSessionResources("a"); err != nil {
 		t.Fatal(err)
 	}
-	if hasExceededStrictToolLimits("a") || !hasExceededStrictToolLimits("b") {
+	if HasExceededStrictToolLimits("a") || !HasExceededStrictToolLimits("b") {
 		t.Fatal("cleaning up one session must forget only that session")
 	}
 	if err := CleanupSessionResources(""); err != nil {
 		t.Fatal(err)
 	}
-	if hasExceededStrictToolLimits("b") {
+	if HasExceededStrictToolLimits("b") {
 		t.Fatal("cleaning up every session must forget all")
 	}
 }
@@ -70,9 +70,9 @@ func TestStrictToolLimitSessionsRememberedUntilCleanup(t *testing.T) {
 func TestStrictToolLimitSessionsDropOldestBeyondCap(t *testing.T) {
 	t.Cleanup(func() { _ = CleanupSessionResources("") })
 	for index := 0; index <= 10_000; index++ {
-		markStrictToolLimitsExceeded("session-" + strconv.Itoa(index))
+		MarkStrictToolLimitsExceeded("session-" + strconv.Itoa(index))
 	}
-	if hasExceededStrictToolLimits("session-0") || !hasExceededStrictToolLimits("session-1") || !hasExceededStrictToolLimits("session-10000") {
+	if HasExceededStrictToolLimits("session-0") || !HasExceededStrictToolLimits("session-1") || !HasExceededStrictToolLimits("session-10000") {
 		t.Fatal("the oldest session beyond 10,000 must be the one dropped")
 	}
 }

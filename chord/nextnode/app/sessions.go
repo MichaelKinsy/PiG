@@ -29,7 +29,7 @@ import (
 // (past it the oldest ends), so a public login costs the same whatever came before; each ends with its client's connection (its
 // last link closed, a grace period passed: the links endpoint's `opened` hook counts them), and none outlives the server's run.
 //
-// Go forced differences (D457): a function that rejects returns `(value, error)`; the principal's generic parameter is designed
+// Go forced differences (language mechanics): a function that rejects returns `(value, error)`; the principal's generic parameter is designed
 // out (a principal is a JSON object); the facet contributes through the `Sessions` object's StoreSelf, as the host-lifetime local
 // type it is; a session whose `lastUsed` or removal is written after an authentication is written in a goroutine of its own
 // (upstream's un-awaited promise), on a context that keeps the request's values and not its cancellation.
@@ -45,7 +45,7 @@ const (
 )
 
 // SessionInfo is a browser or device session as `Sessions.list` shows it: never its token or hash. Kind is SessionBrowser or
-// SessionDevice; Principal is the principal's JSON (the generic parameter is designed out, D457).
+// SessionDevice; Principal is the principal's JSON (the generic parameter is designed out: language mechanics).
 type SessionInfo struct {
 	ID        string
 	Label     string

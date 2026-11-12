@@ -97,7 +97,7 @@ func Local(name string, declaration LocalDeclaration) (*Contract, error) {
 	if err != nil {
 		return nil, err
 	}
-	variant := &VariantData{State: NewNamedMap[*Snapshot](0), Methods: NewNamedMap[*MethodData](0), Keyed: NewNamedMap[*Snapshot](0)}
+	variant := &VariantData{State: NewNamedMap[*Snapshot](0), Methods: NewNamedMap[*MethodData](0), Keyed: NewNamedMap[*KeyedSnapshot](0)}
 	for _, entry := range members {
 		path := name + "." + LocalVariant + "." + entry.Name
 		switch member := entry.Value.(type) {
@@ -114,7 +114,7 @@ func Local(name string, declaration LocalDeclaration) (*Contract, error) {
 			if member == nil {
 				return nil, notAMember(path)
 			}
-			snapshot, err := SnapshotSchema(member.Schema, path)
+			snapshot, err := keyedSnapshot(member.Schema, member.Key, path)
 			if err != nil {
 				return nil, err
 			}
@@ -166,7 +166,22 @@ func readVariant(source VariantDeclaration, path string) (*VariantData, error) {
 		}
 		methods.Set(entry.Name, method)
 	}
-	return &VariantData{State: state, Methods: methods, Keyed: NewNamedMap[*Snapshot](0)}, nil
+	return &VariantData{State: state, Methods: methods, Keyed: NewNamedMap[*KeyedSnapshot](0)}, nil
+}
+
+// keyedSnapshot is a keyed member's snapshot: its schema's and, keyed by a host kind, the kind (declaration policy: a
+// declared one, its name in the member's normal form).
+func keyedSnapshot(schema Schema, key *HostKind, path string) (*KeyedSnapshot, error) {
+	snapshot, err := SnapshotSchema(schema, path)
+	if err != nil {
+		return nil, err
+	}
+	if key != nil {
+		if _, err := KindParams(key); err != nil {
+			return nil, err
+		}
+	}
+	return &KeyedSnapshot{Snapshot: *snapshot, Key: key}, nil
 }
 
 // readMethod is one method declaration as Chord-owned snapshots; its arguments must be closed.

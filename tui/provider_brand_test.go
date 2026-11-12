@@ -1,5 +1,7 @@
 package tui
 
+// pi: packages/coding-agent/src/modes/interactive/components/provider-brand.ts
+
 import (
 	"testing"
 	"time"

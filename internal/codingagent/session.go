@@ -20,6 +20,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/sessionentry"
 	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
@@ -376,6 +377,14 @@ func compactionWithoutRecord(entry SessionEntry, raw []byte) SessionEntry {
 // write that fails leaves memory as the file is (session-manager.ts _appendEntry): the entry is not kept and is not the parent of a later one.
 func (s *Session) appendEntryRecordOf(se SessionEntry, raw []byte, ownMessage bool) error {
 	base := se.Base()
+	if raw == nil && !s.fileless() {
+		// A session that gained a file since the caller left the record out writes it here.
+		encoded, err := marshalSessionLine(se)
+		if err != nil {
+			return fmt.Errorf("session: marshal entry: %w", err)
+		}
+		raw = encoded
+	}
 	if isUndescribed(se) {
 		var strict SessionEntryBase
 		if err := json.Unmarshal(raw, &strict); err != nil {
@@ -725,6 +734,13 @@ func (s *Session) appendMessageEntry(msg agent.AgentMessage) (string, error) {
 		Timestamp: RFC3339NowNano(),
 		Message:   msg,
 	}
+	// pig additive (D112): a session without a file writes no record, so a message entry that is held as appended and whose encoding cannot fail is not encoded at all.
+	if s.holdsWithoutRecord(entry) {
+		if err := s.appendEntryRecordOf(entry, nil, true); err != nil {
+			return "", err
+		}
+		return id, nil
+	}
 	// The entry is encoded once: its record is what the session stores, counts, decodes and writes. A message that cannot be encoded is reported as the message's own error.
 	raw, err := marshalSessionLine(entry)
 	if err != nil {
@@ -744,6 +760,45 @@ func (s *Session) appendMessageEntry(msg agent.AgentMessage) (string, error) {
 		return "", err
 	}
 	return id, nil
+}
+
+// fileless reports whether the session has no file to write: a session made with no path (--no-session, an in-memory manager).
+func (s *Session) fileless() bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.path == ""
+}
+
+// holdsWithoutRecord reports whether the session of no file holds entry exactly as appended, with no record to write, and with the entry
+// encoding without error, which is what heldMessageEntry decides from a record's decode. It is the case heldMessageEntry returns entry for
+// (its decoded form is proven equal to entry), minus the encoding that only the file needs. A message whose Details are a Go value encodes
+// them once here, because only the encoding says whether they can be encoded; the other members are proven by decodedFormBesideDetails.
+// pig additive (D112): Pi appends the object and stringifies it only to persist (session-manager.ts _persist returns without a session file).
+func (s *Session) holdsWithoutRecord(entry MessageEntry) bool {
+	if !s.fileless() {
+		return false
+	}
+	if form, ok := entry.Message.DecodedForm(); ok {
+		decoded, ok := sessionentry.NewDecodedMessageEntry(entry.SessionEntryBase, form, nil)
+		return ok && reflect.DeepEqual(SessionEntry(decoded), SessionEntry(entry))
+	}
+	form, ok := decodedFormBesideDetails(entry.Message)
+	if !ok {
+		return false
+	}
+	decoded, ok := sessionentry.NewDecodedMessageEntry(entry.SessionEntryBase, form, nil)
+	if !ok {
+		return false
+	}
+	result := *entry.Message.ToolResult
+	result.Details = nil
+	stripped := entry
+	stripped.Message.ToolResult = &result
+	if !reflect.DeepEqual(SessionEntry(decoded), SessionEntry(stripped)) {
+		return false
+	}
+	_, err := jsstring.MarshalJSON(entry.Message.ToolResult.Details)
+	return err == nil
 }
 
 // heldMessageEntry returns the entry the session holds for entry, whose record is raw, and whether that is entry itself (with raw as its

@@ -798,6 +798,9 @@ type tuiBase struct {
 	renderRequested          bool
 	immediateRenderRequested bool
 	renderTimer              stoppableTimer
+	// deferredRenderTimer is the timer of RequestRenderWithin until a frame is drawn: that frame draws the change the timer was set for, so the timer is stopped when a frame begins. deferredRenderGeneration lets a callback that lost that race see it did.
+	deferredRenderTimer      stoppableTimer
+	deferredRenderGeneration uint64
 	// frameActive is set while a frame holds mu and renders components (lockFrame). mu is not reentrant, so RequestRender during the frame (from a component's Render, as Pi's Loader.invalidate and requestRender-on-image-load do, or from another goroutine) is recorded in frameRenderRequest and issued when the frame releases mu.
 	frameActive atomic.Bool
 	// frameOwner is the goroutine that set frameActive (0 outside a frame): the goroutine running a frame holds mu and the base container's lock while it
@@ -1975,7 +1978,11 @@ func (t *tuiBase) runImmediateRender(generation uint64) {
 func (t *tuiBase) requestRender(force bool) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	t.requestRenderLocked(force)
+}
 
+// requestRenderLocked is requestRender with mu held.
+func (t *tuiBase) requestRenderLocked(force bool) {
 	if force {
 		t.forceRedraw = true
 		if t.resetRenderState != nil {
@@ -1997,6 +2004,63 @@ func (t *tuiBase) requestRender(force bool) {
 	}
 	t.renderRequested = true
 	t.scheduleRenderLocked()
+}
+
+// RequestRenderWithin asks for a frame within delay for a change that need not be drawn at once, such as a spinner's next step: any frame drawn in that time draws the change, and only when none is does the timer ask for one (Pi-Bolt TUI.requestRenderWithin). A frame already asked for draws the change, and so does a timer already set.
+//
+// pig divergence (D619): Pi asks for a frame at once for every animation step; the Loader asks for it within min(40 ms, interval/2) through this method.
+func (t *tuiBase) RequestRenderWithin(delay time.Duration) {
+	if t.frameActive.Load() {
+		// A request made while a frame holds mu cannot be deferred: the frame may have read the component before it changed. Ask for a frame as RequestRender does.
+		t.RequestRender()
+		return
+	}
+	t.mu.Lock()
+	if t.stopped || t.renderRequested || t.deferredRenderTimer != nil {
+		t.mu.Unlock()
+		return
+	}
+	t.deferredRenderGeneration++
+	generation := t.deferredRenderGeneration
+	t.deferredRenderTimer = t.afterFunc(delay, func() { t.runDeferredRender(generation) })
+	t.mu.Unlock()
+}
+
+// CancelRenderWithin drops the frame RequestRenderWithin asked for, when no frame has drawn the change yet: a spinner that was removed has no step left to draw, and a frame it asked for would come after the frame that removed it.
+//
+// pig divergence (D619): Pi-Bolt's Loader.stop() leaves the requestRenderWithin timer armed.
+func (t *tuiBase) CancelRenderWithin() {
+	t.mu.Lock()
+	if t.deferredRenderTimer != nil {
+		t.deferredRenderTimer.Stop()
+		t.deferredRenderTimer = nil
+		t.deferredRenderGeneration++
+	}
+	t.mu.Unlock()
+}
+
+func (t *tuiBase) runDeferredRender(generation uint64) {
+	t.mu.Lock()
+	if generation != t.deferredRenderGeneration || t.deferredRenderTimer == nil {
+		t.mu.Unlock()
+		return
+	}
+	t.deferredRenderTimer = nil
+	// The frame is requested under the lock the check was made under, and a frame begins under it (frameBeganLocked): a frame cannot begin between the check and the request, so the request never follows a frame that drew the change.
+	if !t.stopped {
+		t.requestRenderLocked(false)
+	}
+	t.mu.Unlock()
+}
+
+// frameBeganLocked is what a frame does first: it draws the changes RequestRenderWithin was set for, so their timer is not needed. mu must be held.
+func (t *tuiBase) frameBeganLocked() {
+	t.lastRenderAt = t.now()
+	if t.deferredRenderTimer != nil {
+		t.deferredRenderTimer.Stop()
+		t.deferredRenderTimer = nil
+		t.deferredRenderGeneration++
+	}
 }
 
 func (t *tuiBase) scheduleRenderLocked() {
@@ -2230,7 +2294,7 @@ func (t *TuiMainScreen) applyLineResetsCachedWithCursor(lines []string, cursorRo
 func (t *TuiMainScreen) doRender() {
 	t.lockFrame()
 	defer t.unlockFrame()
-	t.lastRenderAt = t.now()
+	t.frameBeganLocked()
 
 	t.updateSize()
 	width, height := t.size()

@@ -114,34 +114,36 @@ func TestTheServersCloseFailsTheBuildInFlightItsWaitersAnswer503(t *testing.T) {
 	}
 }
 
-// Forced Go difference: the close joins a build in flight. It returns once the build ended, not before (Pi's `#close` does not
-// wait for the build's Promise).
-func TestClosingASurfaceWaitsForItsBuildInFlight(t *testing.T) {
+// As Pi's `#close`, closing a surface does not wait for its build in flight; wait (Go's ownership of the goroutine, no Pi
+// counterpart) returns once the build ended.
+func TestClosingASurfaceDoesNotWaitForItsBuildInFlightWaitJoinsIt(t *testing.T) {
 	entry, pipe := heldEntry(t)
 	f := newBuildFixture(t, entry)
 	f.building.start()
-	closed := make(chan error, 1)
-	go func() { closed <- f.building.close(context.Background()) }()
-	// The build's esbuild run reads the pipe: it ends only when the pipe is written, after the close began waiting for it.
+	f.building.close()
+	if f.building.built() != nil {
+		t.Fatal("the build ended while its pipe was held")
+	}
+	// The build's esbuild run reads the pipe: it ends only when the pipe is written.
 	release(t, pipe)
-	if err := <-closed; err != nil {
-		t.Fatalf("close = %v, want nil once the build ended", err)
+	if err := f.building.wait(context.Background()); err != nil {
+		t.Fatalf("wait = %v, want nil once the build ended", err)
 	}
 	if f.building.built() == nil {
-		t.Fatal("close returned before the build ended")
+		t.Fatal("wait returned before the build ended")
 	}
 }
 
-// A close whose context ended abandons the build in flight: it returns the context's error, the goroutine finishes on its own.
-func TestClosingASurfaceAbandonsItsBuildInFlightWhenTheContextEnds(t *testing.T) {
+// A wait whose context ended abandons the build in flight: it returns the context's error, the goroutine finishes on its own.
+func TestWaitingForASurfaceBuildReturnsTheContextsErrorWhenItEndsFirst(t *testing.T) {
 	entry, pipe := heldEntry(t)
 	f := newBuildFixture(t, entry)
 	f.building.start()
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	// The pipe is not written: the build cannot have ended.
-	if err := f.building.close(ctx); !errors.Is(err, context.Canceled) {
-		t.Fatalf("close = %v, want the context's error", err)
+	if err := f.building.wait(ctx); !errors.Is(err, context.Canceled) {
+		t.Fatalf("wait = %v, want the context's error", err)
 	}
 	if f.building.built() != nil {
 		t.Fatal("the build ended while its pipe was held")

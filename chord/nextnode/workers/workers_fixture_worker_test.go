@@ -361,6 +361,12 @@ func runWorkerFixture() {
 		executable, _ := os.Executable()
 		_, _ = fmt.Fprintf(os.Stdout, "executable %s\n", executable)
 	}
+	if os.Getenv(fixtureReportArgs) != "" {
+		_, _ = fmt.Fprintf(os.Stdout, "args %q\n", os.Args[1:])
+	}
+	if os.Getenv(fixtureReportCompileCache) != "" {
+		_, _ = fmt.Fprintf(os.Stdout, "compilecache %q\n", os.Getenv("NODE_COMPILE_CACHE"))
+	}
 	port := &countingPort{processPort: openProcessChannel()}
 	var worker host.Host
 	serve(port, func(start WorkerStart, ctx context.Context) (*WorkerResult, error) {

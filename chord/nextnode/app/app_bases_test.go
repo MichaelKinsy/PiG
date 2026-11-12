@@ -21,15 +21,15 @@ import (
 // there, and a base that fails after the listen is reported and the server runs on (the page answers 503).
 //
 // Forced differences. A base build that waits is a web entry importing a named pipe (Linux, as Pi's mkfifo). A Go worker kind's
-// base is a copy of its executable (D600): its build cannot be held, so Pi's tests of a worker kind's base waiting for the build
+// base is a copy of its executable (a Go worker is a program, not a Node bundle): its build cannot be held, so Pi's tests of a worker kind's base waiting for the build
 // (`answers before a worker kind's base is built`) and of a closed start's late worker-base build (the same component-level tests
 // in chord/nextnode/workers: a component that closed copies nothing) have no app-level counterpart; the worker kind's part of the
 // failing-base test below is a start that fails, as Pi's. Pi's tests of the scan of the server's own code held on a pipe (`answers
 // before the scan ... finished`, `closes without waiting for a scan ... stalled on a read`) are the two tests of a stalled web
-// base: the scan runs after the bases are built; the close, which Pi's does not make wait for a build, waits for it (a forced Go
-// lifetime difference: app_bases_scan_test.go, app_bases_linux_test.go). Its `settles baseWatched only once the
+// base: the scan runs after the bases are built; the close does not wait for the build, as Pi's, and Wait (Go's ownership of
+// the goroutines, no Pi counterpart) joins it: app_bases_scan_test.go, app_bases_linux_test.go. Its `settles baseWatched only once the
 // base bundles' records were compared` is `TestRecordBaseSettlesOnceItsFirstComparisonsEnded` (the plugins' watcher) and
-// `TestAppMarksBaseForAChangeOfAWorkerKindsEntry…` (app_changes_test.go). A link's upgrade waiting for the bases is D604.
+// `TestAppMarksBaseForAChangeOfAWorkerKindsEntry…` (app_changes_test.go). A link's upgrade does not wait for the bases (Pi's connects at once): app_bases_linux_test.go.
 
 // plainPage is a page showing the base script's URL.
 func plainPage(_ chordhttp.HttpRequest, assets nodesurfaces.PageAssets) (string, error) {

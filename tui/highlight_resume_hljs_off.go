@@ -6,8 +6,10 @@ package tui
 
 func resetHighlightResumesLocked() {}
 
-func highlightResumable(highlightEngine, string, string, *Theme) ([]string, bool) {
+func highlightResumable(highlightEngine, string, string, *Theme, bool) ([]string, bool) {
 	return nil, false
 }
 
 func highlightResumeHeld(string, string, *Theme) bool { return false }
+
+func releaseHighlightUnits(string, string) {}

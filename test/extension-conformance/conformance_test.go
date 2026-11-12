@@ -1476,6 +1476,29 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 				},
 				Source: inprocFixtureName,
 			},
+			// The two probes of TestToolAbortKeepsTheToolsHostCalls run in the SDK fixtures; the in-process baseline lists them so every transport registers the same tools.
+			"signal_host_probe": {
+				Definition: extension.ToolDefinition{
+					Name:        "signal_host_probe",
+					Description: "Await host dialogs across the abort",
+					Parameters:  json.RawMessage(`{"type":"object","properties":{}}`),
+					Execute: func(context.Context, string, json.RawMessage, extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
+						return agent.AgentToolResult{}, nil
+					},
+				},
+				Source: inprocFixtureName,
+			},
+			"signal_nested_probe": {
+				Definition: extension.ToolDefinition{
+					Name:        "signal_nested_probe",
+					Description: "Run abort_tool as a nested tool call",
+					Parameters:  json.RawMessage(`{"type":"object","properties":{}}`),
+					Execute: func(context.Context, string, json.RawMessage, extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
+						return agent.AgentToolResult{}, nil
+					},
+				},
+				Source: inprocFixtureName,
+			},
 			"rich_tool": {
 				Definition: extension.ToolDefinition{
 					Name:        "rich_tool",

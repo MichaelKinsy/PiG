@@ -42,6 +42,8 @@ allow = [
 	"github.com/MichaelKinsy/PiG/internal/codingagent",
 	"github.com/MichaelKinsy/PiG/internal/codingagent/compaction",
 	"github.com/MichaelKinsy/PiG/internal/codingagent/configschema",
+	# 32,789 B on linux_amd64 and 33,400 B on windows_amd64 (26,184 B on darwin_arm64, under 32 KiB): the HTML export page assets embedded gzip-compressed (template.js.gz 18.9 KB, template.css.gz 4.1 KB) and the renderer. The package stood at 30,508 B and 31,096 B until the OSC 8 link conversion of Pi #12052 (4669953e2, 909154b71 on the release line) added 2,281 B and 2,304 B, 21 B over the line on linux. cli.runExportFlag (the --export flag, which a Piglet Binary compiles out with pig_strip_export_html) reaches it through codingagent.ExportFileToHTML and export.FromJSONL.
+	"github.com/MichaelKinsy/PiG/internal/codingagent/export",
 	"github.com/MichaelKinsy/PiG/internal/codingagent/llama",
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools",
 	"github.com/MichaelKinsy/PiG/internal/latex",

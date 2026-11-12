@@ -886,6 +886,28 @@ func Extension() *sdk.Extension {
 		time.Sleep(8 * time.Second)
 		return "late", nil
 	})
+	// signal_host_probe awaits two host dialogs across the abort of its run: Pi's abort fires the tool's signal and nothing else, so the dialog pending at the abort and the one opened after it are answered (TestToolAbortKeepsTheToolsHostCalls).
+	ext.Tool("signal_host_probe", "Await host dialogs across the abort", sdk.Schema{"type": "object", "properties": map[string]any{}}, func(ctx sdk.Context, _ map[string]any) (any, error) {
+		ask := func(title string) string {
+			answer, _, err := ctx.Input(title, "p")
+			if err != nil {
+				return "failed: " + err.Error()
+			}
+			return fmt.Sprint(answer)
+		}
+		first := ask("tool_signal:first")
+		aborted := ctx.Err() != nil
+		second := ask("tool_signal:later")
+		return fmt.Sprintf("tool_signal:%t:%s:%s", aborted, first, second), nil
+	})
+	// signal_nested_probe runs abort_tool as a nested call without a signal of its own: it gets the calling tool's signal (runner.ts:979-981 `options.signal ?? signal`), so the run's abort reaches it.
+	ext.Tool("signal_nested_probe", "Run abort_tool as a nested tool call", sdk.Schema{"type": "object", "properties": map[string]any{}}, func(ctx sdk.Context, _ map[string]any) (any, error) {
+		outcome, err := ctx.ExecuteTool("abort_tool", map[string]any{}, nil)
+		if err != nil {
+			return "tool_signal_nested:failed: " + err.Error(), nil
+		}
+		return "tool_signal_nested:" + outcome.Result.Text(), nil
+	})
 	ext.Command("abort_probe", "Report whether abort_tool saw its abort signal", func(ctx sdk.Context, args string) error {
 		ctx.Notify(fmt.Sprintf("abort:%t", abortObserved.Load()), "info")
 		return nil
@@ -1564,6 +1586,29 @@ func Extension() *sdk.Extension {
 		ext.OnEvent(name, func(sdk.Context, map[string]any) (any, error) { return result, nil })
 		return nil
 	})
+	// event_signal_probe subscribes to session_before_compact or session_before_tree with a handler that reports, in the result it returns, the state of the event's signal (the handler request's cancellation) on its first line and after a dialog it opened answered, and the dialog's answer (the mode is the event's customInstructions): the signal aborts while the dialog is pending (mode "wait") or before the handler runs (mode "first"), and Pi's in-process host call still returns its answer. The answer is no SDK's fallback: a cancelled call yields an error. TestSessionBeforeSignalReachesEverySDKWhenAbortedDuringDispatch.
+	ext.Command("event_signal_probe", "Subscribe to session_before_compact or session_before_tree with a handler that returns the state of its event signal", func(ctx sdk.Context, args string) error {
+		name := strings.TrimSpace(args)
+		ext.OnEvent(name, func(hctx sdk.Context, data map[string]any) (any, error) {
+			source := data
+			if name == "session_before_tree" {
+				source, _ = data["preparation"].(map[string]any)
+			}
+			mode, _ := source["customInstructions"].(string)
+			before := hctx.Err() != nil
+			// Pi's handler runs ordinary host calls with the signal aborted or aborting (custom-compaction.ts notifies first): the call returns the user's answer.
+			answer, _, err := hctx.Input("event_signal:"+name+":"+mode+":pending", "p")
+			if err != nil {
+				answer = "failed: " + err.Error()
+			}
+			state := fmt.Sprintf("event_signal:%s:%t:%t:%s", mode, before, hctx.Err() != nil, answer)
+			if name == "session_before_compact" {
+				return map[string]any{"compaction": map[string]any{"summary": state, "firstKeptEntryId": "k", "tokensBefore": 1}}, nil
+			}
+			return map[string]any{"label": state}, nil
+		})
+		return nil
+	})
 	// event_ordered_result_probe is event_result_probe whose result keeps its members in the order they are written: a Go handler authors an object with
 	// member order as a json.RawMessage (TestConformance_HandedBackEventObjectsKeepTheirMemberOrder proposes a draft this way).
 	ext.Command("event_ordered_result_probe", "Subscribe to an event with a handler that returns the given JSON, members in written order", func(ctx sdk.Context, args string) error {
@@ -1696,6 +1741,11 @@ func Extension() *sdk.Extension {
 			}
 			return strings.Join(parts, "|")
 		}
+		// The runner awaits a handler before it starts the next, so the second handler of a dispatch starts after the first handler's reply was sent, and the SDK
+		// reads the first handler's payload (the reply carries what the handler left in it) before that reply. The late writer waits for the second handler's start,
+		// so its write follows the SDK's last read of the payload through the reply and the second handler's request: a write that waited only for the clock
+		// would be a data race with that read.
+		secondStarted := make(chan struct{}, 4)
 		ext.OnEvent(name, func(hctx sdk.Context, data map[string]any) (any, error) {
 			hctx.Notify(fmt.Sprintf("event_isolation:A:%v:end", marker(data)), "info")
 			scribble(data, "SENTINEL-HANDLER-A")
@@ -1707,6 +1757,7 @@ func Extension() *sdk.Extension {
 				}
 			}
 			go func() {
+				<-secondStarted
 				time.Sleep(100 * time.Millisecond)
 				scribble(data, "SENTINEL-LATE-WRITER")
 				for _, object := range found {
@@ -1718,6 +1769,7 @@ func Extension() *sdk.Extension {
 			return nil, nil
 		})
 		ext.OnEvent(name, func(hctx sdk.Context, data map[string]any) (any, error) {
+			secondStarted <- struct{}{}
 			hctx.Notify(fmt.Sprintf("event_isolation:B:%v:end", marker(data)), "info")
 			hctx.Notify("event_isolation_msgs:B:"+report(messages(data)), "info")
 			return nil, nil

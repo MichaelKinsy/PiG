@@ -69,7 +69,7 @@ function standInReason(value, isClass) {
 }
 
 // ── Objects an extension reaches ────────────────────────────────────────────
-const { Runtime } = await import(pathToFileURL(join(runtimeDir, "runtime.mjs")).href);
+const { Runtime, addCommandContextMembers } = await import(pathToFileURL(join(runtimeDir, "runtime.mjs")).href);
 const runtime = new Runtime("/probe/extension.mjs");
 runtime.ui.theme.setPalette({ name: "probe", sourcePath: "/probe/theme.json", foregrounds: {}, backgrounds: {} });
 
@@ -82,7 +82,10 @@ function memberNames(obj) {
 }
 for (const name of Object.keys(runtime.api)) out.symbols.push(`api.${name}`);
 for (const name of Object.keys(runtime.api.events ?? {})) out.symbols.push(`api.events.${name}`);
-for (const obj of [runtime.ctx, runtime.ui, runtime.ui.theme, runtime.ctx.sessionManager, runtime.ctx.modelRegistry, runtime.footerDataProvider()]) {
+// A command handler's context (and a withSession callback's) is the one that has newSession, fork, navigateTree, switchSession and reload (D617); runtime.ctx, which an event, tool or shortcut handler's context copies, has none. It is built here the way the runtime builds a request's context for a command request.
+const commandCtx = Object.create(Object.getPrototypeOf(runtime.ctx));
+addCommandContextMembers(commandCtx, runtime.ctx);
+for (const obj of [runtime.ctx, commandCtx, runtime.ui, runtime.ui.theme, runtime.ctx.sessionManager, runtime.ctx.modelRegistry, runtime.footerDataProvider()]) {
   const cls = obj.constructor.name;
   for (const name of memberNames(obj)) out.symbols.push(`${cls}.${name}`);
 }

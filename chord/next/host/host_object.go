@@ -871,6 +871,19 @@ func (o *chordObject) queries() *store.LiveQueries {
 	return o.liveQueries
 }
 
+// owner is its type's name: the owner of its documents and tables in the store (R2).
+func (o *chordObject) owner() string { return o.served.contract.Name }
+
+// declaredTable is the live instance's declaration of table `table` (SQL name), if it has one (a host data import's
+// history).
+func (o *chordObject) declaredTable(table string) *store.TableDefinition {
+	instance, _ := o.instance().(*attempt)
+	if instance == nil {
+		return nil
+	}
+	return instance.declaredTable(table)
+}
+
 // claimDocuments claims this object's documents in namespace of the host's store, as claimTable.
 func (o *chordObject) claimDocuments(namespace string) error {
 	return o.host.store.Claims.Documents(o.served.contract.Name, namespace, o)

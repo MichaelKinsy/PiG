@@ -688,6 +688,48 @@ class SharedStoreTests(unittest.TestCase):
         self.assertEqual(packed_from, [built / "src"])
 
 
+    def carries_backports(self, pin=COMMIT):
+        """The committed pin is `pin`, whose oracle carries the post-release backports; apply_backports is recorded, not run."""
+        applied = []
+        stack = contextlib.ExitStack()
+        self.addCleanup(stack.close)
+        stack.enter_context(mock.patch.object(pinlib, "committed", lambda: pin))
+        stack.enter_context(mock.patch.object(oracle, "apply_backports", applied.append))
+        return applied
+
+    def test_the_committed_pins_oracle_carries_the_backports_and_is_stamped_with_them(self):
+        applied = self.carries_backports()
+        built = oracle.ensure(COMMIT)
+        self.assertEqual(applied, [built], "the installed tree must be patched once, before the build is published")
+        digest = hashlib.sha256(oracle.BACKPORTS.read_bytes()).hexdigest()
+        self.assertEqual(json.loads((built.parent / oracle.STAMP).read_text())["backports"], digest)
+        self.assertEqual(oracle.ensure(COMMIT), built, "a build with the current backports must be reused, not rebuilt")
+        self.assertEqual(self.builds, 1)
+
+    def test_a_build_without_the_backports_is_not_the_oracle_of_the_pin_that_carries_them(self):
+        plain = oracle.ensure(COMMIT)
+        self.assertNotIn("backports", json.loads((plain.parent / oracle.STAMP).read_text()))
+        applied = self.carries_backports()
+        backported = oracle.ensure(COMMIT)
+        self.assertNotEqual(plain.resolve(), backported.resolve(), "the unpatched build was reused as the backported oracle")
+        self.assertEqual(applied, [backported])
+        self.assertNotIn("backports", json.loads((plain.parent / oracle.STAMP).read_text()), "the new build rewrote the first")
+        self.assertEqual(self.builds, 2)
+
+    def test_a_pin_the_backports_were_not_recorded_for_gets_a_plain_oracle(self):
+        applied = self.carries_backports(TAG)  # the committed pin is another one: PI_UPSTREAM_REF built COMMIT for one run
+        built = oracle.ensure(COMMIT)
+        self.assertEqual(applied, [])
+        self.assertNotIn("backports", json.loads((built.parent / oracle.STAMP).read_text()))
+
+    def test_changing_a_backport_rebuilds_the_oracle(self):
+        self.carries_backports()
+        first = oracle.ensure(COMMIT)
+        with mock.patch.object(oracle, "backports_digest", lambda _pin: "0" * 64):
+            second = oracle.ensure(COMMIT)
+        self.assertNotEqual(first.resolve(), second.resolve())
+        self.assertEqual(self.builds, 2)
+
 
 class PiVersionTests(unittest.TestCase):
     def test_a_missing_oracle_package_is_a_pin_error_that_names_the_remedy(self):
@@ -748,6 +790,56 @@ class ClosureTests(unittest.TestCase):
                 with self.assertRaisesRegex(pinlib.PinError, "packed"):
                     oracle.freeze_closure(TAG, Path("published-lock.json"))
         self.assertEqual(calls, ["extract", "build", "pack"])
+
+    def freezing_from(self, published_data: str, frozen_data: str):
+        """freeze_closure over a published build that ships `published_data` as its model data, for a pin that froze `frozen_data`; return the source it packed and the steps it took."""
+        steps = []
+        packed_from = []
+
+        def write_data(source, text):
+            (source / "packages" / "coding-agent" / "dist").mkdir(parents=True, exist_ok=True)
+            data = source / oracle.DIST_DATA_DIR
+            data.mkdir(parents=True, exist_ok=True)
+            (data / "openrouter.json").write_text(text)
+
+        def extract(_pin, destination):
+            steps.append("extract")
+            (destination / "packages").mkdir(parents=True)
+
+        def build(_pin, source):
+            steps.append("build")
+            write_data(source, frozen_data)
+
+        def pack(source, *_a):
+            steps.append("pack")
+            packed_from.append(source)
+            raise pinlib.PinError("packed")
+
+        with tempfile.TemporaryDirectory() as home, tempfile.TemporaryDirectory() as frozen:
+            built = Path(home) / "build"
+            write_data(built / "src", published_data)
+            frozen_source = Path(frozen) / "data"
+            frozen_source.mkdir()
+            (frozen_source / "openrouter.json").write_text(frozen_data)
+            with mock.patch.object(oracle, "published", lambda *_a: built), mock.patch.object(oracle, "entry", lambda _pin: Path(home) / "entry"), \
+                    mock.patch.object(oracle, "frozen_digest", lambda _pin: oracle.data_digest(frozen_source)), \
+                    mock.patch.object(oracle, "extract_source", extract), mock.patch.object(oracle, "build_source", build), mock.patch.object(oracle, "pack", pack), \
+                    mock.patch.object(oracle, "read_frozen_lock", lambda *_a: None):
+                with self.assertRaisesRegex(pinlib.PinError, "packed"):
+                    oracle.freeze_closure(COMMIT)
+            return packed_from[0].relative_to(home), steps
+
+    def test_freezing_a_closure_does_not_pack_a_build_made_with_other_model_data(self):
+        # A pack ships dist/providers/data. A build made before the pin froze its data packs other bytes than every later build, so a closure
+        # frozen from it fails `npm ci` with EINTEGRITY in a clean cache while the warm cache that still holds the old build passes.
+        packed, steps = self.freezing_from(published_data='{"day":"before the freeze"}', frozen_data='{"day":"frozen"}')
+        self.assertEqual(packed, Path("entry/src"))
+        self.assertEqual(steps, ["extract", "build", "pack"])
+
+    def test_freezing_a_closure_packs_the_published_build_that_ships_the_frozen_model_data(self):
+        packed, steps = self.freezing_from(published_data='{"day":"frozen"}', frozen_data='{"day":"frozen"}')
+        self.assertEqual(packed, Path("build/src"))
+        self.assertEqual(steps, ["pack"])
 
     def test_a_lock_of_another_install_is_not_a_closure(self):
         with self.assertRaisesRegex(pinlib.PinError, "not the lock of an install"):
@@ -976,6 +1068,71 @@ class ClosureTests(unittest.TestCase):
         self.assertIsNotNone(lock, f"no frozen closure for {pin.commit}")
         self.assertEqual(lock["packages"][""]["devDependencies"], {oracle.AGENT: pin.package_version})
         self.assertEqual(lock["packages"][oracle.LOCK_KEY]["version"], pin.package_version)
+
+
+class BackportTests(unittest.TestCase):
+    """apply_backports hands the installed Pi packages to the backports script; the script's own patching is tested here with the real entries."""
+
+    def tree(self, root: Path) -> Path:
+        return make_tree(root / "node_modules", {
+            "node_modules/@earendil-works/pi-coding-agent": "@earendil-works/pi-coding-agent@1.5.2",
+            "node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-ai": "@earendil-works/pi-ai@1.5.2",
+            "node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-tui": "@earendil-works/pi-tui@1.5.2",
+            "node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-mcp": "@earendil-works/pi-mcp@1.5.2",
+        })
+
+    def test_each_installed_pi_package_is_named_to_the_script_once(self):
+        with tempfile.TemporaryDirectory() as root, mock.patch.object(oracle, "BACKPORTS", Path(root) / "args.mjs"):
+            modules = self.tree(Path(root))
+            oracle.BACKPORTS.write_text('import { writeFileSync } from "node:fs";\nwriteFileSync(process.argv[1] + ".out", JSON.stringify(process.argv.slice(2)));\n')
+            oracle.apply_backports(modules)
+            agent = modules / "@earendil-works" / "pi-coding-agent"
+            self.assertEqual(json.loads((Path(root) / "args.mjs.out").read_text()), [
+                "--packages", f"pi-ai={agent / 'node_modules/@earendil-works/pi-ai'}", f"pi-coding-agent={agent}", f"pi-tui={agent / 'node_modules/@earendil-works/pi-tui'}"])
+
+    def test_a_tree_with_two_copies_of_a_patched_package_is_refused(self):
+        with tempfile.TemporaryDirectory() as root:
+            modules = self.tree(Path(root))
+            make_tree(modules, {"node_modules/@earendil-works/pi-tui": "@earendil-works/pi-tui@1.5.2"})
+            with self.assertRaisesRegex(pinlib.PinError, "2 copies of pi-tui"):
+                oracle.apply_backports(modules)
+
+    def test_a_backport_that_does_not_apply_fails_the_build_with_the_scripts_reason(self):
+        with tempfile.TemporaryDirectory() as root:
+            modules = self.tree(Path(root))
+            with self.assertRaisesRegex(pinlib.PinError, "do not apply to the installed oracle"):
+                oracle.apply_backports(modules)  # the packages hold no dist/ files
+
+    def test_the_scripts_entries_patch_a_package_at_its_dist_and_docs_paths(self):
+        script = r'''
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import assert from "node:assert/strict";
+const { applyPackageBackports, backportPatches, packageFileBackports } = await import(process.env.BACKPORTS);
+const root = process.env.ROOT;
+const packages = {};
+const entriesByFile = { ...backportPatches, ...packageFileBackports };
+const where = (file) => {
+  const [name, ...rest] = file.split("/");
+  packages[name] = join(root, name);
+  return join(root, name, name === "pi-coding-agent" && (rest[0] === "docs" || rest[0] === "schemas") ? rest.join("/") : ["dist", ...rest].join("/"));
+};
+for (const [file, entries] of Object.entries(entriesByFile)) {
+  const path = where(file);
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, entries.map(([before]) => before).join("\n//--\n"));
+}
+assert.deepEqual(Object.keys(packages).sort(), ["pi-ai", "pi-coding-agent", "pi-tui"]);
+applyPackageBackports(packages);
+for (const [file, entries] of Object.entries(entriesByFile)) {
+  const text = readFileSync(where(file), "utf8");
+  for (const [, after] of entries) assert.ok(text.includes(after), `${file} lacks ${after.slice(0, 60)}`);
+}
+assert.throws(() => applyPackageBackports(packages), /no longer applies/, "a second application must fail, not pass silently");
+'''
+        with tempfile.TemporaryDirectory() as root:
+            done = subprocess.run(["node", "--input-type=module", "-e", script], env={**os.environ, "BACKPORTS": oracle.BACKPORTS.as_uri(), "ROOT": root}, capture_output=True, text=True, timeout=60)
+            self.assertEqual(done.returncode, 0, done.stderr)
 
 
 class LedgerVersionTests(unittest.TestCase):

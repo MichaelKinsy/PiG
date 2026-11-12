@@ -485,6 +485,15 @@ classification = "upstream"
 rationale = "pi-chord packages/chord/src/store/engine.ts StoredDocument.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
 
 [[fields]]
+id = "chord/next/store/engine.go#committedRecord.Version:json:version"
+path = "chord/next/store/engine.go"
+owner = "committedRecord"
+field = "Version"
+wire_name = "version"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/store/engine.ts createDocument (engine.ts:111-120) puts the base's version in the `document.create` record it returns, and DocumentRecord.version (engine.ts:291) is that column of the stored record; the store schema is Pi's (schema.ts MIGRATIONS, whose version 3, Pi 8a5da3ce6, adds the host column the record spreads after its key): the version the application declares for its own data. committedRecord is the Go twin of that record in Pi's key order; the port carries the number unchanged and reads no format from it."
+
+[[fields]]
 id = "chord/next/store/json_column.go#JsonColumn.Version:go:-"
 path = "chord/next/store/json_column.go"
 owner = "JsonColumn"
@@ -1275,6 +1284,33 @@ field = "Version"
 wire_name = "-"
 classification = "upstream"
 rationale = "pi-durable document definition version carried by a Session document line (packages/durable/src/session)."
+
+[[fields]]
+id = "durable/signals.go#AnySignal.Version:go:-"
+path = "durable/signals.go"
+owner = "AnySignal"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-durable signal kind version (packages/durable/src/signals.ts SignalToken.version, Pi 473515f9c) of the erased signal: the positive integer a stored signal value is compared with before it is migrated or refused."
+
+[[fields]]
+id = "durable/signals.go#SignalDefinition.Version:go:-"
+path = "durable/signals.go"
+owner = "SignalDefinition"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-durable signal definition version (packages/durable/src/signals.ts SignalDefinition.version, Pi 473515f9c), the positive integer version of the value shape that defineSignal checks."
+
+[[fields]]
+id = "durable/signals.go#SignalToken.Version:go:-"
+path = "durable/signals.go"
+owner = "SignalToken"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-durable signal token version (packages/durable/src/signals.ts SignalToken.version, Pi 473515f9c), the version a read compares a stored value's version with."
 
 [[fields]]
 id = "durable/storage/jsonl/storage.go#const.formatVersion:go:-"

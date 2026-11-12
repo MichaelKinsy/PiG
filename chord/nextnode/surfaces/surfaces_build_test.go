@@ -179,8 +179,9 @@ func TestAFailedBuildStaysFailedEveryLaterRequestAnswers503AndNothingRebuilds(t 
 // starts one; every waiter gets the failed outcome (503) at once, with no goroutine.
 func TestASurfaceClosedBeforeItsBuildStartedNeverStartsOneItsWaitersAnswer503(t *testing.T) {
 	f := newBuildFixture(t, entryIn(t, "globalThis.started = true;\n"))
-	if err := f.building.close(context.Background()); err != nil {
-		t.Fatalf("close = %v, want nil: no build was in flight", err)
+	f.building.close()
+	if err := f.building.wait(context.Background()); err != nil {
+		t.Fatalf("wait = %v, want nil: no build was started", err)
 	}
 	outcome := f.building.build()
 	if outcome.Kind != SurfaceBuiltKindFailed || !errors.Is(outcome.Error, errClosed) {
@@ -190,7 +191,8 @@ func TestASurfaceClosedBeforeItsBuildStartedNeverStartsOneItsWaitersAnswer503(t 
 	if err != nil || response.Kind != http.KindError || response.Status != 503 {
 		t.Fatalf("file = %+v, %v, want 503", response, err)
 	}
-	if err := f.building.close(context.Background()); err != nil {
-		t.Fatalf("second close = %v", err)
+	f.building.close()
+	if err := f.building.wait(context.Background()); err != nil {
+		t.Fatalf("wait after the failed outcome = %v, want nil", err)
 	}
 }

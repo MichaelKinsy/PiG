@@ -1,6 +1,6 @@
 {
- "pin": "1.5.1",
- "package": "pi-ai@1.5.1",
+ "pin": "1.5.2",
+ "package": "pi-ai@1.5.2",
  "module": "pi-ai",
  "export": "renderSystemMessageUpdate",
  "cases": [

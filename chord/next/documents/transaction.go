@@ -26,11 +26,12 @@ import (
 // Tx is what `self.tx` gives its callback. Inside it: only `tx.*`, no other `self.tx`, no calls to other objects.
 type Tx interface {
 	// Draft is the document's draft: the same one for the same document within one transaction. handle is a
-	// SingletonHandle (no key) or a KeyedHandle with its key.
-	Draft(handle any, key ...string) (*delta.Object, error)
+	// SingletonHandle (no key) or a KeyedHandle with its key: a string, or for a host-keyed one an address of its kind
+	// (anything else, and an omitted key, is invalid/args).
+	Draft(handle any, key ...any) (*delta.Object, error)
 	// Retire retires the document when the transaction commits (its address reads `initial()` again); a no-op when it
 	// is absent.
-	Retire(handle any, key ...string) error
+	Retire(handle any, key ...any) error
 	// Start starts a run of job, one of this object's jobs, with this transaction's other writes (§15): both commit or
 	// neither. It returns its Run at once; a discarded transaction's Run fails `released` from Outcome. A key of an
 	// unsettled run (one started earlier in this transaction too) returns that run.
@@ -166,9 +167,11 @@ func (tx *Transaction) StageStore(chordStore *store.ChordStore) *[]store.StagedW
 	return &tx.writes.staged
 }
 
-// keyed is what a slot of either kind says of a key.
+// keyer is what a slot of either kind says of a key: Key is the stored key of a string (the text rules), KeyOf the
+// string a handle's key stands for (an address's key for a host-keyed slot).
 type keyer interface {
 	Key(key string) (string, error)
+	KeyOf(key any) (string, error)
 }
 
 func (tx *Transaction) slotOf(handle any) (slot DocumentSlot, err error) {
@@ -188,27 +191,36 @@ func (tx *Transaction) slotOf(handle any) (slot DocumentSlot, err error) {
 	return nil, fmt.Errorf("%s: a transaction drafts only documents of handles self.state made", tx.documents.Label())
 }
 
-func keyOf(keys []string) string {
+// keyOf is the key a transaction call was given: "" when omitted.
+func keyOf(keys []any) any {
 	if len(keys) > 0 {
 		return keys[0]
 	}
 	return ""
 }
 
+// storedKey is the stored key of key for slot: `slot.key(slot.keyOf(key))`.
+func storedKey(slot DocumentSlot, key any) (string, error) {
+	each := slot.(keyer)
+	handleKey, err := each.KeyOf(key)
+	if err != nil {
+		return "", err
+	}
+	return each.Key(handleKey)
+}
+
 // Draft is the draft of the document of handle (at key, for a keyed one).
-func (tx *Transaction) Draft(handle any, keys ...string) (*delta.Object, error) {
+func (tx *Transaction) Draft(handle any, keys ...any) (*delta.Object, error) {
 	var slot DocumentSlot
 	var at string
 	var err error
-	// Keyed keys follow the text rules (KeyedSlot.Key); a singleton's key is always "".
+	// Keyed keys are the handle's (KeyOf: an address's key for a host-keyed one, an empty string refused there) and
+	// follow the text rules (KeyedSlot.Key); a singleton's key is always "".
 	tx.documents.Do(func() {
 		if slot, err = tx.slotOf(handle); err != nil {
 			return
 		}
-		at = keyOf(keys)
-		if at != "" {
-			at, err = slot.(keyer).Key(at)
-		}
+		at, err = storedKey(slot, keyOf(keys))
 	})
 	if err != nil {
 		return nil, err
@@ -255,7 +267,7 @@ func (tx *Transaction) DraftSlot(slot DocumentSlot, key string) (*delta.Object, 
 }
 
 // Retire retires the document of handle (at key, for a keyed one) when the transaction commits.
-func (tx *Transaction) Retire(handle any, keys ...string) error {
+func (tx *Transaction) Retire(handle any, keys ...any) error {
 	var slot DocumentSlot
 	var at string
 	var e *Entry
@@ -264,11 +276,8 @@ func (tx *Transaction) Retire(handle any, keys ...string) error {
 		if slot, err = tx.slotOf(handle); err != nil {
 			return
 		}
-		at = keyOf(keys)
-		if at != "" {
-			if at, err = slot.(keyer).Key(at); err != nil {
-				return
-			}
+		if at, err = storedKey(slot, keyOf(keys)); err != nil {
+			return
 		}
 		e, err = tx.RetireSlot(slot, at)
 	})
@@ -824,7 +833,12 @@ func (tx *Transaction) begin(e *Entry) (*delta.Object, error) {
 
 // checkFound fails, failing slot's owner `broken`, when its definition cannot read the cold document found (R15).
 func (tx *Transaction) checkFound(found *FoundDocument, persisted PersistedSlot, slot DocumentSlot) error {
-	if err := CheckReadable(found.Stored.Version, found.Fingerprint, persisted.Definition().Current()); err != nil {
+	definition := persisted.Definition().Current()
+	err := persisted.Persistence().CheckHost(found.Host, definition)
+	if err == nil {
+		err = CheckReadable(found.Stored.Version, found.Fingerprint, definition)
+	}
+	if err != nil {
 		failure := data.AsChordError(err, slot.Owner().Label())
 		slot.Owner().Fail(failure)
 		return failure

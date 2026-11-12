@@ -31,18 +31,21 @@ type HighlightOptions struct {
 var loadAllHighlightLanguagesOnce sync.Once
 
 // LoadAllHighlightLanguages registers every highlight.js language, as loadAllHighlightLanguages does, and returns when they are available. It runs once; later calls wait for that load. Highlighted code cached before the load is discarded, because more languages now highlight.
-func LoadAllHighlightLanguages() {
+// It reports whether the call that loaded them found an earlier highlight lookup whose answer the load changes, which is when a screen that drew highlighted code needs drawing again; a call that did not load them, or a load before any lookup, reports false.
+func LoadAllHighlightLanguages() (earlierLookupsDiffer bool) {
+	// pig divergence (D618): the result tells the caller whether a repaint is owed; Pi's loadAllHighlightLanguages resolves with no value and its caller always repaints.
 	// pig additive (D92): a Piglet that strips syntax-highlight loads no grammar.
 	if highlightStripped() {
-		return
+		return false
 	}
 	loadAllHighlightLanguagesOnce.Do(func() {
-		highlightRegistry().LoadAllLanguages()
+		earlierLookupsDiffer = highlightRegistry().LoadAllLanguages()
 		hlMu.Lock()
 		resetHighlightCacheLocked()
 		hlGeneration++
 		hlMu.Unlock()
 	})
+	return earlierLookupsDiffer
 }
 
 // SupportsLanguage reports whether highlight.js has a language or alias of that name.
@@ -464,8 +467,20 @@ func WarmHighlight(code, lang string) bool {
 		hlTheme = t
 	}
 	hlMu.Unlock()
-	highlightResumable(highlightRegistry(), code, lang, t)
+	highlightResumable(highlightRegistry(), code, lang, t, true)
 	return highlightResumeHeld(code, lang, t)
+}
+
+// ReleaseWarmHighlight drops the UTF-16 units that WarmHighlight of code, and of the texts code starts with, kept for a longer text
+// to continue from. A caller that warms a text as it grows calls it with the last text it warmed when no longer text will follow (the
+// text is complete, or its owner ended), so the units of a warm-up that ended after the text's last draw, or that no draw took, are
+// not held until later warm-ups push their state out. The resume states stay, and so do the lines HighlightCode returns.
+// pig additive (D112): only when the units are freed moves.
+func ReleaseWarmHighlight(code, lang string) {
+	if highlightStripped() {
+		return
+	}
+	releaseHighlightUnits(code, lang)
 }
 
 // HighlightEpoch is what HighlightCode's lines depend on besides its arguments: the active theme and the highlight.js
@@ -533,7 +548,7 @@ func highlightCodeLines(code, lang string) []string {
 	generation := hlGeneration
 	hlMu.Unlock()
 
-	out, ok := highlightResumable(highlightRegistry(), code, lang, t)
+	out, ok := highlightResumable(highlightRegistry(), code, lang, t, false)
 	if !ok {
 		out = highlightCodeUncached(highlightRegistry(), code, lang, t)
 	}

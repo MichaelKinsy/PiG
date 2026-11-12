@@ -50,10 +50,10 @@ var versionLiteralAllowlist = []allowedVersionLiteral{
 	{"automation/make/ci.mk", "26.5.1", "the oldest Node whose sandbox the terminal surface tests need; a requirement of that test, not a Node pin"},
 
 	// Checked copies. make compliance compares each with its source and fails on drift.
-	{"automation/images/ci-go/Dockerfile", "1.27.3", "ARG GO_IMAGE: a digest-pinned image tag; make compliance checks it against .go-version"},
-	{"automation/images/ci-go/metadata.env", "1.27.3", "IMAGE_TAG; make compliance checks it against .go-version"},
-	{"automation/images/ci-parity/Dockerfile", "1.27.3", "ARG GO_VERSION; make compliance checks it against .go-version"},
-	{"automation/images/ci-parity/metadata.env", "1.27.3", "IMAGE_TAG; make compliance checks it against .go-version"},
+	{"automation/images/ci-go/Dockerfile", "1.27.4", "ARG GO_IMAGE: a digest-pinned image tag; make compliance checks it against .go-version"},
+	{"automation/images/ci-go/metadata.env", "1.27.4", "IMAGE_TAG; make compliance checks it against .go-version"},
+	{"automation/images/ci-parity/Dockerfile", "1.27.4", "ARG GO_VERSION; make compliance checks it against .go-version"},
+	{"automation/images/ci-parity/metadata.env", "1.27.4", "IMAGE_TAG; make compliance checks it against .go-version"},
 	{"automation/images/ci-parity/Dockerfile", "1.5.2", "ARG PI_VERSION; make pin-sync writes it from .upstream/pin and make compliance checks it"},
 	{"automation/images/ci-parity/metadata.env", "1.5.2", "IMAGE_TAG; make compliance checks it against the pin"},
 	{"automation/images/ci-parity/Dockerfile", "12.2.1", "the image's npm check; make compliance checks it against NPM_VERSION"},

@@ -1,0 +1,160 @@
+from = "1.5.2"
+to = "1.5.2+release-0.8.0"
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/find.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/tools/find_leading_dot_slash_port_test.go#TestFindIgnoresLeadingDotSlashInPattern"]
+rationale = "bbfc6c7ce (#12044): fd's full paths never contain \"/./\", so a pattern starting with \"./\" found nothing; the tool drops every leading \"./\" after the Windows separator normalisation and before choosing --full-path. newFindFdInvocation does the same, and Pi's three patterns and the \"./*.json\" case are ported."
+
+[[files]]
+path = "packages/tui/src/components/markdown.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/markdown_image_hard_break_port_test.go#TestMarkdownKeepsHardBreaksAfterInlineImageAsSeparateRows"]
+rationale = "5b4d7d3df (#12045): an image line skips wrapping, so rows joined to it by hard breaks drew over the image; the line is split at \"\\n\" before layout and each piece is laid out as its own row. markdown_resume.go layoutRows does the same, and Pi's test is ported."
+
+[[files]]
+path = "packages/tui/src/tui-alt-screen.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/kitty_full_redraw_port_test.go#TestAltScreenKeepsUploadedKittyImagesAcrossFullRedraw"]
+rationale = "be2744d95 (#12047): Kitty frees image data without placements on ED 2, so a full redraw that deleted placements and then cleared the screen broke placement-only reuse; with uploaded Kitty images the redraw now deletes the placements and skips the screen clear. TuiAltScreen.doRender does the same, and Pi's test is ported. Oracle-vs-next gap: the vendored alt-screen fixture is Pi 1.5.2, which predates #12047 and still clears the screen with ESC[2J, so checkAltScreenOracleIn (alt_screen_oracle_test.go) ends the byte comparison of a Kitty scenario at the first step that differs only by that clear, and skips the later Kitty scenarios, whose image registry no longer matches the fixture's; recordings for the term corpus still replay every scenario. The comparison returns in full when the oracle pin passes #12047."
+
+[[files]]
+path = "packages/coding-agent/src/core/export-html/ansi-to-html.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/export/ansi_links_port_test.go#TestAnsiToHTMLConvertsOSC8HyperlinksToAnchors", "test:internal/codingagent/export/ansi_links_port_test.go#TestAnsiToHTMLKeepsStyledTextNestedInAnchorAndClosesUnterminatedLink", "test:internal/codingagent/export/ansi_links_port_test.go#TestAnsiToHTMLDropsUnsafeSchemesAndOtherEscapeSequences"]
+rationale = "0e1e3fc81 (#12052): the converter matches SGR, other CSI, OSC and APC sequences; OSC 8 links with http, https or mailto URLs (C0 controls stripped before the scheme check) become anchors around the current span and other sequences and stray ESC are dropped. ansiToHTML in ansi_html.go does the same, and Pi's three tests are ported. Oracle-vs-next gap: the vendored oracle is Pi 1.5.2, which predates #12052, so TestAnsiToHTMLMatchesPiOracle skips the inputs with an ESC outside a complete SGR sequence and TestToolHTMLRendererMatchesPi no longer feeds the OSC 8 line; ansi_links_port_test.go and the ported tests cover those inputs, and the oracle comparison returns in full when the oracle pin passes #12052."
+
+[[files]]
+path = "packages/coding-agent/src/core/export-html/tool-renderer.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/export/ansi_links_port_test.go#TestCustomToolResultHTMLTrimsLineWithOnlyEscapeSequences"]
+rationale = "0e1e3fc81: a rendered line is blank after stripAnsiEscapes removes every converted sequence, not only SGR. isBlankRenderedLine does the same, and the whitespace test change is ported."
+
+[[files]]
+path = "packages/coding-agent/src/core/export-html/template.js"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/export/ansi_links_port_test.go#TestExportTemplateExpandableToolOutputIgnoresLinkClicks"]
+rationale = "0e1e3fc81: an expandable ansi-rendered tool output does not toggle when the click lands on a link. The embedded template.js carries the same onclick guard."
+
+[[files]]
+path = "packages/coding-agent/src/core/agent-session.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/mcp_restore_own_tool_port_test.go#TestAgentSessionMCPToolsAfterResumeAndReloadKeepsRestoredToolsWhenAnExtensionDeactivatesOnlyItsOwnToolBeforeTheyRegister", "test:coding/mcp_restore_own_tool_port_test.go#TestAgentSessionMCPToolsAfterResumeAndReloadKeepsToolsToolSearchLoadedAfterReloadWhenAnExtensionDeactivatesOnlyItsOwnTool"]
+rationale = "3345c2925 (#12054): a loadout change dropped the pending restored tools when it deactivated any active tool, so an extension hiding its own loader tool at session_start lost the MCP tools tool_search had loaded. Session.restoredToolNames (set by applyTranscriptTools and refreshTools after a reload) holds the restored loadout, and SetActiveToolsByName drops the pending tools only when a tool of it is deactivated. Pi's two dropLoader tests are ported."
+
+[[files]]
+path = "packages/durable/src/env/node.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/env/node/list_race_port_test.go#TestListDirLeavesOutAnEntryRemovedBetweenEnumerationAndLstat", "test:durable/env/node/list_race_port_test.go#TestListDirLeavesOutANonUTF8Name"]
+rationale = "75ca6e7d0 (#12055): NodeExecutionEnv.listDir leaves out an entry whose lstat reports ENOENT instead of failing. NodeExecutionEnv.ListDir does the same, and Pi's test is ported with a hook that runs the rename before the lstat. Node decodes a non-UTF-8 name with replacement characters, so its lstat finds nothing and the entry is left out; the local ListDir now skips such names too (TestListDirLeavesOutANonUTF8Name), as the remote env already did."
+
+[[files]]
+path = "packages/env/src/remote-env.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:env/remote_list_race_port_test.go#TestRemoteListDirLeavesOutAnEntryRemovedBetweenEnumerationAndLstat", "test:env/remote_list_race_port_test.go#TestRemoteListDirFailsOnOtherEntryErrors"]
+rationale = "75ca6e7d0 (#12055): RemoteExecutionEnv.listDir leaves out an entry the daemon reports as ENOENT and fails on any other entry error. RemoteExecutionEnv.ListDir does the same, tested through a scripted daemon; the differential non-UTF-8 case now expects those names left out."
+
+[[files]]
+path = "packages/durable/src/harness/scheduler.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/scheduler_scope_above_test.go#TestAddScopesAboveCostDoesNotGrowWithTheChain", "test:durable/harness/scheduler_scope_above_test.go#TestAddScopesAboveMatchesAWalkUp"]
+rationale = "628d8ab52ce2: #addScopesAbove starts at record.conversationId, because a child task lives in its owner's conversation, and walks conversation by conversation through the owner edge and the owner task's node, so a change deep in an owner chain costs the conversations above it, not the chain's depth. addScopesAboveLocked (scheduler_idle.go) does the same; it replaces this line's earlier walked-set variant: nothing is kept, and an unknown owner task in the middle of a chain no longer makes the walk fail, as in Pi. scheduler_scope_above_test.go (from next) gates the walk's allocations at depth 10 and 5,000 and compares it with a walk up. Pi's commit carries no test. The Rust daemon change of b48c675a912f (packages/env/daemon/src/{exec,output,process,pty}.rs, test/process.test.ts) is outside the tracked source files; env/daemon/{output,process,pty}.go port it. 64c96d00d (#11961, Harness close): the scheduler owns the Harness's providerSessionIds and associates every task runtime it builds with that set; scheduler.go holds the set and attaches it to the context every invocation's Signal derives from."
+
+[[files]]
+path = "packages/chord/src/node/plugins/install.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginReadsNpm12sPackOutputThePackedTarballsByPackageName", "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginTakesTheTarballOfItsPackageFromNpm12sOutputNotTheFirstOneListed", "test:chord/nextnode/plugins/plugins_install_test.go#TestPackedTarballReadsTheListNpm11PrintsAndTheMemberOfThePackageNpm12Prints"]
+rationale = "75d59639a reads `npm pack --json` as `Array.isArray(output) ? output[0] : output[name]`: the list npm 11 and earlier print, or the member of the package asked for in the object npm 12 prints. plugins_install.go packedTarball takes the package name and reads the same member, so D501 (PiG took the object's first member) is retired; Pi's own npm 12 test is ported with a fake npm 12, and the keyed selection and JavaScript's errors for a missing member or a JSON null are pinned."
+
+[[files]]
+path = "packages/durable/src/harness/harness.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_lifecycle_test.go#TestHarnessClose"]
+rationale = "64c96d00d (#11961): beforeClose joins the task invocations, then releases the pi-ai resources of every provider session the Harness's tasks used (cleanupSessionResources per session id, a failure reported as host_error for models), so none close while in use and none outlive the Harness. harness.go BeforeClose runs Join, then ai.CleanupSessionResources for each recorded id and reports a failure the same way; the three Pi cases (after running tasks join, when the Harness fails, not another Harness's) are ported."
+
+[[files]]
+path = "packages/durable/src/harness/provider.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_lifecycle_test.go#TestHarnessClose"]
+rationale = "64c96d00d: ensureProviderSessionId records the session id it returns in the set of the Harness that owns the task runtime (providerSessionsByRuntime); the persisted ProviderDoc is unchanged. provider.go records it in the Harness's providerSessionIds, which rides the invocation's Signal context because a Go runtime reaches the handler wrapped in its task definition's types."
+
+[[files]]
+path = "packages/ai/src/api/anthropic-messages.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsAnyProviderOnAnthropicEndpoint", "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsEndpointSupport"]
+rationale = "49fe0a237 (#11987) makes the default of supportsMessageThreads `compat ?? baseUrl.includes(\"api.anthropic.com\")`, with no provider id check. anthropicProvider.supportsMessageThreads (ai/anthropic.go) does the same; Pi's case (an alias provider on api.anthropic.com creates then continues a thread, a gateway sends none) is ported."
+
+[[files]]
+path = "packages/ai/src/providers/compat-schema.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/configschema/compat_schema_exports_test.go#TestCompatSchemaExportsMatchPi"]
+rationale = "49fe0a237 rewords the supportsMessageThreads description (default true for a baseUrl on api.anthropic.com); configschema/compat_b.go, the models.schema.json and models-configuration.md mirrors carry the new text."
+
+[[files]]
+path = "packages/coding-agent/src/extensions/llama/provider.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/llama/native_provider_test.go#TestModelsProviderIsDormantUntilConfigured", "test:internal/codingagent/llama/client_test.go#TestNormalizeLlamaServerURL"]
+rationale = "Pi b3c2e4a6bef8 (#12001): DEFAULT_LLAMA_SERVER_URL is http://127.0.0.1:9931, not :8080; internal/codingagent/llama/provider.go DefaultLlamaServerURL follows, and the dormant provider test pins the default inference URL http://127.0.0.1:9931/v1."
+
+[[files]]
+path = "packages/coding-agent/docs/nvidia-rtx-llama-cpp.md"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/llama/native_provider_test.go#TestModelsProviderIsDormantUntilConfigured"]
+rationale = "Pi b3c2e4a6bef8 (#12001): the NVIDIA RTX guide drops --port 8080 from the llama-server command and connects to http://127.0.0.1:9931; docs/site/docs/nvidia-rtx-llama-cpp.md follows (the llama-cpp.md mirror also uses 9931 for the default URL, LLAMA_BASE_URL and health checks)."
+
+[[files]]
+path = "packages/coding-agent/docs/extensions.md"
+change = "modified"
+disposition = "n/a"
+rationale = "Pi b3c2e4a6bef8 (#12001): example snippets change localhost:8080 to localhost:9931; PiG ships no mirror of this Pi file and its extension docs carry other examples."
+
+[[files]]
+path = "packages/coding-agent/test/config-schemas.test.ts"
+change = "modified"
+disposition = "n/a"
+rationale = "Pi b3c2e4a6bef8 (#12001): the schema fixture baseUrl changes only its port; the validation it exercises does not depend on it."
+
+[[files]]
+path = "packages/coding-agent/test/llama-extension.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/llama/client_test.go#TestNormalizeLlamaServerURL", "test:internal/codingagent/llama/provider_test.go#TestSetCatalogExposesLoadedAndSleepingModelsWithRouterMetadata"]
+rationale = "Pi b3c2e4a6bef8 (#12001): the normalize, catalog base-URL and decision-model cases use http://127.0.0.1:9931 and http://localhost:9931; the Go tests carry the same inputs and expectations."
+
+[[files]]
+path = "packages/ai/test/llama-cpp-classify.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream"]
+rationale = "Pi b3c2e4a6bef8 (#12001): the classifier fixtures and the llamaServerRoot case use port 9931; ai/llama_cpp_classify_upstream_test.go follows with the same inputs and expectations."
+
+[[files]]
+path = "packages/ai/README.md"
+change = "modified"
+disposition = "n/a"
+rationale = "Pi b3c2e4a6bef8 (#12001): README examples change 127.0.0.1:8080 to 9931; PiG ships no mirror of this Pi README."
+
+[[files]]
+path = "packages/durable/src/harness/util.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/wait_aborted_context_test.go#TestWaitCancelledBeforeItsResultIsDeliveredReturnsTheCauseOnThatWait"]
+rationale = "Pi d9d535b6c9e4 (#11963, #11820) marks the promise Waiters.add returns as handled before it reaches the caller, so a wait cancelled or closed while the line still delivers earlier outcomes leaves no unhandledRejection; the caller still gets the rejection. Go has no unhandled rejection: Waiter.Wait returns the stored cancellation cause or closed error on the same call, so no Go source changed and the contract is the error on that operation. The ported Pi case (slow Publishing, earlier write, cancelled wait) is TestWaitCancelledBeforeItsResultIsDeliveredReturnsTheCauseOnThatWait; a mutant of Waiters.Add that drops the cause of an already-done context fails it."

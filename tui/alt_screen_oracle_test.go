@@ -475,6 +475,6 @@ func TestAltScreenFixtureIsCurrent(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !bytes.Equal(generated, committed) {
-		t.Fatalf("testdata/alt-screen-oracle.json.gz is not the output of the installed Pi %s: regenerate it with node tui/testdata/alt-screen-oracle.mjs <pi-tui dist/index.js> | gzip", pigversion.UpstreamVersion)
+		t.Fatalf("testdata/alt-screen-oracle.json.gz is not the output of the installed Pi %s: regenerate it with make regenerate-alt-screen-oracle", pigversion.UpstreamVersion)
 	}
 }

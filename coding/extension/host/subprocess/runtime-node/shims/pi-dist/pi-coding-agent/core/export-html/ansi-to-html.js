@@ -9,6 +9,7 @@
  * - RGB true color (38;2;R;G;B and 48;2;R;G;B)
  * - Text styles: bold (1), dim (2), italic (3), underline (4)
  * - Reset (0)
+ * - OSC 8 hyperlinks with http, https, or mailto URLs (other CSI, OSC, and APC sequences and stray ESC characters are dropped)
  */
 // Standard ANSI color palette (0-15)
 const ANSI_COLORS = [
@@ -191,8 +192,18 @@ function applySgrCode(params, style) {
         i++;
     }
 }
-// Match ANSI escape sequences: ESC[ followed by params and ending with 'm'
-const ANSI_REGEX = /\x1b\[([\d;]*)m/g;
+// Pi 0e1e3fc81 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+// Match escape sequences: SGR (ESC[...m), other CSI sequences, OSC sequences, and APC sequences (terminated by BEL or ST)
+const ANSI_REGEX = /\x1b\[([\d;]*)m|\x1b\[[0-?]*[ -/]*[@-~]|\x1b\]([^\x07\x1b]*)(?:\x07|\x1b\\)|\x1b_[^\x07\x1b]*(?:\x07|\x1b\\)/g;
+// OSC 8 hyperlink payload: "8;params;url"
+const OSC8_REGEX = /^8;[^;]*;(.*)$/s;
+const SAFE_LINK_REGEX = /^(?:https?:|mailto:)/i;
+/**
+ * Remove all escape sequences matched by the converter, plus stray ESC characters.
+ */
+export function stripAnsiEscapes(text) {
+    return text.replace(ANSI_REGEX, "").replace(/\x1b/g, "");
+}
 /**
  * Convert ANSI-escaped text to HTML with inline styles.
  */
@@ -201,6 +212,19 @@ export function ansiToHtml(text) {
     let result = "";
     let lastIndex = 0;
     let inSpan = false;
+    let inLink = false;
+    const closeSpan = () => {
+        if (inSpan) {
+            result += "</span>";
+            inSpan = false;
+        }
+    };
+    const openSpan = () => {
+        if (hasStyle(style)) {
+            result += `<span style="${styleToInlineCSS(style)}">`;
+            inSpan = true;
+        }
+    };
     // Reset regex state
     ANSI_REGEX.lastIndex = 0;
     let match = ANSI_REGEX.exec(text);
@@ -208,34 +232,48 @@ export function ansiToHtml(text) {
         // Add text before this escape sequence
         const beforeText = text.slice(lastIndex, match.index);
         if (beforeText) {
-            result += escapeHtml(beforeText);
+            result += escapeHtml(beforeText.replace(/\x1b/g, ""));
         }
-        // Parse SGR parameters
-        const paramStr = match[1];
-        const params = paramStr ? paramStr.split(";").map((p) => parseInt(p, 10) || 0) : [0];
-        // Close existing span if we have one
-        if (inSpan) {
-            result += "</span>";
-            inSpan = false;
+        if (match[1] !== undefined) {
+            // Parse SGR parameters
+            const paramStr = match[1];
+            const params = paramStr ? paramStr.split(";").map((p) => parseInt(p, 10) || 0) : [0];
+            closeSpan();
+            applySgrCode(params, style);
+            openSpan();
         }
-        // Apply the codes
-        applySgrCode(params, style);
-        // Open new span if we have any styling
-        if (hasStyle(style)) {
-            result += `<span style="${styleToInlineCSS(style)}">`;
-            inSpan = true;
+        else if (match[2] !== undefined) {
+            const hyperlink = OSC8_REGEX.exec(match[2]);
+            if (hyperlink) {
+                // Keep spans nested inside the link: close and reopen the current style around link changes
+                // Browsers strip C0 controls from URLs, so strip them before checking the scheme
+                const url = hyperlink[1].trim().replace(/[\x00-\x1f\x7f]/g, "");
+                closeSpan();
+                if (inLink) {
+                    result += "</a>";
+                    inLink = false;
+                }
+                if (url && SAFE_LINK_REGEX.test(url)) {
+                    result += `<a href="${escapeHtml(url)}">`;
+                    inLink = true;
+                }
+                openSpan();
+            }
+            // Other OSC sequences are dropped
         }
+        // Other CSI and APC sequences are dropped
         lastIndex = match.index + match[0].length;
         match = ANSI_REGEX.exec(text);
     }
     // Add remaining text
     const remainingText = text.slice(lastIndex);
     if (remainingText) {
-        result += escapeHtml(remainingText);
+        result += escapeHtml(remainingText.replace(/\x1b/g, ""));
     }
-    // Close any open span
-    if (inSpan) {
-        result += "</span>";
+    // Close any open span and link
+    closeSpan();
+    if (inLink) {
+        result += "</a>";
     }
     return result;
 }

@@ -8,6 +8,7 @@ import (
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 	"github.com/MichaelKinsy/PiG/chord/sqlite"
@@ -137,6 +138,22 @@ func (queries *LiveQueries) On(table string) []*LiveQuery {
 	queries.mu.Lock()
 	defer queries.mu.Unlock()
 	return append([]*LiveQuery(nil), queries.byTable[table]...)
+}
+
+// OnHostKind are the live queries over tables with a `host(...)` column of host kind kind: what a host data change
+// re-runs.
+func (queries *LiveQueries) OnHostKind(kind string) []*LiveQuery {
+	queries.mu.Lock()
+	defer queries.mu.Unlock()
+	var found []*LiveQuery
+	for _, list := range queries.byTable {
+		for _, query := range list {
+			if host := query.handle.Definition.HostColumn; host != nil && host.Host.Kind.Kind == kind {
+				found = append(found, query)
+			}
+		}
+	}
+	return found
 }
 
 // RefreshOf is the re-run of the live queries over the tables a transaction writes (handles, in the order it first wrote
@@ -474,7 +491,7 @@ func sameStored(a, b sqlite.SqliteRow, physical []string) bool {
 }
 
 // rowJSON is a decoded row as a JSON object in the table's column order (absent optional columns left out; integers as JSON
-// numbers).
+// numbers; a `host(...)` cell as the address's object).
 func rowJSON(definition *TableDefinition, row Row) *delta.JsonObject {
 	object := delta.NewJsonObject(len(definition.Columns))
 	for _, column := range definition.Columns {
@@ -482,8 +499,12 @@ func rowJSON(definition *TableDefinition, row Row) *delta.JsonObject {
 		if !present || value == nil {
 			continue
 		}
-		if number, isInt := value.(int64); isInt {
-			value = float64(number)
+		switch typed := value.(type) {
+		case int64:
+			value = float64(typed)
+		case contracts.Address:
+			// A `host(...)` cell is the address's plain object (a JSON value cannot hold the struct).
+			value = delta.JsonObjectOf("kind", typed.Kind, "params", typed.Params, "key", typed.Key)
 		}
 		object.Set(column.Name, value)
 	}

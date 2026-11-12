@@ -2216,8 +2216,12 @@
     },
     {
       "path": "packages/chord/test/contracts/accepts.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:e59f226491cb3a143e3bb5a7b26c02ae3b062e0e328417b41adbbe83c986dd5c"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:e59f226491cb3a143e3bb5a7b26c02ae3b062e0e328417b41adbbe83c986dd5c",
+      "evidence": [
+        "chord/next/contracts/accepts_test.go"
+      ],
+      "rationale": "All 17 upstream cases run in the evidence files: TestAcceptsStateMappings (5), TestAcceptsMethodMappings (6), TestAcceptsVersions (4), TestAcceptsKeyedMappings (1) and TestAcceptsKeyKindChanged (1). Pi 1.5.2 (8a5da3ce6) adds 'a keyed member's key kind changed > is only refused: a value mapping cannot map keys': TestAcceptsKeyKindChanged evolves a keyed member to a host kind, accepts the refuse mapping with one version, refuses a function mapping with 'its key kind changed: a value mapping cannot map keys' and expects the fingerprint to change. Go also runs a case Pi has no title for (a table of the wrong kind refused)."
     },
     {
       "path": "packages/chord/test/contracts/contract.test.ts",
@@ -2230,22 +2234,19 @@
     },
     {
       "path": "packages/chord/test/contracts/declare.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:00a2b2c11e4590e8e94c15f2dad761c036f57a50070d1747982878485f164eb7",
       "evidence": [
         "chord/next/contracts/declare_test.go#TestDeclarationChecks",
         "chord/next/contracts/declare_test.go#TestDeclarationMembersAcrossVariants",
         "chord/next/contracts/declare_test.go#TestReservedMemberNames",
-        "chord/next/contracts/declare_test.go#TestKeyedMembers"
+        "chord/next/contracts/declare_test.go#TestKeyedMembers",
+        "chord/next/contracts/declare_test.go#TestHostKeyedMembers"
       ],
       "designedOutCases": [
         "keyed members (slice 6a §12) › refuse a keyed member in a remote contract, at the type level and at declaration"
       ],
-      "missingCases": [
-        "host-keyed keyed members › carry their host kind in the data and the fingerprint; string-keyed ones carry none",
-        "host-keyed keyed members › refuse a kind that was not declared"
-      ],
-      "rationale": "Eleven of the 12 upstream cases run in declare_test.go; the twelfth, the keyed member refused in a remote contract, is designed out under the owner class approval recorded in the release policy (the compiler refuses it: *KeyedMember is no Schema). 'refuse a remote declaration without a host address at the type level' runs as the 'a missing host address' row, because upstream asserts the runtime throw. Inside the three it.each tables every row a typed Go declaration can hold is ported; the rows whose input a Go declaration cannot hold are not: remote 'name not a string', 'unknown declaration key', 'a host address that is no function', 'unknown variant key', 'a method under state' and 'a schema under methods' (its Go form is a nil *Method, ported as 'a nil method under methods'), local 'unknown key' and 'a host address' (LocalDeclaration has no such fields). Pi 1.5.2 (8a5da3ce6, host-keyed data) adds the cases listed in missingCases; the host-data lane of fix/port-152 ports them and returns the entry to ported.",
+      "rationale": "Thirteen of the 14 upstream cases run in declare_test.go; the remaining one, the keyed member refused in a remote contract, is designed out under the owner class approval recorded in the release policy (the compiler refuses it: *KeyedMember is no Schema). The two host-keyed cases of Pi 1.5.2 (8a5da3ce6) run in TestHostKeyedMembers: a host-keyed member carries its kind in the data (KeyedSnapshot.Key) and its fingerprint differs from the string-keyed one's (a string-keyed member carries none and keeps its pre-host-key fingerprint, pinned in a further case), and a kind that was not declared is refused ('x: not a declared host kind'). 'refuse a remote declaration without a host address at the type level' runs as the 'a missing host address' row, because upstream asserts the runtime throw. Inside the three it.each tables every row a typed Go declaration can hold is ported; the rows whose input a Go declaration cannot hold are not: remote 'name not a string', 'unknown declaration key', 'a host address that is no function', 'unknown variant key', 'a method under state' and 'a schema under methods' (its Go form is a nil *Method, ported as 'a nil method under methods'), local 'unknown key' and 'a host address' (LocalDeclaration has no such fields).",
       "protects": "A keyed member cannot be declared in a remote contract.",
       "pigTest": "chord/next/contracts/declare_types_test.go#TestARemoteVariantsMembersAreTypedSoAKeyedMemberOrMethodCannotBeDeclaredInItsState pins by reflection the types that refuse it: a remote variant's state holds Schema, its methods *Method, and *KeyedMember is assignable to neither.",
       "whyNot": "The upstream case also expects a runtime error 'keyed members are only in local contracts'. Go has no runtime path to it: VariantDeclaration.State is []Property of Schema, so the declaration does not compile and no value reaches Remote. The type half is pinned; the runtime half cannot exist."
@@ -2280,8 +2281,13 @@
     },
     {
       "path": "packages/chord/test/contracts/host-kind.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:9662fefede8781d822d8c80fd2198e54d856f15330c96cfbf73e742a77af329e"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:9662fefede8781d822d8c80fd2198e54d856f15330c96cfbf73e742a77af329e",
+      "evidence": [
+        "chord/next/contracts/host_kind_test.go",
+        "chord/next/contracts/derived_runtime_test.go"
+      ],
+      "rationale": "All 8 upstream cases run in the evidence files: host_kind_test.go runs 'host kinds' (addresses, params policy, the address's params checked where routed with invalid/host_address, params kept only while the kind is referenced), 'hostAddress > is not part of the fingerprint and is carried by evolve' and Pi 1.5.2's two 'address keys' cases (keys decode into addresses; keys of a value are computed from its params and refused for anything that is no address of the kind). One case is type-level and Go adapts it instead of porting it literally: 'hostAddress > is typed by the contract's params' is a @ts-expect-error assertion with no runtime input (the params have no `id`); a Go hostAddress takes an untyped *delta.JsonObject, so TestHostAddressParams in derived_runtime_test.go runs the runtime consequence: an address built from an undeclared param is refused where it is routed (invalid/host_address) and the declared param routes."
     },
     {
       "path": "packages/chord/test/contracts/params.test.ts",
@@ -2539,8 +2545,12 @@
     },
     {
       "path": "packages/chord/test/documents/definition.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:8a309ad8b9d23fa4eb23dbb7ba17bbf5875c4d0b429a8efcb394a4eb2ee2c87a"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:8a309ad8b9d23fa4eb23dbb7ba17bbf5875c4d0b429a8efcb394a4eb2ee2c87a",
+      "evidence": [
+        "chord/next/documents/definition_test.go"
+      ],
+      "rationale": "All 8 upstream cases run in the evidence files, one Go test each. Pi 1.5.2 (8a5da3ce6) adds 'defineState > keys by a declared host kind: keyed, with the kind as its host; an undeclared kind is refused': TestDefineStateKeysByADeclaredHostKindKeyedWithTheKindAsItsHostAnUndeclaredKindIsRefused."
     },
     {
       "path": "packages/chord/test/documents/documents.test.ts",
@@ -2565,13 +2575,22 @@
     },
     {
       "path": "packages/chord/test/documents/handles.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:8e9c09ee75b1d5a690d68a73e0f2a9c97e139c96f5c7a4c0b15b79e9d1422778"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:8e9c09ee75b1d5a690d68a73e0f2a9c97e139c96f5c7a4c0b15b79e9d1422778",
+      "evidence": [
+        "chord/next/documents/handles_test.go"
+      ],
+      "rationale": "All 4 upstream cases run in the evidence files, one Go test each. Pi 1.5.2 (8a5da3ce6) adds the two 'host-keyed handles' cases (take and list addresses of their kind stored by their keys; refuse strings and addresses of another kind through the handle and in a transaction): TestHostKeyedHandlesTakeAndListAddressesOfTheirKindStoredByTheirKeys and TestHostKeyedHandlesRefuseStringsAndAddressesOfAnotherKindThroughTheHandleAndInATransaction."
     },
     {
       "path": "packages/chord/test/documents/keyed-slot.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:940cce86650711f69da8f6a2ce990fe458a078e1e3fd6fb4cb5300a3e1aff9c1"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:940cce86650711f69da8f6a2ce990fe458a078e1e3fd6fb4cb5300a3e1aff9c1",
+      "evidence": [
+        "chord/next/documents/keyed_slot_test.go",
+        "chord/next/host/host_keyed_slot_host_test.go"
+      ],
+      "rationale": "All 29 upstream cases run in the evidence files. keyed_slot_test.go runs 28 of them at the documents level (one Go test each); 'at(key) > only in the factory' is the host's assertion (the attempt's check that at() is valid only in the factory) and runs in host_keyed_slot_host_test.go (TestKeyedSlotAtKeyOnlyInTheFactory) on a real host, which also runs the host halves of the cases whose assertions are reports and the failed state of a reference (migration on access, tx.retire of a cold key stored at a newer version or another fingerprint, a retirement cut by its attempt's seal, a plugin migrate throwing a ChordError, a key whose migrate fails). Pi 1.5.2 (8a5da3ce6) adds 'a host data change's documents' (2 cases): a pinned key shows a creation then its retirement and a resident one too, and a document the owner cannot read changes nothing; they run in keyed_slot_test.go."
     },
     {
       "path": "packages/chord/test/documents/line.test.ts",
@@ -2584,8 +2603,12 @@
     },
     {
       "path": "packages/chord/test/documents/persistence.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:8cc3d91a1cb2914f14743f7d8ce1b4d1bbfc84113625639e95721f565f224980"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:8cc3d91a1cb2914f14743f7d8ce1b4d1bbfc84113625639e95721f565f224980",
+      "evidence": [
+        "chord/next/documents/persistence_test.go"
+      ],
+      "rationale": "All 10 upstream cases run in the evidence files, one Go test each. Pi 1.5.2 (8a5da3ce6) adds 'host-keyed documents > store their key as the record's host; string-keyed ones store none' and 'the host discriminator > refuses a record stored with string keys to a host-keyed definition, and the reverse': TestHostKeyedDocumentsStoreTheirKeyAsTheRecordsHostStringKeyedOnesStoreNone and TestTheHostDiscriminatorRefusesARecordStoredWithStringKeysToAHostKeyedDefinitionAndTheReverse."
     },
     {
       "path": "packages/chord/test/documents/residency.test.ts",
@@ -2598,8 +2621,13 @@
     },
     {
       "path": "packages/chord/test/documents/slot.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c8c203fff224a6981b5ea72e0503cc11eb640e3a8f51cafe0c065f9b86f1be20"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c8c203fff224a6981b5ea72e0503cc11eb640e3a8f51cafe0c065f9b86f1be20",
+      "evidence": [
+        "chord/next/documents/slot_test.go",
+        "chord/next/host/host_documents_host_test.go"
+      ],
+      "rationale": "All 11 upstream cases run in the evidence files. slot_test.go runs each at the documents level; the four whose assertions are the host's (the failure kinds and labels of a failed activation, the reports, host.get's rejection: 'keep them across a throwing factory', 'fail the attempt broken for a flipped keyed, another key kind, an older version or a schema changed without a bump', 'fail the activation broken for a newer stored version or another fingerprint at the same version (D9)' and 'refuse persisting without a stable identity or a store, and a flipped persist') also run on a real host in host_documents_host_test.go. Pi 1.5.2 (8a5da3ce6) adds the row 'another key kind' to the flipped-keyed case; it runs in slot_test.go's table."
     },
     {
       "path": "packages/chord/test/documents/transaction.test.ts",
@@ -2730,8 +2758,12 @@
     },
     {
       "path": "packages/chord/test/host/host-data.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:8bdfa586e1f1dc3fcf5b526dc19810f92d631aeda29b682e86b53425d463f92a"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:8bdfa586e1f1dc3fcf5b526dc19810f92d631aeda29b682e86b53425d463f92a",
+      "evidence": [
+        "chord/next/host/host_host_data_test.go"
+      ],
+      "rationale": "All 15 upstream cases run in the evidence file, one Go test each: live owners (4), lifecycle (3), older and newer tables (2), the gate (2) and review round 3 (4). Forced differences are stated in the file's header: a Promise Pi leaves pending is a goroutine whose result arrives on a channel, 'await delivered()' is a wait for what the step reaches (never a duration), and the handler holding a transaction open waits with chordctx.Receive so it parks as a handler ctx should."
     },
     {
       "path": "packages/chord/test/host/host.test.ts",
@@ -2746,8 +2778,12 @@
     },
     {
       "path": "packages/chord/test/host/members.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:402275f4746bf2d1ca6d5e3093f876616920b39f3fe140961c0ce8b277a4109f"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:402275f4746bf2d1ca6d5e3093f876616920b39f3fe140961c0ce8b277a4109f",
+      "evidence": [
+        "chord/next/host/host_members_test.go"
+      ],
+      "rationale": "All 4 upstream cases run in the evidence file: 'the member check (Q14)' (2 cases: an inherited property refused for a member; a derive named in errors by its member when exposed, else by its position; TestHostGetRefusesAnInheritedPropertyForAMember, TestHostGetNamesADeriveInErrorsByItsMemberWhenExposedElseByItsPosition) and Pi 1.5.2's two 'host-keyed keyed members' cases (read by address through a reference, pinned by at(address) in another factory, strings refused; a handle keyed otherwise refused): TestHostKeyedKeyedMembersAreReadByAddressThroughAReferencePinnedByAtAddressInAnotherFactoryStringsRefused and TestHostKeyedKeyedMembersRefuseAHandleKeyedOtherwise."
     },
     {
       "path": "packages/chord/test/host/native.test.ts",
@@ -3082,13 +3118,35 @@
     },
     {
       "path": "packages/chord/test/node/app/app.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:8120747bdf457587ef9f8dfabba9acf30a5490724162af381b81cd8f529da30a"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:8120747bdf457587ef9f8dfabba9acf30a5490724162af381b81cd8f529da30a",
+      "evidence": [
+        "chord/nextnode/app/app_test.go",
+        "chord/nextnode/app/app_workers_test.go",
+        "chord/nextnode/app/app_changes_test.go",
+        "chord/nextnode/app/app_executable_test.go",
+        "chord/nextnode/app/app_bases_scan_test.go",
+        "chord/nextnode/app/app_bases_test.go",
+        "chord/nextnode/app/app_bases_linux_test.go",
+        "chord/nextnode/app/app_bases_workers_linux_test.go",
+        "chord/nextnode/app/app_export_test.go",
+        "chord/nextnode/app/app_export_host_test.go",
+        "chord/nextnode/plugins/plugins_watcher_base_test.go"
+      ],
+      "missingCases": [
+        "base code › closes without waiting for a scan of its own code stalled on a read"
+      ],
+      "rationale": "33 of the 34 upstream cases run in the evidence files. starting and closing (9) run in app_test.go (the type-level half of 'starts without worker kinds and without principal.worker' is a compile error in Pi; Go refuses worker kinds without a worker principal at start, which the case asserts); workers (2) in app_workers_test.go and app_changes_test.go; applying changes one after another and installs in app_changes_test.go; base code (9) in app_executable_test.go (the server's own code is its executable, D603: cases that start with no base given), app_bases_scan_test.go (answers before the scan finished; a record edited right after the start), app_changes_test.go (marks base for a change of base files, a worker kind's entry, not a rewrite with the same bytes) and, for 'settles baseWatched only once the base bundles' records were compared', plugins_watcher_base_test.go TestRecordBaseSettlesOnceItsFirstComparisonsEnded; bases built after the listen (5) in app_bases_linux_test.go, app_bases_workers_linux_test.go and app_bases_test.go (a worker kind's base is its executable's copy, D600); the seven 'export and import per address' cases in app_export_test.go (running worker, the worker's data object, the lock, a failed address, the round trip with its refusals) and app_export_host_test.go (the server's records and rows of the address copied, refused, replaced and deleted with it, and the order around the server's commit). The server's data is two parts (D462: the NodeHost's `server.archive` and the Go host's `kit-server.archive`), so the two export cases run against the NodeHost's part (Pi's TypeScript host reached through the process's control requests) and the Go host's part together, and the import's one server commit is two commits in Go. The one case not ported: Pi's close does not wait for a build or scan; the Go close waits for the bases' builds and the scan (a forced Go lifetime difference stated in app_bases_scan_test.go and app_bases_test.go, tests there assert Go's wait and its abandonment when the context ends) and no numbered divergence records it yet, so the case stays missing until it is numbered and designed out."
     },
     {
       "path": "packages/chord/test/node/app/archive.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:8dc292731f8e8abdca05c5f9a33a21654a1c0e83489dc411eb5606ffeb38187f"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:8dc292731f8e8abdca05c5f9a33a21654a1c0e83489dc411eb5606ffeb38187f",
+      "evidence": [
+        "chord/nextnode/app/archive_upstream_test.go",
+        "chord/nextnode/app/archive_cancel_test.go"
+      ],
+      "rationale": "All 4 upstream cases run in the evidence files: the round trip of a host directory's store and files without uploads under way (TestRoundTripsAHostDirectorysStoreAndFilesWithoutUploadsUnderWay), refusing to pack an address without data, refusing an archive past its limits (unpacked bytes and entries counted before writing) and refusing what accept refuses, an archive not starting with its manifest and a foreign entry, leaving nothing. The Go archive carries the server's part as two files (D462: `server.archive`, the NodeHost's, and `kit-server.archive`, the Go host's), so the Go cases add the archive without its server part refused, the entries in Pi's order, the manifest as JSON.stringify writes it and the round trip of a kit store beside the plugin store; archive_cancel_test.go adds the abort contract (unpacking stops at the entry after ctx ends, packing with an ended ctx leaves no target or staging directory)."
     },
     {
       "path": "packages/chord/test/node/app/blobs.test.ts",
@@ -3435,8 +3493,12 @@
     },
     {
       "path": "packages/chord/test/node/plugins/stack.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:a936247768b1188928f970ecbbc9231b86a407bb68605efa586005d153a0334a"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:a936247768b1188928f970ecbbc9231b86a407bb68605efa586005d153a0334a",
+      "evidence": [
+        "chord/nextnode/plugins/plugins_stack_test.go"
+      ],
+      "rationale": "All 5 upstream cases run in the evidence files, against the real esbuild Go API and the real Node subprocess running Pi's own stack.ts; each test comment names its case and any process-boundary adaptation."
     },
     {
       "path": "packages/chord/test/node/plugins/testing.test.ts",
@@ -3670,8 +3732,13 @@
     },
     {
       "path": "packages/chord/test/node/workers/base.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:4584527c75bd829adf33ed0b9c5cc59adabc43351e439b23a24ec0d71ca32682"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:4584527c75bd829adf33ed0b9c5cc59adabc43351e439b23a24ec0d71ca32682",
+      "evidence": [
+        "chord/nextnode/workers/workers_workers_test.go#TestTheWorkerBaseInANamedDirectoryEmptiedFirstWrittenAgainThereRemovedByClose",
+        "chord/nextnode/workers/workers_workers_test.go#TestTheWorkerBaseAComponentThatClosedBeforeItsBuildWritesNothingAndLeavesANamedDirectoryAsItIs"
+      ],
+      "rationale": "284e63d9c: the base writes nothing before its first file and leaves a named directory as it is; ported as the two TestTheWorkerBase tests. 602b8d1cb9 changes the \"stack traces name the source files\" case to read the maps beside the bundle's files (linked) and \"the bundle's file\" cases to skip them; a Go worker is a program with no bundle, source map or Node flag, so those two cases keep their PiG form above (language mechanics)."
     },
     {
       "path": "packages/chord/test/node/workers/child.test.ts",
@@ -3680,7 +3747,7 @@
       "evidence": [
         "chord/nextnode/workers/workers_child_test.go"
       ],
-      "rationale": "The one upstream case (\"the child entry's imports › loads no esbuild\": a forked worker does not pay for the server's build tool) is in PiG form (owner rule 2026-11-08: D600 does not design this file out): a deps test, TestTheWorkersPackageLinksNoEsbuild, that `go list -deps` of chord/nextnode/workers, of chord/nextnode/plugins (the worker's runtime and the Node host) and of chord/nextnode/plugins/model links no github.com/evanw/esbuild package. It holds because the plugins component was split in three layers: plugins/model (the data and discovery), plugins/build (esbuild: BuildFacet, the CSS module scoping, Recorder) and plugins (the runtime and the component), which takes the builder as PluginsOptions.Build. Measured before the split: 26 esbuild packages linked by workers. An app's worker executable is the server's own program (`app.StartWorker`), so it still links `app` and the 25 esbuild packages behind it; the test protects the worker side (`workers`, the plugin runtime and the plugin data) only. TestTheDependencyCheckSeesTheEsbuildTheBuilderLinks pins that the check sees esbuild where it is linked. Mutation: a blank import of plugins/build in the workers package fails the first test (25 esbuild packages)."
+      "rationale": "The one upstream case (\"the child entry's imports › loads no esbuild\": a forked worker does not pay for the server's build tool) is in PiG form (owner rule 2026-11-08: this file is not designed out): a deps test, TestTheWorkersPackageLinksNoEsbuild, that `go list -deps` of chord/nextnode/workers, of chord/nextnode/plugins (the worker's runtime and the Node host) and of chord/nextnode/plugins/model links no github.com/evanw/esbuild package. It holds because the plugins component was split in three layers: plugins/model (the data and discovery), plugins/build (esbuild: BuildFacet, the CSS module scoping, Recorder) and plugins (the runtime and the component), which takes the builder as PluginsOptions.Build. Measured before the split: 26 esbuild packages linked by workers. An app's worker executable is the server's own program (`app.StartWorker`), so it still links `app` and the 25 esbuild packages behind it; the test protects the worker side (`workers`, the plugin runtime and the plugin data) only. TestTheDependencyCheckSeesTheEsbuildTheBuilderLinks pins that the check sees esbuild where it is linked. Mutation: a blank import of plugins/build in the workers package fails the first test (25 esbuild packages)."
     },
     {
       "path": "packages/chord/test/node/workers/control.test.ts",
@@ -3721,8 +3788,15 @@
     },
     {
       "path": "packages/chord/test/node/workers/workers.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:90df78d9356a176c8ced59c9816e1d34b26549227e5926cb5d8acd2dc6a383e9"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:90df78d9356a176c8ced59c9816e1d34b26549227e5926cb5d8acd2dc6a383e9",
+      "evidence": [
+        "chord/nextnode/workers/workers_base_held_linux_test.go#TestTheWorkerBaseAStartWaitsForAHeldBuildAndForksOnceItEndedTheStartDataIsAskedForThen",
+        "chord/nextnode/workers/workers_workers_test.go#TestTheWorkerBaseAStartWaitsForTheBasesBuildAndStartsItWhenNothingDid",
+        "chord/nextnode/workers/workers_base_close_test.go#TestTheWorkerBaseCloseKeepsTheBasesCopyUntilItsWorkersExitedACloserStillFindsItsProgram",
+        "chord/nextnode/workers/workers_workers_test.go#TestTheWorkerBaseForksWithoutEnableSourceMapsNodeParsesNoMapOfTheBaseWhoseMapsLieBesideItsFiles"
+      ],
+      "rationale": "284e63d9c: a start waits for the base's build and starts it when nothing did, and the close keeps the base's files until its workers exited; ported as the three tests. 602b8d1cb9: \"forks without --enable-source-maps\" is ported as the fork's arguments being ExecArgv verbatim (a Go worker has no source maps and never had the flag; its base's maps lie beside no files). Pi-only: the held pipe is the entry (a Go worker is a program, not a Node bundle)."
     },
     {
       "path": "packages/chord/test/output-skip.test.ts",
@@ -4005,8 +4079,12 @@
     },
     {
       "path": "packages/chord/test/store/applier.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:961e844f1255eda8abaf18e91d222767cc7a621f9c97c7cf013024e8d7ce4ee5"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:961e844f1255eda8abaf18e91d222767cc7a621f9c97c7cf013024e8d7ce4ee5",
+      "evidence": [
+        "chord/next/store/applier_test.go"
+      ],
+      "rationale": "Both upstream cases run in TestApplier: the applied table and rows as recorded, and one refusal subtest per row of the it.each table. Pi 1.5.2 (8a5da3ce6) adds four rows: two host columns, a host column that is opt, a host column of an int type and a host kind that is no name; each runs with the message Pi expects ('more than one host column', 'a host column is a non-opt str column without a default', 'expected lowercase')."
     },
     {
       "path": "packages/chord/test/store/apply-batch.test.ts",
@@ -4048,7 +4126,7 @@
     },
     {
       "path": "packages/chord/test/store/columns.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:5a2ad05b196a50922c015e9afd792e321ce8c948514a4ac91c83ff4ae8ed987a",
       "evidence": [
         "chord/next/store/columns_test.go"
@@ -4056,19 +4134,19 @@
       "designedOutCases": [
         "row types › types rows with optional opt(...) fields and puts with optional defaulted fields"
       ],
-      "missingCases": [
-        "host(...) columns › are recorded as str columns with their kind, refused inside opt(...)",
-        "host(...) columns › type rows with addresses of their kind"
-      ],
-      "rationale": "All 3 upstream cases run in the evidence files; 1 type-level cases are designed out. Pi 1.5.2 (8a5da3ce6, host-keyed data) adds the cases listed in missingCases; the host-data lane of fix/port-152 ports them and returns the entry to ported.",
+      "rationale": "5 of the 6 upstream cases run in the evidence files ('describes the helpers in declaration order', 'checks names', 'refuses other schemas...', Pi 1.5.2's 'host(...) columns > are recorded as str columns with their kind, refused inside opt(...)' (TestHostColumnsDescribed expects the record {type str, host session} and refuses Col(Opt(Host(kind)))) and its 'host(...) columns > type rows with addresses of their kind', a type-level Equal<RowOf,...> assertion adapted to its runtime effect: TestHostCells in rows_test.go puts and keys a host cell as the address's key and decodes it into the address); 1 type-level case is designed out: the row-type assertion of opt(...)/defaulted fields.",
       "protects": "Row types carry optional opt(...) and defaulted fields.",
       "pigTest": "chord/next/store/evidence_storeA_test.go#TestEvidenceStoreAColumnsOptionalRowType plus its compile-time declarations over Opt, ColumnSchema.Optional and Row; the defaulted put runs in the ported table and row cases.",
       "whyNot": "The upstream case is an Equal<RowOf,...> type assertion with no runtime input. A Go row is map[string]any, so the optional and defaulted behavior is the runtime test above."
     },
     {
       "path": "packages/chord/test/store/engine.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:da7dabe364717c31e8ba3e56a64644ceba8ee5af40ed1f6a7c1a1e8ce8077318"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:da7dabe364717c31e8ba3e56a64644ceba8ee5af40ed1f6a7c1a1e8ce8077318",
+      "evidence": [
+        "chord/next/store/engine_test.go"
+      ],
+      "rationale": "All 12 upstream cases run in the evidence file: documents (4), history rules and reads at a point (4), counters at the safe-integer limit (2) and Pi 1.5.2's 'records belonging to a host (schema 3)' (2: records keep their host, are listed by it - live only, by id - and round-trip through an archive; the host column is indexed): TestEngineHostRecords."
     },
     {
       "path": "packages/chord/test/store/evaluate.test.ts",
@@ -4081,33 +4159,58 @@
     },
     {
       "path": "packages/chord/test/store/export.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:e06177b75767f595dfe9985a1897b7343763ec783a91e1c5a272f0d54d9cb84c"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:e06177b75767f595dfe9985a1897b7343763ec783a91e1c5a272f0d54d9cb84c",
+      "evidence": [
+        "chord/next/store/export_test.go"
+      ],
+      "rationale": "All 13 upstream cases run in the evidence file: parts (2), revisions (1), the commit queue (9) and Pi 1.5.2's 'a host's selection' (the tables with a host column of the key's kind, their rows of the key and the records of the key): TestExportHostSelection."
     },
     {
       "path": "packages/chord/test/store/expression.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c91feb9b8b762062f9b0c96adeaa9e107360410214b4fff5d2e3aa26b8656e91"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c91feb9b8b762062f9b0c96adeaa9e107360410214b4fff5d2e3aa26b8656e91",
+      "evidence": [
+        "chord/next/store/expression_test.go"
+      ],
+      "rationale": "All 10 upstream cases run in the evidence file: compiling conditions (3), compiling sets (4) and Pi 1.5.2's 'host(...) columns' (3, TestHostColumnExpressions: addresses compare by eq, ne and inArray compiled to keys; order comparisons, isNull and prefix refused; addresses taken in a set, never an expression)."
     },
     {
       "path": "packages/chord/test/store/host-column.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:7f1ff220e67756a6322d430ac1570a1cace359295ddbc0e6e4a28194c943bc6d"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:7f1ff220e67756a6322d430ac1570a1cace359295ddbc0e6e4a28194c943bc6d",
+      "evidence": [
+        "chord/next/store/host_column_test.go"
+      ],
+      "rationale": "All 5 upstream cases run in TestHostColumns, one subtest each (an address stored as its key and read back; the canonical key, a lone surrogate replaced and NUL refused; a value that is no address of the kind refused; a kind that was not declared refused; str columns to the store, never opt(...)). TestHostColumnAddressOfAMalformedKey adds the malformed-key read Pi has no title for."
     },
     {
       "path": "packages/chord/test/store/host-data.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c9aff36c520644f651fb9f914fa11c82274e018ac6994ca68e7046d552d6eb3e"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c9aff36c520644f651fb9f914fa11c82274e018ac6994ca68e7046d552d6eb3e",
+      "evidence": [
+        "chord/next/store/host_data_test.go",
+        "chord/next/host/host_store_host_data_test.go"
+      ],
+      "rationale": "All 13 upstream cases run in the evidence files: host_data_test.go runs them against the store's own API (the tables' handles and CreateDocument write the data, the tables' SQL and FindDocument read it back, as the object's methods of Pi's tests do): export (1), import (5), archive checks (the refusal rows and the folding of a record's base and deltas), delete (1), review round 2 (3) and 'keeps import and delete off the store's public surface' (TestHostDataSurface: the store package's exported identifiers hold ExportHostData and ReadHostArchive and no import or delete operation, which the host reaches only through chord/next/internal/hostdata, importable by chord/next packages alone); host_store_host_data_test.go runs the cases that serve a host (export, import, delete and review round 2) through a live host. Go also runs 'names the owners whose data it changes' (hostDataOwners), which Pi's file has no title for."
     },
     {
       "path": "packages/chord/test/store/import-migration.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:d4ee076430b272b4b8d0cbc4c77a68f540f67939b3dcdc6162b20b8a4b092dcf"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:d4ee076430b272b4b8d0cbc4c77a68f540f67939b3dcdc6162b20b8a4b092dcf",
+      "evidence": [
+        "chord/next/store/import_migration_test.go"
+      ],
+      "rationale": "All 5 upstream cases run in TestMigratedRows, one subtest each (each version's edits and data step with $v and json cell versions exact; stopping at the version the store records; resuming an archive exported during a migration; refusing a version the owner's history does not have; a json cell's version set by a data step)."
     },
     {
       "path": "packages/chord/test/store/import.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:f29444a76528867b865bd5ea97953a3de1a0cfed4db5384011cf307da76071b8"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:f29444a76528867b865bd5ea97953a3de1a0cfed4db5384011cf307da76071b8",
+      "evidence": [
+        "chord/next/store/import_test.go"
+      ],
+      "rationale": "All 8 upstream cases run in the evidence file: round trips (3), json(...) cells holding null (2) and refusals (the it.each table, one subtest per row, the non-empty backend, and the input that stalls cancelled by ctx). Pi 1.5.2 (8a5da3ce6) adds the row 'a host's data archive' (a manifest carrying a host is refused with 'import it with importHostData'), which runs in TestImportRefusals. Go also runs cases Pi has no title for: an input whose Next panics, and an archive written before schema 3 (TestImportOfAnArchiveWrittenBeforeSchema3)."
     },
     {
       "path": "packages/chord/test/store/json-column.test.ts",
@@ -4168,8 +4271,12 @@
     },
     {
       "path": "packages/chord/test/store/rows.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:dc2104b69f358fc62cdf6ba577ba271ecda837f5c5d88c78cae91022f771deed"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:dc2104b69f358fc62cdf6ba577ba271ecda837f5c5d88c78cae91022f771deed",
+      "evidence": [
+        "chord/next/store/rows_test.go"
+      ],
+      "rationale": "All 9 upstream cases run in the evidence file: put rows (4), keys (1), decoding (2) and Pi 1.5.2's 'host(...) cells' (2, TestHostCells: put and keyed as the address's key and decoded into the address; turned between the stored key and the address by stored/addressed, rows without a host column staying). One input of an existing case has no Go form: 'serializes json cells at staging: a cycle or a BigInt' runs with the cycle only, since a Go json cell holds no BigInt value."
     },
     {
       "path": "packages/chord/test/store/sql.test.ts",
@@ -4182,13 +4289,22 @@
     },
     {
       "path": "packages/chord/test/store/store.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:45469109892a61c040ac30d7df4268f241b90e97b79e0b24784cd4e04af5fffc"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:45469109892a61c040ac30d7df4268f241b90e97b79e0b24784cd4e04af5fffc",
+      "evidence": [
+        "chord/next/store/store_test.go",
+        "chord/next/store/group_commit_test.go"
+      ],
+      "rationale": "All 45 upstream cases run in store_test.go (27: opening 3, the commit step 4, refusals and unknown outcomes 5, the id allocator 3, one host per store 1, close 1, a commit series 10) and group_commit_test.go (18). Pi 1.5.2 (8a5da3ce6) adds 'opening > migrates a store of schema 2 to 3: its records kept, a host column and its index added', which runs in store_test.go (which also opens a file written by the pre-schema-3 code). The Go forms of a throwing adapter, adoption and admission are stated in the files' headers (a panic recovered at the commit boundary)."
     },
     {
       "path": "packages/chord/test/store/table-changes.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:23cdee8a70e3cadb5a5515e03e115ce30c4fcd4f4448645d91938bf708d0782a"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:23cdee8a70e3cadb5a5515e03e115ce30c4fcd4f4448645d91938bf708d0782a",
+      "evidence": [
+        "chord/next/store/table_changes_test.go"
+      ],
+      "rationale": "All 5 upstream cases run in the evidence file: staging (1), the tx.get overlay (3) and Pi 1.5.2's 'the tx.get overlay of a host(...) column' (reads the committed row and its own writes with the address, compares the stored key in a when): TestTheTxGetOverlayOfAHostColumn."
     },
     {
       "path": "packages/chord/test/store/table-evolve.test.ts",
@@ -4239,8 +4355,12 @@
     },
     {
       "path": "packages/chord/test/store/table.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:6468814ba688e529aed4e181bdeb0b8ee12ecabe5a268d87edacfdbdc5ee20c8"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:6468814ba688e529aed4e181bdeb0b8ee12ecabe5a268d87edacfdbdc5ee20c8",
+      "evidence": [
+        "chord/next/store/table_test.go"
+      ],
+      "rationale": "All 7 upstream cases run in the evidence file: defineTable (3), keys (TestKeysTypeAnIntKeyColumnAsANumberAndAStrOneAsAString) and Pi 1.5.2's 'host(...) columns' (3, TestHostColumnTables: the index host unless the key starts with them; the index kept across evolveTable, following a rename and lost with a drop; one per table, the index name host theirs, the kind in the fingerprint)."
     },
     {
       "path": "packages/chord/test/store/text.test.ts",
@@ -4309,7 +4429,7 @@
       "rationale": "All 5 upstream cases run. 4 run in surfaces_active_language_test.go and surfaces_language_test.go. \"the render scope › is current only while a render runs, and a nested render restores the outer\" is TestTheRenderScopeIsCurrentOnlyWhileARenderRunsAndANestedRenderRestoresTheOuter with Pi's inputs and expected results: no current language outside a render, InLanguage(de) seeing [de, fr, de] across a nested InLanguage(fr), none after, and none after a render that fails (a panic). The scope is the context (InLanguage, CurrentLanguage; Messages.InScope is Pi's `t` outside `in`), where Pi's is a module variable. A TypeScript plugin's render also runs Pi's case over the vendored language.ts (TestNodeHostRenderScopeIsCurrentOnlyWhileARenderRunsAndANestedRenderRestoresTheOuter), and TestANestedRenderInAnotherLanguageLeavesTheOuterRenderInItsOwnEvenWhenTheNestedOneFailsOrPanics guards that nesting a render in another language never changes what the outer function's own `lang` formats.",
       "protects": "The render scope is current only while a render runs and a nested render restores the outer.",
       "pigTest": "chord/next/surfaces/surfaces_language_test.go TestTheRenderScopeIsCurrentOnlyWhileARenderRunsAndANestedRenderRestoresTheOuter (Pi's inputs: de, fr, outer restored, a failing render) and TestMessagesInAScopeRenderInTheCurrentLanguage.",
-      "whyNot": "Pi's scope is a module variable; Go's is the context the render is given (InLanguage, CurrentLanguage, Messages.InScope), so 'restores' is that the outer context is unchanged when the nested render returns or panics. A message function also receives its language as its first parameter (D450)."
+      "whyNot": "Pi's scope is a module variable; Go's is the context the render is given (InLanguage, CurrentLanguage, Messages.InScope), so 'restores' is that the outer context is unchanged when the nested render returns or panics. A message function also receives its language as its first parameter (language mechanics)."
     },
     {
       "path": "packages/chord/test/surfaces/locale-choice.test.ts",
@@ -5995,7 +6115,7 @@
         "internal/codingagent/llama/ui_selection_test.go#TestHuggingFaceSearchSelectsTheBestMatchWhenTheUserDidNotBrowse",
         "internal/codingagent/llama/ui_selection_test.go#TestHuggingFaceSearchSelectsTheBestMatchWhenTheBrowsedModelIsNotInTheNewResults"
       ],
-      "rationale": "All 3 upstream cases run in internal/codingagent/llama/ui_selection_test.go; D312 records the Pi 1.5.0 difference."
+      "rationale": "All 3 upstream cases run in internal/codingagent/llama/ui_selection_test.go; the Pi 1.5.0 difference (the model selector kept no selection when results refreshed, Pi df0d88aac) was fixed in Pi 1.5.1, before the 1.5.2 pin."
     },
     {
       "path": "packages/coding-agent/test/login-dialog-device-code.test.ts",

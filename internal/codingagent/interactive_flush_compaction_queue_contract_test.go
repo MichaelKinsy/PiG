@@ -11,6 +11,7 @@ import (
 	"sync"
 	"testing"
 	"testing/synctest"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
@@ -30,6 +31,10 @@ type flushQueueHandle struct {
 	mu          sync.Mutex
 	inputs      []string
 	behaviors   []string
+	// afterRunEnds, when set, makes the input handlers of the message with that text wait until the run the flush started has settled, which is the
+	// instant a fast rejection leaves behind on a loaded host.
+	afterRunEnds string
+	runActive    func() bool
 }
 
 func (h *flushQueueHandle) RunInputHandlers(_ context.Context, text string, images []ai.ImageContent, _ extension.InputSource, behavior string) (string, []ai.ImageContent, bool, error) {
@@ -37,6 +42,11 @@ func (h *flushQueueHandle) RunInputHandlers(_ context.Context, text string, imag
 	h.inputs = append(h.inputs, text)
 	h.behaviors = append(h.behaviors, behavior)
 	h.mu.Unlock()
+	if h.afterRunEnds == text {
+		for h.runActive() {
+			time.Sleep(time.Millisecond)
+		}
+	}
 	if h.inputErr != nil && (h.failOn == "" || h.failOn == text) {
 		return text, images, false, h.inputErr
 	}
@@ -123,6 +133,34 @@ func TestFlushCompactionQueueRestoresAtEveryRejectionSite(t *testing.T) {
 			})
 		})
 	}
+}
+
+// The run the first prompt starts rejects it (a before_agent_start stage that fails) and settles before the message behind it is delivered: on a loaded host the
+// run goroutine is that fast. The message behind must not start a run of its own and be rejected again: Pi's flush sends it into the queue the rejection
+// clears, so the whole queue comes back with one failure shown.
+func TestFlushCompactionQueueDoesNotStartARunBehindARejectedPrompt(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		m, handle := newFlushQueueMode(t)
+		handle.afterRunEnds, handle.runActive = "second", m.turnActive.Load
+		var system agent.AgentMessage
+		if err := system.UnmarshalJSON([]byte(`{"role":"system","content":5,"timestamp":1}`)); err != nil {
+			t.Fatal(err)
+		}
+		m.agent.SetMessages([]agent.AgentMessage{system})
+		m.compactionQueue = []compactionQueuedMessage{{text: "first", mode: compactionQueueSteer}, {text: "second", mode: compactionQueueFollowUp}}
+		m.flushCompactionQueue(t.Context(), false)
+		settleSubmissions(m)
+		chat := flushedChat(m)
+		if got := strings.Count(chat, "Failed to send queued messages"); got != 1 {
+			t.Fatalf("the failure is shown %d times, want once: %q", got, chat)
+		}
+		if !slices.Equal(queuedTexts(m.compactionQueue), []string{"first", "second"}) {
+			t.Fatalf("queue = %q, want both messages restored", queuedTexts(m.compactionQueue))
+		}
+		if steering, followUps := m.agent.PendingMessages(); len(steering)+len(followUps) != 0 {
+			t.Fatalf("the Session queue keeps %d messages", len(steering)+len(followUps))
+		}
+	})
 }
 
 // A message that fails to send stops the flush: Pi's loop throws at the failed message, so the messages behind it are never sent, and the whole queue

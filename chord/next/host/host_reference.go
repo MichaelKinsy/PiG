@@ -14,6 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/documents"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
+	"github.com/MichaelKinsy/PiG/chord/next/store"
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
@@ -356,8 +357,8 @@ func newBinding(
 		for _, member := range variant.State.Keys() {
 			b.members[member] = &ReferenceMember{binding: b, member: member}
 		}
-		for _, member := range variant.Keyed.Keys() {
-			b.keyed[member] = &ReferenceKeyed{binding: b, member: member}
+		for member, declared := range variant.Keyed.All() {
+			b.keyed[member] = &ReferenceKeyed{binding: b, member: member, kind: declared.Key}
 		}
 		for _, member := range variant.Methods.Keys() {
 			b.methods[member] = struct{}{}
@@ -1230,10 +1231,30 @@ func (m *ReferenceMember) WatchThen(ctx context.Context, then func(watch chord.W
 // source is the provider's member: a source or a constant.
 func (m *ReferenceMember) source() (state.DeriveSource, error) { return m.binding.member(m.member) }
 
-// ReferenceKeyed is a keyed member of a reference (slice 6a §12): reads by key behave as calls (they wait while loading).
+// ReferenceKeyed is a keyed member of a reference (slice 6a §12): reads by key behave as calls (they wait while loading). A
+// host-keyed one takes addresses of its kind (checked: a trust boundary for callers) and reads the provider's slot by their
+// canonical keys.
 type ReferenceKeyed struct {
 	binding *binding
 	member  string
+	// kind is the host kind the member's keys are addresses of; nil for string keys.
+	kind *contracts.HostKind
+}
+
+// key is the provider slot's key of a key the consumer gave: an address's canonical key, or the string itself.
+func (k *ReferenceKeyed) key(raw any) (string, error) {
+	if k.kind == nil {
+		text, isText := raw.(string)
+		if !isText {
+			return "", data.Invalid(data.ReasonArgs, k.member+": expected a string")
+		}
+		return text, nil
+	}
+	stored, fits := contracts.KeyOfAddress(k.kind, raw)
+	if !fits {
+		return "", data.Invalid(data.ReasonArgs, k.member+": expected an address of "+k.kind.Kind)
+	}
+	return store.StoredText(stored, k.member+": key")
 }
 
 // slot is the provider's slot: the ultimate provider's, through re-exposures (rule 22).
@@ -1246,11 +1267,19 @@ func (k *ReferenceKeyed) slot() (*documents.KeyedSlot, error) {
 
 // keyedBinding is this member as another object re-exposing it has it: its keys held through this reference.
 func (k *ReferenceKeyed) keyedBinding() *keyedBinding {
-	return &keyedBinding{kind: keyedReexposed, binding: k.binding, member: k.member}
+	key := ""
+	if k.kind != nil {
+		key = k.kind.Kind
+	}
+	return &keyedBinding{kind: keyedReexposed, binding: k.binding, member: k.member, key: key}
 }
 
 // Get is the document at key, found false when absent. It blocks.
-func (k *ReferenceKeyed) Get(ctx context.Context, key string) (value delta.JsonValue, found bool, err error) {
+func (k *ReferenceKeyed) Get(ctx context.Context, raw any) (value delta.JsonValue, found bool, err error) {
+	key, err := k.key(raw)
+	if err != nil {
+		return nil, false, err
+	}
 	if err = k.binding.awaitHydrated(ctx); err != nil {
 		return nil, false, err
 	}
@@ -1278,7 +1307,11 @@ func (k *ReferenceKeyed) Get(ctx context.Context, key string) (value delta.JsonV
 
 // Watch is a watch of the document at key across the object's attempts (it holds the key through the object), nil when
 // absent; it ends with this reference. It blocks.
-func (k *ReferenceKeyed) Watch(ctx context.Context, key string) (chord.WatchHandle[delta.JsonValue], error) {
+func (k *ReferenceKeyed) Watch(ctx context.Context, raw any) (chord.WatchHandle[delta.JsonValue], error) {
+	key, err := k.key(raw)
+	if err != nil {
+		return nil, err
+	}
 	b := k.binding
 	if err := b.awaitFirstValues(ctx); err != nil {
 		return nil, err
@@ -1331,11 +1364,56 @@ func (k *ReferenceKeyed) Watch(ctx context.Context, key string) (chord.WatchHand
 }
 
 // At is `ref.member.at(key)`, in a factory only: the pinned key's values are the member's documents.
-func (k *ReferenceKeyed) At(key string) (*KeyedMemberAt, error) {
+func (k *ReferenceKeyed) At(raw any) (*KeyedMemberAt, error) {
+	key, err := k.key(raw)
+	if err != nil {
+		return nil, err
+	}
 	var at *KeyedMemberAt
-	var err error
 	k.binding.loop.Run(func() { at, err = k.binding.at(k.member, key) })
 	return at, err
+}
+
+// KeyedDocument is a document of a keyed member and its key.
+type KeyedDocument struct {
+	Key   string
+	Value delta.JsonValue
+}
+
+// Snapshot is every present document of this member and, registered before they are read, the observer of its later changes
+// (stop ends it). It is for the plugins bridge, which keeps a Node host's copy of a keyed member (Pi's plugins share the one
+// host, so Pi's ReferenceKeyed has no such call). It waits for the reference's first values and reads the provider's slot as
+// `Get` does; the observer is told of the slot's own commits, and of its end (`dropped`), after which the caller snapshots again
+// when the reference is live on the next instance. It blocks.
+func (k *ReferenceKeyed) Snapshot(ctx context.Context, observer documents.KeyObserver) (docs []KeyedDocument, stop func(), err error) {
+	if err = k.binding.awaitFirstValues(ctx); err != nil {
+		return nil, nil, err
+	}
+	slot, err := k.slot()
+	if err != nil {
+		return nil, nil, err
+	}
+	stop = slot.Observe(observer)
+	keys := slot.Keys(ownAccess(slot), ctx)
+	defer keys.Close()
+	for {
+		key, ok, err := keys.Next(ctx)
+		if err != nil {
+			stop()
+			return nil, nil, err
+		}
+		if !ok {
+			return docs, stop, nil
+		}
+		value, found, err := k.Get(ctx, key)
+		if err != nil {
+			stop()
+			return nil, nil, err
+		}
+		if found {
+			docs = append(docs, KeyedDocument{Key: key, Value: value})
+		}
+	}
 }
 
 // ownAccess is how a consumer reads its provider's keyed documents as the provider's own code may: current version, own

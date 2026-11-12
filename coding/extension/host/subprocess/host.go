@@ -243,7 +243,8 @@ func extensionSourcePaths(config ExtConfig) (path, resolvedPath string) {
 		path = config.Path
 	}
 	resolvedPath = path
-	if absolute, err := filepath.Abs(path); err == nil && path != "" {
+	// A `builtin:<name>` path names no file (source-info.ts BUILTIN_PATH_PREFIX): a fused member selected by one keeps it as its resolved path.
+	if absolute, err := filepath.Abs(path); err == nil && path != "" && !strings.HasPrefix(path, "builtin:") {
 		resolvedPath = absolute
 	}
 	return path, resolvedPath
@@ -4499,6 +4500,25 @@ func (h *Host) handleEventSubscription(me *managedExt, call *CallPayload) (*Call
 	return &CallResultPayload{}, nil
 }
 
+// beforeEventSignal is the AbortSignal of a session_before_compact or session_before_tree event (types.ts SessionBeforeCompactEvent.signal, SessionBeforeTreeEvent.signal), nil for any other event or an event without one.
+func beforeEventSignal(event any) context.Context {
+	switch e := event.(type) {
+	case extension.SessionBeforeCompactEvent:
+		return e.Signal
+	case *extension.SessionBeforeCompactEvent:
+		if e != nil {
+			return e.Signal
+		}
+	case extension.SessionBeforeTreeEvent:
+		return e.Signal
+	case *extension.SessionBeforeTreeEvent:
+		if e != nil {
+			return e.Signal
+		}
+	}
+	return nil
+}
+
 // makeEventHandler returns a HandlerFn that dispatches events over the socket.
 //
 //pig:hotpath
@@ -4622,6 +4642,12 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 				if started := extension.DispatchStartedFromContext(parent); started != nil {
 					// The request is the handler's start: the process runs requests in the order they arrive.
 					requestCtx = withRequestIssued(parent, started)
+				}
+				if len(args) > 0 {
+					if signal := beforeEventSignal(args[0]); signal != nil {
+						// runner.ts emit awaits every handler with event.signal aborted: the abort reaches the handler as its cancel, not as the end of the wait.
+						requestCtx = withRequestSignal(requestCtx, signal)
+					}
 				}
 				resp, err = conn.Request(requestCtx, envelope)
 			}

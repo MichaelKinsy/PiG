@@ -28,6 +28,9 @@ type Result struct {
 	// FrameWatch is what the steps' frame_watch saw.
 	FrameWatch FrameWatchResult
 
+	// FinalFrame is what the steps' final_frame saw in the raw transcript.
+	FinalFrame FinalFrameResult
+
 	// ChangelogSource is the binary's independent document input for complete release-header assertions.
 	ChangelogSource string
 }

@@ -10,15 +10,17 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
+	"github.com/MichaelKinsy/PiG/chord/next/documents"
+	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
 // pi: packages/chord/src/host/members.ts
-// Ports packages/chord/test/host/members.test.ts: its two cases (TestHostGet...) serve a contract through a whole
-// host and assert the message the host builds from the object's label and the cause. The other tests are own tests of the
-// member check and of the resolution behind derives and contributions, driven directly; each names the upstream case
-// whose behavior it mirrors.
+// Ports packages/chord/test/host/members.test.ts: its two cases (TestHostGet...) and the two host-keyed ones
+// (TestHostKeyedKeyedMembers...) serve a contract through a whole host and assert the message the host builds from the
+// object's label and the cause. The other tests are own tests of the member check and of the resolution behind derives and
+// contributions, driven directly; each names the upstream case whose behavior it mirrors.
 
 // membersGone is a type no host serves: a reference held to it has a member whose getter throws (the check that left it
 // unbound failed it `waiting`), and a keyed member a re-exposing object could follow.
@@ -370,5 +372,86 @@ func TestHostGetNamesADeriveInErrorsByItsMemberWhenExposedElseByItsPosition(t *t
 		if err == nil || !strings.Contains(err.Error(), tc.want) {
 			t.Fatalf("get n=%v = %v, want it to fail with %q", tc.n, err, tc.want)
 		}
+	}
+}
+
+// The host-keyed keyed members of members.test.ts: `keyed(schema, Session)` members implemented by a host-keyed document
+// handle, read by address through a reference.
+var (
+	hkMeta = exDefineState("meta", documents.StateOptions{
+		Schema: exObj(exProp("title", exStr())), Initial: func() *delta.JsonObject { return jsonObject("title", "") }, Keyed: Session,
+	})
+	hkPlain = exDefineState("plain", documents.StateOptions{
+		Schema: exObj(exProp("title", exStr())), Initial: func() *delta.JsonObject { return jsonObject("title", "") }, Keyed: true,
+	})
+	hkStore = exLocal("test.meta-store", contracts.Params{},
+		contracts.Mem("meta", contracts.Keyed(exObj(exProp("title", exStr())), Session)),
+		contracts.Mem("set", contracts.NewMethod(exObj(exProp("id", exStr()), exProp("title", exStr())))))
+	// hkView is a per-session view pinning its session's document through the store's member.
+	hkView = exLocal("test.meta-view", contracts.Params{exProp("id", exStr())}, contracts.Mem("meta", exObj(exProp("title", exStr()))))
+)
+
+// members.test.ts › host-keyed keyed members › are read by address through a reference, pinned by `at(address)` in another
+// factory; strings refused.
+func TestHostKeyedKeyedMembersAreReadByAddressThroughAReferencePinnedByAtAddressInAnotherFactoryStringsRefused(t *testing.T) {
+	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
+		if err := h.Serve(hkStore, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			meta := self.State(hkMeta).(*documents.Keyed)
+			return contracts.Implementation{Members: contracts.VariantImplementation{
+				Keyed: map[string]contracts.KeyedWatchable[delta.JsonValue]{"meta": ExposeKeyed(meta)},
+				Methods: map[string]contracts.MethodFunction{
+					"set": exMethod(func(args *delta.JsonObject, ctx context.Context) (delta.JsonValue, error) {
+						_, err := meta.Change(ctx, Session.Address(jsonObject("id", exParam(args, "id"))), func(draft *delta.Object) (any, error) {
+							return nil, draft.Set("title", args.Value("title"))
+						})
+						return nil, err
+					}),
+				},
+			}}, nil
+		}, ServeOptions{}); err != nil {
+			return err
+		}
+		return h.Serve(hkView, func(params *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			at, err := self.Get(hkStore, jsonObject()).Keyed("meta").At(Session.Address(jsonObject("id", exParam(params, "id"))))
+			return contracts.Implementation{Members: contracts.VariantImplementation{
+				State: map[string]chord.Watchable[delta.JsonValue]{"meta": Expose(at)},
+			}}, err
+		}, ServeOptions{})
+	}, loadedOptions{})
+	defer closeHosts(t, host)
+	store := mustGet(t, host, hkStore, jsonObject())
+	exCall(t, store, "set", jsonObject("id", "S1", "title", "one"))
+	session := Session.Address(jsonObject("id", "S1"))
+	got, found, err := store.Keyed("meta").Get(background, session)
+	must(t, err)
+	if !found {
+		t.Fatal("meta.get(S1) found nothing")
+	}
+	nexttest.RequireJSONEqual(t, got, jsonObject("title", "one"))
+	watch, err := store.Keyed("meta").Watch(background, session)
+	must(t, err)
+	nexttest.RequireJSONEqual(t, watch.Value(), jsonObject("title", "one"))
+	view := mustGet(t, host, hkView, jsonObject("id", "S1"))
+	nexttest.RequireJSONEqual(t, exValue(t, view, "meta"), jsonObject("title", "one"))
+	exCall(t, store, "set", jsonObject("id", "S1", "title", "two"))
+	nexttest.RequireJSONEqual(t, exValue(t, view, "meta"), jsonObject("title", "two"))
+	_, _, err = store.Keyed("meta").Get(background, "session|S1")
+	wantChordError(t, err, data.CodeInvalid, "", "meta: expected an address of session")
+}
+
+// members.test.ts › host-keyed keyed members › refuse a handle keyed otherwise.
+func TestHostKeyedKeyedMembersRefuseAHandleKeyedOtherwise(t *testing.T) {
+	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
+		return h.Serve(hkStore, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			return contracts.Implementation{Members: contracts.VariantImplementation{
+				Keyed:   map[string]contracts.KeyedWatchable[delta.JsonValue]{"meta": ExposeKeyed(self.State(hkPlain))},
+				Methods: map[string]contracts.MethodFunction{"set": membersPlainMethod},
+			}}, nil
+		}, ServeOptions{})
+	}, loadedOptions{})
+	defer closeHosts(t, host)
+	_, err := host.Get(background, hkStore, jsonObject(), GetOptions{})
+	if err == nil || !strings.Contains(err.Error(), "meta: declared with addresses of session, implemented with string keys") {
+		t.Fatalf("get = %v, want it to fail with meta: declared with addresses of session, implemented with string keys", err)
 	}
 }

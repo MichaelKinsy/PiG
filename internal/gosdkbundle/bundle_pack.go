@@ -185,6 +185,7 @@ var bundledFiles = []string{
 	"tui/internal/widthx/unicode_tables.go",
 	"tui/internal/widthx/widthx.go",
 	"tui/internal/widthx/wrap.go",
+	"tui/internal/widthx/wrap_cache.go",
 	"tui/keybindings.go",
 	"tui/keys.go",
 	"tui/terminal.go",
@@ -214,4 +215,4 @@ var bundledFiles = []string{
 }
 
 // stagedHash is the staging hash of the files, as pigsdk names a staged SDK by it: the first 16 hex digits.
-const stagedHash = "130041694f44ba4e"
+const stagedHash = "5b97165343382e85"

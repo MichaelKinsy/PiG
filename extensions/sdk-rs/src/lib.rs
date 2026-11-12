@@ -247,7 +247,7 @@ mod tool_render;
 mod tool_start_order;
 mod transport;
 mod user_bash;
-pub use user_bash::{BashExecFn, BashExecOptions, BashOperations};
+pub use user_bash::{BashExecError, BashExecFn, BashExecOptions, BashOperations};
 mod builtin_tool;
 pub use builtin_tool::{
     BashSpawnContext, BashSpawnHook, BashToolOptions, BuiltinTool, BuiltinToolDefinition,

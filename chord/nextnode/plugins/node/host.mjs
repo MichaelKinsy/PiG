@@ -22,8 +22,10 @@
 // link silent for the heartbeat (30 s) is closed by this host, and the process exits with it; the heartbeat starts with the
 // link, so a host nothing attaches has none.
 import { EventEmitter } from "node:events";
+import { createReadStream, createWriteStream } from "node:fs";
 import { enableCompileCache, flushCompileCache } from "node:module";
 import { connect } from "node:net";
+import { pipeline } from "node:stream/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import "./resolve.mjs";
 import * as callbacks from "./callbacks.mjs";
@@ -52,7 +54,7 @@ const [chordNext, { ipcLink }, { createPluginRuntime, PluginError }, { mapStack 
 		pi("node/compression.ts"),
 		pi("data/internal.ts"),
 	]);
-const { createHost, isChordError } = chordNext;
+const { createHost, decodeJsonl, encodeJsonl, isChordError } = chordNext;
 // host.ts's `Destination` (resolve.mjs): already loaded by the import of the host above.
 const { setParentServes, forgetParentServes } = await import("./destination.mjs");
 
@@ -307,11 +309,40 @@ async function revoke(request, context) {
 	return {};
 }
 
+/**
+ * The host data operations of this process's host (Pi's `host.exportHostData`, `importHostData` and `deleteHostData`, which
+ * `app.ts` calls on its one host), over JSONL files at paths the Go side names: the archive is `encodeJsonl` of the export and
+ * `decodeJsonl` of the import, as `app.ts` pipes them. The Go side's store is another file (D462): this process's host holds the
+ * plugins' documents and rows.
+ */
+const hostDataOperations = {
+	exportHostData: async (request, context) => {
+		if (hosted === undefined) throw new Error("exportHostData: no host is loaded");
+		const parts = encodeJsonl(hosted.host.exportHostData(request.address, context));
+		await pipeline(parts, createWriteStream(request.path, { mode: 0o600 }));
+		return {};
+	},
+	importHostData: async (request, context) => {
+		if (hosted === undefined) throw new Error("importHostData: no host is loaded");
+		const parts = decodeJsonl(createReadStream(request.path));
+		await hosted.host.importHostData(parts, context, {
+			address: request.address,
+			...(request.existing === undefined ? {} : { existing: request.existing }),
+		});
+		return {};
+	},
+	deleteHostData: async (request, context) => {
+		if (hosted === undefined) throw new Error("deleteHostData: no host is loaded");
+		await hosted.host.deleteHostData(request.address, context);
+		return {};
+	},
+};
+
 // The reference RPC and contracts as data (bridge.mjs, contracts.mjs): the control requests of `NodeHost.Get` and the Go host's `Bridged` facets.
 const { createBridge, GO_PACKAGE } = await import("./bridge.mjs");
 const bridge = createBridge({ port, wireError, host: () => hosted?.host });
 const { testOperations } = await import("./testing.mjs");
-const operations = { load, reload, revoke, ...bridge.operations, ...testOperations({ hosted: () => hosted, chord: chordNext }) };
+const operations = { load, reload, revoke, ...hostDataOperations, ...bridge.operations, ...testOperations({ hosted: () => hosted, chord: chordNext }) };
 
 port.on("message", (message) => {
 	if (message instanceof Uint8Array) return;

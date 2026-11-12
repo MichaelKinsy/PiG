@@ -14,7 +14,7 @@ import (
 // Ports packages/chord/test/node/app/ephemeral.test.ts (Pi main c23b9ec1): tests of the ephemeral login plugin (slice 13 §3): a public
 // route taking a name signs the browser in as a fresh `{ kind: "user", id, name }` with a cookie that ends with the browser, and the
 // session ends with the server. The app is the whole app (StartServer, as Pi's testApp): the login facet is loaded through
-// AppOptions.Facets, where Pi's app loads it with a one-line plugin (D456), and `whoami` is the tests' route facet.
+// AppOptions.Facets, where Pi's app loads it with a one-line plugin (a TypeScript plugin cannot import a Go facet), and `whoami` is the tests' route facet.
 
 func mustDecode(t *testing.T, body []byte) delta.JsonValue {
 	t.Helper()

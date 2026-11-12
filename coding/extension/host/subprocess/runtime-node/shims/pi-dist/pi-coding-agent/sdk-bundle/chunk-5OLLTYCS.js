@@ -2128,6 +2128,7 @@ function createFindToolDefinition(cwd, options) {
             if (!insideGitRepo)
               args.push("--no-require-git");
             let effectivePattern = process.platform === "win32" ? pattern.replaceAll("\\", "/") : pattern;
+            effectivePattern = effectivePattern.replace(/^(?:\.\/)+/, "");
             const isPathPattern = effectivePattern.includes("/");
             if (isPathPattern && !effectivePattern.startsWith("/") && !effectivePattern.startsWith("**/") && effectivePattern !== "**") {
               effectivePattern = `**/${effectivePattern}`;

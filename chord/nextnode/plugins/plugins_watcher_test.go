@@ -16,8 +16,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fsnotify/fsnotify"
-
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
@@ -108,6 +106,12 @@ func watcherOn(t *testing.T, root, base string) *watcherFixture {
 // test ends.
 func watcherOver(t *testing.T, roots []string, base string) *watcherFixture {
 	t.Helper()
+	return watcherOverNotifier(t, roots, base, nil)
+}
+
+// watcherOverNotifier is watcherOver on the system watcher makeNotifier makes (nil: fsnotify's).
+func watcherOverNotifier(t *testing.T, roots []string, base string, makeNotifier func() (notifier, error)) *watcherFixture {
+	t.Helper()
 	root := ""
 	if len(roots) > 0 {
 		root = roots[0]
@@ -115,7 +119,7 @@ func watcherOver(t *testing.T, roots []string, base string) *watcherFixture {
 	f := &watcherFixture{t: t, root: root, base: base, loop: host.NewLoop(), scheduler: chord.NewDeliveryScheduler()}
 	batch := state.NewBatch(func(state.BatchError) {}, nil).UseScheduler(f.scheduler).UseMicrotasks(f.loop.Queue).UseSection(f.loop.Run, f.loop.InSection)
 	f.watcher = newPluginWatcher(watcherOptions{
-		Roots: roots, Base: []string{base}, Kinds: kinds,
+		Roots: roots, Base: []string{base}, Kinds: kinds, Notifier: makeNotifier,
 		Failed: func(err error) {
 			f.mu.Lock()
 			defer f.mu.Unlock()
@@ -541,7 +545,7 @@ func TestTheWatcherClosesTheSystemWatcherOutsideTheHostsLockAndJoinWaitsForIt(t 
 	base := realOf(t, tempRoot(t))
 	f := watcherOver(t, nil, base)
 	closing, release, closed := make(chan struct{}), make(chan struct{}), make(chan struct{})
-	f.watcher.closeFS = func(watcher *fsnotify.Watcher) {
+	f.watcher.closeFS = func(watcher notifier) {
 		close(closing)
 		<-release
 		_ = watcher.Close()
