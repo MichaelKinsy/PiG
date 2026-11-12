@@ -200,8 +200,8 @@ func (l *DefaultResourceLoader) Reload(options ...ResourceLoaderReloadOptions) e
 
 // ReloadWith is Reload with the context ctx. A ResolveProjectTrust in options first loads the bootstrap extension set with project settings forced untrusted and hands it to the callback, then applies the answer to the settings (resource-loader.ts reload(options)); the final extension set reuses the bootstrap load. A failed decision or bootstrap load fails the reload and leaves the previous results in place, with the project untrusted as the bootstrap pass left it.
 func (l *DefaultResourceLoader) ReloadWith(ctx context.Context, options ...ResourceLoaderReloadOptions) error {
-	l.opMu.Lock()
-	defer l.opMu.Unlock()
+	ctx, unlock := l.enterOperation(ctx)
+	defer unlock()
 	// resource-loader.ts:510: each reload starts the extensions timeline over.
 	timings.ResetTimings(timings.Extensions)
 	var preTrust *LoadExtensionsResult
@@ -695,4 +695,18 @@ func resolveResourceLoader(svcs *AgentSessionServices, supplied ResourceLoader) 
 	}
 	timings.Time("resourceLoader.reload")
 	return &resourceLoaderRef{loader: loader, promptFromLoader: true}, nil
+}
+
+// operationHeldKey marks a context handed to the callbacks of an operation that holds a loader\x27s opMu; its value is that loader.
+type operationHeldKey struct{}
+
+// enterOperation takes opMu for a Reload or LoadProjectTrustExtensions and returns the context its callbacks receive, which marks the loader as held.
+// Pi has no lock: a callback of a running reload() that calls reload() interleaves with it and resolves (resource-loader.ts:541-710). A call
+// whose ctx came from such a callback runs inside the outer operation, without waiting for opMu, which that operation holds until its callback returns.
+func (l *DefaultResourceLoader) enterOperation(ctx context.Context) (context.Context, func()) {
+	if ctx.Value(operationHeldKey{}) == l {
+		return ctx, func() {}
+	}
+	l.opMu.Lock()
+	return context.WithValue(ctx, operationHeldKey{}, l), l.opMu.Unlock
 }

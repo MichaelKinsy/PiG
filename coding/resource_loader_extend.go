@@ -145,8 +145,8 @@ func (l *DefaultResourceLoader) GetThemes() ThemesResult {
 
 // LoadProjectTrustExtensions loads the extension set with project settings forced untrusted and returns it (resource-loader.ts loadProjectTrustExtensions). The loader's settings stay untrusted until the next Reload or an explicit trust decision.
 func (l *DefaultResourceLoader) LoadProjectTrustExtensions(ctx context.Context) (LoadExtensionsResult, error) {
-	l.opMu.Lock()
-	defer l.opMu.Unlock()
+	ctx, unlock := l.enterOperation(ctx)
+	defer unlock()
 	return l.loadProjectTrustExtensions(ctx)
 }
 
