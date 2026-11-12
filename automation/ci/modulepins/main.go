@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 
 // Command modulepins fails when an in-tree Go module that replaces the PiG root module or the extension SDK module with local source requires either at a version other than the one the root go.mod requires for the SDK. A stale pin makes the generated packed-cell go.mod select an older SDK than the replaced root needs, and `go build` stops with "updates to go.mod needed" in every strict and packed Go cell of the conformance suite. `make set-version SET_VERSION_ARGS=--release-modules` pins them at a release; between releases, bumping the root's SDK pseudo-version means bumping these too (go mod edit -require=<module>@<version> <go.mod>). It also fails on a Go source that writes such a requirement at run time with pigversion.PigVersion or a literal version instead of internal/testenv.RootSDKRequirement (templates.go).
+//
+// It also fails when the root go.mod pins the SDK at a commit that is not in the history of the branch it is run on: the 12 hex digits of a pseudo-version, or the commit of the tag extensions/sdk/<version>, must be an ancestor of HEAD (git merge-base --is-ancestor). A pin of another line is public and passes every module check, then dangles when the branch is squash-merged. The check needs the history; ci.yml's bookkeeping job checks out with fetch-depth 0. In a shallow checkout that lacks the commit or cannot reach it, the result is a failure that says so (see reachable.go).
 package main
 
 import (
@@ -28,11 +30,17 @@ func main() {
 		fmt.Fprintln(os.Stderr, "modulepins:", err)
 		os.Exit(2)
 	}
+	reachable, err := checkReachable(root)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "modulepins:", err)
+		os.Exit(2)
+	}
+	problems = append(problems, reachable...)
 	for _, problem := range problems {
 		fmt.Fprintln(os.Stderr, problem)
 	}
 	if len(problems) > 0 {
-		fmt.Fprintf(os.Stderr, "modulepins: %d stale pin(s)\n", len(problems))
+		fmt.Fprintf(os.Stderr, "modulepins: %d pin problem(s)\n", len(problems))
 		os.Exit(1)
 	}
 }

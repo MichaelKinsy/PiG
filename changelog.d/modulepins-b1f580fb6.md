@@ -1,0 +1,3 @@
+### Changed
+
+- CI: `make module-pins` (part of `ci-bookkeeping`) now also fails when the root `go.mod` pins the extension SDK at a commit that is not in the history of the branch it runs on: the 12 hex digits of a pseudo-version, or the commit of the tag `extensions/sdk/<version>` (a release or a pre-release such as `v0.8.0-rc.1`), must be an ancestor of `HEAD`. A pin of another line is public and passes `make module-publication` and `make module-size`, then dangles when the branch is squash-merged. A shallow checkout that cannot answer fails with a message that asks for the full history instead of passing.
