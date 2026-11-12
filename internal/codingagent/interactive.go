@@ -601,7 +601,7 @@ type InteractiveMode struct {
 
 	// rawDrain consumes late protocol input before renderer teardown and reports a failed read; temporary handoffs restore
 	// without draining.
-	rawDrain             func() error
+	rawDrain             func(tui.ExitDrainFacts) error
 	rawRestore           func()
 	inputReader          *interactiveTerminalReader
 	externalEditorActive bool

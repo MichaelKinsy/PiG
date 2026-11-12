@@ -378,6 +378,22 @@ func (m *InteractiveMode) requestShutdown() {
 	m.postUITask(func() {})
 }
 
+// exitDrainSource is a renderer that reports what it left on the terminal.
+type exitDrainSource interface{ ExitDrainFacts() tui.ExitDrainFacts }
+
+// exitDrainFacts is what the exit drain needs from the renderer: the mouse and focus reports to stop and the replies still owed.
+func (m *InteractiveMode) exitDrainFacts() tui.ExitDrainFacts {
+	var renderer any = m.tuiInst
+	if m.altScreen != nil {
+		renderer = m.altScreen
+	}
+	source, ok := renderer.(exitDrainSource)
+	if !ok {
+		return tui.ExitDrainFacts{Unaccounted: true}
+	}
+	return source.ExitDrainFacts()
+}
+
 // stopInteractiveTui drains input, stops the renderer while output is raw, then restores cooked mode and disposes the transcript view exactly once. Signal cleanup precedes it; dead-terminal emergencies skip these writes.
 func (m *InteractiveMode) stopInteractiveTui() {
 	if m.tuiTornDown {
@@ -402,7 +418,8 @@ func (m *InteractiveMode) stopInteractiveTui() {
 	// emergencyTerminalExit during drainInput.
 	var drainErr error
 	if m.rawDrain != nil {
-		drainErr = m.rawDrain()
+		// pig divergence (D622): the drain ends on the terminal's reply to its DA1 query, after the renderer's mouse and focus reports are stopped.
+		drainErr = m.rawDrain(m.exitDrainFacts())
 		m.rawDrain = nil
 	} else if m.rawRestore != nil && m.inputReader != nil {
 		// upstream: packages/tui/src/terminal.ts:drainInput

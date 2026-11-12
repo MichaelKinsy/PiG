@@ -98,7 +98,7 @@ func TestExitRestoreFixture(t *testing.T) {
 	}
 	if mode == "stop" {
 		// A normal stop, in the driver's order: drain (which pops the keyboard protocol), the renderer, then raw-mode restore.
-		_ = drain()
+		_ = drain(alt.ExitDrainFacts())
 		alt.StopWithOptions(StopOptions{PreserveScreen: true})
 		restore()
 	}

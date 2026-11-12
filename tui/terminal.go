@@ -108,6 +108,10 @@ type ProcessTerminal struct {
 	protocolQueried bool
 	// pendingKeyboardProtocolDeviceAttributes counts the DA1 replies owed to keyboard protocol queries. Later DA1 replies answer other queries, such as QueryTerminalColors, and are forwarded.
 	pendingKeyboardProtocolDeviceAttributes atomic.Int32
+	// deviceAttributesAnswered is whether the terminal answered the DA1 sentinel of this raw session's keyboard protocol query: it replies to \x1b[c, so the exit can end on the reply to its own \x1b[c (ExitDrain).
+	deviceAttributesAnswered atomic.Bool
+	// drainClock is the clock and poll the exit drain waits with; the zero value is the real one.
+	drainClock exitDrainClock
 
 	progressMu        sync.Mutex
 	progressTicker    *time.Ticker
@@ -226,6 +230,7 @@ func (t *ProcessTerminal) queryAndEnableKittyProtocol() {
 	t.protocolQueried = true
 	keyboardProtocolPushed.Store(true)
 	t.pendingKeyboardProtocolDeviceAttributes.Add(1)
+	t.deviceAttributesAnswered.Store(false)
 	// The OSC 7501 support query shares the DA sentinel: a terminal that supports it replies before DA.
 	t.programStatusMu.Lock()
 	query := t.startProgramStatusLocked()
@@ -346,13 +351,14 @@ func EnterRawMode() (restore func(), err error) {
 	return processTerminal.EnterRawMode()
 }
 
-// EnterRawModeWithDrain separates process-shutdown input draining from cooked-mode restoration. A renderer drains first, stops while output is still raw, then restores cooked mode. Temporary terminal handoffs call only restore. drain returns DrainInput's error, so a caller can treat a terminal that went away as Pi's stdin error handler does.
-func EnterRawModeWithDrain() (restore func(), drain func() error, err error) {
+// EnterRawModeWithDrain separates process-shutdown input draining from cooked-mode restoration. A renderer drains first, stops while output is still raw, then restores cooked mode. Temporary terminal handoffs call only restore. drain returns the read error, so a caller can treat a terminal that went away as Pi's stdin error handler does; given the state the renderer owns, it ends as ExitDrain does.
+func EnterRawModeWithDrain() (restore func(), drain func(ExitDrainFacts) error, err error) {
 	restore, err = EnterRawModeForHandoff()
 	if err != nil {
 		return nil, nil, err
 	}
-	return restore, func() error { return processTerminal.DrainInput(time.Second, 50*time.Millisecond) }, nil
+	// pig divergence (D622): the process-exit drain ends on the reply to a DA1 query written after the input disables (ExitDrain), where Pi's drainInput waits for 50 ms of silence.
+	return restore, processTerminal.ExitDrain, nil
 }
 
 // StdinInForeground reports whether this process's group is the foreground process group of the terminal on stdin (tcgetpgrp). A terminal that
@@ -449,6 +455,7 @@ func ReadInputChunk(r io.Reader) ([]byte, error) {
 	}
 	buf := make([]byte, 256)
 	n, err := r.Read(buf)
+	noteInputTail(buf[:n])
 	return buf[:n], err
 }
 
@@ -490,6 +497,7 @@ func (t *ProcessTerminal) consumeOwedDeviceAttributesReply() bool {
 	}
 	// The last owed DA answers the latest query, which got no program status reply first. Earlier DA replies belong to queries from before a restart.
 	if t.pendingKeyboardProtocolDeviceAttributes.Add(-1) == 0 {
+		t.deviceAttributesAnswered.Store(true)
 		t.programStatusMu.Lock()
 		t.programStatusQueryPending = false
 		t.programStatusMu.Unlock()
@@ -713,12 +721,13 @@ func (t *ProcessTerminal) DrainInput(maxWait, idleWait time.Duration) error {
 	}
 
 	fd := t.stdin.Fd()
-	end := time.Now().Add(maxWait)
-	lastData := time.Now()
+	clock := t.drainClock
+	end := clock.time().Add(maxWait)
+	lastData := clock.time()
 	buf := make([]byte, 256)
 
 	for {
-		now := time.Now()
+		now := clock.time()
 		if !now.Before(end) || now.Sub(lastData) >= idleWait {
 			return nil
 		}
@@ -730,7 +739,7 @@ func (t *ProcessTerminal) DrainInput(maxWait, idleWait time.Duration) error {
 		if ms <= 0 {
 			ms = 1
 		}
-		n, err := pollReadable(fd, ms)
+		n, err := clock.pollReadable(fd, ms)
 		if err != nil {
 			return err
 		}
@@ -743,7 +752,7 @@ func (t *ProcessTerminal) DrainInput(maxWait, idleWait time.Duration) error {
 			}
 			return err
 		}
-		lastData = time.Now()
+		lastData = clock.time()
 	}
 }
 
