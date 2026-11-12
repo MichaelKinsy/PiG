@@ -66,8 +66,6 @@ type Global struct {
 type ToolOptions struct {
 	// Sandbox runs the scripts.
 	Sandbox Sandbox
-	// Namespaces are groups of tools by name prefix, such as MCP servers, for the `codemode` section and tool search.
-	Namespaces []Namespace
 	// InlineBudget is the estimated tokens the tool declarations in the `codemode` section may use. Nil: 3000.
 	InlineBudget *int
 	// Models gives scripts `models.*`: the model catalog, classifiers, and image generation. Nil: true.
@@ -134,7 +132,7 @@ func CreateExtension(options ToolOptions) *durable.Extension {
 					callable = append(callable, tool)
 				}
 			}
-			return Section(callable, options.Namespaces, budget)
+			return Section(callable, input.Agent.Extensions, budget)
 		}),
 	}}
 }

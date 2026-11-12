@@ -7,8 +7,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand/v2"
+	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -17,10 +19,10 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
-// Pi's codemodeDescription, namespaceOf, sampleOf and codemodeSection (describe.ts, imported as-is under Node, with Pi's
-// own pi-codemode declarations) answer for seeded random tool sets. Description, NamespaceOf, sampleOf and Section must
+// Pi's codemodeDescription, namespacesOf, sampleOf and codemodeSection (describe.ts, imported as-is under Node, with Pi's
+// own pi-codemode declarations) answer for seeded random tool sets. Description, NamespacesOf, sampleOf and Section must
 // answer the same text. The tool sets are the shapes the code branches on: tool names that are and are not identifiers,
-// namespaces whose prefixes nest, descriptions with blank and multi-line text, schemas of every JSON Schema kind, and a
+// extensions that declare namespaces (also the same name twice, and one without tools) and bring tools several of them name, descriptions with blank and multi-line text, schemas of every JSON Schema kind, and a
 // budget swept one token at a time across the whole range, so every place a tool does or does not fit is compared.
 
 type describeOp struct {
@@ -28,16 +30,21 @@ type describeOp struct {
 	Models     bool              `json:"models"`
 	Tools      []json.RawMessage `json:"tools"`
 	Tool       json.RawMessage   `json:"tool,omitempty"`
-	Namespaces []describeNS      `json:"namespaces"`
+	Extensions []describeExt     `json:"extensions"`
 	Budget     int               `json:"budget"`
-	Name       string            `json:"name"`
+}
+
+// describeExt is an extension of the oracle's ops: the tools it brings, by name, and the namespace it declares.
+type describeExt struct {
+	Name      string      `json:"name"`
+	Tools     []string    `json:"tools"`
+	Namespace *describeNS `json:"namespace,omitempty"`
 }
 
 type describeNS struct {
 	Name         string `json:"name"`
-	Description  string `json:"description,omitempty"`
+	Description  string `json:"description"`
 	Instructions string `json:"instructions,omitempty"`
-	Prefix       string `json:"prefix"`
 }
 
 type describeAnswer struct {
@@ -150,31 +157,63 @@ func randomTool(rng *rand.Rand, i int) string {
 	return out + `}`
 }
 
-func randomNamespaces(rng *rand.Rand) []describeNS {
-	all := []describeNS{
-		{Name: "github", Description: "GitHub MCP server", Prefix: "mcp__github__"},
-		{Name: "slack", Description: "  Slack\nMCP server  ", Prefix: "mcp__slack__"},
-		{Name: "slackbot", Prefix: "mcp__slackbot__", Instructions: "ignored here"},
-		{Name: "mcp", Description: "Every MCP tool", Prefix: "mcp__"},
-		{Name: "issues", Description: "Issue tools", Prefix: "mcp__github__list_"},
-		{Name: "Apple", Description: " ", Prefix: "my-"},
-		{Name: "zeta", Description: "Last", Prefix: "z"},
-		{Name: "Éclair", Prefix: "É"},
-		{Name: "githubAlt", Description: "Same prefix, later", Prefix: "mcp__github__"},
-		{Name: "aaa", Description: "Same prefix, sorted first", Prefix: "mcp__slack__"},
-	}
-	var picked []describeNS
-	for _, ns := range all {
-		if rng.IntN(2) == 0 {
-			picked = append(picked, ns)
+// randomExtensions are extensions bringing random subsets of the tools: some declare a namespace (one without tools too, and
+// two of the same name), some none; a tool several of them name belongs to the first.
+func randomExtensions(rng *rand.Rand, tools []json.RawMessage) []describeExt {
+	names := make([]string, len(tools))
+	for i, raw := range tools {
+		var named struct {
+			Name string `json:"name"`
 		}
+		if err := json.Unmarshal(raw, &named); err != nil {
+			panic(err)
+		}
+		names[i] = named.Name
+	}
+	all := []*describeNS{
+		{Name: "github", Description: "GitHub MCP server"},
+		{Name: "slack", Description: "  Slack\nMCP server  ", Instructions: "ignored here"},
+		{Name: "slackbot", Description: "Bot"},
+		{Name: "mcp", Description: "Every MCP tool"},
+		{Name: "Apple", Description: " "},
+		{Name: "zeta", Description: "Last", Instructions: "Z first"},
+		{Name: "Éclair", Description: ""},
+		{Name: "github", Description: "The same name, later"},
+		{Name: "aaa", Description: "Sorted first"},
+		nil,
+	}
+	var picked []describeExt
+	for i, ns := range all {
+		if rng.IntN(2) == 0 {
+			continue
+		}
+		extension := describeExt{Name: fmt.Sprintf("extension-%d", i), Tools: []string{}, Namespace: ns}
+		for _, name := range names {
+			if rng.IntN(3) == 0 {
+				extension.Tools = append(extension.Tools, name)
+			}
+		}
+		picked = append(picked, extension)
 	}
 	rng.Shuffle(len(picked), func(i, j int) { picked[i], picked[j] = picked[j], picked[i] })
-	return append([]describeNS{}, picked...)
+	return append([]describeExt{}, picked...)
+}
+
+// namespaceOracleSkip skips a test that needs Pi's code mode namespaces declared by extensions (Pi 5e24c6b1f, after the committed
+// pin 1.5.2): the pin's mirror has describe.ts with prefix namespaces and cannot answer. `make test-carried-oracles` runs the test
+// with the effective pin overridden to that commit; a pin that reaches the commit runs it in every run, and this skip, the make
+// target's entry and CARRIED_ORACLE_* go with that pin bump (the skip is the one pioracle.Bin gives an oracle that is not built).
+func namespaceOracleSkip(t testing.TB) {
+	t.Helper()
+	source, err := os.ReadFile(filepath.Join(testenv.ModuleRoot(t), ".upstream", "current", "packages", "durable", "src", "codemode", "describe.ts"))
+	if err != nil || !strings.Contains(string(source), "export function namespacesOf(") {
+		t.Skip("the pin's Pi mirror has prefix namespaces (Pi 5e24c6b1f declares them in extensions, after the committed pin): run make test-carried-oracles")
+	}
 }
 
 func askDescribePi(t *testing.T, ops []describeOp) []describeAnswer {
 	t.Helper()
+	namespaceOracleSkip(t)
 	input, err := json.Marshal(ops)
 	if err != nil {
 		t.Fatal(err)
@@ -215,20 +254,28 @@ func registration(t *testing.T, raw json.RawMessage) *durable.ToolRegistration {
 	return tool
 }
 
-func namespacesOf(in []describeNS) []Namespace {
-	out := make([]Namespace, len(in))
-	for i, ns := range in {
-		out[i] = Namespace(ns)
+// extensionsOf are the extensions of an op as the harness holds them: tools by name, the namespace declared.
+func extensionsOf(in []describeExt) []*durable.Extension {
+	out := make([]*durable.Extension, len(in))
+	for i, each := range in {
+		out[i] = &durable.Extension{Name: each.Name}
+		for _, name := range each.Tools {
+			out[i].Tools = append(out[i].Tools, &durable.ToolRegistration{Name: name})
+		}
+		if each.Namespace != nil {
+			out[i].Namespace = &durable.ToolNamespace{Name: each.Namespace.Name, Description: each.Namespace.Description, Instructions: each.Namespace.Instructions}
+		}
 	}
 	return out
 }
 
 func TestDescribeMatchesPiOnSeededToolSets(t *testing.T) {
+	namespaceOracleSkip(t)
 	rng := rand.New(rand.NewPCG(20261117, 3))
 	ops := []describeOp{{Op: "constants"}, {Op: "description", Models: false}, {Op: "description", Models: true}}
 	type setup struct {
 		tools      []json.RawMessage
-		namespaces []describeNS
+		extensions []describeExt
 	}
 	var sets []setup
 	for i := range 14 {
@@ -236,13 +283,13 @@ func TestDescribeMatchesPiOnSeededToolSets(t *testing.T) {
 		for j := range 1 + rng.IntN(8) {
 			tools = append(tools, json.RawMessage(randomTool(rng, i*10+j)))
 		}
-		sets = append(sets, setup{tools, randomNamespaces(rng)})
+		sets = append(sets, setup{tools, randomExtensions(rng, tools)})
 	}
-	sets = append(sets, setup{[]json.RawMessage{}, []describeNS{}})
+	sets = append(sets, setup{[]json.RawMessage{}, []describeExt{}}, setup{[]json.RawMessage{}, randomExtensions(rng, []json.RawMessage{json.RawMessage(`{"name":"x"}`)})})
 	// The upper end of each sweep: a budget no tool set needs more than.
 	full := make([]describeOp, len(sets))
 	for i, set := range sets {
-		full[i] = describeOp{Op: "section", Tools: set.tools, Namespaces: set.namespaces, Budget: 1 << 30}
+		full[i] = describeOp{Op: "section", Tools: set.tools, Extensions: set.extensions, Budget: 1 << 30}
 	}
 	fullAnswers := askDescribePi(t, full)
 	for i, set := range sets {
@@ -251,16 +298,20 @@ func TestDescribeMatchesPiOnSeededToolSets(t *testing.T) {
 			_ = json.Unmarshal(*fullAnswers[i].OK, &text)
 		}
 		for budget := 0; budget <= len(text)/4+8; budget++ {
-			ops = append(ops, describeOp{Op: "section", Tools: set.tools, Namespaces: set.namespaces, Budget: budget})
+			ops = append(ops, describeOp{Op: "section", Tools: set.tools, Extensions: set.extensions, Budget: budget})
 		}
 		for _, tool := range set.tools {
 			ops = append(ops, describeOp{Op: "sample", Tool: tool})
 		}
 	}
-	for _, ns := range [][]describeNS{randomNamespaces(rng), randomNamespaces(rng), randomNamespaces(rng)} {
-		for _, name := range []string{"read", "mcp__github__list_issues", "mcp__github__x", "mcp__slack__post", "mcp__slackbot__ping", "mcp__other", "my-tool", "zed", "Éa", "", "mcp__", "mcp"} {
-			ops = append(ops, describeOp{Op: "namespace", Name: name, Namespaces: ns})
-		}
+	// The namespace of every tool, over extensions that bring the same tools in different orders.
+	named := []json.RawMessage{}
+	for _, name := range []string{"read", "mcp__github__list_issues", "mcp__github__x", "mcp__slack__post", "mcp__slackbot__ping", "mcp__other", "my-tool", "zed", "Éa", "", "mcp__", "mcp"} {
+		quoted, _ := json.Marshal(name)
+		named = append(named, json.RawMessage(`{"name":`+string(quoted)+`}`))
+	}
+	for range 12 {
+		ops = append(ops, describeOp{Op: "namespacesOf", Extensions: randomExtensions(rng, named)})
 	}
 	answers := askDescribePi(t, ops)
 	texts, sections := 0, 0
@@ -270,7 +321,7 @@ func TestDescribeMatchesPiOnSeededToolSets(t *testing.T) {
 		if answers[i].Err != nil {
 			t.Fatalf("op %d (%s): Pi threw %q on %s", i, op.Op, *answers[i].Err, func() string { b, _ := json.Marshal(op); return string(b) }())
 		}
-		if !wantNil && op.Op != "namespace" && op.Op != "constants" {
+		if !wantNil && op.Op != "namespacesOf" && op.Op != "constants" {
 			if err := json.Unmarshal(*answers[i].OK, &want); err != nil {
 				t.Fatal(err)
 			}
@@ -301,7 +352,7 @@ func TestDescribeMatchesPiOnSeededToolSets(t *testing.T) {
 			for j, raw := range op.Tools {
 				tools[j] = registration(t, raw)
 			}
-			got, err := Section(tools, namespacesOf(op.Namespaces), op.Budget)
+			got, err := Section(tools, extensionsOf(op.Extensions), op.Budget)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -314,23 +365,17 @@ func TestDescribeMatchesPiOnSeededToolSets(t *testing.T) {
 				t.Errorf("budget %d of set %d: Section differs from Pi\nPiG:\n%s\nPi:\n%s", op.Budget, i, *got, want)
 			}
 			sections++
-		case "namespace":
-			got := namespaceOf(op.Name, namespacesOf(op.Namespaces))
-			var piName *string
-			if !wantNil {
-				var ns describeNS
-				if err := json.Unmarshal(*answers[i].OK, &ns); err != nil {
-					t.Fatal(err)
-				}
-				piName = &ns.Name
+		case "namespacesOf":
+			var piNames map[string]string
+			if err := json.Unmarshal(*answers[i].OK, &piNames); err != nil {
+				t.Fatal(err)
 			}
-			switch {
-			case got == nil && piName != nil:
-				t.Errorf("namespaceOf(%q) = none, Pi %q", op.Name, *piName)
-			case got != nil && piName == nil:
-				t.Errorf("namespaceOf(%q) = %q, Pi none", op.Name, got.Name)
-			case got != nil && got.Name != *piName:
-				t.Errorf("namespaceOf(%q) = %q, Pi %q", op.Name, got.Name, *piName)
+			got := map[string]string{}
+			for tool, namespace := range NamespacesOf(extensionsOf(op.Extensions)) {
+				got[tool] = namespace.Name
+			}
+			if !reflect.DeepEqual(got, piNames) {
+				t.Errorf("NamespacesOf = %v, Pi %v", got, piNames)
 			}
 		}
 	}

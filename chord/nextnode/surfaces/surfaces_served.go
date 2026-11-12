@@ -50,6 +50,10 @@ func MimeOf(path string) string {
 	return "application/octet-stream"
 }
 
+// AssetExtensions are the extensions of the files a build collects as assets (fonts, images, WebAssembly): served under the
+// prefix's `assets/`.
+var AssetExtensions = []string{"svg", "png", "jpg", "jpeg", "gif", "webp", "woff", "woff2", "ttf", "wasm"}
+
 // assetTypes are the types of the assets builds collect, by extension.
 var assetTypes = map[string]string{
 	"svg": "image/svg+xml", "png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "gif": "image/gif", "webp": "image/webp",

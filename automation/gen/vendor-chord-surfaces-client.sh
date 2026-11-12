@@ -6,6 +6,11 @@
 #   PI_COMMIT      the commit of PI_TREE for the manifest (default: the pin's). A commit other than the pin's is a catch-up: the
 #                  manifest then names it as `catchup`, the one commit the manifest may differ from the pin by (the Go test
 #                  TestNodeVendoredFilesAreExactlyTheManifests reads both), and records the pin it was made against.
+#   PI_CARRIED     Pi commits (comma-separated, in Pi's order) cherry-picked onto PI_COMMIT to make PI_TREE: a tree that is the pin plus those
+#                  commits alone, for a vendored file a carried commit changes while a later Pi commit this port does not carry (events,
+#                  Pi 8d30e6306) changed the rest of the closure. The manifest records them as `carried`; make PI_TREE with
+#                  `git worktree add --detach <dir> <pin> && git -C <dir> cherry-pick <carried...>`. Drop it when a re-vendor at a
+#                  later commit takes over (then PI_COMMIT is that commit, a `catchup`).
 #   PI_TELEMETRY   the @earendil-works/pi-telemetry package dir (default: the one extensions/sdk-ts installed)
 # React (the version Pi chord tests with, production builds) and its scheduler come from npm (`npm pack`).
 # @earendil-works/pi-schema is a package of the Pi tree (packages/schema), copied from PI_TREE; its version and
@@ -30,4 +35,4 @@ wantTelemetry=$(node -p "require('$tree/packages/chord/package.json').dependenci
 haveTelemetry=$(node -p "require('$telemetry/package.json').version")
 [ "$wantTelemetry" = "$haveTelemetry" ] || { echo "vendor-chord-surfaces-client: Pi's chord pins @earendil-works/pi-telemetry $wantTelemetry, $telemetry is $haveTelemetry" >&2; exit 1; }
 
-node --disable-warning=ExperimentalWarning "$root/automation/gen/vendor-chord-surfaces-client.mjs" "$tree" "$commit" "$telemetry" "$out" "$pin"
+node --disable-warning=ExperimentalWarning "$root/automation/gen/vendor-chord-surfaces-client.mjs" "$tree" "$commit" "$telemetry" "$out" "$pin" "${PI_CARRIED:-}"

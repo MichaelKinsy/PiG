@@ -176,6 +176,19 @@ func TestAPageLoadsThePluginsAppliesAnEditInPlaceKeepingThePagesStateAndFollowsT
 	}
 }
 
+func TestAPageWritesNoThemeOnRootWithThemesFalseSoTheAppsOwnVariablesStand(t *testing.T) {
+	browser := browsertest.Start(t)
+	s := webBrowserApp(t, versionedEntry(t, "1", "", "{ themes: false }"), freePort(t), map[string]map[string]string{"notes": panelPlugin("Notes", "#123456")}, nil)
+	signIn(browser, s.app.OwnerLink())
+	browser.Wait(`document.querySelector(".panel")?.textContent === "Notes"`)
+	if got := browser.String(`document.documentElement.style.cssText`); got != "" {
+		t.Fatalf("cssText = %q, want none", got)
+	}
+	if got := browser.String(`getComputedStyle(document.documentElement).getPropertyValue("--accent")`); got != "" {
+		t.Fatalf("--accent = %q, want none", got)
+	}
+}
+
 func TestAPageReloadsWhenTheServerComesBackWithAnotherBaseBundle(t *testing.T) {
 	browser := browsertest.Start(t)
 	port := freePort(t)

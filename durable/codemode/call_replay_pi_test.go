@@ -18,19 +18,23 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
-// codemode.ts:263-285 builds the namespaces of the start data: every tool whose name starts with a namespace's prefix is in
-// that namespace's `tools`, in registry order. describeNamespace() answers from them, matching the name or its identifier
+// codemode.ts builds the namespaces of the start data from the extensions' declared namespaces: every tool of an extension
+// that declares one is in that namespace's `tools`, in registry order (Pi 5e24c6b1f). describeNamespace() answers from them, matching the name or its identifier
 // form, and the first match is the one it describes.
 func TestDescribeNamespaceListsEveryToolOfItsNamespaceAndMatchesItByIdentifier(t *testing.T) {
-	chat := codemodeChatWith(t, ToolOptions{Namespaces: []Namespace{
-		{Name: "my-github", Description: "Two words", Prefix: "mcp__my_github__"},
-		{Name: "slack", Prefix: "mcp__slack__"},
-	}})
-	for _, name := range []string{"mcp__my_github__a", "mcp__slack__post", "mcp__my_github__b", "mcp__my_github__c"} {
-		addTool(t, chat.setup.registry, tool(name, func(context.Context, toolArgs, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
-			return durable.ToolExecutionResult{}, nil
-		}, durable.ReplayUnsafe))
+	chat := codemodeChatWith(t, ToolOptions{})
+	noop := func(context.Context, toolArgs, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
+		return durable.ToolExecutionResult{}, nil
 	}
+	tools := func(names ...string) []*durable.ToolRegistration {
+		var out []*durable.ToolRegistration
+		for _, name := range names {
+			out = append(out, tool(name, noop, durable.ReplayUnsafe))
+		}
+		return out
+	}
+	addNamespaced(t, chat.setup.registry, "mcp:my-github", durable.ToolNamespace{Name: "my-github", Description: "Two words"}, tools("mcp__my_github__a", "mcp__my_github__b", "mcp__my_github__c")...)
+	addNamespaced(t, chat.setup.registry, "mcp:slack", durable.ToolNamespace{Name: "slack", Description: "Slack"}, tools("mcp__slack__post")...)
 	run := runScript(t, `return {
 		byName: await describeNamespace("my-github"),
 		byIdentifier: await describeNamespace("my_github"),
@@ -41,7 +45,7 @@ func TestDescribeNamespaceListsEveryToolOfItsNamespaceAndMatchesItByIdentifier(t
 		t.Fatalf("%q: %v", run.text, err)
 	}
 	github := map[string]any{"name": "my-github", "description": "Two words", "tools": []any{"mcp__my_github__a", "mcp__my_github__b", "mcp__my_github__c"}}
-	slack := map[string]any{"name": "slack", "tools": []any{"mcp__slack__post"}}
+	slack := map[string]any{"name": "slack", "description": "Slack", "tools": []any{"mcp__slack__post"}}
 	for key, want := range map[string]map[string]any{"byName": github, "byIdentifier": github, "second": slack} {
 		if !equalJSON(got[key], want) {
 			t.Errorf("%s = %s, want %s", key, mustJSON(got[key]), mustJSON(want))

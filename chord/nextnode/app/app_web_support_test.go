@@ -49,14 +49,15 @@ func quoted(s string) string {
 	return string(text)
 }
 
-// versionedEntry writes a web entry importing the fixture's with version in dir (a new directory when empty): its path.
-func versionedEntry(t testing.TB, version, dir string) string {
+// versionedEntry writes a web entry importing the fixture's with version in dir (a new directory when empty), calling
+// `start(options)` (options is a literal): its path.
+func versionedEntry(t testing.TB, version, dir string, options ...string) string {
 	t.Helper()
 	if dir == "" {
 		dir = t.TempDir()
 	}
 	main := surfacesFixture(t, "web", "main.ts")
-	text := "import { start } from " + quoted(main) + ";\nglobalThis.version = " + quoted(version) + ";\nstart();\n"
+	text := "import { start } from " + quoted(main) + ";\nglobalThis.version = " + quoted(version) + ";\nstart(" + strings.Join(options, "") + ");\n"
 	path := filepath.Join(dir, "main.ts")
 	if err := os.WriteFile(path, []byte(text), 0o644); err != nil {
 		t.Fatal(err)

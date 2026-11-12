@@ -1,6 +1,6 @@
 // Run Pi's packages/durable/src/codemode/codemode.ts (imported as-is with types stripped): the code mode tool and
 // extension declarations, the module's constants, its three documents, and its `codemode` prompt section.
-// Op: {op: "static"} | {op: "variant", options: {models?, inlineBudget?, namespaces?}}
+// Op: {op: "static"} | {op: "variant", options: {models?, inlineBudget?}}
 //   | {op: "section", options, callable: [{name, description, parameters, deferred?}]}
 // stdout: per op its description of what Pi built.
 // usage: node codemode_oracle.mjs <packages dir>   (PI_INTEROP_DIR: a directory whose node_modules holds @earendil-works/pi-durable)
@@ -39,9 +39,14 @@ const options = (raw) => ({
 	sandbox: {},
 	...(raw.models === null || raw.models === undefined ? {} : { models: raw.models }),
 	...(raw.inlineBudget === null || raw.inlineBudget === undefined ? {} : { inlineBudget: raw.inlineBudget }),
-	namespaces: raw.namespaces,
 });
 
+const extensionsOf = (raw) =>
+	(raw ?? []).map((extension) => ({
+		name: extension.name,
+		tools: extension.tools.map((name) => ({ name })),
+		...(extension.namespace ? { namespace: extension.namespace } : {}),
+	}));
 let input = "";
 process.stdin.setEncoding("utf8");
 for await (const chunk of process.stdin) input += chunk;
@@ -81,7 +86,7 @@ for (const op of JSON.parse(input)) {
 			}
 			case "section": {
 				const extension = codemode.createCodemodeExtension(options(op.options));
-				const rendered = await extension.sections[0].render({ agent: { callable: op.callable } });
+				const rendered = await extension.sections[0].render({ agent: { callable: op.callable, extensions: extensionsOf(op.extensions) } });
 				out.push({ ok: rendered ?? null });
 				break;
 			}

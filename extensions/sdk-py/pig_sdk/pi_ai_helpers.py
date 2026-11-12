@@ -477,7 +477,10 @@ _RETRYABLE_PROVIDER_ERROR_PATTERN = _js_regexp("|".join([
     "(?<![a-z0-9])(?:429|500|502|503|504|520|524)(?![a-z0-9])",
     "service.?(?:is.?)?(?:temporarily.?)?unavailable", "server.?error", "internal.?error", "provider.?returned.?(?:an.?)?error",
     "exceeded request buffer limit while retrying upstream", "unable to forward upstream", "upstream.?request.?failed", "upstream_stream_read_error", "stream was interrupted",
-    "http/?2 stream failed", "network.?error", "connection.?error", "connection.?refused", "connection.?lost", "other side closed", "fetch failed",
+    "http/?2 stream failed", "network.?error", "connection.?error", "connection.?refused", "connection.?lost",
+    # Pi 9b88b94e2 (#12064): a gateway's mid-stream drop relayed as an Anthropic-style api_error event reading "Connection closed.".
+    "connection.?closed",
+    "other side closed", "fetch failed",
     r"request to \S+ failed, reason:", "getaddrinfo", "ENOTFOUND", "EAI_AGAIN", "upstream.?connect", "reset before headers", "socket hang up", "socket connection was closed",
     "timed? out", "timeout", "terminated", "websocket.?closed", "websocket.?error", "ended without", "stream ended before message_stop",
     "stream ended before a terminal response event", "http2 request did not get a response",

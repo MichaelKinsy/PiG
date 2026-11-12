@@ -17,16 +17,22 @@ import (
 // "P3" to "P5"): the base bundle built from the app's entry after the server's start (`build`; the page and the surface's files
 // wait for it, and answer 503 when it failed), the plugins' web scripts published as registered scripts and one combined file,
 // `WebScripts` showing the current set, and the page through the app's own template;
-// everything as `Http` contributions of the surface's facet, which the app puts among the server's core facets. The app keeps
-// its HTML, CSS, components and themes.
+// everything as `Http` contributions of the surface's facet, which the app puts among the server's core facets, or (Routes false)
+// served by an app with an HTTP stack of its own through File, PageAssets and Base. The app keeps its HTML, CSS, components and
+// themes.
 
-// WebSurfaceOptions is what NewWebSurface takes.
+// WebSurfaceOptions is what NewWebSurface takes: the surface's routes as `Http` contributions with the app's page template, or none
+// (Routes false) for an app with an HTTP stack of its own, which serves File, PageAssets and Base itself (Pi's `routes?: true` with
+// the page options, or `routes: false` alone: a union in Pi, one struct here whose Page, Paths and Public a Routes false ignores).
 type WebSurfaceOptions struct {
 	// Kind is the web facet kind: `web` by default ("").
 	Kind    string
 	Plugins *plugins.Plugins
 	// Entry is the app's web start code (it calls `startPage`): the base bundle's entry.
 	Entry string
+	// Routes is whether the surface contributes its routes (`Http` contributions): yes by default (nil); false for an app serving
+	// the surface itself.
+	Routes *bool
 	// Page is the page's HTML: the app's template, given the request (its Nonce) and the assets to include.
 	Page func(request http.HttpRequest, assets PageAssets) (string, error)
 	// Paths are the paths serving the page: `["/"]` by default (nil; patterns, `/*` for a page with its own routing).
@@ -88,8 +94,15 @@ func NewWebSurface(server host.Host, options WebSurfaceOptions) *WebSurface {
 		kind = "web"
 	}
 	building := newSurfaceBuild(Web, PlatformBrowser, WebPrefix, surfaceBuildOptions{kind: kind, entry: options.Entry, conditions: options.Conditions, plugins: options.Plugins}, server)
-	routes := webRoutes(options, building)
+	withRoutes := options.Routes == nil || *options.Routes
+	var routes []http.HttpRouteEntry
+	if withRoutes {
+		routes = webRoutes(options, building)
+	}
 	facet := host.DefineFacet(func(_ host.FacetHost, self host.FacetSelf) error {
+		if !withRoutes {
+			return nil
+		}
 		return self.Contribute(registries.Registry[any, any](http.Http), http.HttpContribution{
 			Routes: routes,
 			Csp: []http.CspEntry{
@@ -102,6 +115,31 @@ func NewWebSurface(server host.Host, options WebSurfaceOptions) *WebSurface {
 		})
 	})
 	return &WebSurface{Facet: facet, Scripts: ScriptsFacet(Web, building.set), building: building}
+}
+
+// File is a file of the surface (path under WebPrefix), served forever; 404 for none, 503 when the build failed (the build is
+// started when nothing did, and awaited as long as ctx lasts).
+func (s *WebSurface) File(path string, ctx context.Context) (http.HttpResponse, error) {
+	return s.building.file(path, ctx)
+}
+
+// PageAssets is what a page includes now (its bootstrap, scripts and stylesheets); nil when the build failed.
+func (s *WebSurface) PageAssets(ctx context.Context) (*PageAssets, error) {
+	parts, err := s.building.parts(ctx)
+	if parts == nil {
+		return nil, err
+	}
+	assets := pageAssets(parts.base, parts.published)
+	return &assets, nil
+}
+
+// Base is the base bundle's hash now (what an outdated page compares); "" when the build failed.
+func (s *WebSurface) Base(ctx context.Context) (string, error) {
+	parts, err := s.building.parts(ctx)
+	if parts == nil {
+		return "", err
+	}
+	return parts.base.Hash, nil
 }
 
 // webRoutes are the surface's routes, each waiting for the build (503 when it failed): its files (served forever), its current
@@ -167,14 +205,15 @@ func pageAssets(base *BaseBundle, published *PublishedScripts) PageAssets {
 			styles = append(styles, *entry.CSS)
 		}
 	}
-	return PageAssets{Bootstrap: bootstrap(base.Hash, set), Script: base.Script, Plugins: set.Combined, Styles: styles}
+	return PageAssets{Bootstrap: PageBootstrap(base.Hash, set), Script: base.Script, Plugins: set.Combined, Styles: styles}
 }
 
-// bootstrap is the page's inline bootstrap: the base hash and each plugin's stylesheet (set's, the combined file's) for
+// PageBootstrap is the page's inline bootstrap: the base hash and each plugin's stylesheet (set's, the combined file's) for
 // `startPage`; how each stylesheet's load ended (`links`, by `href`: `load` or `error`, from a capturing listener the page's
 // start removes: a failed load still has a `sheet`, empty); and the `chordFacet` the combined file's scripts call before the
-// base bundle runs (they queue; `startPage` takes them).
-func bootstrap(hash string, set next.ScriptSet) string {
+// base bundle runs (they queue; `startPage` takes them). Also what a page built offline runs first (a static page:
+// `startPage({ follow: false })`).
+func PageBootstrap(hash string, set next.ScriptSet) string {
 	styles := delta.NewJsonObject(len(set.Plugins))
 	for _, entry := range set.Plugins {
 		if entry.CSS != nil {

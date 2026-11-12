@@ -67,7 +67,9 @@ func BuildBase(entry string, platform BasePlatform, prefix string, conditions []
 		MinifyWhitespace: true, MinifyIdentifiers: true, MinifySyntax: true, LegalComments: api.LegalCommentsNone,
 		// Ignore any tsconfig.json: TypeScript is stripped, JSX compiled with the automatic React runtime.
 		TsconfigRaw: "{}", JSX: api.JSXAutomatic,
-		Define:   map[string]string{"process.env.NODE_ENV": `"production"`},
+		Define: map[string]string{"process.env.NODE_ENV": `"production"`},
+		// Fonts and images a stylesheet's `url()` (or a script) names: files under `assets/`, named by their content.
+		Loader:   assetLoaders(),
 		Plugins:  []api.Plugin{recorder.Plugin()},
 		LogLevel: api.LogLevelSilent,
 	}
@@ -111,6 +113,15 @@ func BuildBase(entry string, platform BasePlatform, prefix string, conditions []
 		}
 	}
 	return bundle, nil
+}
+
+// assetLoaders is the file loader of every extension of AssetExtensions.
+func assetLoaders() map[string]api.Loader {
+	loaders := make(map[string]api.Loader, len(AssetExtensions))
+	for _, extension := range AssetExtensions {
+		loaders["."+extension] = api.LoaderFile
+	}
+	return loaders
 }
 
 // ProcessConditions is the resolution conditions of a Node process started with execArgv and the environment's nodeOptions

@@ -35,6 +35,18 @@ export const backportPatches = {
   // 49fe0a237 (#11987): Anthropic message threads default by endpoint, not provider id (the description pi-ai's compat schema and the models docs carry).
   "pi-ai/providers/compat-schema.js": [messageThreadsDefault],
   "pi-coding-agent/docs/models-configuration.md": [messageThreadsDefault],
+  // 9b88b94e2 (#12093, #12064): a provider error reading "Connection closed." is retried (the classifier that pi-ai's SDK, the coding agent and the oracle test of ai.IsRetryableAssistantError run).
+  "pi-ai/utils/retry.js": [
+    [`    "connection.?lost",
+    "other side closed",
+`, `    "connection.?lost",
+    ${note("9b88b94e2").trim()}
+    // Gateway mid-stream drop relayed as an Anthropic-style \`api_error\` event,
+    // e.g. {"type":"error","error":{"type":"api_error","message":"Connection closed."}} (#12064).
+    "connection.?closed",
+    "other side closed",
+`],
+  ],
   // be2744d95 (#12047): a Kitty fullscreen redraw keeps the uploaded images and skips the ED 2 clear.
   "pi-tui/tui-alt-screen.js": [
     [`            const clearImages = this.imageProtocol === "kitty" && hadUploadedKittyImages
@@ -178,6 +190,21 @@ export function stripAnsiEscapes(text) {
         result += "</a>";
     }
 `],
+  ],
+  // a83b75a07 (#12089): a command a signal ended reports 128 + the signal number as its code, not 0.
+  "pi-coding-agent/core/exec.js": [
+    ['import { spawn } from "node:child_process";\n', 'import { spawn } from "node:child_process";\nimport { constants as osConstants } from "node:os";\n'],
+    ["    const exitCode = code ?? 0;\n",
+      `    ${note("a83b75a07").trim()}
+    // A signal-killed command has no exit code. Use the shell convention, as the bash tool does, so a
+    // timeout, an abort or a crash does not read as success (#12088).
+    const exitCode = code ?? (proc.signalCode ? 128 + (osConstants.signals[proc.signalCode] ?? 0) : 1);
+`],
+  ],
+  // a83b75a07 (#12089): the pi.exec docs name the code of a command a signal ended.
+  "pi-coding-agent/docs/extensions.md": [
+    ["A command that ignores SIGTERM gets SIGKILL after 5 seconds.\n",
+      "A command that ignores SIGTERM gets SIGKILL after 5 seconds. A command terminated by a signal, by pi or otherwise, reports 128 + the signal number as `code`, like a shell: 143 for SIGTERM, 137 for SIGKILL.\n"],
   ],
   // 0e1e3fc81 (#12052): a rendered line is blank once every escape sequence the converter handles is stripped.
   "pi-coding-agent/core/export-html/tool-renderer.js": [

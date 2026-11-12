@@ -117191,6 +117191,17 @@
       "shapeHash": "sha256:174925e07fe689a1ad77b2d12cbd9cc333fd8ebd4214c53530f5a51a06e5b3e3"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#exitCode",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "exitCode",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(state *os.ProcessState, _ bool) int"
+      },
+      "shapeHash": "sha256:8bc53a13f8249730430bc90fe88709d06fbd65e7438983c9ee0af6dda79e6088"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#forceTerminate",
       "package": "github.com/MichaelKinsy/PiG/coding/extension",
       "name": "forceTerminate",

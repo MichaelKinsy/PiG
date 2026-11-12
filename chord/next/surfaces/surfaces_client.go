@@ -101,7 +101,10 @@ type ClientOptions struct {
 	// Telemetry makes the host's telemetry adapter (nil: none); incarnation names the host's run (it is read at the adapter's
 	// first span, after the host was made).
 	Telemetry func(incarnation func() string) telemetry.TelemetryContext
-	OnError   func(err ClientError)
+	// Follow is whether the client follows the scripts object (new sets applied, another base Outdated, the server's base asked
+	// before each reconnect): yes by default (nil); false for a static client (a page built offline and served elsewhere).
+	Follow  *bool
+	OnError func(err ClientError)
 }
 
 // Client is a running client: its host, once its plugins are loaded, and its Stop.
@@ -109,9 +112,12 @@ type Client struct {
 	Host    host.Host
 	connect *Connection
 	updates *updates
+	// following is closed when the background follow of the scripts object ended (it is closed at once for a static client).
+	following chan struct{}
 }
 
-// StartClient starts a client: its host loaded with the initial scripts, its link kept, its plugins kept current. As in Pi
+// StartClient starts a client: its host loaded with the initial scripts, its link kept, its plugins kept current from the scripts
+// object once the server answers (returning before: a client starts offline). As in Pi
 // the client's lifetime is BACKGROUND_CONTEXT (context.Background): it bounds the scripts object's hold and watch, the
 // script fetches and the stylesheets' loads, and Stop ends it.
 func StartClient(options ClientOptions) (*Client, error) {
@@ -154,30 +160,46 @@ func StartClient(options ClientOptions) (*Client, error) {
 		left[each.Plugin] = true
 	}
 	u := newUpdates(h, loaded, left, options, ctx, cancel)
-	loop := connect(h, options, ctx, func(state ConnectionState) {
-		if state == Connected {
+	follow := options.Follow == nil || *options.Follow
+	// A static client asks no base: it never learns it is outdated.
+	serverBase := options.ServerBase
+	if !follow {
+		serverBase = func(context.Context) (*string, error) { return nil, nil }
+	}
+	loop := connect(h, options, ctx, serverBase, func(state ConnectionState) {
+		if follow && state == Connected {
 			u.reconnected()
 		}
 	})
-	if err := u.follow(); err != nil {
-		loop.Stop()
-		u.stop()
-		_ = h.Close(ctx)
-		return nil, err
+	following := make(chan struct{})
+	if follow {
+		// In the background: the scripts object is the server's, and a client starts (a page renders) without it, offline too.
+		// Pi's `void updates.follow(context).catch(...)`: an owned task whose failure is reported, ended and joined by Stop.
+		//portlint:allow golifetime the task ends when its hold and watch are made or fail (Stop aborts its context) and Stop joins it through following
+		go func() {
+			defer close(following)
+			if err := u.follow(); err != nil {
+				options.OnError(ClientError{Kind: ClientUpdateFailed, Err: err})
+			}
+		}()
+	} else {
+		close(following)
 	}
-	return &Client{Host: h, connect: loop, updates: u}, nil
+	return &Client{Host: h, connect: loop, updates: u, following: following}, nil
 }
 
-// Stop stops the client: its connection loop, its updates, its host.
+// Stop stops the client: its connection loop, its updates (and the background follow of the scripts object, which it ends and
+// joins), its host.
 func (c *Client) Stop(ctx context.Context) error {
 	c.connect.Stop()
 	c.updates.stop()
+	<-c.following
 	return c.Host.Close(ctx)
 }
 
 // connect keeps h's parent link to the server, asking ServerBase and CanRetry before every reconnect; onState hears each state
 // after the app's OnConnection.
-func connect(h host.Host, options ClientOptions, ctx context.Context, onState func(ConnectionState)) *Connection {
+func connect(h host.Host, options ClientOptions, ctx context.Context, serverBase func(context.Context) (*string, error), onState func(ConnectionState)) *Connection {
 	return KeepConnected(LoopOptions{
 		Open: func(events SocketEvents) LoopLink {
 			// The loop and the host both follow the link's close; a link has one close listener.
@@ -196,7 +218,7 @@ func connect(h host.Host, options ClientOptions, ctx context.Context, onState fu
 			onState(state)
 		},
 		CanRetry: func(ctx context.Context) (bool, error) {
-			base, err := options.ServerBase(ctx)
+			base, err := serverBase(ctx)
 			if err != nil {
 				return false, err
 			}
@@ -313,13 +335,21 @@ func newUpdates(h host.Host, loaded *LoadedFacets, left map[string]bool, options
 	return u
 }
 
-// follow holds the scripts object and applies every set it shows, the first included (a reconnect's snapshot too).
+// follow holds the scripts object and applies the set it shows when following begins (a watch's current value is no frame) and
+// every set it shows after (a reconnect's snapshot too). It returns once the watch is started: the hold and the watch wait for
+// the server (StartClient runs it in the background), and an error is why there is no following.
 func (u *updates) follow() error {
 	held, err := u.host.Hold(u.ctx, u.options.Scripts, delta.NewJsonObject(0), host.GetOptions{})
 	if err != nil {
 		return err
 	}
 	u.mu.Lock()
+	if err := u.ctx.Err(); err != nil {
+		// Stop ran before the hold was recorded: nothing else releases it.
+		u.mu.Unlock()
+		held.Release()
+		return err
+	}
 	u.release = held.Release
 	u.mu.Unlock()
 	watch, err := held.Member("set").Watch(u.ctx)
@@ -327,31 +357,43 @@ func (u *updates) follow() error {
 		return err
 	}
 	u.mu.Lock()
+	if err := u.ctx.Err(); err != nil {
+		u.mu.Unlock()
+		_, _ = watch.Stop()
+		return err
+	}
 	u.watch = watch
 	u.mu.Unlock()
+	// The set shown when the watch began (a set published before it, while the client started, is no frame): Pi's `void this.#take(...)`.
+	u.take(ScriptSetOf(watch.Value()))
 	chord.StartUnlessEnded(func() {
 		watch.Start(func(_ context.Context, call chord.WatchCall[delta.JsonValue]) error {
 			if call.Kind != chord.WatchCallValue {
 				return nil
 			}
-			set := ScriptSetOf(call.Value)
-			u.mu.Lock()
-			u.latest = &set
-			retry := u.retry
-			u.retry = nil
-			u.pause = 0
-			u.mu.Unlock()
-			if retry != nil {
-				retry()
-			}
-			// Pi: `await this.#queue(set, ctx)`: the watch's call returns when the update ended.
-			applied := u.enqueue(&set)
+			// Pi: `await this.#take(set, ctx)`: the watch's call returns when the update ended.
+			applied := u.take(ScriptSetOf(call.Value))
 			chord.DeliveryEntered()
 			<-applied
 			return nil
 		})
 	})
 	return nil
+}
+
+// take takes set as the newest: a pending retry of an older one is dropped, set applied in turn; the channel it returns is closed
+// when the update ended (Pi's `#take`).
+func (u *updates) take(set ScriptSet) <-chan struct{} {
+	u.mu.Lock()
+	u.latest = &set
+	retry := u.retry
+	u.retry = nil
+	u.pause = 0
+	u.mu.Unlock()
+	if retry != nil {
+		retry()
+	}
+	return u.enqueue(&set)
 }
 
 // reconnected: the link is back: the newest set is applied again when this client does not run all of it (a plugin kept its

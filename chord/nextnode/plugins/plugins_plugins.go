@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
@@ -335,7 +338,7 @@ func (c *Plugins) Discovery() model.Discovery {
 }
 
 // Build builds every facet of names (and of plugins discovered since the last build; discovery runs again first when the
-// plugin set changed): plain data. It changes no current set: a rollout ships it.
+// plugin set changed, or when a named plugin is unknown to it or its files are gone before the watcher said so): plain data. It changes no current set: a rollout ships it.
 func (c *Plugins) Build(names []string, ctx context.Context) (*Built, error) {
 	var before []string
 	previous := map[string]model.Plugin{}
@@ -347,6 +350,11 @@ func (c *Plugins) Build(names []string, ctx context.Context) (*Built, error) {
 		}
 		needs = !c.discovered || c.watcher.needsDiscovery()
 	})
+	// Ports packages/chord/src/node/plugins/plugins.ts (Pi 822b37a27): a named plugin the watcher has not reported yet
+	// discovers again; unseen reads files, so it runs outside the section.
+	if !needs && unseen(names, previous) {
+		needs = true
+	}
 	if needs {
 		if err := c.discover(ctx); err != nil {
 			return nil, err
@@ -819,4 +827,26 @@ func builtOf(built *Built, kinds []string) []string {
 		}
 	}
 	return names
+}
+
+// unseen is whether a named plugin changed in a way the watcher has not reported yet (its events lag behind the files,
+// more on some platforms than others): discovery does not know it, or a file discovery found for it is gone. A build of
+// named plugins never trusts the watcher's timing for them.
+func unseen(names []string, known map[string]model.Plugin) bool {
+	for _, name := range names {
+		plugin, ok := known[name]
+		if !ok {
+			return true
+		}
+		files := slices.Collect(maps.Values(plugin.Facets))
+		if plugin.Layout == model.LayoutDirectory {
+			files = append(files, filepath.Join(plugin.Dir, "package.json"))
+		}
+		for _, file := range files {
+			if _, err := os.Stat(file); err != nil {
+				return true
+			}
+		}
+	}
+	return false
 }

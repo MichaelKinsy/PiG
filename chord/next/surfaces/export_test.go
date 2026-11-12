@@ -16,3 +16,8 @@ func (c *Client) NewestDigest(plugin string) string {
 	}
 	return ""
 }
+
+// Following is closed once the client's background follow of the scripts object ended: its watch is started (or it failed). Pi's
+// startClient returns with the follow already made in a test's in-memory link (every promise there is a microtask); a goroutine has no
+// such order, so a test that publishes a set right after the start waits for this.
+func (c *Client) Following() <-chan struct{} { return c.following }
