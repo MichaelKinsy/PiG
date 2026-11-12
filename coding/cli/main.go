@@ -765,6 +765,10 @@ func Main(args []string, options *MainOptions) {
 		}
 		args = res.Args
 		clihook.SetOwnPrintOutput(res.OwnPrintOutput)
+		if res.Retry != nil {
+			codingagent.SetDefaultRetryConfig(codingagent.RetryConfig{Enabled: true, MaxRetries: res.Retry.MaxRetries,
+				BaseDelayMs: res.Retry.BaseDelayMs, MaxAgentDelayMs: res.Retry.MaxAgentDelayMs})
+		}
 	}
 
 	// Subcommands run before a Piglet Binary initializes session extensions.

@@ -640,7 +640,11 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 	if opts.Mode != "text" {
 		return nil
 	}
-	return writePrintModeResult(current().Messages(), opts.stdout, opts.stderr)
+	resultStderr := opts.stderr
+	if clihook.OwnPrintOutput() {
+		resultStderr = io.Discard // a fused member that owns the print output words a failed run's error itself
+	}
+	return writePrintModeResult(current().Messages(), opts.stdout, resultStderr)
 }
 
 // sendPrintPrompt mirrors AgentSession.prompt for print and JSON mode's input

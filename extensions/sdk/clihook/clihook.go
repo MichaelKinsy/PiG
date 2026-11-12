@@ -20,11 +20,22 @@ type Env struct {
 	StdoutTTY      bool
 }
 
+// RetryPolicy is the agent-level retry policy the hook asks PiG to use when the user's settings name none: the number of
+// retries of a failed model request, the delay before the first one (it doubles each time) and the cap on one delay.
+// settings.json `retry` still wins over it.
+type RetryPolicy struct {
+	MaxRetries      int
+	BaseDelayMs     int
+	MaxAgentDelayMs int
+}
+
 // Result is what the hook decided.
 type Result struct {
 	Handled bool     // the hook served the invocation; PiG exits with Exit
 	Exit    int      //
 	Args    []string // PiG's arguments when not Handled
+	// Retry, when set, replaces PiG's built-in retry defaults (3 retries, 2 s base, 60 s cap) for a session run.
+	Retry *RetryPolicy
 	// OwnPrintOutput: the run is a print run whose stdout the hook's extension writes itself (through Stdout). PiG's
 	// print mode then writes nothing to stdout, and exits with ExitCode when that is not 0.
 	OwnPrintOutput bool
