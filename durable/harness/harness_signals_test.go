@@ -643,6 +643,8 @@ func TestSleepingOnSignals(t *testing.T) {
 		)
 		// Collected by the token the task reads with: the two tasks run in no fixed order.
 		errs := &syncMap[string]{}
+		// Pi's test calls signal right after createTask and the task's first read comes later, because one event loop runs both. Here the scheduler runs a task on its own goroutine as soon as scheduling is enabled (the first Signal enables it), so a task created after that could read before its Signal landed, find no value and throw nothing (the Signal then answers closed). A task reads once the Signal addressed to it has been delivered: the value it reads is the one Pi's task reads.
+		delivered := map[int]chan struct{}{1: make(chan struct{}), 2: make(chan struct{})}
 		read := durable.DefineTask(durable.TaskDefinition[readInput, stepState, durable.JsonValue, any]{
 			Name:    "test.read-versions",
 			Version: 1,
@@ -652,6 +654,11 @@ func TestSleepingOnSignals(t *testing.T) {
 					token := v1
 					if task.Input.Token == 2 {
 						token = v2
+					}
+					select {
+					case <-delivered[task.Input.Token]:
+					case <-ctx.Done():
+						return ctx.Err()
 					}
 					if _, err := durable.ReadSignal(ctx, runtime, token, "k"); err != nil {
 						errs.put(strconv.Itoa(task.Input.Token), err.Error())
@@ -682,10 +689,12 @@ func TestSleepingOnSignals(t *testing.T) {
 		if result, err := Signal(testContext, harness, newer, v2, "k", count{N: 2}); err != nil || result != durable.SignalDelivered {
 			t.Fatalf("newer: %s %v", result, err)
 		}
+		close(delivered[1])
 		older := create(2)
 		if result, err := Signal(testContext, harness, older, v1, "k", count{N: 1}); err != nil || result != durable.SignalDelivered {
 			t.Fatalf("older: %s %v", result, err)
 		}
+		close(delivered[2])
 		tkWaitOutcome(t, harness, newer)
 		tkWaitOutcome(t, harness, older)
 		found := errs.all()
