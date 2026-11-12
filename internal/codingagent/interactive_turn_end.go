@@ -5,7 +5,7 @@ import "slices"
 // frameRequested reports whether the renderer has a requested frame that the loop has not run yet. A loop that does not own the frames (a test
 // harness whose renderer runs them from its own timer) cannot tell, and says yes.
 func (m *InteractiveMode) frameRequested() bool {
-	return m.frameTimer == nil || m.frameDue.Load() != 0
+	return m.frameTimer.Load() == nil || m.frameDue.Load() != 0
 }
 
 // turnEndState is what the cleanup at the end of a run found before it changed anything: the rows it may change, and whether a status
