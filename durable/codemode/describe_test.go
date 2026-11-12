@@ -244,3 +244,33 @@ func TestDescribeRendersADefaultWithItsAuthoredMemberOrder(t *testing.T) {
 		t.Errorf("sample lacks %s:\n%s", want, sample)
 	}
 }
+
+// Pi 1.5.2 packages/durable/src/codemode/codemode.ts:268 renders the section with `options.inlineBudget ??
+// DEFAULT_CODEMODE_INLINE_BUDGET`; Pi has no test of the default. An extension made without a budget lists what
+// DefaultInlineBudget fits of a tool set larger than it, and a budget in the options replaces the default.
+func TestTheExtensionsSectionListsWhatDefaultInlineBudgetFitsUnlessTheOptionsNameABudget(t *testing.T) {
+	var many []*durable.ToolRegistration
+	for i := range 60 {
+		many = append(many, describeTool(fmt.Sprintf("tool%d", i), strings.Repeat("x", 400)))
+	}
+	extensions := []*durable.Extension{describeExtension("github", many, github)}
+	render := func(options ToolOptions) string {
+		t.Helper()
+		section, err := CreateExtension(options).Sections[0].Render(t.Context(), durable.PromptInput{Agent: durable.Agent{Callable: many, Extensions: extensions}})
+		if err != nil || section == nil {
+			t.Fatalf("section %v, error %v", section, err)
+		}
+		return *section
+	}
+	byDefault := render(ToolOptions{})
+	if want := *mustSection(t, many, extensions, DefaultInlineBudget); byDefault != want {
+		t.Errorf("the section without a budget is not the section of DefaultInlineBudget:\n%s\nwant:\n%s", byDefault, want)
+	}
+	if !strings.Contains(byDefault, "Some tools are not listed") {
+		t.Fatalf("DefaultInlineBudget fits every tool, so the section does not show the budget:\n%s", byDefault)
+	}
+	half := DefaultInlineBudget / 2
+	if halved := render(ToolOptions{InlineBudget: &half}); halved == byDefault || halved != *mustSection(t, many, extensions, half) {
+		t.Errorf("the section with half the budget is the default's, or is not the section of that budget:\n%s", halved)
+	}
+}

@@ -239289,7 +239289,7 @@
       "evidence": [
         "test:durable/codemode/codemode_pi_oracle_test.go#TestCodemodeDeclarationsMatchPi",
         "test:durable/harness/agent_resolve_pi_oracle_test.go#TestResolveAgentMatchesPi",
-        "test:durable/core/driver/core_test.go#TestAgentIsServedByTheCoreFromTheRegistryAndTheStoredState"
+        "test:durable/codemode/describe_test.go#TestTheExtensionsSectionListsWhatDefaultInlineBudgetFitsUnlessTheOptionsNameABudget"
       ]
     },
     {
@@ -248128,7 +248128,7 @@
       "evidence": [
         "test:durable/codemode/codemode_pi_oracle_test.go#TestCodemodeDeclarationsMatchPi",
         "test:durable/codemode/describe_test.go#TestDescribeRendersTheSectionFromTheConversationsExtensionsAndCallableToolsIntoTheSystemPrompt",
-        "test:durable/codemode/imports_test.go#TestTheCodeModeExtensionLoadsWithoutPiCodemodesWasmRuntime"
+        "test:durable/codemode/describe_test.go#TestTheExtensionsSectionListsWhatDefaultInlineBudgetFitsUnlessTheOptionsNameABudget"
       ]
     },
     {
@@ -248150,7 +248150,7 @@
       "evidence": [
         "test:durable/codemode/codemode_pi_oracle_test.go#TestCodemodeDeclarationsMatchPi",
         "test:durable/codemode/describe_test.go#TestDescribeRendersTheSectionFromTheConversationsExtensionsAndCallableToolsIntoTheSystemPrompt",
-        "test:durable/codemode/imports_test.go#TestTheCodeModeExtensionLoadsWithoutPiCodemodesWasmRuntime"
+        "test:durable/codemode/describe_test.go#TestTheExtensionsSectionListsWhatDefaultInlineBudgetFitsUnlessTheOptionsNameABudget"
       ]
     },
     {
@@ -248215,7 +248215,8 @@
       ],
       "evidence": [
         "test:durable/codemode/describe_pi_oracle_test.go#TestDescribeMatchesPiOnSeededToolSets",
-        "test:durable/codemode/constants_test.go#TestExportedConstantsAndDocumentMatchPi"
+        "test:durable/codemode/constants_test.go#TestExportedConstantsAndDocumentMatchPi",
+        "test:durable/codemode/describe_test.go#TestTheExtensionsSectionListsWhatDefaultInlineBudgetFitsUnlessTheOptionsNameABudget"
       ]
     },
     {
