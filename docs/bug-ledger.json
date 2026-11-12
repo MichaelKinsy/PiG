@@ -28364,6 +28364,31 @@
       ]
     },
     {
+      "id": "BF-9e95660",
+      "title": "A compaction, branch summary or bug report summary no longer fails with \"Summarization failed: 401…",
+      "symptom": "A compaction, branch summary or bug report summary no longer fails with \"Summarization failed: 401 Unauthorized\" when the short-lived token it started with (a GitHub Copilot API token lives about 30 minutes) expires before its last request: after a retry's backoff, or on a later chunk.",
+      "rootCause": "A compaction, branch summary or bug report on a Session the CLI builds pinned the credential it resolved when it started into every request it made, so a retry after a backoff, or a later chunk, sent a derived token (GitHub Copilot's lives about 30 minutes) after it had expired and got the provider's 401: \"Auto-compaction failed: Summarization failed: 401 Unauthorized\".",
+      "rootCauseSource": "commit",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A compaction, branch summary or bug report summary no longer fails with \"Summarization failed: 401 Unauthorized\" when the short-lived token it started with (a GitHub Copilot API token lives about 30 minutes) expires before its last request: after a retry's backoff, or on a later chunk. A Session started from the command line resolved its credentials once, when the summary began, and sent that token with every request of it. Each request now resolves its own credentials when it is sent, as a turn does and as Pi's sessions do.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "9e95660e7d",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "coding/session_summary_auth_refresh_test.go::TestAutoCompactionSurfacesRefreshFailureOnce",
+        "coding/session_summary_auth_refresh_test.go::TestCompactionResolvesCredentialWhenItStartsFreshAndExpired",
+        "coding/session_summary_auth_refresh_test.go::TestSummarizationRequestResolvesNoCredentialForARuntimeSession",
+        "coding/session_summary_auth_refresh_test.go::TestSummaryAttemptsEachSendAFreshCredentialAfterExpiry"
+      ]
+    },
+    {
       "id": "BF-9eda512",
       "title": "The Go Durable SDK's scheduler no longer resolves the Harness settings for the context a run itself reads…",
       "symptom": "The Go Durable SDK's scheduler no longer resolves the Harness settings for the context a run itself reads: `contextRetentionMs` is read only when the conversation is idle, as Pi's `runtime.context` does, which removes four settings resolutions from every round of one generation with a tool call.",
