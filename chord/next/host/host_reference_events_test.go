@@ -109,7 +109,7 @@ var pulse = mustContract(contracts.Local("app.pulse", contracts.LocalDeclaration
 func TestReferenceEventSubscriptionsKeepGettingAnOldAttemptsEmitsWhileAReloadDrainsItThenTheSuccessors(t *testing.T) {
 	var mu sync.Mutex
 	var sources []contracts.EventSource[delta.JsonValue]
-	open := make(chan struct{})
+	open, running := make(chan struct{}), newSignal()
 	facets := func() []HostFacet {
 		return []HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
 			return h.Serve(pulse, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
@@ -121,6 +121,7 @@ func TestReferenceEventSubscriptionsKeepGettingAnOldAttemptsEmitsWhileAReloadDra
 					Events: map[string]contracts.EventMember[delta.JsonValue]{"beats": beats},
 					Methods: map[string]contracts.MethodFunction{
 						"slow": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+							running.fire()
 							if _, err := chordctx.Receive(ctx, open); err != nil {
 								return nil, err
 							}
@@ -146,6 +147,9 @@ func TestReferenceEventSubscriptionsKeepGettingAnOldAttemptsEmitsWhileAReloadDra
 	// Old work: a call running on the old attempt when the reload commits; the drain waits for it.
 	slow := make(chan error, 1)
 	go func() { _, err := ref.Call("slow", nil, background); slow <- err }()
+	// Pi's `await flushed()` runs the call to its first await. Here the call's goroutine is waited for: one that reached the
+	// host after the reload's commit waits at the gate for the successor, and there would be no old work to drain.
+	running.wait(t)
 	flushed(host)
 	reloaded := make(chan error, 1)
 	go func() { _, err := host.Reload(facets(), background, ReloadOptions{}); reloaded <- err }()
@@ -159,6 +163,10 @@ func TestReferenceEventSubscriptionsKeepGettingAnOldAttemptsEmitsWhileAReloadDra
 	flushed(host)
 	wantSeen(t, seen, 1.0)
 	must(t, <-reloaded)
+	// Pi's `await flushed()` runs the drain, the old attempt's end and the successor's factory to their ends before the emit.
+	// The reference shows `live` while the old attempt is open (rule 5), so `waitLive` alone can pass before the old attempt
+	// ended, with the last source still staging's (an inert one): the successor's source is waited for first.
+	until(t, "the successor's source", func() bool { return count() == 3 })
 	waitLive(t, ref)
 	hostTurn(host, func() { _ = last().Emit(sample(2)) })
 	flushed(host)
