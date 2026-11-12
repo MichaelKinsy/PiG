@@ -59,6 +59,11 @@ func startBridge(t *testing.T, more ...string) bridge {
 	}
 	node, err := exec.LookPath("node")
 	if err != nil {
+		// Where the page tests are required (CI sets CHORD_REQUIRE_CHROMIUM, as for the chord web tests), a missing Node
+		// fails them as a missing browser does (browsertest.Start) rather than skipping them.
+		if os.Getenv("CHORD_REQUIRE_CHROMIUM") != "" {
+			t.Fatal("node is not installed, and CHORD_REQUIRE_CHROMIUM is set")
+		}
 		t.Skip("node is not installed")
 	}
 	home := t.TempDir()
@@ -494,10 +499,11 @@ func TestPageKeepsTypedTextAcrossUpdates(t *testing.T) {
 	if got, want := browser.String(state), `{"same":false,"value":"sent again","selection":"10-10","focused":true,"body":"a draft","sameBody":true}`; got != want {
 		t.Errorf("after the node moved, the text is\n  %s\nwant\n  %s", got, want)
 	}
-	// The node is gone and one with another id stands in its place: nothing of the old text is in it.
-	send(`/fx-a update ` + view("5 mails", `{"kind":"box","children":[{"kind":"input","id":"other","value":""}]}`))
+	// The node is gone and one with another id and the same value stands in its place: it has its own value, not the
+	// text typed into the old one.
+	send(`/fx-a update ` + view("5 mails", `{"kind":"box","children":[{"kind":"input","id":"other","value":"sent"}]}`))
 	browser.Wait(`document.querySelector('[data-key="fx-a"] .text').textContent === "5 mails"`)
-	if got, want := browser.String(`(() => { const other = document.querySelector('[id$="-other"]'); return [document.querySelector('[id$="-reply"]') === null, JSON.stringify(other.value), other === window.typedInto, document.activeElement === other].join(); })()`), `true,"",false,false`; got != want {
+	if got, want := browser.String(`(() => { const other = document.querySelector('[id$="-other"]'); return [document.querySelector('[id$="-reply"]') === null, JSON.stringify(other.value), other === window.typedInto, document.activeElement === other].join(); })()`), `true,"sent",false,false`; got != want {
 		t.Errorf("after the node was removed: gone, the new node's value, same element, focused = %s, want %s", got, want)
 	}
 }
