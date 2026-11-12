@@ -404,7 +404,7 @@ def remote_provider(context, decl):
                 finally:
                     cleanup()
                 stream.mark_started(error)
-                stream.push(_model_stream_error_event(error, model))
+                stream._enqueue(_model_stream_error_event(error, model), False)
                 with extension._model_stream_lock:
                     extension._model_streams.pop(stream_id, None)
                 with extension._request_threads_lock:
