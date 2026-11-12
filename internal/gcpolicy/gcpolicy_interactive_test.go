@@ -6,6 +6,7 @@ import (
 	"os"
 	"runtime"
 	"runtime/debug"
+	"runtime/metrics"
 	"testing"
 	"time"
 )
@@ -39,7 +40,7 @@ func TestInteractiveRevertsAtItsLiveHeapThreshold(t *testing.T) {
 	unsetGOGC(t)
 	unsetMemoryLimit(t)
 	defer debug.SetGCPercent(debug.SetGCPercent(DefaultPercent))
-	defer Interactive.Apply()()
+	defer interactiveWithoutFloor().Apply()()
 	if got := gcPercent(); got != InteractivePercent {
 		t.Fatalf("GC percent %d after Apply, want %d", got, InteractivePercent)
 	}
@@ -75,7 +76,7 @@ func TestInteractiveStopsWhenIdle(t *testing.T) {
 	unsetGOGC(t)
 	unsetMemoryLimit(t)
 	defer debug.SetGCPercent(debug.SetGCPercent(DefaultPercent))
-	idle := Interactive
+	idle := interactiveWithoutFloor()
 	idle.Idle = 500 * time.Millisecond
 	stop := idle.Apply()
 	defer stop()
@@ -113,7 +114,7 @@ func TestInteractiveStopsWhenIdle(t *testing.T) {
 	debug.SetGCPercent(DefaultPercent)
 
 	// A collection restarts the clock: a run that keeps collecting is not idle.
-	busy := Interactive
+	busy := interactiveWithoutFloor()
 	busy.Idle = 300 * time.Millisecond
 	defer busy.Apply()()
 	end := time.Now().Add(900 * time.Millisecond)
@@ -155,4 +156,146 @@ func TestBatchIgnoresAMemoryLimit(t *testing.T) {
 	if got := gcPercent(); got != TargetPercent {
 		t.Fatalf("GC percent %d with GOMEMLIMIT set, want %d", got, TargetPercent)
 	}
+}
+
+// interactiveWithoutFloor is the interactive policy at its fixed percent, for the tests of the live-heap threshold and the idle stop.
+func interactiveWithoutFloor() Policy {
+	p := Interactive
+	p.GoalFloor = 0
+	return p
+}
+
+// D621: below the goal floor the percent after a collection puts the next heap goal at the floor, never under the policy's percent and
+// never over the percent whose minimum heap (4 MiB at 100) is the floor.
+func TestGoalFloorPercent(t *testing.T) {
+	const MiB = 1 << 20
+	p := Policy{Percent: 150, GoalFloor: 16 * MiB}
+	for _, tc := range []struct {
+		live, scan uint64
+		want       int
+	}{
+		{0, 0, 400},             // nothing collected yet: the runtime's minimum heap, 4 MiB x 400 %, is the floor
+		{MiB / 2, MiB / 2, 400}, // a tiny heap: the ceiling
+		{3 * MiB, MiB, 325},     // 3 + (3+1) x 3.25 = 16
+		{5 * MiB, MiB, 183},     // 5 + (5+1) x 1.83 = 16
+		{7 * MiB, MiB, 150},     // the policy's percent already reaches the floor
+		{16 * MiB, MiB, 150},    // at the floor
+		{40 * MiB, MiB, 150},    // above it
+	} {
+		if got := p.percentFor(p.Percent, tc.live, tc.scan); got != tc.want {
+			t.Errorf("percentFor(%d MiB live, %d MiB scan) = %d, want %d", tc.live/MiB, tc.scan/MiB, got, tc.want)
+		}
+	}
+	if got := p.percentFor(DefaultPercent, 7*MiB, MiB); got != 112 {
+		t.Errorf("past the fallback, 7 MiB live answers %d, want 112: 7 + (7+1) x 1.12 = 16", got)
+	}
+	if got := (Policy{Percent: 150}).percentFor(150, 3*MiB, MiB); got != 150 {
+		t.Errorf("a policy without a floor answers %d, want its percent", got)
+	}
+}
+
+// D621: an interactive run starts at the floor's percent, keeps a percent between the policy's and the floor's while its live heap is small,
+// and still returns to DefaultPercent past InteractiveFallbackLiveBytes.
+func TestInteractiveKeepsItsGoalFloorWhileTheHeapIsSmall(t *testing.T) {
+	unsetGOGC(t)
+	unsetMemoryLimit(t)
+	defer debug.SetGCPercent(debug.SetGCPercent(DefaultPercent))
+	defer Interactive.Apply()()
+	ceiling := uint64(InteractiveGoalFloorBytes * 100 / minHeap)
+	if got := gcPercent(); got != ceiling {
+		t.Fatalf("GC percent %d after Apply, want %d", got, ceiling)
+	}
+	for range 3 {
+		runtime.GC()
+		time.Sleep(10 * time.Millisecond) // Room for the watcher to read after the collection.
+	}
+	if got := gcPercent(); got < InteractivePercent || got > ceiling {
+		t.Fatalf("GC percent %d after collections of a small heap, want %d to %d", got, InteractivePercent, ceiling)
+	}
+	live := make([]byte, InteractiveFallbackLiveBytes+4<<20)
+	waitForPercent(t, DefaultPercent, 10*time.Second, runtime.GC)
+	runtime.KeepAlive(live)
+}
+
+// D621: past InteractiveFallbackLiveBytes the run's percent is DefaultPercent for good, and the floor holds again when the live heap
+// shrinks below it, as it does when a long session drops what it kept.
+func TestInteractiveGoalFloorHoldsAgainAfterTheHeapShrinks(t *testing.T) {
+	unsetGOGC(t)
+	unsetMemoryLimit(t)
+	defer debug.SetGCPercent(debug.SetGCPercent(DefaultPercent))
+	defer Interactive.Apply()()
+	live := make([]byte, InteractiveFallbackLiveBytes+12<<20)
+	waitForPercent(t, DefaultPercent, 10*time.Second, runtime.GC)
+	runtime.KeepAlive(live)
+	live = nil
+	deadline := time.Now().Add(10 * time.Second)
+	for gcPercent() <= DefaultPercent {
+		if time.Now().After(deadline) {
+			t.Fatalf("GC percent %d after the live heap shrank below the floor, want it above %d", gcPercent(), DefaultPercent)
+		}
+		runtime.GC()
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+// heapGoal reads the runtime's heap goal with the live heap and the scan work it was computed from.
+func heapGoal() (goal, live, scan uint64) {
+	sample := []metrics.Sample{{Name: "/gc/heap/goal:bytes"}, {Name: "/gc/heap/live:bytes"}, {Name: "/gc/scan/globals:bytes"}, {Name: "/gc/scan/stack:bytes"}}
+	metrics.Read(sample)
+	return sample[0].Value.Uint64(), sample[1].Value.Uint64(), sample[2].Value.Uint64() + sample[3].Value.Uint64()
+}
+
+// D621, the rule as the runtime applies it: after a collection the heap goal of an interactive run is the larger of 16 MiB and the goal
+// of the run's percent, which is 150 until a collection has found more than 8 MiB live and 100 from then on, also when the heap has
+// shrunk again. Each row holds that much heap live, collects, and compares the runtime's goal with the rule's for the live heap and
+// scan work the runtime reports.
+func TestInteractiveHeapGoalByLiveHeap(t *testing.T) {
+	unsetGOGC(t)
+	unsetMemoryLimit(t)
+	defer debug.SetGCPercent(debug.SetGCPercent(DefaultPercent))
+	defer Interactive.Apply()()
+	const (
+		MiB   = 1 << 20
+		floor = 16 * MiB
+	)
+	var held []byte
+	for _, tc := range []struct {
+		hold    int    // MiB the test keeps live, on top of the test binary's own heap
+		percent uint64 // the run's percent at this row
+		floored bool   // whether the floor, not the percent, sets the goal
+	}{
+		{0, 150, true},
+		{3, 150, true},
+		{5, 150, true},
+		{7, 150, false},  // 7 + 7 x 1.5 is past the floor
+		{12, 100, false}, // more than 8 MiB live: the run's percent is 100 from here on
+		{20, 100, false},
+		{7, 100, true}, // shrunk again: at 100 the percent's goal for 7 MiB is under the floor
+		{3, 100, true},
+		{10, 100, false},
+	} {
+		held = nil
+		held = make([]byte, tc.hold*MiB)
+		for i := 0; i < len(held); i += 4096 {
+			held[i] = 1
+		}
+		var goal, live, scan, want uint64
+		deadline := time.Now().Add(5 * time.Second)
+		for {
+			runtime.GC()
+			time.Sleep(10 * time.Millisecond) // Room for the watcher to read after the collection.
+			goal, live, scan = heapGoal()
+			want = max(floor, live+(live+scan)*tc.percent/100)
+			if diff := int64(goal) - int64(want); -floor/50 <= diff && diff <= floor/50 {
+				break
+			}
+			if time.Now().After(deadline) {
+				t.Fatalf("%d MiB held (%d bytes live, %d bytes of scan work): heap goal %d, want %d (the larger of %d and the goal of %d %%)", tc.hold, live, scan, goal, want, uint64(floor), tc.percent)
+			}
+		}
+		if floored := want == floor; floored != tc.floored {
+			t.Errorf("%d MiB held (%d bytes live): the floor sets the goal = %v, want %v", tc.hold, live, floored, tc.floored)
+		}
+	}
+	runtime.KeepAlive(held)
 }

@@ -893,7 +893,7 @@ func Main(args []string, options *MainOptions) {
 	// pig additive (D232): a --listen server skips D175's GOGC 400 start, because resident memory across many sessions is its objective.
 	if policy, ok := gcPolicyFor(runMode, flags.Listen); ok {
 		// pig additive (D175): print, json and rpc runs collect at GOGC 400 unless the environment sets GOGC, and at 100 again past 64 MiB live.
-		// pig additive (D621): an interactive run collects at GOGC 150 until 8 MiB are live, then at 100, unless the environment sets GOGC or GOMEMLIMIT; its watcher ends after 2 minutes without a collection.
+		// pig additive (D621): an interactive run keeps a heap goal of at least 16 MiB, at GOGC 150 until 8 MiB are live and at 100 from then on, unless the environment sets GOGC or GOMEMLIMIT; its watcher ends at 100 after 2 seconds without a collection.
 		stopGCPolicy = policy.Apply()
 		// Deferred after stopProfiles, so it runs first: the exit record counts no watcher.
 		defer stopGCPolicy()

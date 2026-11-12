@@ -13,7 +13,7 @@ func gcPolicyFor(mode appMode, listen string) (gcpolicy.Policy, bool) {
 	case appModePrint, appModeJSON, appModeRPC:
 		return gcpolicy.Batch, true
 	case appModeInteractive:
-		// pig additive (D621): an interactive run collects at GOGC 150 until 8 MiB are live.
+		// pig additive (D621): an interactive run keeps a heap goal of at least 16 MiB, at GOGC 150 until 8 MiB are live.
 		return gcpolicy.Interactive, true
 	}
 	return gcpolicy.Policy{}, false
