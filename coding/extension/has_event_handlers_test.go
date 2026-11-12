@@ -108,14 +108,12 @@ func TestHasEventHandlersSeesEveryCompletedChange(t *testing.T) {
 	var stop atomic.Bool
 	var readers sync.WaitGroup
 	for range 4 {
-		readers.Add(1)
-		go func() {
-			defer readers.Done()
+		readers.Go(func() {
 			for !stop.Load() {
 				_ = ext.HasEventHandlers("toggled")
 				_ = ext.HasEventHandlers("stable")
 			}
-		}()
+		})
 	}
 	for i := range 3000 {
 		ext.AddEventHandler("toggled", 100+i, noopHandler)
