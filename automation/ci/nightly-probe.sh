@@ -14,6 +14,7 @@ repo=${REPO:?owner/repo}
 branch="bisect/${BISECT_TAG:?run tag}-${sha:0:12}"
 limit=${PROBE_TIMEOUT_SECONDS:-10800}
 
+# shellcheck disable=SC2329 # cleanup runs only through the EXIT trap below.
 cleanup() { git push --quiet origin ":refs/heads/$branch" >/dev/null 2>&1 || true; }
 trap cleanup EXIT
 
