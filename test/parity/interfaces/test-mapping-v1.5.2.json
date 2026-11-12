@@ -4536,7 +4536,7 @@
       "evidence": [
         "chord/next/telemetryingest/ingest_upstream_test.go"
       ],
-      "rationale": "All 8 upstream cases have a Go test on this branch. Cases earlier listed missing, with the Go test checked: \"a page's batches › writes its own spans marked `chord.host: browser` with its link's principal, no attribute of its overriding\" -\u003e next/telemetryingest/ingest_upstream_test.go:TestPageBatchWritesItsOwnSpansMarkedBrowserWithItsLinksPrincipalNoAttributeOfItsOverriding; \"a page's batches › drops spans posing as another sender's or the server's: ids, traces and parents not under its own prefix\" -\u003e next/telemetryingest/ingest_upstream_test.go:TestPageBatchDropsSpansPosingAsAnotherSendersOrTheServers; \"a page's batches › caps a page's spans per minute: past the budget they are dropped and counted\" -\u003e next/telemetryingest/ingest_upstream_test.go:TestPageBatchCapsAPagesSpansPerMinuteDroppingAndCountingPastTheBudget; \"a page's batches › never keeps a principal the page claims: with a hook recording none, its spans carry none\" -\u003e chord/next/telemetryingest/ingest_upstream_test.go:TestPageBatchNeverKeepsAPrincipalThePageClaims."
+      "rationale": "All 8 upstream cases have a Go test on this branch. Cases earlier listed missing, with the Go test checked: \"a page's batches › writes its own spans marked `chord.host: browser` with its link's principal, no attribute of its overriding\" -\u003e next/telemetryingest/ingest_upstream_test.go:TestPageBatchWritesItsOwnSpansMarkedBrowserWithItsLinksPrincipalNoAttributeOfItsOverriding; \"a page's batches › drops spans posing as another sender's or the server's: ids, traces and parents not under its own prefix\" -\u003e next/telemetryingest/ingest_upstream_test.go:TestPageBatchDropsSpansPosingAsAnotherSendersOrTheServers; \"a page's batches › caps a page's spans per minute: past the budget they are dropped and counted\" -\u003e next/telemetryingest/ingest_upstream_test.go:TestPageBatchCapsAPagesSpansPerMinuteDroppingAndCountingPastTheBudget; \"a page's batches › never keeps a principal the page claims: with a hook recording none, its spans carry none\" -\u003e chord/next/telemetryingest/ingest_upstream_test.go:TestPageBatchNeverKeepsAPrincipalThePageClaims. Pi 7ae9ff8c7 adds the case \"admitting pages\" (facet.test.ts:84-94), ported as TestAdmittingPagesRefusesThePageOfAPrincipalTheAppDoesNotAdmitItsHoldFailsForbiddenNothingIsWritten; the hash is the pin's."
     },
     {
       "path": "packages/chord/test/telemetry-ingest/recorder.test.ts",
@@ -4554,7 +4554,7 @@
       "evidence": [
         "chord/next/telemetryingest/ingest_upstream_test.go"
       ],
-      "rationale": "All 3 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
+      "rationale": "All 3 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none). Pi 7ae9ff8c7 only adds `admit: () => true` to its helper (sender.test.ts:33), set the same in the Go helper; the hash is the pin's."
     },
     {
       "path": "packages/chord/test/telemetry-sqlite-node.test.ts",
