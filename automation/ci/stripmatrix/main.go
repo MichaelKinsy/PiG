@@ -131,7 +131,7 @@ func testAI(set tagSet, scratch string) error {
 		wg.Go(func() {
 			slots <- struct{}{}
 			defer func() { <-slots }()
-			//nolint:gosec // G204 (class b): program is binary, the test binary of aiPackage that the preceding go test -c built into the tool's scratch directory; args are fixed flags and a test name from the committed red list.
+			//nolint:gosec // G204 (class b): program is binary, the test binary of aiPackage that the go test -c above built into the scratch directory this process made with os.MkdirTemp; args are the fixed -test.run and -test.count=1 with a name parseRed read from the committed red list (redDir), which must start with Test. Nothing comes from a flag or the environment.
 			cmd := exec.Command(binary, "-test.run", "^"+name+"$", "-test.count=1")
 			cmd.Dir = aiPackage
 			passed[i] = cmd.Run() == nil
@@ -235,7 +235,7 @@ func checkList(output string, stripped, kept []string) error {
 
 // run executes one command of a step with the process's output.
 func run(env []string, name string, args ...string) error {
-	//nolint:gosec // G204 (class a): program is the literal go or automation/ci/go-vet.sh that main passes; args are fixed flags, the generated strip tags and package patterns.
+	//nolint:gosec // G204 (class a): program is the literal go or automation/ci/go-vet.sh at every call site; args are fixed subcommands and flags, the constant package patterns (aiPackage, wholePackages, guardPackages, ./cmd/pig), an output path under the os.MkdirTemp scratch directory, and -tags of a tagSet, whose tags are piglet.StripBuildTags (the generated strip ID table). The -set flag only selects among those sets by equality and is never passed on.
 	cmd := exec.Command(name, args...)
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 	cmd.Env = append(os.Environ(), env...)
@@ -345,7 +345,7 @@ export default async function () {
 	if err := os.WriteFile(extension, []byte(source), 0o600); err != nil {
 		return err
 	}
-	//nolint:gosec // G204 (class b): program is binary, the cmd/pig that smoke built into the tool's scratch directory; args are fixed flags and the extension file this function wrote there.
+	//nolint:gosec // G204 (class b): program is binary, the cmd/pig that smoke's go build wrote into the os.MkdirTemp scratch directory; args are literals but extension, the path of the TypeScript file this function wrote into that directory from a constant source and the generated API names.
 	cmd := exec.Command(binary, "-e", extension, "--no-session", "--model", "test-faux/faux-1", "-p", "What is 20+22?")
 	cmd.Dir = filepath.Join(scratch, "home")
 	cmd.Env = append(slices.Clone(env), "PIG_TEST_FAUX=1")
@@ -389,7 +389,7 @@ func smoke(set tagSet, scratch string, providers, strippable, stripped []string,
 		return err
 	}
 	env := []string{"PATH=" + os.Getenv("PATH"), "HOME=" + home, "PIG_HOME=" + home, "PI_HOME=" + home, "PIG_CODING_AGENT_DIR=" + agent, "PI_CODING_AGENT_DIR=" + agent, "PIG_OFFLINE=1"}
-	//nolint:gosec // G204 (class b): program is binary, the cmd/pig that the preceding go build wrote into the tool's scratch directory; the only arg is fixed --list-models.
+	//nolint:gosec // G204 (class b): program is binary, the cmd/pig that the go build above wrote into the os.MkdirTemp scratch directory; the only arg is the literal --list-models.
 	cmd := exec.Command(binary, "--list-models")
 	cmd.Dir = home
 	cmd.Env = env
