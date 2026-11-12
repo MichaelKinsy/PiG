@@ -438,6 +438,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-5689853](#bf-5689853) | `pig piglet build` produced a dynamically linked Piglet Binary unless `CGO_ENABLED=0` was set, so a Binary… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-56a0400](#bf-56a0400) | Single-line inputs (login prompts, search boxes) ignore xterm modifyOtherKeys text sequences, as Pi's Input… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-56b0e0f](#bf-56b0e0f) | On Linux, the native X11 clipboard reads a `DISPLAY` that starts with `/` or `unix:` as a socket path with an… | PiG's own defect | Linux | Unreleased |
+| [BF-56b0e0f-2](#bf-56b0e0f-2) | fix(nativeplatform): parse X11 displays that start with / or unix: as libxcb 1.16 does (#424) | PiG's own defect | All platforms | Unreleased |
 | [BF-56f1d3c](#bf-56f1d3c) | A family document member accepts a typed Go value as its seed, as `CreateTask` input and snapshots already do | PiG's own defect | All platforms | 0.5.0 |
 | [BF-56f1d3c-2](#bf-56f1d3c-2) | `Submission.Wait`, `WaitForTask` and the idle waits return after every commit subscriber has run for the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-570c037](#bf-570c037) | `pig install <path> --validate-only` called a `.mjs` file, or a directory with only `index.mjs`, a valid… | PiG's own defect | All platforms | 0.7.0 |
@@ -7398,6 +7399,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `56b0e0f8e2` (2026-11-11, #424)
 - **Tests:** `internal/nativeplatform/clipboard_x11_display_range_linux_test.go::TestX11DisplayNumbersParseAsXcbDoes`, `internal/nativeplatform/clipboard_x11_display_range_linux_test.go::TestX11DisplaySpellingsConnectAsPiDoes`, `internal/nativeplatform/clipboard_x11_display_range_linux_test.go::TestX11SocketPathDisplaysParseAsXcbDoes`
 - **Release note:** On Linux, the native X11 clipboard reads a `DISPLAY` that starts with `/` or `unix:` as a socket path with an optional screen (`/tmp/.X11-unix/X0.1`, `unix:/tmp/.X11-unix/X0`), as libxcb 1.16 and later do. A socket path now connects where it failed before, and `DISPLAY=unix:0` no longer names display 0 by itself. As libxcb 1.16 does (xcb_util.c `_xcb_parse_display_path_to_socket` and `_xcb_open`), the text after `unix:` is a path that must exist once any `.N` screen suffix is removed (`unix:relative-socket.1` needs `relative-socket`), and only an absolute path is dialed directly: a relative path that exists (`unix:relative-socket`, or `unix:0` with a file named `0` in the working directory) dials display 0's socket, `/tmp/.X11-unix/X0`, and one that does not exist fails. Pi's addon links the host's libxcb, so hosts with libxcb 1.15 or earlier read these displays differently.
+
+### BF-56b0e0f-2
+
+**fix(nativeplatform): parse X11 displays that start with / or unix: as libxcb 1.16 does (#424)**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(nativeplatform): parse X11 displays that start with / or unix: as libxcb 1.16 does (#424)
+- **Root cause:** Fix-Commit:
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `56b0e0f8e2` (2026-11-11, #424)
+- **Tests:** `internal/nativeplatform/clipboard_x11_display_range_linux_test.go::TestX11DisplayNumbersParseAsXcbDoes`, `internal/nativeplatform/clipboard_x11_display_range_linux_test.go::TestX11DisplaySpellingsConnectAsPiDoes`, `internal/nativeplatform/clipboard_x11_display_range_linux_test.go::TestX11SocketPathDisplaysParseAsXcbDoes`
 
 ### BF-56f1d3c
 
