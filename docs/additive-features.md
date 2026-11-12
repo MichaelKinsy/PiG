@@ -1725,9 +1725,9 @@ What: when the environment does not set `GOGC`, `cli.Main` sets the GC percent t
 
 Pi source: none. Node's collector has no such setting; the GC target is a Go runtime choice.
 
-Why: a one-shot run allocates a few megabytes and exits, so the default target spends its CPU on collections whose memory the exit returns anyway, and on many-core hosts each cycle wakes idle mark workers. PF1 (research/frontier/PF1-print-cpu.md sections 11-12) measured Pi-Bolt's headless row going from 2-5 GC cycles to none: Linux 0.66 to 0.61x Pi-Bolt CPU and Mac 0.80 to 0.70x Pi-Bolt cycles on top of D174. Process-wide GOGC 400 (E12b) doubled long-session memory, so the target stays out of interactive runs, and the 64 MiB fallback keeps a print run over a large session within the default's peak (`-p --session` on a 66 MB session: +3%).
+Why: a one-shot run allocates a few megabytes and exits, so the default target spends its CPU on collections whose memory the exit returns anyway, and on many-core hosts each cycle wakes idle mark workers. PF1 (research/frontier/PF1-print-cpu.md sections 11-12) measured Pi-Bolt's headless row going from 2-5 GC cycles to none: Linux 0.66 to 0.61x Pi-Bolt CPU and Mac 0.80 to 0.70x Pi-Bolt cycles on top of D174. Process-wide GOGC 400 (E12b) doubled long-session memory, so the 400 target stays out of interactive runs (which D621 gives a smaller, bounded step), and the 64 MiB fallback keeps a print run over a large session within the default's peak (`-p --session` on a 66 MB session: +3%).
 
-Call-site markers: `internal/gcpolicy/gcpolicy.go` (`Apply`, `checkLiveHeap`), `coding/cli/main.go` (`Main`).
+Call-site markers: `internal/gcpolicy/gcpolicy.go` (`Policy.Apply`, `Policy.watchLiveHeap`, `Batch`), `coding/cli/gc_policy.go` (`gcPolicyFor`), `coding/cli/main.go` (`Main`).
 
 Locked by: `TestPrintModeRaisesGCTarget` (`test/perfgate`; red at fb18cdb01b: 2-3 GC cycles), `TestPrintModeKeepsUsersGOGC`, `TestPrintModeGCTargetFallsBackOnLargeHeap` (`test/perfgate`), `TestRPCModeRaisesGCTarget` (red without the rpc case: GC percent 100), `TestRPCModeKeepsUsersGOGC` (`test/perfgate`), `TestApplyFallsBackAboveTheLiveHeapLimit`, `TestApplyLeavesAUserGOGC` (`internal/gcpolicy`), and the ratchet `process.print_tools.gc_cycles` = 0.
 
@@ -2155,4 +2155,27 @@ Locked by: `TestRendererClickAcrossSDKs` (`test/extension-conformance/renderer_c
 Remove when: Pi runs extensions outside its process with a renderer that can hold state and a pointer handler, or the SDKs gain closures that cross the wire.
 
 Approval: approved by owner Michael Kinsy on 2026-11-07.
+SCRUTINIZED:approved
+
+## D621 Interactive runs collect at GOGC 150 until the live heap passes 8 MiB
+
+Summary: An interactive run uses a garbage-collection percent of 150 while its live heap is at most 8 MiB, then the default 100, unless you set GOGC or GOMEMLIMIT.
+
+Audience: runtime
+
+Stock disposition: inert capability. It selects no product behavior, and a user's `GOGC` or `GOMEMLIMIT` turns it off: the terminal output, session files and model requests are the same; only when the Go collector runs changes.
+
+What: when the environment sets neither `GOGC` nor `GOMEMLIMIT`, `cli.Main` sets the GC percent to 150 for an interactive run (not `--listen`, D232) before the session loads, through D175's live-heap watcher (`gcpolicy.Interactive`). The watcher reads `/gc/heap/live:bytes` every 5 ms, backing off to every 1 s while no collection finishes; the first read that finds more than 8 MiB live sets the percent back to 100 for the rest of the process. A process that goes 2 s without a collection restores 100 and ends the watcher, so a session left at its prompt fires no timer; a cleanup attached to a sentinel object restarts the policy (a new watcher at 150) at the next collection, and a stop of the policy ends that restart. D175's print, json and rpc policy is unchanged (400 until 64 MiB, GOGC only).
+
+Pi source: none. Node's collector has no such setting; the GC target is a Go runtime choice.
+
+Why: an interactive run's cost is dominated by short bursts of allocation (a turn streams, a card renders) over a heap of a few megabytes, and the default target spends collections on it: 21 cycles in 20 prompts of a long session, about 3.7 ms each. Measured in one harness invocation, paired by round, on pinned xd670 cores (base 7750686238dd vs this change, n = 8): the interactive scenario's CPU 205.7 -> 191.5 ms (-6.6 %, 8 of 8 pairs), the default-theme scenario's CPU 89.9 -> 83.9 ms (-8.0 %, 8 of 8), time to interactive -13 %; in a 20-prompt session CPU per prompt -3.4 % and user instructions -4.2 % (8 of 8), at 40 prompts CPU -3.3 % and instructions -2.2 % (8 of 8). The cost is memory while the heap is small: the interactive scenario's peak own memory rises from 15.0 to 16.6 MB (Pi-Bolt 26.4) and a session's own memory after 20 prompts from 24.75 to 25.9 MB; after 40 prompts it is unchanged (37.95 -> 36.65 MB, within the noise) because the 8 MiB fallback has long ended the policy. GOGC 200 would raise the interactive peak to 20.6 MB for 193.6 ms, and a GC-off policy with a runtime memory limit (16, 20 and 24 MiB, switching at half the limit) was measured and dropped: 16 and 20 MiB collected so often that a long session's CPU per prompt rose 50-80 %, and 24 MiB raised peak memory more (+7 MB) than this policy. Idle CPU of a session at its prompt: 0.006-0.009 ms/s against 0.000 for the default (a 1 Hz watcher that never stopped cost 0.16 ms/s, which is why the watcher ends after 2 s without a collection).
+
+Call-site markers: `internal/gcpolicy/gcpolicy.go` (`Interactive`, `Policy.Apply`, `Policy.watchLiveHeap`, `watcher.resumeAtNextCollection`), `coding/cli/gc_policy.go` (`gcPolicyFor`), `coding/cli/main.go` (`Main`).
+
+Locked by: `TestInteractiveRevertsAtItsLiveHeapThreshold`, `TestBatchKeepsItsTargetBetweenTheInteractiveAndBatchThresholds`, `TestInteractiveStopsWhenIdle` (idle stop, restart at the next collection, stop ends the restart), `TestInteractiveLeavesAUserGOGCOrMemoryLimit`, `TestBatchIgnoresAMemoryLimit` (`internal/gcpolicy`), `TestGCPolicyFollowsTheRunMode` (`coding/cli`: interactive gets the interactive policy, print, json and rpc D175's, `--listen` none).
+
+Remove when: the Go runtime's default pacing stops collecting small interactive heaps, or a measurement shows GOGC 100 costs no CPU on the interactive and default-theme scenarios.
+
+Approval: owner, 2026-11-11 ("higher setting until ~8 MiB live, then normal").
 SCRUTINIZED:approved

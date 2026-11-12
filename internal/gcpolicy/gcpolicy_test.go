@@ -116,7 +116,7 @@ func TestApplyFallsBackWithoutACleanup(t *testing.T) {
 
 func watcherRunning() bool {
 	buf := make([]byte, 1<<20)
-	return strings.Contains(string(buf[:runtime.Stack(buf, true)]), "gcpolicy.watchLiveHeap")
+	return strings.Contains(string(buf[:runtime.Stack(buf, true)]), "gcpolicy.Policy.watchLiveHeap")
 }
 
 // D175: the watcher is owned by its caller. stop returns only after the goroutine has returned, so a process that calls it before
