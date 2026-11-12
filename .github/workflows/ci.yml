@@ -164,8 +164,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: automation/ci/wait-preflight.sh "$REPO" "$HEAD_SHA" "$BASE_SHA"
+          # pull_request_target runs preflight.yml from the default branch, whatever the PR's base.
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: automation/ci/wait-preflight.sh "$REPO" "$HEAD_SHA" "$DEFAULT_BRANCH"
 
   bookkeeping:
     name: Bookkeeping

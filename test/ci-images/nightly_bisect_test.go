@@ -128,8 +128,9 @@ func TestNightlyBisectWorkflowOpensAnIssueAndMergesNothing(t *testing.T) {
 	}
 }
 
-// runWaitPreflight runs wait-preflight.sh against a fake gh: base is present, absent (HTTP 404), or error for the workflow lookup on the base commit; states are the successive statuses.
-func runWaitPreflight(t *testing.T, base string, states ...string) (string, error) {
+// runWaitPreflight runs wait-preflight.sh against a fake gh: the workflow on the default branch main is present, absent (HTTP 404), or an
+// error; a lookup on any other ref is an error, so a skip proves main was asked. states are the successive statuses.
+func runWaitPreflight(t *testing.T, onMain string, states ...string) (string, error) {
 	script := filepath.Join(repoRoot(t), "automation", "ci", "wait-preflight.sh")
 	bin := t.TempDir()
 	count := filepath.Join(bin, "count")
@@ -137,14 +138,14 @@ func runWaitPreflight(t *testing.T, base string, states ...string) (string, erro
 	for i, state := range states {
 		cases += fmt.Sprintf("%d) echo %s;;\n", i, state)
 	}
-	fake := "#!/bin/sh\ncase \"$*\" in *contents/*preflight.yml*) case \"$FAKE_BASE\" in present) echo file; exit 0;; absent) echo \"gh: Not Found (HTTP 404)\" >&2; exit 1;; *) echo \"gh: boom (HTTP 502)\" >&2; exit 1;; esac;; esac\nn=$(cat \"" + count + "\" 2>/dev/null || echo 0)\necho $((n+1)) > \"" + count + "\"\ncase $n in\n" + cases + "*) echo none;;\nesac\n"
+	fake := "#!/bin/sh\ncase \"$*\" in *contents/*preflight.yml?ref=main*) case \"$FAKE_MAIN\" in present) echo file; exit 0;; absent) echo \"gh: Not Found (HTTP 404)\" >&2; exit 1;; *) echo \"gh: boom (HTTP 502)\" >&2; exit 1;; esac;; *contents/*) echo \"gh: Not Found (HTTP 404)\" >&2; exit 1;; esac\nn=$(cat \"" + count + "\" 2>/dev/null || echo 0)\necho $((n+1)) > \"" + count + "\"\ncase $n in\n" + cases + "*) echo none;;\nesac\n"
 	gh := filepath.Join(bin, "gh")
 	if err := os.WriteFile(gh, []byte(fake), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	summary := filepath.Join(bin, "summary")
-	cmd := exec.Command("bash", script, "o/r", "abc", "base1")
-	cmd.Env = append(os.Environ(), "FAKE_BASE="+base, "GITHUB_STEP_SUMMARY="+summary, "GH="+gh, "PREFLIGHT_POLL_SECONDS=0", "PREFLIGHT_WAIT_SECONDS=0")
+	cmd := exec.Command("bash", script, "o/r", "abc", "main")
+	cmd.Env = append(os.Environ(), "FAKE_MAIN="+onMain, "GITHUB_STEP_SUMMARY="+summary, "GH="+gh, "PREFLIGHT_POLL_SECONDS=0", "PREFLIGHT_WAIT_SECONDS=0")
 	out, err := cmd.CombinedOutput()
 	t.Logf("%v: %s", states, out)
 	note, _ := os.ReadFile(summary)
@@ -167,19 +168,20 @@ func TestWaitPreflightReportsTheStatusOfTheHead(t *testing.T) {
 	}
 }
 
-// The wait is skipped only when the base commit lacks the workflow; a head that deletes it, or an API error, keeps the wait.
-func TestWaitPreflightSkipsOnlyWhenTheBaseLacksTheWorkflow(t *testing.T) {
+// The wait is skipped only when the default branch lacks the workflow (pull_request_target runs from it, whatever the base);
+// a head that deletes it, or an API error, keeps the wait.
+func TestWaitPreflightSkipsOnlyWhenTheDefaultBranchLacksTheWorkflow(t *testing.T) {
 	out, err := runWaitPreflight(t, "absent", "none")
-	if err != nil || !strings.Contains(out, "pre-flight is not on the base branch yet: verdict skipped") {
-		t.Errorf("base without the workflow: err %v, output %q; want a skip with the notice", err, out)
+	if err != nil || !strings.Contains(out, "pre-flight is not on the default branch yet: verdict skipped") {
+		t.Errorf("default branch without the workflow: err %v, output %q; want a skip with the notice", err, out)
 	}
-	for _, base := range []string{"present", "error"} {
-		out, err := runWaitPreflight(t, base, "none")
+	for _, onMain := range []string{"present", "error"} {
+		out, err := runWaitPreflight(t, onMain, "none")
 		if err == nil || strings.Contains(out, "verdict skipped") {
-			t.Errorf("base %q skipped the wait: err %v, output %q", base, err, out)
+			t.Errorf("workflow %q on main skipped the wait: err %v, output %q", onMain, err, out)
 		}
 	}
 	if _, err := runWaitPreflight(t, "present", "success"); err != nil {
-		t.Errorf("base with the workflow and a passed status failed: %v", err)
+		t.Errorf("main with the workflow and a passed status failed: %v", err)
 	}
 }
