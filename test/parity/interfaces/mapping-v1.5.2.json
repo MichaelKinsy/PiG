@@ -106906,7 +106906,7 @@
       "evidence": [
         "test:agent/agent_class_pi_oracle_test.go#TestAgentClassMatchesPi",
         "test:agent/agent_loop_pi_oracle_test.go#TestAgentLoopMatchesPi",
-        "test:chord/next/host/host_ctx_test.go#TestCtxGetRejectsWithTheAcquireErrorWhileItsHandlerRuns"
+        "test:chord/next/host/host_ctx_test.go#TestCtxAGetThatFinishedItsAcquireInTheTurnItsHandlerSettledIsReleasedAtOnceRace11Deterministic"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -106929,7 +106929,7 @@
       "evidence": [
         "test:chord/next/host/host_routines_test.go#TestOnTypesTheirHandlerByTheSourcesKindOpsAndRetiredForAJSONWatchableTheValueAloneForANativeOne",
         "test:chord/next/host/jobs_job_runs_test.go#TestPhaseSpansKeepARunsCtxAJobsUnderCtxTraceItsIdAndStateRecordedOrNot",
-        "test:chord/next/host/host_ctx_test.go#TestCtxGetRejectsWithTheAcquireErrorWhileItsHandlerRuns"
+        "test:chord/next/host/host_ctx_test.go#TestCtxAGetThatFinishedItsAcquireInTheTurnItsHandlerSettledIsReleasedAtOnceRace11Deterministic"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -109396,8 +109396,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_ctx_test.go#TestCallChainAMethodsCtxIsItsOwnChainNodeAboveItTheChainOfTheCallThatMadeItARootsHasNone",
-        "test:chord/next/host/host_documents_cancel_test.go#TestDocumentsTransactionsTheirContextsEndCancelledAreReportedBesidesRejectingAChangeStartedInARootAndNotAwaitedItsFnSettledFirst",
-        "test:chord/next/host/host_example_30_test.go#TestExample30HostRoot"
+        "test:chord/next/host/host_ctx_test.go#TestCtxAGetThatFinishedItsAcquireInTheTurnItsHandlerSettledIsReleasedAtOnceRace11Deterministic",
+        "test:chord/next/host/host_ctx_test.go#TestCtxSettleReleasesTheReferencesAndForgetsThem"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -109419,8 +109419,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_ctx_test.go#TestCallChainAMethodsCtxIsItsOwnChainNodeAboveItTheChainOfTheCallThatMadeItARootsHasNone",
-        "test:chord/next/host/host_documents_cancel_test.go#TestDocumentsTransactionsTheirContextsEndCancelledAreReportedBesidesRejectingAChangeStartedInARootAndNotAwaitedItsFnSettledFirst",
-        "test:chord/next/host/host_example_30_test.go#TestExample30HostRoot"
+        "test:chord/next/host/host_ctx_test.go#TestCtxAGetThatFinishedItsAcquireInTheTurnItsHandlerSettledIsReleasedAtOnceRace11Deterministic",
+        "test:chord/next/host/host_ctx_test.go#TestCtxSettleReleasesTheReferencesAndForgetsThem"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -115875,8 +115875,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_ctx_test.go#TestCallChainAMethodsCtxIsItsOwnChainNodeAboveItTheChainOfTheCallThatMadeItARootsHasNone",
-        "test:chord/next/host/host_documents_cancel_test.go#TestDocumentsTransactionsTheirContextsEndCancelledAreReportedBesidesRejectingAChangeStartedInARootAndNotAwaitedItsFnSettledFirst",
-        "test:chord/next/host/host_example_30_test.go#TestExample30HostRoot"
+        "test:chord/next/host/host_ctx_test.go#TestCtxAGetThatFinishedItsAcquireInTheTurnItsHandlerSettledIsReleasedAtOnceRace11Deterministic",
+        "test:chord/next/host/host_ctx_test.go#TestCtxSettleReleasesTheReferencesAndForgetsThem"
       ]
     },
     {
