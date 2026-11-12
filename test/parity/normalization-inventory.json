@@ -27,8 +27,8 @@
     },
     {
       "source": "test/parity/runner/driver_tmux.go",
-      "sha256": "e5cbc36dd8aa2197655bb6dd454c27a4ca16ed68921daa77d1a419725bc82dc8",
-      "reason": "Terminal state capture is not a byte-stream assertion. A scenario explicitly selects viewport or retained history and its crop. History capture uses session-local maximum retention without changing pane size or shared defaults; required anchors and source-derived assertions reject incomplete history. Readiness and new-output barriers are synchronization, not behavioral coverage. The final capture is taken only from a still screen (the plain captures around the escaped one are equal, within the last step budget), and a capture_start absent from either capture fails the run instead of comparing the whole screen."
+      "sha256": "a810ee0b4ec6840ca2302a69b02b8ac5dd72ed5f3c63ccc04a2e2a30c76b8379",
+      "reason": "Terminal state capture is not a byte-stream assertion. A scenario explicitly selects viewport or retained history and its crop. History capture uses session-local maximum retention without changing pane size or shared defaults; required anchors and source-derived assertions reject incomplete history. Readiness and new-output barriers are synchronization, not behavioral coverage. The final capture is taken only from a still screen (the plain captures around the escaped one are equal, within the last step budget), and a capture_start absent from either capture, still absent when that budget ends, fails the run instead of comparing the whole screen."
     },
     {
       "source": "test/parity/runner/footer_crop.go",
