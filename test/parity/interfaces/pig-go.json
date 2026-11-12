@@ -291304,9 +291304,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(after time.Duration)"
+        "type": "func(after time.Duration, tick bool)"
       },
-      "shapeHash": "sha256:c5e142b867121317c0c4d031241c814ce97ade2b1f88b9ba646a1053b5cb968a"
+      "shapeHash": "sha256:219fbee68fd3c52d6563056986ddba59dd40d384bd7f9d31f61d18705ea758e5"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#keyAction",
