@@ -44,3 +44,17 @@
       (check-equal "done" (pig:jget out "outcome"))
       (check-equal "t7" (pig:jget seen "ticket"))
       (check-equal 5 (pig:jget seen "rev")))))
+
+(deftest ui-view-when-wire
+  (kt-check-json "{\"any\":[{\"all\":[{\"claim\":\"display.colors\",\"op\":\"atLeast\",\"value\":256},{\"claim\":\"display.hover\",\"op\":\"present\"}]}]}"
+                 (pig::view-when (list (pig::view-clause "display.colors" "atLeast" 256) (pig::view-clause "display.hover" "present")))))
+
+(deftest ui-view-alternative-keeps-its-parts
+  (let ((alt (pig::view-alternative (pig::view-when (list (pig::view-clause "a.b" "present"))) :a-view :drawing :a-drawing)))
+    (check-equal t (hash-table-p (first alt)))
+    (check-equal :a-view (second alt))
+    (check-equal :a-drawing (third alt))))
+
+(deftest ui-view-status-carries-the-result
+  (check-equal 77 (pig::view-status-result (pig::%view-status (pig::view-ref "k" 1 1) "finished" "" 77)))
+  (check-equal nil (pig::view-status-result (pig::%view-status (pig::view-ref "k" 1 1) "live" ""))))

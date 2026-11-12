@@ -62,5 +62,44 @@ class UIViewWireTests(unittest.TestCase):
         self.assertEqual(seen, [(pig_sdk.ViewRef("k", 2, 0), 5, "t7", {"n": 1})])
 
 
+class AmendmentTest(unittest.TestCase):
+    """The D614 amendment: claims, the status result, notices and the content members."""
+
+    def test_abilities_carry_claims_slot_claims_and_drawing(self):
+        ab = ui_view.decode_abilities(
+            {
+                "slots": ["panel"],
+                "claims": [{"name": "a.flag", "value": True}, {"name": "a.count", "value": 4242}, {"name": "a.list", "value": ["x", "y"]}],
+                "slotClaims": [{"slot": "panel", "claims": [{"name": "a.count", "value": 77}]}],
+                "drawing": {"profiles": ["scene"], "shapes": 5, "pixels": 16},
+            }
+        )
+        self.assertEqual([(c.name, c.value) for c in ab.claims], [("a.flag", True), ("a.count", 4242), ("a.list", ("x", "y"))])
+        self.assertEqual((ab.slot_claims[0].slot, ab.slot_claims[0].claims[0].value), ("panel", 77))
+        self.assertEqual((ab.drawing.profiles, ab.drawing.shapes, ab.drawing.pixels), (("scene",), 5, 16))
+        plain = ui_view.decode_abilities({"slots": ["panel"]})
+        self.assertEqual((plain.claims, plain.slot_claims, plain.drawing), ((), (), None))
+
+    def test_status_carries_the_finish_result(self):
+        st = ui_view.decode_status({"mount": {"key": "k", "epoch": 2, "rev": 1}, "state": "finished", "result": {"picked": 77}})
+        self.assertEqual(st.result, {"picked": 77})
+        self.assertIsNone(ui_view.decode_status({"mount": {"key": "k", "epoch": 2, "rev": 1}, "state": "live"}).result)
+
+    def test_notices_decode_and_a_malformed_reply_raises(self):
+        notices = ui_view.decode_notices({"notices": [{"code": "limit", "severity": "error", "path": "update", "measured": 6, "limit": 5, "epoch": 2, "rev": 1, "count": 3}]})
+        n = notices[0]
+        self.assertEqual((n.code, n.severity, n.path, n.measured, n.limit, n.epoch, n.rev, n.count, n.message), ("limit", "error", "update", 6, 5, 2, 1, 3, ""))
+        self.assertEqual(ui_view.decode_notices({"notices": []}), [])
+        with self.assertRaises(RuntimeError):
+            ui_view.decode_notices({})
+
+    def test_content_carries_the_members_only_when_given(self):
+        self.assertEqual(ui_view.encode_content({"root": {}}, (), (), None), {"view": {"root": {}}})
+        drawing = {"profile": "scene", "shapes": [{"kind": "rect", "width": 1, "height": 1}]}
+        alt = {"when": {"any": [{"all": [{"claim": "a.count", "op": "atLeast", "value": 2}]}]}, "view": {"root": {}}}
+        out = ui_view.encode_content({"root": {}}, (), (), None, [alt], drawing, [{"node": "n"}], [{"node": "n", "request": "mount"}])
+        self.assertEqual(out, {"view": {"root": {}}, "alternatives": [alt], "drawing": drawing, "a11y": [{"node": "n"}], "focus": [{"node": "n", "request": "mount"}]})
+
+
 if __name__ == "__main__":
     unittest.main()
