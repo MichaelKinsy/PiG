@@ -527,22 +527,31 @@ func SystemMessageFromAgentMessage(message agent.AgentMessage) (ai.SystemMessage
 	return *message.System, true
 }
 
-// CurrentSystemMessage replays every projected system message into the
-// current prompt and tool state (pi-ai getCurrentSystemMessage).
-func CurrentSystemMessage(messages []agent.AgentMessage) *ai.SystemMessage {
-	var systems []ai.Message
+// CurrentSystemMessageView replays every projected system message into the current prompt and tool state (pi-ai
+// getCurrentSystemMessage) for a caller that only reads it. The tool declarations in the result are the ones the projected
+// messages hold, not copies, so the caller must neither modify them nor keep them past the projection's life: the message
+// reads what compaction estimates and records, and a copy of every tool's parameters per read is what it saves. A declaration
+// is only ever replaced (declareToolChanges adds a new one and removes the old), never changed in place.
+func CurrentSystemMessageView(messages []agent.AgentMessage) *ai.SystemMessage {
+	var systems, instructions []ai.Message
 	for _, message := range messages {
 		if system, ok := SystemMessageFromAgentMessage(message); ok {
 			systems = append(systems, system)
+			system.ToolsAdded, system.ToolsRemoved = nil, nil
+			instructions = append(instructions, system)
 		}
 	}
-	return ai.GetCurrentSystemMessage(systems)
+	current := ai.GetCurrentSystemMessage(instructions)
+	if current != nil {
+		current.ToolsAdded = ai.BorrowedCurrentTools(systems)
+	}
+	return current
 }
 
 // compactionSystemMessage returns the JSON of the current projected system
 // state stamped with the compaction time, or nil when there is none.
 func compactionSystemMessage(messages []agent.AgentMessage, timestampMs int64) (json.RawMessage, error) {
-	current := CurrentSystemMessage(messages)
+	current := CurrentSystemMessageView(messages)
 	if current == nil {
 		return nil, nil
 	}
