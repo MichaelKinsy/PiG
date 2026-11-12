@@ -1906,3 +1906,38 @@ commit = "7ecacae312a0e75c215dd7dddbc658ab8dbfcfa2"
 class = "CITE"
 cite = "packages/coding-agent/src/modes/interactive/interactive-mode.ts:2907"
 reason = "Pi's promptForMissingSessionCwd (interactive-mode.ts:2907) offers Continue, Fork and Cancel with the labels of session-cwd.ts:52-53 for /import as for /resume: the import handler's prompt is the one-line prompt of session-cwd.ts:41 with those three options, the answer that declined is Cancel, and the Fork answer switches to a fork of the source in the current cwd with no second import."
+
+[[entry]]
+path = "ai/sse_event_idle_equivalence_test.go"
+commit = "28ae700a6739ac28d2bab669a8172f89703253e0"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The SSE idle tracker (sseIdleBody, D131) is PiG-original: Pi has no such tracker, so no Pi line governs it. The commit makes the tracker search a data line for reasoning markers only when a keepalive asks, so the reasoning answer is no longer a field set after every read but the result of isReasoning(). The reference test keeps the replaced tracker verbatim and still compares the same observable (progress, ping and event state after every read, and the reasoning answer after the last read and after one read in three): its field comparison moves from got.reasoning to got.isReasoning(), and the claim stays that the new tracker agrees with the old one."
+
+[[entry]]
+path = "internal/gcpolicy/gcpolicy_test.go"
+commit = "92630fc35831e89ca8bbd7bf97c68f0a196e24fc"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The GC policy is PiG-original (D175, D621): Pi has no counterpart, so no Pi line governs it. watchLiveHeap became a method of Policy, so the stack frame the test looks for to tell whether the watcher goroutine runs is now gcpolicy.Policy.watchLiveHeap; the asserted behavior (the watcher is owned by its caller and stopped before stop returns) is unchanged."
+
+[[entry]]
+path = "chord/nextnode/plugins/plugins_node_lifecycle_test.go"
+commit = "05796d6a06bd47d091836ae9e137941da7744ce9"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The closing and exit timers of NodeHost.Close are PiG-owned (D223: Close returning the exit, and the closeTimeout a host that answered gets); Pi's workers stop a child with one GRACE kill (workers.ts #shutdown, #exited), so no Pi line governs these tests. The commit changes how the tests order the process's answer against the stop grace: they pass the deadlines through NodeHost.startAfter instead of racing wall time (the 200 ms grace failed on loaded Windows runners). The two asserted behaviors stay: a host that answered `closing` is not killed when the grace passes within closeTimeout, and a host that does not answer is killed when the deadline passes."
+
+[[entry]]
+path = "chord/nextnode/plugins/plugins_install_test.go"
+commit = "2a0a44d8b02e0641c82373a6311a1fa754cf7585"
+class = "CITE"
+cite = "packages/chord/src/node/plugins/install.ts:245"
+reason = "Pi 75d59639a (after the pin v1.5.2, so the mirror's install.ts:245 still shows the old `const [tarball] = JSON.parse(...)`) reads npm's pack output as `Array.isArray(output) ? output[0] : output[name]`: the first tarball of the list npm 11 and earlier print, or the member of the package asked for in the object npm 12 prints. packedTarball takes the package name and does the same, so the expectations that read the object's first member (D501, retired by this commit) now read the member of the name, an object without the name packs nothing, and the errors for a string, a number and a JSON null follow JavaScript's reads."
+
+[[entry]]
+path = "env/differential_test.go"
+commit = "e6e4f9acc50b26111b6f83f48ea004ca1fa9927e"
+class = "CITE"
+cite = "packages/env/src/remote-env.ts:694"
+reason = "Pi 75ca6e7d0849 (#12055, after the pin v1.5.2: the mirror's listDir at remote-env.ts:694 still throws on an entry the daemon could not lstat) lists a directory without the entries removed during the enumeration, as Pi's directory readers do. The differential test's two expectations for names Node decodes with replacement characters, which cannot be lstat'ed under that name, change from listDir failing with not_found to listDir leaving them out (names b, z, é)."
