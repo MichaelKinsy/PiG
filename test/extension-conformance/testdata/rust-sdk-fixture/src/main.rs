@@ -3677,6 +3677,7 @@ fn main() {
             drawing: None,
             a11y: vec![],
             focus: vec![],
+            bindings: vec![],
         }
     }
     ext.command(
@@ -3731,6 +3732,7 @@ fn main() {
                 drawing: None,
                 a11y: vec![],
                 focus: vec![],
+                bindings: vec![],
             }) {
                 Ok(st) => st,
                 Err(e) => return CommandResult::Error(e.to_string()),
@@ -3747,6 +3749,7 @@ fn main() {
                 drawing: None,
                 a11y: vec![],
                 focus: vec![],
+                bindings: vec![],
             });
             ctx.notify(&format!("view-stale:{}", code(stale)), "info");
             let cur = st.mount.clone();
@@ -3876,6 +3879,7 @@ fn main() {
             drawing: None,
             a11y: vec![],
             focus: vec![],
+            bindings: vec![],
         }
     }
     fn x_when(claim: &str, op: &str, value: Option<Value>) -> pig_sdk::ViewWhen {
@@ -3951,6 +3955,7 @@ fn main() {
                     pig_sdk::ViewA11y { node: "base".into(), name: "Base".into(), ..Default::default() },
                 ],
                 focus: vec![pig_sdk::ViewFocus { node: "alt".into(), request: "mount".into(), restore: "previous".into() }],
+                bindings: vec![],
             }) {
                 Ok(st) => st,
                 Err(e) => return CommandResult::Error(e.to_string()),
@@ -4005,6 +4010,105 @@ fn main() {
             let count = |code: &str| notices.iter().filter(|n| n.code == code && n.path == "update").map(|n| n.count).sum::<u64>();
             ctx.notify(&format!("view-x-diag:invalid={},limit={},unsupported={},stale={}", count("invalid"), count("limit"), count("unsupported"), count("stale")), "info");
             ctx.notify(&format!("view-x-bigresult:{}", x_code(ctx.finish_view_with(&st.mount, json!("r".repeat(65536))))), "info");
+            CommandResult::Ok
+        },
+    );
+    // D614 bindings: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewBindings).
+    fn b_intents() -> Vec<pig_sdk::ViewIntent> {
+        vec![
+            pig_sdk::ViewIntent {
+                name: "fx.go".into(),
+                arg: pig_sdk::ViewShape::object(
+                    &[("n", pig_sdk::ViewShape::new("integer"))],
+                    &["n"],
+                ),
+                ..Default::default()
+            },
+            pig_sdk::ViewIntent {
+                name: "fx.tap".into(),
+                arg: pig_sdk::ViewShape::new("object"),
+                ..Default::default()
+            },
+        ]
+    }
+    fn b_go(key: &str, n: Value) -> pig_sdk::ViewBinding {
+        pig_sdk::ViewBinding {
+            key: key.into(),
+            intent: "fx.go".into(),
+            arg: Some(json!({ "n": n })),
+            ..Default::default()
+        }
+    }
+    fn b_tap(key: &str) -> pig_sdk::ViewBinding {
+        pig_sdk::ViewBinding {
+            key: key.into(),
+            intent: "fx.tap".into(),
+            ..Default::default()
+        }
+    }
+    ext.command(
+        "ui_view_bindings",
+        "Mount a view with bindings and probe what the host refuses",
+        |ctx, args| {
+            let Some((key, number)) = args.split_once(' ') else {
+                return CommandResult::Error("want a key and a number".into());
+            };
+            let Ok(n) = number.parse::<i64>() else {
+                return CommandResult::Error("want a number".into());
+            };
+            let mut mount = view_mount("bind", view_text(ctx, "-bind"), b_intents());
+            mount.bindings = vec![
+                pig_sdk::ViewBinding {
+                    name: format!("Go {n}"),
+                    ..b_go(key, json!(n))
+                },
+                b_go("w", json!(n + 1)),
+                pig_sdk::ViewBinding {
+                    gesture: "swipe-left".into(),
+                    intent: "fx.tap".into(),
+                    ..Default::default()
+                },
+            ];
+            let st = match ctx.mount_view(mount) {
+                Ok(st) => st,
+                Err(e) => return CommandResult::Error(e.to_string()),
+            };
+            ctx.notify(&format!("view-b-mounted:{}", st.state), "info");
+            let attempt = |label: &str, bindings: Vec<pig_sdk::ViewBinding>| {
+                let mut update = x_update(&st.mount);
+                update.view = view_text(ctx, "-bind");
+                update.intents = b_intents();
+                update.bindings = bindings;
+                ctx.notify(
+                    &format!("view-b-{label}:{}", x_code(ctx.update_view(update))),
+                    "info",
+                );
+            };
+            attempt(
+                "many",
+                "abcdefghijklmnopqrstuvwxyz0123456"
+                    .chars()
+                    .map(|c| b_tap(&c.to_string()))
+                    .collect(),
+            );
+            attempt("reserved", vec![b_tap("shift+tab")]);
+            attempt("order", vec![b_tap("ctrl+shift+p"), b_tap("shift+ctrl+p")]);
+            attempt(
+                "gesture",
+                vec![pig_sdk::ViewBinding {
+                    gesture: "pinch".into(),
+                    intent: "fx.tap".into(),
+                    ..Default::default()
+                }],
+            );
+            attempt("arg", vec![b_go("a", json!("x"))]);
+            attempt(
+                "ok",
+                vec![
+                    b_go("ctrl+shift+p", json!(n)),
+                    b_go("shift+ctrl+q", json!(n + 1)),
+                ],
+            );
             CommandResult::Ok
         },
     );
@@ -4112,6 +4216,7 @@ fn main() {
                             drawing: None,
                             a11y: vec![],
                             focus: focus(""),
+                            bindings: vec![],
                         })?;
                         let st = ctx.hide_view(&st.mount)?;
                         let st = ctx.show_view(&st.mount)?;
@@ -4126,6 +4231,7 @@ fn main() {
                             drawing: None,
                             a11y: vec![],
                             focus: focus("update"),
+                            bindings: vec![],
                         })?;
                         Ok(format!("view-tool:{},rev={}", st.state, st.mount.rev))
                     };

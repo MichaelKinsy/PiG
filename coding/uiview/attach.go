@@ -79,7 +79,7 @@ func (r *Registry) Attach(a ClientAbilities, sink Sink) (*Attachment, Resync, *E
 	r.atts = append(r.atts, t)
 	r.merged = mergeAbilities(r.atts)
 	rs := r.resync(t)
-	fn := r.onAbility
+	fn := r.abilityWatchers()
 	r.mu.Unlock()
 	if fn != nil {
 		fn()
@@ -159,7 +159,7 @@ func (t *Attachment) UpdateAbilities(a ClientAbilities) *Error {
 			t.deliver(k, s)
 		}
 	}
-	fn := r.onAbility
+	fn := r.abilityWatchers()
 	r.mu.Unlock()
 	if fn != nil {
 		fn()
@@ -181,7 +181,7 @@ func (t *Attachment) Detach() {
 	if r.solo == t {
 		r.solo = nil
 	}
-	fn := r.onAbility
+	fn := r.abilityWatchers()
 	r.mu.Unlock()
 	t.end()
 	if fn != nil {
@@ -274,9 +274,10 @@ func fallbackFits(a *ClientAbilities, m measured) bool {
 }
 
 // resolve returns the snapshot one client draws for a mount: the alternative its claims select or the view, with the
-// a11y and focus entries of the nodes that view has. A client that does not draw the slot is not sent the mount. A
-// client the content does not fit is sent the fallback (or no view when that does not fit either), marked degraded, and
-// the plugin gets a notice. It reads the measurements made when the content was admitted and never walks a view.
+// a11y and focus entries of the nodes that view has and, unless the fallback stands in, every binding. A client that
+// does not draw the slot is not sent the mount. A client the content does not fit is sent the fallback (or no view when
+// that does not fit either), marked degraded, and the plugin gets a notice. It reads the measurements made when the
+// content was admitted and never walks a view.
 func (r *Registry) resolve(t *Attachment, m *mount) (Snapshot, bool) {
 	if !slices.Contains(t.abilities.Slots, m.snap.Slot) {
 		return Snapshot{}, false
@@ -311,6 +312,9 @@ func (r *Registry) resolve(t *Attachment, m *mount) (Snapshot, bool) {
 		if _, ok := ids[f.Node]; ok {
 			out.Focus = append(out.Focus, f)
 		}
+	}
+	if i >= 0 {
+		out.Bindings = c.Bindings
 	}
 	if i > 0 {
 		s.Alternative = i

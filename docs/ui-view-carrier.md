@@ -24,7 +24,7 @@ One connection holds one attachment at a time. Several clients use several conne
 | host to client | `ui_view` | `attachment`, `seq`, `snapshot` | one delivery: the whole of one mount as this client draws it | `Delivery` |
 | host to client | `ui_view_gap` | `attachment`, `seq` | the host refused delivery number `seq` because the client's queue was full | the sink returned false |
 
-A snapshot is `{plugin, slot, target?, mount {key, epoch, rev}, state, reason?, result?, title?, view, intents?, assets?, drawing?, a11y?, focus?, alternative?, degraded?, digest?}`. `state` is live, hidden, finished, removed or broken. A mount is gone when its state is finished (with the plugin's `result`), removed or broken (with a `reason`). `alternative` says which content the client's claims selected (absent for the view itself), `degraded` that the content did not fit the client and the fallback, or nothing, stands in, and `digest` is the SHA-256 of the RFC 8785 form of the content.
+A snapshot is `{plugin, slot, target?, mount {key, epoch, rev}, state, reason?, result?, title?, view, intents?, assets?, drawing?, a11y?, focus?, bindings?, alternative?, degraded?, digest?}`. `state` is live, hidden, finished, removed or broken. A mount is gone when its state is finished (with the plugin's `result`), removed or broken (with a `reason`). `alternative` says which content the client's claims selected (absent for the view itself), `degraded` that the content did not fit the client and the fallback, or nothing, stands in, and `digest` is the SHA-256 of the RFC 8785 form of the content.
 
 Mounting, updating, hiding, showing, finishing and removing are the extension's calls. A client sees only their effect, as snapshots.
 
@@ -51,6 +51,18 @@ A client that stops reading costs the host a bounded queue and nothing else. No 
 ## Reports
 
 `ui_view_report` tells the plugin that the client could not draw part of a mount, or did not give it the focus its `focus` record asked for: `code` is undrawn, unsupported, limit or unfocused and `severity` info, warning or error. The plugin reads it with `ui.view.diagnostics`.
+
+## Bindings
+
+A snapshot's `bindings [{key | gesture, intent, arg?, name?}]` tie keys and gestures to intents of the mount that name no node. The host has checked them (the record is in [additive-features.md](additive-features.md), D614, "Bindings") and sends every client all of them; firing them is the client's part:
+
+- A key binding fires only while its mount holds the keyboard focus, and a mount with a key binding can hold the focus as a whole. The focused node of the mount gets the key first; a key it does not take fires the binding of that key; a key no binding names is the client's own. No binding is global.
+- A gesture binding fires when the gesture (`swipe-left`, `swipe-right`, `swipe-up`, `swipe-down`) is made on the mount and the node under it did not take it.
+- To fire a binding, send `ui_view_intent` with the binding's `intent`, no `nodeKey`, and its `arg`, or `{}` when it has none.
+- `key` is a key id: `shift`, `ctrl` and `alt` in any order, each followed by `+`, then the base key. Compare keys parsed, not as text.
+- The keys of `uiview.ReservedKeys` never arrive in a binding (`escape`, `tab` and `f6` with any modifiers; `c`, `d` and `z` with `ctrl`): keep them for leaving the mount, moving the focus, and the terminal's interrupt, end of input and suspend.
+- A client that takes keyboard input for a focused mount honours key bindings, and one whose pointing surface reports swipes honours gesture bindings. Report binding `i` that you cannot honour with `ui_view_report`: `{code: "unsupported", severity: "info", path: "bindings[i]"}`.
+- You may state the claim `input.bindings` (a list of `key` and `gesture`) in your abilities, so that an extension's `alternatives` can test it. The host does not read it.
 
 ## Errors
 
