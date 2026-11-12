@@ -20,6 +20,21 @@ func terminate(process *os.Process) (noExitCode bool) {
 	return process.Kill() == nil
 }
 
+// signalTerm is SIGTERM in Node's os.constants.signals, the signal libuv records for a child that terminate ended.
+const signalTerm = 15
+
+// exitCode is exec.ts's `code ?? (proc.signalCode ? 128 + osConstants.signals[proc.signalCode] : 1)`. A child that terminate ended has no exit code
+// and the signal libuv recorded, SIGTERM, so its code is 143; any other child keeps its own, and one with neither has 1.
+func exitCode(state *os.ProcessState, terminated bool) int {
+	if terminated {
+		return 128 + signalTerm
+	}
+	if code := state.ExitCode(); code >= 0 {
+		return code
+	}
+	return 1
+}
+
 // forceTerminate is proc.kill("SIGKILL"), which exec.ts sends execForceKillDelay after SIGTERM to a child that has not exited; Node ends a Windows process the same way for every signal.
 func forceTerminate(process *os.Process) { _ = process.Kill() }
 

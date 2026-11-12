@@ -191,6 +191,21 @@ export function stripAnsiEscapes(text) {
     }
 `],
   ],
+  // a83b75a07 (#12089): a command a signal ended reports 128 + the signal number as its code, not 0.
+  "pi-coding-agent/core/exec.js": [
+    ['import { spawn } from "node:child_process";\n', 'import { spawn } from "node:child_process";\nimport { constants as osConstants } from "node:os";\n'],
+    ["    const exitCode = code ?? 0;\n",
+      `    ${note("a83b75a07").trim()}
+    // A signal-killed command has no exit code. Use the shell convention, as the bash tool does, so a
+    // timeout, an abort or a crash does not read as success (#12088).
+    const exitCode = code ?? (proc.signalCode ? 128 + (osConstants.signals[proc.signalCode] ?? 0) : 1);
+`],
+  ],
+  // a83b75a07 (#12089): the pi.exec docs name the code of a command a signal ended.
+  "pi-coding-agent/docs/extensions.md": [
+    ["A command that ignores SIGTERM gets SIGKILL after 5 seconds.\n",
+      "A command that ignores SIGTERM gets SIGKILL after 5 seconds. A command terminated by a signal, by pi or otherwise, reports 128 + the signal number as `code`, like a shell: 143 for SIGTERM, 137 for SIGKILL.\n"],
+  ],
   // 0e1e3fc81 (#12052): a rendered line is blank once every escape sequence the converter handles is stripped.
   "pi-coding-agent/core/export-html/tool-renderer.js": [
     ['import { ansiLinesToHtml } from "./ansi-to-html.js";', 'import { ansiLinesToHtml, stripAnsiEscapes } from "./ansi-to-html.js";'],

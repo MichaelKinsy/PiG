@@ -71,7 +71,8 @@ type ExecOptions struct {
 type ExecResult struct {
 	Stdout string `json:"stdout"`
 	Stderr string `json:"stderr"`
-	Code   int    `json:"code"`
+	// Code is the exit code, or 128 + the signal number when a signal terminated the command (143 for SIGTERM), as a shell reports it.
+	Code int `json:"code"`
 	// Killed reports that pi terminated the command: timeout, abort, or output over MaxBuffer.
 	Killed bool `json:"killed"`
 	// Truncated reports that output exceeded MaxBuffer: Stdout and Stderr are incomplete and Code is nonzero.
@@ -107,9 +108,11 @@ type execDrainHooksKey struct{}
 // kill terminates the process), and execForceKillDelay later with SIGKILL if
 // the child has not exited by then. No descendant is signalled. The result's
 // code is the child's exit code; a child that a signal ended has none, and
-// upstream resolves it as 0 (`code ?? 0`). On Windows a child that the kill
-// ended has none either: libuv reports the signal it was sent instead of the
-// exit status 1, so the code is 0 there too.
+// upstream reports 128 + the signal number, as a shell does (143 for SIGTERM,
+// 137 for SIGKILL), so a timeout, an abort or a crash does not read as success.
+// With neither a code nor a signal it is 1. On Windows a child that the kill
+// ended has no code either: libuv reports the signal it was sent instead of the
+// exit status 1, so the code is 143 there too.
 //
 // opts.MaxBuffer caps the bytes of stdout and stderr together (default 256 MiB,
 // capped by the runtime string limit; an invalid value fails the call, as
@@ -307,15 +310,12 @@ func ExecCommand(ctx context.Context, cwd, command string, args []string, opts *
 		Killed:    killed,
 		Truncated: truncated,
 	}
-	// A child that a signal ended has no exit code (ExitCode is -1), nor has
-	// a Windows child that terminate ended, and upstream resolves `code ?? 0`.
-	switch state := cmd.ProcessState; {
-	case state == nil:
+	// A child that a signal ended has no exit code (ExitCode is -1), nor has a Windows child that terminate ended: exitCode gives them
+	// 128 + the signal number, as upstream does (#12088).
+	if state := cmd.ProcessState; state == nil {
 		result.Code = 1
-	case terminated:
-		result.Code = 0
-	default:
-		result.Code = max(state.ExitCode(), 0)
+	} else {
+		result.Code = exitCode(state, terminated)
 	}
 	// A truncated result never reads as success.
 	if truncated && result.Code == 0 {
