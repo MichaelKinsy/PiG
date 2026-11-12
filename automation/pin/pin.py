@@ -21,6 +21,8 @@
   pin.py ledgers [--from REF] generate the effective pin's ledgers that one file holds (async-contracts, behavior-contracts,
                               known-gaps, under test/parity/pin-ledgers/) from the earlier pin REF (default: the committed pin),
                               plus the interface delta manifest and the custom-factory draft; skips what exists
+  pin.py oracle-node          the bin directory of the oracle Node (ai/testdata/node-microtasks/oracle-node-version), fetched from nodejs.org
+                              and verified against its SHASUMS256.txt when the cache has none (automation/pin/nodefetch.py)
   pin.py gaps                 the effective pin's gap list: `make ledger-update`, then `make ledger-check` (the pin-follow gaps step)
 """
 from __future__ import annotations
@@ -518,6 +520,12 @@ def cmd_freeze_closure(args: argparse.Namespace) -> None:
     print(f"freeze-closure: wrote {oracle.freeze_closure(pin, lock)}")
 
 
+def cmd_oracle_node(_: argparse.Namespace) -> None:
+    import nodefetch
+
+    print(nodefetch.ensure())
+
+
 def cmd_link_mirror(_: argparse.Namespace) -> None:
     import oracle
 
@@ -608,6 +616,7 @@ def main() -> None:
     vendored.add_argument("--rebuild", action="store_true", help="also pack the pinned source build again and compare the bytes")
     vendored.set_defaults(fn=cmd_check_vendored)
     sub_.add_parser("link-mirror").set_defaults(fn=cmd_link_mirror)
+    sub_.add_parser("oracle-node").set_defaults(fn=cmd_oracle_node)
     ledgers = sub_.add_parser("ledgers")
     ledgers.add_argument("--from", dest="previous")
     ledgers.add_argument("--force", action="store_true")
