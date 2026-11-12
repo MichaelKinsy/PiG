@@ -24,12 +24,11 @@ func TestTranscriptReaderKeepsEveryChunkWhenCatStalls(t *testing.T) {
 	}
 	bin := t.TempDir()
 	stall := "#!/bin/sh\nhead -c1 >/dev/null\nexec sleep 30\n"
-	if err := os.WriteFile(filepath.Join(bin, "cat"), []byte(stall), 0o755); err != nil { //nolint:gosec // a fixture script must be executable.
+	if err := os.WriteFile(filepath.Join(bin, "cat"), []byte(stall), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	socket := fmt.Sprintf("pig-parity-transcript-%d", os.Getpid())
 	tmux := func(args ...string) *exec.Cmd {
-		//nolint:gosec // G204 (class a): program is literal tmux; args are fixed options and test-local names.
 		cmd := exec.Command("tmux", append([]string{"-L", socket, "-f", os.DevNull}, args...)...)
 		cmd.Env = append(os.Environ(), "PATH="+bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 		return cmd
