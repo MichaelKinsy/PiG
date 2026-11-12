@@ -96,7 +96,7 @@ func RegisterImagesAPIProvider(provider ImagesAPIProvider, sourceID ...string) {
 	generate := provider.GenerateImages
 	provider.GenerateImages = func(ctx context.Context, model ImageModel, imagesCtx ImagesContext, options ProviderImagesOptions) AssistantImages {
 		if model.API != provider.API {
-			panic(fmt.Errorf("Mismatched api: %s expected %s", model.API, provider.API))
+			panic(&mismatchedImagesAPIError{model: model.API, expected: provider.API})
 		}
 		return generate(ctx, model, imagesCtx, options)
 	}
@@ -124,6 +124,27 @@ func GenerateImages(ctx context.Context, model ImageModel, imagesCtx ImagesConte
 		return AssistantImages{}, fmt.Errorf("No API provider registered for api: %s", model.API)
 	}
 	return provider.GenerateImages(ctx, model, imagesCtx, options), nil
+}
+
+// mismatchedImagesAPIError is what the images registry throws for a model of another api (images-api-registry.ts wrapGenerateImages).
+type mismatchedImagesAPIError struct{ model, expected ImageAPI }
+
+func (e *mismatchedImagesAPIError) Error() string {
+	return fmt.Sprintf("Mismatched api: %s expected %s", e.model, e.expected)
+}
+
+// catchImagesMismatch runs call and returns the registry's throw as an error, as the catch of Models.generateImages (models.ts:1034) does. Any other panic is not Pi's throw and continues.
+func catchImagesMismatch(call func() (AssistantImages, error)) (result AssistantImages, err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			mismatch, ok := recovered.(*mismatchedImagesAPIError)
+			if !ok {
+				panic(recovered)
+			}
+			result, err = AssistantImages{}, mismatch
+		}
+	}()
+	return call()
 }
 
 func init() {

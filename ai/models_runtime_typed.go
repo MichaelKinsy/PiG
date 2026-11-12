@@ -83,5 +83,5 @@ func (m *Models) generateImages(ctx context.Context, model *ImageModel, request 
 	}
 	requestOptions := options.ImagesOptions
 	requestOptions.APIKey, requestOptions.Headers, requestOptions.Env, requestOptions.Identity = auth.apiKey, auth.headers, auth.env, auth.identity
-	return provider.GenerateImages(ctx, requestModel, request, requestOptions)
+	return catchImagesMismatch(func() (AssistantImages, error) { return provider.GenerateImages(ctx, requestModel, request, requestOptions) })
 }
