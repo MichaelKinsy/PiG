@@ -1406,7 +1406,6 @@ impl Connection {
             #[serde(skip_serializing_if = "Option::is_none")]
             parent_request_id: Option<&'a str>,
             #[serde(skip_serializing_if = "std::ops::Not::not")]
-            #[serde(skip_serializing_if = "std::ops::Not::not")]
             command_context: bool,
             #[serde(skip_serializing_if = "std::ops::Not::not")]
             timer: bool,
