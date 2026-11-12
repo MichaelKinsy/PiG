@@ -47,8 +47,8 @@ func credentialTestRuntime(t *testing.T, store ai.CredentialStore, providers ...
 	if result.Aborted || len(result.Errors) != 0 {
 		t.Fatalf("initial refresh = %+v", result)
 	}
-	// A test that holds a registration refresh releases it as it returns, which starts a refresh on the task owner that writes models-store.json. Join that work before TempDir removes the directory.
-	t.Cleanup(func() { registry.CloseModelTasks(); registry.NativeModels().Close() })
+	// A test that holds a registration refresh releases it as it returns, which starts a refresh on the task owner that writes models-store.json. CloseModelTasks joins that work before TempDir removes the directory.
+	t.Cleanup(registry.CloseModelTasks)
 	return registry
 }
 
