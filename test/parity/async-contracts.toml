@@ -1731,10 +1731,10 @@ rationale = "Model-cycle prefix/notification and prompt preflight admission are 
 
 [[files]]
 path = "packages/coding-agent/src/core/auth-storage.ts"
-disposition = "deferred"
-contracts = []
-evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/auth.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Re-audited at Pi c23b9ec1: the async skeleton of packages/coding-agent/src/core/auth-storage.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."
+disposition = "translated"
+contracts = ["awaited", "cancellable", "concurrent-joined"]
+evidence = ["test:ai/auth_file_lock_cancellation_test.go#TestAuthStorageFileLockWaitCancellation", "test:ai/auth_storage_memory_queue_test.go#TestInMemoryAuthStorageCancelledQueueOperations", "test:ai/auth_storage_memory_upstream_test.go#TestAuthStorageInMemoryCancellationAndOrderingUpstream", "test:ai/auth_reload_lifecycle_test.go#TestAuthStorageReadCancellationStopsReloadUpstream", "test:ai/auth_reload_lifecycle_test.go#TestAuthStorageFailedReloadRetainsSnapshotAndRetries", "test:ai/auth_modify_cancel_async_modelsb_test.go#TestAuthStorageModifyCancelledDuringTheCallbackRejectsAnUnchangedResult"]
+rationale = "Contract: Pi auth-storage.ts:116-200 file operations take the cancellable file lock (acquireLockAsync checks the signal between attempts and after acquiring), and after the callback an aborted signal rejects the operation before next is examined (:177-181); the in-memory backend chains operations (:309-326): a queued operation whose signal aborted is skipped, each caller races its own signal. Go: ai/auth_mutex.go:28 LockContext, ai/auth_store.go Modify (:254, post-callback check :284), InMemoryAuthStorage.withLockAsync (:322) / runPending (:341), ai/auth_reload.go reader cancel. Red: lock wait ignoring ctx -> TestAuthStorageFileLockWaitCancellation; queued op not skipped when cancelled -> TestInMemoryAuthStorageCancelledQueueOperations and ...InMemoryCancellationAndOrderingUpstream; memory waiter ignoring ctx -> same two; last reader cancel not aborting the reload -> TestAuthStorageReadCancellationStopsReloadUpstream; reader fallback inverted -> FileLockWaitCancellation, ReadCancellation..., FailedReloadRetainsSnapshotAndRetries; post-callback ctx check removed -> TestAuthStorageModifyCancelledDuringTheCallbackRejectsAnUnchangedResult. The pre-callback check (auth_store.go:~264) is not proven (mutation survived)."
 
 [[files]]
 path = "packages/coding-agent/src/core/bash-executor.ts"
@@ -1871,10 +1871,10 @@ rationale = "Ported in full (coding/nested_tool_calls.go NestedToolCallRunner.Ex
 
 [[files]]
 path = "packages/coding-agent/src/core/output-guard.ts"
-disposition = "deferred"
-contracts = []
-evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/output_guard.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+disposition = "translated"
+contracts = ["awaited", "detached-owned"]
+evidence = ["test:internal/codingagent/output_guard_retry_async_modelsb_test.go#TestRawStdoutRetriesTransientErrorsAfterTenMilliseconds", "test:internal/codingagent/output_guard_retry_async_modelsb_test.go#TestRawStdoutRetryResumesAfterAPartialWrite", "test:internal/codingagent/output_guard_retry_async_modelsb_test.go#TestRawStdoutRetryHoldsTheChunkUntilThePauseEnds", "test:internal/codingagent/output_guard_retry_async_modelsb_test.go#TestRawStdoutWriterKeepsOrderAcrossAStalledReader", "test:coding/cli/stdout_retry_async_modelsb_test.go#TestStdoutQueueWaitCoversTheRetryPause", "test:coding/cli/stdout_retry_async_modelsb_test.go#TestStdoutQueueOverRawWriterReportsAClosedReader"]
+rationale = "Contract: Pi output-guard.ts:20-45 writeRawStdoutChunk retries a write failing with ENOBUFS/EAGAIN/EWOULDBLOCK every 10 ms without limit, continuing with the bytes not yet accepted; any other error ends the process (exit 1); the raw writes form one ordered tail and callers wait for backpressure/flush. Go: internal/codingagent/output_guard.go retryingWriter.Write (:119-139), RawStdoutWriter/WriteRawStdout (:141-166) reached by print/json mode (coding/cli/print_mode.go:197) and rpc (rpc_transport.go:31) through the ordered stdoutQueue (coding/cli/stdout_queue.go), whose owner goroutine reports a failed write once (exit-1 hook) and whose Wait covers the retry pause. Red: retry condition inverted -> TestRawStdoutRetriesTransientErrors..., TestRawStdoutRetryResumesAfterAPartialWrite, TestRawStdoutRetryHoldsTheChunk... fail; Write(p) instead of Write(p[done:]) -> ...ResumesAfterAPartialWrite (\"abcababcdefgh\"); WriteRawStdout dropping text -> ...KeepsOrderAcrossAStalledReader; wait(0) -> ...Transient...; retry condition inverted again in the cli package -> TestStdoutQueueWaitCoversTheRetryPause (failure reported instead of retried); idleLocked always true -> TestStdoutQueueWaitCoversTheRetryPause (wait returned in the pause); queue failure hook disabled -> TestStdoutQueueOverRawWriterReportsAClosedReader."
 
 [[files]]
 path = "packages/coding-agent/src/core/package-manager.ts"
@@ -1885,10 +1885,10 @@ rationale = "checkForAvailableUpdates (:1363-1424) runs its checks through runWi
 
 [[files]]
 path = "packages/coding-agent/src/core/project-trust.ts"
-disposition = "deferred"
-contracts = []
-evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`coding/cli/project_trust.go + internal/codingagent/trust_manager.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Delta at Pi 2c8d1feb: no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged."
+disposition = "translated"
+contracts = ["awaited", "ui-handoff"]
+evidence = ["test:coding/cli/project_trust_async_modelsb_test.go#TestResolveProjectTrustedExtensionDecisionBeatsASavedDecision", "test:coding/cli/project_trust_async_modelsb_test.go#TestResolveProjectTrustedReportsAThrowingHandlerAndContinues", "test:coding/cli/project_trust_async_modelsb_test.go#TestResolveProjectTrustedCancelledDialogAnswersNotTrusted", "test:coding/cli/project_trust_async_modelsb_test.go#TestResolveProjectTrustedPromptsOnlyAfterTheHandlersFinish", "test:coding/cli/project_trust_context_test.go#TestResolveProjectTrustedPassesTheContextToHandlers"]
+rationale = "Contract: Pi project-trust.ts:47-98 resolveProjectTrusted awaits the project_trust event (:52-56), reports each throwing handler through onExtensionError and continues (:57-59), an extension yes/no beats the saved decision (:60-72), and only when every handler abstained is the trust dialog awaited (:89-95); a dialog that resolves undefined/aborts answers not trusted (:96-98). Go: coding/cli/project_trust.go resolveProjectTrusted (:34-115), handlers via inproc.EmitProjectTrust (:50-56), error report (:58-62). Red: the runner skipped when a saved decision exists -> ...ExtensionDecisionBeatsASavedDecision (trusted=false); OnExtensionError never called -> ...ReportsAThrowingHandlerAndContinues (reports empty); context.Canceled branch disabled -> ...CancelledDialogAnswersNotTrusted (err=context canceled); handlers skipped whenever a UI exists -> ...PromptsOnlyAfterTheHandlersFinish and ...PassesTheContextToHandlers."
 
 [[files]]
 path = "packages/coding-agent/src/core/provider-composer.ts"
@@ -1906,10 +1906,10 @@ rationale = "`(not ported: pi.dev remote model catalog refresh)` Delta at Pi dd3
 
 [[files]]
 path = "packages/coding-agent/src/core/resource-loader.ts"
-disposition = "deferred"
-contracts = []
-evidence = ["test:coding/resource_loader_extension_files_test.go#TestDefaultResourceLoaderWarnsAndKeepsLoadingWhenAConfiguredPackageCannotBeInstalled", "test:coding/resource_loader_extension_files_test.go#TestDefaultResourceLoaderPointsTemporaryExtensionSourcesAtTheSource", "test:coding/resource_loader_extension_files_test.go#TestDefaultResourceLoaderPointsProjectPackagesAtRemoveLocal", "test:coding/resource_loader_extension_files_test.go#TestDefaultResourceLoaderWarnsOnceAboutAFailingInstallWhenProjectTrustIsResolved"]
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`coding/packagecontent/packagecontent.go + internal/codingagent/resources.go + coding/cli/configured_resources.go + internal/codingagent/prompt_templates.go + internal/codingagent/skills.go + coding/cli/config_command.go + coding/cli/reload_resources.go + coding/cli/resource_source_info.go + internal/codingagent/interactive.go + internal/codingagent/reload_resources.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Pi 6dfb54678 awaits resolve() and resolveExtensionSources() as before and adds only the synchronous formatting of their installFailures into warnings merged into the final extension set; the rest of the file stays deferred. Delta at Pi 2c8d1feb: no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged."
+disposition = "translated"
+contracts = ["awaited", "cancellable", "concurrent-joined"]
+evidence = ["test:coding/resource_loader_trust_async_modelsb_test.go#TestDefaultResourceLoaderTrustCallbackRunsBetweenBootstrapAndFinalLoad", "test:coding/resource_loader_trust_async_modelsb_test.go#TestDefaultResourceLoaderTrustFailuresRejectTheReloadAndKeepThePreviousResult", "test:coding/resource_loader_trust_async_modelsb_test.go#TestDefaultResourceLoaderReloadHoldsTheOperationLockDuringTheExtensionLoad", "test:coding/resource_loader_overlap_async_modelsb_test.go#TestDefaultResourceLoaderOverlappingReloadsEndInTheLastInputsState", "test:coding/resource_loader_overlap_async_modelsb_test.go#TestDefaultResourceLoaderManyOverlappingReloadsEndInTheSameState", "test:coding/resource_loader_overlap_async_modelsb_test.go#TestDefaultResourceLoaderCallbackMayReloadWithItsContext"]
+rationale = "Contract: Pi resource-loader.ts:541-556 reload(options) loads the bootstrap extension set with project settings forced untrusted (:533-539), awaits resolveProjectTrust with it, applies the answer, reloads settings, then loads the final set reusing the bootstrap; a rejected bootstrap or callback rejects reload() and leaves the previous results; the caller's signal/ctx reaches the callback. opMu serialisation: divergence pending. Pi has no lock: overlapping reloads interleave at awaits (:618) and each assigns its results when it finishes; Go: ReloadWith (coding/resource_loader.go:202) serialises by opMu through enterOperation (:706), each reload atomic; with unchanged inputs the final state is equal. A callback of a running reload that reloads with the context it received runs inside the outer reload (Pi: nested reload resolves; Go before this change deadlocked on opMu). Red: SetProjectTrusted(trusted) replaced by _ = trusted -> ...TrustCallbackRunsBetweenBootstrapAndFinalLoad; bootstrap not forced untrusted -> same test and ...TrustFailures...; callback/bootstrap error swallowed -> ...TrustFailures... (trust refused / bootstrap failed); ctx replaced by Background -> ...TrustFailures... and ...CallbackMayReloadWithItsContext (times out); opMu not taken -> ...OverlappingReloadsEnd... (second reload reached its load), ...HoldsTheOperationLock..., and under -race ...ManyOverlapping...; held-context check disabled -> ...CallbackMayReloadWithItsContext (5 s deadline, 3 subtests). Pi can finish the first reload last with stale skill paths (:585-590, snapshot before the await at :618) next to a system prompt read after it (:689); PiG ends in the last inputs' state: divergence proposal."
 
 [[files]]
 path = "packages/coding-agent/src/core/runtime-credentials.ts"
@@ -1920,10 +1920,10 @@ rationale = "A credential store overlay with runtime API-key overrides. read, li
 
 [[files]]
 path = "packages/coding-agent/src/core/sdk.ts"
-disposition = "deferred"
-contracts = ["awaited", "cancellable"]
-evidence = ["test:coding/sdk_stream_options_upstream_test.go", "test:coding/session_cache_warming_test.go", "test:ai/provider_request_options_test.go", "scenario:test/parity/scenarios/providers-faux-streaming/20-sdk-stream-options.toml"]
-rationale = "Reviewed streamFn/buildRequestOptions: request presence overrides settings, the assembled-header hook completes before provider execution, its errors propagate on the same request, and cache warming receives the prepared options. Header-attempt timers stop at headers; request cancellation owns body/tunnel lifetime. All nine SDK stream-options cases are ported and presence mutations fail. Other SDK construction and resource-loader async obligations remain deferred. Delta at Pi bd3c9b82: adc5fa9f/04a93bad set the per-request identity and rename transformHeaders' parameter; the transformHeaders callback stays async and awaited (only its parameter name changes) and its await of the extension header hook is the one the evidence covers, so the reviewed contract is unchanged. Re-confirmed at Pi e7a0df27: the delta since b3a29f11 changes no line that mentions async, await, Promise, then/catch/finally, timers, signals or AbortSignal, so the contract stands."
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:coding/sdk_hooks_async_modelsb_test.go#TestSDKRequestHooksRunInRequestOrderAndEachCompletesBeforeTheProviderContinues", "test:coding/sdk_hooks_async_modelsb_test.go#TestSDKRequestHooksFollowALateBoundRunner", "test:coding/sdk_hooks_async_modelsb_test.go#TestSDKProviderHooksAreAwaitedAndReportHandlerErrors", "test:coding/sdk_hooks_async_modelsb_test.go#TestSDKProviderHookHandlerErrorsAreReportedAndDoNotFailTheRequest"]
+rationale = "Contract: Pi sdk.ts:341-343,374-433 the per-request hooks (transformContext, onPayload, onResponse, onProviderStreamEvent) read extensionRunnerRef at call time and each awaits its runner emit before the provider continues; a handler failure is reported to the runner's error listeners and does not fail the request. Go: coding/session_extension_hooks.go extensionContextHook (:157), extensionProviderRequestHook (:261), extensionProviderResponseHook (:277), extensionProviderStreamEventHook (:~300). Not claimed: createAgentSession awaiting ModelRuntime.create (sdk.ts:198), no test proves it. Red: response hook emitted with go -> ...RequestHooksRunInRequestOrder... and ...ProviderHooksAreAwaited... (response case); stream hook with go -> same; context hook skipped -> ...RequestOrder..., ...LateBoundRunner, ...ProviderHooksAreAwaited... (context case fails cleanly); payload replacement dropped -> ...RequestOrder..., ...LateBoundRunner (send:123 missing), ...ProviderHooksAreAwaited... (payload case)."
 
 [[files]]
 path = "packages/coding-agent/src/core/session-manager.ts"
@@ -2039,10 +2039,10 @@ rationale = "execute (:57-90) runs inside withFileMutationQueue(absolutePath, ..
 
 [[files]]
 path = "packages/coding-agent/src/core/trust-manager.ts"
-disposition = "deferred"
-contracts = []
-evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/trust_manager.go (unit-tested + project-trust/01 behavioral scenario covers it)`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Delta at Pi 2c8d1feb: no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged."
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:internal/codingagent/trust_lock_async_modelsb_test.go#TestProjectTrustStoreSetFailsWithTheLockErrorWhileTheLockIsHeldAndReleasesIt", "test:internal/codingagent/trust_manager_test.go#TestProjectTrustStore_ConcurrentUpdatesWaitForInProcessWriter", "test:internal/codingagent/trust_manager_test.go#TestProjectTrustStore_ConcurrentUpdatesDoNotLoseEntries"]
+rationale = "Contract: Pi trust-manager.ts:145-185,229-240 every get/set runs inside withTrustFileLock, a synchronous lock acquisition: ten attempts 20 ms apart then proper-lockfile's ELOCKED error without writing, lock released when the call returns. Go: internal/codingagent/trust_manager.go withLock (:277) adds an in-process mutex (Pi is single-threaded; Go-only), acquireSyncLockWithRetry, releaseSyncLock. Red: no file lock -> ...SetFailsWithTheLockError... (nil error); pilock.SyncAttempts 10->3 -> same test (gave up too early); lock never released -> same test and ...ConcurrentUpdatesDoNotLoseEntries; mutex removed -> ...ConcurrentUpdatesWaitForInProcessWriter (Lock file is already being held). TestSettingsAndTrustLocksFailWhileHeld and ...LockErrorsAreProperLockfileErrorsUpstream are NOT cited: they fail in the current tree (SetTheme with the lock held = nil) because settings.go/settings_writer.go are being changed by WModelsA."
 
 [[files]]
 path = "packages/coding-agent/src/core/virtual-models.ts"
