@@ -14,13 +14,15 @@ type withinFixture struct {
 	comp   *countingRenderComponent
 	timers []*manualRenderTimer
 	delays []time.Duration
+	at     time.Time
 }
 
 func newWithinFixture(t *testing.T) *withinFixture {
 	t.Helper()
-	f := &withinFixture{comp: &countingRenderComponent{}}
+	f := &withinFixture{comp: &countingRenderComponent{}, at: time.Unix(1_000_000, 0)}
 	f.ui = NewWithOutput(&bytes.Buffer{}, 20, 5)
 	f.ui.Add(f.comp)
+	f.ui.now = func() time.Time { return f.at }
 	f.ui.afterFunc = func(d time.Duration, fn func()) stoppableTimer {
 		timer := &manualRenderTimer{fn: fn}
 		f.timers = append(f.timers, timer)
@@ -30,14 +32,21 @@ func newWithinFixture(t *testing.T) *withinFixture {
 	return f
 }
 
+// frame draws a frame and lets 10 ms pass: frames are being drawn, as while a reply streams in.
+func (f *withinFixture) frame() {
+	f.ui.Render()
+	f.at = f.at.Add(10 * time.Millisecond)
+}
+
 // Pi-Bolt tui.ts requestRenderWithin: a change that need not be drawn at once is drawn by any frame drawn within the time, and a frame is asked for only when none was.
 func TestRequestRenderWithinAsksForAFrameOnlyWhenNoneIsDrawn(t *testing.T) {
 	f := newWithinFixture(t)
+	f.frame()
 	f.ui.RequestRenderWithin(40 * time.Millisecond)
 	if len(f.timers) != 1 || f.delays[0] != 40*time.Millisecond {
 		t.Fatalf("timers %d delays %v, want one timer of 40ms", len(f.timers), f.delays)
 	}
-	if f.comp.Count() != 0 {
+	if f.comp.Count() != 1 {
 		t.Fatal("RequestRenderWithin drew a frame at once")
 	}
 	f.timers[0].fn()
@@ -45,13 +54,14 @@ func TestRequestRenderWithinAsksForAFrameOnlyWhenNoneIsDrawn(t *testing.T) {
 		t.Fatalf("an expired RequestRenderWithin armed %d timers, want the frame's", len(f.timers))
 	}
 	f.timers[1].fn()
-	if f.comp.Count() != 1 {
-		t.Fatalf("frames drawn %d, want 1", f.comp.Count())
+	if f.comp.Count() != 2 {
+		t.Fatalf("frames drawn %d, want 2", f.comp.Count())
 	}
 }
 
 func TestFrameDrawnWithinTheDelayCarriesTheChange(t *testing.T) {
 	f := newWithinFixture(t)
+	f.frame()
 	f.ui.RequestRenderWithin(40 * time.Millisecond)
 	f.ui.Render()
 	if !f.timers[0].stopped {
@@ -62,8 +72,8 @@ func TestFrameDrawnWithinTheDelayCarriesTheChange(t *testing.T) {
 	if len(f.timers) != 1 {
 		t.Fatalf("a stale RequestRenderWithin callback asked for a frame (timers %d)", len(f.timers))
 	}
-	if f.comp.Count() != 1 {
-		t.Fatalf("frames drawn %d, want 1", f.comp.Count())
+	if f.comp.Count() != 2 {
+		t.Fatalf("frames drawn %d, want 2", f.comp.Count())
 	}
 }
 
@@ -76,6 +86,7 @@ func TestRequestRenderWithinIsCoveredByAFrameAlreadyAskedFor(t *testing.T) {
 		t.Fatalf("a frame is asked for already, RequestRenderWithin armed a timer (%d -> %d)", armed, len(f.timers))
 	}
 	f2 := newWithinFixture(t)
+	f2.frame()
 	f2.ui.RequestRenderWithin(40 * time.Millisecond)
 	f2.ui.RequestRenderWithin(10 * time.Millisecond)
 	if len(f2.timers) != 1 {
@@ -186,6 +197,7 @@ func TestLoaderTickStepAsksForNoFrame(t *testing.T) {
 // A spinner removed while the frame of its step waits has no step to draw: the timer is dropped, and a callback that was already running finds its generation gone, so no frame follows the frame that removed it (D619).
 func TestCancelRenderWithinDropsTheWaitingStepFrame(t *testing.T) {
 	f := newWithinFixture(t)
+	f.frame()
 	f.ui.RequestRenderWithin(40 * time.Millisecond)
 	f.ui.CancelRenderWithin()
 	if !f.timers[0].stopped {
@@ -198,5 +210,36 @@ func TestCancelRenderWithinDropsTheWaitingStepFrame(t *testing.T) {
 	f.ui.RequestRenderWithin(40 * time.Millisecond)
 	if len(f.timers) != 2 {
 		t.Fatalf("a request after the cancel armed %d timers in all, want 2", len(f.timers))
+	}
+}
+
+// The wait is for a frame something else is about to draw. A spinner that animates while nothing else is drawn (a reply that has not begun, a tool that runs) steps on time, as Pi's does: its frame is asked for at once when no frame was drawn within the delay (D619).
+func TestRequestRenderWithinAsksAtOnceWhenNoFrameWasDrawnWithinTheDelay(t *testing.T) {
+	never := newWithinFixture(t)
+	never.ui.RequestRenderWithin(40 * time.Millisecond)
+	if len(never.timers) != 1 || never.delays[0] != 0 {
+		t.Fatalf("no frame drawn yet: timers %d delays %v, want the frame's own timer at once", len(never.timers), never.delays)
+	}
+	never.timers[0].fn()
+	if never.comp.Count() != 1 {
+		t.Fatalf("frames drawn %d, want 1", never.comp.Count())
+	}
+
+	for _, tc := range []struct {
+		since time.Duration
+		want  time.Duration
+	}{
+		{80 * time.Millisecond, 0},                     // the last frame was the spinner's previous step
+		{40 * time.Millisecond, 0},                     // exactly the delay ago
+		{39 * time.Millisecond, 40 * time.Millisecond}, // a frame was drawn within the delay: wait for the next
+		{20 * time.Millisecond, 40 * time.Millisecond},
+	} {
+		f := newWithinFixture(t)
+		f.ui.Render()
+		f.at = f.at.Add(tc.since)
+		f.ui.RequestRenderWithin(40 * time.Millisecond)
+		if len(f.timers) != 1 || f.delays[0] != tc.want {
+			t.Errorf("last frame %v ago: timers %d delays %v, want one of %v", tc.since, len(f.timers), f.delays, tc.want)
+		}
 	}
 }

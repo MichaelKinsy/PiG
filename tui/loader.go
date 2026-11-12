@@ -88,7 +88,7 @@ func (l *Loader) requestStepRender(interval time.Duration) {
 	if l.ui == nil {
 		return
 	}
-	// pig divergence (D619): Pi's loader.ts asks for the frame of a step at once (`ui.requestRender()`).
+	// pig divergence (D619): Pi's loader.ts asks for the frame of a step at once (`ui.requestRender()`); RequestRenderWithin does so only when no frame was drawn within the delay.
 	if ui, ok := l.ui.(FrameWithinRequester); ok {
 		ui.RequestRenderWithin(StepFrameDelay(interval))
 		return
