@@ -4,7 +4,6 @@ import (
 	"reflect"
 	"sync"
 	"testing"
-	"unsafe"
 )
 
 // resetDerivedVariants drops every held variant, as a process that has listed and looked up nothing holds none, and puts back what was held
@@ -24,10 +23,14 @@ func resetDerivedVariants(t *testing.T) {
 	})
 }
 
+// oneString reports whether a and b are one string, the same bytes and not equal copies: the mark of one derivation.
+func oneString(a, b string) bool {
+	return len(a) == len(b) && reflect.ValueOf(a).Pointer() == reflect.ValueOf(b).Pointer()
+}
+
 // sameStrings reports whether a and b hold the very strings of one derivation: the same id, name and record bytes, not equal copies.
 func sameStrings(a, b *GeneratedModel) bool {
-	return unsafe.StringData(a.ID) == unsafe.StringData(b.ID) && unsafe.StringData(a.DisplayName) == unsafe.StringData(b.DisplayName) &&
-		unsafe.StringData(a.Record) == unsafe.StringData(b.Record)
+	return oneString(a.ID, b.ID) && oneString(a.DisplayName, b.DisplayName) && oneString(a.Record, b.Record)
 }
 
 // D199: a routing variant of a bundled OpenRouter model is held once. The shared list holds it, both lookups return that element, and every
