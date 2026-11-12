@@ -42325,6 +42325,30 @@
       ]
     },
     {
+      "id": "BF-c1292ec",
+      "title": "A PiG that runs without a model API no longer panics when a caller streams through pi-ai's compat functions",
+      "symptom": "A PiG that runs without a model API no longer panics when a caller streams through pi-ai's compat functions.",
+      "rootCause": "A build with pig_strip_bedrock_converse_stream, pig_strip_google_vertex or pig_strip_mistral_conversations (a Piglet Binary whose strip.apis names the API), and Stock PiG running a Piglet that strips one, panicked in ai.BuiltinProviders:",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A PiG that runs without a model API no longer panics when a caller streams through pi-ai's compat functions. This affected a Piglet Binary whose `strip.apis` names `bedrock-converse-stream`, `google-vertex` or `mistral-conversations` (build tags `pig_strip_bedrock_converse_stream`, `pig_strip_google_vertex`, `pig_strip_mistral_conversations`), and Stock PiG running a Piglet file with such a strip. In such a Binary the provider bridge subprocess (the `provider-bridge` command of the PiG executable, the transport of an extension's detached helpers such as background runs of pi-subagents) exited with status 2 and `panic: Provider \u003cid\u003e: at least one of \"api\", \"images\", or \"classifiers\" is required.` on its first stream request, whatever provider the request named. In both, an extension's pi-ai `stream` or `complete` call failed with `internal_panic: panic in HandleCall for \u003cextension\u003e.modelStream: Provider \u003cid\u003e: at least one of \"api\", \"images\", or \"classifiers\" is required.`. The built-in provider collection behind those calls now leaves a stripped provider out: requests to the other providers run, and a request for a model on a stripped API ends with `Provider \u003cid\u003e: API \u003capi\u003e is stripped from this Piglet (strip.apis: \u003capi\u003e)`. `--version`, `--help`, `--list-models`, print mode, RPC `get_available_models` and a `--model` that names a stripped provider were not affected, and neither was a build that strips only extensions or features. The defect is in every release since 0.5.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c1292ecbab",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "ai/builtin_providers_strip_test.go::TestStrippedProvidersAreNotBuilt",
+        "ai/providers/bedrock/bedrock_models_upstream_stripped_test.go::TestBedrockUpstreamModelCatalog",
+        "ai/strip_built_test.go::TestBuiltStrippedProvidersMatchTheStripState"
+      ]
+    },
+    {
       "id": "BF-c1524ce",
       "title": "fix(durable/core): a registry change tells the task graph its blocked reasons may have changed",
       "symptom": "fix(durable/core): a registry change tells the task graph its blocked reasons may have changed",

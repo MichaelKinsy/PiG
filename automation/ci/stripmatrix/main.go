@@ -70,7 +70,7 @@ func redTests(set tagSet) ([]string, error) {
 // parseRed reads a red list: blank lines and # comments aside, every line is a test name and a reason.
 func parseRed(text string) ([]string, error) {
 	var tests []string
-	for _, line := range strings.Split(text, "\n") {
+	for line := range strings.SplitSeq(text, "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
@@ -247,7 +247,6 @@ func stripMessage(provider, api string) string {
 func checkBridge(binary string, env []string, serverURL string, stripped map[string]string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	//nolint:gosec // G204 (class b): program is binary, the cmd/pig that smoke built into the tool's scratch directory; the only arg is fixed provider-bridge.
 	cmd := exec.CommandContext(ctx, binary, "provider-bridge")
 	cmd.Env = env
 	var stderr bytes.Buffer

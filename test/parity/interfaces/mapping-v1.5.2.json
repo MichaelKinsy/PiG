@@ -57433,8 +57433,8 @@
       ],
       "evidence": [
         "test:ai/faux_registration_queue_upstream_test.go#TestFauxProviderRegistrationQueueMethodsUpstream",
-        "test:ai/compat_registry_test.go#TestCompatStreamUsesTheBuiltInProviderWithTheEnvironmentKey",
-        "test:ai/compat_registry_test.go#TestFirstRegisterAPIProviderOverridesTheBuiltInForCatalogModels"
+        "test:ai/builtin_providers_strip_test.go#TestStrippedProvidersAreNotBuilt",
+        "test:ai/compat_registry_test.go#TestCompatStreamUsesTheBuiltInProviderWithTheEnvironmentKey"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -57456,8 +57456,8 @@
       ],
       "evidence": [
         "test:ai/faux_registration_queue_upstream_test.go#TestFauxProviderRegistrationQueueMethodsUpstream",
-        "test:ai/compat_registry_test.go#TestCompatStreamUsesTheBuiltInProviderWithTheEnvironmentKey",
-        "test:ai/compat_registry_test.go#TestFirstRegisterAPIProviderOverridesTheBuiltInForCatalogModels"
+        "test:ai/builtin_providers_strip_test.go#TestStrippedProvidersAreNotBuilt",
+        "test:ai/compat_registry_test.go#TestCompatStreamUsesTheBuiltInProviderWithTheEnvironmentKey"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },

@@ -1532,6 +1532,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-c1162b4](#bf-c1162b4) | `Shift+Enter` inserts a newline instead of queueing a follow-up in Apple Terminal setups that send `ESC` +… | A fix Pi shipped that PiG ported | Windows | 0.7.0 |
 | [BF-c122088](#bf-c122088) | A durable nested call keeps its arguments in the member order the caller wrote them, as Pi does: the stored… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c129008](#bf-c129008) | Registering a native provider did not refresh the Session's active model from the registry, as Pi does after… | PiG's own defect | All platforms | Unreleased |
+| [BF-c1292ec](#bf-c1292ec) | A PiG that runs without a model API no longer panics when a caller streams through pi-ai's compat functions | PiG's own defect | All platforms | Unreleased |
 | [BF-c1524ce](#bf-c1524ce) | fix(durable/core): a registry change tells the task graph its blocked reasons may have changed | PiG's own defect | All platforms | Unreleased |
 | [BF-c15309d](#bf-c15309d) | fix(sdk): extension SDK calculateCost reports totalFromProvider=false (Pi); chord entries reach the durable… | PiG's own defect | All platforms | Unreleased |
 | [BF-c1ed918](#bf-c1ed918) | fix(sdk-rs): give the request-start wire test's RequestMsg the batch, child_session, tool_call_index and… | PiG's own defect | All platforms | Unreleased |
@@ -23012,6 +23013,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `c1290084cb` (2026-11-07)
 - **Tests:** `internal/codingagent/native_provider_observers_test.go::TestRegisterNativeProviderReportsToTheRegistryObservers`
 - **Release note:** Registering a native provider did not refresh the Session's active model from the registry, as Pi does after `registerNativeProvider`; the registry's observers are now told, and the Node runtime refreshes its model view too.
+
+### BF-c1292ec
+
+**A PiG that runs without a model API no longer panics when a caller streams through pi-ai's compat functions**
+
+- **Source:** PiG's own defect
+- **Symptom:** A PiG that runs without a model API no longer panics when a caller streams through pi-ai's compat functions.
+- **Root cause:** A build with pig_strip_bedrock_converse_stream, pig_strip_google_vertex or pig_strip_mistral_conversations (a Piglet Binary whose strip.apis names the API), and Stock PiG running a Piglet that strips one, panicked in ai.BuiltinProviders:
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `c1292ecbab` (2026-11-12)
+- **Tests:** `ai/builtin_providers_strip_test.go::TestStrippedProvidersAreNotBuilt`, `ai/providers/bedrock/bedrock_models_upstream_stripped_test.go::TestBedrockUpstreamModelCatalog`, `ai/strip_built_test.go::TestBuiltStrippedProvidersMatchTheStripState`
+- **Release note:** A PiG that runs without a model API no longer panics when a caller streams through pi-ai's compat functions. This affected a Piglet Binary whose `strip.apis` names `bedrock-converse-stream`, `google-vertex` or `mistral-conversations` (build tags `pig_strip_bedrock_converse_stream`, `pig_strip_google_vertex`, `pig_strip_mistral_conversations`), and Stock PiG running a Piglet file with such a strip. In such a Binary the provider bridge subprocess (the `provider-bridge` command of the PiG executable, the transport of an extension's detached helpers such as background runs of pi-subagents) exited with status 2 and `panic: Provider <id>: at least one of "api", "images", or "classifiers" is required.` on its first stream request, whatever provider the request named. In both, an extension's pi-ai `stream` or `complete` call failed with `internal_panic: panic in HandleCall for <extension>.modelStream: Provider <id>: at least one of "api", "images", or "classifiers" is required.`. The built-in provider collection behind those calls now leaves a stripped provider out: requests to the other providers run, and a request for a model on a stripped API ends with `Provider <id>: API <api> is stripped from this Piglet (strip.apis: <api>)`. `--version`, `--help`, `--list-models`, print mode, RPC `get_available_models` and a `--model` that names a stripped provider were not affected, and neither was a build that strips only extensions or features. The defect is in every release since 0.5.0.
 
 ### BF-c1524ce
 
