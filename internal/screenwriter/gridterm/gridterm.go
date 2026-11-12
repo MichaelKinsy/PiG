@@ -433,7 +433,7 @@ func (v *Terminal) Write(s string) {
 				i = j
 			case ']':
 				j := i + 2
-				for j < len(s) && s[j] != 0x07 && !(s[j] == 0x1b && j+1 < len(s) && s[j+1] == '\\') {
+				for j < len(s) && s[j] != 0x07 && (s[j] != 0x1b || j+1 >= len(s) || s[j+1] != '\\') {
 					j++
 				}
 				if body := s[i+2 : j]; strings.HasPrefix(body, "8;") {
@@ -450,7 +450,7 @@ func (v *Terminal) Write(s string) {
 				i = j + 1
 			case 'P', '_', '^', 'X':
 				j := i + 2
-				for j+1 < len(s) && !(s[j] == 0x1b && s[j+1] == '\\') {
+				for j+1 < len(s) && (s[j] != 0x1b || s[j+1] != '\\') {
 					j++
 				}
 				v.unknown["string "+s[i+1:i+2]]++

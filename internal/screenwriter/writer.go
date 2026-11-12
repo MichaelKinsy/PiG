@@ -37,6 +37,7 @@
 package screenwriter
 
 import (
+	"bytes"
 	"encoding/binary"
 	"sort"
 	"strconv"
@@ -214,7 +215,7 @@ func (w *Writer) Translate(data string) string {
 	default:
 		w.stats.Translated++
 		w.out = append(w.out, syncEnd...)
-		out = unsafe.String(unsafe.SliceData(w.out), len(w.out))
+		out = unsafe.String(unsafe.SliceData(w.out), len(w.out)) //nolint:gosec // G103: the writer's own buffer as the result, valid until the next call, without a copy of every frame.
 	}
 	if w.anyPartial && w.settle > 0 {
 		w.lastWrite = time.Now()
@@ -386,7 +387,7 @@ func (w *Writer) writeDiff(index int, o, t *row, shared, same int) bool {
 	for p < no && p < nt && sameCell(o, p, t, p) {
 		p++
 	}
-	if p == no && p == nt {
+	if p == no && no == nt {
 		return true
 	}
 	// The cells before p are o's. From there through o's last cell that is not a default blank, t's cells must lie where o's do and
@@ -402,7 +403,7 @@ func (w *Writer) writeDiff(index int, o, t *row, shared, same int) bool {
 		}
 		// A cluster of uncertain width keeps its place: with another cluster there, the cells after it lie in other columns than
 		// counted here in a terminal that draws it wider or narrower.
-		if !(a.certain() && b.certain()) && string(o.line[a.off():a.end()]) != string(t.line[b.off():b.end()]) {
+		if (!a.certain() || !b.certain()) && !bytes.Equal(o.line[a.off():a.end()], t.line[b.off():b.end()]) {
 			return false
 		}
 	}
@@ -767,7 +768,7 @@ func (w *Writer) Settled() string {
 	w.moveTo(w.curRow, w.curCol)
 	w.setPen(pen{})
 	w.out = append(w.out, syncEnd...)
-	out := unsafe.String(unsafe.SliceData(w.out), len(w.out))
+	out := unsafe.String(unsafe.SliceData(w.out), len(w.out)) //nolint:gosec // G103: the writer's own buffer as the result, valid until the next call, without a copy.
 	w.stats.Settles++
 	w.stats.BytesOut += len(out)
 	if w.record != nil {

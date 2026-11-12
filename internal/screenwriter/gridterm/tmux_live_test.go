@@ -76,7 +76,6 @@ func copyBytes(to, from int) {
 
 // tmuxCommand runs tmux on the test's own server, the one whose socket is the file socket.
 func tmuxCommand(socket string, args ...string) (string, error) {
-	//nolint:gosec // G204 (class a): program is literal tmux; the arguments are the test's own, on a server of its own.
 	cmd := exec.Command("tmux", append([]string{"-S", socket, "-f", "/dev/null"}, args...)...)
 	for _, v := range os.Environ() {
 		if !strings.HasPrefix(v, "TMUX=") && !strings.HasPrefix(v, "SHELL=") {
@@ -115,7 +114,6 @@ func TestLinesAreWhatTmuxShows(t *testing.T) {
 	if _, err := exec.LookPath("tmux"); err != nil {
 		t.Skip("no tmux in PATH: the lines tmux itself shows are not asked for here; TestLinesAreWhatTmuxRecorded compares the recorded ones")
 	}
-	//nolint:gosec // G204 (class a): program is literal tmux.
 	versionOut, err := exec.Command("tmux", "-V").Output()
 	if err != nil {
 		t.Skipf("tmux -V: %v", err)
@@ -164,12 +162,12 @@ func TestLinesAreWhatTmuxShows(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer feed.Close()
+		defer func() { _ = feed.Close() }()
 		answered, err := os.OpenFile(answers, os.O_RDWR, 0)
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer answered.Close()
+		defer func() { _ = answered.Close() }()
 		session := fmt.Sprintf("case%d", i)
 		must("new-session", "-d", "-s", session, "-x", fmt.Sprint(c.cols), "-y", fmt.Sprint(c.rows), fmt.Sprintf("PIG_GRIDTERM_PANE_IN='%s' PIG_GRIDTERM_PANE_ANSWERS='%s' exec '%s'", in, answers, self))
 		defer func() { _, _ = tmuxCommand(socket, "kill-session", "-t", session) }()

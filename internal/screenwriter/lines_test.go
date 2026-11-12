@@ -30,7 +30,7 @@ func TestRecordedMenuReturnLeavesTheRenderersLines(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	reader, err := gzip.NewReader(file)
 	if err != nil {
 		t.Fatal(err)

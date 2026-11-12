@@ -16,7 +16,7 @@ const (
 )
 
 // bytesOf is s as bytes, not to be written to: for reading it eight bytes at a time.
-func bytesOf(s string) []byte { return unsafe.Slice(unsafe.StringData(s), len(s)) }
+func bytesOf(s string) []byte { return unsafe.Slice(unsafe.StringData(s), len(s)) } //nolint:gosec // G103: the string's own bytes, read and never written.
 
 // controls marks, with its high bit, the lowest byte of x that is a control character (below 0x20, or 0x7f); the bytes above that one
 // may be marked wrongly.

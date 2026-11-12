@@ -133,7 +133,7 @@ func (f *startupFixture) runForScreenWriter(ctx context.Context, t *testing.T, v
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	unpacked, err := gzip.NewReader(file)
 	if err != nil {
 		t.Fatal(err)

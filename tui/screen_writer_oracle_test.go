@@ -73,7 +73,7 @@ func screenWriterStreams(t *testing.T) map[string][]string {
 			t.Fatal(err)
 		}
 		data, err := io.ReadAll(reader)
-		file.Close()
+		_ = file.Close()
 		if err != nil {
 			t.Fatal(err)
 		}

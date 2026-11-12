@@ -118,9 +118,9 @@ func tmuxCases() []tmuxCase {
 func tmuxDigest(cases []tmuxCase) string {
 	sum := sha256.New()
 	for _, c := range cases {
-		fmt.Fprintf(sum, "%q %d %d\n", c.name, c.cols, c.rows)
+		_, _ = fmt.Fprintf(sum, "%q %d %d\n", c.name, c.cols, c.rows)
 		for _, step := range c.steps {
-			fmt.Fprintf(sum, "%q %d %d\n", step.write, step.cols, step.rows)
+			_, _ = fmt.Fprintf(sum, "%q %d %d\n", step.write, step.cols, step.rows)
 		}
 	}
 	return hex.EncodeToString(sum.Sum(nil))[:16]
