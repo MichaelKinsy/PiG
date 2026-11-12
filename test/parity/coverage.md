@@ -30,7 +30,7 @@ Raw PORT_MAP rows: 1144. Breakdown: 117 n/a (designed out) · 5 🟡 partial. Se
 - **Four core packages (agent, ai, coding-agent, tui):** 535 / 536 intended-portable files ✅ (99.8%) from 589 rows; 518 behavioral (96.8%), 0 weak-only, 17 untested.
 - **Shipped surface (agent, ai, codemode, coding-agent, mcp, schema, telemetry, tui; coding-agent without ):** 620 / 621 intended-portable files ✅ (99.8%) from 685 rows; 553 behavioral (89.2%), 0 weak-only, 67 untested.
 - **Whole monorepo (12 packages):** 1022 / 1027 intended-portable files ✅ (99.5%) from 1144 rows; 822 behavioral (80.4%), 0 weak-only, 200 untested.
-- **Interface closure:** 15102 of 15117 semantic interface IDs closed (517 designed-out, 15 pending, 14585 ported). A file-level ✅ does not close an interface ID.
+- **Interface closure:** 15106 of 15117 semantic interface IDs closed (521 designed-out, 11 pending, 14585 ported). A file-level ✅ does not close an interface ID.
 
 Behavioral evidence includes paired scenarios and reviewed mutation-proven Go unit tests. Unit tests are listed separately; last run refers only to paired scenarios, not unit execution or exhaustive parity.
 
