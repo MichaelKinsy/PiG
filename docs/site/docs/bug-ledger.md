@@ -1302,6 +1302,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D540](#bf-d540) | The plugins watcher's directory identity has no birth time on a system whose stat Go does not expose it for | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D601](#bf-d601) | The browser page's and the terminal sandbox's client runtimes, and the React bindings, are Pi's TypeScript… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D605](#bf-d605) | The server's two hosts serve one union: `Host.Delegate` one way, the Node host's destination the other | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D622](#bf-d622) | The process-exit input drain ends on the terminal's reply to a DA1 query written after the input disables… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26](#bf-a09da26) | `pi.getSettings()` in a subprocess extension lists the settings in Pi's order: the global settings file's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26-2](#bf-a09da26-2) | A bash or PowerShell tool card reads the result's `truncation` details by their exact keys, as Pi does: a… | PiG's own defect | Windows | 0.5.0 |
@@ -19794,6 +19795,21 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `612e5b6ab7` (2026-11-07), `6871fcf20e` (2026-11-07), `70b2b7bf42` (2026-11-07), `23978e4efb` (2026-11-08), `595c3b4930` (2026-11-08), `981a62878f` (2026-11-08)
 - **Tests:** `chord/next/host/host_delegate_test.go::TestDelegateAHoldMadeWhileItIsDownWaitsOnTheResolvesErrorAndBindsOnceItIsBack`, `chord/next/host/host_delegate_test.go::TestDelegateWhatTheDelegatesOwnLinkAsksForAndNothingServesIsNotSentBackToIt`, `chord/next/host/host_delegate_test.go::TestDelegateWhenItIsDownItsTypesWaitAndTheHostsOwnAreUntouched`, `chord/next/host/host_delegate_test.go::TestHostServesTheTypesOfItsPublishedTableAndNoOtherName`, `chord/nextnode/app/app_delegate_test.go::TestAServerPluginsObjectHoldsTheTypesTheGoServerServesOverTheNodeHostsLinkAsTheServer`
 
+### BF-D622
+
+**The process-exit input drain ends on the terminal's reply to a DA1 query written after the input disables…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D622)
+- **Symptom:** none claimed. Pi's wait is the price of a guard that a reply to an ordered query makes exact.
+- **Root cause:** the 50 ms wait is about a tenth of an interactive run (about 54 ms of 520-570 ms) and a fifth of a default-theme run (about 220-240 ms). A conditional skip never fires in real runs: modifyOtherKeys is on after the DA1 fallback, and the fullscreen renderer keeps mouse and focus reporting on until `Stop`, which runs after the drain. The timer cannot be shortened safely, because it guesses how long a terminal or a link takes; the reply does not guess. It also closes two windows that Pi's order leaves: mouse, focus and light/dark reports are stopped before the wait, not after it, so a mouse moved while the process exits no longer reaches the shell after the timer ends, and the wait follows a…
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** Pi's drain waits for a reply to an ordered query, or the owner declines the sentinel.
+- **Fix commits:** `3725179a59` (2026-11-11)
+- **Tests:** `test/integration/exit_drain_test.go::TestExitLeavesNoStrayBytesForTheShellUnderTmux`, `tui/terminal_exit_drain_test.go::TestExitDrainCountsDeviceAttributesRepliesOwedToEarlierQueries`, `tui/terminal_exit_drain_test.go::TestExitDrainDiscardsASecondReplyThatFollowsTheFirst`, `tui/terminal_exit_drain_test.go::TestExitDrainDiscardsWhatWasInFlightBeforeTheReply`, `tui/terminal_exit_drain_test.go::TestExitDrainEndsOnTheReplyWithoutWaiting`, `tui/terminal_exit_drain_test.go::TestExitDrainFinishesAReplyTheInputReaderBegan`, `tui/terminal_exit_drain_test.go::TestExitDrainKeepsPisTimerWhereTheTerminalNeverAnsweredDeviceAttributes`, `tui/terminal_exit_drain_test.go::TestExitDrainLeavesWhatIsTypedAfterTheReply` and 4 more in docs/bug-ledger.json
+
 ### BF-a076a50
 
 **A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…**
@@ -29733,6 +29749,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D605 | The server's two hosts serve one union: `Host.Delegate` one way, the Node host's destination the other | [BF-D605](#bf-d605) |
 | D607 | The plugins component loads hosts through a Node subprocess it starts: Pi's `evaluate`, `stack` and runtime… | deliberate difference |
 | D616 | An npm tarball is extracted with `tar` told the archive and the destination relative to the pack directory… | [BF-5043738](#bf-5043738) |
+| D622 | The process-exit input drain ends on the terminal's reply to a DA1 query written after the input disables… | [BF-D622](#bf-d622) |
 
 ## Fix-titled commits that are not bugs in a release
 

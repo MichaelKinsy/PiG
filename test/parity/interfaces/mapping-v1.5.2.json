@@ -315808,9 +315808,9 @@
         "call:tui/tui_alt_screen.go#newTuiAltScreen"
       ],
       "evidence": [
+        "test:tui/terminal_exit_drain_test.go#TestRendererExitDrainFacts",
         "test:tui/terminal_exit_restore_test.go#TestExitRestoreFixture",
-        "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys",
-        "test:tui/tui_alt_screen_keyboard_protocol_test.go#TestTuiAltScreenMovesOutstandingKeyboardPushAcrossScreens"
+        "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys"
       ]
     },
     {

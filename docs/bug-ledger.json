@@ -35666,6 +35666,40 @@
       ]
     },
     {
+      "id": "BF-D622",
+      "title": "The process-exit input drain ends on the terminal's reply to a DA1 query written after the input disables…",
+      "symptom": "none claimed. Pi's wait is the price of a guard that a reply to an ordered query makes exact.",
+      "rootCause": "the 50 ms wait is about a tenth of an interactive run (about 54 ms of 520-570 ms) and a fifth of a default-theme run (about 220-240 ms). A conditional skip never fires in real runs: modifyOtherKeys is on after the DA1 fallback, and the fullscreen renderer keeps mouse and focus reporting on until `Stop`, which runs after the drain. The timer cannot be shortened safely, because it guesses how long a terminal or a link takes; the reply does not guess. It also closes two windows that Pi's order leaves: mouse, focus and light/dark reports are stopped before the wait, not after it, so a mouse moved while the process exits no longer reaches the shell after the timer ends, and the wait follows a…",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D622",
+      "removeWhen": "Pi's drain waits for a reply to an ordered query, or the owner declines the sentinel.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "3725179a59",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "test/integration/exit_drain_test.go::TestExitLeavesNoStrayBytesForTheShellUnderTmux",
+        "tui/terminal_exit_drain_test.go::TestExitDrainCountsDeviceAttributesRepliesOwedToEarlierQueries",
+        "tui/terminal_exit_drain_test.go::TestExitDrainDiscardsASecondReplyThatFollowsTheFirst",
+        "tui/terminal_exit_drain_test.go::TestExitDrainDiscardsWhatWasInFlightBeforeTheReply",
+        "tui/terminal_exit_drain_test.go::TestExitDrainEndsOnTheReplyWithoutWaiting",
+        "tui/terminal_exit_drain_test.go::TestExitDrainFinishesAReplyTheInputReaderBegan",
+        "tui/terminal_exit_drain_test.go::TestExitDrainKeepsPisTimerWhereTheTerminalNeverAnsweredDeviceAttributes",
+        "tui/terminal_exit_drain_test.go::TestExitDrainLeavesWhatIsTypedAfterTheReply",
+        "tui/terminal_exit_drain_test.go::TestExitDrainWaitsForALateReply",
+        "tui/terminal_exit_drain_test.go::TestExitDrainWaitsForTheReplyUpToPisMaximum",
+        "tui/terminal_exit_drain_test.go::TestExitDrainWritesEveryDisableBeforeTheQuery",
+        "tui/terminal_exit_drain_test.go::TestRendererExitDrainFacts"
+      ]
+    },
+    {
       "id": "BF-a076a50",
       "title": "A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…",
       "symptom": "The time the connection had spent idle in the pool was deducted from the next request's timeout.",
@@ -57769,6 +57803,11 @@
       "id": "D616",
       "title": "An npm tarball is extracted with `tar` told the archive and the destination relative to the pack directory…",
       "entry": "BF-5043738"
+    },
+    {
+      "id": "D622",
+      "title": "The process-exit input drain ends on the terminal's reply to a DA1 query written after the input disables…",
+      "entry": "BF-D622"
     }
   ],
   "exemptCommits": {

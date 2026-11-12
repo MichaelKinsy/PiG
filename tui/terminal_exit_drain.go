@@ -8,8 +8,11 @@ import (
 
 // Pi's drainInput(1000, 50) at process exit (terminal.ts:391; interactive-mode.ts shutdown): wait until 50 ms pass with no input, at most 1000 ms.
 const (
-	exitDrainMaxWait  = time.Second
+	// upstream: packages/tui/src/terminal.ts:drainInput (maxMs = 1000)
+	exitDrainMaxWait = time.Second
+	// upstream: packages/tui/src/terminal.ts:drainInput (idleMs = 50)
 	exitDrainIdleWait = 50 * time.Millisecond
+	// pig divergence (D622): the 5 ms of silence after the reply to the exit's DA1 query replaces Pi's 50 ms idle wait.
 	// exitSentinelSettle is the silence that ends the exit after the reply to its query: a terminal or multiplexer that answers DA1 twice, or a reply to an earlier query still in flight, is discarded rather than left for the shell.
 	exitSentinelSettle = 5 * time.Millisecond
 )
