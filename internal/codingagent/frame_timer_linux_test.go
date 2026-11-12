@@ -5,6 +5,7 @@ package codingagent
 import (
 	"errors"
 	"os"
+	"runtime"
 	"slices"
 	"testing"
 	"time"
@@ -84,6 +85,41 @@ func TestKernelFrameTimerStopDropsTheTickAndResetReplacesTheDeadline(t *testing.
 	case <-time.After(5 * time.Second):
 		t.Fatal("no tick for a deadline that has passed")
 	}
+}
+
+// A deadline that has passed ticks before Reset returns, without the kernel: the reader goroutine of the descriptor runs only once the netpoller is
+// polled, which a P with runnable goroutines does after they have run (the first frame of a run was 1.4 ms late that way while the process started).
+// With one P the reader cannot run between Reset and the receive, so a tick that comes through the descriptor is not there yet.
+func TestKernelFrameTimerTicksAtOnceForADeadlineThatHasPassed(t *testing.T) {
+	d, _ := newKernelFrameTimer().(*kernelFrameTimer)
+	if d == nil {
+		t.Skip("no timerfd on this kernel")
+	}
+	defer d.Close()
+	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(1))
+	for _, after := range []time.Duration{0, -time.Second} {
+		// The deadline it replaces is gone with it.
+		d.Reset(time.Hour)
+		d.Reset(after)
+		select {
+		case <-d.c:
+		default:
+			t.Fatalf("no tick when Reset(%v) returned", after)
+		}
+		if kernelTimerArmed(t, d) {
+			t.Fatalf("Reset(%v) left a deadline armed in the kernel", after)
+		}
+	}
+}
+
+// kernelTimerArmed reports whether the descriptor holds a deadline that has not expired.
+func kernelTimerArmed(t *testing.T, d *kernelFrameTimer) bool {
+	t.Helper()
+	var spec unix.ItimerSpec
+	if err := unix.TimerfdGettime(d.fd, &spec); err != nil {
+		t.Fatal(err)
+	}
+	return spec.Value.Sec != 0 || spec.Value.Nsec != 0
 }
 
 // Close releases the descriptor and ends the goroutine that reads it; a late Reset or Stop touches nothing.
@@ -244,4 +280,30 @@ func TestStoppedRendererLeavesTheKernelFrameTimerDisarmed(t *testing.T) {
 	}
 	m.tuiInst.Start()
 	frame()
+}
+
+// The first frame of a run, asked for when nothing has been drawn before, is due at once: its tick is on the owner loop channel when RequestRender
+// returns and the kernel holds no deadline for it (with one P, so that the descriptor reader could not have delivered it yet).
+func TestFirstFrameOfARunTicksAtOnceWithoutArmingTheKernelTimer(t *testing.T) {
+	frameOutputIs(t, true)
+	m := newPendingDisplayHarness(t)
+	m.opts.KernelFrameDeadline = true
+	m.installRenderDispatcher()
+	timer := kernelTimerOf(m)
+	if timer == nil {
+		t.Skip("no timerfd on this kernel")
+	}
+	t.Cleanup(func() { _ = m.Stop() })
+	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(1))
+	m.tuiInst.Start()
+	m.tuiInst.RequestRender()
+	select {
+	case <-m.renderWakeCh:
+	default:
+		t.Fatal("the first frame of a run had no tick when RequestRender returned")
+	}
+	if kernelTimerArmed(t, timer) {
+		t.Fatal("the first frame of a run armed a deadline in the kernel")
+	}
+	m.tuiInst.RunDueRender()
 }

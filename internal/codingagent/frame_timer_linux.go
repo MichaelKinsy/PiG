@@ -58,26 +58,44 @@ func (d *kernelFrameTimer) read() {
 	}
 }
 
-// Reset arms the deadline to expire after the given time, replacing the one armed.
+// Reset arms the deadline to expire after the given time, replacing the one armed. A deadline that has passed is not handed to the kernel: the tick
+// is sent from here, as the runtime timer delivers one at the next scheduling point. Through the descriptor it would reach the owner loop only
+// once the netpoller is polled, which a P with runnable goroutines does after they have run: the first frame of a run, due at once while the
+// process is still starting, was drawn 1.4 ms late that way.
 func (d *kernelFrameTimer) Reset(after time.Duration) {
-	// A zero value disarms a timerfd, so a deadline that has passed is armed with the least value that expires: it ticks at once.
-	d.set(max(after, 1))
+	if after <= 0 {
+		d.set(0, true)
+		return
+	}
+	d.set(after, false)
 }
 
 // Stop disarms the deadline and drops a tick not yet received.
 func (d *kernelFrameTimer) Stop() {
-	d.set(0)
+	d.set(0, false)
 	select {
 	case <-d.c:
 	default:
 	}
 }
 
-func (d *kernelFrameTimer) set(after time.Duration) {
+// set arms the descriptor to expire after the given time, or disarms it for zero; tick also leaves a tick for the owner loop.
+func (d *kernelFrameTimer) set(after time.Duration, tick bool) {
 	spec := unix.ItimerSpec{Value: unix.NsecToTimespec(int64(after))}
 	d.mu.Lock()
 	if !d.closed {
 		_ = unix.TimerfdSettime(d.fd, 0, &spec, nil)
+		if tick {
+			// The latest tick replaces one the owner loop has not received: a tick is a wake, and the renderer checks the due time itself.
+			select {
+			case <-d.c:
+			default:
+			}
+			select {
+			case d.c <- time.Now():
+			default:
+			}
+		}
 	}
 	d.mu.Unlock()
 }
