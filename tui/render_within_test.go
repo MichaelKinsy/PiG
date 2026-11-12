@@ -182,3 +182,21 @@ func TestLoaderTickStepAsksForNoFrame(t *testing.T) {
 		t.Fatalf("Tick requested %d frames, want 1", ui.requests.Load()-before)
 	}
 }
+
+// A spinner removed while the frame of its step waits has no step to draw: the timer is dropped, and a callback that was already running finds its generation gone, so no frame follows the frame that removed it (D619).
+func TestCancelRenderWithinDropsTheWaitingStepFrame(t *testing.T) {
+	f := newWithinFixture(t)
+	f.ui.RequestRenderWithin(40 * time.Millisecond)
+	f.ui.CancelRenderWithin()
+	if !f.timers[0].stopped {
+		t.Fatal("CancelRenderWithin left the timer armed")
+	}
+	f.timers[0].fn()
+	if len(f.timers) != 1 {
+		t.Fatalf("a callback that was running asked for a frame (timers %d)", len(f.timers))
+	}
+	f.ui.RequestRenderWithin(40 * time.Millisecond)
+	if len(f.timers) != 2 {
+		t.Fatalf("a request after the cancel armed %d timers in all, want 2", len(f.timers))
+	}
+}
