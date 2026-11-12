@@ -58,10 +58,14 @@ func TestGoogleAdaptersRouteEveryRequestShapeThroughTheCallersFetch(t *testing.T
 			options := tc.options
 			options.Fetch, options.Transport = custom, TransportSSE
 			stream, err := tc.provider(tc.baseURL).Stream(t.Context(), NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("hello"), Timestamp: 1}}}), options)
+			message := ""
 			if err != nil {
-				t.Fatal(err)
+				// An ADC request fails Stream itself where an API-key request ends the stream with the error.
+				message = err.Error()
+			} else {
+				message = stream.Result().ErrorMessage
 			}
-			if message := stream.Result().ErrorMessage; !strings.Contains(message, "upstream rejected request") {
+			if !strings.Contains(message, "upstream rejected request") {
 				t.Fatalf("error = %q", message)
 			}
 			seen := urls.snapshot()
