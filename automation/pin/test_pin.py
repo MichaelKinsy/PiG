@@ -1140,30 +1140,46 @@ class CarryTests(unittest.TestCase):
         self.assertGreater(len(self.calls), first)
 
 
-class PointCurrentTests(unittest.TestCase):
-    """make test-carried-oracles runs at another Pi commit, and install-oracle points .upstream/current at that commit's mirror. The next
-    make interface-gaps read the carried Pi and reported seven gaps the tree does not have. `pin.py point-current`, which the target runs
-    when it ends, points the link back at the effective pin's mirror."""
+class OverrideTreeCommandTests(unittest.TestCase):
+    """`pin.py override-tree` is read by make as $(...): its standard output is the tree's path and nothing else, whatever the build prints."""
 
-    def setUp(self):
-        self.root = Path(tempfile.mkdtemp())
-        self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
-        (self.root / ".upstream" / COMMIT.mirror_dir).mkdir(parents=True)
-        self.current = self.root / ".upstream" / "current"
-        self.current.symlink_to(COMMIT.mirror_dir)
+    def run_command(self, ref: str) -> str:
+        def build(pin):
+            print("npm said something")
+            os.write(1, b"a child process said something\n")
+            return Path("/store") / pin.commit / "durable-x"
 
-    def point(self):
-        with mock.patch.object(pin_tool, "ROOT", self.root), mock.patch.object(pinlib, "effective", lambda: (TAG, False)):
-            pin_tool.cmd_point_current(None)
+        import vendor
 
-    def test_current_returns_to_the_mirror_of_the_effective_pin(self):
-        (self.root / ".upstream" / TAG.mirror_dir).mkdir()
-        self.point()
-        self.assertEqual(os.readlink(self.current), TAG.mirror_dir)
+        with tempfile.TemporaryFile() as captured:
+            saved = os.dup(1)
+            os.dup2(captured.fileno(), 1)
+            try:
+                with mock.patch.dict(os.environ, {pinlib.OVERRIDE_ENV: ref}), mock.patch.object(pinlib, "effective", lambda: (COMMIT, False)), mock.patch.object(vendor, "override_tree", build), contextlib.redirect_stderr(io.StringIO()):
+                    pin_tool.cmd_override_tree(None)
+            finally:
+                sys.stdout.flush()
+                os.dup2(saved, 1)
+                os.close(saved)
+            captured.seek(0)
+            return captured.read().decode()
 
-    def test_current_stays_when_the_tree_has_no_mirror_of_the_pin(self):
-        self.point()
-        self.assertEqual(os.readlink(self.current), COMMIT.mirror_dir)
+    def test_standard_output_is_the_path_alone(self):
+        with tempfile.TemporaryFile() as errors:
+            saved = os.dup(2)
+            os.dup2(errors.fileno(), 2)
+            try:
+                printed = self.run_command(COMMIT.commit)
+            finally:
+                os.dup2(saved, 2)
+                os.close(saved)
+            errors.seek(0)
+            self.assertIn(b"a child process said something", errors.read())
+        self.assertEqual(printed, str(Path("/store") / COMMIT.commit / "durable-x") + "\n")
+
+    def test_a_run_that_names_no_commit_has_no_override_tree(self):
+        with self.assertRaisesRegex(pinlib.PinError, "PI_UPSTREAM_REF"):
+            self.run_command("")
 
 
 class MirrorLinkTests(unittest.TestCase):

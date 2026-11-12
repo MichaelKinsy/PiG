@@ -53637,6 +53637,33 @@
       ]
     },
     {
+      "id": "BF-ee9dfad",
+      "title": "Tooling: `make test-carried-oracles` (the CI step \"Run the oracle tests of carried Pi work\") passes again and…",
+      "symptom": "Tooling: `make test-carried-oracles` (the CI step \"Run the oracle tests of carried Pi work\") passes again and no longer changes the tree.",
+      "rootCause": "Since the vendored packs, durable/interop holds the pin's packages at every pin, and the run was red: TestWakeRecordMemosMatchPi (wake_memos_pi_oracle_test.go:105, ERR_PACKAGE_PATH_NOT_EXPORTED './session-resources' in durable/interop/node_modules/@earendil-works/pi-ai), and the five scripted-session tests of durable/interop compared Go with the pin's Pi Durable.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Tooling: `make test-carried-oracles` (the CI step \"Run the oracle tests of carried Pi work\") passes again and no longer changes the tree. Since Pi's durable packages are vendored, `durable/interop` holds the pin's packages at every pin, so the run, which compares with a later Pi commit, failed (`TestWakeRecordMemosMatchPi`: `ERR_PACKAGE_PATH_NOT_EXPORTED './session-resources'`) and compared the scripted sessions with the pin's Pi Durable. The run also pointed `extensions/sdk-ts/node_modules` and `.upstream/current` at the later commit, and a run that was killed left them there for the next gate. It now reads that commit's Pi in the build store (`pin.py override-tree`, handed to the tests as `PIG_PI_OVERRIDE_TREE`) and writes nothing in the tree, so `pin.py point-current` is removed. A carried test fails instead of skipping when that Pi lacks the work. `make test-carried-oracles-guard` runs the target to its end, failing and killed, and requires the tree's own Pi to be what it was; `pin.py check-vendored --installed durable/interop` checks the installed packages against the vendored packs.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ee9dfad46e",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "automation/pin/test_carried_guard.py",
+        "durable/harness/wake_memos_pi_oracle_test.go::TestWakeRecordMemosMatchPi",
+        "internal/pioracle/source_test.go::TestARunAtThePinReadsTheRepositorysPi",
+        "internal/pioracle/source_test.go::TestARunThatNamesAnotherPiReadsOnlyItsTree",
+        "internal/pioracle/source_test.go::TestAnOverrideTreeMustBeFinishedAndHoldItsOwnPacks",
+        "internal/pioracle/source_test.go::TestWorkThePiLacksSkipsAtThePinAndFailsInACarriedRun"
+      ]
+    },
+    {
       "id": "BF-eeac307",
       "title": "Anthropic and Bedrock assistant messages write `providerThinkingLevel` after `model`, and write…",
       "symptom": "Anthropic and Bedrock assistant messages write `providerThinkingLevel` after `model`, and write `cacheWrite1h` and `reasoning` after `cost` in `usage`, as Pi does.",

@@ -10,14 +10,14 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/internal/testenv"
+	"github.com/MichaelKinsy/PiG/internal/pioracle"
 )
 
 // TestDurableTelemetrySchemaMatchesPi evaluates Pi's DURABLE_TELEMETRY_SCHEMA declaration as written and compares the schema JSON member by
 // member with DurableTelemetrySchema's: spans, events, attributes with their values, status, and metrics with kind, unit and attributes.
 // Object member order is not compared; Go writes map members sorted and JSON objects are unordered.
 func TestDurableTelemetrySchemaMatchesPi(t *testing.T) {
-	source := filepath.Join(testenv.ModuleRoot(t), ".upstream", "current", "packages", "durable", "src", "harness", "telemetry.ts")
+	source := filepath.Join(pioracle.Packages(t), "durable", "src", "harness", "telemetry.ts")
 	cmd := exec.CommandContext(t.Context(), "node", "--disable-warning=ExperimentalWarning", "testdata/telemetry_schema.mjs", source)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr

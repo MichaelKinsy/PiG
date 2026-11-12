@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/internal/pioracle"
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
@@ -33,9 +34,8 @@ func TestANestedKeyErrorQuotesTheKeyAsPiDoes(t *testing.T) {
 		payload.WriteString(`{"op":"checkKey","key":` + k.pi + `}`)
 	}
 	payload.WriteByte(']')
-	root := testenv.ModuleRoot(t)
-	cmd := exec.CommandContext(t.Context(), testenv.RequireQualifiedNode(t), "--disable-warning=ExperimentalWarning", "testdata/tool_oracle.mjs", filepath.Join(root, ".upstream", "current", "packages"))
-	cmd.Env = append(cmd.Environ(), "PI_INTEROP_DIR="+filepath.Join(root, "durable", "interop")+"/")
+	cmd := exec.CommandContext(t.Context(), testenv.RequireQualifiedNode(t), "--disable-warning=ExperimentalWarning", "testdata/tool_oracle.mjs", pioracle.Packages(t))
+	cmd.Env = append(cmd.Environ(), "PI_INTEROP_DIR="+pioracle.Project(t))
 	cmd.Stdin = &payload
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
