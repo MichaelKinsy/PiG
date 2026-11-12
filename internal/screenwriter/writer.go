@@ -619,10 +619,17 @@ func (w *Writer) settleFire() {
 }
 
 // Settled is the settle write: every row that had a part written since it was last written whole, written whole as the frame wrote
-// it, in one synchronized update that leaves the cursor where it is. It is empty when no row is waiting for it, or when the cursor is
-// not known or the pen is not the default one; the rows then wait for the frame that next writes them.
+// it, in one synchronized update that leaves the cursor where it is. It is empty when no row is waiting for it, when the terminal
+// changed size since the last frame, or when the cursor is not known or the pen is not the default one; the rows then wait for the
+// frame that next writes them.
 func (w *Writer) Settled() string {
 	w.catchUp()
+	if cols, rows := w.size(); cols != w.cols || rows != w.high {
+		// The terminal changed size since the last frame: the rows kept are not what it shows, and rows of the old width written now
+		// would wrap. The repaint the resize brings is the next frame.
+		w.resize()
+		return ""
+	}
 	if !w.anyPartial || !w.active.Load() || !w.curKnown || !w.penKnown || w.pen != (pen{}) {
 		return ""
 	}

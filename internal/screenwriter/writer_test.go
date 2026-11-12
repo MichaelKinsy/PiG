@@ -544,6 +544,31 @@ func TestResizeForgetsTheScreen(t *testing.T) {
 	}
 }
 
+// The settle write after the terminal changed size writes nothing: rows of the old width written now would wrap on the new screen, and
+// the repaint the resize brings is the next frame. Without a resize it writes as before.
+func TestSettleAfterAResizeWritesNothing(t *testing.T) {
+	cols, rows := 20, 5
+	w := New(Options{Size: func() (int, int) { return cols, rows }, Settle: -1})
+	w.Translate("\x1b[?1049h")
+	w.Translate(frame("\x1b[2J", line(1, "one"), line(2, "two")))
+	w.Translate(frame(line(1, "one"), line(2, "two!")))
+	cols = 12
+	if got := w.Settled(); got != "" {
+		t.Fatalf("the settle write after a resize is %q", got)
+	}
+	if got := w.Settled(); got != "" {
+		t.Fatalf("a second settle write after a resize is %q", got)
+	}
+	repaint := frame("\x1b[2J", line(1, "one"), line(2, "two!"))
+	if got := w.Translate(repaint); got != repaint {
+		t.Errorf("the repaint was translated: %q", got)
+	}
+	w.Translate(frame(line(1, "one"), line(2, "two!!")))
+	if got := w.Settled(); got == "" {
+		t.Error("no settle write after the repaint and a partial write")
+	}
+}
+
 // Outside the alternate screen every byte is sent as it came, frames included; leaving it ends the settle write; entering it again
 // starts from nothing.
 func TestOutsideTheAlternateScreenEveryByteIsSentAsItCame(t *testing.T) {
