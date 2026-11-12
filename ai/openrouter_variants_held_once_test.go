@@ -175,9 +175,7 @@ func TestConcurrentFirstUsesBuildOneOpenRouterBundle(t *testing.T) {
 	var start, done sync.WaitGroup
 	start.Add(1)
 	for r := range readers {
-		done.Add(1)
-		go func() {
-			defer done.Done()
+		done.Go(func() {
 			start.Wait()
 			switch r % 3 {
 			case 0:
@@ -190,7 +188,7 @@ func TestConcurrentFirstUsesBuildOneOpenRouterBundle(t *testing.T) {
 					found[r] = append(found[r], entry)
 				}
 			}
-		}()
+		})
 	}
 	start.Done()
 	done.Wait()

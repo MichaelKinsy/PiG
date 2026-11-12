@@ -37,12 +37,10 @@ func TestConcurrentFirstReadersOfTheListedCatalogShareOneList(t *testing.T) {
 	var start, done sync.WaitGroup
 	start.Add(1)
 	for r := range readers {
-		done.Add(1)
-		go func() {
-			defer done.Done()
+		done.Go(func() {
 			start.Wait()
 			lists[r] = builtinChatCatalogListed("openrouter")
-		}()
+		})
 	}
 	start.Done()
 	done.Wait()
