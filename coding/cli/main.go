@@ -886,7 +886,6 @@ func Main(args []string, options *MainOptions) {
 	}
 
 	runMode := processAppMode(flags)
-	applyScreenWriterMode(runMode)
 	if flags.Listen != "" {
 		// pig additive (D232): a --listen server runs many sessions, so it ends D174's cap of 2 Ps: sessions that start together do their server-side work on every P.
 		procpolicy.Release()

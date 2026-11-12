@@ -99,8 +99,8 @@ type ProcessTerminal struct {
 	outMu  sync.Mutex
 	// writeLog receives every Write when PI_TUI_WRITE_LOG names a log.
 	writeLog *terminalWriteLog
-	// screen is the screen writer under write (D624), nil when the terminal is sent the bytes as they are written (terminal_screen_writer.go).
-	screen *screenwriter.Writer
+	// screen is the screen writer under write (D624): nil when the terminal was given none, as before an interactive run starts and in byte mode; a writer that was dropped stays and passes every write on as it came (terminal_screen_writer.go).
+	screen atomic.Pointer[screenwriter.Writer]
 
 	// startMu guards reader, resize and protocol-query ownership. Start is idempotent until Stop releases that ownership.
 	startMu         sync.Mutex
@@ -171,7 +171,7 @@ func newProcessTerminal(stdin, stdout *os.File, out io.Writer) *ProcessTerminal 
 		writeLog:          newTerminalWriteLog(),
 		progressKeepalive: terminalProgressKeepalive,
 	}
-	t.screen = newTerminalScreenWriter(t, os.Getenv)
+	t.screen.Store(newTerminalScreenWriter(t, os.Getenv))
 	return t
 }
 
@@ -796,8 +796,8 @@ func (t *ProcessTerminal) write(data string) {
 	if t.out == nil || t.exitRestored.Load() {
 		return
 	}
-	if t.screen != nil {
-		if data = t.screen.Translate(data); data == "" {
+	if screen := t.screen.Load(); screen != nil {
+		if data = screen.Translate(data); data == "" {
 			return
 		}
 	}

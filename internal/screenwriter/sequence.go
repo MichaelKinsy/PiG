@@ -303,10 +303,16 @@ func (p *pen) applySGR(params string) bool {
 	return true
 }
 
-// neutralModes are the private modes that change nothing the writer keeps: cursor keys, autowrap (the alternate screen is entered with
+// neutralMode reports whether mode is a private mode that changes nothing the writer keeps: cursor keys, autowrap (the alternate screen is entered with
 // it off, and no row the writer writes ends past the row the frame wrote), cursor blink, mouse reporting and its encodings, focus
 // reports, bracketed paste, synchronized updates, grapheme clustering reports, color-scheme reports and in-band resize.
-var neutralModes = map[string]bool{"1": true, "7": true, "12": true, "1000": true, "1002": true, "1003": true, "1004": true, "1005": true, "1006": true, "1015": true, "1016": true, "2004": true, "2026": true, "2027": true, "2031": true, "2048": true}
+func neutralMode(mode string) bool {
+	switch mode {
+	case "1", "7", "12", "1000", "1002", "1003", "1004", "1005", "1006", "1015", "1016", "2004", "2026", "2027", "2031", "2048":
+		return true
+	}
+	return false
+}
 
 // neutralOSC are the operating-system commands that change nothing the writer keeps: titles, the palette and the default colors (a
 // cell keeps the color number it was written with), notifications and progress, the clipboard, program status, shell-integration marks
@@ -337,7 +343,7 @@ func outside(data string, shown bool) (screen bool, cursor int, forget bool) {
 						if final == 'h' {
 							cursor = 1
 						}
-					case !neutralModes[mode]:
+					case !neutralMode(mode):
 						forget = true
 					}
 				}

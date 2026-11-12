@@ -66,6 +66,7 @@ type swSize struct{ at, cols, rows int }
 // after each read when slow is set.
 func newSWScreen(t *testing.T, writer bool, cols, rows int, chunk int, pause time.Duration) *swScreen {
 	t.Helper()
+	setScreenWriterChoice(t, screenWriterOn)
 	t.Setenv(screenWriterEnv, map[bool]string{true: "1", false: "pi"}[writer])
 	t.Setenv(screenWriterLogEnv, "")
 	master, slave := openTestPTY(t)
@@ -77,14 +78,14 @@ func newSWScreen(t *testing.T, writer bool, cols, rows int, chunk int, pause tim
 	}
 	s := &swScreen{t: t, master: master, slave: slave, cols: cols, rows: rows, sizes: []swSize{{0, cols, rows}}}
 	s.term = NewProcessTerminal(slave, slave)
-	if writer != (s.term.screen != nil) {
-		t.Fatalf("screen writer on = %v, want %v", s.term.screen != nil, writer)
+	if writer != (s.term.screen.Load() != nil) {
+		t.Fatalf("screen writer on = %v, want %v", s.term.screen.Load() != nil, writer)
 	}
-	if s.term.screen != nil {
+	if s.term.screen.Load() != nil {
 		// Registered after the pty's cleanup, so it runs before it: the settle timer reads the terminal's size, and must not do so
 		// once the pty is closed. The product never closes its output while the terminal runs (the exit restore leaves the alternate
 		// screen, which ends the settle write, and drops every later write), so this is the test's teardown only.
-		t.Cleanup(s.term.screen.Stop)
+		t.Cleanup(s.term.screen.Load().Stop)
 	}
 	go func() {
 		buf := make([]byte, chunk)
@@ -259,26 +260,27 @@ func (s *swScreen) play(steps []swStep) {
 }
 
 // A set PIG_TUI_SCREEN_WRITER decides: pi and 0 are byte mode, in which the terminal is sent exactly what is written; every other
-// value is the writer, whatever the setting says. Unset or empty, the setting decides, and the writer, its default, while none was applied.
+// value is the writer, whatever the setting says. Unset or empty, the setting decides. While no interactive run has applied the setting
+// a terminal is built without a screen writer, whatever the variable says.
 func TestScreenWriterSwitch(t *testing.T) {
 	for _, c := range []struct {
 		value  string
 		choice int32
 		want   bool
 	}{
-		{"", screenWriterUnset, true}, {"", screenWriterOn, true}, {"", screenWriterOff, false},
-		{"pi", screenWriterUnset, false}, {"pi", screenWriterOn, false}, {"0", screenWriterOn, false}, {"0", screenWriterOff, false},
-		{"1", screenWriterUnset, true}, {"1", screenWriterOff, true}, {"writer", screenWriterOff, true},
+		{"", screenWriterOn, true}, {"", screenWriterOff, false},
+		{"pi", screenWriterOn, false}, {"0", screenWriterOn, false}, {"0", screenWriterOff, false},
+		{"1", screenWriterOn, true}, {"1", screenWriterOff, true}, {"writer", screenWriterOff, true},
 		{"true", screenWriterOff, true}, {"yes", screenWriterOff, true}, {" 1", screenWriterOff, true}, {"PI", screenWriterOff, true}, {"off", screenWriterOff, true},
-		{"1", screenWriterNone, false}, {"", screenWriterNone, false},
+		{"", screenWriterUnset, false}, {"1", screenWriterUnset, false}, {"writer", screenWriterUnset, false}, {"pi", screenWriterUnset, false},
 	} {
 		t.Run(fmt.Sprintf("value=%s/choice=%d", c.value, c.choice), func(t *testing.T) {
 			t.Setenv(screenWriterEnv, c.value)
 			setScreenWriterChoice(t, c.choice)
 			var out bytes.Buffer
 			terminal := NewProcessTerminalWithOutput(nil, nil, &out)
-			if (terminal.screen != nil) != c.want {
-				t.Fatalf("screen writer present = %v, want %v", terminal.screen != nil, c.want)
+			if (terminal.screen.Load() != nil) != c.want {
+				t.Fatalf("screen writer present = %v, want %v", terminal.screen.Load() != nil, c.want)
 			}
 			var wrote strings.Builder
 			for _, data := range append(swStarted(), swFrame(swLine(1, "one")), swFrame(swLine(1, "one")), "\x1b[?1049l") {
@@ -297,6 +299,7 @@ func TestScreenWriterActive(t *testing.T) {
 	for value, has := range map[string]bool{"1": true, "pi": false} {
 		t.Run("value="+value, func(t *testing.T) {
 			t.Setenv(screenWriterEnv, value)
+			setScreenWriterChoice(t, screenWriterOn)
 			var out bytes.Buffer
 			terminal := NewProcessTerminalWithOutput(nil, nil, &out)
 			if terminal.ScreenWriterActive() {
@@ -321,6 +324,7 @@ func TestScreenWriterLogRecordsEveryWrite(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "writes.bin")
 	t.Setenv(screenWriterEnv, "1")
 	t.Setenv(screenWriterLogEnv, path)
+	setScreenWriterChoice(t, screenWriterOn)
 	var out bytes.Buffer
 	terminal := NewProcessTerminalWithOutput(nil, nil, &out)
 	inputs := append(swStarted(), swFrame(swLine(1, "one")), swFrame(swLine(1, "one")), swFrame(swLine(1, "one!")), "\x1b[?25h")
@@ -362,7 +366,7 @@ func TestScreenWriterTerminalShowsTheSameScreens(t *testing.T) {
 			cols, rows, steps := swScenario(t, name)
 			reference, writer := swBoth(t, cols, rows, func(s *swScreen) { s.play(steps) })
 			sameScreens(t, name, reference, writer)
-			if stats := writer.term.screen.Stats(); stats.Translated == 0 {
+			if stats := writer.term.screen.Load().Stats(); stats.Translated == 0 {
 				t.Errorf("the writer translated no frame: %+v", stats)
 			}
 			if len(writer.transcript()) >= len(reference.transcript()) {
@@ -440,7 +444,7 @@ func TestScreenWriterExit(t *testing.T) {
 		s := newSWScreen(t, true, 40, 10, 4096, 0)
 		frames(s)
 		s.settle()
-		if stats := s.term.screen.Stats(); stats.Settles != 1 {
+		if stats := s.term.screen.Load().Stats(); stats.Settles != 1 {
 			t.Fatalf("settle writes = %d, want 1: the exit cases below would prove nothing", stats.Settles)
 		}
 	})
@@ -489,7 +493,7 @@ func TestScreenWriterExit(t *testing.T) {
 				s.drain()
 				tails[i] = s.transcript()
 				if writer {
-					settles = s.term.screen.Stats().Settles
+					settles = s.term.screen.Load().Stats().Settles
 					if got := s.transcript()[before:]; got != "" {
 						t.Errorf("written after the exit: %q", got)
 					}
@@ -594,7 +598,7 @@ func TestScreenWriterImageRows(t *testing.T) {
 	if !strings.Contains(writer.transcript(), imageFrame) {
 		t.Errorf("the frame with the image rows was not sent as it came")
 	}
-	if stats := writer.term.screen.Stats(); stats.Unread != 1 || stats.Translated < 2 {
+	if stats := writer.term.screen.Load().Stats(); stats.Unread != 1 || stats.Translated < 2 {
 		t.Errorf("stats %+v: want the one image frame unread and the others translated", stats)
 	}
 	sameScreens(t, "image rows", reference, writer)
