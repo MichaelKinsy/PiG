@@ -25,6 +25,8 @@ type TuiSurfaceOptions struct {
 	Entry string
 	// Conditions are the conditions the base bundle's packages resolve with: the server process's by default (nil).
 	Conditions []string
+	// Tsconfig is a tsconfig.json whose `paths` the base bundle's packages resolve through, as the server's loader does (BaseResolution).
+	Tsconfig string
 }
 
 // TuiStart is what a launcher downloads at its start (`GET /_chord/tui/start`): the base bundle and the combined plugin file.
@@ -71,7 +73,7 @@ func NewTuiSurface(server host.Host, options TuiSurfaceOptions) *TuiSurface {
 	if kind == "" {
 		kind = "tui"
 	}
-	building := newSurfaceBuild(Tui, PlatformSandbox, TuiPrefix, surfaceBuildOptions{kind: kind, entry: options.Entry, conditions: options.Conditions, plugins: options.Plugins}, server)
+	building := newSurfaceBuild(Tui, PlatformSandbox, TuiPrefix, surfaceBuildOptions{kind: kind, entry: options.Entry, resolution: BaseResolution{Conditions: options.Conditions, Tsconfig: options.Tsconfig}, plugins: options.Plugins}, server)
 	serve := func(request http.HttpRequest, ctx host.Ctx) (http.HttpResponse, error) {
 		return building.file(request.Path(), ctx)
 	}
