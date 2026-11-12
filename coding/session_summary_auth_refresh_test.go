@@ -237,15 +237,15 @@ func summaryAuthShapes() []summaryAuthShape {
 				writeAgentFile(t, agentDir, "models.json", fmt.Sprintf(`{"providers":{"anthropic":{"baseUrl":%q}}}`, w.server.URL))
 				writeAgentFile(t, agentDir, "auth.json", fmt.Sprintf(`{"anthropic":{"type":"oauth","access":%q,"refresh":"plain-refresh","expires":%d}}`, token, expires.UnixMilli()-5*60*1000))
 				return func(services *AgentSessionServices) *ai.Model {
-					for _, candidate := range services.ModelRuntime().GetModels("anthropic") {
-						model, err := BuildModel("anthropic/"+candidate.ID, services)
-						if err != nil {
-							t.Fatal(err)
-						}
-						return model
+					catalog := services.ModelRuntime().GetModels("anthropic")
+					if len(catalog) == 0 {
+						t.Fatal("catalog has no anthropic model")
 					}
-					t.Fatal("catalog has no anthropic model")
-					return nil
+					model, err := BuildModel("anthropic/"+catalog[0].ID, services)
+					if err != nil {
+						t.Fatal(err)
+					}
+					return model
 				}
 			},
 		},
