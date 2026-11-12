@@ -338,11 +338,14 @@ func TestRPCUIViewCarrierOverBothTransports(t *testing.T) {
 			if gap["attachment"] != 1.0 || gap["seq"] != last+1 || last < 257 || last >= 4001 {
 				t.Fatalf("gap = %v after event %v", gap, last)
 			}
-			// The burst's own response was written in its place among the events, before the gap.
+			// The burst's response arrives, but the carrier promises no order between it and the gap: docs/ui-view-carrier.md
+			// orders only "the events of an attachment" and the attach, abilities and resync replies ("Replies are not
+			// numbered"). The rpc loop writes the response when the command returns, the pump writes the gap once the reader
+			// resumes, so either line may come first.
 			if !slices.ContainsFunc(c.seen, func(line string) bool {
 				return strings.HasPrefix(line, `{"id":"burst","type":"response","command":"prompt","success":true`)
 			}) {
-				t.Fatalf("the burst's response is not among the lines before the gap")
+				c.response("burst", "prompt")
 			}
 			// Nothing more for the attachment until it resyncs, whatever the extension does.
 			before := len(c.seen)
