@@ -369,7 +369,7 @@
    #:kit-skill-invocation #:kit-skill-invocation-set-expanded #:kit-skill-invocation-set-output-pad
    #:kit-custom-message #:kit-custom-message-set-expanded #:kit-custom-message-set-output-pad
    #:kit-cancellable-loader #:kit-bordered-loader #:kit-input #:kit-slash-command #:kit-autocomplete #:kit-editor
-   #:kit-scroll-view #:kit-mouse-region
+   #:kit-scroll-view #:kit-mouse-region #:kit-grid #:kit-grid-cell #:kit-grid-chip
    ;; kit: views, events and the view renderers' result
    #:kit-view #:kit-render-result #:kit-event-node #:kit-event-type #:kit-event-index #:kit-event-item #:kit-event-id #:kit-event-value
    #:kit-event-cursor #:kit-event-mouse

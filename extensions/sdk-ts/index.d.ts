@@ -120,6 +120,22 @@ export interface PiGViewAsset {
 }
 /** The D107 wire view, `{ root: { kind: "text", text: "..." } }`. */
 export type PiGWireView = { root: Record<string, unknown>; focus?: string; theme?: Record<string, string> };
+/** D614: one event of a grid cell: its text (at most 256 bytes) and its colour (a theme token, "#rrggbb" or "#rrggbbaa"). */
+export type PiGViewGridChip = { text: string; color?: string };
+/**
+ * D614: one cell of a {@link PiGViewGrid}. `value` names it in the intent a choice raises (at most 256 bytes, unique in the grid; a cell
+ * without one cannot be chosen), `label` is its first line (at most 64 bytes), `mark` draws it as today, `dim` as outside the shown range,
+ * `color` tints the label, `chips` are the events it shows (at most 8) and `more` counts the events the sender left out (0..9999).
+ */
+export type PiGViewGridCell = { value?: string; label?: string; mark?: "current"; dim?: boolean; color?: string; chips?: PiGViewGridChip[]; more?: number };
+/**
+ * D614: the grid node of the D107 view, a calendar-style grid of equal columns whose cells are data. Use it as the `root` of a
+ * {@link PiGWireView} or as a child of a container node. The host is its only validator: `columns` is 1..16, `head` is absent or one label a
+ * column (64 bytes each), `chipRows` 1..8 (default 3), at most 128 cells in at most 32 rows, `selected` one of the cell values, and a member
+ * the record lacks rejects the call with code `invalid`. An intent whose `nodeKey` is the grid's `id` is raised with `{ value }` of the cell
+ * the user chose.
+ */
+export type PiGViewGrid = { kind: "grid"; id: string; columns: number; head?: string[]; chipRows?: number; selected?: string; cells: PiGViewGridCell[] };
 /** One fact the attached client states about itself, named "<area>.<fact>". */
 export interface PiGViewClaim {
   name: string;

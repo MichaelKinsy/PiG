@@ -237509,6 +237509,61 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/kit#Grid",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/kit",
+      "name": "Grid",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "Grid"
+      },
+      "shapeHash": "sha256:28ad198c25b56314263c3e4a1443fb943adfb8cec247daa23c26d8dd819211cf"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/kit#Grid.WireNode",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/kit",
+      "name": "Grid.WireNode",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() WireForm"
+      },
+      "shapeHash": "sha256:603a7c71ce7511ae0bce437b4fa2ffb03cd0b1d80109ea0948d822943aab9035"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/kit#Grid.isNode",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/kit",
+      "name": "Grid.isNode",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/kit#GridCell",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/kit",
+      "name": "GridCell",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "GridCell"
+      },
+      "shapeHash": "sha256:740f968f5579bae48203d2d26bf966691a0e87183a01c764075c7d147b3f0d36"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/kit#GridChip",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/kit",
+      "name": "GridChip",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "GridChip"
+      },
+      "shapeHash": "sha256:86d9cc4e4127a5f966ec58a49e634cfbc32f9edf7ed53d58ecbc0908b84f2329"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/kit#HStack",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk/kit",
       "name": "HStack",
@@ -237980,6 +238035,17 @@
         "type": "func(id string) *Editor"
       },
       "shapeHash": "sha256:825232755e46f05955a4f79a2282a1a187e230fa11dc43d187de71e945b8c5af"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/kit#NewGrid",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/kit",
+      "name": "NewGrid",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(id string, columns int, cells []GridCell) *Grid"
+      },
+      "shapeHash": "sha256:d7b38a9ae19eb01405107d7ff1cea259e1b92c90a1fb8e90b2fa6feb2a65bc2d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/kit#NewHStack",
@@ -238937,6 +239003,17 @@
         "type": "editorFields"
       },
       "shapeHash": "sha256:0d0eacc5a0a843341deea331fad27793882ccf97aed6923d6a0aab5a061de844"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/kit#gridFields",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/kit",
+      "name": "gridFields",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "gridFields"
+      },
+      "shapeHash": "sha256:b0ff20c1255298a37640615d473f0e7ffd196d22871c8bf2ac740f8e5c80c578"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/kit#imageRef",
