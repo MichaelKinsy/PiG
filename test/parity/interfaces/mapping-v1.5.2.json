@@ -88481,8 +88481,8 @@
       ],
       "evidence": [
         "test:ai/registry_test.go#TestGetBuiltinModelDataGeneratedAtReturnsACopyOfTheManifestTime",
-        "test:coding/model_runtime_store_path_test.go#TestCreateModelRuntimeRestoresCachedCatalogsFromModelsStorePath",
-        "test:internal/codingagent/remote_catalog_registry_test.go#TestRegistryIgnoresAStoredRemoteCatalogThatIsNotNewerThanTheBundledOne"
+        "test:coding/cli/model_remote_catalog_test.go#TestResolveModel_RemoteOnlyCatalogModelKeepsItsLimits",
+        "test:coding/model_runtime_store_path_test.go#TestCreateModelRuntimeRestoresCachedCatalogsFromModelsStorePath"
       ]
     },
     {
@@ -88503,8 +88503,8 @@
       ],
       "evidence": [
         "test:ai/registry_test.go#TestGetBuiltinModelDataGeneratedAtReturnsACopyOfTheManifestTime",
-        "test:coding/model_runtime_store_path_test.go#TestCreateModelRuntimeRestoresCachedCatalogsFromModelsStorePath",
-        "test:internal/codingagent/remote_catalog_registry_test.go#TestRegistryIgnoresAStoredRemoteCatalogThatIsNotNewerThanTheBundledOne"
+        "test:coding/cli/model_remote_catalog_test.go#TestResolveModel_RemoteOnlyCatalogModelKeepsItsLimits",
+        "test:coding/model_runtime_store_path_test.go#TestCreateModelRuntimeRestoresCachedCatalogsFromModelsStorePath"
       ]
     },
     {
@@ -166412,8 +166412,8 @@
       ],
       "evidence": [
         "test:coding/session_stats_upstream_test.go#TestUpstreamAgentSessionStatsContext",
-        "test:coding/session_context_usage_test.go#TestSessionContextUsageCompactionUnknownUntilValidProjectedUsage",
-        "test:coding/session_recovery_test.go#TestBoundaryDoesNotTreatRetainedPreCompactionAssistantUsageAsPostCompactionUsage"
+        "test:coding/model_remote_catalog_test.go#TestResumedSessionKeepsTheWindowOfARemoteOnlyModel",
+        "test:coding/session_context_usage_test.go#TestSessionContextUsageCompactionUnknownUntilValidProjectedUsage"
       ]
     },
     {
@@ -166435,7 +166435,7 @@
       "evidence": [
         "test:coding/session_boundaries_accounting_upstream_test.go#TestUpstreamSessionBoundariesAccounting",
         "test:coding/session_stats_upstream_test.go#TestUpstreamAgentSessionStatsContext",
-        "test:coding/session_context_usage_reuse_test.go#TestContextUsageReusesTheEstimateUntilTheLogOrWindowChanges"
+        "test:coding/model_remote_catalog_test.go#TestResumedSessionKeepsTheWindowOfARemoteOnlyModel"
       ]
     },
     {
