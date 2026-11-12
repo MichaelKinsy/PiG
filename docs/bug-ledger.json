@@ -36537,6 +36537,85 @@
       ]
     },
     {
+      "id": "BF-D624",
+      "title": "Fullscreen frames reach the terminal through a screen writer that sends only what changes the screen, where…",
+      "symptom": "none. Pi has no layer under the terminal's write; its bytes are correct, only more.",
+      "rootCause": "through tmux or ssh the bytes of a frame are what the terminal and the multiplexer read and parse, a row's unchanged cells included; the writer sends between a fifth and nine tenths of them on the streams above.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D624",
+      "removeWhen": "Pi sends only what changes the screen, or the owner declines the writer. If the owner rules that it is opt-in, `TerminalScreenWriterDefault` becomes `\"pi\"` and this record says so; if he declines it, `internal/screenwriter`, `tui/terminal_screen_writer.go`, the five hunks in `tui/terminal.go`, the setting, the markers and this record go.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "0502bf8532",
+          "date": "2026-11-12"
+        },
+        {
+          "hash": "2b55d338f1",
+          "date": "2026-11-12"
+        },
+        {
+          "hash": "30eff09b91",
+          "date": "2026-11-12"
+        },
+        {
+          "hash": "a191c2884c",
+          "date": "2026-11-12"
+        },
+        {
+          "hash": "b64ee76fc6",
+          "date": "2026-11-12"
+        },
+        {
+          "hash": "ce81455f7f",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/cli/screen_writer_binary_test.go::TestNoScreenWriterOutsideInteractiveMode",
+        "internal/codingagent/interactive_screen_writer_test.go::TestScreenWriterChoiceIsMadeBeforeTheFirstFrame",
+        "internal/codingagent/interactive_screen_writer_test.go::TestScreenWriterSettingChangeWaitsForTheNextStart",
+        "internal/codingagent/interactive_screen_writer_test.go::TestTerminalScreenWriterSetting",
+        "internal/codingagent/interactive_screen_writer_test.go::TestTerminalScreenWriterUnderEitherDefault",
+        "internal/screenwriter/autowrap_test.go::TestAutowrapIsReadAmongUnrecognisedSequences",
+        "internal/screenwriter/autowrap_test.go::TestFramesAreTranslatedOnlyWhileAutowrapIsKnownToBeOff",
+        "internal/screenwriter/autowrap_test.go::TestOutsideReportsAutowrap",
+        "internal/screenwriter/autowrap_test.go::TestTranslationResumesWithWholeRows",
+        "internal/screenwriter/gridterm/tmux_live_test.go::TestLinesAreWhatTmuxShows",
+        "internal/screenwriter/gridterm/tmux_test.go::TestLinesAreWhatTmuxRecorded",
+        "internal/screenwriter/lines_test.go::TestAClusterOfUncertainWidthKeepsItsPlace",
+        "internal/screenwriter/lines_test.go::TestEveryChangeOfARowKeepsItsLineOrForgetsTheRow",
+        "internal/screenwriter/lines_test.go::TestRandomFramesLeaveTheRenderersLines",
+        "internal/screenwriter/lines_test.go::TestRecordedMenuReturnLeavesTheRenderersLines",
+        "internal/screenwriter/outside_modes_test.go::TestOutsideReadsAPrivateModeOnlyAsItsNumber",
+        "internal/screenwriter/regular_test.go::TestRegularModeIsSentAsItCame",
+        "internal/screenwriter/writer_test.go::TestDropSendsEveryWriteAsItCame",
+        "internal/screenwriter/writer_test.go::TestRandomEditsShowTheSameScreens",
+        "internal/screenwriter/writer_test.go::TestRecordedStreamsShowTheSameScreens",
+        "internal/screenwriter/writer_test.go::TestResizeForgetsTheScreen",
+        "internal/screenwriter/writer_test.go::TestRules",
+        "internal/screenwriter/writer_test.go::TestScribbledRowsHealByTheSettleWrite",
+        "internal/screenwriter/writer_test.go::TestSettleAfterAResizeWritesNothing",
+        "internal/screenwriter/writer_test.go::TestWriterMakesNoSequenceOfItsOwn",
+        "tui/screen_writer_oracle_test.go::TestScreenWriterShowsTheRenderersScreens",
+        "tui/terminal_screen_writer_autowrap_test.go::TestScreenWriterTranslatesOnlyUnderTheRenderersAutowrap",
+        "tui/terminal_screen_writer_switch_test.go::TestNoScreenWriterBeforeAnInteractiveRun",
+        "tui/terminal_screen_writer_switch_test.go::TestSetScreenWriterYieldsToTheEnvironment",
+        "tui/terminal_screen_writer_test.go::TestScreenWriterAlternateScreenEnterAndLeave",
+        "tui/terminal_screen_writer_test.go::TestScreenWriterExit",
+        "tui/terminal_screen_writer_test.go::TestScreenWriterImageRows",
+        "tui/terminal_screen_writer_test.go::TestScreenWriterResizeBetweenFrames",
+        "tui/terminal_screen_writer_test.go::TestScreenWriterSlowPTY",
+        "tui/terminal_screen_writer_test.go::TestScreenWriterSuspendAndResume",
+        "tui/terminal_screen_writer_test.go::TestScreenWriterTerminalShowsTheSameScreens",
+        "tui/terminal_screen_writer_test.go::TestScreenWriterWritesPastTheTerminal"
+      ]
+    },
+    {
       "id": "BF-a076a50",
       "title": "A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…",
       "symptom": "The time the connection had spent idle in the pool was deducted from the next request's timeout.",
@@ -58945,6 +59024,11 @@
       "id": "D619",
       "title": "A status-indicator or Loader animation step asks for its frame within min(40 ms, interval/2), where Pi asks…",
       "entry": "BF-D619"
+    },
+    {
+      "id": "D624",
+      "title": "Fullscreen frames reach the terminal through a screen writer that sends only what changes the screen, where…",
+      "entry": "BF-D624"
     }
   ],
   "exemptCommits": {

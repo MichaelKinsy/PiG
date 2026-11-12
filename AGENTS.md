@@ -315,7 +315,7 @@ Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registrati
 | `extension-host` | 1 | 1 | 0 | 0 | 0 | 2 | not run |
 | `extensions-runtime` | 151 | 150 | 0 | 1 | 0 | 67 | not run |
 | `footer` | 12 | 12 | 0 | 0 | 0 | 9 | not run |
-| `fullscreen` | 18 | 18 | 0 | 0 | 0 | 12 | not run |
+| `fullscreen` | 19 | 19 | 0 | 0 | 0 | 13 | not run |
 | `interactive-rendering` | 80 | 79 | 1 | 0 | 0 | 39 | not run |
 | `json` | 14 | 14 | 0 | 0 | 0 | 10 | not run |
 | `model-resolver-selector` | 29 | 29 | 0 | 0 | 0 | 16 | not run |
