@@ -878,7 +878,7 @@ func (m *copilotTokenManager) getAccessToken(ctx context.Context) (string, error
 	oauth := &OAuthAuth{Name: "GitHub Copilot", Refresh: func(ctx context.Context, current Credential) (Credential, error) {
 		return refreshCopilotCredential(ctx, current.Refresh, current.EnterpriseDomain)
 	}}
-	post, err := refreshStoredOAuthCredential(ctx, m.auth, "github-copilot", oauth, expiresSoon)
+	post, err := refreshStoredOAuthCredential(ctx, m.auth, "github-copilot", oauth, expiresSoon, startOAuthRefreshWork)
 	if err != nil {
 		// If the context was canceled (user abort), propagate the
 		// cancellation directly so callers can distinguish user abort
