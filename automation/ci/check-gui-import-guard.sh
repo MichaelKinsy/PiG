@@ -4,15 +4,21 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 modpath=$(awk '$1 == "module" {print $2; exit}' go.mod)
-gui=${GUI_PACKAGES:-"coding/uiview coding/presentation extensions/sdk/ui internal/viewcarrier"}
+gui=${GUI_PACKAGES:-"coding/uiview coding/presentation extensions/sdk/ui internal/viewcarrier internal/chordview"}
 status=0
+# A listing that fails (an import cycle through a UI package, a package that does not load) is a failure of the guard, not a pass.
+if ! listing=$(go list -test -f '{{.ImportPath}} {{join .Imports " "}} {{join .TestImports " "}} {{join .XTestImports " "}}' ./chord/... 2>&1); then
+  echo "$listing" | tail -n 5 >&2
+  echo "gui import guard: go list ./chord/... failed" >&2
+  exit 1
+fi
 while read -r pkg imports; do
   for imp in $imports; do
     for g in $gui; do
       case $imp in "$modpath/$g"|"$modpath/$g/"*) echo "chord imports GUI package: $pkg -> $imp" >&2; status=1 ;; esac
     done
   done
-done < <(go list -test -f '{{.ImportPath}} {{join .Imports " "}} {{join .TestImports " "}} {{join .XTestImports " "}}' ./chord/... 2>/dev/null)
+done <<< "$listing"
 # No Wails anywhere (owner decision 2026-11-11): the UI contract is host-agnostic, so no Go file imports a wails package and
 # no module file requires one. Hosts (TUI, p2 web, MyGo, ACP, third-party) connect through adapters.
 if git grep -nIiE '^[[:space:]]*(import[[:space:]]+)?([A-Za-z_.]+[[:space:]]+)?"[^"]*wails[^"]*"[[:space:]]*$' -- '*.go' ':!third_party' >&2 ||

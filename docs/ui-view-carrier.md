@@ -110,3 +110,5 @@ Carry `code` wherever the other protocol puts an error's data, and members as th
 ## Reference client
 
 [`examples/ui-view-web`](../examples/ui-view-web) is a static page and a bridge program (Node, standard library only) that starts `pig --mode rpc` for each page, relays its lines as Server-Sent Events and the page's lines by POST on 127.0.0.1. The page keeps the client's rule above, draws the view nodes that carry an id as focusable elements, applies `a11y` and `focus`, and raises intents. Pig itself has no web server.
+
+Its tests are in `examples/ui-view-web/bridge_test.go`. `TestBridgeRelaysTheCarrier` drives the bridge with an HTTP client and always runs (it needs Node). `TestPageDrawsFocusesAndRaisesIntents` opens the page in headless Chromium: it needs `CHROMIUM_BIN` to name a Chromium binary and is skipped without it.
