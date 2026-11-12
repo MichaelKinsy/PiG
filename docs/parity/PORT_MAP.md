@@ -966,7 +966,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/host/readiness.ts` | `chord/next/host/host_readiness.go` | ✅ |
 | `packages/chord/src/host/reload-cycle.ts` | `chord/next/host/host_reload_cycle.go` | ✅ |
 | `packages/chord/src/host/unbound-clock.ts` | `chord/next/host/host_unbound_clock.go` | ✅ |
-| `packages/chord/src/node/app/app.ts` | `chord/nextnode/app/app.go, chord/nextnode/app/app_bases.go (App.BasesBuilt and App.BaseWatched), chord/nextnode/plugins/node/host.mjs (exportHostData, importHostData, deleteHostData control requests; their Go side is a pig divergence with no Pi file, D462); Pi 22fe46c7b: AppWeb's fields are unchanged (chord/nextnode/app/app_surfaces.go)` | ✅ |
+| `packages/chord/src/node/app/app.ts` | `chord/nextnode/app/app.go, chord/nextnode/app/app_bases.go (App.BasesBuilt and App.BaseWatched), chord/nextnode/plugins/node/host.mjs (exportHostData, importHostData, deleteHostData control requests; their Go side is a pig divergence with no Pi file, D462); Pi 22fe46c7b: AppWeb's fields are unchanged; Pi 53af02378: AppWeb and AppTui take Tsconfig` | ✅ |
 | `packages/chord/src/node/app/archive.ts` | `chord/nextnode/app/archive.go` | ✅ |
 | `packages/chord/src/node/app/blobs.ts` | `chord/nextnode/app/blobs.go` | ✅ |
 | `packages/chord/src/node/app/data.ts` | `chord/nextnode/app/data.go, host_data.mjs` | ✅ |
