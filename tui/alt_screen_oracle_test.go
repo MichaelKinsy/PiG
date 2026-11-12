@@ -209,6 +209,12 @@ func checkAltScreenOracleIn(t *testing.T, screens bool, env map[string]string, t
 	// the images earlier tests or an earlier -count run registered, and leave none behind.
 	resetKittyRegistry(t)
 	t.Cleanup(func() { resetKittyRegistry(t) })
+	// The generator's Node process had pushed no Kitty keyboard flags, so Pi's start writes no pop and push of them (the alternate screen
+	// moves an outstanding push to its own screen, tui_alt_screen.go). A test that started a terminal earlier in this process and left
+	// its push outstanding (TestKeyboardProtocolNegotiationUsesDeviceAttributesFallback does) is another environment: start from none
+	// and give back what was there.
+	pushed := keyboardProtocolPushed.Swap(false)
+	t.Cleanup(func() { keyboardProtocolPushed.Store(pushed) })
 	recordOnly, closeClipped := tap != nil && tap.recordOnly, tap != nil && tap.closeClipped
 	failures, scrolledSteps := 0, 0
 	report := func(format string, args ...any) {
