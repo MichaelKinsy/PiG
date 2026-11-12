@@ -238,3 +238,9 @@ generator = "schema/testdata/gen-coerce-golden.mjs"
 paths = ["tui/testdata/utf8-decoder-oracle.json"]
 owner = "pi"
 generator = "tui/testdata/utf8-decoder-oracle.mjs"
+
+[[golden]]
+paths = ["coding/testdata/tool_schema_request_bodies.golden.json"]
+owner = "pig"
+invariant = "TestRequestBodiesAreUnchangedByHoldingToolSchemasOnce"
+why = "The length and SHA-256 of every request body the session sent through seven provider shapes before tool schemas were held once (written from commit 9cd955810e). The test is a before and after guard of a refactor, so only a body taken from the code before the change can state it; the provider conformance tests hold the bodies themselves against Pi."
