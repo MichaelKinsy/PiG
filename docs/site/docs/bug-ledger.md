@@ -177,6 +177,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-1971aae](#bf-1971aae) | A `bash` shell that starts at the moment `pig` handles an emergency exit, a crash or a signal is now killed… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-19a07f0](#bf-19a07f0) | fix(sdk-rs): give the request-start wire test's RequestMsg the batch, child_session, tool_call_index and… | PiG's own defect | All platforms | Unreleased |
 | [BF-19a2d2d](#bf-19a2d2d) | fix(durable/core): match Pi's passes in the cut-off flows: drain resumes after the async reserve, open and… | PiG's own defect | All platforms | Unreleased |
+| [BF-19f9ce2](#bf-19f9ce2) | Chord store: `Close` now waits for the `OnCommitted` announcement of the last commit before it closes the… | PiG's own defect | All platforms | Unreleased |
 | [BF-1a855cd](#bf-1a855cd) | The `/session` block now follows a later theme change and shows the cache-warming countdown as of each… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1a893bc](#bf-1a893bc) | fix(durable/core): report task_interrupted from the runtime's commit path for every task (Pi scheduler.ts) | PiG's own defect | All platforms | Unreleased |
 | [BF-1aaf60f](#bf-1aaf60f) | Rendered diffs keep the indentation shared by a removed and an added line when text is inserted at the start… | PiG's own defect | All platforms | Unreleased |
@@ -1074,6 +1075,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-85d3119](#bf-85d3119) | A Piglet's tool scope now covers the built-in MCP tools | PiG's own defect | All platforms | 0.7.0 |
 | [BF-860776a](#bf-860776a) | A Google provider built from a model id without catalog metadata now sends its own earlier thinking blocks as… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8620e9e](#bf-8620e9e) | The SDK `DefaultResourceLoader` lists a tool or flag that two extensions register as an error of the… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-862a8f7](#bf-862a8f7) | Chord surfaces: a client holds the scripts object by the time `StartClient` returns, as in Pi | PiG's own defect | All platforms | Unreleased |
 | [BF-86364b4](#bf-86364b4) | fix(minimatch): case-insensitive patterns compare as a JavaScript RegExp does | PiG's own defect | All platforms | Unreleased |
 | [BF-86376a7](#bf-86376a7) | Draining a model collection while it refreshes no longer starts provider work after the drain began, and a… | PiG's own defect | All platforms | Unreleased |
 | [BF-86376a7-2](#bf-86376a7-2) | fix: Drain admits no work once it begins, and a stream's auth callback is not owned work | PiG's own defect | All platforms | Unreleased |
@@ -4229,6 +4231,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `19a2d2d93d` (2026-10-29)
 - **Tests:** None recorded.
+
+### BF-19f9ce2
+
+**Chord store: `Close` now waits for the `OnCommitted` announcement of the last commit before it closes the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Chord store: `Close` now waits for the `OnCommitted` announcement of the last commit before it closes the backend.
+- **Root cause:** Not recorded.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `19f9ce245e` (2026-11-12)
+- **Tests:** `chord/next/store/store_test.go::TestStore`
+- **Release note:** Chord store: `Close` now waits for the `OnCommitted` announcement of the last commit before it closes the backend. A listener could be called after `Close` had returned, or not have been called yet when it returned.
 
 ### BF-1a855cd
 
@@ -16638,6 +16654,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `8620e9eac5` (2026-10-25)
 - **Tests:** None recorded.
 - **Release note:** The SDK `DefaultResourceLoader` lists a tool or flag that two extensions register as an error of the extension load result (`Tool "x" conflicts with <path>`), and an extension it loads from `additionalExtensionPaths` has the source `cli`, as Pi's loader reports them.
+
+### BF-862a8f7
+
+**Chord surfaces: a client holds the scripts object by the time `StartClient` returns, as in Pi**
+
+- **Source:** PiG's own defect
+- **Symptom:** Chord surfaces: a client holds the scripts object by the time `StartClient` returns, as in Pi.
+- **Root cause:** Test: TestHoldsTheScriptsObjectWhenTheClientIsReturnedAndStopEndsAFollowingStillWaitingForItsServer (a server that never answers): the release is recorded when StartClient returns, Stop returns, nothing is held or watched after it and no goroutine of the client is left. Before the fix, 10 runs of 10: "the scripts object's release was not recorded when StartClient returned".
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `862a8f7a90` (2026-11-12)
+- **Tests:** `chord/next/surfaces/surfaces_client_test.go::TestHoldsTheScriptsObjectWhenTheClientIsReturnedAndStopEndsAFollowingStillWaitingForItsServer`
+- **Release note:** Chord surfaces: a client holds the scripts object by the time `StartClient` returns, as in Pi. The hold was made in the background, so it could be missing right after the start.
 
 ### BF-86364b4
 

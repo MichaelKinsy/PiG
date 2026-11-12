@@ -4456,6 +4456,28 @@
       "tests": []
     },
     {
+      "id": "BF-19f9ce2",
+      "title": "Chord store: `Close` now waits for the `OnCommitted` announcement of the last commit before it closes the…",
+      "symptom": "Chord store: `Close` now waits for the `OnCommitted` announcement of the last commit before it closes the backend.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord store: `Close` now waits for the `OnCommitted` announcement of the last commit before it closes the backend. A listener could be called after `Close` had returned, or not have been called yet when it returned.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "19f9ce245e",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "chord/next/store/store_test.go::TestStore"
+      ]
+    },
+    {
       "id": "BF-1a855cd",
       "title": "The `/session` block now follows a later theme change and shows the cache-warming countdown as of each…",
       "symptom": "The `/session` block now follows a later theme change and shows the cache-warming countdown as of each redraw, as in Pi.",
@@ -29262,6 +29284,28 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-862a8f7",
+      "title": "Chord surfaces: a client holds the scripts object by the time `StartClient` returns, as in Pi",
+      "symptom": "Chord surfaces: a client holds the scripts object by the time `StartClient` returns, as in Pi.",
+      "rootCause": "Test: TestHoldsTheScriptsObjectWhenTheClientIsReturnedAndStopEndsAFollowingStillWaitingForItsServer (a server that never answers): the release is recorded when StartClient returns, Stop returns, nothing is held or watched after it and no goroutine of the client is left. Before the fix, 10 runs of 10: \"the scripts object's release was not recorded when StartClient returned\".",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord surfaces: a client holds the scripts object by the time `StartClient` returns, as in Pi. The hold was made in the background, so it could be missing right after the start.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "862a8f7a90",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "chord/next/surfaces/surfaces_client_test.go::TestHoldsTheScriptsObjectWhenTheClientIsReturnedAndStopEndsAFollowingStillWaitingForItsServer"
+      ]
     },
     {
       "id": "BF-86364b4",
