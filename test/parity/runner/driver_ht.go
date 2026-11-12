@@ -252,29 +252,14 @@ func (htDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scenar
 	// Capture ANSI version for escaped_output_equal comparisons.
 	viewAnsi, _ := htOutput(ctx, "view", sessionName, "--format", "ansi")
 
-	raw := string(viewOut)
-	escaped := string(viewAnsi)
+	return htFinalResult(sc.Name, bin.Label, cfg, scenarioCaptureUse(sc), string(viewOut), string(viewAnsi), elapsed)
+}
 
-	// Strip trailing "cursor: R,C" status line that ht appends.
-	raw = stripHTCursorLine(raw)
-	escaped = stripHTCursorLine(escaped)
-
-	// Apply crop using CaptureStart/CaptureEnd patterns (same as tmux driver).
-	use := scenarioCaptureUse(sc)
-	plain, escaped, err := cropCaptures(cfg, use, raw, escaped)
-	if err != nil {
-		return Result{Err: fmt.Errorf("scenario %s (%s), final capture: %w", sc.Name, bin.Label, err)}
-	}
-	plainUncropped, escapedUncropped := uncroppedKinds(cfg, use)
-
-	return Result{
-		Output:           strings.TrimRight(plain, "\n"),
-		Escaped:          strings.TrimRight(escaped, "\n"),
-		PlainUncropped:   plainUncropped,
-		EscapedUncropped: escapedUncropped,
-		RuntimeMs:        elapsed,
-		ReadyOK:          true,
-	}
+// htFinalResult builds the run's result from the two views ht gave: it strips the trailing "cursor: R,C" status line ht appends and crops the captures a comparator reads to the scenario's capture markers (same as the tmux driver). A crop failure keeps the whole captures in the result, so the artifacts hold them next to the error.
+func htFinalResult(scenario, binary string, cfg TmuxDriverConfig, use captureUse, view, viewAnsi string, elapsedMs int64) Result {
+	plain, escaped, err := cropCaptures(cfg, use, stripHTCursorLine(view), stripHTCursorLine(viewAnsi))
+	return withFinalCaptures(Result{RuntimeMs: elapsedMs, ReadyOK: true}, scenario, binary, cfg, use,
+		strings.TrimRight(plain, "\n"), strings.TrimRight(escaped, "\n"), err)
 }
 
 // htOutput runs ht and returns its stdout: the session JSON or the screen the
