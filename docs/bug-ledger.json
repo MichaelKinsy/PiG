@@ -3491,6 +3491,30 @@
       ]
     },
     {
+      "id": "BF-15b13fc",
+      "title": "fix(session): resolve each summary request's credential when it is sent, as Pi's createAgentSession does",
+      "symptom": "fix(session): resolve each summary request's credential when it is sent, as Pi's createAgentSession does",
+      "rootCause": "A compaction, branch summary or bug report on a Session the CLI builds pinned the credential it resolved when it started into every request it made, so a retry after a backoff, or a later chunk, sent a derived token (GitHub Copilot's lives about 30 minutes) after it had expired and got the provider's 401: \"Auto-compaction failed: Summarization failed: 401 Unauthorized\".",
+      "rootCauseSource": "commit",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "15b13fcae5",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "coding/session_summary_auth_refresh_test.go::TestAutoCompactionSurfacesRefreshFailureOnce",
+        "coding/session_summary_auth_refresh_test.go::TestCompactionResolvesCredentialWhenItStartsFreshAndExpired",
+        "coding/session_summary_auth_refresh_test.go::TestSummarizationRequestResolvesNoCredentialForARuntimeSession",
+        "coding/session_summary_auth_refresh_test.go::TestSummaryAttemptsEachSendAFreshCredentialAfterExpiry"
+      ]
+    },
+    {
       "id": "BF-160d95a",
       "title": "In RPC mode, a run that an extension command starts with `sendMessage` or `sendUserMessage` now emits…",
       "symptom": "In RPC mode, a run that an extension command starts with `sendMessage` or `sendUserMessage` now emits `agent_start` after the command's response, as in Pi, when the command is written with the Go, Python or Rust SDK, not only on Node.",

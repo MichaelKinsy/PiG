@@ -151,6 +151,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-155d0f3](#bf-155d0f3) | In RPC mode, SIGTERM or SIGHUP during a tool call likewise stops the run while the `session_shutdown`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1584ac1](#bf-1584ac1) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-15a5c0b](#bf-15a5c0b) | The Kimi Code, Meta and xAI device logins judge the verification URI the way Pi does, and Meta and xAI open… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-15b13fc](#bf-15b13fc) | fix(session): resolve each summary request's credential when it is sent, as Pi's createAgentSession does | PiG's own defect | All platforms | Unreleased |
 | [BF-160d95a](#bf-160d95a) | In RPC mode, a run that an extension command starts with `sendMessage` or `sendUserMessage` now emits… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-160d95a-2](#bf-160d95a-2) | In RPC mode, the Go, Python and Rust SDKs no longer let the host move on while a `notify`, `setStatus`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1631753](#bf-1631753) | Queueing a steering or follow-up message while the agent streams prints no status line, as Pi does | PiG's own defect | All platforms | 0.5.0 |
@@ -3853,6 +3854,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `15a5c0b670` (2026-10-09), `7c4d874438` (2026-10-09)
 - **Tests:** `ai/githubcopilot_oracle_test.go::TestGitHubCopilotHelpersMatchPi`, `ai/trusted_url_oracle_test.go::TestTrustedVerificationURLsMatchPi`
 - **Release note:** The Kimi Code, Meta and xAI device logins judge the verification URI the way Pi does, and Meta and xAI open the URL Pi opens. A `https:host` or backslash form is read as a URL; a port above 65535, an out-of-range numeric host, or a space in the host is refused. The opened URL is normalized as `new URL` does (lowercase scheme and host, default port and empty userinfo dropped, an empty path becomes `/`) instead of being echoed as received.
+
+### BF-15b13fc
+
+**fix(session): resolve each summary request's credential when it is sent, as Pi's createAgentSession does**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(session): resolve each summary request's credential when it is sent, as Pi's createAgentSession does
+- **Root cause:** A compaction, branch summary or bug report on a Session the CLI builds pinned the credential it resolved when it started into every request it made, so a retry after a backoff, or a later chunk, sent a derived token (GitHub Copilot's lives about 30 minutes) after it had expired and got the provider's 401: "Auto-compaction failed: Summarization failed: 401 Unauthorized".
+- **User impact:** Credential or permission exposure
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `15b13fcae5` (2026-11-11)
+- **Tests:** `coding/session_summary_auth_refresh_test.go::TestAutoCompactionSurfacesRefreshFailureOnce`, `coding/session_summary_auth_refresh_test.go::TestCompactionResolvesCredentialWhenItStartsFreshAndExpired`, `coding/session_summary_auth_refresh_test.go::TestSummarizationRequestResolvesNoCredentialForARuntimeSession`, `coding/session_summary_auth_refresh_test.go::TestSummaryAttemptsEachSendAFreshCredentialAfterExpiry`
 
 ### BF-160d95a
 
