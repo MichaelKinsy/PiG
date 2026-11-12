@@ -79,16 +79,35 @@ func statusFor(cfg config, ev evaluation) (state, description string) {
 	return state, description
 }
 
+// send takes a POST as not repeatable: it creates a comment, and a second one would be a duplicate. A PATCH sets a
+// comment's whole body, so it is repeatable.
 func (a *api) send(ctx context.Context, method, path string, body, out any) error {
+	return a.sendWhen(ctx, method, path, method != http.MethodPost, body, out)
+}
+
+func (a *api) sendWhen(ctx context.Context, method, path string, repeatable bool, body, out any) error {
 	raw, err := json.Marshal(body)
 	if err != nil {
 		return err
 	}
-	r, err := a.call(ctx, method, a.base+"/"+strings.TrimPrefix(path, "/"), method+" "+path, raw, 1<<20)
+	r, err := a.call(ctx, method, a.base+"/"+strings.TrimPrefix(path, "/"), method+" "+path, repeatable, raw, 1<<20)
 	if err != nil || out == nil {
 		return err
 	}
 	return json.Unmarshal(r.body, out)
+}
+
+// setStatus posts the commit status. GitHub keeps one current status per head and context, so the same state posted
+// twice changes nothing: unlike a comment's POST, this one is repeated after a network error, a timeout or a 5xx, as
+// well as after a 429. Any other 4xx is an answer and ends the call at once.
+//
+// The bound is the one of every call here: len(defaultRetryDelays)+1 = 4 attempts of at most apiTimeout (30 s) each,
+// 2, 4 and 6 s apart, 132 s at worst. That is inside the 5 minutes the job's timeout-minutes (30) leaves after the
+// run's --time-budget (25m) in preflight.yml, and inside the 900 s wait-preflight.sh waits for the verdict: a status
+// that needed every attempt still reaches the waiting CI jobs. A cancelled context ends the wait between two attempts.
+func (a *api) setStatus(ctx context.Context, prefix, head, state, description string) error {
+	body := map[string]string{"state": state, "description": description, "context": statusContext}
+	return a.sendWhen(ctx, http.MethodPost, fmt.Sprintf("%s/statuses/%s", prefix, head), true, body, nil)
 }
 
 type recordOptions struct {
@@ -192,10 +211,14 @@ func (r recording) show(log io.Writer) error {
 func (r recording) send(ctx context.Context, o recordOptions, log io.Writer) error {
 	a := newAPI(o.apiBase, o.token)
 	a.log = log
+	return r.sendVia(ctx, a, log)
+}
+
+func (r recording) sendVia(ctx context.Context, a *api, log io.Writer) error {
 	prefix := "repos/" + r.d.Repo
 	// The status first: it gates the PR, so nothing after it may keep it from being set.
 	if r.setStatus {
-		if err := a.send(ctx, http.MethodPost, fmt.Sprintf("%s/statuses/%s", prefix, r.ev.Head), map[string]string{"state": r.status, "description": r.description, "context": statusContext}, nil); err != nil {
+		if err := a.setStatus(ctx, prefix, r.ev.Head, r.status, r.description); err != nil {
 			return err
 		}
 		logf(log, "record: status %s on %s", r.status, short(r.ev.Head))

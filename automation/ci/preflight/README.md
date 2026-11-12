@@ -47,9 +47,13 @@ GH_TOKEN=$(gh auth token) /tmp/preflight run --repo MichaelKinsy/PiG --root . \
 4. Decide the cheap checks from that data. Only when none failed, check out the
    head sparsely and run the scans in parallel.
 5. Record: the status first (it is what holds the PR back), then the step
-   summary, any alert, and the comment with the new state. A POST (the status,
-   an alert, a first comment) is sent once, and again only after a 429: after
-   a 5xx or a broken connection GitHub may already have created it.
+   summary, any alert, and the comment with the new state. A POST that
+   creates a comment (an alert, a first comment) is sent once, and again only
+   after a 429: after a 5xx or a broken connection GitHub may already have
+   created it. The status POST is retried like a read (three retries after 2,
+   4 and 6 s, after a 5xx, a broken connection, a timeout or a 429): GitHub
+   keeps one status per head and context, so the same one sent twice changes
+   nothing. Any other 4xx fails it at once.
 
 A job fully checks at most `--budget` PRs (200). Reused PRs and PRs too large
 for the API do not count. The PRs beyond go to next jobs of the same run
