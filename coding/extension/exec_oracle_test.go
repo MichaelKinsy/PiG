@@ -186,7 +186,7 @@ func (c codeCounts) String() string {
 	return strings.Join(parts, ", ")
 }
 
-// execSocketResetScript is the maxBuffer script whose codes in Pi are those of a socket pair, which PiG does not give a command (pig divergence D631):
+// execSocketResetScript is the maxBuffer script whose codes in Pi are those of a socket pair, which PiG does not give a command:
 // yes is the command itself and writes its stdout. Node's stdio are socket pairs, and the first write to a socket whose peer closed with unread data
 // fails with ECONNRESET and no SIGPIPE, so yes goes on to report "yes: standard output: Connection reset by peer" on stderr: it exits 1 when it gets
 // that far, the SIGTERM ends it while it reports (143), or the report meets the closed stderr (141). The write of a pipe raises SIGPIPE at once, so
