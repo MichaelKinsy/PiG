@@ -261,10 +261,12 @@ func TestObjectOrderLookupOfAnotherMapDoesNotSort(t *testing.T) {
 		t.Fatal(err)
 	}
 	// An address no object has that the filter does not pass: the filter's answer is "not here" without a sort. (A map the filter passes by chance is sorted
-	// for, and found missing; its address cannot be chosen, so the test chooses an address.)
-	order.Keys(8)
+	// for, and found missing; its address cannot be chosen, so the test chooses an address.) The test asks the filter for that address, so it builds the
+	// filter first, as the first lookup does and from the same addresses, without looking an address up: a lookup of a fixed address would itself be passed by
+	// chance about once in 74 runs (two bits of 32768, about 3800 set by the 2001 objects), and would sort. The lookup below is then still this order's first.
+	order.buildFilter()
 	var other uintptr
-	for other = 16; order.mayHold(other); other += 8 {
+	for other = 8; order.mayHold(other); other += 8 {
 		if other > 1<<24 {
 			t.Fatal("the filter passes every address")
 		}
