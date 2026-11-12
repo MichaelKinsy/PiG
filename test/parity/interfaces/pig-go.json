@@ -256241,6 +256241,17 @@
       "shapeHash": "sha256:435ee5dacc5f22739bace95accec47eb1c79066490aece59093b57ad979dcd69"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.drawsOnProcessTerminal",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.drawsOnProcessTerminal",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.dropBoundSprites",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.dropBoundSprites",
@@ -261673,6 +261684,17 @@
         "type": "func()"
       },
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.useFrameTimer",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.useFrameTimer",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(timer frameTimer)"
+      },
+      "shapeHash": "sha256:2c7525050b2bebea08a6d2f328cef6b7d630b11119c28acfdd70f3894a5af749"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.validatePromptModelAuth",
@@ -288141,6 +288163,28 @@
       "shapeHash": "sha256:081ca6e57628d622092bb0194372666fee11d178d9de174bc7f4b6c54b9a0cea"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#frameOutputIsTerminal",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "frameOutputIsTerminal",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#frameTimer",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "frameTimer",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "frameTimer"
+      },
+      "shapeHash": "sha256:6eaf28d397f33e2d5866a4983a5b685abb76187217b2b91aef744173cd84c69e"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#frontendActFeed",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "frontendActFeed",
@@ -291186,6 +291230,83 @@
         "type": "untyped int"
       },
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#kernelFrameTimer",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "kernelFrameTimer",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "kernelFrameTimer"
+      },
+      "shapeHash": "sha256:81df6f7fd0e350d10561cdf4cb681c29e02fb3407240357583154e7da13efa48"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#kernelFrameTimer.C",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "kernelFrameTimer.C",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() \u003c-chan time.Time"
+      },
+      "shapeHash": "sha256:976316297a0ae6bf251432f8ea86c9ae4e5e45ae0e427d8ecf198a2a8722106d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#kernelFrameTimer.Close",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "kernelFrameTimer.Close",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#kernelFrameTimer.Reset",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "kernelFrameTimer.Reset",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(after time.Duration)"
+      },
+      "shapeHash": "sha256:c5e142b867121317c0c4d031241c814ce97ade2b1f88b9ba646a1053b5cb968a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#kernelFrameTimer.Stop",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "kernelFrameTimer.Stop",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#kernelFrameTimer.read",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "kernelFrameTimer.read",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#kernelFrameTimer.set",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "kernelFrameTimer.set",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(after time.Duration)"
+      },
+      "shapeHash": "sha256:c5e142b867121317c0c4d031241c814ce97ade2b1f88b9ba646a1053b5cb968a"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#keyAction",
@@ -297260,6 +297381,17 @@
       "shapeHash": "sha256:4da7aaec4ddfc9774f390a5e7307df48cfed8383d2fc0686a94e7e30b607487e"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#newKernelFrameTimer",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "newKernelFrameTimer",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() frameTimer"
+      },
+      "shapeHash": "sha256:e9e80d9157006de498ce6d06cb187b9972b76b05ff1e161418c21541a17a5460"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#newKitToolCard",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "newKitToolCard",
@@ -297379,6 +297511,17 @@
         "type": "func(selector *github.com/MichaelKinsy/PiG/tui.ExtensionSelectorComponent, label string, text string, requestRender func()) *radiusLoginMenu"
       },
       "shapeHash": "sha256:899acd65e6f1da14b12981e7044872abc02b36a8d4b9565ba999a82708cc14f9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#newRuntimeFrameTimer",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "newRuntimeFrameTimer",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() frameTimer"
+      },
+      "shapeHash": "sha256:e9e80d9157006de498ce6d06cb187b9972b76b05ff1e161418c21541a17a5460"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#newScopedModelsSelection",
@@ -305123,6 +305266,61 @@
         "type": "func(ctx context.Context, path string, args []string, output *trashOutput) (*os/exec.Cmd, error)"
       },
       "shapeHash": "sha256:93866be8b5409dafceace649b49fe59977d97e8a3f2f62756a8af49cff01955e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#runtimeFrameTimer",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "runtimeFrameTimer",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "runtimeFrameTimer"
+      },
+      "shapeHash": "sha256:e7ee499de09d87bbc7039f871ad2894ea521a6bc37aa37a4b964d698be50375d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#runtimeFrameTimer.C",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "runtimeFrameTimer.C",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() \u003c-chan time.Time"
+      },
+      "shapeHash": "sha256:976316297a0ae6bf251432f8ea86c9ae4e5e45ae0e427d8ecf198a2a8722106d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#runtimeFrameTimer.Close",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "runtimeFrameTimer.Close",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#runtimeFrameTimer.Reset",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "runtimeFrameTimer.Reset",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(after time.Duration)"
+      },
+      "shapeHash": "sha256:c5e142b867121317c0c4d031241c814ce97ade2b1f88b9ba646a1053b5cb968a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#runtimeFrameTimer.Stop",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "runtimeFrameTimer.Stop",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#runtimeImporter",
