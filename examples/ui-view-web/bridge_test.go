@@ -37,7 +37,7 @@ func buildPig(t *testing.T) string {
 		cmd := exec.Command("go", "build", "-o", pigBinary.path, "github.com/MichaelKinsy/PiG/cmd/pig")
 		cmd.Dir = filepath.Join("..", "..")
 		if out, err := cmd.CombinedOutput(); err != nil {
-			pigBinary.err = fmt.Errorf("go build ./cmd/pig: %v\n%s", err, out)
+			pigBinary.err = fmt.Errorf("go build ./cmd/pig: %w\n%s", err, out)
 		}
 	})
 	if pigBinary.err != nil {
@@ -106,6 +106,7 @@ func (b bridge) open(t *testing.T) *page {
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { _ = res.Body.Close() })
 	if res.StatusCode != http.StatusOK || res.Header.Get("Content-Type") != "text/event-stream" {
 		t.Fatalf("GET /events = %s %s", res.Status, res.Header.Get("Content-Type"))
 	}
