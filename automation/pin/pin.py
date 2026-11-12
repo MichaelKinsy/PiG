@@ -495,6 +495,12 @@ def cmd_freeze_closure(args: argparse.Namespace) -> None:
     print(f"freeze-closure: wrote {oracle.freeze_closure(pin, lock)}")
 
 
+def cmd_point_current(_: argparse.Namespace) -> None:
+    """After a run at another pin (PI_UPSTREAM_REF): .upstream/current is the effective pin's mirror again, when the tree has that mirror."""
+    pin, _override = pinlib.effective()
+    point_current(pin)
+
+
 def cmd_link_mirror(_: argparse.Namespace) -> None:
     import oracle
 
@@ -585,6 +591,7 @@ def main() -> None:
     vendored.add_argument("--rebuild", action="store_true", help="also pack the pinned source build again and compare the bytes")
     vendored.set_defaults(fn=cmd_check_vendored)
     sub_.add_parser("link-mirror").set_defaults(fn=cmd_link_mirror)
+    sub_.add_parser("point-current").set_defaults(fn=cmd_point_current)
     ledgers = sub_.add_parser("ledgers")
     ledgers.add_argument("--from", dest="previous")
     ledgers.add_argument("--force", action="store_true")

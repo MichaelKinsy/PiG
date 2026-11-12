@@ -806,8 +806,11 @@ CARRIED_ORACLE_REF := 5e24c6b1f9b5e3049ec07b2101a105b11d1d1b4f
 CARRIED_ORACLE_TESTS := ^(TestAdmitSubmissionMatchesPiOnSeededPrograms|TestAdmitInputEntryMatchesPiOnSeededPrograms|TestWakeRecordMemosMatchPi|TestDescribeMatchesPiOnSeededToolSets|TestCodemodeDeclarationsMatchPi)$$
 CARRIED_INTEROP_TESTS := ^(TestScriptedSessionStoresMatchPiDurable|TestSecondScriptedSessionStoresMatchPiDurable|TestScriptedSessionsViewIdentically|TestScriptedSessionJsonlFilesMatchPiDurable|TestUnawaitedJobCommittedAfterTheAnswerChangesOnlyOrder)$$
 
+# The run points .upstream/current at the carried commit's mirror (install-oracle follows the effective pin). make interface-gaps reads that link and
+# none of its dependencies moves it back, so the target points it at the pin's mirror again (pin.py point-current, when the tree has that mirror),
+# whatever the tests returned.
 test-carried-oracles: ## Run the oracle tests of Pi work carried ahead of the pin (suspendable work, Pi 473515f9c; code mode namespaces, Pi 5e24c6b1f) against that Pi build
-	@$(MAKE) --no-print-directory PI_UPSTREAM_REF=$(CARRIED_ORACLE_REF) carried-oracles-run
+	@$(MAKE) --no-print-directory PI_UPSTREAM_REF=$(CARRIED_ORACLE_REF) carried-oracles-run; rc=$$?; $(PIN_TOOL) point-current; exit $$rc
 
 carried-oracles-run: upstream-mirror
 	go test -count=1 -run '$(CARRIED_ORACLE_TESTS)' ./durable/harness ./durable/codemode

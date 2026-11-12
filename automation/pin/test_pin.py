@@ -1140,6 +1140,32 @@ class CarryTests(unittest.TestCase):
         self.assertGreater(len(self.calls), first)
 
 
+class PointCurrentTests(unittest.TestCase):
+    """make test-carried-oracles runs at another Pi commit, and install-oracle points .upstream/current at that commit's mirror. The next
+    make interface-gaps read the carried Pi and reported seven gaps the tree does not have. `pin.py point-current`, which the target runs
+    when it ends, points the link back at the effective pin's mirror."""
+
+    def setUp(self):
+        self.root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
+        (self.root / ".upstream" / COMMIT.mirror_dir).mkdir(parents=True)
+        self.current = self.root / ".upstream" / "current"
+        self.current.symlink_to(COMMIT.mirror_dir)
+
+    def point(self):
+        with mock.patch.object(pin_tool, "ROOT", self.root), mock.patch.object(pinlib, "effective", lambda: (TAG, False)):
+            pin_tool.cmd_point_current(None)
+
+    def test_current_returns_to_the_mirror_of_the_effective_pin(self):
+        (self.root / ".upstream" / TAG.mirror_dir).mkdir()
+        self.point()
+        self.assertEqual(os.readlink(self.current), TAG.mirror_dir)
+
+    def test_current_stays_when_the_tree_has_no_mirror_of_the_pin(self):
+        self.point()
+        self.assertEqual(os.readlink(self.current), COMMIT.mirror_dir)
+
+
 class MirrorLinkTests(unittest.TestCase):
     """link-mirror gives the pin's read-only mirror the dependencies of the pinned source build, so a Node oracle script
     that imports the mirrored source (chord/src/schema.ts imports typebox) resolves them."""
