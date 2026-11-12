@@ -4,7 +4,9 @@
 package tui
 
 import (
+	"slices"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -23,6 +25,9 @@ type pacingScreen struct {
 	gate       atomic.Bool
 	terminal   *pacingTerminal
 	pacing     *FramePacing
+	// state is what the screen has to show now; written is everything the frames wrote.
+	state   string
+	written strings.Builder
 }
 
 // pacingTerminal is the renderer's terminal with a screen writer that is on or off.
@@ -33,17 +38,18 @@ type pacingTerminal struct {
 
 func (p *pacingTerminal) ScreenWriterActive() bool { return p.writerActive }
 
-// Render shows a row that differs in every frame, so every frame writes.
+// Render shows a row that differs in every frame, so every frame writes, and the state of the moment the frame is drawn.
 func (s *pacingScreen) Render(int) []string {
 	s.renders++
 	s.at = s.at.Add(s.renderCost)
-	return []string{"frame " + strconv.Itoa(s.renders)}
+	return []string{"frame " + strconv.Itoa(s.renders) + " " + s.state}
 }
 
 func (s *pacingScreen) Invalidate() {}
 
 func (s *pacingScreen) Write(data []byte) (int, error) {
 	s.at = s.at.Add(s.writeCost)
+	s.written.Write(data)
 	return len(data), nil
 }
 
@@ -408,5 +414,216 @@ func TestPendingFrameKeepsItsDeadlineWhenThePolicyTurnsOn(t *testing.T) {
 	s.ui.requestRender(false)
 	if len(s.delays) != armed || s.lastDelay() != 14*time.Millisecond {
 		t.Fatalf("timers armed %v, want the one of 14 ms and no other", s.delays[armed-1:])
+	}
+}
+
+// A listed terminal that states its version is trusted from the first release with mode 2026 on and not below it; a version that is missing or is no number leaves the terminal trusted by its name, except the VS Code terminal, which must state 1.108 or later. A terminal that names itself is judged by that name, whatever variables of another terminal it inherited.
+func TestSynchronizedUpdatesTrustedFromTheImplementingRelease(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		program string
+		version string
+		others  map[string]string
+		want    bool
+	}{
+		{"iTerm2 below", "iTerm.app", "3.4.23", nil, false},
+		{"iTerm2 below, session id set", "iTerm.app", "3.4.23", map[string]string{"ITERM_SESSION_ID": "w0t0p0"}, false},
+		{"iTerm2 at", "iTerm.app", "3.5.0", nil, true},
+		{"iTerm2 first beta", "iTerm.app", "3.5.0beta1", nil, true},
+		{"iTerm2 above", "iTerm.app", "3.7.7", nil, true},
+		{"iTerm2 absent", "iTerm.app", "", nil, true},
+		{"iTerm2 garbage", "iTerm.app", "nightly", nil, true},
+		{"WezTerm below", "WezTerm", "20210502-154244-3f7122cb", nil, false},
+		{"WezTerm below, pane set", "WezTerm", "20210502-154244-3f7122cb", map[string]string{"WEZTERM_PANE": "0"}, false},
+		{"WezTerm at", "WezTerm", "20210814-124438-54e29167", nil, true},
+		{"WezTerm above", "WezTerm", "20240203-110809-5046fc22", nil, true},
+		{"WezTerm absent", "WezTerm", "", nil, true},
+		{"WezTerm garbage", "WezTerm", "main", nil, true},
+		{"Ghostty below", "ghostty", "0.1.0", nil, false},
+		{"Ghostty at", "ghostty", "1.0.0", nil, true},
+		{"Ghostty above, with a suffix", "ghostty", "1.3.1-main+abc", nil, true},
+		{"Ghostty absent", "ghostty", "", nil, true},
+		{"Warp below", "WarpTerminal", "v0.2025.01.08.08.02.stable_03", nil, false},
+		{"Warp below, session set", "WarpTerminal", "v0.2024.12.18.08.02.stable_04", map[string]string{"WARP_SESSION_ID": "1"}, false},
+		{"Warp at", "WarpTerminal", "v0.2025.01.15.08.02.stable_02", nil, true},
+		{"Warp above", "WarpTerminal", "v0.2026.06.17.09.49.stable_02", nil, true},
+		{"Warp absent", "WarpTerminal", "", nil, true},
+		{"Warp garbage", "WarpTerminal", "stable", nil, true},
+		{"kitty with any version", "kitty", "0.1.0", nil, true},
+		{"Alacritty with any version", "alacritty", "0.1.0", nil, true},
+		{"VS Code below", "vscode", "1.107.1", nil, false},
+		{"VS Code at", "vscode", "1.108.0", nil, true},
+		{"VS Code at, two numbers", "vscode", "1.108", nil, true},
+		{"VS Code above, insiders", "vscode", "1.109.0-insider", nil, true},
+		{"VS Code next major", "vscode", "2.0.0", nil, true},
+		{"VS Code absent", "vscode", "", nil, false},
+		{"VS Code garbage", "vscode", "insider", nil, false},
+		{"VS Code below, started from kitty", "vscode", "1.107.1", map[string]string{"KITTY_WINDOW_ID": "1"}, false},
+		{"VS Code absent, started from iTerm2", "vscode", "", map[string]string{"ITERM_SESSION_ID": "w0t0p0"}, false},
+		{"VS Code at, behind tmux", "vscode", "1.108.0", map[string]string{"TMUX": "/tmp/tmux-1000/default,1,0"}, false},
+		{"Apple Terminal started from kitty", "Apple_Terminal", "455", map[string]string{"KITTY_WINDOW_ID": "1"}, false},
+		{"Windows Terminal, whatever it states", "", "1.24.2372.0", map[string]string{"WT_SESSION": "1"}, false},
+	} {
+		env := map[string]string{"TERM": "xterm-256color", "TERM_PROGRAM": tc.program, "TERM_PROGRAM_VERSION": tc.version}
+		for name, value := range tc.others {
+			env[name] = value
+		}
+		if got := synchronizedUpdatesTrustedIn(func(name string) string { return env[name] }); got != tc.want {
+			t.Errorf("%s (TERM_PROGRAM=%q TERM_PROGRAM_VERSION=%q %v): trusted = %v, want %v", tc.name, tc.program, tc.version, tc.others, got, tc.want)
+		}
+	}
+}
+
+func TestLeadingVersionNumbers(t *testing.T) {
+	for _, tc := range []struct {
+		version string
+		want    []int
+	}{
+		{"3.5.0", []int{3, 5, 0}},
+		{"3.5.0beta1", []int{3, 5, 0}},
+		{"1.108", []int{1, 108}},
+		{"20210814-124438-54e29167", []int{20210814}},
+		{"v0.2025.01.15.08.02.stable_02", []int{0, 2025, 1, 15, 8, 2}},
+		{"1.", []int{1}},
+		{"", nil},
+		{"v", nil},
+		{"nightly", nil},
+		{".5", nil},
+		{"12345678901234567890", nil},
+	} {
+		got, ok := leadingVersionNumbers(tc.version)
+		if ok != (tc.want != nil) || !slices.Equal(got, tc.want) {
+			t.Errorf("leadingVersionNumbers(%q) = %v, %v; want %v", tc.version, got, ok, tc.want)
+		}
+	}
+}
+
+// The ordering contract of a paced stream, first part: a key press and a forced request are drawn at once though a paced frame is pending, in place of it and not after it, and what they draw is the newest state.
+func TestKeyPressAndForcedFrameReplaceAPendingPacedFrameAtOnce(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		request func(ui *TuiAltScreen)
+	}{
+		{"forced", func(ui *TuiAltScreen) { ui.requestRender(true) }},
+		{"key press", func(ui *TuiAltScreen) { ui.RequestImmediateRender() }},
+	} {
+		s := newPacingScreen(t)
+		s.frame(time.Millisecond, 0)
+		s.at = s.at.Add(time.Millisecond)
+		s.state = "delta"
+		s.ui.requestRender(false)
+		if got := s.lastDelay(); got != frameIntervalFloor-2*time.Millisecond {
+			t.Fatalf("%s: the paced frame waits %v, want the rest of the floor", tc.name, got)
+		}
+		paced := s.timer
+		s.state = "key"
+		armed, before := len(s.delays), s.renders
+		tc.request(s.ui)
+		if !paced.stopped {
+			t.Errorf("%s: the paced frame is still pending beside the immediate one", tc.name)
+		}
+		if len(s.delays) != armed+1 || s.lastDelay() != 0 {
+			t.Fatalf("%s: timers armed %v, want one with no delay", tc.name, s.delays[armed:])
+		}
+		s.fire()
+		if s.renders != before+1 || !strings.Contains(s.written.String(), "key") || strings.Contains(s.written.String(), "delta") {
+			t.Errorf("%s: %d frames drawn, the last wrote %q; want one frame that shows the newest state and none that shows the older one", tc.name, s.renders-before, s.written.String())
+		}
+		if s.timer != nil && !s.timer.stopped {
+			t.Errorf("%s: a frame is pending after the immediate one though nothing was requested", tc.name)
+		}
+	}
+}
+
+// Second part: the last frame of a run is never dropped. The request that follows the last paced frame is drawn though the gate closed before its timer fired (the run ended), at the deadline it was given, and it shows the final state.
+func TestLastFrameOfARunIsDrawnAfterTheGateCloses(t *testing.T) {
+	for _, closeBeforeRequest := range []bool{false, true} {
+		s := newPacingScreen(t)
+		s.frame(time.Millisecond, 0)
+		s.at = s.at.Add(time.Millisecond)
+		if closeBeforeRequest {
+			s.gate.Store(false)
+		}
+		s.state = "final"
+		s.ui.requestRender(false)
+		want := frameIntervalFloor - 2*time.Millisecond
+		if closeBeforeRequest {
+			want = minRenderInterval - 2*time.Millisecond
+		}
+		if got := s.lastDelay(); got != want {
+			t.Fatalf("gate closed before the request=%v: the last frame waits %v, want %v", closeBeforeRequest, got, want)
+		}
+		s.gate.Store(false)
+		armed, before := len(s.delays), s.renders
+		s.at = s.at.Add(want)
+		s.fire()
+		if s.renders != before+1 || !strings.Contains(s.written.String(), "final") {
+			t.Errorf("gate closed before the request=%v: %d frames drawn, the last wrote %q; want one frame with the final state", closeBeforeRequest, s.renders-before, s.written.String())
+		}
+		if len(s.delays) != armed {
+			t.Errorf("gate closed before the request=%v: timers %v armed after the last frame though nothing was requested", closeBeforeRequest, s.delays[armed:])
+		}
+	}
+}
+
+// Third part: a paced frame shows the newest state. Requests that arrive while a paced frame is pending arm nothing and move no deadline, and the one frame drawn shows the state of the moment it is drawn, not of the request that armed it.
+func TestPacedFrameShowsTheNewestState(t *testing.T) {
+	s := newPacingScreen(t)
+	s.frame(time.Millisecond, 0)
+	s.at = s.at.Add(time.Millisecond)
+	s.state = "first"
+	s.ui.requestRender(false)
+	armed, before := len(s.delays), s.renders
+	for _, state := range []string{"second", "third", "newest"} {
+		s.at = s.at.Add(2 * time.Millisecond)
+		s.state = state
+		s.ui.requestRender(false)
+	}
+	if len(s.delays) != armed {
+		t.Fatalf("requests behind a pending paced frame armed timers %v, want none", s.delays[armed:])
+	}
+	s.at = s.at.Add(2 * time.Millisecond)
+	s.fire()
+	if s.renders != before+1 || !strings.Contains(s.written.String(), "newest") || strings.Contains(s.written.String(), "first") {
+		t.Errorf("%d frames drawn, the last wrote %q; want one frame that shows only the newest state", s.renders-before, s.written.String())
+	}
+}
+
+// A forced frame and a key press are measured like any frame, and their cost is the next interval's input. The interval never exceeds Pi's constant, so the frame after a slow one begins no later than 16 ms after the slow one began, which is Pi's rule, and the slow frame's cost is forgotten with the next frame drawn: the one after that waits the floor again.
+func TestSlowImmediateFrameDelaysTheNextFrameNoLongerThanPisInterval(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		request func(ui *TuiAltScreen)
+	}{
+		{"forced", func(ui *TuiAltScreen) { ui.requestRender(true) }},
+		{"key press", func(ui *TuiAltScreen) { ui.RequestImmediateRender() }},
+	} {
+		for _, cost := range []time.Duration{5 * time.Millisecond, 12 * time.Millisecond, 500 * time.Millisecond} {
+			s := newPacingScreen(t)
+			s.frame(time.Millisecond, 0)
+			s.at = s.at.Add(time.Second)
+			began := s.at
+			s.renderCost = cost
+			tc.request(s.ui)
+			s.fire()
+			s.renderCost = 0
+			if got := s.interval(); got != minRenderInterval {
+				t.Fatalf("%s frame of %v: the next interval is %v, want Pi's constant, the longest there is", tc.name, cost, got)
+			}
+			s.ui.requestRender(false)
+			if next := s.at.Add(s.lastDelay()); next.Sub(began) > max(minRenderInterval, cost) {
+				t.Errorf("%s frame of %v: the next frame begins %v after it began, want no later than Pi's interval or its own end", tc.name, cost, next.Sub(began))
+			}
+			s.at = s.at.Add(s.lastDelay())
+			s.fire()
+			if got := s.interval(); got != frameIntervalFloor {
+				t.Errorf("%s frame of %v: the interval after the next frame is %v, want the floor: one slow frame slows one interval", tc.name, cost, got)
+			}
+			s.at = s.at.Add(time.Millisecond)
+			s.ui.requestRender(false)
+			if got := s.lastDelay(); got != frameIntervalFloor-time.Millisecond {
+				t.Errorf("%s frame of %v: the second frame after it waits %v, want the rest of the floor", tc.name, cost, got)
+			}
+		}
 	}
 }
