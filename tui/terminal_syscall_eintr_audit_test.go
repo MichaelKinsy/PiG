@@ -126,6 +126,8 @@ var eintrAuditExcluded = map[string]string{
 	"bench/sessionscale/cmd/sessionscale/run.go": "a benchmark driver's ioctls (TIOCSPTLCK, TIOCGPTN, TIOCSWINSZ) on a pty master it opened for the session it measures; not the user's terminal and never stopped by job control",
 	"env/daemon/pty_unix.go":                     "ioctls and reads on a pty master the environment daemon allocated for its own child; a stop and continue of the user's terminal never interrupts them",
 	"env/daemon/pty_linux.go":                    "ioctls (TIOCGPTN, TIOCSPTLCK) on a pty master the environment daemon allocated for its own child, not the user's terminal",
+	"internal/testenv/grab_terminal_unix.go":     "a test helper that takes the foreground of a pty the test itself created (TIOCSPGRP) to stage a terminal for the code under test; not the user terminal, and no job-control stop reaches it",
+	"internal/testenv/terminal_session_linux.go": "a test helper that makes the test process the leader of a session on a pty it opened (TIOCSCTTY, TIOCGPGRP, TIOCSPGRP); not the user terminal, and no job-control stop reaches it",
 }
 
 // touchesUserTerminal reports whether file imports x/term or x/sys/unix and names a standard stream, a tty path, an Fd call or a termios ioctl
