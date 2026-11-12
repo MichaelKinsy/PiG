@@ -35666,6 +35666,36 @@
       ]
     },
     {
+      "id": "BF-D619",
+      "title": "A status-indicator or Loader animation step asks for its frame within min(40 ms, interval/2), where Pi asks…",
+      "symptom": "none; Pi's frame per step is correct, only costlier.",
+      "rootCause": "while a reply or a tool call streams in, Pi draws a frame every 16-20 ms and the spinner step adds a frame of its own every 80 ms, about one frame in five. The frames dropped carry only a glyph of the spinner that the next frame draws anyway.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D619",
+      "removeWhen": "Pi's `Loader` draws a step within a time, or the owner withdraws the change.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "3699c0b10c",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/status_tick_within_test.go::TestStatusTickAsksForItsFrameWithinTheStepDelay",
+        "internal/codingagent/status_tick_within_test.go::TestStatusTickDrawsAtOnceOnATUIThatCannotWait",
+        "tui/render_within_test.go::TestFrameDrawnWithinTheDelayCarriesTheChange",
+        "tui/render_within_test.go::TestLoaderAnimationStepAsksForItsFrameWithin",
+        "tui/render_within_test.go::TestLoaderTickStepAsksForNoFrame",
+        "tui/render_within_test.go::TestRequestRenderWithinAsksForAFrameOnlyWhenNoneIsDrawn",
+        "tui/render_within_test.go::TestRequestRenderWithinDuringAFrameAsksForTheNextFrame",
+        "tui/render_within_test.go::TestRequestRenderWithinIsCoveredByAFrameAlreadyAskedFor"
+      ]
+    },
+    {
       "id": "BF-a076a50",
       "title": "A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…",
       "symptom": "The time the connection had spent idle in the pool was deducted from the next request's timeout.",
@@ -57769,6 +57799,11 @@
       "id": "D616",
       "title": "An npm tarball is extracted with `tar` told the archive and the destination relative to the pack directory…",
       "entry": "BF-5043738"
+    },
+    {
+      "id": "D619",
+      "title": "A status-indicator or Loader animation step asks for its frame within min(40 ms, interval/2), where Pi asks…",
+      "entry": "BF-D619"
     }
   ],
   "exemptCommits": {

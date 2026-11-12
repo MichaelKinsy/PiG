@@ -258815,6 +258815,17 @@
       "shapeHash": "sha256:6fecb7879fa241b7a1bad0e09af459b41023cc49f35ef598e0b3338a488e5aeb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.renderStatusStep",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.renderStatusStep",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.renderWidgetsLocked",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.renderWidgetsLocked",
@@ -331492,6 +331503,17 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#CancellableLoader.TickStep",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "CancellableLoader.TickStep",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#CancellableLoader.notifyOwner",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "CancellableLoader.notifyOwner",
@@ -331534,6 +331556,17 @@
         "type": "func()"
       },
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#CancellableLoader.requestStepRender",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "CancellableLoader.requestStepRender",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(interval time.Duration)"
+      },
+      "shapeHash": "sha256:c96ba7feec559dbe44f091262765ac1ab6c9d953a8439dbbe46545cc7bd18d72"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#CancellableLoader.restartAnimation",
@@ -338587,6 +338620,17 @@
       "shapeHash": "sha256:871bd7c0b9598bfeacd6e8c24fa685e2f7bb5984dc3febf22313b4fce2ff06e1"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#FrameWithinRequester",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "FrameWithinRequester",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "FrameWithinRequester"
+      },
+      "shapeHash": "sha256:78d95adb54b4a07252ed12391fae844b494df0203da4a7b6e09e378f6fd9dc7e"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#FuzzyFilter",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "FuzzyFilter",
@@ -341777,6 +341821,17 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#Loader.TickStep",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "Loader.TickStep",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#Loader.notifyOwner",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "Loader.notifyOwner",
@@ -341819,6 +341874,17 @@
         "type": "func()"
       },
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#Loader.requestStepRender",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "Loader.requestStepRender",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(interval time.Duration)"
+      },
+      "shapeHash": "sha256:c96ba7feec559dbe44f091262765ac1ab6c9d953a8439dbbe46545cc7bd18d72"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#Loader.restartAnimation",
@@ -353800,6 +353866,17 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#StatusIndicator.TickStep",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "StatusIndicator.TickStep",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#StatusIndicator.notifyOwner",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "StatusIndicator.notifyOwner",
@@ -353842,6 +353919,17 @@
         "type": "func()"
       },
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#StatusIndicator.requestStepRender",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "StatusIndicator.requestStepRender",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(interval time.Duration)"
+      },
+      "shapeHash": "sha256:c96ba7feec559dbe44f091262765ac1ab6c9d953a8439dbbe46545cc7bd18d72"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#StatusIndicator.restartAnimation",
@@ -354370,6 +354458,17 @@
         "type": "func() (bool, error)"
       },
       "shapeHash": "sha256:445dc8d6f1996672991f88a8c5d8ec1530635dcbfcbbedbd5bfc56414677b5b0"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#StepFrameDelay",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "StepFrameDelay",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(interval time.Duration) time.Duration"
+      },
+      "shapeHash": "sha256:e5c60b1172413e8425788a61730588e4d339970f1672f6f2be0b543f498d5e09"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#StopOptions",
@@ -361203,6 +361302,17 @@
       "shapeHash": "sha256:aaf6be69f7b09c93c101baed4486e15ce8338574d69435458709163847591f5b"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.RequestRenderWithin",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiAltScreen.RequestRenderWithin",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(delay time.Duration)"
+      },
+      "shapeHash": "sha256:be3c88a4b177e6ed7779f30c4871dbbed4cae275638dd9cba79d0b7e12c2a6ea"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.ResetTextSelection",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiAltScreen.ResetTextSelection",
@@ -362031,6 +362141,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.enterFrame",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiAltScreen.enterFrame",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.frameBeganLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiAltScreen.frameBeganLocked",
       "kind": "function",
       "exported": false,
       "shape": {
@@ -362928,6 +363049,17 @@
         "type": "func(wheel wheelEvent, delta int)"
       },
       "shapeHash": "sha256:9228dfb7cc3b2c3a8664fc9ac8c528f0c61a52f8d48e56fc8bc3be70848b3ff4"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.runDeferredRender",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiAltScreen.runDeferredRender",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(generation uint64)"
+      },
+      "shapeHash": "sha256:988ce4f83c67fa137e148f701e3e60e2569221af251fbe0875528d807cc2c35a"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.runImmediateRender",
@@ -363887,6 +364019,17 @@
       "shapeHash": "sha256:aaf6be69f7b09c93c101baed4486e15ce8338574d69435458709163847591f5b"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.RequestRenderWithin",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiMainScreen.RequestRenderWithin",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(delay time.Duration)"
+      },
+      "shapeHash": "sha256:be3c88a4b177e6ed7779f30c4871dbbed4cae275638dd9cba79d0b7e12c2a6ea"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.RestoreRenderState",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiMainScreen.RestoreRenderState",
@@ -364503,6 +364646,17 @@
       "shapeHash": "sha256:3f9e2c0dacea0ac9ef7e4c957dea5ee588438ccf712595744e1e8bbc71264027"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.frameBeganLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiMainScreen.frameBeganLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.frameOverlaySnapshot",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiMainScreen.frameOverlaySnapshot",
@@ -364996,6 +365150,17 @@
         "type": "func(component Component) Component"
       },
       "shapeHash": "sha256:658512dbda2095eb8ae503b1e6db6a3b7cc468b11a37ba1e76114a687d5c0fce"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.runDeferredRender",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiMainScreen.runDeferredRender",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(generation uint64)"
+      },
+      "shapeHash": "sha256:988ce4f83c67fa137e148f701e3e60e2569221af251fbe0875528d807cc2c35a"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.runImmediateRender",
@@ -365878,6 +366043,17 @@
       "shapeHash": "sha256:aaf6be69f7b09c93c101baed4486e15ce8338574d69435458709163847591f5b"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.RequestRenderWithin",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiSurface.RequestRenderWithin",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(delay time.Duration)"
+      },
+      "shapeHash": "sha256:be3c88a4b177e6ed7779f30c4871dbbed4cae275638dd9cba79d0b7e12c2a6ea"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.Resume",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiSurface.Resume",
@@ -366637,6 +366813,17 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.frameBeganLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiSurface.frameBeganLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.frameMark",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiSurface.frameMark",
@@ -367251,6 +367438,17 @@
         "type": "func(component Component) Component"
       },
       "shapeHash": "sha256:658512dbda2095eb8ae503b1e6db6a3b7cc468b11a37ba1e76114a687d5c0fce"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.runDeferredRender",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiSurface.runDeferredRender",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(generation uint64)"
+      },
+      "shapeHash": "sha256:988ce4f83c67fa137e148f701e3e60e2569221af251fbe0875528d807cc2c35a"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.runImmediateRender",
@@ -377569,6 +377767,138 @@
         "type": "untyped int"
       },
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#loaderStepFrameDelay",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "loaderStepFrameDelay",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "time.Duration"
+      },
+      "shapeHash": "sha256:83488df5bf69d53eed0fce849900072064e69ce5fc0b1a0f19720f7f5af6ce46"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#loaderStepFrameDelay.Abs",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "loaderStepFrameDelay.Abs",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() time.Duration"
+      },
+      "shapeHash": "sha256:182a2bb05a9afffa29d82fa1b9199409a6edc02648d561478a37684fc219d429"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#loaderStepFrameDelay.Hours",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "loaderStepFrameDelay.Hours",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() float64"
+      },
+      "shapeHash": "sha256:dd83be6ee46574c9a5e582bb0e3ecaa65591b89698409ba285fe424794c25f12"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#loaderStepFrameDelay.Microseconds",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "loaderStepFrameDelay.Microseconds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int64"
+      },
+      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#loaderStepFrameDelay.Milliseconds",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "loaderStepFrameDelay.Milliseconds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int64"
+      },
+      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#loaderStepFrameDelay.Minutes",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "loaderStepFrameDelay.Minutes",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() float64"
+      },
+      "shapeHash": "sha256:dd83be6ee46574c9a5e582bb0e3ecaa65591b89698409ba285fe424794c25f12"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#loaderStepFrameDelay.Nanoseconds",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "loaderStepFrameDelay.Nanoseconds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int64"
+      },
+      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#loaderStepFrameDelay.Round",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "loaderStepFrameDelay.Round",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(m time.Duration) time.Duration"
+      },
+      "shapeHash": "sha256:39141cddd85eb7dfd5f1aefdd730190ba3f474ef79255ee327bb2fbccb4168ae"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#loaderStepFrameDelay.Seconds",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "loaderStepFrameDelay.Seconds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() float64"
+      },
+      "shapeHash": "sha256:dd83be6ee46574c9a5e582bb0e3ecaa65591b89698409ba285fe424794c25f12"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#loaderStepFrameDelay.String",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "loaderStepFrameDelay.String",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#loaderStepFrameDelay.Truncate",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "loaderStepFrameDelay.Truncate",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(m time.Duration) time.Duration"
+      },
+      "shapeHash": "sha256:39141cddd85eb7dfd5f1aefdd730190ba3f474ef79255ee327bb2fbccb4168ae"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#loaderStepFrameDelay.format",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "loaderStepFrameDelay.format",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(buf *[32]byte) int"
+      },
+      "shapeHash": "sha256:2dfd215036b14c3898ddd16ce618fec9fa6ba141357d49869e3171fbf3801867"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#lockMask",
@@ -390177,6 +390507,17 @@
       "shapeHash": "sha256:aaf6be69f7b09c93c101baed4486e15ce8338574d69435458709163847591f5b"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.RequestRenderWithin",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "tuiBase.RequestRenderWithin",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(delay time.Duration)"
+      },
+      "shapeHash": "sha256:be3c88a4b177e6ed7779f30c4871dbbed4cae275638dd9cba79d0b7e12c2a6ea"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.RunDueRender",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "tuiBase.RunDueRender",
@@ -390620,6 +390961,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.enterFrame",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "tuiBase.enterFrame",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.frameBeganLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "tuiBase.frameBeganLocked",
       "kind": "function",
       "exported": false,
       "shape": {
@@ -391077,6 +391429,17 @@
         "type": "func(component Component) Component"
       },
       "shapeHash": "sha256:658512dbda2095eb8ae503b1e6db6a3b7cc468b11a37ba1e76114a687d5c0fce"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.runDeferredRender",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "tuiBase.runDeferredRender",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(generation uint64)"
+      },
+      "shapeHash": "sha256:988ce4f83c67fa137e148f701e3e60e2569221af251fbe0875528d807cc2c35a"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.runImmediateRender",
