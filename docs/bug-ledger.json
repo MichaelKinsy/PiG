@@ -28685,6 +28685,30 @@
       ]
     },
     {
+      "id": "BF-8392c29",
+      "title": "fix(mcp): start stdio servers in a session of their own, as Pi's detached spawn does (#427)",
+      "symptom": "fix(mcp): start stdio servers in a session of their own, as Pi's detached spawn does (#427)",
+      "rootCause": "Pi's stdio transport spawns the server with `detached: USE_PROCESS_GROUPS` (packages/mcp/src/transports/stdio.ts:107), which Node starts with setsid(2) on every platform but Windows. PiG called setpgid only, so a server, or a child of it, kept PiG's controlling terminal and could take the terminal's foreground group away from PiG, as the bash tool's shell did.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "8392c29006",
+          "date": "2026-11-11",
+          "pr": "427"
+        }
+      ],
+      "tests": [
+        "mcp/fixtures_test.go::TestMain",
+        "mcp/stdio_session_linux_test.go::TestStdioServerCannotTakeThePigTerminal",
+        "mcp/stdio_session_linux_test.go::TestStdioServerLeadsItsOwnSessionAndProcessGroup"
+      ]
+    },
+    {
       "id": "BF-83d5488",
       "title": "`pig install \u003cdir\u003e` of a local directory with no package manifest and no `extensions/`, `skills/`, `prompts/`…",
       "symptom": "Previously Pig recorded the Package and loaded nothing from it.",
@@ -30796,6 +30820,28 @@
       ],
       "tests": [
         "coding/extension/exec_drain_test.go::TestExecCommandKeepsTheOutputOfAChildThatExitedBeforeItsReadersRan"
+      ]
+    },
+    {
+      "id": "BF-8fbbd2d",
+      "title": "fix(chord): start workers in a session of their own, as Pi's detached fork does (#427)",
+      "symptom": "fix(chord): start workers in a session of their own, as Pi's detached fork does (#427)",
+      "rootCause": "Pi forks a worker with `detached: true` (packages/chord/src/node/workers/process.ts:54), which Node starts with setsid(2). PiG's detach carried the comment \"Node's `detached: true`\" but called setpgid only, so a worker kept PiG's controlling terminal.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "8fbbd2da17",
+          "date": "2026-11-11",
+          "pr": "427"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/workers/workers_process_session_linux_test.go::TestAWorkerProcessLeadsItsOwnSessionAndProcessGroup"
       ]
     },
     {
@@ -41454,6 +41500,39 @@
       ]
     },
     {
+      "id": "BF-bc6c54f",
+      "title": "Fix the extension event result type and keep the event fast paths exact",
+      "symptom": "Fix the extension event result type and keep the event fast paths exact",
+      "rootCause": "A Host's connections read every response by the full decode, because Host.observeXref sets the inbound observer on each of them and the fast route ran only without one. The fast route now declines only the responses the observer needs: the response to a request cross-process accounting expects, and every response while a diagnostic observer is set. The event round-trip allocation gate wires its connection as a Host does, and a test shows which responses the Host's connection decodes.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "bc6c54f11d",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/event_result_type_test.go::TestEventHandlerResultKeepsTheRawJSONType",
+        "coding/extension/host/subprocess/perf_gate_norace_test.go::TestExtensionEventRoundTripAllocationGate",
+        "coding/extension/host/subprocess/response_channel_test.go::TestLateResponseNeverReachesTheRequestHoldingTheChannel",
+        "coding/extension/host/subprocess/response_channel_test.go::TestPythonSDKResponseFramesAreRoutedByTheFullDecode",
+        "coding/extension/host/subprocess/response_channel_test.go::TestResponseChannelIsEmptyWhenItsRequestReturnsIt",
+        "coding/extension/host/subprocess/response_channel_test.go::TestResponseReadForAnEndedRequestIsNotSent",
+        "coding/extension/host/subprocess/response_route_test.go::TestHostConnectionRoutesTheResponsesInboundDoesNotNeed",
+        "coding/session_prompt_options_version_test.go::TestRunSystemPromptFollowsAnInProcessEditOfTheBaseOptions",
+        "coding/session_prompt_options_version_test.go::TestStatePushEncodesAnInProcessEditOfTheBaseOptions",
+        "coding/session_prompt_options_version_test.go::TestSystemPromptOptionsKeyTracksTheBaseOptions",
+        "coding/session_prompt_options_version_test.go::TestSystemPromptOptionsVersionAllocatesNothingWhenUnchanged",
+        "coding/session_prompt_options_version_test.go::TestSystemPromptOptionsVersionFollowsTheContents",
+        "coding/session_prompt_options_version_test.go::TestSystemPromptOptionsVersionSeesEveryWrite"
+      ]
+    },
+    {
       "id": "BF-bc8d37f",
       "title": "`FileModelsStore` roots and index keys: new live-Pi oracle…",
       "symptom": "`FileModelsStore` roots and index keys: new live-Pi oracle `TestFileModelsStoreNonObjectRootsAndIndexKeysMatchPi` (`ai/models_store_file_oracle_test.go`; 900 models-store.json files x 1-5 operations; null, array, number and boolean roots, integer-index provider ids, valid files holding null/number/string/array entries; TypeError text compared).",
@@ -49502,6 +49581,35 @@
       ],
       "tests": [
         "coding/cli/strip_providers_binary_test.go::TestStripBedrockConverseStreamBuildOmitsAWSSDK"
+      ]
+    },
+    {
+      "id": "BF-dc7d547",
+      "title": "fix(tools): start the bash tool's shell in a session of its own so an interactive shell cannot take PiG's…",
+      "symptom": "fix(tools): start the bash tool's shell in a session of its own so an interactive shell cannot take PiG's terminal (#427)",
+      "rootCause": "Pi spawns the shell with `detached: true` (core/tools/bash.ts createLocalShellOperations), which Node starts with setsid(2): the shell leads a new session and a new process group and has no controlling terminal. PiG called setpgid only, so the shell stayed in PiG's session with PiG's controlling terminal. An interactive job-control shell (`zsh -f -i -c true; true`) opened /dev/tty, made its own process group the terminal's foreground group and left it so when it exited. PiG, in the background of its own terminal, was stopped by SIGTTIN on the next key press (`suspended (tty input)`). `bash -i -c true; true` stopped itself and the tool call never returned; Pi's shell prints `bash: cannot set…",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "dc7d547ecf",
+          "date": "2026-11-11",
+          "pr": "427"
+        }
+      ],
+      "tests": [
+        "coding/cli/testmain_test.go::TestMain",
+        "coding/cli/user_bash_terminal_pty_test.go::TestInteractiveUserBashLeavesTheTerminalToPig",
+        "internal/codingagent/tools/bash_tty_linux_test.go::TestBashAbortAndTimeoutKillTheShellsDescendants",
+        "internal/codingagent/tools/bash_tty_linux_test.go::TestBashCommandCannotTakeThePigTerminal",
+        "internal/codingagent/tools/bash_tty_linux_test.go::TestBashShellLeadsItsOwnSessionAndProcessGroup",
+        "internal/codingagent/tools/testmain_test.go::TestMain",
+        "internal/testenv/terminal_session_linux_test.go::TestInTerminalSessionRunsTheTestAsTheLeaderOfAControllingTerminal",
+        "internal/testenv/terminal_session_linux_test.go::TestRequireTerminalForegroundFailsWhileAnotherGroupHoldsTheTerminal"
       ]
     },
     {
