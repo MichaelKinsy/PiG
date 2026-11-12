@@ -63,7 +63,7 @@ func surrogateCases() []surrogateCase {
 		{name: "tool control handoff and addTools", got: func() ([]byte, error) {
 			return ToolControl{AddTools: []string{loneHigh}, Handoff: str(loneLow)}.MarshalJSON()
 		}, pi: `{"addTools":["\ud800"],"handoff":"\udc00"}`},
-		{name: "compaction model overrides keys", got: func() ([]byte, error) { return overrides.MarshalJSON() },
+		{name: "compaction model overrides keys", got: overrides.MarshalJSON,
 			pi: `{"\ud800/a":{"reserveTokens":5},"b/\udc00":{}}`},
 		{name: "document content value", got: func() ([]byte, error) {
 			value := delta.JsonObjectOf("a"+loneHigh, loneLow)

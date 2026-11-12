@@ -411,10 +411,10 @@ func parseIPv6(input string) (string, bool) {
 				}
 				for at(pointer) >= '0' && at(pointer) <= '9' {
 					number := at(pointer) - '0'
-					switch {
-					case value == -1:
+					switch value {
+					case -1:
 						value = number
-					case value == 0:
+					case 0:
 						return "", false
 					default:
 						value = value*10 + number
