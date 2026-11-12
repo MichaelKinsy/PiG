@@ -3,6 +3,7 @@
 package testenv
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -39,10 +40,37 @@ func GrabTerminalIfRequested() {
 		os.Exit(1)
 	}
 	signal.Ignore(syscall.SIGTTOU)
-	if err := unix.IoctlSetPointerInt(int(tty.Fd()), unix.TIOCSPGRP, os.Getpid()); err != nil {
+	if err := ioctlSetPointerInt(int(tty.Fd()), unix.TIOCSPGRP, os.Getpid()); err != nil {
 		fmt.Printf("tcsetpgrp: %v\n", err)
 		os.Exit(1)
 	}
 	fmt.Println(TookTheTerminal)
 	os.Exit(0)
+}
+
+// isEINTR reports whether a terminal ioctl error is an interrupted syscall worth retrying. Go's runtime signals threads for goroutine preemption, so
+// a terminal ioctl that sleeps in the kernel can return EINTR in a test helper as it can in the terminal code (tui.isEINTR).
+func isEINTR(err error) bool { return errors.Is(err, unix.EINTR) }
+
+// ioctlGetInt is unix.IoctlGetInt that goes round again on EINTR. The requests the helpers make (TIOCGPGRP, TIOCGPTN) are idempotent queries.
+func ioctlGetInt(fd int, req uint) (int, error) {
+	for {
+		value, err := unix.IoctlGetInt(fd, req)
+		if isEINTR(err) {
+			continue
+		}
+		return value, err
+	}
+}
+
+// ioctlSetPointerInt is unix.IoctlSetPointerInt that goes round again on EINTR. The requests the helpers make (TIOCSPGRP, TIOCSPTLCK) set a
+// value outright, so a repeat after an interruption that did not apply it, or that applied it, leaves the same state.
+func ioctlSetPointerInt(fd int, req uint, value int) error {
+	for {
+		err := unix.IoctlSetPointerInt(fd, req, value)
+		if isEINTR(err) {
+			continue
+		}
+		return err
+	}
 }
