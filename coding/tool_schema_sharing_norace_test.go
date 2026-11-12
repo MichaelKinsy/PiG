@@ -3,35 +3,13 @@
 package coding
 
 import (
-	"context"
 	"fmt"
 	"runtime"
-	"strings"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 )
-
-// schemaScaleProvider answers every request with one text reply.
-type schemaScaleProvider struct{}
-
-func (schemaScaleProvider) ID() string { return "fake" }
-func (schemaScaleProvider) Stream(context.Context, ai.TranscriptContext, ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
-	message := sessionTestMessage("fake", "ok", ai.StopReasonStop, "")
-	return newSessionTestStream(ai.StartEvent{Partial: message}, ai.DoneEvent{Reason: ai.StopReasonStop, Message: message}), nil
-}
-func (schemaScaleProvider) Close() error { return nil }
-
-// schemaScaleParameters is a JSON schema of the given number of string properties, each with a description as long as a real tool's.
-func schemaScaleParameters(properties int) []byte {
-	members := make([]string, 0, properties)
-	for i := range properties {
-		members = append(members, fmt.Sprintf(`"field%d":{"type":"string","description":"argument %d of the extension tool, with a description of realistic length for a schema"}`, i, i))
-	}
-	return []byte(`{"type":"object","properties":{` + strings.Join(members, ",") + `},"required":["field0"]}`)
-}
 
 // promptCost is the bytes and allocations one prompt costs a session with the four default built-in tools and three extension tools
 // whose schemas have the given number of properties, averaged over prompts after the tools are declared.
