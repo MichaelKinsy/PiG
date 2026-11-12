@@ -253,7 +253,7 @@ func requireSessionFailed(t *testing.T, name string, err, cause error) {
 	if !ok {
 		t.Fatalf("%s: outcome %v, want SessionFailed", name, err)
 	}
-	if got != cause {
+	if !errors.Is(got, cause) {
 		t.Fatalf("%s: SessionFailed caused by %v, want %v", name, got, cause)
 	}
 }
@@ -374,7 +374,7 @@ func TestWriterWhatAPartAfterAStopRejectsWith(t *testing.T) {
 		requireOwn(t, "the refused part", outcome(parts[1]), refusal)
 		requireSessionFailed(t, "the part after the refused one", outcome(parts[2]), refusal)
 		requireOneFailure(t, rig.host.fails)
-		if fail := rig.host.fails[0]; fail.err != refusal || fail.at != 2 || !slices.Equal(fail.own, []int{2}) {
+		if fail := rig.host.fails[0]; !errors.Is(fail.err, refusal) || fail.at != 2 || !slices.Equal(fail.own, []int{2}) {
 			t.Fatalf("the Session failed with %+v, want the refusal at the refused part (line index 2) with only that part as its own", fail)
 		}
 	})
@@ -425,7 +425,7 @@ func TestWriterTheFailureOfARejectedCallNamesItsFirstPartAndOnlyItsOwnParts(t *t
 	requireOwn(t, "unreceived stored part", outcome(parts[2]), rejection)
 	requireSessionFailed(t, "held part after the stop", outcome(parts[3]), rejection)
 	requireOneFailure(t, rig.host.fails)
-	if fail := rig.host.fails[0]; fail.err != rejection || fail.at != 11 || !slices.Equal(fail.own, []int{11, 12, 13}) {
+	if fail := rig.host.fails[0]; !errors.Is(fail.err, rejection) || fail.at != 11 || !slices.Equal(fail.own, []int{11, 12, 13}) {
 		t.Fatalf("the Session failed with %+v, want the storage error at the first part of the call that rejected (11), with parts 11, 12 and 13 as its own and not the held part 14 SessionFailed", fail)
 	}
 }
@@ -495,7 +495,7 @@ func TestWriterAPartThatFailsAtPublication(t *testing.T) {
 			t.Fatalf("discards %v: the part whose adoption failed was published (kept), the part after it discarded once", rig.discards)
 		}
 		requireOneFailure(t, rig.host.fails)
-		if fail := rig.host.fails[0]; fail.err != adoption || fail.at != 1 || !slices.Equal(fail.own, []int{1}) {
+		if fail := rig.host.fails[0]; !errors.Is(fail.err, adoption) || fail.at != 1 || !slices.Equal(fail.own, []int{1}) {
 			t.Fatalf("the Session failed with %+v, want the adoption failure at part 1 with only it as its own", fail)
 		}
 	})
@@ -516,7 +516,7 @@ func TestWriterAPartThatFailsAtPublication(t *testing.T) {
 		rig.host.mu.Lock()
 		reports := slices.Clone(rig.host.reports)
 		rig.host.mu.Unlock()
-		if len(reports) != 1 || reports[0].err != listener {
+		if len(reports) != 1 || !errors.Is(reports[0].err, listener) {
 			t.Fatalf("reported %+v, want the observer's panic once", reports)
 		}
 	})
@@ -545,7 +545,7 @@ func TestWriterAPartThatFailsAtPublication(t *testing.T) {
 		if err := outcome(first); err != nil {
 			t.Fatalf("the part whose observer panicked rejected with %v: its commit stands", err)
 		}
-		if failedAtSettle != listener {
+		if !errors.Is(failedAtSettle, listener) {
 			t.Fatalf("the Session had failed with %v when the part resolved, want the observer's panic: the failure comes before the commit's caller resumes", failedAtSettle)
 		}
 		requireSessionFailed(t, "the part after it", outcome(second), listener)
@@ -559,7 +559,7 @@ func TestWriterAPartThatFailsAtPublication(t *testing.T) {
 			t.Fatalf("discards %v, want the part after it discarded once", rig.discards)
 		}
 		requireOneFailure(t, rig.host.fails)
-		if fail := rig.host.fails[0]; fail.err != listener || fail.at != 1 || len(fail.own) != 0 {
+		if fail := rig.host.fails[0]; !errors.Is(fail.err, listener) || fail.at != 1 || len(fail.own) != 0 {
 			t.Fatalf("the Session failed with %+v, want the observer's panic at part 1, no part's own", fail)
 		}
 	})
@@ -679,7 +679,7 @@ func TestWriterAPanicTheWriterDidNotExpectFailsTheSessionAndSettlesTheParts(t *t
 			t.Fatalf("discards %v, want the settled part untouched and the other discarded once", rig.discards)
 		}
 		requireOneFailure(t, rig.host.fails)
-		if fail := rig.host.fails[0]; fail.err != unexpected || fail.at != 21 || len(fail.own) != 0 {
+		if fail := rig.host.fails[0]; !errors.Is(fail.err, unexpected) || fail.at != 21 || len(fail.own) != 0 {
 			t.Fatalf("the Session failed with %+v, want the panic at the first part of the call (21), no part's own", fail)
 		}
 		if rig.writer.Unpublished() != 0 || rig.writer.Drained() != nil {
@@ -764,10 +764,10 @@ func TestPartSettlesOnceAndReportsItsOutcomeToALateWaiter(t *testing.T) {
 		part.OnSettled(func(err error) { got = append(got, err) })
 		part.settle(first)
 		part.settle(second)
-		if err := part.Wait(); err != first {
+		if err := part.Wait(); !errors.Is(err, first) {
 			t.Fatalf("Wait = %v, want the first settlement %v", err, first)
 		}
-		if len(got) != 1 || got[0] != first {
+		if len(got) != 1 || !errors.Is(got[0], first) {
 			t.Fatalf("a waiter ran with %v, want once with %v", got, first)
 		}
 	})
@@ -777,7 +777,7 @@ func TestPartSettlesOnceAndReportsItsOutcomeToALateWaiter(t *testing.T) {
 		part.settle(first)
 		var got []error
 		part.OnSettled(func(err error) { got = append(got, err) })
-		if len(got) != 1 || got[0] != first {
+		if len(got) != 1 || !errors.Is(got[0], first) {
 			t.Fatalf("a late waiter ran with %v, want once with %v", got, first)
 		}
 	})

@@ -125,7 +125,9 @@ func compositionOf(t *testing.T, names ...string) durable.RegistrySnapshot {
 	return registry.Snapshot()
 }
 
-func holds(snapshot durable.RegistrySnapshot, name string) bool { return snapshot.Extension(name) != nil }
+func holds(snapshot durable.RegistrySnapshot, name string) bool {
+	return snapshot.Extension(name) != nil
+}
 
 func TestRegistryReaderServesTheLatestCompositionItsObserverRecorded(t *testing.T) {
 	t.Run("reads the last good composition while compose fails, without reading the value outside its batch", func(t *testing.T) {
