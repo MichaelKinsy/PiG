@@ -94090,6 +94090,17 @@
       "shapeHash": "sha256:bb9f2ea8836417f7e66d0a70442d77f7550dc10c6d9d8585a26cb0fedca70fbb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#gcPolicyFor",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "gcPolicyFor",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(mode appMode, listen string) (github.com/MichaelKinsy/PiG/internal/gcpolicy.Policy, bool)"
+      },
+      "shapeHash": "sha256:9e39ecf5da225893431c0e0c1a899b1fe788c6817cf92f3c83ef9a04f1980887"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#gitShortCommit",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "gitShortCommit",
