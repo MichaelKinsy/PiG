@@ -113586,6 +113586,8 @@
         "call:chord/next/state/native_source.go#FollowedSource.End"
       ],
       "evidence": [
+        "test:durable/harness/registry_reader_observation_test.go#TestRegistryReaderServesTheLatestCompositionItsObserverRecorded",
+        "test:durable/harness/registry_reader_observation_test.go#TestRegistryReaderEndsWithItsContext",
         "test:durable/harness/registry_reader_test.go#TestRegistryReader"
       ]
     },
@@ -113606,6 +113608,8 @@
         "call:chord/next/state/native_source.go#FollowedSource.deliver"
       ],
       "evidence": [
+        "test:durable/harness/registry_reader_observation_test.go#TestRegistryReaderServesTheLatestCompositionItsObserverRecorded",
+        "test:durable/harness/registry_reader_observation_test.go#TestRegistryReaderEndsWithItsContext",
         "test:durable/harness/registry_reader_test.go#TestRegistryReader"
       ]
     },
@@ -113626,6 +113630,8 @@
         "call:chord/next/state/native_source.go#FollowedSource.deliver"
       ],
       "evidence": [
+        "test:durable/harness/registry_reader_observation_test.go#TestRegistryReaderServesTheLatestCompositionItsObserverRecorded",
+        "test:durable/harness/registry_reader_observation_test.go#TestRegistryReaderEndsWithItsContext",
         "test:durable/harness/registry_reader_test.go#TestRegistryReader"
       ]
     },
@@ -113633,7 +113639,7 @@
       "id": "pkg:chord/.#NativeObserver::property:end",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:9b8b23d91a403c30d04131e56761297107685dc365c2b0f5fe92bb217721c367",
-      "rationale": "Derived by the interface gap detector: NativeObserver::property:end is Go chord/next/state/native_source.go#NativeObserver.End (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: NativeObserver::property:end is Go chord/next/state/native_source.go#NativeObserver.End (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/next/state/native_source.go#NativeObserver.End"
       ],
@@ -113646,14 +113652,14 @@
         "call:chord/next/state/native_source.go#FollowedSource.End"
       ],
       "evidence": [
-        "reach:chord/next/state/native_source.go#FollowedSource.End"
+        "test:durable/harness/registry_reader_observation_test.go#TestRegistryReaderEndsWithItsContext"
       ]
     },
     {
       "id": "pkg:chord/.#NativeObserver::property:end::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:109cb48d29b622109b2d22450281f2a04d8def226a089fa19bb982f30bd820dd",
-      "rationale": "Derived by the interface gap detector: NativeObserver::property:end::call:0 is Go chord/next/state/native_source.go#NativeObserver.End (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: NativeObserver::property:end::call:0 is Go chord/next/state/native_source.go#NativeObserver.End (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/next/state/native_source.go#NativeObserver.End"
       ],
@@ -113666,7 +113672,7 @@
         "call:chord/next/state/native_source.go#FollowedSource.End"
       ],
       "evidence": [
-        "reach:chord/next/state/native_source.go#FollowedSource.End"
+        "test:durable/harness/registry_reader_observation_test.go#TestRegistryReaderEndsWithItsContext"
       ]
     },
     {
@@ -239798,7 +239804,7 @@
       "evidence": [
         "test:durable/harness/registry_reader_host_test.go#TestRegistryReaderOnAChordHost",
         "test:durable/harness/registry_reader_host_test.go#TestRegistryReaderWithACancelledContextReadsTheValueItself",
-        "test:durable/harness/registry_reader_test.go#TestRegistryReader"
+        "test:durable/harness/registry_reader_observation_test.go#TestRegistryReaderEndsWithItsContext"
       ]
     },
     {
@@ -239842,7 +239848,7 @@
       "evidence": [
         "test:durable/harness/registry_reader_host_test.go#TestRegistryReaderOnAChordHost",
         "test:durable/harness/registry_reader_host_test.go#TestRegistryReaderWithACancelledContextReadsTheValueItself",
-        "test:durable/harness/registry_reader_test.go#TestRegistryReader"
+        "test:durable/harness/registry_reader_observation_test.go#TestRegistryReaderEndsWithItsContext"
       ]
     },
     {
