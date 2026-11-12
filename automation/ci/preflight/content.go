@@ -642,7 +642,11 @@ func checkOut(head string, targets map[string][]string) error {
 	for _, files := range targets {
 		for _, f := range files {
 			if _, err := os.Stat(filepath.Join(head, filepath.FromSlash(f))); err != nil {
-				missing = append(missing, "/"+f)
+				p, err := sparsePattern(f)
+				if err != nil {
+					return err
+				}
+				missing = append(missing, p)
 			}
 		}
 	}

@@ -97,7 +97,11 @@ func prepareWorkspace(ctx context.Context, d *data, scans []check, ws workspace,
 		return nil
 	}
 	for _, f := range changed {
-		patterns = append(patterns, "/"+f)
+		p, err := sparsePattern(f)
+		if err != nil {
+			return err
+		}
+		patterns = append(patterns, p)
 	}
 	if err := checkoutHead(ctx, d, ws, patterns, log); err != nil {
 		return err
@@ -133,6 +137,26 @@ func scanNeeds(scans []check) (need map[string]bool, patterns, overlays []string
 		overlays = append(overlays, c.Scan.Overlay...)
 	}
 	return need, patterns, overlays
+}
+
+// sparsePattern is the non-cone sparse-checkout pattern that matches the one path name and nothing else. git reads a
+// pattern by gitignore's rules: the leading "/" anchors it at the root and keeps a "!" or "#" from opening the line, and
+// a backslash takes the meaning from "*", "?", "[" and a backslash and keeps a trailing space. A line break ends a
+// pattern, so a name with one has no pattern.
+func sparsePattern(name string) (string, error) {
+	if strings.ContainsAny(name, "\n\r") {
+		return "", fmt.Errorf("file name %q has a line break, which no sparse-checkout pattern can name", name)
+	}
+	kept := len(strings.TrimRight(name, " "))
+	var b strings.Builder
+	b.WriteByte('/')
+	for i := range len(name) {
+		if c := name[i]; c == '*' || c == '?' || c == '[' || c == '\\' || (c == ' ' && i >= kept) {
+			b.WriteByte('\\')
+		}
+		b.WriteByte(name[i])
+	}
+	return b.String(), nil
 }
 
 func writeAdded(d *data, ws workspace, added bool) (changed, whole []string, err error) {
