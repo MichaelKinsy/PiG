@@ -338620,6 +338620,17 @@
       "shapeHash": "sha256:871bd7c0b9598bfeacd6e8c24fa685e2f7bb5984dc3febf22313b4fce2ff06e1"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#FrameWithinCanceler",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "FrameWithinCanceler",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "FrameWithinCanceler"
+      },
+      "shapeHash": "sha256:a92a77d4a471fcc94501ff398a8ed4cf050adfa7483b0189d043ba6d35312bb4"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#FrameWithinRequester",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "FrameWithinRequester",
@@ -360719,6 +360730,17 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.CancelRenderWithin",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiAltScreen.CancelRenderWithin",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.ChildCount",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiAltScreen.ChildCount",
@@ -363546,6 +363568,17 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.CancelRenderWithin",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiMainScreen.CancelRenderWithin",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.CaptureRenderState",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiMainScreen.CaptureRenderState",
@@ -365540,6 +365573,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.CancelPendingRender",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiSurface.CancelPendingRender",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.CancelRenderWithin",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiSurface.CancelRenderWithin",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -390092,6 +390136,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.CancelPendingRender",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "tuiBase.CancelPendingRender",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.CancelRenderWithin",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "tuiBase.CancelRenderWithin",
       "kind": "function",
       "exported": true,
       "shape": {
