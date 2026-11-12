@@ -8,7 +8,7 @@ const SLOTS = ["notify", "status", "widget-above", "widget-below", "header", "fo
 const NODES = ["container", "box", "vstack", "hstack", "text", "truncated-text", "markdown", "lines", "spacer", "dynamic-border", "image",
   "select-list", "settings-list", "input", "editor", "mouse-region", "scroll-view"];
 const ABILITIES = {
-  slots: SLOTS, nodes: NODES, markdown: false, imageFormats: ["png", "jpeg", "gif", "webp"],
+  slots: SLOTS, nodes: NODES, markdown: true, imageFormats: ["png", "jpeg", "gif", "webp"],
   limits: { nodes: 2048, depth: 32, snapshotBytes: 1 << 20, textBytes: 1 << 16, mounts: 32, intentArgBytes: 1 << 16 },
   input: { keyboard: true, pointer: true, text: true },
   claims: [{ name: "client.kind", value: "web" }],
@@ -142,6 +142,7 @@ function draw(key, snapshot, held) {
   title.textContent = `${snapshot.plugin} / ${snapshot.mount.key}${snapshot.degraded ? " (degraded)" : ""}`;
   head.append(title);
   const body = text("view", "");
+  theme(body, snapshot.view);
   mount.footer = document.createElement("footer");
   // What the last intent came to stays readable across a redraw.
   if (held) {
@@ -182,6 +183,77 @@ function text(className, value) {
 const cols = (n) => `calc(${n} * var(--col))`;
 const rows = (n) => `calc(${n} * var(--row))`;
 const ALIGN = { stretch: "stretch", start: "flex-start", center: "center", end: "flex-end" };
+
+// colour follows the rule drawings use (coding/uiview/drawing.go, validColor): "#rrggbb" or "#rrggbbaa" is the colour
+// itself and a name is a theme token, drawn from the custom property --pig-<token> that the page (index.html) or the
+// view's theme sets. A token the page has no colour for draws nothing.
+const HEX = /^#(?:[0-9a-f]{6}|[0-9a-f]{8})$/;
+const TOKEN = /^[a-z][A-Za-z0-9]*$/;
+function colour(value) {
+  return HEX.test(value) ? value : TOKEN.test(value ?? "") ? `var(--pig-${value})` : "";
+}
+
+// theme sets the view's token overrides on its element, so they reach this view's nodes and no other mount.
+function theme(el, view) {
+  for (const [token, value] of Object.entries(view?.theme ?? {})) if (TOKEN.test(token) && HEX.test(value)) el.style.setProperty(`--pig-${token}`, value);
+}
+
+// markdown draws the everyday subset of CommonMark as elements built one by one: headings, paragraphs, lists, quotes,
+// fenced code and rules, with code spans, emphasis, strikethrough and links. The text is never parsed as HTML: a tag,
+// a script or an on* attribute in it is drawn as the characters it is, and a link is kept only when it is http, https
+// or mailto.
+function markdown(source) {
+  const root = text("markdown", "");
+  const make = (tag, parent = root) => parent.appendChild(document.createElement(tag));
+  const lines = source.split("\n");
+  let block = null; // the open paragraph, list or quote
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    let m;
+    if (/^\s*```/.test(line)) {
+      const body = [];
+      for (i++; i < lines.length && !/^\s*```/.test(lines[i]); i++) body.push(lines[i]);
+      make("code", make("pre")).textContent = body.join("\n");
+      block = null;
+    } else if (!line.trim()) block = null;
+    else if ((m = /^(#{1,6})\s+(.*)$/.exec(line))) {
+      inline(make(`h${m[1].length}`), m[2]);
+      block = null;
+    } else if (/^\s*([-*_])(\s*\1){2,}\s*$/.test(line)) {
+      make("hr");
+      block = null;
+    } else if ((m = /^\s*(?:[-*+]|(\d+)[.)])\s+(.*)$/.exec(line))) {
+      const tag = m[1] ? "OL" : "UL";
+      if (block?.tagName !== tag) block = make(tag);
+      inline(make("li", block), m[2]);
+    } else {
+      m = /^\s*>\s?(.*)$/.exec(line);
+      const tag = m ? "BLOCKQUOTE" : "P";
+      if (block?.tagName !== tag) block = make(tag);
+      else block.append("\n");
+      inline(block, m ? m[1] : line);
+    }
+  }
+  return root;
+}
+
+const INLINE = /`([^`]+)`|\*\*([^*]+)\*\*|~~([^~]+)~~|\*([^*\s][^*]*)\*|\b_([^_]+)_\b|\[([^\]]+)\]\(([^)\s]+)\)/g;
+const INLINE_TAGS = ["code", "strong", "del", "em", "em", "a"];
+
+function inline(parent, source) {
+  let at = 0;
+  for (const m of source.matchAll(INLINE)) {
+    const which = m.findIndex((group, i) => i > 0 && group !== undefined) - 1;
+    if (which === 5 && !/^(?:https?:|mailto:)/i.test(m[7])) continue; // not a link this page follows: left as text
+    parent.append(source.slice(at, m.index));
+    at = m.index + m[0].length;
+    const el = parent.appendChild(document.createElement(INLINE_TAGS[which]));
+    if (which === 0) el.textContent = m[1];
+    else inline(el, m[which + 1]);
+    if (which === 5) Object.assign(el, { href: m[7], target: "_blank", rel: "noopener noreferrer" });
+  }
+  parent.append(source.slice(at));
+}
 
 // pad sets a node's padding; `fallback` is what the kind has when the view names none.
 function pad(el, n, fallback) {
@@ -225,6 +297,7 @@ function node(n, mount, path, undrawn, view) {
     case "box":
       el = children(text("box", ""));
       pad(el, n, 1);
+      el.style.background = colour(n.bg);
       break;
     case "vstack": case "hstack":
       el = stack(n, text(n.kind, ""), child);
@@ -232,14 +305,22 @@ function node(n, mount, path, undrawn, view) {
     case "text":
       el = text("text", n.text ?? "");
       pad(el, n, 1);
+      el.style.background = colour(n.bg);
       break;
     case "truncated-text":
       el = text("text truncated", n.text ?? "");
       pad(el, n, 0);
       break;
-    case "markdown":
-      el = text("text", n.text ?? "");
+    case "markdown": {
+      el = markdown(n.text ?? "");
+      const style = n.defaultTextStyle ?? {};
+      el.style.color = colour(style.color);
+      el.style.background = colour(style.bgColor);
+      if (style.bold) el.style.fontWeight = "bold";
+      if (style.italic) el.style.fontStyle = "italic";
+      el.style.textDecoration = [style.underline && "underline", style.strikethrough && "line-through"].filter(Boolean).join(" ");
       break;
+    }
     case "lines":
       el = text("lines", (n.content ?? []).join("\n"));
       break;
@@ -250,6 +331,7 @@ function node(n, mount, path, undrawn, view) {
     case "dynamic-border":
       el = document.createElement("hr");
       el.className = "rule";
+      el.style.borderColor = colour(n.color);
       break;
     case "image": {
       const bytes = (view.images ?? []).find((image) => image.ref === n.ref);

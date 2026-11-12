@@ -417,3 +417,40 @@ func TestPageLaysOutStacks(t *testing.T) {
 		t.Errorf("the layout is\n  %s\nwant\n  %s", got, want)
 	}
 }
+
+// TestPageDrawsColoursThemeAndMarkdown checks the computed colours and the markdown the page draws: a `bg` and a
+// `color` token take the colour the view's theme gives the token (a theme belongs to its view: the same token in
+// another mount keeps the page's colour), a markdown node is drawn as headings, lists, emphasis and links with its
+// default text style, and nothing in its text becomes markup: a script tag, an element with an on* attribute and a
+// javascript link are drawn as the characters they are.
+func TestPageDrawsColoursThemeAndMarkdown(t *testing.T) {
+	browser, send := openFixtures(t)
+	root := `"root":{"kind":"vstack","children":[` +
+		`{"kind":"box","bg":"selectedBg","children":[{"kind":"text","text":"chip","bg":"customMessageBg"}]},` +
+		`{"kind":"dynamic-border","color":"accent"},` +
+		`{"kind":"markdown","defaultTextStyle":{"color":"accent","bold":true},"text":"# Title\n\nSome **bold** and a [link](https://example.com/).\n\n- one\n- two\n\n` +
+		`<script>window.pwned = 1</script>\n\n<img src=x onerror=\"window.pwned = 2\">\n\n[bad](javascript:window.pwned=3)"}]}`
+	send(`/fx-a mount {"view":{"theme":{"selectedBg":"#102030","accent":"#123456"},` + root + `}}`)
+	send(`/fx-b mount {"view":{` + root + `}}`)
+	browser.Wait(`document.querySelector('[data-key="fx-a"] .box') !== null && document.querySelector('[data-key="fx-b"] .box') !== null`)
+	got := browser.String(`(() => {
+		const a = document.querySelector('[data-key="fx-a"] .view'), b = document.querySelector('[data-key="fx-b"] .view');
+		const style = (root, selector) => getComputedStyle(root.querySelector(selector));
+		const md = a.querySelector(".markdown");
+		const all = [...a.querySelectorAll("*")];
+		return JSON.stringify({
+			themedBg: style(a, ".box").backgroundColor,
+			otherMountBg: style(b, ".box").backgroundColor !== "rgb(16, 32, 48)" && style(b, ".box").backgroundColor !== "rgba(0, 0, 0, 0)",
+			textBg: style(a, ".box .text").backgroundColor !== "rgba(0, 0, 0, 0)",
+			rule: style(a, ".rule").borderTopColor,
+			markdownStyle: md ? getComputedStyle(md).color + " " + getComputedStyle(md).fontWeight : "",
+			markdown: [md?.querySelector("h1")?.textContent, md?.querySelector("strong")?.textContent, md?.querySelectorAll("li").length, md?.querySelector("a")?.href].join("|"),
+			inert: all.every((el) => !["SCRIPT", "IMG"].includes(el.tagName) && [...el.attributes].every((at) => !at.name.startsWith("on"))) &&
+				a.querySelectorAll("a").length === 1 && window.pwned === undefined,
+			asText: a.textContent.includes("<script>window.pwned = 1</script>") && a.textContent.includes('<img src=x onerror="window.pwned = 2">') && a.textContent.includes("[bad](javascript:window.pwned=3)"),
+		});
+	})()`)
+	if want := `{"themedBg":"rgb(16, 32, 48)","otherMountBg":true,"textBg":true,"rule":"rgb(18, 52, 86)","markdownStyle":"rgb(18, 52, 86) 700","markdown":"Title|bold|2|https://example.com/","inert":true,"asText":true}`; got != want {
+		t.Errorf("colours and markdown are\n  %s\nwant\n  %s", got, want)
+	}
+}
