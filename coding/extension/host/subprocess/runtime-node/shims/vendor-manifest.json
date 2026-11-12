@@ -7318,8 +7318,8 @@
         "integrity": "sha512-2tWPSnV3qzfiDIY3aWluBag3vC++Vs+VsXt/UquSU5onPMohPih72FUhIhaqmDdMYubOgB3Byl9uF4Vk40JLvQ=="
       },
       "source": "dist/api/constrained-sampling.js",
-      "sourceSha256": "e00e31f3143f1136139d61895357a08af070eb359a29dd9f5a82761c474d4d28",
-      "sha256": "e00e31f3143f1136139d61895357a08af070eb359a29dd9f5a82761c474d4d28"
+      "sourceSha256": "a2f8da97ff83ba02fb96a507fc31430423e55057260b50dff04bb0ca1ee9d129",
+      "sha256": "a2f8da97ff83ba02fb96a507fc31430423e55057260b50dff04bb0ca1ee9d129"
     },
     {
       "path": "pi-dist/pi-ai/api/github-copilot-headers.js",

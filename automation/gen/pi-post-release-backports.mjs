@@ -213,6 +213,21 @@ export function stripAnsiEscapes(text) {
         this._restoredToolNames = new Set(this.getActiveToolNames());
         this._buildRuntime({`],
   ],
+  // 406e719a6bff (#12049): a tool schema with a node that has no type, enum or anyOf is not sent strict (OpenAI strict mode rejects it).
+  "pi-ai/api/constrained-sampling.js": [
+    [`        }
+    }
+    if (schema.anyOf !== undefined) {
+`, `        }
+    }
+    ${note("406e719a6bff").trim()}
+    // OpenAI strict mode rejects nodes without a type; a bare enum counts as typed, a bare const does not.
+    if (schema.type === undefined && schema.anyOf === undefined && schema.enum === undefined) {
+        throw new UnsupportedStrictJsonSchemaError("schemas without a type are unsupported");
+    }
+    if (schema.anyOf !== undefined) {
+`],
+  ],
 };
 
 // Files of a Pi package that are not compiled output and that the vendored runtime does not carry, but that the installed Pi package
