@@ -17687,6 +17687,7 @@
       ],
       "evidence": [
         "test:ai/google_vertex_option_fields_upstream_test.go#TestGoogleVertexProjectAndLocationOptions",
+        "test:ai/google_fetch_option_shapes_test.go#TestGoogleAdaptersRouteEveryRequestShapeThroughTheCallersFetch",
         "test:ai/google_vertex_adc_test.go#TestGoogleVertexProjectAndLocationFromStreamOptions"
       ]
     },
@@ -17865,6 +17866,7 @@
       ],
       "evidence": [
         "test:ai/google_vertex_option_fields_upstream_test.go#TestGoogleVertexProjectAndLocationOptions",
+        "test:ai/google_fetch_option_shapes_test.go#TestGoogleAdaptersRouteEveryRequestShapeThroughTheCallersFetch",
         "test:ai/google_vertex_adc_test.go#TestGoogleVertexProjectAndLocationFromStreamOptions"
       ]
     },
@@ -42301,6 +42303,7 @@
       ],
       "evidence": [
         "test:ai/google_vertex_option_fields_upstream_test.go#TestGoogleVertexProjectAndLocationOptions",
+        "test:ai/google_fetch_option_shapes_test.go#TestGoogleAdaptersRouteEveryRequestShapeThroughTheCallersFetch",
         "test:ai/google_vertex_adc_test.go#TestGoogleVertexProjectAndLocationFromStreamOptions"
       ]
     },
@@ -42479,6 +42482,7 @@
       ],
       "evidence": [
         "test:ai/google_vertex_option_fields_upstream_test.go#TestGoogleVertexProjectAndLocationOptions",
+        "test:ai/google_fetch_option_shapes_test.go#TestGoogleAdaptersRouteEveryRequestShapeThroughTheCallersFetch",
         "test:ai/google_vertex_adc_test.go#TestGoogleVertexProjectAndLocationFromStreamOptions"
       ]
     },
@@ -63122,6 +63126,7 @@
       ],
       "evidence": [
         "test:ai/google_vertex_option_fields_upstream_test.go#TestGoogleVertexProjectAndLocationOptions",
+        "test:ai/google_fetch_option_shapes_test.go#TestGoogleAdaptersRouteEveryRequestShapeThroughTheCallersFetch",
         "test:ai/google_vertex_adc_test.go#TestGoogleVertexProjectAndLocationFromStreamOptions"
       ]
     },
@@ -63300,6 +63305,7 @@
       ],
       "evidence": [
         "test:ai/google_vertex_option_fields_upstream_test.go#TestGoogleVertexProjectAndLocationOptions",
+        "test:ai/google_fetch_option_shapes_test.go#TestGoogleAdaptersRouteEveryRequestShapeThroughTheCallersFetch",
         "test:ai/google_vertex_adc_test.go#TestGoogleVertexProjectAndLocationFromStreamOptions"
       ]
     },
