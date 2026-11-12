@@ -322,7 +322,9 @@ func ruleFixLedger(d *data, p params, _ *ruleEnv) outcome {
 
 var (
 	fragmentNameRE = regexp.MustCompile(`^changelog\.d/[a-z0-9][a-z0-9-]*-([0-9a-f]{7,40})\.md$`)
-	fixMarkerRE    = regexp.MustCompile(`<!-- fix: ([0-9a-f, ]+) -->`)
+	fixMarkerRE    = regexp.MustCompile(`<!-- fix: ([0-9a-f, ]*) -->`)
+	// The length a fragment's file name takes: fewer than 7 digits name too many commits, and a sha has 40.
+	fixSHARE = regexp.MustCompile(`^[0-9a-f]{7,40}$`)
 )
 
 func (d *data) prCommit(prefix string) bool {
@@ -385,7 +387,10 @@ func fixMarkerProblems(d *data, fragment, bullet string) []string {
 	}
 	var problems []string
 	for sha := range strings.SplitSeq(m[1], ",") {
-		if sha = strings.TrimSpace(sha); !d.prCommit(sha) {
+		switch sha = strings.TrimSpace(sha); {
+		case !fixSHARE.MatchString(sha):
+			problems = append(problems, fmt.Sprintf("%s: fix marker %q is not a commit sha of 7 to 40 hex digits", fragment, sha))
+		case !d.prCommit(sha):
 			problems = append(problems, fmt.Sprintf("%s: fix marker %s is not a commit of this PR", fragment, sha))
 		}
 	}
