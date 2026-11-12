@@ -21,8 +21,12 @@ func TestMessageTextSanitizesLoneSurrogatesOnTheWire(t *testing.T) {
 			continue
 		}
 		seen[key] = true
+		model, ok := LookupModelExact(tc.provider + "/" + tc.model)
+		if ok && !builtAPI(model.API) {
+			// A build with this API's pig_strip tag sends no request for the model.
+			continue
+		}
 		t.Run(key, func(t *testing.T) {
-			model, ok := LookupModelExact(tc.provider + "/" + tc.model)
 			if !ok {
 				t.Fatal("missing upstream model")
 			}

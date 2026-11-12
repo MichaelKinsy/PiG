@@ -95,6 +95,10 @@ func TestFetchOptionUpstream(t *testing.T) {
 				return &http.Response{StatusCode: http.StatusUnauthorized, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"error":{"message":"upstream rejected request"}}`)), Request: request}, nil
 			})}
 			for _, api := range tc.apis {
+				if !builtAPI(api) {
+					// A build with this API's pig_strip tag has no provider to hand the client to.
+					continue
+				}
 				message := fetchOptionResult(t, fetchOptionProvider(api, fallback.URL), custom)
 				if tc.rejects {
 					name := "Google Generative AI"

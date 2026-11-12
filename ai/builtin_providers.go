@@ -193,15 +193,19 @@ var builtinProviderConstructors = map[string]func() *ModelsProvider{
 }
 
 // BuiltinProviders returns every built-in provider, freshly constructed.
+// pig additive (D92): a provider whose catalog models are all on stripped APIs (ProviderStripped) is left out, so BuiltinModels and the collection the compat streams consult do not hold it. Stock PiG strips no API and returns every catalog provider.
 func BuiltinProviders() []*ModelsProvider {
 	ids := ListProviders()
-	providers := make([]*ModelsProvider, len(ids))
-	for i, id := range ids {
-		if construct, ok := builtinProviderConstructors[id]; ok {
-			providers[i] = construct()
+	providers := make([]*ModelsProvider, 0, len(ids))
+	for _, id := range ids {
+		if ProviderStripped(id) {
 			continue
 		}
-		providers[i] = builtinProvider(id)
+		if construct, ok := builtinProviderConstructors[id]; ok {
+			providers = append(providers, construct())
+			continue
+		}
+		providers = append(providers, builtinProvider(id))
 	}
 	return providers
 }
