@@ -305,6 +305,7 @@ class PipelineTests(unittest.TestCase):
             "test/parity/upstream-sync/v1.1.0+4ac0bd8c.toml": 'from = "a"\nto = "b"\n\n[[files]]\npath = "packages/codemode/src/cloudflare.ts"\nchange = "added"\ndisposition = "pending"\n',
             ".upstream/v%s/packages/ai/src/types.ts" % MIRROR_VERSION: "export interface Model {}\n",
             "automation/pin/frozen/%s.provider-data.tgz" % COMMIT: "x",
+            "automation/pin/frozen/%s.closure.json.gz" % COMMIT: "x",
         })
         return root
 
@@ -393,6 +394,15 @@ class PipelineTests(unittest.TestCase):
             result = self.pipeline(root, FakeRunner()).run()
             self.assertEqual(result.failed, "freeze")
 
+    def test_an_oracle_that_leaves_no_frozen_closure_fails_the_pipeline_before_the_gates_that_need_it(self):
+        # The closure (npm ci of the build's dependency tree) is frozen beside the provider data; a build without it is not reproducible in a clean cache.
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.setup_root(directory)
+            (root / "automation/pin/frozen" / f"{COMMIT}.closure.json.gz").unlink()
+            result = self.pipeline(root, FakeRunner()).run()
+            self.assertEqual(result.failed, "freeze")
+            self.assertIn("closure.json.gz", (root / "ready.log").read_text())
+
     def test_the_default_ready_log_is_the_run_state_directory_or_the_named_file(self):
         # The repository does not know an operator's coordination paths: without --ready-log or PIG_PIN_FOLLOW_READY_LOG
         # the READY and FINDING lines stay with the run's state.
@@ -425,7 +435,7 @@ class PipelineTests(unittest.TestCase):
             self.assertEqual(record["package_version"], "1.1.0")
             self.assertEqual(record["gap_rows"], 1)
             self.assertEqual([s["name"] for s in record["steps"]][:2], ["resolve", "oracle"])
-            self.assertEqual(sorted(record["frozen"]), [f"{COMMIT}.provider-data.tgz"])
+            self.assertEqual(sorted(record["frozen"]), [f"{COMMIT}.closure.json.gz", f"{COMMIT}.provider-data.tgz"])
             self.assertIn("gaps", record["latency"])
 
     def test_a_failed_pipeline_writes_no_record(self):

@@ -343,11 +343,15 @@ class Pipeline:
         return 0
 
     def frozen_check(self) -> int:
-        """install-oracle freezes the model data of a commit's first build; the pipeline fails when no snapshot exists and reports a new one."""
+        """install-oracle freezes the model data and the dependency closure of a commit's first build; the pipeline fails when either is
+        missing (the next `make parity-deps` of the bumped pin would build another tree) and reports new ones."""
         new = sorted(self.frozen_names() - self.frozen_before)
         if new:
             self.post("FINDING", f"the oracle build froze {', '.join(new)} in automation/pin/frozen: commit them with the pin")
-        return 0 if self.frozen().exists() else 1
+        missing = [name for name in (f"{self.commit}.provider-data.tgz", f"{self.commit}.closure.json.gz") if name not in self.frozen_names()]
+        if missing:
+            self.post("FINDING", f"the oracle build left no {', '.join(missing)} in automation/pin/frozen")
+        return 1 if missing else 0
 
     def make_task_list(self) -> int:
         gaps = self.root / "test/parity/interface-closure/gaps" / f"interface-gaps-v{self.version}.tsv"
