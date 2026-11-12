@@ -40,11 +40,16 @@ GH_TOKEN=$(gh auth token) /tmp/preflight run --repo MichaelKinsy/PiG --root . \
    API calls and writes nothing.
 3. Otherwise fetch the PR's data (files, commits, compare with main, and the
    sources the relevant checks read), each source retried on its own: three
-   retries after 2, 4 and 6 s.
+   retries after 2, 4 and 6 s. A source that still failed, or a file or commit
+   list shorter than the PR's own count, is an error of every check that reads
+   it; without the file list every path-gated check and every scan is an
+   error too. An error fails the verdict and is decided again by the next run.
 4. Decide the cheap checks from that data. Only when none failed, check out the
    head sparsely and run the scans in parallel.
 5. Record: the status first (it is what holds the PR back), then the step
-   summary, any alert, and the comment with the new state.
+   summary, any alert, and the comment with the new state. A POST (the status,
+   an alert, a first comment) is sent once, and again only after a 429: after
+   a 5xx or a broken connection GitHub may already have created it.
 
 A job fully checks at most `--budget` PRs (200). Reused PRs and PRs too large
 for the API do not count. The PRs beyond go to next jobs of the same run
@@ -72,7 +77,7 @@ Each check:
 | `rule`, `with` | (cheap) the built-in rule of `rules.go` and its parameters |
 | `scan` | (scan) the tool run, below |
 | `main` | files in main's tree the verdict depends on (globs; a directory counts with everything in it) |
-| `alert` | posted once as a comment of its own that mentions the PR's author when the check fails; again only after it passed in between |
+| `alert` | posted once as a comment of its own that mentions the PR's author when the check fails; again only after it passed in between, and never twice for the same head |
 | `revision` | raise it to decide the check again where nothing else changed |
 
 A scan:
@@ -109,6 +114,9 @@ tip, a hash of the description, the status last set and the alerts posted. Only
 a comment by the bot (`--bot`, `github-actions[bot]`) is read, so no one else
 can hand a run a state; a state that does not parse is no state. The status is
 set only when it or the head changed, the comment only when its text changed.
+An alert comment ends with `<!-- pig-preflight-alert <check> <head> -->`. The
+state is written after the alerts, so when that write fails the next run finds
+the alert by its mark, in the bot's comments only, and does not post it again.
 
 The state is unsigned: anyone with write access can edit the bot's comment.
 The Actions cache is the intended place once upstream's cache has room.
@@ -166,7 +174,11 @@ secret and rewrite the branch.
 The program, its configuration and the scanners' configuration come from main,
 never from the PR. A PR's symbolic links are replaced by files holding their
 target before anything reads the head. The token reaches git through the
-environment, for the remote's host only.
+environment, as the header for the remote's host only. No program the
+pre-flight starts (the scanners, git, pip) gets a variable whose name ends in
+`_TOKEN`: not `GITHUB_TOKEN` or `GH_TOKEN`, nor the job's other credentials.
+A PR's file names reach `git sparse-checkout` escaped, so each names one file
+and none works as a pattern; a name with a line break fails the scans.
 
 ## verify
 
