@@ -43,6 +43,36 @@ func scrollRegionsUsableIn(getenv func(string) string) bool {
 	return true
 }
 
+// synchronizedUpdatesTrusted reports whether the terminal PiG runs in is trusted to show a frame at once at its end (synchronized updates, mode 2026: the bracket every frame is written in). Frames drawn more often than Pi draws them (FramePacing) need it: a terminal that ignores the bracket would show their rows as they arrive.
+// pig divergence (D625): Pi never asks which terminal it runs in before it schedules a frame.
+func synchronizedUpdatesTrusted() bool {
+	return synchronizedUpdatesTrustedIn(os.Getenv)
+}
+
+// synchronizedUpdatesTrustedIn is synchronizedUpdatesTrusted on the environment getenv reads. A terminal is trusted when it is trusted with scroll regions (scrollRegionsUsableIn), nothing stands between it and PiG (inside tmux, GNU screen, Zellij or Herdr the environment names the multiplexer or still names the terminal behind it, and what reaches that terminal is the multiplexer's), and the environment names a terminal whose releases implement mode 2026, by the names Pi's capability detection reads (terminal_image.go): kitty, Ghostty, WezTerm, Warp, iTerm2, Windows Terminal, Alacritty and the VS Code terminal. Every other terminal, an unknown one included, gets Pi's interval.
+func synchronizedUpdatesTrustedIn(getenv func(string) string) bool {
+	if !scrollRegionsUsableIn(getenv) {
+		return false
+	}
+	term := strings.ToLower(getenv("TERM"))
+	if getenv("TMUX") != "" || getenv("STY") != "" || getenv("HERDR_ENV") != "" || strings.HasPrefix(term, "tmux") || strings.HasPrefix(term, "screen") {
+		return false
+	}
+	switch strings.ToLower(getenv("TERM_PROGRAM")) {
+	case "kitty", "ghostty", "wezterm", "warpterminal", "iterm.app", "alacritty", "vscode":
+		return true
+	}
+	if strings.Contains(term, "ghostty") || strings.HasPrefix(term, "alacritty") {
+		return true
+	}
+	for _, name := range [...]string{"KITTY_WINDOW_ID", "GHOSTTY_RESOURCES_DIR", "WEZTERM_PANE", "WARP_SESSION_ID", "WARP_TERMINAL_SESSION_UUID", "ITERM_SESSION_ID", "WT_SESSION", "ALACRITTY_WINDOW_ID"} {
+		if getenv(name) != "" {
+			return true
+		}
+	}
+	return false
+}
+
 // movedRows is the part of the screen whose rows moved since the last frame: rows top..bottom moved up by up rows, or down
 // when up is negative.
 type movedRows struct {

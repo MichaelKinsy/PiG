@@ -812,8 +812,11 @@ type tuiBase struct {
 	frameRenderRequest atomic.Uint32
 	renderGeneration   uint64
 	lastRenderAt       time.Time
-	now                func() time.Time
-	afterFunc          func(time.Duration, func()) stoppableTimer
+	// pacing answers scheduleRenderLocked's interval from lastFrameCost, what the last throttled frame took from its start to the return of its write; nil is Pi's constant (frame_pacing.go).
+	pacing        *FramePacing
+	lastFrameCost time.Duration
+	now           func() time.Time
+	afterFunc     func(time.Duration, func()) stoppableTimer
 
 	// renderOnMain, when set, marshals a scheduled render onto the owner's
 	// main loop instead of running doRender on the throttle-timer
@@ -2083,8 +2086,8 @@ func (t *tuiBase) scheduleRenderLocked() {
 	delay := time.Duration(0)
 	if !t.lastRenderAt.IsZero() {
 		elapsed := t.now().Sub(t.lastRenderAt)
-		if elapsed < minRenderInterval {
-			delay = minRenderInterval - elapsed
+		if interval := t.frameIntervalLocked(); elapsed < interval {
+			delay = interval - elapsed
 		}
 	}
 	generation := t.renderGeneration
@@ -2131,9 +2134,11 @@ func (t *tuiBase) renderScheduled(generation uint64) {
 // frame if more render requests arrived. It must run on whichever goroutine
 // owns component-tree mutation (the main loop when renderOnMain is set).
 func (t *tuiBase) renderAndReschedule() {
+	began := t.now()
 	t.render()
 
 	t.mu.Lock()
+	t.lastFrameCost = t.now().Sub(began)
 	t.scheduleRenderLocked()
 	t.mu.Unlock()
 }
