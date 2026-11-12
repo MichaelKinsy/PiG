@@ -65,8 +65,9 @@ func TestATurnHookKeepsTheMessagesItWasGiven(t *testing.T) {
 	}
 }
 
-// The hooks of tool calls that run in parallel each get their own copy of the run's messages: they can run at the same time, and two of
-// them writing a message of one array would race. What they write stays theirs and does not reach the run. (Run with -race.)
+// The after hooks of tool calls that run in parallel each get their own copy of the run's messages: they run on the calls' goroutines at
+// the same time, and two of them writing a message of one array would race. What they write stays theirs and does not reach the run, and
+// the copy holds what the before hooks wrote. (Run with -race.)
 func TestHooksOfParallelToolCallsWriteTheirOwnCopyOfTheMessages(t *testing.T) {
 	provider := &scriptedProvider{respond: toolCallsThenText(
 		toolCall("tool-1", "echo", ai.JsonObject{"value": "first"}),
@@ -96,8 +97,44 @@ func TestHooksOfParallelToolCallsWriteTheirOwnCopyOfTheMessages(t *testing.T) {
 	if provider.calls() != 2 {
 		t.Fatalf("model requests %d, want 2", provider.calls())
 	}
-	if got := userTexts(provider.request(2).transcript); !reflect.DeepEqual(got, []string{"echo both"}) {
-		t.Fatalf("the request after the tools carries %q: a parallel call's hook wrote the run's messages", got)
+	// The before hooks ran one after another on the run's own messages (the second call's hook wrote last); the after hooks wrote copies.
+	if got := userTexts(provider.request(2).transcript); !reflect.DeepEqual(got, []string{"written before second"}) {
+		t.Fatalf("the request after the tools carries %q: want the message the last before hook wrote and nothing an after hook wrote", got)
+	}
+}
+
+// Pi runs prepareToolCall, and so beforeToolCall, for the calls of a parallel batch one after another in a loop on one thread, handing
+// each currentContext (agent-loop.ts executeToolCallsParallel): what the first call's hook writes in place is what the second call's hook
+// reads and what the next request carries. The before hooks of a parallel batch receive the run's own messages, as Pi's do.
+func TestTheBeforeHooksOfParallelToolCallsShareTheRunsMessages(t *testing.T) {
+	provider := &scriptedProvider{respond: toolCallsThenText(
+		toolCall("tool-1", "echo", ai.JsonObject{"value": "first"}),
+		toolCall("tool-2", "echo", ai.JsonObject{"value": "second"}),
+	)}
+	var seenBySecond string
+	a := mustNewAgent(AgentOptions{
+		Model:         scriptedModel(provider),
+		Tools:         []AgentTool{valueEchoTool(ToolModeParallel, nil)},
+		ToolExecution: ToolModeParallel,
+		BeforeToolCall: func(_ context.Context, call BeforeToolCallContext) *ToolCallHookResult {
+			index := promptIndex(call.Context.Messages)
+			switch argValue(call.Args) {
+			case "first":
+				call.Context.Messages[index] = userMessage("replaced by the first before hook")
+			case "second":
+				seenBySecond = call.Context.Messages[index].User.Content.(ai.UserContentBlocks)[0].(ai.TextContent).Text
+			}
+			return nil
+		},
+	})
+
+	mustSend(t, a, "echo both")
+
+	if seenBySecond != "replaced by the first before hook" {
+		t.Errorf("the second call's before hook saw the prompt %q: want the message the first call's hook replaced in place", seenBySecond)
+	}
+	if got := userTexts(provider.request(2).transcript); !reflect.DeepEqual(got, []string{"replaced by the first before hook"}) {
+		t.Errorf("the request after the tools carries %q, want the message the first call's before hook wrote in place", got)
 	}
 }
 

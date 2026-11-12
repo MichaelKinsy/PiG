@@ -12,10 +12,11 @@ import (
 type ToolCallHookContext struct {
 	// AssistantMessage issued the tool call. Nil for a RunToolCall made without one.
 	AssistantMessage *AssistantMessage
-	// Context is the agent context (messages and tools) the call runs in. Its Messages are the run's own array, cut at its length, when
-	// the call's hooks run one at a time (a sequential batch, a batch of one call): a hook that replaces a message in place changes
-	// the run, as in Pi, and an append goes to an array of the hook's own. The hooks of two or more calls executed in parallel each
-	// receive a copy instead, because they can run at the same time: what they write there stays theirs.
+	// Context is the agent context (messages and tools) the call runs in. Its Messages are the run's own array, cut at its length, for a
+	// hook that runs while no other call's hook or tool does (a sequential batch, a batch of one call, and the before hooks of a
+	// parallel batch, which run one after another as in Pi): a hook that replaces a message in place changes the run, and the next
+	// hook and the next request see it, as in Pi; an append goes to an array of the hook's own. The tool and the after hooks of two or
+	// more calls executed in parallel receive a copy instead, because they run at the same time: what they write there stays theirs.
 	Context AgentContext
 }
 
