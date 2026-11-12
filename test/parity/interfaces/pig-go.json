@@ -33854,6 +33854,17 @@
       "shapeHash": "sha256:cd24126399fdf7149e394794428481b770bf0b909671ee7c920aac52898ecf29"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#catchImagesMismatch",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "catchImagesMismatch",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(call func() (AssistantImages, error)) (result AssistantImages, err error)"
+      },
+      "shapeHash": "sha256:a27f69117aa69ae2494ab10164d8b3ece3bb44ab25901126a792c4aaa262d4f9"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#ccToolLookup",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "ccToolLookup",
@@ -49483,6 +49494,28 @@
         "type": "func(model *Model, api API) error"
       },
       "shapeHash": "sha256:db3b54d6aca731c73315fc4f653921f00304bd628ff0742b5899e8f2c61e89ad"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#mismatchedImagesAPIError",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "mismatchedImagesAPIError",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "mismatchedImagesAPIError"
+      },
+      "shapeHash": "sha256:376a7091918af70c2c8bd32543c5e76c526f3a1896f2a3b8fb54ffd1ee65fa05"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#mismatchedImagesAPIError.Error",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "mismatchedImagesAPIError.Error",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#mistralAbortReason",
