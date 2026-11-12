@@ -7298,3 +7298,75 @@ end = "\n\n\trequestRender(force = false): void {"
 sha256 = "a41d73a127962410af68ce65abee17a1c1530e3b348359d240dbb9179ca569d2"
 keybindings = [
 ]
+
+[[contract]]
+id = "tui/alt-screen/screen-writer-frame-output"
+upstream_id = "render:packages/tui/src/tui-alt-screen.ts#TuiAltScreen.doRender"
+family = "fullscreen"
+kind = "render-layout"
+claim = "porting guard of the screen writer (D624, internal/screenwriter): the frame grammar the writer reads, a synchronized update holding cursor addresses, rows erased at column 1 and followed by a line of text, SGR and the hyperlink close, an erase of the screen and the cursor shown or hidden, is what this method writes; a changed hash means the grammar and the writer's sequence table must be reviewed against the new range, then the pinned counts of TestScreenWriterShowsTheRenderersScreens (frames of Pi's fixture and the frames the writer has no rule for) re-pinned"
+status = "ported"
+pig_targets = [
+  "internal/screenwriter/writer.go#Translate",
+  "internal/screenwriter/sequence.go#outside",
+]
+evidence = [
+  "tui/screen_writer_oracle_test.go#TestScreenWriterShowsTheRenderersScreens",
+  "tui/terminal_screen_writer_test.go#TestScreenWriterTerminalShowsTheSameScreens",
+  "test/parity/scenarios/fullscreen/01-conversation-fullscreen.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/tui-alt-screen.ts"
+start = "protected override doRender(): void {"
+end = "this.currentLayout = nextLayout;\n\t}"
+sha256 = "0407a20896b5757a9e85671306cbc42acdb40eccadaabe398c9296d64a6af9e3"
+keybindings = []
+
+[[contract]]
+id = "tui/alt-screen/screen-writer-enter-exit-writes"
+upstream_id = "render:packages/tui/src/tui-alt-screen.ts#TuiAltScreen.doRender"
+family = "fullscreen"
+kind = "render-layout"
+claim = "porting guard of the screen writer (D624): the writes that enter the alternate screen (erase, home, cursor hidden), prepare the stop (Kitty images deleted, mouse off, autowrap on) and leave it, with the document repainted on the main screen or not, are the ones the writer passes through and takes as the end of its screen; a changed hash means the writer's handling of entering and leaving (internal/screenwriter, TestScreenWriterAlternateScreenEnterAndLeave and TestScreenWriterExit) must be reviewed against the new range"
+status = "ported"
+pig_targets = [
+  "internal/screenwriter/writer.go#other",
+  "tui/terminal_screen_writer.go#newTerminalScreenWriter",
+]
+evidence = [
+  "tui/terminal_screen_writer_test.go#TestScreenWriterAlternateScreenEnterAndLeave",
+  "tui/terminal_screen_writer_test.go#TestScreenWriterExit",
+  "test/parity/scenarios/fullscreen/01-conversation-fullscreen.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/tui-alt-screen.ts"
+start = "\t\tthis.terminal.write(\n\t\t\t`${ENTER_ALT_SCREEN}${DISABLE_AUTOWRAP}"
+end = "this.terminal.write(buffer);\n\t\t}\n\t\tif (this.savedCapabilities) {"
+sha256 = "e2457bbe3de532fc36afc5c3bc819e30faa4955289528efd372e99df46689929"
+keybindings = []
+
+[[contract]]
+id = "tui/terminal/screen-writer-write-sites"
+upstream_id = "input:packages/tui/src/terminal.ts#ProcessTerminal.handleKeyboardProtocolNegotiationSequence"
+family = "tui-components"
+kind = "terminal-output-writes"
+claim = "porting guard of the screen writer (D624): every process.stdout.write site of ProcessTerminal (start, stop, restore on exit, cursor, title, progress, program status, and write itself) lies in this range, and the writer sees all of them below ProcessTerminal.write or, for a write that goes past it, through WriteToTerminal; a changed hash means the table of sequences that change nothing the writer keeps (internal/screenwriter sequence.go) and the writes past the terminal must be reviewed against the new range"
+status = "ported"
+pig_targets = [
+  "internal/screenwriter/sequence.go#outside",
+  "tui/terminal_screen_writer.go#screenWriterWrittenPast",
+]
+evidence = [
+  "internal/screenwriter/writer_test.go#TestOutsideTable",
+  "tui/terminal_screen_writer_test.go#TestScreenWriterWritesPastTheTerminal",
+  "test/parity/scenarios/tui-components/14-terminal-negotiation-framing.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/terminal.ts"
+start = "\tprivate writeLogPath = (() => {"
+end = "\n\tprivate clearProgressInterval(): boolean {"
+sha256 = "77585eb1bacc3fce65b70a6d58d12e15c15981c2b30930205c040c752900c8fc"
+keybindings = []
