@@ -14,9 +14,13 @@ The scroll margins (`top`, `bottom`, origin mode, and whether the region is the 
 
 The cursor's position is compared only while it is shown (a hidden cursor's position cannot be seen, and every frame addresses its rows absolutely); whether it is shown is compared always.
 
+## The screen writer's variants (D624)
+
+The corpus also holds two more variants of every scenario: **C** is what the screen writer (`internal/screenwriter`, `PIG_TUI_SCREEN_WRITER=1`) sends for the frames of A, and **D** what it sends for the frames of B, step for step (the writer's output for one frame is the step's bytes; a step the writer does not write is an empty step; every seventh step ends with the settle write). `test/term-engines` requires every engine to show the same screen after every step of C as of A, and of D as of B, in all scenarios including the `known-*` ones: the writer's bytes must leave a terminal showing what the bytes it was given leave. The corpus also holds the two recorded benchmark steps (`race-md20000`, `race-write50`, 160 by 48, A and B the same stream).
+
 ## Formats
 
-`plan.txt` is tab-separated: `scenario NAME COLS ROWS`, then for variants `A` and `B` a `variant A|B FILE` line followed by one `step END [COLS ROWS]` line per frame. `END` is the byte offset in FILE at which the frame's bytes end; `COLS ROWS` resizes the terminal before the frame's bytes. A runner starts every variant at the scenario's size and prints a first line `{"engine": ...}`, then one line `{"scenario", "variant", "checkpoints": [{"cursor": [x, y], "rows": [...], "styles": [[[column, width, style]...]...]}]}` per variant, one checkpoint per step. A style is the engine's own words for the cell's non-default colors and attributes.
+`plan.txt` is tab-separated: `scenario NAME COLS ROWS`, then for variants `A`, `B`, `C` and `D` a `variant A|B|C|D FILE` line followed by one `step END [COLS ROWS]` line per frame. `END` is the byte offset in FILE at which the frame's bytes end; `COLS ROWS` resizes the terminal before the frame's bytes. A runner starts every variant at the scenario's size and prints a first line `{"engine": ...}`, then one line `{"scenario", "variant", "checkpoints": [{"cursor": [x, y], "rows": [...], "styles": [[[column, width, style]...]...]}]}` per variant, one checkpoint per step. A style is the engine's own words for the cell's non-default colors and attributes.
 
 ## Engines
 
