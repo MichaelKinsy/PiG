@@ -14,6 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/internal/imageprocessing"
+	"github.com/MichaelKinsy/PiG/internal/jsloop"
 	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
@@ -455,7 +456,8 @@ func (m *InteractiveMode) checkPromptCompaction(ctx context.Context) {
 // compaction, and only queued input continues the run.
 func (m *InteractiveMode) runAgentPrompt(ctx context.Context, start func(context.Context) ([]agent.AgentMessage, error)) ([]agent.AgentMessage, error) {
 	if m.opts.SessionHandle != nil {
-		return m.opts.SessionHandle.RunAgentPrompt(ctx, start)
+		// The run reports the tasks of Pi's event loop it executes, so the frames keep to their bounds (handleAgentEvent).
+		return m.opts.SessionHandle.RunAgentPrompt(jsloop.WithTasks(ctx), start)
 	}
 	messages, err := start(ctx)
 	for err == nil && ctx.Err() == nil && m.agent.HasQueuedMessages() {
