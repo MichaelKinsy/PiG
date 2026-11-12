@@ -3,6 +3,7 @@ package codingagent
 import (
 	"encoding/json"
 	"strings"
+	"sync"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -259,6 +260,124 @@ func TestTerminalViewClientEscapeLeavesThePanelBeforeItInterrupts(t *testing.T) 
 				}
 				if text := p.m.editor.Text(); text != "" {
 					t.Fatalf("a key of the focused panel reached the editor: %q", text)
+				}
+			})
+		})
+	}
+}
+
+// viewAttachRun is one session whose extension takes the state the bridge pushes when the client attaches, which is how
+// the abilities reach an extension, and, with mounts, mounts at that moment, off the loop.
+type viewAttachRun struct {
+	p              *viewModeProbe
+	before, frames string
+	second         string
+	pushes         int32
+	code, state    string
+}
+
+func runViewAttach(t *testing.T, mode, slot string, selected, mounts bool) *viewAttachRun {
+	t.Helper()
+	m, term := newTickRenderProbe(t, mode)
+	m.opts.TerminalViewClient = selected
+	bridge := subprocess.NewUIBridge(m.requestRender)
+	bridge.SetUIContext(&ExtUIContext{m: m})
+	m.tuiInst.SetFocus(m.editor)
+	r := &viewAttachRun{p: &viewModeProbe{t: t, m: m, term: term, bridge: bridge}}
+	m.requestRender()
+	r.before = r.p.frame()
+	var mu sync.Mutex
+	mounted := false
+	bridge.OnStateChanged = func() {
+		mu.Lock()
+		defer mu.Unlock()
+		if bridge.Views().Abilities() == nil {
+			return
+		}
+		r.pushes++
+		if !mounts || mounted {
+			return
+		}
+		mounted = true
+		res, err := bridge.HandleCall("ext", &subprocess.CallPayload{Method: "ui.view.mount", Args: json.RawMessage(strings.Replace(viewProbeMount, "%SLOT%", slot, 1))})
+		switch {
+		case err != nil:
+			r.code = err.Error()
+		case res.Error != nil:
+			r.code = res.Error.Code
+		default:
+			var status struct {
+				State string `json:"state"`
+			}
+			if err := json.Unmarshal(res.Result, &status); err != nil {
+				r.code = err.Error()
+			}
+			r.state = status.State
+		}
+	}
+	m.attachTerminalViewClient(bridge)
+	t.Cleanup(m.detachTerminalViewClient)
+	first := r.p.frame()
+	r.second = r.p.frame()
+	r.frames = first + r.second + r.p.typeText("hello") + r.p.typeText(" world")
+	// The lock orders this goroutine's reads after the pushes' writes.
+	mu.Lock()
+	defer mu.Unlock()
+	return r
+}
+
+// pig additive (D614): an extension that mounts on the abilities it is pushed when the client attaches is drawn once: the
+// mount is on the screen after the attach and no later frame draws it again. In both TUI modes and in a panel and a
+// widget slot.
+func TestTerminalViewClientDrawsAMountMadeAtTheAttachOnce(t *testing.T) {
+	for _, mode := range []string{"regular", "fullscreen"} {
+		for _, slot := range []string{"panel", "widget-above"} {
+			t.Run(mode+"/"+slot, func(t *testing.T) {
+				synctest.Test(t, func(t *testing.T) {
+					r := runViewAttach(t, mode, slot, true, true)
+					if r.pushes == 0 {
+						t.Fatal("the attach pushed no state with abilities: the extension had no moment to mount")
+					}
+					if r.code != "" || r.state != "live" {
+						t.Fatalf("the mount at the attach answered %q, state %q", r.code, r.state)
+					}
+					if n := strings.Count(widthx.StripAnsi(r.frames), "mounted view row"); n != 1 {
+						t.Fatalf("the mount made at the attach was drawn %d times, want 1:\n%q", n, r.frames)
+					}
+					if r.second != "" {
+						t.Fatalf("the frame after the one that drew the mount wrote %q", r.second)
+					}
+					if client := r.p.m.viewClient.Load(); len(client.mounts) != 1 || len(r.p.m.viewMounts) != 1 {
+						t.Fatalf("the client holds %d mount(s) and the layout %d, want 1 and 1", len(client.mounts), len(r.p.m.viewMounts))
+					}
+				})
+			})
+		}
+	}
+}
+
+// pig additive (D614): an extension that takes the same push and does not mount leaves the session what it is without
+// the client: the terminal is written the same bytes before the attach, after it and while a line is typed.
+func TestTerminalViewClientAttachWithAListeningExtensionCostsNothing(t *testing.T) {
+	for _, mode := range []string{"regular", "fullscreen"} {
+		t.Run(mode, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				off := runViewAttach(t, mode, "panel", false, false)
+				on := runViewAttach(t, mode, "panel", true, false)
+				if off.pushes != 0 {
+					t.Fatalf("a session without the client pushed abilities %d times", off.pushes)
+				}
+				if on.pushes == 0 {
+					t.Fatal("the attach pushed no state with abilities: the comparison has no listening extension")
+				}
+				if on.before != off.before || on.frames != off.frames {
+					t.Errorf("the terminal was written different bytes with the client attached and a listening extension:\noff %q\non  %q", off.before+off.frames, on.before+on.frames)
+				}
+				if off.frames == "" {
+					t.Error("the session wrote nothing after the attach: the comparison is empty")
+				}
+				if n := len(on.p.m.widgetContainer.Children()) - len(off.p.m.widgetContainer.Children()); n != 0 {
+					t.Errorf("the widget container holds %d more children with the client attached", n)
 				}
 			})
 		})
