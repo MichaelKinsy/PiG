@@ -1054,6 +1054,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-844d215](#bf-844d215) | Repairing a partial tool-call arguments text follows partial-json's `obj["__proto__"] = value`: a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8476760](#bf-8476760) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-848836a](#bf-848836a) | fix(frontmatter): header starts one UTF-16 unit after the fence | PiG's own defect | All platforms | Unreleased |
+| [BF-849f5f9](#bf-849f5f9) | The README installed `@michaelkinsy/pig-extension-types` from the source tree as a link, and the compiler… | PiG's own defect | All platforms | Unreleased |
+| [BF-849f5f9-2](#bf-849f5f9-2) | `registerMarkdownTransformer`'s `context` and `ui.onThemeChange`'s `theme` were `any`: `index.d.ts` named… | PiG's own defect | All platforms | Unreleased |
 | [BF-84b2fca](#bf-84b2fca) | Code that fails to highlight takes the code-block color, as in Pi: `highlightCode` returns it in the… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-852652e](#bf-852652e) | PiG no longer names documentation that does not exist | PiG's own defect | All platforms | 0.5.0 |
 | [BF-852c46b](#bf-852c46b) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
@@ -16347,6 +16349,34 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `848836a581` (2026-10-10)
 - **Tests:** `internal/codingagent/frontmatter/pi_random_oracle_test.go::TestParseRandomDocumentsMatchesPi`
+
+### BF-849f5f9
+
+**The README installed `@michaelkinsy/pig-extension-types` from the source tree as a link, and the compiler…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The README installed `@michaelkinsy/pig-extension-types` from the source tree as a link, and the compiler then resolved the package's imports from the folder: the PiG-only members, `ctx.ui.setLogin` of the README's own example among them, were missing from Pi's types.
+- **Root cause:** .npmrc sets legacy-peer-deps so the lock's tree stays the published install of Pi that the pin tooling freezes; the lock gains only the root block.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `849f5f9c8d` (2026-11-12)
+- **Tests:** `extensions/sdk-ts/scripts/author-view.test.mjs`, `extensions/sdk-ts/scripts/pin-bundle.test.mjs`
+- **Release note:** The README installed `@michaelkinsy/pig-extension-types` from the source tree as a link, and the compiler then resolved the package's imports from the folder: the PiG-only members, `ctx.ui.setLogin` of the README's own example among them, were missing from Pi's types. The install command is now `npm install --install-links`, which copies the folder, and the README names `preserveSymlinks` for a project that keeps a link.
+
+### BF-849f5f9-2
+
+**`registerMarkdownTransformer`'s `context` and `ui.onThemeChange`'s `theme` were `any`: `index.d.ts` named…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `registerMarkdownTransformer`'s `context` and `ui.onThemeChange`'s `theme` were `any`: `index.d.ts` named `MarkdownTransformContext` and `Theme` without importing them.
+- **Root cause:** .npmrc sets legacy-peer-deps so the lock's tree stays the published install of Pi that the pin tooling freezes; the lock gains only the root block.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `849f5f9c8d` (2026-11-12)
+- **Tests:** `extensions/sdk-ts/scripts/author-view.test.mjs`, `extensions/sdk-ts/scripts/pin-bundle.test.mjs`
+- **Release note:** `registerMarkdownTransformer`'s `context` and `ui.onThemeChange`'s `theme` were `any`: `index.d.ts` named `MarkdownTransformContext` and `Theme` without importing them.
 
 ### BF-84b2fca
 
