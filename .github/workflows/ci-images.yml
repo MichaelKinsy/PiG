@@ -54,9 +54,11 @@ on:
 permissions:
   contents: read
 
+# A newer push supersedes a pull request's run. No other in-progress run is cancelled: a dispatch from main publishes the CI images (a cancelled publish would leave a
+# half-pushed set). A pending run can still be replaced by a newer run in the same group. A push to main runs verification only and the schedule builds without publishing; the pin proposal records digests from a publish dispatch.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   REGISTRY: ghcr.io/michaelkinsy

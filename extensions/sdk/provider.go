@@ -215,5 +215,7 @@ func CreateAssistantMessageEventStream() *ModelEventStream {
 	return stream
 }
 
-// Push publishes an event in source order. A terminal event completes Result and closes Events.
-func (s *ModelEventStream) Push(event map[string]any) { s.push(event) }
+// Push publishes an event in source order. A terminal event completes Result and closes Events. The host receives the event as it is when Push returns: the SDK encodes it here,
+// so the author may go on changing the message it shows. Events keeps yielding the map itself. That is stronger than Pi, whose consumer reads the shared message at its own turn:
+// after a synchronous burst of pushes or between microtask awaits it can see later changes (D615).
+func (s *ModelEventStream) Push(event map[string]any) { s.enqueue(event, true) }

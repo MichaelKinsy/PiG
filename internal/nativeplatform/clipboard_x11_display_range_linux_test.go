@@ -19,7 +19,7 @@ import (
 // Pi linux-platform-x11.c:185 delegates to xcb_connect, whose parser (libxcb 1.15 xcb_util.c:176 and :186) reads the display and screen with C strtoul
 // into an int: leading white space and a sign are accepted, a minus negates modulo 2^64, an overflow saturates at ULONG_MAX, and the int keeps the low
 // 32 bits. Local display numbers name Unix sockets; a network display's port is the low 16 bits of 6000 plus the number (xcb_util.c:244). The rows are
-// what xcb_parse_display returns for each spelling on libxcb 1.15.
+// what xcb_parse_display returns for each spelling on libxcb 1.16 and later.
 func TestX11DisplayNumbersParseAsXcbDoes(t *testing.T) {
 	for _, tc := range []struct {
 		input string
@@ -36,12 +36,10 @@ func TestX11DisplayNumbersParseAsXcbDoes(t *testing.T) {
 		{":+1", x11Display{number: 1, local: true}},
 		{":01", x11Display{number: 1, local: true}},
 		{":-1", x11Display{number: -1, local: true}},
-		{"unix:-1", x11Display{host: "unix", number: -1, local: true}},
 		{":1.+2", x11Display{number: 1, screen: 2, local: true}},
 		{":1. 2", x11Display{number: 1, screen: 2, local: true}},
 		{":1.\v2", x11Display{number: 1, screen: 2, local: true}},
 		{":1.-1", x11Display{number: 1, screen: -1, local: true}},
-		{"unix:60000.-1", x11Display{host: "unix", number: 60000, screen: -1, local: true}},
 		{":4294967297", x11Display{number: 1, local: true}},
 		{":2147483648", x11Display{number: -2147483648, local: true}},
 		{":-2147483649", x11Display{number: 2147483647, local: true}},
@@ -56,7 +54,7 @@ func TestX11DisplayNumbersParseAsXcbDoes(t *testing.T) {
 			}
 		})
 	}
-	for _, input := range []string{":", ":1 ", ":0x1", ":1.", ":1.2 ", ":1.0x", "host:1.0.0", "unix:invalid", ":+", ": -"} {
+	for _, input := range []string{":", ":1 ", ":0x1", ":1.", ":1.2 ", ":1.0x", "host:1.0.0", "unix:invalid", ":+", ": -", "unix:-1", "unix:60000.-1", "unix:0", "unix:1.2"} {
 		t.Run("reject "+input, func(t *testing.T) {
 			if got, err := parseX11Display(input); err == nil {
 				t.Fatalf("xcb_parse_display rejects %q, PiG accepted %+v", input, got)
@@ -87,6 +85,23 @@ int main(void) {
 }
 `
 
+// xcbOracleFlags links the oracle against pkg-config's libxcb, which must be 1.16 or later.
+func xcbOracleFlags(t *testing.T) []string {
+	t.Helper()
+	const hint = "the X11 display oracle needs libxcb 1.16 or later; run automation/ci/build-libxcb.sh and set the PKG_CONFIG_PATH it prints"
+	if output, err := exec.CommandContext(t.Context(), "pkg-config", "--atleast-version=1.16", "xcb").CombinedOutput(); err != nil {
+		t.Fatalf("pkg-config --atleast-version=1.16 xcb: %v %s(%s)", err, output, hint)
+	}
+	pkgConfig := func(arguments ...string) string {
+		output, err := exec.CommandContext(t.Context(), "pkg-config", append(arguments, "xcb")...).Output()
+		if err != nil {
+			t.Fatalf("pkg-config %v xcb: %v", arguments, err)
+		}
+		return strings.TrimSpace(string(output))
+	}
+	return append(strings.Fields(pkgConfig("--cflags", "--libs")), "-Wl,-rpath,"+pkgConfig("--variable=libdir"))
+}
+
 // Each DISPLAY spelling reaches the same screen as Pi's xcb_connect on a two-screen server that listens on its Unix socket and on TCP, or fails as Pi's does.
 func TestX11DisplaySpellingsConnectAsPiDoes(t *testing.T) {
 	for _, command := range []string{"cc", "Xvfb"} {
@@ -99,7 +114,8 @@ func TestX11DisplaySpellingsConnectAsPiDoes(t *testing.T) {
 	if err := os.WriteFile(source, []byte(x11OpenOracle), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if output, err := exec.CommandContext(t.Context(), "cc", "-std=c11", "-Wall", "-Wextra", "-Werror", source, "-lxcb", "-o", oracle).CombinedOutput(); err != nil {
+	arguments := append([]string{"-std=c11", "-Wall", "-Wextra", "-Werror", source}, xcbOracleFlags(t)...)
+	if output, err := exec.CommandContext(t.Context(), "cc", append(arguments, "-o", oracle)...).CombinedOutput(); err != nil {
 		t.Fatalf("compile the xcb oracle: %v\n%s", err, output)
 	}
 	// Each spelling connects the oracle and then PiG, one client at a time. Without -noreset the server resets whenever its
@@ -115,8 +131,11 @@ func TestX11DisplaySpellingsConnectAsPiDoes(t *testing.T) {
 	spellings := []string{
 		":" + display, ": " + display, ":\t" + display, ":+" + display, ":0" + display, ":" + display + ".0", ":" + display + ".1",
 		":" + display + ".+1", ":" + display + ".-1", ":" + display + ".2", ":-" + display, ":" + strconv.FormatInt(number+1<<32, 10),
-		"unix:" + display + ".-1", "127.0.0.1:" + display, "127.0.0.1:" + strconv.FormatInt(number+1<<16, 10), "tcp/127.0.0.1:" + display + ".-1",
+		"unix/:" + display + ".-1", "127.0.0.1:" + display, "127.0.0.1:" + strconv.FormatInt(number+1<<16, 10), "tcp/127.0.0.1:" + display + ".-1",
 		":18446744073709551616",
+		"unix:" + display + ".-1", "unix:" + display, "/tmp/.X11-unix/X" + display, "/tmp/.X11-unix/X" + display + ".1", "/tmp/.X11-unix/X" + display + ".0",
+		"/tmp/.X11-unix/X" + display + ".2", "/tmp/.X11-unix/X" + display + ".-1", "unix:/tmp/.X11-unix/X" + display + ".1", "unix:/tmp/.X11-unix/X" + display + ".01",
+		"unix:/tmp/.X11-unix/X" + display + ".2147483648",
 	}
 	for _, spelling := range spellings {
 		t.Run(spelling, func(t *testing.T) {
@@ -158,4 +177,49 @@ func pigX11Root(ctx context.Context, spelling string) (string, error) {
 		return "error", err
 	}
 	return fmt.Sprintf("root %d", root), nil
+}
+
+// The rows are xcb_parse_display on libxcb 1.17.
+func TestX11SocketPathDisplaysParseAsXcbDoes(t *testing.T) {
+	directory := t.TempDir()
+	socket := filepath.Join(directory, "X0")
+	dotted := filepath.Join(directory, "X.1")
+	lettered := filepath.Join(directory, "Xs")
+	for _, name := range []string{socket, dotted, lettered} {
+		if err := os.WriteFile(name, nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, tc := range []struct {
+		input string
+		want  x11Display
+	}{
+		{socket, x11Display{socket: socket, local: true}},
+		{"unix:" + socket, x11Display{socket: socket, local: true}},
+		{socket + ".2", x11Display{socket: socket, screen: 2, local: true}},
+		{"unix:" + socket + ".19", x11Display{socket: socket, screen: 19, local: true}},
+		{socket + ".2147483647", x11Display{socket: socket, screen: 2147483647, local: true}},
+		{dotted, x11Display{socket: dotted, local: true}},
+		{dotted + ".3", x11Display{socket: dotted, screen: 3, local: true}},
+		{socket + ".9", x11Display{socket: socket, screen: 9, local: true}},
+		{lettered + ".2", x11Display{socket: lettered, screen: 2, local: true}},
+	} {
+		t.Run(tc.input, func(t *testing.T) {
+			got, err := parseX11Display(tc.input)
+			if err != nil || !reflect.DeepEqual(got, tc.want) {
+				t.Fatalf("display=%+v error=%v, want %+v", got, err, tc.want)
+			}
+		})
+	}
+	for _, input := range []string{
+		socket + ".0", socket + ".-1", socket + ".01", socket + ".+1", socket + ".1x", socket + ".", socket + ".2147483648", socket + ".99999999999999999999",
+		filepath.Join(directory, "missing"), filepath.Join(directory, "missing") + ".1", "unix:" + filepath.Join(directory, "missing.1"),
+		socket + "/child", socket + "/child.1", "/" + strings.Repeat("a", 4096), "unix:" + strings.Repeat("b", 4096),
+	} {
+		t.Run("reject "+input, func(t *testing.T) {
+			if got, err := parseX11Display(input); err == nil {
+				t.Fatalf("xcb_parse_display rejects %q, PiG accepted %+v", input, got)
+			}
+		})
+	}
 }

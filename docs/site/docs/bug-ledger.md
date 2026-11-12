@@ -311,6 +311,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3fa6e63](#bf-3fa6e63) | MCP servers with resources registered no tools until every resource was listed, so a slow listing (a large… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3fbdfd2](#bf-3fbdfd2) | A configured number in settings text prints as JavaScript's `String(number)`: `-0` is `0`, and a magnitude of… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3fd2500](#bf-3fd2500) | `pi update` no longer stops with `git clean -fdx failed with code 1` when a Git package has files that cannot… | PiG's own defect | Windows | 0.7.0 |
+| [BF-3fe5b20](#bf-3fe5b20) | A `-p`, `--mode json` or `--mode rpc` run over a large session no longer sometimes keeps the Go GC target of… | PiG's own defect | All platforms | Unreleased |
 | [BF-4027b34](#bf-4027b34) | A finished code-mode execution no longer keeps its closed VM reachable through its stopped halt-grace timer… | PiG's own defect | Linux | 0.5.0 |
 | [BF-4058f34](#bf-4058f34) | The /fork message picker checks its keys in Pi's order (up, down, confirm, cancel) when bindings overlap | PiG's own defect | All platforms | 0.5.0 |
 | [BF-40b5a89](#bf-40b5a89) | Assistant messages in session files and RPC output list `responseId` before `responseModel`, Codex's… | PiG's own defect | All platforms | 0.5.0 |
@@ -436,6 +437,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-56731e9-2](#bf-56731e9-2) | An extension's API-key login no longer shows "Waiting for authentication..." after an authorization URL | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5689853](#bf-5689853) | `pig piglet build` produced a dynamically linked Piglet Binary unless `CGO_ENABLED=0` was set, so a Binary… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-56a0400](#bf-56a0400) | Single-line inputs (login prompts, search boxes) ignore xterm modifyOtherKeys text sequences, as Pi's Input… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-56b0e0f](#bf-56b0e0f) | On Linux, the native X11 clipboard reads a `DISPLAY` that starts with `/` or `unix:` as a socket path with an… | PiG's own defect | Linux | Unreleased |
 | [BF-56f1d3c](#bf-56f1d3c) | A family document member accepts a typed Go value as its seed, as `CreateTask` input and snapshots already do | PiG's own defect | All platforms | 0.5.0 |
 | [BF-56f1d3c-2](#bf-56f1d3c-2) | `Submission.Wait`, `WaitForTask` and the idle waits return after every commit subscriber has run for the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-570c037](#bf-570c037) | `pig install <path> --validate-only` called a `.mjs` file, or a directory with only `index.mjs`, a valid… | PiG's own defect | All platforms | 0.7.0 |
@@ -887,6 +889,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-91e912a](#bf-91e912a) | Two PiG versions that share a config root (two installed versions, or PiG beside a Piglet Binary) no longer… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-91f9946](#bf-91f9946) | OpenRouter image generation reads the chat completions body as Pi does, checked against the pinned Pi in a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-9208423](#bf-9208423) | fix(imageprocessing): an image with no pixels is not encoded as PNG | PiG's own defect | All platforms | Unreleased |
+| [BF-924fe28](#bf-924fe28) | A provider written with the Go, Python or Lisp extension SDK now reaches the host with each stream event… | PiG's own defect | All platforms | Unreleased |
 | [BF-928e15c](#bf-928e15c) | A listener that fails while agent_start is dispatched now ends the run as in Pi (failure messages, no… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-928e15c-10](#bf-928e15c-10) | Constrained-sampling errors quote tool and property names as Pi does (raw text between double quotes, not… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-928e15c-11](#bf-928e15c-11) | GitHub Copilot model-catalog fetches now report a failed response as Pi does (`<status> <reason>: <untrimmed… | PiG's own defect | All platforms | 0.5.0 |
@@ -5652,6 +5655,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `coding/cli/git_update_upstream_test.go::TestGitUpdatesUpstream`, `coding/cli/package_git_dependencies_upstream_test.go::TestPackageGitDependenciesOriginal`
 - **Release note:** `pi update` no longer stops with `git clean -fdx failed with code 1` when a Git package has files that cannot be deleted, for example a native module another pi session still has open on Windows. pi now warns that files may be in use by another pi session, installs the dependencies anyway, and retries the clean on the next update. Carried forward from Pi e3da248e (earendil-works/pi#11648), past the 1.4.0+b3a29f11 pin.
 
+### BF-3fe5b20
+
+**A `-p`, `--mode json` or `--mode rpc` run over a large session no longer sometimes keeps the Go GC target of…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A `-p`, `--mode json` or `--mode rpc` run over a large session no longer sometimes keeps the Go GC target of 400 past 64 MiB live heap.
+- **Root cause:** A cleanup runs when the sweeper reaches the sentinel's span, and a sentinel allocated while a collection marks survives that collection, so the collection that found a large heap could be skipped and the target stayed at 400. TestPrintModeGCTargetFallsBackOnLargeHeap failed in CI run 42725996591 (exit at percent 400, RSS 1.57x); on xd670 with 4 CPUs and 3 busy loops it failed 6 of 80 runs at and 0 of 80 with this change.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `3fe5b201f0` (2026-11-09)
+- **Tests:** `internal/gcpolicy/gcpolicy_test.go::TestApplyFallsBackAboveTheLiveHeapLimit`, `test/perfgate/print_tools_test.go::TestPrintModeGCTargetFallsBackOnLargeHeap`
+- **Release note:** A `-p`, `--mode json` or `--mode rpc` run over a large session no longer sometimes keeps the Go GC target of 400 past 64 MiB live heap. The check that returns to the default 100 waited for a cleanup after each collection, and that cleanup could run late or miss the collection that found the large heap; on a 66 MB session about 1 run in 13 under CPU load exited at target 400 with a peak RSS 1.37-1.80x that of `GOGC=100`. A goroutine now reads the live heap every 5 ms (every second while no collection finishes), so the fallback fires once a read finds the latest finished collection's live heap above 64 MiB. A later collection can replace that value before the next read, so a read can miss a short-lived peak, but the fallback no longer waits on a cleanup. Output is unchanged.
+
 ### BF-4027b34
 
 **A finished code-mode execution no longer keeps its closed VM reachable through its stopped halt-grace timer…**
@@ -7367,6 +7384,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `56a0400b9c` (2026-10-07), `f2a2b3409b` (2026-10-07)
 - **Tests:** `internal/codingagent/tree_row_format_test.go::TestFormatTreeRow_AllEntryTypes`, `internal/codingagent/tree_selector_oracle_test.go::TestTreeSelectorInputMatchesPi`, `tui/editor_bindings_oracle_test.go::TestEditorRebindingsMatchPi`, `tui/input_oracle_test.go::TestInputHandleInputMatchesPi`, `tui/key_csiu_text_test.go::TestTextInputIgnoresModifyOtherKeysText`, `tui/scoped_models_list_test.go::TestScopedModels_SearchAcceptsKittyAndPasteInput`, `tui/select_list_oracle_test.go::TestSelectListInputMatchesPi`
 - **Release note:** Single-line inputs (login prompts, search boxes) ignore xterm modifyOtherKeys text sequences, as Pi's Input does; the multi-line editor still accepts them.
+
+### BF-56b0e0f
+
+**On Linux, the native X11 clipboard reads a `DISPLAY` that starts with `/` or `unix:` as a socket path with an…**
+
+- **Source:** PiG's own defect
+- **Symptom:** On Linux, the native X11 clipboard reads a `DISPLAY` that starts with `/` or `unix:` as a socket path with an optional screen (`/tmp/.X11-unix/X0.1`, `unix:/tmp/.X11-unix/X0`), as libxcb 1.16 and later do.
+- **Root cause:** Fix-Commit:
+- **User impact:** An operation failed or was rejected
+- **Platform:** Linux
+- **Fixed in:** Unreleased
+- **Fix commits:** `56b0e0f8e2` (2026-11-11, #424)
+- **Tests:** `internal/nativeplatform/clipboard_x11_display_range_linux_test.go::TestX11DisplayNumbersParseAsXcbDoes`, `internal/nativeplatform/clipboard_x11_display_range_linux_test.go::TestX11DisplaySpellingsConnectAsPiDoes`, `internal/nativeplatform/clipboard_x11_display_range_linux_test.go::TestX11SocketPathDisplaysParseAsXcbDoes`
+- **Release note:** On Linux, the native X11 clipboard reads a `DISPLAY` that starts with `/` or `unix:` as a socket path with an optional screen (`/tmp/.X11-unix/X0.1`, `unix:/tmp/.X11-unix/X0`), as libxcb 1.16 and later do. A socket path now connects where it failed before, and `DISPLAY=unix:0` no longer names display 0 by itself. As libxcb 1.16 does (xcb_util.c `_xcb_parse_display_path_to_socket` and `_xcb_open`), the text after `unix:` is a path that must exist once any `.N` screen suffix is removed (`unix:relative-socket.1` needs `relative-socket`), and only an absolute path is dialed directly: a relative path that exists (`unix:relative-socket`, or `unix:0` with a file named `0` in the working directory) dials display 0's socket, `/tmp/.X11-unix/X0`, and one that does not exist fails. Pi's addon links the host's libxcb, so hosts with libxcb 1.15 or earlier read these displays differently.
 
 ### BF-56f1d3c
 
@@ -13623,6 +13654,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `9208423356` (2026-10-29)
 - **Tests:** None recorded.
+
+### BF-924fe28
+
+**A provider written with the Go, Python or Lisp extension SDK now reaches the host with each stream event…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A provider written with the Go, Python or Lisp extension SDK now reaches the host with each stream event showing the partial message as it was when the provider pushed the event, and with the stream's result as it was when the provider ended it.
+- **Root cause:** The Go, Python and Lisp SDKs queued the event the author pushed and a forwarding goroutine or thread encoded it later, while the author's code could still append to the shared partial message: the host then received later text (every text_delta showing the finished message under load) and, in Go, the forwarder's read of the author's map raced the author's writes. Push and End now take the event, and the result, at the call: the Go SDK encodes the event on the author's goroutine and the forwarder writes those bytes, the Python and Lisp SDKs queue a copy. The result the author reads is still its own message. Events the SDK builds or decodes itself are queued as they are. The Rust SDK takes…
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `924fe2818c` (2026-11-09)
+- **Tests:** None recorded.
+- **Release note:** A provider written with the Go, Python or Lisp extension SDK now reaches the host with each stream event showing the partial message as it was when the provider pushed the event, and with the stream's result as it was when the provider ended it. The SDK queued the event the provider pushed and a goroutine or thread encoded it later, so a provider that appended to its shared partial message right after a `Push` could have the host receive the later text (under load every `text_delta` showed the finished message), and in the Go SDK the encoder's read of the provider's map was a data race with the provider's writes. `Push` and `End` now take the event, and the result, at the call (the Go SDK encodes the event on the provider's goroutine; the Python and Lisp SDKs queue a copy), so the host sees each event as it was at the push, which is stronger than Pi's own guarantee (D615): Pi's consumer reads the shared message at its own turn, so after a synchronous burst of pushes or between microtask awaits it shows later changes. The event and the message the provider reads back (`Events()`, `result()`) are still its own objects, and a value of a kind JSON has no copy of (a lock, a cycle) ends the request instead of raising in the provider's `Push`. In the Python SDK the guarantee holds for a stream that uses the SDK's own `events()` and `result()`: a Python subclass that overrides either one is read as Pi's consumer reads it, so the host receives what the override yields or returns when the host asks, including later changes to a message the override shares. The Rust SDK takes the event by value and is unchanged.
 
 ### BF-928e15c
 
@@ -23962,6 +24007,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D228 | Terminal.app: plain Up dequeues a queued message, and Up recall elsewhere says once that the text is a copy | [BF-2359a0a](#bf-2359a0a) |
 | D231 | PiG follows Pi main 1708b4788 ahead of the v1.5.0 pin: RPC mode acts on an idle `ctx.shutdown()` | [BF-0cced6a](#bf-0cced6a) |
 | D233 | A Streamable HTTP application/json reply is capped at maxMessageBytes, and an HTTP error body keeps its first… | [BF-d4e641b](#bf-d4e641b) |
+| D615 | The Go, Python, Lisp and Rust SDKs show the host each provider stream event as it was when the provider… | deliberate difference |
 
 ## Fix-titled commits that are not bugs in a release
 
