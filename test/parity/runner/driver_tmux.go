@@ -324,7 +324,6 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 		}
 	}
 	pane, escaped, cropErr := cropCaptures(cfg, use, pane, escaped)
-	plainUncropped, escapedUncropped := uncroppedKinds(cfg, use)
 	if !readyOK && paneMatchesCaptureSurface(pane, cfg) {
 		readyOK = true
 	}
@@ -346,19 +345,13 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 	}
 
 	result = Result{
-		ChangelogSource:  changelogSource,
-		Output:           pane,
-		Escaped:          escaped,
-		PlainUncropped:   plainUncropped && cropErr == nil,
-		EscapedUncropped: escapedUncropped && cropErr == nil,
-		ExitCode:         exitCode,
-		RuntimeMs:        elapsed,
-		ReadyOK:          readyOK,
-		Err:              operationErr,
+		ChangelogSource: changelogSource,
+		ExitCode:        exitCode,
+		RuntimeMs:       elapsed,
+		ReadyOK:         readyOK,
+		Err:             operationErr,
 	}
-	if result.Err == nil && cropErr != nil {
-		result.Err = finalCaptureError(sc.Name, bin.Label, cfg, cropErr)
-	}
+	result = withFinalCaptures(result, sc.Name, bin.Label, cfg, use, pane, escaped, cropErr)
 	// Coverage-only: Go integration coverage flushes on a clean process exit, but
 	// an interactive pig sits at its prompt and is SIGKILLed at teardown, losing
 	// its counters. When GOCOVERDIR is set, drive a clean quit after capture so
