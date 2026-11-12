@@ -393,9 +393,39 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-## @earendil-works/pi-telemetry 1.4.0
+## Pi's durable closure (`third_party/pi-packs`)
 
-The plugins component's Node subprocess runs Pi's chord host, which imports Pi's telemetry contracts. `chord/nextnode/plugins/node/pi/node_modules/@earendil-works/pi-telemetry` is the npm package `@earendil-works/pi-telemetry@1.4.0` (the version Pi's `packages/chord/package.json` depends on, checked by `automation/gen/vendor-chord-plugins-node.sh`): its `package.json` and its compiled `dist/*.js` modules except `dist/testing/`, unmodified.
+`third_party/pi-packs/*.tgz` are the `npm pack` outputs of the pinned Pi source build's `@earendil-works/pi-durable` closure (`chord`, `pi-ai`, `pi-codemode`, `pi-durable`, `pi-schema`, `pi-telemetry`), unmodified, which `durable/core/host/cf`, `durable/interop` and `bench/k8s/image/pi-durable` install through `file:` dependencies (`automation/pin/vendor.py`, `make vendor-pi-packs`). `manifest.json` lists each pack's name, version, sha512 integrity and licence field.
+
+Each package declares `"license": "MIT"` (author Mario Zechner, repository `earendil-works/pi`) and ships no license file; `@earendil-works/pi-schema` also carries `THIRD_PARTY_NOTICES/typebox-LICENSE` (TypeBox 1.3.27, MIT) inside its pack. No pack bundles a dependency. `third_party/pi-packs/LICENSE` is the `LICENSE` of `earendil-works/pi` at the pinned commit, verbatim:
+
+```text
+MIT License
+
+Copyright (c) 2025 Mario Zechner
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+## @earendil-works/pi-telemetry (the pinned build)
+
+The plugins component's Node subprocess runs Pi's chord host, which imports Pi's telemetry contracts. `chord/nextnode/plugins/node/pi/node_modules/@earendil-works/pi-telemetry` is the pinned build's `@earendil-works/pi-telemetry` (the version Pi's `packages/chord/package.json` depends on, checked by `automation/gen/vendor-chord-plugins-node.sh`): its `package.json` and its compiled `dist/*.js` modules except `dist/testing/`, unmodified and byte for byte the files of the pack in `third_party/pi-packs` (`pin.py check-vendored` compares them).
 
 The package declares `"license": "MIT"` (author Mario Zechner, repository `earendil-works/pi`, directory `packages/telemetry`) and its README's License section says `MIT`; the npm tarball ships no license file. The license text is the `LICENSE` of the repository it is published from, `earendil-works/pi`:
 

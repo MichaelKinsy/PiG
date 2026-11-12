@@ -193,6 +193,13 @@ precedence = "override"
 SPDX-FileCopyrightText = "Copyright (c) 2025 Mario Zechner"
 SPDX-License-Identifier = "MIT"
 
+# The vendored `npm pack` outputs of the pinned Pi build's durable closure and Pi's LICENSE (automation/pin/vendor.py).
+[[annotations]]
+path = "third_party/pi-packs/**"
+precedence = "override"
+SPDX-FileCopyrightText = "Copyright (c) 2025 Mario Zechner"
+SPDX-License-Identifier = "MIT"
+
 [[annotations]]
 path = "chord/nextnode/plugins/node/pi/schema/**"
 precedence = "override"
