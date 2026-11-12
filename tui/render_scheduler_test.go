@@ -309,3 +309,45 @@ func TestRequestRenderForceRendersAtOnceAsFullRepaint(t *testing.T) {
 		})
 	}
 }
+
+// Pi hands `16 - elapsed` to setTimeout, and Node runs a timer after the whole milliseconds of its delay, so a frame asked for 1.4 ms after the
+// last one began is drawn 14 ms later, not 14.6 (tui.ts scheduleRender; Node timers: "Non-integer delays are truncated to an integer").
+func TestThrottledFrameWaitsTheWholeMillisecondsLeftOfTheInterval(t *testing.T) {
+	for _, tc := range []struct{ elapsed, want time.Duration }{
+		{1400 * time.Microsecond, 14 * time.Millisecond},
+		{5 * time.Millisecond, 11 * time.Millisecond},
+		{15300 * time.Microsecond, 0},
+		{16 * time.Millisecond, 0},
+	} {
+		var out bytes.Buffer
+		ui := NewWithOutput(&out, 20, 5)
+		ui.Add(&countingRenderComponent{})
+		clock := newManualRenderClock(t, ui)
+		ui.requestRender(false)
+		clock.fire()
+		clock.at = clock.at.Add(tc.elapsed)
+		ui.requestRender(false)
+		if want := []time.Duration{0, tc.want}; !slices.Equal(clock.delays, want) {
+			t.Errorf("a frame asked for %v after the last one began: delays = %v, want %v", tc.elapsed, clock.delays, want)
+		}
+	}
+}
+
+// The loop that keeps the frame deadline itself (SetRenderDeadline) is handed the same whole milliseconds: a frame asked for 1.4 ms after the last
+// one began is due 14 ms after the request.
+func TestOwnerDeadlineOfAThrottledFrameIsTheWholeMillisecondsLeftOfTheInterval(t *testing.T) {
+	var out bytes.Buffer
+	ui := NewWithOutput(&out, 20, 5)
+	ui.Add(&countingRenderComponent{})
+	at := time.Unix(1_000_000, 0)
+	ui.now = func() time.Time { return at }
+	var due []time.Time
+	ui.SetRenderDeadline(func(d time.Time) { due = append(due, d) })
+	ui.requestRender(false)
+	ui.RunDueRender()
+	at = at.Add(1400 * time.Microsecond)
+	ui.requestRender(false)
+	if want := at.Add(14 * time.Millisecond); len(due) == 0 || !due[len(due)-1].Equal(want) {
+		t.Fatalf("deadlines handed to the owner = %v, want the last one at %v", due, want)
+	}
+}
