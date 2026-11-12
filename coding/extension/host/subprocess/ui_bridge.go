@@ -186,12 +186,13 @@ type UIBridge struct {
 	// mode (D107). Every state snapshot carries it as StatePayload.frontend.
 	frontend bool
 	// frontendPush is the owned worker that pushes the state_update for a
-	// SetFrontend change off the caller's goroutine. pending coalesces changes
-	// made while a push runs, since each push reads the current flag;
+	// SetFrontend change, or a change of the view abilities, off the caller's
+	// goroutine. pending coalesces changes made while a push runs, since each
+	// push reads the current state. The worker ends when nothing is pending and
+	// the next change starts it again, so an idle bridge holds no goroutine;
 	// StopFrontendPushes stops the worker and waits for it.
 	frontendPush struct {
 		mu      sync.Mutex
-		cond    *sync.Cond
 		pending bool
 		started bool
 		stopped bool
@@ -767,22 +768,18 @@ func (b *UIBridge) schedulePush() {
 	w.pending = true
 	if !w.started {
 		w.started = true
-		w.cond = sync.NewCond(&w.mu)
 		w.wg.Go(b.runFrontendPushes)
 	}
-	w.cond.Signal()
 }
 
-// runFrontendPushes pushes one state_update per batch of SetFrontend changes
-// until StopFrontendPushes.
+// runFrontendPushes pushes one state_update per batch of changes and ends
+// when none is pending or StopFrontendPushes stopped it.
 func (b *UIBridge) runFrontendPushes() {
 	w := &b.frontendPush
 	for {
 		w.mu.Lock()
-		for !w.pending && !w.stopped {
-			w.cond.Wait()
-		}
-		if w.stopped {
+		if !w.pending || w.stopped {
+			w.started = false
 			w.mu.Unlock()
 			return
 		}
@@ -803,9 +800,6 @@ func (b *UIBridge) StopFrontendPushes() {
 	w := &b.frontendPush
 	w.mu.Lock()
 	w.stopped = true
-	if w.cond != nil {
-		w.cond.Broadcast()
-	}
 	w.mu.Unlock()
 	w.wg.Wait()
 }

@@ -479,6 +479,19 @@ func (m *InteractiveMode) renderWidgetsLocked() {
 			above = append(above, entry.component)
 		}
 	}
+	// pig additive (D614): the mounts the terminal view client draws follow the widgets of their side, and the panels are
+	// the rows nearest the editor.
+	for _, region := range [...]viewRegion{viewAboveEditor, viewPanel, viewBelowEditor} {
+		for _, mount := range m.viewMounts {
+			switch {
+			case mount.slot.region != region:
+			case region == viewBelowEditor:
+				below = append(below, mount)
+			default:
+				above = append(above, mount)
+			}
+		}
+	}
 	// pig divergence (D228): the one-time copy tip sits under the editor, after the below-editor widgets.
 	if m.queueCopyTip != nil {
 		below = append(below, m.queueCopyTip)

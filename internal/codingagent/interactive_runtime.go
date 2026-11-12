@@ -246,6 +246,7 @@ func (m *InteractiveMode) attachSubprocess() {
 		// A reload's new bridge learns that a frontend still draws.
 		bridge.SetFrontend(m.surface != nil)
 		m.detachModelRegistry = m.wireSubprocessHostCallbacks()
+		m.attachTerminalViewClient(bridge)
 	}
 	if host := m.opts.SubprocessHost; host != nil {
 		if resolved, ok := host.(interface{ SetToolRenderersResolvedFunc(func(string)) }); ok {
@@ -257,7 +258,10 @@ func (m *InteractiveMode) attachSubprocess() {
 		uiCtx.interactiveMode = m
 		host.SetWidthFunc(func() int { return m.tuiInst.Width() })
 		host.SetHeightFunc(func() int { return m.tuiInst.Height() })
-		m.tuiInst.SetOnWidthChange(func(width int) { host.NotifyWidth(width) })
+		m.tuiInst.SetOnWidthChange(func(width int) {
+			host.NotifyWidth(width)
+			m.viewClientResized()
+		})
 		if w := m.tuiInst.Width(); w > 0 {
 			host.NotifyWidth(w)
 		}
@@ -283,6 +287,7 @@ func (m *InteractiveMode) detachSubprocess() {
 		m.detachModelRegistry()
 		m.detachModelRegistry = nil
 	}
+	m.detachTerminalViewClient()
 	if bridge := m.opts.SubprocessUIBridge; bridge != nil {
 		bridge.SetUIContext(extension.NoopUIContext)
 		bridge.SetWidgetSyncFunc(func(map[string]*subprocess.PushProxy) {})
