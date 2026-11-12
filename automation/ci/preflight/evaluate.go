@@ -74,9 +74,12 @@ func evaluate(cfg config, d *data, env *ruleEnv) evaluation {
 			v.Input = scanInputHash(c, selectedFiles(d, c.Scan))
 		}
 		stored, had := prev[c.Name]
+		source, failed := failedSource(d, c)
 		switch {
 		case d.Limit != "":
 			v.Result, v.Reason = resultFail, "the PR is too large for the pre-flight: "+d.Limit
+		case failed:
+			v.Result, v.Reason = resultError, clip(fmt.Sprintf("source %s failed after retries: %s", source, d.SourceErrors[source]), maxReason)
 		case !slices.Contains(d.Relevant, c.Name):
 			v.Result, v.Reason = resultPass, "no file it covers changed"
 		case had && stored.Input == v.Input && (stored.Result == resultPass || stored.Result == resultFail):
@@ -107,12 +110,23 @@ func evaluate(cfg config, d *data, env *ruleEnv) evaluation {
 	return ev
 }
 
-func decide(d *data, c check, env *ruleEnv) outcome {
-	for _, s := range c.Reads {
-		if msg, bad := d.SourceErrors[s]; bad {
-			return outcome{result: resultError, reason: fmt.Sprintf("source %s failed after retries: %s", s, msg)}
+// failedSource names a source the check cannot be decided without and that could not be read. A failed source is not an
+// empty one: the check is neither run on it nor answered from a stored verdict. Besides the sources a check reads, the
+// file list decides whether a path-gated check applies and what a scan gets.
+func failedSource(d *data, c check) (string, bool) {
+	needs := c.Reads
+	if !c.When.Always || c.Stage == stageScan {
+		needs = append([]string{"files"}, needs...)
+	}
+	for _, s := range needs {
+		if _, bad := d.SourceErrors[s]; bad {
+			return s, true
 		}
 	}
+	return "", false
+}
+
+func decide(d *data, c check, env *ruleEnv) outcome {
 	return builtinRules[c.Rule].run(d, params(c.With), env)
 }
 

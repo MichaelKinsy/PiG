@@ -262,11 +262,24 @@ func (f *fetcher) source(name string, fetch func() error) {
 
 func (f *fetcher) waveOne(ctx context.Context) {
 	d, head := f.d, f.d.Pull.Head.SHA
+	// A list shorter than the PR's own count is a part of the list: a page was lost, or the PR grew since it was read.
 	f.source("files", func() error {
-		return f.a.get(ctx, fmt.Sprintf("%s/pulls/%d/files?per_page=%d", f.prefix, f.o.pr, perPage), &d.Files, true)
+		if err := f.a.get(ctx, fmt.Sprintf("%s/pulls/%d/files?per_page=%d", f.prefix, f.o.pr, perPage), &d.Files, true); err != nil {
+			return err
+		}
+		if len(d.Files) < d.Pull.ChangedFiles {
+			return fmt.Errorf("the API listed %d of the PR's %d changed files", len(d.Files), d.Pull.ChangedFiles)
+		}
+		return nil
 	})
 	f.source("commits", func() error {
-		return f.a.get(ctx, fmt.Sprintf("%s/pulls/%d/commits?per_page=%d", f.prefix, f.o.pr, perPage), &d.Commits, true)
+		if err := f.a.get(ctx, fmt.Sprintf("%s/pulls/%d/commits?per_page=%d", f.prefix, f.o.pr, perPage), &d.Commits, true); err != nil {
+			return err
+		}
+		if len(d.Commits) < d.Pull.Commits {
+			return fmt.Errorf("the API listed %d of the PR's %d commits", len(d.Commits), d.Pull.Commits)
+		}
+		return nil
 	})
 	f.source("compare-main", func() error {
 		return f.a.get(ctx, fmt.Sprintf("%s/compare/%s...%s", f.prefix, refPath(d.Pull.Base.Ref), head), &d.CompareMain, false)
