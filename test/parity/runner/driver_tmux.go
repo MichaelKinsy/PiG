@@ -224,6 +224,7 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 	var operationErr error
 	var frames FrameWatchResult
 	var finalFrame FinalFrameResult
+	var finalFrameSpecs []TmuxFinalFrame
 	if ready != "" {
 		timeout := time.Duration(cfg.ReadyTimeoutSeconds) * time.Second
 		readyOK = waitForPaneOrCapture(ctx, session, ready, cfg.CaptureStart, timeout)
@@ -266,7 +267,9 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 				break
 			}
 			if step.FinalFrame != nil {
-				finalFrame = finalFrame.merge(observeFinalFrame(transcriptPath, *step.FinalFrame))
+				// The quiet window runs now; the transcript is read once the run is over and the pane's pipe is closed (see finishTranscript).
+				time.Sleep(finalFrameQuiet(*step.FinalFrame))
+				finalFrameSpecs = append(finalFrameSpecs, *step.FinalFrame)
 			}
 		}
 	} else if operationErr == nil {
@@ -312,6 +315,16 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 	if err != nil {
 		return Result{RuntimeMs: elapsed, ReadyOK: readyOK, Err: err}
 	}
+	// A comparator reads the byte stream only from a transcript its reader has finished: the pipe is closed, and the reader's trailer counts the bytes the file must hold. A reader that did not finish is an error, never a short transcript read as "no frame".
+	if len(finalFrameSpecs) > 0 && operationErr == nil {
+		if err := finishTranscript(ctx, session, transcriptPath, sc.Name, bin.Label, transcriptDoneTimeout); err != nil {
+			operationErr = err
+		} else {
+			for _, spec := range finalFrameSpecs {
+				finalFrame = finalFrame.merge(observeFinalFrame(transcriptPath, spec))
+			}
+		}
+	}
 	if exited && exitCode != 0 && operationErr == nil {
 		expected := sc.Assert.ExitCode
 		if bin.Label == "pig" && sc.Assert.PigExitCode != nil {
@@ -353,15 +366,14 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 	return result
 }
 
-// transcriptReaderCommand is the shell command tmux pipe-pane starts to append everything the pane's program writes to path.
-func transcriptReaderCommand(path string) string {
-	return "cat >> " + shellQuote(path)
-}
-
 // attachTranscript records the raw bytes the session's pane receives in the file at path, for the waits and comparators that read the byte stream rather than the screen.
 func attachTranscript(ctx context.Context, session, path string) error {
-	//nolint:gosec // G204 (class a): program is literal tmux; the pipe command is built by transcriptReaderCommand from a path under the run's temp root.
-	if err := exec.CommandContext(ctx, "tmux", tmuxArgs("pipe-pane", "-o", "-t", session, transcriptReaderCommand(path))...).Run(); err != nil {
+	command, err := transcriptReaderCommand(path)
+	if err != nil {
+		return err
+	}
+	//nolint:gosec // G204 (class a): program is literal tmux; the pipe command is built by transcriptReaderCommand from the test binary's path and a path under the run's temp root.
+	if err := exec.CommandContext(ctx, "tmux", tmuxArgs("pipe-pane", "-o", "-t", session, command)...).Run(); err != nil {
 		return fmt.Errorf("tmux pipe-pane: %w", err)
 	}
 	return nil
