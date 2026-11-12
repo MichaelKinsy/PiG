@@ -560,6 +560,7 @@ func createHost(options HostOptions) (*chordHost, error) {
 	h.eventFlow = newHostEvents(events, h.metrics, func(err error) {
 		h.report(BatchHostError(state.BatchError{Kind: state.BatchListenerError, Error: err}))
 	})
+	h.eventFlow.window = h.eventWindow
 	h.heartbeat.ping, h.heartbeat.close = defaultPing, defaultHeartbeat
 	if options.Heartbeat != nil {
 		h.heartbeat.ping = durationOr(options.Heartbeat.Ping, defaultPing)
