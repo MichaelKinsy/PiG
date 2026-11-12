@@ -307,15 +307,19 @@ func TestNodeTreeIsExtractedOncePerContent(t *testing.T) {
 // pin's (`.upstream/pin`), unless the manifest names it as an explicit `catchup`, which the script writes when it vendors a
 // commit other than the pin's; the manifest also records the pin it was made against, so a pin that moved since fails here
 // until the copy is regenerated (`make pin-bump` does it).
+// A manifest that lists `carried` Pi commits was vendored from the pin's tree with exactly those commits cherry-picked onto
+// it (PI_CARRIED of automation/gen/vendor-chord-common.sh, as the client surfaces' copy records them): each is a full Pi commit
+// id, and `make vendor-chord-carried-check` rebuilds that tree and compares what it vendors with this manifest.
 func TestNodeVendoredFilesAreExactlyTheManifests(t *testing.T) {
 	text, err := nodeFiles.ReadFile("node/manifest.json")
 	if err != nil {
 		t.Fatal(err)
 	}
 	var manifest struct {
-		Commit  string `json:"commit"`
-		Pin     string `json:"pin"`
-		Catchup string `json:"catchup"`
+		Commit  string   `json:"commit"`
+		Pin     string   `json:"pin"`
+		Catchup string   `json:"catchup"`
+		Carried []string `json:"carried"`
 		Files   []struct {
 			Path   string `json:"path"`
 			Sha256 string `json:"sha256"`
@@ -345,6 +349,11 @@ func TestNodeVendoredFilesAreExactlyTheManifests(t *testing.T) {
 	}
 	if manifest.Commit != pin && manifest.Catchup != manifest.Commit {
 		t.Errorf("the copy is Pi %s, the pin %s, and the manifest names no catch-up for it (catchup = %q)", manifest.Commit, pin, manifest.Catchup)
+	}
+	for _, carried := range manifest.Carried {
+		if _, err := hex.DecodeString(carried); err != nil || len(carried) != 40 {
+			t.Errorf("carried commit %q is not a full Pi commit id", carried)
+		}
 	}
 	if manifest.Commit == pin && manifest.Catchup != "" {
 		t.Errorf("the copy is the pin's, yet the manifest names the catch-up %s", manifest.Catchup)

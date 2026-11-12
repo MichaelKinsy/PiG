@@ -1,0 +1,38 @@
+# Sourced by vendor-chord-plugins-node.sh and vendor-chord-surfaces-client.sh: the inputs of a vendored copy of Pi's chord
+# sources, read and checked one way for both trees. The caller sets `name` (its own, for messages) and `default_out`.
+#   PI_TREE        the Pi tree (default: the mirror of the pin, .upstream/current; make upstream-mirror)
+#   PI_COMMIT      the commit of PI_TREE for the manifest (default: the pin's). A commit other than the pin's is a catch-up: the
+#                  manifest then names it as `catchup`, the one commit the manifest may differ from the pin by (the Go tests
+#                  TestNodeVendoredFilesAreExactlyTheManifests and TestClientVendoredFilesAreExactlyTheManifests read it), and
+#                  records the pin it was made against.
+#   PI_CARRIED     Pi commits (comma-separated full ids, in Pi's order) cherry-picked onto PI_COMMIT to make PI_TREE: a tree that is
+#                  the pin plus those commits alone, for a vendored file a carried commit changes while a later Pi commit this port
+#                  does not carry changed the rest of the closure. The manifest records them as `carried`; make PI_TREE with
+#                  `git worktree add --detach <dir> <pin> && git -C <dir> cherry-pick <carried...>`. Drop it when a re-vendor at a
+#                  later commit takes over (then PI_COMMIT is that commit, a `catchup`). `make vendor-chord-carried-check` proves
+#                  that each vendored tree is its manifest's commit plus its carried commits.
+#   PI_TELEMETRY   the @earendil-works/pi-telemetry package dir (default: the one extensions/sdk-ts installed)
+#   VENDOR_CHORD_OUT  where the copy and its manifest go (default: the tree's place in this repository); the carried check
+#                  regenerates into a scratch directory with it.
+# @earendil-works/pi-schema is a package of the Pi tree (packages/schema), copied from PI_TREE; its version and
+# pi-telemetry's must be the versions Pi's chord pins.
+# Sets root, tree, pin, commit, carried, telemetry and out.
+
+root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
+tree=${PI_TREE:-"$root/.upstream/current"}
+pin=$(sed -n 's/^commit=//p' "$root/.upstream/pin")
+commit=${PI_COMMIT:-$pin}
+carried=${PI_CARRIED:-}
+telemetry=${PI_TELEMETRY:-"$root/extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-telemetry"}
+out=${VENDOR_CHORD_OUT:-"$root/$default_out"}
+
+[ -d "$tree/packages/chord/src" ] || { echo "$name: $tree has no packages/chord/src (make upstream-mirror, or set PI_TREE)" >&2; exit 1; }
+[ -f "$telemetry/package.json" ] || { echo "$name: no pi-telemetry at $telemetry (install extensions/sdk-ts, or set PI_TELEMETRY)" >&2; exit 1; }
+chordDeps=$(node -p "Object.keys(require('$tree/packages/chord/package.json').dependencies).sort().join(' ')")
+[ "$chordDeps" = "@earendil-works/pi-schema @earendil-works/pi-telemetry" ] || { echo "$name: Pi's chord depends on [$chordDeps], this script carries @earendil-works/pi-schema and @earendil-works/pi-telemetry" >&2; exit 1; }
+wantSchema=$(node -p "require('$tree/packages/chord/package.json').dependencies['@earendil-works/pi-schema']")
+haveSchema=$(node -p "require('$tree/packages/schema/package.json').version")
+[ "$wantSchema" = "$haveSchema" ] || { echo "$name: Pi's chord pins @earendil-works/pi-schema $wantSchema, $tree/packages/schema is $haveSchema" >&2; exit 1; }
+wantTelemetry=$(node -p "require('$tree/packages/chord/package.json').dependencies['@earendil-works/pi-telemetry']")
+haveTelemetry=$(node -p "require('$telemetry/package.json').version")
+[ "$wantTelemetry" = "$haveTelemetry" ] || { echo "$name: Pi's chord pins @earendil-works/pi-telemetry $wantTelemetry, $telemetry is $haveTelemetry" >&2; exit 1; }
