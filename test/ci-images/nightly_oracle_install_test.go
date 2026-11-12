@@ -23,7 +23,7 @@ func TestNightlyPreparesTheOracleLikeCI(t *testing.T) {
 		t.Fatalf("ci.yml's linux job does not run %q, the step the nightly jobs share", shared)
 	}
 	nightly := readWorkflow(t, "nightly.yml")
-	for _, name := range []string{"race", "allocations"} {
+	for _, name := range []string{"race", "allocations", "strip-matrix"} {
 		job, ok := nightly.Jobs[name]
 		if !ok {
 			t.Fatalf("nightly.yml has no %s job", name)

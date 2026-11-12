@@ -13,7 +13,15 @@
 // -sets api (the default) takes the single tags that strip a model API; -sets all takes every single tag. -tests api (the
 // default) runs the test step for the sets that strip a model API, all tags among them; -tests all runs it for every set.
 //
-// Usage: go run ./automation/ci/stripmatrix [-sets api|all] [-tests api|all] [-set tags]... [-step vet|test|smoke]...
+// -guard is make piglet-strip-guard, the part of the matrix that costs seconds: for each set, go vet of guardPackages only, with the
+// live tag added, and no other step. It catches a file of package ai or of a provider package that names something a strip tag
+// compiles out, which is how a change most often breaks a stripped build; a file of another package that does so, a failing test and
+// a stripped binary that misbehaves are caught only by the matrix.
+//
+// Where it runs: the default matrix took 2610 s at 8 CPUs, so it is a step of make release-check and a job of the nightly workflow
+// (.github/workflows/nightly.yml), and make ci-contracts, which every pull request runs, has the guard.
+//
+// Usage: go run ./automation/ci/stripmatrix [-guard] [-sets api|all] [-tests api|all] [-set tags]... [-step vet|test|smoke]...
 package main
 
 import (
@@ -45,6 +53,9 @@ const aiPackage = "./ai/"
 
 // wholePackages have no test known to fail under a strip tag: the optional provider packages and the consumer of ai.BuiltinModels.
 var wholePackages = []string{"./ai/providers/...", "./ai/all/...", "./durable/harness/..."}
+
+// guardPackages are what -guard vets in place of every package: package ai, the provider packages and the rest of its tree.
+const guardPackages = "./ai/..."
 
 // redDir holds one file per tag set, named after the tag (all.txt for all tags): the top-level tests of aiPackage that fail under
 // the set, one per line, the name followed by the reason. The list can only shrink: a listed test that passes fails the gate, and
@@ -423,6 +434,7 @@ func (f *setFlags) Set(v string) error { *f = append(*f, v); return nil }
 func main() {
 	single := flag.String("sets", "api", "the single tags checked before all tags: api (a tag that strips a model API) or all")
 	tests := flag.String("tests", "api", "the sets whose provider table tests run: api (a set that strips a model API) or all")
+	guard := flag.Bool("guard", false, "vet only "+guardPackages+" under each set, and run no other step (make piglet-strip-guard)")
 	var only, onlySteps setFlags
 	flag.Var(&only, "set", "check only this tag set (comma-separated tags, as printed); repeatable")
 	flag.Var(&onlySteps, "step", "run only this step (vet, test or smoke); repeatable")
@@ -468,6 +480,9 @@ func main() {
 		steps = append(steps, step{"smoke", func() error {
 			return smoke(set, filepath.Join(scratch, fmt.Sprint(i)), providers, strippable, stripped, apiProviders)
 		}})
+		if *guard {
+			steps = []step{{"vet " + guardPackages, func() error { return run(nil, "go", "vet", "-tags", set.String()+",live", guardPackages) }}}
+		}
 		for _, step := range steps {
 			if len(onlySteps) > 0 && !slices.Contains(onlySteps, step.name) {
 				continue
