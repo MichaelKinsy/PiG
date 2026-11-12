@@ -3,12 +3,14 @@ package coding
 import (
 	"context"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -57,6 +59,31 @@ func newSummaryAuthWorld(t *testing.T) *summaryAuthWorld {
 	http.DefaultTransport = world
 	t.Cleanup(func() { http.DefaultTransport = previous })
 	return world
+}
+
+// systemRootsFromEnvironment reports whether the platform's TLS client reads its trusted roots from SSL_CERT_FILE, which TestMain points at the certificate of
+// net/http/httptest's TLS servers. macOS and Windows verify against the operating system's store instead.
+var systemRootsFromEnvironment = runtime.GOOS != "darwin" && runtime.GOOS != "windows"
+
+// trustHTTPTestCertificate writes the certificate that net/http/httptest's TLS servers present to a file under dir and points SSL_CERT_FILE at it, before any
+// client of the process has loaded the system roots. A shape whose base URL is https-only reaches such a server without a transport seam in production code.
+func trustHTTPTestCertificate(dir string) error {
+	server := httptest.NewUnstartedServer(http.NotFoundHandler())
+	server.StartTLS()
+	defer server.Close()
+	pemBytes := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: server.Certificate().Raw})
+	file := filepath.Join(dir, "httptest-ca.pem")
+	if err := os.WriteFile(file, pemBytes, 0o600); err != nil {
+		return err
+	}
+	return os.Setenv("SSL_CERT_FILE", file)
+}
+
+// serveTLS moves the endpoint a derived token names to a TLS server, for a provider whose derived base URL is https-only. It must run before the token is minted.
+func (w *summaryAuthWorld) serveTLS() {
+	server := httptest.NewTLSServer(http.HandlerFunc(w.serveChat))
+	w.t.Cleanup(server.Close)
+	w.host = server.Listener.Addr().String()
 }
 
 func (w *summaryAuthWorld) now() time.Time { return time.Now().Add(w.offset) }
@@ -190,7 +217,8 @@ type summaryAuthShape struct {
 	credentialProvider string
 	// expires reports whether the shape's request credential can expire.
 	expires bool
-	// offline marks a shape whose chat endpoint a test cannot reach (the derived base URL of GitHub Copilot is https-only and its provider has no insecure option), so it is checked at the pure layer only.
+	// offline marks a shape whose chat endpoint a test cannot reach, so it is checked at the pure layer only: the derived base URL of GitHub Copilot is https-only and its provider has no insecure option, so
+	// the test endpoint is a TLS server that the client trusts through SSL_CERT_FILE (TestMain), which only the platforms that load their roots from the environment honor.
 	offline bool
 	// setup writes the agent directory and returns the model the CLI would resolve for it.
 	setup func(t *testing.T, w *summaryAuthWorld, agentDir string) func(services *AgentSessionServices) *ai.Model
@@ -209,8 +237,9 @@ func summaryAuthShapes() []summaryAuthShape {
 	return []summaryAuthShape{
 		{
 			// OAuth whose request token is derived and short-lived: the production github-copilot provider, resolved the way the CLI resolves --model.
-			name: "derived-token-oauth-github-copilot", credentialProvider: "github-copilot", expires: true, offline: true,
+			name: "derived-token-oauth-github-copilot", credentialProvider: "github-copilot", expires: true, offline: !systemRootsFromEnvironment,
 			setup: func(t *testing.T, w *summaryAuthWorld, agentDir string) func(*AgentSessionServices) *ai.Model {
+				w.serveTLS()
 				token, expires := w.mint("tid=%d;proxy-ep="+w.host+";", 30*time.Minute)
 				writeAgentFile(t, agentDir, "auth.json", fmt.Sprintf(`{"github-copilot":{"type":"oauth","access":%q,"refresh":"ghu_refresh","expires":%d}}`, token, expires.UnixMilli()-5*60*1000))
 				return func(services *AgentSessionServices) *ai.Model {
@@ -448,6 +477,15 @@ func TestSummaryAttemptsEachSendAFreshCredentialAfterExpiry(t *testing.T) {
 				if shape.expires && bearers[0] != turnBearer {
 					t.Fatalf("the first summary request sent %q, the turn sent %q: the credential had not expired yet", bearers[0], turnBearer)
 				}
+				if shape.expires {
+					refreshed, found, err := services.Auth().Get(shape.credentialProvider)
+					if err != nil || !found {
+						t.Fatalf("stored credential = %+v, %v, %v", refreshed, found, err)
+					}
+					if strings.Contains(bearers[0], refreshed.Access) || !strings.Contains(bearers[1], refreshed.Access) {
+						t.Fatalf("the attempts sent %q, want the old token and then the refreshed %q", bearers, refreshed.Access)
+					}
+				}
 			})
 		}
 	}
@@ -480,6 +518,35 @@ func TestCompactionResolvesCredentialWhenItStartsFreshAndExpired(t *testing.T) {
 				}
 				if got := world.refreshes() - refreshesBefore; got != wantRefreshes {
 					t.Fatalf("the summary refreshed the credential %d times, want %d", got, wantRefreshes)
+				}
+			})
+		}
+	}
+}
+
+// An API key has nothing to refresh: the provider's refusal of it surfaces as the summary's error after one request, with no retry loop and no token endpoint call.
+func TestSummaryWithARefusedAPIKeySurfacesTheProviderErrorOnce(t *testing.T) {
+	for _, shape := range summaryAuthShapes() {
+		if shape.expires || shape.offline {
+			continue
+		}
+		for _, operation := range summaryOperations() {
+			t.Run(shape.name+"/"+operation.name, func(t *testing.T) {
+				world, _, session := summaryAuthSession(t, shape, true)
+				world.mu.Lock()
+				world.expiry["sk-static"] = world.now().Add(-time.Hour)
+				world.mu.Unlock()
+				world.arm(0, nil)
+				refreshesBefore := world.refreshes()
+				err := operation.run(t, session)
+				if err == nil || !strings.Contains(err.Error(), "401") && !strings.Contains(err.Error(), "Unauthorized") {
+					t.Fatalf("%s = %v, want the provider's 401 refusal", operation.name, err)
+				}
+				if bearers := world.bearers(); len(bearers) != 1 {
+					t.Fatalf("the refused key was sent %d times: %q", len(bearers), bearers)
+				}
+				if got := world.refreshes() - refreshesBefore; got != 0 {
+					t.Fatalf("the summary called a token endpoint %d times for an API key", got)
 				}
 			})
 		}
