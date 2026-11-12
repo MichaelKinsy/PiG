@@ -1,0 +1,3 @@
+### Changed
+
+- Tooling: a tree returns to the tag pin after a run at a commit pin. `make test-carried-oracles` (`PI_UPSTREAM_REF`) leaves `.upstream/current` and `durable/interop/node_modules` at its commit. At the tag pin `make durable-interop-deps` now removes that link before the locked install (`pin.py unlink-interop`) instead of failing with "refusing to install through shared path", so `make upstream-mirror` restores the pin. A failed `make interface-gaps` over a mirror that is not the pinned build says so and names `make upstream-mirror`, instead of reporting the other Pi's reopened rows as gaps of the tree with no reason.
