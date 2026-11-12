@@ -193449,9 +193449,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(v any, at string) error"
+        "type": "func(raw []byte, at string) error"
       },
-      "shapeHash": "sha256:a6cd495fe91999a711a41296357e61b53b34333cb2e56f52c0e23b8503361549"
+      "shapeHash": "sha256:2e53d704442690d515b4d58292ffd90245520d14e49d6e673e9cc27aa79db427"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/uiview#Sink",
@@ -194046,6 +194046,17 @@
         "type": "func(in []Claim) []Claim"
       },
       "shapeHash": "sha256:7f137b6ed82e33106824c79eaee5f0e0d5f702edceac6b5b916a4f2435fb95e1"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/uiview#closed",
+      "package": "github.com/MichaelKinsy/PiG/coding/uiview",
+      "name": "closed",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(dec *encoding/json.Decoder, err error) *Error"
+      },
+      "shapeHash": "sha256:ffc31c197d449687ee5c5f5a29cc917760a211021caa4807aac82bb9fbe34d50"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/uiview#decodeClaimString",
@@ -194730,15 +194741,15 @@
       "shapeHash": "sha256:3c001783d6aa69232bee1906be4935f380bbabe300ce1bb0ee4e08c52a35878e"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/uiview#strict",
+      "id": "go:github.com/MichaelKinsy/PiG/coding/uiview#strictDecoder",
       "package": "github.com/MichaelKinsy/PiG/coding/uiview",
-      "name": "strict",
+      "name": "strictDecoder",
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(raw []byte, into any) *Error"
+        "type": "func(raw []byte) *encoding/json.Decoder"
       },
-      "shapeHash": "sha256:d1ee46ca2bc9cb1ba3b252cd9486abd1e4f763980e51c60da3ad9afcc4dd314a"
+      "shapeHash": "sha256:5818bef7ce7b0df40fc5e96b70bfee34dc5ca5a332a567fb685f1a43c55a2554"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/uiview#union",
