@@ -2,13 +2,13 @@ package codingagent
 
 import (
 	"encoding/json"
-	"runtime"
 	"strings"
 	"testing"
 	"testing/synctest"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
@@ -128,10 +128,10 @@ func TestTerminalViewClientNeverMountedCostsNothing(t *testing.T) {
 					bridge := subprocess.NewUIBridge(m.requestRender)
 					bridge.SetUIContext(&ExtUIContext{m: m})
 					synctest.Wait()
-					before := runtime.NumGoroutine()
+					before := testenv.LiveGoroutines()
 					m.attachTerminalViewClient(bridge)
 					synctest.Wait()
-					goroutines = runtime.NumGoroutine() - before
+					goroutines = testenv.LiveGoroutines() - before
 					p := &viewModeProbe{t: t, m: m, term: term, bridge: bridge}
 					written = p.frame() + p.typeText("hello") + p.typeText(" world")
 					m.viewClientResized()
