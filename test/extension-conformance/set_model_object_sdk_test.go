@@ -82,7 +82,8 @@ func TestSetModelTakesTheObjectAcrossSDKs(t *testing.T) {
 					if i < 0 {
 						return false
 					}
-					answer = strings.TrimSuffix(recorded[i][strings.Index(recorded[i], "setModelObject="):], ":info")
+					_, after, _ := strings.Cut(recorded[i], "setModelObject=")
+					answer = "setModelObject=" + strings.TrimSuffix(after, ":info")
 					return true
 				})
 				return answer
