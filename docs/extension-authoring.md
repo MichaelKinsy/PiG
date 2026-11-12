@@ -618,11 +618,19 @@ there are any.
    shapes than it states fail with `limit`. `regions` turn a gesture inside a shape into one of your declared intents.
 7. Describe nodes to assistive technology with `a11y` and make them focusable with `focus`. Both name view nodes by their `id`,
    so give those nodes an id.
-8. Leave a result when you finish: `FinishViewWith(ref, result)`, `finish_view(mount, result=...)`, `finish_view_with`,
+8. Bind keys and gestures with `bindings` (at most 32): each entry has a `key` (a key id such as `d`, `shift+left` or
+   `ctrl+shift+p`) or a `gesture` (`swipe-left`, `swipe-right`, `swipe-up`, `swipe-down`), the `intent` it raises, and optionally
+   a constant `arg` and a `name` the client shows. The intent is one you declared without a `nodeKey`; several bindings may raise
+   it with different arguments (`d`, `w` and `m` for three views). A binding works only while the mount holds the focus, after
+   the focused node has had the key, so an input inside the view keeps its letters; a global key is `registerShortcut`. The host
+   answers `invalid` for a key bound twice and for a reserved key (`escape`, `tab`, `f6`, and `ctrl` with `c`, `d` or `z`). A
+   client that cannot honour a binding leaves an `unsupported` notice with the path `bindings[i]`; a client may also state the
+   claim `input.bindings`, which an alternative can test.
+9. Leave a result when you finish: `FinishViewWith(ref, result)`, `finish_view(mount, result=...)`, `finish_view_with`,
    `(ctx-finish-view ctx mount :result value)`, `ctx.ui.finishView(mount, result)`. The reply and the state carry it back.
-9. Read what went wrong with `ViewDiagnostics(key)`, `view_diagnostics`, `view_diagnostics`, `ctx-view-diagnostics` or
-   `ctx.ui.viewDiagnostics`: the notices of a mount say which update the host rejected, which intent it ended and what a client
-   could not draw. The host keeps 32 notices for a mount and counts repeats.
+10. Read what went wrong with `ViewDiagnostics(key)`, `view_diagnostics`, `view_diagnostics`, `ctx-view-diagnostics` or
+    `ctx.ui.viewDiagnostics`: the notices of a mount say which update the host rejected, which intent it ended and what a client
+    could not draw. The host keeps 32 notices for a mount and counts repeats.
 
 Every bound is the host's: one past it fails with code `invalid` in every SDK. `docs/additive-features.md` D614 lists the bounds.
 
