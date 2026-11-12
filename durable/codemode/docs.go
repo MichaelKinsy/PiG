@@ -30,7 +30,7 @@ type declaredTool struct {
 // startNamespace is a namespace of the tools, as `describeNamespace()` and `searchTools()` see it.
 type startNamespace struct {
 	Name         string   `json:"name"`
-	Description  string   `json:"description,omitempty"`
+	Description  string   `json:"description"`
 	Instructions string   `json:"instructions,omitempty"`
 	Tools        []string `json:"tools"`
 }

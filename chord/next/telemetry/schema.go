@@ -320,5 +320,15 @@ var Schema = pitelemetry.DefineTelemetrySchema(&pitelemetry.TelemetrySchemaDefin
 		"chord.links.open":        upDown("Open links of this host."),
 		"chord.park.duration":     histogram("How long an activation attempt stayed parked on its dependencies."),
 		"chord.backpressure.wait": histogram("How long a link origin's state waited for a slot of its window."),
+		"chord.events.emitted":    counter("Event values this host's sources emitted."),
+		"chord.events.sent":       counter("Event entries this host sent of its own in `event` messages (one per hold)."),
+		"chord.events.dropped": {
+			Kind:        pitelemetry.TelemetryMetricKindCounter,
+			Description: "Event entries dropped: an origin's event window full at a flush (`window`, at the emitting host), a value past a part limit where parsed (`too_large`), an older version's mapping that threw (`mapping`, one per emit and version).",
+			Attributes: map[string]pitelemetry.TelemetryMetricAttributeDefinition{
+				"reason": str("Why it was dropped.", true, false, "window", "too_large", "mapping"),
+			},
+		},
+		"chord.events.encodes": counter("Event values encoded for links: once per representation (the current version, each mapped one)."),
 	},
 })

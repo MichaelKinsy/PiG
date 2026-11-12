@@ -81,15 +81,15 @@ type queued struct {
 type WebSocket struct {
 	conn *websocket.Conn
 
-	mu        sync.Mutex
-	state     int
-	listeners []*socketListener
-	queue     []queued
-	writing   bool
-	buffered  int64
-	started   bool
-	closeOnce sync.Once
-	timer     *time.Timer
+	mu           sync.Mutex
+	state        int
+	listeners    []*socketListener
+	queue        []queued
+	writing      bool
+	buffered     int64
+	started      bool
+	closeClaimed atomic.Bool
+	timer        *time.Timer
 
 	// deliverMu serializes the delivery of messages; holding keeps them in held (until release) while a handler runs.
 	deliverMu sync.Mutex
@@ -262,7 +262,11 @@ func (s *WebSocket) Terminate() {
 	s.state = WebSocketClosedState
 	s.mu.Unlock()
 	_ = s.conn.UnderlyingConn().Close()
-	s.closed(CloseEvent{Code: 1006})
+	// `ws`'s terminate() only destroys the connection: its `close` event is emitted on a later turn, never inside terminate()
+	// (the caller may hold the host's loop, which a close listener takes: the reader's close ends the link and runs
+	// hostLink.Closed on that loop), and a second terminate() never waits for it.
+	//portlint:allow golifetime ends when the close was emitted, or found claimed by the socket's reader
+	go s.closed(CloseEvent{Code: 1006})
 }
 
 // Ping sends a ping frame.
@@ -366,24 +370,26 @@ func (s *WebSocket) finish(event CloseEvent) {
 	s.closed(event)
 }
 
-// closed emits `close` once and drops what is pending.
+// closed emits `close` once and drops what is pending. The first closer does the work; a later one returns at once, never
+// waiting for the first's listeners (`ws` has no such wait, and a listener may need what the later caller holds).
 func (s *WebSocket) closed(event CloseEvent) {
-	s.closeOnce.Do(func() {
-		s.mu.Lock()
-		if s.timer != nil {
-			s.timer.Stop()
+	if !s.closeClaimed.CompareAndSwap(false, true) {
+		return
+	}
+	s.mu.Lock()
+	if s.timer != nil {
+		s.timer.Stop()
+	}
+	pending := s.queue
+	s.queue = nil
+	s.buffered = 0
+	s.mu.Unlock()
+	for _, job := range pending {
+		if job.done != nil {
+			job.done(errors.New("WebSocket is not open"))
 		}
-		pending := s.queue
-		s.queue = nil
-		s.buffered = 0
-		s.mu.Unlock()
-		for _, job := range pending {
-			if job.done != nil {
-				job.done(errors.New("WebSocket is not open"))
-			}
-		}
-		s.emit(link.WebSocketClose, event)
-	})
+	}
+	s.emit(link.WebSocketClose, event)
 }
 
 // push queues job when the socket is open, in one critical section with the state change a close frame makes: a send never

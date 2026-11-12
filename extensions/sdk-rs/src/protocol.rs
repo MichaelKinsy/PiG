@@ -725,7 +725,7 @@ pub struct CallMsg {
     pub args: Option<Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parent_request_id: Option<String>,
-    /// Set on a call made through a command context (a command handler's or a withSession callback's), kept with the context after its request ended: Pi gives `newSession`, `fork`, `navigateTree`, `switchSession` and `reload` to no other context, and the host refuses them without it.
+    /// Set on a call made through a command context (a command handler's or a withSession callback's), kept with the context after its request ended: Pi gives `newSession`, `fork`, `navigateTree`, `switchSession` and `reload` to no other context, and the host refuses them from any call that does not carry this mark.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub command_context: bool,
     /// Set on a call made through a request's scope after its handler returned: deferred work, which the host runs once Pi's loop turns.

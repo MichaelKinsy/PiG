@@ -128,7 +128,7 @@ func TestTurnLimit(t *testing.T) {
 		// upstream: packages/durable/test/harness-turn-limit.test.ts:104
 		yields := 0
 		setup, harness, root := turnLimited(t, 2, func(chat *chatState) {
-			addHooks(t, chat.Registry, GenerationTask.Erased(), &GenerationHooks{OnYield: func(context.Context, ai.AssistantMessage, HookApi) (*YieldContinue, error) {
+			addHooks(t, chat.Registry, GenerationTask.Erased(), &GenerationHooks{OnYield: func(context.Context, ai.AssistantMessage, HookApi) (YieldResult, error) {
 				yields++
 				if yields == 1 {
 					return &YieldContinue{Continue: ai.UserText("keep going")}, nil

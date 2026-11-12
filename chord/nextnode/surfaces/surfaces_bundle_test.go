@@ -5,6 +5,7 @@ package surfaces
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -15,8 +16,8 @@ import (
 
 // Tests of base bundles' resolution (p3 step 0a): packages resolve with the given conditions (a source checkout's source,
 // not its `dist/`), by default the server process's (`--conditions`/`-C` of its flags and of a quoted `NODE_OPTIONS`), a
-// browser build keeping its `module` condition and `browser` field, and every file read recorded with its bytes' hash. Ports
-// packages/chord/test/node/surfaces/bundle.test.ts.
+// browser build keeping its `module` condition and `browser` field, every file read recorded with its bytes' hash, and the fonts and
+// images its stylesheet names collected as assets. Ports packages/chord/test/node/surfaces/bundle.test.ts.
 
 // project is a directory with files and the workspace packages under `workspace/` linked into its `node_modules`: its real path.
 func project(t *testing.T, files map[string]string, linked ...string) string {
@@ -169,5 +170,43 @@ func TestConditionsKeepsABrowserBuildsModuleConditionAndBrowserFieldWithCustomCo
 	script := scriptOf(bundle)
 	if !strings.Contains(script, `"module"`) || !strings.Contains(script, `"browser"`) || strings.Contains(script, `"node"`) {
 		t.Fatalf("script = %s", script)
+	}
+}
+
+func TestAssetsCollectsTheFontsAndImagesTheBasesStylesheetNamesAsFilesUnderAssetsNamedByTheirContent(t *testing.T) {
+	dir := project(t, map[string]string{
+		"main.ts":    "import \"./style.css\";\nglobalThis.started = true;\n",
+		"style.css":  "@font-face { font-family: Body; src: url(\"./body.woff2\"); }\n.logo { background: url(\"./logo.png\"); }\n",
+		"body.woff2": "font bytes",
+		"logo.png":   "png bytes",
+	})
+	base, err := BuildBase(filepath.Join(dir, "main.ts"), PlatformBrowser, "/_chord/web/", []string{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var assets []string
+	for path := range base.Files {
+		if strings.HasPrefix(path, "/_chord/web/assets/") {
+			assets = append(assets, path)
+		}
+	}
+	slices.Sort(assets)
+	wants := []string{`^/_chord/web/assets/body-[A-Z0-9]+\.woff2$`, `^/_chord/web/assets/logo-[A-Z0-9]+\.png$`}
+	if len(assets) != len(wants) {
+		t.Fatalf("assets = %v, want one for each of the font and the image", assets)
+	}
+	for i, want := range wants {
+		if !regexp.MustCompile(want).MatchString(assets[i]) {
+			t.Fatalf("asset %d = %q, want %s", i, assets[i], want)
+		}
+	}
+	css := string(base.Files[base.Style].Bytes)
+	for _, path := range assets {
+		if !strings.Contains(css, path) {
+			t.Fatalf("the stylesheet does not name %s: %s", path, css)
+		}
+	}
+	if got := base.Files[assets[0]].Mime; got != "font/woff2" {
+		t.Fatalf("mime = %q, want font/woff2", got)
 	}
 }

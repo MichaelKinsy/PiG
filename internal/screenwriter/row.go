@@ -4,6 +4,7 @@
 package screenwriter
 
 import (
+	"bytes"
 	"encoding/binary"
 	"math/bits"
 	"sort"
@@ -58,6 +59,23 @@ func (r *row) blank(known bool) {
 	r.known, r.partial = known, false
 	r.cells, r.line, r.pens = r.cells[:0], r.line[:0], r.pens[:0]
 	r.width, r.uncertain, r.endPen = 0, 0, pen{}
+}
+
+// blankAt reports whether cell i is a blank under the default pen: the one cell a terminal may keep no trace of having been sent
+// (tmux does not store it past the cells the row's line has).
+func (r *row) blankAt(i int) bool {
+	c := r.cells[i]
+	return c.size() == 1 && r.line[c.off()] == ' ' && r.pens[c.pen()] == pen{}
+}
+
+// ink is how many cells the row has through its last one that is not a blank under the default pen.
+func (r *row) ink() int {
+	for i := len(r.cells) - 1; i >= 0; i-- {
+		if !r.blankAt(i) {
+			return i + 1
+		}
+	}
+	return 0
 }
 
 // reach is the last column a terminal may have reached after the cells [0,j).
@@ -144,7 +162,8 @@ func (r *row) parse(line string, old *row, cols, room int, symbols *symbolWidths
 		return 0, 0, false
 	}
 	r.buffers(cols, len(line), room)
-	cells, pens := r.cells[:0], append(r.pens[:0], pen{})
+	cells, pens := r.cells[:0], r.pens[:0]
+	pens = append(pens, pen{})
 	uncertain := -1
 	var p pen
 	var over, at cell // the over count and the pen's index, in their fields
@@ -362,15 +381,6 @@ func (r *row) parse(line string, old *row, cols, room int, symbols *symbolWidths
 	return shared, same, true
 }
 
-// copyOf makes r what src is: the row another row shows.
-func (r *row) copyOf(src *row, cols, room int) {
-	r.buffers(cols, len(src.line), room)
-	r.cells = append(r.cells[:0], src.cells...)
-	r.pens = append(r.pens[:0], src.pens...)
-	r.line = append(r.line[:0], src.line...)
-	r.width, r.endPen, r.uncertain = src.width, src.endPen, src.uncertain
-}
-
 // commonPrefix is how many bytes a and b share at their start.
 func commonPrefix(a, b []byte) int {
 	n, limit := 0, min(len(a), len(b))
@@ -402,7 +412,7 @@ func commonSuffix(a, b []byte) int {
 // sameCell reports whether o's cell i and t's cell j are the same cluster under the same pen in the same column.
 func sameCell(o *row, i int, t *row, j int) bool {
 	a, b := o.cells[i], t.cells[j]
-	return a.col() == b.col() && a.size() == b.size() && o.pens[a.pen()] == t.pens[b.pen()] && string(o.line[a.off():a.end()]) == string(t.line[b.off():b.end()])
+	return a.col() == b.col() && a.size() == b.size() && o.pens[a.pen()] == t.pens[b.pen()] && bytes.Equal(o.line[a.off():a.end()], t.line[b.off():b.end()])
 }
 
 // uncertainAlike reports whether o's cells [from,i1) and t's cells [from,j1) hold the same clusters of uncertain width in the same
@@ -423,7 +433,7 @@ func uncertainAlike(o *row, i1 int, t *row, j1, from int) bool {
 			return i == i1 && j == j1
 		}
 		a, b := o.cells[i], t.cells[j]
-		if string(o.line[a.off():a.end()]) != string(t.line[b.off():b.end()]) {
+		if !bytes.Equal(o.line[a.off():a.end()], t.line[b.off():b.end()]) {
 			return false
 		}
 		i++

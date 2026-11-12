@@ -7,9 +7,11 @@
 // pen, the cursor, the scroll region) and, for a frame it can read completely, sends only what changes that screen:
 //
 //   - a row the frame rewrites with the cells it already shows is not written;
-//   - a row whose cells change is written from its first cell through its last changed one, as the first bytes of the frame's own
-//     line (the first-cell rule); what follows on the row stays;
-//   - a row that got shorter is written whole, as the frame wrote it: the line erased, then the row;
+//   - a row whose cells change is written in place, from its first cell through its last changed one, as the first bytes of the
+//     frame's own line (the first-cell rule), when the line is no narrower than the row, has a cell that is not a blank under
+//     the default pen wherever the row has one (the same cluster, where terminals disagree on its width), and has others only
+//     after the last of them; a line that has others is written through its last cell; what follows the written cells stays;
+//   - every other row whose cells change is written whole, as the frame wrote it: the line erased, then the row;
 //   - a frame that changes no cell, cursor position or cursor visibility is not written;
 //   - once no frame was written for the settle time, every row that had a part written is rewritten whole, as the frame wrote it.
 //
@@ -21,12 +23,22 @@
 // the cursor address of a row's first column and a reset of the pen; a cursor address, a scroll and a region the frame wrote are sent
 // as the frame wrote them.
 //
+// What tmux keeps of a line is modelled by the screens of the tests (gridterm) and checked against tmux itself: the lines of tmux
+// 3.4 and 3.6 are recorded there, and where the tests find a tmux they ask that one (3.4 in the Linux container the tests run in).
+// CI sets PIG_GRIDTERM_TMUX_REQUIRED on its Linux job: there the test that asks tmux fails where it would otherwise be skipped.
+//
+// Frames are translated only while autowrap is known to be off: a write turned it off (CSI ? 7 l) and none since turned it on,
+// switched to or from an alternate screen, restored saved modes or reset the terminal. With autowrap on tmux stores a row's text
+// in the runs it reads, and the line it keeps follows no rule of the writer's. While autowrap is not known to be off every frame
+// is sent as it came and the rows are forgotten, so that the first frame after it is turned off again writes its rows whole.
+//
 // Before the alternate screen is entered and after it is left every byte is sent as it came.
 //
 // pig divergence (D624): tui.ProcessTerminal puts a Writer under its write unless PIG_TUI_SCREEN_WRITER or the terminal.screenWriter setting selects Pi's bytes (tui/terminal_screen_writer.go).
 package screenwriter
 
 import (
+	"bytes"
 	"encoding/binary"
 	"sort"
 	"strconv"
@@ -86,6 +98,7 @@ type Stats struct {
 	Unchanged  int // of them, not written: they changed nothing
 	Repaints   int // of them, sent as they came: they erase the screen
 	Unread     int // of them, sent as they came: something in them has no rule
+	Wrapping   int // of them, sent as they came: autowrap was not known to be off
 	Settles    int // settle writes
 	BytesIn    int // bytes of the synchronized updates read
 	BytesOut   int // bytes written for them, settle writes included
@@ -105,6 +118,8 @@ type Writer struct {
 	active     atomic.Bool // the alternate screen is shown
 	past       atomic.Bool // a write that may have changed the screen reached the terminal past the writer
 	dropped    atomic.Bool // Drop was called: every write is sent as it came
+	pastWrap   atomic.Bool // a write that says something of autowrap reached the terminal past the writer
+	wrapOff    bool        // autowrap is known to be off: frames are translated only then
 	cols, high int
 	rows       []row
 	scratch    row
@@ -170,6 +185,17 @@ func (w *Writer) Translate(data string) string {
 		return data
 	}
 	w.catchUp()
+	if !w.wrapOff {
+		w.unread(data)
+		w.stats.Frames++
+		w.stats.Wrapping++
+		w.stats.BytesIn += len(data)
+		w.stats.BytesOut += len(data)
+		if w.record != nil {
+			w.record(RecordFrame, data, data)
+		}
+		return data
+	}
 	w.resize()
 	w.stats.Frames++
 	w.stats.BytesIn += len(data)
@@ -180,10 +206,7 @@ func (w *Writer) Translate(data string) string {
 	out := data
 	switch ok := w.frame(body, whole); {
 	case !ok:
-		w.forget()
-		if strings.LastIndex(data, "\x1b[?1049l") > strings.LastIndex(data, "\x1b[?1049h") {
-			w.active.Store(false)
-		}
+		w.unread(data)
 		w.stats.Unread++
 	case whole:
 		w.stats.Repaints++
@@ -193,7 +216,7 @@ func (w *Writer) Translate(data string) string {
 	default:
 		w.stats.Translated++
 		w.out = append(w.out, syncEnd...)
-		out = unsafe.String(unsafe.SliceData(w.out), len(w.out))
+		out = unsafe.String(unsafe.SliceData(w.out), len(w.out)) //nolint:gosec // G103: the writer's own buffer as the result, valid until the next call, without a copy of every frame.
 	}
 	if w.anyPartial && w.settle > 0 {
 		w.lastWrite = time.Now()
@@ -209,16 +232,37 @@ func (w *Writer) Translate(data string) string {
 // Outside takes a write that reached the terminal without passing through Translate: unless the table of sequences that change
 // nothing the writer keeps covers it, the writer forgets the screen before its next write. It needs no lock.
 func (w *Writer) Outside(data string) {
-	if _, cursor, forget := outside(data, true); forget || cursor != 0 {
+	_, cursor, forget, wrap := outside(data, true)
+	if forget || cursor != 0 {
 		w.past.Store(true)
+	}
+	if wrap != 0 {
+		w.pastWrap.Store(true)
 	}
 }
 
-// catchUp forgets the screen after a write past the writer.
+// catchUp forgets the screen after a write past the writer; after one that says something of autowrap, autowrap is not known to be
+// off, whatever the write says: where it came among the writes that pass through the writer is not known.
 func (w *Writer) catchUp() {
+	if w.pastWrap.Load() && w.pastWrap.Swap(false) {
+		w.wrapOff = false
+		w.forget()
+	}
 	if w.past.Load() && w.past.Swap(false) && w.active.Load() {
 		w.resize()
 		w.forget()
+	}
+}
+
+// unread follows a frame that is sent as it came: the screen kept is forgotten, and the frame may have left the alternate screen
+// or said something of autowrap.
+func (w *Writer) unread(data string) {
+	w.forget()
+	if strings.LastIndex(data, "\x1b[?1049l") > strings.LastIndex(data, "\x1b[?1049h") {
+		w.active.Store(false)
+	}
+	if _, _, _, wrap := outside(data, true); wrap != 0 {
+		w.wrapOff = wrap > 0
 	}
 }
 
@@ -230,17 +274,21 @@ func (w *Writer) other(data string) {
 	if !shown && !strings.Contains(data, "\x1b[?1049h") {
 		return
 	}
-	screen, cursor, forget := outside(data, shown)
+	screen, cursor, forget, wrap := outside(data, shown)
 	if !screen {
 		if shown {
 			w.active.Store(false)
 		}
+		w.wrapOff = false
 		return
 	}
 	w.catchUp()
 	w.active.Store(true)
+	if wrap != 0 {
+		w.wrapOff = wrap > 0
+	}
 	switch {
-	case forget:
+	case forget || wrap < 0:
 		w.resize()
 		w.forget()
 	case cursor != 0:
@@ -308,12 +356,25 @@ func (w *Writer) writeWhole(index int, r *row) {
 	w.aPen = r.endPen
 }
 
-// writeDiff makes a row that shows o show t: the first bytes of t's line through its last changed cell. shared and same are how many
-// of t's first and last cells are known to be o's (parse); 0 when not known. It reports false, having written nothing, when only
-// writing the row whole does.
+// writeDiff makes a row that shows o show t in place: the first bytes of t's line through its last changed cell. shared and same are
+// how many of t's first and last cells are known to be o's (parse); 0 when not known. It reports false, having written nothing, when
+// only writing the row whole does.
+//
+// A row written in place must leave a terminal the line the frame's erase and line leave it: the cells, and what the terminal keeps
+// of a line besides them. tmux keeps how many cells a line has and how far cells were stored in it, frees them only when the line
+// is erased whole, and does not store a blank under the default pen past the cells the line has: both depend on the order in which
+// the other cells arrived since the erase and on the blanks that arrived after them, not only on the cells the row shows.
+//
+// So a row is written in place only when that keeps this invariant: since the row's line was last erased whole (by a whole write
+// of the row, a repaint, or a scroll that brought the line in), no line the frames wrote for it was narrower than the one before
+// it, each had a cell that is not a default blank exactly where the one before it had one (a cluster of uncertain width being the
+// same cluster there) and, besides, only after the last of them, and a line that had some there was sent through its last cell.
+// Then the terminal was sent, since the line's erase, the cells that are not default blanks in the order of the columns in which
+// the frame's line has them, and after the last of them every cell of the line: what the frame's erase and line send it, some of
+// it more than once. Every other way a row changes writes it whole (the settle write), moves the line with the row (a scroll), or
+// leaves the row unknown, to be written whole by the next frame (a row erased under another pen, another screen size, the
+// alternate screen entered again, a write that is not a frame and may have changed the screen).
 func (w *Writer) writeDiff(index int, o, t *row, shared, same int) bool {
-	// A row that got shorter is written whole: the frame erased the line and wrote the row. Erasing from the row's new end instead
-	// shows the same cells, but a terminal that frees a line's cells only when the line is erased whole (tmux) keeps the longer line.
 	if t.width < o.width {
 		return false
 	}
@@ -327,11 +388,28 @@ func (w *Writer) writeDiff(index int, o, t *row, shared, same int) bool {
 	for p < no && p < nt && sameCell(o, p, t, p) {
 		p++
 	}
-	if p == no && p == nt {
+	if p == no && no == nt {
 		return true
 	}
+	// The cells before p are o's. From there through o's last cell that is not a default blank, t's cells must lie where o's do and
+	// be default blanks where o's are.
+	ink := o.ink()
+	if ink > nt {
+		return false
+	}
+	for k := p; k < ink; k++ {
+		a, b := o.cells[k], t.cells[k]
+		if a.col() != b.col() || a.width() != b.width() || o.blankAt(k) != t.blankAt(k) {
+			return false
+		}
+		// A cluster of uncertain width keeps its place: with another cluster there, the cells after it lie in other columns than
+		// counted here in a terminal that draws it wider or narrower.
+		if (!a.certain() || !b.certain()) && !bytes.Equal(o.line[a.off():a.end()], t.line[b.off():b.end()]) {
+			return false
+		}
+	}
 	s := 0
-	if o.width == t.width {
+	if o.width == t.width && t.ink() == ink {
 		limit := min(no, nt) - p
 		if s = min(same, limit); s == 0 {
 			// The cells that start in the bytes the two lines share at their end are the same clusters: they are the same cells where
@@ -386,18 +464,20 @@ func (w *Writer) shows(line string, index int) *row {
 
 // scroll moves the rows of the scroll region by one: up for a line feed at its bottom, down for a reverse index at its top.
 func (w *Writer) scroll(up bool) {
-	clean := w.penKnown && w.pen == pen{}
-	if up {
-		first := w.rows[w.top]
-		copy(w.rows[w.top:w.bot], w.rows[w.top+1:w.bot+1])
-		w.rows[w.bot] = first
-		w.rows[w.bot].blank(clean)
-	} else {
-		last := w.rows[w.bot]
-		copy(w.rows[w.top+1:w.bot+1], w.rows[w.top:w.bot])
-		w.rows[w.top] = last
-		w.rows[w.top].blank(clean)
+	// The row that leaves the region gives its buffers to the row that comes in, blank, at the region's other end.
+	region := w.rows[w.top : w.bot+1]
+	in := len(region) - 1
+	if !up {
+		in = 0
 	}
+	spare := region[len(region)-1-in]
+	if up {
+		copy(region, region[1:])
+	} else {
+		copy(region[1:], region)
+	}
+	region[in] = spare
+	region[in].blank(w.penKnown && w.pen == pen{})
 }
 
 // frame applies the body of a synchronized update to the screen kept and, unless whole, puts into out what makes the terminal show
@@ -514,11 +594,11 @@ func (w *Writer) frame(body string, whole bool) bool {
 		return false
 	}
 	if visSet && (!w.visKnown || vis != w.visible) {
+		seq := "\x1b[?25l"
 		if vis {
-			w.out = append(w.out, "\x1b[?25h"...)
-		} else {
-			w.out = append(w.out, "\x1b[?25l"...)
+			seq = "\x1b[?25h"
 		}
+		w.out = append(w.out, seq...)
 		w.visible, w.visKnown = vis, true
 	}
 	return true
@@ -543,20 +623,18 @@ func (w *Writer) row(index int, line string, whole, positioned bool) bool {
 		if len(line) > w.room {
 			w.room = len(line) + len(line)/2
 		}
-		if moved := w.shows(line, index); moved != nil {
-			// The line is one another row shows (the renderers moved it): its cells are that row's.
-			t.copyOf(moved, w.cols, w.room)
-			plain = true
-		} else {
-			shared, same, plain = t.parse(line, r, w.cols, w.room, &w.symbols)
+		// A line another row shows (the renderers moved it) has that row's cells: they are taken from it, and say nothing of what
+		// the line shares with the row it is written to.
+		moved := w.shows(line, index)
+		if moved == nil {
+			moved = r
+		}
+		if shared, same, plain = t.parse(line, moved, w.cols, w.room, &w.symbols); moved != r {
+			shared, same = 0, 0
 		}
 	}
 	switch {
-	case whole && plain:
-		w.rows[index], w.scratch = *t, *r
-		w.rows[index].known, w.rows[index].partial = true, false
-		w.pen = w.rows[index].endPen
-	case whole:
+	case whole && !plain:
 		r.known, r.partial = false, false
 		w.penAfter(line)
 	case !plain:
@@ -574,15 +652,18 @@ func (w *Writer) row(index int, line string, whole, positioned bool) bool {
 			w.aPen = w.pen
 		}
 	default:
-		// A row the frame rewrote and the writer did not write whole waits for the settle write, whether or not a part of it was written.
-		partial := r.known && positioned && w.writeDiff(index, r, t, shared, same)
-		if !partial {
-			w.writeWhole(index, t)
+		// A frame that erases the screen is sent as it came: nothing is written for its rows. A row another frame rewrote and the
+		// writer did not write whole waits for the settle write, whether or not a part of it was written.
+		partial := false
+		if !whole {
+			if partial = r.known && positioned && w.writeDiff(index, r, t, shared, same); !partial {
+				w.writeWhole(index, t)
+			}
 		}
-		w.rows[index], w.scratch = *t, *r
-		w.rows[index].known, w.rows[index].partial = true, partial
+		*r, *t = *t, *r
+		r.known, r.partial = true, partial
 		w.anyPartial = w.anyPartial || partial
-		w.pen = w.rows[index].endPen
+		w.pen = r.endPen
 	}
 	return true
 }
@@ -691,7 +772,7 @@ func (w *Writer) Settled() string {
 	w.moveTo(w.curRow, w.curCol)
 	w.setPen(pen{})
 	w.out = append(w.out, syncEnd...)
-	out := unsafe.String(unsafe.SliceData(w.out), len(w.out))
+	out := unsafe.String(unsafe.SliceData(w.out), len(w.out)) //nolint:gosec // G103: the writer's own buffer as the result, valid until the next call, without a copy.
 	w.stats.Settles++
 	w.stats.BytesOut += len(out)
 	if w.record != nil {

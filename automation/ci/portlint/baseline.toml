@@ -1698,18 +1698,6 @@ snippet = "Model []ai.Message  `json:\"model,omitempty\"`"
 check = "emptydrop"
 file = "durable/types.go"
 func = "(decl)"
-snippet = "On         []TaskId        `json:\"on,omitempty\"`"
-
-[[hit]]
-check = "emptydrop"
-file = "durable/types.go"
-func = "(decl)"
-snippet = "Memos map[string]JsonValue `json:\"memos,omitempty\"`"
-
-[[hit]]
-check = "emptydrop"
-file = "durable/types.go"
-func = "(decl)"
 snippet = "Ops     []Op                `json:\"ops,omitempty\"`"
 
 [[hit]]

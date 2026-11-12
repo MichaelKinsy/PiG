@@ -35,13 +35,17 @@ type rawRelayOptions struct {
 	Principal data.Principal
 	Calls     int
 	Loop      sectionLoop
+	// Trusted makes the tab's link trusted; NoAck is `ack: false` of the raw tab.
+	Trusted, NoAck bool
+	// Server sets up the server (it serves nothing by default).
+	Server func(host FacetHost) error
 }
 
 func rawRelay(t testing.TB, options rawRelayOptions) *rawRelayHost {
 	t.Helper()
 	workers := newRawWorkers(t, rawWorkerOptions{Calls: options.Calls})
-	rel := relay(t, relayedOptions{Resolve: workers.Resolve, Loop: options.Loop})
-	return &rawRelayHost{relayed: rel, Workers: workers, Raw: rawTab(t, rel.Server, options.Principal, link.PartLimits{})}
+	rel := relay(t, relayedOptions{Resolve: workers.Resolve, Loop: options.Loop, Server: options.Server})
+	return &rawRelayHost{relayed: rel, Workers: workers, Raw: rawTabWith(t, rel.Server, options.Principal, link.PartLimits{}, options.Trusted, options.NoAck)}
 }
 
 // rawTab is a raw tab on a new link the server accepts as principal (owner by default).
@@ -53,12 +57,18 @@ func rawTab(t testing.TB, server Host, principal data.Principal, limits link.Par
 // rawTabOn is rawTab on a link trusted when trusted (`rawTab(server, principal, true)`).
 func rawTabOn(t testing.TB, server Host, principal data.Principal, limits link.PartLimits, trusted bool) *RawPeer {
 	t.Helper()
+	return rawTabWith(t, server, principal, limits, trusted, false)
+}
+
+// rawTabWith is rawTabOn acknowledging `bound` and `state` by itself unless noAck (`rawTab(server, principal, trusted, ack)`).
+func rawTabWith(t testing.TB, server Host, principal data.Principal, limits link.PartLimits, trusted, noAck bool) *RawPeer {
+	t.Helper()
 	a, b := link.MemoryLinkPair()
 	if principal == nil {
 		principal = ownerPrincipal()
 	}
 	must(t, server.Accept(a, LinkOptions{Principal: principal, Codec: testCodec(), Limits: limits, Trusted: trusted}, background))
-	return newRawPeer(t, b, rawPeerOptions{})
+	return newRawPeer(t, b, rawPeerOptions{NoAck: noAck})
 }
 
 // placedHold is a hold of PlacedNotes for session with id hold, naming its address.

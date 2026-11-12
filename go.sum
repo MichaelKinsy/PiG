@@ -75,8 +75,8 @@ github.com/Masterminds/semver/v3 v3.5.0 h1:kQceYJfbupGfZOKZQg0kou0DgAKhzDg2NZPAw
 github.com/Masterminds/semver/v3 v3.5.0/go.mod h1:4V+yj/TJE1HU9XfppCwVMZq3I84lprf4nC11bSS5beM=
 github.com/MichaelKinsy/PiG/extensions/sdk v0.7.0 h1:5esSYPrwspz6Xo6XMAVJu05qyrp/7wijF5ZqgG0x6kw=
 github.com/MichaelKinsy/PiG/extensions/sdk v0.7.0/go.mod h1:4j0XhCW0EPOBWvqYE7XKjTvIAahI7K1VyyW3KpjTKj8=
-github.com/MichaelKinsy/PiG/extensions/sdk v0.7.1-0.20261108053302-4e194449dcd7 h1:T4ZoNqnRPDVBRGPhnH8+7D5TYlBzzp28PB2Uojp1Wbg=
-github.com/MichaelKinsy/PiG/extensions/sdk v0.7.1-0.20261108053302-4e194449dcd7/go.mod h1:4j0XhCW0EPOBWvqYE7XKjTvIAahI7K1VyyW3KpjTKj8=
+github.com/MichaelKinsy/PiG/extensions/sdk v0.7.1-0.20261112135708-2daf79c20a25 h1:wNF1OCjT8zrPqGGkZAerEvW8m9DD5lVqHTPE1fLSbQE=
+github.com/MichaelKinsy/PiG/extensions/sdk v0.7.1-0.20261112135708-2daf79c20a25/go.mod h1:4j0XhCW0EPOBWvqYE7XKjTvIAahI7K1VyyW3KpjTKj8=
 github.com/Microsoft/go-winio v0.6.4 h1:kJF2pamtYCWXf0xAT8sAkwKC0pMl2HYBrRPHAqyUc+g=
 github.com/Microsoft/go-winio v0.6.4/go.mod h1:1xl5JXG4ze/m74GH6Dc4Mwxfc3VL5siRVQjIAlHH07U=
 github.com/MirrexOne/unqueryvet v1.5.4 h1:38QOxShO7JmMWT+eCdDMbcUgGCOeJphVkzzRgyLJgsQ=

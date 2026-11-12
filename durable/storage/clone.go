@@ -49,6 +49,17 @@ func cloneTask(record storedTask) storedTask {
 	if state.On != nil {
 		state.On = append([]durable.TaskId(nil), state.On...)
 	}
+	state.Until = clonePointer(state.Until)
+	if state.Signals != nil {
+		state.Signals = append([]durable.SignalKey(nil), state.Signals...)
+	}
+	if state.Wake != nil {
+		wake := *state.Wake
+		if wake.Ended != nil {
+			wake.Ended = append([]durable.TaskId(nil), wake.Ended...)
+		}
+		state.Wake = &wake
+	}
 	if state.Outcome != nil {
 		outcome := *state.Outcome
 		outcome.Result = cloneJSONPointer(outcome.Result)
@@ -74,6 +85,7 @@ func cloneTask(record storedTask) storedTask {
 func cloneSubmission(record durable.SubmissionRecord) durable.SubmissionRecord {
 	record.Trace = cloneCarrier(record.Trace)
 	record.RequestId = clonePointer(record.RequestId)
+	record.Notify = clonePointer(record.Notify)
 	record.Entry = clonePointer(record.Entry)
 	record.Answer = clonePointer(record.Answer)
 	record.Reason = clonePointer(record.Reason)

@@ -6,25 +6,93 @@
 package tui
 
 import (
+	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/screenwriter"
 )
 
-// setScreenWriterChoice makes choice what the process has been told about the screen writer until the test ends.
+// setScreenWriterChoice makes choice what the process has been told about the screen writer until the test ends, when the process's
+// terminal and the registered writers are again what they were.
 func setScreenWriterChoice(t *testing.T, choice int32) {
 	t.Helper()
 	screenWriterMu.Lock()
-	previous := screenWriterChoice
+	previous, writer, writers := screenWriterChoice, processTerminal.screen.Load(), screenWriters.Load()
 	screenWriterChoice = choice
 	screenWriterMu.Unlock()
 	t.Cleanup(func() {
 		screenWriterMu.Lock()
 		screenWriterChoice = previous
+		if given := processTerminal.screen.Swap(writer); given != nil && given != writer {
+			given.Stop()
+		}
+		screenWriters.Store(writers)
 		screenWriterMu.Unlock()
 	})
+}
+
+// What the process's terminal had when the package was initialized, before any test ran.
+var swAtInit = struct {
+	writer     *screenwriter.Writer
+	registered bool
+}{processTerminal.screen.Load(), screenWriters.Load() != nil}
+
+// The process's terminal is built when the package is initialized, without a screen writer, whatever PIG_TUI_SCREEN_WRITER says: the
+// test asks the initialized package, in this process and in one started with the variable asking for the writer.
+func TestNoScreenWriterBeforeAnInteractiveRun(t *testing.T) {
+	if swAtInit.writer != nil || swAtInit.registered {
+		t.Errorf("with %s=%q the process's terminal was initialized with a screen writer (%v) or one was registered (%v)", screenWriterEnv, os.Getenv(screenWriterEnv), swAtInit.writer != nil, swAtInit.registered)
+	}
+	const child = "PIG_TEST_SCREEN_WRITER_INIT_CHILD"
+	if os.Getenv(child) != "" {
+		return
+	}
+	for _, value := range []string{"1", "writer", ""} {
+		command := exec.CommandContext(t.Context(), os.Args[0], "-test.run=^TestNoScreenWriterBeforeAnInteractiveRun$", "-test.count=1")
+		command.Env = append(os.Environ(), screenWriterEnv+"="+value, child+"=1")
+		if output, err := command.CombinedOutput(); err != nil {
+			t.Errorf("%s=%q: %v\n%s", screenWriterEnv, value, err, output)
+		}
+	}
+}
+
+// SetScreenWriter, which interactive mode calls when it starts, is what gives the process's terminal its screen writer: before it no
+// terminal has or gets one, the variable asking for it included; a terminal built before it, other than the process's, stays without.
+func TestSetScreenWriterGivesTheProcessTerminalItsWriter(t *testing.T) {
+	for _, c := range []struct {
+		value  string
+		writer bool
+		want   bool
+	}{{"", true, true}, {"1", true, true}, {"1", false, true}, {"", false, false}, {"pi", true, false}, {"pi", false, false}} {
+		t.Run(fmt.Sprintf("value=%s/setting=%v", c.value, c.writer), func(t *testing.T) {
+			t.Setenv(screenWriterEnv, c.value)
+			setScreenWriterChoice(t, screenWriterUnset)
+			processTerminal.screen.Store(nil)
+			before, _ := swFileTerminal(t)
+			if before.screen.Load() != nil || processTerminal.screen.Load() != nil {
+				t.Fatalf("a terminal has a screen writer before SetScreenWriter")
+			}
+			SetScreenWriter(c.writer)
+			given := processTerminal.screen.Load()
+			if (given != nil) != c.want || swRegistered(processTerminal) != c.want {
+				t.Fatalf("after SetScreenWriter(%v) the process's terminal has a screen writer = %v, registered = %v, want %v", c.writer, given != nil, swRegistered(processTerminal), c.want)
+			}
+			if before.screen.Load() != nil {
+				t.Errorf("a terminal built before SetScreenWriter was given a screen writer")
+			}
+			if later, _ := swFileTerminal(t); (later.screen.Load() != nil) != c.want {
+				t.Errorf("a terminal built after SetScreenWriter(%v) has a screen writer = %v, want %v", c.writer, later.screen.Load() != nil, c.want)
+			}
+			if SetScreenWriter(c.writer); processTerminal.screen.Load() != given {
+				t.Errorf("a second SetScreenWriter(%v) replaced the process terminal's screen writer", c.writer)
+			}
+		})
+	}
 }
 
 // swFileTerminal is a terminal that writes to a file, as the process's terminal does, and what the file holds.
@@ -36,8 +104,8 @@ func swFileTerminal(t *testing.T) (*ProcessTerminal, func() string) {
 	}
 	t.Cleanup(func() { _ = file.Close() })
 	terminal := NewProcessTerminalWithOutput(nil, nil, file)
-	if terminal.screen != nil {
-		t.Cleanup(terminal.screen.Stop)
+	if writer := terminal.screen.Load(); writer != nil {
+		t.Cleanup(writer.Stop)
 	}
 	return terminal, func() string {
 		data, err := os.ReadFile(file.Name())
@@ -51,7 +119,7 @@ func swFileTerminal(t *testing.T) (*ProcessTerminal, func() string) {
 func swRegistered(terminal *ProcessTerminal) bool {
 	if writers := screenWriters.Load(); writers != nil {
 		for _, entry := range *writers {
-			if entry.writer == terminal.screen {
+			if entry.writer == terminal.screen.Load() {
 				return true
 			}
 		}
@@ -66,7 +134,7 @@ func TestSetScreenWriterDropsTheWriterOfATerminalBuiltBefore(t *testing.T) {
 	t.Setenv(screenWriterEnv, "")
 	setScreenWriterChoice(t, screenWriterOn)
 	terminal, sent := swFileTerminal(t)
-	if terminal.screen == nil || !swRegistered(terminal) {
+	if terminal.screen.Load() == nil || !swRegistered(terminal) {
 		t.Fatalf("the terminal has no registered screen writer before the setting is applied")
 	}
 	SetScreenWriter(false)
@@ -84,11 +152,11 @@ func TestSetScreenWriterDropsTheWriterOfATerminalBuiltBefore(t *testing.T) {
 	if got := sent(); got != wrote.String() {
 		t.Errorf("after SetScreenWriter(false) the terminal was sent %q, want exactly %q", got, wrote.String())
 	}
-	if later, _ := swFileTerminal(t); later.screen != nil {
+	if later, _ := swFileTerminal(t); later.screen.Load() != nil {
 		t.Errorf("a terminal built after SetScreenWriter(false) has a screen writer")
 	}
 	SetScreenWriter(true)
-	if later, _ := swFileTerminal(t); later.screen == nil {
+	if later, _ := swFileTerminal(t); later.screen.Load() == nil {
 		t.Errorf("a terminal built after SetScreenWriter(true) has no screen writer")
 	}
 	if terminal.Write(swFrame(swLine(1, "one!"))); !strings.HasSuffix(sent(), swFrame(swLine(1, "one!"))) {
@@ -118,7 +186,7 @@ func TestSetScreenWriterKeepsTheWriter(t *testing.T) {
 // A set PIG_TUI_SCREEN_WRITER outranks the setting: with a writer value SetScreenWriter(false) drops nothing.
 func TestSetScreenWriterYieldsToTheEnvironment(t *testing.T) {
 	t.Setenv(screenWriterEnv, "1")
-	setScreenWriterChoice(t, screenWriterUnset)
+	setScreenWriterChoice(t, screenWriterOn)
 	terminal, sent := swFileTerminal(t)
 	SetScreenWriter(false)
 	if !swRegistered(terminal) {
@@ -132,34 +200,8 @@ func TestSetScreenWriterYieldsToTheEnvironment(t *testing.T) {
 	if got := sent()[before:]; got != "" || !terminal.ScreenWriterActive() {
 		t.Errorf("a frame that changes nothing was sent as %q, active = %v", got, terminal.ScreenWriterActive())
 	}
-	if later, _ := swFileTerminal(t); later.screen == nil {
+	if later, _ := swFileTerminal(t); later.screen.Load() == nil {
 		t.Errorf("a terminal built afterwards has no screen writer")
-	}
-}
-
-// NoScreenWriter leaves no terminal with a screen writer, the environment asking for one included.
-func TestNoScreenWriter(t *testing.T) {
-	for _, value := range []string{"", "1", "pi"} {
-		t.Run("value="+value, func(t *testing.T) {
-			t.Setenv(screenWriterEnv, value)
-			setScreenWriterChoice(t, screenWriterOn)
-			terminal, sent := swFileTerminal(t)
-			NoScreenWriter()
-			if writers := screenWriters.Load(); writers != nil {
-				t.Errorf("%d screen writers are registered after NoScreenWriter", len(*writers))
-			}
-			var wrote strings.Builder
-			for _, data := range append(swStarted(), swFrame(swLine(1, "one")), swFrame(swLine(1, "one"))) {
-				terminal.Write(data)
-				wrote.WriteString(data)
-			}
-			if got := sent(); got != wrote.String() || terminal.ScreenWriterActive() {
-				t.Errorf("the terminal was sent %q, want exactly %q; active = %v", got, wrote.String(), terminal.ScreenWriterActive())
-			}
-			if later, _ := swFileTerminal(t); later.screen != nil {
-				t.Errorf("a terminal built after NoScreenWriter has a screen writer")
-			}
-		})
 	}
 }
 

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
@@ -36,8 +37,14 @@ func TestImageReferenceIsThePinnedPiVersion(t *testing.T) {
 			t.Fatal(err)
 		}
 		for _, name := range names {
-			if got := manifest.Dependencies[name]; got != pigversion.UpstreamPackageVersion {
-				t.Errorf("%s: package.json pins %s %q, want the pinned Pi version %s", dir, name, got, pigversion.UpstreamPackageVersion)
+			got, want := manifest.Dependencies[name], pigversion.UpstreamPackageVersion
+			if filepath.Base(dir) == "pi-durable" {
+				// The Durable reference installs the vendored packs of the pin (third_party/pi-packs).
+				if !strings.HasPrefix(got, vendoredPacksPrefix) {
+					t.Errorf("%s: package.json names %s %q, want a pack under %s", dir, name, got, vendoredPacksPrefix)
+				}
+			} else if got != want {
+				t.Errorf("%s: package.json pins %s %q, want the pinned Pi version %s", dir, name, got, want)
 			}
 			if got := lock.Packages["node_modules/"+name].Version; got != pigversion.UpstreamPackageVersion {
 				t.Errorf("%s: package-lock.json resolves %s %q, want %s; regenerate it with npm install --package-lock-only", dir, name, got, pigversion.UpstreamPackageVersion)

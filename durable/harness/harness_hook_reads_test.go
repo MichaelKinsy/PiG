@@ -25,7 +25,7 @@ func TestEntryReadsForHooksAndTasks(t *testing.T) {
 			user  string
 		}
 		var seen syncList[seenRead]
-		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{OnYield: func(ctx context.Context, _ ai.AssistantMessage, api HookApi) (*YieldContinue, error) {
+		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{OnYield: func(ctx context.Context, _ ai.AssistantMessage, api HookApi) (YieldResult, error) {
 			page, err := api.Entries(ctx, durable.EntryQuery{Order: new(durable.ScanAscending)}, 10, nil)
 			if err != nil {
 				return nil, err

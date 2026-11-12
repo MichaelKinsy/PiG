@@ -11,13 +11,13 @@ import (
 	"github.com/MichaelKinsy/PiG/durable"
 )
 
-// slowPublications holds each publication for 20ms once slow is set (SlowPublications in harness-submissions.test.ts).
-type slowPublications struct {
+// delayedPublications holds each publication for 20ms once slow is set (SlowPublications in harness-submissions.test.ts).
+type delayedPublications struct {
 	*controlledStorage
 	slow atomic.Bool
 }
 
-func (storage *slowPublications) Publishing(_ context.Context, publish func()) {
+func (storage *delayedPublications) Publishing(_ context.Context, publish func()) {
 	if storage.slow.Load() {
 		time.Sleep(20 * time.Millisecond)
 	}
@@ -30,7 +30,7 @@ func (storage *slowPublications) Publishing(_ context.Context, publish func()) {
 // its own error while an earlier commit is still publishing, that the earlier commit completes, and that a close afterwards
 // succeeds.
 func TestWaitCancelledBeforeItsResultIsDeliveredReturnsTheCauseOnThatWait(t *testing.T) {
-	storage := &slowPublications{controlledStorage: newControlledStorage()}
+	storage := &delayedPublications{controlledStorage: newControlledStorage()}
 	setup := chatSetup(t)
 	setup.Faux.SetResponses([]ai.FauxResponseStep{unanswered().step})
 	harness, root := openChat(t, storage, setup)

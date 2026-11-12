@@ -117,12 +117,19 @@ func renderDiagnostics(diagnostics []durable.ToolDiagnostic) string {
 	return "<harness>\n" + strings.Join(lines, "\n") + "\n</harness>"
 }
 
-// ToolTaskCheckpoint is the tool task's checkpoint: call, or execute with the durable intent, the final arguments and
-// the replay policy recorded before execution (tool.ts:35-38).
+// ToolTaskCheckpoint is the tool task's checkpoint (tool.ts ToolTaskCheckpoint): call; execute with the durable intent, the
+// final arguments and the replay policy recorded before execution, and for a run after a park, why it woke and what it
+// parked with (Wake, Checkpoint); or parked, the call's park, holding the arguments, the replay policy and the park's
+// checkpoint (spec suspendable §4.2).
 type ToolTaskCheckpoint struct {
 	Phase     ToolTaskPhase      `json:"phase"`
 	Arguments map[string]any     `json:"arguments"`
 	Replay    durable.ToolReplay `json:"replay"`
+	// Wake is why the run woke from its park; nil when it is no run after a park. Phase execute only.
+	Wake *durable.WakeReason
+	// Checkpoint is what the call last parked with, set only with HasCheckpoint.
+	Checkpoint    durable.JsonValue
+	HasCheckpoint bool
 	// argumentsJSON is Arguments in the call's member order, which the stored intent keeps (tool.ts:163); nil: sorted.
 	argumentsJSON json.RawMessage
 }
@@ -133,11 +140,22 @@ type ToolTaskPhase string
 const (
 	toolPhaseCall    ToolTaskPhase = "call"
 	toolPhaseExecute ToolTaskPhase = "execute"
+	toolPhaseParked  ToolTaskPhase = "parked"
 )
 
-// MarshalJSON writes {"phase":"call"} or the execute intent with its arguments and replay.
+// toolCheckpointWire is the stored members of the execute and parked checkpoints, in the order upstream writes them.
+type toolCheckpointWire struct {
+	Phase      ToolTaskPhase       `json:"phase"`
+	Arguments  json.RawMessage     `json:"arguments"`
+	Replay     durable.ToolReplay  `json:"replay"`
+	Wake       *durable.WakeReason `json:"wake,omitempty"`
+	Checkpoint json.RawMessage     `json:"checkpoint,omitempty"`
+}
+
+// MarshalJSON writes {"phase":"call"}, or the execute or parked checkpoint with its arguments and replay, and its wake and
+// checkpoint when it has them.
 func (checkpoint ToolTaskCheckpoint) MarshalJSON() ([]byte, error) {
-	if checkpoint.Phase != toolPhaseExecute {
+	if checkpoint.Phase != toolPhaseExecute && checkpoint.Phase != toolPhaseParked {
 		return json.Marshal(struct {
 			Phase ToolTaskPhase `json:"phase"`
 		}{checkpoint.Phase})
@@ -146,25 +164,26 @@ func (checkpoint ToolTaskCheckpoint) MarshalJSON() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return json.Marshal(struct {
-		Phase     ToolTaskPhase      `json:"phase"`
-		Arguments json.RawMessage    `json:"arguments"`
-		Replay    durable.ToolReplay `json:"replay"`
-	}{checkpoint.Phase, arguments, checkpoint.Replay})
+	wire := toolCheckpointWire{Phase: checkpoint.Phase, Arguments: arguments, Replay: checkpoint.Replay}
+	if checkpoint.Phase == toolPhaseExecute {
+		wire.Wake = checkpoint.Wake
+	}
+	if checkpoint.HasCheckpoint {
+		if wire.Checkpoint, err = jsstring.MarshalKeepingSurrogates(checkpoint.Checkpoint); err != nil {
+			return nil, err
+		}
+	}
+	return json.Marshal(wire)
 }
 
 // UnmarshalJSON reads the checkpoint and keeps the arguments' text, so the rerun of a safe tool shows them in the member order
 // the intent stored, as the parsed object keeps it upstream (tool.ts:202-217).
 func (checkpoint *ToolTaskCheckpoint) UnmarshalJSON(data []byte) error {
-	var wire struct {
-		Phase     ToolTaskPhase      `json:"phase"`
-		Arguments json.RawMessage    `json:"arguments"`
-		Replay    durable.ToolReplay `json:"replay"`
-	}
+	var wire toolCheckpointWire
 	if err := json.Unmarshal(data, &wire); err != nil {
 		return err
 	}
-	decoded := ToolTaskCheckpoint{Phase: wire.Phase, Replay: wire.Replay}
+	decoded := ToolTaskCheckpoint{Phase: wire.Phase, Replay: wire.Replay, Wake: wire.Wake}
 	if len(wire.Arguments) > 0 && string(wire.Arguments) != "null" {
 		// The object's decode goes through a struct member, so the map is the struct's field, not an interface tree.
 		var object struct {
@@ -175,6 +194,13 @@ func (checkpoint *ToolTaskCheckpoint) UnmarshalJSON(data []byte) error {
 		}
 		decoded.Arguments = object.Arguments
 		decoded.argumentsJSON = wire.Arguments
+	}
+	if len(wire.Checkpoint) > 0 {
+		value, err := delta.DecodeJson(wire.Checkpoint)
+		if err != nil {
+			return err
+		}
+		decoded.Checkpoint, decoded.HasCheckpoint = value, true
 	}
 	*checkpoint = decoded
 	return nil
@@ -197,16 +223,18 @@ type toolRecord = durable.RunningTask[ToolTaskInput, ToolTaskCheckpoint, ToolTas
 
 // ToolTask is the built-in tool task (tool.ts:48-120): it resolves the called tool among its phase agent's tools,
 // validates, runs beforeTool, records intent, executes, runs afterTool, and appends the result, all in one call
-// handler so nothing separates resolution from settlement. execute is reached only by recovery and applies the replay
+// handler so nothing separates resolution from settlement. A call that parks runs again in parked, which resolves the
+// tool, records intent, and executes in one handler too. execute is reached only by recovery and applies the replay
 // rule.
 var ToolTask durable.Task[ToolTaskInput, ToolTaskCheckpoint, ToolTaskResult, *ToolHooks]
 
 func init() {
 	ToolTask = durable.DefineTask(durable.TaskDefinition[ToolTaskInput, ToolTaskCheckpoint, ToolTaskResult, *ToolHooks]{
 		Name:    "pi.tool",
-		Version: 3,
+		Version: 4,
 		Initial: func(ToolTaskInput) ToolTaskCheckpoint { return ToolTaskCheckpoint{Phase: toolPhaseCall} },
-		// Version 1 had only model-issued calls, without `kind`; version 3 added `unoffered`, absent in version 2 inputs.
+		// Version 1 had only model-issued calls, without `kind`; version 3 added `unoffered`, absent in version 2 inputs;
+		// version 4 added parked and the optional fields of execute, absent in older checkpoints.
 		Migrate: func(input durable.JsonValue, checkpoint durable.JsonValue, fromVersion int) (ToolTaskInput, ToolTaskCheckpoint, error) {
 			typedInput, err := durable.FromJsonValue[ToolTaskInput](input)
 			if err != nil {
@@ -221,6 +249,7 @@ func init() {
 		Phases: map[string]durable.PhaseHandler[ToolTaskInput, ToolTaskCheckpoint, ToolTaskResult, *ToolHooks]{
 			string(toolPhaseCall):    toolCallPhase,
 			string(toolPhaseExecute): toolExecutePhase,
+			string(toolPhaseParked):  toolParkedPhase,
 		},
 		Abort: toolAbort,
 	})
@@ -253,8 +282,9 @@ func toolCallPhase(ctx context.Context, task toolRecord, runtime toolRuntime) er
 		return rejectTool(ctx, runtime, task.Input, call, tool, invalidArguments(invalidReason))
 	}
 	var block *string
+	var sleep *GateSleep
 	if err := runtime.Hooks().Each("beforeTool", func(hooks *ToolHooks) error {
-		if block != nil || hooks == nil || hooks.BeforeTool == nil {
+		if block != nil || sleep != nil || hooks == nil || hooks.BeforeTool == nil {
 			return nil
 		}
 		decided := hookCall(task.Input, call)
@@ -274,9 +304,12 @@ func toolCallPhase(ctx context.Context, task toolRecord, runtime toolRuntime) er
 			block = &reason
 			return nil
 		}
-		if decision != nil && decision.Block != nil {
+		switch {
+		case decision != nil && decision.Block != nil:
 			block = decision.Block
-		} else if decision != nil && decision.Arguments != nil {
+		case decision != nil && decision.Sleep != nil:
+			sleep = decision.Sleep
+		case decision != nil && decision.Arguments != nil:
 			args = decision.Arguments
 		}
 		return nil
@@ -286,6 +319,9 @@ func toolCallPhase(ctx context.Context, task toolRecord, runtime toolRuntime) er
 	if block != nil {
 		blocked := HarnessError("blocked", "Tool call blocked: "+*block)
 		return rejectTool(ctx, runtime, task.Input, call, tool, blocked)
+	}
+	if sleep != nil {
+		return parkAtGate(ctx, runtime, task.Input, call, tool, *sleep)
 	}
 	final, invalidReason := validateArguments(tool, call, args)
 	if invalidReason != "" {
@@ -298,16 +334,65 @@ func toolCallPhase(ctx context.Context, task toolRecord, runtime toolRuntime) er
 	if err != nil {
 		return err
 	}
-	replay := tool.Replay
-	if replay == "" {
-		replay = durable.ReplayUnsafe
+	intent := ToolTaskCheckpoint{Phase: toolPhaseExecute, Arguments: final, Replay: replayOf(tool), argumentsJSON: finalJSON}
+	if err := commitIntent(ctx, runtime, intent); err != nil {
+		return err
 	}
-	shown, err := delta.DecodeJson(finalJSON)
+	return runTool(ctx, runtime, task.Input, call, tool, intent, toolResumed{})
+}
+
+// replayOf is the replay policy of tool, unsafe unless it says safe.
+func replayOf(tool *durable.ToolRegistration) durable.ToolReplay {
+	if tool.Replay == "" {
+		return durable.ReplayUnsafe
+	}
+	return tool.Replay
+}
+
+// toolParkedPhase is a call woken from a park: it resolves the tool again, records intent with the wake, and runs Execute
+// again. A tool that no longer resolves cannot run or clean up; the call ends failed, so what it owns is aborted.
+func toolParkedPhase(ctx context.Context, task toolRecord, runtime toolRuntime) error {
+	parked := *task.State.Checkpoint
+	wake := task.State.Wake
+	call, err := readCall(ctx, runtime, task.Input)
 	if err != nil {
 		return err
 	}
-	// The slot's status and arguments are presentation, stored like progress (ProgressCommit); the intent is durable before
-	// the tool runs. Parallel calls of one round then share no immediate write to pi.live.
+	if CutOffTooOften(task.Restarts, runtime) {
+		return toolEndCutOff(ctx, runtime, task, call)
+	}
+	tool, err := findTool(ctx, runtime, task.Input, call.Name)
+	if err != nil {
+		return err
+	}
+	if tool == nil {
+		message := fmt.Sprintf("Tool %s is not available", call.Name)
+		runtime.Report(fmt.Errorf("%s: its parked call %s cannot run again", message, call.ID))
+		ending := toolEnding{status: durable.OutcomeFailed, message: message}
+		return settleFromSlot(ctx, runtime, task.Input, call, &settleHooks{}, ending, "tool_unavailable", message)
+	}
+	intent := ToolTaskCheckpoint{
+		Phase: toolPhaseExecute, Arguments: parked.Arguments, Replay: replayOf(tool), argumentsJSON: parked.argumentsJSON,
+		Wake: wake, Checkpoint: parked.Checkpoint, HasCheckpoint: parked.HasCheckpoint,
+	}
+	if err := commitIntent(ctx, runtime, intent); err != nil {
+		return err
+	}
+	return runTool(ctx, runtime, task.Input, call, tool, intent, toolResumed{wake: wake, checkpoint: parked.Checkpoint, hasCheckpoint: parked.HasCheckpoint})
+}
+
+// commitIntent records intent: the slot shows the call running (and a nested call the arguments it runs with), stored like
+// progress (ProgressCommit), so parallel calls of one round share no immediate write to pi.live; then the execute
+// checkpoint, durable before the tool runs.
+func commitIntent(ctx context.Context, runtime toolRuntime, intent ToolTaskCheckpoint) error {
+	encoded, err := intent.argumentsText()
+	if err != nil {
+		return err
+	}
+	shown, err := delta.DecodeJson(encoded)
+	if err != nil {
+		return err
+	}
 	if err := runtime.Commit(ctx, func(tx durable.Tx, _ toolRecord) (*toolNext, error) {
 		live, err := docDraft(tx, LiveDoc, runtime.ConversationId())
 		if err != nil {
@@ -329,13 +414,36 @@ func toolCallPhase(ctx context.Context, task toolRecord, runtime toolRuntime) er
 	}, ProgressCommit); err != nil {
 		return err
 	}
-	if err := runtime.Commit(ctx, func(durable.Tx, toolRecord) (*toolNext, error) {
-		intent := ToolTaskCheckpoint{Phase: toolPhaseExecute, Arguments: final, Replay: replay, argumentsJSON: finalJSON}
+	return runtime.Commit(ctx, func(durable.Tx, toolRecord) (*toolNext, error) {
 		return &toolNext{Status: durable.TaskRunning, Checkpoint: &intent}, nil
-	}); err != nil {
+	})
+}
+
+// parkAtGate parks the call at its gates, before it runs (spec suspendable §5.1): the task sleeps at call, its slot
+// sleeping, and every wake runs the whole phase again. A sleep the commit refuses (no until or signals, a used key, a bad
+// deadline) ends the call invalid_park, through afterTool.
+func parkAtGate(ctx context.Context, runtime toolRuntime, input ToolTaskInput, call ai.ToolCall, tool *durable.ToolRegistration, sleep GateSleep) error {
+	err := runtime.Commit(ctx, func(tx durable.Tx, _ toolRecord) (*toolNext, error) {
+		live, err := docDraft(tx, LiveDoc, runtime.ConversationId())
+		if err != nil {
+			return nil, err
+		}
+		if slot := FindToolSlot(live, runtime.TaskId()); slot != nil {
+			if err := slot.Set("status", string(ToolSlotSleeping)); err != nil {
+				return nil, err
+			}
+		}
+		return &toolNext{Status: durable.TaskSleeping, Checkpoint: &ToolTaskCheckpoint{Phase: toolPhaseCall}, Until: sleep.Until, Signals: sleep.Signals}, nil
+	})
+	if err == nil {
+		return nil
+	}
+	// A close seals the Session before it signals the run.
+	if runtime.Signal().Err() != nil || closeSignal(runtime).Err() != nil {
 		return err
 	}
-	return runTool(ctx, runtime, task.Input, call, tool, final)
+	invalid := HarnessError("invalid_park", fmt.Sprintf("Tool call %s cannot wait at its gates: %s", call.ID, err.Error()))
+	return rejectTool(ctx, runtime, input, call, tool, invalid)
 }
 
 // toolExecutePhase is recovery after intent: rerun only when the stored and the current policy both say safe.
@@ -355,7 +463,8 @@ func toolExecutePhase(ctx context.Context, task toolRecord, runtime toolRuntime)
 	}
 	if checkpoint.Replay == durable.ReplaySafe && tool != nil && tool.Replay == durable.ReplaySafe {
 		// The rerun reports from scratch: clear what the interrupted attempt published, and show the slot running with the
-		// arguments it runs with again, as the deferred commit that showed them may have been lost with the crash.
+		// arguments it runs with again, as the deferred commit that showed them may have been lost with the crash. A woken
+		// run keeps the details and diagnostics earlier runs left, as a park does.
 		encoded, err := checkpoint.argumentsText()
 		if err != nil {
 			return err
@@ -370,7 +479,11 @@ func toolExecutePhase(ctx context.Context, task toolRecord, runtime toolRuntime)
 				return nil, err
 			}
 			if slot := FindToolSlot(live, runtime.TaskId()); slot != nil {
-				ClearProgress(slot)
+				if checkpoint.Wake == nil {
+					ClearProgress(slot)
+				} else {
+					ClearOutput(slot)
+				}
 				if err := slot.Set("status", string(ToolSlotRunning)); err != nil {
 					return nil, err
 				}
@@ -384,7 +497,13 @@ func toolExecutePhase(ctx context.Context, task toolRecord, runtime toolRuntime)
 		}); err != nil {
 			return err
 		}
-		return runTool(ctx, runtime, task.Input, call, tool, checkpoint.Arguments)
+		return runTool(ctx, runtime, task.Input, call, tool, checkpoint, toolResumed{wake: checkpoint.Wake, checkpoint: checkpoint.Checkpoint, hasCheckpoint: checkpoint.HasCheckpoint})
+	}
+	// A woken run may have restarted external work that nothing will collect now.
+	if checkpoint.Wake != nil && tool != nil {
+		if err := cancelTool(ctx, runtime, task.Input, call, tool, checkpoint); err != nil {
+			return err
+		}
 	}
 	message := fmt.Sprintf("Tool %s was interrupted and may have partially run", call.Name)
 	// failed records cancellation intent, so the call's owned conversations, left unsupervised, are aborted.
@@ -415,23 +534,39 @@ func toolAbort(ctx context.Context, task toolRecord, runtime toolRuntime) error 
 	if err := awaitEarlierAborts(ctx, runtime); err != nil {
 		return err
 	}
+	checkpoint := task.State.Checkpoint
 	// Abandoned after a restart (TaskOptions.AbandonOnRestart): say whether the call may have run (tool.ts abort). An
 	// unoffered call could not run in any case, and its result says so.
 	code, message := "aborted", fmt.Sprintf("Tool %s was aborted", call.Name)
 	if isUnoffered(task.Input) {
 		code, message = "tool_unavailable", fmt.Sprintf("Tool %s is not available", call.Name)
 	} else if task.AbortReason == durable.AbortedByRestart {
-		if task.State.Checkpoint != nil && task.State.Checkpoint.Phase == toolPhaseExecute {
+		switch {
+		case checkpoint != nil && checkpoint.Phase == toolPhaseExecute:
 			code, message = "interrupted", fmt.Sprintf("Tool %s was interrupted by a restart and may have partially run", call.Name)
-		} else {
+		case checkpoint != nil && checkpoint.Phase == toolPhaseParked:
+			code, message = "abandoned", fmt.Sprintf("Tool %s was parked: its caller ended with a restart", call.Name)
+		default:
 			code, message = "abandoned", fmt.Sprintf("Tool %s was not started: its caller ended with a restart", call.Name)
 		}
 	}
-	// The scheduler runs an abort handler only while its restarts are below the limit, and faults the task without a
-	// result when the last attempt is cut off. That attempt skips the hooks, which may be what cuts it off.
+	tool := toolForLimits(ctx, runtime, task.Input, call.Name)
+	// External work may be live while no code of the tool runs: parked, or woken and cut off before it parked again. The
+	// scheduler ends an abort handler cut off restartLimit times itself, so Cancel cannot keep it from ending.
+	if checkpoint != nil && (checkpoint.Phase == toolPhaseParked || (checkpoint.Phase == toolPhaseExecute && checkpoint.Wake != nil)) {
+		if tool != nil {
+			if err := cancelTool(ctx, runtime, task.Input, call, tool, *checkpoint); err != nil {
+				return err
+			}
+		} else {
+			runtime.Report(fmt.Errorf("Tool %s is not available: its parked call %s was not cancelled", call.Name, call.ID))
+		}
+	}
+	// The scheduler faults the task without a result when its last abort attempt is cut off. That attempt skips the hooks,
+	// which may be what cuts it off.
 	var hooks *settleHooks
 	if float64(task.Restarts) < runtime.Settings().RestartLimit-1 {
-		hooks = &settleHooks{tool: toolForLimits(ctx, runtime, task.Input, call.Name)}
+		hooks = &settleHooks{tool: tool}
 	}
 	return settleFromSlot(ctx, runtime, task.Input, call, hooks, toolEnding{status: durable.OutcomeAborted}, code, message)
 }
@@ -629,27 +764,26 @@ func ToolOutputLimits(tool *durable.ToolRegistration) output.OutputLimits {
 	return limits
 }
 
-// runTool executes with the resolved implementation, then settles its result (tool.ts:157-262).
-func runTool(ctx context.Context, runtime toolRuntime, input ToolTaskInput, call ai.ToolCall, tool *durable.ToolRegistration, args map[string]any) error {
-	limits := ToolOutputLimits(tool)
-	reported := &toolReported{output: output.NewOutputBuffer(limits), limits: limits}
-	progress := publishProgress(ctx, runtime, reported, input.Kind != ToolTaskNested || input.Progress == nil || *input.Progress)
-	api := &toolApi{runtime: runtime, call: call, tool: tool, reported: reported, progress: progress, nested: NewNestedCalls(call.ID, tool.Replay == durable.ReplaySafe)}
-	if limits.Retain == string(durable.RetainTail) {
-		api.window = &env.ShellOutputWindow{
-			MaxBytes:       limits.MaxBytes,
-			MaxLines:       limits.MaxLines,
-			MinIntervalMs:  runtime.Settings().Progress.OutputIntervalMs,
-			BytesPerSecond: output.ProgressBytesPerSecond,
-		}
-	}
+// toolResumed is what a run of Execute starts from after a park: why it woke, and what the call last parked with.
+type toolResumed struct {
+	wake          *durable.WakeReason
+	checkpoint    durable.JsonValue
+	hasCheckpoint bool
+}
 
+// runTool executes with the resolved implementation, then settles its result or parks the call (tool.ts:157-262, run).
+func runTool(ctx context.Context, runtime toolRuntime, input ToolTaskInput, call ai.ToolCall, tool *durable.ToolRegistration, intent ToolTaskCheckpoint, resumed toolResumed) error {
+	args := intent.Arguments
+	api, err := startAttempt(ctx, runtime, input, call, tool, resumed)
+	if err != nil {
+		return err
+	}
 	var result durable.ToolExecutionResult
 	ending := toolCompleted
-	// Execution time of this attempt; a rerun after recovery measures only itself. The environment build and the hooks are
+	// Execution time of this attempt, for a record without StartedAt (settleTool). The environment build and the hooks are
 	// not part of it, and a failed Execute still has a duration.
-	var durationMs *int64
-	err := callTool(func() error {
+	var measured *int64
+	err = callTool(func() error {
 		// Built for this call, so a rerun after recovery gets the conversation's environment at that time.
 		environment, err := runtime.Env(ctx)
 		if err != nil {
@@ -658,16 +792,16 @@ func runTool(ctx context.Context, runtime toolRuntime, input ToolTaskInput, call
 		api.env = environment
 		startedAt := time.Now()
 		defer func() {
-			durationMs = new(int64(math.Round(float64(time.Since(startedAt)) / float64(time.Millisecond))))
+			measured = new(int64(math.Round(float64(time.Since(startedAt)) / float64(time.Millisecond))))
 		}()
-		result, err = tool.Execute(ctx, args, api)
+		result, err = tool.Execute(withBaseParks(ctx, api.parks), args, api)
 		return err
 	})
 	if err != nil {
 		if runtime.Signal().Err() != nil {
 			api.ended.Store(true)
 			api.nested.End()
-			output.SettleInOrder(progress.Stop(), err)
+			output.SettleInOrder(api.progress.Stop(), err)
 			return err
 		}
 		isError := true
@@ -676,19 +810,22 @@ func runTool(ctx context.Context, runtime toolRuntime, input ToolTaskInput, call
 		// owned; it no longer supervises it. The error text is already in the result entry.
 		ending = toolEnding{status: durable.OutcomeFailed, message: fmt.Sprintf("Tool %s threw", call.Name)}
 	}
-	api.ended.Store(true)
-	// No admission starts after ended; let those underway commit, so settlement aborts and lists their calls.
-	api.nested.End()
-	reported.mu.Lock()
-	reported.output.End()
-	reported.mu.Unlock()
-	// Details still waiting for a progress commit settle with the terminal commit, the final flush.
-	pending := progress.Stop()
-	// The caller of the details() the last progress commit settled may still be running; it runs before what follows.
-	if trailing := progress.TrailingWaiter(); trailing != nil {
-		output.AwaitCaller(trailing)
+	// Details still waiting for a progress commit settle with the next commit, the park's or the result's.
+	pending := api.end()
+	if isPark(result) {
+		invalid, err := parkTool(ctx, runtime, input, call, tool, intent, result, api)
+		if err != nil {
+			output.SettleAndAwait(pending, err)
+			return err
+		}
+		if invalid == "" {
+			output.SettleAndAwait(pending, nil)
+			return nil
+		}
+		result = HarnessError("invalid_park", fmt.Sprintf("Tool %s returned an invalid park: %s", call.Name, invalid))
+		ending = toolEnding{status: durable.OutcomeFailed, message: fmt.Sprintf("Tool %s returned an invalid park", call.Name)}
 	}
-	settled, err := finalResult(ctx, runtime, input, tool, call, result, reported)
+	settled, err := finalResult(ctx, runtime, input, tool, call, result, api.reported)
 	commitCtx := ctx
 	if len(pending) > 0 {
 		// Upstream resolves each of them after the terminal commit (tool.ts:420-428) and runs their continuations before the
@@ -699,13 +836,218 @@ func runTool(ctx context.Context, runtime toolRuntime, input ToolTaskInput, call
 		defer hold.release()
 	}
 	if err == nil {
-		err = settleTool(commitCtx, runtime, input, call, ending, settled, durationMs)
+		err = settleTool(commitCtx, runtime, input, call, ending, settled, measured)
 	}
 	output.SettleAndAwait(pending, err)
 	return err
 }
 
-// toolApi is the ToolExecutionApi of one call (tool.ts:177-238).
+// startAttempt starts a run of the tool's code (Execute or Cancel): its api, what it reported, and its progress commits. A
+// woken run adds to the details and diagnostics earlier runs left in the slot (spec suspendable §4.2), so it starts from
+// them; a nested call without progress keeps none there.
+func startAttempt(ctx context.Context, runtime toolRuntime, input ToolTaskInput, call ai.ToolCall, tool *durable.ToolRegistration, resumed toolResumed) (*toolApi, error) {
+	limits := ToolOutputLimits(tool)
+	streams := input.Kind != ToolTaskNested || input.Progress == nil || *input.Progress
+	reported := &toolReported{output: output.NewOutputBuffer(limits), limits: limits}
+	if resumed.wake != nil && streams {
+		live, err := durable.Snapshot[LiveState](ctx, runtime, LiveDoc, runtime.ConversationId())
+		if err != nil {
+			return nil, err
+		}
+		if live != nil {
+			if kept := toolSlotOf(live, runtime.TaskId()); kept != nil {
+				reported.diagnostics = slices.Clone(kept.Diagnostics)
+				if kept.Details != nil {
+					reported.details, reported.hasDetails = *kept.Details, true
+				}
+			}
+		}
+	}
+	progress := publishProgress(ctx, runtime, reported, streams)
+	api := &toolApi{
+		runtime: runtime, call: call, tool: tool, reported: reported, progress: progress,
+		// A caller that can rerun reattaches to its nested calls and child tasks after a restart; any other caller never
+		// resumes, so they are abandoned (TaskOptions.AbandonOnRestart).
+		nested: NewNestedCalls(call.ID, tool.Replay == durable.ReplaySafe),
+		wake:   resumed.wake, checkpoint: resumed.checkpoint, hasCheckpoint: resumed.hasCheckpoint,
+		parks: &baseParks{},
+	}
+	api.nested.afterWake = resumed.wake != nil
+	if limits.Retain == string(durable.RetainTail) {
+		api.window = &env.ShellOutputWindow{
+			MaxBytes:       limits.MaxBytes,
+			MaxLines:       limits.MaxLines,
+			MinIntervalMs:  runtime.Settings().Progress.OutputIntervalMs,
+			BytesPerSecond: output.ProgressBytesPerSecond,
+		}
+	}
+	return api, nil
+}
+
+// end ends the attempt: the api then fails, and no nested call is admitted; those underway commit, so settlement aborts
+// and lists their calls. It ends the output, stops progress, and returns the details waiters still waiting for a progress
+// commit.
+func (api *toolApi) end() []*output.ProgressWaiter {
+	api.ended.Store(true)
+	api.nested.End()
+	api.reported.mu.Lock()
+	api.reported.output.End()
+	api.reported.mu.Unlock()
+	pending := api.progress.Stop()
+	// The caller of the details() the last progress commit settled may still be running; it runs before what follows.
+	if trailing := api.progress.TrailingWaiter(); trailing != nil {
+		output.AwaitCaller(trailing)
+	}
+	return pending
+}
+
+// parkTool parks the call (spec suspendable §4.2). One commit persists the details and diagnostics the attempt reported,
+// shows the slot sleeping or waiting without output, and stores the parked checkpoint with the park's sleep or wait; the
+// call's live nested calls keep running. It returns why the park is invalid instead, when it is. When the commit is refused
+// because the call was abort-marked meanwhile, Cancel cleans up what the run started before the error ends the run.
+func parkTool(ctx context.Context, runtime toolRuntime, input ToolTaskInput, call ai.ToolCall, tool *durable.ToolRegistration, intent ToolTaskCheckpoint, returned durable.ToolExecutionResult, api *toolApi) (string, error) {
+	if shape := parkError(tool, returned, api.parks); shape != "" {
+		return shape, nil
+	}
+	park := returned.Park
+	if park.Wait != nil {
+		for _, id := range park.Wait.On {
+			record, err := runtime.GetTask(ctx, id)
+			if err != nil {
+				return "", err
+			}
+			if record == nil || record.Owner == nil || *record.Owner != runtime.TaskId() {
+				return fmt.Sprintf("task %d is not owned by the call", id), nil
+			}
+		}
+	}
+	parked := ToolTaskCheckpoint{Phase: toolPhaseParked, Arguments: intent.Arguments, Replay: replayOf(tool), argumentsJSON: intent.argumentsJSON}
+	if park.Sleep != nil {
+		parked.Checkpoint, parked.HasCheckpoint = park.Sleep.Checkpoint, park.Sleep.HasCheckpoint
+	} else {
+		parked.Checkpoint, parked.HasCheckpoint = park.Wait.Checkpoint, park.Wait.HasCheckpoint
+	}
+	streams := input.Kind != ToolTaskNested || input.Progress == nil || *input.Progress
+	reported := api.reported
+	reported.mu.Lock()
+	details, hasDetails := reported.details, reported.hasDetails
+	diagnostics := slices.Clone(reported.diagnostics)
+	reported.mu.Unlock()
+	var diagnosticsJSON durable.JsonValue
+	if streams && len(diagnostics) > 0 {
+		var err error
+		if diagnosticsJSON, err = durable.ToJsonValue(diagnostics); err != nil {
+			return "", err
+		}
+	}
+	err := runtime.Commit(ctx, func(tx durable.Tx, _ toolRecord) (*toolNext, error) {
+		live, err := docDraft(tx, LiveDoc, runtime.ConversationId())
+		if err != nil {
+			return nil, err
+		}
+		if slot := FindToolSlot(live, runtime.TaskId()); slot != nil {
+			if streams && hasDetails {
+				if err := AssignJson(slot, "details", details, nil); err != nil {
+					return nil, err
+				}
+			}
+			if streams && len(diagnostics) > 0 {
+				if err := AssignJson(slot, "diagnostics", diagnosticsJSON, nil); err != nil {
+					return nil, err
+				}
+			}
+			ClearOutput(slot)
+			status := ToolSlotWaiting
+			if park.Sleep != nil {
+				status = ToolSlotSleeping
+			}
+			if err := slot.Set("status", string(status)); err != nil {
+				return nil, err
+			}
+		}
+		if park.Sleep != nil {
+			return &toolNext{Status: durable.TaskSleeping, Checkpoint: &parked, Until: park.Sleep.Until, Signals: park.Sleep.Signals}, nil
+		}
+		return &toolNext{Status: durable.TaskWaiting, Checkpoint: &parked, On: park.Wait.On, Policy: park.Wait.Policy}, nil
+	})
+	if err == nil {
+		return "", nil
+	}
+	// The sleep or wait broke a rule the commit checks: a deadline, a used key, a missing task, a wait cycle. A close seals
+	// the Session before it signals the run.
+	closed := closeSignal(runtime)
+	if runtime.Signal().Err() == nil && closed.Err() == nil {
+		return err.Error(), nil
+	}
+	// Abort-marked meanwhile, unlike a close, which leaves the run to recovery: the park is not stored, so clean up with its
+	// checkpoint now, in a context only the Harness's close cancels.
+	cleanup := chordctx.WithAbortSignal(chordctx.WithoutAbortSignal(ctx), closed)
+	record, getErr := runtime.GetTask(cleanup, runtime.TaskId())
+	if getErr != nil {
+		return "", getErr
+	}
+	if record != nil && record.AbortRequested {
+		if cancelErr := cancelTool(cleanup, runtime, input, call, tool, parked); cancelErr != nil {
+			return "", cancelErr
+		}
+	}
+	return "", err
+}
+
+// cancelApi is the api of Cancel: that of its attempt, which starts no nested calls or tasks.
+type cancelApi struct {
+	*toolApi
+}
+
+func (api cancelApi) refused() error {
+	return fmt.Errorf("Tool %s cannot start nested calls or tasks in cancel", api.call.Name)
+}
+
+func (api cancelApi) ExecuteTool(context.Context, string, map[string]any, ...durable.NestedCallOptions) (durable.NestedToolExecutionResult, error) {
+	return durable.NestedToolExecutionResult{}, api.refused()
+}
+
+func (api cancelApi) ExecuteToolNoWait(context.Context, string, map[string]any, ...durable.NestedCallOptions) (durable.NestedToolCall, error) {
+	return durable.NestedToolCall{}, api.refused()
+}
+
+func (api cancelApi) CreateTaskErased(context.Context, durable.AnyTask, durable.JsonValue, durable.ToolTaskOptions) (durable.TaskId, error) {
+	return 0, api.refused()
+}
+
+// cancelTool runs the tool's Cancel, if it has one, to clean up the external work of a call that parked (spec suspendable
+// §4.2): api.Checkpoint is the last park's, api.Wake nil, and the api starts no nested calls or tasks. A failure is
+// reported; the call ends either way. checkpoint is the parked or execute checkpoint holding the park's arguments and
+// checkpoint.
+func cancelTool(ctx context.Context, runtime toolRuntime, input ToolTaskInput, call ai.ToolCall, tool *durable.ToolRegistration, checkpoint ToolTaskCheckpoint) error {
+	if tool.Cancel == nil {
+		return nil
+	}
+	api, err := startAttempt(ctx, runtime, input, call, tool, toolResumed{checkpoint: checkpoint.Checkpoint, hasCheckpoint: checkpoint.HasCheckpoint})
+	if err != nil {
+		return err
+	}
+	err = callTool(func() error {
+		environment, err := runtime.Env(ctx)
+		if err != nil {
+			return err
+		}
+		api.env = environment
+		return tool.Cancel(ctx, checkpoint.Arguments, cancelApi{api})
+	})
+	if err != nil {
+		// Only the Harness's close cancels a cleanup.
+		if ctx.Err() != nil {
+			output.SettleInOrder(api.end(), err)
+			return err
+		}
+		reportToolError(ctx, runtime, tool, err)
+	}
+	output.SettleAndAwait(api.end(), nil)
+	return nil
+}
+
+// toolApi is the ToolExecutionApi of one run of a tool's code (tool.ts:177-238, Attempt).
 type toolApi struct {
 	runtime  toolRuntime
 	call     ai.ToolCall
@@ -716,7 +1058,15 @@ type toolApi struct {
 	ended    atomic.Bool
 	tool     *durable.ToolRegistration
 	nested   *NestedCalls
+	// wake, checkpoint and hasCheckpoint are what a run after a park starts from (spec suspendable §4.2).
+	wake          *durable.WakeReason
+	checkpoint    durable.JsonValue
+	hasCheckpoint bool
+	// parks are the parks a wrapped base returned in this run (parks.ts BASE_PARKS).
+	parks *baseParks
 }
+
+func (api *toolApi) carriedParks() *baseParks { return api.parks }
 
 var _ durable.ToolExecutionApi = (*toolApi)(nil)
 
@@ -732,6 +1082,17 @@ func (api *toolApi) TaskId() durable.TaskId { return api.runtime.TaskId() }
 func (api *toolApi) ConversationId() durable.ConversationId { return api.runtime.ConversationId() }
 
 func (api *toolApi) CallId() string { return api.call.ID }
+
+// Wake is why this run started after a park; nil on a fresh call, and in Cancel.
+func (api *toolApi) Wake() *durable.WakeReason { return api.wake }
+
+// Checkpoint is what the call last parked with; ok is false on a fresh call or after a park without one.
+func (api *toolApi) Checkpoint() (durable.JsonValue, bool) { return api.checkpoint, api.hasCheckpoint }
+
+// ReadSignalErased is a signal key's committed state in this call's task.
+func (api *toolApi) ReadSignalErased(ctx context.Context, token durable.AnySignalSource, key string) (*durable.ErasedSignalState, error) {
+	return api.runtime.ReadSignalErased(ctx, token, key)
+}
 
 func (api *toolApi) Registry() durable.RegistrySnapshot { return api.runtime.Registry() }
 
@@ -844,9 +1205,20 @@ func (api *toolApi) MemoCandidate(ctx context.Context, name string, candidate du
 	return api.runtime.MemoCandidate(ctx, name, candidate)
 }
 
-// CreateTaskErased creates a task in its own commit; the conversation is the tool task's own default.
-func (api *toolApi) CreateTaskErased(ctx context.Context, task durable.AnyTask, input durable.JsonValue, options durable.TaskOptions) (durable.TaskId, error) {
+// CreateTaskErased creates a task in its own commit; the conversation is the tool task's own default. With a Key, the
+// task is recorded under it in the call's NestedCallDoc in the same commit, so a later call with the key, in this run, a
+// rerun, or a run after a wake, returns that task; after a wake a key is required.
+func (api *toolApi) CreateTaskErased(ctx context.Context, task durable.AnyTask, input durable.JsonValue, toolOptions durable.ToolTaskOptions) (durable.TaskId, error) {
+	options := toolOptions.TaskOptions
 	options.ConversationId = nil
+	key := toolOptions.Key
+	if key != nil {
+		if err := checkNestedKey(*key); err != nil {
+			return 0, err
+		}
+	} else if api.wake != nil {
+		return 0, fmt.Errorf("Tool call %s needs explicit keys after a wake", api.call.ID)
+	}
 	// A caller that can rerun reattaches to its child tasks after a restart; any other caller never resumes, so they are
 	// abandoned (TaskOptions.AbandonOnRestart) unless the options say otherwise (tool.ts:338).
 	if options.Ownership.Kind == durable.TaskOwnedByTask && !api.resumes() && options.AbandonOnRestart == nil {
@@ -855,8 +1227,43 @@ func (api *toolApi) CreateTaskErased(ctx context.Context, task durable.AnyTask, 
 	var id durable.TaskId
 	err := api.runtime.Commit(ctx, func(tx durable.Tx, _ toolRecord) (*toolNext, error) {
 		var err error
-		id, err = tx.CreateTaskErased(task, input, options)
-		return nil, err
+		if key == nil {
+			id, err = tx.CreateTaskErased(task, input, options)
+			return nil, err
+		}
+		// Opened, or created empty for a key not used yet.
+		member, err := tx.Doc(NestedCallDoc, api.runtime.TaskId(), *key, nil)
+		if err != nil {
+			return nil, err
+		}
+		if existing, found := member.Get("taskId").(float64); found {
+			same := false
+			if member.Get("kind") == "task" {
+				record, err := tx.Task(durable.TaskId(existing))
+				if err != nil {
+					return nil, err
+				}
+				if record != nil && record.Kind == task.AnyDefinition().Name {
+					copied, err := durable.CopyJson(input)
+					if err != nil {
+						return nil, err
+					}
+					same = jsonEqual(record.Input, copied)
+				}
+			}
+			if !same {
+				return nil, fmt.Errorf("Key %s of tool call %s was already used for another call or task", *key, api.call.ID)
+			}
+			id = durable.TaskId(existing)
+			return nil, nil
+		}
+		if id, err = tx.CreateTaskErased(task, input, options); err != nil {
+			return nil, err
+		}
+		if err := member.Set("kind", "task"); err != nil {
+			return nil, err
+		}
+		return nil, member.Set("taskId", float64(id))
 	})
 	return id, err
 }
@@ -923,11 +1330,12 @@ func progressClock(runtime toolRuntime) output.ProgressClock {
 // publishProgress returns throttled commits of what the tool reported into its pi.live.tools slot, each writing only
 // what changed since the last one (tool.ts:268-318).
 func publishProgress(ctx context.Context, runtime toolRuntime, reported *toolReported, enabled bool) *output.Progress {
+	// The slot holds what the attempt started from (startAttempt).
 	written := struct {
 		text           string
 		detailsVersion int
 		diagnostics    int
-	}{}
+	}{diagnostics: len(reported.diagnostics)}
 	return output.NewProgressWithClock(func() (int, error) {
 		if !enabled {
 			return 0, nil
@@ -1076,12 +1484,7 @@ func finalResult(ctx context.Context, runtime toolRuntime, input ToolTaskInput, 
 			harness = append(harness, toolDiagnostic("invalid_structured_output", broken))
 		} else {
 			// The model never sees structured output, so its call stands; the host learns of the broken tool.
-			// Only names the extension: a failed resolution leaves the report without the name.
-			var extension string
-			if agent, err := runtime.Agent(ctx); err == nil {
-				extension = ToolExtension(agent, tool.Name)
-			}
-			runtime.Report(errors.New(broken), durable.ReportFrom{Kind: durable.ReportFromExtension, Extension: extension})
+			reportToolError(ctx, runtime, tool, errors.New(broken))
 		}
 	}
 	// Programs get the tool's own value: without a schema, its output. The model reads only Output, so model-issued calls
@@ -1124,8 +1527,10 @@ func sameContent(left, right []ai.ToolResultMessageContent) bool {
 }
 
 // settleTool commits the tool's terminal state (tool.ts:359-385): it appends the result entry, marks the slot done,
-// and completes or ends aborted with the entry ID. control applies only when the task completes.
-func settleTool(ctx context.Context, runtime toolRuntime, input ToolTaskInput, call ai.ToolCall, ending toolEnding, result durable.ToolExecutionResult, durationMs ...*int64) error {
+// and completes or ends aborted with the entry ID. control applies only when the task completes. The result's durationMs
+// is the call's whole span, from the task's StartedAt to now on the Harness clock, parks, reruns, and downtime included
+// (spec suspendable §4.2); a record from before lifecycle times keeps measured, the last attempt's execution time.
+func settleTool(ctx context.Context, runtime toolRuntime, input ToolTaskInput, call ai.ToolCall, ending toolEnding, result durable.ToolExecutionResult, measured *int64) error {
 	// A crash in between leaves the call in execute: a safe rerun reattaches to the calls, an interruption ends here. Every live
 	// nested call the task owns, also those an earlier attempt made and this one never called again.
 	nestedIds, err := nestedCallIds(ctx, runtime)
@@ -1141,16 +1546,16 @@ func settleTool(ctx context.Context, runtime toolRuntime, input ToolTaskInput, c
 	if err := abortAll(ctx, runtime, nestedIds); err != nil {
 		return err
 	}
-	return runtime.Commit(ctx, func(tx durable.Tx, _ toolRecord) (*toolNext, error) {
+	return runtime.Commit(ctx, func(tx durable.Tx, current toolRecord) (*toolNext, error) {
+		duration := measured
+		if current.StartedAt != nil {
+			duration = new(int64(math.Round(runtime.Now() - *current.StartedAt)))
+		}
 		live, err := docDraft(tx, LiveDoc, runtime.ConversationId())
 		if err != nil {
 			return nil, err
 		}
 		slot := FindToolSlot(live, runtime.TaskId())
-		var duration *int64
-		if len(durationMs) > 0 {
-			duration = durationMs[0]
-		}
 		var settled ToolTaskResult
 		if input.Kind == ToolTaskNested {
 			nested := nestedResult(runtime.TaskId(), result, duration)
@@ -1248,7 +1653,7 @@ func rejectTool(ctx context.Context, runtime toolRuntime, input ToolTaskInput, c
 	if err != nil {
 		return err
 	}
-	return settleTool(ctx, runtime, input, call, toolCompleted, settled)
+	return settleTool(ctx, runtime, input, call, toolCompleted, settled, nil)
 }
 
 // settleFromSlot settles an error result built from the call's slot (fromSlot): an interruption, the restart limit, or an
@@ -1274,7 +1679,17 @@ func settleFromSlot(ctx context.Context, runtime toolRuntime, input ToolTaskInpu
 	} else if truncation != nil {
 		settled.Diagnostics = append(slices.Clone(result.Diagnostics), *truncation)
 	}
-	return settleTool(ctx, runtime, input, call, ending, settled)
+	return settleTool(ctx, runtime, input, call, ending, settled, nil)
+}
+
+// reportToolError reports a failure of the tool's code as an extension error, naming its extension when the agent
+// resolves: a failed resolution leaves the report without the name.
+func reportToolError(ctx context.Context, runtime toolRuntime, tool *durable.ToolRegistration, err error) {
+	var extension string
+	if agent, agentErr := runtime.Agent(ctx); agentErr == nil {
+		extension = ToolExtension(agent, tool.Name)
+	}
+	runtime.Report(err, durable.ReportFrom{Kind: durable.ReportFromExtension, Extension: extension})
 }
 
 // toolSlotOf is the slot of tool task taskId in a pi.live value, model-issued or nested, as a model-issued slot; nil when

@@ -26,7 +26,7 @@ func closedConnectionProviders() []closedConnectionProvider {
 	const anthropicEvent = `{"type":"error","error":{"type":"api_error","message":"Connection closed."}}`
 	const closedSocket = "terminated: other side closed (UND_ERR_SOCKET)"
 	const connectionError = "Connection error.: other side closed (UND_ERR_SOCKET)"
-	return []closedConnectionProvider{
+	providers := []closedConnectionProvider{
 		{
 			name: "anthropic API key",
 			make: func(u string) Provider {
@@ -76,14 +76,10 @@ func closedConnectionProviders() []closedConnectionProvider {
 			},
 			beforeByte: "fetch failed", afterHeaders: closedSocket, midStream: closedSocket,
 		},
-		{
-			name: "mistral",
-			make: func(u string) Provider {
-				return NewMistralProvider(MistralConfig{BaseURL: u, APIKey: "test-key", Model: "mistral-small"})
-			},
-			beforeByte: "fetch failed", afterHeaders: "terminated", midStream: "terminated",
-		},
 	}
+	// The Mistral case is in provider_closed_connection_mistral_test.go: a Piglet built with pig_strip_mistral_conversations has no
+	// NewMistralProvider, and this file is built for every Piglet (make piglet-strip-build vets it with every strip tag).
+	return append(providers, closedConnectionMistralProviders()...)
 }
 
 func TestProviderStreamErrorEventReadingConnectionClosedIsRetryable(t *testing.T) {

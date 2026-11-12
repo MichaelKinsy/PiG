@@ -50,10 +50,11 @@ func TestToolsAndHooksSeeTheHarnessModels(t *testing.T) {
 	mustClose(t, run.harness)
 }
 
-// TestToolResultRecordsHowLongExecuteTook mirrors packages/durable/test/harness-tools.test.ts:432 ("records how long execute()
-// took, excluding hooks, and nothing for calls that did not run"; src/harness/tool.ts:253-262,383,460-476): the duration spans
-// the tool's own work, a tool that throws still has one, and a call a beforeTool hook blocked has none.
-func TestToolResultRecordsHowLongExecuteTook(t *testing.T) {
+// TestToolResultRecordsTheSpanFromTheCallsFirstRun mirrors packages/durable/test/harness-tools.test.ts:461 ("records each
+// result's span from the call's first run, hooks included, also for calls that did not execute"; src/harness/tool.ts settle):
+// the duration spans the hooks and the tool's own work, a tool that throws still has one, and a call a beforeTool hook
+// blocked has the hook's time.
+func TestToolResultRecordsTheSpanFromTheCallsFirstRun(t *testing.T) {
 	setup := chatSetup(t)
 	work := func(_ context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 		time.Sleep(30 * time.Millisecond) // the tool's simulated work is what the duration measures
@@ -82,17 +83,17 @@ func TestToolResultRecordsHowLongExecuteTook(t *testing.T) {
 	for _, id := range []string{"slow", "thrower"} {
 		duration := byId[id].DurationMs
 		if duration == nil {
-			t.Fatalf("%s: recorded no durationMs, want about 30 and below the 100 ms hook time", id)
+			t.Fatalf("%s: recorded no durationMs, want at least 125", id)
 		}
-		if *duration < 25 || *duration >= 100 {
-			t.Fatalf("%s: durationMs %d, want about 30 and below the 100 ms hook time", id, *duration)
+		if *duration < 125 {
+			t.Fatalf("%s: durationMs %d, want at least 125: the 100 ms hook time and the 30 ms execution", id, *duration)
 		}
 	}
 	if !byId["thrower"].IsError {
 		t.Fatal("the thrower's result is not an error")
 	}
-	if byId["blocked"].DurationMs != nil {
-		t.Fatalf("a blocked call has durationMs %d, want none", *byId["blocked"].DurationMs)
+	if duration := byId["blocked"].DurationMs; duration == nil || *duration < 95 {
+		t.Fatalf("a blocked call has durationMs %v, want at least 95: the hook's time", duration)
 	}
 	mustClose(t, run.harness)
 }

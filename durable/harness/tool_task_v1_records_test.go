@@ -103,8 +103,8 @@ func TestAPendingVersion1ToolTaskMigratesAndRunsAsAModelIssuedCall(t *testing.T)
 	path, id := storeToolTaskVersion(t, setup, map[string]any{"phase": "call"}, 1)
 	harness, root, settled := reopenToolTaskVersion(t, setup, path, id, 1)
 	defer func() { _ = harness.Close(testContext) }()
-	if settled.Version != 3 {
-		t.Fatalf("settled version %d, want 3", settled.Version)
+	if settled.Version != 4 {
+		t.Fatalf("settled version %d, want 4", settled.Version)
 	}
 	expectSettledModelToolTask(t, settled, false, "completed")
 	results := tlResults(allEntries(t, root))
@@ -124,8 +124,8 @@ func TestAVersion1ToolTaskInterruptedAfterIntentSettlesInterrupted(t *testing.T)
 	path, id := storeToolTaskVersion(t, setup, map[string]any{"phase": "execute", "arguments": map[string]any{"text": "old"}, "replay": "unsafe"}, 1)
 	harness, root, settled := reopenToolTaskVersion(t, setup, path, id, 1)
 	defer func() { _ = harness.Close(testContext) }()
-	if settled.Version != 3 {
-		t.Fatalf("settled version %d, want 3", settled.Version)
+	if settled.Version != 4 {
+		t.Fatalf("settled version %d, want 4", settled.Version)
 	}
 	var outcome map[string]any
 	if err := json.Unmarshal(must(json.Marshal(settled.State.Outcome)), &outcome); err != nil {
@@ -140,8 +140,8 @@ func TestAVersion1ToolTaskInterruptedAfterIntentSettlesInterrupted(t *testing.T)
 	}
 }
 
-// harness-nested-tools.test.ts:1330 it("reserves a stored version 2 task under version 3 and runs it as a model-issued call") (#11043)
-func TestAVersion2ToolTaskIsReservedUnderVersion3AndRunsAsAModelIssuedCall(t *testing.T) {
+// harness-nested-tools.test.ts:1330 it("reserves a stored version 2 task under version 4 and runs it as a model-issued call") (#11043)
+func TestAVersion2ToolTaskIsReservedUnderVersion4AndRunsAsAModelIssuedCall(t *testing.T) {
 	setup := chatSetup(t)
 	runs := 0
 	addTool(t, setup.Registry, tlTool("echo", func(_ context.Context, args any, _ durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
@@ -152,8 +152,8 @@ func TestAVersion2ToolTaskIsReservedUnderVersion3AndRunsAsAModelIssuedCall(t *te
 	path, id := storeToolTaskVersion(t, setup, map[string]any{"phase": "call"}, 2)
 	harness, root, settled := reopenToolTaskVersion(t, setup, path, id, 2)
 	defer func() { _ = harness.Close(testContext) }()
-	if settled.Version != 3 {
-		t.Fatalf("settled version %d, want 3", settled.Version)
+	if settled.Version != 4 {
+		t.Fatalf("settled version %d, want 4", settled.Version)
 	}
 	expectSettledModelToolTask(t, settled, true, "completed")
 	results := tlResults(allEntries(t, root))

@@ -425,7 +425,7 @@ func TestAgentResolution(t *testing.T) {
 		local := CreateRegistry()
 		first := &ToolHooks{BeforeTool: func(context.Context, ToolHookCall, HookApi) (*BeforeToolResult, error) { return nil, nil }}
 		second := &ToolHooks{BeforeTool: func(context.Context, ToolHookCall, HookApi) (*BeforeToolResult, error) { return nil, nil }}
-		onYield := &GenerationHooks{OnYield: func(context.Context, ai.AssistantMessage, HookApi) (*YieldContinue, error) { return nil, nil }}
+		onYield := &GenerationHooks{OnYield: func(context.Context, ai.AssistantMessage, HookApi) (YieldResult, error) { return nil, nil }}
 		mustInstall(t, local,
 			new(durable.Extension{Name: "a", Hooks: []durable.HookRegistration{Hook(ToolTask, first), Hook(GenerationTask, onYield)}}),
 			new(durable.Extension{Name: "b", Hooks: []durable.HookRegistration{Hook(ToolTask, second)}}),

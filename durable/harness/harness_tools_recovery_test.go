@@ -296,12 +296,12 @@ func TestToolRecovery(t *testing.T) {
 		addTool(t, setup.Registry, trTool("work", tlNoContent))
 		reached := deferred()
 		var observed atomicCounter
-		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{AfterTools: func(ctx context.Context, _ durable.EntryId, _ []durable.EntryId, _ HookApi) error {
+		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{AfterTools: func(ctx context.Context, _ durable.EntryId, _ []durable.EntryId, _ HookApi) (*HookTasks, error) {
 			if observed.add() == 1 {
 				reached.resolve()
-				return abortedBy(ctx)
+				return nil, abortedBy(ctx)
 			}
-			return nil
+			return nil, nil
 		}})
 		setup.Faux.SetResponses([]ai.FauxResponseStep{trCall("work", "c1"), tlDone()})
 		harness, root := trOpen(t, path, setup)

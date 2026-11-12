@@ -381,3 +381,56 @@ func TestReadStreamAllYieldsTheChunksInOrderAndErrReportsTheReadFailure(t *testi
 		t.Fatalf("chunks = %q, err = %v", got, failing.Err())
 	}
 }
+
+// Ported from upstream test/read-streaming.test.ts (ef9361ab7, #11956). Pi's crash is a Node 'error' event no listener handles after an
+// aborted signal destroys a file stream; Go has no such event, so these pin the observable contract of the same inputs: an abort
+// ends the read with "Operation aborted", reads no further chunk, and leaves the stream closed.
+
+func TestReadStreamingRejectsWhenAbortedWhileOpeningTheFile(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	chunksRead, closed := 0, false
+	ops := &ReadOperations{
+		ReadFile: func(string) ([]byte, error) { return nil, nil },
+		Access:   func(string) error { return nil },
+		// The abort lands while the stream is created, as Pi's test aborts inside the open of the file.
+		CreateReadStream: func(context.Context, string) (*ReadStream, error) {
+			cancel()
+			return NewReadStream(&closeTracker{Reader: readerFunc(func(p []byte) (int, error) {
+				chunksRead++
+				return copy(p, "line\n"), nil
+			}), onClose: func() { closed = true }}), nil
+		},
+	}
+	res := runFileTool(t, &ReadTool{CWD: "/virtual", Operations: ops}, ctx, map[string]any{"path": streamingTestPath})
+	if !res.IsError || res.Text() != "Operation aborted" {
+		t.Fatalf("result = %+v", res)
+	}
+	if chunksRead != 0 || !closed {
+		t.Fatalf("chunksRead = %d, closed = %v, want 0 and true", chunksRead, closed)
+	}
+}
+
+func TestReadStreamingStopsReadingALocalFileWhenAbortedMidRead(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "abort-mid-read.txt")
+	// Many stream chunks, so the abort lands with most of the file unread.
+	if err := os.WriteFile(path, []byte(strings.Repeat("x", 1024*1024)), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	chunks := 0
+	afterReadChunkHook = func() {
+		chunks++
+		cancel()
+	}
+	t.Cleanup(func() { afterReadChunkHook = nil })
+	res := runFileTool(t, &ReadTool{CWD: dir}, ctx, map[string]any{"path": path})
+	if !res.IsError || res.Text() != "Operation aborted" {
+		t.Fatalf("result = %+v", res)
+	}
+	if chunks != 1 {
+		t.Fatalf("chunks read = %d, want 1", chunks)
+	}
+}

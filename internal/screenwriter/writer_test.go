@@ -19,11 +19,19 @@ import (
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
+// Every test of this package that gives the writer frames requires that at least one of them was translated: a comparison of what
+// the writer sends with what the frames wrote is satisfied by a writer that sends every frame as it came. To see that this holds,
+// make Translate send every frame as it came (take its branch for autowrap that is not known to be off always) and run the
+// package: the tests that still pass must be the ones named here. They give the writer no frames: TestNextToken, TestTwoParams and
+// TestApplySGR read sequences; TestOutsideTable and TestOutsideReportsAutowrap classify writes that are not frames;
+// TestGridKeepsALinesLength is of the tests' screens. And the subject of TestRegularModeIsSentAsItCame is that nothing is
+// translated on the main screen: it requires a run that holds synchronized updates and that every write of it is sent unchanged.
+
 const reset = "\x1b[0m\x1b]8;;\x07" // widthx.SegmentReset: what the renderers end a line with
 
 // started is what a session writes first: the alternate screen, then two repaints. After the first the pen is known (a line's reset
 // ended it), after the second every row is known to be blank.
-var started = "\x1b[?1049h" + frame("\x1b[2J", line(1, "")) + frame("\x1b[2J", line(1, ""))
+var started = "\x1b[?1049h\x1b[?7l" + frame("\x1b[2J", line(1, "")) + frame("\x1b[2J", line(1, ""))
 
 // newTestWriter is a writer of a cols by rows terminal that took started, without a settle timer.
 func newTestWriter(cols, rows int) *Writer {
@@ -177,7 +185,7 @@ func TestOutsideTable(t *testing.T) {
 		{"\x1b[?2026h", true, false, 0},
 		{"\x1b[", true, true, 0},
 	} {
-		screen, cursor, forget := outside(c.data, true)
+		screen, cursor, forget, _ := outside(c.data, true)
 		if screen != c.screen || cursor != c.cursor || forget != c.forget {
 			t.Errorf("outside(%q) = screen %v, cursor %d, forget %v, want %v, %d, %v", c.data, screen, cursor, forget, c.screen, c.cursor, c.forget)
 		}
@@ -312,6 +320,9 @@ func TestAShorterRowKeepsNoCellOfTheLongerRow(t *testing.T) {
 					t.Errorf("after %q, sent as %q: %s", write, out, diff)
 				}
 			}
+			if w.Stats().Translated == 0 {
+				t.Errorf("the writer translated no frame")
+			}
 		})
 	}
 }
@@ -364,6 +375,9 @@ func TestWriterMakesNoSequenceOfItsOwn(t *testing.T) {
 				t.Fatalf("%s: the writer sent %q, which is not in the frame %q", name, seq, write)
 			}
 		}
+		if w.Stats().Translated == 0 {
+			t.Errorf("%s: the writer translated no frame: it sent nothing of its own to look at", name)
+		}
 	}
 }
 
@@ -380,17 +394,17 @@ func testStreams(t testing.TB) map[string]string {
 			t.Fatal(err)
 		}
 		data, err := io.ReadAll(reader)
-		file.Close()
+		_ = file.Close()
 		if err != nil {
 			t.Fatal(err)
 		}
-		streams[name] = "\x1b[?1049h" + string(data)
+		streams[name] = "\x1b[?1049h\x1b[?7l" + string(data)
 	}
 	return streams
 }
 
 // The recorded streams leave the same screen after every write, with and without the writer, on every width model; the settle write
-// changes no cell; and the writer writes far less.
+// changes no cell; and the writer never writes more than the frames do.
 func TestRecordedStreamsShowTheSameScreens(t *testing.T) {
 	for name, stream := range testStreams(t) {
 		w := newTestWriter(160, 48)
@@ -411,9 +425,12 @@ func TestRecordedStreamsShowTheSameScreens(t *testing.T) {
 		stats := w.Stats()
 		t.Logf("%s: %d writes, %d frames: %d translated, %d not written, %d repaints and %d without a rule sent as they came, %d settle writes; %d bytes in, %d out (%.1f %%)",
 			name, len(writes), stats.Frames, stats.Translated, stats.Unchanged, stats.Repaints, stats.Unread, stats.Settles, stats.BytesIn, stats.BytesOut, 100*float64(stats.BytesOut)/float64(stats.BytesIn))
+		if stats.Translated == 0 {
+			t.Errorf("%s: the writer translated no frame: the screens are the same because the bytes are", name)
+		}
 		// The streams hold nothing the frame grammar does not cover: the repaints of the start (the first of them under a pen not yet known).
-		if stats.Unread != 0 || stats.Repaints > 4 || stats.BytesOut > stats.BytesIn*3/4 {
-			t.Errorf("%s: %d of %d frames have no rule, %d are repaints, and %d of %d bytes were written: the writer does not take the renderers' frames", name, stats.Unread, stats.Frames, stats.Repaints, stats.BytesOut, stats.BytesIn)
+		if stats.Unread != 0 || stats.Repaints > 4 || stats.BytesOut > stats.BytesIn {
+			t.Errorf("%s: %d of %d frames have no rule, %d are repaints, and %d bytes were written for %d: the writer does not take the renderers' frames, or writes more than they do", name, stats.Unread, stats.Frames, stats.Repaints, stats.BytesOut, stats.BytesIn)
 		}
 	}
 }
@@ -582,7 +599,7 @@ func TestScribbledRowsHealByTheSettleWrite(t *testing.T) {
 func TestResizeForgetsTheScreen(t *testing.T) {
 	cols, rows := 20, 5
 	w := New(Options{Size: func() (int, int) { return cols, rows }, Settle: -1})
-	w.Translate("\x1b[?1049h")
+	w.Translate("\x1b[?1049h\x1b[?7l")
 	w.Translate(frame(line(1, "one"), line(5, "five")))
 	rows = 3
 	old := frame(line(1, "one"), line(5, "five!"))
@@ -608,7 +625,7 @@ func TestResizeForgetsTheScreen(t *testing.T) {
 func TestSettleAfterAResizeWritesNothing(t *testing.T) {
 	cols, rows := 20, 5
 	w := New(Options{Size: func() (int, int) { return cols, rows }, Settle: -1})
-	w.Translate("\x1b[?1049h")
+	w.Translate("\x1b[?1049h\x1b[?7l")
 	w.Translate(frame("\x1b[2J", line(1, "one"), line(2, "two")))
 	w.Translate(frame(line(1, "one"), line(2, "two!")))
 	cols = 12
@@ -638,9 +655,11 @@ func TestOutsideTheAlternateScreenEveryByteIsSentAsItCame(t *testing.T) {
 			t.Fatalf("before the alternate screen the writer sent %q", got)
 		}
 	}
-	w.Translate("\x1b[?1049h")
+	w.Translate("\x1b[?1049h\x1b[?7l")
 	w.Translate(frame(line(1, "one")))
-	w.Translate(frame(line(1, "one!")))
+	if got, in := w.Translate(frame(line(1, "one!"))), frame(line(1, "one!")); got == in || w.Stats().Translated == 0 {
+		t.Fatalf("in the alternate screen the frame was sent as it came (%d translated): nothing below would test the writer", w.Stats().Translated)
+	}
 	exit := "\x1b[?25h\x1b[?2004l\x1b[?1049l"
 	if got := w.Translate(exit); got != exit {
 		t.Fatalf("the exit was sent as %q", got)
@@ -654,7 +673,7 @@ func TestOutsideTheAlternateScreenEveryByteIsSentAsItCame(t *testing.T) {
 		}
 	}
 	// A resume enters the screen again and repaints: nothing of the last session is assumed.
-	w.Translate("\x1b[?1049h")
+	w.Translate("\x1b[?1049h\x1b[?7l")
 	if got, want := w.Translate(frame(line(1, "one!"))), syncBegin+line(1, "one!")+at(1, 1)+"\x1b[?25l"+syncEnd; got != want {
 		t.Errorf("after entering the screen again the writer sent %q, want %q", got, want)
 	}

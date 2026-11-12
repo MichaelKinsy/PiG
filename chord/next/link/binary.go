@@ -38,13 +38,15 @@ const (
 	kindPing
 	kindPong
 	kindRevoke
+	kindEvent
 	kindCount
 )
 
 const (
 	// originFlag is the kind byte's flag for an origin.
 	originFlag = 0x80
-	// oldFlag is the kind byte's flag for a `call` that is old work of a reload (`call.old`); another kind with it is unknown.
+	// oldFlag is the kind byte's third flag: on a `call`, old work of a reload (`call.old`); on an `ack`, an event ack, its
+	// count following (so a state ack stays one byte); another kind with it is unknown.
 	oldFlag = 0x20
 	// traceFlag is the kind byte's flag for a trace carrier (a hold's or call's): the carrier follows the origin as JSON.
 	traceFlag = 0x40
@@ -92,6 +94,9 @@ func (binaryCodec) Encode(message Message) (encoded []byte, err error) {
 	if call, ok := message.(*CallMessage); ok && call.Old {
 		kind |= oldFlag
 	}
+	if ack, ok := message.(*AckMessage); ok && ack.Events.Ok {
+		kind |= oldFlag
+	}
 	trace := traceOf(message)
 	if trace != nil {
 		kind |= traceFlag
@@ -120,7 +125,7 @@ func (binaryCodec) Decode(bytes []byte) (message Message, err error) {
 	}
 	hasOld := first&oldFlag != 0
 	kind := int(first &^ (originFlag | traceFlag | oldFlag))
-	if kind >= kindCount || (hasOld && kind != kindCall) {
+	if kind >= kindCount || (hasOld && kind != kindCall && kind != kindAck) {
 		fail("binary: an unknown kind")
 	}
 	var trace any
@@ -128,7 +133,11 @@ func (binaryCodec) Decode(bytes []byte) (message Message, err error) {
 	if hasTrace {
 		trace = reader.json()
 	}
-	message = decodeFields(kind, reader)
+	if kind == kindAck && hasOld {
+		message = &AckMessage{Events: Some(reader.varint())}
+	} else {
+		message = decodeFields(kind, reader)
+	}
 	reader.end()
 	if hasTrace {
 		// The message schema refuses a carrier on a kind without one, or of another shape.
@@ -137,7 +146,7 @@ func (binaryCodec) Decode(bytes []byte) (message Message, err error) {
 			failWith(errSchema)
 		}
 	}
-	if hasOld {
+	if hasOld && kind == kindCall {
 		message.(*CallMessage).Old = true
 	}
 	// A fresh message; the message schema refuses an origin of 0.
@@ -185,6 +194,8 @@ func kindOf(message Message) int {
 		return kindPong
 	case *RevokeMessage:
 		return kindRevoke
+	case *EventMessage:
+		return kindEvent
 	}
 	fail("binary: an unknown message type %T", message)
 	return 0
@@ -261,6 +272,8 @@ func setOrigin(message Message, origin int) bool {
 	case *BoundMessage:
 		typed.Origin = Some(origin)
 	case *StateMessage:
+		typed.Origin = Some(origin)
+	case *EventMessage:
 		typed.Origin = Some(origin)
 	case *AckMessage:
 		typed.Origin = Some(origin)
@@ -380,7 +393,20 @@ func encodeFields(message Message, writer *writer) {
 		writer.json(typed.Error)
 	case *RevokeMessage:
 		writer.json(typed.Revocation)
-	case *AckMessage, *ClosedMessage, *PingMessage, *PongMessage:
+	case *EventMessage:
+		writer.varint(len(typed.Events))
+		for _, entry := range typed.Events {
+			writer.varint(entry.Hold)
+			writer.varint(entry.Member)
+			writer.varint(entry.At)
+			writer.part(entry.Value)
+		}
+	case *AckMessage:
+		// An event ack's count (the kind byte's flag says it follows); a state ack has no field.
+		if typed.Events.Ok {
+			writer.varint(typed.Events.Value)
+		}
+	case *ClosedMessage, *PingMessage, *PongMessage:
 	}
 }
 
@@ -409,7 +435,16 @@ func decodeFields(kind int, reader *reader) Message {
 	case kindHello:
 		protocol := reader.varint()
 		incarnation := uuid(reader.raw(16))
+		// 0: no window (a window is at least 1).
 		return &HelloMessage{Protocol: protocol, Incarnation: incarnation, Calls: reader.varint()}
+	case kindEvent:
+		count := reader.count()
+		events := make([]WireEvent, count)
+		for index := range events {
+			hold, member, at := reader.varint(), reader.varint(), reader.varint()
+			events[index] = WireEvent{Hold: hold, Member: member, At: at, Value: reader.part()}
+		}
+		return &EventMessage{Events: events}
 	case kindHold:
 		message := &HoldMessage{Hold: reader.varint()}
 		message.Type = reader.string()
