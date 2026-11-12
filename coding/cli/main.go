@@ -1291,7 +1291,11 @@ func Main(args []string, options *MainOptions) {
 	}
 	if flags.ListModels != "" || flags.ListModelsAll {
 		codingagent.ReportDiagnostics(metadataDiagnostics)
-		printModelList(build.Services.Registry().ModelRegistry, flags.ListModels)
+		// main.ts:951 leaves a rejection of listModels uncaught: Node reports the error and exits with status 1.
+		if err := listModels(ctx, build.Services.ModelRuntime(), build.Services.Registry().ModelRegistry, flags.ListModels); err != nil {
+			fmt.Fprintln(os.Stderr, uncaughtListModelsError(err))
+			exitProcess(1)
+		}
 		exitProcess(0)
 	}
 	// RPC owns stdin as JSONL. Other modes read piped input before runtime diagnostics, and metadata commands above never consume it.

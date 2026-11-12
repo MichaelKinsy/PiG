@@ -4,10 +4,12 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding"
@@ -134,22 +136,41 @@ func formatTokenCount(count int) string {
 	return fmt.Sprintf("%d", count)
 }
 
-// printModelList prints the models the given registry (already populated with any
-// extension-contributed providers) reports as available. Mirrors upstream
-// listModels (cli/list-models.ts), which lists exactly modelRuntime.getAvailable():
-// a built-in model the runtime's own catalog no longer carries, such as one an
-// OpenRouter personalized catalog dropped, is not listed. The caller owns process
-// exit and extension-host teardown.
-func printModelList(registry *codingagent.ModelRegistry, search string) {
-	// Load error handling mirrors upstream.
-	if loadErr := registry.LoadError(); loadErr != "" {
+// listModelsTimeout is main.ts:951's AbortSignal.timeout(15_000).
+const listModelsTimeout = 15 * time.Second
+
+// listModels is upstream listModels (cli/list-models.ts:29-115) under the bound of main.ts:951. It warns of the runtime's error (:34-37), awaits a
+// fresh availability pass (:39, model-runtime.ts:490-506) and prints the table of the registry, which reads the availability that pass published. A
+// pass that fails, or that the bound or ctx ends, returns its error and no table line is printed. The caller owns process exit and extension-host
+// teardown.
+func listModels(ctx context.Context, runtime *coding.ModelRuntime, registry *codingagent.ModelRegistry, search string) error {
+	if loadErr := runtime.GetError(); loadErr != "" {
 		fmt.Fprintln(os.Stderr, chalkYellow("Warning: errors loading models.json:\n"+loadErr))
 	}
+	ctx, cancel := context.WithTimeout(ctx, listModelsTimeout)
+	defer cancel()
+	if _, err := runtime.GetAvailable(ctx); err != nil {
+		return err
+	}
+	printModelTable(registry, search)
+	return nil
+}
 
-	// Auth-filtered models: mirrors upstream modelRegistry.getAvailable().
-	entries := registry.GetAvailable()
+// uncaughtListModelsError is the line Node heads its report with for the error of listModels, which Pi's main leaves uncaught: the bound that
+// fired is the DOMException of AbortSignal.timeout.
+func uncaughtListModelsError(err error) string {
+	if errors.Is(err, context.DeadlineExceeded) {
+		return "DOMException [TimeoutError]: The operation was aborted due to timeout"
+	}
+	return err.Error()
+}
 
-	for _, line := range modelListLines(entries, search) {
+// printModelTable prints the models the given registry (already populated with any
+// extension-contributed providers) reports as available: exactly modelRuntime.getAvailable()
+// (cli/list-models.ts:39-114). A built-in model the runtime's own catalog no longer carries,
+// such as one an OpenRouter personalized catalog dropped, is not listed.
+func printModelTable(registry *codingagent.ModelRegistry, search string) {
+	for _, line := range modelListLines(registry.GetAvailable(), search) {
 		fmt.Println(line)
 	}
 }
