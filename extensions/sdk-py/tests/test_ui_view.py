@@ -99,6 +99,8 @@ class AmendmentTest(unittest.TestCase):
         alt = {"when": {"any": [{"all": [{"claim": "a.count", "op": "atLeast", "value": 2}]}]}, "view": {"root": {}}}
         out = ui_view.encode_content({"root": {}}, (), (), None, [alt], drawing, [{"node": "n"}], [{"node": "n", "request": "mount"}])
         self.assertEqual(out, {"view": {"root": {}}, "alternatives": [alt], "drawing": drawing, "a11y": [{"node": "n"}], "focus": [{"node": "n", "request": "mount"}]})
+        binding = {"key": "shift+left", "intent": "x.page", "arg": {}}
+        self.assertEqual(ui_view.encode_content({"root": {}}, (), (), None, bindings=[binding]), {"view": {"root": {}}, "bindings": [binding]})
 
 
 if __name__ == "__main__":

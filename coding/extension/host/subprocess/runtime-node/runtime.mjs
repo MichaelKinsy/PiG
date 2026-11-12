@@ -2075,12 +2075,13 @@ class RuntimeUI {
     return abilities ? structuredClone(abilities) : null;
   }
   // The amendment members ride beside the view: alternatives ([{ when, view, drawing? }], the first whose `when` holds for a
-  // client's claims is what that client draws), drawing, a11y and focus. The host checks every bound and answers invalid.
-  mountView({ key, slot, target, view, intents, assets, fallback, alternatives, drawing, a11y, focus } = {}) {
-    return this.runtime.call("ui.view.mount", viewArgs({ key, slot, target }, { view, intents, assets, fallback, alternatives, drawing, a11y, focus }));
+  // client's claims is what that client draws), drawing, a11y, focus and bindings ([{ key | gesture, intent, arg?, name? }],
+  // keys and gestures a client turns into intents while the mount holds the focus). The host checks every bound and answers invalid.
+  mountView({ key, slot, target, view, intents, assets, fallback, alternatives, drawing, a11y, focus, bindings } = {}) {
+    return this.runtime.call("ui.view.mount", viewArgs({ key, slot, target }, { view, intents, assets, fallback, alternatives, drawing, a11y, focus, bindings }));
   }
-  updateView(mount, { view, intents, assets, fallback, alternatives, drawing, a11y, focus } = {}) {
-    return this.runtime.call("ui.view.update", viewArgs({ mount }, { view, intents, assets, fallback, alternatives, drawing, a11y, focus }));
+  updateView(mount, { view, intents, assets, fallback, alternatives, drawing, a11y, focus, bindings } = {}) {
+    return this.runtime.call("ui.view.update", viewArgs({ mount }, { view, intents, assets, fallback, alternatives, drawing, a11y, focus, bindings }));
   }
   hideView(mount) { return this.runtime.call("ui.view.hide", { mount }); }
   showView(mount) { return this.runtime.call("ui.view.show", { mount }); }

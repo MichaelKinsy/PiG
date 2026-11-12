@@ -73,6 +73,7 @@ export default function extension(pi: ExtensionAPI): void {
       drawing: { profile: "scene", shapes: [{ kind: "rect", width: 1, height: 1 }], regions: [{ key: "r", shape: { kind: "rect", width: 1, height: 1 }, gestures: ["activate"], intent: "x.go", name: "Go" }] },
       a11y: [{ node: "t", name: "Next", role: "status" }],
       focus: [{ node: "t", request: "mount" }],
+      bindings: [{ key: "shift+left", intent: "x.go", arg: {}, name: "Back" }, { gesture: "swipe-left", intent: "x.go" }],
     });
     const notices: PiGViewNotice[] = await ctx.ui.viewDiagnostics("k");
     const colors = abilities?.claims?.find((claim: PiGViewClaim) => claim.name === "display.colors")?.value;

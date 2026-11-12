@@ -337,9 +337,10 @@ def encode_content(
     drawing: Any = None,
     a11y: Any = (),
     focus: Any = (),
+    bindings: Any = (),
 ) -> dict[str, Any]:
     """Build the content of a mount or an update. ``alternatives`` are already in wire form (``when``, ``view``, ``drawing``);
-    ``drawing``, ``a11y`` and ``focus`` are the wire records themselves."""
+    ``drawing``, ``a11y``, ``focus`` and ``bindings`` are the wire records themselves."""
     out: dict[str, Any] = {"view": wire_view}
     if alternatives:
         out["alternatives"] = list(alternatives)
@@ -349,6 +350,8 @@ def encode_content(
         out["a11y"] = list(a11y)
     if focus:
         out["focus"] = list(focus)
+    if bindings:
+        out["bindings"] = list(bindings)
     if intents:
         out["intents"] = [i._wire() for i in intents]
     if assets:
