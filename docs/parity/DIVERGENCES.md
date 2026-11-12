@@ -3725,9 +3725,9 @@ Pi bug: none.
 
 Scope: `coding.Session.refreshCurrentModelFromRegistry`, `coding.ModelRuntime.BindModelObject` and `coding.ModelRuntime.prepareRequest`; a model object set through an SDK's `setModel` over the extension wire that differs from the registry's model of the same provider and id. A model the registry lists, set unchanged by its object or by its `provider/id` name, is not in scope: it follows the registry as before.
 
-Owner decision: owner sign-off pending (drafted by the SetModelImpl lane on 2026-11-12).
+Owner decision: proposed, not yet approved by the owner (drafted by the SetModelImpl lane on 2026-11-12).
 
-SCRUTINIZED:approved
+SCRUTINIZED:pending-owner
 
 Remove when: the extension wire can tell an in-place edit of a registry model from a copy, or Pi changes the rule of `_refreshCurrentModelFromRegistry`.
 

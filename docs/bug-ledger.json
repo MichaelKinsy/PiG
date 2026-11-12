@@ -600,6 +600,36 @@
       ]
     },
     {
+      "id": "BF-0392315",
+      "title": "A Node extension's `pi.setModel(model)` with an edited or hand-built model object lost every member of the…",
+      "symptom": "A Node extension's `pi.setModel(model)` with an edited or hand-built model object lost every member of the object but the provider and the id: the session took the registry's model, or one with no context window.",
+      "rootCause": "Pi's pi.setModel(model) takes a model object and the Session uses it as given. PiG's wire carried \"provider/id\" and the host looked the model up in its registry, so every other member of the object was lost.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Node extension's `pi.setModel(model)` with an edited or hand-built model object lost every member of the object but the provider and the id: the session took the registry's model, or one with no context window.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0392315da8",
+          "date": "2026-11-12"
+        },
+        {
+          "hash": "66df6c8115",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/ui_bridge_test.go::TestUIBridge_HandleCall_SetModel",
+        "extensions/sdk-py/tests/test_set_model.py",
+        "internal/codingagent/interactive_model_select_events_test.go::TestInteractiveExtensionSetModelEmitsNoModelSelectOfItsOwn",
+        "test/extension-conformance/api_session_state_test.go::TestConformance_ExtensionAPISetModel",
+        "test/extension-conformance/extension_api_thinking_model_test.go::TestExtensionAPIThinkingLevelAndSetModelAcrossSDKs"
+      ]
+    },
+    {
       "id": "BF-03ad544",
       "title": "fix(tui): card of an unregistered tool is Pi's formatToolExecution",
       "symptom": "fix(tui): card of an unregistered tool is Pi's formatToolExecution",
@@ -46099,6 +46129,29 @@
         "agent/proxy_non_object_arguments_test.go::TestProxyNonObjectToolArgumentsFollowPi",
         "ai/tool_call_non_object_converters_test.go::TestGoogleNullFunctionCallArgsAreTheEmptyObject",
         "ai/tool_call_non_object_converters_test.go::TestNonObjectToolArgumentsReplayAsEachProviderDoes"
+      ]
+    },
+    {
+      "id": "BF-d5e4cbc",
+      "title": "An extension's `setModel` of a model id that a registered provider object does not list answered `model not…",
+      "symptom": "An extension's `setModel` of a model id that a registered provider object does not list answered `model not found` in every SDK.",
+      "rootCause": "BuildModel answered \"model not found\" for an id that a registered provider object (RegisterNativeProvider) does not list, while it built a model for an unlisted id of every other provider shape (built-in, OAuth, an extension-registered provider with or without models). An extension setModel of such a model therefore failed on every SDK where Pi switches to it: Pi only requires the provider of a model to exist (model-runtime.ts prepareRequest) and that its auth is configured (agent-session.ts _bindExtensionCore setModel).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension's `setModel` of a model id that a registered provider object does not list answered `model not found` in every SDK. It now switches to the model, as it does for every other kind of provider and as Pi does.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d5e4cbc53f",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/build_model_native_unlisted_test.go::TestBuildModelOnNativeProviderBuildsUnlistedModel",
+        "test/extension-conformance/set_model_object_test.go::TestSetModelObjectAcrossSDKs"
       ]
     },
     {
