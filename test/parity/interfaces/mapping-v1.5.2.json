@@ -108965,7 +108965,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/next/host/host_host.go#chordHost.dataSite"
+        "call:chord/next/host/host_events_port.go#eventPort.Tap"
       ],
       "evidence": [
         "test:chord/next/telemetryingest/ingest_upstream_test.go#TestWorkerBatchWritesSpansAndMetricsAsTheyAreStampedWithItsHostAnyoneElseHasNothingToCall",
