@@ -210,10 +210,8 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 	}
 	started = true
 	transcriptPath := filepath.Join(tc.tempRoot, "terminal-transcript.log")
-	pipeCommand := "cat >> " + shellQuote(transcriptPath)
-	//nolint:gosec // G204 (class a): program is literal tmux; pipeCommand is "cat >> " + shellQuote(transcriptPath), with the path under tc.tempRoot.
-	if err := exec.CommandContext(ctx, "tmux", tmuxArgs("pipe-pane", "-o", "-t", session, pipeCommand)...).Run(); err != nil {
-		return Result{Err: fmt.Errorf("tmux pipe-pane: %w", err)}
+	if err := attachTranscript(ctx, session, transcriptPath); err != nil {
+		return Result{Err: err}
 	}
 
 	// Pick the right ready pattern for this binary.
@@ -353,6 +351,20 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 		flushCoverageOnCleanExit(ctx, session, exitStatusPath)
 	}
 	return result
+}
+
+// transcriptReaderCommand is the shell command tmux pipe-pane starts to append everything the pane's program writes to path.
+func transcriptReaderCommand(path string) string {
+	return "cat >> " + shellQuote(path)
+}
+
+// attachTranscript records the raw bytes the session's pane receives in the file at path, for the waits and comparators that read the byte stream rather than the screen.
+func attachTranscript(ctx context.Context, session, path string) error {
+	//nolint:gosec // G204 (class a): program is literal tmux; the pipe command is built by transcriptReaderCommand from a path under the run's temp root.
+	if err := exec.CommandContext(ctx, "tmux", tmuxArgs("pipe-pane", "-o", "-t", session, transcriptReaderCommand(path))...).Run(); err != nil {
+		return fmt.Errorf("tmux pipe-pane: %w", err)
+	}
+	return nil
 }
 
 // runTmuxStep sends one step's keys and waits for the state it names. When the step carries a frame_watch, the pane is sampled from before the
