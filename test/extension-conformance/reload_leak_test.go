@@ -115,15 +115,15 @@ func (reloadLeakFused) FusedServe(cfg subprocess.ExtConfig) (func(net.Conn) erro
 
 // reloadLeakSample is what the host holds after a number of reloads.
 type reloadLeakSample struct {
-	reloads        int
-	goroutines     int
-	heapBytes      uint64
-	heapObjects    uint64
-	fds            int
-	processes      int
-	zombies        int
+	reloads     int
+	goroutines  int
+	heapBytes   uint64
+	heapObjects uint64
+	fds         int
+	processes   int
+	zombies     int
 	// rssBytes is the resident memory of the row's processes: a host keeps an extension's process over a reload and runs the factory in it again.
-	rssBytes int64
+	rssBytes       int64
 	inotify        int
 	inotifyWatches int
 	files          int
