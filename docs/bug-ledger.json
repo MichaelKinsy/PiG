@@ -27214,6 +27214,29 @@
       "tests": []
     },
     {
+      "id": "BF-7d34ee2",
+      "title": "durable harness: `ConversationTranscript.LoadEarlier` and `FillGap` waited for good once an entry loader had…",
+      "symptom": "durable harness: `ConversationTranscript.LoadEarlier` and `FillGap` waited for good once an entry loader had panicked: the load that call ran stayed registered and never ended.",
+      "rootCause": "The call whose loader did not return now settles its load on the way out: the callers that share it fail with \"ConversationTranscript: the entry loader panicked\", the load is unregistered, and the panic goes on to the caller whose call ran the loader. The path of a loader that returns is unchanged.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "durable harness: `ConversationTranscript.LoadEarlier` and `FillGap` waited for good once an entry loader had panicked: the load that call ran stayed registered and never ended. A load whose loader does not return is now settled, as Pi's shared promise settles when its loader throws: the calls that share it fail with `ConversationTranscript: the entry loader panicked`, the next call loads again, and the panic still reaches the caller whose call ran the loader.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7d34ee2c6c",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "durable/harness/transcript_loader_panic_test.go::TestConversationTranscriptFailsTheCallersSharingALoadWhoseLoaderPanicked",
+        "durable/harness/transcript_loader_panic_test.go::TestConversationTranscriptLoadsAgainAfterItsLoaderPanicked"
+      ]
+    },
+    {
       "id": "BF-7d798ce",
       "title": "fix(testenv): the shared Cargo target is keyed by the absolute path of the SDK as well as its lock",
       "symptom": "fix(testenv): the shared Cargo target is keyed by the absolute path of the SDK as well as its lock",
@@ -37109,6 +37132,28 @@
       ]
     },
     {
+      "id": "BF-a3391bc",
+      "title": "env: closing a connection at the moment its daemon was being started left that daemon process unreaped, a…",
+      "symptom": "env: closing a connection at the moment its daemon was being started left that daemon process unreaped, a zombie holding its pipes, until PiG exited.",
+      "rootCause": "Connection.start checks closed, spawns the daemon and only then keeps its session. A Close in between finds no session to tear down; the start then sees the connection closed, signals the daemon it just spawned and returns, and none of the goroutines of a session is started, the one that waits for the daemon's exit included. The process stayed in the process table, with its pipes open, until PiG exited. Pi has no such window: #start spawns and keeps the session in one synchronous step (connection.ts:341-347), and Node reaps a child by itself.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "env: closing a connection at the moment its daemon was being started left that daemon process unreaped, a zombie holding its pipes, until PiG exited. The start that finds the connection closed now waits for the daemon it has just signalled.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a3391bc58e",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "env/connection_close_during_start_test.go::TestConnectionWaitsForADaemonItStartedWhileItWasClosed"
+      ]
+    },
+    {
       "id": "BF-a3859aa",
       "title": "An OpenAI-compatible provider that streams a tool call without an id or a function name (OpenRouter and GLM…",
       "symptom": "An OpenAI-compatible provider that streams a tool call without an id or a function name (OpenRouter and GLM do) no longer leaves the session failing every later turn with `tool messages must include a non-empty string tool_call_id`.",
@@ -41635,6 +41680,28 @@
       "tests": [
         "internal/jsstring/toprecision_oracle_test.go::TestToPrecisionAgainstNodeCorpus",
         "internal/jsstring/toprecision_oracle_test.go::TestToPrecisionKeepsTheExponentOfAValueJustBelowAPowerOfTen"
+      ]
+    },
+    {
+      "id": "BF-bc5d1ad",
+      "title": "durable harness: closing a Harness on one goroutine while a commit was being published on another could start…",
+      "symptom": "durable harness: closing a Harness on one goroutine while a commit was being published on another could start a scheduler pass after the close had waited for the scheduler's passes.",
+      "rootCause": "kick, scheduleReconcileLocked and scheduleSweepLocked started their pass from a callback the Session runs at the end of the publication in progress (DeferUntilPublished), off the scheduler's mutex. A Close on another goroutine, while that publication ran the host's commit listeners, sealed the scheduler and let Join wait for the background group, which was empty; the pass joined the group afterwards. Join did not wait for it, and a sync.WaitGroup Add that meets a Wait at a zero counter panics (\"WaitGroup is reused before previous Wait has returned\"). Pi has no such group: join() waits for the invocations only (scheduler.ts:587-603), and its queued drain and reconcile find #closing and do…",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "durable harness: closing a Harness on one goroutine while a commit was being published on another could start a scheduler pass after the close had waited for the scheduler's passes. The pass ran unjoined, and the close could panic with `sync: WaitGroup is reused before previous Wait has returned`. A pass now joins the scheduler when it is scheduled, so the close waits for it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "bc5d1adb08",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "durable/harness/scheduler_join_test.go::TestSchedulerStartsNoPassAfterTheSealWhenAPublicationEndsAfterIt"
       ]
     },
     {
@@ -53720,6 +53787,30 @@
       ],
       "tests": [
         "ai/classifier_models_upstream_test.go::TestClassifierModelsUpstream"
+      ]
+    },
+    {
+      "id": "BF-f003f0a",
+      "title": "tui: after quick terminal resizes a subprocess extension could be left rendering for a width the terminal no…",
+      "symptom": "tui: after quick terminal resizes a subprocess extension could be left rendering for a width the terminal no longer had, and what it pushed for that width was not painted until the next resize.",
+      "rootCause": "The main screen and the frontend surface called onWidthChange and onHeightChange on a goroutine of its own for each frame that changed a size. Two resizes in a row could reach the listener in either order, or while it was still taking the earlier one, and the surface called it after a Stop that came between its frame and the callback. The listener is the subprocess extension host, which keeps the width as the one extensions render for: after 80, 100, 120 it could be left with 100, and what extensions pushed for that width was not painted until the next resize.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "tui: after quick terminal resizes a subprocess extension could be left rendering for a width the terminal no longer had, and what it pushed for that width was not painted until the next resize. On the main screen and with a frontend, the resize callbacks ran on a goroutine each, so two resizes could reach the extension host out of order, or after the renderer had stopped. They now run one at a time, in render order, as they already did on the alternate screen: a size replaced while the listener is busy is skipped, the last one always arrives, and a stop discards what is pending.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f003f0a6d1",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "tui/tui_geometry_callbacks_test.go::TestGeometryCallbacksCoalesceInRenderOrder",
+        "tui/tui_geometry_callbacks_test.go::TestGeometryCallbacksStopDiscardsPendingSizes",
+        "tui/tui_geometry_callbacks_test.go::TestSurfaceGeometryCallbacksAreNotCalledAfterStop"
       ]
     },
     {

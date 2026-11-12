@@ -364790,6 +364790,17 @@
       "shapeHash": "sha256:664ed74aef63f04bc89f32d3c127aba68603fa35fbe3acb31f69ccdb37e16a87"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.queueGeometryLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiAltScreen.queueGeometryLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(width int, height int)"
+      },
+      "shapeHash": "sha256:ebfdded3333d5d8bc1b684250a34d170641b8b3c64533609fb5570bca9784298"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.recordLocked",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiAltScreen.recordLocked",
@@ -366880,6 +366891,17 @@
       "shapeHash": "sha256:bc2267c4ed7f718d97ff40c509dfbdb99a8c7e867d42b7f031b54dc391f3a43e"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.notifyGeometryChanges",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiMainScreen.notifyGeometryChanges",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.notifyOwner",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiMainScreen.notifyOwner",
@@ -366988,6 +367010,17 @@
         "type": "func(out io.Writer, options TerminalColorQueryOptions) \u003c-chan TerminalColorsResult"
       },
       "shapeHash": "sha256:664ed74aef63f04bc89f32d3c127aba68603fa35fbe3acb31f69ccdb37e16a87"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.queueGeometryLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiMainScreen.queueGeometryLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(width int, height int)"
+      },
+      "shapeHash": "sha256:ebfdded3333d5d8bc1b684250a34d170641b8b3c64533609fb5570bca9784298"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.recordLocked",
@@ -369146,6 +369179,17 @@
       "shapeHash": "sha256:9c52f305671879db9b9cff10b5d38238e880a83eeae15f12a0de0579a8b9e522"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.notifyGeometryChanges",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiSurface.notifyGeometryChanges",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.notifyOwner",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiSurface.notifyOwner",
@@ -369276,6 +369320,17 @@
         "type": "func(out io.Writer, options TerminalColorQueryOptions) \u003c-chan TerminalColorsResult"
       },
       "shapeHash": "sha256:664ed74aef63f04bc89f32d3c127aba68603fa35fbe3acb31f69ccdb37e16a87"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.queueGeometryLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiSurface.queueGeometryLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(width int, height int)"
+      },
+      "shapeHash": "sha256:ebfdded3333d5d8bc1b684250a34d170641b8b3c64533609fb5570bca9784298"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.recordLocked",
@@ -393258,6 +393313,17 @@
       "shapeHash": "sha256:bc2267c4ed7f718d97ff40c509dfbdb99a8c7e867d42b7f031b54dc391f3a43e"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.notifyGeometryChanges",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "tuiBase.notifyGeometryChanges",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.notifyOwner",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "tuiBase.notifyOwner",
@@ -393355,6 +393421,17 @@
         "type": "func(out io.Writer, options TerminalColorQueryOptions) \u003c-chan TerminalColorsResult"
       },
       "shapeHash": "sha256:664ed74aef63f04bc89f32d3c127aba68603fa35fbe3acb31f69ccdb37e16a87"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.queueGeometryLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "tuiBase.queueGeometryLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(width int, height int)"
+      },
+      "shapeHash": "sha256:ebfdded3333d5d8bc1b684250a34d170641b8b3c64533609fb5570bca9784298"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.recordLocked",
