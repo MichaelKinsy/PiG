@@ -144,7 +144,7 @@ func TestMacOSUnitFailsWhenItsGoTestFails(t *testing.T) {
 				if !errors.As(err, &exit) || exit.ExitCode() != 1 || !strings.Contains(string(output), "::error::macOS unit "+first+" failed") {
 					t.Fatalf("%s with a failing go test: %v, want exit status 1 and the unit's error\n%s", tc.units, err, output)
 				}
-				for _, unit := range strings.Fields(tc.units) {
+				for unit := range strings.FieldsSeq(tc.units) {
 					if !strings.Contains(string(output), "::group::"+unit+"\n") {
 						t.Errorf("%s did not run after a failing unit\n%s", unit, output)
 					}
