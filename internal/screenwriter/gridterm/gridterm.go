@@ -55,20 +55,27 @@ type cell struct {
 type Terminal struct {
 	cols, rows int
 	grid       [][]cell
-	// used is how far each row was printed since it was last erased whole. tmux keeps a line's cells until the line is erased
-	// whole: an erase from a column on leaves them, and capture-pane -N shows them as trailing blanks (in 3.6, with autowrap off, a
-	// quarter, a half or the whole of the width, by how far the row was printed). Two streams that leave the same value here leave
-	// such a terminal the same line. A line scrolled in has none. Not modelled: an erase under a background.
-	used        []int
-	row, col    int
-	pen         pen
-	link        string
-	visible     bool
-	autowrap    bool
-	top, bottom int
-	model       Model
-	last        *cell
-	unknown     map[string]int
+	// used is how far each row was printed since its line was last erased whole: the length of the line in a terminal that keeps
+	// every cell it is sent until the line is erased whole, an erase from a column on included.
+	used []int
+	// size and stored are the line tmux keeps for a row while autowrap is off, as it is while the alternate screen's frames are
+	// written: the cells the line has (capture-pane -N shows that many, and capture-pane -e ends a row's pen there) and how far
+	// cells were stored in it (capture-pane -J shows that many). tmux takes a row's cells one by one and does not store a blank
+	// under the default pen (no colour, no attribute, no hyperlink) past the cells the line has; a cell stored past them makes the
+	// line a quarter, a half or the whole of the width (grow). A line erased whole, or scrolled in, has no cells, and all of them
+	// when the pen has a background; an erase of a part under a background makes the line reach the part's end. So a row padded
+	// with blanks is as long as its text makes it, and both values depend on the order the cells came in, not only on the cells
+	// the row shows. Measured on tmux 3.4 and 3.6 (D624). With autowrap on tmux stores runs of text at once: not modelled.
+	size, stored []int
+	row, col     int
+	pen          pen
+	link         string
+	visible      bool
+	autowrap     bool
+	top, bottom  int
+	model        Model
+	last         *cell
+	unknown      map[string]int
 }
 
 // New returns a terminal of cols by rows cells with an empty screen.
@@ -97,15 +104,15 @@ func (v *Terminal) Row(row int) string {
 
 func (v *Terminal) Resize(cols, rows int) {
 	cols, rows = max(cols, 1), max(rows, 1)
-	grid, used := make([][]cell, rows), make([]int, rows)
+	grid, used, size, stored := make([][]cell, rows), make([]int, rows), make([]int, rows), make([]int, rows)
 	for r := range grid {
 		grid[r] = make([]cell, cols)
 		if r < len(v.grid) {
 			copy(grid[r], v.grid[r])
-			used[r] = min(v.used[r], cols)
+			used[r], size[r], stored[r] = min(v.used[r], cols), v.size[r], v.stored[r]
 		}
 	}
-	v.grid, v.used, v.cols, v.rows = grid, used, cols, rows
+	v.grid, v.used, v.size, v.stored, v.cols, v.rows = grid, used, size, stored, cols, rows
 	v.top, v.bottom = 0, rows-1
 	v.row, v.col = min(v.row, rows-1), min(v.col, cols-1)
 	v.last = nil
@@ -163,6 +170,10 @@ func (v *Terminal) print(cluster string, width int) {
 	for k := range width {
 		v.unwide(v.row, v.col+k)
 	}
+	if !v.autowrap && (v.col < v.size[v.row] || cluster != " " || v.pen != (pen{}) || v.link != "") {
+		v.grow(v.row, v.col+width)
+		v.stored[v.row] = max(v.stored[v.row], v.col+width)
+	}
 	v.grid[v.row][v.col] = cell{text: cluster, pen: v.pen, link: v.link, state: 1}
 	v.last = &v.grid[v.row][v.col]
 	for k := 1; k < width; k++ {
@@ -182,8 +193,27 @@ func (v *Terminal) erase(r, from, to int) {
 	for c := from; c < to && c < v.cols; c++ {
 		v.grid[r][c] = cell{pen: pen{bg: v.pen.bg}}
 	}
-	if from == 0 && to >= v.cols {
-		v.used[r] = 0
+	switch {
+	case from == 0 && to >= v.cols:
+		v.used[r], v.size[r], v.stored[r] = 0, 0, 0
+		if v.pen.bg != "" {
+			v.size[r] = v.cols
+		}
+	case v.pen.bg != "" && from < to:
+		v.grow(r, min(to, v.cols))
+	}
+}
+
+// grow makes row r's line hold n cells, as tmux's grid_expand_line does.
+func (v *Terminal) grow(r, n int) {
+	switch {
+	case n <= v.size[r]:
+	case n < v.cols/4:
+		v.size[r] = v.cols / 4
+	case n < v.cols/2:
+		v.size[r] = v.cols / 2
+	default:
+		v.size[r] = max(n, v.cols)
 	}
 }
 
@@ -194,6 +224,8 @@ func (v *Terminal) lineFeed() {
 		first := v.grid[v.top]
 		copy(v.grid[v.top:v.bottom], v.grid[v.top+1:v.bottom+1])
 		copy(v.used[v.top:v.bottom], v.used[v.top+1:v.bottom+1])
+		copy(v.stored[v.top:v.bottom], v.stored[v.top+1:v.bottom+1])
+		copy(v.size[v.top:v.bottom], v.size[v.top+1:v.bottom+1])
 		v.grid[v.bottom] = first
 		v.erase(v.bottom, 0, v.cols)
 	case v.row < v.rows-1:
@@ -208,6 +240,8 @@ func (v *Terminal) reverseIndex() {
 		last := v.grid[v.bottom]
 		copy(v.grid[v.top+1:v.bottom+1], v.grid[v.top:v.bottom])
 		copy(v.used[v.top+1:v.bottom+1], v.used[v.top:v.bottom])
+		copy(v.stored[v.top+1:v.bottom+1], v.stored[v.top:v.bottom])
+		copy(v.size[v.top+1:v.bottom+1], v.size[v.top:v.bottom])
 		v.grid[v.top] = last
 		v.erase(v.top, 0, v.cols)
 	case v.row > 0:
@@ -303,6 +337,7 @@ func (v *Terminal) csi(private byte, list string, final byte) {
 					if final == 'h' {
 						for r := range v.grid {
 							v.grid[r] = make([]cell, v.cols)
+							v.used[r], v.size[r], v.stored[r] = 0, 0, 0
 						}
 					}
 				}
@@ -473,6 +508,12 @@ func Differ(a, b *Terminal) string {
 	for r := range a.used {
 		if a.used[r] != b.used[r] {
 			return fmt.Sprintf("row %d: a line of %d cells, not of %d (a terminal that keeps a line's length shows the rest as blanks)", r+1, b.used[r], a.used[r])
+		}
+		if a.size[r] != b.size[r] {
+			return fmt.Sprintf("row %d: tmux keeps a line of %d cells, not of %d (capture-pane -N shows them, and capture-pane -e ends the row's pen there)", r+1, b.size[r], a.size[r])
+		}
+		if a.stored[r] != b.stored[r] {
+			return fmt.Sprintf("row %d: tmux stored %d cells of the line, not %d (capture-pane -J shows them)", r+1, b.stored[r], a.stored[r])
 		}
 	}
 	switch {

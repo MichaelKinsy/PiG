@@ -60,6 +60,23 @@ func (r *row) blank(known bool) {
 	r.width, r.uncertain, r.endPen = 0, 0, pen{}
 }
 
+// blankAt reports whether cell i is a blank under the default pen: the one cell a terminal may keep no trace of having been sent
+// (tmux does not store it past the cells the row's line has).
+func (r *row) blankAt(i int) bool {
+	c := r.cells[i]
+	return c.size() == 1 && r.line[c.off()] == ' ' && r.pens[c.pen()] == pen{}
+}
+
+// ink is how many cells the row has through its last one that is not a blank under the default pen.
+func (r *row) ink() int {
+	for i := len(r.cells) - 1; i >= 0; i-- {
+		if !r.blankAt(i) {
+			return i + 1
+		}
+	}
+	return 0
+}
+
 // reach is the last column a terminal may have reached after the cells [0,j).
 func (r *row) reach(j int) int {
 	if j == 0 {

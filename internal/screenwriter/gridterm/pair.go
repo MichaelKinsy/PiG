@@ -65,7 +65,7 @@ func (v *Terminal) clone() *Terminal {
 	for r := range v.grid {
 		c.grid[r] = slices.Clone(v.grid[r])
 	}
-	c.used = slices.Clone(v.used)
+	c.used, c.size, c.stored = slices.Clone(v.used), slices.Clone(v.size), slices.Clone(v.stored)
 	c.unknown = map[string]int{}
 	return &c
 }

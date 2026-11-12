@@ -7,9 +7,11 @@
 // pen, the cursor, the scroll region) and, for a frame it can read completely, sends only what changes that screen:
 //
 //   - a row the frame rewrites with the cells it already shows is not written;
-//   - a row whose cells change is written from its first cell through its last changed one, as the first bytes of the frame's own
-//     line (the first-cell rule); what follows on the row stays;
-//   - a row that got shorter is written whole, as the frame wrote it: the line erased, then the row;
+//   - a row whose cells change is written in place, from its first cell through its last changed one, as the first bytes of the
+//     frame's own line (the first-cell rule), when the line is no narrower than the row, has a cell that is not a blank under
+//     the default pen wherever the row has one (the same cluster, where terminals disagree on its width), and has others only
+//     after the last of them; a line that has others is written through its last cell; what follows the written cells stays;
+//   - every other row whose cells change is written whole, as the frame wrote it: the line erased, then the row;
 //   - a frame that changes no cell, cursor position or cursor visibility is not written;
 //   - once no frame was written for the settle time, every row that had a part written is rewritten whole, as the frame wrote it.
 //
@@ -308,12 +310,25 @@ func (w *Writer) writeWhole(index int, r *row) {
 	w.aPen = r.endPen
 }
 
-// writeDiff makes a row that shows o show t: the first bytes of t's line through its last changed cell. shared and same are how many
-// of t's first and last cells are known to be o's (parse); 0 when not known. It reports false, having written nothing, when only
-// writing the row whole does.
+// writeDiff makes a row that shows o show t in place: the first bytes of t's line through its last changed cell. shared and same are
+// how many of t's first and last cells are known to be o's (parse); 0 when not known. It reports false, having written nothing, when
+// only writing the row whole does.
+//
+// A row written in place must leave a terminal the line the frame's erase and line leave it: the cells, and what the terminal keeps
+// of a line besides them. tmux keeps how many cells a line has and how far cells were stored in it, frees them only when the line
+// is erased whole, and does not store a blank under the default pen past the cells the line has: both depend on the order in which
+// the other cells arrived since the erase and on the blanks that arrived after them, not only on the cells the row shows.
+//
+// So a row is written in place only when that keeps this invariant: since the row's line was last erased whole (by a whole write
+// of the row, a repaint, or a scroll that brought the line in), no line the frames wrote for it was narrower than the one before
+// it, each had a cell that is not a default blank exactly where the one before it had one (a cluster of uncertain width being the
+// same cluster there) and, besides, only after the last of them, and a line that had some there was sent through its last cell.
+// Then the terminal was sent, since the line's erase, the cells that are not default blanks in the order of the columns in which
+// the frame's line has them, and after the last of them every cell of the line: what the frame's erase and line send it, some of
+// it more than once. Every other way a row changes writes it whole (the settle write), moves the line with the row (a scroll), or
+// leaves the row unknown, to be written whole by the next frame (a row erased under another pen, another screen size, the
+// alternate screen entered again, a write that is not a frame and may have changed the screen).
 func (w *Writer) writeDiff(index int, o, t *row, shared, same int) bool {
-	// A row that got shorter is written whole: the frame erased the line and wrote the row. Erasing from the row's new end instead
-	// shows the same cells, but a terminal that frees a line's cells only when the line is erased whole (tmux) keeps the longer line.
 	if t.width < o.width {
 		return false
 	}
@@ -330,8 +345,25 @@ func (w *Writer) writeDiff(index int, o, t *row, shared, same int) bool {
 	if p == no && p == nt {
 		return true
 	}
+	// The cells before p are o's. From there through o's last cell that is not a default blank, t's cells must lie where o's do and
+	// be default blanks where o's are.
+	ink := o.ink()
+	if ink > nt {
+		return false
+	}
+	for k := p; k < ink; k++ {
+		a, b := o.cells[k], t.cells[k]
+		if a.col() != b.col() || a.width() != b.width() || o.blankAt(k) != t.blankAt(k) {
+			return false
+		}
+		// A cluster of uncertain width keeps its place: with another cluster there, the cells after it lie in other columns than
+		// counted here in a terminal that draws it wider or narrower.
+		if !(a.certain() && b.certain()) && string(o.line[a.off():a.end()]) != string(t.line[b.off():b.end()]) {
+			return false
+		}
+	}
 	s := 0
-	if o.width == t.width {
+	if o.width == t.width && t.ink() == ink {
 		limit := min(no, nt) - p
 		if s = min(same, limit); s == 0 {
 			// The cells that start in the bytes the two lines share at their end are the same clusters: they are the same cells where
