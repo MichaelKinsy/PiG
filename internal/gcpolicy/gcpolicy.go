@@ -94,13 +94,11 @@ type watcher struct {
 func (w *watcher) start() {
 	quit := make(chan struct{})
 	w.quit = quit
-	w.running.Add(1)
-	go func() {
-		defer w.running.Done()
+	w.running.Go(func() {
 		if w.policy.watchLiveHeap(quit) == endedIdle {
 			w.resumeAtNextCollection()
 		}
-	}()
+	})
 }
 
 // sentinel is what a cleanup is attached to: it has a pointer field so the allocator does not batch it with other tiny objects.
