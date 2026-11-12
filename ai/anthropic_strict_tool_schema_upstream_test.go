@@ -70,14 +70,14 @@ func anthropicStrictTool(t *testing.T, parameters string, strict bool) ToolSchem
 // .upstream/v0.99.2/packages/ai/test/anthropic-strict-tool-schema.test.ts (moved from
 // anthropic-eager-tool-input-compat.test.ts in 0.99.2).
 func TestAnthropicStrictToolSchemas(t *testing.T) {
-	// anthropic-strict-tool-schema.test.ts:70-104
+	// anthropic-strict-tool-schema.test.ts:70-104; the legacy schema expects additionalProperties: false since Pi aa47cedce (#12100)
 	t.Run("only sends the full input schema for strict JSON-schema tools", func(t *testing.T) {
 		legacy := anthropicStrictTestCapture(t, anthropicStrictTool(t, `{"type":"object","properties":{"value":{"type":"string"}},"required":["value"],"additionalProperties":false,"title":"LookupInput"}`, false))
 		if _, ok := legacy["strict"]; ok {
 			t.Fatalf("legacy tool carries strict: %v", legacy)
 		}
 		legacySchema, _ := json.Marshal(legacy["input_schema"])
-		assertShapeJSON(t, legacySchema, `{"type":"object","properties":{"value":{"type":"string"}},"required":["value"]}`)
+		assertShapeJSON(t, legacySchema, `{"type":"object","properties":{"value":{"type":"string"}},"required":["value"],"additionalProperties":false}`)
 
 		strict := anthropicStrictTestCapture(t, anthropicStrictTool(t, `{"type":"object","properties":{"value":{"type":"string"},"optional":{"type":"number"}},"required":["value"],"title":"StrictLookupInput"}`, true))
 		if strict["strict"] != true {
