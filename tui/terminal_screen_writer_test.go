@@ -80,6 +80,12 @@ func newSWScreen(t *testing.T, writer bool, cols, rows int, chunk int, pause tim
 	if writer != (s.term.screen != nil) {
 		t.Fatalf("screen writer on = %v, want %v", s.term.screen != nil, writer)
 	}
+	if s.term.screen != nil {
+		// Registered after the pty's cleanup, so it runs before it: the settle timer reads the terminal's size, and must not do so
+		// once the pty is closed. The product never closes its output while the terminal runs (the exit restore leaves the alternate
+		// screen, which ends the settle write, and drops every later write), so this is the test's teardown only.
+		t.Cleanup(s.term.screen.Stop)
+	}
 	go func() {
 		buf := make([]byte, chunk)
 		for {

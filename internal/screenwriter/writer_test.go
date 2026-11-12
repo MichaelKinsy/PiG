@@ -647,6 +647,44 @@ func TestSettleTimer(t *testing.T) {
 	}
 }
 
+// Stop cancels the settle timer under the terminal's lock: a timer waiting writes nothing after it, and a frame written after it arms
+// none; the writer still translates.
+func TestStopEndsTheSettleTimer(t *testing.T) {
+	locked := make(chan struct{}, 1)
+	emitted := make(chan string, 4)
+	w := New(Options{
+		Size:   func() (int, int) { return 20, 5 },
+		Settle: 20 * time.Millisecond,
+		Lock:   func() { locked <- struct{}{} },
+		Unlock: func() { <-locked },
+		Emit:   func(data string) { emitted <- strings.Clone(data) },
+	})
+	write := func(data string) string {
+		locked <- struct{}{}
+		defer func() { <-locked }()
+		return strings.Clone(w.Translate(data))
+	}
+	for _, data := range gridterm.SplitWrites(started) {
+		write(data)
+	}
+	write(frame(line(2, "hello world")))
+	w.Stop()
+	w.Stop()
+	select {
+	case got := <-emitted:
+		t.Fatalf("a settle write after Stop: %q", got)
+	case <-time.After(100 * time.Millisecond):
+	}
+	if got := write(frame(line(2, "hello world!"))); !strings.HasPrefix(got, syncBegin) || !strings.Contains(got, "!") {
+		t.Errorf("a frame after Stop translated to %q, want the changed cells", got)
+	}
+	select {
+	case got := <-emitted:
+		t.Fatalf("a settle write for a frame written after Stop: %q", got)
+	case <-time.After(100 * time.Millisecond):
+	}
+}
+
 // The records of a log read back as they were appended.
 func TestRecords(t *testing.T) {
 	var log []byte

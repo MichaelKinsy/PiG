@@ -129,6 +129,7 @@ type Writer struct {
 	lastWrite  time.Time
 	timer      *time.Timer
 	armed      bool
+	stopped    bool // Stop was called: the settle timer neither fires nor is armed again
 	stats      Stats
 }
 
@@ -590,9 +591,9 @@ func (w *Writer) penAfter(line string) {
 	}
 }
 
-// arm makes the settle timer fire after d, unless it is waiting already.
+// arm makes the settle timer fire after d, unless it is waiting already or the writer was stopped.
 func (w *Writer) arm(d time.Duration) {
-	if w.armed {
+	if w.armed || w.stopped {
 		return
 	}
 	w.armed = true
@@ -603,12 +604,27 @@ func (w *Writer) arm(d time.Duration) {
 	w.timer.Reset(d)
 }
 
+// Stop ends the settle timer: when it returns the timer is cancelled, a settle write already under way has been written, and none
+// comes later. Call it without the terminal's output lock, before the terminal's output is released. A stopped writer still
+// translates; only its settle write is gone.
+func (w *Writer) Stop() {
+	if w.lock != nil {
+		w.lock()
+		defer w.unlock()
+	}
+	w.stopped = true
+	w.armed = false
+	if w.timer != nil {
+		w.timer.Stop()
+	}
+}
+
 // settleFire is the settle timer: it writes the settle write once no frame was written for the settle time.
 func (w *Writer) settleFire() {
 	w.lock()
 	defer w.unlock()
 	w.armed = false
-	if !w.anyPartial || !w.active.Load() {
+	if w.stopped || !w.anyPartial || !w.active.Load() {
 		return
 	}
 	if since := time.Since(w.lastWrite); since < w.settle {
