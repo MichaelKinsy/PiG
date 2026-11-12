@@ -176,6 +176,8 @@ def extract_source(pin: Pin, destination: Path) -> None:
 # snapshot below is unpacked in place of the hydrate step, and its digest is the oracle's identity. A release tag's snapshot
 # is the data its published package shipped (`pin.py freeze-oracle --from <dist/providers/data>`), a commit's is its first build's, which `build_source` freezes itself.
 DATA_DIR = Path("packages/ai/src/providers/data")
+# What a pack of pi-ai ships: the build copies DATA_DIR here.
+DIST_DATA_DIR = Path("packages/ai/dist/providers/data")
 FROZEN = ROOT / "automation" / "pin" / "frozen"
 
 
@@ -222,6 +224,13 @@ def write_snapshot(directory: Path, target: Path) -> None:
 def frozen_digest(pin: Pin) -> str | None:
     marker = frozen_path(pin).parent / (frozen_path(pin).name + ".sha256")
     return marker.read_text().strip() if marker.exists() else None
+
+
+def built_with_frozen_data(pin: Pin, source: Path) -> bool:
+    """Whether the built tree `source` ships the model data the pin froze (a pin that froze none accepts any build)."""
+    frozen = frozen_digest(pin)
+    shipped = source / DIST_DATA_DIR
+    return frozen is None or (shipped.is_dir() and data_digest(shipped) == frozen)
 
 
 def unpack_snapshot(pin: Pin, source: Path) -> str:
@@ -983,6 +992,11 @@ def freeze_closure(pin: Pin, published_lock: Path | None = None) -> Path:
     commit's derived from its packs. The packs come from a build of the commit, made here when none exists."""
     build = published(pin, "current")
     source = build / "src" if build is not None else entry(pin) / "src"
+    if (source / "packages" / "coding-agent" / "dist").is_dir() and not built_with_frozen_data(pin, source):
+        # The packs ship dist/providers/data. A build made before the pin froze its model data, or from another snapshot, packs other bytes than
+        # the build of every later oracle, and a closure frozen from it fails EINTEGRITY at `npm ci` in a clean cache (a warm cache keeps the old build).
+        source = entry(pin) / "src"
+        extract_source(pin, source)
     if not (source / "packages").is_dir():
         extract_source(pin, source)
     if not (source / "packages" / "coding-agent" / "dist").is_dir():

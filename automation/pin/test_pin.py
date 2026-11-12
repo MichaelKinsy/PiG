@@ -791,6 +791,56 @@ class ClosureTests(unittest.TestCase):
                     oracle.freeze_closure(TAG, Path("published-lock.json"))
         self.assertEqual(calls, ["extract", "build", "pack"])
 
+    def freezing_from(self, published_data: str, frozen_data: str):
+        """freeze_closure over a published build that ships `published_data` as its model data, for a pin that froze `frozen_data`; return the source it packed and the steps it took."""
+        steps = []
+        packed_from = []
+
+        def write_data(source, text):
+            (source / "packages" / "coding-agent" / "dist").mkdir(parents=True, exist_ok=True)
+            data = source / oracle.DIST_DATA_DIR
+            data.mkdir(parents=True, exist_ok=True)
+            (data / "openrouter.json").write_text(text)
+
+        def extract(_pin, destination):
+            steps.append("extract")
+            (destination / "packages").mkdir(parents=True)
+
+        def build(_pin, source):
+            steps.append("build")
+            write_data(source, frozen_data)
+
+        def pack(source, *_a):
+            steps.append("pack")
+            packed_from.append(source)
+            raise pinlib.PinError("packed")
+
+        with tempfile.TemporaryDirectory() as home, tempfile.TemporaryDirectory() as frozen:
+            built = Path(home) / "build"
+            write_data(built / "src", published_data)
+            frozen_source = Path(frozen) / "data"
+            frozen_source.mkdir()
+            (frozen_source / "openrouter.json").write_text(frozen_data)
+            with mock.patch.object(oracle, "published", lambda *_a: built), mock.patch.object(oracle, "entry", lambda _pin: Path(home) / "entry"), \
+                    mock.patch.object(oracle, "frozen_digest", lambda _pin: oracle.data_digest(frozen_source)), \
+                    mock.patch.object(oracle, "extract_source", extract), mock.patch.object(oracle, "build_source", build), mock.patch.object(oracle, "pack", pack), \
+                    mock.patch.object(oracle, "read_frozen_lock", lambda *_a: None):
+                with self.assertRaisesRegex(pinlib.PinError, "packed"):
+                    oracle.freeze_closure(COMMIT)
+            return packed_from[0].relative_to(home), steps
+
+    def test_freezing_a_closure_does_not_pack_a_build_made_with_other_model_data(self):
+        # A pack ships dist/providers/data. A build made before the pin froze its data packs other bytes than every later build, so a closure
+        # frozen from it fails `npm ci` with EINTEGRITY in a clean cache while the warm cache that still holds the old build passes.
+        packed, steps = self.freezing_from(published_data='{"day":"before the freeze"}', frozen_data='{"day":"frozen"}')
+        self.assertEqual(packed, Path("entry/src"))
+        self.assertEqual(steps, ["extract", "build", "pack"])
+
+    def test_freezing_a_closure_packs_the_published_build_that_ships_the_frozen_model_data(self):
+        packed, steps = self.freezing_from(published_data='{"day":"frozen"}', frozen_data='{"day":"frozen"}')
+        self.assertEqual(packed, Path("build/src"))
+        self.assertEqual(steps, ["pack"])
+
     def test_a_lock_of_another_install_is_not_a_closure(self):
         with self.assertRaisesRegex(pinlib.PinError, "not the lock of an install"):
             oracle.published_closure({"lockfileVersion": 3, "packages": {"": {}, "node_modules/typescript": {"version": "5"}}}, "1.1.0")
