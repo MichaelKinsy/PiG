@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"encoding/json/jsontext"
 	"fmt"
 	"slices"
 	"strconv"
@@ -194,7 +195,8 @@ type Snapshot struct {
 // missing required member reject it.
 func DecodeMount(raw []byte) (MountArgs, *Error) {
 	var a MountArgs
-	if err := strict(raw, &a); err != nil {
+	dec := strictDecoder(raw)
+	if err := closed(dec, dec.Decode(&a)); err != nil {
 		return a, err
 	}
 	if n := len(a.Key); n < 1 || n > 128 {
@@ -214,7 +216,8 @@ func DecodeMount(raw []byte) (MountArgs, *Error) {
 
 func DecodeUpdate(raw []byte) (UpdateArgs, *Error) {
 	var a UpdateArgs
-	if err := strict(raw, &a); err != nil {
+	dec := strictDecoder(raw)
+	if err := closed(dec, dec.Decode(&a)); err != nil {
 		return a, err
 	}
 	if a.Mount.Key == "" {
@@ -225,7 +228,8 @@ func DecodeUpdate(raw []byte) (UpdateArgs, *Error) {
 
 func DecodeRef(raw []byte) (RefArgs, *Error) {
 	var a RefArgs
-	if err := strict(raw, &a); err != nil {
+	dec := strictDecoder(raw)
+	if err := closed(dec, dec.Decode(&a)); err != nil {
 		return a, err
 	}
 	if a.Mount.Key == "" {
@@ -236,7 +240,8 @@ func DecodeRef(raw []byte) (RefArgs, *Error) {
 
 func DecodeFinish(raw []byte) (FinishArgs, *Error) {
 	var a FinishArgs
-	if err := strict(raw, &a); err != nil {
+	dec := strictDecoder(raw)
+	if err := closed(dec, dec.Decode(&a)); err != nil {
 		return a, err
 	}
 	if a.Mount.Key == "" {
@@ -250,7 +255,8 @@ func DecodeFinish(raw []byte) (FinishArgs, *Error) {
 
 func DecodeState(raw []byte) (StateArgs, *Error) {
 	var a StateArgs
-	if err := strict(raw, &a); err != nil {
+	dec := strictDecoder(raw)
+	if err := closed(dec, dec.Decode(&a)); err != nil {
 		return a, err
 	}
 	if a.Key == "" {
@@ -280,10 +286,17 @@ func validTarget(slot Slot, t Target) bool {
 	return false
 }
 
-func strict(raw []byte, into any) *Error {
+// strictDecoder reads one closed record: an unknown member is an error. The caller decodes into its own record type and
+// passes the result to closed.
+func strictDecoder(raw []byte) *json.Decoder {
 	dec := json.NewDecoder(bytes.NewReader(raw))
 	dec.DisallowUnknownFields()
-	if err := dec.Decode(into); err != nil {
+	return dec
+}
+
+// closed turns the result of a strict decode into the operation error; data after the record is an error too.
+func closed(dec *json.Decoder, err error) *Error {
+	if err != nil {
 		return fail(CodeInvalid, "%v", err)
 	}
 	if dec.More() {
@@ -542,45 +555,73 @@ func (r *Registry) Abilities() *ClientAbilities {
 	return &cp
 }
 
-// measure counts the nodes (objects with a string "kind") and the nesting depth of a view, collects the node ids, and
-// reports the first node kind outside the host's vocabulary.
+// measure counts the nodes (objects with a string "kind") and the nesting depth of a view, collects the node ids, finds
+// the longest string value, and reports the first node kind outside the host's vocabulary. It reads the view token by
+// token, so it builds no tree of the view.
 func measure(raw json.RawMessage, known func(string) bool) (m measured, badKind string) {
 	m.ids = map[string]struct{}{}
 	m.bytes = len(raw)
-	var walk func(v any, d int)
-	walk = func(v any, d int) {
-		if d > m.depth {
-			m.depth = d
+	// frame is one open object or array. An object remembers the member it is reading, whether it is a node, and its id.
+	type frame struct {
+		object, wantName, node bool
+		name, id               string
+	}
+	var open []frame
+	dec := jsontext.NewDecoder(bytes.NewReader(raw), jsontext.AllowDuplicateNames(true), jsontext.AllowInvalidUTF8(true))
+	for {
+		tok, err := dec.ReadToken()
+		if err != nil {
+			return m, badKind
 		}
-		switch t := v.(type) {
-		case map[string]any:
-			if k, ok := t["kind"].(string); ok {
+		kind := tok.Kind()
+		top := len(open) - 1
+		if kind == '}' || kind == ']' {
+			if f := open[top]; f.node {
 				m.nodes++
-				if known != nil && !known(k) && badKind == "" {
-					badKind = k
-				}
-				if id, ok := t["id"].(string); ok && id != "" {
-					m.ids[id] = struct{}{}
+				if f.id != "" {
+					m.ids[f.id] = struct{}{}
 				}
 			}
-			for _, c := range t {
-				walk(c, d+1)
+			open = open[:top]
+			if top > 0 && open[top-1].object {
+				open[top-1].wantName = true
 			}
-		case []any:
-			for _, c := range t {
-				walk(c, d+1)
-			}
-		case string:
-			if len(t) > m.text {
-				m.text = len(t)
+			continue
+		}
+		if top >= 0 && open[top].object && open[top].wantName {
+			open[top].name, open[top].wantName = tok.String(), false
+			continue
+		}
+		// A value sits one level below the container that holds it.
+		if len(open) > m.depth {
+			m.depth = len(open)
+		}
+		text, isText := "", kind == '"'
+		if isText {
+			text = tok.String()
+			if len(text) > m.text {
+				m.text = len(text)
 			}
 		}
+		if top >= 0 && open[top].object {
+			switch open[top].name {
+			case "kind":
+				open[top].node = isText
+				if isText && known != nil && !known(text) && badKind == "" {
+					badKind = text
+				}
+			case "id":
+				open[top].id = text
+			}
+			open[top].wantName = kind != '{' && kind != '['
+		}
+		switch kind {
+		case '{':
+			open = append(open, frame{object: true, wantName: true})
+		case '[':
+			open = append(open, frame{})
+		}
 	}
-	var v any
-	if json.Unmarshal(raw, &v) == nil {
-		walk(v, 0)
-	}
-	return m, badKind
 }
 
 // prepare measures the view, every alternative and the fallback once, and rejects a node kind the host does not know

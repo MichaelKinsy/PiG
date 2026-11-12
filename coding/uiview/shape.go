@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	"slices"
+	"strconv"
 )
 
 // Shape is the closed JSON subset an intent argument or answer is checked against: boolean, string, integer, number,
@@ -77,39 +78,35 @@ func (s Shape) checkDepth(depth int) error {
 
 // Validate reports whether raw is a value of the shape.
 func (s Shape) Validate(raw json.RawMessage) error {
-	dec := json.NewDecoder(bytes.NewReader(raw))
-	dec.UseNumber()
-	var v any
-	if err := dec.Decode(&v); err != nil {
-		return fmt.Errorf("not JSON: %w", err)
+	if !json.Valid(raw) {
+		return errors.New("not one JSON value")
 	}
-	if dec.More() {
-		return errors.New("trailing data")
-	}
-	return s.validate(v, "value")
+	return s.validate(bytes.TrimSpace(raw), "value")
 }
 
-func (s Shape) validate(v any, at string) error {
+// validate checks one valid JSON value against the shape. It decodes objects and arrays one level at a time into raw
+// members, so no value is decoded into an interface.
+func (s Shape) validate(raw []byte, at string) error {
+	first := raw[0]
 	switch s.Type {
 	case "boolean":
-		if _, ok := v.(bool); !ok {
+		if first != 't' && first != 'f' {
 			return fmt.Errorf("%s is not a boolean", at)
 		}
 	case "string":
-		if _, ok := v.(string); !ok {
+		if first != '"' {
 			return fmt.Errorf("%s is not a string", at)
 		}
 	case "enum":
-		str, ok := v.(string)
-		if !ok || !slices.Contains(s.Enum, str) {
+		var str string
+		if first != '"' || json.Unmarshal(raw, &str) != nil || !slices.Contains(s.Enum, str) {
 			return fmt.Errorf("%s is not one of the enum values", at)
 		}
 	case "number", "integer":
-		n, ok := v.(json.Number)
-		if !ok {
+		if first != '-' && (first < '0' || first > '9') {
 			return fmt.Errorf("%s is not a number", at)
 		}
-		f, err := n.Float64()
+		f, err := strconv.ParseFloat(string(raw), 64)
 		if err != nil || math.IsInf(f, 0) {
 			return fmt.Errorf("%s is not a finite number", at)
 		}
@@ -117,8 +114,8 @@ func (s Shape) validate(v any, at string) error {
 			return fmt.Errorf("%s is not a safe integer", at)
 		}
 	case "object":
-		obj, ok := v.(map[string]any)
-		if !ok {
+		var obj map[string]json.RawMessage
+		if first != '{' || json.Unmarshal(raw, &obj) != nil {
 			return fmt.Errorf("%s is not an object", at)
 		}
 		for name, val := range obj {
@@ -126,7 +123,7 @@ func (s Shape) validate(v any, at string) error {
 			if !known {
 				return fmt.Errorf("%s has unknown member %q", at, name)
 			}
-			if err := p.validate(val, at+"."+name); err != nil {
+			if err := p.validate(bytes.TrimSpace(val), at+"."+name); err != nil {
 				return err
 			}
 		}
@@ -136,15 +133,15 @@ func (s Shape) validate(v any, at string) error {
 			}
 		}
 	case "array":
-		arr, ok := v.([]any)
-		if !ok {
+		var arr []json.RawMessage
+		if first != '[' || json.Unmarshal(raw, &arr) != nil {
 			return fmt.Errorf("%s is not an array", at)
 		}
 		if len(arr) > s.MaxItems {
 			return fmt.Errorf("%s has %d items, at most %d", at, len(arr), s.MaxItems)
 		}
 		for i, val := range arr {
-			if err := s.Items.validate(val, fmt.Sprintf("%s[%d]", at, i)); err != nil {
+			if err := s.Items.validate(bytes.TrimSpace(val), fmt.Sprintf("%s[%d]", at, i)); err != nil {
 				return err
 			}
 		}
