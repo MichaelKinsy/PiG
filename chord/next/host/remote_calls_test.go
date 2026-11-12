@@ -3,6 +3,7 @@ package host
 import (
 	"runtime"
 	"slices"
+	"strconv"
 	"testing"
 	"weak"
 
@@ -118,4 +119,21 @@ func TestCallWindowKeepsNoCallThatWentOutOrWasTaken(t *testing.T) {
 	}()
 	nexttest.ExpectCollected(t, refs...)
 	runtime.KeepAlive(window)
+}
+
+// calls.test.ts: the call window › sends every call at once to a peer that announced no window (a trusted link's), after
+// its hello
+func TestCallWindowSendsEveryCallAtOnceToAPeerThatAnnouncedNoWindow(t *testing.T) {
+	var sent []string
+	window := &callWindow[*testCall]{}
+	window.submit(callOf("early", &sent))
+	expectSent(t, sent)
+	// The peer announced none: 0 in Go (a window is at least 1).
+	window.opened(0)
+	for call := range 300 {
+		window.submit(callOf(strconv.Itoa(call), &sent))
+	}
+	if len(sent) != 301 {
+		t.Fatalf("sent %d calls, want 301", len(sent))
+	}
 }

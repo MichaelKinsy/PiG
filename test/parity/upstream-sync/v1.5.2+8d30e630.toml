@@ -1,0 +1,275 @@
+from = "1.5.2+628d8ab5"
+to = "1.5.2+8d30e630"
+
+[[files]]
+path = "packages/chord/src/host/events.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:chord/next/host/host_events_test.go#TestEventFlushDeliversATurnsEmitsInOneFlushInOrderStampedWithTheEmitsNow", "test:chord/next/host/host_events_test.go#TestEventFlushPutsWhatAListenerEmitsIntoTheNextFlush", "test:chord/next/host/host_events_test.go#TestEventFlushCallsListenersInEntryOrderThenSubscriptionOrderAcrossReferences", "test:chord/next/host/host_events_test.go#TestEventFlushLetsAListenerStopReleaseSubscribeStartATransactionAndEmitACallDueWhenItStoppedIsSkipped", "test:chord/next/host/host_events_test.go#TestEventFlushReportsAThrowingListenerAndEndsOnlyItsSubscription", "test:chord/next/host/host_events_test.go#TestEventFlushThrowsReleasedForAnEmitAfterItsAttemptsSeal", "test:chord/next/host/host_events_test.go#TestEventFlushDeliversAnEmitMadeInsideATransactionThatFailsEmitIsNoTransactionWork", "test:chord/next/host/host_events_test.go#TestEventFlushLetsTheOwnerListenToItsOwnSourceFromItsSubscriptionOn", "test:chord/next/host/host_events_test.go#TestEventsWhoGetsNothingForAReferenceBoundAfterTheEmitAlsoBeforeTheFlush", "test:chord/next/host/host_events_test.go#TestEventsWhoGetsAnEventForAReferenceBoundBeforeTheEmitAndSubscribedAfterItBeforeTheFlush", "test:chord/next/host/host_events_test.go#TestEventsWhoGetsNothingForABindingMadeAtTheEmitsCounterValueASameHostReferenceAndAReexposingView", "test:chord/next/host/host_events_test.go#TestEventsWhoGetsNothingForAReferenceReleasedBeforeTheFlush", "test:chord/next/host/host_events_test.go#TestEventsWhoGetsNothingOnceItsObjectFailedBeforeTheFlushAndAgainOnceARetryIsLive", "test:chord/next/host/host_events_test.go#TestEventsWhoGetsNothingThroughAReexposingViewOnceTheSourceFailedBeforeTheFlush", "test:chord/next/host/host_events_test.go#TestEventsGCStoppedSubscriptionsReleasedReferencesAndAFlushedListKeepNothing", "test:chord/next/host/host_events_test.go#TestEventsGCASubscriptionKeepsNoAbortListenerOnceStopped", "test:chord/next/host/host_events_test.go#TestEventsGCAStoppedSubscriptionKeptByItsHolderKeepsNeitherItsSourceNorItsReference", "test:chord/next/host/host_events_test.go#TestEventsCostAContractWithoutEventMembersCostsNoEventBookkeepingPerBindingHereOrOverALink", "test:chord/next/host/host_events_test.go#TestEventsCostAnEmitWithNoHolderEncodesNothingWalksAndCopiesNothingItIsCountedEmitted"]
+rationale = "8d30e6306 (events: fire-and-forget members): HostEvents (counter, list, one flush per turn as a Loop.Queue microtask: every entry to its node's taps, links' senders first, then listeners in entry then subscription order), EventNode/Tap (boundAt < n), Subscription (stop, context abort, a panicking listener is reported listener_error and ends only itself) and OwnEventSource (Emit returns released after the seal; Emit and On enter the loop as a section because the rest of a suspended handler runs off the section that admitted it). Pi's settled Promise from on() is a blocking (subscription, error). host_events.go; tests host_events_test.go with host_events_support_test.go (Pi's support.ts event helpers: Ticker, NamedTicker, TickerView, Match, ticking, recorder; Pi's single JS turn is hostTurn, one host section). Designed out: the vi.spyOn of HostEvents.counter in the cost test (a Go method cannot be spied: the test asserts the bindings of contracts without event members hold no event bookkeeping and the counter never moved) and the shared-empty-events-slice identity of variantNames (Go empty slices share no allocation by construction)."
+
+[[files]]
+path = "packages/chord/src/host/reference-events.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:chord/next/host/host_reference_events_test.go#TestReferenceEventSubscriptionsAreInstalledAtOnceWhileLoadingAndReceiveOnceTheirReferenceIsLive", "test:chord/next/host/host_reference_events_test.go#TestReferenceEventSubscriptionsRejectAnAbortedContextsReasonAndAReleasedReferencesReleasedInstallingNothing", "test:chord/next/host/host_reference_events_test.go#TestReferenceEventSubscriptionsEndWithTheirContextsAbort", "test:chord/next/host/host_reference_events_test.go#TestReferenceEventSubscriptionsMoveWithTheirReferenceToARestartsNewInstanceAReloadNothingMissedIsReplayed", "test:chord/next/host/host_reference_events_test.go#TestReferenceEventSubscriptionsKeepGettingAnOldAttemptsEmitsWhileAReloadDrainsItThenTheSuccessors", "test:chord/next/host/host_reference_events_test.go#TestReferenceEventReexposedMembersForwardEachEventWithItsValueAndStampUnchanged", "test:chord/next/host/host_reference_events_test.go#TestReferenceEventReexposedMembersFollowTheirSourcesNewInstanceWithoutTheViewRestarting", "test:chord/next/host/host_reference_events_test.go#TestReferenceEventSubscriptionsOpenWhileTheObjectIsFailedAndReceiveOnceARetryIsLive", "test:chord/next/host/host_reference_events_test.go#TestReferenceEventSubscriptionsKeepNoNodeOfAnInstanceAReloadReplacedWhileReferencesSurvive"]
+rationale = "8d30e6306: ReferenceEvents (the reference's event member, On at once bound or not), ReexposedEvents (fed by its reference, value and stamp unchanged), ReferenceEventTaps (per member tap on the instance's node from the binding's counter value; moved on retarget, untapped while it points at nothing). host_reference_events.go; tests host_reference_events_test.go. EventNode instance tracking (Pi's instancesOf(EventNode, \"deliver\")) is replaced by weak pointers to the three nodes of the scenario (own source, re-exposure, mapping)."
+
+[[files]]
+path = "packages/chord/src/host/adapted.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/host_adapted_events_test.go#TestAdaptedEventsGetEachValueMappedByTheirVersionsMappingOncePerEmitForAllOfThem", "test:chord/next/host/host_adapted_events_test.go#TestAdaptedEventsDropAnEmitOnlyForTheirVersionWhenTheMappingThrowsReportedOncePerFailureEpisodeTriedAgainNext", "test:chord/next/host/host_adapted_events_test.go#TestAdaptedEventsAreRefusedTheirBindingWhenTheProviderRefusesAChangedEventMember", "test:chord/next/host/host_adapted_events_test.go#TestAdaptedEventsBindWithARemovedEventMemberAndReceiveNoneOfItTheUnchangedOnesAsTheyAre", "test:chord/next/host/host_adapted_events_test.go#TestAdaptedEventsKeepNoMappingOnceTheirVersionsLastReferenceLeftGC"]
+rationale = "8d30e6306: event(member) and MappedEvents (an older version's event member: the instance's node when unchanged, a mapping node made by the first use otherwise, none for a removed member or a refused one; one mapping call per emit for all of the version's bindings; a mapping that fails drops that emit for that version only, counted chord.events.dropped{reason=mapping}, reported event_mapping_failed once per failure episode), refusal over events. host_adapted.go; tests host_adapted_events_test.go."
+
+[[files]]
+path = "packages/chord/src/host/attempt.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/host_events_test.go#TestEventFlushDeliversATurnsEmitsInOneFlushInOrderStampedWithTheEmitsNow", "test:chord/next/host/host_events_test.go#TestEventFlushPutsWhatAListenerEmitsIntoTheNextFlush", "test:chord/next/host/host_events_test.go#TestEventFlushCallsListenersInEntryOrderThenSubscriptionOrderAcrossReferences", "test:chord/next/host/host_events_test.go#TestEventFlushLetsAListenerStopReleaseSubscribeStartATransactionAndEmitACallDueWhenItStoppedIsSkipped", "test:chord/next/host/host_events_test.go#TestEventFlushReportsAThrowingListenerAndEndsOnlyItsSubscription", "test:chord/next/host/host_events_test.go#TestEventFlushThrowsReleasedForAnEmitAfterItsAttemptsSeal", "test:chord/next/host/host_events_test.go#TestEventFlushDeliversAnEmitMadeInsideATransactionThatFailsEmitIsNoTransactionWork", "test:chord/next/host/host_events_test.go#TestEventFlushLetsTheOwnerListenToItsOwnSourceFromItsSubscriptionOn", "test:chord/next/host/host_events_test.go#TestEventsWhoGetsNothingForAReferenceBoundAfterTheEmitAlsoBeforeTheFlush", "test:chord/next/host/host_events_test.go#TestEventsWhoGetsAnEventForAReferenceBoundBeforeTheEmitAndSubscribedAfterItBeforeTheFlush", "test:chord/next/host/host_events_test.go#TestEventsWhoGetsNothingForABindingMadeAtTheEmitsCounterValueASameHostReferenceAndAReexposingView", "test:chord/next/host/host_events_test.go#TestEventsWhoGetsNothingForAReferenceReleasedBeforeTheFlush", "test:chord/next/host/host_events_test.go#TestEventsWhoGetsNothingOnceItsObjectFailedBeforeTheFlushAndAgainOnceARetryIsLive", "test:chord/next/host/host_events_test.go#TestEventsWhoGetsNothingThroughAReexposingViewOnceTheSourceFailedBeforeTheFlush", "test:chord/next/host/host_events_test.go#TestEventsGCStoppedSubscriptionsReleasedReferencesAndAFlushedListKeepNothing", "test:chord/next/host/host_events_test.go#TestEventsGCASubscriptionKeepsNoAbortListenerOnceStopped", "test:chord/next/host/host_events_test.go#TestEventsGCAStoppedSubscriptionKeptByItsHolderKeepsNeitherItsSourceNorItsReference", "test:chord/next/host/host_events_test.go#TestEventsCostAContractWithoutEventMembersCostsNoEventBookkeepingPerBindingHereOrOverALink", "test:chord/next/host/host_events_test.go#TestEventsCostAnEmitWithNoHolderEncodesNothingWalksAndCopiesNothingItIsCountedEmitted", "test:chord/next/host/host_reference_events_test.go#TestReferenceEventSubscriptionsAreInstalledAtOnceWhileLoadingAndReceiveOnceTheirReferenceIsLive", "test:chord/next/host/host_reference_events_test.go#TestReferenceEventSubscriptionsRejectAnAbortedContextsReasonAndAReleasedReferencesReleasedInstallingNothing", "test:chord/next/host/host_reference_events_test.go#TestReferenceEventSubscriptionsEndWithTheirContextsAbort", "test:chord/next/host/host_reference_events_test.go#TestReferenceEventSubscriptionsMoveWithTheirReferenceToARestartsNewInstanceAReloadNothingMissedIsReplayed", "test:chord/next/host/host_reference_events_test.go#TestReferenceEventSubscriptionsKeepGettingAnOldAttemptsEmitsWhileAReloadDrainsItThenTheSuccessors", "test:chord/next/host/host_reference_events_test.go#TestReferenceEventReexposedMembersForwardEachEventWithItsValueAndStampUnchanged", "test:chord/next/host/host_reference_events_test.go#TestReferenceEventReexposedMembersFollowTheirSourcesNewInstanceWithoutTheViewRestarting", "test:chord/next/host/host_reference_events_test.go#TestReferenceEventSubscriptionsOpenWhileTheObjectIsFailedAndReceiveOnceARetryIsLive", "test:chord/next/host/host_reference_events_test.go#TestReferenceEventSubscriptionsKeepNoNodeOfAnInstanceAReloadReplacedWhileReferencesSurvive"]
+rationale = "8d30e6306: Self.Events() (assertDeclaring, one sourceOwner per attempt, sources detached at its end), eventNode(member, version) (its own at its version, else the shared mapping), the re-exposures attached at the members check and detached at the end, event_mapping_failed reports. host_attempt.go; exercised by the events and reference-events tests."
+
+[[files]]
+path = "packages/chord/src/host/members.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/host_members_events_test.go#TestEventMembersFailTheObjectBrokenForAnImplementationThatIsNeitherItsOwnSourceNorAReferencesEventMember", "test:chord/next/host/host_members_events_test.go#TestEventMembersBindAnEventOnlyContractLiveNoStateToHydrateAtOnceOverALinkToo"]
+rationale = "8d30e6306: event members in the member check (own source owned by the attempt, or a reference's event member re-exposed; anything else is the message `<member>: an event member is this object's own self.events() or a reference's event member`). Designed out: the third case of Pi's test (a state member as an event member): a Go VariantImplementation.Events map holds only EventMember values. host_members.go; tests host_members_events_test.go."
+
+[[files]]
+path = "packages/chord/src/host/reference.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/host_reference_events_test.go#TestReferenceEventSubscriptionsAreInstalledAtOnceWhileLoadingAndReceiveOnceTheirReferenceIsLive", "test:chord/next/host/host_reference_events_test.go#TestReferenceEventSubscriptionsRejectAnAbortedContextsReasonAndAReleasedReferencesReleasedInstallingNothing", "test:chord/next/host/host_reference_events_test.go#TestReferenceEventSubscriptionsEndWithTheirContextsAbort", "test:chord/next/host/host_reference_events_test.go#TestReferenceEventSubscriptionsMoveWithTheirReferenceToARestartsNewInstanceAReloadNothingMissedIsReplayed", "test:chord/next/host/host_reference_events_test.go#TestReferenceEventSubscriptionsKeepGettingAnOldAttemptsEmitsWhileAReloadDrainsItThenTheSuccessors", "test:chord/next/host/host_reference_events_test.go#TestReferenceEventReexposedMembersForwardEachEventWithItsValueAndStampUnchanged", "test:chord/next/host/host_reference_events_test.go#TestReferenceEventReexposedMembersFollowTheirSourcesNewInstanceWithoutTheViewRestarting", "test:chord/next/host/host_reference_events_test.go#TestReferenceEventSubscriptionsOpenWhileTheObjectIsFailedAndReceiveOnceARetryIsLive", "test:chord/next/host/host_reference_events_test.go#TestReferenceEventSubscriptionsKeepNoNodeOfAnInstanceAReloadReplacedWhileReferencesSurvive", "test:chord/next/host/host_events_test.go#TestEventFlushDeliversATurnsEmitsInOneFlushInOrderStampedWithTheEmitsNow", "test:chord/next/host/host_events_test.go#TestEventFlushPutsWhatAListenerEmitsIntoTheNextFlush", "test:chord/next/host/host_events_test.go#TestEventFlushCallsListenersInEntryOrderThenSubscriptionOrderAcrossReferences", "test:chord/next/host/host_events_test.go#TestEventFlushLetsAListenerStopReleaseSubscribeStartATransactionAndEmitACallDueWhenItStoppedIsSkipped", "test:chord/next/host/host_events_test.go#TestEventFlushReportsAThrowingListenerAndEndsOnlyItsSubscription", "test:chord/next/host/host_events_test.go#TestEventFlushThrowsReleasedForAnEmitAfterItsAttemptsSeal", "test:chord/next/host/host_events_test.go#TestEventFlushDeliversAnEmitMadeInsideATransactionThatFailsEmitIsNoTransactionWork", "test:chord/next/host/host_events_test.go#TestEventFlushLetsTheOwnerListenToItsOwnSourceFromItsSubscriptionOn", "test:chord/next/host/host_events_test.go#TestEventsWhoGetsNothingForAReferenceBoundAfterTheEmitAlsoBeforeTheFlush", "test:chord/next/host/host_events_test.go#TestEventsWhoGetsAnEventForAReferenceBoundBeforeTheEmitAndSubscribedAfterItBeforeTheFlush", "test:chord/next/host/host_events_test.go#TestEventsWhoGetsNothingForABindingMadeAtTheEmitsCounterValueASameHostReferenceAndAReexposingView", "test:chord/next/host/host_events_test.go#TestEventsWhoGetsNothingForAReferenceReleasedBeforeTheFlush", "test:chord/next/host/host_events_test.go#TestEventsWhoGetsNothingOnceItsObjectFailedBeforeTheFlushAndAgainOnceARetryIsLive", "test:chord/next/host/host_events_test.go#TestEventsWhoGetsNothingThroughAReexposingViewOnceTheSourceFailedBeforeTheFlush", "test:chord/next/host/host_events_test.go#TestEventsGCStoppedSubscriptionsReleasedReferencesAndAFlushedListKeepNothing", "test:chord/next/host/host_events_test.go#TestEventsGCASubscriptionKeepsNoAbortListenerOnceStopped", "test:chord/next/host/host_events_test.go#TestEventsGCAStoppedSubscriptionKeptByItsHolderKeepsNeitherItsSourceNorItsReference", "test:chord/next/host/host_events_test.go#TestEventsCostAContractWithoutEventMembersCostsNoEventBookkeepingPerBindingHereOrOverALink", "test:chord/next/host/host_events_test.go#TestEventsCostAnEmitWithNoHolderEncodesNothingWalksAndCopiesNothingItIsCountedEmitted"]
+rationale = "8d30e6306: Binding events (the host's events, the instance its members tap and the counter value of its binding to it, taken whenever it attaches to another instance shown live), subscribeEvents/forwardEvents/unforwardEvents, taps ended at release; Attachable.eventNode (remote replicas: remote_remote_object.go). host_reference.go; Reference.Events(name)."
+
+[[files]]
+path = "packages/chord/src/host/host.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/host_events_test.go#TestEventFlushDeliversATurnsEmitsInOneFlushInOrderStampedWithTheEmitsNow", "test:chord/next/host/host_events_test.go#TestEventFlushPutsWhatAListenerEmitsIntoTheNextFlush", "test:chord/next/host/host_events_test.go#TestEventFlushCallsListenersInEntryOrderThenSubscriptionOrderAcrossReferences", "test:chord/next/host/host_events_test.go#TestEventFlushLetsAListenerStopReleaseSubscribeStartATransactionAndEmitACallDueWhenItStoppedIsSkipped", "test:chord/next/host/host_events_test.go#TestEventFlushReportsAThrowingListenerAndEndsOnlyItsSubscription", "test:chord/next/host/host_events_test.go#TestEventFlushThrowsReleasedForAnEmitAfterItsAttemptsSeal", "test:chord/next/host/host_events_test.go#TestEventFlushDeliversAnEmitMadeInsideATransactionThatFailsEmitIsNoTransactionWork", "test:chord/next/host/host_events_test.go#TestEventFlushLetsTheOwnerListenToItsOwnSourceFromItsSubscriptionOn", "test:chord/next/host/host_events_test.go#TestEventsWhoGetsNothingForAReferenceBoundAfterTheEmitAlsoBeforeTheFlush", "test:chord/next/host/host_events_test.go#TestEventsWhoGetsAnEventForAReferenceBoundBeforeTheEmitAndSubscribedAfterItBeforeTheFlush", "test:chord/next/host/host_events_test.go#TestEventsWhoGetsNothingForABindingMadeAtTheEmitsCounterValueASameHostReferenceAndAReexposingView", "test:chord/next/host/host_events_test.go#TestEventsWhoGetsNothingForAReferenceReleasedBeforeTheFlush", "test:chord/next/host/host_events_test.go#TestEventsWhoGetsNothingOnceItsObjectFailedBeforeTheFlushAndAgainOnceARetryIsLive", "test:chord/next/host/host_events_test.go#TestEventsWhoGetsNothingThroughAReexposingViewOnceTheSourceFailedBeforeTheFlush", "test:chord/next/host/host_events_test.go#TestEventsGCStoppedSubscriptionsReleasedReferencesAndAFlushedListKeepNothing", "test:chord/next/host/host_events_test.go#TestEventsGCASubscriptionKeepsNoAbortListenerOnceStopped", "test:chord/next/host/host_events_test.go#TestEventsGCAStoppedSubscriptionKeptByItsHolderKeepsNeitherItsSourceNorItsReference", "test:chord/next/host/host_events_test.go#TestEventsCostAContractWithoutEventMembersCostsNoEventBookkeepingPerBindingHereOrOverALink", "test:chord/next/host/host_events_test.go#TestEventsCostAnEmitWithNoHolderEncodesNothingWalksAndCopiesNothingItIsCountedEmitted"]
+rationale = "8d30e6306: HostOptions callWindow (10,000) and eventWindow (32), the host's HostEvents, the event_mapping_failed HostError, bindings made with the host's events. host_host.go, host_error.go; the link side of the windows is the remote layer's."
+
+[[files]]
+path = "packages/chord/src/host/staging.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/host_staging_events_test.go#TestStagingHandsOutAnInertEventSourceAnEmitInStagingDeliversNothing"]
+rationale = "8d30e6306: RecordingSelf.events() hands out an inert source (Pi's INERT). host_staging.go recordingSelf.Events returns inertEvents (Emit does nothing, On gives a subscription that stops nothing); host_staging_events_test.go."
+
+[[files]]
+path = "packages/chord/src/host/internal.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "8d30e6306 exports events.ts from the barrel; Go packages have no barrel (DESIGN-go-layout.md)."
+
+[[files]]
+path = "packages/chord/src/host/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "Documentation of the event flush and windows; Go's package docs and the file comments carry it."
+
+[[files]]
+path = "packages/chord/src/contracts/accepts.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/contracts/events_test.go#TestAcceptsEventMappings", "test:chord/next/contracts/events_test.go#TestDeclareEventMembers", "test:chord/next/contracts/events_test.go#TestEvolveEventEdits", "test:chord/next/contracts/events_test.go#TestFingerprintsOfEventMembers"]
+rationale = "8d30e6306: event members (EventMapping in accepts, the Event declaration and Events in variants, evolve's event edits, fingerprints of event members, history). contracts/accepts.go; tests chord/next/contracts/events_test.go."
+
+[[files]]
+path = "packages/chord/src/contracts/contract.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/contracts/events_test.go#TestAcceptsEventMappings", "test:chord/next/contracts/events_test.go#TestDeclareEventMembers", "test:chord/next/contracts/events_test.go#TestEvolveEventEdits", "test:chord/next/contracts/events_test.go#TestFingerprintsOfEventMembers"]
+rationale = "8d30e6306: event members (EventMapping in accepts, the Event declaration and Events in variants, evolve's event edits, fingerprints of event members, history). contracts/contract.go; tests chord/next/contracts/events_test.go."
+
+[[files]]
+path = "packages/chord/src/contracts/declare.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/contracts/events_test.go#TestAcceptsEventMappings", "test:chord/next/contracts/events_test.go#TestDeclareEventMembers", "test:chord/next/contracts/events_test.go#TestEvolveEventEdits", "test:chord/next/contracts/events_test.go#TestFingerprintsOfEventMembers"]
+rationale = "8d30e6306: event members (EventMapping in accepts, the Event declaration and Events in variants, evolve's event edits, fingerprints of event members, history). contracts/declare.go; tests chord/next/contracts/events_test.go."
+
+[[files]]
+path = "packages/chord/src/contracts/evolve.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/contracts/events_test.go#TestAcceptsEventMappings", "test:chord/next/contracts/events_test.go#TestDeclareEventMembers", "test:chord/next/contracts/events_test.go#TestEvolveEventEdits", "test:chord/next/contracts/events_test.go#TestFingerprintsOfEventMembers"]
+rationale = "8d30e6306: event members (EventMapping in accepts, the Event declaration and Events in variants, evolve's event edits, fingerprints of event members, history). contracts/evolve.go; tests chord/next/contracts/events_test.go."
+
+[[files]]
+path = "packages/chord/src/contracts/fingerprint.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/contracts/events_test.go#TestAcceptsEventMappings", "test:chord/next/contracts/events_test.go#TestDeclareEventMembers", "test:chord/next/contracts/events_test.go#TestEvolveEventEdits", "test:chord/next/contracts/events_test.go#TestFingerprintsOfEventMembers"]
+rationale = "8d30e6306: event members (EventMapping in accepts, the Event declaration and Events in variants, evolve's event edits, fingerprints of event members, history). contracts/fingerprint.go; tests chord/next/contracts/events_test.go."
+
+[[files]]
+path = "packages/chord/src/contracts/history.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/contracts/events_test.go#TestAcceptsEventMappings", "test:chord/next/contracts/events_test.go#TestDeclareEventMembers", "test:chord/next/contracts/events_test.go#TestEvolveEventEdits", "test:chord/next/contracts/events_test.go#TestFingerprintsOfEventMembers"]
+rationale = "8d30e6306: event members (EventMapping in accepts, the Event declaration and Events in variants, evolve's event edits, fingerprints of event members, history). contracts/history.go; tests chord/next/contracts/events_test.go."
+
+[[files]]
+path = "packages/chord/src/contracts/schema.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/contracts/events_test.go#TestAcceptsEventMappings", "test:chord/next/contracts/events_test.go#TestDeclareEventMembers", "test:chord/next/contracts/events_test.go#TestEvolveEventEdits", "test:chord/next/contracts/events_test.go#TestFingerprintsOfEventMembers"]
+rationale = "8d30e6306: event members (EventMapping in accepts, the Event declaration and Events in variants, evolve's event edits, fingerprints of event members, history). contracts/schema.go; tests chord/next/contracts/events_test.go."
+
+[[files]]
+path = "packages/chord/src/contracts/index.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "8d30e6306 exports the event declarations from the barrel; Go packages have no barrel."
+
+[[files]]
+path = "packages/chord/src/contracts/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "Documentation only."
+
+[[files]]
+path = "packages/chord/src/telemetry.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/host_events_test.go#TestEventsCostAnEmitWithNoHolderEncodesNothingWalksAndCopiesNothingItIsCountedEmitted", "test:chord/next/host/host_adapted_events_test.go#TestAdaptedEventsDropAnEmitOnlyForTheirVersionWhenTheMappingThrowsReportedOncePerFailureEpisodeTriedAgainNext"]
+rationale = "8d30e6306: the four chord.events.* metrics (emitted, dropped, encodes, windows). chord/next/telemetry/schema.go."
+
+[[files]]
+path = "packages/chord/src/link/message.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/link/message_test.go#TestMessages", "test:chord/next/link/event_test.go#TestEventSchema"]
+rationale = "8d30e6306: the `event` kind (entries hold, member, at, value part; one message per flush per link and origin, possibly without entries when a relay filtered them all), `ack.events` (an event ack counting consumed `event` messages, apart from the state ack), and `hello.calls` optional (none for a trusted link). link/message.go: EventMessage/WireEvent, AckMessage.Events, HelloMessage.Calls 0 = none; the Pi message tests are ported with byte goldens for each new frame."
+
+[[files]]
+path = "packages/chord/src/link/binary.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/link/message_test.go#TestTheBinaryCodec", "test:chord/next/link/message_test.go#TestMessages"]
+rationale = "8d30e6306: the binary frame of `event` (hold, member, at, value part per entry), the third flag of the `ack` kind byte for `events`, and `hello` writing 0 for no call window. link/binary.go; the goldens of the new frames are in TestTheBinaryCodec."
+
+[[files]]
+path = "packages/chord/src/link/text.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/link/message_test.go#TestTheTextCodec", "test:chord/next/link/message_test.go#TestMessages"]
+rationale = "8d30e6306: the text form of `event`, `ack.events`, and `hello` without `calls`. link/text.go mirrors the binary codec; the goldens of the new frames are in TestTheTextCodec."
+
+[[files]]
+path = "packages/chord/src/link/channel.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/link/channel_test.go#TestTheHandshake"]
+rationale = "8d30e6306: the handshake accepts a `hello` without a call window (a trusted peer's): PeerCalls is 0, the link opens. link/channel.go."
+
+[[files]]
+path = "packages/chord/src/link/internal.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "Exports the event message types from the barrel; Go packages have no barrel (DESIGN-go-layout.md)."
+
+[[files]]
+path = "packages/chord/src/link/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "Documentation of the event message and ack; the Go package docs and file comments carry it."
+
+[[files]]
+path = "packages/chord/src/remote/calls.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_calls_test.go#TestCallWindowSendsEveryCallAtOnceToAPeerThatAnnouncedNoWindow", "test:chord/next/host/remote_consumer_test.go#TestConsumerCallWindow"]
+rationale = "8d30e6306 (decision \"Call windows only for untrusted links\"): `opened(undefined)` makes the window unlimited: a peer that announced no calls (a trusted link's) gets every call at once after its hello. remote_calls.go callWindow.opened(0) = no window (a window is at least 1)."
+
+[[files]]
+path = "packages/chord/src/remote/host-link.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_host_link_trust_test.go#TestHostLinkAnnouncesNoCallWindowOnATrustedLinkAndTheHostsOtherwise", "test:chord/next/host/remote_host_link_trust_test.go#TestHostLinkAnnouncesNoCallWindowOnARoutesTrustedLinkAndTheHostsOtherwise", "test:chord/next/host/remote_host_link_trust_test.go#TestHostLinkAClientTrustingItsServerKeepsWithinTheServersWindow"]
+rationale = "8d30e6306: a link announces its host's `callWindow` (default 10,000) only when it was not given as trusted (accept, connect, a route's resolve); a trusted link announces none, and its provider side counts no limit. remote_host_link.go hostLink.calls (0 for trusted); a client trusting its server still keeps within the window the server announced."
+
+[[files]]
+path = "packages/chord/src/remote/consumer.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_consumer_events_test.go#TestConsumerEvents", "test:chord/next/host/remote_consumer_test.go#TestConsumerCallWindow"]
+rationale = "8d30e6306: `event` messages of this side's own holds are handed to the host's event flush (an unknown hold, a hold not live or a member nobody listens to drops the entry unopened and uninflated, an index outside the bound version is a protocol error, a value past the part limit counts chord.events.dropped{too_large}), the message consumed and acknowledged once per inbound turn after the flush (a microtask), deflated parts inflated asynchronously first on a host without a compressor; the `bound` ack goes before the references go live so parked calls follow it; calls parked while rebinding go after that ack; calls wait in the window the peer announced (none: all at once). remote_consumer.go events/deflatedEvents/consumed, bound."
+
+[[files]]
+path = "packages/chord/src/remote/hold.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_provider_events_test.go#TestProviderEvents", "test:chord/next/host/remote_relay_events_test.go#TestRelayEvents"]
+rationale = "8d30e6306: a served hold taps its object's event nodes for the links that follow it (bound at the binding, untapped at release, end or rebinding), queueing each entry to its provider side after the state published before the flush. remote_hold.go stopFollowing/untap/tapEvents."
+
+[[files]]
+path = "packages/chord/src/remote/remote-object.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_consumer_events_test.go#TestConsumerEvents", "test:chord/next/host/remote_relay_events_test.go#TestRelayEventsAcrossRealHostsReachATabThroughTheRelayAndThroughTheServersReExposure"]
+rationale = "8d30e6306: a remote object has the event nodes of its variant's event members (eventNodeOf by wire index), delivers consumed entries to its reference's taps with the wire stamp, and nothing of an earlier binding. remote_remote_object.go."
+
+[[files]]
+path = "packages/chord/src/remote/provider.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_provider_events_test.go#TestProviderEvents", "test:chord/next/host/remote_provider_test.go#TestProviderCallLimit", "test:chord/next/host/remote_provider_test.go#TestProviderOrigins", "test:chord/next/host/remote_relay_events_test.go#TestRelayEvents"]
+rationale = "8d30e6306: the per-link, per-origin event window (the host's `eventWindow`, default 32): an entry meeting a full window is dropped before it is encoded and counted chord.events.dropped{window}; one `event` message per flush per origin takes a slot; a state ack and an event ack (`ack.events`) are separate credits; a value is encoded once per representation for every hold and link; a relayed event message is forwarded at once with its filtered entries and its sender as a ticket, returned in order by the downstream's event acks; a side retires only once its tickets drained. Calls count against the announced window only on an untrusted link. remote_provider.go queueEvent/sendEvents/eventAck/tickets, limit 0 = none."
+
+[[files]]
+path = "packages/chord/src/remote/relay.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_relay_events_test.go#TestRelayedCallsInTheUpstreamWindow", "test:chord/next/host/remote_relay_events_test.go#TestRelayedCallsInARealWorkersFiniteWindowNeverExceedItWhenAHoldWithAForwardedCallIsReleased", "test:chord/next/host/remote_relay_events_test.go#TestRelayEvents"]
+rationale = "8d30e6306: relayed calls wait per upstream window (the worker's announced one, also behind a trusted downstream link): a waiting call leaves the queue on abort, release or the downstream's close, forwarded ones free their slots (the release goes before the next call), loading rejects the waiting calls (unavailable, \"rebinding\"), a rebound one waits for the new bound's ack (\"rebound\"), failed and gone reject them with their cause, an upstream drop fails them. remote_relay.go relayedCall."
+
+[[files]]
+path = "packages/chord/src/remote/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "Documentation of the event window and the call windows by trust; the Go file comments carry it."
+
+[[files]]
+path = "packages/chord/src/tui/scope.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/tui/tui_scope_test.go#TestScopeEventSubscriptionsCallTheListenerForEachEventNeverChangedByThemselvesUntilDispose"]
+rationale = "8d30e6306: `TuiScope.on(member, listener)` subscribes to an event member until dispose; events call the listener only, never `changed`. tui_scope.go On."
+
+[[files]]
+path = "packages/chord/src/tui/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "Documentation only."
+
+[[files]]
+path = "packages/chord/src/react/hooks.ts"
+change = "modified"
+disposition = "deferred"
+evidence = ["test:chord/nextnode/surfaces/client_manifest_test.go"]
+rationale = "8d30e6306: useEvents(member, listener) (an event member subscribed while the component is mounted; the latest listener is called through a ref updated in a layout effect). The Go side ships this file only as the vendored client (D601, chord/nextnode/surfaces/client), byte-for-byte from the pinned mirror: client_manifest_test.go compares its sha256 with manifest.json and the pin is v1.5.2, which does not contain 8d30e6306, so the vendored copy keeps the pinned hooks.ts and the new hook arrives with the pin bump that contains it (make pin-bump regenerates the vendored client). No Go code reads or wraps this file; the Go host's event member (host_events.go, host_reference_events.go) is the surface the hook subscribes to through the client link."
+
+[[files]]
+path = "packages/chord/src/react/index.ts"
+change = "modified"
+disposition = "deferred"
+evidence = ["test:chord/nextnode/surfaces/client_manifest_test.go"]
+rationale = "8d30e6306: re-exports useEvents. Vendored byte-for-byte at the pin (see react/hooks.ts): the one-line re-export arrives with the pin bump."
+
+[[files]]
+path = "packages/chord/src/react/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "Documentation only (the useEvents entry); the README is not vendored."

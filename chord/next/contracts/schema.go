@@ -321,6 +321,22 @@ func keyOption(what string, key []*HostKind) *HostKind {
 	panic(fmt.Sprintf("%s: expected at most one key host kind, got %d", what, len(key)))
 }
 
+// EventDeclaration is an event member's declaration in a local contract's flat members (decision "Events:
+// fire-and-forget members"): the schema of the JSON values its object emits.
+type EventDeclaration struct {
+	Schema Schema
+}
+
+func (*EventDeclaration) localMember() {}
+
+// Event declares an event member of a local contract, as Keyed marks a keyed member: JSON values of schema the
+// object emits, delivered once to the references bound to it, never kept (a remote contract lists them under a
+// variant's Events).
+func Event(schema Schema) *EventDeclaration {
+	refuseOptional("Event", schema)
+	return &EventDeclaration{Schema: schema}
+}
+
 // refuseOptional panics when a schema is opt(...): it marks an object property and is no schema anywhere else.
 // TypeScript rejects it where a Schema is expected (`arr`, `map`, `union`, `keyed`, `method`), and a snapshot refuses it
 // with `<path>: expected a schema`; Go has no compile-time check, so the constructor refuses it, as it refuses an option
@@ -351,7 +367,7 @@ func NewMethod(sides ...Schema) *Method {
 	return method
 }
 
-// LocalMember is a local contract's member: a state schema (Schema), a *Method or a *KeyedMember.
+// LocalMember is a local contract's member: a state schema (Schema), a *Method, a *KeyedMember or an *EventDeclaration.
 type LocalMember interface {
 	localMember()
 }

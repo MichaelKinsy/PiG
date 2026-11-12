@@ -132,7 +132,8 @@ type StateEntry struct {
 	Retired []int
 }
 
-// HelloMessage opens a link. Calls is how many concurrent calls this side accepts (the call window).
+// HelloMessage opens a link. Calls is how many concurrent calls of one origin this side accepts (the call window); 0:
+// none announced (a link this side was given as trusted: a window is at least 1).
 type HelloMessage struct {
 	Protocol    int
 	Incarnation string
@@ -220,8 +221,26 @@ type StateMessage struct {
 	Holds  []StateEntry
 }
 
-// AckMessage acknowledges one applied `bound` or `state` message of its origin (the window).
-type AckMessage struct{ Origin Optional[int] }
+// AckMessage acknowledges one applied `bound` or `state` message of its origin (the window); with Events, none of
+// those: the number of `event` messages of the origin consumed since the last such ack (the event window).
+type AckMessage struct {
+	Origin Optional[int]
+	Events Optional[int]
+}
+
+// WireEvent is one entry of an `event` message: the emitting hold, `member` an index into the bound variant's event
+// members, `At` the emitting host's `Date.now()` at the emit, and the value's part.
+type WireEvent struct {
+	Hold, Member, At int
+	Value            Part
+}
+
+// EventMessage carries the events of bound holds: one message per flush per link and origin, possibly without entries
+// (a relay forwards what is left after filtering).
+type EventMessage struct {
+	Origin Optional[int]
+	Events []WireEvent
+}
 
 // ClosedMessage says a relay's downstream link closed: the origin's holds are released and its calls aborted. Its
 // origin is required (0 is what a decode without one gives, which CheckMessage refuses).
@@ -291,6 +310,7 @@ func (*LoadingMessage) Kind() string { return "loading" }
 func (*ResultMessage) Kind() string  { return "result" }
 func (*ErrorMessage) Kind() string   { return "error" }
 func (*GoneMessage) Kind() string    { return "gone" }
+func (*EventMessage) Kind() string   { return "event" }
 
 func (message *HoldMessage) origin() Optional[int]    { return message.Origin }
 func (message *ReleaseMessage) origin() Optional[int] { return message.Origin }
@@ -306,6 +326,7 @@ func (message *LoadingMessage) origin() Optional[int] { return message.Origin }
 func (message *ResultMessage) origin() Optional[int]  { return message.Origin }
 func (message *ErrorMessage) origin() Optional[int]   { return message.Origin }
 func (message *GoneMessage) origin() Optional[int]    { return message.Origin }
+func (message *EventMessage) origin() Optional[int]   { return message.Origin }
 
 func (message *HoldMessage) withOrigin(origin Optional[int]) OriginMessage {
 	copied := *message
@@ -350,7 +371,7 @@ func (message *StateMessage) withOrigin(origin Optional[int]) OriginMessage {
 }
 
 func (message *AckMessage) withOrigin(origin Optional[int]) OriginMessage {
-	return &AckMessage{Origin: origin}
+	return &AckMessage{Origin: origin, Events: message.Events}
 }
 
 func (message *ClosedMessage) withOrigin(origin Optional[int]) OriginMessage {
@@ -381,6 +402,12 @@ func (message *ErrorMessage) withOrigin(origin Optional[int]) OriginMessage {
 	return &copied
 }
 
+func (message *EventMessage) withOrigin(origin Optional[int]) OriginMessage {
+	copied := *message
+	copied.Origin = origin
+	return &copied
+}
+
 func (message *GoneMessage) withOrigin(origin Optional[int]) OriginMessage {
 	copied := *message
 	copied.Origin = origin
@@ -401,6 +428,7 @@ func (*LoadingMessage) consumerMessage() {}
 func (*ResultMessage) consumerMessage()  {}
 func (*ErrorMessage) consumerMessage()   {}
 func (*GoneMessage) consumerMessage()    {}
+func (*EventMessage) consumerMessage()   {}
 
 // Codec is how a link turns messages into bytes and back; both ends of a link use the same one.
 type Codec interface {
@@ -431,7 +459,7 @@ func CheckMessage(message Message, ctx context.Context) (Message, error) {
 func conforms(message Message) bool {
 	switch typed := message.(type) {
 	case *HelloMessage:
-		return typed.Protocol >= 0 && isUUID(typed.Incarnation) && typed.Calls >= 1
+		return typed.Protocol >= 0 && isUUID(typed.Incarnation) && typed.Calls >= 0
 	case *HoldMessage:
 		return validOrigin(typed.Origin) && typed.Hold >= 0 && typed.Version >= 1 && isHex16(typed.Fingerprint) && typed.Params != nil &&
 			jsstring.Length(typed.Type) <= NAME_LENGTH && jsstring.Length(typed.Address.Kind) <= NAME_LENGTH && validCarrier(typed.Trace) &&
@@ -482,7 +510,17 @@ func conforms(message Message) bool {
 		}
 		return true
 	case *AckMessage:
-		return validOrigin(typed.Origin)
+		return validOrigin(typed.Origin) && (!typed.Events.Ok || typed.Events.Value >= 1)
+	case *EventMessage:
+		if !validOrigin(typed.Origin) {
+			return false
+		}
+		for _, entry := range typed.Events {
+			if entry.Hold < 0 || entry.Member < 0 || entry.At < 0 || entry.Value == nil {
+				return false
+			}
+		}
+		return true
 	case *ClosedMessage:
 		return typed.Origin >= 1
 	case *RevokeMessage, *PingMessage, *PongMessage:

@@ -1060,6 +1060,8 @@ type fakeInstance struct {
 
 func (*fakeInstance) attachedVariant() string { return "" }
 
+func (*fakeInstance) eventNode(string, int) *eventNode { return nil }
+
 // fakeKeysTarget is the object a reference's keys pin on: one live instance at a time, whose `pinKey` fails once when
 // asked (Pi replaces the key slot's `persistence.read` once).
 type fakeKeysTarget struct {

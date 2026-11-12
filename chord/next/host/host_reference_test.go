@@ -1118,7 +1118,7 @@ func TestABindingReleasedWhileItBindsFixRound5EndsCleanlyWhenItsObjectsHoldRelea
 	h := host.(*chordHost)
 	var released weak.Pointer[Reference]
 	func() {
-		b := newBinding(refCounter, h, h.batch, nil, caller{}, time.Second)
+		b := newBinding(refCounter, h, h.batch, nil, caller{}, time.Second, h.eventFlow)
 		ref := b.reference
 		fake := &releasingTarget{release: ref.Release}
 		var failure any

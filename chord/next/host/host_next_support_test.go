@@ -19,6 +19,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/documents"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
+	"github.com/MichaelKinsy/PiG/chord/next/state"
 	"github.com/MichaelKinsy/PiG/chord/next/store"
 	"github.com/MichaelKinsy/PiG/chord/nextnode"
 	"github.com/MichaelKinsy/PiG/chord/sqlite"
@@ -807,6 +808,8 @@ type rawPeerOptions struct {
 	// NoHello is `hello: false`.
 	NoHello bool
 	Calls   int
+	// NoCalls is `calls: null`: its hello announces no call window (a trusted link's).
+	NoCalls bool
 	// NoAck is `ack: false`.
 	NoAck bool
 	Codec link.Codec
@@ -863,6 +866,9 @@ func newRawPeer(t testing.TB, end link.Link, options rawPeerOptions) *RawPeer {
 		calls := options.Calls
 		if calls == 0 {
 			calls = 256
+		}
+		if options.NoCalls {
+			calls = 0
 		}
 		peer.send(&link.HelloMessage{Protocol: data.ProtocolVersion, Incarnation: rawPeerIncarnation, Calls: calls})
 	}
@@ -952,6 +958,7 @@ type wireIndexes struct {
 	Variant int
 	State   map[string]int
 	Methods map[string]int
+	Events  map[string]int
 	names   contracts.VariantNames
 }
 
@@ -970,7 +977,7 @@ func wireNames(t testing.TB, typ *contracts.Contract, variant string) wireIndexe
 		}
 		return out
 	}
-	return wireIndexes{Variant: slices.Index(order, variant), State: indexes(names.State), Methods: indexes(names.Methods), names: names}
+	return wireIndexes{Variant: slices.Index(order, variant), State: indexes(names.State), Methods: indexes(names.Methods), Events: indexes(names.Events), names: names}
 }
 
 // Named is a message's members by index as an object by name, their parts parsed (`ops` or `value` per member).
@@ -1014,7 +1021,11 @@ type rawLinkedOptions struct {
 	Parent bool
 	// Trusted is `trusted: true` on the link: its calls' old-work mark is honoured.
 	Trusted bool
-	Loop    sectionLoop
+	// CallWindow and EventWindow are the host's `callWindow` and `eventWindow` (nil: its defaults).
+	CallWindow, EventWindow *int
+	// NoAck is `ack: false`: the raw peer does not acknowledge `bound` and `state` by itself.
+	NoAck bool
+	Loop  sectionLoop
 	// Telemetry is the server's adapter (Pi's `{ telemetry }`); nil has none.
 	Telemetry telemetry.TelemetryContext
 }
@@ -1035,6 +1046,8 @@ func rawLinked(t testing.TB, setup func(host FacetHost) error, options rawLinked
 		Principal:    serverPrincipal(),
 		ReadyTimeout: options.ReadyTimeout,
 		Compression:  options.Compression,
+		CallWindow:   options.CallWindow,
+		EventWindow:  options.EventWindow,
 		OnError:      errs.push,
 		Telemetry:    options.Telemetry,
 		loop:         options.Loop,
@@ -1053,7 +1066,7 @@ func rawLinked(t testing.TB, setup func(host FacetHost) error, options rawLinked
 	} else {
 		must(t, server.Accept(a, linkOptions, background))
 	}
-	return &rawLinkedHost{Server: server, Peer: newRawPeer(t, b, rawPeerOptions{NoHello: options.NoHello}), Errors: errs}
+	return &rawLinkedHost{Server: server, Peer: newRawPeer(t, b, rawPeerOptions{NoHello: options.NoHello, NoAck: options.NoAck}), Errors: errs}
 }
 
 // notesVariants are the variants of the notes types: an editor variant for owners, a reader one for guests.
@@ -1488,6 +1501,8 @@ type relayedOptions struct {
 	// AuthorizeErr is used instead of Authorize when set: an authorize that throws.
 	AuthorizeErr func(principal data.Principal, address contracts.Address) (bool, error)
 	Trusted      bool
+	// WorkerCallWindow is the workers' `callWindow` (announced on their route links unless trusted).
+	WorkerCallWindow *int
 	// TabCodec and RouteCodec are `codecs.tab` and `codecs.route`.
 	TabCodec, RouteCodec link.Codec
 	Server               func(host FacetHost) error
@@ -1555,6 +1570,7 @@ func relay(t testing.TB, options relayedOptions) *relayed {
 			Principal:   principal,
 			RevokedBy:   options.RevokedBy,
 			Compression: options.WorkerCompression,
+			CallWindow:  options.WorkerCallWindow,
 			OnError:     result.Errors.Worker.push,
 			Telemetry:   options.Telemetry.Worker,
 			loop:        options.Loop,
@@ -1645,6 +1661,7 @@ func relay(t testing.TB, options relayedOptions) *relayed {
 // rawWorkerOptions is the options of `rawWorkers`.
 type rawWorkerOptions struct {
 	Calls   int
+	NoCalls bool
 	NoAck   bool
 	Trusted bool
 	Limits  link.PartLimits
@@ -1702,7 +1719,7 @@ func (w *rawWorkers) Peers() []*RawPeer {
 // Resolve is the `resolve` of relayedOptions: it makes a raw peer for the address.
 func (w *rawWorkers) Resolve(address contracts.Address, _ func() resolved, _ context.Context) (resolved, error) {
 	a, b := link.MemoryLinkPair()
-	peer := newRawPeer(w.t, b, rawPeerOptions{Calls: w.options.Calls, NoAck: w.options.NoAck})
+	peer := newRawPeer(w.t, b, rawPeerOptions{Calls: w.options.Calls, NoCalls: w.options.NoCalls, NoAck: w.options.NoAck})
 	w.mu.Lock()
 	w.peers = append(w.peers, peer)
 	if w.made != nil {
@@ -1748,4 +1765,60 @@ func (c *countingCompression) Bytes() int {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return c.bytes
+}
+
+// MatchV2 is `Match` with the paddle's values carrying a sample time: an older consumer gets them mapped.
+var MatchV2 = mustContract(contracts.Evolve(Match, func(e *contracts.RemoteEditor) *contracts.RemoteEditor {
+	return e.Event("player", "paddle", contracts.Obj(contracts.Prop("y", contracts.Num()), contracts.Prop("t", contracts.Num())))
+}))
+
+// matchProbe is what a test reaches of each match attempt: its paddle source, its score's writable and its `self`.
+type matchProbe struct {
+	mu      sync.Mutex
+	paddles []contracts.EventSource[delta.JsonValue]
+	scores  []state.Writable[any]
+	selves  []Self
+}
+
+func (p *matchProbe) paddle(index int) contracts.EventSource[delta.JsonValue] {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.paddles[index]
+}
+
+func (p *matchProbe) score(index int) state.Writable[any] {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.scores[index]
+}
+
+func (p *matchProbe) self(index int) Self {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.selves[index]
+}
+
+// serveMatch serves `Match`; guests get the watcher variant.
+func serveMatch(host FacetHost, probe *matchProbe) error {
+	return host.Serve(Match, func(_ *delta.JsonObject, principal data.Principal, self Self) (contracts.Implementation, error) {
+		paddle := self.Events()
+		ball := self.Events()
+		writable := self.Writable(0.0)
+		probe.mu.Lock()
+		probe.paddles = append(probe.paddles, paddle)
+		probe.scores = append(probe.scores, writable)
+		probe.selves = append(probe.selves, self)
+		probe.mu.Unlock()
+		score := self.Derive([]any{writable}, func(values []any) (delta.JsonValue, error) { return values[0], nil })
+		if principalKind(principal) == "guest" {
+			return contracts.Implementation{Variant: "watcher", Members: contracts.VariantImplementation{
+				State: map[string]chord.Watchable[delta.JsonValue]{"score": score},
+			}}, nil
+		}
+		return contracts.Implementation{Variant: "player", Members: contracts.VariantImplementation{
+			State:   map[string]chord.Watchable[delta.JsonValue]{"score": score},
+			Events:  map[string]contracts.EventMember[delta.JsonValue]{"paddle": paddle, "ball": ball},
+			Methods: map[string]contracts.MethodFunction{"bump": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return nil, nil }},
+		}}, nil
+	}, ServeOptions{})
 }

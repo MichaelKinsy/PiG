@@ -888,14 +888,14 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/jobs/stored.ts` | `chord/next/host/jobs_stored.go` | ✅ |
 | `packages/chord/src/jobs/index.ts` | `(barrel: Go imports the package (DESIGN-go-layout.md section 2); what it exports is exported by the files above: DefineJob, JobAccepts, JobDefinition, JobError, JobOptions, Outcome, JobCtx, JobHandle, JobImplementation, RunState, StartOptions, BlockedReason, Run; RunningEntry is type-level (jobs_running.go))` | n/a |
 | `packages/chord/src/jobs/internal.ts` | `(barrel for host/remote: one package, Job, JobRecords, JobContext, Staging, ... are unexported where Pi keeps them out of index.ts (DESIGN-go-layout.md sections 1-2))` | n/a |
-| `packages/chord/src/remote/hold.ts` | `chord/next/host/remote_hold.go` | ✅ |
-| `packages/chord/src/remote/remote-object.ts` | `chord/next/host/remote_remote_object.go` | ✅ |
-| `packages/chord/src/remote/host-link.ts` | `chord/next/host/remote_host_link.go` | ✅ |
+| `packages/chord/src/remote/hold.ts` | `chord/next/host/remote_hold.go` Events at 8d30e6306 (Pi tests of that commit): chord/next/host/remote_provider_events_test.go, chord/next/host/remote_relay_events_test.go | ✅ |
+| `packages/chord/src/remote/remote-object.ts` | `chord/next/host/remote_remote_object.go` Events at 8d30e6306 (Pi tests of that commit): chord/next/host/remote_consumer_events_test.go | ✅ |
+| `packages/chord/src/remote/host-link.ts` | `chord/next/host/remote_host_link.go` Events at 8d30e6306 (Pi tests of that commit): chord/next/host/remote_host_link_trust_test.go | ✅ |
 | `packages/chord/src/remote/path.ts` | `chord/next/host/remote_path.go` | ✅ |
-| `packages/chord/src/remote/calls.ts` | `chord/next/host/remote_calls.go` | ✅ |
-| `packages/chord/src/remote/provider.ts` | `chord/next/host/remote_provider.go` | ✅ |
-| `packages/chord/src/remote/consumer.ts` | `chord/next/host/remote_consumer.go` | ✅ |
-| `packages/chord/src/remote/relay.ts` | `chord/next/host/remote_relay.go` | ✅ |
+| `packages/chord/src/remote/calls.ts` | `chord/next/host/remote_calls.go` Events at 8d30e6306 (Pi tests of that commit): chord/next/host/remote_calls_test.go | ✅ |
+| `packages/chord/src/remote/provider.ts` | `chord/next/host/remote_provider.go` Events at 8d30e6306 (Pi tests of that commit): chord/next/host/remote_provider_events_test.go, chord/next/host/remote_provider_test.go | ✅ |
+| `packages/chord/src/remote/consumer.ts` | `chord/next/host/remote_consumer.go` Events at 8d30e6306 (Pi tests of that commit): chord/next/host/remote_consumer_events_test.go, chord/next/host/remote_consumer_test.go | ✅ |
+| `packages/chord/src/remote/relay.ts` | `chord/next/host/remote_relay.go` Events at 8d30e6306 (Pi tests of that commit): chord/next/host/remote_relay_events_test.go | ✅ |
 | `packages/chord/src/remote/replica.ts` | `chord/next/host/remote_replica.go` | ✅ |
 | `packages/chord/src/remote/internal.ts` | `(barrel for Chord's own layers: Go imports the package; what it exported (Path, Upstream, HostLink, HoldRequest, actingFor, ...) is unexported in Go (DESIGN-go-layout.md section 2))` | n/a |
 | `packages/chord/src/jobs/job.ts` | `chord/next/host/jobs_job.go` | ✅ |
