@@ -1517,6 +1517,12 @@ var stdoutIsTTY = func() bool { return term.IsTerminal(int(os.Stdout.Fd())) }
 
 // printResumeHint writes the resume command after the terminal is restored on an interactive quit, only for a persisted session with an existing file and TTY stdout.
 func (m *InteractiveMode) printResumeHint() {
+	// pig additive (D91): Pi has no frontend member. A frontend that drew this run owns its exit screen, and the
+	// frontend contract has no exit text path, so the host writes nothing after it. leaveFrontend clears surface,
+	// so a run that fell back to the ANSI renderer prints the hint as Pi does.
+	if m.surface != nil {
+		return
+	}
 	cmd := m.resumeHintCommand()
 	if cmd == "" {
 		return
