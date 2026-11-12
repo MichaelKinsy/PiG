@@ -100,6 +100,11 @@ class AmendmentTest(unittest.TestCase):
         out = ui_view.encode_content({"root": {}}, (), (), None, [alt], drawing, [{"node": "n"}], [{"node": "n", "request": "mount"}])
         self.assertEqual(out, {"view": {"root": {}}, "alternatives": [alt], "drawing": drawing, "a11y": [{"node": "n"}], "focus": [{"node": "n", "request": "mount"}]})
 
+    def test_title_and_the_intent_a_hidden_mount_takes(self):
+        out = ui_view.encode_content({"root": {}}, [pig_sdk.ViewIntent("x.open", pig_sdk.ViewShape("object"), when_hidden=True)], (), None, focus=[{"node": "n", "request": "update"}], title="Mail")
+        self.assertEqual(out, {"view": {"root": {}}, "title": "Mail", "intents": [{"name": "x.open", "arg": {"type": "object"}, "whenHidden": True}], "focus": [{"node": "n", "request": "update"}]})
+        self.assertNotIn("title", ui_view.encode_content({"root": {}}, (), (), None, title=""))
+
 
 if __name__ == "__main__":
     unittest.main()

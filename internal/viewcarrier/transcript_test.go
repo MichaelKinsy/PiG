@@ -181,7 +181,7 @@ var transcripts = map[string]func(s *script){
 		s.client(`{"id":"2","type":"ui_view_report","attachment":1,"plugin":"p","mount":{"key":"k","epoch":1},"notice":{"code":"undrawn","severity":"warning","message":"no room for the box","path":"root/0"}}`)
 		s.client(`{"id":"3","type":"ui_view_report","attachment":1,"plugin":"p","mount":{"key":"k","epoch":1},"notice":{"code":"limit","severity":"error","claim":"display.colors","measured":300,"limit":256}}`)
 		s.client(`{"id":"4","type":"ui_view_report","attachment":1,"plugin":"p","mount":{"key":"k","epoch":1},"notice":{"code":"unsupported","severity":"info"}}`)
-		s.note("A client reports undrawn, unsupported or limit; the mount must be the current incarnation of its key.")
+		s.note("A client reports undrawn, unsupported, limit or unfocused; the mount must be the current incarnation of its key.")
 		s.client(`{"id":"5","type":"ui_view_report","attachment":1,"plugin":"p","mount":{"key":"k","epoch":1},"notice":{"code":"refused","severity":"info"}}`)
 		s.client(`{"id":"6","type":"ui_view_report","attachment":1,"plugin":"p","mount":{"key":"k","epoch":2},"notice":{"code":"undrawn","severity":"info"}}`)
 		s.client(`{"id":"7","type":"ui_view_report","attachment":1,"plugin":"p","mount":{"key":"gone","epoch":1},"notice":{"code":"undrawn","severity":"info"}}`)

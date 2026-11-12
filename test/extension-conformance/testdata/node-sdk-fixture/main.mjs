@@ -1051,7 +1051,36 @@ export default function (pi) {
     const cur = await ctx.ui.viewState("extras");
     ctx.ui.notify(`view-x-state:${cur.state},picked=${cur.result?.picked}`, "info");
   } });
+  // D614: a view an agent's tool shows. The command registers the tool; the tool mounts a titled panel, hides it, shows it and
+  // updates it with a focus request, the same way in every SDK fixture (conformance TestConformance_UIViewToolShowsAndFocuses).
+  pi.registerCommand("ui_view_tool", { description: "Register the tool that shows a titled view", handler: async () => {
+    pi.registerTool({
+      name: "view_show",
+      label: "view_show",
+      description: "Mount, show and focus a titled view",
+      parameters: { type: "object", properties: {} },
+      async execute(_id, params, _signal, _onUpdate, ctx) {
+        const text = (value) => ({ content: [{ type: "text", text: value }] });
+        if (params.op === "hide") return text(`view-tool:${(await ctx.ui.hideView((await ctx.ui.viewState("shown")).mount)).state}`);
+        const content = (title, request) => ({
+          title, view: xList(params.node, "fixture-shown"),
+          intents: [{ name: "fx.reopen", arg: { type: "object" }, whenHidden: true }, { name: "fx.tap", arg: { type: "object" } }],
+          focus: [request ? { node: params.node, request } : { node: params.node }],
+        });
+        let st = await ctx.ui.mountView({ key: "shown", slot: "panel", ...content(params.title) });
+        st = await ctx.ui.hideView(st.mount);
+        st = await ctx.ui.showView(st.mount);
+        st = await ctx.ui.updateView(st.mount, content(`${params.title}/2`, "update"));
+        return text(`view-tool:${st.state},rev=${st.mount.rev}`);
+      },
+    });
+  } });
   pi.onViewIntent(async (inv, ctx) => {
+    if (inv.intent === "fx.reopen") {
+      // The user opened the hidden view: its handler shows it.
+      await ctx.ui.showView({ ...inv.mount, rev: inv.rev });
+      return { outcome: "done" };
+    }
     if (inv.intent === "fx.add") return { outcome: "done", answer: { sum: inv.arg.n * 2 + (ctx.ui.viewAbilities()?.limits.intentArgBytes ?? 0) } };
     if (inv.intent === "fx.wait") {
       ctx.ui.notify(`intent-started:${inv.arg.tag}`, "info");

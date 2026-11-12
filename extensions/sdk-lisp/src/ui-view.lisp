@@ -37,13 +37,16 @@ broken, \"session_replaced\", \"owner_gone\" or \"shutdown\"; RESULT is the JSON
     (when max-items (setf (gethash "maxItems" shape) max-items))
     shape))
 
-(defun view-intent (name arg &key node-key answer cancellable timeout-ms)
-  "One intent the view's nodes may raise. NAME is \"<extension>.<verb>\"; TIMEOUT-MS defaults to 30000 and is 100..300000."
+(defun view-intent (name arg &key node-key answer cancellable timeout-ms when-hidden)
+  "One intent the view's nodes may raise. NAME is \"<extension>.<verb>\"; TIMEOUT-MS defaults to 30000 and is 100..300000.
+WHEN-HIDDEN lets a client raise the intent while the mount is hidden: it is how the user opens a view the extension hid, and the
+handler shows the mount. At most one intent of a mount has it; it names no node and its ARG accepts the empty object."
   (let ((intent (obj "name" name "arg" arg)))
     (when node-key (setf (gethash "nodeKey" intent) node-key))
     (when answer (setf (gethash "answer" intent) answer))
     (when cancellable (setf (gethash "cancellable" intent) t))
     (when timeout-ms (setf (gethash "timeoutMs" intent) timeout-ms))
+    (when when-hidden (setf (gethash "whenHidden" intent) t))
     intent))
 
 (defun view-asset (id mime size sha256 delivery)
@@ -95,9 +98,10 @@ of 8 clauses."
   "A kit VIEW a client is sent in place of the mount's view when WHEN (a VIEW-WHEN) holds for that client's claims. DRAWING is a JSON object."
   (list when view drawing))
 
-(defun view-content-args (ctx view intents assets fallback &key alternatives drawing a11y focus)
+(defun view-content-args (ctx view intents assets fallback &key title alternatives drawing a11y focus)
   (let* ((ext (ctx-extension ctx))
          (args (obj "view" (view-inline-wire (kit-encode ext view)))))
+    (when (and title (string/= title "")) (setf (gethash "title" args) title))
     (when alternatives
       (setf (gethash "alternatives" args)
             (coerce (mapcar (lambda (alt)
@@ -124,19 +128,20 @@ of 8 clauses."
       (%view-status (view-ref (jget mount "key" "") (jget mount "epoch" 0) (jget mount "rev" 0))
                     (jget result "state" "") (jget result "reason" "") (jget result "result")))))
 
-(defun ctx-mount-view (ctx key slot view &key target intents assets fallback alternatives drawing a11y focus)
+(defun ctx-mount-view (ctx key slot view &key target title intents assets fallback alternatives drawing a11y focus)
   "Mount VIEW (a kit view) under KEY in SLOT, a slot the attached client draws. TARGET is a VIEW-TARGET, INTENTS VIEW-INTENTs, ASSETS
 VIEW-ASSETs, FALLBACK a kit node the client draws when it cannot draw the view. ALTERNATIVES are VIEW-ALTERNATIVEs (at most 8; a client
 draws the first whose predicate holds for its claims), DRAWING a JSON object (\"profile\" \"scene\" with \"shapes\" or \"pixels\" with
-\"pixels\", and \"regions\"), A11Y and FOCUS lists of JSON objects naming view nodes by id (at most 256 each)."
-  (let ((args (view-content-args ctx view intents assets fallback :alternatives alternatives :drawing drawing :a11y a11y :focus focus)))
+\"pixels\", and \"regions\"), A11Y and FOCUS lists of JSON objects naming view nodes by id (at most 256 each); a focus object's
+\"request\" is \"mount\" or \"update\". TITLE is the short text a client labels the mount with (at most 64 bytes on one line)."
+  (let ((args (view-content-args ctx view intents assets fallback :title title :alternatives alternatives :drawing drawing :a11y a11y :focus focus)))
     (setf (gethash "key" args) key (gethash "slot" args) slot)
     (when target (setf (gethash "target" args) target))
     (view-call ctx "ui.view.mount" args)))
 
-(defun ctx-update-view (ctx mount view &key intents assets fallback alternatives drawing a11y focus)
-  "Replace the content of MOUNT, a VIEW-REF. Signals code \"stale\" unless MOUNT carries the epoch and rev the last operation returned."
-  (let ((args (view-content-args ctx view intents assets fallback :alternatives alternatives :drawing drawing :a11y a11y :focus focus)))
+(defun ctx-update-view (ctx mount view &key title intents assets fallback alternatives drawing a11y focus)
+  "Replace the content of MOUNT, a VIEW-REF, its TITLE included. Signals code \"stale\" unless MOUNT carries the epoch and rev the last operation returned."
+  (let ((args (view-content-args ctx view intents assets fallback :title title :alternatives alternatives :drawing drawing :a11y a11y :focus focus)))
     (setf (gethash "mount" args) (view-ref-wire mount))
     (view-call ctx "ui.view.update" args)))
 

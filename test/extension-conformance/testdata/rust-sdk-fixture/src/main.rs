@@ -3667,6 +3667,7 @@ fn main() {
         pig_sdk::ViewMount {
             key: key.into(),
             slot: "panel".into(),
+            title: String::new(),
             target: None,
             view,
             intents,
@@ -3721,6 +3722,7 @@ fn main() {
             let first = st.mount.clone();
             let st = match ctx.update_view(pig_sdk::ViewUpdate {
                 mount: first.clone(),
+                title: String::new(),
                 view: view_text(ctx, "-2"),
                 intents: vec![],
                 assets: vec![],
@@ -3736,6 +3738,7 @@ fn main() {
             ctx.notify(&format!("view-updated:rev={}", st.mount.rev), "info");
             let stale = ctx.update_view(pig_sdk::ViewUpdate {
                 mount: first,
+                title: String::new(),
                 view: view_text(ctx, "-stale"),
                 intents: vec![],
                 assets: vec![],
@@ -3864,6 +3867,7 @@ fn main() {
     fn x_update(mount: &pig_sdk::ViewRef) -> pig_sdk::ViewUpdate {
         pig_sdk::ViewUpdate {
             mount: mount.clone(),
+            title: String::new(),
             view: x_list("base", "fixture-x-base"),
             intents: vec![],
             assets: vec![],
@@ -3923,6 +3927,7 @@ fn main() {
             let st = match ctx.mount_view(pig_sdk::ViewMount {
                 key: "extras".into(),
                 slot: "panel".into(),
+                title: String::new(),
                 target: None,
                 view: x_list("base", "fixture-x-base"),
                 intents: vec![pig_sdk::ViewIntent { name: "fx.tap".into(), arg: pig_sdk::ViewShape::new("object"), ..Default::default() }],
@@ -4046,7 +4051,109 @@ fn main() {
             }
         },
     );
+    // D614: a view an agent's tool shows. The command registers the tool; the tool mounts a titled panel, hides it,
+    // shows it and updates it with a focus request, the same way in every SDK fixture (conformance
+    // TestConformance_UIViewToolShowsAndFocuses).
+    ext.command(
+        "ui_view_tool",
+        "Register the tool that shows a titled view",
+        |ctx, _args| {
+            let tool = ToolDefinition::new(
+                "view_show",
+                "view_show",
+                "Mount, show and focus a titled view",
+                json!({"type": "object"}),
+                |ctx, params| {
+                    let text = |name: &str| {
+                        params
+                            .get(name)
+                            .and_then(Value::as_str)
+                            .unwrap_or("")
+                            .to_string()
+                    };
+                    let (title, node) = (text("title"), text("node"));
+                    let run = || -> Result<String, pig_sdk::ViewError> {
+                        if text("op") == "hide" {
+                            let st = ctx.hide_view(&ctx.view_state("shown")?.mount)?;
+                            return Ok(format!("view-tool:{}", st.state));
+                        }
+                        let intents = || {
+                            vec![
+                                pig_sdk::ViewIntent {
+                                    name: "fx.reopen".into(),
+                                    arg: pig_sdk::ViewShape::new("object"),
+                                    when_hidden: true,
+                                    ..Default::default()
+                                },
+                                pig_sdk::ViewIntent {
+                                    name: "fx.tap".into(),
+                                    arg: pig_sdk::ViewShape::new("object"),
+                                    ..Default::default()
+                                },
+                            ]
+                        };
+                        let focus = |request: &str| {
+                            vec![pig_sdk::ViewFocus {
+                                node: node.clone(),
+                                request: request.into(),
+                                ..Default::default()
+                            }]
+                        };
+                        let st = ctx.mount_view(pig_sdk::ViewMount {
+                            key: "shown".into(),
+                            slot: "panel".into(),
+                            title: title.clone(),
+                            target: None,
+                            view: x_list(&node, "fixture-shown"),
+                            intents: intents(),
+                            assets: vec![],
+                            fallback: None,
+                            alternatives: vec![],
+                            drawing: None,
+                            a11y: vec![],
+                            focus: focus(""),
+                        })?;
+                        let st = ctx.hide_view(&st.mount)?;
+                        let st = ctx.show_view(&st.mount)?;
+                        let st = ctx.update_view(pig_sdk::ViewUpdate {
+                            mount: st.mount,
+                            title: format!("{title}/2"),
+                            view: x_list(&node, "fixture-shown"),
+                            intents: intents(),
+                            assets: vec![],
+                            fallback: None,
+                            alternatives: vec![],
+                            drawing: None,
+                            a11y: vec![],
+                            focus: focus("update"),
+                        })?;
+                        Ok(format!("view-tool:{},rev={}", st.state, st.mount.rev))
+                    };
+                    match run() {
+                        Ok(text) => ToolResult::text(text),
+                        Err(e) => ToolResult::Error(e.to_string()),
+                    }
+                },
+            );
+            match ctx.register_tool(tool) {
+                Ok(()) => CommandResult::Ok,
+                Err(err) => CommandResult::Error(err.to_string()),
+            }
+        },
+    );
     ext.on_view_intent(|inv| match inv.intent.as_str() {
+        // The user opened the hidden view: its handler shows it.
+        "fx.reopen" => {
+            let shown = inv.context.show_view(&pig_sdk::ViewRef {
+                key: inv.mount.key.clone(),
+                epoch: inv.mount.epoch,
+                rev: inv.rev,
+            });
+            match shown {
+                Ok(_) => pig_sdk::ViewIntentResult::done(json!({})),
+                Err(e) => pig_sdk::ViewIntentResult::failed(&e.to_string()),
+            }
+        }
         "fx.add" => {
             let n = inv.arg.get("n").and_then(Value::as_i64).unwrap_or(0);
             let extra = inv

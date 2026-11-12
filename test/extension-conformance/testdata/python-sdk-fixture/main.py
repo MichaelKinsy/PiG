@@ -2403,6 +2403,10 @@ def new_extension() -> pig_sdk.Extension:
         ctx.notify(f"view-state:{st.state}:{st.reason}", "info")
 
     def view_intent(inv):
+        if inv.intent == "fx.reopen":
+            # The user opened the hidden view: its handler shows it.
+            inv.context.show_view(pig_sdk.ViewRef(inv.mount.key, inv.mount.epoch, inv.rev))
+            return pig_sdk.ViewIntentResult("done")
         if inv.intent == "fx.add":
             ab = inv.context.view_abilities()
             total = inv.arg["n"] * 2 + (ab.limits.intent_arg_bytes if ab else 0)
@@ -2505,6 +2509,39 @@ def new_extension() -> pig_sdk.Extension:
         cur = ctx.view_state("extras")
         ctx.notify(f"view-x-state:{cur.state},picked={cur.result['picked']}", "info")
 
+    # D614: a view an agent's tool shows. The command registers the tool; the tool mounts a titled panel, hides it, shows it and
+    # updates it with a focus request, the same way in every SDK fixture (conformance TestConformance_UIViewToolShowsAndFocuses).
+    def view_show(ctx, params):
+        if params.get("op") == "hide":
+            return f"view-tool:{ctx.hide_view(ctx.view_state('shown').mount).state}"
+        title, node = params["title"], params["node"]
+
+        def content(title, request):
+            return {
+                "title": title,
+                "intents": [
+                    pig_sdk.ViewIntent("fx.reopen", pig_sdk.ViewShape("object"), when_hidden=True),
+                    pig_sdk.ViewIntent("fx.tap", pig_sdk.ViewShape("object")),
+                ],
+                "focus": [{"node": node, "request": request} if request else {"node": node}],
+            }
+
+        st = ctx.mount_view("shown", "panel", x_list(node, "fixture-shown"), **content(title, ""))
+        st = ctx.hide_view(st.mount)
+        st = ctx.show_view(st.mount)
+        st = ctx.update_view(st.mount, x_list(node, "fixture-shown"), **content(title + "/2", "update"))
+        return f"view-tool:{st.state},rev={st.mount.rev}"
+
+    def view_tool_probe(ctx, _args):
+        ctx.register_tool(pig_sdk.ToolDefinition(
+            name="view_show",
+            label="view_show",
+            description="Mount, show and focus a titled view",
+            parameters={"type": "object"},
+            execute=view_show,
+        ))
+
+    ext.command("ui_view_tool", "Register the tool that shows a titled view", view_tool_probe)
     ext.command("ui_view_extras", "Mount a view with alternatives, a drawing, a11y and focus, and probe the bounds", view_extras_probe)
     ext.command("ui_view_extras_end", "Read the notices of the extras mount and finish it with a result", view_extras_end_probe)
     ext.command("ui_view_abilities", "Report the replicated client abilities", view_abilities_probe)

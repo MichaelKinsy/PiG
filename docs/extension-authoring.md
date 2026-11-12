@@ -623,6 +623,19 @@ there are any.
 9. Read what went wrong with `ViewDiagnostics(key)`, `view_diagnostics`, `view_diagnostics`, `ctx-view-diagnostics` or
    `ctx.ui.viewDiagnostics`: the notices of a mount say which update the host rejected, which intent it ended and what a client
    could not draw. The host keeps 32 notices for a mount and counts repeats.
+10. Give the mount a `title` (Go `ViewContent.Title`, Python and Lisp the `title` keyword, Rust `ViewMount.title` and
+    `ViewUpdate.title`, Node the `title` member): at most 64 bytes on one line. A client labels the mount with it, in a tab or a
+    list of views. It is content, so send it again with every update; an update without it clears it.
+11. Let the user open a view you hid. Declare one intent with `whenHidden` (Go `WhenHidden`, Python `when_hidden`, Rust
+    `when_hidden`, Lisp `:when-hidden`, Node `whenHidden`): no `nodeKey`, and an argument shape that accepts `{}`. It is the one
+    intent a hidden mount takes. A client lists your hidden mount by its title, and when the user chooses it your handler gets
+    that intent: call `ShowView`, after an update if the view is out of date. A hidden mount without such an intent is not
+    offered to the user.
+12. Show a view from a tool. Register a tool of your own (for example `mail_show`); its handler mounts the view, or shows and
+    updates it, from the context it is given. To ask for the keyboard too, put `request: "update"` on one `focus` record of that
+    update (`request: "mount"` asks when the mount is first drawn). Send it only with the update that should move the focus,
+    because every revision that carries it asks again. The client decides: it shows the view where it can, and when it does not
+    give the focus `ViewDiagnostics` returns an `unfocused` notice that says why.
 
 Every bound is the host's: one past it fails with code `invalid` in every SDK. `docs/additive-features.md` D614 lists the bounds.
 
@@ -649,8 +662,8 @@ check the abilities and keep a fallback such as a widget or a notice.
 - One intent per mount runs at a time. Redraw the view from the handler to show what it did; an activation made before your
   answer arrived is dropped.
 
-Conformance: `TestConformance_UIViewMounts` and `TestConformance_UIViewExtras` run the same probes in every SDK against the host, and
-`docs/additive-features.md` D614 lists the records.
+Conformance: `TestConformance_UIViewMounts`, `TestConformance_UIViewExtras` and `TestConformance_UIViewToolShowsAndFocuses` run the
+same probes in every SDK against the host, and `docs/additive-features.md` D614 lists the records.
 
 ## Adding a new extension API surface
 

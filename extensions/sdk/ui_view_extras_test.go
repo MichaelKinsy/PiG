@@ -27,6 +27,8 @@ func TestViewAmendmentWire(t *testing.T) {
 		{"a11y", ViewA11y{Node: "n", Name: "N", Role: "button", ReadOnly: &yes, Relations: []ViewRelation{{Kind: "owns", Target: "m"}}},
 			`{"node":"n","name":"N","role":"button","readOnly":true,"relations":[{"kind":"owns","target":"m"}]}`},
 		{"focus", ViewFocus{Node: "n", Request: "mount", Restore: "previous"}, `{"node":"n","request":"mount","restore":"previous"}`},
+		{"focus on update", ViewFocus{Node: "n", Request: "update"}, `{"node":"n","request":"update"}`},
+		{"intent a hidden mount takes", ViewIntent{Name: "x.open", Arg: ViewShape{Type: "object"}, WhenHidden: true}, `{"name":"x.open","arg":{"type":"object"},"whenHidden":true}`},
 	}
 	for _, tc := range cases {
 		got, err := json.Marshal(tc.in)

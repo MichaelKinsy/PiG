@@ -14,8 +14,10 @@ import (
 	"fmt"
 	"slices"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
+	"unicode"
 )
 
 // Slot names where a client draws a mount. The set is closed.
@@ -115,12 +117,18 @@ type IntentDecl struct {
 	Answer      *Shape `json:"answer,omitempty"`
 	Cancellable bool   `json:"cancellable,omitempty"`
 	TimeoutMs   int    `json:"timeoutMs,omitempty"`
+	// WhenHidden lets a client raise the intent while the mount is hidden: it is how the user opens a view its plugin
+	// hid, and the plugin's handler shows the mount. At most one intent of a mount has it; it names no node and its
+	// argument shape accepts the empty object, which is what a client sends.
+	WhenHidden bool `json:"whenHidden,omitempty"`
 }
 
 // Content is what a mount shows: the D107 view, the intents its nodes raise, its assets and a degrade node; and beside
 // them the alternatives a client's claims select from, a drawing, and the a11y and focus records of the view's nodes.
+// Title is the short text a client labels the mount with, in a tab or a list of views.
 type Content struct {
-	View json.RawMessage `json:"view"`
+	Title string          `json:"title,omitempty"`
+	View  json.RawMessage `json:"view"`
 	//portlint:allow emptydrop the D614 records are PiG-owned with no Pi counterpart, and an absent and an empty list mean the same: none
 	Intents []IntentDecl `json:"intents,omitempty"`
 	//portlint:allow emptydrop the D614 records are PiG-owned with no Pi counterpart, and an absent and an empty list mean the same: none
@@ -312,7 +320,17 @@ func hasRoot(raw json.RawMessage) bool {
 	return len(raw) > 0 && json.Unmarshal(raw, &view) == nil && len(view.Root) > 0
 }
 
+// pig additive (D614): a mount's title is at most 64 bytes, on one line: it holds no C0 or C1 control character (ESC and
+// the line breaks are among them) and neither U+2028 nor U+2029. An empty title is no title.
+const maxTitle = 64
+
 func (c *Content) check() *Error {
+	if len(c.Title) > maxTitle {
+		return fail(CodeInvalid, "title is %d bytes, at most %d", len(c.Title), maxTitle)
+	}
+	if strings.ContainsFunc(c.Title, func(r rune) bool { return unicode.IsControl(r) || r == '\u2028' || r == '\u2029' }) {
+		return fail(CodeInvalid, "title holds a control character or a line separator")
+	}
 	if !hasRoot(c.View) {
 		return fail(CodeInvalid, "view must be an object with a root")
 	}
@@ -320,6 +338,7 @@ func (c *Content) check() *Error {
 		return fail(CodeInvalid, "fallback must be a node object")
 	}
 	seen := map[string]struct{}{}
+	whenHidden := 0
 	for i := range c.Intents {
 		d := &c.Intents[i]
 		if d.Name == "" {
@@ -343,6 +362,18 @@ func (c *Content) check() *Error {
 			if err := d.Answer.check(); err != nil {
 				return fail(CodeInvalid, "intent %q answer: %v", d.Name, err)
 			}
+		}
+		if !d.WhenHidden {
+			continue
+		}
+		if whenHidden++; whenHidden > 1 {
+			return fail(CodeInvalid, "intent %q: at most one intent of a mount may be whenHidden", d.Name)
+		}
+		if d.NodeKey != "" {
+			return fail(CodeInvalid, "intent %q is whenHidden and names a node; a hidden mount draws none", d.Name)
+		}
+		if err := d.Arg.Validate(json.RawMessage(`{}`)); err != nil {
+			return fail(CodeInvalid, "intent %q is whenHidden and its arg does not accept {}: %v", d.Name, err)
 		}
 	}
 	assets := make(map[string]struct{}, len(c.Assets))
@@ -955,7 +986,8 @@ func (r *Registry) noteIntent(k ownerKey, epoch uint64, intent string, res Resul
 }
 
 // Invoke raises an intent on a mount and returns its final result. The intent is checked against the mount's declaration
-// first: an unknown intent or an argument outside its shape is refused without reaching the plugin. The result is the
+// first: an unknown intent or an argument outside its shape is refused without reaching the plugin, and so is every
+// intent on a mount that is not live, except the intent a hidden mount declares whenHidden. The result is the
 // first of the plugin's answer, the timeout, and ctx ending. A cancellable intent's handler is cancelled when the
 // timeout or ctx ends it; an answer that arrives afterwards is dropped. An answer for a mount that changed in the
 // meantime is stale. Every result but done and cancelled leaves a notice on the mount.
@@ -976,14 +1008,15 @@ func (r *Registry) Invoke(ctx context.Context, plugin string, ref Ref, nodeKey, 
 		r.mu.Unlock()
 		return res
 	}
-	if m.snap.State != StateLive {
-		return refuse("mount is " + string(m.snap.State))
-	}
 	var decl *IntentDecl
 	for i := range m.snap.Intents {
 		if m.snap.Intents[i].Name == intent {
 			decl = &m.snap.Intents[i]
 		}
+	}
+	// A mount that is not live takes no intent, but for the one a hidden mount declares whenHidden.
+	if m.snap.State != StateLive && (m.snap.State != StateHidden || decl == nil || !decl.WhenHidden) {
+		return refuse("mount is " + string(m.snap.State))
 	}
 	limit := 0
 	if r.merged != nil {

@@ -1427,8 +1427,53 @@ func Extension() *sdk.Extension {
 		ctx.Notify(fmt.Sprintf("view-x-state:%s,picked=%d", cur.State, picked(cur)), "info")
 		return nil
 	})
+	// D614: a view an agent's tool shows. The command registers the tool; the tool mounts a titled panel, hides it,
+	// shows it and updates it with a focus request, the same way in every SDK fixture (conformance
+	// TestConformance_UIViewToolShowsAndFocuses). The title and the node are the caller's.
+	ext.Command("ui_view_tool", "Register the tool that shows a titled view", func(ctx sdk.Context, args string) error {
+		ctx.RegisterTool(sdk.ToolDefinition{Name: "view_show", Label: "view_show", Description: "Mount, show and focus a titled view", Parameters: sdk.Schema{"type": "object"}, Execute: func(ctx sdk.Context, params map[string]any) (any, error) {
+			title, _ := params["title"].(string)
+			node, _ := params["node"].(string)
+			if op, _ := params["op"].(string); op == "hide" {
+				st, err := ctx.ViewState("shown")
+				if err == nil {
+					st, err = ctx.HideView(st.Mount)
+				}
+				if err != nil {
+					return nil, err
+				}
+				return "view-tool:" + string(st.State), nil
+			}
+			content := func(title, request string) sdk.ViewContent {
+				return sdk.ViewContent{Title: title, View: viewList(node, "fixture-shown"),
+					Intents: []sdk.ViewIntent{{Name: "fx.reopen", Arg: sdk.ViewShape{Type: "object"}, WhenHidden: true}, {Name: "fx.tap", Arg: sdk.ViewShape{Type: "object"}}},
+					Focus:   []sdk.ViewFocus{{Node: node, Request: request}}}
+			}
+			st, err := ctx.MountView(sdk.ViewMount{Key: "shown", Slot: sdk.ViewSlotPanel, ViewContent: content(title, "")})
+			if err == nil {
+				st, err = ctx.HideView(st.Mount)
+			}
+			if err == nil {
+				st, err = ctx.ShowView(st.Mount)
+			}
+			if err == nil {
+				st, err = ctx.UpdateView(sdk.ViewUpdate{Mount: st.Mount, ViewContent: content(title+"/2", "update")})
+			}
+			if err != nil {
+				return nil, err
+			}
+			return fmt.Sprintf("view-tool:%s,rev=%d", st.State, st.Mount.Rev), nil
+		}})
+		return nil
+	})
 	ext.OnViewIntent(func(in sdk.ViewIntentInvocation) sdk.ViewIntentResult {
 		switch in.Intent {
+		case "fx.reopen":
+			// The user opened the hidden view: its handler shows it.
+			if _, err := in.Context.ShowView(sdk.ViewRef{Key: in.Mount.Key, Epoch: in.Mount.Epoch, Rev: in.Rev}); err != nil {
+				return sdk.ViewIntentResult{Outcome: "failed", Error: err.Error()}
+			}
+			return sdk.ViewIntentResult{Outcome: "done"}
 		case "fx.add":
 			var arg struct {
 				N int `json:"n"`

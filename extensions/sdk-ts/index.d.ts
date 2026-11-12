@@ -110,6 +110,11 @@ export interface PiGViewIntent {
   cancellable?: boolean;
   /** 100..300000; default 30000. */
   timeoutMs?: number;
+  /**
+   * Lets a client raise the intent while the mount is hidden: it is how the user opens a view the extension hid, and the
+   * handler shows the mount. At most one intent of a mount has it; it names no node and its `arg` accepts `{}`.
+   */
+  whenHidden?: boolean;
 }
 export interface PiGViewAsset {
   id: string;
@@ -213,15 +218,19 @@ export interface PiGViewA11y {
   invalid?: boolean;
   relations?: { kind: "labelledBy" | "describedBy" | "controls" | "owns"; target: string }[];
 }
-/** Makes the node with id `node` focusable; the order of the entries is the focus order. */
+/**
+ * Makes the node with id `node` focusable; the order of the entries is the focus order. `request` asks for the focus when
+ * the mount is first drawn (`mount`) or when the revision that carries it is first drawn (`update`); a client that does not
+ * give it leaves an `unfocused` notice.
+ */
 export interface PiGViewFocus {
   node: string;
-  request?: "mount";
+  request?: "mount" | "update";
   restore?: "previous" | "self";
 }
 /** One diagnostic of a mount; `count` is how often it happened. */
 export interface PiGViewNotice {
-  code: "invalid" | "unsupported" | "limit" | "stale" | "terminal" | "refused" | "failed" | "timeout" | "undrawn";
+  code: "invalid" | "unsupported" | "limit" | "stale" | "terminal" | "refused" | "failed" | "timeout" | "undrawn" | "unfocused";
   severity: "info" | "warning" | "error";
   message?: string;
   path?: string;
@@ -234,6 +243,8 @@ export interface PiGViewNotice {
   count: number;
 }
 export interface PiGViewContent {
+  /** The short text a client labels the mount with, in a tab or a list of views: at most 64 bytes on one line. */
+  title?: string;
   view: PiGWireView;
   intents?: PiGViewIntent[];
   assets?: PiGViewAsset[];

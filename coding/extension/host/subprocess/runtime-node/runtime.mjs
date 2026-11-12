@@ -2076,11 +2076,12 @@ class RuntimeUI {
   }
   // The amendment members ride beside the view: alternatives ([{ when, view, drawing? }], the first whose `when` holds for a
   // client's claims is what that client draws), drawing, a11y and focus. The host checks every bound and answers invalid.
-  mountView({ key, slot, target, view, intents, assets, fallback, alternatives, drawing, a11y, focus } = {}) {
-    return this.runtime.call("ui.view.mount", viewArgs({ key, slot, target }, { view, intents, assets, fallback, alternatives, drawing, a11y, focus }));
+  // title is the short text a client labels the mount with; an update replaces it like the rest of the content.
+  mountView({ key, slot, target, title, view, intents, assets, fallback, alternatives, drawing, a11y, focus } = {}) {
+    return this.runtime.call("ui.view.mount", viewArgs({ key, slot, target }, { title, view, intents, assets, fallback, alternatives, drawing, a11y, focus }));
   }
-  updateView(mount, { view, intents, assets, fallback, alternatives, drawing, a11y, focus } = {}) {
-    return this.runtime.call("ui.view.update", viewArgs({ mount }, { view, intents, assets, fallback, alternatives, drawing, a11y, focus }));
+  updateView(mount, { title, view, intents, assets, fallback, alternatives, drawing, a11y, focus } = {}) {
+    return this.runtime.call("ui.view.update", viewArgs({ mount }, { title, view, intents, assets, fallback, alternatives, drawing, a11y, focus }));
   }
   hideView(mount) { return this.runtime.call("ui.view.hide", { mount }); }
   showView(mount) { return this.runtime.call("ui.view.show", { mount }); }
