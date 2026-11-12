@@ -25,7 +25,7 @@ func (p *fakePane) read(bool) (string, error) {
 func TestCaptureStablePair_TakesAnUnstablePairAgain(t *testing.T) {
 	// Round one: the plain captures around the escaped one differ (the screen moved). Round two: all still.
 	pane := &fakePane{screens: []string{"old frame", "escaped one", "new frame", "new frame", "escaped two", "new frame"}}
-	plain, escaped, err := captureStablePair(context.Background(), pane.read, time.Minute, time.Millisecond)
+	plain, escaped, err := captureStablePair(context.Background(), pane.read, nil, time.Minute, time.Millisecond)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +39,7 @@ func TestCaptureStablePair_TakesAnUnstablePairAgain(t *testing.T) {
 
 func TestCaptureStablePair_StableScreenIsOneRound(t *testing.T) {
 	pane := &fakePane{screens: []string{"still", "escaped", "still"}}
-	plain, escaped, err := captureStablePair(context.Background(), pane.read, time.Minute, time.Millisecond)
+	plain, escaped, err := captureStablePair(context.Background(), pane.read, nil, time.Minute, time.Millisecond)
 	if err != nil || plain != "still" || escaped != "escaped" || pane.reads != 3 {
 		t.Fatalf("plain=%q escaped=%q reads=%d err=%v, want one round of three captures", plain, escaped, pane.reads, err)
 	}
@@ -52,7 +52,7 @@ func TestCaptureStablePair_NeverStableFailsWithTheDiff(t *testing.T) {
 		// Within every round of three reads the first and the third differ.
 		return "row one\nrow two " + strings.Repeat("x", flip/3), nil
 	}
-	_, _, err := captureStablePair(context.Background(), read, 30*time.Millisecond, time.Millisecond)
+	_, _, err := captureStablePair(context.Background(), read, nil, 30*time.Millisecond, time.Millisecond)
 	if err == nil {
 		t.Fatal("a screen that never stops changing was accepted")
 	}
@@ -63,9 +63,38 @@ func TestCaptureStablePair_NeverStableFailsWithTheDiff(t *testing.T) {
 	}
 }
 
+func hasStart(plain, escaped string) bool {
+	return strings.Contains(plain, "BEGIN") && strings.Contains(escaped, "BEGIN")
+}
+
+func TestCaptureStablePair_StillButIncompletePairIsTakenAgain(t *testing.T) {
+	// Round one holds still but lacks the start row (a writer stopped mid-burst); round two is whole.
+	pane := &fakePane{screens: []string{"banner", "esc banner", "banner", "BEGIN\nbody", "esc BEGIN\nbody", "BEGIN\nbody"}}
+	plain, escaped, err := captureStablePair(context.Background(), pane.read, hasStart, time.Minute, time.Millisecond)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plain != "BEGIN\nbody" || escaped != "esc BEGIN\nbody" || pane.reads != 6 {
+		t.Fatalf("plain=%q escaped=%q reads=%d, want the second round's captures after 6 reads", plain, escaped, pane.reads)
+	}
+}
+
+func TestCaptureStablePair_IncompleteToTheEndReturnsThePairForTheCropToFail(t *testing.T) {
+	pane := &fakePane{screens: []string{"banner", "esc banner", "banner"}}
+	plain, escaped, err := captureStablePair(context.Background(), pane.read, hasStart, 20*time.Millisecond, time.Millisecond)
+	if err != nil || plain != "banner" || escaped != "banner" {
+		// The fake repeats its last screen, so the last round's escaped capture reads "banner".
+		t.Fatalf("plain=%q escaped=%q err=%v, want the still pair back without an error", plain, escaped, err)
+	}
+	cfg := TmuxDriverConfig{CaptureStart: "BEGIN"}
+	if _, _, err := cropCaptures(cfg, plain, escaped); err == nil || !strings.Contains(err.Error(), `"BEGIN" not found`) {
+		t.Fatalf("the crop must fail on the pair that never held its start, got %v", err)
+	}
+}
+
 func TestCaptureStablePair_ReadErrorIsReturned(t *testing.T) {
 	boom := errors.New("tmux gone")
-	_, _, err := captureStablePair(context.Background(), func(bool) (string, error) { return "", boom }, time.Minute, time.Millisecond)
+	_, _, err := captureStablePair(context.Background(), func(bool) (string, error) { return "", boom }, nil, time.Minute, time.Millisecond)
 	if !errors.Is(err, boom) {
 		t.Fatalf("got %v, want the read error", err)
 	}
@@ -76,7 +105,7 @@ func TestCaptureStablePair_CancelledContextStopsTheWait(t *testing.T) {
 	cancel()
 	flip := 0
 	read := func(bool) (string, error) { flip++; return strings.Repeat("x", flip), nil }
-	_, _, err := captureStablePair(ctx, read, time.Minute, time.Hour)
+	_, _, err := captureStablePair(ctx, read, nil, time.Minute, time.Hour)
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("got %v, want context.Canceled", err)
 	}

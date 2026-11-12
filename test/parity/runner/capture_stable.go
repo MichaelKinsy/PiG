@@ -35,10 +35,12 @@ var errScreenNeverStable = errors.New("the screen never became stable")
 // paneReader reads the pane once; escaped selects the capture that keeps the escape sequences.
 type paneReader func(escaped bool) (string, error)
 
-// captureStablePair returns the plain and the escaped capture of one screen that did not change while they were taken.
+// captureStablePair returns the plain and the escaped capture of one screen that did not change while they were taken and that holds what the scenario crops to.
 //
-// The two captures are separate tmux commands, and tmux does not hold back a TUI's synchronized-output frame: Pi repaints every row of its fullscreen layout as one burst of "move to row, clear row, write row" when a bash block completes, so a capture taken inside the burst shows a mix of the old and the new frame. A plain capture before and after the escaped one tells the two apart: when they differ the screen moved while the pair was taken, and the pair is taken again, every poll, until the budget ends.
-func captureStablePair(ctx context.Context, read paneReader, budget, poll time.Duration) (string, string, error) {
+// The two captures are separate tmux commands, and tmux does not hold back a TUI's synchronized-output frame: Pi repaints every row of its fullscreen layout as one burst of "move to row, clear row, write row" when a bash block completes, so a capture taken inside the burst shows a mix of the old and the new frame. A plain capture before and after the escaped one tells a moving screen from a still one: when they differ the pair is taken again, every poll, until the budget ends.
+//
+// A starved writer can also stop in the middle of a burst for longer than a capture takes, and the screen then holds still with rows missing. complete says whether a still pair holds what the scenario needs (its capture_start); a still pair that does not is taken again as well. When the budget ends on a still pair that is not complete, that pair is returned so the caller's crop names what is missing; when it ends on a moving screen the error says so.
+func captureStablePair(ctx context.Context, read paneReader, complete func(plain, escaped string) bool, budget, poll time.Duration) (string, string, error) {
 	deadline := time.Now().Add(budget)
 	for {
 		before, err := read(false)
@@ -53,10 +55,14 @@ func captureStablePair(ctx context.Context, read paneReader, budget, poll time.D
 		if err != nil {
 			return "", "", err
 		}
-		if before == after {
+		still := before == after
+		if still && (complete == nil || complete(before, escaped)) {
 			return before, escaped, nil
 		}
 		if !time.Now().Before(deadline) {
+			if still {
+				return before, escaped, nil
+			}
 			return "", "", fmt.Errorf("%w within %s: the plain captures taken before and after the escaped capture differ (%s)", errScreenNeverStable, budget, paneDiffSummary(before, after))
 		}
 		select {
