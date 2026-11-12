@@ -1046,11 +1046,11 @@ fn exec_signal_cancels_the_command() {
     host.reply(&cancel, json!({}));
     host.reply(
         &call,
-        json!({"stdout":"so far","stderr":"","code":0,"killed":true}),
+        json!({"stdout":"so far","stderr":"","code":143,"killed":true}),
     );
     assert_eq!(
         host.response("r1")["result"]["details"],
-        json!({"stdout":"so far","code":0,"killed":true})
+        json!({"stdout":"so far","code":143,"killed":true})
     );
     host.finish();
 }
@@ -1108,7 +1108,7 @@ fn exec_with_a_cancelled_signal_sends_the_cancel_behind_the_call() {
     host.reply(&cancel, json!({}));
     host.reply(
         &call,
-        json!({"stdout":"","stderr":"","code":0,"killed":true}),
+        json!({"stdout":"","stderr":"","code":143,"killed":true}),
     );
     assert_eq!(host.response("r1")["result"]["details"]["killed"], true);
     host.finish();

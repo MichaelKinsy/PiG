@@ -91,7 +91,7 @@ func TestExecWithASignalThatIsDoneAlreadySendsTheCancelBehindTheCall(t *testing.
 		t.Fatalf("calls = %s, %s; want exec then exec.cancel", call.Call.Method, cancel.Call.Method)
 	}
 	host.writeEnvelope(t, envelope{Type: msgCallResult, ID: cancel.ID, CallResult: &callResultMsg{}})
-	host.writeEnvelope(t, envelope{Type: msgCallResult, ID: call.ID, CallResult: &callResultMsg{Result: json.RawMessage(`{"stdout":"","stderr":"","code":0,"killed":true}`)}})
+	host.writeEnvelope(t, envelope{Type: msgCallResult, ID: call.ID, CallResult: &callResultMsg{Result: json.RawMessage(`{"stdout":"","stderr":"","code":143,"killed":true}`)}})
 	if got := recv(t, outcome); got.err != nil || got.result == nil || !got.result.Killed {
 		t.Fatalf("outcome = %+v, %v", got.result, got.err)
 	}
