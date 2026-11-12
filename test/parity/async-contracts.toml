@@ -809,7 +809,7 @@ rationale = "The files index is the part of the source store's export that is Fi
 path = "packages/chord/src/node/app/files-index.ts"
 disposition = "translated"
 contracts = ["awaited"]
-evidence = ["test:chord/nextnode/app/files_index_test.go"]
+evidence = ["test:chord/nextnode/app/files_turns_test.go#TestChangesStartedTogetherTakeTurnsSoVersionsAndKeysAreDecidedOnce", "test:chord/nextnode/app/files_test.go#TestVersionsNeverUseANumberTwiceForAPath"]
 rationale = "Every change of the index is one transaction computed by its caller's turn (the object runs one change at a time) and its reads are awaited in turn; Go blocks on the same calls in the same order."
 
 [[files]]
@@ -837,7 +837,7 @@ rationale = "invite.ts: POST /_chord/invites awaits `ctx.get(AppInfo, {})` for t
 path = "packages/chord/src/node/app/layout.ts"
 disposition = "translated"
 contracts = ["awaited"]
-evidence = ["test:chord/nextnode/app/layout_test.go"]
+evidence = ["test:chord/nextnode/app/layout_test.go#TestTheDataDirectoryMakesTheLayoutsDirectoriesTheDataDirectoryWithMode0700", "test:chord/nextnode/app/layout_error_test.go#TestTheLayoutOfADataDirectoryReturnsTheErrorOfTheFirstDirectoryItCannotMake"]
 rationale = "The data directory's layout is made by awaited file operations in turn; Go calls them in the same order and blocks."
 
 [[files]]
@@ -879,7 +879,7 @@ rationale = "tar.ts: writeTar and readTar are async generators that pull from th
 path = "packages/chord/src/node/app/uploads.ts"
 disposition = "translated"
 contracts = ["awaited"]
-evidence = ["test:chord/nextnode/app/uploads_test.go"]
+evidence = ["test:chord/nextnode/app/files_test.go#TestChunkedUploadsFinishAnUploadOnlyOnceTheAppendsSentBeforeItLanded", "test:chord/nextnode/app/files_test.go#TestChunkedUploadsWriteAppendsSentWithoutWaitingAtTheirOwnOffsetsByteForByte"]
 rationale = "An append is accepted at the offset the accepted appends reached and its write starts synchronously, then is awaited: Accept is that first half (it returns the write to run), Append both. The writes in flight are a WaitGroup, not a Set of Promises; uploaded, finish and expiry wait for an upload's writes in flight."
 
 [[files]]
@@ -1397,7 +1397,7 @@ rationale = "preference.ts: the PickStore object's `set({key, pick}, ctx)` is an
 path = "packages/chord/src/sync/batch.ts"
 disposition = "translated"
 contracts = ["awaited", "cancellable"]
-evidence = ["test:chord/sync/lines_test.go#TestBatchBodies", "test:chord/sync/lines_test.go#TestSnapshotBodies", "test:chord/sync/sync_test.go"]
+evidence = ["test:chord/sync/lines_test.go#TestBatchBodies", "test:chord/sync/lines_test.go#TestSnapshotBodies", "test:chord/sync/batch_source_test.go#TestABatchBodyPassesTheContextOfNextToItsSource", "test:chord/sync/batch_source_test.go#TestABatchBodyEndsWithTheErrorOfItsSourceAndGivesTheSourceBack", "test:chord/sync/batch_source_test.go#TestClosingABatchBodyClosesTheSourceItWraps"]
 rationale = "Pi's bodies are async iterables over a CompressionStream written while the output is read. Go bodies are store.ByteSource pull iterators (Next blocks for the next chunk, Close is the generator's return, idempotent) that compress and decompress on the caller's goroutine as the body is read, with no goroutine of their own: a body holds one chunk of lines and the compressor's window, a source's error ends the iterator, and closing it closes the source it wraps (an export gives the store's commit queue back). The context of Next reaches the source's wait."
 
 [[files]]
@@ -1432,7 +1432,7 @@ rationale = "Interfaces of the remote store (their methods return promises in Pi
 path = "packages/chord/src/sync/state.ts"
 disposition = "translated"
 contracts = ["awaited"]
-evidence = ["test:chord/sync/sync_test.go"]
+evidence = ["test:chord/sync/sync_test.go#TestHostPieces/keeps sync state in files", "test:chord/sync/files_contract_test.go#TestFileSyncStateStoreReadsATextFileAndWritesAThroughATemporaryOne", "test:chord/sync/state_error_test.go#TestSetOfASyncStateReturnsTheErrorOfAFailedRenameAndKeepsTheEarlierState"]
 rationale = "One JSON file per session, replaced through a temporary file and a rename, each file operation awaited in turn; Go calls them in the same order and blocks."
 
 [[files]]
@@ -1551,7 +1551,7 @@ rationale = "styles.ts PageStyles.prepare(set, signal): for each plugin whose st
 path = "packages/chord/src/web/themes.ts"
 disposition = "translated"
 contracts = ["awaited", "detached-owned"]
-evidence = ["test:chord/nextnode/surfaces/client_manifest_test.go#TestClientVendoredFilesAreExactlyTheManifests", "test:chord/nextnode/app/app_web_browser_test.go#TestAPageLoadsThePluginsAppliesAnEditInPlaceKeepingThePagesStateAndFollowsTheTheme", "test:chord/next/surfaces/surfaces_themes_test.go"]
+evidence = ["test:chord/nextnode/surfaces/client_manifest_test.go#TestClientVendoredFilesAreExactlyTheManifests", "test:chord/nextnode/app/app_web_browser_test.go#TestAPageLoadsThePluginsAppliesAnEditInPlaceKeepingThePagesStateAndFollowsTheTheme"]
 rationale = "themes.ts followThemes(host, context): `await followActiveTheme(host, mode, changed, context)` (the caller waits for the registry), then a `change` listener on the prefers-color-scheme media query that calls the follower's setMode (synchronous) and applies the active theme's variables from `changed`; returns a function removing the listener and stopping the follower. No timers; the ordering is the follower's (active-theme.ts row). Vendored client (D601, draft: not yet approved): the file is shipped byte-for-byte under chord/nextnode/surfaces/client and TestClientVendoredFilesAreExactlyTheManifests re-checks its sha256 against the manifest, so the code that runs is Pi's own and its async behaviour is Pi's by construction; the evidence tests run it in a real engine."
 
 [[files]]
