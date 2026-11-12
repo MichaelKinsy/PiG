@@ -22,6 +22,13 @@
 # (an expected value changed together with its code needs a Pi citation).
 expectations_from = "2026-10-10T00:00:00Z"
 
+# [[tooling]] puts a directory of PiG-owned CI tooling outside that expected-value rule: the program is not ported from Pi,
+# so no Pi behavior can be cited for a changed expectation. Each entry names its reason; a prefix must lie below
+# automation/<area>/, so a product directory cannot be listed (testprune lint checks this).
+[[tooling]]
+prefix = "automation/ci/preflight/"
+reason = "CI tooling owned by PiG; no upstream Pi behaviour to cite"
+
 [[golden]]
 paths = ["ai/providers/bedrock/testdata/bedrock-eventstream/golden.json"]
 owner = "pi"
