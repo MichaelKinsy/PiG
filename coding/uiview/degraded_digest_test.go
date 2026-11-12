@@ -94,3 +94,72 @@ func TestDegradedClientsAreSentTheDigestOfTheirOwnContent(t *testing.T) {
 		})
 	}
 }
+
+// TestClientMovingBetweenContentsIsDeliveredEachChangeOnce: one client's limits move it between the view, the fallback
+// and no view, forwards and back. Every move that changes what it is owed is delivered exactly once, with that
+// content under that content's digest, the same digest each time the content comes back; a change of its limits that
+// leaves it owed what it draws, and the same abilities again, deliver nothing.
+func TestClientMovingBetweenContentsIsDeliveredEachChangeOnce(t *testing.T) {
+	const fallback = `{"root":{"id":"fb","kind":"text","text":"short"}}`
+	r := New(Options{})
+	_, _, _ = attach(t, r, richAbilities()) // draws the view whatever the moving client's limits are
+	limits := func(text int) ClientAbilities {
+		a := *abilities()
+		a.Limits.TextBytes = text
+		return a
+	}
+	c, att, _ := attach(t, r, limits(256))
+	rec := mountRecord("k", map[string]any{"fallback": map[string]any{"kind": "text", "id": "fb", "text": "short"}})
+	rec["view"] = map[string]any{"root": map[string]any{"kind": "text", "id": "v", "text": strings.Repeat("w", 100)}}
+	args, err := decodeRecord(t, rec)
+	wantOK(t, "decode", err)
+	if _, err := r.Mount("p", args); err != nil {
+		t.Fatal(err)
+	}
+	if len(c.got) != 1 || c.got[0].Snapshot.Degraded || !strings.Contains(string(c.got[0].Snapshot.View), `"id":"v"`) {
+		t.Fatalf("the mount was delivered %d times, first %+v, want the view once", len(c.got), c.got)
+	}
+	digests := map[string]string{"view": c.got[0].Snapshot.Digest}
+	for i, step := range []struct {
+		text int
+		want string // the content owed after the step, or "" when the step changes nothing
+	}{
+		{64, "fallback"}, {3, "none"}, {64, "fallback"}, {70, ""}, {64, ""}, {256, "view"}, {3, "none"}, {3, ""}, {2, ""}, {256, "view"}, {64, "fallback"},
+	} {
+		before := len(c.got)
+		wantOK(t, "update abilities", att.UpdateAbilities(limits(step.text)))
+		sent := c.got[before:]
+		if step.want == "" {
+			if len(sent) != 0 {
+				t.Fatalf("step %d (text limit %d) changes nothing the client is owed and delivered %d times: %s degraded=%v digest %q", i, step.text, len(sent), sent[0].Snapshot.View, sent[0].Snapshot.Degraded, sent[0].Snapshot.Digest)
+			}
+			continue
+		}
+		if len(sent) != 1 {
+			t.Fatalf("step %d (text limit %d) owes the client %s and delivered %d times, want once", i, step.text, step.want, len(sent))
+		}
+		s := sent[0].Snapshot
+		var drawn string
+		switch {
+		case s.View == nil && s.Degraded:
+			drawn = "none"
+		case string(s.View) == fallback && s.Degraded:
+			drawn = "fallback"
+		case !s.Degraded && strings.Contains(string(s.View), `"id":"v"`):
+			drawn = "view"
+		}
+		if drawn != step.want {
+			t.Fatalf("step %d (text limit %d) delivered %s degraded=%v, want %s", i, step.text, s.View, s.Degraded, step.want)
+		}
+		if want := contentDigest(t, s); s.Digest == "" || s.Digest != want {
+			t.Errorf("step %d (text limit %d) delivered %s under the digest %q, its content has %q", i, step.text, step.want, s.Digest, want)
+		}
+		if held, ok := digests[step.want]; ok && held != s.Digest {
+			t.Errorf("step %d (text limit %d): %s came back under the digest %q, it had %q", i, step.text, step.want, s.Digest, held)
+		}
+		digests[step.want] = s.Digest
+	}
+	if len(digests) != 3 || digests["view"] == digests["fallback"] || digests["fallback"] == digests["none"] || digests["view"] == digests["none"] {
+		t.Errorf("the three contents have the digests %v, want three different ones", digests)
+	}
+}
