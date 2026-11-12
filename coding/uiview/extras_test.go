@@ -11,6 +11,7 @@ import (
 // richAbilities is a client that states claims, draws both profiles and takes large mounts.
 func richAbilities() ClientAbilities {
 	a := *abilities()
+	a.Nodes = []string{"text", "box"}
 	a.Limits = Limits{Nodes: 1024, Depth: 16, SnapshotBytes: 1 << 22, TextBytes: 256, Mounts: 8, IntentArgBytes: 256}
 	a.Input.Pointer = true
 	a.Claims = []Claim{

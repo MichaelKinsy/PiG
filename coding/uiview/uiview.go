@@ -464,6 +464,8 @@ type Invoker interface {
 type measured struct {
 	nodes, depth, text, bytes int
 	ids                       map[string]struct{}
+	// kinds are the node kinds the view holds, each once, in the order they first appear.
+	kinds []string
 }
 
 type mount struct {
@@ -607,6 +609,9 @@ func measure(raw json.RawMessage, known func(string) bool) (m measured, badKind 
 			switch open[top].name {
 			case "kind":
 				open[top].node = isText
+				if isText && !slices.Contains(m.kinds, text) {
+					m.kinds = append(m.kinds, text)
+				}
 				if isText && known != nil && !known(text) && badKind == "" {
 					badKind = text
 				}
@@ -701,6 +706,9 @@ func overLimit(what string, got, limit int) *misfit {
 
 // fits checks one candidate of a content against one client. It reads only what prepare measured.
 func fits(a *ClientAbilities, c *Content, m measured, d *Drawing) *misfit {
+	if kind, ok := undrawnKind(a, m); ok {
+		return &misfit{code: CodeUnsupported, message: fmt.Sprintf("the client does not draw node kind %q", kind)}
+	}
 	if m.bytes > a.Limits.SnapshotBytes {
 		return overLimit("snapshot bytes", m.bytes, a.Limits.SnapshotBytes)
 	}
@@ -732,6 +740,17 @@ func fits(a *ClientAbilities, c *Content, m measured, d *Drawing) *misfit {
 		return &misfit{code: CodeUnsupported, message: "the client delivers no pointer or keyboard input, so a region cannot be used"}
 	}
 	return nil
+}
+
+// undrawnKind returns the first node kind of m that the client's nodes list does not name. A client draws only the kinds it
+// declares: an empty list draws none, as an empty slots list draws no slot.
+func undrawnKind(a *ClientAbilities, m measured) (string, bool) {
+	for _, kind := range m.kinds {
+		if !slices.Contains(a.Nodes, kind) {
+			return kind, true
+		}
+	}
+	return "", false
 }
 
 // candidate returns the index a client draws (0 the view, i alternative i-1) with its view and drawing.
