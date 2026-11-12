@@ -88,13 +88,19 @@ fn is_zero(n: &u32) -> bool {
 
 impl ViewShape {
     pub fn new(kind: &str) -> Self {
-        Self { kind: kind.into(), ..Self::default() }
+        Self {
+            kind: kind.into(),
+            ..Self::default()
+        }
     }
 
     pub fn object(properties: &[(&str, ViewShape)], required: &[&str]) -> Self {
         Self {
             kind: "object".into(),
-            properties: properties.iter().map(|(k, v)| ((*k).to_string(), v.clone())).collect(),
+            properties: properties
+                .iter()
+                .map(|(k, v)| ((*k).to_string(), v.clone()))
+                .collect(),
             required: required.iter().map(|s| (*s).to_string()).collect(),
             ..Self::default()
         }
@@ -236,19 +242,32 @@ pub struct ViewIntentResult {
 
 impl ViewIntentResult {
     pub fn done(answer: Value) -> Self {
-        Self { outcome: "done".into(), answer: Some(answer), error: String::new() }
+        Self {
+            outcome: "done".into(),
+            answer: Some(answer),
+            error: String::new(),
+        }
     }
 
     pub fn refused(error: &str) -> Self {
-        Self { outcome: "refused".into(), answer: None, error: error.into() }
+        Self {
+            outcome: "refused".into(),
+            answer: None,
+            error: error.into(),
+        }
     }
 
     pub fn failed(error: &str) -> Self {
-        Self { outcome: "failed".into(), answer: None, error: error.into() }
+        Self {
+            outcome: "failed".into(),
+            answer: None,
+            error: error.into(),
+        }
     }
 }
 
-pub(crate) type ViewIntentHandler = Box<dyn Fn(ViewIntentInvocation) -> ViewIntentResult + Send + Sync>;
+pub(crate) type ViewIntentHandler =
+    Box<dyn Fn(ViewIntentInvocation) -> ViewIntentResult + Send + Sync>;
 
 /// The replicated abilities of one connection.
 #[derive(Default)]
@@ -271,7 +290,11 @@ impl ViewState {
 }
 
 /// Answers a `ui.view.intent` request.
-pub(crate) fn handle_intent(handler: Option<&ViewIntentHandler>, context: Context, args: Option<&Value>) -> Value {
+pub(crate) fn handle_intent(
+    handler: Option<&ViewIntentHandler>,
+    context: Context,
+    args: Option<&Value>,
+) -> Value {
     let Some(handler) = handler else {
         return json!({"outcome": "refused", "error": "no intent handler"});
     };
@@ -279,8 +302,17 @@ pub(crate) fn handle_intent(handler: Option<&ViewIntentHandler>, context: Contex
     let mount = args
         .get("mount")
         .and_then(|m| serde_json::from_value::<ViewRef>(m.clone()).ok())
-        .unwrap_or(ViewRef { key: String::new(), epoch: 0, rev: 0 });
-    let text = |name: &str| args.get(name).and_then(Value::as_str).unwrap_or("").to_string();
+        .unwrap_or(ViewRef {
+            key: String::new(),
+            epoch: 0,
+            rev: 0,
+        });
+    let text = |name: &str| {
+        args.get(name)
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .to_string()
+    };
     let res = handler(ViewIntentInvocation {
         mount,
         rev: args.get("rev").and_then(Value::as_u64).unwrap_or(0),
@@ -291,7 +323,14 @@ pub(crate) fn handle_intent(handler: Option<&ViewIntentHandler>, context: Contex
         context,
     });
     let mut out = Map::new();
-    out.insert("outcome".into(), Value::String(if res.outcome.is_empty() { "done".into() } else { res.outcome }));
+    out.insert(
+        "outcome".into(),
+        Value::String(if res.outcome.is_empty() {
+            "done".into()
+        } else {
+            res.outcome
+        }),
+    );
     if let Some(answer) = res.answer {
         out.insert("answer".into(), answer);
     }
@@ -302,7 +341,10 @@ pub(crate) fn handle_intent(handler: Option<&ViewIntentHandler>, context: Contex
 }
 
 fn transport(err: impl std::fmt::Display) -> ViewError {
-    ViewError { code: "transport".into(), message: err.to_string() }
+    ViewError {
+        code: "transport".into(),
+        message: err.to_string(),
+    }
 }
 
 /// One fact the attached client states about itself, named `<area>.<fact>`. `value` is a boolean, a non-negative
@@ -604,47 +646,88 @@ impl Context {
     }
 
     fn view_wire(&self, view: &crate::kit::View) -> Result<Value, ViewError> {
-        Ok(self.conn.views.encode(view).map_err(|e| ViewError { code: "invalid".into(), message: e })?.inline_wire())
+        Ok(self
+            .conn
+            .views
+            .encode(view)
+            .map_err(|e| ViewError {
+                code: "invalid".into(),
+                message: e,
+            })?
+            .inline_wire())
     }
 
     fn view_content(&self, parts: ViewParts<'_>) -> Result<Map<String, Value>, ViewError> {
-        let ViewParts { view, intents, assets, fallback, alternatives, drawing, a11y, focus } = parts;
+        let ViewParts {
+            view,
+            intents,
+            assets,
+            fallback,
+            alternatives,
+            drawing,
+            a11y,
+            focus,
+        } = parts;
         let mut out = Map::new();
         out.insert("view".into(), self.view_wire(view)?);
         if !alternatives.is_empty() {
             let mut alts = Vec::with_capacity(alternatives.len());
             for alt in alternatives {
                 let mut wire = Map::new();
-                wire.insert("when".into(), serde_json::to_value(&alt.when).map_err(transport)?);
+                wire.insert(
+                    "when".into(),
+                    serde_json::to_value(&alt.when).map_err(transport)?,
+                );
                 wire.insert("view".into(), self.view_wire(&alt.view)?);
                 if let Some(drawing) = &alt.drawing {
-                    wire.insert("drawing".into(), serde_json::to_value(drawing).map_err(transport)?);
+                    wire.insert(
+                        "drawing".into(),
+                        serde_json::to_value(drawing).map_err(transport)?,
+                    );
                 }
                 alts.push(Value::Object(wire));
             }
             out.insert("alternatives".into(), Value::Array(alts));
         }
         if let Some(drawing) = drawing {
-            out.insert("drawing".into(), serde_json::to_value(drawing).map_err(transport)?);
+            out.insert(
+                "drawing".into(),
+                serde_json::to_value(drawing).map_err(transport)?,
+            );
         }
         if !a11y.is_empty() {
-            out.insert("a11y".into(), serde_json::to_value(a11y).map_err(transport)?);
+            out.insert(
+                "a11y".into(),
+                serde_json::to_value(a11y).map_err(transport)?,
+            );
         }
         if !focus.is_empty() {
-            out.insert("focus".into(), serde_json::to_value(focus).map_err(transport)?);
+            out.insert(
+                "focus".into(),
+                serde_json::to_value(focus).map_err(transport)?,
+            );
         }
         if !intents.is_empty() {
-            out.insert("intents".into(), serde_json::to_value(intents).map_err(transport)?);
+            out.insert(
+                "intents".into(),
+                serde_json::to_value(intents).map_err(transport)?,
+            );
         }
         if !assets.is_empty() {
-            out.insert("assets".into(), serde_json::to_value(assets).map_err(transport)?);
+            out.insert(
+                "assets".into(),
+                serde_json::to_value(assets).map_err(transport)?,
+            );
         }
         if let Some(node) = fallback {
             let enc = self
                 .conn
                 .views
                 .encode(&crate::kit::View::new(node.clone()))
-                .map_err(|e| ViewError { code: "invalid".into(), message: e })?;
+                .map_err(|e| ViewError {
+                    code: "invalid".into(),
+                    message: e,
+                })?;
             if let Some(root) = enc.body.get("root") {
                 out.insert("fallback".into(), root.clone());
             }
@@ -655,7 +738,10 @@ impl Context {
     fn view_call(&self, method: &str, args: Value) -> Result<ViewStatus, ViewError> {
         let reply = self.call_wire(method, Some(args)).map_err(transport)?;
         if let Some(err) = reply.error {
-            return Err(ViewError { code: err.code.unwrap_or_default(), message: err.message });
+            return Err(ViewError {
+                code: err.code.unwrap_or_default(),
+                message: err.message,
+            });
         }
         let result = reply.result.ok_or_else(|| transport("missing reply"))?;
         serde_json::from_value(result).map_err(transport)
@@ -676,7 +762,10 @@ impl Context {
         args.insert("key".into(), Value::String(mount.key));
         args.insert("slot".into(), Value::String(mount.slot));
         if let Some(target) = mount.target {
-            args.insert("target".into(), serde_json::to_value(target).map_err(transport)?);
+            args.insert(
+                "target".into(),
+                serde_json::to_value(target).map_err(transport)?,
+            );
         }
         self.view_call("ui.view.mount", Value::Object(args))
     }
@@ -694,7 +783,10 @@ impl Context {
             a11y: &update.a11y,
             focus: &update.focus,
         })?;
-        args.insert("mount".into(), serde_json::to_value(update.mount).map_err(transport)?);
+        args.insert(
+            "mount".into(),
+            serde_json::to_value(update.mount).map_err(transport)?,
+        );
         self.view_call("ui.view.update", Value::Object(args))
     }
 
@@ -719,19 +811,31 @@ impl Context {
 
     /// Ends a mount as completed and leaves `result`, any JSON value of at most 65536 encoded bytes, as the
     /// extension's last word on it. The clients' snapshots and [`Context::view_state`] carry it.
-    pub fn finish_view_with(&self, mount: &ViewRef, result: Value) -> Result<ViewStatus, ViewError> {
+    pub fn finish_view_with(
+        &self,
+        mount: &ViewRef,
+        result: Value,
+    ) -> Result<ViewStatus, ViewError> {
         self.view_call("ui.view.finish", json!({"mount": mount, "result": result}))
     }
 
     /// The notices of the mount under `key`, oldest first: what the host rejected or ended and what a client could
     /// not draw. The host keeps at most 32 and counts repeats.
     pub fn view_diagnostics(&self, key: &str) -> Result<Vec<ViewNotice>, ViewError> {
-        let reply = self.call_wire("ui.view.diagnostics", Some(json!({"key": key}))).map_err(transport)?;
+        let reply = self
+            .call_wire("ui.view.diagnostics", Some(json!({"key": key})))
+            .map_err(transport)?;
         if let Some(err) = reply.error {
-            return Err(ViewError { code: err.code.unwrap_or_default(), message: err.message });
+            return Err(ViewError {
+                code: err.code.unwrap_or_default(),
+                message: err.message,
+            });
         }
         let result = reply.result.ok_or_else(|| transport("missing reply"))?;
-        let notices = result.get("notices").cloned().ok_or_else(|| transport("reply has no notices"))?;
+        let notices = result
+            .get("notices")
+            .cloned()
+            .ok_or_else(|| transport("reply has no notices"))?;
         serde_json::from_value(notices).map_err(transport)
     }
 
@@ -757,7 +861,12 @@ mod tests {
             name: "x.go".into(),
             node_key: "btn".into(),
             arg: ViewShape::object(&[("n", int.clone())], &["n"]),
-            answer: Some(ViewShape { kind: "array".into(), items: Some(Box::new(ViewShape::new("string"))), max_items: 3, ..ViewShape::default() }),
+            answer: Some(ViewShape {
+                kind: "array".into(),
+                items: Some(Box::new(ViewShape::new("string"))),
+                max_items: 3,
+                ..ViewShape::default()
+            }),
             cancellable: true,
             timeout_ms: 500,
         };
@@ -772,7 +881,15 @@ mod tests {
                 "timeoutMs": 500
             })
         );
-        assert_eq!(serde_json::to_value(ViewIntent { name: "y.go".into(), arg: int, ..Default::default() }).unwrap(), json!({"name": "y.go", "arg": {"type": "integer"}}));
+        assert_eq!(
+            serde_json::to_value(ViewIntent {
+                name: "y.go".into(),
+                arg: int,
+                ..Default::default()
+            })
+            .unwrap(),
+            json!({"name": "y.go", "arg": {"type": "integer"}})
+        );
     }
 
     #[test]
@@ -781,7 +898,17 @@ mod tests {
         let snapshot = json!({"uiAbilities": {"slots": ["panel"], "nodes": ["text"], "markdown": true, "imageFormats": ["png"], "limits": {"mounts": 7, "intentArgBytes": 123}, "input": {"keyboard": true}}});
         state.apply_state(snapshot.as_object().unwrap());
         let ab = state.abilities().unwrap();
-        assert_eq!((ab.slots, ab.limits.mounts, ab.limits.intent_arg_bytes, ab.input.keyboard, ab.input.pointer, ab.markdown), (vec!["panel".to_string()], 7, 123, true, false, true));
+        assert_eq!(
+            (
+                ab.slots,
+                ab.limits.mounts,
+                ab.limits.intent_arg_bytes,
+                ab.input.keyboard,
+                ab.input.pointer,
+                ab.markdown
+            ),
+            (vec!["panel".to_string()], 7, 123, true, false, true)
+        );
         state.apply_state(&Map::new());
         assert!(state.abilities().is_none());
     }
@@ -789,7 +916,15 @@ mod tests {
     #[test]
     fn status_decodes_a_broken_reason() {
         let st: ViewStatus = serde_json::from_value(json!({"mount": {"key": "k", "epoch": 3, "rev": 2}, "state": "broken", "reason": "owner_gone"})).unwrap();
-        assert_eq!((st.mount.epoch, st.mount.rev, st.state.as_str(), st.reason.as_str()), (3, 2, "broken", "owner_gone"));
+        assert_eq!(
+            (
+                st.mount.epoch,
+                st.mount.rev,
+                st.state.as_str(),
+                st.reason.as_str()
+            ),
+            (3, 2, "broken", "owner_gone")
+        );
         assert_eq!(st.result, None);
         let done: ViewStatus = serde_json::from_value(json!({"mount": {"key": "k", "epoch": 3, "rev": 2}, "state": "finished", "result": {"picked": 77}})).unwrap();
         assert_eq!(done.result, Some(json!({"picked": 77})));
@@ -797,11 +932,23 @@ mod tests {
 
     #[test]
     fn amendment_records_use_the_wire_names() {
-        let shape = ViewDrawShape { kind: "rect".into(), width: 2.0, height: 1.0, ..Default::default() };
+        let shape = ViewDrawShape {
+            kind: "rect".into(),
+            width: 2.0,
+            height: 1.0,
+            ..Default::default()
+        };
         let drawing = ViewDrawing {
             profile: "scene".into(),
             shapes: vec![shape.clone()],
-            regions: vec![ViewRegion { key: "r".into(), shape, gestures: vec!["activate".into()], intent: "x.go".into(), name: "Go".into(), ..Default::default() }],
+            regions: vec![ViewRegion {
+                key: "r".into(),
+                shape,
+                gestures: vec!["activate".into()],
+                intent: "x.go".into(),
+                name: "Go".into(),
+                ..Default::default()
+            }],
             ..Default::default()
         };
         assert_eq!(
@@ -809,17 +956,69 @@ mod tests {
             json!({"profile": "scene", "shapes": [{"kind": "rect", "width": 2.0, "height": 1.0}],
                 "regions": [{"key": "r", "shape": {"kind": "rect", "width": 2.0, "height": 1.0}, "gestures": ["activate"], "intent": "x.go", "name": "Go"}]})
         );
-        let when = ViewWhen { any: vec![ViewWhenAll { all: vec![ViewClause { claim: "display.colors".into(), op: "atLeast".into(), value: Some(json!(256)) }, ViewClause { claim: "display.hover".into(), op: "present".into(), value: None }] }] };
-        assert_eq!(serde_json::to_value(&when).unwrap(), json!({"any": [{"all": [{"claim": "display.colors", "op": "atLeast", "value": 256}, {"claim": "display.hover", "op": "present"}]}]}));
-        let a11y = ViewA11y { node: "n".into(), read_only: Some(true), relations: vec![ViewRelation { kind: "owns".into(), target: "m".into() }], ..Default::default() };
-        assert_eq!(serde_json::to_value(&a11y).unwrap(), json!({"node": "n", "readOnly": true, "relations": [{"kind": "owns", "target": "m"}]}));
-        assert_eq!(serde_json::to_value(ViewFocus { node: "n".into(), request: "mount".into(), ..Default::default() }).unwrap(), json!({"node": "n", "request": "mount"}));
+        let when = ViewWhen {
+            any: vec![ViewWhenAll {
+                all: vec![
+                    ViewClause {
+                        claim: "display.colors".into(),
+                        op: "atLeast".into(),
+                        value: Some(json!(256)),
+                    },
+                    ViewClause {
+                        claim: "display.hover".into(),
+                        op: "present".into(),
+                        value: None,
+                    },
+                ],
+            }],
+        };
+        assert_eq!(
+            serde_json::to_value(&when).unwrap(),
+            json!({"any": [{"all": [{"claim": "display.colors", "op": "atLeast", "value": 256}, {"claim": "display.hover", "op": "present"}]}]})
+        );
+        let a11y = ViewA11y {
+            node: "n".into(),
+            read_only: Some(true),
+            relations: vec![ViewRelation {
+                kind: "owns".into(),
+                target: "m".into(),
+            }],
+            ..Default::default()
+        };
+        assert_eq!(
+            serde_json::to_value(&a11y).unwrap(),
+            json!({"node": "n", "readOnly": true, "relations": [{"kind": "owns", "target": "m"}]})
+        );
+        assert_eq!(
+            serde_json::to_value(ViewFocus {
+                node: "n".into(),
+                request: "mount".into(),
+                ..Default::default()
+            })
+            .unwrap(),
+            json!({"node": "n", "request": "mount"})
+        );
         let state = ViewState::default();
         let snapshot = json!({"uiAbilities": {"claims": [{"name": "display.colors", "value": 4242}], "slotClaims": [{"slot": "panel", "claims": [{"name": "display.colors", "value": 77}]}], "drawing": {"profiles": ["scene"], "shapes": 5, "pixels": 16}}});
         state.apply_state(snapshot.as_object().unwrap());
         let ab = state.abilities().unwrap();
-        assert_eq!((ab.claims[0].value.as_i64(), ab.slot_claims[0].claims[0].value.as_i64(), ab.drawing.unwrap().shapes), (Some(4242), Some(77), 5));
+        assert_eq!(
+            (
+                ab.claims[0].value.as_i64(),
+                ab.slot_claims[0].claims[0].value.as_i64(),
+                ab.drawing.unwrap().shapes
+            ),
+            (Some(4242), Some(77), 5)
+        );
         let notices: Vec<ViewNotice> = serde_json::from_value(json!([{"code": "limit", "severity": "error", "path": "update", "measured": 6, "limit": 5, "epoch": 2, "rev": 1, "count": 3}])).unwrap();
-        assert_eq!((notices[0].code.as_str(), notices[0].measured, notices[0].limit, notices[0].count), ("limit", Some(6), Some(5), 3));
+        assert_eq!(
+            (
+                notices[0].code.as_str(),
+                notices[0].measured,
+                notices[0].limit,
+                notices[0].count
+            ),
+            ("limit", Some(6), Some(5), 3)
+        );
     }
 }

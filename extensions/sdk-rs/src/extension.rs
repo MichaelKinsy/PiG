@@ -934,7 +934,10 @@ impl Extension {
     }
 
     /// Answers the intents of this extension's mounts (D614). A later call replaces the handler.
-    pub fn on_view_intent(&mut self, handler: impl Fn(crate::ViewIntentInvocation) -> crate::ViewIntentResult + Send + Sync + 'static) {
+    pub fn on_view_intent(
+        &mut self,
+        handler: impl Fn(crate::ViewIntentInvocation) -> crate::ViewIntentResult + Send + Sync + 'static,
+    ) {
         self.view_intent_fn = Some(Box::new(handler));
     }
 
@@ -3581,7 +3584,11 @@ impl Extension {
             }
             "ui.view.intent" => {
                 let ctx = base_ctx.clone_for_request(cancel.clone(), None, id.to_string());
-                let value = crate::ui_view::handle_intent(self.view_intent_fn.as_ref(), ctx, req.args.as_ref());
+                let value = crate::ui_view::handle_intent(
+                    self.view_intent_fn.as_ref(),
+                    ctx,
+                    req.args.as_ref(),
+                );
                 let _ = conn.respond(id, Some(value), None);
             }
             "shortcut" => {

@@ -3653,11 +3653,30 @@ fn main() {
     );
     // D614 plugin UI mounts: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewMounts).
     fn view_text(ctx: &pig_sdk::Context, suffix: &str) -> kit::View {
-        let n = ctx.view_abilities().map(|a| a.limits.intent_arg_bytes).unwrap_or(0);
+        let n = ctx
+            .view_abilities()
+            .map(|a| a.limits.intent_arg_bytes)
+            .unwrap_or(0);
         kit::View::new(kit::Text::new(format!("fixture-view-{n}{suffix}"), 0, 0))
     }
-    fn view_mount(key: &str, view: kit::View, intents: Vec<pig_sdk::ViewIntent>) -> pig_sdk::ViewMount {
-        pig_sdk::ViewMount { key: key.into(), slot: "panel".into(), target: None, view, intents, assets: vec![], fallback: None, alternatives: vec![], drawing: None, a11y: vec![], focus: vec![] }
+    fn view_mount(
+        key: &str,
+        view: kit::View,
+        intents: Vec<pig_sdk::ViewIntent>,
+    ) -> pig_sdk::ViewMount {
+        pig_sdk::ViewMount {
+            key: key.into(),
+            slot: "panel".into(),
+            target: None,
+            view,
+            intents,
+            assets: vec![],
+            fallback: None,
+            alternatives: vec![],
+            drawing: None,
+            a11y: vec![],
+            focus: vec![],
+        }
     }
     ext.command(
         "ui_view_abilities",
@@ -3692,17 +3711,47 @@ fn main() {
                 Ok(st) => st,
                 Err(e) => return CommandResult::Error(e.to_string()),
             };
-            ctx.notify(&format!("view-mounted:epoch={},rev={},state={}", st.mount.epoch, st.mount.rev, st.state), "info");
+            ctx.notify(
+                &format!(
+                    "view-mounted:epoch={},rev={},state={}",
+                    st.mount.epoch, st.mount.rev, st.state
+                ),
+                "info",
+            );
             let first = st.mount.clone();
-            let st = match ctx.update_view(pig_sdk::ViewUpdate { mount: first.clone(), view: view_text(ctx, "-2"), intents: vec![], assets: vec![], fallback: None, alternatives: vec![], drawing: None, a11y: vec![], focus: vec![] }) {
+            let st = match ctx.update_view(pig_sdk::ViewUpdate {
+                mount: first.clone(),
+                view: view_text(ctx, "-2"),
+                intents: vec![],
+                assets: vec![],
+                fallback: None,
+                alternatives: vec![],
+                drawing: None,
+                a11y: vec![],
+                focus: vec![],
+            }) {
                 Ok(st) => st,
                 Err(e) => return CommandResult::Error(e.to_string()),
             };
             ctx.notify(&format!("view-updated:rev={}", st.mount.rev), "info");
-            let stale = ctx.update_view(pig_sdk::ViewUpdate { mount: first, view: view_text(ctx, "-stale"), intents: vec![], assets: vec![], fallback: None, alternatives: vec![], drawing: None, a11y: vec![], focus: vec![] });
+            let stale = ctx.update_view(pig_sdk::ViewUpdate {
+                mount: first,
+                view: view_text(ctx, "-stale"),
+                intents: vec![],
+                assets: vec![],
+                fallback: None,
+                alternatives: vec![],
+                drawing: None,
+                a11y: vec![],
+                focus: vec![],
+            });
             ctx.notify(&format!("view-stale:{}", code(stale)), "info");
             let cur = st.mount.clone();
-            for (op, label) in [("hide", "view-hidden"), ("show", "view-shown"), ("finish", "view-finished")] {
+            for (op, label) in [
+                ("hide", "view-hidden"),
+                ("show", "view-shown"),
+                ("finish", "view-finished"),
+            ] {
                 let r = match op {
                     "hide" => ctx.hide_view(&cur),
                     "show" => ctx.show_view(&cur),
@@ -3713,7 +3762,10 @@ fn main() {
                     Err(e) => return CommandResult::Error(e.to_string()),
                 }
             }
-            ctx.notify(&format!("view-terminal:{}", code(ctx.remove_view(&cur))), "info");
+            ctx.notify(
+                &format!("view-terminal:{}", code(ctx.remove_view(&cur))),
+                "info",
+            );
             match ctx.view_state("probe") {
                 Ok(st) => ctx.notify(&format!("view-final:{}", st.state), "info"),
                 Err(e) => return CommandResult::Error(e.to_string()),
@@ -3728,14 +3780,20 @@ fn main() {
                 },
                 pig_sdk::ViewIntent {
                     name: "fx.wait".into(),
-                    arg: pig_sdk::ViewShape::object(&[("tag", pig_sdk::ViewShape::new("string"))], &["tag"]),
+                    arg: pig_sdk::ViewShape::object(
+                        &[("tag", pig_sdk::ViewShape::new("string"))],
+                        &["tag"],
+                    ),
                     cancellable: true,
                     timeout_ms: 5000,
                     ..Default::default()
                 },
             ];
             match ctx.mount_view(view_mount("probe2", view_text(ctx, "-live"), intents)) {
-                Ok(st) => ctx.notify(&format!("view-second:epoch={},rev={}", st.mount.epoch, st.mount.rev), "info"),
+                Ok(st) => ctx.notify(
+                    &format!("view-second:epoch={},rev={}", st.mount.epoch, st.mount.rev),
+                    "info",
+                ),
                 Err(e) => return CommandResult::Error(e.to_string()),
             }
             CommandResult::Ok
@@ -3766,16 +3824,36 @@ fn main() {
         claims.iter().find(|c| c.name == name).map(|c| &c.value)
     }
     fn x_picked(ab: &pig_sdk::ViewAbilities) -> i64 {
-        ab.slot_claims.iter().find(|s| s.slot == "panel").and_then(|s| x_claim(&s.claims, "display.colors")).and_then(Value::as_i64).unwrap_or(0)
+        ab.slot_claims
+            .iter()
+            .find(|s| s.slot == "panel")
+            .and_then(|s| x_claim(&s.claims, "display.colors"))
+            .and_then(Value::as_i64)
+            .unwrap_or(0)
     }
     fn x_list(id: &str, label: &str) -> kit::View {
-        kit::View::new(kit::SelectList::new(id, vec![kit::SelectItem::new(id, label)], 5))
+        kit::View::new(kit::SelectList::new(
+            id,
+            vec![kit::SelectItem::new(id, label)],
+            5,
+        ))
     }
     fn x_rects(n: u64) -> Vec<pig_sdk::ViewDrawShape> {
-        (0..n).map(|_| pig_sdk::ViewDrawShape { kind: "rect".into(), width: 1.0, height: 1.0, ..Default::default() }).collect()
+        (0..n)
+            .map(|_| pig_sdk::ViewDrawShape {
+                kind: "rect".into(),
+                width: 1.0,
+                height: 1.0,
+                ..Default::default()
+            })
+            .collect()
     }
     fn x_scene(shapes: Vec<pig_sdk::ViewDrawShape>) -> Option<pig_sdk::ViewDrawing> {
-        Some(pig_sdk::ViewDrawing { profile: "scene".into(), shapes, ..Default::default() })
+        Some(pig_sdk::ViewDrawing {
+            profile: "scene".into(),
+            shapes,
+            ..Default::default()
+        })
     }
     fn x_code<T>(r: Result<T, pig_sdk::ViewError>) -> String {
         match r {
@@ -3784,10 +3862,28 @@ fn main() {
         }
     }
     fn x_update(mount: &pig_sdk::ViewRef) -> pig_sdk::ViewUpdate {
-        pig_sdk::ViewUpdate { mount: mount.clone(), view: x_list("base", "fixture-x-base"), intents: vec![], assets: vec![], fallback: None, alternatives: vec![], drawing: None, a11y: vec![], focus: vec![] }
+        pig_sdk::ViewUpdate {
+            mount: mount.clone(),
+            view: x_list("base", "fixture-x-base"),
+            intents: vec![],
+            assets: vec![],
+            fallback: None,
+            alternatives: vec![],
+            drawing: None,
+            a11y: vec![],
+            focus: vec![],
+        }
     }
     fn x_when(claim: &str, op: &str, value: Option<Value>) -> pig_sdk::ViewWhen {
-        pig_sdk::ViewWhen { any: vec![pig_sdk::ViewWhenAll { all: vec![pig_sdk::ViewClause { claim: claim.into(), op: op.into(), value }] }] }
+        pig_sdk::ViewWhen {
+            any: vec![pig_sdk::ViewWhenAll {
+                all: vec![pig_sdk::ViewClause {
+                    claim: claim.into(),
+                    op: op.into(),
+                    value,
+                }],
+            }],
+        }
     }
     ext.command(
         "ui_view_extras",
@@ -3911,16 +4007,37 @@ fn main() {
         "ui_view_extras_end",
         "Read the notices of the extras mount and finish it with a result",
         |ctx, _args| {
-            let Some(ab) = ctx.view_abilities() else { return CommandResult::Error("no client".into()) };
-            let picked_of = |st: &pig_sdk::ViewStatus| st.result.as_ref().and_then(|r| r.get("picked")).and_then(Value::as_i64).unwrap_or(0);
+            let Some(ab) = ctx.view_abilities() else {
+                return CommandResult::Error("no client".into());
+            };
+            let picked_of = |st: &pig_sdk::ViewStatus| {
+                st.result
+                    .as_ref()
+                    .and_then(|r| r.get("picked"))
+                    .and_then(Value::as_i64)
+                    .unwrap_or(0)
+            };
             let run = || -> Result<(), pig_sdk::ViewError> {
                 let st = ctx.view_state("extras")?;
                 let notices = ctx.view_diagnostics("extras")?;
-                ctx.notify(&format!("view-x-diag2:n={},last={}", notices.len(), notices.last().map(|n| n.path.as_str()).unwrap_or("")), "info");
+                ctx.notify(
+                    &format!(
+                        "view-x-diag2:n={},last={}",
+                        notices.len(),
+                        notices.last().map(|n| n.path.as_str()).unwrap_or("")
+                    ),
+                    "info",
+                );
                 let done = ctx.finish_view_with(&st.mount, json!({"picked": x_picked(&ab)}))?;
-                ctx.notify(&format!("view-x-finished:{},picked={}", done.state, picked_of(&done)), "info");
+                ctx.notify(
+                    &format!("view-x-finished:{},picked={}", done.state, picked_of(&done)),
+                    "info",
+                );
                 let cur = ctx.view_state("extras")?;
-                ctx.notify(&format!("view-x-state:{},picked={}", cur.state, picked_of(&cur)), "info");
+                ctx.notify(
+                    &format!("view-x-state:{},picked={}", cur.state, picked_of(&cur)),
+                    "info",
+                );
                 Ok(())
             };
             match run() {
@@ -3932,11 +4049,20 @@ fn main() {
     ext.on_view_intent(|inv| match inv.intent.as_str() {
         "fx.add" => {
             let n = inv.arg.get("n").and_then(Value::as_i64).unwrap_or(0);
-            let extra = inv.context.view_abilities().map(|a| a.limits.intent_arg_bytes as i64).unwrap_or(0);
+            let extra = inv
+                .context
+                .view_abilities()
+                .map(|a| a.limits.intent_arg_bytes as i64)
+                .unwrap_or(0);
             pig_sdk::ViewIntentResult::done(json!({"sum": n * 2 + extra}))
         }
         "fx.wait" => {
-            let tag = inv.arg.get("tag").and_then(Value::as_str).unwrap_or("").to_string();
+            let tag = inv
+                .arg
+                .get("tag")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .to_string();
             inv.context.notify(&format!("intent-started:{tag}"), "info");
             while !inv.context.is_cancelled() {
                 thread::sleep(Duration::from_millis(10));

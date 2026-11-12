@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -63,6 +64,28 @@ func TestConformance_UIViewMounts(t *testing.T) {
 				return slices.Contains(viewNotifies(h), "view-abilities:none")
 			})
 			h.bridge.SetClientAbilities(conformanceClientAbilities())
+			// A second client attaches the way a Go embedder does, through the registry of the session's UIBridge, and
+			// takes deliveries. Everything below that names `client` runs through the production wiring: the extension's
+			// host call, the registry, the delivery to the attached client, and the client's intent back to the extension.
+			var clientMu sync.Mutex
+			var client []uiview.Delivery
+			att, _, aerr := views.Attach(*conformanceClientAbilities(), func(d uiview.Delivery) bool {
+				clientMu.Lock()
+				defer clientMu.Unlock()
+				if d.Snapshot.Plugin == tc.extName {
+					client = append(client, d)
+				}
+				return true
+			})
+			if aerr != nil {
+				t.Fatal(aerr)
+			}
+			t.Cleanup(att.Detach)
+			delivered := func() []uiview.Delivery {
+				clientMu.Lock()
+				defer clientMu.Unlock()
+				return slices.Clone(client)
+			}
 			const abilities = "view-abilities:mounts=7,argbytes=123,slots=panel+status,nodes=text+box,markdown=true"
 			pollUntilConformance(t, "abilities never replicated", func() bool {
 				*h.notify = (*h.notify)[:0]
@@ -125,6 +148,22 @@ func TestConformance_UIViewMounts(t *testing.T) {
 			if res := h.bridge.InvokeViewIntent(context.Background(), tc.extName, second.Mount, "", "fx.add", json.RawMessage(`{"n":"x"}`)); res.Outcome != uiview.OutcomeRefused {
 				t.Errorf("fx.add with a string = %+v", res)
 			}
+			// The attached client was sent every change of the extension's mounts as a full snapshot, numbered without a
+			// hole in the order the extension made them: probe (mount, update, hide, show, finish) and probe2 (mount).
+			var states []string
+			for i, d := range delivered() {
+				if d.Attachment != att.Generation() || (i > 0 && d.Seq <= delivered()[i-1].Seq) || len(d.Snapshot.View) == 0 || len(d.Snapshot.Digest) != 64 {
+					t.Fatalf("delivery %d = attachment %d seq %d digest %q", i, d.Attachment, d.Seq, d.Snapshot.Digest)
+				}
+				states = append(states, d.Snapshot.Mount.Key+":"+string(d.Snapshot.State))
+			}
+			if want := "probe:live,probe:live,probe:hidden,probe:live,probe:finished,probe2:live"; strings.Join(states, ",") != want {
+				t.Errorf("the attached client was sent %q, want %q", states, want)
+			}
+			// The client's intent, raised under its attachment, reaches the extension, and the answer comes back.
+			if res := h.bridge.InvokeViewIntentFrom(context.Background(), att, tc.extName, second.Mount, "", "fx.add", json.RawMessage(`{"n":30}`)); res.Outcome != uiview.OutcomeDone || string(res.Answer) != `{"sum":183}` {
+				t.Errorf("fx.add from the attached client = %+v", res)
+			}
 			// W2 cancel: cancelling the caller cancels the extension's handler, which reports the tag it was given.
 			ctx, cancel := context.WithCancel(context.Background())
 			out := make(chan uiview.Result, 1)
@@ -159,6 +198,14 @@ func TestConformance_UIViewMounts(t *testing.T) {
 				runConformanceCommand(t, h, "ui_view_state")
 				return slices.Contains(viewNotifies(h), "view-state:broken:session_replaced")
 			})
+			// The attached client is told too, and once its attachment ended its intent is stale without reaching the extension.
+			if all := delivered(); all[len(all)-1].Snapshot.State != uiview.StateBroken || all[len(all)-1].Snapshot.Reason != uiview.ReasonSessionReplaced {
+				t.Errorf("the attached client's last delivery = %+v", all[len(all)-1].Snapshot.Status)
+			}
+			att.Detach()
+			if res := h.bridge.InvokeViewIntentFrom(context.Background(), att, tc.extName, second.Mount, "", "fx.add", json.RawMessage(`{"n":1}`)); res.Outcome != uiview.OutcomeStale {
+				t.Errorf("intent under an ended attachment = %+v", res)
+			}
 		})
 	}
 }
