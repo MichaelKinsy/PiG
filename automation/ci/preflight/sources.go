@@ -32,6 +32,7 @@ type api struct {
 	token       string
 	client      *http.Client
 	retryDelays []time.Duration
+	wait        func(context.Context, time.Duration) error
 	log         io.Writer
 
 	mu    sync.Mutex
@@ -44,6 +45,7 @@ func newAPI(base, token string) *api {
 		token:       token,
 		client:      &http.Client{Timeout: apiTimeout},
 		retryDelays: defaultRetryDelays,
+		wait:        sleep,
 	}
 }
 
@@ -56,12 +58,12 @@ type response struct {
 }
 
 func retrying(ctx context.Context, delays []time.Duration, log io.Writer, label string, send func() (response, error)) (response, error) {
-	return retryingWhen(ctx, delays, log, label, true, send)
+	return retryingWhen(ctx, delays, sleep, log, label, true, send)
 }
 
 // retryingWhen repeats a request the server did not take (HTTP 429) and, when the request is repeatable, one that
 // failed with a network error or a 5xx: after those the server may have done what was asked.
-func retryingWhen(ctx context.Context, delays []time.Duration, log io.Writer, label string, repeatable bool, send func() (response, error)) (response, error) {
+func retryingWhen(ctx context.Context, delays []time.Duration, wait func(context.Context, time.Duration) error, log io.Writer, label string, repeatable bool, send func() (response, error)) (response, error) {
 	for attempt := 0; ; attempt++ {
 		r, err := send()
 		if err == nil && succeeded(r.status) {
@@ -77,7 +79,7 @@ func retryingWhen(ctx context.Context, delays []time.Duration, log io.Writer, la
 		if log != nil {
 			logf(log, "retry %d/%d of %s in %s: %v", attempt+1, len(delays), label, delays[attempt], err)
 		}
-		if err := sleep(ctx, delays[attempt]); err != nil {
+		if err := wait(ctx, delays[attempt]); err != nil {
 			return r, err
 		}
 	}
@@ -115,9 +117,9 @@ func exchange(ctx context.Context, client *http.Client, method, target, token st
 	return response{status: resp.StatusCode, header: resp.Header, body: raw}, nil
 }
 
-// A POST creates a status or a comment, so it is not repeatable; a GET reads and a PATCH sets a comment's whole body.
-func (a *api) call(ctx context.Context, method, target, label string, body []byte, limit int64) (response, error) {
-	return retryingWhen(ctx, a.retryDelays, a.log, label, method != http.MethodPost, func() (response, error) {
+// The caller says whether the request is repeatable: sending it again after the server may have applied it does no harm.
+func (a *api) call(ctx context.Context, method, target, label string, repeatable bool, body []byte, limit int64) (response, error) {
+	return retryingWhen(ctx, a.retryDelays, a.wait, a.log, label, repeatable, func() (response, error) {
 		a.mu.Lock()
 		a.calls++
 		a.mu.Unlock()
@@ -156,7 +158,7 @@ func (a *api) get(ctx context.Context, path string, out any, all bool) error {
 		if !strings.HasPrefix(next, a.base+"/") {
 			return fmt.Errorf("GET %s: next page %q is not under %s", path, next, a.base)
 		}
-		r, err := a.call(ctx, http.MethodGet, next, "GET "+path, nil, 64<<20)
+		r, err := a.call(ctx, http.MethodGet, next, "GET "+path, true, nil, 64<<20)
 		if err != nil {
 			return err
 		}
