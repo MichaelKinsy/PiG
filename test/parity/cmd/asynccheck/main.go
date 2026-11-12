@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
 	"maps"
 	"os"
 	"path/filepath"
@@ -78,7 +77,7 @@ func main() {
 	}
 	problems := validateManifest(manifest, paths, *repoRoot)
 	if len(problems) > 0 {
-		report(os.Stderr, problems)
+		fmt.Fprint(os.Stderr, report(problems))
 		os.Exit(1)
 	}
 	entries := 0
@@ -162,11 +161,12 @@ func rowProblem(format string, args ...any) problem {
 	return problem{Class: classRow, Text: fmt.Sprintf(format, args...)}
 }
 
-// report prints every violation with its class, then the count per class.
-func report(w io.Writer, problems []problem) {
+// report is the gate's output for a ledger with violations: every violation with its class, then the count per class.
+func report(problems []problem) string {
+	var out strings.Builder
 	counts := map[string]int{}
 	for _, p := range problems {
-		fmt.Fprintf(w, "async-contracts: [%s] %s\n", p.Class, p.Text)
+		fmt.Fprintf(&out, "async-contracts: [%s] %s\n", p.Class, p.Text)
 		counts[p.Class]++
 	}
 	perClass := make([]string, 0, len(counts))
@@ -177,7 +177,8 @@ func report(w io.Writer, problems []problem) {
 	if len(problems) == 1 {
 		noun = "violation"
 	}
-	fmt.Fprintf(w, "async-contracts: %d %s: %s\n", len(problems), noun, strings.Join(perClass, " "))
+	fmt.Fprintf(&out, "async-contracts: %d %s: %s\n", len(problems), noun, strings.Join(perClass, " "))
+	return out.String()
 }
 
 func validateManifest(manifest asyncManifest, paths []string, repoRoot string) []problem {

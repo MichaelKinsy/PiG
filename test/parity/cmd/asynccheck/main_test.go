@@ -368,14 +368,13 @@ func TestEvidenceRulesRejectWhatDoesNotResolve(t *testing.T) {
 
 // The gate prints every violation with its class and ends with the count per class.
 func TestReportCountsViolationsPerClass(t *testing.T) {
-	var out strings.Builder
-	report(&out, []problem{{"name-not-found", "a.ts evidence x"}, {"skipped-evidence", "b.ts evidence y"}, {"name-not-found", "c.ts evidence z"}})
+	got := report([]problem{{"name-not-found", "a.ts evidence x"}, {"skipped-evidence", "b.ts evidence y"}, {"name-not-found", "c.ts evidence z"}})
 	want := "async-contracts: [name-not-found] a.ts evidence x\n" +
 		"async-contracts: [skipped-evidence] b.ts evidence y\n" +
 		"async-contracts: [name-not-found] c.ts evidence z\n" +
 		"async-contracts: 3 violations: name-not-found=2 skipped-evidence=1\n"
-	if out.String() != want {
-		t.Fatalf("report printed\n%s\nwant\n%s", out.String(), want)
+	if got != want {
+		t.Fatalf("report printed\n%s\nwant\n%s", got, want)
 	}
 }
 
