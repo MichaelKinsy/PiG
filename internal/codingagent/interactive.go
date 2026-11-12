@@ -668,10 +668,13 @@ type InteractiveMode struct {
 	managedToolStatusStarted bool
 
 	// frameTimer keeps the renderer's throttled-frame deadline for the owner
-	// loop (installRenderDispatcher); renderWakeCh is its channel, which every
-	// owner loop selects to run the due frame.
-	frameTimer   *time.Timer
-	renderWakeCh <-chan time.Time
+	// loop (installRenderDispatcher): the runtime's timer, or a kernel timer
+	// (kernelFrameTimer is set) for a run that asked for one and draws on the
+	// process terminal. renderWakeCh is its channel, which every owner loop
+	// selects to run the due frame.
+	frameTimer       atomic.Pointer[frameTimer]
+	kernelFrameTimer bool
+	renderWakeCh     <-chan time.Time
 
 	// Extension errors reported from any goroutine wait here until the main
 	// loop shows them; extensionErrorWakeCh (capacity 1) wakes the loop.
@@ -768,23 +771,53 @@ func (m *InteractiveMode) postUITaskQuiet(fn func()) bool {
 // frame's deadline on one reusable timer, as upstream's requestRender arms one
 // setTimeout on the single event loop.
 func (m *InteractiveMode) installRenderDispatcher() {
-	if m.frameTimer == nil {
-		m.frameTimer = time.NewTimer(time.Hour)
-		m.frameTimer.Stop()
-		m.renderWakeCh = m.frameTimer.C
+	if m.frameTimer.Load() == nil {
+		m.useFrameTimer(newRuntimeFrameTimer())
+	}
+	if !m.kernelFrameTimer && m.drawsOnProcessTerminal() {
+		if timer := newKernelFrameTimer(); timer != nil {
+			m.kernelFrameTimer = true
+			m.useFrameTimer(timer)
+			// Stop releases the kernel timer; the runtime's keeps the deadline of a frame asked for afterwards.
+			m.onStop(func() error {
+				m.kernelFrameTimer = false
+				m.useFrameTimer(newRuntimeFrameTimer())
+				return nil
+			})
+		}
 	}
 	m.tuiInst.SetRenderDeadline(m.armFrameTimer)
 	m.tuiInst.SetOwnerDispatcher(m.postToMain)
 }
 
+// useFrameTimer makes timer the one that keeps the owner loop's frame deadline and releases the one it replaces. The goroutine of the owner loop
+// calls it, or Stop once the loop has ended.
+func (m *InteractiveMode) useFrameTimer(timer frameTimer) {
+	m.renderWakeCh = timer.C()
+	if replaced := m.frameTimer.Swap(&timer); replaced != nil {
+		(*replaced).Close()
+	}
+}
+
+// drawsOnProcessTerminal reports whether the frames go to the terminal the process runs in and the run asked for a frame's deadline on a kernel
+// timer (InteractiveModeOptions.KernelFrameDeadline). A terminal handed in through the options and a standard output that is not a terminal keep
+// the runtime's timer.
+func (m *InteractiveMode) drawsOnProcessTerminal() bool {
+	return m.opts.KernelFrameDeadline && m.opts.Terminal == nil && frameOutputIsTerminal()
+}
+
+// frameOutputIsTerminal reports whether standard output is a terminal; a test replaces it.
+var frameOutputIsTerminal = func() bool { return term.IsTerminal(int(os.Stdout.Fd())) }
+
 // armFrameTimer moves the owner loop's frame deadline to due; the zero time
 // disarms it. The renderer calls it under its lock, so calls arrive in order.
 func (m *InteractiveMode) armFrameTimer(due time.Time) {
+	timer := *m.frameTimer.Load()
 	if due.IsZero() {
-		m.frameTimer.Stop()
+		timer.Stop()
 		return
 	}
-	m.frameTimer.Reset(max(time.Until(due), 0))
+	timer.Reset(time.Until(due))
 }
 
 // runScheduledRender runs the renderer's due throttled frame, if any, on the
@@ -1045,6 +1078,10 @@ type InteractiveModeOptions struct {
 	Frontend frontend.Frontend
 	// Terminal is the terminal the renderer drives (interactive-mode.ts:447 `terminal?: Terminal`, passed to createInteractiveTui at :626). Nil selects the process terminal.
 	Terminal tui.Terminal
+	// KernelFrameDeadline lets the owner loop keep a frame's deadline on a kernel timer where the runtime's timer is coarser than a frame needs
+	// (kernelFrameTimer; Linux). The pig command sets it. Left unset, the runtime's timer keeps the deadline, whose time a testing/synctest bubble
+	// controls; a kernel timer's is the machine's.
+	KernelFrameDeadline bool
 	// SettingsManager provides read/write access to global settings.
 	// Wired by main.go via coding.AgentSessionServices.
 	SettingsManager *SettingsManager

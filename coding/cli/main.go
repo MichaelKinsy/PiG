@@ -1552,6 +1552,8 @@ func Main(args []string, options *MainOptions) {
 		InitialImages:          initialImages,
 		InitialMessages:        extraMessages,
 		AppVersion:             UpstreamPackageVersion,
+		// A frame comes due between the stream's wake-ups; the runtime's timer would draw it up to a millisecond late (codingagent kernelFrameTimer).
+		KernelFrameDeadline: true,
 		// pig additive (D91): a Piglet Binary's fused frontend member.
 		// pig additive (D202): an overlay that removes the frontend slot starts the Binary without it.
 		Frontend: frontendpack.SelectedIf(!overlayRemovedFrontend(activePiglet)),
