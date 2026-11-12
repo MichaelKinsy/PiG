@@ -55021,6 +55021,32 @@
       "tests": []
     },
     {
+      "id": "BF-f51de47",
+      "title": "ai: a non-strict Anthropic tool schema keeps its root `additionalProperties` (false, true or a schema), so…",
+      "symptom": "ai: a non-strict Anthropic tool schema keeps its root `additionalProperties` (false, true or a schema), so Claude is told whether extra arguments are allowed; root `anyOf`, `oneOf` and `allOf` stay out (Pi aa47cedce, #12100).",
+      "rootCause": "A non-strict tool's input_schema was rebuilt from type, properties, required, $defs and definitions, so a root additionalProperties: false never reached Claude. Pi copies the root additionalProperties whatever its value (false, true or a schema) after required and before $defs and definitions; root anyOf, oneOf and allOf and other root keywords stay out, because Anthropic answers a root anyOf with a 400. anthInputSchema does the same (anthLegacyOptionalRootKeys); the strict path already sent the keyword and is unchanged.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "ai: a non-strict Anthropic tool schema keeps its root `additionalProperties` (false, true or a schema), so Claude is told whether extra arguments are allowed; root `anyOf`, `oneOf` and `allOf` stay out (Pi aa47cedce, #12100).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f51de47842",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "ai/anthropic_root_additional_properties_port_test.go::TestAnthropicNonStrictInputSchemaKeepsRootAdditionalPropertiesPiAa47cedce",
+        "ai/anthropic_root_additional_properties_port_test.go::TestAnthropicStrictInputSchemaStillSendsAdditionalPropertiesPiAa47cedce",
+        "ai/anthropic_strict_tool_schema_upstream_test.go::TestAnthropicStrictToolSchemas",
+        "ai/anthropic_test.go::TestAnthropicConvertToolsStrict",
+        "ai/tool_schema_wire_order_test.go::TestToolSchemaKeepsAuthoredOrderInProviderRequests"
+      ]
+    },
+    {
       "id": "BF-f589900",
       "title": "fix(tui): delete D155; PageUp and PageDown paging follows Pi",
       "symptom": "fix(tui): delete D155; PageUp and PageDown paging follows Pi",
