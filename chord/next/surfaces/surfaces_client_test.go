@@ -169,6 +169,10 @@ type more struct {
 	fetching func(entry ScriptEntry)
 	// follow is the client's Follow option (nil: the default).
 	follow *bool
+	// offline: the server never answers, the client's sockets never open.
+	offline bool
+	// shown is the set the server shows from the start (nil: initial's).
+	shown []RegisteredScript
 }
 
 // setup is a server serving WebScripts with initial, and a client started against it with available to fetch; failing fetches
@@ -200,7 +204,11 @@ func setup(t *testing.T, initial []RegisteredScript, available []RegisteredScrip
 			t.Errorf("server close: %v", err)
 		}
 	})
-	first := setOf("B1", initial...)
+	shown := initial
+	if opt.shown != nil {
+		shown = opt.shown
+	}
+	first := setOf("B1", shown...)
 	if report, err := server.Load([]host.HostFacet{{Name: "chord.web", Facet: nodesurfaces.ScriptsFacet(nodesurfaces.Web, func() ScriptSet { return first })}}, ctx); err != nil || len(report.Failed) != 0 {
 		t.Fatalf("server load: %v %v", err, report.Failed)
 	}
@@ -231,7 +239,7 @@ func setup(t *testing.T, initial []RegisteredScript, available []RegisteredScrip
 		Online: func() bool { return true },
 		OnWake: func(func()) func() { return func() {} },
 	}
-	client, err := StartClient(ClientOptions{
+	options := ClientOptions{
 		Scripts: ScriptsContract(WebScripts),
 		Base:    "B1",
 		Initial: initial,
@@ -239,6 +247,12 @@ func setup(t *testing.T, initial []RegisteredScript, available []RegisteredScrip
 		Core:    []host.HostFacet{{Name: "@test/core", Facet: serving(echo, "core")}},
 		Open: func(events SocketEvents) link.Link {
 			mine, theirs := link.MemoryLinkPair()
+			if opt.offline {
+				s.mu.Lock()
+				s.sockets = append(s.sockets, socket{events, mine})
+				s.mu.Unlock()
+				return mine
+			}
 			if err := server.Accept(theirs, host.LinkOptions{Principal: delta.JsonObjectOf("kind", "user", "id", "u")}, ctx); err != nil {
 				t.Error(err)
 			}
@@ -281,11 +295,35 @@ func setup(t *testing.T, initial []RegisteredScript, available []RegisteredScrip
 		Follow:      opt.follow,
 		Environment: env,
 		OnError:     func(e ClientError) { s.mu.Lock(); s.errs = append(s.errs, e); s.mu.Unlock() },
-	})
-	if err != nil {
-		t.Fatal(err)
 	}
-	s.client = client
+	// A client starts without waiting for its server (a start that does not return fails here instead of hanging the package).
+	type started struct {
+		client *Client
+		err    error
+	}
+	done := make(chan started, 1)
+	go func() {
+		client, err := StartClient(options)
+		done <- started{client, err}
+	}()
+	select {
+	case result := <-done:
+		if result.err != nil {
+			t.Fatal(result.err)
+		}
+		s.client = result.client
+	case <-time.After(30 * time.Second):
+		t.Fatal("StartClient did not return within 30 s")
+	}
+	if !opt.offline {
+		// As Pi's setup, whose follow is made (every promise of the in-memory link is a microtask) before the test body runs: a set
+		// published before the watch started would be the one the watch shows at its start, not a frame.
+		select {
+		case <-s.client.Following():
+		case <-time.After(30 * time.Second):
+			t.Fatal("the client did not start following within 30 s")
+		}
+	}
 	return s
 }
 
@@ -389,8 +427,10 @@ func TestStartClientReportsAnInitialScriptThatFailsAndStartsWithTheOthers(t *tes
 		}
 	}
 	s.mu.Unlock()
-	if !slices.Equal(kinds, []ClientErrorKind{ClientPluginsError}) || len(plugins.Failed) != 1 || plugins.Failed[0].Plugin != "@test/a" || plugins.Failed[0].Error == nil {
-		t.Fatalf("errors = %v, failed = %+v; want one plugins error naming @test/a", kinds, plugins.Failed)
+	// The set shown at the start is applied too (Pi 3c771bd18), which fetches the failed plugin's script again: that update's failure
+	// (update_failed, tried again later) may follow the plugins error, which is reported first and once.
+	if len(kinds) == 0 || kinds[0] != ClientPluginsError || slices.Contains(kinds[1:], ClientPluginsError) || len(plugins.Failed) != 1 || plugins.Failed[0].Plugin != "@test/a" || plugins.Failed[0].Error == nil {
+		t.Fatalf("errors = %v, failed = %+v; want one plugins error naming @test/a, first", kinds, plugins.Failed)
 	}
 	if got := valueOf(text(t, s.client.Host, greeting)); got != "fine" {
 		t.Fatalf("greeting = %q, want the good plugin's", got)
@@ -412,6 +452,29 @@ func TestStartClientReportsAHostFailureAsAHostError(t *testing.T) {
 		}
 	}
 	t.Fatalf("no routine_failed host error among %+v", s.errs)
+}
+
+func TestStartsWithItsInitialScriptsWhileTheServerDoesNotAnswer(t *testing.T) {
+	s := setup(t, []RegisteredScript{script("notes", "d1", "one")}, nil, more{offline: true})
+	// Pi's client has opened its socket when startClient resolves; the loop's open runs on its own goroutine here.
+	until(t, func() bool { return s.socketCount() > 0 })
+	g := text(t, s.client.Host, greeting)
+	if got := valueOf(g); got != "one" {
+		t.Fatalf("greeting = %q", got)
+	}
+	g.Release()
+	s.finish(t)
+}
+
+func TestAppliesTheSetTheServerShowsWhenItStartsFollowingThoughNoFrameBroughtIt(t *testing.T) {
+	a1, a2 := script("@test/a", "d1", "hello"), script("@test/a", "d2", "hello again")
+	s := setup(t, []RegisteredScript{a1}, []RegisteredScript{a2}, more{shown: []RegisteredScript{a2}})
+	g := text(t, s.client.Host, greeting)
+	until(t, func() bool { return valueOf(g) == "hello again" })
+	if f := s.fetchedNow(); !slices.Equal(f, []string{"/@test/a.d2.js"}) {
+		t.Fatalf("fetched = %v", f)
+	}
+	s.finish(t)
 }
 
 func TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne(t *testing.T) {
@@ -524,20 +587,30 @@ func TestTriesAFailedPluginsScriptAgainWhenAReconnectsSnapshotHasItNotTakenAsApp
 	s.finish(t)
 }
 
-// recording is a ClientStyles writing what it is asked into calls, its loads finishing when the test says.
+// recording is a ClientStyles writing what it is asked into calls, its loads finishing when the test says. It leaves out the set
+// shown at the start (start: its stylesheets): Pi skips that update as stale, since the test has published its set before the update
+// (a microtask later) runs, while an update on a goroutine can run before the test publishes.
 type recording struct {
 	mu     sync.Mutex
 	calls  []string
 	loaded chan struct{}
+	start  string
 }
 
-func (r *recording) Prepare(c context.Context, set ScriptSet) {
+func stylesheets(set ScriptSet) string {
 	var css []string
 	for _, p := range set.Plugins {
 		css = append(css, *p.CSS)
 	}
+	return strings.Join(css, " ")
+}
+
+func (r *recording) Prepare(c context.Context, set ScriptSet) {
+	if stylesheets(set) == r.start {
+		return
+	}
 	r.mu.Lock()
-	r.calls = append(r.calls, "prepare "+strings.Join(css, " "))
+	r.calls = append(r.calls, "prepare "+stylesheets(set))
 	r.mu.Unlock()
 	select {
 	case <-r.loaded:
@@ -546,6 +619,9 @@ func (r *recording) Prepare(c context.Context, set ScriptSet) {
 }
 
 func (r *recording) Settle(set ScriptSet, kept map[string]bool) {
+	if stylesheets(set) == r.start {
+		return
+	}
 	var names []string
 	for n := range kept {
 		names = append(names, n)
@@ -560,7 +636,7 @@ func (r *recording) count() int { r.mu.Lock(); defer r.mu.Unlock(); return len(r
 
 func TestLoadsTheNewStylesheetsBeforeTheReloadThenSettlesThemWithThePluginsThatKeptTheirOldCode(t *testing.T) {
 	a1, a2, broken := script("@test/a", "d1", "hello"), script("@test/a", "d2", "hello again"), script("@test/b", "e2", "broken")
-	r := &recording{loaded: make(chan struct{})}
+	r := &recording{loaded: make(chan struct{}), start: "/@test/a.d1.css /@test/b.e1.css"}
 	s := setup(t, []RegisteredScript{a1, script("@test/b", "e1", "b")}, []RegisteredScript{a2, broken}, more{styles: r})
 	g := text(t, s.client.Host, greeting)
 	s.publish(t, setOf("B1", a2, broken))
@@ -582,7 +658,7 @@ func TestLoadsTheNewStylesheetsBeforeTheReloadThenSettlesThemWithThePluginsThatK
 
 func TestEndsTheWaitForStylesheetsAtTheClientsStopTheUpdateStopsThere(t *testing.T) {
 	a1, a2 := script("@test/a", "d1", "hello"), script("@test/a", "d2", "hello again")
-	r := &recording{loaded: make(chan struct{})}
+	r := &recording{loaded: make(chan struct{}), start: "/@test/a.d1.css"}
 	s := setup(t, []RegisteredScript{a1}, []RegisteredScript{a2}, more{styles: r})
 	g := text(t, s.client.Host, greeting)
 	s.publish(t, setOf("B1", a2))

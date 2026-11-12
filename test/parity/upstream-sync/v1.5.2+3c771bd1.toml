@@ -1,0 +1,23 @@
+from = "1.5.2+da44c4df"
+to = "1.5.2+3c771bd1"
+
+[[files]]
+path = "packages/chord/src/surfaces/client.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/surfaces/surfaces_client_test.go#TestStartsWithItsInitialScriptsWhileTheServerDoesNotAnswer", "test:chord/next/surfaces/surfaces_client_test.go#TestAppliesTheSetTheServerShowsWhenItStartsFollowingThoughNoFrameBroughtIt"]
+rationale = "3c771bd18: startClient no longer awaits its watch of the scripts object (which waits for the server): it follows in the background and reports a failure as update_failed, so a client starts, and a page renders, offline; and the set shown when following begins is applied too (a watch's current value is no frame, so a set published while the client started was missed). surfaces_client.go StartClient runs follow on an owned goroutine that Stop ends and joins (Pi's `void updates.follow(...).catch(...)`), and follow takes the watch's Value as the newest set before the watch starts (`take`, shared with the listener). Both tests are red before: StartClient did not return offline, and the set shown at the start of following was not applied (the code's comment that the first set was applied held for a frame, not for the watch's current value). The browser runs Pi's client.ts vendored byte-for-byte (derived tree, manifest `carried`)."
+
+[[files]]
+path = "packages/chord/src/surfaces/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "3c771bd18: Pi's README sentence on following in the background; PiG documents it on StartClient and updates.follow."
+
+[[files]]
+path = "packages/chord/test/surfaces/client.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/surfaces/surfaces_client_test.go#TestStartsWithItsInitialScriptsWhileTheServerDoesNotAnswer", "test:chord/next/surfaces/surfaces_client_test.go#TestAppliesTheSetTheServerShowsWhenItStartsFollowingThoughNoFrameBroughtIt"]
+rationale = "3c771bd18: \"starting offline\" and \"applies the set the server shows when it starts following, though no frame brought it\" ported with the setup's offline and shown options. The Go setup returns within 30 s or fails, so the red of the first is a failure rather than a hang."

@@ -112,9 +112,12 @@ type Client struct {
 	Host    host.Host
 	connect *Connection
 	updates *updates
+	// following is closed when the background follow of the scripts object ended (it is closed at once for a static client).
+	following chan struct{}
 }
 
-// StartClient starts a client: its host loaded with the initial scripts, its link kept, its plugins kept current. As in Pi
+// StartClient starts a client: its host loaded with the initial scripts, its link kept, its plugins kept current from the scripts
+// object once the server answers (returning before: a client starts offline). As in Pi
 // the client's lifetime is BACKGROUND_CONTEXT (context.Background): it bounds the scripts object's hold and watch, the
 // script fetches and the stylesheets' loads, and Stop ends it.
 func StartClient(options ClientOptions) (*Client, error) {
@@ -168,21 +171,29 @@ func StartClient(options ClientOptions) (*Client, error) {
 			u.reconnected()
 		}
 	})
+	following := make(chan struct{})
 	if follow {
-		if err := u.follow(); err != nil {
-			loop.Stop()
-			u.stop()
-			_ = h.Close(ctx)
-			return nil, err
-		}
+		// In the background: the scripts object is the server's, and a client starts (a page renders) without it, offline too.
+		// Pi's `void updates.follow(context).catch(...)`: an owned task whose failure is reported, ended and joined by Stop.
+		//portlint:allow golifetime the task ends when its hold and watch are made or fail (Stop aborts its context) and Stop joins it through following
+		go func() {
+			defer close(following)
+			if err := u.follow(); err != nil {
+				options.OnError(ClientError{Kind: ClientUpdateFailed, Err: err})
+			}
+		}()
+	} else {
+		close(following)
 	}
-	return &Client{Host: h, connect: loop, updates: u}, nil
+	return &Client{Host: h, connect: loop, updates: u, following: following}, nil
 }
 
-// Stop stops the client: its connection loop, its updates, its host.
+// Stop stops the client: its connection loop, its updates (and the background follow of the scripts object, which it ends and
+// joins), its host.
 func (c *Client) Stop(ctx context.Context) error {
 	c.connect.Stop()
 	c.updates.stop()
+	<-c.following
 	return c.Host.Close(ctx)
 }
 
@@ -324,13 +335,21 @@ func newUpdates(h host.Host, loaded *LoadedFacets, left map[string]bool, options
 	return u
 }
 
-// follow holds the scripts object and applies every set it shows, the first included (a reconnect's snapshot too).
+// follow holds the scripts object and applies the set it shows when following begins (a watch's current value is no frame) and
+// every set it shows after (a reconnect's snapshot too). It returns once the watch is started: the hold and the watch wait for
+// the server (StartClient runs it in the background), and an error is why there is no following.
 func (u *updates) follow() error {
 	held, err := u.host.Hold(u.ctx, u.options.Scripts, delta.NewJsonObject(0), host.GetOptions{})
 	if err != nil {
 		return err
 	}
 	u.mu.Lock()
+	if err := u.ctx.Err(); err != nil {
+		// Stop ran before the hold was recorded: nothing else releases it.
+		u.mu.Unlock()
+		held.Release()
+		return err
+	}
 	u.release = held.Release
 	u.mu.Unlock()
 	watch, err := held.Member("set").Watch(u.ctx)
@@ -338,31 +357,43 @@ func (u *updates) follow() error {
 		return err
 	}
 	u.mu.Lock()
+	if err := u.ctx.Err(); err != nil {
+		u.mu.Unlock()
+		_, _ = watch.Stop()
+		return err
+	}
 	u.watch = watch
 	u.mu.Unlock()
+	// The set shown when the watch began (a set published before it, while the client started, is no frame): Pi's `void this.#take(...)`.
+	u.take(ScriptSetOf(watch.Value()))
 	chord.StartUnlessEnded(func() {
 		watch.Start(func(_ context.Context, call chord.WatchCall[delta.JsonValue]) error {
 			if call.Kind != chord.WatchCallValue {
 				return nil
 			}
-			set := ScriptSetOf(call.Value)
-			u.mu.Lock()
-			u.latest = &set
-			retry := u.retry
-			u.retry = nil
-			u.pause = 0
-			u.mu.Unlock()
-			if retry != nil {
-				retry()
-			}
-			// Pi: `await this.#queue(set, ctx)`: the watch's call returns when the update ended.
-			applied := u.enqueue(&set)
+			// Pi: `await this.#take(set, ctx)`: the watch's call returns when the update ended.
+			applied := u.take(ScriptSetOf(call.Value))
 			chord.DeliveryEntered()
 			<-applied
 			return nil
 		})
 	})
 	return nil
+}
+
+// take takes set as the newest: a pending retry of an older one is dropped, set applied in turn; the channel it returns is closed
+// when the update ended (Pi's `#take`).
+func (u *updates) take(set ScriptSet) <-chan struct{} {
+	u.mu.Lock()
+	u.latest = &set
+	retry := u.retry
+	u.retry = nil
+	u.pause = 0
+	u.mu.Unlock()
+	if retry != nil {
+		retry()
+	}
+	return u.enqueue(&set)
 }
 
 // reconnected: the link is back: the newest set is applied again when this client does not run all of it (a plugin kept its

@@ -1015,7 +1015,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/store/live-query.ts` | `chord/next/store/live_query.go` | ✅ |
 | `packages/chord/src/surfaces/active-language.ts` | `chord/next/surfaces/surfaces_active_language.go`, `chord/next/surfaces/surfaces_page_state.go` | ✅ |
 | `packages/chord/src/surfaces/active-theme.ts` | `chord/next/surfaces/surfaces_active_theme.go` | ✅ |
-| `packages/chord/src/surfaces/client.ts` | `chord/next/surfaces/surfaces_client.go; Pi 22fe46c7b: ClientOptions.Follow (false: a static client)`, `chord/nextnode/surfaces/client/pi/chord/src/surfaces/client.ts` (vendored byte-for-byte for the browser, D601; derived tree: manifest `carried`) | ✅ |
+| `packages/chord/src/surfaces/client.ts` | `chord/next/surfaces/surfaces_client.go; Pi 22fe46c7b: ClientOptions.Follow (false: a static client); Pi 3c771bd18: StartClient follows the scripts object in the background (an owned goroutine Stop joins) and applies the set shown when following begins`, `chord/nextnode/surfaces/client/pi/chord/src/surfaces/client.ts` (vendored byte-for-byte for the browser, D601; derived tree: manifest `carried`) | ✅ |
 | `packages/chord/src/surfaces/connection.ts` | `chord/next/surfaces/surfaces_connection.go` | ✅ |
 | `packages/chord/src/surfaces/format.ts` | `chord/next/surfaces/surfaces_format.go` (FormatNumber; FormatTime in chord/next/surfaces/intl_time.go over the generated Intl tables, D464, D465, D466; packages/chord/test/surfaces/format.test.ts in surfaces_format_test.go, differential tests intl_drift_test.go) | ✅ |
 | `packages/chord/src/surfaces/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |

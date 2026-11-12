@@ -2,7 +2,9 @@
 	"commit": "b4afdddf44e059c67ccf5097e5317d913521b470",
 	"pin": "b4afdddf44e059c67ccf5097e5317d913521b470",
 	"carried": [
-		"22fe46c7b889bb469017e00f621ec1f2779d7809"
+		"22fe46c7b889bb469017e00f621ec1f2779d7809",
+		"da44c4df38c9e74a1bcb165af237e86c1ad33124",
+		"3c771bd18ebf71be1ee6a2df5a9b214d123b755d"
 	],
 	"piSchema": "1.5.2",
 	"piTelemetry": "1.5.2",
@@ -686,7 +688,7 @@
 		},
 		{
 			"path": "pi/chord/src/surfaces/client.ts",
-			"sha256": "d1c31e9b00067b42b245902d80285c71620cbd46407d6858d5de6e1fdceb31ed"
+			"sha256": "17f44a09d45886ecd35ce6f46262ffb18cdcb1188172819315bdab0268c6b8f3"
 		},
 		{
 			"path": "pi/chord/src/surfaces/connection.ts",
