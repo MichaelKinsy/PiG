@@ -2184,7 +2184,7 @@ Call-site markers: `internal/codingagent/tools/output_accumulator.go` (`LastLine
 
 Locked by: `TestBashLongLastLineNoticeNamesTheLineSize` (the bash tool) and `TestOutputAccumulatorLastLineBytes` (chunk boundaries, blank last line, split multi-byte character) in `internal/codingagent/tools/last_line_bytes_test.go`.
 
-Parity allowance: the `bash over-long last line` case of `test/parity/scenarios/tools/15-builtin-tool-wire-details.toml` runs such a command (`TestBuiltinToolDetailsParityProbe` and `tool-details-pi.mjs`) and replaces only the notice's `(line is <size>)` (0B in Pi, the line's size in PiG) on both sides; the retained bytes, details and the rest of the notice stay byte-compared.
+Parity allowance: none. No paired scenario runs a command whose last line exceeds the limit and ends with a newline.
 
 Remove when: Pi reports the size of the last counted line.
 

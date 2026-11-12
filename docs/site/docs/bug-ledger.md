@@ -182,6 +182,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-1a855cd](#bf-1a855cd) | The `/session` block now follows a later theme change and shows the cache-warming countdown as of each… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1a893bc](#bf-1a893bc) | fix(durable/core): report task_interrupted from the runtime's commit path for every task (Pi scheduler.ts) | PiG's own defect | All platforms | Unreleased |
 | [BF-1aaf60f](#bf-1aaf60f) | Rendered diffs keep the indentation shared by a removed and an added line when text is inserted at the start… | PiG's own defect | All platforms | Unreleased |
+| [BF-1ad65fe](#bf-1ad65fe) | The bash tool no longer returns no output, with a footer like `[Showing lines 3-2 of 2]`, when a command's… | PiG's own defect | All platforms | Unreleased |
 | [BF-1b5540a](#bf-1b5540a) | `client.Client.Disconnect` takes the reason string as Pi's `Client.disconnect(reason)` does (it was an… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1b9718b](#bf-1b9718b) | fix(photonimage): register the lossless decoders Decode falls back to and decode test sources with Photon | PiG's own defect | All platforms | Unreleased |
 | [BF-1c1887a](#bf-1c1887a) | Closing a Chord host no longer hangs when a hold arrives over a link that closes at the same time | PiG's own defect | Windows | 0.7.0 |
@@ -309,6 +310,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-2e8dcc1](#bf-2e8dcc1) | A Node extension loaded in a TUI could lose `ctx.ui` (every widget, status and footer call became a no-op)… | PiG's own defect | All platforms | Unreleased |
 | [BF-2e95347](#bf-2e95347) | Chord's active-language and active-theme followers could miss the user's pick for good: the pick's watch was… | PiG's own defect | All platforms | Unreleased |
 | [BF-2ea8ad2](#bf-2ea8ad2) | The openai-completions, openai-responses and openrouter-images requests build their URL as the openai SDK… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-2ed0813](#bf-2ed0813) | A tool that requires strict JSON-schema sampling and has a schema node without a type (such as `items: {}`… | PiG's own defect | All platforms | Unreleased |
 | [BF-2f7f692](#bf-2f7f692) | Chord's surfaces: a language or theme follower stopped before its pick watch bound no longer crashes the… | PiG's own defect | All platforms | Unreleased |
 | [BF-2f7f692-2](#bf-2f7f692-2) | Chord's `TuiScope`: a holder that releases its own `Hold`en reference before the scope's watch of its state… | PiG's own defect | All platforms | Unreleased |
 | [BF-2f8638b](#bf-2f8638b) | Chord: the rollout Step of a published script set now lists removed plugins in UTF-16 code unit order, as Pi… | PiG's own defect | All platforms | Unreleased |
@@ -4291,6 +4293,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `tui/diff_render_test.go::TestRenderDiffDoesNotHighlightSharedIndentationAsAnInsertion`, `tui/diff_render_test.go::TestRenderDiffPreservesIndentation`
 - **Release note:** Rendered diffs keep the indentation shared by a removed and an added line when text is inserted at the start of the line.
 
+### BF-1ad65fe
+
+**The bash tool no longer returns no output, with a footer like `[Showing lines 3-2 of 2]`, when a command's…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The bash tool no longer returns no output, with a footer like `[Showing lines 3-2 of 2]`, when a command's output ends in one line longer than about 100KB, such as a `grep` match in a minified file; it shows the end of that line, as Pi does (upstream #12092).
+- **Root cause:** When a command printed a short line and then one line longer than about 100KB, the bash tool returned no output and a footer like "[Showing lines 3-2 of 2 (50.0KB limit)]". The accumulator's retained tail was only the end of that line, clipping dropped its partial first line, and nothing was left. snapshotText now returns the unclipped tail in that case, so the truncation shows the last 50.0KB of the line with the partial-line notice, as Pi does.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1ad65fe04f` (2026-11-12)
+- **Tests:** `internal/codingagent/tools/details_parity_test.go::TestBuiltinToolDetailsParityProbe`, `internal/codingagent/tools/output_accumulator_long_last_line_port_test.go::TestBashToolShowsTheEndOfAnOverLongLastLineAfterAShortLine`, `internal/codingagent/tools/output_accumulator_long_last_line_port_test.go::TestOutputAccumulatorKeepsTheEndOfAnOverLongLastLine`, `internal/codingagent/tools/output_accumulator_oracle_test.go::TestOutputAccumulatorMatchesPi`
+- **Release note:** The bash tool no longer returns no output, with a footer like `[Showing lines 3-2 of 2]`, when a command's output ends in one line longer than about 100KB, such as a `grep` match in a minified file; it shows the end of that line, as Pi does (upstream #12092).
+
 ### BF-1b5540a
 
 **`client.Client.Disconnect` takes the reason string as Pi's `Client.disconnect(reason)` does (it was an…**
@@ -6046,6 +6062,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `2ea8ad24ae` (2026-10-10), `a8ff0c7afe` (2026-10-10)
 - **Tests:** `ai/sdk_request_url_oracle_test.go::TestSDKProvidersRefuseCredentialsLikeFetch`, `ai/sdk_request_url_oracle_test.go::TestSDKProvidersRequestURLMatchesSDK`
 - **Release note:** The openai-completions, openai-responses and openrouter-images requests build their URL as the openai SDK does (base query rewritten through qs, one slash dropped, WHATWG normalisation) and a URL with credentials is refused as fetch refuses it ("Connection error."), where Pig sent the credentials as Basic auth.
+
+### BF-2ed0813
+
+**A tool that requires strict JSON-schema sampling and has a schema node without a type (such as `items: {}`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A tool that requires strict JSON-schema sampling and has a schema node without a type (such as `items: {}`, an unknown or any value, or a bare `const`) is now refused with a clear local error, and one that only prefers strict sampling is sent without strict mode, where before the provider rejected the request with an HTTP 400 error; a node with only an `enum` stays strict, as under Pi (upstream #12049).
+- **Root cause:** OpenAI strict mode rejects a schema node without a type, such as items: {}, Type.Unknown(), Type.Any() or a bare const. Pi makes makeJsonSchemaNodeStrict throw for a node with no type, anyOf or enum, so a strict "prefer" tool is sent without strict mode and a "require" tool fails locally with a clear message. A node with only an enum stays strict.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2ed08134a2` (2026-11-12)
+- **Tests:** `ai/constrained_sampling_oracle_test.go::TestConstrainedSamplingMatchesPi`, `ai/constrained_sampling_upstream_test.go::TestConstrainedSamplingKeepsStrictForEnumOnlySchemasUpstream`, `ai/constrained_sampling_upstream_test.go::TestConstrainedSamplingUnsupportedSchemasUpstream`, `ai/strict_untyped_nodes_port_test.go::TestUntypedSchemaNodesFallBackFromStrictInTheRequestPort`, `coding/session_untyped_strict_tool_port_test.go::TestSessionSendsAStrictPreferToolWithAnUntypedNodeWithoutStrictPort`
+- **Release note:** A tool that requires strict JSON-schema sampling and has a schema node without a type (such as `items: {}`, an unknown or any value, or a bare `const`) is now refused with a clear local error, and one that only prefers strict sampling is sent without strict mode, where before the provider rejected the request with an HTTP 400 error; a node with only an `enum` stays strict, as under Pi (upstream #12049).
 
 ### BF-2f7f692
 

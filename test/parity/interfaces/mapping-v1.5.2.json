@@ -46463,8 +46463,8 @@
       ],
       "evidence": [
         "test:ai/constrained_sampling_upstream_test.go#TestConstrainedSamplingConversionUpstream",
-        "test:ai/constrained_sampling_upstream_test.go#TestConstrainedSamplingUnsupportedSchemasUpstream",
-        "test:ai/openai_responses_shared_oracle_test.go#TestConvertResponsesMessagesMatchesPi"
+        "test:ai/constrained_sampling_upstream_test.go#TestConstrainedSamplingKeepsStrictForEnumOnlySchemasUpstream",
+        "test:ai/constrained_sampling_upstream_test.go#TestConstrainedSamplingUnsupportedSchemasUpstream"
       ]
     },
     {
@@ -46485,8 +46485,8 @@
       ],
       "evidence": [
         "test:ai/constrained_sampling_upstream_test.go#TestConstrainedSamplingConversionUpstream",
-        "test:ai/constrained_sampling_upstream_test.go#TestConstrainedSamplingUnsupportedSchemasUpstream",
-        "test:ai/openai_responses_shared_oracle_test.go#TestConvertResponsesMessagesMatchesPi"
+        "test:ai/constrained_sampling_upstream_test.go#TestConstrainedSamplingKeepsStrictForEnumOnlySchemasUpstream",
+        "test:ai/constrained_sampling_upstream_test.go#TestConstrainedSamplingUnsupportedSchemasUpstream"
       ]
     },
     {
@@ -161073,7 +161073,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/tools/bash_tool_oracle_test.go#TestBashToolMatchesPi",
-        "test:internal/codingagent/tools/bash_tool_options_test.go#TestCreateBashToolAppliesPrefixThenSpawnHookToCustomOperations"
+        "test:internal/codingagent/tools/bash_tool_options_test.go#TestCreateBashToolAppliesPrefixThenSpawnHookToCustomOperations",
+        "test:internal/codingagent/tools/output_accumulator_long_last_line_port_test.go#TestBashToolShowsTheEndOfAnOverLongLastLineAfterAShortLine"
       ]
     },
     {
@@ -230229,7 +230230,7 @@
       "evidence": [
         "test:internal/codingagent/tools/harness_truncate_upstream_test.go#TestHarnessTruncate",
         "test:internal/codingagent/tools/output_accumulator_oracle_test.go#TestOutputAccumulatorMatchesPi",
-        "test:internal/codingagent/tools/sanitize_test.go#TestTruncateTail_LastLineLargerThanCap"
+        "test:internal/codingagent/tools/output_accumulator_long_last_line_port_test.go#TestBashToolShowsTheEndOfAnOverLongLastLineAfterAShortLine"
       ]
     },
     {
