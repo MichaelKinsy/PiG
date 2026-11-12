@@ -70384,6 +70384,17 @@
       "shapeHash": "sha256:a67130324ae67db0155010bd80b6c33a59d94f85edfbc16cbeb966d065c3612e"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.ResolveRemoteCatalogModel",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "ModelRegistry.ResolveRemoteCatalogModel",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(providerID string, modelID string) (github.com/MichaelKinsy/PiG/internal/codingagent.ModelEntry, bool)"
+      },
+      "shapeHash": "sha256:2543308454181182cd5197a2264cd20d21e1061522337f6d25225046f002135b"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.RuntimeAPIKey",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "ModelRegistry.RuntimeAPIKey",
@@ -71020,6 +71031,17 @@
         "type": "func(ctx context.Context, respectHold bool) \u003c-chan struct{}"
       },
       "shapeHash": "sha256:aaacf95faa2dc84f757a58d4bca10d9c39f61ef6f68f62e5bf643a8f1c708617"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.layerCatalogEntry",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "ModelRegistry.layerCatalogEntry",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(providerID string, modelID string, entry github.com/MichaelKinsy/PiG/internal/codingagent.ModelEntry) github.com/MichaelKinsy/PiG/internal/codingagent.ModelEntry"
+      },
+      "shapeHash": "sha256:1e6a98b5557cfb2aef315955d8c19ce1e9a2937f118693d706d47bd1c56c72be"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.load",
@@ -253721,6 +253743,17 @@
       "shapeHash": "sha256:a67130324ae67db0155010bd80b6c33a59d94f85edfbc16cbeb966d065c3612e"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ModelRegistry.ResolveRemoteCatalogModel",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "ModelRegistry.ResolveRemoteCatalogModel",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(providerID string, modelID string) (ModelEntry, bool)"
+      },
+      "shapeHash": "sha256:e726218592bab1b51603aea18ea1a13a561d7281f0e1758f9acc12d92e43e86d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ModelRegistry.RuntimeAPIKey",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "ModelRegistry.RuntimeAPIKey",
@@ -254324,6 +254357,17 @@
         "type": "func(ctx context.Context, respectHold bool) \u003c-chan struct{}"
       },
       "shapeHash": "sha256:aaacf95faa2dc84f757a58d4bca10d9c39f61ef6f68f62e5bf643a8f1c708617"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ModelRegistry.layerCatalogEntry",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "ModelRegistry.layerCatalogEntry",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(providerID string, modelID string, entry ModelEntry) ModelEntry"
+      },
+      "shapeHash": "sha256:d8b21b0e2a966daf88a8e891e17ba1a9d35684632cf4fb9b19e00b9ea3269c09"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ModelRegistry.load",
