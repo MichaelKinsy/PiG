@@ -12,9 +12,9 @@ import (
 // Prose that states the pinned Pi release or commit, or shows a composite version beside `pig version` or `--version`, must agree with internal/coding/pigversion/pigversion.go. The public-claims gate checks "Pi <version>" wording; this checks the other phrasings a README or page uses for the pin.
 
 var (
-	pinConst       = regexp.MustCompile(`(?m)^const (UpstreamVersion|UpstreamCommit|PigVersion) = "([^"]+)"`)
-	pinnedRelease  = regexp.MustCompile("(?i)pinned Pi (?:release|version|build) (?:is )?`?(\\d+\\.\\d+\\.\\d+(?:\\+[0-9a-f]{8})?)`?")
-	pinnedCommit   = regexp.MustCompile("(?i)pinned(?:[^.\\n]|\\.\\d)*commit `([0-9a-f]{40})`")
+	pinConst      = regexp.MustCompile(`(?m)^const (UpstreamVersion|UpstreamCommit|PigVersion) = "([^"]+)"`)
+	pinnedRelease = regexp.MustCompile("(?i)pinned Pi (?:release|version|build) (?:is )?`?(\\d+\\.\\d+\\.\\d+(?:\\+[0-9a-f]{8})?)`?")
+	pinnedCommit  = regexp.MustCompile("(?i)pinned(?:[^.\\n]|\\.\\d)*commit `([0-9a-f]{40})`")
 	// compositeValue reads a `<PiG release>+<build metadata>` example, with either joiner of a commit pin's metadata (`.` is the binary's, `+` is
 	// the wrong form), so that the wrong form is read and compared, not skipped.
 	compositeValue = regexp.MustCompile("`(\\d+\\.\\d+\\.\\d+)\\+(\\d+\\.\\d+\\.\\d+(?:[.+][0-9a-f]{8})?)`")
