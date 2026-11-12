@@ -22,6 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import pinlib  # noqa: E402
 import pin as pin_tool  # noqa: E402
 import oracle  # noqa: E402
+import backport_fixture  # noqa: E402
 
 TAG = pinlib.Pin("v1.1.0", "a" * 40, "1.1.0", "1.1.0")
 COMMIT = pinlib.Pin("b" * 40, "b" * 40, "1.1.0", "1.1.0+bbbbbbbb")
@@ -965,7 +966,7 @@ class BackportTests(unittest.TestCase):
                 oracle.apply_backports(modules)
 
     def test_a_backport_that_does_not_apply_fails_the_build_with_the_scripts_reason(self):
-        with tempfile.TemporaryDirectory() as root:
+        with tempfile.TemporaryDirectory() as root, mock.patch.object(oracle, "BACKPORTS", backport_fixture.script()):
             modules = self.tree(Path(root))
             with self.assertRaisesRegex(pinlib.PinError, "do not apply to the installed oracle"):
                 oracle.apply_backports(modules)  # the packages hold no dist/ files
@@ -998,7 +999,7 @@ for (const [file, entries] of Object.entries(entriesByFile)) {
 assert.throws(() => applyPackageBackports(packages), /no longer applies/, "a second application must fail, not pass silently");
 '''
         with tempfile.TemporaryDirectory() as root:
-            done = subprocess.run(["node", "--input-type=module", "-e", script], env={**os.environ, "BACKPORTS": oracle.BACKPORTS.as_uri(), "ROOT": root}, capture_output=True, text=True, timeout=60)
+            done = subprocess.run(["node", "--input-type=module", "-e", script], env={**os.environ, "BACKPORTS": backport_fixture.script().as_uri(), "ROOT": root}, capture_output=True, text=True, timeout=60)
             self.assertEqual(done.returncode, 0, done.stderr)
 
 

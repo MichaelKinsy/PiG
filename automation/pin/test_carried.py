@@ -13,10 +13,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import carried  # noqa: E402
 import oracle  # noqa: E402
 import pinlib  # noqa: E402
+import backport_fixture  # noqa: E402
 
 TAG = pinlib.Pin("v1.1.0", "a" * 40, "1.1.0", "1.1.0")
 COMMIT = pinlib.Pin("b" * 40, "b" * 40, "1.1.0", "1.1.0+bbbbbbbb")
-SCRIPT = oracle.BACKPORTS
+SCRIPT = backport_fixture.script()
 HAVE_NODE = shutil.which("node") is not None
 
 
@@ -102,7 +103,7 @@ console.log(JSON.stringify({{ ...backportPatches, ...packageFileBackports }}));'
         self.assertIn("line 1", entry["detail"])
 
     def test_the_script_without_blocks_is_valid_exports_nothing_and_applies_nothing(self):
-        text = carried.retire_backport_blocks(SCRIPT.read_text(encoding="utf-8"), oracle.backport_ids())
+        text = carried.retire_backport_blocks(SCRIPT.read_text(encoding="utf-8"), oracle.backport_ids(SCRIPT.read_text(encoding="utf-8")))
         self.assertEqual(oracle.backport_ids(text), [])
         with tempfile.TemporaryDirectory() as directory:
             empty = Path(directory) / "empty.mjs"
@@ -129,15 +130,19 @@ class BlockTests(unittest.TestCase):
     def test_a_script_without_entries_leaves_the_oracle_key_of_a_build_without_the_hooks(self):
         with tempfile.TemporaryDirectory() as directory:
             empty = Path(directory) / "none.mjs"
-            empty.write_text(carried.retire_backport_blocks(SCRIPT.read_text(encoding="utf-8"), oracle.backport_ids()), encoding="utf-8")
+            empty.write_text(carried.retire_backport_blocks(SCRIPT.read_text(encoding="utf-8"), oracle.backport_ids(SCRIPT.read_text(encoding="utf-8"))), encoding="utf-8")
             with mock.patch.object(oracle, "BACKPORTS", empty), mock.patch.object(pinlib, "committed", lambda: COMMIT):
                 digest = oracle.backports_digest(COMMIT)
             self.assertEqual(digest, "")
             self.assertEqual(oracle.identity("data", "closure", digest), oracle.identity("data", "closure"))
-        with mock.patch.object(pinlib, "committed", lambda: COMMIT):
+        with mock.patch.object(oracle, "BACKPORTS", SCRIPT), mock.patch.object(pinlib, "committed", lambda: COMMIT):
             self.assertEqual(oracle.backports_digest(COMMIT), hashlib.sha256(SCRIPT.read_bytes()).hexdigest(), "with entries the digest is the script's")
 
 
+NO_CARRIED_ORACLE = "the pin carries no oracle ahead of it (no CARRIED_ORACLE_REF in the Makefile): the retirement was done by the bump, and these tests run again when a build carries one"
+
+
+@unittest.skipUnless(carried.carried_oracle_ref(), NO_CARRIED_ORACLE)
 class CarriedOracleTests(unittest.TestCase):
     FILES = ["Makefile", ".github/workflows/ci.yml", "durable/harness/suspendable_oracle_test.go", "durable/interop/carried_oracle_test.go", "durable/interop/interop_test.go",
              "durable/interop/unawaited_job_test.go", "test/parity/interface-closure/autobind/reviewed-decisions.json"]
@@ -209,14 +214,17 @@ class CarriedOracleTests(unittest.TestCase):
         self.assertIn("GH_PUBLIC_TOKEN", message)
 
 
+@unittest.skipUnless(carried.carried_oracle_ref(), NO_CARRIED_ORACLE)
 class RetireTests(unittest.TestCase):
     def setUp(self):
         self.root = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.root, True)
-        for rel in CarriedOracleTests.FILES + ["automation/gen/pi-post-release-backports.mjs"]:
+        for rel in CarriedOracleTests.FILES:
             (self.root / rel).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(pinlib.ROOT / rel, self.root / rel)
         self.script = self.root / "automation/gen/pi-post-release-backports.mjs"
+        self.script.parent.mkdir(parents=True, exist_ok=True)
+        self.script.write_text(SCRIPT.read_text(encoding="utf-8"), encoding="utf-8")
         self.ids = oracle.backport_ids(self.script.read_text())
 
     def retire(self, states, compare_status="ahead"):
