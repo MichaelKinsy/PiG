@@ -3818,7 +3818,7 @@ class Context:
         the ``signal`` (a :class:`ProviderSignal`) terminates the command, as
         Pi does: the command alone receives SIGTERM (the process is killed on
         Windows), no descendant is signalled, and the call returns the output
-        written so far with ``killed`` set and ``exit_code`` 0, which is what a
+        written so far with ``killed`` set and ``exit_code`` 143 (128 + SIGTERM), which is what a
         command that a signal ended reports. A signal that is set before the
         call starts the command and ends it at once. SIGKILL follows the
         SIGTERM five seconds later if the command has not exited, for a
