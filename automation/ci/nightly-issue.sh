@@ -4,7 +4,8 @@
 # Opens (or finds) the issue that asks for a fix PR for the first bad commit of a red nightly. It never opens a pull
 # request, never reverts and never merges: the author or a maintainer decides between a fix and a revert.
 #
-# Usage: nightly-issue.sh <first-bad-sha> <good-sha> <bad-sha> [red-run-url]
+# Usage: nightly-issue.sh <first-bad-sha> <good-sha> <bad-sha> [red-run-url] [red-run-id]
+# With the red run's id the issue lists that run's failed and timed-out jobs, each with its link.
 # Environment: GH_TOKEN, REPO (owner/repo), GH (the gh command, for tests).
 set -euo pipefail
 
@@ -12,6 +13,7 @@ first=${1:?first bad sha}
 good=${2:?good sha}
 bad=${3:?bad sha}
 url=${4:-}
+run=${5:-}
 repo=${REPO:?owner/repo}
 gh=${GH:-gh}
 
@@ -23,6 +25,16 @@ if [ -n "$existing" ]; then
 fi
 
 summary=$(git log -1 --format='%h %s (%an)' "$first")
+failed=
+if [ -n "$run" ]; then
+  # The issue is opened without the jobs when they cannot be read: it is the request for the fix.
+  if jobs=$("$gh" run view "$run" --repo "$repo" --json jobs \
+    --jq '.jobs[] | select(.conclusion == "failure" or .conclusion == "timed_out") | "  - \(.name) (\(.conclusion)): \(.url)"'); then
+    failed=$(printf '%s\n%s' "- failed jobs of the red run:" "${jobs:-  - none reported}")
+  else
+    failed="- failed jobs of the red run: could not be read; see the run"
+  fi
+fi
 body=$(printf '%s\n' \
   "The nightly full CI run on main went red. Bisecting the commits between the last green nightly and the red one found:" \
   "" \
@@ -30,6 +42,7 @@ body=$(printf '%s\n' \
   "- last green nightly head: \`$good\`" \
   "- red nightly head: \`$bad\`" \
   "${url:+- red run: $url}" \
+  "$failed" \
   "" \
   "Open a fix PR (or a revert PR) against main. Nothing here merges anything: this issue is the request, and the fix goes through the normal pre-flight, review and CI." \
   "" \

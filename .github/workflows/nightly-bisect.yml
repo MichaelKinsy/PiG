@@ -97,6 +97,7 @@ jobs:
           GOOD: ${{ steps.range.outputs.good }}
           BAD: ${{ steps.range.outputs.bad }}
           RED_URL: ${{ github.event.workflow_run.html_url }}
+          RED_RUN: ${{ github.event.workflow_run.id }}
         run: |
           set -euo pipefail
-          automation/ci/nightly-issue.sh "$FIRST" "$GOOD" "$BAD" "${RED_URL:-}"
+          automation/ci/nightly-issue.sh "$FIRST" "$GOOD" "$BAD" "${RED_URL:-}" "${RED_RUN:-}"

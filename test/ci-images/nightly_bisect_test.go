@@ -260,3 +260,94 @@ func TestNightlyBisectKeepsTheDefaultProbeWhenOldCommitsLackIt(t *testing.T) {
 		t.Errorf("the bisect did not return to the commit it started on: %v", err)
 	}
 }
+
+// runNightlyIssue runs nightly-issue.sh against a fake gh that answers "run view" with the jobs of a red run, filtered
+// by the script's own jq expression, and returns the body of the issue the script created ("" when it created none).
+func runNightlyIssue(t *testing.T, jobs string, args ...string) (body, calls string) {
+	t.Helper()
+	jq, err := exec.LookPath("jq")
+	if err != nil {
+		t.Skip("jq is not on PATH")
+	}
+	dir, commits, _ := bisectFixture(t, 5)
+	bin := t.TempDir()
+	fake := `#!/bin/sh
+echo "$*" >> "$FAKE_DIR/calls"
+case "$1 $2" in
+"issue list") ;;
+"run view")
+  [ -n "$FAKE_JOBS" ] || { echo "gh: run not found" >&2; exit 1; }
+  while [ "$#" -gt 1 ]; do [ "$1" = --jq ] && filter=$2; shift; done
+  printf '%s' "$FAKE_JOBS" | "$FAKE_JQ" -r "$filter" ;;
+"issue create")
+  while [ "$#" -gt 1 ]; do [ "$1" = --body ] && printf '%s\n' "$2" > "$FAKE_DIR/body"; shift; done ;;
+*) echo "unexpected gh $*" >&2; exit 1 ;;
+esac
+`
+	gh := filepath.Join(bin, "gh")
+	if err := os.WriteFile(gh, []byte(fake), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command("bash", append([]string{filepath.Join(repoRoot(t), "automation", "ci", "nightly-issue.sh"), commits[5], commits[0], commits[9]}, args...)...)
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "REPO=o/r", "GH="+gh, "FAKE_DIR="+bin, "FAKE_JOBS="+jobs, "FAKE_JQ="+jq)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("nightly-issue.sh: %v\n%s", err, out)
+	}
+	raw, _ := os.ReadFile(filepath.Join(bin, "body"))
+	log, _ := os.ReadFile(filepath.Join(bin, "calls"))
+	return string(raw), string(log)
+}
+
+// The issue names the jobs of the red nightly run that failed, each with its link, and no job that passed.
+func TestNightlyIssueListsTheFailedJobsOfTheRedRun(t *testing.T) {
+	jobs := `{"jobs":[
+		{"name":"Lint","conclusion":"success","url":"https://github.example/o/r/actions/runs/77/job/1"},
+		{"name":"Unit tests (windows) [2/4]","conclusion":"failure","url":"https://github.example/o/r/actions/runs/77/job/2"},
+		{"name":"Parity","conclusion":"timed_out","url":"https://github.example/o/r/actions/runs/77/job/3"},
+		{"name":"CI result","conclusion":"skipped","url":"https://github.example/o/r/actions/runs/77/job/4"},
+		{"name":"Race","conclusion":"cancelled","url":"https://github.example/o/r/actions/runs/77/job/5"}]}`
+	body, calls := runNightlyIssue(t, jobs, "https://github.example/o/r/actions/runs/77", "77")
+	if !strings.Contains(calls, "run view 77 --repo o/r --json jobs") {
+		t.Fatalf("the red run's jobs were not read:\n%s", calls)
+	}
+	for _, want := range []string{
+		"- red run: https://github.example/o/r/actions/runs/77",
+		"- failed jobs of the red run:",
+		"  - Unit tests (windows) [2/4] (failure): https://github.example/o/r/actions/runs/77/job/2",
+		"  - Parity (timed_out): https://github.example/o/r/actions/runs/77/job/3",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the issue lacks %q:\n%s", want, body)
+		}
+	}
+	for _, banned := range []string{"Lint", "CI result", "Race"} {
+		if strings.Contains(body, banned) {
+			t.Errorf("the issue names %q, which did not fail:\n%s", banned, body)
+		}
+	}
+}
+
+// The issue is the request for the fix: it is opened when the jobs cannot be read, and says so; a manual bisect has no
+// red run and names no jobs.
+func TestNightlyIssueIsOpenedWithoutTheJobs(t *testing.T) {
+	body, _ := runNightlyIssue(t, "", "https://github.example/o/r/actions/runs/77", "77")
+	if !strings.Contains(body, "- failed jobs of the red run: could not be read; see the run") || !strings.Contains(body, "first bad commit") {
+		t.Errorf("unreadable jobs:\n%s", body)
+	}
+	body, calls := runNightlyIssue(t, "")
+	if strings.Contains(body, "failed jobs") || strings.Contains(calls, "run view") || !strings.Contains(body, "first bad commit") {
+		t.Errorf("a bisect without a red run: calls\n%s\nbody\n%s", calls, body)
+	}
+}
+
+// The workflow hands the red run's id to the issue script.
+func TestNightlyBisectWorkflowPassesTheRedRunToTheIssue(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join(repoRoot(t), ".github", "workflows", "nightly-bisect.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), `automation/ci/nightly-issue.sh "$FIRST" "$GOOD" "$BAD" "${RED_URL:-}" "${RED_RUN:-}"`) {
+		t.Fatal("nightly-bisect.yml does not pass the red run's id to nightly-issue.sh")
+	}
+}
