@@ -931,6 +931,202 @@ fn kit_event_name(kind: EventKind) -> &'static str {
 /// The tag of the last ui.view.intent whose handler saw its request cancelled.
 static VIEW_CANCELLED_TAG: std::sync::Mutex<String> = std::sync::Mutex::new(String::new());
 
+// D614: the redraw panel and the abilities watcher, the same way in every SDK fixture (conformance
+// TestConformance_UIViewAnswerRedraw and TestConformance_UIViewAbilitiesEvent).
+
+/// The context of the command that mounted the redraw panel: an update made through it is the extension's, not an
+/// intent handler's.
+static VIEW_REDRAW_COMMAND: std::sync::Mutex<Option<pig_sdk::Context>> =
+    std::sync::Mutex::new(None);
+static VIEW_WATCH_ARMED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+static VIEW_WATCH_BLOCK: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+static VIEW_WATCH_RELEASED: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
+static VIEW_WATCH_EVENTS: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+
+fn row_text_view(text: String) -> pig_sdk::kit::View {
+    pig_sdk::kit::View::new(pig_sdk::kit::Text::new(text, 0, 0))
+}
+
+fn row_panel_mount(
+    key: &str,
+    view: pig_sdk::kit::View,
+    intents: Vec<pig_sdk::ViewIntent>,
+) -> pig_sdk::ViewMount {
+    pig_sdk::ViewMount {
+        key: key.into(),
+        slot: "panel".into(),
+        target: None,
+        view,
+        intents,
+        assets: vec![],
+        fallback: None,
+        alternatives: vec![],
+        drawing: None,
+        a11y: vec![],
+        focus: vec![],
+    }
+}
+
+fn redraw_intents() -> Vec<pig_sdk::ViewIntent> {
+    let int = pig_sdk::ViewShape::new("integer");
+    ["fx.redraw", "fx.foreign"]
+        .iter()
+        .map(|name| pig_sdk::ViewIntent {
+            name: (*name).into(),
+            arg: pig_sdk::ViewShape::object(&[("n", int.clone())], &["n"]),
+            answer: Some(pig_sdk::ViewShape::object(
+                &[("rev", int.clone())],
+                &["rev"],
+            )),
+            ..Default::default()
+        })
+        .collect()
+}
+
+fn describe_abilities(abilities: &Option<pig_sdk::ViewAbilities>) -> String {
+    match abilities {
+        Some(a) => format!("slots={},mounts={}", a.slots.join("+"), a.limits.mounts),
+        None => "none".to_string(),
+    }
+}
+
+/// Answers fx.redraw and fx.foreign: both replace the view of the mount the intent came from and answer done with the
+/// new rev. fx.redraw updates through the handler's context; fx.foreign through the context of the command that mounted
+/// the panel.
+fn redraw_intent(inv: &pig_sdk::ViewIntentInvocation) -> pig_sdk::ViewIntentResult {
+    let own = inv.intent == "fx.redraw";
+    let n = inv
+        .arg
+        .get("n")
+        .and_then(serde_json::Value::as_i64)
+        .unwrap_or(0);
+    let limit = inv
+        .context
+        .view_abilities()
+        .map(|a| a.limits.intent_arg_bytes as i64)
+        .unwrap_or(0);
+    let ctx = if own {
+        inv.context.clone()
+    } else {
+        match VIEW_REDRAW_COMMAND.lock().unwrap().clone() {
+            Some(ctx) => ctx,
+            None => return pig_sdk::ViewIntentResult::failed("ui_view_redraw has not run"),
+        }
+    };
+    let name = if own { "redraw" } else { "foreign" };
+    match ctx.update_view(pig_sdk::ViewUpdate {
+        mount: pig_sdk::ViewRef {
+            key: inv.mount.key.clone(),
+            epoch: inv.mount.epoch,
+            rev: inv.rev,
+        },
+        view: row_text_view(format!("fixture-{name}-{}", n + limit)),
+        intents: redraw_intents(),
+        assets: vec![],
+        fallback: None,
+        alternatives: vec![],
+        drawing: None,
+        a11y: vec![],
+        focus: vec![],
+    }) {
+        Ok(st) => pig_sdk::ViewIntentResult::done(serde_json::json!({"rev": st.mount.rev})),
+        Err(e) => pig_sdk::ViewIntentResult::failed(&e.to_string()),
+    }
+}
+
+fn register_view_rows(ext: &mut pig_sdk::Extension) {
+    use std::sync::atomic::Ordering::SeqCst;
+    ext.command(
+        "ui_view_redraw",
+        "Mount the panel whose intents redraw it",
+        |ctx, _args| match ctx.mount_view(row_panel_mount(
+            "redraw",
+            row_text_view("fixture-redraw-0".to_string()),
+            redraw_intents(),
+        )) {
+            Ok(st) => {
+                *VIEW_REDRAW_COMMAND.lock().unwrap() = Some(ctx.clone());
+                ctx.notify(&format!("view-redraw:rev={}", st.mount.rev), "info");
+                CommandResult::Ok
+            }
+            Err(e) => CommandResult::Error(e.to_string()),
+        },
+    );
+    ext.on_view_abilities(|ctx, abilities| {
+        VIEW_WATCH_EVENTS.fetch_add(1, SeqCst);
+        if !VIEW_WATCH_ARMED.load(SeqCst) {
+            return;
+        }
+        if VIEW_WATCH_BLOCK.swap(false, SeqCst) {
+            ctx.notify("view-event-blocked", "info");
+            while !VIEW_WATCH_RELEASED.swap(false, SeqCst) {
+                std::thread::sleep(std::time::Duration::from_millis(10));
+            }
+            ctx.notify("view-event-released", "info");
+        }
+        let Some(arrived) = abilities.clone() else {
+            ctx.notify("view-event:none", "info");
+            return;
+        };
+        let shown = describe_abilities(&abilities);
+        ctx.notify(
+            &format!(
+                "view-event:{shown},same={}",
+                shown == describe_abilities(&ctx.view_abilities())
+            ),
+            "info",
+        );
+        match ctx.mount_view(row_panel_mount(
+            "arrived",
+            row_text_view(format!("fixture-arrived-{}", arrived.limits.mounts)),
+            vec![],
+        )) {
+            Ok(st) => ctx.notify(&format!("view-arrived:{}", st.state), "info"),
+            Err(e) => ctx.notify(&format!("view-arrived:{}", e.code), "info"),
+        };
+    });
+    ext.command(
+        "ui_view_watch",
+        "Arm the abilities watcher",
+        |ctx, _args| {
+            VIEW_WATCH_ARMED.store(true, SeqCst);
+            ctx.notify("view-watch:armed", "info");
+            CommandResult::Ok
+        },
+    );
+    ext.command(
+        "ui_view_block",
+        "Block the abilities watcher on its next event",
+        |ctx, _args| {
+            VIEW_WATCH_RELEASED.store(false, SeqCst);
+            VIEW_WATCH_BLOCK.store(true, SeqCst);
+            ctx.notify("view-block:set", "info");
+            CommandResult::Ok
+        },
+    );
+    ext.command(
+        "ui_view_release",
+        "Release the blocked abilities watcher",
+        |ctx, _args| {
+            VIEW_WATCH_RELEASED.store(true, SeqCst);
+            ctx.notify("view-release:done", "info");
+            CommandResult::Ok
+        },
+    );
+    ext.command(
+        "ui_view_events",
+        "Report how often the abilities watcher ran",
+        |ctx, _args| {
+            ctx.notify(
+                &format!("view-events:{}", VIEW_WATCH_EVENTS.load(SeqCst)),
+                "info",
+            );
+            CommandResult::Ok
+        },
+    );
+}
+
 fn main() {
     let mut ext = Extension::new("rust-sdk-fixture");
     // factory_agent_dir is get_agent_dir() while the factory runs, where Pi's extensions call it (TestConformance_HostConfigurationAgreesAcrossSDKs).
@@ -4046,7 +4242,9 @@ fn main() {
             }
         },
     );
+    register_view_rows(&mut ext);
     ext.on_view_intent(|inv| match inv.intent.as_str() {
+        "fx.redraw" | "fx.foreign" => redraw_intent(&inv),
         "fx.add" => {
             let n = inv.arg.get("n").and_then(Value::as_i64).unwrap_or(0);
             let extra = inv
