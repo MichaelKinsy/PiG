@@ -165,6 +165,16 @@ func uncroppedKinds(cfg TmuxDriverConfig, use captureUse) (plain, escaped bool) 
 	return !use.plain, !use.escaped
 }
 
+// withFinalCaptures puts the final captures into a run's result: the cropped ones, or the whole ones when the crop failed, so the artifacts still show what the screen held. The captures no comparator reads keep their uncropped label whether or not another capture failed to crop.
+func withFinalCaptures(r Result, scenario, binary string, cfg TmuxDriverConfig, use captureUse, plain, escaped string, cropErr error) Result {
+	r.Output, r.Escaped = plain, escaped
+	r.PlainUncropped, r.EscapedUncropped = uncroppedKinds(cfg, use)
+	if r.Err == nil && cropErr != nil {
+		r.Err = finalCaptureError(scenario, binary, cfg, cropErr)
+	}
+	return r
+}
+
 // finalCaptureError names the scenario, the binary and the final capture in a failure of that capture.
 func finalCaptureError(scenario, binary string, cfg TmuxDriverConfig, err error) error {
 	return fmt.Errorf("scenario %s (%s), %s: %w", scenario, binary, finalCaptureLabel(cfg), err)

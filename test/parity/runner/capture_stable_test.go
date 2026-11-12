@@ -307,3 +307,25 @@ func TestCaptureArtifactName_LabelsAnUncroppedCapture(t *testing.T) {
 		t.Fatalf("got %q", got)
 	}
 }
+
+func TestWithFinalCaptures_KeepsTheUncroppedLabelWhenAnotherCaptureFailsToCrop(t *testing.T) {
+	cfg := TmuxDriverConfig{CaptureStart: "BEGIN"}
+	use := captureUse{escaped: true} // only the escaped capture is compared; the plain one is kept whole
+	plain, escaped, cropErr := cropCaptures(cfg, use, "banner", "esc banner")
+	if cropErr == nil {
+		t.Fatal("the escaped capture lacks the start marker and must fail to crop")
+	}
+	got := withFinalCaptures(Result{}, "scn", "pig", cfg, use, plain, escaped, cropErr)
+	if !got.PlainUncropped || got.EscapedUncropped {
+		t.Fatalf("PlainUncropped=%v EscapedUncropped=%v, want the unasserted plain capture labelled and the failed asserted one not", got.PlainUncropped, got.EscapedUncropped)
+	}
+	if got.Output != "banner" || got.Escaped != "esc banner" {
+		t.Fatalf("captures %q, %q: a failed crop must keep both whole for diagnosis", got.Output, got.Escaped)
+	}
+	if got.Err == nil || !strings.Contains(got.Err.Error(), `"BEGIN" not found`) {
+		t.Fatalf("got %v, want the crop failure", got.Err)
+	}
+	if name := captureArtifactName("pig.stdout", got.PlainUncropped); name != "pig.stdout.not-asserted-uncropped" {
+		t.Fatalf("artifact name %q lacks the not-asserted label", name)
+	}
+}
