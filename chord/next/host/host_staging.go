@@ -476,6 +476,25 @@ func (r *recordingSelf) Writable(any) state.Writable[any] {
 	return inertWritable{}
 }
 
+// Events implements Self: an inert event source (Pi's INERT): Emit does nothing, On gives a subscription that stops nothing.
+func (r *recordingSelf) Events() contracts.EventSource[delta.JsonValue] {
+	r.assertDeclaring("events")
+	return inertEvents{}
+}
+
+// inertEvents is a recording's event source: nothing is emitted or delivered.
+type inertEvents struct{}
+
+func (inertEvents) Emit(delta.JsonValue) error { return nil }
+
+func (inertEvents) On(func(contracts.EventDelivery[delta.JsonValue]), context.Context) (contracts.EventSubscription, error) {
+	return inertEventSubscription{}, nil
+}
+
+type inertEventSubscription struct{}
+
+func (inertEventSubscription) Stop() {}
+
 // RetryOn implements Self.
 func (r *recordingSelf) RetryOn(sources ...any) {
 	r.assertDeclaring("retryOn")

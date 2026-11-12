@@ -93,6 +93,12 @@ type Self interface {
 	// Writable is an in-process value this attempt sets (identity compared): a contribution, a derive source and an `On`
 	// source, never a state member; its watches end with the attempt, and Set after its end returns `released`.
 	Writable(initial any) state.Writable[any]
+	// Events is an event source of this attempt (decision "Events: fire-and-forget members"), implementing an event member
+	// (Implementation.Events): Emit delivers a JSON value once to each reference bound to the object before it, at the
+	// event flush (a microtask), after the state published before it; never kept, never folded, dropped for a holder that
+	// cannot keep up. Emits are no transaction work (`Tx(...)`, then Emit); after the attempt's seal Emit returns
+	// `released`.
+	Events() contracts.EventSource[delta.JsonValue]
 	// RetryOn declares wake signals: a new value of any of sources (registry values; constants never change) retries this
 	// object while it is failed, as `ref.retry()` does, and once more at once if its current activation fails. Followed from
 	// the factory's return until the next attempt's declaration or the object's end; failures wake nothing.
@@ -341,6 +347,10 @@ type attempt struct {
 	endedEarly *data.ChordError
 	// registry are its registry reads, contributions, wake signals and writables, made by the first: most attempts have none.
 	registry *registryDeclarations
+	// sourceOwner is what its own event sources check (its seal) and count with, made by the first `self.events()`.
+	sourceOwner *eventSourceOwner
+	// sources are its own event sources, detached at its end; made by the first.
+	sources []*ownEventSource
 	// check is its first dependency check; nil is Pi's undefined.
 	check *firstCheck
 	// reloaded is what a reload did to it, made by the first such step (most attempts never meet one).
@@ -525,6 +535,27 @@ func (a *attempt) Writable(initial any) state.Writable[any] {
 	declarations := a.declarations()
 	declarations.writables = append(declarations.writables, writable)
 	return writable
+}
+
+// Events implements Self.
+func (a *attempt) Events() contracts.EventSource[delta.JsonValue] {
+	a.assertDeclaring("events")
+	object := a.object
+	if a.sourceOwner == nil {
+		a.sourceOwner = &eventSourceOwner{
+			events: object.host.eventFlow,
+			sealed: func() error {
+				if a.token.Sealed() {
+					return object.ended()
+				}
+				return nil
+			},
+		}
+	}
+	source := newOwnEventSource(a.sourceOwner)
+	a.sources = append(a.sources, source)
+	// Its values are JSON the object emits, never validated (as state).
+	return source
 }
 
 // attemptWritableOwner is the attempt as the owner of its writables: the object's context, and usable until it is sealed.
@@ -1167,9 +1198,36 @@ func (a *attempt) adaptedAt(version int) *adaptedMembers {
 		report: func(member string, err error) {
 			host.report(HostError{Kind: ErrDeriveFailed, Object: label, Member: member, Error: err})
 		},
+		event: a.eventOf,
+		reportEvent: func(member string, err error) {
+			host.report(HostError{Kind: ErrEventMappingFailed, Object: label, Member: member, Version: version, Error: err})
+		},
+		metrics: host.metrics,
 	}, version)
 	a.adapted = append(a.adapted, made)
 	return made
+}
+
+// eventOf is event member `member`'s node of the current version; nil when its variant has none (or before the members
+// check).
+func (a *attempt) eventOf(member string) *eventNode {
+	if a.members == nil {
+		return nil
+	}
+	if event, found := a.members.events.Get(member); found {
+		return event.node
+	}
+	return nil
+}
+
+// eventNode is event member `member`'s node as a binding of `version` taps it: its own at its version, else its shared
+// mapping for that version; nil outside the variant (or removed since that version), before the members check, and for a
+// version its provider does not serve (`attachable`).
+func (a *attempt) eventNode(member string, version int) *eventNode {
+	if version == a.served.contract.Version {
+		return a.eventOf(member)
+	}
+	return a.adaptedAt(version).event(member)
 }
 
 // attachedVariant is the variant of the instance a reference attaches to ("" for a local object: Pi's undefined).
@@ -1265,6 +1323,16 @@ func (a *attempt) detach() {
 	}
 	for _, follow := range a.follows {
 		follow.detach()
+	}
+	for _, source := range a.sources {
+		source.detach()
+	}
+	if a.members != nil {
+		for _, event := range a.members.events.All() {
+			if event.reexposed != nil {
+				event.reexposed.detach()
+			}
+		}
 	}
 	if a.registry != nil {
 		for _, writable := range a.registry.writables {
@@ -1714,12 +1782,18 @@ func (a *attempt) ownSteps(implementation factoryResult, finish func(activation)
 // `activation_failed` alone).
 func (a *attempt) checkOwn(implementation factoryResult) (*members, error) {
 	object := a.object
-	variant, checked, err := checkImplementation(object.served.contract, implementation)
+	variant, checked, err := checkImplementation(object.served.contract, implementation, a.sourceOwner)
 	if err != nil {
 		return nil, err
 	}
 	a.members = checked
 	a.variant = variant
+	// Fed by their references from now on (the object's bindings tap them once it is live).
+	for _, event := range checked.events.All() {
+		if event.reexposed != nil {
+			event.reexposed.attach()
+		}
+	}
 	if a.registry != nil {
 		contributions, err := a.resolveContributions(a.registry)
 		if err != nil {
@@ -1820,7 +1894,7 @@ func (a *attempt) declare() (factoryResult, error) {
 }
 
 // factoryResultOf is what a factory returned as the member check takes it: the variant (none for a local contract's) and
-// the members by name, state members, methods and keyed members, each in name order.
+// the members by name, state members, methods, keyed members and event members, each in name order.
 func factoryResultOf(implementation contracts.Implementation) factoryResult {
 	result := factoryResult{}
 	if implementation.Variant != "" {
@@ -1839,6 +1913,9 @@ func factoryResultOf(implementation contracts.Implementation) factoryResult {
 	}
 	for _, name := range sortedKeys(members.Keyed) {
 		add(name, members.Keyed[name])
+	}
+	for _, name := range sortedKeys(members.Events) {
+		add(name, members.Events[name])
 	}
 	return result
 }

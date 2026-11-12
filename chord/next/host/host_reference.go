@@ -65,6 +65,9 @@ func (r *Reference) Member(name string) *ReferenceMember { return r.binding.memb
 // Keyed is the keyed member `name`, nil when the contract has none.
 func (r *Reference) Keyed(name string) *ReferenceKeyed { return r.binding.keyed[name] }
 
+// Events is the event member `name`, nil when the contract has none.
+func (r *Reference) Events(name string) *ReferenceEvents { return r.binding.events[name] }
+
 // Variant is the variant its remote object bound last; bound is false before the first binding and for a local contract.
 // A released reference returns its end.
 func (r *Reference) Variant() (variant string, bound bool, err error) {
@@ -175,6 +178,8 @@ type target interface {
 // variant ("" is Pi's `undefined`). It is a pointer type, compared by identity.
 type attachable interface {
 	attachedVariant() string
+	// eventNode is event member member's node as a binding of version taps it; nil for a member its variant lacks.
+	eventNode(member string, version int) *eventNode
 }
 
 // followedKind is what a reference follows of its target for one state member.
@@ -320,6 +325,10 @@ type binding struct {
 	heldKeys *referenceKeys
 	// attached is the instance it attached to last: it takes last values only from that one.
 	attached attachable
+	// eventsOf are its events, for a contract with event members only; dropped at its end (it keeps no host).
+	eventsOf *bindingEvents
+	// events are its event members, by name.
+	events map[string]*ReferenceEvents
 	// unlisted is whether presence lists leave it out: a restart's readiness bindings (`unlist`).
 	unlisted bool
 
@@ -341,6 +350,7 @@ func newBinding(
 	dependent *chordObject,
 	from caller,
 	parkTimeout time.Duration,
+	events *hostEvents,
 ) *binding {
 	b := &binding{
 		loop: host.loop(), scheduler: host.scheduler, from: from, name: contract.Name, contractKind: contract.Kind,
@@ -352,7 +362,17 @@ func newBinding(
 	if err != nil {
 		panic(err)
 	}
+	b.events = map[string]*ReferenceEvents{}
 	for _, variant := range variants.All() {
+		// Event bookkeeping only for a contract with event members: others pay nothing for events per binding.
+		if variant.Events.Len() > 0 {
+			if b.eventsOf == nil {
+				b.eventsOf = &bindingEvents{host: events}
+			}
+			for _, member := range variant.Events.Keys() {
+				b.events[member] = &ReferenceEvents{binding: b, member: member}
+			}
+		}
 		for _, member := range variant.State.Keys() {
 			b.members[member] = &ReferenceMember{binding: b, member: member}
 		}
@@ -480,6 +500,87 @@ func (b *binding) bind(goal target) {
 // following is whether its members or keys were used: `retarget` moves them (in a batch).
 func (b *binding) following() bool { return b.sources.len() > 0 || b.heldKeys != nil }
 
+// bindingEvents are a binding's events, for a contract with event members only: the host's events; the instance its
+// members tap and the counter value of its binding to it (`at`, taken whenever it attaches to another instance shown
+// live, used or not, so a subscription made later still gets what was emitted since; nil while it points at nothing);
+// its members' subscriptions and re-exposing nodes (`taps`, made by the first use).
+type bindingEvents struct {
+	host *hostEvents
+	at   *eventsAt
+	taps *referenceEventTaps
+}
+
+// retargetEvents: its event members follow current from the host's counter value now, when it is another instance than
+// they follow: only while it shows its object live (a failed instance's admitted commits still reach its members, never
+// its events).
+func (b *binding) retargetEvents(events *bindingEvents, current attachable) {
+	var instance attachable
+	if b.refState().Kind == RefStateLive {
+		instance = current
+	}
+	if events.at == nil {
+		if instance == nil {
+			return
+		}
+	} else if events.at.instance == instance {
+		return
+	}
+	if instance == nil {
+		events.at = nil
+	} else {
+		events.at = &eventsAt{instance: instance, boundAt: events.host.counter()}
+	}
+	if events.taps != nil {
+		events.taps.retarget(events.at)
+	}
+}
+
+// subscribeEvents subscribes listener to event member member at once, bound or not: it gets what this reference receives
+// while it is bound to an instance whose variant has the member. Fails `released` once released, and an aborted ctx's
+// cause.
+func (b *binding) subscribeEvents(member string, listener eventListener, ctx context.Context) (contracts.EventSubscription, error) {
+	if b.state.kind == bindingReleased {
+		return nil, b.state.ended.Error
+	}
+	taps := b.eventTaps()
+	return subscribe(
+		// Its contract has event members (member is one) and it is not released: it has its events.
+		b.eventsOf.host,
+		listener,
+		ctx,
+		func(s *subscription) { taps.subscribe(member, s) },
+		func(s *subscription) {
+			if b.eventsOf != nil && b.eventsOf.taps != nil {
+				b.eventsOf.taps.unsubscribe(member, s)
+			}
+		},
+	)
+}
+
+// forwardEvents feeds node (an object's member re-exposing event member member) what this reference receives, until
+// unforwardEvents; nothing for a released reference.
+func (b *binding) forwardEvents(member string, node *eventNode) {
+	if b.state.kind != bindingReleased {
+		b.eventTaps().forward(member, node)
+	}
+}
+
+// unforwardEvents stops feeding node.
+func (b *binding) unforwardEvents(member string, node *eventNode) {
+	if b.eventsOf != nil && b.eventsOf.taps != nil {
+		b.eventsOf.taps.unforward(member, node)
+	}
+}
+
+// eventTaps are its event taps, made by the first use at its version, tapped on the instance it points at.
+func (b *binding) eventTaps() *referenceEventTaps {
+	events := b.eventsOf
+	if events.taps == nil {
+		events.taps = newReferenceEventTaps(b.consumer.Version, events.at)
+	}
+	return events.taps
+}
+
 // retarget runs inside a batch when following: its members and keys follow what its object shows now
 // (`target.followed`): the live instance's members (moved there, one frame each), or their last values (one `failed`
 // call for a failure). The first time it points at nothing, every member of its version gets its last value, read or not.
@@ -490,6 +591,9 @@ func (b *binding) retarget() {
 	goal := b.state.target
 	version := b.consumer.Version
 	current := goal.attachable()
+	if b.eventsOf != nil {
+		b.retargetEvents(b.eventsOf, current)
+	}
 	if current != nil {
 		b.attached = current
 	} else if b.attached != nil {
@@ -536,6 +640,13 @@ func (b *binding) removed(r removal) {
 	}, chordctx.Background())
 	// Its last values taken: it keeps no node of that instance (GC).
 	b.attached = nil
+	// Unbound: no events until it binds again (then from that binding's counter value, even to the same instance).
+	if events := b.eventsOf; events != nil {
+		events.at = nil
+		if events.taps != nil {
+			events.taps.retarget(nil)
+		}
+	}
 	b.state = bindingState{kind: bindingUnbound, batch: batch, dependent: dependent}
 	r.host.rewait(b, b.consumer, r.params, r.cause, r.ctx)
 }
@@ -1020,6 +1131,15 @@ func (b *binding) end(err *data.ChordError) {
 	b.sources = keyedMap[*referenceSource]{}
 	b.heldKeys = nil
 	b.attached = nil
+	// Its subscriptions end and its event members untap (taken out first: a stopping subscription finds none).
+	var eventTaps *referenceEventTaps
+	if b.eventsOf != nil {
+		eventTaps = b.eventsOf.taps
+	}
+	b.eventsOf = nil
+	if eventTaps != nil {
+		eventTaps.end()
+	}
 	if previous.kind != bindingReleased && (len(sources) > 0 || keys != nil) {
 		end := func() {
 			for _, source := range sources {

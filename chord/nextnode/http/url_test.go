@@ -26,7 +26,11 @@ func TestTheWireURLIsWhatTheURLParserMakesOfTheHostAndTarget(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer file.Close()
+	t.Cleanup(func() {
+		if err := file.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	scanner := bufio.NewScanner(file)
 	scanner.Buffer(make([]byte, 1<<20), 1<<20)
 	rows, diffs := 0, 0
@@ -73,7 +77,11 @@ func TestTheHostIsWhatTheURLParserMakesOfItAsUnicode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer file.Close()
+	t.Cleanup(func() {
+		if err := file.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	scanner := bufio.NewScanner(file)
 	scanner.Buffer(make([]byte, 1<<20), 1<<20)
 	rows, diffs := 0, 0

@@ -104,7 +104,7 @@ type ChannelOptions struct {
 	Codec Codec
 	// Incarnation is this host's incarnation, sent in `hello`.
 	Incarnation string
-	// Calls is how many concurrent calls this side accepts, sent in `hello`.
+	// Calls is how many concurrent calls of one origin this side accepts, sent in `hello`; 0: no window (a trusted link).
 	Calls int
 	// Trusted skips the message schema check (framing, the codec's decode and the owners' checks still run).
 	Trusted bool
@@ -211,7 +211,8 @@ func (c *Channel) Peer() string {
 	return ""
 }
 
-// PeerCalls is how many concurrent calls the peer accepts, from its `hello`; 0 before it arrived.
+// PeerCalls is how many concurrent calls of one origin the peer accepts, from its `hello`: 0 when it announced no window
+// (read once the channel is open).
 func (c *Channel) PeerCalls() int {
 	c.mu.Lock()
 	defer c.mu.Unlock()

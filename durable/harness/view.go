@@ -120,7 +120,7 @@ func (docs *ViewDocs) UnmarshalJSON(data []byte) error {
 	}
 	if jsstring.HasSurrogateEscape(data) {
 		// Chord's object decoder reads the escape of a lone surrogate as U+FFFD; the text is read again as JSON.parse reads it.
-		value, err := chordjson.DecodeUnquoting(data, func(raw []byte, text *string) error { return jsstring.UnmarshalKeepingSurrogates(raw, text) })
+		value, err := chordjson.DecodeUnquoting(data, jsstring.UnmarshalKeepingSurrogates)
 		if err != nil {
 			return err
 		}

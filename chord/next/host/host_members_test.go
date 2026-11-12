@@ -84,7 +84,7 @@ func membersRemote(t *testing.T, name string, variants ...contracts.VariantEntry
 }
 
 func membersCheck(contract *contracts.Contract, result factoryResult) (*string, *members, error) {
-	return checkImplementation(contract, result)
+	return checkImplementation(contract, result, nil)
 }
 
 func wantMembersError(t *testing.T, err error, want string) {

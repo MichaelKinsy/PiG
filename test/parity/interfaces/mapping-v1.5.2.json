@@ -104765,8 +104765,8 @@
       ],
       "evidence": [
         "test:chord/next/contracts/derived_runtime_test.go#TestDerivedShapes",
-        "test:chord/next/contracts/params_test.go#TestParamsPolicy",
-        "test:chord/next/contracts/schema_test.go#TestSchemaBytes"
+        "test:chord/next/contracts/events_test.go#TestDeclareEventMembers",
+        "test:chord/next/contracts/events_test.go#TestEvolveEventEdits"
       ]
     },
     {
@@ -106392,9 +106392,9 @@
         "call:chord/next/link/part.go#OpenPart"
       ],
       "evidence": [
+        "test:chord/next/host/remote_consumer_events_test.go#TestConsumerEvents",
         "test:chord/next/host/remote_consumer_test.go#TestConsumerLimitsPerPart",
-        "test:chord/next/host/remote_provider_test.go#TestProviderLimitsPerPart",
-        "test:chord/nextnode/compression_test.go#TestNodeCompression"
+        "test:chord/next/host/remote_provider_test.go#TestProviderLimitsPerPart"
       ]
     },
     {
@@ -106414,9 +106414,9 @@
         "call:chord/next/link/part.go#OriginPart"
       ],
       "evidence": [
+        "test:chord/next/host/remote_consumer_events_test.go#TestConsumerEvents",
         "test:chord/next/host/remote_consumer_test.go#TestConsumerLimitsPerPart",
-        "test:chord/next/host/remote_provider_test.go#TestProviderLimitsPerPart",
-        "test:chord/nextnode/compression_test.go#TestNodeCompression"
+        "test:chord/next/host/remote_provider_test.go#TestProviderLimitsPerPart"
       ]
     },
     {
@@ -106436,9 +106436,9 @@
         "call:chord/next/link/part.go#OriginPart"
       ],
       "evidence": [
+        "test:chord/next/host/remote_consumer_events_test.go#TestConsumerEvents",
         "test:chord/next/host/remote_consumer_test.go#TestConsumerLimitsPerPart",
-        "test:chord/next/host/remote_provider_test.go#TestProviderLimitsPerPart",
-        "test:chord/nextnode/compression_test.go#TestNodeCompression"
+        "test:chord/next/host/remote_provider_test.go#TestProviderLimitsPerPart"
       ]
     },
     {
@@ -107210,8 +107210,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_activity_test.go#TestHostActivityFeedsDerivesWhichRecomputeInThePublishingBatch",
-        "test:chord/next/host/host_adapted_test.go#TestAnInstancesMappingDetachesOnlyWhatItMadeKeepsAnUnchangedMemberTheInstancesOwnDeriveWhenTheLastOlderReferenceLeaves",
-        "test:chord/next/host/host_adapted_test.go#TestAnOlderConsumerOfAProvidersAcceptedVersionReadsKeyedMembersMappedPerKeyGetWatchAndAFactorysAtKey"
+        "test:chord/next/host/host_adapted_events_test.go#TestAdaptedEventsBindWithARemovedEventMemberAndReceiveNoneOfItTheUnchangedOnesAsTheyAre",
+        "test:chord/next/host/host_adapted_test.go#TestAnInstancesMappingDetachesOnlyWhatItMadeKeepsAnUnchangedMemberTheInstancesOwnDeriveWhenTheLastOlderReferenceLeaves"
       ]
     },
     {
@@ -107232,8 +107232,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_activity_test.go#TestHostActivityFeedsDerivesWhichRecomputeInThePublishingBatch",
-        "test:chord/next/host/host_adapted_test.go#TestAnInstancesMappingDetachesOnlyWhatItMadeKeepsAnUnchangedMemberTheInstancesOwnDeriveWhenTheLastOlderReferenceLeaves",
-        "test:chord/next/host/host_adapted_test.go#TestAnOlderConsumerOfAProvidersAcceptedVersionReadsKeyedMembersMappedPerKeyGetWatchAndAFactorysAtKey"
+        "test:chord/next/host/host_adapted_events_test.go#TestAdaptedEventsBindWithARemovedEventMemberAndReceiveNoneOfItTheUnchangedOnesAsTheyAre",
+        "test:chord/next/host/host_adapted_test.go#TestAnInstancesMappingDetachesOnlyWhatItMadeKeepsAnUnchangedMemberTheInstancesOwnDeriveWhenTheLastOlderReferenceLeaves"
       ]
     },
     {
@@ -108638,9 +108638,8 @@
       "id": "pkg:chord/.#formatTime::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:d722554fc8dc2d98f7686bb0c6bc325734287ef82b54fab924fb9912e8ec8c21",
-      "rationale": "Pi packages/chord/src/surfaces/format.ts (Pi 1.5.1) formatTime(at, options?) is `Intl.DateTimeFormat` with the current language's locale (the platform's default outside a render), `{timeStyle: \"short\"}` by default, of `new Date(at)`. Go FormatTime(lang *Language, at time.Time, options *TimeOptions) (string, error): the language is the first parameter (D450); `Date | number | string` is a time.Time (D465); the options are the closed TimeOptions over tables generated from the pinned Node's Intl (D464); the zone is the process's, as a Date's is. TestTimesMatchNode diffs every output against a live Node and TestFormatTimeShowsTheInstantInTheProcessZone pins the zone; mutating the process zone to UTC or the default style to medium fails the tests. The public library API has no PiG call site: its callers are the tests. The Go function is the port (surfaces_format.go, intl_time.go) and carries the language first (D450), one parameter more than Pi's two, which no shape rule of the closure engine matches to Pi's signature; the row is designed out for that signature alone and the port is proven by its evidence tests (portmapcheck derives the format.ts row from them).",
+      "rationale": "Pi packages/chord/src/surfaces/format.ts (Pi 1.5.1) formatTime(at, options?) is `Intl.DateTimeFormat` with the current language's locale (the platform's default outside a render), `{timeStyle: \"short\"}` by default, of `new Date(at)`. Go FormatTime(lang *Language, at time.Time, options *TimeOptions) (string, error): the language is the first parameter (D450); `Date | number | string` is a time.Time (D465); the options are the closed TimeOptions over tables generated from the pinned Node's Intl (D464); the zone is the process's, as a Date's is. TestTimesMatchNode diffs every output against a live Node and TestFormatTimeShowsTheInstantInTheProcessZone pins the zone; mutating the process zone to UTC or the default style to medium fails the tests. The public library API has no PiG call site: its callers are the tests. The Go function is the port (intl_time.go) and carries the language first (D450), one parameter more than Pi's two, which no shape rule of the closure engine matches to Pi's signature; the row is designed out for that signature alone and the port is proven by its evidence tests (portmapcheck derives the format.ts row from them).",
       "pigTargets": [
-        "chord/next/surfaces/surfaces_format.go#FormatTime",
         "chord/next/surfaces/intl_time.go#FormatTime"
       ],
       "evidence": [
@@ -109138,8 +109137,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_activity_test.go#TestHostActivityFeedsDerivesWhichRecomputeInThePublishingBatch",
-        "test:chord/next/host/host_adapted_test.go#TestAnOlderConsumerOfAProvidersAcceptedVersionReadsKeyedMembersMappedPerKeyGetWatchAndAFactorysAtKey",
-        "test:chord/next/host/host_adapted_test.go#TestReloadAVersionRefusalKeepsTheWaitingReferencesLastValuesKeepsAnOlderWatchOpenWhileItsVersionIsRefusedAndHealsItWhenItIsAcceptedAgain"
+        "test:chord/next/host/host_adapted_events_test.go#TestAdaptedEventsBindWithARemovedEventMemberAndReceiveNoneOfItTheUnchangedOnesAsTheyAre",
+        "test:chord/next/host/host_adapted_test.go#TestAnOlderConsumerOfAProvidersAcceptedVersionReadsKeyedMembersMappedPerKeyGetWatchAndAFactorysAtKey"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -109161,8 +109160,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_activity_test.go#TestHostActivityFeedsDerivesWhichRecomputeInThePublishingBatch",
-        "test:chord/next/host/host_adapted_test.go#TestAnOlderConsumerOfAProvidersAcceptedVersionReadsKeyedMembersMappedPerKeyGetWatchAndAFactorysAtKey",
-        "test:chord/next/host/host_adapted_test.go#TestReloadAVersionRefusalKeepsTheWaitingReferencesLastValuesKeepsAnOlderWatchOpenWhileItsVersionIsRefusedAndHealsItWhenItIsAcceptedAgain"
+        "test:chord/next/host/host_adapted_events_test.go#TestAdaptedEventsBindWithARemovedEventMemberAndReceiveNoneOfItTheUnchangedOnesAsTheyAre",
+        "test:chord/next/host/host_adapted_test.go#TestAnOlderConsumerOfAProvidersAcceptedVersionReadsKeyedMembersMappedPerKeyGetWatchAndAFactorysAtKey"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -112048,7 +112047,7 @@
       "evidence": [
         "test:chord/next/contracts/declare_test.go#TestDeclarationChecks",
         "test:chord/next/contracts/declare_test.go#TestReservedMemberNames",
-        "test:chord/next/host/host_attempt_test.go#TestAttemptCallsCheckArgumentsWithL1AndPassArgumentsAndResultsByReference"
+        "test:chord/next/contracts/events_test.go#TestDeclareEventMembers"
       ]
     },
     {
@@ -115284,7 +115283,7 @@
       ],
       "evidence": [
         "test:chord/next/host/host_activity_test.go#TestHostActivityCountsAHoldPlacedHereFromItsArrivalBoundOrNot",
-        "test:chord/next/host/host_adapted_test.go#TestAdaptedMembersLifetimeDropsAnOlderVersionsAdaptedMembersWhenItsLastConsumerLeavesWhileTheObjectLivesOn",
+        "test:chord/next/host/host_adapted_events_test.go#TestAdaptedEventsBindWithARemovedEventMemberAndReceiveNoneOfItTheUnchangedOnesAsTheyAre",
         "test:chord/next/host/host_ref_state_test.go#TestRefStateAWatchTakenAfterReleaseHasEnded"
       ]
     },
@@ -115511,8 +115510,8 @@
       ],
       "evidence": [
         "test:chord/watch_upstream_test.go#TestNativeWatchableWatchHoldsTheCurrentValueThenOneFramePerNewValueAndEndsWithItsContext",
-        "test:chord/next/host/host_delegate_test.go#TestDelegateHoldsKeepTheirOrderAcrossTheDelegatesRestartAndTheServersTypesNeverMove",
-        "test:chord/next/host/host_dependencies_test.go#TestTheDependencyCheckSettlesAWaitingRingAcrossHostsAfterOneRound"
+        "test:chord/next/host/host_adapted_events_test.go#TestAdaptedEventsBindWithARemovedEventMemberAndReceiveNoneOfItTheUnchangedOnesAsTheyAre",
+        "test:chord/next/host/host_delegate_test.go#TestDelegateHoldsKeepTheirOrderAcrossTheDelegatesRestartAndTheServersTypesNeverMove"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -115576,8 +115575,8 @@
       ],
       "evidence": [
         "test:chord/watch_upstream_test.go#TestNativeWatchableWatchHoldsTheCurrentValueThenOneFramePerNewValueAndEndsWithItsContext",
-        "test:chord/next/host/host_example_08_test.go#TestExample08Remote",
-        "test:chord/next/host/host_example_11_test.go#TestExample11LingerAndRetry"
+        "test:chord/next/host/host_adapted_events_test.go#TestAdaptedEventsBindWithARemovedEventMemberAndReceiveNoneOfItTheUnchangedOnesAsTheyAre",
+        "test:chord/next/host/host_events_test.go#TestEventsCostAContractWithoutEventMembersCostsNoEventBookkeepingPerBindingHereOrOverALink"
       ]
     },
     {
@@ -116308,8 +116307,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_activity_test.go#TestHostActivityFeedsDerivesWhichRecomputeInThePublishingBatch",
-        "test:chord/next/host/host_adapted_test.go#TestAnInstancesMappingDetachesOnlyWhatItMadeKeepsAnUnchangedMemberTheInstancesOwnDeriveWhenTheLastOlderReferenceLeaves",
-        "test:chord/next/host/host_adapted_test.go#TestAnOlderConsumerOfAProvidersAcceptedVersionReadsKeyedMembersMappedPerKeyGetWatchAndAFactorysAtKey"
+        "test:chord/next/host/host_adapted_events_test.go#TestAdaptedEventsBindWithARemovedEventMemberAndReceiveNoneOfItTheUnchangedOnesAsTheyAre",
+        "test:chord/next/host/host_adapted_test.go#TestAnInstancesMappingDetachesOnlyWhatItMadeKeepsAnUnchangedMemberTheInstancesOwnDeriveWhenTheLastOlderReferenceLeaves"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -116771,7 +116770,7 @@
       "evidence": [
         "test:chord/next/host/host_attempt_test.go#TestAttemptEndingRejectsTheirCallersAtOnceTheHandlerRunsOnWithItsContextAbortedAndCannotCommit",
         "test:chord/next/host/host_batch_test.go#TestDeliveryReportsADeliveryThatThrowsAndStillDeliversTheLaterFramesOfTheCommit",
-        "test:chord/next/host/host_example_02_test.go#TestExample02Documents"
+        "test:chord/next/host/host_events_test.go#TestEventFlushLetsAListenerStopReleaseSubscribeStartATransactionAndEmitACallDueWhenItStoppedIsSkipped"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -116794,7 +116793,7 @@
       "evidence": [
         "test:chord/next/host/host_attempt_test.go#TestAttemptEndingRejectsTheirCallersAtOnceTheHandlerRunsOnWithItsContextAbortedAndCannotCommit",
         "test:chord/next/host/host_batch_test.go#TestDeliveryReportsADeliveryThatThrowsAndStillDeliversTheLaterFramesOfTheCommit",
-        "test:chord/next/host/host_example_02_test.go#TestExample02Documents"
+        "test:chord/next/host/host_events_test.go#TestEventFlushLetsAListenerStopReleaseSubscribeStartATransactionAndEmitACallDueWhenItStoppedIsSkipped"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -118476,8 +118475,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_activity_test.go#TestHostActivityFeedsDerivesWhichRecomputeInThePublishingBatch",
-        "test:chord/next/host/host_adapted_test.go#TestAnInstancesMappingDetachesOnlyWhatItMadeKeepsAnUnchangedMemberTheInstancesOwnDeriveWhenTheLastOlderReferenceLeaves",
-        "test:chord/next/host/host_adapted_test.go#TestAnOlderConsumerOfAProvidersAcceptedVersionReadsKeyedMembersMappedPerKeyGetWatchAndAFactorysAtKey"
+        "test:chord/next/host/host_adapted_events_test.go#TestAdaptedEventsBindWithARemovedEventMemberAndReceiveNoneOfItTheUnchangedOnesAsTheyAre",
+        "test:chord/next/host/host_adapted_test.go#TestAnInstancesMappingDetachesOnlyWhatItMadeKeepsAnUnchangedMemberTheInstancesOwnDeriveWhenTheLastOlderReferenceLeaves"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -119067,7 +119066,7 @@
       "evidence": [
         "test:chord/next/host/host_attempt_test.go#TestAttemptEndingRejectsTheirCallersAtOnceTheHandlerRunsOnWithItsContextAbortedAndCannotCommit",
         "test:chord/next/host/host_batch_test.go#TestDeliveryReportsADeliveryThatThrowsAndStillDeliversTheLaterFramesOfTheCommit",
-        "test:chord/next/host/host_example_02_test.go#TestExample02Documents"
+        "test:chord/next/host/host_events_test.go#TestEventFlushLetsAListenerStopReleaseSubscribeStartATransactionAndEmitACallDueWhenItStoppedIsSkipped"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -119090,7 +119089,7 @@
       "evidence": [
         "test:chord/next/host/host_attempt_test.go#TestAttemptEndingRejectsTheirCallersAtOnceTheHandlerRunsOnWithItsContextAbortedAndCannotCommit",
         "test:chord/next/host/host_batch_test.go#TestDeliveryReportsADeliveryThatThrowsAndStillDeliversTheLaterFramesOfTheCommit",
-        "test:chord/next/host/host_example_02_test.go#TestExample02Documents"
+        "test:chord/next/host/host_events_test.go#TestEventFlushLetsAListenerStopReleaseSubscribeStartATransactionAndEmitACallDueWhenItStoppedIsSkipped"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -121778,8 +121777,8 @@
       ],
       "evidence": [
         "test:chord/watch_upstream_test.go#TestNativeWatchableWatchHoldsTheCurrentValueThenOneFramePerNewValueAndEndsWithItsContext",
-        "test:chord/next/host/host_delegate_test.go#TestDelegateHoldsKeepTheirOrderAcrossTheDelegatesRestartAndTheServersTypesNeverMove",
-        "test:chord/next/host/host_dependencies_test.go#TestTheDependencyCheckSettlesAWaitingRingAcrossHostsAfterOneRound"
+        "test:chord/next/host/host_adapted_events_test.go#TestAdaptedEventsBindWithARemovedEventMemberAndReceiveNoneOfItTheUnchangedOnesAsTheyAre",
+        "test:chord/next/host/host_delegate_test.go#TestDelegateHoldsKeepTheirOrderAcrossTheDelegatesRestartAndTheServersTypesNeverMove"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -121845,8 +121844,8 @@
       ],
       "evidence": [
         "test:chord/watch_upstream_test.go#TestNativeWatchableWatchHoldsTheCurrentValueThenOneFramePerNewValueAndEndsWithItsContext",
-        "test:chord/next/host/host_example_08_test.go#TestExample08Remote",
-        "test:chord/next/host/host_example_11_test.go#TestExample11LingerAndRetry"
+        "test:chord/next/host/host_adapted_events_test.go#TestAdaptedEventsBindWithARemovedEventMemberAndReceiveNoneOfItTheUnchangedOnesAsTheyAre",
+        "test:chord/next/host/host_events_test.go#TestEventsCostAContractWithoutEventMembersCostsNoEventBookkeepingPerBindingHereOrOverALink"
       ]
     },
     {
@@ -123651,8 +123650,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_17_test.go#TestExample17LimitsAndCompression",
-        "test:chord/next/host/remote_consumer_test.go#TestConsumerLimitsPerPart",
-        "test:chord/next/host/remote_host_link_test.go#TestHostLinkPartsCompressionAndLimits"
+        "test:chord/next/host/remote_consumer_events_test.go#TestConsumerEvents",
+        "test:chord/next/host/remote_consumer_test.go#TestConsumerLimitsPerPart"
       ]
     },
     {
@@ -137700,7 +137699,7 @@
       "evidence": [
         "test:chord/next/tui/tui_scope_release_test.go#TestAHoldersOwnReleaseBeforeTheScopesWatchStartsEndsQuietly",
         "test:chord/next/tui/tui_scope_test.go#TestOptimisticShowsTheValueWhileItsCallIsPendingThenTheReadersCallingChangedOnEachChange",
-        "test:chord/next/tui/tui_scope_test.go#TestScopeHoldsFollowsAndCallsChangedOnEveryChangeReleasingEverythingAtDispose"
+        "test:chord/next/tui/tui_scope_test.go#TestScopeEventSubscriptionsCallTheListenerForEachEventNeverChangedByThemselvesUntilDispose"
       ]
     },
     {
@@ -137788,7 +137787,7 @@
       "evidence": [
         "test:chord/next/tui/tui_scope_release_test.go#TestAHoldersOwnReleaseBeforeTheScopesWatchStartsEndsQuietly",
         "test:chord/next/tui/tui_scope_test.go#TestOptimisticShowsTheValueWhileItsCallIsPendingThenTheReadersCallingChangedOnEachChange",
-        "test:chord/next/tui/tui_scope_test.go#TestScopeHoldsFollowsAndCallsChangedOnEveryChangeReleasingEverythingAtDispose"
+        "test:chord/next/tui/tui_scope_test.go#TestScopeEventSubscriptionsCallTheListenerForEachEventNeverChangedByThemselvesUntilDispose"
       ]
     },
     {
@@ -137810,7 +137809,7 @@
       "evidence": [
         "test:chord/next/tui/tui_scope_release_test.go#TestAHoldersOwnReleaseBeforeTheScopesWatchStartsEndsQuietly",
         "test:chord/next/tui/tui_scope_test.go#TestOptimisticShowsTheValueWhileItsCallIsPendingThenTheReadersCallingChangedOnEachChange",
-        "test:chord/next/tui/tui_scope_test.go#TestScopeHoldsFollowsAndCallsChangedOnEveryChangeReleasingEverythingAtDispose"
+        "test:chord/next/tui/tui_scope_test.go#TestScopeEventSubscriptionsCallTheListenerForEachEventNeverChangedByThemselvesUntilDispose"
       ]
     },
     {
@@ -138495,8 +138494,8 @@
       ],
       "evidence": [
         "test:chord/watch_upstream_test.go#TestNativeWatchableWatchHoldsTheCurrentValueThenOneFramePerNewValueAndEndsWithItsContext",
-        "test:chord/next/host/host_delegate_test.go#TestDelegateHoldsKeepTheirOrderAcrossTheDelegatesRestartAndTheServersTypesNeverMove",
-        "test:chord/next/host/host_dependencies_test.go#TestTheDependencyCheckSettlesAWaitingRingAcrossHostsAfterOneRound"
+        "test:chord/next/host/host_adapted_events_test.go#TestAdaptedEventsBindWithARemovedEventMemberAndReceiveNoneOfItTheUnchangedOnesAsTheyAre",
+        "test:chord/next/host/host_delegate_test.go#TestDelegateHoldsKeepTheirOrderAcrossTheDelegatesRestartAndTheServersTypesNeverMove"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -138518,8 +138517,8 @@
       ],
       "evidence": [
         "test:chord/watch_upstream_test.go#TestNativeWatchableWatchHoldsTheCurrentValueThenOneFramePerNewValueAndEndsWithItsContext",
-        "test:chord/next/host/host_example_08_test.go#TestExample08Remote",
-        "test:chord/next/host/host_example_11_test.go#TestExample11LingerAndRetry"
+        "test:chord/next/host/host_adapted_events_test.go#TestAdaptedEventsBindWithARemovedEventMemberAndReceiveNoneOfItTheUnchangedOnesAsTheyAre",
+        "test:chord/next/host/host_events_test.go#TestEventsCostAContractWithoutEventMembersCostsNoEventBookkeepingPerBindingHereOrOverALink"
       ]
     },
     {
@@ -246663,6 +246662,143 @@
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
+      "id": "pkg:durable/.#WatchHandle::property:closed",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:759e6077dbfa773d0ad77cc905c76cf72acb0afc02c540332c9d8ac8f28a4909",
+      "rationale": "Derived by the interface gap detector: WatchHandle::property:closed is Go chord/watch.go#WatchHandle.Closed (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/watch.go#WatchHandle.Closed"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/host/host_routines.go#onRoutine.open"
+      ],
+      "evidence": [
+        "test:chord/watch_upstream_test.go#TestWatchableWatchHoldsTheCurrentValueThenOneFramePerChangeAndEndsWithItsContext",
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotWatchKeyIsUndefinedWhenAbsentItFollowsTheAddressThroughARetirementAndARecreation",
+        "test:chord/next/host/host_example_04_test.go#TestExample04Watches"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/.#WatchHandle::property:start",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:b9ae6502a7ee1fc7c7371b26c88fcf137bf41ad1604073c8865d5e79e849bcde",
+      "rationale": "Derived by the interface gap detector: WatchHandle::property:start is Go chord/watch.go#WatchHandle.Start (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/watch.go#WatchHandle.Start"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/host/host_routines.go#onRoutine.open"
+      ],
+      "evidence": [
+        "test:chord/watch_upstream_test.go#TestWatchableWatchHoldsTheCurrentValueThenOneFramePerChangeAndEndsWithItsContext",
+        "test:durable/session/session_deferred_commits_upstream_test.go#TestPublicationsOfDeferredCommits",
+        "test:chord/next/documents/transaction_test.go#TestTablesInATransactionCommitRowsAndDocumentsInOneStepTheDocumentsAdoptInsideItOneSeq"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/.#WatchHandle::property:start::call:0",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:a2ee8a9e147bbb5e36bf25b44659c0901b57ce445015af2787ffb7d9b8d4139d",
+      "rationale": "Derived by the interface gap detector: WatchHandle::property:start::call:0 is Go chord/watch.go#WatchHandle.Start (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/watch.go#WatchHandle.Start"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/host/host_routines.go#onRoutine.open"
+      ],
+      "evidence": [
+        "test:chord/watch_upstream_test.go#TestWatchableWatchHoldsTheCurrentValueThenOneFramePerChangeAndEndsWithItsContext",
+        "test:durable/session/session_deferred_commits_upstream_test.go#TestPublicationsOfDeferredCommits",
+        "test:chord/next/documents/transaction_test.go#TestTablesInATransactionCommitRowsAndDocumentsInOneStepTheDocumentsAdoptInsideItOneSeq"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/.#WatchHandle::property:stop",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:6e9e3051adf8af7ba6cab41b1f27d52592808eff76c95ec34302f56bdcd56a01",
+      "rationale": "Derived by the interface gap detector: WatchHandle::property:stop is Go chord/watch.go#WatchHandle.Stop (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/watch.go#WatchHandle.Stop"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/host/host_routines.go#onRoutine.open"
+      ],
+      "evidence": [
+        "test:durable/session/session_deferred_commits_upstream_test.go#TestPublicationsOfDeferredCommits",
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotAStoppedWatchUnpinsItsKeyItsSourceIsCollected",
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotAnUnpinnedKeyIdleForTheRetentionLeavesMemoryAPinnedOneStays"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/.#WatchHandle::property:stop::call:0",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:9246c11e21bcd1f6190b0ecdd159930119ffc469e3dd4bc69dbb131f35ae739d",
+      "rationale": "Derived by the interface gap detector: WatchHandle::property:stop::call:0 is Go chord/watch.go#WatchHandle.Stop (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/watch.go#WatchHandle.Stop"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/host/host_routines.go#onRoutine.open"
+      ],
+      "evidence": [
+        "test:durable/session/session_deferred_commits_upstream_test.go#TestPublicationsOfDeferredCommits",
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotAStoppedWatchUnpinsItsKeyItsSourceIsCollected",
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotAnUnpinnedKeyIdleForTheRetentionLeavesMemoryAPinnedOneStays"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/.#WatchHandle::property:value",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:6b6dc5080cb94abee579e0a7dce40a0e29358c6286c4040d4fa8540aced7613e",
+      "rationale": "Derived by the interface gap detector: WatchHandle::property:value is Go chord/watch.go#WatchHandle.Value (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/watch.go#WatchHandle.Value"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/host/host_routines.go#onRoutine.open"
+      ],
+      "evidence": [
+        "test:chord/watch_upstream_test.go#TestWatchableWatchHoldsTheCurrentValueThenOneFramePerChangeAndEndsWithItsContext",
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotALoneSurrogateInAKeyIsUFFFDAtEveryEntryPointInMemoryAndInTheStoreNULIsRefused",
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotWatchKeyIsUndefinedWhenAbsentItFollowsTheAddressThroughARetirementAndARecreation"
+      ]
+    },
+    {
       "id": "pkg:durable/.#Wrap",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:2b8dc4667ff6a7e42858e453fb10ee37eb43e75ee7b9ba68fb544ed7f077911f",
@@ -256822,6 +256958,344 @@
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
+      "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::construct:0",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:4e980ac3c6831051e2b0c912a6e021698bbcf1c65bcab5561b27d35ab3e93964",
+      "rationale": "Derived by the interface gap detector: DurableObjectSqliteDatabase::construct:0 is Go durable/storage/sqlite/cloudflare/cloudflare.go#NewDurableObjectSqliteDatabase (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/sqlite/cloudflare/cloudflare.go#NewDurableObjectSqliteDatabase"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/sqlite/cloudflare/cloudflare.go#NewDurableObjectSqliteDatabase"
+      ],
+      "evidence": [
+        "test:durable/storage/sqlite/cloudflare/cloudflare_test.go#TestDurableObjectSqliteAdapter"
+      ]
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:all",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:8310ba81ed36571606b4985caa5734b3a0ce9372d4708ebe577150aae1fea534",
+      "rationale": "Derived by the interface gap detector: DurableObjectSqliteDatabase::property:all is Go chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.All (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.All"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.All"
+      ],
+      "evidence": [
+        "test:chord/sqlite/cloudflare/adapter_semantics_test.go#TestDurableObjectSqliteDatabaseBindsIntegersExactlyWithinTheSafeRange",
+        "test:chord/sqlite/cloudflare/adapter_semantics_test.go#TestDurableObjectSqliteDatabaseGetAndAllReadTheCursor",
+        "test:chord/sqlite/cloudflare/adapter_semantics_test.go#TestDurableObjectSqliteDatabaseQueuesEveryOperationBehindATransaction"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:all::call:0",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:d079d5309b5c7c8b498c93f46fbd8693c8bdc688a4d12080adb1774d4b33d052",
+      "rationale": "Derived by the interface gap detector: DurableObjectSqliteDatabase::property:all::call:0 is Go chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.All (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.All"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.All"
+      ],
+      "evidence": [
+        "test:chord/sqlite/cloudflare/adapter_semantics_test.go#TestDurableObjectSqliteDatabaseBindsIntegersExactlyWithinTheSafeRange",
+        "test:chord/sqlite/cloudflare/adapter_semantics_test.go#TestDurableObjectSqliteDatabaseGetAndAllReadTheCursor",
+        "test:chord/sqlite/cloudflare/adapter_semantics_test.go#TestDurableObjectSqliteDatabaseQueuesEveryOperationBehindATransaction"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:close",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:224a331c8b3e5b8db8f0ed62fadfe68cc6c41e65f8bf7ffb1374a3d41303eed7",
+      "rationale": "Derived by the interface gap detector: DurableObjectSqliteDatabase::property:close is Go chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.Close (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.Close"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.Close"
+      ],
+      "evidence": [
+        "test:chord/sqlite/cloudflare/adapter_semantics_test.go#TestDurableObjectSqliteDatabaseQueuesEveryOperationBehindATransaction",
+        "test:chord/sqlite/cloudflare/cloudflare_test.go#TestDurableObjectSqliteDriver",
+        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestDurableObjectSqliteTelemetryStoreConformance"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:close::call:0",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:4016e58fe8d19c1878838481adfefa1484c3b03881840f594c0670e3a6202013",
+      "rationale": "Derived by the interface gap detector: DurableObjectSqliteDatabase::property:close::call:0 is Go chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.Close (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.Close"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.Close"
+      ],
+      "evidence": [
+        "test:chord/sqlite/cloudflare/adapter_semantics_test.go#TestDurableObjectSqliteDatabaseQueuesEveryOperationBehindATransaction",
+        "test:chord/sqlite/cloudflare/cloudflare_test.go#TestDurableObjectSqliteDriver",
+        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestDurableObjectSqliteTelemetryStoreConformance"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:exec",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:aa1db8aee9048fa058d54c104babd5980aa1542d7f3ece8d28e54fd19a68b3b1",
+      "rationale": "Derived by the interface gap detector: DurableObjectSqliteDatabase::property:exec is Go chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.Exec (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.Exec"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.Exec"
+      ],
+      "evidence": [
+        "test:chord/sqlite/cloudflare/adapter_semantics_test.go#TestDurableObjectSqliteDatabaseBindsIntegersExactlyWithinTheSafeRange",
+        "test:chord/sqlite/cloudflare/adapter_semantics_test.go#TestDurableObjectSqliteDatabaseGetAndAllReadTheCursor",
+        "test:chord/sqlite/cloudflare/adapter_semantics_test.go#TestDurableObjectSqliteDatabaseQueuesEveryOperationBehindATransaction"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:exec::call:0",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:c49a95920258b9a6128ad389d463610556c18bb37f90c4a58be13da7ce5d77a8",
+      "rationale": "Derived by the interface gap detector: DurableObjectSqliteDatabase::property:exec::call:0 is Go chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.Exec (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.Exec"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.Exec"
+      ],
+      "evidence": [
+        "test:chord/sqlite/cloudflare/adapter_semantics_test.go#TestDurableObjectSqliteDatabaseBindsIntegersExactlyWithinTheSafeRange",
+        "test:chord/sqlite/cloudflare/adapter_semantics_test.go#TestDurableObjectSqliteDatabaseGetAndAllReadTheCursor",
+        "test:chord/sqlite/cloudflare/adapter_semantics_test.go#TestDurableObjectSqliteDatabaseQueuesEveryOperationBehindATransaction"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:get",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:818a9b558f62a03bf346fcef7c0d4a5cce8906c6cad2a70fe350e5d815f4b791",
+      "rationale": "Derived by the interface gap detector: DurableObjectSqliteDatabase::property:get is Go chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.Get (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.Get"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.Get"
+      ],
+      "evidence": [
+        "test:chord/sqlite/cloudflare/adapter_semantics_test.go#TestDurableObjectSqliteDatabaseBindsIntegersExactlyWithinTheSafeRange",
+        "test:chord/sqlite/cloudflare/adapter_semantics_test.go#TestDurableObjectSqliteDatabaseGetAndAllReadTheCursor",
+        "test:chord/sqlite/cloudflare/adapter_semantics_test.go#TestDurableObjectSqliteDatabaseQueuesEveryOperationBehindATransaction"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:get::call:0",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:4050b02493ed20077f98f2744e9c8934045f94dcc95652bf8405c87ebfa3b0a3",
+      "rationale": "Derived by the interface gap detector: DurableObjectSqliteDatabase::property:get::call:0 is Go chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.Get (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.Get"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.Get"
+      ],
+      "evidence": [
+        "test:chord/sqlite/cloudflare/adapter_semantics_test.go#TestDurableObjectSqliteDatabaseBindsIntegersExactlyWithinTheSafeRange",
+        "test:chord/sqlite/cloudflare/adapter_semantics_test.go#TestDurableObjectSqliteDatabaseGetAndAllReadTheCursor",
+        "test:chord/sqlite/cloudflare/adapter_semantics_test.go#TestDurableObjectSqliteDatabaseQueuesEveryOperationBehindATransaction"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:run",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:893cced2e3697649ea5416356a5dafe017c883452fe6c9803fc0bcca14e1fe11",
+      "rationale": "Derived by the interface gap detector: DurableObjectSqliteDatabase::property:run is Go chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.Run (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.Run"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.Run"
+      ],
+      "evidence": [
+        "test:chord/sqlite/cloudflare/adapter_semantics_test.go#TestDurableObjectSqliteDatabaseBindsIntegersExactlyWithinTheSafeRange",
+        "test:chord/sqlite/cloudflare/adapter_semantics_test.go#TestDurableObjectSqliteDatabaseQueuesEveryOperationBehindATransaction",
+        "test:chord/sqlite/cloudflare/cloudflare_test.go#TestDurableObjectSqliteDriver"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:run::call:0",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:f388ea66402c326e6c6457d7858db84826078b4859713fe41aae988204719a23",
+      "rationale": "Derived by the interface gap detector: DurableObjectSqliteDatabase::property:run::call:0 is Go chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.Run (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.Run"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.Run"
+      ],
+      "evidence": [
+        "test:chord/sqlite/cloudflare/adapter_semantics_test.go#TestDurableObjectSqliteDatabaseBindsIntegersExactlyWithinTheSafeRange",
+        "test:chord/sqlite/cloudflare/adapter_semantics_test.go#TestDurableObjectSqliteDatabaseQueuesEveryOperationBehindATransaction",
+        "test:chord/sqlite/cloudflare/cloudflare_test.go#TestDurableObjectSqliteDriver"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:runCounted",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:b54c804b3ec8c925b4321f7262e2cbe6003189b10b7ade3bd95803be9d473841",
+      "rationale": "Derived by the interface gap detector: DurableObjectSqliteDatabase::property:runCounted is Go chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.RunCounted (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.RunCounted"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.RunCounted"
+      ],
+      "evidence": [
+        "reach:chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.RunCounted"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:runCounted::call:0",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:19399b7f6f7d0e9043f076d4d6e0e31ede9fbb7a458d9b4bb3fead741b2f8ab0",
+      "rationale": "Derived by the interface gap detector: DurableObjectSqliteDatabase::property:runCounted::call:0 is Go chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.RunCounted (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.RunCounted"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.RunCounted"
+      ],
+      "evidence": [
+        "reach:chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.RunCounted"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:transaction",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:d77e696751043ee8378ce2335b9345bbb8da61d2865240e316a675986a68605d",
+      "rationale": "Derived by the interface gap detector: DurableObjectSqliteDatabase::property:transaction is Go chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.Transaction (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.Transaction"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.Transaction"
+      ],
+      "evidence": [
+        "test:chord/sqlite/cloudflare/adapter_semantics_test.go#TestDurableObjectSqliteDatabaseQueuesEveryOperationBehindATransaction",
+        "test:chord/sqlite/cloudflare/adapter_semantics_test.go#TestDurableObjectSqliteTransactionHandleRejectsEveryOperationAfterTheCallbackSettles",
+        "test:chord/sqlite/cloudflare/cloudflare_test.go#TestDurableObjectSqliteDriver"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:transaction::call:0",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:4231c2b88c41b1792e01760ec6e3ba0b1ec4eb07ddd0c806fe17ef2849e0adec",
+      "rationale": "Derived by the interface gap detector: DurableObjectSqliteDatabase::property:transaction::call:0 is Go chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.Transaction (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.Transaction"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.Transaction"
+      ],
+      "evidence": [
+        "test:chord/sqlite/cloudflare/adapter_semantics_test.go#TestDurableObjectSqliteDatabaseQueuesEveryOperationBehindATransaction",
+        "test:chord/sqlite/cloudflare/adapter_semantics_test.go#TestDurableObjectSqliteTransactionHandleRejectsEveryOperationAfterTheCallbackSettles",
+        "test:chord/sqlite/cloudflare/cloudflare_test.go#TestDurableObjectSqliteDriver"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
       "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteStorage",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:aa3a2097992e6f0cd88f8d3f4880bed84b50e8f1f081eb32d844c32acce36d5a",
@@ -256910,6 +257384,345 @@
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
+      "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::construct:0",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:7196d2229a2fb928c745527e3f53d54eaca2fd7ab7cd4410ac6708c155d3006a",
+      "rationale": "Derived by the interface gap detector: NodeSqliteDatabase::construct:0 is Go durable/storage/sqlite/node/node.go#NewNodeSqliteDatabase (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/sqlite/node/node.go#NewNodeSqliteDatabase"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/sqlite/node/node.go#NewNodeSqliteDatabase"
+      ],
+      "evidence": [
+        "test:durable/storage/sqlite/node/sqlite_facade_test.go#TestNewNodeSqliteDatabaseAdaptsADatabaseSync",
+        "test:durable/storage/sqlite/node/sqlite_facade_test.go#TestPortableSQLiteFacadeSettlement"
+      ]
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:all",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:8310ba81ed36571606b4985caa5734b3a0ce9372d4708ebe577150aae1fea534",
+      "rationale": "Derived by the interface gap detector: NodeSqliteDatabase::property:all is Go chord/sqlite/node/node.go#nodeSqliteExecutor.All (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/node/node.go#nodeSqliteExecutor.All"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/node/node.go#nodeSqliteExecutor.All"
+      ],
+      "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
+        "test:chord/next/store/import_test.go#TestImportRefusals",
+        "test:chord/sqlite/migrations_test.go#TestSqliteMigrations"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:all::call:0",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:d079d5309b5c7c8b498c93f46fbd8693c8bdc688a4d12080adb1774d4b33d052",
+      "rationale": "Derived by the interface gap detector: NodeSqliteDatabase::property:all::call:0 is Go chord/sqlite/node/node.go#nodeSqliteExecutor.All (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/node/node.go#nodeSqliteExecutor.All"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/node/node.go#nodeSqliteExecutor.All"
+      ],
+      "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
+        "test:chord/next/store/import_test.go#TestImportRefusals",
+        "test:chord/sqlite/migrations_test.go#TestSqliteMigrations"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:close",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:224a331c8b3e5b8db8f0ed62fadfe68cc6c41e65f8bf7ffb1374a3d41303eed7",
+      "rationale": "Derived by the interface gap detector: NodeSqliteDatabase::property:close is Go chord/sqlite/node/node.go#NodeSqliteDatabase.Close (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/node/node.go#NodeSqliteDatabase.Close"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/node/node.go#NodeSqliteDatabase.Close"
+      ],
+      "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestNewNodeSqliteDatabaseTakesPisModeAndDefaultsToReadWrite",
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:close::call:0",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:4016e58fe8d19c1878838481adfefa1484c3b03881840f594c0670e3a6202013",
+      "rationale": "Derived by the interface gap detector: NodeSqliteDatabase::property:close::call:0 is Go chord/sqlite/node/node.go#NodeSqliteDatabase.Close (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/node/node.go#NodeSqliteDatabase.Close"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/node/node.go#NodeSqliteDatabase.Close"
+      ],
+      "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestNewNodeSqliteDatabaseTakesPisModeAndDefaultsToReadWrite",
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:exec",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:aa1db8aee9048fa058d54c104babd5980aa1542d7f3ece8d28e54fd19a68b3b1",
+      "rationale": "Derived by the interface gap detector: NodeSqliteDatabase::property:exec is Go chord/sqlite/node/node.go#nodeSqliteExecutor.Exec (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/node/node.go#nodeSqliteExecutor.Exec"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/node/node.go#nodeSqliteExecutor.Exec"
+      ],
+      "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestNewNodeSqliteDatabaseTakesPisModeAndDefaultsToReadWrite",
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:exec::call:0",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:c49a95920258b9a6128ad389d463610556c18bb37f90c4a58be13da7ce5d77a8",
+      "rationale": "Derived by the interface gap detector: NodeSqliteDatabase::property:exec::call:0 is Go chord/sqlite/node/node.go#nodeSqliteExecutor.Exec (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/node/node.go#nodeSqliteExecutor.Exec"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/node/node.go#nodeSqliteExecutor.Exec"
+      ],
+      "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestNewNodeSqliteDatabaseTakesPisModeAndDefaultsToReadWrite",
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:get",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:818a9b558f62a03bf346fcef7c0d4a5cce8906c6cad2a70fe350e5d815f4b791",
+      "rationale": "Derived by the interface gap detector: NodeSqliteDatabase::property:get is Go chord/sqlite/node/node.go#nodeSqliteExecutor.Get (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/node/node.go#nodeSqliteExecutor.Get"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/node/node.go#nodeSqliteExecutor.Get"
+      ],
+      "evidence": [
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack",
+        "test:chord/next/store/schema_test.go#TestStoreSchemaOfANewDatabase"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:get::call:0",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:4050b02493ed20077f98f2744e9c8934045f94dcc95652bf8405c87ebfa3b0a3",
+      "rationale": "Derived by the interface gap detector: NodeSqliteDatabase::property:get::call:0 is Go chord/sqlite/node/node.go#nodeSqliteExecutor.Get (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/node/node.go#nodeSqliteExecutor.Get"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/node/node.go#nodeSqliteExecutor.Get"
+      ],
+      "evidence": [
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack",
+        "test:chord/next/store/schema_test.go#TestStoreSchemaOfANewDatabase"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:run",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:893cced2e3697649ea5416356a5dafe017c883452fe6c9803fc0bcca14e1fe11",
+      "rationale": "Derived by the interface gap detector: NodeSqliteDatabase::property:run is Go chord/sqlite/node/node.go#nodeSqliteExecutor.Run (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/node/node.go#nodeSqliteExecutor.Run"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/node/node.go#nodeSqliteExecutor.Run"
+      ],
+      "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestNewNodeSqliteDatabaseTakesPisModeAndDefaultsToReadWrite",
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:run::call:0",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:f388ea66402c326e6c6457d7858db84826078b4859713fe41aae988204719a23",
+      "rationale": "Derived by the interface gap detector: NodeSqliteDatabase::property:run::call:0 is Go chord/sqlite/node/node.go#nodeSqliteExecutor.Run (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/node/node.go#nodeSqliteExecutor.Run"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/node/node.go#nodeSqliteExecutor.Run"
+      ],
+      "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestNewNodeSqliteDatabaseTakesPisModeAndDefaultsToReadWrite",
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:runCounted",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:b54c804b3ec8c925b4321f7262e2cbe6003189b10b7ade3bd95803be9d473841",
+      "rationale": "Derived by the interface gap detector: NodeSqliteDatabase::property:runCounted is Go chord/sqlite/node/node.go#nodeSqliteExecutor.RunCounted (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/node/node.go#nodeSqliteExecutor.RunCounted"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/node/node.go#nodeSqliteExecutor.RunCounted"
+      ],
+      "evidence": [
+        "reach:chord/sqlite/node/node.go#nodeSqliteExecutor.RunCounted"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:runCounted::call:0",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:19399b7f6f7d0e9043f076d4d6e0e31ede9fbb7a458d9b4bb3fead741b2f8ab0",
+      "rationale": "Derived by the interface gap detector: NodeSqliteDatabase::property:runCounted::call:0 is Go chord/sqlite/node/node.go#nodeSqliteExecutor.RunCounted (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/node/node.go#nodeSqliteExecutor.RunCounted"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/node/node.go#nodeSqliteExecutor.RunCounted"
+      ],
+      "evidence": [
+        "reach:chord/sqlite/node/node.go#nodeSqliteExecutor.RunCounted"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:transaction",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:d77e696751043ee8378ce2335b9345bbb8da61d2865240e316a675986a68605d",
+      "rationale": "Derived by the interface gap detector: NodeSqliteDatabase::property:transaction is Go chord/sqlite/node/node.go#NodeSqliteDatabase.Transaction (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/node/node.go#NodeSqliteDatabase.Transaction"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/node/node.go#NodeSqliteDatabase.Transaction"
+      ],
+      "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
+        "test:chord/next/store/refusal_check_code_test.go#TestCheckFailureCode"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:transaction::call:0",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:4231c2b88c41b1792e01760ec6e3ba0b1ec4eb07ddd0c806fe17ef2849e0adec",
+      "rationale": "Derived by the interface gap detector: NodeSqliteDatabase::property:transaction::call:0 is Go chord/sqlite/node/node.go#NodeSqliteDatabase.Transaction (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/node/node.go#NodeSqliteDatabase.Transaction"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/node/node.go#NodeSqliteDatabase.Transaction"
+      ],
+      "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
+        "test:chord/next/store/refusal_check_code_test.go#TestCheckFailureCode"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
       "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabaseOptions",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:d034b602317a1d4686c710de7cf68dbb707dd874270b80987cb99ebe668b7d24",
@@ -256958,6 +257771,29 @@
       "disposition": "ported",
       "upstreamShapeHash": "sha256:4c8aa22211ea4f73b720f7a48f25353c60ab2a02d07cc43e2d943ee77eba38be",
       "rationale": "Derived by the interface gap detector: openNodeSqliteDatabase is Go durable/storage/sqlite/node/node.go#OpenNodeSqliteDatabase (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/sqlite/node/node.go#OpenNodeSqliteDatabase"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/sqlite/node/node.go#OpenNodeSqliteDatabase"
+      ],
+      "evidence": [
+        "test:durable/harness/harness_generation_recovery_test.go#TestGenerationRecovery",
+        "test:durable/storage/sqlite/entry_surrogates_test.go#TestSqliteEntryTextKeepsLoneSurrogatesAtBothSidesOfTheBoundOfLargeRows",
+        "test:durable/storage/sqlite/node/kill_test.go#TestKilledDurableWriterLeavesWholeCalls"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/node#openNodeSqliteDatabase::call:0",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:669b06b4f76c90cc7c58bb92fb403693bf0abb03c53ff757b281fe7cfde8e52d",
+      "rationale": "Derived by the interface gap detector: openNodeSqliteDatabase::call:0 is Go durable/storage/sqlite/node/node.go#OpenNodeSqliteDatabase (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/storage/sqlite/node/node.go#OpenNodeSqliteDatabase"
       ],
@@ -257135,6 +257971,326 @@
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
+      "id": "pkg:durable/storage/sqlite#SqliteDatabase::property:all",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:8310ba81ed36571606b4985caa5734b3a0ce9372d4708ebe577150aae1fea534",
+      "rationale": "Derived by the interface gap detector: SqliteDatabase::property:all is Go chord/sqlite/database.go#SqliteExecutor.All (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/database.go#SqliteExecutor.All"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/store/adapter.go#OwnerTable.Select"
+      ],
+      "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteDatabase::property:all::call:0",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:d079d5309b5c7c8b498c93f46fbd8693c8bdc688a4d12080adb1774d4b33d052",
+      "rationale": "Derived by the interface gap detector: SqliteDatabase::property:all::call:0 is Go chord/sqlite/database.go#SqliteExecutor.All (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/database.go#SqliteExecutor.All"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/store/adapter.go#OwnerTable.Select"
+      ],
+      "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteDatabase::property:close",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:224a331c8b3e5b8db8f0ed62fadfe68cc6c41e65f8bf7ffb1374a3d41303eed7",
+      "rationale": "Derived by the interface gap detector: SqliteDatabase::property:close is Go chord/sqlite/database.go#SqliteDatabase.Close (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/database.go#SqliteDatabase.Close"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/store/import.go#ImportStore"
+      ],
+      "evidence": [
+        "test:chord/sqlite/node/database_contract_test.go#TestSqliteDatabaseContractRollsBackAFailedTransactionAndClosesIdempotently",
+        "test:chord/sqlite/node/sqlite_executor_all_test.go#TestSqliteExecutorAllThroughDatabaseAndTransaction",
+        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestSqliteTelemetryStoreConformance"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteDatabase::property:close::call:0",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:4016e58fe8d19c1878838481adfefa1484c3b03881840f594c0670e3a6202013",
+      "rationale": "Derived by the interface gap detector: SqliteDatabase::property:close::call:0 is Go chord/sqlite/database.go#SqliteDatabase.Close (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/database.go#SqliteDatabase.Close"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/store/import.go#ImportStore"
+      ],
+      "evidence": [
+        "test:chord/sqlite/node/database_contract_test.go#TestSqliteDatabaseContractRollsBackAFailedTransactionAndClosesIdempotently",
+        "test:chord/sqlite/node/sqlite_executor_all_test.go#TestSqliteExecutorAllThroughDatabaseAndTransaction",
+        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestSqliteTelemetryStoreConformance"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteDatabase::property:exec",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:aa1db8aee9048fa058d54c104babd5980aa1542d7f3ece8d28e54fd19a68b3b1",
+      "rationale": "Derived by the interface gap detector: SqliteDatabase::property:exec is Go chord/sqlite/database.go#SqliteExecutor.Exec (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/database.go#SqliteExecutor.Exec"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/migrations.go#ApplySqliteMigrations"
+      ],
+      "evidence": [
+        "test:chord/sqlite/cloudflare/adapter_semantics_test.go#TestDurableObjectSqliteTransactionHandleRejectsEveryOperationAfterTheCallbackSettles",
+        "test:chord/sqlite/cloudflare/store_check_test.go#TestStoreOnDurableObjectTellsCheckByMessage",
+        "test:chord/sqlite/node/database_contract_test.go#TestSqliteDatabaseContractReportsBothErrorsWhenRollbackFails"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteDatabase::property:exec::call:0",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:c49a95920258b9a6128ad389d463610556c18bb37f90c4a58be13da7ce5d77a8",
+      "rationale": "Derived by the interface gap detector: SqliteDatabase::property:exec::call:0 is Go chord/sqlite/database.go#SqliteExecutor.Exec (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/database.go#SqliteExecutor.Exec"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/migrations.go#ApplySqliteMigrations"
+      ],
+      "evidence": [
+        "test:chord/sqlite/cloudflare/adapter_semantics_test.go#TestDurableObjectSqliteTransactionHandleRejectsEveryOperationAfterTheCallbackSettles",
+        "test:chord/sqlite/cloudflare/store_check_test.go#TestStoreOnDurableObjectTellsCheckByMessage",
+        "test:chord/sqlite/node/database_contract_test.go#TestSqliteDatabaseContractReportsBothErrorsWhenRollbackFails"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteDatabase::property:get",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:818a9b558f62a03bf346fcef7c0d4a5cce8906c6cad2a70fe350e5d815f4b791",
+      "rationale": "Derived by the interface gap detector: SqliteDatabase::property:get is Go chord/sqlite/database.go#SqliteExecutor.Get (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/database.go#SqliteExecutor.Get"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/migrations.go#ApplySqliteMigrations"
+      ],
+      "evidence": [
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
+        "test:chord/next/store/group_commit_test.go#TestGroupCommit",
+        "test:chord/next/store/store_test.go#TestStore"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteDatabase::property:get::call:0",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:4050b02493ed20077f98f2744e9c8934045f94dcc95652bf8405c87ebfa3b0a3",
+      "rationale": "Derived by the interface gap detector: SqliteDatabase::property:get::call:0 is Go chord/sqlite/database.go#SqliteExecutor.Get (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/database.go#SqliteExecutor.Get"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/migrations.go#ApplySqliteMigrations"
+      ],
+      "evidence": [
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
+        "test:chord/next/store/group_commit_test.go#TestGroupCommit",
+        "test:chord/next/store/store_test.go#TestStore"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteDatabase::property:run",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:893cced2e3697649ea5416356a5dafe017c883452fe6c9803fc0bcca14e1fe11",
+      "rationale": "Derived by the interface gap detector: SqliteDatabase::property:run is Go chord/sqlite/database.go#SqliteExecutor.Run (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/database.go#SqliteExecutor.Run"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/migrations.go#ApplySqliteMigrations"
+      ],
+      "evidence": [
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
+        "test:chord/next/host/host_live_query_test.go#TestLiveQueryActivationARunThatFailsAtActivationFailsTheActivationBroken",
+        "test:chord/next/host/host_live_query_test.go#TestLiveQueryFailureAFailingRunIsAFailedMemberReportedOnceTheNextGoodRunHealsIt"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteDatabase::property:run::call:0",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:f388ea66402c326e6c6457d7858db84826078b4859713fe41aae988204719a23",
+      "rationale": "Derived by the interface gap detector: SqliteDatabase::property:run::call:0 is Go chord/sqlite/database.go#SqliteExecutor.Run (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/database.go#SqliteExecutor.Run"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/migrations.go#ApplySqliteMigrations"
+      ],
+      "evidence": [
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
+        "test:chord/next/host/host_live_query_test.go#TestLiveQueryActivationARunThatFailsAtActivationFailsTheActivationBroken",
+        "test:chord/next/host/host_live_query_test.go#TestLiveQueryFailureAFailingRunIsAFailedMemberReportedOnceTheNextGoodRunHealsIt"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteDatabase::property:runCounted",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:b54c804b3ec8c925b4321f7262e2cbe6003189b10b7ade3bd95803be9d473841",
+      "rationale": "Derived by the interface gap detector: SqliteDatabase::property:runCounted is Go chord/sqlite/database.go#SqliteExecutor.RunCounted (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/database.go#SqliteExecutor.RunCounted"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/store/step.go#Step.RunCounted"
+      ],
+      "evidence": [
+        "test:chord/sqlite/cloudflare/cloudflare_test.go#TestDurableObjectSqliteDriver",
+        "test:chord/sqlite/node/sqlite_driver_test.go#TestNodeSqliteDriver"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteDatabase::property:runCounted::call:0",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:19399b7f6f7d0e9043f076d4d6e0e31ede9fbb7a458d9b4bb3fead741b2f8ab0",
+      "rationale": "Derived by the interface gap detector: SqliteDatabase::property:runCounted::call:0 is Go chord/sqlite/database.go#SqliteExecutor.RunCounted (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/database.go#SqliteExecutor.RunCounted"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/store/step.go#Step.RunCounted"
+      ],
+      "evidence": [
+        "test:chord/sqlite/cloudflare/cloudflare_test.go#TestDurableObjectSqliteDriver",
+        "test:chord/sqlite/node/sqlite_driver_test.go#TestNodeSqliteDriver"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteDatabase::property:transaction",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:d77e696751043ee8378ce2335b9345bbb8da61d2865240e316a675986a68605d",
+      "rationale": "Derived by the interface gap detector: SqliteDatabase::property:transaction is Go chord/sqlite/database.go#SqliteDatabase.Transaction (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/database.go#SqliteDatabase.Transaction"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/migrations.go#ApplySqliteMigrations"
+      ],
+      "evidence": [
+        "test:chord/next/store/proof_chord_test.go#TestStepRunCountedReturnsTheRowsAStatementChangedAndCountsIt",
+        "test:chord/sqlite/node/database_contract_test.go#TestSqliteDatabaseContractRollsBackAFailedTransactionAndClosesIdempotently",
+        "test:chord/sqlite/node/sqlite_executor_all_test.go#TestSqliteExecutorAllThroughDatabaseAndTransaction"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteDatabase::property:transaction::call:0",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:4231c2b88c41b1792e01760ec6e3ba0b1ec4eb07ddd0c806fe17ef2849e0adec",
+      "rationale": "Derived by the interface gap detector: SqliteDatabase::property:transaction::call:0 is Go chord/sqlite/database.go#SqliteDatabase.Transaction (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/database.go#SqliteDatabase.Transaction"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/migrations.go#ApplySqliteMigrations"
+      ],
+      "evidence": [
+        "test:chord/next/store/proof_chord_test.go#TestStepRunCountedReturnsTheRowsAStatementChangedAndCountsIt",
+        "test:chord/sqlite/node/database_contract_test.go#TestSqliteDatabaseContractRollsBackAFailedTransactionAndClosesIdempotently",
+        "test:chord/sqlite/node/sqlite_executor_all_test.go#TestSqliteExecutorAllThroughDatabaseAndTransaction"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
       "id": "pkg:durable/storage/sqlite#SqliteExecutor",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:0de2a29e3d6569b2fd315cbee742a007265335928a51d4c4140309e1911d00df",
@@ -257154,6 +258310,234 @@
         "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
         "test:durable/storage/sqlite/insert_bigrow_pi_oracle_test.go#TestInsertRowsStoreTheBytesOfPiAtTheLargeRowBound"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteExecutor::property:all",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:8310ba81ed36571606b4985caa5734b3a0ce9372d4708ebe577150aae1fea534",
+      "rationale": "Derived by the interface gap detector: SqliteExecutor::property:all is Go chord/sqlite/database.go#SqliteExecutor.All (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/database.go#SqliteExecutor.All"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/store/adapter.go#OwnerTable.Select"
+      ],
+      "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteExecutor::property:all::call:0",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:d079d5309b5c7c8b498c93f46fbd8693c8bdc688a4d12080adb1774d4b33d052",
+      "rationale": "Derived by the interface gap detector: SqliteExecutor::property:all::call:0 is Go chord/sqlite/database.go#SqliteExecutor.All (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/database.go#SqliteExecutor.All"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/store/adapter.go#OwnerTable.Select"
+      ],
+      "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteExecutor::property:exec",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:aa1db8aee9048fa058d54c104babd5980aa1542d7f3ece8d28e54fd19a68b3b1",
+      "rationale": "Derived by the interface gap detector: SqliteExecutor::property:exec is Go chord/sqlite/database.go#SqliteExecutor.Exec (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/database.go#SqliteExecutor.Exec"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/migrations.go#ApplySqliteMigrations"
+      ],
+      "evidence": [
+        "test:chord/sqlite/cloudflare/adapter_semantics_test.go#TestDurableObjectSqliteTransactionHandleRejectsEveryOperationAfterTheCallbackSettles",
+        "test:chord/sqlite/cloudflare/store_check_test.go#TestStoreOnDurableObjectTellsCheckByMessage",
+        "test:chord/sqlite/node/database_contract_test.go#TestSqliteDatabaseContractReportsBothErrorsWhenRollbackFails"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteExecutor::property:exec::call:0",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:c49a95920258b9a6128ad389d463610556c18bb37f90c4a58be13da7ce5d77a8",
+      "rationale": "Derived by the interface gap detector: SqliteExecutor::property:exec::call:0 is Go chord/sqlite/database.go#SqliteExecutor.Exec (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/database.go#SqliteExecutor.Exec"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/migrations.go#ApplySqliteMigrations"
+      ],
+      "evidence": [
+        "test:chord/sqlite/cloudflare/adapter_semantics_test.go#TestDurableObjectSqliteTransactionHandleRejectsEveryOperationAfterTheCallbackSettles",
+        "test:chord/sqlite/cloudflare/store_check_test.go#TestStoreOnDurableObjectTellsCheckByMessage",
+        "test:chord/sqlite/node/database_contract_test.go#TestSqliteDatabaseContractReportsBothErrorsWhenRollbackFails"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteExecutor::property:get",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:818a9b558f62a03bf346fcef7c0d4a5cce8906c6cad2a70fe350e5d815f4b791",
+      "rationale": "Derived by the interface gap detector: SqliteExecutor::property:get is Go chord/sqlite/database.go#SqliteExecutor.Get (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/database.go#SqliteExecutor.Get"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/migrations.go#ApplySqliteMigrations"
+      ],
+      "evidence": [
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
+        "test:chord/next/store/group_commit_test.go#TestGroupCommit",
+        "test:chord/next/store/store_test.go#TestStore"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteExecutor::property:get::call:0",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:4050b02493ed20077f98f2744e9c8934045f94dcc95652bf8405c87ebfa3b0a3",
+      "rationale": "Derived by the interface gap detector: SqliteExecutor::property:get::call:0 is Go chord/sqlite/database.go#SqliteExecutor.Get (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/database.go#SqliteExecutor.Get"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/migrations.go#ApplySqliteMigrations"
+      ],
+      "evidence": [
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
+        "test:chord/next/store/group_commit_test.go#TestGroupCommit",
+        "test:chord/next/store/store_test.go#TestStore"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteExecutor::property:run",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:893cced2e3697649ea5416356a5dafe017c883452fe6c9803fc0bcca14e1fe11",
+      "rationale": "Derived by the interface gap detector: SqliteExecutor::property:run is Go chord/sqlite/database.go#SqliteExecutor.Run (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/database.go#SqliteExecutor.Run"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/migrations.go#ApplySqliteMigrations"
+      ],
+      "evidence": [
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
+        "test:chord/next/host/host_live_query_test.go#TestLiveQueryActivationARunThatFailsAtActivationFailsTheActivationBroken",
+        "test:chord/next/host/host_live_query_test.go#TestLiveQueryFailureAFailingRunIsAFailedMemberReportedOnceTheNextGoodRunHealsIt"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteExecutor::property:run::call:0",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:f388ea66402c326e6c6457d7858db84826078b4859713fe41aae988204719a23",
+      "rationale": "Derived by the interface gap detector: SqliteExecutor::property:run::call:0 is Go chord/sqlite/database.go#SqliteExecutor.Run (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/database.go#SqliteExecutor.Run"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/migrations.go#ApplySqliteMigrations"
+      ],
+      "evidence": [
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
+        "test:chord/next/host/host_live_query_test.go#TestLiveQueryActivationARunThatFailsAtActivationFailsTheActivationBroken",
+        "test:chord/next/host/host_live_query_test.go#TestLiveQueryFailureAFailingRunIsAFailedMemberReportedOnceTheNextGoodRunHealsIt"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteExecutor::property:runCounted",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:b54c804b3ec8c925b4321f7262e2cbe6003189b10b7ade3bd95803be9d473841",
+      "rationale": "Derived by the interface gap detector: SqliteExecutor::property:runCounted is Go chord/sqlite/database.go#SqliteExecutor.RunCounted (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/database.go#SqliteExecutor.RunCounted"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/store/step.go#Step.RunCounted"
+      ],
+      "evidence": [
+        "test:chord/sqlite/cloudflare/cloudflare_test.go#TestDurableObjectSqliteDriver",
+        "test:chord/sqlite/node/sqlite_driver_test.go#TestNodeSqliteDriver"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteExecutor::property:runCounted::call:0",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:19399b7f6f7d0e9043f076d4d6e0e31ede9fbb7a458d9b4bb3fead741b2f8ab0",
+      "rationale": "Derived by the interface gap detector: SqliteExecutor::property:runCounted::call:0 is Go chord/sqlite/database.go#SqliteExecutor.RunCounted (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/database.go#SqliteExecutor.RunCounted"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/store/step.go#Step.RunCounted"
+      ],
+      "evidence": [
+        "test:chord/sqlite/cloudflare/cloudflare_test.go#TestDurableObjectSqliteDriver",
+        "test:chord/sqlite/node/sqlite_driver_test.go#TestNodeSqliteDriver"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },

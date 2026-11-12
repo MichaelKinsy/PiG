@@ -1,7 +1,7 @@
 // Package tui ports packages/chord/src/tui: Chord's terminal client side. TuiScope (scope.ts) is a terminal
 // component's Chord resources, the counterpart of the React bindings for terminal UI libraries (slice 11 §4, decision
 // "Slice 11, P9"; p2's `TuiScope`): it holds references, follows watchables and registries, calls one `changed` callback
-// (the app's redraw) on every change, and releases everything at Dispose.
+// (the app's redraw) on every change, subscribes to event members, and releases everything at Dispose.
 //
 // Forced Go differences from upstream (D452):
 //   - Methods cannot have type parameters and Go has no union of the watchable shapes Pi's `watch` takes: Watch is
@@ -77,6 +77,13 @@ func (s *TuiScope) Hold(typ *contracts.Contract, params any) (*host.Reference, e
 	s.release(held.Release)
 	WatchNative(s, held.State())
 	return held, nil
+}
+
+// On subscribes listener to event member member (a reference's, decision "Events: fire-and-forget members") until
+// Dispose. Events call listener only, never changed: the listener decides what redraws.
+func (s *TuiScope) On(member contracts.EventMember[delta.JsonValue], listener func(contracts.EventDelivery[delta.JsonValue])) {
+	// Rejected only once released or disposed: nothing to follow then.
+	_, _ = member.On(listener, s.ctx)
 }
 
 // follow follows a source until Dispose: its changes call changed; the reader of its current value is the result.

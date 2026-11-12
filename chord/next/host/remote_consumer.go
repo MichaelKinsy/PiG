@@ -16,8 +16,11 @@ import (
 // Ports packages/chord/src/remote/consumer.ts. The consumer side of a link (§7, §22, W1): the holds this host's own
 // remote references sent on it, by this side's ids, the calls through them within the peer's call window, and each
 // `bound` and `state` message applied to their replicas as one batch, then acknowledged. Messages with an origin answer
-// holds this host relays: they go to that origin's provider side. On a host without a compressor, the deflated parts of
-// this host's own holds and calls are inflated asynchronously first, and the message is handled once they are.
+// holds this host relays: they go to that origin's provider side; the calls this host relays for an origin wait here
+// within the same window (one per origin). Each `event` message of its own holds is consumed (its values handed to the
+// host's event flush, or deliberately dropped) and acknowledged with one event `ack` per inbound turn (decision
+// "Events: fire-and-forget members"). On a host without a compressor, the deflated parts of this host's own holds and
+// calls are inflated asynchronously first, and the message is handled once they are.
 
 // outgoingCall is a call through this side: waiting for a slot of the call window (no id yet), then in flight under its
 // id until its reply, its abort, its hold's release or `gone`, or the link's close.
@@ -66,10 +69,17 @@ func (c *outgoingCall) stopListening() {
 // consumerSide is the consumer side of one link. Ids are its own counters, from 0; a reply naming an id this side gave up
 // is ignored (Q1). When the link closes, every call rejects `unavailable` (never resent) and its path tells every holder.
 type consumerSide struct {
-	link     *hostLink
-	entries  orderedTable[int, *remoteObject]
-	calls    orderedTable[int, *outgoingCall]
-	window   callWindow[*outgoingCall]
+	link    *hostLink
+	entries orderedTable[int, *remoteObject]
+	calls   orderedTable[int, *outgoingCall]
+	window  callWindow[*outgoingCall]
+	// relayed are the calls this host relays upstream on this link, one window per downstream origin's number here (decision
+	// "Call windows only for untrusted links": a relay honours each upstream window); made by an origin's first call.
+	relayed map[int]*callWindow[*relayedCall]
+	// greeted is the peer's `hello` call window (0: none), once it arrived.
+	greeted *int
+	// consumed is the `event` messages consumed since the last event `ack` (one goes in a microtask after the first).
+	consumed int
 	nextHold int
 	nextCall int
 }
@@ -161,15 +171,43 @@ func (c *consumerSide) forget(hold int, err *data.ChordError) {
 	c.failCalls(hold, err)
 }
 
-// opened: the peer's `hello` arrived: calls go out within its window.
-func (c *consumerSide) opened(calls int) { c.window.opened(calls) }
+// opened: the peer's `hello` arrived: calls go out within its window (0: none announced), relayed ones too.
+func (c *consumerSide) opened(calls int) {
+	c.greeted = &calls
+	c.window.opened(calls)
+	for _, window := range c.relayed {
+		window.opened(calls)
+	}
+}
+
+// relayWindow is the window of the calls this host relays on this link for the downstream origin with number origin here:
+// they wait in it while the peer's N calls of that origin are in flight (before its `hello`, all of them).
+func (c *consumerSide) relayWindow(origin int) *callWindow[*relayedCall] {
+	window, found := c.relayed[origin]
+	if !found {
+		window = &callWindow[*relayedCall]{}
+		if c.greeted != nil {
+			window.opened(*c.greeted)
+		}
+		if c.relayed == nil {
+			c.relayed = map[int]*callWindow[*relayedCall]{}
+		}
+		c.relayed[origin] = window
+	}
+	return window
+}
+
+// unrelay: the downstream origin with number origin here closed: its relayed calls' window goes (`closed` aborts them).
+func (c *consumerSide) unrelay(origin int) {
+	delete(c.relayed, origin)
+}
 
 // message handles one message from the provider: this host's own, or (with an origin) one for a relayed hold. A `bound`,
 // `state` or `result` with deflated parts to inflate asynchronously returns that handling and is handled after it.
 func (c *consumerSide) message(message link.Message) (*link.Handling, error) {
 	if origin := link.OriginOf(message); origin.Ok {
 		if side, found := c.link.host.relays.get(origin.Value); found {
-			side.forward(message.(link.ConsumerMessage), c.link)
+			return nil, side.forward(message.(link.ConsumerMessage), c.link)
 		}
 		return nil, nil
 	}
@@ -194,6 +232,15 @@ func (c *consumerSide) message(message link.Message) (*link.Handling, error) {
 		return c.reply(typed.Call, typed, nil, nil, typed.Error)
 	case *link.GoneMessage:
 		return nil, c.gone(typed)
+	case *link.EventMessage:
+		deflated, err := c.deflatedEvents(typed.Events)
+		if err != nil {
+			return nil, err
+		}
+		if deflated != nil {
+			return c.link.inflate(deflated, func() error { _, err := c.message(message); return err }), nil
+		}
+		return nil, c.events(typed.Events)
 	}
 	return nil, nil
 }
@@ -204,6 +251,8 @@ func (c *consumerSide) closed() {
 	calls := append(c.calls.values(), c.window.clear()...)
 	c.calls.clear()
 	c.entries.clear()
+	// The relays' upstream drops answer their calls (providerSide.upstreamDropped).
+	c.relayed = nil
 	for _, call := range calls {
 		call.reject(err)
 	}
@@ -269,6 +318,55 @@ func (c *consumerSide) inflating(deflated []inflatePart, part link.Part) []infla
 	return deflated
 }
 
+// deflatedEvents is the deflated values of this side's own holds' events waiting for an asynchronous inflate, each with the
+// link's decoded limit; nil when none does. Only values something listens to are inflated: those of holds this side gave
+// up (Q1), of a hold not live or of a member nobody listens to are dropped unopened (an index outside the bound version is
+// an error here, a protocol error).
+func (c *consumerSide) deflatedEvents(events []link.WireEvent) ([]inflatePart, error) {
+	var deflated []inflatePart
+	for _, event := range events {
+		if _, waits := c.link.inflates(event.Value, c.link.limits); !waits {
+			continue
+		}
+		holder, held := c.entries.get(event.Hold)
+		if !held {
+			continue
+		}
+		node, err := holder.eventNodeOf(event.Member)
+		if err != nil {
+			return nil, err
+		}
+		if node == nil {
+			continue
+		}
+		deflated = c.inflating(deflated, event.Value)
+	}
+	return deflated, nil
+}
+
+// events handles one `event` message, its parts inflated: each entry goes to its holder (an unknown or released hold drops
+// it), which hands it to the host's event flush or drops it; then the message is consumed: one event `ack` per inbound
+// turn, sent after the flush delivered what it consumed (a microtask queued after the flush's).
+func (c *consumerSide) events(events []link.WireEvent) error {
+	for _, event := range events {
+		if holder, held := c.entries.get(event.Hold); held {
+			if err := holder.event(event.Member, event.At, event.Value, c.link); err != nil {
+				return err
+			}
+		}
+	}
+	c.consumed++
+	if c.consumed > 1 {
+		return nil
+	}
+	c.link.host.loop().Queue(func() {
+		consumed := c.consumed
+		c.consumed = 0
+		c.link.send(&link.AckMessage{Events: link.Some(consumed)})
+	})
+	return nil
+}
+
 // bound handles one `bound` message: every entry prepared first (one that does not fit closes the link before anything
 // changed) and applied in one batch; then the references go live, and the message is acknowledged. An entry with a part
 // past the link's limits fails only its hold (`too_large/part`); the others apply.
@@ -296,6 +394,9 @@ func (c *consumerSide) bound(holds []link.BoundEntry) error {
 	if err := c.adopt(adoptions); err != nil {
 		return err
 	}
+	// Acknowledged before the references go live: the calls they send then (their parked ones) follow the `ack`, so the
+	// provider decodes them by this binding's indexes, never by a rebinding's previous ones.
+	c.link.send(&link.AckMessage{})
 	// After the batch: the references go live with every replica of the message in place.
 	for _, holder := range bound {
 		holder.wentLive()
@@ -303,7 +404,6 @@ func (c *consumerSide) bound(holds []link.BoundEntry) error {
 	for _, each := range oversized {
 		each.holder.tooLarge(each.err)
 	}
-	c.link.send(&link.AckMessage{})
 	return nil
 }
 

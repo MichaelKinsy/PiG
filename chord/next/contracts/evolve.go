@@ -185,6 +185,42 @@ func (e *LocalEditor) RemoveKeyed(member string) *LocalEditor {
 	return e
 }
 
+// Event changes event member member's schema in variant (an older consumer gets each value mapped, or is refused).
+func (e *RemoteEditor) Event(variant, member string, schema Schema) *RemoteEditor {
+	e.d.run(func() error { return e.d.event(variant, member, schema) })
+	return e
+}
+
+// AddEvent adds an event member to a variant.
+func (e *RemoteEditor) AddEvent(variant, member string, schema Schema) *RemoteEditor {
+	e.d.run(func() error { return e.d.addEvent(variant, member, schema) })
+	return e
+}
+
+// RemoveEvent removes an event member of a variant.
+func (e *RemoteEditor) RemoveEvent(variant, member string) *RemoteEditor {
+	e.d.run(func() error { return e.d.removeEvent(variant, member) })
+	return e
+}
+
+// Event changes event member member's schema (an older consumer gets each value mapped, or is refused).
+func (e *LocalEditor) Event(member string, schema Schema) *LocalEditor {
+	e.d.run(func() error { return e.d.event(LocalVariant, member, schema) })
+	return e
+}
+
+// AddEvent adds an event member.
+func (e *LocalEditor) AddEvent(member string, schema Schema) *LocalEditor {
+	e.d.run(func() error { return e.d.addEvent(LocalVariant, member, schema) })
+	return e
+}
+
+// RemoveEvent removes an event member.
+func (e *LocalEditor) RemoveEvent(member string) *LocalEditor {
+	e.d.run(func() error { return e.d.removeEvent(LocalVariant, member) })
+	return e
+}
+
 // draft is the next version under construction. Every edit is checked as it is made.
 type draft struct {
 	kind     Kind
@@ -201,7 +237,7 @@ func newDraft(data *ContractData) *draft {
 	current := data.Versions[len(data.Versions)-1]
 	variants := NewNamedMap[*VariantData](current.Variants.Len())
 	for name, variant := range current.Variants.All() {
-		variants.Set(name, &VariantData{State: variant.State.Clone(), Methods: variant.Methods.Clone(), Keyed: variant.Keyed.Clone()})
+		variants.Set(name, &VariantData{State: variant.State.Clone(), Methods: variant.Methods.Clone(), Keyed: variant.Keyed.Clone(), Events: variant.Events.Clone()})
 	}
 	version := current.Version + 1
 	return &draft{
@@ -328,6 +364,46 @@ func (d *draft) putState(variant, member string, schema Schema) error {
 	return d.checked()
 }
 
+func (d *draft) event(variant, member string, schema Schema) error {
+	found, err := d.variant(variant)
+	if err != nil {
+		return err
+	}
+	if !found.Events.Has(member) {
+		return fail("%s: no such event member", d.memberPath(variant, member, MemberKindEvent))
+	}
+	return d.putEvent(variant, member, schema)
+}
+
+func (d *draft) addEvent(variant, member string, schema Schema) error {
+	if err := d.refuseDeclared(variant, member, MemberKindEvent); err != nil {
+		return err
+	}
+	return d.putEvent(variant, member, schema)
+}
+
+func (d *draft) removeEvent(variant, member string) error {
+	found, err := d.variant(variant)
+	if err != nil {
+		return err
+	}
+	if !found.Events.Delete(member) {
+		return fail("%s: no such event member", d.memberPath(variant, member, MemberKindEvent))
+	}
+	return nil
+}
+
+func (d *draft) putEvent(variant, member string, schema Schema) error {
+	snapshot, err := eventSnapshot(schema, d.memberPath(variant, member, MemberKindEvent))
+	if err != nil {
+		return err
+	}
+	found, _ := d.variant(variant)
+	found.Events.Set(member, snapshot)
+	d.changes = append(d.changes, Change{variant, member, SideEvent})
+	return d.checked()
+}
+
 func (d *draft) putKeyed(variant, member string, schema Schema) error {
 	snapshot, err := SnapshotSchema(schema, d.memberPath(variant, member, MemberKindKeyed))
 	if err != nil {
@@ -395,7 +471,7 @@ func (d *draft) refuseDeclared(variant, member string, kind MemberKind) error {
 	if err != nil {
 		return err
 	}
-	if found.State.Has(member) || found.Methods.Has(member) || found.Keyed.Has(member) {
+	if found.State.Has(member) || found.Methods.Has(member) || found.Keyed.Has(member) || found.Events.Has(member) {
 		return fail("%s: already declared", d.memberPath(variant, member, kind))
 	}
 	return nil
