@@ -32,7 +32,8 @@ type Port interface {
 	// Untap ends hold's tap (nothing for an unknown hold).
 	Untap(hold int)
 	// Ack tells that the consumer consumed that many more messages: each frees one slot of the window. One that counts
-	// more than is unacknowledged frees only what is: the window never grows.
+	// more than is unacknowledged frees only what is: the window never grows. It never blocks: the slots are free
+	// from the host's next turn on.
 	Ack(messages int)
 	// Close ends every tap; a closed port sends nothing more.
 	Close()

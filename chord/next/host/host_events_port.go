@@ -18,8 +18,9 @@ import (
 // (host_reference_events.go `forward`): the port gets what the reference receives, value and stamp unchanged, whatever
 // instance the reference follows.
 //
-// Async contract: none of its own. Every method enters the host's loop once (a section) and returns; the flush calls
-// `send` inside its section, so `send` must not block.
+// Async contract: none of its own. Tap, Untap and Close enter the host's loop once (a section) and return; Ack queues
+// its work on the loop (`Loop.Queue`, safe from any goroutine: a section of its own, on a task the host's loop owns and
+// its close joins) and returns at once. The flush calls `send` inside its section, so `send` must not block.
 
 func init() { hostevents.Open = openEventPort }
 
@@ -157,9 +158,11 @@ func (p *eventPort) sendEvents() {
 	p.send(entries)
 }
 
-// Ack is hostevents.Port's: remote_provider.go's eventAck for this host's own tickets.
+// Ack is hostevents.Port's: remote_provider.go's eventAck for this host's own tickets. The slots are freed in a turn
+// of their own, as a link's ack arrives in one (the window cannot change during a flush), queued and not entered: the
+// caller is the bridge's channel reader, which must not wait for a section of this host.
 func (p *eventPort) Ack(messages int) {
-	p.events.loop.Run(func() {
+	p.events.loop.Queue(func() {
 		for range messages {
 			if p.inFlight == 0 {
 				break

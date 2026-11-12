@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/internal/hostevents"
@@ -209,6 +210,43 @@ func TestAnEventPortsAckForMessagesNeverSentOrCountedTwiceIsIgnoredAndOpensNoSlo
 		emitTurns(t, rig, 2, 5)
 		requireEqual(t, "messages", rig.take(), [][]string{{tick(0, 1)}, {tick(0, 2)}, {tick(0, 3)}})
 	})
+}
+
+// Ack never waits for a section of the host: its caller is the bridge's channel reader, and a section may be waiting
+// for what that reader delivers. The slot is free from the host's next turn on.
+func TestAnEventPortsAckReturnsWhileASectionOfTheHostRuns(t *testing.T) {
+	rig := portOf(t, HostOptions{EventWindow: new(1)})
+	_, err := rig.Port.Tap(rig.Ticker, 0)
+	must(t, err)
+	rig.emit(t, 1)
+	entered, release, left := make(chan struct{}), make(chan struct{}), make(chan struct{})
+	go func() {
+		defer close(left)
+		hostTurn(rig.Host, func() {
+			close(entered)
+			<-release
+			// Emitted after the ack was queued: the ack's turn runs before this emit's flush, which finds the slot free.
+			must(t, rig.Source().Emit(sample(2)))
+		})
+	}()
+	<-entered
+	acked := make(chan struct{})
+	go func() {
+		defer close(acked)
+		rig.Port.Ack(1)
+	}()
+	select {
+	case <-acked:
+	case <-time.After(5 * time.Second):
+		close(release)
+		<-left
+		t.Fatal("Ack waited for the section of the host that was running")
+	}
+	close(release)
+	<-left
+	flushed(rig.Host)
+	rig.emit(t, 3)
+	requireEqual(t, "messages", rig.take(), [][]string{{tick(0, 1)}, {tick(0, 2)}})
 }
 
 // A tap gets what is emitted after it, as a hold bound now does (remote_hold.go `tapEvents`: `boundAt` is the host's
