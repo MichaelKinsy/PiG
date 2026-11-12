@@ -24,6 +24,9 @@ import (
 //     settled stale, and its handler is cancelled if the intent is cancellable.
 //   - Errors. UpdateAbilities, Resync and Report on an ended attachment fail with CodeStale.
 
+// pig additive (D614): a registry holds at most 8 attachments, whatever kind of client holds them.
+const maxAttachments = 8
+
 // Delivery is one snapshot sent to one client.
 type Delivery struct {
 	Attachment uint64   `json:"attachment"`
@@ -59,13 +62,17 @@ type Attachment struct {
 }
 
 // Attach attaches a client and returns its attachment with every current mount resolved for it. A nil sink takes no
-// deliveries (the client reads Resync when it wants to draw).
+// deliveries (the client reads Resync when it wants to draw). A registry that holds maxAttachments refuses with CodeLimit.
 func (r *Registry) Attach(a ClientAbilities, sink Sink) (*Attachment, Resync, *Error) {
 	if err := a.check(); err != nil {
 		return nil, Resync{}, err
 	}
-	ctx, end := context.WithCancel(context.Background())
 	r.mu.Lock()
+	if len(r.atts) >= maxAttachments {
+		r.mu.Unlock()
+		return nil, Resync{}, fail(CodeLimit, "the host holds %d attachments, the most it takes", maxAttachments)
+	}
+	ctx, end := context.WithCancel(context.Background())
 	r.gen++
 	t := &Attachment{r: r, gen: r.gen, abilities: cloneAbilities(a), sink: sink, sent: map[ownerKey]string{}, ctx: ctx, end: end}
 	r.atts = append(r.atts, t)

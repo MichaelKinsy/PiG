@@ -1,0 +1,12 @@
+# ui_view_resync {attachment} is Attachment.Resync. The client drops every event numbered at or below the reply's seq and redraws only what has another digest.
+C: {"id":"1","type":"ui_view_attach","abilities":{"slots":["panel","tool-card"],"nodes":["text","box"],"markdown":true,"imageFormats":["png"],"limits":{"nodes":64,"depth":8,"snapshotBytes":4096,"textBytes":1024,"mounts":8,"intentArgBytes":64},"input":{"keyboard":true,"pointer":true,"text":false},"claims":[{"name":"display.colors","value":256}],"slotClaims":[{"slot":"panel","claims":[{"name":"display.colors","value":16}]}],"drawing":{"profiles":["scene"],"shapes":8,"pixels":0}}}
+H: {"id":"1","type":"response","command":"ui_view_attach","success":true,"data":{"attachment":1,"seq":0,"snapshots":[]}}
+H: {"type":"ui_view","attachment":1,"seq":1,"snapshot":{"plugin":"p","slot":"panel","mount":{"key":"k","epoch":1,"rev":1},"state":"live","view":{"root":{"kind":"text","text":"one"}},"digest":"dca2195ea1ba1541fd95edc4dc30c59adfee255396642c34d8cee6eff4a21e47"}}
+H: {"type":"ui_view","attachment":1,"seq":2,"snapshot":{"plugin":"p","slot":"panel","mount":{"key":"k","epoch":1,"rev":2},"state":"live","view":{"root":{"kind":"text","text":"two"}},"digest":"b42ad2e56024257e1e742820daf2902c7fc5723ff6ba6c48e36300b2d5ec7a55"}}
+H: {"type":"ui_view","attachment":1,"seq":3,"snapshot":{"plugin":"p","slot":"panel","mount":{"key":"j","epoch":2,"rev":1},"state":"live","view":{"root":{"kind":"text","text":"other"}},"digest":"a4bc33ce301934b6eb06f5ba6be791edea7f4bc2220a394d97429c7560ed03e3"}}
+C: {"id":"2","type":"ui_view_resync","attachment":1}
+H: {"id":"2","type":"response","command":"ui_view_resync","success":true,"data":{"attachment":1,"seq":3,"snapshots":[{"plugin":"p","slot":"panel","mount":{"key":"k","epoch":1,"rev":2},"state":"live","view":{"root":{"kind":"text","text":"two"}},"digest":"b42ad2e56024257e1e742820daf2902c7fc5723ff6ba6c48e36300b2d5ec7a55"},{"plugin":"p","slot":"panel","mount":{"key":"j","epoch":2,"rev":1},"state":"live","view":{"root":{"kind":"text","text":"other"}},"digest":"a4bc33ce301934b6eb06f5ba6be791edea7f4bc2220a394d97429c7560ed03e3"}]}}
+C: {"id":"3","type":"ui_view_resync","attachment":2}
+H: {"id":"3","type":"response","command":"ui_view_resync","success":false,"error":"stale: the connection does not hold attachment 2","code":"stale"}
+C: {"id":"4","type":"ui_view_resync","attachment":1,"since":2}
+H: {"id":"4","type":"response","command":"ui_view_resync","success":false,"error":"invalid: unknown field \"since\"","code":"invalid"}

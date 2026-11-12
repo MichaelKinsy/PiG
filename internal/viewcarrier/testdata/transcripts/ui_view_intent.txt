@@ -1,0 +1,24 @@
+# ui_view_intent {attachment, plugin, mount {key, epoch, rev}, nodeKey?, intent, arg} is Attachment.Invoke. The reply comes once the intent settled and is its result {ticket, outcome, answer?, error?}.
+C: {"id":"1","type":"ui_view_attach","abilities":{"slots":["panel","tool-card"],"nodes":["text","box"],"markdown":true,"imageFormats":["png"],"limits":{"nodes":64,"depth":8,"snapshotBytes":4096,"textBytes":1024,"mounts":8,"intentArgBytes":64},"input":{"keyboard":true,"pointer":true,"text":false},"claims":[{"name":"display.colors","value":256}],"slotClaims":[{"slot":"panel","claims":[{"name":"display.colors","value":16}]}],"drawing":{"profiles":["scene"],"shapes":8,"pixels":0}}}
+H: {"id":"1","type":"response","command":"ui_view_attach","success":true,"data":{"attachment":1,"seq":0,"snapshots":[]}}
+H: {"type":"ui_view","attachment":1,"seq":1,"snapshot":{"plugin":"p","slot":"panel","mount":{"key":"k","epoch":1,"rev":1},"state":"live","view":{"root":{"kind":"text","text":"one"}},"intents":[{"name":"add","nodeKey":"n","arg":{"type":"object","properties":{"n":{"type":"integer"}},"required":["n"]},"answer":{"type":"object","properties":{"sum":{"type":"integer"}},"required":["sum"]},"timeoutMs":30000}],"digest":"db2dbfd3a2fda8cd0e207a1fa00b68b9e9295e4e08e572b17677bb604151d4a3"}}
+# done: the plugin's answer.
+C: {"id":"2","type":"ui_view_intent","attachment":1,"plugin":"p","mount":{"key":"k","epoch":1,"rev":1},"nodeKey":"n","intent":"add","arg":{"n":1}}
+H: {"id":"2","type":"response","command":"ui_view_intent","success":true,"data":{"ticket":"t1","outcome":"done","answer":{"sum":3}}}
+# refused by the host: the argument is outside the declared shape, and the plugin is not reached.
+C: {"id":"3","type":"ui_view_intent","attachment":1,"plugin":"p","mount":{"key":"k","epoch":1,"rev":1},"nodeKey":"n","intent":"add","arg":{"n":"one"}}
+H: {"id":"3","type":"response","command":"ui_view_intent","success":true,"data":{"ticket":"","outcome":"refused","error":"value.n is not a number"}}
+# stale: the mount ref is not the current one.
+C: {"id":"4","type":"ui_view_intent","attachment":1,"plugin":"p","mount":{"key":"k","epoch":1,"rev":9},"nodeKey":"n","intent":"add","arg":{"n":1}}
+H: {"id":"4","type":"response","command":"ui_view_intent","success":true,"data":{"ticket":"","outcome":"stale","error":"mount changed"}}
+# stale: the connection does not hold the attachment. The reply is still a result.
+C: {"id":"5","type":"ui_view_intent","attachment":9,"plugin":"p","mount":{"key":"k","epoch":1,"rev":1},"nodeKey":"n","intent":"add","arg":{"n":1}}
+H: {"id":"5","type":"response","command":"ui_view_intent","success":true,"data":{"ticket":"","outcome":"stale","error":"attachment ended"}}
+# An intent without an id settles like any other; its reply has no id and it cannot be cancelled.
+C: {"type":"ui_view_intent","attachment":1,"plugin":"p","mount":{"key":"k","epoch":1,"rev":1},"nodeKey":"n","intent":"add","arg":{"n":1}}
+H: {"type":"response","command":"ui_view_intent","success":true,"data":{"ticket":"t2","outcome":"done","answer":{"sum":3}}}
+# A malformed command is an error response with code invalid.
+C: {"id":"6","type":"ui_view_intent","attachment":1,"plugin":"p","mount":{"key":"k","epoch":1,"rev":1},"intent":"add"}
+H: {"id":"6","type":"response","command":"ui_view_intent","success":false,"error":"invalid: plugin, mount, intent and arg are required","code":"invalid"}
+C: {"id":"7","type":"ui_view_intent","attachment":1,"plugin":"p","mount":{"key":"k","epoch":1,"rev":1},"intent":"add","arg":{},"ticket":"t9"}
+H: {"id":"7","type":"response","command":"ui_view_intent","success":false,"error":"invalid: unknown field \"ticket\"","code":"invalid"}

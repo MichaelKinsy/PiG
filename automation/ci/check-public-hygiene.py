@@ -33,6 +33,7 @@ GUI_PATHS = re.compile(
     r"extensions/sdk-rs/src/ui|coding/presentation/|coding/extension/presentation|schema/ui-view/|cmd/pig/rpc_gui|cmd/pig/testdata/ui-present|"
     r"coding/extension/host/subprocess/(?:uiview|ui_view|view_|presentation_bridge|ui_present)|"
     r"extensions/sdk-lisp/(?:src|tests)/ui-view|test/extension-conformance/ui_view|"
+    r"internal/viewcarrier/|coding/cli/(?:testdata/)?rpc[_-]ui[_-]view|examples/ui-view-web/|"
     r"coding/extension/host/subprocess/runtime-node/shims/pig-ui|docs/ui-)"
 )
 WORD = re.compile(r"[A-Za-z]{3,}")
