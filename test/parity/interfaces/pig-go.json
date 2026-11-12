@@ -363018,6 +363018,17 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.requestRenderLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiAltScreen.requestRenderLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(force bool)"
+      },
+      "shapeHash": "sha256:c4a8f726ad8288230457066521e6c3e2f61046b104e7ebcbeb00b2f9c8d2d2dc"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.resetRenderStateLocked",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiAltScreen.resetRenderStateLocked",
@@ -365155,6 +365166,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.requestRender",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiMainScreen.requestRender",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(force bool)"
+      },
+      "shapeHash": "sha256:c4a8f726ad8288230457066521e6c3e2f61046b104e7ebcbeb00b2f9c8d2d2dc"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.requestRenderLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiMainScreen.requestRenderLocked",
       "kind": "function",
       "exported": false,
       "shape": {
@@ -367454,6 +367476,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.requestRender",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiSurface.requestRender",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(force bool)"
+      },
+      "shapeHash": "sha256:c4a8f726ad8288230457066521e6c3e2f61046b104e7ebcbeb00b2f9c8d2d2dc"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.requestRenderLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiSurface.requestRenderLocked",
       "kind": "function",
       "exported": false,
       "shape": {
@@ -391456,6 +391489,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.requestRender",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "tuiBase.requestRender",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(force bool)"
+      },
+      "shapeHash": "sha256:c4a8f726ad8288230457066521e6c3e2f61046b104e7ebcbeb00b2f9c8d2d2dc"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.requestRenderLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "tuiBase.requestRenderLocked",
       "kind": "function",
       "exported": false,
       "shape": {
