@@ -1416,16 +1416,17 @@ func (p *openAIProvider) convertTranscript(transcript TranscriptContext, grammar
 	if err != nil {
 		return completionsConversion{}, err
 	}
-	lead := msgs[:0]
+	slot := 0
 	if leadTools != nil {
 		tools, err := p.convertTools(leadTools)
 		if err != nil {
 			return completionsConversion{}, err
 		}
-		lead = append(lead, oaiMessage{Role: "system", Tools: tools})
+		msgs[slot] = oaiMessage{Role: "system", Tools: tools}
+		slot++
 	}
 	if systemPrompt != "" {
-		lead = append(lead, oaiMessage{Role: p.systemPromptRole(isReasoning), Content: sanitizeSurrogates(systemPrompt)})
+		msgs[slot] = oaiMessage{Role: p.systemPromptRole(isReasoning), Content: sanitizeSurrogates(systemPrompt)}
 	}
 	return completionsConversion{messages: messages, tools: transcriptTools, grammarProps: grammarProps, chat: msgs}, nil
 }

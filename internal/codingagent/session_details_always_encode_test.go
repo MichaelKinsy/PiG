@@ -49,7 +49,7 @@ func TestAlwaysEncodesHoldsOnlyForTypesWhoseValuesAllEncode(t *testing.T) {
 		{"grep details", &tools.GrepDetails{Truncation: truncation, MatchLimitReached: math.NaN()}, true},
 		{"find details", &tools.FindDetails{Truncation: truncation}, true},
 		{"ls details", &tools.LsDetails{Truncation: truncation, EntryLimitReached: math.Inf(-1)}, true},
-		{"embedded details", embedsDetails{ReadDetails: tools.ReadDetails{Truncation: truncation}, Count: 2}, true},
+		{"embedded details", embedsDetails{Truncation: truncation, Count: 2}, true},
 		{"typed slice", []string{"a", text}, true},
 		{"array", [2]int{1, 2}, true},
 		{"bytes", []byte{1, 2, 3}, true},
