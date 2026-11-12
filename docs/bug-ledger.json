@@ -22542,6 +22542,30 @@
       ]
     },
     {
+      "id": "BF-6691fb8",
+      "title": "Resuming or replacing a session whose saved model no catalog describes no longer continues on a blank model…",
+      "symptom": "Resuming or replacing a session whose saved model no catalog describes no longer continues on a blank model with no context window and no prices (a footer of `0.0%/0`).",
+      "rootCause": "A resumed or replaced Session built a model with no context window and no prices when its saved model was in no catalog and its provider had auth. Like Pi (sdk.ts:224-231) it now restores only a model the model runtime carries and otherwise keeps the model it had.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Resuming or replacing a session whose saved model no catalog describes no longer continues on a blank model with no context window and no prices (a footer of `0.0%/0`). As in Pi, only a model the model runtime carries is restored; otherwise the session keeps the model it had.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6691fb8df5",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "coding/session_restore_uncataloged_test.go::TestCreateAgentSessionReportsAnUncatalogedSavedModelForEveryProviderShape",
+        "coding/session_restore_uncataloged_test.go::TestResumedSessionDoesNotBuildABlankModelForAnUncatalogedSavedModel",
+        "coding/session_restore_uncataloged_test.go::TestResumedSessionRestoresAModelsJSONModel"
+      ]
+    },
+    {
       "id": "BF-66b0fc0",
       "title": "The Anthropic workload-identity token endpoint check parses the base URL with the WHATWG parser, as the…",
       "symptom": "The Anthropic workload-identity token endpoint check parses the base URL with the WHATWG parser, as the Anthropic SDK does: loopback hosts reached with userinfo, mixed case or unusual spellings are accepted, and a base URL containing a backslash, quote or non-ASCII text appears unescaped in the error message.",
@@ -25537,6 +25561,41 @@
         "internal/codingagent/ext_ui_dialog_displace_test.go::TestExtensionSelectLongListShowsAWindowAroundTheCursor",
         "tui/extension_selector_test.go::TestExtensionSelectorShortAndEmptyListsHaveNoScrollIndicator",
         "tui/extension_selector_test.go::TestExtensionSelectorWindowsLongOptionListsAroundTheSelection"
+      ]
+    },
+    {
+      "id": "BF-72fdd1e",
+      "title": "A streaming tool call's card is drawn again from the rows of its last frame: a `write` card at 160 columns…",
+      "symptom": "A streaming tool call's card is drawn again from the rows of its last frame: a `write` card at 160 columns now re-wraps, measures and pads only the lines whose text changed (its collapsed preview changes one line, the \"...",
+      "rootCause": "A streaming tool call changes the end of a card that is otherwise the same: the card's Box is cleared and refilled by every update (which dropped the Box's render cache, so each row went through applyBg and VisibleWidth again) and its Text takes a new text whose last line, the \"... (N more lines\" hint, differs from the one before, so every row of the card was wrapped, measured and padded again. A write card at 160 columns drew ten ANSI-dense rows that way on every frame.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A streaming tool call's card is drawn again from the rows of its last frame: a `write` card at 160 columns now re-wraps, measures and pads only the lines whose text changed (its collapsed preview changes one line, the \"... (N more lines\" hint) instead of all of them, which halves the per-frame cost of the card in an in-process benchmark (178.7 to 89.5 us per frame for a 50 KB file, 121.7 to 43.0 us for 200 KB). The rows drawn are those of a fresh card. The rows kept are bounded (4096 rows of the last text), so a text of many thousand lines does not retain a memo as large as itself.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "72fdd1ee15",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/write_card_rows_test.go::TestWriteCardRowsMatchAFreshChainWhileStreaming",
+        "tui/box_row_reuse_test.go::TestBoxRenderAfterClearAppliesTheBackgroundToChangedRowsOnly",
+        "tui/box_row_reuse_test.go::TestBoxRenderAfterClearMatchesAFreshBox",
+        "tui/text_row_bound_test.go::TestTextAfterOneChangeRetainsAboutAsMuchAsATextDrawnOnce",
+        "tui/text_row_cache_test.go::TestTextKeepsRowsOnlyAfterItsTextChanged",
+        "tui/text_row_cache_test.go::TestTextRenderAfterSetTextKeepsTheRowsOfUnchangedLines",
+        "tui/text_row_cache_test.go::TestTextRenderAfterSetTextMatchesAFreshText",
+        "tui/text_row_cache_test.go::TestTextRowsFollowAWidthAndPaddingThatKeepTheContentWidth",
+        "tui/widthx/wrap_cache_bound_test.go::TestLineWrapCacheAcrossItsBoundMatchesWrapTextWithAnsi",
+        "tui/widthx/wrap_cache_bound_test.go::TestLineWrapCacheRetainsABoundedMemo",
+        "tui/widthx/wrap_cache_bound_test.go::TestLineWrapCacheServesTheLinesInsideItsBound",
+        "tui/widthx/wrap_cache_test.go::TestLineWrapCacheMatchesWrapTextWithAnsi",
+        "tui/widthx/wrap_cache_test.go::TestLineWrapCacheWidthAndResetServeNothing",
+        "tui/widthx/wrap_cache_test.go::TestLineWrapCacheWrapsOnlyTheLinesThatChanged"
       ]
     },
     {

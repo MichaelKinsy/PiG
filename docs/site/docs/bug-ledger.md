@@ -828,6 +828,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-666acff-2](#bf-666acff-2) | A pattern that Pi cannot compile now fails where Pi fails: a local Package keeps only the resource kinds… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-667d493](#bf-667d493) | On Windows, an edit or write waits for an earlier edit or write of the same file reached through a hard link… | PiG's own defect | Windows | Unreleased |
 | [BF-668b3fa](#bf-668b3fa) | Fix the shared attribute-order store case: advance the clock before flush and compare metric row names only | PiG's own defect | All platforms | Unreleased |
+| [BF-6691fb8](#bf-6691fb8) | Resuming or replacing a session whose saved model no catalog describes no longer continues on a blank model… | PiG's own defect | All platforms | Unreleased |
 | [BF-66b0fc0](#bf-66b0fc0) | The Anthropic workload-identity token endpoint check parses the base URL with the WHATWG parser, as the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-66beda3](#bf-66beda3) | `pig mcp login -l` and `pig mcp logout -l` no longer fail with `Unknown option --local.`, as `pig mcp add`… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-66c3f01](#bf-66c3f01) | Image components render inline in Orca terminals that advertise Kitty graphics (`TERM_PROGRAM=Orca` with… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
@@ -934,6 +935,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-72e7ab2-6](#bf-72e7ab2-6) | `TestSummaryAndSkillMessageComponentsMatchPi` probes the compaction, branch summary and skill messages under… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-72f75e5](#bf-72f75e5) | The footer no longer shows `0.0%/0 (auto)` for a model the remote model catalog carries and the bundled… | PiG's own defect | All platforms | Unreleased |
 | [BF-72fa7a7](#bf-72fa7a7) | An extension selector with more than ten options now shows a window of ten around the cursor and a… | PiG's own defect | All platforms | Unreleased |
+| [BF-72fdd1e](#bf-72fdd1e) | A streaming tool call's card is drawn again from the rows of its last frame: a `write` card at 160 columns… | PiG's own defect | All platforms | Unreleased |
 | [BF-731474b](#bf-731474b) | `coding.DefineTool` returns the tool definition it is given, as Pi's `defineTool` does | PiG's own defect | All platforms | 0.5.0 |
 | [BF-731474b-2](#bf-731474b-2) | `codemode.CodemodeJsonSchema` names the raw JSON of a tool's JSON Schema document, as Pi's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-735e4a2](#bf-735e4a2) | fix(chord/next/host): a native closed before its open began opens nothing | PiG's own defect | All platforms | Unreleased |
@@ -13219,6 +13221,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `668b3fa13b` (2026-10-19)
 - **Tests:** `telemetry/store_upstream_test.go::TestInMemoryMetricRowsKeepAttributeInsertionOrder`
 
+### BF-6691fb8
+
+**Resuming or replacing a session whose saved model no catalog describes no longer continues on a blank model…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Resuming or replacing a session whose saved model no catalog describes no longer continues on a blank model with no context window and no prices (a footer of `0.0%/0`).
+- **Root cause:** A resumed or replaced Session built a model with no context window and no prices when its saved model was in no catalog and its provider had auth. Like Pi (sdk.ts:224-231) it now restores only a model the model runtime carries and otherwise keeps the model it had.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6691fb8df5` (2026-11-11)
+- **Tests:** `coding/session_restore_uncataloged_test.go::TestCreateAgentSessionReportsAnUncatalogedSavedModelForEveryProviderShape`, `coding/session_restore_uncataloged_test.go::TestResumedSessionDoesNotBuildABlankModelForAnUncatalogedSavedModel`, `coding/session_restore_uncataloged_test.go::TestResumedSessionRestoresAModelsJSONModel`
+- **Release note:** Resuming or replacing a session whose saved model no catalog describes no longer continues on a blank model with no context window and no prices (a footer of `0.0%/0`). As in Pi, only a model the model runtime carries is restored; otherwise the session keeps the model it had.
+
 ### BF-66b0fc0
 
 **The Anthropic workload-identity token endpoint check parses the base URL with the WHATWG parser, as the…**
@@ -14687,6 +14703,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `1628f742e1` (2026-11-05), `72fa7a7feb` (2026-11-05)
 - **Tests:** `internal/codingagent/ext_ui_dialog_displace_test.go::TestExtensionSelectLongListShowsAWindowAroundTheCursor`, `tui/extension_selector_test.go::TestExtensionSelectorShortAndEmptyListsHaveNoScrollIndicator`, `tui/extension_selector_test.go::TestExtensionSelectorWindowsLongOptionListsAroundTheSelection`
 - **Release note:** An extension selector with more than ten options now shows a window of ten around the cursor and a `(selection/total)` indicator, so a long list no longer overflows the terminal (Pi #6688, D257).
+
+### BF-72fdd1e
+
+**A streaming tool call's card is drawn again from the rows of its last frame: a `write` card at 160 columns…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A streaming tool call's card is drawn again from the rows of its last frame: a `write` card at 160 columns now re-wraps, measures and pads only the lines whose text changed (its collapsed preview changes one line, the "...
+- **Root cause:** A streaming tool call changes the end of a card that is otherwise the same: the card's Box is cleared and refilled by every update (which dropped the Box's render cache, so each row went through applyBg and VisibleWidth again) and its Text takes a new text whose last line, the "... (N more lines" hint, differs from the one before, so every row of the card was wrapped, measured and padded again. A write card at 160 columns drew ten ANSI-dense rows that way on every frame.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `72fdd1ee15` (2026-11-11)
+- **Tests:** `internal/codingagent/write_card_rows_test.go::TestWriteCardRowsMatchAFreshChainWhileStreaming`, `tui/box_row_reuse_test.go::TestBoxRenderAfterClearAppliesTheBackgroundToChangedRowsOnly`, `tui/box_row_reuse_test.go::TestBoxRenderAfterClearMatchesAFreshBox`, `tui/text_row_bound_test.go::TestTextAfterOneChangeRetainsAboutAsMuchAsATextDrawnOnce`, `tui/text_row_cache_test.go::TestTextKeepsRowsOnlyAfterItsTextChanged`, `tui/text_row_cache_test.go::TestTextRenderAfterSetTextKeepsTheRowsOfUnchangedLines`, `tui/text_row_cache_test.go::TestTextRenderAfterSetTextMatchesAFreshText`, `tui/text_row_cache_test.go::TestTextRowsFollowAWidthAndPaddingThatKeepTheContentWidth` and 6 more in docs/bug-ledger.json
+- **Release note:** A streaming tool call's card is drawn again from the rows of its last frame: a `write` card at 160 columns now re-wraps, measures and pads only the lines whose text changed (its collapsed preview changes one line, the "... (N more lines" hint) instead of all of them, which halves the per-frame cost of the card in an in-process benchmark (178.7 to 89.5 us per frame for a 50 KB file, 121.7 to 43.0 us for 200 KB). The rows drawn are those of a fresh card. The rows kept are bounded (4096 rows of the last text), so a text of many thousand lines does not retain a memo as large as itself.
 
 ### BF-731474b
 

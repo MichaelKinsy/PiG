@@ -240401,6 +240401,39 @@
       "shapeHash": "sha256:391a9e96555d5038a6d0791e7a3018d91114729515dc2d23dd81c51a27a6b139"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#LineWrapCache",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "name": "LineWrapCache",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "LineWrapCache"
+      },
+      "shapeHash": "sha256:5eff310829db8c4a95ddf05a2ff1da6ddd8ae1541817d0989aa97323b48dc255"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#LineWrapCache.Reset",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "name": "LineWrapCache.Reset",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#LineWrapCache.Wrap",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "name": "LineWrapCache.Wrap",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(text string, width int, finish func(row string) string) []string"
+      },
+      "shapeHash": "sha256:c3e9e7dd1d80fa8354fa5feb6d88a94279482351c5a783ffbb35c3dfd240fbe1"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#NormalizeTerminalOutput",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
       "name": "NormalizeTerminalOutput",
@@ -241127,6 +241160,17 @@
       "shapeHash": "sha256:abc2191af35609859ce32f50fc00dcb12e79a321b139fe6e3f16efe735a1e4c2"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#maxCachedRows",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "name": "maxCachedRows",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#needsGraphemeWidth",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
       "name": "needsGraphemeWidth",
@@ -241413,6 +241457,17 @@
       "shapeHash": "sha256:afbfa0e34e9d6c66ccb1f588e053ad6458ff48f16ff299249aa444a8b7c2214a"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#trackerIs",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "name": "trackerIs",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(p *AnsiCodeTracker, tr AnsiCodeTracker) bool"
+      },
+      "shapeHash": "sha256:ce9e1a311a6423d2ead38164072b4cc1d22884e41f0044c405e8fd5381893bf9"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#truncateFragmentToWidth",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
       "name": "truncateFragmentToWidth",
@@ -241433,6 +241488,28 @@
         "type": "untyped string"
       },
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#wrapCacheLine",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "name": "wrapCacheLine",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "wrapCacheLine"
+      },
+      "shapeHash": "sha256:77c01aa1fbee01d66f107f7ae84794e7cb756c77ba5ef5a563c2670a3c2a01e9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#wrapInputLines",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "name": "wrapInputLines",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(text string) []string"
+      },
+      "shapeHash": "sha256:2849e1ad1fbe672a475bfdcf17ef8f2d9a87e5b611f41a7bc30936a69bfd144a"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#wrapSingleLine",
@@ -398581,6 +398658,39 @@
       "shapeHash": "sha256:391a9e96555d5038a6d0791e7a3018d91114729515dc2d23dd81c51a27a6b139"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/widthx#LineWrapCache",
+      "package": "github.com/MichaelKinsy/PiG/tui/widthx",
+      "name": "LineWrapCache",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "LineWrapCache"
+      },
+      "shapeHash": "sha256:5eff310829db8c4a95ddf05a2ff1da6ddd8ae1541817d0989aa97323b48dc255"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/widthx#LineWrapCache.Reset",
+      "package": "github.com/MichaelKinsy/PiG/tui/widthx",
+      "name": "LineWrapCache.Reset",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/widthx#LineWrapCache.Wrap",
+      "package": "github.com/MichaelKinsy/PiG/tui/widthx",
+      "name": "LineWrapCache.Wrap",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(text string, width int, finish func(row string) string) []string"
+      },
+      "shapeHash": "sha256:c3e9e7dd1d80fa8354fa5feb6d88a94279482351c5a783ffbb35c3dfd240fbe1"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui/widthx#NormalizeTerminalOutput",
       "package": "github.com/MichaelKinsy/PiG/tui/widthx",
       "name": "NormalizeTerminalOutput",
@@ -399307,6 +399417,17 @@
       "shapeHash": "sha256:abc2191af35609859ce32f50fc00dcb12e79a321b139fe6e3f16efe735a1e4c2"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/widthx#maxCachedRows",
+      "package": "github.com/MichaelKinsy/PiG/tui/widthx",
+      "name": "maxCachedRows",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui/widthx#needsGraphemeWidth",
       "package": "github.com/MichaelKinsy/PiG/tui/widthx",
       "name": "needsGraphemeWidth",
@@ -399593,6 +399714,17 @@
       "shapeHash": "sha256:afbfa0e34e9d6c66ccb1f588e053ad6458ff48f16ff299249aa444a8b7c2214a"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/widthx#trackerIs",
+      "package": "github.com/MichaelKinsy/PiG/tui/widthx",
+      "name": "trackerIs",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(p *AnsiCodeTracker, tr AnsiCodeTracker) bool"
+      },
+      "shapeHash": "sha256:ce9e1a311a6423d2ead38164072b4cc1d22884e41f0044c405e8fd5381893bf9"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui/widthx#truncateFragmentToWidth",
       "package": "github.com/MichaelKinsy/PiG/tui/widthx",
       "name": "truncateFragmentToWidth",
@@ -399613,6 +399745,28 @@
         "type": "untyped string"
       },
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/widthx#wrapCacheLine",
+      "package": "github.com/MichaelKinsy/PiG/tui/widthx",
+      "name": "wrapCacheLine",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "wrapCacheLine"
+      },
+      "shapeHash": "sha256:77c01aa1fbee01d66f107f7ae84794e7cb756c77ba5ef5a563c2670a3c2a01e9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/widthx#wrapInputLines",
+      "package": "github.com/MichaelKinsy/PiG/tui/widthx",
+      "name": "wrapInputLines",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(text string) []string"
+      },
+      "shapeHash": "sha256:2849e1ad1fbe672a475bfdcf17ef8f2d9a87e5b611f41a7bc30936a69bfd144a"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui/widthx#wrapSingleLine",

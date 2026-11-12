@@ -162764,8 +162764,8 @@
       ],
       "evidence": [
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:tui/box_cache_test.go#TestBoxRenderCacheMissesWhenPaddingChanges",
-        "test:tui/box_cache_test.go#TestBoxRenderCacheSeesInPlaceChildEdits"
+        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming",
+        "test:tui/box_cache_test.go#TestBoxRenderCacheMissesWhenPaddingChanges"
       ]
     },
     {
@@ -162786,8 +162786,8 @@
       ],
       "evidence": [
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:tui/box_cache_test.go#TestBoxRenderCacheMissesWhenPaddingChanges",
-        "test:tui/box_cache_test.go#TestBoxRenderCacheSeesInPlaceChildEdits"
+        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming",
+        "test:tui/box_cache_test.go#TestBoxRenderCacheMissesWhenPaddingChanges"
       ]
     },
     {
@@ -162827,9 +162827,9 @@
         "call:tui/box.go#Box.Clear"
       ],
       "evidence": [
-        "test:tui/box_semantics_test.go#TestBoxChangesMarkItDirty",
-        "test:tui/box_semantics_test.go#TestBoxStructureChangesDoNotInvalidateTheChildren",
-        "test:tui/box_slice_style_gaps_test.go#TestBoxAddRemoveClearAndInvalidateReachChildren"
+        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming",
+        "test:tui/box_row_reuse_test.go#TestBoxRenderAfterClearAppliesTheBackgroundToChangedRowsOnly",
+        "test:tui/box_row_reuse_test.go#TestBoxRenderAfterClearMatchesAFreshBox"
       ]
     },
     {
@@ -162849,9 +162849,9 @@
         "call:tui/box.go#Box.Clear"
       ],
       "evidence": [
-        "test:tui/box_semantics_test.go#TestBoxChangesMarkItDirty",
-        "test:tui/box_semantics_test.go#TestBoxStructureChangesDoNotInvalidateTheChildren",
-        "test:tui/box_slice_style_gaps_test.go#TestBoxAddRemoveClearAndInvalidateReachChildren"
+        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming",
+        "test:tui/box_row_reuse_test.go#TestBoxRenderAfterClearAppliesTheBackgroundToChangedRowsOnly",
+        "test:tui/box_row_reuse_test.go#TestBoxRenderAfterClearMatchesAFreshBox"
       ]
     },
     {
@@ -165434,8 +165434,8 @@
       ],
       "evidence": [
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:tui/box_cache_test.go#TestBoxRenderCacheMissesWhenPaddingChanges",
-        "test:tui/box_cache_test.go#TestBoxRenderCacheSeesInPlaceChildEdits"
+        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming",
+        "test:tui/box_cache_test.go#TestBoxRenderCacheMissesWhenPaddingChanges"
       ]
     },
     {
@@ -165456,8 +165456,8 @@
       ],
       "evidence": [
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:tui/box_cache_test.go#TestBoxRenderCacheMissesWhenPaddingChanges",
-        "test:tui/box_cache_test.go#TestBoxRenderCacheSeesInPlaceChildEdits"
+        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming",
+        "test:tui/box_cache_test.go#TestBoxRenderCacheMissesWhenPaddingChanges"
       ]
     },
     {
@@ -165497,9 +165497,9 @@
         "call:tui/box.go#Box.Clear"
       ],
       "evidence": [
-        "test:tui/box_semantics_test.go#TestBoxChangesMarkItDirty",
-        "test:tui/box_semantics_test.go#TestBoxStructureChangesDoNotInvalidateTheChildren",
-        "test:tui/box_slice_style_gaps_test.go#TestBoxAddRemoveClearAndInvalidateReachChildren"
+        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming",
+        "test:tui/box_row_reuse_test.go#TestBoxRenderAfterClearAppliesTheBackgroundToChangedRowsOnly",
+        "test:tui/box_row_reuse_test.go#TestBoxRenderAfterClearMatchesAFreshBox"
       ]
     },
     {
@@ -165519,9 +165519,9 @@
         "call:tui/box.go#Box.Clear"
       ],
       "evidence": [
-        "test:tui/box_semantics_test.go#TestBoxChangesMarkItDirty",
-        "test:tui/box_semantics_test.go#TestBoxStructureChangesDoNotInvalidateTheChildren",
-        "test:tui/box_slice_style_gaps_test.go#TestBoxAddRemoveClearAndInvalidateReachChildren"
+        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming",
+        "test:tui/box_row_reuse_test.go#TestBoxRenderAfterClearAppliesTheBackgroundToChangedRowsOnly",
+        "test:tui/box_row_reuse_test.go#TestBoxRenderAfterClearMatchesAFreshBox"
       ]
     },
     {
@@ -223772,8 +223772,8 @@
       ],
       "evidence": [
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:tui/box_cache_test.go#TestBoxRenderCacheMissesWhenPaddingChanges",
-        "test:tui/box_cache_test.go#TestBoxRenderCacheSeesInPlaceChildEdits"
+        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming",
+        "test:tui/box_cache_test.go#TestBoxRenderCacheMissesWhenPaddingChanges"
       ]
     },
     {
@@ -223794,8 +223794,8 @@
       ],
       "evidence": [
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:tui/box_cache_test.go#TestBoxRenderCacheMissesWhenPaddingChanges",
-        "test:tui/box_cache_test.go#TestBoxRenderCacheSeesInPlaceChildEdits"
+        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming",
+        "test:tui/box_cache_test.go#TestBoxRenderCacheMissesWhenPaddingChanges"
       ]
     },
     {
@@ -223835,9 +223835,9 @@
         "call:tui/box.go#Box.Clear"
       ],
       "evidence": [
-        "test:tui/box_semantics_test.go#TestBoxChangesMarkItDirty",
-        "test:tui/box_semantics_test.go#TestBoxStructureChangesDoNotInvalidateTheChildren",
-        "test:tui/box_slice_style_gaps_test.go#TestBoxAddRemoveClearAndInvalidateReachChildren"
+        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming",
+        "test:tui/box_row_reuse_test.go#TestBoxRenderAfterClearAppliesTheBackgroundToChangedRowsOnly",
+        "test:tui/box_row_reuse_test.go#TestBoxRenderAfterClearMatchesAFreshBox"
       ]
     },
     {
@@ -223857,9 +223857,9 @@
         "call:tui/box.go#Box.Clear"
       ],
       "evidence": [
-        "test:tui/box_semantics_test.go#TestBoxChangesMarkItDirty",
-        "test:tui/box_semantics_test.go#TestBoxStructureChangesDoNotInvalidateTheChildren",
-        "test:tui/box_slice_style_gaps_test.go#TestBoxAddRemoveClearAndInvalidateReachChildren"
+        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming",
+        "test:tui/box_row_reuse_test.go#TestBoxRenderAfterClearAppliesTheBackgroundToChangedRowsOnly",
+        "test:tui/box_row_reuse_test.go#TestBoxRenderAfterClearMatchesAFreshBox"
       ]
     },
     {
@@ -293488,8 +293488,8 @@
       ],
       "evidence": [
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:tui/box_cache_test.go#TestBoxRenderCacheMissesWhenPaddingChanges",
-        "test:tui/box_cache_test.go#TestBoxRenderCacheSeesInPlaceChildEdits"
+        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming",
+        "test:tui/box_cache_test.go#TestBoxRenderCacheMissesWhenPaddingChanges"
       ]
     },
     {
@@ -303228,7 +303228,7 @@
       "evidence": [
         "test:tui/tool_execution_mouse_upstream_test.go#TestToolMouseDelegatesNestedHandlersBeforeExpansion",
         "test:tui/tui_alt_screen_wheel_upstream_test.go#TestUpstreamAltScreenAppliesRuntimeWheelLineCountUpdates",
-        "test:tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportWheelOverlaysShadowTheLayout"
+        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming"
       ]
     },
     {
@@ -303250,7 +303250,7 @@
       "evidence": [
         "test:tui/tool_execution_mouse_upstream_test.go#TestToolMouseDelegatesNestedHandlersBeforeExpansion",
         "test:tui/tui_alt_screen_wheel_upstream_test.go#TestUpstreamAltScreenAppliesRuntimeWheelLineCountUpdates",
-        "test:tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportWheelOverlaysShadowTheLayout"
+        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming"
       ]
     },
     {
