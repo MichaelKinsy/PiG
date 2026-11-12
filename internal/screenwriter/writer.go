@@ -8,7 +8,8 @@
 //
 //   - a row the frame rewrites with the cells it already shows is not written;
 //   - a row whose cells change is written from its first cell through its last changed one, as the first bytes of the frame's own
-//     line (the first-cell rule); what follows on the row stays, and a shorter row is erased from its end;
+//     line (the first-cell rule); what follows on the row stays;
+//   - a row that got shorter is written whole, as the frame wrote it: the line erased, then the row;
 //   - a frame that changes no cell, cursor position or cursor visibility is not written;
 //   - once no frame was written for the settle time, every row that had a part written is rewritten whole, as the frame wrote it.
 //
@@ -17,8 +18,8 @@
 // with line feeds or reverse indexes, an erase of the screen, and the cursor shown or hidden. A frame with anything else in it, and
 // every write that is not a frame, is sent as it came; unless the table of sequences that change nothing the writer keeps covers it
 // (sequence.go), every row is then forgotten and written whole when a frame next writes it. The writer makes no sequence of its own but
-// the cursor address of a row's first column, an erase to the end of a line and a reset of the pen; a cursor address, a scroll and a
-// region the frame wrote are sent as the frame wrote them.
+// the cursor address of a row's first column and a reset of the pen; a cursor address, a scroll and a region the frame wrote are sent
+// as the frame wrote them.
 //
 // Before the alternate screen is entered and after it is left every byte is sent as it came.
 //
@@ -303,10 +304,15 @@ func (w *Writer) writeWhole(index int, r *row) {
 	w.aPen = r.endPen
 }
 
-// writeDiff makes a row that shows o show t: the first bytes of t's line through its last changed cell, and an erase after a shorter
-// row. shared and same are how many of t's first and last cells are known to be o's (parse); 0 when not known. It reports false,
-// having written nothing, when only writing the row whole does.
+// writeDiff makes a row that shows o show t: the first bytes of t's line through its last changed cell. shared and same are how many
+// of t's first and last cells are known to be o's (parse); 0 when not known. It reports false, having written nothing, when only
+// writing the row whole does.
 func (w *Writer) writeDiff(index int, o, t *row, shared, same int) bool {
+	// A row that got shorter is written whole: the frame erased the line and wrote the row. Erasing from the row's new end instead
+	// shows the same cells, but a terminal that frees a line's cells only when the line is erased whole (tmux) keeps the longer line.
+	if t.width < o.width {
+		return false
+	}
 	no, nt := len(o.cells), len(t.cells)
 	p := shared
 	if p == 0 {
@@ -346,10 +352,8 @@ func (w *Writer) writeDiff(index int, o, t *row, shared, same int) bool {
 		return false
 	}
 	// A cluster of uncertain width may be wider in the terminal than counted here. Where the row could then reach the screen's edge
-	// before the written cells end short of the row's end, or before the rest of the row is erased, the terminal clips it: only the
-	// row written whole shows that.
-	erase := t.width < o.width
-	if te < nt && t.reach(te) > w.cols-1 || erase && t.reach(nt) > w.cols-1 {
+	// before the written cells end short of the row's end, the terminal clips it: only the row written whole shows that.
+	if te < nt && t.reach(te) > w.cols-1 {
 		return false
 	}
 	w.moveTo(index, 0)
@@ -362,11 +366,6 @@ func (w *Writer) writeDiff(index int, o, t *row, shared, same int) bool {
 		if t.uncertain < te {
 			w.aCurKnown = false
 		}
-	}
-	if erase {
-		// The written cells end the row here (a shorter row shares no cells at its end), so the cursor is where the erase starts.
-		w.setPen(pen{})
-		w.out = append(w.out, "\x1b[K"...)
 	}
 	return true
 }

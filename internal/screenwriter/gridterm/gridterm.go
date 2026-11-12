@@ -53,8 +53,13 @@ type cell struct {
 
 // Terminal is the screen a stream leaves.
 type Terminal struct {
-	cols, rows  int
-	grid        [][]cell
+	cols, rows int
+	grid       [][]cell
+	// used is how far each row was printed since it was last erased whole. tmux keeps a line's cells until the line is erased
+	// whole: an erase from a column on leaves them, and capture-pane -N shows them as trailing blanks (in 3.6, with autowrap off, a
+	// quarter, a half or the whole of the width, by how far the row was printed). Two streams that leave the same value here leave
+	// such a terminal the same line. A line scrolled in has none. Not modelled: an erase under a background.
+	used        []int
 	row, col    int
 	pen         pen
 	link        string
@@ -92,14 +97,15 @@ func (v *Terminal) Row(row int) string {
 
 func (v *Terminal) Resize(cols, rows int) {
 	cols, rows = max(cols, 1), max(rows, 1)
-	grid := make([][]cell, rows)
+	grid, used := make([][]cell, rows), make([]int, rows)
 	for r := range grid {
 		grid[r] = make([]cell, cols)
 		if r < len(v.grid) {
 			copy(grid[r], v.grid[r])
+			used[r] = min(v.used[r], cols)
 		}
 	}
-	v.grid, v.cols, v.rows = grid, cols, rows
+	v.grid, v.used, v.cols, v.rows = grid, used, cols, rows
 	v.top, v.bottom = 0, rows-1
 	v.row, v.col = min(v.row, rows-1), min(v.col, cols-1)
 	v.last = nil
@@ -163,6 +169,7 @@ func (v *Terminal) print(cluster string, width int) {
 		v.grid[v.row][v.col+k] = cell{pen: v.pen, link: v.link, state: 2}
 	}
 	v.col += width
+	v.used[v.row] = max(v.used[v.row], min(v.col, v.cols))
 	if v.col >= v.cols && !v.autowrap {
 		v.col = v.cols - 1
 	}
@@ -175,6 +182,9 @@ func (v *Terminal) erase(r, from, to int) {
 	for c := from; c < to && c < v.cols; c++ {
 		v.grid[r][c] = cell{pen: pen{bg: v.pen.bg}}
 	}
+	if from == 0 && to >= v.cols {
+		v.used[r] = 0
+	}
 }
 
 func (v *Terminal) lineFeed() {
@@ -183,6 +193,7 @@ func (v *Terminal) lineFeed() {
 	case v.row == v.bottom:
 		first := v.grid[v.top]
 		copy(v.grid[v.top:v.bottom], v.grid[v.top+1:v.bottom+1])
+		copy(v.used[v.top:v.bottom], v.used[v.top+1:v.bottom+1])
 		v.grid[v.bottom] = first
 		v.erase(v.bottom, 0, v.cols)
 	case v.row < v.rows-1:
@@ -196,6 +207,7 @@ func (v *Terminal) reverseIndex() {
 	case v.row == v.top:
 		last := v.grid[v.bottom]
 		copy(v.grid[v.top+1:v.bottom+1], v.grid[v.top:v.bottom])
+		copy(v.used[v.top+1:v.bottom+1], v.used[v.top:v.bottom])
 		v.grid[v.top] = last
 		v.erase(v.top, 0, v.cols)
 	case v.row > 0:
@@ -456,6 +468,11 @@ func Differ(a, b *Terminal) string {
 			if a.grid[r][c] != b.grid[r][c] {
 				return fmt.Sprintf("row %d column %d: %+v, not %+v", r+1, c+1, b.grid[r][c], a.grid[r][c])
 			}
+		}
+	}
+	for r := range a.used {
+		if a.used[r] != b.used[r] {
+			return fmt.Sprintf("row %d: a line of %d cells, not of %d (a terminal that keeps a line's length shows the rest as blanks)", r+1, b.used[r], a.used[r])
 		}
 	}
 	switch {

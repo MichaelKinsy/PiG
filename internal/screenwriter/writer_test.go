@@ -204,12 +204,12 @@ func TestRules(t *testing.T) {
 			[]string{frame(line(2, "abcdefgh")), frame(line(2, "a\x1b[31mb\x1b[39mcdefgh"))}, syncBegin + at(2, 1) + "a\x1b[31mb" + at(1, 1) + "\x1b[0m" + syncEnd},
 		{"a row that starts with a pen: the line's own first bytes",
 			[]string{frame(line(2, "\x1b[38;5;66m|\x1b[39m ab")), frame(line(2, "\x1b[38;5;66m|\x1b[39m xb"))}, syncBegin + at(2, 1) + "\x1b[38;5;66m|\x1b[39m x" + at(1, 1) + syncEnd},
-		{"a shorter row: its cells that changed, then an erase to the end of the line",
-			[]string{frame(line(2, "hello world")), frame(line(2, "help"))}, syncBegin + at(2, 1) + "help\x1b[K" + at(1, 1) + syncEnd},
-		{"a row that lost its end: the erase alone, from the cells that stay",
-			[]string{frame(line(2, "hello world")), frame(line(2, "hello"))}, syncBegin + at(2, 1) + "hello\x1b[K" + at(1, 1) + syncEnd},
-		{"an emptied row: an erase at its first column",
-			[]string{frame(line(2, "hello")), frame(line(2, ""))}, syncBegin + at(2, 1) + "\x1b[K" + at(1, 1) + syncEnd},
+		{"a shorter row is written whole, as the frame wrote it: the line erased, then the row",
+			[]string{frame(line(2, "hello world")), frame(line(2, "help"))}, syncBegin + line(2, "help") + at(1, 1) + syncEnd},
+		{"a row that lost its end is written whole",
+			[]string{frame(line(2, "hello world")), frame(line(2, "hello"))}, syncBegin + line(2, "hello") + at(1, 1) + syncEnd},
+		{"an emptied row is written whole: the frame's erase of the line",
+			[]string{frame(line(2, "hello")), frame(line(2, ""))}, syncBegin + line(2, "") + at(1, 1) + syncEnd},
 		{"a blank row is written from its first cell",
 			[]string{frame(line(1, "a")), frame(line(2, "new"))}, syncBegin + at(2, 1) + "new" + at(1, 1) + syncEnd},
 		{"only the cursor moved: its address as the frame wrote it",
@@ -290,8 +290,65 @@ func TestRules(t *testing.T) {
 	}
 }
 
-// The writer makes no sequence of its own but a cursor address, an erase to the end of the line and the pen's reset: every other
-// sequence it sends stands in the frame it translates.
+// A row that got shorter leaves a terminal with no cell of the longer row: the writer erases the line, as the frame did, and never
+// from the row's new end on. tmux keeps a line's length across an erase from a column on (capture-pane -N shows the rest of the old
+// line as blanks), which the screens' line lengths follow; the first case is the one found there.
+func TestAShorterRowKeepsNoCellOfTheLongerRow(t *testing.T) {
+	for _, c := range []struct{ name, before, after string }{
+		{"shorter", "the same line           ", "added 0.16.4"},
+		{"lost its end", "hello world", "hello"},
+		{"emptied", "hello", ""},
+		{"shorter under a pen", "\x1b[1m\x1b[42mlonger row", "\x1b[1m\x1b[40mshort"},
+		{"as wide as the screen, then shorter", strings.Repeat("x", 49), "x"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			w, pair := newTestWriter(49, 13), newTestPair(49, 13)
+			for _, write := range []string{frame(line(8, c.before)), frame(line(9, "below")), frame(line(8, c.after)), frame(line(8, c.after+"!"))} {
+				out := w.Translate(write)
+				if strings.Contains(out, "\x1b[K") {
+					t.Errorf("the writer erased to the end of a line: %q", out)
+				}
+				if diff := pair.Step(write, out); diff != "" {
+					t.Errorf("after %q, sent as %q: %s", write, out, diff)
+				}
+			}
+		})
+	}
+}
+
+// A line's length in the screens: printing extends it, an erase from a column on keeps it, an erase of the whole line ends it, and
+// a scroll moves it with its row.
+func TestGridKeepsALinesLength(t *testing.T) {
+	screen := func(writes ...string) *gridterm.Terminal {
+		v := gridterm.New(20, 5, gridterm.Models[0])
+		for _, write := range writes {
+			v.Write(write)
+		}
+		return v
+	}
+	whole := screen(at(2, 1) + "hello world" + at(2, 1) + "\x1b[2K" + "help")
+	for name, other := range map[string]*gridterm.Terminal{
+		"erased from the new end on": screen(at(2, 1) + "hello world" + at(2, 1) + "help" + "\x1b[K"),
+		"erased to the cursor":       screen(at(2, 1) + "hello world" + at(2, 12) + "\x1b[1K" + at(2, 1) + "help"),
+	} {
+		if diff := gridterm.Differ(whole, other); !strings.Contains(diff, "a line of 11 cells, not of 4") {
+			t.Errorf("%s: the screens differ as %q, want the line's length", name, diff)
+		}
+	}
+	for name, other := range map[string]*gridterm.Terminal{
+		"written once":             screen(at(2, 1) + "help"),
+		"erased by the screen":     screen(at(2, 1) + "hello world" + "\x1b[2J" + at(2, 1) + "help"),
+		"scrolled up from row 3":   screen("\x1b[2;5r" + at(3, 1) + "help" + at(5, 1) + "\n" + "\x1b[r" + at(2, 5)),
+		"scrolled down from row 1": screen(at(1, 1) + "help" + at(1, 1) + "\x1bM" + at(2, 5)),
+	} {
+		if diff := gridterm.Differ(whole, other); diff != "" {
+			t.Errorf("%s: %s", name, diff)
+		}
+	}
+}
+
+// The writer makes no sequence of its own but a cursor address and the pen's reset: every other sequence it sends stands in the
+// frame it translates. It never erases to the end of a line, which no frame does.
 func TestWriterMakesNoSequenceOfItsOwn(t *testing.T) {
 	for name, stream := range testStreams(t) {
 		w := newTestWriter(160, 48)
@@ -301,7 +358,7 @@ func TestWriterMakesNoSequenceOfItsOwn(t *testing.T) {
 				kind, end := nextToken(out, i)
 				seq := out[i:end]
 				i = end
-				if kind == tokenText || seq == "\x1b[K" || seq == "\x1b[0m" || kind == tokenCSI && seq[len(seq)-1] == 'H' || strings.Contains(write, seq) {
+				if kind == tokenText || seq == "\x1b[0m" || kind == tokenCSI && seq[len(seq)-1] == 'H' || strings.Contains(write, seq) {
 					continue
 				}
 				t.Fatalf("%s: the writer sent %q, which is not in the frame %q", name, seq, write)
@@ -464,7 +521,8 @@ func TestRandomEditsShowTheSameScreens(t *testing.T) {
 }
 
 // A terminal another program scribbled on heals as it does without the writer: every row the frames rewrote since is whole again
-// once the settle write is out, and the rows no frame rewrote keep the scribble in both.
+// once the settle write is out, and the rows no frame rewrote keep the scribble in both. A row that got shorter is whole at once: the
+// frame's translation writes it whole.
 func TestScribbledRowsHealByTheSettleWrite(t *testing.T) {
 	w := newTestWriter(20, 5)
 	pair := newTestPair(20, 5)
@@ -482,22 +540,23 @@ func TestScribbledRowsHealByTheSettleWrite(t *testing.T) {
 	step(scribble, scribble)
 	second := frame(line(1, "one"), line(2, "two!"), line(3, "thr"))
 	out := strings.Clone(w.Translate(second))
-	if strings.Contains(out, "\x1b[2K") {
-		t.Fatalf("the writer wrote a row whole: %q", out)
+	if !strings.Contains(out, line(3, "thr")) || strings.Count(out, "\x1b[2K") != 1 {
+		t.Fatalf("the writer sent %q, want row 3, which got shorter, written whole and no other row whole", out)
 	}
-	// Until the settle write the rows written in part still show a part of the scribble; the renderers' bytes healed them at once.
+	// Until the settle write rows 1 and 2, not written or written in part, still show a part of the scribble; the renderers' bytes
+	// healed them at once.
 	pair.Step(second, out)
 	if pair.Differences != 1 {
 		t.Fatalf("%d differences before the settle write, want the one the scribble leaves", pair.Differences)
 	}
 	settled := w.Settled()
-	for _, want := range []string{"\x1b[2Kone" + reset, line(2, "two!"), line(3, "thr")} {
+	for _, want := range []string{"\x1b[2Kone" + reset, line(2, "two!")} {
 		if !strings.Contains(settled, want) {
 			t.Errorf("the settle write %q does not write %q", settled, want)
 		}
 	}
-	if strings.Contains(settled, "four") {
-		t.Errorf("the settle write %q writes a row no frame rewrote", settled)
+	if strings.Contains(settled, "four") || strings.Contains(settled, "thr") {
+		t.Errorf("the settle write %q writes a row no frame rewrote, or the row the frame's translation wrote whole", settled)
 	}
 	// Step carried on from the renderers' screen after the difference: apply the settle write to a screen that took the writer's bytes.
 	healed, reference := gridterm.New(20, 5, gridterm.Models[0]), gridterm.New(20, 5, gridterm.Models[0])
