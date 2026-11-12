@@ -199,6 +199,29 @@ func TestProviderEvents(t *testing.T) {
 			requireEqual(t, "entries", got, []entry{{0, p, 1.0}, {1, p, 1.0}, {0, p, 2.0}, {1, p, 2.0}})
 		})
 
+		// No Pi test. Pi's provider.ts (8d30e6306) sends a flush's events by `sendEvents` (lines 382-389) after only the event
+		// window (`#eventsInFlight`, queueEvent 367-380; "Separate from the state window and its fence", 677), never looking
+		// at the state window or its waiting holds (`#free`, 734): with the state window full the state waits for a slot and
+		// the event message overtakes it. The same order here.
+		t.Run("send a flush's events before the state held back by a full state window, which goes when a slot frees", func(t *testing.T) {
+			s := matchServer(t, rawLinkedOptions{NoAck: true})
+			provHoldMatch(t, s.Peer, 0)
+			provHoldMatch(t, s.Peer, 1)
+			s.Peer.Next("bound")
+			s.Peer.Next("bound")
+			settle(s.Peer)
+			forgetReceived(s.Peer)
+			hostTurn(s.Server, func() {
+				must(t, s.Probe.paddle(0).Emit(sample(1)))
+				must(t, s.Probe.score(0).Set(1.0))
+			})
+			settle(s.Peer)
+			requireEqual(t, "kinds with the window full", kindsAfterHello(s.Peer), []string{"event"})
+			s.Peer.Ack(link.Optional[int]{})
+			settle(s.Peer)
+			requireEqual(t, "kinds after one ack", kindsAfterHello(s.Peer), []string{"event", "state"})
+		})
+
 		// Ports "send one message per origin, each with its origin".
 		t.Run("send one message per origin, each with its origin", func(t *testing.T) {
 			s := matchServer(t, rawLinkedOptions{Parent: true})
