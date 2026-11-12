@@ -430,7 +430,7 @@ func TestViewClientRaisesAnIntentFromAKeyAndOrdersItsAnswer(t *testing.T) {
 	var got uiview.Invocation
 	f.host.invoke = func(_ context.Context, inv uiview.Invocation) (uiview.Result, error) {
 		got = inv
-		if _, err := f.host.reg.Update("ext", uiview.UpdateArgs{Mount: ref, Content: uiview.Content{View: viewList("picked"), Intents: []uiview.IntentDecl{viewPickIntent}}}); err != nil {
+		if _, err := f.host.reg.Update("ext", uiview.UpdateArgs{Mount: ref, View: viewList("picked"), Intents: []uiview.IntentDecl{viewPickIntent}}); err != nil {
 			t.Errorf("the handler's update: %v", err)
 		}
 		return uiview.Result{Outcome: uiview.OutcomeDone}, nil
@@ -465,7 +465,7 @@ func TestViewClientRaisesAnIntentFromAKeyAndOrdersItsAnswer(t *testing.T) {
 func TestViewClientAppliesAHandlersDeliveriesBeforeItsResult(t *testing.T) {
 	f := newViewFixture(t)
 	f.host.invoke = func(context.Context, uiview.Invocation) (uiview.Result, error) {
-		if _, err := f.host.reg.Mount("ext", uiview.MountArgs{Key: "side", Slot: uiview.SlotWidgetAbove, Content: uiview.Content{View: viewText("made by the handler")}}); err != nil {
+		if _, err := f.host.reg.Mount("ext", uiview.MountArgs{Key: "side", Slot: uiview.SlotWidgetAbove, View: viewText("made by the handler")}); err != nil {
 			t.Errorf("the handler's mount: %v", err)
 		}
 		return uiview.Result{Outcome: uiview.OutcomeRefused, Error: "no"}, nil
@@ -490,7 +490,7 @@ func TestViewClientResyncsAfterAMissedDelivery(t *testing.T) {
 	if _, err := f.host.reg.Transition("ext", "remove", uiview.RefArgs{Mount: b}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := f.host.reg.Update("ext", uiview.UpdateArgs{Mount: a, Content: uiview.Content{View: viewText("a2")}}); err != nil {
+	if _, err := f.host.reg.Update("ext", uiview.UpdateArgs{Mount: a, View: viewText("a2")}); err != nil {
 		t.Fatal(err)
 	}
 	f.client.mu.Lock()
@@ -690,7 +690,7 @@ func TestViewClientSlowLoopUsesTheRegistrysGap(t *testing.T) {
 	ref := f.mount("m", uiview.SlotWidgetAbove, uiview.Content{View: viewText("v0")})
 	m := f.loop.drawn()[0]
 	for i := 1; i <= viewQueueLimit+6; i++ {
-		st, err := f.host.reg.Update("ext", uiview.UpdateArgs{Mount: ref, Content: uiview.Content{View: viewText("v" + strconv.Itoa(i))}})
+		st, err := f.host.reg.Update("ext", uiview.UpdateArgs{Mount: ref, View: viewText("v" + strconv.Itoa(i))})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -728,7 +728,7 @@ func TestViewClientSinkNeverWaitsForTheLoop(t *testing.T) {
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		if _, err := f.host.reg.Mount("ext", uiview.MountArgs{Key: "m", Slot: uiview.SlotPanel, Content: uiview.Content{View: viewText("x")}}); err != nil {
+		if _, err := f.host.reg.Mount("ext", uiview.MountArgs{Key: "m", Slot: uiview.SlotPanel, View: viewText("x")}); err != nil {
 			t.Error(err)
 		}
 	}()
@@ -822,7 +822,7 @@ func TestViewClientDetachEndsEverything(t *testing.T) {
 		t.Fatal("the registry still states abilities after the terminal detached")
 	}
 	f.loop.run()
-	if _, err := f.host.reg.Mount("ext", uiview.MountArgs{Key: "late", Slot: uiview.SlotPanel, Content: uiview.Content{View: viewText("x")}}); err == nil || err.Code != uiview.CodeUnsupported {
+	if _, err := f.host.reg.Mount("ext", uiview.MountArgs{Key: "late", Slot: uiview.SlotPanel, View: viewText("x")}); err == nil || err.Code != uiview.CodeUnsupported {
 		t.Fatalf("a mount after the detach: %v, want unsupported", err)
 	}
 }
