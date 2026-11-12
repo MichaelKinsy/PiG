@@ -25,15 +25,7 @@ func WrapTextWithAnsi(text string, width int) []string {
 	if text == "" {
 		return []string{""}
 	}
-	// Split on CRLF, lone CR, and LF alike so text pasted or produced with
-	// non-LF line endings still wraps per logical line. Mirrors upstream
-	// wrapTextWithAnsi splitting on /\r\n|\r|\n/ (#6764).
-	src := text
-	if strings.ContainsRune(src, '\r') {
-		src = strings.ReplaceAll(src, "\r\n", "\n")
-		src = strings.ReplaceAll(src, "\r", "\n")
-	}
-	inputLines := strings.Split(src, "\n")
+	inputLines := wrapInputLines(text)
 	var result []string
 	tr := &AnsiCodeTracker{}
 	for _, line := range inputLines {
@@ -48,6 +40,18 @@ func WrapTextWithAnsi(text string, width int) []string {
 		return []string{""}
 	}
 	return result
+}
+
+// wrapInputLines is the logical lines WrapTextWithAnsi wraps. It splits on CRLF, lone CR, and LF alike so text pasted or
+// produced with non-LF line endings still wraps per logical line. Mirrors upstream wrapTextWithAnsi splitting on
+// /\r\n|\r|\n/ (#6764).
+func wrapInputLines(text string) []string {
+	src := text
+	if strings.ContainsRune(src, '\r') {
+		src = strings.ReplaceAll(src, "\r\n", "\n")
+		src = strings.ReplaceAll(src, "\r", "\n")
+	}
+	return strings.Split(src, "\n")
 }
 
 func wrapSingleLine(line string, width int) []string {
