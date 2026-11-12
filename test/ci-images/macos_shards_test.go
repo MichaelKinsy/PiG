@@ -3,6 +3,7 @@
 package ciimages
 
 import (
+	"errors"
 	"maps"
 	"os"
 	"os/exec"
@@ -83,17 +84,73 @@ func TestMacOSShardsTestTheMacOSSensitivePackages(t *testing.T) {
 		t.Fatal(err)
 	}
 	script := string(data)
-	cliRun := regexp.MustCompile(`test-shard-pattern\.sh "\$\{unit#cli-\}" ([0-9]+) ` + regexp.QuoteMeta(cliPkg) + `\); then\n\s*go test -timeout 30m -run "\$run" ` + regexp.QuoteMeta(cliPkg) + ` \|\| failed=1\n`)
+	cliRun := regexp.MustCompile(`test-shard-pattern\.sh "\$\{unit#cli-\}" ([0-9]+) ` + regexp.QuoteMeta(cliPkg) + `\); then\n\s*go test -timeout 30m -json -run "\$run" ` + regexp.QuoteMeta(cliPkg) + ` \| python3 automation/ci/test-json-report\.py \|\| failed=1\n`)
 	if match := cliRun.FindStringSubmatch(script); match == nil {
 		t.Error("macos-units.sh does not run a cmd/pig unit as its own go test of one test-shard-pattern.sh shard")
 	} else if match[1] != strconv.Itoa(shards) {
 		t.Errorf("macos-units.sh splits cmd/pig into %s shards, want %d as make test-cli runs", match[1], shards)
 	}
-	if !regexp.MustCompile(`test-shard-pattern\.sh "\$\{unit##\*-\}" 3 \./coding/extension/host/subprocess\); then\n\s*go test -timeout 30m -run "\$run" \./coding/extension/host/subprocess \|\| failed=1\n`).MatchString(script) {
+	if !regexp.MustCompile(`test-shard-pattern\.sh "\$\{unit##\*-\}" 3 \./coding/extension/host/subprocess\); then\n\s*go test -timeout 30m -json -run "\$run" \./coding/extension/host/subprocess \| python3 automation/ci/test-json-report\.py \|\| failed=1\n`).MatchString(script) {
 		t.Error("macos-units.sh does not run an extension host unit as its own go test of one third")
 	}
-	if !strings.Contains(script, "go test -timeout 30m ./env ./coding/piglet || failed=1\n") {
+	if !strings.Contains(script, "go test -timeout 30m -json ./env ./coding/piglet | python3 automation/ci/test-json-report.py || failed=1\n") {
 		t.Error("macos-units.sh does not run the packages unit")
+	}
+}
+
+// macosUnitsFixture is groupedTestFixture with macos-units.sh and the report it pipes go test into. The fixture's python3 stands for the interpreter: it fails unless the report script it is given exists, reads the events and exits 0, as the report does.
+func macosUnitsFixture(t *testing.T) string {
+	t.Helper()
+	root := groupedTestFixture(t)
+	copyCIFixture(t, root, "automation/ci/macos-units.sh")
+	copyCIFixture(t, root, "automation/ci/test-json-report.py")
+	writeCIFixture(t, root, "bin/python3", "#!/usr/bin/env bash\ntest -f \"$1\" || exit 97\ncat >/dev/null\n")
+	writeCIFixture(t, root, "runs", "")
+	writeCIFixture(t, root, "packages", "")
+	t.Setenv("RUN_LOG", filepath.Join(root, "runs"))
+	t.Setenv("TEST_LOG", filepath.Join(root, "packages"))
+	// The fake go test runs only with the fixtures test-grouped.sh exports; macos-units.sh needs none.
+	t.Setenv("CI_TEST_FIXTURES", "ready")
+	t.Setenv("RUNNER_TEMP", t.TempDir())
+	return root
+}
+
+// A unit's go test runs in a pipeline whose last command, the report, exits 0: the unit, and with it the step, must still fail when go test fails, and the later units of the job must still run.
+func TestMacOSUnitFailsWhenItsGoTestFails(t *testing.T) {
+	_, cliPkg := cliShards(t)
+	for kind, tc := range map[string]struct{ units, pkg string }{
+		"cli":            {"cli-1 cli-2", cliPkg},
+		"extension-host": {"extension-host-1 extension-host-2", "./coding/extension/host/subprocess"},
+		"packages":       {"packages", "./env"},
+	} {
+		t.Run(kind, func(t *testing.T) {
+			root := macosUnitsFixture(t)
+			first := strings.Fields(tc.units)[0]
+			for _, fail := range []bool{false, true} {
+				cmd := exec.CommandContext(t.Context(), testenv.Bash(t), "automation/ci/macos-units.sh", kind)
+				cmd.Dir = root
+				cmd.Env = append(os.Environ(), "UNITS="+tc.units)
+				if fail {
+					cmd.Env = append(cmd.Env, "FAIL_PACKAGE="+tc.pkg)
+				}
+				output, err := cmd.CombinedOutput()
+				if !fail {
+					if err != nil {
+						t.Fatalf("%s: %v\n%s", tc.units, err, output)
+					}
+					continue
+				}
+				var exit *exec.ExitError
+				if !errors.As(err, &exit) || exit.ExitCode() != 1 || !strings.Contains(string(output), "::error::macOS unit "+first+" failed") {
+					t.Fatalf("%s with a failing go test: %v, want exit status 1 and the unit's error\n%s", tc.units, err, output)
+				}
+				for _, unit := range strings.Fields(tc.units) {
+					if !strings.Contains(string(output), "::group::"+unit+"\n") {
+						t.Errorf("%s did not run after a failing unit\n%s", unit, output)
+					}
+				}
+			}
+		})
 	}
 }
 
@@ -122,16 +179,8 @@ func TestMacOSJobsRunEveryTestOfEveryUnitExactlyOnce(t *testing.T) {
 	shards, cliPkg := cliShards(t)
 	const hostPkg = "./coding/extension/host/subprocess"
 	steps := macosUnitSteps(t)
-	root := groupedTestFixture(t)
-	copyCIFixture(t, root, "automation/ci/macos-units.sh")
+	root := macosUnitsFixture(t)
 	runs, packages := filepath.Join(root, "runs"), filepath.Join(root, "packages")
-	writeCIFixture(t, root, "runs", "")
-	writeCIFixture(t, root, "packages", "")
-	t.Setenv("RUN_LOG", runs)
-	t.Setenv("TEST_LOG", packages)
-	// The fake go test runs only with the fixtures test-grouped.sh exports; macos-units.sh needs none.
-	t.Setenv("CI_TEST_FIXTURES", "ready")
-	t.Setenv("RUNNER_TEMP", t.TempDir())
 	for _, entry := range planFor(t, "merge_group", "").shards("macos") {
 		for kind, marker := range steps {
 			if !strings.Contains(entry, marker) {
@@ -158,7 +207,7 @@ func TestMacOSJobsRunEveryTestOfEveryUnitExactlyOnce(t *testing.T) {
 		patterns[pkg] = append(patterns[pkg], pattern)
 	}
 	if len(patterns) != 2 || len(patterns[cliPkg]) != shards || len(patterns[hostPkg]) != 3 {
-		t.Fatalf("the macos jobs ran shards of %v, want %d of %s and 3 of %s", slices.Sorted(maps.Keys(patterns)), shards, cliPkg, hostPkg)
+		t.Fatalf("the macos jobs ran %d shards of %s and %d of %s (sharded packages: %v), want %d and 3 of those two", len(patterns[cliPkg]), cliPkg, len(patterns[hostPkg]), hostPkg, slices.Sorted(maps.Keys(patterns)), shards)
 	}
 	requireShardPartition(t, patterns[cliPkg])
 	requireShardPartition(t, patterns[hostPkg])
