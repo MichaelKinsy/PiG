@@ -12,6 +12,7 @@ func resetKittyRegistry(t *testing.T) {
 	kittyImageMetadata = map[int]registeredKittyImageMetadata{}
 	kittyImageMetadataOrder = nil
 	kittyTransmissionGeneration = 0
+	maxKittyImageRows = 0
 	kittyMetadataMu.Unlock()
 }
 
