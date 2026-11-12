@@ -2015,7 +2015,12 @@ func (p *openAIProvider) parseSSE(ctx context.Context, r io.Reader, builder *ass
 		if chunk.ID != "" && builder.partial.ResponseID == "" || responseModel != "" && builder.partial.ResponseModel == "" {
 			builder.touch()
 		}
-		builder.setResponseMetadata(chunk.ID, responseModel, "", "", nil)
+		responseID := chunk.ID
+		if decodedFast && responseID != "" && builder.partial.ResponseID == "" {
+			// The fast decode's strings are substrings of the record. The message keeps its own copy of the id, so it does not hold the record's line buffer.
+			responseID = strings.Clone(responseID)
+		}
+		builder.setResponseMetadata(responseID, responseModel, "", "", nil)
 
 		if errorMessage, ok := openAIStreamErrorMessage(chunk.Error); ok {
 			fail(StopReasonError, errors.New(errorMessage))
@@ -2037,6 +2042,10 @@ func (p *openAIProvider) parseSSE(ctx context.Context, r io.Reader, builder *ass
 			if choice.FinishReason != "" || choice.finishReasonNotString {
 				hasFinishReason = true
 				finishReason, finishReasonNotString = choice.FinishReason, choice.finishReasonNotString
+				if decodedFast {
+					// The message keeps its own copy of the raw finish reason, as it does of the id.
+					finishReason = strings.Clone(finishReason)
+				}
 				builder.setResponseMetadata("", "", finishReason, "", nil)
 				stopReason, errorMessage := mapChunkFinishReason(finishReason, finishReasonNotString)
 				builder.partial.StopReason = stopReason
@@ -2105,11 +2114,18 @@ func (p *openAIProvider) parseSSE(ctx context.Context, r io.Reader, builder *ass
 				if tc.ID != "" {
 					if pt.id == "" {
 						pt.id = tc.ID
+						if decodedFast {
+							// The call keeps its own copy of the id and of the name, as the message does of the response id.
+							pt.id = strings.Clone(tc.ID)
+						}
 					}
 					partialsByID[tc.ID] = pt
 				}
 				if pt.name == "" {
 					pt.name = functionName
+					if decodedFast {
+						pt.name = strings.Clone(functionName)
+					}
 				}
 				// A call is a custom (grammar) call from the first delta that says so, or at once when it is created by one.
 				var custom *customToolInput
