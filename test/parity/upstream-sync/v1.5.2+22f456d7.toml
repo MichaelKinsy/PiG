@@ -19,8 +19,8 @@ rationale = "f72f799a4 (#12103): the Vertex adapter passes options.fetch through
 path = "packages/ai/src/api/google-shared.ts"
 change = "modified"
 disposition = "ported"
-evidence = ["test:ai/google_stop_reason_continuation_upstream_test.go#TestGoogleContinuationMapsToLengthLikeMaxTokens", "test:ai/google_contract_0861_test.go#TestMapGoogleFinishReasonFollowsMapStopReason"]
-rationale = "f72f799a4: mapStopReason maps FinishReason.CONTINUATION to length like MAX_TOKENS, and the exported mapStopReasonString (STOP and MAX_TOKENS, else error) is removed. ai/google.go mapStopReason has the CONTINUATION arm and no longer delegates to a string mapper; the Go mapStopReasonString and its test are deleted."
+evidence = ["test:ai/google_stop_reason_continuation_upstream_test.go#TestGoogleContinuationMapsToLengthLikeMaxTokens", "test:ai/google_contract_0861_test.go#TestMapGoogleFinishReasonFollowsMapStopReason", "test:ai/google_shared_stop_disabled_test.go#TestMapStopReasonStringIsStopLengthOrError"]
+rationale = "f72f799a4: mapStopReason maps FinishReason.CONTINUATION to length like MAX_TOKENS, and the exported mapStopReasonString (STOP and MAX_TOKENS, else error) is removed. ai/google.go mapStopReason has the CONTINUATION arm (through mapStopReasonString, which maps CONTINUATION to length); Go keeps mapStopReasonString and its test because the pinned interface inventory (c23b9ec1) still lists google-shared#mapStopReasonString: a pin bump past f72f799a4 drops that ID and then the Go function."
 
 [[files]]
 path = "packages/ai/test/fetch-option.test.ts"

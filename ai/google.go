@@ -1463,18 +1463,28 @@ func (p *googleProvider) parseGeminiSSE(ctx context.Context, r io.Reader, builde
 	builder.done(stopReason, &state.usage, errorMessage)
 }
 
+// mapStopReasonString maps a Gemini finish reason to a stop reason; every reason other than STOP, MAX_TOKENS and CONTINUATION is an error
+// (google-shared.ts:474 mapStopReasonString over a raw string). Pi f72f799a4 deleted the TypeScript function; the pinned interface inventory still
+// lists it, so Go keeps it as mapStopReason's string mapper until a pin bump drops that interface ID.
+func mapStopReasonString(reason string) StopReason {
+	switch reason {
+	case "STOP":
+		return StopReasonStop
+	case "MAX_TOKENS", "CONTINUATION":
+		return StopReasonLength
+	default:
+		return StopReasonError
+	}
+}
+
 // mapStopReason is google-shared.ts:495 mapStopReason: the Gemini FinishReason enum members map to stop, length (MAX_TOKENS, and since Pi f72f799a4
 // CONTINUATION, the per-request token limit reached before generation completed: pi does not resume with the continuation token) or error, and any
 // other value reaches the exhaustive switch's default, which throws `Unhandled stop reason: <reason>`.
 func mapStopReason(reason string) (StopReason, error) {
 	switch reason {
-	case "STOP":
-		return StopReasonStop, nil
-	case "MAX_TOKENS", "CONTINUATION":
-		return StopReasonLength, nil
-	case "BLOCKLIST", "PROHIBITED_CONTENT", "SPII", "SAFETY", "IMAGE_SAFETY", "IMAGE_PROHIBITED_CONTENT", "IMAGE_RECITATION", "IMAGE_OTHER", "RECITATION",
+	case "STOP", "MAX_TOKENS", "CONTINUATION", "BLOCKLIST", "PROHIBITED_CONTENT", "SPII", "SAFETY", "IMAGE_SAFETY", "IMAGE_PROHIBITED_CONTENT", "IMAGE_RECITATION", "IMAGE_OTHER", "RECITATION",
 		"FINISH_REASON_UNSPECIFIED", "OTHER", "LANGUAGE", "MALFORMED_FUNCTION_CALL", "UNEXPECTED_TOOL_CALL", "TOO_MANY_TOOL_CALLS", "NO_IMAGE":
-		return StopReasonError, nil
+		return mapStopReasonString(reason), nil
 	default:
 		return StopReasonError, fmt.Errorf("Unhandled stop reason: %s", reason)
 	}
