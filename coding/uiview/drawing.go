@@ -62,33 +62,37 @@ type PathCommand struct {
 // (X1, Y1, X2, Y2), polyline (Points, Closed), path (Commands), text (X, Y, Text, Size, Align) or image (X, Y, Width,
 // Height, Asset). A member that does not belong to the kind rejects the drawing.
 type DrawShape struct {
-	Kind      string        `json:"kind"`
-	Key       string        `json:"key,omitempty"`
-	Fill      string        `json:"fill,omitempty"`
-	Stroke    *Stroke       `json:"stroke,omitempty"`
-	Opacity   *float64      `json:"opacity,omitempty"`
-	Transform []float64     `json:"transform,omitempty"`
-	Children  []DrawShape   `json:"children,omitempty"`
-	X         float64       `json:"x,omitempty"`
-	Y         float64       `json:"y,omitempty"`
-	Width     float64       `json:"width,omitempty"`
-	Height    float64       `json:"height,omitempty"`
-	Radius    float64       `json:"radius,omitempty"`
-	CX        float64       `json:"cx,omitempty"`
-	CY        float64       `json:"cy,omitempty"`
-	RX        float64       `json:"rx,omitempty"`
-	RY        float64       `json:"ry,omitempty"`
-	X1        float64       `json:"x1,omitempty"`
-	Y1        float64       `json:"y1,omitempty"`
-	X2        float64       `json:"x2,omitempty"`
-	Y2        float64       `json:"y2,omitempty"`
-	Points    []Point       `json:"points,omitempty"`
-	Closed    bool          `json:"closed,omitempty"`
-	Commands  []PathCommand `json:"commands,omitempty"`
-	Text      string        `json:"text,omitempty"`
-	Size      float64       `json:"size,omitempty"`
-	Align     string        `json:"align,omitempty"`
-	Asset     string        `json:"asset,omitempty"`
+	Kind    string   `json:"kind"`
+	Key     string   `json:"key,omitempty"`
+	Fill    string   `json:"fill,omitempty"`
+	Stroke  *Stroke  `json:"stroke,omitempty"`
+	Opacity *float64 `json:"opacity,omitempty"`
+	//portlint:allow emptydrop the D614 records are PiG-owned with no Pi counterpart, and an absent and an empty list mean the same: none
+	Transform []float64 `json:"transform,omitempty"`
+	//portlint:allow emptydrop the D614 records are PiG-owned with no Pi counterpart, and an absent and an empty list mean the same: none
+	Children []DrawShape `json:"children,omitempty"`
+	X        float64     `json:"x,omitempty"`
+	Y        float64     `json:"y,omitempty"`
+	Width    float64     `json:"width,omitempty"`
+	Height   float64     `json:"height,omitempty"`
+	Radius   float64     `json:"radius,omitempty"`
+	CX       float64     `json:"cx,omitempty"`
+	CY       float64     `json:"cy,omitempty"`
+	RX       float64     `json:"rx,omitempty"`
+	RY       float64     `json:"ry,omitempty"`
+	X1       float64     `json:"x1,omitempty"`
+	Y1       float64     `json:"y1,omitempty"`
+	X2       float64     `json:"x2,omitempty"`
+	Y2       float64     `json:"y2,omitempty"`
+	//portlint:allow emptydrop the D614 records are PiG-owned with no Pi counterpart, and an absent and an empty list mean the same: none
+	Points []Point `json:"points,omitempty"`
+	Closed bool    `json:"closed,omitempty"`
+	//portlint:allow emptydrop the D614 records are PiG-owned with no Pi counterpart, and an absent and an empty list mean the same: none
+	Commands []PathCommand `json:"commands,omitempty"`
+	Text     string        `json:"text,omitempty"`
+	Size     float64       `json:"size,omitempty"`
+	Align    string        `json:"align,omitempty"`
+	Asset    string        `json:"asset,omitempty"`
 }
 
 // Pixels is a pixel grid: an image asset shown Width by Height cells, each cell one pixel of the asset.
@@ -113,12 +117,14 @@ type Region struct {
 // Drawing is the drawing of a view. Profile "scene" carries Shapes; "pixels" carries Pixels. Node names the view node
 // the drawing fills; without it the drawing follows the view.
 type Drawing struct {
-	Profile  string      `json:"profile"`
-	Node     string      `json:"node,omitempty"`
-	Viewport *Viewport   `json:"viewport,omitempty"`
-	Shapes   []DrawShape `json:"shapes,omitempty"`
-	Pixels   *Pixels     `json:"pixels,omitempty"`
-	Regions  []Region    `json:"regions,omitempty"`
+	Profile  string    `json:"profile"`
+	Node     string    `json:"node,omitempty"`
+	Viewport *Viewport `json:"viewport,omitempty"`
+	//portlint:allow emptydrop the D614 records are PiG-owned with no Pi counterpart, and an absent and an empty list mean the same: none
+	Shapes []DrawShape `json:"shapes,omitempty"`
+	Pixels *Pixels     `json:"pixels,omitempty"`
+	//portlint:allow emptydrop the D614 records are PiG-owned with no Pi counterpart, and an absent and an empty list mean the same: none
+	Regions []Region `json:"regions,omitempty"`
 
 	// shapes, text and bytes are measured once by check: the shape count, the longest text and the encoded size.
 	shapes, text, bytes int
@@ -173,19 +179,28 @@ func validColor(c string) bool {
 			return false
 		}
 		for i := 1; i < len(c); i++ {
-			if !(c[i] >= '0' && c[i] <= '9' || c[i] >= 'a' && c[i] <= 'f') {
+			if !isHexDigit(c[i]) {
 				return false
 			}
 		}
 		return true
 	}
 	for i := range len(c) {
-		ch := c[i]
-		if !(ch >= 'a' && ch <= 'z' || i > 0 && (ch >= 'A' && ch <= 'Z' || ch >= '0' && ch <= '9')) {
+		if !isTokenByte(c[i], i == 0) {
 			return false
 		}
 	}
 	return true
+}
+
+func isHexDigit(c byte) bool { return c >= '0' && c <= '9' || c >= 'a' && c <= 'f' }
+
+// isTokenByte reports whether c may stand in a theme color token: a lower-case letter first, then letters and digits.
+func isTokenByte(c byte, first bool) bool {
+	if c >= 'a' && c <= 'z' {
+		return true
+	}
+	return !first && (c >= 'A' && c <= 'Z' || c >= '0' && c <= '9')
 }
 
 // check validates one shape and what it holds, counting every shape into d.shapes. It stops at the first shape past
@@ -310,7 +325,7 @@ func (d *Drawing) check(intents, assets map[string]struct{}) error {
 			}
 		}
 		k := g.Shape.Kind
-		if k != "rect" && k != "ellipse" && !(k == "polyline" && g.Shape.Closed) {
+		if k != "rect" && k != "ellipse" && (k != "polyline" || !g.Shape.Closed) {
 			return fmt.Errorf("region %q is a rect, an ellipse or a closed polyline", g.Key)
 		}
 		if err := d.checkShape(&g.Shape, 1, assets); err != nil {

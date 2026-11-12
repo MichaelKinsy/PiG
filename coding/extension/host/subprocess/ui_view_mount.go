@@ -30,7 +30,9 @@ func (b *UIBridge) Views() *uiview.Registry { return b.views }
 // SetClientAbilities attaches a client that draws plugin mounts, or detaches it with nil, and replicates the abilities to
 // every extension. It is the one-client form; a client that takes deliveries, or one of several, attaches through
 // Views().Attach. Abilities whose claims or drawing limits are outside the record are refused with code invalid.
-func (b *UIBridge) SetClientAbilities(a *uiview.ClientAbilities) *uiview.Error { return b.views.SetAbilities(a) }
+func (b *UIBridge) SetClientAbilities(a *uiview.ClientAbilities) *uiview.Error {
+	return b.views.SetAbilities(a)
+}
 
 // ViewsSessionReplaced ends every mount, as the session they belong to was replaced.
 func (b *UIBridge) ViewsSessionReplaced() { b.views.Break("", uiview.ReasonSessionReplaced) }

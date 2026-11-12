@@ -119,14 +119,19 @@ type IntentDecl struct {
 // Content is what a mount shows: the D107 view, the intents its nodes raise, its assets and a degrade node; and beside
 // them the alternatives a client's claims select from, a drawing, and the a11y and focus records of the view's nodes.
 type Content struct {
-	View         json.RawMessage `json:"view"`
-	Intents      []IntentDecl    `json:"intents,omitempty"`
-	Assets       []Asset         `json:"assets,omitempty"`
-	Fallback     json.RawMessage `json:"fallback,omitempty"`
-	Alternatives []Alternative   `json:"alternatives,omitempty"`
-	Drawing      *Drawing        `json:"drawing,omitempty"`
-	A11y         []A11y          `json:"a11y,omitempty"`
-	Focus        []Focus         `json:"focus,omitempty"`
+	View json.RawMessage `json:"view"`
+	//portlint:allow emptydrop the D614 records are PiG-owned with no Pi counterpart, and an absent and an empty list mean the same: none
+	Intents []IntentDecl `json:"intents,omitempty"`
+	//portlint:allow emptydrop the D614 records are PiG-owned with no Pi counterpart, and an absent and an empty list mean the same: none
+	Assets   []Asset         `json:"assets,omitempty"`
+	Fallback json.RawMessage `json:"fallback,omitempty"`
+	//portlint:allow emptydrop the D614 records are PiG-owned with no Pi counterpart, and an absent and an empty list mean the same: none
+	Alternatives []Alternative `json:"alternatives,omitempty"`
+	Drawing      *Drawing      `json:"drawing,omitempty"`
+	//portlint:allow emptydrop the D614 records are PiG-owned with no Pi counterpart, and an absent and an empty list mean the same: none
+	A11y []A11y `json:"a11y,omitempty"`
+	//portlint:allow emptydrop the D614 records are PiG-owned with no Pi counterpart, and an absent and an empty list mean the same: none
+	Focus []Focus `json:"focus,omitempty"`
 }
 
 // MountArgs is the ui.view.mount record.
@@ -393,15 +398,17 @@ type Input struct {
 // Claims are further facts the client states about itself, SlotClaims those that differ for one slot, and Drawing the
 // drawing profiles it draws.
 type ClientAbilities struct {
-	Slots        []Slot            `json:"slots"`
-	Nodes        []string          `json:"nodes"`
-	Markdown     bool              `json:"markdown"`
-	ImageFormats []string          `json:"imageFormats"`
-	Limits       Limits            `json:"limits"`
-	Input        Input             `json:"input"`
-	Claims       []Claim           `json:"claims,omitempty"`
-	SlotClaims   []SlotClaims      `json:"slotClaims,omitempty"`
-	Drawing      *DrawingAbilities `json:"drawing,omitempty"`
+	Slots        []Slot   `json:"slots"`
+	Nodes        []string `json:"nodes"`
+	Markdown     bool     `json:"markdown"`
+	ImageFormats []string `json:"imageFormats"`
+	Limits       Limits   `json:"limits"`
+	Input        Input    `json:"input"`
+	//portlint:allow emptydrop the D614 records are PiG-owned with no Pi counterpart, and an absent and an empty list mean the same: none
+	Claims []Claim `json:"claims,omitempty"`
+	//portlint:allow emptydrop the D614 records are PiG-owned with no Pi counterpart, and an absent and an empty list mean the same: none
+	SlotClaims []SlotClaims      `json:"slotClaims,omitempty"`
+	Drawing    *DrawingAbilities `json:"drawing,omitempty"`
 }
 
 // Outcome is how an intent ended.
@@ -753,7 +760,7 @@ func (r *Registry) Mount(plugin string, a MountArgs) (Status, *Error) {
 	r.epoch++
 	m := &mount{cands: cands, fb: fb}
 	m.snap = Snapshot{Plugin: plugin, Slot: a.Slot, Target: a.Target, Content: a.Content,
-		Status: Status{Mount: Ref{Key: a.Key, Epoch: r.epoch, Rev: 1}, State: StateLive}}
+		Mount: Ref{Key: a.Key, Epoch: r.epoch, Rev: 1}, State: StateLive}
 	r.mounts[k] = m
 	r.publish(k, m)
 	return m.snap.Status, nil

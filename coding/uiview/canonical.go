@@ -70,7 +70,7 @@ func checkIJSON(raw []byte) error {
 			break
 		}
 	}
-	if _, err := dec.ReadToken(); err != io.EOF {
+	if _, err := dec.ReadToken(); !errors.Is(err, io.EOF) {
 		return errors.New("trailing data")
 	}
 	return nil
@@ -158,11 +158,11 @@ func (c *canon) str() ([]uint16, error) {
 	i := c.pos + 1
 	for i < len(c.src) {
 		b := c.src[i]
-		switch {
-		case b == '"':
+		switch b {
+		case '"':
 			c.pos = i + 1
 			return units, nil
-		case b == '\\':
+		case '\\':
 			if i+1 >= len(c.src) {
 				return nil, io.ErrUnexpectedEOF
 			}

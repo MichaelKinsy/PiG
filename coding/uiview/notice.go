@@ -35,19 +35,20 @@ type Relation struct {
 
 // A11y describes one node of the view to assistive technology.
 type A11y struct {
-	Node        string     `json:"node"`
-	Name        string     `json:"name,omitempty"`
-	Description string     `json:"description,omitempty"`
-	Role        string     `json:"role,omitempty"`
-	Selected    *bool      `json:"selected,omitempty"`
-	Checked     *bool      `json:"checked,omitempty"`
-	Expanded    *bool      `json:"expanded,omitempty"`
-	Busy        *bool      `json:"busy,omitempty"`
-	Disabled    *bool      `json:"disabled,omitempty"`
-	ReadOnly    *bool      `json:"readOnly,omitempty"`
-	Required    *bool      `json:"required,omitempty"`
-	Invalid     *bool      `json:"invalid,omitempty"`
-	Relations   []Relation `json:"relations,omitempty"`
+	Node        string `json:"node"`
+	Name        string `json:"name,omitempty"`
+	Description string `json:"description,omitempty"`
+	Role        string `json:"role,omitempty"`
+	Selected    *bool  `json:"selected,omitempty"`
+	Checked     *bool  `json:"checked,omitempty"`
+	Expanded    *bool  `json:"expanded,omitempty"`
+	Busy        *bool  `json:"busy,omitempty"`
+	Disabled    *bool  `json:"disabled,omitempty"`
+	ReadOnly    *bool  `json:"readOnly,omitempty"`
+	Required    *bool  `json:"required,omitempty"`
+	Invalid     *bool  `json:"invalid,omitempty"`
+	//portlint:allow emptydrop the D614 records are PiG-owned with no Pi counterpart, and an absent and an empty list mean the same: none
+	Relations []Relation `json:"relations,omitempty"`
 }
 
 // Focus makes one node focusable. The order of the entries is the focus order. Request "mount" asks for the focus when
@@ -194,7 +195,7 @@ func (r *Registry) Rejected(plugin string, op string, raw []byte, err *Error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if m := r.mounts[ownerKey{plugin, head.Mount.Key}]; m != nil && m.snap.Mount.Epoch == head.Mount.Epoch {
-		m.rejected(op, err)
+		m.note(Notice{Code: string(err.Code), Severity: SeverityError, Path: op, Message: err.Message})
 	}
 }
 

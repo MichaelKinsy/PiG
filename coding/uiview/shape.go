@@ -13,12 +13,15 @@ import (
 // enum (at most 32 strings), object (at most 32 properties, no extra members) and array (at most 64 items), nested to
 // depth 4.
 type Shape struct {
-	Type       string           `json:"type"`
-	Enum       []string         `json:"enum,omitempty"`
+	Type string `json:"type"`
+	//portlint:allow emptydrop the D614 records are PiG-owned with no Pi counterpart, and an absent and an empty list mean the same: none
+	Enum []string `json:"enum,omitempty"`
+	//portlint:allow emptydrop the D614 records are PiG-owned with no Pi counterpart, and an absent and an empty map mean the same: none
 	Properties map[string]Shape `json:"properties,omitempty"`
-	Required   []string         `json:"required,omitempty"`
-	Items      *Shape           `json:"items,omitempty"`
-	MaxItems   int              `json:"maxItems,omitempty"`
+	//portlint:allow emptydrop the D614 records are PiG-owned with no Pi counterpart, and an absent and an empty list mean the same: none
+	Required []string `json:"required,omitempty"`
+	Items    *Shape   `json:"items,omitempty"`
+	MaxItems int      `json:"maxItems,omitempty"`
 }
 
 // pig additive (D614): the closed argument and answer shape limits of a view intent.

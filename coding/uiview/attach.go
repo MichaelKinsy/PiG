@@ -64,6 +64,7 @@ func (r *Registry) Attach(a ClientAbilities, sink Sink) (*Attachment, Resync, *E
 	if err := a.check(); err != nil {
 		return nil, Resync{}, err
 	}
+	//portlint:allow ctxbackground this context is the attachment's own lifetime: Detach ends it, and no caller's context outlives an attachment
 	ctx, end := context.WithCancel(context.Background())
 	r.mu.Lock()
 	r.gen++
