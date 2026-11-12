@@ -118,7 +118,8 @@ type IntentDecl struct {
 }
 
 // Content is what a mount shows: the D107 view, the intents its nodes raise, its assets and a degrade node; and beside
-// them the alternatives a client's claims select from, a drawing, and the a11y and focus records of the view's nodes.
+// them the alternatives a client's claims select from, a drawing, the a11y and focus records of the view's nodes, and
+// the bindings of keys and gestures to its intents.
 type Content struct {
 	View json.RawMessage `json:"view"`
 	//portlint:allow emptydrop the D614 records are PiG-owned with no Pi counterpart, and an absent and an empty list mean the same: none
@@ -133,6 +134,8 @@ type Content struct {
 	A11y []A11y `json:"a11y,omitempty"`
 	//portlint:allow emptydrop the D614 records are PiG-owned with no Pi counterpart, and an absent and an empty list mean the same: none
 	Focus []Focus `json:"focus,omitempty"`
+	//portlint:allow emptydrop the D614 records are PiG-owned with no Pi counterpart, and an absent and an empty list mean the same: none
+	Bindings []Binding `json:"bindings,omitempty"`
 }
 
 // MountArgs is the ui.view.mount record. Answering is not a member of the record: a transport sets it to the ticket of
@@ -385,6 +388,9 @@ func (c *Content) check() *Error {
 		return fail(CodeInvalid, "%v", err)
 	}
 	if err := checkFocus(c.Focus); err != nil {
+		return fail(CodeInvalid, "%v", err)
+	}
+	if err := checkBindings(c.Bindings, c.Intents); err != nil {
 		return fail(CodeInvalid, "%v", err)
 	}
 	return nil
@@ -756,6 +762,11 @@ func fits(a *ClientAbilities, c *Content, m measured, d *Drawing) *misfit {
 	}
 	if len(c.Intents) > 0 && !a.Input.Keyboard && !a.Input.Pointer && !a.Input.Text {
 		return &misfit{code: CodeUnsupported, message: fmt.Sprintf("the client delivers no input, so intent %q cannot be raised", c.Intents[0].Name)}
+	}
+	for i := range c.Bindings {
+		if n := len(c.Bindings[i].Arg); n > a.Limits.IntentArgBytes {
+			return overLimit("binding argument bytes", n, a.Limits.IntentArgBytes)
+		}
 	}
 	if d == nil {
 		return nil
