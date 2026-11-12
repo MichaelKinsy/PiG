@@ -384,6 +384,9 @@ type InteractiveMode struct {
 	branchSummaryCancel context.CancelFunc
 	// frameHold is true while a tree navigation holds the frames its selection requested (holdFrames). Owner loop only.
 	frameHold bool
+	// framePacingInstalled is whether the renderer has the adaptive frame pacing policy (installFramePacing); framePacingAllowed is the policy's gate, stored by the owner loop before each throttled frame (allowFramePacing) and loaded by the renderer.
+	framePacingInstalled bool
+	framePacingAllowed   atomic.Bool
 
 	// Bash-prefix execution state.
 	// bashCancel cancels the currently-running `!cmd` (Esc routes
@@ -788,6 +791,7 @@ func (m *InteractiveMode) installRenderDispatcher() {
 	}
 	m.tuiInst.SetRenderDeadline(m.armFrameTimer)
 	m.tuiInst.SetOwnerDispatcher(m.postToMain)
+	m.installFramePacing()
 }
 
 // useFrameTimer makes timer the one that keeps the owner loop's frame deadline and releases the one it replaces. The goroutine of the owner loop
@@ -827,6 +831,7 @@ func (m *InteractiveMode) runScheduledRender() {
 	if m.frameHold {
 		return
 	}
+	m.allowFramePacing()
 	m.tuiInst.RunDueRender()
 	m.wakeSpinner()
 }
