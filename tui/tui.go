@@ -860,6 +860,14 @@ type tuiBase struct {
 	// render height-dependent content (chain graphs, dashboards) would
 	// never know to reflow.
 	onHeightChange func(height int)
+	// pendingWidth and pendingHeight are the sizes the geometry callbacks have not been given yet (0: none), and
+	// notifyingGeometry whether the one worker that calls them runs. The worker calls one callback at a time, in render
+	// order, so a slow callback cannot reorder resizes, and a size replaced before its turn is skipped: Pi's components
+	// get the width inside the render, one render at a time, and resizes that arrive before the next render share it
+	// (tui-main-screen.ts:249-252, tui.ts:1033-1042). A stop discards the pending sizes. Guarded by mu.
+	pendingWidth      int
+	pendingHeight     int
+	notifyingGeometry bool
 
 	mu sync.Mutex // protects render state
 
@@ -1673,18 +1681,58 @@ func (t *TuiMainScreen) RenderSnapshot(width int) []string {
 	return t.Container.Render(width)
 }
 
-// SetOnWidthChange registers a terminal-width callback. Fullscreen coalesces pending changes while a callback runs. Thread-safe.
+// SetOnWidthChange registers a terminal-width callback. Pending changes coalesce while a callback runs, and the callbacks run one at a time in render order. Thread-safe.
 func (t *tuiBase) SetOnWidthChange(fn func(width int)) {
 	t.mu.Lock()
 	t.onWidthChange = fn
 	t.mu.Unlock()
 }
 
-// SetOnHeightChange registers a terminal-height callback. Fullscreen coalesces pending changes while a callback runs. Thread-safe.
+// SetOnHeightChange registers a terminal-height callback. Pending changes coalesce while a callback runs, and the callbacks run one at a time in render order. Thread-safe.
 func (t *tuiBase) SetOnHeightChange(fn func(height int)) {
 	t.mu.Lock()
 	t.onHeightChange = fn
 	t.mu.Unlock()
+}
+
+// queueGeometryLocked records a width or height that changed in the frame being rendered (0: unchanged) for the geometry
+// callbacks and starts the worker that calls them unless it runs. The caller holds mu.
+func (t *tuiBase) queueGeometryLocked(width, height int) {
+	if width != 0 && t.onWidthChange != nil {
+		t.pendingWidth = width
+	}
+	if height != 0 && t.onHeightChange != nil {
+		t.pendingHeight = height
+	}
+	if !t.notifyingGeometry && (t.pendingWidth != 0 || t.pendingHeight != 0) {
+		t.notifyingGeometry = true
+		//portlint:allow golifetime ends once no size is pending or the renderer stopped, and a stop discards the pending sizes (Go-only, no tui.ts counterpart); a callback may re-enter the TUI, so it runs off the frame
+		go t.notifyGeometryChanges()
+	}
+}
+
+// notifyGeometryChanges calls the geometry callbacks with the pending sizes, the width first, until none is pending or the
+// renderer stopped.
+func (t *tuiBase) notifyGeometryChanges() {
+	for {
+		t.mu.Lock()
+		if t.stopped || (t.pendingWidth == 0 && t.pendingHeight == 0) {
+			t.notifyingGeometry = false
+			t.mu.Unlock()
+			return
+		}
+		callback, size := t.onWidthChange, t.pendingWidth
+		if size != 0 {
+			t.pendingWidth = 0
+		} else {
+			callback, size = t.onHeightChange, t.pendingHeight
+			t.pendingHeight = 0
+		}
+		t.mu.Unlock()
+		if callback != nil {
+			callback(size)
+		}
+	}
 }
 
 // SetRenderDispatcher installs a hook that runs throttled scheduled renders
@@ -2399,12 +2447,14 @@ func (t *TuiMainScreen) doRender() {
 		t.fullRender(newLines, width, height, true)
 		t.positionHardwareCursor(cursorPos, hasCursorPos, len(newLines))
 		// Notify listeners of width change (e.g. subprocess extension host).
-		if widthChanged && t.onWidthChange != nil {
-			go t.onWidthChange(width)
+		changedWidth, changedHeight := 0, 0
+		if widthChanged {
+			changedWidth = width
 		}
-		if heightChanged && t.onHeightChange != nil {
-			go t.onHeightChange(height)
+		if heightChanged {
+			changedHeight = height
 		}
+		t.queueGeometryLocked(changedWidth, changedHeight)
 		return
 	}
 
@@ -2416,9 +2466,7 @@ func (t *TuiMainScreen) doRender() {
 		t.logRedraw(fmt.Sprintf("terminal height changed (%d -> %d)", t.prevHeight, height), len(newLines), height)
 		t.fullRender(newLines, width, height, true)
 		t.positionHardwareCursor(cursorPos, hasCursorPos, len(newLines))
-		if t.onHeightChange != nil {
-			go t.onHeightChange(height)
-		}
+		t.queueGeometryLocked(0, height)
 		return
 	}
 
@@ -2909,7 +2957,10 @@ func (t *TuiMainScreen) RestoreRenderState(state TuiMainScreenRenderState) {
 
 // Start resumes the main-screen renderer after a terminal handoff. The driver restores input and requests the full repaint, as Pi's TUI.start does.
 func (t *TuiMainScreen) Start() {
+	// Under mu, where the geometry worker reads it.
+	t.mu.Lock()
 	t.stopped = false
+	t.mu.Unlock()
 	t.HideCursor()
 	if t.colorSchemeNotificationsEnabled() {
 		writeColorSchemeNotifications(t.out, true)
@@ -2928,6 +2979,8 @@ func (t *TuiMainScreen) StopWithOptions(options StopOptions) {
 // stopWithOptionsLocked also serves the overflow path, which already holds the render lock.
 func (t *TuiMainScreen) stopWithOptionsLocked(options StopOptions) {
 	t.stopped = true
+	t.pendingWidth = 0
+	t.pendingHeight = 0
 	t.cancelPendingRenderLocked()
 	if t.colorSchemeNotificationsEnabled() {
 		writeColorSchemeNotifications(t.out, false)

@@ -263818,8 +263818,8 @@
       ],
       "evidence": [
         "test:env/connection_cancelled_request_test.go#TestRequestCancelledWhileTheDaemonStartsIsAbortedAtOnce",
-        "test:env/connection_frames_test.go#TestConnectionRejectsAFrameLengthOutsideItsBounds",
-        "test:env/connection_frames_test.go#TestConnectionReportsShellNoiseBeforeTheSyncLineThroughOnLog"
+        "test:env/connection_close_during_start_test.go#TestConnectionWaitsForADaemonItStartedWhileItWasClosed",
+        "test:env/connection_frames_test.go#TestConnectionRejectsAFrameLengthOutsideItsBounds"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -263841,8 +263841,8 @@
       ],
       "evidence": [
         "test:env/connection_cancelled_request_test.go#TestRequestCancelledWhileTheDaemonStartsIsAbortedAtOnce",
-        "test:env/connection_frames_test.go#TestConnectionRejectsAFrameLengthOutsideItsBounds",
-        "test:env/connection_frames_test.go#TestConnectionReportsShellNoiseBeforeTheSyncLineThroughOnLog"
+        "test:env/connection_close_during_start_test.go#TestConnectionWaitsForADaemonItStartedWhileItWasClosed",
+        "test:env/connection_frames_test.go#TestConnectionRejectsAFrameLengthOutsideItsBounds"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },

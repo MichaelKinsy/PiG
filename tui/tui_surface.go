@@ -316,6 +316,8 @@ func (t *TuiSurface) StopWithOptions(StopOptions) {
 	wasStopped := t.stopped
 	t.stopped = true
 	t.started = false
+	t.pendingWidth = 0
+	t.pendingHeight = 0
 	t.cancelPendingRenderLocked()
 	t.forgetMain()
 	t.mu.Unlock()
@@ -477,7 +479,15 @@ func (t *TuiSurface) doRender() {
 	t.hasRendered = true
 	t.prevWidth, t.prevHeight = width, height
 	t.prevMainCols, t.prevDockCols = mainCols, dockCols
-	onWidth, onHeight := t.onWidthChange, t.onHeightChange
+	// Queued in the frame that saw the size, so the callbacks follow the renders' order; they run off the frame, where they may re-enter the TUI.
+	changedWidth, changedHeight := 0, 0
+	if widthChanged {
+		changedWidth = width
+	}
+	if heightChanged {
+		changedHeight = height
+	}
+	t.queueGeometryLocked(changedWidth, changedHeight)
 	session, onApplyError := t.session, t.onApplyError
 	t.unlockFrame()
 
@@ -485,14 +495,6 @@ func (t *TuiSurface) doRender() {
 		if err := session.Apply(frontend.Frame{Ops: ops, SessionFile: sessionFile, Theme: palette, Mark: mark}); err != nil && onApplyError != nil {
 			onApplyError(err)
 		}
-	}
-	if widthChanged && onWidth != nil {
-		//portlint:allow golifetime fire-and-forget resize hook (Go-only, no tui.ts counterpart), the same hand-off as tui.go's render; it runs after unlockFrame so the callback can re-enter the TUI
-		go onWidth(width)
-	}
-	if heightChanged && onHeight != nil {
-		//portlint:allow golifetime fire-and-forget resize hook (Go-only, no tui.ts counterpart), the same hand-off as tui.go's render; it runs after unlockFrame so the callback can re-enter the TUI
-		go onHeight(height)
 	}
 }
 

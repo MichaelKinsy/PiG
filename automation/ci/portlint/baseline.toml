@@ -2133,25 +2133,6 @@ func = "StartThemeWatcher"
 snippet = "go w.run()"
 
 [[hit]]
-check = "golifetime"
-file = "tui/tui.go"
-func = "TuiMainScreen.doRender"
-snippet = "go t.onWidthChange(width)"
-
-[[hit]]
-check = "golifetime"
-file = "tui/tui.go"
-func = "TuiMainScreen.doRender"
-snippet = "go t.onHeightChange(height)"
-count = 2
-
-[[hit]]
-check = "golifetime"
-file = "tui/tui_alt_screen.go"
-func = "TuiAltScreen.doRender"
-snippet = "go t.notifyGeometryChanges()"
-
-[[hit]]
 check = "gorecover"
 file = "coding/cli/rpc_mode.go"
 func = "serveRPCMode"

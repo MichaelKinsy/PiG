@@ -1003,6 +1003,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-7c936f9](#bf-7c936f9) | The Lisp SDK reads a Windows path as one: `with-file-mutation-queue` no longer sends the host the working… | PiG's own defect | Windows | 0.7.0 |
 | [BF-7cca5ee](#bf-7cca5ee) | A Node extension can default-import TypeBox (`import Type from "typebox"`, and likewise `typebox/value`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7d0621f](#bf-7d0621f) | fix(extension): keep Pi's three-parameter EmitBeforeAgentStart (prompt, images, options); a custom run's… | PiG's own defect | All platforms | Unreleased |
+| [BF-7d34ee2](#bf-7d34ee2) | durable harness: `ConversationTranscript.LoadEarlier` and `FillGap` waited for good once an entry loader had… | PiG's own defect | All platforms | Unreleased |
 | [BF-7d798ce](#bf-7d798ce) | fix(testenv): the shared Cargo target is keyed by the absolute path of the SDK as well as its lock | PiG's own defect | All platforms | Unreleased |
 | [BF-7db4bd0](#bf-7db4bd0) | Resizing an image sends the smaller of the PNG and the JPEG at the configured quality instead of the PNG… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-7db4e68](#bf-7db4e68) | The alternate screen's viewport accessors (`ViewportTop`, `IsFollowingOutput`, `ScrollBy`, `ScrollToTop`… | PiG's own defect | All platforms | 0.7.0 |
@@ -1359,6 +1360,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-a28d69b](#bf-a28d69b) | Fix merge-gate reds: anthropic thread normalization decodes through RawMessage (no any decode), drop stale… | PiG's own defect | All platforms | Unreleased |
 | [BF-a2fad25](#bf-a2fad25) | The footer's context percentage includes the prompt as soon as it is sent, for the whole reply, as Pi shows… | PiG's own defect | All platforms | Unreleased |
 | [BF-a30388b](#bf-a30388b) | GPT-5.4 and GPT-5.5 no longer fail with `Missing namespace for function_call` after switching from another… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-a3391bc](#bf-a3391bc) | env: closing a connection at the moment its daemon was being started left that daemon process unreaped, a… | PiG's own defect | All platforms | Unreleased |
 | [BF-a3859aa](#bf-a3859aa) | An OpenAI-compatible provider that streams a tool call without an id or a function name (OpenRouter and GLM… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-a397ee9](#bf-a397ee9) | Stopping and continuing `pig` (Ctrl+Z, then `fg`) while it asks for an API key at the login prompt no longer… | PiG's own defect | macOS | Unreleased |
 | [BF-a3bfab2](#bf-a3bfab2) | A Radius gateway config cached on an OAuth credential is sanitized as Pi does | PiG's own defect | All platforms | 0.5.0 |
@@ -1512,6 +1514,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-bbccefd](#bf-bbccefd) | A Durable value that holds a lone UTF-16 surrogate is stored as Pi stores it | PiG's own defect | All platforms | Unreleased |
 | [BF-bc24321](#bf-bc24321) | fix(mem M3): arm the idle collection at run end and run it after 500 ms | PiG's own defect | All platforms | Unreleased |
 | [BF-bc4cd62](#bf-bc4cd62) | `toPrecision` rounds a value just below a power of ten (1e-11 to 16 digits, 9.999999999999998e9 to 16 digits)… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-bc5d1ad](#bf-bc5d1ad) | durable harness: closing a Harness on one goroutine while a commit was being published on another could start… | PiG's own defect | All platforms | Unreleased |
 | [BF-bc6c54f](#bf-bc6c54f) | Fix the extension event result type and keep the event fast paths exact | PiG's own defect | All platforms | Unreleased |
 | [BF-bc8d37f](#bf-bc8d37f) | `FileModelsStore` roots and index keys: new live-Pi oracle… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-bcc2046](#bf-bcc2046) | A nested list whose last item is empty but for spaces after its marker is followed by an empty row before the… | PiG's own defect | All platforms | 0.5.0 |
@@ -1906,6 +1909,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-eeac307](#bf-eeac307) | Anthropic and Bedrock assistant messages write `providerThinkingLevel` after `model`, and write… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-eeee29b](#bf-eeee29b) | `chord/nextnode/workers`: a worker that ended (was stopped or killed) while its Node plugin host was still… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-ef0f95a](#bf-ef0f95a) | OpenCode Zen and OpenCode Go use the `opencode.ai/inference` endpoints, which fixes OpenCode Go Gemini models… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-f003f0a](#bf-f003f0a) | tui: after quick terminal resizes a subprocess extension could be left rendering for a width the terminal no… | PiG's own defect | All platforms | Unreleased |
 | [BF-f00bf6c](#bf-f00bf6c) | fix(childwait): call PeekNamedPipe through kernel32 | PiG's own defect | All platforms | Unreleased |
 | [BF-f02269c](#bf-f02269c) | When an extension's `before_provider_request` handler replaces an Anthropic request, or a Codex WebSocket… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f051c65](#bf-f051c65) | fix(extensions): a yield call on the withSession route answers empty; D225 marker at endSyncRunHold, docs of… | PiG's own defect | All platforms | Unreleased |
@@ -15655,6 +15659,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `7d0621f995` (2026-10-09)
 - **Tests:** None recorded.
 
+### BF-7d34ee2
+
+**durable harness: `ConversationTranscript.LoadEarlier` and `FillGap` waited for good once an entry loader had…**
+
+- **Source:** PiG's own defect
+- **Symptom:** durable harness: `ConversationTranscript.LoadEarlier` and `FillGap` waited for good once an entry loader had panicked: the load that call ran stayed registered and never ended.
+- **Root cause:** The call whose loader did not return now settles its load on the way out: the callers that share it fail with "ConversationTranscript: the entry loader panicked", the load is unregistered, and the panic goes on to the caller whose call ran the loader. The path of a loader that returns is unchanged.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `7d34ee2c6c` (2026-11-12)
+- **Tests:** `durable/harness/transcript_loader_panic_test.go::TestConversationTranscriptFailsTheCallersSharingALoadWhoseLoaderPanicked`, `durable/harness/transcript_loader_panic_test.go::TestConversationTranscriptLoadsAgainAfterItsLoaderPanicked`
+- **Release note:** durable harness: `ConversationTranscript.LoadEarlier` and `FillGap` waited for good once an entry loader had panicked: the load that call ran stayed registered and never ended. A load whose loader does not return is now settled, as Pi's shared promise settles when its loader throws: the calls that share it fail with `ConversationTranscript: the entry loader panicked`, the next call loads again, and the panic still reaches the caller whose call ran the loader.
+
 ### BF-7d798ce
 
 **fix(testenv): the shared Cargo target is keyed by the absolute path of the SDK as well as its lock**
@@ -20630,6 +20648,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/openai_responses_compat_upstream_test.go::TestOpenAIResponsesCompatDefaultsUpstream`
 - **Release note:** GPT-5.4 and GPT-5.5 no longer fail with `Missing namespace for function_call` after switching from another model that called tools. On the OpenAI and OpenCode providers they declare their tools in the top-level tool list instead of loading them through `additional_tools` or tool search; GPT-5.6 and later keep `additional_tools`. Ports Pi's #11415.
 
+### BF-a3391bc
+
+**env: closing a connection at the moment its daemon was being started left that daemon process unreaped, a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** env: closing a connection at the moment its daemon was being started left that daemon process unreaped, a zombie holding its pipes, until PiG exited.
+- **Root cause:** Connection.start checks closed, spawns the daemon and only then keeps its session. A Close in between finds no session to tear down; the start then sees the connection closed, signals the daemon it just spawned and returns, and none of the goroutines of a session is started, the one that waits for the daemon's exit included. The process stayed in the process table, with its pipes open, until PiG exited. Pi has no such window: #start spawns and keeps the session in one synchronous step (connection.ts:341-347), and Node reaps a child by itself.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a3391bc58e` (2026-11-12)
+- **Tests:** `env/connection_close_during_start_test.go::TestConnectionWaitsForADaemonItStartedWhileItWasClosed`
+- **Release note:** env: closing a connection at the moment its daemon was being started left that daemon process unreaped, a zombie holding its pipes, until PiG exited. The start that finds the connection closed now waits for the daemon it has just signalled.
+
 ### BF-a3859aa
 
 **An OpenAI-compatible provider that streams a tool call without an id or a function name (OpenRouter and GLM…**
@@ -22741,6 +22773,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `bc4cd62404` (2026-10-10)
 - **Tests:** `internal/jsstring/toprecision_oracle_test.go::TestToPrecisionAgainstNodeCorpus`, `internal/jsstring/toprecision_oracle_test.go::TestToPrecisionKeepsTheExponentOfAValueJustBelowAPowerOfTen`
 - **Release note:** `toPrecision` rounds a value just below a power of ten (1e-11 to 16 digits, 9.999999999999998e9 to 16 digits) to the digits Node prints (`9.999999999999999e-12`, `9999999999.999998`) instead of carrying it up to the power of ten.
+
+### BF-bc5d1ad
+
+**durable harness: closing a Harness on one goroutine while a commit was being published on another could start…**
+
+- **Source:** PiG's own defect
+- **Symptom:** durable harness: closing a Harness on one goroutine while a commit was being published on another could start a scheduler pass after the close had waited for the scheduler's passes.
+- **Root cause:** kick, scheduleReconcileLocked and scheduleSweepLocked started their pass from a callback the Session runs at the end of the publication in progress (DeferUntilPublished), off the scheduler's mutex. A Close on another goroutine, while that publication ran the host's commit listeners, sealed the scheduler and let Join wait for the background group, which was empty; the pass joined the group afterwards. Join did not wait for it, and a sync.WaitGroup Add that meets a Wait at a zero counter panics ("WaitGroup is reused before previous Wait has returned"). Pi has no such group: join() waits for the invocations only (scheduler.ts:587-603), and its queued drain and reconcile find #closing and do…
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `bc5d1adb08` (2026-11-12)
+- **Tests:** `durable/harness/scheduler_join_test.go::TestSchedulerStartsNoPassAfterTheSealWhenAPublicationEndsAfterIt`
+- **Release note:** durable harness: closing a Harness on one goroutine while a commit was being published on another could start a scheduler pass after the close had waited for the scheduler's passes. The pass ran unjoined, and the close could panic with `sync: WaitGroup is reused before previous Wait has returned`. A pass now joins the scheduler when it is scheduled, so the close waits for it.
 
 ### BF-bc6c54f
 
@@ -28192,6 +28238,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `ef0f95ab0e` (2026-10-14)
 - **Tests:** `ai/classifier_models_upstream_test.go::TestClassifierModelsUpstream`
 - **Release note:** OpenCode Zen and OpenCode Go use the `opencode.ai/inference` endpoints, which fixes OpenCode Go Gemini models failing with a 404; OpenCode Go MiniMax M2.7 uses the Anthropic Messages API, and OpenCode Go DeepSeek V4 Flash is no longer listed (carried Pi fix, Pi 195120a9).
+
+### BF-f003f0a
+
+**tui: after quick terminal resizes a subprocess extension could be left rendering for a width the terminal no…**
+
+- **Source:** PiG's own defect
+- **Symptom:** tui: after quick terminal resizes a subprocess extension could be left rendering for a width the terminal no longer had, and what it pushed for that width was not painted until the next resize.
+- **Root cause:** The main screen and the frontend surface called onWidthChange and onHeightChange on a goroutine of its own for each frame that changed a size. Two resizes in a row could reach the listener in either order, or while it was still taking the earlier one, and the surface called it after a Stop that came between its frame and the callback. The listener is the subprocess extension host, which keeps the width as the one extensions render for: after 80, 100, 120 it could be left with 100, and what extensions pushed for that width was not painted until the next resize.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f003f0a6d1` (2026-11-12)
+- **Tests:** `tui/tui_geometry_callbacks_test.go::TestGeometryCallbacksCoalesceInRenderOrder`, `tui/tui_geometry_callbacks_test.go::TestGeometryCallbacksStopDiscardsPendingSizes`, `tui/tui_geometry_callbacks_test.go::TestSurfaceGeometryCallbacksAreNotCalledAfterStop`
+- **Release note:** tui: after quick terminal resizes a subprocess extension could be left rendering for a width the terminal no longer had, and what it pushed for that width was not painted until the next resize. On the main screen and with a frontend, the resize callbacks ran on a goroutine each, so two resizes could reach the extension host out of order, or after the renderer had stopped. They now run one at a time, in render order, as they already did on the alternate screen: a size replaced while the listener is busy is skipped, the last one always arrives, and a stop discards what is pending.
 
 ### BF-f00bf6c
 
