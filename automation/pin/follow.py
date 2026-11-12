@@ -295,7 +295,7 @@ class Pipeline:
             "mirror": [(["make", "upstream-mirror"], 1800)],
             "inventories": [(["make", "interface-proposals"], 3600), (["make", "test-inventory-generate"], 1800)],
             "ledgers": [([*pin, "ledgers"], 7200)],
-            "gaps": [(["make", "ledger-check"], 3600)],
+            "gaps": [([*pin, "gaps"], 7200)],
         }
         return table.get(name, [])
 

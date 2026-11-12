@@ -320,7 +320,7 @@ class PipelineTests(unittest.TestCase):
             runner = FakeRunner()
             result = self.pipeline(root, runner).run()
             joined = [" ".join(c) for c in runner.calls]
-            order = [next(i for i, c in enumerate(joined) if marker in c) for marker in ("install-oracle", "upstream-mirror", "interface-proposals", "test-inventory-generate", "pin.py ledgers", "ledger-check")]
+            order = [next(i for i, c in enumerate(joined) if marker in c) for marker in ("install-oracle", "upstream-mirror", "interface-proposals", "test-inventory-generate", "pin.py ledgers", "pin.py gaps")]
             self.assertEqual(order, sorted(order))
             state = json.loads((root / "tmp/pin-follow/1.1.0+4ac0bd8c/state.json").read_text())
             self.assertEqual([s["name"] for s in state["steps"]][:3], ["resolve", "oracle", "freeze"])
@@ -441,7 +441,7 @@ class PipelineTests(unittest.TestCase):
     def test_a_failed_pipeline_writes_no_record(self):
         with tempfile.TemporaryDirectory() as directory:
             root = self.setup_root(directory)
-            self.pipeline(root, FakeRunner(fail="ledger-check")).run()
+            self.pipeline(root, FakeRunner(fail="pin.py gaps")).run()
             self.assertFalse((root / "automation/pin/records").exists())
 
     def test_tasks_tsv_names_the_frozen_rows_file_of_each_closure_task_and_the_rows_exist(self):

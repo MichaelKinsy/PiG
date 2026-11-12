@@ -1131,6 +1131,35 @@ class CarryTests(unittest.TestCase):
     def test_an_override_run_restores_the_reviewed_types_the_update_pruned(self):
         self.assertEqual(self.carry(TAG).read_text(), "original")
 
+    def gaps(self, committed):
+        calls = self.calls
+        reviewed = self.root / "test/parity/interface-closure/autobind/reviewed-types.json"
+        reviewed.parent.mkdir(parents=True, exist_ok=True)
+        reviewed.write_text("stale")
+
+        def fake_run(command, **kwargs):
+            calls.append(command[-1])
+            if command[-1] == "ledger-update":
+                reviewed.write_text("pruned")
+            elif reviewed.read_text() != "pruned":
+                raise subprocess.CalledProcessError(2, command)  # ledger-check stops on a stale exception
+
+        saved = (pin_tool.ROOT, pinlib.effective, pinlib.committed, pin_tool.subprocess.run)
+        pin_tool.ROOT, pinlib.effective, pinlib.committed, pin_tool.subprocess.run = self.root, (lambda: (COMMIT, committed != COMMIT)), (lambda: committed), fake_run
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                pin_tool.cmd_gaps(None)
+        finally:
+            pin_tool.ROOT, pinlib.effective, pinlib.committed, pin_tool.subprocess.run = saved
+        return reviewed
+
+    def test_the_gaps_step_binds_the_ledgers_before_it_checks_them(self):
+        self.gaps(COMMIT)
+        self.assertEqual(self.calls, ["ledger-update", "ledger-check"])
+
+    def test_the_gaps_step_of_an_override_run_leaves_the_committed_pins_reviewed_types(self):
+        self.assertEqual(self.gaps(TAG).read_text(), "stale")
+
     def test_the_committed_pin_keeps_the_prune(self):
         self.assertEqual(self.carry(COMMIT).read_text(), "pruned")
 

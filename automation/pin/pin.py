@@ -21,10 +21,12 @@
   pin.py ledgers [--from REF] generate the effective pin's ledgers that one file holds (async-contracts, behavior-contracts,
                               known-gaps, under test/parity/pin-ledgers/) from the earlier pin REF (default: the committed pin),
                               plus the interface delta manifest and the custom-factory draft; skips what exists
+  pin.py gaps                 the effective pin's gap list: `make ledger-update`, then `make ledger-check` (the pin-follow gaps step)
 """
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import os
 import re
@@ -354,6 +356,30 @@ def cmd_ledgers(args: argparse.Namespace) -> None:
 INTERFACES = "test/parity/interfaces"
 
 
+@contextlib.contextmanager
+def committed_exceptions_kept(pin: Pin):
+    """The prune of an earlier pin's reviewed exceptions (autobind/reviewed-types.json) that `make ledger-update` writes belongs to the pin
+    that is committed: under a PI_UPSTREAM_REF override the file is restored when the block ends."""
+    reviewed = ROOT / "test/parity/interface-closure/autobind/reviewed-types.json"
+    snapshot = reviewed.read_bytes() if reviewed.exists() else None
+    try:
+        yield
+    finally:
+        if pin != pinlib.committed() and snapshot is not None:
+            reviewed.write_bytes(snapshot)
+
+
+def cmd_gaps(_: argparse.Namespace) -> None:
+    """The gap list of the effective pin: bind its ledgers (`make ledger-update`), then check them (`make ledger-check`). The check alone
+    stops on every reviewed exception the earlier pin's mapping made stale, which only the update prunes (the pin-follow pipeline once
+    stopped there and went green only after a hand-run `make ledger-update`)."""
+    pin, _override = pinlib.effective()
+    with committed_exceptions_kept(pin):
+        for target in ("ledger-update", "ledger-check"):
+            subprocess.run(["make", "--no-print-directory", target], cwd=ROOT, check=True, timeout=7200)
+    print(f"gaps: the gap list of Pi {pin.version} is derived and ledger-check passes")
+
+
 def carry_interface_ledgers(pin: Pin, previous: Pin, force: bool) -> None:
     """Generate the pin's reviewed interface ledgers from the earlier pin's, each only when it is absent (--force: again).
 
@@ -386,12 +412,9 @@ def carry_interface_ledgers(pin: Pin, previous: Pin, force: bool) -> None:
     mapping = target("mapping-v{v}.json")
     if absent(mapping):
         run_go(f"go run ./test/parity/cmd/interfaceinventory -inventory {rel(target('upstream-v{v}.json'))} -observable {rel(target('cli-v{v}.json'))} -generate-pending -previous-mapping {rel(source('mapping-v{v}.json'))} -previous-upstream-root {shlex.quote(str(mirror_before))}", mapping)
-        reviewed = ROOT / "test/parity/interface-closure/autobind/reviewed-types.json"
-        snapshot = reviewed.read_bytes() if reviewed.exists() else None
-        for _ in range(2):
-            subprocess.run(["make", "--no-print-directory", "ledger-update"], cwd=ROOT, check=True, timeout=7200)
-        if pin != pinlib.committed() and snapshot is not None:
-            reviewed.write_bytes(snapshot)  # the prune of an earlier pin's exceptions belongs to the pin that is committed
+        with committed_exceptions_kept(pin):
+            for _ in range(2):
+                subprocess.run(["make", "--no-print-directory", "ledger-update"], cwd=ROOT, check=True, timeout=7200)
         print(f"pin-ledgers: {mapping.relative_to(ROOT)} and the gap baseline derived from {source('mapping-v{v}.json').name}")
     tests = target("test-mapping-v{v}.json")
     if absent(tests):
@@ -589,6 +612,7 @@ def main() -> None:
     ledgers.add_argument("--from", dest="previous")
     ledgers.add_argument("--force", action="store_true")
     ledgers.set_defaults(fn=cmd_ledgers)
+    sub_.add_parser("gaps").set_defaults(fn=cmd_gaps)
     closure = sub_.add_parser("freeze-closure")
     closure.add_argument("--from-published-lock", dest="published_lock")
     closure.set_defaults(fn=cmd_freeze_closure)
