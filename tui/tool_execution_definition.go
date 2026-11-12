@@ -46,6 +46,8 @@ type ToolDefinitionRenderers struct {
 	// CallReadsFields reports that Call reads a streaming call's arguments from ToolRenderInput.Fields: the card then
 	// hands it the decoded arguments and no text, so a frame does not encode arguments that grow with every delta.
 	CallReadsFields bool
+	// CallUnchanged, when set, reports that Call, called with this input, would draw the lines its last call drew; a Call that cannot tell without drawing leaves it nil (ToolExecutionComponent.CallShowsNoChange).
+	CallUnchanged func(ToolRenderInput) bool
 }
 
 // RendererFallback is implemented by a renderer component whose rendering can
@@ -109,6 +111,15 @@ func (c *ToolExecutionComponent) ResultValue() any { return c.definitionResult }
 // streamed partial result or the final one.
 func (c *ToolExecutionComponent) definitionHasResult() bool {
 	return c.State != ToolStateRunning || c.definitionResult != nil || c.Output != ""
+}
+
+// CallShowsNoChange reports whether the card's call renderer knows that the streamed arguments the card holds now draw the lines the card's last frame drew. False is the answer of every card that cannot tell: one without a definition, one whose renderer does not say, one that has a result or holds no streamed arguments.
+// pig additive (D625): Pi asks no card whether an update changed it; it requests a frame for every update.
+func (c *ToolExecutionComponent) CallShowsNoChange() bool {
+	if c.definition == nil || c.definition.CallUnchanged == nil || c.streamed == nil || c.streamedFields == nil || c.definitionHasResult() {
+		return false
+	}
+	return c.definition.CallUnchanged(c.definitionInput(true))
 }
 
 // definitionInput is the renderers' input. Streamed arguments reach a Call that reads them decoded as Fields, and any other

@@ -72,13 +72,26 @@ func adaptiveFrameInterval(cost time.Duration) time.Duration {
 	return min(minRenderInterval, max(frameIntervalFloor, frameCostFactor*cost))
 }
 
-// frameIntervalLocked is how long after a throttled frame began the next one may begin (tui.ts scheduleRender, MIN_RENDER_INTERVAL_MS). mu must be held. It takes no lock, starts nothing and allocates nothing.
-func (t *tuiBase) frameIntervalLocked() time.Duration {
+// FramePacingActive reports whether the adaptive policy answers the scheduler's interval now: it is installed, the terminal is trusted with synchronized updates, the owner's gate is open and the screen writer is translating the terminal's frames. Thread-safe.
+func (t *tuiBase) FramePacingActive() bool {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.framePacingActiveLocked()
+}
+
+// framePacingActiveLocked is FramePacingActive with mu held. It takes no lock, starts nothing and allocates nothing.
+func (t *tuiBase) framePacingActiveLocked() bool {
 	pacing := t.pacing
 	if pacing == nil || !pacing.terminalTrusted || !pacing.allowed.Load() {
-		return minRenderInterval
+		return false
 	}
-	if terminal, ok := t.Terminal().(screenWriterTerminal); !ok || !terminal.ScreenWriterActive() {
+	terminal, ok := t.Terminal().(screenWriterTerminal)
+	return ok && terminal.ScreenWriterActive()
+}
+
+// frameIntervalLocked is how long after a throttled frame began the next one may begin (tui.ts scheduleRender, MIN_RENDER_INTERVAL_MS). mu must be held. It takes no lock, starts nothing and allocates nothing.
+func (t *tuiBase) frameIntervalLocked() time.Duration {
+	if !t.framePacingActiveLocked() {
 		return minRenderInterval
 	}
 	// pig additive (D625): with the policy installed, the terminal trusted with synchronized updates, the screen writer active and the owner's gate open, the interval follows the last frame's cost between the floor and Pi's constant.

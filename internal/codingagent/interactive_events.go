@@ -199,7 +199,13 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 			break
 		}
 		updateAssistantMessageBlock(m.evCurrentBlock, e.Message.Assistant)
-		m.tuiInst.RequestRender()
+		// pig additive (D625): while the adaptive policy paces the frames, a tool call delta that leaves its card's lines as the last frame drew them asks for no frame (unchanged, below): the frame would send the terminal nothing. Under Pi's interval every update asks for one here and one below, as Pi's handler does.
+		_, toolDelta := e.AssistantMessageEvent.(ai.ToolCallDeltaEvent)
+		skippable := toolDelta && m.framePacingInForce()
+		if !skippable {
+			m.tuiInst.RequestRender()
+		}
+		unchanged := false
 		var toolIndex int
 		var toolID, toolName string
 		var endCall ai.ToolCall
@@ -270,11 +276,14 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 				m.appendToChat(comp)
 			} else {
 				m.toolMu.Unlock()
+				unchanged = skippable && hasStreamed && comp.CallShowsNoChange()
 			}
 		} else {
 			m.toolMu.Unlock()
 		}
-		m.tuiInst.RequestRender()
+		if !unchanged {
+			m.tuiInst.RequestRender()
+		}
 
 	case agent.MessageEndEvent:
 		// Pi ends message_end for a user message without rendering or touching the pending tools (interactive-mode.ts handleEvent).

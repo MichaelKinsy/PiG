@@ -41,6 +41,15 @@ func (m *InteractiveMode) allowFramePacing() {
 	}
 }
 
+// framePacingInForce reports whether the adaptive policy paces the frames now: this run installed it, its gate was open at the last frame, and the renderer says the terminal's conditions hold (tui FramePacingActive). Only the owner loop calls it.
+func (m *InteractiveMode) framePacingInForce() bool {
+	if !m.framePacingInstalled || !m.framePacingAllowed.Load() {
+		return false
+	}
+	renderer, ok := m.tuiInst.(interface{ FramePacingActive() bool })
+	return ok && renderer.FramePacingActive()
+}
+
 // replyStreamsUndisturbed reports whether an agent run is active, from its start to its end (runStreaming: a run that ends by an abort, an error or an empty queue is no longer active), no compaction is running, and no extension draws on the screen. Only the owner loop calls it.
 //
 // pig additive (D625): frames are paced only then, so an extension's component that counts frames, an idle screen and a compaction see Pi's interval.

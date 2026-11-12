@@ -224,6 +224,11 @@ func (m *InteractiveMode) toolDefinitionRenderers(definition extension.ToolRende
 		}
 	}
 	renderers := &tui.ToolDefinitionRenderers{Self: definition.RenderShell == extension.ToolRenderShellSelf, CallReadsFields: readsCallFields(definition.RenderCall)}
+	if unchanged := callShowsNoChange(definition.RenderCall); unchanged != nil {
+		renderers.CallUnchanged = func(input tui.ToolRenderInput) bool {
+			return input.Fields != nil && unchanged(input.Fields, context(input, nil))
+		}
+	}
 	if definition.RenderCall != nil {
 		var last extension.Component
 		renderers.Call = func(input tui.ToolRenderInput) (tui.Component, bool) {
