@@ -43670,6 +43670,28 @@
       ]
     },
     {
+      "id": "BF-c72462b",
+      "title": "Chord: a registry value an app keeps past `host.close` (`host.registry`) no longer keeps the closed host…",
+      "symptom": "Chord: a registry value an app keeps past `host.close` (`host.registry`) no longer keeps the closed host alive; after the close it reads its last composition and holds nothing of the host.",
+      "rootCause": "RegistryValueSource kept the host batch it was made with in a field that Close never cleared, and the batch holds the host, so a value an app kept past host.close (host.registry) kept the closed host alive where Pi collects it. The source now reads its batch from its native source, which End releases, so after Close a read is its last start and nothing of the host is held.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord: a registry value an app keeps past `host.close` (`host.registry`) no longer keeps the closed host alive; after the close it reads its last composition and holds nothing of the host.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c72462b370",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "chord/next/host/host_registry_readers_test.go::TestValuesMemoryAValueAnAppKeepsAfterHostCloseKeepsNoClosedHostAndReadsItsLastCompositionSolAstra"
+      ]
+    },
+    {
       "id": "BF-c7b91e7",
       "title": "Terminal input bytes decode as Node's StringDecoder does, as Pi's `stdin.setEncoding(\"utf8\")` reads them: a…",
       "symptom": "Terminal input bytes decode as Node's StringDecoder does, as Pi's `stdin.setEncoding(\"utf8\")` reads them: a trailing C0, C1, F5-F7, or an E0, ED, F0 or F4 lead followed by an out-of-range byte is held until the next read instead of becoming U+FFFD at once, so a mouse report ending in such a byte is no longer taken as a wheel scroll.",

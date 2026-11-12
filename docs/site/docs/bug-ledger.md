@@ -1582,6 +1582,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-c6f6953](#bf-c6f6953) | Wrapped text no longer starts the next line with a space when a styled word ends exactly at the wrap width… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-c6fb795](#bf-c6fb795) | After a Radius sign-in, accepting the offer to configure the Radius MCP server updates the chat (its notices… | PiG's own defect | All platforms | Unreleased |
 | [BF-c723782](#bf-c723782) | In the Node extension runtime, `ctx.isIdle()` read on the statement after a triggering `pi.sendMessage(..., {… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-c72462b](#bf-c72462b) | Chord: a registry value an app keeps past `host.close` (`host.registry`) no longer keeps the closed host… | PiG's own defect | All platforms | Unreleased |
 | [BF-c7b91e7](#bf-c7b91e7) | Terminal input bytes decode as Node's StringDecoder does, as Pi's `stdin.setEncoding("utf8")` reads them: a… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-c7ebb23](#bf-c7ebb23) | A cancelled prompt in a `config.oauth` login now rejects with Pi's `Login cancelled` in every SDK (it was… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c7ebb23-2](#bf-c7ebb23-2) | A `config.oauth` login's `onManualCodeInput` asks "Paste the authorization code", as Pi does, and a provider… | PiG's own defect | All platforms | 0.5.0 |
@@ -23717,6 +23718,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `c7237820c1` (2026-11-01)
 - **Tests:** `coding/cli/extension_send_message_binary_test.go::TestExtensionSendMessageTriggerTurnStartsTheRunAsPi`, `coding/extension/host/subprocess/runtime_node_send_idle_test.go::TestNodeIsIdleStaysBusyThroughTheSynchronousRunAfterATriggeringSendMessage`
 - **Release note:** In the Node extension runtime, `ctx.isIdle()` read on the statement after a triggering `pi.sendMessage(..., { triggerTurn: true })` is busy as in Pi, where the started run cannot end before the handler awaits; a run that settled while the read was in flight made print mode report an idle session. The Host now holds that answer for every SDK and extension (`isidle-2323d94ce7`), and the runtime reports only where its handler awaits.
+
+### BF-c72462b
+
+**Chord: a registry value an app keeps past `host.close` (`host.registry`) no longer keeps the closed host…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Chord: a registry value an app keeps past `host.close` (`host.registry`) no longer keeps the closed host alive; after the close it reads its last composition and holds nothing of the host.
+- **Root cause:** RegistryValueSource kept the host batch it was made with in a field that Close never cleared, and the batch holds the host, so a value an app kept past host.close (host.registry) kept the closed host alive where Pi collects it. The source now reads its batch from its native source, which End releases, so after Close a read is its last start and nothing of the host is held.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `c72462b370` (2026-11-12)
+- **Tests:** `chord/next/host/host_registry_readers_test.go::TestValuesMemoryAValueAnAppKeepsAfterHostCloseKeepsNoClosedHostAndReadsItsLastCompositionSolAstra`
+- **Release note:** Chord: a registry value an app keeps past `host.close` (`host.registry`) no longer keeps the closed host alive; after the close it reads its last composition and holds nothing of the host.
 
 ### BF-c7b91e7
 
