@@ -303,8 +303,9 @@ func (p *pen) applySGR(params string) bool {
 	return true
 }
 
-// neutralMode reports whether mode is a private mode that changes nothing the writer keeps: cursor keys, autowrap (the alternate screen is entered with
-// it off, and no row the writer writes ends past the row the frame wrote), cursor blink, mouse reporting and its encodings, focus
+// neutralMode reports whether mode is a private mode that changes nothing the writer keeps of the screen: cursor keys, autowrap (no
+// row the writer writes ends past the row the frame wrote; outside reports what a write says of it, and frames are translated only
+// while it is known to be off), cursor blink, mouse reporting and its encodings, focus
 // reports, bracketed paste, synchronized updates, grapheme clustering reports, color-scheme reports and in-band resize.
 func neutralMode(mode string) bool {
 	switch mode {
@@ -322,7 +323,10 @@ var neutralOSC = [...]string{"0;", "1;", "2;", "4;", "7;", "9;", "10;", "11;", "
 // outside classifies a write that is not a frame. screen is whether the alternate screen is shown after it (shown before it), cursor is
 // +1 or -1 when it shows or hides the cursor, and forget is whether it holds anything that may change the cells, the pen, the cursor's
 // position or the scroll region: everything that is not in the tables above, a query, a keyboard-protocol sequence or a keypad mode.
-func outside(data string, shown bool) (screen bool, cursor int, forget bool) {
+// wrap is what the write leaves known of autowrap: +1 when it is off after it (CSI ? 7 l came last), -1 when it is not known to be
+// off (autowrap turned on; a switch to or from an alternate screen, modes 47, 1047 and 1049; saved private modes restored; a reset
+// of the terminal, DECSTR or RIS), 0 when the write says nothing of it.
+func outside(data string, shown bool) (screen bool, cursor int, forget bool, wrap int) {
 	screen = shown
 	for i := 0; i < len(data); {
 		kind, end := nextToken(data, i)
@@ -338,6 +342,15 @@ func outside(data string, shown bool) (screen bool, cursor int, forget bool) {
 					case mode == "1049":
 						screen = final == 'h'
 						forget = true
+						wrap = -1
+					case mode == "47" || mode == "1047":
+						forget = true
+						wrap = -1
+					case mode == "7":
+						wrap = -1
+						if final == 'l' {
+							wrap = 1
+						}
 					case mode == "25":
 						cursor = -1
 						if final == 'h' {
@@ -349,6 +362,10 @@ func outside(data string, shown bool) (screen bool, cursor int, forget bool) {
 				}
 			case len(seq) > 3 && (seq[2] == '>' || seq[2] == '<' || seq[2] == '=' || seq[2] == '?') && (final == 'u' || final == 'm' || final == 'c' || final == 'q' || final == 'p' || final == 'n'):
 				// The kitty keyboard protocol, modifyOtherKeys, device attributes, the terminal's name and mode and status queries.
+			case len(seq) > 2 && seq[2] == '?' && final == 'r', seq == "\x1b[!p":
+				// Saved private modes restored, and the soft reset: autowrap may be on after either.
+				forget = true
+				wrap = -1
 			case final == 'c' || final == 'n' || final == 't' || final == 'q':
 				// Device attributes, status reports, window reports and the cursor's shape.
 			default:
@@ -364,9 +381,12 @@ func outside(data string, shown bool) (screen bool, cursor int, forget bool) {
 			forget = forget || seq != "\x07"
 		case tokenEscape:
 			forget = forget || seq != "\x1b=" && seq != "\x1b>"
+			if seq == "\x1bc" {
+				wrap = -1
+			}
 		default:
 			forget = true
 		}
 	}
-	return screen, cursor, forget
+	return screen, cursor, forget, wrap
 }

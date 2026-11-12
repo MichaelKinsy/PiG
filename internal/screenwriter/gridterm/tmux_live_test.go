@@ -105,11 +105,15 @@ func cellsShown(capture string) []int {
 // The grid's lines are the ones the tmux in PATH shows: every case is written to a pane of a tmux server of the test's own, and
 // after every step capture-pane -N and -J are compared with the grid. A pane's program is this test binary (paneMain): it copies a
 // FIFO to the terminal and what the terminal answers to another; a step ends with a request for the cursor's position, so tmux has
-// read the step when the answer comes. With PIG_GRIDTERM_RECORD set the lines are written to testdata as that version's record. Without tmux the test is
-// skipped: TestLinesAreWhatTmuxRecorded compares the records.
+// read the step when the answer comes.
+//
+// The test logs the tmux version. A tmux whose lines are the grid's passes, whether its version is recorded or not. One whose lines
+// differ fails, and the failure names the version, the first step that differs and what to do next. With PIG_GRIDTERM_RECORD set
+// the lines are written to testdata as that version's record, also when they differ. Without tmux, or where tmux can start no
+// server, the test is skipped with a notice: TestLinesAreWhatTmuxRecorded compares the records everywhere.
 func TestLinesAreWhatTmuxShows(t *testing.T) {
 	if _, err := exec.LookPath("tmux"); err != nil {
-		t.Skip("no tmux in PATH")
+		t.Skip("no tmux in PATH: the lines tmux itself shows are not asked for here; TestLinesAreWhatTmuxRecorded compares the recorded ones")
 	}
 	//nolint:gosec // G204 (class a): program is literal tmux.
 	versionOut, err := exec.Command("tmux", "-V").Output()
@@ -117,6 +121,7 @@ func TestLinesAreWhatTmuxShows(t *testing.T) {
 		t.Skipf("tmux -V: %v", err)
 	}
 	version := strings.TrimPrefix(strings.TrimSpace(string(versionOut)), "tmux ")
+	t.Logf("tmux %s", version)
 	// The server's socket is in a directory of its own that ends with the test, so that nothing of the server is left then, whatever
 	// tmux does with the file. The directory is in /tmp and not in t.TempDir(): a socket's path has to fit in about a hundred bytes.
 	socketDir, err := os.MkdirTemp("/tmp", "pig-gridterm-")
@@ -127,7 +132,7 @@ func TestLinesAreWhatTmuxShows(t *testing.T) {
 	socket := filepath.Join(socketDir, "tmux")
 	// The server ends with its last session: this one keeps it up between two cases, and its end is the server's.
 	if out, err := tmuxCommand(socket, "new-session", "-d", "-s", "hold", "-x", "80", "-y", "24", "sleep 900"); err != nil {
-		t.Skipf("tmux %s starts no server here: %v: %s", version, err, out)
+		t.Skipf("tmux %s starts no server here, so its lines are not asked for: %v: %s", version, err, out)
 	}
 	t.Cleanup(func() { _, _ = tmuxCommand(socket, "kill-session", "-t", "hold") })
 	must := func(args ...string) string {
@@ -213,8 +218,7 @@ func TestLinesAreWhatTmuxShows(t *testing.T) {
 	for i, c := range cases {
 		shown[c.name] = show(i, c)
 	}
-	compareTmuxLines(t, version, cases, shown)
-	if os.Getenv("PIG_GRIDTERM_RECORD") != "" && !t.Failed() {
+	if os.Getenv("PIG_GRIDTERM_RECORD") != "" {
 		data, err := json.Marshal(tmuxRecord{Tmux: version, Digest: tmuxDigest(cases), Lines: shown})
 		if err != nil {
 			t.Fatal(err)
@@ -223,4 +227,9 @@ func TestLinesAreWhatTmuxShows(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	rows, differing, first := tmuxDifference(cases, shown)
+	if differing > 0 {
+		t.Fatalf("tmux %s shows other lines than the grid has after %d steps; the first: %s. %s", version, differing, first, tmuxNext)
+	}
+	t.Logf("tmux %s: %d cases, %d rows compared", version, len(cases), rows)
 }

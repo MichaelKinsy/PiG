@@ -23,6 +23,14 @@
 // the cursor address of a row's first column and a reset of the pen; a cursor address, a scroll and a region the frame wrote are sent
 // as the frame wrote them.
 //
+// What tmux keeps of a line is modelled by the screens of the tests (gridterm) and checked against tmux itself: the lines of tmux
+// 3.4 and 3.6 are recorded there, and where the tests find a tmux they ask that one (3.4 in the Linux container the tests run in).
+//
+// Frames are translated only while autowrap is known to be off: a write turned it off (CSI ? 7 l) and none since turned it on,
+// switched to or from an alternate screen, restored saved modes or reset the terminal. With autowrap on tmux stores a row's text
+// in the runs it reads, and the line it keeps follows no rule of the writer's. While autowrap is not known to be off every frame
+// is sent as it came and the rows are forgotten, so that the first frame after it is turned off again writes its rows whole.
+//
 // Before the alternate screen is entered and after it is left every byte is sent as it came.
 //
 // pig divergence (D624): tui.ProcessTerminal puts a Writer under its write unless PIG_TUI_SCREEN_WRITER or the terminal.screenWriter setting selects Pi's bytes (tui/terminal_screen_writer.go).
@@ -88,6 +96,7 @@ type Stats struct {
 	Unchanged  int // of them, not written: they changed nothing
 	Repaints   int // of them, sent as they came: they erase the screen
 	Unread     int // of them, sent as they came: something in them has no rule
+	Wrapping   int // of them, sent as they came: autowrap was not known to be off
 	Settles    int // settle writes
 	BytesIn    int // bytes of the synchronized updates read
 	BytesOut   int // bytes written for them, settle writes included
@@ -107,6 +116,8 @@ type Writer struct {
 	active     atomic.Bool // the alternate screen is shown
 	past       atomic.Bool // a write that may have changed the screen reached the terminal past the writer
 	dropped    atomic.Bool // Drop was called: every write is sent as it came
+	pastWrap   atomic.Bool // a write that says something of autowrap reached the terminal past the writer
+	wrapOff    bool        // autowrap is known to be off: frames are translated only then
 	cols, high int
 	rows       []row
 	scratch    row
@@ -172,6 +183,17 @@ func (w *Writer) Translate(data string) string {
 		return data
 	}
 	w.catchUp()
+	if !w.wrapOff {
+		w.unread(data)
+		w.stats.Frames++
+		w.stats.Wrapping++
+		w.stats.BytesIn += len(data)
+		w.stats.BytesOut += len(data)
+		if w.record != nil {
+			w.record(RecordFrame, data, data)
+		}
+		return data
+	}
 	w.resize()
 	w.stats.Frames++
 	w.stats.BytesIn += len(data)
@@ -182,10 +204,7 @@ func (w *Writer) Translate(data string) string {
 	out := data
 	switch ok := w.frame(body, whole); {
 	case !ok:
-		w.forget()
-		if strings.LastIndex(data, "\x1b[?1049l") > strings.LastIndex(data, "\x1b[?1049h") {
-			w.active.Store(false)
-		}
+		w.unread(data)
 		w.stats.Unread++
 	case whole:
 		w.stats.Repaints++
@@ -211,16 +230,37 @@ func (w *Writer) Translate(data string) string {
 // Outside takes a write that reached the terminal without passing through Translate: unless the table of sequences that change
 // nothing the writer keeps covers it, the writer forgets the screen before its next write. It needs no lock.
 func (w *Writer) Outside(data string) {
-	if _, cursor, forget := outside(data, true); forget || cursor != 0 {
+	_, cursor, forget, wrap := outside(data, true)
+	if forget || cursor != 0 {
 		w.past.Store(true)
+	}
+	if wrap != 0 {
+		w.pastWrap.Store(true)
 	}
 }
 
-// catchUp forgets the screen after a write past the writer.
+// catchUp forgets the screen after a write past the writer; after one that says something of autowrap, autowrap is not known to be
+// off, whatever the write says: where it came among the writes that pass through the writer is not known.
 func (w *Writer) catchUp() {
+	if w.pastWrap.Load() && w.pastWrap.Swap(false) {
+		w.wrapOff = false
+		w.forget()
+	}
 	if w.past.Load() && w.past.Swap(false) && w.active.Load() {
 		w.resize()
 		w.forget()
+	}
+}
+
+// unread follows a frame that is sent as it came: the screen kept is forgotten, and the frame may have left the alternate screen
+// or said something of autowrap.
+func (w *Writer) unread(data string) {
+	w.forget()
+	if strings.LastIndex(data, "\x1b[?1049l") > strings.LastIndex(data, "\x1b[?1049h") {
+		w.active.Store(false)
+	}
+	if _, _, _, wrap := outside(data, true); wrap != 0 {
+		w.wrapOff = wrap > 0
 	}
 }
 
@@ -232,17 +272,21 @@ func (w *Writer) other(data string) {
 	if !shown && !strings.Contains(data, "\x1b[?1049h") {
 		return
 	}
-	screen, cursor, forget := outside(data, shown)
+	screen, cursor, forget, wrap := outside(data, shown)
 	if !screen {
 		if shown {
 			w.active.Store(false)
 		}
+		w.wrapOff = false
 		return
 	}
 	w.catchUp()
 	w.active.Store(true)
+	if wrap != 0 {
+		w.wrapOff = wrap > 0
+	}
 	switch {
-	case forget:
+	case forget || wrap < 0:
 		w.resize()
 		w.forget()
 	case cursor != 0:

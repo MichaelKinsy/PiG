@@ -212,11 +212,17 @@ func TestRandomFramesLeaveTheRenderersLines(t *testing.T) {
 	}
 }
 
-// A cluster whose width terminals disagree on keeps its place in a row that is written in place. With another cluster where it was,
-// the cells after it lie in other columns in a terminal that draws it wider than counted, and tmux's line, which steps with the
-// columns, is not the one the frame's erase and line leave. The plus-minus sign is two columns wide to one of the screens' width
-// models, and on 8 columns these rows cross the steps of tmux's line: written whole the second row's line has 8 cells there,
-// written over the first row 4.
+// A cluster whose width terminals disagree on keeps its place in a row that is written in place. To the writer a cluster is of
+// certain width when it is one code point that is printable ASCII, a Braille pattern (U+2800 to U+28FF), or a letter (General
+// Category L) from U+00A1 to U+052F whose East Asian Width is Neutral or Narrow (certainWidth). Every other cluster a row may hold
+// is of uncertain width: the characters of East Asian Width Ambiguous, Wide, Fullwidth and Halfwidth, every character above U+007E
+// that is not a letter (but the Braille patterns), and every letter above U+052F. With another such cluster where one was, the
+// cells after it lie in other columns in a terminal that draws it wider than counted, and tmux's line, which steps with the
+// columns, is not the one the frame's erase and line leave.
+//
+// This is shown on the screens' width models, not on a real terminal. The case is a character of East Asian Width Ambiguous
+// (U+00B1) that one of the models draws two columns wide, on a screen of 8 columns: there the second row's line has 8 cells when
+// the row is written whole, and 4 when it is written over the first row.
 func TestAClusterOfUncertainWidthKeepsItsPlace(t *testing.T) {
 	w, pair := newTestWriter(8, 4), newTestPair(8, 4)
 	for _, write := range []string{frame(line(2, "\u00b1 a")), frame(line(2, "x \u00b1")), frame(line(2, "x \u00b1!"))} {

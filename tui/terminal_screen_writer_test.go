@@ -30,7 +30,7 @@ const (
 	swBegin = "\x1b[?2026h"
 	swEnd   = "\x1b[?2026l"
 	swReset = "\x1b[0m\x1b]8;;\x07"
-	swEnter = "\x1b[?1049h"
+	swEnter = "\x1b[?1049h\x1b[?7l" // as the fullscreen renderer enters: autowrap off, without which the writer translates nothing
 	swLeave = "\x1b[?1049l"
 )
 

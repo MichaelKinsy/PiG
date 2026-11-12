@@ -144,27 +144,34 @@ func gridLines(c tmuxCase) []tmuxLines {
 	return all
 }
 
-// compareTmuxLines reports where the grid's lines are not the ones tmux showed.
-func compareTmuxLines(t *testing.T, tmux string, cases []tmuxCase, shown map[string][]tmuxLines) {
-	t.Helper()
-	rows := 0
+// tmuxNext is what to do about a tmux whose lines are not the grid's.
+const tmuxNext = "The screen writer writes a row in place only where that leaves tmux the line the renderers' bytes leave " +
+	"(internal/screenwriter), and the grid is its model of that line: under a tmux whose lines differ the writer may leave other " +
+	"lines. Record this version's lines (PIG_GRIDTERM_RECORD=1 go test -run TestLinesAreWhatTmuxShows ./internal/screenwriter/gridterm) " +
+	"and give the grid its rule; until then PIG_TUI_SCREEN_WRITER=pi selects the renderers' bytes."
+
+// tmuxDifference compares the grid's lines with the ones tmux showed: the rows compared, the steps that differ, and the first of them.
+func tmuxDifference(cases []tmuxCase, shown map[string][]tmuxLines) (rows, differing int, first string) {
+	differ := func(format string, args ...any) {
+		if differing++; first == "" {
+			first = fmt.Sprintf(format, args...)
+		}
+	}
 	for _, c := range cases {
 		grid, lines := gridLines(c), shown[c.name]
 		if len(lines) != len(grid) {
-			t.Errorf("tmux %s, %s: %d steps shown, the case has %d", tmux, c.name, len(lines), len(grid))
+			differ("case %q: %d steps shown, the case has %d", c.name, len(lines), len(grid))
 			continue
 		}
 		for step := range grid {
 			rows += len(grid[step].N)
-			if !slices.Equal(grid[step].N, lines[step].N) {
-				t.Errorf("tmux %s, %s, step %d: capture-pane -N shows lines of %v cells, the grid has %v", tmux, c.name, step, lines[step].N, grid[step].N)
-			}
-			if !slices.Equal(grid[step].J, lines[step].J) {
-				t.Errorf("tmux %s, %s, step %d: capture-pane -J shows %v cells stored, the grid has %v", tmux, c.name, step, lines[step].J, grid[step].J)
+			if !slices.Equal(grid[step].N, lines[step].N) || !slices.Equal(grid[step].J, lines[step].J) {
+				differ("case %q, step %d: capture-pane -N shows lines of %v cells and capture-pane -J %v cells stored; the grid has lines of %v cells and %v stored",
+					c.name, step, lines[step].N, lines[step].J, grid[step].N, grid[step].J)
 			}
 		}
 	}
-	t.Logf("tmux %s: %d cases, %d rows compared", tmux, len(cases), rows)
+	return rows, differing, first
 }
 
 // The grid's lines are tmux's: after every step of every case the cells a line has and the cells stored in it are the ones
@@ -187,6 +194,11 @@ func TestLinesAreWhatTmuxRecorded(t *testing.T) {
 		if record.Digest != tmuxDigest(cases) {
 			t.Fatalf("%s was recorded for other cases: record it again (PIG_GRIDTERM_RECORD=1 go test -run TestLinesAreWhatTmuxShows, with that tmux in PATH)", file)
 		}
-		compareTmuxLines(t, record.Tmux+" (recorded)", cases, record.Lines)
+		rows, differing, first := tmuxDifference(cases, record.Lines)
+		if differing > 0 {
+			t.Errorf("tmux %s, as recorded in %s, shows other lines than the grid has after %d steps; the first: %s. %s", record.Tmux, file, differing, first, tmuxNext)
+			continue
+		}
+		t.Logf("tmux %s (recorded): %d cases, %d rows compared", record.Tmux, len(cases), rows)
 	}
 }

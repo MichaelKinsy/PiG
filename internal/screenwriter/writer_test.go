@@ -177,7 +177,7 @@ func TestOutsideTable(t *testing.T) {
 		{"\x1b[?2026h", true, false, 0},
 		{"\x1b[", true, true, 0},
 	} {
-		screen, cursor, forget := outside(c.data, true)
+		screen, cursor, forget, _ := outside(c.data, true)
 		if screen != c.screen || cursor != c.cursor || forget != c.forget {
 			t.Errorf("outside(%q) = screen %v, cursor %d, forget %v, want %v, %d, %v", c.data, screen, cursor, forget, c.screen, c.cursor, c.forget)
 		}
@@ -582,7 +582,7 @@ func TestScribbledRowsHealByTheSettleWrite(t *testing.T) {
 func TestResizeForgetsTheScreen(t *testing.T) {
 	cols, rows := 20, 5
 	w := New(Options{Size: func() (int, int) { return cols, rows }, Settle: -1})
-	w.Translate("\x1b[?1049h")
+	w.Translate("\x1b[?1049h\x1b[?7l")
 	w.Translate(frame(line(1, "one"), line(5, "five")))
 	rows = 3
 	old := frame(line(1, "one"), line(5, "five!"))
@@ -608,7 +608,7 @@ func TestResizeForgetsTheScreen(t *testing.T) {
 func TestSettleAfterAResizeWritesNothing(t *testing.T) {
 	cols, rows := 20, 5
 	w := New(Options{Size: func() (int, int) { return cols, rows }, Settle: -1})
-	w.Translate("\x1b[?1049h")
+	w.Translate("\x1b[?1049h\x1b[?7l")
 	w.Translate(frame("\x1b[2J", line(1, "one"), line(2, "two")))
 	w.Translate(frame(line(1, "one"), line(2, "two!")))
 	cols = 12
@@ -638,7 +638,7 @@ func TestOutsideTheAlternateScreenEveryByteIsSentAsItCame(t *testing.T) {
 			t.Fatalf("before the alternate screen the writer sent %q", got)
 		}
 	}
-	w.Translate("\x1b[?1049h")
+	w.Translate("\x1b[?1049h\x1b[?7l")
 	w.Translate(frame(line(1, "one")))
 	w.Translate(frame(line(1, "one!")))
 	exit := "\x1b[?25h\x1b[?2004l\x1b[?1049l"
@@ -654,7 +654,7 @@ func TestOutsideTheAlternateScreenEveryByteIsSentAsItCame(t *testing.T) {
 		}
 	}
 	// A resume enters the screen again and repaints: nothing of the last session is assumed.
-	w.Translate("\x1b[?1049h")
+	w.Translate("\x1b[?1049h\x1b[?7l")
 	if got, want := w.Translate(frame(line(1, "one!"))), syncBegin+line(1, "one!")+at(1, 1)+"\x1b[?25l"+syncEnd; got != want {
 		t.Errorf("after entering the screen again the writer sent %q, want %q", got, want)
 	}
