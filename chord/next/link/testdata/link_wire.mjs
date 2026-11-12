@@ -1,8 +1,8 @@
-// Drives Pi's own codec sources, never a translated oracle: copies binary.ts, text.ts, values.ts and part.ts of the
-// pinned Pi tree (packages/chord/src/next/link) and encodes a fixed list of messages with binaryCodec and textCodec.
-// Node strips the types. message.ts is not copied (it pulls in TypeBox and the contract layer): its two constants the
-// codecs read, CAUSE_KINDS and NO_RETIRED, are extracted from it and asserted; part.ts and values.ts import only
-// ChordError and invalid from the data layer, replaced by empty stand-ins the wire code never reaches.
+// Drives Pi's own codec sources, never a translated oracle: copies binary.ts, text.ts, values.ts and part.ts of a Pi
+// tree (packages/chord/src/link) and encodes a fixed list of messages with binaryCodec and textCodec. Node strips the
+// types. message.ts is not copied (it pulls in TypeBox and the contract layer): its two constants the codecs read,
+// CAUSE_KINDS and NO_RETIRED, are extracted from it and asserted; part.ts and values.ts import only ChordError and
+// invalid from the data layer and chordMetrics from telemetry.ts, replaced by stand-ins the wire code never reaches.
 //
 //   node link_wire.mjs <pi tree root> > link_wire_golden.json
 import { createHash } from "node:crypto";
@@ -13,11 +13,11 @@ import { pathToFileURL } from "node:url";
 
 const root = process.argv[2];
 if (root === undefined) throw new Error("usage: link_wire.mjs <pi tree root>");
-const source = join(root, "packages/chord/src/next/link");
+const source = join(root, "packages/chord/src/link");
 const work = mkdtempSync(join(tmpdir(), "link-wire-"));
-const out = join(work, "next/link");
+const out = join(work, "link");
 mkdirSync(out, { recursive: true });
-mkdirSync(join(work, "next/data"));
+mkdirSync(join(work, "data"));
 for (const file of ["binary.ts", "text.ts", "values.ts", "part.ts"]) cpSync(join(source, file), join(out, file));
 
 const message = readFileSync(join(source, "message.ts"), "utf8");
@@ -28,8 +28,9 @@ writeFileSync(
 	join(out, "message.ts"),
 	'export const CAUSE_KINDS = ["transient", "broken", "waiting"];\nexport const NO_RETIRED = [];\n',
 );
-writeFileSync(join(work, "next/data/index.ts"), "export class ChordError extends Error {}\n");
-writeFileSync(join(work, "next/data/internal.ts"), "export const invalid = (_r, m) => new Error(m);\n");
+writeFileSync(join(work, "data/index.ts"), "export class ChordError extends Error {}\n");
+writeFileSync(join(work, "data/internal.ts"), "export const invalid = (_r, m) => new Error(m);\n");
+writeFileSync(join(work, "telemetry.ts"), 'export const chordMetrics = () => { throw new Error("the wire code reads no metrics"); };\n');
 
 const { binaryCodec } = await import(pathToFileURL(join(out, "binary.ts")).href);
 const { textCodec } = await import(pathToFileURL(join(out, "text.ts")).href);
@@ -58,6 +59,9 @@ const raw = (text) => ({ $b: text });
  * a string; `{ $repeat: [s, n] }` is a string of `s` n times anywhere; segments are hex strings. */
 const cases = [
 	["hello", { kind: "hello", protocol: 1, incarnation, calls: 256 }],
+	// No call window (a trusted link's): written as 0 by the binary codec, left out by the text codec.
+	["hello no window", { kind: "hello", protocol: 1, incarnation }],
+	["hello default window", { kind: "hello", protocol: 1, incarnation, calls: 10000 }],
 	["hold bare", hold({ hold: 300, version: 2, params: '{"id":1}' })],
 	[
 		"hold principal incarnation",
@@ -140,6 +144,25 @@ const cases = [
 	["gone origin", { kind: "gone", origin: 2, hold: 3, error: chord("released", "m") }],
 	["ack", { kind: "ack" }],
 	["ack origin", { kind: "ack", origin: 300 }],
+	// Event acks: the kind byte's third flag and the count (a state ack stays one byte).
+	["ack events", { kind: "ack", events: 1 }],
+	["ack events origin", { kind: "ack", origin: 300, events: 4000 }],
+	// Events: `at` a whole Date.now(), several holds and members in one message, and none (a relay's filtered one).
+	[
+		"event",
+		{
+			kind: "event",
+			events: [
+				{ hold: 0, member: 0, at: 1762819200123, value: '{"t":1,"y":0.5}' },
+				{ hold: 300, member: 2, at: 0, value: "null" },
+			],
+		},
+	],
+	["event one", { kind: "event", events: [{ hold: 1, member: 0, at: 9, value: '{"y":1}' }] }],
+	["event empty origin", { kind: "event", origin: 7, events: [] }],
+	["event origin deflated", { kind: "event", origin: 2, events: [{ hold: 0, member: 1, at: 5, value: deflated("0102") }] }],
+	["event bytes part", { kind: "event", events: [{ hold: 1, member: 0, at: 9, value: raw('{"y":1}') }] }],
+	["event latest date", { kind: "event", events: [{ hold: 0, member: 0, at: 8640000000000000, value: json(rep("€", 300)) }] }],
 	["closed", { kind: "closed", origin: 300 }],
 	["revoke", { kind: "revoke", revocation: { grant: "g1" } }],
 	["ping", { kind: "ping" }],

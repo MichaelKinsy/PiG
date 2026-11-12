@@ -129,6 +129,9 @@ func idList(ids []string) []any {
 func ownTuple(message Message) string {
 	switch typed := message.(type) {
 	case *HelloMessage:
+		if typed.Calls == 0 {
+			return jsonText([]any{"h", float64(typed.Protocol), typed.Incarnation})
+		}
 		return jsonText([]any{"h", float64(typed.Protocol), typed.Incarnation, float64(typed.Calls)})
 	case *HoldMessage:
 		head := jsonText([]any{"H", float64(typed.Hold), typed.Type, float64(typed.Version), typed.Fingerprint})
@@ -222,7 +225,16 @@ func ownTuple(message Message) string {
 	case *LoadingMessage:
 		return jsonText([]any{"l", float64(typed.Hold)})
 	case *AckMessage:
+		if typed.Events.Ok {
+			return jsonText([]any{"a", float64(typed.Events.Value)})
+		}
 		return `["a"]`
+	case *EventMessage:
+		entries := make([]string, len(typed.Events))
+		for index, entry := range typed.Events {
+			entries[index] = "[" + strconv.Itoa(entry.Hold) + "," + strconv.Itoa(entry.Member) + "," + strconv.Itoa(entry.At) + "," + mustPartText(entry.Value) + "]"
+		}
+		return `["E",[` + strings.Join(entries, ",") + "]]"
 	case *ClosedMessage:
 		return `["C"]`
 	case *PingMessage:
@@ -368,8 +380,15 @@ func fromFields(fields []any, rest []byte) Message {
 	}
 	switch tag {
 	case "h":
-		arity(3)
-		return &HelloMessage{Protocol: asInt(f[0]), Incarnation: asString(f[1]), Calls: asInt(f[2])}
+		arity(2, 3)
+		message := &HelloMessage{Protocol: asInt(f[0]), Incarnation: asString(f[1])}
+		if len(f) == 3 {
+			// A window is at least 1: the message schema refuses an explicit 0 (Go's 0 is "absent").
+			if message.Calls = asInt(f[2]); message.Calls == 0 {
+				failWith(errSchema)
+			}
+		}
+		return message
 	case "H":
 		arity(6, 7, 8, 9, 10, 11)
 		address := list(f[5])
@@ -526,8 +545,23 @@ func fromFields(fields []any, rest []byte) Message {
 		arity(1)
 		return &LoadingMessage{Hold: asInt(f[0])}
 	case "a":
-		arity(0)
-		return &AckMessage{}
+		arity(0, 1)
+		if len(f) == 0 {
+			return &AckMessage{}
+		}
+		return &AckMessage{Events: Some(asInt(f[0]))}
+	case "E":
+		arity(1)
+		entries := list(f[0])
+		events := make([]WireEvent, len(entries))
+		for index, item := range entries {
+			entry := list(item)
+			if len(entry) != 4 {
+				fail("text: an event entry with %d fields", len(entry))
+			}
+			events[index] = WireEvent{Hold: asInt(entry[0]), Member: asInt(entry[1]), At: asInt(entry[2]), Value: mustTextPart(entry[3])}
+		}
+		return &EventMessage{Events: events}
 	case "C":
 		arity(0)
 		// Its origin is the wrapper's; 0 without one, which the message schema refuses.

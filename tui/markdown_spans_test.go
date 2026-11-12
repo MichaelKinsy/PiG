@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // Real Pi 1.1.0 (pi-tui Markdown with the coding agent's markdown theme, width 80, lines joined by "\n"): the sha256 of its output for each input, recorded with extensions/sdk-ts's installed Pi. Inputs use only bold, italic and strikethrough, whose codes do not depend on the active color theme. The nested-emphasis output is the byte stream chalk produces when an inner close code re-opens the outer style, quadratic in the delimiter count.
@@ -164,8 +166,11 @@ func TestStackedInlineRenderingLeavesOtherThemesAlone(t *testing.T) {
 	}
 }
 
-// Hostile nesting must cost memory in proportion to its output, not to the cube of the delimiter count (QUALITY-AUDIT-050 item 10: 16 GB for the 8 MB Pi also produces). Allocation is measured as TotalAlloc growth, an exact count of bytes handed out.
+// Hostile nesting must cost memory in proportion to its output, not to the cube of the delimiter count (QUALITY-AUDIT-050 item 10: 16 GB for the 8 MB Pi also produces). Allocation is measured as TotalAlloc growth, an exact count of bytes handed out. TotalAlloc counts every goroutine of the process, not only the render, so a goroutine that an earlier test left running adds its own allocation to a reading (the budget is a few times the output); the test counts in a process of its own (testenv.InOwnProcess).
 func TestNestedEmphasisAllocatesInProportionToItsOutput(t *testing.T) {
+	if !testenv.InOwnProcess(t) {
+		return
+	}
 	color := func(s string) string { return "\x1b[38;5;244m" + s + "\x1b[39m" }
 	contexts := []struct {
 		name   string

@@ -133,6 +133,8 @@ type harnessOptions struct {
 	// (test/suite/harness.ts createHarness streamFn), not through the model runtime: the faux provider reports a run aborted before its
 	// request as aborted, where the runtime's request setup rejects it with the signal's reason (lazy.ts lazyStream).
 	compatStream bool
+	// provider replaces the scripted provider as the model's provider, so a session runs against a real provider over a hermetic server; the scripted responses are then unused.
+	provider ai.Provider
 }
 
 type recoveryHarness struct {
@@ -173,7 +175,11 @@ func newRecoveryHarness(t *testing.T, opts harnessOptions, responses ...scripted
 	if contextWindow == 0 {
 		contextWindow = 128_000
 	}
-	model := &ai.Model{ID: "faux-1", DisplayName: "faux-1", Provider: provider, Capabilities: ai.ModelCapabilities{ContextWindow: contextWindow, MaxOutputTokens: opts.maxTokens}, InputLimits: opts.inputLimits, ProviderMeta: ai.ProviderMetadata{Reasoning: opts.reasoning}}
+	var modelProvider ai.Provider = provider
+	if opts.provider != nil {
+		modelProvider = opts.provider
+	}
+	model := &ai.Model{ID: "faux-1", DisplayName: "faux-1", Provider: modelProvider, Capabilities: ai.ModelCapabilities{ContextWindow: contextWindow, MaxOutputTokens: opts.maxTokens}, InputLimits: opts.inputLimits, ProviderMeta: ai.ProviderMetadata{Reasoning: opts.reasoning}}
 	var runner *inproc.Runner
 	if opts.extension.Handlers != nil || len(opts.extensions) > 0 {
 		loaded := opts.extensions

@@ -183,7 +183,8 @@ func (s *Session) startCacheWarming(model *ai.Model, transcript ai.TranscriptCon
 		return
 	}
 	request := icodingagent.CacheWarmRequest{Model: model, Context: transcript, Options: options}
-	warmer.Start(request, s.cacheContextIsCurrent(model))
+	// The copy of the messages that cacheContextIsCurrent takes is made only for a request the warmer keeps.
+	warmer.StartCapturing(request, func() func() bool { return s.cacheContextIsCurrent(model) })
 }
 
 // cacheContextIsCurrent keeps warming while the current transcript still

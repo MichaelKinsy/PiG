@@ -31,11 +31,21 @@ func describeTool(name, description string, edit ...func(*durable.ToolRegistrati
 	return registration
 }
 
-var github = Namespace{Name: "github", Description: "GitHub MCP server", Prefix: "mcp__github__"}
+var github = durable.ToolNamespace{Name: "mcp__github", Description: "GitHub MCP server", Instructions: "Pass repositories as owner/name."}
 
-func mustSection(t *testing.T, tools []*durable.ToolRegistration, namespaces []Namespace, budget int) *string {
+// describeExtension is Pi's `extension(name, tools, namespace)` of codemode-describe.test.ts: an extension bringing tools, in
+// namespace when given.
+func describeExtension(name string, tools []*durable.ToolRegistration, namespace ...durable.ToolNamespace) *durable.Extension {
+	extension := &durable.Extension{Name: name, Tools: tools}
+	if len(namespace) > 0 {
+		extension.Namespace = &namespace[0]
+	}
+	return extension
+}
+
+func mustSection(t *testing.T, tools []*durable.ToolRegistration, extensions []*durable.Extension, budget int) *string {
 	t.Helper()
-	section, err := Section(tools, namespaces, budget)
+	section, err := Section(tools, extensions, budget)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,43 +65,84 @@ func TestDescribeKeepsTheToolDescriptionTheSameForEveryConversation(t *testing.T
 	}
 }
 
-// Pi 1.2.0 packages/durable/test/codemode-describe.test.ts:33 "lists callable tools as declarations, grouped by namespace, with namespace descriptions"
-func TestDescribeListsCallableToolsAsDeclarationsGroupedByNamespace(t *testing.T) {
-	section := *mustSection(t, []*durable.ToolRegistration{describeTool("read", "Read a file."), describeTool("mcp__github__list_issues", "List issues.")}, []Namespace{github}, 3000)
-	for _, want := range []string{"### `read`\nRead a file.", "read(args: {", "## github\nGitHub MCP server", "Promise<string>"} {
+// Ports packages/durable/test/codemode-describe.test.ts (Pi 5e24c6b1f) "puts a tool in its extension's namespace; the first
+// extension naming a tool wins"
+func TestDescribePutsAToolInItsExtensionsNamespaceTheFirstExtensionNamingAToolWins(t *testing.T) {
+	issues, shared := describeTool("list_issues", "List issues."), describeTool("read", "Read a file.")
+	namespaces := NamespacesOf([]*durable.Extension{describeExtension("coding", []*durable.ToolRegistration{shared}), describeExtension("github", []*durable.ToolRegistration{issues, shared}, github)})
+	if got := namespaces["list_issues"]; got == nil || *got != github {
+		t.Errorf("list_issues is in %+v, want %+v", got, github)
+	}
+	// `read` came first from an extension without a namespace: ungrouped.
+	if _, has := namespaces["read"]; has {
+		t.Errorf("read is in %+v, want ungrouped", namespaces["read"])
+	}
+	reversed := NamespacesOf([]*durable.Extension{describeExtension("github", []*durable.ToolRegistration{issues, shared}, github), describeExtension("coding", []*durable.ToolRegistration{shared})})
+	if got := reversed["read"]; got == nil || *got != github {
+		t.Errorf("read in the reversed order is in %+v, want %+v", got, github)
+	}
+}
+
+// Ports codemode-describe.test.ts "lists ungrouped tools first, then each namespace's heading and description, then its
+// declarations"
+func TestDescribeListsUngroupedToolsFirstThenEachNamespacesHeadingAndDescriptionThenItsDeclarations(t *testing.T) {
+	read, issues := describeTool("read", "Read a file."), describeTool("list_issues", "List issues.")
+	section := *mustSection(t, []*durable.ToolRegistration{read, issues}, []*durable.Extension{describeExtension("coding", []*durable.ToolRegistration{read}), describeExtension("github", []*durable.ToolRegistration{issues}, github)}, 3000)
+	for _, want := range []string{"### `read`\nRead a file.", "read(args: {", "## mcp__github\nGitHub MCP server", "Promise<string>"} {
 		if !strings.Contains(section, want) {
 			t.Errorf("section lacks %q:\n%s", want, section)
 		}
 	}
-	// Tools before namespaces; a namespace's tools after its heading.
-	read, heading, listed := strings.Index(section, "### `read`"), strings.Index(section, "## github"), strings.Index(section, "### `mcp__github__list_issues`")
-	if read < 0 || read >= heading || heading >= listed {
-		t.Errorf("order read %d, heading %d, listed %d", read, heading, listed)
+	// Instructions only through describeNamespace().
+	if strings.Contains(section, "owner/name") {
+		t.Errorf("section has the instructions:\n%s", section)
+	}
+	readAt, heading, listed := strings.Index(section, "### `read`"), strings.Index(section, "## mcp__github"), strings.Index(section, "### `list_issues`")
+	if readAt < 0 || readAt >= heading || heading >= listed {
+		t.Errorf("order read %d, heading %d, listed %d", readAt, heading, listed)
 	}
 }
 
-// Pi 1.2.0 packages/durable/test/codemode-describe.test.ts:48 "lists what fits the budget, every namespace before any is complete, and says what is left out"
-func TestDescribeListsWhatFitsTheBudgetEveryNamespaceBeforeAnyIsCompleteAndSaysWhatIsLeftOut(t *testing.T) {
-	var many []*durable.ToolRegistration
-	for i := range 30 {
-		many = append(many, describeTool(fmt.Sprintf("mcp__github__tool%d", i), strings.Repeat("x", 200)))
-	}
-	section := *mustSection(t, append([]*durable.ToolRegistration{describeTool("read", "Read a file.")}, many...), []Namespace{github}, 400)
-	if !strings.Contains(section, "### `read`") || !strings.Contains(section, "## github (some tools not listed)") || strings.Contains(section, "tool29") {
+// Ports codemode-describe.test.ts "lists a namespace without tools, and nothing without tools and namespaces"
+func TestDescribeListsANamespaceWithoutToolsAndNothingWithoutToolsAndNamespaces(t *testing.T) {
+	section := *mustSection(t, nil, []*durable.Extension{describeExtension("github", nil, github)}, 3000)
+	if !strings.Contains(section, "## mcp__github\nGitHub MCP server") {
 		t.Errorf("section:\n%s", section)
 	}
-	if none := *mustSection(t, many, []Namespace{github}, 10); !strings.Contains(none, "## github (tools not listed)") {
-		t.Errorf("over a tiny budget:\n%s", none)
-	}
-	if got := mustSection(t, nil, []Namespace{github}, 3000); got != nil {
-		t.Errorf("without tools: %q, want none", *got)
+	if got := mustSection(t, nil, []*durable.Extension{describeExtension("coding", nil)}, 3000); got != nil {
+		t.Errorf("without tools and namespaces: %q, want none", *got)
 	}
 }
 
-// Pi 1.2.0 packages/durable/test/codemode-describe.test.ts:58 "uses the longest matching namespace prefix"
-func TestDescribeUsesTheLongestMatchingNamespacePrefix(t *testing.T) {
-	section := *mustSection(t, []*durable.ToolRegistration{describeTool("mcp__github__x", "x")}, []Namespace{{Name: "git", Prefix: "mcp__git"}, github}, 3000)
-	if !strings.Contains(section, "## github") || strings.Contains(section, "## git\n") {
+// Ports codemode-describe.test.ts "keeps the section identical before and after a namespace's (deferred) tools appear"
+func TestDescribeKeepsTheSectionIdenticalBeforeAndAfterANamespacesDeferredToolsAppear(t *testing.T) {
+	read := describeTool("read", "Read a file.")
+	before := mustSection(t, []*durable.ToolRegistration{read}, []*durable.Extension{describeExtension("coding", []*durable.ToolRegistration{read}), describeExtension("github", nil, github)}, 3000)
+	// The server connected: its tools are installed, deferred, and callable by scripts.
+	issues := describeTool("list_issues", "List issues.", func(tool *durable.ToolRegistration) { tool.Deferred = true })
+	extensions := []*durable.Extension{describeExtension("coding", []*durable.ToolRegistration{read}), describeExtension("github", []*durable.ToolRegistration{issues}, github)}
+	// The section's caller passes the non-deferred callable tools (deferred ones are found with searchTools()).
+	after := mustSection(t, []*durable.ToolRegistration{read}, extensions, 3000)
+	if before == nil || after == nil || *before != *after {
+		t.Errorf("before:\n%v\nafter:\n%v", before, after)
+	}
+}
+
+// Ports codemode-describe.test.ts "lists what fits the budget, every namespace before any is complete, with no counts in headings"
+func TestDescribeListsWhatFitsTheBudgetEveryNamespaceBeforeAnyIsCompleteWithNoCountsInHeadings(t *testing.T) {
+	var many []*durable.ToolRegistration
+	for i := range 30 {
+		many = append(many, describeTool(fmt.Sprintf("tool%d", i), strings.Repeat("x", 200)))
+	}
+	read := describeTool("read", "Read a file.")
+	extensions := []*durable.Extension{describeExtension("coding", []*durable.ToolRegistration{read}), describeExtension("github", many, github)}
+	section := *mustSection(t, append([]*durable.ToolRegistration{read}, many...), extensions, 400)
+	for _, want := range []string{"### `read`", "Some tools are not listed: find them with `searchTools()`.", "## mcp__github\nGitHub MCP server"} {
+		if !strings.Contains(section, want) {
+			t.Errorf("section lacks %q:\n%s", want, section)
+		}
+	}
+	if strings.Contains(section, "tool29") || strings.Contains(section, "not listed)") {
 		t.Errorf("section:\n%s", section)
 	}
 }
@@ -116,21 +167,23 @@ func TestSelectCatalogPlacesTheCheapestToolOfEachGroupPerRound(t *testing.T) {
 	}
 }
 
-// Pi 1.2.0 packages/durable/test/codemode-describe.test.ts:68 "renders the section from the conversation's callable tools into the system prompt"
-func TestDescribeRendersTheSectionFromTheConversationsCallableToolsIntoTheSystemPrompt(t *testing.T) {
+// Pi 1.2.0 packages/durable/test/codemode-describe.test.ts:68 "renders the section from the conversation's extensions and callable tools into the system prompt"
+func TestDescribeRendersTheSectionFromTheConversationsExtensionsAndCallableToolsIntoTheSystemPrompt(t *testing.T) {
 	setup := chatSetup()
 	sandbox, err := cm.NewSandbox(cm.SandboxOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = sandbox.Close() })
-	if err := setup.registry.Install(CreateExtension(ToolOptions{Sandbox: sandbox, Namespaces: []Namespace{github}})); err != nil {
+	if err := setup.registry.Install(CreateExtension(ToolOptions{Sandbox: sandbox})); err != nil {
 		t.Fatal(err)
 	}
-	if err := setup.registry.Install(&durable.Extension{Name: "tools", Tools: []*durable.ToolRegistration{
-		harness.DefineTool(*describeTool("read", "Read a file.")),
-		harness.DefineTool(*describeTool("mcp__github__list_issues", "List issues.", func(tool *durable.ToolRegistration) { tool.Callers = []durable.ToolCaller{durable.CallerTools} })),
-		harness.DefineTool(*describeTool("mcp__github__get_issue", "Get an issue.", func(tool *durable.ToolRegistration) { tool.Deferred = true })),
+	if err := setup.registry.Install(&durable.Extension{Name: "tools", Tools: []*durable.ToolRegistration{harness.DefineTool(*describeTool("read", "Read a file."))}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := setup.registry.Install(&durable.Extension{Name: "mcp:github", Namespace: &github, Tools: []*durable.ToolRegistration{
+		harness.DefineTool(*describeTool("list_issues", "List issues.", func(tool *durable.ToolRegistration) { tool.Callers = []durable.ToolCaller{durable.CallerTools} })),
+		harness.DefineTool(*describeTool("get_issue", "Get an issue.", func(tool *durable.ToolRegistration) { tool.Deferred = true })),
 	}}); err != nil {
 		t.Fatal(err)
 	}
@@ -150,14 +203,14 @@ func TestDescribeRendersTheSectionFromTheConversationsCallableToolsIntoTheSystem
 			section = *candidate.Value
 		}
 	}
-	for _, want := range []string{"### `read`", "### `mcp__github__list_issues`"} {
+	for _, want := range []string{"### `read`", "## mcp__github\nGitHub MCP server", "### `list_issues`"} {
 		if !strings.Contains(section, want) {
 			t.Errorf("section lacks %q:\n%s", want, section)
 		}
 	}
 	// Deferred tools are found with searchTools(), not listed.
 	// The code mode tool itself is not callable from scripts, nor are its internal tools.
-	for _, unwanted := range []string{"mcp__github__get_issue", "### `codemode`", InternalPrefix} {
+	for _, unwanted := range []string{"get_issue", "### `codemode`", InternalPrefix} {
 		if strings.Contains(section, unwanted) {
 			t.Errorf("section has %q", unwanted)
 		}

@@ -13,6 +13,9 @@
   pin.py bump <ref>           write .upstream/pin for a tag or commit, then sync
   pin.py install-oracle       install the Pi oracle for the effective pin into extensions/sdk-ts/node_modules
   pin.py freeze-closure       freeze the pin's dependency closure (release: --from-published-lock <lock>; commit: derived from its packs)
+  pin.py vendor               pack the pinned build's durable closure into third_party/pi-packs and point its consumers at it
+  pin.py check-vendored [--rebuild] [--installed CONSUMER]  fail when the vendored packs, a consumer or a consumer's install are not the pin's (automation/pin/vendor.py)
+  pin.py override-tree        under PI_UPSTREAM_REF, build the tree the oracle tests of that Pi commit read and print its path; the repository is not written
   pin.py check-oracle         verify the installed oracle is the effective pin's Pi
   pin.py link-mirror          point the effective pin's mirror (.upstream/<mirror>/node_modules) at its source build's
                               dependencies, so oracle scripts that import the mirrored source resolve its imports
@@ -176,8 +179,6 @@ def interface_snapshot_ignore(pin: Pin, text: str) -> str:
 
 
 # (path, transform(pin, text), command to refresh a lock when the file changed or None)
-INTEROP = ['@earendil-works/chord', '@earendil-works/pi-ai', '@earendil-works/pi-durable', '@earendil-works/pi-telemetry']
-CF_HOST = ['@earendil-works/chord', '@earendil-works/pi-ai', '@earendil-works/pi-durable']
 ORACLE_PACKAGES = ['@earendil-works/pi-agent-core', '@earendil-works/pi-ai', '@earendil-works/pi-coding-agent', '@earendil-works/pi-tui']
 RULES: list[tuple[str, object, str | None]] = [
     (".gitignore", lambda p, t: interface_snapshot_ignore(p, t), None),
@@ -192,9 +193,6 @@ RULES: list[tuple[str, object, str | None]] = [
     ("automation/images/ci-parity/Dockerfile", lambda p, t: ci_commit(p, regex_rule(r"^(ARG PI_VERSION=)\S+", r"\g<1>{v}", "package_version")(p, t)), None),
     ("automation/images/ci-parity/metadata.env", lambda p, t: ci_tag(p, t), None),
     ("automation/images/ci-parity/package.json", package_deps(ORACLE_PACKAGES), "automation/images/ci-parity"),
-    ("durable/interop/package.json", package_deps(INTEROP), "durable/interop"),
-    ("durable/core/host/cf/package.json", package_deps(CF_HOST), "durable/core/host/cf"),
-    ("bench/k8s/image/pi-durable/package.json", package_deps(INTEROP), "bench/k8s/image/pi-durable"),
     ("coding/extension/host/subprocess/runtime-node/harness/package.json", regex_rule(r'^(  "version": ")[^"]+(")', r'\g<1>{v}\g<2>', "package_version"), None),
 ]
 
@@ -464,10 +462,6 @@ def cmd_install_oracle(args: argparse.Namespace) -> None:
     if got != pin.package_version:
         raise PinError(f"the installed Pi reports {got}, the pin needs {pin.package_version}")
     print(f"install-oracle: Pi {pin.version}: {oracle.SDK_TS / 'node_modules'} -> {os.path.realpath(oracle.SDK_TS / 'node_modules')}")
-    if pin.kind != "tag":
-        durable = oracle.ensure_durable(pin, force=args.force)
-        oracle.link_interop(durable)
-        print(f"install-oracle: Pi Durable {pin.version}: durable/interop/node_modules -> {os.path.realpath(durable)}")
     point_current(pin)
     oracle.link_mirror(pin)
 
@@ -511,22 +505,45 @@ def cmd_link_mirror(_: argparse.Namespace) -> None:
         print(f"link-mirror: .upstream/{pin.mirror_dir}/node_modules -> {modules}")
 
 
-def cmd_link_durable_host(args: argparse.Namespace) -> None:
-    import oracle
+def cmd_vendor(args: argparse.Namespace) -> None:
+    import vendor
 
+    pin, override = pinlib.effective()
+    if override:
+        raise PinError("vendor writes the committed pin's packs: unset PI_UPSTREAM_REF")
+    vendor.sync(pin)
+
+
+def cmd_check_vendored(args: argparse.Namespace) -> None:
+    import vendor
+
+    pin, override = pinlib.effective()
+    problems = vendor.check(pin) + (vendor.check_rebuild(pin) if args.rebuild else [])
+    for consumer in args.installed:
+        problems += vendor.check_installed(consumer)
+    if problems:
+        raise PinError("the vendored Pi packages are not the pin's:\n  " + "\n  ".join(problems))
+    print(f"check-vendored: third_party/pi-packs holds the " + ("rebuilt " if args.rebuild else "") + f"durable closure of Pi {pin.version} and every consumer installs it")
+
+
+def cmd_override_tree(_: argparse.Namespace) -> None:
+    """Under PI_UPSTREAM_REF: build (once) the tree the oracle tests of that Pi commit read (vendor.override_tree) and print its
+    path. The build reports on stderr, and the repository's own Pi (mirror, oracle link, installs) is not touched. The commit
+    may be the pin's own: the tree is then the pin's Pi, read the way another commit's is."""
+    import vendor
+
+    if not os.environ.get(pinlib.OVERRIDE_ENV, "").strip():
+        raise PinError("override-tree builds the tree of the Pi commit a run names: set PI_UPSTREAM_REF=<commit>")
     pin, _override = pinlib.effective()
-    host = (ROOT / args.host).resolve()
-    linked = oracle.link_host(pin, host)
-    where = f"the pinned build of {pin.commit[:8]}" if linked else f"the published release {pin.package_version}"
-    print(f"link-durable-host: {args.host}/node_modules uses {where}" + (f" for {', '.join(linked)}" if linked else ""))
-
-
-def cmd_check_durable_host(args: argparse.Namespace) -> None:
-    import oracle
-
-    pin, _override = pinlib.effective()
-    oracle.check_host(pin, (ROOT / args.host).resolve())
-    print(f"check-durable-host: {args.host}/node_modules matches Pi {pin.version}")
+    out = os.dup(1)
+    os.dup2(2, 1)
+    try:
+        tree = vendor.override_tree(pin)
+    finally:
+        sys.stdout.flush()
+        os.dup2(out, 1)
+        os.close(out)
+    print(tree)
 
 
 def cmd_check_oracle(_: argparse.Namespace) -> None:
@@ -559,8 +576,6 @@ def cmd_check_oracle(_: argparse.Namespace) -> None:
             raise PinError("the installed dependency tree differs from the frozen closure:\n  " + "\n  ".join(problems[:20]))
     if data.get("backports", "") != oracle.backports_digest(pin):
         raise PinError("the installed Pi carries other post-release backports than automation/gen/pi-post-release-backports.mjs lists; rebuild with `pin.py install-oracle --force`")
-    if pin.kind != "tag":
-        oracle.check_durable(pin)
     print(f"check-oracle: Pi {pin.version} (source build of {pin.commit[:8]})")
 
 
@@ -588,11 +603,13 @@ def main() -> None:
     inst.add_argument("--force", action="store_true")
     inst.set_defaults(fn=cmd_install_oracle)
     sub_.add_parser("check-oracle").set_defaults(fn=cmd_check_oracle)
-    for name, fn in (("link-durable-host", cmd_link_durable_host), ("check-durable-host", cmd_check_durable_host)):
-        host = sub_.add_parser(name)
-        host.add_argument("host", help="the host directory (with its package.json and locked npm tree), relative to the repository")
-        host.set_defaults(fn=fn)
+    sub_.add_parser("vendor").set_defaults(fn=cmd_vendor)
+    vendored = sub_.add_parser("check-vendored")
+    vendored.add_argument("--rebuild", action="store_true", help="also pack the pinned source build again and compare the bytes")
+    vendored.add_argument("--installed", action="append", default=[], metavar="CONSUMER", help="also require the node_modules of this consumer (durable/interop) to be an install of the vendored packs")
+    vendored.set_defaults(fn=cmd_check_vendored)
     sub_.add_parser("link-mirror").set_defaults(fn=cmd_link_mirror)
+    sub_.add_parser("override-tree").set_defaults(fn=cmd_override_tree)
     ledgers = sub_.add_parser("ledgers")
     ledgers.add_argument("--from", dest="previous")
     ledgers.add_argument("--force", action="store_true")

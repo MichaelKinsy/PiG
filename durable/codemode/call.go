@@ -268,18 +268,17 @@ func (c *call) execute(source string) (durable.ToolExecutionResult, error) {
 	for _, global := range c.options.Globals {
 		globals = append(globals, declaredGlobal{Name: global.Name, Spread: global.Spread})
 	}
+	// The namespaces the selected extensions declare, with their tools; one without tools yet is listed too.
+	toolNamespaces := NamespacesOf(agent.Extensions)
 	namespaces := []startNamespace{}
-	for _, tool := range listed {
-		namespace := namespaceOf(tool.Name, c.options.Namespaces)
-		if namespace == nil {
-			continue
+	for _, namespace := range declaredNamespaces(agent.Extensions) {
+		entry := startNamespace{Name: namespace.Name, Description: namespace.Description, Instructions: namespace.Instructions, Tools: []string{}}
+		for _, tool := range listed {
+			if own := toolNamespaces[tool.Name]; own != nil && own.Name == namespace.Name {
+				entry.Tools = append(entry.Tools, tool.Name)
+			}
 		}
-		index := slices.IndexFunc(namespaces, func(candidate startNamespace) bool { return candidate.Name == namespace.Name })
-		if index < 0 {
-			namespaces = append(namespaces, startNamespace{Name: namespace.Name, Description: namespace.Description, Instructions: namespace.Instructions, Tools: []string{}})
-			index = len(namespaces) - 1
-		}
-		namespaces[index].Tools = append(namespaces[index].Tools, tool.Name)
+		namespaces = append(namespaces, entry)
 	}
 	maxOutputTokens := DefaultMaxOutputTokens
 	if parsed.Options.MaxOutputTokens != nil {
@@ -1574,7 +1573,7 @@ func (c *call) discover(hostCall cm.HostCall) (json.RawMessage, error) {
 			}
 			described := struct {
 				Name         string   `json:"name"`
-				Description  string   `json:"description,omitempty"`
+				Description  string   `json:"description"`
 				Instructions string   `json:"instructions,omitempty"`
 				Tools        []string `json:"tools"`
 			}{namespaces[i].Name, namespaces[i].Description, namespaces[i].Instructions, make([]string, len(namespaces[i].Tools))}

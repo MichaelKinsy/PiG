@@ -205,33 +205,124 @@ func (h *relayedHold) lost() {
 	h.downstream.forget(h, nil)
 }
 
-// call forwards a call from downstream (registered there under its id) upstream at once; its reply comes back by the
-// origin. Without an upstream link it is answered `unavailable` at once (it crossed the `loading` notice).
-func (h *relayedHold) call(message *link.CallMessage) *chordtelemetry.OpenSpan {
-	if upstream := h.upstream; upstream != nil {
-		// A downstream link that is not trusted (a page) cannot claim old work: its flag is dropped here.
-		if message.Old && !h.downstream.link.trusted {
-			unmarked := *message
-			unmarked.Old = false
-			message = &unmarked
-		}
-		adapter := upstream.link.host.telemetry
-		if chordtelemetry.Untraced(adapter) {
-			upstream.link.send(link.WithOrigin(message, link.Some(upstream.origin)))
-			return nil
-		}
-		span := chordtelemetry.NewOpenSpan(chordtelemetry.ParentOf(message.Trace, adapter), "chord.relay", h.attributes(fmt.Sprintf("#%d", message.Method)))
-		forwarded := *message
-		if carrier := chordtelemetry.CarrierOf(span.Span()); carrier != nil {
-			forwarded.Trace = carrier
-			forwarded.TraceOrder = nil
-		}
-		upstream.link.send(link.WithOrigin(&forwarded, link.Some(upstream.origin)))
-		return span
+// submit: a call from downstream (registered there under its id) waits in its upstream link's window for this origin and
+// is forwarded (`call`) as a slot frees, at once when one is free and nothing waits (a trusted upstream announced no
+// window); its reply comes back by the origin. Without an upstream link it is answered `unavailable` at once (it crossed
+// the `loading` notice).
+func (h *relayedHold) submit(call *relayedCall) {
+	upstream := h.upstream
+	if upstream == nil {
+		err := data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: fmt.Sprintf("hold %d: its upstream link is down", h.id)}, nil)
+		h.downstream.reply(call.message.Call, &link.ErrorMessage{Call: call.message.Call, Error: link.WireErrorOf(err)})
+		return
 	}
-	err := data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: fmt.Sprintf("hold %d: its upstream link is down", h.id)}, nil)
-	h.downstream.reply(message.Call, &link.ErrorMessage{Call: message.Call, Error: link.WireErrorOf(err)})
-	return nil
+	call.queue(upstream.link.consumer.relayWindow(upstream.origin))
+}
+
+// call forwards a submitted call upstream, now that its window has a slot; it returns its `chord.relay` span when this
+// host records.
+func (h *relayedHold) call(message *link.CallMessage) *chordtelemetry.OpenSpan {
+	// A call waits only in its hold's current upstream window: the drop answers it first (upstreamDropped), a release
+	// forgets it.
+	upstream := h.upstream
+	// A downstream link that is not trusted (a page) cannot claim old work: its flag is dropped here.
+	if message.Old && !h.downstream.link.trusted {
+		unmarked := *message
+		unmarked.Old = false
+		message = &unmarked
+	}
+	adapter := upstream.link.host.telemetry
+	if chordtelemetry.Untraced(adapter) {
+		upstream.link.send(link.WithOrigin(message, link.Some(upstream.origin)))
+		return nil
+	}
+	span := chordtelemetry.NewOpenSpan(chordtelemetry.ParentOf(message.Trace, adapter), "chord.relay", h.attributes(fmt.Sprintf("#%d", message.Method)))
+	forwarded := *message
+	if carrier := chordtelemetry.CarrierOf(span.Span()); carrier != nil {
+		forwarded.Trace = carrier
+		forwarded.TraceOrder = nil
+	}
+	upstream.link.send(link.WithOrigin(&forwarded, link.Some(upstream.origin)))
+	return span
+}
+
+// relayedCallKind is where a relayed call stands: new (registered, answered at once when its hold has no upstream link),
+// queued (waiting in its upstream link's window for its origin), forwarded (upstream, its `chord.relay` span when this host
+// records) or ended (answered, aborted, its hold or origin gone).
+type relayedCallKind uint8
+
+const (
+	relayedCallNew relayedCallKind = iota
+	relayedCallQueued
+	relayedCallForwarded
+	relayedCallEnded
+)
+
+// relayedCall is a downstream call on a relayed hold, as its downstream origin keeps it (decision "Call windows only for
+// untrusted links": a relay honours each upstream window): queued in its upstream link's window for the origin until a
+// slot forwards it (send), then in flight until its reply, its abort, its hold's end or the upstream's drop.
+type relayedCall struct {
+	hold    *relayedHold
+	message *link.CallMessage
+	state   relayedCallKind
+	window  *callWindow[*relayedCall]
+	span    *chordtelemetry.OpenSpan
+}
+
+func newRelayedCall(hold *relayedHold, message *link.CallMessage) *relayedCall {
+	return &relayedCall{hold: hold, message: message}
+}
+
+func (c *relayedCall) holdID() int { return c.hold.id }
+
+// queue waits in window (its hold's upstream link's, for its origin), forwarded at once when a slot is free.
+func (c *relayedCall) queue(window *callWindow[*relayedCall]) {
+	c.state, c.window = relayedCallQueued, window
+	window.submit(c)
+}
+
+// send: its window has a slot for it: forwarded upstream. A window sends only the calls queued in it.
+func (c *relayedCall) send() {
+	c.state = relayedCallForwarded
+	c.span = c.hold.call(c.message)
+}
+
+// unqueue takes it out of its window when it still waits there (ended unsent); whether it did.
+func (c *relayedCall) unqueue() bool {
+	if c.state != relayedCallQueued {
+		return false
+	}
+	c.state = relayedCallEnded
+	c.window.remove(c)
+	return true
+}
+
+// end ends it: a waiting one leaves its window, a forwarded one frees its slot (which may forward the next waiting call)
+// and its span ends with reply (nil: `aborted`).
+func (c *relayedCall) end(reply link.OriginMessage) {
+	state := c.state
+	c.state = relayedCallEnded
+	if state == relayedCallQueued {
+		c.window.remove(c)
+	}
+	if state != relayedCallForwarded {
+		return
+	}
+	if c.span != nil {
+		relayEnded(c.span, reply)
+	}
+	c.window.freed()
+}
+
+// endAll ends calls (of one hold or origin): the waiting ones leave their windows first, so a slot a forwarded one frees
+// never forwards one of them.
+func endAll(calls []*relayedCall) {
+	for _, call := range calls {
+		call.unqueue()
+	}
+	for _, call := range calls {
+		call.end(nil)
+	}
 }
 
 // abort forwards a downstream `abort` of call id.

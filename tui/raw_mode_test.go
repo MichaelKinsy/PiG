@@ -14,6 +14,7 @@ func TestExtendedKeyInitSequenceMatchesPi083(t *testing.T) {
 }
 
 func TestKeyboardProtocolNegotiationUsesDeviceAttributesFallback(t *testing.T) {
+	preserveKeyboardProtocolState(t)
 	var output bytes.Buffer
 	terminal := NewProcessTerminalWithOutput(nil, nil, &output)
 	// Only the DA1 reply owed to a keyboard protocol query is negotiation (terminal.ts:262,272).
@@ -53,12 +54,13 @@ func TestProcessTerminalModifyOtherKeysActiveFollowsNegotiation(t *testing.T) {
 }
 
 func TestAC50KeyboardProtocolNegotiationMatchesPi083(t *testing.T) {
+	// The negotiation pushes the keyboard flags and marks the process-wide Kitty flag active; later tests (the alternate screen's
+	// start writes a pop and a push while the flags are pushed) read the state this test found, so it puts that back.
+	preserveKeyboardProtocolState(t)
 	var output bytes.Buffer
 	terminal := NewProcessTerminalWithOutput(nil, nil, &output)
 	terminal.queryAndEnableKittyProtocol()
 	output.Reset()
-	// The negotiation marks the process-wide Kitty flag active; later tests read legacy Alt input with it off.
-	t.Cleanup(func() { SetKittyProtocolActive(false); modifyOtherKeysActive.Store(false) })
 	SetKittyProtocolActive(false)
 	modifyOtherKeysActive.Store(true)
 

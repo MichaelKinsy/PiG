@@ -64,6 +64,14 @@
     (check (not (pig:retryable-assistant-error-p (message "429 {\"error\":{\"code\":1308,\"message\":\"Usage limit reached\"}}"))))
     (check (pig:retryable-assistant-error-p (message "429 {\"error\":{\"code\":\"13081\",\"message\":\"Too many requests\"}}")))))
 
+;; Pi 9b88b94e2 packages/ai/test/retry.test.ts:106 (#12064): a gateway ends the stream with an Anthropic-style api_error event reading "Connection closed.".
+(deftest connection-closed-is-retryable
+  (flet ((message (text) (pig:from-json (format nil "{\"role\":\"assistant\",\"stopReason\":\"error\",\"errorMessage\":~A}" (pig:to-json text)))))
+    (check (pig:retryable-assistant-error-p (message "{\"type\":\"error\",\"error\":{\"type\":\"api_error\",\"message\":\"Connection closed.\"}}")))
+    (check (pig:retryable-assistant-error-p (message "Connection closed by proxy server before the response completed")))
+    (check (not (pig:retryable-assistant-error-p (message "{\"type\":\"error\",\"error\":{\"type\":\"api_error\",\"message\":\"Connection closed. insufficient_quota\"}}"))))
+    (check (not (pig:retryable-assistant-error-p (message "The connection was closed by the user"))))))
+
 (deftest the-default-retry-delay-cap-is-pis
   (check-equal 60000 pig:+default-max-agent-retry-delay-ms+))
 

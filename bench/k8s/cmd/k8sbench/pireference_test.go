@@ -25,11 +25,8 @@ func npmIntegrity(data []byte) string {
 	return "sha512-" + base64.StdEncoding.EncodeToString(sum[:])
 }
 
-// fakePinnedSource writes a frozen durable closure for commit under root and the packs it names under packs.
-func fakePinnedSource(t *testing.T, root, packs, commit string) map[string][]byte {
-	t.Helper()
-	return fakeReference(t, root, packs, commit, durableReference, "1.2.3")
-}
+// fixtureReference is a closure-installed reference whose package is pi-durable: the pinnedProject tests need a package that is not the agent.
+var fixtureReference = piReference{dir: "pi-durable", closure: "durable-closure", packs: "durable-packs", pkg: "@earendil-works/pi-durable"}
 
 // fakeReference writes ref's frozen closure for commit under root, installing ref.pkg and pi-ai at version from their
 // packs, which it writes under packs, and one registry package.
@@ -81,9 +78,8 @@ func TestCmdPiPackages(t *testing.T) {
 		t.Skip("the commit pin path")
 	}
 	root, store, out := t.TempDir(), t.TempDir(), filepath.Join(t.TempDir(), "pi")
-	for _, ref := range []piReference{durableReference, agentReference} {
-		fakeReference(t, root, filepath.Join(store, pin.Commit, ref.packs), pin.Commit, ref, pin.PackageVersion)
-	}
+	fakeReference(t, root, filepath.Join(store, pin.Commit, agentReference.packs), pin.Commit, agentReference, pin.PackageVersion)
+	fakeVendoredDurable(t, root)
 	var stdout bytes.Buffer
 	if err := cmdPiPackages([]string{"-repo", root, "-pi-builds", store, "-out", out}, &stdout, func(string) string { return "" }); err != nil {
 		t.Fatal(err)
@@ -92,7 +88,11 @@ func TestCmdPiPackages(t *testing.T) {
 		if v, err := os.ReadFile(filepath.Join(out, ref.dir, "VERSION")); err != nil || string(v) != pin.Version+"\n" {
 			t.Errorf("%s/VERSION %q %v", ref.dir, v, err)
 		}
-		if _, err := os.Stat(filepath.Join(out, ref.dir, "packs", packFile(ref.pkg, pin.PackageVersion))); err != nil {
+		pack := packFile(ref.pkg, pin.PackageVersion)
+		if ref == durableReference {
+			pack = "earendil-works-pi-durable-1.2.3.tgz"
+		}
+		if _, err := os.Stat(filepath.Join(out, ref.dir, "packs", pack)); err != nil {
 			t.Errorf("%s: %v", ref.dir, err)
 		}
 	}
@@ -107,135 +107,121 @@ func TestCmdPiPackages(t *testing.T) {
 	}
 }
 
-// At a commit pin the reference is the pinned source's pi-durable: the install project is the frozen durable closure with
-// every packed package resolved to its pack, copied beside it, and the registry packages left as frozen.
-func TestPiDurableInstallAtACommitPin(t *testing.T) {
+// fakeVendoredDurable writes bench/k8s/image/pi-durable's pair for root as the pin tooling writes it (the lock resolving each pack of
+// third_party/pi-packs by its file: path and sha512) and the packs it names; it returns the packs.
+func fakeVendoredDurable(t *testing.T, root string) map[string][]byte {
+	t.Helper()
+	tarballs := map[string][]byte{"earendil-works-pi-durable-1.2.3.tgz": []byte("durable pack"), "earendil-works-pi-ai-1.2.3.tgz": []byte("ai pack")}
+	packs := filepath.Join(root, "third_party", "pi-packs")
+	project := filepath.Join(root, "bench", "k8s", "image", "pi-durable")
+	for _, dir := range []string{packs, project} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for name, data := range tarballs {
+		if err := os.WriteFile(filepath.Join(packs, name), data, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	const prefix = "file:../../../../third_party/pi-packs/"
+	manifest := `{"dependencies":{"@earendil-works/pi-durable":"` + prefix + `earendil-works-pi-durable-1.2.3.tgz"},"overrides":{"@earendil-works/pi-ai":"` + prefix + `earendil-works-pi-ai-1.2.3.tgz"}}`
+	lock := `{"packages":{"node_modules/@earendil-works/pi-durable":{"version":"1.2.3","resolved":"` + prefix + `earendil-works-pi-durable-1.2.3.tgz","integrity":"` + npmIntegrity(tarballs["earendil-works-pi-durable-1.2.3.tgz"]) + `"},` +
+		`"node_modules/@earendil-works/pi-ai":{"version":"1.2.3","resolved":"` + prefix + `earendil-works-pi-ai-1.2.3.tgz","integrity":"` + npmIntegrity(tarballs["earendil-works-pi-ai-1.2.3.tgz"]) + `"},` +
+		`"node_modules/typebox":{"version":"1.3.27","resolved":"https://registry.npmjs.org/typebox/-/typebox-1.3.27.tgz","integrity":"sha512-registry"}}}`
+	for name, text := range map[string]string{"package.json": manifest, "package-lock.json": lock} {
+		if err := os.WriteFile(filepath.Join(project, name), []byte(text), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return tarballs
+}
+
+// The pi-durable reference is bench/k8s/image/pi-durable's project with the vendored packs beside it: the packs the lock names are copied
+// to packs/, the lock's file: paths point there, and the sha512 stays the vendored pack's. A release pin's and a commit pin's differ in the version only.
+func TestPiDurableInstallIsTheVendoredPacks(t *testing.T) {
 	commit := strings.Repeat("ab", 20)
-	pin := piPin{Ref: commit, Commit: commit, PackageVersion: "1.2.3", Version: "1.2.3+abababab"}
-	root, packs, out := t.TempDir(), filepath.Join(t.TempDir(), "durable-packs"), filepath.Join(t.TempDir(), "pi-durable")
-	tarballs := fakePinnedSource(t, root, packs, commit)
-	version, err := writePinnedInstall(root, out, packs, durableReference, pin)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if version != "1.2.3+abababab" {
-		t.Errorf("version %q", version)
-	}
-	var manifest struct {
-		DevDependencies map[string]string `json:"devDependencies"`
-	}
-	data, err := os.ReadFile(filepath.Join(out, "package.json"))
-	if err != nil || json.Unmarshal(data, &manifest) != nil {
-		t.Fatalf("package.json %s: %v", data, err)
-	}
-	if manifest.DevDependencies["@earendil-works/pi-durable"] != "1.2.3" || manifest.DevDependencies["typebox"] != "1.3.27" {
-		t.Errorf("package.json dependencies %v", manifest.DevDependencies)
-	}
-	var lock struct {
-		Packages map[string]struct{ Resolved, Integrity string } `json:"packages"`
-	}
-	data, err = os.ReadFile(filepath.Join(out, "package-lock.json"))
-	if err != nil || json.Unmarshal(data, &lock) != nil {
-		t.Fatalf("package-lock.json %s: %v", data, err)
-	}
-	for key, want := range map[string]string{
-		"node_modules/@earendil-works/pi-durable":                                    "file:packs/earendil-works-pi-durable-1.2.3.tgz",
-		"node_modules/@earendil-works/pi-durable/node_modules/@earendil-works/pi-ai": "file:packs/earendil-works-pi-ai-1.2.3.tgz",
-		"node_modules/typebox": "https://registry.npmjs.org/typebox/-/typebox-1.3.27.tgz",
+	for _, pin := range []piPin{
+		{Ref: commit, Commit: commit, PackageVersion: "1.2.3", Version: "1.2.3+abababab"},
+		{Ref: "v1.2.3", Commit: commit, PackageVersion: "1.2.3", Version: "1.2.3"},
 	} {
-		if got := lock.Packages[key].Resolved; got != want {
-			t.Errorf("%s resolves %q, want %q", key, got, want)
+		root, out := t.TempDir(), filepath.Join(t.TempDir(), "pi-durable")
+		tarballs := fakeVendoredDurable(t, root)
+		version, err := writePinnedInstall(root, out, "", durableReference, pin)
+		if err != nil || version != pin.Version {
+			t.Fatalf("%s: version %q, %v", pin.Ref, version, err)
 		}
-	}
-	if got := lock.Packages["node_modules/@earendil-works/pi-durable"].Integrity; got != npmIntegrity(tarballs["earendil-works-pi-durable-1.2.3.tgz"]) {
-		t.Errorf("pi-durable integrity %q", got)
-	}
-	for name, want := range tarballs {
-		if got, err := os.ReadFile(filepath.Join(out, "packs", name)); err != nil || !bytes.Equal(got, want) {
-			t.Errorf("packs/%s: %q %v", name, got, err)
+		for _, f := range []string{"package.json", "package-lock.json"} {
+			data, err := os.ReadFile(filepath.Join(out, f))
+			if err != nil || strings.Contains(string(data), "third_party") || !strings.Contains(string(data), "file:packs/earendil-works-pi-durable-1.2.3.tgz") {
+				t.Errorf("%s: %s %v", f, data, err)
+			}
+		}
+		data, _ := os.ReadFile(filepath.Join(out, "package-lock.json"))
+		if !strings.Contains(string(data), npmIntegrity(tarballs["earendil-works-pi-durable-1.2.3.tgz"])) || !strings.Contains(string(data), "https://registry.npmjs.org/typebox/") {
+			t.Errorf("lock %s", data)
+		}
+		for name, want := range tarballs {
+			if got, err := os.ReadFile(filepath.Join(out, "packs", name)); err != nil || !bytes.Equal(got, want) {
+				t.Errorf("packs/%s: %q %v", name, got, err)
+			}
 		}
 	}
 }
 
-// A pack that is not the bytes the closure was frozen with, or no packs at all, is refused with the command that builds them.
-func TestPiDurableInstallRefusesOtherPacks(t *testing.T) {
-	commit := strings.Repeat("cd", 20)
-	pin := piPin{Ref: commit, Commit: commit, PackageVersion: "1.2.3", Version: "1.2.3+cdcdcdcd"}
-	root, packs := t.TempDir(), filepath.Join(t.TempDir(), "durable-packs")
-	fakePinnedSource(t, root, packs, commit)
-	if err := os.WriteFile(filepath.Join(packs, "earendil-works-pi-ai-1.2.3.tgz"), []byte("another build"), 0o644); err != nil {
+// A lock that names no vendored pack, or one the repository does not hold, is refused with the command that writes them.
+func TestPiDurableInstallRefusesAnIncompleteVendoredSet(t *testing.T) {
+	pin := piPin{Ref: strings.Repeat("cd", 20), Commit: strings.Repeat("cd", 20), PackageVersion: "1.2.3", Version: "1.2.3+cdcdcdcd"}
+	root := t.TempDir()
+	fakeVendoredDurable(t, root)
+	if err := os.Remove(filepath.Join(root, "third_party", "pi-packs", "earendil-works-pi-ai-1.2.3.tgz")); err != nil {
 		t.Fatal(err)
 	}
-	_, err := writePinnedInstall(root, filepath.Join(t.TempDir(), "out"), packs, durableReference, pin)
-	if err == nil || !strings.Contains(err.Error(), "no pack earendil-works-pi-ai-1.2.3.tgz") || !strings.Contains(err.Error(), "pin.py install-oracle") {
-		t.Errorf("rebuilt pack: %v", err)
+	if _, err := writePinnedInstall(root, filepath.Join(t.TempDir(), "out"), "", durableReference, pin); err == nil || !strings.Contains(err.Error(), "earendil-works-pi-ai-1.2.3.tgz") {
+		t.Errorf("a missing pack: %v", err)
 	}
-	_, err = writePinnedInstall(root, filepath.Join(t.TempDir(), "out"), t.TempDir(), durableReference, pin)
-	if err == nil || !strings.Contains(err.Error(), "no packs of the pinned Pi") {
-		t.Errorf("no packs: %v", err)
-	}
-	other := piPin{Ref: strings.Repeat("ef", 20), Commit: strings.Repeat("ef", 20), PackageVersion: "1.2.3", Version: "1.2.3+efefefef"}
-	if _, err := writePinnedInstall(root, filepath.Join(t.TempDir(), "out"), packs, durableReference, other); err == nil || !strings.Contains(err.Error(), "frozen closure for pi-durable") {
-		t.Errorf("no frozen closure: %v", err)
-	}
-}
-
-// At a release pin the reference is the published packages of bench/k8s/image/pi-durable's lockfile.
-func TestPiDurableInstallAtAReleasePin(t *testing.T) {
-	root, err := filepath.Abs(filepath.Join("..", "..", "..", ".."))
-	if err != nil {
+	if err := os.WriteFile(filepath.Join(root, "bench", "k8s", "image", "pi-durable", "package-lock.json"), []byte(`{"packages":{}}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	out := t.TempDir()
-	version, err := writePinnedInstall(root, out, "/nonexistent", durableReference, piPin{Ref: "v1.1.0", Commit: strings.Repeat("0", 40), PackageVersion: "1.1.0", Version: "1.1.0"})
-	if err != nil || version != "1.1.0" {
-		t.Fatalf("%q %v", version, err)
-	}
-	for _, f := range []string{"package.json", "package-lock.json"} {
-		want, _ := os.ReadFile(filepath.Join(root, "bench", "k8s", "image", "pi-durable", f))
-		if got, err := os.ReadFile(filepath.Join(out, f)); err != nil || !bytes.Equal(got, want) {
-			t.Errorf("%s differs from bench/k8s/image/pi-durable: %v", f, err)
-		}
-	}
-	if _, err := os.Stat(filepath.Join(out, "packs")); !os.IsNotExist(err) {
-		t.Errorf("a release install has packs: %v", err)
+	if _, err := writePinnedInstall(root, filepath.Join(t.TempDir(), "out"), "", durableReference, pin); err == nil || !strings.Contains(err.Error(), "make vendor-pi-packs") {
+		t.Errorf("a lock without packs: %v", err)
 	}
 }
 
-// The committed pin names a reference the bundle and the image can install: a release's lockfile, or a commit's frozen
-// durable closure that takes pi-durable, pi-ai and chord from the pinned source at the pinned package version.
+// The committed pin's pi-durable reference is the vendored build of the pin: the manifest of third_party/pi-packs is for the pin's commit and
+// bench/k8s/image/pi-durable's lock resolves pi-durable, pi-ai and chord from the packs it lists, with their sha512.
 func TestCommittedPinHasADurableReference(t *testing.T) {
 	pin := committedPiPin()
 	if pin.Version != pigversion.UpstreamVersion {
 		t.Fatalf("pin %+v", pin)
 	}
-	if pin.isRelease() {
-		t.Skip("a release pin installs bench/k8s/image/pi-durable (TestImageReferenceIsThePinnedPiVersion)")
+	read := func(v any, path ...string) {
+		t.Helper()
+		data, err := os.ReadFile(filepath.Join(append([]string{"..", "..", "..", ".."}, path...)...))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal(data, v); err != nil {
+			t.Fatalf("%v: %v", path, err)
+		}
 	}
-	data, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "automation", "pin", "frozen", pin.Commit+".durable-closure.json.gz"))
-	if err != nil {
-		t.Fatal(err)
+	var manifest struct {
+		Commit string `json:"commit"`
+		Packs  map[string]struct{ Name, Version, Integrity string }
 	}
-	zr, err := gzip.NewReader(bytes.NewReader(data))
-	if err != nil {
-		t.Fatal(err)
+	read(&manifest, "third_party", "pi-packs", "manifest.json")
+	if manifest.Commit != pin.Commit {
+		t.Fatalf("third_party/pi-packs is the build of %s, the pin is %s", manifest.Commit, pin.Commit)
 	}
 	var lock struct {
-		Packages map[string]struct {
-			Version, Resolved, Integrity string
-			DevDependencies              map[string]string
-		} `json:"packages"`
+		Packages map[string]struct{ Version, Resolved, Integrity string } `json:"packages"`
 	}
-	if err := json.NewDecoder(zr).Decode(&lock); err != nil {
-		t.Fatal(err)
-	}
+	read(&lock, "bench", "k8s", "image", "pi-durable", "package-lock.json")
 	for _, name := range []string{"@earendil-works/pi-durable", "@earendil-works/pi-ai", "@earendil-works/chord"} {
 		entry := lock.Packages["node_modules/"+name]
-		if entry.Resolved != packPrefix+name || entry.Version != pin.PackageVersion || !strings.HasPrefix(entry.Integrity, "sha512-") {
-			t.Errorf("%s: %+v, want the pinned source's pack at %s with its integrity", name, entry, pin.PackageVersion)
-		}
-		if got := lock.Packages[""].DevDependencies[name]; got != pin.PackageVersion {
-			t.Errorf("the closure's root needs %s %q", name, got)
+		file := packFile(name, entry.Version)
+		if entry.Resolved != vendoredPacksPrefix+file || manifest.Packs[file].Name != name || entry.Integrity != manifest.Packs[file].Integrity || entry.Version != pin.PackageVersion {
+			t.Errorf("%s: %+v, want the vendored pack %s at %s with the manifest's integrity", name, entry, file, pin.PackageVersion)
 		}
 	}
 }
@@ -318,8 +304,8 @@ func TestPinnedProjectNeedsThePackageFromItsPack(t *testing.T) {
 	commit := strings.Repeat("12", 20)
 	pin := piPin{Ref: commit, Commit: commit, PackageVersion: "1.2.3", Version: "1.2.3+12121212"}
 	root := t.TempDir()
-	fakeReference(t, root, t.TempDir(), commit, piReference{dir: "pi-durable", closure: durableReference.closure, pkg: "@earendil-works/pi-other"}, "1.2.3")
-	if _, _, _, err := pinnedProject(root, durableReference, pin); err == nil || !strings.Contains(err.Error(), "does not install @earendil-works/pi-durable from the pinned source") {
+	fakeReference(t, root, t.TempDir(), commit, piReference{dir: "pi-durable", closure: fixtureReference.closure, pkg: "@earendil-works/pi-other"}, "1.2.3")
+	if _, _, _, err := pinnedProject(root, fixtureReference, pin); err == nil || !strings.Contains(err.Error(), "does not install @earendil-works/pi-durable from the pinned source") {
 		t.Errorf("closure without a pi-durable pack: %v", err)
 	}
 }
@@ -385,14 +371,14 @@ func TestPinnedProjectRefusesOnePackWithTwoIntegrities(t *testing.T) {
 	if err := zw.Close(); err != nil {
 		t.Fatal(err)
 	}
-	frozen := filepath.Join(root, "automation", "pin", "frozen", commit+"."+durableReference.closure+".json.gz")
+	frozen := filepath.Join(root, "automation", "pin", "frozen", commit+"."+fixtureReference.closure+".json.gz")
 	if err := os.MkdirAll(filepath.Dir(frozen), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(frozen, gz.Bytes(), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, err := pinnedProject(root, durableReference, pin); err == nil || !strings.Contains(err.Error(), "packs earendil-works-pi-durable-1.2.3.tgz twice with different integrity") {
+	if _, _, _, err := pinnedProject(root, fixtureReference, pin); err == nil || !strings.Contains(err.Error(), "packs earendil-works-pi-durable-1.2.3.tgz twice with different integrity") {
 		t.Errorf("one pack with two integrities: %v", err)
 	}
 }

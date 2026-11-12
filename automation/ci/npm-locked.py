@@ -31,11 +31,22 @@ def npm_ci(directory: Path) -> None:
     subprocess.run([npm, "ci", "--ignore-scripts", "--no-audit", "--no-fund"], cwd=directory, check=True)
 
 
+REPOSITORY = Path(__file__).resolve().parents[2]
+VENDORED = Path("third_party") / "pi-packs"
+
+
 def ensure_shared(directory: Path, store: Path, expected: str) -> None:
-    """Install into store/<name>-<digest> once, under a lock, and link directory/node_modules to it."""
+    """Install into store/<name>-<digest> once, under a lock, and link directory/node_modules to it.
+
+    A manifest may name vendored Pi packs by a path relative to its directory (`file:../../third_party/pi-packs/x.tgz`), so the
+    install runs in a copy of the directory at the same relative position of a tree whose third_party/pi-packs is the checkout's."""
     store.mkdir(parents=True, exist_ok=True)
     entry = store / f"{directory.name}-{expected.strip()[:24]}"
-    shared = entry / "node_modules"
+    try:
+        relative = directory.resolve().relative_to(REPOSITORY)
+    except ValueError:  # a project outside the checkout names no vendored pack by a relative path
+        relative = Path(directory.name)
+    shared = entry / relative / "node_modules"
     stamp = shared / ".pig-deps-ready"
     if not (stamp.is_file() and stamp.read_text() == expected):
         import fcntl  # POSIX only; the store is a host cache for lane machines
@@ -45,12 +56,17 @@ def ensure_shared(directory: Path, store: Path, expected: str) -> None:
             if not (stamp.is_file() and stamp.read_text() == expected):
                 staging = Path(tempfile.mkdtemp(prefix=f".{entry.name}.", dir=store))
                 try:
+                    project = staging / relative
+                    project.mkdir(parents=True)
                     for name in ("package.json", "package-lock.json"):
-                        shutil.copyfile(directory / name, staging / name)
-                    npm_ci(staging)
-                    if manifest_digest(directory) != expected or manifest_digest(staging) != expected:
+                        shutil.copyfile(directory / name, project / name)
+                    (staging / VENDORED.parent).mkdir(parents=True)
+                    (staging / VENDORED).symlink_to(REPOSITORY / VENDORED, target_is_directory=True)
+                    npm_ci(project)
+                    if manifest_digest(directory) != expected or manifest_digest(project) != expected:
                         raise ValueError("npm manifests changed during install; no dependency stamp written")
-                    (staging / "node_modules" / ".pig-deps-ready").write_text(expected)
+                    (project / "node_modules" / ".pig-deps-ready").write_text(expected)
+                    (staging / VENDORED).unlink()
                     if entry.exists():
                         shutil.rmtree(entry)
                     staging.rename(entry)

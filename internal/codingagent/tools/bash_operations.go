@@ -157,8 +157,8 @@ func (o *LocalShellOperations) Exec(ctx context.Context, command, cwd string, op
 		}
 		cmd.Stdin = stdinRead
 	}
-	// Process group so abort and timeout reap descendants (upstream spawns
-	// detached on non-win32 and kills the tree).
+	// Own session and process group, so abort and timeout reap descendants and the shell has no controlling terminal (upstream spawns detached on
+	// non-win32 and kills the tree).
 	setProcessGroup(cmd)
 	// Upstream spawns with windowsHide: true and stdio
 	// [commandFromStdin ? "pipe" : "ignore", "pipe", "pipe"].

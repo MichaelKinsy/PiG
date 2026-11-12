@@ -9,7 +9,7 @@ import (
 	nodesurfaces "github.com/MichaelKinsy/PiG/chord/nextnode/surfaces"
 )
 
-// Ports the `web` and `tui` options of packages/chord/src/node/app/app.ts and its `surfacesOf`.
+// Ports packages/chord/src/node/app/app.ts: its `web` and `tui` options and its `surfacesOf`.
 
 // AppWeb is the kit's web surface options (WebSurfaceOptions without its kind `web` and the kit's plugins): the app's web entry
 // (the base bundle's), its page template, the paths serving the page (`["/"]` by default), whether it is public, and the

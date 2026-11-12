@@ -13,9 +13,10 @@ import (
 )
 
 // The wire formats byte for byte against Pi: testdata/link_wire_golden.json is what Pi's own binary.ts, text.ts,
-// values.ts and part.ts (the pinned source, run by Node; see testdata/link_wire.mjs) write for the cases in that
-// generator. Go builds each message from the case's spec and must write the same bytes with both codecs, and read
-// them back to the same message.
+// values.ts and part.ts (the sources of Pi 8d30e6306, the commit of the event message, the event ack and the hello
+// without a call window, run by Node; see testdata/link_wire.mjs) write for the cases in that generator. Go builds
+// each message from the case's spec and must write the same bytes with both codecs, and read them back to the same
+// message.
 
 type goldenOutput struct {
 	length int
@@ -241,7 +242,14 @@ func buildMessage(t testing.TB, spec *delta.JsonObject) link.Message {
 		}
 		return message
 	case "ack":
-		return &link.AckMessage{Origin: origin}
+		return &link.AckMessage{Origin: origin, Events: specOptional(spec, "events")}
+	case "event":
+		message := &link.EventMessage{Origin: origin}
+		for _, item := range spec.Value("events").([]any) {
+			entry := item.(*delta.JsonObject)
+			message.Events = append(message.Events, link.WireEvent{Hold: specInt(entry, "hold"), Member: specInt(entry, "member"), At: specInt(entry, "at"), Value: specPart(t, entry.Value("value"))})
+		}
+		return message
 	case "closed":
 		return &link.ClosedMessage{Origin: origin.Value}
 	case "revoke":
@@ -269,7 +277,7 @@ func buildMessage(t testing.TB, spec *delta.JsonObject) link.Message {
 
 func TestWireFormatsMatchPi(t *testing.T) {
 	cases := loadGolden(t)
-	if len(cases) < 80 {
+	if len(cases) < 93 {
 		t.Fatalf("golden has %d cases", len(cases))
 	}
 	for _, c := range cases {
