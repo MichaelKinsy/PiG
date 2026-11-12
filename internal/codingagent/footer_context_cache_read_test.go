@@ -13,10 +13,10 @@ import (
 func TestFooterContextUsageOfACacheReadDominatedTurn(t *testing.T) {
 	usage := &ai.Usage{Input: 2, CacheRead: 294000, CacheWrite: 1400, Output: 860}
 	for _, tc := range []struct {
-		name   string
-		window int
+		name    string
+		window  int
 		unknown bool
-		want   string
+		want    string
 	}{
 		{"window known", 1_000_000, false, "29.6%/1.0M (auto)"},
 		{"window unknown to the model", 0, false, "0.0%/0 (auto)"},
