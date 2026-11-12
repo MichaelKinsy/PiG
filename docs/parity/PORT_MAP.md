@@ -865,8 +865,6 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/host/parked.ts` | `chord/next/host/host_parked.go` Tests: parked.test.ts: chord/next/host/host_parked_test.go | ✅ |
 | `packages/chord/src/host/native.ts` | `chord/next/host/host_native.go` Tests: native.test.ts: chord/next/host/host_native_test.go, host_facet_test.go, host_spans_test.go | ✅ |
 | `packages/chord/src/host/follow.ts` | `chord/next/host/host_follow.go` | ✅ |
-| `packages/chord/src/host/events.ts` | `chord/next/host/host_events.go` Tests: events.test.ts: chord/next/host/host_events_test.go, host_events_support_test.go | ✅ |
-| `packages/chord/src/host/reference-events.ts` | `chord/next/host/host_reference_events.go` Tests: reference-events.test.ts: chord/next/host/host_reference_events_test.go | ✅ |
 | `packages/chord/src/host/members.ts` | `chord/next/host/host_members.go` | ✅ |
 | `packages/chord/src/host/ctx.ts` | `chord/next/host/host_ctx.go`, `chord/next/host/host_ctx_trace.go` (tests: host_ctx_test.go, host_spans_test.go) Missing: `binding.release()` in `Get` for a get that finished in its handler's settling turn (Pi race 11, host_ctx.go:176) is pinned only nondeterministically, by TestCtxAGetFinishingAfterItsHandlerSettledIsReleasedAtOnceRace11, which kills its deletion in most runs but not every one (it depends on timing), so no test pins that release deterministically; none observes `settle` clearing `c.references` (host_ctx.go:193) after the releases; every other statement and branch mutant of host_ctx.go is killed, does not compile or is equivalent | 🟡 |
 | `packages/chord/src/host/root.ts` | `chord/next/host/host_root.go` | ✅ |
