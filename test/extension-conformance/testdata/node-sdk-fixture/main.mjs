@@ -1051,6 +1051,26 @@ export default function (pi) {
     const cur = await ctx.ui.viewState("extras");
     ctx.ui.notify(`view-x-state:${cur.state},picked=${cur.result?.picked}`, "info");
   } });
+  // D614 bindings: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewBindings).
+  pi.registerCommand("ui_view_bindings", { description: "Mount a view with bindings and probe what the host refuses", handler: async (args, ctx) => {
+    const [key, number] = args.split(" ");
+    const n = Number(number);
+    const content = (bindings) => ({
+      view: viewText(ctx, "-bind"), bindings,
+      intents: [{ name: "fx.go", arg: { type: "object", properties: { n: { type: "integer" } }, required: ["n"] } }, { name: "fx.tap", arg: { type: "object" } }],
+    });
+    const goTo = (key, n) => ({ key, intent: "fx.go", arg: { n } });
+    const tap = (key) => ({ key, intent: "fx.tap" });
+    const st = await ctx.ui.mountView({ key: "bind", slot: "panel", ...content([{ ...goTo(key, n), name: `Go ${n}` }, goTo("w", n + 1), { gesture: "swipe-left", intent: "fx.tap" }]) });
+    ctx.ui.notify(`view-b-mounted:${st.state}`, "info");
+    const attempt = async (label, bindings) => ctx.ui.notify(`view-b-${label}:${await viewCode(() => ctx.ui.updateView(st.mount, content(bindings)))}`, "info");
+    await attempt("many", [..."abcdefghijklmnopqrstuvwxyz0123456"].map(tap));
+    await attempt("reserved", [tap("shift+tab")]);
+    await attempt("order", [tap("ctrl+shift+p"), tap("shift+ctrl+p")]);
+    await attempt("gesture", [{ gesture: "pinch", intent: "fx.tap" }]);
+    await attempt("arg", [goTo("a", "x")]);
+    await attempt("ok", [goTo("ctrl+shift+p", n), goTo("shift+ctrl+q", n + 1)]);
+  } });
   pi.onViewIntent(async (inv, ctx) => {
     if (inv.intent === "fx.add") return { outcome: "done", answer: { sum: inv.arg.n * 2 + (ctx.ui.viewAbilities()?.limits.intentArgBytes ?? 0) } };
     if (inv.intent === "fx.wait") {
