@@ -92,6 +92,14 @@ var (
 func RegisterImagesAPIProvider(provider ImagesAPIProvider, sourceID ...string) {
 	imagesAPIProviderMu.Lock()
 	defer imagesAPIProviderMu.Unlock()
+	// wrapGenerateImages (images-api-registry.ts): a model of another api throws before the provider runs.
+	generate := provider.GenerateImages
+	provider.GenerateImages = func(ctx context.Context, model ImageModel, imagesCtx ImagesContext, options ProviderImagesOptions) AssistantImages {
+		if model.API != provider.API {
+			panic(fmt.Errorf("Mismatched api: %s expected %s", model.API, provider.API))
+		}
+		return generate(ctx, model, imagesCtx, options)
+	}
 	entry := registeredImagesAPIProvider{provider: provider}
 	if len(sourceID) > 0 {
 		entry.sourceID = sourceID[0]
