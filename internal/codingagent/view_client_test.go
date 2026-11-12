@@ -594,6 +594,54 @@ func TestViewClientEscapeLeavesThePanelAndCancelsItsIntent(t *testing.T) {
 	}
 }
 
+// pig additive (D614): in fullscreen mode a press on a panel's list gives the panel the focus and the click on an item
+// raises the node's intent; a mount of a widget slot takes the click and never the focus.
+func TestViewClientClickFocusesAPanelAndRaisesAnIntent(t *testing.T) {
+	f := newViewFixture(t)
+	args := make(chan string, 2)
+	f.host.invoke = func(_ context.Context, inv uiview.Invocation) (uiview.Result, error) {
+		args <- inv.Mount.Key + " " + string(inv.Arg)
+		return uiview.Result{Outcome: uiview.OutcomeDone}, nil
+	}
+	list := json.RawMessage(`{"root":{"kind":"select-list","id":"pick","maxVisible":4,"items":[{"value":"a","label":"Alpha"},{"value":"b","label":"Beta"}]},"focus":"pick"}`)
+	f.mount("w", uiview.SlotWidgetAbove, uiview.Content{View: list, Intents: []uiview.IntentDecl{viewPickIntent}})
+	f.mount("p", uiview.SlotPanel, uiview.Content{View: list, Intents: []uiview.IntentDecl{viewPickIntent}})
+	gesture := func(m *viewMount) *tui.TuiMouseDispatchResult {
+		t.Helper()
+		m.Render(40)
+		event := tui.TuiMouseEvent{Type: tui.MousePress, Button: tui.MouseButtonLeft, X: 2, Y: 1, ScreenX: 2, ScreenY: 9, Width: 40, Height: 2}
+		pressed := m.HandleMouse(event)
+		if pressed == nil || pressed.Target.Component != tui.Component(m) {
+			t.Fatalf("the press was not taken by the mount: %+v", pressed)
+		}
+		if pressed.FocusTarget != nil {
+			f.loop.ui().focus(m)
+		}
+		event.Type = tui.MouseRelease
+		m.HandleMouse(event)
+		event.Type, event.ClickCount = tui.MouseClick, 1
+		m.HandleMouse(event)
+		select {
+		case got := <-args:
+			if want := m.key.key + ` {"value":"b"}`; got != want {
+				t.Fatalf("the click raised %q, want %q", got, want)
+			}
+		case <-time.After(5 * time.Second):
+			t.Fatal("the click raised no intent")
+		}
+		f.awaitResult()
+		f.loop.run()
+		return pressed
+	}
+	widget, panel := f.loop.drawn()[0], f.loop.drawn()[1]
+	if pressed := gesture(widget); pressed.Focus || pressed.FocusTarget != nil || f.loop.focused != nil {
+		t.Fatalf("a press on a widget slot's mount asked for the focus: %+v", pressed)
+	}
+	if pressed := gesture(panel); !pressed.Focus || pressed.FocusTarget != tui.Component(panel) || f.loop.focused != panel || !panel.focused {
+		t.Fatalf("a press on a panel's list did not focus the panel: %+v", pressed)
+	}
+}
+
 // pig additive (D614): F6 is bound only while a focusable panel is drawn. It moves the focus from the editor through
 // the panels and back, and passes the key on while something else (a selector) holds the focus.
 func TestViewClientFocusKeyCyclesPanels(t *testing.T) {
