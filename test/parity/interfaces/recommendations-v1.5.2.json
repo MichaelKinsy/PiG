@@ -152993,7 +152993,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "14 normalized-name Pig candidates are ambiguous."
+        "20 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -153011,12 +153011,18 @@
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#Schema",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#BashTool.Schema",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#EditTool.Schema",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#EditTool.schema",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#FindTool.Schema",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#FindTool.schema",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#GrepTool.Schema",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#GrepTool.schema",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#LsTool.Schema",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#LsTool.schema",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#PowerShellTool.Schema",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#ReadTool.Schema",
-        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#WriteTool.Schema"
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#ReadTool.schema",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#WriteTool.Schema",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#WriteTool.schema"
       ],
       "missingClosure": [
         "candidate-disambiguation",
@@ -383475,7 +383481,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "14 normalized-name Pig candidates are ambiguous."
+        "20 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -383493,12 +383499,18 @@
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#Schema",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#BashTool.Schema",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#EditTool.Schema",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#EditTool.schema",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#FindTool.Schema",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#FindTool.schema",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#GrepTool.Schema",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#GrepTool.schema",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#LsTool.Schema",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#LsTool.schema",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#PowerShellTool.Schema",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#ReadTool.Schema",
-        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#WriteTool.Schema"
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#ReadTool.schema",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#WriteTool.Schema",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#WriteTool.schema"
       ],
       "missingClosure": [
         "candidate-disambiguation",
