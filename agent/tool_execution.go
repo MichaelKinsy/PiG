@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+	"slices"
 	"sync"
 	"time"
 
@@ -56,11 +57,15 @@ func (r *loopRun) toolCtx() context.Context {
 // sequential execution or any call targets a tool whose ExecutionMode is
 // sequential; otherwise in parallel.
 func (r *loopRun) executeToolCalls(assistant *AssistantMessage, calls []pendingToolCall) executedToolCallBatch {
-	ctx := WithToolCallHookContext(r.toolCtx(), r.toolCallHookContext(assistant))
-	if r.h.cfg.ToolExecution == ToolModeSequential || r.hasSequentialToolCall(calls) {
-		return r.executeToolCallsSequential(ctx, calls)
+	if len(calls) < 2 || r.h.cfg.ToolExecution == ToolModeSequential || r.hasSequentialToolCall(calls) {
+		// The hooks of these calls run one at a time, so they receive the run's own messages, as Pi's hooks do (hookView).
+		ctx := WithToolCallHookContext(r.toolCtx(), r.toolCallHookContext(assistant, hookView(r.context)))
+		if r.h.cfg.ToolExecution == ToolModeSequential || r.hasSequentialToolCall(calls) {
+			return r.executeToolCallsSequential(ctx, calls)
+		}
+		return r.executeToolCallsParallel(ctx, assistant, calls, false)
 	}
-	return r.executeToolCallsParallel(ctx, calls)
+	return r.executeToolCallsParallel(r.toolCtx(), assistant, calls, true)
 }
 
 func (r *loopRun) hasSequentialToolCall(calls []pendingToolCall) bool {
@@ -112,14 +117,20 @@ func (r *loopRun) executeToolCallsSequential(ctx context.Context, calls []pendin
 // prefix — including a file-mutation-queue registration — in call order,
 // before any call's async work begins, and Go's per-call goroutines below
 // have no equivalent guarantee on their own (see QueueOrderable).
-func (r *loopRun) executeToolCallsParallel(ctx context.Context, calls []pendingToolCall) executedToolCallBatch {
+// executeToolCallsParallel runs the calls at once. With ownHookContext each call's hooks get a copy of the run's messages of their own:
+// the after hooks of calls that run in parallel run on the calls' goroutines, and two of them writing a message of one shared array
+// would race. Pi shares the live array among them because its hooks never run at the same time.
+func (r *loopRun) executeToolCallsParallel(ctx context.Context, assistant *AssistantMessage, calls []pendingToolCall, ownHookContext bool) executedToolCallBatch {
 	outcomes := make([]toolCallOutcome, 0, len(calls))
 	callCtxs := make([]context.Context, 0, len(calls))
 	var registration registrationOrder
 	for _, call := range calls {
 		r.h.emitToolExecutionStart(call)
-		outcome := r.h.prepareToolCall(ctx, call)
 		callCtx := ctx
+		if ownHookContext {
+			callCtx = WithToolCallHookContext(ctx, r.toolCallHookContext(assistant, slices.Clone(r.context)))
+		}
+		outcome := r.h.prepareToolCall(callCtx, call)
 		if outcome.prepared != nil {
 			tool := outcome.prepared.tool
 			if mayTake, ok := tool.(MayTakeFileMutationQueue); ok && mayTake.MayTakeFileMutationQueue() {
