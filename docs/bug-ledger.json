@@ -19643,6 +19643,31 @@
       ]
     },
     {
+      "id": "BF-647eb85",
+      "title": "`pi.exec` no longer reports code 0 for a command that a signal ended",
+      "symptom": "`pi.exec` no longer reports code 0 for a command that a signal ended.",
+      "rootCause": "A command that a signal ended, by a timeout, an abort, a crash or an outside kill such as the OOM killer, has no exit code, and ExecCommand resolved that as 0 (`code ?? 0`), so an extension that checks `result.code === 0` took it for a success. It now reports 128 + the signal number, as a shell does and as Pi does: 143 for SIGTERM, 137 for SIGKILL, and 1 with neither a code nor a signal. killed and truncated are unchanged, and a truncated result is still never 0. On Windows a child that terminate ended reports 143, the signal libuv records for it.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pi.exec` no longer reports code 0 for a command that a signal ended. A command that timed out, was aborted, crashed or was killed from outside returned `code: 0`, which an extension checking `result.code === 0` took for a success; it now returns 128 plus the signal number as a shell does (143 for SIGTERM, 137 for SIGKILL), as Pi does (upstream #12089).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "647eb85bbd",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/extension/exec_oracle_test.go::TestExecCommandMatchesPi",
+        "coding/extension/exec_signal_code_unix_test.go::TestExecCommandReportsSIGTERMForATimeout",
+        "coding/extension/exec_signal_code_unix_test.go::TestExecCommandReportsSIGTERMForAnAbort",
+        "coding/extension/exec_signal_code_unix_test.go::TestExecCommandReportsTheSignalOfACommandKilledByAnother"
+      ]
+    },
+    {
       "id": "BF-648ff3e",
       "title": "A child session's `message_update` event carries the message so far and the assistant event's `partial`, as…",
       "symptom": "A child session's `message_update` event carries the message so far and the assistant event's `partial`, as Pi's `AgentSession.subscribe` hands them to a listener, where RPC mode's trimmed shape left both out.",
@@ -23703,6 +23728,28 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-6a5007f",
+      "title": "chord: base bundles collect the fonts and images their stylesheets name: a base stylesheet with `url()`…",
+      "symptom": "chord: base bundles collect the fonts and images their stylesheets name: a base stylesheet with `url()` fonts, images or WebAssembly no longer fails to build with \"No loader is configured\"; they are files under `assets/`, named by their content (Pi da44c4df3).",
+      "rootCause": "BuildBase had no loader for fonts, images and WebAssembly: a base stylesheet with url() fonts did not build (\"No loader is configured for .woff2\"). They now load as files under assets/, named by their content, for the extensions the surfaces serve (AssetExtensions, shared with the types of served assets).",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "chord: base bundles collect the fonts and images their stylesheets name: a base stylesheet with `url()` fonts, images or WebAssembly no longer fails to build with \"No loader is configured\"; they are files under `assets/`, named by their content (Pi da44c4df3).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6a5007f3c1",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/surfaces/surfaces_bundle_test.go::TestAssetsCollectsTheFontsAndImagesTheBasesStylesheetNamesAsFilesUnderAssetsNamedByTheirContent"
+      ]
     },
     {
       "id": "BF-6a6fffa",
@@ -38680,6 +38727,30 @@
         "test/parity/scenarios/extensions-runtime/73-print-prompt-end-command.toml",
         "test/parity/scenarios/extensions-runtime/73-print-prompt-end-input.toml",
         "test/parity/scenarios/extensions-runtime/73-print-prompt-end-settled.toml"
+      ]
+    },
+    {
+      "id": "BF-acb7737",
+      "title": "chord: a client starts without its server (a page renders offline, from a service worker's kept page)…",
+      "symptom": "chord: a client starts without its server (a page renders offline, from a service worker's kept page): `StartClient` follows the scripts object in the background, a failure reported as `update_failed`, and `Client.Stop` ends and joins it; the set the scripts object shows when following begins is applied too, so a set published while the client started is no longer missed (Pi 3c771bd18).",
+      "rootCause": "StartClient awaited its hold and watch of the scripts object, which wait for the server, so a client (a page) did not start offline. It follows in the background now: an owned goroutine that reports a failure as update_failed and that Stop ends and joins. A watch's current value is no frame, so a set published while the client started was missed; the set shown when following begins is applied too (updates.take, shared with the listener).",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "chord: a client starts without its server (a page renders offline, from a service worker's kept page): `StartClient` follows the scripts object in the background, a failure reported as `update_failed`, and `Client.Stop` ends and joins it; the set the scripts object shows when following begins is applied too, so a set published while the client started is no longer missed (Pi 3c771bd18).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "acb7737a0a",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "chord/next/surfaces/surfaces_client_test.go::TestAppliesTheSetTheServerShowsWhenItStartsFollowingThoughNoFrameBroughtIt",
+        "chord/next/surfaces/surfaces_client_test.go::TestEndsTheWaitForStylesheetsAtTheClientsStopTheUpdateStopsThere",
+        "chord/next/surfaces/surfaces_client_test.go::TestStartClientReportsAnInitialScriptThatFailsAndStartsWithTheOthers"
       ]
     },
     {

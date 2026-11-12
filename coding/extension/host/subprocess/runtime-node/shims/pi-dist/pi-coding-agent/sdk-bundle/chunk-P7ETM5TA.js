@@ -4374,6 +4374,7 @@ import { mcpNamespace } from "../../pi-mcp/index.js";
 // pi-dist/pi-coding-agent/core/exec.js
 import { constants as bufferConstants } from "node:buffer";
 import { spawn } from "node:child_process";
+import { constants as osConstants } from "node:os";
 import { StringDecoder as StringDecoder2 } from "node:string_decoder";
 var DEFAULT_EXEC_MAX_BUFFER = Math.min(256 * 1024 * 1024, bufferConstants.MAX_STRING_LENGTH);
 var FORCE_KILL_DELAY_MS = 5e3;
@@ -4459,7 +4460,7 @@ async function execCommand(command, args, cwd, options) {
     stdout += stdoutDecoder.end();
     stderr += stderrDecoder.end();
   }
-  const exitCode = code ?? 0;
+  const exitCode = code ?? (proc.signalCode ? 128 + (osConstants.signals[proc.signalCode] ?? 0) : 1);
   return {
     stdout,
     stderr,
