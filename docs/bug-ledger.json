@@ -12394,6 +12394,30 @@
       ]
     },
     {
+      "id": "BF-56b0e0f-2",
+      "title": "fix(nativeplatform): parse X11 displays that start with / or unix: as libxcb 1.16 does (#424)",
+      "symptom": "fix(nativeplatform): parse X11 displays that start with / or unix: as libxcb 1.16 does (#424)",
+      "rootCause": "Fix-Commit:",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "56b0e0f8e2",
+          "date": "2026-11-11",
+          "pr": "424"
+        }
+      ],
+      "tests": [
+        "internal/nativeplatform/clipboard_x11_display_range_linux_test.go::TestX11DisplayNumbersParseAsXcbDoes",
+        "internal/nativeplatform/clipboard_x11_display_range_linux_test.go::TestX11DisplaySpellingsConnectAsPiDoes",
+        "internal/nativeplatform/clipboard_x11_display_range_linux_test.go::TestX11SocketPathDisplaysParseAsXcbDoes"
+      ]
+    },
+    {
       "id": "BF-56f1d3c",
       "title": "A family document member accepts a typed Go value as its seed, as `CreateTask` input and snapshots already do",
       "symptom": "A family document member accepts a typed Go value as its seed, as `CreateTask` input and snapshots already do.",
