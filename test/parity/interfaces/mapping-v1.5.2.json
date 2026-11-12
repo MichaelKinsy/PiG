@@ -105007,8 +105007,8 @@
       ],
       "evidence": [
         "test:chord/next/telemetry/telemetry_upstream_test.go#TestOpenSpansEndOnceWithHowTheirWorkSettled",
-        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageBatchRefusesAnInvalidBatchWritingNothing",
-        "test:chord/nextnode/app/users_upstream_test.go#TestUsersKeepAccountsByIDWithTheAppsProfileListedUpdatedRemovedAndKeptAcrossStarts"
+        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestAdmittingPagesRefusesThePageOfAPrincipalTheAppDoesNotAdmitItsHoldFailsForbiddenNothingIsWritten",
+        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageBatchRefusesAnInvalidBatchWritingNothing"
       ]
     },
     {
@@ -108849,9 +108849,9 @@
         "call:chord/next/host/host_attempt.go#attempt.Get"
       ],
       "evidence": [
+        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestAdmittingPagesRefusesThePageOfAPrincipalTheAppDoesNotAdmitItsHoldFailsForbiddenNothingIsWritten",
         "test:chord/next/telemetryingest/ingest_upstream_test.go#TestWorkerBatchWritesSpansAndMetricsAsTheyAreStampedWithItsHostAnyoneElseHasNothingToCall",
-        "test:chord/nextnode/app/info_upstream_test.go#TestAppInfoServesTheDataDirectoryNameVersionAndOwner",
-        "test:chord/nextnode/app/info_upstream_test.go#TestWorkerInfoServesItsAddressAndItsStartData"
+        "test:chord/nextnode/app/info_upstream_test.go#TestAppInfoServesTheDataDirectoryNameVersionAndOwner"
       ]
     },
     {
@@ -108968,9 +108968,9 @@
         "call:chord/next/host/host_host.go#chordHost.dataSite"
       ],
       "evidence": [
+        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestAdmittingPagesRefusesThePageOfAPrincipalTheAppDoesNotAdmitItsHoldFailsForbiddenNothingIsWritten",
         "test:chord/next/telemetryingest/ingest_upstream_test.go#TestWorkerBatchWritesSpansAndMetricsAsTheyAreStampedWithItsHostAnyoneElseHasNothingToCall",
-        "test:chord/nextnode/app/info_upstream_test.go#TestAppInfoServesTheDataDirectoryNameVersionAndOwner",
-        "test:chord/nextnode/app/info_upstream_test.go#TestWorkerInfoServesItsAddressAndItsStartData"
+        "test:chord/nextnode/app/info_upstream_test.go#TestAppInfoServesTheDataDirectoryNameVersionAndOwner"
       ]
     },
     {
@@ -109012,9 +109012,9 @@
         "call:chord/next/host/host_host.go#CreateHost"
       ],
       "evidence": [
+        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestAdmittingPagesRefusesThePageOfAPrincipalTheAppDoesNotAdmitItsHoldFailsForbiddenNothingIsWritten",
         "test:chord/next/telemetryingest/ingest_upstream_test.go#TestWorkerBatchWritesSpansAndMetricsAsTheyAreStampedWithItsHostAnyoneElseHasNothingToCall",
-        "test:chord/nextnode/app/info_upstream_test.go#TestAppInfoServesTheDataDirectoryNameVersionAndOwner",
-        "test:chord/nextnode/app/info_upstream_test.go#TestWorkerInfoServesItsAddressAndItsStartData"
+        "test:chord/nextnode/app/info_upstream_test.go#TestAppInfoServesTheDataDirectoryNameVersionAndOwner"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -109321,9 +109321,9 @@
         "call:chord/nextnode/app/app.go#App.exportRunning"
       ],
       "evidence": [
+        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestAdmittingPagesRefusesThePageOfAPrincipalTheAppDoesNotAdmitItsHoldFailsForbiddenNothingIsWritten",
         "test:chord/next/telemetryingest/ingest_upstream_test.go#TestWorkerBatchWritesSpansAndMetricsAsTheyAreStampedWithItsHostAnyoneElseHasNothingToCall",
-        "test:chord/nextnode/app/info_upstream_test.go#TestAppInfoServesTheDataDirectoryNameVersionAndOwner",
-        "test:chord/nextnode/app/info_upstream_test.go#TestWorkerInfoServesItsAddressAndItsStartData"
+        "test:chord/nextnode/app/info_upstream_test.go#TestAppInfoServesTheDataDirectoryNameVersionAndOwner"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -109344,9 +109344,9 @@
         "call:chord/nextnode/app/app.go#App.exportRunning"
       ],
       "evidence": [
+        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestAdmittingPagesRefusesThePageOfAPrincipalTheAppDoesNotAdmitItsHoldFailsForbiddenNothingIsWritten",
         "test:chord/next/telemetryingest/ingest_upstream_test.go#TestWorkerBatchWritesSpansAndMetricsAsTheyAreStampedWithItsHostAnyoneElseHasNothingToCall",
-        "test:chord/nextnode/app/info_upstream_test.go#TestAppInfoServesTheDataDirectoryNameVersionAndOwner",
-        "test:chord/nextnode/app/info_upstream_test.go#TestWorkerInfoServesItsAddressAndItsStartData"
+        "test:chord/nextnode/app/info_upstream_test.go#TestAppInfoServesTheDataDirectoryNameVersionAndOwner"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -110098,9 +110098,9 @@
         "call:chord/next/host/host_host.go#CreateHost"
       ],
       "evidence": [
+        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestAdmittingPagesRefusesThePageOfAPrincipalTheAppDoesNotAdmitItsHoldFailsForbiddenNothingIsWritten",
         "test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageBatchCallsTheHookOncePerSpanItStampsCachingNothingItself",
-        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageBatchCapsAPagesSpansPerMinuteDroppingAndCountingPastTheBudget",
-        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageBatchDropsSpansPosingAsAnotherSendersOrTheServers"
+        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageBatchCapsAPagesSpansPerMinuteDroppingAndCountingPastTheBudget"
       ]
     },
     {
