@@ -6,6 +6,11 @@
       "reason": "Normalized/layout comparators are explicit plain-terminal contracts: ANSI, CR, trailing spaces and outer blank rows are not compared. They are not full wire proof. Exact comparators apply only scenario-declared, justified replacements."
     },
     {
+      "source": "test/parity/runner/capture_stable.go",
+      "sha256": "b1cc3c4c0d146cb6330865b6afd6c5d60eb4a26c58721cd38f04ecadfc67ffad",
+      "reason": "The final terminal capture is the plain screen, the escaped screen and the plain screen again; it is accepted only when both plain captures are equal and hold the scenario's capture_start, and it is retaken every poll within the last step budget until then. Only the capture kinds a comparator reads are cropped to capture_start/capture_end: a capture_start absent from one of those fails the run (the whole captures are kept in the artifacts, with the failure joined to any step failure), and a capture no comparator reads is kept whole under a not-asserted-uncropped artifact name. No comparison is loosened: this is synchronization with the screen and a stricter crop, not a normalization."
+    },
+    {
       "source": "test/parity/runner/changelog_assert.go",
       "sha256": "ce703c70d410d59e79c6f0e1df29268350b47148169f43ac809385659f1a3b4a",
       "reason": "D22: the products ship different changelog documents. Compare every rendered release header, in order, against that binary's independent source document; this does not claim cross-product equality of body text or styling."
@@ -17,7 +22,7 @@
     },
     {
       "source": "test/parity/runner/driver_ht.go",
-      "sha256": "88dafa2246d2f34188e46b0d3d407fb2c25621ae2f9c342ff25f5007a1d64e20",
+      "sha256": "8b4b59fd3b8faf1a1048769f3650a72297beabfdd63b4af4fc68dc768162813a",
       "reason": "Headless terminal state capture compares the declared visible surface, not transient bytes. Tool stderr is diagnostic transport noise, not product stderr. A capture_start absent from a capture a comparator reads fails the run instead of comparing the whole screen."
     },
     {
@@ -27,7 +32,7 @@
     },
     {
       "source": "test/parity/runner/driver_tmux.go",
-      "sha256": "16aa832d4e4f0f320ccda34902db960b7523fec7e6d92ffa2b93b3877ef2050b",
+      "sha256": "d45c2c50cbea9d302dd7da466d06f58e1a16a1345833b714e49ee961155a7fe8",
       "reason": "Terminal state capture is not a byte-stream assertion. A scenario explicitly selects viewport or retained history and its crop. History capture uses session-local maximum retention without changing pane size or shared defaults; required anchors and source-derived assertions reject incomplete history. Readiness and new-output barriers are synchronization, not behavioral coverage. The final capture is taken only from a still screen (the plain captures around the escaped one are equal, within the last step budget), and a capture_start absent from a capture a comparator reads, still absent when that budget ends, fails the run instead of comparing the whole screen. A capture no comparator reads is kept whole, not cropped."
     },
     {
