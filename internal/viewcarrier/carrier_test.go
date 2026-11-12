@@ -136,12 +136,11 @@ func (p *plugin) Invoke(ctx context.Context, inv uiview.Invocation) (uiview.Resu
 }
 
 type fixture struct {
-	t    *testing.T
-	w    *wire
-	h    *host
-	c    *Carrier
-	p    *plugin
-	next int
+	t *testing.T
+	w *wire
+	h *host
+	c *Carrier
+	p *plugin
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -440,6 +439,7 @@ func TestCarrierUnknownMemberIsInvalid(t *testing.T) {
 	n := f.attach(4096)
 	f.mount("k", "one", intentDecls)
 	ab := abilitiesJSON(4096)
+	f.settled()
 	for _, line := range []string{
 		`{"id":"1","type":"ui_view_attach","abilities":` + ab + `,"version":1}`,
 		`{"id":"2","type":"ui_view_attach","abilities":` + strings.Replace(ab, `"markdown"`, `"extra":1,"markdown"`, 1) + `}`,

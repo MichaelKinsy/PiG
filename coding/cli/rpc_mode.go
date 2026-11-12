@@ -10,7 +10,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/MichaelKinsy/PiG/internal/viewcarrier"
 	"io"
 	"os"
 	"path/filepath"
@@ -34,6 +33,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/handleryield"
 	"github.com/MichaelKinsy/PiG/internal/sessionentry"
+	"github.com/MichaelKinsy/PiG/internal/viewcarrier"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
