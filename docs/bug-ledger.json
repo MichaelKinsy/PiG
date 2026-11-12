@@ -17897,6 +17897,30 @@
       ]
     },
     {
+      "id": "BF-6785b03",
+      "title": "The pi-env daemon ended by SIGTERM, SIGINT or SIGHUP could end with status 1 and a stray `pi-env: read…",
+      "symptom": "The pi-env daemon ended by SIGTERM, SIGINT or SIGHUP could end with status 1 and a stray `pi-env: read /dev/stdin: file already closed` instead of 128 plus the signal number (143 for SIGTERM).",
+      "rootCause": "TestDaemonGivesBackBlockingStdioOnEveryExit/SIGTERM failed on a macOS runner with \"exit code 1, want 143\" (daemon_stdio_mode_test.go:129). The 143 is the daemon's own os.Exit(128 + number) in Serve's signal goroutine (server.go, since); it is not computed by the exec path (durable/env/node/exec.go exitCode, pty_unix.go wait), which maps a child ended by a signal and is a different function. The product is wrong, not the test.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "macOS",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The pi-env daemon ended by SIGTERM, SIGINT or SIGHUP could end with status 1 and a stray `pi-env: read /dev/stdin: file already closed` instead of 128 plus the signal number (143 for SIGTERM). The signal exit gives the daemon's stdin back by closing the descriptor the serving loop is reading; the loop returned that read error to `main`, which ended the process with status 1 whenever it got there before the signal exit did (a loaded or slow-to-wake host, macOS most often). The signal exit now claims the process first, and the serving loop waits for it to end it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6785b03919",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "agent/testmain_leak_test.go::TestMain",
+        "env/daemon/server_unix_test.go::TestServeDoesNotReturnWhileTheSignalExitEndsTheProcess",
+        "env/daemon_stdio_mode_test.go::TestDaemonGivesBackBlockingStdioOnEveryExit"
+      ]
+    },
+    {
       "id": "BF-67eccd7",
       "title": "Opening the model selector no longer composes the whole model catalog, OpenRouter's `:nitro` and `:floor`…",
       "symptom": "Opening the model selector no longer composes the whole model catalog, OpenRouter's `:nitro` and `:floor` variants included, to read each scoped model, and the registry no longer derives those variants for a provider it lists no model of.",
