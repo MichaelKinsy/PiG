@@ -32,6 +32,7 @@ type screenWriterOutput struct {
 
 // newTerminalScreenWriter is the screen writer under t's write, nil unless the environment asks for one.
 func newTerminalScreenWriter(t *ProcessTerminal, getenv func(string) string) *screenwriter.Writer {
+	// pig additive (D624): with PIG_TUI_SCREEN_WRITER=1 the terminal is sent only what changes the screen; unset it is sent Pi's bytes.
 	if getenv(screenWriterEnv) != "1" {
 		return nil
 	}

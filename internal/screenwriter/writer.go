@@ -21,6 +21,8 @@
 // region the frame wrote are sent as the frame wrote them.
 //
 // Before the alternate screen is entered and after it is left every byte is sent as it came.
+//
+// pig additive (D624): tui.ProcessTerminal puts a Writer under its write only when PIG_TUI_SCREEN_WRITER=1 (tui/terminal_screen_writer.go).
 package screenwriter
 
 import (
