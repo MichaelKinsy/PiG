@@ -37,7 +37,7 @@ func buildPig(t *testing.T) string {
 		cmd := exec.Command("go", "build", "-o", pigBinary.path, "github.com/MichaelKinsy/PiG/cmd/pig")
 		cmd.Dir = filepath.Join("..", "..")
 		if out, err := cmd.CombinedOutput(); err != nil {
-			pigBinary.err = fmt.Errorf("go build ./cmd/pig: %v\n%s", err, out)
+			pigBinary.err = fmt.Errorf("go build ./cmd/pig: %w\n%s", err, out)
 		}
 	})
 	if pigBinary.err != nil {
@@ -114,39 +114,43 @@ func (b bridge) open(t *testing.T) *page {
 		t.Fatal(err)
 	}
 	if res.StatusCode != http.StatusOK || res.Header.Get("Content-Type") != "text/event-stream" {
+		_ = res.Body.Close()
 		t.Fatalf("GET /events = %s %s", res.Status, res.Header.Get("Content-Type"))
 	}
 	p := &page{t: t, b: b, lines: make(chan string, 4096), close: cancel}
 	session := make(chan string, 1)
-	go func() {
-		defer close(p.lines)
-		defer func() { _ = res.Body.Close() }()
-		reader := bufio.NewReaderSize(res.Body, 1<<16)
-		event := "message"
-		for {
-			line, err := reader.ReadString('\n')
-			if err != nil {
-				return
-			}
-			line = strings.TrimSuffix(line, "\n")
-			switch {
-			case strings.HasPrefix(line, "event: "):
-				event = strings.TrimPrefix(line, "event: ")
-			case strings.HasPrefix(line, "data: ") && event == "session":
-				session <- strings.TrimPrefix(line, "data: ")
-			case strings.HasPrefix(line, "data: ") && event == "message":
-				p.lines <- strings.TrimPrefix(line, "data: ")
-			case line == "":
-				event = "message"
-			}
-		}
-	}()
+	go p.relay(res, session)
 	select {
 	case p.session = <-session:
 	case <-time.After(30 * time.Second):
 		t.Fatal("the bridge sent no session")
 	}
 	return p
+}
+
+// relay reads the event stream of a page until it ends: the session it names and the lines pig wrote.
+func (p *page) relay(res *http.Response, session chan<- string) {
+	defer close(p.lines)
+	defer func() { _ = res.Body.Close() }()
+	reader := bufio.NewReaderSize(res.Body, 1<<16)
+	event := "message"
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			return
+		}
+		line = strings.TrimSuffix(line, "\n")
+		switch {
+		case strings.HasPrefix(line, "event: "):
+			event = strings.TrimPrefix(line, "event: ")
+		case strings.HasPrefix(line, "data: ") && event == "session":
+			session <- strings.TrimPrefix(line, "data: ")
+		case strings.HasPrefix(line, "data: ") && event == "message":
+			p.lines <- strings.TrimPrefix(line, "data: ")
+		case line == "":
+			event = "message"
+		}
+	}
 }
 
 func (p *page) post(line string) int {
