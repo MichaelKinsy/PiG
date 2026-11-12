@@ -40,6 +40,8 @@ Every upstream Promise-returning extension method, callback, handler, factory, p
 
 A client that draws plugin mounts holds an attachment (`uiview.Registry.Attach`). No extension sees an attachment; the contract below binds a host adapter. Pi has no counterpart: its extension UI is drawn in process by one terminal.
 
+A Go embedder attaches a client with two imports: `github.com/MichaelKinsy/PiG/coding/uiview` and `github.com/MichaelKinsy/PiG/coding/extension/host/subprocess`. It gets the bridge in one of two ways: it makes one with `subprocess.NewUIBridge` and gives it to the host with `Host.SetUIBridge`, or it takes the one a `coding` session made, from the `UIBridge()` of the session's extensions result. It then calls `bridge.Views().Attach(abilities, sink)` and raises the client's intents with `bridge.InvokeViewIntentFrom`.
+
 - **Who waits.** `Attach`, `UpdateAbilities`, `Resync` and `Detach` are blocking calls that return when the registry state has changed. A mount, update or transition of an extension returns to the extension after every attached client's sink has returned for that change.
 - **Order.** The registry makes the deliveries of one attachment one at a time, in the order it accepted the operations that caused them. It numbers them 1, 2, 3 without a hole. Deliveries to different attachments for one change are made in attach order.
 - **Executor.** A sink runs on the goroutine of the operation that caused the delivery, under the registry lock. A sink must not block and must not call the registry or its attachment. A host adapter hands the snapshot to its own loop (the TUI's run-on-main path, a connection's write queue) and returns.
