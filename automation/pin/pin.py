@@ -23,6 +23,8 @@
                               plus the interface delta manifest and the custom-factory draft; skips what exists
   pin.py oracle-node          the bin directory of the oracle Node (ai/testdata/node-microtasks/oracle-node-version), fetched from nodejs.org
                               and verified against its SHASUMS256.txt when the cache has none (automation/pin/nodefetch.py)
+  pin.py retire <ref>         delete the post-release backports and the carried oracle that Pi <ref> already holds (automation/pin/carried.py);
+                              the first step of `make pin-bump`, decided against the target before the pin moves
   pin.py gaps                 the effective pin's gap list: `make ledger-update`, then `make ledger-check` (the pin-follow gaps step)
 """
 from __future__ import annotations
@@ -520,6 +522,17 @@ def cmd_freeze_closure(args: argparse.Namespace) -> None:
     print(f"freeze-closure: wrote {oracle.freeze_closure(pin, lock)}")
 
 
+def cmd_retire(args: argparse.Namespace) -> None:
+    """Delete the carried work (post-release backports, the carried oracle) that Pi <ref> already holds (automation/pin/carried.py)."""
+    import carried
+
+    target = pinlib.resolve(args.ref, pinlib.committed())
+    decisions = carried.retire(target)
+    for line in carried.summary(decisions):
+        print(f"retire: {line}")
+    print(f"retire: {len(decisions['changed'])} file(s) changed" + (": " + ", ".join(decisions["changed"]) if decisions["changed"] else ""))
+
+
 def cmd_oracle_node(_: argparse.Namespace) -> None:
     import nodefetch
 
@@ -617,6 +630,9 @@ def main() -> None:
     vendored.set_defaults(fn=cmd_check_vendored)
     sub_.add_parser("link-mirror").set_defaults(fn=cmd_link_mirror)
     sub_.add_parser("oracle-node").set_defaults(fn=cmd_oracle_node)
+    retire = sub_.add_parser("retire")
+    retire.add_argument("ref")
+    retire.set_defaults(fn=cmd_retire)
     ledgers = sub_.add_parser("ledgers")
     ledgers.add_argument("--from", dest="previous")
     ledgers.add_argument("--force", action="store_true")

@@ -1,23 +1,23 @@
-// Post-v1.5.2 Pi fixes that the vendored Pi JavaScript (shims/pi-dist) must carry (0.8.0).
+// Post-release Pi fixes that the vendored Pi JavaScript (shims/pi-dist) and the parity oracle carry ahead of the pin.
 //
-// PiG pins Pi v1.5.2, and the Node extension runtime runs that package's compiled output: the SDK
-// (createAgentSession, the built-in tools, the llama.cpp built-in extension), pi-tui components
-// extensions render with, and the HTML export. Go ports of later Pi fixes do not change those files,
-// so a Node path would keep the old behavior. Each entry below applies one Pi commit's change to the
-// compiled output with exact before/after strings, and the vendoring step fails when a `before`
-// string is missing or ambiguous (a pin change cannot silently drop a backport). The Pi commit is named
-// at each entry. This is Pi's own later behavior, not a divergence.
+// PiG pins one Pi build, and the Node extension runtime runs that package's compiled output: the SDK (createAgentSession, the built-in
+// tools, the llama.cpp built-in extension), pi-tui components extensions render with, and the HTML export. Go ports of later Pi fixes do
+// not change those files, so a Node path would keep the old behavior. Each entry below (a BEGIN/END block named by the Pi commit it
+// carries) applies that commit's change to the compiled output with exact before/after strings, and the vendoring step fails when a
+// `before` string is missing or ambiguous (a pin change cannot silently drop a backport). This is Pi's own later behavior, not a divergence.
+//
+// An entry lives only until the pin reaches its commit: `make pin-bump` (automation/pin/carried.py) classifies every entry against the
+// target Pi's installed package and deletes the blocks the target already carries (`--classify`); a block the target does not carry must
+// still apply, else the bump stops naming the entry and the file. A script with no block is a no-op: the mechanism stays for the next
+// release cycle, and the oracle build does not apply or stamp it (oracle.backports_digest is "" then).
 //
 // Run through vendor-pi-dist.sh after the identity patches and before the SDK and library bundles are compiled.
 // The same entries are applied to the installed Pi the parity tests compare with (`--packages name=dir ...`, from automation/pin/oracle.py), so the oracle is Pi with these fixes.
-// The source mirror (.upstream/current) stays the pinned release, which the sync ledger's delta audit compares with the earlier pin; the
+// The source mirror (.upstream/current) stays the pinned build, which the sync ledger's delta audit compares with the earlier pin; the
 // tests that read the mirror's docs and schemas read them through `--read-mirror <mirror> <path>` (internal/upstreammirror.ReadPicked), the
 // pinned file plus the entries of packageFileBackports and backportPatches that cover it.
-// `--verify-packages` and `--verify-mirror` fail when an installed Pi does not carry each entry once, or a mirror file is not the pinned release's.
-//
-// Pi commits of the 0.8.0 list that are not here, and why:
-//   49fe0a237 (Anthropic threads by endpoint), code part: pi-ai's anthropic-messages implementation is a bridge stub that runs in PiG's host; only its description text is backported below.
-//   75ca6e7d0, 628d8ab52, 64c96d00d, d9d535b6c (durable, env), b48c675a9 (env daemon, Rust), 75d59639a, 65c43bb52 (chord): packages the Node runtime does not vendor.
+// `--verify-packages` and `--verify-mirror` fail when an installed Pi does not carry each entry once, or a mirror file is not the pinned build's.
+
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -27,16 +27,29 @@ const note = (sha) => `// Pi ${sha} (post-v1.5.2), backported by automation/gen/
 // 49fe0a237 (#11987): the supportsMessageThreads description of pi-ai's compat schema, which the models docs and the models.json schema repeat.
 const messageThreadsDefault = ["Default: true for provider anthropic with a baseUrl on api.anthropic.com", "Default: true for a baseUrl on api.anthropic.com"];
 
-export const backportPatches = {
-  // b3c2e4a6bef8 (#12001): the llama.cpp default server port is 9931.
-  "pi-coding-agent/extensions/llama/provider.js": [
+const blocks = [];
+const patch = (id, key, patches) => blocks.push({ id, key, patches, table: "dist" });
+const packageFile = (id, key, patches) => blocks.push({ id, key, patches, table: "package" });
+
+// BEGIN backport b3c2e4a6bef8
+// b3c2e4a6bef8 (#12001): the llama.cpp default server port is 9931.
+patch("b3c2e4a6bef8", "pi-coding-agent/extensions/llama/provider.js", [
     ['export const DEFAULT_LLAMA_SERVER_URL = "http://127.0.0.1:8080";', 'export const DEFAULT_LLAMA_SERVER_URL = "http://127.0.0.1:9931";'],
-  ],
-  // 49fe0a237 (#11987): Anthropic message threads default by endpoint, not provider id (the description pi-ai's compat schema and the models docs carry).
-  "pi-ai/providers/compat-schema.js": [messageThreadsDefault],
-  "pi-coding-agent/docs/models-configuration.md": [messageThreadsDefault],
-  // be2744d95 (#12047): a Kitty fullscreen redraw keeps the uploaded images and skips the ED 2 clear.
-  "pi-tui/tui-alt-screen.js": [
+]);
+// END backport b3c2e4a6bef8
+
+// BEGIN backport 49fe0a237
+// 49fe0a237 (#11987): Anthropic message threads default by endpoint, not provider id (the description pi-ai's compat schema and the models docs carry).
+patch("49fe0a237", "pi-ai/providers/compat-schema.js", [messageThreadsDefault]);
+// END backport 49fe0a237
+
+// BEGIN backport 49fe0a237
+patch("49fe0a237", "pi-coding-agent/docs/models-configuration.md", [messageThreadsDefault]);
+// END backport 49fe0a237
+
+// BEGIN backport be2744d95
+// be2744d95 (#12047): a Kitty fullscreen redraw keeps the uploaded images and skips the ED 2 clear.
+patch("be2744d95", "pi-tui/tui-alt-screen.js", [
     [`            const clearImages = this.imageProtocol === "kitty" && hadUploadedKittyImages
                 ? deleteAllKittyPlacements()
                 : this.deleteKittyImages();
@@ -52,26 +65,35 @@ export const backportPatches = {
                 buffer += \`\${this.deleteKittyImages()}\\x1b[2J\`;
             }
 `],
-  ],
-  // 5b4d7d3df (#12045): hard breaks after an inline Markdown image stay separate rows.
-  "pi-tui/components/markdown.js": [
+]);
+// END backport be2744d95
+
+// BEGIN backport 5b4d7d3df
+// 5b4d7d3df (#12045): hard breaks after an inline Markdown image stay separate rows.
+patch("5b4d7d3df", "pi-tui/components/markdown.js", [
     ["        for (const line of this.renderToken(token, contentWidth, nextTokenType)) {\n",
       `${"        " + note("5b4d7d3df")}        // Image lines skip wrapping, so split them here: hard breaks after an image must stay separate rows.
         const tokenLines = this.renderToken(token, contentWidth, nextTokenType).flatMap((line) => isImageLine(line) ? line.split("\\n") : [line]);
         for (const line of tokenLines) {
 `],
-  ],
-  // bbfc6c7ce (#12044): the find tool ignores a leading ./ in its pattern.
-  "pi-coding-agent/core/tools/find.js": [
+]);
+// END backport 5b4d7d3df
+
+// BEGIN backport bbfc6c7ce
+// bbfc6c7ce (#12044): the find tool ignores a leading ./ in its pattern.
+patch("bbfc6c7ce", "pi-coding-agent/core/tools/find.js", [
     ['                        let effectivePattern = process.platform === "win32" ? pattern.replaceAll("\\\\", "/") : pattern;\n',
       `                        let effectivePattern = process.platform === "win32" ? pattern.replaceAll("\\\\", "/") : pattern;
                         ${note("bbfc6c7ce").trim()}
                         // fd's full paths never contain "/./", so "./src/*.ts" would find nothing; drop the "./".
                         effectivePattern = effectivePattern.replace(/^(?:\\.\\/)+/, "");
 `],
-  ],
-  // 0e1e3fc81 (#12052): OSC 8 hyperlinks in HTML-exported tool output become links.
-  "pi-coding-agent/core/export-html/ansi-to-html.js": [
+]);
+// END backport bbfc6c7ce
+
+// BEGIN backport 0e1e3fc81
+// 0e1e3fc81 (#12052): OSC 8 hyperlinks in HTML-exported tool output become links.
+patch("0e1e3fc81", "pi-coding-agent/core/export-html/ansi-to-html.js", [
     [` * - Reset (0)
  */`, ` * - Reset (0)
  * - OSC 8 hyperlinks with http, https, or mailto URLs (other CSI, OSC, and APC sequences and stray ESC characters are dropped)
@@ -168,20 +190,29 @@ export function stripAnsiEscapes(text) {
         result += "</a>";
     }
 `],
-  ],
-  // 0e1e3fc81 (#12052): a rendered line is blank once every escape sequence the converter handles is stripped.
-  "pi-coding-agent/core/export-html/tool-renderer.js": [
+]);
+// END backport 0e1e3fc81
+
+// BEGIN backport 0e1e3fc81
+// 0e1e3fc81 (#12052): a rendered line is blank once every escape sequence the converter handles is stripped.
+patch("0e1e3fc81", "pi-coding-agent/core/export-html/tool-renderer.js", [
     ['import { ansiLinesToHtml } from "./ansi-to-html.js";', 'import { ansiLinesToHtml, stripAnsiEscapes } from "./ansi-to-html.js";'],
     ["const ANSI_ESCAPE_REGEX = /\\x1b\\[[\\d;]*m/g;\n", ""],
     ['    return line.replace(ANSI_ESCAPE_REGEX, "").trim().length === 0;', '    return stripAnsiEscapes(line).trim().length === 0;'],
-  ],
-  // 0e1e3fc81 (#12052): a click on a link in an expandable tool output does not toggle it.
-  "pi-coding-agent/core/export-html/template.js": [
+]);
+// END backport 0e1e3fc81
+
+// BEGIN backport 0e1e3fc81
+// 0e1e3fc81 (#12052): a click on a link in an expandable tool output does not toggle it.
+patch("0e1e3fc81", "pi-coding-agent/core/export-html/template.js", [
     ["class=\"tool-output expandable ansi-rendered\" onclick=\"if(window.getSelection().toString())return;this.classList.toggle('expanded')\">",
       "class=\"tool-output expandable ansi-rendered\" onclick=\"if(window.getSelection().toString()||event.target.closest('a'))return;this.classList.toggle('expanded')\">"],
-  ],
-  // 3345c2925 (#12054): hiding an extension's own tool keeps the restored MCP tools pending.
-  "pi-coding-agent/core/agent-session.js": [
+]);
+// END backport 0e1e3fc81
+
+// BEGIN backport 3345c2925
+// 3345c2925 (#12054): hiding an extension's own tool keeps the restored MCP tools pending.
+patch("3345c2925", "pi-coding-agent/core/agent-session.js", [
     ["    _pendingToolNames = new Set();\n",
       "    _pendingToolNames = new Set();\n    /** The restored or reloaded loadout that `_pendingToolNames` belongs to. */\n    _restoredToolNames = new Set();\n"],
     [`        // A loadout that deactivates a tool replaces the restored one, whose pending tools are dropped.
@@ -212,15 +243,19 @@ export function stripAnsiEscapes(text) {
             this._pendingToolNames.add(name);
         this._restoredToolNames = new Set(this.getActiveToolNames());
         this._buildRuntime({`],
-  ],
-};
+]);
+// END backport 3345c2925
 
-// Files of a Pi package that are not compiled output and that the vendored runtime does not carry, but that the installed Pi package
-// (the parity oracle) and the source mirror hold, with the same text: keyed like backportPatches, by package and path in the package.
-export const packageFileBackports = {
-  // 49fe0a237 (#11987): the models.json schema Pi generates from compat-schema.ts.
-  "pi-coding-agent/schemas/models.schema.json": [messageThreadsDefault],
-};
+// BEGIN backport 49fe0a237
+// 49fe0a237 (#11987): the models.json schema Pi generates from compat-schema.ts.
+packageFile("49fe0a237", "pi-coding-agent/schemas/models.schema.json", [messageThreadsDefault]);
+// END backport 49fe0a237
+
+// backportPatches keys the compiled output of a Pi package; packageFileBackports the files that are not compiled output and that the vendored runtime
+// does not carry, but that the installed Pi package (the parity oracle) and the source mirror hold, with the same text. Both are keyed by package and path.
+const tableOf = (name) => Object.fromEntries(blocks.filter((b) => b.table === name).map((b) => [b.key, b.patches]));
+export const backportPatches = tableOf("dist");
+export const packageFileBackports = tableOf("package");
 
 const patchesOf = (file) => backportPatches[file] ?? packageFileBackports[file] ?? [];
 
@@ -279,6 +314,53 @@ export function verifyPackageBackports(packages) {
   if (problems.length > 0) throw new Error(problems.join("\n"));
 }
 
+const commonPrefix = (a, b) => {
+  let n = 0;
+  while (n < a.length && n < b.length && a[n] === b[n]) n++;
+  return n;
+};
+
+// firstDifference says where the text of an entry (`before`) first differs from the file `text`: the file's line that shares the longest prefix with
+// the entry's first line, then the first later line that differs, so a maintainer reads the change without diffing by hand.
+function firstDifference(before, text) {
+  const want = before.split("\n");
+  const have = text.split("\n");
+  let at = 0;
+  let best = -1;
+  have.forEach((line, i) => {
+    const n = commonPrefix(want[0], line);
+    if (n > best) [best, at] = [n, i];
+  });
+  const show = (line) => JSON.stringify((line ?? "<end of file>").slice(0, 140));
+  for (let i = 0; i < want.length; i++) {
+    if (have[at + i] !== want[i]) return `entry text line ${i + 1} reads ${show(want[i])}, the file's line ${at + i + 1} reads ${show(have[at + i])}`;
+  }
+  return `the entry's text occurs ${count(text, before)} times in the file`;
+}
+
+// classifyBackports says, for every block of a package in `packages`, whether the installed package is still the one the block was written for
+// ("pending": each patch's before-text occurs once and its after-text not at all), already carries the block's change ("carried": each
+// after-text occurs once, a removal's before-text not at all), or is neither ("conflict", with the file and the first differing line).
+export function classifyBackports(packages) {
+  const results = [];
+  for (const { id, key, patches } of blocks) {
+    const [name, ...rest] = key.split("/");
+    if (!(name in packages)) continue;
+    const text = readFileSync(join(packages[name], packageLocation(name, rest)), "utf8");
+    const states = patches.map(([before, after]) => {
+      const nb = count(text, before);
+      const na = after === "" ? 0 : count(text, after);
+      if (after === "" ? nb === 0 : na === 1 && (nb === 0 || after.includes(before))) return "carried";
+      if (nb === 1 && na === 0) return "pending";
+      return `conflict: ${firstDifference(before, text)}`;
+    });
+    const bad = states.find((state) => state.startsWith("conflict"));
+    const state = bad ? "conflict" : states.every((x) => x === "carried") ? "carried" : states.every((x) => x === "pending") ? "pending" : "conflict";
+    results.push({ id, key, state, detail: bad ?? (state === "conflict" ? "some patches of the entry are carried and some are not" : "") });
+  }
+  return results;
+}
+
 // mirrorKey is the backport key of a file of the Pi repository the source mirror holds (packages/coding-agent/docs/x.md), or undefined
 // for a file no backport table covers: the mirror's TypeScript sources stay Pi's, whose delta from the pin the sync ledger accounts for.
 const mirrorKey = (path) => {
@@ -308,6 +390,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const [mode, ...args] = process.argv.slice(2);
   if (mode === "--packages") applyPackageBackports(packagesOf(args));
   else if (mode === "--verify-packages") verifyPackageBackports(packagesOf(args));
+  else if (mode === "--classify") process.stdout.write(JSON.stringify(classifyBackports(packagesOf(args))));
   else if (mode === "--read-mirror") process.stdout.write(readMirrorFile(args[0], args[1]));
   else if (mode === "--verify-mirror") verifyMirrorBackports(args[0]);
   else applyBackportPatches(mode);
