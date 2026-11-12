@@ -14,7 +14,7 @@ import (
 )
 
 // The tests of the worker base's build that hold it on a named pipe (Pi's mkfifo, Linux only). Pi holds the bundle's build with a
-// file the entry imports; a Go worker's base is a copy of its entry (D600), so the entry itself is the pipe: the copy reads it and
+// file the entry imports; a Go worker's base is a copy of its entry (a Go worker is a program, not a Node bundle), so the entry itself is the pipe: the copy reads it and
 // waits until it is written. `exec.LookPath` accepts a pipe with its execute bit, as the base's check of the entry.
 
 // heldEntry is a named pipe that can be started, as a worker's entry: its copy waits until the pipe is written.
@@ -93,7 +93,7 @@ func TestTheWorkerBaseACloseDoesNotWaitForTheBasesBuildAStartWaitingForItEndsAtT
 	}
 	// The build's read ends only when the pipe is written; what it ends with after the close is dropped.
 	release(held, "late")
-	if built := f.workers.Build(); built.Err == nil {
+	if built := f.workers.Build(); buildError(built) == nil {
 		t.Fatalf("build = %+v, want the closed component's failure", built)
 	}
 	if got := mustRead(t, others); string(got) != "another start's" {
@@ -132,7 +132,7 @@ func TestTheWorkerBaseAStartWaitsForAHeldBuildAndForksOnceItEndedTheStartDataIsA
 	if starts := f.starts.all(); !reflect.DeepEqual(starts, []string{"session|S1"}) {
 		t.Fatalf("starts = %v, want one, after the build", starts)
 	}
-	if built := f.workers.Built(); built == nil || built.Err != nil {
+	if built := f.workers.Built(); built == nil || buildError(built) != nil {
 		t.Fatalf("built = %+v", built)
 	}
 }
@@ -148,7 +148,7 @@ func TestTheWorkerBaseAComponentThatClosedOpensNotItsEntry(t *testing.T) {
 	go func() { done <- f.workers.Build() }()
 	select {
 	case built := <-done:
-		if built.Err == nil {
+		if buildError(built) == nil {
 			t.Fatal("a closed component built")
 		}
 	case <-time.After(3 * time.Second):

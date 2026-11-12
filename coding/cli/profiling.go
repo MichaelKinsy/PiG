@@ -16,7 +16,7 @@ var stopProfiles = func() {}
 // stopModelServices cancels and drains Services-owned model work while extension transports are still available.
 var stopModelServices = func() {}
 
-// stopGCPolicy ends the live-heap watcher of the print, json and rpc GC target (D175) and waits for it to return. It runs before stopProfiles,
+// stopGCPolicy ends the live-heap watcher of the GC policy (D175 for print, json and rpc runs, D621 for interactive runs) and waits for it to return. It runs before stopProfiles,
 // which counts the goroutines left at exit. It is a no-op until Main applies the policy.
 var stopGCPolicy = func() {}
 

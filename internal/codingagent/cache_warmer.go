@@ -470,7 +470,7 @@ func (w *CacheWarmer) sendRefresh(run *cacheWarmingRun, extensionOverride bool) 
 			reschedule = true
 		}
 	}()
-	ctx, options := ai.GetCacheWarmingRequestOptions(run.Options, run.ctx)
+	ctx, options := ai.GetCacheWarmingRequestOptions(run.ctx, run.Options)
 	stream, err := w.stream(ctx, run.Model, run.Context, options)
 	if err != nil {
 		return true

@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/core/preferred-providers.ts
+
 import (
 	"os"
 	"path/filepath"

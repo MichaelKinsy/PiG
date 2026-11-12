@@ -220,8 +220,8 @@ func TestSSEIdleTrackerRecognizesReasoningEvents(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			body := &sseIdleBody{}
 			body.scan([]byte(tc.stream))
-			if body.reasoning != tc.want {
-				t.Fatalf("reasoning=%v, want %v", body.reasoning, tc.want)
+			if got := body.isReasoning(); got != tc.want {
+				t.Fatalf("reasoning=%v, want %v", got, tc.want)
 			}
 		})
 	}
@@ -249,8 +249,8 @@ func TestSSEIdleTrackerFindsReasoningMarkersPastTheSniffWindow(t *testing.T) {
 				for i := range len(tc.stream) {
 					single.scan([]byte(tc.stream[i : i+1]))
 				}
-				if whole.reasoning != tc.want || single.reasoning != tc.want || len(whole.line) != 0 {
-					t.Fatalf("%s with %d bytes of text: reasoning=%v (one byte at a time %v), want %v", name, len(text), whole.reasoning, single.reasoning, tc.want)
+				if got, bytewise := whole.isReasoning(), single.isReasoning(); got != tc.want || bytewise != tc.want || len(whole.line) != 0 {
+					t.Fatalf("%s with %d bytes of text: reasoning=%v (one byte at a time %v), want %v", name, len(text), got, bytewise, tc.want)
 				}
 			}
 		}

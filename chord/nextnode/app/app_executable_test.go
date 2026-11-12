@@ -15,7 +15,7 @@ import (
 )
 
 // Ports the "base code" tests of packages/chord/test/node/app/app.test.ts that start a server with no `base` given (Pi's `runStart`).
-// Pi compares the static import graph of its start script; the server's own code in Go is its executable (D603). Test 1 ("compares
+// Pi compares the static import graph of its start script; the server's own code in Go is its executable (language mechanics: an executable has no import graph). Test 1 ("compares
 // the server's own code ... with no `base` given", marked and cleared at the revert) and test 3 ("starts when the scan of its entry
 // fails ...: reported, not compared") are ported with a helper program the test builds. Test 2 ("starts with an entry whose inactive
 // optional import is missing: the import is left out, the rest compared") has the Go form of a path of the server's own code that is
@@ -221,7 +221,7 @@ func TestAppSkipsAGoBuildProgramBeforeReadingIt(t *testing.T) {
 }
 
 // Intention of app.test.ts "base code › starts with an entry whose inactive optional import is missing: the import is left out,
-// the rest compared" (D603: the Go server's own code is its executable, so it has no import graph to scan). What the case
+// the rest compared" (the Go server's own code is its executable, so it has no import graph to scan: language mechanics). What the case
 // protects is that a missing file an import graph names never stops the server from starting. The Node-hosted code of an app is
 // its plugins, and the graph of a plugin is what its build reads (BuildFacet's inputs, compared by the plugins' watcher). A
 // plugin of the user's root whose facet imports a file that is not there has a failed build (a result naming the file, line and

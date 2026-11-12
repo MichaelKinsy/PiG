@@ -184,7 +184,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/ai/src/auth/oauth/radius.ts` | `ai/oauth_radius.go (ai/oauth_radius_test.go)` | ✅ |
 | `packages/ai/src/auth/oauth/trusted-url.ts` | `ai/oauth_trusted_url.go trustedHTTPURL (shared by ai/githubcopilot.go via ai/copilot_verification_uri.go, ai/oauth_kimi.go, ai/oauth_meta.go and ai/oauth_radius.go; ai/trusted_url_oracle_test.go compares it with Pi's trustedHttpUrl over the verification-URI corpus)` | ✅ |
 | `packages/ai/src/auth/oauth/xai.ts` | `ai/oauth_xai.go (device-code login, polling, refresh, response validation, and owner-context cancellation; ai/oauth_xai_test.go including LoginContext/RefreshTokenContext cancellation, coding/cli/model_oauth_refresh_test.go caller cancellation, oauth/09 behavioral scenario)` | ✅ |
-| `packages/ai/src/cache-warming.ts` | `ai/cache_warming.go (the shared cache-warming policy: delay, prompt-cache TTL, replayability, EvaluateCacheWarming)` | ✅ |
+| `packages/ai/src/cache-warming.ts` | `ai/cache_warming.go (the shared cache-warming policy: delay, prompt-cache TTL, replayability, EvaluateCacheWarming)`, `coding/extension/cache_warming.go` (CacheWarmingDecisionEvent, the decision an extension sees) | ✅ |
 | `packages/ai/src/bun-oauth.ts` | `(Bun-only OAuth flow registration; Go links OAuth implementations directly)` | n/a |
 | `packages/ai/src/compat.ts` | `ai/compat.go`, `ai/builtin_providers.go`, `ai/registry.go`, `ai/faux.go` | ✅ |
 | `packages/ai/src/compat/extension-oauth-types.ts` | `ai/oauth_types.go (type-only legacy OAuth callback and prompt contracts; runtime OAuth behavior belongs to the auth/provider rows; the file re-exports OAuthCredentials, whose JSON member order and tags are the observable wire contract, so the red-proof mutants edit that credential shape in ai/oauth_types.go)` | ✅ |
@@ -840,7 +840,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/store/step.ts` | `chord/next/store/step.go` | ✅ |
 | `packages/chord/src/store/writes.ts` | `(type-only: the StoreWrite union; chord/next/store/writes.go StoreWrite interface)` | n/a |
 | `packages/chord/src/documents/address-source.ts` | `chord/next/documents/address_source.go` | ✅ |
-| `packages/chord/src/documents/definition.ts` | `chord/next/documents/definition.go` | ✅ |
+| `packages/chord/src/documents/definition.ts` | `chord/next/documents/definition.go` (StateDefinition.Host is Pi's `host`, a `KindShape` or `undefined`: Pi's KindShape, a type-level shape designed out, is the Go struct *contracts.HostKind, nil for `undefined`, which interface-closure/autobind/representations.json records as KindShape's Go representation so the ledger's type rules (T9c) match it; the ledger derives the StateDefinition and StateDefinition::property:host rows as ported, and DefineState's keyedBy and StateDefinition.Host are covered by TestDefineStateKeysByADeclaredHostKindKeyedWithTheKindAsItsHostAnUndeclaredKindIsRefused) | ✅ |
 | `packages/chord/src/documents/documents.ts` | `chord/next/documents/documents.go` | ✅ |
 | `packages/chord/src/documents/fence.ts` | `chord/next/documents/fence.go` | ✅ |
 | `packages/chord/src/documents/handles.ts` | `chord/next/documents/handles.go` | ✅ |
@@ -866,7 +866,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/host/native.ts` | `chord/next/host/host_native.go` Tests: native.test.ts: chord/next/host/host_native_test.go, host_facet_test.go, host_spans_test.go | ✅ |
 | `packages/chord/src/host/follow.ts` | `chord/next/host/host_follow.go` | ✅ |
 | `packages/chord/src/host/members.ts` | `chord/next/host/host_members.go` | ✅ |
-| `packages/chord/src/host/ctx.ts` | `chord/next/host/host_ctx.go`, `chord/next/host/host_ctx_trace.go` (tests: host_ctx_test.go, host_spans_test.go) Missing: `binding.release()` in `Get` for a get that finished in its handler's settling turn (Pi race 11, host_ctx.go:176) is pinned only nondeterministically, by TestCtxAGetFinishingAfterItsHandlerSettledIsReleasedAtOnceRace11, which kills its deletion in most runs but not every one (it depends on timing), so no test pins that release deterministically; none observes `settle` clearing `c.references` (host_ctx.go:193) after the releases; every other statement and branch mutant of host_ctx.go is killed, does not compile or is equivalent | 🟡 |
+| `packages/chord/src/host/ctx.ts` | `chord/next/host/host_ctx.go`, `chord/next/host/host_ctx_trace.go` (tests: host_ctx_test.go, host_spans_test.go; `binding.release()` in `Get` for a get that finished in its handler's settling turn (Pi race 11, ctx.ts:112-115) is pinned deterministically by TestCtxAGetThatFinishedItsAcquireInTheTurnItsHandlerSettledIsReleasedAtOnceRace11Deterministic, which settles the ctx in the section `Get` runs after its acquire (settlingLoop, no sleep, no gate), and `settle` clearing `c.references` (ctx.ts:133 `#references = undefined`) after the releases by TestCtxSettleReleasesTheReferencesAndForgetsThem; deleting the release fails the first and keeping the references fails the second in 200 of 200 runs) | ✅ |
 | `packages/chord/src/host/root.ts` | `chord/next/host/host_root.go` | ✅ |
 | `packages/chord/src/host/routines.ts` | `chord/next/host/host_routines.go` | ✅ |
 | `packages/chord/src/host/facet.ts` | `chord/next/host/host_facet.go` | ✅ |
@@ -961,12 +961,12 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/node/workers/lock.ts` | `chord/nextnode/workers/workers_lock.go, workers_lock_unix.go` (the Windows named-pipe variant workers_lock_windows is built only on Windows and is run by the native Windows CI job) | ✅ |
 | `packages/chord/src/node/workers/main.ts` | `chord/nextnode/workers/workers_main.go` | ✅ |
 | `packages/chord/src/node/workers/process.ts` | `chord/nextnode/workers/workers_process.go, workers_process_unix.go, workers_channel.go, workers_channel_unix.go` (the Windows variants workers_process_windows and workers_channel_windows are built only on Windows and are run by the native Windows CI job) | ✅ |
-| `packages/chord/src/node/workers/workers.ts` | `chord/nextnode/workers/workers_workers.go` | ✅ |
+| `packages/chord/src/node/workers/workers.ts` | `chord/nextnode/workers/workers_workers.go` (WorkersBuilt is Pi's union of `{ kind: "built"; inputs }` and `{ kind: "failed"; error }` as a sealed interface: WorkersBuiltBuilt{Inputs} and WorkersBuiltFailed{Error}, each with its `Kind()`; `Built()` is nil for Pi's `undefined`; the failed variant is covered by TestTheWorkersBuildSaysHowItEndedItsKindBuiltWithItsInputsOrFailedWithItsError (workers.test.ts:77, :141), TestTheWorkerBaseABrokenEntryFailsItsBuildAndEveryStartWorkerFailedThePublicStartErrorNothingForks and, through the app, TestAppReportsABaseThatFailsAfterTheListenAndRunsOnThePageAnswers503TheKindsWorkersFailTheirStart; storing the failure as a built variant, a start that ignores the failed variant and the app dropping its error each fail those tests; the ledger derives the WorkersBuilt row as ported) | ✅ |
 | `packages/chord/src/host/old-work.ts` | `chord/next/host/host_old_work.go` | ✅ |
 | `packages/chord/src/host/readiness.ts` | `chord/next/host/host_readiness.go` | ✅ |
 | `packages/chord/src/host/reload-cycle.ts` | `chord/next/host/host_reload_cycle.go` | ✅ |
 | `packages/chord/src/host/unbound-clock.ts` | `chord/next/host/host_unbound_clock.go` | ✅ |
-| `packages/chord/src/node/app/app.ts` | `chord/nextnode/app/app.go` | ✅ |
+| `packages/chord/src/node/app/app.ts` | `chord/nextnode/app/app.go, chord/nextnode/app/app_bases.go (App.BasesBuilt and App.BaseWatched), chord/nextnode/plugins/node/host.mjs (exportHostData, importHostData, deleteHostData control requests; their Go side is a pig divergence with no Pi file, D462)` | ✅ |
 | `packages/chord/src/node/app/archive.ts` | `chord/nextnode/app/archive.go` | ✅ |
 | `packages/chord/src/node/app/blobs.ts` | `chord/nextnode/app/blobs.go` | ✅ |
 | `packages/chord/src/node/app/data.ts` | `chord/nextnode/app/data.go, host_data.mjs` | ✅ |
@@ -1007,8 +1007,8 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/node/tui/launcher.ts` | `chord/nextnode/tui/tui_launcher.go`, `chord/nextnode/tui/tui_terminal.go` (the launcher's process terminal: TerminalOptions input and output, raw mode and resize; chord/nextnode/tui/tui_terminal_test.go, tui_terminal_pty_linux_test.go) | ✅ |
 | `packages/chord/src/node/tui/pipe.ts` | `chord/nextnode/tui/tui_pipe.go` | ✅ |
 | `packages/chord/src/node/tui/sandbox.ts` | `chord/nextnode/tui/tui_sandbox.go` | ✅ |
-| `packages/chord/src/node/workers/base.ts` | `(designed out, D600 draft: a Go worker is the program's own executable; no esbuild worker base; rows/chord-reload-workers.md)` | n/a |
-| `packages/chord/src/node/workers/child.ts` | `(designed out, D600 draft: a Go worker is the program's own executable; no esbuild worker base; rows/chord-reload-workers.md)` | n/a |
+| `packages/chord/src/node/workers/base.ts` | `(language mechanics: Pi bundles the worker's JavaScript with esbuild, writes the ES modules with their source maps beside them (linked, 602b8d1cb9) and forks Node on them; a Go worker is the program's own executable, copied by chord/nextnode/workers Build, with no JavaScript bundle, source map or Node flag; Go stack traces are Go's whatever Pi's maps are)` | n/a |
+| `packages/chord/src/node/workers/child.ts` | `(language mechanics: the worker side of a Node fork, importable without esbuild; a Go worker is the program's own executable, whose WorkerMain is chord/nextnode/workers, and links no esbuild: chord/nextnode/workers TestTheWorkersPackageLinksNoEsbuild)` | n/a |
 | `packages/chord/src/react/hooks.ts` | `chord/nextnode/surfaces/client/pi/chord/src/react/hooks.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 | `packages/chord/src/react/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
 | `packages/chord/src/react/stores.ts` | `chord/nextnode/surfaces/client/pi/chord/src/react/stores.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
@@ -1061,10 +1061,10 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/web/scripts.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/scripts.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 | `packages/chord/src/web/styles.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/styles.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 | `packages/chord/src/web/themes.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/themes.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
-| `packages/chord/src/host/host-data.ts` | `(new upstream by 1.5.2; not mapped)` | ⬜ |
-| `packages/chord/src/store/host-column.ts` | `(new upstream by 1.5.2; not mapped)` | ⬜ |
-| `packages/chord/src/store/host-data.ts` | `(new upstream by 1.5.2; not mapped)` | ⬜ |
-| `packages/chord/src/store/import-migration.ts` | `(new upstream by 1.5.2; not mapped)` | ⬜ |
+| `packages/chord/src/host/host-data.ts` | `chord/next/host/host_host_data.go` | ✅ |
+| `packages/chord/src/store/host-column.ts` | `chord/next/store/host_column.go, chord/next/store/columns.go (ColumnSchema.Host, the Go form of Pi's HostColumnSchema.host)` | ✅ |
+| `packages/chord/src/store/host-data.ts` | `chord/next/store/host_data.go` | ✅ |
+| `packages/chord/src/store/import-migration.ts` | `chord/next/store/import_migration.go` | ✅ |
 
 ## `packages/protocol/src/`
 

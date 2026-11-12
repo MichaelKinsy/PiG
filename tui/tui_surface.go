@@ -440,7 +440,7 @@ func (t *TuiSurface) doRender() {
 		t.unlockFrame()
 		return
 	}
-	t.lastRenderAt = t.now()
+	t.frameBeganLocked()
 	t.updateSize()
 	columns, rows := t.size()
 	width, height := max(1, columns), max(1, rows)

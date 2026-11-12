@@ -257,7 +257,7 @@ func ksKeysErr(handle *Keyed) ([]string, error) {
 		if !ok {
 			return keys, nil
 		}
-		keys = append(keys, key)
+		keys = append(keys, key.(string))
 	}
 }
 
@@ -1337,5 +1337,140 @@ func TestKeyedSlotAnEvictedDocumentIsCollected(t *testing.T) {
 	nexttest.Flushed()
 	nexttest.ExpectCollected(t, collected)
 	ksRequireDoc(t, ksGet(t, p.notes(), "a"), "x")
+	p.close()
+}
+
+// ---- a host data change's documents --------------------------------------------------------------------------------
+
+// ksStepRead is a staged write that reads in the commit step and records nothing: Pi's `{ order: "write", apply }`.
+type ksStepRead func(step *store.Step) error
+
+func (ksStepRead) StageOrder() store.WriteOrder { return store.OrderWrite }
+
+func (read ksStepRead) Apply(step *store.Step) ([]store.StoreWrite, error) { return nil, read(step) }
+
+// ksOutside commits writes outside every object's transactions, reading key of slot in the step: what it read.
+func ksOutside(t *testing.T, chordStore *store.ChordStore, writes []store.StagedWrite, slot *KeyedSlot, key string) ChangedDocument {
+	t.Helper()
+	var changed ChangedDocument
+	read := ksStepRead(func(step *store.Step) error {
+		var err error
+		changed, err = slot.ReadChanged(key, step, background)
+		return err
+	})
+	fence := store.CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64, int) error { return nil }}
+	if _, err := chordStore.Commit(append(writes, read), fence, background); err != nil {
+		t.Fatalf("commit: %v", err)
+	}
+	return changed
+}
+
+// ksAdopt is `slot.owner.batch.commit(() => slot.adoptChanged(key, changed), context)`.
+func ksAdopt(t *testing.T, o *object, slot *KeyedSlot, key string, changed ChangedDocument) {
+	t.Helper()
+	var err error
+	o.Do(func() { err = o.batch.Commit(func() error { return slot.AdoptChanged(key, changed) }, background) })
+	if err != nil {
+		t.Fatalf("adoptChanged(%q): %v", key, err)
+	}
+}
+
+func ksFind(t *testing.T, chordStore *store.ChordStore, key string) *store.DocumentRecord {
+	t.Helper()
+	address := store.DocumentAddress{Owner: "app.owner", Namespace: "chord", Kind: "notes.note", Key: &key}
+	record, err := store.Read(chordStore, func(executor sqlite.SqliteExecutor) (*store.DocumentRecord, error) {
+		return store.FindDocument(executor, address, store.CurrentPoint)
+	}, background)
+	if err != nil {
+		t.Fatalf("find(%q): %v", key, err)
+	}
+	return record
+}
+
+// TestKeyedSlotAHostDataChangesDocumentsAreReadInTheStepAndAdoptedAPinnedKeyShowsACreationThenItsRetirementAResidentOneToo
+// runs `it("are read in the step and adopted: a pinned key shows a creation, then its retirement; a resident one
+// too")` of the `describe("a host data change's documents")` of packages/chord/test/documents/keyed-slot.test.ts.
+func TestKeyedSlotAHostDataChangesDocumentsAreReadInTheStepAndAdoptedAPinnedKeyShowsACreationThenItsRetirementAResidentOneToo(t *testing.T) {
+	chordStore, _ := ksFreshStore(t)
+	ksSeed(t, chordStore, ksEntry{"b", "old"})
+	var pinned *KeySource
+	p := ksPersistedOver(t, chordStore, func(_ int, _ *attempt, notes *Keyed) {
+		var err error
+		if pinned, err = notes.At("a"); err != nil {
+			t.Fatalf("at: %v", err)
+		}
+	})
+	read := func() delta.JsonValue {
+		var value delta.JsonValue
+		var err error
+		p.o.Do(func() { value, err = pinned.Value() })
+		if err != nil {
+			t.Fatalf("pinned.value: %v", err)
+		}
+		return value
+	}
+	slot := p.notes().Slot
+	nexttest.RequireJSONEqual(t, read(), obj("title", ""))
+	ksRequireDoc(t, ksGet(t, p.notes(), "b"), "old")
+	var holds [3]bool
+	p.o.Do(func() { holds = [3]bool{slot.Holds("a"), slot.Holds("b"), slot.Holds("c")} })
+	if holds != [3]bool{true, true, false} {
+		t.Fatalf("holds(a, b, c) = %v, want [true true false]", holds)
+	}
+	key := "a"
+	address := store.DocumentAddress{Owner: "app.owner", Namespace: "chord", Kind: "notes.note", Key: &key}
+	base := store.DocumentBase{Version: 1, Fingerprint: p.def.Fingerprint, Value: obj("title", "new")}
+	created := ksOutside(t, chordStore, []store.StagedWrite{store.CreateDocument(address, base, `{"title":"new"}`, nil)}, slot, "a")
+	if created.Kind != ChangedPresent {
+		t.Fatalf("created = %+v, want present", created)
+	}
+	ksAdopt(t, p.o, slot, "a", created)
+	nexttest.RequireJSONEqual(t, read(), obj("title", "new"))
+	b := ksFind(t, chordStore, "b")
+	if unchanged := ksOutside(t, chordStore, nil, slot, "b"); unchanged.Kind != ChangedUnchanged {
+		t.Fatalf("unchanged = %+v", unchanged)
+	}
+	gone := ksOutside(t, chordStore, []store.StagedWrite{store.RetireDocument(b.ID, b.Revision)}, slot, "b")
+	if gone.Kind != ChangedAbsent {
+		t.Fatalf("gone = %+v, want absent", gone)
+	}
+	ksAdopt(t, p.o, slot, "b", gone)
+	ksRequireAbsent(t, ksGet(t, p.notes(), "b"))
+	a := ksFind(t, chordStore, "a")
+	retired := ksOutside(t, chordStore, []store.StagedWrite{store.RetireDocument(a.ID, a.Revision)}, slot, "a")
+	ksAdopt(t, p.o, slot, "a", retired)
+	nexttest.RequireJSONEqual(t, read(), obj("title", ""))
+	p.close()
+}
+
+// TestKeyedSlotAHostDataChangesDocumentsADocumentTheOwnerCannotReadChangesNothingTheResidentAndThePinnedKeyKeepTheirValue
+// runs `it("a document the owner cannot read changes nothing: the resident and the pinned key keep their value")` of
+// the same describe.
+func TestKeyedSlotAHostDataChangesDocumentsADocumentTheOwnerCannotReadChangesNothingTheResidentAndThePinnedKeyKeepTheirValue(t *testing.T) {
+	chordStore, _ := ksFreshStore(t)
+	ksSeed(t, chordStore, ksEntry{"a", "old"})
+	var pinned *KeySource
+	p := ksPersistedOver(t, chordStore, func(_ int, _ *attempt, notes *Keyed) {
+		var err error
+		if pinned, err = notes.At("a"); err != nil {
+			t.Fatalf("at: %v", err)
+		}
+	})
+	slot := p.notes().Slot
+	failed := ChangedDocument{Kind: ChangedFailed, Error: data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "unreadable"}, nil)}
+	ksAdopt(t, p.o, slot, "a", failed)
+	var value, resident delta.JsonValue
+	var err error
+	p.o.Do(func() {
+		value, err = pinned.Value()
+		if tracker, _ := slot.Current("a"); tracker != nil {
+			resident = tracker.Value()
+		}
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	nexttest.RequireJSONEqual(t, value, obj("title", "old"))
+	nexttest.RequireJSONEqual(t, resident, obj("title", "old"))
 	p.close()
 }

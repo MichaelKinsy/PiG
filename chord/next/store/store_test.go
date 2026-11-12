@@ -3,6 +3,7 @@ package store
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -136,6 +137,94 @@ func TestStore(t *testing.T) {
 			noError(t, err)
 			sameAdoptions(t, *adopted, adoption{2, []int64{3}})
 			noError(t, reopened.Close(background))
+		})
+
+		t.Run("migrates a store of schema 2 to 3: its records kept, a host column and its index added", func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "store.sqlite")
+			store := openStoreAt(t, path)
+			storeCreated(t, store)
+			noError(t, store.Close(background))
+			// The store as schema 2 left it.
+			db, err := node.OpenNodeSqliteDatabase(path, node.NodeSqliteDatabaseOptions{})
+			noError(t, err)
+			noError(t, db.Exec("DROP INDEX chord_documents_host"))
+			noError(t, db.Exec("ALTER TABLE chord_documents DROP COLUMN host"))
+			noError(t, db.Run("UPDATE chord_store_schema SET version = 2"))
+			noError(t, db.Close())
+			migrated := openStoreAt(t, path)
+			record := engineFind(t, migrated, storeAddress, CurrentPoint)
+			if record == nil || record.ID != 2 || record.Owner != "app.store" || record.Host != nil {
+				t.Fatalf("record = %+v, want id 2 of app.store without a host", record)
+			}
+			_, fence := recording()
+			hosted := storeAddress
+			hosted.Key, hosted.Host = new("s"), new("session|S1")
+			_, err = migrated.Commit([]StagedWrite{CreateDocument(hosted, storeBase, "{}", nil)}, fence, background)
+			noError(t, err)
+			found := engineFind(t, migrated, DocumentAddress{Namespace: "chord", Owner: "app.store", Kind: "notes", Key: new("s")}, CurrentPoint)
+			if found == nil || found.Host == nil || *found.Host != "session|S1" {
+				t.Fatalf("hosted = %+v, want host session|S1", found)
+			}
+			noError(t, migrated.Close(background))
+		})
+
+		t.Run("opens a store file the code before schema 3 wrote (Pi's stored/store.db at schema 2) and migrates it, keeping every record", func(t *testing.T) {
+			fixture, err := os.ReadFile(filepath.Join("..", "host", "testdata", "schema-switch", "stored", "store.db"))
+			noError(t, err)
+			path := filepath.Join(t.TempDir(), "store.sqlite")
+			noError(t, os.WriteFile(path, fixture, 0o600))
+			const old = `SELECT id, owner, namespace, kind, key, history, created_at, retired_at, meta, revision, version, fingerprint FROM ` + TableDocuments + ` ORDER BY id`
+			const revisions = `SELECT document_id, seq, kind, version, content FROM ` + TableRevisions + ` ORDER BY document_id, seq`
+			const tables = `SELECT name, definition FROM ` + TableTables + ` ORDER BY name`
+			snapshot := func(db sqlite.SqliteDatabase) [][]sqlite.SqliteRow {
+				var rows [][]sqlite.SqliteRow
+				for _, sql := range []string{old, revisions, tables, `SELECT last_seq, next_id, outbox, outbox_floor FROM ` + TableMeta} {
+					each, err := db.All(sql)
+					noError(t, err)
+					rows = append(rows, each)
+				}
+				return rows
+			}
+			before, err := node.OpenNodeSqliteDatabase(path, node.NodeSqliteDatabaseOptions{})
+			noError(t, err)
+			version, err := before.Get(`SELECT version FROM chord_store_schema WHERE singleton = 1`)
+			noError(t, err)
+			qEqual(t, version["version"], int64(2))
+			if _, err := before.Get(`SELECT host FROM ` + TableDocuments); err == nil {
+				t.Fatal("the fixture's documents already have a host column")
+			}
+			kept := snapshot(before)
+			if len(kept[0]) == 0 || len(kept[1]) == 0 || len(kept[2]) == 0 {
+				t.Fatalf("the fixture holds no documents, revisions or tables: %d, %d, %d", len(kept[0]), len(kept[1]), len(kept[2]))
+			}
+			noError(t, before.Close())
+
+			migrated := openStoreAt(t, path)
+			after := migrated.db
+			qEqual(t, snapshot(after), kept)
+			hosts, err := after.All(`SELECT id FROM ` + TableDocuments + ` WHERE host IS NOT NULL`)
+			noError(t, err)
+			qEqual(t, len(hosts), 0)
+			version, err = after.Get(`SELECT version FROM chord_store_schema WHERE singleton = 1`)
+			noError(t, err)
+			qEqual(t, version["version"], int64(3))
+			index, err := after.Get(`SELECT sql FROM sqlite_master WHERE name = 'chord_documents_host'`)
+			noError(t, err)
+			if index == nil || !strings.Contains(index["sql"].(string), "WHERE host IS NOT NULL") {
+				t.Fatalf("index chord_documents_host = %v", index)
+			}
+			// Host-keyed data can be created, and the old records still load.
+			_, fence := recording()
+			hosted := storeAddress
+			hosted.Key, hosted.Host = new("session|S1"), new("session|S1")
+			_, err = migrated.Commit([]StagedWrite{CreateDocument(hosted, storeBase, "{}", nil)}, fence, background)
+			noError(t, err)
+			listed, err := Read(migrated, func(executor sqlite.SqliteExecutor) ([]DocumentRecord, error) {
+				return ListHostRecords(executor, "session|S1", 0, 10)
+			}, background)
+			noError(t, err)
+			qEqual(t, len(listed), 1)
+			noError(t, migrated.Close(background))
 		})
 
 		t.Run("refuses a database that is not UTF-8, closing the backend (rule 12)", func(t *testing.T) {

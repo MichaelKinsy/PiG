@@ -1414,6 +1414,13 @@
    "new": "from.role != linkRoleParent ||"
   }
  ],
+ "packages/chord/src/host/host-data.ts": [
+  {
+   "file": "chord/next/host/host_host_data.go",
+   "old": "Admit: func() bool { return ctx.Err() == nil },",
+   "new": "Admit: func() bool { return ctx.Err() != nil },"
+  }
+ ],
  "packages/chord/src/host/members.ts": [
   {
    "file": "chord/next/host/host_members.go",
@@ -3265,8 +3272,8 @@
  "packages/coding-agent/src/modes/interactive/components/radius-login-selector.ts": [
   {
    "file": "internal/codingagent/radius_login_selector.go",
-   "old": "\"#f1be57\"",
-   "new": "\"#f1be58\""
+   "old": "animated := theme.Fg(\"accent\", \"→ \") + shimmer + r.label[len(r.text):]",
+   "new": "animated := theme.Fg(\"accent\", \"→ \") + shimmer + r.label"
   }
  ],
  "packages/coding-agent/src/modes/interactive/components/themed-text.ts": [
@@ -5973,6 +5980,13 @@
    "new": "length < 4 || length > MaxPipeFrame*2 {"
   }
  ],
+ "packages/chord/src/store/import-migration.ts": [
+  {
+   "file": "chord/next/store/import_migration.go",
+   "old": "\tstate.version = v\n\treturn nil\n}",
+   "new": "\tstate.version = v + 1\n\treturn nil\n}"
+  }
+ ],
  "packages/chord/src/store/live-query.ts": [
   {
    "file": "chord/next/store/live_query.go",
@@ -6541,6 +6555,25 @@
    "file": "chord/next/host/host_parked.go",
    "old": "if p.walking == 0 && p.removed > 16 &&",
    "new": "if p.removed > 16 &&"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/components/provider-brand.ts": [
+  {
+   "file": "tui/provider_brand.go",
+   "old": "\"#f1be57\"",
+   "new": "\"#f1be58\""
+  }
+ ],
+ "packages/coding-agent/src/core/preferred-providers.ts": [
+  {
+   "file": "ai/preferred_providers.go",
+   "old": "[]string{RadiusProviderID, \"openrouter\"}",
+   "new": "[]string{\"openrouter\", RadiusProviderID}"
+  },
+  {
+   "file": "internal/codingagent/preferred_providers.go",
+   "old": "return rankA - rankB",
+   "new": "return rankB - rankA"
   }
  ]
 }

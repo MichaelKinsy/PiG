@@ -30,6 +30,13 @@ type TestHarness struct {
 // Session event.
 func NewTestHarness(t testing.TB, opts InteractiveModeOptions, onEvent func(h *TestHarness, ev agent.AgentEvent)) *TestHarness {
 	t.Helper()
+	return NewTestHarnessWithOutput(t, opts, onEvent, io.Discard)
+}
+
+// NewTestHarnessWithOutput is NewTestHarness with the renderer writing to out, so a test can assert the exact bytes the
+// terminal receives. out must tolerate concurrent writes from the render timer and the owner loop.
+func NewTestHarnessWithOutput(t testing.TB, opts InteractiveModeOptions, onEvent func(h *TestHarness, ev agent.AgentEvent), out io.Writer) *TestHarness {
+	t.Helper()
 	restoreStartupTheme(t)
 	m := NewInteractiveMode(nil, opts)
 	m.chatContainer = tui.NewContainer()
@@ -39,7 +46,7 @@ func NewTestHarness(t testing.TB, opts InteractiveModeOptions, onEvent func(h *T
 	m.pendingMessagesContainer = tui.NewContainer()
 	m.widgetContainer = tui.NewContainer(tui.NewSpacer(1))
 	m.widgetContainerBelow = tui.NewContainer()
-	m.rendererOut = io.Discard
+	m.rendererOut = out
 	m.tuiInst = tui.NewWithOutput(m.rendererOut, 100, 30)
 	m.statusLine = NewFooterComponent(opts.Model, "", nil)
 	m.editor = tui.NewEditor()
@@ -50,6 +57,12 @@ func NewTestHarness(t testing.TB, opts InteractiveModeOptions, onEvent func(h *T
 	m.wireInprocContextActions()
 	m.keybindings = NewKeybindingsManagerFromBindings(harnessUserBindings, "")
 	m.slashRegistry = NewSlashRegistry()
+	if out != io.Discard {
+		// A test that reads the bytes needs the whole regular-mode layout mounted and painted once, as Run does.
+		m.layout = tui.NewContainer(m.loadedResourcesContainer, m.chatContainer, m.pendingMessagesContainer, m.statusContainer, m.editorContainer, m.statusLine)
+		m.tuiInst.Add(m.layout)
+		m.tuiInst.Render()
+	}
 	m.agent = opts.SessionHandle.Agent()
 	m.installRunPromptTurnRefresh()
 	m.eventCh = opts.SessionHandle.Events()

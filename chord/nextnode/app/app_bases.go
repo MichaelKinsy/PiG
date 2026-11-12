@@ -1,14 +1,12 @@
 package app
 
 import (
-	"errors"
 	"os"
 	"sync"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/chord/next/data"
-	chordhttp "github.com/MichaelKinsy/PiG/chord/nextnode/http"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/workers"
 )
 
 // Ports the bases' part of packages/chord/src/node/app/app.ts (Pi 284e63d9): `buildBases`, `watchBaseCode` and `editedSinceStart`.
@@ -16,12 +14,12 @@ import (
 // the base code the `base` mark compares.
 //
 // Forced Go differences. A Promise is a channel closed when it settles (`BasesBuilt`, `BaseWatched`). The server's own code is its
-// executable (D603), where Pi scans the static import graph of its start script; a worker kind's base is its executable too, which
+// executable (language mechanics: an executable has no import graph), where Pi scans the static import graph of its start script; a worker kind's base is its executable too, which
 // holds its code already (workers' doc.go): its build copies the entry (the check that it can be started) and records its bytes. The one
-// goroutine that builds and records is the app's, and the close joins it (drainBuilds), bounded by the close's context, where Pi's
-// `#close` does not wait for its unawaited builds (a forced Go lifetime difference, no numbered divergence): a build cannot be
-// cancelled (esbuild), so what it finishes after the close began is dropped, and one still running when the close's context ends is
-// abandoned (Close returns the context's error).
+// goroutine that builds and records is the app's, joined by Wait (Go's ownership of what Pi leaves as unawaited promises: no Pi
+// counterpart, no numbered divergence). As in Pi, the close does not wait for the builds or the scan: a build cannot be cancelled
+// (esbuild), so what it finishes after the close began is dropped (nothing reported, nothing recorded), the goroutine ends with its
+// scan, and `BaseWatched` closes then.
 
 // futureSlack is how far in the future a file's timestamp may be and still count as an edit since the start: clock skew.
 const futureSlack = 5 * time.Second
@@ -90,7 +88,7 @@ func (a *App) reportLate(kind AppErrorKind, err any, base string) {
 func (a *App) startBases(bases []baseBuild) {
 	built, watched := a.basesBuilt, a.baseWatched
 	a.basesStarted.Store(true)
-	//portlint:allow golifetime the bases' builds cannot be cancelled (esbuild): the goroutine ends when they do, and the close joins it (drainBuilds, bounded by its context); what they finish after the close began is dropped
+	//portlint:allow golifetime the bases' builds cannot be cancelled (esbuild): the goroutine ends when they do, and Wait joins it (the close does not, as Pi's `#close`); what the builds and the scan finish after the close began is dropped
 	go func() { //portlint:allow asyncorder the bases build at once after the listen, off the caller, as Pi's app.ts does (`buildBases` after `http.listening`, Pi 1.5.1); the builds join inside (builds.Wait, then close(built)) and each request that needs a base waits for built
 		defer close(watched)
 		compared := &comparisons{}
@@ -172,24 +170,13 @@ func (a *App) baseBuilds() []baseBuild {
 	for _, kind := range a.options.Workers {
 		name := kind.Kind.Kind
 		bases = append(bases, baseBuild{name: name, build: func() (model.BaseInputs, error) {
+			// How the build ended: Pi's `error` of a failed one, the `inputs` of a built one (Build never returns nil).
 			built := a.Workers[name].Build()
-			return built.Inputs, built.Err
+			if failed, ok := built.(workers.WorkersBuiltFailed); ok {
+				return nil, failed.Error
+			}
+			return built.(workers.WorkersBuiltBuilt).Inputs, nil
 		}})
 	}
 	return bases
-}
-
-// linksAfterTheBases holds a link's upgrade until the bases are built: a client that connects while the server builds (a page
-// reconnecting to a restarted server) would hold the scripts object's empty set, and its base is none the page runs (it reloads).
-// Pi's client has that window too; its build is quicker than a Go server's, which starts the plugins' Node. A request the server
-// closes meanwhile is refused. The options are the zero ones the links endpoint gave every socket.
-//
-// Pi's links connect at once; here an upgrade waits for the bases.
-func (a *App) linksAfterTheBases(chordhttp.HttpRequest, data.Principal) (chordhttp.LinkOptions, error) {
-	select {
-	case <-a.basesBuilt:
-		return chordhttp.LinkOptions{}, nil
-	case <-a.ended:
-		return chordhttp.LinkOptions{}, errors.New("the app is closing")
-	}
 }

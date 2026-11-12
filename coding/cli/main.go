@@ -61,7 +61,6 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/codingagent/prompts"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/timings"
 	"github.com/MichaelKinsy/PiG/internal/frontendpack"
-	"github.com/MichaelKinsy/PiG/internal/gcpolicy"
 	"github.com/MichaelKinsy/PiG/internal/nativeplatform"
 	"github.com/MichaelKinsy/PiG/internal/packagemanager"
 	"github.com/MichaelKinsy/PiG/internal/pigstrip"
@@ -892,9 +891,10 @@ func Main(args []string, options *MainOptions) {
 		procpolicy.Release()
 	}
 	// pig additive (D232): a --listen server skips D175's GOGC 400 start, because resident memory across many sessions is its objective.
-	if (runMode == appModePrint || runMode == appModeJSON || runMode == appModeRPC) && flags.Listen == "" {
+	if policy, ok := gcPolicyFor(runMode, flags.Listen); ok {
 		// pig additive (D175): print, json and rpc runs collect at GOGC 400 unless the environment sets GOGC, and at 100 again past 64 MiB live.
-		stopGCPolicy = gcpolicy.Apply()
+		// pig additive (D621): an interactive run collects at GOGC 150 until 8 MiB are live, then at 100, unless the environment sets GOGC or GOMEMLIMIT; its watcher ends after 2 minutes without a collection.
+		stopGCPolicy = policy.Apply()
 		// Deferred after stopProfiles, so it runs first: the exit record counts no watcher.
 		defer stopGCPolicy()
 	}

@@ -144,9 +144,14 @@ func (changes *TableChanges) Get(key any, ctx context.Context) (EvaluatedRow, er
 	}
 	var row EvaluatedRow
 	if start == 0 {
-		// A committed row is decoded by the table's columns: scalars and JSON, what the evaluator takes.
-		if row, err = changes.Handle.Get(ctx, encoded.Key); err != nil {
+		// A committed row is decoded by the table's columns: scalars and JSON, what the evaluator takes once its
+		// `host(...)` cell is the stored key again.
+		committed, err := changes.Handle.Get(ctx, key)
+		if err != nil {
 			return nil, err
+		}
+		if committed != nil {
+			row = definition.Rows.Stored(committed)
 		}
 	} else if from := writes[start-1]; from.kind == keyPut {
 		row = from.row
@@ -159,7 +164,10 @@ func (changes *TableChanges) Get(key any, ctx context.Context) (EvaluatedRow, er
 			}
 		}
 	}
-	return row, nil
+	if row == nil {
+		return nil, nil
+	}
+	return definition.Rows.Addressed(row)
 }
 
 func (changes *TableChanges) compileSet(set any, what string) (SetNode, error) {

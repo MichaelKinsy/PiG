@@ -125,7 +125,7 @@ path = "packages/chord/src/node/workers/base.ts"
 change = "modified"
 disposition = "ported"
 evidence = ["test:chord/nextnode/workers/workers_workers_test.go#TestTheWorkerBaseInANamedDirectoryEmptiedFirstWrittenAgainThereRemovedByClose", "test:chord/nextnode/workers/workers_workers_test.go#TestTheWorkerBaseAComponentThatClosedBeforeItsBuildWritesNothingAndLeavesANamedDirectoryAsItIs"]
-rationale = "284e63d9c makes the worker base write nothing until the first file and stage in a named directory; workers_base.go ports it (staged beside the named directory and renamed in, a Go mechanic recorded with D600/D603)."
+rationale = "284e63d9c makes the worker base write nothing until the first file and stage in a named directory; workers_base.go ports it (staged beside the named directory and renamed in, a Go mechanic: the base is a copy of the executable)."
 
 [[files]]
 path = "packages/chord/src/node/workers/index.ts"

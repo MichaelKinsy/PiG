@@ -2,7 +2,6 @@ package coding
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -14,6 +13,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/invocation"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // errAgentAlreadyProcessing is upstream prompt()'s error for a message sent
@@ -489,7 +489,8 @@ func extensionUserMessageContent(raw any) (string, []ai.ImageContent, error) {
 	case []ai.UserContentBlock:
 		blocks = value
 	default:
-		encoded, err := json.Marshal(raw)
+		// A text block holds the extension's JavaScript string: a lone UTF-16 unit it carries is kept, as the session line JSON.stringify writes it.
+		encoded, err := jsstring.MarshalKeepingSurrogates(raw)
 		if err != nil {
 			return "", nil, fmt.Errorf("user content must be a string or array: %w", err)
 		}
@@ -499,7 +500,7 @@ func extensionUserMessageContent(raw any) (string, []ai.ImageContent, error) {
 			Data     string `json:"data"`
 			MimeType string `json:"mimeType"`
 		}
-		if err := json.Unmarshal(encoded, &wire); err != nil {
+		if err := jsstring.UnmarshalKeepingSurrogates(encoded, &wire); err != nil {
 			return "", nil, fmt.Errorf("user content must be a string or array")
 		}
 		for i, block := range wire {

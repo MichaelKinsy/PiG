@@ -167,3 +167,43 @@ func TestDecoding(t *testing.T) {
 
 // jsstringInfinity is Number.POSITIVE_INFINITY.
 func jsstringInfinity() float64 { return math.Inf(1) }
+
+func TestHostCells(t *testing.T) {
+	session := hostColKind(t, "session")
+	pins := qDefine(t, "pins", TableOptions{
+		Version: 1,
+		Columns: []ColumnProp{Col("id", Str()), Col("session", Host(session))},
+		Key:     []string{"id"},
+	})
+	S1 := hostColAddress(session, "S1")
+
+	t.Run("are put and keyed as their address's key, decoded into the address", func(t *testing.T) {
+		encoded, err := pins.Rows.Put(Row{"id": "p", "session": S1}, 1)
+		must(t, err)
+		qEqual(t, encoded.Params, []sqlite.SqliteValue{"p", "session|S1", int64(1)})
+		qEqual(t, qJSON(t, encoded.Row), `{"id":"p","session":"session|S1"}`)
+		decoded, err := pins.Rows.Decode(background, sqlite.SqliteRow{"id": "p", "session": "session|S1"})
+		must(t, err)
+		qEqual(t, decoded, Row{"id": "p", "session": S1})
+		_, err = pins.Rows.Put(Row{"id": "p", "session": "session|S1"}, 1)
+		qFails(t, err, "expected an address of session")
+	})
+
+	t.Run("turn between the stored key and the address (`stored`, `addressed`); rows without a host column stay", func(t *testing.T) {
+		read := Row{"id": "p", "session": S1}
+		qEqual(t, pins.Rows.Stored(read), Row{"id": "p", "session": "session|S1"})
+		addressed, err := pins.Rows.Addressed(pins.Rows.Stored(read))
+		must(t, err)
+		qEqual(t, addressed, read)
+		plain := rowsTable(t)
+		row := Row{"id": "a", "x": int64(1)}
+		if got := plain.Rows.Stored(row); reflect.ValueOf(got).Pointer() != reflect.ValueOf(row).Pointer() {
+			t.Fatalf("Stored copied a row without a host column")
+		}
+		got, err := plain.Rows.Addressed(row)
+		must(t, err)
+		if reflect.ValueOf(got).Pointer() != reflect.ValueOf(row).Pointer() {
+			t.Fatalf("Addressed copied a row without a host column")
+		}
+	})
+}

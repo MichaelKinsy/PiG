@@ -15,6 +15,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess/internal/noderuntimepack"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess/internal/noderuntimepeers"
+	"github.com/MichaelKinsy/PiG/internal/zstdblob"
 )
 
 func main() {
@@ -93,7 +94,8 @@ func generate(root, archive, metadata string) error {
 		digest.Write(file.Data)
 	}
 	files = append(files, peers...)
-	packed, err := noderuntimepack.Pack(files)
+	existing, _ := os.ReadFile(archive)
+	packed, err := noderuntimepack.Pack(files, blockEncoder(string(existing)))
 	if err != nil {
 		return err
 	}
@@ -105,6 +107,35 @@ func generate(root, archive, metadata string) error {
 		return err
 	}
 	return writeGenerated(metadata, source)
+}
+
+// blockEncoder returns the encoder of the archive's blocks. A block of the archive already on disk that decodes to the same bytes is kept as it is (zstdblob.Reuse does the same for a whole file), so regenerating an unchanged runtime, as `make build` does, needs no zstd command. Any other block is written by the pinned zstd command (zstdblob.Encode), and a machine without it gets the error that names how to install it.
+func blockEncoder(existing string) func(raw []byte) ([]byte, error) {
+	var decoded [][]byte
+	var frames []string
+	loaded := false
+	return func(raw []byte) ([]byte, error) {
+		if !loaded {
+			loaded = true
+			frames, _ = noderuntimepack.Blocks(existing)
+			for _, frame := range frames {
+				data, err := zstdblob.Decode([]byte(frame))
+				if err != nil {
+					data = nil
+				}
+				decoded = append(decoded, data)
+			}
+		}
+		for i, data := range decoded {
+			if data != nil && bytes.Equal(data, raw) {
+				return []byte(frames[i]), nil
+			}
+		}
+		if _, err := zstdblob.PinnedCLI(); err != nil {
+			return nil, err
+		}
+		return zstdblob.Encode(raw), nil
+	}
 }
 
 // harnessVersion is the version the harness package declares (Pi's, the pin): the peers carry it so a manifest read from the harness reports one release.

@@ -10,7 +10,7 @@
 
 [pin]
 reference = "earendil-works/pi"
-commit = "c23b9ec1ef12a63573d739d4c294f81a377b7d57"
+commit = "b4afdddf44e059c67ccf5097e5317d913521b470"
 release = "1.0.4"
 
 [[scenario]]
@@ -894,7 +894,7 @@ id = "U-harness-read-only"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/harness-read-only.test.ts"
-sha256 = "ab194b95e69f2855c837d0efffbb10ddf69a7054b284dfa31f301047590a8eaf"
+sha256 = "0bd9fb1ed6b56f2ccfb6158d158a0abd74d988adea103ddd045eadc7d2a1464d"
 owner = "dcore-session"
 levels = ["tests"]
 status = "ready"
@@ -1067,10 +1067,12 @@ id = "U-harness-tasks"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/harness-tasks.test.ts"
-sha256 = "167fa91d055d3660832344cf54c4afa5af7e732e7e8af021f59976262f82c8b6"
+sha256 = "6b3c61985a68d9a96af0613a18e84a3ae30e914a7397caeae0f66e384e429f00"
 owner = "dcore-session"
 levels = ["tests"]
 status = "ready"
+skip_tests = ["task scheduling finalizes a holder whose last child is published while a finalize pass plans other holders","task scheduling runs a waiter whose last dependency is published while a reservation pass plans"]
+reason = "Pi 1.5.2's two #11892 tests release a held publication from inside a monkeypatched session.touch, which Pi's TaskScheduler calls once per key of every decision region. Here scheduler decision regions run inside the Go core, and the facade's harness.touch is reached only by line jobs, so the patched touch is never called. The scheduling fix itself is ported and unit-tested in durable/core/session/sched_candidates_test.go (TestAPassKeepsTheCandidateMadeWhilePlanning, TestAPassDoesNotReturnACandidateThatEndedOrHoldsMeanwhile, TestAPassListsATaskMadeACandidateAgainOnce, TestAJobRunAgainKeepsTheCandidatesItTook); running these two tests needs a core-to-host report of the keys each region reads, owner decision, post-0.8.0."
 
 [[scenario]]
 id = "U-harness-telemetry-options"
@@ -1182,7 +1184,7 @@ id = "U-jsonl-storage"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/jsonl-storage.test.ts"
-sha256 = "8ec8e4026789901469a2cc1ef63564a975bbb98ac5c6d06c162d01a626e21359"
+sha256 = "b5d3ad9bfd1891aa92ed2605266ffb061d0d8fc963550a0fb2fea4d23d00c487"
 owner = "dcore-host"
 levels = ["tests"]
 status = "skipped"

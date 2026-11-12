@@ -157,6 +157,7 @@ fn provider_object(provider: &Value) -> Arc<Provider> {
         name,
         base_url: None,
         headers: None,
+        refresh_models_auth: None,
         auth,
         get_models: Arc::new(move || Ok(vec![model.clone()])),
         filter_models: None,

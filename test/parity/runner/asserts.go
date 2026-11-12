@@ -354,6 +354,26 @@ func EvaluateOutcome(o *ScenarioOutcome) {
 		}
 	}
 
+	// no_frames_after_reply: no frame begins after the reply text in either binary's raw transcript.
+	if a.NoFramesAfterReply {
+		for _, system := range []SystemResults{o.Pig, o.Pi} {
+			for run, r := range system.Runs {
+				f := r.FinalFrame
+				switch {
+				case !f.Observed:
+					o.Failures = append(o.Failures, fmt.Sprintf("%s run %d: no_frames_after_reply needs a tmux step with final_frame", system.System, run+1))
+				case !f.Found:
+					o.Failures = append(o.Failures, fmt.Sprintf("%s run %d: the reply text %q is not in the raw transcript", system.System, run+1, f.Text))
+				case f.Trailing > 0:
+					o.Failures = append(o.Failures, fmt.Sprintf("%s run %d: %d frame(s) began after the reply text %q; bytes after it: %s", system.System, run+1, f.Trailing, f.Text, f.Tail))
+				}
+			}
+		}
+	}
+
+	// final_frame_cursor_only_pig / _pi: each binary's exact count of cursor-only frames after the final_frame text (D618).
+	evaluateFinalFrameCursorOnly(o, a)
+
 	// runtime_ratio_max: the performance gate.
 	// pig.median <= ratio * pi.median, when both have at least one run.
 	// Suppressed under parallel mode (CPU contention skews the
@@ -519,4 +539,28 @@ func expandVersionTokens(lists ...[]string) []string {
 		}
 	}
 	return out
+}
+
+// evaluateFinalFrameCursorOnly checks the cursor-only frame counts a scenario pins for a recorded divergence.
+func evaluateFinalFrameCursorOnly(o *ScenarioOutcome, a AssertSpec) {
+	check := func(system SystemResults, key string, want *int) {
+		if want == nil {
+			return
+		}
+		for run, r := range system.Runs {
+			f := r.FinalFrame
+			switch {
+			case !f.Observed:
+				o.Failures = append(o.Failures, fmt.Sprintf("%s run %d: %s needs a tmux step with final_frame", system.System, run+1, key))
+			case !f.Found:
+				o.Failures = append(o.Failures, fmt.Sprintf("%s run %d: the text %q is not in the raw transcript", system.System, run+1, f.Text))
+			default:
+				if got := f.CursorOnly(); got != *want {
+					o.Failures = append(o.Failures, fmt.Sprintf("%s run %d: %d cursor-only frame(s) began after the text %q, want %d; bytes after it: %q", system.System, run+1, got, f.Text, *want, f.Frames))
+				}
+			}
+		}
+	}
+	check(o.Pig, "final_frame_cursor_only_pig", a.FinalFrameCursorOnlyPig)
+	check(o.Pi, "final_frame_cursor_only_pi", a.FinalFrameCursorOnlyPi)
 }

@@ -6,6 +6,7 @@ import (
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/store"
 	"github.com/MichaelKinsy/PiG/chord/sqlite"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
@@ -30,10 +31,12 @@ type Stored struct {
 	DeltasSinceBase int
 }
 
-// FoundDocument is a live document found without loading it: what is stored of it and the fingerprint it was stored with.
+// FoundDocument is a live document found without loading it: what is stored of it, the fingerprint it was stored with
+// and the host it belongs to (CheckHost); nil Host when it belongs to none.
 type FoundDocument struct {
 	Stored      Stored
 	Fingerprint string
+	Host        *string
 }
 
 // Loaded is a loaded document: its value at the definition's version, and what is stored of it.
@@ -84,11 +87,19 @@ type StoredChange struct {
 type Persistence struct {
 	Store   *store.ChordStore
 	address store.DocumentAddress
+	// host is the host kind whose addresses key the documents: their records belong to the host (`host` = the key); nil
+	// for string keys and singletons.
+	host *contracts.HostKind
 }
 
-// NewPersistence is the persistence of kind under namespace of owner (the object's type, R2).
-func NewPersistence(chordStore *store.ChordStore, owner, namespace, kind string) *Persistence {
-	return &Persistence{Store: chordStore, address: store.DocumentAddress{Owner: owner, Namespace: namespace, Kind: kind}}
+// NewPersistence is the persistence of kind under namespace of owner (the object's type, R2); host is the host kind
+// of a host-keyed definition (at most one; Pi's optional trailing parameter).
+func NewPersistence(chordStore *store.ChordStore, owner, namespace, kind string, host ...*contracts.HostKind) *Persistence {
+	persistence := &Persistence{Store: chordStore, address: store.DocumentAddress{Owner: owner, Namespace: namespace, Kind: kind}}
+	if len(host) > 0 {
+		persistence.host = host[0]
+	}
+	return persistence
 }
 
 // Read is the stored document at key, nil when absent: found and loaded with plain reads (a store error is the
@@ -118,10 +129,14 @@ func (persistence *Persistence) Read(key string, ctx context.Context) (*store.St
 }
 
 // Decode is document as definition reads it: a stored version newer than the code's, or the same version with another
-// fingerprint (D9), fails; an older one is migrated and the result checked once (R8). What fails here is the code's (a
-// failing migrate too, whatever it fails with), never the store's.
+// fingerprint (D9), or a record whose host does not match the keys (CheckHost), fails; an older one is migrated and the
+// result checked once (R8). What fails here is the code's (a failing migrate too, whatever it fails with), never the
+// store's.
 func (persistence *Persistence) Decode(document *store.StoredDocument, definition AnyDefinition, ctx context.Context) (Loaded, error) {
 	record := document.Record
+	if err := persistence.CheckHost(record.Host, definition); err != nil {
+		return Loaded{}, err
+	}
 	if err := CheckReadable(record.Version, record.Fingerprint, definition); err != nil {
 		return Loaded{}, err
 	}
@@ -147,7 +162,26 @@ func (persistence *Persistence) Find(key string, ctx context.Context) (*FoundDoc
 		return nil, err
 	}
 	// The change counter is all a retirement needs; DeltasSinceBase is not read for one.
-	return &FoundDocument{Stored: Stored{ID: record.ID, Revision: record.Revision, Version: record.Version}, Fingerprint: record.Fingerprint}, nil
+	return &FoundDocument{Stored: Stored{ID: record.ID, Revision: record.Revision, Version: record.Version}, Fingerprint: record.Fingerprint, Host: record.Host}, nil
+}
+
+// CheckHost fails unless a record's host fits how definition keys its documents: a host-keyed definition reads only
+// records belonging to their key's host (host set: the key is the address key), a string-keyed one or a singleton only
+// records belonging to none. No implicit conversion: the owner fails, the data stays (an explicit store migration
+// converts it).
+func (persistence *Persistence) CheckHost(host *string, definition AnyDefinition) error {
+	keyedBy := persistence.host
+	if (keyedBy == nil) == (host == nil) {
+		return nil
+	}
+	stored, declared := "string keys", "string keys"
+	if host != nil {
+		stored = "addresses of " + contracts.KindOfKey(*host)
+	}
+	if keyedBy != nil {
+		declared = "addresses of " + keyedBy.Kind
+	}
+	return fmt.Errorf("%s: stored with %s, declared with %s (convert it explicitly)", definition.Name, stored, declared)
 }
 
 // Keys is up to limit keys of live documents after `after`, in code point order.
@@ -177,7 +211,13 @@ func (persistence *Persistence) Stage(key string, definition AnyDefinition, stor
 		}
 		base := store.DocumentBase{Version: version, Fingerprint: definition.Fingerprint, Value: prepared.Value()}
 		created := &CreatedID{}
-		*writes = append(*writes, store.CreateDocument(persistence.At(key), base, string(text), func(id int64) { created.ID = id }))
+		// A host-keyed document's key is its host's address key: its record belongs to that host.
+		address := persistence.At(key)
+		if persistence.host != nil {
+			host := key
+			address.Host = &host
+		}
+		*writes = append(*writes, store.CreateDocument(address, base, string(text), func(id int64) { created.ID = id }))
 		return StoredChange{Kind: StoredCreate, Version: version, Created: created}, nil
 	}
 	info := CheckpointInfo{DeltasSinceBase: stored.DeltasSinceBase}

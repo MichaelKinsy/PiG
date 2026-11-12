@@ -144,3 +144,14 @@ fn cancelled_parent_never_becomes_runtime_parent() {
             .is_err()
     );
 }
+
+#[test]
+fn cancel_message_decodes_signal_only_and_defaults_it_to_false() {
+    let signal_only: CancelMsg =
+        serde_json::from_str(r#"{"request_id":"req-1","signal_only":true}"#).unwrap();
+    assert_eq!(signal_only.request_id, "req-1");
+    assert!(signal_only.signal_only);
+    let ordinary: CancelMsg = serde_json::from_str(r#"{"request_id":"req-1"}"#).unwrap();
+    assert_eq!(ordinary.request_id, "req-1");
+    assert!(!ordinary.signal_only);
+}

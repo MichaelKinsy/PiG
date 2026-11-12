@@ -60,6 +60,7 @@ func parseWireURL(host, target string) (string, int) {
 		}
 		return r
 	}, input)
+	//portlint:allow utf16units "http:" is ASCII and still leads the input after the trims
 	rest := input[len("http:"):]
 	// The special authority: any run of `/` and `\` before it.
 	rest = strings.TrimLeft(rest, "/\\")
@@ -134,6 +135,7 @@ func parseHostPort(authority string) (hostName, port string, status int) {
 	}
 	hostText := authority
 	if colon >= 0 {
+		//portlint:allow utf16units the cut is at an ASCII ':' found above and the input holds Latin-1 runes, so the offsets address whole characters as Pi's do
 		hostText, port = authority[:colon], authority[colon+1:]
 	}
 	if hostText == "" {
@@ -247,6 +249,7 @@ func domainToASCII(domain string) (string, bool) {
 		}
 		mapped, _ := labelMapper.ToUnicode("-" + label)
 		mapped = strings.TrimPrefix(mapped, "-")
+		//portlint:allow utf16units the length is compared with 4 only for the ASCII prefix "xn--" just matched, so bytes and code units agree
 		if strings.HasPrefix(mapped, "xn--") && (len(mapped) == 4 || !isASCII(mapped)) {
 			return "", false
 		}
@@ -294,9 +297,13 @@ func parseIPv4Number(input string) (float64, bool) {
 	}
 	radix := 10
 	switch {
+	//portlint:allow utf16units "0x", "0X" and "0" are ASCII, so their byte offsets are their UTF-16 offsets
 	case len(input) >= 2 && (input[:2] == "0x" || input[:2] == "0X"):
+		//portlint:allow utf16units the prefix cut is ASCII
 		input, radix = input[2:], 16
+	//portlint:allow utf16units "0" is ASCII, so the length test and the cut agree in both units
 	case len(input) >= 2 && input[0] == '0':
+		//portlint:allow utf16units the prefix cut is ASCII
 		input, radix = input[1:], 8
 	}
 	value := 0.0
@@ -305,7 +312,7 @@ func parseIPv4Number(input string) (float64, bool) {
 		if !isHex(input[i]) || digit >= radix {
 			return 0, false
 		}
-		value = math.Min(value*float64(radix)+float64(digit), math.MaxFloat64)
+		value = math.Min(float64(value*float64(radix))+float64(digit), math.MaxFloat64)
 	}
 	return value, true
 }
@@ -343,8 +350,10 @@ func parseIPv4(input string) (string, bool) {
 	if last >= math.Pow(256, float64(5-len(numbers))) {
 		return "", false
 	}
+	//portlint:allow numbers last is below 256^(5-n) <= 2^32 (checked above) and never NaN (parseIPv4Number yields finite digits sums), so the conversion is exact
 	address := uint64(last)
 	for i, number := range numbers[:len(numbers)-1] {
+		//portlint:allow numbers every number before the last is at most 255 (checked above), so both conversions are exact
 		address += uint64(number) * uint64(math.Pow(256, float64(3-i)))
 	}
 	return strconv.Itoa(int(address>>24&255)) + "." + strconv.Itoa(int(address>>16&255)) + "." + strconv.Itoa(int(address>>8&255)) + "." + strconv.Itoa(int(address&255)), true

@@ -2232,7 +2232,8 @@ fn main() {
     // event_session_actions_on keeps the handler's context; event_session_actions_stored calls the actions through it after the handler's request ended.
     let kept_event_ctx: Arc<Mutex<Option<pig_sdk::Context>>> = Arc::new(Mutex::new(None));
     let report_session_actions = |ctx: &pig_sdk::Context| {
-        let describe = |name: &str, result: std::io::Result<Option<serde_json::Value>>| match result {
+        let describe = |name: &str, result: std::io::Result<Option<serde_json::Value>>| match result
+        {
             Ok(_) => format!("{name}=allowed"),
             Err(err) if err.to_string().contains("is not a function") => {
                 format!("{name}=rejected")
@@ -2242,8 +2243,14 @@ fn main() {
         [
             describe("new", ctx.new_session(serde_json::json!({}))),
             describe("fork", ctx.fork("entry", serde_json::json!({}))),
-            describe("navigate", ctx.navigate_tree("entry", serde_json::json!({}))),
-            describe("switch", ctx.switch_session("/s.jsonl", serde_json::json!({}))),
+            describe(
+                "navigate",
+                ctx.navigate_tree("entry", serde_json::json!({})),
+            ),
+            describe(
+                "switch",
+                ctx.switch_session("/s.jsonl", serde_json::json!({})),
+            ),
             describe("reload", ctx.reload().map(|()| None)),
         ]
         .join(",")
@@ -2277,8 +2284,15 @@ fn main() {
         "event_session_actions_stored",
         "Call the session actions through the context an event handler kept",
         move |ctx, _| {
-            let kept = kept_event_ctx.lock().unwrap().clone().expect("no event context was kept");
-            ctx.notify(&format!("stored_actions:{}", report_session_actions(&kept)), "info");
+            let kept = kept_event_ctx
+                .lock()
+                .unwrap()
+                .clone()
+                .expect("no event context was kept");
+            ctx.notify(
+                &format!("stored_actions:{}", report_session_actions(&kept)),
+                "info",
+            );
             CommandResult::Ok
         },
     );
@@ -2828,6 +2842,44 @@ fn main() {
             ));
             thread::sleep(Duration::from_secs(8));
             ToolResult::text("late")
+        },
+    );
+    // signal_host_probe: the host keeps answering a tool's host calls after the abort, as Pi's in-process calls are.
+    ext.tool(
+        "signal_host_probe",
+        "Await host dialogs across the abort",
+        json!({"type": "object", "properties": {}}),
+        |ctx, _params: Value| {
+            let dialog = |title: &str| match ctx.input(title, "p") {
+                Ok((value, _)) => value.as_str().unwrap_or("").to_string(),
+                Err(error) => format!("failed: {error}"),
+            };
+            let first = dialog("tool_signal:first");
+            let aborted = ctx.is_cancelled();
+            let second = dialog("tool_signal:later");
+            ToolResult::text(format!("tool_signal:{aborted}:{first}:{second}"))
+        },
+    );
+    // signal_nested_probe: a nested tool call keeps working after the abort, as Pi's in-process calls do.
+    ext.tool(
+        "signal_nested_probe",
+        "Run abort_tool as a nested tool call",
+        json!({"type": "object", "properties": {}}),
+        |ctx, _params: Value| {
+            let text = match ctx.execute_tool(
+                "abort_tool",
+                json!({}),
+                pig_sdk::ExecuteToolOptions::default(),
+            ) {
+                Ok(outcome) => outcome
+                    .result
+                    .content
+                    .iter()
+                    .filter_map(|block| block["text"].as_str())
+                    .collect::<String>(),
+                Err(error) => format!("failed: {error}"),
+            };
+            ToolResult::text(format!("tool_signal_nested:{text}"))
         },
     );
     ext.command(
@@ -4240,6 +4292,43 @@ fn main() {
                 .lock()
                 .unwrap()
                 .push(subscription);
+            CommandResult::Ok
+        },
+    );
+    // event_signal_probe subscribes to session_before_compact or session_before_tree with a handler that returns the state of its event signal (the request's cancellation) on its first line and after a dialog it opened was answered, and the dialog's answer: the signal aborts while the dialog is pending (mode "wait") or before the handler runs (mode "first"), and Pi's in-process host call still returns its answer.
+    let event_signal_subscriber = ext.event_subscriber();
+    let event_signal_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> =
+        Arc::new(Mutex::new(Vec::new()));
+    ext.command(
+        "event_signal_probe",
+        "Subscribe to session_before_compact or session_before_tree with a handler that returns the state of its event signal",
+        move |_ctx, args| {
+            let name = args.trim().to_string();
+            let event = name.clone();
+            let subscription = subscribe(&event_signal_subscriber, &name, move |hctx, data| {
+                let source: &serde_json::Value = if event == "session_before_tree" {
+                    data.get("preparation").unwrap_or(&serde_json::Value::Null)
+                } else {
+                    &*data
+                };
+                let mode = source
+                    .get("customInstructions")
+                    .and_then(serde_json::Value::as_str)
+                    .unwrap_or("")
+                    .to_string();
+                let before = hctx.is_cancelled();
+                let answer = match hctx.input(&format!("event_signal:{event}:{mode}:pending"), "p") {
+                    Ok((value, _)) => value.as_str().unwrap_or("").to_string(),
+                    Err(error) => format!("failed: {error}"),
+                };
+                let state = format!("event_signal:{mode}:{before}:{}:{answer}", hctx.is_cancelled());
+                if event == "session_before_compact" {
+                    Ok(Some(serde_json::json!({"compaction": {"summary": state, "firstKeptEntryId": "k", "tokensBefore": 1}})))
+                } else {
+                    Ok(Some(serde_json::json!({"label": state})))
+                }
+            });
+            event_signal_subscriptions.lock().unwrap().push(subscription);
             CommandResult::Ok
         },
     );
@@ -6569,9 +6658,9 @@ fn conformance_bash_operations() -> pig_sdk::BashOperations {
                 (options.on_data)(b"waiting");
                 options.signal.wait();
                 (options.on_data)(b"stopped");
-                Err("aborted".to_string())
+                Err("aborted".into())
             }
-            other => Err(format!("exec failed: {other}")),
+            other => Err(format!("exec failed: {other}").into()),
         }),
     }
 }
@@ -7018,6 +7107,37 @@ fn builtin_options(case: &Value, log: &CallLog) -> ProbeOptions {
             })
         }));
     }
+    if case["ops"].as_str() == Some("localThread") {
+        // The local operations run on another thread and their error comes back unchanged: the shell's exit belongs to the error, not to the thread.
+        let inner = pig_sdk::create_local_bash_operations(None).exec;
+        options.bash.operations = Some(pig_sdk::BashOperations {
+            exec: Arc::new(move |command, cwd, exec_options| {
+                let inner = inner.clone();
+                let (command, cwd) = (command.to_string(), cwd.to_string());
+                std::thread::spawn(move || inner(&command, &cwd, exec_options))
+                    .join()
+                    .unwrap_or_else(|_| Err("the local operations panicked".into()))
+            }),
+        });
+        return options;
+    }
+    if matches!(case["ops"].as_str(), Some("local" | "localWrapped")) {
+        // The bash tool runs on the local operations. "local" returns their error unchanged; "localWrapped" returns a new error with the same message, which is not the
+        // backend's error and keeps nothing of it (Pi matches the backend's class, bash.ts).
+        let wrapped = case["ops"].as_str() == Some("localWrapped");
+        let inner = pig_sdk::create_local_bash_operations(None).exec;
+        options.bash.operations = Some(pig_sdk::BashOperations {
+            exec: Arc::new(move |command, cwd, exec_options| {
+                let result = inner(command, cwd, exec_options);
+                if wrapped {
+                    result.map_err(|error| pig_sdk::BashExecError::from(error.message()))
+                } else {
+                    result
+                }
+            }),
+        });
+        return options;
+    }
     if case["ops"].as_str() == Some("globlimit") {
         // Pi main 676af1d77 (#11747): the tool asks glob for one result past its limit.
         let glob_log = log.clone();
@@ -7353,7 +7473,7 @@ fn builtin_local(case: &Value) -> Value {
         options,
     ) {
         Ok(code) => report["exitCode"] = json!(code),
-        Err(message) => report["error"] = json!(message),
+        Err(error) => report["error"] = json!(error.message()),
     }
     report["output"] = json!(chunks.lock().unwrap().join(""));
     report

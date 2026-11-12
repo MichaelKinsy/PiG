@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 
@@ -23,6 +24,7 @@ import (
 // is encoded into one buffer sized for its text and its escapes instead, where the room reserved beyond the record is a small part of it: a
 // buffer the encoder outgrows is replaced by one of twice its size, which the session would keep.
 func marshalSessionLine(value any) ([]byte, error) {
+	sessionLinesEncoded.Add(1)
 	if entry, ok := value.(MessageEntry); ok {
 		text := entry.Message.TextBytes()
 		if size := text + sessionLineOverhead; size > sessionLinePooledMax {
@@ -31,6 +33,10 @@ func marshalSessionLine(value any) ([]byte, error) {
 	}
 	return jsstring.MarshalJSON(value)
 }
+
+// sessionLinesEncoded counts the records marshalSessionLine has encoded, which a session without a file must not need for a message it holds
+// as appended (the test of Session.holdsWithoutRecord reads it).
+var sessionLinesEncoded atomic.Uint64
 
 // sessionLineOverhead is the room a message entry's record takes beyond its message's text: the entry's members and the message's metadata.
 const sessionLineOverhead = 1 << 10

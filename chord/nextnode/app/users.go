@@ -18,7 +18,7 @@ import (
 // never rides in the principal: a principal names the user, `Users` holds the rest. An exported facet, not a plugin directory: it
 // takes the app's schema as an argument (settings are arguments).
 //
-// Go forced differences (D456): a plugin directory is TypeScript the Node plugin host evaluates, and cannot import this Go
+// Go forced differences (language mechanics): a plugin directory is TypeScript the Node plugin host evaluates, and cannot import this Go
 // facet; the Go app loads it as a core facet of the server (AppOptions.Facets), where Pi's app re-exports it through its API and a
 // one-line plugin loads it. The generics of `defineUsers<T, P>` are designed out: a profile is a JSON value.
 

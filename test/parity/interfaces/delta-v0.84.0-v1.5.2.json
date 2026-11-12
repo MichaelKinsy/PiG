@@ -57033,7 +57033,7 @@
     {
       "id": "pkg:chord/react#HostProvider",
       "change": "added",
-      "after_shape_hash": "sha256:3ff454d8522c67d9aef04a8fea72d1dc0f739635e4fb66054d0823eadac74c02",
+      "after_shape_hash": "sha256:4c4f24370c6afcaec37b34f4a292b0e359b564a539a26aec82699a5d0da94767",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -57041,7 +57041,7 @@
     {
       "id": "pkg:chord/react#HostProvider::call:0",
       "change": "added",
-      "after_shape_hash": "sha256:3c63eb5be20495ebb497676d0754b388c36aa16bf3afc591753bf263db477241",
+      "after_shape_hash": "sha256:ac9f3bd2b895c09dadf00b1c5625436564e13dd8b92440ef040a491b8667e8d9",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -74771,7 +74771,7 @@
     {
       "id": "pkg:durable/.#Conversation",
       "change": "added",
-      "after_shape_hash": "sha256:cec64f249c4b87f21e8250cfa5bb6f314ae85d1e41da52f86f75a017e4a52e1f",
+      "after_shape_hash": "sha256:45fe53c60cfe73df5a4581434cfa6bae0a2c7a9ed5b96616beee9cc5f44dad5a",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -74971,7 +74971,7 @@
     {
       "id": "pkg:durable/.#Conversation::property:watch",
       "change": "added",
-      "after_shape_hash": "sha256:d42250f7b871422dfd68cabea6bcd89550599054e08c7c5f118a76a492fe0ab0",
+      "after_shape_hash": "sha256:d366024e93397f1d2d2f849df9868b84cc065601aa6674133d7867e84e877abf",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -74979,7 +74979,7 @@
     {
       "id": "pkg:durable/.#Conversation::property:watch::call:0",
       "change": "added",
-      "after_shape_hash": "sha256:3d1e3f5f1ec9f385528d29fb5384ee744c3dc9a977ce5662e61d0456eac8bab9",
+      "after_shape_hash": "sha256:ed3a17c8579ea4984f13d4d05b0a8690f64e949e806e8169c85667fa360620f9",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -75363,7 +75363,7 @@
     {
       "id": "pkg:durable/.#ConversationWatch",
       "change": "added",
-      "after_shape_hash": "sha256:bdaa608a6f33e8c7ee0e0d254d0a1eee0b0fe4d5e4dbfea9a20a4d914e926d86",
+      "after_shape_hash": "sha256:e53a8e8df6e62df6a5d3042f74ebf0be771b8be1055f072c9454e1bf10c8fdc7",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -75547,7 +75547,7 @@
     {
       "id": "pkg:durable/.#DocumentObserver",
       "change": "added",
-      "after_shape_hash": "sha256:c848962d67a6ff5c844e61337bd52f7125fc7460ba6b6f2b36c7c16f49e94f97",
+      "after_shape_hash": "sha256:29c1fb4814c45e51fff2c6fd065cb5fbd2127e18a58a139d5827149b66e42abf",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -75555,7 +75555,7 @@
     {
       "id": "pkg:durable/.#DocumentObserver::property:watchDoc",
       "change": "added",
-      "after_shape_hash": "sha256:b179b617d8e85a51db4a289713956c5d03761ffc06f94bf8b8934c02cb7e196b",
+      "after_shape_hash": "sha256:3b961e02e073abd807cb3317817f3091c221141a11ce451885f95a1da8559a9b",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -75563,7 +75563,7 @@
     {
       "id": "pkg:durable/.#DocumentObserver::property:watchDoc::call:0",
       "change": "added",
-      "after_shape_hash": "sha256:0a6a0fd4a1ae644d22b17b7359d6bbf300b3fc1c867f58c9387243daa52cd60a",
+      "after_shape_hash": "sha256:e32e9542dcd874442a2a3c8341b514a212aff9fabb7b64419e5ec0d6a49c2e09",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -75571,7 +75571,7 @@
     {
       "id": "pkg:durable/.#DocumentObserver::property:watchDoc::call:1",
       "change": "added",
-      "after_shape_hash": "sha256:02c0790fd1360f8278342140c235c6eea094392aff2937f5613d7f44562ea273",
+      "after_shape_hash": "sha256:75b50a03ed6f2266a72da10a247d980ff9f67c6b60e55f84ff6a9118019be7ab",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -75579,7 +75579,7 @@
     {
       "id": "pkg:durable/.#DocumentObserver::property:watchDoc::call:2",
       "change": "added",
-      "after_shape_hash": "sha256:9071fe8748c3a93a623b9dfbdf310c4f47029d008aebb34018b92a01059ab398",
+      "after_shape_hash": "sha256:ed0489233d643f0d6bd3c8a8a2b20bc1aa0df231ce756a126f35fcc87ad2a462",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -75587,7 +75587,7 @@
     {
       "id": "pkg:durable/.#DocumentObserver::property:watchDoc::call:3",
       "change": "added",
-      "after_shape_hash": "sha256:f8f86c48d9ddb5b482dca587aedeadaf738b9545b5f936214cc1c22496942d94",
+      "after_shape_hash": "sha256:dc884322a21f812ec390665bde2d63bc8e796a724abe02cd430089a9bc4078ea",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -75595,7 +75595,7 @@
     {
       "id": "pkg:durable/.#DocumentObserver::property:watchDoc::call:4",
       "change": "added",
-      "after_shape_hash": "sha256:ebd86c3ee5e4d72b85632c9b6b2d6acae3875ef6941e56461f282a1ebbae3e42",
+      "after_shape_hash": "sha256:3c461d61768b95dd267e03d48a3712e529116053b0ebcb31ee659a07d5f82c8e",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -75603,7 +75603,7 @@
     {
       "id": "pkg:durable/.#DocumentObserver::property:watchDoc::call:5",
       "change": "added",
-      "after_shape_hash": "sha256:d9f9c196c3be55d29969307cf3655c1a15e50341021c09ae098e6f3b5a6efc75",
+      "after_shape_hash": "sha256:6d5dcbf5eed27d350f7f2fca47db20fb76aac8f45c85ba87a496621158eecf91",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -75651,7 +75651,7 @@
     {
       "id": "pkg:durable/.#DocumentWatch",
       "change": "added",
-      "after_shape_hash": "sha256:623ca3df78117b405a4f0a88bf904b638f283705dfa3b8e75826fb40b1f4406b",
+      "after_shape_hash": "sha256:b88606ed1f1b2b51d967e36135aa194300006289203ca00222d023813d0974d3",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -76603,7 +76603,7 @@
     {
       "id": "pkg:durable/.#NativeWatchCall",
       "change": "added",
-      "after_shape_hash": "sha256:cf8b58ffd2bef5c78f739e7699684779dd31d007ed5b36e32db1eeeb7e6173e0",
+      "after_shape_hash": "sha256:fb12062b201b77602d8df8b9b5ec55a39aa85319fee12d2ae62ceef0e85831ee",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -77187,7 +77187,7 @@
     {
       "id": "pkg:durable/.#Session",
       "change": "added",
-      "after_shape_hash": "sha256:1984f0921e4073e848196ccd3c4ee27d94aac24665260c0ac3cfe1fed3724ee5",
+      "after_shape_hash": "sha256:07029d4b0e10281a11c7416293f04c3241540d10391f279400a18c98292ad372",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -77403,7 +77403,7 @@
     {
       "id": "pkg:durable/.#Session::property:watchDoc",
       "change": "added",
-      "after_shape_hash": "sha256:b179b617d8e85a51db4a289713956c5d03761ffc06f94bf8b8934c02cb7e196b",
+      "after_shape_hash": "sha256:3b961e02e073abd807cb3317817f3091c221141a11ce451885f95a1da8559a9b",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -77411,7 +77411,7 @@
     {
       "id": "pkg:durable/.#Session::property:watchDoc::call:0",
       "change": "added",
-      "after_shape_hash": "sha256:0a6a0fd4a1ae644d22b17b7359d6bbf300b3fc1c867f58c9387243daa52cd60a",
+      "after_shape_hash": "sha256:e32e9542dcd874442a2a3c8341b514a212aff9fabb7b64419e5ec0d6a49c2e09",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -77419,7 +77419,7 @@
     {
       "id": "pkg:durable/.#Session::property:watchDoc::call:1",
       "change": "added",
-      "after_shape_hash": "sha256:02c0790fd1360f8278342140c235c6eea094392aff2937f5613d7f44562ea273",
+      "after_shape_hash": "sha256:75b50a03ed6f2266a72da10a247d980ff9f67c6b60e55f84ff6a9118019be7ab",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -77427,7 +77427,7 @@
     {
       "id": "pkg:durable/.#Session::property:watchDoc::call:2",
       "change": "added",
-      "after_shape_hash": "sha256:9071fe8748c3a93a623b9dfbdf310c4f47029d008aebb34018b92a01059ab398",
+      "after_shape_hash": "sha256:ed0489233d643f0d6bd3c8a8a2b20bc1aa0df231ce756a126f35fcc87ad2a462",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -77435,7 +77435,7 @@
     {
       "id": "pkg:durable/.#Session::property:watchDoc::call:3",
       "change": "added",
-      "after_shape_hash": "sha256:f8f86c48d9ddb5b482dca587aedeadaf738b9545b5f936214cc1c22496942d94",
+      "after_shape_hash": "sha256:dc884322a21f812ec390665bde2d63bc8e796a724abe02cd430089a9bc4078ea",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -77443,7 +77443,7 @@
     {
       "id": "pkg:durable/.#Session::property:watchDoc::call:4",
       "change": "added",
-      "after_shape_hash": "sha256:ebd86c3ee5e4d72b85632c9b6b2d6acae3875ef6941e56461f282a1ebbae3e42",
+      "after_shape_hash": "sha256:3c461d61768b95dd267e03d48a3712e529116053b0ebcb31ee659a07d5f82c8e",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -77451,7 +77451,7 @@
     {
       "id": "pkg:durable/.#Session::property:watchDoc::call:5",
       "change": "added",
-      "after_shape_hash": "sha256:d9f9c196c3be55d29969307cf3655c1a15e50341021c09ae098e6f3b5a6efc75",
+      "after_shape_hash": "sha256:6d5dcbf5eed27d350f7f2fca47db20fb76aac8f45c85ba87a496621158eecf91",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -78115,7 +78115,7 @@
     {
       "id": "pkg:durable/.#TaskGraphWatch",
       "change": "added",
-      "after_shape_hash": "sha256:95fb0f9984a13cde7e622ec571b920f6d1aff2e9c30e9f18198c7fed56fb4075",
+      "after_shape_hash": "sha256:f88cda2aaa73a5001096d6aab5f55f18d9bc95b5be358bdce4182d7df07b4618",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -78187,7 +78187,7 @@
     {
       "id": "pkg:durable/.#TaskRuntime",
       "change": "added",
-      "after_shape_hash": "sha256:c0bc6fcb41f352a36841cb3fd2043fa137e7ad734990abbeec7db92b434675f6",
+      "after_shape_hash": "sha256:f95b5dd48c369e8f09f285b1de42e2fd709905e300450fd85afdbd05423dc974",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -78619,7 +78619,7 @@
     {
       "id": "pkg:durable/.#TaskRuntime::property:watchDoc",
       "change": "added",
-      "after_shape_hash": "sha256:b179b617d8e85a51db4a289713956c5d03761ffc06f94bf8b8934c02cb7e196b",
+      "after_shape_hash": "sha256:3b961e02e073abd807cb3317817f3091c221141a11ce451885f95a1da8559a9b",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -78627,7 +78627,7 @@
     {
       "id": "pkg:durable/.#TaskRuntime::property:watchDoc::call:0",
       "change": "added",
-      "after_shape_hash": "sha256:0a6a0fd4a1ae644d22b17b7359d6bbf300b3fc1c867f58c9387243daa52cd60a",
+      "after_shape_hash": "sha256:e32e9542dcd874442a2a3c8341b514a212aff9fabb7b64419e5ec0d6a49c2e09",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -78635,7 +78635,7 @@
     {
       "id": "pkg:durable/.#TaskRuntime::property:watchDoc::call:1",
       "change": "added",
-      "after_shape_hash": "sha256:02c0790fd1360f8278342140c235c6eea094392aff2937f5613d7f44562ea273",
+      "after_shape_hash": "sha256:75b50a03ed6f2266a72da10a247d980ff9f67c6b60e55f84ff6a9118019be7ab",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -78643,7 +78643,7 @@
     {
       "id": "pkg:durable/.#TaskRuntime::property:watchDoc::call:2",
       "change": "added",
-      "after_shape_hash": "sha256:9071fe8748c3a93a623b9dfbdf310c4f47029d008aebb34018b92a01059ab398",
+      "after_shape_hash": "sha256:ed0489233d643f0d6bd3c8a8a2b20bc1aa0df231ce756a126f35fcc87ad2a462",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -78651,7 +78651,7 @@
     {
       "id": "pkg:durable/.#TaskRuntime::property:watchDoc::call:3",
       "change": "added",
-      "after_shape_hash": "sha256:f8f86c48d9ddb5b482dca587aedeadaf738b9545b5f936214cc1c22496942d94",
+      "after_shape_hash": "sha256:dc884322a21f812ec390665bde2d63bc8e796a724abe02cd430089a9bc4078ea",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -78659,7 +78659,7 @@
     {
       "id": "pkg:durable/.#TaskRuntime::property:watchDoc::call:4",
       "change": "added",
-      "after_shape_hash": "sha256:ebd86c3ee5e4d72b85632c9b6b2d6acae3875ef6941e56461f282a1ebbae3e42",
+      "after_shape_hash": "sha256:3c461d61768b95dd267e03d48a3712e529116053b0ebcb31ee659a07d5f82c8e",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -78667,7 +78667,7 @@
     {
       "id": "pkg:durable/.#TaskRuntime::property:watchDoc::call:5",
       "change": "added",
-      "after_shape_hash": "sha256:d9f9c196c3be55d29969307cf3655c1a15e50341021c09ae098e6f3b5a6efc75",
+      "after_shape_hash": "sha256:6d5dcbf5eed27d350f7f2fca47db20fb76aac8f45c85ba87a496621158eecf91",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -78699,7 +78699,7 @@
     {
       "id": "pkg:durable/.#ToolExecutionApi",
       "change": "added",
-      "after_shape_hash": "sha256:3968425dcaab5864e7793615b3135232dee16fd1d2b67a25e801fe6f703d1896",
+      "after_shape_hash": "sha256:4eb9719d8e302e6f67d21438b78583a94a0d30ce729a382ddb5bfb8437d0e87a",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -79059,7 +79059,7 @@
     {
       "id": "pkg:durable/.#ToolExecutionApi::property:watchDoc",
       "change": "added",
-      "after_shape_hash": "sha256:b179b617d8e85a51db4a289713956c5d03761ffc06f94bf8b8934c02cb7e196b",
+      "after_shape_hash": "sha256:3b961e02e073abd807cb3317817f3091c221141a11ce451885f95a1da8559a9b",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -79067,7 +79067,7 @@
     {
       "id": "pkg:durable/.#ToolExecutionApi::property:watchDoc::call:0",
       "change": "added",
-      "after_shape_hash": "sha256:0a6a0fd4a1ae644d22b17b7359d6bbf300b3fc1c867f58c9387243daa52cd60a",
+      "after_shape_hash": "sha256:e32e9542dcd874442a2a3c8341b514a212aff9fabb7b64419e5ec0d6a49c2e09",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -79075,7 +79075,7 @@
     {
       "id": "pkg:durable/.#ToolExecutionApi::property:watchDoc::call:1",
       "change": "added",
-      "after_shape_hash": "sha256:02c0790fd1360f8278342140c235c6eea094392aff2937f5613d7f44562ea273",
+      "after_shape_hash": "sha256:75b50a03ed6f2266a72da10a247d980ff9f67c6b60e55f84ff6a9118019be7ab",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -79083,7 +79083,7 @@
     {
       "id": "pkg:durable/.#ToolExecutionApi::property:watchDoc::call:2",
       "change": "added",
-      "after_shape_hash": "sha256:9071fe8748c3a93a623b9dfbdf310c4f47029d008aebb34018b92a01059ab398",
+      "after_shape_hash": "sha256:ed0489233d643f0d6bd3c8a8a2b20bc1aa0df231ce756a126f35fcc87ad2a462",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -79091,7 +79091,7 @@
     {
       "id": "pkg:durable/.#ToolExecutionApi::property:watchDoc::call:3",
       "change": "added",
-      "after_shape_hash": "sha256:f8f86c48d9ddb5b482dca587aedeadaf738b9545b5f936214cc1c22496942d94",
+      "after_shape_hash": "sha256:dc884322a21f812ec390665bde2d63bc8e796a724abe02cd430089a9bc4078ea",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -79099,7 +79099,7 @@
     {
       "id": "pkg:durable/.#ToolExecutionApi::property:watchDoc::call:4",
       "change": "added",
-      "after_shape_hash": "sha256:ebd86c3ee5e4d72b85632c9b6b2d6acae3875ef6941e56461f282a1ebbae3e42",
+      "after_shape_hash": "sha256:3c461d61768b95dd267e03d48a3712e529116053b0ebcb31ee659a07d5f82c8e",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -79107,7 +79107,7 @@
     {
       "id": "pkg:durable/.#ToolExecutionApi::property:watchDoc::call:5",
       "change": "added",
-      "after_shape_hash": "sha256:d9f9c196c3be55d29969307cf3655c1a15e50341021c09ae098e6f3b5a6efc75",
+      "after_shape_hash": "sha256:6d5dcbf5eed27d350f7f2fca47db20fb76aac8f45c85ba87a496621158eecf91",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -79251,7 +79251,7 @@
     {
       "id": "pkg:durable/.#Tx",
       "change": "added",
-      "after_shape_hash": "sha256:107eea6ceb8ea3c748af5d6c035ddd00d9d718d53a28d59dc00285712543638e",
+      "after_shape_hash": "sha256:1a9836d1ac244a15dfda162e3c39eb538fdc897a7a0aae12ec529bad9e52297a",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -79347,7 +79347,7 @@
     {
       "id": "pkg:durable/.#Tx::property:doc",
       "change": "added",
-      "after_shape_hash": "sha256:f2a4273cc71cff248a85be0a5e632df89831d771a1772318d64f80e0d88986a0",
+      "after_shape_hash": "sha256:b8e231c9375038e4d6d8824c600166edb10b7118f7215c3af6c0595964061a83",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -79355,7 +79355,7 @@
     {
       "id": "pkg:durable/.#Tx::property:doc::call:0",
       "change": "added",
-      "after_shape_hash": "sha256:2c44637a2f6e8538290397950e14871bcc64c439a1ea3140afabf99d760acae2",
+      "after_shape_hash": "sha256:4ea76bb357fa9e281d4f90cac852c30ba0fa662e41821fb7a15ec9991a7fe601",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -79363,7 +79363,7 @@
     {
       "id": "pkg:durable/.#Tx::property:doc::call:1",
       "change": "added",
-      "after_shape_hash": "sha256:49764cd8fcc3bc1584a7c7d599f96a2ec1b818164897269a558ef9e1985e0273",
+      "after_shape_hash": "sha256:af7e6e81ec515f1d0a51e438c6d7ffda6678f70a602994620d4d1b9a5e538492",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -79371,7 +79371,7 @@
     {
       "id": "pkg:durable/.#Tx::property:doc::call:2",
       "change": "added",
-      "after_shape_hash": "sha256:f657dc9d8c5ac7e8560b2fe5b116a8c3a0f74bb207afe3eef3a2e65725789089",
+      "after_shape_hash": "sha256:714966287e03a0bba5e15010112dc27c4070722ba827dc35f1d018321d06f35d",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -79379,7 +79379,7 @@
     {
       "id": "pkg:durable/.#Tx::property:doc::call:3",
       "change": "added",
-      "after_shape_hash": "sha256:53dd1915f9994ec3dd241e4d785b996e36177a003557c64342361c74752746f2",
+      "after_shape_hash": "sha256:4696f5ebffecfda7a72cad5f7e3a0dd5f053f6c7960c5f9f24e3f6f808b52f48",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -79387,7 +79387,7 @@
     {
       "id": "pkg:durable/.#Tx::property:doc::call:4",
       "change": "added",
-      "after_shape_hash": "sha256:4cda509f987ce1f56e80f2cdd28eb996c300edb172580305d592999e2ca9f56c",
+      "after_shape_hash": "sha256:a2e735d056feebf90521e432cdd5031830e5f713958dc2b14081ce1ad18dcd26",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -79395,7 +79395,7 @@
     {
       "id": "pkg:durable/.#Tx::property:doc::call:5",
       "change": "added",
-      "after_shape_hash": "sha256:758692b048fb97f5ec1e33ebe851c4c16cfcad5dea4a9636dd3664e937cdd9f8",
+      "after_shape_hash": "sha256:e1baf73546e34f143add4aa46481f245201d11dca7cf549968e3fe97d6381c25",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -79715,7 +79715,7 @@
     {
       "id": "pkg:durable/.#WatchCall",
       "change": "added",
-      "after_shape_hash": "sha256:cf8b58ffd2bef5c78f739e7699684779dd31d007ed5b36e32db1eeeb7e6173e0",
+      "after_shape_hash": "sha256:7af9911e853b8d811523aa00e428d56ba93e31fdc46bc80280bb5796919b8a62",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -79723,7 +79723,7 @@
     {
       "id": "pkg:durable/.#WatchEnd",
       "change": "added",
-      "after_shape_hash": "sha256:cf8b58ffd2bef5c78f739e7699684779dd31d007ed5b36e32db1eeeb7e6173e0",
+      "after_shape_hash": "sha256:2e02a33979a21447015090d17efbafc702663996f65a507e2468fc3a2ae6aac9",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -79731,7 +79731,55 @@
     {
       "id": "pkg:durable/.#WatchHandle",
       "change": "added",
-      "after_shape_hash": "sha256:cf8b58ffd2bef5c78f739e7699684779dd31d007ed5b36e32db1eeeb7e6173e0",
+      "after_shape_hash": "sha256:70e3c0b1c02b1aff785a59298c9b4c39a6a2ef549d54ba7481efbae69fb88c95",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/.#WatchHandle::property:closed",
+      "change": "added",
+      "after_shape_hash": "sha256:759e6077dbfa773d0ad77cc905c76cf72acb0afc02c540332c9d8ac8f28a4909",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/.#WatchHandle::property:start",
+      "change": "added",
+      "after_shape_hash": "sha256:b9ae6502a7ee1fc7c7371b26c88fcf137bf41ad1604073c8865d5e79e849bcde",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/.#WatchHandle::property:start::call:0",
+      "change": "added",
+      "after_shape_hash": "sha256:a2ee8a9e147bbb5e36bf25b44659c0901b57ce445015af2787ffb7d9b8d4139d",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/.#WatchHandle::property:stop",
+      "change": "added",
+      "after_shape_hash": "sha256:6e9e3051adf8af7ba6cab41b1f27d52592808eff76c95ec34302f56bdcd56a01",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/.#WatchHandle::property:stop::call:0",
+      "change": "added",
+      "after_shape_hash": "sha256:9246c11e21bcd1f6190b0ecdd159930119ffc469e3dd4bc69dbb131f35ae739d",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/.#WatchHandle::property:value",
+      "change": "added",
+      "after_shape_hash": "sha256:6b6dc5080cb94abee579e0a7dce40a0e29358c6286c4040d4fa8540aced7613e",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -79987,7 +80035,7 @@
     {
       "id": "pkg:durable/.#section",
       "change": "added",
-      "after_shape_hash": "sha256:a6f53a2a6f5d4abcf6223de8e5febf35a646e322868255b3697061898ae4d1de",
+      "after_shape_hash": "sha256:39b91335a6563b813182012d02877dba7d96c6622ddc2029f80564ec3fa281ca",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -79995,7 +80043,7 @@
     {
       "id": "pkg:durable/.#section::call:0",
       "change": "added",
-      "after_shape_hash": "sha256:86efe06cdc7a7d14b892e9bb86c21cfb66942978d3ecf2ad8ac3f22d19e85734",
+      "after_shape_hash": "sha256:9d507d4c192f068ecf115fa9f312e0bde59b7995f556fec66fa89db5d4631c43",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -83915,7 +83963,7 @@
     {
       "id": "pkg:durable/storage/sqlite#CURRENT_SQLITE_SCHEMA_VERSION",
       "change": "added",
-      "after_shape_hash": "sha256:cef0f2075d92aacf725ee9180deaf5e9d84b355f7b6a74aa4a5ea23d4d28b93c",
+      "after_shape_hash": "sha256:153a411c4574902239c832015b4f3178d08eb7694c9b7c5773679b28e043b009",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -83931,7 +83979,119 @@
     {
       "id": "pkg:durable/storage/sqlite#SqliteDatabase",
       "change": "added",
-      "after_shape_hash": "sha256:cf8b58ffd2bef5c78f739e7699684779dd31d007ed5b36e32db1eeeb7e6173e0",
+      "after_shape_hash": "sha256:5fb71ee4243b0fec9a72351c290bb4fba9e895fffdcf9bbb21217ab2054fff0c",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteDatabase::property:all",
+      "change": "added",
+      "after_shape_hash": "sha256:8310ba81ed36571606b4985caa5734b3a0ce9372d4708ebe577150aae1fea534",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteDatabase::property:all::call:0",
+      "change": "added",
+      "after_shape_hash": "sha256:d079d5309b5c7c8b498c93f46fbd8693c8bdc688a4d12080adb1774d4b33d052",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteDatabase::property:close",
+      "change": "added",
+      "after_shape_hash": "sha256:224a331c8b3e5b8db8f0ed62fadfe68cc6c41e65f8bf7ffb1374a3d41303eed7",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteDatabase::property:close::call:0",
+      "change": "added",
+      "after_shape_hash": "sha256:4016e58fe8d19c1878838481adfefa1484c3b03881840f594c0670e3a6202013",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteDatabase::property:exec",
+      "change": "added",
+      "after_shape_hash": "sha256:aa1db8aee9048fa058d54c104babd5980aa1542d7f3ece8d28e54fd19a68b3b1",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteDatabase::property:exec::call:0",
+      "change": "added",
+      "after_shape_hash": "sha256:c49a95920258b9a6128ad389d463610556c18bb37f90c4a58be13da7ce5d77a8",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteDatabase::property:get",
+      "change": "added",
+      "after_shape_hash": "sha256:818a9b558f62a03bf346fcef7c0d4a5cce8906c6cad2a70fe350e5d815f4b791",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteDatabase::property:get::call:0",
+      "change": "added",
+      "after_shape_hash": "sha256:4050b02493ed20077f98f2744e9c8934045f94dcc95652bf8405c87ebfa3b0a3",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteDatabase::property:run",
+      "change": "added",
+      "after_shape_hash": "sha256:893cced2e3697649ea5416356a5dafe017c883452fe6c9803fc0bcca14e1fe11",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteDatabase::property:run::call:0",
+      "change": "added",
+      "after_shape_hash": "sha256:f388ea66402c326e6c6457d7858db84826078b4859713fe41aae988204719a23",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteDatabase::property:runCounted",
+      "change": "added",
+      "after_shape_hash": "sha256:b54c804b3ec8c925b4321f7262e2cbe6003189b10b7ade3bd95803be9d473841",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteDatabase::property:runCounted::call:0",
+      "change": "added",
+      "after_shape_hash": "sha256:19399b7f6f7d0e9043f076d4d6e0e31ede9fbb7a458d9b4bb3fead741b2f8ab0",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteDatabase::property:transaction",
+      "change": "added",
+      "after_shape_hash": "sha256:d77e696751043ee8378ce2335b9345bbb8da61d2865240e316a675986a68605d",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteDatabase::property:transaction::call:0",
+      "change": "added",
+      "after_shape_hash": "sha256:4231c2b88c41b1792e01760ec6e3ba0b1ec4eb07ddd0c806fe17ef2849e0adec",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -83939,7 +84099,87 @@
     {
       "id": "pkg:durable/storage/sqlite#SqliteExecutor",
       "change": "added",
-      "after_shape_hash": "sha256:cf8b58ffd2bef5c78f739e7699684779dd31d007ed5b36e32db1eeeb7e6173e0",
+      "after_shape_hash": "sha256:0de2a29e3d6569b2fd315cbee742a007265335928a51d4c4140309e1911d00df",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteExecutor::property:all",
+      "change": "added",
+      "after_shape_hash": "sha256:8310ba81ed36571606b4985caa5734b3a0ce9372d4708ebe577150aae1fea534",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteExecutor::property:all::call:0",
+      "change": "added",
+      "after_shape_hash": "sha256:d079d5309b5c7c8b498c93f46fbd8693c8bdc688a4d12080adb1774d4b33d052",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteExecutor::property:exec",
+      "change": "added",
+      "after_shape_hash": "sha256:aa1db8aee9048fa058d54c104babd5980aa1542d7f3ece8d28e54fd19a68b3b1",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteExecutor::property:exec::call:0",
+      "change": "added",
+      "after_shape_hash": "sha256:c49a95920258b9a6128ad389d463610556c18bb37f90c4a58be13da7ce5d77a8",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteExecutor::property:get",
+      "change": "added",
+      "after_shape_hash": "sha256:818a9b558f62a03bf346fcef7c0d4a5cce8906c6cad2a70fe350e5d815f4b791",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteExecutor::property:get::call:0",
+      "change": "added",
+      "after_shape_hash": "sha256:4050b02493ed20077f98f2744e9c8934045f94dcc95652bf8405c87ebfa3b0a3",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteExecutor::property:run",
+      "change": "added",
+      "after_shape_hash": "sha256:893cced2e3697649ea5416356a5dafe017c883452fe6c9803fc0bcca14e1fe11",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteExecutor::property:run::call:0",
+      "change": "added",
+      "after_shape_hash": "sha256:f388ea66402c326e6c6457d7858db84826078b4859713fe41aae988204719a23",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteExecutor::property:runCounted",
+      "change": "added",
+      "after_shape_hash": "sha256:b54c804b3ec8c925b4321f7262e2cbe6003189b10b7ade3bd95803be9d473841",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteExecutor::property:runCounted::call:0",
+      "change": "added",
+      "after_shape_hash": "sha256:19399b7f6f7d0e9043f076d4d6e0e31ede9fbb7a458d9b4bb3fead741b2f8ab0",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -83947,7 +84187,7 @@
     {
       "id": "pkg:durable/storage/sqlite#SqliteMigration",
       "change": "added",
-      "after_shape_hash": "sha256:cf8b58ffd2bef5c78f739e7699684779dd31d007ed5b36e32db1eeeb7e6173e0",
+      "after_shape_hash": "sha256:216ff88e717e68b42f6600a93d73cf9c044409465149e58551cfb16b9c2f19b7",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -84235,7 +84475,7 @@
     {
       "id": "pkg:durable/storage/sqlite#SqliteValue",
       "change": "added",
-      "after_shape_hash": "sha256:cf8b58ffd2bef5c78f739e7699684779dd31d007ed5b36e32db1eeeb7e6173e0",
+      "after_shape_hash": "sha256:d3456d7f8912d144f41ea93d9cc0a180650d65a195afc964ee40a7a60a804ab4",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -84259,7 +84499,127 @@
     {
       "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase",
       "change": "added",
-      "after_shape_hash": "sha256:cf8b58ffd2bef5c78f739e7699684779dd31d007ed5b36e32db1eeeb7e6173e0",
+      "after_shape_hash": "sha256:be8db0b32524ed2a0b6e910cf05ac9dce18cb41646b69fdd745618a58c6a2e5b",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::construct:0",
+      "change": "added",
+      "after_shape_hash": "sha256:4e980ac3c6831051e2b0c912a6e021698bbcf1c65bcab5561b27d35ab3e93964",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:all",
+      "change": "added",
+      "after_shape_hash": "sha256:8310ba81ed36571606b4985caa5734b3a0ce9372d4708ebe577150aae1fea534",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:all::call:0",
+      "change": "added",
+      "after_shape_hash": "sha256:d079d5309b5c7c8b498c93f46fbd8693c8bdc688a4d12080adb1774d4b33d052",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:close",
+      "change": "added",
+      "after_shape_hash": "sha256:224a331c8b3e5b8db8f0ed62fadfe68cc6c41e65f8bf7ffb1374a3d41303eed7",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:close::call:0",
+      "change": "added",
+      "after_shape_hash": "sha256:4016e58fe8d19c1878838481adfefa1484c3b03881840f594c0670e3a6202013",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:exec",
+      "change": "added",
+      "after_shape_hash": "sha256:aa1db8aee9048fa058d54c104babd5980aa1542d7f3ece8d28e54fd19a68b3b1",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:exec::call:0",
+      "change": "added",
+      "after_shape_hash": "sha256:c49a95920258b9a6128ad389d463610556c18bb37f90c4a58be13da7ce5d77a8",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:get",
+      "change": "added",
+      "after_shape_hash": "sha256:818a9b558f62a03bf346fcef7c0d4a5cce8906c6cad2a70fe350e5d815f4b791",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:get::call:0",
+      "change": "added",
+      "after_shape_hash": "sha256:4050b02493ed20077f98f2744e9c8934045f94dcc95652bf8405c87ebfa3b0a3",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:run",
+      "change": "added",
+      "after_shape_hash": "sha256:893cced2e3697649ea5416356a5dafe017c883452fe6c9803fc0bcca14e1fe11",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:run::call:0",
+      "change": "added",
+      "after_shape_hash": "sha256:f388ea66402c326e6c6457d7858db84826078b4859713fe41aae988204719a23",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:runCounted",
+      "change": "added",
+      "after_shape_hash": "sha256:b54c804b3ec8c925b4321f7262e2cbe6003189b10b7ade3bd95803be9d473841",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:runCounted::call:0",
+      "change": "added",
+      "after_shape_hash": "sha256:19399b7f6f7d0e9043f076d4d6e0e31ede9fbb7a458d9b4bb3fead741b2f8ab0",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:transaction",
+      "change": "added",
+      "after_shape_hash": "sha256:d77e696751043ee8378ce2335b9345bbb8da61d2865240e316a675986a68605d",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:transaction::call:0",
+      "change": "added",
+      "after_shape_hash": "sha256:4231c2b88c41b1792e01760ec6e3ba0b1ec4eb07ddd0c806fe17ef2849e0adec",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -84267,7 +84627,7 @@
     {
       "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteStorage",
       "change": "added",
-      "after_shape_hash": "sha256:cf8b58ffd2bef5c78f739e7699684779dd31d007ed5b36e32db1eeeb7e6173e0",
+      "after_shape_hash": "sha256:aa3a2097992e6f0cd88f8d3f4880bed84b50e8f1f081eb32d844c32acce36d5a",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -84291,7 +84651,127 @@
     {
       "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase",
       "change": "added",
-      "after_shape_hash": "sha256:cf8b58ffd2bef5c78f739e7699684779dd31d007ed5b36e32db1eeeb7e6173e0",
+      "after_shape_hash": "sha256:fc1812c9289978df0dffa37dfb4eec70b42d71979cecfc64eca0e3f3878f7e52",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::construct:0",
+      "change": "added",
+      "after_shape_hash": "sha256:7196d2229a2fb928c745527e3f53d54eaca2fd7ab7cd4410ac6708c155d3006a",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:all",
+      "change": "added",
+      "after_shape_hash": "sha256:8310ba81ed36571606b4985caa5734b3a0ce9372d4708ebe577150aae1fea534",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:all::call:0",
+      "change": "added",
+      "after_shape_hash": "sha256:d079d5309b5c7c8b498c93f46fbd8693c8bdc688a4d12080adb1774d4b33d052",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:close",
+      "change": "added",
+      "after_shape_hash": "sha256:224a331c8b3e5b8db8f0ed62fadfe68cc6c41e65f8bf7ffb1374a3d41303eed7",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:close::call:0",
+      "change": "added",
+      "after_shape_hash": "sha256:4016e58fe8d19c1878838481adfefa1484c3b03881840f594c0670e3a6202013",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:exec",
+      "change": "added",
+      "after_shape_hash": "sha256:aa1db8aee9048fa058d54c104babd5980aa1542d7f3ece8d28e54fd19a68b3b1",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:exec::call:0",
+      "change": "added",
+      "after_shape_hash": "sha256:c49a95920258b9a6128ad389d463610556c18bb37f90c4a58be13da7ce5d77a8",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:get",
+      "change": "added",
+      "after_shape_hash": "sha256:818a9b558f62a03bf346fcef7c0d4a5cce8906c6cad2a70fe350e5d815f4b791",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:get::call:0",
+      "change": "added",
+      "after_shape_hash": "sha256:4050b02493ed20077f98f2744e9c8934045f94dcc95652bf8405c87ebfa3b0a3",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:run",
+      "change": "added",
+      "after_shape_hash": "sha256:893cced2e3697649ea5416356a5dafe017c883452fe6c9803fc0bcca14e1fe11",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:run::call:0",
+      "change": "added",
+      "after_shape_hash": "sha256:f388ea66402c326e6c6457d7858db84826078b4859713fe41aae988204719a23",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:runCounted",
+      "change": "added",
+      "after_shape_hash": "sha256:b54c804b3ec8c925b4321f7262e2cbe6003189b10b7ade3bd95803be9d473841",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:runCounted::call:0",
+      "change": "added",
+      "after_shape_hash": "sha256:19399b7f6f7d0e9043f076d4d6e0e31ede9fbb7a458d9b4bb3fead741b2f8ab0",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:transaction",
+      "change": "added",
+      "after_shape_hash": "sha256:d77e696751043ee8378ce2335b9345bbb8da61d2865240e316a675986a68605d",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:transaction::call:0",
+      "change": "added",
+      "after_shape_hash": "sha256:4231c2b88c41b1792e01760ec6e3ba0b1ec4eb07ddd0c806fe17ef2849e0adec",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -84299,7 +84779,7 @@
     {
       "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabaseOptions",
       "change": "added",
-      "after_shape_hash": "sha256:cf8b58ffd2bef5c78f739e7699684779dd31d007ed5b36e32db1eeeb7e6173e0",
+      "after_shape_hash": "sha256:d034b602317a1d4686c710de7cf68dbb707dd874270b80987cb99ebe668b7d24",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -84307,7 +84787,7 @@
     {
       "id": "pkg:durable/storage/sqlite/node#NodeSqliteStorageOptions",
       "change": "added",
-      "after_shape_hash": "sha256:0324b5dcdaf58d7b6468fcce884c7a67a69b3d09d9a488fedf49df0478ca5e5e",
+      "after_shape_hash": "sha256:357ec1b884dd0a9b2496cfe8f7a7039445b080312cf5fc5d3be845940557494d",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -84315,7 +84795,15 @@
     {
       "id": "pkg:durable/storage/sqlite/node#openNodeSqliteDatabase",
       "change": "added",
-      "after_shape_hash": "sha256:cf8b58ffd2bef5c78f739e7699684779dd31d007ed5b36e32db1eeeb7e6173e0",
+      "after_shape_hash": "sha256:4c8aa22211ea4f73b720f7a48f25353c60ab2a02d07cc43e2d943ee77eba38be",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/node#openNodeSqliteDatabase::call:0",
+      "change": "added",
+      "after_shape_hash": "sha256:669b06b4f76c90cc7c58bb92fb403693bf0abb03c53ff757b281fe7cfde8e52d",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -84323,7 +84811,7 @@
     {
       "id": "pkg:durable/storage/sqlite/node#openNodeSqliteStorage",
       "change": "added",
-      "after_shape_hash": "sha256:0f8d135de83cb950440c331103d0ee7e45d7f1d14a8ba0680c8f4d15f6cc8a46",
+      "after_shape_hash": "sha256:900f6957aab1d3ca3b1295ae3d3f9301f94800f2602424ab9bd6146218c396fa",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -84331,7 +84819,7 @@
     {
       "id": "pkg:durable/storage/sqlite/node#openNodeSqliteStorage::call:0",
       "change": "added",
-      "after_shape_hash": "sha256:d8d3aad0f16a2e0b5723c19bba83065ca3ea94704d4f105689e9651e163ac841",
+      "after_shape_hash": "sha256:daf57c30ee40f1f0503d687bd0142aca726840cee1ac309142a95a20363c4c06",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""

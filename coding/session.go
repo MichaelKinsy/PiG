@@ -885,10 +885,13 @@ func restoreSessionRuntimeState(inner *icodingagent.Session, services *AgentSess
 	// Assistant messages name the physical model that answered, so a virtual selection is only in model_change entries. upstream: sdk.ts:201-205
 	// sdk.ts:224-231 keeps the saved model only while its provider has configured auth; otherwise the session keeps the model it had (none at startup).
 	if selected := GetBranchSelection(branch, services.ModelRuntime().GetModel); restoreModel && selected != nil && !selected.Unresolvable && selected.Provider != "" && selected.ModelID != "" && services.ModelRuntime().HasConfiguredAuth(selected.Provider) {
+		// sdk.ts:224-231 restores only a model modelRuntime.getModel finds; one no catalog describes would build blank (no window, no prices), so the session keeps its model.
 		if restored := services.ModelRuntime().GetModel(selected.Provider, selected.ModelID); IsVirtualModel(restored) {
 			model = restored
-		} else if restored, err := BuildModel(selected.Provider+"/"+selected.ModelID, services); err == nil {
-			model = restored
+		} else if restored != nil {
+			if built, err := BuildModel(selected.Provider+"/"+selected.ModelID, services); err == nil {
+				model = built
+			}
 		}
 	}
 	if slices.ContainsFunc(branch, func(entry icodingagent.SessionEntry) bool { return entry.Base().Type == "thinking_level_change" }) {

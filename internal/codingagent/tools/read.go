@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"math/bits"
 	"os"
 	"unicode/utf8"
 
@@ -79,13 +80,10 @@ const readOutputSchema = `{"anyOf":[{"type":"string"},{"type":"object","required
 // OutputSchema is the schema of the result's structured content.
 func (t *ReadTool) OutputSchema() json.RawMessage { return json.RawMessage(readOutputSchema) }
 
-// readStructuredContent mirrors upstream toReadOutput: the image block and its note, or the text for text files and for
-// images that could not be processed. It writes what a json.Encoder with SetEscapeHTML(false) writes, without the newline, into
-// one buffer of the exact size.
-func readStructuredContent(content []ai.ToolResultMessageContent) json.RawMessage {
-	var text string
-	var image ai.ImageContent
-	haveText, haveImage := false, false
+// readOutputParts is the first text block of a read result's content and its first image block, which toReadOutput turns into the
+// structured content.
+func readOutputParts(content []ai.ToolResultMessageContent) (text string, image ai.ImageContent, haveImage bool) {
+	haveText := false
 	for _, block := range content {
 		switch block := block.(type) {
 		case ai.TextContent:
@@ -98,7 +96,20 @@ func readStructuredContent(content []ai.ToolResultMessageContent) json.RawMessag
 			}
 		}
 	}
+	return text, image, haveImage
+}
+
+// readStructuredContent mirrors upstream toReadOutput: the image block and its note, or the text for text files and for
+// images that could not be processed. It writes what a json.Encoder with SetEscapeHTML(false) writes, without the newline, into
+// one buffer of the exact size.
+func readStructuredContent(content []ai.ToolResultMessageContent) json.RawMessage {
+	text, image, haveImage := readOutputParts(content)
 	if !haveImage {
+		// A large text's encoding is the one the session entry and the request that carry the text use, made once (ai.QuotedPlainText); the
+		// structured content is that slice itself, which nothing writes to.
+		if quoted, ok := ai.QuotedPlainText(text); ok {
+			return quoted
+		}
 		return appendEncodedString(make([]byte, 0, encodedStringLen(text)), text)
 	}
 	const imageMembers = `{"type":"image","data":,"mimeType":,"note":}`
@@ -107,6 +118,46 @@ func readStructuredContent(content []ai.ToolResultMessageContent) json.RawMessag
 	out = appendEncodedString(append(out, `,"mimeType":`...), image.MimeType)
 	out = appendEncodedString(append(out, `,"note":`...), text)
 	return append(out, '}')
+}
+
+// structuredMatchChunk is the bytes of text StructuredContentMatches encodes into its scratch buffer at a time.
+const structuredMatchChunk = 2048
+
+// StructuredContentMatches reports whether structured is the structured content the built-in tool named toolName derives from content
+// alone (what RebuildStructuredContent returns), false for a tool that derives none. A text result is compared a chunk at a time
+// through a buffer on the stack, so a card that retains a finished read result does not encode the file again into a copy of its size.
+func StructuredContentMatches(toolName string, content []ai.ToolResultMessageContent, structured json.RawMessage) bool {
+	if toolName != "read" {
+		return false
+	}
+	text, _, haveImage := readOutputParts(content)
+	if haveImage {
+		return bytes.Equal(readStructuredContent(content), structured)
+	}
+	if len(structured) < len(`""`) || structured[0] != '"' || structured[len(structured)-1] != '"' {
+		return false
+	}
+	if quoted, ok := ai.QuotedPlainText(text); ok {
+		// The tool's structured content is the shared encoding itself, which a card that retains the result compares by its address.
+		return len(quoted) == len(structured) && (&quoted[0] == &structured[0] || bytes.Equal(quoted, structured))
+	}
+	rest := structured[1 : len(structured)-1]
+	// A chunk of text holds at most six bytes of encoding for each byte, and its quotes.
+	var scratch [6*structuredMatchChunk + 2]byte
+	for len(text) > 0 {
+		end := min(len(text), structuredMatchChunk)
+		// The cut falls where a sequence starts: the bytes before it decode as they do in the whole text, and those after it start a sequence.
+		for end < len(text) && !utf8.RuneStart(text[end]) {
+			end++
+		}
+		encoded := appendEncodedString(scratch[:0], text[:end])
+		body := encoded[1 : len(encoded)-1]
+		if !bytes.HasPrefix(rest, body) {
+			return false
+		}
+		rest, text = rest[len(body):], text[end:]
+	}
+	return len(rest) == 0
 }
 
 // encodedASCIILen is the length encoding/json writes for each ASCII byte with HTML escaping off: 1 for the byte itself, 2 for a short
@@ -125,10 +176,40 @@ var encodedASCIILen = func() (lengths [utf8.RuneSelf]uint8) {
 	return lengths
 }()
 
+// nextEscape is the index of the first byte of s at or after i that the encoder does not copy as it is: an ASCII control, a quote, a
+// backslash, or a byte of a multi-byte sequence; len(s) when there is none. It tests eight bytes at a time: a word's lowest flagged byte
+// is always a true hit (a borrow only spoils the bytes above it), so the lowest flag names the first byte.
+func nextEscape(s string, i int) int {
+	const (
+		ones = 0x0101010101010101
+		high = 0x8080808080808080
+	)
+	for ; i+8 <= len(s); i += 8 {
+		w := uint64(s[i]) | uint64(s[i+1])<<8 | uint64(s[i+2])<<16 | uint64(s[i+3])<<24 |
+			uint64(s[i+4])<<32 | uint64(s[i+5])<<40 | uint64(s[i+6])<<48 | uint64(s[i+7])<<56
+		quote, slash := w^(ones*'"'), w^(ones*'\\')
+		flags := ((w-ones*0x20)&^w | (quote-ones)&^quote | (slash-ones)&^slash | w) & high
+		if flags != 0 {
+			return i + bits.TrailingZeros64(flags)>>3
+		}
+	}
+	for ; i < len(s); i++ {
+		if c := s[i]; c < 0x20 || c == '"' || c == '\\' || c >= utf8.RuneSelf {
+			return i
+		}
+	}
+	return len(s)
+}
+
 // encodedStringLen is len(appendEncodedString(nil, s)).
 func encodedStringLen(s string) int {
 	n := len(`""`)
 	for i := 0; i < len(s); {
+		next := nextEscape(s, i)
+		n += next - i
+		if i = next; i == len(s) {
+			break
+		}
 		if c := s[i]; c < utf8.RuneSelf {
 			n += int(encodedASCIILen[c])
 			i++
@@ -155,11 +236,10 @@ func appendEncodedString(dst []byte, s string) []byte {
 	dst = append(dst, '"')
 	start := 0
 	for i := 0; i < len(s); {
+		if i = nextEscape(s, i); i == len(s) {
+			break
+		}
 		if c := s[i]; c < utf8.RuneSelf {
-			if encodedASCIILen[c] == 1 {
-				i++
-				continue
-			}
 			dst = append(dst, s[start:i]...)
 			switch c {
 			case '"', '\\':

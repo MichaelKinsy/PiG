@@ -64,7 +64,9 @@ fn make_provider() -> Arc<Provider> {
         name: "Carrier Provider".into(),
         base_url: Some("http://127.0.0.1:9".into()),
         headers: Some(json!({"X-Carrier":"present"})),
-        refresh_models_auth: std::env::var("CARRIER_REFRESH_AUTH").ok().filter(|v| !v.is_empty()),
+        refresh_models_auth: std::env::var("CARRIER_REFRESH_AUTH")
+            .ok()
+            .filter(|v| !v.is_empty()),
         auth: ProviderAuth {
             api_key: Some(APIKeyAuth {
                 name: "Carrier API key".into(),

@@ -3,6 +3,7 @@ package host
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"runtime"
 	"sync"
 	"testing"
@@ -601,6 +602,12 @@ var ctxProbe = mustContract(declareLocal("app.ctx-probe", contracts.LocalDeclara
 // whose `far` runs far.
 func ctxProbeHost(t *testing.T, seen *deskSeen, far func(ctx Ctx) error) Host {
 	t.Helper()
+	return ctxProbeHostOn(t, seen, far, nil)
+}
+
+// ctxProbeHostOn is ctxProbeHost on the loop (nil is the real one).
+func ctxProbeHostOn(t *testing.T, seen *deskSeen, far func(ctx Ctx) error, loop sectionLoop) Host {
+	t.Helper()
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
 		if err := h.Serve(ctxItem, func(params *delta.JsonObject, _ Self) (contracts.Implementation, error) {
 			seen.mu.Lock()
@@ -636,7 +643,7 @@ func ctxProbeHost(t *testing.T, seen *deskSeen, far func(ctx Ctx) error) Host {
 				"far": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) { return nil, far(ctx.(Ctx)) },
 			}}}, nil
 		}, ServeOptions{})
-	}, loadedOptions{})
+	}, loadedOptions{Loop: loop})
 	return host
 }
 
@@ -833,5 +840,152 @@ func TestLinkedAbortSignalsAnAbortOfOneSourceRemovesTheListenerOnTheOther(t *tes
 		}
 		<-linked.context.Done()
 		scopeEventually(t, "the listeners to go", func() bool { return callerCtx.count() == 0 && callCtx.count() == 0 })
+	}
+}
+
+// Deterministic pins of ctx.ts `get`'s two settle-turn statements (Pi ctx.ts:112-115 and 131-136), which the timing-driven
+// TestCtxAGetFinishingAfterItsHandlerSettledIsReleasedAtOnceRace11 reaches only through whichever of the settle's two effects
+// wins: a get still waiting when its handler settles gives up (the settling signal), and only a get whose acquire already
+// finished is released by `binding.release()`.
+
+// getName is the function name of callContext.Get as runtime reports it, the frame of the sections `Get` runs.
+var getName = runtime.FuncForPC(reflect.ValueOf((*callContext).Get).Pointer()).Name()
+
+// settlingLoop is a scopeLoop that settles a ctx in the turn of a `Get`'s section after its acquire: the Go form of "the get
+// finished in the turn its handler settled", at the exact point between `acquire` and `get`'s second step, without a timing.
+// The first section Get runs is its first synchronous part, the second the one after the acquire.
+type settlingLoop struct {
+	*scopeLoop
+	mu sync.Mutex
+	// call is the ctx whose Get is watched; nil settles nothing.
+	call *callContext
+	// sections counts the sections `call.Get` ran, settled the settles done.
+	sections, settled int
+}
+
+var _ sectionLoop = (*settlingLoop)(nil)
+
+// Run runs work as a section; the one `Get` runs after its acquire settles the ctx first, in that same section.
+func (l *settlingLoop) Run(work func()) {
+	pc, _, _, ok := runtime.Caller(1)
+	var frame string
+	if fn := runtime.FuncForPC(pc); ok && fn != nil {
+		frame = fn.Name()
+	}
+	l.mu.Lock()
+	settling := false
+	if l.call != nil && frame == getName {
+		l.sections++
+		settling = l.sections == 2
+	}
+	call := l.call
+	l.mu.Unlock()
+	if !settling {
+		l.scopeLoop.Run(work)
+		return
+	}
+	l.scopeLoop.Run(func() {
+		call.settle()
+		l.mu.Lock()
+		l.settled++
+		l.mu.Unlock()
+		work()
+	})
+}
+
+// Mirrors "ctx › a ctx.get finishing after its handler settled is released at once (race 11)", pinned deterministically: the
+// handler settles in the turn the get finished its acquire (ctx.ts:112-115 `binding.release()`), no sleep, no gate.
+func TestCtxAGetThatFinishedItsAcquireInTheTurnItsHandlerSettledIsReleasedAtOnceRace11Deterministic(t *testing.T) {
+	loop := &settlingLoop{scopeLoop: newScopeLoop()}
+	seen := &deskSeen{}
+	host := ctxProbeHostOn(t, seen, nil, loop)
+	defer closeHosts(t, host)
+	_, err := host.Root(func(root Ctx) (any, error) {
+		loop.mu.Lock()
+		loop.call = root.(*callContext)
+		loop.mu.Unlock()
+		reference, err := root.Get(ctxItem, jsonObject("id", float64(1)), GetOptions{})
+		if reference != nil {
+			t.Errorf("reference of a get that finished after the settle = %v, want none", reference)
+		}
+		return nil, err
+	}, background, RootOptions{})
+	wantScopeError(t, err, data.CodeReleased, data.ReasonSettled, "app.item: ctx.get after its call settled")
+	loop.mu.Lock()
+	sections, settled := loop.sections, loop.settled
+	loop.mu.Unlock()
+	if sections != 2 || settled != 1 {
+		t.Fatalf("Get ran %d sections and the ctx settled %d times, want 2 and 1", sections, settled)
+	}
+	turn(host)
+	// The object was made for the get and ended with its reference: the release was at once, not left for a settle that will
+	// not come.
+	if got := seen.factoryCount(); got != 1 {
+		t.Fatalf("factories = %d, want 1", got)
+	}
+	h := host.(*chordHost)
+	var items, kept int
+	h.enter(func() {
+		for _, object := range h.objectList() {
+			if object.served.contract.Name == "app.item" {
+				items++
+			}
+		}
+		kept = len(loop.call.references)
+	})
+	if items != 0 {
+		t.Fatalf("app.item objects alive = %d, want 0", items)
+	}
+	if kept != 0 {
+		t.Fatalf("the settled ctx kept %d references, want 0", kept)
+	}
+}
+
+// ctx.ts:131-136 `settle`: `this.#references = undefined` after the references were taken: a settle releases each reference
+// and leaves none behind, so a later settle (or a late get) finds nothing to release twice.
+func TestCtxSettleReleasesTheReferencesAndForgetsThem(t *testing.T) {
+	seen := &deskSeen{}
+	host := ctxProbeHost(t, seen, nil)
+	defer closeHosts(t, host)
+	h := host.(*chordHost)
+	var call *callContext
+	_, err := host.Root(func(root Ctx) (any, error) {
+		call = root.(*callContext)
+		for id := 1; id <= 2; id++ {
+			if _, err := call.Get(ctxItem, jsonObject("id", float64(id)), GetOptions{}); err != nil {
+				return nil, err
+			}
+		}
+		var held, items int
+		h.enter(func() {
+			held = len(call.references)
+			for _, object := range h.objectList() {
+				if object.served.contract.Name == "app.item" {
+					items++
+				}
+			}
+		})
+		if held != 2 || items != 2 {
+			t.Errorf("before the settle: %d references, %d items, want 2 and 2", held, items)
+		}
+		h.enter(call.settle)
+		return nil, nil
+	}, background, RootOptions{})
+	must(t, err)
+	turn(host)
+	var kept, items int
+	h.enter(func() {
+		kept = len(call.references)
+		for _, object := range h.objectList() {
+			if object.served.contract.Name == "app.item" {
+				items++
+			}
+		}
+	})
+	if kept != 0 || call.references != nil {
+		t.Fatalf("the settled ctx kept %d references (nil: %v), want none", kept, call.references == nil)
+	}
+	if items != 0 {
+		t.Fatalf("app.item objects alive after the settle = %d, want 0", items)
 	}
 }

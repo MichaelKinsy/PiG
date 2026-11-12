@@ -225,6 +225,7 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 	readyOK := true
 	var operationErr error
 	var frames FrameWatchResult
+	var finalFrame FinalFrameResult
 	if ready != "" {
 		timeout := time.Duration(cfg.ReadyTimeoutSeconds) * time.Second
 		readyOK = waitForPaneOrCapture(ctx, session, ready, cfg.CaptureStart, timeout)
@@ -265,6 +266,9 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 			if err != nil {
 				operationErr = err
 				break
+			}
+			if step.FinalFrame != nil {
+				finalFrame = finalFrame.merge(observeFinalFrame(transcriptPath, *step.FinalFrame))
 			}
 		}
 	} else if operationErr == nil {
@@ -322,6 +326,7 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 		ReadyOK:         readyOK,
 		Err:             operationErr,
 		FrameWatch:      frames,
+		FinalFrame:      finalFrame,
 	}
 	if result.Err == nil && readyOK && cfg.CaptureStart != "" && !strings.Contains(pane, cfg.CaptureStart) {
 		result.Err = fmt.Errorf("capture_start %q absent after scenario steps", cfg.CaptureStart)

@@ -30,8 +30,8 @@ func TestTheWorkerBaseCloseKeepsTheBasesCopyUntilItsWorkersExitedACloserStillFin
 // Pi's closing re-check after `awaitWithContext(#built(), #closingContext)`: a build that ended and a close are both ready; the close wins.
 func TestTheWorkerBaseAStartsWaitForTheBuildEndsClosedWhenTheBuildAndTheCloseAreBothDone(t *testing.T) {
 	f := newFleet(t, fleetOptions{})
-	if built := f.workers.Build(); built.Err != nil {
-		t.Fatal(built.Err)
+	if err := buildError(f.workers.Build()); err != nil {
+		t.Fatal(err)
 	}
 	if err := f.workers.Close(background); err != nil {
 		t.Fatal(err)

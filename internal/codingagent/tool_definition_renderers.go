@@ -174,6 +174,10 @@ const toolCardSweepMin = 256
 // invalidate that runs both renderers again.
 func (m *InteractiveMode) toolDefinitionRenderers(definition extension.ToolRenderers, card func() *tui.ToolExecutionComponent, toolCallID string) *tui.ToolDefinitionRenderers {
 	state := map[string]any{}
+	if m.backgroundCtx != nil {
+		// The card's highlight warm-up (warmWholeHighlight) runs in the session's background group, which ends with its context.
+		state[builtInRenderStateKey] = &builtInRenderState{lifetime: m.backgroundCtx, spawn: m.backgroundTasks.Go}
+	}
 	cardID := "card-" + strconv.FormatUint(toolCardSeq.Add(1), 10)
 	cwd := m.opts.CWD
 	invalidate := func() {
@@ -221,7 +225,7 @@ func (m *InteractiveMode) toolDefinitionRenderers(definition extension.ToolRende
 	if definition.RenderResult != nil {
 		var last extension.Component
 		renderers.Result = func(input tui.ToolRenderInput) (tui.Component, bool) {
-			result, ok := toolResultOf(card().ResultValue())
+			result, ok := toolResultForRenderer(card().ResultValue(), definition.RenderResult)
 			if !ok {
 				result = agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: card().Output}}, IsError: input.IsError}
 			}

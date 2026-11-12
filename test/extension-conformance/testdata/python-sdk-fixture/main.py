@@ -998,6 +998,39 @@ def new_extension() -> pig_sdk.Extension:
                 log.append("spawnHook:" + spawn["command"])
                 return {"command": "printf '%s|%s' \"$HOOK_VAR\" \"$PI_SESSION_ID\"", "cwd": spawn["cwd"], "env": {**spawn["env"], "HOOK_VAR": "hook-env"}}
         ops = None
+        if case.get("ops") == "localThread":
+            # The local operations run on another thread and their error comes back unchanged.
+            local = pig_sdk.create_local_bash_operations()
+
+            def local_thread_exec(command, cwd, options):
+                outcome = {}
+
+                def run():
+                    try:
+                        outcome["result"] = local.exec(command, cwd, options)
+                    except BaseException as error:  # noqa: BLE001
+                        outcome["error"] = error
+
+                worker = threading.Thread(target=run)
+                worker.start()
+                worker.join()
+                if "error" in outcome:
+                    raise outcome["error"]
+                return outcome["result"]
+            ops = pig_sdk.BashOperations(exec=local_thread_exec)
+        if case.get("ops") in ("local", "localWrapped"):
+            # The bash tool runs on the local operations. "local" raises their error unchanged; "localWrapped" raises a new one with the same message, which is not the
+            # backend's error and keeps nothing of it (Pi matches the backend's class, bash.ts).
+            local = pig_sdk.create_local_bash_operations()
+
+            def local_exec(command, cwd, options):
+                try:
+                    return local.exec(command, cwd, options)
+                except Exception as error:  # noqa: BLE001
+                    if case["ops"] == "localWrapped":
+                        raise RuntimeError(str(error)) from None
+                    raise
+            ops = pig_sdk.BashOperations(exec=local_exec)
         if custom:
             def exec_(command, cwd, options):
                 log.append("exec:%s|cwd=%s" % (command, cwd))
@@ -1914,6 +1947,28 @@ def new_extension() -> pig_sdk.Extension:
         time.sleep(8)
         return {"content": "late"}
 
+    # signal_host_probe shows that the host keeps answering a tool's host calls after its abort, as Pi's in-process calls are.
+    def signal_host_probe(ctx, _params):
+        def ask(title):
+            try:
+                return ctx.input(title, "p")[0]
+            except Exception as error:
+                return "failed: %s" % error
+
+        first = ask("tool_signal:first")
+        aborted = str(ctx.is_cancelled()).lower()
+        second = ask("tool_signal:later")
+        return {"content": "tool_signal:%s:%s:%s" % (aborted, first, second)}
+
+    # signal_nested_probe shows that the host keeps answering a nested tool call's host calls after the abort, as Pi's in-process calls are.
+    def signal_nested_probe(ctx, _params):
+        try:
+            result = ctx.execute_tool("abort_tool", {})["result"]
+            text = "".join(block.get("text", "") for block in result["content"]) if isinstance(result["content"], list) else result["content"]
+        except Exception as error:
+            text = "failed: %s" % error
+        return {"content": "tool_signal_nested:" + text}
+
     ext.tool("big_out", "Return text of the size in the argument", {"type": "object", "properties": {}}, lambda ctx, params: {"content": [{"type": "text", "text": "a" * int(params["n"])}]})
     ext.tool("echo_params", "Return the arguments as the result details", {"type": "object", "properties": {}}, lambda ctx, params: {"content": [{"type": "text", "text": "echoed"}], "details": params})
     ext.tool("nan_out", "Return details holding NaN and Infinity", {"type": "object", "properties": {}}, lambda ctx, params: {"content": [{"type": "text", "text": "nan"}], "details": {"n": float("nan"), "i": float("-inf"), "l": [float("nan"), 2, {"d": float("inf")}], "ok": 1}})
@@ -1922,6 +1977,8 @@ def new_extension() -> pig_sdk.Extension:
     ext.tool("ordered_result", "Return a result whose members are not in the declared order", {"type": "object", "properties": {}}, ordered_result)
     ext.tool("abort_tool", "Wait for the abort signal", {"type": "object", "properties": {}}, abort_tool)
     ext.tool("hang_tool", "Ignore the abort signal", {"type": "object", "properties": {}}, hang_tool)
+    ext.tool("signal_host_probe", "Await host dialogs across the abort", {"type": "object", "properties": {}}, signal_host_probe)
+    ext.tool("signal_nested_probe", "Run abort_tool as a nested tool call", {"type": "object", "properties": {}}, signal_nested_probe)
     ext.command(
         "abort_probe",
         "Report whether abort_tool saw its abort signal",
@@ -2544,6 +2601,27 @@ def new_extension() -> pig_sdk.Extension:
         ext.on_event(name, lambda hctx, data: result)
 
     ext.command("event_result_probe", "Subscribe to an event with a handler that returns the given JSON", event_result_probe)
+
+    def event_signal_probe(ctx, args):
+        # Subscribe to session_before_compact or session_before_tree with a handler that returns the state of its event signal (the request's cancellation) on its first line and after a dialog it opened was answered, and the dialog's answer: the signal aborts while the dialog is pending (mode "wait") or before the handler runs (mode "first"), and Pi's in-process host call still returns its answer.
+        name = args.strip()
+
+        def handler(hctx, data):
+            source = data.get("preparation", {}) if name == "session_before_tree" else data
+            mode = source.get("customInstructions", "")
+            before = hctx.is_cancelled()
+            try:
+                answer = hctx.input("event_signal:%s:%s:pending" % (name, mode), "p")[0]
+            except Exception as error:
+                answer = "failed: %s" % error
+            state = "event_signal:%s:%s:%s:%s" % (mode, str(before).lower(), str(hctx.is_cancelled()).lower(), answer)
+            if name == "session_before_compact":
+                return {"compaction": {"summary": state, "firstKeptEntryId": "k", "tokensBefore": 1}}
+            return {"label": state}
+
+        ext.on_event(name, handler)
+
+    ext.command("event_signal_probe", "Subscribe to session_before_compact or session_before_tree with a handler that returns the state of its event signal", event_signal_probe)
 
     def event_ordered_result_probe(ctx, args):
         # A Python dict keeps its members in the order they were written, so this is event_result_probe.

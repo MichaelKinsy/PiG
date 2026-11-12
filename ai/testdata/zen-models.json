@@ -197,6 +197,10 @@
   },
   {
     "provider": "opencode",
+    "id": "minimax-m3.1-flash-free"
+  },
+  {
+    "provider": "opencode",
     "id": "mistral-large-4"
   },
   {

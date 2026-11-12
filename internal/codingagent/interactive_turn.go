@@ -339,7 +339,7 @@ func (m *InteractiveMode) startTurn(ctx context.Context, prompt string, images [
 					m.statusLine.SetWorking(false)
 					m.stopWorkingLoader() // belt-and-suspenders: ensure loader is removed on abort
 				}
-				m.updatePendingMessagesDisplay() // clear stale queue indicators
+				m.rebuildPendingMessages() // clear stale queue indicators
 				m.tuiInst.Render()
 			})
 			// Upstream prompt() throws before _runAgentPrompt, so a rejected
@@ -377,6 +377,7 @@ func (m *InteractiveMode) startTurn(ctx context.Context, prompt string, images [
 		if userPrompt {
 			if err := m.validatePromptModelAuth(runCtx); err != nil {
 				rejected = true
+				markPromptRejected(ctx)
 				_ = m.settleTurn(runCtx, err)
 				if runCtx.Err() == nil {
 					m.runOnMain(m.runCtx, func() { m.rejectPrompt(ctx, err) })
@@ -401,9 +402,15 @@ func (m *InteractiveMode) startTurn(ctx context.Context, prompt string, images [
 		if userPrompt {
 			err = m.prepareRunPrompt(runCtx, runner, gen, extension.UserPromptTrigger(prompt, images))
 			rejected = err != nil
+			if rejected {
+				markPromptRejected(ctx)
+			}
 		} else if custom != nil {
 			err = m.prepareRunPrompt(runCtx, runner, gen, extension.CustomMessageTrigger(*custom))
 			rejected = err != nil
+			if rejected {
+				markPromptRejected(ctx)
+			}
 		}
 
 		// The user prompt, assistant messages, and tool results are all persisted
@@ -424,7 +431,6 @@ func (m *InteractiveMode) startTurn(ctx context.Context, prompt string, images [
 				m.showTurnError(err)
 			}
 		}
-		m.runOnMain(m.runCtx, func() { m.tuiInst.Render() })
 	}()
 }
 

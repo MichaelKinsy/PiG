@@ -33,7 +33,7 @@ import (
 // one way for a file that exists, another for one that does not: Opus E13), and allocate memory outside its heap (no limit
 // without a shell's `ulimit`; only the child dies). Needs Node 26.5.1 or later.
 //
-// Forced Go difference (D602). Pi's launcher runs on Node and starts the sandbox with its own binary (`process.execPath`); the
+// Forced Go difference (language mechanics: a Go program is not Node). Pi's launcher runs on Node and starts the sandbox with its own binary (`process.execPath`); the
 // Go launcher starts the Node of SandboxOptions.Node (a Node 26.5.1 or later), and the bootstrap is Pi's text, vendored.
 
 // maxBundle is the largest base bundle a sandbox runs: 8 MiB.
