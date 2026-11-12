@@ -3,13 +3,17 @@
 package ciimages
 
 import (
+	"maps"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"slices"
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // macOS runs the packages whose tests reached macOS-only failures (104-byte
@@ -90,6 +94,84 @@ func TestMacOSShardsTestTheMacOSSensitivePackages(t *testing.T) {
 	}
 	if !strings.Contains(script, "go test -timeout 30m ./env ./coding/piglet || failed=1\n") {
 		t.Error("macos-units.sh does not run the packages unit")
+	}
+}
+
+// macosUnitSteps returns, for each kind of unit that macos-units.sh runs, the text a job's shard name must hold for the workflow to run the step of that kind.
+func macosUnitSteps(t *testing.T) map[string]string {
+	t.Helper()
+	condition := regexp.MustCompile(`contains\(matrix\.shard, '([^']+)'\)`)
+	steps := map[string]string{}
+	for _, step := range verificationJobs(t)["macos"].Steps {
+		kind, ok := strings.CutPrefix(strings.TrimSpace(step.Run), "automation/ci/macos-units.sh ")
+		if !ok {
+			continue
+		}
+		match := condition.FindAllStringSubmatch(step.If, -1)
+		if len(match) != 1 || step.Env["UNITS"] != "${{ matrix.shard }}" {
+			t.Fatalf("macos step %q runs if %q with UNITS %q, want one contains(matrix.shard, ...) condition and the job's units", step.Run, step.If, step.Env["UNITS"])
+		}
+		steps[kind] = match[0][1]
+	}
+	return steps
+}
+
+// However ci-tiers.txt packs the units into jobs, the macOS jobs of the full run together run every test once: each job runs the macos-units.sh steps its shard name selects in the workflow, the cmd/pig units
+// and the extension host units select every test of their package exactly once across the jobs, and the packages unit runs once. The fixture's fake go lists the same tests for every package and records each go test.
+func TestMacOSJobsRunEveryTestOfEveryUnitExactlyOnce(t *testing.T) {
+	shards, cliPkg := cliShards(t)
+	const hostPkg = "./coding/extension/host/subprocess"
+	steps := macosUnitSteps(t)
+	root := groupedTestFixture(t)
+	copyCIFixture(t, root, "automation/ci/macos-units.sh")
+	runs, packages := filepath.Join(root, "runs"), filepath.Join(root, "packages")
+	writeCIFixture(t, root, "runs", "")
+	writeCIFixture(t, root, "packages", "")
+	t.Setenv("RUN_LOG", runs)
+	t.Setenv("TEST_LOG", packages)
+	// The fake go test runs only with the fixtures test-grouped.sh exports; macos-units.sh needs none.
+	t.Setenv("CI_TEST_FIXTURES", "ready")
+	t.Setenv("RUNNER_TEMP", t.TempDir())
+	for _, entry := range planFor(t, "merge_group", "").shards("macos") {
+		for kind, marker := range steps {
+			if !strings.Contains(entry, marker) {
+				continue
+			}
+			cmd := exec.CommandContext(t.Context(), testenv.Bash(t), "automation/ci/macos-units.sh", kind)
+			cmd.Dir = root
+			cmd.Env = append(os.Environ(), "UNITS="+entry)
+			if output, err := cmd.CombinedOutput(); err != nil {
+				t.Fatalf("macos job %q, %s units: %v\n%s", entry, kind, err, output)
+			}
+		}
+	}
+	data, err := os.ReadFile(runs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	patterns := map[string][]string{}
+	for line := range strings.Lines(string(data)) {
+		pkg, pattern, ok := strings.Cut(strings.TrimSpace(line), " ")
+		if !ok {
+			t.Fatalf("a unit ran %q, want one package with a -run pattern", line)
+		}
+		patterns[pkg] = append(patterns[pkg], pattern)
+	}
+	if len(patterns) != 2 || len(patterns[cliPkg]) != shards || len(patterns[hostPkg]) != 3 {
+		t.Fatalf("the macos jobs ran shards of %v, want %d of %s and 3 of %s", slices.Sorted(maps.Keys(patterns)), shards, cliPkg, hostPkg)
+	}
+	requireShardPartition(t, patterns[cliPkg])
+	requireShardPartition(t, patterns[hostPkg])
+	data, err = os.ReadFile(packages)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]int{}
+	for line := range strings.Lines(string(data)) {
+		got[strings.TrimSpace(line)]++
+	}
+	if want := map[string]int{cliPkg: shards, hostPkg: 3, "./env": 1, "./coding/piglet": 1}; !maps.Equal(got, want) {
+		t.Fatalf("go test processes per package = %v, want %v", got, want)
 	}
 }
 
