@@ -307,7 +307,6 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 		}
 	}
 	pane, escaped, cropErr := cropCaptures(cfg, use, pane, escaped)
-	plainUncropped, escapedUncropped := uncroppedKinds(cfg, use)
 	if !readyOK && paneMatchesCaptureSurface(pane, cfg) {
 		readyOK = true
 	}
@@ -339,21 +338,15 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 	}
 
 	result = Result{
-		ChangelogSource:  changelogSource,
-		Output:           pane,
-		Escaped:          escaped,
-		PlainUncropped:   plainUncropped && cropErr == nil,
-		EscapedUncropped: escapedUncropped && cropErr == nil,
-		ExitCode:         exitCode,
-		RuntimeMs:        elapsed,
-		ReadyOK:          readyOK,
-		Err:              operationErr,
-		FrameWatch:       frames,
-		FinalFrame:       finalFrame,
+		ChangelogSource: changelogSource,
+		ExitCode:        exitCode,
+		RuntimeMs:       elapsed,
+		ReadyOK:         readyOK,
+		Err:             operationErr,
+		FrameWatch:      frames,
+		FinalFrame:      finalFrame,
 	}
-	if result.Err == nil && cropErr != nil {
-		result.Err = finalCaptureError(sc.Name, bin.Label, cfg, cropErr)
-	}
+	result = withFinalCaptures(result, sc.Name, bin.Label, cfg, use, pane, escaped, cropErr)
 	// Coverage-only: Go integration coverage flushes on a clean process exit, but
 	// an interactive pig sits at its prompt and is SIGKILLed at teardown, losing
 	// its counters. When GOCOVERDIR is set, drive a clean quit after capture so
@@ -886,7 +879,7 @@ func capturePairFrom(ctx context.Context, read paneReader, cfg TmuxDriverConfig,
 		_, _, err := cropCaptures(cfg, use, plain, escaped)
 		return err == nil
 	}
-	return captureStablePair(ctx, read, cropsCleanly, finalCaptureBudget(cfg), tmuxQuiescencePoll)
+	return captureStablePair(ctx, wallClock, read, cropsCleanly, finalCaptureBudget(cfg), tmuxQuiescencePoll)
 }
 
 // sessionRegistry tracks every tmux session created by Run() so we can
