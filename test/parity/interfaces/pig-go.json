@@ -245043,6 +245043,17 @@
       "shapeHash": "sha256:711d81fcf01ebb8fe009deacf95deb27ae833c4135e420db9254bcafa959f4af"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#CacheWarmer.StartCapturing",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "CacheWarmer.StartCapturing",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(request CacheWarmRequest, capture func() func() bool)"
+      },
+      "shapeHash": "sha256:2328effb345b33a46f52d137ae38ea8454856185f5878f53b69079ca66d23d29"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#CacheWarmer.Status",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "CacheWarmer.Status",
