@@ -155494,7 +155494,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "88 normalized-name Pig candidates are ambiguous."
+        "89 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -155586,6 +155586,7 @@
         "go:github.com/MichaelKinsy/PiG/tui#lastKeystroke.Store",
         "go:github.com/MichaelKinsy/PiG/tui#modifyOtherKeysActive.Store",
         "go:github.com/MichaelKinsy/PiG/tui#resolvedWriteLogs.Store",
+        "go:github.com/MichaelKinsy/PiG/tui#screenWriters.Store",
         "go:github.com/MichaelKinsy/PiG/tui#selectedThemeName.Store",
         "go:github.com/MichaelKinsy/PiG/tui#terminalColorScheme.Store",
         "go:github.com/MichaelKinsy/PiG/tui#terminalColorsPending.Store",

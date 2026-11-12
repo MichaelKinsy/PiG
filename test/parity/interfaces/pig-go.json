@@ -349379,6 +349379,17 @@
       "shapeHash": "sha256:abda90b0a9dee566c1c4d8a5e69e5e1e0dc21a5f6a3f00ada27ad225d1a5f10b"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ProcessTerminal.ScreenWriterActive",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ProcessTerminal.ScreenWriterActive",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#ProcessTerminal.SetProgramStatus",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "ProcessTerminal.SetProgramStatus",
@@ -384293,6 +384304,17 @@
       "shapeHash": "sha256:2a33108ea3d2f24e2b9b3b3d7f4924634f9eb7519f8f68a8f50d78ad022c81f0"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#newTerminalScreenWriter",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "newTerminalScreenWriter",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(t *ProcessTerminal, getenv func(string) string) *github.com/MichaelKinsy/PiG/internal/screenwriter.Writer"
+      },
+      "shapeHash": "sha256:995a4a6b0802851ac8f98df1776e592b043bb7d1cc01dffcbbfeb28ab1117c52"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#newTerminalWriteLog",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "newTerminalWriteLog",
@@ -387340,6 +387362,17 @@
       "shapeHash": "sha256:abda90b0a9dee566c1c4d8a5e69e5e1e0dc21a5f6a3f00ada27ad225d1a5f10b"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#rendererTerminal.ScreenWriterActive",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "rendererTerminal.ScreenWriterActive",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#rendererTerminal.SetProgramStatus",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "rendererTerminal.SetProgramStatus",
@@ -388328,6 +388361,127 @@
         "type": "func(filePath string, query string, isDirectory bool) int"
       },
       "shapeHash": "sha256:9105d10b68b0ed5031593e27977fd6ac01aeca174596b0b5a40a1aa6eae4ea1d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#screenWriterEnv",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "screenWriterEnv",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#screenWriterLog",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "screenWriterLog",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "screenWriterLog"
+      },
+      "shapeHash": "sha256:1904703e7858ceb36e8c18f38c6e4bd449dba46c816ab3ac4db0ef0ea54c8b0d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#screenWriterLog.append",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "screenWriterLog.append",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(kind byte, in string, out string)"
+      },
+      "shapeHash": "sha256:386db3ba85423b699ce276ce8227d112e4493e2038ac85e4af07284933c36587"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#screenWriterLogEnv",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "screenWriterLogEnv",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#screenWriterOutput",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "screenWriterOutput",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "screenWriterOutput"
+      },
+      "shapeHash": "sha256:b7287e741e52068bf0192d5357e1812ff5162fa60a3d8d3774242ffd74ba895c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#screenWriterWrittenPast",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "screenWriterWrittenPast",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(out io.Writer, data string)"
+      },
+      "shapeHash": "sha256:a291e1e4aa75f521f2c82b837ab8e05fbb62a8a2f44a18ab113fd88691d1a83c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#screenWriters",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "screenWriters",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "sync/atomic.Pointer[[]screenWriterOutput]"
+      },
+      "shapeHash": "sha256:700fc3056441fdefab5e3181cebb9cbe49a1e2100ad0674af05dde5cd995f23d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#screenWriters.CompareAndSwap",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "screenWriters.CompareAndSwap",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(old *[]screenWriterOutput, new *[]screenWriterOutput) (swapped bool)"
+      },
+      "shapeHash": "sha256:9e88715caa99a103a3c2909a5f43f26507e3221b052940bdbc11593cd081f04c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#screenWriters.Load",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "screenWriters.Load",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() *[]screenWriterOutput"
+      },
+      "shapeHash": "sha256:01a881961a8e5e9f05b1c0c25163d84d5ba6008f1786e7427f13e51391133f14"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#screenWriters.Store",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "screenWriters.Store",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(val *[]screenWriterOutput)"
+      },
+      "shapeHash": "sha256:9aa0adb7fde509f0fd3e86c9b7563231aa3872c98262be52330cfe521a6d2933"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#screenWriters.Swap",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "screenWriters.Swap",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(new *[]screenWriterOutput) (old *[]screenWriterOutput)"
+      },
+      "shapeHash": "sha256:09cc5383498c893fa040d4d3ece3f8af74de1568dc3478449da5b19863fe1a8e"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#scrollRegionsUsable",
