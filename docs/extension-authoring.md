@@ -610,8 +610,24 @@ there are any.
    `done` with an answer, `refused` or `failed`. A cancellable intent's handler is cancelled when its timeout elapses or the
    user withdraws it (`ctx` cancellation, `is_cancelled`, `AbortSignal`); its answer is then dropped.
 
-Conformance: `TestConformance_UIViewMounts` runs the same probe in every SDK against the host, and `docs/additive-features.md` D614
-lists the records.
+5. Offer alternatives when clients differ. The abilities carry `claims` (facts the client states, such as a color count) and
+   `slotClaims`. Pass `alternatives` (at most 8) with the mount: each has a `when` predicate over the claims and its own view. The
+   host sends every client the first alternative whose predicate holds for it, otherwise the view. You do not choose per client.
+6. Add a `drawing` when the view needs vector shapes or a pixel grid: profile `scene` with `shapes`, or `pixels` with an image
+   asset. Read `abilities.drawing` first: a client that does not draw the profile makes the call fail with `unsupported`, and more
+   shapes than it states fail with `limit`. `regions` turn a gesture inside a shape into one of your declared intents.
+7. Describe nodes to assistive technology with `a11y` and make them focusable with `focus`. Both name view nodes by their `id`,
+   so give those nodes an id.
+8. Leave a result when you finish: `FinishViewWith(ref, result)`, `finish_view(mount, result=...)`, `finish_view_with`,
+   `(ctx-finish-view ctx mount :result value)`, `ctx.ui.finishView(mount, result)`. The reply and the state carry it back.
+9. Read what went wrong with `ViewDiagnostics(key)`, `view_diagnostics`, `view_diagnostics`, `ctx-view-diagnostics` or
+   `ctx.ui.viewDiagnostics`: the notices of a mount say which update the host rejected, which intent it ended and what a client
+   could not draw. The host keeps 32 notices for a mount and counts repeats.
+
+Every bound is the host's: one past it fails with code `invalid` in every SDK. `docs/additive-features.md` D614 lists the bounds.
+
+Conformance: `TestConformance_UIViewMounts` and `TestConformance_UIViewExtras` run the same probes in every SDK against the host, and
+`docs/additive-features.md` D614 lists the records.
 
 ## Adding a new extension API surface
 
