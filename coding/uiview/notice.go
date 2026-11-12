@@ -1,6 +1,7 @@
 package uiview
 
 import (
+	"encoding/json"
 	"fmt"
 	"slices"
 	"strings"
@@ -178,6 +179,23 @@ func (m *mount) note(n Notice) {
 		m.notices = slices.Delete(m.notices, 0, 1)
 	}
 	m.notices = append(m.notices, n)
+}
+
+// Rejected records that an operation on a mount was refused before it reached the registry, because its record is
+// outside the closed shape. raw is the refused record; only its mount ref is read. A record that names no current
+// incarnation of a mount leaves no notice.
+func (r *Registry) Rejected(plugin string, op string, raw []byte, err *Error) {
+	var head struct {
+		Mount Ref `json:"mount"`
+	}
+	if json.Unmarshal(raw, &head) != nil || head.Mount.Key == "" {
+		return
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if m := r.mounts[ownerKey{plugin, head.Mount.Key}]; m != nil && m.snap.Mount.Epoch == head.Mount.Epoch {
+		m.rejected(op, err)
+	}
 }
 
 // Diagnostics returns the notices of the mount of plugin under key, oldest first.

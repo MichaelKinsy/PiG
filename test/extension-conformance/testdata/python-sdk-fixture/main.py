@@ -2416,6 +2416,97 @@ def new_extension() -> pig_sdk.Extension:
             return pig_sdk.ViewIntentResult("done", {})
         return pig_sdk.ViewIntentResult("refused", error="unknown intent")
 
+    # D614 amendment: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewExtras).
+    def x_claim(claims, name):
+        return next((c.value for c in claims if c.name == name), None)
+
+    def x_picked(ab):
+        return next((x_claim(sc.claims, "display.colors") for sc in ab.slot_claims if sc.slot == "panel"), None)
+
+    def x_list(node_id, label):
+        return kit.View(kit.SelectList(node_id, [kit.SelectItem(node_id, label)]))
+
+    def x_rects(n):
+        return [{"kind": "rect", "width": 1, "height": 1} for _ in range(n)]
+
+    def x_code(call):
+        try:
+            call()
+            return "none"
+        except pig_sdk.ViewError as err:
+            return err.code
+
+    def view_extras_probe(ctx, _args):
+        ab = ctx.view_abilities()
+        picked = x_picked(ab)
+        ctx.notify(
+            f"view-x-claims:colors={x_claim(ab.claims, 'display.colors')},kind={x_claim(ab.claims, 'display.kind')},"
+            f"gestures={'+'.join(x_claim(ab.claims, 'input.gestures'))},hover={str(x_claim(ab.claims, 'display.hover')).lower()},"
+            f"panel.colors={picked},profiles={'+'.join(ab.drawing.profiles)},shapes={ab.drawing.shapes},pixels={ab.drawing.pixels}",
+            "info",
+        )
+        when = {"any": [{"all": [{"claim": "display.colors", "op": "equals", "value": picked}]}]}
+        region = {"key": "r", "shape": {"kind": "rect", "width": 4, "height": 4}, "gestures": ["activate"], "intent": "fx.tap", "name": "Tap"}
+        st = ctx.mount_view(
+            "extras",
+            "panel",
+            x_list("base", "fixture-x-base"),
+            intents=[pig_sdk.ViewIntent(name="fx.tap", arg=pig_sdk.ViewShape("object"))],
+            alternatives=[{"when": when, "view": x_list("alt", f"fixture-x-alt-{picked}"), "drawing": {"profile": "scene", "shapes": x_rects(ab.drawing.shapes - 1), "regions": [region]}}],
+            a11y=[
+                {"node": "alt", "name": f"Extras {picked}", "role": "button", "checked": True, "relations": [{"kind": "describedBy", "target": "base"}]},
+                {"node": "base", "name": "Base"},
+            ],
+            focus=[{"node": "alt", "request": "mount", "restore": "previous"}],
+        )
+        ctx.notify(f"view-x-mounted:{st.state}", "info")
+
+        def attempt(label, **content):
+            ctx.notify(f"view-x-{label}:{x_code(lambda: ctx.update_view(st.mount, x_list('base', 'fixture-x-base'), **content))}", "info")
+
+        def scene(shapes):
+            return {"profile": "scene", "shapes": shapes}
+
+        present = {"any": [{"all": [{"claim": "display.hover", "op": "present"}]}]}
+        nested = {"kind": "rect", "width": 1, "height": 1}
+        for _ in range(8):
+            nested = {"kind": "group", "children": [nested]}
+        attempt("alts", alternatives=[{"when": present, "view": x_list("base", "fixture-x-base")} for _ in range(9)])
+        attempt("nest", drawing=scene([nested]))
+        attempt("points", drawing=scene([{"kind": "polyline", "points": [{"x": i, "y": i} for i in range(1025)]}]))
+        attempt("shapes", drawing=scene(x_rects(4097)))
+        attempt("a11y", a11y=[{"node": f"n{i}"} for i in range(257)])
+        attempt("over", drawing=scene(x_rects(ab.drawing.shapes + 1)))
+        attempt(
+            "pixels",
+            drawing={"profile": "pixels", "pixels": {"width": 2, "height": 2, "asset": "img", "scaling": "nearest"}},
+            assets=[pig_sdk.ViewAsset(id="img", mime="image/png", size=4, sha256="a" * 64, delivery="inline")],
+        )
+        old = pig_sdk.ViewRef(st.mount.key, st.mount.epoch, st.mount.rev + 50)
+        stale = "none"
+        for _ in range(3):
+            stale = x_code(lambda: ctx.update_view(old, x_list("base", "fixture-x-base")))
+        ctx.notify(f"view-x-stale:{stale}", "info")
+        notices = ctx.view_diagnostics("extras")
+
+        def count(code):
+            return sum(n.count for n in notices if n.code == code and n.path == "update")
+
+        ctx.notify(f"view-x-diag:invalid={count('invalid')},limit={count('limit')},unsupported={count('unsupported')},stale={count('stale')}", "info")
+        ctx.notify(f"view-x-bigresult:{x_code(lambda: ctx.finish_view(st.mount, result='r' * 65536))}", "info")
+
+    def view_extras_end_probe(ctx, _args):
+        picked = x_picked(ctx.view_abilities())
+        st = ctx.view_state("extras")
+        notices = ctx.view_diagnostics("extras")
+        ctx.notify(f"view-x-diag2:n={len(notices)},last={notices[-1].path if notices else ''}", "info")
+        done = ctx.finish_view(st.mount, result={"picked": picked})
+        ctx.notify(f"view-x-finished:{done.state},picked={done.result['picked']}", "info")
+        cur = ctx.view_state("extras")
+        ctx.notify(f"view-x-state:{cur.state},picked={cur.result['picked']}", "info")
+
+    ext.command("ui_view_extras", "Mount a view with alternatives, a drawing, a11y and focus, and probe the bounds", view_extras_probe)
+    ext.command("ui_view_extras_end", "Read the notices of the extras mount and finish it with a result", view_extras_end_probe)
     ext.command("ui_view_abilities", "Report the replicated client abilities", view_abilities_probe)
     ext.command("ui_view_probe", "Mount, update, hide, show, finish and remove a view", view_probe)
     ext.command("ui_view_cancelled", "Report the intent whose handler was cancelled", view_cancelled_probe)

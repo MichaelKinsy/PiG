@@ -293,7 +293,7 @@
    #:oauth-on-prompt #:oauth-on-select #:oauth-on-manual-code-input #:register-virtual-model #:unregister-virtual-model
    #:ctx-register-virtual-model #:ctx-unregister-virtual-model #:register-mcp-server #:unregister-mcp-server
    #:ctx-register-mcp-server #:ctx-unregister-mcp-server #:ctx-get-mcp-servers #:tool-renderer #:message-renderer
-   #:view-ref #:view-ref-p #:view-ref-key #:view-ref-epoch #:view-ref-rev #:view-status #:view-status-p #:view-status-mount #:view-status-state #:view-status-reason
+   #:view-ref #:view-ref-p #:view-ref-key #:view-ref-epoch #:view-ref-rev #:view-status #:view-status-p #:view-status-mount #:view-status-state #:view-status-reason #:view-status-result #:view-clause #:view-when #:view-alternative #:ctx-view-diagnostics
    #:view-shape #:view-intent #:view-asset #:view-target #:ctx-view-abilities #:ctx-mount-view #:ctx-update-view #:ctx-hide-view #:ctx-show-view
    #:ctx-finish-view #:ctx-remove-view #:ctx-view-state #:on-view-intent #:view-intent-result
    #:message-view-renderer #:entry-renderer #:entry-view-renderer #:message-view-event #:entry-view-event

@@ -141,7 +141,9 @@ from . import _tui_state
 from . import tui as tui  # loaded here with every other module: tests/test_staged_directory_independence.py
 from .kit import ViewComponent as ViewComponent
 from . import ui_view as _ui_view
-from .ui_view import ViewAbilities as ViewAbilities, ViewAsset as ViewAsset, ViewError as ViewError, ViewInput as ViewInput, ViewIntent as ViewIntent, ViewIntentInvocation as ViewIntentInvocation, ViewIntentResult as ViewIntentResult, ViewLimits as ViewLimits, ViewRef as ViewRef, ViewShape as ViewShape, ViewStatus as ViewStatus, ViewTarget as ViewTarget
+
+_NO_VIEW_RESULT: Any = object()
+from .ui_view import ViewAbilities as ViewAbilities, ViewAsset as ViewAsset, ViewClaim as ViewClaim, ViewDrawingAbilities as ViewDrawingAbilities, ViewNotice as ViewNotice, ViewSlotClaims as ViewSlotClaims, ViewError as ViewError, ViewInput as ViewInput, ViewIntent as ViewIntent, ViewIntentInvocation as ViewIntentInvocation, ViewIntentResult as ViewIntentResult, ViewLimits as ViewLimits, ViewRef as ViewRef, ViewShape as ViewShape, ViewStatus as ViewStatus, ViewTarget as ViewTarget
 from .event_bus import EventBus as EventBus, EventBusHandler as EventBusHandler, _EventBusHub
 from .state_feed import StateFeed
 from .user_bash import BashExecOptions as BashExecOptions, BashOperations as BashOperations, _BashOperationsTable, _data_update, _run_user_bash_exec, _user_bash_operations_reply
@@ -3455,25 +3457,65 @@ class Context:
                 raise ViewError(err.code, err.message) from err
             raise
 
-    def _view_content(self, view: "kit.View", intents: Any, assets: Any, fallback: Any) -> dict[str, Any]:
+    def _view_wire(self, view: "kit.View") -> dict[str, Any]:
         encoded = self.extension._views.encode(view)
         wire = dict(encoded.body)
         if encoded.images:
             wire["images"] = [{"ref": i.ref, "mimeType": i.mime_type, "data": base64.b64encode(i.data).decode("ascii")} for i in encoded.images]
-        fallback_wire = None if fallback is None else self.extension._views.encode(kit.View(root=fallback)).body
-        return _ui_view.encode_content(wire, intents, assets, fallback_wire)
+        return wire
 
-    def mount_view(self, key: str, slot: str, view: "kit.View", *, target: ViewTarget | None = None, intents: Any = (), assets: Any = (), fallback: Any = None) -> ViewStatus:
-        """Mount ``view`` in a slot the attached client draws. ``key`` names the mount among this extension's."""
-        args = self._view_content(view, intents, assets, fallback)
+    def _view_content(self, view: "kit.View", intents: Any, assets: Any, fallback: Any, alternatives: Any = (), drawing: Any = None, a11y: Any = (), focus: Any = ()) -> dict[str, Any]:
+        fallback_wire = None if fallback is None else self.extension._views.encode(kit.View(root=fallback)).body
+        alts = []
+        for alt in alternatives or ():
+            entry = {"when": alt["when"], "view": self._view_wire(alt["view"])}
+            if alt.get("drawing") is not None:
+                entry["drawing"] = alt["drawing"]
+            alts.append(entry)
+        return _ui_view.encode_content(self._view_wire(view), intents, assets, fallback_wire, alts, drawing, a11y, focus)
+
+    def mount_view(
+        self,
+        key: str,
+        slot: str,
+        view: "kit.View",
+        *,
+        target: ViewTarget | None = None,
+        intents: Any = (),
+        assets: Any = (),
+        fallback: Any = None,
+        alternatives: Any = (),
+        drawing: Any = None,
+        a11y: Any = (),
+        focus: Any = (),
+    ) -> ViewStatus:
+        """Mount ``view`` in a slot the attached client draws. ``key`` names the mount among this extension's.
+
+        ``alternatives`` (at most 8) are dicts ``{"when": {"any": [{"all": [{"claim", "op", "value"}]}]}, "view": kit.View,
+        "drawing": ...}``; a client draws the first whose ``when`` holds for its claims. ``drawing`` is the wire record
+        (``profile`` ``scene`` with ``shapes`` or ``pixels`` with ``pixels``, and ``regions``); ``a11y`` and ``focus`` are
+        lists of wire records naming view nodes by id (at most 256 each). The host checks every bound."""
+        args = self._view_content(view, intents, assets, fallback, alternatives, drawing, a11y, focus)
         args["key"], args["slot"] = key, slot
         if target is not None:
             args["target"] = target._wire()
         return self._view_call("ui.view.mount", args)
 
-    def update_view(self, mount: ViewRef, view: "kit.View", *, intents: Any = (), assets: Any = (), fallback: Any = None) -> ViewStatus:
+    def update_view(
+        self,
+        mount: ViewRef,
+        view: "kit.View",
+        *,
+        intents: Any = (),
+        assets: Any = (),
+        fallback: Any = None,
+        alternatives: Any = (),
+        drawing: Any = None,
+        a11y: Any = (),
+        focus: Any = (),
+    ) -> ViewStatus:
         """Replace the content of a mount. Fails with ``ViewError`` code ``"stale"`` unless ``mount`` carries the epoch and rev the last operation returned."""
-        args = self._view_content(view, intents, assets, fallback)
+        args = self._view_content(view, intents, assets, fallback, alternatives, drawing, a11y, focus)
         args["mount"] = mount._wire()
         return self._view_call("ui.view.update", args)
 
@@ -3483,9 +3525,15 @@ class Context:
     def show_view(self, mount: ViewRef) -> ViewStatus:
         return self._view_call("ui.view.show", {"mount": mount._wire()})
 
-    def finish_view(self, mount: ViewRef) -> ViewStatus:
-        """End a mount as completed. Terminal: a later operation on the mount fails with code ``"terminal"``."""
-        return self._view_call("ui.view.finish", {"mount": mount._wire()})
+    def finish_view(self, mount: ViewRef, *, result: Any = _NO_VIEW_RESULT) -> ViewStatus:
+        """End a mount as completed. Terminal: a later operation on the mount fails with code ``"terminal"``.
+
+        ``result``, any JSON value of at most 65536 encoded bytes, is the extension's last word on the mount; the reply
+        and ``view_state`` carry it as ``ViewStatus.result``."""
+        args: dict[str, Any] = {"mount": mount._wire()}
+        if result is not _NO_VIEW_RESULT:
+            args["result"] = result
+        return self._view_call("ui.view.finish", args)
 
     def remove_view(self, mount: ViewRef) -> ViewStatus:
         """End a mount as withdrawn. Terminal."""
@@ -3493,6 +3541,17 @@ class Context:
 
     def view_state(self, key: str) -> ViewStatus:
         return self._view_call("ui.view.state", {"key": key})
+
+    def view_diagnostics(self, key: str) -> list[ViewNotice]:
+        """The notices of the mount under ``key``, oldest first: what the host rejected or ended and what a client could
+        not draw. The host keeps at most 32 and counts repeats."""
+        self._assert_active()
+        try:
+            return _ui_view.decode_notices(self._call("ui.view.diagnostics", {"key": key}).get("result"))
+        except HostCallError as err:
+            if err.code in ("invalid", "not_found"):
+                raise ViewError(err.code, err.message) from err
+            raise
 
     def has_ui(self) -> bool:
         """Whether the host binds a UI context: interactive and RPC, not print/JSON."""

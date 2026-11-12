@@ -119,11 +119,132 @@ export interface PiGViewAsset {
   delivery: "inline" | "managed";
 }
 /** The D107 wire view, `{ root: { kind: "text", text: "..." } }`. */
+export type PiGWireView = { root: Record<string, unknown>; focus?: string; theme?: Record<string, string> };
+/** One fact the attached client states about itself, named "<area>.<fact>". */
+export interface PiGViewClaim {
+  name: string;
+  value: boolean | number | string | string[];
+}
+/** Tests one claim: present, equals (boolean, integer or string), contains (every listed string is claimed) or atLeast (integer). */
+export interface PiGViewClause {
+  claim: string;
+  op: "present" | "equals" | "contains" | "atLeast";
+  value?: boolean | number | string | string[];
+}
+/** Holds when any group holds; a group holds when all its clauses do. At most 8 groups of 8 clauses. */
+export interface PiGViewWhen {
+  any: { all: PiGViewClause[] }[];
+}
+export interface PiGViewStroke {
+  color: string;
+  width: number;
+}
+/** One shape of a scene; a member of another kind rejects the drawing. A color is "#rrggbb", "#rrggbbaa" or a theme color token. */
+export interface PiGViewDrawShape {
+  kind: "group" | "rect" | "ellipse" | "line" | "polyline" | "path" | "text" | "image";
+  key?: string;
+  fill?: string;
+  stroke?: PiGViewStroke;
+  opacity?: number;
+  /** Six numbers. */
+  transform?: number[];
+  children?: PiGViewDrawShape[];
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  radius?: number;
+  cx?: number;
+  cy?: number;
+  rx?: number;
+  ry?: number;
+  x1?: number;
+  y1?: number;
+  x2?: number;
+  y2?: number;
+  /** 2..1024 vertices of a polyline. */
+  points?: { x: number; y: number }[];
+  closed?: boolean;
+  /** 1..1024 steps of a path; the first is a move. */
+  commands?: { op: "move" | "line" | "quad" | "cubic" | "close"; x?: number; y?: number; x1?: number; y1?: number; x2?: number; y2?: number }[];
+  text?: string;
+  size?: number;
+  align?: "start" | "center" | "end";
+  asset?: string;
+}
+/** Turns a gesture inside `shape` (a rect, an ellipse or a closed polyline) into a declared intent; the client hit-tests. */
+export interface PiGViewRegion {
+  key: string;
+  shape: PiGViewDrawShape;
+  gestures: ("activate" | "press" | "release" | "drag")[];
+  intent: string;
+  name: string;
+  role?: string;
+}
+/** A scene of at most 4096 shapes nested 8 deep, or a pixel grid over an image asset, with at most 64 regions. */
+export interface PiGViewDrawing {
+  profile: "scene" | "pixels";
+  /** The id of the view node the drawing fills. */
+  node?: string;
+  viewport?: { x: number; y: number; width: number; height: number; fit: "contain" | "cover" | "stretch" };
+  shapes?: PiGViewDrawShape[];
+  pixels?: { width: number; height: number; asset: string; scaling: "nearest" | "smooth" };
+  regions?: PiGViewRegion[];
+}
+/** A view a client is sent in place of the mount's view when `when` holds for that client's claims. */
+export interface PiGViewAlternative {
+  when: PiGViewWhen;
+  view: PiGWireView;
+  drawing?: PiGViewDrawing;
+}
+/** Describes the view node with id `node` to assistive technology. */
+export interface PiGViewA11y {
+  node: string;
+  name?: string;
+  description?: string;
+  role?: string;
+  selected?: boolean;
+  checked?: boolean;
+  expanded?: boolean;
+  busy?: boolean;
+  disabled?: boolean;
+  readOnly?: boolean;
+  required?: boolean;
+  invalid?: boolean;
+  relations?: { kind: "labelledBy" | "describedBy" | "controls" | "owns"; target: string }[];
+}
+/** Makes the node with id `node` focusable; the order of the entries is the focus order. */
+export interface PiGViewFocus {
+  node: string;
+  request?: "mount";
+  restore?: "previous" | "self";
+}
+/** One diagnostic of a mount; `count` is how often it happened. */
+export interface PiGViewNotice {
+  code: "invalid" | "unsupported" | "limit" | "stale" | "terminal" | "refused" | "failed" | "timeout" | "undrawn";
+  severity: "info" | "warning" | "error";
+  message?: string;
+  path?: string;
+  claim?: string;
+  intent?: string;
+  measured?: number;
+  limit?: number;
+  epoch: number;
+  rev?: number;
+  count: number;
+}
 export interface PiGViewContent {
-  view: { root: Record<string, unknown>; focus?: string; theme?: Record<string, string> };
+  view: PiGWireView;
   intents?: PiGViewIntent[];
   assets?: PiGViewAsset[];
   fallback?: Record<string, unknown>;
+  /** At most 8; the first whose `when` holds for a client's claims is what that client draws. */
+  alternatives?: PiGViewAlternative[];
+  drawing?: PiGViewDrawing;
+  /** At most 256 entries. */
+  a11y?: PiGViewA11y[];
+  /** At most 256 entries; at most one requests the focus. */
+  focus?: PiGViewFocus[];
 }
 export interface PiGViewMount extends PiGViewContent {
   key: string;
@@ -141,6 +262,8 @@ export interface PiGViewStatus {
   state: "live" | "hidden" | "finished" | "removed" | "broken";
   /** Set for `broken`. */
   reason?: "session_replaced" | "owner_gone" | "shutdown";
+  /** The result a finished mount was given. */
+  result?: unknown;
 }
 /** What the attached client draws. */
 export interface PiGViewAbilities {
@@ -150,6 +273,12 @@ export interface PiGViewAbilities {
   imageFormats: string[];
   limits: { nodes: number; depth: number; snapshotBytes: number; textBytes: number; mounts: number; intentArgBytes: number };
   input: { keyboard: boolean; pointer: boolean; text: boolean };
+  /** Further facts the client states about itself; with several clients attached, the claims all of them share. */
+  claims?: PiGViewClaim[];
+  /** Claims that replace the same-named ones for mounts of one slot. */
+  slotClaims?: { slot: PiGViewSlot; claims: PiGViewClaim[] }[];
+  /** The drawing profiles the client draws; absent when it draws none. */
+  drawing?: { profiles: ("scene" | "pixels")[]; shapes: number; pixels: number };
 }
 export interface PiGViewIntentInvocation {
   mount: PiGViewRef;
@@ -251,10 +380,12 @@ declare module "@earendil-works/pi-coding-agent" {
     hideView(mount: PiGViewRef): Promise<PiGViewStatus>;
     showView(mount: PiGViewRef): Promise<PiGViewStatus>;
     /** End a mount as completed. Terminal: a later operation fails with code `terminal`. */
-    finishView(mount: PiGViewRef): Promise<PiGViewStatus>;
+    finishView(mount: PiGViewRef, result?: unknown): Promise<PiGViewStatus>;
     /** End a mount as withdrawn. Terminal. */
     removeView(mount: PiGViewRef): Promise<PiGViewStatus>;
     viewState(key: string): Promise<PiGViewStatus>;
+    /** The notices of the mount under `key`, oldest first; the host keeps at most 32 and counts repeats. */
+    viewDiagnostics(key: string): Promise<PiGViewNotice[]>;
   }
   interface ExtensionAPI {
     /**

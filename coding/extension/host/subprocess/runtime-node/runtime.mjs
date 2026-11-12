@@ -1931,6 +1931,7 @@ function createNoOpUI(ui) {
     finishView: ui.finishView,
     removeView: ui.removeView,
     viewState: ui.viewState,
+    viewDiagnostics: ui.viewDiagnostics,
   };
 }
 
@@ -2073,17 +2074,27 @@ class RuntimeUI {
     const abilities = this.runtime.viewAbilities;
     return abilities ? structuredClone(abilities) : null;
   }
-  mountView({ key, slot, target, view, intents, assets, fallback } = {}) {
-    return this.runtime.call("ui.view.mount", viewArgs({ key, slot, target }, { view, intents, assets, fallback }));
+  // The amendment members ride beside the view: alternatives ([{ when, view, drawing? }], the first whose `when` holds for a
+  // client's claims is what that client draws), drawing, a11y and focus. The host checks every bound and answers invalid.
+  mountView({ key, slot, target, view, intents, assets, fallback, alternatives, drawing, a11y, focus } = {}) {
+    return this.runtime.call("ui.view.mount", viewArgs({ key, slot, target }, { view, intents, assets, fallback, alternatives, drawing, a11y, focus }));
   }
-  updateView(mount, { view, intents, assets, fallback } = {}) {
-    return this.runtime.call("ui.view.update", viewArgs({ mount }, { view, intents, assets, fallback }));
+  updateView(mount, { view, intents, assets, fallback, alternatives, drawing, a11y, focus } = {}) {
+    return this.runtime.call("ui.view.update", viewArgs({ mount }, { view, intents, assets, fallback, alternatives, drawing, a11y, focus }));
   }
   hideView(mount) { return this.runtime.call("ui.view.hide", { mount }); }
   showView(mount) { return this.runtime.call("ui.view.show", { mount }); }
-  finishView(mount) { return this.runtime.call("ui.view.finish", { mount }); }
+  // A result (any JSON value, at most 65536 encoded bytes) is the extension's last word on the mount; the reply and
+  // viewState carry it back as `result`.
+  finishView(mount, result) { return this.runtime.call("ui.view.finish", result === undefined ? { mount } : { mount, result }); }
   removeView(mount) { return this.runtime.call("ui.view.remove", { mount }); }
   viewState(key) { return this.runtime.call("ui.view.state", { key }); }
+  // The notices of a mount, oldest first: what the host rejected or ended and what a client could not draw.
+  async viewDiagnostics(key) {
+    const reply = await this.runtime.call("ui.view.diagnostics", { key });
+    if (!reply || !Array.isArray(reply.notices)) throw new Error("ui.view.diagnostics: malformed reply");
+    return reply.notices;
+  }
   setTitle(title) { this.runtime.fireAndForget("ui.setTitle", { title }); }
   async custom(factory, options = {}) {
     // rpc-mode.ts custom(): RPC mode has no custom UI, so it resolves undefined and the factory never runs; the host call keeps the ui_prompt scope.

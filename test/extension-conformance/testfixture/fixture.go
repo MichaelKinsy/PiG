@@ -1266,6 +1266,168 @@ func Extension() *sdk.Extension {
 		ctx.Notify(fmt.Sprintf("view-state:%s:%s", st.State, st.Reason), "info")
 		return nil
 	})
+	// D614 amendment: claims and alternatives, drawing, a11y and focus, diagnostics and the finish result, the same way
+	// in every SDK fixture (conformance TestConformance_UIViewExtras). The alternative's predicate, the shape counts and
+	// the result are built from what the host replicated, so an SDK that drops a member or answers from a constant fails.
+	viewClaim := func(claims []sdk.ViewClaim, name string) any {
+		for _, c := range claims {
+			if c.Name == name {
+				return c.Value
+			}
+		}
+		return nil
+	}
+	viewPicked := func(ab *sdk.ViewAbilities) int64 {
+		for _, sc := range ab.SlotClaims {
+			if sc.Slot == sdk.ViewSlotPanel {
+				n, _ := viewClaim(sc.Claims, "display.colors").(int64)
+				return n
+			}
+		}
+		return 0
+	}
+	viewList := func(id, label string) kit.View {
+		return kit.View{Root: kit.NewSelectList(id, []kit.SelectItem{{Value: id, Label: label}}, 5)}
+	}
+	ext.Command("ui_view_extras", "Mount a view with alternatives, a drawing, a11y and focus, and probe the bounds", func(ctx sdk.Context, args string) error {
+		code := func(err error) string {
+			if ve, ok := errors.AsType[*sdk.ViewError](err); ok {
+				return string(ve.Code)
+			}
+			return "none"
+		}
+		ab := ctx.ViewAbilities()
+		if ab == nil || ab.Drawing == nil {
+			return errors.New("ui_view_extras: the client states no drawing abilities")
+		}
+		picked := viewPicked(ab)
+		gestures, _ := viewClaim(ab.Claims, "input.gestures").([]string)
+		ctx.Notify(fmt.Sprintf("view-x-claims:colors=%v,kind=%v,gestures=%s,hover=%v,panel.colors=%d,profiles=%s,shapes=%d,pixels=%d",
+			viewClaim(ab.Claims, "display.colors"), viewClaim(ab.Claims, "display.kind"), strings.Join(gestures, "+"), viewClaim(ab.Claims, "display.hover"),
+			picked, strings.Join(ab.Drawing.Profiles, "+"), ab.Drawing.Shapes, ab.Drawing.Pixels), "info")
+		rects := func(n int) []sdk.ViewDrawShape {
+			out := make([]sdk.ViewDrawShape, n)
+			for i := range out {
+				out[i] = sdk.ViewDrawShape{Kind: "rect", Width: 1, Height: 1}
+			}
+			return out
+		}
+		scene := func(shapes []sdk.ViewDrawShape) *sdk.ViewDrawing {
+			return &sdk.ViewDrawing{Profile: "scene", Shapes: shapes}
+		}
+		base := func() kit.View { return viewList("base", "fixture-x-base") }
+		drawing := scene(rects(ab.Drawing.Shapes - 1))
+		drawing.Regions = []sdk.ViewRegion{{Key: "r", Shape: sdk.ViewDrawShape{Kind: "rect", Width: 4, Height: 4}, Gestures: []string{"activate"}, Intent: "fx.tap", Name: "Tap"}}
+		yes := true
+		st, err := ctx.MountView(sdk.ViewMount{Key: "extras", Slot: sdk.ViewSlotPanel, ViewContent: sdk.ViewContent{
+			View:    base(),
+			Intents: []sdk.ViewIntent{{Name: "fx.tap", Arg: sdk.ViewShape{Type: "object"}}},
+			Alternatives: []sdk.ViewAlternative{{
+				When:    sdk.ViewWhen{Any: []sdk.ViewWhenAll{{All: []sdk.ViewClause{{Claim: "display.colors", Op: "equals", Value: picked}}}}},
+				View:    viewList("alt", fmt.Sprintf("fixture-x-alt-%d", picked)),
+				Drawing: drawing,
+			}},
+			A11y: []sdk.ViewA11y{
+				{Node: "alt", Name: fmt.Sprintf("Extras %d", picked), Role: "button", Checked: &yes, Relations: []sdk.ViewRelation{{Kind: "describedBy", Target: "base"}}},
+				{Node: "base", Name: "Base"},
+			},
+			Focus: []sdk.ViewFocus{{Node: "alt", Request: "mount", Restore: "previous"}},
+		}})
+		if err != nil {
+			return err
+		}
+		ctx.Notify("view-x-mounted:"+string(st.State), "info")
+		attempt := func(label string, c sdk.ViewContent) {
+			c.View = base()
+			_, err := ctx.UpdateView(sdk.ViewUpdate{Mount: st.Mount, ViewContent: c})
+			ctx.Notify("view-x-"+label+":"+code(err), "info")
+		}
+		alts := make([]sdk.ViewAlternative, 9)
+		for i := range alts {
+			alts[i] = sdk.ViewAlternative{When: sdk.ViewWhen{Any: []sdk.ViewWhenAll{{All: []sdk.ViewClause{{Claim: "display.hover", Op: "present"}}}}}, View: base()}
+		}
+		attempt("alts", sdk.ViewContent{Alternatives: alts})
+		nested := sdk.ViewDrawShape{Kind: "rect", Width: 1, Height: 1}
+		for range 8 {
+			nested = sdk.ViewDrawShape{Kind: "group", Children: []sdk.ViewDrawShape{nested}}
+		}
+		attempt("nest", sdk.ViewContent{Drawing: scene([]sdk.ViewDrawShape{nested})})
+		points := make([]sdk.ViewPoint, 1025)
+		for i := range points {
+			points[i] = sdk.ViewPoint{X: float64(i), Y: float64(i)}
+		}
+		attempt("points", sdk.ViewContent{Drawing: scene([]sdk.ViewDrawShape{{Kind: "polyline", Points: points}})})
+		attempt("shapes", sdk.ViewContent{Drawing: scene(rects(4097))})
+		a11y := make([]sdk.ViewA11y, 257)
+		for i := range a11y {
+			a11y[i] = sdk.ViewA11y{Node: fmt.Sprintf("n%d", i)}
+		}
+		attempt("a11y", sdk.ViewContent{A11y: a11y})
+		attempt("over", sdk.ViewContent{Drawing: scene(rects(ab.Drawing.Shapes + 1))})
+		attempt("pixels", sdk.ViewContent{
+			Drawing: &sdk.ViewDrawing{Profile: "pixels", Pixels: &sdk.ViewPixels{Width: 2, Height: 2, Asset: "img", Scaling: "nearest"}},
+			Assets:  []sdk.ViewAsset{{ID: "img", MIME: "image/png", Size: 4, SHA256: strings.Repeat("a", 64), Delivery: "inline"}},
+		})
+		old := st.Mount
+		old.Rev += 50
+		stale := "none"
+		for range 3 {
+			_, err := ctx.UpdateView(sdk.ViewUpdate{Mount: old, ViewContent: sdk.ViewContent{View: base()}})
+			stale = code(err)
+		}
+		ctx.Notify("view-x-stale:"+stale, "info")
+		notices, err := ctx.ViewDiagnostics("extras")
+		if err != nil {
+			return err
+		}
+		count := map[string]int{}
+		for _, n := range notices {
+			if n.Path == "update" {
+				count[n.Code] += n.Count
+			}
+		}
+		ctx.Notify(fmt.Sprintf("view-x-diag:invalid=%d,limit=%d,unsupported=%d,stale=%d", count["invalid"], count["limit"], count["unsupported"], count["stale"]), "info")
+		_, err = ctx.FinishViewWith(st.Mount, strings.Repeat("r", 65536))
+		ctx.Notify("view-x-bigresult:"+code(err), "info")
+		return nil
+	})
+	ext.Command("ui_view_extras_end", "Read the notices of the extras mount and finish it with a result", func(ctx sdk.Context, args string) error {
+		ab := ctx.ViewAbilities()
+		if ab == nil {
+			return errors.New("ui_view_extras_end: no client")
+		}
+		st, err := ctx.ViewState("extras")
+		if err != nil {
+			return err
+		}
+		notices, err := ctx.ViewDiagnostics("extras")
+		if err != nil {
+			return err
+		}
+		last := ""
+		if len(notices) > 0 {
+			last = notices[len(notices)-1].Path
+		}
+		ctx.Notify(fmt.Sprintf("view-x-diag2:n=%d,last=%s", len(notices), last), "info")
+		picked := func(st sdk.ViewStatus) int64 {
+			var res struct {
+				Picked int64 `json:"picked"`
+			}
+			_ = json.Unmarshal(st.Result, &res)
+			return res.Picked
+		}
+		done, err := ctx.FinishViewWith(st.Mount, map[string]any{"picked": viewPicked(ab)})
+		if err != nil {
+			return err
+		}
+		ctx.Notify(fmt.Sprintf("view-x-finished:%s,picked=%d", done.State, picked(done)), "info")
+		cur, err := ctx.ViewState("extras")
+		if err != nil {
+			return err
+		}
+		ctx.Notify(fmt.Sprintf("view-x-state:%s,picked=%d", cur.State, picked(cur)), "info")
+		return nil
+	})
 	ext.OnViewIntent(func(in sdk.ViewIntentInvocation) sdk.ViewIntentResult {
 		switch in.Intent {
 		case "fx.add":

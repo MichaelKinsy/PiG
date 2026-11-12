@@ -1001,6 +1001,56 @@ export default function (pi) {
     const st = await ctx.ui.viewState("probe2");
     ctx.ui.notify(`view-state:${st.state}:${st.reason ?? ""}`, "info");
   } });
+  // D614 amendment: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewExtras).
+  const xClaim = (claims, name) => (claims ?? []).find((c) => c.name === name)?.value;
+  const xPicked = (ab) => xClaim((ab.slotClaims ?? []).find((s) => s.slot === "panel")?.claims, "display.colors");
+  const xList = (id, label) => ({ root: { kind: "select-list", id, items: [{ value: id, label }], maxVisible: 5 } });
+  const xRects = (n) => Array.from({ length: n }, () => ({ kind: "rect", width: 1, height: 1 }));
+  pi.registerCommand("ui_view_extras", { description: "Mount a view with alternatives, a drawing, a11y and focus, and probe the bounds", handler: async (_args, ctx) => {
+    const ab = ctx.ui.viewAbilities();
+    const picked = xPicked(ab);
+    ctx.ui.notify(`view-x-claims:colors=${xClaim(ab.claims, "display.colors")},kind=${xClaim(ab.claims, "display.kind")},gestures=${xClaim(ab.claims, "input.gestures").join("+")},hover=${xClaim(ab.claims, "display.hover")},panel.colors=${picked},profiles=${ab.drawing.profiles.join("+")},shapes=${ab.drawing.shapes},pixels=${ab.drawing.pixels}`, "info");
+    const base = xList("base", "fixture-x-base");
+    const st = await ctx.ui.mountView({
+      key: "extras", slot: "panel", view: base, intents: [{ name: "fx.tap", arg: { type: "object" } }],
+      alternatives: [{
+        when: { any: [{ all: [{ claim: "display.colors", op: "equals", value: picked }] }] },
+        view: xList("alt", `fixture-x-alt-${picked}`),
+        drawing: { profile: "scene", shapes: xRects(ab.drawing.shapes - 1), regions: [{ key: "r", shape: { kind: "rect", width: 4, height: 4 }, gestures: ["activate"], intent: "fx.tap", name: "Tap" }] },
+      }],
+      a11y: [{ node: "alt", name: `Extras ${picked}`, role: "button", checked: true, relations: [{ kind: "describedBy", target: "base" }] }, { node: "base", name: "Base" }],
+      focus: [{ node: "alt", request: "mount", restore: "previous" }],
+    });
+    ctx.ui.notify(`view-x-mounted:${st.state}`, "info");
+    const attempt = async (label, content) => ctx.ui.notify(`view-x-${label}:${await viewCode(() => ctx.ui.updateView(st.mount, { view: base, ...content }))}`, "info");
+    const scene = (shapes) => ({ drawing: { profile: "scene", shapes } });
+    let nested = { kind: "rect", width: 1, height: 1 };
+    for (let i = 0; i < 8; i++) nested = { kind: "group", children: [nested] };
+    await attempt("alts", { alternatives: Array.from({ length: 9 }, () => ({ when: { any: [{ all: [{ claim: "display.hover", op: "present" }] }] }, view: base })) });
+    await attempt("nest", scene([nested]));
+    await attempt("points", scene([{ kind: "polyline", points: Array.from({ length: 1025 }, (_, i) => ({ x: i, y: i })) }]));
+    await attempt("shapes", scene(xRects(4097)));
+    await attempt("a11y", { a11y: Array.from({ length: 257 }, (_, i) => ({ node: `n${i}` })) });
+    await attempt("over", scene(xRects(ab.drawing.shapes + 1)));
+    await attempt("pixels", { drawing: { profile: "pixels", pixels: { width: 2, height: 2, asset: "img", scaling: "nearest" } }, assets: [{ id: "img", mime: "image/png", size: 4, sha256: "a".repeat(64), delivery: "inline" }] });
+    let stale = "none";
+    for (let i = 0; i < 3; i++) stale = await viewCode(() => ctx.ui.updateView({ ...st.mount, rev: st.mount.rev + 50 }, { view: base }));
+    ctx.ui.notify(`view-x-stale:${stale}`, "info");
+    const notices = await ctx.ui.viewDiagnostics("extras");
+    const count = (code) => notices.filter((n) => n.code === code && n.path === "update").reduce((sum, n) => sum + n.count, 0);
+    ctx.ui.notify(`view-x-diag:invalid=${count("invalid")},limit=${count("limit")},unsupported=${count("unsupported")},stale=${count("stale")}`, "info");
+    ctx.ui.notify(`view-x-bigresult:${await viewCode(() => ctx.ui.finishView(st.mount, "r".repeat(65536)))}`, "info");
+  } });
+  pi.registerCommand("ui_view_extras_end", { description: "Read the notices of the extras mount and finish it with a result", handler: async (_args, ctx) => {
+    const picked = xPicked(ctx.ui.viewAbilities());
+    const st = await ctx.ui.viewState("extras");
+    const notices = await ctx.ui.viewDiagnostics("extras");
+    ctx.ui.notify(`view-x-diag2:n=${notices.length},last=${notices[notices.length - 1]?.path ?? ""}`, "info");
+    const done = await ctx.ui.finishView(st.mount, { picked });
+    ctx.ui.notify(`view-x-finished:${done.state},picked=${done.result?.picked}`, "info");
+    const cur = await ctx.ui.viewState("extras");
+    ctx.ui.notify(`view-x-state:${cur.state},picked=${cur.result?.picked}`, "info");
+  } });
   pi.onViewIntent(async (inv, ctx) => {
     if (inv.intent === "fx.add") return { outcome: "done", answer: { sum: inv.arg.n * 2 + (ctx.ui.viewAbilities()?.limits.intentArgBytes ?? 0) } };
     if (inv.intent === "fx.wait") {

@@ -5,7 +5,8 @@
 ;;;; replicates what the client draws (CTX-VIEW-ABILITIES); with no client attached it is NIL and a mount signals
 ;;;; HOST-CALL-ERROR with code "unsupported". A failed operation signals HOST-CALL-ERROR whose HOST-CALL-ERROR-CODE is "invalid",
 ;;;; "unsupported", "limit", "stale", "terminal" or "not_found". The wire is the one the Go SDK speaks: the ui.view.mount, update,
-;;;; hide, show, finish, remove and state calls, and the ui.view.intent request.
+;;;; hide, show, finish, remove, state and diagnostics calls, and the ui.view.intent request. The members the D614 amendment adds
+;;;; (alternatives, drawing, a11y, focus, a finish result) are JSON objects in the wire's own shape, built with OBJ.
 
 (in-package #:pig)
 
@@ -13,10 +14,10 @@
   "One revision of one mount incarnation. Pass the ref the last operation returned to the next update."
   key epoch rev)
 
-(defstruct (view-status (:constructor %view-status (mount state reason)))
+(defstruct (view-status (:constructor %view-status (mount state reason &optional result)))
   "The reply of every mount operation. STATE is \"live\", \"hidden\", \"finished\", \"removed\" or \"broken\"; REASON is \"\" or, for
-broken, \"session_replaced\", \"owner_gone\" or \"shutdown\"."
-  mount state reason)
+broken, \"session_replaced\", \"owner_gone\" or \"shutdown\"; RESULT is the JSON value a finished mount was given, or NIL."
+  mount state reason result)
 
 (defun view-ref-wire (ref)
   (obj "key" (view-ref-key ref) "epoch" (view-ref-epoch ref) "rev" (view-ref-rev ref)))
@@ -59,7 +60,9 @@ broken, \"session_replaced\", \"owner_gone\" or \"shutdown\"."
 
 (defun ctx-view-abilities (ctx)
   "What the attached client draws, a JSON object with \"slots\", \"nodes\", \"markdown\", \"imageFormats\", \"limits\" (\"nodes\", \"depth\",
-\"snapshotBytes\", \"textBytes\", \"mounts\", \"intentArgBytes\") and \"input\" (\"keyboard\", \"pointer\", \"text\"); NIL while no client is attached."
+\"snapshotBytes\", \"textBytes\", \"mounts\", \"intentArgBytes\"), \"input\" (\"keyboard\", \"pointer\", \"text\") and, when the client states them,
+\"claims\" (objects with \"name\" and \"value\"), \"slotClaims\" (\"slot\", \"claims\") and \"drawing\" (\"profiles\", \"shapes\", \"pixels\"); NIL while
+no client is attached."
   (let ((ext (ctx-extension ctx)))
     (sb-thread:with-mutex ((extension-view-lock ext)) (extension-view-abilities ext))))
 
@@ -76,9 +79,37 @@ broken, \"session_replaced\", \"owner_gone\" or \"shutdown\"."
                                     images)))
           body))))
 
-(defun view-content-args (ctx view intents assets fallback)
+(defun view-clause (claim op &optional (value nil value-p))
+  "One test of a claim: OP \"present\", \"equals\" (VALUE a boolean, an integer or a string), \"contains\" (VALUE a vector of strings the
+claimed list must hold) or \"atLeast\" (VALUE an integer)."
+  (let ((clause (obj "claim" claim "op" op)))
+    (when value-p (setf (gethash "value" clause) value))
+    clause))
+
+(defun view-when (&rest groups)
+  "A predicate over the client's claims: it holds when all the VIEW-CLAUSEs of any one of GROUPS (lists of clauses) hold. At most 8 groups
+of 8 clauses."
+  (obj "any" (coerce (mapcar (lambda (group) (obj "all" (coerce group 'simple-vector))) groups) 'simple-vector)))
+
+(defun view-alternative (when view &key drawing)
+  "A kit VIEW a client is sent in place of the mount's view when WHEN (a VIEW-WHEN) holds for that client's claims. DRAWING is a JSON object."
+  (list when view drawing))
+
+(defun view-content-args (ctx view intents assets fallback &key alternatives drawing a11y focus)
   (let* ((ext (ctx-extension ctx))
          (args (obj "view" (view-inline-wire (kit-encode ext view)))))
+    (when alternatives
+      (setf (gethash "alternatives" args)
+            (coerce (mapcar (lambda (alt)
+                              (destructuring-bind (when alt-view alt-drawing) alt
+                                (let ((wire (obj "when" when "view" (view-inline-wire (kit-encode ext alt-view)))))
+                                  (when alt-drawing (setf (gethash "drawing" wire) alt-drawing))
+                                  wire)))
+                            alternatives)
+                    'simple-vector)))
+    (when drawing (setf (gethash "drawing" args) drawing))
+    (when a11y (setf (gethash "a11y" args) (coerce a11y 'simple-vector)))
+    (when focus (setf (gethash "focus" args) (coerce focus 'simple-vector)))
     (when intents (setf (gethash "intents" args) (coerce intents 'simple-vector)))
     (when assets (setf (gethash "assets" args) (coerce assets 'simple-vector)))
     (when fallback
@@ -91,31 +122,45 @@ broken, \"session_replaced\", \"owner_gone\" or \"shutdown\"."
       (error 'host-call-error :message (format nil "host reply to ~A is not a mount status" method) :code "invalid_reply"))
     (let ((mount (jget result "mount")))
       (%view-status (view-ref (jget mount "key" "") (jget mount "epoch" 0) (jget mount "rev" 0))
-                    (jget result "state" "") (jget result "reason" "")))))
+                    (jget result "state" "") (jget result "reason" "") (jget result "result")))))
 
-(defun ctx-mount-view (ctx key slot view &key target intents assets fallback)
+(defun ctx-mount-view (ctx key slot view &key target intents assets fallback alternatives drawing a11y focus)
   "Mount VIEW (a kit view) under KEY in SLOT, a slot the attached client draws. TARGET is a VIEW-TARGET, INTENTS VIEW-INTENTs, ASSETS
-VIEW-ASSETs, FALLBACK a kit node the client draws when it cannot draw the view."
-  (let ((args (view-content-args ctx view intents assets fallback)))
+VIEW-ASSETs, FALLBACK a kit node the client draws when it cannot draw the view. ALTERNATIVES are VIEW-ALTERNATIVEs (at most 8; a client
+draws the first whose predicate holds for its claims), DRAWING a JSON object (\"profile\" \"scene\" with \"shapes\" or \"pixels\" with
+\"pixels\", and \"regions\"), A11Y and FOCUS lists of JSON objects naming view nodes by id (at most 256 each)."
+  (let ((args (view-content-args ctx view intents assets fallback :alternatives alternatives :drawing drawing :a11y a11y :focus focus)))
     (setf (gethash "key" args) key (gethash "slot" args) slot)
     (when target (setf (gethash "target" args) target))
     (view-call ctx "ui.view.mount" args)))
 
-(defun ctx-update-view (ctx mount view &key intents assets fallback)
+(defun ctx-update-view (ctx mount view &key intents assets fallback alternatives drawing a11y focus)
   "Replace the content of MOUNT, a VIEW-REF. Signals code \"stale\" unless MOUNT carries the epoch and rev the last operation returned."
-  (let ((args (view-content-args ctx view intents assets fallback)))
+  (let ((args (view-content-args ctx view intents assets fallback :alternatives alternatives :drawing drawing :a11y a11y :focus focus)))
     (setf (gethash "mount" args) (view-ref-wire mount))
     (view-call ctx "ui.view.update" args)))
 
 (defun ctx-hide-view (ctx mount) (view-call ctx "ui.view.hide" (obj "mount" (view-ref-wire mount))))
 (defun ctx-show-view (ctx mount) (view-call ctx "ui.view.show" (obj "mount" (view-ref-wire mount))))
-(defun ctx-finish-view (ctx mount)
-  "End MOUNT as completed. Terminal: a later operation on the mount signals code \"terminal\"."
-  (view-call ctx "ui.view.finish" (obj "mount" (view-ref-wire mount))))
+(defun ctx-finish-view (ctx mount &key (result nil result-p))
+  "End MOUNT as completed. Terminal: a later operation on the mount signals code \"terminal\". RESULT, any JSON value of at most 65536
+encoded bytes, is the extension's last word on the mount; the reply and CTX-VIEW-STATE carry it as VIEW-STATUS-RESULT."
+  (let ((args (obj "mount" (view-ref-wire mount))))
+    (when result-p (setf (gethash "result" args) result))
+    (view-call ctx "ui.view.finish" args)))
 (defun ctx-remove-view (ctx mount)
   "End MOUNT as withdrawn. Terminal."
   (view-call ctx "ui.view.remove" (obj "mount" (view-ref-wire mount))))
 (defun ctx-view-state (ctx key) (view-call ctx "ui.view.state" (obj "key" key)))
+
+(defun ctx-view-diagnostics (ctx key)
+  "The notices of the mount under KEY, oldest first, a list of JSON objects with \"code\", \"severity\", \"count\", \"epoch\" and, when
+set, \"message\", \"path\", \"claim\", \"intent\", \"measured\", \"limit\" and \"rev\". The host keeps at most 32 and counts repeats."
+  (let* ((result (ctx-call-host ctx "ui.view.diagnostics" (obj "key" key)))
+         (notices (and (hash-table-p result) (jget result "notices"))))
+    (unless (vectorp notices)
+      (error 'host-call-error :message "host reply to ui.view.diagnostics has no notices" :code "invalid_reply"))
+    (coerce notices 'list)))
 
 (defun on-view-intent (ext handler)
   "Answer the intents of EXT's mounts. HANDLER is called with the request context and the invocation, a JSON object with \"mount\" (\"key\",

@@ -44,6 +44,53 @@ class ViewStatus:
     mount: ViewRef
     state: str
     reason: str = ""
+    #: The JSON value a finished mount was given by ``finish_view(mount, result=...)``; ``None`` otherwise.
+    result: Any = None
+
+
+@dataclass(frozen=True)
+class ViewClaim:
+    """One fact the attached client states about itself, named ``<area>.<fact>``. ``value`` is a bool, an int, a str or
+    a tuple of str."""
+
+    name: str
+    value: Any
+
+
+@dataclass(frozen=True)
+class ViewSlotClaims:
+    """The claims that replace the same-named ones for mounts of one slot."""
+
+    slot: str
+    claims: tuple[ViewClaim, ...] = ()
+
+
+@dataclass(frozen=True)
+class ViewDrawingAbilities:
+    """The drawing profiles (``scene``, ``pixels``) the client draws, and how many shapes and pixels."""
+
+    profiles: tuple[str, ...] = ()
+    shapes: int = 0
+    pixels: int = 0
+
+
+@dataclass(frozen=True)
+class ViewNotice:
+    """One diagnostic of a mount: an operation the host rejected (``invalid``, ``unsupported``, ``limit``, ``stale``,
+    ``terminal``), an intent it ended (``refused``, ``failed``, ``timeout``, ``stale``) or a part a client could not draw
+    (``undrawn``). ``count`` is how often it happened; ``measured`` and ``limit`` are ``None`` unless a limit was hit."""
+
+    code: str
+    severity: str
+    message: str = ""
+    path: str = ""
+    claim: str = ""
+    intent: str = ""
+    measured: int | None = None
+    limit: int | None = None
+    epoch: int = 0
+    rev: int = 0
+    count: int = 0
 
 
 @dataclass(frozen=True)
@@ -158,6 +205,11 @@ class ViewAbilities:
     image_formats: tuple[str, ...] = ()
     limits: ViewLimits = field(default_factory=ViewLimits)
     input: ViewInput = field(default_factory=ViewInput)
+    #: Further facts the client states; with several clients attached, the claims all of them share.
+    claims: tuple[ViewClaim, ...] = ()
+    slot_claims: tuple[ViewSlotClaims, ...] = ()
+    #: ``None`` when the client draws no drawing.
+    drawing: ViewDrawingAbilities | None = None
 
 
 @dataclass
@@ -205,6 +257,15 @@ def decode_abilities(raw: Any) -> ViewAbilities | None:
             intent_arg_bytes=int(limits.get("intentArgBytes") or 0),
         ),
         input=ViewInput(keyboard=inp.get("keyboard") is True, pointer=inp.get("pointer") is True, text=inp.get("text") is True),
+        claims=_claims(raw.get("claims")),
+        slot_claims=tuple(ViewSlotClaims(str(sc.get("slot", "")), _claims(sc.get("claims"))) for sc in raw.get("slotClaims") or ()),
+        drawing=None
+        if not isinstance(raw.get("drawing"), dict)
+        else ViewDrawingAbilities(
+            profiles=tuple(raw["drawing"].get("profiles") or ()),
+            shapes=int(raw["drawing"].get("shapes") or 0),
+            pixels=int(raw["drawing"].get("pixels") or 0),
+        ),
     )
 
 
@@ -212,7 +273,41 @@ def decode_status(result: Any) -> ViewStatus:
     if not isinstance(result, dict) or not isinstance(result.get("mount"), dict):
         raise RuntimeError("ui.view: malformed reply")
     m = result["mount"]
-    return ViewStatus(ViewRef(str(m.get("key", "")), int(m.get("epoch", 0)), int(m.get("rev", 0))), str(result.get("state", "")), str(result.get("reason", "")))
+    return ViewStatus(
+        ViewRef(str(m.get("key", "")), int(m.get("epoch", 0)), int(m.get("rev", 0))),
+        str(result.get("state", "")),
+        str(result.get("reason", "")),
+        result.get("result"),
+    )
+
+
+def decode_notices(result: Any) -> list[ViewNotice]:
+    if not isinstance(result, dict) or not isinstance(result.get("notices"), list):
+        raise RuntimeError("ui.view.diagnostics: malformed reply")
+    return [
+        ViewNotice(
+            code=str(n.get("code", "")),
+            severity=str(n.get("severity", "")),
+            message=str(n.get("message", "")),
+            path=str(n.get("path", "")),
+            claim=str(n.get("claim", "")),
+            intent=str(n.get("intent", "")),
+            measured=n.get("measured"),
+            limit=n.get("limit"),
+            epoch=int(n.get("epoch", 0)),
+            rev=int(n.get("rev", 0)),
+            count=int(n.get("count", 0)),
+        )
+        for n in result["notices"]
+    ]
+
+
+def _claims(raw: Any) -> tuple[ViewClaim, ...]:
+    out = []
+    for c in raw or ():
+        value = c.get("value")
+        out.append(ViewClaim(str(c.get("name", "")), tuple(value) if isinstance(value, list) else value))
+    return tuple(out)
 
 
 class ViewState:
@@ -233,8 +328,27 @@ class ViewState:
             return self._abilities
 
 
-def encode_content(wire_view: dict[str, Any], intents: Any, assets: Any, fallback_wire: dict[str, Any] | None) -> dict[str, Any]:
+def encode_content(
+    wire_view: dict[str, Any],
+    intents: Any,
+    assets: Any,
+    fallback_wire: dict[str, Any] | None,
+    alternatives: Any = (),
+    drawing: Any = None,
+    a11y: Any = (),
+    focus: Any = (),
+) -> dict[str, Any]:
+    """Build the content of a mount or an update. ``alternatives`` are already in wire form (``when``, ``view``, ``drawing``);
+    ``drawing``, ``a11y`` and ``focus`` are the wire records themselves."""
     out: dict[str, Any] = {"view": wire_view}
+    if alternatives:
+        out["alternatives"] = list(alternatives)
+    if drawing is not None:
+        out["drawing"] = drawing
+    if a11y:
+        out["a11y"] = list(a11y)
+    if focus:
+        out["focus"] = list(focus)
     if intents:
         out["intents"] = [i._wire() for i in intents]
     if assets:

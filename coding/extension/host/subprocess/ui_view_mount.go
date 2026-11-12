@@ -114,6 +114,7 @@ func (b *UIBridge) handleViewCall(extName string, call *CallPayload) (*CallResul
 	case CallUIViewUpdate:
 		a, err := uiview.DecodeUpdate(call.Args)
 		if err != nil {
+			b.views.Rejected(extName, "update", call.Args, err)
 			return viewError(err)
 		}
 		st, err := b.views.Update(extName, a)
@@ -134,6 +135,7 @@ func (b *UIBridge) handleViewCall(extName string, call *CallPayload) (*CallResul
 	case CallUIViewFinish:
 		a, err := uiview.DecodeFinish(call.Args)
 		if err != nil {
+			b.views.Rejected(extName, "finish", call.Args, err)
 			return viewError(err)
 		}
 		st, err := b.views.Finish(extName, a)
