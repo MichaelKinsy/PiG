@@ -191301,7 +191301,9 @@
         "call:internal/codingagent/interactive_tui.go#InteractiveMode.createInteractiveTui"
       ],
       "evidence": [
-        "test:internal/codingagent/interactive_terminal_option_test.go#TestInteractiveModeBuildsItsRendererOnTheTerminalOption"
+        "test:internal/codingagent/interactive_terminal_option_test.go#TestInteractiveModeBuildsItsRendererOnTheTerminalOption",
+        "test:internal/codingagent/interactive_screen_writer_test.go#TestScreenWriterChoiceIsMadeBeforeTheFirstFrame",
+        "test:internal/codingagent/interactive_screen_writer_test.go#TestScreenWriterSettingChangeWaitsForTheNextStart"
       ]
     },
     {
@@ -297415,8 +297417,8 @@
       ],
       "evidence": [
         "test:tui/layout_upstream_test.go#TestUpstreamViewportLayout",
-        "test:tui/terminal_image_dimensions_oracle_test.go#TestImageSizingAndEncodingMatchPi",
-        "test:tui/terminal_image_upstream_test.go#TestUpstreamTerminalImageEncoding"
+        "test:tui/screen_writer_oracle_test.go#TestScreenWriterImageRowsUnderAnOverlay",
+        "test:tui/terminal_image_dimensions_oracle_test.go#TestImageSizingAndEncodingMatchPi"
       ]
     },
     {
@@ -297437,8 +297439,8 @@
       ],
       "evidence": [
         "test:tui/layout_upstream_test.go#TestUpstreamViewportLayout",
-        "test:tui/terminal_image_dimensions_oracle_test.go#TestImageSizingAndEncodingMatchPi",
-        "test:tui/terminal_image_upstream_test.go#TestUpstreamTerminalImageEncoding"
+        "test:tui/screen_writer_oracle_test.go#TestScreenWriterImageRowsUnderAnOverlay",
+        "test:tui/terminal_image_dimensions_oracle_test.go#TestImageSizingAndEncodingMatchPi"
       ]
     },
     {
@@ -304198,7 +304200,7 @@
       "evidence": [
         "test:tui/main_screen_oracle_test.go#TestMainScreenFramesMatchPiOracle",
         "test:tui/overlay_options_upstream_test.go#TestUpstreamOverlayOptionsHidingAfterStop",
-        "test:internal/codingagent/ext_ui_custom_test.go#TestExtUIContextCustomOverlayOptionsFunctionAndOnHandle"
+        "test:tui/screen_writer_oracle_test.go#TestScreenWriterImageRowsUnderAnOverlay"
       ]
     },
     {
@@ -304220,7 +304222,7 @@
       "evidence": [
         "test:tui/main_screen_oracle_test.go#TestMainScreenFramesMatchPiOracle",
         "test:tui/overlay_options_upstream_test.go#TestUpstreamOverlayOptionsHidingAfterStop",
-        "test:internal/codingagent/ext_ui_custom_test.go#TestExtUIContextCustomOverlayOptionsFunctionAndOnHandle"
+        "test:tui/screen_writer_oracle_test.go#TestScreenWriterImageRowsUnderAnOverlay"
       ]
     },
     {
@@ -304562,9 +304564,9 @@
         "call:tui/overlay_spec.go#OverlaySpec.Options"
       ],
       "evidence": [
+        "test:tui/screen_writer_oracle_test.go#TestScreenWriterImageRowsUnderAnOverlay",
         "test:tui/fake_cursor_test.go#TestMainScreenKeepsTheCursorWhenAnOverlayEndsDirectlyLeftOfIt",
-        "test:tui/fake_cursor_test.go#TestMainScreenResolvesTheFakeCursorOfAnOverlayComponent",
-        "test:tui/tui_surface_mouse_test.go#TestTuiSurfaceClickMatchesTheTerminalOnOverlays"
+        "test:tui/fake_cursor_test.go#TestMainScreenResolvesTheFakeCursorOfAnOverlayComponent"
       ]
     },
     {
@@ -304714,9 +304716,9 @@
         "call:tui/overlay_spec.go#OverlaySpec.Options"
       ],
       "evidence": [
+        "test:tui/screen_writer_oracle_test.go#TestScreenWriterImageRowsUnderAnOverlay",
         "test:tui/fake_cursor_test.go#TestMainScreenKeepsTheCursorWhenAnOverlayEndsDirectlyLeftOfIt",
-        "test:tui/fake_cursor_test.go#TestMainScreenResolvesTheFakeCursorOfAnOverlayComponent",
-        "test:tui/tui_surface_mouse_test.go#TestTuiSurfaceClickMatchesTheTerminalOnOverlays"
+        "test:tui/fake_cursor_test.go#TestMainScreenResolvesTheFakeCursorOfAnOverlayComponent"
       ]
     },
     {
@@ -304759,8 +304761,8 @@
       ],
       "evidence": [
         "test:tui/overlay_options_upstream_test.go#TestOverlaySpecMarginUnionMatchesPi",
-        "test:tui/fake_cursor_test.go#TestMainScreenKeepsTheCursorWhenAnOverlayEndsDirectlyLeftOfIt",
-        "test:tui/fake_cursor_test.go#TestMainScreenResolvesTheFakeCursorOfAnOverlayComponent"
+        "test:tui/screen_writer_oracle_test.go#TestScreenWriterImageRowsUnderAnOverlay",
+        "test:tui/fake_cursor_test.go#TestMainScreenKeepsTheCursorWhenAnOverlayEndsDirectlyLeftOfIt"
       ]
     },
     {
@@ -305301,6 +305303,7 @@
         "call:tui/terminal_exit_restore.go#ProcessTerminal.RestoreOnExit"
       ],
       "evidence": [
+        "test:tui/terminal_screen_writer_test.go#TestScreenWriterExit",
         "test:tui/terminal_write_encode_test.go#TestProcessTerminalWritesEncodeLoneSurrogates",
         "test:tui/terminal_exit_restore_test.go#TestTerminalInterfaceRestoreOnExitWritesBeforeOwnResetsAfter"
       ]
@@ -305322,6 +305325,7 @@
         "call:tui/terminal_exit_restore.go#ProcessTerminal.RestoreOnExit"
       ],
       "evidence": [
+        "test:tui/terminal_screen_writer_test.go#TestScreenWriterExit",
         "test:tui/terminal_write_encode_test.go#TestProcessTerminalWritesEncodeLoneSurrogates",
         "test:tui/terminal_exit_restore_test.go#TestTerminalInterfaceRestoreOnExitWritesBeforeOwnResetsAfter"
       ]
@@ -305531,8 +305535,8 @@
       ],
       "evidence": [
         "test:tui/terminal_pty_test.go#TestProcessTerminalOnPseudoTerminal",
-        "test:tui/terminal_test.go#TestProcessTerminal_StartStop_DoubleStartStopIsNoop",
-        "test:tui/terminal_interface_pty_test.go#TestTerminalInterfaceStartForwardsInputAndStopEndsIt"
+        "test:tui/terminal_screen_writer_test.go#TestScreenWriterExit",
+        "test:tui/terminal_screen_writer_test.go#TestScreenWriterSuspendAndResume"
       ]
     },
     {
@@ -305553,8 +305557,8 @@
       ],
       "evidence": [
         "test:tui/terminal_pty_test.go#TestProcessTerminalOnPseudoTerminal",
-        "test:tui/terminal_test.go#TestProcessTerminal_StartStop_DoubleStartStopIsNoop",
-        "test:tui/terminal_interface_pty_test.go#TestTerminalInterfaceStartForwardsInputAndStopEndsIt"
+        "test:tui/terminal_screen_writer_test.go#TestScreenWriterExit",
+        "test:tui/terminal_screen_writer_test.go#TestScreenWriterSuspendAndResume"
       ]
     },
     {
@@ -305618,7 +305622,7 @@
       "evidence": [
         "test:internal/codingagent/dead_terminal_write_unix_test.go#TestDeadTerminalWriteChild",
         "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys",
-        "test:tui/terminal_stream_text_test.go#TestProcessTerminalWritesALoneSurrogateAsNodeDoes"
+        "test:tui/terminal_screen_writer_switch_test.go#TestScreenWriterActiveWhileTheWriterIsDropped"
       ]
     },
     {
@@ -305640,7 +305644,7 @@
       "evidence": [
         "test:internal/codingagent/dead_terminal_write_unix_test.go#TestDeadTerminalWriteChild",
         "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys",
-        "test:tui/terminal_stream_text_test.go#TestProcessTerminalWritesALoneSurrogateAsNodeDoes"
+        "test:tui/terminal_screen_writer_switch_test.go#TestScreenWriterActiveWhileTheWriterIsDropped"
       ]
     },
     {
@@ -309410,8 +309414,8 @@
       ],
       "evidence": [
         "test:tui/overlay_options_upstream_test.go#TestOverlaySpecMarginUnionMatchesPi",
-        "test:tui/fake_cursor_test.go#TestMainScreenKeepsTheCursorWhenAnOverlayEndsDirectlyLeftOfIt",
-        "test:tui/fake_cursor_test.go#TestMainScreenResolvesTheFakeCursorOfAnOverlayComponent"
+        "test:tui/screen_writer_oracle_test.go#TestScreenWriterImageRowsUnderAnOverlay",
+        "test:tui/fake_cursor_test.go#TestMainScreenKeepsTheCursorWhenAnOverlayEndsDirectlyLeftOfIt"
       ]
     },
     {
@@ -315776,8 +315780,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/interactive_transcript_selection_test.go#TestRenderSessionEntriesDropsFullscreenSelection",
-        "test:tui/tui_alt_screen_kitty_order_test.go#TestAltScreenDoesNotLeakCursorMarkersWhileSelectingAfterTheCaret",
-        "test:tui/tui_alt_screen_new_test.go#TestNewTuiAltScreenDrawsOnItsTerminalAndTakesItsSize"
+        "test:tui/terminal_screen_writer_autowrap_test.go#TestScreenWriterTranslatesOnlyUnderTheRenderersAutowrap",
+        "test:tui/tui_alt_screen_kitty_order_test.go#TestAltScreenDoesNotLeakCursorMarkersWhileSelectingAfterTheCaret"
       ]
     },
     {
@@ -315822,7 +315826,7 @@
       "evidence": [
         "test:tui/terminal_exit_restore_test.go#TestExitRestoreFixture",
         "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys",
-        "test:tui/tui_alt_screen_keyboard_protocol_test.go#TestTuiAltScreenMovesOutstandingKeyboardPushAcrossScreens"
+        "test:tui/terminal_screen_writer_autowrap_test.go#TestScreenWriterTranslatesOnlyUnderTheRenderersAutowrap"
       ]
     },
     {
