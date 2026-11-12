@@ -4755,6 +4755,7 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 			}
 			// A user_bash reply that names a BashOperations object the extension holds becomes the object Pi's runner holds.
 			if event == "user_bash" && len(resp.Response.Result) > 0 {
+				//portlint:allow hotpathalloc the reply frame returns to the connection when this handler returns (releaseResponse) and the result outlives it; one copy per user_bash operation, not per streamed event
 				if typed, ok := userBashOperationsResult(conn, bytes.Clone(resp.Response.Result)); ok {
 					return typed, nil
 				}
@@ -4764,6 +4765,7 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 			// so null never reaches the Runner as a result value.
 			if result := resp.Response.Result; len(result) > 0 && strings.TrimSpace(string(result)) != "null" {
 				// Return raw JSON for the Runner to interpret.
+				//portlint:allow hotpathalloc the reply frame returns to the connection when this handler returns (releaseResponse) and the result outlives it; one copy of a non-null handler result
 				return slices.Clone(result), nil
 			}
 		}
