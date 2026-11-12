@@ -14,7 +14,7 @@ export default function (pi) {
       }
     },
   });
-  // Runs a command that never ends on its own and aborts its signal: pi.exec kills the command and resolves with killed set and code 0, in every mode.
+  // Runs a command that never ends on its own and aborts its signal: pi.exec kills the command and resolves with killed set and code 143, in every mode.
   pi.registerCommand("exec_abort_probe", {
     description: "abort the signal of a running pi.exec",
     handler: async () => {
@@ -23,7 +23,7 @@ export default function (pi) {
       const controller = new AbortController();
       setTimeout(() => controller.abort(), 500);
       const result = await pi.exec(helper, ["hang"], { signal: controller.signal });
-      if (!result.killed || result.code !== 0) throw new Error(`exec killed = ${result.killed}, code = ${result.code}, want killed with code 0`);
+      if (!result.killed || result.code !== 143) throw new Error(`exec killed = ${result.killed}, code = ${result.code}, want killed with code 143`);
     },
   });
 }
