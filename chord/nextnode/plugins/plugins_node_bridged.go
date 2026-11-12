@@ -64,7 +64,7 @@ type bridgedWire struct {
 }
 
 // validBridged checks the facets and returns their names' set: names are unique, a facet that has not failed has a host and
-// contracts that are local.
+// contracts that are local and have no event member (eventsDoNotCross).
 func validBridged(facets []BridgedFacet) error {
 	names := map[string]bool{}
 	for _, facet := range facets {
@@ -88,6 +88,9 @@ func validBridged(facets []BridgedFacet) error {
 			}
 			if declared.Kind != contracts.KindLocal {
 				return fmt.Errorf("plugins: bridged facet %q: %s is a remote type; only local types are bridged", facet.Name, declared.Name)
+			}
+			if err := eventsDoNotCross(declared); err != nil {
+				return fmt.Errorf("plugins: bridged facet %q: %w", facet.Name, err)
 			}
 		}
 	}
