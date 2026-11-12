@@ -180,6 +180,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-1a855cd](#bf-1a855cd) | The `/session` block now follows a later theme change and shows the cache-warming countdown as of each… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1a893bc](#bf-1a893bc) | fix(durable/core): report task_interrupted from the runtime's commit path for every task (Pi scheduler.ts) | PiG's own defect | All platforms | Unreleased |
 | [BF-1aaf60f](#bf-1aaf60f) | Rendered diffs keep the indentation shared by a removed and an added line when text is inserted at the start… | PiG's own defect | All platforms | Unreleased |
+| [BF-1ad65fe](#bf-1ad65fe) | The bash tool no longer returns no output, with a footer like `[Showing lines 3-2 of 2]`, when a command's… | PiG's own defect | All platforms | Unreleased |
 | [BF-1b5540a](#bf-1b5540a) | `client.Client.Disconnect` takes the reason string as Pi's `Client.disconnect(reason)` does (it was an… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1b9718b](#bf-1b9718b) | fix(photonimage): register the lossless decoders Decode falls back to and decode test sources with Photon | PiG's own defect | All platforms | Unreleased |
 | [BF-1be8228](#bf-1be8228) | `listDir` of the local and remote execution environments leaves out an entry removed between enumeration and… | PiG's own defect | All platforms | Unreleased |
@@ -307,6 +308,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-2e8dcc1](#bf-2e8dcc1) | A Node extension loaded in a TUI could lose `ctx.ui` (every widget, status and footer call became a no-op)… | PiG's own defect | All platforms | Unreleased |
 | [BF-2e95347](#bf-2e95347) | Chord's active-language and active-theme followers could miss the user's pick for good: the pick's watch was… | PiG's own defect | All platforms | Unreleased |
 | [BF-2ea8ad2](#bf-2ea8ad2) | The openai-completions, openai-responses and openrouter-images requests build their URL as the openai SDK… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-2ed0813](#bf-2ed0813) | A tool that requires strict JSON-schema sampling and has a schema node without a type (such as `items: {}`… | PiG's own defect | All platforms | Unreleased |
 | [BF-2f7f692](#bf-2f7f692) | Chord's surfaces: a language or theme follower stopped before its pick watch bound no longer crashes the… | PiG's own defect | All platforms | Unreleased |
 | [BF-2f7f692-2](#bf-2f7f692-2) | Chord's `TuiScope`: a holder that releases its own `Hold`en reference before the scope's watch of its state… | PiG's own defect | All platforms | Unreleased |
 | [BF-2f8638b](#bf-2f8638b) | Chord: the rollout Step of a published script set now lists removed plugins in UTF-16 code unit order, as Pi… | PiG's own defect | All platforms | Unreleased |
@@ -1049,6 +1051,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-82ca8da](#bf-82ca8da) | On Windows, the host reports the load error of a Node extension that exits right after it sends the error | PiG's own defect | Windows | 0.7.0 |
 | [BF-82d1808](#bf-82d1808) | Subprocess extensions no longer slow down each streamed token in long sessions: the state sent before each… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8303e4c](#bf-8303e4c) | fix(entered): Classify takes the tracer and heap dump stops, the exact fd lock frames and the whole header… | PiG's own defect | All platforms | Unreleased |
+| [BF-8392c29](#bf-8392c29) | MCP stdio servers now start in a session of their own, as Pi's stdio transport does (`detached` in Node's… | PiG's own defect | All platforms | Unreleased |
 | [BF-83d5488](#bf-83d5488) | `pig install <dir>` of a local directory with no package manifest and no `extensions/`, `skills/`, `prompts/`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-83fea11](#bf-83fea11) | On Windows, a refused connection reads as Node's `connect ECONNREFUSED` and is not retried, as in Pi; it was… | PiG's own defect | Windows | 0.5.0 |
 | [BF-844d215](#bf-844d215) | Repairing a partial tool-call arguments text follows partial-json's `obj["__proto__"] = value`: a… | PiG's own defect | All platforms | 0.5.0 |
@@ -1121,6 +1124,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-8f241ca](#bf-8f241ca) | A response stream dropped mid-run reports `terminated: other side closed (UND_ERR_SOCKET)` on… | PiG's own defect | All platforms | Unreleased |
 | [BF-8f45099](#bf-8f45099) | Compaction summaries, branch summaries and bug reports omit thinking blocks (Pi 15e7bdc1, Pi #9602): replayed… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8f88d43](#bf-8f88d43) | On Windows, an extension's `exec` no longer returns no output for a command that printed, when the machine is… | PiG's own defect | Windows | 0.7.0 |
+| [BF-8fbbd2d](#bf-8fbbd2d) | Chord workers now start in a session of their own, as Pi's `detached: true` fork does, so a worker no longer… | PiG's own defect | All platforms | Unreleased |
 | [BF-8fead2d](#bf-8fead2d) | fix(chord/nextnode/workers,chord/nextnode/plugins): the workers run on the plugins' Node host; no test hooks… | PiG's own defect | All platforms | Unreleased |
 | [BF-905f3d0](#bf-905f3d0) | A trap of the codemode module on a Worker no longer loses the output the script printed before it: the host… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-9076cd5](#bf-9076cd5) | Markdown bold and italic render next to CJK punctuation in the terminal, for example… | PiG's own defect | All platforms | 0.5.2 |
@@ -1501,6 +1505,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-bbccefd](#bf-bbccefd) | A Durable value that holds a lone UTF-16 surrogate is stored as Pi stores it | PiG's own defect | All platforms | Unreleased |
 | [BF-bc24321](#bf-bc24321) | fix(mem M3): arm the idle collection at run end and run it after 500 ms | PiG's own defect | All platforms | Unreleased |
 | [BF-bc4cd62](#bf-bc4cd62) | `toPrecision` rounds a value just below a power of ten (1e-11 to 16 digits, 9.999999999999998e9 to 16 digits)… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-bc6c54f](#bf-bc6c54f) | Fix the extension event result type and keep the event fast paths exact | PiG's own defect | All platforms | Unreleased |
 | [BF-bc8d37f](#bf-bc8d37f) | `FileModelsStore` roots and index keys: new live-Pi oracle… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-bcc2046](#bf-bcc2046) | A nested list whose last item is empty but for spaces after its marker is followed by an empty row before the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-bd3e8ab](#bf-bd3e8ab) | On arm64 and other CPUs with a fused multiply-add, Kimi, Radius and xAI OAuth credentials store the `expires`… | PiG's own defect | All platforms | 0.5.0 |
@@ -1745,6 +1750,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-dc003a9-2](#bf-dc003a9-2) | Automatic retry now triggers for `stream disconnected before completion` errors that a proxy wrapping the… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-dc003a9-3](#bf-dc003a9-3) | Sign in with ChatGPT: a ChatGPT Business workspace usage-limit error… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-dc53412](#bf-dc53412) | A `pig_strip_bedrock_converse_stream` Piglet Binary no longer links the AWS SDK through the Bedrock retry… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-dc7d547](#bf-dc7d547) | An interactive shell run by the bash tool or by a `!` command no longer suspends PiG with `suspended (tty… | PiG's own defect | All platforms | Unreleased |
 | [BF-dca5763](#bf-dca5763) | A notification, status or message that an extension queues on `setImmediate` or `setTimeout(0)` from inside a… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-dcf10b2](#bf-dcf10b2) | chord: a server that closed a connection while the host loop was sending on it could freeze the host for good… | PiG's own defect | All platforms | Unreleased |
 | [BF-dd09fd4](#bf-dd09fd4) | Startup now records the changelog version, and each extension package's version, before the UI and the… | PiG's own defect | All platforms | Unreleased |
@@ -4259,6 +4265,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `tui/diff_render_test.go::TestRenderDiffDoesNotHighlightSharedIndentationAsAnInsertion`, `tui/diff_render_test.go::TestRenderDiffPreservesIndentation`
 - **Release note:** Rendered diffs keep the indentation shared by a removed and an added line when text is inserted at the start of the line.
 
+### BF-1ad65fe
+
+**The bash tool no longer returns no output, with a footer like `[Showing lines 3-2 of 2]`, when a command's…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The bash tool no longer returns no output, with a footer like `[Showing lines 3-2 of 2]`, when a command's output ends in one line longer than about 100KB, such as a `grep` match in a minified file; it shows the end of that line, as Pi does (upstream #12092).
+- **Root cause:** When a command printed a short line and then one line longer than about 100KB, the bash tool returned no output and a footer like "[Showing lines 3-2 of 2 (50.0KB limit)]". The accumulator's retained tail was only the end of that line, clipping dropped its partial first line, and nothing was left. snapshotText now returns the unclipped tail in that case, so the truncation shows the last 50.0KB of the line with the partial-line notice, as Pi does.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1ad65fe04f` (2026-11-12)
+- **Tests:** `internal/codingagent/tools/details_parity_test.go::TestBuiltinToolDetailsParityProbe`, `internal/codingagent/tools/output_accumulator_long_last_line_port_test.go::TestBashToolShowsTheEndOfAnOverLongLastLineAfterAShortLine`, `internal/codingagent/tools/output_accumulator_long_last_line_port_test.go::TestOutputAccumulatorKeepsTheEndOfAnOverLongLastLine`, `internal/codingagent/tools/output_accumulator_oracle_test.go::TestOutputAccumulatorMatchesPi`
+- **Release note:** The bash tool no longer returns no output, with a footer like `[Showing lines 3-2 of 2]`, when a command's output ends in one line longer than about 100KB, such as a `grep` match in a minified file; it shows the end of that line, as Pi does (upstream #12092).
+
 ### BF-1b5540a
 
 **`client.Client.Disconnect` takes the reason string as Pi's `Client.disconnect(reason)` does (it was an…**
@@ -6014,6 +6034,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `2ea8ad24ae` (2026-10-10), `a8ff0c7afe` (2026-10-10)
 - **Tests:** `ai/sdk_request_url_oracle_test.go::TestSDKProvidersRefuseCredentialsLikeFetch`, `ai/sdk_request_url_oracle_test.go::TestSDKProvidersRequestURLMatchesSDK`
 - **Release note:** The openai-completions, openai-responses and openrouter-images requests build their URL as the openai SDK does (base query rewritten through qs, one slash dropped, WHATWG normalisation) and a URL with credentials is refused as fetch refuses it ("Connection error."), where Pig sent the credentials as Basic auth.
+
+### BF-2ed0813
+
+**A tool that requires strict JSON-schema sampling and has a schema node without a type (such as `items: {}`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A tool that requires strict JSON-schema sampling and has a schema node without a type (such as `items: {}`, an unknown or any value, or a bare `const`) is now refused with a clear local error, and one that only prefers strict sampling is sent without strict mode, where before the provider rejected the request with an HTTP 400 error; a node with only an `enum` stays strict, as under Pi (upstream #12049).
+- **Root cause:** OpenAI strict mode rejects a schema node without a type, such as items: {}, Type.Unknown(), Type.Any() or a bare const. Pi makes makeJsonSchemaNodeStrict throw for a node with no type, anyOf or enum, so a strict "prefer" tool is sent without strict mode and a "require" tool fails locally with a clear message. A node with only an enum stays strict.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2ed08134a2` (2026-11-12)
+- **Tests:** `ai/constrained_sampling_oracle_test.go::TestConstrainedSamplingMatchesPi`, `ai/constrained_sampling_upstream_test.go::TestConstrainedSamplingKeepsStrictForEnumOnlySchemasUpstream`, `ai/constrained_sampling_upstream_test.go::TestConstrainedSamplingUnsupportedSchemasUpstream`, `ai/strict_untyped_nodes_port_test.go::TestUntypedSchemaNodesFallBackFromStrictInTheRequestPort`, `coding/session_untyped_strict_tool_port_test.go::TestSessionSendsAStrictPreferToolWithAnUntypedNodeWithoutStrictPort`
+- **Release note:** A tool that requires strict JSON-schema sampling and has a schema node without a type (such as `items: {}`, an unknown or any value, or a bare `const`) is now refused with a clear local error, and one that only prefers strict sampling is sent without strict mode, where before the provider rejected the request with an HTTP 400 error; a node with only an `enum` stays strict, as under Pi (upstream #12049).
 
 ### BF-2f7f692
 
@@ -16280,6 +16314,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `8303e4c989` (2026-11-09)
 - **Tests:** `durable/harness/quiescence_test.go::TestAwaitQuiescentReturnsWithGoroutinesParkedInTheProgramsWaits`, `internal/entered/entered_test.go::TestParkedKeepsAFileDescriptorLockAsALock`
 
+### BF-8392c29
+
+**MCP stdio servers now start in a session of their own, as Pi's stdio transport does (`detached` in Node's…**
+
+- **Source:** PiG's own defect
+- **Symptom:** MCP stdio servers now start in a session of their own, as Pi's stdio transport does (`detached` in Node's spawn is `setsid`): a server, or a child of it, no longer keeps PiG's controlling terminal and cannot take the terminal's foreground process group from PiG.
+- **Root cause:** Pi's stdio transport spawns the server with `detached: USE_PROCESS_GROUPS` (packages/mcp/src/transports/stdio.ts:107), which Node starts with setsid(2) on every platform but Windows. PiG called setpgid only, so a server, or a child of it, kept PiG's controlling terminal and could take the terminal's foreground group away from PiG, as the bash tool's shell did.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8392c29006` (2026-11-11, #427)
+- **Tests:** `mcp/fixtures_test.go::TestMain`, `mcp/stdio_session_linux_test.go::TestStdioServerCannotTakeThePigTerminal`, `mcp/stdio_session_linux_test.go::TestStdioServerLeadsItsOwnSessionAndProcessGroup`
+- **Release note:** MCP stdio servers now start in a session of their own, as Pi's stdio transport does (`detached` in Node's spawn is `setsid`): a server, or a child of it, no longer keeps PiG's controlling terminal and cannot take the terminal's foreground process group from PiG. The server still leads its own process group, so closing the transport still ends its children (#427).
+
 ### BF-83d5488
 
 **`pig install <dir>` of a local directory with no package manifest and no `extensions/`, `skills/`, `prompts/`…**
@@ -17275,6 +17323,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `8f88d43fa5` (2026-10-24)
 - **Tests:** `coding/extension/exec_drain_test.go::TestExecCommandKeepsTheOutputOfAChildThatExitedBeforeItsReadersRan`
 - **Release note:** On Windows, an extension's `exec` no longer returns no output for a command that printed, when the machine is too busy to run PiG's pipe reader within 100 ms of the command's exit. The command now starts suspended and joins a job object before it can start another process, as the bash tool's shell already did, so PiG knows when no process holds the output pipes any more and reads them to the end instead of dropping what the command had written before it exited.
+
+### BF-8fbbd2d
+
+**Chord workers now start in a session of their own, as Pi's `detached: true` fork does, so a worker no longer…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Chord workers now start in a session of their own, as Pi's `detached: true` fork does, so a worker no longer keeps the launching terminal as its controlling terminal.
+- **Root cause:** Pi forks a worker with `detached: true` (packages/chord/src/node/workers/process.ts:54), which Node starts with setsid(2). PiG's detach carried the comment "Node's `detached: true`" but called setpgid only, so a worker kept PiG's controlling terminal.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8fbbd2da17` (2026-11-11, #427)
+- **Tests:** `chord/nextnode/workers/workers_process_session_linux_test.go::TestAWorkerProcessLeadsItsOwnSessionAndProcessGroup`
+- **Release note:** Chord workers now start in a session of their own, as Pi's `detached: true` fork does, so a worker no longer keeps the launching terminal as its controlling terminal. The worker still leads its own process group, so killing the group still kills everything it spawned (#427).
 
 ### BF-8fead2d
 
@@ -22573,6 +22635,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `internal/jsstring/toprecision_oracle_test.go::TestToPrecisionAgainstNodeCorpus`, `internal/jsstring/toprecision_oracle_test.go::TestToPrecisionKeepsTheExponentOfAValueJustBelowAPowerOfTen`
 - **Release note:** `toPrecision` rounds a value just below a power of ten (1e-11 to 16 digits, 9.999999999999998e9 to 16 digits) to the digits Node prints (`9.999999999999999e-12`, `9999999999.999998`) instead of carrying it up to the power of ten.
 
+### BF-bc6c54f
+
+**Fix the extension event result type and keep the event fast paths exact**
+
+- **Source:** PiG's own defect
+- **Symptom:** Fix the extension event result type and keep the event fast paths exact
+- **Root cause:** A Host's connections read every response by the full decode, because Host.observeXref sets the inbound observer on each of them and the fast route ran only without one. The fast route now declines only the responses the observer needs: the response to a request cross-process accounting expects, and every response while a diagnostic observer is set. The event round-trip allocation gate wires its connection as a Host does, and a test shows which responses the Host's connection decodes.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `bc6c54f11d` (2026-11-11)
+- **Tests:** `coding/extension/host/subprocess/event_result_type_test.go::TestEventHandlerResultKeepsTheRawJSONType`, `coding/extension/host/subprocess/perf_gate_norace_test.go::TestExtensionEventRoundTripAllocationGate`, `coding/extension/host/subprocess/response_channel_test.go::TestLateResponseNeverReachesTheRequestHoldingTheChannel`, `coding/extension/host/subprocess/response_channel_test.go::TestPythonSDKResponseFramesAreRoutedByTheFullDecode`, `coding/extension/host/subprocess/response_channel_test.go::TestResponseChannelIsEmptyWhenItsRequestReturnsIt`, `coding/extension/host/subprocess/response_channel_test.go::TestResponseReadForAnEndedRequestIsNotSent`, `coding/extension/host/subprocess/response_route_test.go::TestHostConnectionRoutesTheResponsesInboundDoesNotNeed`, `coding/session_prompt_options_version_test.go::TestRunSystemPromptFollowsAnInProcessEditOfTheBaseOptions` and 5 more in docs/bug-ledger.json
+
 ### BF-bc8d37f
 
 **`FileModelsStore` roots and index keys: new live-Pi oracle…**
@@ -25952,6 +26027,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `dc53412cc2` (2026-10-11)
 - **Tests:** `coding/cli/strip_providers_binary_test.go::TestStripBedrockConverseStreamBuildOmitsAWSSDK`
 - **Release note:** A `pig_strip_bedrock_converse_stream` Piglet Binary no longer links the AWS SDK through the Bedrock retry delay.
+
+### BF-dc7d547
+
+**An interactive shell run by the bash tool or by a `!` command no longer suspends PiG with `suspended (tty…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An interactive shell run by the bash tool or by a `!` command no longer suspends PiG with `suspended (tty input)` on the next key press.
+- **Root cause:** Pi spawns the shell with `detached: true` (core/tools/bash.ts createLocalShellOperations), which Node starts with setsid(2): the shell leads a new session and a new process group and has no controlling terminal. PiG called setpgid only, so the shell stayed in PiG's session with PiG's controlling terminal. An interactive job-control shell (`zsh -f -i -c true; true`) opened /dev/tty, made its own process group the terminal's foreground group and left it so when it exited. PiG, in the background of its own terminal, was stopped by SIGTTIN on the next key press (`suspended (tty input)`). `bash -i -c true; true` stopped itself and the tool call never returned; Pi's shell prints `bash: cannot set…
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `dc7d547ecf` (2026-11-11, #427)
+- **Tests:** `coding/cli/testmain_test.go::TestMain`, `coding/cli/user_bash_terminal_pty_test.go::TestInteractiveUserBashLeavesTheTerminalToPig`, `internal/codingagent/tools/bash_tty_linux_test.go::TestBashAbortAndTimeoutKillTheShellsDescendants`, `internal/codingagent/tools/bash_tty_linux_test.go::TestBashCommandCannotTakeThePigTerminal`, `internal/codingagent/tools/bash_tty_linux_test.go::TestBashShellLeadsItsOwnSessionAndProcessGroup`, `internal/codingagent/tools/testmain_test.go::TestMain`, `internal/testenv/terminal_session_linux_test.go::TestInTerminalSessionRunsTheTestAsTheLeaderOfAControllingTerminal`, `internal/testenv/terminal_session_linux_test.go::TestRequireTerminalForegroundFailsWhileAnotherGroupHoldsTheTerminal`
+- **Release note:** An interactive shell run by the bash tool or by a `!` command no longer suspends PiG with `suspended (tty input)` on the next key press. PiG started the shell in its own process group but in PiG's session, so the shell kept PiG's controlling terminal: `zsh -f -i -c true; true` opened `/dev/tty`, made its own process group the terminal's foreground group and left it so when it exited, and PiG's next read from the terminal raised SIGTTIN. `bash -i -c true; true` stopped itself and the tool call never returned. The shell now starts in a session of its own, as Pi's `detached: true` does (Node's spawn calls `setsid`), so it has no controlling terminal: `/dev/tty` cannot be opened and `bash -i` reports `no job control in this shell` and returns. The shell still leads its own process group, so abort, timeout and the exit cleanup still end every descendant (#427, reported by @asp345).
 
 ### BF-dca5763
 
