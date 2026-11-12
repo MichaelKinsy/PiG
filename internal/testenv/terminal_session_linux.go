@@ -80,7 +80,7 @@ func InTerminalSession(t *testing.T) bool {
 // a terminal session.
 func RequireTerminalForeground(t testing.TB) {
 	t.Helper()
-	foreground, err := unix.IoctlGetInt(0, unix.TIOCGPGRP)
+	foreground, err := ioctlGetInt(0, unix.TIOCGPGRP)
 	if err != nil {
 		t.Fatalf("the test process has no terminal; call InTerminalSession first: %v", err)
 	}
@@ -97,10 +97,10 @@ func openTerminalSessionPTY(t *testing.T) (master, slave *os.File) {
 		t.Fatalf("open /dev/ptmx: %v", err)
 	}
 	t.Cleanup(func() { _ = master.Close() })
-	if err := unix.IoctlSetPointerInt(int(master.Fd()), unix.TIOCSPTLCK, 0); err != nil {
+	if err := ioctlSetPointerInt(int(master.Fd()), unix.TIOCSPTLCK, 0); err != nil {
 		t.Fatalf("unlock pseudo-terminal: %v", err)
 	}
-	number, err := unix.IoctlGetInt(int(master.Fd()), unix.TIOCGPTN)
+	number, err := ioctlGetInt(int(master.Fd()), unix.TIOCGPTN)
 	if err != nil {
 		t.Fatalf("pseudo-terminal number: %v", err)
 	}

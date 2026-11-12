@@ -32337,8 +32337,8 @@
       ],
       "evidence": [
         "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallDoesNotRetryAbortedMessage",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallDoesNotRetryNonRetryableError"
+        "test:ai/provider_closed_connection_test.go#TestRetryAssistantCallOverAGatewayClosedConnection",
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallDoesNotRetryAbortedMessage"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -78419,8 +78419,8 @@
       ],
       "evidence": [
         "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallDoesNotRetryAbortedMessage",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallDoesNotRetryNonRetryableError"
+        "test:ai/provider_closed_connection_test.go#TestRetryAssistantCallOverAGatewayClosedConnection",
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallDoesNotRetryAbortedMessage"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -102451,8 +102451,8 @@
       ],
       "evidence": [
         "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallDoesNotRetryAbortedMessage",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallDoesNotRetryNonRetryableError"
+        "test:ai/provider_closed_connection_test.go#TestRetryAssistantCallOverAGatewayClosedConnection",
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallDoesNotRetryAbortedMessage"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -154148,8 +154148,8 @@
       ],
       "evidence": [
         "test:coding/session_retry_events_upstream_test.go#TestUpstreamSessionRetryEvents",
-        "test:coding/session_rpc_test.go#TestSessionAbortRetryCancelsDelay",
-        "test:coding/agent_session_oracle_test.go#TestAgentSessionMatchesPi"
+        "test:coding/session_connection_closed_retry_test.go#TestSessionAbortRetryDuringAClosedConnectionBackoff",
+        "test:coding/session_rpc_test.go#TestSessionAbortRetryCancelsDelay"
       ]
     },
     {
@@ -154170,8 +154170,8 @@
       ],
       "evidence": [
         "test:coding/session_retry_events_upstream_test.go#TestUpstreamSessionRetryEvents",
-        "test:coding/session_rpc_test.go#TestSessionAbortRetryCancelsDelay",
-        "test:coding/agent_session_oracle_test.go#TestAgentSessionMatchesPi"
+        "test:coding/session_connection_closed_retry_test.go#TestSessionAbortRetryDuringAClosedConnectionBackoff",
+        "test:coding/session_rpc_test.go#TestSessionAbortRetryCancelsDelay"
       ]
     },
     {
@@ -155080,8 +155080,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/missing_theme_export_upstream_test.go#TestMissingConfiguredThemeExportsWithActiveFallback",
-        "test:coding/session_last_assistant_text_test.go#TestSessionLastAssistantText",
-        "test:coding/session_name_wait_idle_test.go#TestSessionNameHandlerWaitForIdleReleasesNotifications"
+        "test:coding/session_connection_closed_retry_test.go#TestSessionRetriesAGatewayClosedConnectionOnce",
+        "test:coding/session_connection_closed_retry_test.go#TestSessionRetriesAServerSocketClosedBeforeTheAnswer"
       ]
     },
     {
@@ -155102,8 +155102,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/missing_theme_export_upstream_test.go#TestMissingConfiguredThemeExportsWithActiveFallback",
-        "test:coding/session_last_assistant_text_test.go#TestSessionLastAssistantText",
-        "test:coding/session_name_wait_idle_test.go#TestSessionNameHandlerWaitForIdleReleasesNotifications"
+        "test:coding/session_connection_closed_retry_test.go#TestSessionRetriesAGatewayClosedConnectionOnce",
+        "test:coding/session_connection_closed_retry_test.go#TestSessionRetriesAServerSocketClosedBeforeTheAnswer"
       ]
     },
     {

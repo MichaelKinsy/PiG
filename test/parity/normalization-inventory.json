@@ -17,8 +17,8 @@
     },
     {
       "source": "test/parity/runner/driver_ht.go",
-      "sha256": "69a91a07c9bc69269eca4ae4325da959194a5689037ff44f122d6995eb7416cf",
-      "reason": "Headless terminal state capture compares the declared visible surface, not transient bytes. Tool stderr is diagnostic transport noise, not product stderr."
+      "sha256": "88dafa2246d2f34188e46b0d3d407fb2c25621ae2f9c342ff25f5007a1d64e20",
+      "reason": "Headless terminal state capture compares the declared visible surface, not transient bytes. Tool stderr is diagnostic transport noise, not product stderr. A capture_start absent from a capture a comparator reads fails the run instead of comparing the whole screen."
     },
     {
       "source": "test/parity/runner/driver_rpc.go",
@@ -27,8 +27,8 @@
     },
     {
       "source": "test/parity/runner/driver_tmux.go",
-      "sha256": "6da493568046b813904eb4e809da7cf6f8d563e5d1b72549bec8593fed0a1f98",
-      "reason": "Terminal state capture is not a byte-stream assertion. A scenario explicitly selects viewport or retained history and its crop. History capture uses session-local maximum retention without changing pane size or shared defaults; required anchors and source-derived assertions reject incomplete history. Readiness and new-output barriers are synchronization, not behavioral coverage."
+      "sha256": "e1f687c9863ad927b4d05e73be417241d97a4a9e0d34eee9260a967a5c09e0a1",
+      "reason": "Terminal state capture is not a byte-stream assertion. A scenario explicitly selects viewport or retained history and its crop. History capture uses session-local maximum retention without changing pane size or shared defaults; required anchors and source-derived assertions reject incomplete history. Readiness and new-output barriers are synchronization, not behavioral coverage. The final capture is taken only from a still screen (the plain captures around the escaped one are equal, within the last step budget), and a capture_start absent from a capture a comparator reads, still absent when that budget ends, fails the run instead of comparing the whole screen. A capture no comparator reads is kept whole, not cropped."
     },
     {
       "source": "test/parity/runner/footer_crop.go",
@@ -4637,8 +4637,8 @@
         {
           "kind": "terminal_crop",
           "configuration": {
-            "capture_start": "reply with exactly: FRAMETAILOK",
-            "capture_end": "FRAMETAILOK"
+            "capture_start": "queued-after-compaction-ok",
+            "capture_end": "queued-after-compaction-ok"
           },
           "reason": "Owned visible surface: No frame begins after the frame that carries the end of a reply, in the raw terminal stream.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
