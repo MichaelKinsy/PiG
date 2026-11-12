@@ -64,11 +64,11 @@ func buildModel(spec string, svcs *AgentSessionServices, apiKey string) (*ai.Mod
 
 	registry := svcs.Registry()
 	if registry.GetProvider(providerID) != nil {
-		model := svcs.ModelRuntime().GetModel(providerID, modelID)
-		if model == nil {
-			return nil, fmt.Errorf("model not found: %s/%s", providerID, modelID)
+		if model := svcs.ModelRuntime().GetModel(providerID, modelID); model != nil {
+			return model, nil
 		}
-		return model, nil
+		// An id the provider does not list is still a model of that provider, as it is for every other provider shape below: the model names the provider and the id, and the provider's own stream function receives it (Pi takes a model object that no registry lists and only requires its provider to exist, model-runtime.ts:667-689 prepareRequest).
+		return svcs.ModelRuntime().bindNativeModel(&ai.Model{ID: modelID, DisplayName: modelID, ProviderMeta: ai.ProviderMetadata{ProviderID: providerID}}), nil
 	}
 	var entry icodingagent.ModelEntry
 	if remote, found := registry.ResolveRemoteCatalogModel(providerID, modelID); found {
