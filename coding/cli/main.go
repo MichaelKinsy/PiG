@@ -45,6 +45,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/nodepath"
 	"github.com/MichaelKinsy/PiG/internal/nodeurl"
 
+	"github.com/MichaelKinsy/PiG/extensions/sdk/clihook"
 	"golang.org/x/term"
 
 	"github.com/MichaelKinsy/PiG/agent"
@@ -753,6 +754,17 @@ func Main(args []string, options *MainOptions) {
 			pigstrip.SetPiglet(p.Name)
 			undoBinaryStrip = p.Strip.Record()
 		}
+	}
+
+	// A fused member's CLI hook owns the command line first (extensions/sdk/clihook).
+	if hook := clihook.Registered(); hook != nil {
+		res := hook(clihook.Env{Args: args, Stdin: os.Stdin, Stdout: os.Stdout, Stderr: os.Stderr, Getenv: os.Getenv, Chdir: os.Chdir,
+			StdinTTY: term.IsTerminal(int(os.Stdin.Fd())), StdoutTTY: term.IsTerminal(int(os.Stdout.Fd()))})
+		if res.Handled {
+			exitProcess(res.Exit)
+		}
+		args = res.Args
+		clihook.SetOwnPrintOutput(res.OwnPrintOutput)
 	}
 
 	// Subcommands run before a Piglet Binary initializes session extensions.
@@ -1469,6 +1481,9 @@ func Main(args []string, options *MainOptions) {
 				printCLIError("%v", err)
 			}
 			exitProcess(exitCode)
+		}
+		if code, ok := clihook.ExitCode(); ok && code != 0 {
+			exitProcess(code)
 		}
 		return
 	}

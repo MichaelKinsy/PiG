@@ -23,6 +23,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/handleryield"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 
+	"github.com/MichaelKinsy/PiG/extensions/sdk/clihook"
 	"golang.org/x/term"
 )
 
@@ -195,6 +196,10 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 			}
 		}
 		opts.stdout = codingagent.RawStdoutWriter()
+		if clihook.OwnPrintOutput() {
+			clihook.SetStdout(opts.stdout)
+			opts.stdout = io.Discard
+		}
 	}
 	if opts.stderr == nil {
 		opts.stderr = os.Stderr
