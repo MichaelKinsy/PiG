@@ -31,7 +31,9 @@ func loopbackDefaultClient(t *testing.T, handler http.Handler) {
 // The registered GitHub Copilot provider (the caller that hands the login its prompt) returns exactly "Login cancelled" when its prompt settles after the signal aborted
 // (github-copilot.ts:434), and no request leaves: the listener fails the test on any.
 func TestCopilotOAuthProviderLoginSettledPromptAfterAbortIsLoginCancelled(t *testing.T) {
-	loopbackDefaultClient(t, http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) { t.Errorf("a request left a cancelled login: %s %s", r.Method, r.URL) }))
+	loopbackDefaultClient(t, http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		t.Errorf("a request left a cancelled login: %s %s", r.Method, r.URL)
+	}))
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	_, err := copilotOAuthRegistryProvider{}.LoginContext(ctx, OAuthLoginCallbacks{OnPrompt: func(OAuthPrompt) (string, error) {

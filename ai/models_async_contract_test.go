@@ -45,7 +45,9 @@ func loginNeverRuns(context.Context, AuthInteraction, LoginOptions) (Credential,
 	return Credential{}, errNeverLogin
 }
 
-func oauthCredential() Credential { return Credential{Type: CredentialOAuth, Access: "a", Refresh: "r"} }
+func oauthCredential() Credential {
+	return Credential{Type: CredentialOAuth, Access: "a", Refresh: "r"}
+}
 
 // models.ts login (:803-812) takes `signal.throwIfAborted()` before the provider lookup and before the flow, with the signal's own reason.
 func TestModelsLoginWithAnAbortedSignalSettlesWithItsReasonBeforeAnyOtherCheck(t *testing.T) {
@@ -151,8 +153,12 @@ func TestModelsLoginFinishingAfterTheAbortSettlesWithTheReason(t *testing.T) {
 func TestModelsLoginStoreFailureIsWrappedAndAnAbortDuringTheModifyWins(t *testing.T) {
 	diskFull := errors.New("disk full")
 	t.Run("wrapped", func(t *testing.T) {
-		models, store, _ := oauthModels(func(context.Context, AuthInteraction, LoginOptions) (Credential, error) { return oauthCredential(), nil })
-		store.modify = func(context.Context, string, func(*Credential) (*Credential, error)) (*Credential, error) { return nil, diskFull }
+		models, store, _ := oauthModels(func(context.Context, AuthInteraction, LoginOptions) (Credential, error) {
+			return oauthCredential(), nil
+		})
+		store.modify = func(context.Context, string, func(*Credential) (*Credential, error)) (*Credential, error) {
+			return nil, diskFull
+		}
 		_, err := models.Login(t.Context(), "p", CredentialOAuth, AuthInteraction{})
 		var modelsErr *ModelsError
 		if !errors.As(err, &modelsErr) || modelsErr.Code != ModelsErrorAuth || !errors.Is(err, diskFull) || modelsErr.Message != "Credential store modify failed for p: disk full" {
@@ -162,7 +168,9 @@ func TestModelsLoginStoreFailureIsWrappedAndAnAbortDuringTheModifyWins(t *testin
 	t.Run("abort after the modify started", func(t *testing.T) {
 		reason := errors.New("operator interrupt")
 		ctx, cancel := context.WithCancelCause(t.Context())
-		models, store, _ := oauthModels(func(context.Context, AuthInteraction, LoginOptions) (Credential, error) { return oauthCredential(), nil })
+		models, store, _ := oauthModels(func(context.Context, AuthInteraction, LoginOptions) (Credential, error) {
+			return oauthCredential(), nil
+		})
 		store.modify = func(ctx context.Context, _ string, fn func(*Credential) (*Credential, error)) (*Credential, error) {
 			if _, err := fn(nil); err != nil {
 				return nil, err
@@ -184,7 +192,9 @@ func TestModelsLoginAbortBeforeTheModifyStartedDoesNotWaitForTheStore(t *testing
 		ctx, cancel := context.WithCancelCause(t.Context())
 		gate := make(chan struct{})
 		entered := make(chan struct{})
-		models, store, _ := oauthModels(func(context.Context, AuthInteraction, LoginOptions) (Credential, error) { return oauthCredential(), nil })
+		models, store, _ := oauthModels(func(context.Context, AuthInteraction, LoginOptions) (Credential, error) {
+			return oauthCredential(), nil
+		})
 		store.modify = func(context.Context, string, func(*Credential) (*Credential, error)) (*Credential, error) {
 			close(entered)
 			<-gate
