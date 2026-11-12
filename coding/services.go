@@ -124,7 +124,8 @@ type CreateAgentSessionServicesOptions struct {
 	ModelRuntime *ModelRuntime
 
 	// ModelRuntimeSignal bounds the model catalog restore and the first availability refresh of the runtime the Services
-	// create; nil never cancels. Upstream CreateAgentSessionServicesOptions.modelRuntimeSignal (an AbortSignal).
+	// create; nil never cancels. It bounds neither the resource reload nor the refresh that follows it. Upstream
+	// CreateAgentSessionServicesOptions.modelRuntimeSignal (an AbortSignal).
 	ModelRuntimeSignal context.Context
 
 	// ExtensionFlagValues are the CLI values for extension flags in command-line order (a JavaScript Map keeps insertion order,
@@ -179,6 +180,9 @@ func CreateAgentSessionServices(opts CreateAgentSessionServicesOptions) (*AgentS
 	if signal == nil {
 		signal = context.Background()
 	}
+	// agent-session-services.ts:140-146 passes modelRuntimeSignal to ModelRuntime.create alone: the resource reload (:154) and the refresh after the
+	// extension registrations (:194) take no signal.
+	afterCreate := context.WithoutCancel(signal)
 
 	projectTrusted := true
 	if opts.ProjectTrusted != nil {
@@ -221,7 +225,7 @@ func CreateAgentSessionServices(opts CreateAgentSessionServicesOptions) (*AgentS
 	services.extensionFlagValues = opts.ExtensionFlagValues
 	if opts.ResourceLoader != nil {
 		services.resourceLoader, services.sharedLoader = opts.ResourceLoader, true
-		services.applyLoadedExtensions(signal)
+		services.applyLoadedExtensions(afterCreate)
 		return services, nil
 	}
 	if opts.ResourceLoaderOptions != nil || opts.ResourceLoaderReloadOptions != nil {
@@ -235,11 +239,11 @@ func CreateAgentSessionServices(opts CreateAgentSessionServicesOptions) (*AgentS
 		if opts.ResourceLoaderReloadOptions != nil {
 			reload = *opts.ResourceLoaderReloadOptions
 		}
-		if err := services.resourceLoader.ReloadWith(signal, reload); err != nil {
+		if err := services.resourceLoader.ReloadWith(afterCreate, reload); err != nil {
 			services.Close()
 			return nil, fmt.Errorf("coding.CreateAgentSessionServices: reload resources: %w", err)
 		}
-		services.applyLoadedExtensions(signal)
+		services.applyLoadedExtensions(afterCreate)
 	}
 	return services, nil
 }
