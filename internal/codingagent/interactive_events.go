@@ -78,13 +78,57 @@ func (m *InteractiveMode) finalizeRunningTools() {
 // setTerminalProgress writes the OSC 9;4 terminal progress indicator.
 var setTerminalProgress = tui.SetTerminalProgress
 
+// handleAgentEvent takes one item of the Session's Events on the owner loop.
+//
+// Pi's frame is a timer callback (packages/tui/src/tui.ts:1033-1090 requestRender), so it cannot begin between two events that Pi's loop handles in one task: the events of a response the provider delivered in one run, and the message_end, tool_execution_start, turn_end and agent_end the loop emits behind them without awaiting anything (packages/agent/src/agent-loop.ts:262-263, 296-299, 329). The Session marks the bounds of such a task (eventRegionMarker). The loop takes the frame timer and the events from one select, so between the markers it only collects the events, and applies them all in the iteration that takes the closing marker: a frame that falls due meanwhile draws the state before the task, as Pi's timer does when it fires before the task, and the frame after it draws the whole task.
+//
+// No frame, dialog or input waits for a marker. A producer that waits inside a task delays that task's events only, and a task that closes early is drawn as it was without markers.
 func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
-	// Each assistant message owns one block updated from authoritative event snapshots.
 	if barrier, ok := ev.(eventBarrier); ok {
+		if marker, ok := ev.(eventRegionMarker); ok {
+			if open, bounds := marker.EventRegion(); bounds {
+				m.setEventRegion(open)
+				return
+			}
+		}
 		// Every earlier event has now been handled on this loop.
+		m.applyEventRegion()
 		barrier.AcknowledgeEvent()
 		return
 	}
+	if m.eventRegionOpen {
+		m.eventRegion = append(m.eventRegion, ev)
+		switch ev.(type) {
+		case agent.AgentEndEvent, agent.AgentSettledEvent:
+			// The run is over, so its task is, whatever became of the closing marker.
+			m.setEventRegion(false)
+		}
+		return
+	}
+	m.applyAgentEvent(ev)
+}
+
+// setEventRegion opens a task's region, or closes it and applies the events collected in it.
+func (m *InteractiveMode) setEventRegion(open bool) {
+	m.eventRegionOpen = open
+	if !open {
+		m.applyEventRegion()
+	}
+}
+
+// applyEventRegion applies the collected events in the order they arrived, in this one iteration of the loop.
+func (m *InteractiveMode) applyEventRegion() {
+	events := m.eventRegion
+	m.eventRegion = m.eventRegion[:0]
+	for i, ev := range events {
+		events[i] = nil
+		m.applyAgentEvent(ev)
+	}
+}
+
+// applyAgentEvent updates the mode for one Session event.
+func (m *InteractiveMode) applyAgentEvent(ev agent.AgentEvent) {
+	// Each assistant message owns one block updated from authoritative event snapshots.
 	m.programStatusReporter().HandleEvent(ev)
 	switch e := ev.(type) {
 	case agent.SessionInfoChangedEvent:

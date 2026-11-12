@@ -4,6 +4,8 @@ import (
 	"context"
 	"iter"
 	"sync"
+
+	"github.com/MichaelKinsy/PiG/internal/jsloop"
 )
 
 // Ports packages/agent/src/agent-loop.ts (the awaited event-sink continuations of the for-await loop in streamAssistantResponse).
@@ -354,10 +356,30 @@ func (stream *AssistantMessageEventStream) observeEvents(ctx context.Context, ma
 			iterator := newContinuationEventIterator(ctx, stream, executor)
 			defer iterator.close()
 			owner := currentGoroutineID()
+			// The run's own reader reports the tasks of Pi's loop (jsloop.Task). A task runs from the event the reader takes and ends once every ready reaction has run, which is where the reader would wait for the provider. One process.nextTick-class reaction per task ends it: Node runs such a callback after the microtasks of the task and before the next I/O completion.
+			task := jsloop.TaskReaderFrom(ctx)
+			parking := false
+			var park func()
+			if task != nil {
+				//perf:ok created once per response, and only for a run whose owner asked for its tasks
+				park = func() {
+					parking = false
+					task.Park()
+				}
+			}
 			for {
 				delivery := awaitContinuation(turn, iterator.next())
 				if delivery.done {
 					return
+				}
+				if task != nil {
+					task.Begin()
+					if !parking {
+						parking = true
+						if drain := executor.postTickDeferred(park); drain != nil {
+							drain()
+						}
+					}
 				}
 				observation := &StreamObservation{turn: turn, owner: owner}
 				executor.mu.Lock()

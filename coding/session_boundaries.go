@@ -113,6 +113,7 @@ func (s *Session) dispatchTurnEndBoundary(ctx context.Context, event agent.TurnE
 	if runner == nil || !runner.HasHandlers(icodingagent.EventTurnEnd) {
 		return false, nil
 	}
+	s.endEventTask()
 	event = s.turnEndWithEntryIDs(event)
 	for i := range event.ToolResults {
 		s.rememberMessageEntry(agent.AgentMessage{ToolResult: &event.ToolResults[i]}, event.ToolResultEntryIDs[i])

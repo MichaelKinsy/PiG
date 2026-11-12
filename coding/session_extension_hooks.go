@@ -58,6 +58,7 @@ func (s *Session) toolCallHook(ctx context.Context, toolCallID, parentToolCallID
 	if runner == nil || !runner.HasHandlers(icodingagent.EventToolCall) {
 		return agent.ToolCallHookResult{}
 	}
+	s.endEventTask()
 	var input map[string]any
 	if len(args) > 0 {
 		// A lone UTF-16 surrogate in the model's arguments stays that unit, as JSON.parse reads it: the handler, the before/after comparison and InputJSON all see it.
@@ -329,6 +330,10 @@ func (s *Session) extensionEventHook(ev agent.AgentEvent) {
 	runner := s.currentRunner()
 	if runner == nil {
 		return
+	}
+	if task := s.eventRegions.task; task.Running() && runner.HasHandlers(icodingagent.AgentLoopEventType(ev)) {
+		// Pi's loop turns while a handler awaits, so what precedes the handler is drawn while it runs: the task ends before the dispatch.
+		task.End()
 	}
 	end, ok := ev.(agent.MessageEndEvent)
 	if !ok {

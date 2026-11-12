@@ -122,6 +122,8 @@ type Session struct {
 	detachAgentEvents   func()
 	// agentEventHold holds the Agent at its next event while a termination signal's disposal runs; see HoldAgentEvents.
 	agentEventHold agentEventHold
+	// eventRegions reports the tasks of Pi's event loop that a run of the interactive mode executes, as markers on Events; see sessionEventRegions.
+	eventRegions sessionEventRegions
 
 	// Only the admitted Agent run reads or changes actionable-boundary state.
 	boundaryTurnIndex         int
@@ -789,6 +791,7 @@ func NewSession(svcs *AgentSessionServices, opts SessionOptions) (*Session, erro
 		return sess.hasListeners() || sess.eventsSubscribed.Load() || sess.agentEventHold.held() || sess.HasExtensionHandlers(icodingagent.EventMessageUpdate)
 	})
 	sess.installAgentBoundaryHooks()
+	sess.eventRegions.init(sess)
 	sess.installExtensionHooks(opts.Agent != nil)
 	if opts.existing == nil {
 		// A clone shares its source's runner; the source keeps the binding.
@@ -1107,6 +1110,7 @@ func (s *Session) CheckPromptCompaction(ctx context.Context) error {
 func (s *Session) RunAgentPrompt(ctx context.Context, start func(context.Context) ([]agent.AgentMessage, error)) ([]agent.AgentMessage, error) {
 	ctx, cancelRun := s.beginAgentRun(ctx)
 	defer s.endAgentRun(cancelRun)
+	ctx = s.eventRegions.runContext(ctx)
 	messages, runErr := start(ctx)
 	s.mu.Lock()
 	messages, runErr = s.runPostAgentRunsWith(ctx, messages, runErr, func(ctx context.Context) ([]agent.AgentMessage, error) {

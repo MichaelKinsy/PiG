@@ -2077,7 +2077,13 @@ func (h *loopHost) consumeStream(ctx context.Context, stream *ai.AssistantMessag
 		iteratorContext = signal.parent
 	}
 	// Events arrive unrefreshed: each is refreshed at the tick it arrives, unless it is a message_update that nothing can observe, whose delivery is skipped whole (h.skipUnobservedUpdate).
-	for observation, event := range stream.ObservePublishedEvents(caller.Context(iteratorContext)) {
+	// The run's reader names itself to the stream, which reports the tasks of Pi's loop the reader runs (jsloop.Task). A run whose owner asked for none reads as before.
+	task := jsloop.TaskFrom(ctx)
+	readerContext := caller.Context(iteratorContext)
+	if task != nil {
+		readerContext = jsloop.WithTaskReader(readerContext, task)
+	}
+	for observation, event := range stream.ObservePublishedEvents(readerContext) {
 		if !started {
 			switch event.(type) {
 			case ai.StartEvent, ai.DoneEvent, ai.ErrorEvent:
@@ -2123,6 +2129,8 @@ func (h *loopHost) consumeStream(ctx context.Context, stream *ai.AssistantMessag
 				h.emitObserved(observation, MessageStartEvent{Message: AgentMessage{Assistant: cloneAssistantMessage(message)}})
 			}
 			message = h.endAssistantMessage(observation, message)
+			// The response is over: the loop's end events follow it in the same task of Pi's loop (agent-loop.ts emits them back to back, awaiting nothing).
+			task.Tail()
 			return message, pendingToolCalls(message), nil
 		case ai.ErrorEvent:
 			message = result(stream.Result())
@@ -2130,7 +2138,9 @@ func (h *loopHost) consumeStream(ctx context.Context, stream *ai.AssistantMessag
 			if !started {
 				h.emitObserved(observation, MessageStartEvent{Message: AgentMessage{Assistant: cloneAssistantMessage(message)}})
 			}
-			return h.endAssistantMessage(observation, message), nil, nil
+			message = h.endAssistantMessage(observation, message)
+			task.Tail()
+			return message, nil, nil
 		}
 	}
 

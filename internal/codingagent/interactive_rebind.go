@@ -64,6 +64,8 @@ func (m *InteractiveMode) rebindCurrentSession(ctx context.Context, renderBefore
 		if session == nil {
 			return errors.New("interactive: SessionHandle is required")
 		}
+		// The events the old Session delivered are applied before its channel is dropped, as they were when they arrived.
+		m.setEventRegion(false)
 		m.eventCh = nil
 		m.programStatusReporter().Reset()
 		m.applyRuntimeSettings()
@@ -135,6 +137,7 @@ func (m *InteractiveMode) setAgent(next *agent.Agent) {
 }
 
 func (m *InteractiveMode) subscribeToAgent() {
+	m.setEventRegion(false)
 	m.eventCh = m.opts.SessionHandle.Events()
 }
 
