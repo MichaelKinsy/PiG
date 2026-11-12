@@ -1,4 +1,4 @@
-// Ports the parked-work helpers of packages/durable/src/harness/scheduler.ts (parked, asleep, reserved, pendingAgain,
+// Ports packages/durable/src/harness/scheduler.ts (the parked-work helpers parked, asleep, reserved, pendingAgain and
 // closeSignal) and the two predicates of src/harness/tool.ts the Harness hands the scheduler (gatedCall, keepsChildren),
 // spec suspendable §2.
 
