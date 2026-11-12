@@ -71,10 +71,11 @@ var bundledFiles = []string{
 	"pig_sdk/tui_alt_screen.py",
 	"pig_sdk/type_engine.py",
 	"pig_sdk/type_schema.py",
+	"pig_sdk/ui_view.py",
 	"pig_sdk/user_bash.py",
 	"pig_sdk/visual_truncate.py",
 	"pyproject.toml",
 }
 
 // stagedHash is the staging hash of the files, as pigsdk names a staged SDK by it: the first 16 hex digits.
-const stagedHash = "25209456cf2ce2f2"
+const stagedHash = "0659e95c006e3287"
