@@ -187,7 +187,6 @@ func TestGridRendersEqualColumnsAtEveryWidth(t *testing.T) {
 				t.Fatal("nothing drawn")
 			}
 			cellW := (width - 6) / 7
-			var starts []int
 			for i, row := range rows {
 				if w := widthx.VisibleWidth(row); w != width {
 					t.Fatalf("row %d is %d cells, want %d: %q", i, w, width, widthx.StripAnsi(row))
@@ -207,7 +206,6 @@ func TestGridRendersEqualColumnsAtEveryWidth(t *testing.T) {
 						t.Fatalf("row %d: separator %d at cell %d, want %d (equal columns of %d)", i, c, col, want, cellW)
 					}
 				}
-				starts = append(starts, len(at))
 			}
 			all := widthx.StripAnsi(strings.Join(rows, "\n"))
 			for _, want := range []string{"Mon", "Sun", "+3", "…", "+3 more"} {

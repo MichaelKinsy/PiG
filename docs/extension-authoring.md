@@ -646,6 +646,7 @@ check the abilities and keep a fallback such as a widget or a notice.
   an editor and clicking a mouse-region raise it. Declare the argument as an object with a `value` property (the item's value,
   the new setting value or the submitted text) and, for a settings-list, an `item` property (the setting's id), or as a scalar
   that takes the value. The TUI offers no control for an intent without a `nodeKey`; `ViewDiagnostics` says so.
+- A `grid` node is a calendar-style grid of equal columns whose cells are data: `{kind: "grid", id, columns, head?, chipRows?, selected?, cells: [{value?, label?, mark?, dim?, color?, chips: [{text, color?}], more?}]}` (at most 128 cells, 8 chips a cell). Name it in the view's `focus` and bind an intent to it with `nodeKey`: the arrow keys, Home, End, Enter and Space of a focused grid in the TUI, and a click, raise the intent with the chosen cell's `value`; every other key, and a move past an edge, goes to the client. Send the chips you show and the count you left out in `more`; the client adds what it could not draw to its "+K more" line.
 - One intent per mount runs at a time. Redraw the view from the handler to show what it did; an activation made before your
   answer arrived is dropped.
 
