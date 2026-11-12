@@ -2572,6 +2572,46 @@ const RPC_SYNCHRONOUS_UI_EFFECTS: &[&str] = &[
     "ui.setHeader",
 ];
 
+/// The model [`Context::set_model`] takes: a Pi model object, or the `provider/id` name of one. Both convert into it, so
+/// `ctx.set_model(&object)` and `ctx.set_model("provider/id")` compile.
+#[derive(Debug, Clone, PartialEq)]
+pub enum SetModelArg {
+    /// A Pi model object.
+    Object(serde_json::Value),
+    /// A `provider/id` name.
+    Named(String),
+}
+
+impl From<serde_json::Value> for SetModelArg {
+    fn from(object: serde_json::Value) -> Self {
+        SetModelArg::Object(object)
+    }
+}
+
+impl From<&serde_json::Value> for SetModelArg {
+    fn from(object: &serde_json::Value) -> Self {
+        SetModelArg::Object(object.clone())
+    }
+}
+
+impl From<&str> for SetModelArg {
+    fn from(spec: &str) -> Self {
+        SetModelArg::Named(spec.to_string())
+    }
+}
+
+impl From<String> for SetModelArg {
+    fn from(spec: String) -> Self {
+        SetModelArg::Named(spec)
+    }
+}
+
+impl From<&String> for SetModelArg {
+    fn from(spec: &String) -> Self {
+        SetModelArg::Named(spec.clone())
+    }
+}
+
 impl Context {
     pub fn model_registry(&self) -> ModelRegistry {
         ModelRegistry {
@@ -3432,10 +3472,44 @@ impl Context {
         );
     }
 
-    /// Set the model. Returns (success, error_message).
-    pub fn set_model(&self, model: &str) -> (bool, String) {
+    /// Pi's `pi.setModel(model)`: make `model`, a Pi model object, the Session's model. Returns (switched, error_message).
+    ///
+    /// `switched` is false, and nothing changes, when the model's provider has no configured auth. The Session uses the object as given, with
+    /// the members the caller left on it (its context window, limits, base URL, compat): a model taken from the model registry and edited, or
+    /// one built by hand for a provider the host knows. The `model_select` handlers have run when it returns.
+    ///
+    /// A `provider/id` string stands for the registry's model of that name, or for an id the registry does not list a model the host builds
+    /// from the provider; a name with no slash is an openai model. The string form asks the host for the model object and then sets it, two
+    /// calls: the object the first call returned is the one set, whatever the registry became in between, and an error of the first call is
+    /// returned without setting.
+    pub fn set_model(&self, model: impl Into<SetModelArg>) -> (bool, String) {
+        let model = match model.into() {
+            SetModelArg::Object(object) => object,
+            SetModelArg::Named(spec) => {
+                match self.call_wire("resolveModel", Some(serde_json::json!({"spec": spec}))) {
+                    Ok(result) => {
+                        if let Some(error) = result.error {
+                            return (false, error.message);
+                        }
+                        let mut v = result.result.unwrap_or_default();
+                        let err = v.get("error").and_then(|s| s.as_str()).unwrap_or("");
+                        if !err.is_empty() {
+                            return (false, err.to_string());
+                        }
+                        v.get_mut("model")
+                            .map(serde_json::Value::take)
+                            .unwrap_or(serde_json::Value::Null)
+                    }
+                    Err(e) => return (false, e.to_string()),
+                }
+            }
+        };
         match self.call_wire("setModel", Some(serde_json::json!({"model": model}))) {
             Ok(result) => {
+                // The host rejects a value that is not a chat model object; Pi's Promise rejects.
+                if let Some(error) = result.error {
+                    return (false, error.message);
+                }
                 let v = result.result.unwrap_or_default();
                 let ok = v
                     .get("success")

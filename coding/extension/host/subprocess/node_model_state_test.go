@@ -27,7 +27,7 @@ let resolve, reject;
 r.conn = {requestState(){}, call(method,args) {
  if (method === "ui.setHeader" || method === "ui.setFooter") return Promise.resolve({});
  assert.equal(method, "setModel");
- assert.deepEqual(args, {model:"p/new"});
+ assert.deepEqual(args, {model:next});
  return new Promise((yes,no) => {resolve=yes; reject=no;});
 }};
 let settled = false;
