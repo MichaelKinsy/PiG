@@ -78416,17 +78416,6 @@
       "shapeHash": "sha256:a670f80d9d343290c72d955f9b551785e49cb0b898c60c1c710e194570222157"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding#Session.baseSectionsRenderBaseOptions",
-      "package": "github.com/MichaelKinsy/PiG/coding",
-      "name": "Session.baseSectionsRenderBaseOptions",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(active []string, hidden map[string]struct{}) bool"
-      },
-      "shapeHash": "sha256:afa91729f78c288111048a5f07b094c9a05ea9d3f62763128aeb7aa38ddee0b5"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#Session.beforeExtensionReplacement",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "Session.beforeExtensionReplacement",
