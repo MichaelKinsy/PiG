@@ -98,8 +98,8 @@ func (s *Session) treeFactsLocked() {
 		if slot.facts != 0 || slot.typ() != typeMessage || slot.role() != "assistant" {
 			continue
 		}
-		if slot.entry != nil {
-			slot.facts = s.storeFactsLocked(treeFactsOf(s.messageFor(slot.entry)))
+		if resident := s.resident.get(i); resident != nil {
+			slot.facts = s.storeFactsLocked(treeFactsOf(s.messageFor(resident)))
 			continue
 		}
 		missing = append(missing, i)
@@ -265,13 +265,13 @@ func (s *Session) lazyTree() ([]*SessionTreeNode, *lazyTree) {
 	nodes := make(map[string]*SessionTreeNode, len(s.slots))
 	for i := range s.slots {
 		slot := &s.slots[i]
-		entry := slot.entry
+		entry := s.resident.get(i)
 		loaded := entry != nil
 		if !loaded {
-			entry = RawEntry{Type: slot.typ(), ID: slot.id, ParentID: s.parentPtrLocked(i)}
+			entry = RawEntry{Type: slot.typ(), ID: s.idOf(slot), ParentID: s.parentPtrLocked(i)}
 		}
 		n := &SessionTreeNode{Entry: entry}
-		nodes[slot.id] = n
+		nodes[s.idOf(slot)] = n
 		lt.nodes[n] = &lazyTreeNode{slot: i, role: slot.role(), facts: s.factsLocked(slot.facts), loaded: loaded}
 	}
 	for id, label := range s.labels {
@@ -281,10 +281,10 @@ func (s *Session) lazyTree() ([]*SessionTreeNode, *lazyTree) {
 	}
 	var roots []*SessionTreeNode
 	for i := range s.slots {
-		slot := &s.slots[i]
-		n := nodes[slot.id]
+		id := s.idAt(i)
+		n := nodes[id]
 		parentID, has := s.parentIDLocked(i)
-		if !has || parentID == slot.id {
+		if !has || parentID == id {
 			roots = append(roots, n)
 			continue
 		}
@@ -337,7 +337,7 @@ func (lt *lazyTree) entry(n *SessionTreeNode) SessionEntry {
 		return n.Entry
 	}
 	lt.s.mu.RLock()
-	if ln.slot < len(lt.s.slots) && lt.s.slots[ln.slot].id == n.Entry.Base().ID {
+	if ln.slot < len(lt.s.slots) && lt.s.idAt(ln.slot) == n.Entry.Base().ID {
 		n.Entry = lt.s.entryAtLocked(ln.slot)
 	}
 	lt.s.mu.RUnlock()
@@ -387,9 +387,9 @@ func (lt *lazyTree) searchTexts(text func(n *SessionTreeNode, e SessionEntry, ra
 	defer lt.s.mu.RUnlock()
 	for n, ln := range lt.nodes {
 		slot := &lt.s.slots[ln.slot]
-		switch entry := slot.entry; {
-		case lt.s.coldPart(slot).searchAt != 0:
-			ln.search = withSearchLabel(n.Label, searchBody{text: lt.s.searchTexts.text(lt.s.coldPart(slot).searchAt), parts: true})
+		switch entry := lt.s.resident.get(ln.slot); {
+		case lt.s.searchAtOf(slot) != 0:
+			ln.search = withSearchLabel(n.Label, searchBody{text: lt.s.searchTexts.text(lt.s.searchAtOf(slot)), parts: true})
 		case entry == nil && slot.evictable() && !ln.loaded:
 			entry = lt.s.entryAtLocked(ln.slot)
 			ln.search = text(n, entry, entry.Raw())

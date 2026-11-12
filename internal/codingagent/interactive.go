@@ -1456,6 +1456,8 @@ func NewInteractiveMode(runtimeHost InteractiveRuntime, options InteractiveModeO
 	// Mirrors the upstream InteractiveMode constructor's
 	// setCapabilityOverrides(settingsManager.getTerminalCapabilityOverrides()).
 	tui.SetCapabilityOverrides(opts.Settings.GetTerminalCapabilityOverrides())
+	// pig divergence (D624): terminal.screenWriter is applied here, once, before a renderer exists and so before the alternate screen is entered; a settings change or a reload acts at the next start. The merged settings carry the global file's value, because a project file cannot set the key.
+	tui.SetScreenWriter(opts.Settings.GetTerminalScreenWriter() == TerminalScreenWriterWriter)
 	ensurePngTranscoder(nil)
 	// Pi's constructor uses options.tuiMode ?? settingsManager.getTuiMode().
 	if opts.TuiMode == "" {
@@ -1559,6 +1561,12 @@ var stdoutIsTTY = func() bool { return term.IsTerminal(int(os.Stdout.Fd())) }
 
 // printResumeHint writes the resume command after the terminal is restored on an interactive quit, only for a persisted session with an existing file and TTY stdout.
 func (m *InteractiveMode) printResumeHint() {
+	// pig additive (D91): Pi has no frontend member. A frontend that drew this run owns its exit screen, and the
+	// frontend contract has no exit text path, so the host writes nothing after it. leaveFrontend clears surface,
+	// so a run that fell back to the ANSI renderer prints the hint as Pi does.
+	if m.surface != nil {
+		return
+	}
 	cmd := m.resumeHintCommand()
 	if cmd == "" {
 		return

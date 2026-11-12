@@ -70,6 +70,16 @@ export const backportPatches = {
                         effectivePattern = effectivePattern.replace(/^(?:\\.\\/)+/, "");
 `],
   ],
+  // 935f0ac0ccfc (#12092): the bash tool keeps the end of the last line when the retained tail is only that over-long line.
+  "pi-coding-agent/core/tools/output-accumulator.js": [
+    ["        const tailTruncation = truncateTail(this.getSnapshotText(), {\n",
+      `        ${note("935f0ac0ccfc").trim()}
+        // Clipping drops the partial first line of the retained tail. When the tail is only the end of one over-long line,
+        // that is everything, so show the end of that line instead.
+        const snapshotText = this.getSnapshotText() || this.tailText;
+        const tailTruncation = truncateTail(snapshotText, {
+`],
+  ],
   // 0e1e3fc81 (#12052): OSC 8 hyperlinks in HTML-exported tool output become links.
   "pi-coding-agent/core/export-html/ansi-to-html.js": [
     [` * - Reset (0)
@@ -212,6 +222,21 @@ export function stripAnsiEscapes(text) {
             this._pendingToolNames.add(name);
         this._restoredToolNames = new Set(this.getActiveToolNames());
         this._buildRuntime({`],
+  ],
+  // 406e719a6bff (#12049): a tool schema with a node that has no type, enum or anyOf is not sent strict (OpenAI strict mode rejects it).
+  "pi-ai/api/constrained-sampling.js": [
+    [`        }
+    }
+    if (schema.anyOf !== undefined) {
+`, `        }
+    }
+    ${note("406e719a6bff").trim()}
+    // OpenAI strict mode rejects nodes without a type; a bare enum counts as typed, a bare const does not.
+    if (schema.type === undefined && schema.anyOf === undefined && schema.enum === undefined) {
+        throw new UnsupportedStrictJsonSchemaError("schemas without a type are unsupported");
+    }
+    if (schema.anyOf !== undefined) {
+`],
   ],
 };
 

@@ -70,6 +70,7 @@ const loaderStepFrameDelay = 40 * time.Millisecond // pig divergence (D619)
 
 // StepFrameDelay is how long the frame for an animation step of the given interval may wait for another frame: min(40 ms, interval/2), Pi-Bolt's `Math.min(STEP_FRAME_DELAY_MS, intervalMs / 2)`.
 func StepFrameDelay(interval time.Duration) time.Duration {
+	//portlint:allow numbers a time.Duration is whole nanoseconds, so the half is exact to the nanosecond; Pi-Bolt halves a millisecond float
 	return min(loaderStepFrameDelay, interval/2)
 }
 

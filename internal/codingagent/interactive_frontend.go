@@ -78,6 +78,11 @@ func (m *InteractiveMode) openFrontend() {
 		Click: func(click frontend.Click) {
 			m.postFrontendAction(func() { m.surface.Click(click) })
 		},
+		// pig additive (D91): a wheel turn over an extension's view reaches
+		// the component that drew it on the owner loop, as Click does.
+		Wheel: func(wheel frontend.Wheel) {
+			m.postFrontendAction(func() { m.surface.Wheel(wheel) })
+		},
 	})
 	if err != nil || session == nil {
 		// No session draws: the process terminal shows the program status,

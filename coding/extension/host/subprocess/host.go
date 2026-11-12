@@ -243,7 +243,8 @@ func extensionSourcePaths(config ExtConfig) (path, resolvedPath string) {
 		path = config.Path
 	}
 	resolvedPath = path
-	if absolute, err := filepath.Abs(path); err == nil && path != "" {
+	// A `builtin:<name>` path names no file (source-info.ts BUILTIN_PATH_PREFIX): a fused member selected by one keeps it as its resolved path.
+	if absolute, err := filepath.Abs(path); err == nil && path != "" && !strings.HasPrefix(path, "builtin:") {
 		resolvedPath = absolute
 	}
 	return path, resolvedPath
@@ -4658,6 +4659,8 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 		} else {
 			_ = request()
 		}
+		// The reply's frame is reused once the handler holds nothing of it: what leaves is a copy of its result.
+		defer releaseResponse(resp)
 		if streamed && (err != nil || resp.Response == nil || resp.Response.Error != nil) {
 			// The runtime may not hold the payload this frame carried: the next one is a keyframe.
 			if update != nil {
@@ -4752,7 +4755,8 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 			}
 			// A user_bash reply that names a BashOperations object the extension holds becomes the object Pi's runner holds.
 			if event == "user_bash" && len(resp.Response.Result) > 0 {
-				if typed, ok := userBashOperationsResult(conn, resp.Response.Result); ok {
+				//portlint:allow hotpathalloc the reply frame returns to the connection when this handler returns (releaseResponse) and the result outlives it; one copy per user_bash operation, not per streamed event
+				if typed, ok := userBashOperationsResult(conn, bytes.Clone(resp.Response.Result)); ok {
 					return typed, nil
 				}
 			}
@@ -4761,7 +4765,8 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 			// so null never reaches the Runner as a result value.
 			if result := resp.Response.Result; len(result) > 0 && strings.TrimSpace(string(result)) != "null" {
 				// Return raw JSON for the Runner to interpret.
-				return result, nil
+				//portlint:allow hotpathalloc the reply frame returns to the connection when this handler returns (releaseResponse) and the result outlives it; one copy of a non-null handler result
+				return slices.Clone(result), nil
 			}
 		}
 

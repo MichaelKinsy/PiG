@@ -84,8 +84,8 @@ func TestLazyTreeRowsMatchTheResidentTree(t *testing.T) {
 
 func residentSlots(s *Session) int {
 	n := 0
-	for _, slot := range s.slots {
-		if slot.entry != nil {
+	for i := range s.slots {
+		if s.resident.get(i) != nil {
 			n++
 		}
 	}

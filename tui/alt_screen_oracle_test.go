@@ -68,6 +68,8 @@ const altScreenOracleStartMarker = "<terminal.start>\x1b[?25l"
 // components returned at that step's size. Scrolling the rows that moved (D205) writes other bytes than Pi, so it is off here.
 func TestAltScreenFramesMatchPiOracle(t *testing.T) {
 	t.Setenv("PIG_TUI_SCROLL_ROWS", "0")
+	// Pi's bytes are compared, so this is byte mode: the screen writer (D624) sends other bytes for the same screen. It sits under ProcessTerminal.write, which these renderers, writing to their own buffer, do not pass; the variable holds for one that does.
+	t.Setenv("PIG_TUI_SCREEN_WRITER", "pi")
 	checkAltScreenOracle(t, false)
 }
 
@@ -81,6 +83,8 @@ func TestAltScreenScrolledFramesShowPisScreens(t *testing.T) {
 // step of every scenario of the pinned Pi's fixture writes exactly the bytes Pi's step wrote, as escaped_output_equal compares them.
 // PIG_TUI_SCROLL_ROWS=0 in a terminal that would scroll does the same.
 func TestAltScreenScrollFallsBackToPisBytes(t *testing.T) {
+	// Byte mode, as in TestAltScreenFramesMatchPiOracle: Pi's bytes are compared.
+	t.Setenv("PIG_TUI_SCREEN_WRITER", "pi")
 	for _, tc := range []struct {
 		name string
 		env  map[string]string
@@ -209,22 +213,20 @@ func checkAltScreenOracleIn(t *testing.T, screens bool, env map[string]string, t
 	// the images earlier tests or an earlier -count run registered, and leave none behind.
 	resetKittyRegistry(t)
 	t.Cleanup(func() { resetKittyRegistry(t) })
+	// The generator's Node process had pushed no Kitty keyboard flags, so Pi's start writes no pop and push of them (the alternate screen
+	// moves an outstanding push to its own screen, tui_alt_screen.go). A test that started a terminal earlier in this process and left
+	// its push outstanding (TestKeyboardProtocolNegotiationUsesDeviceAttributesFallback does) is another environment: start from none
+	// and give back what was there.
+	pushed := keyboardProtocolPushed.Swap(false)
+	t.Cleanup(func() { keyboardProtocolPushed.Store(pushed) })
 	recordOnly, closeClipped := tap != nil && tap.recordOnly, tap != nil && tap.closeClipped
 	failures, scrolledSteps := 0, 0
-	// Pi 1.5.2 (the oracle) predates #12047: its Kitty full redraw clears the screen with \x1b[2J, which PiG now skips once images are
-	// uploaded. The first step that differs only that way ends the comparison of its scenario, and of every later Kitty scenario: the
-	// fixture's Kitty image registry carries over from scenario to scenario, so PiG's and Pi's registries differ from there on.
-	pre12047 := false
 	report := func(format string, args ...any) {
 		if failures++; failures <= 6 {
 			t.Errorf(format, args...)
 		}
 	}
 	for index, sc := range scenarios {
-		pre12047Kitty := pre12047 && sc.Images == "kitty"
-		if pre12047Kitty && !recordOnly {
-			continue
-		}
 		setOracleEnv(t, "TERM_PROGRAM", sc.Wez, "WezTerm")
 		setOracleEnv(t, "TMUX", sc.Tmux, "1")
 		SetCellDimensions(CellDimensions{WidthPx: 9, HeightPx: 18})
@@ -387,32 +389,20 @@ func checkAltScreenOracleIn(t *testing.T, screens bool, env map[string]string, t
 							fmt.Fprintf(&rows, "\nrow %d: PiG %q\n        Pi  %q", row, pig, pi)
 						}
 					}
-					if pre12047FullRedraw(sc.Images, out.String(), sc.Log[step].Out) {
-						pre12047 = true
-						break
-					}
 					report("scenario %d (%dx%d, images %q) step %d %+v shows other rows than Pi's step:%s\nPiG wrote %q\nPi wrote  %q", index, sc.Cols, sc.Rows, sc.Images, step, spec, rows.String(), out.String(), sc.Log[step].Out)
 					break
 				}
 				if out.String() != sc.Log[step].Out {
 					scrolledSteps++
 				}
-			} else if got, want := out.String(), sc.Log[step].Out; !screens && !closeClipped && !pre12047Kitty && got != want {
-				if pre12047FullRedraw(sc.Images, got, want) {
-					// A recording keeps replaying the scenario's remaining steps; a comparison ends at the first difference anyway.
-					pre12047, pre12047Kitty = true, true
-					if !recordOnly {
-						break
-					}
-					continue
-				}
+			} else if got, want := out.String(), sc.Log[step].Out; !screens && !closeClipped && got != want {
 				report("scenario %d (%dx%d, images %q) step %d %+v\n got %q\nwant %q", index, sc.Cols, sc.Rows, sc.Images, step, spec, got, want)
 				break
 			}
 		}
 		out.Reset()
 		ui.StopWithOptions(StopOptions{PreserveScreen: sc.Preserve})
-		if got, want := out.String(), strings.ReplaceAll(sc.StopOut, altScreenOracleStopMarker, ""); !closeClipped && !pre12047Kitty && got != want {
+		if got, want := out.String(), strings.ReplaceAll(sc.StopOut, altScreenOracleStopMarker, ""); !closeClipped && got != want {
 			report("scenario %d (%dx%d, images %q, preserve %v) stop\n got %q\nwant %q", index, sc.Cols, sc.Rows, sc.Images, sc.Preserve, got, want)
 		}
 		if got := string(GetCapabilities().Images); got != sc.ImagesAfterStop {
@@ -428,11 +418,6 @@ func checkAltScreenOracleIn(t *testing.T, screens bool, env map[string]string, t
 			t.Error("no step scrolled rows, so no step was compared by what it shows")
 		}
 	}
-}
-
-// pre12047FullRedraw reports a Kitty step where PiG deleted the placements and kept the uploads (Pi #12047) while the pinned Pi 1.5.2 cleared the screen.
-func pre12047FullRedraw(images, got, want string) bool {
-	return images == "kitty" && strings.Contains(want, "\x1b[2J") && !strings.Contains(got, "\x1b[2J") && strings.Contains(got, DeleteAllKittyPlacements())
 }
 
 // TestAltScreenFixtureIsCurrent reruns testdata/alt-screen-oracle.mjs against the installed Pi and requires the committed fixture to be
@@ -475,6 +460,6 @@ func TestAltScreenFixtureIsCurrent(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !bytes.Equal(generated, committed) {
-		t.Fatalf("testdata/alt-screen-oracle.json.gz is not the output of the installed Pi %s: regenerate it with node tui/testdata/alt-screen-oracle.mjs <pi-tui dist/index.js> | gzip", pigversion.UpstreamVersion)
+		t.Fatalf("testdata/alt-screen-oracle.json.gz is not the output of the installed Pi %s: regenerate it with make regenerate-alt-screen-oracle", pigversion.UpstreamVersion)
 	}
 }

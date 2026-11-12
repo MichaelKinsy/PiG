@@ -101,6 +101,8 @@ them.
 
 In fullscreen mode, when the transcript grows or scrolls, PiG moves the rows that only moved with a scroll region and draws only the rows that changed. Pi draws every row that changed (D205). The screen is the same, and PiG writes a fraction of the bytes to the terminal, which matters most through tmux or ssh. Set `PIG_TUI_SCROLL_ROWS=0` to draw every changed row, as Pi does.
 
+Fullscreen mode can also send the terminal only the cells a frame changes (D624). It is off: set `PIG_TUI_SCREEN_WRITER=1` to turn it on (any other value, and the variable unset, send the terminal what Pi sends). With it on, a row whose text changes is written from its first cell through its last changed cell, a frame that changes nothing is not written, and rows written in part are written whole once output has been quiet for 250 ms. The screen is the same; PiG writes about 30 % fewer bytes on a long streamed answer and about 80 % fewer when a file is written, which matters most through tmux or ssh. A program that reads PiG's raw output (`script`, `tmux pipe-pane`, a CI log) sees other bytes with the same text. `PIG_TUI_SCREEN_WRITER_LOG=path` records every write as it came and as it was sent, for bug reports.
+
 Set `PIG_RENDER_DEBUG` to any value to write render diagnostics. Use it when you
 report a display problem.
 
