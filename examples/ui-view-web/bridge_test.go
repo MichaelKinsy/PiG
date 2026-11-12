@@ -113,6 +113,7 @@ func (b bridge) open(t *testing.T) *page {
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { _ = res.Body.Close() })
 	if res.StatusCode != http.StatusOK || res.Header.Get("Content-Type") != "text/event-stream" {
 		_ = res.Body.Close()
 		t.Fatalf("GET /events = %s %s", res.Status, res.Header.Get("Content-Type"))
