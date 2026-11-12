@@ -21,8 +21,9 @@ import (
 // hand, or one the manifest does not list, fails here (automation/gen/vendor-chord-surfaces-client.sh regenerates both). The
 // commit is the pin's (`.upstream/pin`), unless the manifest names it as an explicit `catchup`, as the plugins component's
 // vendored tree is checked. A manifest that lists `carried` Pi commits was vendored from the pin's tree with exactly those commits
-// cherry-picked onto it (PI_CARRIED of the script): each is a full Pi commit id, and the list is a derived input of the copy that
-// goes away when a re-vendor at a later Pi commit takes over.
+// cherry-picked onto it (PI_CARRIED of automation/gen/vendor-chord-common.sh): each is a full Pi commit id, and the list is a derived
+// input of the copy that goes away when a re-vendor at a later Pi commit takes over. `make vendor-chord-carried-check` rebuilds that
+// tree and compares what it vendors with this manifest, for this copy and the plugins component's.
 func TestClientVendoredFilesAreExactlyTheManifests(t *testing.T) {
 	text, err := os.ReadFile(filepath.Join("client", "manifest.json"))
 	if err != nil {

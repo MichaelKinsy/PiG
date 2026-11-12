@@ -279,7 +279,7 @@ path = "packages/chord/docs/benchmarks.md"
 change = "modified"
 disposition = "designed-out"
 evidence = []
-rationale = "8d30e6306: the events and state-binding benchmark results of Pi's test/bench/events.ts and state-binding.ts. chord/README.md: Pi's chord design documents are not ported; the Go packages follow them."
+rationale = "8d30e6306: the events and state-binding benchmark results of Pi's test/bench/events.ts and state-binding.ts (both benches are ported: chord/next/host/bench_events_test.go, bench_state_binding_test.go; the document's machine-independent values, 67 B and the encodes per emit, are checked there). chord/README.md: Pi's chord design documents are not ported; the Go packages follow them."
 
 [[files]]
 path = "packages/chord/docs/decisions.md"
@@ -308,3 +308,24 @@ change = "modified"
 disposition = "designed-out"
 evidence = []
 rationale = "8d30e6306: the events slice in Pi's slice list. chord/README.md: Pi's chord design documents are not ported; the Go packages follow them."
+
+[[files]]
+path = "packages/chord/test/examples/67-events.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:chord/next/host/host_example_67_test.go#TestExample67Events"]
+rationale = "8d30e6306: the events example (a ticking server object, a fast client and one whose link delivers 100 ms late, eventWindow 4). The script prints what each client saw and the server's chord.events.* counters and asserts nothing. The twin runs the same inputs (a sample every 10 ms, a tick every tenth, the 100 samples of the script's one second) and turns the printed lines into checks that hold whatever the scheduling: the fast client has every sample from its subscription on, the slow link never holds more than the window's 4 event messages and fills it, the slow client got fewer samples, both ticks are whole, and the counters add up (emitted, one encode per emit for both links, sent plus dropped{reason=window})."
+
+[[files]]
+path = "packages/chord/test/bench/events.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:chord/next/host/bench_events_test.go#BenchmarkEvents", "test:chord/next/host/bench_events_test.go#TestBenchEventsMessageBytesAndEncodesPerEmit"]
+rationale = "8d30e6306: the events benchmark (0, 1, 10 and 70 holders, 10 holders of an older version, 10 through a relay, the NOOP adapter), 'Run by hand from packages/chord (not in CI)'. BenchmarkEvents has one sub-benchmark per row of the script's table, as the sibling benches (bench_relay_test.go). The two values the script prints that do not depend on the machine are checked on every run by TestBenchEventsMessageBytesAndEncodesPerEmit with Pi's recorded results (docs/benchmarks.md, Events): one event message of a paddle sample is 67 B with the binary codec, and the encodes per emit are 0, 1, 1, 1 for 0, 1, 10 and 70 holders, 1 for the older version and 0 at the relay. The time and heap columns are measurements and are not asserted."
+
+[[files]]
+path = "packages/chord/test/bench/state-binding.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:chord/next/host/bench_state_binding_test.go#BenchmarkStateBinding"]
+rationale = "8d30e6306: the benchmark of binding state-only references ('Time and heap allocated per step, medians of seven bursts', 'Run by hand from packages/chord (not in CI)'). The script asserts nothing observable: its three rows (same host get and release; over a link get and release; rebound by a raw provider, loading then bound, acknowledged) are the three sub-benchmarks of BenchmarkStateBinding, run by hand as Pi's. No timing row is recorded here."

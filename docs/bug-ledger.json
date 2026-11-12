@@ -27172,6 +27172,50 @@
       "tests": []
     },
     {
+      "id": "BF-7c9ce6f",
+      "title": "Chord: a contract with an event member that crosses between a Go host and a Node host as data is rebuilt with…",
+      "symptom": "Chord: a contract with an event member that crosses between a Go host and a Node host as data is rebuilt with its event member; it was rebuilt as a method and refused with a fingerprint mismatch.",
+      "rootCause": "node/contracts.mjs rebuilt every member that is neither state nor keyed as a method, so a contract with an event member that crossed as data was described with another fingerprint and refused with a fingerprint mismatch. It now rebuilds `{ event }` with Pi's `event(schema)` (a remote variant's `events`), and the Node host describes the type with the Go contract's fingerprint.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord: a contract with an event member that crosses between a Go host and a Node host as data is rebuilt with its event member; it was rebuilt as a method and refused with a fingerprint mismatch. Until events are delivered across the plugins bridge, `NodeHost.Get`, `NodeHost.Hold` and a bridged Go core facet fail for a type with an event member with an error that says events do not cross the plugins bridge.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6c41c55932",
+          "date": "2026-11-12"
+        },
+        {
+          "hash": "7c9ce6f31f",
+          "date": "2026-11-12"
+        },
+        {
+          "hash": "d197f36cf3",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "chord/next/host/bench_events_test.go::TestBenchEventsMessageBytesAndEncodesPerEmit",
+        "chord/next/host/host_example_67_test.go::TestExample67Events",
+        "chord/next/host/remote_consumer_events_test.go::TestConsumerEvents",
+        "chord/next/host/remote_events_order_window_test.go::TestAnEventAckForMessagesNeverSentOrCountedTwiceIsIgnoredAndOpensNoSlot",
+        "chord/next/host/remote_events_order_window_test.go::TestEventsKeepTheirOrderAgainstACallsResultOnOneLink",
+        "chord/next/host/remote_events_order_window_test.go::TestTheDefaultCallWindowRuns10000ConcurrentCallsAndClosesTheLinkAtThe10001st",
+        "chord/next/host/remote_events_order_window_test.go::TestTheDefaultEventWindowSendsThe32ndUnacknowledgedMessageAndDropsThe33rd",
+        "chord/nextnode/app/app_web_browser_test.go::TestReactBindingsCallTheLatestListenerOfUseEventsFollowItsMemberAndStopAtUnmount",
+        "chord/nextnode/plugins/plugins_node_events_bridge_test.go::TestABridgedGoTypeWithAnEventMemberIsRefusedSayingEventsDoNotCrossThePluginsBridge",
+        "chord/nextnode/plugins/plugins_node_events_bridge_test.go::TestNodeDescribeRebuildsAnEventMemberAsAnEventMember",
+        "chord/nextnode/plugins/plugins_node_events_bridge_test.go::TestNodeGetOfATypeWithAnEventMemberSaysEventsDoNotCrossThePluginsBridge",
+        "chord/nextnode/plugins/plugins_node_events_test.go::TestANodePluginDeclaresAnEventMemberAndItsEmitsReachASubscriberOnTheNodeHost",
+        "chord/nextnode/plugins/plugins_node_test.go::TestNodeVendoredFilesAreExactlyTheManifests",
+        "chord/nextnode/surfaces/surfaces_events_test.go::TestClientEventsReachAListenerCrossALinkAndAreExportedToReact",
+        "chord/nextnode/surfaces/testdata/client_events.test.mjs"
+      ]
+    },
+    {
       "id": "BF-7cca5ee",
       "title": "A Node extension can default-import TypeBox (`import Type from \"typebox\"`, and likewise `typebox/value`…",
       "symptom": "A Node extension can default-import TypeBox (`import Type from \"typebox\"`, and likewise `typebox/value`, `typebox/compile` and `@sinclair/typebox*`), as it can in Pi.",

@@ -2,36 +2,13 @@
 # Regenerate chord/nextnode/surfaces/client/pi: Pi's own chord sources of the client surfaces (the page's and the terminal's runtimes, the React
 # bindings) with the test fixtures the Go tests build base bundles from, and the two packages they run on (pi-schema, pi-telemetry), and
 # client/manifest.json (D601).
-#   PI_TREE        the Pi tree (default: the mirror of the pin, .upstream/current; make upstream-mirror)
-#   PI_COMMIT      the commit of PI_TREE for the manifest (default: the pin's). A commit other than the pin's is a catch-up: the
-#                  manifest then names it as `catchup`, the one commit the manifest may differ from the pin by (the Go test
-#                  TestNodeVendoredFilesAreExactlyTheManifests reads both), and records the pin it was made against.
-#   PI_CARRIED     Pi commits (comma-separated, in Pi's order) cherry-picked onto PI_COMMIT to make PI_TREE: a tree that is the pin plus those
-#                  commits alone, for a vendored file a carried commit changes while a later Pi commit this port does not carry changed the rest of the closure. The manifest records them as `carried`; make PI_TREE with
-#                  `git worktree add --detach <dir> <pin> && git -C <dir> cherry-pick <carried...>`. Drop it when a re-vendor at a
-#                  later commit takes over (then PI_COMMIT is that commit, a `catchup`).
-#   PI_TELEMETRY   the @earendil-works/pi-telemetry package dir (default: the one extensions/sdk-ts installed)
+# Inputs (PI_TREE, PI_COMMIT, PI_CARRIED, PI_TELEMETRY, VENDOR_CHORD_OUT): automation/gen/vendor-chord-common.sh, shared with
+# vendor-chord-plugins-node.sh.
 # React (the version Pi chord tests with, production builds) and its scheduler come from npm (`npm pack`).
-# @earendil-works/pi-schema is a package of the Pi tree (packages/schema), copied from PI_TREE; its version and
-# pi-telemetry's must be the versions Pi's chord pins.
 set -euo pipefail
 
-root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
-tree=${PI_TREE:-"$root/.upstream/current"}
-pin=$(sed -n 's/^commit=//p' "$root/.upstream/pin")
-commit=${PI_COMMIT:-$pin}
-telemetry=${PI_TELEMETRY:-"$root/extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-telemetry"}
-out="$root/chord/nextnode/surfaces/client"
+name=vendor-chord-surfaces-client
+default_out=chord/nextnode/surfaces/client
+. "$(dirname -- "${BASH_SOURCE[0]}")/vendor-chord-common.sh"
 
-[ -d "$tree/packages/chord/src" ] || { echo "vendor-chord-surfaces-client: $tree has no packages/chord/src (make upstream-mirror, or set PI_TREE)" >&2; exit 1; }
-[ -f "$telemetry/package.json" ] || { echo "vendor-chord-surfaces-client: no pi-telemetry at $telemetry (install extensions/sdk-ts, or set PI_TELEMETRY)" >&2; exit 1; }
-chordDeps=$(node -p "Object.keys(require('$tree/packages/chord/package.json').dependencies).sort().join(' ')")
-[ "$chordDeps" = "@earendil-works/pi-schema @earendil-works/pi-telemetry" ] || { echo "vendor-chord-surfaces-client: Pi's chord depends on [$chordDeps], this script carries @earendil-works/pi-schema and @earendil-works/pi-telemetry" >&2; exit 1; }
-wantSchema=$(node -p "require('$tree/packages/chord/package.json').dependencies['@earendil-works/pi-schema']")
-haveSchema=$(node -p "require('$tree/packages/schema/package.json').version")
-[ "$wantSchema" = "$haveSchema" ] || { echo "vendor-chord-surfaces-client: Pi's chord pins @earendil-works/pi-schema $wantSchema, $tree/packages/schema is $haveSchema" >&2; exit 1; }
-wantTelemetry=$(node -p "require('$tree/packages/chord/package.json').dependencies['@earendil-works/pi-telemetry']")
-haveTelemetry=$(node -p "require('$telemetry/package.json').version")
-[ "$wantTelemetry" = "$haveTelemetry" ] || { echo "vendor-chord-surfaces-client: Pi's chord pins @earendil-works/pi-telemetry $wantTelemetry, $telemetry is $haveTelemetry" >&2; exit 1; }
-
-node --disable-warning=ExperimentalWarning "$root/automation/gen/vendor-chord-surfaces-client.mjs" "$tree" "$commit" "$telemetry" "$out" "$pin" "${PI_CARRIED:-}"
+node --disable-warning=ExperimentalWarning "$root/automation/gen/vendor-chord-surfaces-client.mjs" "$tree" "$commit" "$telemetry" "$out" "$pin" "$carried"
