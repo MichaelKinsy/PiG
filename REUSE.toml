@@ -200,6 +200,13 @@ precedence = "override"
 SPDX-FileCopyrightText = "Copyright (c) 2025 Mario Zechner"
 SPDX-License-Identifier = "MIT"
 
+# The data-only module file of that directory is PiG-authored.
+[[annotations]]
+path = "third_party/pi-packs/go.mod"
+precedence = "override"
+SPDX-FileCopyrightText = "Copyright Michael Kinsy"
+SPDX-License-Identifier = "MIT"
+
 # The pinned Pi build's declarations as ambient modules, generated from the installed build (extensions/sdk-ts/scripts/pin-bundle.mjs).
 [[annotations]]
 path = "extensions/sdk-ts/pi-pin.d.ts"
