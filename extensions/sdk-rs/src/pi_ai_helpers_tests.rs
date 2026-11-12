@@ -462,6 +462,29 @@ fn zhipu_usage_limit_1308_is_not_retryable() {
     }
 }
 
+/// Pi 9b88b94e2 packages/ai/test/retry.test.ts:106 (#12064): a gateway ends the stream with an Anthropic-style api_error event reading "Connection closed.".
+#[test]
+fn connection_closed_is_retryable() {
+    for (text, want) in [
+        (
+            r#"{"type":"error","error":{"type":"api_error","message":"Connection closed."}}"#,
+            true,
+        ),
+        (
+            "Connection closed by proxy server before the response completed",
+            true,
+        ),
+        (
+            r#"{"type":"error","error":{"type":"api_error","message":"Connection closed. insufficient_quota"}}"#,
+            false,
+        ),
+        ("The connection was closed by the user", false),
+    ] {
+        let message = json!({"role": "assistant", "stopReason": "error", "errorMessage": text});
+        assert_eq!(is_retryable_assistant_error(&message), want, "{text}");
+    }
+}
+
 #[test]
 fn the_default_retry_delay_cap_is_pis() {
     assert_eq!(DEFAULT_MAX_AGENT_RETRY_DELAY_MS, 60_000.0);

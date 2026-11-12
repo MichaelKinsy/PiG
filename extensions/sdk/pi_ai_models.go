@@ -325,6 +325,8 @@ var (
 		`connection.?error`,
 		`connection.?refused`,
 		`connection.?lost`,
+		// Pi 9b88b94e2 (#12064): a gateway's mid-stream drop relayed as an Anthropic-style api_error event reading "Connection closed.".
+		`connection.?closed`,
 		`other side closed`,
 		`fetch failed`,
 		`request to \S+ failed, reason:`,

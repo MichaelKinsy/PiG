@@ -35,6 +35,18 @@ export const backportPatches = {
   // 49fe0a237 (#11987): Anthropic message threads default by endpoint, not provider id (the description pi-ai's compat schema and the models docs carry).
   "pi-ai/providers/compat-schema.js": [messageThreadsDefault],
   "pi-coding-agent/docs/models-configuration.md": [messageThreadsDefault],
+  // 9b88b94e2 (#12093, #12064): a provider error reading "Connection closed." is retried (the classifier that pi-ai's SDK, the coding agent and the oracle test of ai.IsRetryableAssistantError run).
+  "pi-ai/utils/retry.js": [
+    [`    "connection.?lost",
+    "other side closed",
+`, `    "connection.?lost",
+    ${note("9b88b94e2").trim()}
+    // Gateway mid-stream drop relayed as an Anthropic-style \`api_error\` event,
+    // e.g. {"type":"error","error":{"type":"api_error","message":"Connection closed."}} (#12064).
+    "connection.?closed",
+    "other side closed",
+`],
+  ],
   // be2744d95 (#12047): a Kitty fullscreen redraw keeps the uploaded images and skips the ED 2 clear.
   "pi-tui/tui-alt-screen.js": [
     [`            const clearImages = this.imageProtocol === "kitty" && hadUploadedKittyImages
