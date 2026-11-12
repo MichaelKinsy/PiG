@@ -108,7 +108,7 @@ func testAI(set tagSet, scratch string) error {
 	if err := os.MkdirAll(scratch, 0o700); err != nil {
 		return err
 	}
-	defer os.RemoveAll(scratch)
+	defer func() { _ = os.RemoveAll(scratch) }()
 	binary := filepath.Join(scratch, "ai.test")
 	if err := run(nil, "go", "test", "-c", "-tags", set.String(), "-o", binary, aiPackage); err != nil {
 		return err
@@ -120,6 +120,7 @@ func testAI(set tagSet, scratch string) error {
 		wg.Go(func() {
 			slots <- struct{}{}
 			defer func() { <-slots }()
+			//nolint:gosec // G204 (class b): program is binary, the test binary of aiPackage that the preceding go test -c built into the tool's scratch directory; args are fixed flags and a test name from the committed red list.
 			cmd := exec.Command(binary, "-test.run", "^"+name+"$", "-test.count=1")
 			cmd.Dir = aiPackage
 			passed[i] = cmd.Run() == nil
@@ -223,6 +224,7 @@ func checkList(output string, stripped, kept []string) error {
 
 // run executes one command of a step with the process's output.
 func run(env []string, name string, args ...string) error {
+	//nolint:gosec // G204 (class a): program is the literal go or automation/ci/go-vet.sh that main passes; args are fixed flags, the generated strip tags and package patterns.
 	cmd := exec.Command(name, args...)
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 	cmd.Env = append(os.Environ(), env...)
@@ -245,6 +247,7 @@ func stripMessage(provider, api string) string {
 func checkBridge(binary string, env []string, serverURL string, stripped map[string]string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
+	//nolint:gosec // G204 (class b): program is binary, the cmd/pig that smoke built into the tool's scratch directory; the only arg is fixed provider-bridge.
 	cmd := exec.CommandContext(ctx, binary, "provider-bridge")
 	cmd.Env = env
 	var stderr bytes.Buffer
@@ -332,6 +335,7 @@ export default async function () {
 	if err := os.WriteFile(extension, []byte(source), 0o600); err != nil {
 		return err
 	}
+	//nolint:gosec // G204 (class b): program is binary, the cmd/pig that smoke built into the tool's scratch directory; args are fixed flags and the extension file this function wrote there.
 	cmd := exec.Command(binary, "-e", extension, "--no-session", "--model", "test-faux/faux-1", "-p", "What is 20+22?")
 	cmd.Dir = filepath.Join(scratch, "home")
 	cmd.Env = append(slices.Clone(env), "PIG_TEST_FAUX=1")
@@ -353,7 +357,7 @@ export default async function () {
 // catalog provider, a build lists the models of every provider it keeps; strippable are the providers some set strips. provider-bridge and, in a build with the
 // Node runtime, an extension's complete(): the two callers of the pi-ai compat streams (checkBridge, checkExtension).
 func smoke(set tagSet, scratch string, providers, strippable, stripped []string, apiProviders map[string]string) error {
-	defer os.RemoveAll(scratch)
+	defer func() { _ = os.RemoveAll(scratch) }()
 	home := filepath.Join(scratch, "home")
 	agent := filepath.Join(home, "agent")
 	if err := os.MkdirAll(agent, 0o700); err != nil {
@@ -375,6 +379,7 @@ func smoke(set tagSet, scratch string, providers, strippable, stripped []string,
 		return err
 	}
 	env := []string{"PATH=" + os.Getenv("PATH"), "HOME=" + home, "PIG_HOME=" + home, "PI_HOME=" + home, "PIG_CODING_AGENT_DIR=" + agent, "PI_CODING_AGENT_DIR=" + agent, "PIG_OFFLINE=1"}
+	//nolint:gosec // G204 (class b): program is binary, the cmd/pig that the preceding go build wrote into the tool's scratch directory; the only arg is fixed --list-models.
 	cmd := exec.Command(binary, "--list-models")
 	cmd.Dir = home
 	cmd.Env = env
