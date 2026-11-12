@@ -180,8 +180,7 @@ func serveCarrier(t *testing.T, bridge *subprocess.UIBridge, transport string) *
 		defer close(c.lines)
 		reader := bufio.NewReaderSize(clientOut, 1<<12)
 		for {
-			c.gate.Lock()
-			c.gate.Unlock() //nolint:staticcheck // the gate only holds the reader back
+			c.passGate()
 			line, err := reader.ReadString('\n')
 			if line != "" {
 				c.lines <- strings.TrimSuffix(line, "\n")
@@ -485,4 +484,10 @@ func mustUpdate(t *testing.T, ref uiview.Ref, text string) uiview.UpdateArgs {
 		t.Fatal(err)
 	}
 	return update
+}
+
+// passGate returns once the gate is free: the reader goroutine stops here while the test holds the gate.
+func (c *carrierClient) passGate() {
+	c.gate.Lock()
+	defer c.gate.Unlock()
 }
