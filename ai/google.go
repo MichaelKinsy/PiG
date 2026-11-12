@@ -942,13 +942,6 @@ func geminiThinkingBudget(level ModelThinkingLevel, modelID string) int {
 // Stream preserves omitted native thinking, applies explicit logical/raw thinking, and exposes model/contents/config to OnPayload before REST lowering. A replacement payload also owns the dispatched model and configuration.
 func (p *googleProvider) Stream(ctx context.Context, transcript TranscriptContext, opts StreamOptions) (*AssistantMessageEventStream, error) {
 	// upstream: packages/ai/src/api/google-generative-ai.ts:stream
-	if opts.Fetch != nil && opts.Fetch != http.DefaultClient {
-		adapter := "Google Generative AI"
-		if p.cfg.api == APIGoogleVertex {
-			adapter = "Google Vertex"
-		}
-		return nil, fmt.Errorf("Custom fetch is not supported by the %s adapter", adapter)
-	}
 	// pig divergence (D48): the agent loop asks for the tool-flow repair.
 	if opts.RepairToolFlow {
 		transcript = transcript.withRepairedToolFlow()
@@ -1470,26 +1463,18 @@ func (p *googleProvider) parseGeminiSSE(ctx context.Context, r io.Reader, builde
 	builder.done(stopReason, &state.usage, errorMessage)
 }
 
-// mapStopReasonString maps a Gemini finish reason to a stop reason; every reason other than STOP and MAX_TOKENS is an error
-// (google-shared.ts:474 mapStopReasonString over a raw string).
-func mapStopReasonString(reason string) StopReason {
-	switch reason {
-	case "STOP":
-		return StopReasonStop
-	case "MAX_TOKENS":
-		return StopReasonLength
-	default:
-		return StopReasonError
-	}
-}
-
-// mapStopReason is google-shared.ts:441 mapStopReason: the Gemini FinishReason enum members map to stop, length or error, and any other value reaches the
-// exhaustive switch's default, which throws `Unhandled stop reason: <reason>`.
+// mapStopReason is google-shared.ts:495 mapStopReason: the Gemini FinishReason enum members map to stop, length (MAX_TOKENS, and since Pi f72f799a4
+// CONTINUATION, the per-request token limit reached before generation completed: pi does not resume with the continuation token) or error, and any
+// other value reaches the exhaustive switch's default, which throws `Unhandled stop reason: <reason>`.
 func mapStopReason(reason string) (StopReason, error) {
 	switch reason {
-	case "STOP", "MAX_TOKENS", "BLOCKLIST", "PROHIBITED_CONTENT", "SPII", "SAFETY", "IMAGE_SAFETY", "IMAGE_PROHIBITED_CONTENT", "IMAGE_RECITATION", "IMAGE_OTHER", "RECITATION",
+	case "STOP":
+		return StopReasonStop, nil
+	case "MAX_TOKENS", "CONTINUATION":
+		return StopReasonLength, nil
+	case "BLOCKLIST", "PROHIBITED_CONTENT", "SPII", "SAFETY", "IMAGE_SAFETY", "IMAGE_PROHIBITED_CONTENT", "IMAGE_RECITATION", "IMAGE_OTHER", "RECITATION",
 		"FINISH_REASON_UNSPECIFIED", "OTHER", "LANGUAGE", "MALFORMED_FUNCTION_CALL", "UNEXPECTED_TOOL_CALL", "TOO_MANY_TOOL_CALLS", "NO_IMAGE":
-		return mapStopReasonString(reason), nil
+		return StopReasonError, nil
 	default:
 		return StopReasonError, fmt.Errorf("Unhandled stop reason: %s", reason)
 	}

@@ -1,0 +1,9 @@
+from = "1.5.2+22f456d7"
+to = "1.5.2+7a1c1f61"
+
+[[files]]
+path = "packages/chord/docs/shared-holds/design.md"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "502f79e3e (design for review), 20a6e09dc (the sharing key includes the computed address) and 7a1c1f61e (third draft: event fence, reference count): a design for references that share one wire hold, status \"design, for review\", not implemented in Pi (host.ts makes one RemoteObject per binding; PiG's chord/next/host/host_host.go bind makes one remoteObject per binding the same way). chord/README.md: Pi's chord design documents are not ported; the Go packages follow them."

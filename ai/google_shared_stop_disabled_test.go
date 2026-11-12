@@ -2,25 +2,6 @@ package ai
 
 import "testing"
 
-// packages/ai/src/api/google-shared.ts:441-472 mapStopReason over the FinishReason enum and :474-481 mapStopReasonString: STOP is
-// "stop", MAX_TOKENS is "length", and every other reason (the 16 error members of the SDK enum, an unknown string, empty) is "error".
-func TestMapStopReasonStringIsStopLengthOrError(t *testing.T) {
-	want := map[string]StopReason{"STOP": StopReasonStop, "MAX_TOKENS": StopReasonLength}
-	for _, reason := range []string{
-		"STOP", "MAX_TOKENS", "BLOCKLIST", "PROHIBITED_CONTENT", "SPII", "SAFETY", "IMAGE_SAFETY", "IMAGE_PROHIBITED_CONTENT",
-		"IMAGE_RECITATION", "IMAGE_OTHER", "RECITATION", "FINISH_REASON_UNSPECIFIED", "OTHER", "LANGUAGE", "MALFORMED_FUNCTION_CALL",
-		"UNEXPECTED_TOOL_CALL", "TOO_MANY_TOOL_CALLS", "NO_IMAGE", "stop", "NEW_REASON", "",
-	} {
-		expected, ok := want[reason]
-		if !ok {
-			expected = StopReasonError
-		}
-		if got := mapStopReasonString(reason); got != expected {
-			t.Errorf("mapStopReasonString(%q) = %q, want %q", reason, got, expected)
-		}
-	}
-}
-
 // google-shared.ts:102-112 getDisabledGoogleThinkingConfig: a model without the discrete level control sends a zero budget; a level
 // model sends the lowest level its map allows when "off" is not itself available, and a zero budget when "off" is.
 func TestGetDisabledGoogleThinkingConfigFollowsTheModelsLevelControl(t *testing.T) {
