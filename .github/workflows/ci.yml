@@ -164,7 +164,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: automation/ci/wait-preflight.sh "$REPO" "$HEAD_SHA"
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: automation/ci/wait-preflight.sh "$REPO" "$HEAD_SHA" "$BASE_SHA"
 
   bookkeeping:
     name: Bookkeeping
