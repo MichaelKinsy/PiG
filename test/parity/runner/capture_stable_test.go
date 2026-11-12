@@ -87,7 +87,7 @@ func TestCaptureStablePair_IncompleteToTheEndReturnsThePairForTheCropToFail(t *t
 		t.Fatalf("plain=%q escaped=%q err=%v, want the still pair back without an error", plain, escaped, err)
 	}
 	cfg := TmuxDriverConfig{CaptureStart: "BEGIN"}
-	if _, _, err := cropCaptures(cfg, plain, escaped); err == nil || !strings.Contains(err.Error(), `"BEGIN" not found`) {
+	if _, _, err := cropCaptures(cfg, captureUse{plain: true, escaped: true}, plain, escaped); err == nil || !strings.Contains(err.Error(), `"BEGIN" not found`) {
 		t.Fatalf("the crop must fail on the pair that never held its start, got %v", err)
 	}
 }
@@ -158,7 +158,7 @@ func TestCropCaptures_MissingStartNamesTheCapture(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			plain, escaped, err := cropCaptures(cfg, tt.plain, tt.escaped)
+			plain, escaped, err := cropCaptures(cfg, captureUse{plain: true, escaped: true}, tt.plain, tt.escaped)
 			if err == nil {
 				t.Fatal("a capture without capture_start was accepted")
 			}
@@ -177,7 +177,7 @@ func TestCropCaptures_MissingStartNamesTheCapture(t *testing.T) {
 			}
 		})
 	}
-	plain, escaped, err := cropCaptures(cfg, withMarker, withMarker)
+	plain, escaped, err := cropCaptures(cfg, captureUse{plain: true, escaped: true}, withMarker, withMarker)
 	if err != nil || plain != "AUTH-JSON-1BEGIN\n{}\nAUTH-JSON-1END" || escaped != plain {
 		t.Fatalf("both captures carry the start: plain=%q escaped=%q err=%v", plain, escaped, err)
 	}
@@ -188,6 +188,89 @@ func TestFinalCaptureLabel(t *testing.T) {
 		t.Fatalf("got %q", got)
 	}
 	if got := finalCaptureLabel(TmuxDriverConfig{}); !strings.Contains(got, "without steps") {
+		t.Fatalf("got %q", got)
+	}
+}
+
+func TestCropCaptures_ACaptureNoComparatorReadsIsKeptWhole(t *testing.T) {
+	cfg := TmuxDriverConfig{CaptureStart: "AUTH-JSON-1BEGIN", CaptureEnd: "AUTH-JSON-1END"}
+	const withMarker = "banner\nAUTH-JSON-1BEGIN\n{}\nAUTH-JSON-1END\nfooter"
+	const without = "banner\nSaved API key"
+	// The escaped capture lacks the start and nothing compares it: no failure, and it comes back as it was.
+	plain, escaped, err := cropCaptures(cfg, captureUse{plain: true}, withMarker, without)
+	if err != nil || plain != "AUTH-JSON-1BEGIN\n{}\nAUTH-JSON-1END" || escaped != without {
+		t.Fatalf("plain=%q escaped=%q err=%v, want the plain capture cropped and the escaped one whole", plain, escaped, err)
+	}
+	// A capture that does hold the start is still kept whole when nothing reads it: the rule is about use, not about luck.
+	plain, escaped, err = cropCaptures(cfg, captureUse{plain: true}, withMarker, withMarker)
+	if err != nil || plain != "AUTH-JSON-1BEGIN\n{}\nAUTH-JSON-1END" || escaped != withMarker {
+		t.Fatalf("plain=%q escaped=%q err=%v, want only the plain capture cropped", plain, escaped, err)
+	}
+	// The mirror: the plain capture is unread and lacks the start, the escaped one is asserted.
+	plain, escaped, err = cropCaptures(cfg, captureUse{escaped: true}, without, withMarker)
+	if err != nil || plain != without || escaped != "AUTH-JSON-1BEGIN\n{}\nAUTH-JSON-1END" {
+		t.Fatalf("plain=%q escaped=%q err=%v, want only the escaped capture cropped", plain, escaped, err)
+	}
+	plainUncropped, escapedUncropped := uncroppedKinds(cfg, captureUse{plain: true})
+	if plainUncropped || !escapedUncropped {
+		t.Fatalf("uncropped kinds plain=%v escaped=%v, want only the escaped capture", plainUncropped, escapedUncropped)
+	}
+	if p, e := uncroppedKinds(TmuxDriverConfig{}, captureUse{}); p || e {
+		t.Fatalf("a scenario without a crop has no uncropped capture, got plain=%v escaped=%v", p, e)
+	}
+}
+
+func TestCropCaptures_AnAssertedEscapedCaptureWithASplitMarkerFails(t *testing.T) {
+	// The marker is contiguous in the plain capture and split by SGR sequences in the escaped one.
+	cfg := TmuxDriverConfig{CaptureStart: " No messages to fork from", CaptureEnd: "before cloning or forking it."}
+	const plain = "banner\n No messages to fork from\n before cloning or forking it.\nfooter"
+	const escaped = "banner\n\x1b[2m No\x1b[22m messages to fork from\n before cloning or forking it.\nfooter"
+	if _, _, err := cropCaptures(cfg, captureUse{plain: true}, plain, escaped); err != nil {
+		t.Fatalf("a scenario that asserts the plain output only must not fail on the escaped capture: %v", err)
+	}
+	_, _, err := cropCaptures(cfg, captureUse{plain: true, escaped: true}, plain, escaped)
+	if err == nil {
+		t.Fatal("an asserted escaped capture whose marker is split by SGR sequences was accepted: that is an authoring error the runner must report")
+	}
+	full := finalCaptureError("12-unsaved-clone-fork", "pi", TmuxDriverConfig{Steps: make([]TmuxStep, 2)}, err).Error()
+	for _, want := range []string{"12-unsaved-clone-fork", "(pi)", "final capture after step 2 of 2", "escaped capture", `capture_start " No messages to fork from" not found`} {
+		if !strings.Contains(full, want) {
+			t.Errorf("failure %q lacks %q", full, want)
+		}
+	}
+	if strings.Contains(full, "plain capture") {
+		t.Errorf("failure %q names the plain capture, which holds the marker", full)
+	}
+}
+
+func TestScenarioCaptureUse(t *testing.T) {
+	tests := []struct {
+		name string
+		sc   Scenario
+		want captureUse
+	}{
+		{"nothing asserted", Scenario{}, captureUse{}},
+		{"output_equal reads the plain capture", Scenario{Assert: AssertSpec{OutputEqual: true}}, captureUse{plain: true}},
+		{"normalized and layout comparators read the plain capture", Scenario{Assert: AssertSpec{OutputNormalizedEqual: true}}, captureUse{plain: true}},
+		{"contains reads the plain capture", Scenario{Assert: AssertSpec{BothContain: []string{"x"}}}, captureUse{plain: true}},
+		{"a divergence block reads the plain capture", Scenario{Diverge: DivergeSpec{PigContains: []string{"x"}}}, captureUse{plain: true}},
+		{"escaped_output_equal reads the escaped capture only", Scenario{Assert: AssertSpec{EscapedOutputEqual: true}}, captureUse{escaped: true}},
+		{"both", Scenario{Assert: AssertSpec{OutputEqual: true, EscapedOutputEqual: true}}, captureUse{plain: true, escaped: true}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := scenarioCaptureUse(&tt.sc); got != tt.want {
+				t.Fatalf("got %+v, want %+v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestCaptureArtifactName_LabelsAnUncroppedCapture(t *testing.T) {
+	if got := captureArtifactName("pig.escaped", false); got != "pig.escaped" {
+		t.Fatalf("got %q", got)
+	}
+	if got := captureArtifactName("pig.escaped", true); got != "pig.escaped.not-asserted-uncropped" {
 		t.Fatalf("got %q", got)
 	}
 }

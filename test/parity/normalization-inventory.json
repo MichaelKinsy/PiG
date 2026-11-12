@@ -17,8 +17,8 @@
     },
     {
       "source": "test/parity/runner/driver_ht.go",
-      "sha256": "25e42598992d180a5d81519bf6014994c1ff1eca87fe88dac445a4232d086eb4",
-      "reason": "Headless terminal state capture compares the declared visible surface, not transient bytes. Tool stderr is diagnostic transport noise, not product stderr. A capture_start absent from either capture fails the run instead of comparing the whole screen."
+      "sha256": "88dafa2246d2f34188e46b0d3d407fb2c25621ae2f9c342ff25f5007a1d64e20",
+      "reason": "Headless terminal state capture compares the declared visible surface, not transient bytes. Tool stderr is diagnostic transport noise, not product stderr. A capture_start absent from a capture a comparator reads fails the run instead of comparing the whole screen."
     },
     {
       "source": "test/parity/runner/driver_rpc.go",
@@ -27,8 +27,8 @@
     },
     {
       "source": "test/parity/runner/driver_tmux.go",
-      "sha256": "8ebc0042e19b5fc91ba62f2c2b143af7e872f78d44ff37fa619b51642af2aace",
-      "reason": "Terminal state capture is not a byte-stream assertion. A scenario explicitly selects viewport or retained history and its crop. History capture uses session-local maximum retention without changing pane size or shared defaults; required anchors and source-derived assertions reject incomplete history. Readiness and new-output barriers are synchronization, not behavioral coverage. The final capture is taken only from a still screen (the plain captures around the escaped one are equal, within the last step budget), and a capture_start absent from either capture, still absent when that budget ends, fails the run instead of comparing the whole screen."
+      "sha256": "16aa832d4e4f0f320ccda34902db960b7523fec7e6d92ffa2b93b3877ef2050b",
+      "reason": "Terminal state capture is not a byte-stream assertion. A scenario explicitly selects viewport or retained history and its crop. History capture uses session-local maximum retention without changing pane size or shared defaults; required anchors and source-derived assertions reject incomplete history. Readiness and new-output barriers are synchronization, not behavioral coverage. The final capture is taken only from a still screen (the plain captures around the escaped one are equal, within the last step budget), and a capture_start absent from a capture a comparator reads, still absent when that budget ends, fails the run instead of comparing the whole screen. A capture no comparator reads is kept whole, not cropped."
     },
     {
       "source": "test/parity/runner/footer_crop.go",
