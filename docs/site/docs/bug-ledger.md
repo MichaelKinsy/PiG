@@ -481,6 +481,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-4534a2b](#bf-4534a2b) | fix(durable): put the lifetime note of the publication goroutine on its line | PiG's own defect | All platforms | Unreleased |
 | [BF-4579493](#bf-4579493) | The terminal's frame and bundle limits count bytes, as Pi's `Buffer.byteLength` checks do, again | PiG's own defect | All platforms | Unreleased |
 | [BF-4599fab](#bf-4599fab) | fix(ai): an iteration's shared cancellation does not compare contexts | PiG's own defect | All platforms | Unreleased |
+| [BF-45c0b46](#bf-45c0b46) | Interactive mode: a `before_agent_start` handler's edit of `systemPromptOptions` (for example… | PiG's own defect | All platforms | Unreleased |
 | [BF-45ec149](#bf-45ec149) | Read-only credential storage reports an unreadable or malformed `auth.json` as Pi does: `Failed to read… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4610c9f](#bf-4610c9f) | A `!` or `!!` command's block draws the bytes Pi's `BashExecutionComponent` draws: its rows are padded to the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4625b4c](#bf-4625b4c) | `Value.Check` and `Value.Errors` of the Go, Rust, Python and Lisp extension SDKs check a schema's `minLength`… | PiG's own defect | All platforms | Unreleased |
@@ -8429,6 +8430,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `4599fab32c` (2026-10-12)
 - **Tests:** `ai/event_stream_cancellation_test.go::TestIterationOnAnUncomparableContextWaitsForEachEvent`, `ai/event_stream_waiter_disarm_test.go::TestContinuationIteratorDisarmsDeliveredWaits`
+
+### BF-45c0b46
+
+**Interactive mode: a `before_agent_start` handler's edit of `systemPromptOptions` (for example…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Interactive mode: a `before_agent_start` handler's edit of `systemPromptOptions` (for example `appendSystemPrompt`, `customPrompt` or `contextFiles`) is sent to the model also when a skill is loaded and the active tools do not include `read`.
+- **Root cause:** Interactive mode hands the Session its structured prompt together with the resources behind it. The Session rebuilt such a prompt from the before_agent_start options only while the caller's sections equalled a rendering of the base options. The skills section names the tool that loads skill files, so with a skill loaded the equality stopped holding once the loadout had no read tool; the run then kept the caller's sections and took only tools and rules from the handlers' options. An appendSystemPrompt, customPrompt or contextFiles edit was not sent, and the skills section still named the read tool. Pi builds every run's prompt from the handlers' options (agent-session.ts:1828-1840, 2043).
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `45c0b46c0a` (2026-11-12)
+- **Tests:** `coding/cli/run_prompt_loadout_binary_test.go::TestRunPromptOptionEditsSurviveALoadoutChangeInEveryMode`, `coding/session_prompt_options_version_test.go::TestRunSystemPromptFollowsAnInProcessEditOfTheBaseOptions`, `coding/session_prompt_structured_run_test.go::TestStructuredPromptWithResourcesIsBuiltFromTheRunOptionsAfterALoadoutChange`
+- **Release note:** Interactive mode: a `before_agent_start` handler's edit of `systemPromptOptions` (for example `appendSystemPrompt`, `customPrompt` or `contextFiles`) is sent to the model also when a skill is loaded and the active tools do not include `read`. In that case the request kept the startup prompt and changed only its tool list and rules, so the edit was lost and the skills section still told the model to use the `read` tool. Print, JSON and RPC mode were not affected.
 
 ### BF-45ec149
 

@@ -13033,6 +13033,30 @@
       ]
     },
     {
+      "id": "BF-45c0b46",
+      "title": "Interactive mode: a `before_agent_start` handler's edit of `systemPromptOptions` (for example…",
+      "symptom": "Interactive mode: a `before_agent_start` handler's edit of `systemPromptOptions` (for example `appendSystemPrompt`, `customPrompt` or `contextFiles`) is sent to the model also when a skill is loaded and the active tools do not include `read`.",
+      "rootCause": "Interactive mode hands the Session its structured prompt together with the resources behind it. The Session rebuilt such a prompt from the before_agent_start options only while the caller's sections equalled a rendering of the base options. The skills section names the tool that loads skill files, so with a skill loaded the equality stopped holding once the loadout had no read tool; the run then kept the caller's sections and took only tools and rules from the handlers' options. An appendSystemPrompt, customPrompt or contextFiles edit was not sent, and the skills section still named the read tool. Pi builds every run's prompt from the handlers' options (agent-session.ts:1828-1840, 2043).",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Interactive mode: a `before_agent_start` handler's edit of `systemPromptOptions` (for example `appendSystemPrompt`, `customPrompt` or `contextFiles`) is sent to the model also when a skill is loaded and the active tools do not include `read`. In that case the request kept the startup prompt and changed only its tool list and rules, so the edit was lost and the skills section still told the model to use the `read` tool. Print, JSON and RPC mode were not affected.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "45c0b46c0a",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/cli/run_prompt_loadout_binary_test.go::TestRunPromptOptionEditsSurviveALoadoutChangeInEveryMode",
+        "coding/session_prompt_options_version_test.go::TestRunSystemPromptFollowsAnInProcessEditOfTheBaseOptions",
+        "coding/session_prompt_structured_run_test.go::TestStructuredPromptWithResourcesIsBuiltFromTheRunOptionsAfterALoadoutChange"
+      ]
+    },
+    {
       "id": "BF-45ec149",
       "title": "Read-only credential storage reports an unreadable or malformed `auth.json` as Pi does: `Failed to read…",
       "symptom": "Read-only credential storage reports an unreadable or malformed `auth.json` as Pi does: `Failed to read auth.json: ` followed by Node's errno text (for example `EISDIR: illegal operation on a directory, read`) or the JSON.parse SyntaxError text (for example `Unexpected end of JSON input`), instead of Go's error text.",
