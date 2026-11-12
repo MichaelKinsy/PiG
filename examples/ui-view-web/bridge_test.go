@@ -51,7 +51,8 @@ type bridge struct {
 }
 
 // startBridge runs bridge.mjs over a pig with the demo extension and the faux model, and returns the page's address.
-func startBridge(t *testing.T) bridge {
+// More arguments go to pig.
+func startBridge(t *testing.T, more ...string) bridge {
 	t.Helper()
 	if testing.Short() {
 		t.Skip("starts Node and pig")
@@ -61,7 +62,8 @@ func startBridge(t *testing.T) bridge {
 		t.Skip("node is not installed")
 	}
 	home := t.TempDir()
-	cmd := exec.Command(node, "bridge.mjs", "--port", "0", "--pig", buildPig(t), "--", "--model", "test-faux/echo", "--no-session", "-e", "demo-extension.mjs")
+	args := []string{"bridge.mjs", "--port", "0", "--pig", buildPig(t), "--", "--model", "test-faux/echo", "--no-session", "-e", "demo-extension.mjs"}
+	cmd := exec.Command(node, append(args, more...)...)
 	cmd.Env = append(os.Environ(), "PIG_TEST_FAUX=1", "PIG_HOME="+filepath.Join(home, "home"), "PI_HOME="+filepath.Join(home, "pihome"),
 		"PIG_CODING_AGENT_DIR="+filepath.Join(home, "agent"), "PI_CODING_AGENT_DIR="+filepath.Join(home, "piagent"))
 	cmd.Stderr = os.Stderr
@@ -350,5 +352,68 @@ func TestPageDrawsFocusesAndRaisesIntents(t *testing.T) {
 	browser.Wait(`document.querySelector('[data-key="demo"]') === null && document.activeElement.name === "message"`)
 	if got := browser.String(`String(window.uiView.reports) + "/" + String(window.uiView.resyncs)`); got != "0/0" {
 		t.Errorf("reports/resyncs = %s, want 0/0", got)
+	}
+}
+
+// openFixtures opens the page over a pig with the two fixture extensions (testdata/fixture.mjs) and returns the browser
+// and a function that sends a line as the user does: `/fx-a mount <content>`, `/fx-b update <content>`.
+func openFixtures(t *testing.T) (*browsertest.Browser, func(line string)) {
+	t.Helper()
+	b := startBridge(t, "-e", "testdata/fixture-a.mjs", "-e", "testdata/fixture-b.mjs")
+	browser := browsertest.Start(t)
+	browser.Open(b.base + "/?token=" + b.token)
+	browser.Wait(`window.uiView && window.uiView.attachment === 1`)
+	return browser, func(line string) {
+		t.Helper()
+		text, err := json.Marshal(line)
+		if err != nil {
+			t.Fatal(err)
+		}
+		browser.Run(`(() => { const form = document.getElementById("prompt"); form.elements.message.value = ` + string(text) + `; form.requestSubmit(); })()`)
+	}
+}
+
+// TestPageLaysOutStacks checks the geometry the page computes for the layout members of a view: an hstack's children
+// with `stack {basis: 0, grow: 1}` are columns of one width side by side whatever their text, `gap` is cells between
+// children, `align` places a shorter child, a `basis` is a width in cells, and the padding of a box and of a text is
+// what the view says (a text's default is one cell each way). A cell is 1ch wide and one line high.
+func TestPageLaysOutStacks(t *testing.T) {
+	browser, send := openFixtures(t)
+	send(`/fx-a mount {"view":{"root":{"kind":"vstack","gap":1,"children":[` +
+		`{"kind":"hstack","gap":2,"children":[` +
+		`{"kind":"text","text":"a","paddingX":0,"paddingY":0,"stack":{"basis":0,"grow":1}},` +
+		`{"kind":"text","text":"a much longer cell than its neighbours","paddingX":0,"paddingY":0,"stack":{"basis":0,"grow":1}},` +
+		`{"kind":"text","text":"c","paddingX":0,"paddingY":0,"stack":{"basis":0,"grow":1}}]},` +
+		`{"kind":"hstack","align":"end","children":[{"kind":"text","text":"one","paddingX":0,"paddingY":0},{"kind":"text","text":"one\ntwo\nthree","paddingX":0,"paddingY":0}]},` +
+		`{"kind":"box","paddingX":3,"paddingY":2,"children":[{"kind":"text","text":"boxed"}]},` +
+		`{"kind":"hstack","children":[{"kind":"text","text":"x","paddingX":0,"paddingY":0,"stack":{"basis":10,"shrink":0}},{"kind":"text","text":"y","paddingX":0,"paddingY":0,"stack":{"grow":1}}]}` +
+		`]}}}`)
+	browser.Wait(`document.querySelector('[data-key="fx-a"] .box') !== null`)
+	got := browser.String(`(() => {
+		const view = document.querySelector('[data-key="fx-a"] .vstack');
+		const probe = document.createElement("div");
+		probe.style.cssText = "width: 10ch; height: 0";
+		view.append(probe);
+		const col = probe.getBoundingClientRect().width / 10;
+		probe.remove();
+		const row = parseFloat(getComputedStyle(view).lineHeight);
+		const rect = (el) => el.getBoundingClientRect();
+		const near = (a, b) => Math.abs(a - b) < 0.75;
+		const [cells, ends, box, fixed] = view.children;
+		const c = [...cells.children].map(rect), e = [...ends.children].map(rect);
+		const boxStyle = getComputedStyle(box), textStyle = getComputedStyle(box.firstChild);
+		return JSON.stringify({
+			equalColumns: near(c[0].width, c[1].width) && near(c[1].width, c[2].width) && c[0].width > col,
+			sameRow: near(c[0].top, c[1].top) && near(c[1].top, c[2].top) && c[0].left < c[1].left && c[1].left < c[2].left,
+			columnGap: near(c[1].left - c[0].right, 2 * col) && near(c[2].left - c[1].right, 2 * col),
+			rowGap: near(rect(ends).top - rect(cells).bottom, row),
+			alignEnd: near(e[0].bottom, e[1].bottom) && e[0].top > e[1].top + row,
+			boxPadding: near(parseFloat(boxStyle.paddingLeft), 3 * col) && near(parseFloat(boxStyle.paddingTop), 2 * row),
+			textPadding: near(parseFloat(textStyle.paddingLeft), col) && near(parseFloat(textStyle.paddingTop), row),
+			basis: near(rect(fixed.children[0]).width, 10 * col) && near(rect(fixed.children[1]).right, rect(fixed).right),
+		});
+	})()`)
+	if want := `{"equalColumns":true,"sameRow":true,"columnGap":true,"rowGap":true,"alignEnd":true,"boxPadding":true,"textPadding":true,"basis":true}`; got != want {
+		t.Errorf("the layout is\n  %s\nwant\n  %s", got, want)
 	}
 }

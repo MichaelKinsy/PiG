@@ -18,10 +18,13 @@
   .mount > header { display: flex; gap: .5rem; align-items: center; font-size: .8em; opacity: .75; margin-bottom: .4rem; }
   .mount > header span { flex: 1; }
   .mount > footer { font-size: .8em; opacity: .75; margin-top: .4rem; min-height: 1.2em; }
-  .hstack { display: flex; flex-direction: row; gap: .5rem; align-items: baseline; }
-  .vstack, .container, .box { display: flex; flex-direction: column; gap: .25rem; }
-  .box { padding: .35rem .6rem; border-radius: .35rem; background: color-mix(in srgb, CanvasText 5%, Canvas); }
-  .text, .lines { white-space: pre-wrap; margin: 0; font: inherit; }
+  /* A cell of a view: 1ch wide, one line high (client.js: cols, rows). */
+  .view { --col: 1ch; --row: 1.45em; }
+  .hstack { display: flex; flex-direction: row; }
+  .vstack { display: flex; flex-direction: column; }
+  .view * { box-sizing: border-box; }
+  .text, .lines { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; font: inherit; }
+  .text.truncated { white-space: pre; overflow: hidden; text-overflow: ellipsis; }
   .lines { font-family: ui-monospace, monospace; }
   .rule { border: 0; border-top: 1px solid color-mix(in srgb, CanvasText 30%, Canvas); width: 100%; }
   [role=listbox] { display: flex; flex-direction: column; border: 1px solid color-mix(in srgb, CanvasText 25%, Canvas); border-radius: .35rem; }
@@ -33,6 +36,7 @@
   .undrawn { font-style: italic; opacity: .6; }
   :focus-visible { outline: 2px solid Highlight; outline-offset: 1px; }
   input, textarea, select, button { font: inherit; }
+  .view input, .view textarea { max-width: 100%; }
   textarea { width: 100%; box-sizing: border-box; min-height: 4rem; }
   form.arg { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; margin-top: .4rem; }
   section[data-slot=notify] { position: fixed; top: .75rem; right: .75rem; width: 18rem; }

@@ -141,7 +141,7 @@ function draw(key, snapshot, held) {
   const title = document.createElement("span");
   title.textContent = `${snapshot.plugin} / ${snapshot.mount.key}${snapshot.degraded ? " (degraded)" : ""}`;
   head.append(title);
-  const body = document.createElement("div");
+  const body = text("view", "");
   mount.footer = document.createElement("footer");
   // What the last intent came to stays readable across a redraw.
   if (held) {
@@ -177,26 +177,75 @@ function text(className, value) {
   return el;
 }
 
+// The sizes of a view (gap, padding, basis, minSize, maxSize, a spacer's lines) are terminal cells (D107). Here a cell
+// is 1ch wide (the width of "0" in the view's font) and one line high.
+const cols = (n) => `calc(${n} * var(--col))`;
+const rows = (n) => `calc(${n} * var(--row))`;
+const ALIGN = { stretch: "stretch", start: "flex-start", center: "center", end: "flex-end" };
+
+// pad sets a node's padding; `fallback` is what the kind has when the view names none.
+function pad(el, n, fallback) {
+  el.style.padding = `${rows(n.paddingY ?? fallback)} ${cols(n.paddingX ?? fallback)}`;
+}
+
+// stack draws an hstack or a vstack as Pi's stacks lay them out (tui/stack.go): `gap` cells between children, and each
+// child's `stack` entry as a flex item: basis (none: its own size), grow 0, shrink 1, minSize 0, maxSize none. Only
+// an hstack has a size to share out and an `align` (where a shorter child sits); a vstack's children take its width
+// and their own or their basis height.
+function stack(n, el, child) {
+  const row = n.kind === "hstack";
+  const size = row ? cols : rows;
+  el.style.gap = size(n.gap ?? 0);
+  if (row) el.style.alignItems = ALIGN[n.align ?? "stretch"];
+  (n.children ?? []).forEach((c, i) => {
+    const item = child(c, i);
+    const entry = c.stack ?? {};
+    const basis = entry.basis === undefined ? "auto" : size(entry.basis);
+    item.style.flex = row ? `${entry.grow ?? 0} ${entry.shrink ?? 1} ${basis}` : `0 0 ${basis}`;
+    if (row || entry.minSize !== undefined) item.style[row ? "minWidth" : "minHeight"] = size(entry.minSize ?? 0);
+    if (entry.maxSize !== undefined) item.style[row ? "maxWidth" : "maxHeight"] = size(entry.maxSize);
+    el.append(item);
+  });
+  return el;
+}
+
 // node draws one D107 view node. The kinds that carry an id (select-list, settings-list, input, editor, mouse-region,
 // scroll-view) become focusable elements under that id, so a11y and focus records can name them.
 function node(n, mount, path, undrawn, view) {
   let el;
+  const child = (c, i) => node(c, mount, `${path}/${i}`, undrawn, view);
   const children = (parent) => {
-    (n.children ?? []).forEach((child, i) => parent.append(node(child, mount, `${path}/${i}`, undrawn, view)));
+    (n.children ?? []).forEach((c, i) => parent.append(child(c, i)));
     return parent;
   };
   switch (n.kind) {
-    case "container": case "box": case "vstack": case "hstack":
-      el = children(text(n.kind, ""));
+    case "container":
+      el = children(text("container", ""));
       break;
-    case "text": case "truncated-text": case "markdown":
+    case "box":
+      el = children(text("box", ""));
+      pad(el, n, 1);
+      break;
+    case "vstack": case "hstack":
+      el = stack(n, text(n.kind, ""), child);
+      break;
+    case "text":
+      el = text("text", n.text ?? "");
+      pad(el, n, 1);
+      break;
+    case "truncated-text":
+      el = text("text truncated", n.text ?? "");
+      pad(el, n, 0);
+      break;
+    case "markdown":
       el = text("text", n.text ?? "");
       break;
     case "lines":
       el = text("lines", (n.content ?? []).join("\n"));
       break;
     case "spacer":
-      el = text("text", "\n".repeat(Math.max(0, (n.lines ?? 1) - 1)) + "\u00a0");
+      el = text("spacer", "");
+      el.style.height = rows(n.lines ?? 1);
       break;
     case "dynamic-border":
       el = document.createElement("hr");
