@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"bytes"
 	"encoding/json"
 	"reflect"
 	"testing"
@@ -51,7 +52,7 @@ func TestSchemaStaysPrivateWhenBorrowed(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if string(after) != string(before) {
+			if !bytes.Equal(after, before) {
 				t.Errorf("%s: an edit of Schema().Parameters reached a later schema:\n got  %s\n want %s", name, after, before)
 			}
 		}
