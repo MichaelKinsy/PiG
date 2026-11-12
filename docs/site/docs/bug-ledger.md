@@ -1516,6 +1516,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-bdb7ad8](#bf-bdb7ad8) | A single server-sent-event line larger than 32 MiB (for example a base64 image chunk) no longer fails the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-be2920a](#bf-be2920a) | A tool with JSON-schema constrained sampling `strict: "require"` now fails an OpenAI Chat Completions request… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-be6803c](#bf-be6803c) | The /tree "Summarize branch?" selector and "Custom summarization instructions" editor, the /import… | PiG's own defect | All platforms | 0.5.2 |
+| [BF-be8900b](#bf-be8900b) | A turn that ends with a provider error reading `Connection closed.`, such as a gateway cutting a stream with… | PiG's own defect | All platforms | Unreleased |
 | [BF-beeb36a](#bf-beeb36a) | Running with no home directory now fails the way Pi's package manager does, instead of reading the project's… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-bf094af](#bf-bf094af) | The OpenAI Responses API now gets the session-affinity header `session-id` instead of `session_id`, as in Pi… | PiG's own defect | All platforms | Unreleased |
 | [BF-bf1905d](#bf-bf1905d) | Markdown removes the indent of a line of an indented code block that follows a Unicode line separator… | PiG's own defect | All platforms | Unreleased |
@@ -22789,6 +22790,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `be6803c903` (2026-10-20)
 - **Tests:** `internal/codingagent/owner_dialog_stack_test.go::TestBugReportPromptsStayOutsideTheDialogStackAndReportNoStatus`, `internal/codingagent/owner_dialog_stack_test.go::TestExtensionDialogOpenedDuringATreeSummaryPromptTakesTheKeys`, `internal/codingagent/owner_dialog_stack_test.go::TestMissingCwdConfirmationStacksWithAnOpenExtensionDialog`, `internal/codingagent/owner_dialog_stack_test.go::TestSessionReplacementDismissesAnOpenTreeSummaryPrompt`, `internal/codingagent/owner_dialog_stack_test.go::TestStackedPromptsReportTheirBlockedStatus`
 - **Release note:** The /tree "Summarize branch?" selector and "Custom summarization instructions" editor, the /import confirmation and the missing-session-cwd confirmation of /resume and /import are dialogs on the same stack as an extension's, as in Pi. A dialog an extension opens while one of them is shown takes the keys, closing the prompt shows the earlier dialog again instead of hiding it, each reports its blocked status to the terminal, and a session replacement or `/reload` removes the prompt with the other dialogs. `/bug` keeps its own prompts outside the stack and no longer reports a blocked status for its description editor, as in Pi (Pi 38847563, bug-report.ts).
+
+### BF-be8900b
+
+**A turn that ends with a provider error reading `Connection closed.`, such as a gateway cutting a stream with…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A turn that ends with a provider error reading `Connection closed.`, such as a gateway cutting a stream with an `api_error` event, is now retried automatically like other dropped connections, instead of stopping with the error; the same applies to the agent proxy's `Connection closed by proxy server before the response completed` error, in the extension SDKs' `isRetryableAssistantError`, and for durable agents (upstream #12093).
+- **Root cause:** Some gateways end a stream mid-response with {"type":"error","error":{"type":"api_error","message":"Connection closed."}}. isRetryableAssistantError did not match that text, so the turn stopped with an error and no automatic retry, while "Connection lost" and "socket connection was closed" were retried.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `be8900bb34` (2026-11-12)
+- **Tests:** `ai/assistant_retry_classifier_oracle_test.go::TestIsRetryableAssistantErrorMatchesPiOracle`, `ai/assistant_retry_test.go::TestIsRetryableAssistantErrorClassification`, `ai/provider_closed_connection_test.go::TestProviderServerSocketCloseIsRetryable`, `ai/provider_closed_connection_test.go::TestProviderStreamErrorEventReadingConnectionClosedIsRetryable`, `ai/provider_closed_connection_test.go::TestRetryAssistantCallOverAGatewayClosedConnection`, `coding/session_connection_closed_retry_test.go::TestSessionAbortRetryDuringAClosedConnectionBackoff`, `coding/session_connection_closed_retry_test.go::TestSessionRetriesAGatewayClosedConnectionOnce`, `coding/session_connection_closed_retry_test.go::TestSessionRetriesAServerSocketClosedBeforeTheAnswer` and 4 more in docs/bug-ledger.json
+- **Release note:** A turn that ends with a provider error reading `Connection closed.`, such as a gateway cutting a stream with an `api_error` event, is now retried automatically like other dropped connections, instead of stopping with the error; the same applies to the agent proxy's `Connection closed by proxy server before the response completed` error, in the extension SDKs' `isRetryableAssistantError`, and for durable agents (upstream #12093).
 
 ### BF-beeb36a
 

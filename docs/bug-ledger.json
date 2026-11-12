@@ -41814,6 +41814,39 @@
       ]
     },
     {
+      "id": "BF-be8900b",
+      "title": "A turn that ends with a provider error reading `Connection closed.`, such as a gateway cutting a stream with…",
+      "symptom": "A turn that ends with a provider error reading `Connection closed.`, such as a gateway cutting a stream with an `api_error` event, is now retried automatically like other dropped connections, instead of stopping with the error; the same applies to the agent proxy's `Connection closed by proxy server before the response completed` error, in the extension SDKs' `isRetryableAssistantError`, and for durable agents (upstream #12093).",
+      "rootCause": "Some gateways end a stream mid-response with {\"type\":\"error\",\"error\":{\"type\":\"api_error\",\"message\":\"Connection closed.\"}}. isRetryableAssistantError did not match that text, so the turn stopped with an error and no automatic retry, while \"Connection lost\" and \"socket connection was closed\" were retried.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A turn that ends with a provider error reading `Connection closed.`, such as a gateway cutting a stream with an `api_error` event, is now retried automatically like other dropped connections, instead of stopping with the error; the same applies to the agent proxy's `Connection closed by proxy server before the response completed` error, in the extension SDKs' `isRetryableAssistantError`, and for durable agents (upstream #12093).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "be8900bb34",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "ai/assistant_retry_classifier_oracle_test.go::TestIsRetryableAssistantErrorMatchesPiOracle",
+        "ai/assistant_retry_test.go::TestIsRetryableAssistantErrorClassification",
+        "ai/provider_closed_connection_test.go::TestProviderServerSocketCloseIsRetryable",
+        "ai/provider_closed_connection_test.go::TestProviderStreamErrorEventReadingConnectionClosedIsRetryable",
+        "ai/provider_closed_connection_test.go::TestRetryAssistantCallOverAGatewayClosedConnection",
+        "coding/session_connection_closed_retry_test.go::TestSessionAbortRetryDuringAClosedConnectionBackoff",
+        "coding/session_connection_closed_retry_test.go::TestSessionRetriesAGatewayClosedConnectionOnce",
+        "coding/session_connection_closed_retry_test.go::TestSessionRetriesAServerSocketClosedBeforeTheAnswer",
+        "coding/session_connection_closed_retry_test.go::TestSessionSurfacesAGatewayClosedConnectionAfterTheConfiguredRetries",
+        "durable/core/turn/classify_carried_test.go::TestConnectionClosedIsRetryable",
+        "durable/core/turn/classify_carried_test.go::TestStreamCutShortMidReplyIsRetryable",
+        "extensions/sdk/pi_ai_helpers_test.go::TestConnectionClosedIsRetryable"
+      ]
+    },
+    {
       "id": "BF-beeb36a",
       "title": "Running with no home directory now fails the way Pi's package manager does, instead of reading the project's…",
       "symptom": "With no `HOME` and no entry for your user in the system's user database (a container run as a user its passwd file does not list), `pig` used to take the home directory to be empty, so the `.agents/skills` directory of the current project was listed as the user's `~/.agents/skills`, with user scope and without the project-trust prompt.",

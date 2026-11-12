@@ -61,6 +61,10 @@ const RETRYABLE_PROVIDER_ERROR_PATTERN = buildProviderErrorPattern([
     "connection.?error",
     "connection.?refused",
     "connection.?lost",
+    // Pi 9b88b94e2 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+    // Gateway mid-stream drop relayed as an Anthropic-style `api_error` event,
+    // e.g. {"type":"error","error":{"type":"api_error","message":"Connection closed."}} (#12064).
+    "connection.?closed",
     "other side closed",
     "fetch failed",
     // node-fetch system errors, e.g. the Google ADC OAuth token refresh used by
