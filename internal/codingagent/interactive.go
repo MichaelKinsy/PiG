@@ -708,7 +708,7 @@ func (m *InteractiveMode) loadRemainingHighlightLanguages() {
 			})
 		}
 		// After the repaint is queued, so the collection never delays it.
-		releaseStartupHeap()
+		m.releaseStartupHeapWhenIdle(ctx)
 	})
 }
 
