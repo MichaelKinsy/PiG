@@ -278,8 +278,8 @@ func (t *GrepTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 	}
 	if len(notices) > 0 {
 		output += "\n\n[" + strings.Join(notices, ". ") + "]"
-		shareTruncatedContent(details.Truncation, output)
 	}
+	output = sharedOutput(details.Truncation, output)
 	result := agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: output}}}
 	if len(notices) > 0 {
 		result.Details = details
