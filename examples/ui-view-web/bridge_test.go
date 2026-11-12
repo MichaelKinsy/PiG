@@ -454,3 +454,50 @@ func TestPageDrawsColoursThemeAndMarkdown(t *testing.T) {
 		t.Errorf("colours and markdown are\n  %s\nwant\n  %s", got, want)
 	}
 }
+
+// TestPageKeepsTypedTextAcrossUpdates checks what an update does to what the user is typing: a text node whose id is
+// in the next view keeps its element, text, selection and the focus while a sibling changes; a value the extension
+// changes replaces the text; a node that moved to another parent keeps its text and the focus; and when the node is
+// gone, the node with another id that stands in its place starts with its own value.
+func TestPageKeepsTypedTextAcrossUpdates(t *testing.T) {
+	browser, send := openFixtures(t)
+	view := func(mail, input string) string {
+		return `{"view":{"root":{"kind":"vstack","children":[{"kind":"text","text":"` + mail + `"},` + input + `,{"kind":"editor","id":"body","value":""}]}}}`
+	}
+	reply := `{"kind":"input","id":"reply","value":""}`
+	state := `(() => { const el = document.querySelector('[id$="-reply"]'), body = document.querySelector('[id$="-body"]');
+		return JSON.stringify({ same: el === window.typedInto, value: el?.value, selection: el?.selectionStart + "-" + el?.selectionEnd, focused: document.activeElement === el, body: body?.value, sameBody: body === window.bodyWas }); })()`
+	send(`/fx-a mount ` + view("1 mail", reply))
+	browser.Wait(`document.querySelector('[id$="-reply"]') !== null`)
+	browser.Run(`(window.bodyWas = document.querySelector('[id$="-body"]')).focus()`)
+	browser.Type("a draft")
+	browser.Run(`(window.typedInto = document.querySelector('[id$="-reply"]')).focus()`)
+	browser.Type("half typed")
+	browser.Run(`window.typedInto.setSelectionRange(2, 5)`)
+	// A sibling changes: a new mail arrives.
+	send(`/fx-a update ` + view("2 mails", reply))
+	browser.Wait(`document.querySelector('[data-key="fx-a"] .text').textContent === "2 mails"`)
+	if got, want := browser.String(state), `{"same":true,"value":"half typed","selection":"2-5","focused":true,"body":"a draft","sameBody":true}`; got != want {
+		t.Fatalf("after a sibling changed, the typed text is\n  %s\nwant\n  %s", got, want)
+	}
+	// The extension changes the value: its value is drawn.
+	send(`/fx-a update ` + view("3 mails", `{"kind":"input","id":"reply","value":"sent"}`))
+	browser.Wait(`document.querySelector('[data-key="fx-a"] .text').textContent === "3 mails"`)
+	if got, want := browser.String(state), `{"same":true,"value":"sent","selection":"2-4","focused":true,"body":"a draft","sameBody":true}`; got != want {
+		t.Errorf("after the extension changed the value, the text is\n  %s\nwant\n  %s", got, want)
+	}
+	// The node moves into a box: it is another element, with the text and the focus of the one it replaces.
+	browser.Run(`window.typedInto.setSelectionRange(4, 4)`)
+	browser.Type(" again")
+	send(`/fx-a update ` + view("4 mails", `{"kind":"box","children":[{"kind":"input","id":"reply","value":"sent"}]}`))
+	browser.Wait(`document.querySelector('[data-key="fx-a"] .text').textContent === "4 mails"`)
+	if got, want := browser.String(state), `{"same":false,"value":"sent again","selection":"10-10","focused":true,"body":"a draft","sameBody":true}`; got != want {
+		t.Errorf("after the node moved, the text is\n  %s\nwant\n  %s", got, want)
+	}
+	// The node is gone and one with another id stands in its place: nothing of the old text is in it.
+	send(`/fx-a update ` + view("5 mails", `{"kind":"box","children":[{"kind":"input","id":"other","value":""}]}`))
+	browser.Wait(`document.querySelector('[data-key="fx-a"] .text').textContent === "5 mails"`)
+	if got, want := browser.String(`(() => { const other = document.querySelector('[id$="-other"]'); return [document.querySelector('[id$="-reply"]') === null, JSON.stringify(other.value), other === window.typedInto, document.activeElement === other].join(); })()`), `true,"",false,false`; got != want {
+		t.Errorf("after the node was removed: gone, the new node's value, same element, focused = %s, want %s", got, want)
+	}
+}

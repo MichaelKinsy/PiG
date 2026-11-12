@@ -120,7 +120,7 @@ function apply(snapshot) {
     const result = snapshot.result === undefined ? "" : `: ${JSON.stringify(snapshot.result)}`;
     say(`${snapshot.plugin}/${snapshot.mount.key} ${snapshot.state}${why}${result}`);
   } else if (held && held.snapshot.mount.epoch === snapshot.mount.epoch && snapshot.digest && held.snapshot.digest === snapshot.digest) {
-    // The same content: keep what is drawn, with its focus and what the user typed.
+    // The same content: nothing is drawn.
     held.snapshot = snapshot;
     held.element.hidden = snapshot.state === "hidden";
   } else {
@@ -129,46 +129,94 @@ function apply(snapshot) {
   state.textContent = `attachment ${attachment}, event ${lastSeq}, ${mounts.size} mounts`;
 }
 
+// draw shows a snapshot. A mount already on the page keeps its element and morph keeps what it can of its view, so an
+// update leaves what the user is typing, the selection and the focus where they are.
 function draw(key, snapshot, held) {
-  const prefix = held?.prefix ?? `m${++nextMount}-`;
-  const mount = { snapshot, prefix, ids: new Map(), restore: held?.restore ?? document.activeElement };
-  const element = document.createElement("article");
-  element.className = "mount";
-  element.dataset.plugin = snapshot.plugin;
-  element.dataset.key = snapshot.mount.key;
-  element.hidden = snapshot.state === "hidden";
-  const head = document.createElement("header");
-  const title = document.createElement("span");
-  title.textContent = `${snapshot.plugin} / ${snapshot.mount.key}${snapshot.degraded ? " (degraded)" : ""}`;
-  head.append(title);
-  const body = text("view", "");
-  theme(body, snapshot.view);
-  mount.footer = document.createElement("footer");
-  // What the last intent came to stays readable across a redraw.
-  if (held) {
-    mount.footer.textContent = held.footer.textContent;
-    if (held.footer.dataset.outcome) mount.footer.dataset.outcome = held.footer.dataset.outcome;
+  const mount = held ?? { prefix: `m${++nextMount}-`, restore: document.activeElement };
+  const was = mount.ids ?? new Map();
+  mount.snapshot = snapshot;
+  mount.ids = new Map();
+  if (!held) {
+    mount.element = document.createElement("article");
+    mount.element.className = "mount";
+    mount.element.dataset.plugin = snapshot.plugin;
+    mount.element.dataset.key = snapshot.mount.key;
+    mount.head = document.createElement("header");
+    mount.head.append(document.createElement("span"));
+    mount.body = text("view", "");
+    mount.footer = document.createElement("footer");
+    mount.element.append(mount.head, mount.body, mount.footer);
   }
-  element.append(head, body, mount.footer);
-  mount.element = element;
+  mount.element.hidden = snapshot.state === "hidden";
+  mount.head.firstChild.textContent = `${snapshot.plugin} / ${snapshot.mount.key}${snapshot.degraded ? " (degraded)" : ""}`;
+  mount.body.removeAttribute("style");
+  theme(mount.body, snapshot.view);
 
   const undrawn = [];
-  if (snapshot.view?.root) body.append(node(snapshot.view.root, mount, "root", undrawn, snapshot.view));
-  else body.append(text("undrawn", snapshot.degraded ? "This view does not fit this client." : ""));
-  for (const decl of snapshot.intents ?? []) {
-    if (decl.nodeKey) continue;
-    const button = document.createElement("button");
-    button.textContent = decl.name;
-    button.addEventListener("click", () => raise(mount, decl, "", undefined));
-    head.append(button);
+  const fresh = snapshot.view?.root ? node(snapshot.view.root, mount, "root", undrawn, snapshot.view) : text("undrawn", snapshot.degraded ? "This view does not fit this client." : "");
+  const focused = mount.element.contains(document.activeElement) ? document.activeElement : null;
+  const selection = focused && typed(focused) ? [focused.selectionStart, focused.selectionEnd, focused.selectionDirection] : null;
+  const root = mount.body.firstChild;
+  if (!root) mount.body.append(fresh);
+  else if (morph(root, fresh, mount) !== root) root.replaceWith(fresh);
+  // A text node that morph could not keep in place (it moved to another parent) hands its text to the element drawn for it.
+  for (const [id, el] of mount.ids) {
+    const old = was.get(id);
+    if (old && old !== el && typed(el) && old.tagName === el.tagName && (el.view.value ?? "") === (old.view.value ?? "")) el.value = old.value;
+  }
+  const actions = JSON.stringify((snapshot.intents ?? []).filter((decl) => !decl.nodeKey));
+  if (actions !== mount.actions) {
+    mount.actions = actions;
+    mount.head.replaceChildren(mount.head.firstChild);
+    for (const decl of JSON.parse(actions)) {
+      const button = document.createElement("button");
+      button.textContent = decl.name;
+      button.addEventListener("click", () => raise(mount, decl, "", undefined));
+      mount.head.append(button);
+    }
   }
   applyA11y(mount);
-  const refocus = held && held.element.contains(document.activeElement) ? document.activeElement.id : "";
-  if (held) held.element.replaceWith(element);
-  else document.querySelector(`section[data-slot="${snapshot.slot}"]`).append(element);
+  if (!held) document.querySelector(`section[data-slot="${snapshot.slot}"]`).append(mount.element);
   mounts.set(key, mount);
-  applyFocus(mount, !held, refocus);
+  // The focus stays on the element that had it; when that element was drawn again, on the one with its id.
+  const target = focused?.isConnected ? focused : focused?.id ? document.getElementById(focused.id) : null;
+  if (target && document.activeElement !== target) {
+    target.focus({ preventScroll: true });
+    if (selection && typed(target)) target.setSelectionRange(...selection);
+  }
+  applyFocus(mount, !held);
   for (const [path, kind] of undrawn) report(mount, path, `this client does not draw ${kind}`);
+}
+
+const typed = (el) => el.tagName === "INPUT" || el.tagName === "TEXTAREA";
+// The kinds whose element morph keeps while it morphs their children. Their listeners name only the mount and the id.
+const SHELLS = new Set(["container", "box", "vstack", "hstack", "mouse-region", "scroll-view"]);
+
+// morph makes what is drawn (old) show the freshly drawn node and returns the element that stands for it: old when
+// both are the same kind under the same id and the kind is a shell or takes text, else fresh. An input or editor that
+// is kept keeps the user's text unless the view's value changed. Children with an id are matched by id and the others
+// by position, so a node that is gone takes its element with it and never lends it to another id.
+function morph(old, fresh, mount) {
+  const n = fresh.view;
+  if (!n || old.view?.kind !== n.kind || old.view.id !== n.id || !(typed(old) || SHELLS.has(n.kind))) return fresh;
+  for (const { name } of [...old.attributes]) if (!fresh.hasAttribute(name)) old.removeAttribute(name);
+  for (const { name, value } of fresh.attributes) if (old.getAttribute(name) !== value) old.setAttribute(name, value);
+  if (typed(old) && (n.value ?? "") !== (old.view.value ?? "")) old.value = n.value ?? "";
+  old.view = n;
+  if (n.id) mount.ids.set(n.id, old);
+  if (typed(old)) return old;
+  const olds = [...old.children];
+  const byId = new Map(olds.filter((el) => el.view?.id).map((el) => [el.view.id, el]));
+  const kept = new Set();
+  [...fresh.children].forEach((child, i) => {
+    const match = child.view?.id ? byId.get(child.view.id) : olds[i]?.view?.id ? undefined : olds[i];
+    const now = match && !kept.has(match) ? morph(match, child, mount) : child;
+    kept.add(now);
+    if (old.children[i] !== now) old.insertBefore(now, old.children[i] ?? null);
+  });
+  for (const el of olds) if (!kept.has(el)) el.remove();
+  if (n.kind === "scroll-view" && n.follow === "end") old.scrollTop = old.scrollHeight;
+  return old;
 }
 
 function text(className, value) {
@@ -369,6 +417,7 @@ function node(n, mount, path, undrawn, view) {
     default:
       return undrawnNode(n, path, undrawn);
   }
+  el.view = n;
   if (n.id) {
     el.id = mount.prefix + n.id;
     mount.ids.set(n.id, el);
@@ -543,16 +592,15 @@ function applyA11y(mount) {
 }
 
 // applyFocus puts the named nodes in the focus order the snapshot gives and, on a new mount, moves the focus to the
-// node that requests it. A redrawn mount keeps the focus on the node that had it.
-function applyFocus(mount, isNew, refocus) {
+// node that requests it.
+function applyFocus(mount, isNew) {
   const order = mount.snapshot.focus ?? [];
   order.forEach((entry, i) => {
     const el = mount.ids.get(entry.node);
     if (el) el.tabIndex = i + 1;
   });
   const asked = order.find((entry) => entry.request === "mount");
-  if (refocus && document.getElementById(refocus)) document.getElementById(refocus).focus();
-  else if (isNew && asked) mount.ids.get(asked.node)?.focus();
+  if (isNew && asked) mount.ids.get(asked.node)?.focus();
   const restore = order.find((entry) => entry.restore);
   if (restore?.restore === "self") mount.restore = undefined;
 }
