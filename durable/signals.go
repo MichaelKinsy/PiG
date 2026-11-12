@@ -231,6 +231,7 @@ func memoOf(memos map[string]JsonValue, name string) *signalMemo {
 	version, _ := object.Value("version").(float64)
 	value, _ := object.Get("value")
 	consumed, _ := object.Value("consumed").(bool)
+	//portlint:allow numbers version is a counter the Go store wrote as a whole number; a non-integral or out-of-range value is a corrupt record that fails the version comparison either way
 	return &signalMemo{version: int(version), value: value, consumed: consumed}
 }
 

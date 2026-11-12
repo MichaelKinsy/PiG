@@ -648,10 +648,12 @@ type TaskState[S, R any] struct {
 	Checkpoint *S         `json:"checkpoint,omitempty"`
 	// Wake is why the task woke from its last wait or sleep, kept while it runs at the checkpoint it woke at. Pending and
 	// running only.
-	Wake    *WakeReason     `json:"wake,omitempty"`
-	On      []TaskId        `json:"on,omitempty"`
-	Policy  JoinPolicy      `json:"policy,omitempty"`
-	Until   *float64        `json:"until,omitempty"`
+	Wake *WakeReason `json:"wake,omitempty"`
+	//portlint:allow emptydrop the finding baselined as On's omitempty before gofmt realigned this block for Signals; the baseline entry names the old spacing
+	On     []TaskId   `json:"on,omitempty"`
+	Policy JoinPolicy `json:"policy,omitempty"`
+	Until  *float64   `json:"until,omitempty"`
+	//portlint:allow emptydrop Pi's sleep needs `until` or a non-empty `signals` (durable/src/types.ts, Pi 473515f9c), so an empty list is never written
 	Signals []SignalKey     `json:"signals,omitempty"`
 	Outcome *TaskOutcome[R] `json:"outcome,omitempty"`
 }

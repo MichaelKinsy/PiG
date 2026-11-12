@@ -355,6 +355,7 @@ func newFindFdInvocation(pattern, searchPath string, effectiveLimit float64, win
 	}
 	// fd's full paths never contain "/./", so "./src/*.ts" would find nothing; drop the leading "./" (upstream #12020).
 	for strings.HasPrefix(effectivePattern, "./") {
+		//portlint:allow utf16units the two bytes are the ASCII "./" the loop condition matched, so a byte and a UTF-16 offset agree
 		effectivePattern = effectivePattern[2:]
 	}
 	isPathPattern := strings.Contains(effectivePattern, "/")
