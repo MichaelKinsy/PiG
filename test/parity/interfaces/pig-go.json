@@ -163808,6 +163808,17 @@
       "shapeHash": "sha256:9675533de915ec6179c921280fb89eb22380a36e19a8b0f62ce7741c433226f7"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess/internal/noderuntimegen#blockEncoder",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess/internal/noderuntimegen",
+      "name": "blockEncoder",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(existing string) func(raw []byte) ([]byte, error)"
+      },
+      "shapeHash": "sha256:5bd85255c83310395337025e378af31a4011f0a92c22667569acdc621f00fda1"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess/internal/noderuntimegen#generate",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess/internal/noderuntimegen",
       "name": "generate",
@@ -163852,6 +163863,17 @@
       "shapeHash": "sha256:b2fb3b0828a13975633b734e64c0d68919b1443f5c65eebcdb07bb67bf600bf6"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess/internal/noderuntimepack#Blocks",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess/internal/noderuntimepack",
+      "name": "Blocks",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(archive string) ([]string, error)"
+      },
+      "shapeHash": "sha256:edaddc7ff498233b8721ffee8fa5d2ba6c2c2847b83f705f68bd0e6aca1f5f3d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess/internal/noderuntimepack#ErrTruncated",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess/internal/noderuntimepack",
       "name": "ErrTruncated",
@@ -163891,9 +163913,9 @@
       "kind": "function",
       "exported": true,
       "shape": {
-        "type": "func(files []File) ([]byte, error)"
+        "type": "func(files []File, encode func(raw []byte) ([]byte, error)) ([]byte, error)"
       },
-      "shapeHash": "sha256:9a56a0e83a6f70ac4976ecd4fafd3bb639bab3d19171637a4c02aa09578c7071"
+      "shapeHash": "sha256:e1008a451bc32d564270cf2a0f3c1fa16c4be24df6f5a359d7651e7a54c14ada"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess/internal/noderuntimepack#UnreadAtRuntime",
@@ -163924,9 +163946,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(files []File) ([]byte, error)"
+        "type": "func(files []File, encode func(raw []byte) ([]byte, error)) ([]byte, error)"
       },
-      "shapeHash": "sha256:9a56a0e83a6f70ac4976ecd4fafd3bb639bab3d19171637a4c02aa09578c7071"
+      "shapeHash": "sha256:e1008a451bc32d564270cf2a0f3c1fa16c4be24df6f5a359d7651e7a54c14ada"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess/internal/noderuntimepack#extractBlock",
