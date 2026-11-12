@@ -72,8 +72,10 @@ func heapReleasedBytes() uint64 {
 
 var startupGarbageSink [][]byte
 
-// The first frame and the startup loads leave free heap the runtime's background scavenger returns slowly; the task that registers the remaining grammars returns it once, after queueing the repaint (D172). The test runs in its own process so no other test's collection returns the garbage first.
-func TestLoadRemainingHighlightLanguagesReturnsTheStartupHeap(t *testing.T) {
+// The first frame and the startup loads leave free heap the runtime's background scavenger returns slowly. The grammar-load task does not collect it
+// right after the first frame (a forced collection there took 23 ms of the core the first prompt needs): it arms the idle collection, which returns
+// the heap once the session has stayed idle (D172). The test runs in its own process so no other test's collection returns the garbage first.
+func TestStartupHeapIsReturnedByTheFirstIdleCollectionNotByTheGrammarLoad(t *testing.T) {
 	if !testenv.InOwnProcess(t) {
 		return
 	}
@@ -81,11 +83,44 @@ func TestLoadRemainingHighlightLanguagesReturnsTheStartupHeap(t *testing.T) {
 		startupGarbageSink = append(startupGarbageSink, make([]byte, 1<<20))
 	}
 	startupGarbageSink = nil
+	m, ctx, _ := newLifecycleMode(t)
+	m.installRenderDispatcher()
+	m.isIdle = true
+	m.backgroundCtx = ctx
+	spinCtx, cancel := context.WithCancel(ctx)
+	spinnerDone := make(chan struct{})
+	go func() { defer close(spinnerDone); m.tickSpinner(spinCtx) }()
+	defer func() { cancel(); <-spinnerDone }()
+
 	before := heapReleasedBytes()
-	m := &InteractiveMode{tuiInst: &repaintRecorder{}, uiTaskCh: make(chan func(), 1), backgroundCtx: t.Context()}
 	m.loadRemainingHighlightLanguages()
 	m.backgroundTasks.Wait()
-	if released := heapReleasedBytes() - before; released < 40<<20 {
-		t.Fatalf("the grammar-load task returned %d bytes of the 64 MiB the start left free, want at least 40 MiB", released)
+	// The released-bytes counter also falls when the runtime reuses released pages, so the difference is signed.
+	if released := int64(heapReleasedBytes()) - int64(before); released >= 20<<20 {
+		t.Fatalf("the grammar-load task returned %d bytes of the 64 MiB the start left free before the first idle point, want less than 20 MiB", released)
+	}
+	if got := m.idleCollector.collects.Load(); got != 0 {
+		t.Fatalf("idle collections right after the grammar load = %d, want 0 before the idle wait", got)
+	}
+
+	// Drive the owner loop as the input loop does until the idle collection has run.
+	start := time.Now()
+	for m.idleCollector.collects.Load() == 0 {
+		if time.Since(start) > 5*time.Second {
+			t.Fatal("the idle collection never ran after the grammar load")
+		}
+		select {
+		case fn := <-m.uiTaskCh:
+			fn()
+		case <-m.renderWakeCh:
+			m.runScheduledRender()
+		case <-time.After(10 * time.Millisecond):
+		}
+	}
+	if after := time.Since(start); after < idleCollectEarliest {
+		t.Fatalf("the idle collection ran %v after the grammar load, want at least %v of idle first", after, idleCollectEarliest)
+	}
+	if released := int64(heapReleasedBytes()) - int64(before); released < 40<<20 {
+		t.Fatalf("the first idle collection returned %d bytes of the 64 MiB the start left free, want at least 40 MiB", released)
 	}
 }

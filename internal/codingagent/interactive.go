@@ -370,7 +370,7 @@ type InteractiveMode struct {
 	spinnerWakeGen atomic.Uint64
 	// spinnerParkCh carries an idle tick's request to park the ticker.
 	spinnerParkCh chan spinnerPark
-	// idleCollectArmed is set at run end and by busy ticks; while it is set, an
+	// idleCollectArmed is set at start (armIdleCollect), at run end and by busy ticks; while it is set, an
 	// idle park starts the idle heap collection's wait. The collection clears it.
 	idleCollectArmed atomic.Bool
 	// idleCollectPending is set while that wait runs; typed input restarts it.
@@ -703,8 +703,9 @@ func (m *InteractiveMode) loadRemainingHighlightLanguages() {
 			m.tuiInst.Invalidate()
 			m.tuiInst.RequestRender()
 		})
-		// After the repaint is queued, so the collection never delays it.
-		releaseStartupHeap()
+		// pig additive (D172): the first frame and the startup loads left free heap; the first idle collection returns it, once the session has
+		// stayed idle (no render, input or run), and not this task right now, where the forced collection ran on the core the first prompt needs.
+		m.armIdleCollect()
 	})
 }
 

@@ -235,18 +235,21 @@ func (c *idleHeapCollector) collect() {
 	c.collects.Add(1)
 }
 
-// releaseStartupHeap returns the heap the start left free to the OS, once: the first frame and the startup loads (settings, the model catalog,
-// the resource listings, the grammars) allocate several times what they keep, and the runtime's background scavenger releases the rest
-// slowly. It runs on a background task after the first frame, never on the owner loop, which keeps handling input while the collection runs.
-// pig additive (D172): the same heap return as the idle collection, once at start.
-func releaseStartupHeap() {
-	debug.FreeOSMemory()
+// armIdleCollect arms the idle collection for a session that has not run yet: the first frame and the startup loads (settings, the model catalog,
+// the resource listings, the grammars) allocate several times what they keep, and the runtime's background scavenger releases the rest slowly.
+// The collection runs once the session has stayed idle for idleCollectAfter, as after a run, and any render, input or run before then restarts
+// the wait; it never runs on the owner loop, and a forced collection no longer lands right after the first frame, where it took the core the
+// first prompt's frames need (23 ms on a pinned core).
+// pig additive (D172): the same heap return as the idle collection after a run, armed once at start.
+func (m *InteractiveMode) armIdleCollect() {
+	m.idleCollectArmed.Store(true)
+	m.wakeSpinner()
 }
 
 // releaseSwitchHeap returns the heap a Session replacement or a tree navigation left free to the OS, on a task the mode owns after the new
 // transcript is painted: the replaced Session's entries and the load's buffers are garbage by then, and the runtime's scavenger returns them
 // slowly. One release is queued at a time; a switch that arrives while it runs is covered by it or by the idle collection.
-// pig additive (D172): the same heap return as the one at start, which ran before any switch.
+// pig additive (D172): the same heap return as the idle collection.
 func (m *InteractiveMode) releaseSwitchHeap() {
 	m.switchHeapReleases.Add(1)
 	if !m.switchHeapRelease.CompareAndSwap(false, true) {
@@ -254,7 +257,7 @@ func (m *InteractiveMode) releaseSwitchHeap() {
 	}
 	m.backgroundTasks.Go(func() {
 		defer m.switchHeapRelease.Store(false)
-		releaseStartupHeap()
+		debug.FreeOSMemory()
 	})
 }
 
