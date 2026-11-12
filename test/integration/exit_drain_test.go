@@ -277,6 +277,11 @@ func TestExitLeavesNoStrayBytesForTheShellUnderTmux(t *testing.T) {
 			}
 			waitForPaneText(t, session, interactiveReadyMarker, 30*time.Second)
 			time.Sleep(300 * time.Millisecond)
+			// pipe-pane copies the bytes pig writes before tmux parses them: the proof that these runs take the sentinel path, which ends its writes with a DA1 query after the bracketed-paste disable (Pi's timer drain writes none).
+			written := filepath.Join(t.TempDir(), "pane-output")
+			if out, err := tmuxCommand("pipe-pane", "-t", session, "cat >> "+shQuote(written)).CombinedOutput(); err != nil {
+				t.Fatalf("pipe-pane: %v\n%s", err, out)
+			}
 			if out, err := tmuxCommand("send-keys", "-t", session, "-l", "/quit\r").CombinedOutput(); err != nil {
 				t.Fatalf("quit: %v\n%s", err, out)
 			}
@@ -293,6 +298,11 @@ func TestExitLeavesNoStrayBytesForTheShellUnderTmux(t *testing.T) {
 			out, err := tmuxCommand("capture-pane", "-p", "-J", "-t", session).Output()
 			if err != nil {
 				t.Fatal(err)
+			}
+			if pipe, err := os.ReadFile(written); err != nil {
+				t.Fatal(err)
+			} else if off, _, found := bytes.Cut(pipe, []byte("\x1b[?2004l")); !found || !bytes.Contains(pipe[len(off):], []byte("\x1b[c")) {
+				t.Fatalf("pig did not end with the DA1 query after the bracketed-paste disable, so this run was not the sentinel exit; it wrote %q", pipe)
 			}
 			got := shellReceived(t, string(out))
 			for _, ok := range tc.allowed {
