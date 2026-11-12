@@ -644,7 +644,9 @@ func (runtime *ModelRuntime) prepareRequest(ctx context.Context, model *ai.Model
 			overrides.APIKey = &options.APIKey
 		}
 		registry := runtime.services.Registry()
-		if refreshed := runtime.GetModel(providerID, model.ID); refreshed != nil {
+		// A model object an extension set is sent as it is: Pi's request uses the model it is given (model-runtime.ts:667-689 prepareRequest), and the Session replaces the object when the registry's model changes (refreshCurrentModelFromRegistry). A model the host built from a name takes the registry's current model of that name.
+		object := runtime.modelObjectOrigin(model) != nil
+		if refreshed := runtime.GetModel(providerID, model.ID); refreshed != nil && !object {
 			requestModel = refreshed
 		}
 		auth, err := registry.ResolveRegistryModelAuth(ctx, requestModel, overrides)
@@ -655,7 +657,13 @@ func (runtime *ModelRuntime) prepareRequest(ctx context.Context, model *ai.Model
 			if options.APIKey == "" && modelRuntimeRequiresAuth(providerID) && registry.GetProvider(providerID) == nil && !registry.ModelRegistry.HasConfiguredAuth(providerID) {
 				return nil, nil, ai.StreamOptions{}, &modelRuntimeAuthMissingError{provider: providerID}
 			}
-			resolved, err := buildModel(providerID+"/"+model.ID, runtime.services, options.APIKey)
+			build := func() (*ai.Model, error) {
+				return buildModel(providerID+"/"+model.ID, runtime.services, options.APIKey)
+			}
+			if object {
+				build = func() (*ai.Model, error) { return buildRequestModel(model, runtime.services, options.APIKey) }
+			}
+			resolved, err := build()
 			if err != nil {
 				return nil, nil, ai.StreamOptions{}, err
 			}
