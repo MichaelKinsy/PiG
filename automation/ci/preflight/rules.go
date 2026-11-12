@@ -547,7 +547,10 @@ func ruleNoAdvisories(d *data, p params, _ *ruleEnv) outcome {
 
 var (
 	// REUSE-IgnoreStart
-	spdxLicenseRE = regexp.MustCompile(`SPDX-License-Identifier:\s*([^\n*]+?)\s*(?:\*/|-->|$)`)
+	// The tag declares a license where it opens its line or follows only a comment opener: "//", "/*", the "*" of a
+	// block comment, "#", "<#", ";", "<!--", "--", "..", "%", "REM" or "::". After anything else on the line (a quote,
+	// a key, code, prose) it is text of the file, not a declaration.
+	spdxLicenseRE = regexp.MustCompile(`^\s*(?:(?://+!?|/\*+|\*+|#+|<#|;+|<!--|--+|\.\.|%+|(?i:@?rem)|::)\s*)?SPDX-License-Identifier:\s*([^\n*]+?)\s*(?:\*/|-->|$)`)
 	licenseIDRE   = regexp.MustCompile(`[A-Za-z0-9][A-Za-z0-9.+-]*`)
 	copyrightRE   = regexp.MustCompile(`(?i)\b(?:SPDX-FileCopyrightText:|Copyright\s+(?:\(c\)|©|\d{4}))`)
 	// REUSE-IgnoreEnd
