@@ -2188,9 +2188,9 @@ SCRUTINIZED:approved
 
 ## D624 PIG_TUI_SCREEN_WRITER=1 sends the terminal only the cells a frame changes
 
-Summary: With `PIG_TUI_SCREEN_WRITER=1` in the environment, PiG sends the terminal the part of each fullscreen frame that changes what the screen shows, instead of every row Pi rewrites; unset, it sends Pi's bytes.
+Summary: With `PIG_TUI_SCREEN_WRITER=1`, PiG sends the terminal only the part of each fullscreen frame that changes the screen, not every row Pi rewrites; unset, it sends Pi's bytes.
 
-Audience: users, terminal
+Audience: runtime
 
 Stock disposition: inert capability. It selects no product behavior: unset, or set to anything but `1`, the terminal is sent Pi's bytes exactly (a nil check in `ProcessTerminal.write`), and with it on the terminal shows the same screen after every frame and after the settle write; only the bytes on the wire, through tmux or ssh, differ.
 
