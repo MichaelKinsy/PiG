@@ -76,7 +76,7 @@ func (r *cancelRecordingTUI) CancelRenderWithin() { r.cancels++ }
 // An indicator removed while the frame of its step waits must take that frame with it: it would be drawn after the frame that removed the indicator, a frame after the end of the reply (D619, scenario 68).
 func TestRemovingTheIndicatorCancelsItsWaitingStepFrame(t *testing.T) {
 	m := statusBorderMode(t, false)
-	ui := &cancelRecordingTUI{stepRecordingTUI: stepRecordingTUI{TUI: m.tuiInst}}
+	ui := &cancelRecordingTUI{TUI: m.tuiInst}
 	m.tuiInst = ui
 	m.isIdle = true
 	m.handleAgentEvent(agent.CompactionStartEvent{Reason: "manual"})
