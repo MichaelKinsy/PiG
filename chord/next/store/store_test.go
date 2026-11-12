@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -724,6 +725,58 @@ func TestStore(t *testing.T) {
 			defer mu.Unlock()
 			if len(h.seqs) != before {
 				t.Fatalf("a refused commit announced: %v", h.seqs)
+			}
+		})
+
+		t.Run("delivers the announcements underway and queued before Close returns, in order, and none after", func(t *testing.T) {
+			store := memoryStore(t)
+			h := &heard{}
+			// A listener held in its first call: the commits made meanwhile wait for one more announcement.
+			entered, release := make(chan struct{}), make(chan struct{})
+			var enter sync.Once
+			store.OnCommitted(func(seq int64) {
+				enter.Do(func() { close(entered) })
+				<-release
+				mu.Lock()
+				h.seqs = append(h.seqs, seq)
+				mu.Unlock()
+			}, func(err error) {
+				mu.Lock()
+				h.errors = append(h.errors, err)
+				mu.Unlock()
+			})
+			_, fence := recording()
+			_, err := store.Commit([]StagedWrite{keyed("")}, fence, background)
+			noError(t, err)
+			first := store.LastSeq()
+			<-entered
+			for _, key := range []string{"b", "c"} {
+				_, err = store.Commit([]StagedWrite{keyed(key)}, fence, background)
+				noError(t, err)
+			}
+			final := store.LastSeq()
+			closed := make(chan error, 1)
+			go func() { closed <- store.Close(background) }()
+			select {
+			case err := <-closed:
+				t.Fatalf("Close returned (%v) while an announcement was underway", err)
+			case <-time.After(50 * time.Millisecond):
+			}
+			close(release)
+			noError(t, <-closed)
+			// Close returned: both announcements were delivered, the second once for the two commits it covers.
+			mu.Lock()
+			got := slices.Clone(h.seqs)
+			failed := len(h.errors)
+			mu.Unlock()
+			if !slices.Equal(got, []int64{first, final}) || failed != 0 {
+				t.Fatalf("announced %v (%d errors) when Close returned, want [%d %d]", got, failed, first, final)
+			}
+			time.Sleep(50 * time.Millisecond)
+			mu.Lock()
+			defer mu.Unlock()
+			if len(h.seqs) != 2 {
+				t.Fatalf("announced %v after Close returned", h.seqs)
 			}
 		})
 

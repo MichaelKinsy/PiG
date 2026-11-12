@@ -105984,9 +105984,9 @@
         "call:chord/next/surfaces/surfaces_client.go#StartClient"
       ],
       "evidence": [
+        "test:chord/next/surfaces/surfaces_client_test.go#TestHoldsTheScriptsObjectWhenTheClientIsReturnedAndStopEndsAFollowingStillWaitingForItsServer",
         "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAppliesTheSetTheServerShowsWhenItStartsFollowingThoughNoFrameBroughtIt",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestDropsTheRetryOfASetANewerOneReplacedAndAppliesTheNewerOne"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAppliesTheSetTheServerShowsWhenItStartsFollowingThoughNoFrameBroughtIt"
       ]
     },
     {

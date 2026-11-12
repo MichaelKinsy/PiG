@@ -112,8 +112,8 @@ type Client struct {
 	Host    host.Host
 	connect *Connection
 	updates *updates
-	// following is closed when the background follow of the scripts object ended (it is closed at once for a static client).
-	following chan struct{}
+	// following is the background follow of the scripts object (none for a static client): Stop ends it and waits for it.
+	following sync.WaitGroup
 }
 
 // StartClient starts a client: its host loaded with the initial scripts, its link kept, its plugins kept current from the scripts
@@ -171,21 +171,23 @@ func StartClient(options ClientOptions) (*Client, error) {
 			u.reconnected()
 		}
 	})
-	following := make(chan struct{})
+	client := &Client{Host: h, connect: loop, updates: u}
 	if follow {
 		// In the background: the scripts object is the server's, and a client starts (a page renders) without it, offline too.
-		// Pi's `void updates.follow(context).catch(...)`: an owned task whose failure is reported, ended and joined by Stop.
-		//portlint:allow golifetime the task ends when its hold and watch are made or fail (Stop aborts its context) and Stop joins it through following
-		go func() {
-			defer close(following)
-			if err := u.follow(); err != nil {
+		// Pi's `void updates.follow(context).catch(...)`: what follow does before its first await (the hold of the scripts
+		// object, its release recorded) is done when the client is returned; the rest (the watch, which waits for the server)
+		// is a task the client owns, whose failure is reported and which Stop ends and waits for.
+		held, err := u.hold()
+		client.following.Go(func() {
+			if err == nil {
+				err = u.follow(held)
+			}
+			if err != nil {
 				options.OnError(ClientError{Kind: ClientUpdateFailed, Err: err})
 			}
-		}()
-	} else {
-		close(following)
+		})
 	}
-	return &Client{Host: h, connect: loop, updates: u, following: following}, nil
+	return client, nil
 }
 
 // Stop stops the client: its connection loop, its updates (and the background follow of the scripts object, which it ends and
@@ -193,7 +195,7 @@ func StartClient(options ClientOptions) (*Client, error) {
 func (c *Client) Stop(ctx context.Context) error {
 	c.connect.Stop()
 	c.updates.stop()
-	<-c.following
+	c.following.Wait()
 	return c.Host.Close(ctx)
 }
 
@@ -335,23 +337,22 @@ func newUpdates(h host.Host, loaded *LoadedFacets, left map[string]bool, options
 	return u
 }
 
-// follow holds the scripts object and applies the set it shows when following begins (a watch's current value is no frame) and
-// every set it shows after (a reconnect's snapshot too). It returns once the watch is started: the hold and the watch wait for
-// the server (StartClient runs it in the background), and an error is why there is no following.
-func (u *updates) follow() error {
+// hold holds the scripts object and records its release: what Pi's `follow` does before its first await.
+func (u *updates) hold() (*host.Reference, error) {
 	held, err := u.host.Hold(u.ctx, u.options.Scripts, delta.NewJsonObject(0), host.GetOptions{})
 	if err != nil {
-		return err
+		return nil, err
 	}
 	u.mu.Lock()
-	if err := u.ctx.Err(); err != nil {
-		// Stop ran before the hold was recorded: nothing else releases it.
-		u.mu.Unlock()
-		held.Release()
-		return err
-	}
 	u.release = held.Release
 	u.mu.Unlock()
+	return held, nil
+}
+
+// follow applies the set the held scripts object shows when following begins (a watch's current value is no frame) and
+// every set it shows after (a reconnect's snapshot too). It returns once the watch is started: the watch waits for the
+// server (StartClient runs it in the background), and an error is why there is no following.
+func (u *updates) follow(held *host.Reference) error {
 	watch, err := held.Member("set").Watch(u.ctx)
 	if err != nil {
 		return err

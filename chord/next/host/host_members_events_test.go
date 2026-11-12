@@ -7,6 +7,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
@@ -14,9 +15,9 @@ import (
 
 // Ports the `event members` describe of packages/chord/test/host/members.test.ts (Pi 8d30e6306).
 //
-// Designed out: the third case of "fail the object broken for an implementation that is neither its own source nor a
-// reference's event member" (`{ ticks: constant(1) as never }`, a state member as an event member): a Go
-// VariantImplementation.Events map holds only contracts.EventMember values, so a state member cannot be put there.
+// Pi's `as never` casts put a plain object and a state member where an event member is declared. Go's
+// VariantImplementation.Events map holds contracts.EventMember values, so each of the two is a type with an `On`
+// method: a plain one, and one that is a state member (the constant watchable) as well.
 
 var membersTicks = mustContract(contracts.Local("app.ticks", contracts.LocalDeclaration{
 	Version: 1,
@@ -37,6 +38,15 @@ func (plainEvents) On(func(contracts.EventDelivery[delta.JsonValue]), context.Co
 
 func (plainEvents) Emit(delta.JsonValue) error { return nil }
 
+// stateAsEvents is a state member (`constant(1)`) given where an event member is declared.
+type stateAsEvents struct {
+	chord.Watchable[delta.JsonValue]
+}
+
+func (stateAsEvents) On(func(contracts.EventDelivery[delta.JsonValue]), context.Context) (contracts.EventSubscription, error) {
+	return plainSubscription{}, nil
+}
+
 func TestEventMembersFailTheObjectBrokenForAnImplementationThatIsNeitherItsOwnSourceNorAReferencesEventMember(t *testing.T) {
 	var mu sync.Mutex
 	var others []contracts.EventSource[delta.JsonValue]
@@ -50,11 +60,13 @@ func TestEventMembersFailTheObjectBrokenForAnImplementationThatIsNeitherItsOwnSo
 			mu.Unlock()
 			var ticks contracts.EventMember[delta.JsonValue] = own
 			switch n {
-			// 1: a plain object with `on`; 2: another attempt's source.
+			// 1: a plain object with `on`; 2: another attempt's source; 3: a state member.
 			case 1:
 				ticks = plainEvents{}
 			case 2:
 				ticks = first
+			case 3:
+				ticks = stateAsEvents{constant(1.0)}
 			}
 			return contracts.Implementation{Members: contracts.VariantImplementation{
 				Events: map[string]contracts.EventMember[delta.JsonValue]{"ticks": ticks},
@@ -65,7 +77,7 @@ func TestEventMembersFailTheObjectBrokenForAnImplementationThatIsNeitherItsOwnSo
 	if base.Events("ticks") == nil {
 		t.Fatal("no ticks member")
 	}
-	for _, n := range []int{1, 2} {
+	for _, n := range []int{1, 2, 3} {
 		_, err := host.Get(background, membersTicks, jsonObject("n", float64(n)), GetOptions{})
 		want := "app.ticks(" + strconv.Itoa(n) + "): ticks: an event member is this object's own self.events() or a reference's event member"
 		if err == nil || err.Error() != want {
