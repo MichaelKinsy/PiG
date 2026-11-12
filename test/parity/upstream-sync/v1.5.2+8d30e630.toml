@@ -252,3 +252,24 @@ change = "modified"
 disposition = "designed-out"
 evidence = []
 rationale = "Documentation only."
+
+[[files]]
+path = "packages/chord/src/react/hooks.ts"
+change = "modified"
+disposition = "deferred"
+evidence = ["test:chord/nextnode/surfaces/client_manifest_test.go"]
+rationale = "8d30e6306: useEvents(member, listener) (an event member subscribed while the component is mounted; the latest listener is called through a ref updated in a layout effect). The Go side ships this file only as the vendored client (D601, chord/nextnode/surfaces/client), byte-for-byte from the pinned mirror: client_manifest_test.go compares its sha256 with manifest.json and the pin is v1.5.2, which does not contain 8d30e6306, so the vendored copy keeps the pinned hooks.ts and the new hook arrives with the pin bump that contains it (make pin-bump regenerates the vendored client). No Go code reads or wraps this file; the Go host's event member (host_events.go, host_reference_events.go) is the surface the hook subscribes to through the client link."
+
+[[files]]
+path = "packages/chord/src/react/index.ts"
+change = "modified"
+disposition = "deferred"
+evidence = ["test:chord/nextnode/surfaces/client_manifest_test.go"]
+rationale = "8d30e6306: re-exports useEvents. Vendored byte-for-byte at the pin (see react/hooks.ts): the one-line re-export arrives with the pin bump."
+
+[[files]]
+path = "packages/chord/src/react/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "Documentation only (the useEvents entry); the README is not vendored."
