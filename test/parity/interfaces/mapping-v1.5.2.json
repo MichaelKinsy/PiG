@@ -112572,8 +112572,7 @@
       "evidence": [
         "test:chord/next/contracts/declare_test.go#TestDeclarationChecks",
         "test:chord/next/contracts/declare_test.go#TestHostKeyedMembers",
-        "test:chord/next/contracts/declare_test.go#TestReservedMemberNames",
-        "test:chord/next/contracts/events_test.go#TestDeclareEventMembers"
+        "test:chord/next/contracts/declare_test.go#TestReservedMemberNames"
       ]
     },
     {
