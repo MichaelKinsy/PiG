@@ -12,7 +12,9 @@ import "github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 const PigVersion = pigversion.PigVersion
 
 // Version is PiG's one displayed version: its own release line with the Pi
-// release it ports as semver build metadata (for example 0.2.0+0.87.1). Semver
+// release it ports as semver build metadata, one plus: 0.2.0+0.87.1 for a
+// release pin, 0.8.0+1.5.2.2443c687 for a commit pin (its commit joins the version
+// with a dot, the way pin.build_metadata writes it). Semver
 // precedence ignores build metadata, so Version sorts exactly as PigVersion.
 // Self-update comparisons, release tags, and the Piglet compatibility check
 // still use PigVersion itself.
