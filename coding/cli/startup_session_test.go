@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -182,7 +183,7 @@ func TestApplyMissingCWDChoiceContinuesOrForks(t *testing.T) {
 		if err != nil || header.CWD != launch || header.ID == "orphan" || header.ParentSession != path {
 			t.Fatalf("fork header = %+v, %v", header, err)
 		}
-		if after, _ := os.ReadFile(path); string(after) != string(before) {
+		if after, _ := os.ReadFile(path); !bytes.Equal(after, before) {
 			t.Fatal("the original session changed")
 		}
 	})
