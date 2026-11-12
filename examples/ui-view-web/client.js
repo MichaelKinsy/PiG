@@ -131,7 +131,7 @@ function apply(snapshot) {
 
 function draw(key, snapshot, held) {
   const prefix = held?.prefix ?? `m${++nextMount}-`;
-  const mount = { snapshot, prefix, ids: new Map(), restore: held?.restore ?? document.activeElement, inFlight: new Map() };
+  const mount = { snapshot, prefix, ids: new Map(), restore: held?.restore ?? document.activeElement };
   const element = document.createElement("article");
   element.className = "mount";
   element.dataset.plugin = snapshot.plugin;
@@ -143,6 +143,11 @@ function draw(key, snapshot, held) {
   head.append(title);
   const body = document.createElement("div");
   mount.footer = document.createElement("footer");
+  // What the last intent came to stays readable across a redraw.
+  if (held) {
+    mount.footer.textContent = held.footer.textContent;
+    if (held.footer.dataset.outcome) mount.footer.dataset.outcome = held.footer.dataset.outcome;
+  }
   element.append(head, body, mount.footer);
   mount.element = element;
 
@@ -382,6 +387,8 @@ async function raise(mount, decl, nodeKey, value, item) {
   }
   const reply = await request(command, id);
   const result = reply.success ? reply.data : { outcome: reply.code, error: reply.error };
+  // The mount may have been redrawn while the intent was in flight: write to the one on the page.
+  mount = mounts.get(`${mount.snapshot.plugin}\n${key}`) ?? mount;
   mount.footer.textContent = `${decl.name}: ${result.outcome}${result.error ? ` (${result.error})` : ""}${result.answer === undefined ? "" : ` ${JSON.stringify(result.answer)}`}`;
   mount.footer.dataset.outcome = result.outcome;
 }
