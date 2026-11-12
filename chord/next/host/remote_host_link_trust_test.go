@@ -28,9 +28,6 @@ func helloOf(t testing.TB, peer *RawPeer) *link.HelloMessage {
 	return hello
 }
 
-//go:fix inline
-func intp(n int) *int { return new(n) }
-
 // host-link.test.ts: call windows by trust › announce none on a link given as trusted, the host's callWindow otherwise: accept and connect
 func TestHostLinkAnnouncesNoCallWindowOnATrustedLinkAndTheHostsOtherwise(t *testing.T) {
 	forEachCodec(t, func(t *testing.T) {

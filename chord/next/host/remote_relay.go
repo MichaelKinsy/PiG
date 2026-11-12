@@ -275,9 +275,6 @@ func newRelayedCall(hold *relayedHold, message *link.CallMessage) *relayedCall {
 
 func (c *relayedCall) holdID() int { return c.hold.id }
 
-// forwarded reports whether it was forwarded upstream and is not answered yet.
-func (c *relayedCall) forwarded() bool { return c.state == relayedCallForwarded }
-
 // queue waits in window (its hold's upstream link's, for its origin), forwarded at once when a slot is free.
 func (c *relayedCall) queue(window *callWindow[*relayedCall]) {
 	c.state, c.window = relayedCallQueued, window

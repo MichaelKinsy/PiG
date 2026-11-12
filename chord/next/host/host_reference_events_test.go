@@ -58,7 +58,8 @@ func TestReferenceEventSubscriptionsRejectAnAbortedContextsReasonAndAReleasedRef
 	}
 	ticker.Release()
 	_, err = ticker.Events("ticks").On(func(contracts.EventDelivery[delta.JsonValue]) {}, background)
-	if chordErr, ok := err.(*data.ChordError); !ok || chordErr.Code != data.CodeReleased {
+	var chordErr *data.ChordError
+	if !errors.As(err, &chordErr) || chordErr.Code != data.CodeReleased {
 		t.Fatalf("err = %#v, want released", err)
 	}
 }
@@ -345,7 +346,7 @@ func TestReferenceEventSubscriptionsKeepNoNodeOfAnInstanceAReloadReplacedWhileRe
 	if own.Value() == nil || reexposed.Value() == nil || mapped.Value() == nil {
 		t.Fatal("a delivering node is missing")
 	}
-	source, sourceSelf, viewerSelf = nil, nil, nil
+	source = nil
 	mu.Lock()
 	sources, sourceSelves, viewerSelves = nil, nil, nil
 	mu.Unlock()

@@ -2,6 +2,7 @@ package host
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"strconv"
 	"testing"
@@ -168,7 +169,8 @@ func TestEventFlushThrowsReleasedForAnEmitAfterItsAttemptsSeal(t *testing.T) {
 		err = source.Emit(sample(1))
 		return err != nil
 	})
-	if chordErr, ok := err.(*data.ChordError); !ok || chordErr.Code != data.CodeReleased {
+	var chordErr *data.ChordError
+	if !errors.As(err, &chordErr) || chordErr.Code != data.CodeReleased {
 		t.Fatalf("err = %#v, want released", err)
 	}
 }
@@ -322,12 +324,11 @@ func TestEventsWhoGetsNothingThroughAReexposingViewOnceTheSourceFailedBeforeTheF
 func TestEventsGCStoppedSubscriptionsReleasedReferencesAndAFlushedListKeepNothing(t *testing.T) {
 	k := ticking(t, loadedOptions{})
 	type refs struct {
-		listener, kept    weak.Pointer[int]
-		subscription      weak.Pointer[subscription]
-		keptSubscription  weak.Pointer[subscription]
-		value             weak.Pointer[delta.JsonObject]
-		other             weak.Pointer[Reference]
-		subscriptionAlive func() bool
+		listener, kept   weak.Pointer[int]
+		subscription     weak.Pointer[subscription]
+		keptSubscription weak.Pointer[subscription]
+		value            weak.Pointer[delta.JsonObject]
+		other            weak.Pointer[Reference]
 	}
 	made := func() refs {
 		ticker := mustGet(t, k.Host, Ticker, jsonObject())

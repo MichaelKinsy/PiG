@@ -1,6 +1,7 @@
 package host
 
 import (
+	"errors"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -157,7 +158,8 @@ func TestAdaptedEventsAreRefusedTheirBindingWhenTheProviderRefusesAChangedEventM
 	k := newAdaptedTicker(t, nil)
 	timeout := 20 * time.Millisecond
 	_, err := k.Host.Get(background, adaptedTickerV1, jsonObject(), GetOptions{ReadyTimeout: &timeout})
-	if chordErr, ok := err.(*data.ChordError); !ok || chordErr.Code != data.CodeContractMismatch {
+	var chordErr *data.ChordError
+	if !errors.As(err, &chordErr) || chordErr.Code != data.CodeContractMismatch {
 		t.Fatalf("err = %#v, want contract_mismatch", err)
 	}
 	if mustGet(t, k.Host, adaptedTickerV2, jsonObject()).Events("ticks") == nil {

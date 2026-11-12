@@ -2,6 +2,7 @@ package host
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"sync"
 	"testing"
@@ -70,7 +71,8 @@ func TestEventMembersFailTheObjectBrokenForAnImplementationThatIsNeitherItsOwnSo
 		if err == nil || err.Error() != want {
 			t.Fatalf("n=%d: err = %v, want %q", n, err, want)
 		}
-		if _, ok := err.(*data.ChordError); !ok {
+		var chordErr *data.ChordError
+		if !errors.As(err, &chordErr) {
 			t.Fatalf("n=%d: err is %T", n, err)
 		}
 	}

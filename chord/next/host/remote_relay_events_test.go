@@ -663,7 +663,7 @@ func TestRelayEventsAcrossRealHostsReachATabThroughTheRelayAndThroughTheServersR
 		})
 		seenMu.Lock()
 		defer seenMu.Unlock()
-		if !(seen[0] == "direct1" && seen[1] == "lobby1" || seen[0] == "lobby1" && seen[1] == "direct1") {
+		if (seen[0] != "direct1" || seen[1] != "lobby1") && (seen[0] != "lobby1" || seen[1] != "direct1") {
 			t.Fatalf("seen = %v, want direct1 and lobby1", seen)
 		}
 		if len(stamps) != 1 {
