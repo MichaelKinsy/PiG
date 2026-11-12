@@ -8,8 +8,8 @@ Two kinds are carried, and `make pin-bump` decides each one against the target P
   block is deleted), `pending` (the target is the build the entry was written for: it stays and must still apply), or `conflict` (neither:
   the bump stops naming the entry, the file and the first differing line).
 * the carried oracle: tests of a Pi commit newer than the pin (Makefile CARRIED_ORACLE_REF) that run against that commit's build. When
-  GitHub's compare says the target contains the commit, its make target, CI step, skip helpers, reviewed decisions and frozen files are
-  deleted; otherwise it stays.
+  GitHub's compare says the target contains the commit, its make targets, CI step, guard, skips, reviewed decisions and frozen files are
+  deleted (retire_carried_oracle lists what goes and what stays); otherwise it stays.
 
 Every decision, with its evidence, is returned for the bump's state file and printed in its summary.
 """
@@ -111,46 +111,123 @@ def decide_carried_oracle(target: Pin, root: Path = ROOT, compare: Callable[[str
     return {"commit": ref, "state": "carried" if contained else "pending", "evidence": f"GitHub compare {ref[:9]}...{target.commit[:9]}: {answer['status']}, ahead_by {answer.get('ahead_by')}, behind_by {answer.get('behind_by')}"}
 
 
-def edit(root: Path, rel: str, transform: Callable[[str], str]) -> None:
-    path = root / rel
-    text = path.read_text(encoding="utf-8")
-    new = transform(text)
-    if new == text:
-        raise PinError(f"{rel}: nothing to retire (the carried-oracle text this tool deletes is not there)")
-    path.write_text(new, encoding="utf-8")
+# The names that exist only while an oracle is carried. A retirement leaves none of them in a file it writes.
+RETIRED_NAMES = ("CARRIED_ORACLE", "CARRIED_INTEROP", "test-carried-oracles", "carried_guard", "skipWithoutSuspendableWork", "suspendableOraclePackages", "namespaceOracleSkip")
+PIN_DOCUMENT = "docs/parity/upstream-pin.md"
+PIORACLE_IMPORT = '"github.com/MichaelKinsy/PiG/internal/pioracle"'
+
+
+def retired_names_in(rel: str, text: str) -> list[str]:
+    """The retired names `text` holds. The pin document keeps them in one paragraph, Carried work, which says what a bump retires."""
+    if rel == PIN_DOCUMENT:
+        text = "\n".join(line for line in text.split("\n") if not line.startswith("**Carried work.**"))
+    return [name for name in RETIRED_NAMES if name in text]
+
+
+class Retirement:
+    """The edits of one retirement, decided on the whole tree before any file is written: a piece that is not where this tool
+    expects it stops the retirement naming the file and the piece, and the tree is left as it was."""
+
+    def __init__(self, root: Path):
+        self.root = root
+        self.texts: dict[str, str] = {}
+        self.deleted: list[str] = []
+
+    def read(self, rel: str, piece: str) -> str:
+        if rel in self.texts:
+            return self.texts[rel]
+        path = self.root / rel
+        if rel in self.deleted or not path.is_file():
+            raise PinError(f"{rel}: nothing to retire ({piece} is not there)")
+        return path.read_text(encoding="utf-8")
+
+    def edit(self, rel: str, piece: str, transform: Callable[[str], str]) -> None:
+        text = self.read(rel, piece)
+        new = transform(text)
+        if new == text:
+            raise PinError(f"{rel}: nothing to retire ({piece} is not there)")
+        self.texts[rel] = new
+
+    def delete(self, rel: str, piece: str) -> None:
+        if rel in self.deleted or not (self.root / rel).is_file():
+            raise PinError(f"{rel}: nothing to retire ({piece} is not there)")
+        self.texts.pop(rel, None)
+        self.deleted.append(rel)
+
+    def tests_with(self, directory: str, needle: str, piece: str) -> list[str]:
+        """The test files of `directory` that still hold `needle`; none at all means the piece is gone."""
+        found = [rel for rel in sorted(str(path.relative_to(self.root)) for path in (self.root / directory).glob("*_test.go")) if rel not in self.deleted and needle in self.read(rel, piece)]
+        if not found:
+            raise PinError(f"{directory}: nothing to retire ({piece} is not there)")
+        return found
+
+    def apply(self) -> list[str]:
+        for rel, text in self.texts.items():
+            left = retired_names_in(rel, text)
+            if left:
+                raise PinError(f"{rel}: the retirement would leave {', '.join(left)} behind: the carried-oracle text there is not the text this tool deletes")
+        for rel, text in self.texts.items():
+            (self.root / rel).write_text(text, encoding="utf-8")
+        for rel in self.deleted:
+            (self.root / rel).unlink()
+        return [*self.texts, *self.deleted]
 
 
 def drop(pattern: str, flags: int = re.M | re.S) -> Callable[[str], str]:
     return lambda text: re.sub(pattern, "", text, count=1, flags=flags)
 
 
-def retire_carried_oracle(root: Path = ROOT) -> list[str]:
-    """Delete everything that exists only because the port carries Pi work ahead of the pin; return the paths changed."""
+def swap(old: str, new: str) -> Callable[[str], str]:
+    return lambda text: text.replace(old, new)
+
+
+def drop_unused_imports(text: str, imports: dict[str, str]) -> str:
+    """Remove the import lines of `imports` ({import path: package name}) that the Go code of `text` no longer uses."""
+    code = "\n".join(line for line in text.split("\n") if not line.lstrip().startswith("//"))
+    for path, name in imports.items():
+        if not re.search(rf"\b{re.escape(name)}\.", code):
+            text = text.replace(f'\t"{path}"\n', "", 1)
+    return text
+
+
+def retire_carried_oracle(root: Path = ROOT, *, keep_frozen: bool = False) -> list[str]:
+    """Delete everything that exists only because the port carries Pi work ahead of the pin; return the paths changed.
+
+    What goes: the Makefile block (CARRIED_ORACLE_REF, the test lists, `test-carried-oracles` and `test-carried-oracles-guard`), the
+    CI step that runs the guard, the guard and its tests, the three skips of the oracle tests (durable/interop, durable/harness,
+    durable/codemode: the pin's Pi now has the work, so they run in every test run), the reviewed decisions carried ahead of the pin,
+    the documentation of the carried run, and the commit's frozen files unless the target is that commit (`keep_frozen`: they are the
+    new pin's then). What stays is what a run at another Pi commit needs whether or not one is carried: `pin.py override-tree`
+    (vendor.override_tree) and internal/pioracle (Packages, Project, OverrideTree, SkipAtPin); their comments stop naming the target.
+    Nothing is written unless every piece is found; a tree without CARRIED_ORACLE_REF carries nothing and is left alone."""
     ref = carried_oracle_ref(root)
     if ref is None:
         return []
-    edit(root, "Makefile", drop(r"^# Oracle tests of Pi work the Go port carries ahead of the committed pin.*?^\.PHONY: test-carried-oracles carried-oracles-run\n\n?"))
-    edit(root, ".github/workflows/ci.yml", drop(r"^      # test-carried-oracles:.*?make test-carried-oracles\n"))
-    changed = ["Makefile", ".github/workflows/ci.yml"]
-    interop = root / "durable" / "interop"
-    (interop / "carried_oracle_test.go").unlink()
-    changed.append("durable/interop/carried_oracle_test.go")
-    for path in sorted(interop.glob("*_test.go")):
-        text = path.read_text(encoding="utf-8")
-        if "\tskipWithoutSuspendableWork(t)\n" in text:
-            path.write_text(text.replace("\tskipWithoutSuspendableWork(t)\n", ""), encoding="utf-8")
-            changed.append(str(path.relative_to(root)))
-    harness = "durable/harness/suspendable_oracle_test.go"
+    plan = Retirement(root)
+    plan.edit("Makefile", "the block of CARRIED_ORACLE_REF, test-carried-oracles and test-carried-oracles-guard",
+              drop(r"^# Oracle tests of Pi work the Go port carries ahead of the committed pin.*?^\.PHONY: test-carried-oracles test-carried-oracles-guard\n\n?"))
+    plan.edit(".github/workflows/ci.yml", "the step that runs make test-carried-oracles-guard", drop(r"^      # test-carried-oracles:.*?make test-carried-oracles-guard\n"))
+    for rel in ("automation/pin/carried_guard.py", "automation/pin/test_carried_guard.py"):
+        plan.delete(rel, "the guard of the carried run")
 
-    def harness_edit(text: str) -> str:
-        text = re.sub(r"// suspendableOraclePackages is .*?\n}\n", (
-            "// suspendableOraclePackages is the packages directory of the pinned Pi, the oracle of the tests of suspendable work (signals, tool parks,\n"
-            "// hook tasks, the generation at task version 3).\n"
-            "func suspendableOraclePackages(t testing.TB) string {\n\tt.Helper()\n"
-            "\treturn filepath.Join(testenv.ModuleRoot(t), \".upstream\", \"current\", \"packages\")\n}\n"), text, count=1, flags=re.S)
-        return text.replace('\t"os"\n', "") if "os." not in text else text
-    edit(root, harness, harness_edit)
-    changed.append(harness)
+    skip = "the skip skipWithoutSuspendableWork"
+    plan.delete("durable/interop/carried_oracle_test.go", skip)
+    for rel in plan.tests_with("durable/interop", "\tskipWithoutSuspendableWork(t)\n", skip):
+        plan.edit(rel, skip, swap("\tskipWithoutSuspendableWork(t)\n", ""))
+
+    skip = "the skip of suspendableOraclePackages"
+    plan.delete("durable/harness/suspendable_oracle_test.go", skip)
+    for rel in plan.tests_with("durable/harness", "suspendableOraclePackages(t)", skip):
+        if PIORACLE_IMPORT not in plan.read(rel, skip):
+            raise PinError(f"{rel}: cannot retire {skip}: the file does not import internal/pioracle, whose Packages replaces it")
+        plan.edit(rel, skip, swap("suspendableOraclePackages(t)", "pioracle.Packages(t)"))
+
+    skip = "the skip namespaceOracleSkip"
+    describe = "durable/codemode/describe_pi_oracle_test.go"
+    plan.edit(describe, skip, drop(r"^// namespaceOracleSkip skips .*?^}\n\n"))
+    for rel in plan.tests_with("durable/codemode", "\tnamespaceOracleSkip(t)\n", skip):
+        plan.edit(rel, skip, swap("\tnamespaceOracleSkip(t)\n", ""))
+    plan.texts[describe] = drop_unused_imports(plan.texts[describe], {"os": "os", "path/filepath": "filepath"})
 
     def decisions_edit(text: str) -> str:
         lines = [line for line in text.split("\n") if '"rationale":"Carried ahead of the pin:' not in line]
@@ -158,12 +235,23 @@ def retire_carried_oracle(root: Path = ROOT) -> list[str]:
         out = re.sub(r",\n\}", "\n}", out)
         json.loads(out)
         return out
-    edit(root, "test/parity/interface-closure/autobind/reviewed-decisions.json", decisions_edit)
-    changed.append("test/parity/interface-closure/autobind/reviewed-decisions.json")
-    for frozen in sorted((root / "automation" / "pin" / "frozen").glob(f"{ref}.*")):
-        frozen.unlink()
-        changed.append(str(frozen.relative_to(root)))
-    return changed
+    plan.edit("test/parity/interface-closure/autobind/reviewed-decisions.json", "a reviewed decision whose rationale starts 'Carried ahead of the pin:'", decisions_edit)
+
+    # The tooling of a run at another Pi commit stays; its comments and the documentation stop naming the retired target.
+    named = "the mention of make test-carried-oracles"
+    plan.edit("automation/pin/vendor.py", named, swap(" for a run that compares with it (make test-carried-oracles).\n", " for a run that compares with it.\n"))
+    plan.edit("internal/pioracle/source.go", named, swap(" make test-carried-oracles sets it for the\n", " A run at another Pi commit sets it for the\n"))
+    plan.edit("durable/interop/interop_test.go", named, swap(" (pioracle.OverrideTreeEnv,\n// `make test-carried-oracles`), a ", " (pioracle.OverrideTreeEnv),\n// a "))
+    plan.edit("test/parity/interface-closure/autobind/mirror_guard_test.go", named, swap(": make test-carried-oracles left\n", ": a run at another Pi once left\n"))
+    plan.edit(PIN_DOCUMENT, "the paragraph 'The carried run at this pin'", drop(r"^- The carried run at this pin: .*?\n"))
+
+    if not keep_frozen:
+        frozen = sorted(str(path.relative_to(root)) for path in (root / "automation" / "pin" / "frozen").glob(f"{ref}.*"))
+        if not frozen:
+            raise PinError(f"automation/pin/frozen: nothing to retire (the frozen files of the carried commit {ref} are not there)")
+        for rel in frozen:
+            plan.delete(rel, "a frozen file of the carried commit")
+    return plan.apply()
 
 
 # -- the retirement -------------------------------------------------------------------------------------------------
@@ -182,12 +270,14 @@ def retire(target: Pin, root: Path = ROOT, *, modules: Path | None = None, compa
     carried_oracle = decide_carried_oracle(target, root, compare)
     carried = [ident for ident, d in backports.items() if d["state"] == "carried"]
     changed: list[str] = []
-    if carried:
-        script = root / "automation/gen/pi-post-release-backports.mjs"
-        script.write_text(retire_backport_blocks(script.read_text(encoding="utf-8"), carried), encoding="utf-8")
-        changed.append("automation/gen/pi-post-release-backports.mjs")
+    script = root / "automation/gen/pi-post-release-backports.mjs"
+    text = retire_backport_blocks(script.read_text(encoding="utf-8"), carried)
     if carried_oracle and carried_oracle["state"] == "carried":
-        changed += retire_carried_oracle(root)
+        # The oracle first: it writes nothing unless every piece is there, so a retirement that stops leaves the script as it was too.
+        changed += retire_carried_oracle(root, keep_frozen=target.commit == carried_oracle["commit"])
+    if carried:
+        script.write_text(text, encoding="utf-8")
+        changed.insert(0, "automation/gen/pi-post-release-backports.mjs")
     return {"backports": backports, "carried_oracle": carried_oracle, "changed": changed}
 
 
@@ -197,5 +287,7 @@ def summary(decisions: dict) -> list[str]:
         lines.append(f"backport {ident}: {d['state']} [{d['evidence']}] ({', '.join(d['files'])})" + (" -> entry deleted" if d["state"] == "carried" else " -> kept, must still apply"))
     carried = decisions["carried_oracle"]
     if carried:
-        lines.append(f"carried oracle {carried['commit'][:9]}: {carried['state']} ({carried['evidence']})" + (" -> make target, CI step, skip helpers, decisions, frozen files deleted" if carried["state"] == "carried" else " -> kept"))
+        lines.append(f"carried oracle {carried['commit'][:9]}: {carried['state']} ({carried['evidence']})" + (" -> make targets, CI step, guard, skips, decisions, frozen files deleted" if carried["state"] == "carried" else " -> kept"))
+    elif lines:
+        lines.append("carried oracle: none (the Makefile names no CARRIED_ORACLE_REF) -> nothing to retire")
     return lines or ["nothing is carried ahead of the pin"]
