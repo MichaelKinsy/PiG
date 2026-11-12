@@ -55,8 +55,18 @@ type sseIdleBody struct {
 	ping bool
 	// eventReasoning reports that the current event's name says reasoning, as OpenAI's response.reasoning_summary_text.delta does.
 	eventReasoning bool
-	// reasoning reports that the last event with data was a reasoning or thinking event.
+	// reasoning reports that the last event with data was a reasoning or thinking event. While unsniffed is set it is not known yet: isReasoning answers.
 	reasoning bool
+	// unsniffed reports that the last data line belongs to no event named reasoning and its reasoning markers have not been searched for. Only a keepalive
+	// asks whether the stream is reasoning, and the next data line answers anew, so the search waits for a keepalive (isReasoning). tail is what the
+	// search reads, the line's last sniff window; while tailBorrowed is set it is part of the read being scanned or of line, afterwards tailKept, a copy
+	// (keepTail).
+	unsniffed    bool
+	tailBorrowed bool
+	tail         []byte
+	tailKept     []byte
+	// markerScans counts the searches for reasoning markers; tests read it.
+	markerScans int
 	// afterCR reports that the previous byte was a CR, so a LF right after it ends no further line (CRLF is one line end).
 	afterCR bool
 	// A line longer than the sniff window is classified when the window first fills; kind holds that, payload is where a data line's data starts in the
@@ -134,6 +144,8 @@ func (b *sseIdleBody) scan(data []byte) (progress bool) {
 		window, kept := b.extend(data[i:end])
 		if end == len(data) {
 			if !kept {
+				// The unsniffed line may be what line held before.
+				b.keepTail()
 				b.line = append(b.line[:0], window...)
 			}
 			break
@@ -144,7 +156,28 @@ func (b *sseIdleBody) scan(data []byte) (progress bool) {
 		}
 		i = end + 1
 	}
+	// The read is the caller's again once scan returns.
+	b.keepTail()
 	return progress
+}
+
+// keepTail copies the unsniffed line out of the buffer it borrows, the read or line, before that buffer is reused.
+func (b *sseIdleBody) keepTail() {
+	if b.unsniffed && b.tailBorrowed {
+		b.tailKept = append(b.tailKept[:0], b.tail...)
+		b.tail, b.tailBorrowed = b.tailKept, false
+	}
+}
+
+// isReasoning reports whether the last event with data was a reasoning or thinking event, searching its data line for reasoning markers if that is still to do.
+func (b *sseIdleBody) isReasoning() bool {
+	if b.unsniffed {
+		b.unsniffed = false
+		b.markerScans++
+		b.reasoning = isReasoningEventData(b.tail, len(b.tail))
+		b.tail = nil
+	}
+	return b.reasoning
 }
 
 // extend adds span, the next bytes of the current line, to the sniff window, sniffing each window that fills. It returns the window that is still open: b.line when the line began in an earlier read (kept), otherwise the tail of span itself.
@@ -192,6 +225,7 @@ func (b *sseIdleBody) slide(window []byte) {
 	}
 	if b.kind == sseLineData && !b.lineReasoning {
 		data := window[b.payload:]
+		b.markerScans++
 		b.lineReasoning = isReasoningEventData(data, len(data)-sseSniffOverlap)
 	}
 	b.payload = 0
@@ -210,12 +244,17 @@ func (b *sseIdleBody) endLine(window []byte) bool {
 	b.line, b.kind, b.payload, b.lineReasoning = b.line[:0], sseLineUnknown, 0, false
 	switch kind {
 	case sseLineComment:
-		return b.reasoning
+		return b.isReasoning()
 	case sseLineData:
 		if b.ping {
-			return b.reasoning
+			return b.isReasoning()
 		}
-		b.reasoning = b.eventReasoning || lineReasoning || isReasoningEventData(data, len(data))
+		// The event's name or an earlier window of the line may already say reasoning; otherwise the line's markers decide, once a keepalive asks.
+		if b.reasoning = b.eventReasoning || lineReasoning; b.reasoning {
+			b.unsniffed, b.tailBorrowed, b.tail = false, false, nil
+		} else {
+			b.unsniffed, b.tailBorrowed, b.tail = true, true, data
+		}
 		return true
 	}
 	return false
