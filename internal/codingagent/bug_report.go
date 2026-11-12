@@ -8,6 +8,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"cmp"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -408,7 +409,7 @@ func (r *ModelRegistry) BugReportProviderInfo(providerID string) *BugReportProvi
 		Name:                  r.GetProviderDisplayName(providerID),
 		HeaderNames:           sortedKeys(headerNames),
 		AuthStatus:            BugReportAuthStatus{Configured: status.Configured, Source: string(status.Source), Label: status.Label},
-		UsingOAuth:            r.hasStoredOAuth(providerID),
+		UsingOAuth:            r.hasStoredOAuth(context.Background(), providerID),
 		RegisteredByExtension: registered,
 	}
 	// upstream: provider-composer.ts composeProvider: `extension?.baseUrl ?? config?.baseUrl ?? base?.baseUrl`; describeProvider (bug-report.ts) reports the provider's baseUrl.
