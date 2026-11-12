@@ -1025,6 +1025,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-81e1a45](#bf-81e1a45) | Streaming a tool call's arguments allocates less per delta | PiG's own defect | All platforms | 0.7.0 |
 | [BF-81e584b](#bf-81e584b) | anthropic-messages payload now matches Pi for four cases found by the new live-Pi oracle… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-81e584b-2](#bf-81e584b-2) | Live-Pi oracle `TestMistralMessagesPayloadMatchesPi` (`ai/mistral_messages_payload_oracle_test.go`… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-821721b](#bf-821721b) | In interactive mode the frame that draws a reply could leave the Working indicator on screen for a second… | PiG's own defect | All platforms | Unreleased |
 | [BF-82253c8](#bf-82253c8) | fix(chord/nextnode/workers): a process's exit joins its output readers and ends its channel | PiG's own defect | All platforms | Unreleased |
 | [BF-8241433](#bf-8241433) | A Mistral stream chunk with a member of an unexpected type is read as Pi's JavaScript reads it instead of… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-825b4ab](#bf-825b4ab) | `pig config` no longer clips ` No resources found` and the `(n/total)` scroll row to the terminal width, as… | A Pi defect that PiG fixed first | All platforms | Unreleased |
@@ -1431,6 +1432,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-b4c6569](#bf-b4c6569) | `~/dir/` expands to the home directory with the trailing separator kept (`$HOME/dir/`), as Node's `path.join`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b4e83db](#bf-b4e83db) | Anthropic tools list `eager_input_streaming` and `strict` before `input_schema`, and the input schema and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b4f1d4a](#bf-b4f1d4a) | Pasting a large text that arrives in many terminal reads no longer stalls input: the paste is joined once… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-b4f8322](#bf-b4f8322) | In interactive mode a frame that changed no row could follow the frame that carries a reply, when the frame… | PiG's own defect | All platforms | Unreleased |
 | [BF-b50a5ab](#bf-b50a5ab) | A telemetry span of a failed provider request kept a 500-character cut of the provider's error message that… | PiG's own defect | All platforms | Unreleased |
 | [BF-b54f9aa](#bf-b54f9aa) | The tree selector label time of a session entry whose timestamp is not a valid date prints "aN/NaN/NaN… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b59b9db](#bf-b59b9db) | fix(durable/core): a Session-mode read that stored held changes answers when the Storage settles the commit… | PiG's own defect | All platforms | Unreleased |
@@ -15914,6 +15916,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `agent/message_json_number_spelling_test.go::TestAgentMessageDecodeKeepsANonNumberWhereAnIntegerIsExpected`, `agent/message_json_test.go::TestAgentMessageJSONRejectsInvalidUnion`, `agent/message_type_mismatch_test.go::TestDecodedMessageKeepsMembersOfAnyType`, `agent/provider_content_block_decode_test.go::TestUnknownContentBlockCostsOnlyThatBlock`, `ai/anthropic_effort_strict_test.go::TestAnthropicManagedEffortMapping`, `ai/anthropic_messages_compat_options_oracle_test.go::TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi`, `ai/mistral_messages_payload_oracle_test.go::TestMistralMessagesPayloadMatchesPi`, `ai/openai_completions_compat_options_oracle_test.go::TestOpenAICompletionsCompatAndCacheOptionsPayloadMatchesPi` and 4 more in docs/bug-ledger.json
 - **Release note:** Live-Pi oracle `TestMistralMessagesPayloadMatchesPi` (`ai/mistral_messages_payload_oracle_test.go`, mistral-conversations.ts toChatMessages and options; 1,200 random transcripts with thinking, errored/aborted turns, foreign tool calls, tool results with images and mid-conversation system messages, thinking level maps, sampling options, tool choices): the earlier Mistral payload oracles drew one user message, so the message conversion was only checked by two hand-written bodies. No payload difference. Mutation-checked: dropping the initial-system slice, the tool-result error text and the image data-URL prefix go red; `sanitizeSurrogates` on the system prompt is not drawn (generated text has no lone surrogate).
 
+### BF-821721b
+
+**In interactive mode the frame that draws a reply could leave the Working indicator on screen for a second…**
+
+- **Source:** PiG's own defect
+- **Symptom:** In interactive mode the frame that draws a reply could leave the Working indicator on screen for a second frame to take away, where Pi draws both in one frame: the 16 ms frame timer could fire between two events of the end of a response.
+- **Root cause:** One cause: the 16 ms frame timer fired between two events of the end of a response, so one frame drew the reply with the Working indicator still shown and a second one took it away.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `821721b7ed` (2026-11-11)
+- **Tests:** `agent/task_bounds_pacing_test.go::TestTaskFollowsThePacingOfTheProvider`, `agent/task_bounds_test.go::TestRunWithoutATaskReportsNone`, `agent/task_bounds_test.go::TestTaskEndsBeforeAFollowUpTurnIsPrepared`, `agent/task_bounds_test.go::TestTaskEndsWhereTheReaderWaitsForTheProvider`, `agent/task_bounds_test.go::TestTaskHoldsEveryToolStartAndEndsBeforeAToolRuns`, `agent/task_bounds_test.go::TestTaskSpansAResponseAndTheLoopEndEvents`, `internal/codingagent/interactive_reply_frame_test.go::TestInteractiveDrawsTheReplyWhileAnExtensionHandlerWaits`, `internal/codingagent/interactive_reply_frame_test.go::TestInteractiveReplyAndWorkingRemovalAreOneFrame` and 2 more in docs/bug-ledger.json
+- **Release note:** In interactive mode the frame that draws a reply could leave the Working indicator on screen for a second frame to take away, where Pi draws both in one frame: the 16 ms frame timer could fire between two events of the end of a response. The events that Pi's event loop handles in one task (the part of a response its provider delivered in one run, and behind it `message_end`, the tool starts, `turn_end` and `agent_end`) are now applied together, so a frame draws all of them or none. Print mode, RPC mode and SDK consumers of `Session.Events` receive the events they received before.
+
 ### BF-82253c8
 
 **fix(chord/nextnode/workers): a process's exit joins its output readers and ends its channel**
@@ -21571,6 +21587,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `b4f1d4a41a` (2026-10-10)
 - **Tests:** `tui/complexity_scaling_norace_test.go::TestScalingBracketedPaste`, `tui/stdin_buffer_paste_chunks_test.go::TestPasteOverManyReadsEqualsOnePasteBuffer`
 - **Release note:** Pasting a large text that arrives in many terminal reads no longer stalls input: the paste is joined once instead of being copied and searched again on every read.
+
+### BF-b4f8322
+
+**In interactive mode a frame that changed no row could follow the frame that carries a reply, when the frame…**
+
+- **Source:** PiG's own defect
+- **Symptom:** In interactive mode a frame that changed no row could follow the frame that carries a reply, when the frame timer fired before the clean-up at the end of the turn reached the screen loop.
+- **Root cause:** The second cause of scenario interactive-rendering/68 failing for pig under CPU load ("1 frame(s) began after the reply text"): the frame that agent_end requested ran before the turn's cleanup reached the owner loop, and the cleanup then painted a frame that changed no row. The runner counts every CSI ? 2026 h after the reply text, so that frame failed the run. With only the fix for the first cause (the events of one task applied together), the scenario still failed at run 18 of 100 under load.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `b4f8322312` (2026-11-11)
+- **Tests:** `internal/codingagent/interactive_turn_end_frame_test.go::TestInteractiveTurnCleanupDrawsNoFrameAfterTheFrameOfAgentEnd`
+- **Release note:** In interactive mode a frame that changed no row could follow the frame that carries a reply, when the frame timer fired before the clean-up at the end of the turn reached the screen loop. The clean-up now paints only a frame that is still owed or rows it changed.
 
 ### BF-b50a5ab
 
