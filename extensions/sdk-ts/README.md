@@ -37,9 +37,10 @@ pnpm install peer dependencies by themselves. They are packages Pi's own install
 already brings, at the same versions while the pin equals the release, so the
 install then adds nothing.
 
-`--install-links` makes npm copy this folder into `node_modules`. Without it
-npm links the folder, the compiler resolves those imports from the folder
-itself, and the types that come from those packages are lost without an error.
+With `npm install --install-links`, npm copies this folder into `node_modules`.
+Without that flag npm links the folder, the compiler resolves those imports
+from the folder itself, and the types that come from those packages are lost
+without an error.
 To keep a link, set `"preserveSymlinks": true` in `tsconfig.json`. Node's own
 modules need `@types/node`, as Pi's published declarations do. Specifiers that
 begin with `pi-pin:` are private to the bundle.
