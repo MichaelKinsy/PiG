@@ -652,7 +652,35 @@ func (r *ModelRegistry) ResolveGeneratedModel(providerID, modelID string, genera
 	if entry, found, _ := r.resolveRadiusModel(providerID, modelID); found {
 		return entry
 	}
-	entry := generatedModelEntry(providerID, modelID, generated)
+	return r.layerCatalogEntry(providerID, modelID, generatedModelEntry(providerID, modelID, generated))
+}
+
+// ResolveRemoteCatalogModel is ResolveGeneratedModel for a model the remote catalog overlay carries: a model the bundled catalog lacks, or one whose bundled record the overlay replaces.
+// The entry holds the overlay's window, limits and prices, so a model built from it matches the one ModelRuntime.getModel returns. It reports false for a model the overlay does not carry
+// and for one an explicit models list defines.
+// upstream: model-runtime.ts getModel reads the catalog with the remote overlay applied; sdk.ts:224-229 and agent-session.ts:647 build every session model from it.
+func (r *ModelRegistry) ResolveRemoteCatalogModel(providerID, modelID string) (ModelEntry, bool) {
+	if r.GetProvider(providerID) != nil || r.HasModelDefinition(providerID, modelID) {
+		return ModelEntry{}, false
+	}
+	carried := slices.ContainsFunc(r.remoteOverlayModels(providerID), func(model ai.AnyModel) bool {
+		chat, ok := model.(*ai.Model)
+		return ok && chat.ID == modelID
+	})
+	if !carried {
+		return ModelEntry{}, false
+	}
+	model := r.GetProviderModelDataByID(providerID, modelID)
+	if model == nil {
+		return ModelEntry{}, false
+	}
+	entry := NativeModelEntry(model)
+	entry.ProviderID, entry.ModelID = providerID, modelID
+	return r.layerCatalogEntry(providerID, modelID, entry), true
+}
+
+// layerCatalogEntry layers provider configuration, registered-provider settings and a matching model override onto the catalog entry of one model.
+func (r *ModelRegistry) layerCatalogEntry(providerID, modelID string, entry ModelEntry) ModelEntry {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	var configured *providerConfig
