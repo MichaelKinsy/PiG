@@ -139,7 +139,7 @@ Without these options, PiG enables `read`, `bash`, `edit`, and `write`, unless t
 | `find` | Find paths by glob pattern | no |
 | `ls` | List directory contents | no |
 
-A command that the `bash` tool runs writes to a pipe. Pi gives the command a socket pair. On Linux a command that opens `/dev/stdout` or `/dev/stderr` again, such as `echo x > /dev/stdout` or `tee /dev/stderr`, works under PiG and fails under Pi with `No such device or address` (D631, owner decision pending).
+A command that the `bash` tool runs writes to a pipe. Pi gives the command a socket pair. On Linux a command that opens `/dev/stdout` or `/dev/stderr` again, such as `echo x > /dev/stdout` or `tee /dev/stderr`, works under PiG and fails under Pi with `No such device or address` (D631).
 
 <a id="mcp-tools"></a>
 
