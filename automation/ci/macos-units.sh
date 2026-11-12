@@ -6,6 +6,9 @@ set -uo pipefail
 # separate jobs did. Every unit runs even when an earlier one fails; the script fails if any unit failed.
 #   UNITS='cli-2 cli-8 extension-host-2 packages' macos-units.sh cli|extension-host|packages
 # Units: cli-1 to cli-8 (the cmd/pig shards of make test-cli), extension-host-1 to extension-host-3, packages.
+# Each go test streams its events through test-json-report.py, as the changed-packages run of test-grouped.sh does: a line for
+# each package, the output of every failed test, and the unit's ten slowest tests. Those times are what the jobs are packed by
+# (ci-tiers.txt), and they name the test to look at when a unit nears its job's limit. The report exits 0; pipefail keeps go test's status.
 
 kind=${1:?usage: UNITS=... macos-units.sh cli|extension-host|packages}
 read -r -a units <<< "${UNITS:?UNITS lists the units of the job}"
@@ -27,20 +30,20 @@ for unit in "${units[@]}"; do
   case "$unit" in
     cli-*)
       if run=$(automation/ci/test-shard-pattern.sh "${unit#cli-}" 8 ./coding/cli); then
-        go test -timeout 30m -run "$run" ./coding/cli || failed=1
+        go test -timeout 30m -json -run "$run" ./coding/cli | python3 automation/ci/test-json-report.py || failed=1
       else
         failed=1
       fi
       ;;
     extension-host-*)
       if run=$(automation/ci/test-shard-pattern.sh "${unit##*-}" 3 ./coding/extension/host/subprocess); then
-        go test -timeout 30m -run "$run" ./coding/extension/host/subprocess || failed=1
+        go test -timeout 30m -json -run "$run" ./coding/extension/host/subprocess | python3 automation/ci/test-json-report.py || failed=1
       else
         failed=1
       fi
       ;;
     packages)
-      go test -timeout 30m ./env ./coding/piglet || failed=1
+      go test -timeout 30m -json ./env ./coding/piglet | python3 automation/ci/test-json-report.py || failed=1
       ;;
   esac
   echo "::endgroup::"
