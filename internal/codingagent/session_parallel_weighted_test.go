@@ -113,8 +113,8 @@ func TestParallelHistoryReadIsIdenticalAtEveryWidth(t *testing.T) {
 				t.Fatal(err)
 			}
 			evicted := 0
-			for _, slot := range indexed.slots {
-				if slot.entry == nil {
+			for i := range indexed.slots {
+				if indexed.resident.get(i) == nil {
 					evicted++
 				}
 			}

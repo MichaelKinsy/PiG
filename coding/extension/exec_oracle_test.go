@@ -151,6 +151,15 @@ func pigExecOutcome(ctx context.Context, scenario execScenario) execOutcome {
 	return normalized
 }
 
+// truncatedCodeClass maps the three codes the race above gives a truncated command to one.
+func truncatedCodeClass(code int) int {
+	switch code {
+	case 141, 143:
+		return 1
+	}
+	return code
+}
+
 // execOracleScript is testdata/exec.mjs, which a test that changes its working
 // directory still finds.
 var execOracleScript, _ = filepath.Abs("testdata/exec.mjs")
@@ -214,6 +223,12 @@ func TestExecCommandMatchesPi(t *testing.T) {
 		normalized := pigExecOutcome(ctx, scenario)
 		raw, _ := json.Marshal(normalized)
 		want := expected[i]
+		// A truncated result is never 0, and what it is depends on what reaches the child first: the exit that its closed pipe brings (1), a
+		// SIGPIPE its own write meets (141, `yes`) or the SIGTERM exec.ts sends (143). Since a83b75a07 reports a signal as 128 + its number, Pi's
+		// own runs show all three for the same scenario, so a truncated result passes on either side with any of them.
+		if normalized.Truncated && want.Truncated {
+			normalized.Code, want.Code = truncatedCodeClass(normalized.Code), truncatedCodeClass(want.Code)
+		}
 		if normalized.Thrown != "" && want.Thrown != "" {
 			// Pi's message starts with the Node error code; Pig reports Node's message text.
 			if _, message, ok := strings.Cut(want.Thrown, ":"); ok && strings.Contains(normalized.Thrown, strings.TrimSpace(message)[:min(len(strings.TrimSpace(message)), 40)]) {

@@ -298,7 +298,7 @@ Raw PORT_MAP rows: 1144. Breakdown: 117 n/a (designed out) · 5 🟡 partial. Se
 - **Four core packages (agent, ai, coding-agent, tui):** 535 / 536 intended-portable files ✅ (99.8%) from 589 rows; 518 behavioral (96.8%), 0 weak-only, 17 untested.
 - **Shipped surface (agent, ai, codemode, coding-agent, mcp, schema, telemetry, tui; coding-agent without ):** 620 / 621 intended-portable files ✅ (99.8%) from 685 rows; 553 behavioral (89.2%), 0 weak-only, 67 untested.
 - **Whole monorepo (12 packages):** 1022 / 1027 intended-portable files ✅ (99.5%) from 1144 rows; 822 behavioral (80.4%), 0 weak-only, 200 untested.
-- **Interface closure:** 15117 of 15117 semantic interface IDs closed (524 designed-out, 14593 ported). A file-level ✅ does not close an interface ID.
+- **Interface closure:** 15117 of 15117 semantic interface IDs closed (526 designed-out, 14591 ported). A file-level ✅ does not close an interface ID.
 
 Behavioral evidence includes paired scenarios and reviewed mutation-proven unit tests; the family table below counts paired scenarios only.
 Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registration-only, 1 smoke-only.
@@ -318,7 +318,7 @@ Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registrati
 | `fullscreen` | 18 | 18 | 0 | 0 | 0 | 12 | not run |
 | `interactive-rendering` | 80 | 79 | 1 | 0 | 0 | 39 | not run |
 | `json` | 14 | 14 | 0 | 0 | 0 | 10 | not run |
-| `model-resolver-selector` | 28 | 28 | 0 | 0 | 0 | 16 | not run |
+| `model-resolver-selector` | 29 | 29 | 0 | 0 | 0 | 16 | not run |
 | `model-runtime-store-catalog` | 25 | 25 | 0 | 0 | 0 | 24 | not run |
 | `oauth` | 32 | 32 | 0 | 0 | 0 | 19 | not run |
 | `print` | 13 | 13 | 0 | 0 | 0 | 9 | not run |

@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -265,7 +266,8 @@ func ResolveUpstreamPiBin(t *testing.T) BinaryRef {
 			// minimal baseline matching pig's startup. Scenarios that need
 			// extensions can override via Args in the scenario file.
 			Args: []string{"--no-extensions"},
-			Env:  piEnv,
+			// A scenario's helper script finds its oracle through PIG_PARITY_PI_BIN; the variable is unset here, so the child gets the path resolved above.
+			Env: append(slices.Clone(piEnv), "PIG_PARITY_PI_BIN="+bin),
 		}
 	}
 

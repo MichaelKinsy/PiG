@@ -14,7 +14,8 @@
   pin.py install-oracle       install the Pi oracle for the effective pin into extensions/sdk-ts/node_modules
   pin.py freeze-closure       freeze the pin's dependency closure (release: --from-published-lock <lock>; commit: derived from its packs)
   pin.py vendor               pack the pinned build's durable closure into third_party/pi-packs and point its consumers at it
-  pin.py check-vendored [--rebuild]  fail when the vendored packs or a consumer are not the pin's (automation/pin/vendor.py)
+  pin.py check-vendored [--rebuild] [--installed CONSUMER]  fail when the vendored packs, a consumer or a consumer's install are not the pin's (automation/pin/vendor.py)
+  pin.py override-tree        under PI_UPSTREAM_REF, build the tree the oracle tests of that Pi commit read and print its path; the repository is not written
   pin.py check-oracle         verify the installed oracle is the effective pin's Pi
   pin.py link-mirror          point the effective pin's mirror (.upstream/<mirror>/node_modules) at its source build's
                               dependencies, so oracle scripts that import the mirrored source resolve its imports
@@ -562,9 +563,31 @@ def cmd_check_vendored(args: argparse.Namespace) -> None:
 
     pin, override = pinlib.effective()
     problems = vendor.check(pin) + (vendor.check_rebuild(pin) if args.rebuild else [])
+    for consumer in args.installed:
+        problems += vendor.check_installed(consumer)
     if problems:
         raise PinError("the vendored Pi packages are not the pin's:\n  " + "\n  ".join(problems))
     print(f"check-vendored: third_party/pi-packs holds the " + ("rebuilt " if args.rebuild else "") + f"durable closure of Pi {pin.version} and every consumer installs it")
+
+
+def cmd_override_tree(_: argparse.Namespace) -> None:
+    """Under PI_UPSTREAM_REF: build (once) the tree the oracle tests of that Pi commit read (vendor.override_tree) and print its
+    path. The build reports on stderr, and the repository's own Pi (mirror, oracle link, installs) is not touched. The commit
+    may be the pin's own: the tree is then the pin's Pi, read the way another commit's is."""
+    import vendor
+
+    if not os.environ.get(pinlib.OVERRIDE_ENV, "").strip():
+        raise PinError("override-tree builds the tree of the Pi commit a run names: set PI_UPSTREAM_REF=<commit>")
+    pin, _override = pinlib.effective()
+    out = os.dup(1)
+    os.dup2(2, 1)
+    try:
+        tree = vendor.override_tree(pin)
+    finally:
+        sys.stdout.flush()
+        os.dup2(out, 1)
+        os.close(out)
+    print(tree)
 
 
 def cmd_check_oracle(_: argparse.Namespace) -> None:
@@ -627,12 +650,14 @@ def main() -> None:
     sub_.add_parser("vendor").set_defaults(fn=cmd_vendor)
     vendored = sub_.add_parser("check-vendored")
     vendored.add_argument("--rebuild", action="store_true", help="also pack the pinned source build again and compare the bytes")
+    vendored.add_argument("--installed", action="append", default=[], metavar="CONSUMER", help="also require the node_modules of this consumer (durable/interop) to be an install of the vendored packs")
     vendored.set_defaults(fn=cmd_check_vendored)
     sub_.add_parser("link-mirror").set_defaults(fn=cmd_link_mirror)
     sub_.add_parser("oracle-node").set_defaults(fn=cmd_oracle_node)
     retire = sub_.add_parser("retire")
     retire.add_argument("ref")
     retire.set_defaults(fn=cmd_retire)
+    sub_.add_parser("override-tree").set_defaults(fn=cmd_override_tree)
     ledgers = sub_.add_parser("ledgers")
     ledgers.add_argument("--from", dest="previous")
     ledgers.add_argument("--force", action="store_true")

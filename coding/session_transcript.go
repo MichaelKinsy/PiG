@@ -92,8 +92,12 @@ func systemMessageWithoutTools(message ai.SystemMessage) ai.SystemMessage {
 
 // effectiveSystemSections reads the run's live loadout without changing the base prompt. A structured prompt is built from the run's before_agent_start options, as agent-session.ts:1669-1683 builds it for every mode, also when the caller's structured prompt is the rendering of the base options; any other caller-owned structured prompt takes only the tools and rules sections from them. The caller holds toolRegistryMu.
 func (s *Session) effectiveSystemSections() (ai.OrderedSections, error) {
+	return s.effectiveSystemSectionsFor(s.runPrompt.Load())
+}
+
+// effectiveSystemSectionsFor is effectiveSystemSections for the run the caller loaded.
+func (s *Session) effectiveSystemSectionsFor(run *codingagent.BeforeAgentStartRun) (ai.OrderedSections, error) {
 	desired := s.baseSystemSections
-	run := s.runPrompt.Load()
 	if run == nil {
 		return desired, nil
 	}
@@ -171,12 +175,12 @@ func (s *Session) systemPrompt() string {
 	if prompt, present := s.agent.SystemPromptOverride(); present {
 		return prompt
 	}
-	if s.runPrompt.Load() != nil {
+	if run := s.runPrompt.Load(); run != nil {
 		s.toolRegistryMu.RLock()
-		sections, err := s.effectiveSystemSections()
+		prompt, err := s.runSystemPromptLocked(run)
 		s.toolRegistryMu.RUnlock()
 		if err == nil {
-			return ai.GetCurrentSystemPrompt([]ai.Message{ai.SystemMessage{Sections: sections}})
+			return prompt
 		}
 	}
 	if baseline := s.baseSystemPrompt.Load(); baseline != nil {

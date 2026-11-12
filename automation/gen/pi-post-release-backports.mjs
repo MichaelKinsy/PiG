@@ -38,6 +38,21 @@ patch("b3c2e4a6bef8", "pi-coding-agent/extensions/llama/provider.js", [
 ]);
 // END backport b3c2e4a6bef8
 
+// BEGIN backport 9b88b94e2
+// 9b88b94e2 (#12093, #12064): a provider error reading "Connection closed." is retried (the classifier that pi-ai's SDK, the coding agent and the oracle test of ai.IsRetryableAssistantError run).
+patch("9b88b94e2", "pi-ai/utils/retry.js", [
+    [`    "connection.?lost",
+    "other side closed",
+`, `    "connection.?lost",
+    ${note("9b88b94e2").trim()}
+    // Gateway mid-stream drop relayed as an Anthropic-style \`api_error\` event,
+    // e.g. {"type":"error","error":{"type":"api_error","message":"Connection closed."}} (#12064).
+    "connection.?closed",
+    "other side closed",
+`],
+]);
+// END backport 9b88b94e2
+
 // BEGIN backport 49fe0a237
 // 49fe0a237 (#11987): Anthropic message threads default by endpoint, not provider id (the description pi-ai's compat schema and the models docs carry).
 patch("49fe0a237", "pi-ai/providers/compat-schema.js", [messageThreadsDefault]);
@@ -90,6 +105,19 @@ patch("bbfc6c7ce", "pi-coding-agent/core/tools/find.js", [
 `],
 ]);
 // END backport bbfc6c7ce
+
+// BEGIN backport 935f0ac0ccfc
+// 935f0ac0ccfc (#12092): the bash tool keeps the end of the last line when the retained tail is only that over-long line.
+patch("935f0ac0ccfc", "pi-coding-agent/core/tools/output-accumulator.js", [
+    ["        const tailTruncation = truncateTail(this.getSnapshotText(), {\n",
+      `        ${note("935f0ac0ccfc").trim()}
+        // Clipping drops the partial first line of the retained tail. When the tail is only the end of one over-long line,
+        // that is everything, so show the end of that line instead.
+        const snapshotText = this.getSnapshotText() || this.tailText;
+        const tailTruncation = truncateTail(snapshotText, {
+`],
+]);
+// END backport 935f0ac0ccfc
 
 // BEGIN backport 0e1e3fc81
 // 0e1e3fc81 (#12052): OSC 8 hyperlinks in HTML-exported tool output become links.
@@ -193,6 +221,27 @@ export function stripAnsiEscapes(text) {
 ]);
 // END backport 0e1e3fc81
 
+// BEGIN backport a83b75a07
+// a83b75a07 (#12089): a command a signal ended reports 128 + the signal number as its code, not 0.
+patch("a83b75a07", "pi-coding-agent/core/exec.js", [
+    ['import { spawn } from "node:child_process";\n', 'import { spawn } from "node:child_process";\nimport { constants as osConstants } from "node:os";\n'],
+    ["    const exitCode = code ?? 0;\n",
+      `    ${note("a83b75a07").trim()}
+    // A signal-killed command has no exit code. Use the shell convention, as the bash tool does, so a
+    // timeout, an abort or a crash does not read as success (#12088).
+    const exitCode = code ?? (proc.signalCode ? 128 + (osConstants.signals[proc.signalCode] ?? 0) : 1);
+`],
+]);
+// END backport a83b75a07
+
+// BEGIN backport a83b75a07
+// a83b75a07 (#12089): the pi.exec docs name the code of a command a signal ended.
+patch("a83b75a07", "pi-coding-agent/docs/extensions.md", [
+    ["A command that ignores SIGTERM gets SIGKILL after 5 seconds.\n",
+      "A command that ignores SIGTERM gets SIGKILL after 5 seconds. A command terminated by a signal, by pi or otherwise, reports 128 + the signal number as `code`, like a shell: 143 for SIGTERM, 137 for SIGKILL.\n"],
+]);
+// END backport a83b75a07
+
 // BEGIN backport 0e1e3fc81
 // 0e1e3fc81 (#12052): a rendered line is blank once every escape sequence the converter handles is stripped.
 patch("0e1e3fc81", "pi-coding-agent/core/export-html/tool-renderer.js", [
@@ -245,6 +294,24 @@ patch("3345c2925", "pi-coding-agent/core/agent-session.js", [
         this._buildRuntime({`],
 ]);
 // END backport 3345c2925
+
+// BEGIN backport 406e719a6bff
+// 406e719a6bff (#12049): a tool schema with a node that has no type, enum or anyOf is not sent strict (OpenAI strict mode rejects it).
+patch("406e719a6bff", "pi-ai/api/constrained-sampling.js", [
+    [`        }
+    }
+    if (schema.anyOf !== undefined) {
+`, `        }
+    }
+    ${note("406e719a6bff").trim()}
+    // OpenAI strict mode rejects nodes without a type; a bare enum counts as typed, a bare const does not.
+    if (schema.type === undefined && schema.anyOf === undefined && schema.enum === undefined) {
+        throw new UnsupportedStrictJsonSchemaError("schemas without a type are unsupported");
+    }
+    if (schema.anyOf !== undefined) {
+`],
+]);
+// END backport 406e719a6bff
 
 // BEGIN backport 49fe0a237
 // 49fe0a237 (#11987): the models.json schema Pi generates from compat-schema.ts.

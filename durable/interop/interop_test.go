@@ -34,7 +34,7 @@ func nodeWith(t *testing.T, env []string, args ...string) []byte {
 	t.Helper()
 	ensureDependencies(t)
 	command := exec.Command("node", args...)
-	command.Dir = "."
+	command.Dir = programDir(t)
 	command.Env = append(append(os.Environ(), "NODE_NO_WARNINGS=1"), env...)
 	var stderr bytes.Buffer
 	command.Stderr = &stderr
@@ -47,12 +47,13 @@ func nodeWith(t *testing.T, env []string, args ...string) []byte {
 
 var dependenciesReady bool
 
-// ensureDependencies requires the pinned Pi packages, which `make durable-interop-deps` installs before `make test`: the
-// locked release (package-lock.json) for a release pin, the stamped build of the pinned commit for a commit pin (pioracle.CheckDurable). It fails when they are missing: an unavailable dependency is a blocker, not a pass, and a test
-// does not reach the network or write into the source tree.
+// ensureDependencies requires the pinned Pi packages, which `make durable-interop-deps` installs before `make test`: the pin's
+// vendored packs (pioracle.CheckDurable). It fails when they are missing: an unavailable dependency is a blocker, not a pass, and a
+// test does not reach the network or write into the source tree. A run that names another Pi does not read this directory's
+// install: pioracle.OverrideTree checks the install of the tree it names.
 func ensureDependencies(t *testing.T) {
 	t.Helper()
-	if dependenciesReady {
+	if dependenciesReady || pioracle.OverrideTree(t) != "" {
 		return
 	}
 	// A commit pin shares its package version with the published release, so the version alone would let the published package stand in for the pinned build.
@@ -60,6 +61,35 @@ func ensureDependencies(t *testing.T) {
 		t.Fatalf("the pinned Pi Durable packages are not installed in durable/interop: run `make durable-interop-deps`: %v", err)
 	}
 	dependenciesReady = true
+}
+
+// programDir is the directory the Node programs run in, where Node resolves the Pi packages they import: this package's
+// directory, with the pin's vendored packs installed in node_modules, or, in a run that names another Pi (pioracle.OverrideTreeEnv,
+// `make test-carried-oracles`), a temporary directory of the test with copies of the programs and a node_modules link to that
+// tree's install, so the run reads the other Pi without changing this directory's install.
+func programDir(t *testing.T) string {
+	t.Helper()
+	if pioracle.OverrideTree(t) == "" {
+		return "."
+	}
+	dir := t.TempDir()
+	programs, err := filepath.Glob("*.mjs")
+	if err != nil || len(programs) == 0 {
+		t.Fatalf("the Node programs of durable/interop: %v (%d found)", err, len(programs))
+	}
+	for _, name := range programs {
+		data, err := os.ReadFile(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, name), data, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.Symlink(filepath.Join(pioracle.Project(t), "node_modules"), filepath.Join(dir, "node_modules")); err != nil {
+		t.Fatal(err)
+	}
+	return dir
 }
 
 func decode(t *testing.T, data []byte) any {

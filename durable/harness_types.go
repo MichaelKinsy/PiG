@@ -485,12 +485,24 @@ type SectionWrap struct {
 func (ToolWrap) isWrap()    {}
 func (SectionWrap) isWrap() {}
 
+// ToolNamespace is a named group of tools for code mode: the extension that brings the tools declares it (Ports
+// packages/durable/src/harness/types.ts, Pi 5e24c6b1f). Description is one line, shown in the `codemode` prompt section;
+// Instructions is the longer how-to, returned only by `describeNamespace()` (empty: none); `searchTools()` searches both.
+type ToolNamespace struct {
+	Name         string
+	Description  string
+	Instructions string
+}
+
 // Extension is a named bundle of code, installed in a registry and selected by conversations by name.
 type Extension struct {
-	Name     string
-	Tools    []*ToolRegistration
-	Sections []*PromptSection
-	Hooks    []HookRegistration
+	Name string
+	// Namespace is the code-mode namespace of this extension's tools (a tool named by several extensions belongs to the
+	// first one's). The `codemode` section lists it while the extension is selected, also before it has any tools.
+	Namespace *ToolNamespace
+	Tools     []*ToolRegistration
+	Sections  []*PromptSection
+	Hooks     []HookRegistration
 	// Wraps apply where this extension is selected, in order.
 	Wraps []Wrap
 	// Tasks are resolved by name for every task, whichever conversations select this extension.

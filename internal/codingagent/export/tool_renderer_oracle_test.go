@@ -61,8 +61,7 @@ type toolOracleOut struct {
 	Expanded  string `json:"expanded,omitempty"`
 }
 
-// The OSC 8 link line is not here: the pinned Pi (1.5.2) predates #12052, which converts it to an anchor and counts OSC-only lines as blank (ansi_links_port_test.go).
-var toolOracleLines = []string{"", " ", "\t", "\x1b[1m \x1b[0m", "\x1b[0m", "\u00a0", "\ufeff", "\u0085", "\u2028", "\u200b", "\u205f", "\u3000", "\u2009", "\u1680", "\u202f", "\u180e", "text", "\x1b[31mred\x1b[0m", "a<b&c>\"d'", "日本語", "😀", "\x1b[38;5;99mx", "\x1b[1;2m", "  indented", "trailing  "}
+var toolOracleLines = []string{"", " ", "\t", "\x1b[1m \x1b[0m", "\x1b[0m", "\u00a0", "\ufeff", "\u0085", "\u2028", "\u200b", "\u205f", "\u3000", "\u2009", "\u1680", "\u202f", "\u180e", "text", "\x1b[31mred\x1b[0m", "a<b&c>\"d'", "日本語", "😀", "\x1b[38;5;99mx", "\x1b[1;2m", "  indented", "trailing  ", "\x1b]8;;http://x\x07link\x1b]8;;\x07"}
 
 func toolOracleScenarios() []toolOracleScenario {
 	rng := rand.New(rand.NewPCG(5, 9))

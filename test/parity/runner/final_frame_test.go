@@ -27,7 +27,7 @@ func TestObserveFinalFrame(t *testing.T) {
 			if err := os.WriteFile(path, []byte(tc.transcript), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			got := observeFinalFrame(path, TmuxFinalFrame{Text: "ANSWER-END", QuietMilliseconds: 1})
+			got := observeFinalFrame(path, TmuxFinalFrame{Text: "ANSWER-END"})
 			if !got.Observed || got.Found != tc.wantFound || got.Trailing != tc.wantTrailing {
 				t.Fatalf("observeFinalFrame = %+v, want found=%v trailing=%d", got, tc.wantFound, tc.wantTrailing)
 			}
@@ -38,6 +38,7 @@ func TestObserveFinalFrame(t *testing.T) {
 func TestEvaluateOutcome_NoFramesAfterReply(t *testing.T) {
 	ok := Result{FinalFrame: FinalFrameResult{Observed: true, Found: true, Text: "R"}}
 	extra := Result{FinalFrame: FinalFrameResult{Observed: true, Found: true, Text: "R", Trailing: 3, Tail: "x"}}
+	absent := Result{FinalFrame: FinalFrameResult{Observed: true, Text: "R"}}
 	for name, tc := range map[string]struct {
 		pig, pi Result
 		want    string
@@ -46,6 +47,9 @@ func TestEvaluateOutcome_NoFramesAfterReply(t *testing.T) {
 		"pig frames": {extra, ok, "pig run 1: 3 frame(s) began after the reply text"},
 		"pi frames":  {ok, extra, "pi run 1: 3 frame(s) began after the reply text"},
 		"no step":    {Result{}, ok, "pig run 1: no_frames_after_reply needs a tmux step with final_frame"},
+		// A transcript without the reply is an error on either side, never "no frame after the reply".
+		"pig reply absent": {absent, ok, "pig run 1: the reply text \"R\" is not in the raw transcript"},
+		"pi reply absent":  {ok, absent, "pi run 1: the reply text \"R\" is not in the raw transcript"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			o := &ScenarioOutcome{

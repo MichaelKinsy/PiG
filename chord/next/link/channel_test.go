@@ -184,6 +184,15 @@ func TestTheHandshake(t *testing.T) {
 			}
 		})
 
+		t.Run("opens on a hello without a call window (a trusted peer's), PeerCalls 0", func(t *testing.T) {
+			setup := openChannel(t, codec, false, false)
+			setup.peer.send(&link.HelloMessage{Protocol: data.ProtocolVersion, Incarnation: rawPeerIncarnation})
+			transported(setup.ends, setup.peerEnd)
+			if !setup.channel.Opened() || setup.channel.PeerCalls() != 0 || len(setup.reports.messages()) != 0 {
+				t.Fatalf("opened = %v, calls = %d, reports = %v", setup.channel.Opened(), setup.channel.PeerCalls(), setup.reports.messages())
+			}
+		})
+
 		t.Run("queues what a side sends until the peer's hello", func(t *testing.T) {
 			setup := openChannel(t, codec, false, false)
 			requireNoError(t, setup.channel.Send(&link.ReleaseMessage{Hold: 1}))
