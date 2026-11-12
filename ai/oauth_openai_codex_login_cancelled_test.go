@@ -30,7 +30,7 @@ func TestCodexDeviceUserCodeRequestCancelledMidFlightIsLoginCancelled(t *testing
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			entered := make(chan struct{})
-			withMockCodexClient(t, cancelledMidRequest(t, entered))
+			withMockCodexClient(t, cancelledMidRequest(t, entered)) //nolint:bodyclose // the stub never returns a response
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
 			done := make(chan error, 1)
@@ -46,7 +46,7 @@ func TestCodexDeviceUserCodeRequestCancelledMidFlightIsLoginCancelled(t *testing
 
 func TestCodexDeviceTokenPollCancelledMidFlightIsLoginCancelled(t *testing.T) {
 	entered := make(chan struct{})
-	withMockCodexClient(t, cancelledMidRequest(t, entered))
+	withMockCodexClient(t, cancelledMidRequest(t, entered)) //nolint:bodyclose // the stub never returns a response
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	done := make(chan error, 1)

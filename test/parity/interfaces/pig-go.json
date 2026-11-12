@@ -32545,6 +32545,17 @@
       "shapeHash": "sha256:1898b0252a6e27f51d60bde23dd12b09f983d066c70808ba2a5d0b14b507f8a4"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#authEnv",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "authEnv",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, env func(string) (string, bool), name string) (string, bool, error)"
+      },
+      "shapeHash": "sha256:1a495260750d6b3fab3709ce21e8ca0f9ed96475144cfb9be2f7a5ab796c606f"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#authFileReload",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "authFileReload",
@@ -59963,9 +59974,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(gateway bool, input APIKeyAuthInput) *cloudflareResolution"
+        "type": "func(ctx context.Context, gateway bool, input APIKeyAuthInput) (*cloudflareResolution, error)"
       },
-      "shapeHash": "sha256:77a0ed99dfed67fb8deed2c83e1ee39d832225a6d3a233b4744d2cdd8b40b6fa"
+      "shapeHash": "sha256:1f46b9471945d9c3e9a55f36da993b2f614cc2d0a1f6ed240e9a6cdba4738484"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#resolveCloudflarePlaceholders",
@@ -59985,9 +59996,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(name string, input APIKeyAuthInput) string"
+        "type": "func(ctx context.Context, name string, input APIKeyAuthInput) (string, error)"
       },
-      "shapeHash": "sha256:d52cce53fc773921048329c670881d3d84f7889a76a838fe4eb29364fcdb5e0c"
+      "shapeHash": "sha256:4cebf0c03f76ce7da74aeb7b498dd51ca1be42c97cfe940c6326d87fb65372df"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#resolveCodexServiceTier",

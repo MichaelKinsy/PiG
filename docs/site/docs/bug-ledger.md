@@ -257,6 +257,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-26d302a-2](#bf-26d302a-2) | A provider object's own `auth.apiKey.login` runs in the login dialog, as Pi's `showApiKeyLoginDialog` runs… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-26d302a-3](#bf-26d302a-3) | A provider object's login that sends a prompt or event type Pi does not define fails with an error that names… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-270da2f](#bf-270da2f) | fix: raw content blocks sized without continue or discarded errors, tsruntime in a race group, provenance of… | PiG's own defect | All platforms | Unreleased |
+| [BF-274fef9](#bf-274fef9) | ai: an images API provider now refuses a model of another api with `Mismatched api: <model api> expected… | PiG's own defect | All platforms | Unreleased |
 | [BF-27a1650](#bf-27a1650) | The keybindings manager's key text and key matching now cover every keybinding the merged table defines… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-27b7a4e](#bf-27b7a4e) | Clipboard image paste, copy through `powershell.exe` and opening the browser for sign-in no longer fail… | A fix Pi shipped that PiG ported | Windows, WSL | 0.7.0 |
 | [BF-27ddc30](#bf-27ddc30) | A tool card shows the arguments of a tool call while they stream, as Pi does: a streamed write card shows its… | PiG's own defect | All platforms | 0.5.0 |
@@ -5323,6 +5324,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `270da2fced` (2026-11-08)
 - **Tests:** None recorded.
+
+### BF-274fef9
+
+**ai: an images API provider now refuses a model of another api with `Mismatched api: <model api> expected…**
+
+- **Source:** PiG's own defect
+- **Symptom:** ai: an images API provider now refuses a model of another api with `Mismatched api: <model api> expected <api>` before it runs, as Pi's images registry does; GitHub Copilot and OpenAI Codex logins report `Login cancelled` when the login is cancelled while a prompt or request is in flight, and GitHub Copilot login errors are no longer prefixed.
+- **Root cause:** Fixes: images registry rejects a model of another api before running (images-api-registry.ts); github-copilot login returns Pi's "Login cancelled" and unwrapped errors; openai-codex fetch after abort is "Login cancelled".
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `274fef902d` (2026-11-12)
+- **Tests:** `agent/tool_update_join_test.go::TestExecutePreparedToolCallJoinsAnUpdateStillBeingDeliveredWhenTheToolReturns`, `ai/auth_resolve_cancellation_test.go::TestAPIKeyAuthResolveObservesACancellationDuringAnyEnvLookup`, `ai/classifier_request_lifecycle_test.go::TestClassifiersEndWithTheOutcomeOfTheRequestLifecycle`, `ai/compat_radius_cancellation_test.go::TestCompleteHandsTheCallersCancellationToTheProviderAndReturnsItsAbortedMessage`, `ai/compat_radius_cancellation_test.go::TestLoadRadiusGatewayConfigIsCancelledWhileTheGatewayHasNotAnswered`, `ai/githubcopilot_login_cancelled_test.go::TestLoginGitHubCopilotPromptOutcomesMatchPi`, `ai/images_register_builtins_test.go::TestImagesAPIProviderRegistryReturnsTheLatestRegistrationForAnAPI`, `ai/images_registry_mismatch_test.go::TestRegisteredImagesProviderRefusesAModelOfAnotherAPIBeforeRunning` and 7 more in docs/bug-ledger.json
+- **Release note:** ai: an images API provider now refuses a model of another api with `Mismatched api: <model api> expected <api>` before it runs, as Pi's images registry does; GitHub Copilot and OpenAI Codex logins report `Login cancelled` when the login is cancelled while a prompt or request is in flight, and GitHub Copilot login errors are no longer prefixed.
 
 ### BF-27a1650
 

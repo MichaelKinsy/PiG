@@ -62,12 +62,17 @@ func TestCompleteHandsTheCallersCancellationToTheProviderAndReturnsItsAbortedMes
 func TestLoadRadiusGatewayConfigIsCancelledWhileTheGatewayHasNotAnswered(t *testing.T) {
 	entered := make(chan struct{})
 	released := make(chan struct{})
+	stop := make(chan struct{})
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		close(entered)
-		<-r.Context().Done()
+		select {
+		case <-r.Context().Done():
+		case <-stop:
+		}
 		close(released)
 	}))
 	defer server.Close()
+	defer close(stop)
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	done := make(chan error, 1)

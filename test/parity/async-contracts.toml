@@ -93,10 +93,10 @@ rationale = "The only async code is retryGoogleRequest (google-shared.ts:496-514
 
 [[files]]
 path = "packages/ai/src/api/google-vertex.ts"
-disposition = "deferred"
-contracts = []
-evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/google_vertex.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Delta at Pi bd3c9b82: adc5fa9f replaces the local User-Agent merge with getIdentityHeaders; no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged. Delta at Pi d0aa218c: f715a15c1 changes only the code named in the upstream-sync row of this file; no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged."
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:ai/google_vertex_adc_test.go#TestGoogleVertexADCRequestCancellation"]
+rationale = "The stream awaits the request (:116) and the chunks (:122) and ends with `Request was aborted` (:288) when the signal aborts. The test cancels while the ADC request is in flight and requires the stream to end with the cancellation (with failure watchdogs). Mutation: handing context.Background() to the access-token call in ai/google.go fails it."
 
 [[files]]
 path = "packages/ai/src/api/lazy.ts"
@@ -177,10 +177,10 @@ rationale = "`(lazy dynamic-import wrapper; Go providers are statically linked)`
 
 [[files]]
 path = "packages/ai/src/api/openrouter-images.ts"
-disposition = "deferred"
-contracts = []
-evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/openrouter_images.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Delta at Pi bd3c9b82: adc5fa9f sends the identity headers; no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged."
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:ai/openrouter_images_upstream_test.go#TestOpenRouterImagesUpstream"]
+rationale = "The request carries options.signal (:69, :81) and a failure after an abort ends as stopReason `aborted` instead of `error` (:114). Mutation: dropping the ctx.Err() branch of imagesStopReasonForContext in ai/openrouter_images.go fails TestOpenRouterImagesUpstream."
 
 [[files]]
 path = "packages/ai/src/api/pi-messages.ts"
@@ -226,24 +226,24 @@ rationale = "envApiKeyAuth's login checks the signal before and after the prompt
 
 [[files]]
 path = "packages/ai/src/auth/oauth/anthropic.ts"
-disposition = "deferred"
-contracts = []
-evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/oauth_anthropic.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+disposition = "translated"
+contracts = ["awaited", "concurrent-joined", "cancellable"]
+evidence = ["test:ai/oauth_async_contract_test.go#TestAnthropicOAuthLoginReturnsOnlyAfterTheManualPromptReturned"]
+rationale = "The anthropic login awaits waitForCallbackOrManualInput (callback-server.ts:155-181) and returns only after its manual prompt has settled; the test requires the login to return only after the prompt returned when the callback won. Mutation: removing `<-manualDone` in ai/oauth_callback_server.go fails it."
 
 [[files]]
 path = "packages/ai/src/auth/oauth/callback-server.ts"
-disposition = "deferred"
-contracts = []
-evidence = []
-rationale = "async/Promise source new in 0.99.1; PORT_MAP status ⬜ ((not started: shared OAuth callback server; the Go OAuth flows still run their own loopback listeners)); no per-file ordering, cancellation and error contract has been reviewed yet, and no evidence is claimed. Review with the owning family before marking translated."
+disposition = "translated"
+contracts = ["awaited", "concurrent-joined", "cancellable"]
+evidence = ["test:ai/oauth_async_contract_test.go#TestWaitForCallbackOrManualInputReturnsOnlyAfterTheManualPromptReturned"]
+rationale = "waitForCallbackOrManualInput (:155-181) starts the manual prompt with its own AbortController, awaits the callback, and in finally aborts that controller; its prompt's settling is joined by the caller's own flow. Go (ai/oauth_callback_server.go WaitForCallbackOrManualInput) cancels the manual prompt and waits on manualDone before returning, whether the callback or the manual input won. The test holds the manual prompt open after the callback won and requires the wait to stay blocked until the prompt returned; dropping `<-manualDone` (both joins, mutation run) fails it and the anthropic and openrouter login tests that rest on this join."
 
 [[files]]
 path = "packages/ai/src/auth/oauth/device-code.ts"
-disposition = "deferred"
-contracts = []
-evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/oauth_device_code.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:ai/oauth_async_contract_test.go#TestPollDeviceCodeSleepCancelledByTheSignalIsLoginCancelledNotATimeout", "test:ai/oauth_async_contract_test.go#TestAbortableDeviceSleepSettlesWithTheTimerOrTheCancelMessage"]
+rationale = "abortableSleep (:26-44) settles with the timer or rejects with the cancel message, and pollOAuthDeviceCodeFlow (:46-97) turns a cancel during the sleep into that message (not the timeout message). Tests cancel during the sleep (hermetic, no real-clock wait) and require exactly the cancel message. Mutation: `return nil` for the cancelled sleep in ai/oauth_device_code.go fails both."
 
 [[files]]
 path = "packages/ai/src/auth/oauth/github-copilot.ts"
@@ -289,10 +289,10 @@ rationale = "The browser path (:359) falls back to the paste when the callback s
 
 [[files]]
 path = "packages/ai/src/auth/oauth/openrouter.ts"
-disposition = "deferred"
-contracts = []
-evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/oauth_openrouter.go (OpenRouter OAuth login/exchange; registered in oauth_registry.go; unit-tested + oauth/08 behavioral scenario)`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+disposition = "translated"
+contracts = ["awaited", "concurrent-joined", "cancellable"]
+evidence = ["test:ai/oauth_async_contract_test.go#TestOpenRouterOAuthLoginReturnsOnlyAfterTheManualPromptReturned", "test:ai/oauth_async_contract_test.go#TestOpenRouterExchangeIsCancelledBeforeAndDuringTheRequest"]
+rationale = "loginOpenRouter (:113) joins the manual prompt through waitForCallbackOrManualInput; exchangeAuthorizationCode (:58-89) throws `Login cancelled` for an aborted signal before the request (:63), and after a failed fetch when the caller's signal aborted (:88) before the timeout message (:89). Tests: the login returns only after the manual prompt returned; an already cancelled and a mid-request cancelled exchange both end with exactly `Login cancelled`. Mutations: dropping `<-manualDone`, the pre-check in exchangeOpenRouterCode, and the abort-before-timeout branch each fail them."
 
 [[files]]
 path = "packages/ai/src/auth/oauth/pkce.ts"
@@ -303,10 +303,10 @@ rationale = "generatePKCE is async only because crypto.subtle.digest returns a P
 
 [[files]]
 path = "packages/ai/src/auth/oauth/radius.ts"
-disposition = "deferred"
-contracts = []
-evidence = []
-rationale = "PORT_MAP marks this file ⏸ deferred: `(deferred: PiG-owned hosted authentication and gateway contract is not ratified)`"
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:ai/oauth_async_contract_test.go#TestRadiusOAuthLoginCancelledWhileTheGatewayHasNotAnswered", "test:ai/oauth_async_contract_test.go#TestRadiusOAuthBrowserLoginReleasesTheLoopbackPortBeforeReturning"]
+rationale = "requestOAuthToken (:96-110) and requestDeviceAuthorization (:191-201) turn a fetch that fails after the signal aborted into `Login cancelled`; loginWithBrowser (:136-187) closes the callback server in finally before returning. Tests: a stalled device or token endpoint cancelled mid-request returns exactly `Login cancelled`; the loopback port is free when the browser login returns. Mutations: removing the sendForm cancel mapping and `defer callback.Close()` fail them."
 
 [[files]]
 path = "packages/ai/src/auth/oauth/xai.ts"
@@ -366,10 +366,10 @@ rationale = "registerImagesApiProvider stores a wrapGenerateImages wrapper: a mo
 
 [[files]]
 path = "packages/ai/src/images.ts"
-disposition = "deferred"
-contracts = []
-evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/images.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:ai/images_registry_mismatch_test.go#TestRegisteredImagesProviderRefusesAModelOfAnotherAPIBeforeRunning", "test:ai/openrouter_images_upstream_test.go#TestOpenRouterImagesUpstream"]
+rationale = "generateImages (:19) awaits the registered provider and refuses a model of another api with `Mismatched api: <model api> expected <api>` before the provider runs; the caller's signal reaches the provider. Tests: the registry refusal text and that the provider did not run; the images call's context reaches the provider request. Mutations: dropping the mismatch guard in ai/images.go and passing context.Background() to the provider fail them."
 
 [[files]]
 path = "packages/ai/src/lazy-oauth.ts"
@@ -422,10 +422,10 @@ rationale = "resolveValue checks the signal before and after each ctx.env lookup
 
 [[files]]
 path = "packages/ai/src/providers/faux.ts"
-disposition = "deferred"
-contracts = []
-evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/faux.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'. Delta at Pi d0aa218c: f715a15c1 changes only the code named in the upstream-sync row of this file; no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged."
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:ai/faux_abort_contract_test.go#TestFauxAbortedStreamsCarryPisAbortedMessage", "test:ai/faux_provider_upstream_test.go#TestFauxProviderUpstream"]
+rationale = "streamWithDeltas checks the signal before the first chunk (:367) and in the text, thinking and toolcall chunk loops (:391, :414, :433) and ends with createAbortedMessage (:344): stopReason aborted, errorMessage `Request was aborted`. Tests assert the aborted error event, the result's stopReason and message for each of the four sites. Mutations that fail them: the pre-start check, the text, thinking and toolcall chunk checks, and the message text. The per-block check at the top of the block loop (:377) cannot be told apart without racing the consumer: its removal stays green and is not claimed."
 
 [[files]]
 path = "packages/ai/src/providers/google-vertex.ts"
@@ -450,10 +450,10 @@ rationale = "personalizeOpenRouterCatalog (1.2.0, ee409a85) awaits one fetch of 
 
 [[files]]
 path = "packages/ai/src/providers/radius-config.ts"
-disposition = "deferred"
-contracts = []
-evidence = []
-rationale = "PORT_MAP marks this file ⏸ deferred: `(deferred: PiG-owned gateway URL, authentication, privacy, and retention contract is not ratified)`. Delta at Pi d0aa218c: f715a15c1 changes only the code named in the upstream-sync row of this file; no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged."
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:ai/compat_radius_cancellation_test.go#TestLoadRadiusGatewayConfigIsCancelledWhileTheGatewayHasNotAnswered"]
+rationale = "loadRadiusGatewayConfig (:81-94) passes its signal to fetch, so an abort ends the request. The test cancels while the gateway has not answered and requires the call to end with the cancellation and the server to see its request context end (with a failure watchdog, no sleeps as synchronisation). Mutation: `radiusHTTPClient.Do(request.WithContext(context.Background()))` fails it."
 
 [[files]]
 path = "packages/ai/src/providers/radius.ts"
@@ -485,10 +485,10 @@ rationale = "`(AbortSignal/Promise racing: raceWithAbortSignal/operationSignal; 
 
 [[files]]
 path = "packages/ai/src/utils/event-stream.ts"
-disposition = "deferred"
+disposition = "translated"
 contracts = ["awaited", "cancellable"]
-evidence = ["test:ai/event_stream_end_test.go", "test:agent/stream_end_result_test.go", "scenario:test/parity/scenarios/providers-faux-streaming/20-sdk-stream-options.toml"]
-rationale = "Reviewed result-only end: iteration closes independently of final-result resolution; first resolution retains its pointer, later pushes are ignored, and Agent/ModelRuntime await Result with operation cancellation. The compiling dropped-result mutation fails the End guards. Complete source-wide Promise/invariant review remains deferred; this does not close unreviewed pre-terminal event validation behavior."
+evidence = ["test:ai/event_stream_end_test.go#TestAssistantStreamEndResolvesWithoutEvents", "test:ai/event_stream_end_test.go#TestAssistantStreamEndWithoutResultClosesOnlyIteration", "test:agent/stream_end_result_test.go"]
+rationale = "push ignores events after the terminal one (:51-), the first result wins, result() awaits the final promise (:86) and the iterator ends with the stream. Go: AssistantEventStream.push/End/ResultContext. Mutations that fail the end tests: dropping the after-terminal guard, accepting a later result over the first, and ResultContext returning nil on cancellation."
 
 [[files]]
 path = "packages/ai/src/utils/provider-retry.ts"
@@ -499,10 +499,10 @@ rationale = "retryProviderRequest (:87) awaits the request; on failure a signal 
 
 [[files]]
 path = "packages/ai/src/utils/retry.ts"
-disposition = "deferred"
-contracts = []
-evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ported, but the per-file cross-language ordering/cancellation/error contract has not been reviewed for this pin, as for its sibling rows. Delta at Pi bd3c9b82: cedefc53, 29057ece and 6e491cfa change the classifier regular expressions; no added or removed line contains async, await, Promise or .then, so the delta adds no async contract to review. delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Re-confirmed at Pi e7a0df27: the delta since b3a29f11 changes no line that mentions async, await, Promise, then/catch/finally, timers, signals or AbortSignal, so the contract stands. Delta at Pi c23b9ec1: 566344046 adds the gateway wording \"cut short after the reply had begun\" to the retryable patterns; the backoff sleep and abort contract are unchanged."
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:ai/oauth_async_contract_test.go#TestRetrySleepOnAnAbortedSignalIsAlwaysAborted"]
+rationale = "The backoff sleep (:178-182) rejects at once for an already aborted signal, and retryAssistantCall (:212-258) normalizes it to an aborted message. The test requires sleepContext on an aborted context to return the aborted error even for a zero delay. Mutation: removing the pre-check in ai/assistant_retry.go sleepContext fails it."
 
 [[files]]
 path = "packages/ai/src/utils/sleep.ts"
@@ -2557,10 +2557,10 @@ rationale = "renderSections awaits each section's render in declaration order, s
 
 [[files]]
 path = "packages/durable/src/harness/provider.ts"
-disposition = "deferred"
-contracts = []
-evidence = []
-rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release. Re-audited at Pi c23b9ec1: the async skeleton of packages/durable/src/harness/provider.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:durable/harness/provider_session_id_contract_test.go#TestEnsureProviderSessionIdAwaitsTheSnapshotThenTheCommitAndFailsWithTheirFailures"]
+rationale = "ensureProviderSessionId (:26-37) awaits runtime.snapshot, then runtime.commit with its context, and throws `Conversation N has no provider session ID` when none exists. The test scripts the runtime and requires the snapshot read before the commit, the caller's context on both, each failure returned unchanged, the empty-id error text, and the id recorded. Mutations: dropping the empty-id error, the recorded session, the commit context and the commit error fail it."
 
 [[files]]
 path = "packages/durable/src/harness/scheduler.ts"
@@ -2606,10 +2606,10 @@ rationale = "Type declarations only: every Promise here (Conversation/Harness/Ta
 
 [[files]]
 path = "packages/durable/src/harness/usage.ts"
-disposition = "deferred"
-contracts = []
-evidence = []
-rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release. Re-audited at Pi c23b9ec1: the async skeleton of packages/durable/src/harness/usage.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:durable/harness/usage_contract_test.go#TestRecordUsageOpensTheConversationLedgerAndFailsWithItsFailure", "test:durable/harness/usage_pi_oracle_test.go#TestUsageLedgerMatchesPiOnSeededPrograms"]
+rationale = "recordUsage (:26-33) awaits tx.doc(UsageDoc, conversationId) and adds into the bucket. Tests: the failure of the ledger read is returned and nothing is written; the seeded Pi oracle compares totals. Mutations: swallowing the doc error and dropping the accumulation fail them."
 
 [[files]]
 path = "packages/durable/src/harness/util.ts"
@@ -2662,10 +2662,10 @@ rationale = "latest() and marker() (:29-60) await the caller's read callback onc
 
 [[files]]
 path = "packages/durable/src/session/forks.ts"
-disposition = "deferred"
-contracts = []
-evidence = []
-rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release. Re-audited at Pi c23b9ec1: the async skeleton of packages/durable/src/session/forks.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:durable/session/forks_contract_test.go#TestPrepareForkDocumentCopiesAwaitsItsReadsInOrderWithTheCallersContext", "test:durable/session/session_forks_test.go#TestSessionConversationDocumentForks"]
+rationale = "prepareForkDocumentCopies (:26-90) awaits entry (:33), then the scans page by page (:73) and the id minting (:76), each with the caller's context; an invisible entry throws `Entry ... is not visible from conversation ...`. Tests record the order of reads and the context each received and the paging. Mutations: stopping paging after the first page, handing context.Background() to the scan and returning nil for an invisible entry fail them."
 
 [[files]]
 path = "packages/durable/src/session/keys.ts"
@@ -2704,10 +2704,10 @@ rationale = "Browser-only Storage backed by window IndexedDB: every method wraps
 
 [[files]]
 path = "packages/durable/src/storage/jsonl/node.ts"
-disposition = "deferred"
-contracts = []
-evidence = ["test:durable/storage/jsonl/jsonl_storage_read_only_test.go#TestJsonlStorageReadOnlyOpen"]
-rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release. Re-audited at Pi c23b9ec1: the async skeleton of packages/durable/src/storage/jsonl/node.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged. Delta at Pi f5f4a71af: a doc comment and the JsonlStorageReadOnlyError re-export only; no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged (the read-only open's awaited retry lives in storage.ts)."
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:durable/storage/jsonl/node/open_node_storage_contract_test.go#TestOpenNodeJsonlStorageSettlesWithTheOpenOfItsStorage", "test:durable/storage/jsonl/jsonl_storage_read_only_test.go#TestJsonlStorageReadOnlyOpen"]
+rationale = "openNodeJsonlStorage (:6) resolves its directory against the working directory at open time and settles with the open of its storage. The test requires an open on a cancelled context to end with that open's own failure, and the open-time working directory. Mutations: a fixed directory and context.Background() on the open fail them."
 
 [[files]]
 path = "packages/durable/src/storage/jsonl/storage.ts"
@@ -2739,10 +2739,10 @@ rationale = "New in Pi c23b9ec1: one SqliteStorage.commit call in a few statemen
 
 [[files]]
 path = "packages/durable/src/storage/sqlite/migrations.ts"
-disposition = "deferred"
-contracts = []
-evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ported, but the per-file cross-language ordering/cancellation/error contract has not been reviewed for this pin, as for its sibling rows. Delta at Pi bd3c9b82: 4c25119f changes it and cae9fd28 reverts it; no added or removed line contains async, await, Promise or .then, so the delta adds no async contract to review. delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:durable/storage/sqlite/sqlite_migrations_contract_test.go#TestSqliteMigrationEntryPointsApplyTheListTheyAreGiven", "test:durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations"]
+rationale = "applySqliteMigrations and applySqliteMigrationsForSchema (:124-137) await the shared applyMigrations with the given list and the schema's version table. Tests: the list given is the list applied (an empty list is not replaced by the defaults), the schema's table is used, and a failure is returned. Mutations: replacing an empty list, the default table and dropping the error fail them."
 
 [[files]]
 path = "packages/durable/src/storage/sqlite/node.ts"
@@ -2795,10 +2795,10 @@ rationale = "StoreStorage is Durable's Storage on Chord's store. open (:118-146)
 
 [[files]]
 path = "packages/durable/src/testing/assertions.ts"
-disposition = "deferred"
-contracts = []
-evidence = []
-rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:durable/durabletest/assertions_upstream_test.go#TestStorageConformanceAssertionsPassAndFail"]
+rationale = "rejects (:35-36) awaits the operation and passes only when it rejects with a message containing messageIncludes. Mutations: accepting a successful call and ignoring the message fail the test."
 
 [[files]]
 path = "packages/durable/src/testing/commit-writes.ts"
@@ -2816,10 +2816,10 @@ rationale = "Added to the accounting when every monorepo package was listed: the
 
 [[files]]
 path = "packages/durable/src/testing/runner.ts"
-disposition = "deferred"
-contracts = []
-evidence = []
-rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:durable/durabletest/runner_contract_test.go#TestConformanceRunnerCasesFailWithTheirProvidersFailure"]
+rationale = "runner.it (:9) runs each conformance case as its own test and ends it with the case's failure. Go RegisterStorageConformance and RegisterEnvConformance run each case through runStorageConformanceCase/runEnvConformanceCase, which fail the test with the case's error. Mutations: swallowing that error in either fail the test."
 
 [[files]]
 path = "packages/durable/src/testing/storage-benchmark.ts"
