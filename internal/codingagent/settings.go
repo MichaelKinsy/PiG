@@ -1713,7 +1713,7 @@ const (
 	TerminalFramePacingPi       = "pi"
 )
 
-// terminalFramePacingDefault is the frame pacing of a run that selects none: the terminal.framePacing key unset or holding any other value, and PIG_FRAME_PACING naming no policy. It is Pi's interval: the adaptive policy's median gap between visible changes is shorter, but on small writes a 10 ms frame that changes nothing restarts the interval, so more than a third of the gaps there are 20 ms where Pi's are 16 (D625). This constant is the only place the default is decided.
+// terminalFramePacingDefault is the frame pacing of a run that selects none: the terminal.framePacing key unset or holding any other value, and PIG_FRAME_PACING naming no policy. It is Pi's interval: the adaptive policy's median and 95th percentile gap between visible changes are shorter, but while a file is written its 99th percentile is 34 ms where Pi's is 17, and it uses 17 to 19 % more CPU time there (D625). This constant is the only place the default is decided.
 // pig additive (D625): the adaptive policy is opt-in.
 const terminalFramePacingDefault = TerminalFramePacingPi
 
