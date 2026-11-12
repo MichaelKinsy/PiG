@@ -286,7 +286,7 @@ func (m *InteractiveMode) tickStatusIndicators(now time.Time) {
 
 // renderStatusStep draws what a status-indicator tick changed. Pi's Loader asks for the frame of every step at once; a TUI that draws a change within a time (the main-screen and alt-screen renderers) gets it within tui.StepFrameDelay, so that a frame the stream asks for in that time draws the step and the tick adds none of its own. Any other TUI draws the tick at once.
 //
-// pig divergence (D619): the step's frame waits for a frame drawn for something else, up to min(40 ms, interval/2).
+// pig divergence (D619): while frames are being drawn the step's frame waits for a frame drawn for something else, up to min(40 ms, interval/2); a step taken when no frame was drawn in that time asks for its frame at once, as Pi does.
 func (m *InteractiveMode) renderStatusStep() {
 	if ui, ok := m.tuiInst.(tui.FrameWithinRequester); ok {
 		ui.RequestRenderWithin(tui.StepFrameDelay(m.statusFrameInterval()))
