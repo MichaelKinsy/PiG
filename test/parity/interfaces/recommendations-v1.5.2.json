@@ -155488,7 +155488,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "87 normalized-name Pig candidates are ambiguous."
+        "88 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -155556,6 +155556,7 @@
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#emergencyExiting.Store",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#extensionKeybindingDefinitions.Store",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#mermaidFoldScanned.Store",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent#sessionLinesEncoded.Store",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#stdoutTTY.Store",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#toolCardSeq.Store",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#uncaughtGoroutineHandler.Store",
@@ -160473,7 +160474,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "114 normalized-name Pig candidates are ambiguous."
+        "115 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -160553,6 +160554,7 @@
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#radiusLoginMenu.Add",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#searchTextArena.add",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#sessionAccountingAccumulator.add",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent#sessionLinesEncoded.Add",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#sessionProjector.add",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#sessionSnapshot.add",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#toolCardSeq.Add",
@@ -160644,7 +160646,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "27 normalized-name Pig candidates are ambiguous."
+        "28 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -160678,6 +160680,7 @@
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#diagnosticBytes.And",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/engine#keyIDCacheCount.And",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#mermaidFoldScanned.And",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent#sessionLinesEncoded.And",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#toolCardSeq.And",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/export#exportCardSeq.And",
         "go:github.com/MichaelKinsy/PiG/tui#keyIDCacheCount.And"
@@ -164984,7 +164987,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "31 normalized-name Pig candidates are ambiguous."
+        "32 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -165022,6 +165025,7 @@
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#diagnosticBytes.Or",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/engine#keyIDCacheCount.Or",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#mermaidFoldScanned.Or",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent#sessionLinesEncoded.Or",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#toolCardSeq.Or",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/export#exportCardSeq.Or",
         "go:github.com/MichaelKinsy/PiG/tui#keyIDCacheCount.Or"
