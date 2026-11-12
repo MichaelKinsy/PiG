@@ -42,8 +42,9 @@ if ! git bisect run sh -c 'exec "$1" "$(git rev-parse HEAD)"' sh "$probe" >"$log
   exit 4
 fi
 cat "$log" >&2
-first=$(sed -n 's/^\([0-9a-f]\{40\}\) is the first bad commit$/\1/p' "$log" | tail -1)
-[ -n "$first" ] || {
+# A finished search leaves the first bad commit in refs/bisect/bad (the trap resets it). Its report line is not parsed: git 2.56 words it
+# "is the first 'bad' commit" where older versions print "is the first bad commit".
+first=$(git rev-parse --verify --quiet "refs/bisect/bad^{commit}") || {
   echo "::error::git bisect named no first bad commit" >&2
   exit 4
 }
