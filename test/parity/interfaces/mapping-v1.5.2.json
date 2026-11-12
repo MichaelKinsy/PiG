@@ -109232,8 +109232,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_66_test.go#TestExample66HostData",
-        "test:chord/next/host/host_host_data_test.go#TestHostDataLifecycleAHostWithoutAStoreRefusesEveryHostDataCall",
-        "test:chord/next/host/host_host_data_test.go#TestHostDataLifecycleAnAbortBeforeTheCommitWasAdmittedWritesNothing"
+        "test:chord/next/host/host_host_data_test.go#TestHostDataAnActivationWaitingAtTheGateWhoseObjectEndedMeanwhileFailsReleased",
+        "test:chord/next/host/host_host_data_test.go#TestHostDataLifecycleADeleteAbortedAfterItsLinesWereTakenIsRefusedAtAdmissionAndWritesNothing"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -109255,8 +109255,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_66_test.go#TestExample66HostData",
-        "test:chord/next/host/host_host_data_test.go#TestHostDataLifecycleAHostWithoutAStoreRefusesEveryHostDataCall",
-        "test:chord/next/host/host_host_data_test.go#TestHostDataLifecycleAnAbortBeforeTheCommitWasAdmittedWritesNothing"
+        "test:chord/next/host/host_host_data_test.go#TestHostDataAnActivationWaitingAtTheGateWhoseObjectEndedMeanwhileFailsReleased",
+        "test:chord/next/host/host_host_data_test.go#TestHostDataLifecycleADeleteAbortedAfterItsLinesWereTakenIsRefusedAtAdmissionAndWritesNothing"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -109279,7 +109279,7 @@
       "evidence": [
         "test:chord/next/host/host_example_66_test.go#TestExample66HostData",
         "test:chord/next/host/host_host_data_test.go#TestHostDataLifecycleAHostWithoutAStoreRefusesEveryHostDataCall",
-        "test:chord/next/host/host_host_data_test.go#TestHostDataLifecycleAnOwnerThatCannotReadAnImportedDocumentFailsAloneTheOtherOwnersAdopt"
+        "test:chord/next/host/host_host_data_test.go#TestHostDataLifecycleAnImportAbortedAfterItsLinesWereTakenIsRefusedAtAdmissionAndWritesNothing"
       ]
     },
     {
@@ -109301,7 +109301,7 @@
       "evidence": [
         "test:chord/next/host/host_example_66_test.go#TestExample66HostData",
         "test:chord/next/host/host_host_data_test.go#TestHostDataLifecycleAHostWithoutAStoreRefusesEveryHostDataCall",
-        "test:chord/next/host/host_host_data_test.go#TestHostDataLifecycleAnOwnerThatCannotReadAnImportedDocumentFailsAloneTheOtherOwnersAdopt"
+        "test:chord/next/host/host_host_data_test.go#TestHostDataLifecycleAnImportAbortedAfterItsLinesWereTakenIsRefusedAtAdmissionAndWritesNothing"
       ]
     },
     {
@@ -109413,7 +109413,7 @@
       "evidence": [
         "test:chord/next/host/host_example_66_test.go#TestExample66HostData",
         "test:chord/next/host/host_host_data_test.go#TestHostDataLifecycleAHostWithoutAStoreRefusesEveryHostDataCall",
-        "test:chord/next/host/host_host_data_test.go#TestHostDataLifecycleAnOwnerThatCannotReadAnImportedDocumentFailsAloneTheOtherOwnersAdopt"
+        "test:chord/next/host/host_host_data_test.go#TestHostDataLifecycleAnImportAbortedAfterItsLinesWereTakenIsRefusedAtAdmissionAndWritesNothing"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -109436,7 +109436,7 @@
       "evidence": [
         "test:chord/next/host/host_example_66_test.go#TestExample66HostData",
         "test:chord/next/host/host_host_data_test.go#TestHostDataLifecycleAHostWithoutAStoreRefusesEveryHostDataCall",
-        "test:chord/next/host/host_host_data_test.go#TestHostDataLifecycleAnOwnerThatCannotReadAnImportedDocumentFailsAloneTheOtherOwnersAdopt"
+        "test:chord/next/host/host_host_data_test.go#TestHostDataLifecycleAnImportAbortedAfterItsLinesWereTakenIsRefusedAtAdmissionAndWritesNothing"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -109898,8 +109898,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_66_test.go#TestExample66HostData",
-        "test:chord/next/host/host_host_data_test.go#TestHostDataLifecycleAnAbortBeforeTheCommitWasAdmittedWritesNothing",
-        "test:chord/next/host/host_host_data_test.go#TestHostDataLiveOwnersFollowADeleteThePinnedKeyReadsInitialTheLiveQueryIsEmpty"
+        "test:chord/next/host/host_host_data_test.go#TestHostDataAnActivationWaitingAtTheGateWhoseObjectEndedMeanwhileFailsReleased",
+        "test:chord/next/host/host_host_data_test.go#TestHostDataLifecycleADeleteAbortedAfterItsLinesWereTakenIsRefusedAtAdmissionAndWritesNothing"
       ]
     },
     {
@@ -109930,7 +109930,7 @@
       "evidence": [
         "test:chord/next/host/host_example_66_test.go#TestExample66HostData",
         "test:chord/next/host/host_host_data_test.go#TestHostDataLifecycleAHostWithoutAStoreRefusesEveryHostDataCall",
-        "test:chord/next/host/host_host_data_test.go#TestHostDataLifecycleAnOwnerThatCannotReadAnImportedDocumentFailsAloneTheOtherOwnersAdopt"
+        "test:chord/next/host/host_host_data_test.go#TestHostDataLifecycleAnImportAbortedAfterItsLinesWereTakenIsRefusedAtAdmissionAndWritesNothing"
       ]
     },
     {
