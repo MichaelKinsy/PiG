@@ -33,7 +33,7 @@ if [ "$count" = 1 ]; then
 fi
 
 log=$(mktemp)
-trap 'git bisect reset >/dev/null 2>&1 || true; rm -f "$log"' EXIT
+trap 'rm -f "$log"; git bisect reset >/dev/null 2>&1 || true' EXIT
 git bisect start --first-parent "$bad" "$good" >&2
 # shellcheck disable=SC2016 # The inner sh expands $1 and the rev-parse substitution, not this shell.
 if ! git bisect run sh -c 'exec "$1" "$(git rev-parse HEAD)"' sh "$probe" >"$log" 2>&1; then
