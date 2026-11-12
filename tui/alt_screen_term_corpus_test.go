@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/internal/screenwriter"
+	"github.com/MichaelKinsy/PiG/internal/screenwriter/gridterm"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
@@ -562,6 +564,21 @@ func TestAltScreenTermEngineCorpus(t *testing.T) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
+	// The two recorded steps of the benchmark (PiG's own bytes for the long answer and the 50-file write), in both variants.
+	for name, writes := range screenWriterStreams(t) {
+		recorded := add(name, 160, 48)
+		for _, variant := range []string{"A", "B"} {
+			v := recorded.Variants[variant]
+			for _, write := range writes {
+				(&termRecorder{v}).add(nil, write)
+			}
+		}
+	}
+	// C and D are what the screen writer (D624) makes of A and B: its bytes must leave every engine showing the screen the bytes it
+	// was given do, after every step. Every seventh step ends with the settle write.
+	for _, sc := range manifest.Scenarios {
+		sc.Variants["C"], sc.Variants["D"] = termWriterVariant(sc, sc.Variants["A"], sc.Name+".C.bin"), termWriterVariant(sc, sc.Variants["B"], sc.Name+".D.bin")
+	}
 	for _, sc := range manifest.Scenarios {
 		for _, v := range sc.Variants {
 			if err := os.WriteFile(filepath.Join(dir, v.File), v.data, 0o644); err != nil {
@@ -572,7 +589,7 @@ func TestAltScreenTermEngineCorpus(t *testing.T) {
 	var plan strings.Builder
 	for _, sc := range manifest.Scenarios {
 		fmt.Fprintf(&plan, "scenario\t%s\t%d\t%d\n", sc.Name, sc.Cols, sc.Rows)
-		for _, name := range []string{"A", "B"} {
+		for _, name := range []string{"A", "B", "C", "D"} {
 			v := sc.Variants[name]
 			fmt.Fprintf(&plan, "variant\t%s\t%s\n", name, v.File)
 			for _, step := range v.Steps {
@@ -587,4 +604,26 @@ func TestAltScreenTermEngineCorpus(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "plan.txt"), []byte(plan.String()), 0o644); err != nil {
 		t.Fatal(err)
 	}
+}
+
+// termWriterVariant is the bytes a terminal of the scenario's size, resized as v says, is sent for the steps of v when a screen writer is under it.
+func termWriterVariant(sc *termCorpusScenario, v *termCorpusVariant, file string) *termCorpusVariant {
+	size := [2]int{sc.Cols, sc.Rows}
+	writer := screenwriter.New(screenwriter.Options{Size: func() (int, int) { return size[0], size[1] }, Settle: -1})
+	out := &termCorpusVariant{File: file}
+	start := 0
+	for i, step := range v.Steps {
+		if step.Resize != nil {
+			size = [2]int{step.Resize[0], step.Resize[1]}
+		}
+		for _, write := range gridterm.SplitWrites(string(v.data[start:step.End])) {
+			out.data = append(out.data, writer.Translate(write)...)
+		}
+		if i%7 == 6 {
+			out.data = append(out.data, writer.Settled()...)
+		}
+		start = step.End
+		out.Steps = append(out.Steps, termCorpusStep{Resize: step.Resize, End: len(out.data)})
+	}
+	return out
 }
