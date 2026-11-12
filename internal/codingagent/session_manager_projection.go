@@ -168,9 +168,9 @@ func BuildSessionProjection(entries []SessionEntry, leafID *string, byID map[str
 	return buildSessionProjection(buildSessionPath(entries, leafID, byID), asMessage, true)
 }
 
-// ProjectSessionPath projects a root-to-leaf entry path as it stands, without walking parent links again. Compaction preparation uses it on SessionManager.getBranch() output (compaction.ts prepareCompaction passes that path to buildSessionProjection, which returns the same projection for a chained path).
+// ProjectSessionPath projects a root-to-leaf entry path as it stands, without walking parent links again. Compaction preparation uses it on SessionManager.getBranch() output (compaction.ts prepareCompaction passes that path to buildSessionProjection, which returns the same projection for a chained path). The messages are the entries' own, to be read and never modified: a caller that hands one on clones it first, as PrepareCompaction does for each message it returns.
 func ProjectSessionPath(path []SessionEntry) SessionProjection {
-	return buildSessionProjection(path, asMessage, true)
+	return buildSessionProjection(path, asMessage, false)
 }
 
 // SessionEntryToContextMessages projects one entry into context messages
