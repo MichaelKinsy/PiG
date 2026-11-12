@@ -318,6 +318,30 @@ patch("406e719a6bff", "pi-ai/api/constrained-sampling.js", [
 packageFile("49fe0a237", "pi-coding-agent/schemas/models.schema.json", [messageThreadsDefault]);
 // END backport 49fe0a237
 
+// BEGIN backport aa47cedce
+// aa47cedce (#12100): a non-strict Anthropic tool schema keeps its root additionalProperties (false, true or a schema). PiG's vendored runtime carries pi-ai's
+// anthropic-messages as a bridge stub that runs in PiG's host (ai/anthropic.go, which has the change), so the file is the installed Pi's only: the parity oracle
+// (the request body of test/pipeline-diff's tool schema comparison) is Pi with the fix.
+packageFile("aa47cedce", "pi-ai/api/anthropic-messages.js", [
+    [`        // Keep shared definitions so property $refs still resolve. Other root keywords stay out:
+        // Anthropic rejects root anyOf/oneOf/allOf with a 400.
+        const legacyInputSchema = {
+            type: "object",
+            properties: schema.properties ?? {},
+            required: schema.required ?? [],
+`, `        // Keep shared definitions so property $refs still resolve, and additionalProperties so the
+        // model knows whether extra arguments are allowed. Other root keywords stay out:
+        // Anthropic rejects root anyOf/oneOf/allOf with a 400.
+        ${note("aa47cedce").trim()}
+        const legacyInputSchema = {
+            type: "object",
+            properties: schema.properties ?? {},
+            required: schema.required ?? [],
+            ...(schema.additionalProperties === undefined ? {} : { additionalProperties: schema.additionalProperties }),
+`],
+]);
+// END backport aa47cedce
+
 // backportPatches keys the compiled output of a Pi package; packageFileBackports the files that are not compiled output and that the vendored runtime
 // does not carry, but that the installed Pi package (the parity oracle) and the source mirror hold, with the same text. Both are keyed by package and path.
 const tableOf = (name) => Object.fromEntries(blocks.filter((b) => b.table === name).map((b) => [b.key, b.patches]));

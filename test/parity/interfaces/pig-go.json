@@ -28883,9 +28883,9 @@
       "shapeHash": "sha256:3669eb7349cb8bcae461655862e7429d36ba1b77f74bc7b6eea72428d185bbe8"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/ai#anthLegacyDefinitionKeys",
+      "id": "go:github.com/MichaelKinsy/PiG/ai#anthLegacyInputSchemaOrder",
       "package": "github.com/MichaelKinsy/PiG/ai",
-      "name": "anthLegacyDefinitionKeys",
+      "name": "anthLegacyInputSchemaOrder",
       "kind": "variable",
       "exported": false,
       "shape": {
@@ -28894,9 +28894,9 @@
       "shapeHash": "sha256:a1c330895d4124c2ac5e7956eaa7a61082b08546669578b38030562429ad3b1e"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/ai#anthLegacyInputSchemaOrder",
+      "id": "go:github.com/MichaelKinsy/PiG/ai#anthLegacyOptionalRootKeys",
       "package": "github.com/MichaelKinsy/PiG/ai",
-      "name": "anthLegacyInputSchemaOrder",
+      "name": "anthLegacyOptionalRootKeys",
       "kind": "variable",
       "exported": false,
       "shape": {

@@ -1965,6 +1965,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-f4cc20b](#bf-f4cc20b) | The pi-env daemon ended by SIGTERM, SIGINT or SIGHUP could end with status 1 and a stray `pi-env: read… | PiG's own defect | macOS | Unreleased |
 | [BF-f4d85f8](#bf-f4d85f8) | A large file written through a tool call no longer slows down as it streams: each streamed piece of the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f4daf25](#bf-f4daf25) | fix(chord): drop principal_same.go: follow/pi-main ported samePrincipal into principal.go | PiG's own defect | All platforms | Unreleased |
+| [BF-f51de47](#bf-f51de47) | ai: a non-strict Anthropic tool schema keeps its root `additionalProperties` (false, true or a schema), so… | PiG's own defect | All platforms | Unreleased |
 | [BF-f589900](#bf-f589900) | fix(tui): delete D155; PageUp and PageDown paging follows Pi | PiG's own defect | All platforms | Unreleased |
 | [BF-f5dd13f](#bf-f5dd13f) | fix(photonimage): lint findings of the PNG inflater and the GIF decoder | PiG's own defect | All platforms | Unreleased |
 | [BF-f5ecdc2](#bf-f5ecdc2) | Settings and `models.json` compat objects keep the members PiG does not model, as Pi 1.2.0 does | PiG's own defect | All platforms | 0.5.0 |
@@ -29027,6 +29028,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `f4daf25b83` (2026-11-07)
 - **Tests:** None recorded.
+
+### BF-f51de47
+
+**ai: a non-strict Anthropic tool schema keeps its root `additionalProperties` (false, true or a schema), so…**
+
+- **Source:** PiG's own defect
+- **Symptom:** ai: a non-strict Anthropic tool schema keeps its root `additionalProperties` (false, true or a schema), so Claude is told whether extra arguments are allowed; root `anyOf`, `oneOf` and `allOf` stay out (Pi aa47cedce, #12100).
+- **Root cause:** A non-strict tool's input_schema was rebuilt from type, properties, required, $defs and definitions, so a root additionalProperties: false never reached Claude. Pi copies the root additionalProperties whatever its value (false, true or a schema) after required and before $defs and definitions; root anyOf, oneOf and allOf and other root keywords stay out, because Anthropic answers a root anyOf with a 400. anthInputSchema does the same (anthLegacyOptionalRootKeys); the strict path already sent the keyword and is unchanged.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f51de47842` (2026-11-12)
+- **Tests:** `ai/anthropic_root_additional_properties_port_test.go::TestAnthropicNonStrictInputSchemaKeepsRootAdditionalPropertiesPiAa47cedce`, `ai/anthropic_root_additional_properties_port_test.go::TestAnthropicStrictInputSchemaStillSendsAdditionalPropertiesPiAa47cedce`, `ai/anthropic_strict_tool_schema_upstream_test.go::TestAnthropicStrictToolSchemas`, `ai/anthropic_test.go::TestAnthropicConvertToolsStrict`, `ai/tool_schema_wire_order_test.go::TestToolSchemaKeepsAuthoredOrderInProviderRequests`
+- **Release note:** ai: a non-strict Anthropic tool schema keeps its root `additionalProperties` (false, true or a schema), so Claude is told whether extra arguments are allowed; root `anyOf`, `oneOf` and `allOf` stay out (Pi aa47cedce, #12100).
 
 ### BF-f589900
 
