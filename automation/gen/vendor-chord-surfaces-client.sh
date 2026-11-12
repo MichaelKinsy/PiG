@@ -7,8 +7,7 @@
 #                  manifest then names it as `catchup`, the one commit the manifest may differ from the pin by (the Go test
 #                  TestNodeVendoredFilesAreExactlyTheManifests reads both), and records the pin it was made against.
 #   PI_CARRIED     Pi commits (comma-separated, in Pi's order) cherry-picked onto PI_COMMIT to make PI_TREE: a tree that is the pin plus those
-#                  commits alone, for a vendored file a carried commit changes while a later Pi commit this port does not carry (events,
-#                  Pi 8d30e6306) changed the rest of the closure. The manifest records them as `carried`; make PI_TREE with
+#                  commits alone, for a vendored file a carried commit changes while a later Pi commit this port does not carry changed the rest of the closure. The manifest records them as `carried`; make PI_TREE with
 #                  `git worktree add --detach <dir> <pin> && git -C <dir> cherry-pick <carried...>`. Drop it when a re-vendor at a
 #                  later commit takes over (then PI_COMMIT is that commit, a `catchup`).
 #   PI_TELEMETRY   the @earendil-works/pi-telemetry package dir (default: the one extensions/sdk-ts installed)
