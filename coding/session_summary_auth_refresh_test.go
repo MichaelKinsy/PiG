@@ -427,6 +427,7 @@ func TestSummaryAttemptsEachSendAFreshCredentialAfterExpiry(t *testing.T) {
 						world.advance(services, shape.credentialProvider, 31*time.Minute)
 					}
 				})
+				refreshesBefore := world.refreshes()
 				if err := operation.run(t, session); err != nil {
 					t.Fatalf("%s: %v; seen %q", operation.name, err, world.bearers())
 				}
@@ -436,6 +437,13 @@ func TestSummaryAttemptsEachSendAFreshCredentialAfterExpiry(t *testing.T) {
 				}
 				if shape.expires && bearers[1] == bearers[0] {
 					t.Fatalf("the retry after expiry sent the expired credential %q again", bearers[1])
+				}
+				wantRefreshes := 0
+				if shape.expires {
+					wantRefreshes = 1
+				}
+				if got := world.refreshes() - refreshesBefore; got != wantRefreshes {
+					t.Fatalf("the summary refreshed the credential %d times across the expiry, want %d", got, wantRefreshes)
 				}
 				if shape.expires && bearers[0] != turnBearer {
 					t.Fatalf("the first summary request sent %q, the turn sent %q: the credential had not expired yet", bearers[0], turnBearer)
@@ -458,12 +466,20 @@ func TestCompactionResolvesCredentialWhenItStartsFreshAndExpired(t *testing.T) {
 					world.advance(services, shape.credentialProvider, 31*time.Minute)
 				}
 				world.arm(0, nil)
+				refreshesBefore := world.refreshes()
 				result, err := session.Compact(t.Context(), "")
 				if err != nil || !strings.Contains(result.Summary, "summary text") {
 					t.Fatalf("compaction = %+v, %v; seen %q", result, err, world.bearers())
 				}
 				if bearers := world.bearers(); len(bearers) != 1 {
 					t.Fatalf("the summary sent %d requests: %q", len(bearers), bearers)
+				}
+				wantRefreshes := 0
+				if shape.expires && expired {
+					wantRefreshes = 1
+				}
+				if got := world.refreshes() - refreshesBefore; got != wantRefreshes {
+					t.Fatalf("the summary refreshed the credential %d times, want %d", got, wantRefreshes)
 				}
 			})
 		}
@@ -493,6 +509,7 @@ func TestAutoCompactionSurfacesRefreshFailureOnce(t *testing.T) {
 					mu.Unlock()
 				}
 			})
+			refreshesBefore := world.refreshes()
 			compacted, err := session.runAutoCompaction(t.Context(), "threshold", false)
 			if compacted || err != nil {
 				t.Fatalf("runAutoCompaction = %v, %v", compacted, err)
@@ -504,6 +521,9 @@ func TestAutoCompactionSurfacesRefreshFailureOnce(t *testing.T) {
 			}
 			if bearers := world.bearers(); len(bearers) != 0 {
 				t.Fatalf("a request was sent although its credential could not be resolved: %q", bearers)
+			}
+			if got := world.refreshes() - refreshesBefore; got != 1 {
+				t.Fatalf("the refused refresh was attempted %d times, want once", got)
 			}
 			if got := len(suiteCompactions(t, session)); got != 0 {
 				t.Fatalf("the failed compaction left %d compaction entries", got)
