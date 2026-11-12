@@ -200,6 +200,13 @@ precedence = "override"
 SPDX-FileCopyrightText = "Copyright (c) 2025 Mario Zechner"
 SPDX-License-Identifier = "MIT"
 
+# The pinned Pi build's declarations as ambient modules, generated from the installed build (extensions/sdk-ts/scripts/pin-bundle.mjs).
+[[annotations]]
+path = "extensions/sdk-ts/pi-pin.d.ts"
+precedence = "override"
+SPDX-FileCopyrightText = "Copyright (c) 2025 Mario Zechner"
+SPDX-License-Identifier = "MIT"
+
 [[annotations]]
 path = "chord/nextnode/plugins/node/pi/schema/**"
 precedence = "override"

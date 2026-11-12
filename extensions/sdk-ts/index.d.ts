@@ -1,4 +1,5 @@
-import "@earendil-works/pi-coding-agent";
+/// <reference path="./pi-pin.d.ts" />
+import type { MarkdownTransformContext, Theme } from "@earendil-works/pi-coding-agent";
 import "@earendil-works/pi-tui";
 
 export type * from "@earendil-works/pi-coding-agent";
