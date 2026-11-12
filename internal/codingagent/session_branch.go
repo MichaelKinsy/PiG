@@ -43,17 +43,18 @@ func (s *Session) planBranchedSession(leafID string) (branchedPlan, bool) {
 	var pending []string
 	for _, idx := range path {
 		slot := &s.slots[idx]
+		slotID := s.idOf(slot)
 		if slot.typ() == typeLabel {
-			pending = append(pending, slot.id)
+			pending = append(pending, slotID)
 			continue
 		}
 		for _, id := range pending {
-			replacements[id] = slot.id
+			replacements[id] = slotID
 		}
 		pending = pending[:0]
-		record := branchedRecord{slot: idx, id: slot.id}
+		record := branchedRecord{slot: idx, id: slotID}
 		if slot.typ() == typeCompaction {
-			if first := s.firstKept[int(idx)]; first != slot.id {
+			if first := s.firstKept[int(idx)]; first != slotID {
 				record.firstKept, record.rekeyed = replacements[first]
 			}
 		}
@@ -147,8 +148,8 @@ func (s *Session) branchedRecord(idx int32, records *recordSource, reader *recor
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	slot := &s.slots[idx]
-	if slot.entry != nil {
-		return slot.entry.Raw(), slot.entry
+	if resident := s.resident.get(int(idx)); resident != nil {
+		return resident.Raw(), resident
 	}
 	cold := s.coldPart(slot)
 	reader.blocks, reader.file = s.blockList, records.get()

@@ -48,10 +48,11 @@ func perfResponder(conn net.Conn) {
 	}
 }
 
-// One agent event dispatched to an extension (the request frame encoded and written, the response frame read, decoded and delivered to the waiting dispatcher) costs a constant allocation. The fake extension answers without allocating, so the counts are the host side of the crossing.
+// One agent event dispatched to an extension (the request frame encoded and written, the response frame read, decoded and delivered to the waiting dispatcher) costs a constant allocation. The connection is wired as a Host wires its own (observeXref), so the counts are what a Host pays, and the fake extension answers without allocating, so they are the host side of the crossing.
 func TestExtensionEventRoundTripAllocationGate(t *testing.T) {
 	hostSide, extSide := net.Pipe()
 	conn := NewConn("perf-gate", hostSide)
+	NewHostWithConfigRoot(t.TempDir(), t.TempDir()).observeXref(conn)
 	conn.Start(t.Context())
 	go perfResponder(extSide)
 	t.Cleanup(func() {
@@ -62,9 +63,12 @@ func TestExtensionEventRoundTripAllocationGate(t *testing.T) {
 	ctx := context.Background()
 	run := func(events int) {
 		for range events {
-			if _, err := conn.request(ctx, &Envelope{Type: MsgRequest, Request: &RequestPayload{Method: "event", Event: "message_update", Args: args}}, 0, "event"); err != nil {
+			resp, err := conn.request(ctx, &Envelope{Type: MsgRequest, Request: &RequestPayload{Method: "event", Event: "message_update", Args: args}}, 0, "event")
+			if err != nil {
 				t.Fatal(err)
 			}
+			// The handler returns the reply's frame once it has what it needs of it.
+			releaseResponse(resp)
 		}
 	}
 	marginal := perfgate.CheckLinear(t, "extension.event_roundtrip", 500, 1.5, run)

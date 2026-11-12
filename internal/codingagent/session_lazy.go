@@ -34,7 +34,7 @@ func (s *Session) locateLocked(slot *entrySlot, off int64, line []byte) {
 // locateHashedLocked is locateLocked of a line of size bytes whose recordHash is hash.
 func (s *Session) locateHashedLocked(slot *entrySlot, off int64, size int, hash uint64) {
 	cold := s.coldLocked(slot)
-	cold.off, cold.size, cold.hash, cold.block = off, int32(size), uint32(hash), 0
+	cold.off, cold.size, cold.hash = off, int32(size), uint32(hash)
 }
 
 // errRecordChanged is the reason a read gives for a record whose bytes are not the indexed ones.
@@ -189,7 +189,7 @@ func (s *Session) noteTimestampLocked(i int, timestamp string) {
 func (s *Session) lazyAtLocked(i int) bool {
 	slot := &s.slots[i]
 	cold := s.coldPart(slot)
-	return slot.typ() == typeMessage && slot.entry == nil && (cold.block != 0 || cold.off >= 0 && s.backing != "")
+	return slot.typ() == typeMessage && s.resident.get(i) == nil && (cold.blockOf() != 0 || cold.off >= 0 && s.backing != "")
 }
 
 // entryHandlesLocked returns the entries of the given slots for a whole-history read: a resident entry as it is, a message that is not
@@ -203,10 +203,10 @@ func (s *Session) entryHandlesLocked(indexes []int32) []SessionEntry {
 	var missing []int
 	var need []int32
 	for k, i := range indexes {
-		slot := &s.slots[i]
+		resident := s.resident.get(int(i))
 		switch {
-		case slot.entry != nil:
-			out[k] = slot.entry
+		case resident != nil:
+			out[k] = resident
 		case s.lazyAtLocked(int(i)):
 			handle := &s.handles[i]
 			if !handle.Indexed() {
@@ -235,15 +235,15 @@ func (s *Session) newHandleLocked(i int) sessionentry.LazyEntry {
 	}
 	cold := s.coldPart(slot)
 	at := sessionentry.RecordAt{Off: cold.off, Size: cold.size, Hash: uint64(cold.hash)}
-	if cold.block != 0 {
+	if blockNo := cold.blockOf(); blockNo != 0 {
 		at.Off = cold.blockAt()
-		return sessionentry.NewLazyEntry(slot.id, s.parentPtrLocked(i), timestamp, s.blockList[cold.block-1], at)
+		return sessionentry.NewLazyEntry(s.idOf(slot), s.parentPtrLocked(i), timestamp, s.blockList[blockNo-1], at)
 	}
 	if s.records == nil || s.records.path != s.backing || s.records.snapshot != s.snapshot {
 		// A handle keeps the source it was made with; a new backing file gets a new source.
 		s.records = &fileRecords{path: s.backing, snapshot: s.snapshot}
 	}
-	return sessionentry.NewLazyEntry(slot.id, s.parentPtrLocked(i), timestamp, s.records, at)
+	return sessionentry.NewLazyEntry(s.idOf(slot), s.parentPtrLocked(i), timestamp, s.records, at)
 }
 
 // mustMessage is sessionentry.AsMessage for code that has no error to return. No LazyEntry reaches it: lazy entries leave the Session only

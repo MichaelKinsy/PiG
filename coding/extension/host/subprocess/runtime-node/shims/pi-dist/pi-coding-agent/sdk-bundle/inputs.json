@@ -379,7 +379,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/tools/output-accumulator.js",
-      "sha256": "5416cd0ef5a8edc984093ed67053ae27ebfc7ed42699c452daddf94dd6217858"
+      "sha256": "117de1c63de9d87f9847ea71dcddaed6cbbbd5dd6ff9f33742533bf01a2431d0"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/tools/path-utils.js",

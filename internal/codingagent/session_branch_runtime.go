@@ -127,6 +127,7 @@ func (s *Session) replaceSessionLog(branched *Session) {
 	s.header = branched.header
 	s.effectiveCWD = branched.effectiveCWD
 	s.slots = branched.slots
+	s.ids, s.resident, s.searchRefs = branched.ids, branched.resident, branched.searchRefs
 	s.byID = branched.byID
 	s.danglingParents = branched.danglingParents
 	s.factArena = branched.factArena

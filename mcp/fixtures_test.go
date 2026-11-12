@@ -2,6 +2,7 @@ package mcp_test
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -21,7 +22,17 @@ import (
 const fixtureEnv = "MCP_TEST_FIXTURE"
 
 func TestMain(m *testing.M) {
+	testenv.GrabTerminalIfRequested()
 	switch os.Getenv(fixtureEnv) {
+	case "own-session":
+		// The server reports its process id, process group and session on stderr.
+		stat, err := os.ReadFile("/proc/self/stat")
+		if err != nil {
+			os.Exit(1)
+		}
+		fields := strings.Fields(string(stat[bytes.LastIndexByte(stat, ')')+1:]))
+		fmt.Fprintf(os.Stderr, "%d %s %s", os.Getpid(), fields[2], fields[3])
+		return
 	case "stdio-server":
 		runStdioServerFixture()
 		return

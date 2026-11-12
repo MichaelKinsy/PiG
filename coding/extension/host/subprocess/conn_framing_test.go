@@ -146,8 +146,8 @@ func (f outboundFrame) payloadBytes() []byte {
 const (
 	// A frame the host sends: encoded into a pooled buffer and written with one syscall.
 	sendAllocBudget = 0
-	// A request answered by the extension: the response channel, the decoded response envelope, and the request's bookkeeping. A request without an inactivity lease or suspension report has no state channel.
-	requestAllocBudget = 11
+	// A request answered by the extension: the test's own envelope and request payload, and the request's bookkeeping. The response channel, the response frame and the request ID are reused, and a request without an inactivity lease or suspension report has no state channel.
+	requestAllocBudget = 4
 )
 
 func TestConnAllocationBudgets(t *testing.T) {

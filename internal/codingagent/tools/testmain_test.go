@@ -18,6 +18,7 @@ func TestMain(m *testing.M) {
 		return
 	}
 	reportShellEnvIfRequested()
+	testenv.GrabTerminalIfRequested()
 	testenv.ReportStartupIfRequested()
 	testenv.ReportEnvironIfRequested()
 	os.Exit(testenv.RunScoped(m, "pig-tools-"))

@@ -18,13 +18,14 @@ var (
 
 func bgContext() context.Context { return context.Background() }
 
-// setStdioProcAttr gives the server its own process group, so closing the
-// transport can terminate the server's children too.
+// setStdioProcAttr starts the server as the leader of a new session, as Pi's stdio transport spawns it with `detached: USE_PROCESS_GROUPS` (stdio.ts), which
+// Node starts with setsid(2). The server leads its own process group, so closing the transport can terminate the server's children too, and it has no
+// controlling terminal: a server or a child of it cannot open /dev/tty and take the terminal's foreground group from PiG.
 func setStdioProcAttr(cmd *exec.Cmd) {
 	if cmd.SysProcAttr == nil {
 		cmd.SysProcAttr = &syscall.SysProcAttr{}
 	}
-	cmd.SysProcAttr.Setpgid = true
+	cmd.SysProcAttr.Setsid = true
 }
 
 func trackProcessGroup(pid int) {

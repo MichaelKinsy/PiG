@@ -3,7 +3,6 @@ package subprocess
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"sync"
 )
 
@@ -78,6 +77,3 @@ func (c *Conn) handleOAuthSignalRelease(args json.RawMessage) {
 		c.releaseAbort(release.RequestID)
 	}
 }
-
-// newRequestID returns a request ID unique on this connection.
-func (c *Conn) newRequestID() string { return fmt.Sprintf("r%d", c.nextID.Add(1)) }

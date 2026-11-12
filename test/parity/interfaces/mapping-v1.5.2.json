@@ -46463,8 +46463,8 @@
       ],
       "evidence": [
         "test:ai/constrained_sampling_upstream_test.go#TestConstrainedSamplingConversionUpstream",
-        "test:ai/constrained_sampling_upstream_test.go#TestConstrainedSamplingUnsupportedSchemasUpstream",
-        "test:ai/openai_responses_shared_oracle_test.go#TestConvertResponsesMessagesMatchesPi"
+        "test:ai/constrained_sampling_upstream_test.go#TestConstrainedSamplingKeepsStrictForEnumOnlySchemasUpstream",
+        "test:ai/constrained_sampling_upstream_test.go#TestConstrainedSamplingUnsupportedSchemasUpstream"
       ]
     },
     {
@@ -46485,8 +46485,8 @@
       ],
       "evidence": [
         "test:ai/constrained_sampling_upstream_test.go#TestConstrainedSamplingConversionUpstream",
-        "test:ai/constrained_sampling_upstream_test.go#TestConstrainedSamplingUnsupportedSchemasUpstream",
-        "test:ai/openai_responses_shared_oracle_test.go#TestConvertResponsesMessagesMatchesPi"
+        "test:ai/constrained_sampling_upstream_test.go#TestConstrainedSamplingKeepsStrictForEnumOnlySchemasUpstream",
+        "test:ai/constrained_sampling_upstream_test.go#TestConstrainedSamplingUnsupportedSchemasUpstream"
       ]
     },
     {
@@ -161073,7 +161073,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/tools/bash_tool_oracle_test.go#TestBashToolMatchesPi",
-        "test:internal/codingagent/tools/bash_tool_options_test.go#TestCreateBashToolAppliesPrefixThenSpawnHookToCustomOperations"
+        "test:internal/codingagent/tools/bash_tool_options_test.go#TestCreateBashToolAppliesPrefixThenSpawnHookToCustomOperations",
+        "test:internal/codingagent/tools/output_accumulator_long_last_line_port_test.go#TestBashToolShowsTheEndOfAnOverLongLastLineAfterAShortLine"
       ]
     },
     {
@@ -162137,7 +162138,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/subprocess/boundary_wire.go#boundaryContextWire.appendJSON"
+        "call:coding/extension/host/subprocess/boundary_wire.go#boundaryContextWire.encodedHalves"
       ],
       "evidence": [
         "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder",
@@ -162159,7 +162160,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/subprocess/boundary_wire.go#boundaryContextWire.appendJSON"
+        "call:coding/extension/host/subprocess/boundary_wire.go#boundaryContextWire.encodedHalves"
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBoundary",
@@ -162181,7 +162182,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/subprocess/boundary_wire.go#boundaryContextWire.appendJSON"
+        "call:coding/extension/host/subprocess/boundary_wire.go#boundaryContextWire.encodedHalves"
       ],
       "evidence": [
         "test:coding/session_boundaries_drafts_upstream_test.go#TestUpstreamSessionBoundariesDrafts",
@@ -162203,7 +162204,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/subprocess/boundary_wire.go#boundaryContextWire.appendJSON"
+        "call:coding/extension/host/subprocess/boundary_wire.go#boundaryContextWire.encodedHalves"
       ],
       "evidence": [
         "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder",
@@ -162225,7 +162226,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/subprocess/boundary_wire.go#boundaryContextWire.appendJSON"
+        "call:coding/extension/host/subprocess/boundary_wire.go#boundaryContextWire.encodedHalves"
       ],
       "evidence": [
         "test:coding/session_boundaries_drafts_upstream_test.go#TestUpstreamSessionBoundariesDrafts",
@@ -163622,7 +163623,9 @@
         "call:coding/extension/system_prompt_options.go#BuildSystemPromptOptions.MarshalJSON"
       ],
       "evidence": [
-        "test:coding/session_hidden_tools_order_test.go#TestSystemPromptOptionsListHiddenToolsInTheOrderTheHooksHidThem"
+        "test:coding/session_hidden_tools_order_test.go#TestSystemPromptOptionsListHiddenToolsInTheOrderTheHooksHidThem",
+        "test:coding/session_prompt_options_version_test.go#TestSystemPromptOptionsVersionSeesEveryWrite",
+        "test:coding/session_prompt_options_version_test.go#TestSystemPromptOptionsVersionAllocatesNothingWhenUnchanged"
       ]
     },
     {
@@ -163644,7 +163647,7 @@
       "evidence": [
         "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
         "test:coding/extension/host/inproc/before_agent_start_render_test.go#TestBeforeAgentStartPromptFollowsEveryOptionsEdit",
-        "test:internal/codingagent/event_bridge_test.go#TestEmitBeforeAgentStart_ForwardsSystemPromptOptionsToHandler"
+        "test:coding/session_prompt_options_version_test.go#TestSystemPromptOptionsVersionSeesEveryWrite"
       ]
     },
     {
@@ -211974,7 +211977,7 @@
       ],
       "evidence": [
         "test:bench/sessionscale/gen_test.go#TestGeneratedSessionResumesToTheReportedContext",
-        "test:internal/codingagent/perf_gate_norace_test.go#TestSessionTurnAllocationGate",
+        "test:internal/codingagent/perf_gate_norace_test.go#TestSessionContextCopyAllocationGate",
         "test:internal/codingagent/session_compaction_record_test.go#TestCompactionEntriesServeTheirLines"
       ]
     },
@@ -211996,7 +211999,7 @@
       ],
       "evidence": [
         "test:bench/sessionscale/gen_test.go#TestGeneratedSessionResumesToTheReportedContext",
-        "test:internal/codingagent/perf_gate_norace_test.go#TestSessionTurnAllocationGate",
+        "test:internal/codingagent/perf_gate_norace_test.go#TestSessionContextCopyAllocationGate",
         "test:internal/codingagent/session_compaction_record_test.go#TestCompactionEntriesServeTheirLines"
       ]
     },
@@ -230227,7 +230230,7 @@
       "evidence": [
         "test:internal/codingagent/tools/harness_truncate_upstream_test.go#TestHarnessTruncate",
         "test:internal/codingagent/tools/output_accumulator_oracle_test.go#TestOutputAccumulatorMatchesPi",
-        "test:internal/codingagent/tools/sanitize_test.go#TestTruncateTail_LastLineLargerThanCap"
+        "test:internal/codingagent/tools/output_accumulator_long_last_line_port_test.go#TestBashToolShowsTheEndOfAnOverLongLastLineAfterAShortLine"
       ]
     },
     {

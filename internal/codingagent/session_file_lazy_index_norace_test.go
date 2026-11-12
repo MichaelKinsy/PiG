@@ -30,8 +30,8 @@ func TestOpenLeavesSearchTextsToTree(t *testing.T) {
 		t.Errorf("open made %.1f allocations per line, want at most %.1f", allocs, openAllocsPerLine)
 	}
 	for i := range s.slots {
-		if s.coldPart(&s.slots[i]).searchAt != 0 {
-			t.Fatalf("slot %d (%s) has a search text after the open", i, s.slots[i].id)
+		if s.searchAtOf(&s.slots[i]) != 0 {
+			t.Fatalf("slot %d (%s) has a search text after the open", i, s.idAt(i))
 		}
 	}
 	if s.searchTexts.size != 0 {
@@ -44,7 +44,7 @@ func TestOpenLeavesSearchTextsToTree(t *testing.T) {
 	lt.searchTexts(treeSearchableText)
 	indexed := 0
 	for i := range s.slots {
-		if s.coldPart(&s.slots[i]).searchAt != 0 {
+		if s.searchAtOf(&s.slots[i]) != 0 {
 			indexed++
 		}
 	}

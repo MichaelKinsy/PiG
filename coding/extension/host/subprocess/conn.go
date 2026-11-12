@@ -133,6 +133,8 @@ type Conn struct {
 	beforeCancel func()
 	// inbound observes each decoded frame on the read loop, in wire order, before routing. Cross-process reference accounting uses it so a later release on this connection can never overtake an earlier transmission.
 	inbound func(*Envelope)
+	// inboundWantsResponse, set together with inbound, reports whether inbound has any use for the response frame of request id: a response it does not need is routed without a full decode (routeResponseFrame). Nil means inbound reads every response.
+	inboundWantsResponse func(id string) bool
 	// outbound observes each frame's JSON on the write loop, in write order, before it is written (Host.SetOutboundObserver).
 	outbound func(frame []byte)
 	// parts is conn when it takes frames by parts (a fused extension's fusedConn); nil for a socket.
@@ -222,6 +224,8 @@ type Conn struct {
 	requestStates map[string]requestStateSink
 	// writeResults pools the channels that carry a frame's write result (writeResult).
 	writeResults sync.Pool
+	// responseChans pools the channels that carry a request's response (responseChan).
+	responseChans sync.Pool
 	// suspending counts the suspension frames of a request that the read loop queued for the host and the host has not yet delivered. suspensionsSettled is closed and replaced whenever a count drops.
 	suspending        map[string]int
 	suspendedRequests map[string]bool
@@ -246,8 +250,9 @@ type Conn struct {
 	withSessionMu     sync.Mutex
 	withSessionRoutes map[string]*withSessionRoute
 
-	// nextID is an atomic counter for generating request IDs.
-	nextID atomic.Uint64
+	// nextID is an atomic counter for generating request IDs, which idChunk spells.
+	nextID  atomic.Uint64
+	idChunk atomic.Pointer[idChunk]
 
 	// autocompleteUnholds are the input-hold releases of the autocomplete.suggest requests in flight, by request id.
 	autocompleteMu      sync.Mutex
@@ -511,6 +516,14 @@ func (c *Conn) writeInline(frame *encodedFrame) (written bool, err error) {
 	return true, err
 }
 
+// responseChan returns an empty one-slot channel for a request's response. Like writeResult's, the pool belongs to the connection. A channel is returned only by a request that received its response and unregistered, and emptied: the senders (sendResponse, the failure paths) send under pendingMu to a registered request only, so a pooled channel is empty and has no sender.
+func (c *Conn) responseChan() chan *Envelope {
+	if ch, ok := c.responseChans.Get().(chan *Envelope); ok {
+		return ch
+	}
+	return make(chan *Envelope, 1)
+}
+
 // writeResult returns an empty one-slot channel for a frame's write result. The pool belongs to the connection, not the package: a channel made inside a testing/synctest bubble is bound to it, and a package pool would hand it to a connection of another bubble or of none.
 func (c *Conn) writeResult() chan error {
 	if result, ok := c.writeResults.Get().(chan error); ok {
@@ -745,7 +758,7 @@ const toolCallLane = " tool"
 // command) has a lane of its own, so a slow consumer holds back no tool.
 func (c *Conn) requestWithUpdates(ctx context.Context, env *Envelope, onUpdate func(json.RawMessage)) (*Envelope, error) {
 	if env.ID == "" {
-		env.ID = "r" + strconv.FormatUint(c.nextID.Add(1), 10)
+		env.ID = c.newRequestID()
 	}
 	updates := c.toolUpdates
 	if env.Request == nil || env.Request.Method != MethodToolCall {
@@ -783,7 +796,7 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 
 	// Assign a unique ID if not already set.
 	if env.ID == "" {
-		env.ID = "r" + strconv.FormatUint(c.nextID.Add(1), 10)
+		env.ID = c.newRequestID()
 	}
 	// The operation names the request in an error only, so it is built when one is returned.
 	operationName := func() string {
@@ -794,7 +807,8 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 	}
 
 	// Register the pending response channel.
-	respCh := make(chan *Envelope, 1)
+	respCh := c.responseChan()
+	received := false
 	c.pendingMu.Lock()
 	c.pending[env.ID] = respCh
 	if env.Request != nil && env.Request.Method == MethodToolCall {
@@ -850,6 +864,14 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 		delete(c.earlierWindows, env.ID)
 		delete(c.drainable, env.ID)
 		c.pendingMu.Unlock()
+		if received {
+			// The request is unregistered, so nothing sends to the channel any more; a second answer that arrived after the first (a failure racing the response) is dropped with the channel's content.
+			select {
+			case <-respCh:
+			default:
+			}
+			c.responseChans.Put(respCh)
+		}
 		c.stateMu.Lock()
 		delete(c.requestStates, env.ID)
 		delete(c.suspendedRequests, env.ID)
@@ -920,6 +942,7 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 	for {
 		select {
 		case resp := <-respCh:
+			received = true
 			// A state frame that preceded the response was queued first; apply it before the response is delivered. The host delivers a suspension only after every earlier call of the connection applied, so the response waits for it only while a suspension can change what the response does.
 			if requestSuspensionDecides(ctx) {
 				c.awaitSuspensions(ctx, env.ID)
@@ -1256,6 +1279,12 @@ func (c *Conn) readLoop(ctx context.Context) {
 			return
 		}
 
+		// The response to a request has one shape nearly always; it is routed without decoding the whole envelope.
+		if c.routeResponseFrame(frame.data) {
+			frame.release()
+			continue
+		}
+
 		// Decode the envelope. Unmarshal copies every string and json.RawMessage it keeps, so the frame is free once it returns.
 		var env Envelope
 		err = decodeEnvelope(frame.data, &env)
@@ -1364,28 +1393,7 @@ func (c *Conn) readLoop(ctx context.Context) {
 		// Route responses to pending requests.
 		if env.Type == MsgResponse || env.Type == MsgCallResult {
 			if env.ID != "" {
-				c.pendingMu.Lock()
-				ch, ok := c.pending[env.ID]
-				answered := c.answered[env.ID]
-				arrived := c.arrived[env.ID]
-				c.pendingMu.Unlock()
-				if !ok {
-					c.settleAbandoned(env.ID)
-				}
-				if ok {
-					// The read loop reads responses in the order the peer wrote them; the goroutines that wait for them wake in no order.
-					if arrived != nil {
-						arrived()
-					}
-					select {
-					case ch <- &env:
-					default:
-					}
-					// The frames after this response, such as a drain notification, are read after answered ran.
-					if answered != nil {
-						answered()
-					}
-				}
+				c.deliverResponse(env.ID, &env)
 			}
 			// Response-shaped frames never become unsolicited host messages.
 			// A missing correlation means cancellation already won; discard the
@@ -2272,6 +2280,78 @@ func (c *Conn) settleAbandoned(id string) {
 	if ok {
 		close(done)
 	}
+}
+
+// deliverResponse hands env, the response or call result for request id, to the request waiting for it. A response nobody waits for, because the request ended first, settles the request's abandonment instead.
+func (c *Conn) deliverResponse(id string, env *Envelope) {
+	c.pendingMu.Lock()
+	ch, ok := c.pending[id]
+	answered := c.answered[id]
+	arrived := c.arrived[id]
+	c.pendingMu.Unlock()
+	if !ok {
+		c.settleAbandoned(id)
+		return
+	}
+	// The read loop reads responses in the order the peer wrote them; the goroutines that wait for them wake in no order.
+	if arrived != nil {
+		arrived()
+	}
+	c.sendResponse(id, ch, env)
+	// The frames after this response, such as a drain notification, are read after answered ran.
+	if answered != nil {
+		answered()
+	}
+}
+
+// sendResponse puts env in the channel of the request id while the request is still registered, and reports whether it did: the request returns its channel for reuse only after it unregistered under pendingMu, so no response is sent to a channel that was reused.
+func (c *Conn) sendResponse(id string, ch chan *Envelope, env *Envelope) bool {
+	c.pendingMu.Lock()
+	sent := false
+	if c.pending[id] == ch {
+		select {
+		case ch <- env:
+			sent = true
+		default:
+		}
+	}
+	c.pendingMu.Unlock()
+	return sent
+}
+
+// routeResponseFrame delivers the frame when it is a response in the shape parseResponseFrame recognizes that inbound does not need, and reports whether it did; any other frame is left for the full decode, which shows it to inbound.
+func (c *Conn) routeResponseFrame(data []byte) bool {
+	if c.inbound != nil && c.inboundWantsResponse == nil {
+		return false
+	}
+	id, result, ok := parseResponseFrame(data)
+	if !ok {
+		return false
+	}
+	requestID := c.internRequestID(id)
+	if c.inbound != nil && c.inboundWantsResponse(requestID) {
+		return false
+	}
+	c.pendingMu.Lock()
+	ch, found := c.pending[requestID]
+	answered := c.answered[requestID]
+	arrived := c.arrived[requestID]
+	c.pendingMu.Unlock()
+	if !found {
+		c.settleAbandoned(requestID)
+		return true
+	}
+	if arrived != nil {
+		arrived()
+	}
+	resp := pooledResponse(requestID, result)
+	if !c.sendResponse(requestID, ch, resp) {
+		releaseResponse(resp)
+	}
+	if answered != nil {
+		answered()
+	}
+	return true
 }
 
 func (c *Conn) settleAllAbandoned() {

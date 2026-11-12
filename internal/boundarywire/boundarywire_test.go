@@ -1,6 +1,7 @@
 package boundarywire
 
 import (
+	"bytes"
 	"context"
 	"testing"
 
@@ -94,5 +95,35 @@ func TestCacheKeptServesOnlyTheLatestSharedUndeliveredBuild(t *testing.T) {
 	_, cache = WithCache(context.Background())
 	if _, _, ok := cache.Kept(build(cache, true)); ok {
 		t.Fatal("Kept served a dispatch without session encodings")
+	}
+}
+
+// An event encoding is shared by the handlers that are handed the same members: the same head and tail bytes and the same projected encoding. Any other one makes it again.
+func TestJoinedSharesTheEncodingOfTheSameParts(t *testing.T) {
+	var nilCache *Cache
+	if _, ok := nilCache.Joined([]byte("h"), []byte("p"), []byte("t")); ok {
+		t.Fatal("a nil cache found an encoding")
+	}
+	nilCache.StoreJoined([]byte("h"), []byte("p"), []byte("t"), []byte("out"))
+
+	cache := &Cache{}
+	head, projected, tail := []byte(`{"type":"turn_end"}`), []byte(`{"contextEntries":null}`), []byte(`{"canContinue":false}`)
+	if _, ok := cache.Joined(head, projected, tail); ok {
+		t.Fatal("an empty cache found an encoding")
+	}
+	cache.StoreJoined(head, projected, tail, []byte("joined"))
+	if got, ok := cache.Joined(bytes.Clone(head), projected, bytes.Clone(tail)); !ok || string(got) != "joined" {
+		t.Fatalf("the same parts found %q, %v", got, ok)
+	}
+	for name, probe := range map[string]func() ([]byte, []byte, []byte){
+		"another head":      func() ([]byte, []byte, []byte) { return []byte(`{"type":"agent_end"}`), projected, tail },
+		"another tail":      func() ([]byte, []byte, []byte) { return head, projected, []byte(`{"canContinue":true}`) },
+		"another projected": func() ([]byte, []byte, []byte) { return head, bytes.Clone(projected), tail },
+		"no projected":      func() ([]byte, []byte, []byte) { return head, nil, tail },
+	} {
+		h, p, tl := probe()
+		if got, ok := cache.Joined(h, p, tl); ok {
+			t.Fatalf("%s found %q", name, got)
+		}
 	}
 }
