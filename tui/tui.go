@@ -1978,7 +1978,11 @@ func (t *tuiBase) runImmediateRender(generation uint64) {
 func (t *tuiBase) requestRender(force bool) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	t.requestRenderLocked(force)
+}
 
+// requestRenderLocked is requestRender with mu held.
+func (t *tuiBase) requestRenderLocked(force bool) {
 	if force {
 		t.forceRedraw = true
 		if t.resetRenderState != nil {
@@ -2042,8 +2046,11 @@ func (t *tuiBase) runDeferredRender(generation uint64) {
 		return
 	}
 	t.deferredRenderTimer = nil
+	// The frame is requested under the lock the check was made under, and a frame begins under it (frameBeganLocked): a frame cannot begin between the check and the request, so the request never follows a frame that drew the change.
+	if !t.stopped {
+		t.requestRenderLocked(false)
+	}
 	t.mu.Unlock()
-	t.RequestRender()
 }
 
 // frameBeganLocked is what a frame does first: it draws the changes RequestRenderWithin was set for, so their timer is not needed. mu must be held.
