@@ -381,9 +381,8 @@ func TestAvailabilityPassStatsEachAuthFileOnce(t *testing.T) {
 		t.Run(pass.name, func(t *testing.T) {
 			rig := newAuthPassRig(t, server, seen, content, true, pass.extension)
 			authFiles := []string{rig.authPath}
-			providers := len(rig.registry().GetAllModelData())
 			if got := leastAuthFileStats(func() { pass.run(rig, "openai") }); got > uint64(len(authFiles)) {
-				t.Errorf("%d auth.json stats in one pass over %d models, want at most %d (one per auth file)", got, providers, len(authFiles))
+				t.Errorf("%d auth.json stats in one pass, want at most %d (one per auth file)", got, len(authFiles))
 			}
 		})
 	}
