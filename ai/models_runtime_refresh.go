@@ -79,7 +79,7 @@ type modelsRefresh struct {
 	pending int
 	done    chan struct{}
 	mu      sync.Mutex // guards result and pending
-	result       ModelsRefreshResult
+	result  ModelsRefreshResult
 }
 
 func (refresh *modelsRefresh) release() {
