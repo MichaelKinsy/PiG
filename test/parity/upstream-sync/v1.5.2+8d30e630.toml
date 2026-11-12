@@ -6,14 +6,14 @@ path = "packages/chord/src/host/events.ts"
 change = "added"
 disposition = "ported"
 evidence = ["test:chord/next/host/host_events_test.go#TestEventFlushDeliversATurnsEmitsInOneFlushInOrderStampedWithTheEmitsNow", "test:chord/next/host/host_events_test.go#TestEventFlushPutsWhatAListenerEmitsIntoTheNextFlush", "test:chord/next/host/host_events_test.go#TestEventFlushCallsListenersInEntryOrderThenSubscriptionOrderAcrossReferences", "test:chord/next/host/host_events_test.go#TestEventFlushLetsAListenerStopReleaseSubscribeStartATransactionAndEmitACallDueWhenItStoppedIsSkipped", "test:chord/next/host/host_events_test.go#TestEventFlushReportsAThrowingListenerAndEndsOnlyItsSubscription", "test:chord/next/host/host_events_test.go#TestEventFlushThrowsReleasedForAnEmitAfterItsAttemptsSeal", "test:chord/next/host/host_events_test.go#TestEventFlushDeliversAnEmitMadeInsideATransactionThatFailsEmitIsNoTransactionWork", "test:chord/next/host/host_events_test.go#TestEventFlushLetsTheOwnerListenToItsOwnSourceFromItsSubscriptionOn", "test:chord/next/host/host_events_test.go#TestEventsWhoGetsNothingForAReferenceBoundAfterTheEmitAlsoBeforeTheFlush", "test:chord/next/host/host_events_test.go#TestEventsWhoGetsAnEventForAReferenceBoundBeforeTheEmitAndSubscribedAfterItBeforeTheFlush", "test:chord/next/host/host_events_test.go#TestEventsWhoGetsNothingForABindingMadeAtTheEmitsCounterValueASameHostReferenceAndAReexposingView", "test:chord/next/host/host_events_test.go#TestEventsWhoGetsNothingForAReferenceReleasedBeforeTheFlush", "test:chord/next/host/host_events_test.go#TestEventsWhoGetsNothingOnceItsObjectFailedBeforeTheFlushAndAgainOnceARetryIsLive", "test:chord/next/host/host_events_test.go#TestEventsWhoGetsNothingThroughAReexposingViewOnceTheSourceFailedBeforeTheFlush", "test:chord/next/host/host_events_test.go#TestEventsGCStoppedSubscriptionsReleasedReferencesAndAFlushedListKeepNothing", "test:chord/next/host/host_events_test.go#TestEventsGCASubscriptionKeepsNoAbortListenerOnceStopped", "test:chord/next/host/host_events_test.go#TestEventsGCAStoppedSubscriptionKeptByItsHolderKeepsNeitherItsSourceNorItsReference", "test:chord/next/host/host_events_test.go#TestEventsCostAContractWithoutEventMembersCostsNoEventBookkeepingPerBindingHereOrOverALink", "test:chord/next/host/host_events_test.go#TestEventsCostAnEmitWithNoHolderEncodesNothingWalksAndCopiesNothingItIsCountedEmitted"]
-rationale = "8d30e6306 (events: fire-and-forget members): HostEvents (counter, list, one flush per turn as a Loop.Queue microtask: every entry to its node's taps, links' senders first, then listeners in entry then subscription order), EventNode/Tap (boundAt < n), Subscription (stop, context abort, a panicking listener is reported listener_error and ends only itself) and OwnEventSource (Emit returns released after the seal; Emit and On enter the loop as a section because the rest of a suspended handler runs off the section that admitted it). Pi's settled Promise from on() is a blocking (subscription, error). host_events.go; tests host_events_test.go with host_events_support_test.go (Pi's support.ts event helpers: Ticker, NamedTicker, TickerView, Match, ticking, recorder; Pi's single JS turn is hostTurn, one host section). Designed out: the vi.spyOn of HostEvents.counter in the cost test (a Go method cannot be spied: the test asserts the bindings of contracts without event members hold no event bookkeeping and the counter never moved) and the shared-empty-events-slice identity of variantNames (Go empty slices share no allocation by construction)."
+rationale = "8d30e6306 (events: fire-and-forget members): HostEvents (counter, list, one flush per turn as a Loop.Queue microtask: every entry to its node's taps, links' senders first, then listeners in entry then subscription order), EventNode/Tap (boundAt < n), Subscription (stop, context abort, a panicking listener is reported listener_error and ends only itself) and OwnEventSource (Emit returns released after the seal; Emit and On enter the loop as a section because the rest of a suspended handler runs off the section that admitted it). Pi's settled Promise from on() is a blocking (subscription, error). host_events.go; tests host_events_test.go with host_events_support_test.go (Pi's support.ts event helpers: Ticker, NamedTicker, TickerView, Match, ticking, recorder; Pi's single JS turn is hostTurn, one host section). Designed out: the vi.spyOn of HostEvents.counter in the cost test (a Go method cannot be spied: the test asserts the bindings of contracts without event members hold no event bookkeeping and the counter never moved) and the shared-empty-events-slice identity of variantNames (Go empty slices share no allocation by construction). Async contract (Pi 8d30e6306; the file is not in the v1.5.2 tree, so test/parity/async-contracts.toml has no row for it until the pin contains it; contracts microtask-ordering, cancellable): HostEvents.push `if (this.#list.length === 0) queueMicrotask(() => this.#flush())`: one flush per turn after the turn's published state, entries in emit order, what a listener emits goes to the next flush: hostEvents.push queues flush once per non-empty list with Loop.Queue, never a goroutine. | Subscription `signal.addEventListener(\"abort\", this.#abort, { once: true })`: `context.AfterFunc(ctx, ...)` entering the loop to stop the subscription, removed at Stop; a call due after the abort is skipped. | subscribe()/OwnEventSource.on(): Promise<EventSubscription>, settled when returned (`Promise.reject(signal.reason)` for an aborted context, `released` after the seal, else `Promise.resolve(subscription)`): a blocking (contracts.EventSubscription, error) with context.Cause(ctx) or the released error; a listener that throws is reported listener_error and ends only its subscription."
 
 [[files]]
 path = "packages/chord/src/host/reference-events.ts"
 change = "added"
 disposition = "ported"
 evidence = ["test:chord/next/host/host_reference_events_test.go#TestReferenceEventSubscriptionsAreInstalledAtOnceWhileLoadingAndReceiveOnceTheirReferenceIsLive", "test:chord/next/host/host_reference_events_test.go#TestReferenceEventSubscriptionsRejectAnAbortedContextsReasonAndAReleasedReferencesReleasedInstallingNothing", "test:chord/next/host/host_reference_events_test.go#TestReferenceEventSubscriptionsEndWithTheirContextsAbort", "test:chord/next/host/host_reference_events_test.go#TestReferenceEventSubscriptionsMoveWithTheirReferenceToARestartsNewInstanceAReloadNothingMissedIsReplayed", "test:chord/next/host/host_reference_events_test.go#TestReferenceEventSubscriptionsKeepGettingAnOldAttemptsEmitsWhileAReloadDrainsItThenTheSuccessors", "test:chord/next/host/host_reference_events_test.go#TestReferenceEventReexposedMembersForwardEachEventWithItsValueAndStampUnchanged", "test:chord/next/host/host_reference_events_test.go#TestReferenceEventReexposedMembersFollowTheirSourcesNewInstanceWithoutTheViewRestarting", "test:chord/next/host/host_reference_events_test.go#TestReferenceEventSubscriptionsOpenWhileTheObjectIsFailedAndReceiveOnceARetryIsLive", "test:chord/next/host/host_reference_events_test.go#TestReferenceEventSubscriptionsKeepNoNodeOfAnInstanceAReloadReplacedWhileReferencesSurvive"]
-rationale = "8d30e6306: ReferenceEvents (the reference's event member, On at once bound or not), ReexposedEvents (fed by its reference, value and stamp unchanged), ReferenceEventTaps (per member tap on the instance's node from the binding's counter value; moved on retarget, untapped while it points at nothing). host_reference_events.go; tests host_reference_events_test.go. EventNode instance tracking (Pi's instancesOf(EventNode, \"deliver\")) is replaced by weak pointers to the three nodes of the scenario (own source, re-exposure, mapping)."
+rationale = "8d30e6306: ReferenceEvents (the reference's event member, On at once bound or not), ReexposedEvents (fed by its reference, value and stamp unchanged), ReferenceEventTaps (per member tap on the instance's node from the binding's counter value; moved on retarget, untapped while it points at nothing). host_reference_events.go; tests host_reference_events_test.go. EventNode instance tracking (Pi's instancesOf(EventNode, \"deliver\")) is replaced by weak pointers to the three nodes of the scenario (own source, re-exposure, mapping). Async contract (Pi 8d30e6306; no row in test/parity/async-contracts.toml until the pin contains the file; contracts awaited, cancellable): ReferenceEvents.on(listener, context): Promise<EventSubscription> returns subscribe(...)'s settled promise: installed at once whether the reference is bound or not, rejected with the context's abort reason or `released` for a released reference, installing nothing: ReferenceEvents.On returns (contracts.EventSubscription, error) at once; the subscription ends with its context's abort."
 
 [[files]]
 path = "packages/chord/src/host/adapted.ts"
@@ -34,7 +34,7 @@ path = "packages/chord/src/host/members.ts"
 change = "modified"
 disposition = "ported"
 evidence = ["test:chord/next/host/host_members_events_test.go#TestEventMembersFailTheObjectBrokenForAnImplementationThatIsNeitherItsOwnSourceNorAReferencesEventMember", "test:chord/next/host/host_members_events_test.go#TestEventMembersBindAnEventOnlyContractLiveNoStateToHydrateAtOnceOverALinkToo"]
-rationale = "8d30e6306: event members in the member check (own source owned by the attempt, or a reference's event member re-exposed; anything else is the message `<member>: an event member is this object's own self.events() or a reference's event member`). Designed out: the third case of Pi's test (a state member as an event member): a Go VariantImplementation.Events map holds only EventMember values. host_members.go; tests host_members_events_test.go."
+rationale = "8d30e6306: event members in the member check (own source owned by the attempt, or a reference's event member re-exposed; anything else is the message `<member>: an event member is this object's own self.events() or a reference's event member`). Pi's three wrong implementations are ported: the plain object and the state member are Go types with an On method (a VariantImplementation.Events map holds contracts.EventMember values), where Pi casts with `as never`. host_members.go; tests host_members_events_test.go."
 
 [[files]]
 path = "packages/chord/src/host/reference.ts"
@@ -202,7 +202,7 @@ path = "packages/chord/src/remote/consumer.ts"
 change = "modified"
 disposition = "ported"
 evidence = ["test:chord/next/host/remote_consumer_events_test.go#TestConsumerEvents", "test:chord/next/host/remote_consumer_test.go#TestConsumerCallWindow"]
-rationale = "8d30e6306: `event` messages of this side's own holds are handed to the host's event flush (an unknown hold, a hold not live or a member nobody listens to drops the entry unopened and uninflated, an index outside the bound version is a protocol error, a value past the part limit counts chord.events.dropped{too_large}), the message consumed and acknowledged once per inbound turn after the flush (a microtask), deflated parts inflated asynchronously first on a host without a compressor; the `bound` ack goes before the references go live so parked calls follow it; calls parked while rebinding go after that ack; calls wait in the window the peer announced (none: all at once). remote_consumer.go events/deflatedEvents/consumed, bound."
+rationale = "8d30e6306: `event` messages of this side's own holds are handed to the host's event flush (an unknown hold, a hold not live or a member nobody listens to drops the entry unopened and uninflated, an index outside the bound version is a protocol error, a value past the part limit counts chord.events.dropped{too_large}), the message consumed and acknowledged once per inbound turn after the flush (a microtask), deflated parts inflated asynchronously first on a host without a compressor; the `bound` ack goes before the references go live so parked calls follow it; calls parked while rebinding go after that ack; calls wait in the window the peer announced (none: all at once). remote_consumer.go events/deflatedEvents/consumed, bound. The case \"keep the event window exhausted while an asynchronous inflate holds the message: acknowledged once consumed\" holds the inflate through the link context's telemetry (the inflate counts itself before it reads its part), as Pi's stubbed DecompressionStream does."
 
 [[files]]
 path = "packages/chord/src/remote/hold.ts"
@@ -256,16 +256,16 @@ rationale = "Documentation only."
 [[files]]
 path = "packages/chord/src/react/hooks.ts"
 change = "modified"
-disposition = "deferred"
-evidence = ["test:chord/nextnode/surfaces/client_manifest_test.go"]
-rationale = "8d30e6306: useEvents(member, listener) (an event member subscribed while the component is mounted; the latest listener is called through a ref updated in a layout effect). The Go side ships this file only as the vendored client (D601, chord/nextnode/surfaces/client), byte-for-byte from the pinned mirror: client_manifest_test.go compares its sha256 with manifest.json and the pin is v1.5.2, which does not contain 8d30e6306, so the vendored copy keeps the pinned hooks.ts and the new hook arrives with the pin bump that contains it (make pin-bump regenerates the vendored client). No Go code reads or wraps this file; the Go host's event member (host_events.go, host_reference_events.go) is the surface the hook subscribes to through the client link."
+disposition = "ported"
+evidence = ["test:chord/nextnode/surfaces/surfaces_events_test.go#TestClientEventsReachAListenerCrossALinkAndAreExportedToReact", "test:chord/nextnode/app/app_web_browser_test.go#TestReactBindingsCallTheLatestListenerOfUseEventsFollowItsMemberAndStopAtUnmount", "test:chord/nextnode/surfaces/client_manifest_test.go#TestClientVendoredFilesAreExactlyTheManifests"]
+rationale = "8d30e6306: useEvents(member, listener) (an event member subscribed while the component is mounted; the latest listener is called through a ref updated in a layout effect). The Go side ships this file as the vendored client (D601, chord/nextnode/surfaces/client), byte for byte from Pi: the tree is the pin plus the carried commits client/manifest.json lists, 8d30e6306 among them (client_manifest_test.go compares every file's sha256). Pi's test of the hook (hooks.test.ts \"calls the latest listener of useEvents, follows its member and stops at unmount\") is ported over a real Chromium (app_web_browser_test.go), and surfaces_events_test.go runs events over the vendored host under Node and checks that react/index.ts exports the hook."
 
 [[files]]
 path = "packages/chord/src/react/index.ts"
 change = "modified"
-disposition = "deferred"
-evidence = ["test:chord/nextnode/surfaces/client_manifest_test.go"]
-rationale = "8d30e6306: re-exports useEvents. Vendored byte-for-byte at the pin (see react/hooks.ts): the one-line re-export arrives with the pin bump."
+disposition = "ported"
+evidence = ["test:chord/nextnode/surfaces/surfaces_events_test.go#TestClientEventsReachAListenerCrossALinkAndAreExportedToReact", "test:chord/nextnode/app/app_web_browser_test.go#TestReactBindingsCallTheLatestListenerOfUseEventsFollowItsMemberAndStopAtUnmount", "test:chord/nextnode/surfaces/client_manifest_test.go#TestClientVendoredFilesAreExactlyTheManifests"]
+rationale = "8d30e6306: re-exports useEvents. Vendored byte for byte with react/hooks.ts (the carried commits of client/manifest.json contain 8d30e6306); surfaces_events_test.go imports the vendored react/index.ts under Node and finds useEvents, and the page of the Chromium test imports it from there."
 
 [[files]]
 path = "packages/chord/src/react/README.md"
@@ -273,3 +273,38 @@ change = "modified"
 disposition = "designed-out"
 evidence = []
 rationale = "Documentation only (the useEvents entry); the README is not vendored."
+
+[[files]]
+path = "packages/chord/docs/benchmarks.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "8d30e6306: the events and state-binding benchmark results of Pi's test/bench/events.ts and state-binding.ts. chord/README.md: Pi's chord design documents are not ported; the Go packages follow them."
+
+[[files]]
+path = "packages/chord/docs/decisions.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "8d30e6306: Pi's decision \"Events: fire-and-forget members\" and the amended \"Call windows only for untrusted links\"; the Go port follows them. chord/README.md: Pi's chord design documents are not ported; the Go packages follow them."
+
+[[files]]
+path = "packages/chord/docs/design.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "8d30e6306: the design of event members (the flush, the event window, the wire) and of call windows by trust; the Go port follows it. chord/README.md: Pi's chord design documents are not ported; the Go packages follow them."
+
+[[files]]
+path = "packages/chord/docs/events/spec.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "8d30e6306: the events spec as implemented; the Go port follows it. chord/README.md: Pi's chord design documents are not ported; the Go packages follow them."
+
+[[files]]
+path = "packages/chord/docs/slices.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "8d30e6306: the events slice in Pi's slice list. chord/README.md: Pi's chord design documents are not ported; the Go packages follow them."
