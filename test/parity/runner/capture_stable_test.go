@@ -22,10 +22,30 @@ func (p *fakePane) read(bool) (string, error) {
 	return p.screens[i], nil
 }
 
+// fakeClock is a clock a test drives: time moves only when the capture waits, by the wait it asked for.
+type fakeClock struct {
+	t     time.Time
+	waits int
+}
+
+func (c *fakeClock) clock() captureClock {
+	return captureClock{
+		now: func() time.Time { return c.t },
+		wait: func(ctx context.Context, d time.Duration) error {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			c.waits++
+			c.t = c.t.Add(d)
+			return nil
+		},
+	}
+}
+
 func TestCaptureStablePair_TakesAnUnstablePairAgain(t *testing.T) {
 	// Round one: the plain captures around the escaped one differ (the screen moved). Round two: all still.
 	pane := &fakePane{screens: []string{"old frame", "escaped one", "new frame", "new frame", "escaped two", "new frame"}}
-	plain, escaped, err := captureStablePair(context.Background(), pane.read, nil, time.Minute, time.Millisecond)
+	plain, escaped, err := captureStablePair(context.Background(), (&fakeClock{}).clock(), pane.read, nil, time.Minute, time.Millisecond)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +59,7 @@ func TestCaptureStablePair_TakesAnUnstablePairAgain(t *testing.T) {
 
 func TestCaptureStablePair_StableScreenIsOneRound(t *testing.T) {
 	pane := &fakePane{screens: []string{"still", "escaped", "still"}}
-	plain, escaped, err := captureStablePair(context.Background(), pane.read, nil, time.Minute, time.Millisecond)
+	plain, escaped, err := captureStablePair(context.Background(), (&fakeClock{}).clock(), pane.read, nil, time.Minute, time.Millisecond)
 	if err != nil || plain != "still" || escaped != "escaped" || pane.reads != 3 {
 		t.Fatalf("plain=%q escaped=%q reads=%d err=%v, want one round of three captures", plain, escaped, pane.reads, err)
 	}
@@ -52,7 +72,11 @@ func TestCaptureStablePair_NeverStableFailsWithTheDiff(t *testing.T) {
 		// Within every round of three reads the first and the third differ.
 		return "row one\nrow two " + strings.Repeat("x", flip/3), nil
 	}
-	_, _, err := captureStablePair(context.Background(), read, nil, 30*time.Millisecond, time.Millisecond)
+	clock := &fakeClock{}
+	_, _, err := captureStablePair(context.Background(), clock.clock(), read, nil, 30*time.Millisecond, time.Millisecond)
+	if clock.waits != 30 {
+		t.Fatalf("waited %d times, want 30 polls of 1ms to spend the 30ms budget", clock.waits)
+	}
 	if err == nil {
 		t.Fatal("a screen that never stops changing was accepted")
 	}
@@ -70,7 +94,11 @@ func hasStart(plain, escaped string) bool {
 func TestCaptureStablePair_StillButIncompletePairIsTakenAgain(t *testing.T) {
 	// Round one holds still but lacks the start row (a writer stopped mid-burst); round two is whole.
 	pane := &fakePane{screens: []string{"banner", "esc banner", "banner", "BEGIN\nbody", "esc BEGIN\nbody", "BEGIN\nbody"}}
-	plain, escaped, err := captureStablePair(context.Background(), pane.read, hasStart, time.Minute, time.Millisecond)
+	clock := &fakeClock{}
+	plain, escaped, err := captureStablePair(context.Background(), clock.clock(), pane.read, hasStart, time.Minute, time.Millisecond)
+	if clock.waits != 1 {
+		t.Fatalf("waited %d times, want exactly one poll between the incomplete round and the whole one", clock.waits)
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +109,12 @@ func TestCaptureStablePair_StillButIncompletePairIsTakenAgain(t *testing.T) {
 
 func TestCaptureStablePair_IncompleteToTheEndReturnsThePairForTheCropToFail(t *testing.T) {
 	pane := &fakePane{screens: []string{"banner", "esc banner", "banner"}}
-	plain, escaped, err := captureStablePair(context.Background(), pane.read, hasStart, 20*time.Millisecond, time.Millisecond)
+	clock := &fakeClock{}
+	plain, escaped, err := captureStablePair(context.Background(), clock.clock(), pane.read, hasStart, 20*time.Millisecond, time.Millisecond)
+	if clock.waits != 20 || pane.reads != 3*21 {
+		// The budget is spent by the explicit clock only: 20 polls of 1ms, then the round that finds the deadline reached.
+		t.Fatalf("waited %d times and read %d times, want 20 polls and 21 rounds of three reads", clock.waits, pane.reads)
+	}
 	if err != nil || plain != "banner" || escaped != "banner" {
 		// The fake repeats its last screen, so the last round's escaped capture reads "banner".
 		t.Fatalf("plain=%q escaped=%q err=%v, want the still pair back without an error", plain, escaped, err)
@@ -94,7 +127,7 @@ func TestCaptureStablePair_IncompleteToTheEndReturnsThePairForTheCropToFail(t *t
 
 func TestCaptureStablePair_ReadErrorIsReturned(t *testing.T) {
 	boom := errors.New("tmux gone")
-	_, _, err := captureStablePair(context.Background(), func(bool) (string, error) { return "", boom }, nil, time.Minute, time.Millisecond)
+	_, _, err := captureStablePair(context.Background(), (&fakeClock{}).clock(), func(bool) (string, error) { return "", boom }, nil, time.Minute, time.Millisecond)
 	if !errors.Is(err, boom) {
 		t.Fatalf("got %v, want the read error", err)
 	}
@@ -105,7 +138,7 @@ func TestCaptureStablePair_CancelledContextStopsTheWait(t *testing.T) {
 	cancel()
 	flip := 0
 	read := func(bool) (string, error) { flip++; return strings.Repeat("x", flip), nil }
-	_, _, err := captureStablePair(ctx, read, nil, time.Minute, time.Hour)
+	_, _, err := captureStablePair(ctx, (&fakeClock{}).clock(), read, nil, time.Minute, time.Hour)
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("got %v, want context.Canceled", err)
 	}

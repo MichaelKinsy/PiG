@@ -834,7 +834,7 @@ func capturePanePair(ctx context.Context, session string, cfg TmuxDriverConfig, 
 		_, _, err := cropCaptures(cfg, use, plain, escaped)
 		return err == nil
 	}
-	return captureStablePair(ctx, read, cropsCleanly, finalCaptureBudget(cfg), tmuxQuiescencePoll)
+	return captureStablePair(ctx, wallClock, read, cropsCleanly, finalCaptureBudget(cfg), tmuxQuiescencePoll)
 }
 
 // sessionRegistry tracks every tmux session created by Run() so we can
