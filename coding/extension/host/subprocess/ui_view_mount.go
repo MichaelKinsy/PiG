@@ -115,6 +115,9 @@ func (b *UIBridge) handleViewCall(extName string, call *CallPayload) (*CallResul
 		if err != nil {
 			return viewError(err)
 		}
+		if gerr := checkMountGrids(&a.Content); gerr != nil {
+			return viewError(gridCheckError(gerr))
+		}
 		st, err := b.views.Mount(extName, a)
 		if err != nil {
 			return viewError(err)
@@ -123,6 +126,11 @@ func (b *UIBridge) handleViewCall(extName string, call *CallPayload) (*CallResul
 	case CallUIViewUpdate:
 		a, err := uiview.DecodeUpdate(call.Args)
 		if err != nil {
+			b.views.Rejected(extName, "update", call.Args, err)
+			return viewError(err)
+		}
+		if gerr := checkMountGrids(&a.Content); gerr != nil {
+			err := gridCheckError(gerr)
 			b.views.Rejected(extName, "update", call.Args, err)
 			return viewError(err)
 		}

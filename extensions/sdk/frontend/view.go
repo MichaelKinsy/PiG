@@ -66,6 +66,8 @@ const (
 	ViewKindCompactionSummary ViewKind = "compaction-summary"
 	ViewKindCustomMessage     ViewKind = "custom-message"
 	ViewKindSkillInvocation   ViewKind = "skill-invocation"
+	// ViewKindGrid is PiG's grid: equal columns of data cells (D614).
+	ViewKindGrid ViewKind = "grid"
 )
 
 // ViewNode is one component and the lines it drew.
@@ -170,7 +172,30 @@ type ViewNode struct {
 	Aborted bool
 	// Scroll is a scroll view's state, or nil elsewhere.
 	Scroll *ViewScroll
+	// Grid is a grid node's state, or nil elsewhere.
+	Grid *ViewGrid
 }
+
+// ViewGrid is a grid's data and its cursor: Selected is the value of the cell the cursor is on, or "". ChipRows is the
+// most chip lines a cell draws, and Head the column labels or none.
+type ViewGrid struct {
+	Columns, ChipRows int
+	Head              []string
+	Cells             []ViewGridCell
+	Selected          string
+}
+
+// ViewGridCell is one cell of a grid: Mark is "current" or "", Color a theme token or #rrggbb(aa), More the events the
+// sender left out.
+type ViewGridCell struct {
+	Value, Label, Mark, Color string
+	Dim                       bool
+	Chips                     []ViewGridChip
+	More                      int
+}
+
+// ViewGridChip is one event a cell shows.
+type ViewGridChip struct{ Text, Color string }
 
 // ViewCursor is the cursor of an input or an editor: a logical line and a
 // UTF-16 column.

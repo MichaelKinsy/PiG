@@ -52,6 +52,9 @@ type MountSurfaceOptions struct {
 	Leave func()
 	// TerminalRows returns the terminal's height in rows.
 	TerminalRows func() int
+	// RowBudget returns the rows the mount is drawn with: a taller view is cut by its owner, so a grid draws fewer chip
+	// lines to fit. Nil or 0 means no cut.
+	RowBudget func() int
 }
 
 // MountSurface draws the view of one plugin mount.
@@ -67,6 +70,7 @@ func NewMountSurface(o MountSurfaceOptions) *MountSurface {
 	m := &MountSurface{s: newViewSurface("", newViewImageStore()), activate: o.Activate, leave: o.Leave}
 	m.s.repaint = o.Repaint
 	m.s.terminalRows = o.TerminalRows
+	m.s.rowBudget = o.RowBudget
 	m.s.unfocused = true
 	m.s.sendEvent = m.event
 	return m
