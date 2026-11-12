@@ -37,11 +37,11 @@ func requireMigratedOrLeftAtRoot(t *testing.T, agentDir, encodedDir, name, conte
 }
 
 func TestMigrationDocsURLsUseEarendilWorksRepo(t *testing.T) {
-	if !strings.Contains(migrationGuideURL, "github.com/earendil-works/pi") {
-		t.Fatalf("migrationGuideURL = %q, want earendil-works repo", migrationGuideURL)
+	if !strings.Contains(MigrationGuideURL, "github.com/earendil-works/pi") {
+		t.Fatalf("MigrationGuideURL = %q, want earendil-works repo", MigrationGuideURL)
 	}
-	if !strings.Contains(extensionsDocURL, "github.com/earendil-works/pi") {
-		t.Fatalf("extensionsDocURL = %q, want earendil-works repo", extensionsDocURL)
+	if !strings.Contains(ExtensionsDocURL, "github.com/earendil-works/pi") {
+		t.Fatalf("ExtensionsDocURL = %q, want earendil-works repo", ExtensionsDocURL)
 	}
 }
 
