@@ -2202,7 +2202,7 @@ Scope: every `pig` process (interactive, print, json, rpc, `--listen`) and every
 
 Pi source: none. Node has no sampling heap profiler running by default.
 
-Why: measured paired and interleaved, same harness invocation, pinned xd6702 node1 cores, base 1accad07e9dc against this change, the same base binary twice as the floor (n = 12 rounds; pairs that survived the foreign-load filter are given): interactive scenario peak memory -1.5 MB (10 of 11 pairs; floor 0; a second run of 28 pairs: 25 of 28), 40-prompt session own memory -1.15 MB (11 of 12; floor +0.25 MB) and resident memory -1.9 MB (11 of 12; floor +0.15 MB), 20-prompt session resident memory -0.9 MB (10 of 10; floor +0.1 MB), `-p` headless user instructions -0.8 % (11 of 11; floor +0.1 %). The same binary with `GODEBUG=memprofilerate=0` from the first instruction measured the same rows within the floor. No CPU time, wall time or time-to-interactive claim: those did not move beyond the floor (time to interactive +0.15 ms in 28 pairs, floor -0.6 ms).
+Why: measured paired and interleaved, same harness invocation, pinned xd6702 node1 cores, base 1accad07e9dc against this change, the same base binary twice as the floor (n = 12 interleaved rounds on clean benchmark cores): interactive scenario peak own memory -1.5 MB (11 of 12), 40-prompt session own memory -1.05 MB (9 of 10) and resident memory -1.75 MB, 20-prompt session resident memory -0.9 MB (12 of 12), `-p` headless user instructions -0.9 % (12 of 12), each against a same-binary floor; measured on the branch before the merge onto the current line, by the lane that built it. The same binary with `GODEBUG=memprofilerate=0` from the first instruction measured the same rows within the floor. No CPU time, wall time or time-to-interactive claim: those did not move beyond the floor (time to interactive +0.15 ms in 28 pairs, floor -0.6 ms).
 
 Call-site markers: `internal/memprofrate/memprofrate.go` (`init`), `coding/cli/main.go` (the import).
 
@@ -2210,5 +2210,5 @@ Locked by: `TestSamplingFollowsTheRequest` (`internal/memprofrate`: child proces
 
 Remove when: the Go runtime stops allocating the profile table and touching its pages for a program that never reads the profile, or a measurement shows the sampling costs no resident memory.
 
-Approval: proposed, not yet approved by the owner.
-SCRUTINIZED:pending-owner
+Approval: owner, 2026-11-12T20:58Z, through the maintainer ("D627 APPROVED"), after being told that the runtime samples heap allocations in every normal run, that nothing in PiG reads the samples unless a profile is asked for, that D627 turns the sampling off by default, and that a user who wants a heap profile must ask for it.
+SCRUTINIZED:approved
