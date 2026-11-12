@@ -6010,7 +6010,7 @@ snippet = "lifetime, dispose := context.WithCancel(context.Background())"
 [[hit]]
 check = "ctxbackground"
 file = "internal/codingagent/cache_warmer.go"
-func = "CacheWarmer.Start"
+func = "CacheWarmer.StartCapturing"
 snippet = "ctx, cancel := context.WithCancel(context.Background())"
 
 [[hit]]
