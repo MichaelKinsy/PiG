@@ -25487,6 +25487,31 @@
       ]
     },
     {
+      "id": "BF-72f75e5",
+      "title": "The footer no longer shows `0.0%/0 (auto)` for a model the remote model catalog carries and the bundled…",
+      "symptom": "The footer no longer shows `0.0%/0 (auto)` for a model the remote model catalog carries and the bundled catalog lacks (for example `github-copilot/claude-fable-5.2`).",
+      "rootCause": "BuildModel built every model from the bundled catalog or a blank entry, so a resumed session, a /model switch and an extension setModel handed the Session a model with window 0 and no prices; the context estimate was unknown and the footer printed Pi's window-0 form. The startup path rebuilt such a model from the provider's default model, with that model's window and prices.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The footer no longer shows `0.0%/0 (auto)` for a model the remote model catalog carries and the bundled catalog lacks (for example `github-copilot/claude-fable-5.2`). A resumed session, a `/model` switch and an extension's `setModel` built such a model without its context window and prices, so the context estimate was unknown and automatic compaction had no window to compare against; the startup model took the window and prices of the provider's default model. Every path now builds the model from the catalog entry the model runtime returns, with the remote catalog's window, limits and prices.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "72f75e5e70",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "coding/cli/model_remote_catalog_test.go::TestResolveModel_RemoteOnlyCatalogModelKeepsItsLimits",
+        "coding/model_remote_catalog_test.go::TestBuildModelCarriesTheCatalogWindowAndPrices",
+        "coding/model_remote_catalog_test.go::TestResumedSessionKeepsTheWindowOfARemoteOnlyModel",
+        "internal/codingagent/footer_context_cache_read_test.go::TestFooterContextUsageOfACacheReadDominatedTurn"
+      ]
+    },
+    {
       "id": "BF-72fa7a7",
       "title": "An extension selector with more than ten options now shows a window of ten around the cursor and a…",
       "symptom": "An extension selector with more than ten options now shows a window of ten around the cursor and a `(selection/total)` indicator, so a long list no longer overflows the terminal (Pi #6688, D257).",
@@ -36118,6 +36143,46 @@
         "internal/codingagent/highlight_languages_load_test.go::TestLoadRemainingHighlightLanguagesPostsNoRepaintWhenNoLookupDiffers",
         "internal/codingagent/highlight_languages_load_test.go::TestLoadRemainingHighlightLanguagesRepaintsOnTheOwnerLoop",
         "tui/internal/hljs/load_reports_test.go::TestLoadAllLanguagesReportsEarlierLookupsThatDiffer"
+      ]
+    },
+    {
+      "id": "BF-D619",
+      "title": "A status-indicator or Loader animation step asks for its frame within min(40 ms, interval/2), where Pi asks…",
+      "symptom": "none; Pi's frame per step is correct, only costlier.",
+      "rootCause": "while a reply or a tool call streams in, Pi draws a frame every 16-20 ms and the spinner step adds a frame of its own every 80 ms, about one frame in five. The frames dropped carry only a glyph of the spinner that the next frame draws anyway.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D619",
+      "removeWhen": "Pi's `Loader` draws a step within a time, or the owner withdraws the change.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "5042dd06e8",
+          "date": "2026-11-11"
+        },
+        {
+          "hash": "deaeb3a5dc",
+          "date": "2026-11-11"
+        },
+        {
+          "hash": "e3373144bb",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/status_tick_within_test.go::TestRemovingTheIndicatorCancelsItsWaitingStepFrame",
+        "internal/codingagent/status_tick_within_test.go::TestStatusTickAsksForItsFrameWithinTheStepDelay",
+        "internal/codingagent/status_tick_within_test.go::TestStatusTickDrawsAtOnceOnATUIThatCannotWait",
+        "tui/render_within_test.go::TestCancelRenderWithinDropsTheWaitingStepFrame",
+        "tui/render_within_test.go::TestFrameDrawnWithinTheDelayCarriesTheChange",
+        "tui/render_within_test.go::TestLoaderAnimationStepAsksForItsFrameWithin",
+        "tui/render_within_test.go::TestLoaderTickStepAsksForNoFrame",
+        "tui/render_within_test.go::TestRequestRenderWithinAsksForAFrameOnlyWhenNoneIsDrawn",
+        "tui/render_within_test.go::TestRequestRenderWithinDuringAFrameAsksForTheNextFrame",
+        "tui/render_within_test.go::TestRequestRenderWithinIsCoveredByAFrameAlreadyAskedFor"
       ]
     },
     {
@@ -58387,6 +58452,11 @@
       "id": "D618",
       "title": "A start repaints after the highlight grammar load only when a highlight lookup made before it could have…",
       "entry": "BF-D618"
+    },
+    {
+      "id": "D619",
+      "title": "A status-indicator or Loader animation step asks for its frame within min(40 ms, interval/2), where Pi asks…",
+      "entry": "BF-D619"
     }
   ],
   "exemptCommits": {
