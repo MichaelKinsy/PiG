@@ -25,7 +25,7 @@ func borrowedParameters(description string) map[string]any {
 }
 
 func newBorrowingTool(name string, description *string) *borrowingTool {
-	return &borrowingTool{fakeTool: fakeTool{name: name}, build: func() ai.ToolSchema {
+	return &borrowingTool{name: name, build: func() ai.ToolSchema {
 		return ai.ToolSchema{Name: name, Description: "a tool", Parameters: borrowedParameters(*description)}
 	}}
 }
@@ -78,9 +78,9 @@ func TestDeclaredToolIsNotTheBorrowedSchema(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			shared := borrowedParameters("the path")
 			schema := ai.ToolSchema{Name: "shared", Description: "a tool", Parameters: shared}
-			var tool AgentTool = &samplingTool{fakeTool: fakeTool{name: "shared"}, schema: schema}
+			var tool AgentTool = &samplingTool{name: "shared", schema: schema}
 			if borrowing {
-				tool = &borrowingTool{fakeTool: fakeTool{name: "shared"}, build: func() ai.ToolSchema { return schema }}
+				tool = &borrowingTool{name: "shared", build: func() ai.ToolSchema { return schema }}
 			}
 			tools := []AgentTool{tool}
 			committed := declareToolChanges(tools, nil, nil)
