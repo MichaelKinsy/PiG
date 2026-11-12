@@ -711,6 +711,48 @@ kit-widget-event=<type>:<value> (a change report is not one). It never closes it
                            (kp-notify ctx (format nil "view-x-finished:~A,picked=~D" (pig:view-status-state done) (pig:jget (pig:view-status-result done) "picked"))))
                          (let ((cur (pig:ctx-view-state ctx "extras")))
                            (kp-notify ctx (format nil "view-x-state:~A,picked=~D" (pig:view-status-state cur) (pig:jget (pig:view-status-result cur) "picked"))))))))
+      ;; D614 grid node: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewGrid). The argument is the
+      ;; row's token: the cell values, the selection and one chip text are built from it. A cell is a plain table here, so this fixture can
+      ;; also write a member the record lacks (the member line); the builders of the Go, Rust and Python kits cannot.
+      (pig:command ext "ui_view_grid" "Mount a month as a grid and probe the bounds of the grid"
+                   (lambda (ctx args)
+                     (let* ((tok (string-trim " " args))
+                            (cells (append
+                                    (list (pig:kit-grid-cell :label "30" :dim t) (pig:kit-grid-cell :label "31" :dim t))
+                                    (loop for d from 1 to 28
+                                          collect (let ((value (format nil "~A-~D" tok d)) (label (format nil "~D" d)))
+                                                    (case d
+                                                      (1 (pig:kit-grid-cell :value value :label label :more 2
+                                                                            :chips (list (pig:kit-grid-chip (format nil "~A standup" tok) "#3366cc")
+                                                                                         (pig:kit-grid-chip "lunch" "accent"))))
+                                                      (2 (pig:kit-grid-cell :value value :label label :mark "current" :color "#ff000080"))
+                                                      (3 (pig:kit-grid-cell :value value :label label :chips (list (pig:kit-grid-chip "plain"))))
+                                                      (28 (pig:kit-grid-cell :value value))
+                                                      (t (pig:kit-grid-cell :value value :label label))))))))
+                       (flet ((view-of (grid) (pig:kit-view (pig:kit-container (list (pig:kit-text (format nil "Month ~A" tok) 0 0) grid))))
+                              (intents () (list (pig:view-intent "fx.pick" (pig:view-shape "object" :properties (list (cons "value" (pig:view-shape "string")))
+                                                                                                    :required '("value"))
+                                                                 :node-key "month")))
+                              (fallback () (pig:kit-text (format nil "grid-fallback ~A" tok) 0 0)))
+                         (let* ((st (pig:ctx-mount-view ctx "grid" "panel"
+                                                        (view-of (pig:kit-grid "month" 7 cells :head '("Mo" "Tu" "We" "Th" "Fr" "Sa" "Su") :chip-rows 2
+                                                                                               :selected (format nil "~A-2" tok)))
+                                                        :intents (intents) :fallback (fallback)))
+                                (mount (pig:view-status-mount st)))
+                           (kp-notify ctx (format nil "view-g-mounted:~A" (pig:view-status-state st)))
+                           (flet ((attempt (label columns cells)
+                                    (kp-notify ctx (format nil "view-g-~A:~A" label
+                                                           (code-of (lambda () (pig:ctx-update-view ctx mount (view-of (pig:kit-grid "month" columns cells))
+                                                                                                    :intents (intents) :fallback (fallback))))))))
+                             (attempt "cells" 7 (loop repeat 129 collect (pig:kit-grid-cell :label "x")))
+                             (attempt "chips" 7 (list (pig:kit-grid-cell :value "a" :chips (loop repeat 9 collect (pig:kit-grid-chip "c")))))
+                             (attempt "columns" 17 (list (pig:kit-grid-cell :value "a")))
+                             (attempt "mark" 7 (list (pig:kit-grid-cell :value "a" :mark tok)))
+                             (let ((odd (pig:kit-grid-cell :value "a")))
+                               (setf (gethash "extra" odd) 1)
+                               (attempt "member" 7 (list odd))))
+                           (let ((cur (pig:ctx-view-state ctx "grid")))
+                             (kp-notify ctx (format nil "view-g-state:~A,rev=~D" (pig:view-status-state cur) (pig:view-ref-rev (pig:view-status-mount cur))))))))))
       (pig:command ext "ui_view_cancelled" "Report the intent whose handler was cancelled"
                    (lambda (ctx args) (declare (ignore args)) (kp-notify ctx (format nil "intent-cancelled:~A" (car cancelled-tag)))))
       (pig:command ext "ui_view_state" "Report the state of the second mount"
@@ -721,7 +763,9 @@ kit-widget-event=<type>:<value> (a change report is not one). It never closes it
        ext
        (lambda (ctx inv)
          (let ((intent (pig:jget inv "intent")) (arg (pig:jget inv "arg")))
-           (cond ((equal intent "fx.add")
+           (cond ((equal intent "fx.pick")
+                  (pig:view-intent-result "done" :answer (pig:obj "node" (pig:jget inv "nodeKey") "picked" (pig:jget arg "value"))))
+                 ((equal intent "fx.add")
                   (let ((ab (pig:ctx-view-abilities ctx)))
                     (pig:view-intent-result "done" :answer (pig:obj "sum" (+ (* 2 (pig:jget arg "n")) (if ab (pig:jref ab "limits" "intentArgBytes") 0))))))
                  ((equal intent "fx.wait")

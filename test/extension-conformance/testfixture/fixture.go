@@ -1427,8 +1427,80 @@ func Extension() *sdk.Extension {
 		ctx.Notify(fmt.Sprintf("view-x-state:%s,picked=%d", cur.State, picked(cur)), "info")
 		return nil
 	})
+	// D614 grid node: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewGrid). The
+	// argument is the row's token: the cell values, the selection and one chip text are built from it.
+	ext.Command("ui_view_grid", "Mount a month as a grid and probe the bounds of the grid", func(ctx sdk.Context, args string) error {
+		tok := strings.TrimSpace(args)
+		code := func(err error) string {
+			if ve, ok := errors.AsType[*sdk.ViewError](err); ok {
+				return string(ve.Code)
+			}
+			return "none"
+		}
+		cells := []kit.GridCell{{Label: "30", Dim: true}, {Label: "31", Dim: true}}
+		for d := 1; d <= 28; d++ {
+			cell := kit.GridCell{Value: fmt.Sprintf("%s-%d", tok, d), Label: strconv.Itoa(d)}
+			switch d {
+			case 1:
+				cell.Chips = []kit.GridChip{{Text: tok + " standup", Color: "#3366cc"}, {Text: "lunch", Color: "accent"}}
+				cell.More = 2
+			case 2:
+				cell.Mark, cell.Color = "current", "#ff000080"
+			case 3:
+				cell.Chips = []kit.GridChip{{Text: "plain"}}
+			case 28:
+				cell.Label = ""
+			}
+			cells = append(cells, cell)
+		}
+		month := kit.NewGrid("month", 7, cells)
+		month.Head = []string{"Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"}
+		month.ChipRows = new(2)
+		month.Selected = tok + "-2"
+		content := func(grid *kit.Grid) sdk.ViewContent {
+			return sdk.ViewContent{
+				View:     kit.View{Root: kit.NewContainer(kit.NewText("Month "+tok, 0, 0), grid)},
+				Intents:  []sdk.ViewIntent{{Name: "fx.pick", NodeKey: "month", Arg: sdk.ViewShape{Type: "object", Properties: map[string]sdk.ViewShape{"value": {Type: "string"}}, Required: []string{"value"}}}},
+				Fallback: kit.NewText("grid-fallback "+tok, 0, 0),
+			}
+		}
+		st, err := ctx.MountView(sdk.ViewMount{Key: "grid", Slot: sdk.ViewSlotPanel, ViewContent: content(month)})
+		if err != nil {
+			return err
+		}
+		ctx.Notify("view-g-mounted:"+string(st.State), "info")
+		attempt := func(label string, columns int, cells []kit.GridCell) {
+			_, err := ctx.UpdateView(sdk.ViewUpdate{Mount: st.Mount, ViewContent: content(kit.NewGrid("month", columns, cells))})
+			ctx.Notify("view-g-"+label+":"+code(err), "info")
+		}
+		many := make([]kit.GridCell, 129)
+		for i := range many {
+			many[i] = kit.GridCell{Label: "x"}
+		}
+		attempt("cells", 7, many)
+		chips := make([]kit.GridChip, 9)
+		for i := range chips {
+			chips[i] = kit.GridChip{Text: "c"}
+		}
+		attempt("chips", 7, []kit.GridCell{{Value: "a", Chips: chips}})
+		attempt("columns", 17, []kit.GridCell{{Value: "a"}})
+		attempt("mark", 7, []kit.GridCell{{Value: "a", Mark: tok}})
+		cur, err := ctx.ViewState("grid")
+		if err != nil {
+			return err
+		}
+		ctx.Notify(fmt.Sprintf("view-g-state:%s,rev=%d", cur.State, cur.Mount.Rev), "info")
+		return nil
+	})
 	ext.OnViewIntent(func(in sdk.ViewIntentInvocation) sdk.ViewIntentResult {
 		switch in.Intent {
+		case "fx.pick":
+			var arg struct {
+				Value string `json:"value"`
+			}
+			_ = json.Unmarshal(in.Arg, &arg)
+			answer, _ := json.Marshal(map[string]string{"node": in.NodeKey, "picked": arg.Value})
+			return sdk.ViewIntentResult{Outcome: "done", Answer: answer}
 		case "fx.add":
 			var arg struct {
 				N int `json:"n"`

@@ -1051,7 +1051,38 @@ export default function (pi) {
     const cur = await ctx.ui.viewState("extras");
     ctx.ui.notify(`view-x-state:${cur.state},picked=${cur.result?.picked}`, "info");
   } });
+  // D614 grid node: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewGrid). The argument is the
+  // row's token: the cell values, the selection and one chip text are built from it. A view is a plain object here, so this fixture can
+  // also write a member the record lacks (the `member` line); the builders of the Go, Rust and Python kits cannot.
+  pi.registerCommand("ui_view_grid", { description: "Mount a month as a grid and probe the bounds of the grid", handler: async (args, ctx) => {
+    const tok = args.trim();
+    const cells = [{ label: "30", dim: true }, { label: "31", dim: true }];
+    for (let d = 1; d <= 28; d++) {
+      const cell = { value: `${tok}-${d}`, label: String(d) };
+      if (d === 1) Object.assign(cell, { chips: [{ text: `${tok} standup`, color: "#3366cc" }, { text: "lunch", color: "accent" }], more: 2 });
+      if (d === 2) Object.assign(cell, { mark: "current", color: "#ff000080" });
+      if (d === 3) cell.chips = [{ text: "plain" }];
+      if (d === 28) delete cell.label;
+      cells.push(cell);
+    }
+    const content = (grid) => ({
+      view: { root: { kind: "container", children: [{ kind: "text", text: `Month ${tok}`, paddingX: 0, paddingY: 0 }, { kind: "grid", id: "month", ...grid }] } },
+      intents: [{ name: "fx.pick", nodeKey: "month", arg: { type: "object", properties: { value: { type: "string" } }, required: ["value"] } }],
+      fallback: { kind: "text", text: `grid-fallback ${tok}`, paddingX: 0, paddingY: 0 },
+    });
+    const st = await ctx.ui.mountView({ key: "grid", slot: "panel", ...content({ columns: 7, head: ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"], chipRows: 2, selected: `${tok}-2`, cells }) });
+    ctx.ui.notify(`view-g-mounted:${st.state}`, "info");
+    const attempt = async (label, columns, cells) => ctx.ui.notify(`view-g-${label}:${await viewCode(() => ctx.ui.updateView(st.mount, content({ columns, cells })))}`, "info");
+    await attempt("cells", 7, Array.from({ length: 129 }, () => ({ label: "x" })));
+    await attempt("chips", 7, [{ value: "a", chips: Array.from({ length: 9 }, () => ({ text: "c" })) }]);
+    await attempt("columns", 17, [{ value: "a" }]);
+    await attempt("mark", 7, [{ value: "a", mark: tok }]);
+    await attempt("member", 7, [{ value: "a", extra: 1 }]);
+    const cur = await ctx.ui.viewState("grid");
+    ctx.ui.notify(`view-g-state:${cur.state},rev=${cur.mount.rev}`, "info");
+  } });
   pi.onViewIntent(async (inv, ctx) => {
+    if (inv.intent === "fx.pick") return { outcome: "done", answer: { node: inv.nodeKey, picked: inv.arg.value } };
     if (inv.intent === "fx.add") return { outcome: "done", answer: { sum: inv.arg.n * 2 + (ctx.ui.viewAbilities()?.limits.intentArgBytes ?? 0) } };
     if (inv.intent === "fx.wait") {
       ctx.ui.notify(`intent-started:${inv.arg.tag}`, "info");
