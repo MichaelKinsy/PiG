@@ -133672,9 +133672,9 @@
         "call:chord/sync/batch.go#EncodeBatch"
       ],
       "evidence": [
-        "test:chord/sync/limits_test.go#TestLineLimit",
-        "test:chord/sync/limits_test.go#TestSizesCountUTF16Units",
-        "test:chord/sync/lines_test.go#TestBatchBodies"
+        "test:chord/sync/batch_source_test.go#TestABatchBodyEndsWithTheErrorOfItsSourceAndGivesTheSourceBack",
+        "test:chord/sync/batch_source_test.go#TestABatchBodyPassesTheContextOfNextToItsSource",
+        "test:chord/sync/batch_source_test.go#TestClosingABatchBodyClosesTheSourceItWraps"
       ]
     },
     {
@@ -133694,9 +133694,9 @@
         "call:chord/sync/batch.go#EncodeBatch"
       ],
       "evidence": [
-        "test:chord/sync/limits_test.go#TestLineLimit",
-        "test:chord/sync/limits_test.go#TestSizesCountUTF16Units",
-        "test:chord/sync/lines_test.go#TestBatchBodies"
+        "test:chord/sync/batch_source_test.go#TestABatchBodyEndsWithTheErrorOfItsSourceAndGivesTheSourceBack",
+        "test:chord/sync/batch_source_test.go#TestABatchBodyPassesTheContextOfNextToItsSource",
+        "test:chord/sync/batch_source_test.go#TestClosingABatchBodyClosesTheSourceItWraps"
       ]
     },
     {
@@ -133946,7 +133946,7 @@
       "evidence": [
         "test:chord/sync/files_contract_test.go#TestFileSyncStateStoreReadsATextFileAndWritesAThroughATemporaryOne",
         "test:chord/sync/proof_chord_test.go#TestFileSyncStateStoreKeepsEachSessionsStateUntilDeleted",
-        "test:chord/sync/sync_test.go#TestHostPieces"
+        "test:chord/sync/state_error_test.go#TestSetOfASyncStateReturnsTheErrorOfAFailedRenameAndKeepsTheEarlierState"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -133969,7 +133969,7 @@
       "evidence": [
         "test:chord/sync/files_contract_test.go#TestFileSyncStateStoreReadsATextFileAndWritesAThroughATemporaryOne",
         "test:chord/sync/proof_chord_test.go#TestFileSyncStateStoreKeepsEachSessionsStateUntilDeleted",
-        "test:chord/sync/sync_test.go#TestHostPieces"
+        "test:chord/sync/state_error_test.go#TestSetOfASyncStateReturnsTheErrorOfAFailedRenameAndKeepsTheEarlierState"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -135251,7 +135251,7 @@
       "evidence": [
         "test:chord/sync/files_contract_test.go#TestFileSyncStateStoreReadsATextFileAndWritesAThroughATemporaryOne",
         "test:chord/sync/proof_chord_test.go#TestFileSyncStateStoreKeepsEachSessionsStateUntilDeleted",
-        "test:chord/sync/sync_test.go#TestHostPieces"
+        "test:chord/sync/state_error_test.go#TestSetOfASyncStateReturnsTheErrorOfAFailedRenameAndKeepsTheEarlierState"
       ]
     },
     {
@@ -136122,8 +136122,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_25_test.go#TestExample25ExportImport",
-        "test:chord/sync/limits_test.go#TestLineLimit",
-        "test:chord/sync/lines_test.go#TestSnapshotBodies"
+        "test:chord/sync/batch_source_test.go#TestABatchBodyEndsWithTheErrorOfItsSourceAndGivesTheSourceBack",
+        "test:chord/sync/batch_source_test.go#TestABatchBodyPassesTheContextOfNextToItsSource"
       ]
     },
     {
@@ -136711,7 +136711,7 @@
       "evidence": [
         "test:chord/sync/files_contract_test.go#TestFileSyncStateStoreReadsATextFileAndWritesAThroughATemporaryOne",
         "test:chord/sync/proof_chord_test.go#TestFileSyncStateStoreKeepsEachSessionsStateUntilDeleted",
-        "test:chord/sync/sync_test.go#TestHostPieces"
+        "test:chord/sync/state_error_test.go#TestSetOfASyncStateReturnsTheErrorOfAFailedRenameAndKeepsTheEarlierState"
       ]
     },
     {
@@ -261817,7 +261817,7 @@
       "evidence": [
         "test:durable/storage/storage_benchmark_fork_depth_pi_test.go#TestStorageReadBenchmarkForkDepthScenariosReadTheDeepestConversation",
         "test:durable/storage/storage_benchmark_scenarios_test.go#TestStorageBenchmarkScenariosReturnWhatTheyExpectOnEveryBackend",
-        "test:durable/storage/storage_read_contract_test.go#TestStorageBenchmarkScalesAndPrimaryRecordCount"
+        "test:durable/storage/storage_benchmark_seed_order_test.go#TestSeedStorageBenchmarkMintsConsecutiveIdsInSeedingOrder"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -261840,7 +261840,7 @@
       "evidence": [
         "test:durable/storage/storage_benchmark_fork_depth_pi_test.go#TestStorageReadBenchmarkForkDepthScenariosReadTheDeepestConversation",
         "test:durable/storage/storage_benchmark_scenarios_test.go#TestStorageBenchmarkScenariosReturnWhatTheyExpectOnEveryBackend",
-        "test:durable/storage/storage_read_contract_test.go#TestStorageBenchmarkScalesAndPrimaryRecordCount"
+        "test:durable/storage/storage_benchmark_seed_order_test.go#TestSeedStorageBenchmarkMintsConsecutiveIdsInSeedingOrder"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -261909,7 +261909,7 @@
       "evidence": [
         "test:durable/storage/storage_benchmark_fork_depth_pi_test.go#TestStorageReadBenchmarkForkDepthScenariosReadTheDeepestConversation",
         "test:durable/storage/storage_benchmark_scenarios_test.go#TestStorageBenchmarkScenariosReturnWhatTheyExpectOnEveryBackend",
-        "test:durable/storage/storage_read_contract_test.go#TestStorageBenchmarkScalesAndPrimaryRecordCount"
+        "test:durable/storage/storage_benchmark_seed_order_test.go#TestSeedStorageBenchmarkMintsConsecutiveIdsInSeedingOrder"
       ]
     },
     {
@@ -261974,8 +261974,8 @@
       ],
       "evidence": [
         "test:durable/storage/storage_benchmark_fork_depth_pi_test.go#TestStorageReadBenchmarkForkDepthScenariosReadTheDeepestConversation",
-        "test:durable/storage/storage_read_contract_test.go#TestStorageBenchmarkScalesAndPrimaryRecordCount",
-        "test:durable/storage/storage_bench_test.go#TestStorageBenchmarkExpectations"
+        "test:durable/storage/storage_benchmark_seed_order_test.go#TestSeedStorageBenchmarkMintsConsecutiveIdsInSeedingOrder",
+        "test:durable/storage/storage_read_contract_test.go#TestStorageBenchmarkScalesAndPrimaryRecordCount"
       ]
     },
     {
@@ -261995,6 +261995,7 @@
         "public-api:durable/durabletest/storage_benchmark.go#StorageBenchmarkPrimaryRecordCount"
       ],
       "evidence": [
+        "test:durable/storage/storage_benchmark_seed_order_test.go#TestSeedStorageBenchmarkMintsConsecutiveIdsInSeedingOrder",
         "test:durable/storage/storage_read_contract_test.go#TestStorageBenchmarkScalesAndPrimaryRecordCount"
       ]
     },
@@ -262015,6 +262016,7 @@
         "public-api:durable/durabletest/storage_benchmark.go#StorageBenchmarkPrimaryRecordCount"
       ],
       "evidence": [
+        "test:durable/storage/storage_benchmark_seed_order_test.go#TestSeedStorageBenchmarkMintsConsecutiveIdsInSeedingOrder",
         "test:durable/storage/storage_read_contract_test.go#TestStorageBenchmarkScalesAndPrimaryRecordCount"
       ]
     },
@@ -262035,6 +262037,7 @@
         "public-api:durable/durabletest/storage_benchmark.go#StorageBenchmarkScale"
       ],
       "evidence": [
+        "test:durable/storage/storage_benchmark_seed_order_test.go#TestSeedStorageBenchmarkMintsConsecutiveIdsInSeedingOrder",
         "test:durable/storage/storage_read_contract_test.go#TestStorageBenchmarkScalesAndPrimaryRecordCount"
       ]
     },
@@ -267498,7 +267501,7 @@
       "evidence": [
         "test:env/connection_request_test.go#TestRemoteWatchOptionsModeForcesTheWatcherMode",
         "test:env/regressions_test.go#TestRemoteWatcherOutlivesTheContextThatOpenedIt",
-        "test:env/watch_semantics_test.go#TestRemoteWatcherStopReturnsOnlyAfterTheWatchRequestHasFinished"
+        "test:env/remote_watch_abort_test.go#TestRemoteExecutionEnvWatchWithAnAbortedContextFailsAbortedBeforeTouchingTheConnection"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -267521,7 +267524,7 @@
       "evidence": [
         "test:env/connection_request_test.go#TestRemoteWatchOptionsModeForcesTheWatcherMode",
         "test:env/regressions_test.go#TestRemoteWatcherOutlivesTheContextThatOpenedIt",
-        "test:env/watch_semantics_test.go#TestRemoteWatcherStopReturnsOnlyAfterTheWatchRequestHasFinished"
+        "test:env/remote_watch_abort_test.go#TestRemoteExecutionEnvWatchWithAnAbortedContextFailsAbortedBeforeTouchingTheConnection"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
