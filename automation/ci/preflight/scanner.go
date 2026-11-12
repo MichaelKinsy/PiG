@@ -287,7 +287,9 @@ func mergeTree(ctx context.Context, ws workspace, d *data) (bool, error) {
 	if got = strings.TrimSpace(got); got != d.Pull.Head.SHA {
 		return false, fmt.Errorf("the PR's head is at %s, the evaluated head is %s", short(got), short(d.Pull.Head.SHA))
 	}
-	out, err := gitAuth(ctx, ws.remote, ws.token, "-C", dir, "merge-tree", "--write-tree", "--quiet", "refs/preflight/base", "refs/preflight/head")
+	// No --quiet: git learned it in 2.50 and an older one exits 129 on it. The exit status says the same without it, and
+	// what git prints is read only for the error.
+	out, err := gitAuth(ctx, ws.remote, ws.token, "-C", dir, "merge-tree", "--write-tree", "refs/preflight/base", "refs/preflight/head")
 	var exitErr *exec.ExitError
 	switch {
 	case err == nil:
