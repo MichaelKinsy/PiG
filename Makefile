@@ -408,7 +408,7 @@ test-sdk-conformance: ## Run the SDK conformance scenario table against every ex
 test-mcp-conformance: ## Run the official MCP client conformance suite against PiG's MCP client (needs network the first time; see test/mcp-conformance/README.md)
 	@go run ./test/mcp-conformance/run $(MCP_CONFORMANCE_ARGS)
 
-test-sdk-ts: parity-deps ## Check the pinned TypeScript extension declarations (equal to the published release's) and runtime helpers
+test-sdk-ts: parity-deps ## Check the TypeScript extension declarations (pi-pin.d.ts equals the pinned build and is current, an author's project compiles against it, the differences from the published release are reported) and runtime helpers
 	@cd extensions/sdk-ts && npm test
 
 # Resolve the selected Rust toolchain before validators replace HOME so tool-manager shims do not select a different compiler.
@@ -827,6 +827,7 @@ pin-check: ## Test the pin tooling and fail when a file derived from .upstream/p
 	@python3 -B -m unittest discover -s automation/pin -p 'test_*.py'
 	@$(PIN_TOOL) sync --check
 	@$(PIN_TOOL) check-vendored
+	@node extensions/sdk-ts/scripts/check-pin-bundle.mjs
 
 pin-check-vendored-rebuild: parity-deps ## Pack the pinned Pi build again and require third_party/pi-packs to equal it (members and bytes)
 	@$(PIN_TOOL) check-vendored --rebuild
@@ -834,20 +835,18 @@ pin-check-vendored-rebuild: parity-deps ## Pack the pinned Pi build again and re
 vendor-sdk-ts-declarations: ## Freeze the published declarations of the peer dependency's Pi release for the sdk-ts drift test (npm pack, verified against package-lock.json; a no-op when the snapshot is current)
 	@cd extensions/sdk-ts && node scripts/freeze-published-declarations.mjs
 
+vendor-sdk-ts-pin-declarations: parity-deps ## Regenerate extensions/sdk-ts/pi-pin.d.ts, the pinned build's declarations an extension author type-checks against, from the installed oracle, and the peer dependencies it imports in package.json (with package-lock.json, through npm, when they change)
+	@cd extensions/sdk-ts && node scripts/pin-bundle.mjs
+
 vendor-pi-packs: parity-deps ## Regenerate third_party/pi-packs, the vendored `npm pack` of the pinned build's durable closure, and the locks of its consumers
 	@$(PIN_TOOL) vendor
 
 pin-ledgers: ## Generate the effective pin's per-pin ledgers (async-contracts, behavior-contracts, known-gaps, interface delta, custom-factory draft) from PIN_FROM=<tag|commit> (default: the committed pin)
 	@$(PIN_TOOL) ledgers $(if $(PIN_FROM),--from "$(PIN_FROM)")
 
-pin-bump: ## Move the pin to PI_UPSTREAM_REF=<tag|commit>, regenerate what derives from it, then mirror, install the oracle and generate the ledgers
+pin-bump: ## Move the pin to PI_UPSTREAM_REF=<tag|commit> and regenerate everything that derives from it, in one resumable run (retire carried work, mirror, inventories, ledgers, vendored Pi, observation oracles, gaps, make generate); a rerun resumes, a finished bump is a no-op; PIN_FROM=<ref> names the earlier pin only when the pin file moved without a record
 	@test -n "$(PI_UPSTREAM_REF)" || { echo "pin-bump: set PI_UPSTREAM_REF=<tag|commit>" >&2; exit 2; }
-	@old=$$(env -u PI_UPSTREAM_REF $(PIN_TOOL) get ref); env -u PI_UPSTREAM_REF $(PIN_TOOL) bump "$(PI_UPSTREAM_REF)"; \
-		$(MAKE) --no-print-directory PI_UPSTREAM_REF= upstream-mirror interface-proposals test-inventory-generate && \
-		$(MAKE) --no-print-directory PI_UPSTREAM_REF= PIN_FROM="$$old" pin-ledgers && \
-		$(MAKE) --no-print-directory PI_UPSTREAM_REF= vendor-pi-packs vendor-sdk-ts-declarations vendor-pi-dist vendor-chord-plugins-node vendor-chord-surfaces-client model-catalogs intl-tables && \
-		./automation/gen/regenerate-observation-oracles.sh && \
-		./automation/gen/refresh-pi-test-sources.sh
+	@env -u PI_UPSTREAM_REF PIN_FROM="$(PIN_FROM)" python3 automation/pin/bump.py "$(PI_UPSTREAM_REF)"
 
 regenerate-alt-screen-oracle: parity-deps ## Re-record tui/testdata/alt-screen-oracle.json.gz from the installed Pi (the fixture TestAltScreenFixtureIsCurrent compares byte for byte)
 	@node tui/testdata/alt-screen-oracle.mjs "$$(cd extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-tui && pwd -P)/dist/index.js" | gzip -n -9 > tui/testdata/alt-screen-oracle.json.gz.tmp && mv tui/testdata/alt-screen-oracle.json.gz.tmp tui/testdata/alt-screen-oracle.json.gz
@@ -934,7 +933,7 @@ parity-deps: interface-deps durable-interop-deps ## Build the Pi comparator from
 	@test -d "$(PI_PACKAGE_ROOT)" || { echo "exact Pi package not found: $(PI_PACKAGE_ROOT)" >&2; exit 1; }
 	@$(PIN_TOOL) check-oracle
 
-.PHONY: bug-ledger-refresh port-lens pin-show pin-sync pin-check pin-check-vendored-rebuild vendor-pi-packs vendor-sdk-ts-declarations pin-bump pin-ledgers vendor-pi-dist regenerate-alt-screen-oracle vendor-chord-plugins-node vendor-chord-surfaces-client vendor-chord-carried-check bench-test bench-lock-verify bench-lock-bump bench-arms bench-overhead bench-reliability bench-longhistory bench-startup bench-aggregate bench-soak bench-local bench-durable bench-harbor bench-report durable-interop-deps durable-contract durable-contract-setup durable-contract-test node-runtime bug-ledger bug-ledger-check release-notes-draft npm-dist-test npm-dist-e2e compliance evals-mutate slop slop-check # Deterministic tmux-driven integration tier # Release gate. Tighter than `check` # The recommended one-shot for end-of-loop verification # docs-drift gates the shipped docs bundle against the code it describes # install # numbered in docs/parity/DIVERGENCES.md must have a matching `// pig divergence (DN) # the single-main-loop ownership invariant bench bench-base bench-compare build build-env-daemons check check-core clean dev divergence-guard divergence-quality doctor port-lint any-trap perf-lint evals evals-live evals-publish evals-requests evals-test examples-check go-fix-clean help help-parity interface-deps knowledge-graph lint lint-changed model-catalogs parity-deps perf-check pgo pig profile qc setup standard-check test test-fixtures test-go-modules test-mcp-conformance test-prereqs test-sdk-conformance test-sdk-go test-sdk-rs test-sdk-ts test-stress upstream-mirror vet durable-counts durable-bar durable-flat durable-counts-update durable-contract-trace durable-core-host-deps durable-core-host-check durable-core-budget
+.PHONY: bug-ledger-refresh port-lens pin-show pin-sync pin-check pin-check-vendored-rebuild vendor-pi-packs vendor-sdk-ts-declarations vendor-sdk-ts-pin-declarations pin-bump pin-ledgers vendor-pi-dist regenerate-alt-screen-oracle vendor-chord-plugins-node vendor-chord-surfaces-client vendor-chord-carried-check bench-test bench-lock-verify bench-lock-bump bench-arms bench-overhead bench-reliability bench-longhistory bench-startup bench-aggregate bench-soak bench-local bench-durable bench-harbor bench-report durable-interop-deps durable-contract durable-contract-setup durable-contract-test node-runtime bug-ledger bug-ledger-check release-notes-draft npm-dist-test npm-dist-e2e compliance evals-mutate slop slop-check # Deterministic tmux-driven integration tier # Release gate. Tighter than `check` # The recommended one-shot for end-of-loop verification # docs-drift gates the shipped docs bundle against the code it describes # install # numbered in docs/parity/DIVERGENCES.md must have a matching `// pig divergence (DN) # the single-main-loop ownership invariant bench bench-base bench-compare build build-env-daemons check check-core clean dev divergence-guard divergence-quality doctor port-lint any-trap perf-lint evals evals-live evals-publish evals-requests evals-test examples-check go-fix-clean help help-parity interface-deps knowledge-graph lint lint-changed model-catalogs parity-deps perf-check pgo pig profile qc setup standard-check test test-fixtures test-go-modules test-mcp-conformance test-prereqs test-sdk-conformance test-sdk-go test-sdk-rs test-sdk-ts test-stress upstream-mirror vet durable-counts durable-bar durable-flat durable-counts-update durable-contract-trace durable-core-host-deps durable-core-host-check durable-core-budget
 
 include automation/make/parity.mk
 include automation/make/ci.mk

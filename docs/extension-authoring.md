@@ -474,6 +474,8 @@ Export one Pi-compatible default extension function. Pig packs Node factories in
 
 Use `@michaelkinsy/pig-extension-types` during development when the extension uses a PiG-only API such as `ui.setLogin`. The declaration package pins the exact Pi version from `coding.UpstreamVersion`; it does not provide a second runtime implementation. See `extensions/sdk-ts/README.md`.
 
+A project that imports `@michaelkinsy/pig-extension-types` type-checks `@earendil-works/pi-coding-agent`, `pi-ai`, `pi-tui` and `pi-agent-core` against the Pi build PiG is pinned to, not against the installed release: the package's `pi-pin.d.ts` declares them, and no `tsconfig` entry is needed. The pin can be past the published release, so a member the pin has and the release lacks exists only in PiG, and an extension that uses it does not run on that Pi release. The comment at the top of `node_modules/@michaelkinsy/pig-extension-types/pi-pin.d.ts` lists those members.
+
 ## Contributing an OAuth provider
 
 Register OAuth only through the runtime provider declaration. `pig login --list` resolves enabled extensions. For each source extension without a valid projection for its exact source configuration and immutable artifact digest, Pig starts it for registration inspection, collects OAuth provider declarations, and stops it without dispatching session or capability handlers. A valid projection avoids startup. Embedded packed members are inspected independently through the complete compiled artifact. Duplicate provider IDs fail and name both owners. Login then starts only the owning extension. Embedded and fused extensions use the same registration contract.

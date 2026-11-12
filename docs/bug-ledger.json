@@ -28979,6 +28979,52 @@
       ]
     },
     {
+      "id": "BF-849f5f9",
+      "title": "The README installed `@michaelkinsy/pig-extension-types` from the source tree as a link, and the compiler…",
+      "symptom": "The README installed `@michaelkinsy/pig-extension-types` from the source tree as a link, and the compiler then resolved the package's imports from the folder: the PiG-only members, `ctx.ui.setLogin` of the README's own example among them, were missing from Pi's types.",
+      "rootCause": ".npmrc sets legacy-peer-deps so the lock's tree stays the published install of Pi that the pin tooling freezes; the lock gains only the root block.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The README installed `@michaelkinsy/pig-extension-types` from the source tree as a link, and the compiler then resolved the package's imports from the folder: the PiG-only members, `ctx.ui.setLogin` of the README's own example among them, were missing from Pi's types. The install command is now `npm install --install-links`, which copies the folder, and the README names `preserveSymlinks` for a project that keeps a link.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "849f5f9c8d",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "extensions/sdk-ts/scripts/author-view.test.mjs",
+        "extensions/sdk-ts/scripts/pin-bundle.test.mjs"
+      ]
+    },
+    {
+      "id": "BF-849f5f9-2",
+      "title": "`registerMarkdownTransformer`'s `context` and `ui.onThemeChange`'s `theme` were `any`: `index.d.ts` named…",
+      "symptom": "`registerMarkdownTransformer`'s `context` and `ui.onThemeChange`'s `theme` were `any`: `index.d.ts` named `MarkdownTransformContext` and `Theme` without importing them.",
+      "rootCause": ".npmrc sets legacy-peer-deps so the lock's tree stays the published install of Pi that the pin tooling freezes; the lock gains only the root block.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`registerMarkdownTransformer`'s `context` and `ui.onThemeChange`'s `theme` were `any`: `index.d.ts` named `MarkdownTransformContext` and `Theme` without importing them.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "849f5f9c8d",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "extensions/sdk-ts/scripts/author-view.test.mjs",
+        "extensions/sdk-ts/scripts/pin-bundle.test.mjs"
+      ]
+    },
+    {
       "id": "BF-84b2fca",
       "title": "Code that fails to highlight takes the code-block color, as in Pi: `highlightCode` returns it in the…",
       "symptom": "Code that fails to highlight takes the code-block color, as in Pi: `highlightCode` returns it in the `mdCodeBlock` color in the Go, Rust, Python and Lisp extension SDKs when the host's highlighter fails or cannot be reached, and in the host for a theme that lacks a syntax color, where PiG panicked.",
@@ -30899,6 +30945,26 @@
         "tui/editor_autocomplete_hold_test.go::TestExtensionChainBehindAnUnfinishedRequestDoesNotHold",
         "tui/editor_autocomplete_hold_test.go::TestFlushAutocompleteStartsTheExtensionChainOncePerRead"
       ]
+    },
+    {
+      "id": "BF-8e49dba",
+      "title": "Tooling: `make pin-bump` retires the carried oracle as it is built now",
+      "symptom": "Tooling: `make pin-bump` retires the carried oracle as it is built now.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Tooling: `make pin-bump` retires the carried oracle as it is built now. The retirement step still looked for the earlier mechanism (a Makefile block that ended in `carried-oracles-run`, a rewritten `suspendableOraclePackages`), so a bump to a Pi that contains the carried commit stopped at `Makefile: nothing to retire` and `make pin-check` failed in three tests of `automation/pin/test_carried.py`. It now deletes what exists only for the carried run: the Makefile block (`CARRIED_ORACLE_REF`, the two test lists, `test-carried-oracles`, `test-carried-oracles-guard`), the CI step that runs the guard, `automation/pin/carried_guard.py` and its tests, the three skips of the oracle tests (`skipWithoutSuspendableWork`, `suspendableOraclePackages`, `namespaceOracleSkip`), the reviewed decisions carried ahead of the pin, the paragraph on the carried run in `docs/parity/upstream-pin.md`, and the commit's frozen files. `pin.py override-tree` and `internal/pioracle` stay: they serve a run at any Pi commit. Three things changed in how it does that: every piece is looked up before a file is written, so a tree that lacks one stops the bump with `\u003cfile\u003e: nothing to retire (\u003cpiece\u003e is not there)` and no edit (before, the files edited up to that point stayed edited, and so did the backports script); the frozen provider data and closure of the carried commit are kept when the bump's target is that very commit, whose oracle build reads them (before, they were deleted and the new pin's first build would have hydrated live model data); and a rerun after a retirement reports `carried oracle: none`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8e49dba241",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-8e70eff",
