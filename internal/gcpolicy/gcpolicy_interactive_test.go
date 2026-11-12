@@ -227,7 +227,7 @@ func TestInteractiveGoalFloorHoldsAgainAfterTheHeapShrinks(t *testing.T) {
 	live := make([]byte, InteractiveFallbackLiveBytes+12<<20)
 	waitForPercent(t, DefaultPercent, 10*time.Second, runtime.GC)
 	runtime.KeepAlive(live)
-	live = nil
+	// live is dead after KeepAlive: the collector frees it without an assignment.
 	deadline := time.Now().Add(10 * time.Second)
 	for gcPercent() <= DefaultPercent {
 		if time.Now().After(deadline) {
@@ -274,7 +274,6 @@ func TestInteractiveHeapGoalByLiveHeap(t *testing.T) {
 		{3, 100, true},
 		{10, 100, false},
 	} {
-		held = nil
 		held = make([]byte, tc.hold*MiB)
 		for i := 0; i < len(held); i += 4096 {
 			held[i] = 1
