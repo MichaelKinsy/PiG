@@ -36293,6 +36293,29 @@
       ]
     },
     {
+      "id": "BF-D626",
+      "title": "A model object an extension set is replaced by the registry's model only when the registry's entry for its…",
+      "symptom": "none.",
+      "rootCause": "the extension wire carries the model object as JSON, not its identity, so the host cannot tell an in-place edit from a copy. Replacing every object that differs from the registry's entry would make the upstream-tested shape (issue 9631: an edited registry model set from `before_agent_start`) lose its edit at PiG's own background catalog refreshes, which Pi does not have. Keeping the object until its entry changes is Pi's in-place case, and for a model set from the registry unchanged it is what PiG did before.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D626",
+      "removeWhen": "the extension wire can tell an in-place edit of a registry model from a copy, or Pi changes the rule of `_refreshCurrentModelFromRegistry`.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "e08c6a2630",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/session_model_object_refresh_test.go::TestRegistryChangeAndTheModelObjectOfTheSession"
+      ]
+    },
+    {
       "id": "BF-a076a50",
       "title": "A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…",
       "symptom": "The time the connection had spent idle in the pool was deducted from the next request's timeout.",
@@ -58562,6 +58585,11 @@
       "id": "D619",
       "title": "A status-indicator or Loader animation step asks for its frame within min(40 ms, interval/2), where Pi asks…",
       "entry": "BF-D619"
+    },
+    {
+      "id": "D626",
+      "title": "A model object an extension set is replaced by the registry's model only when the registry's entry for its…",
+      "entry": "BF-D626"
     }
   ],
   "exemptCommits": {
