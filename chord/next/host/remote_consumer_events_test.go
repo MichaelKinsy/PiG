@@ -1,9 +1,13 @@
 package host
 
 import (
+	"context"
+	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
@@ -22,6 +26,8 @@ type eventClientOptions struct {
 	Compression link.Compression
 	// Watcher binds the watcher variant (no paddle) first.
 	Watcher bool
+	// Context is the link's context; nil is background.
+	Context context.Context
 }
 
 // eventClientHost is what eventClient returns: Pi's `{ client, peer, match, paddle, hold, errors, counts }`.
@@ -79,7 +85,11 @@ func eventClient(t testing.TB, options eventClientOptions) *eventClientHost {
 		}
 		k.queue.post(job)
 	}, k.queue.flush)
-	must(t, k.Client.Connect(a, LinkOptions{Principal: serverPrincipal(), Codec: testCodec(), Limits: options.Limits}, background))
+	linkContext := options.Context
+	if linkContext == nil {
+		linkContext = background
+	}
+	must(t, k.Client.Connect(a, LinkOptions{Principal: serverPrincipal(), Codec: testCodec(), Limits: options.Limits}, linkContext))
 	k.Peer = newRawPeer(t, b, rawPeerOptions{})
 	got := asyncGet(k.Client, Match, jsonObject("id", float64(1)), background, GetOptions{})
 	k.Hold = k.Peer.Next("hold").(*link.HoldMessage).Hold
@@ -121,6 +131,47 @@ func eventAcks(peer *RawPeer) []int {
 		}
 	}
 	return acks
+}
+
+// heldInflate is the telemetry of a link's context whose `chord.link.inflates` counter waits for release. An
+// asynchronous inflate counts itself before it reads its part, so it holds its message until then: Pi's test stubs
+// DecompressionStream with one whose output waits for a gate.
+type heldInflate struct {
+	telemetry.TelemetrySpan
+	enter            sync.Once
+	entered, release chan struct{}
+}
+
+func newHeldInflate() *heldInflate {
+	return &heldInflate{TelemetrySpan: telemetry.NoopTelemetryContext, entered: make(chan struct{}), release: make(chan struct{})}
+}
+
+func (h *heldInflate) Metrics() telemetry.TelemetryMetrics {
+	return heldInflateMetrics{TelemetryMetrics: h.TelemetrySpan.Metrics(), held: h}
+}
+
+type heldInflateMetrics struct {
+	telemetry.TelemetryMetrics
+	held *heldInflate
+}
+
+func (m heldInflateMetrics) Counter(name string, options telemetry.InstrumentOptions) telemetry.TelemetryCounter {
+	counter := m.TelemetryMetrics.Counter(name, options)
+	if name != "chord.link.inflates" {
+		return counter
+	}
+	return heldInflateCounter{TelemetryCounter: counter, held: m.held}
+}
+
+type heldInflateCounter struct {
+	telemetry.TelemetryCounter
+	held *heldInflate
+}
+
+func (c heldInflateCounter) Add(value float64, attributes telemetry.SpanAttributes) {
+	c.held.enter.Do(func() { close(c.held.entered) })
+	<-c.held.release
+	c.TelemetryCounter.Add(value, attributes)
 }
 
 func sumInts(values []int) int {
@@ -264,26 +315,30 @@ func TestConsumerEvents(t *testing.T) {
 			requireEqual(t, "seen", seen, []any{5.0})
 		})
 
-		// "keep the event window exhausted while an asynchronous inflate holds the message: acknowledged once consumed":
-		// Pi stalls a stubbed DecompressionStream; link.InflateAsync cannot be stalled (see the GC test of the
-		// asynchronous inflate), so the Go form asserts what is observable: a deflated event is acknowledged once, after
-		// it was delivered.
-		t.Run("acknowledge a deflated event once, after it was consumed", func(t *testing.T) {
-			k := eventClient(t, eventClientOptions{})
+		t.Run("keep the event window exhausted while an asynchronous inflate holds the message: acknowledged once consumed", func(t *testing.T) {
+			held := newHeldInflate()
+			k := eventClient(t, eventClientOptions{Context: chordctx.WithTelemetry(background, held)})
 			var seen []any
-			var acksAtDelivery []int
 			k.paddle(t, func(e contracts.EventDelivery[delta.JsonValue]) {
 				seen = append(seen, e.Value.(*delta.JsonObject).Value("y"))
-				acksAtDelivery = append(acksAtDelivery, len(eventAcks(k.Peer)))
 			})
 			text, err := link.JsonPart(jsonObject("y", 1.0))
 			must(t, err)
 			value := link.NewDeflatedPart(nextnode.NodeCompression.Deflate([]byte(string(text))))
 			k.Peer.Send(&link.EventMessage{Events: []link.WireEvent{{Hold: k.Hold, Member: wireNames(t, Match, "player").Events["paddle"], At: 1, Value: value}}})
+			select {
+			case <-held.entered:
+			case <-time.After(10 * time.Second):
+				t.Fatal("the asynchronous inflate never started")
+			}
+			for range 5 {
+				settle(k.Peer)
+			}
+			requireEqual(t, "event acks while the inflate holds the message", eventAcks(k.Peer), []int{})
+			close(held.release)
 			rhWaitFor(t, func() bool { return len(eventAcks(k.Peer)) > 0 })
 			settle(k.Peer)
 			requireEqual(t, "seen", seen, []any{1.0})
-			requireEqual(t, "acks at delivery", acksAtDelivery, []int{0})
 			requireEqual(t, "event acks", eventAcks(k.Peer), []int{1})
 		})
 	})
