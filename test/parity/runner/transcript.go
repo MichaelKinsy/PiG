@@ -61,16 +61,16 @@ func copyTranscript(path string, in io.Reader, diag io.Writer) int {
 		}
 	}
 	if err := f.Close(); err != nil {
-		fmt.Fprintf(diag, "transcript reader: %v\n", err)
+		_, _ = fmt.Fprintf(diag, "transcript reader: %v\n", err)
 		return 1
 	}
 	done := path + transcriptDoneSuffix
 	if err := os.WriteFile(done+".tmp", []byte(strconv.FormatInt(total, 10)+"\n"), 0o600); err != nil {
-		fmt.Fprintf(diag, "transcript reader: %v\n", err)
+		_, _ = fmt.Fprintf(diag, "transcript reader: %v\n", err)
 		return 1
 	}
 	if err := os.Rename(done+".tmp", done); err != nil {
-		fmt.Fprintf(diag, "transcript reader: %v\n", err)
+		_, _ = fmt.Fprintf(diag, "transcript reader: %v\n", err)
 		return 1
 	}
 	return 0
