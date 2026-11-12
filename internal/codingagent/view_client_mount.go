@@ -2,6 +2,7 @@ package codingagent
 
 import (
 	"context"
+	"slices"
 	"strconv"
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
@@ -20,10 +21,16 @@ type viewMount struct {
 	ref     uiview.Ref
 	intents []uiview.IntentDecl
 	digest  string
-	// accepted reports that the surface holds a view, drawable that the last snapshot's view is the one it holds, and
-	// visible that the mount is live and drawable, so it is in the tree.
-	accepted, drawable, visible bool
-	focused                     bool
+	// accepted reports that the surface holds a view, drawable that the last snapshot's view is the one it holds, live
+	// that the mount is live and drawable, hidden that its plugin hid it, and visible that the mount is in the tree: it is
+	// live and, in a slot with tabs, the tab that is drawn.
+	accepted, drawable, live, hidden, visible bool
+	focused                                   bool
+	// title is the snapshot's. node is the node of the last focus request, which takes the keys while the focus records
+	// name it. asksFocus reports a focus request the client has not answered, and attention that the mount asked to be
+	// shown while the user worked in another view.
+	title, node          string
+	asksFocus, attention bool
 	// cancel ends the intent in flight and is nil when there is none; flight numbers it and cancellable is its
 	// declaration's.
 	cancel      context.CancelFunc
@@ -40,6 +47,21 @@ type viewMount struct {
 	lineRows  int
 	lineRev   uint64
 	lineTheme *tui.Theme
+}
+
+// focusNode returns the node that takes the keys when the view names none: the node of the last focus request while the
+// records still name it, else the first record's.
+func (m *viewMount) focusNode(entries []uiview.Focus, request *uiview.Focus) string {
+	if request != nil {
+		m.node = request.Node
+	}
+	if !slices.ContainsFunc(entries, func(f uiview.Focus) bool { return f.Node == m.node }) {
+		m.node = ""
+		if len(entries) > 0 {
+			m.node = entries[0].Node
+		}
+	}
+	return m.node
 }
 
 // takesFocus reports whether the mount can hold the keyboard focus now.
@@ -89,6 +111,7 @@ func (m *viewMount) SetFocused(focused bool) {
 		return
 	}
 	m.focused = focused
+	m.c.stamp++
 	m.surface.SetFocused(focused)
 	switch {
 	case focused:

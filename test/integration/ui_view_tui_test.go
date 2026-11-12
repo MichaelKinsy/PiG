@@ -280,11 +280,12 @@ func TestUIViewMountThenUnmountIsTheSessionThatNeverMounted(t *testing.T) {
 				if !strings.Contains(never.session, "20+22") {
 					t.Errorf("the session file lacks the prompt:\n%s", never.session)
 				}
-				if !bytes.Equal(never.raw, control.raw) {
+				switch {
+				case !bytes.Equal(never.raw, control.raw):
 					t.Logf("two sessions that never mounted wrote different bytes for the same keys (%d and %d): the byte comparison is not stable here", len(never.raw), len(control.raw))
-				} else if !bytes.Equal(mounted.raw, never.raw) {
+				case !bytes.Equal(mounted.raw, never.raw):
 					t.Errorf("the bytes written for the same keys differ.\n--- mounted and ended ---\n%q\n--- never mounted ---\n%q", mounted.raw, never.raw)
-				} else if len(never.raw) == 0 {
+				case len(never.raw) == 0:
 					t.Error("no bytes were recorded: the comparison proves nothing")
 				}
 			})
@@ -306,5 +307,46 @@ func TestUIViewClientIsSelectedByThePiglet(t *testing.T) {
 	pane = on.settle("fixture widget row", "fixture panel", "Alpha item")
 	if strings.Contains(pane, "unsupported") {
 		t.Fatalf("the Piglet that selects the terminal client refused the mount:\n%s", pane)
+	}
+}
+
+// Titled panels are tabs in a real session: one row of titles, the front tab's view alone, F6 from tab to tab, Enter on
+// a hidden tab opens it through its whenHidden intent, and a focus request made while the editor is empty moves the
+// keys into the view. In both TUI modes.
+func TestUIViewPanelsAreTabs(t *testing.T) {
+	for _, mode := range []string{"fullscreen", "regular"} {
+		t.Run(mode, func(t *testing.T) {
+			r := startUIView(t, "on.yaml", mode, true)
+			absent := func(pane string, needles ...string) {
+				t.Helper()
+				for _, needle := range needles {
+					if strings.Contains(pane, needle) {
+						t.Fatalf("%q is on the screen:\n%s", needle, pane)
+					}
+				}
+			}
+			r.send("/vtabs\r")
+			absent(r.settle("Mail", "Calendar", "(Notes)", "cal rows"), "mail rows", "notes rows", "[Mail]", "[Calendar]")
+			r.sendKey("F6")
+			absent(r.settle("[Mail]", "mail rows"), "cal rows", "notes rows")
+			r.sendKey("F6")
+			absent(r.settle("[Calendar]", "cal rows"), "mail rows", "notes rows")
+			r.sendKey("F6")
+			absent(r.settle("[(Notes)]", "enter opens", "cal rows"), "notes rows")
+			r.sendKey("Enter")
+			absent(r.settle("[Notes]", "notes rows"), "cal rows", "(Notes)", "enter opens")
+			// The opened tab holds the focus: its list takes the keys.
+			r.sendKey("Down")
+			r.sendKey("Enter")
+			r.settle("notes picked beta")
+			r.sendKey("Escape")
+			r.settle()
+			// With the editor empty, the second tab's request for the focus is granted.
+			r.send("/vfocus\r")
+			absent(r.settle("[Calendar]", "cal asked"), "notes picked beta")
+			r.sendKey("Down")
+			r.sendKey("Enter")
+			absent(r.settle("cal picked beta"), "viewfx vfocus", "refused")
+		})
 	}
 }

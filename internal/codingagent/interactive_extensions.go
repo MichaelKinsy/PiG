@@ -482,6 +482,9 @@ func (m *InteractiveMode) renderWidgetsLocked() {
 	// pig additive (D614): the mounts the terminal view client draws follow the widgets of their side, and the panels are
 	// the rows nearest the editor.
 	for _, region := range [...]viewRegion{viewAboveEditor, viewPanel, viewBelowEditor} {
+		if region == viewPanel && m.viewTabRow != nil {
+			above = append(above, m.viewTabRow)
+		}
 		for _, mount := range m.viewMounts {
 			switch {
 			case mount.slot.region != region:
