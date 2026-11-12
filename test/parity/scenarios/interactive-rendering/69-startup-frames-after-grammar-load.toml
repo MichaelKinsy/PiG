@@ -17,6 +17,14 @@
 # which of Pi's frames comes from its grammar load (the harness has no direct pty driver and the cursor-only frames are byte-identical); that
 # attribution is the pty capture in the evidence above, and the direct tests of the repaint decision in internal/codingagent and tui/internal/hljs.
 
+# Re-measured 2026-11-12 on xd670 (Ubuntu 26.04, tmux 3.6a, Pi 1.5.2 source oracle b4afdddf, with and without the post-release backports; the counts did not differ).
+# The earlier red came from the runner, not from either binary: the transcript was read through cat, which on that host is uutils coreutils 0.8.0 and stops copying
+# tmux pipe-pane's socket after the first chunk, so the last frame was missing (Pi: 0 cursor-only frames in 20 of 20 runs, loaded and on quiet cores; PiG: wrong in 10 and
+# 12 of 20). With the runner's own complete transcript reader (transcript.go) Pi and PiG had one cursor-only frame after "(auto)" in 70 of 70 runs each (50 loaded, 20
+# pinned to cores 56-63). Shapes (8 runs of each): Pi writes the first frame with the footer's "(auto)", sometimes a header frame, then the cursor-only frame; PiG writes
+# the first frame, one 4.7 kB frame, then the cursor-only frame. The cursor-only frame is the render coding-agent loadAllHighlightLanguages() requests when the grammar
+# import resolves (interactive-mode.ts), and Pi writes it for every request, so the count is exact unless a later frame rewrites the footer; none was seen.
+
 # lint-known-gap: no equality comparator. The start screen carries each product's own banner (PiG's logo and "PiG can explain..." hint against Pi's
 # name), which no recorded normalization covers; this scenario asserts the byte stream after the footer's text, and the settled screens are compared
 # by the family's scenarios that follow a start with a prompt (68-no-frame-after-reply and the others).
