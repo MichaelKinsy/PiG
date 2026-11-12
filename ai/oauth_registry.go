@@ -218,7 +218,7 @@ func resolveStoredOAuthAPIKey(ctx context.Context, storage *AuthStorage, provide
 	if !ok {
 		return "", fmt.Errorf("unknown OAuth provider: %s", providerID)
 	}
-	current, err := refreshStoredOAuth(ctx, storage, providerID, oauthProviderAuth(providerID, provider), credential, nil)
+	current, err := refreshStoredOAuth(ctx, storage, providerID, oauthProviderAuth(providerID, provider), credential, nil, startOAuthRefreshWork)
 	if err != nil || current == nil {
 		return "", err
 	}
