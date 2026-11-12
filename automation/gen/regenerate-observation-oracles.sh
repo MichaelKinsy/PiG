@@ -6,16 +6,19 @@
 # The fixtures record the microtask and macrotask order of Pi's pipeline, which depends on the Node release: from Node 24.22.0
 # a body delivered in separate socket writes can reach Pi's consumer in one macrotask, where Node 24.14.1 through 24.21.0 deliver
 # one macrotask per write. The Go models replay the oracle Node, ai/testdata/node-microtasks/oracle-node-version, not .node-version
-# (CI's Node) and not Node current. The script refuses to record under any other Node.
+# (CI's Node) and not Node current. The script records under no other Node: when the `node` on PATH is not that release it fetches it
+# (`pin.py oracle-node`: nodejs.org's tarball, sha256 checked against its SHASUMS256.txt, cached under ~/.cache/pig/node).
 set -euo pipefail
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
 cd "$root"
 oracle=$(tr -d '\r\n' < ai/testdata/node-microtasks/oracle-node-version)
 have=$(node --version 2>/dev/null || true)
 if [ "$have" != "v$oracle" ]; then
-  echo "regenerate-observation-oracles: Node on PATH is '${have:-none}'; the observation fixtures are recorded under the oracle Node v$oracle (ai/testdata/node-microtasks/oracle-node-version), not .node-version." >&2
-  echo "Put Node v$oracle first on PATH (tern-ci: run.sh --node $oracle, with that release mounted at /opt/node/$oracle if the image lacks it) and rerun." >&2
-  exit 1
+  # No image or host is guaranteed to have the oracle Node: fetch it from nodejs.org, verified against the release's SHASUMS256.txt, into the user cache.
+  bin=$(python3 automation/pin/pin.py oracle-node) || exit 1
+  export PATH="$bin:$PATH"
+  have=$(node --version 2>/dev/null || true)
+  [ "$have" = "v$oracle" ] || { echo "regenerate-observation-oracles: Node on PATH is '${have:-none}', not the oracle Node v$oracle (ai/testdata/node-microtasks/oracle-node-version)." >&2; exit 1; }
 fi
 eval "$(python3 automation/pin/pin.py env)"
 export PI_PACKAGE_ROOT="$root/extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent"

@@ -15,7 +15,10 @@ var (
 	pinConst       = regexp.MustCompile(`(?m)^const (UpstreamVersion|UpstreamCommit|PigVersion) = "([^"]+)"`)
 	pinnedRelease  = regexp.MustCompile("(?i)pinned Pi (?:release|version|build) (?:is )?`?(\\d+\\.\\d+\\.\\d+(?:\\+[0-9a-f]{8})?)`?")
 	pinnedCommit   = regexp.MustCompile("(?i)pinned(?:[^.\\n]|\\.\\d)*commit `([0-9a-f]{40})`")
-	compositeValue = regexp.MustCompile("`(\\d+\\.\\d+\\.\\d+)\\+(\\d+\\.\\d+\\.\\d+(?:\\+[0-9a-f]{8})?)`")
+	// compositeValue reads a `<PiG release>+<build metadata>` example, with either joiner of a commit pin's metadata (`.` is the binary's, `+` is
+	// the wrong form), so that the wrong form is read and compared, not skipped.
+	compositeValue = regexp.MustCompile("`(\\d+\\.\\d+\\.\\d+)\\+(\\d+\\.\\d+\\.\\d+(?:[.+][0-9a-f]{8})?)`")
+	versionConst   = regexp.MustCompile(`(?m)^const Version = PigVersion \+ "\+([^"]+)"`)
 )
 
 func readPin(t *testing.T) map[string]string {
@@ -28,10 +31,22 @@ func readPin(t *testing.T) map[string]string {
 	for _, m := range pinConst.FindAllStringSubmatch(string(data), -1) {
 		out[m[1]] = m[2]
 	}
-	if out["UpstreamVersion"] == "" || out["UpstreamCommit"] == "" || out["PigVersion"] == "" {
+	if m := versionConst.FindStringSubmatch(string(data)); m != nil {
+		out["BuildMetadata"] = m[1]
+	}
+	if out["UpstreamVersion"] == "" || out["UpstreamCommit"] == "" || out["PigVersion"] == "" || out["BuildMetadata"] == "" {
 		t.Fatalf("pigversion.go no longer declares the pin constants: %v", out)
 	}
 	return out
+}
+
+// compositeProblem says what is wrong with the `<PiG release>+<build metadata>` example m of a line, "" when it is the string the binary
+// prints: pigversion.Version, PigVersion plus "+" plus the pin's build metadata (one plus: a commit pin's version joins its commit with a dot).
+func compositeProblem(m []string, pin map[string]string) string {
+	if m[1] == pin["PigVersion"] && m[2] == pin["BuildMetadata"] {
+		return ""
+	}
+	return "shows the version " + m[1] + "+" + m[2] + ", but the binary prints " + pin["PigVersion"] + "+" + pin["BuildMetadata"]
 }
 
 func TestProseNamesTheCurrentPin(t *testing.T) {
@@ -60,8 +75,8 @@ func TestProseNamesTheCurrentPin(t *testing.T) {
 					continue
 				}
 				checked++
-				if m[1] != pin["PigVersion"] || m[2] != pin["UpstreamVersion"] {
-					at("shows the version %s+%s, but this release is %s+%s", m[1], m[2], pin["PigVersion"], pin["UpstreamVersion"])
+				if problem := compositeProblem(m, pin); problem != "" {
+					at("%s", problem)
 				}
 			}
 		}
@@ -84,6 +99,29 @@ func TestPinPatternsReadTheCommitPinSentence(t *testing.T) {
 	}
 	if m := pinnedCommit.FindStringSubmatch("The pin is pinned. Another commit `" + sha + "`."); m != nil {
 		t.Errorf("pinnedCommit crossed a sentence: %q", m)
+	}
+}
+
+// The README example of the composed version is the binary's string: the wrong form of a commit pin, two pluses, must be read and refused
+// (docs-drift once stayed green on `0.7.0+1.5.2+2443c687` while the binary prints `0.7.0+1.5.2.2443c687`).
+func TestCompositeExampleIsTheBinaryString(t *testing.T) {
+	pin := map[string]string{"PigVersion": "0.8.0", "UpstreamVersion": "1.5.2+2443c687", "BuildMetadata": "1.5.2.2443c687"}
+	for _, c := range []struct {
+		example string
+		ok      bool
+	}{
+		{"`0.8.0+1.5.2.2443c687`", true},
+		{"`0.8.0+1.5.2+2443c687`", false},
+		{"`0.8.0+1.5.2`", false},
+		{"`0.7.0+1.5.2.2443c687`", false},
+	} {
+		m := compositeValue.FindStringSubmatch(c.example)
+		if m == nil {
+			t.Fatalf("compositeValue does not read %s", c.example)
+		}
+		if got := compositeProblem(m, pin) == ""; got != c.ok {
+			t.Errorf("%s accepted = %v, want %v", c.example, got, c.ok)
+		}
 	}
 }
 

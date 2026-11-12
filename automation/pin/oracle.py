@@ -30,6 +30,7 @@ import hashlib
 import io
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -87,17 +88,24 @@ BACKPORTS = ROOT / "automation" / "gen" / "pi-post-release-backports.mjs"
 BACKPORT_PACKAGES = ("pi-ai", "pi-coding-agent", "pi-tui")
 
 
+def backport_ids(text: str | None = None) -> list[str]:
+    """The Pi commits the backports script carries an entry (a `// BEGIN backport <commit>` block) for, in file order, without repeats."""
+    if text is None:
+        text = BACKPORTS.read_text(encoding="utf-8")
+    return list(dict.fromkeys(re.findall(r"^// BEGIN backport (\w+)$", text, re.M)))
+
+
 def backports_digest(pin: Pin) -> str:
     """The digest of the backports the oracle of `pin` carries, "" for a pin that carries none. Only the committed pin does: a run
-    with PI_UPSTREAM_REF set builds another Pi (the upstream follower's), which the backports' exact before-strings do not describe."""
-    if pin != pinlib.committed():
+    with PI_UPSTREAM_REF set builds another Pi (the upstream follower's), which the backports' exact before-strings do not describe.
+    A script with no entry carries none either, so the oracle's key and stamp are those of a build that never heard of backports."""
+    if pin != pinlib.committed() or not backport_ids():
         return ""
     return hashlib.sha256(BACKPORTS.read_bytes()).hexdigest()
 
 
-def apply_backports(modules: Path) -> None:
-    """Apply the post-release backports to the installed Pi packages under `modules` in place. The packs and the source tree stay
-    as built: the frozen closure pins each pack's integrity, and the Durable oracle packs the source tree again."""
+def backport_places(modules: Path) -> dict[str, Path]:
+    """The one installed copy of each Pi package the backports patch, by short name (pi-ai), under the oracle's `modules`."""
     found: dict[str, list[Path]] = {name: [] for name in BACKPORT_PACKAGES}
     for key, installed in tree_packages(modules).items():
         package = installed.rsplit("@", 1)[0].removeprefix("@earendil-works/")
@@ -106,10 +114,20 @@ def apply_backports(modules: Path) -> None:
     for package, places in found.items():
         if len(places) != 1:
             raise PinError(f"the installed oracle has {len(places)} copies of {package} ({', '.join(map(str, places))}); the post-release backports patch exactly one")
+    return {package: places[0] for package, places in found.items()}
+
+
+def backports_node(*arguments: str) -> subprocess.CompletedProcess:
     node = shutil.which("node")
     if node is None:
         raise PinError("node is required to apply the post-release backports to the oracle")
-    done = subprocess.run([node, str(BACKPORTS), "--packages", *(f"{name}={places[0]}" for name, places in found.items())], capture_output=True, text=True, check=False, timeout=120)
+    return subprocess.run([node, str(BACKPORTS), *arguments], capture_output=True, text=True, check=False, timeout=120)
+
+
+def apply_backports(modules: Path) -> None:
+    """Apply the post-release backports to the installed Pi packages under `modules` in place. The packs and the source tree stay
+    as built: the frozen closure pins each pack's integrity, and the Durable oracle packs the source tree again."""
+    done = backports_node("--packages", *(f"{name}={place}" for name, place in backport_places(modules).items()))
     if done.returncode != 0:
         raise PinError(f"the post-release backports do not apply to the installed oracle:\n{done.stderr.strip()}")
 
