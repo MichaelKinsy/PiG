@@ -60,7 +60,7 @@ func (m *InteractiveMode) presentToolCard(comp *tui.ToolExecutionComponent, tool
 // resolveToolRenderers returns the renderers that draw calls of the named tool, or nil when the tool has none.
 func (m *InteractiveMode) resolveToolRenderers(name string) *extension.ToolRenderers {
 	// upstream: interactive-mode.ts getRegisteredToolDefinition: extension resolvers in load order, then the registered tool.
-	// pig divergence (D625): the resolution also notes whether an extension draws the card (toolRenderersOfAnExtension); Pi's keeps no such note.
+	// pig additive (D625): the resolution also notes whether an extension draws the card (toolRenderersOfAnExtension); Pi's keeps no such note.
 	var fromBase *extension.ToolRenderers
 	var plain extension.ToolRenderers
 	registered := false

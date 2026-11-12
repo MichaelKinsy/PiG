@@ -44,7 +44,7 @@ func scrollRegionsUsableIn(getenv func(string) string) bool {
 }
 
 // synchronizedUpdatesTrusted reports whether the terminal PiG runs in is trusted to show a frame at once at its end (synchronized updates, mode 2026: the bracket every frame is written in). Frames drawn more often than Pi draws them (FramePacing) need it: a terminal that ignores the bracket would show their rows as they arrive.
-// pig divergence (D625): Pi never asks which terminal it runs in before it schedules a frame.
+// pig additive (D625): Pi never asks which terminal it runs in before it schedules a frame.
 func synchronizedUpdatesTrusted() bool {
 	return synchronizedUpdatesTrustedIn(os.Getenv)
 }
@@ -59,7 +59,7 @@ func synchronizedUpdatesTrusted() bool {
 //	Alacritty  0.13.0 (its changelog: "Synchronized updates now use CSI 2026"); exports no version
 //	VS Code    1.108 (its release notes of December 2025: "Synchronized output"); exports TERM_PROGRAM_VERSION, and releases without the mode are common, so the version is required
 //
-// pig divergence (D625): the list and its floors are PiG's; Pi has neither.
+// pig additive (D625): the list and its floors are PiG's; Pi has neither.
 func synchronizedUpdatesRelease(termProgram string) (floor []int, versionRequired, listed bool) {
 	switch termProgram {
 	case "kitty", "alacritty":

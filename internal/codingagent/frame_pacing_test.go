@@ -296,14 +296,73 @@ func (r *pacingRecorder) SetFramePacing(pacing *tui.FramePacing) {
 	r.policies = append(r.policies, pacing)
 }
 
-// The policy is installed at start, once, unless the run selects Pi's interval: the environment decides when it names a policy, else the terminal.framePacing setting, and a missing or invalid setting is the default, adaptive. A run that selects Pi's interval gives the renderer nothing.
+// The default is decided in one constant, so both of its values are tested here: with either, a setting or a PIG_FRAME_PACING that names a policy wins, and a run that names none gets the default. Under "pi" such a run does not select the adaptive policy, under "adaptive" it does.
+func TestFramePacingSelectionUnderEitherDefault(t *testing.T) {
+	for _, byDefault := range []string{TerminalFramePacingPi, TerminalFramePacingAdaptive} {
+		unselected := byDefault == TerminalFramePacingAdaptive
+		for _, tc := range []struct {
+			setting, env string
+			want         bool
+		}{
+			{"", "", unselected}, {"Pi", "", unselected}, {"0", "", unselected}, {"faster", "", unselected}, {"", "1", unselected}, {"", "PI", unselected},
+			{"adaptive", "", true}, {"pi", "", false},
+			{"", "adaptive", true}, {"", "pi", false}, {"", "0", false},
+			{"adaptive", "pi", false}, {"adaptive", "0", false}, {"pi", "adaptive", true}, {"pi", "1", false}, {"adaptive", "1", true},
+		} {
+			setting := terminalFramePacingOr(tc.setting, byDefault)
+			if setting != TerminalFramePacingPi && setting != TerminalFramePacingAdaptive {
+				t.Errorf("default %q: terminal.framePacing %q reads as %q, which names no frame pacing", byDefault, tc.setting, setting)
+			}
+			getenv := func(name string) string {
+				if name == framePacingEnv {
+					return tc.env
+				}
+				return ""
+			}
+			if got := adaptiveFramePacingSelected(setting, getenv); got != tc.want {
+				t.Errorf("default %q, terminal.framePacing %q, %s=%q: adaptive = %v, want %v", byDefault, tc.setting, framePacingEnv, tc.env, got, tc.want)
+			}
+		}
+	}
+}
+
+// A run that selects no frame pacing has Pi's interval: the settings read "pi" and the renderer is given no policy, so nothing of the adaptive policy exists in the run. The setting and PIG_FRAME_PACING each opt one run in.
+func TestARunThatSelectsNoFramePacingHasPisInterval(t *testing.T) {
+	const shipped = TerminalFramePacingPi
+	if terminalFramePacingDefault != shipped {
+		t.Fatalf("the default frame pacing is %q, want %q", terminalFramePacingDefault, shipped)
+	}
+	if got := (Settings{}).GetTerminalFramePacing(); got != shipped {
+		t.Fatalf("settings without terminal.framePacing read %q, want %q", got, shipped)
+	}
+	if got := NewSettingsManager(t.TempDir(), t.TempDir()).GetTerminalFramePacing(); got != shipped {
+		t.Fatalf("with no settings file terminal.framePacing reads %q, want %q", got, shipped)
+	}
+	for _, tc := range []struct {
+		setting, env string
+		policies     int
+	}{{"", "", 0}, {"faster", "", 0}, {"", "1", 0}, {"adaptive", "", 1}, {"", "adaptive", 1}} {
+		t.Setenv(framePacingEnv, tc.env)
+		m, _, _ := newLifecycleMode(t)
+		m.opts.Settings.TerminalFramePacing = tc.setting
+		renderer := &pacingRecorder{TUI: m.tuiInst}
+		m.tuiInst = renderer
+		m.installFramePacing()
+		if got := len(renderer.policies); got != tc.policies || m.framePacingInstalled != (tc.policies == 1) {
+			t.Errorf("terminal.framePacing %q, %s=%q: the renderer was given %d policies (installed %v), want %d", tc.setting, framePacingEnv, tc.env, got, m.framePacingInstalled, tc.policies)
+		}
+	}
+}
+
+// The policy is installed at start, once, only when the run selects it: the environment decides when it names a policy, else the terminal.framePacing setting, and a missing or invalid setting is the default. A run that has Pi's interval gives the renderer nothing.
 func TestInstallFramePacingFollowsTheSelection(t *testing.T) {
+	unselected := terminalFramePacingDefault == TerminalFramePacingAdaptive
 	for _, tc := range []struct {
 		setting, env string
 		want         bool
 	}{
-		{"", "", true}, {"adaptive", "", true}, {"pi", "", false}, {"Pi", "", true}, {"0", "", true}, {"faster", "", true},
-		{"", "pi", false}, {"", "0", false}, {"adaptive", "pi", false}, {"adaptive", "0", false},
+		{"", "", unselected}, {"adaptive", "", true}, {"pi", "", false}, {"Pi", "", unselected}, {"0", "", unselected}, {"faster", "", unselected},
+		{"", "pi", false}, {"", "0", false}, {"adaptive", "pi", false}, {"adaptive", "0", false}, {"", "adaptive", true},
 		{"pi", "adaptive", true}, {"pi", "1", false}, {"pi", "PI", false}, {"adaptive", "1", true},
 	} {
 		t.Setenv(framePacingEnv, tc.env)
@@ -322,9 +381,12 @@ func TestInstallFramePacingFollowsTheSelection(t *testing.T) {
 	}
 }
 
-// terminal.framePacing is "adaptive" unless it is "pi", is read from the global file only, and a rewrite of the settings file keeps it.
+// terminal.framePacing is the default unless it names the other pacing, is read from the global file only, and a rewrite of the settings file keeps it.
 func TestTerminalFramePacingSetting(t *testing.T) {
-	const byDefault, other = TerminalFramePacingAdaptive, TerminalFramePacingPi
+	byDefault, other := terminalFramePacingDefault, TerminalFramePacingAdaptive
+	if byDefault == TerminalFramePacingAdaptive {
+		other = TerminalFramePacingPi
+	}
 	agentDir, cwd := t.TempDir(), t.TempDir()
 	if got := NewSettingsManager(cwd, agentDir).GetTerminalFramePacing(); got != byDefault {
 		t.Fatalf("with no settings file = %q, want the default %q", got, byDefault)

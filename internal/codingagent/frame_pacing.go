@@ -22,9 +22,9 @@ func adaptiveFramePacingSelected(setting string, getenv func(string) string) boo
 	return setting == TerminalFramePacingAdaptive
 }
 
-// installFramePacing gives the renderer the adaptive frame pacing policy when the run selects it (PIG_FRAME_PACING, else terminal.framePacing of the global settings file, else "adaptive"); otherwise the renderer keeps Pi's interval and nothing of the policy exists in the run. The selection is read once, at start: a settings change or a reload acts at the next start.
+// installFramePacing gives the renderer the adaptive frame pacing policy when the run selects it (PIG_FRAME_PACING, else terminal.framePacing of the global settings file, else terminalFramePacingDefault, Pi's interval); otherwise the renderer keeps Pi's interval and nothing of the policy exists in the run. The selection is read once, at start: a settings change or a reload acts at the next start.
 //
-// pig divergence (D625): Pi has one frame interval and no setting for it.
+// pig additive (D625): Pi has one frame interval and no setting for it; a run that does not select the adaptive policy has Pi's.
 func (m *InteractiveMode) installFramePacing() {
 	renderer, ok := m.tuiInst.(interface{ SetFramePacing(*tui.FramePacing) })
 	if !ok || m.framePacingInstalled || !adaptiveFramePacingSelected(m.opts.Settings.GetTerminalFramePacing(), os.Getenv) {
@@ -43,7 +43,7 @@ func (m *InteractiveMode) allowFramePacing() {
 
 // replyStreamsUndisturbed reports whether an agent run is active, from its start to its end (runStreaming: a run that ends by an abort, an error or an empty queue is no longer active), no compaction is running, and no extension draws on the screen. Only the owner loop calls it.
 //
-// pig divergence (D625): frames are paced only then, so an extension's component that counts frames, an idle screen and a compaction see Pi's interval.
+// pig additive (D625): frames are paced only then, so an extension's component that counts frames, an idle screen and a compaction see Pi's interval.
 func (m *InteractiveMode) replyStreamsUndisturbed() bool {
 	return m.runStreaming() && !m.isCompacting && !m.extensionDrawsOnScreen()
 }
@@ -67,7 +67,7 @@ func (m *InteractiveMode) extensionDrawsOnScreen() bool {
 
 // extensionRenderersMounted notes that the transcript now holds something an extension's renderer draws: a tool card, a custom message or a custom entry. The gate stays closed from the next frame until the transcript is emptied (transcriptEmptied), which is when the last such component leaves the screen. Only the owner loop calls it.
 //
-// pig divergence (D625): an extension's renderer runs once a frame, so it sees Pi's interval.
+// pig additive (D625): an extension's renderer runs once a frame, so it sees Pi's interval.
 func (m *InteractiveMode) extensionRenderersMounted() {
 	m.extensionRendersTranscript = true
 }

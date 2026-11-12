@@ -749,8 +749,8 @@ type Settings struct {
 	// pig divergence (D624): Pi has no such key; it writes every row a frame holds.
 	TerminalScreenWriter string `json:"screenWriter,omitempty"`
 
-	// TerminalFramePacing is terminal.framePacing, how soon a streaming reply's next frame may begin in fullscreen mode: "adaptive" for the last frame's cost times four between 10 and 16 ms, "pi" for Pi's 16 ms; see GetTerminalFramePacing. PIG_FRAME_PACING overrides it. It is read once, when interactive mode starts. Global setting only.
-	// pig divergence (D625): Pi has no such key; its frame interval is one constant.
+	// TerminalFramePacing is terminal.framePacing, how soon a streaming reply's next frame may begin in fullscreen mode: "pi" for Pi's 16 ms, the default, "adaptive" for the last frame's cost times four between 10 and 16 ms; see GetTerminalFramePacing. PIG_FRAME_PACING overrides it. It is read once, when interactive mode starts. Global setting only.
+	// pig additive (D625): Pi has no such key; its frame interval is one constant, which is what the key unset selects.
 	TerminalFramePacing string `json:"framePacing,omitempty"`
 
 	// terminalHyperlinks, terminalImages, and terminalTrueColor hold the
@@ -1713,13 +1713,22 @@ const (
 	TerminalFramePacingPi       = "pi"
 )
 
-// GetTerminalFramePacing returns the terminal.framePacing setting, TerminalFramePacingAdaptive or TerminalFramePacingPi. The key unset, and any other value, is "adaptive".
-// pig divergence (D625): see Settings.TerminalFramePacing.
-func (s Settings) GetTerminalFramePacing() string {
-	if s.TerminalFramePacing == TerminalFramePacingPi {
-		return TerminalFramePacingPi
+// terminalFramePacingDefault is the frame pacing of a run that selects none: the terminal.framePacing key unset or holding any other value, and PIG_FRAME_PACING naming no policy. It is Pi's interval: the adaptive policy's median gap between visible changes is shorter, but on small writes a 10 ms frame that changes nothing restarts the interval, so more than a third of the gaps there are 20 ms where Pi's are 16 (D625). This constant is the only place the default is decided.
+// pig additive (D625): the adaptive policy is opt-in.
+const terminalFramePacingDefault = TerminalFramePacingPi
+
+// terminalFramePacingOr returns value when it names a frame pacing, else byDefault.
+func terminalFramePacingOr(value, byDefault string) string {
+	if value == TerminalFramePacingAdaptive || value == TerminalFramePacingPi {
+		return value
 	}
-	return TerminalFramePacingAdaptive
+	return byDefault
+}
+
+// GetTerminalFramePacing returns the terminal.framePacing setting, TerminalFramePacingAdaptive or TerminalFramePacingPi. The key unset, and any other value, is the default, terminalFramePacingDefault.
+// pig additive (D625): see Settings.TerminalFramePacing.
+func (s Settings) GetTerminalFramePacing() string {
+	return terminalFramePacingOr(s.TerminalFramePacing, terminalFramePacingDefault)
 }
 
 // GetShowTerminalProgress returns whether OSC 9;4 terminal progress indicators are enabled.
@@ -3265,7 +3274,7 @@ func (sm *SettingsManager) GetTerminalScreenWriter() string {
 }
 
 // GetTerminalFramePacing returns the global terminal.framePacing setting, normalized as Settings.GetTerminalFramePacing does. A project file cannot set it.
-// pig divergence (D625): see Settings.TerminalFramePacing.
+// pig additive (D625): see Settings.TerminalFramePacing.
 func (sm *SettingsManager) GetTerminalFramePacing() string {
 	return sm.GetGlobalSettings().GetTerminalFramePacing()
 }
