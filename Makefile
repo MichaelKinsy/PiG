@@ -835,14 +835,9 @@ vendor-pi-packs: parity-deps ## Regenerate third_party/pi-packs, the vendored `n
 pin-ledgers: ## Generate the effective pin's per-pin ledgers (async-contracts, behavior-contracts, known-gaps, interface delta, custom-factory draft) from PIN_FROM=<tag|commit> (default: the committed pin)
 	@$(PIN_TOOL) ledgers $(if $(PIN_FROM),--from "$(PIN_FROM)")
 
-pin-bump: ## Move the pin to PI_UPSTREAM_REF=<tag|commit>, regenerate what derives from it, then mirror, install the oracle and generate the ledgers
+pin-bump: ## Move the pin to PI_UPSTREAM_REF=<tag|commit> and regenerate everything that derives from it, in one resumable run (retire carried work, mirror, inventories, ledgers, vendored Pi, observation oracles, gaps, make generate); a rerun resumes, a finished bump is a no-op; PIN_FROM=<ref> names the earlier pin only when the pin file moved without a record
 	@test -n "$(PI_UPSTREAM_REF)" || { echo "pin-bump: set PI_UPSTREAM_REF=<tag|commit>" >&2; exit 2; }
-	@old=$$(env -u PI_UPSTREAM_REF $(PIN_TOOL) get ref); env -u PI_UPSTREAM_REF $(PIN_TOOL) bump "$(PI_UPSTREAM_REF)"; \
-		$(MAKE) --no-print-directory PI_UPSTREAM_REF= upstream-mirror interface-proposals test-inventory-generate && \
-		$(MAKE) --no-print-directory PI_UPSTREAM_REF= PIN_FROM="$$old" pin-ledgers && \
-		$(MAKE) --no-print-directory PI_UPSTREAM_REF= vendor-pi-packs vendor-sdk-ts-declarations vendor-pi-dist vendor-chord-plugins-node vendor-chord-surfaces-client model-catalogs intl-tables && \
-		./automation/gen/regenerate-observation-oracles.sh && \
-		./automation/gen/refresh-pi-test-sources.sh
+	@env -u PI_UPSTREAM_REF PIN_FROM="$(PIN_FROM)" python3 automation/pin/bump.py "$(PI_UPSTREAM_REF)"
 
 regenerate-alt-screen-oracle: parity-deps ## Re-record tui/testdata/alt-screen-oracle.json.gz from the installed Pi (the fixture TestAltScreenFixtureIsCurrent compares byte for byte)
 	@node tui/testdata/alt-screen-oracle.mjs "$$(cd extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-tui && pwd -P)/dist/index.js" | gzip -n -9 > tui/testdata/alt-screen-oracle.json.gz.tmp && mv tui/testdata/alt-screen-oracle.json.gz.tmp tui/testdata/alt-screen-oracle.json.gz

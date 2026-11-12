@@ -21,14 +21,39 @@ HAVE_NODE = shutil.which("node") is not None
 
 
 class DecisionTests(unittest.TestCase):
+    @staticmethod
+    def never(commit):
+        raise AssertionError(f"the ancestry of {commit} was asked although the files decide")
+
+    def gone(self, state="conflict", key="pi-tui/x.js", before_gone=True):
+        return {"id": "e", "key": key, "state": state, "beforeGone": before_gone, "detail": "entry text line 1 reads 'a', the file's line 2 reads 'b'"}
+
+    def test_pi_own_version_of_a_change_is_carried_when_the_target_contains_the_commit(self):
+        asked = []
+        got = carried.decide_backports([self.gone(), self.gone(key="pi-ai/y.js", state="carried", before_gone=True)], lambda c: asked.append(c) or {"status": "ahead"})
+        self.assertEqual(got["e"]["state"], "carried")
+        self.assertEqual(asked, ["e"])
+        self.assertIn("GitHub compare e...target: ahead", got["e"]["evidence"])
+        self.assertIn("pi-tui/x.js", got["e"]["evidence"])
+
+    def test_a_missing_before_text_is_a_conflict_when_the_target_does_not_contain_the_commit(self):
+        got = carried.decide_backports([self.gone()], lambda c: {"status": "diverged"})
+        self.assertEqual(got["e"]["state"], "conflict")
+        self.assertIn("pi-tui/x.js: entry text line 1", got["e"]["detail"])
+        self.assertIn("the target does not contain the commit", got["e"]["detail"])
+
+    def test_a_conflict_with_the_before_text_still_in_the_file_never_asks_the_ancestry(self):
+        got = carried.decide_backports([self.gone(before_gone=False)], self.never)
+        self.assertEqual(got["e"]["state"], "conflict")
+
     def test_an_entry_is_carried_or_pending_only_when_every_file_of_it_is(self):
         results = [
             {"id": "a", "key": "pi-ai/x.js", "state": "carried", "detail": ""},
             {"id": "b", "key": "pi-ai/y.js", "state": "pending", "detail": ""},
             {"id": "c", "key": "pi-ai/z.js", "state": "carried", "detail": ""}, {"id": "c", "key": "pi-tui/z.js", "state": "pending", "detail": ""},
-            {"id": "d", "key": "pi-ai/w.js", "state": "conflict", "detail": "entry text line 2 reads 'a', the file's line 9 reads 'b'"},
+            {"id": "d", "key": "pi-ai/w.js", "state": "conflict", "beforeGone": False, "detail": "entry text line 2 reads 'a', the file's line 9 reads 'b'"},
         ]
-        got = carried.decide_backports(results)
+        got = carried.decide_backports(results, self.never)
         self.assertEqual({k: v["state"] for k, v in got.items()}, {"a": "carried", "b": "pending", "c": "conflict", "d": "conflict"})
         self.assertIn("carried in pi-ai/z.js but not in the other files", got["c"]["detail"])
         self.assertTrue(got["d"]["detail"].startswith("pi-ai/w.js: entry text line 2"))
@@ -195,8 +220,8 @@ class RetireTests(unittest.TestCase):
         self.ids = oracle.backport_ids(self.script.read_text())
 
     def retire(self, states, compare_status="ahead"):
-        results = {i: {"state": states.get(i, "pending"), "files": ["f"], "detail": "f: entry text line 1 reads 'a', the file's line 2 reads 'b'" if states.get(i) == "conflict" else ""} for i in self.ids}
-        with mock.patch.object(pinlib, "committed", lambda: TAG), mock.patch.object(carried, "classify_backports", lambda modules: results):
+        results = {i: {"state": states.get(i, "pending"), "files": ["f"], "detail": "f: entry text line 1 reads 'a', the file's line 2 reads 'b'" if states.get(i) == "conflict" else "", "evidence": "test"} for i in self.ids}
+        with mock.patch.object(pinlib, "committed", lambda: TAG), mock.patch.object(carried, "classify_backports", lambda modules, contains: results):
             return carried.retire(COMMIT, self.root, modules=Path("/unused"), compare=lambda base, head: {"status": compare_status, "ahead_by": 1, "behind_by": 0})
 
     def test_carried_entries_go_pending_ones_stay_and_the_decisions_are_returned(self):

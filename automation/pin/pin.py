@@ -25,7 +25,7 @@
                               and verified against its SHASUMS256.txt when the cache has none (automation/pin/nodefetch.py)
   pin.py retire <ref>         delete the post-release backports and the carried oracle that Pi <ref> already holds (automation/pin/carried.py);
                               the first step of `make pin-bump`, decided against the target before the pin moves
-  pin.py gaps                 the effective pin's gap list: `make ledger-update`, then `make ledger-check` (the pin-follow gaps step)
+  pin.py gaps [--updates N]   the effective pin's gap list: `make ledger-update` N times (default 1), then `make ledger-check` (the pin-follow gaps step)
 """
 from __future__ import annotations
 
@@ -373,13 +373,13 @@ def committed_exceptions_kept(pin: Pin):
             reviewed.write_bytes(snapshot)
 
 
-def cmd_gaps(_: argparse.Namespace) -> None:
+def cmd_gaps(args: argparse.Namespace) -> None:
     """The gap list of the effective pin: bind its ledgers (`make ledger-update`), then check them (`make ledger-check`). The check alone
     stops on every reviewed exception the earlier pin's mapping made stale, which only the update prunes (the pin-follow pipeline once
     stopped there and went green only after a hand-run `make ledger-update`)."""
     pin, _override = pinlib.effective()
     with committed_exceptions_kept(pin):
-        for target in ("ledger-update", "ledger-check"):
+        for target in ["ledger-update"] * args.updates + ["ledger-check"]:
             subprocess.run(["make", "--no-print-directory", target], cwd=ROOT, check=True, timeout=7200)
     print(f"gaps: the gap list of Pi {pin.version} is derived and ledger-check passes")
 
@@ -637,7 +637,9 @@ def main() -> None:
     ledgers.add_argument("--from", dest="previous")
     ledgers.add_argument("--force", action="store_true")
     ledgers.set_defaults(fn=cmd_ledgers)
-    sub_.add_parser("gaps").set_defaults(fn=cmd_gaps)
+    gaps = sub_.add_parser("gaps")
+    gaps.add_argument("--updates", type=int, default=1, help="how many times to bind the ledgers before the check (a bump needs two: the first binds, the second settles the pending rows that are not gaps)")
+    gaps.set_defaults(fn=cmd_gaps)
     closure = sub_.add_parser("freeze-closure")
     closure.add_argument("--from-published-lock", dest="published_lock")
     closure.set_defaults(fn=cmd_freeze_closure)

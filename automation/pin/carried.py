@@ -30,34 +30,46 @@ from pinlib import ROOT, Pin, PinError  # noqa: E402
 
 # -- backports ----------------------------------------------------------------------------------------------------------
 
-def decide_backports(results: list[dict]) -> dict[str, dict]:
-    """One decision per commit from the per-file classifications of the script: {commit: {state, files, detail}}."""
-    by_id: dict[str, dict] = {}
+def decide_backports(results: list[dict], contains: Callable[[str], dict]) -> dict[str, dict]:
+    """One decision per commit from the per-file classifications of the script: {commit: {state, files, detail, evidence}}.
+
+    The target's own text decides when it can: every file of the entry holds the entry's after-text (carried) or its before-text (pending).
+    Pi's version of a change is rarely byte for byte the backport's (the backport adds a note line), so a file that has lost the entry's
+    before-text without holding its after-text is settled by `contains(commit)`: GitHub's compare of the commit with the target. A commit
+    the target contains whose old text is gone from every such file makes the entry carried; anything else is a conflict."""
+    by_id: dict[str, list[dict]] = {}
     for result in results:
-        decision = by_id.setdefault(result["id"], {"states": {}, "files": [], "detail": ""})
-        decision["states"][result["key"]] = result["state"]
-        decision["files"].append(result["key"])
-        if result["state"] == "conflict" and not decision["detail"]:
-            decision["detail"] = f"{result['key']}: {result['detail']}"
+        by_id.setdefault(result["id"], []).append(result)
     out = {}
-    for ident, decision in by_id.items():
-        states = set(decision["states"].values())
-        if states == {"carried"} or states == {"pending"}:
-            state, detail = states.pop(), ""
+    for ident, blocks in by_id.items():
+        files = [b["key"] for b in blocks]
+        states = {b["state"] for b in blocks}
+        if states == {"carried"}:
+            out[ident] = {"state": "carried", "files": files, "detail": "", "evidence": "the target holds the entry's text in every file"}
+        elif states == {"pending"}:
+            out[ident] = {"state": "pending", "files": files, "detail": "", "evidence": "the target holds the old text the entry changes in every file"}
         else:
-            carried = sorted(k for k, v in decision["states"].items() if v == "carried")
-            state = "conflict"
-            detail = decision["detail"] or f"carried in {', '.join(carried)} but not in the other files of the entry"
-        out[ident] = {"state": state, "files": decision["files"], "detail": detail}
+            conflicts = [b for b in blocks if b["state"] == "conflict"]
+            others = [b for b in blocks if b["state"] != "conflict"]
+            first = conflicts[0] if conflicts else None
+            detail = f"{first['key']}: {first['detail']}" if first else f"carried in {', '.join(b['key'] for b in blocks if b['state'] == 'carried')} but not in the other files of the entry"
+            if conflicts and all(b["beforeGone"] for b in conflicts) and all(b["state"] == "carried" for b in others):
+                answer = contains(ident)
+                if answer["status"] in ("ahead", "identical"):
+                    gone = ", ".join(b["key"] for b in conflicts)
+                    out[ident] = {"state": "carried", "files": files, "detail": "", "evidence": f"GitHub compare {ident}...target: {answer['status']}; the old text is gone from {gone}, which holds Pi's own version of the change"}
+                    continue
+                detail += f" (GitHub compare {ident}...target: {answer['status']}: the target does not contain the commit)"
+            out[ident] = {"state": "conflict", "files": files, "detail": detail, "evidence": ""}
     return out
 
 
-def classify_backports(modules: Path) -> dict[str, dict]:
+def classify_backports(modules: Path, contains: Callable[[str], dict]) -> dict[str, dict]:
     """Classify every entry of the script against the Pi packages installed under `modules` (an oracle built without backports)."""
     done = oracle.backports_node("--classify", *(f"{name}={place}" for name, place in oracle.backport_places(modules).items()))
     if done.returncode != 0:
         raise PinError(f"the backports script cannot classify its entries:\n{done.stderr.strip()}")
-    return decide_backports(json.loads(done.stdout))
+    return decide_backports(json.loads(done.stdout), contains)
 
 
 def retire_backport_blocks(text: str, carried: list[str]) -> str:
@@ -162,7 +174,7 @@ def retire(target: Pin, root: Path = ROOT, *, modules: Path | None = None, compa
     if target == pinlib.committed():
         raise PinError(f"Pi {target.version} is already the committed pin: its oracle carries the backports, so they cannot be classified against it")
     ids = oracle.backport_ids((root / "automation/gen/pi-post-release-backports.mjs").read_text(encoding="utf-8"))
-    backports = classify_backports(modules or oracle.ensure(target)) if ids else {}
+    backports = classify_backports(modules or oracle.ensure(target), lambda commit: compare(commit, target.commit)) if ids else {}
     conflicts = {ident: d for ident, d in backports.items() if d["state"] == "conflict"}
     if conflicts:
         lines = [f"backport {ident} neither applies to nor is carried by Pi {target.version}: {d['detail']}" for ident, d in conflicts.items()]
@@ -182,7 +194,7 @@ def retire(target: Pin, root: Path = ROOT, *, modules: Path | None = None, compa
 def summary(decisions: dict) -> list[str]:
     lines = []
     for ident, d in decisions["backports"].items():
-        lines.append(f"backport {ident}: {d['state']} ({', '.join(d['files'])})" + (" -> entry deleted" if d["state"] == "carried" else " -> kept, must still apply"))
+        lines.append(f"backport {ident}: {d['state']} [{d['evidence']}] ({', '.join(d['files'])})" + (" -> entry deleted" if d["state"] == "carried" else " -> kept, must still apply"))
     carried = decisions["carried_oracle"]
     if carried:
         lines.append(f"carried oracle {carried['commit'][:9]}: {carried['state']} ({carried['evidence']})" + (" -> make target, CI step, skip helpers, decisions, frozen files deleted" if carried["state"] == "carried" else " -> kept"))

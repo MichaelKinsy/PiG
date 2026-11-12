@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: MIT
 """Tests of the pin model and its derivations. They use no network: refs that
 need resolution are exercised through the cached and committed paths."""
+import argparse
 import contextlib
 import hashlib
 import io
@@ -1148,7 +1149,7 @@ class CarryTests(unittest.TestCase):
         pin_tool.ROOT, pinlib.effective, pinlib.committed, pin_tool.subprocess.run = self.root, (lambda: (COMMIT, committed != COMMIT)), (lambda: committed), fake_run
         try:
             with contextlib.redirect_stdout(io.StringIO()):
-                pin_tool.cmd_gaps(None)
+                pin_tool.cmd_gaps(argparse.Namespace(updates=1))
         finally:
             pin_tool.ROOT, pinlib.effective, pinlib.committed, pin_tool.subprocess.run = saved
         return reviewed

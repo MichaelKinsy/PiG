@@ -341,6 +341,8 @@ function firstDifference(before, text) {
 // classifyBackports says, for every block of a package in `packages`, whether the installed package is still the one the block was written for
 // ("pending": each patch's before-text occurs once and its after-text not at all), already carries the block's change ("carried": each
 // after-text occurs once, a removal's before-text not at all), or is neither ("conflict", with the file and the first differing line).
+// Pi's own version of the change need not be the backport's text, so the caller decides a conflict whose before-text is gone (beforeGone) by
+// asking whether the target contains the Pi commit.
 export function classifyBackports(packages) {
   const results = [];
   for (const { id, key, patches } of blocks) {
@@ -356,7 +358,11 @@ export function classifyBackports(packages) {
     });
     const bad = states.find((state) => state.startsWith("conflict"));
     const state = bad ? "conflict" : states.every((x) => x === "carried") ? "carried" : states.every((x) => x === "pending") ? "pending" : "conflict";
-    results.push({ id, key, state, detail: bad ?? (state === "conflict" ? "some patches of the entry are carried and some are not" : "") });
+    // beforeGone: no patch's before-text is in the file any more. Pi's own version of a change rarely equals the backport's after-text
+    // (the backport adds a note line), so a target that holds the Pi commit shows as "conflict" here with its before-text gone; the caller
+    // settles that with the commit's ancestry.
+    const beforeGone = patches.every(([before]) => count(text, before) === 0);
+    results.push({ id, key, state, beforeGone, detail: bad ?? (state === "conflict" ? "some patches of the entry are carried and some are not" : "") });
   }
   return results;
 }
