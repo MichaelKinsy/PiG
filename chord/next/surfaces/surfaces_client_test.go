@@ -135,6 +135,8 @@ type clientSetup struct {
 	base     string
 	asked    []string
 	finished bool
+	// holding is whether the scripts object's release was recorded when StartClient returned.
+	holding bool
 }
 
 func (s *clientSetup) fetchedNow() []string {
@@ -298,20 +300,21 @@ func setup(t *testing.T, initial []RegisteredScript, available []RegisteredScrip
 	}
 	// A client starts without waiting for its server (a start that does not return fails here instead of hanging the package).
 	type started struct {
-		client *Client
-		err    error
+		client  *Client
+		err     error
+		holding bool
 	}
 	done := make(chan started, 1)
 	go func() {
 		client, err := StartClient(options)
-		done <- started{client, err}
+		done <- started{client, err, client != nil && client.Holding()}
 	}()
 	select {
 	case result := <-done:
 		if result.err != nil {
 			t.Fatal(result.err)
 		}
-		s.client = result.client
+		s.client, s.holding = result.client, result.holding
 	case <-time.After(30 * time.Second):
 		t.Fatal("StartClient did not return within 30 s")
 	}
@@ -464,6 +467,35 @@ func TestStartsWithItsInitialScriptsWhileTheServerDoesNotAnswer(t *testing.T) {
 	}
 	g.Release()
 	s.finish(t)
+}
+
+// Pi's `void updates.follow(context).catch(...)` (client.ts, createClient) runs follow up to its first await before the client is
+// returned: the scripts object is held and its release recorded. What follow awaits (the watch, which waits for a server that
+// never answers here) is the client's task: Stop ends it, waits for it and releases the hold.
+func TestHoldsTheScriptsObjectWhenTheClientIsReturnedAndStopEndsAFollowingStillWaitingForItsServer(t *testing.T) {
+	s := setup(t, []RegisteredScript{script("notes", "d1", "one")}, nil, more{offline: true})
+	if !s.holding {
+		t.Fatal("the scripts object's release was not recorded when StartClient returned")
+	}
+	stopped := make(chan error, 1)
+	go func() { stopped <- s.client.Stop(ctx) }()
+	select {
+	case err := <-stopped:
+		if err != nil {
+			t.Fatalf("client stop: %v", err)
+		}
+	case <-time.After(30 * time.Second):
+		t.Fatal("Stop did not return while the following waited for its server")
+	}
+	if s.client.Holding() || s.client.Watching() {
+		t.Fatal("the following kept its hold or a watch after Stop returned")
+	}
+	s.finished = true
+	if err := s.server.Close(ctx); err != nil {
+		t.Errorf("server close: %v", err)
+	}
+	// No goroutine of the client is left: the following ended with Stop.
+	noClientGoroutines(t)
 }
 
 func TestAppliesTheSetTheServerShowsWhenItStartsFollowingThoughNoFrameBroughtIt(t *testing.T) {
