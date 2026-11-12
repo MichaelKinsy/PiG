@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -248,9 +249,9 @@ func TestFetchLimitsAndRenames(t *testing.T) {
 		commits, files int
 		limit          string
 	}{{250, 3000, ""}, {251, 1, "251 commits"}, {1, 3001, "3001 changed files"}} {
-		calls := 0
+		var calls atomic.Int32
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			calls++
+			calls.Add(1)
 			switch r.URL.Path {
 			case "/repos/o/r/pulls/1":
 				_ = json.NewEncoder(w).Encode(map[string]any{"number": 1, "mergeable": true, "commits": tc.commits, "changed_files": tc.files, "head": map[string]string{"sha": "h"}, "base": map[string]string{"sha": "b", "ref": "main"}})
@@ -271,8 +272,8 @@ func TestFetchLimitsAndRenames(t *testing.T) {
 			t.Errorf("%d commits, %d files: limit %q, want %q", tc.commits, tc.files, d.Limit, tc.limit)
 		}
 		if tc.limit != "" {
-			if calls != 1 {
-				t.Errorf("%d commits, %d files: %d call(s), want 1", tc.commits, tc.files, calls)
+			if n := calls.Load(); n != 1 {
+				t.Errorf("%d commits, %d files: %d call(s), want 1", tc.commits, tc.files, n)
 			}
 			continue
 		}
