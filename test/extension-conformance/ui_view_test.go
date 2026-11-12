@@ -22,7 +22,7 @@ func conformanceClientAbilities() *uiview.ClientAbilities {
 
 func viewNotifies(h *harness) []string {
 	var out []string
-	for _, n := range *h.notify {
+	for _, n := range h.ui.Recorded() {
 		// The harness records a notify as "<message>:<level>".
 		if strings.HasPrefix(n, "view-") || strings.HasPrefix(n, "intent-") {
 			out = append(out, strings.TrimSuffix(n, ":info"))
@@ -59,11 +59,13 @@ func TestConformance_UIViewMounts(t *testing.T) {
 
 			// W3: before a client attaches the extension sees none; after, the host's values.
 			pollUntilConformance(t, "no-client abilities never reported", func() bool {
-				*h.notify = (*h.notify)[:0]
+				h.ui.ClearRecorded()
 				runConformanceCommand(t, h, "ui_view_abilities")
 				return slices.Contains(viewNotifies(h), "view-abilities:none")
 			})
-			h.bridge.SetClientAbilities(conformanceClientAbilities())
+			if err := h.bridge.SetClientAbilities(conformanceClientAbilities()); err != nil {
+				t.Fatal(err)
+			}
 			// A second client attaches the way a Go embedder does, through the registry of the session's UIBridge, and
 			// takes deliveries. Everything below that names `client` runs through the production wiring: the extension's
 			// host call, the registry, the delivery to the attached client, and the client's intent back to the extension.
@@ -88,7 +90,7 @@ func TestConformance_UIViewMounts(t *testing.T) {
 			}
 			const abilities = "view-abilities:mounts=7,argbytes=123,slots=panel+status,nodes=text+box,markdown=true"
 			pollUntilConformance(t, "abilities never replicated", func() bool {
-				*h.notify = (*h.notify)[:0]
+				h.ui.ClearRecorded()
 				runConformanceCommand(t, h, "ui_view_abilities")
 				return slices.Contains(viewNotifies(h), abilities)
 			})
@@ -97,7 +99,7 @@ func TestConformance_UIViewMounts(t *testing.T) {
 			if _, err := views.Mount("other", mustMount(t, "o", "other")); err != nil {
 				t.Fatal(err)
 			}
-			*h.notify = (*h.notify)[:0]
+			h.ui.ClearRecorded()
 			runConformanceCommand(t, h, "ui_view_probe")
 			waitViewNotify(t, h, "view-second:epoch=3,rev=1")
 			want := []string{

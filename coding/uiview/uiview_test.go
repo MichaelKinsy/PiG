@@ -53,7 +53,7 @@ func TestNoClientNothingMounts(t *testing.T) {
 
 func TestMountUpdateStaleRejected(t *testing.T) {
 	r := New(Options{})
-	r.SetAbilities(abilities())
+	wantOK(t, "set abilities", r.SetAbilities(abilities()))
 	st, err := r.Mount("p", mountArgs(t, "k", "one"))
 	if err != nil || st.Mount.Epoch != 1 || st.Mount.Rev != 1 || st.State != StateLive {
 		t.Fatalf("mount = %+v, %v", st, err)
@@ -78,7 +78,7 @@ func TestMountUpdateStaleRejected(t *testing.T) {
 
 func TestFirstTerminalWinsAndKeyReusable(t *testing.T) {
 	r := New(Options{})
-	r.SetAbilities(abilities())
+	wantOK(t, "set abilities", r.SetAbilities(abilities()))
 	st, _ := r.Mount("p", mountArgs(t, "k", "x"))
 	if s, err := r.Transition("p", "hide", RefArgs{Mount: st.Mount}); err != nil || s.State != StateHidden {
 		t.Fatalf("hide = %+v %v", s, err)
@@ -102,7 +102,7 @@ func TestFirstTerminalWinsAndKeyReusable(t *testing.T) {
 
 func TestBreakReasons(t *testing.T) {
 	r := New(Options{})
-	r.SetAbilities(abilities())
+	wantOK(t, "set abilities", r.SetAbilities(abilities()))
 	a, _ := r.Mount("p", mountArgs(t, "a", "x"))
 	b, _ := r.Mount("q", mountArgs(t, "b", "x"))
 	r.Break("p", ReasonOwnerGone)
@@ -123,7 +123,7 @@ func TestBreakReasons(t *testing.T) {
 
 func TestAdmissionLimits(t *testing.T) {
 	r := New(Options{KnownKind: func(k string) bool { return k == "text" }})
-	r.SetAbilities(abilities())
+	wantOK(t, "set abilities", r.SetAbilities(abilities()))
 	raw := []byte(`{"key":"k","slot":"footer","view":{"root":{"kind":"text"}}}`)
 	a, _ := DecodeMount(raw)
 	_, err := r.Mount("p", a)
@@ -202,7 +202,7 @@ func (f *fakeInvoker) Invoke(ctx context.Context, inv Invocation) (Result, error
 
 func intentMount(t *testing.T, cancellable bool, timeout int) (*Registry, Status) {
 	r := New(Options{})
-	r.SetAbilities(abilities())
+	wantOK(t, "set abilities", r.SetAbilities(abilities()))
 	st, err := r.Mount("p", mountArgs(t, "k", "x", IntentDecl{Name: "p.go", Arg: Shape{Type: "integer"}, Answer: &Shape{Type: "integer"}, Cancellable: cancellable, TimeoutMs: timeout}))
 	if err != nil {
 		t.Fatal(err)
@@ -329,7 +329,7 @@ func TestInvokeTimeoutAndCancelReachPlugin(t *testing.T) {
 
 func TestSubscribersSeeFullSnapshotsInOrder(t *testing.T) {
 	r := New(Options{})
-	r.SetAbilities(abilities())
+	wantOK(t, "set abilities", r.SetAbilities(abilities()))
 	var got []Snapshot
 	if _, _, err := r.Attach(*abilities(), func(d Delivery) bool { got = append(got, d.Snapshot); return true }); err != nil {
 		t.Fatal(err)
@@ -347,12 +347,12 @@ func TestAbilitiesAreCopiedAndAnnounced(t *testing.T) {
 	var calls int
 	r.OnAbilities(func() { calls++ })
 	a := abilities()
-	r.SetAbilities(a)
+	wantOK(t, "set abilities", r.SetAbilities(a))
 	a.Slots[0] = SlotFooter
 	if got := r.Abilities(); got.Slots[0] != SlotPanel {
 		t.Fatal("registry aliases the caller's slots")
 	}
-	r.SetAbilities(nil)
+	wantOK(t, "set abilities", r.SetAbilities(nil))
 	if r.Abilities() != nil || calls != 2 {
 		t.Fatalf("abilities = %v, calls = %d", r.Abilities(), calls)
 	}

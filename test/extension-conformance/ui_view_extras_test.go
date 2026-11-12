@@ -73,12 +73,12 @@ func TestConformance_UIViewExtras(t *testing.T) {
 				return slices.Clone(got)
 			}
 			pollUntilConformance(t, "abilities never replicated", func() bool {
-				*h.notify = (*h.notify)[:0]
+				h.ui.ClearRecorded()
 				runConformanceCommand(t, h, "ui_view_abilities")
 				return slices.Contains(viewNotifies(h), "view-abilities:mounts=7,argbytes=123,slots=panel+status,nodes=text+box,markdown=true")
 			})
 
-			*h.notify = (*h.notify)[:0]
+			h.ui.ClearRecorded()
 			runConformanceCommand(t, h, "ui_view_extras")
 			waitViewNotify(t, h, "view-x-bigresult:invalid")
 			want := []string{
@@ -137,7 +137,7 @@ func TestConformance_UIViewExtras(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			*h.notify = (*h.notify)[:0]
+			h.ui.ClearRecorded()
 			runConformanceCommand(t, h, "ui_view_extras_end")
 			waitViewNotify(t, h, "view-x-state:finished,picked=77")
 			want = []string{"view-x-diag2:n=32,last=node/39", "view-x-finished:finished,picked=77", "view-x-state:finished,picked=77"}

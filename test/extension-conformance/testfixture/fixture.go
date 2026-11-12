@@ -1209,18 +1209,18 @@ func Extension() *sdk.Extension {
 			}
 			return "none"
 		}
-		st, err := ctx.MountView(sdk.ViewMount{Key: "probe", Slot: sdk.ViewSlotPanel, ViewContent: sdk.ViewContent{View: viewText(ctx, "")}})
+		st, err := ctx.MountView(sdk.ViewMount{Key: "probe", Slot: sdk.ViewSlotPanel, View: viewText(ctx, "")})
 		if err != nil {
 			return err
 		}
 		ctx.Notify(fmt.Sprintf("view-mounted:epoch=%d,rev=%d,state=%s", st.Mount.Epoch, st.Mount.Rev, st.State), "info")
 		first := st.Mount
-		st, err = ctx.UpdateView(sdk.ViewUpdate{Mount: first, ViewContent: sdk.ViewContent{View: viewText(ctx, "-2")}})
+		st, err = ctx.UpdateView(sdk.ViewUpdate{Mount: first, View: viewText(ctx, "-2")})
 		if err != nil {
 			return err
 		}
 		ctx.Notify(fmt.Sprintf("view-updated:rev=%d", st.Mount.Rev), "info")
-		_, err = ctx.UpdateView(sdk.ViewUpdate{Mount: first, ViewContent: sdk.ViewContent{View: viewText(ctx, "-stale")}})
+		_, err = ctx.UpdateView(sdk.ViewUpdate{Mount: first, View: viewText(ctx, "-stale")})
 		ctx.Notify("view-stale:"+code(err), "info")
 		cur := st.Mount
 		if st, err = ctx.HideView(cur); err != nil {
@@ -1246,7 +1246,7 @@ func Extension() *sdk.Extension {
 			{Name: "fx.add", Arg: sdk.ViewShape{Type: "object", Properties: map[string]sdk.ViewShape{"n": {Type: "integer"}}, Required: []string{"n"}}, Answer: &sdk.ViewShape{Type: "object", Properties: map[string]sdk.ViewShape{"sum": {Type: "integer"}}, Required: []string{"sum"}}},
 			{Name: "fx.wait", Arg: sdk.ViewShape{Type: "object", Properties: map[string]sdk.ViewShape{"tag": {Type: "string"}}, Required: []string{"tag"}}, Cancellable: true, TimeoutMs: 5000},
 		}
-		st, err = ctx.MountView(sdk.ViewMount{Key: "probe2", Slot: sdk.ViewSlotPanel, ViewContent: sdk.ViewContent{View: viewText(ctx, "-live"), Intents: intents}})
+		st, err = ctx.MountView(sdk.ViewMount{Key: "probe2", Slot: sdk.ViewSlotPanel, View: viewText(ctx, "-live"), Intents: intents})
 		if err != nil {
 			return err
 		}
@@ -1319,7 +1319,7 @@ func Extension() *sdk.Extension {
 		drawing := scene(rects(ab.Drawing.Shapes - 1))
 		drawing.Regions = []sdk.ViewRegion{{Key: "r", Shape: sdk.ViewDrawShape{Kind: "rect", Width: 4, Height: 4}, Gestures: []string{"activate"}, Intent: "fx.tap", Name: "Tap"}}
 		yes := true
-		st, err := ctx.MountView(sdk.ViewMount{Key: "extras", Slot: sdk.ViewSlotPanel, ViewContent: sdk.ViewContent{
+		st, err := ctx.MountView(sdk.ViewMount{Key: "extras", Slot: sdk.ViewSlotPanel,
 			View:    base(),
 			Intents: []sdk.ViewIntent{{Name: "fx.tap", Arg: sdk.ViewShape{Type: "object"}}},
 			Alternatives: []sdk.ViewAlternative{{
@@ -1331,8 +1331,7 @@ func Extension() *sdk.Extension {
 				{Node: "alt", Name: fmt.Sprintf("Extras %d", picked), Role: "button", Checked: &yes, Relations: []sdk.ViewRelation{{Kind: "describedBy", Target: "base"}}},
 				{Node: "base", Name: "Base"},
 			},
-			Focus: []sdk.ViewFocus{{Node: "alt", Request: "mount", Restore: "previous"}},
-		}})
+			Focus: []sdk.ViewFocus{{Node: "alt", Request: "mount", Restore: "previous"}}})
 		if err != nil {
 			return err
 		}
@@ -1372,7 +1371,7 @@ func Extension() *sdk.Extension {
 		old.Rev += 50
 		stale := "none"
 		for range 3 {
-			_, err := ctx.UpdateView(sdk.ViewUpdate{Mount: old, ViewContent: sdk.ViewContent{View: base()}})
+			_, err := ctx.UpdateView(sdk.ViewUpdate{Mount: old, View: base()})
 			stale = code(err)
 		}
 		ctx.Notify("view-x-stale:"+stale, "info")

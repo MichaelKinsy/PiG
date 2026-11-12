@@ -194246,6 +194246,28 @@
       "shapeHash": "sha256:f55fb497a255f47d5c2ed53164c6e63505f130fd4fe92f16265e41455bb19381"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/uiview#isHexDigit",
+      "package": "github.com/MichaelKinsy/PiG/coding/uiview",
+      "name": "isHexDigit",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(c byte) bool"
+      },
+      "shapeHash": "sha256:ddee310485d8cb330136843bd197df952280076e599df8b9fa4911341282355d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/uiview#isTokenByte",
+      "package": "github.com/MichaelKinsy/PiG/coding/uiview",
+      "name": "isTokenByte",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(c byte, first bool) bool"
+      },
+      "shapeHash": "sha256:4b0d665454a434d7e3c3c3f744aed3862de14115d0f242be3a31d1d9dbebb3eb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/uiview#maxA11y",
       "package": "github.com/MichaelKinsy/PiG/coding/uiview",
       "name": "maxA11y",

@@ -38,6 +38,8 @@ allow = [
 	"github.com/MichaelKinsy/PiG/coding/piglet/signature",
 	"github.com/MichaelKinsy/PiG/coding/pigletbuild",
 	"github.com/MichaelKinsy/PiG/coding/piglogin",
+	# 68,947 B on linux_amd64, 56,208 B on darwin_arm64 and 69,984 B on windows_amd64: the plugin UI registry of D614 with its amendment (claims and alternatives, drawing checks, notices, attachments, RFC 8785 digests). subprocess.NewUIBridge makes the registry, so every binary that hosts extensions links it.
+	"github.com/MichaelKinsy/PiG/coding/uiview",
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json",
 	"github.com/MichaelKinsy/PiG/internal/codingagent",
 	"github.com/MichaelKinsy/PiG/internal/codingagent/compaction",

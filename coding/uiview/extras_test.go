@@ -3,6 +3,7 @@ package uiview
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"strings"
 	"testing"
 )
@@ -31,9 +32,7 @@ func mountRecord(key string, extra map[string]any) map[string]any {
 	m := map[string]any{"key": key, "slot": "panel", "view": textView("base"),
 		"intents": []any{map[string]any{"name": "fx.tap", "arg": map[string]any{"type": "object"}}},
 		"assets":  []any{map[string]any{"id": "img", "mime": "image/png", "size": 4, "sha256": strings.Repeat("a", 64), "delivery": "inline"}}}
-	for k, v := range extra {
-		m[k] = v
-	}
+	maps.Copy(m, extra)
 	return m
 }
 
@@ -165,9 +164,7 @@ func TestAlternativeBounds(t *testing.T) {
 
 	bad := func(w map[string]any, extra map[string]any) *Error {
 		alt := map[string]any{"when": w, "view": textView("alt")}
-		for k, v := range extra {
-			alt[k] = v
-		}
+		maps.Copy(alt, extra)
 		return tryMount(t, a, mountRecord("k", map[string]any{"alternatives": []any{alt}}))
 	}
 	wantCode(t, bad(when("display.colors", "matches", "x"), nil), CodeInvalid)                          // unknown operator
@@ -255,9 +252,7 @@ func shapes(n int) []any {
 
 func scene(members map[string]any) map[string]any {
 	d := map[string]any{"profile": "scene", "shapes": shapes(1)}
-	for k, v := range members {
-		d[k] = v
-	}
+	maps.Copy(d, members)
 	return d
 }
 

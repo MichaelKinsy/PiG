@@ -263,6 +263,9 @@ type Extension struct {
 	// instead of fetching the entire log over IPC.
 	session sessionMirror
 
+	// views is the D614 mount state: what the attached client draws and the intent handler. It carries its own lock, so it
+	// stands before mu and the replicated fields mu guards; applyAbilities takes every state snapshot.
+	views viewState
 	// session info from host (set after ready message).
 	mu          sync.RWMutex
 	sessionName string
@@ -271,9 +274,7 @@ type Extension struct {
 	hasUI       bool
 	// frontend is set while a D91 frontend session draws (D107): views
 	// carry frontend-only annotations only then.
-	frontend bool
-	// views is the D614 mount state: what the attached client draws and the intent handler.
-	views         viewState
+	frontend      bool
 	width         int
 	height        int
 	model         string

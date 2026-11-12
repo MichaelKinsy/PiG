@@ -72,6 +72,7 @@ func (r *Registry) Attach(a ClientAbilities, sink Sink) (*Attachment, Resync, *E
 		r.mu.Unlock()
 		return nil, Resync{}, fail(CodeLimit, "the host holds %d attachments, the most it takes", maxAttachments)
 	}
+	//portlint:allow ctxbackground this context is the attachment's own lifetime: Detach ends it, and no caller's context outlives an attachment
 	ctx, end := context.WithCancel(context.Background())
 	r.gen++
 	t := &Attachment{r: r, gen: r.gen, abilities: cloneAbilities(a), sink: sink, sent: map[ownerKey]string{}, ctx: ctx, end: end}
