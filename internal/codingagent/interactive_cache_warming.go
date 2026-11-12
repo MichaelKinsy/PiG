@@ -113,6 +113,7 @@ func (m *InteractiveMode) renderBoundaryCompaction(entry CompactionEntry) {
 	}
 	m.disposeArminComponents()
 	m.chatContainer.Clear()
+	m.transcriptEmptied()
 	m.tuiInst.ForceFullRender()
 	branch := session.GetBranch()
 	compactionIndex := slices.IndexFunc(branch, func(candidate SessionEntry) bool { return candidate.Base().ID == entry.ID })

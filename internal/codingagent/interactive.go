@@ -387,6 +387,8 @@ type InteractiveMode struct {
 	// framePacingInstalled is whether the renderer has the adaptive frame pacing policy (installFramePacing); framePacingAllowed is the policy's gate, stored by the owner loop before each throttled frame (allowFramePacing) and loaded by the renderer.
 	framePacingInstalled bool
 	framePacingAllowed   atomic.Bool
+	// extensionRendersTranscript is whether the transcript holds a tool card, a custom message or a custom entry drawn by an extension's renderer; the adaptive policy's gate is closed while it is (extensionRenderersMounted, transcriptEmptied). Owner loop only.
+	extensionRendersTranscript bool
 
 	// Bash-prefix execution state.
 	// bashCancel cancels the currently-running `!cmd` (Esc routes

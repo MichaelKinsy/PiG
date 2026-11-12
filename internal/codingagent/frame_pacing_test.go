@@ -2,11 +2,16 @@ package codingagent
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	"github.com/MichaelKinsy/PiG/tui"
 )
@@ -116,22 +121,23 @@ func (pacingTestComponent) Render(int) []string { return nil }
 func (pacingTestComponent) Invalidate()         {}
 func (pacingTestComponent) Dispose()            {}
 
-// Each extension surface alone closes the gate at the next frame of an active run, and so does an open overlay.
+// Each extension surface alone, mounted while a run streams, closes the gate at the next frame, and so does an open overlay; the frame after the surface is unmounted opens it again.
 func TestFramePacingGateIsClosedWhileAnExtensionDrawsOnScreen(t *testing.T) {
 	for _, tc := range []struct {
-		name  string
-		mount func(m *InteractiveMode)
+		name    string
+		mount   func(m *InteractiveMode)
+		unmount func(m *InteractiveMode)
 	}{
-		{"dialog", func(m *InteractiveMode) { m.extensionDialogs = []*extensionDialog{{}} }},
-		{"overlay of an extension", func(m *InteractiveMode) { m.extensionOverlays = []*extensionOverlay{{}} }},
-		{"open overlay", func(m *InteractiveMode) { m.tuiInst.ShowOverlay(tui.NewText("overlay"), tui.OverlayOptions{}) }},
-		{"header", func(m *InteractiveMode) { m.extHeaderComponent = pacingTestComponent{} }},
-		{"footer", func(m *InteractiveMode) { m.extFooterComponent = pacingTestComponent{} }},
+		{"dialog", func(m *InteractiveMode) { m.extensionDialogs = []*extensionDialog{{}} }, func(m *InteractiveMode) { m.extensionDialogs = nil }},
+		{"overlay of an extension", func(m *InteractiveMode) { m.extensionOverlays = []*extensionOverlay{{}} }, func(m *InteractiveMode) { m.extensionOverlays = nil }},
+		{"open overlay", func(m *InteractiveMode) { m.tuiInst.ShowOverlay(tui.NewText("overlay"), tui.OverlayOptions{}) }, func(m *InteractiveMode) { m.tuiInst.HideOverlay() }},
+		{"header", func(m *InteractiveMode) { m.extHeaderComponent = pacingTestComponent{} }, func(m *InteractiveMode) { m.extHeaderComponent = nil }},
+		{"footer", func(m *InteractiveMode) { m.extFooterComponent = pacingTestComponent{} }, func(m *InteractiveMode) { m.extFooterComponent = nil }},
 		{"editor", func(m *InteractiveMode) {
 			m.editorFactory = func(tui.TUI, tui.EditorTheme, extension.KeybindingsManager) tui.EditorComponent { return nil }
-		}},
-		{"widget of the host process", func(m *InteractiveMode) { m.inprocessWidgets = []inprocessWidget{{}} }},
-		{"widget of an extension process", func(m *InteractiveMode) { m.bridgeWidgets = map[string]*subprocess.PushProxy{"w": nil} }},
+		}, func(m *InteractiveMode) { m.editorFactory = nil }},
+		{"widget of the host process", func(m *InteractiveMode) { m.inprocessWidgets = []inprocessWidget{{}} }, func(m *InteractiveMode) { m.inprocessWidgets = nil }},
+		{"widget of an extension process", func(m *InteractiveMode) { m.bridgeWidgets = map[string]*subprocess.PushProxy{"w": nil} }, func(m *InteractiveMode) { delete(m.bridgeWidgets, "w") }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			m, _, _ := newLifecycleMode(t)
@@ -145,6 +151,126 @@ func TestFramePacingGateIsClosedWhileAnExtensionDrawsOnScreen(t *testing.T) {
 			m.runScheduledRender()
 			if m.framePacingAllowed.Load() {
 				t.Fatal("the gate is open one frame after the mount")
+			}
+			tc.unmount(m)
+			m.runScheduledRender()
+			if !m.framePacingAllowed.Load() {
+				t.Fatal("the gate stayed closed one frame after the unmount")
+			}
+		})
+	}
+}
+
+// pacingTestExtension registers what an extension can draw inside the transcript: a tool with a call renderer, a tool without renderers, a message renderer and an entry renderer.
+func pacingTestExtension() extension.Extension {
+	component := func() extension.Component { return pacingTestComponent{} }
+	return extension.Extension{
+		Name: "pacing-test",
+		Tools: map[string]extension.RegisteredTool{
+			"drawn": {Definition: extension.ToolDefinition{Name: "drawn", RenderCall: func(json.RawMessage, extension.Theme, extension.ToolRenderContext) extension.Component {
+				return component()
+			}}},
+			"plain": {Definition: extension.ToolDefinition{Name: "plain"}},
+		},
+		ToolOrder: []string{"drawn", "plain"},
+		MessageRenderers: map[string]extension.MessageRenderer{"note": func(extension.CustomMessage, extension.MessageRenderOptions, extension.Theme) extension.Component {
+			return component()
+		}},
+		EntryRenderers: map[string]extension.EntryRenderer{"mark": func(extension.CustomEntry, extension.EntryRenderOptions, extension.Theme) extension.Component {
+			return component()
+		}},
+	}
+}
+
+// Something an extension's renderer draws inside the transcript, added while a run streams, closes the gate at the next frame: a card of a tool whose definition has a renderer, a custom message and a custom entry with a registered renderer. The frame after the transcript is emptied opens it again. What no extension draws leaves the gate open: a built-in tool's card, the card of an extension's tool without renderers, a message and an entry without a registered renderer.
+func TestFramePacingGateIsClosedWhileAnExtensionRendersInsideTheTranscript(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		add    func(m *InteractiveMode)
+		closes bool
+	}{
+		{"card of a tool with a renderer", func(m *InteractiveMode) { m.newToolCard("drawn", "call-1", json.RawMessage(`{}`)) }, true},
+		{"card bound to a tool with a renderer", func(m *InteractiveMode) {
+			m.bindToolCard(m.newToolCard("read", "call-1", json.RawMessage(`{}`)), "call-1", "drawn", json.RawMessage(`{}`))
+		}, true},
+		{"message with a renderer", func(m *InteractiveMode) {
+			m.appendCustomMessage(CustomMessageEntry{CustomType: "note", Content: "text", Display: true}, messageMeta{})
+		}, true},
+		{"entry with a renderer", func(m *InteractiveMode) { m.addCustomEntryToChat(CustomEntry{CustomType: "mark"}) }, true},
+		{"card of a built-in tool", func(m *InteractiveMode) { m.newToolCard("read", "call-1", json.RawMessage(`{}`)) }, false},
+		{"card of an extension's tool without renderers", func(m *InteractiveMode) { m.newToolCard("plain", "call-1", json.RawMessage(`{}`)) }, false},
+		{"message without a renderer", func(m *InteractiveMode) {
+			m.appendCustomMessage(CustomMessageEntry{CustomType: "other", Content: "text", Display: true}, messageMeta{})
+		}, false},
+		{"entry without a renderer", func(m *InteractiveMode) { m.addCustomEntryToChat(CustomEntry{CustomType: "other"}) }, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m, _, _ := newLifecycleMode(t)
+			m.newRunner = inproc.NewRunner([]extension.Extension{pacingTestExtension()}, m.opts.AgentDir)
+			m.framePacingInstalled = true
+			m.turnActive.Store(true)
+			m.runScheduledRender()
+			if !m.framePacingAllowed.Load() {
+				t.Fatal("the gate is closed while the run is active and the transcript is empty")
+			}
+			tc.add(m)
+			m.runScheduledRender()
+			if got := !m.framePacingAllowed.Load(); got != tc.closes {
+				t.Fatalf("one frame after it was added the gate is closed = %v, want %v", got, tc.closes)
+			}
+			m.rebuildChatFrom(nil, false)
+			m.runScheduledRender()
+			if !m.framePacingAllowed.Load() {
+				t.Fatal("the gate stayed closed one frame after the transcript was emptied")
+			}
+		})
+	}
+}
+
+// A tool renderer resolver of an extension closes the gate when it answers for the tool, with renderers of its own or by changing the ones it was handed, and not when it hands the resolution on.
+func TestFramePacingGateFollowsToolRendererResolvers(t *testing.T) {
+	render := func(json.RawMessage, extension.Theme, extension.ToolRenderContext) extension.Component {
+		return pacingTestComponent{}
+	}
+	for _, tc := range []struct {
+		name     string
+		resolver extension.ToolRendererResolver
+		closes   bool
+	}{
+		{"hands on", func(_ string, next func() *extension.ToolRenderers) *extension.ToolRenderers { return next() }, false},
+		{"hands on after asking twice", func(_ string, next func() *extension.ToolRenderers) *extension.ToolRenderers {
+			next()
+			return next()
+		}, false},
+		{"answers with its own renderers", func(string, func() *extension.ToolRenderers) *extension.ToolRenderers {
+			return &extension.ToolRenderers{RenderCall: render}
+		}, true},
+		{"answers with a copy of the ones it was handed", func(_ string, next func() *extension.ToolRenderers) *extension.ToolRenderers {
+			copied := *next()
+			return &copied
+		}, true},
+		{"changes the ones it was handed", func(_ string, next func() *extension.ToolRenderers) *extension.ToolRenderers {
+			handed := next()
+			handed.RenderCall = render
+			return handed
+		}, true},
+		{"changes the shell of the ones it was handed", func(_ string, next func() *extension.ToolRenderers) *extension.ToolRenderers {
+			handed := next()
+			handed.RenderShell = extension.ToolRenderShellSelf
+			return handed
+		}, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m, _, _ := newLifecycleMode(t)
+			m.newRunner = inproc.NewRunner([]extension.Extension{{Name: "resolver", ToolRenderers: []extension.ToolRendererResolver{tc.resolver}}}, m.opts.AgentDir)
+			m.framePacingInstalled = true
+			m.turnActive.Store(true)
+			if m.resolveToolRenderers("read") == nil {
+				t.Fatal("the built-in tool resolved to no renderers")
+			}
+			m.runScheduledRender()
+			if got := !m.framePacingAllowed.Load(); got != tc.closes {
+				t.Fatalf("one frame after the resolution the gate is closed = %v, want %v", got, tc.closes)
 			}
 		})
 	}
@@ -160,17 +286,84 @@ func TestFramePacingGateIsUntouchedWithoutThePolicy(t *testing.T) {
 	}
 }
 
-// The policy is installed at start unless the run selects Pi's interval.
+// pacingRecorder is a renderer that keeps the policies it is given.
+type pacingRecorder struct {
+	tui.TUI
+	policies []*tui.FramePacing
+}
+
+func (r *pacingRecorder) SetFramePacing(pacing *tui.FramePacing) {
+	r.policies = append(r.policies, pacing)
+}
+
+// The policy is installed at start, once, unless the run selects Pi's interval: the environment decides when it names a policy, else the terminal.framePacing setting, and a missing or invalid setting is the default, adaptive. A run that selects Pi's interval gives the renderer nothing.
 func TestInstallFramePacingFollowsTheSelection(t *testing.T) {
 	for _, tc := range []struct {
-		env  string
-		want bool
-	}{{"pi", false}, {"0", false}, {"adaptive", true}, {"", true}} {
+		setting, env string
+		want         bool
+	}{
+		{"", "", true}, {"adaptive", "", true}, {"pi", "", false}, {"Pi", "", true}, {"0", "", true}, {"faster", "", true},
+		{"", "pi", false}, {"", "0", false}, {"adaptive", "pi", false}, {"adaptive", "0", false},
+		{"pi", "adaptive", true}, {"pi", "1", false}, {"pi", "PI", false}, {"adaptive", "1", true},
+	} {
 		t.Setenv(framePacingEnv, tc.env)
 		m, _, _ := newLifecycleMode(t)
+		m.opts.Settings.TerminalFramePacing = tc.setting
+		renderer := &pacingRecorder{TUI: m.tuiInst}
+		m.tuiInst = renderer
+		m.installFramePacing()
 		m.installFramePacing()
 		if m.framePacingInstalled != tc.want {
-			t.Errorf("%s=%q: policy installed = %v, want %v", framePacingEnv, tc.env, m.framePacingInstalled, tc.want)
+			t.Errorf("terminal.framePacing %q, %s=%q: policy installed = %v, want %v", tc.setting, framePacingEnv, tc.env, m.framePacingInstalled, tc.want)
 		}
+		if got := len(renderer.policies); (got == 1) != tc.want || got > 1 || (got == 1 && renderer.policies[0] == nil) {
+			t.Errorf("terminal.framePacing %q, %s=%q: the renderer was given %d policies %v, want one policy only when the run selects the adaptive one", tc.setting, framePacingEnv, tc.env, got, renderer.policies)
+		}
+	}
+}
+
+// terminal.framePacing is "adaptive" unless it is "pi", is read from the global file only, and a rewrite of the settings file keeps it.
+func TestTerminalFramePacingSetting(t *testing.T) {
+	const byDefault, other = TerminalFramePacingAdaptive, TerminalFramePacingPi
+	agentDir, cwd := t.TempDir(), t.TempDir()
+	if got := NewSettingsManager(cwd, agentDir).GetTerminalFramePacing(); got != byDefault {
+		t.Fatalf("with no settings file = %q, want the default %q", got, byDefault)
+	}
+	if err := os.MkdirAll(filepath.Join(cwd, ".pig"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeSettingsFixture(t, filepath.Join(cwd, ".pig", "settings.json"), `{"terminal":{"framePacing":"`+other+`","showTerminalProgress":true}}`)
+	project := NewSettingsManager(cwd, agentDir)
+	if got, merged := project.GetTerminalFramePacing(), project.Get().GetTerminalFramePacing(); got != byDefault || merged != byDefault {
+		t.Fatalf("a project file selected %q (merged view %q)", got, merged)
+	}
+	if !project.GetShowTerminalProgress() {
+		t.Fatalf("the project file's other terminal keys were not read")
+	}
+	settingsPath := filepath.Join(agentDir, "settings.json")
+	for value, want := range map[string]string{"adaptive": TerminalFramePacingAdaptive, "pi": TerminalFramePacingPi, "": byDefault, "Pi": byDefault, "0": byDefault, "fast": byDefault} {
+		writeSettingsFixture(t, settingsPath, `{"terminal":{"framePacing":"`+value+`"}}`)
+		sm := NewSettingsManager(cwd, agentDir)
+		if got, merged := sm.GetTerminalFramePacing(), sm.Get().GetTerminalFramePacing(); got != want || merged != want {
+			t.Errorf("terminal.framePacing %q reads as %q (merged view %q), want %q", value, got, merged, want)
+		}
+	}
+	writeSettingsFixture(t, settingsPath, `{"terminal":{"framePacing":"`+other+`","screenWriter":"pi","clearOnShrink":true}}`)
+	sm := NewSettingsManager(cwd, agentDir)
+	if err := sm.UpdateGlobal(func(s *Settings) { s.Theme = "light" }); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(settingsPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), `"framePacing": "`+other+`"`) && !strings.Contains(string(data), `"framePacing":"`+other+`"`) {
+		t.Fatalf("the rewritten settings file lost terminal.framePacing: %s", data)
+	}
+	if got := NewSettingsManager(cwd, agentDir).GetTerminalFramePacing(); got != other {
+		t.Fatalf("after the rewrite the setting reads %q, want %q", got, other)
+	}
+	if got := NewSettingsManager(cwd, agentDir).GetTerminalScreenWriter(); got != TerminalScreenWriterPi {
+		t.Fatalf("after the rewrite terminal.screenWriter reads %q, want %q", got, TerminalScreenWriterPi)
 	}
 }

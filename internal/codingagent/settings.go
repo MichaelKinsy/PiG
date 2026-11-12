@@ -306,6 +306,8 @@ type terminalSettingsWire struct {
 	ShowTerminalProgress *bool `json:"showTerminalProgress,omitempty"`
 	// ScreenWriter is PiG's own key; see Settings.TerminalScreenWriter.
 	ScreenWriter string `json:"screenWriter,omitempty"`
+	// FramePacing is PiG's own key; see Settings.TerminalFramePacing.
+	FramePacing string `json:"framePacing,omitempty"`
 	// Hyperlinks, Images, and TrueColor keep the authored JSON value; see
 	// Settings.GetTerminalCapabilityOverrides.
 	Hyperlinks json.RawMessage `json:"hyperlinks,omitempty"`
@@ -747,6 +749,10 @@ type Settings struct {
 	// pig divergence (D624): Pi has no such key; it writes every row a frame holds.
 	TerminalScreenWriter string `json:"screenWriter,omitempty"`
 
+	// TerminalFramePacing is terminal.framePacing, how soon a streaming reply's next frame may begin in fullscreen mode: "adaptive" for the last frame's cost times four between 10 and 16 ms, "pi" for Pi's 16 ms; see GetTerminalFramePacing. PIG_FRAME_PACING overrides it. It is read once, when interactive mode starts. Global setting only.
+	// pig divergence (D625): Pi has no such key; its frame interval is one constant.
+	TerminalFramePacing string `json:"framePacing,omitempty"`
+
 	// terminalHyperlinks, terminalImages, and terminalTrueColor hold the
 	// authored terminal.hyperlinks, terminal.images, and terminal.trueColor
 	// JSON values. Upstream types them boolean | "auto",
@@ -1064,6 +1070,7 @@ func cloneSettings(s Settings) Settings {
 		ClearOnShrink:                  cloneBoolPtr(s.ClearOnShrink),
 		ShowTerminalProgress:           cloneBoolPtr(s.ShowTerminalProgress),
 		TerminalScreenWriter:           s.TerminalScreenWriter,
+		TerminalFramePacing:            s.TerminalFramePacing,
 		terminalHyperlinks:             slices.Clone(s.terminalHyperlinks),
 		terminalImages:                 slices.Clone(s.terminalImages),
 		terminalTrueColor:              slices.Clone(s.terminalTrueColor),
@@ -1167,13 +1174,14 @@ func (s Settings) MarshalJSON() ([]byte, error) {
 		}
 	}
 	if s.ShowImages != nil || s.ImageWidthCells > 0 || s.imageWidthCellsSet || s.ClearOnShrink != nil || s.ShowTerminalProgress != nil ||
-		s.TerminalScreenWriter != "" || s.terminalHyperlinks != nil || s.terminalImages != nil || s.terminalTrueColor != nil {
+		s.TerminalScreenWriter != "" || s.TerminalFramePacing != "" || s.terminalHyperlinks != nil || s.terminalImages != nil || s.terminalTrueColor != nil {
 		w.Terminal = &terminalSettingsWire{
 			ShowImages:           s.ShowImages,
 			ImageWidthCells:      imageWidthCellsWire(s),
 			ClearOnShrink:        s.ClearOnShrink,
 			ShowTerminalProgress: s.ShowTerminalProgress,
 			ScreenWriter:         s.TerminalScreenWriter,
+			FramePacing:          s.TerminalFramePacing,
 			Hyperlinks:           s.terminalHyperlinks,
 			Images:               s.terminalImages,
 			TrueColor:            s.terminalTrueColor,
@@ -1336,6 +1344,7 @@ func (s *Settings) UnmarshalJSON(data []byte) error {
 		s.ClearOnShrink = w.Terminal.ClearOnShrink
 		s.ShowTerminalProgress = w.Terminal.ShowTerminalProgress
 		s.TerminalScreenWriter = w.Terminal.ScreenWriter
+		s.TerminalFramePacing = w.Terminal.FramePacing
 		s.terminalHyperlinks = w.Terminal.Hyperlinks
 		s.terminalImages = w.Terminal.Images
 		s.terminalTrueColor = w.Terminal.TrueColor
@@ -1696,6 +1705,21 @@ func (s Settings) GetTerminalScreenWriter() string {
 		return TerminalScreenWriterPi
 	}
 	return TerminalScreenWriterWriter
+}
+
+// The values of terminal.framePacing.
+const (
+	TerminalFramePacingAdaptive = "adaptive"
+	TerminalFramePacingPi       = "pi"
+)
+
+// GetTerminalFramePacing returns the terminal.framePacing setting, TerminalFramePacingAdaptive or TerminalFramePacingPi. The key unset, and any other value, is "adaptive".
+// pig divergence (D625): see Settings.TerminalFramePacing.
+func (s Settings) GetTerminalFramePacing() string {
+	if s.TerminalFramePacing == TerminalFramePacingPi {
+		return TerminalFramePacingPi
+	}
+	return TerminalFramePacingAdaptive
 }
 
 // GetShowTerminalProgress returns whether OSC 9;4 terminal progress indicators are enabled.
@@ -3238,6 +3262,12 @@ func (sm *SettingsManager) GetExtensionsTypescriptRuntime() string {
 // pig divergence (D624): see Settings.TerminalScreenWriter.
 func (sm *SettingsManager) GetTerminalScreenWriter() string {
 	return sm.GetGlobalSettings().GetTerminalScreenWriter()
+}
+
+// GetTerminalFramePacing returns the global terminal.framePacing setting, normalized as Settings.GetTerminalFramePacing does. A project file cannot set it.
+// pig divergence (D625): see Settings.TerminalFramePacing.
+func (sm *SettingsManager) GetTerminalFramePacing() string {
+	return sm.GetGlobalSettings().GetTerminalFramePacing()
 }
 
 // GetExtensionsAutoUpgrade reports whether the global settings turn on the automatic Go extension upgrade. It is off unless set, and a project file cannot turn it on.
