@@ -210,3 +210,53 @@ func TestNightlyBisectProbeBranchIsUniquePerRunAttempt(t *testing.T) {
 		t.Fatal("nightly-probe.sh no longer names its branch after BISECT_TAG")
 	}
 }
+
+// The range can reach back before the probe script existed, and git bisect checks those commits out. The default probe
+// is run from a copy outside the checkout, so every commit of the range is judged by the same probe.
+func TestNightlyBisectKeepsTheDefaultProbeWhenOldCommitsLackIt(t *testing.T) {
+	dir := t.TempDir()
+	runGitIn(t, dir, "init", "-q", "-b", "main")
+	bisect, err := os.ReadFile(filepath.Join(repoRoot(t), "automation", "ci", "nightly-bisect.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	probe := "#!/bin/sh\ncase \"$(git show \"$1:state\")\" in ok*) exit 0;; broken*) exit 1;; *) exit 125;; esac\n"
+	const badFrom, scriptsFrom = 3, 8
+	var commits []string
+	for i := range 10 {
+		state := "ok"
+		if i >= badFrom {
+			state = "broken"
+		}
+		if err := os.WriteFile(filepath.Join(dir, "state"), []byte(state+fmt.Sprint(i)+"\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if i == scriptsFrom {
+			scripts := filepath.Join(dir, "automation", "ci")
+			if err := os.MkdirAll(scripts, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			for name, text := range map[string]string{"nightly-bisect.sh": string(bisect), "nightly-probe.sh": probe} {
+				if err := os.WriteFile(filepath.Join(scripts, name), []byte(text), 0o755); err != nil {
+					t.Fatal(err)
+				}
+			}
+		}
+		runGitIn(t, dir, "add", "-A")
+		runGitIn(t, dir, "commit", "-q", "-m", fmt.Sprint("c", i))
+		commits = append(commits, runGitIn(t, dir, "rev-parse", "HEAD"))
+	}
+	// As the workflow runs it: the checkout's own script, no PROBE in the environment.
+	cmd := exec.Command("bash", "automation/ci/nightly-bisect.sh", commits[0], commits[9])
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "PROBE=")
+	var stderr strings.Builder
+	cmd.Stderr = &stderr
+	out, err := cmd.Output()
+	if got, want := strings.TrimSpace(string(out)), "first-bad="+commits[badFrom]; err != nil || got != want {
+		t.Fatalf("got %q, %v, want %q\n%s", got, err, want, stderr.String())
+	}
+	if _, err := os.Stat(filepath.Join(dir, "automation", "ci", "nightly-probe.sh")); err != nil {
+		t.Errorf("the bisect did not return to the commit it started on: %v", err)
+	}
+}

@@ -6,13 +6,14 @@
 # Usage: nightly-bisect.sh <good-sha> <bad-sha>
 # Environment: PROBE, the command run with the commit under test as its one argument: exit 0 for good, 1 for bad, 125 for "cannot tell" (default
 # automation/ci/nightly-probe.sh, which runs CI on the commit). The checkout needs the history between the two commits.
+# The bisect checks out commits that may lack the probe script, so the default probe runs from a copy outside the checkout.
 #
 # The nightly red CI run is the bad end and the last green nightly the good one. A range of one commit needs no probe.
 set -euo pipefail
 
 good=${1:?good sha}
 bad=${2:?bad sha}
-probe=${PROBE:-$(dirname "$0")/nightly-probe.sh}
+probe=${PROBE:-}
 
 git merge-base --is-ancestor "$good" "$bad" || {
   echo "::error::$good is not an ancestor of $bad; nothing to bisect" >&2
@@ -32,8 +33,14 @@ if [ "$count" = 1 ]; then
   exit 0
 fi
 
-log=$(mktemp)
-trap 'rm -f "$log"; git bisect reset >/dev/null 2>&1 || true' EXIT
+scratch=$(mktemp -d)
+trap 'rm -rf "$scratch"; git bisect reset >/dev/null 2>&1 || true' EXIT
+log=$scratch/log
+if [ -z "$probe" ]; then
+  probe=$scratch/nightly-probe.sh
+  cp "$(dirname "$0")/nightly-probe.sh" "$probe"
+  chmod +x "$probe"
+fi
 git bisect start --first-parent "$bad" "$good" >&2
 # shellcheck disable=SC2016 # The inner sh expands $1 and the rev-parse substitution, not this shell.
 if ! git bisect run sh -c 'exec "$1" "$(git rev-parse HEAD)"' sh "$probe" >"$log" 2>&1; then
