@@ -116,12 +116,13 @@ func TestTerminalViewClientIsSelectedNotDefault(t *testing.T) {
 }
 
 // pig additive (D614): the client selected and never sent a mount costs a session nothing: the terminal is written the
-// same bytes, no goroutine runs for it, the widget containers hold the same children and a frame allocates the same.
+// same bytes, no goroutine runs for it and the widget containers hold the same children. The allocations of a frame are
+// compared in view_client_allocs_norace_test.go.
 func TestTerminalViewClientNeverMountedCostsNothing(t *testing.T) {
 	for _, mode := range []string{"regular", "fullscreen"} {
 		t.Run(mode, func(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
-				run := func(selected bool) (written string, goroutines int, children int, allocs float64) {
+				run := func(selected bool) (written string, goroutines int, children int) {
 					m, term := newTickRenderProbe(t, mode)
 					m.opts.TerminalViewClient = selected
 					bridge := subprocess.NewUIBridge(m.requestRender)
@@ -136,13 +137,11 @@ func TestTerminalViewClientNeverMountedCostsNothing(t *testing.T) {
 					m.viewClientResized()
 					written += p.frame()
 					children = len(m.widgetContainer.Children())
-					allocs = testing.AllocsPerRun(20, func() { m.tuiInst.Render() })
-					term.take()
 					m.detachTerminalViewClient()
-					return written, goroutines, children, allocs
+					return written, goroutines, children
 				}
-				offBytes, offGoroutines, offChildren, offAllocs := run(false)
-				onBytes, onGoroutines, onChildren, onAllocs := run(true)
+				offBytes, offGoroutines, offChildren := run(false)
+				onBytes, onGoroutines, onChildren := run(true)
 				if onBytes != offBytes {
 					t.Errorf("the terminal was written different bytes with the client selected:\noff %q\non  %q", offBytes, onBytes)
 				}
@@ -155,10 +154,7 @@ func TestTerminalViewClientNeverMountedCostsNothing(t *testing.T) {
 				if onChildren != offChildren {
 					t.Errorf("widget container children: off %d, on %d", offChildren, onChildren)
 				}
-				if onAllocs != offAllocs {
-					t.Errorf("allocations of one frame: off %v, on %v", offAllocs, onAllocs)
-				}
-				t.Logf("%s: bytes %d = %d, goroutines %d = %d, widget children %d = %d, allocations per frame %v = %v", mode, len(offBytes), len(onBytes), offGoroutines, onGoroutines, offChildren, onChildren, offAllocs, onAllocs)
+				t.Logf("%s: bytes %d = %d, goroutines %d = %d, widget children %d = %d", mode, len(offBytes), len(onBytes), offGoroutines, onGoroutines, offChildren, onChildren)
 			})
 		})
 	}
