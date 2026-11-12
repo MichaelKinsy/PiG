@@ -3,7 +3,6 @@ package coding
 import (
 	"context"
 	"encoding/json"
-	"encoding/pem"
 	"fmt"
 	"io"
 	"net/http"
@@ -61,28 +60,14 @@ func newSummaryAuthWorld(t *testing.T) *summaryAuthWorld {
 	return world
 }
 
-// systemRootsFromEnvironment reports whether the platform's TLS client reads its trusted roots from SSL_CERT_FILE, which TestMain points at the certificate of
-// net/http/httptest's TLS servers. macOS and Windows verify against the operating system's store instead.
+// systemRootsFromEnvironment reports whether the platform's TLS client reads its trusted roots from SSL_CERT_FILE, which TestMain points at the test
+// certificate authority only (testCA). macOS and Windows verify against the operating system's store instead.
 var systemRootsFromEnvironment = runtime.GOOS != "darwin" && runtime.GOOS != "windows"
 
-// trustHTTPTestCertificate writes the certificate that net/http/httptest's TLS servers present to a file under dir and points SSL_CERT_FILE at it, before any
-// client of the process has loaded the system roots. A shape whose base URL is https-only reaches such a server without a transport seam in production code.
-func trustHTTPTestCertificate(dir string) error {
-	server := httptest.NewUnstartedServer(http.NotFoundHandler())
-	server.StartTLS()
-	defer server.Close()
-	pemBytes := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: server.Certificate().Raw})
-	file := filepath.Join(dir, "httptest-ca.pem")
-	if err := os.WriteFile(file, pemBytes, 0o600); err != nil {
-		return err
-	}
-	return os.Setenv("SSL_CERT_FILE", file)
-}
-
-// serveTLS moves the endpoint a derived token names to a TLS server, for a provider whose derived base URL is https-only. It must run before the token is minted.
+// serveTLS moves the endpoint a derived token names to a TLS server whose certificate the test CA signed, for a provider whose derived base URL is https-only
+// and reaches no transport seam in production code. It must run before the token is minted.
 func (w *summaryAuthWorld) serveTLS() {
-	server := httptest.NewTLSServer(http.HandlerFunc(w.serveChat))
-	w.t.Cleanup(server.Close)
+	server := testCA.newTLSServer(w.t, http.HandlerFunc(w.serveChat))
 	w.host = server.Listener.Addr().String()
 }
 
