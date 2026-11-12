@@ -260,7 +260,7 @@ func extensionsOf(in []describeExt) []*durable.Extension {
 	for i, each := range in {
 		out[i] = &durable.Extension{Name: each.Name}
 		for _, name := range each.Tools {
-			out[i].Tools = append(out[i].Tools, &durable.ToolRegistration{ToolSchema: ai.ToolSchema{Name: name}})
+			out[i].Tools = append(out[i].Tools, &durable.ToolRegistration{Name: name})
 		}
 		if each.Namespace != nil {
 			out[i].Namespace = &durable.ToolNamespace{Name: each.Namespace.Name, Description: each.Namespace.Description, Instructions: each.Namespace.Instructions}
