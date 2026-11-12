@@ -321,6 +321,12 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 			Err:       fmt.Errorf("capture-pane: %w (%s)", err, tmuxServerReport(ctx, session)),
 		}
 	}
+	// The waits read the transcript while the run is live; once the run is over the pane's pipe is closed and the reader's trailer must count every byte the file holds, so a reader that stopped copying fails the run instead of silently shortening what a wait saw.
+	if operationErr == nil {
+		if err := finishTranscript(ctx, session, transcriptPath, sc.Name, bin.Label, transcriptDoneTimeout); err != nil {
+			operationErr = err
+		}
+	}
 	pane, escaped, cropErr := cropCaptures(cfg, use, pane, escaped)
 	if !readyOK && paneMatchesCaptureSurface(pane, cfg) {
 		readyOK = true
@@ -680,15 +686,14 @@ func waitForPaneState(ctx context.Context, session string, includes, excludes []
 	return false
 }
 
-// transcriptReaderCommand is the shell command tmux pipe-pane starts to append everything the pane's program writes to path.
-func transcriptReaderCommand(path string) string {
-	return "cat >> " + shellQuote(path)
-}
-
-// attachTranscript records the raw bytes the session's pane receives in the file at path, for the waits that read the byte stream rather than the screen.
+// attachTranscript records the raw bytes the session's pane receives in the file at path, for the waits and comparators that read the byte stream rather than the screen.
 func attachTranscript(ctx context.Context, session, path string) error {
-	//nolint:gosec // G204 (class a): program is literal tmux; the pipe command is built by transcriptReaderCommand from a path under the run temp root.
-	if err := exec.CommandContext(ctx, "tmux", tmuxArgs("pipe-pane", "-o", "-t", session, transcriptReaderCommand(path))...).Run(); err != nil {
+	command, err := transcriptReaderCommand(path)
+	if err != nil {
+		return err
+	}
+	//nolint:gosec // G204 (class a): program is literal tmux; the pipe command is built by transcriptReaderCommand from the test binary's path and a path under the run's temp root.
+	if err := exec.CommandContext(ctx, "tmux", tmuxArgs("pipe-pane", "-o", "-t", session, command)...).Run(); err != nil {
 		return fmt.Errorf("tmux pipe-pane: %w", err)
 	}
 	return nil
