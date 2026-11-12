@@ -272,6 +272,27 @@ export function stripAnsiEscapes(text) {
 export const packageFileBackports = {
   // 49fe0a237 (#11987): the models.json schema Pi generates from compat-schema.ts.
   "pi-coding-agent/schemas/models.schema.json": [messageThreadsDefault],
+  // aa47cedce (#12100): a non-strict Anthropic tool schema keeps its root additionalProperties (false, true or a schema). PiG's vendored runtime carries pi-ai's
+  // anthropic-messages as a bridge stub that runs in PiG's host (ai/anthropic.go, which has the change), so the file is the installed Pi's only: the parity oracle
+  // (the request body of test/pipeline-diff's tool schema comparison) is Pi with the fix.
+  "pi-ai/api/anthropic-messages.js": [
+    [`        // Keep shared definitions so property $refs still resolve. Other root keywords stay out:
+        // Anthropic rejects root anyOf/oneOf/allOf with a 400.
+        const legacyInputSchema = {
+            type: "object",
+            properties: schema.properties ?? {},
+            required: schema.required ?? [],
+`, `        // Keep shared definitions so property $refs still resolve, and additionalProperties so the
+        // model knows whether extra arguments are allowed. Other root keywords stay out:
+        // Anthropic rejects root anyOf/oneOf/allOf with a 400.
+        ${note("aa47cedce").trim()}
+        const legacyInputSchema = {
+            type: "object",
+            properties: schema.properties ?? {},
+            required: schema.required ?? [],
+            ...(schema.additionalProperties === undefined ? {} : { additionalProperties: schema.additionalProperties }),
+`],
+  ],
 };
 
 const patchesOf = (file) => backportPatches[file] ?? packageFileBackports[file] ?? [];
