@@ -10,6 +10,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 func TestAddedNumbered(t *testing.T) {
@@ -546,9 +548,7 @@ func TestSymlinksOfAPRAreNotFollowed(t *testing.T) {
 	remote := t.TempDir()
 	gitRepo(t, remote, map[string]string{"a.go": "package a"})
 	repo := filepath.Join(remote, "o", "r")
-	if err := os.Symlink(secret, filepath.Join(repo, "link")); err != nil {
-		t.Fatal(err)
-	}
+	testenv.Symlink(t, secret, filepath.Join(repo, "link"))
 	for _, args := range [][]string{{"add", "link"}, {"-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false", "commit", "-q", "-m", "link"}} {
 		if out, err := git(context.Background(), append([]string{"-C", repo}, args...)...); err != nil {
 			t.Fatalf("git %v: %v %s", args, err, out)
@@ -595,9 +595,11 @@ func TestFlattenSymlinksNeverEntersALink(t *testing.T) {
 	}
 	links := map[string]string{"dir": outside, "sub/deeper/file": filepath.Join(outside, "secret"), "sub/rel": "../dir/secret"}
 	for name, target := range links {
-		if err := os.Symlink(target, filepath.Join(head, filepath.FromSlash(name))); err != nil {
-			t.Fatal(err)
+		if name == "dir" {
+			testenv.RequireDirectoryLink(t, target, filepath.Join(head, name))
+			continue
 		}
+		testenv.Symlink(t, target, filepath.Join(head, filepath.FromSlash(name)))
 	}
 	if err := flattenSymlinks(head); err != nil {
 		t.Fatal(err)
@@ -613,9 +615,7 @@ func TestFlattenSymlinksNeverEntersALink(t *testing.T) {
 	if raw, _ := os.ReadFile(filepath.Join(outside, "secret")); string(raw) != "AKIA" {
 		t.Fatal("the target was changed")
 	}
-	if err := os.Symlink(filepath.Join(outside, "secret"), filepath.Join(head, "late")); err != nil {
-		t.Fatal(err)
-	}
+	testenv.Symlink(t, filepath.Join(outside, "secret"), filepath.Join(head, "late"))
 	dataPath := filepath.Join(t.TempDir(), "data.json")
 	if err := writeJSON(dataPath, &data{Files: []prFile{{Filename: "late", Status: "added"}}}); err != nil {
 		t.Fatal(err)

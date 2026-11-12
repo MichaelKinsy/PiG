@@ -150,6 +150,8 @@ var fileSymlinkCallers = map[string]string{
 	"env/daemon/list_test.go::TestListFilesListsSymbolicLinksWithoutFollowingThem":                                                                             "a link to a missing target and directory links, one of them a loop; the listing reports each as a link without following it",
 	"env/list_files_oracle_test.go::writeGenerated":                                                                                                            "links to random tree names (files, directories, missing names) and to \".\", each compared with Pi's listing",
 	"internal/codingagent/context_files_symlink_test.go::TestLoadProjectContextFilesNestedWorktreeSymlinkedContext":                                            "file link; AGENTS.md in a nested worktree links to the main repo's file (#10681)",
+	"automation/ci/preflight/scanner_test.go::TestSymlinksOfAPRAreNotFollowed":                                                                                 "file link; the pull request's head commits a link to a file outside the checkout, which the scan must flatten instead of following",
+	"automation/ci/preflight/scanner_test.go::TestFlattenSymlinksNeverEntersALink":                                                                             "file links, one relative; the directory link uses RequireDirectoryLink",
 }
 
 // Windows-building tests keep Symlink for file links only, so the directory-link behavior they exercise runs on a stock Windows host.
