@@ -170,7 +170,8 @@ var ansiRegex = lazyregexp.New(`\x1b\[([\d;]*)m|\x1b\[[0-?]*[ -/]*[@-~]|\x1b\]([
 // osc8Regex matches an OSC 8 hyperlink payload: "8;params;url".
 var osc8Regex = lazyregexp.New(`(?s)^8;[^;]*;(.*)$`)
 
-var safeLinkRegex = lazyregexp.New(`(?i)^(?:https?:|mailto:)`)
+// The scheme's case is spelled out: JS /i does not fold a non-ASCII letter onto an ASCII one (the long s U+017F is not an s), which Go's (?i) does.
+var safeLinkRegex = lazyregexp.New(`^(?:[Hh][Tt][Tt][Pp][Ss]?:|[Mm][Aa][Ii][Ll][Tt][Oo]:)`)
 
 // jsWhitespace is ECMAScript WhiteSpace plus LineTerminator, the set String.prototype.trim removes.
 const jsWhitespace = "\t\n\v\f\r \u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff"
