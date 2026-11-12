@@ -1301,6 +1301,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26](#bf-a09da26) | `pi.getSettings()` in a subprocess extension lists the settings in Pi's order: the global settings file's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26-2](#bf-a09da26-2) | A bash or PowerShell tool card reads the result's `truncation` details by their exact keys, as Pi does: a… | PiG's own defect | Windows | 0.5.0 |
+| [BF-a0a1c37](#bf-a0a1c37) | fix(sdk-rs): the Call envelope carried the command_context attribute twice; regenerate the Rust SDK bundle | PiG's own defect | All platforms | Unreleased |
 | [BF-a110f68](#bf-a110f68) | fix(tui,codingagent): owner-loop frame deadline and reader-side input routing (TU-T11, TU-T12) | PiG's own defect | All platforms | Unreleased |
 | [BF-a11fc08](#bf-a11fc08) | fix(durable): list D206 in the docs bundle; the cut-off tool case types its task id; the retry delay product… | PiG's own defect | All platforms | Unreleased |
 | [BF-a13bae4](#bf-a13bae4) | A `read` result shown in the transcript no longer keeps the file text a second time as its structured content | PiG's own defect | All platforms | 0.5.0 |
@@ -19772,6 +19773,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `a09da26616` (2026-10-13)
 - **Tests:** `coding/session_settings_json_test.go::TestSessionSettingsJSONIsTheEncodingOfGetSettings`, `internal/codingagent/settings_extension_json_test.go::TestExtensionSettingsJSONEncodesOncePerSettingsGeneration`, `internal/codingagent/settings_extension_json_test.go::TestExtensionSettingsJSONKeepsPiMemberOrder`, `internal/codingagent/settings_shared_read_test.go::TestSettingsReadHonorsPiWriterLock`, `internal/codingagent/tool_render_shell_details_test.go::TestShellCardIgnoresACaseVariantTruncatedBy`, `internal/codingagent/tool_render_shell_details_test.go::TestShellDetailsFromReadsTheExactKeys`
 - **Release note:** A bash or PowerShell tool card reads the result's `truncation` details by their exact keys, as Pi does: a member such as `TRUNCATEDBY` no longer stands in for `truncatedBy`.
+
+### BF-a0a1c37
+
+**fix(sdk-rs): the Call envelope carried the command_context attribute twice; regenerate the Rust SDK bundle**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(sdk-rs): the Call envelope carried the command_context attribute twice; regenerate the Rust SDK bundle
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a0a1c37105` (2026-11-11)
+- **Tests:** None recorded.
 
 ### BF-a110f68
 

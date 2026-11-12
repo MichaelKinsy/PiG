@@ -35646,6 +35646,25 @@
       ]
     },
     {
+      "id": "BF-a0a1c37",
+      "title": "fix(sdk-rs): the Call envelope carried the command_context attribute twice; regenerate the Rust SDK bundle",
+      "symptom": "fix(sdk-rs): the Call envelope carried the command_context attribute twice; regenerate the Rust SDK bundle",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "a0a1c37105",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-a110f68",
       "title": "fix(tui,codingagent): owner-loop frame deadline and reader-side input routing (TU-T11, TU-T12)",
       "symptom": "fix(tui,codingagent): owner-loop frame deadline and reader-side input routing (TU-T11, TU-T12)",
