@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 	"unicode/utf8"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // liveHeap is the bytes of live heap after a collection.
@@ -19,7 +21,14 @@ func liveHeap() uint64 {
 
 // A finished message is lexed in passes whose strings are copied into chunks of up to 16 KiB; a memo entry must not keep the chunk its code was copied into, or one short snippet in a long answer pins the answer's chunk and the memo holds far more than hlEntrySize counts (hlCacheMaxBytes).
 // Bound: after a session of finished messages of 9 KB with one Go block each, rendered whole and streamed, the memo retains about what it accounts for. A streamed block stores its frames' keys without a copy, so the key of its last frame must get one when the stream ends; the shapes that lex every frame from the start of the message (a link reference definition, a non-ASCII list) have the longest chunks.
+//
+// The retained bytes are the difference of two heap readings of the process, which counts every goroutine in it: one that an earlier
+// test left running and that allocates or frees between the readings moves the difference as it moves the heap. The test runs in a
+// process of its own (testenv.InOwnProcess), where nothing but its messages allocates.
 func TestHighlightMemoRetainsWhatItAccountsFor(t *testing.T) {
+	if !testenv.InOwnProcess(t) {
+		return
+	}
 	prose := strings.Repeat("Some prose that explains the change in a sentence of ordinary length.\n\n", 62)
 	block := func(n string) string { return "```go\nfunc f" + n + "(x int) int { return x * " + n + " }\n```\n\n" }
 	const definition = "[ref]: https://example.com/ref\n\n"

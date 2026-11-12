@@ -17,7 +17,10 @@ type ToolSlotStatus string
 const (
 	ToolSlotPending ToolSlotStatus = "pending"
 	ToolSlotRunning ToolSlotStatus = "running"
-	ToolSlotDone    ToolSlotStatus = "done"
+	// ToolSlotSleeping and ToolSlotWaiting show a call parked (spec suspendable §4.2); a parked slot holds no output.
+	ToolSlotSleeping ToolSlotStatus = "sleeping"
+	ToolSlotWaiting  ToolSlotStatus = "waiting"
+	ToolSlotDone     ToolSlotStatus = "done"
 )
 
 // ToolSlot is the presentation of one tool call of the current round (live.ts:11-31).
@@ -163,6 +166,16 @@ type LiveRun struct {
 	// AfterRun is present once the run answered and its generation waits for the tasks afterRun hooks asked for, listed
 	// once created: queued items stay queued until they are terminal, and the run then ends without a failure.
 	AfterRun *LiveRunAfterRun `json:"afterRun,omitempty"`
+	// Yield is present while tasks an onYield hook asked for decide whether the answer stands (spec suspendable §6): the
+	// answer's entry, which the tasks read, and the tasks. The inputs stay open; every exit but a continuation settles them
+	// done with this answer.
+	Yield *LiveRunYield `json:"yield,omitempty"`
+}
+
+// LiveRunYield is LiveRun.Yield.
+type LiveRunYield struct {
+	Answer durable.EntryId  `json:"answer"`
+	Tasks  []durable.TaskId `json:"tasks"`
 }
 
 // LiveRunAfterRun is LiveRun.AfterRun: the tasks afterRun hooks asked for.
@@ -533,11 +546,16 @@ func FinishSlot(slot *delta.Object) error {
 
 // ClearProgress removes what a tool published while running; its result entry or a rerun replaces it.
 func ClearProgress(slot *delta.Object) {
+	ClearOutput(slot)
+	slot.Delete("details")
+	slot.Delete("diagnostics")
+}
+
+// ClearOutput removes a slot's running output only: a parked call, and its next run, keep its details and diagnostics.
+func ClearOutput(slot *delta.Object) {
 	slot.Delete("output")
 	slot.Delete("droppedBytes")
 	slot.Delete("droppedLines")
-	slot.Delete("details")
-	slot.Delete("diagnostics")
 }
 
 // SettleSchedulerOutcome is the Harness cleanup for a terminal outcome the scheduler writes itself (faulted or
@@ -588,6 +606,14 @@ func SettleSchedulerOutcome(tx durable.Tx, record durable.TaskRecord[durable.Jso
 	}
 	if owner, ok := runTaskOf(live); !ok || owner != record.Id {
 		return nil
+	}
+	// The run answered and waited for its onYield tasks: it ends with its answer, without a failure.
+	run, err := liveRunOf(live)
+	if err != nil {
+		return err
+	}
+	if run.Yield != nil {
+		return EndRun(tx, live, record.Id, runDone(run.Yield.Answer))
 	}
 	// Cut off, the abort handler may have died converting the partial: the run ends without it.
 	if !cutOff {

@@ -32337,8 +32337,8 @@
       ],
       "evidence": [
         "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallDoesNotRetryAbortedMessage",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallDoesNotRetryNonRetryableError"
+        "test:ai/provider_closed_connection_test.go#TestRetryAssistantCallOverAGatewayClosedConnection",
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallDoesNotRetryAbortedMessage"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -78419,8 +78419,8 @@
       ],
       "evidence": [
         "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallDoesNotRetryAbortedMessage",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallDoesNotRetryNonRetryableError"
+        "test:ai/provider_closed_connection_test.go#TestRetryAssistantCallOverAGatewayClosedConnection",
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallDoesNotRetryAbortedMessage"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -102451,8 +102451,8 @@
       ],
       "evidence": [
         "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallDoesNotRetryAbortedMessage",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallDoesNotRetryNonRetryableError"
+        "test:ai/provider_closed_connection_test.go#TestRetryAssistantCallOverAGatewayClosedConnection",
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallDoesNotRetryAbortedMessage"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -104893,8 +104893,8 @@
       ],
       "evidence": [
         "test:chord/next/contracts/derived_runtime_test.go#TestDerivedShapes",
-        "test:chord/next/contracts/params_test.go#TestParamsPolicy",
-        "test:chord/next/contracts/schema_test.go#TestSchemaBytes"
+        "test:chord/next/contracts/events_test.go#TestDeclareEventMembers",
+        "test:chord/next/contracts/events_test.go#TestEvolveEventEdits"
       ]
     },
     {
@@ -105984,9 +105984,9 @@
         "call:chord/next/surfaces/surfaces_client.go#StartClient"
       ],
       "evidence": [
-        "test:chord/next/surfaces/surfaces_client_test.go#TestDropsTheRetryOfASetANewerOneReplacedAndAppliesTheNewerOne",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestDropsTheRetryOfASetANewerOneReplacedWhileItsTimerWasBeingSet",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestEndsTheWaitForStylesheetsAtTheClientsStopTheUpdateStopsThere"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestHoldsTheScriptsObjectWhenTheClientIsReturnedAndStopEndsAFollowingStillWaitingForItsServer",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAppliesTheSetTheServerShowsWhenItStartsFollowingThoughNoFrameBroughtIt"
       ]
     },
     {
@@ -106038,8 +106038,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_client_test.go#TestANewerSetIsNotDeliveredWhileTheUpdateBeforeItRunsSoItsRetryWaitsTheFirstPauseAgain",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAsksTheServersBaseBeforeReconnectingAnotherOneCallsOutdatedAndStops",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestCallsOutdatedForASetWithAnotherBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientReconnectsWithoutAskingTheServersBase"
       ]
     },
     {
@@ -106522,9 +106522,9 @@
         "call:chord/next/link/part.go#OpenPart"
       ],
       "evidence": [
+        "test:chord/next/host/remote_consumer_events_test.go#TestConsumerEvents",
         "test:chord/next/host/remote_consumer_test.go#TestConsumerLimitsPerPart",
-        "test:chord/next/host/remote_provider_test.go#TestProviderLimitsPerPart",
-        "test:chord/nextnode/compression_test.go#TestNodeCompression"
+        "test:chord/next/host/remote_provider_test.go#TestProviderLimitsPerPart"
       ]
     },
     {
@@ -106544,9 +106544,9 @@
         "call:chord/next/link/part.go#OriginPart"
       ],
       "evidence": [
+        "test:chord/next/host/remote_consumer_events_test.go#TestConsumerEvents",
         "test:chord/next/host/remote_consumer_test.go#TestConsumerLimitsPerPart",
-        "test:chord/next/host/remote_provider_test.go#TestProviderLimitsPerPart",
-        "test:chord/nextnode/compression_test.go#TestNodeCompression"
+        "test:chord/next/host/remote_provider_test.go#TestProviderLimitsPerPart"
       ]
     },
     {
@@ -106566,9 +106566,9 @@
         "call:chord/next/link/part.go#OriginPart"
       ],
       "evidence": [
+        "test:chord/next/host/remote_consumer_events_test.go#TestConsumerEvents",
         "test:chord/next/host/remote_consumer_test.go#TestConsumerLimitsPerPart",
-        "test:chord/next/host/remote_provider_test.go#TestProviderLimitsPerPart",
-        "test:chord/nextnode/compression_test.go#TestNodeCompression"
+        "test:chord/next/host/remote_provider_test.go#TestProviderLimitsPerPart"
       ]
     },
     {
@@ -107342,8 +107342,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_activity_test.go#TestHostActivityFeedsDerivesWhichRecomputeInThePublishingBatch",
-        "test:chord/next/host/host_adapted_test.go#TestAnInstancesMappingDetachesOnlyWhatItMadeKeepsAnUnchangedMemberTheInstancesOwnDeriveWhenTheLastOlderReferenceLeaves",
-        "test:chord/next/host/host_adapted_test.go#TestAnOlderConsumerOfAProvidersAcceptedVersionReadsKeyedMembersMappedPerKeyGetWatchAndAFactorysAtKey"
+        "test:chord/next/host/host_adapted_events_test.go#TestAdaptedEventsBindWithARemovedEventMemberAndReceiveNoneOfItTheUnchangedOnesAsTheyAre",
+        "test:chord/next/host/host_adapted_test.go#TestAnInstancesMappingDetachesOnlyWhatItMadeKeepsAnUnchangedMemberTheInstancesOwnDeriveWhenTheLastOlderReferenceLeaves"
       ]
     },
     {
@@ -107364,8 +107364,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_activity_test.go#TestHostActivityFeedsDerivesWhichRecomputeInThePublishingBatch",
-        "test:chord/next/host/host_adapted_test.go#TestAnInstancesMappingDetachesOnlyWhatItMadeKeepsAnUnchangedMemberTheInstancesOwnDeriveWhenTheLastOlderReferenceLeaves",
-        "test:chord/next/host/host_adapted_test.go#TestAnOlderConsumerOfAProvidersAcceptedVersionReadsKeyedMembersMappedPerKeyGetWatchAndAFactorysAtKey"
+        "test:chord/next/host/host_adapted_events_test.go#TestAdaptedEventsBindWithARemovedEventMemberAndReceiveNoneOfItTheUnchangedOnesAsTheyAre",
+        "test:chord/next/host/host_adapted_test.go#TestAnInstancesMappingDetachesOnlyWhatItMadeKeepsAnUnchangedMemberTheInstancesOwnDeriveWhenTheLastOlderReferenceLeaves"
       ]
     },
     {
@@ -109478,8 +109478,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_activity_test.go#TestHostActivityFeedsDerivesWhichRecomputeInThePublishingBatch",
-        "test:chord/next/host/host_adapted_test.go#TestAnOlderConsumerOfAProvidersAcceptedVersionReadsKeyedMembersMappedPerKeyGetWatchAndAFactorysAtKey",
-        "test:chord/next/host/host_adapted_test.go#TestReloadAVersionRefusalKeepsTheWaitingReferencesLastValuesKeepsAnOlderWatchOpenWhileItsVersionIsRefusedAndHealsItWhenItIsAcceptedAgain"
+        "test:chord/next/host/host_adapted_events_test.go#TestAdaptedEventsBindWithARemovedEventMemberAndReceiveNoneOfItTheUnchangedOnesAsTheyAre",
+        "test:chord/next/host/host_adapted_test.go#TestAnOlderConsumerOfAProvidersAcceptedVersionReadsKeyedMembersMappedPerKeyGetWatchAndAFactorysAtKey"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -109501,8 +109501,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_activity_test.go#TestHostActivityFeedsDerivesWhichRecomputeInThePublishingBatch",
-        "test:chord/next/host/host_adapted_test.go#TestAnOlderConsumerOfAProvidersAcceptedVersionReadsKeyedMembersMappedPerKeyGetWatchAndAFactorysAtKey",
-        "test:chord/next/host/host_adapted_test.go#TestReloadAVersionRefusalKeepsTheWaitingReferencesLastValuesKeepsAnOlderWatchOpenWhileItsVersionIsRefusedAndHealsItWhenItIsAcceptedAgain"
+        "test:chord/next/host/host_adapted_events_test.go#TestAdaptedEventsBindWithARemovedEventMemberAndReceiveNoneOfItTheUnchangedOnesAsTheyAre",
+        "test:chord/next/host/host_adapted_test.go#TestAnOlderConsumerOfAProvidersAcceptedVersionReadsKeyedMembersMappedPerKeyGetWatchAndAFactorysAtKey"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -112668,8 +112668,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_client_test.go#TestANewerSetIsNotDeliveredWhileTheUpdateBeforeItRunsSoItsRetryWaitsTheFirstPauseAgain",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAsksTheServersBaseBeforeReconnectingAnotherOneCallsOutdatedAndStops",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestCallsOutdatedForASetWithAnotherBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientReconnectsWithoutAskingTheServersBase"
       ]
     },
     {
@@ -112690,8 +112690,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_client_test.go#TestANewerSetIsNotDeliveredWhileTheUpdateBeforeItRunsSoItsRetryWaitsTheFirstPauseAgain",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAsksTheServersBaseBeforeReconnectingAnotherOneCallsOutdatedAndStops",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestCallsOutdatedForASetWithAnotherBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientReconnectsWithoutAskingTheServersBase"
       ]
     },
     {
@@ -112712,8 +112712,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_client_test.go#TestANewerSetIsNotDeliveredWhileTheUpdateBeforeItRunsSoItsRetryWaitsTheFirstPauseAgain",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAsksTheServersBaseBeforeReconnectingAnotherOneCallsOutdatedAndStops",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestCallsOutdatedForASetWithAnotherBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientReconnectsWithoutAskingTheServersBase"
       ]
     },
     {
@@ -112734,8 +112734,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_client_test.go#TestANewerSetIsNotDeliveredWhileTheUpdateBeforeItRunsSoItsRetryWaitsTheFirstPauseAgain",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAsksTheServersBaseBeforeReconnectingAnotherOneCallsOutdatedAndStops",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestCallsOutdatedForASetWithAnotherBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientReconnectsWithoutAskingTheServersBase"
       ]
     },
     {
@@ -112756,8 +112756,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_client_test.go#TestANewerSetIsNotDeliveredWhileTheUpdateBeforeItRunsSoItsRetryWaitsTheFirstPauseAgain",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAsksTheServersBaseBeforeReconnectingAnotherOneCallsOutdatedAndStops",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestCallsOutdatedForASetWithAnotherBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientReconnectsWithoutAskingTheServersBase"
       ]
     },
     {
@@ -112778,8 +112778,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_client_test.go#TestANewerSetIsNotDeliveredWhileTheUpdateBeforeItRunsSoItsRetryWaitsTheFirstPauseAgain",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAsksTheServersBaseBeforeReconnectingAnotherOneCallsOutdatedAndStops",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestCallsOutdatedForASetWithAnotherBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientReconnectsWithoutAskingTheServersBase"
       ]
     },
     {
@@ -112800,8 +112800,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_client_test.go#TestANewerSetIsNotDeliveredWhileTheUpdateBeforeItRunsSoItsRetryWaitsTheFirstPauseAgain",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAsksTheServersBaseBeforeReconnectingAnotherOneCallsOutdatedAndStops",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestCallsOutdatedForASetWithAnotherBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientReconnectsWithoutAskingTheServersBase"
       ]
     },
     {
@@ -112822,8 +112822,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_client_test.go#TestANewerSetIsNotDeliveredWhileTheUpdateBeforeItRunsSoItsRetryWaitsTheFirstPauseAgain",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAsksTheServersBaseBeforeReconnectingAnotherOneCallsOutdatedAndStops",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestCallsOutdatedForASetWithAnotherBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientReconnectsWithoutAskingTheServersBase"
       ]
     },
     {
@@ -112844,8 +112844,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_client_test.go#TestANewerSetIsNotDeliveredWhileTheUpdateBeforeItRunsSoItsRetryWaitsTheFirstPauseAgain",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAsksTheServersBaseBeforeReconnectingAnotherOneCallsOutdatedAndStops",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestCallsOutdatedForASetWithAnotherBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientReconnectsWithoutAskingTheServersBase"
       ]
     },
     {
@@ -115844,7 +115844,7 @@
       ],
       "evidence": [
         "test:chord/next/host/host_activity_test.go#TestHostActivityCountsAHoldPlacedHereFromItsArrivalBoundOrNot",
-        "test:chord/next/host/host_adapted_test.go#TestAdaptedMembersLifetimeDropsAnOlderVersionsAdaptedMembersWhenItsLastConsumerLeavesWhileTheObjectLivesOn",
+        "test:chord/next/host/host_adapted_events_test.go#TestAdaptedEventsBindWithARemovedEventMemberAndReceiveNoneOfItTheUnchangedOnesAsTheyAre",
         "test:chord/next/host/host_ref_state_test.go#TestRefStateAWatchTakenAfterReleaseHasEnded"
       ]
     },
@@ -115886,8 +115886,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_client_test.go#TestANewerSetIsNotDeliveredWhileTheUpdateBeforeItRunsSoItsRetryWaitsTheFirstPauseAgain",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestDropsTheRetryOfASetANewerOneReplacedAndAppliesTheNewerOne",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestDropsTheRetryOfASetANewerOneReplacedWhileItsTimerWasBeingSet"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAppliesTheSetTheServerShowsWhenItStartsFollowingThoughNoFrameBroughtIt"
       ]
     },
     {
@@ -116071,8 +116071,8 @@
       ],
       "evidence": [
         "test:chord/watch_upstream_test.go#TestNativeWatchableWatchHoldsTheCurrentValueThenOneFramePerNewValueAndEndsWithItsContext",
-        "test:chord/next/host/host_delegate_test.go#TestDelegateHoldsKeepTheirOrderAcrossTheDelegatesRestartAndTheServersTypesNeverMove",
-        "test:chord/next/host/host_dependencies_test.go#TestTheDependencyCheckSettlesAWaitingRingAcrossHostsAfterOneRound"
+        "test:chord/next/host/host_adapted_events_test.go#TestAdaptedEventsBindWithARemovedEventMemberAndReceiveNoneOfItTheUnchangedOnesAsTheyAre",
+        "test:chord/next/host/host_delegate_test.go#TestDelegateHoldsKeepTheirOrderAcrossTheDelegatesRestartAndTheServersTypesNeverMove"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -116136,8 +116136,8 @@
       ],
       "evidence": [
         "test:chord/watch_upstream_test.go#TestNativeWatchableWatchHoldsTheCurrentValueThenOneFramePerNewValueAndEndsWithItsContext",
-        "test:chord/next/host/host_example_08_test.go#TestExample08Remote",
-        "test:chord/next/host/host_example_11_test.go#TestExample11LingerAndRetry"
+        "test:chord/next/host/host_adapted_events_test.go#TestAdaptedEventsBindWithARemovedEventMemberAndReceiveNoneOfItTheUnchangedOnesAsTheyAre",
+        "test:chord/next/host/host_events_test.go#TestEventsCostAContractWithoutEventMembersCostsNoEventBookkeepingPerBindingHereOrOverALink"
       ]
     },
     {
@@ -116803,7 +116803,7 @@
       "evidence": [
         "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
         "test:chord/next/surfaces/surfaces_client_test.go#TestANewerSetIsNotDeliveredWhileTheUpdateBeforeItRunsSoItsRetryWaitsTheFirstPauseAgain",
-        "test:chord/nextnode/app/app_surfaces_test.go#TestWebSurfaceKeepsAPluginsAssetsWhileItKeepsItsOldScriptAfterFailedBuildsOpusL4FableM3"
+        "test:chord/nextnode/app/app_surfaces_test.go#TestAnAppServingTheSurfaceItselfRoutesFalseContributesNoRoutesAndGivesTheFilesThePagesAssetsAndTheBaseHash"
       ]
     },
     {
@@ -116824,8 +116824,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_client_test.go#TestANewerSetIsNotDeliveredWhileTheUpdateBeforeItRunsSoItsRetryWaitsTheFirstPauseAgain",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAsksTheServersBaseBeforeReconnectingAnotherOneCallsOutdatedAndStops",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestCallsOutdatedForASetWithAnotherBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientReconnectsWithoutAskingTheServersBase"
       ]
     },
     {
@@ -116846,8 +116846,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
-        "test:chord/nextnode/app/app_surfaces_test.go#TestWebSurfaceKeepsAPluginsAssetsWhileItKeepsItsOldScriptAfterFailedBuildsOpusL4FableM3",
-        "test:chord/nextnode/app/app_surfaces_test.go#TestWebSurfacePublishesANewSetOnARolloutWithoutWaitingForClientsThePreviousFilesStayServed"
+        "test:chord/nextnode/app/app_surfaces_test.go#TestAnAppServingTheSurfaceItselfRoutesFalseContributesNoRoutesAndGivesTheFilesThePagesAssetsAndTheBaseHash",
+        "test:chord/nextnode/app/app_surfaces_test.go#TestWebSurfaceKeepsAPluginsAssetsWhileItKeepsItsOldScriptAfterFailedBuildsOpusL4FableM3"
       ]
     },
     {
@@ -116868,8 +116868,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_activity_test.go#TestHostActivityFeedsDerivesWhichRecomputeInThePublishingBatch",
-        "test:chord/next/host/host_adapted_test.go#TestAnInstancesMappingDetachesOnlyWhatItMadeKeepsAnUnchangedMemberTheInstancesOwnDeriveWhenTheLastOlderReferenceLeaves",
-        "test:chord/next/host/host_adapted_test.go#TestAnOlderConsumerOfAProvidersAcceptedVersionReadsKeyedMembersMappedPerKeyGetWatchAndAFactorysAtKey"
+        "test:chord/next/host/host_adapted_events_test.go#TestAdaptedEventsBindWithARemovedEventMemberAndReceiveNoneOfItTheUnchangedOnesAsTheyAre",
+        "test:chord/next/host/host_adapted_test.go#TestAnInstancesMappingDetachesOnlyWhatItMadeKeepsAnUnchangedMemberTheInstancesOwnDeriveWhenTheLastOlderReferenceLeaves"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -117331,7 +117331,7 @@
       "evidence": [
         "test:chord/next/host/host_attempt_test.go#TestAttemptEndingRejectsTheirCallersAtOnceTheHandlerRunsOnWithItsContextAbortedAndCannotCommit",
         "test:chord/next/host/host_batch_test.go#TestDeliveryReportsADeliveryThatThrowsAndStillDeliversTheLaterFramesOfTheCommit",
-        "test:chord/next/host/host_example_02_test.go#TestExample02Documents"
+        "test:chord/next/host/host_events_test.go#TestEventFlushLetsAListenerStopReleaseSubscribeStartATransactionAndEmitACallDueWhenItStoppedIsSkipped"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -117354,7 +117354,7 @@
       "evidence": [
         "test:chord/next/host/host_attempt_test.go#TestAttemptEndingRejectsTheirCallersAtOnceTheHandlerRunsOnWithItsContextAbortedAndCannotCommit",
         "test:chord/next/host/host_batch_test.go#TestDeliveryReportsADeliveryThatThrowsAndStillDeliversTheLaterFramesOfTheCommit",
-        "test:chord/next/host/host_example_02_test.go#TestExample02Documents"
+        "test:chord/next/host/host_events_test.go#TestEventFlushLetsAListenerStopReleaseSubscribeStartATransactionAndEmitACallDueWhenItStoppedIsSkipped"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -117896,8 +117896,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_client_test.go#TestANewerSetIsNotDeliveredWhileTheUpdateBeforeItRunsSoItsRetryWaitsTheFirstPauseAgain",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAsksTheServersBaseBeforeReconnectingAnotherOneCallsOutdatedAndStops",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestCallsOutdatedForASetWithAnotherBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientReconnectsWithoutAskingTheServersBase"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -117919,8 +117919,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_client_test.go#TestANewerSetIsNotDeliveredWhileTheUpdateBeforeItRunsSoItsRetryWaitsTheFirstPauseAgain",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAsksTheServersBaseBeforeReconnectingAnotherOneCallsOutdatedAndStops",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestCallsOutdatedForASetWithAnotherBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientReconnectsWithoutAskingTheServersBase"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -119124,8 +119124,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_activity_test.go#TestHostActivityFeedsDerivesWhichRecomputeInThePublishingBatch",
-        "test:chord/next/host/host_adapted_test.go#TestAnInstancesMappingDetachesOnlyWhatItMadeKeepsAnUnchangedMemberTheInstancesOwnDeriveWhenTheLastOlderReferenceLeaves",
-        "test:chord/next/host/host_adapted_test.go#TestAnOlderConsumerOfAProvidersAcceptedVersionReadsKeyedMembersMappedPerKeyGetWatchAndAFactorysAtKey"
+        "test:chord/next/host/host_adapted_events_test.go#TestAdaptedEventsBindWithARemovedEventMemberAndReceiveNoneOfItTheUnchangedOnesAsTheyAre",
+        "test:chord/next/host/host_adapted_test.go#TestAnInstancesMappingDetachesOnlyWhatItMadeKeepsAnUnchangedMemberTheInstancesOwnDeriveWhenTheLastOlderReferenceLeaves"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -119715,7 +119715,7 @@
       "evidence": [
         "test:chord/next/host/host_attempt_test.go#TestAttemptEndingRejectsTheirCallersAtOnceTheHandlerRunsOnWithItsContextAbortedAndCannotCommit",
         "test:chord/next/host/host_batch_test.go#TestDeliveryReportsADeliveryThatThrowsAndStillDeliversTheLaterFramesOfTheCommit",
-        "test:chord/next/host/host_example_02_test.go#TestExample02Documents"
+        "test:chord/next/host/host_events_test.go#TestEventFlushLetsAListenerStopReleaseSubscribeStartATransactionAndEmitACallDueWhenItStoppedIsSkipped"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -119738,7 +119738,7 @@
       "evidence": [
         "test:chord/next/host/host_attempt_test.go#TestAttemptEndingRejectsTheirCallersAtOnceTheHandlerRunsOnWithItsContextAbortedAndCannotCommit",
         "test:chord/next/host/host_batch_test.go#TestDeliveryReportsADeliveryThatThrowsAndStillDeliversTheLaterFramesOfTheCommit",
-        "test:chord/next/host/host_example_02_test.go#TestExample02Documents"
+        "test:chord/next/host/host_events_test.go#TestEventFlushLetsAListenerStopReleaseSubscribeStartATransactionAndEmitACallDueWhenItStoppedIsSkipped"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -122228,9 +122228,9 @@
         "public-api:chord/next/surfaces/surfaces_scripts.go#WebScripts"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_surfaces_test.go#TestAnAppServingTheSurfaceItselfRoutesFalseContributesNoRoutesAndGivesTheFilesThePagesAssetsAndTheBaseHash",
         "test:chord/nextnode/surfaces/surfaces_build_test.go#TestOneSharedBuildBuildsOnceForEveryWaiterTheScriptsObjectShowsAnEmptySetBeforeTheFirstSetAfter",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestANewerSetIsNotDeliveredWhileTheUpdateBeforeItRunsSoItsRetryWaitsTheFirstPauseAgain",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAsksTheServersBaseBeforeReconnectingAnotherOneCallsOutdatedAndStops"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestANewerSetIsNotDeliveredWhileTheUpdateBeforeItRunsSoItsRetryWaitsTheFirstPauseAgain"
       ]
     },
     {
@@ -122525,8 +122525,8 @@
       ],
       "evidence": [
         "test:chord/watch_upstream_test.go#TestNativeWatchableWatchHoldsTheCurrentValueThenOneFramePerNewValueAndEndsWithItsContext",
-        "test:chord/next/host/host_delegate_test.go#TestDelegateHoldsKeepTheirOrderAcrossTheDelegatesRestartAndTheServersTypesNeverMove",
-        "test:chord/next/host/host_dependencies_test.go#TestTheDependencyCheckSettlesAWaitingRingAcrossHostsAfterOneRound"
+        "test:chord/next/host/host_adapted_events_test.go#TestAdaptedEventsBindWithARemovedEventMemberAndReceiveNoneOfItTheUnchangedOnesAsTheyAre",
+        "test:chord/next/host/host_delegate_test.go#TestDelegateHoldsKeepTheirOrderAcrossTheDelegatesRestartAndTheServersTypesNeverMove"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -122592,8 +122592,8 @@
       ],
       "evidence": [
         "test:chord/watch_upstream_test.go#TestNativeWatchableWatchHoldsTheCurrentValueThenOneFramePerNewValueAndEndsWithItsContext",
-        "test:chord/next/host/host_example_08_test.go#TestExample08Remote",
-        "test:chord/next/host/host_example_11_test.go#TestExample11LingerAndRetry"
+        "test:chord/next/host/host_adapted_events_test.go#TestAdaptedEventsBindWithARemovedEventMemberAndReceiveNoneOfItTheUnchangedOnesAsTheyAre",
+        "test:chord/next/host/host_events_test.go#TestEventsCostAContractWithoutEventMembersCostsNoEventBookkeepingPerBindingHereOrOverALink"
       ]
     },
     {
@@ -124518,8 +124518,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_17_test.go#TestExample17LimitsAndCompression",
-        "test:chord/next/host/remote_consumer_test.go#TestConsumerLimitsPerPart",
-        "test:chord/next/host/remote_host_link_test.go#TestHostLinkPartsCompressionAndLimits"
+        "test:chord/next/host/remote_consumer_events_test.go#TestConsumerEvents",
+        "test:chord/next/host/remote_consumer_test.go#TestConsumerLimitsPerPart"
       ]
     },
     {
@@ -126939,9 +126939,9 @@
         "call:chord/nextnode/http/admission.go#admit"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_surfaces_test.go#TestAnAppServingTheSurfaceItselfRoutesFalseContributesNoRoutesAndGivesTheFilesThePagesAssetsAndTheBaseHash",
         "test:chord/nextnode/http/admission_test.go#TestAdmissionProvenance",
-        "test:chord/nextnode/http/http_test.go#TestAnswersSendsSeveralSetCookieHeaders",
-        "test:chord/nextnode/http/http_test.go#TestMountingWithoutAConnectionARequestIsNeverLocal"
+        "test:chord/nextnode/http/http_test.go#TestAnswersSendsSeveralSetCookieHeaders"
       ]
     },
     {
@@ -127027,9 +127027,9 @@
         "call:chord/nextnode/http/http.go#CreateHttp"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_surfaces_test.go#TestAnAppServingTheSurfaceItselfRoutesFalseContributesNoRoutesAndGivesTheFilesThePagesAssetsAndTheBaseHash",
         "test:chord/nextnode/app/invite_upstream_test.go#TestInvitesAcceptTheOwnerTheAppChoseAndRefuseAnotherUser",
-        "test:chord/nextnode/app/invite_upstream_test.go#TestInvitesSignTheInviteeInAsTheChosenPrincipalOnceOnlyTheOwnerInvites",
-        "test:chord/nextnode/app/owner_upstream_test.go#TestAUserOwnersTokenFileIsKeptAcrossStartsAlsoWithTheOwnersFieldsInAnotherOrder"
+        "test:chord/nextnode/app/invite_upstream_test.go#TestInvitesSignTheInviteeInAsTheChosenPrincipalOnceOnlyTheOwnerInvites"
       ]
     },
     {
@@ -127049,9 +127049,9 @@
         "call:chord/nextnode/http/http.go#CreateHttp"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_surfaces_test.go#TestAnAppServingTheSurfaceItselfRoutesFalseContributesNoRoutesAndGivesTheFilesThePagesAssetsAndTheBaseHash",
         "test:chord/nextnode/app/invite_upstream_test.go#TestInvitesAcceptTheOwnerTheAppChoseAndRefuseAnotherUser",
-        "test:chord/nextnode/app/invite_upstream_test.go#TestInvitesSignTheInviteeInAsTheChosenPrincipalOnceOnlyTheOwnerInvites",
-        "test:chord/nextnode/app/owner_upstream_test.go#TestAUserOwnersTokenFileIsKeptAcrossStartsAlsoWithTheOwnersFieldsInAnotherOrder"
+        "test:chord/nextnode/app/invite_upstream_test.go#TestInvitesSignTheInviteeInAsTheChosenPrincipalOnceOnlyTheOwnerInvites"
       ]
     },
     {
@@ -127183,9 +127183,9 @@
         "call:chord/nextnode/http/http.go#CreateHttp"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_surfaces_test.go#TestAnAppServingTheSurfaceItselfRoutesFalseContributesNoRoutesAndGivesTheFilesThePagesAssetsAndTheBaseHash",
         "test:chord/nextnode/http/http_test.go#TestAnswersSendsSeveralSetCookieHeaders",
-        "test:chord/nextnode/http/http_test.go#TestMountingWithoutAConnectionARequestIsNeverLocal",
-        "test:chord/nextnode/http/http_test.go#TestStartupListensOncePublishedWhereItsListenSettingSaysWithoutItNoListener"
+        "test:chord/nextnode/http/http_test.go#TestMountingWithoutAConnectionARequestIsNeverLocal"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -127206,9 +127206,9 @@
         "call:chord/nextnode/http/http.go#HttpComponent.Close"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_surfaces_test.go#TestAnAppServingTheSurfaceItselfRoutesFalseContributesNoRoutesAndGivesTheFilesThePagesAssetsAndTheBaseHash",
         "test:chord/nextnode/http/http_test.go#TestCancellationACloseBeforeLoadLeavesNothingRunningTheEarlyRequestAnswers503",
-        "test:chord/nextnode/http/http_test.go#TestCancellationACloseWhileTheFirstRequestResolvesTheRegistriesStartsNoFollow",
-        "test:chord/nextnode/http/http_test.go#TestCancellationACloseWhoseContextIsAbortedAlreadyDoesNotWait"
+        "test:chord/nextnode/http/http_test.go#TestCancellationACloseWhileTheFirstRequestResolvesTheRegistriesStartsNoFollow"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -127229,9 +127229,9 @@
         "call:chord/nextnode/http/http.go#HttpComponent.Close"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_surfaces_test.go#TestAnAppServingTheSurfaceItselfRoutesFalseContributesNoRoutesAndGivesTheFilesThePagesAssetsAndTheBaseHash",
         "test:chord/nextnode/http/http_test.go#TestCancellationACloseBeforeLoadLeavesNothingRunningTheEarlyRequestAnswers503",
-        "test:chord/nextnode/http/http_test.go#TestCancellationACloseWhileTheFirstRequestResolvesTheRegistriesStartsNoFollow",
-        "test:chord/nextnode/http/http_test.go#TestCancellationACloseWhoseContextIsAbortedAlreadyDoesNotWait"
+        "test:chord/nextnode/http/http_test.go#TestCancellationACloseWhileTheFirstRequestResolvesTheRegistriesStartsNoFollow"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -127252,9 +127252,9 @@
         "call:chord/nextnode/http/http.go#HttpComponent.Facet"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_surfaces_test.go#TestAnAppServingTheSurfaceItselfRoutesFalseContributesNoRoutesAndGivesTheFilesThePagesAssetsAndTheBaseHash",
         "test:chord/nextnode/app/invite_upstream_test.go#TestInvitesAcceptTheOwnerTheAppChoseAndRefuseAnotherUser",
-        "test:chord/nextnode/app/invite_upstream_test.go#TestInvitesSignTheInviteeInAsTheChosenPrincipalOnceOnlyTheOwnerInvites",
-        "test:chord/nextnode/app/owner_upstream_test.go#TestAUserOwnersTokenFileIsKeptAcrossStartsAlsoWithTheOwnersFieldsInAnotherOrder"
+        "test:chord/nextnode/app/invite_upstream_test.go#TestInvitesSignTheInviteeInAsTheChosenPrincipalOnceOnlyTheOwnerInvites"
       ]
     },
     {
@@ -127274,9 +127274,9 @@
         "call:chord/nextnode/http/http.go#HttpComponent.Fetch"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_surfaces_test.go#TestAnAppServingTheSurfaceItselfRoutesFalseContributesNoRoutesAndGivesTheFilesThePagesAssetsAndTheBaseHash",
         "test:chord/nextnode/http/http_test.go#TestAnswersSendsSeveralSetCookieHeaders",
-        "test:chord/nextnode/http/http_test.go#TestMountingWithoutAConnectionARequestIsNeverLocal",
-        "test:chord/nextnode/http/node_test.go#TestFetchRefusesTwoHostHeaders"
+        "test:chord/nextnode/http/http_test.go#TestMountingWithoutAConnectionARequestIsNeverLocal"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -127297,9 +127297,9 @@
         "call:chord/nextnode/http/http.go#HttpComponent.Fetch"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_surfaces_test.go#TestAnAppServingTheSurfaceItselfRoutesFalseContributesNoRoutesAndGivesTheFilesThePagesAssetsAndTheBaseHash",
         "test:chord/nextnode/http/http_test.go#TestAnswersSendsSeveralSetCookieHeaders",
-        "test:chord/nextnode/http/http_test.go#TestMountingWithoutAConnectionARequestIsNeverLocal",
-        "test:chord/nextnode/http/node_test.go#TestFetchRefusesTwoHostHeaders"
+        "test:chord/nextnode/http/http_test.go#TestMountingWithoutAConnectionARequestIsNeverLocal"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -127406,9 +127406,9 @@
         "call:chord/nextnode/http/http.go#HttpComponent.failure"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_surfaces_test.go#TestAnAppServingTheSurfaceItselfRoutesFalseContributesNoRoutesAndGivesTheFilesThePagesAssetsAndTheBaseHash",
         "test:chord/nextnode/http/http_test.go#TestHostAndPrincipalsRunsARequestWithoutAPrincipalAnonymousAsksTheAuthenticatorsInOrderSkippingAThrowingOne",
-        "test:chord/nextnode/http/http_test.go#TestRoutesAndWrapsFailingAnswersAThrowingRoute500WithoutItsMessageAThrowingWrap500NamingItsPluginAnHttpFailureItsStatus",
-        "test:chord/nextnode/http/response_test.go#TestBytesDestroyTheConnectionOnAShortOrAThrowingReadReportedResponseFailed"
+        "test:chord/nextnode/http/http_test.go#TestRoutesAndWrapsFailingAnswersAThrowingRoute500WithoutItsMessageAThrowingWrap500NamingItsPluginAnHttpFailureItsStatus"
       ]
     },
     {
@@ -127558,9 +127558,9 @@
         "call:chord/nextnode/http/http.go#CreateHttp"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_surfaces_test.go#TestAnAppServingTheSurfaceItselfRoutesFalseContributesNoRoutesAndGivesTheFilesThePagesAssetsAndTheBaseHash",
         "test:chord/nextnode/app/invite_upstream_test.go#TestInvitesAcceptTheOwnerTheAppChoseAndRefuseAnotherUser",
-        "test:chord/nextnode/app/invite_upstream_test.go#TestInvitesSignTheInviteeInAsTheChosenPrincipalOnceOnlyTheOwnerInvites",
-        "test:chord/nextnode/app/owner_upstream_test.go#TestAUserOwnersTokenFileIsKeptAcrossStartsAlsoWithTheOwnersFieldsInAnotherOrder"
+        "test:chord/nextnode/app/invite_upstream_test.go#TestInvitesSignTheInviteeInAsTheChosenPrincipalOnceOnlyTheOwnerInvites"
       ]
     },
     {
@@ -127897,8 +127897,8 @@
         "call:chord/nextnode/http/file.go#FileResponse"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_surfaces_test.go#TestAnAppServingTheSurfaceItselfRoutesFalseContributesNoRoutesAndGivesTheFilesThePagesAssetsAndTheBaseHash",
         "test:chord/nextnode/http/file_test.go#TestFileResponseClosesItsHandleOnEveryPathOpensNoneWhenNothingIsWritten",
-        "test:chord/nextnode/http/file_test.go#TestFileResponseTypesByExtensionTextImagesAudioVideoNeverHTMLOrSVGUnlessNamed",
         "test:chord/nextnode/http/http_test.go#TestAnswersSendsSeveralSetCookieHeaders"
       ]
     },
@@ -129685,9 +129685,9 @@
         "call:chord/nextnode/plugins/plugins_plugins.go#CreatePlugins"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_surfaces_test.go#TestAnAppServingTheSurfaceItselfRoutesFalseContributesNoRoutesAndGivesTheFilesThePagesAssetsAndTheBaseHash",
         "test:chord/nextnode/plugins/plugins_cssmodules_test.go#TestPluginsBuildsShareOneEvaluatorProcessAndCloseEndsIt",
-        "test:chord/nextnode/plugins/plugins_current_proof_test.go#TestPluginsCurrentIsEmptyBeforeAKindsFirstUseThenItsBuiltSet",
-        "test:chord/nextnode/plugins/plugins_current_proof_test.go#TestPluginsWatchBaseSetsBaseWhileARecordedFileDiffersFromItsBytes"
+        "test:chord/nextnode/plugins/plugins_current_proof_test.go#TestPluginsCurrentIsEmptyBeforeAKindsFirstUseThenItsBuiltSet"
       ]
     },
     {
@@ -129707,9 +129707,9 @@
         "call:chord/nextnode/plugins/plugins_plugins.go#CreatePlugins"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_surfaces_test.go#TestAnAppServingTheSurfaceItselfRoutesFalseContributesNoRoutesAndGivesTheFilesThePagesAssetsAndTheBaseHash",
         "test:chord/nextnode/plugins/plugins_cssmodules_test.go#TestPluginsBuildsShareOneEvaluatorProcessAndCloseEndsIt",
-        "test:chord/nextnode/plugins/plugins_current_proof_test.go#TestPluginsCurrentIsEmptyBeforeAKindsFirstUseThenItsBuiltSet",
-        "test:chord/nextnode/plugins/plugins_current_proof_test.go#TestPluginsWatchBaseSetsBaseWhileARecordedFileDiffersFromItsBytes"
+        "test:chord/nextnode/plugins/plugins_current_proof_test.go#TestPluginsCurrentIsEmptyBeforeAKindsFirstUseThenItsBuiltSet"
       ]
     },
     {
@@ -130001,9 +130001,9 @@
         "call:chord/nextnode/plugins/plugins_plugins.go#CreatePlugins"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_surfaces_test.go#TestAnAppServingTheSurfaceItselfRoutesFalseContributesNoRoutesAndGivesTheFilesThePagesAssetsAndTheBaseHash",
         "test:chord/nextnode/plugins/plugins_cssmodules_test.go#TestPluginsBuildsShareOneEvaluatorProcessAndCloseEndsIt",
-        "test:chord/nextnode/plugins/plugins_current_proof_test.go#TestPluginsCurrentIsEmptyBeforeAKindsFirstUseThenItsBuiltSet",
-        "test:chord/nextnode/plugins/plugins_current_proof_test.go#TestPluginsWatchBaseSetsBaseWhileARecordedFileDiffersFromItsBytes"
+        "test:chord/nextnode/plugins/plugins_current_proof_test.go#TestPluginsCurrentIsEmptyBeforeAKindsFirstUseThenItsBuiltSet"
       ]
     },
     {
@@ -130255,9 +130255,9 @@
         "call:chord/nextnode/plugins/model/model_discover.go#DiscoverPlugins"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_surfaces_test.go#TestAnAppServingTheSurfaceItselfRoutesFalseContributesNoRoutesAndGivesTheFilesThePagesAssetsAndTheBaseHash",
         "test:chord/nextnode/plugins/plugins_cssmodules_test.go#TestPluginsBuildsShareOneEvaluatorProcessAndCloseEndsIt",
-        "test:chord/nextnode/plugins/plugins_discover_test.go#TestDiscoveryMarksThePluginsOfARequiredRootAndRecordsEachPluginsRoot",
-        "test:chord/nextnode/plugins/plugins_discover_test.go#TestDiscoveryReportsARequiredRootThatDoesNotExistAndRecordsEachProblemsRoot"
+        "test:chord/nextnode/plugins/plugins_discover_test.go#TestDiscoveryMarksThePluginsOfARequiredRootAndRecordsEachPluginsRoot"
       ]
     },
     {
@@ -130428,8 +130428,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/app/app_close_test.go#TestAppCloseStopsAtTheFirstFailedStepAndLeavesTheLaterStepsUndone",
-        "test:chord/nextnode/plugins/plugins_cssmodules_test.go#TestPluginsBuildsShareOneEvaluatorProcessAndCloseEndsIt",
-        "test:chord/nextnode/plugins/plugins_node_lifecycle_test.go#TestPluginsWarmStartsTheSpareLoadTakesAndCloseClosesAnUntakenOne"
+        "test:chord/nextnode/app/app_surfaces_test.go#TestAnAppServingTheSurfaceItselfRoutesFalseContributesNoRoutesAndGivesTheFilesThePagesAssetsAndTheBaseHash",
+        "test:chord/nextnode/plugins/plugins_cssmodules_test.go#TestPluginsBuildsShareOneEvaluatorProcessAndCloseEndsIt"
       ]
     },
     {
@@ -130450,8 +130450,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/app/app_close_test.go#TestAppCloseStopsAtTheFirstFailedStepAndLeavesTheLaterStepsUndone",
-        "test:chord/nextnode/plugins/plugins_cssmodules_test.go#TestPluginsBuildsShareOneEvaluatorProcessAndCloseEndsIt",
-        "test:chord/nextnode/plugins/plugins_node_lifecycle_test.go#TestPluginsWarmStartsTheSpareLoadTakesAndCloseClosesAnUntakenOne"
+        "test:chord/nextnode/app/app_surfaces_test.go#TestAnAppServingTheSurfaceItselfRoutesFalseContributesNoRoutesAndGivesTheFilesThePagesAssetsAndTheBaseHash",
+        "test:chord/nextnode/plugins/plugins_cssmodules_test.go#TestPluginsBuildsShareOneEvaluatorProcessAndCloseEndsIt"
       ]
     },
     {
@@ -130909,9 +130909,9 @@
         "call:chord/nextnode/plugins/plugins_plugins.go#CreatePlugins"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_surfaces_test.go#TestAnAppServingTheSurfaceItselfRoutesFalseContributesNoRoutesAndGivesTheFilesThePagesAssetsAndTheBaseHash",
         "test:chord/nextnode/plugins/plugins_cssmodules_test.go#TestPluginsBuildsShareOneEvaluatorProcessAndCloseEndsIt",
-        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample37PluginImports",
-        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample38WatchAndRollout"
+        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample37PluginImports"
       ]
     },
     {
@@ -133010,9 +133010,9 @@
         "call:chord/nextnode/surfaces/surfaces_build.go#publicOutcome"
       ],
       "evidence": [
+        "test:chord/nextnode/surfaces/surfaces_bundle_test.go#TestAssetsCollectsTheFontsAndImagesTheBasesStylesheetNamesAsFilesUnderAssetsNamedByTheirContent",
         "test:chord/nextnode/surfaces/surfaces_bundle_test.go#TestConditionsResolvesWithTheGivenConditionsTheSourceAsInputNotDistEachWithItsBytesHash",
-        "test:chord/nextnode/surfaces/surfaces_bundle_test.go#TestConditionsKeepsABrowserBuildsModuleConditionAndBrowserFieldWithCustomConditions",
-        "test:chord/nextnode/surfaces/surfaces_bundle_test.go#TestConditionsResolvePackageExportsWithEachSpellingOfTheFlagTheDefaultWithNone"
+        "test:chord/nextnode/surfaces/surfaces_bundle_test.go#TestConditionsKeepsABrowserBuildsModuleConditionAndBrowserFieldWithCustomConditions"
       ]
     },
     {
@@ -133034,7 +133034,7 @@
       "evidence": [
         "test:chord/nextnode/app/app_bases_linux_test.go#TestAppAnAbortedApplyWaitingAtTheWebStepForTheInitialBuildStopsThereTheBuildGoesOn",
         "test:chord/nextnode/app/app_bases_test.go#TestAppReportsABaseThatFailsAfterTheListenAndRunsOnThePageAnswers503TheKindsWorkersFailTheirStart",
-        "test:chord/nextnode/surfaces/surfaces_pagescripts_proof_test.go#TestPageScriptsGivesTheBootstrapWithItsNonceThenStylesThenDeferredScripts"
+        "test:chord/nextnode/app/app_surfaces_test.go#TestAnAppServingTheSurfaceItselfRoutesFalseContributesNoRoutesAndGivesTheFilesThePagesAssetsAndTheBaseHash"
       ]
     },
     {
@@ -133140,9 +133140,9 @@
         "call:chord/nextnode/surfaces/surfaces_bundle.go#BuildBase"
       ],
       "evidence": [
+        "test:chord/nextnode/surfaces/surfaces_bundle_test.go#TestAssetsCollectsTheFontsAndImagesTheBasesStylesheetNamesAsFilesUnderAssetsNamedByTheirContent",
         "test:chord/nextnode/surfaces/surfaces_published_test.go#TestPublishedScriptsAPluginWhoseNextBuildFailsKeepsItsDigestTextStylesheetAndAssets",
-        "test:chord/nextnode/surfaces/surfaces_published_test.go#TestPublishedScriptsAStylesheetChangeAloneKeepsTheScriptsDigestAndChangesItsName",
-        "test:chord/nextnode/surfaces/surfaces_published_test.go#TestPublishedScriptsFilesNameEachScriptStylesheetAndAssetByContentAndCombineWithoutSourceMaps"
+        "test:chord/nextnode/surfaces/surfaces_published_test.go#TestPublishedScriptsAStylesheetChangeAloneKeepsTheScriptsDigestAndChangesItsName"
       ]
     },
     {
@@ -133163,8 +133163,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/app/app_bases_linux_test.go#TestAppCloseDoesNotWaitForABaseBuildStalledOnAReadItsLateResultIsDroppedAndWaitReturnsNil",
-        "test:chord/nextnode/surfaces/surfaces_build_linux_test.go#TestARolloutStepDuringTheBuildStopsWaitingAtItsContextsAbortBeforeTheBuildEndsTheBuildGoesOn",
-        "test:chord/nextnode/surfaces/surfaces_build_linux_test.go#TestTheServersCloseFailsTheBuildInFlightItsWaitersAnswer503"
+        "test:chord/nextnode/app/app_surfaces_test.go#TestAnAppServingTheSurfaceItselfRoutesFalseContributesNoRoutesAndGivesTheFilesThePagesAssetsAndTheBaseHash",
+        "test:chord/nextnode/surfaces/surfaces_build_linux_test.go#TestARolloutStepDuringTheBuildStopsWaitingAtItsContextsAbortBeforeTheBuildEndsTheBuildGoesOn"
       ]
     },
     {
@@ -133313,7 +133313,7 @@
       "id": "pkg:chord/surfaces#webSurface",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:6a086363fc1a6743c562cd9e6d86796c8b150e8189367532e430eb965345f827",
-      "rationale": "Derived by the interface gap detector: webSurface is Go chord/nextnode/surfaces/surfaces_web.go#NewWebSurface (name rule N5), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: webSurface is Go chord/nextnode/surfaces/surfaces_web.go#NewWebSurface (name rule N5), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/nextnode/surfaces/surfaces_web.go#NewWebSurface"
       ],
@@ -133326,14 +133326,14 @@
         "call:chord/nextnode/surfaces/surfaces_web.go#NewWebSurface"
       ],
       "evidence": [
-        "reach:chord/nextnode/surfaces/surfaces_web.go#NewWebSurface"
+        "test:chord/nextnode/app/app_surfaces_test.go#TestAnAppServingTheSurfaceItselfRoutesFalseContributesNoRoutesAndGivesTheFilesThePagesAssetsAndTheBaseHash"
       ]
     },
     {
       "id": "pkg:chord/surfaces#WebSurface",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:b60e98cfb3c03d2da4e1c8da6c6fa0f5f154bea680717f59ae267d07c8d7ba82",
-      "rationale": "Derived by the interface gap detector: WebSurface is Go chord/nextnode/surfaces/surfaces_web.go#WebSurface (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: WebSurface is Go chord/nextnode/surfaces/surfaces_web.go#WebSurface (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/nextnode/surfaces/surfaces_web.go#WebSurface"
       ],
@@ -133346,14 +133346,14 @@
         "call:chord/nextnode/surfaces/surfaces_web.go#NewWebSurface"
       ],
       "evidence": [
-        "reach:chord/nextnode/surfaces/surfaces_web.go#NewWebSurface"
+        "test:chord/nextnode/app/app_surfaces_test.go#TestAnAppServingTheSurfaceItselfRoutesFalseContributesNoRoutesAndGivesTheFilesThePagesAssetsAndTheBaseHash"
       ]
     },
     {
       "id": "pkg:chord/surfaces#webSurface::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:0fc9209857af6d78c823a6dfc80ceffe3148e73e26584eccd530023e53872524",
-      "rationale": "Derived by the interface gap detector: webSurface::call:0 is Go chord/nextnode/surfaces/surfaces_web.go#NewWebSurface (name rule N5), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: webSurface::call:0 is Go chord/nextnode/surfaces/surfaces_web.go#NewWebSurface (name rule N5), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/nextnode/surfaces/surfaces_web.go#NewWebSurface"
       ],
@@ -133366,14 +133366,14 @@
         "call:chord/nextnode/surfaces/surfaces_web.go#NewWebSurface"
       ],
       "evidence": [
-        "reach:chord/nextnode/surfaces/surfaces_web.go#NewWebSurface"
+        "test:chord/nextnode/app/app_surfaces_test.go#TestAnAppServingTheSurfaceItselfRoutesFalseContributesNoRoutesAndGivesTheFilesThePagesAssetsAndTheBaseHash"
       ]
     },
     {
       "id": "pkg:chord/surfaces#WebSurfaceOptions",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:fc7299fd1de158828c553c8b2aaea8fcac1a374addc92427651aad640353160e",
-      "rationale": "Derived by the interface gap detector: WebSurfaceOptions is Go chord/nextnode/surfaces/surfaces_web.go#WebSurfaceOptions (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: WebSurfaceOptions is Go chord/nextnode/surfaces/surfaces_web.go#WebSurfaceOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/nextnode/surfaces/surfaces_web.go#WebSurfaceOptions"
       ],
@@ -133386,7 +133386,7 @@
         "call:chord/nextnode/surfaces/surfaces_web.go#NewWebSurface"
       ],
       "evidence": [
-        "reach:chord/nextnode/surfaces/surfaces_web.go#NewWebSurface"
+        "test:chord/nextnode/app/app_surfaces_test.go#TestAnAppServingTheSurfaceItselfRoutesFalseContributesNoRoutesAndGivesTheFilesThePagesAssetsAndTheBaseHash"
       ]
     },
     {
@@ -138567,7 +138567,7 @@
       "evidence": [
         "test:chord/next/tui/tui_scope_release_test.go#TestAHoldersOwnReleaseBeforeTheScopesWatchStartsEndsQuietly",
         "test:chord/next/tui/tui_scope_test.go#TestOptimisticShowsTheValueWhileItsCallIsPendingThenTheReadersCallingChangedOnEachChange",
-        "test:chord/next/tui/tui_scope_test.go#TestScopeHoldsFollowsAndCallsChangedOnEveryChangeReleasingEverythingAtDispose"
+        "test:chord/next/tui/tui_scope_test.go#TestScopeEventSubscriptionsCallTheListenerForEachEventNeverChangedByThemselvesUntilDispose"
       ]
     },
     {
@@ -138655,7 +138655,7 @@
       "evidence": [
         "test:chord/next/tui/tui_scope_release_test.go#TestAHoldersOwnReleaseBeforeTheScopesWatchStartsEndsQuietly",
         "test:chord/next/tui/tui_scope_test.go#TestOptimisticShowsTheValueWhileItsCallIsPendingThenTheReadersCallingChangedOnEachChange",
-        "test:chord/next/tui/tui_scope_test.go#TestScopeHoldsFollowsAndCallsChangedOnEveryChangeReleasingEverythingAtDispose"
+        "test:chord/next/tui/tui_scope_test.go#TestScopeEventSubscriptionsCallTheListenerForEachEventNeverChangedByThemselvesUntilDispose"
       ]
     },
     {
@@ -138677,7 +138677,7 @@
       "evidence": [
         "test:chord/next/tui/tui_scope_release_test.go#TestAHoldersOwnReleaseBeforeTheScopesWatchStartsEndsQuietly",
         "test:chord/next/tui/tui_scope_test.go#TestOptimisticShowsTheValueWhileItsCallIsPendingThenTheReadersCallingChangedOnEachChange",
-        "test:chord/next/tui/tui_scope_test.go#TestScopeHoldsFollowsAndCallsChangedOnEveryChangeReleasingEverythingAtDispose"
+        "test:chord/next/tui/tui_scope_test.go#TestScopeEventSubscriptionsCallTheListenerForEachEventNeverChangedByThemselvesUntilDispose"
       ]
     },
     {
@@ -139362,8 +139362,8 @@
       ],
       "evidence": [
         "test:chord/watch_upstream_test.go#TestNativeWatchableWatchHoldsTheCurrentValueThenOneFramePerNewValueAndEndsWithItsContext",
-        "test:chord/next/host/host_delegate_test.go#TestDelegateHoldsKeepTheirOrderAcrossTheDelegatesRestartAndTheServersTypesNeverMove",
-        "test:chord/next/host/host_dependencies_test.go#TestTheDependencyCheckSettlesAWaitingRingAcrossHostsAfterOneRound"
+        "test:chord/next/host/host_adapted_events_test.go#TestAdaptedEventsBindWithARemovedEventMemberAndReceiveNoneOfItTheUnchangedOnesAsTheyAre",
+        "test:chord/next/host/host_delegate_test.go#TestDelegateHoldsKeepTheirOrderAcrossTheDelegatesRestartAndTheServersTypesNeverMove"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -139385,8 +139385,8 @@
       ],
       "evidence": [
         "test:chord/watch_upstream_test.go#TestNativeWatchableWatchHoldsTheCurrentValueThenOneFramePerNewValueAndEndsWithItsContext",
-        "test:chord/next/host/host_example_08_test.go#TestExample08Remote",
-        "test:chord/next/host/host_example_11_test.go#TestExample11LingerAndRetry"
+        "test:chord/next/host/host_adapted_events_test.go#TestAdaptedEventsBindWithARemovedEventMemberAndReceiveNoneOfItTheUnchangedOnesAsTheyAre",
+        "test:chord/next/host/host_events_test.go#TestEventsCostAContractWithoutEventMembersCostsNoEventBookkeepingPerBindingHereOrOverALink"
       ]
     },
     {
@@ -154148,8 +154148,8 @@
       ],
       "evidence": [
         "test:coding/session_retry_events_upstream_test.go#TestUpstreamSessionRetryEvents",
-        "test:coding/session_rpc_test.go#TestSessionAbortRetryCancelsDelay",
-        "test:coding/agent_session_oracle_test.go#TestAgentSessionMatchesPi"
+        "test:coding/session_connection_closed_retry_test.go#TestSessionAbortRetryDuringAClosedConnectionBackoff",
+        "test:coding/session_rpc_test.go#TestSessionAbortRetryCancelsDelay"
       ]
     },
     {
@@ -154170,8 +154170,8 @@
       ],
       "evidence": [
         "test:coding/session_retry_events_upstream_test.go#TestUpstreamSessionRetryEvents",
-        "test:coding/session_rpc_test.go#TestSessionAbortRetryCancelsDelay",
-        "test:coding/agent_session_oracle_test.go#TestAgentSessionMatchesPi"
+        "test:coding/session_connection_closed_retry_test.go#TestSessionAbortRetryDuringAClosedConnectionBackoff",
+        "test:coding/session_rpc_test.go#TestSessionAbortRetryCancelsDelay"
       ]
     },
     {
@@ -154305,7 +154305,7 @@
       "evidence": [
         "test:coding/session_cache_warming_failure_test.go#TestCacheWarmingStatusSafeDuringPersistenceFailure",
         "test:coding/session_cache_warming_lifecycle_test.go#TestReplacementDrainsAndReleasesInFlightCacheWarmer",
-        "test:coding/session_cache_warming_test.go#TestOnlySessionRequestsStartCacheWarming"
+        "test:coding/session_cache_warming_snapshot_test.go#TestSkippedCacheWarmingRequestCopiesNoMessages"
       ]
     },
     {
@@ -155080,8 +155080,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/missing_theme_export_upstream_test.go#TestMissingConfiguredThemeExportsWithActiveFallback",
-        "test:coding/session_last_assistant_text_test.go#TestSessionLastAssistantText",
-        "test:coding/session_name_wait_idle_test.go#TestSessionNameHandlerWaitForIdleReleasesNotifications"
+        "test:coding/session_connection_closed_retry_test.go#TestSessionRetriesAGatewayClosedConnectionOnce",
+        "test:coding/session_connection_closed_retry_test.go#TestSessionRetriesAServerSocketClosedBeforeTheAnswer"
       ]
     },
     {
@@ -155102,8 +155102,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/missing_theme_export_upstream_test.go#TestMissingConfiguredThemeExportsWithActiveFallback",
-        "test:coding/session_last_assistant_text_test.go#TestSessionLastAssistantText",
-        "test:coding/session_name_wait_idle_test.go#TestSessionNameHandlerWaitForIdleReleasesNotifications"
+        "test:coding/session_connection_closed_retry_test.go#TestSessionRetriesAGatewayClosedConnectionOnce",
+        "test:coding/session_connection_closed_retry_test.go#TestSessionRetriesAServerSocketClosedBeforeTheAnswer"
       ]
     },
     {
@@ -174422,7 +174422,7 @@
       "evidence": [
         "test:test/extension-conformance/node_load_exec_test.go#TestNodeFactoryExecDuringLoad",
         "test:test/extension-conformance/timeout_numbers_test.go#TestTimeoutNumbersAcrossSDKs",
-        "test:coding/extension/exec_test.go#TestExecCommand_Timeout"
+        "test:coding/extension/exec_signal_code_unix_test.go#TestExecCommandReportsSIGTERMForATimeout"
       ]
     },
     {
@@ -204303,8 +204303,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/tools/read_streaming_test.go#TestReadStreamingKeepsMemoryBoundedForA200MBLine",
-        "test:internal/codingagent/tools/read_streaming_test.go#TestReadStreamingStopsConsumingTheStreamWhenAborted",
-        "test:internal/codingagent/tools/read_streaming_test.go#TestReadStreamingDecodesChunkSplitCharactersAndInvalidUTF8LikeBufferToString"
+        "test:internal/codingagent/tools/read_streaming_test.go#TestReadStreamingRejectsWhenAbortedWhileOpeningTheFile",
+        "test:internal/codingagent/tools/read_streaming_test.go#TestReadStreamingStopsConsumingTheStreamWhenAborted"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -232922,7 +232922,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/generation.go#prepareRunEndTask"
+        "call:durable/harness/generation.go#generationAfterToolsHandler"
       ],
       "evidence": [
         "test:durable/types_upstream_test.go#TestTypesUpstream",
@@ -233472,7 +233472,7 @@
       "evidence": [
         "test:durable/harness/view_pi_oracle_test.go#TestConversationViewsMatchPi",
         "test:durable/examples/background_subagents_example_test.go#TestExample22SubagentBackground",
-        "test:durable/harness/harness_conversations_test.go#TestHarnessAgent"
+        "test:durable/examples/subagent_waits_example_test.go#TestExample43SubagentWaits"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -233495,7 +233495,7 @@
       "evidence": [
         "test:durable/harness/view_pi_oracle_test.go#TestConversationViewsMatchPi",
         "test:durable/examples/background_subagents_example_test.go#TestExample22SubagentBackground",
-        "test:durable/harness/harness_conversations_test.go#TestHarnessAgent"
+        "test:durable/examples/subagent_waits_example_test.go#TestExample43SubagentWaits"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -234344,9 +234344,9 @@
         "call:durable/harness/harness.go#newHarness"
       ],
       "evidence": [
+        "test:durable/examples/after_tools_terminate_example_test.go#TestExample46AfterToolsTerminate",
         "test:durable/examples/background_subagents_example_test.go#TestExample22SubagentBackground",
-        "test:durable/examples/tests_after_edits_example_test.go#TestExample32TestsAfterEdits",
-        "test:durable/harness/harness_after_run_test.go#TestAfterRun"
+        "test:durable/examples/subagent_waits_example_test.go#TestExample43SubagentWaits"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -235673,7 +235673,7 @@
       "evidence": [
         "test:durable/harness/harness_deferred_progress_upstream_test.go#TestReadingPiLiveInACommitStoresTheHeldPartial",
         "test:durable/harness/types_upstream_test.go#TestMissingPhaseHandlerFaultsTheTaskAsAThrowingHandlerDoes",
-        "test:durable/types_upstream_test.go#TestTypesUpstream"
+        "test:durable/harness/wake_memos_pi_oracle_test.go#TestWakeRecordMemosMatchPi"
       ]
     },
     {
@@ -235695,7 +235695,7 @@
       "evidence": [
         "test:durable/harness/harness_deferred_progress_upstream_test.go#TestReadingPiLiveInACommitStoresTheHeldPartial",
         "test:durable/harness/types_upstream_test.go#TestMissingPhaseHandlerFaultsTheTaskAsAThrowingHandlerDoes",
-        "test:durable/types_upstream_test.go#TestTypesUpstream"
+        "test:durable/harness/wake_memos_pi_oracle_test.go#TestWakeRecordMemosMatchPi"
       ]
     },
     {
@@ -236618,7 +236618,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/codemode/tool.go#CreateExtension"
+        "call:durable/codemode/describe.go#NamespacesOf"
       ],
       "evidence": [
         "test:durable/codemode/codemode_pi_oracle_test.go#TestCodemodeDeclarationsMatchPi",
@@ -236706,7 +236706,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/registry.go#newRegistryState"
+        "call:durable/harness/generation.go#generationAfterToolsHandler"
       ],
       "evidence": [
         "test:durable/harness/registry_reader_upstream_test.go#TestRegistryReaderSnapshotsAreImmutableAndSubscribersSeeEachPublication",
@@ -236728,7 +236728,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/codemode/tool.go#CreateExtension"
+        "call:durable/codemode/describe.go#NamespacesOf"
       ],
       "evidence": [
         "test:durable/harness/agent_resolve_pi_oracle_test.go#TestResolveAgentMatchesPi",
@@ -236909,33 +236909,23 @@
       ],
       "evidence": [
         "test:durable/core/driver/hook_test.go#TestHooksReturnTheResultObjectOfEachHook",
-        "test:durable/harness/harness_structured_test.go#TestToolRounds",
-        "test:durable/harness/harness_structured_test.go#TestToolRoundsAsTheViewShowsThem"
+        "test:durable/core/driver/suspendable_pin_core_test.go#TestCoreHarnessAfterToolsWithoutTasksIsNotAPinError",
+        "test:durable/core/driver/suspendable_pin_core_test.go#TestCoreHarnessHookResultsOfSuspendableWorkAreReportedWithThePinError"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/.#GenerationHooks::property:afterTools::call:0",
-      "disposition": "ported",
+      "disposition": "designed-out",
       "upstreamShapeHash": "sha256:368a016d49ef90e1a4da4c4dae1454bb4f29fd04f265ab0ae3789b8a69c40213",
-      "rationale": "Derived by the interface gap detector: GenerationHooks::property:afterTools::call:0 is Go durable/harness/types.go#GenerationHooks.AfterTools (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Carried ahead of the pin: Pi 1.5.2 (packages/durable/src/harness/types.ts:1017) declares `afterTools(assistant: EntryId, results: readonly EntryId[], api: HookApi, context: Context): void | Promise<void>`; Pi 473515f9c (packages/durable/src/harness/types.ts:1116-1121) replaces it with `afterTools(assistant, results, api, context): HookResult<{ readonly tasks: readonly HookTask[] }>`: the hook returns the tasks it asks for, which run as the generation's children before the round ends, and one that completes with `AfterToolsDecision` (`{ terminate?: true }`, types.ts:1154) ends the run as a round whose calls all asked to terminate. PiG implements the successor, not the pin's shape: GenerationHooks.AfterTools returns (*HookTasks, error) (durable/harness/types.go), read by generationAfterToolsHandler (durable/harness/generation.go). Tests: TestAfterToolsTasks, TestHookTasksRecovery. Evidence of the upstream change: test/parity/upstream-sync/v1.5.2+473515f9.toml rows packages/durable/src/harness/generation.ts and define.ts. The declarations are quoted from the Pi source at 473515f9c (the frozen automation/pin/frozen/473515f9c297c75cf2c3ebb3ba027049ed836d27.* files hold its npm and provider-data closure, not its declarations). This row closes when the pin reaches 473515f9c; the decision is then dropped.",
       "pigTargets": [
         "durable/harness/types.go#GenerationHooks.AfterTools"
       ],
-      "layers": {
-        "behavior": "complete",
-        "production": "complete",
-        "shape": "complete"
-      },
-      "production": [
-        "call:durable/harness/generation.go#finishToolRound"
-      ],
       "evidence": [
-        "test:durable/core/driver/hook_test.go#TestHooksReturnTheResultObjectOfEachHook",
-        "test:durable/harness/harness_structured_test.go#TestToolRounds",
-        "test:durable/harness/harness_structured_test.go#TestToolRoundsAsTheViewShowsThem"
-      ],
-      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+        "test:durable/harness/harness_hook_tasks_test.go#TestAfterToolsTasks",
+        "test:durable/harness/harness_hook_tasks_test.go#TestHookTasksRecovery"
+      ]
     },
     {
       "id": "pkg:durable/.#GenerationHooks::property:beforeProviderRequest",
@@ -237041,30 +237031,21 @@
       ],
       "evidence": [
         "test:durable/core/driver/hook_test.go#TestHooksReturnTheResultObjectOfEachHook",
-        "test:durable/examples/agent_examples_test.go#TestExample27Reviewer",
-        "test:durable/harness/harness_after_run_test.go#TestAfterRun"
+        "test:durable/core/driver/suspendable_pin_core_test.go#TestCoreHarnessAfterToolsWithoutTasksIsNotAPinError",
+        "test:durable/core/driver/suspendable_pin_core_test.go#TestCoreHarnessHookResultsOfSuspendableWorkAreReportedWithThePinError"
       ]
     },
     {
       "id": "pkg:durable/.#GenerationHooks::property:onYield::call:0",
-      "disposition": "ported",
+      "disposition": "designed-out",
       "upstreamShapeHash": "sha256:e6737dec4447f26d89087860d028528e8ec5afbaf7c7f82a4b03783d3d213e3d",
-      "rationale": "Derived by the interface gap detector: GenerationHooks::property:onYield::call:0 is Go durable/harness/types.go#GenerationHooks.OnYield (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Carried ahead of the pin: Pi 1.5.2 (packages/durable/src/harness/types.ts:1015) declares `onYield(answer: AssistantMessage, api: HookApi, context: Context): HookResult<{ readonly continue: UserInput }>`; Pi 473515f9c (packages/durable/src/harness/types.ts:1105-1109) replaces it with `HookResult<{ readonly continue: UserInput } | { readonly tasks: readonly HookTask[] }>`: `continue` appends a user message and continues the run, `tasks` decide whether the answer stands (the run's inputs stay open, `LiveRun.yield`; the first task in creation order that completes with a `YieldDecision` holding `continue`, types.ts:1151, provides the continuation). PiG implements the successor, not the pin's shape: GenerationHooks.OnYield returns (YieldResult, error), YieldResult being *YieldContinue or *YieldTasks (durable/harness/types.go), read by generationYieldHandler (durable/harness/generation.go). Tests: TestOnYieldTasks, TestHookTasksRecovery. Evidence of the upstream change: test/parity/upstream-sync/v1.5.2+473515f9.toml rows packages/durable/src/harness/generation.ts and live.ts. The declarations are quoted from the Pi source at 473515f9c (the frozen automation/pin/frozen/473515f9c297c75cf2c3ebb3ba027049ed836d27.* files hold its npm and provider-data closure, not its declarations). This row closes when the pin reaches 473515f9c; the decision is then dropped.",
       "pigTargets": [
         "durable/harness/types.go#GenerationHooks.OnYield"
       ],
-      "layers": {
-        "behavior": "complete",
-        "production": "complete",
-        "shape": "complete"
-      },
-      "production": [
-        "call:durable/harness/generation.go#answer"
-      ],
       "evidence": [
-        "test:durable/core/driver/hook_test.go#TestHooksReturnTheResultObjectOfEachHook",
-        "test:durable/examples/agent_examples_test.go#TestExample27Reviewer",
-        "test:durable/harness/harness_after_run_test.go#TestAfterRun"
+        "test:durable/harness/harness_hook_tasks_test.go#TestOnYieldTasks",
+        "test:durable/harness/harness_hook_tasks_test.go#TestHookTasksRecovery"
       ]
     },
     {
@@ -238020,7 +238001,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/generation.go#classify"
+        "call:durable/harness/generation.go#answer"
       ],
       "evidence": [
         "test:durable/core/driver/harness_inspect_core_test.go#TestCoreInspectDerivesEveryLiveTasksStateWithoutRunningTaskCode",
@@ -238129,7 +238110,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/generation.go#finishToolRound"
+        "call:durable/harness/generation.go#roundSlots"
       ],
       "evidence": [
         "test:durable/harness/harness_deferred_progress_upstream_test.go#TestReadingPiLiveInACommitStoresTheHeldPartial",
@@ -238540,9 +238521,9 @@
         "call:durable/storage/memory.go#MemoryStorage.MintId"
       ],
       "evidence": [
+        "test:durable/harness/scheduler_parked_test.go#TestKeptChildrenSurviveARestart",
         "test:durable/storage/create_unions_variants_test.go#TestDocumentCreateUnionEveryScopeHistoryAndForkIsStored",
-        "test:durable/storage/create_unions_variants_test.go#TestSettledSubmissionRecordUnionEveryVariantIsStored",
-        "test:durable/storage/memory_storage_reads_test.go#TestMemoryStorageReadsCommittedRecordsAndFailsAfterClose"
+        "test:durable/storage/create_unions_variants_test.go#TestSettledSubmissionRecordUnionEveryVariantIsStored"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -238563,9 +238544,9 @@
         "call:durable/storage/memory.go#MemoryStorage.MintId"
       ],
       "evidence": [
+        "test:durable/harness/scheduler_parked_test.go#TestKeptChildrenSurviveARestart",
         "test:durable/storage/create_unions_variants_test.go#TestDocumentCreateUnionEveryScopeHistoryAndForkIsStored",
-        "test:durable/storage/create_unions_variants_test.go#TestSettledSubmissionRecordUnionEveryVariantIsStored",
-        "test:durable/storage/memory_storage_reads_test.go#TestMemoryStorageReadsCommittedRecordsAndFailsAfterClose"
+        "test:durable/storage/create_unions_variants_test.go#TestSettledSubmissionRecordUnionEveryVariantIsStored"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -239037,7 +239018,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/tool_nested.go#NestedCalls.Execute"
+        "call:durable/harness/tool.go#toolApi.CreateTaskErased"
       ],
       "evidence": [
         "test:durable/session/codemode_checkpoints_upstream_test.go#TestBuiltInDocumentCheckpointPolicies",
@@ -239059,7 +239040,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/tool_nested.go#NestedCalls.Execute"
+        "call:durable/harness/tool_nested.go#NestedCalls.ExecuteNoWait"
       ],
       "evidence": [
         "test:durable/harness/tool_nested_calls_doc_test.go#TestANestedCallOfAnAbortedCallerRejectsAndLeavesNoDocumentForIt",
@@ -239240,7 +239221,7 @@
       "evidence": [
         "test:durable/harness/harness_deferred_progress_upstream_test.go#TestReadingPiLiveInACommitStoresTheHeldPartial",
         "test:durable/harness/types_upstream_test.go#TestMissingPhaseHandlerFaultsTheTaskAsAThrowingHandlerDoes",
-        "test:durable/core/driver/docs_core_test.go#TestCoreTaskInitialPanicRejectsCreateTask"
+        "test:durable/harness/wake_memos_pi_oracle_test.go#TestWakeRecordMemosMatchPi"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -239263,7 +239244,7 @@
       "evidence": [
         "test:durable/harness/harness_deferred_progress_upstream_test.go#TestReadingPiLiveInACommitStoresTheHeldPartial",
         "test:durable/harness/types_upstream_test.go#TestMissingPhaseHandlerFaultsTheTaskAsAThrowingHandlerDoes",
-        "test:durable/core/driver/docs_core_test.go#TestCoreTaskInitialPanicRejectsCreateTask"
+        "test:durable/harness/wake_memos_pi_oracle_test.go#TestWakeRecordMemosMatchPi"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -239630,7 +239611,7 @@
       "evidence": [
         "test:durable/harness/registry_reader_upstream_test.go#TestRegistryReaderSnapshotsAreImmutableAndSubscribersSeeEachPublication",
         "test:durable/codemode/codemode_test.go#TestDurableCodeMode",
-        "test:durable/codemode/describe_test.go#TestDescribeRendersTheSectionFromTheConversationsCallableToolsIntoTheSystemPrompt"
+        "test:durable/codemode/describe_test.go#TestDescribeRendersTheSectionFromTheConversationsExtensionsAndCallableToolsIntoTheSystemPrompt"
       ]
     },
     {
@@ -240117,7 +240098,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/generation.go#prepareRunEndTask"
+        "call:durable/harness/generation.go#prepareHookTask"
       ],
       "evidence": [
         "test:durable/harness/harness_registry_test.go#TestRegistry",
@@ -240139,7 +240120,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/generation.go#prepareRunEndTask"
+        "call:durable/harness/generation.go#prepareHookTask"
       ],
       "evidence": [
         "test:durable/harness/harness_registry_test.go#TestRegistry",
@@ -240327,7 +240308,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/generation.go#finishToolRound"
+        "call:durable/harness/generation.go#endToolRound"
       ],
       "evidence": [
         "test:durable/harness/harness_inbox_test.go#TestInbox",
@@ -240425,9 +240406,9 @@
       "id": "pkg:durable/.#runEndTask",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:6f28342ce7bf6f8d74171edcc61ef8cf59d2f53ece445a4640c50e376a2fcb81",
-      "rationale": "Derived by the interface gap detector: runEndTask is Go durable/harness/define.go#RunEndTaskOf (name rule N5), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: runEndTask is Go durable/harness/define.go#HookTaskOf (name rule N5), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "durable/harness/define.go#RunEndTaskOf"
+        "durable/harness/define.go#HookTaskOf"
       ],
       "layers": {
         "behavior": "complete",
@@ -240435,43 +240416,33 @@
         "shape": "complete"
       },
       "production": [
-        "public-api:durable/harness/define.go#RunEndTaskOf"
+        "public-api:durable/harness/define.go#HookTaskOf"
       ],
       "evidence": [
         "test:durable/core/driver/harness_lanec_core_test.go#TestCoreRunsTheTasksAnAfterRunHookAsksFor",
-        "test:durable/examples/tests_after_edits_example_test.go#TestExample32TestsAfterEdits",
-        "test:durable/harness/harness_after_run_test.go#TestAfterRun"
+        "test:durable/examples/after_tools_terminate_example_test.go#TestExample46AfterToolsTerminate",
+        "test:durable/examples/review_on_yield_example_test.go#TestExample45ReviewOnYield"
       ]
     },
     {
       "id": "pkg:durable/.#RunEndTask",
-      "disposition": "ported",
+      "disposition": "designed-out",
       "upstreamShapeHash": "sha256:6a2b00b83856c9fdbaf530dc242096947b4231a9a2039ce4bccdd5e27a81690d",
-      "rationale": "Derived by the interface gap detector: RunEndTask is Go durable/harness/types.go#RunEndTask (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Carried ahead of the pin: Pi 1.5.2 (packages/durable/src/harness/types.ts:1044) declares `export type RunEndTask = { readonly task: AnyTask; readonly input: JsonValue }` and builds it with `runEndTask()` (define.ts:43); Pi 473515f9c renames both: `export type HookTask = { readonly task: AnyTask; readonly input: JsonValue }` (types.ts:1148) and `hookTask()` (define.ts:48), because afterTools and onYield now ask for tasks as well as afterRun. PiG implements the successor name, not the pin's: durable/harness/types.go HookTask and durable/harness/define.go HookTaskOf (RunEndTask no longer exists in Go). Test: TestAfterToolsTasks. Evidence of the upstream rename: test/parity/upstream-sync/v1.5.2+473515f9.toml row packages/durable/src/harness/define.ts. The declarations are quoted from the Pi source at 473515f9c (the frozen automation/pin/frozen/473515f9c297c75cf2c3ebb3ba027049ed836d27.* files hold its npm and provider-data closure, not its declarations). This row closes when the pin reaches 473515f9c; the decision is then dropped.",
       "pigTargets": [
-        "durable/harness/types.go#RunEndTask"
-      ],
-      "layers": {
-        "behavior": "complete",
-        "production": "complete",
-        "shape": "complete"
-      },
-      "production": [
-        "call:durable/harness/generation.go#prepareRunEndTask"
+        "durable/harness/types.go#HookTask"
       ],
       "evidence": [
-        "test:durable/core/driver/harness_lanec_core_test.go#TestCoreRunsTheTasksAnAfterRunHookAsksFor",
-        "test:durable/core/driver/hook_test.go#TestAfterRunAnswersCarryRejectedOnlyWhenARequestWasRejected",
-        "test:durable/examples/tests_after_edits_example_test.go#TestExample32TestsAfterEdits"
+        "test:durable/harness/harness_hook_tasks_test.go#TestAfterToolsTasks"
       ]
     },
     {
       "id": "pkg:durable/.#runEndTask::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:586226b23eb413b24a6aacd1c15e6a01772b381eed026a4d3c90e65d5b3b2ebe",
-      "rationale": "Derived by the interface gap detector: runEndTask::call:0 is Go durable/harness/define.go#RunEndTaskOf (name rule N5), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: runEndTask::call:0 is Go durable/harness/define.go#HookTaskOf (name rule N5), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "durable/harness/define.go#RunEndTaskOf"
+        "durable/harness/define.go#HookTaskOf"
       ],
       "layers": {
         "behavior": "complete",
@@ -240479,12 +240450,12 @@
         "shape": "complete"
       },
       "production": [
-        "public-api:durable/harness/define.go#RunEndTaskOf"
+        "public-api:durable/harness/define.go#HookTaskOf"
       ],
       "evidence": [
         "test:durable/core/driver/harness_lanec_core_test.go#TestCoreRunsTheTasksAnAfterRunHookAsksFor",
-        "test:durable/examples/tests_after_edits_example_test.go#TestExample32TestsAfterEdits",
-        "test:durable/harness/harness_after_run_test.go#TestAfterRun"
+        "test:durable/examples/after_tools_terminate_example_test.go#TestExample46AfterToolsTerminate",
+        "test:durable/examples/review_on_yield_example_test.go#TestExample45ReviewOnYield"
       ]
     },
     {
@@ -240567,7 +240538,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/generation.go#answer"
+        "call:durable/harness/generation.go#concludeAnswer"
       ],
       "evidence": [
         "test:durable/core/driver/harness_lanec_core_test.go#TestCoreRunsTheTasksAnAfterRunHookAsksFor",
@@ -240594,7 +240565,7 @@
       "evidence": [
         "test:durable/storage/sqlite/storage_request_error_test.go#TestBuiltinStoragesRejectInvalidReadsWithStorageRequestError",
         "test:durable/core/driver/harness_tasks_port2_core_test.go#TestCoreTaskScanPagesTheNewestFirst",
-        "test:durable/examples/submit_in_commit_example_test.go#TestExample34SubmitInCommit"
+        "test:durable/examples/after_tools_terminate_example_test.go#TestExample46AfterToolsTerminate"
       ]
     },
     {
@@ -241751,7 +241722,7 @@
       "evidence": [
         "test:durable/harness/harness_blocked_test.go#TestBlockedTasksOnTheReference",
         "test:durable/harness/harness_continue_test.go#TestContinue",
-        "test:durable/harness/harness_tool_hooks_test.go#TestCallsToToolsTheRequestDidNotOffer"
+        "test:durable/harness/harness_hook_tasks_test.go#TestHookTasksRecovery"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -241774,7 +241745,7 @@
       "evidence": [
         "test:durable/harness/harness_blocked_test.go#TestBlockedTasksOnTheReference",
         "test:durable/harness/harness_continue_test.go#TestContinue",
-        "test:durable/harness/harness_tool_hooks_test.go#TestCallsToToolsTheRequestDidNotOffer"
+        "test:durable/harness/harness_hook_tasks_test.go#TestHookTasksRecovery"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -242094,9 +242065,9 @@
         "call:durable/session/cached_storage.go#CachedStorage.MintId"
       ],
       "evidence": [
+        "test:durable/harness/harness_signals_test.go#TestWakes",
         "test:durable/storage/jsonl/closed_storage_upstream_test.go#TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage",
-        "test:durable/storage/jsonl_pi_oracle_test.go#TestJsonlStorageMatchesPiOnSeededPrograms",
-        "test:durable/storage/jsonl_recovery_pi_oracle_test.go#TestJsonlRecoveryMatchesPiOnDamagedDirectories"
+        "test:durable/storage/jsonl_pi_oracle_test.go#TestJsonlStorageMatchesPiOnSeededPrograms"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -242117,9 +242088,9 @@
         "call:durable/session/cached_storage.go#CachedStorage.MintId"
       ],
       "evidence": [
+        "test:durable/harness/harness_signals_test.go#TestWakes",
         "test:durable/storage/jsonl/closed_storage_upstream_test.go#TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage",
-        "test:durable/storage/jsonl_pi_oracle_test.go#TestJsonlStorageMatchesPiOnSeededPrograms",
-        "test:durable/storage/jsonl_recovery_pi_oracle_test.go#TestJsonlRecoveryMatchesPiOnDamagedDirectories"
+        "test:durable/storage/jsonl_pi_oracle_test.go#TestJsonlStorageMatchesPiOnSeededPrograms"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -242483,8 +242454,8 @@
       ],
       "evidence": [
         "test:durable/harness/harness_blocked_test.go#TestBlockedTasksOnTheReference",
-        "test:durable/harness/harness_tool_hooks_test.go#TestCallsToToolsTheRequestDidNotOffer",
-        "test:durable/storage/memory_read_api_pi_test.go#TestStorageInterfaceReadContractThroughTheInterface"
+        "test:durable/harness/harness_hook_tasks_test.go#TestHookTasksRecovery",
+        "test:durable/harness/harness_tool_hooks_test.go#TestCallsToToolsTheRequestDidNotOffer"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -242506,8 +242477,8 @@
       ],
       "evidence": [
         "test:durable/harness/harness_blocked_test.go#TestBlockedTasksOnTheReference",
-        "test:durable/harness/harness_tool_hooks_test.go#TestCallsToToolsTheRequestDidNotOffer",
-        "test:durable/storage/memory_read_api_pi_test.go#TestStorageInterfaceReadContractThroughTheInterface"
+        "test:durable/harness/harness_hook_tasks_test.go#TestHookTasksRecovery",
+        "test:durable/harness/harness_tool_hooks_test.go#TestCallsToToolsTheRequestDidNotOffer"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -242862,8 +242833,8 @@
       ],
       "evidence": [
         "test:durable/types_upstream_test.go#TestTypesUpstream",
-        "test:durable/harness/harness_generation_test.go#TestGeneration",
-        "test:durable/harness/harness_submissions_test.go#TestSubmissions"
+        "test:durable/core/driver/suspendable_pin_core_test.go#TestCoreHarnessSignalsAndNotifyReturnThePinError",
+        "test:durable/harness/harness_generation_test.go#TestGeneration"
       ]
     },
     {
@@ -243105,7 +243076,7 @@
       "evidence": [
         "test:durable/harness/harness_deferred_progress_upstream_test.go#TestReadingPiLiveInACommitStoresTheHeldPartial",
         "test:durable/harness/types_upstream_test.go#TestMissingPhaseHandlerFaultsTheTaskAsAThrowingHandlerDoes",
-        "test:durable/harness/tool_nested_test.go#TestToolTaskMigratesVersion1InputToAModelIssuedCall"
+        "test:durable/harness/wake_memos_pi_oracle_test.go#TestWakeRecordMemosMatchPi"
       ]
     },
     {
@@ -243435,7 +243406,7 @@
       "evidence": [
         "test:durable/harness/harness_deferred_progress_upstream_test.go#TestReadingPiLiveInACommitStoresTheHeldPartial",
         "test:durable/harness/types_upstream_test.go#TestMissingPhaseHandlerFaultsTheTaskAsAThrowingHandlerDoes",
-        "test:durable/core/driver/harness_blocked_core_test.go#TestBlockedTasks"
+        "test:durable/harness/wake_memos_pi_oracle_test.go#TestWakeRecordMemosMatchPi"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -243548,7 +243519,7 @@
       "evidence": [
         "test:durable/harness/harness_deferred_progress_upstream_test.go#TestReadingPiLiveInACommitStoresTheHeldPartial",
         "test:durable/harness/types_upstream_test.go#TestMissingPhaseHandlerFaultsTheTaskAsAThrowingHandlerDoes",
-        "test:durable/core/driver/harness_blocked_core_test.go#TestBlockedTasks"
+        "test:durable/harness/wake_memos_pi_oracle_test.go#TestWakeRecordMemosMatchPi"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -243571,7 +243542,7 @@
       "evidence": [
         "test:durable/harness/harness_deferred_progress_upstream_test.go#TestReadingPiLiveInACommitStoresTheHeldPartial",
         "test:durable/harness/types_upstream_test.go#TestMissingPhaseHandlerFaultsTheTaskAsAThrowingHandlerDoes",
-        "test:durable/core/driver/harness_blocked_core_test.go#TestBlockedTasks"
+        "test:durable/harness/wake_memos_pi_oracle_test.go#TestWakeRecordMemosMatchPi"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -243638,9 +243609,9 @@
         "call:durable/harness/tool.go#toolApi.Conversation"
       ],
       "evidence": [
+        "test:durable/examples/after_tools_terminate_example_test.go#TestExample46AfterToolsTerminate",
         "test:durable/examples/background_subagents_example_test.go#TestExample22SubagentBackground",
-        "test:durable/examples/tests_after_edits_example_test.go#TestExample32TestsAfterEdits",
-        "test:durable/harness/harness_ownership_tools_test.go#TestOwnedConversationsFromTools"
+        "test:durable/examples/tests_after_edits_example_test.go#TestExample32TestsAfterEdits"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -243661,9 +243632,9 @@
         "call:durable/harness/tool.go#toolApi.Conversation"
       ],
       "evidence": [
+        "test:durable/examples/after_tools_terminate_example_test.go#TestExample46AfterToolsTerminate",
         "test:durable/examples/background_subagents_example_test.go#TestExample22SubagentBackground",
-        "test:durable/examples/tests_after_edits_example_test.go#TestExample32TestsAfterEdits",
-        "test:durable/harness/harness_ownership_tools_test.go#TestOwnedConversationsFromTools"
+        "test:durable/examples/tests_after_edits_example_test.go#TestExample32TestsAfterEdits"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -243748,6 +243719,7 @@
         "call:durable/entries.go#TaskEntry"
       ],
       "evidence": [
+        "test:durable/examples/review_on_yield_example_test.go#TestExample45ReviewOnYield",
         "test:durable/examples/task_runtime_test.go#TestTaskRuntimeReadsHarnessState",
         "test:durable/harness/harness_after_run_test.go#TestAfterRun"
       ],
@@ -243770,6 +243742,7 @@
         "call:durable/entries.go#TaskEntry"
       ],
       "evidence": [
+        "test:durable/examples/review_on_yield_example_test.go#TestExample45ReviewOnYield",
         "test:durable/examples/task_runtime_test.go#TestTaskRuntimeReadsHarnessState",
         "test:durable/harness/harness_after_run_test.go#TestAfterRun"
       ],
@@ -243852,12 +243825,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/tool.go#toolApi.GetTask"
+        "call:durable/harness/generation.go#generationAfterToolsHandler"
       ],
       "evidence": [
+        "test:durable/harness/wake_memos_pi_oracle_test.go#TestWakeRecordMemosMatchPi",
         "test:durable/core/driver/harness_tasks_gettask_core_test.go#TestCoreTaskRuntimeGetTaskReadsAChildRecordAndNothingForAnUnknownID",
-        "test:durable/core/driver/task_abort_owned_core_test.go#TestTaskRuntimeAbortOwnedOverTheCore",
-        "test:durable/examples/task_runtime_test.go#TestTaskRuntimeReadsHarnessState"
+        "test:durable/core/driver/task_abort_owned_core_test.go#TestTaskRuntimeAbortOwnedOverTheCore"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -243875,12 +243848,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/tool.go#toolApi.GetTask"
+        "call:durable/harness/generation.go#generationAfterToolsHandler"
       ],
       "evidence": [
+        "test:durable/harness/wake_memos_pi_oracle_test.go#TestWakeRecordMemosMatchPi",
         "test:durable/core/driver/harness_tasks_gettask_core_test.go#TestCoreTaskRuntimeGetTaskReadsAChildRecordAndNothingForAnUnknownID",
-        "test:durable/core/driver/task_abort_owned_core_test.go#TestTaskRuntimeAbortOwnedOverTheCore",
-        "test:durable/examples/task_runtime_test.go#TestTaskRuntimeReadsHarnessState"
+        "test:durable/core/driver/task_abort_owned_core_test.go#TestTaskRuntimeAbortOwnedOverTheCore"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -244055,7 +244028,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/generation.go#finishToolRound"
+        "call:durable/harness/generation.go#endToolRound"
       ],
       "evidence": [
         "test:durable/core/driver/harness_tasks_core_test.go#TestCoreTaskStartsAChildAndWaitsForItsOutcome",
@@ -244078,7 +244051,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/generation.go#finishToolRound"
+        "call:durable/harness/generation.go#endToolRound"
       ],
       "evidence": [
         "test:durable/core/driver/harness_tasks_core_test.go#TestCoreTaskStartsAChildAndWaitsForItsOutcome",
@@ -244147,7 +244120,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/generation.go#prepareRunEndTask"
+        "call:durable/harness/generation.go#generationAfterToolsHandler"
       ],
       "evidence": [
         "test:durable/core/driver/harness_tasks_core_test.go#TestCoreRegistrySnapshotToolsPairEachToolWithItsExtensionInInstallOrder",
@@ -244579,9 +244552,9 @@
         "call:durable/harness/compaction.go#compactionRetryHandler"
       ],
       "evidence": [
+        "test:durable/harness/wake_memos_pi_oracle_test.go#TestWakeRecordMemosMatchPi",
         "test:durable/core/driver/task_abort_owned_core_test.go#TestTaskRuntimeAbortOwnedOverTheCore",
-        "test:durable/harness/harness_context_ranges_test.go#TestTaskContextRanges",
-        "test:durable/harness/harness_group_commit_test.go#TestGroupCommitRecordsADecisionCopies"
+        "test:durable/examples/after_tools_terminate_example_test.go#TestExample46AfterToolsTerminate"
       ]
     },
     {
@@ -244825,7 +244798,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/generation.go#finishToolRound"
+        "call:durable/harness/generation.go#endToolRound"
       ],
       "evidence": [
         "test:durable/toolsearch/toolsearch_pi_oracle_test.go#TestToolSearchMatchesPiOnSeededDeferredTools",
@@ -244896,6 +244869,7 @@
       ],
       "evidence": [
         "test:durable/examples/pocket_dropin_test.go#TestPocketToolHooksAreIntrospectableAndCallableFromATool",
+        "test:durable/examples/subagent_waits_example_test.go#TestExample43SubagentWaits",
         "test:durable/harness/harness_tools_test.go#TestToolExecutionApi"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -244918,6 +244892,7 @@
       ],
       "evidence": [
         "test:durable/examples/pocket_dropin_test.go#TestPocketToolHooksAreIntrospectableAndCallableFromATool",
+        "test:durable/examples/subagent_waits_example_test.go#TestExample43SubagentWaits",
         "test:durable/harness/harness_tools_test.go#TestToolExecutionApi"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -244961,7 +244936,7 @@
       "evidence": [
         "test:durable/examples/agent_examples_test.go#TestExample26PlanMode",
         "test:durable/examples/background_subagents_example_test.go#TestExample22SubagentBackground",
-        "test:durable/examples/task_examples_test.go#TestExample10ExtensionState"
+        "test:durable/examples/subagent_waits_example_test.go#TestExample43SubagentWaits"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -244984,7 +244959,7 @@
       "evidence": [
         "test:durable/examples/agent_examples_test.go#TestExample26PlanMode",
         "test:durable/examples/background_subagents_example_test.go#TestExample22SubagentBackground",
-        "test:durable/examples/task_examples_test.go#TestExample10ExtensionState"
+        "test:durable/examples/subagent_waits_example_test.go#TestExample43SubagentWaits"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -245069,7 +245044,9 @@
         "public-api:durable/tasks.go#ToolCreateTask"
       ],
       "evidence": [
-        "test:durable/harness/tool_nested_records_test.go#TestNestedCallsAndChildTasksOfACallerThatNeverResumesAreAbandonedOnRestart"
+        "test:durable/harness/harness_park_children_test.go#TestParkChildrenNestedCallsWithoutWaiting",
+        "test:durable/harness/harness_park_children_test.go#TestParkChildrenTasksCreatedUnderAKey",
+        "test:durable/harness/harness_tool_parks_test.go#TestToolParksOnTasks"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -245090,7 +245067,9 @@
         "public-api:durable/tasks.go#ToolCreateTask"
       ],
       "evidence": [
-        "test:durable/harness/tool_nested_records_test.go#TestNestedCallsAndChildTasksOfACallerThatNeverResumesAreAbandonedOnRestart"
+        "test:durable/harness/harness_park_children_test.go#TestParkChildrenNestedCallsWithoutWaiting",
+        "test:durable/harness/harness_park_children_test.go#TestParkChildrenTasksCreatedUnderAKey",
+        "test:durable/harness/harness_tool_parks_test.go#TestToolParksOnTasks"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -245197,9 +245176,9 @@
         "call:durable/codemode/call.go#call.outputFiles"
       ],
       "evidence": [
+        "test:durable/harness/harness_tool_parks_test.go#TestToolParksCancel",
         "test:durable/harness/harness_tools_recovery_test.go#TestToolRecovery",
-        "test:durable/harness/harness_tools_test.go#TestToolExecutionApi",
-        "test:durable/tools/tools_test.go#TestBashPreparesCommandCwdAndAnExplicitEnvironmentWithTheCallsApi"
+        "test:durable/harness/harness_tools_test.go#TestToolExecutionApi"
       ]
     },
     {
@@ -245383,7 +245362,7 @@
       "id": "pkg:durable/.#ToolExecutionApi::property:now",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:cc7604879da6b051ce791a4901955f5acc73da975f330915257196c07d333e98",
-      "rationale": "Derived by the interface gap detector: ToolExecutionApi::property:now is Go durable/harness_types.go#ToolExecutionApi.Now (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ToolExecutionApi::property:now is Go durable/harness_types.go#ToolExecutionApi.Now (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/harness_types.go#ToolExecutionApi.Now"
       ],
@@ -245396,14 +245375,16 @@
         "call:durable/codemode/call.go#call.complete"
       ],
       "evidence": [
-        "reach:durable/codemode/call.go#call.complete"
+        "test:durable/examples/tool_polls_example_test.go#TestExample41ToolPolls",
+        "test:durable/examples/tool_waits_for_webhook_example_test.go#TestExample40ToolWaitsForWebhook",
+        "test:durable/harness/harness_tool_parks_test.go#TestToolParksOnASignal"
       ]
     },
     {
       "id": "pkg:durable/.#ToolExecutionApi::property:now::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:3e0b081ebbd71e514bd05601ea038c0c56bc24b739bed58495893591b5062cba",
-      "rationale": "Derived by the interface gap detector: ToolExecutionApi::property:now::call:0 is Go durable/harness_types.go#ToolExecutionApi.Now (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ToolExecutionApi::property:now::call:0 is Go durable/harness_types.go#ToolExecutionApi.Now (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/harness_types.go#ToolExecutionApi.Now"
       ],
@@ -245416,7 +245397,9 @@
         "call:durable/codemode/call.go#call.complete"
       ],
       "evidence": [
-        "reach:durable/codemode/call.go#call.complete"
+        "test:durable/examples/tool_polls_example_test.go#TestExample41ToolPolls",
+        "test:durable/examples/tool_waits_for_webhook_example_test.go#TestExample40ToolWaitsForWebhook",
+        "test:durable/harness/harness_tool_parks_test.go#TestToolParksOnASignal"
       ]
     },
     {
@@ -246238,12 +246221,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/generation.go#finishToolRound"
+        "call:durable/harness/generation.go#endToolRound"
       ],
       "evidence": [
         "test:durable/harness/tool_pi_oracle_test.go#TestToolResultHelpersMatchPi",
-        "test:durable/examples/lifecycle_examples_test.go#TestExample20LateJoin",
-        "test:durable/harness/document_retention_test.go#TestTheViewsAreTheSameWithDocumentsEvictedRightAfterUseAsWithDocumentsKept"
+        "test:durable/examples/approval_gate_example_test.go#TestExample44ApprovalGate",
+        "test:durable/examples/lifecycle_examples_test.go#TestExample20LateJoin"
       ]
     },
     {
@@ -246282,7 +246265,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/tool.go#toolAbort"
+        "call:durable/harness/tool.go#cancelTool"
       ],
       "evidence": [
         "test:durable/harness/tool_checkpoint_order_test.go#TestAToolCheckpointKeepsALoneSurrogateInItsArguments",
@@ -246326,7 +246309,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/generation.go#finishToolRound"
+        "call:durable/harness/generation.go#endToolRound"
       ],
       "evidence": [
         "test:durable/harness/default_policies_test.go#TestCheckpointAndRequestWireShapes",
@@ -246569,9 +246552,9 @@
         "call:durable/harness/submissions.go#AdmitSubmission"
       ],
       "evidence": [
+        "test:durable/core/driver/suspendable_pin_core_test.go#TestCoreHarnessSignalsAndNotifyReturnThePinError",
         "test:durable/harness/harness_telemetry_events_test.go#TestDurableTelemetryEmitsEntryAndSettlementEventsOnlyAfterSuccessfulStorageCommits",
-        "test:durable/harness/scheduler_queued_scopes_test.go#TestTheCascadeDoesNotWithdrawInAConversationWithOnlyAQueuedWrite",
-        "test:durable/session/session_tx_place_submission_test.go#TestSessionTransactionPlaceSubmissionIsATableWriteAndRefusedAfterSettling"
+        "test:durable/harness/scheduler_queued_scopes_test.go#TestTheCascadeDoesNotWithdrawInAConversationWithOnlyAQueuedWrite"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -246592,9 +246575,9 @@
         "call:durable/harness/submissions.go#AdmitSubmission"
       ],
       "evidence": [
+        "test:durable/core/driver/suspendable_pin_core_test.go#TestCoreHarnessSignalsAndNotifyReturnThePinError",
         "test:durable/harness/harness_telemetry_events_test.go#TestDurableTelemetryEmitsEntryAndSettlementEventsOnlyAfterSuccessfulStorageCommits",
-        "test:durable/harness/scheduler_queued_scopes_test.go#TestTheCascadeDoesNotWithdrawInAConversationWithOnlyAQueuedWrite",
-        "test:durable/session/session_tx_place_submission_test.go#TestSessionTransactionPlaceSubmissionIsATableWriteAndRefusedAfterSettling"
+        "test:durable/harness/scheduler_queued_scopes_test.go#TestTheCascadeDoesNotWithdrawInAConversationWithOnlyAQueuedWrite"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -247597,7 +247580,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/generation.go#answer"
+        "call:durable/harness/generation.go#concludeAnswer"
       ],
       "evidence": [
         "test:durable/core/driver/harness_read_only_core_test.go#TestReadOnlyHarnessCore",
@@ -247619,7 +247602,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/inbox.go#appendInput"
+        "call:durable/harness/generation.go#answer"
       ],
       "evidence": [
         "test:durable/harness/user_input_content_test.go#TestUserInputVariantsBecomeTheUserMessageContent",
@@ -248030,25 +248013,9 @@
     },
     {
       "id": "pkg:durable/codemode#CodemodeNamespace",
-      "disposition": "ported",
+      "disposition": "designed-out",
       "upstreamShapeHash": "sha256:3e3787e2ad54e4e945d9b47f3ee523de813cec8996424ec442e4707f80705d84",
-      "rationale": "Derived by the interface gap detector: CodemodeNamespace is Go durable/codemode/describe.go#Namespace (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
-      "pigTargets": [
-        "durable/codemode/describe.go#Namespace"
-      ],
-      "layers": {
-        "behavior": "complete",
-        "production": "complete",
-        "shape": "complete"
-      },
-      "production": [
-        "call:durable/codemode/call.go#call.execute"
-      ],
-      "evidence": [
-        "test:durable/codemode/describe_pi_oracle_test.go#TestDescribeMatchesPiOnSeededToolSets",
-        "test:durable/codemode/call_replay_pi_test.go#TestDescribeNamespaceListsEveryToolOfItsNamespaceAndMatchesItByIdentifier",
-        "test:durable/codemode/describe_test.go#TestDescribeListsCallableToolsAsDeclarationsGroupedByNamespace"
-      ]
+      "rationale": "Pi packages/durable/src/codemode/describe.ts CodemodeNamespace (Pi 1.5.2): a prefix namespace of code mode tools. Pi 5e24c6b1f (after the pin) removes it with no fallback: a namespace is declared by an extension (ToolNamespace on Extension.namespace), so PiG removed its Namespace type with prefix grouping (durable/codemode/describe.go, durable/harness_types.go ToolNamespace). The row goes with the next pin bump."
     },
     {
       "id": "pkg:durable/codemode#CodemodeNestedCall",
@@ -248138,25 +248105,9 @@
     },
     {
       "id": "pkg:durable/codemode#CodemodeToolOptions",
-      "disposition": "ported",
+      "disposition": "designed-out",
       "upstreamShapeHash": "sha256:6444ff0d87a73cd15ecda0bba5ca0b0134848dda3a6cad1fdcb4089706937c60",
-      "rationale": "Derived by the interface gap detector: CodemodeToolOptions is Go durable/codemode/tool.go#ToolOptions (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
-      "pigTargets": [
-        "durable/codemode/tool.go#ToolOptions"
-      ],
-      "layers": {
-        "behavior": "complete",
-        "production": "complete",
-        "shape": "complete"
-      },
-      "production": [
-        "call:durable/codemode/call.go#call.callGlobal"
-      ],
-      "evidence": [
-        "test:durable/codemode/codemode_pi_oracle_test.go#TestCodemodeDeclarationsMatchPi",
-        "test:durable/codemode/tool_declarations_pi_oracle_test.go#TestToolDeclarationsMatchPi",
-        "test:durable/codemode/call_replay_pi_test.go#TestDescribeNamespaceListsEveryToolOfItsNamespaceAndMatchesItByIdentifier"
-      ]
+      "rationale": "Pi packages/durable/src/codemode/codemode.ts CodemodeToolOptions (Pi 1.5.2): its namespaces option carried the prefix namespaces. Pi 5e24c6b1f (after the pin) removes the option with no fallback; PiG's codemode.ToolOptions has no Namespaces field for the same reason (durable/codemode/tool.go). The other options are unchanged. The row goes with the next pin bump."
     },
     {
       "id": "pkg:durable/codemode#createCodemodeExtension",
@@ -248176,7 +248127,7 @@
       ],
       "evidence": [
         "test:durable/codemode/codemode_pi_oracle_test.go#TestCodemodeDeclarationsMatchPi",
-        "test:durable/codemode/describe_test.go#TestDescribeRendersTheSectionFromTheConversationsCallableToolsIntoTheSystemPrompt",
+        "test:durable/codemode/describe_test.go#TestDescribeRendersTheSectionFromTheConversationsExtensionsAndCallableToolsIntoTheSystemPrompt",
         "test:durable/codemode/imports_test.go#TestTheCodeModeExtensionLoadsWithoutPiCodemodesWasmRuntime"
       ]
     },
@@ -248198,7 +248149,7 @@
       ],
       "evidence": [
         "test:durable/codemode/codemode_pi_oracle_test.go#TestCodemodeDeclarationsMatchPi",
-        "test:durable/codemode/describe_test.go#TestDescribeRendersTheSectionFromTheConversationsCallableToolsIntoTheSystemPrompt",
+        "test:durable/codemode/describe_test.go#TestDescribeRendersTheSectionFromTheConversationsExtensionsAndCallableToolsIntoTheSystemPrompt",
         "test:durable/codemode/imports_test.go#TestTheCodeModeExtensionLoadsWithoutPiCodemodesWasmRuntime"
       ]
     },
@@ -254001,7 +253952,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/tool.go#runTool"
+        "call:durable/harness/tool.go#startAttempt"
       ],
       "evidence": [
         "test:durable/core/driver/tool_test.go#TestToolOutputSkippingFramesTheSkipBeforeTheChunk",
@@ -254023,7 +253974,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/tool.go#runTool"
+        "call:durable/harness/tool.go#startAttempt"
       ],
       "evidence": [
         "test:durable/harness/harness_tools_test.go#TestToolResults",
@@ -254045,7 +253996,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/tool.go#runTool"
+        "call:durable/harness/tool.go#startAttempt"
       ],
       "evidence": [
         "test:durable/core/driver/tool_test.go#TestToolOutputSkippingFramesTheSkipBeforeTheChunk",
@@ -254067,7 +254018,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/tool.go#runTool"
+        "call:durable/harness/tool.go#startAttempt"
       ],
       "evidence": [
         "test:durable/core/driver/tool_test.go#TestToolOutputSkippingFramesTheSkipBeforeTheChunk",
@@ -254089,7 +254040,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/tool.go#runTool"
+        "call:durable/harness/tool.go#startAttempt"
       ],
       "evidence": [
         "test:durable/harness/harness_tools_test.go#TestToolResults",
@@ -257442,9 +257393,9 @@
         "call:durable/storage/memory.go#MemoryStorage.MintId"
       ],
       "evidence": [
+        "test:durable/harness/scheduler_parked_test.go#TestKeptChildrenSurviveARestart",
         "test:durable/storage/create_unions_variants_test.go#TestDocumentCreateUnionEveryScopeHistoryAndForkIsStored",
-        "test:durable/storage/create_unions_variants_test.go#TestSettledSubmissionRecordUnionEveryVariantIsStored",
-        "test:durable/storage/memory_storage_reads_test.go#TestMemoryStorageReadsCommittedRecordsAndFailsAfterClose"
+        "test:durable/storage/create_unions_variants_test.go#TestSettledSubmissionRecordUnionEveryVariantIsStored"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -257465,9 +257416,9 @@
         "call:durable/storage/memory.go#MemoryStorage.MintId"
       ],
       "evidence": [
+        "test:durable/harness/scheduler_parked_test.go#TestKeptChildrenSurviveARestart",
         "test:durable/storage/create_unions_variants_test.go#TestDocumentCreateUnionEveryScopeHistoryAndForkIsStored",
-        "test:durable/storage/create_unions_variants_test.go#TestSettledSubmissionRecordUnionEveryVariantIsStored",
-        "test:durable/storage/memory_storage_reads_test.go#TestMemoryStorageReadsCommittedRecordsAndFailsAfterClose"
+        "test:durable/storage/create_unions_variants_test.go#TestSettledSubmissionRecordUnionEveryVariantIsStored"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -286808,7 +286759,8 @@
         "public-api:schema/builders.go#Bytes"
       ],
       "evidence": [
-        "test:schema/builders_upstream_test.go#TestBuildersProduceEveryLeaf"
+        "test:schema/builders_upstream_test.go#TestBuildersProduceEveryLeaf",
+        "test:durable/harness/harness_signals_test.go#TestDefineSignal"
       ]
     },
     {
@@ -287372,11 +287324,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:schema/builders.go#Int"
+        "call:schema/builders.go#Int"
       ],
       "evidence": [
         "test:schema/builders_upstream_test.go#TestBuildersAcceptEveryAnnotationAndBound",
@@ -287452,11 +287404,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:schema/builders.go#Lit"
+        "call:schema/builders.go#Lit"
       ],
       "evidence": [
         "test:schema/builders_upstream_test.go#TestBuildersAcceptEveryAnnotationAndBound",
@@ -287660,16 +287612,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:schema/builders.go#Obj"
+        "call:schema/builders.go#Obj"
       ],
       "evidence": [
+        "test:durable/harness/wake_memos_pi_oracle_test.go#TestWakeRecordMemosMatchPi",
         "test:schema/builders_upstream_test.go#TestBuildersAreDeterministicForTagUnions",
-        "test:schema/builders_upstream_test.go#TestBuildersCompileIntoChecksWithTheDeclaredSemantics",
-        "test:schema/builders_upstream_test.go#TestBuildersNarrowValuesThroughACompiledCheck"
+        "test:schema/builders_upstream_test.go#TestBuildersCompileIntoChecksWithTheDeclaredSemantics"
       ]
     },
     {
@@ -287698,7 +287650,9 @@
         "public-api:schema/builders.go#OneOf"
       ],
       "evidence": [
-        "test:schema/builders_upstream_test.go#TestBuildersProducePlainJSONSchema"
+        "test:schema/builders_upstream_test.go#TestBuildersProducePlainJSONSchema",
+        "test:durable/examples/after_tools_terminate_example_test.go#TestExample46AfterToolsTerminate",
+        "test:durable/examples/tool_waits_for_webhook_example_test.go#TestExample40ToolWaitsForWebhook"
       ]
     },
     {
@@ -287720,11 +287674,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:schema/builders.go#Opt"
+        "call:schema/builders.go#Opt"
       ],
       "evidence": [
         "test:schema/builders_upstream_test.go#TestBuildersCompileIntoChecksWithTheDeclaredSemantics",
@@ -287879,16 +287833,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:schema/builders.go#Str"
+        "call:schema/builders.go#Str"
       ],
       "evidence": [
+        "test:durable/harness/wake_memos_pi_oracle_test.go#TestWakeRecordMemosMatchPi",
         "test:schema/builders_upstream_test.go#TestBuildersAcceptEveryAnnotationAndBound",
-        "test:schema/builders_upstream_test.go#TestBuildersAreDeterministicForTagUnions",
-        "test:schema/builders_upstream_test.go#TestBuildersCompileIntoChecksWithTheDeclaredSemantics"
+        "test:schema/builders_upstream_test.go#TestBuildersAreDeterministicForTagUnions"
       ]
     },
     {
@@ -287940,11 +287894,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:schema/builders.go#Union"
+        "call:schema/builders.go#Union"
       ],
       "evidence": [
         "test:schema/builders_upstream_test.go#TestBuildersAcceptEveryAnnotationAndBound",
@@ -288000,11 +287954,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:schema/builders.go#Unsafe"
+        "call:schema/builders.go#Unsafe"
       ],
       "evidence": [
         "test:schema/pi_main_unsafe_upstream_test.go#TestPiMainTypesASchemaAsGivenWithUnsafe"
@@ -288020,11 +287974,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:schema/builders.go#Unsafe"
+        "call:schema/builders.go#Unsafe"
       ],
       "evidence": [
         "test:schema/pi_main_unsafe_upstream_test.go#TestPiMainTypesASchemaAsGivenWithUnsafe"

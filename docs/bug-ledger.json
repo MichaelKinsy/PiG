@@ -390,28 +390,6 @@
       ]
     },
     {
-      "id": "BF-028c1a5",
-      "title": "Text after a multi-row inline image in Markdown no longer draws over the image when the image rows were…",
-      "symptom": "Text after a multi-row inline image in Markdown no longer draws over the image when the image rows were joined with hard line breaks; the rows stay separate, as under Pi (upstream #12017).",
-      "rootCause": "Image lines skip wrapping, so rows joined to an image by hard breaks drew over it. Split such a line into rows before layout, as upstream does. Ported test: TestMarkdownKeepsHardBreaksAfterInlineImageAsSeparateRows.",
-      "rootCauseSource": "commit",
-      "userImpact": "Wrong display",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "Text after a multi-row inline image in Markdown no longer draws over the image when the image rows were joined with hard line breaks; the rows stay separate, as under Pi (upstream #12017).",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "028c1a5b09",
-          "date": "2026-11-11"
-        }
-      ],
-      "tests": [
-        "tui/markdown_image_hard_break_port_test.go::TestMarkdownKeepsHardBreaksAfterInlineImageAsSeparateRows"
-      ]
-    },
-    {
       "id": "BF-0309820",
       "title": "Aborting a compaction while extensions were being told it finished no longer keeps the extensions after the…",
       "symptom": "Aborting a compaction while extensions were being told it finished no longer keeps the extensions after the first from hearing about it.",
@@ -433,6 +411,28 @@
         "coding/session_compact_abort_dispatch_test.go::TestSessionCompactReachesEveryExtensionWhenAbortedDuringDispatch",
         "test/extension-conformance/session_compact_abort_test.go::TestNodeSessionCompactReachesTheNextExtensionWhenAbortedDuringDispatch",
         "test/extension-conformance/session_compact_abort_test.go::TestSessionCompactIsDeliveredToEverySDKWhenAbortedDuringDispatch"
+      ]
+    },
+    {
+      "id": "BF-030a083",
+      "title": "Fullscreen Kitty images no longer disappear after a full redraw such as a window resize; the redraw deletes…",
+      "symptom": "Fullscreen Kitty images no longer disappear after a full redraw such as a window resize; the redraw deletes the placements and keeps the uploaded image data instead of clearing the screen, as Pi does (upstream #12047).",
+      "rootCause": "Kitty frees image data that has no placements on ED 2, so a full redraw that deleted placements and then cleared the screen left placement-only reuse pointing at nothing. With uploaded images, delete the placements and skip \\x1b[2J (every row is cleared with EL 2), as Pi does. Ported test: TestAltScreenKeepsUploadedKittyImagesAcrossFullRedraw.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Fullscreen Kitty images no longer disappear after a full redraw such as a window resize; the redraw deletes the placements and keeps the uploaded image data instead of clearing the screen, as Pi does (upstream #12047).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "030a083ada",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "tui/kitty_full_redraw_port_test.go::TestAltScreenKeepsUploadedKittyImagesAcrossFullRedraw"
       ]
     },
     {
@@ -924,39 +924,6 @@
         "test/extension-conformance/session_before_abort_test.go::TestNodeSessionBeforeCompactReachesTheNextExtensionWhenAbortedDuringDispatch",
         "test/extension-conformance/session_before_abort_test.go::TestNodeSessionBeforeTreeHonoursAResultReturnedAfterTheAbort",
         "test/extension-conformance/session_before_signal_test.go::TestSessionBeforeSignalReachesEverySDKWhenAbortedDuringDispatch"
-      ]
-    },
-    {
-      "id": "BF-05be6ad",
-      "title": "Fix the extension event result type and keep the event fast paths exact",
-      "symptom": "Fix the extension event result type and keep the event fast paths exact",
-      "rootCause": "A Host's connections read every response by the full decode, because Host.observeXref sets the inbound observer on each of them and the fast route ran only without one. The fast route now declines only the responses the observer needs: the response to a request cross-process accounting expects, and every response while a diagnostic observer is set. The event round-trip allocation gate wires its connection as a Host does, and a test shows which responses the Host's connection decodes.",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "origin": "commit",
-      "commits": [
-        {
-          "hash": "05be6adebd",
-          "date": "2026-11-11"
-        }
-      ],
-      "tests": [
-        "coding/extension/host/subprocess/event_result_type_test.go::TestEventHandlerResultKeepsTheRawJSONType",
-        "coding/extension/host/subprocess/perf_gate_norace_test.go::TestExtensionEventRoundTripAllocationGate",
-        "coding/extension/host/subprocess/response_channel_test.go::TestLateResponseNeverReachesTheRequestHoldingTheChannel",
-        "coding/extension/host/subprocess/response_channel_test.go::TestPythonSDKResponseFramesAreRoutedByTheFullDecode",
-        "coding/extension/host/subprocess/response_channel_test.go::TestResponseChannelIsEmptyWhenItsRequestReturnsIt",
-        "coding/extension/host/subprocess/response_channel_test.go::TestResponseReadForAnEndedRequestIsNotSent",
-        "coding/extension/host/subprocess/response_route_test.go::TestHostConnectionRoutesTheResponsesInboundDoesNotNeed",
-        "coding/session_prompt_options_version_test.go::TestRunSystemPromptFollowsAnInProcessEditOfTheBaseOptions",
-        "coding/session_prompt_options_version_test.go::TestStatePushEncodesAnInProcessEditOfTheBaseOptions",
-        "coding/session_prompt_options_version_test.go::TestSystemPromptOptionsKeyTracksTheBaseOptions",
-        "coding/session_prompt_options_version_test.go::TestSystemPromptOptionsVersionAllocatesNothingWhenUnchanged",
-        "coding/session_prompt_options_version_test.go::TestSystemPromptOptionsVersionFollowsTheContents",
-        "coding/session_prompt_options_version_test.go::TestSystemPromptOptionsVersionSeesEveryWrite"
       ]
     },
     {
@@ -1693,15 +1660,8 @@
         }
       ],
       "tests": [
-        "chord/nextnode/app/app_bases_linux_test.go::TestAppARepeatedCloseWhileABuildIsStalledReturnsTheFirstResultAtOnce",
-        "chord/nextnode/app/app_bases_linux_test.go::TestAppCloseDoesNotWaitForABaseBuildStalledOnAReadItsLateResultIsDroppedAndWaitReturnsNil",
-        "chord/nextnode/app/app_bases_linux_test.go::TestAppCloseReleasesTheDataDirectorysLockAtOnceWhileABuildIsStalled",
-        "chord/nextnode/app/app_bases_linux_test.go::TestAppWaitReturnsTheContextsErrorWhileAStalledBuildOutlivesItAndNilOnceItEnded",
-        "chord/nextnode/app/app_bases_linux_test.go::TestAppWaitWithoutAnyBuildStartedReturnsNilAtOnce",
         "chord/nextnode/app/app_bases_scan_test.go::TestAppARecordOfTheServersCodeArrivingAfterTheClosedWatcherWatchesNothingAndMarksNothing",
         "chord/nextnode/app/app_bases_scan_test.go::TestAppARecordOfTheServersCodeEditedSinceTheStartMarksBaseWhileTheAppIsOpen",
-        "chord/nextnode/surfaces/surfaces_build_linux_test.go::TestClosingASurfaceDoesNotWaitForItsBuildInFlightWaitJoinsIt",
-        "chord/nextnode/surfaces/surfaces_build_linux_test.go::TestWaitingForASurfaceBuildReturnsTheContextsErrorWhenItEndsFirst",
         "chord/nextnode/surfaces/surfaces_build_test.go::TestASurfaceClosedBeforeItsBuildStartedNeverStartsOneItsWaitersAnswer503"
       ]
     },
@@ -1741,31 +1701,6 @@
         "tui/syntax_highlight_upstream_test.go::TestSyntaxHighlightInterpolationTakesTheTextColor",
         "tui/theme_unknown_token_test.go::TestThemeTextAttributeMethodsWrapInChalkPairs",
         "tui/theme_unknown_token_test.go::TestThemeTokenLookupsPanicForAnUnknownToken"
-      ]
-    },
-    {
-      "id": "BF-09bbe00",
-      "title": "A compaction, branch summary or bug report summary no longer fails with \"Summarization failed: 401…",
-      "symptom": "A compaction, branch summary or bug report summary no longer fails with \"Summarization failed: 401 Unauthorized\" when the short-lived token it started with (a GitHub Copilot API token lives about 30 minutes) expires before its last request: after a retry's backoff, or on a later chunk.",
-      "rootCause": "A compaction, branch summary or bug report on a Session the CLI builds pinned the credential it resolved when it started into every request it made, so a retry after a backoff, or a later chunk, sent a derived token (GitHub Copilot's lives about 30 minutes) after it had expired and got the provider's 401: \"Auto-compaction failed: Summarization failed: 401 Unauthorized\".",
-      "rootCauseSource": "commit",
-      "userImpact": "Credential or permission exposure",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "A compaction, branch summary or bug report summary no longer fails with \"Summarization failed: 401 Unauthorized\" when the short-lived token it started with (a GitHub Copilot API token lives about 30 minutes) expires before its last request: after a retry's backoff, or on a later chunk. A Session started from the command line resolved its credentials once, when the summary began, and sent that token with every request of it. Each request now resolves its own credentials when it is sent, as a turn does and as Pi's sessions do.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "09bbe00000",
-          "date": "2026-11-11"
-        }
-      ],
-      "tests": [
-        "coding/session_summary_auth_refresh_test.go::TestAutoCompactionSurfacesRefreshFailureOnce",
-        "coding/session_summary_auth_refresh_test.go::TestCompactionResolvesCredentialWhenItStartsFreshAndExpired",
-        "coding/session_summary_auth_refresh_test.go::TestSummarizationRequestResolvesNoCredentialForARuntimeSession",
-        "coding/session_summary_auth_refresh_test.go::TestSummaryAttemptsEachSendAFreshCredentialAfterExpiry"
       ]
     },
     {
@@ -3525,15 +3460,16 @@
     },
     {
       "id": "BF-15b13fc",
-      "title": "fix(session): resolve each summary request's credential when it is sent, as Pi's createAgentSession does",
-      "symptom": "fix(session): resolve each summary request's credential when it is sent, as Pi's createAgentSession does",
+      "title": "A compaction, branch summary or bug report summary no longer fails with \"Summarization failed: 401…",
+      "symptom": "A compaction, branch summary or bug report summary no longer fails with \"Summarization failed: 401 Unauthorized\" when the short-lived token it started with (a GitHub Copilot API token lives about 30 minutes) expires before its last request: after a retry's backoff, or on a later chunk.",
       "rootCause": "A compaction, branch summary or bug report on a Session the CLI builds pinned the credential it resolved when it started into every request it made, so a retry after a backoff, or a later chunk, sent a derived token (GitHub Copilot's lives about 30 minutes) after it had expired and got the provider's 401: \"Auto-compaction failed: Summarization failed: 401 Unauthorized\".",
       "rootCauseSource": "commit",
       "userImpact": "Credential or permission exposure",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "origin": "commit",
+      "releaseNote": "A compaction, branch summary or bug report summary no longer fails with \"Summarization failed: 401 Unauthorized\" when the short-lived token it started with (a GitHub Copilot API token lives about 30 minutes) expires before its last request: after a retry's backoff, or on a later chunk. A Session started from the command line resolved its credentials once, when the summary began, and sent that token with every request of it. Each request now resolves its own credentials when it is sent, as a turn does and as Pi's sessions do.",
+      "origin": "release note",
       "commits": [
         {
           "hash": "15b13fcae5",
@@ -4520,6 +4456,28 @@
       "tests": []
     },
     {
+      "id": "BF-19f9ce2",
+      "title": "Chord store: `Close` now waits for the `OnCommitted` announcement of the last commit before it closes the…",
+      "symptom": "Chord store: `Close` now waits for the `OnCommitted` announcement of the last commit before it closes the backend.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord store: `Close` now waits for the `OnCommitted` announcement of the last commit before it closes the backend. A listener could be called after `Close` had returned, or not have been called yet when it returned.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "19f9ce245e",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "chord/next/store/store_test.go::TestStore"
+      ]
+    },
+    {
       "id": "BF-1a855cd",
       "title": "The `/session` block now follows a later theme change and shows the cache-warming countdown as of each…",
       "symptom": "The `/session` block now follows a later theme change and shows the cache-warming countdown as of each redraw, as in Pi.",
@@ -4589,31 +4547,6 @@
       ]
     },
     {
-      "id": "BF-1ad65fe",
-      "title": "The bash tool no longer returns no output, with a footer like `[Showing lines 3-2 of 2]`, when a command's…",
-      "symptom": "The bash tool no longer returns no output, with a footer like `[Showing lines 3-2 of 2]`, when a command's output ends in one line longer than about 100KB, such as a `grep` match in a minified file; it shows the end of that line, as Pi does (upstream #12092).",
-      "rootCause": "When a command printed a short line and then one line longer than about 100KB, the bash tool returned no output and a footer like \"[Showing lines 3-2 of 2 (50.0KB limit)]\". The accumulator's retained tail was only the end of that line, clipping dropped its partial first line, and nothing was left. snapshotText now returns the unclipped tail in that case, so the truncation shows the last 50.0KB of the line with the partial-line notice, as Pi does.",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "The bash tool no longer returns no output, with a footer like `[Showing lines 3-2 of 2]`, when a command's output ends in one line longer than about 100KB, such as a `grep` match in a minified file; it shows the end of that line, as Pi does (upstream #12092).",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "1ad65fe04f",
-          "date": "2026-11-12"
-        }
-      ],
-      "tests": [
-        "internal/codingagent/tools/details_parity_test.go::TestBuiltinToolDetailsParityProbe",
-        "internal/codingagent/tools/output_accumulator_long_last_line_port_test.go::TestBashToolShowsTheEndOfAnOverLongLastLineAfterAShortLine",
-        "internal/codingagent/tools/output_accumulator_long_last_line_port_test.go::TestOutputAccumulatorKeepsTheEndOfAnOverLongLastLine",
-        "internal/codingagent/tools/output_accumulator_oracle_test.go::TestOutputAccumulatorMatchesPi"
-      ]
-    },
-    {
       "id": "BF-1b5540a",
       "title": "`client.Client.Disconnect` takes the reason string as Pi's `Client.disconnect(reason)` does (it was an…",
       "symptom": "`client.Client.Disconnect` takes the reason string as Pi's `Client.disconnect(reason)` does (it was an `error`); the connection fails with a `DisconnectedError` carrying it.",
@@ -4659,6 +4592,32 @@
         "internal/codingagent/team_app_image_convert_test.go::TestImageConvertDecodedPixels",
         "internal/photonimage/decode_routing_test.go::TestDecoderUsesFindsGoDecoderCalls",
         "internal/photonimage/decode_routing_test.go::TestNoProductionCodeDecodesWithTheGoDecoders"
+      ]
+    },
+    {
+      "id": "BF-1be8228",
+      "title": "`listDir` of the local and remote execution environments leaves out an entry removed between enumeration and…",
+      "symptom": "`listDir` of the local and remote execution environments leaves out an entry removed between enumeration and `lstat` instead of failing, so a read-only JSONL open beside a live writer no longer fails with `JSONL directory listing failed: ENOENT`, as Pi does (upstream #11994, #12055).",
+      "rootCause": "NodeExecutionEnv.ListDir and RemoteExecutionEnv.ListDir failed with ENOENT when an entry vanished between readdir and lstat (a writer renaming a .reclaim file over a sidecar); they now leave it out, as the directory readers already did and Pi does. Any other entry error still fails the listing. Ported tests: env-node-list-race (a test hook runs the rename before the lstat) and a scripted daemon for the remote listing; the differential test now expects Node's non-UTF-8 names to be left out of the remote listDir.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`listDir` of the local and remote execution environments leaves out an entry removed between enumeration and `lstat` instead of failing, so a read-only JSONL open beside a live writer no longer fails with `JSONL directory listing failed: ENOENT`, as Pi does (upstream #11994, #12055).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1be82286e0",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "durable/env/node/list_race_port_test.go::TestListDirLeavesOutAnEntryRemovedBetweenEnumerationAndLstat",
+        "env/differential_test.go::TestRemoteExecutionEnvAgainstNodeExecutionEnv",
+        "env/main_test.go::TestMain",
+        "env/remote_list_race_port_test.go::TestRemoteListDirFailsOnOtherEntryErrors",
+        "env/remote_list_race_port_test.go::TestRemoteListDirLeavesOutAnEntryRemovedBetweenEnumerationAndLstat"
       ]
     },
     {
@@ -7446,28 +7405,6 @@
       ]
     },
     {
-      "id": "BF-2b29409",
-      "title": "The find tool no longer returns no results for patterns that start with `./`, such as `./src/*.ts`; the…",
-      "symptom": "The find tool no longer returns no results for patterns that start with `./`, such as `./src/*.ts`; the leading `./` is dropped, as under Pi (upstream #12020).",
-      "rootCause": "fd's full paths never contain /./, so ./src/*.ts found nothing. Drop the leading ./ before choosing full-path matching, as upstream does. Ported test: TestFindIgnoresLeadingDotSlashInPattern.",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "The find tool no longer returns no results for patterns that start with `./`, such as `./src/*.ts`; the leading `./` is dropped, as under Pi (upstream #12020).",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "2b29409f01",
-          "date": "2026-11-11"
-        }
-      ],
-      "tests": [
-        "internal/codingagent/tools/find_leading_dot_slash_port_test.go::TestFindIgnoresLeadingDotSlashInPattern"
-      ]
-    },
-    {
       "id": "BF-2b8731a",
       "title": "A `models.json` number that is not an integer and also below the minimum of an integer field (for example…",
       "symptom": "A `models.json` number that is not an integer and also below the minimum of an integer field (for example `inputLimits.images.resize.maxBytes: 0.5`) is now reported with both errors, `must be integer` and `must be \u003e= 1`, as Pi's TypeBox validation lists them.",
@@ -7654,6 +7591,31 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-2c7db1a",
+      "title": "Shutting down a Session no longer leaves a provider's model refresh, or an auth check it had abandoned…",
+      "symptom": "Shutting down a Session no longer leaves a provider's model refresh, or an auth check it had abandoned, running against the agent directory.",
+      "rootCause": "CloseModelTasks cancelled the native collection's refreshes and then joined its operations on a detached goroutine (`go models.Close()`), so a provider's refreshModels, its store write, or an auth check the caller had abandoned kept running after Close returned, so its owner could remove the agent directory under it. Windows cannot delete a directory while a file in it is being written or held open, and TestModelPickerGeminiAuthAndCatalog failed on Windows CI with \"TempDir RemoveAll cleanup: The directory is not empty\". That failure was not reproduced; the Linux evidence is TestModelSelectorNativeProviderRefreshDoesNotOutliveShutdown, which shows the provider's refresh still running after…",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Shutting down a Session no longer leaves a provider's model refresh, or an auth check it had abandoned, running against the agent directory. Closing the registry's model tasks cancelled the native model collection's refreshes but joined their work on a detached goroutine, so the refresh could still be writing its catalog after `Close` returned and the owner removed the directory (which on Windows cannot delete a directory whose file is still being written). `ai.Models` gains `Drain`, which cancels active refreshes and waits for the work the collection runs for its own queries (a provider's refresh and its store write, auth resolution and checks, availability) but not for a caller's login or stream, and `CloseModelTasks` calls it before returning.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2c7db1a655",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "ai/models_runtime_drain_test.go::TestModelsDrainJoinsAbandonedRefreshButNotLogin",
+        "internal/codingagent/model_availability_read_context_test.go::TestAvailabilityReadContextOnlyWithoutExtensionProviders",
+        "internal/codingagent/model_picker_parity_test.go::TestModelPickerGeminiAuthAndCatalog",
+        "internal/codingagent/model_selector_native_refresh_owned_test.go::TestModelSelectorNativeProviderRefreshDoesNotOutliveShutdown"
+      ]
     },
     {
       "id": "BF-2c88c5f",
@@ -7862,28 +7824,6 @@
         "cmd/gen-models/main_test.go::TestAllowedFallbackModelsLiteralKeepsTiersPresence",
         "coding/cli/rpc_model_cost_tiers_test.go::TestRPCModelValueKeepsCostTiersPresence",
         "coding/model_object_cost_tiers_test.go::TestModelObjectKeepsAnAuthoredEmptyCostTiers"
-      ]
-    },
-    {
-      "id": "BF-2d2259d",
-      "title": "`listDir` of the local execution environment leaves out an entry whose name is not valid UTF-8, as Pi does…",
-      "symptom": "`listDir` of the local execution environment leaves out an entry whose name is not valid UTF-8, as Pi does (Node decodes the name with replacement characters, so its `lstat` finds nothing and #12055 skips the entry); the remote environment already matched.",
-      "rootCause": "",
-      "rootCauseSource": "",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "`listDir` of the local execution environment leaves out an entry whose name is not valid UTF-8, as Pi does (Node decodes the name with replacement characters, so its `lstat` finds nothing and #12055 skips the entry); the remote environment already matched.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "2d2259d899",
-          "date": "2026-11-11"
-        }
-      ],
-      "tests": [
-        "durable/env/node/list_race_port_test.go::TestListDirLeavesOutANonUTF8Name"
       ]
     },
     {
@@ -8145,32 +8085,6 @@
       "tests": [
         "ai/sdk_request_url_oracle_test.go::TestSDKProvidersRefuseCredentialsLikeFetch",
         "ai/sdk_request_url_oracle_test.go::TestSDKProvidersRequestURLMatchesSDK"
-      ]
-    },
-    {
-      "id": "BF-2ed0813",
-      "title": "A tool that requires strict JSON-schema sampling and has a schema node without a type (such as `items: {}`…",
-      "symptom": "A tool that requires strict JSON-schema sampling and has a schema node without a type (such as `items: {}`, an unknown or any value, or a bare `const`) is now refused with a clear local error, and one that only prefers strict sampling is sent without strict mode, where before the provider rejected the request with an HTTP 400 error; a node with only an `enum` stays strict, as under Pi (upstream #12049).",
-      "rootCause": "OpenAI strict mode rejects a schema node without a type, such as items: {}, Type.Unknown(), Type.Any() or a bare const. Pi makes makeJsonSchemaNodeStrict throw for a node with no type, anyOf or enum, so a strict \"prefer\" tool is sent without strict mode and a \"require\" tool fails locally with a clear message. A node with only an enum stays strict.",
-      "rootCauseSource": "commit",
-      "userImpact": "An operation failed or was rejected",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "A tool that requires strict JSON-schema sampling and has a schema node without a type (such as `items: {}`, an unknown or any value, or a bare `const`) is now refused with a clear local error, and one that only prefers strict sampling is sent without strict mode, where before the provider rejected the request with an HTTP 400 error; a node with only an `enum` stays strict, as under Pi (upstream #12049).",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "2ed08134a2",
-          "date": "2026-11-12"
-        }
-      ],
-      "tests": [
-        "ai/constrained_sampling_oracle_test.go::TestConstrainedSamplingMatchesPi",
-        "ai/constrained_sampling_upstream_test.go::TestConstrainedSamplingKeepsStrictForEnumOnlySchemasUpstream",
-        "ai/constrained_sampling_upstream_test.go::TestConstrainedSamplingUnsupportedSchemasUpstream",
-        "ai/strict_untyped_nodes_port_test.go::TestUntypedSchemaNodesFallBackFromStrictInTheRequestPort",
-        "coding/session_untyped_strict_tool_port_test.go::TestSessionSendsAStrictPreferToolWithAnUntypedNodeWithoutStrictPort"
       ]
     },
     {
@@ -8544,29 +8458,6 @@
       ]
     },
     {
-      "id": "BF-307f24c",
-      "title": "Chord workers now start in a session of their own, as Pi's `detached: true` fork does, so a worker no longer…",
-      "symptom": "Chord workers now start in a session of their own, as Pi's `detached: true` fork does, so a worker no longer keeps the launching terminal as its controlling terminal.",
-      "rootCause": "Pi forks a worker with `detached: true` (packages/chord/src/node/workers/process.ts:54), which Node starts with setsid(2). PiG's detach carried the comment \"Node's `detached: true`\" but called setpgid only, so a worker kept PiG's controlling terminal.",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "Chord workers now start in a session of their own, as Pi's `detached: true` fork does, so a worker no longer keeps the launching terminal as its controlling terminal. The worker still leads its own process group, so killing the group still kills everything it spawned (#427).",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "307f24c15d",
-          "date": "2026-11-11",
-          "pr": "427"
-        }
-      ],
-      "tests": [
-        "chord/nextnode/workers/workers_process_session_linux_test.go::TestAWorkerProcessLeadsItsOwnSessionAndProcessGroup"
-      ]
-    },
-    {
       "id": "BF-308d280",
       "title": "`chord/next/surfaces`: a locale tag whose `-u-` extension is only `true` or `yes` keeps it as Node's…",
       "symptom": "`chord/next/surfaces`: a locale tag whose `-u-` extension is only `true` or `yes` keeps it as Node's `Intl.getCanonicalLocales` does (`en-u-true` and `en-u-yes` are attributes); the lone `true` or `yes` of another singleton is still dropped.",
@@ -8753,37 +8644,6 @@
         }
       ],
       "tests": []
-    },
-    {
-      "id": "BF-3151efa",
-      "title": "A `write` tool call that streams a large file no longer leaves the UTF-16 units of its last highlight warm-up…",
-      "symptom": "A `write` tool call that streams a large file no longer leaves the UTF-16 units of its last highlight warm-up in memory after the call is done: each finished card held up to 1.7 MB (a 400 KB file) in the highlighter until later warm-ups pushed it out.",
-      "rootCause": "A warm-up keeps the UTF-16 units of its text with the resume state for the next step. The draw of the whole file that ends the call takes them, but a step that is still running when the call completes ends after that draw and leaves its units in a state nothing continues, so each finished write card held up to 4 bytes a unit of its file until later warm-ups pushed the state out: 1.7 MB of hljs.Text units in the heap of a session that had streamed a 400 KB write, none in the base. The worker that ends after the call completed or the card ended releases its units (tui.ReleaseWarmHighlight), the frame that completes the call releases what the worker left, and ToolRendererCard.Dispose releases…",
-      "rootCauseSource": "commit",
-      "userImpact": "Wrong display",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "A `write` tool call that streams a large file no longer leaves the UTF-16 units of its last highlight warm-up in memory after the call is done: each finished card held up to 1.7 MB (a 400 KB file) in the highlighter until later warm-ups pushed it out. The units are released when the call completes, when its card is disposed, and by a warm-up that ends after either; the lines the card draws are unchanged.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "3151efaf13",
-          "date": "2026-11-11"
-        }
-      ],
-      "tests": [
-        "internal/codingagent/write_highlight_warm_release_test.go::TestWriteWarmUpKeepsItsUnitsWhileTheCallStreams",
-        "internal/codingagent/write_highlight_warm_release_test.go::TestWriteWarmUpReleasesItsUnitsAfterTheDrawOfTheCompleteCall",
-        "internal/codingagent/write_highlight_warm_release_test.go::TestWriteWarmUpReleasesItsUnitsWhenAnIdleCardIsDisposed",
-        "internal/codingagent/write_highlight_warm_release_test.go::TestWriteWarmUpReleasesItsUnitsWhenTheCallCompletesDuringAStep",
-        "internal/codingagent/write_highlight_warm_release_test.go::TestWriteWarmUpReleasesItsUnitsWhenTheCardEndsDuringAStep",
-        "internal/codingagent/write_highlight_warm_release_test.go::TestWriteWarmUpThatCannotResumeReleasesNothing",
-        "tui/highlight_warm_release_test.go::TestReleaseWarmHighlightDropsTheUnitsOfALateWarmUp",
-        "tui/highlight_warm_release_test.go::TestReleaseWarmHighlightDropsTheUnitsOfEveryWarmUpOfFilesThatBeginAlike",
-        "tui/highlight_warm_release_test.go::TestReleaseWarmHighlightKeepsTheUnitsOfOtherTexts",
-        "tui/highlight_warm_release_test.go::TestWarmHighlightUnitsGoWithTheDrawOfTheWholeText"
-      ]
     },
     {
       "id": "BF-316eac6",
@@ -11264,6 +11124,28 @@
       ]
     },
     {
+      "id": "BF-3d49280",
+      "title": "`listDir` of the local execution environment leaves out an entry whose name is not valid UTF-8, as Pi does…",
+      "symptom": "`listDir` of the local execution environment leaves out an entry whose name is not valid UTF-8, as Pi does (Node decodes the name with replacement characters, so its `lstat` finds nothing and #12055 skips the entry); the remote environment already matched.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`listDir` of the local execution environment leaves out an entry whose name is not valid UTF-8, as Pi does (Node decodes the name with replacement characters, so its `lstat` finds nothing and #12055 skips the entry); the remote environment already matched.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3d492806e5",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "durable/env/node/list_race_port_test.go::TestListDirLeavesOutANonUTF8Name"
+      ]
+    },
+    {
       "id": "BF-3d98081",
       "title": "Validating arguments against a recursive schema whose object alternatives all reject a deeply nested value no…",
       "symptom": "Validating arguments against a recursive schema whose object alternatives all reject a deeply nested value no longer takes exponential time: the call is rejected with its errors at once.",
@@ -11359,34 +11241,6 @@
         "coding/nested_recorder_oracle_test.go::TestNestedCallRecorderMatchesPi",
         "internal/codingagent/compaction/compaction_oracle_test.go::TestCompactionMatchesPi",
         "internal/orderedjson/orderedjson_test.go::TestObjectEnumeratesArrayIndexKeysFirst"
-      ]
-    },
-    {
-      "id": "BF-3dff2c3",
-      "title": "A `write` tool call that streams a large file keeps the highlight of the whole file warm in steps of 4 KB…",
-      "symptom": "A `write` tool call that streams a large file keeps the highlight of the whole file warm in steps of 4 KB that each cost what they add, so the 99th percentile of the gap between frames while a 200 KB or 400 KB file streams in is 17 ms where it was 18-20 ms, and the CPU is not above.",
-      "rootCause": "A warm-up of the whole file of a streaming write call converted the whole text to UTF-16 units again, twice, and found the byte offset of its resume point from the start of the text, so a step cost more as the file grew and the steps were a sixteenth of the file, up to 32 KB, to keep the passes few. A step of 32 KB held the highlighter for 20-30 ms, and the frames that fell in it stretched the 99th percentile of the gap between frames.",
-      "rootCauseSource": "commit",
-      "userImpact": "Wrong display",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "A `write` tool call that streams a large file keeps the highlight of the whole file warm in steps of 4 KB that each cost what they add, so the 99th percentile of the gap between frames while a 200 KB or 400 KB file streams in is 17 ms where it was 18-20 ms, and the CPU is not above. The highlighter keeps the UTF-16 units of the text it has seen from one step to the next and converts only the text a step adds; the lines the card draws are those of a run over the whole file, as before.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "3dff2c3bf1",
-          "date": "2026-11-11"
-        }
-      ],
-      "tests": [
-        "internal/codingagent/write_highlight_warm_owner_test.go::TestWriteWarmUpsFollowTheContentInSmallSteps",
-        "tui/highlight_warm_units_test.go::TestWarmHighlightAndHighlightCodeOfOneTextDoNotShareUnits",
-        "tui/highlight_warm_units_test.go::TestWarmHighlightKeepsTheStatesOfTwoLanguagesApart",
-        "tui/highlight_warm_units_test.go::TestWarmHighlightStepsAcrossCharacterBoundariesDrawTheLinesOfAWholeRun",
-        "tui/internal/hljs/text_test.go::TestTextGrowToUnrelatedCodeConvertsItWhole",
-        "tui/internal/hljs/text_test.go::TestTextGrownThroughCutsHasTheUnitsOfAFreshConversion",
-        "tui/internal/hljs/text_test.go::TestTextSettledPartStopsBeforeAnIncompleteSequence"
       ]
     },
     {
@@ -12949,31 +12803,6 @@
       "tests": []
     },
     {
-      "id": "BF-44803aa",
-      "title": "fix: Drain admits no work once it begins, and a stream's auth callback is not owned work",
-      "symptom": "fix: Drain admits no work once it begins, and a stream's auth callback is not owned work",
-      "rootCause": "Drain took its snapshot of the collection's owned work without stopping the collection from admitting more. A refresh loop with providers still queued kept starting them after Drain began, and any owned worker added while Drain waited (or at a zero count) raced the WaitGroup. Drain now sets a draining flag under the lock that admission takes, so work is admitted before it or not at all: the refresh loop starts no further provider, a late publication writes nothing, and the loop's own settle wait is a counter instead of one more owned goroutine.",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "origin": "commit",
-      "commits": [
-        {
-          "hash": "44803aac4d",
-          "date": "2026-11-11"
-        }
-      ],
-      "tests": [
-        "ai/models_runtime_drain_test.go::TestModelsDrainDoesNotWaitForAStreamsAuthCallback",
-        "ai/models_runtime_drain_test.go::TestModelsDrainJoinsTheCredentialWriteOfACancelledStream",
-        "ai/models_runtime_drain_test.go::TestModelsPublicationAfterDrainWritesNothing",
-        "ai/models_runtime_drain_test.go::TestModelsRefreshLoopStartsNoQueuedProviderAfterDrainBegan",
-        "ai/models_runtime_drain_test.go::TestModelsRefreshStartsNoProviderWorkOnceDrainBegan"
-      ]
-    },
-    {
       "id": "BF-448b245",
       "title": "The working status (OSC 7501) no longer disappears in Rex and iTerm2 during runs in regular TUI mode",
       "symptom": "The working status (OSC 7501) no longer disappears in Rex and iTerm2 during runs in regular TUI mode.",
@@ -13138,37 +12967,6 @@
         "test/extension-conformance/renderer_click_test.go::TestRendererClickOutsideTheRegionFallsThrough",
         "test/parity/scenarios/extensions-runtime/96-message-click-expansion.toml",
         "tui/container_mouse_redraw_test.go::TestHandledMouseEventRedrawsComponentsThatChangedSilently"
-      ]
-    },
-    {
-      "id": "BF-450883a",
-      "title": "An extension that calls `newSession`, `fork`, `navigateTree`, `switchSession` or `reload` from an event, tool…",
-      "symptom": "An extension that calls `newSession`, `fork`, `navigateTree`, `switchSession` or `reload` from an event, tool or shortcut handler, for example a `session_start` handler, no longer replaces the session in the middle of the emit, which made the built-in MCP extension panic on a stale context and `pig` exit 1.",
-      "rootCause": "A call with no live parent request was allowed, so a handler that stored its event context and called later replaced the session; Pi never allows that. The Go, Python, Rust and Lisp SDKs mark every call made through a command handler's or a withSession callback's context (command_context) for the context's whole life, and the host refuses newSession, fork, navigateTree, switchSession and reload without the mark. The Node runtime gives only those contexts the five members, so an event context has none: typeof is undefined and a call throws Pi's TypeError (D617).",
-      "rootCauseSource": "commit",
-      "userImpact": "Crash, hang or runaway process",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D617",
-      "removeWhen": "the Go, Python, Rust and Lisp SDKs hand event, tool and shortcut handlers a context type that has no command-only session actions (a separate command-context type), so the call cannot be written.",
-      "fixedIn": "Unreleased",
-      "releaseNote": "An extension that calls `newSession`, `fork`, `navigateTree`, `switchSession` or `reload` from an event, tool or shortcut handler, for example a `session_start` handler, no longer replaces the session in the middle of the emit, which made the built-in MCP extension panic on a stale context and `pig` exit 1. A handler that stores its event context and calls one of them after its request ended is refused as well. Pi gives these only to the command context, so its handler gets a `TypeError` there and the session goes on. In the Node runtime an event, tool or shortcut context has no such member (`typeof ctx.switchSession` is `undefined` and the call throws `ctx.switchSession is not a function`); the Go, Python, Rust and Lisp SDKs, whose `Context` type has the methods, get the error `not_a_command_context` and the host runs nothing (D617). A command handler and a `withSession` callback are unchanged.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "450883ab60",
-          "date": "2026-11-11"
-        },
-        {
-          "hash": "5c4865d8fb",
-          "date": "2026-11-11"
-        }
-      ],
-      "tests": [
-        "coding/extension/host/subprocess/callpayload_shape_test.go::TestCallPayloadKeepsUnkeyedLiteralShape",
-        "coding/extension/host/subprocess/command_only_calls_test.go::TestCommandOnlyCallErrorIsPisMissingFunctionError",
-        "coding/extension/host/subprocess/command_only_calls_test.go::TestCommandOnlyCallsAreThePiCommandContextSessionActions",
-        "test/extension-conformance/session_actions_event_context_test.go::TestConformance_CommandOnlySessionActionsRefusedFromEventContext"
       ]
     },
     {
@@ -13449,6 +13247,34 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-4669953",
+      "title": "`/export` HTML no longer shows raw terminal hyperlink escape codes around links in custom tool output; http…",
+      "symptom": "`/export` HTML no longer shows raw terminal hyperlink escape codes around links in custom tool output; http, https and mailto links are clickable and other escape sequences are dropped, as Pi does (upstream #12052).",
+      "rootCause": "ansiToHTML now drops CSI, OSC and APC sequences and stray ESC characters and turns OSC 8 links with http, https or mailto URLs into anchors nested around the current style span; expandable tool output ignores clicks on links; a line holding only escape sequences counts as blank when result lines are trimmed. As Pi does.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`/export` HTML no longer shows raw terminal hyperlink escape codes around links in custom tool output; http, https and mailto links are clickable and other escape sequences are dropped, as Pi does (upstream #12052).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4669953e23",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/export/ansi_html_test.go::TestCustomToolResultHTMLBlankLineSemantics",
+        "internal/codingagent/export/ansi_links_port_test.go::TestAnsiToHTMLConvertsOSC8HyperlinksToAnchors",
+        "internal/codingagent/export/ansi_links_port_test.go::TestAnsiToHTMLDropsUnsafeSchemesAndOtherEscapeSequences",
+        "internal/codingagent/export/ansi_links_port_test.go::TestAnsiToHTMLKeepsStyledTextNestedInAnchorAndClosesUnterminatedLink",
+        "internal/codingagent/export/ansi_links_port_test.go::TestCustomToolResultHTMLTrimsLineWithOnlyEscapeSequences",
+        "internal/codingagent/export/ansi_links_port_test.go::TestExportTemplateExpandableToolOutputIgnoresLinkClicks",
+        "internal/codingagent/export/upstream_test.go::TestExportHTMLPinnedAssets"
+      ]
     },
     {
       "id": "BF-46abed3",
@@ -14469,6 +14295,29 @@
       ],
       "tests": [
         "internal/codingagent/trust_store_multi_oracle_test.go::TestProjectTrustStoreMultiEntryFilesMatchPi"
+      ]
+    },
+    {
+      "id": "BF-4b6e822",
+      "title": "MCP tools loaded by `tool_search` are no longer dropped on resume and `/reload` when an extension deactivates…",
+      "symptom": "MCP tools loaded by `tool_search` are no longer dropped on resume and `/reload` when an extension deactivates only its own tool at `session_start`, as Pi does (upstream #12054).",
+      "rootCause": "A loadout change dropped the pending restored tools whenever it deactivated any active tool, so an extension that registers a loader tool and hides it at session_start (the restore or reload activated it as newly registered) lost the MCP tools tool_search had loaded. The Session now remembers the restored or reloaded loadout (restoredToolNames) and drops the pending tools only when a tool of that loadout is deactivated, as Pi does. Ported tests: the two dropLoader cases of agent-session-mcp.test.ts.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "MCP tools loaded by `tool_search` are no longer dropped on resume and `/reload` when an extension deactivates only its own tool at `session_start`, as Pi does (upstream #12054).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4b6e822b66",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "coding/mcp_restore_own_tool_port_test.go::TestAgentSessionMCPToolsAfterResumeAndReloadKeepsRestoredToolsWhenAnExtensionDeactivatesOnlyItsOwnToolBeforeTheyRegister",
+        "coding/mcp_restore_own_tool_port_test.go::TestAgentSessionMCPToolsAfterResumeAndReloadKeepsToolsToolSearchLoadedAfterReloadWhenAnExtensionDeactivatesOnlyItsOwnTool"
       ]
     },
     {
@@ -17245,6 +17094,29 @@
       ]
     },
     {
+      "id": "BF-577d664",
+      "title": "Durable: a task change deep in a long ownership chain no longer costs time proportional to the chain's depth…",
+      "symptom": "Durable: a task change deep in a long ownership chain no longer costs time proportional to the chain's depth: finding the conversations whose idleness a change can affect starts at the task's own conversation, as Pi does (Pi 628d8ab52ce2), instead of walking every owner task up to the conversation.",
+      "rootCause": "A child task lives in its owner's conversation, so the first conversation above a task is its own and the walk needs no owner chain: it visits the conversations on the way up through each conversation's owner edge and that owner's node, keeps nothing, and costs the conversations above, not the chain's depth. This replaces the scopeAbove memo of (same cost, O(1) per change) with Pi's mechanism, so the code mirrors upstream: no per-task index to invalidate or to compare in the retention tests, and an owner task in the middle of a chain no longer has to be known for the walk to succeed (Pi's \"unknown\" result is now an unknown owner edge or an unknown owner of a conversation on the way up).",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Durable: a task change deep in a long ownership chain no longer costs time proportional to the chain's depth: finding the conversations whose idleness a change can affect starts at the task's own conversation, as Pi does (Pi 628d8ab52ce2), instead of walking every owner task up to the conversation.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "577d66446d",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "durable/harness/scheduler_scope_above_test.go::TestAddScopesAboveCostDoesNotGrowWithTheChain",
+        "durable/harness/scheduler_scope_above_test.go::TestAddScopesAboveMatchesAWalkUp"
+      ]
+    },
+    {
       "id": "BF-578804d",
       "title": "fix(photonimage): the remaining if-else chains of the inflater are switches",
       "symptom": "fix(photonimage): the remaining if-else chains of the inflater are switches",
@@ -17768,14 +17640,6 @@
       "origin": "release note",
       "commits": [
         {
-          "hash": "5695ab6a24",
-          "date": "2026-11-10"
-        },
-        {
-          "hash": "05796d6a06",
-          "date": "2026-11-11"
-        },
-        {
           "hash": "5b36301b39",
           "date": "2026-11-11"
         }
@@ -17784,10 +17648,7 @@
         "chord/next/documents/documents_test.go::TestHydrateOfDocumentsThatEndedWhileTheAttemptWaitedFailsReleasedAndReleasesItsPins",
         "chord/next/host/host_host_data_test.go::TestHostDataAnActivationWaitingAtTheGateWhoseObjectEndedMeanwhileFailsReleased",
         "chord/next/host/host_host_data_test.go::TestHostDataLifecycleADeleteAbortedAfterItsLinesWereTakenIsRefusedAtAdmissionAndWritesNothing",
-        "chord/next/host/host_host_data_test.go::TestHostDataLifecycleAnImportAbortedAfterItsLinesWereTakenIsRefusedAtAdmissionAndWritesNothing",
-        "chord/nextnode/plugins/plugins_node_lifecycle_test.go::TestNodeCloseDoesNotKillAHostThatIsStillClosingWithinItsCloseTimeout",
-        "chord/nextnode/plugins/plugins_node_lifecycle_test.go::TestNodeCloseKillsAHostThatDoesNotAnswerWithinTheGrace",
-        "chord/nextnode/plugins/plugins_node_lifecycle_test.go::TestNodeCloseKillsAHostThatIsStillClosingPastItsCloseTimeoutAndTheGrace"
+        "chord/next/host/host_host_data_test.go::TestHostDataLifecycleAnImportAbortedAfterItsLinesWereTakenIsRefusedAtAdmissionAndWritesNothing"
       ]
     },
     {
@@ -18744,32 +18605,6 @@
         "internal/photonimage/ddsdecode_test.go::TestDecodeDDSPlacesBlocksInRows",
         "internal/photonimage/ddsdecode_test.go::TestDecodeDDSRefuses",
         "internal/photonimage/ddsdecode_test.go::TestDecodeRoutesDDS"
-      ]
-    },
-    {
-      "id": "BF-609ec06",
-      "title": "Draining a model collection while it refreshes no longer starts provider work after the drain began, and a…",
-      "symptom": "Draining a model collection while it refreshes no longer starts provider work after the drain began, and a streaming request's blocked auth callback no longer holds the drain.",
-      "rootCause": "Drain took its snapshot of the collection's owned work without stopping the collection from admitting more. A refresh loop with providers still queued kept starting them after Drain began, and any owned worker added while Drain waited (or at a zero count) raced the WaitGroup. Drain now sets a draining flag under the lock that admission takes, so work is admitted before it or not at all: the refresh loop starts no further provider, a late publication writes nothing, and the loop's own settle wait is a counter instead of one more owned goroutine.",
-      "rootCauseSource": "commit",
-      "userImpact": "Credential or permission exposure",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "Draining a model collection while it refreshes no longer starts provider work after the drain began, and a streaming request's blocked auth callback no longer holds the drain. `ai.Models.Drain` now stops the collection admitting owned work under the lock the work is admitted under, so a refresh with providers still queued starts none of them, a publication made afterwards writes nothing, and no worker is added to the group the drain is waiting on. A stream's auth callbacks run outside the work `Drain` joins, as a login's do, while the credential write of a stored OAuth refresh, which a cancelled stream leaves running, is joined.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "609ec06f9f",
-          "date": "2026-11-11"
-        }
-      ],
-      "tests": [
-        "ai/models_runtime_drain_test.go::TestModelsDrainDoesNotWaitForAStreamsAuthCallback",
-        "ai/models_runtime_drain_test.go::TestModelsDrainJoinsTheCredentialWriteOfACancelledStream",
-        "ai/models_runtime_drain_test.go::TestModelsPublicationAfterDrainWritesNothing",
-        "ai/models_runtime_drain_test.go::TestModelsRefreshLoopStartsNoQueuedProviderAfterDrainBegan",
-        "ai/models_runtime_drain_test.go::TestModelsRefreshStartsNoProviderWorkOnceDrainBegan"
       ]
     },
     {
@@ -19827,6 +19662,31 @@
       "tests": [
         "coding/extension/builtin/codemode/join_adjacent_text_test.go::TestJoinAdjacentTextIsLinearInTheNumberOfItems",
         "coding/extension/builtin/codemode/join_adjacent_text_test.go::TestJoinAdjacentTextMatchesUpstreamOnMixedItems"
+      ]
+    },
+    {
+      "id": "BF-647eb85",
+      "title": "`pi.exec` no longer reports code 0 for a command that a signal ended",
+      "symptom": "`pi.exec` no longer reports code 0 for a command that a signal ended.",
+      "rootCause": "A command that a signal ended, by a timeout, an abort, a crash or an outside kill such as the OOM killer, has no exit code, and ExecCommand resolved that as 0 (`code ?? 0`), so an extension that checks `result.code === 0` took it for a success. It now reports 128 + the signal number, as a shell does and as Pi does: 143 for SIGTERM, 137 for SIGKILL, and 1 with neither a code nor a signal. killed and truncated are unchanged, and a truncated result is still never 0. On Windows a child that terminate ended reports 143, the signal libuv records for it.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pi.exec` no longer reports code 0 for a command that a signal ended. A command that timed out, was aborted, crashed or was killed from outside returned `code: 0`, which an extension checking `result.code === 0` took for a success; it now returns 128 plus the signal number as a shell does (143 for SIGTERM, 137 for SIGKILL), as Pi does (upstream #12089).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "647eb85bbd",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/extension/exec_oracle_test.go::TestExecCommandMatchesPi",
+        "coding/extension/exec_signal_code_unix_test.go::TestExecCommandReportsSIGTERMForATimeout",
+        "coding/extension/exec_signal_code_unix_test.go::TestExecCommandReportsSIGTERMForAnAbort",
+        "coding/extension/exec_signal_code_unix_test.go::TestExecCommandReportsTheSignalOfACommandKilledByAnother"
       ]
     },
     {
@@ -22176,6 +22036,34 @@
       "tests": []
     },
     {
+      "id": "BF-65eafc1",
+      "title": "A `write` tool call that streams a large file keeps the highlight of the whole file warm in steps of 4 KB…",
+      "symptom": "A `write` tool call that streams a large file keeps the highlight of the whole file warm in steps of 4 KB that each cost what they add, so the 99th percentile of the gap between frames while a 200 KB or 400 KB file streams in is 17 ms where it was 18-20 ms, and the CPU is not above.",
+      "rootCause": "A warm-up of the whole file of a streaming write call converted the whole text to UTF-16 units again, twice, and found the byte offset of its resume point from the start of the text, so a step cost more as the file grew and the steps were a sixteenth of the file, up to 32 KB, to keep the passes few. A step of 32 KB held the highlighter for 20-30 ms, and the frames that fell in it stretched the 99th percentile of the gap between frames.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A `write` tool call that streams a large file keeps the highlight of the whole file warm in steps of 4 KB that each cost what they add, so the 99th percentile of the gap between frames while a 200 KB or 400 KB file streams in is 17 ms where it was 18-20 ms, and the CPU is not above. The highlighter keeps the UTF-16 units of the text it has seen from one step to the next and converts only the text a step adds; the lines the card draws are those of a run over the whole file, as before.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "65eafc14a2",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/write_highlight_warm_owner_test.go::TestWriteWarmUpsFollowTheContentInSmallSteps",
+        "tui/highlight_warm_units_test.go::TestWarmHighlightAndHighlightCodeOfOneTextDoNotShareUnits",
+        "tui/highlight_warm_units_test.go::TestWarmHighlightKeepsTheStatesOfTwoLanguagesApart",
+        "tui/highlight_warm_units_test.go::TestWarmHighlightStepsAcrossCharacterBoundariesDrawTheLinesOfAWholeRun",
+        "tui/internal/hljs/text_test.go::TestTextGrowToUnrelatedCodeConvertsItWhole",
+        "tui/internal/hljs/text_test.go::TestTextGrownThroughCutsHasTheUnitsOfAFreshConversion",
+        "tui/internal/hljs/text_test.go::TestTextSettledPartStopsBeforeAnIncompleteSequence"
+      ]
+    },
+    {
       "id": "BF-663e84b",
       "title": "The built-in models page lists the real thinking levels (off, minimal, low, medium, high, xhigh, max) instead…",
       "symptom": "The built-in models page lists the real thinking levels (off, minimal, low, medium, high, xhigh, max) instead of a five-step ladder that started at none.",
@@ -22912,6 +22800,37 @@
       ]
     },
     {
+      "id": "BF-672bed7",
+      "title": "A `write` tool call that streams a large file no longer leaves the UTF-16 units of its last highlight warm-up…",
+      "symptom": "A `write` tool call that streams a large file no longer leaves the UTF-16 units of its last highlight warm-up in memory after the call is done: each finished card held up to 1.7 MB (a 400 KB file) in the highlighter until later warm-ups pushed it out.",
+      "rootCause": "A warm-up keeps the UTF-16 units of its text with the resume state for the next step. The draw of the whole file that ends the call takes them, but a step that is still running when the call completes ends after that draw and leaves its units in a state nothing continues, so each finished write card held up to 4 bytes a unit of its file until later warm-ups pushed the state out: 1.7 MB of hljs.Text units in the heap of a session that had streamed a 400 KB write, none in the base. The worker that ends after the call completed or the card ended releases its units (tui.ReleaseWarmHighlight), the frame that completes the call releases what the worker left, and ToolRendererCard.Dispose releases…",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A `write` tool call that streams a large file no longer leaves the UTF-16 units of its last highlight warm-up in memory after the call is done: each finished card held up to 1.7 MB (a 400 KB file) in the highlighter until later warm-ups pushed it out. The units are released when the call completes, when its card is disposed, and by a warm-up that ends after either; the lines the card draws are unchanged.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "672bed754b",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/write_highlight_warm_release_test.go::TestWriteWarmUpKeepsItsUnitsWhileTheCallStreams",
+        "internal/codingagent/write_highlight_warm_release_test.go::TestWriteWarmUpReleasesItsUnitsAfterTheDrawOfTheCompleteCall",
+        "internal/codingagent/write_highlight_warm_release_test.go::TestWriteWarmUpReleasesItsUnitsWhenAnIdleCardIsDisposed",
+        "internal/codingagent/write_highlight_warm_release_test.go::TestWriteWarmUpReleasesItsUnitsWhenTheCallCompletesDuringAStep",
+        "internal/codingagent/write_highlight_warm_release_test.go::TestWriteWarmUpReleasesItsUnitsWhenTheCardEndsDuringAStep",
+        "internal/codingagent/write_highlight_warm_release_test.go::TestWriteWarmUpThatCannotResumeReleasesNothing",
+        "tui/highlight_warm_release_test.go::TestReleaseWarmHighlightDropsTheUnitsOfALateWarmUp",
+        "tui/highlight_warm_release_test.go::TestReleaseWarmHighlightDropsTheUnitsOfEveryWarmUpOfFilesThatBeginAlike",
+        "tui/highlight_warm_release_test.go::TestReleaseWarmHighlightKeepsTheUnitsOfOtherTexts",
+        "tui/highlight_warm_release_test.go::TestWarmHighlightUnitsGoWithTheDrawOfTheWholeText"
+      ]
+    },
+    {
       "id": "BF-6753e9c",
       "title": "fix(chord): tui scope ends its watches in Dispose; settle the test's change counter",
       "symptom": "fix(chord): tui scope ends its watches in Dispose; settle the test's change counter",
@@ -23264,6 +23183,32 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-69427f2",
+      "title": "A tool that requires strict JSON-schema sampling and has a schema node without a type (such as `items: {}`…",
+      "symptom": "A tool that requires strict JSON-schema sampling and has a schema node without a type (such as `items: {}`, an unknown or any value, or a bare `const`) is now refused with a clear local error, and one that only prefers strict sampling is sent without strict mode, where before the provider rejected the request with an HTTP 400 error; a node with only an `enum` stays strict, as under Pi (upstream #12049).",
+      "rootCause": "OpenAI strict mode rejects a schema node without a type, such as items: {}, Type.Unknown(), Type.Any() or a bare const. Pi makes makeJsonSchemaNodeStrict throw for a node with no type, anyOf or enum, so a strict \"prefer\" tool is sent without strict mode and a \"require\" tool fails locally with a clear message. A node with only an enum stays strict.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A tool that requires strict JSON-schema sampling and has a schema node without a type (such as `items: {}`, an unknown or any value, or a bare `const`) is now refused with a clear local error, and one that only prefers strict sampling is sent without strict mode, where before the provider rejected the request with an HTTP 400 error; a node with only an `enum` stays strict, as under Pi (upstream #12049).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "69427f2277",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "ai/constrained_sampling_oracle_test.go::TestConstrainedSamplingMatchesPi",
+        "ai/constrained_sampling_upstream_test.go::TestConstrainedSamplingKeepsStrictForEnumOnlySchemasUpstream",
+        "ai/constrained_sampling_upstream_test.go::TestConstrainedSamplingUnsupportedSchemasUpstream",
+        "ai/strict_untyped_nodes_port_test.go::TestUntypedSchemaNodesFallBackFromStrictInTheRequestPort",
+        "coding/session_untyped_strict_tool_port_test.go::TestSessionSendsAStrictPreferToolWithAnUntypedNodeWithoutStrictPort"
+      ]
     },
     {
       "id": "BF-69899c5",
@@ -23805,6 +23750,28 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-6a5007f",
+      "title": "chord: base bundles collect the fonts and images their stylesheets name: a base stylesheet with `url()`…",
+      "symptom": "chord: base bundles collect the fonts and images their stylesheets name: a base stylesheet with `url()` fonts, images or WebAssembly no longer fails to build with \"No loader is configured\"; they are files under `assets/`, named by their content (Pi da44c4df3).",
+      "rootCause": "BuildBase had no loader for fonts, images and WebAssembly: a base stylesheet with url() fonts did not build (\"No loader is configured for .woff2\"). They now load as files under assets/, named by their content, for the extensions the surfaces serve (AssetExtensions, shared with the types of served assets).",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "chord: base bundles collect the fonts and images their stylesheets name: a base stylesheet with `url()` fonts, images or WebAssembly no longer fails to build with \"No loader is configured\"; they are files under `assets/`, named by their content (Pi da44c4df3).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6a5007f3c1",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/surfaces/surfaces_bundle_test.go::TestAssetsCollectsTheFontsAndImagesTheBasesStylesheetNamesAsFilesUnderAssetsNamedByTheirContent"
+      ]
     },
     {
       "id": "BF-6a6fffa",
@@ -24958,6 +24925,25 @@
       "tests": [
         "chord/nextnode/app/app_web_browser_test.go::TestAPageReloadsWhenTheServerComesBackWithAnotherBaseBundle"
       ]
+    },
+    {
+      "id": "BF-704bed4",
+      "title": "fix(ai): default Anthropic message threads by endpoint, not provider id (Pi, #11987); ledger v1.5.2+",
+      "symptom": "fix(ai): default Anthropic message threads by endpoint, not provider id (Pi, #11987); ledger v1.5.2+",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "704bed4d93",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-7056d2d",
@@ -26263,6 +26249,52 @@
       ]
     },
     {
+      "id": "BF-75b1d96",
+      "title": "chord: `Plugins.Build` discovers again when a named plugin is unknown to discovery or a file discovery found…",
+      "symptom": "chord: `Plugins.Build` discovers again when a named plugin is unknown to discovery or a file discovery found for it is gone, so a plugin deleted (or written) just before a build is removed (or added) even when the watcher's events lag (Pi 822b37a27).",
+      "rootCause": "Pi (Chord part of the backup coordinator): Store.OnCommitted announces the new LastSeq after a commit, a group, a series or an applied batch is durable, on a goroutine of its own outside the store's lock, coalesced, one delivery at a time and in order; a panicking listener is removed and handed to onError. Pi's three onCommitted cases are ported in TestStore. The SessionSyncUploader type narrowing is designed out (no observable behaviour; the pinned interface mapping names SessionSyncStore).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "chord: `Plugins.Build` discovers again when a named plugin is unknown to discovery or a file discovery found for it is gone, so a plugin deleted (or written) just before a build is removed (or added) even when the watcher's events lag (Pi 822b37a27).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "75b1d96226",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "chord/next/store/store_test.go::TestStore",
+        "chord/nextnode/plugins/plugins_plugins_test.go::TestPluginsPerPluginAtReloadDiscoversAgainForANamedPluginTheWatcherHasNotReportedYetRemovedOrNew"
+      ]
+    },
+    {
+      "id": "BF-75b1d96-2",
+      "title": "chord tutorial: chapter VI waits for the app's base code to be watched before it adds the Harbor plugin, so…",
+      "symptom": "chord tutorial: chapter VI waits for the app's base code to be watched before it adds the Harbor plugin, so file events dropped while a watch is added no longer leave it waiting (Pi f2bd84a51).",
+      "rootCause": "Pi (Chord part of the backup coordinator): Store.OnCommitted announces the new LastSeq after a commit, a group, a series or an applied batch is durable, on a goroutine of its own outside the store's lock, coalesced, one delivery at a time and in order; a panicking listener is removed and handed to onError. Pi's three onCommitted cases are ported in TestStore. The SessionSyncUploader type narrowing is designed out (no observable behaviour; the pinned interface mapping names SessionSyncStore).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "chord tutorial: chapter VI waits for the app's base code to be watched before it adds the Harbor plugin, so file events dropped while a watch is added no longer leave it waiting (Pi f2bd84a51).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "75b1d96226",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "chord/next/store/store_test.go::TestStore",
+        "chord/nextnode/plugins/plugins_plugins_test.go::TestPluginsPerPluginAtReloadDiscoversAgainForANamedPluginTheWatcherHasNotReportedYetRemovedOrNew"
+      ]
+    },
+    {
       "id": "BF-75c6ccb",
       "title": "fix(codingagent): context edits leave system messages unchanged",
       "symptom": "fix(codingagent): context edits leave system messages unchanged",
@@ -27092,28 +27124,6 @@
       ],
       "tests": [
         "internal/codingagent/session_selector_oracle_test.go::TestSessionSelectorInputMatchesPi"
-      ]
-    },
-    {
-      "id": "BF-7c6d3f9",
-      "title": "The pi-env daemon no longer loses the end of a program's output when the program exits while the link is…",
-      "symptom": "The pi-env daemon no longer loses the end of a program's output when the program exits while the link is backed up: `process` (and the terminal) ended their wait 100 ms after the exit even though a reader still waited for the link with output left in the pipe, so up to one pipe buffer went missing.",
-      "rootCause": "The `process` and `pty` operations ended their wait 100 ms after the program's exit even when the reader was waiting for the link (waitForRoom above bulkLimit) with more output still in the pipe, so up to one pipe buffer of the end of the output went missing. A gate now counts a reader as held from the moment it hands a chunk over until it has room again, and the wait of the command extends its grace while one is held (Gate in output.rs, exec.rs, process.rs, pty.rs). `exec` is unchanged: the NodeExecutionEnv drain already treats a chunk mid-feed, which includes the OnOutput that waits for room, as activity.",
-      "rootCauseSource": "commit",
-      "userImpact": "Lost or altered data",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "The pi-env daemon no longer loses the end of a program's output when the program exits while the link is backed up: `process` (and the terminal) ended their wait 100 ms after the exit even though a reader still waited for the link with output left in the pipe, so up to one pipe buffer went missing. Reading now continues while a reader is held (Pi b48c675a912f).",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "7c6d3f9821",
-          "date": "2026-11-11"
-        }
-      ],
-      "tests": [
-        "env/process_test.go::TestOpenProcessDeliversOutputLeftInThePipeWhenTheProgramExitsWhileTheLinkIsBackedUp"
       ]
     },
     {
@@ -28737,15 +28747,16 @@
     },
     {
       "id": "BF-8392c29",
-      "title": "fix(mcp): start stdio servers in a session of their own, as Pi's detached spawn does (#427)",
-      "symptom": "fix(mcp): start stdio servers in a session of their own, as Pi's detached spawn does (#427)",
+      "title": "MCP stdio servers now start in a session of their own, as Pi's stdio transport does (`detached` in Node's…",
+      "symptom": "MCP stdio servers now start in a session of their own, as Pi's stdio transport does (`detached` in Node's spawn is `setsid`): a server, or a child of it, no longer keeps PiG's controlling terminal and cannot take the terminal's foreground process group from PiG.",
       "rootCause": "Pi's stdio transport spawns the server with `detached: USE_PROCESS_GROUPS` (packages/mcp/src/transports/stdio.ts:107), which Node starts with setsid(2) on every platform but Windows. PiG called setpgid only, so a server, or a child of it, kept PiG's controlling terminal and could take the terminal's foreground group away from PiG, as the bash tool's shell did.",
       "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
+      "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "origin": "commit",
+      "releaseNote": "MCP stdio servers now start in a session of their own, as Pi's stdio transport does (`detached` in Node's spawn is `setsid`): a server, or a child of it, no longer keeps PiG's controlling terminal and cannot take the terminal's foreground process group from PiG. The server still leads its own process group, so closing the transport still ends its children (#427).",
+      "origin": "release note",
       "commits": [
         {
           "hash": "8392c29006",
@@ -29275,6 +29286,28 @@
       "tests": []
     },
     {
+      "id": "BF-862a8f7",
+      "title": "Chord surfaces: a client holds the scripts object by the time `StartClient` returns, as in Pi",
+      "symptom": "Chord surfaces: a client holds the scripts object by the time `StartClient` returns, as in Pi.",
+      "rootCause": "Test: TestHoldsTheScriptsObjectWhenTheClientIsReturnedAndStopEndsAFollowingStillWaitingForItsServer (a server that never answers): the release is recorded when StartClient returns, Stop returns, nothing is held or watched after it and no goroutine of the client is left. Before the fix, 10 runs of 10: \"the scripts object's release was not recorded when StartClient returned\".",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord surfaces: a client holds the scripts object by the time `StartClient` returns, as in Pi. The hold was made in the background, so it could be missing right after the start.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "862a8f7a90",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "chord/next/surfaces/surfaces_client_test.go::TestHoldsTheScriptsObjectWhenTheClientIsReturnedAndStopEndsAFollowingStillWaitingForItsServer"
+      ]
+    },
+    {
       "id": "BF-86364b4",
       "title": "fix(minimatch): case-insensitive patterns compare as a JavaScript RegExp does",
       "symptom": "fix(minimatch): case-insensitive patterns compare as a JavaScript RegExp does",
@@ -29293,6 +29326,57 @@
       ],
       "tests": [
         "internal/minimatch/minimatch_oracle_test.go::TestMatchAgainstNodeMinimatch"
+      ]
+    },
+    {
+      "id": "BF-86376a7",
+      "title": "Draining a model collection while it refreshes no longer starts provider work after the drain began, and a…",
+      "symptom": "Draining a model collection while it refreshes no longer starts provider work after the drain began, and a streaming request's blocked auth callback no longer holds the drain.",
+      "rootCause": "Drain took its snapshot of the collection's owned work without stopping the collection from admitting more. A refresh loop with providers still queued kept starting them after Drain began, and any owned worker added while Drain waited (or at a zero count) raced the WaitGroup. Drain now sets a draining flag under the lock that admission takes, so work is admitted before it or not at all: the refresh loop starts no further provider, a late publication writes nothing, and the loop's own settle wait is a counter instead of one more owned goroutine.",
+      "rootCauseSource": "commit",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Draining a model collection while it refreshes no longer starts provider work after the drain began, and a streaming request's blocked auth callback no longer holds the drain. `ai.Models.Drain` now stops the collection admitting owned work under the lock the work is admitted under, so a refresh with providers still queued starts none of them, a publication made afterwards writes nothing, and no worker is added to the group the drain is waiting on. A stream's auth callbacks run outside the work `Drain` joins, as a login's do, while the credential write of a stored OAuth refresh, which a cancelled stream leaves running, is joined.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "86376a7777",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "ai/models_runtime_drain_test.go::TestModelsDrainDoesNotWaitForAStreamsAuthCallback",
+        "ai/models_runtime_drain_test.go::TestModelsDrainJoinsTheCredentialWriteOfACancelledStream",
+        "ai/models_runtime_drain_test.go::TestModelsPublicationAfterDrainWritesNothing",
+        "ai/models_runtime_drain_test.go::TestModelsRefreshLoopStartsNoQueuedProviderAfterDrainBegan",
+        "ai/models_runtime_drain_test.go::TestModelsRefreshStartsNoProviderWorkOnceDrainBegan"
+      ]
+    },
+    {
+      "id": "BF-86376a7-2",
+      "title": "fix: Drain admits no work once it begins, and a stream's auth callback is not owned work",
+      "symptom": "fix: Drain admits no work once it begins, and a stream's auth callback is not owned work",
+      "rootCause": "Drain took its snapshot of the collection's owned work without stopping the collection from admitting more. A refresh loop with providers still queued kept starting them after Drain began, and any owned worker added while Drain waited (or at a zero count) raced the WaitGroup. Drain now sets a draining flag under the lock that admission takes, so work is admitted before it or not at all: the refresh loop starts no further provider, a late publication writes nothing, and the loop's own settle wait is a counter instead of one more owned goroutine.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "86376a7777",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "ai/models_runtime_drain_test.go::TestModelsDrainDoesNotWaitForAStreamsAuthCallback",
+        "ai/models_runtime_drain_test.go::TestModelsDrainJoinsTheCredentialWriteOfACancelledStream",
+        "ai/models_runtime_drain_test.go::TestModelsPublicationAfterDrainWritesNothing",
+        "ai/models_runtime_drain_test.go::TestModelsRefreshLoopStartsNoQueuedProviderAfterDrainBegan",
+        "ai/models_runtime_drain_test.go::TestModelsRefreshStartsNoProviderWorkOnceDrainBegan"
       ]
     },
     {
@@ -30690,6 +30774,26 @@
       ]
     },
     {
+      "id": "BF-8e21230",
+      "title": "Closing a durable Harness releases the pi-ai resources of the provider sessions its tasks used, after the…",
+      "symptom": "Closing a durable Harness releases the pi-ai resources of the provider sessions its tasks used, after the running task invocations joined and before Storage closes, so a legacy OpenAI Codex WebSocket no longer keeps the process alive after `Harness.close()` returns.",
+      "rootCause": "Ports provider.ts, scheduler.ts and harness.ts beforeClose: ensureProviderSessionId records the provider session ID it resolves into the set of the Harness that owns the task runtime; once task invocations joined, close runs pi-ai's scoped cleanup (ai.CleanupSessionResources) for each of them, reporting a failing cleanup as host_error/models without stopping Storage from closing. The persisted ProviderDoc is untouched, and another live Harness's sessions are left alone.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Closing a durable Harness releases the pi-ai resources of the provider sessions its tasks used, after the running task invocations joined and before Storage closes, so a legacy OpenAI Codex WebSocket no longer keeps the process alive after `Harness.close()` returns. The cleanup is scoped to the closing Harness (another live Harness in the process keeps its resources), runs also when the Harness fails, leaves the persisted provider session IDs for a reopened Harness, and a failing cleanup is reported as a `host_error` for `models` without stopping Storage from closing.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8e2123081c",
+          "date": "2026-11-10"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-8e3613d",
       "title": "Text typed over an extension's autocomplete provider and followed at once by Enter no longer skips the menu…",
       "symptom": "Text typed over an extension's autocomplete provider and followed at once by Enter no longer skips the menu Pi opens.",
@@ -30875,15 +30979,16 @@
     },
     {
       "id": "BF-8fbbd2d",
-      "title": "fix(chord): start workers in a session of their own, as Pi's detached fork does (#427)",
-      "symptom": "fix(chord): start workers in a session of their own, as Pi's detached fork does (#427)",
+      "title": "Chord workers now start in a session of their own, as Pi's `detached: true` fork does, so a worker no longer…",
+      "symptom": "Chord workers now start in a session of their own, as Pi's `detached: true` fork does, so a worker no longer keeps the launching terminal as its controlling terminal.",
       "rootCause": "Pi forks a worker with `detached: true` (packages/chord/src/node/workers/process.ts:54), which Node starts with setsid(2). PiG's detach carried the comment \"Node's `detached: true`\" but called setpgid only, so a worker kept PiG's controlling terminal.",
       "rootCauseSource": "commit",
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "origin": "commit",
+      "releaseNote": "Chord workers now start in a session of their own, as Pi's `detached: true` fork does, so a worker no longer keeps the launching terminal as its controlling terminal. The worker still leads its own process group, so killing the group still kills everything it spawned (#427).",
+      "origin": "release note",
       "commits": [
         {
           "hash": "8fbbd2da17",
@@ -31081,34 +31186,6 @@
         "ai/trusted_url_oracle_test.go::TestTrustedVerificationURLsMatchPi",
         "internal/nodeurl/genericurl_oracle_test.go::TestParseURLMatchesNode",
         "internal/nodeurl/url_oracle_test.go::TestParseMatchesNodeURL"
-      ]
-    },
-    {
-      "id": "BF-909154b",
-      "title": "`/export` HTML no longer shows raw terminal hyperlink escape codes around links in custom tool output; http…",
-      "symptom": "`/export` HTML no longer shows raw terminal hyperlink escape codes around links in custom tool output; http, https and mailto links are clickable and other escape sequences are dropped, as Pi does (upstream #12052).",
-      "rootCause": "ansiToHTML now drops CSI, OSC and APC sequences and stray ESC characters and turns OSC 8 links with http, https or mailto URLs into anchors nested around the current style span; expandable tool output ignores clicks on links; a line holding only escape sequences counts as blank when result lines are trimmed. As Pi does.",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "`/export` HTML no longer shows raw terminal hyperlink escape codes around links in custom tool output; http, https and mailto links are clickable and other escape sequences are dropped, as Pi does (upstream #12052).",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "909154b717",
-          "date": "2026-11-11"
-        }
-      ],
-      "tests": [
-        "internal/codingagent/export/ansi_html_test.go::TestCustomToolResultHTMLBlankLineSemantics",
-        "internal/codingagent/export/ansi_links_port_test.go::TestAnsiToHTMLConvertsOSC8HyperlinksToAnchors",
-        "internal/codingagent/export/ansi_links_port_test.go::TestAnsiToHTMLDropsUnsafeSchemesAndOtherEscapeSequences",
-        "internal/codingagent/export/ansi_links_port_test.go::TestAnsiToHTMLKeepsStyledTextNestedInAnchorAndClosesUnterminatedLink",
-        "internal/codingagent/export/ansi_links_port_test.go::TestCustomToolResultHTMLTrimsLineWithOnlyEscapeSequences",
-        "internal/codingagent/export/ansi_links_port_test.go::TestExportTemplateExpandableToolOutputIgnoresLinkClicks",
-        "internal/codingagent/export/upstream_test.go::TestExportHTMLPinnedAssets"
       ]
     },
     {
@@ -31433,29 +31510,6 @@
         "schema/pi_main_follow_upstream_test.go::TestPiMainRelativeRootIDAppliedOnce",
         "schema/pi_main_follow_upstream_test.go::TestPiMainRelativeRootIDWithUnevaluatedKeywords",
         "schema/pi_main_follow_upstream_test.go::TestPiMainValidateChecksWithoutCoercing"
-      ]
-    },
-    {
-      "id": "BF-91d3edc",
-      "title": "Durable: a task change deep in a long ownership chain no longer costs time proportional to the chain's depth…",
-      "symptom": "Durable: a task change deep in a long ownership chain no longer costs time proportional to the chain's depth: finding the conversations whose idleness a change can affect starts at the task's own conversation, as Pi does (Pi 628d8ab52ce2), instead of walking every owner task up to the conversation.",
-      "rootCause": "A child task lives in its owner's conversation, so the first conversation above a task is its own: the walk visits the conversations on the way up through each conversation's owner edge and that owner's node and costs the conversations above, not the chain's depth. Replaces the walked-set variant. Port of next onto this line (which has no scopeAbove memo); tests scheduler_scope_above_test.go from next.",
-      "rootCauseSource": "commit",
-      "userImpact": "Wrong output or ordering",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "Durable: a task change deep in a long ownership chain no longer costs time proportional to the chain's depth: finding the conversations whose idleness a change can affect starts at the task's own conversation, as Pi does (Pi 628d8ab52ce2), instead of walking every owner task up to the conversation.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "91d3edcb1c",
-          "date": "2026-11-11"
-        }
-      ],
-      "tests": [
-        "durable/harness/scheduler_scope_above_test.go::TestAddScopesAboveCostDoesNotGrowWithTheChain",
-        "durable/harness/scheduler_scope_above_test.go::TestAddScopesAboveMatchesAWalkUp"
       ]
     },
     {
@@ -33350,6 +33404,28 @@
       ]
     },
     {
+      "id": "BF-93cc26e",
+      "title": "A durable `Submission.Wait` or task wait whose context was cancelled while earlier commits were still…",
+      "symptom": "A durable `Submission.Wait` or task wait whose context was cancelled while earlier commits were still publishing returns the cancellation cause as the error of that call; a regression test with a slow `Storage.Publishing` (Pi `d9d535b6c9e4`, #11963, #11820) pins it.",
+      "rootCause": "Pi marks the waiter promise handled so Node reports no unhandledRejection. Go has none: the rejection is the error of the same Wait call, so the port is the ported test (red under a mutant of Waiters.Add), the async-contracts row and the v1.5.2+ sync ledger row.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A durable `Submission.Wait` or task wait whose context was cancelled while earlier commits were still publishing returns the cancellation cause as the error of that call; a regression test with a slow `Storage.Publishing` (Pi `d9d535b6c9e4`, #11963, #11820) pins it. Pi needed a fix so Node reported no unhandled promise rejection; Go has none, so no Go source changed.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "93cc26e553",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "durable/harness/wait_aborted_context_test.go::TestWaitCancelledBeforeItsResultIsDeliveredReturnsTheCauseOnThatWait"
+      ]
+    },
+    {
       "id": "BF-93f8b7c",
       "title": "fix(agent): a listener failure at agent_start ends the run as in Pi; failure messages carry the model's api",
       "symptom": "fix(agent): a listener failure at agent_start ends the run as in Pi; failure messages carry the model's api",
@@ -33521,6 +33597,28 @@
       "tests": [
         "codemode/deterministic_internal_test.go::TestTheVirtualClockRoundsLikeMathRound",
         "durable/codemode/describe_test.go::TestDescribeRendersADefaultWithItsAuthoredMemberOrder"
+      ]
+    },
+    {
+      "id": "BF-951b35a",
+      "title": "The pi-env daemon no longer loses the end of a program's output when the program exits while the link is…",
+      "symptom": "The pi-env daemon no longer loses the end of a program's output when the program exits while the link is backed up: `process` (and the terminal) ended their wait 100 ms after the exit even though a reader still waited for the link with output left in the pipe, so up to one pipe buffer went missing.",
+      "rootCause": "The `process` and `pty` operations ended their wait 100 ms after the program's exit even when the reader was waiting for the link (waitForRoom above bulkLimit) with more output still in the pipe, so up to one pipe buffer of the end of the output went missing. A gate now counts a reader as held from the moment it hands a chunk over until it has room again, and the wait of the command extends its grace while one is held (Gate in output.rs, exec.rs, process.rs, pty.rs). `exec` is unchanged: the NodeExecutionEnv drain already treats a chunk mid-feed, which includes the OnOutput that waits for room, as activity.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The pi-env daemon no longer loses the end of a program's output when the program exits while the link is backed up: `process` (and the terminal) ended their wait 100 ms after the exit even though a reader still waited for the link with output left in the pipe, so up to one pipe buffer went missing. Reading now continues while a reader is held (Pi b48c675a912f).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "951b35a6af",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "env/process_test.go::TestOpenProcessDeliversOutputLeftInThePipeWhenTheProgramExitsWhileTheLinkIsBackedUp"
       ]
     },
     {
@@ -33904,28 +34002,6 @@
       ],
       "commitsFrom": "release note",
       "tests": []
-    },
-    {
-      "id": "BF-97711db",
-      "title": "Fullscreen Kitty images no longer disappear after a full redraw such as a window resize; the redraw deletes…",
-      "symptom": "Fullscreen Kitty images no longer disappear after a full redraw such as a window resize; the redraw deletes the placements and keeps the uploaded image data instead of clearing the screen, as Pi does (upstream #12047).",
-      "rootCause": "Kitty frees image data that has no placements on ED 2, so a full redraw that deleted placements and then cleared the screen left placement-only reuse pointing at nothing. With uploaded images, delete the placements and skip \\x1b[2J (every row is cleared with EL 2), as Pi does. Ported test: TestAltScreenKeepsUploadedKittyImagesAcrossFullRedraw.",
-      "rootCauseSource": "commit",
-      "userImpact": "Wrong output or ordering",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "Fullscreen Kitty images no longer disappear after a full redraw such as a window resize; the redraw deletes the placements and keeps the uploaded image data instead of clearing the screen, as Pi does (upstream #12047).",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "97711dbbc6",
-          "date": "2026-11-11"
-        }
-      ],
-      "tests": [
-        "tui/kitty_full_redraw_port_test.go::TestAltScreenKeepsUploadedKittyImagesAcrossFullRedraw"
-      ]
     },
     {
       "id": "BF-97cd675",
@@ -34588,6 +34664,39 @@
       ]
     },
     {
+      "id": "BF-9b5c69f",
+      "title": "A turn that ends with a provider error reading `Connection closed.`, such as a gateway cutting a stream with…",
+      "symptom": "A turn that ends with a provider error reading `Connection closed.`, such as a gateway cutting a stream with an `api_error` event, is now retried automatically like other dropped connections, instead of stopping with the error; the same applies to the agent proxy's `Connection closed by proxy server before the response completed` error, in the extension SDKs' `isRetryableAssistantError`, and for durable agents (upstream #12093).",
+      "rootCause": "Some gateways end a stream mid-response with {\"type\":\"error\",\"error\":{\"type\":\"api_error\",\"message\":\"Connection closed.\"}}. isRetryableAssistantError did not match that text, so the turn stopped with an error and no automatic retry, while \"Connection lost\" and \"socket connection was closed\" were retried.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A turn that ends with a provider error reading `Connection closed.`, such as a gateway cutting a stream with an `api_error` event, is now retried automatically like other dropped connections, instead of stopping with the error; the same applies to the agent proxy's `Connection closed by proxy server before the response completed` error, in the extension SDKs' `isRetryableAssistantError`, and for durable agents (upstream #12093).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "9b5c69fa11",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "ai/assistant_retry_classifier_oracle_test.go::TestIsRetryableAssistantErrorMatchesPiOracle",
+        "ai/assistant_retry_test.go::TestIsRetryableAssistantErrorClassification",
+        "ai/provider_closed_connection_test.go::TestProviderServerSocketCloseIsRetryable",
+        "ai/provider_closed_connection_test.go::TestProviderStreamErrorEventReadingConnectionClosedIsRetryable",
+        "ai/provider_closed_connection_test.go::TestRetryAssistantCallOverAGatewayClosedConnection",
+        "coding/session_connection_closed_retry_test.go::TestSessionAbortRetryDuringAClosedConnectionBackoff",
+        "coding/session_connection_closed_retry_test.go::TestSessionRetriesAGatewayClosedConnectionOnce",
+        "coding/session_connection_closed_retry_test.go::TestSessionRetriesAServerSocketClosedBeforeTheAnswer",
+        "coding/session_connection_closed_retry_test.go::TestSessionSurfacesAGatewayClosedConnectionAfterTheConfiguredRetries",
+        "durable/core/turn/classify_carried_test.go::TestConnectionClosedIsRetryable",
+        "durable/core/turn/classify_carried_test.go::TestStreamCutShortMidReplyIsRetryable",
+        "extensions/sdk/pi_ai_helpers_test.go::TestConnectionClosedIsRetryable"
+      ]
+    },
+    {
       "id": "BF-9b63b2b",
       "title": "On Windows, the bash tool no longer risks waiting forever after a command exits while a process it started in…",
       "symptom": "On Windows, the bash tool no longer risks waiting forever after a command exits while a process it started in the background still holds the output pipe.",
@@ -34797,31 +34906,6 @@
         }
       ],
       "tests": []
-    },
-    {
-      "id": "BF-9bb3685",
-      "title": "MCP stdio servers now start in a session of their own, as Pi's stdio transport does (`detached` in Node's…",
-      "symptom": "MCP stdio servers now start in a session of their own, as Pi's stdio transport does (`detached` in Node's spawn is `setsid`): a server, or a child of it, no longer keeps PiG's controlling terminal and cannot take the terminal's foreground process group from PiG.",
-      "rootCause": "Pi's stdio transport spawns the server with `detached: USE_PROCESS_GROUPS` (packages/mcp/src/transports/stdio.ts:107), which Node starts with setsid(2) on every platform but Windows. PiG called setpgid only, so a server, or a child of it, kept PiG's controlling terminal and could take the terminal's foreground group away from PiG, as the bash tool's shell did.",
-      "rootCauseSource": "commit",
-      "userImpact": "An operation failed or was rejected",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "MCP stdio servers now start in a session of their own, as Pi's stdio transport does (`detached` in Node's spawn is `setsid`): a server, or a child of it, no longer keeps PiG's controlling terminal and cannot take the terminal's foreground process group from PiG. The server still leads its own process group, so closing the transport still ends its children (#427).",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "9bb3685b06",
-          "date": "2026-11-11",
-          "pr": "427"
-        }
-      ],
-      "tests": [
-        "mcp/fixtures_test.go::TestMain",
-        "mcp/stdio_session_linux_test.go::TestStdioServerCannotTakeThePigTerminal",
-        "mcp/stdio_session_linux_test.go::TestStdioServerLeadsItsOwnSessionAndProcessGroup"
-      ]
     },
     {
       "id": "BF-9be5765",
@@ -36396,6 +36480,10 @@
         {
           "hash": "a726a597cc",
           "date": "2026-11-11"
+        },
+        {
+          "hash": "e7a2839b83",
+          "date": "2026-11-11"
         }
       ],
       "tests": [
@@ -36418,6 +36506,10 @@
       "fixedIn": "Unreleased",
       "origin": "divergence",
       "commits": [
+        {
+          "hash": "1488c993df",
+          "date": "2026-11-11"
+        },
         {
           "hash": "5042dd06e8",
           "date": "2026-11-11"
@@ -36520,6 +36612,25 @@
         "internal/codingagent/tool_render_shell_details_test.go::TestShellCardIgnoresACaseVariantTruncatedBy",
         "internal/codingagent/tool_render_shell_details_test.go::TestShellDetailsFromReadsTheExactKeys"
       ]
+    },
+    {
+      "id": "BF-a0a1c37",
+      "title": "fix(sdk-rs): the Call envelope carried the command_context attribute twice; regenerate the Rust SDK bundle",
+      "symptom": "fix(sdk-rs): the Call envelope carried the command_context attribute twice; regenerate the Rust SDK bundle",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "a0a1c37105",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-a110f68",
@@ -38635,6 +38746,28 @@
       "tests": []
     },
     {
+      "id": "BF-ac7ebbf",
+      "title": "The find tool no longer returns no results for patterns that start with `./`, such as `./src/*.ts`; the…",
+      "symptom": "The find tool no longer returns no results for patterns that start with `./`, such as `./src/*.ts`; the leading `./` is dropped, as under Pi (upstream #12020).",
+      "rootCause": "fd's full paths never contain /./, so ./src/*.ts found nothing. Drop the leading ./ before choosing full-path matching, as upstream does. Ported test: TestFindIgnoresLeadingDotSlashInPattern.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The find tool no longer returns no results for patterns that start with `./`, such as `./src/*.ts`; the leading `./` is dropped, as under Pi (upstream #12020).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ac7ebbf1a5",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/tools/find_leading_dot_slash_port_test.go::TestFindIgnoresLeadingDotSlashInPattern"
+      ]
+    },
+    {
       "id": "BF-ac8664c",
       "title": "Fix in shipped code",
       "symptom": "Fix in shipped code",
@@ -38686,6 +38819,30 @@
         "test/parity/scenarios/extensions-runtime/73-print-prompt-end-command.toml",
         "test/parity/scenarios/extensions-runtime/73-print-prompt-end-input.toml",
         "test/parity/scenarios/extensions-runtime/73-print-prompt-end-settled.toml"
+      ]
+    },
+    {
+      "id": "BF-acb7737",
+      "title": "chord: a client starts without its server (a page renders offline, from a service worker's kept page)…",
+      "symptom": "chord: a client starts without its server (a page renders offline, from a service worker's kept page): `StartClient` follows the scripts object in the background, a failure reported as `update_failed`, and `Client.Stop` ends and joins it; the set the scripts object shows when following begins is applied too, so a set published while the client started is no longer missed (Pi 3c771bd18).",
+      "rootCause": "StartClient awaited its hold and watch of the scripts object, which wait for the server, so a client (a page) did not start offline. It follows in the background now: an owned goroutine that reports a failure as update_failed and that Stop ends and joins. A watch's current value is no frame, so a set published while the client started was missed; the set shown when following begins is applied too (updates.take, shared with the listener).",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "chord: a client starts without its server (a page renders offline, from a service worker's kept page): `StartClient` follows the scripts object in the background, a failure reported as `update_failed`, and `Client.Stop` ends and joins it; the set the scripts object shows when following begins is applied too, so a set published while the client started is no longer missed (Pi 3c771bd18).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "acb7737a0a",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "chord/next/surfaces/surfaces_client_test.go::TestAppliesTheSetTheServerShowsWhenItStartsFollowingThoughNoFrameBroughtIt",
+        "chord/next/surfaces/surfaces_client_test.go::TestEndsTheWaitForStylesheetsAtTheClientsStopTheUpdateStopsThere",
+        "chord/next/surfaces/surfaces_client_test.go::TestStartClientReportsAnInitialScriptThatFailsAndStartsWithTheOthers"
       ]
     },
     {
@@ -40323,29 +40480,6 @@
       ]
     },
     {
-      "id": "BF-b562713",
-      "title": "MCP tools loaded by `tool_search` are no longer dropped on resume and `/reload` when an extension deactivates…",
-      "symptom": "MCP tools loaded by `tool_search` are no longer dropped on resume and `/reload` when an extension deactivates only its own tool at `session_start`, as Pi does (upstream #12054).",
-      "rootCause": "A loadout change dropped the pending restored tools whenever it deactivated any active tool, so an extension that registers a loader tool and hides it at session_start (the restore or reload activated it as newly registered) lost the MCP tools tool_search had loaded. The Session now remembers the restored or reloaded loadout (restoredToolNames) and drops the pending tools only when a tool of that loadout is deactivated, as Pi does. Ported tests: the two dropLoader cases of agent-session-mcp.test.ts.",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "MCP tools loaded by `tool_search` are no longer dropped on resume and `/reload` when an extension deactivates only its own tool at `session_start`, as Pi does (upstream #12054).",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "b562713f26",
-          "date": "2026-11-11"
-        }
-      ],
-      "tests": [
-        "coding/mcp_restore_own_tool_port_test.go::TestAgentSessionMCPToolsAfterResumeAndReloadKeepsRestoredToolsWhenAnExtensionDeactivatesOnlyItsOwnToolBeforeTheyRegister",
-        "coding/mcp_restore_own_tool_port_test.go::TestAgentSessionMCPToolsAfterResumeAndReloadKeepsToolsToolSearchLoadedAfterReloadWhenAnExtensionDeactivatesOnlyItsOwnTool"
-      ]
-    },
-    {
       "id": "BF-b59b9db",
       "title": "fix(durable/core): a Session-mode read that stored held changes answers when the Storage settles the commit…",
       "symptom": "fix(durable/core): a Session-mode read that stored held changes answers when the Storage settles the commit it adopted, with that call's failure",
@@ -41099,31 +41233,6 @@
       ]
     },
     {
-      "id": "BF-ba5e8ab",
-      "title": "Shutting down a Session no longer leaves a provider's model refresh, or an auth check it had abandoned…",
-      "symptom": "Shutting down a Session no longer leaves a provider's model refresh, or an auth check it had abandoned, running against the agent directory.",
-      "rootCause": "CloseModelTasks cancelled the native collection's refreshes and then joined its operations on a detached goroutine (`go models.Close()`), so a provider's refreshModels, its store write, or an auth check the caller had abandoned kept running after Close returned, so its owner could remove the agent directory under it. Windows cannot delete a directory while a file in it is being written or held open, and TestModelPickerGeminiAuthAndCatalog failed on Windows CI with \"TempDir RemoveAll cleanup: The directory is not empty\". That failure was not reproduced; the Linux evidence is TestModelSelectorNativeProviderRefreshDoesNotOutliveShutdown, which shows the provider's refresh still running after…",
-      "rootCauseSource": "commit",
-      "userImpact": "An operation failed or was rejected",
-      "platform": "Windows",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "Shutting down a Session no longer leaves a provider's model refresh, or an auth check it had abandoned, running against the agent directory. Closing the registry's model tasks cancelled the native model collection's refreshes but joined their work on a detached goroutine, so the refresh could still be writing its catalog after `Close` returned and the owner removed the directory (which on Windows cannot delete a directory whose file is still being written). `ai.Models` gains `Drain`, which cancels active refreshes and waits for the work the collection runs for its own queries (a provider's refresh and its store write, auth resolution and checks, availability) but not for a caller's login or stream, and `CloseModelTasks` calls it before returning.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "ba5e8abb4e",
-          "date": "2026-11-11"
-        }
-      ],
-      "tests": [
-        "ai/models_runtime_drain_test.go::TestModelsDrainJoinsAbandonedRefreshButNotLogin",
-        "internal/codingagent/model_availability_read_context_test.go::TestAvailabilityReadContextOnlyWithoutExtensionProviders",
-        "internal/codingagent/model_picker_parity_test.go::TestModelPickerGeminiAuthAndCatalog",
-        "internal/codingagent/model_selector_native_refresh_owned_test.go::TestModelSelectorNativeProviderRefreshDoesNotOutliveShutdown"
-      ]
-    },
-    {
       "id": "BF-ba80002",
       "title": "fix(chord/nextnode/plugins): a process the Go side killed ends with SIGKILL on Windows too",
       "symptom": "fix(chord/nextnode/plugins): a process the Go side killed ends with SIGKILL on Windows too",
@@ -41526,28 +41635,6 @@
       "tests": [
         "internal/jsstring/toprecision_oracle_test.go::TestToPrecisionAgainstNodeCorpus",
         "internal/jsstring/toprecision_oracle_test.go::TestToPrecisionKeepsTheExponentOfAValueJustBelowAPowerOfTen"
-      ]
-    },
-    {
-      "id": "BF-bc5690c",
-      "title": "A durable `Submission.Wait` or task wait whose context was cancelled while earlier commits were still…",
-      "symptom": "A durable `Submission.Wait` or task wait whose context was cancelled while earlier commits were still publishing returns the cancellation cause as the error of that call; a regression test with a slow `Storage.Publishing` (Pi `d9d535b6c9e4`, #11963, #11820) pins it.",
-      "rootCause": "Pi marks the waiter promise handled so Node reports no unhandledRejection. Go has none: the rejection is the error of the same Wait call, so the port is the ported test (red under a mutant of Waiters.Add), the async-contracts row and the v1.5.2+ sync ledger row.",
-      "rootCauseSource": "commit",
-      "userImpact": "An operation failed or was rejected",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "A durable `Submission.Wait` or task wait whose context was cancelled while earlier commits were still publishing returns the cancellation cause as the error of that call; a regression test with a slow `Storage.Publishing` (Pi `d9d535b6c9e4`, #11963, #11820) pins it. Pi needed a fix so Node reported no unhandled promise rejection; Go has none, so no Go source changed.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "bc5690c60e",
-          "date": "2026-11-11"
-        }
-      ],
-      "tests": [
-        "durable/harness/wait_aborted_context_test.go::TestWaitCancelledBeforeItsResultIsDeliveredReturnsTheCauseOnThatWait"
       ]
     },
     {
@@ -43375,30 +43462,6 @@
       ]
     },
     {
-      "id": "BF-c6ef57f",
-      "title": "fix: closing a registry's model tasks joins the native Models collection's own refresh and auth work",
-      "symptom": "fix: closing a registry's model tasks joins the native Models collection's own refresh and auth work",
-      "rootCause": "CloseModelTasks cancelled the native collection's refreshes and then joined its operations on a detached goroutine (`go models.Close()`), so a provider's refreshModels, its store write, or an auth check the caller had abandoned kept running after Close returned, so its owner could remove the agent directory under it. Windows cannot delete a directory while a file in it is being written or held open, and TestModelPickerGeminiAuthAndCatalog failed on Windows CI with \"TempDir RemoveAll cleanup: The directory is not empty\". That failure was not reproduced; the Linux evidence is TestModelSelectorNativeProviderRefreshDoesNotOutliveShutdown, which shows the provider's refresh still running after…",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "origin": "commit",
-      "commits": [
-        {
-          "hash": "c6ef57f905",
-          "date": "2026-11-11"
-        }
-      ],
-      "tests": [
-        "ai/models_runtime_drain_test.go::TestModelsDrainJoinsAbandonedRefreshButNotLogin",
-        "internal/codingagent/model_availability_read_context_test.go::TestAvailabilityReadContextOnlyWithoutExtensionProviders",
-        "internal/codingagent/model_picker_parity_test.go::TestModelPickerGeminiAuthAndCatalog",
-        "internal/codingagent/model_selector_native_refresh_owned_test.go::TestModelSelectorNativeProviderRefreshDoesNotOutliveShutdown"
-      ]
-    },
-    {
       "id": "BF-c6f6953",
       "title": "Wrapped text no longer starts the next line with a space when a styled word ends exactly at the wrap width…",
       "symptom": "Wrapped text no longer starts the next line with a space when a styled word ends exactly at the wrap width, and strikethrough no longer runs into the right padding of a wrapped line: the wrap closes `\\x1b[29m` at line end like underline and opens it again on the next line.",
@@ -43894,36 +43957,6 @@
       ]
     },
     {
-      "id": "BF-c9c18e0",
-      "title": "An interactive shell run by the bash tool or by a `!` command no longer suspends PiG with `suspended (tty…",
-      "symptom": "An interactive shell run by the bash tool or by a `!` command no longer suspends PiG with `suspended (tty input)` on the next key press.",
-      "rootCause": "Pi spawns the shell with `detached: true` (core/tools/bash.ts createLocalShellOperations), which Node starts with setsid(2): the shell leads a new session and a new process group and has no controlling terminal. PiG called setpgid only, so the shell stayed in PiG's session with PiG's controlling terminal. An interactive job-control shell (`zsh -f -i -c true; true`) opened /dev/tty, made its own process group the terminal's foreground group and left it so when it exited. PiG, in the background of its own terminal, was stopped by SIGTTIN on the next key press (`suspended (tty input)`). `bash -i -c true; true` stopped itself and the tool call never returned; Pi's shell prints `bash: cannot set…",
-      "rootCauseSource": "commit",
-      "userImpact": "An operation failed or was rejected",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "An interactive shell run by the bash tool or by a `!` command no longer suspends PiG with `suspended (tty input)` on the next key press. PiG started the shell in its own process group but in PiG's session, so the shell kept PiG's controlling terminal: `zsh -f -i -c true; true` opened `/dev/tty`, made its own process group the terminal's foreground group and left it so when it exited, and PiG's next read from the terminal raised SIGTTIN. `bash -i -c true; true` stopped itself and the tool call never returned. The shell now starts in a session of its own, as Pi's `detached: true` does (Node's spawn calls `setsid`), so it has no controlling terminal: `/dev/tty` cannot be opened and `bash -i` reports `no job control in this shell` and returns. The shell still leads its own process group, so abort, timeout and the exit cleanup still end every descendant (#427, reported by @asp345).",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "c9c18e05a3",
-          "date": "2026-11-11",
-          "pr": "427"
-        }
-      ],
-      "tests": [
-        "coding/cli/testmain_test.go::TestMain",
-        "coding/cli/user_bash_terminal_pty_test.go::TestInteractiveUserBashLeavesTheTerminalToPig",
-        "internal/codingagent/tools/bash_tty_linux_test.go::TestBashAbortAndTimeoutKillTheShellsDescendants",
-        "internal/codingagent/tools/bash_tty_linux_test.go::TestBashCommandCannotTakeThePigTerminal",
-        "internal/codingagent/tools/bash_tty_linux_test.go::TestBashShellLeadsItsOwnSessionAndProcessGroup",
-        "internal/codingagent/tools/testmain_test.go::TestMain",
-        "internal/testenv/terminal_session_linux_test.go::TestInTerminalSessionRunsTheTestAsTheLeaderOfAControllingTerminal",
-        "internal/testenv/terminal_session_linux_test.go::TestRequireTerminalForegroundFailsWhileAnotherGroupHoldsTheTerminal"
-      ]
-    },
-    {
       "id": "BF-c9f1cff",
       "title": "The experimental client takes Pi's `ByteTransportFactory` shape: `ClientOptions.TransportFactory` returns a…",
       "symptom": "The experimental client takes Pi's `ByteTransportFactory` shape: `ClientOptions.TransportFactory` returns a `ByteTransport` whose `Send(ctx, chunk)` returns when the write settles.",
@@ -44100,6 +44133,25 @@
         "coding/cli/rpc_exit_once_test.go::TestRPCExitRunsItsStepsOnce",
         "coding/cli/rpc_shutdown_exitlog_test.go::TestRPCExitLogNamesWhatEndedTheProcess"
       ]
+    },
+    {
+      "id": "BF-cafa121",
+      "title": "fix(llama): default llama.cpp server URL is port 9931 (Pi, #12001); NVIDIA RTX guide mirror (Pi)",
+      "symptom": "fix(llama): default llama.cpp server URL is port 9931 (Pi, #12001); NVIDIA RTX guide mirror (Pi)",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "cafa121edf",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-cb00273",
@@ -46652,6 +46704,28 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-d7dd9c5",
+      "title": "Text after a multi-row inline image in Markdown no longer draws over the image when the image rows were…",
+      "symptom": "Text after a multi-row inline image in Markdown no longer draws over the image when the image rows were joined with hard line breaks; the rows stay separate, as under Pi (upstream #12017).",
+      "rootCause": "Image lines skip wrapping, so rows joined to an image by hard breaks drew over it. Split such a line into rows before layout, as upstream does. Ported test: TestMarkdownKeepsHardBreaksAfterInlineImageAsSeparateRows.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Text after a multi-row inline image in Markdown no longer draws over the image when the image rows were joined with hard line breaks; the rows stay separate, as under Pi (upstream #12017).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d7dd9c5a19",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "tui/markdown_image_hard_break_port_test.go::TestMarkdownKeepsHardBreaksAfterInlineImageAsSeparateRows"
+      ]
     },
     {
       "id": "BF-d7fbf00",
@@ -49636,15 +49710,16 @@
     },
     {
       "id": "BF-dc7d547",
-      "title": "fix(tools): start the bash tool's shell in a session of its own so an interactive shell cannot take PiG's…",
-      "symptom": "fix(tools): start the bash tool's shell in a session of its own so an interactive shell cannot take PiG's terminal (#427)",
+      "title": "An interactive shell run by the bash tool or by a `!` command no longer suspends PiG with `suspended (tty…",
+      "symptom": "An interactive shell run by the bash tool or by a `!` command no longer suspends PiG with `suspended (tty input)` on the next key press.",
       "rootCause": "Pi spawns the shell with `detached: true` (core/tools/bash.ts createLocalShellOperations), which Node starts with setsid(2): the shell leads a new session and a new process group and has no controlling terminal. PiG called setpgid only, so the shell stayed in PiG's session with PiG's controlling terminal. An interactive job-control shell (`zsh -f -i -c true; true`) opened /dev/tty, made its own process group the terminal's foreground group and left it so when it exited. PiG, in the background of its own terminal, was stopped by SIGTTIN on the next key press (`suspended (tty input)`). `bash -i -c true; true` stopped itself and the tool call never returned; Pi's shell prints `bash: cannot set…",
       "rootCauseSource": "commit",
       "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "origin": "commit",
+      "releaseNote": "An interactive shell run by the bash tool or by a `!` command no longer suspends PiG with `suspended (tty input)` on the next key press. PiG started the shell in its own process group but in PiG's session, so the shell kept PiG's controlling terminal: `zsh -f -i -c true; true` opened `/dev/tty`, made its own process group the terminal's foreground group and left it so when it exited, and PiG's next read from the terminal raised SIGTTIN. `bash -i -c true; true` stopped itself and the tool call never returned. The shell now starts in a session of its own, as Pi's `detached: true` does (Node's spawn calls `setsid`), so it has no controlling terminal: `/dev/tty` cannot be opened and `bash -i` reports `no job control in this shell` and returns. The shell still leads its own process group, so abort, timeout and the exit cleanup still end every descendant (#427, reported by @asp345).",
+      "origin": "release note",
       "commits": [
         {
           "hash": "dc7d547ecf",
@@ -49687,6 +49762,31 @@
       ],
       "tests": [
         "coding/extension/host/subprocess/callpayload_shape_test.go::TestCallPayloadKeepsUnkeyedLiteralShape"
+      ]
+    },
+    {
+      "id": "BF-dcf10b2",
+      "title": "chord: a server that closed a connection while the host loop was sending on it could freeze the host for good…",
+      "symptom": "chord: a server that closed a connection while the host loop was sending on it could freeze the host for good (seen as a hang of p2's code-mode restart test under stress).",
+      "rootCause": "The reader of a socket that saw its connection fail ran the close listeners (the link end, whose Closed takes the host loop) inside a sync.Once, while the goroutine that held the host loop sent on the socket, found it over its output cap or closed and Terminate d it, and waited for that Once: loop -\u003e close -\u003e loop (the p2 stress hang, TestCodeModeFakeProvider graceful restart). Pi has no lock there: ws terminate() only destroys the connection, its close event follows on a later turn, and a second terminate() never waits for it. closed() now claims the close with an atomic compare-and-swap (the loser returns at once; the winner fails what is queued, stops the close timer and emits once), and…",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "chord: a server that closed a connection while the host loop was sending on it could freeze the host for good (seen as a hang of p2's code-mode restart test under stress). The socket's reader ran the close listeners, which take the host loop, inside a once-lock, while the goroutine holding the loop terminated the same socket and waited for that lock. As with Node's `ws`, whose `terminate()` only destroys the connection and whose `close` event follows on a later turn, a second closer no longer waits for the first one's listeners and `Terminate` no longer emits `close` inside the call; `close` is still emitted exactly once, queued sends still fail with `WebSocket is not open` and the close timer is still stopped.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "dcf10b28b3",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/http/websocket_close_test.go::TestWebSocketASecondCloserNeverWaitsForTheFirstClosersListeners",
+        "chord/nextnode/http/websocket_close_test.go::TestWebSocketCloseEmitsOnceFailsWhatIsQueuedAndStopsTheTimer",
+        "chord/nextnode/http/websocket_close_test.go::TestWebSocketLinkSendTerminatingUnderTheLoopWhileTheReaderClosesDoesNotDeadlock",
+        "chord/nextnode/http/websocket_close_test.go::TestWebSocketTerminateEmitsItsCloseOnALaterTurn"
       ]
     },
     {
@@ -50928,6 +51028,37 @@
       ]
     },
     {
+      "id": "BF-e299ba1",
+      "title": "An extension that calls `newSession`, `fork`, `navigateTree`, `switchSession` or `reload` from an event, tool…",
+      "symptom": "An extension that calls `newSession`, `fork`, `navigateTree`, `switchSession` or `reload` from an event, tool or shortcut handler, for example a `session_start` handler, no longer replaces the session in the middle of the emit, which made the built-in MCP extension panic on a stale context and `pig` exit 1.",
+      "rootCause": "A call with no live parent request was allowed, so a handler that stored its event context and called later replaced the session; Pi never allows that. The Go, Python, Rust and Lisp SDKs mark every call made through a command handler's or a withSession callback's context (command_context) for the context's whole life, and the host refuses newSession, fork, navigateTree, switchSession and reload without the mark. The Node runtime gives only those contexts the five members, so an event context has none: typeof is undefined and a call throws Pi's TypeError (D617).",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D617",
+      "removeWhen": "the Go, Python, Rust and Lisp SDKs hand event, tool and shortcut handlers a context type that has no command-only session actions (a separate command-context type), so the call cannot be written.",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension that calls `newSession`, `fork`, `navigateTree`, `switchSession` or `reload` from an event, tool or shortcut handler, for example a `session_start` handler, no longer replaces the session in the middle of the emit, which made the built-in MCP extension panic on a stale context and `pig` exit 1. A handler that stores its event context and calls one of them after its request ended is refused as well. Pi gives these only to the command context, so its handler gets a `TypeError` there and the session goes on. In the Node runtime an event, tool or shortcut context has no such member (`typeof ctx.switchSession` is `undefined` and the call throws `ctx.switchSession is not a function`); the Go, Python, Rust and Lisp SDKs, whose `Context` type has the methods, get the error `not_a_command_context` and the host runs nothing (D617). A command handler and a `withSession` callback are unchanged.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "105a93fed1",
+          "date": "2026-11-11"
+        },
+        {
+          "hash": "e299ba1cf9",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/callpayload_shape_test.go::TestCallPayloadKeepsUnkeyedLiteralShape",
+        "coding/extension/host/subprocess/command_only_calls_test.go::TestCommandOnlyCallErrorIsPisMissingFunctionError",
+        "coding/extension/host/subprocess/command_only_calls_test.go::TestCommandOnlyCallsAreThePiCommandContextSessionActions",
+        "test/extension-conformance/session_actions_event_context_test.go::TestConformance_CommandOnlySessionActionsRefusedFromEventContext"
+      ]
+    },
+    {
       "id": "BF-e2bbcc5",
       "title": "A lone UTF-16 surrogate now keeps its unit through the coding paths that still went through `encoding/json`…",
       "symptom": "A lone UTF-16 surrogate now keeps its unit through the coding paths that still went through `encoding/json`, which writes it as U+FFFD, where Pi's `JSON.stringify` and `JSON.parse` keep it: the text blocks of an extension's `sendUserMessage` (the persisted user message), the `tool_call` and `tool_result` input a handler sees and the arguments an edited call runs with (also when the handler runs in an extension process and edits another member), the arguments and structured content an in-process `tool_execution_*` handler sees, the content of an extension's custom message sent to the model, a `context` handler's change to such a message, the `entry_appended` event's usage entry (now the exact session-line bytes, with `\u003c`, `\u003e` and `\u0026` literal), an `extension_ui_response` string value, the text of an RPC command field that a template literal coerces (`Model not found: …`, a non-string `bash` command), and the Go RPC client's typed decode of a response.",
@@ -51737,32 +51868,6 @@
       ]
     },
     {
-      "id": "BF-e6e4f9a",
-      "title": "`listDir` of the local and remote execution environments leaves out an entry removed between enumeration and…",
-      "symptom": "`listDir` of the local and remote execution environments leaves out an entry removed between enumeration and `lstat` instead of failing, so a read-only JSONL open beside a live writer no longer fails with `JSONL directory listing failed: ENOENT`, as Pi does (upstream #11994, #12055).",
-      "rootCause": "NodeExecutionEnv.ListDir and RemoteExecutionEnv.ListDir failed with ENOENT when an entry vanished between readdir and lstat (a writer renaming a .reclaim file over a sidecar); they now leave it out, as the directory readers already did and Pi does. Any other entry error still fails the listing. Ported tests: env-node-list-race (a test hook runs the rename before the lstat) and a scripted daemon for the remote listing; the differential test now expects Node's non-UTF-8 names to be left out of the remote listDir.",
-      "rootCauseSource": "commit",
-      "userImpact": "An operation failed or was rejected",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "`listDir` of the local and remote execution environments leaves out an entry removed between enumeration and `lstat` instead of failing, so a read-only JSONL open beside a live writer no longer fails with `JSONL directory listing failed: ENOENT`, as Pi does (upstream #11994, #12055).",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "e6e4f9acc5",
-          "date": "2026-11-11"
-        }
-      ],
-      "tests": [
-        "durable/env/node/list_race_port_test.go::TestListDirLeavesOutAnEntryRemovedBetweenEnumerationAndLstat",
-        "env/differential_test.go::TestRemoteExecutionEnvAgainstNodeExecutionEnv",
-        "env/main_test.go::TestMain",
-        "env/remote_list_race_port_test.go::TestRemoteListDirFailsOnOtherEntryErrors",
-        "env/remote_list_race_port_test.go::TestRemoteListDirLeavesOutAnEntryRemovedBetweenEnumerationAndLstat"
-      ]
-    },
-    {
       "id": "BF-e73e536",
       "title": "Codemode scripts no longer fail immediately when both codemode workers are busy, for example with parallel…",
       "symptom": "Codemode scripts no longer fail immediately when both codemode workers are busy, for example with parallel codemode calls or in-process subagents.",
@@ -52208,26 +52313,6 @@
         "coding/session_message_sequence_test.go::TestSessionNumbersTheMessagesExtensionEventsShare",
         "internal/codingagent/session_message_entries_test.go::TestMessageEntriesAfterACursor"
       ]
-    },
-    {
-      "id": "BF-e99d1a7",
-      "title": "Closing a durable Harness releases the pi-ai resources of the provider sessions its tasks used, after the…",
-      "symptom": "Closing a durable Harness releases the pi-ai resources of the provider sessions its tasks used, after the running task invocations joined and before Storage closes, so a legacy OpenAI Codex WebSocket no longer keeps the process alive after `Harness.close()` returns.",
-      "rootCause": "Ports provider.ts, scheduler.ts and harness.ts beforeClose: ensureProviderSessionId records the provider session ID it resolves into the set of the Harness that owns the task runtime; once task invocations joined, close runs pi-ai's scoped cleanup (ai.CleanupSessionResources) for each of them, reporting a failing cleanup as host_error/models without stopping Storage from closing. The persisted ProviderDoc is untouched, and another live Harness's sessions are left alone.",
-      "rootCauseSource": "commit",
-      "userImpact": "Lost or altered data",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "Closing a durable Harness releases the pi-ai resources of the provider sessions its tasks used, after the running task invocations joined and before Storage closes, so a legacy OpenAI Codex WebSocket no longer keeps the process alive after `Harness.close()` returns. The cleanup is scoped to the closing Harness (another live Harness in the process keeps its resources), runs also when the Harness fails, leaves the persisted provider session IDs for a reopened Harness, and a failing cleanup is reported as a `host_error` for `models` without stopping Storage from closing.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "e99d1a7ca3",
-          "date": "2026-11-10"
-        }
-      ],
-      "tests": []
     },
     {
       "id": "BF-e9ca222",
@@ -53549,6 +53634,33 @@
       ],
       "tests": [
         "coding/extension/host/subprocess/event_bus_conn_test.go::TestHostEventBusClosedConnectionForgetsRetainedSubscriptions"
+      ]
+    },
+    {
+      "id": "BF-ee9dfad",
+      "title": "Tooling: `make test-carried-oracles` (the CI step \"Run the oracle tests of carried Pi work\") passes again and…",
+      "symptom": "Tooling: `make test-carried-oracles` (the CI step \"Run the oracle tests of carried Pi work\") passes again and no longer changes the tree.",
+      "rootCause": "Since the vendored packs, durable/interop holds the pin's packages at every pin, and the run was red: TestWakeRecordMemosMatchPi (wake_memos_pi_oracle_test.go:105, ERR_PACKAGE_PATH_NOT_EXPORTED './session-resources' in durable/interop/node_modules/@earendil-works/pi-ai), and the five scripted-session tests of durable/interop compared Go with the pin's Pi Durable.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Tooling: `make test-carried-oracles` (the CI step \"Run the oracle tests of carried Pi work\") passes again and no longer changes the tree. Since Pi's durable packages are vendored, `durable/interop` holds the pin's packages at every pin, so the run, which compares with a later Pi commit, failed (`TestWakeRecordMemosMatchPi`: `ERR_PACKAGE_PATH_NOT_EXPORTED './session-resources'`) and compared the scripted sessions with the pin's Pi Durable. The run also pointed `extensions/sdk-ts/node_modules` and `.upstream/current` at the later commit, and a run that was killed left them there for the next gate. It now reads that commit's Pi in the build store (`pin.py override-tree`, handed to the tests as `PIG_PI_OVERRIDE_TREE`) and writes nothing in the tree, so `pin.py point-current` is removed. A carried test fails instead of skipping when that Pi lacks the work. `make test-carried-oracles-guard` runs the target to its end, failing and killed, and requires the tree's own Pi to be what it was; `pin.py check-vendored --installed durable/interop` checks the installed packages against the vendored packs.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ee9dfad46e",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "automation/pin/test_carried_guard.py",
+        "durable/harness/wake_memos_pi_oracle_test.go::TestWakeRecordMemosMatchPi",
+        "internal/pioracle/source_test.go::TestARunAtThePinReadsTheRepositorysPi",
+        "internal/pioracle/source_test.go::TestARunThatNamesAnotherPiReadsOnlyItsTree",
+        "internal/pioracle/source_test.go::TestAnOverrideTreeMustBeFinishedAndHoldItsOwnPacks",
+        "internal/pioracle/source_test.go::TestWorkThePiLacksSkipsAtThePinAndFailsInACarriedRun"
       ]
     },
     {
@@ -56058,6 +56170,31 @@
         "chord/delta/own_key_order_test.go::TestDiffRevisionsVisitsArrayIndexKeysFirstInNumericOrder",
         "internal/chord/chordjson/own_key_order_test.go::TestCopyFollowsPisKeyOrderAndMessages",
         "internal/evals/report_oracle_test.go::TestEvalReportMatchesPiOnSeededDesigns"
+      ]
+    },
+    {
+      "id": "BF-f803eca",
+      "title": "The bash tool no longer returns no output, with a footer like `[Showing lines 3-2 of 2]`, when a command's…",
+      "symptom": "The bash tool no longer returns no output, with a footer like `[Showing lines 3-2 of 2]`, when a command's output ends in one line longer than about 100KB, such as a `grep` match in a minified file; it shows the end of that line, as Pi does (upstream #12092).",
+      "rootCause": "When a command printed a short line and then one line longer than about 100KB, the bash tool returned no output and a footer like \"[Showing lines 3-2 of 2 (50.0KB limit)]\". The accumulator's retained tail was only the end of that line, clipping dropped its partial first line, and nothing was left. snapshotText now returns the unclipped tail in that case, so the truncation shows the last 50.0KB of the line with the partial-line notice, as Pi does.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The bash tool no longer returns no output, with a footer like `[Showing lines 3-2 of 2]`, when a command's output ends in one line longer than about 100KB, such as a `grep` match in a minified file; it shows the end of that line, as Pi does (upstream #12092).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f803ecabe1",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/tools/details_parity_test.go::TestBuiltinToolDetailsParityProbe",
+        "internal/codingagent/tools/output_accumulator_long_last_line_port_test.go::TestBashToolShowsTheEndOfAnOverLongLastLineAfterAShortLine",
+        "internal/codingagent/tools/output_accumulator_long_last_line_port_test.go::TestOutputAccumulatorKeepsTheEndOfAnOverLongLastLine",
+        "internal/codingagent/tools/output_accumulator_oracle_test.go::TestOutputAccumulatorMatchesPi"
       ]
     },
     {
@@ -58797,7 +58934,7 @@
     {
       "id": "D617",
       "title": "A command-only session action called through a context that is not a command context is a method that refuses…",
-      "entry": "BF-450883a"
+      "entry": "BF-e299ba1"
     },
     {
       "id": "D618",

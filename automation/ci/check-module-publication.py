@@ -12,18 +12,29 @@ import sys
 import tempfile
 
 
-def command(args, cwd, env):
-    result = subprocess.run(args, cwd=cwd, env=env, text=True, capture_output=True, timeout=60)
+def command(args, cwd, env, timeout=60):
+    result = subprocess.run(args, cwd=cwd, env=env, text=True, capture_output=True, timeout=timeout)
     if result.returncode:
         raise ValueError(f"{' '.join(args)} failed:\n{result.stdout}{result.stderr}")
     return result.stdout
+
+
+# A go mod download of a pin the public proxy has not served yet is 404 after about a minute and then a direct fetch of every branch and
+# tag of the repository: 55 s with the machine to itself and 154 s under load, measured against github.com/MichaelKinsy/PiG on 2026-11-12.
+# The limit covers both with a wide margin; the other commands stay at 60 s.
+DOWNLOAD_TIMEOUT = 600
+
+
+def proxy_info_url(path, version):
+    escaped = "".join("!" + c.lower() if c.isupper() else c for c in path)
+    return f"https://proxy.golang.org/{escaped}/@v/{version}.info"
 
 
 # The shape of a Go pseudo-version (golang.org/x/mod/module.IsPseudoVersion): the commit a requirement names instead of a tag.
 PSEUDO_VERSION = re.compile(r"^v[0-9]+\.(?:0\.0-|[0-9]+\.[0-9]+-(?:[^+]*\.)?0\.)[0-9]{14}-[0-9a-f]{12}$")
 
 
-def check(root: Path, remote: str):
+def check(root: Path, remote: str, download_timeout: int = DOWNLOAD_TIMEOUT):
     # Stock disposition: required substrate; verify public Go dependency publication independently of workspace builds.
     env = dict(os.environ, GOWORK="off", GOFLAGS="", GIT_TERMINAL_PROMPT="0")
     manifest = json.loads(command(["go", "mod", "edit", "-json"], root, env))
@@ -56,7 +67,13 @@ def check(root: Path, remote: str):
         for requirement in requirements:
             path, version = requirement["Path"], requirement["Version"]
             tag = version if PSEUDO_VERSION.match(version) else path[len(prefix):] + "/" + version
-            result = json.loads(command(["go", "mod", "download", "-json", path + "@" + version], scratch, env))
+            try:
+                result = json.loads(command(["go", "mod", "download", "-json", path + "@" + version], scratch, env, download_timeout))
+            except subprocess.TimeoutExpired:
+                raise ValueError(f"go mod download {path}@{version} did not finish within {download_timeout} s. proxy.golang.org answers a "
+                                 "pin it has not fetched yet with 404 after about a minute, and the go command then clones the whole "
+                                 "repository directly; the proxy takes up to 30 minutes to serve a new pseudo-version after its commit "
+                                 f"is public. Wait and rerun, or poll {proxy_info_url(path, version)} until it answers 200") from None
             for suffix, key in (("", "Sum"), ("/go.mod", "GoModSum")):
                 expected = f"{path} {version}{suffix} {result[key]}"
                 if expected not in sums:
@@ -68,8 +85,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=Path("."))
     parser.add_argument("--remote", default="https://github.com/MichaelKinsy/PiG.git")
+    parser.add_argument("--download-timeout", type=int, default=DOWNLOAD_TIMEOUT, help="seconds allowed to each go mod download")
     args = parser.parse_args()
     try:
-        check(args.root.resolve(), args.remote)
+        check(args.root.resolve(), args.remote, args.download_timeout)
     except (OSError, ValueError, KeyError, subprocess.TimeoutExpired) as error:
         sys.exit(f"module-publication: {error}")

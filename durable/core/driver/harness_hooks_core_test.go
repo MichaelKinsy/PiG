@@ -62,11 +62,11 @@ func openHookHarness(t *testing.T, log *hookLog, toolHooks *harness.ToolHooks) d
 					log.add("afterResponse")
 					return nil
 				},
-				AfterTools: func(context.Context, durable.EntryId, []durable.EntryId, harness.HookApi) error {
+				AfterTools: func(context.Context, durable.EntryId, []durable.EntryId, harness.HookApi) (*harness.HookTasks, error) {
 					log.add("afterTools")
-					return nil
+					return nil, nil
 				},
-				OnYield: func(context.Context, ai.AssistantMessage, harness.HookApi) (*harness.YieldContinue, error) {
+				OnYield: func(context.Context, ai.AssistantMessage, harness.HookApi) (harness.YieldResult, error) {
 					log.add("onYield")
 					return nil, nil
 				},

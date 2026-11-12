@@ -494,6 +494,7 @@ func (s *TaskScheduler) trackLocked(previous *anyTaskRecord, record anyTaskRecor
 		node := nodeOf(record)
 		s.deleteLiveLocked(id)
 		s.sleeping.Delete(id)
+		delete(s.gateWakes, id)
 		s.intent.Delete(id)
 		s.runnable.Delete(id)
 		s.finalizeChecks.Delete(id)
@@ -538,6 +539,7 @@ func (s *TaskScheduler) trackLocked(previous *anyTaskRecord, record anyTaskRecor
 		s.sleeping.Add(id)
 	} else {
 		s.sleeping.Delete(id)
+		delete(s.gateWakes, id)
 	}
 }
 

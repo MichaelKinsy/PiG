@@ -52,13 +52,17 @@ type ToolBackend interface {
 	Commit(ctx context.Context, change func(tx durable.Tx) (any, error), options ...durable.CommitOptions) (any, error)
 	Memo(ctx context.Context, name string) (value durable.JsonValue, ok bool, err error)
 	MemoCandidate(ctx context.Context, name string, candidate durable.JsonValue) (durable.JsonValue, error)
-	CreateTaskErased(ctx context.Context, task durable.AnyTask, input durable.JsonValue, options durable.TaskOptions) (durable.TaskId, error)
+	CreateTaskErased(ctx context.Context, task durable.AnyTask, input durable.JsonValue, options durable.ToolTaskOptions) (durable.TaskId, error)
 	GetTask(ctx context.Context, id durable.TaskId) (*durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue], error)
 	WaitForTask(ctx context.Context, id durable.TaskId) (durable.SettledTask[durable.JsonValue], error)
 	Conversation(ctx context.Context, id durable.ConversationId) (durable.ConversationHandle, error)
 }
 
 // Tools runs tool effects: it finds the registration, gives it an api, and reports progress and the result to the core.
+//
+// The core never parks a call (CONTRACT.md section 8): an Execute that returns a ToolExecutionResult.Park ends the call with
+// an invalid_park error result that names ErrSuspendableWorkNotInCorePin, and a registration's Cancel is never called, as
+// the call never parks and so is never aborted while no code of the tool runs.
 type Tools struct {
 	// Lookup returns the registration a tool call executes: the called tool among the conversation's resolved agent's tools (tool.ts call
 	// phase), so a later same-name tool replaces an earlier one and wrappers apply. ok is false when the agent has no such tool.
@@ -114,6 +118,10 @@ func (t *Tools) run(ctx context.Context, call *sqlhost.Call) error {
 	if err != nil {
 		call.Post(abi.Event{Kind: abi.EventToolDone, ID: call.ID, Phase: abi.OutcomeThrown, Payload: wireError(err)})
 		return nil
+	}
+	if result.Park != nil {
+		// The park is not dropped: the call ends as Pi ends a call whose park breaks a rule (tool.ts invalid_park), with the pin's text.
+		result = harness.HarnessError("invalid_park", fmt.Sprintf("Tool %s returned an invalid park: %v", p.ToolName, ErrSuspendableWorkNotInCorePin))
 	}
 	body, err := encodeToolResult(result)
 	if err != nil {
@@ -215,6 +223,22 @@ func (a *toolAPI) output(chunk any, skipped *env.ShellOutputSkip) {
 // of kind nested owned by this call.
 func (a *toolAPI) ExecuteTool(ctx context.Context, name string, args map[string]any, options ...durable.NestedCallOptions) (durable.NestedToolExecutionResult, error) {
 	return a.nested.Execute(ctx, nestedCaller{a}, name, args, options...)
+}
+
+// ExecuteToolNoWait is ExecuteTool with wait: false, which only a call that parks can use: the core never parks.
+func (a *toolAPI) ExecuteToolNoWait(context.Context, string, map[string]any, ...durable.NestedCallOptions) (durable.NestedToolCall, error) {
+	return durable.NestedToolCall{}, notInPin("ExecuteToolNoWait")
+}
+
+// Wake is why this run started after a park: nil, as a core call never parks.
+func (a *toolAPI) Wake() *durable.WakeReason { return nil }
+
+// Checkpoint is what the call last parked with: none, as a core call never parks.
+func (a *toolAPI) Checkpoint() (durable.JsonValue, bool) { return nil, false }
+
+// ReadSignalErased is the signal read of a call, which the core cannot answer (CONTRACT.md section 8).
+func (a *toolAPI) ReadSignalErased(context.Context, durable.AnySignalSource, string) (*durable.ErasedSignalState, error) {
+	return nil, notInPin("ReadSignalErased")
 }
 
 // nestedCaller lends a call's backend to nested-call admission.

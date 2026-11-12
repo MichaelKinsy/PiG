@@ -159,7 +159,13 @@ impl Host {
         self.state(id, "started", None);
     }
 
-    fn call(&mut self, parent: &str, method: &str, text: Option<(&str, &[u16])>) -> String {
+    fn call(
+        &mut self,
+        parent: &str,
+        method: &str,
+        text: Option<(&str, &[u16])>,
+        command_context: bool,
+    ) -> String {
         self.state(parent, "blocked", Some("host_call"));
         #[derive(Deserialize)]
         #[serde(deny_unknown_fields)]
@@ -173,6 +179,8 @@ impl Host {
         struct Call {
             method: String,
             parent_request_id: String,
+            #[serde(default)]
+            command_context: bool,
             args: Option<Box<RawValue>>,
         }
         #[derive(Deserialize)]
@@ -187,6 +195,11 @@ impl Host {
         assert!(self.calls.insert(frame.id.clone()), "reused call ID");
         assert_eq!(frame.call.method, method);
         assert_eq!(frame.call.parent_request_id, parent);
+        // A call made through a command handler's context carries the mark the host needs to accept the command-only session actions.
+        assert_eq!(
+            frame.call.command_context, command_context,
+            "{method} command context mark"
+        );
         if let Some((literal, units)) = text {
             let args = frame.call.args.expect("text arguments");
             // Exact literal guards against a mutually lossy encoder/decoder, double escaping, and WTF-8 bytes.
@@ -292,12 +305,12 @@ fn editor_text_typed_calls_preserve_utf16_on_the_wire() {
             ),
         ] {
             host.request(name, "tool_call", "roundtrip");
-            let call = host.call(name, "ui.getEditorText", None);
+            let call = host.call(name, "ui.getEditorText", None, false);
             // A pong must arrive while the handler is still waiting for this exact call_result.
             host.ping(name);
             host.reply(name, &call, Some(&format!(r#"{{"text":{input}}}"#)));
             for method in ["ui.setEditorText", "ui.pasteToEditor"] {
-                let call = host.call(name, method, Some((output, units)));
+                let call = host.call(name, method, Some((output, units)), false);
                 host.reply(name, &call, None);
             }
             host.response(name, json!({"result": {"units": units}}));
@@ -328,7 +341,7 @@ fn surrogate_ready_and_state_updates_keep_calls_and_heartbeat_live() {
                 host.send(&r#"{"type":"ready","ready":{"mode":"tui","state":{"hasUI":true,"editorText":TEXT}}}"#.replace("TEXT", ready));
                 host.ping("after-ready");
                 host.request("ready-read", "tool_call", "read");
-                let call = host.call("ready-read", "ui.getEditorText", None);
+                let call = host.call("ready-read", "ui.getEditorText", None, false);
                 // The authoritative getter result differs from the ready replica.
                 host.reply(
                     "ready-read",
@@ -344,7 +357,7 @@ fn surrogate_ready_and_state_updates_keep_calls_and_heartbeat_live() {
                 // Socket order is the barrier: the dispatcher processes the state update before the ping/request.
                 host.ping("after-state-update");
                 host.request("updated-read", "tool_call", "read");
-                let call = host.call("updated-read", "ui.getEditorText", None);
+                let call = host.call("updated-read", "ui.getEditorText", None, false);
                 host.ping("while-typed-call-pending");
                 host.reply("updated-read", &call, Some(r#"{"text":"😀"}"#));
                 host.response(
@@ -378,7 +391,7 @@ fn no_result_response_omits_result_after_typed_editor_calls() {
                 ("ui.setEditorText", r#""\ud83d""#, &[0xd83d][..]),
                 ("ui.pasteToEditor", r#""\ude00""#, &[0xde00][..]),
             ] {
-                let call = host.call("no-result", method, Some((literal, units)));
+                let call = host.call("no-result", method, Some((literal, units)), true);
                 host.reply("no-result", &call, None);
             }
             // Structural equality distinguishes {} from {"result":null}, not Option<Value> deserialization.

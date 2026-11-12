@@ -92,10 +92,10 @@ func TestNormalizeLlamaServerURL(t *testing.T) {
 	if _, err := NormalizeLlamaServerURL("file:///tmp/llama"); err == nil || !strings.Contains(err.Error(), "http or https") {
 		t.Fatalf("file URL error = %v, want http or https", err)
 	}
-	if _, err := NormalizeLlamaServerURL("127.0.0.1:8080"); err == nil || err.Error() != "Invalid URL" {
+	if _, err := NormalizeLlamaServerURL("127.0.0.1:9931"); err == nil || err.Error() != "Invalid URL" {
 		t.Fatalf("schemeless URL error = %v, want Invalid URL", err)
 	}
-	if got, _ := LlamaInferenceURL("http://localhost:8080/v1"); got != "http://localhost:8080/v1" {
+	if got, _ := LlamaInferenceURL("http://localhost:9931/v1"); got != "http://localhost:9931/v1" {
 		t.Fatalf("LlamaInferenceURL = %q", got)
 	}
 }

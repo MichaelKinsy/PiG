@@ -135,7 +135,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/exec.js",
-      "sha256": "b9858de5bf26a6fcf90039218f831de3ebf8bfdf4fc027d3c56be190fb0ae1e7"
+      "sha256": "09b05db09d15d014205ccc909283db0f35f119c8cb0484df100cbda9a4e41af8"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/experimental.js",
