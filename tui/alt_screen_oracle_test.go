@@ -211,20 +211,12 @@ func checkAltScreenOracleIn(t *testing.T, screens bool, env map[string]string, t
 	t.Cleanup(func() { resetKittyRegistry(t) })
 	recordOnly, closeClipped := tap != nil && tap.recordOnly, tap != nil && tap.closeClipped
 	failures, scrolledSteps := 0, 0
-	// Pi 1.5.2 (the oracle) predates #12047: its Kitty full redraw clears the screen with \x1b[2J, which PiG now skips once images are
-	// uploaded. The first step that differs only that way ends the comparison of its scenario, and of every later Kitty scenario: the
-	// fixture's Kitty image registry carries over from scenario to scenario, so PiG's and Pi's registries differ from there on.
-	pre12047 := false
 	report := func(format string, args ...any) {
 		if failures++; failures <= 6 {
 			t.Errorf(format, args...)
 		}
 	}
 	for index, sc := range scenarios {
-		pre12047Kitty := pre12047 && sc.Images == "kitty"
-		if pre12047Kitty && !recordOnly {
-			continue
-		}
 		setOracleEnv(t, "TERM_PROGRAM", sc.Wez, "WezTerm")
 		setOracleEnv(t, "TMUX", sc.Tmux, "1")
 		SetCellDimensions(CellDimensions{WidthPx: 9, HeightPx: 18})
@@ -387,32 +379,20 @@ func checkAltScreenOracleIn(t *testing.T, screens bool, env map[string]string, t
 							fmt.Fprintf(&rows, "\nrow %d: PiG %q\n        Pi  %q", row, pig, pi)
 						}
 					}
-					if pre12047FullRedraw(sc.Images, out.String(), sc.Log[step].Out) {
-						pre12047 = true
-						break
-					}
 					report("scenario %d (%dx%d, images %q) step %d %+v shows other rows than Pi's step:%s\nPiG wrote %q\nPi wrote  %q", index, sc.Cols, sc.Rows, sc.Images, step, spec, rows.String(), out.String(), sc.Log[step].Out)
 					break
 				}
 				if out.String() != sc.Log[step].Out {
 					scrolledSteps++
 				}
-			} else if got, want := out.String(), sc.Log[step].Out; !screens && !closeClipped && !pre12047Kitty && got != want {
-				if pre12047FullRedraw(sc.Images, got, want) {
-					// A recording keeps replaying the scenario's remaining steps; a comparison ends at the first difference anyway.
-					pre12047, pre12047Kitty = true, true
-					if !recordOnly {
-						break
-					}
-					continue
-				}
+			} else if got, want := out.String(), sc.Log[step].Out; !screens && !closeClipped && got != want {
 				report("scenario %d (%dx%d, images %q) step %d %+v\n got %q\nwant %q", index, sc.Cols, sc.Rows, sc.Images, step, spec, got, want)
 				break
 			}
 		}
 		out.Reset()
 		ui.StopWithOptions(StopOptions{PreserveScreen: sc.Preserve})
-		if got, want := out.String(), strings.ReplaceAll(sc.StopOut, altScreenOracleStopMarker, ""); !closeClipped && !pre12047Kitty && got != want {
+		if got, want := out.String(), strings.ReplaceAll(sc.StopOut, altScreenOracleStopMarker, ""); !closeClipped && got != want {
 			report("scenario %d (%dx%d, images %q, preserve %v) stop\n got %q\nwant %q", index, sc.Cols, sc.Rows, sc.Images, sc.Preserve, got, want)
 		}
 		if got := string(GetCapabilities().Images); got != sc.ImagesAfterStop {
@@ -428,11 +408,6 @@ func checkAltScreenOracleIn(t *testing.T, screens bool, env map[string]string, t
 			t.Error("no step scrolled rows, so no step was compared by what it shows")
 		}
 	}
-}
-
-// pre12047FullRedraw reports a Kitty step where PiG deleted the placements and kept the uploads (Pi #12047) while the pinned Pi 1.5.2 cleared the screen.
-func pre12047FullRedraw(images, got, want string) bool {
-	return images == "kitty" && strings.Contains(want, "\x1b[2J") && !strings.Contains(got, "\x1b[2J") && strings.Contains(got, DeleteAllKittyPlacements())
 }
 
 // TestAltScreenFixtureIsCurrent reruns testdata/alt-screen-oracle.mjs against the installed Pi and requires the committed fixture to be
@@ -475,6 +450,6 @@ func TestAltScreenFixtureIsCurrent(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !bytes.Equal(generated, committed) {
-		t.Fatalf("testdata/alt-screen-oracle.json.gz is not the output of the installed Pi %s: regenerate it with node tui/testdata/alt-screen-oracle.mjs <pi-tui dist/index.js> | gzip", pigversion.UpstreamVersion)
+		t.Fatalf("testdata/alt-screen-oracle.json.gz is not the output of the installed Pi %s: regenerate it with make regenerate-alt-screen-oracle", pigversion.UpstreamVersion)
 	}
 }
