@@ -181,12 +181,12 @@ func TestViewClientGridAgainstTheTerminalsLimits(t *testing.T) {
 		key        string
 		cells, per int
 	}{{"month", 42, 3}, {"week", 7, 8}} {
-		if _, err := f.host.reg.Mount("ext", uiview.MountArgs{Key: n.key, Slot: uiview.SlotPanel, Content: uiview.Content{View: gridView(n.cells, n.per, "event")}}); err != nil {
+		if _, err := f.host.reg.Mount("ext", uiview.MountArgs{Key: n.key, Slot: uiview.SlotPanel, View: gridView(n.cells, n.per, "event")}); err != nil {
 			t.Fatalf("%s: %v", n.key, err)
 		}
 	}
 	chip := strings.Repeat("c", 250)
-	_, err := f.host.reg.Mount("ext", uiview.MountArgs{Key: "largest", Slot: uiview.SlotPanel, Content: uiview.Content{View: gridView(128, 8, chip)}})
+	_, err := f.host.reg.Mount("ext", uiview.MountArgs{Key: "largest", Slot: uiview.SlotPanel, View: gridView(128, 8, chip)})
 	if err == nil || err.Code != uiview.CodeLimit || !strings.Contains(err.Message, "snapshot bytes") {
 		t.Fatalf("the largest grid (%d bytes) was answered %v, want code limit on snapshot bytes", len(gridView(128, 8, chip)), err)
 	}
