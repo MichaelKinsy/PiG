@@ -17599,6 +17599,42 @@
       "tests": []
     },
     {
+      "id": "BF-5b36301",
+      "title": "A Chord activation that waited at the host data gate while an import or delete ran no longer crashes the host…",
+      "symptom": "A Chord activation that waited at the host data gate while an import or delete ran no longer crashes the host when its object ended meanwhile (a reload that no longer serves the type, a close).",
+      "rootCause": "The portmap marker for host/host-data.ts was unproven because no test refused a commit at the fence's admission: Pi's abort test aborts while the delete waits for a line, before the commit. Two tests abort after the lines were taken and before the commit (delete and import) and expect `released` and nothing written; with `Admit` always true both fail on every run, and with it inverted the mutant no longer panics (the panic above).",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Chord activation that waited at the host data gate while an import or delete ran no longer crashes the host when its object ended meanwhile (a reload that no longer serves the type, a close). Its documents were gone, and the activation dereferenced a missing slot. It now ends as Pi's does, as the abandonment of the ended object (Pi's `#broken` returns the abandonment before a failure), and releases the keys it pinned.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "5695ab6a24",
+          "date": "2026-11-10"
+        },
+        {
+          "hash": "05796d6a06",
+          "date": "2026-11-11"
+        },
+        {
+          "hash": "5b36301b39",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "chord/next/documents/documents_test.go::TestHydrateOfDocumentsThatEndedWhileTheAttemptWaitedFailsReleasedAndReleasesItsPins",
+        "chord/next/host/host_host_data_test.go::TestHostDataAnActivationWaitingAtTheGateWhoseObjectEndedMeanwhileFailsReleased",
+        "chord/next/host/host_host_data_test.go::TestHostDataLifecycleADeleteAbortedAfterItsLinesWereTakenIsRefusedAtAdmissionAndWritesNothing",
+        "chord/next/host/host_host_data_test.go::TestHostDataLifecycleAnImportAbortedAfterItsLinesWereTakenIsRefusedAtAdmissionAndWritesNothing",
+        "chord/nextnode/plugins/plugins_node_lifecycle_test.go::TestNodeCloseDoesNotKillAHostThatIsStillClosingWithinItsCloseTimeout",
+        "chord/nextnode/plugins/plugins_node_lifecycle_test.go::TestNodeCloseKillsAHostThatDoesNotAnswerWithinTheGrace",
+        "chord/nextnode/plugins/plugins_node_lifecycle_test.go::TestNodeCloseKillsAHostThatIsStillClosingPastItsCloseTimeoutAndTheGrace"
+      ]
+    },
+    {
       "id": "BF-5b4a3d3",
       "title": "A lazy line no longer continues a quote whose last quoted line is empty (`\u003e\\nnext` is an empty quote then a…",
       "symptom": "A lazy line no longer continues a quote whose last quoted line is empty (`\u003e\\nnext` is an empty quote then a paragraph), and a quote that renders no rows still adds its spacing row.",

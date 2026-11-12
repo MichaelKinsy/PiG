@@ -635,6 +635,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-5b0e909](#bf-5b0e909) | /scoped-models: an empty search no longer makes enable-all/clear-all act on every model, clearing every model… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5b15407](#bf-5b15407) | In-process extensions that call `pi.getCommands()` now receive the extension commands, prompt templates and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5b1d5b1](#bf-5b1d5b1) | A resource pattern that starts with `~` (`!~/claude-backup/skills/pdf`, `+~/…`, `-~/…`, wildcards) now… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-5b36301](#bf-5b36301) | A Chord activation that waited at the host data gate while an import or delete ran no longer crashes the host… | PiG's own defect | All platforms | Unreleased |
 | [BF-5b4a3d3](#bf-5b4a3d3) | A lazy line no longer continues a quote whose last quoted line is empty (`>\nnext` is an empty quote then a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5b637b1](#bf-5b637b1) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-5b8189f](#bf-5b8189f) | In RPC and print mode, a shutdown that has started now finishes | PiG's own defect | All platforms | Unreleased |
@@ -10531,6 +10532,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `5b1d5b1382` (2026-10-10)
 - **Tests:** None recorded.
 - **Release note:** A resource pattern that starts with `~` (`!~/claude-backup/skills/pdf`, `+~/…`, `-~/…`, wildcards) now expands the home directory like a plain entry instead of silently matching nothing, and a `file://` URL pattern is its path, as Pi 1.2.0 does (pi-mono #10765).
+
+### BF-5b36301
+
+**A Chord activation that waited at the host data gate while an import or delete ran no longer crashes the host…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Chord activation that waited at the host data gate while an import or delete ran no longer crashes the host when its object ended meanwhile (a reload that no longer serves the type, a close).
+- **Root cause:** The portmap marker for host/host-data.ts was unproven because no test refused a commit at the fence's admission: Pi's abort test aborts while the delete waits for a line, before the commit. Two tests abort after the lines were taken and before the commit (delete and import) and expect `released` and nothing written; with `Admit` always true both fail on every run, and with it inverted the mutant no longer panics (the panic above).
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `5695ab6a24` (2026-11-10), `05796d6a06` (2026-11-11), `5b36301b39` (2026-11-11)
+- **Tests:** `chord/next/documents/documents_test.go::TestHydrateOfDocumentsThatEndedWhileTheAttemptWaitedFailsReleasedAndReleasesItsPins`, `chord/next/host/host_host_data_test.go::TestHostDataAnActivationWaitingAtTheGateWhoseObjectEndedMeanwhileFailsReleased`, `chord/next/host/host_host_data_test.go::TestHostDataLifecycleADeleteAbortedAfterItsLinesWereTakenIsRefusedAtAdmissionAndWritesNothing`, `chord/next/host/host_host_data_test.go::TestHostDataLifecycleAnImportAbortedAfterItsLinesWereTakenIsRefusedAtAdmissionAndWritesNothing`, `chord/nextnode/plugins/plugins_node_lifecycle_test.go::TestNodeCloseDoesNotKillAHostThatIsStillClosingWithinItsCloseTimeout`, `chord/nextnode/plugins/plugins_node_lifecycle_test.go::TestNodeCloseKillsAHostThatDoesNotAnswerWithinTheGrace`, `chord/nextnode/plugins/plugins_node_lifecycle_test.go::TestNodeCloseKillsAHostThatIsStillClosingPastItsCloseTimeoutAndTheGrace`
+- **Release note:** A Chord activation that waited at the host data gate while an import or delete ran no longer crashes the host when its object ended meanwhile (a reload that no longer serves the type, a close). Its documents were gone, and the activation dereferenced a missing slot. It now ends as Pi's does, as the abandonment of the ended object (Pi's `#broken` returns the abandonment before a failure), and releases the keys it pinned.
 
 ### BF-5b4a3d3
 

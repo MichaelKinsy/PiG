@@ -192,8 +192,8 @@ func TestDocumentsCheckChecksADeclarationAsDeclareWouldChangingNothing(t *testin
 }
 
 // Go-only, Pi's `documents.hydrate` after the object ended while its attempt waited for the host data gate: every declared name
-// misses its slot, `slots.get(name)!` is undefined and `.hydrate` throws a TypeError, which Pi's `#activate` catches as a failed
-// activation. Go returns `released` (the attempt's `broken` makes the same failed activation of it) instead of dereferencing the
+// misses its slot, `slots.get(name)!` is undefined and `.hydrate` throws a TypeError, which Pi's `#activate` catches and hands to `#broken`, whose
+// result for an ended object is the abandonment. Go returns `released` (the attempt's `broken` makes the same abandonment of it) instead of dereferencing the
 // missing slot, and releases the pins the attempt took, which nothing else will; an attempt that declared nothing hydrates.
 func TestHydrateOfDocumentsThatEndedWhileTheAttemptWaitedFailsReleasedAndReleasesItsPins(t *testing.T) {
 	_, draftsDefinition := documentsDefinitions(t)

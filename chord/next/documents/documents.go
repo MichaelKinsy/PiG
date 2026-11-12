@@ -182,8 +182,9 @@ func (d *Documents) Check(definition AnyDefinition) error {
 // every declared one hydrated (`initial()`, migrations; a failure fails the activation). declared is in declaration
 // order. Documents that ended while the attempt waited for the host data gate (its object ended: a reload no longer
 // serving its type, a close) hold none of its declared slots: Pi's `slots.get(name)!` is undefined there and `.hydrate`
-// throws a TypeError, which `#activate`'s catch turns into a failed activation (or the abandonment that came first). Go
-// returns `released` for that, which the attempt's `broken` turns the same way, and releases the pins the attempt took,
+// throws a TypeError, which `#activate`'s catch hands to `#broken`; that returns the abandonment (`#abandoned ?? failed`), and the
+// object was sealed before its documents ended, so the caller sees the abandonment (ended). Go returns `released` for that,
+// which the attempt's `broken` turns into the same abandonment (`released` is never surfaced), and releases the pins the attempt took,
 // which End's release of the previous ones passed over. A section.
 func (d *Documents) Hydrate(declared []AnyDefinition, pins []func(), ctx context.Context) error {
 	if d.state == documentsEnded && len(declared) > 0 {
