@@ -1058,22 +1058,23 @@ class BackportTests(unittest.TestCase):
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import assert from "node:assert/strict";
-const { applyPackageBackports, backportPatches } = await import(process.env.BACKPORTS);
+const { applyPackageBackports, backportPatches, packageFileBackports } = await import(process.env.BACKPORTS);
 const root = process.env.ROOT;
 const packages = {};
+const entriesByFile = { ...backportPatches, ...packageFileBackports };
 const where = (file) => {
   const [name, ...rest] = file.split("/");
   packages[name] = join(root, name);
-  return join(root, name, name === "pi-coding-agent" && rest[0] === "docs" ? rest.join("/") : ["dist", ...rest].join("/"));
+  return join(root, name, name === "pi-coding-agent" && (rest[0] === "docs" || rest[0] === "schemas") ? rest.join("/") : ["dist", ...rest].join("/"));
 };
-for (const [file, entries] of Object.entries(backportPatches)) {
+for (const [file, entries] of Object.entries(entriesByFile)) {
   const path = where(file);
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, entries.map(([before]) => before).join("\n//--\n"));
 }
 assert.deepEqual(Object.keys(packages).sort(), ["pi-ai", "pi-coding-agent", "pi-tui"]);
 applyPackageBackports(packages);
-for (const [file, entries] of Object.entries(backportPatches)) {
+for (const [file, entries] of Object.entries(entriesByFile)) {
   const text = readFileSync(where(file), "utf8");
   for (const [, after] of entries) assert.ok(text.includes(after), `${file} lacks ${after.slice(0, 60)}`);
 }
