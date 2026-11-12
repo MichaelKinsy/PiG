@@ -23,7 +23,8 @@ product=true
 if [ "$event" = pull_request ] || [ "$event" = merge_group ]; then
   : "${base:?base commit}" "${head:?head commit}"
   # A failing diff must fail the job, not read as an empty change that skips the product suites.
-  changed=$(git diff --name-only "$base...$head")
+  # --no-renames: a rename is listed as the path that disappears and the path that appears, whatever diff.renames says.
+  changed=$(git diff --name-only --no-renames "$base...$head")
   product=false
   patterns=()
   while IFS= read -r line; do
