@@ -248,6 +248,7 @@ Each row gives a value to try, what it does and the line in Pi 1.5.2's `packages
 | `terminal.imageWidthCells` | `40` | Images are 40 cells wide. | `:81` |
 | `terminal.clearOnShrink` | `true` | The screen is cleared when the content gets shorter. | `:87` |
 | `terminal.showTerminalProgress` | `true` | A progress bar appears in the terminal tab while the agent works. | `:93` |
+| `terminal.framePacing` | `"pi"` | PiG-only (D625). In fullscreen mode the frames of a streaming reply begin 16 ms apart, as Pi's do, on every terminal. Without it they begin 10 to 16 ms apart on the terminals listed in [Terminal setup](/docs/latest/terminal-setup#display-problems). Global file only; takes effect at the next start. | none |
 | `terminal.hyperlinks`, `terminal.images`, `terminal.trueColor` | `false`, `"kitty"`, `true` | Overrides detection of links, inline images and 24-bit colour. A setting beats `PI_HYPERLINKS`, `PI_IMAGE_PROTOCOL`, `PI_TRUE_COLOR`. | `:99-103` |
 | `images.autoResize` | `false` | Large images go to the model at full size. | `:107` |
 | `images.blockImages` | `true` | The model receives `Image reading is disabled.` in place of each image (Pi `sdk.ts:312`). Checked for this page: `pig -p "what is this" @a.png` sent the text and no image. | `:113` |

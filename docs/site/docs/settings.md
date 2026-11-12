@@ -21,7 +21,7 @@ Use `/settings` to change a setting from inside a session. PiG writes the file f
 
 ## Where PiG reads settings
 
-PiG merges two files. A key set in the project file overrides the same key in the global file. Resource lists are combined. `defaultProjectTrust`, `httpProxy`, `cacheWarming`, `extensionsAutoUpgrade` and `extensionsTypescriptRuntime` are global settings: PiG ignores them in the project file.
+PiG merges two files. A key set in the project file overrides the same key in the global file. Resource lists are combined. `defaultProjectTrust`, `httpProxy`, `cacheWarming`, `extensionsAutoUpgrade`, `extensionsTypescriptRuntime` and `terminal.framePacing` are global settings: PiG ignores them in the project file.
 
 | Scope | Path |
 |---|---|
@@ -130,6 +130,7 @@ To turn cache warming off, choose `off` for **Cache warming** in `/settings`, or
 | `terminal.imageWidthCells` | number | `60` | Width of a rendered image, in terminal cells. |
 | `terminal.clearOnShrink` | boolean | `false` | Repaint the screen when content shrinks. |
 | `terminal.showTerminalProgress` | boolean | `false` | Show OSC 9;4 progress in the terminal tab. |
+| `terminal.framePacing` | `"adaptive" \| "pi"` | `"adaptive"` | PiG-only (D625). How soon the next frame of a streaming reply may begin in fullscreen mode: `"adaptive"` waits four times what the last frame took, between 10 and 16 ms, on the terminals listed in [Terminal setup](/docs/latest/terminal-setup#display-problems); `"pi"` waits Pi's 16 ms everywhere. Any other value is `"adaptive"`. Global setting, read when PiG starts. `PIG_FRAME_PACING` overrides it. |
 | `images.autoResize` | boolean | `true` | Resize an image to at most 2000 by 2000 pixels before PiG sends it to a model. |
 | `images.blockImages` | boolean | `false` | Keep images away from the model. Each image in a message or tool result is replaced by the text `Image reading is disabled.` before the request is sent, as in Pi (`sdk.ts:312`; PiG `coding/block_images.go`). |
 
