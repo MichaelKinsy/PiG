@@ -1871,6 +1871,41 @@
       ]
     },
     {
+      "id": "BF-0aced69",
+      "title": "A streaming tool call's card is drawn again from the rows of its last frame: a `write` card at 160 columns…",
+      "symptom": "A streaming tool call's card is drawn again from the rows of its last frame: a `write` card at 160 columns now re-wraps, measures and pads only the lines whose text changed (its collapsed preview changes one line, the \"...",
+      "rootCause": "A streaming tool call changes the end of a card that is otherwise the same: the card's Box is cleared and refilled by every update (which dropped the Box's render cache, so each row went through applyBg and VisibleWidth again) and its Text takes a new text whose last line, the \"... (N more lines\" hint, differs from the one before, so every row of the card was wrapped, measured and padded again. A write card at 160 columns drew ten ANSI-dense rows that way on every frame.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A streaming tool call's card is drawn again from the rows of its last frame: a `write` card at 160 columns now re-wraps, measures and pads only the lines whose text changed (its collapsed preview changes one line, the \"... (N more lines\" hint) instead of all of them, which halves the per-frame cost of the card in an in-process benchmark (178.7 to 89.5 us per frame for a 50 KB file, 121.7 to 43.0 us for 200 KB). The rows drawn are those of a fresh card. The rows kept are bounded (4096 rows of the last text), so a text of many thousand lines does not retain a memo as large as itself.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0aced69bbe",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/write_card_rows_test.go::TestWriteCardRowsMatchAFreshChainWhileStreaming",
+        "tui/box_row_reuse_test.go::TestBoxRenderAfterClearAppliesTheBackgroundToChangedRowsOnly",
+        "tui/box_row_reuse_test.go::TestBoxRenderAfterClearMatchesAFreshBox",
+        "tui/text_row_bound_test.go::TestTextAfterOneChangeRetainsAboutAsMuchAsATextDrawnOnce",
+        "tui/text_row_cache_test.go::TestTextKeepsRowsOnlyAfterItsTextChanged",
+        "tui/text_row_cache_test.go::TestTextRenderAfterSetTextKeepsTheRowsOfUnchangedLines",
+        "tui/text_row_cache_test.go::TestTextRenderAfterSetTextMatchesAFreshText",
+        "tui/text_row_cache_test.go::TestTextRowsFollowAWidthAndPaddingThatKeepTheContentWidth",
+        "tui/widthx/wrap_cache_bound_test.go::TestLineWrapCacheAcrossItsBoundMatchesWrapTextWithAnsi",
+        "tui/widthx/wrap_cache_bound_test.go::TestLineWrapCacheRetainsABoundedMemo",
+        "tui/widthx/wrap_cache_bound_test.go::TestLineWrapCacheServesTheLinesInsideItsBound",
+        "tui/widthx/wrap_cache_test.go::TestLineWrapCacheMatchesWrapTextWithAnsi",
+        "tui/widthx/wrap_cache_test.go::TestLineWrapCacheWidthAndResetServeNothing",
+        "tui/widthx/wrap_cache_test.go::TestLineWrapCacheWrapsOnlyTheLinesThatChanged"
+      ]
+    },
+    {
       "id": "BF-0adc7a6",
       "title": "A provider that an extension registers while it loads no longer fails the load when the model registry…",
       "symptom": "A provider that an extension registers while it loads no longer fails the load when the model registry rejects it.",

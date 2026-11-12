@@ -87,6 +87,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-0a8ecd3](#bf-0a8ecd3) | A Chord registry value source reads its composition in a section of the host's loop (inline when the caller… | PiG's own defect | All platforms | Unreleased |
 | [BF-0aa31c4](#bf-0aa31c4) | Extensions that import `@earendil-works/pi-ai/models` (for example for `clampThinkingLevel`) load in the Node… | A fix Pi shipped that PiG ported | All platforms | 0.5.2 |
 | [BF-0aba908](#bf-0aba908) | Extensions' `ctx.ui.setHiddenThinkingLabel()` now changes the collapsed thinking label of every assistant… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-0aced69](#bf-0aced69) | A streaming tool call's card is drawn again from the rows of its last frame: a `write` card at 160 columns… | PiG's own defect | All platforms | Unreleased |
 | [BF-0adc7a6](#bf-0adc7a6) | A provider that an extension registers while it loads no longer fails the load when the model registry… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-0ae286c](#bf-0ae286c) | fix: blank-assign the encodeState.WriteByte results in the SDK json copy that go fix touched | PiG's own defect | All platforms | Unreleased |
 | [BF-0ae3fcf](#bf-0ae3fcf) | The login provider list selects with Enter when `tui.select.confirm` is rebound, as Pi's search input submits… | PiG's own defect | All platforms | 0.5.0 |
@@ -2954,6 +2955,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `0aba908b97` (2026-10-07)
 - **Tests:** `internal/codingagent/hidden_thinking_label_test.go::TestExtensionHiddenThinkingLabelReachesAssistantBlocks`, `tui/assistant_message_label_oracle_test.go::TestAssistantMessageHiddenThinkingLabelMatchesPi`
 - **Release note:** Extensions' `ctx.ui.setHiddenThinkingLabel()` now changes the collapsed thinking label of every assistant block (it was stored but never read) and is reset when the session is replaced.
+
+### BF-0aced69
+
+**A streaming tool call's card is drawn again from the rows of its last frame: a `write` card at 160 columns…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A streaming tool call's card is drawn again from the rows of its last frame: a `write` card at 160 columns now re-wraps, measures and pads only the lines whose text changed (its collapsed preview changes one line, the "...
+- **Root cause:** A streaming tool call changes the end of a card that is otherwise the same: the card's Box is cleared and refilled by every update (which dropped the Box's render cache, so each row went through applyBg and VisibleWidth again) and its Text takes a new text whose last line, the "... (N more lines" hint, differs from the one before, so every row of the card was wrapped, measured and padded again. A write card at 160 columns drew ten ANSI-dense rows that way on every frame.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `0aced69bbe` (2026-11-11)
+- **Tests:** `internal/codingagent/write_card_rows_test.go::TestWriteCardRowsMatchAFreshChainWhileStreaming`, `tui/box_row_reuse_test.go::TestBoxRenderAfterClearAppliesTheBackgroundToChangedRowsOnly`, `tui/box_row_reuse_test.go::TestBoxRenderAfterClearMatchesAFreshBox`, `tui/text_row_bound_test.go::TestTextAfterOneChangeRetainsAboutAsMuchAsATextDrawnOnce`, `tui/text_row_cache_test.go::TestTextKeepsRowsOnlyAfterItsTextChanged`, `tui/text_row_cache_test.go::TestTextRenderAfterSetTextKeepsTheRowsOfUnchangedLines`, `tui/text_row_cache_test.go::TestTextRenderAfterSetTextMatchesAFreshText`, `tui/text_row_cache_test.go::TestTextRowsFollowAWidthAndPaddingThatKeepTheContentWidth` and 6 more in docs/bug-ledger.json
+- **Release note:** A streaming tool call's card is drawn again from the rows of its last frame: a `write` card at 160 columns now re-wraps, measures and pads only the lines whose text changed (its collapsed preview changes one line, the "... (N more lines" hint) instead of all of them, which halves the per-frame cost of the card in an in-process benchmark (178.7 to 89.5 us per frame for a 50 KB file, 121.7 to 43.0 us for 200 KB). The rows drawn are those of a fresh card. The rows kept are bounded (4096 rows of the last text), so a text of many thousand lines does not retain a memo as large as itself.
 
 ### BF-0adc7a6
 

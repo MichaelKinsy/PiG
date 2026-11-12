@@ -329871,7 +329871,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "No normalized-name candidate exists in the scanned Pig production packages."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -329880,9 +329880,13 @@
         "designed-out",
         "divergence"
       ],
-      "pigCandidates": [],
+      "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#LineWrapCache.Wrap",
+        "go:github.com/MichaelKinsy/PiG/tui/widthx#LineWrapCache.Wrap"
+      ],
       "missingClosure": [
-        "pig-go-shape",
+        "candidate-disambiguation",
+        "shape-translation-review",
         "production-reachability",
         "required-layers",
         "behavioral-evidence"
