@@ -28,19 +28,20 @@ func helloOf(t testing.TB, peer *RawPeer) *link.HelloMessage {
 	return hello
 }
 
-func intp(n int) *int { return &n }
+//go:fix inline
+func intp(n int) *int { return new(n) }
 
 // host-link.test.ts: call windows by trust › announce none on a link given as trusted, the host's callWindow otherwise: accept and connect
 func TestHostLinkAnnouncesNoCallWindowOnATrustedLinkAndTheHostsOtherwise(t *testing.T) {
 	forEachCodec(t, func(t *testing.T) {
 		for _, parent := range []bool{false, true} {
-			trusted := rawLinked(t, func(FacetHost) error { return nil }, rawLinkedOptions{Parent: parent, Trusted: true, CallWindow: intp(8)})
+			trusted := rawLinked(t, func(FacetHost) error { return nil }, rawLinkedOptions{Parent: parent, Trusted: true, CallWindow: new(8)})
 			rhWaitFor(t, func() bool { return len(trusted.Peer.Kinds()) > 0 })
 			rhSync(t, trusted.Peer)
 			if got := helloOf(t, trusted.Peer).Calls; got != 0 {
 				t.Fatalf("parent=%v: a trusted link announced calls %d, want none", parent, got)
 			}
-			untrusted := rawLinked(t, func(FacetHost) error { return nil }, rawLinkedOptions{Parent: parent, CallWindow: intp(8)})
+			untrusted := rawLinked(t, func(FacetHost) error { return nil }, rawLinkedOptions{Parent: parent, CallWindow: new(8)})
 			rhSync(t, untrusted.Peer)
 			if got := helloOf(t, untrusted.Peer).Calls; got != 8 {
 				t.Fatalf("parent=%v: an untrusted link announced calls %d, want 8", parent, got)
@@ -74,7 +75,7 @@ func TestHostLinkAClientTrustingItsServerKeepsWithinTheServersWindow(t *testing.
 	forEachCodec(t, func(t *testing.T) {
 		errs := &hostErrors{}
 		var probe *notesProbe
-		server := newHost(t, HostOptions{Address: new(Server.Address(nil)), Principal: serverPrincipal(), CallWindow: intp(2), OnError: errs.push})
+		server := newHost(t, HostOptions{Address: new(Server.Address(nil)), Principal: serverPrincipal(), CallWindow: new(2), OnError: errs.push})
 		mustLoad(t)(server.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(host FacetHost, _ FacetSelf) error {
 			var err error
 			probe, err = serveNotes(host, nil)

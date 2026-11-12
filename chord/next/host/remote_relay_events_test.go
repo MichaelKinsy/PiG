@@ -686,7 +686,7 @@ func TestRelayedCallsInARealWorkersFiniteWindowNeverExceedItWhenAHoldWithAForwar
 		var mu sync.Mutex
 		var runs []int
 		rig := relay(t, relayedOptions{
-			WorkerCallWindow: intp(1),
+			WorkerCallWindow: new(1),
 			Worker: func(host FacetHost) error {
 				return host.Serve(waiter, func(params *delta.JsonObject, _ data.Principal, _ Self) (contracts.Implementation, error) {
 					id := params.Value("id").(float64)

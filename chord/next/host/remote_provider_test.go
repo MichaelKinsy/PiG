@@ -1055,7 +1055,7 @@ func TestProviderOrigins(t *testing.T) {
 
 		// Ports "count calls per origin against N: 8 on each of two origins run, one more on one closes the link".
 		t.Run("count calls per origin against N: 8 on each of two origins run, one more on one closes the link", func(t *testing.T) {
-			s := notesServerOf(t, rawLinkedOptions{Parent: true, CallWindow: intp(8)})
+			s := notesServerOf(t, rawLinkedOptions{Parent: true, CallWindow: new(8)})
 			provHold(t, s.Peer, 0, specOf(Notes), jsonObject("session", "S1"))
 			provHold(t, s.Peer, 0, specOf(Notes), jsonObject("session", "S1"), 1)
 			s.Peer.Next("bound")
@@ -1201,7 +1201,7 @@ func TestProviderCallLimit(t *testing.T) {
 	forEachCodec(t, func(t *testing.T) {
 		wait := editorWire(t).Methods["wait"]
 		windowed := func(t testing.TB, window int, trusted bool, parent bool) *notesServerRaw {
-			return notesServerOf(t, rawLinkedOptions{Parent: parent, CallWindow: intp(window), Trusted: trusted})
+			return notesServerOf(t, rawLinkedOptions{Parent: parent, CallWindow: new(window), Trusted: trusted})
 		}
 
 		// Ports "the call limit (decision \"Call windows only for untrusted links\") › announces the host's callWindow on a link it was not given as trusted, 10,000 by default".

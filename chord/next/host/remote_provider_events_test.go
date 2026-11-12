@@ -322,7 +322,7 @@ func TestProviderEvents(t *testing.T) {
 
 		// Ports "keep state and event credits apart: events flow while the state window is full, and the reverse".
 		t.Run("keep state and event credits apart: events flow while the state window is full, and the reverse", func(t *testing.T) {
-			s := matchServer(t, rawLinkedOptions{NoAck: true, EventWindow: intp(1)})
+			s := matchServer(t, rawLinkedOptions{NoAck: true, EventWindow: new(1)})
 			provHoldMatch(t, s.Peer, 0)
 			s.Peer.Next("bound")
 			hostTurn(s.Server, func() { must(t, s.Probe.score(0).Set(1.0)) })
@@ -361,7 +361,7 @@ func TestProviderEvents(t *testing.T) {
 		// Ports "drop a flush's events while the event window is full, counted, and send again once acknowledged".
 		t.Run("drop a flush's events while the event window is full, counted, and send again once acknowledged", func(t *testing.T) {
 			recorder := telemetry.NewInMemoryTelemetryContext()
-			s := matchServer(t, rawLinkedOptions{EventWindow: intp(2), Telemetry: recorder})
+			s := matchServer(t, rawLinkedOptions{EventWindow: new(2), Telemetry: recorder})
 			provHoldMatch(t, s.Peer, 0)
 			s.Peer.Next("bound")
 			counts := func() map[string]float64 {
