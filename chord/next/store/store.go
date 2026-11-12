@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"maps"
 	"reflect"
+	"slices"
 	"sync"
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
@@ -51,6 +52,11 @@ type Store interface {
 	// Export is the store's state after its LastSeq as archive parts (slice 6a §13), holding the commit queue from the
 	// first Next until the iteration ends, fails, is closed or its context aborts.
 	Export(ctx context.Context) (*StoreExport, error)
+	// OnCommitted calls listener with the new LastSeq after commits are durable and adopted (a commit, a group, a series,
+	// an applied batch): on a goroutine of its own, never inside a commit or under the store's lock, once for however many
+	// commits it covers, one call at a time and in order. A listener that panics is removed and its panic handed to onError
+	// as an error, never to the commit. Commits a listener makes are announced like any other. It returns its removal.
+	OnCommitted(listener func(lastSeq int64), onError func(error)) (remove func())
 	// Close closes the store: waits for a running commit step, rejects queued commits and reads `released`, closes the
 	// backend. Idempotent, also after `storage_failed`; ctx ends only this caller's wait (the close goes on).
 	Close(ctx context.Context) error
@@ -314,11 +320,92 @@ type ChordStore struct {
 	catalog map[string]*TableRecord
 	// held is the ends of the exports holding the queue or waiting for it, which closing the store calls.
 	held map[*heldEnd]struct{}
+	// committedListeners are the OnCommitted listeners by registration number, and announcing is whether an announcement
+	// is queued (one per delivery, with the last lastSeq); deliver serializes the deliveries, as one microtask at a time.
+	committedListeners map[int]committedListener
+	nextListener       int
+	announcing         bool
+	deliver            sync.Mutex
 	// announced is the versions migrations of tables announced (AnnounceTable), by SQL name, until their last commit.
 	announced map[string]int
 }
 
 var _ Store = (*ChordStore)(nil)
+
+// committedListener is an OnCommitted listener and the error handler that goes with it.
+type committedListener struct {
+	listener func(lastSeq int64)
+	onError  func(error)
+}
+
+// OnCommitted is Store.OnCommitted.
+func (store *ChordStore) OnCommitted(listener func(lastSeq int64), onError func(error)) (remove func()) {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	id := store.nextListener
+	store.nextListener++
+	if store.committedListeners == nil {
+		store.committedListeners = map[int]committedListener{}
+	}
+	store.committedListeners[id] = committedListener{listener, onError}
+	return func() {
+		store.mu.Lock()
+		delete(store.committedListeners, id)
+		store.mu.Unlock()
+	}
+}
+
+// committed announces the new lastSeq to the OnCommitted listeners in one delivery, however many commits it covers
+// (Pi's one microtask). It must run without mu held, after the commit's memory was taken.
+func (store *ChordStore) committed() {
+	store.mu.Lock()
+	if store.announcing || len(store.committedListeners) == 0 {
+		store.mu.Unlock()
+		return
+	}
+	store.announcing = true
+	store.mu.Unlock()
+	go func() {
+		store.deliver.Lock()
+		defer store.deliver.Unlock()
+		store.mu.Lock()
+		store.announcing = false
+		seq := store.lastSeq
+		ids := make([]int, 0, len(store.committedListeners))
+		for id := range store.committedListeners {
+			ids = append(ids, id)
+		}
+		slices.Sort(ids)
+		each := make([]committedListener, len(ids))
+		for i, id := range ids {
+			each[i] = store.committedListeners[id]
+		}
+		store.mu.Unlock()
+		for i, entry := range each {
+			if err := announce(entry.listener, seq); err != nil {
+				store.mu.Lock()
+				delete(store.committedListeners, ids[i])
+				store.mu.Unlock()
+				entry.onError(err)
+			}
+		}
+	}()
+}
+
+// announce calls a listener; a panic is Pi's throw: its error (a panicked error value itself).
+func announce(listener func(int64), seq int64) (err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			if asError, ok := recovered.(error); ok {
+				err = asError
+			} else {
+				err = fmt.Errorf("%v", recovered)
+			}
+		}
+	}()
+	listener(seq)
+	return nil
+}
 
 // NewChordStore is the store over db, its metadata row and its catalog, as OpenStore builds it.
 func NewChordStore(db sqlite.SqliteDatabase, meta MetaRow, catalog map[string]*TableRecord) *ChordStore {
@@ -922,6 +1009,8 @@ func (store *ChordStore) adoptGroup(admitted []*queuedCommit, done groupWritten)
 		if index < len(admitted) {
 			store.takeWhole(done.written)
 		}
+		// Durable either way: the whole group is stored.
+		store.committed()
 	}()
 	for ; index < len(admitted); index++ {
 		queued, grouped := admitted[index], done.steps[index]
@@ -1038,6 +1127,7 @@ func (store *ChordStore) admittedStep(writes []StagedWrite, fence CommitFence, c
 		store.catalog = withTables(store.catalog, done.step.Tables)
 	}
 	store.mu.Unlock()
+	store.committed()
 	if err := countCommit(ctx, 1, done.step.Statements); err != nil {
 		return 0, store.failTurn(err)
 	}
@@ -1112,6 +1202,7 @@ func (store *ChordStore) series(commits []SeriesCommit, receive func(index int, 
 			store.catalog = withTables(store.catalog, done.last.tables)
 		}
 		store.mu.Unlock()
+		store.committed()
 	}
 	if err := countCommit(ctx, done.written, done.statements); err != nil {
 		return SeriesResult{}, store.fail(err)
@@ -1375,6 +1466,7 @@ func (store *ChordStore) replay(apply ReplayApply, isDivergence func(err error) 
 	}
 	store.mu.Unlock()
 	store.ids.Raise(replayed.NextID - 1)
+	store.committed()
 	return nil
 }
 

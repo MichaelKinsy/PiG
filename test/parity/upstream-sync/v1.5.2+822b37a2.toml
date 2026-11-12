@@ -1,0 +1,65 @@
+from = "1.5.2+628d8ab5"
+to = "1.5.2+822b37a2"
+
+[[files]]
+path = "packages/chord/src/store/store.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/store/store_test.go#TestStore"]
+rationale = "6268cc5cd (backup coordinator, Chord part): Store.onCommitted announces lastSeq after a commit, a group, a series or an applied batch is durable, in a microtask of its own, once for however many commits it covers; a listener that throws is removed and its error handed to onError. store.go OnCommitted/committed announces from a goroutine of its own outside the store's lock (deliveries serialized by a mutex, so listeners see increasing seqs one at a time), coalesced by the announcing flag; a panic is Pi's throw. Pi's three cases are ported (onCommitted subtests of TestStore); the exact once-per-microtask count cannot be observed in Go, so the test asserts the last seq, order, no call under the lock, no call for a series-less refusal and the removal."
+
+[[files]]
+path = "packages/chord/test/store/store.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/store/store_test.go#TestStore"]
+rationale = "6268cc5cd: the three onCommitted cases, ported in TestStore/onCommitted."
+
+[[files]]
+path = "packages/chord/src/sync/client.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "6268cc5cd: uploadSession's store parameter is narrowed to SessionSyncUploader, only putBatch: a TypeScript type with no observable behaviour and no Pi test. UploadOptions.Store keeps SessionSyncStore, which the pinned v1.5.2 interface mapping (checked against the pinned Pi's uploadSession) names; the narrowing comes with the pin that carries it."
+
+[[files]]
+path = "packages/chord/src/sync/remote.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "6268cc5cd: SessionSyncUploader = Pick<SessionSyncStore, putBatch>, a TypeScript utility type; see client.ts."
+
+[[files]]
+path = "packages/chord/src/sync/index.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "6268cc5cd: the barrel exports the new type; Go imports the package."
+
+[[files]]
+path = "packages/chord/src/node/plugins/plugins.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/plugins/plugins_plugins_test.go#TestPluginsPerPluginAtReloadDiscoversAgainForANamedPluginTheWatcherHasNotReportedYetRemovedOrNew"]
+rationale = "822b37a27: build discovers again when a named plugin is unknown to discovery or a file discovery found for it (its facets, a directory plugin's package.json) is gone, so a build in the tick of a deletion or addition does not use stale discovery. plugins_plugins.go unseen does the same with os.Stat. Pi's same-tick test is ported with the watcher's lag made exact (pcLagBehind clears the watcher's set and manifest marks after its events were let through), because a Go watcher runs on its own goroutine; the case fails when unseen is removed."
+
+[[files]]
+path = "packages/chord/src/node/plugins/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "822b37a27: the Pi README line about build; the Go doc comment of Plugins.Build says the same."
+
+[[files]]
+path = "packages/chord/test/node/plugins/plugins.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/plugins/plugins_plugins_test.go#TestPluginsPerPluginAtReloadDiscoversAgainForANamedPluginTheWatcherHasNotReportedYetRemovedOrNew"]
+rationale = "822b37a27: the new case, ported; itemSource is the existing pcItemPlugin helper."
+
+[[files]]
+path = "packages/chord/test/examples/61-tutorial/main.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:examples/chord-todo/tutorial_test.go#TestTheTutorialsStepsPrintWhatTheBookShows"]
+rationale = "f2bd84a51: the tutorial waits for app.baseWatched before adding the plugin of step 6. themeStep (examples/chord-todo/theme.go) waits for App.BaseWatched() first."

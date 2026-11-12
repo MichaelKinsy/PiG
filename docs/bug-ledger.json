@@ -31439,6 +31439,21 @@
       "tests": []
     },
     {
+      "id": "BF-923efd7",
+      "title": "chord: `Plugins.Build` discovers again when a named plugin is unknown to discovery or a file discovery found…",
+      "symptom": "chord: `Plugins.Build` discovers again when a named plugin is unknown to discovery or a file discovery found for it is gone, so a plugin deleted (or written) just before a build is removed (or added) even when the watcher's events lag (Pi 822b37a27).",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "chord: `Plugins.Build` discovers again when a named plugin is unknown to discovery or a file discovery found for it is gone, so a plugin deleted (or written) just before a build is removed (or added) even when the watcher's events lag (Pi 822b37a27).",
+      "origin": "release note",
+      "commits": [],
+      "tests": []
+    },
+    {
       "id": "BF-928e15c",
       "title": "A listener that fails while agent_start is dispatched now ends the run as in Pi (failure messages, no…",
       "symptom": "A listener that fails while agent_start is dispatched now ends the run as in Pi (failure messages, no turn_start or prompt), and the failure message carries the model's api (agent.ts handleRunFailure).",
@@ -45836,6 +45851,21 @@
           "date": "2026-10-09"
         }
       ],
+      "tests": []
+    },
+    {
+      "id": "BF-d4c1691",
+      "title": "chord tutorial: chapter VI waits for the app's base code to be watched before it adds the Harbor plugin, so…",
+      "symptom": "chord tutorial: chapter VI waits for the app's base code to be watched before it adds the Harbor plugin, so file events dropped while a watch is added no longer leave it waiting (Pi f2bd84a51).",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "chord tutorial: chapter VI waits for the app's base code to be watched before it adds the Harbor plugin, so file events dropped while a watch is added no longer leave it waiting (Pi f2bd84a51).",
+      "origin": "release note",
+      "commits": [],
       "tests": []
     },
     {

@@ -1140,6 +1140,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-91e912a](#bf-91e912a) | Two PiG versions that share a config root (two installed versions, or PiG beside a Piglet Binary) no longer… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-91f9946](#bf-91f9946) | OpenRouter image generation reads the chat completions body as Pi does, checked against the pinned Pi in a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-9208423](#bf-9208423) | fix(imageprocessing): an image with no pixels is not encoded as PNG | PiG's own defect | All platforms | Unreleased |
+| [BF-923efd7](#bf-923efd7) | chord: `Plugins.Build` discovers again when a named plugin is unknown to discovery or a file discovery found… | PiG's own defect | All platforms | Unreleased |
 | [BF-928e15c](#bf-928e15c) | A listener that fails while agent_start is dispatched now ends the run as in Pi (failure messages, no… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-928e15c-10](#bf-928e15c-10) | Constrained-sampling errors quote tool and property names as Pi does (raw text between double quotes, not… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-928e15c-11](#bf-928e15c-11) | GitHub Copilot model-catalog fetches now report a failed response as Pi does (`<status> <reason>: <untrimmed… | PiG's own defect | All platforms | 0.5.0 |
@@ -1652,6 +1653,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-d42aebb](#bf-d42aebb) | `ai.ValidateToolArguments` and `ai.ValidateToolCall` list a failed validation's errors in the order the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d449f74](#bf-d449f74) | `tool_search` and the Durable `searchTools()` ranker compute the same BM25 scores as Pi on arm64: the length… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d490a8b](#bf-d490a8b) | Tool argument validation errors follow Pi: at most eight errors are listed (TypeBox's `maxErrors`), and… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-d4c1691](#bf-d4c1691) | chord tutorial: chapter VI waits for the app's base code to be watched before it adds the Harbor plugin, so… | PiG's own defect | All platforms | Unreleased |
 | [BF-d4ddb14](#bf-d4ddb14) | The `/scoped-models` search input stays editable after a submit key reaches it (LF under the Kitty keyboard… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d4e641b](#bf-d4e641b) | An MCP Streamable HTTP `application/json` reply over `maxMessageBytes` (default 16 MiB) is now rejected with… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-d4e641b-2](#bf-d4e641b-2) | An MCP Streamable HTTP error body is read only up to its first 8 KiB, and the rest is cancelled; the kept… | PiG's own defect | All platforms | 0.7.0 |
@@ -17539,6 +17541,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `9208423356` (2026-10-29)
 - **Tests:** None recorded.
 
+### BF-923efd7
+
+**chord: `Plugins.Build` discovers again when a named plugin is unknown to discovery or a file discovery found…**
+
+- **Source:** PiG's own defect
+- **Symptom:** chord: `Plugins.Build` discovers again when a named plugin is unknown to discovery or a file discovery found for it is gone, so a plugin deleted (or written) just before a build is removed (or added) even when the watcher's events lag (Pi 822b37a27).
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** Not yet committed.
+- **Tests:** None recorded.
+- **Release note:** chord: `Plugins.Build` discovers again when a named plugin is unknown to discovery or a file discovery found for it is gone, so a plugin deleted (or written) just before a build is removed (or added) even when the watcher's events lag (Pi 822b37a27).
+
 ### BF-928e15c
 
 **A listener that fails while agent_start is dispatched now ends the run as in Pi (failure messages, no…**
@@ -24660,6 +24676,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `d490a8b161` (2026-10-09)
 - **Tests:** None recorded.
 - **Release note:** Tool argument validation errors follow Pi: at most eight errors are listed (TypeBox's `maxErrors`), and errors for additional properties, pattern properties and property names come in the arguments' member order instead of sorted order.
+
+### BF-d4c1691
+
+**chord tutorial: chapter VI waits for the app's base code to be watched before it adds the Harbor plugin, so…**
+
+- **Source:** PiG's own defect
+- **Symptom:** chord tutorial: chapter VI waits for the app's base code to be watched before it adds the Harbor plugin, so file events dropped while a watch is added no longer leave it waiting (Pi f2bd84a51).
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** Not yet committed.
+- **Tests:** None recorded.
+- **Release note:** chord tutorial: chapter VI waits for the app's base code to be watched before it adds the Harbor plugin, so file events dropped while a watch is added no longer leave it waiting (Pi f2bd84a51).
 
 ### BF-d4ddb14
 

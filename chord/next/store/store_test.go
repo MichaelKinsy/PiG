@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -624,6 +625,124 @@ func TestStore(t *testing.T) {
 			noError(t, <-closed)
 			_, err = Read(store, func(sqlite.SqliteExecutor) (int, error) { return 1, nil }, background)
 			_ = rejected(t, err, data.CodeReleased, "")
+		})
+	})
+
+	t.Run("onCommitted", func(t *testing.T) {
+		// Go form of Pi's microtask announcement: a goroutine of its own, outside the store's lock and the commit's call
+		// stack, coalescing the commits it covers, one at a time and in order.
+		var mu sync.Mutex
+		type heard struct {
+			seqs   []int64
+			errors []error
+		}
+		listen := func(store *ChordStore, h *heard, throw bool) func() {
+			return store.OnCommitted(func(seq int64) {
+				// Called with the store's lock free: LastSeq would deadlock under it.
+				_ = store.LastSeq()
+				mu.Lock()
+				h.seqs = append(h.seqs, seq)
+				mu.Unlock()
+				if throw {
+					panic(errors.New("listener"))
+				}
+			}, func(err error) {
+				mu.Lock()
+				h.errors = append(h.errors, err)
+				mu.Unlock()
+			})
+		}
+		last := func(h *heard) int64 {
+			mu.Lock()
+			defer mu.Unlock()
+			if len(h.seqs) == 0 {
+				return -1
+			}
+			return h.seqs[len(h.seqs)-1]
+		}
+		waitLast := func(t *testing.T, h *heard, want int64) {
+			t.Helper()
+			deadline := time.Now().Add(5 * time.Second)
+			for last(h) != want {
+				if time.Now().After(deadline) {
+					t.Fatalf("announced %v, want last %d", h.seqs, want)
+				}
+				time.Sleep(time.Millisecond)
+			}
+		}
+		keyed := func(key string) StagedWrite {
+			address := storeAddress
+			address.Key = &key
+			return CreateDocument(address, storeBase, "{}", nil)
+		}
+
+		t.Run("announces the new lastSeq after commits are durable, never inside a commit, in order, with the last seq", func(t *testing.T) {
+			store := memoryStore(t)
+			h := &heard{}
+			remove := listen(store, h, false)
+			_, fence := recording()
+			_, err := store.Commit([]StagedWrite{keyed("")}, fence, background)
+			noError(t, err)
+			waitLast(t, h, store.LastSeq())
+			for _, key := range []string{"b", "c"} {
+				_, err = store.Commit([]StagedWrite{keyed(key)}, fence, background)
+				noError(t, err)
+			}
+			waitLast(t, h, store.LastSeq())
+			mu.Lock()
+			for i := 1; i < len(h.seqs); i++ {
+				if h.seqs[i] <= h.seqs[i-1] {
+					t.Fatalf("announced %v: not increasing", h.seqs)
+				}
+			}
+			mu.Unlock()
+			remove()
+			_, err = store.Commit([]StagedWrite{keyed("d")}, fence, background)
+			noError(t, err)
+			time.Sleep(50 * time.Millisecond)
+			if got := last(h); got != store.LastSeq()-1 {
+				t.Fatalf("last announced after removal = %d, want %d", got, store.LastSeq()-1)
+			}
+		})
+
+		t.Run("announces a series and a refused commit not at all", func(t *testing.T) {
+			store := memoryStore(t)
+			h := &heard{}
+			listen(store, h, false)
+			_, err := store.CommitSeries([]SeriesCommit{{Check: func(*Step) error { return nil }, Writes: []StagedWrite{keyed("")}}}, func(int, int64, []int64) error { return nil }, background)
+			noError(t, err)
+			waitLast(t, h, store.LastSeq())
+			mu.Lock()
+			before := len(h.seqs)
+			mu.Unlock()
+			_, fence := recording()
+			if _, err := store.Commit([]StagedWrite{brokenWrite}, fence, background); err == nil {
+				t.Fatal("Commit(broken) succeeded")
+			}
+			time.Sleep(50 * time.Millisecond)
+			mu.Lock()
+			defer mu.Unlock()
+			if len(h.seqs) != before {
+				t.Fatalf("a refused commit announced: %v", h.seqs)
+			}
+		})
+
+		t.Run("removes a listener that throws and hands its error to onError; the commit stands", func(t *testing.T) {
+			store := memoryStore(t)
+			h := &heard{}
+			listen(store, h, true)
+			_, fence := recording()
+			_, err := store.Commit([]StagedWrite{keyed("")}, fence, background)
+			noError(t, err)
+			waitLast(t, h, 1)
+			_, err = store.Commit([]StagedWrite{keyed("b")}, fence, background)
+			noError(t, err)
+			time.Sleep(50 * time.Millisecond)
+			mu.Lock()
+			defer mu.Unlock()
+			if len(h.seqs) != 1 || len(h.errors) != 1 || h.errors[0].Error() != "listener" || store.LastSeq() != 2 {
+				t.Fatalf("calls %v, errors %v, lastSeq %d, want one call, the listener's error, 2", h.seqs, h.errors, store.LastSeq())
+			}
 		})
 	})
 
