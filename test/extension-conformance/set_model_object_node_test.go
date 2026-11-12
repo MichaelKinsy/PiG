@@ -3,6 +3,7 @@ package extensionconformance
 import (
 	"context"
 	"encoding/json"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
@@ -19,6 +20,7 @@ import (
 // Pi's setModel keeps the object it is given (agent-session.ts:2644-2652: agent.state.model = model). An extension that edits a registry model
 // (Pi's test 9631 sets inputLimits on one) or builds one by hand sees that object as ctx.model, in model_select and in requests. PiG's Node runtime
 // sends `${model.provider}/${model.id}` (runtime-node/runtime.mjs:2614) and the host rebuilds the model from its registry, so every other member is lost.
+// The extension runs alone in its Node process (isolated) and beside a peer in one shared Node realm (packed); both must keep the object.
 func TestSetModelKeepsTheObjectNode(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
@@ -28,6 +30,7 @@ func TestSetModelKeepsTheObjectNode(t *testing.T) {
 	}
 	t.Setenv("ANTHROPIC_API_KEY", "conformance-key")
 	path := filepath.Join(findModuleRoot(t), "test", "extension-conformance", "testdata", "set-model-object", "main.mjs")
+	for _, topology := range []string{"isolated", "packed"} {
 	for _, tc := range []struct {
 		name, object string
 		wantWindow   int
@@ -36,7 +39,7 @@ func TestSetModelKeepsTheObjectNode(t *testing.T) {
 		{"registry-model-edited", `{"provider":"anthropic","id":"claude-haiku-4-5","contextWindow":4321}`, 4321, ""},
 		{"hand-built-on-a-known-provider", `{"provider":"anthropic","id":"claude-handmade-9","api":"anthropic-messages","baseUrl":"https://gateway.invalid/v1","contextWindow":4321,"maxTokens":99,"reasoning":false,"input":["text"],"cost":{"input":1,"output":2,"cacheRead":0,"cacheWrite":0}}`, 4321, "https://gateway.invalid/v1"},
 	} {
-		t.Run(tc.name, func(t *testing.T) {
+		t.Run(topology+"/"+tc.name, func(t *testing.T) {
 			notify, status, actions := &[]string{}, &[]string{}, &[]string{}
 			ui := newRecordingUI(notify, status)
 			bridge := subprocess.NewUIBridge(hostEffects.notify)
@@ -48,12 +51,29 @@ func TestSetModelKeepsTheObjectNode(t *testing.T) {
 			h.SetHostInfo(conformanceHostInfo)
 			h.ShareCells(conformanceCellRegistry)
 			h.SetUIBridge(bridge)
-			ext, err := h.Load(context.Background(), subprocess.ExtConfig{Name: "set-model-object", Source: path, Enabled: true})
-			if err != nil {
-				t.Fatal(err)
+			var exts []extension.Extension
+			if topology == "isolated" {
+				ext, err := h.Load(context.Background(), subprocess.ExtConfig{Name: "set-model-object", Source: path, Enabled: true})
+				if err != nil {
+					t.Fatal(err)
+				}
+				exts = []extension.Extension{*ext}
+			} else {
+				peer := filepath.Join(t.TempDir(), "node-cell-peer.mjs")
+				if err := os.WriteFile(peer, []byte("export default function () {}\n"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+				var errs []error
+				exts, errs = h.LoadAll(context.Background(), []subprocess.ExtConfig{
+					{Name: "set-model-object", Source: path, Enabled: true},
+					{Name: "node-cell-peer", Source: peer, Enabled: true},
+				})
+				if len(errs) != 0 || len(exts) != 2 {
+					t.Fatalf("packed Node LoadAll: %d loaded, %v", len(exts), errs)
+				}
 			}
 			t.Cleanup(func() { h.Shutdown("test done") })
-			runner := inproc.NewRunner([]extension.Extension{*ext}, t.TempDir())
+			runner := inproc.NewRunner(exts, t.TempDir())
 			bridge.SetUIPromptScope(runner)
 			services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 			if err != nil {
@@ -88,5 +108,6 @@ func TestSetModelKeepsTheObjectNode(t *testing.T) {
 			}
 			t.Logf("notifications: %q", ui.Recorded())
 		})
+	}
 	}
 }
