@@ -239,10 +239,12 @@ func (a *OutputAccumulator) trimTail() {
 }
 
 // snapshotText is the tail a snapshot truncates: it starts at a line boundary once the tail has been trimmed. The slice aliases the tail.
+// Clipping drops the partial first line of the retained tail. When the tail is only the end of one over-long line, that is everything, so the
+// unclipped tail is returned instead and the truncation shows the end of that line (Pi 935f0ac0ccfc, #12092).
 func (a *OutputAccumulator) snapshotText() []byte {
 	tail := a.tail
 	if !a.tailStartsAtLineBoundary {
-		if i := bytes.IndexByte(tail, '\n'); i >= 0 {
+		if i := bytes.IndexByte(tail, '\n'); i >= 0 && i+1 < len(tail) {
 			tail = tail[i+1:]
 		}
 	}
