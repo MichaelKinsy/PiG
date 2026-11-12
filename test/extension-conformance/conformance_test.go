@@ -3286,10 +3286,12 @@ func conformanceActions(actions *[]string) *subprocess.HostCallbacks {
 		},
 		GetThinkingLevel: func() string { return conformanceThinkingLevel },
 		GetCommands:      func() []subprocess.CommandInfo { return conformanceHostCommands },
-		SetModel: func(_ context.Context, model string) (bool, error) {
+		SetModel: func(_ context.Context, object *ai.Model) (bool, error) {
+			model := modelSpec(object)
 			*actions = append(*actions, "setModel:"+model)
 			return model == conformanceKnownModel, nil
 		},
+		ResolveModel: specModel,
 		AppendEntry: func(customType string, data any, _ *subprocess.DirectEntryAppend) error {
 			*actions = append(*actions, fmt.Sprintf("appendEntry:%s:%v", customType, data))
 			return nil

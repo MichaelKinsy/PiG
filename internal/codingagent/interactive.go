@@ -1141,6 +1141,8 @@ type InteractiveModeOptions struct {
 	// DefaultModelPerProvider shares the startup resolver's provider defaults with /login.
 	DefaultModelPerProvider map[string]string
 
+	// ModelBinder gives a model object an extension passed to setModel over the wire the Session runtime's backend (coding.ModelRuntime.BindModelObject).
+	ModelBinder func(*ai.Model) *ai.Model
 	// ModelLookup resolves a provider/model identity through the Session-owned runtime.
 	ModelLookup  func(providerID, modelID string) *ai.Model
 	ModelCatalog func(providerID ...string) []*ai.Model

@@ -115,7 +115,7 @@ func (s *replicatedHostSession) bind(b *subprocess.UIBridge) {
 		s.appendEntry("custom_message", fmt.Sprintf(`"customType":%q,"content":%q,"display":%t`, message.CustomType, message.Content, message.Display))
 		return nil
 	})
-	b.SetHostAction("setModel", func(_ context.Context, model string) (bool, error) {
+	setModelBySpec(b, func(_ context.Context, model string) (bool, error) {
 		provider, id, ok := strings.Cut(model, "/")
 		if !ok {
 			return false, fmt.Errorf("model %q is not provider/id", model)
