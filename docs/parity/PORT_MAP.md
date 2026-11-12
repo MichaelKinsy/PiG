@@ -992,12 +992,12 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/node/plugins/base-inputs.ts` | `chord/nextnode/plugins/model/model_baseinputs.go (BaseInputs, ContentHash, HashFile), chord/nextnode/plugins/build/build_recorder.go (Recorder: the one read of a file, kept under a lock for esbuild's goroutines)` | ✅ |
 | `packages/chord/src/node/plugins/css-modules.ts` | `chord/nextnode/plugins/build/build_cssmodules.go (ScopeCSSModule), chord/nextnode/plugins/plugins_cssmodules_node.go (the mapping module runs in a Node subprocess, as Pi runs it in a vm context: the same Script, spread and JSON.stringify)` | ✅ |
 | `packages/chord/src/node/plugins/testing.ts` | `chord/nextnode/plugins/plugins_testing.go` | ✅ |
-| `packages/chord/src/node/surfaces/bundle.ts` | `chord/nextnode/surfaces/surfaces_bundle.go` | ✅ |
+| `packages/chord/src/node/surfaces/bundle.ts` | `chord/nextnode/surfaces/surfaces_bundle.go; Pi da44c4df3: file loaders for AssetExtensions (fonts, images, WebAssembly under assets/)` | ✅ |
 | `packages/chord/src/node/surfaces/current.ts` | `chord/nextnode/surfaces/surfaces_current.go` | ✅ |
 | `packages/chord/src/node/surfaces/surface-build.ts` | `chord/nextnode/surfaces/surfaces_build.go` | ✅ |
 | `packages/chord/src/node/surfaces/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
 | `packages/chord/src/node/surfaces/published.ts` | `chord/nextnode/surfaces/surfaces_published.go` (PublishedScripts: set retention, build-failure carry-over, digests, source maps, assets and the rollout Step; chord/nextnode/surfaces/surfaces_published_test.go) | ✅ |
-| `packages/chord/src/node/surfaces/served.ts` | `chord/nextnode/surfaces/surfaces_served.go` | ✅ |
+| `packages/chord/src/node/surfaces/served.ts` | `chord/nextnode/surfaces/surfaces_served.go; Pi da44c4df3: AssetExtensions` | ✅ |
 | `packages/chord/src/node/surfaces/tui.ts` | `chord/nextnode/surfaces/surfaces_tui.go` | ✅ |
 | `packages/chord/src/node/surfaces/web.ts` | `chord/nextnode/surfaces/surfaces_web.go; Pi 22fe46c7b: WebSurfaceOptions.Routes (false: no routes), WebSurface.File, PageAssets and Base, PageBootstrap` | ✅ |
 | `packages/chord/src/node/tui/actions.ts` | `chord/nextnode/tui/tui_actions.go` | ✅ |

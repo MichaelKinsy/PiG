@@ -1,0 +1,23 @@
+from = "1.5.2+22fe46c7"
+to = "1.5.2+da44c4df"
+
+[[files]]
+path = "packages/chord/src/node/surfaces/bundle.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/surfaces/surfaces_bundle_test.go#TestAssetsCollectsTheFontsAndImagesTheBasesStylesheetNamesAsFilesUnderAssetsNamedByTheirContent"]
+rationale = "da44c4df3: buildBase has a file loader for every extension of ASSET_EXTENSIONS (fonts, images, WebAssembly), so a base stylesheet whose url() names a font or an image builds, the file collected under assets/ and named by its content. surfaces_bundle.go BuildBase sets the same esbuild loaders (its AssetNames already named assets/[name]-[hash]); the new case is red before (esbuild: no loader for .woff2)."
+
+[[files]]
+path = "packages/chord/src/node/surfaces/served.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/surfaces/surfaces_bundle_test.go#TestAssetsCollectsTheFontsAndImagesTheBasesStylesheetNamesAsFilesUnderAssetsNamedByTheirContent"]
+rationale = "da44c4df3: ASSET_EXTENSIONS, the extensions of the files a build collects as assets (svg, png, jpg, jpeg, gif, webp, woff, woff2, ttf, wasm), beside their types. surfaces_served.go exports AssetExtensions, which BuildBase's loaders and the types of assetTypes share."
+
+[[files]]
+path = "packages/chord/test/node/surfaces/bundle.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/surfaces/surfaces_bundle_test.go#TestAssetsCollectsTheFontsAndImagesTheBasesStylesheetNamesAsFilesUnderAssetsNamedByTheirContent"]
+rationale = "da44c4df3: the \"assets\" case ported with the same project (a stylesheet naming body.woff2 and logo.png)."
