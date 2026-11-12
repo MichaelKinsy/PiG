@@ -7612,7 +7612,6 @@
       ],
       "tests": [
         "ai/models_runtime_drain_test.go::TestModelsDrainJoinsAbandonedRefreshButNotLogin",
-        "internal/codingagent/model_availability_read_context_test.go::TestAvailabilityReadContextOnlyWithoutExtensionProviders",
         "internal/codingagent/model_picker_parity_test.go::TestModelPickerGeminiAuthAndCatalog",
         "internal/codingagent/model_selector_native_refresh_owned_test.go::TestModelSelectorNativeProviderRefreshDoesNotOutliveShutdown"
       ]
@@ -36537,6 +36536,36 @@
       ]
     },
     {
+      "id": "BF-D628",
+      "title": "auth.json is read once per availability pass, where Pi stats it on every credential read",
+      "symptom": "none; Pi's stat per read is correct, only costlier.",
+      "rootCause": "an interactive start made 455 revision stats (two synchronous passes of 126 to 131 each and one asynchronous pass of 176, in a fresh home with three models.json providers), 4 to 5 per provider; the built-in llama.cpp extension registers a provider in every start, so the earlier one-view rule, which excluded every pass with an extension provider, never applied to the start's refresh. With one check per pass the same start makes 19, one of them per pass.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D628",
+      "removeWhen": "Pi reads its auth storage once per availability refresh, or an extension API exists through which a provider's check announces that it changed stored credentials, so the view can end there. The credential API already ends the view for writes made through it in this process; no API covers a check that writes the file itself.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "b5c9e29c8f",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/model_availability_auth_pass_test.go::TestAuthWriteDuringAvailabilityPassIsUsedByNextRequest",
+        "coding/model_availability_auth_pass_test.go::TestAvailabilityPassStatsEachAuthFileOnce",
+        "coding/model_availability_auth_pass_test.go::TestAvailabilityPassStatsEveryReadAfterACommandKey",
+        "coding/model_availability_auth_pass_test.go::TestBrokenAuthFileDuringAvailabilityPass",
+        "coding/model_availability_auth_pass_test.go::TestCredentialAPIWriteDuringAvailabilityPassIsUsedByTheSamePass",
+        "coding/model_availability_auth_pass_test.go::TestExtensionCheckRewritingAuthFileIsUsedByNextRequest",
+        "coding/model_availability_auth_view_test.go::TestAvailabilityPassAuthViewMatchesPiUpstream",
+        "internal/codingagent/model_availability_read_context_test.go::TestAvailabilityReadContextGivesEveryPassOneAuthView"
+      ]
+    },
+    {
       "id": "BF-a076a50",
       "title": "A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…",
       "symptom": "The time the connection had spent idle in the pool was deducted from the next request's timeout.",
@@ -46626,7 +46655,6 @@
       ],
       "tests": [
         "ai/models_runtime_drain_test.go::TestModelsDrainJoinsAbandonedRefreshButNotLogin",
-        "internal/codingagent/model_availability_read_context_test.go::TestAvailabilityReadContextOnlyWithoutExtensionProviders",
         "internal/codingagent/model_picker_parity_test.go::TestModelPickerGeminiAuthAndCatalog",
         "internal/codingagent/model_selector_native_refresh_owned_test.go::TestModelSelectorNativeProviderRefreshDoesNotOutliveShutdown"
       ]
@@ -58918,6 +58946,11 @@
       "id": "D619",
       "title": "A status-indicator or Loader animation step asks for its frame within min(40 ms, interval/2), where Pi asks…",
       "entry": "BF-D619"
+    },
+    {
+      "id": "D628",
+      "title": "auth.json is read once per availability pass, where Pi stats it on every credential read",
+      "entry": "BF-D628"
     }
   ],
   "exemptCommits": {
