@@ -35,6 +35,16 @@ type FinalFrameResult struct {
 	Tail string
 	// Frames is the raw bytes of the frames that begin after the last Text (from the first CSI ? 2026 h on), for the cursor-only count.
 	Frames string
+	// WriteLog reports that the frames were read from the step's write log, the bytes the renderers wrote, and not from the terminal transcript.
+	WriteLog bool
+}
+
+// source names, for a failure message, the file the observation read.
+func (r FinalFrameResult) source() string {
+	if r.WriteLog {
+		return "the write log (PI_TUI_WRITE_LOG)"
+	}
+	return "the raw transcript"
 }
 
 // CursorOnly is the number of cursor-only frames among the frames that begin after the last Text.
@@ -50,10 +60,19 @@ func finalFrameQuiet(spec TmuxFinalFrame) time.Duration {
 	return finalFrameQuietDefault
 }
 
+// finalFrameSource is the file a final_frame observation reads: the terminal transcript or, when the step names one, the write log of the
+// binary's renderers, with the scenario's tokens expanded.
+func finalFrameSource(transcriptPath string, spec TmuxFinalFrame, expand func(string) string) string {
+	if spec.WriteLog == "" {
+		return transcriptPath
+	}
+	return expand(spec.WriteLog)
+}
+
 // observeFinalFrame reads the raw transcript (tmux pipe-pane) for frames written after the last Text. It reads the finished transcript: finishTranscript has returned nil, so the file holds every byte the pane wrote.
 func observeFinalFrame(transcriptPath string, spec TmuxFinalFrame) FinalFrameResult {
 	raw, _ := os.ReadFile(transcriptPath)
-	result := FinalFrameResult{Observed: true, Text: spec.Text}
+	result := FinalFrameResult{Observed: true, Text: spec.Text, WriteLog: spec.WriteLog != ""}
 	at := bytes.LastIndex(raw, []byte(spec.Text))
 	if at < 0 {
 		return result
@@ -77,6 +96,7 @@ func (r FinalFrameResult) merge(next FinalFrameResult) FinalFrameResult {
 		return next
 	}
 	r.Found = r.Found && next.Found
+	r.WriteLog = r.WriteLog || next.WriteLog
 	r.Trailing += next.Trailing
 	r.Frames += next.Frames
 	if next.Trailing > 0 || !next.Found {

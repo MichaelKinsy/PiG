@@ -83,6 +83,85 @@ func TestObserveFinalFrameKeepsTheFramesAfterTheText(t *testing.T) {
 	}
 }
 
+// A step that names a write log is read from it, the bytes the renderers wrote, and not from the terminal transcript: PiG's screen writer (D624)
+// does not send the terminal a frame that changes nothing, so the transcript of a writer-mode run lacks the cursor-only frame the write log holds.
+func TestFinalFrameIsReadFromTheWriteLogAStepNames(t *testing.T) {
+	frame := func(body string) string { return "\x1b[?2026h" + body + "\x1b[37;1H\x1b[?25l\x1b[?2026l" }
+	cursorOnly := "\x1b[?2026h\x1b[37;1H\x1b[?25l\x1b[?2026l"
+	dir := t.TempDir()
+	transcript, writeLog := filepath.Join(dir, "terminal-transcript.log"), filepath.Join(dir, "renderer-writes.log")
+	if err := os.WriteFile(transcript, []byte(frame("ready")+frame("\x1b[2;1Hx")), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(writeLog, []byte(frame("ready")+frame("\x1b[2;1Hx")+cursorOnly), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	expand := func(s string) string { return strings.ReplaceAll(s, "{{TEMP}}", dir) }
+	plain := TmuxFinalFrame{Text: "ready"}
+	if source := finalFrameSource(transcript, plain, expand); source != transcript {
+		t.Fatalf("a step without a write log reads %q, want the transcript %q", source, transcript)
+	}
+	if got := observeFinalFrame(finalFrameSource(transcript, plain, expand), plain); got.CursorOnly() != 0 {
+		t.Fatalf("the transcript holds %d cursor-only frame(s) after the text, want 0", got.CursorOnly())
+	}
+	named := TmuxFinalFrame{Text: "ready", WriteLog: "{{TEMP}}/renderer-writes.log"}
+	if source := finalFrameSource(transcript, named, expand); source != writeLog {
+		t.Fatalf("a step with a write log reads %q, want %q", source, writeLog)
+	}
+	if got := observeFinalFrame(finalFrameSource(transcript, named, expand), named); !got.Found || got.CursorOnly() != 1 {
+		t.Fatalf("the write log gave %+v, want the text found and one cursor-only frame after it", got)
+	}
+	// A write log that was never written (a binary that ignored PI_TUI_WRITE_LOG) is a missing text, which the comparators report, not a count of 0.
+	missing := TmuxFinalFrame{Text: "ready", WriteLog: "{{TEMP}}/absent.log"}
+	if got := observeFinalFrame(finalFrameSource(transcript, missing, expand), missing); got.Found {
+		t.Fatalf("a missing write log gave %+v, want the text not found", got)
+	}
+}
+
+// A write log that is missing or empty on either side fails the comparators that read it; it is never a count of 0 or a skipped check.
+func TestEvaluateOutcome_AMissingOrEmptyWriteLogFails(t *testing.T) {
+	frame := func(body string) string { return "\x1b[?2026h" + body + "\x1b[37;1H\x1b[?25l\x1b[?2026l" }
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "full.log"), []byte(frame("R")), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "empty.log"), nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	expand := func(s string) string { return strings.ReplaceAll(s, "{{TEMP}}", dir) }
+	observe := func(name string) Result {
+		spec := TmuxFinalFrame{Text: "R", WriteLog: "{{TEMP}}/" + name}
+		return Result{FinalFrame: observeFinalFrame(finalFrameSource(filepath.Join(dir, "terminal-transcript.log"), spec, expand), spec)}
+	}
+	zero := 0
+	for _, log := range []string{"absent.log", "empty.log"} {
+		for _, side := range []string{"pig", "pi"} {
+			for name, assert := range map[string]AssertSpec{
+				"no_frames_after_reply":   {NoFramesAfterReply: true},
+				"final_frame_cursor_only": {FinalFrameCursorOnlyPig: &zero, FinalFrameCursorOnlyPi: &zero},
+			} {
+				t.Run(log+"/"+side+"/"+name, func(t *testing.T) {
+					pig, pi := observe("full.log"), observe("full.log")
+					if side == "pig" {
+						pig = observe(log)
+					} else {
+						pi = observe(log)
+					}
+					o := &ScenarioOutcome{
+						Scenario: &Scenario{Name: name, Assert: assert},
+						Pig:      SystemResults{System: "pig", Runs: []Result{pig}},
+						Pi:       SystemResults{System: "pi", Runs: []Result{pi}},
+					}
+					EvaluateOutcome(o)
+					if len(o.Failures) != 1 || !strings.HasPrefix(o.Failures[0], side+" run 1: ") || !strings.HasSuffix(o.Failures[0], `"R" is not in the write log (PI_TUI_WRITE_LOG)`) {
+						t.Fatalf("failures = %q, want one for %s that says the text is not in the write log", o.Failures, side)
+					}
+				})
+			}
+		}
+	}
+}
+
 func TestEvaluateOutcome_FinalFrameCursorOnlyPerBinary(t *testing.T) {
 	cursorOnly := "\x1b[?2026h\x1b[37;1H\x1b[?25l\x1b[?2026l"
 	rewrite := "\x1b[?2026h\x1b[2;1H\x1b[2Kx\x1b[37;1H\x1b[?25l\x1b[?2026l"
