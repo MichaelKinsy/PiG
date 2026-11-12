@@ -50,6 +50,12 @@ func (replyProvider) Stream(context.Context, ai.TranscriptContext, ai.StreamOpti
 // replySession is a real Session on replyProvider with exts loaded in process.
 func replySession(t *testing.T, exts ...extension.Extension) (*coding.Session, icodingagent.InteractiveModeOptions) {
 	t.Helper()
+	return replySessionOn(t, replyProvider{}, exts...)
+}
+
+// replySessionOn is a real Session on provider with exts loaded in process.
+func replySessionOn(t *testing.T, provider ai.Provider, exts ...extension.Extension) (*coding.Session, icodingagent.InteractiveModeOptions) {
+	t.Helper()
 	home := t.TempDir()
 	t.Setenv("PIG_HOME", home)
 	agentDir := filepath.Join(home, "agent")
@@ -65,7 +71,7 @@ func replySession(t *testing.T, exts ...extension.Extension) (*coding.Session, i
 		t.Fatal(err)
 	}
 	runner := inproc.NewRunner(exts, cwd)
-	model := &ai.Model{ID: "faux-1", DisplayName: "faux-1", Provider: replyProvider{}, Capabilities: ai.ModelCapabilities{ContextWindow: 100000}}
+	model := &ai.Model{ID: "faux-1", DisplayName: "faux-1", Provider: provider, Capabilities: ai.ModelCapabilities{ContextWindow: 100000}}
 	session, err := coding.NewSession(services, coding.SessionOptions{Model: model, Runner: runner, NoSession: true})
 	if err != nil {
 		t.Fatal(err)

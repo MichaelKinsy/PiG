@@ -384,9 +384,10 @@ type InteractiveMode struct {
 	branchSummaryCancel context.CancelFunc
 	// frameHold is true while a tree navigation holds the frames its selection requested (holdFrames). Owner loop only.
 	frameHold bool
-	// eventRegionOpen is true between the Session's markers that open and close a task of Pi's event loop (eventRegionMarker), and eventRegion holds, in order, the events that arrived meanwhile: they are applied together when the task closes. Owner loop only.
-	eventRegionOpen bool
-	eventRegion     []agent.AgentEvent
+	// eventRegionOpen is true between the Session's markers that open and close a task of Pi's event loop (eventRegionMarker), and eventRegion holds, in order, the events that arrived meanwhile: they are applied together when the task closes. eventRegionUpdate says which part of the message the message_update collected last reports (collectEvent), and is eventRegionNoUpdate whenever eventRegion is empty. Owner loop only.
+	eventRegionOpen   bool
+	eventRegion       []agent.AgentEvent
+	eventRegionUpdate int
 
 	// Bash-prefix execution state.
 	// bashCancel cancels the currently-running `!cmd` (Esc routes
