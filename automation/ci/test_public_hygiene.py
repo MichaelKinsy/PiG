@@ -110,6 +110,9 @@ class GuiProvenanceTests(unittest.TestCase):
         self.assertTrue(self.found('coding/uiview/a.go', 'from Main' + 'stAI'))
         self.assertTrue(self.found('extensions/sdk/ui/x.go', 'a hack' + 'athon entry'))
         self.assertEqual(self.found('coding/uiview/a.go', 'mainstream release'), [])
+        for path in ('coding/extension/host/subprocess/ui_view_mount.go', 'extensions/sdk-lisp/src/ui-view.lisp',
+                     'extensions/sdk-lisp/tests/ui-view-tests.lisp', 'test/extension-conformance/ui_view_extras_test.go'):
+            self.assertTrue(self.found(path, 'from Main' + 'stAI'), path)
         self.assertEqual(self.found('docs/any.md', 'github.com/main' + 'stai/pig'), [])
 
     def test_gui_paths_reject_names_and_employer_but_allow_copyright_header(self):
