@@ -101,6 +101,8 @@ type ProcessTerminal struct {
 	writeLog *terminalWriteLog
 	// screen is the screen writer under write (D624), nil when the terminal is sent the bytes as they are written (terminal_screen_writer.go).
 	screen *screenwriter.Writer
+	// sent counts the writes that were sent on; a frame the screen writer sends nothing of is not one (writesSent, frame_pacing.go).
+	sent atomic.Uint64
 
 	// startMu guards reader, resize and protocol-query ownership. Start is idempotent until Stop releases that ownership.
 	startMu         sync.Mutex
@@ -801,6 +803,7 @@ func (t *ProcessTerminal) write(data string) {
 			return
 		}
 	}
+	t.sent.Add(1)
 	writeTerminalText(t.out, data)
 }
 

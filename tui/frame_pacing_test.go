@@ -28,15 +28,22 @@ type pacingScreen struct {
 	// state is what the screen has to show now; written is everything the frames wrote.
 	state   string
 	written strings.Builder
+	// quiet makes the terminal send nothing of what a frame writes, as the screen writer does with a frame that changes nothing on the screen.
+	quiet bool
+	// due is when the timer armed last comes due.
+	due time.Time
 }
 
 // pacingTerminal is the renderer's terminal with a screen writer that is on or off.
 type pacingTerminal struct {
 	Terminal
 	writerActive bool
+	sent         uint64
 }
 
 func (p *pacingTerminal) ScreenWriterActive() bool { return p.writerActive }
+
+func (p *pacingTerminal) writesSent() uint64 { return p.sent }
 
 // Render shows a row that differs in every frame, so every frame writes, and the state of the moment the frame is drawn.
 func (s *pacingScreen) Render(int) []string {
@@ -49,6 +56,12 @@ func (s *pacingScreen) Invalidate() {}
 
 func (s *pacingScreen) Write(data []byte) (int, error) {
 	s.at = s.at.Add(s.writeCost)
+	if s.quiet {
+		return len(data), nil
+	}
+	if s.terminal != nil {
+		s.terminal.sent++
+	}
 	s.written.Write(data)
 	return len(data), nil
 }
@@ -64,6 +77,7 @@ func newPacingScreen(t *testing.T) *pacingScreen {
 			t.Fatal("a second frame timer was armed while one was pending")
 		}
 		s.delays = append(s.delays, d)
+		s.due = s.at.Add(d)
 		s.timer = &manualRenderTimer{fn: fn}
 		return s.timer
 	}
@@ -624,6 +638,294 @@ func TestSlowImmediateFrameDelaysTheNextFrameNoLongerThanPisInterval(t *testing.
 			if got := s.lastDelay(); got != frameIntervalFloor-time.Millisecond {
 				t.Errorf("%s frame of %v: the second frame after it waits %v, want the rest of the floor", tc.name, cost, got)
 			}
+		}
+	}
+}
+
+// shownFrame draws the pending frame now, with a change on the screen, and returns when it began.
+func (s *pacingScreen) shownFrame(cost time.Duration) time.Time {
+	s.t.Helper()
+	return s.draw(cost, false)
+}
+
+// emptyFrame draws the pending frame now and the terminal is sent nothing of it, and returns when it began.
+func (s *pacingScreen) emptyFrame(cost time.Duration) time.Time {
+	s.t.Helper()
+	return s.draw(cost, true)
+}
+
+func (s *pacingScreen) draw(cost time.Duration, quiet bool) time.Time {
+	s.t.Helper()
+	began, before := s.at, s.renders
+	s.renderCost, s.quiet = cost, quiet
+	s.fire()
+	s.renderCost, s.quiet = 0, false
+	if s.renders != before+1 {
+		s.t.Fatalf("the pending frame rendered %d times, want 1", s.renders-before)
+	}
+	return began
+}
+
+// requestAt asks for a throttled frame at the time at and returns when the scheduler will begin it.
+func (s *pacingScreen) requestAt(at time.Time) time.Time {
+	s.t.Helper()
+	if at.Before(s.at) {
+		s.t.Fatalf("a request %v in the past", s.at.Sub(at))
+	}
+	s.at = at
+	s.ui.requestRender(false)
+	if s.timer == nil || s.timer.stopped {
+		s.t.Fatal("a request armed no frame")
+	}
+	return s.due
+}
+
+// shownThenEmpty draws a frame that shows something and, one floor later, one that sends the terminal nothing and costs cost; it returns when each began.
+func (s *pacingScreen) shownThenEmpty(cost time.Duration) (shown, empty time.Time) {
+	s.t.Helper()
+	s.at = s.at.Add(time.Second)
+	s.ui.requestRender(false)
+	shown = s.shownFrame(250 * time.Microsecond)
+	if due := s.requestAt(shown.Add(3 * time.Millisecond)); due != shown.Add(frameIntervalFloor) {
+		s.t.Fatalf("the frame after one that showed something is due %v after it began, want the floor", due.Sub(shown))
+	}
+	s.at = shown.Add(frameIntervalFloor)
+	return shown, s.emptyFrame(cost)
+}
+
+const pacingMS = time.Millisecond
+
+// A frame that sent the terminal nothing does not restart the interval: the next request is drawn when it would have been drawn without that frame, which is at once, held back only by four times what the empty frame cost, 1 ms at least, and never past Pi's interval after the frame that showed something. Without the rule it would wait a whole floor after the empty frame and the change would be shown 20 ms after the last one.
+func TestFrameThatSentNothingDoesNotRestartTheInterval(t *testing.T) {
+	for _, tc := range []struct {
+		cost, requestAfter, wantAfter time.Duration
+	}{
+		{500 * time.Microsecond, 1 * pacingMS, 2 * pacingMS},
+		{500 * time.Microsecond, 2 * pacingMS, 2 * pacingMS},
+		{500 * time.Microsecond, 5 * pacingMS, 5 * pacingMS},
+		{250 * time.Microsecond, 1 * pacingMS, 1 * pacingMS},
+		{time.Millisecond + 250*time.Microsecond, 2 * pacingMS, 5 * pacingMS},
+		{2 * pacingMS, 3 * pacingMS, 6 * pacingMS},
+		{6 * pacingMS, 7 * pacingMS, 7 * pacingMS},
+	} {
+		s := newPacingScreen(t)
+		shown, empty := s.shownThenEmpty(tc.cost)
+		due := s.requestAt(empty.Add(tc.requestAfter))
+		if got := due.Sub(empty); got != tc.wantAfter {
+			t.Errorf("empty frame of %v, request %v after it began: the next frame is due %v after it, want %v", tc.cost, tc.requestAfter, got, tc.wantAfter)
+		}
+		if due.Sub(shown) < frameIntervalFloor {
+			t.Errorf("empty frame of %v: the next frame is due %v after the last frame that showed something, want no sooner than the floor", tc.cost, due.Sub(shown))
+		}
+		if due.Sub(empty) > minRenderInterval {
+			t.Errorf("empty frame of %v: the next frame is due %v after it, want no later than Pi's interval", tc.cost, due.Sub(empty))
+		}
+		// The frame after the empty one shows the change and restores the adaptive interval.
+		s.at = due
+		next := s.shownFrame(250 * time.Microsecond)
+		if due := s.requestAt(next.Add(pacingMS)); due != next.Add(frameIntervalFloor) {
+			t.Errorf("empty frame of %v: the frame after the one that showed the change is due %v after it, want the floor", tc.cost, due.Sub(next))
+		}
+	}
+}
+
+// An empty frame that follows a frame that showed something sooner than the floor, which only a key press or a forced frame can, leaves the floor between two frames that show something.
+func TestEmptyImmediateFrameKeepsTheFloorBetweenShownFrames(t *testing.T) {
+	for name, request := range map[string]func(ui *TuiAltScreen){
+		"forced":    func(ui *TuiAltScreen) { ui.requestRender(true) },
+		"key press": func(ui *TuiAltScreen) { ui.RequestImmediateRender() },
+	} {
+		s := newPacingScreen(t)
+		s.at = s.at.Add(time.Second)
+		s.ui.requestRender(false)
+		shown := s.shownFrame(250 * time.Microsecond)
+		s.at = shown.Add(2 * pacingMS)
+		request(s.ui)
+		if got := s.lastDelay(); got != 0 {
+			t.Fatalf("%s frame: armed with a delay of %v, want none", name, got)
+		}
+		empty := s.emptyFrame(250 * time.Microsecond)
+		if due := s.requestAt(empty.Add(pacingMS)); due != shown.Add(frameIntervalFloor) {
+			t.Errorf("%s frame that sent nothing 2 ms after a frame that showed something: the next frame is due %v after that one, want the floor", name, due.Sub(shown))
+		}
+	}
+}
+
+// After each further frame in a row that sent the terminal nothing the wait doubles, and the last of them inside Pi's interval after the frame that showed something is drawn exactly at its end; from there the interval is Pi's constant after the last frame, until a frame shows something again.
+func TestEmptyFramesInARowBackOffToPisInterval(t *testing.T) {
+	s := newPacingScreen(t)
+	shown, first := s.shownThenEmpty(500 * time.Microsecond)
+	due := s.requestAt(first.Add(pacingMS))
+	if due != first.Add(2*pacingMS) {
+		t.Fatalf("after one empty frame the next frame is due %v after it, want four times its cost", due.Sub(first))
+	}
+	s.at = due
+	second := s.emptyFrame(500 * time.Microsecond)
+	if due = s.requestAt(second.Add(pacingMS)); due != second.Add(4*pacingMS) || due != shown.Add(minRenderInterval) {
+		t.Fatalf("after two empty frames in a row the next frame is due %v after the second and %v after the frame that showed something, want twice the wait, which is Pi's interval after that frame", due.Sub(second), due.Sub(shown))
+	}
+	s.at = due
+	last := s.emptyFrame(500 * time.Microsecond)
+	for range 3 {
+		if got := s.interval(); got != minRenderInterval {
+			t.Fatalf("an empty frame Pi's interval or more after the last frame that showed something: the interval is %v, want Pi's constant", got)
+		}
+		if due = s.requestAt(last.Add(pacingMS)); due != last.Add(minRenderInterval) {
+			t.Fatalf("an empty frame Pi's interval or more after the last frame that showed something: the next frame is due %v after it, want Pi's interval", due.Sub(last))
+		}
+		s.at = due
+		last = s.emptyFrame(500 * time.Microsecond)
+	}
+	s.at = s.requestAt(last.Add(pacingMS))
+	again := s.shownFrame(500 * time.Microsecond)
+	if due := s.requestAt(again.Add(pacingMS)); due != again.Add(frameIntervalFloor) {
+		t.Errorf("after a frame that showed something again the next frame is due %v after it, want the floor", due.Sub(again))
+	}
+	s.at = again.Add(frameIntervalFloor)
+	empty := s.emptyFrame(500 * time.Microsecond)
+	if due := s.requestAt(empty.Add(pacingMS)); due != empty.Add(2*pacingMS) {
+		t.Errorf("the first empty frame after one that showed something: the next frame is due %v after it, want four times its cost", due.Sub(empty))
+	}
+}
+
+// A wait after an empty frame never ends later than Pi's interval after the frame that showed something: a slow empty frame, whose wait would, is followed by a frame at that moment.
+func TestWaitAfterAnEmptyFrameEndsWithPisIntervalAfterTheShownFrame(t *testing.T) {
+	s := newPacingScreen(t)
+	shown, empty := s.shownThenEmpty(2 * pacingMS)
+	if due := s.requestAt(empty.Add(3 * pacingMS)); due != shown.Add(minRenderInterval) {
+		t.Errorf("an empty frame of 2 ms a floor after the frame that showed something: the next frame is due %v after that frame, want Pi's interval", due.Sub(shown))
+	}
+}
+
+// Whenever the change comes, it is shown no later than Pi's interval would show it after the same frame, and no sooner than a floor after that frame: requests come every millisecond and change nothing until the change does.
+func TestChangeAfterEmptyFramesIsShownNoLaterThanUnderPisInterval(t *testing.T) {
+	for after := pacingMS; after <= 50*pacingMS; after += pacingMS {
+		s := newPacingScreen(t)
+		s.at = s.at.Add(time.Second)
+		s.ui.requestRender(false)
+		start := s.shownFrame(250 * time.Microsecond)
+		var shown time.Time
+		for at := start.Add(pacingMS); shown.IsZero(); at = at.Add(pacingMS) {
+			s.at = at
+			s.ui.requestRender(false)
+			switch {
+			case s.due.After(s.at):
+			case at.Sub(start) < after:
+				s.emptyFrame(250 * time.Microsecond)
+			default:
+				shown = s.shownFrame(250 * time.Microsecond)
+			}
+		}
+		pi := start.Add((after + minRenderInterval - 1) / minRenderInterval * minRenderInterval)
+		if shown.After(pi) || shown.Sub(start) < frameIntervalFloor {
+			t.Errorf("a change %v after a frame that showed something is shown %v after it; Pi's interval shows it %v after it, and the floor is %v", after, shown.Sub(start), pi.Sub(start), frameIntervalFloor)
+		}
+		if after > frameIntervalFloor && after <= minRenderInterval && shown.Sub(start) > after+4*pacingMS {
+			t.Errorf("a change %v after a frame that showed something is shown %v after it, want within 4 ms of the change: the wait after an empty frame doubles from 1 ms", after, shown.Sub(start))
+		}
+	}
+}
+
+// An empty frame with no request after it draws nothing more and arms nothing.
+func TestEmptyFrameWithNoFurtherRequestDrawsNothingMore(t *testing.T) {
+	s := newPacingScreen(t)
+	s.shownThenEmpty(500 * time.Microsecond)
+	if s.timer != nil && !s.timer.stopped {
+		t.Fatal("a frame is pending after an empty frame that no request followed")
+	}
+	renders, timers := s.renders, len(s.delays)
+	s.at = s.at.Add(time.Second)
+	if s.renders != renders || len(s.delays) != timers {
+		t.Fatalf("%d frames were drawn and %d timers armed after an empty frame that no request followed", s.renders-renders, len(s.delays)-timers)
+	}
+}
+
+// A key press and a forced frame are drawn at once after empty frames as after any other, one or several in a row.
+func TestForcedAndImmediateFramesAreDrawnAtOnceAfterEmptyFrames(t *testing.T) {
+	for name, request := range map[string]func(ui *TuiAltScreen){
+		"forced":    func(ui *TuiAltScreen) { ui.requestRender(true) },
+		"key press": func(ui *TuiAltScreen) { ui.RequestImmediateRender() },
+	} {
+		for _, empties := range []int{1, 2, 3} {
+			s := newPacingScreen(t)
+			_, last := s.shownThenEmpty(500 * time.Microsecond)
+			for range empties - 1 {
+				s.at = s.requestAt(last.Add(pacingMS))
+				last = s.emptyFrame(500 * time.Microsecond)
+			}
+			s.requestAt(last.Add(pacingMS))
+			renders := s.renders
+			request(s.ui)
+			if got := s.lastDelay(); got != 0 {
+				t.Errorf("%s frame after %d empty frames: armed with a delay of %v, want none", name, empties, got)
+			}
+			s.shownFrame(250 * time.Microsecond)
+			if s.renders != renders+1 {
+				t.Errorf("%s frame after %d empty frames: %d frames drawn, want 1", name, empties, s.renders-renders)
+			}
+		}
+	}
+}
+
+// A stream whose requests change nothing on the screen, one every millisecond for a second, is drawn as often as under Pi's interval after three frames more: a floor after the frame that showed something, 1 ms and 3 ms later, at Pi's interval after that frame, and from there every 16 ms. The first change after them is shown no later than Pi's interval after the last empty frame, and the floor returns with it.
+func TestStreamThatChangesNothingIsDrawnAsOftenAsUnderPisInterval(t *testing.T) {
+	const stream = time.Second
+	s := newPacingScreen(t)
+	s.at = s.at.Add(time.Second)
+	s.ui.requestRender(false)
+	start := s.shownFrame(250 * time.Microsecond)
+	renders, last := s.renders, start
+	var began []time.Duration
+	for at := start.Add(pacingMS); at.Sub(start) <= stream; at = at.Add(pacingMS) {
+		s.at = at
+		s.ui.requestRender(false)
+		if !s.due.After(s.at) {
+			last = s.emptyFrame(250 * time.Microsecond)
+			began = append(began, last.Sub(start))
+		}
+	}
+	got := s.renders - renders
+	if want := []time.Duration{10 * pacingMS, 11 * pacingMS, 13 * pacingMS, 16 * pacingMS, 32 * pacingMS}; len(began) < len(want) || !slices.Equal(began[:len(want)], want) {
+		t.Errorf("the empty frames began %v after the frame that showed something, want %v and one every 16 ms from there", began[:min(len(began), 6)], want)
+	}
+	// Pi's interval draws a frame every 16 ms, 62 in the second; the three frames before the first of them are the policy's.
+	if want := int(stream/minRenderInterval) + 3; got != want {
+		t.Errorf("%d frames were drawn in %v of requests that change nothing, want %d: three more than Pi's interval draws", got, stream, want)
+	}
+	due := s.requestAt(s.at.Add(pacingMS))
+	if due.Sub(last) > minRenderInterval {
+		t.Errorf("the first change after the empty frames is due %v after the last of them, want no later than Pi's interval", due.Sub(last))
+	}
+	s.at = due
+	shown := s.shownFrame(250 * time.Microsecond)
+	if due := s.requestAt(shown.Add(pacingMS)); due != shown.Add(frameIntervalFloor) {
+		t.Errorf("after the first change the next frame is due %v after it, want the floor", due.Sub(shown))
+	}
+}
+
+// Under Pi's interval an empty frame is a frame like any other: with no policy, with the gate closed and with the screen writer off, the frame after it is due 16 ms after it began.
+func TestEmptyFrameUnderPisIntervalRestartsPisInterval(t *testing.T) {
+	for name, off := range map[string]func(s *pacingScreen){
+		"no policy":         func(s *pacingScreen) { s.ui.SetFramePacing(nil) },
+		"gate closed":       func(s *pacingScreen) { s.gate.Store(false) },
+		"screen writer off": func(s *pacingScreen) { s.terminal.writerActive = false },
+	} {
+		s := newPacingScreen(t)
+		off(s)
+		s.at = s.at.Add(time.Second)
+		s.ui.requestRender(false)
+		shown := s.shownFrame(250 * time.Microsecond)
+		if due := s.requestAt(shown.Add(3 * pacingMS)); due != shown.Add(minRenderInterval) {
+			t.Fatalf("%s: the frame after one that showed something is due %v after it, want Pi's interval", name, due.Sub(shown))
+		}
+		s.at = shown.Add(minRenderInterval)
+		for range 3 {
+			empty := s.emptyFrame(250 * time.Microsecond)
+			due := s.requestAt(empty.Add(pacingMS))
+			if due != empty.Add(minRenderInterval) {
+				t.Errorf("%s: the frame after an empty frame is due %v after it, want Pi's interval", name, due.Sub(empty))
+			}
+			s.at = due
 		}
 	}
 }

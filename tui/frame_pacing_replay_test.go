@@ -5,6 +5,7 @@ package tui
 
 import (
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -35,6 +36,9 @@ type pacedReplay struct {
 	version, drawn int
 	// frames are the frames the loop drew; paced are those, forced ones aside, that began sooner after the frame before them than Pi's interval lets one begin. Both under owner.
 	frames, paced int
+	// shown is when each frame began that sent the terminal something; quietFrames are the frames that sent it nothing. Both under owner.
+	shown       []time.Time
+	quietFrames int
 	// settled are the screens at the settle points, on every width model, and settledAt the version each shows.
 	settled   [][]*gridterm.Terminal
 	settledAt []int
@@ -54,12 +58,24 @@ func (c pacedContent) Render(width int) []string {
 // runPacedReplay replays sc with the adaptive policy or with Pi's interval.
 func runPacedReplay(t *testing.T, sc termScenario, adaptive bool) *pacedReplay {
 	t.Helper()
+	r, text, dock := startPacedReplay(t, sc, adaptive)
+	sc.play(&termSession{t: t, ui: r.ui, draw: r.step, quiet: r.quiet}, text, dock)
+	if r.settledAt[len(r.settledAt)-1] != r.version {
+		r.settle()
+	}
+	r.owner.Unlock()
+	return r
+}
+
+// startPacedReplay starts the renderer of a replay on a screen of sc's size, with the adaptive policy or with Pi's interval, and returns once the first screen has settled, holding owner; text is the transcript and dock what is under it.
+func startPacedReplay(t *testing.T, sc termScenario, adaptive bool) (r *pacedReplay, text, dock *termLines) {
+	t.Helper()
 	for name, value := range map[string]string{"TERM": "xterm-256color", "ALACRITTY_WINDOW_ID": "1", "TERM_PROGRAM": "", "TERM_PROGRAM_VERSION": "", "TMUX": "", "STY": "", "ZELLIJ": "", "HERDR_ENV": "", "PIG_TUI_SCROLL_ROWS": ""} {
 		t.Setenv(name, value)
 	}
 	SetCapabilities(TerminalCapabilities{TrueColor: true})
 	t.Cleanup(ResetCapabilitiesCache)
-	r := &pacedReplay{t: t, wake: make(chan struct{}, 1), done: make(chan struct{})}
+	r = &pacedReplay{t: t, wake: make(chan struct{}, 1), done: make(chan struct{})}
 	r.screen = newSWScreen(t, true, sc.cols, sc.rows, 4096, 0)
 	r.ui = NewTuiAltScreen(r.screen.term, nil, "")
 	if adaptive {
@@ -78,7 +94,7 @@ func runPacedReplay(t *testing.T, sc termScenario, adaptive bool) *pacedReplay {
 		}
 	})
 	go r.loop()
-	text, dock := &termLines{unclipped: sc.unclipped}, &termLines{unclipped: sc.unclipped}
+	text, dock = &termLines{unclipped: sc.unclipped}, &termLines{unclipped: sc.unclipped}
 	r.ui.Add(pacedContent{text, r})
 	if sc.dock != nil {
 		dock.lines = slices.Clone(sc.dock.lines)
@@ -94,12 +110,7 @@ func runPacedReplay(t *testing.T, sc termScenario, adaptive bool) *pacedReplay {
 		t.Fatal("the screen writer is not active on the alternate screen: no frame would be paced")
 	}
 	r.settle()
-	sc.play(&termSession{t: t, ui: r.ui, draw: r.step, quiet: r.quiet}, text, dock)
-	if r.settledAt[len(r.settledAt)-1] != r.version {
-		r.settle()
-	}
-	r.owner.Unlock()
-	return r
+	return r, text, dock
 }
 
 // loop keeps the frame deadline and draws the frame when it comes, as the owner loop of interactive mode does.
@@ -124,7 +135,13 @@ func (r *pacedReplay) loop() {
 			if paced {
 				r.paced++
 			}
+			began, sent := time.Now(), r.screen.term.writesSent()
 			r.ui.RunDueRender()
+			if r.screen.term.writesSent() != sent {
+				r.shown = append(r.shown, began)
+			} else {
+				r.quietFrames++
+			}
 		}
 		r.ui.mu.Lock()
 		next := r.ui.frameDue
@@ -263,4 +280,72 @@ func TestAdaptivePacingShowsTheSameSettledScreens(t *testing.T) {
 		})
 	}
 	t.Logf("%d streams, %d steps, %d settle points, %d frames paced, %d settled screens that differ", streams, steps, points, pacedFrames, differences)
+}
+
+// runPacedStream asks for a frame every pacedStepGap, steps times, and changes what the screen shows at every changeEvery-th of them (never when it is 0), as a stream does whose deltas mostly change nothing on the screen. It returns the replay and the bytes the terminal was sent after the first screen.
+func runPacedStream(t *testing.T, adaptive bool, steps, changeEvery int) (*pacedReplay, int) {
+	t.Helper()
+	r, text, _ := startPacedReplay(t, termScenario{cols: 80, rows: 24}, adaptive)
+	before, frames := len(r.screen.transcript()), r.frames
+	r.shown, r.quietFrames = nil, 0
+	for i := range steps {
+		if changeEvery > 0 && i%changeEvery == 0 {
+			text.lines = []string{"a file is being written", "written so far: " + strconv.Itoa(i) + " steps"}
+		}
+		r.version++
+		r.ui.requestRender(false)
+		r.owner.Unlock()
+		time.Sleep(pacedStepGap)
+		r.owner.Lock()
+	}
+	r.quiet()
+	r.frames -= frames
+	r.owner.Unlock()
+	r.screen.settle()
+	return r, len(r.screen.transcript()) - before
+}
+
+// longGaps counts the times from one frame that showed something to the next that are 18 ms or more: two of the adaptive policy's 10 ms intervals.
+func longGaps(shown []time.Time) (n int) {
+	for i := 1; i < len(shown); i++ {
+		if shown[i].Sub(shown[i-1]) >= 18*time.Millisecond {
+			n++
+		}
+	}
+	return n
+}
+
+// A stream shaped like a file being written asks for a frame every 2 ms and changes the screen every 12 ms. Under Pi's interval every frame shows a change. Under the adaptive policy a frame 10 ms after the last finds nothing changed and the screen writer sends nothing; that frame does not restart the interval, so the change that comes 2 ms later is drawn then and not 10 ms later: the gaps of 18 ms or more between frames that showed something are as rare as under Pi's interval.
+func TestAdaptivePacingDoesNotWaitOutAFrameThatSentNothing(t *testing.T) {
+	const steps, changeEvery = 600, 6
+	pi, _ := runPacedStream(t, false, steps, changeEvery)
+	adaptive, _ := runPacedStream(t, true, steps, changeEvery)
+	piLong, adaptiveLong := longGaps(pi.shown), longGaps(adaptive.shown)
+	t.Logf("%d steps, the screen changes at every %dth; Pi's interval: %d frames, %d showed something, %d gaps of 18 ms or more; adaptive: %d frames, %d showed something, %d sent nothing, %d gaps of 18 ms or more", steps, changeEvery, pi.frames, len(pi.shown), piLong, adaptive.frames, len(adaptive.shown), adaptive.quietFrames, adaptiveLong)
+	if adaptive.quietFrames == 0 || adaptive.paced == 0 || len(pi.shown) < steps/changeEvery/2 {
+		t.Fatalf("with the adaptive policy %d frames sent nothing and %d were paced, with Pi's interval %d frames showed something: the stream proves nothing", adaptive.quietFrames, adaptive.paced, len(pi.shown))
+	}
+	if limit := piLong + len(adaptive.shown)/10; adaptiveLong > limit {
+		t.Errorf("with the adaptive policy %d of %d gaps between frames that showed something are 18 ms or more, with Pi's interval %d of %d: want no more than %d", adaptiveLong, len(adaptive.shown)-1, piLong, len(pi.shown)-1, limit)
+	}
+	if len(adaptive.shown) < len(pi.shown) {
+		t.Errorf("with the adaptive policy %d frames showed something, with Pi's interval %d: want no fewer", len(adaptive.shown), len(pi.shown))
+	}
+}
+
+// A stream that changes nothing on the screen, as a reply does that streams below the viewport of a transcript scrolled up, asks for a frame every 2 ms. Under Pi's interval that is a frame every 16 ms, none of which the screen writer sends on. Under the adaptive policy it is no more: after the second frame in a row that sent nothing the interval is Pi's.
+func TestAdaptivePacingDrawsAStreamThatChangesNothingAsOftenAsPi(t *testing.T) {
+	const steps = 600
+	pi, piBytes := runPacedStream(t, false, steps, 0)
+	adaptive, adaptiveBytes := runPacedStream(t, true, steps, 0)
+	t.Logf("%d steps that change nothing; Pi's interval: %d frames, %d bytes sent; adaptive: %d frames, %d bytes sent", steps, pi.frames, piBytes, adaptive.frames, adaptiveBytes)
+	if len(pi.shown) != 0 || len(adaptive.shown) != 0 {
+		t.Fatalf("%d frames with Pi's interval and %d with the adaptive policy sent the terminal something: the stream changes the screen", len(pi.shown), len(adaptive.shown))
+	}
+	if limit := pi.frames + pi.frames/10 + 2; adaptive.frames > limit {
+		t.Errorf("with the adaptive policy %d frames were drawn, with Pi's interval %d: want no more than %d", adaptive.frames, pi.frames, limit)
+	}
+	if adaptiveBytes > piBytes {
+		t.Errorf("with the adaptive policy the terminal was sent %d bytes, with Pi's interval %d", adaptiveBytes, piBytes)
+	}
 }
