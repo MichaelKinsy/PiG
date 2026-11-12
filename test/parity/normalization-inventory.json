@@ -17,8 +17,8 @@
     },
     {
       "source": "test/parity/runner/driver_ht.go",
-      "sha256": "69a91a07c9bc69269eca4ae4325da959194a5689037ff44f122d6995eb7416cf",
-      "reason": "Headless terminal state capture compares the declared visible surface, not transient bytes. Tool stderr is diagnostic transport noise, not product stderr."
+      "sha256": "25e42598992d180a5d81519bf6014994c1ff1eca87fe88dac445a4232d086eb4",
+      "reason": "Headless terminal state capture compares the declared visible surface, not transient bytes. Tool stderr is diagnostic transport noise, not product stderr. A capture_start absent from either capture fails the run instead of comparing the whole screen."
     },
     {
       "source": "test/parity/runner/driver_rpc.go",
@@ -27,8 +27,8 @@
     },
     {
       "source": "test/parity/runner/driver_tmux.go",
-      "sha256": "b76c6974a5eaad47d77e42e17c9d4f5d6ae73bd6fc8b2150bd0a6806d2aa5305",
-      "reason": "Terminal state capture is not a byte-stream assertion. A scenario explicitly selects viewport or retained history and its crop. History capture uses session-local maximum retention without changing pane size or shared defaults; required anchors and source-derived assertions reject incomplete history. Readiness and new-output barriers are synchronization, not behavioral coverage."
+      "sha256": "297927129ef12ea4e6eae183c030a518b6d57970baad463ef0f3f5e2b4ef50f0",
+      "reason": "Terminal state capture is not a byte-stream assertion. A scenario explicitly selects viewport or retained history and its crop. History capture uses session-local maximum retention without changing pane size or shared defaults; required anchors and source-derived assertions reject incomplete history. Readiness and new-output barriers are synchronization, not behavioral coverage. The final capture is taken only from a still screen (the plain captures around the escaped one are equal, within the last step budget), and a capture_start absent from either capture fails the run instead of comparing the whole screen."
     },
     {
       "source": "test/parity/runner/footer_crop.go",
