@@ -2026,6 +2026,10 @@ func (t *tuiBase) runImmediateRender(generation uint64) {
 func (t *tuiBase) requestRender(force bool) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	// RequestRender read stopped before it took mu, and every stop writes it under mu: a request that lost that race to a stop is dropped here, so no frame is armed on a stopped renderer.
+	if t.stopped.Load() {
+		return
+	}
 	t.requestRenderLocked(force)
 }
 
