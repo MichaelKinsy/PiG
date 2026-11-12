@@ -25,6 +25,12 @@ import (
 // writer off (the renderers' bytes, the reference) and to one with it on, and what the terminal's master end reads is shown on
 // gridterm's screens of every width model. The two must show the same screen once the settle write is in; where the writer must send
 // bytes as they came (leaving the alternate screen, images, writes past it) the bytes are compared.
+//
+// Every test that writes frames through a terminal with the writer requires that a frame was translated: the same screen is what a
+// writer that sends every frame as it came shows too. With such a writer the tests of the screen writer that still pass must be the
+// ones of whether a terminal has a writer and whether it is active, which write no frames to compare:
+// TestNoScreenWriterBeforeAnInteractiveRun, TestSetScreenWriterGivesTheProcessTerminalItsWriter,
+// TestSetScreenWriterDropsTheWriterOfATerminalBuiltBefore, TestScreenWriterActive and TestScreenWriterActiveWhileTheWriterIsDropped.
 
 const (
 	swBegin = "\x1b[?2026h"

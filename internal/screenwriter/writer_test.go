@@ -19,6 +19,14 @@ import (
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
+// Every test of this package that gives the writer frames requires that at least one of them was translated: a comparison of what
+// the writer sends with what the frames wrote is satisfied by a writer that sends every frame as it came. To see that this holds,
+// make Translate send every frame as it came (take its branch for autowrap that is not known to be off always) and run the
+// package: the tests that still pass must be the ones named here. They give the writer no frames: TestNextToken, TestTwoParams and
+// TestApplySGR read sequences; TestOutsideTable and TestOutsideReportsAutowrap classify writes that are not frames;
+// TestGridKeepsALinesLength is of the tests' screens. And the subject of TestRegularModeIsSentAsItCame is that nothing is
+// translated on the main screen: it requires a run that holds synchronized updates and that every write of it is sent unchanged.
+
 const reset = "\x1b[0m\x1b]8;;\x07" // widthx.SegmentReset: what the renderers end a line with
 
 // started is what a session writes first: the alternate screen, then two repaints. After the first the pen is known (a line's reset
