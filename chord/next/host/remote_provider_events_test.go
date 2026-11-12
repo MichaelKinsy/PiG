@@ -168,6 +168,9 @@ func TestProviderEvents(t *testing.T) {
 			provHoldMatch(t, s.Peer, 1)
 			s.Peer.Next("bound")
 			s.Peer.Next("bound")
+			// Pi's `await peer.next` lets the peer's acks reach the host: both window slots (two `bound`) are free again before
+			// the turn, so the state goes out at once and not behind the window.
+			settle(s.Peer)
 			forgetReceived(s.Peer)
 			before := int(time.Now().UnixMilli())
 			hostTurn(s.Server, func() {

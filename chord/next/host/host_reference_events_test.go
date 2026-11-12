@@ -165,6 +165,50 @@ func TestReferenceEventSubscriptionsKeepGettingAnOldAttemptsEmitsWhileAReloadDra
 	must(t, host.Close(background))
 }
 
+// No Pi test pins `removed()` unbinding a binding's event taps (mutant N of the port's mutation run). An object that
+// leaves its reference unbound in the turn of an emit (the flush runs after the turn): the reference is bound to nothing
+// at the flush, so its subscription gets nothing of that emit. (A reload's removal seals the old attempt, which then
+// refuses Emit, so only a same-turn emit can reach the flush.)
+func TestReferenceEventSubscriptionsGetNothingOfAnEmitInTheTurnTheirReferenceWasUnbound(t *testing.T) {
+	var mu sync.Mutex
+	var sources []contracts.EventSource[delta.JsonValue]
+	facets := []HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+		return h.Serve(pulse, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			beats := self.Events()
+			mu.Lock()
+			sources = append(sources, beats)
+			mu.Unlock()
+			return contracts.Implementation{Members: contracts.VariantImplementation{
+				Events: map[string]contracts.EventMember[delta.JsonValue]{"beats": beats},
+				Methods: map[string]contracts.MethodFunction{
+					"slow": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return nil, nil },
+				},
+			}}, nil
+		}, ServeOptions{})
+	})}}
+	host := newHost(t, HostOptions{OnError: func(HostError) {}})
+	_, err := host.Load(facets, background)
+	must(t, err)
+	ref := mustGet(t, host, pulse, jsonObject())
+	var seen []any
+	on(t, ref, "beats", recorder(&seen, ""), background)
+	flushed(host)
+	hostTurn(host, func() {
+		mu.Lock()
+		beats := sources[0]
+		mu.Unlock()
+		must(t, beats.Emit(sample(1)))
+		objects := host.(*chordHost).objectList()
+		if len(objects) != 1 {
+			t.Fatalf("objects = %d, want 1", len(objects))
+		}
+		objects[0].unbound(ref.binding, notServedHere(objects[0].served.contract, 1))
+	})
+	flushed(host)
+	wantSeen(t, seen)
+	must(t, host.Close(background))
+}
+
 // --- re-exposed members --------------------------------------------------------------------------------------------
 
 func TestReferenceEventReexposedMembersForwardEachEventWithItsValueAndStampUnchanged(t *testing.T) {
