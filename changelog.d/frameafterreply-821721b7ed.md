@@ -1,0 +1,4 @@
+### Fixed
+
+- In interactive mode the frame that draws a reply could leave the Working indicator on screen for a second frame to take away, where Pi draws both in one frame: the 16 ms frame timer could fire between two events of the end of a response. The events that Pi's event loop handles in one task (the part of a response its provider delivered in one run, and behind it `message_end`, the tool starts, `turn_end` and `agent_end`) are now applied together, so a frame draws all of them or none. Print mode, RPC mode and SDK consumers of `Session.Events` receive the events they received before. <!-- fix: 821721b7ed -->
+- In interactive mode a frame that changed no row could follow the frame that carries a reply, when the frame timer fired before the clean-up at the end of the turn reached the screen loop. The clean-up now paints only a frame that is still owed or rows it changed. <!-- fix: b4f8322312 -->
