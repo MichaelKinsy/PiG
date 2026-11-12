@@ -1,3 +1,0 @@
-### Fixed
-
-- A streaming tool call's card is drawn again from the rows of its last frame: a `write` card at 160 columns now re-wraps, measures and pads only the lines whose text changed (its collapsed preview changes one line, the "... (N more lines" hint) instead of all of them, which halves the per-frame cost of the card in an in-process benchmark (178.7 to 89.5 us per frame for a 50 KB file, 121.7 to 43.0 us for 200 KB). The rows drawn are those of a fresh card. The rows kept are bounded (4096 rows of the last text), so a text of many thousand lines does not retain a memo as large as itself. <!-- fix: 0f6a987a3b52028aa10ad21b971fae5cdd7cd1ea -->
