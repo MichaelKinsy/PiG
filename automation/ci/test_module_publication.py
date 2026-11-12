@@ -161,6 +161,26 @@ class PublicationTest(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("unpublished nested-module tag(s): sdk/v0.2.1-0.2026010100000-0123456789ab", result.stderr)
 
+    def test_prerelease_tag_is_a_tag_not_a_pseudo_version(self):
+        # extensions/sdk/v0.3.0-rc.1: the tag must be on the remote and the download must match go.sum, like a release tag.
+        version = "v0.3.0-rc.1"
+        self.pin_pseudo_version(version)
+        result = self.gate()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("unpublished nested-module tag(s): sdk/" + version, result.stderr)
+        self.run_command("git", "-c", "user.name=Test", "-c", "user.email=test@example.com", "-c", "tag.gpgsign=false", "tag", "-a", "sdk/" + version, "-m", "SDK pre-release fixture")
+        self.run_command("git", "push", "-q", str(self.remote), "refs/tags/sdk/" + version)
+        result = self.gate()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("published: sdk/" + version + "; Go download and committed checksums verified", result.stdout)
+
+    def test_pseudo_version_on_a_prerelease_base_needs_no_tag(self):
+        pseudo = "v0.3.0-rc.1.0.20260101000000-0123456789ab"
+        self.pin_pseudo_version(pseudo)
+        result = self.gate()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("published: " + pseudo + "; Go download and committed checksums verified", result.stdout)
+
     def test_every_nested_requirement_needs_its_exact_tag(self):
         self.publish()
         (self.root / "go.mod").write_text(self.manifest + "\nrequire example.com/product/other v0.9.0\n")

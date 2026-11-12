@@ -129,6 +129,39 @@ func TestReachableTaggedVersion(t *testing.T) {
 	wantProblem(t, dir, "tag extensions/sdk/v0.8.0", elsewhere[:12], "is not an ancestor of HEAD")
 }
 
+// A pre-release tag (extensions/sdk/v0.8.0-rc.1) is a tagged version, not a pseudo-version: the guard reads the commit the tag names. A pseudo-version
+// whose base is a pre-release (v0.8.0-rc.1.0.<time>-<sha>) names its commit by the 12 hex digits like any other.
+func TestReachablePrereleaseTag(t *testing.T) {
+	dir := pinnedRepo(t, "v0.7.0")
+	gitIn(t, dir, "init", "-q", "-b", "line")
+	tagged := commit(t, dir, "the commit the tag names")
+	const version = "v0.8.0-rc.1"
+
+	// The tag is not in the checkout yet: the owner pushes it before the bump commit, and a checkout without it fails.
+	writePin(t, dir, version)
+	wantProblem(t, dir, "tag extensions/sdk/"+version+" is not in this checkout", "git fetch --tags")
+
+	// The tag on an ancestor passes, annotated or lightweight.
+	gitIn(t, dir, "tag", "-a", "-m", "extensions/sdk "+version, "extensions/sdk/"+version, tagged)
+	wantNoProblem(t, dir)
+	gitIn(t, dir, "tag", "-d", "extensions/sdk/"+version)
+	gitIn(t, dir, "tag", "extensions/sdk/"+version, tagged)
+	wantNoProblem(t, dir)
+
+	// The pre-release tag on a commit of another line fails.
+	gitIn(t, dir, "checkout", "-q", "-b", "other", tagged)
+	elsewhere := commit(t, dir, "tagged on another line")
+	gitIn(t, dir, "tag", "-f", "extensions/sdk/"+version, elsewhere)
+	gitIn(t, dir, "checkout", "-q", "line")
+	wantProblem(t, dir, "tag extensions/sdk/"+version, elsewhere[:12], "is not an ancestor of HEAD")
+
+	// A pseudo-version on a pre-release base is read by its hash.
+	writePin(t, dir, "v0.8.0-rc.1.0.20261108053302-"+tagged[:12])
+	wantNoProblem(t, dir)
+	writePin(t, dir, "v0.8.0-rc.1.0.20261108053302-"+elsewhere[:12])
+	wantProblem(t, dir, "is not an ancestor of HEAD", elsewhere[:12])
+}
+
 func TestReachableShallowCheckoutNeverPasses(t *testing.T) {
 	full := pinnedRepo(t, "v0.7.0")
 	gitIn(t, full, "init", "-q", "-b", "line")
