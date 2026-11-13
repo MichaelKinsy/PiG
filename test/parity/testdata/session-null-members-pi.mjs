@@ -141,6 +141,9 @@ await row("session_before_tree summary usage as its author wrote it", file, asyn
 // A display written as null, which the declaration does not allow and nothing checks: Pi stores the null.
 await draft("draft custom_message display null", [{type: "custom_message", customType: "draft-message", content: "x", display: null}]);
 await row("extension sendMessage display null", file, async () => { pi.sendMessage({customType: "extension-message", content: "x", display: null}); await idle(); });
+// A message sent without content or with a null one, which the declaration does not allow: sendCustomMessage reads `message.content ?? []`, so both write an empty list.
+await row("extension sendMessage content omitted", file, async () => { pi.sendMessage({customType: "extension-message", display: true}); await idle(); });
+await row("extension sendMessage content null", file, async () => { pi.sendMessage({customType: "extension-message", content: null, display: true}); await idle(); });
 // JavaScript rows: values the declarations do not allow, and JSON.stringify's rules.
 await row("js api compaction fromHook null", file, () => sm.appendCompaction("api-compaction", userId, 10, undefined, null), true);
 await row("js api branch_summary fromHook null", file, () => sm.branchWithSummary(sm.getLeafId(), "api-branch", undefined, null), true);

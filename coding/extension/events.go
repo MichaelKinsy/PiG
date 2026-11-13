@@ -641,6 +641,15 @@ func (d SessionBoundaryDraft) DisplayMember() any {
 	return draftDisplay(d.Display, d.DisplayAbsent, d.DisplayNull)
 }
 
+// ContentMember is the content of the custom message a sendMessage call builds: Pi's sendCustomMessage reads `message.content ?? []`
+// (agent-session.ts:2468), so a content that is null or left out is an empty list, in the message and in its session entry.
+func (r CustomMessageRef) ContentMember() any {
+	if r.Content == nil || orderedjson.IsNull(r.Content) {
+		return []any{}
+	}
+	return r.Content
+}
+
 // DisplayMember is the display member of the custom message: the boolean, orderedjson.Null for a message written with a null one, and nil for a
 // message written without one.
 func (r CustomMessageRef) DisplayMember() any {

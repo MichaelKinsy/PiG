@@ -347,6 +347,10 @@ func TestSessionEntryNullMembersMatchPi(t *testing.T) {
 	// A display written as null, which the declaration does not allow and nothing checks: Pi stores the null.
 	draft("draft custom_message display null", `[{"type":"custom_message","customType":"draft-message","content":"x","display":null}]`)
 	row("extension sendMessage display null", send(`{"customType":"extension-message","content":"x","display":null}`, false))
+	// A message sent without content or with a null one, which the declaration does not allow: sendCustomMessage reads `message.content ?? []`, so both
+	// write an empty list.
+	row("extension sendMessage content omitted", send(`{"customType":"extension-message","display":true}`, false))
+	row("extension sendMessage content null", send(`{"customType":"extension-message","content":null,"display":true}`, false))
 
 	entries, err := icodingagent.LoadEntriesFromFile(path)
 	if err != nil {

@@ -21,7 +21,7 @@ func (m *InteractiveMode) sendExtensionMessage(msg extension.CustomMessageRef, o
 	agentMsg := agent.AgentMessage{Custom: map[string]any{
 		"role":       agent.RoleCustom,
 		"customType": msg.CustomType,
-		"content":    msg.Content,
+		"content":    msg.ContentMember(),
 		"timestamp":  time.Now().UnixMilli(), //portlint:allow clock agent-session.ts:2331 sendCustomMessage stamps `timestamp: Date.now()`; the package's clock seams belong to the logo animations
 	}}
 	if display := msg.DisplayMember(); display != nil {
@@ -75,7 +75,7 @@ func (m *InteractiveMode) sendExtensionMessage(msg extension.CustomMessageRef, o
 
 // appendCustomMessageNow persists a custom message and renders it, starting no run (upstream _appendCustomMessage).
 func (m *InteractiveMode) appendCustomMessageNow(msg extension.CustomMessageRef) error {
-	entry, err := m.currentSession().customMessageEntry(CustomMessageEntry{CustomType: msg.CustomType, Content: msg.Content, Display: msg.Display, DisplayAbsent: msg.DisplayAbsent, DisplayNull: msg.DisplayNull, Details: msg.Details}, true)
+	entry, err := m.currentSession().customMessageEntry(CustomMessageEntry{CustomType: msg.CustomType, Content: msg.ContentMember(), Display: msg.Display, DisplayAbsent: msg.DisplayAbsent, DisplayNull: msg.DisplayNull, Details: msg.Details}, true)
 	if err != nil {
 		return err
 	}

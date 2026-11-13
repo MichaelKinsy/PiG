@@ -29,11 +29,7 @@ func (s *Session) SendMessageStaged(message extension.CustomMessageRef, options 
 }
 
 func (s *Session) sendCustomMessage(ctx context.Context, message extension.CustomMessageRef, options *extension.SendMessageOptions, wait bool, stage *ExtensionRunStage) error {
-	content := message.Content
-	if content == nil {
-		content = []any{}
-	}
-	fields := map[string]any{"role": agent.RoleCustom, "customType": message.CustomType, "content": content, "timestamp": time.Now().UnixMilli()}
+	fields := map[string]any{"role": agent.RoleCustom, "customType": message.CustomType, "content": message.ContentMember(), "timestamp": time.Now().UnixMilli()}
 	if display := message.DisplayMember(); display != nil {
 		// upstream: agent-session.ts sendCustomMessage builds the message with `display: message.display`: undefined for a caller that left it out, and null for one that wrote null.
 		fields["display"] = display
