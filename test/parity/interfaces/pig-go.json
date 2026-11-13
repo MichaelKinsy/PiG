@@ -146187,6 +146187,50 @@
       "shapeHash": "sha256:201eda7332acf1f5db1156726c0cfad4aaa839499845d60383ead501ad54b103"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#deathGateFunc",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "deathGateFunc",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "deathGateFunc"
+      },
+      "shapeHash": "sha256:50f2f388f1a14094a885b0b3e51f0a820a943bf7d9a9ac8a8d14c91841ae3e6b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#deathObserver",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "deathObserver",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "deathObserver"
+      },
+      "shapeHash": "sha256:dcbeb6bb667643f2318e40308fad523e63cf59f1833c05e6dbbc0b7792d00b06"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#deathSeenByConnection",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "deathSeenByConnection",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "deathObserver"
+      },
+      "shapeHash": "sha256:dcbeb6bb667643f2318e40308fad523e63cf59f1833c05e6dbbc0b7792d00b06"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#deathSeenByWatcher",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "deathSeenByWatcher",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "deathObserver"
+      },
+      "shapeHash": "sha256:dcbeb6bb667643f2318e40308fad523e63cf59f1833c05e6dbbc0b7792d00b06"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#decodeArgsError",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "decodeArgsError",
