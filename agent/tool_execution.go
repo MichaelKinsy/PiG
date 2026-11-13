@@ -191,6 +191,7 @@ func (r *loopRun) executeToolCallsParallel(ctx context.Context, assistant *Assis
 				// The calls' tools and after hooks run at the same time from here on, so each call gets a copy of the run's messages of its
 				// own, taken now that every before hook has run: it holds what they wrote in place, as Pi's live array does when its after
 				// hooks start, and two calls writing one array would race.
+				//perf:ok one copy of the run's messages (64 B each) per call of a parallel batch of two or more prepared calls, measured by BenchmarkParallelToolBatchWithHistory with and without it: 2 calls +2 allocations and 14 kB after 100 messages, 657 kB after 5,000; 8 calls +10 allocations and 56 kB after 100, 2.6 MB after 5,000. It makes what a call's tool and after hook write to the messages private to that call; Pi's calls share one context (agent-loop.ts:614,641,889)
 				callCtx = WithToolCallHookContext(callCtx, r.toolCallHookContext(assistant, slices.Clone(r.context)))
 			}
 			callCtx = withToolSettle(callCtx, slot, outcome.prepared.call.id, batch)
