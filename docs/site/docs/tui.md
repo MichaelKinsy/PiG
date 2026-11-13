@@ -169,14 +169,20 @@ When the active Piglet sets `viewClient: terminal` (PiG Standard does), an exten
 | Above the editor, after the widgets | views mounted in the `widget-above` slot, at most 10 rows each |
 | Directly above the editor | panels (the `panel` slot), at most half the terminal's rows each |
 | Below the editor, after the widgets | views mounted in the `widget-below` slot, at most 10 rows each |
+| Over the screen, in a titled frame | dialogs (the `dialog` slot), eight tenths of the terminal's columns and rows |
 
 | Key | Effect |
 |---|---|
 | F6 | Move the focus from the editor to the first panel that takes keys, then to the next, then back to the editor. |
 | Escape in a panel | Return the focus to the editor. A second Escape interrupts the agent as usual. |
 | Up, Down, Enter and typing in a panel | Go to the panel's list or input. |
+| Keys in a dialog | Go to the dialog's list or input, then to the keys the dialog names on its last row. |
+| Escape in a dialog | Return the focus to the editor. The dialog stays open until its extension closes it. |
+| F6 while a dialog is open | Move the focus between the editor and the dialog on top. |
 
-In fullscreen mode a click on a panel focuses it. A view taller than its place ends with `... (view truncated)`. F6 is a fixed key and is active only while a panel that takes keys is on screen.
+In fullscreen mode a click on a panel or inside a dialog focuses it. A view taller than its place ends with `... (view truncated)`. F6 is a fixed key and is active only while a panel that takes keys or a dialog is on screen.
+
+A dialog opens with the keyboard unless you are typing in the editor: then it is drawn without it and F6 moves into it. In regular mode, while the transcript is shorter than the screen, a dialog can cover the editor; what you type still goes to the editor while the dialog does not hold the keyboard.
 
 ## Focused custom components
 

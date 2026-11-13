@@ -707,9 +707,11 @@ check the abilities and keep a fallback such as a widget or a notice.
 | `widget-above` | above the editor, after the widgets | at most 10 | no |
 | `widget-below` | below the editor, after the widgets | at most 10 | no |
 | `panel` | the rows directly above the editor, as tabs | at most half the terminal | yes |
+| `dialog` | a titled frame centred over the screen, eight tenths of the terminal's columns and of its rows | the rows inside the frame | yes |
 
 - The TUI draws every D107 node kind except `image`, at the terminal's width. It states its size as claims: `size.columns`,
-  and `size.rows` for each slot. Use them in `alternatives` (`atLeast`) to send a layout that fits; `client.kind` is `terminal`.
+  `size.rows` for each slot, and for `dialog` its own `size.columns`, the columns inside the frame (94 by 30 in a terminal of
+  120 by 40). Use them in `alternatives` (`atLeast`) to send a layout that fits; `client.kind` is `terminal`.
 - A view taller than its slot is cut, the last row reads `... (view truncated)`, and `ViewDiagnostics` returns a `limit` notice.
 - Panels are tabs. One row above the panel lists every live panel, and every hidden one that declares a `whenHidden` intent,
   by `title` (or by `key` without one); only the front tab's view is drawn. One live panel without a title has no tab row. A
@@ -719,6 +721,14 @@ check the abilities and keep a fallback such as a widget or a notice.
   Enter raises its `whenHidden` intent: show the mount in your handler. A click in fullscreen mode focuses a panel.
 - A panel that you mount, show after a hide, or update with a focus request comes to the front when the user is in the editor
   or on its tab. While the user works in another view yours stays where it is and its tab is marked with `*`.
+- A `dialog` mount floats over the transcript, the panels and the editor, which keep their state under it. The frame's title
+  is the mount's `title`, or its `key` without one. It takes the keys when it is shown, by the rule of a focus request below;
+  shown while the user types in the editor it is drawn without them and `ViewDiagnostics` returns `unfocused`. Several live
+  dialogs are stacked, the last shown on top with the keys.
+- Only your extension closes a dialog: hide, finish or remove it from the handler of a key it binds or of a node's intent.
+  Escape returns the keys to the editor and the dialog stays; F6 moves between the editor and the dialog on top. Bind a key
+  to close it (`escape`, `tab` and `f6` cannot be bound) and give the binding a `name`, which the hint row in the frame shows.
+  The TUI lists no hidden dialog, so open one from a key or a node of another view, not from a `whenHidden` intent.
 - A focus request (`request: "mount"` or `"update"`) is granted when your view already has the focus, when the user stands on
   its tab, or when the editor has the focus and is empty. Otherwise `ViewDiagnostics` returns an `unfocused` notice with the
   reason, for example `the editor holds text`. Name the node that takes the keys in the view's `focus`, or request it.
