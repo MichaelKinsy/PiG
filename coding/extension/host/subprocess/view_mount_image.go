@@ -1,7 +1,12 @@
 package subprocess
 
 import (
+	"bytes"
 	"encoding/base64"
+	"image"
+	imagegif "image/gif"
+	imagejpeg "image/jpeg"
+	imagepng "image/png"
 	"slices"
 	"strconv"
 	"strings"
@@ -21,7 +26,9 @@ import (
 //     the rows are placeholder cells: text, which the terminal scrolls, covers and erases like any other text;
 //   - in another Kitty terminal and in an iTerm2 terminal the rows are those of Pi's component, built from the prepared
 //     bytes, with one image id per image;
-//   - in a terminal without an image protocol the row is Pi's text fallback.
+//   - in a terminal without an image protocol (tmux, a plain terminal) the rows are half-block cells
+//     (view_half_block.go), drawn off the loop for the node's box of cells; bytes that cannot be decoded are Pi's
+//     text fallback.
 
 const (
 	// mountImageRefs bounds the prepared images a MountImages keeps for the frames to come.
@@ -33,6 +40,8 @@ const (
 	// mountImageFirstID is below the first image id of a MountImages. A placeholder names its image by the 24 bits of
 	// its foreground colour, so the ids stay below 1<<24.
 	mountImageFirstID = 0x500000
+	// mountHalfMaxPixels is the most pixels of an image the half-block drawing decodes: a larger one is the text fallback.
+	mountHalfMaxPixels = 40_000_000 // pig additive (D614): hard bound of the half-block fallback
 )
 
 // MountImages is what the mount surfaces of one client share to draw their image nodes: the prepared images, and the
@@ -70,6 +79,18 @@ type mountImageData struct {
 	pngDims                      *tui.ImageDimensions
 	measured, converted, running bool
 	waiters                      []func()
+
+	// half is the image as half-block rows for the box halfFor, nil when it could not be decoded; halfDone reports that
+	// it was drawn for halfFor.
+	half     []string
+	halfFor  mountHalf
+	halfDone bool
+}
+
+// mountHalf is what half-block rows are drawn for: the box of cells the image fits in and the colour form.
+type mountHalf struct {
+	cols, rows int
+	depth      halfBlockDepth
 }
 
 // mountPlacement is an image the terminal holds for placeholder cells: the image and the cells of its virtual placement.
@@ -103,9 +124,11 @@ func (m *MountImages) id(ref string) int {
 	return id
 }
 
-// prepare returns img as prepared, and true when its size is known and, with png, its conversion was tried. Otherwise
-// it starts the work off the loop, unless it is running, and calls ready (when not nil) after it ended.
-func (m *MountImages) prepare(img *viewImage, png bool, ready func()) (*mountImageData, bool) {
+// prepare returns img as prepared, and true when its size is known, with png its conversion was tried and, with a half
+// that is not zero, its half-block rows were drawn for that box: it returns them, nil when the image cannot be decoded.
+// Otherwise it starts the work off the loop, unless it is running, and calls what waiter returns (when neither is nil)
+// after it ended.
+func (m *MountImages) prepare(img *viewImage, png bool, half mountHalf, waiter func() func()) (*mountImageData, []string, bool) {
 	m.mu.Lock()
 	d := m.prepared[img.ref]
 	if d == nil {
@@ -124,22 +147,31 @@ func (m *MountImages) prepare(img *viewImage, png bool, ready func()) (*mountIma
 		delete(m.prepared, m.recent[0])
 		m.recent = m.recent[1:]
 	}
-	if d.measured && (!png || d.converted) {
+	halved := half == (mountHalf{}) || (d.halfDone && d.halfFor == half)
+	if d.measured && (!png || d.converted) && halved {
+		var rows []string
+		if half != (mountHalf{}) {
+			rows = d.half
+		}
 		m.mu.Unlock()
-		return d, true
+		return d, rows, true
 	}
-	if ready != nil {
-		d.waiters = append(d.waiters, ready)
+	if waiter != nil {
+		if ready := waiter(); ready != nil {
+			d.waiters = append(d.waiters, ready)
+		}
 	}
-	start, measure, convert := !d.running, !d.measured, png && !d.converted
+	start, measure, convert, draw := !d.running, !d.measured, png && !d.converted, !halved
+	dims := d.dims
 	d.running = true
 	m.mu.Unlock()
 	if !start {
-		return d, false
+		return d, nil, false
 	}
 	work := func() {
-		var dims, pngDims *tui.ImageDimensions
+		var pngDims *tui.ImageDimensions
 		var encoded string
+		var rows []string
 		if measure {
 			dims = tui.GetImageDimensions(img.b64, img.mimeType)
 		}
@@ -154,9 +186,15 @@ func (m *MountImages) prepare(img *viewImage, png bool, ready func()) (*mountIma
 				}
 			}
 		}
+		if draw {
+			rows = m.halfBlock(img, dims, half)
+		}
 		m.mu.Lock()
 		if measure {
 			d.dims, d.measured = dims, true
+		}
+		if draw {
+			d.half, d.halfFor, d.halfDone = rows, half, true
 		}
 		if convert {
 			d.png, d.pngDims, d.converted = encoded, pngDims, true
@@ -178,7 +216,40 @@ func (m *MountImages) prepare(img *viewImage, png bool, ready func()) (*mountIma
 	} else {
 		go work()
 	}
-	return d, false
+	return d, nil, false
+}
+
+// halfBlock draws img, whose size is dims, as half-block rows inside the box of half. It returns nil for bytes without
+// a size, with more pixels than mountHalfMaxPixels, or that cannot be decoded. An image that is not PNG is converted
+// first where the client converts: the conversion applies the rotation the image asks for and reads WebP.
+func (m *MountImages) halfBlock(img *viewImage, dims *tui.ImageDimensions, half mountHalf) []string {
+	if dims == nil || int64(dims.WidthPx)*int64(dims.HeightPx) > mountHalfMaxPixels {
+		return nil
+	}
+	data, mime := img.data, img.mimeType
+	if mime != "image/png" && m.ToPNG != nil {
+		if out := m.ToPNG(data); len(out) > 0 {
+			data, mime = out, "image/png"
+		}
+	}
+	var decoded image.Image
+	var err error
+	switch mime {
+	case "image/png":
+		decoded, err = imagepng.Decode(bytes.NewReader(data))
+	case "image/jpeg":
+		decoded, err = imagejpeg.Decode(bytes.NewReader(data))
+	case "image/gif":
+		decoded, err = imagegif.Decode(bytes.NewReader(data))
+	default:
+		return nil
+	}
+	if err != nil {
+		return nil
+	}
+	bounds := decoded.Bounds()
+	cols, rows := halfBlockSize(bounds.Dx(), bounds.Dy(), half.cols, half.rows)
+	return halfBlockRows(decoded, cols, rows, half.depth, nil)
 }
 
 // place makes next the placement a component holds in the place of prev (nil: it held none) and returns the id of its
@@ -313,6 +384,7 @@ type mountImageKey struct {
 	protocol         tui.ImageProtocol
 	cell             tui.CellDimensions
 	data             *mountImageData
+	half             mountHalf
 }
 
 var mountImagePending = []string{""}
@@ -364,10 +436,6 @@ func (c *mountImage) Render(width int) []string {
 	images := c.s.mountImages
 	caps := tui.GetCapabilities()
 	kitty := caps.Images == tui.ImageProtocolKitty
-	data, ok := images.prepare(c.img, kitty, c.wake())
-	if !ok {
-		return mountImagePending
-	}
 	// The width and the default height are those of Pi's component (image.ts render).
 	maxWidth := 60 // upstream: packages/tui/src/components/image.ts:render
 	if c.maxWidth > 0 {
@@ -385,10 +453,25 @@ func (c *mountImage) Render(width int) []string {
 			maxHeight = min(maxHeight, budget)
 		}
 	}
-	key := mountImageKey{width: width, maxHeight: maxHeight, protocol: caps.Images, cell: cell, data: data}
+	// Without a protocol the image is half-block cells inside the node's box, in the colour form of the terminal.
+	var half mountHalf
+	if caps.Images == "" {
+		half = mountHalf{cols: maxWidth, rows: maxHeight, depth: halfBlock256}
+		if caps.TrueColor {
+			half.depth = halfBlockTrueColor
+		}
+	}
+	// Rows drawn for this terminal and this box stay: another mount of the image may have had it drawn for another
+	// box since.
+	key := mountImageKey{width: width, maxHeight: maxHeight, protocol: caps.Images, cell: cell, data: c.key.data, half: half}
 	if c.lines != nil && c.key == key {
 		return c.lines
 	}
+	data, halfRows, ok := images.prepare(c.img, kitty, half, c.wake)
+	if !ok {
+		return mountImagePending
+	}
+	key.data = data
 	c.key = key
 	dims, b64, mime := data.dims, c.img.b64, c.img.mimeType
 	if kitty && data.png != "" {
@@ -398,9 +481,12 @@ func (c *mountImage) Render(width int) []string {
 		}
 	}
 	switch {
-	case dims == nil || caps.Images == "" || (kitty && data.png == ""):
+	case dims == nil || (kitty && data.png == "") || (caps.Images == "" && halfRows == nil):
 		c.unplace()
 		c.lines = []string{widthx.TruncateToWidth(c.fallback(tui.ImageFallback(c.img.mimeType, data.dims, c.filename)), width, "...", false)}
+	case caps.Images == "":
+		c.unplace()
+		c.lines = halfRows
 	case kitty && images.Placeholders && images.Write != nil:
 		size := tui.CalculateImageCellSize(*dims, maxWidth, maxHeight, cell)
 		next := mountPlacement{ref: c.img.ref, cols: min(size.Columns, len(kittyDiacritics)), rows: min(size.Rows, len(kittyDiacritics))}
