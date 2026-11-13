@@ -55,6 +55,23 @@ patch("9b88b94e2", "pi-ai/utils/retry.js", [
 ]);
 // END backport 9b88b94e2
 
+// BEGIN backport 4699b5b26
+// 4699b5b26 (#12136, #12128): a provider error that reports only a Node socket error code ("read ECONNRESET", "write EPIPE", "connect ETIMEDOUT 1.2.3.4:443") or "connection reset by peer" is retried (the classifier that pi-ai's SDK, the coding agent and the oracle test of ai.IsRetryableAssistantError run).
+patch("4699b5b26", "pi-ai/utils/retry.js", [
+    [`    "getaddrinfo",
+    "ENOTFOUND",
+`, `    "getaddrinfo",
+    ${note("4699b5b26").trim()}
+    // Bare Node socket error codes, e.g. "read ECONNRESET", "write EPIPE", or
+    // "connect ETIMEDOUT 1.2.3.4:443" when a transport reports only the code (#12128).
+    // The codes must not be part of a longer identifier.
+    "(?<![a-z0-9_])(?:ECONNRESET|ECONNABORTED|ECONNREFUSED|ETIMEDOUT|EPIPE)(?![a-z0-9_])",
+    "connection reset by peer",
+    "ENOTFOUND",
+`],
+]);
+// END backport 4699b5b26
+
 // BEGIN backport 49fe0a237
 // 49fe0a237 (#11987): Anthropic message threads default by endpoint, not provider id (the description pi-ai's compat schema and the models docs carry).
 patch("49fe0a237", "pi-ai/providers/compat-schema.js", [messageThreadsDefault]);
