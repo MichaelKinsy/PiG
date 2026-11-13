@@ -16163,6 +16163,29 @@
       ]
     },
     {
+      "id": "BF-5425648",
+      "title": "A provider written with the Go extension SDK whose `streamSimple` request the host cancels is now always…",
+      "symptom": "A provider written with the Go extension SDK whose `streamSimple` request the host cancels is now always answered with the cancellation's error.",
+      "rootCause": "The context is now read first, and once, when forward returns. forward returns without an error only because the context is done or because the stream has ended and every event of it was sent, so a result is answered only when the context was not done at that read; the select is gone. The context is the record of the cancel and is done before an author can see it, so the cancel and the end need no lock to order them. A cancel that arrives after the read leaves the result, as in the Node, Rust, Lisp and Python SDKs, which read the cancel once after their forwarding loop.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A provider written with the Go extension SDK whose `streamSimple` request the host cancels is now always answered with the cancellation's error. The SDK chose between that error and the stream's result with a `select` on the request's context and the stream's end; a provider that ends its stream when it sees the cancel makes both ready, and Go then picks at random, so the cancelled request was answered with the provider's result now and then (5 of 30 runs with the extension loaded in process, 1 of 30 as a subprocess), where the Rust, Lisp and Python SDKs answer the abort. PiG's host stops listening to such a request at its cancel and shows the stream as aborted either way, so the wrong answer was on the wire only. The window has been in the SDK since 0.3.0. A cancel that arrives after the stream ended and was forwarded still leaves the result.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "5425648cb7",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "extensions/sdk/provider_stream_cancel_test.go::TestProviderStreamEndedAfterTheCancelAnswersTheCancellation",
+        "test/extension-conformance/provider_stream_cancel_test.go::TestProviderStreamCancelledDuringAPushBurstAnswersTheAbortError"
+      ]
+    },
+    {
       "id": "BF-54283ce",
       "title": "fix(extension): Shutdown closes live child sessions and releases the objects they hold",
       "symptom": "fix(extension): Shutdown closes live child sessions and releases the objects they hold",
@@ -34717,6 +34740,28 @@
         "chord/output/output_test.go::TestToolOutputBounds",
         "durable/core/host/cf/test/output-sanitize.test.ts",
         "durable/core/turn/output_test.go::TestSanitizeOutputRemovesWholeEscapeSequences"
+      ]
+    },
+    {
+      "id": "BF-98a2e8d",
+      "title": "The Go extension SDK no longer forwards a provider stream event that the provider pushed after the cancel of…",
+      "symptom": "The Go extension SDK no longer forwards a provider stream event that the provider pushed after the cancel of its request.",
+      "rootCause": "drain read the context only before it took the next event. A cancel, and a push by an author that saw it, between that read and the take sent the host one event that was pushed after the cancel. drain now reads the context again once it has taken the event: an author that saw the cancel pushed after the context was done, so the read after the take sees it. The Rust, Lisp, Python and Node SDKs read the cancel after the take as well. The read at the top of the loop stays: it keeps a cancelled consumer from waiting for the delivery lock.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The Go extension SDK no longer forwards a provider stream event that the provider pushed after the cancel of its request. The forwarder read the request's cancellation before it took the next event, so a cancel and a later push that both landed between the two sent the host one more event; it now reads the cancellation again once it has the event, as the Rust, Lisp, Python and Node SDKs do. The window was two statements wide (no run of the conformance row showed it) and has been in the SDK since 0.3.0; PiG's host has ended its own stream at the cancel, so the extra event was on the wire only.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "98a2e8d071",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "extensions/sdk/provider_stream_forward_cancel_test.go::TestProviderStreamEventPushedAfterTheCancelIsNotForwarded"
       ]
     },
     {

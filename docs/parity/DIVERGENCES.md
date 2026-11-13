@@ -3654,7 +3654,7 @@ Call-site markers: `extensions/sdk/context.go` (`ModelEventStream.enqueue`), `ex
 
 Evidence: `TestProviderStreamEventsShowThePartialAsPushed` in `test/extension-conformance` (the row: 11 cases, every SDK isolated and packed; red for the Go, Python and Lisp cases at e0d2778cf, Go also under `-race`), `provider_stream_snapshot_test.go` (Go SDK), `tests/test_provider_stream_snapshot.py` (Python SDK), `model-tests.lisp` (Lisp SDK).
 
-Parity allowance: Pi 1.5.0 has no test of when its consumer reads the partial; the row's expected values are the message at each push.
+Parity allowance: Pi 1.5.2 has no test of when its consumer reads the partial (its `packages/ai/test/event-stream.test.ts` pushes numbers and tests delivery order and the final message's timing); the row's expected values are the message at each push.
 
 ## D616 An npm tarball is extracted with `tar` told the archive and the destination relative to the pack directory, where Pi passes their absolute paths
 
