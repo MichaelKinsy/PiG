@@ -24982,6 +24982,30 @@
       ]
     },
     {
+      "id": "BF-6f949d9",
+      "title": "A Node extension start no longer loads pi-tui's text-width module; it loads when an image line is first…",
+      "symptom": "A Node extension start no longer loads pi-tui's text-width module; it loads when an image line is first measured.",
+      "rootCause": "Pi (backported by the merge of follow/pi-main-13) makes pi-tui/terminal-image.js import visibleWidth from utils.js, for getImageLineExtent. This line's Node runtime loads terminal-image.js at every extension start: runtime.mjs imports it to hand pi-tui the host's terminal capabilities, and the vendored theme.js imports it because the theme's colour mode reads that capability cache in initTheme. So every start loaded utils.js, which TestNodeStartupDefersPresentationDependencies forbids before a presentation module is asked for: red on the merge, green here. Each side of the merge alone passes; no release had the import.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Node extension start no longer loads pi-tui's text-width module; it loads when an image line is first measured. Cause: the Node runtime loads pi-tui's terminal-image module at every start (the runtime hands it the host's terminal capabilities, and the theme's colour mode reads them from it), and the backport of Pi 787005a40 made that module import the width module for its image-line extent, so the merge that brought the backport loaded the width tables at every start. No released PiG had this: the import arrives with that merge.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6f949d9716",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/node_startup_dependencies_test.go::TestNodeStartupDefersPresentationDependencies",
+        "coding/extension/host/subprocess/runtime_node_terminal_image_width_test.go::TestNodeTerminalImageDefersTheWidthModule",
+        "coding/extension/host/subprocess/runtime_node_vendored_test.go::TestVendoredPiDistMatchesThePinnedPackage"
+      ]
+    },
+    {
       "id": "BF-6fb1307",
       "title": "openai-codex-responses reads `instructions` from the initial system message of the resolved transcript before…",
       "symptom": "openai-codex-responses reads `instructions` from the initial system message of the resolved transcript before `transformMessages` drops an errored or aborted assistant turn (`ai/openai_responses.go`, openai-codex-responses.ts:551): a transcript that starts with such a turn followed by a system message no longer sends that message as the prompt.",

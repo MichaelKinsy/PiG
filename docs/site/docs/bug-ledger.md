@@ -920,6 +920,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-6f4a82f](#bf-6f4a82f) | Validation errors for `propertyNames` name the failing member in their path, `contains` reports only "must… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6f553ca](#bf-6f553ca) | `pig update --models` warns about a provider whose OAuth login can no longer be refreshed (`Warning: skipped… | PiG's own defect | All platforms | Unreleased |
 | [BF-6f74b70](#bf-6f74b70) | The in-memory telemetry recorder stored two copies of each event's time, so the second and later events of a… | PiG's own defect | All platforms | Unreleased |
+| [BF-6f949d9](#bf-6f949d9) | A Node extension start no longer loads pi-tui's text-width module; it loads when an image line is first… | PiG's own defect | All platforms | Unreleased |
 | [BF-6fb1307](#bf-6fb1307) | openai-codex-responses reads `instructions` from the initial system message of the resolved transcript before… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6fdf59f](#bf-6fdf59f) | On macOS (kqueue), the watches of a base directory moved away and back are put back, and a watch that cannot… | PiG's own defect | macOS | Unreleased |
 | [BF-7008884](#bf-7008884) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
@@ -14538,6 +14539,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `6f74b7089f` (2026-11-07)
 - **Tests:** `telemetry/memory_events_test.go::TestInMemoryStoredSpanKeepsEachEventsOwnTime`
 - **Release note:** The in-memory telemetry recorder stored two copies of each event's time, so the second and later events of a span read another event's time in stored traces. Each event keeps its own.
+
+### BF-6f949d9
+
+**A Node extension start no longer loads pi-tui's text-width module; it loads when an image line is first…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Node extension start no longer loads pi-tui's text-width module; it loads when an image line is first measured.
+- **Root cause:** Pi (backported by the merge of follow/pi-main-13) makes pi-tui/terminal-image.js import visibleWidth from utils.js, for getImageLineExtent. This line's Node runtime loads terminal-image.js at every extension start: runtime.mjs imports it to hand pi-tui the host's terminal capabilities, and the vendored theme.js imports it because the theme's colour mode reads that capability cache in initTheme. So every start loaded utils.js, which TestNodeStartupDefersPresentationDependencies forbids before a presentation module is asked for: red on the merge, green here. Each side of the merge alone passes; no release had the import.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6f949d9716` (2026-11-13)
+- **Tests:** `coding/extension/host/subprocess/node_startup_dependencies_test.go::TestNodeStartupDefersPresentationDependencies`, `coding/extension/host/subprocess/runtime_node_terminal_image_width_test.go::TestNodeTerminalImageDefersTheWidthModule`, `coding/extension/host/subprocess/runtime_node_vendored_test.go::TestVendoredPiDistMatchesThePinnedPackage`
+- **Release note:** A Node extension start no longer loads pi-tui's text-width module; it loads when an image line is first measured. Cause: the Node runtime loads pi-tui's terminal-image module at every start (the runtime hands it the host's terminal capabilities, and the theme's colour mode reads them from it), and the backport of Pi 787005a40 made that module import the width module for its image-line extent, so the merge that brought the backport loaded the width tables at every start. No released PiG had this: the import arrives with that merge.
 
 ### BF-6fb1307
 
