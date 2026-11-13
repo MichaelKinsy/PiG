@@ -15,6 +15,19 @@ type rpcResponseTurn struct {
 
 func (t *rpcResponseTurn) complete(response any) { t.Microtask(func() { t.write(response) }) }
 
+// deliverRPCDialogAnswer hands a dialog's answer to the handler that awaits it. Pi resolves the dialog's promise on the answer's line and the handler goes on in a microtask (rpc-mode.ts:784-797), so behind every line of the stdin chunk: the reader emits the lines of a chunk in one synchronous loop (jsonl.ts:29-40, rpc-mode.ts:832-834), and a prompt of the chunk that names an extension command has run its handler to the handler's first await by then, on the runner that was current (agent-session.ts:2171-2176, 2279). One that awaits nothing answers ahead of the handler that asked: Pi 1.5.2 writes `notify ping`, `response c`, and then the notifications of the handler that went on.
+//
+// While a reload runs, the handler that asked is a handler of the reload's chain, and what follows its return is the rest of the reload: the old runner's invalidation after session_shutdown, the reloading command's response after session_start (agent-session.ts:3825-3826, 3857-3861). So an answer read during a reload is delivered as the loop's next task, behind the lines of its batch and the microtasks they queued. Delivered at once, the reload went on in another process while the batch was still being dispatched: a prompt of the chunk ran on a generation the reload had just invalidated, or answered behind the reloading command.
+//
+// Outside a reload the answer is delivered at once, so the handler's continuation can precede the responses of its chunk, which Pi writes first.
+func deliverRPCDialogAnswer(turn *rpcResponseTurn, reloading bool, deliver func()) {
+	if !reloading {
+		deliver()
+		return
+	}
+	turn.Macrotask(deliver)
+}
+
 // rpcCommandJoin counts extension command invocations whose prompt response is not yet written. Pi processes stdin's end one event-loop iteration after the line that started a command, and shutdown() then exits within microtasks and one tick (rpc-mode.ts:728-744, output-guard.ts:105-108). The flush therefore joins each command until it has answered or the host counts it suspended: its Node runtime reported its event-loop window closed unresponded, or its runtime has no microtask continuation and the command is still running at the checkpoint. A command that is suspended when the flush ends never answers.
 type rpcCommandJoin struct {
 	mu        sync.Mutex

@@ -32,7 +32,7 @@ type fusedHazard struct {
 }
 
 func (h fusedHazard) message() string {
-	return fmt.Sprintf("%s: fused extension %q: %s uses %s; fused extensions share the Pig process; return errors and use extension host/UI APIs instead", fusedProcessHazardDiagnostic, h.extension, h.position, h.symbol)
+	return fmt.Sprintf("%s: fused extension %q: %s uses %s; fused extensions share the PiG process; return errors and use extension host/UI APIs instead", fusedProcessHazardDiagnostic, h.extension, h.position, h.symbol)
 }
 
 func vetFusedPackages(ctx context.Context, fused []fusedEntry) error {

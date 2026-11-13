@@ -61,9 +61,9 @@ type UIBridge struct {
 	mcpServers    func() []extension.RegisteredMcpServer
 	mu            sync.RWMutex
 	headerMu      sync.Mutex
-	footerMu      sync.Mutex            // footer admission, pending state and application are one step, as for headerMu; lock headerMu first
-	widgets       map[string]*PushProxy // widget key → proxy; one namespace for every extension, as Pi's setExtensionWidget keys its maps
-	widgetOwners  map[string]string     // widget key → the extension that set it, for ClearExtension
+	footerMu      sync.Mutex             // footer admission, pending state and application are one step, as for headerMu; lock headerMu first
+	widgets       map[string]*PushProxy  // widget key → proxy; one namespace for every extension, as Pi's setExtensionWidget keys its maps
+	widgetOwners  map[string]widgetOwner // widget key → the extension that set it and its connection, for ClearExtension
 	widgetOrder   uint64
 	surfaceOwners map[string]surfaceOwner
 
@@ -859,7 +859,7 @@ func (b *UIBridge) StopFrontendPushes() {
 func NewUIBridge(invalidateTUI func()) *UIBridge {
 	b := &UIBridge{
 		widgets:         make(map[string]*PushProxy),
-		widgetOwners:    make(map[string]string),
+		widgetOwners:    make(map[string]widgetOwner),
 		surfaceOwners:   make(map[string]surfaceOwner),
 		customOverlays:  make(map[string]extension.RemoteOverlayHandle),
 		extConns:        make(map[string]*Conn),
@@ -1035,6 +1035,61 @@ func (b *UIBridge) RemoveWidget(key string) {
 	// Clear outside b.mu: it requests a render through b.Invalidate.
 	if ok {
 		proxy.Clear()
+	}
+}
+
+// ResetExtensionUI drops what the extension processes put on screen that Pi's resetExtensionUI resets (interactive-mode.ts), when a
+// /reload begins and before a Session replacement: every widget they set (clearExtensionWidgets), and it tells the widget sync
+// callback; the statuses, the footer and the header the bridge keeps to show a UI bound later; and their terminal input listeners. The
+// UI resets what it draws itself. The connection of a footer or header factory is told that its surface is retired, as Pi disposes the
+// component, and a frame the factory renders afterwards is not installed. What an extension sets after the reset is its own.
+func (b *UIBridge) ResetExtensionUI() {
+	b.headerMu.Lock()
+	b.footerMu.Lock()
+	b.mu.Lock()
+	widgets := make([]*PushProxy, 0, len(b.widgets))
+	for key, proxy := range b.widgets {
+		widgets = append(widgets, proxy)
+		delete(b.widgets, key)
+		delete(b.widgetOwners, key)
+	}
+	clear(b.pendingStatuses)
+	retired := maps.Clone(b.surfaceOwners)
+	clear(b.surfaceOwners)
+	b.pendingFooterSet, b.pendingFooterClear, b.pendingFooter, b.pendingFooterView = false, false, nil, nil
+	b.pendingHeaderSet, b.pendingHeaderClear, b.pendingHeader, b.pendingHeaderView = false, false, nil, nil
+	if b.footerView != nil {
+		b.footerView.close()
+		b.footerView, b.footerViewConn = nil, nil
+	}
+	if b.headerView != nil {
+		b.headerView.close()
+		b.headerView, b.headerViewConn = nil, nil
+	}
+	listeners := b.terminalInputSubs
+	b.terminalInputSubs = nil
+	b.mu.Unlock()
+	b.footerMu.Unlock()
+	b.headerMu.Unlock()
+	for kind, owner := range retired {
+		if owner.conn == nil || owner.id == 0 {
+			continue
+		}
+		args, _ := json.Marshal(struct {
+			Kind      string `json:"kind"`
+			SurfaceID int    `json:"surfaceId"`
+		}{kind, owner.id})
+		_ = owner.conn.Send(&Envelope{Type: MsgNotify, Notify: &NotifyPayload{Method: "ui.surface_retired", Args: args}})
+	}
+	for _, retire := range listeners {
+		retire()
+	}
+	// Clear outside b.mu: it requests a render through b.Invalidate.
+	for _, proxy := range widgets {
+		proxy.Clear()
+	}
+	if len(widgets) > 0 {
+		b.notifyWidgetSync()
 	}
 }
 
@@ -1731,7 +1786,23 @@ func (b *UIBridge) HandleWidgetPush(extName string, conn *Conn, push *WidgetPush
 	if push.Width == 0 {
 		placement = "aboveEditor"
 	}
-	b.updateWidget(extName, push.Key, push.Lines, push.Width, placement)
+	b.updateWidget(extName, conn, push.Key, push.Lines, push.Width, placement)
+}
+
+// widgetOwner is the extension that set a widget and the connection it set it through. A reload runs the extension again over a new
+// connection: the widget the generation before it set goes with that generation (clearExtension), and the same key set through the new
+// connection is a new widget, as Pi clears every widget when a reload begins and the reloaded extension sets its own.
+type widgetOwner struct {
+	name string
+	conn *Conn
+}
+
+// replacedLocked reports whether conn is the connection of a generation of extName that a reload replaced: the extension registered
+// another connection since. Such a generation draws no widget: what it set now would replace its successor's widget under the key and
+// go when it is stopped. b.mu is held.
+func (b *UIBridge) replacedLocked(extName string, conn *Conn) bool {
+	current := b.extConns[extName]
+	return conn != nil && current != nil && current != conn
 }
 
 // hasView reports a carrier's view field that holds a view.
@@ -1749,17 +1820,23 @@ func (b *UIBridge) updateWidgetView(extName string, conn *Conn, widgetKey string
 		b.mu.Unlock()
 		return
 	}
+	if b.replacedLocked(extName, conn) {
+		b.mu.Unlock()
+		return
+	}
 	proxy, exists := b.widgets[key]
-	// Another extension's widget under the same key is replaced, as Pi's setExtensionWidget removes whatever the key held.
+	// Another extension's widget under the same key is replaced, as Pi's setExtensionWidget removes whatever the key held; so is the
+	// widget of the extension's generation before a reload, whose view surface is its connection's.
 	var displaced *PushProxy
-	if exists && b.widgetOwners[key] != extName {
+	owner := widgetOwner{name: extName, conn: conn}
+	if exists && b.widgetOwners[key] != owner {
 		displaced, exists = proxy, false
 	}
 	if !exists {
 		proxy = NewPushProxy(b.Invalidate)
 		b.widgets[key] = proxy
 	}
-	b.widgetOwners[key] = extName
+	b.widgetOwners[key] = owner
 	proxy.mu.Lock()
 	moved := placement != "" && placement != proxy.placement
 	if !exists || moved {
@@ -1789,7 +1866,7 @@ func (b *UIBridge) updateWidgetView(extName string, conn *Conn, widgetKey string
 }
 
 // updateWidget replaces string-list widgets and updates component frames. An empty placement keeps a frame's current slot.
-func (b *UIBridge) updateWidget(extName, widgetKey string, lines []string, width int, placement string) {
+func (b *UIBridge) updateWidget(extName string, conn *Conn, widgetKey string, lines []string, width int, placement string) {
 	key := widgetKey
 
 	b.mu.Lock()
@@ -1797,9 +1874,14 @@ func (b *UIBridge) updateWidget(extName, widgetKey string, lines []string, width
 		b.mu.Unlock()
 		return
 	}
+	if b.replacedLocked(extName, conn) {
+		b.mu.Unlock()
+		return
+	}
 	proxy, exists := b.widgets[key]
 	var displaced *PushProxy
-	if exists && b.widgetOwners[key] != extName {
+	owner := widgetOwner{name: extName, conn: conn}
+	if exists && b.widgetOwners[key] != owner {
 		displaced, exists = proxy, false
 	}
 	replaced := !exists || width == 0
@@ -1807,7 +1889,7 @@ func (b *UIBridge) updateWidget(extName, widgetKey string, lines []string, width
 		proxy = NewPushProxy(b.Invalidate)
 		b.widgets[key] = proxy
 	}
-	b.widgetOwners[key] = extName
+	b.widgetOwners[key] = owner
 	proxy.mu.Lock()
 	moved := placement != "" && placement != proxy.placement
 	if replaced || moved {
@@ -1849,7 +1931,7 @@ func (b *UIBridge) notifyWidgetSync() {
 func (b *UIBridge) GetWidget(extName, key string) *PushProxy {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
-	if b.widgetOwners[key] != extName {
+	if b.widgetOwners[key].name != extName {
 		return nil
 	}
 	return b.widgets[key]
@@ -1891,13 +1973,14 @@ func (b *UIBridge) clearExtension(extName string, owner *Conn, ownerOnly bool) {
 			delete(b.autocompleteQueries, key)
 		}
 	}
-	if !ownerOnly || currentOwner {
-		for k, proxy := range b.widgets {
-			if b.widgetOwners[k] == extName {
-				widgets = append(widgets, proxy)
-				delete(b.widgets, k)
-				delete(b.widgetOwners, k)
-			}
+	for k, proxy := range b.widgets {
+		// A widget goes with the connection that set it: the generation a reload replaced is cleared after its successor registered, when the
+		// bridge no longer names its connection, and its widget would stay drawn, with its view surface and that connection, until the
+		// extension set the key again. The extension's every widget goes when the extension does.
+		if set := b.widgetOwners[k]; set.name == extName && (!ownerOnly || currentOwner || set.conn == owner) {
+			widgets = append(widgets, proxy)
+			delete(b.widgets, k)
+			delete(b.widgetOwners, k)
 		}
 	}
 	for k, handle := range b.customOverlays {
@@ -4769,7 +4852,7 @@ func (b *UIBridge) handleSetWidget(extName string, owner *Conn, args json.RawMes
 		if p.Options != nil && p.Options.Placement == extension.WidgetPlacementBelowEditor {
 			placement = string(extension.WidgetPlacementBelowEditor)
 		}
-		b.updateWidget(extName, p.Key, lines, p.Width, placement)
+		b.updateWidget(extName, owner, p.Key, lines, p.Width, placement)
 	}
 
 	return &CallResultPayload{}, nil

@@ -154,7 +154,7 @@ func AcquireStage(ctx context.Context, configRoot string) (func() error, error) 
 func acquire(ctx context.Context, configRoot string, shared bool) (func() error, error) {
 	root, err := filepath.Abs(configRoot)
 	if err != nil {
-		return nil, fmt.Errorf("resolve Pig config root: %w", err)
+		return nil, fmt.Errorf("resolve PiG config root: %w", err)
 	}
 	lockDir := filepath.Join(root, "state", "pigsdk")
 	if err := os.MkdirAll(lockDir, 0o755); err != nil {

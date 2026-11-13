@@ -206,7 +206,7 @@ func matchManifest(manifest signature.Manifest, record *artifact.Record) error {
 		{"Piglet definition", manifest.PigletDigest, pigletDigest},
 		{"component plan", manifest.ComponentPlanDigest, record.Resolution.ComponentPlan.Digest},
 		{"target", manifest.Target, runtime.GOOS + "/" + runtime.GOARCH},
-		{"Pig version", manifest.PigVersion, coding.PigVersion},
+		{"PiG version", manifest.PigVersion, coding.PigVersion},
 	} {
 		if check.signed != check.actual {
 			return fmt.Errorf("signed Piglet manifest names %s %q, but this binary has %q", check.name, check.signed, check.actual)

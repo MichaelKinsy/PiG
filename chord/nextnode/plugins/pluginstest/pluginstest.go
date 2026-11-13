@@ -17,8 +17,9 @@ import (
 // Watcher is what the barrier asks of a file watcher. *plugins.Plugins answers for its own (WatchTree, Watches); the tests of
 // package plugins answer for a watcher they made without a component.
 type Watcher interface {
-	// WatchTree has the watcher watch the tree at dir too and returns the directories it watches then; false when it
-	// watches nothing (a watcher that failed to watch, or a closed one).
+	// WatchTree has the watcher watch the tree at dir too, until it closes, and returns the directories it watches then; false
+	// when it watches nothing (a watcher that failed to watch, or a closed one). No discovery of the watcher's drops the tree:
+	// one that did, between WatchTree and the event of the barrier's directory, would leave that directory unwatched.
 	WatchTree(dir string) (watched []string, watching bool)
 	// Watches reports whether the watcher has a watch on the directory dir.
 	Watches(dir string) bool
@@ -60,7 +61,8 @@ func settle(t testing.TB, watcher Watcher, bound time.Duration) {
 		}
 	}
 	own := found.(*barrier)
-	// A discovery drops the trees that are no root's, base's or linked plugin's: the barrier's is put back each time.
+	// The watcher keeps the barrier's tree through its discoveries (a build beside the test discovers at any moment). Asking each
+	// time says whether it watches at all and, for Windows, which directories.
 	directories, watching := watcher.WatchTree(own.dir)
 	if !watching {
 		return

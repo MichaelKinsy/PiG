@@ -41,7 +41,7 @@ func Parse(path string, data []byte) (Config, error) {
 		switch event {
 		case "SessionStart", "PostToolUse", "Stop", "SessionEnd":
 		case "PreToolUse":
-			return Config{}, fmt.Errorf("parse %s: PreToolUse is not supported by Pig", path)
+			return Config{}, fmt.Errorf("parse %s: PreToolUse is not supported by PiG", path)
 		default:
 			return Config{}, fmt.Errorf("parse %s: unsupported hook event %q", path, event)
 		}

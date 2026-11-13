@@ -1303,3 +1303,34 @@ func TestPluginsAPanicInAnAppCallbackPropagatesAndIsNeverAPluginFailure(t *testi
 func regexpMatch(expression, text string) bool {
 	return regexp.MustCompile(expression).MatchString(text)
 }
+
+// discoveringComponent is a component as the barrier asks it, discovering again right after each WatchTree: what the build of an
+// apply does beside a test's edit when the plugin set changed.
+type discoveringComponent struct {
+	t *testing.T
+	c *pcComponent
+}
+
+func (w discoveringComponent) WatchTree(dir string) ([]string, bool) {
+	watched, watching := w.c.WatchTree(dir)
+	if err := w.c.discover(background); err != nil {
+		w.t.Fatal(err)
+	}
+	return watched, watching
+}
+
+func (w discoveringComponent) Watches(dir string) bool { return w.c.Watches(dir) }
+
+// No Pi counterpart (Plugins.WatchTree is the barrier's of the Go tests; Pi's tests share the watcher's thread). The component's
+// discovery keeps the tree its barrier watches: the barrier returns with a discovery between its WatchTree and its directory.
+func TestAComponentsDiscoveryKeepsTheTreeItsBarrierWatches(t *testing.T) {
+	root := tempRoot(t)
+	pcItemPlugin(t, root, "a", "a1")
+	c := pcNew(t, root)
+	var watching bool
+	c.section(func() { watching = c.watcher.fs != nil })
+	if !watching {
+		t.Fatal("the component's watcher watches nothing")
+	}
+	pluginstest.Settle(t, discoveringComponent{t, c})
+}

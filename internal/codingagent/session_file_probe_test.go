@@ -49,7 +49,7 @@ func TestSessionFileInteropProbe(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err = manager.Open(invalid)
-	if err == nil || err.Error() != "Session file is not a valid pi session: "+invalid {
+	if err == nil || err.Error() != d2Text("Session file is not a valid pi session: ")+invalid {
 		t.Fatal(err)
 	}
 	data, err = os.ReadFile(invalid)

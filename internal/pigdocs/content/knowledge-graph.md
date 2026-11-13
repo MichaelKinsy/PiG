@@ -1,6 +1,6 @@
 # Knowledge graph
 
-The entities Pig is built from, how they relate, where each lives, and the command that inspects it. Use it to locate a concept before reading its page; each row links the page to read next.
+The entities PiG is built from, how they relate, where each lives, and the command that inspects it. Use it to locate a concept before reading its page; each row links the page to read next.
 
 | Entity | What it is | Where it lives | Inspect with | Read |
 |---|---|---|---|---|

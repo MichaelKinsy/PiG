@@ -70,7 +70,7 @@ func TestSetSessionFileSwitchesThePersistedManager(t *testing.T) {
 		s := manager()
 		before := s.ID()
 		err := s.SetSessionFile(path)
-		if err == nil || !strings.Contains(err.Error(), "Session file is not a valid pi session: "+path) {
+		if err == nil || !strings.Contains(err.Error(), d2Text("Session file is not a valid pi session: ")+path) {
 			t.Fatalf("err = %v", err)
 		}
 		if s.ID() != before || s.Path() != path {

@@ -41,7 +41,7 @@ jsonld = {
     + [{"@type": "pig:Relation", "pig:from": f"pig:{s}", "pig:relation": r, "pig:to": f"pig:{t}", "description": n} for s, r, t, n in graph["relations"]],
 }
 
-agent = ("# Knowledge graph\n\nThe entities Pig is built from, how they relate, where each lives, and the command that inspects it. "
+agent = ("# Knowledge graph\n\nThe entities PiG is built from, how they relate, where each lives, and the command that inspects it. "
          "Use it to locate a concept before reading its page; each row links the page to read next.\n\n"
          + tables(lambda d: f"[{d}]({d})")
          + "\nThe machine-readable form is `pig-knowledge-graph.jsonld` on the documentation site.\n")

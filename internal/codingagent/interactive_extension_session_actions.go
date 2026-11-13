@@ -40,7 +40,7 @@ func (m *InteractiveMode) setExtensionSessionName(name string) error {
 	if m.statusLine != nil {
 		m.statusLine.SetName(name)
 	}
-	tui.SetTerminalTitle(tui.BuildTerminalTitle(name, m.opts.CWD))
+	m.setTerminalTitle(tui.BuildTerminalTitle(name, m.opts.CWD))
 	return nil
 }
 

@@ -1,0 +1,59 @@
+# Behavior family: extensions-runtime
+# Surface: /reload resets what extensions put on screen.
+#
+# Upstream evidence (Pi 1.5.2): interactive-mode.ts handleReloadCommand calls
+# resetExtensionUI before session.reload(). resetExtensionUI restores the
+# built-in footer and header (setExtensionFooter(undefined),
+# setExtensionHeader(undefined)), clears the extension widgets
+# (clearExtensionWidgets) and the keyed statuses (clearExtensionStatuses). The
+# fixture sets a status, a widget, a header and a footer from a command, never
+# from its factory or a session_start handler, so nothing sets them again after
+# the reload. The compared region is the footer, from the working directory line
+# through the pane bottom: PiG's built-in header is taller than Pi's (D2), which
+# moves everything above the editor, so the rows above it are not compared. A
+# footer or a status of the replaced extension that is still drawn replaces or
+# follows the built-in footer's two rows.
+
+name = "98-reload-resets-extension-ui"
+description = "A status and a footer an extension set are gone after /reload when it does not set them again"
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/core/footer-data-provider.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/reload-ui-reset.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/reload-ui-reset.mjs",
+]
+
+[tmux]
+width = 100
+height = 32
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "parity-snap-cwd-"
+
+[[tmux.steps]]
+keys = ["/parity-decorate", "Enter"]
+wait_visible_contains = ["header-set-before-reload", "widget-set-before-reload", "footer-set-before-reload", "status-set-before-reload"]
+wait_timeout_seconds = 20
+
+[[tmux.steps]]
+keys = ["/reload", "Enter"]
+wait_contains = ["Reloaded"]
+wait_timeout_seconds = 30
+
+[assert]
+both_reach_ready = true
+both_contain = ["(auto)"]
+both_not_contain = ["panic:", "goroutine ", "connection closed", "status-set-before-reload", "footer-set-before-reload"]
+output_equal = true
+runs = 3

@@ -1,0 +1,74 @@
+# Behavior family: extensions-runtime
+# Surface: the staleness of extension instances across a /reload that fails and a /reload that then loads.
+#
+# Upstream evidence (Pi 1.5.2): session.reload() invalidates the old runner right
+# after session_shutdown (agent-session.ts:3825-3826) and builds the new one only
+# at _buildRuntime (:3844). The interactive mode catches a reload that throws and
+# shows "Reload failed: <message>" (interactive-mode.ts:6670-6704), so the command
+# that awaited ctx.reload() resolves. The fixture makes the reload fail with a
+# settings entry the resource loader rejects, uses the old instance's captured pi
+# and ctx, restores the settings, and after a second /reload asks every instance
+# again. The cells are compared between the two programs: the old instance is stale
+# after the failed reload and stays stale, it gets session_shutdown once more, and
+# the instance the second reload loads is live.
+
+name = "99-failed-reload-then-reload"
+description = "A /reload that fails leaves the old extension instance stale; a later /reload loads a live one."
+covers = [
+  "packages/coding-agent/src/core/agent-session.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/core/extensions/runner.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pig_extensions = ["testdata/ext/reload-failed-then-reloaded.mjs"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/reload-failed-then-reloaded.mjs",
+]
+
+[tmux]
+width = 100
+height = 45
+ready_pattern_pig = "[Extensions]"
+ready_pattern_pi = "[Extensions]"
+ready_timeout_seconds = 30
+capture_start = "reload-cells-begin"
+capture_end = "reload-cells-end"
+
+[[tmux.steps]]
+keys = ["/parity-reload-fails", "Enter"]
+settle_seconds = 2
+wait_contains = ["Reload failed"]
+wait_timeout_seconds = 20
+
+[[tmux.steps]]
+keys = ["/reload", "Enter"]
+wait_contains = ["Reloaded"]
+wait_timeout_seconds = 20
+
+[[tmux.steps]]
+keys = ["/parity-reload-cells", "Enter"]
+wait_contains = ["reload-cells-end"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_contain = [
+  "g1 ctx.reload() resolved",
+  "g1 pi after the failed reload threw: This extension ctx is stale",
+  "g1 ctx after the failed reload threw: This extension ctx is stale",
+  "g2 session_start reload",
+  "g1 pi after the second reload threw: This extension ctx is stale",
+  "g2 pi after the second reload live",
+]
+both_not_contain = ["connection closed", "unknown command", "panic:", "goroutine ", "g1 pi after the failed reload live", "g2 pi after the second reload threw"]
+output_equal = true
+runs = 3
