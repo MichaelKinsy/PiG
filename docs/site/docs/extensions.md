@@ -4,6 +4,8 @@ Extensions add executable behavior to PiG. They can register tools, commands, ev
 
 PiG preserves the Pi extension model while using a process-oriented host that supports Go, Rust, Python, and Node. A compatible Go extension can also be compiled into a Piglet Binary.
 
+To show one GUI in the terminal and in a web page, mount a view: [Extension views](ui-views.md) (D614).
+
 ## Table of Contents
 
 - [Quick Start](#quick-start)

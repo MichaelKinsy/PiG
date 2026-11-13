@@ -54,13 +54,14 @@ var pageNames = [...]string{
 	"troubleshooting.md",
 	"trust.md",
 	"tui.md",
+	"ui-views.md",
 	"usage.md",
 	"virtual-models.md",
 }
 
 // pageSizes holds the byte size of each page of pageNames.
 var pageSizes = [...]int{
-	12410,
+	12599,
 	5949,
 	3844,
 	2849,
@@ -75,8 +76,8 @@ var pageSizes = [...]int{
 	11346,
 	2677,
 	7287,
-	24363,
-	15365,
+	24478,
+	15470,
 	6957,
 	7618,
 	9366,
@@ -99,7 +100,7 @@ var pageSizes = [...]int{
 	5658,
 	20334,
 	821,
-	10664,
+	10775,
 	19734,
 	11352,
 	6228,
@@ -109,10 +110,11 @@ var pageSizes = [...]int{
 	6777,
 	9558,
 	6154,
-	9708,
+	9813,
+	22338,
 	5877,
 	9269,
 }
 
 // contentDigest is the digest of the pages: sha256 over "name\x00size\x00contents" of each page in name order, in hex.
-const contentDigest = "6314b87aba79db41da54793b3ed77344c61411ea299aa47d6b9b760bc3b32fc5"
+const contentDigest = "0a0a475a36fa0f4c4f1f17f72533d02bce4afae38fffb90fd74a8ae8846df426"
