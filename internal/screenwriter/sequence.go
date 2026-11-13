@@ -154,6 +154,35 @@ func lineEnd(body string, i int) int {
 	}
 }
 
+// resetEnds reports whether line ends with a reset of the pen, the hyperlink close after it or not: the pen after such a line is the
+// default one, whatever the line holds.
+func resetEnds(line string) bool {
+	return strings.HasSuffix(line, "\x1b[0m"+linkCloseBEL) || strings.HasSuffix(line, "\x1b[0m")
+}
+
+// asciiColumns is how many printable ASCII bytes line, a line as lineEnd ends it, has outside its sequences. Each of them is a cell
+// of one column in a line the writer reads, so such a line has no fewer columns.
+func asciiColumns(line string) int {
+	n := 0
+	for i := 0; i < len(line); {
+		if line[i] == 0x1b {
+			_, i = nextToken(line, i)
+			continue
+		}
+		end := max(textEnd(line, i), i+1)
+		run, k := bytesOf(line[i:end]), 0
+		n += len(run)
+		for ; k+8 <= len(run); k += 8 {
+			n -= bits.OnesCount64(binary.LittleEndian.Uint64(run[k:]) & highBits)
+		}
+		for ; k < len(run); k++ {
+			n -= int(run[k] >> 7)
+		}
+		i = end
+	}
+	return n
+}
+
 // twoParams reads the two parameters of a cursor position or a scroll region, each 1 when left out; ok is false for any other form.
 func twoParams(params string) (a, b int, ok bool) {
 	a, b = 1, 1

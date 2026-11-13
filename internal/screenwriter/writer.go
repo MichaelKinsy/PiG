@@ -301,7 +301,7 @@ func (w *Writer) other(data string) {
 // forget makes every row, the pen, the cursor and the scroll region unknown.
 func (w *Writer) forget() {
 	for i := range w.rows {
-		w.rows[i].known, w.rows[i].partial = false, false
+		w.rows[i].known, w.rows[i].partial, w.rows[i].lineOnly = false, false, false
 	}
 	w.penKnown, w.curKnown, w.visKnown, w.aCurKnown = false, false, false, false
 	w.top, w.bot = 0, w.high-1
@@ -393,13 +393,19 @@ func (w *Writer) writeDiff(index int, o, t *row, shared, same int) bool {
 	if p == no && no == nt {
 		return true
 	}
+	// The last same of t's cells are o's last cells, where they were (parse). With as many cells in both rows they are the cells of
+	// the same index from kept on: none of them is compared again.
+	kept := nt
+	if no == nt {
+		kept = nt - same
+	}
 	// The cells before p are o's. From there through o's last cell that is not a default blank, t's cells must lie where o's do and
 	// be default blanks where o's are.
-	ink := o.ink()
+	ink := o.inked
 	if ink > nt {
 		return false
 	}
-	for k := p; k < ink; k++ {
+	for k := p; k < min(ink, kept); k++ {
 		a, b := o.cells[k], t.cells[k]
 		if a.col() != b.col() || a.width() != b.width() || o.blankAt(k) != t.blankAt(k) {
 			return false
@@ -411,7 +417,7 @@ func (w *Writer) writeDiff(index int, o, t *row, shared, same int) bool {
 		}
 	}
 	s := 0
-	if o.width == t.width && t.ink() == ink {
+	if o.width == t.width && t.inked == ink {
 		limit := min(no, nt) - p
 		if s = min(same, limit); s == 0 {
 			// The cells that start in the bytes the two lines share at their end are the same clusters: they are the same cells where
@@ -620,7 +626,13 @@ func (w *Writer) row(index int, line string, whole, positioned bool) bool {
 	r := &w.rows[index]
 	w.curKnown = false
 	clean := w.penKnown && w.pen == pen{}
-	if clean && r.known && positioned && !whole && string(r.line) == line {
+	// What the row shows decides how it is written only here: under the default pen, in a frame that is not sent as it came, with
+	// the cursor moved after the row. A line kept unread is read now.
+	inPlace := clean && positioned && !whole
+	if inPlace && r.lineOnly {
+		w.readRow(r)
+	}
+	if inPlace && r.known && string(r.line) == line {
 		// The row shows the line already. The frame rewrote it whole all the same: the settle write does.
 		r.partial, w.anyPartial = true, true
 		w.pen = r.endPen
@@ -631,6 +643,14 @@ func (w *Writer) row(index int, line string, whole, positioned bool) bool {
 	if clean {
 		if len(line) > w.room {
 			w.room = len(line) + len(line)/2
+		}
+		// A row that is written whole whatever cells the line has keeps the line unread: a row of a frame that is sent as it came,
+		// a row no cursor address follows, a row that is not known, and a row without a cell written with a line as wide as the
+		// screen (so many printable ASCII bytes: read, it has that many columns, and is not written in place; not read, it is
+		// written as the frame wrote it). The line ends with a reset, so the pen after it is the default one, read or not.
+		if resetEnds(line) && (!inPlace || !r.known || len(r.cells) == 0 && asciiColumns(line) >= w.cols) {
+			w.keepLine(index, r, line, whole)
+			return true
 		}
 		// A line another row shows (the renderers moved it) has that row's cells: they are taken from it, and say nothing of what
 		// the line shares with the row it is written to.
@@ -644,7 +664,7 @@ func (w *Writer) row(index int, line string, whole, positioned bool) bool {
 	}
 	switch {
 	case whole && !plain:
-		r.known, r.partial = false, false
+		r.known, r.partial, r.lineOnly = false, false, false
 		w.penAfter(line)
 	case !plain:
 		// A line the writer does not read is written as the frame wrote it, under the frame's pen, and the row is not known after it.
@@ -655,7 +675,7 @@ func (w *Writer) row(index int, line string, whole, positioned bool) bool {
 		w.out = append(w.out, "\x1b[2K"...)
 		w.out = append(w.out, line...)
 		w.aCurKnown = false
-		r.known, r.partial = false, false
+		r.known, r.partial, r.lineOnly = false, false, false
 		w.penAfter(line)
 		if w.penKnown {
 			w.aPen = w.pen
@@ -670,16 +690,45 @@ func (w *Writer) row(index int, line string, whole, positioned bool) bool {
 			}
 		}
 		*r, *t = *t, *r
-		r.known, r.partial = true, partial
+		r.known, r.partial, r.lineOnly = true, partial, false
 		w.anyPartial = w.anyPartial || partial
 		w.pen = r.endPen
 	}
 	return true
 }
 
+// keepLine takes a row that is written whole whatever it shows, with a line that ends with a reset: unless the frame is sent as it
+// came the row is written as the frame wrote it, erased under the default pen, then the line. The line is kept in the row unread:
+// the row's cells are read when a frame next writes the row in a way that depends on them (readRow), and never when the row is
+// scrolled away, erased or forgotten first.
+func (w *Writer) keepLine(index int, r *row, line string, whole bool) {
+	if !whole {
+		w.moveTo(index, 0)
+		w.setPen(pen{})
+		w.out = append(w.out, "\x1b[2K"...)
+		w.out = append(w.out, line...)
+		w.aCurKnown = false
+		w.aPen = pen{}
+	}
+	if cap(r.line) < len(line) {
+		r.line = make([]byte, 0, max(len(line), w.room))
+	}
+	r.line = append(r.line[:0], line...)
+	r.known, r.partial, r.lineOnly = false, false, true
+	w.pen = pen{}
+}
+
+// readRow reads the line a row keeps unread into the row's cells. The row is then what it would be had the line been read when the
+// frame wrote it: known when the writer takes the line, not known otherwise.
+func (w *Writer) readRow(r *row) {
+	line := unsafe.String(unsafe.SliceData(r.line), len(r.line)) //nolint:gosec // G103: the row's own line, read and not written while its cells are read.
+	_, _, ok := r.readLine(line, nil, w.cols, w.room, &w.symbols)
+	r.known, r.lineOnly = ok, false
+}
+
 // penAfter is the pen after a line the writer did not read: the default one when the line ends with a reset, unknown otherwise.
 func (w *Writer) penAfter(line string) {
-	if strings.HasSuffix(line, "\x1b[0m"+linkCloseBEL) || strings.HasSuffix(line, "\x1b[0m") {
+	if resetEnds(line) {
 		w.pen, w.penKnown = pen{}, true
 		return
 	}

@@ -48,18 +48,20 @@ func (c cell) end() int      { return c.off() + c.size() }
 type row struct {
 	known     bool   // the row shows cells, written from column 1 after the row was erased under the default pen, and erased columns after them
 	partial   bool   // the frames rewrote the row since the writer last wrote it whole
+	lineOnly  bool   // the row was written whole, as the frame wrote it, and shows line, which is not read into cells yet: the row is not known until it is
 	line      []byte // the line as the frame wrote it
 	cells     []cell
 	pens      []pen // the pens of the cells, in the order the line sets them; the first is the default pen
 	width     int   // the columns the cells cover
 	endPen    pen   // the pen the line leaves
 	uncertain int   // the first cell that is not certain; len(cells) when all are
+	inked     int   // how many cells the row has through its last one that is not a blank under the default pen
 }
 
 func (r *row) blank(known bool) {
-	r.known, r.partial = known, false
+	r.known, r.partial, r.lineOnly = known, false, false
 	r.cells, r.line, r.pens = r.cells[:0], r.line[:0], r.pens[:0]
-	r.width, r.uncertain, r.endPen = 0, 0, pen{}
+	r.width, r.uncertain, r.endPen, r.inked = 0, 0, pen{}, 0
 }
 
 // blankAt reports whether cell i is a blank under the default pen: the one cell a terminal may keep no trace of having been sent
@@ -69,9 +71,9 @@ func (r *row) blankAt(i int) bool {
 	return c.size() == 1 && r.line[c.off()] == ' ' && r.pens[c.pen()] == pen{}
 }
 
-// ink is how many cells the row has through its last one that is not a blank under the default pen.
-func (r *row) ink() int {
-	for i := range slices.Backward(r.cells) {
+// inkBefore is how many of the row's first n cells there are through the last of them that is not a blank under the default pen.
+func (r *row) inkBefore(n int) int {
+	for i := range slices.Backward(r.cells[:n]) {
 		if !r.blankAt(i) {
 			return i + 1
 		}
@@ -148,8 +150,16 @@ func (r *row) buffers(cols, lineLen, room int) {
 	}
 }
 
-// parse reads line, written from column 1 of a row erased under the default pen, into r, and returns how many of its first cells are
-// old's first cells unchanged. ok is false for a line the writer does not take: one with a sequence other than SGR of the forms applySGR
+// parse reads line into r's cells (readLine) and keeps the line.
+func (r *row) parse(line string, old *row, cols, room int, symbols *symbolWidths) (shared, same int, ok bool) {
+	if shared, same, ok = r.readLine(line, old, cols, room, symbols); ok {
+		r.line = append(r.line[:0], line...)
+	}
+	return shared, same, ok
+}
+
+// readLine reads line, written from column 1 of a row erased under the default pen, into r's cells, and returns how many of its first cells are
+// old's first cells unchanged and how many of its last are old's last, where they were. The line itself is not kept: line may be the line r keeps. ok is false for a line the writer does not take: one with a sequence other than SGR of the forms applySGR
 // reads and the hyperlink close, a control character, a cluster of several code points or without a width of 1 or 2, cells past the
 // screen's edge, or more bytes or pens than a cell can name. room is the length of the longest line the rows may hold: a row's buffers
 // are made once, so the rows, which trade their buffers as they are written, stop allocating.
@@ -158,7 +168,7 @@ func (r *row) buffers(cols, lineLen, room int) {
 // cluster the bytes after it decide). The cells in the bytes the two lines share at their end are old's too, moved to where they are
 // now, from the first of them that the reading reaches at a cluster's start under the pen old had there: from the same place under
 // the same pen the same bytes read the same.
-func (r *row) parse(line string, old *row, cols, room int, symbols *symbolWidths) (shared, same int, ok bool) {
+func (r *row) readLine(line string, old *row, cols, room int, symbols *symbolWidths) (shared, same int, ok bool) {
 	if len(line) > maxLine || cols > maxLine {
 		return 0, 0, false
 	}
@@ -167,8 +177,8 @@ func (r *row) parse(line string, old *row, cols, room int, symbols *symbolWidths
 	pens = append(pens, pen{})
 	uncertain := -1
 	var p pen
-	var over, at cell // the over count and the pen's index, in their fields
-	col, start := 0, 0
+	var over, at cell          // the over count and the pen's index, in their fields
+	col, start, ink := 0, 0, 0 // ink: the cells so far through the last that is not a blank under the default pen
 	// tail is the first of old's cells that may still be taken over, and splice where in line it would start.
 	tail, splice, moved := 0, len(line)+1, 0
 	if old != nil && old.known && len(old.cells) > 0 {
@@ -184,6 +194,9 @@ func (r *row) parse(line string, old *row, cols, room int, symbols *symbolWidths
 			col, start = last.col()+last.width(), last.end()
 			if old.uncertain < shared {
 				uncertain = old.uncertain
+			}
+			if ink = old.inked; ink > shared {
+				ink = old.inkBefore(shared)
 			}
 		}
 		moved = len(line) - len(old.line)
@@ -220,8 +233,15 @@ func (r *row) parse(line string, old *row, cols, room int, symbols *symbolWidths
 					shift := cell(moved) + cell(col-old.width)<<cellColShift + (over - before) + (at - first&(0xff<<cellPenShift))
 					n := len(cells)
 					cells = cells[:n+len(old.cells)-tail]
-					for k, c := range old.cells[tail:] {
-						cells[n+k] = c + shift
+					if shift == 0 {
+						copy(cells[n:], old.cells[tail:])
+					} else {
+						for k, c := range old.cells[tail:] {
+							cells[n+k] = c + shift
+						}
+					}
+					if old.inked > tail {
+						ink = n + old.inked - tail
 					}
 					switch {
 					case uncertain >= 0:
@@ -294,6 +314,16 @@ func (r *row) parse(line string, old *row, cols, room int, symbols *symbolWidths
 					cells[k] = next
 					next += 1 | 1<<cellColShift
 				}
+				// The run's cells are blanks under the default pen from its last byte that is not a space on.
+				last := j
+				if p == (pen{}) {
+					for last > i && line[last-1] == ' ' {
+						last--
+					}
+				}
+				if last > i {
+					ink = n + last - i
+				}
 				col += j - i
 				i = j
 				continue
@@ -346,6 +376,7 @@ func (r *row) parse(line string, old *row, cols, room int, symbols *symbolWidths
 				next += step
 				over += step & (0xffff << cellOverShift)
 			}
+			ink = len(cells)
 			continue
 		}
 		cluster, _ := widthx.FirstGrapheme(line[i:])
@@ -368,6 +399,7 @@ func (r *row) parse(line string, old *row, cols, room int, symbols *symbolWidths
 			over += cell(2-wd) << cellOverShift
 		}
 		cells = append(cells, next|over|cell(wd)<<cellWidthShift)
+		ink = len(cells)
 		if col += wd; col > cols {
 			return 0, 0, false
 		}
@@ -375,10 +407,10 @@ func (r *row) parse(line string, old *row, cols, room int, symbols *symbolWidths
 	r.cells, r.pens = cells, pens
 	r.width = col
 	r.endPen = p
+	r.inked = ink
 	if r.uncertain = uncertain; uncertain < 0 {
 		r.uncertain = len(cells)
 	}
-	r.line = append(r.line[:0], line...)
 	return shared, same, true
 }
 
@@ -399,6 +431,9 @@ func commonPrefix(a, b []byte) int {
 // commonSuffix is how many bytes a and b share at their end.
 func commonSuffix(a, b []byte) int {
 	n, limit := 0, min(len(a), len(b))
+	// Sixty-four bytes at a time while they are the same (bytes.Equal compares them in the machine's widest registers), then by words.
+	for ; n+64 <= limit && bytes.Equal(a[len(a)-n-64:len(a)-n], b[len(b)-n-64:len(b)-n]); n += 64 {
+	}
 	for ; n+8 <= limit; n += 8 {
 		if x := binary.LittleEndian.Uint64(a[len(a)-n-8:]) ^ binary.LittleEndian.Uint64(b[len(b)-n-8:]); x != 0 {
 			return n + bits.LeadingZeros64(x)/8
