@@ -217,11 +217,7 @@ func (m *MountImages) prepare(img *viewImage, png bool, half mountHalf, waiter f
 	if m.Go != nil {
 		m.Go(work)
 	} else {
-		m.workers.Add(1)
-		go func() {
-			defer m.workers.Done()
-			work()
-		}()
+		m.workers.Go(work)
 	}
 	return d, nil, false
 }
