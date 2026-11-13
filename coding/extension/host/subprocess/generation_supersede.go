@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // unacknowledgedGeneration is a generation whose Node runtime had not acknowledged a reload's invalidation at the pong deadline (supersedeGenerations).
@@ -88,7 +89,7 @@ func (h *Host) unacknowledgedNotices(unacknowledged []unacknowledgedGeneration) 
 	if len(unacknowledged) == 0 {
 		return nil
 	}
-	slices.SortFunc(unacknowledged, func(a, b unacknowledgedGeneration) int { return cmp.Compare(a.me.config.Name, b.me.config.Name) })
+	sortx.Func(unacknowledged, func(a, b unacknowledgedGeneration) int { return cmp.Compare(a.me.config.Name, b.me.config.Name) })
 	var order []any
 	processes := make(map[any][]unacknowledgedGeneration)
 	for _, generation := range unacknowledged {
