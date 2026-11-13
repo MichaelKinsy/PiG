@@ -1880,7 +1880,15 @@ file = "coding/extension/host/subprocess/conn.go"
 func = "Conn.readLoop"
 pattern = "chan-hop"
 detail = "send"
-count = 4
+count = 3
+class = "hot-owned:lw-ipc (LW roadmap S10: frame dispatch without a channel hop per frame)"
+
+[[hit]]
+file = "coding/extension/host/subprocess/conn.go"
+func = "Conn.sendResponse"
+pattern = "chan-hop"
+detail = "send"
+count = 1
 class = "hot-owned:lw-ipc (LW roadmap S10: frame dispatch without a channel hop per frame)"
 
 [[hit]]
