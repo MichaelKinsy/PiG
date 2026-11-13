@@ -79,12 +79,12 @@ func TestGeminiToolResultImageOrderingMatchesUpstream(t *testing.T) {
 	}
 }
 
-// google-shared.ts:441-472 mapStopReason: STOP and MAX_TOKENS map to stop and length, every other FinishReason enum member maps to error, and a value outside
+// google-shared.ts:441-472 mapStopReason: STOP, MAX_TOKENS and CONTINUATION (:505-506, Pi f72f799a4) map to stop, length and length, every other FinishReason enum member maps to error, and a value outside
 // the enum reaches the exhaustive switch's default, which throws `Unhandled stop reason: <reason>` (google-generative-ai.ts:226 and google-vertex.ts:234 call it
 // inside the stream try, so the throw ends the stream with that message). google-generative-ai.ts:276-283 turns a pending stop reason into "Google stream ended
 // without a finish reason" and an error stop into `Provider stopped with: <raw>`.
 func TestMapGoogleFinishReasonFollowsMapStopReason(t *testing.T) {
-	for reason, want := range map[string]StopReason{"STOP": StopReasonStop, "MAX_TOKENS": StopReasonLength} {
+	for reason, want := range map[string]StopReason{"STOP": StopReasonStop, "MAX_TOKENS": StopReasonLength, "CONTINUATION": StopReasonLength} {
 		if got, err := mapStopReason(reason); err != nil || got != want {
 			t.Errorf("mapStopReason(%q) = (%q, %v), want %q", reason, got, err, want)
 		}

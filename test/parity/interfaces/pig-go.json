@@ -143207,6 +143207,171 @@
       "shapeHash": "sha256:fa8de15b781b78e3e2cd28d63e5d7da86d097783c4d4149aa43349e2d04d42ce"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ViewGridCell",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "ViewGridCell",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "ViewGridCell"
+      },
+      "shapeHash": "sha256:993a2a65c09376bf236eaffa7d51ff8e58767d11976edfd2b004743c24faca7c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ViewGridChip",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "ViewGridChip",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "ViewGridChip"
+      },
+      "shapeHash": "sha256:c100d817a004f9ab6b19be19595bd8158277b1ef38395872e79b258b8e0c45e6"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ViewGridDefaultChipRows",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "ViewGridDefaultChipRows",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ViewGridFields",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "ViewGridFields",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "ViewGridFields"
+      },
+      "shapeHash": "sha256:7c5a2aec676dfb95a3da8fe0e96ca2a9d1ca590938fabbb6ee5face1c1c071fa"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ViewGridMarkCurrent",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "ViewGridMarkCurrent",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ViewGridMaxCells",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "ViewGridMaxCells",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ViewGridMaxChipBytes",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "ViewGridMaxChipBytes",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ViewGridMaxChipRows",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "ViewGridMaxChipRows",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ViewGridMaxChips",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "ViewGridMaxChips",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ViewGridMaxColumns",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "ViewGridMaxColumns",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ViewGridMaxHeadBytes",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "ViewGridMaxHeadBytes",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ViewGridMaxLabelBytes",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "ViewGridMaxLabelBytes",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ViewGridMaxMore",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "ViewGridMaxMore",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ViewGridMaxRows",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "ViewGridMaxRows",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ViewGridMaxValueBytes",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "ViewGridMaxValueBytes",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ViewImageData",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "ViewImageData",
@@ -143364,6 +143529,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ViewKindEditor",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "ViewKindEditor",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ViewKindGrid",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "ViewKindGrid",
       "kind": "constant",
       "exported": true,
       "shape": {
@@ -144593,6 +144769,17 @@
       "shapeHash": "sha256:8f5250f28c35b0dae48e3081bc538e956acb82136363acb21f213ee45ec23e9c"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#btoi",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "btoi",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(b bool) int"
+      },
+      "shapeHash": "sha256:e4bbab321afa2f613dbbfbf2bdb6f0a479e5d3c1c545324796c3e95c639a6530"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#buildBorderedLoader",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "buildBorderedLoader",
@@ -144734,6 +144921,17 @@
         "type": "func(ctx context.Context, cacheRoot string, srcDir string, outPath string, stagedSDK string) error"
       },
       "shapeHash": "sha256:67a544e82ec0459424a7b140254feb39b2f8bbf3e9fd8dd593e9514ad604e9ed"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#buildGrid",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "buildGrid",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(b *viewBuilder, n *ViewNode, out *github.com/MichaelKinsy/PiG/extensions/sdk/frontend.ViewNode) (github.com/MichaelKinsy/PiG/tui.Component, error)"
+      },
+      "shapeHash": "sha256:9c28835fe6746b08248fa0b433852c2e7e73b57164bc5af3fbbda2cec9de2040"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#buildInput",
@@ -145495,6 +145693,28 @@
       "shapeHash": "sha256:2e7a46ef7c2011cd2aa41a3ad171f9b6f5461f06a15b57547cff43508937a222"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#checkGrid",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "checkGrid",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(c *viewChecker, n *ViewNode)"
+      },
+      "shapeHash": "sha256:56d5b86367b5a3674171ae577f83774870300f26118a597f8d9e6f4ed5994626"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#checkMountGrids",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "checkMountGrids",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(c *github.com/MichaelKinsy/PiG/coding/uiview.Content) error"
+      },
+      "shapeHash": "sha256:47f9e191f332f14627c877bb87a2f1623b204f98a09cd79cea8af9e7bd53151b"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#checkResultFrameSize",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "checkResultFrameSize",
@@ -145779,6 +145999,28 @@
         "type": "func(event []byte, seq uint64) (base uint64, ops []byte, patch bool, ok bool)"
       },
       "shapeHash": "sha256:070228e3f0f54132549dda4b44ea56034ea2bf77a91784ddb31c4134301c8664"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#chipLines",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "chipLines",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(cell *ViewGridCell, k int) int"
+      },
+      "shapeHash": "sha256:6ad835e6a909cb454e00af00fdafd849c581130832224675897222333a25c58f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#chipsOf",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "chipsOf",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(cell *ViewGridCell, k int) (shown []ViewGridChip, more int)"
+      },
+      "shapeHash": "sha256:0d4a15e44c788cac7b9c9b5bd906efdfb9e70f81a8bf253d93c594dfdfa75ca2"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#clipboardCopier",
@@ -146648,6 +146890,17 @@
         "type": "func(data []byte, env *Envelope) error"
       },
       "shapeHash": "sha256:ed8114a70c9c88aaaded436966dc36280d896994337cb7b6f39567f84636f712"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#decodeGridNode",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "decodeGridNode",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(data []byte) error"
+      },
+      "shapeHash": "sha256:2e7a46ef7c2011cd2aa41a3ad171f9b6f5461f06a15b57547cff43508937a222"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#decodeModelStreamRequest",
@@ -149992,6 +150245,83 @@
         "type": "func(old []byte, next []byte) bool"
       },
       "shapeHash": "sha256:ffbe16eb86f9bc506fd64a508a7824278a3d13e659b089e9684caad39477b51a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#gridCheckError",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "gridCheckError",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(err error) *github.com/MichaelKinsy/PiG/coding/uiview.Error"
+      },
+      "shapeHash": "sha256:de0b8b68f323a5a939414585e9c49c29fa4652e24b127f07ffef6be0709e2fc7"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#gridClean",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "gridClean",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(s string) string"
+      },
+      "shapeHash": "sha256:391a9e96555d5038a6d0791e7a3018d91114729515dc2d23dd81c51a27a6b139"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#gridContrast",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "gridContrast",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(bg github.com/MichaelKinsy/PiG/tui.Color) github.com/MichaelKinsy/PiG/tui.Color"
+      },
+      "shapeHash": "sha256:4e1f34bbb7e67bf8ce58d59241b8a5bfe3e41153f1184122f899e5fec617de86"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#gridMountCheck",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "gridMountCheck",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "gridMountCheck"
+      },
+      "shapeHash": "sha256:1dc062ab786c83204a565d95b96496cf1575f2ed3eb6996bf51b41e68f7a0baf"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#gridMountCheck.node",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "gridMountCheck.node",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(raw encoding/json.RawMessage)"
+      },
+      "shapeHash": "sha256:91e3555b0a2a9fe69928d2be8ab3677b343acf8ddbc1cf6d04e350e0e6166cf3"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#gridMountCheck.view",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "gridMountCheck.view",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(raw encoding/json.RawMessage)"
+      },
+      "shapeHash": "sha256:91e3555b0a2a9fe69928d2be8ab3677b343acf8ddbc1cf6d04e350e0e6166cf3"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#gridPad",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "gridPad",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(s string, width int) string"
+      },
+      "shapeHash": "sha256:41d575f83ac6e1905d09b114ebb6fef7102b041093b4e9265d8b2ccc8805a1ed"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#groupBuildFailures",
@@ -160532,6 +160862,17 @@
       "shapeHash": "sha256:8c1d96d031aa6d0e68f68019c881166ef4c2d125fae488a8676624d63d8db1a8"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewChecker.gridColor",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "viewChecker.gridColor",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(what string, color string)"
+      },
+      "shapeHash": "sha256:83cea8975e0351104f87342e8795a7624a10b95feea823ad529c8ead19fc7f59"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewChecker.hasToken",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "viewChecker.hasToken",
@@ -162512,6 +162853,270 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewGrid",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "viewGrid",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "viewGrid"
+      },
+      "shapeHash": "sha256:6c4b4d4537d79da08ac9d3b851ff4486d99f007b1b30a91daac83b9344b42202"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewGrid.HandleMouse",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "viewGrid.HandleMouse",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(event github.com/MichaelKinsy/PiG/tui.TuiMouseEvent) *github.com/MichaelKinsy/PiG/tui.TuiMouseEventResult"
+      },
+      "shapeHash": "sha256:243d2abdef579e3700ac0a23f5d3aa5a393059e60d9f88991ed7612e1f27a14a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewGrid.Invalidate",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "viewGrid.Invalidate",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewGrid.Render",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "viewGrid.Render",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(width int) []string"
+      },
+      "shapeHash": "sha256:81761e7090d7bb4159cdc88ad1df72001d86a8280dab046ca793a8e9191bed39"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewGrid.cellAt",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "viewGrid.cellAt",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(event github.com/MichaelKinsy/PiG/tui.TuiMouseEvent) int"
+      },
+      "shapeHash": "sha256:cc31eba304d9f834a32b58534dc256a05f4ec9e3152dde884c35de8659b6bd35"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewGrid.cellLine",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "viewGrid.cellLine",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(cell *ViewGridCell, line int, k int, w int) string"
+      },
+      "shapeHash": "sha256:fd095d79c630b4f766c271122ae16e53c070d03a6ec95bc39676c41873384516"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewGrid.chip",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "viewGrid.chip",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(chip ViewGridChip, dim bool, w int) string"
+      },
+      "shapeHash": "sha256:0b031b71225df0bb57141274255d03290426b1798e4415efa04441476e888b1d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewGrid.choose",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "viewGrid.choose",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(i int)"
+      },
+      "shapeHash": "sha256:d1fd1a4b595385687e4aaf9592e9760cef7393dee737550021801440dc7416a5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewGrid.color",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "viewGrid.color",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(color string) (github.com/MichaelKinsy/PiG/tui.Color, bool)"
+      },
+      "shapeHash": "sha256:7837b737555406ed366b57bc9e06bc05b7403a9261a0f57a5e239498f5bae2b4"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewGrid.fg",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "viewGrid.fg",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(color string, text string) string"
+      },
+      "shapeHash": "sha256:e11b4433e215181f6ef04ac6c4f592d0d4af9108710cad92c6ca89dc0e2afb22"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewGrid.fitChipRows",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "viewGrid.fitChipRows",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() int"
+      },
+      "shapeHash": "sha256:abda90b0a9dee566c1c4d8a5e69e5e1e0dc21a5f6a3f00ada27ad225d1a5f10b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewGrid.handleInput",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "viewGrid.handleInput",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(data string) bool"
+      },
+      "shapeHash": "sha256:a25ca2dde16f4c7d179d915d26f5bd6051f9838d4ab17973d556130a94b5407e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewGrid.indexOf",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "viewGrid.indexOf",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(value string) int"
+      },
+      "shapeHash": "sha256:ee19ab3e23425639d82a12cdfb50e9ddfafb1048d0ee9a7886488905d42efb97"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewGrid.label",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "viewGrid.label",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(cell *ViewGridCell, k int, w int) string"
+      },
+      "shapeHash": "sha256:866a282bae8c7cbaec818c08f7b67c9ed11a4b6127352a81c75a61a86aec6e7c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewGrid.moveTo",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "viewGrid.moveTo",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(i int)"
+      },
+      "shapeHash": "sha256:d1fd1a4b595385687e4aaf9592e9760cef7393dee737550021801440dc7416a5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewGrid.refresh",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "viewGrid.refresh",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(node *github.com/MichaelKinsy/PiG/extensions/sdk/frontend.ViewNode)"
+      },
+      "shapeHash": "sha256:eb3628d9088b05ec1a75cde00d06308ee491c9d5ae6be8a71310d64f4f2e243c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewGrid.rowHeight",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "viewGrid.rowHeight",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(r int, k int) int"
+      },
+      "shapeHash": "sha256:ff9329c0572f0c5fd8b0e24e289496857b219aa33f61bcda676e60628ea66725"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewGrid.setFocused",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "viewGrid.setFocused",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(focused bool)"
+      },
+      "shapeHash": "sha256:2022dca182fa9a536f7f3c6cb3c1b7edfcee418c2df1a33b626c16a5e4a6c607"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewGrid.step",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "viewGrid.step",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(i int, delta int) int"
+      },
+      "shapeHash": "sha256:ae2ffd422ff97d61feae8904f8ec679aa7ce8d68b116382bd4dc7cd064ecbc10"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewGridChip",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "viewGridChip",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewGridCursor",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "viewGridCursor",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewGridLayout",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "viewGridLayout",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "viewGridLayout"
+      },
+      "shapeHash": "sha256:991de16d0a50c3308df1022831f77585010aff2b9fd53a8ce57a35cf0a7360fd"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewGridSep",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "viewGridSep",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewGridWire",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "viewGridWire",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "viewGridWire"
+      },
+      "shapeHash": "sha256:5c4a7d7d382ec2c8d7146812f1303e6472e03025fa293bd4c562e2b59133b217"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewImage",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "viewImage",
@@ -163302,6 +163907,17 @@
         "type": "viewNodeFields"
       },
       "shapeHash": "sha256:3dba93bf35ceb110f142036584c179d9ddbb8b110f26c741408ea742184d0d6f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewNodeProbe",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "viewNodeProbe",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "viewNodeProbe"
+      },
+      "shapeHash": "sha256:f76582e5dcd2163fb7383d2a301c4eeab36dd86b4e4d667c34ddde33518c2109"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewNodeWire",
@@ -194786,6 +195402,17 @@
       "shapeHash": "sha256:e8690eb6a8f042fba4535198d846fc183086ea91410b8657134093a5ee65ce91"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/uiview#ValidColor",
+      "package": "github.com/MichaelKinsy/PiG/coding/uiview",
+      "name": "ValidColor",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(c string) bool"
+      },
+      "shapeHash": "sha256:1c605e5911b3076c015d5a359b0277d128ede7d1d535c634b23c0bc1bc78d738"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/uiview#Viewport",
       "package": "github.com/MichaelKinsy/PiG/coding/uiview",
       "name": "Viewport",
@@ -195763,6 +196390,17 @@
         "type": "func(raw []byte) *encoding/json.Decoder"
       },
       "shapeHash": "sha256:5818bef7ce7b0df40fc5e96b70bfee34dc5ca5a332a567fb685f1a43c55a2554"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/uiview#undrawnKind",
+      "package": "github.com/MichaelKinsy/PiG/coding/uiview",
+      "name": "undrawnKind",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(a *ClientAbilities, m measured) (string, bool)"
+      },
+      "shapeHash": "sha256:0bd1eb0821d672ea219ad683ab10223883e0fc187cd2782d271909ff1bb1c61d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/uiview#union",
@@ -231515,6 +232153,39 @@
       "shapeHash": "sha256:5f6d8be5d075612e43a78f6b89937cf7f35a8b2b5593c9c95798e53102fb5b98"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/frontend#ViewGrid",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/frontend",
+      "name": "ViewGrid",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "ViewGrid"
+      },
+      "shapeHash": "sha256:8f37f875975513a5454cde3a32e3db354674138e950e8df73a27f8e6f2c81a17"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/frontend#ViewGridCell",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/frontend",
+      "name": "ViewGridCell",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "ViewGridCell"
+      },
+      "shapeHash": "sha256:993a2a65c09376bf236eaffa7d51ff8e58767d11976edfd2b004743c24faca7c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/frontend#ViewGridChip",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/frontend",
+      "name": "ViewGridChip",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "ViewGridChip"
+      },
+      "shapeHash": "sha256:c100d817a004f9ab6b19be19595bd8158277b1ef38395872e79b258b8e0c45e6"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/frontend#ViewImage",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk/frontend",
       "name": "ViewImage",
@@ -231672,6 +232343,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/frontend#ViewKindEditor",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk/frontend",
       "name": "ViewKindEditor",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "ViewKind"
+      },
+      "shapeHash": "sha256:15c4d61649ac77e4123c1c93211f9a8f9476291b354e00570148a7f63e842e84"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/frontend#ViewKindGrid",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/frontend",
+      "name": "ViewKindGrid",
       "kind": "constant",
       "exported": true,
       "shape": {
@@ -237609,6 +238291,61 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/kit#Grid",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/kit",
+      "name": "Grid",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "Grid"
+      },
+      "shapeHash": "sha256:28ad198c25b56314263c3e4a1443fb943adfb8cec247daa23c26d8dd819211cf"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/kit#Grid.WireNode",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/kit",
+      "name": "Grid.WireNode",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() WireForm"
+      },
+      "shapeHash": "sha256:603a7c71ce7511ae0bce437b4fa2ffb03cd0b1d80109ea0948d822943aab9035"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/kit#Grid.isNode",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/kit",
+      "name": "Grid.isNode",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/kit#GridCell",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/kit",
+      "name": "GridCell",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "GridCell"
+      },
+      "shapeHash": "sha256:740f968f5579bae48203d2d26bf966691a0e87183a01c764075c7d147b3f0d36"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/kit#GridChip",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/kit",
+      "name": "GridChip",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "GridChip"
+      },
+      "shapeHash": "sha256:86d9cc4e4127a5f966ec58a49e634cfbc32f9edf7ed53d58ecbc0908b84f2329"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/kit#HStack",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk/kit",
       "name": "HStack",
@@ -238080,6 +238817,17 @@
         "type": "func(id string) *Editor"
       },
       "shapeHash": "sha256:825232755e46f05955a4f79a2282a1a187e230fa11dc43d187de71e945b8c5af"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/kit#NewGrid",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/kit",
+      "name": "NewGrid",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(id string, columns int, cells []GridCell) *Grid"
+      },
+      "shapeHash": "sha256:d7b38a9ae19eb01405107d7ff1cea259e1b92c90a1fb8e90b2fa6feb2a65bc2d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/kit#NewHStack",
@@ -239037,6 +239785,17 @@
         "type": "editorFields"
       },
       "shapeHash": "sha256:0d0eacc5a0a843341deea331fad27793882ccf97aed6923d6a0aab5a061de844"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/kit#gridFields",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/kit",
+      "name": "gridFields",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "gridFields"
+      },
+      "shapeHash": "sha256:b0ff20c1255298a37640615d473f0e7ffd196d22871c8bf2ac740f8e5c80c578"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/kit#imageRef",

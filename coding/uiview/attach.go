@@ -270,7 +270,8 @@ func identity(s *Snapshot) string {
 }
 
 func fallbackFits(a *ClientAbilities, m measured) bool {
-	return m.bytes <= a.Limits.SnapshotBytes && m.nodes <= a.Limits.Nodes && m.depth+1 <= a.Limits.Depth && m.text <= a.Limits.TextBytes
+	_, undrawn := undrawnKind(a, m)
+	return !undrawn && m.bytes <= a.Limits.SnapshotBytes && m.nodes <= a.Limits.Nodes && m.depth+1 <= a.Limits.Depth && m.text <= a.Limits.TextBytes
 }
 
 // resolve returns the snapshot one client draws for a mount: the alternative its claims select or the view, with the

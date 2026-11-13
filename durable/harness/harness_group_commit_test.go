@@ -166,7 +166,7 @@ func TestGroupCommitSchedulerRegions(t *testing.T) {
 		d := creating.wait(t)
 		// In line order D's creation precedes P's decision: P holds while D is live.
 		eventually(t, func() bool { return gcStatus(t, harness, made.p) == "completing" })
-		eventually(t, func() bool { return gcStatus(t, harness, d) == "running" })
+		gcExpectStatus(t, harness, d, "running")
 		fixtures.gate("d").resolve()
 		gcExpectCompleted(t, harness, made.p)
 		closeHarness(t, harness)
@@ -847,6 +847,10 @@ func TestGroupCommitOutcomesAndPublicationThroughTheHarness(t *testing.T) {
 			return gcStatus(t, harness, one) == "running" && gcStatus(t, harness, two) == "running"
 		})
 		ended := gcFollowStoredTasks(harness, func(record anyTaskRecord) bool { return record.State.Status == durable.TaskTerminal })
+		// Both end in one call, behind a commit in flight.
+		held := store.holdCommits()
+		blocker := gcGo(gcAppendNote(root))
+		gcEntered(t, held)
 		// The continuation of the wait for one is a whole turn: the Session waits for it, up to the point the test says it is done,
 		// before it publishes the next commit of the call (WithContinuation). The turn here ends when the test lets it, once it
 		// checked that two's end is still unpublished.
@@ -862,8 +866,8 @@ func TestGroupCommitOutcomesAndPublicationThroughTheHarness(t *testing.T) {
 			turn.Entered()
 			return struct{}{}, err
 		})
-		// The wait is registered, and the steps of the call before its wait have entered, before the commits are held: only what
-		// follows the wake of the wait is held.
+		// The wait is registered, and the steps of the call before its wait have entered, before the tasks end: only what follows
+		// the wake of the wait is held.
 		tasks := harness.(*harnessImpl).tasks
 		eventually(t, func() bool {
 			turn.Entered()
@@ -871,10 +875,6 @@ func TestGroupCommitOutcomesAndPublicationThroughTheHarness(t *testing.T) {
 		})
 		gcFlush(t)
 		turn.Entered()
-		// Both end in one call, behind a commit in flight.
-		held := store.holdCommits()
-		blocker := gcGo(gcAppendNote(root))
-		gcEntered(t, held)
 		fixtures.gate("one").resolve()
 		gcFlush(t)
 		fixtures.gate("two").resolve()
@@ -909,9 +909,10 @@ func TestGroupCommitOutcomesAndPublicationThroughTheHarness(t *testing.T) {
 			Phases: map[string]durable.PhaseHandler[none, stepState, durable.JsonValue, any]{
 				"wait": func(_ context.Context, _ durable.RunningTask[none, stepState, durable.JsonValue], runtime durable.TaskRuntime[none, stepState, durable.JsonValue, any]) error {
 					entered.resolve()
-					err := abortedBy(runtime.Signal())
+					// Pi: `await aborted(runtime.signal).catch(() => signalled.resolve())`: the phase swallows the abort and returns.
+					_ = abortedBy(runtime.Signal())
 					signalled.resolve()
-					return err
+					return nil
 				},
 			},
 			Abort: tkNoopAbort[none, stepState, durable.JsonValue, any],

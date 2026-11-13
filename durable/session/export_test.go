@@ -36,3 +36,22 @@ func ParkedWaits(session *SessionImpl) int {
 	defer session.parkMu.Unlock()
 	return len(session.parks)
 }
+
+// WrapWriterHost replaces the host the Session's writer calls by wrap(host), once the writer is idle. A test makes one step
+// of a publication fail through it where Pi's test patches a prototype method (CachedStorage.prototype.published,
+// Transaction.prototype.adopt, Transaction.prototype.adoptHeld), which Go cannot.
+func WrapWriterHost(session *SessionImpl, wrap func(WriterHost) WriterHost) {
+	session.writer.Wait()
+	session.writer.host = wrap(session.writer.host)
+}
+
+// AbortPrepared aborts the changes tx prepared, so memory cannot adopt its commit: Transaction.adopt and adoptHeld fail.
+func AbortPrepared(tx *Transaction) {
+	tx.mu.Lock()
+	defer tx.mu.Unlock()
+	for _, document := range tx.documents {
+		if document.change != nil {
+			document.change.Abort()
+		}
+	}
+}
