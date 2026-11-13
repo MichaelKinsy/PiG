@@ -1,11 +1,13 @@
 package subprocess
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net"
+	"runtime"
 	"sync"
 	"testing"
 	"testing/synctest"
@@ -105,6 +107,25 @@ func shutdownCatalogHost(ctx context.Context, count int) (*Host, *UIBridge, *syn
 	return h, bridge, peers
 }
 
+// awaitGoroutinesParked returns once no goroutine but the caller can run: every other one waits for a channel, a lock, a timer or its I/O. It is
+// to a benchmark, which has no bubble, what synctest.Wait is to the shutdown tests. stacks is the caller's buffer for the goroutines' stacks, so
+// the wait allocates nothing.
+func awaitGoroutinesParked(tb testing.TB, stacks []byte) {
+	tb.Helper()
+	for range 10000 {
+		runtime.Gosched()
+		dump := stacks[:runtime.Stack(stacks, true)]
+		if len(dump) < len(stacks) && !bytes.Contains(dump, []byte(" [runnable")) && bytes.Count(dump, []byte(" [running")) == 1 {
+			return
+		}
+	}
+	tb.Fatalf("goroutines kept running:\n%s", stacks[:runtime.Stack(stacks, true)])
+}
+
+// The measured interval is Shutdown and the end of every goroutine of the connections it stops. It starts once those goroutines wait for their
+// first frame, as the connections of a host that shuts down do, and ends once they and their peers have ended: what a connection's goroutines
+// allocate to start, or to end after Shutdown returned, fell inside the interval on one run and outside it on the next (1066 to 1239 allocations
+// for twenty connections in five runs).
 func BenchmarkHostShutdownProviderCatalog(b *testing.B) {
 	for _, count := range []int{0, 1, 20} {
 		b.Run(fmt.Sprint(count), func(b *testing.B) {
@@ -112,16 +133,17 @@ func BenchmarkHostShutdownProviderCatalog(b *testing.B) {
 			for i := range models {
 				models[i] = modelJSON(map[string]any{"id": fmt.Sprint(i), "provider": "fixture", "contextWindow": 128000, "maxTokens": 8192})
 			}
+			stacks := make([]byte, 1<<20)
 			b.ReportAllocs()
 			for b.Loop() {
 				b.StopTimer()
 				h, bridge, peers := shutdownCatalogHost(b.Context(), count)
 				bridge.SetHostAction("getModels", func() []json.RawMessage { return models })
+				awaitGoroutinesParked(b, stacks)
 				b.StartTimer()
 				h.Shutdown("quit")
-				b.StopTimer()
 				peers.Wait()
-				b.StartTimer()
+				awaitGoroutinesParked(b, stacks)
 			}
 		})
 	}

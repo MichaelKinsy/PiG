@@ -2,7 +2,7 @@ package hljs
 
 import (
 	"math/bits"
-	"slices"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -100,28 +100,40 @@ func checkBranchDispatch(t *testing.T, shard int) {
 					continue
 				}
 				// Scan the way the highlighter does: from each match to the next. Every match, and the gap before it, is compared; so is every 97th start.
-				compare := func(p int) (match *jsMatch, ok bool) {
-					want := m.matcherRe.exec(units, p)
-					got := m.dispatch.exec(m.matcherRe, units, p, m.matchAt-1)
+				// compare reports the index of the joined expression's match from p, matched false when it finds none, and ok false when the dispatch finds another.
+				compare := func(p int) (index int, matched, ok bool) {
+					want, wantOK := m.matcherRe.exec(units, p)
+					got, gotRule, gotGroup, gotOK := m.dispatch.exec(m.matcherRe, units, p)
 					checked.Add(1)
-					if (want == nil) != (got == nil) || want != nil && (want.index != got.index || !slices.Equal(want.spans, got.spans)) {
-						t.Errorf("%s %s from %d: joined %+v, dispatch %+v\nmatcher %s", c.ID, c.Lang, p, want, got, m.matcherRe.source)
-						return nil, false
+					same := wantOK == gotOK
+					if same && wantOK {
+						wantRule, wantGroup := matchedRule(want, m.regexes)
+						same = want.index == got.index && want.end == got.end && wantRule == gotRule
+						// The groups a rule keeps for its callbacks are the same in both expressions.
+						for k := 1; same && wantRule >= 0 && m.regexes[wantRule].opts.groups && k <= countMatchGroups(m.regexes[wantRule].re); k++ {
+							wantStart, wantEnd, wantTook := want.span(wantGroup + k)
+							gotStart, gotEnd, gotTook := got.span(gotGroup + k)
+							same = wantStart == gotStart && wantEnd == gotEnd && wantTook == gotTook
+						}
 					}
-					return want, true
+					if !same {
+						t.Errorf("%s %s from %d: joined %s, dispatch %s (rule %d)\nmatcher %s", c.ID, c.Lang, p, describeMatch(want, wantOK), describeMatch(got, gotOK), gotRule, m.matcherRe.source)
+						return 0, false, false
+					}
+					return want.index, wantOK, true
 				}
 				for p := 0; p <= len(units); {
-					match, ok := compare(p)
+					index, matched, ok := compare(p)
 					if !ok {
 						return
 					}
-					if match == nil {
+					if !matched {
 						break
 					}
-					p = match.index + 1
+					p = index + 1
 				}
 				for p := 0; p <= len(units); p += 97 {
-					if _, ok := compare(p); !ok {
+					if _, _, ok := compare(p); !ok {
 						return
 					}
 				}
@@ -155,6 +167,14 @@ func TestBranchDispatchHighlightsLikeTheJoinedExpression(t *testing.T) {
 		}
 	}
 	dispatchEnabled = true
+}
+
+// describeMatch is a match as its bounds.
+func describeMatch(m jsMatch, ok bool) string {
+	if !ok {
+		return "no match"
+	}
+	return "[" + strconv.Itoa(m.index) + "," + strconv.Itoa(m.end) + ")"
 }
 
 // describeFirst is a first set as its ASCII members in order, then + for the non-ASCII units, $ for the end of the text and ? for a pattern that can match anywhere.
@@ -248,7 +268,7 @@ func TestBranchDispatchSkipsMostPositions(t *testing.T) {
 			}
 		}
 		if avg := float64(tried) / 128; avg > 2 {
-			t.Errorf("%s: %d branches, %.2f tried per ASCII unit, %d of 128 units skipped", lang, len(d.branches), avg, skipped)
+			t.Errorf("%s: %d branches, %.2f tried per ASCII unit, %d of 128 units skipped", lang, len(d.rules), avg, skipped)
 		}
 	}
 }
