@@ -13,6 +13,7 @@ import (
 	"runtime"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -55,6 +56,10 @@ func Extension() *sdk.Extension {
 	e := sdk.New(%q)
 	e.Command("noop", "Return at once", func(sdk.Context, string) error { return nil })
 	e.Command("version", "Notify the version", func(ctx sdk.Context, _ string) error { ctx.Notify(version, "info"); return nil })
+	e.Command("decorate", "Set a status and a widget", func(ctx sdk.Context, _ string) error {
+		ctx.SetStatus("hybrid", "on")
+		return ctx.SetWidget("hybrid", []string{"line"})
+	})
 	e.OnSessionStart(record("session_start"))
 	e.OnSessionShutdown(record("session_shutdown"))
 	return e
@@ -79,6 +84,10 @@ func hybridFusedCopy(name string) *sdk.Extension {
 	e := sdk.New(name)
 	e.Command("noop", "Return at once", func(sdk.Context, string) error { return nil })
 	e.Command("version", "Notify the version", func(ctx sdk.Context, _ string) error { ctx.Notify("fused", "info"); return nil })
+	e.Command("decorate", "Set a status and a widget", func(ctx sdk.Context, _ string) error {
+		ctx.SetStatus("hybrid", "on")
+		return ctx.SetWidget("hybrid", []string{"line"})
+	})
 	e.OnSessionStart(record("session_start"))
 	e.OnSessionShutdown(record("session_shutdown"))
 	return e
@@ -157,6 +166,12 @@ type hybridHost struct {
 // startHybridHost starts a host in configRoot (a new directory when empty) and loads configs.
 func startHybridHost(t *testing.T, configRoot string, configs ...subprocess.ExtConfig) *hybridHost {
 	t.Helper()
+	return startHybridHostWithUI(t, configRoot, newRecordingUI(new([]string), new([]string)), configs...)
+}
+
+// startHybridHostWithUI is startHybridHost drawing on ui.
+func startHybridHostWithUI(t *testing.T, configRoot string, ui extension.UIContext, configs ...subprocess.ExtConfig) *hybridHost {
+	t.Helper()
 	s := &hybridHost{dir: t.TempDir(), configs: configs, notices: make(chan string, 64)}
 	if configRoot == "" {
 		s.host = subprocess.NewHost(s.dir)
@@ -165,7 +180,7 @@ func startHybridHost(t *testing.T, configRoot string, configs ...subprocess.ExtC
 	}
 	t.Cleanup(func() { s.host.Shutdown("done") })
 	bridge := subprocess.NewUIBridge(func() {})
-	bridge.SetUIContext(newRecordingUI(new([]string), new([]string)))
+	bridge.SetUIContext(ui)
 	bridge.SetNotifyFunc(func(message, _ string) { s.notices <- message })
 	s.host.SetUIBridge(bridge)
 	s.host.SetConfigLoader(func() ([]subprocess.ExtConfig, error) { return slices.Clone(configs), nil })
@@ -536,5 +551,84 @@ func TestChangedFusedMemberStartsFromTheBuildCache(t *testing.T) {
 	}
 	if after := cache(); !slices.Equal(after, built) {
 		t.Fatalf("the second start changed the build cache, so it built again:\n%s\nafter the first start:\n%s", strings.Join(after, "\n"), strings.Join(built, "\n"))
+	}
+}
+
+// decorationUI records the statuses and widgets the host sets and clears.
+type decorationUI struct {
+	*recordingUI
+	mu    sync.Mutex
+	calls []string
+}
+
+func (u *decorationUI) add(call string) {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	u.calls = append(u.calls, call)
+}
+
+func (u *decorationUI) take() []string {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	calls := u.calls
+	u.calls = nil
+	return calls
+}
+
+func (u *decorationUI) SetStatus(key, text string) { u.add("status " + key + "=" + text) }
+
+func (u *decorationUI) SetWidget(key string, lines []string, _ *extension.ExtensionWidgetOptions) {
+	u.add(fmt.Sprintf("widget %s=%q", key, lines))
+}
+
+func (u *decorationUI) SetWidgetFactory(key string, factory extension.WidgetFactory, _ *extension.ExtensionWidgetOptions) {
+	u.add(fmt.Sprintf("widget-factory %s set=%t", key, factory != nil))
+}
+
+// TestFusedMemberDecorationsAcrossReloadMatchTheSubprocessCopy: what the host tells the UI about a status and a widget an extension
+// set, over a reload, is the same for a fused member and for the same extension as a subprocess. The row is logged: it says whether
+// the host clears them at a reload.
+func TestFusedMemberDecorationsAcrossReloadMatchTheSubprocessCopy(t *testing.T) {
+	skipWithoutGoBuilds(t)
+	run := func(t *testing.T, resolver hybridFused) (set, reloaded []string) {
+		t.Helper()
+		source := t.TempDir()
+		cfg := hybridConfig(t, source, hybridName, "v0")
+		if resolver.baked != nil {
+			resolver.baked[hybridName] = hybridDigest(t, source)
+		}
+		installHybrid(t, resolver)
+		ui := &decorationUI{recordingUI: newRecordingUI(new([]string), new([]string))}
+		s := startHybridHostWithUI(t, "", ui, cfg)
+		ui.take()
+		ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+		defer cancel()
+		if err := s.member(t, hybridName).Commands["decorate"].Handler(ctx, ""); err != nil {
+			t.Fatal(err)
+		}
+		// A status is a push without an answer: the version round trip that follows it on the same connection orders it.
+		wantVersion := "v0"
+		if resolver.baked != nil {
+			wantVersion = "fused"
+		}
+		if v := s.version(t, hybridName); v != wantVersion {
+			t.Fatalf("the member answers %q, want %s", v, wantVersion)
+		}
+		set = ui.take()
+		s.reload(t)
+		if v := s.version(t, hybridName); v != wantVersion {
+			t.Fatalf("after the reload the member answers %q, want %s", v, wantVersion)
+		}
+		return set, ui.take()
+	}
+	fusedSet, fusedReloaded := run(t, hybridFused{baked: map[string]string{}})
+	directSet, directReloaded := run(t, hybridFused{})
+	t.Logf("DECORATIONROW fused: set %q, at the reload %q", fusedSet, fusedReloaded)
+	t.Logf("DECORATIONROW subprocess: set %q, at the reload %q", directSet, directReloaded)
+	if len(fusedSet) == 0 {
+		t.Fatal("the UI saw no status and no widget from the fused member")
+	}
+	if !slices.Equal(fusedSet, directSet) || !slices.Equal(fusedReloaded, directReloaded) {
+		t.Fatalf("a fused member and its subprocess copy differ in what the UI is told:\nfused: set %q, at the reload %q\nsubprocess: set %q, at the reload %q", fusedSet, fusedReloaded, directSet, directReloaded)
 	}
 }
