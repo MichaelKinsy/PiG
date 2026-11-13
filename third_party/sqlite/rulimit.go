@@ -3,6 +3,7 @@
 // license that can be found in the LICENSE file.
 
 //go:build linux || darwin || illumos || netbsd || openbsd
+// +build linux darwin illumos netbsd openbsd
 
 package sqlite
 
