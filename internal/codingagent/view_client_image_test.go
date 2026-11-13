@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/uiview"
 	"github.com/MichaelKinsy/PiG/tui"
@@ -66,7 +67,17 @@ func TestViewClientDrawsAPhotographInAPanel(t *testing.T) {
 	if len(drawn) != 1 {
 		t.Fatalf("the layout holds %d mounts, want the photograph's", len(drawn))
 	}
-	rows := drawn[0].Render(40)
+	// The photograph is measured off the loop: the mount draws an empty row for it until then.
+	var rows []string
+	for deadline := time.Now().Add(10 * time.Second); ; time.Sleep(time.Millisecond) {
+		rows = drawn[0].Render(40)
+		if slices.ContainsFunc(rows, func(row string) bool { return strings.Contains(row, "\x1b]1337;File=") }) {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("the mount draws no inline image: %.200q", rows)
+		}
+	}
 	if len(rows) > 12 {
 		t.Fatalf("the mount draws %d rows in a slot of 12", len(rows))
 	}
@@ -92,5 +103,30 @@ func TestViewClientDrawsAPhotographInAPanel(t *testing.T) {
 	}
 	if notices := f.notices("photo"); len(notices) != 0 {
 		t.Fatalf("the plugin reads notices %+v, want none", notices)
+	}
+}
+
+// pig additive (D614): the terminals whose environment says they draw Kitty Unicode placeholders are kitty and Ghostty.
+// A terminal that names itself otherwise is not one, even with kitty's variables in its environment, and neither is a
+// pane of Herdr.
+func TestViewKittyPlaceholdersByEnvironment(t *testing.T) {
+	for name, tc := range map[string]struct {
+		env  map[string]string
+		want bool
+	}{
+		"kitty":                      {map[string]string{"KITTY_WINDOW_ID": "1", "TERM": "xterm-kitty"}, true},
+		"kitty by TERM alone":        {map[string]string{"TERM": "xterm-kitty"}, true},
+		"ghostty":                    {map[string]string{"TERM_PROGRAM": "ghostty", "TERM": "xterm-ghostty"}, true},
+		"ghostty by resources":       {map[string]string{"GHOSTTY_RESOURCES_DIR": "/usr/share/ghostty", "TERM": "xterm-256color"}, true},
+		"wezterm":                    {map[string]string{"TERM_PROGRAM": "WezTerm", "WEZTERM_PANE": "0"}, false},
+		"rex":                        {map[string]string{"TERM_PROGRAM": "rex"}, false},
+		"kitty variables in wezterm": {map[string]string{"TERM_PROGRAM": "WezTerm", "KITTY_WINDOW_ID": "1"}, false},
+		"herdr over kitty":           {map[string]string{"HERDR_ENV": "1", "KITTY_WINDOW_ID": "1", "TERM": "xterm-kitty"}, false},
+		"iterm2":                     {map[string]string{"TERM_PROGRAM": "iTerm.app", "ITERM_SESSION_ID": "w0"}, false},
+		"plain":                      {map[string]string{"TERM": "xterm-256color"}, false},
+	} {
+		if got := viewKittyPlaceholders(func(key string) string { return tc.env[key] }); got != tc.want {
+			t.Errorf("%s: placeholders = %v, want %v", name, got, tc.want)
+		}
 	}
 }
