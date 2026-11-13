@@ -2,6 +2,7 @@ package coding
 
 import (
 	"encoding/json"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -95,9 +96,7 @@ func (f keylessAuthFixture) session(t *testing.T, model *ai.Model) *Session {
 func TestValidatePromptModelAuthHasOneRuleForEveryProviderShape(t *testing.T) {
 	completions := func(extra map[string]any) map[string]any {
 		provider := map[string]any{"api": "openai-completions", "models": []map[string]any{{"id": "m1"}}}
-		for name, value := range extra {
-			provider[name] = value
-		}
+		maps.Copy(provider, extra)
 		return provider
 	}
 	firstOf := func(provider string) func(*testing.T, *ModelRuntime) *ai.Model {
