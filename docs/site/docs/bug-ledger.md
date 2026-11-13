@@ -45,6 +45,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-03ad544](#bf-03ad544) | fix(tui): card of an unregistered tool is Pi's formatToolExecution | PiG's own defect | All platforms | Unreleased |
 | [BF-03fa91c](#bf-03fa91c) | chord: fix the principalAttributes wiring and import groups | PiG's own defect | All platforms | Unreleased |
 | [BF-040088e](#bf-040088e) | `ai.CloudflareStreams` drops the deferred fetch and cancel operations of the API it wraps, as Pi's… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-041d8b8](#bf-041d8b8) | `TestDaemonRepliesBeforeBulkOutputLikePisDaemon` failed on a loaded machine because it started to read before… | PiG's own defect | All platforms | Unreleased |
 | [BF-04a8c5e](#bf-04a8c5e) | The `find` tool no longer reports the result limit when exactly `limit` files match, and `limit: 0` in `find`… | PiG's own defect | All platforms | Unreleased |
 | [BF-04e6229](#bf-04e6229) | Chord sync: the batch decoder scanned the whole unfinished line for a newline on every 64 KiB chunk… | PiG's own defect | All platforms | Unreleased |
 | [BF-05102ad](#bf-05102ad) | In RPC mode, a termination signal that arrives while the mode starts or tears down no longer skips the… | PiG's own defect | All platforms | Unreleased |
@@ -2445,6 +2446,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `040088eba4` (2026-10-10)
 - **Tests:** `ai/classifier_http_error_name_test.go::TestClassifierHTTPErrorNameDistinguishesTimeoutFromHTTPFailure`, `ai/cloudflare_streams_test.go::TestCloudflareStreamsDropsDeferredOperationsAndLeavesTheWrappedValueUntouched`
 - **Release note:** `ai.CloudflareStreams` drops the deferred fetch and cancel operations of the API it wraps, as Pi's `cloudflareStreams` does, so a Cloudflare-wrapped API reports that it does not support deferred responses. Before, it passed them through without materializing the Cloudflare endpoint placeholders.
+
+### BF-041d8b8
+
+**`TestDaemonRepliesBeforeBulkOutputLikePisDaemon` failed on a loaded machine because it started to read before…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `TestDaemonRepliesBeforeBulkOutputLikePisDaemon` failed on a loaded machine because it started to read before the daemon had queued the reply it measures, so it counted command output that its own reading drained as output "ahead of the reply" (2.7 MB against Pi's own daemon in one CI run).
+- **Root cause:** `TestDaemonRepliesBeforeBulkOutputLikePisDaemon` failed on a loaded machine because it started to read before the daemon had queued the reply it measures, so it counted command output that its own reading drained as output "ahead of the reply" (2.7 MB against Pi's own daemon in one CI run).
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `041d8b85d2` (2026-11-13)
+- **Tests:** `env/daemon_wire_exec_oracle_test.go::TestDaemonRepliesBeforeBulkOutputLikePisDaemon`
+- **Release note:** `TestDaemonRepliesBeforeBulkOutputLikePisDaemon` failed on a loaded machine because it started to read before the daemon had queued the reply it measures, so it counted command output that its own reading drained as output "ahead of the reply" (2.7 MB against Pi's own daemon in one CI run). The defect was the test's: no daemon changes. Both daemons send a small reply ahead of the command output still in their queue, and the test bounds the output that arrives ahead of that reply. It read as soon as it had sent its request, or as soon as the request's effect (a `mkdir`) showed, which leaves the time until a worker of the daemon is scheduled to queue the reply: with the `mkdir` wait, 1.57 MB arrived ahead of the reply of PiG's daemon once in 400 runs on a loaded machine. The reply now answers the first of two chunk writes to one handle and the test reads once the second chunk is in the file: a daemon runs a handle's chunk writes in order, so the first reply is queued by then, and exactly one 64 KiB frame is ahead of it on both daemons. The command prints numbered lines instead of zeros, so the test also fails when output is missing, repeated or out of order.
 
 ### BF-04a8c5e
 
