@@ -3,6 +3,7 @@ import threading
 import pytest
 
 import pig_sdk as sdk
+from test_request_lifetime import connected_extension
 
 
 def message_with_block():
@@ -165,3 +166,77 @@ def test_a_result_that_cannot_be_copied_ends_the_stream_and_fails_the_request():
     events, responses = drive(provider)
     assert events == []
     assert responses[0][0] is None and responses[0][1]["message"]
+
+
+@pytest.mark.parametrize("signal_is_late", [False, True])
+def test_a_cancel_during_a_push_burst_forwards_the_pushed_events_and_fails_the_request(signal_is_late):
+    # The host cancels the request in the middle of a burst of pushes, through the SDK's own read loop. As in the Go SDK
+    # (TestProviderStreamCancelledDuringABurstForwardsThePushedEventsAndFailsTheRequest): the host has read the events pushed before the cancel, each as it was at its push and in
+    # push order, it receives none of the events pushed after it, and the request ends with an error and no result. The author's later pushes return and change nothing.
+    # The read loop ends the stream of the cancelled request before it sets the request's signal. With signal_is_late the signal is held back until the request is answered, so
+    # the forwarder runs between the two: the stream it sees ended was ended by the cancel, and the answer is still the abort, never a result.
+    ext = sdk.Extension("snapshot-cancel")
+    cancelled, finished, answered = threading.Event(), threading.Event(), threading.Event()
+    streams, failures = [], []
+
+    def provider(ctx, model, context, options):
+        if signal_is_late:
+            set_signal = ctx._cancelled.set
+
+            def set_after_the_answer():
+                assert answered.wait(10)
+                set_signal()
+
+            ctx._cancelled.set = set_after_the_answer
+        stream = sdk.create_assistant_message_event_stream()
+        streams.append(stream)
+        message, block = message_with_block()
+
+        def produce():
+            try:
+                stream.push({"type": "start", "partial": message})
+                for index in range(6):
+                    if index == 3:
+                        assert cancelled.wait(10)
+                    block["text"] += "x"
+                    stream.push({"type": "text_delta", "contentIndex": 0, "delta": "x", "partial": message})
+                block["text"] += "-AFTER"
+                stream.push({"type": "done", "reason": "stop", "message": message})
+            except BaseException as exc:  # noqa: BLE001 - the test reports it
+                failures.append(exc)
+            finally:
+                finished.set()
+
+        threading.Thread(target=produce, daemon=True).start()
+        return stream
+
+    ext._provider_streams["provider"] = provider
+    with connected_extension(ext) as (send, receive):
+        shown, responses, pongs = [], [], []
+
+        def read_until(done):
+            while not done():
+                frame = receive(None)
+                if frame["type"] == "notify" and frame["notify"]["method"] == "provider_stream_event":
+                    shown.append(shown_text(frame["notify"]["args"]["result"]))
+                elif frame["type"] == "response":
+                    responses.append((frame["id"], frame["response"]["result"], frame["response"]["error"]))
+                    answered.set()
+                elif frame["type"] == "pong":
+                    pongs.append(frame["pong"]["nonce"])
+
+        send({"type": "request", "id": "rid", "request": {"method": "provider_stream_simple", "tool": "provider", "args": {"model": {}, "context": {}, "options": {}}}})
+        read_until(lambda: len(shown) == 4)
+        send({"type": "cancel", "cancel": {"request_id": "rid", "reason": "user"}})
+        send({"type": "ping", "ping": {"nonce": "cancel-read"}})
+        read_until(lambda: "cancel-read" in pongs)
+        cancelled.set()
+        assert finished.wait(10)
+        read_until(lambda: responses)
+        send({"type": "ping", "ping": {"nonce": "after-the-burst"}})
+        read_until(lambda: "after-the-burst" in pongs)
+        assert shown == ["", "x", "xx", "xxx"]
+        assert responses == [("rid", None, {"message": "provider stream aborted"})]
+    assert failures == []
+    assert streams[0].result() is None
+    assert ext._provider_active == {}

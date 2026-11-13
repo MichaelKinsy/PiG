@@ -16,6 +16,12 @@ const snapshotBurst = 100
 // runProviderStream dispatches one provider_stream_simple request to a handler through a real connection and returns the text each forwarded event shows and the response's result.
 func runProviderStream(tb testing.TB, handler ProviderStreamSimpleFunc) (texts []string, result map[string]any, failure string) {
 	tb.Helper()
+	return runProviderStreamOf(tb, context.Background(), handler, nil)
+}
+
+// runProviderStreamOf is runProviderStream for a request whose context is requestContext; received, when set, is called with the number of events the host has read, after each.
+func runProviderStreamOf(tb testing.TB, requestContext context.Context, handler ProviderStreamSimpleFunc, received func(count int)) (texts []string, result map[string]any, failure string) {
+	tb.Helper()
 	client, server := net.Pipe()
 	extension := New("snapshot-probe")
 	extension.conn = newConn(client)
@@ -26,7 +32,7 @@ func runProviderStream(tb testing.TB, handler ProviderStreamSimpleFunc) (texts [
 	extension.providerStreams = map[string]ProviderStreamSimpleFunc{"probe": handler}
 	extension.providerMu.Unlock()
 	args := json.RawMessage(`{"model":{},"context":{},"options":{}}`)
-	go extension.dispatchProviderStream(Context{ext: extension, ctx: context.Background()}, "request-1", &requestMsg{Method: "provider_stream_simple", Tool: "probe", Args: args})
+	go extension.dispatchProviderStream(Context{ext: extension, ctx: requestContext}, "request-1", &requestMsg{Method: "provider_stream_simple", Tool: "probe", Args: args})
 	for {
 		frame, err := host.readFrame()
 		if err != nil {
@@ -58,6 +64,9 @@ func runProviderStream(tb testing.TB, handler ProviderStreamSimpleFunc) (texts [
 				texts = append(texts, args.Result.Message.Content[0].Text)
 			default:
 				texts = append(texts, "")
+			}
+			if received != nil {
+				received(len(texts))
 			}
 		case message.Type == msgResponse:
 			if message.Response.Error != nil {
@@ -119,6 +128,47 @@ func TestProviderStreamForwardsEventsAsPushed(t *testing.T) {
 	content, _ := result["content"].([]any)
 	if len(content) != 1 || content[0].(map[string]any)["text"] != wantDone || result["stopReason"] != "stop" {
 		t.Errorf("result = %v, want the message as it was at the done push", result)
+	}
+}
+
+// The host cancels the request in the middle of a burst of pushes: it has read the events pushed before the cancel, each as it was at its push and in push order, it receives
+// none of the events pushed after it, and the request ends with the cancellation's error and no result. The author's later pushes return. The Python SDK does the same
+// (test_a_cancel_during_a_push_burst_forwards_the_pushed_events_and_fails_the_request).
+func TestProviderStreamCancelledDuringABurstForwardsThePushedEventsAndFailsTheRequest(t *testing.T) {
+	requestContext, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	cancelled, finished := make(chan struct{}), make(chan struct{})
+	texts, result, failure := runProviderStreamOf(t, requestContext, func(Context, map[string]any, map[string]any, map[string]any) (*ModelEventStream, error) {
+		message, block := snapshotMessage1()
+		stream := CreateAssistantMessageEventStream()
+		go func() {
+			defer close(finished)
+			stream.Push(map[string]any{"type": "start", "partial": message})
+			text := ""
+			for i := range 6 {
+				if i == 3 {
+					<-cancelled
+				}
+				text += "x"
+				block["text"] = text
+				stream.Push(map[string]any{"type": "text_delta", "contentIndex": 0, "delta": "x", "partial": message})
+			}
+			block["text"] = text + "-AFTER"
+			stream.Push(map[string]any{"type": "done", "reason": "stop", "message": message})
+		}()
+		return stream, nil
+	}, func(count int) {
+		if count == 4 {
+			cancel()
+			close(cancelled)
+		}
+	})
+	<-finished
+	if want := []string{"", "x", "xx", "xxx"}; strings.Join(texts, "|") != strings.Join(want, "|") {
+		t.Errorf("host received %q, want %q: the events pushed before the cancel, as pushed, and none after it", texts, want)
+	}
+	if failure != context.Canceled.Error() || result != nil {
+		t.Errorf("the request ended with result %v and error %q, want no result and %q", result, failure, context.Canceled.Error())
 	}
 }
 
