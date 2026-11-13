@@ -82322,6 +82322,17 @@
       "shapeHash": "sha256:df3e802b51bf9b90e025fff2766befbbe0a118b7fbacd1fb679c4d61c4683091"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#buildUnauthenticatedRequestModel",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "buildUnauthenticatedRequestModel",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(model *github.com/MichaelKinsy/PiG/ai.Model, listed *github.com/MichaelKinsy/PiG/ai.Model, object bool, svcs *AgentSessionServices, apiKey string) (*github.com/MichaelKinsy/PiG/ai.Model, error)"
+      },
+      "shapeHash": "sha256:e011f5e522c32896c21b4ee984527d6506f11daf4c5114001fad36ebc9d89d03"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#builtinToolDefinition",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "builtinToolDefinition",
