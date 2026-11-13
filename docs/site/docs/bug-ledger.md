@@ -2066,6 +2066,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-facd278](#bf-facd278) | A TIFF image is now decoded the way Pi decodes it (Photon links the `tiff` 0.9.1 crate under `image` 0.24.9)… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-fb4d32e](#bf-fb4d32e) | A cursor marker no longer reaches the terminal when a line holds more than one or a marker sits on another… | PiG's own defect | All platforms | Unreleased |
 | [BF-fb4d32e-2](#bf-fb4d32e-2) | Fullscreen Kitty images show every row in terminals that keep an image in the cells it covers (Orca, WezTerm) | PiG's own defect | All platforms | Unreleased |
+| [BF-fb93e73](#bf-fb93e73) | A view node of every kind can carry an id in the component kits of the Go, Rust, Python and Lisp SDKs (Go the… | PiG's own defect | All platforms | Unreleased |
 | [BF-fba9b47](#bf-fba9b47) | fix(extension): hold the theme colors map the wire palette memo is keyed on | PiG's own defect | All platforms | Unreleased |
 | [BF-fbd3640](#bf-fbd3640) | The legacy credential migration writes `auth.json` and the rewritten `settings.json` with the key order Pi… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-fbd59e3](#bf-fbd59e3) | `chord/nextnode/plugins`, `chord/nextnode/app` (Pi `app.test.ts` "round-trips a worker's documents, tables… | PiG's own defect | All platforms | Unreleased |
@@ -30466,6 +30467,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `fb4d32eb1c` (2026-11-07)
 - **Tests:** `tui/render_regressions_upstream_test.go::TestUpstreamTabWidth`, `tui/tui_alt_screen_kitty_order_test.go::TestAltScreenClearsRowsBeforeKittyImages`, `tui/tui_alt_screen_kitty_order_test.go::TestAltScreenDoesNotLeakCursorMarkersWhileSelectingAfterTheCaret`, `tui/tui_alt_screen_kitty_order_test.go::TestAltScreenDrawsKittyImagesAfterClearingTheRowsTheyCover`, `tui/tui_alt_screen_kitty_order_test.go::TestAltScreenRedrawsKittyImagesAfterWritesToCoveredRows`, `tui/tui_render_upstream_test.go::TestUpstreamTUIBoundedRender`
 - **Release note:** Fullscreen Kitty images show every row in terminals that keep an image in the cells it covers (Orca, WezTerm). The alt screen now draws images after clearing and writing the rows they cover on every Kitty-protocol terminal, not only WezTerm. Follows Pi main 4622edb79 ahead of the pin.
+
+### BF-fb93e73
+
+**A view node of every kind can carry an id in the component kits of the Go, Rust, Python and Lisp SDKs (Go the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Only the kinds that need an id took one there, so an `a11y` record, a `focus` record or a drawing's `node` of a mounted view could not name a container, box, text, truncated text, markdown, spacer, dynamic border, image, loader, stack, lines, user message or diff node, while a Node extension, whose view is a plain object, could.
+- **Root cause:** The wire gives every view node an id, and the records of a mounted view (a11y, focus, a drawing node) name a node by it. A Node view is a plain object, so it could give any node one. The kits of the Go, Python, Rust and Lisp SDKs gave an id only to the kinds that need one, so those records could not name a container, box, text, truncated text, markdown, spacer, dynamic border, image, loader, stack, lines, user message or diff there.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `fb93e7325d` (2026-11-13)
+- **Tests:** `test/extension-conformance/ui_view_node_ids_test.go::TestConformance_UIViewNodeIds`
+- **Release note:** A view node of every kind can carry an id in the component kits of the Go, Rust, Python and Lisp SDKs (Go the field `ID`, Rust `.id("…")`, Python `id=`, Lisp `:id`). Before, only the kinds that need an id took one there, so an `a11y` record, a `focus` record or a drawing's `node` of a mounted view could not name a container, box, text, truncated text, markdown, spacer, dynamic border, image, loader, stack, lines, user message or diff node, while a Node extension, whose view is a plain object, could. A `text` or `box` node has no `color` member in any SDK: its colour is `bg`, and the host draws no `color` it is sent on those kinds.
 
 ### BF-fba9b47
 
