@@ -6956,6 +6956,43 @@
       ]
     },
     {
+      "id": "BF-2653e62",
+      "title": "Pressing Esc during a batch of tool calls left the calls that had not started yet without a result in the…",
+      "symptom": "Pressing Esc during a batch of tool calls left the calls that had not started yet without a result in the session: the transcript held an assistant message with tool calls that no tool result answered.",
+      "rootCause": "When a run was aborted in the middle of a batch of tool calls, the loop left the batch at once: executeToolCallsSequential and executeToolCallsParallel stopped at the first call that ended under a cancelled context. The calls the loop had not reached got no tool_execution_start, no tool_execution_end and no tool result. The session then held an assistant message whose tool calls nothing answered, followed by the aborted response. PiG 0.2.0, 0.3.0 and 0.7.0 have the defect; it is Pi's own (#9986), fixed there by.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Pressing Esc during a batch of tool calls left the calls that had not started yet without a result in the session: the transcript held an assistant message with tool calls that no tool result answered. Each of those calls now gets its start and end events and an \"Operation aborted\" error result, and extension `tool_call` handlers are not asked about a call that will not run. A call whose `tool_call` handler in an extension process was still deciding when the run was aborted now reads \"Operation aborted\" too, where it read \"event tool_call: context canceled\". `ctx.executeTool` answers an aborted run the same way, before it looks the tool up. A session that an older build left with unanswered calls still opens and continues as before. Follows Pi 4438c58ba ([#9986](https://github.com/earendil-works/pi/issues/9986)).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2653e62834",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "agent/abort_batch_answers_test.go::TestABeforeHookEndedByTheAbortAnswersOperationAborted",
+        "agent/abort_batch_answers_test.go::TestAbortBeforeTheFirstCallOfABatchAnswersEveryCall",
+        "agent/abort_batch_answers_test.go::TestAbortBetweenTwoCallsOfASequentialBatchAnswersTheRest",
+        "agent/abort_batch_answers_test.go::TestAbortDuringACallOfASequentialBatchAnswersTheRestInOrder",
+        "agent/abort_batch_answers_test.go::TestAbortWhileAParallelBatchIsPreparedAnswersEveryCallInOrder",
+        "agent/abort_batch_answers_test.go::TestRunToolCallAnswersAnAbortedSignalBeforeTheLookupAndTheHooks",
+        "agent/abort_batch_answers_test.go::TestSteeringQueuedDuringAnAbortedBatchFollowsAResultForEveryCall",
+        "agent/agent_class_pi_oracle_test.go::TestAgentClassMatchesPi",
+        "agent/agent_loop_pi_oracle_test.go::TestAgentLoopMatchesPi",
+        "agent/agent_loop_upstream_test.go::TestAgentLoop_AnswersEveryToolCallOfAParallelBatchAbortedWhileCallsArePrepared",
+        "agent/agent_loop_upstream_test.go::TestAgentLoop_AnswersEveryToolCallOfASequentialBatchAbortedMidBatch",
+        "agent/agent_test.go::TestExecuteParallelAnswersUnstartedCallsAfterContextAbort",
+        "agent/agent_test.go::TestExecuteSequentialAnswersEveryCallAfterContextAbort",
+        "coding/cli/rpc_aborted_batch_test.go::TestRPCAbortedBatchAnswersEveryCallInOrder",
+        "coding/session_aborted_batch_test.go::TestSessionAbortedBatchPersistsAResultForEveryCall",
+        "test/parity/scenarios/rpc/82-rpc-abort-mid-batch-answers-every-call.toml"
+      ]
+    },
+    {
       "id": "BF-26787ff",
       "title": "`pig --mode rpc --listen`: a connection that registered just after the server received SIGTERM was shut down…",
       "symptom": "`pig --mode rpc --listen`: a connection that registered just after the server received SIGTERM was shut down while its session was still starting, and the shutdown read the extension runner while the start filled it, a data race.",

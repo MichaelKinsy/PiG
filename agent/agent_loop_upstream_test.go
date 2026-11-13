@@ -511,6 +511,165 @@ func TestAgentLoop_ForcesSequentialWhenToolIsSequentialUnderParallelConfig(t *te
 	}
 }
 
+// runToolBatch is upstream's runToolBatch (Pi 4438c58ba220 packages/agent/test/agent-loop.test.ts:79-118): one turn whose
+// assistant message calls tool three times, then a final turn the stream function ends as aborted. signal is the run's
+// AbortSignal.
+func runToolBatch(signal context.Context, t *testing.T, tool AgentTool, config AgentLoopConfig) ([]AgentEvent, []AgentMessage) {
+	t.Helper()
+	return runObservedToolBatch(signal, t, tool, config, nil)
+}
+
+// runObservedToolBatch is runToolBatch with a listener that sees every event as the loop emits it, like a subscriber of
+// Pi's Agent: the place a test aborts from between two steps of the batch.
+func runObservedToolBatch(signal context.Context, t *testing.T, tool AgentTool, config AgentLoopConfig, observe func(AgentEvent)) ([]AgentEvent, []AgentMessage) {
+	t.Helper()
+	provider := &scriptedProvider{respond: func(call int, _ scriptedRequest) *ai.AssistantMessageEventStream {
+		if call == 1 {
+			return doneStream(toolUseMessage(
+				toolCall("tool-1", tool.Name(), ai.JsonObject{"value": "first"}),
+				toolCall("tool-2", tool.Name(), ai.JsonObject{"value": "second"}),
+				toolCall("tool-3", tool.Name(), ai.JsonObject{"value": "third"}),
+			))
+		}
+		return errorStream(ai.StopReasonAborted)
+	}}
+	config.Model = scriptedModel(provider)
+	// A parallel batch delivers tool_execution_end from the calls' goroutines.
+	var mu sync.Mutex
+	var events []AgentEvent
+	messages, err := RunAgentLoop(signal, []AgentMessage{userMessage("run three")}, AgentContext{Tools: []AgentTool{tool}}, config, func(event AgentEvent) error {
+		mu.Lock()
+		events = append(events, event)
+		mu.Unlock()
+		if observe != nil {
+			observe(event)
+		}
+		return nil
+	}, providerStream)
+	if err != nil {
+		t.Fatalf("RunAgentLoop: %v", err)
+	}
+	return events, messages
+}
+
+// toolResultTexts is upstream's toolResultTexts (agent-loop.test.ts:120-126): every tool result's call id and text.
+func toolResultTexts(messages []AgentMessage) [][2]string {
+	var texts [][2]string
+	for _, message := range messages {
+		if message.ToolResult == nil {
+			continue
+		}
+		var text strings.Builder
+		for _, block := range message.ToolResult.Content {
+			if content, ok := block.(ai.TextContent); ok {
+				text.WriteString(content.Text)
+			}
+		}
+		texts = append(texts, [2]string{message.ToolResult.ToolCallID, text.String()})
+	}
+	return texts
+}
+
+// toolEventIDs is upstream's toolEventIds (agent-loop.test.ts:128-130): the call ids of the tool_execution_start or the
+// tool_execution_end events, in order.
+func toolEventIDs(events []AgentEvent, eventName string) []string {
+	var ids []string
+	for _, event := range events {
+		switch event := event.(type) {
+		case ToolExecutionStartEvent:
+			if eventName == "tool_execution_start" {
+				ids = append(ids, event.ToolCallID)
+			}
+		case ToolExecutionEndEvent:
+			if eventName == "tool_execution_end" {
+				ids = append(ids, event.ToolCallID)
+			}
+		}
+	}
+	return ids
+}
+
+// Pi 4438c58ba220 packages/agent/test/agent-loop.test.ts:1002-1031 (#9986)
+// upstream: "answers every tool call of a sequential batch aborted mid-batch"
+func TestAgentLoop_AnswersEveryToolCallOfASequentialBatchAbortedMidBatch(t *testing.T) {
+	signal, abort := context.WithCancel(context.Background())
+	defer abort()
+	var executed []string
+	tool := &scriptTool{name: "slow", label: "Slow", description: "Slow tool", params: valueSchema, mode: ToolModeSequential,
+		execute: func(_ context.Context, _ string, args json.RawMessage, _ ToolUpdateCallback) (AgentToolResult, error) {
+			executed = append(executed, argValue(args))
+			// The user aborts while the first call runs.
+			abort()
+			return AgentToolResult{}, errors.New("interrupted")
+		}}
+
+	events, messages := runToolBatch(signal, t, tool, AgentLoopConfig{})
+
+	if !reflect.DeepEqual(executed, []string{"first"}) {
+		t.Errorf("executed = %v, want [first]", executed)
+	}
+	want := [][2]string{{"tool-1", "interrupted"}, {"tool-2", "Operation aborted"}, {"tool-3", "Operation aborted"}}
+	if got := toolResultTexts(messages); !reflect.DeepEqual(got, want) {
+		t.Errorf("tool results = %v, want %v", got, want)
+	}
+	ids := []string{"tool-1", "tool-2", "tool-3"}
+	if got := toolEventIDs(events, "tool_execution_start"); !reflect.DeepEqual(got, ids) {
+		t.Errorf("tool_execution_start = %v, want %v", got, ids)
+	}
+	if got := toolEventIDs(events, "tool_execution_end"); !reflect.DeepEqual(got, ids) {
+		t.Errorf("tool_execution_end = %v, want %v", got, ids)
+	}
+}
+
+// Pi 4438c58ba220 packages/agent/test/agent-loop.test.ts:1033-1070 (#9986)
+// upstream: "answers every tool call of a parallel batch aborted while calls are prepared"
+func TestAgentLoop_AnswersEveryToolCallOfAParallelBatchAbortedWhileCallsArePrepared(t *testing.T) {
+	signal, abort := context.WithCancel(context.Background())
+	defer abort()
+	var executedMu sync.Mutex
+	var executed []string
+	tool := &scriptTool{name: "slow", label: "Slow", description: "Slow tool", params: valueSchema,
+		execute: func(_ context.Context, _ string, args json.RawMessage, _ ToolUpdateCallback) (AgentToolResult, error) {
+			value := argValue(args)
+			executedMu.Lock()
+			executed = append(executed, value)
+			executedMu.Unlock()
+			return AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: value}}, Details: map[string]any{"value": value}}, nil
+		}}
+	// The user aborts while a hook decides about the second call, for example at a permission prompt.
+	var hookCalls []string
+	config := AgentLoopConfig{BeforeToolCall: func(_ context.Context, call BeforeToolCallContext) *BeforeToolCallResult {
+		hookCalls = append(hookCalls, call.ToolCall.ID)
+		if call.ToolCall.ID == "tool-2" {
+			abort()
+		}
+		return nil
+	}}
+
+	events, messages := runToolBatch(signal, t, tool, config)
+
+	if len(executed) != 0 {
+		t.Errorf("executed = %v, want none", executed)
+	}
+	// The hook is not asked about a call that will not run.
+	if !reflect.DeepEqual(hookCalls, []string{"tool-1", "tool-2"}) {
+		t.Errorf("hook calls = %v, want [tool-1 tool-2]", hookCalls)
+	}
+	want := [][2]string{{"tool-1", "Operation aborted"}, {"tool-2", "Operation aborted"}, {"tool-3", "Operation aborted"}}
+	if got := toolResultTexts(messages); !reflect.DeepEqual(got, want) {
+		t.Errorf("tool results = %v, want %v", got, want)
+	}
+	ids := []string{"tool-1", "tool-2", "tool-3"}
+	if got := toolEventIDs(events, "tool_execution_start"); !reflect.DeepEqual(got, ids) {
+		t.Errorf("tool_execution_start = %v, want %v", got, ids)
+	}
+	ends := toolEventIDs(events, "tool_execution_end")
+	slices.Sort(ends)
+	if !reflect.DeepEqual(ends, ids) {
+		t.Errorf("tool_execution_end (sorted) = %v, want %v", ends, ids)
+	}
+}
+
 // .upstream/v0.87.1/packages/agent/test/agent-loop.test.ts:901
 // upstream: "should force sequential execution when one of multiple tools has executionMode=sequential"
 func TestAgentLoop_ForcesSequentialWhenOneOfMultipleToolsIsSequential(t *testing.T) {

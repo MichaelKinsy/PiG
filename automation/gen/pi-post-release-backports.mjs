@@ -1000,6 +1000,84 @@ export const readRenderers = {`],
 ]);
 // END backport 4be4cb4f5e9c
 
+// BEGIN backport 4438c58ba
+// 4438c58ba (#9986): an aborted tool batch answers every call. The sequential and the parallel loop no longer stop at an aborted signal, and prepareToolCall
+// answers "Operation aborted" before the tool lookup and beforeToolCall, so each call the loop had not reached gets its start event, its end event and an error
+// result, and the hooks are not asked about a call that will not run. runToolCall checks the signal first too (its doc comment says so).
+// not carried: pi-agent-core/agent-loop.d.ts (the doc comment of runToolCall): a declaration file; no backport table patches one, and nothing runs it.
+patch("4438c58ba", "pi-agent-core/agent-loop.js", [
+    [`        finalizedCalls.push(finalized);
+        messages.push(toolResultMessage);
+        if (signal?.aborted) {
+            break;
+        }
+    }
+`, `        finalizedCalls.push(finalized);
+        messages.push(toolResultMessage);
+    }
+`],
+    [`            await emitToolExecutionEnd(finalized, emit);
+            finalizedCalls.push(finalized);
+            if (signal?.aborted) {
+                break;
+            }
+            continue;
+`, `            await emitToolExecutionEnd(finalized, emit);
+            finalizedCalls.push(finalized);
+            continue;
+`],
+    [`            await emitToolExecutionEnd(finalized, emit);
+            return finalized;
+        });
+        if (signal?.aborted) {
+            break;
+        }
+    }
+`, `            await emitToolExecutionEnd(finalized, emit);
+            return finalized;
+        });
+    }
+`],
+    [`async function prepareToolCall(currentContext, assistantMessage, toolCall, config, signal, tools = currentContext.tools ?? []) {
+    const tool = tools.find((t) => t.name === toolCall.name);
+`, `async function prepareToolCall(currentContext, assistantMessage, toolCall, config, signal, tools = currentContext.tools ?? []) {
+    ${note("4438c58ba").trim()}
+    // Once aborted, skip preparation and the hooks; callers still record this result, so no call
+    // is left without one (#9986).
+    if (signal?.aborted) {
+        return {
+            kind: "immediate",
+            result: createErrorToolResult("Operation aborted"),
+            isError: true,
+        };
+    }
+    const tool = tools.find((t) => t.name === toolCall.name);
+`],
+    [`            }
+        }
+        if (signal?.aborted) {
+            return {
+                kind: "immediate",
+                result: createErrorToolResult("Operation aborted"),
+                isError: true,
+            };
+        }
+        return {
+            kind: "prepared",
+`, `            }
+        }
+        return {
+            kind: "prepared",
+`],
+    [` * Never rejects for tool failures: unknown tools, validation errors, blocked calls, and thrown
+ * errors come back as \`isError: true\`.
+`, ` * Never rejects for tool failures: an aborted \`signal\`, unknown tools, validation errors, blocked
+ * calls, and thrown errors come back as \`isError: true\`. An aborted \`signal\` is checked first,
+ * before the hooks run.
+`],
+]);
+// END backport 4438c58ba
+
 // BEGIN backport 49fe0a237
 // 49fe0a237 (#11987): the models.json schema Pi generates from compat-schema.ts.
 packageFile("49fe0a237", "pi-coding-agent/schemas/models.schema.json", [messageThreadsDefault]);

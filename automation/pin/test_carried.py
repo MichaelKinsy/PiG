@@ -584,7 +584,8 @@ packageFile("abc123", "pi-coding-agent/docs/models.md", [["a", "b"]]);
         self.assertEqual(carried.ledger_block_key("packages/coding-agent/src/core/export-html/template.js"), "pi-coding-agent/core/export-html/template.js")
         self.assertEqual(carried.ledger_block_key("packages/coding-agent/docs/models.md"), "pi-coding-agent/docs/models.md")
         self.assertEqual(carried.ledger_block_key("packages/tui/src/tui.ts"), "pi-tui/tui.js")
-        for path in ("packages/ai/test/fetch-option.test.ts", "packages/ai/CHANGELOG.md", "packages/chord/src/store/store.ts", "packages/ai/package.json", "package-lock.json"):
+        self.assertEqual(carried.ledger_block_key("packages/agent/src/agent-loop.ts"), "pi-agent-core/agent-loop.js")
+        for path in ("packages/ai/test/fetch-option.test.ts", "packages/agent/test/agent-loop.test.ts", "packages/ai/CHANGELOG.md", "packages/chord/src/store/store.ts", "packages/ai/package.json", "package-lock.json"):
             self.assertIsNone(carried.ledger_block_key(path), path)
 
     def test_a_ported_change_of_a_file_the_oracle_runs_needs_a_block_or_a_reason(self):
