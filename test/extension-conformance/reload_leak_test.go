@@ -57,6 +57,8 @@ type reloadLeakRow struct {
 	// command is a command every extension of the row registers and answers without a UI.
 	command string
 	configs func(t *testing.T, root, dir string) []subprocess.ExtConfig
+	// parallel marks a row that reloads on every P of the process and leaves the heap bounds, which hold on one P only, to its one-P twin.
+	parallel bool
 	// afterLoad runs once after the first load and before the warm-up reloads.
 	afterLoad func(t *testing.T)
 }
@@ -96,7 +98,7 @@ func reloadLeakRows() []reloadLeakRow {
 			// A member of a Piglet Binary built with `build.fusedReload: source` (D31): it loads fused, its source is edited, and the
 			// first warm-up reload switches it to the subprocess built from that source. The baseline is taken after the switch, so
 			// the stopped fused copy is counted once; TestFusedMemberSwitchLeavesNothingRunning requires that a host after the switch
-			// holds the goroutines of one that loaded the subprocess copy directly.
+			// holds the goroutines of one that loaded the subprocess copy directly. The member draws nothing.
 			var hybridSource string
 			rows = append(rows, reloadLeakRow{sdk: s, realization: "fused-then-subprocess", strategy: subprocess.CellStrategyIsolated, command: "noop", configs: func(t *testing.T, _, dir string) []subprocess.ExtConfig {
 				hybridSource = filepath.Join(dir, reloadLeakHybridName)
@@ -107,6 +109,15 @@ func reloadLeakRows() []reloadLeakRow {
 				reloadLeakHybridDigest = hybridDigest(t, hybridSource)
 				return []subprocess.ExtConfig{cfg}
 			}, afterLoad: func(t *testing.T) { hybridEdit(t, hybridSource, reloadLeakHybridName, "v1") }})
+		}
+	}
+	// The two rows whose generations each left a goroutine behind run again on every P, so the reload's own scheduling across Ps stays
+	// under the bounds that do not depend on the runtime's caches: the lone Node extension (the connection loop that waited for the
+	// process) and the Go cell (the watcher of a replaced state).
+	for _, row := range slices.Clone(rows) {
+		if row.sdk == sdkscenarios.Node && row.realization == "isolated" || row.sdk == sdkscenarios.Go && row.realization == "packed" {
+			row.realization, row.parallel = row.realization+"-parallel", true
+			rows = append(rows, row)
 		}
 	}
 	return rows
@@ -327,6 +338,21 @@ func TestReloadLeak(t *testing.T) {
 	t.Cleanup(func() { subprocess.SetFusedResolver(nil) })
 	for _, row := range reloadLeakRows() {
 		t.Run(string(row.sdk)+"/"+row.realization, func(t *testing.T) {
+			if !row.parallel {
+				// The row runs on one P, because the heap bounds compare live heap and the Go runtime keeps live heap per P for the goroutines that
+				// ended: their g structs (runtime.malg; a g struct is never freed, and each P keeps up to 64 free ones before half move to the
+				// global list) and the sudogs they blocked on (runtime.acquireSudog; 128 per P, and only the central list is dropped at a
+				// collection). A goroutine that blocks on one P and is woken on another moves its sudog to the other P's cache, so on more Ps
+				// the caches fill for about a thousand reloads, at a rate that follows GOMAXPROCS and what the process ran before, and then
+				// stand. Measured on the Go packed row, in bytes per reload: over the first hundred reloads 1064 to 1454 on 16 Ps when the row
+				// ran alone (above the slope bound, five runs of five) and 430 to 537 on 4; over each hundred of a thousand reloads on 16 Ps
+				// 1217, 560, 391, 400, -43, 386, -77, 110, 49, 31, and on one P 30, 3 and then 0; over each five hundred of five thousand on 16
+				// Ps 465, 163, -14, 35, -22, -5, 55, -45, 0, 23, and on one P 6 and then 0. The goroutines stood at 21 at every sample. The
+				// exact memory profile between reload 100 and reload 1000 holds 188 more g structs and 440 more sudogs on 16 Ps, none of either
+				// on one P, and in both nothing more that the host allocated.
+				procs := runtime.GOMAXPROCS(1)
+				t.Cleanup(func() { runtime.GOMAXPROCS(procs) })
+			}
 			dir, temp := t.TempDir(), t.TempDir()
 			marker := reloadLeakMarker + "=" + strconv.Itoa(os.Getpid()) + "-" + string(row.sdk) + "-" + row.realization
 			t.Setenv(reloadLeakMarker, strings.TrimPrefix(marker, reloadLeakMarker+"="))
@@ -353,7 +379,9 @@ func TestReloadLeak(t *testing.T) {
 
 			// artifacts are the cells of the latest reload: an unchanged source runs the artifact it ran before.
 			var artifacts []string
-			var durations []time.Duration
+			// The row's own records are sized before the baseline, so the heap the samples compare does not hold their growth.
+			durations := make([]time.Duration, 0, max(reloads, reloadLeakWarmup))
+			samples := make([]reloadLeakSample, 0, reloads/reloadLeakSampleEvery+2)
 			reload := func(n int) {
 				t.Helper()
 				start := time.Now()
@@ -448,7 +476,7 @@ func TestReloadLeak(t *testing.T) {
 			if row.strategy != "" && baseline.processes == 0 {
 				t.Fatalf("no extension process found below this one or by %s: the row would not see a process that stays", reloadLeakMarker)
 			}
-			samples := []reloadLeakSample{first}
+			samples = append(samples, first)
 			durations = durations[:0]
 			var lastFiles []string
 			var lastProcesses map[int]string
@@ -480,6 +508,15 @@ func TestReloadLeak(t *testing.T) {
 				baseline.inotify, last.inotify, baseline.inotifyWatches, last.inotifyWatches, baseline.files, last.files,
 				baseline.heapBytes, last.heapBytes, int64(last.heapBytes)-int64(baseline.heapBytes), slope,
 				baseline.heapObjects, last.heapObjects, int64(last.heapObjects)-int64(baseline.heapObjects))
+			// A structure that fills flattens over the tenths of a long run; what a reload leaks does not.
+			var tenths []string
+			for i := 1; i <= 10; i++ {
+				from, to := samples[(i-1)*(len(samples)-1)/10], samples[i*(len(samples)-1)/10]
+				if to.reloads > from.reloads {
+					tenths = append(tenths, fmt.Sprintf("%d:%+d/%d", to.reloads, (int64(to.heapBytes)-int64(from.heapBytes))/int64(to.reloads-from.reloads), to.goroutines))
+				}
+			}
+			t.Logf("LEAKTENTHS %s %s on %d P: live heap bytes per reload and goroutines over each tenth of the run (reloads:bytes/goroutines) %s", row.sdk, row.realization, runtime.GOMAXPROCS(0), strings.Join(tenths, " "))
 			series := func(value func(reloadLeakSample) int64) string {
 				parts := make([]string, len(samples))
 				for i, s := range samples {
@@ -522,6 +559,9 @@ func TestReloadLeak(t *testing.T) {
 				added = append(added[:12], fmt.Sprintf("... and %d more", len(added)-12))
 			}
 			grew("files", 0, func(s reloadLeakSample) int64 { return int64(s.files) }, "; files the baseline did not have:\n  "+strings.Join(added, "\n  "))
+			if row.parallel {
+				return
+			}
 			grew("live heap bytes", reloadLeakHeapBytes, func(s reloadLeakSample) int64 { return int64(s.heapBytes) }, "")
 			if slope > reloadLeakHeapSlopeBytes {
 				t.Errorf("%s %s: live heap grows by %.0f bytes per reload (bound %d); samples (reloads:bytes) %s", row.sdk, row.realization, slope, reloadLeakHeapSlopeBytes, series(func(s reloadLeakSample) int64 { return int64(s.heapBytes) }))

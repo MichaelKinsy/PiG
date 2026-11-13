@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -533,6 +534,48 @@ func TestReloadDisposesEveryExtensionDialog(t *testing.T) {
 	requireEditorShown(t, r.m, "after /reload")
 	if got := component.disposed.Load(); got != 1 {
 		t.Fatalf("custom component disposed %d times by the reload, want once", got)
+	}
+}
+
+// countdownGoroutines counts the goroutines of the dialogs' countdowns (tui.CountdownTimer).
+func countdownGoroutines() int {
+	buf := make([]byte, 1<<20)
+	buf = buf[:runtime.Stack(buf, true)]
+	count := 0
+	for block := range strings.SplitSeq(string(buf), "\n\n") {
+		if strings.Contains(block, "tui.(*CountdownTimer).run") {
+			count++
+		}
+	}
+	return count
+}
+
+// A selector and an input with a timeout each own a countdown, which the component's dispose stops (extension-selector.ts,
+// extension-input.ts: CountdownTimer). /reload disposes the open dialogs (handleReloadCommand's resetExtensionUI), so the countdown of
+// a dialog the reload removed ends with it: one that ran on would tick, and hold its dialog, until the timeout.
+func TestReloadEndsTheCountdownsOfTheOpenExtensionDialogs(t *testing.T) {
+	r := newCustomRig(t)
+	ctx, abort := context.WithCancel(t.Context())
+	defer abort()
+	before := countdownGoroutines()
+	timed := extension.ExtensionUIDialogOptions{Timeout: new(float64(600000))}
+	r.callDialog(t, func() (string, error) { return r.u.Select(ctx, "Timed select", []string{"one"}, timed) })
+	r.callDialog(t, func() (string, error) { return r.u.Input(ctx, "Timed input", "", timed) })
+	if got := countdownGoroutines(); got != before+2 {
+		t.Fatalf("%d countdown goroutines with a timed select and a timed input open, want %d", got, before+2)
+	}
+
+	if err := r.m.buildSlashContext(t.Context()).Reload(); err != nil {
+		t.Fatal(err)
+	}
+	requireEditorShown(t, r.m, "after /reload")
+	// Dispose closes the countdown's stop channel, and its goroutine ends on its own.
+	deadline := time.Now().Add(5 * time.Second)
+	for countdownGoroutines() != before {
+		if time.Now().After(deadline) {
+			t.Fatalf("%d countdown goroutines after /reload disposed the dialogs, want %d", countdownGoroutines(), before)
+		}
+		time.Sleep(time.Millisecond)
 	}
 }
 
