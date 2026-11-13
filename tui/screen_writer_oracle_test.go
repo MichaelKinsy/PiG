@@ -187,7 +187,7 @@ func TestScreenWriterShowsTheRenderersScreens(t *testing.T) {
 // has no rule.
 const (
 	screenWriterPisFrames = 6338
-	screenWriterPisUnread = 2831
+	screenWriterPisUnread = 2705
 )
 
 // An image's rows under an overlay, in the frames the alternate screen itself writes for them: a transcript with an image three
