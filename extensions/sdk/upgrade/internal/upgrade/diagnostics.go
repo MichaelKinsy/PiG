@@ -106,9 +106,9 @@ type FileSource func(path string) ([]byte, error)
 func Classify(diagnostics []Diagnostic, source FileSource) []Drift {
 	var drifts []Drift
 	index := map[string]int{}
-	files := map[string]*parsedFile{}
+	files := map[string]*ParsedFile{}
 	for _, diagnostic := range diagnostics {
-		ruleID, symbol, ok := classifyDiagnostic(diagnostic, source, files)
+		ruleID, symbol, ok := ClassifyDiagnostic(diagnostic, source, files)
 		if !ok {
 			continue
 		}
@@ -117,7 +117,7 @@ func Classify(diagnostics []Diagnostic, source FileSource) []Drift {
 			continue
 		}
 		rule, _ := RuleByID(ruleID)
-		change, _ := changeFor(symbol)
+		change, _ := ChangeFor(symbol)
 		index[symbol] = len(drifts)
 		drifts = append(drifts, Drift{
 			Rule: ruleID, Symbol: symbol, Old: change.Old, New: change.New, Since: change.Since,
@@ -134,16 +134,18 @@ func lazyPattern(expr string) func() *regexp.Regexp {
 
 var (
 	usageDiagnostic     = lazyPattern(`\.(Tokens|Percent)\b`)
-	usagePointerTypes   = lazyPattern(`\*int\b|\*float64\b`)
 	boolPointerArgument = lazyPattern(`^cannot use .+ as \*bool value in `)
 	credentialType      = lazyPattern(`\*\w+\.Credential\b`)
 	// highlightCodeTarget matches the SDK side of the compiler's message when a function written for the old HighlightCode is assigned to the new field: the target type, whatever the author named or left unnamed the parameters of the function.
 	highlightCodeTarget = lazyPattern(`^cannot use .+ as func\((?:code )?string, (?:lang )?string, (?:palette )?\[\]byte\) \(\[\]string, error\) value`)
 )
 
-// isArityDiagnostic reports whether message is one the compiler gives for a
+// UsagePointerTypes matches the pointer types the fields of ContextUsage have now.
+var UsagePointerTypes = lazyPattern(`\*int\b|\*float64\b`)
+
+// IsArityDiagnostic reports whether message is one the compiler gives for a
 // call that returns two results where one is wanted.
-func isArityDiagnostic(message string) bool {
+func IsArityDiagnostic(message string) bool {
 	for _, prefix := range []string{"assignment mismatch:", "multiple-value ", "too many arguments in call", "too many return values"} {
 		if strings.HasPrefix(message, prefix) {
 			return true
@@ -152,10 +154,11 @@ func isArityDiagnostic(message string) bool {
 	return false
 }
 
-func classifyDiagnostic(diagnostic Diagnostic, source FileSource, files map[string]*parsedFile) (rule, symbol string, ok bool) {
+// ClassifyDiagnostic returns the rule and the symbol of the SDK change behind one diagnostic. files caches the sources it parses.
+func ClassifyDiagnostic(diagnostic Diagnostic, source FileSource, files map[string]*ParsedFile) (rule, symbol string, ok bool) {
 	message := diagnostic.Message
 	if name, found := getterInDiagnostic(message); found {
-		if _, isGetter := getterByName(name); isGetter && importsSDK(diagnostic, source, files) {
+		if _, isGetter := GetterByName(name); isGetter && importsSDK(diagnostic, source, files) {
 			return RuleContextGetters, "Context." + name, true
 		}
 		if name == "Find" && importsSDK(diagnostic, source, files) {
@@ -163,7 +166,7 @@ func classifyDiagnostic(diagnostic Diagnostic, source FileSource, files map[stri
 		}
 		return "", "", false
 	}
-	if isArityDiagnostic(message) {
+	if IsArityDiagnostic(message) {
 		if name, found := getterCalledAt(diagnostic, source, files); found {
 			return RuleContextGetters, "Context." + name, true
 		}
@@ -177,7 +180,7 @@ func classifyDiagnostic(diagnostic Diagnostic, source FileSource, files map[stri
 		if field, found := sdkBoolField(diagnostic, source, files); found {
 			return RuleOptionalBool, field, true
 		}
-	case usageDiagnostic().MatchString(message) && usagePointerTypes().MatchString(message):
+	case usageDiagnostic().MatchString(message) && UsagePointerTypes().MatchString(message):
 		if match := usageDiagnostic().FindStringSubmatch(message); importsSDK(diagnostic, source, files) {
 			return RuleContextUsage, "ContextUsage." + match[1], true
 		}
@@ -222,16 +225,16 @@ func getterMethodValue(message string) (string, bool) {
 	if !found {
 		return "", false
 	}
-	if _, isGetter := getterByName(name); !isGetter {
+	if _, isGetter := GetterByName(name); !isGetter {
 		return "", false
 	}
 	return name, true
 }
 
 // credentialChange names the provider-credential change behind a diagnostic about *sdk.Credential: the struct field the source assigns at the diagnostic, or else the first change whose new shape the message shows.
-func credentialChange(diagnostic Diagnostic, source FileSource, files map[string]*parsedFile) (rule, symbol string, ok bool) {
+func credentialChange(diagnostic Diagnostic, source FileSource, files map[string]*ParsedFile) (rule, symbol string, ok bool) {
 	if field, found := sdkBoolField(diagnostic, source, files); found {
-		if change, _ := changeFor(field); slices.Contains(credentialChanges(), change) {
+		if change, _ := ChangeFor(field); slices.Contains(credentialChanges(), change) {
 			return RuleProviderCredential, field, true
 		}
 	}
@@ -248,8 +251,8 @@ func credentialChanges() []Change {
 	return rule.Changes
 }
 
-// builtinArityPrefix starts the message the compiler gives for a builtin that takes one value and is passed a call with two results.
-const builtinArityPrefix = "invalid operation: too many arguments for "
+// BuiltinArityPrefix starts the message the compiler gives for a builtin that takes one value and is passed a call with two results.
+const BuiltinArityPrefix = "invalid operation: too many arguments for "
 
 // getterInDiagnostic returns the method a single-value-context diagnostic
 // names: `assignment mismatch: 1 variable but ctx.GetSessionID returns 2
@@ -275,9 +278,9 @@ func getterInDiagnostic(message string) (string, bool) {
 			return "", false
 		}
 		expression = before
-	case strings.HasPrefix(message, builtinArityPrefix):
+	case strings.HasPrefix(message, BuiltinArityPrefix):
 		// `invalid operation: too many arguments for len(ctx.GetAllTools()) (expected 1, found 2)`: the call inside the builtin's parentheses.
-		before, _, found := strings.Cut(strings.TrimPrefix(message, builtinArityPrefix), " (expected ")
+		before, _, found := strings.Cut(strings.TrimPrefix(message, BuiltinArityPrefix), " (expected ")
 		open := strings.Index(before, "(")
 		if !found || open < 0 || !strings.HasSuffix(before, ")") {
 			return "", false
@@ -321,8 +324,8 @@ func calleeName(expression string) (string, bool) {
 	return name, true
 }
 
-// parsedFile is a source file read for a diagnostic.
-type parsedFile struct {
+// ParsedFile is a source file read for a diagnostic.
+type ParsedFile struct {
 	fset   *token.FileSet
 	syntax *ast.File
 	tokens *token.File
@@ -330,26 +333,26 @@ type parsedFile struct {
 	sdkNames map[string]bool
 }
 
-func loadFile(diagnostic Diagnostic, source FileSource, files map[string]*parsedFile) *parsedFile {
+func loadFile(diagnostic Diagnostic, source FileSource, files map[string]*ParsedFile) *ParsedFile {
 	if source == nil {
 		return nil
 	}
 	if cached, seen := files[diagnostic.File]; seen {
 		return cached
 	}
-	var parsed *parsedFile
+	var parsed *ParsedFile
 	if data, err := source(diagnostic.File); err == nil {
 		fset := token.NewFileSet()
 		if syntax, err := parser.ParseFile(fset, diagnostic.File, data, parser.SkipObjectResolution); err == nil {
-			parsed = &parsedFile{fset: fset, syntax: syntax, tokens: fset.File(syntax.Pos()), sdkNames: sdkImportNames(syntax)}
+			parsed = &ParsedFile{fset: fset, syntax: syntax, tokens: fset.File(syntax.Pos()), sdkNames: SDKImportNames(syntax)}
 		}
 	}
 	files[diagnostic.File] = parsed
 	return parsed
 }
 
-// sdkImportNames returns the names under which a file imports the SDK.
-func sdkImportNames(file *ast.File) map[string]bool {
+// SDKImportNames returns the names under which a file imports the SDK.
+func SDKImportNames(file *ast.File) map[string]bool {
 	names := map[string]bool{}
 	for _, spec := range file.Imports {
 		path, err := strconv.Unquote(spec.Path.Value)
@@ -368,7 +371,7 @@ func sdkImportNames(file *ast.File) map[string]bool {
 
 // importsSDK reports whether the file a diagnostic points at imports the SDK.
 // Without source it reports true: the diagnostic named the SDK symbol itself.
-func importsSDK(diagnostic Diagnostic, source FileSource, files map[string]*parsedFile) bool {
+func importsSDK(diagnostic Diagnostic, source FileSource, files map[string]*ParsedFile) bool {
 	if source == nil {
 		return true
 	}
@@ -387,7 +390,7 @@ func importsSDK(diagnostic Diagnostic, source FileSource, files map[string]*pars
 // sdkBoolField returns "Type.Field" when the diagnostic points at the value of
 // a struct-literal field of an SDK type: `sdk.SendMessageOptions{TriggerTurn:
 // true}`.
-func sdkBoolField(diagnostic Diagnostic, source FileSource, files map[string]*parsedFile) (string, bool) {
+func sdkBoolField(diagnostic Diagnostic, source FileSource, files map[string]*ParsedFile) (string, bool) {
 	parsed := loadFile(diagnostic, source, files)
 	if parsed == nil || diagnostic.Line < 1 || diagnostic.Line > parsed.tokens.LineCount() || len(parsed.sdkNames) == 0 {
 		return "", false
@@ -424,7 +427,7 @@ func sdkBoolField(diagnostic Diagnostic, source FileSource, files map[string]*pa
 	if field == "" {
 		return "", false
 	}
-	if _, known := changeFor(field); !known {
+	if _, known := ChangeFor(field); !known {
 		return "", false
 	}
 	return field, true
@@ -433,7 +436,7 @@ func sdkBoolField(diagnostic Diagnostic, source FileSource, files map[string]*pa
 // getterCalledAt returns the Context getter called at the position of an arity
 // diagnostic: `strings.TrimSpace(ctx.GetSystemPrompt())` fails with `too many
 // arguments in call` and does not name the getter.
-func getterCalledAt(diagnostic Diagnostic, source FileSource, files map[string]*parsedFile) (string, bool) {
+func getterCalledAt(diagnostic Diagnostic, source FileSource, files map[string]*ParsedFile) (string, bool) {
 	parsed := loadFile(diagnostic, source, files)
 	if parsed == nil || len(parsed.sdkNames) == 0 || diagnostic.Line < 1 || diagnostic.Line > parsed.tokens.LineCount() {
 		return "", false
@@ -449,7 +452,7 @@ func getterCalledAt(diagnostic Diagnostic, source FileSource, files map[string]*
 			return true
 		}
 		if selector, isSelector := call.Fun.(*ast.SelectorExpr); isSelector {
-			if _, isGetter := getterByName(selector.Sel.Name); isGetter {
+			if _, isGetter := GetterByName(selector.Sel.Name); isGetter {
 				name = selector.Sel.Name
 			}
 		}
@@ -467,7 +470,7 @@ func dialogResultVariable() *regexp.Regexp {
 
 // dialogResultMethod returns the SDK dialog method whose result the diagnostic's variable was assigned from: the variable of an any-typed error that a
 // `value, ok, err := ctx.Select(...)` declared. It reads the extension's syntax tree, not the message alone.
-func dialogResultMethod(diagnostic Diagnostic, source FileSource, files map[string]*parsedFile) (string, bool) {
+func dialogResultMethod(diagnostic Diagnostic, source FileSource, files map[string]*ParsedFile) (string, bool) {
 	match := dialogResultVariable().FindStringSubmatch(diagnostic.Message)
 	if match == nil || !importsSDK(diagnostic, source, files) {
 		return "", false

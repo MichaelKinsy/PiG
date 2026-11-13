@@ -38,10 +38,10 @@ func splitLines(text string) []string {
 	return strings.Split(strings.TrimSuffix(text, "\n"), "\n")
 }
 
-// originalLines maps each line of after, from 1, to the line of before it
+// OriginalLines maps each line of after, from 1, to the line of before it
 // comes from. A line the rewrite inserted maps to the before line it was
 // inserted ahead of.
-func originalLines(before, after []byte) []int {
+func OriginalLines(before, after []byte) []int {
 	ops := diffLines(splitLines(string(before)), splitLines(string(after)))
 	lines := make([]int, 1, len(ops)+1)
 	oldLine := 1

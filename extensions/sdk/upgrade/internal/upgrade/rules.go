@@ -2,15 +2,9 @@
 
 // pig additive (D109): Pi has no SDK to drift from; see docs/additive-features.md.
 
-// Package upgrade rewrites Go extensions written for an older SDK so they build
-// against this one. Each rule is one breaking SDK change: the rules sit beside
-// the SDK so a breaking change and its rewrite land together, and the
-// apidiff gate (automation/ci/sdkapidiff) fails a break that has no rule.
-//
-// A rule can classify a compiler diagnostic ([Classify]), name the change with
-// its old and new shape, and, when the change has one correct mechanical form,
-// rewrite the source ([Plan]). The rewrites read the extension's types and edit
-// its syntax tree; they never match source text.
+// Package upgrade is the part of the SDK upgrade that reads no types: the rules, the classification of compiler
+// diagnostics as SDK drift, the diff, and the plan the type check writes. Package upgrade of the SDK is these names and
+// the type check; package plan is these names alone, for a program that must not link go/types (the pig command).
 package upgrade
 
 import "strings"
@@ -72,9 +66,9 @@ const (
 // markdownTransformerSymbol names the changed method as apidiff reports it.
 const markdownTransformerSymbol = "(*Extension).MarkdownTransformer"
 
-// getter is one Context method that gained an error result. Params is the
+// Getter is one Context method that gained an error result. Params is the
 // parameter list and Old and New are the result lists, as Go writes them.
-type getter struct {
+type Getter struct {
 	Name, Params, Old, New string
 	// Pointer is set when the old string result became *string: Pi's undefined
 	// is a nil pointer, and the old SDK returned the empty string for it.
@@ -90,9 +84,10 @@ type getter struct {
 	MustHandle bool
 }
 
-func (g getter) shape(results string) string { return "func(" + g.Params + ") " + results }
+// Shape is the method value's type with the given result list.
+func (g Getter) Shape(results string) string { return "func(" + g.Params + ") " + results }
 
-var getters = []getter{
+var getters = []Getter{
 	{Name: "ConfigHome", Old: "string", New: "(string, error)", Since: "0.5.0", MustHandle: true},
 	{Name: "GetActiveTools", Old: "[]string", New: "([]string, error)"},
 	{Name: "GetAllThemes", Old: "[]ThemeMeta", New: "([]ThemeMeta, error)"},
@@ -118,13 +113,14 @@ var getters = []getter{
 	{Name: "IsProjectTrusted", Old: "bool", New: "(bool, error)"},
 }
 
-func getterByName(name string) (getter, bool) {
+// GetterByName returns the getter with the given method name.
+func GetterByName(name string) (Getter, bool) {
 	for _, candidate := range getters {
 		if candidate.Name == name {
 			return candidate, true
 		}
 	}
-	return getter{}, false
+	return Getter{}, false
 }
 
 func getterChanges() []Change {
@@ -134,7 +130,7 @@ func getterChanges() []Change {
 		if since == "" {
 			since = "0.3.0"
 		}
-		changes[i] = Change{Symbol: "Context." + g.Name, Old: g.shape(g.Old), New: g.shape(g.New), Since: since}
+		changes[i] = Change{Symbol: "Context." + g.Name, Old: g.Shape(g.Old), New: g.Shape(g.New), Since: since}
 	}
 	return changes
 }
@@ -240,7 +236,7 @@ func Rules() []Rule {
 			Rewrites: true,
 			Remedy:   "Read the prompt with `data[\"systemPrompt\"].(*sdk.SystemPrompt).Get()`, which returns `(string, error)`, and return the error from the handler.",
 			Changes: []Change{
-				{Symbol: systemPromptSymbol, Old: "string", New: "*SystemPrompt", Since: systemPromptSince},
+				{Symbol: SystemPromptSymbol, Old: "string", New: "*SystemPrompt", Since: SystemPromptSince},
 			},
 		},
 		{
@@ -290,6 +286,13 @@ func dialogResultChanges() []Change {
 	return changes
 }
 
+const (
+	// SystemPromptSince is the SDK release whose before_agent_start data["systemPrompt"] is an *SystemPrompt.
+	SystemPromptSince = "0.5.0"
+	// SystemPromptSymbol names the change: the value is not a symbol apidiff can report.
+	SystemPromptSymbol = `before_agent_start data["systemPrompt"]`
+)
+
 // dialogResultsSince is the SDK release whose dialogs return JSON values.
 const dialogResultsSince = "0.5.2"
 
@@ -306,11 +309,12 @@ func RuleByID(id string) (Rule, bool) {
 // Covers reports whether a rule covers the symbol an apidiff report names.
 // apidiff writes a method as "Context.GetSessionID" or "(*Extension).Tool".
 func Covers(symbol string) bool {
-	_, ok := changeFor(symbol)
+	_, ok := ChangeFor(symbol)
 	return ok
 }
 
-func changeFor(symbol string) (Change, bool) {
+// ChangeFor returns the change a rule lists for the symbol.
+func ChangeFor(symbol string) (Change, bool) {
 	symbol = strings.TrimSpace(symbol)
 	for _, rule := range Rules() {
 		for _, change := range rule.Changes {

@@ -18,7 +18,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	"github.com/MichaelKinsy/PiG/coding/extension/pigsdk"
-	"github.com/MichaelKinsy/PiG/extensions/sdk/upgrade"
+	upgradeplan "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 	"github.com/MichaelKinsy/PiG/internal/pigsdklock"
 	"github.com/MichaelKinsy/PiG/internal/toolchain"
@@ -56,7 +56,7 @@ const analysisDriver = "./upgrade/driver"
 const analysisKillDelay = 5 * time.Second
 
 // pig divergence (D272): the analysis runs only here, in the driver, and needs the staged SDK. analyzeExtension type checks the extension the way its build sees it and plans the rewrites.
-func (u *extensionUpgrader) analyzeExtension(ctx context.Context, config subprocess.ExtConfig) (*upgrade.Result, error) {
+func (u *extensionUpgrader) analyzeExtension(ctx context.Context, config subprocess.ExtConfig) (*upgradeplan.Result, error) {
 	// The stage lock is exclusive and the build lease below is shared, so the SDK is staged before the lease is taken.
 	if err := pigsdk.EnsureSyncedLang(u.configRoot, "go"); err != nil {
 		return nil, err
@@ -65,9 +65,9 @@ func (u *extensionUpgrader) analyzeExtension(ctx context.Context, config subproc
 	if err != nil {
 		return nil, err
 	}
-	var result *upgrade.Result
+	var result *upgradeplan.Result
 	err = u.withGoCompile(ctx, config, func(compile goCompile) error {
-		options := upgrade.LoadOptions{Dir: compile.Dir, Roots: compile.Roots, Flags: compile.Flags, Command: compile.Command, Env: compile.Env, Patterns: []string{compile.ListPattern}}
+		options := upgradeplan.LoadOptions{Dir: compile.Dir, Roots: compile.Roots, Flags: compile.Flags, Command: compile.Command, Env: compile.Env, Patterns: []string{compile.ListPattern}}
 		var err error
 		result, err = runAnalysisDriver(ctx, u.configRoot, sdkRoot, compile.Command, compile.Env, options)
 		return err
@@ -78,12 +78,12 @@ func (u *extensionUpgrader) analyzeExtension(ctx context.Context, config subproc
 // pig divergence (D272): runAnalysisDriver runs the analysis driver of the staged SDK at sdkRoot for options and returns its plan. The go command and its environment are the ones that list the extension, with the working directory moved to the SDK, so the driver builds as the extension does, offline, because the SDK module requires nothing.
 //
 // The request goes in through the driver's standard input, which stays open while the driver works: the driver cancels its own go command when it closes, and a cancelled analysis closes it. The go command that runs the driver does not pass a kill on to the driver.
-func runAnalysisDriver(ctx context.Context, configRoot, sdkRoot, command string, env []string, options upgrade.LoadOptions) (*upgrade.Result, error) {
+func runAnalysisDriver(ctx context.Context, configRoot, sdkRoot, command string, env []string, options upgradeplan.LoadOptions) (*upgradeplan.Result, error) {
 	request, err := json.Marshal(options) //portlint:allow jsonescape the driver of this binary reads the request, not a Pi-compatible file
 	if err != nil {
 		return nil, err
 	}
-	return pigsdklock.WithBuild(ctx, configRoot, func() (*upgrade.Result, error) {
+	return pigsdklock.WithBuild(ctx, configRoot, func() (*upgradeplan.Result, error) {
 		cmd := exec.CommandContext(ctx, command, "run", "-trimpath", analysisDriver)
 		cmd.Dir = sdkRoot
 		cmd.Env = toolchain.WorkDirEnv(sdkRoot, env)
@@ -111,9 +111,9 @@ func runAnalysisDriver(ctx context.Context, configRoot, sdkRoot, command string,
 			// A cancelled analysis is cut short: its plan would lack what the driver had not read.
 			return nil, ctx.Err()
 		}
-		// The driver's reply is upgrade.Reply of the SDK module, which the SDK release this module requires does not have yet: the JSON shape is declared here.
+		// The driver's reply is upgradeplan.Reply of the SDK module, which the SDK release this module requires does not have yet: the JSON shape is declared here.
 		var reply struct {
-			Result *upgrade.Result
+			Result *upgradeplan.Result
 			Error  string
 		}
 		if decodeErr := json.Unmarshal(stdout.Bytes(), &reply); decodeErr != nil {
@@ -133,7 +133,7 @@ func runAnalysisDriver(ctx context.Context, configRoot, sdkRoot, command string,
 }
 
 // checkRewrite compiles the extension with the plan's files in place of the ones on disk, in a temporary directory, so nothing the user owns changes. It is the build the upgrade promises: the go command, the staged SDK and the module are the ones a start uses.
-func (u *extensionUpgrader) checkRewrite(ctx context.Context, config subprocess.ExtConfig, result *upgrade.Result) (rewriteCheck, error) {
+func (u *extensionUpgrader) checkRewrite(ctx context.Context, config subprocess.ExtConfig, result *upgradeplan.Result) (rewriteCheck, error) {
 	var check rewriteCheck
 	err := u.withGoCompile(ctx, config, func(compile goCompile) error {
 		scratch, err := os.MkdirTemp("", "pig-upgrade-check-*")
@@ -177,11 +177,11 @@ func (u *extensionUpgrader) checkRewrite(ctx context.Context, config subprocess.
 	return check, err
 }
 
-// compileErrorPosition matches the "path:line:col: " that starts a compile error message of upgrade.Result.Errors, up to the first ":line:col: ".
+// compileErrorPosition matches the "path:line:col: " that starts a compile error message of upgradeplan.Result.Errors, up to the first ":line:col: ".
 var compileErrorPosition = lazyregexp.New(`^.*?:\d+:\d+: `)
 
 // classifyRewriteBuild reads the output of the build of a rewritten extension. A compile error the plan predicted (a use it lists for the author, or a compile error the extension already had) is expected; any other is not.
-func classifyRewriteBuild(runErr error, output []byte, dir string, rewritten map[string][]byte, result *upgrade.Result) rewriteCheck {
+func classifyRewriteBuild(runErr error, output []byte, dir string, rewritten map[string][]byte, result *upgradeplan.Result) rewriteCheck {
 	if runErr == nil {
 		return rewriteCheck{Built: true}
 	}
@@ -202,9 +202,9 @@ func classifyRewriteBuild(runErr error, output []byte, dir string, rewritten map
 		}
 	}
 	var check rewriteCheck
-	diagnostics := upgrade.ParseDiagnostics(output)
+	diagnostics := upgradeplan.ParseDiagnostics(output)
 	for _, diagnostic := range diagnostics {
-		if len(upgrade.Classify([]upgrade.Diagnostic{diagnostic}, source)) > 0 || known[diagnostic.Message] {
+		if len(upgradeplan.Classify([]upgradeplan.Diagnostic{diagnostic}, source)) > 0 || known[diagnostic.Message] {
 			continue
 		}
 		check.Unexpected = append(check.Unexpected, fmt.Sprintf("%s:%d: %s", diagnostic.File, diagnostic.Line, diagnostic.Message)) //perf:ok runs once per unexpected compile error after a failed upgrade rebuild
