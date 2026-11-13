@@ -363,9 +363,19 @@ func (r *loopRun) turnContext(assistant *AssistantMessage, toolResults []ToolRes
 	return AgentTurnContext{
 		Message:     assistant,
 		ToolResults: toolResults,
-		Context:     AgentContext{Messages: slices.Clone(r.context), Tools: r.h.tools()},
-		NewMessages: slices.Clone(r.newMessages),
+		Context:     AgentContext{Messages: hookView(r.context), Tools: r.h.tools()},
+		NewMessages: hookView(r.newMessages),
 	}
+}
+
+// hookView is the run's messages as a hook receives them: the run's own array, cut at its length. Pi hands its hooks the live context
+// and new-message arrays (agent-loop.ts runLoop: prepareRequest, finishTurn and prepareNextTurn receive currentContext and newMessages;
+// executeToolCalls gives beforeToolCall and afterToolCall currentContext), so a hook that replaces a message in place changes the run,
+// as it does there. The run only ever appends to the array or replaces it whole (applyUpdate), so a view a hook keeps does not change
+// under it, and a hook's append goes to an array of its own: the cut leaves it no room in the run's. Only hooks that never run at the
+// same time receive the view: the tools and after hooks of tool calls executed in parallel get a copy each (executeToolCallsParallel).
+func hookView(messages []AgentMessage) []AgentMessage {
+	return messages[:len(messages):len(messages)]
 }
 
 func (r *loopRun) finishTurn(turn AgentTurnContext) *AgentTurnDecision {
@@ -403,7 +413,7 @@ func (r *loopRun) prepareRequest() {
 		thinking = ai.ThinkingOff
 	}
 	update, err := r.h.cfg.PrepareRequest(r.ctx, PrepareRequestContext{
-		Context:       AgentContext{Messages: slices.Clone(r.context), Tools: r.h.tools()},
+		Context:       AgentContext{Messages: hookView(r.context), Tools: r.h.tools()},
 		Model:         r.model,
 		ThinkingLevel: thinking,
 	})

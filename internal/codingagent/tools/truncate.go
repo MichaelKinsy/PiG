@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/sharedtext"
 	"github.com/MichaelKinsy/PiG/internal/truncate"
 	"github.com/MichaelKinsy/PiG/tui"
 )
@@ -48,6 +49,15 @@ func shareTruncatedContent(tr *TruncationResult, output string) {
 	if tr != nil && strings.HasPrefix(output, tr.Content) {
 		tr.Content = output[:len(tr.Content)]
 	}
+}
+
+// sharedOutput is the text a tool returns as the string the process already holds for an equal text, when it holds one
+// (sharedtext.Share), with tr.Content pointed at its start (shareTruncatedContent). A tool that produces the same large text again, a
+// file read twice or a search repeated, then adds nothing to what the conversation keeps.
+func sharedOutput(tr *TruncationResult, output string) string {
+	output = sharedtext.Share(output)
+	shareTruncatedContent(tr, output)
+	return output
 }
 
 // TruncationOptions is upstream TruncationOptions (truncate.ts:40): the limits truncateHead and truncateTail apply. A nil

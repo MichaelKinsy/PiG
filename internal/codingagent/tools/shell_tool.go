@@ -273,7 +273,7 @@ func formatShellOutput(snapshot OutputSnapshot, lastLineBytes int, emptyText str
 	}
 	tr := snapshot.Truncation
 	if !tr.Truncated {
-		return text, nil
+		return sharedOutput(nil, text), nil
 	}
 	details := &BashDetails{Truncation: &tr, FullOutputPath: snapshot.FullOutputPath}
 	startLine := tr.TotalLines - tr.OutputLines + 1
