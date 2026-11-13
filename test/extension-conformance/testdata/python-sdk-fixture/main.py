@@ -2882,6 +2882,18 @@ def new_extension() -> pig_sdk.Extension:
         ctx.set_label(args, pig_sdk.NULL)
         ctx.set_label(args, "")
 
+    def setup_null_members(ctx: pig_sdk.Context, args: str) -> None:
+        # The setup callback's SessionManager: an entry and a message with the optional member left out, then with it written as null.
+        def setup(manager: pig_sdk.SetupSessionManager) -> None:
+            manager.append_custom_entry("api-custom")
+            manager.append_custom_entry("api-custom", pig_sdk.NULL)
+            manager.append_custom_message_entry("api-message", "x", False)
+            manager.append_custom_message_entry("api-message", "x", True, pig_sdk.NULL)
+
+        ctx.new_session({"setup": setup})
+
+    ext.command("setup_null_members", "Seed a new session with an omitted and a null member", setup_null_members)
+
     ext.command("label_members", "Set a label that is omitted, null and empty", label_members)
 
     def append_entries_probe(ctx: pig_sdk.Context, args: str) -> None:

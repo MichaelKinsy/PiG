@@ -1773,6 +1773,15 @@ export default function (pi) {
     pi.setLabel(args, null);
     pi.setLabel(args, "");
   } });
+  // The setup callback's SessionManager: an entry and a message with the optional member left out, then with it written as null.
+  pi.registerCommand("setup_null_members", { description: "Seed a new session with an omitted and a null member", handler: async (_args, ctx) => {
+    await ctx.newSession({ setup: async (sessionManager) => {
+      sessionManager.appendCustomEntry("api-custom");
+      sessionManager.appendCustomEntry("api-custom", null);
+      sessionManager.appendCustomMessageEntry("api-message", "x", false);
+      sessionManager.appendCustomMessageEntry("api-message", "x", true, null);
+    } });
+  } });
   pi.registerCommand("append-entries-probe", { description: "Append a custom entry for each comma-separated type", handler: async (args) => { for (const customType of String(args).split(",")) pi.appendEntry(customType, `data-of-${customType}`); } });
   pi.registerCommand("scoped-models-probe", { description: "Report the model scope", handler: async (_args, ctx) => ctx.ui.notify(JSON.stringify(ctx.scopedModels), "info") });
   pi.registerCommand("ui-availability", {

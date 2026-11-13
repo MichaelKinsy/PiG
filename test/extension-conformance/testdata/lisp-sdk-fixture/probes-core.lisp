@@ -321,6 +321,15 @@
                  (pig:ctx-set-label ctx args)
                  (pig:ctx-set-label ctx args :null)
                  (pig:ctx-set-label ctx args "")))
+  ;; The setup callback's session manager: an entry and a message with the optional member left out, then with it written as null.
+  (pig:command ext "setup_null_members" "Seed a new session with an omitted and a null member"
+               (lambda (ctx args)
+                 (declare (ignore args))
+                 (pig:ctx-new-session ctx :setup (lambda (manager)
+                                                   (pig:setup-append-custom-entry manager "api-custom")
+                                                   (pig:setup-append-custom-entry manager "api-custom" :null)
+                                                   (pig:setup-append-custom-message-entry manager "api-message" "x" nil)
+                                                   (pig:setup-append-custom-message-entry manager "api-message" "x" t :null)))))
   (pig:command ext "append-entries-probe" "Append a custom entry for each comma-separated type"
                (lambda (ctx args)
                  (let ((start 0))

@@ -1,7 +1,9 @@
 package extensionconformance
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -269,6 +271,123 @@ func TestSetLabelOmittedNullAndEmptyAcrossSDKs(t *testing.T) {
 			}
 			if label, ok := session.GetLabel(target); ok {
 				t.Errorf("a reader of the labels gets %q, want the label cleared", label)
+			}
+		})
+	}
+}
+
+// setupNullMemberRows are the rows of the pinned Pi package's record (coding/testdata/entry-null-members-pi.jsonl, which
+// TestSessionEntryNullMembersMatchPi holds to the package) for the four appends every SDK's setup_null_members command makes, in call order, and
+// what a reader of the reloaded file gets for the optional member.
+var setupNullMemberRows = []struct{ row, read string }{
+	{"api custom data omitted", "data=undefined"},
+	{"api custom data null", "data=null"},
+	{"api custom_message details omitted", "details=undefined"},
+	{"api custom_message details null", "details=null"},
+}
+
+// wantSetupNullMemberLines are the lines Pi wrote for setupNullMemberRows, each with its reader's value.
+func wantSetupNullMemberLines(t *testing.T) []string {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join("..", "..", "coding", "testdata", "entry-null-members-pi.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	written := map[string][]string{}
+	for record := range strings.SplitSeq(strings.TrimSuffix(string(data), "\n"), "\n") {
+		var row struct {
+			Row   string   `json:"row"`
+			Error string   `json:"error"`
+			Lines []string `json:"lines"`
+		}
+		if err := json.Unmarshal([]byte(record), &row); err != nil {
+			t.Fatal(err)
+		}
+		if row.Error == "" {
+			written[row.Row] = row.Lines
+		}
+	}
+	want := make([]string, 0, len(setupNullMemberRows))
+	for _, row := range setupNullMemberRows {
+		lines := written[row.row]
+		if len(lines) != 1 {
+			t.Fatalf("the Pi record has %d lines for the row %q, want 1", len(lines), row.row)
+		}
+		want = append(want, lines[0]+" => "+row.read)
+	}
+	return want
+}
+
+// Pi: packages/coding-agent/src/core/agent-session-runtime.ts:254-257 hands newSession's setup callback the replacement Session's SessionManager, whose
+// appendCustomEntry and appendCustomMessageEntry (session-manager.ts:1296-1312, 1350-1366) store each member as given: JSON.stringify writes a null and
+// leaves out an undefined one. An SDK's setup callback says the two in its own language: Node undefined and null, Go nil and json.RawMessage("null"),
+// Python None and pig_sdk.NULL, Rust Value::Null and the _opt siblings' Some(Value::Null), Lisp NIL and :NULL. The row binds each append to the line the
+// pinned Pi package wrote for it and to the reloaded value, so an SDK that drops the null or writes one for an omitted member fails, isolated, packed
+// and fused.
+func TestSetupSessionNullMembersAcrossSDKs(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
+	}
+	want := strings.Join(wantSetupNullMemberLines(t), "\n")
+	for _, test := range append(allHarnessCases(), packedSDKHarnessCases()...) {
+		t.Run(test.name, func(t *testing.T) {
+			h := test.make(t)
+			t.Cleanup(func() {
+				if h.cleanup != nil {
+					h.cleanup()
+				}
+				if h.host != nil {
+					h.host.Shutdown("setup null members complete")
+				}
+			})
+			dir := t.TempDir()
+			session, err := icodingagent.NewSessionManagerWithDir(dir, filepath.Join(dir, "sessions")).Create("", "")
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, line := range []string{
+				`{"type":"message","id":"00000001","parentId":null,"timestamp":"2026-01-01T00:00:00.001Z","message":{"role":"user","content":"u","timestamp":1}}`,
+				`{"type":"message","id":"00000002","parentId":"00000001","timestamp":"2026-01-01T00:00:00.002Z","message":{"role":"assistant","content":[{"type":"text","text":"a"}],"api":"faux","provider":"faux","model":"faux-1","usage":{"input":1,"output":2,"cacheRead":0,"cacheWrite":0,"totalTokens":3,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"stopReason":"stop","timestamp":2}}`,
+			} {
+				if err := session.AppendEntry(json.RawMessage(line)); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if test.name != "inproc-go" {
+				if h.bridge == nil {
+					t.Fatal("the harness has no host bridge to bind newSession on")
+				}
+				// The replacement Session's manager behind the setup callback, as the runtime hands it over (agent-session-runtime.ts:254-257).
+				h.bridge.SetHostAction("newSession", func(_ context.Context, opts *extension.NewSessionOptions) (extension.CancelledResult, error) {
+					if opts == nil || opts.Setup == nil {
+						return extension.CancelledResult{}, errors.New("the newSession call named no setup callback")
+					}
+					return extension.CancelledResult{}, opts.Setup(session)
+				})
+				command, ok := findCommand(h.runner, "setup_null_members")
+				if !ok {
+					t.Fatal("setup_null_members command not registered")
+				}
+				if err := command.Handler(t.Context(), ""); err != nil {
+					t.Fatalf("setup_null_members command: %v", err)
+				}
+			} else {
+				// The in-process reference: the manager's own API, where a nil `any` is the omitted argument and json.RawMessage("null") is null.
+				for _, call := range []func() (string, error){
+					func() (string, error) { return session.AppendCustomEntry("api-custom", nil) },
+					func() (string, error) { return session.AppendCustomEntry("api-custom", json.RawMessage("null")) },
+					func() (string, error) { return session.AppendCustomMessageEntry("api-message", "x", false, nil) },
+					func() (string, error) {
+						return session.AppendCustomMessageEntry("api-message", "x", true, json.RawMessage("null"))
+					},
+				} {
+					if _, err := call(); err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
+			if got := strings.Join(entryNullMemberLines(t, session.Path()), "\n"); got != want {
+				t.Errorf("the setup callback left the lines\n%s\nwant\n%s", got, want)
 			}
 		})
 	}

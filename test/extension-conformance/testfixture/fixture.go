@@ -2258,6 +2258,25 @@ func Extension() *sdk.Extension {
 		}
 		return ctx.SetLabel(args, "")
 	})
+	// setup_null_members seeds a new session through the SessionManager of the setup callback: an entry and a message with the optional member left out,
+	// then with it written as null, under the types and display values of the pinned Pi package's rows "api custom data ..." and
+	// "api custom_message details ...". Go's nil is Pi's omitted argument and json.RawMessage("null") is its null.
+	ext.Command("setup_null_members", "Seed a new session with an omitted and a null member", func(ctx sdk.Context, args string) error {
+		_, err := ctx.NewSession(map[string]any{"setup": sdk.SetupFunc(func(manager sdk.SetupSessionManager) error {
+			if _, err := manager.AppendCustomEntry("api-custom", nil); err != nil {
+				return err
+			}
+			if _, err := manager.AppendCustomEntry("api-custom", json.RawMessage("null")); err != nil {
+				return err
+			}
+			if _, err := manager.AppendCustomMessageEntry("api-message", "x", false, nil); err != nil {
+				return err
+			}
+			_, err := manager.AppendCustomMessageEntry("api-message", "x", true, json.RawMessage("null"))
+			return err
+		})})
+		return err
+	})
 	// append-entries-probe appends one custom entry for each comma-separated type in order. Pi's appendEntry returns nothing and never fails, so a refusal the SDK reports is dropped here; the row reads the session afterwards.
 	ext.Command("append-entries-probe", "Append a custom entry for each comma-separated type", func(ctx sdk.Context, args string) error {
 		for customType := range strings.SplitSeq(args, ",") {

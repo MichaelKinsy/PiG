@@ -5463,6 +5463,39 @@ fn main() {
             }
         },
     );
+    // The setup callback's SessionManager: an entry and a message with the optional member left out, then with it written as null. Value::Null is
+    // Pi's omitted argument, and the siblings that take an Option write Some(Value::Null) as null.
+    ext.command(
+        "setup_null_members",
+        "Seed a new session with an omitted and a null member",
+        |ctx, _args| {
+            let result = ctx.new_session_setup(
+                json!({}),
+                |manager: &pig_sdk::SetupSessionManager| {
+                    manager.append_custom_entry("api-custom", Value::Null)?;
+                    manager.append_custom_entry_opt("api-custom", Some(Value::Null))?;
+                    manager.append_custom_message_entry(
+                        "api-message",
+                        json!("x"),
+                        false,
+                        Value::Null,
+                    )?;
+                    manager.append_custom_message_entry_opt(
+                        "api-message",
+                        json!("x"),
+                        true,
+                        Some(Value::Null),
+                    )?;
+                    Ok(())
+                },
+                None,
+            );
+            match result {
+                Ok(_) => CommandResult::Ok,
+                Err(err) => CommandResult::Error(err.to_string()),
+            }
+        },
+    );
     ext.command(
         "append-entries-probe",
         "Append a custom entry for each comma-separated type",
