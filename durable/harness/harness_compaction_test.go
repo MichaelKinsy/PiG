@@ -1975,15 +1975,16 @@ func TestCompactionLiveStatus(t *testing.T) {
 		views := viewHistory(t, chat.harness, chat.root.Id())
 		chat.faux.pushSummary(scriptFailure("overloaded"))
 		id := chat.compact(t, nil)
-		waitFor(t, func() bool {
-			compactions := chat.live(t).Compactions
+		// The late joiner below starts from the views, which hold a commit once it is published (awaitLive), not once a snapshot shows it.
+		views.awaitLive(t, func(states []LiveState) bool {
+			compactions := states[len(states)-1].Compactions
 			return len(compactions) > 0 && compactions[0].Retry != nil
 		})
 		late := must(chat.root.Watch(testContext, nil))
 		expectLike(t, liveValue(t, late.Value()).Compactions, jsonText(t, []any{map[string]any{"taskId": id, "trigger": "manual", "blocking": false, "attempt": 1, "retry": map[string]any{"at": "$number", "error": "overloaded"}}}))
 		must(late.Stop())
 		must(chat.harness.AbortTask(testContext, id))
-		waitFor(t, func() bool { return chat.live(t).Compactions == nil })
+		views.awaitLive(t, func(states []LiveState) bool { return states[len(states)-1].Compactions == nil })
 		views.Detach()
 		var listed []CompactionStatus
 		for _, state := range views.Live() {
@@ -2017,13 +2018,17 @@ func TestCompactionLiveStatus(t *testing.T) {
 			listsTask := func(state LiveState) bool {
 				return slices.ContainsFunc(state.Compactions, func(status CompactionStatus) bool { return status.TaskId == taskId })
 			}
-			states := views.Live()
-			listed := slices.IndexFunc(states, listsTask)
-			index := liveIndexAfter(states, listed, func(state LiveState) bool { return !listsTask(state) })
-			if index < 0 {
-				t.Fatalf("no value ends the compaction of task %d", taskId)
+			// The value that ends it, listed before it: -1 until the recording holds both.
+			endIndex := func(states []LiveState) int {
+				listed := slices.IndexFunc(states, listsTask)
+				if listed < 0 {
+					return -1
+				}
+				return liveIndexAfter(states, listed, func(state LiveState) bool { return !listsTask(state) })
 			}
-			return states[index]
+			// A snapshot shows the failure as soon as it is adopted; the recording holds the commit that records it once it is published.
+			states := views.awaitLive(t, func(states []LiveState) bool { return endIndex(states) >= 0 })
+			return states[endIndex(states)]
 		}
 		expectEqualJSON(t, ended(recorded.TaskId).CompactionFailure, jsonText(t, recorded))
 		// A late watch starts with it.
@@ -2684,7 +2689,7 @@ func TestCompactionEdgeCasesLater(t *testing.T) {
 		addSection(t, chat.setup.Registry, "extra", text("extra"))
 		chat.faux.pushSummary(scriptGated(deferred(), scriptSummary(), nil))
 		chat.turn(t, sized("u4", 100), "a4")
-		waitFor(t, func() bool { return chat.live(t).Compactions != nil })
+		views.awaitLive(t, func(states []LiveState) bool { return states[len(states)-1].Compactions != nil })
 		views.Detach()
 		all := views.All()
 		started := slices.IndexFunc(views.Live(), func(state LiveState) bool { return state.Compactions != nil })

@@ -44,6 +44,9 @@ type Options struct {
 	// OnExitSignal runs with the signal number when the daemon receives SIGTERM, SIGINT or SIGHUP, after everything it
 	// started was killed; it defaults to exiting the process with status 128 + the signal, as the daemon does.
 	OnExitSignal func(signal int)
+	// exit ends the process when the daemon receives a signal and OnExitSignal is nil; it defaults to os.Exit, and only a test
+	// replaces it.
+	exit func(code int)
 }
 
 type fileHandle struct {
@@ -832,6 +835,11 @@ func Serve(input io.Reader, output io.Writer, token string, options Options) err
 		closeOutput()
 	})
 	defer restoreStdio()
+	// The signal exit ends the process itself, after giving the descriptors back. Giving the input back closes it under
+	// serveFrames' read, which then fails: unless Serve waits, it returns that error and its caller ends the process with status
+	// 1 while the exit is still on its way to 128 + the signal. The exit therefore claims the process first. The silence exit
+	// needs no claim: Serve waits for the ping goroutine it runs on before it returns.
+	var exiting atomic.Bool
 	// A client that stops the daemon (Node's `child.kill()`), or a hangup, leaves nothing running either. The signals are
 	// taken before anything starts, so none is lost to their default action.
 	exitSignals, stopExitSignals := notifyExitSignals()
@@ -874,8 +882,13 @@ func Serve(input io.Reader, output io.Writer, token string, options Options) err
 			if options.OnExitSignal != nil {
 				options.OnExitSignal(number)
 			} else {
+				exiting.Store(true)
 				restoreStdio()
-				os.Exit(128 + number)
+				exitProcess := os.Exit
+				if options.exit != nil {
+					exitProcess = options.exit
+				}
+				exitProcess(128 + number)
 			}
 		case <-stop:
 		}
@@ -905,6 +918,11 @@ func Serve(input io.Reader, output io.Writer, token string, options Options) err
 		}
 	})
 	err := s.serveFrames(bufio.NewReaderSize(seen{reader: input, lastSeen: &lastSeen}, 1<<20))
+	if exiting.Load() {
+		// The signal exit gave the input back under the read above and ends the process with its own status; returning would
+		// have the caller end it with this error's.
+		select {}
+	}
 	// However input ended, the client is gone: stop everything it started.
 	close(stop)
 	pings.Wait()

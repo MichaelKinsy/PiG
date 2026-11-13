@@ -645,6 +645,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-66db311](#bf-66db311) | The login dialog now holds TUI focus while it is shown, so the prompt cursor appears in the right place for… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6708fbb](#bf-6708fbb) | When a Go, Rust or Python extension that shares a process registers under a different name than the one it… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-677ded1](#bf-677ded1) | An indented line after a quoted heading, rule or fence in a blockquote renders as the code block Pi shows | PiG's own defect | All platforms | 0.5.0 |
+| [BF-6785b03](#bf-6785b03) | The pi-env daemon ended by SIGTERM, SIGINT or SIGHUP could end with status 1 and a stray `pi-env: read… | PiG's own defect | macOS | Unreleased |
 | [BF-67eccd7](#bf-67eccd7) | Opening the model selector no longer composes the whole model catalog, OpenRouter's `:nitro` and `:floor`… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-68a4ed2](#bf-68a4ed2) | PageUp and PageDown move the selection by a page in selection lists and selectors (settings, model… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-68a63f2](#bf-68a63f2) | A tool namespace registered with `aliases: []` keeps the empty array in `pi.getAllTools()` and the replicated… | PiG's own defect | All platforms | 0.5.0 |
@@ -10280,6 +10281,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `677ded1860` (2026-10-11)
 - **Tests:** `tui/markdown_quote_lazy_oracle_test.go::TestMarkdownQuoteIndentedLazyLineAfterABlockMatchesPi`
 - **Release note:** An indented line after a quoted heading, rule or fence in a blockquote renders as the code block Pi shows.
+
+### BF-6785b03
+
+**The pi-env daemon ended by SIGTERM, SIGINT or SIGHUP could end with status 1 and a stray `pi-env: read…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The pi-env daemon ended by SIGTERM, SIGINT or SIGHUP could end with status 1 and a stray `pi-env: read /dev/stdin: file already closed` instead of 128 plus the signal number (143 for SIGTERM).
+- **Root cause:** TestDaemonGivesBackBlockingStdioOnEveryExit/SIGTERM failed on a macOS runner with "exit code 1, want 143" (daemon_stdio_mode_test.go:129). The 143 is the daemon's own os.Exit(128 + number) in Serve's signal goroutine (server.go, since); it is not computed by the exec path (durable/env/node/exec.go exitCode, pty_unix.go wait), which maps a child ended by a signal and is a different function. The product is wrong, not the test.
+- **User impact:** An operation failed or was rejected
+- **Platform:** macOS
+- **Fixed in:** Unreleased
+- **Fix commits:** `6785b03919` (2026-11-12)
+- **Tests:** `agent/testmain_leak_test.go::TestMain`, `env/daemon/server_unix_test.go::TestServeDoesNotReturnWhileTheSignalExitEndsTheProcess`, `env/daemon_stdio_mode_test.go::TestDaemonGivesBackBlockingStdioOnEveryExit`
+- **Release note:** The pi-env daemon ended by SIGTERM, SIGINT or SIGHUP could end with status 1 and a stray `pi-env: read /dev/stdin: file already closed` instead of 128 plus the signal number (143 for SIGTERM). The signal exit gives the daemon's stdin back by closing the descriptor the serving loop is reading; the loop returned that read error to `main`, which ended the process with status 1 whenever it got there before the signal exit did (a loaded or slow-to-wake host, macOS most often). The signal exit now claims the process first, and the serving loop waits for it to end it.
 
 ### BF-67eccd7
 
