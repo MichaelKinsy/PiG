@@ -360622,6 +360622,17 @@
       "shapeHash": "sha256:809b3591be2f42451c63df2c87db85e9d0bfbf9e83fcc7d6990fe1cc93f0b98f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#SetCustomThemesDir",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "SetCustomThemesDir",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(dir string)"
+      },
+      "shapeHash": "sha256:eab0f33befdf215288c95c5f0137a673c10b2094e399414fc885ec4184d03858"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#SetImageTranscoder",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "SetImageTranscoder",
@@ -382666,6 +382677,61 @@
       "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#customThemesDir",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "customThemesDir",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "sync/atomic.Pointer[string]"
+      },
+      "shapeHash": "sha256:d5a0ef38a78a17fd4029dc1e972cea3360dae9dce85b9ccc64f6974f00e43dc0"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#customThemesDir.CompareAndSwap",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "customThemesDir.CompareAndSwap",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(old *string, new *string) (swapped bool)"
+      },
+      "shapeHash": "sha256:febbb55af3e5c45de20ca759d3ef6517ad887646863fac3172ec7687c4d72052"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#customThemesDir.Load",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "customThemesDir.Load",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() *string"
+      },
+      "shapeHash": "sha256:1cac0973b9d440c21400206e60041c4a526f46c35189cbe1d75ff6da107c7ebe"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#customThemesDir.Store",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "customThemesDir.Store",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(val *string)"
+      },
+      "shapeHash": "sha256:2aa04377fe2a7b8c7a64bf5e7d176a8546a8d07e1e0e4ce1e27d251b052fd30f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#customThemesDir.Swap",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "customThemesDir.Swap",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(new *string) (old *string)"
+      },
+      "shapeHash": "sha256:07917e018279930198431d4d89b3b10aec4fac03bb64796499d4ee5c1d661f7e"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#cutDigits",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "cutDigits",
@@ -387262,6 +387328,28 @@
         "type": "func(name string, mode TerminalColorMode) (*Theme, error)"
       },
       "shapeHash": "sha256:3392656ea36f7f1ca4b3025fad445c1d1f0b7f06222d9420e18907358746f8ea"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#loadThemeLabeled",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "loadThemeLabeled",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(path string, label string, mode TerminalColorMode) (*Theme, error)"
+      },
+      "shapeHash": "sha256:421bc892f3be8b03d1db98b994ba0c91dfa32a98fc3374eb1a0f8625a30b5fbb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#loadUnregisteredTheme",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "loadUnregisteredTheme",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(name string) (*Theme, error)"
+      },
+      "shapeHash": "sha256:d2fd4f28ad0be04b7730a0f4de2f91cf7015fb6756155d1d82ebddeb24d7d626"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#loaderPaddingX",

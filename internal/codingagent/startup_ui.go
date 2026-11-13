@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"slices"
 	"sync"
 	"time"
@@ -364,6 +365,11 @@ func configureStartupTui(opts StartupUIOptions) *KeybindingsManager {
 		}
 	}
 	tui.SetThemeRegistry(registry)
+	customThemesDir := ""
+	if opts.AgentDir != "" {
+		customThemesDir = filepath.Join(opts.AgentDir, "themes")
+	}
+	tui.SetCustomThemesDir(customThemesDir)
 	// The system theme starts in grayscale until the terminal reports its colors.
 	tui.MarkTerminalColorsPending()
 	tui.SetThemeSettingPresence(settings.themeSetting())

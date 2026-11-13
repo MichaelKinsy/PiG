@@ -41281,6 +41281,56 @@
       ]
     },
     {
+      "id": "BF-b637cd4",
+      "title": "A theme file in the agent directory's `themes/` now loads when it is selected by its file name although the…",
+      "symptom": "A theme file in the agent directory's `themes/` now loads when it is selected by its file name although the name inside the file differs (`themes/proto.json` with `\"name\": \"other\"`, selected as `\"theme\": \"proto\"`, `--use-theme proto` or an extension's `ctx.ui.setTheme(\"proto\")`).",
+      "rootCause": "Pi's setTheme reports the error thrown under loadTheme. For a name that is neither built in nor registered, theme.ts loadThemeJson reads \u003cagent directory\u003e/themes/\u003cname\u003e.json whenever that file exists: a valid file loads by its file name, whatever name its JSON carries, and a file that fails gives the loader's reason (fs.readFileSync's message, the parse error and the validator's message labelled with the name, or resolveVarRefs' message). Only a name without such a file is \"Theme not found\".",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A theme file in the agent directory's `themes/` now loads when it is selected by its file name although the name inside the file differs (`themes/proto.json` with `\"name\": \"other\"`, selected as `\"theme\": \"proto\"`, `--use-theme proto` or an extension's `ctx.ui.setTheme(\"proto\")`). PiG refused it with `Theme not found: proto` and fell back to the system theme, where Pi loads it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "b637cd4647",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/theme_load_failure_reason_test.go::TestExtensionSetThemeRepeatsTheLoadersReason",
+        "internal/codingagent/theme_load_failure_reason_test.go::TestStartupThemeLoadFailureRepeatsTheLoadersReason",
+        "internal/codingagent/theme_load_failure_reason_test.go::TestThemeLoadFailureReasonMatchesPi",
+        "tui/theme_unregistered_load_test.go::TestSetThemeByNameCheckedReportsWhyAnUnregisteredThemeFileFailed"
+      ]
+    },
+    {
+      "id": "BF-b637cd4-2",
+      "title": "When the selected theme's file exists but fails to load, the `Failed to load theme \"\u003cname\u003e\":` line and the…",
+      "symptom": "When the selected theme's file exists but fails to load, the `Failed to load theme \"\u003cname\u003e\":` line and the result of an extension's `ctx.ui.setTheme` now give the reason, as Pi does: for example `Variable reference not found: nosuchvar`, the JSON syntax error, the validator's list of missing color tokens, or the file-system error for a file that cannot be read.",
+      "rootCause": "Pi's setTheme reports the error thrown under loadTheme. For a name that is neither built in nor registered, theme.ts loadThemeJson reads \u003cagent directory\u003e/themes/\u003cname\u003e.json whenever that file exists: a valid file loads by its file name, whatever name its JSON carries, and a file that fails gives the loader's reason (fs.readFileSync's message, the parse error and the validator's message labelled with the name, or resolveVarRefs' message). Only a name without such a file is \"Theme not found\".",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "When the selected theme's file exists but fails to load, the `Failed to load theme \"\u003cname\u003e\":` line and the result of an extension's `ctx.ui.setTheme` now give the reason, as Pi does: for example `Variable reference not found: nosuchvar`, the JSON syntax error, the validator's list of missing color tokens, or the file-system error for a file that cannot be read. PiG said `Theme not found: \u003cname\u003e` for every such file since 0.4.0; only a name without a file is still \"Theme not found\".",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "b637cd4647",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/theme_load_failure_reason_test.go::TestExtensionSetThemeRepeatsTheLoadersReason",
+        "internal/codingagent/theme_load_failure_reason_test.go::TestStartupThemeLoadFailureRepeatsTheLoadersReason",
+        "internal/codingagent/theme_load_failure_reason_test.go::TestThemeLoadFailureReasonMatchesPi",
+        "tui/theme_unregistered_load_test.go::TestSetThemeByNameCheckedReportsWhyAnUnregisteredThemeFileFailed"
+      ]
+    },
+    {
       "id": "BF-b65e288",
       "title": "A suspended session that receives SIGCONT while its process group does not own the terminal (`bg`, or `kill…",
       "symptom": "A suspended session that receives SIGCONT while its process group does not own the terminal (`bg`, or `kill -CONT` from elsewhere) no longer re-enters raw mode and draws into the shell's terminal; it stops again and waits for `fg`.",
