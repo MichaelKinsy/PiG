@@ -102,8 +102,7 @@ func TestUnmarshalKeepingSurrogatesReportsEncodingJSONErrors(t *testing.T) {
 		Count int    `json:"count"`
 	}
 	err := UnmarshalKeepingSurrogates([]byte(`{"name":"N[\ud83d]","count":"three"}`), &value)
-	var mismatch *stdjson.UnmarshalTypeError
-	if !errors.As(err, &mismatch) {
+	if _, ok := errors.AsType[*stdjson.UnmarshalTypeError](err); !ok {
 		t.Fatalf("error is %T (%v), want *json.UnmarshalTypeError", err, err)
 	}
 	if err := UnmarshalKeepingSurrogates([]byte(`{"name":"N[\ud83d]","count":3}`), &value); err != nil || value.Name != "N[\xed\xa0\xbd]" || value.Count != 3 {
