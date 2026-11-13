@@ -613,12 +613,15 @@ func (t *ReadTool) readImage(ctx context.Context, data []byte, mime string) agen
 			text += "\n" + hints
 		}
 	}
-	if env.SupportsImages != nil && !*env.SupportsImages {
-		text += "\n[Current model does not support images. The image will be omitted from this request.]"
-	}
 	result := agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: text}}}
 	if err == nil {
 		result.Content = append(result.Content, ai.ImageContent{MimeType: processedMIME, Data: base64Encode(processed)})
+		// read.ts: `if (ctx?.model && !ctx.model.input.includes("image")) details = { imageUnsupportedByModel: ctx.model.id }`. The text
+		// says nothing of the model's image support: it is replayed after a switch to a vision model.
+		if env.SupportsImages != nil && !*env.SupportsImages {
+			model := env.Model
+			result.Details = &ReadDetails{ImageUnsupportedByModel: &model}
+		}
 	}
 	return result
 }

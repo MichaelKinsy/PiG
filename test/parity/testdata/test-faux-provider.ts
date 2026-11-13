@@ -722,7 +722,9 @@ export default function (pi: any) {
       provider: "test-faux",
       baseUrl: "http://localhost:0",
       reasoning: false,
-      input: ["text", "image"],
+      // TEST_FAUX_TEXT_ONLY=1 makes the model text-only, for the scenarios of a read under a model without image input.
+      // It changes only the model's `input`.
+      input: process.env.TEST_FAUX_TEXT_ONLY === "1" ? ["text"] : ["text", "image"],
       cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
       contextWindow: 128000,
       maxTokens: 4096,

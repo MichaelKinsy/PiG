@@ -1515,7 +1515,7 @@ export default function (pi) {
   const builtinReport = (result) => {
     const report = { content: result.content.map((block) => block.type === "text" ? { type: "text", text: block.text } : { type: block.type, mimeType: block.mimeType }), isError: !!result.isError };
     if (result.details !== undefined && result.details !== null) { report.details = result.details; report.detailsJSON = JSON.stringify(result.details); }
-    if (result.structuredContent && typeof result.structuredContent === "object") { report.structuredKeys = Object.keys(result.structuredContent); report.exitCode = result.structuredContent.exit_code; }
+    if (result.structuredContent && typeof result.structuredContent === "object") { report.structuredKeys = Object.keys(result.structuredContent); report.exitCode = result.structuredContent.exit_code ?? null; /* an object without exit_code (an image read) reports null, as the native fixtures' nil does */ }
     return report;
   };
   const builtinOptions = (c, log) => {

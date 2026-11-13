@@ -10,7 +10,13 @@ import {
   createAllToolDefinitions,
   createLocalBashOperations,
   processImage
+<<<<<<<< HEAD:coding/extension/host/subprocess/runtime-node/shims/pi-dist/pi-coding-agent/sdk-bundle/chunk-BYHKDTJN.js
 } from "./chunk-F6KZBFI2.js";
+|||||||| 3875b15fb:coding/extension/host/subprocess/runtime-node/shims/pi-dist/pi-coding-agent/sdk-bundle/chunk-P7ETM5TA.js
+} from "./chunk-QZRBRK3S.js";
+========
+} from "./chunk-DUG27ILE.js";
+>>>>>>>> c8b62a0ad42dfa229f188364d732a887215cf246:coding/extension/host/subprocess/runtime-node/shims/pi-dist/pi-coding-agent/sdk-bundle/chunk-WD3HQ54Y.js
 import {
   getPiUserAgent
 } from "./chunk-PNTN457B.js";

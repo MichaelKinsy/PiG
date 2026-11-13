@@ -1863,6 +1863,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-deadeb8](#bf-deadeb8) | A prompt in a long session no longer costs time in proportion to the session's history: the current branch… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-deadeb8-2](#bf-deadeb8-2) | Extension session reads (`getEntry`, `getLabel`, `getChildren`, `getBranch`, `buildSessionContext` and the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-debe30e](#bf-debe30e) | A `keybindings.json` key named like a property every JavaScript object inherits (`constructor`, `toString`… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-dec362c](#bf-dec362c) | `read` no longer stores a note that the current model does not support images, which was replayed to the… | PiG's own defect | All platforms | Unreleased |
 | [BF-dec54eb](#bf-dec54eb) | fix(tui): Container.Render is safe beside a frame that borrows the window | PiG's own defect | All platforms | Unreleased |
 | [BF-df0b21c](#bf-df0b21c) | A Go, Rust or Python extension that calls `parseFrontmatter` or `Date.parse` while its factory runs, in a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-df43f7b](#bf-df43f7b) | RPC: a `prompt` that starts a run, and a `prompt` that fails in preparation, answer one microtask later than… | PiG's own defect | All platforms | Unreleased |
@@ -10449,7 +10450,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `433d232815` (2026-10-09), `86fe3dc28b` (2026-10-09), `f1d3eec6de` (2026-10-09), `014c014e74` (2026-10-10), `2de6fe21b8` (2026-10-10), `30ca7fcf7f` (2026-10-10), `5443b6c4d5` (2026-10-10), `691e3e1536` (2026-10-10), `76d1a85e45` (2026-10-10), `90b48897e1` (2026-10-10), `98c1299067` (2026-10-10), `af1289d2d7` (2026-10-10), `b7199a2ba1` (2026-10-10), `c87dea7287` (2026-10-10)
-- **Tests:** `agent/convert_custom_upstream_test.go::TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm`, `agent/convert_custom_upstream_test.go::TestConvertToLLMToolFlowMatchesUpstreamTransformOrder`, `agent/convert_custom_upstream_test.go::TestCustomMessagesReachProvidersAsUpstreamContentBlocks`, `agent/transform_custom_user_boundary_test.go::TestAnthropicRequestAfterBranchSummaryHasNoOrphanToolResult`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomMessageWithoutWireOutputKeepsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomUserMessageInterruptsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMHoldsSystemMessageUntilToolFlowCloses`, `ai/builtin_catalog_upstream_test.go::TestBuiltinCatalogsMatchPinnedProviderDataModules` and 69 more in docs/bug-ledger.json
+- **Tests:** `agent/convert_custom_upstream_test.go::TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm`, `agent/convert_custom_upstream_test.go::TestConvertToLLMToolFlowMatchesUpstreamTransformOrder`, `agent/convert_custom_upstream_test.go::TestCustomMessagesReachProvidersAsUpstreamContentBlocks`, `agent/transform_custom_user_boundary_test.go::TestAnthropicRequestAfterBranchSummaryHasNoOrphanToolResult`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomMessageWithoutWireOutputKeepsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomUserMessageInterruptsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMHoldsSystemMessageUntilToolFlowCloses`, `ai/builtin_catalog_upstream_test.go::TestBuiltinCatalogsMatchPinnedProviderDataModules` and 68 more in docs/bug-ledger.json
 - **Release note:** `durable/images` is the image processor of pi-durable: `images.CreatePhotonImages()` (also `images/node` and `images/cloudflare`) is a `tools.ImageProcessor` that turns an image upright by its EXIF orientation, scales it to the limits with a Lanczos3 filter, converts BMP to PNG, and re-encodes PNG or JPEG at falling qualities until it fits. `tools.CreateReadTool(&tools.ReadToolOptions{Images: p})` and `tools.CreateCodingTools(...)` pass it to `read`; `tools.CreateReadTool` now takes its options (nil for none), as `CreateBashTool` does.
 
 ### BF-54660cf
@@ -26332,7 +26333,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `86fe3dc28b` (2026-10-09), `f1d3eec6de` (2026-10-09), `014c014e74` (2026-10-10), `0a25e09319` (2026-10-10), `2de6fe21b8` (2026-10-10), `69538c209e` (2026-10-10), `76d1a85e45` (2026-10-10), `90b48897e1` (2026-10-10), `b7199a2ba1` (2026-10-10), `c87dea7287` (2026-10-10), `d88dca723b` (2026-10-10)
-- **Tests:** `automation/pin/test_pin.py`, `durable/core/docs/addtools_test.go::TestAddToolsExtendsModelToolsAsWell`, `durable/core/driver/tool_structured_test.go::TestRetainedOutputIsTheOutputKeptSoFar`, `durable/core/driver/tool_structured_test.go::TestRetainedOutputReportsDroppedOutputAsTruncated`, `durable/core/turn/generation_test.go::TestToolThrowEndsFailedWithTheErrorInTheResult`, `durable/core/turn/tool_v2_test.go::TestToolTaskMigratesVersion1`, `durable/core/turn/tool_v2_test.go::TestToolTaskRecordIsAVersion2ModelCall`, `durable/examples/pocket_dropin_test.go::TestPocketToolHooksAreIntrospectableAndCallableFromATool` and 29 more in docs/bug-ledger.json
+- **Tests:** `automation/pin/test_pin.py`, `durable/core/docs/addtools_test.go::TestAddToolsExtendsModelToolsAsWell`, `durable/core/driver/tool_structured_test.go::TestRetainedOutputIsTheOutputKeptSoFar`, `durable/core/driver/tool_structured_test.go::TestRetainedOutputReportsDroppedOutputAsTruncated`, `durable/core/turn/generation_test.go::TestToolThrowEndsFailedWithTheErrorInTheResult`, `durable/core/turn/tool_v2_test.go::TestToolTaskMigratesVersion1`, `durable/core/turn/tool_v2_test.go::TestToolTaskRecordIsAVersion2ModelCall`, `durable/examples/pocket_dropin_test.go::TestPocketToolHooksAreIntrospectableAndCallableFromATool` and 28 more in docs/bug-ledger.json
 - **Release note:** `harness.ToolTaskInput.Kind` and `ToolTaskResult.Kind` are the named string type `harness.ToolTaskKind` with `ToolTaskModel` and `ToolTaskNested`, and `harness.ToolHookCall` carries `Type` ("toolCall") like Pi's `ToolHookCall`; build one with `harness.NewToolHookCall`.
 
 ### BF-d8bed22
@@ -27713,6 +27714,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `debe30e486` (2026-10-12)
 - **Tests:** `internal/codingagent/keybindings_file_oracle_test.go::TestKeybindingsFileLoadingMatchesPi`
 - **Release note:** A `keybindings.json` key named like a property every JavaScript object inherits (`constructor`, `toString`, `__proto__` and the rest) is renamed on load the way Pi renames it (to that property's printed text), instead of being kept as written.
+
+### BF-dec362c
+
+**`read` no longer stores a note that the current model does not support images, which was replayed to the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `read` no longer stores a note that the current model does not support images, which was replayed to the model as stale text after a switch to a vision model.
+- **Root cause:** read appended "[Current model does not support images. The image will be omitted from this request.]" to the result text of an image read under a model without image input. The text is stored in the session, so after a switch to a vision model the next request sent the image together with a note that was no longer true.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `dec362c82f` (2026-11-13)
+- **Tests:** `durable/tools/coding_tools_pi_oracle_test.go::TestReadOfImagesMatchesPi`, `durable/tools/read_images_test.go::TestReadNamesAModelThatTakesNoImagesInDetails`, `internal/codingagent/read_image_unsupported_upstream_test.go::TestReadCardDrawsTheImageWarningFromDetails`, `internal/codingagent/read_image_unsupported_upstream_test.go::TestReadResultStoredWithTheOldImageNoteStaysAsWritten`, `internal/codingagent/tools/read_images_test.go::TestReadImageModelProfileOverridesFallback`, `internal/codingagent/tools/tools_read_port_test.go::TestToolsReadPort`
+- **Release note:** `read` no longer stores a note that the current model does not support images, which was replayed to the model as stale text after a switch to a vision model. The image is still replaced with a placeholder per request for a model without image input; the read result names that model in `details.imageUnsupportedByModel`, and the read card shows `[<model> does not support images; it saw a placeholder instead]` from it, collapsed and expanded. A session that already holds the old note keeps it as written. The durable `read` no longer adds the matching `info` diagnostic and names the model in its details the same way (Pi 4be4cb4f5e9c, #12139).
 
 ### BF-dec54eb
 

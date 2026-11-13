@@ -3565,8 +3565,11 @@ function formatCompactReadCall(classification, args, theme2) {
 }
 __name(formatCompactReadCall, "formatCompactReadCall");
 function formatReadResult(args, result, options, theme2, showImages, _cwd, isError) {
+  const unsupportedBy = result.details?.imageUnsupportedByModel;
+  const imageWarning = unsupportedBy ? `
+${theme2.fg("warning", `[${unsupportedBy} does not support images; it saw a placeholder instead]`)}` : "";
   if (!options.expanded && !isError) {
-    return "";
+    return imageWarning;
   }
   const rawPath = str(args?.file_path ?? args?.path);
   const output = getTextOutput(result, showImages);
@@ -3595,7 +3598,7 @@ ${theme2.fg("warning", `[Truncated: showing ${truncation.outputLines} of ${trunc
 ${theme2.fg("warning", `[Truncated: ${truncation.outputLines} lines shown (${formatSize(truncation.maxBytes ?? DEFAULT_MAX_BYTES)} limit)]`)}`;
     }
   }
-  return text;
+  return text + imageWarning;
 }
 __name(formatReadResult, "formatReadResult");
 var readRenderers = {
@@ -3650,13 +3653,6 @@ function toReadOutput(content) {
   return image ? { type: "image", data: image.data, mimeType: image.mimeType, note: text } : text;
 }
 __name(toReadOutput, "toReadOutput");
-function getNonVisionImageNote(model) {
-  if (!model || model.input.includes("image")) {
-    return void 0;
-  }
-  return "[Current model does not support images. The image will be omitted from this request.]";
-}
-__name(getNonVisionImageNote, "getNonVisionImageNote");
 function isStreamableRange(offset, limit) {
   return (offset === void 0 || Number.isInteger(offset)) && (limit === void 0 || Number.isInteger(limit) && limit >= 0);
 }
@@ -3787,7 +3783,6 @@ function createReadToolDefinition(cwd, options) {
             const mimeType = ops.detectImageMimeType ? await ops.detectImageMimeType(absolutePath) : void 0;
             let content;
             let details;
-            const nonVisionImageNote = getNonVisionImageNote(ctx?.model);
             if (mimeType) {
               const buffer = await ops.readFile(absolutePath);
               const processed = await processImage(buffer, mimeType, {
@@ -3795,24 +3790,21 @@ function createReadToolDefinition(cwd, options) {
                 resizeOptions: ctx?.model?.inputLimits?.images?.resize ?? fallbackResizeOptions
               });
               if (!processed.ok) {
-                let textNote = `Read image file [${mimeType}]
+                const textNote = `Read image file [${mimeType}]
 ${processed.message}`;
-                if (nonVisionImageNote)
-                  textNote += `
-${nonVisionImageNote}`;
                 content = [{ type: "text", text: textNote }];
               } else {
                 let textNote = `Read image file [${processed.mimeType}]`;
                 if (processed.hints.length > 0)
                   textNote += `
 ${processed.hints.join("\n")}`;
-                if (nonVisionImageNote)
-                  textNote += `
-${nonVisionImageNote}`;
                 content = [
                   { type: "text", text: textNote },
                   { type: "image", data: processed.data, mimeType: processed.mimeType }
                 ];
+                if (ctx?.model && !ctx.model.input.includes("image")) {
+                  details = { imageUnsupportedByModel: ctx.model.id };
+                }
               }
             } else {
               const startLine = offset ? Math.max(0, offset - 1) : 0;
