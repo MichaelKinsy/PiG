@@ -403,7 +403,12 @@ func (m *InteractiveMode) renderSessionEntryListWithLive(entries []SessionEntry,
 				if !ok {
 					continue
 				}
-				args, _ := jsonNoEscape(call.Arguments)
+				// The card reads the arguments in the member order the session file holds, as a live call's card does: the call
+				// fallback lists them in that order (render-utils.ts formatToolCallWithArgs walks Object.entries).
+				args, err := call.ArgumentsJSON()
+				if err != nil {
+					args = []byte("{}")
+				}
 				comp := m.newToolCard(call.Name, call.ID, json.RawMessage(args))
 				comp.BodyRenderer = toolBodyRendererForCall(call, agent.AgentToolResult{}, nil)
 				m.applyToolPresentation(comp, call.ID, call.Name, json.RawMessage(args))

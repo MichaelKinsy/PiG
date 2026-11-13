@@ -24,7 +24,7 @@ pi_args = ["--session-dir", "sessions", "-c"]
 
 [tmux]
 width = 100
-height = 60
+height = 70
 ready_pattern_pig = "(auto)"
 ready_pattern_pi = "(auto)"
 ready_timeout_seconds = 30
@@ -35,7 +35,8 @@ capture_end = "Prototype path redraw end"
 [[tmux.steps]]
 keys = ["C-o"]
 settle_seconds = 1
-wait_contains = ["path: out.constructor", "path: Constructor.CONSTRUCTOR", "write control.ts"]
+# The wait reads the visible pane: these rows of the expanded read results are in it on both sides.
+wait_contains = ["gamma line", "proto line"]
 wait_timeout_seconds = 15
 
 [assert]
