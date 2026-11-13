@@ -131,9 +131,10 @@ func (r *uiViewRun) recorded() []byte {
 	return data
 }
 
-var uiViewVolatile = regexp.MustCompile(`"(id|parentId|timestamp|responseId|cwd)":("[^"]*"|[0-9]+)`)
+var uiViewVolatile = regexp.MustCompile(`"(id|parentId|timestamp|responseId|cwd|durationMs)":("[^"]*"|[0-9]+)`)
 
-// sessionFile is the session's entries without what differs between any two runs: ids, timestamps and the directory.
+// sessionFile is the session's entries without what differs between any two runs: ids, timestamps, the measured duration
+// of a response and the directory.
 func (r *uiViewRun) sessionFile() string {
 	r.t.Helper()
 	var files []string
@@ -221,6 +222,18 @@ func uiViewDiff(mounted, never string) string {
 	return strings.Join(out, "\n")
 }
 
+// uiViewBytesDiff names the first offset at which two recordings differ and shows the bytes of each around it.
+func uiViewBytesDiff(a, b []byte) string {
+	at := 0
+	for at < len(a) && at < len(b) && a[at] == b[at] {
+		at++
+	}
+	window := func(s []byte) string {
+		return strconv.Quote(string(s[min(max(at-40, 0), len(s)):min(at+80, len(s))]))
+	}
+	return "first difference at byte " + strconv.Itoa(at) + " of " + strconv.Itoa(len(a)) + " and " + strconv.Itoa(len(b)) + "\n" + window(a) + "\n" + window(b)
+}
+
 type uiViewAfter struct {
 	screen, typed, answered, scrollback, session string
 	raw                                          []byte
@@ -287,7 +300,7 @@ func TestUIViewMountThenUnmountIsTheSessionThatNeverMounted(t *testing.T) {
 				}
 				switch {
 				case !bytes.Equal(never.raw, control.raw):
-					t.Logf("two sessions that never mounted wrote different bytes for the same keys (%d and %d): the byte comparison is not stable here", len(never.raw), len(control.raw))
+					t.Errorf("two never-mounted sessions wrote different bytes for the same keys: the comparison is unstable: %s", uiViewBytesDiff(never.raw, control.raw))
 				case !bytes.Equal(mounted.raw, never.raw):
 					t.Errorf("the bytes written for the same keys differ.\n--- mounted and ended ---\n%q\n--- never mounted ---\n%q", mounted.raw, never.raw)
 				case len(never.raw) == 0:
