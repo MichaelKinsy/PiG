@@ -491,6 +491,18 @@ patch("406e719a6bff", "pi-ai/api/constrained-sampling.js", [
 packageFile("49fe0a237", "pi-coding-agent/schemas/models.schema.json", [messageThreadsDefault]);
 // END backport 49fe0a237
 
+// BEGIN backport 49fe0a237
+// 49fe0a237 (#11987), the behavior its three description entries describe: any provider with a baseUrl on api.anthropic.com uses message threads by
+// default, not only the provider named anthropic. The installed Pi only, as for aa47cedce below: ai/anthropic.go (supportsMessageThreads) has the change.
+packageFile("49fe0a237", "pi-ai/api/anthropic-messages.js", [
+    [`        supportsMessageThreads: model.compat?.supportsMessageThreads ??
+            (model.provider === "anthropic" && model.baseUrl.includes("api.anthropic.com")),
+`, `        ${note("49fe0a237").trim()}
+        supportsMessageThreads: model.compat?.supportsMessageThreads ?? model.baseUrl.includes("api.anthropic.com"),
+`],
+]);
+// END backport 49fe0a237
+
 // BEGIN backport aa47cedce
 // aa47cedce (#12100): a non-strict Anthropic tool schema keeps its root additionalProperties (false, true or a schema). PiG's vendored runtime carries pi-ai's
 // anthropic-messages as a bridge stub that runs in PiG's host (ai/anthropic.go, which has the change), so the file is the installed Pi's only: the parity oracle
@@ -666,7 +678,33 @@ packageFile("f72f799a4", "pi-ai/api/google-vertex.js", [
 
 // backportPatches keys the compiled output of a Pi package; packageFileBackports the files that are not compiled output and that the vendored runtime
 // does not carry, but that the installed Pi package (the parity oracle) and the source mirror hold, with the same text. Both are keyed by package and path.
-const tableOf = (name) => Object.fromEntries(blocks.filter((b) => b.table === name).map((b) => [b.key, b.patches]));
+const tableOf = (name) => {
+  // The table of the blocks whose table is `name`: key -> patches. The patches of every block of a key are joined in the order the blocks
+  // are written (two Pi commits can change one file); classification stays per block. Blocks of other tables are not read, so a block of
+  // another kind need not have patches. What cannot work fails here, when the script loads, naming both blocks: two patches that replace
+  // the same text of a key (the second would find nothing to replace), and a key that one block names with patch and another with
+  // packageFile (patchesOf reads one of those two tables).
+  const table = {};
+  const owners = new Map();
+  const twin = name === "dist" ? "package" : name === "package" ? "dist" : undefined;
+  for (const block of blocks.filter((b) => b.table === name)) {
+    const { id, key, patches } = block;
+    const other = blocks.find((b) => b.table === twin && b.key === key);
+    if (other !== undefined) {
+      const [first, second] = blocks.indexOf(other) < blocks.indexOf(block) ? [other.id, id] : [id, other.id];
+      throw new Error(`backport blocks ${first} and ${second} disagree on ${key}: one names it with patch (compiled output), the other with packageFile`);
+    }
+    for (const [before] of patches) {
+      const place = `${key}\n${before}`;
+      if (owners.has(place)) {
+        throw new Error(`backport blocks ${owners.get(place)} and ${id} both replace the same text of ${key}: ${JSON.stringify(before.slice(0, 80))}`);
+      }
+      owners.set(place, id);
+    }
+    (table[key] ??= []).push(...patches);
+  }
+  return table;
+};
 export const backportPatches = tableOf("dist");
 export const packageFileBackports = tableOf("package");
 // carriedDependencies lists the `dependency` entries: {id, package, name, from, to, resolved, integrity, dependencies}.

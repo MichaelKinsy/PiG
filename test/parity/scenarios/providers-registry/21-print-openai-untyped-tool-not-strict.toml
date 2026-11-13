@@ -1,0 +1,56 @@
+# Behavior family: providers-registry
+# Surface: the tools of an OpenAI Chat Completions request (openai-completions) as each binary sends them: a tool whose schema has a node without a type
+# is not sent strict.
+#
+# Upstream evidence (Pi 406e719a6bff, #12049; packages/ai/src/api/constrained-sampling.ts): OpenAI strict mode rejects a schema node that has
+# no type, enum or anyOf, so the strict conversion throws "schemas without a type are unsupported" for it. A tool that prefers strict
+# sampling then goes out with strict false and its schema as authored; a bare enum counts as typed, a bare const does not. Pi v1.5.2 as
+# published sends such a tool with strict true and the endpoint answers 400.
+# The oracle is the pinned Pi plus the post-release backports (automation/gen/pi-post-release-backports.mjs), 406e719a6bff among them; `pi` runs the
+# package's bundle, which the oracle build makes again from the patched compiled output.
+#
+# Probe (Pi alone, 2026-11-13): `pi -p "ECHO_REQUEST /tools"` printed four tools, tools[].function.strict true for typed_tool and read, false for the two
+# probe tools:
+#   typed_tool: "parameters":{"type":"object","properties":{"path":{"type":"string"}},"required":["path"],"additionalProperties":false},"strict":true
+#   {"type":"function","function":{"name":"untyped_items_tool","description":"The items schema is empty.","parameters":{"type":"object","properties":{"commandArguments":{"type":"array","items":{}}}},"strict":false}}
+#   bare_const_tool: "parameters":{"type":"object","properties":{"mode":{"const":"fast"},"level":{"enum":["low","high"]}},"required":["mode","level"]},"strict":false
+#   read: required ["path","offset","limit"], offset and limit as anyOf with null, "additionalProperties":false, "strict":true
+# The strict conversion adds additionalProperties false and makes every property required; the two probe tools keep their authored schema.
+#
+# How the request is seen: both binaries talk to the runner's local provider fixture (provider_fixture, test/parity/README.md). The prompt
+# `ECHO_REQUEST /tools` makes the fixture answer with that part of the request body it received, members in the order received, so each
+# binary prints what it sent and output_equal compares the whole tools array: which tools, their order, each schema member and each strict flag. No normalization: the two requests must be the same bytes after the
+# fixture's uniform spelling of white space and string escapes.
+# provider_fixture_compat = { supportsStrictMode = true }: an OpenAI-compatible model does not get strict tools by default, and without the
+# flag neither binary sends a strict member at all (probed: the same array with no "strict" in it), so the commit's branch is not reached.
+# `--tools typed_tool,untyped_items_tool,bare_const_tool,read`: the three extension tools ask for strict sampling with "prefer"
+# (testdata/request-echo-tools.mjs); read is a built-in tool that does the same with a typed schema.
+# Mutation: with the type check of the strict conversion (ai/constrained_sampling.go, "schemas without a type are unsupported") disabled,
+# pig sends the two probe tools with strict true and a converted schema, and output_equal fails.
+name = "21-print-openai-untyped-tool-not-strict"
+description = "A tool schema with an untyped node goes to an OpenAI Chat Completions endpoint without strict mode, as pi sends it"
+covers = ["packages/ai/src/api/constrained-sampling.ts"]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+provider_fixture = "openai-completions"
+model = "strict-wire/strict"
+provider_fixture_compat = { supportsStrictMode = true }
+
+[print]
+prompt = "ECHO_REQUEST /tools"
+timeout_seconds = 30
+
+[env]
+pig = ["PIG_HOME=../rpc/testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=../rpc/testdata/pi-home/agent"]
+pig_extensions = ["testdata/request-echo-tools.mjs"]
+pi_extensions = ["testdata/request-echo-tools.mjs"]
+pig_args = ["--offline", "--no-extensions", "--tools", "typed_tool,untyped_items_tool,bare_const_tool,read", "--system-prompt", "Strict wire probe.", "--no-context-files", "--no-skills", "--no-session"]
+pi_args = ["--offline", "--no-extensions", "--tools", "typed_tool,untyped_items_tool,bare_const_tool,read", "--system-prompt", "Strict wire probe.", "--no-context-files", "--no-skills", "--no-session"]
+
+[assert]
+exit_code = 0
+both_contain = ['"name":"untyped_items_tool"', '"items":{}}}},"strict":false', '"additionalProperties":false},"strict":true']
+output_equal = true
+stderr_equal = true
+runs = 3
