@@ -266,7 +266,9 @@ func childEnv() []string {
 	})
 }
 
-func mergeTree(ctx context.Context, ws workspace, d *data) (bool, error) {
+// mergeRepo fetches the commits of the PR's head and of its base branch without their trees and blobs; git reads from the
+// remote the ones a merge needs.
+func mergeRepo(ctx context.Context, ws workspace, d *data) (string, error) {
 	dir := filepath.Join(ws.dir, "merge")
 	remote := strings.TrimSuffix(ws.remote, "/") + "/" + d.Repo
 	steps := [][]string{
@@ -275,29 +277,45 @@ func mergeTree(ctx context.Context, ws workspace, d *data) (bool, error) {
 		{"-C", dir, "fetch", "-q", "--filter=tree:0", "origin", fmt.Sprintf("+refs/pull/%d/head:refs/preflight/head", d.PR), "+refs/heads/" + d.Pull.Base.Ref + ":refs/preflight/base"},
 	}
 	if err := os.RemoveAll(dir); err != nil {
-		return false, err
+		return "", err
 	}
 	if err := runGit(ctx, ws.remote, ws.token, steps); err != nil {
-		return false, err
+		return "", err
 	}
 	got, err := git(ctx, "-C", dir, "rev-parse", "refs/preflight/head")
 	if err != nil {
-		return false, err
+		return "", err
 	}
 	if got = strings.TrimSpace(got); got != d.Pull.Head.SHA {
-		return false, fmt.Errorf("the PR's head is at %s, the evaluated head is %s", short(got), short(d.Pull.Head.SHA))
+		return "", fmt.Errorf("the PR's head is at %s, the evaluated head is %s", short(got), short(d.Pull.Head.SHA))
 	}
-	// No --quiet: git learned it in 2.50 and an older one exits 129 on it. The exit status says the same without it, and
-	// what git prints is read only for the error.
-	out, err := gitAuth(ctx, ws.remote, ws.token, "-C", dir, "merge-tree", "--write-tree", "refs/preflight/base", "refs/preflight/head")
+	return dir, nil
+}
+
+func mergeable(ctx context.Context, ws workspace, dir string) (bool, error) {
+	_, clean, err := mergeTreeOf(ctx, ws, dir, "refs/preflight/base", "refs/preflight/head")
+	return clean, err
+}
+
+var treeIDRE = regexp.MustCompile(`(?m)^[0-9a-f]{40}(?:[0-9a-f]{24})?$`)
+
+// mergeTreeOf is git's merge of two commits of mergeRepo's repository: the tree it writes, or clean false when the merge
+// conflicts.
+func mergeTreeOf(ctx context.Context, ws workspace, dir, ours, theirs string) (tree string, clean bool, err error) {
+	// No --quiet: git learned it in 2.50 and an older one exits 129 on it. The exit status says the same without it.
+	out, err := gitAuth(ctx, ws.remote, ws.token, "-C", dir, "merge-tree", "--write-tree", ours, theirs)
 	var exitErr *exec.ExitError
 	switch {
 	case err == nil:
-		return true, nil
+		// The output is git's stdout and stderr: the tree is the one line that is an object id.
+		if tree = treeIDRE.FindString(out); tree == "" {
+			return "", false, fmt.Errorf("git merge-tree printed no tree:\n%s", out)
+		}
+		return tree, true, nil
 	case errors.As(err, &exitErr) && exitErr.ExitCode() == 1:
-		return false, nil
+		return "", false, nil
 	default:
-		return false, fmt.Errorf("git merge-tree: %w\n%s", err, out)
+		return "", false, fmt.Errorf("git merge-tree: %w\n%s", err, out)
 	}
 }
 

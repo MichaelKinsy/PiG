@@ -1,0 +1,3 @@
+### Fixed
+
+- CI: the pre-flight no longer rejects a pull request for the merge of `main` that GitHub's "Update branch" button adds. That commit is GitHub's and cannot carry a `Signed-off-by` line, so the `signoff` check failed every pull request kept current that way. The check now exempts it, and only it: two parents, committed and verified by GitHub, the second parent on the base branch, and the tree git's own merge of the two parents writes. A merge made by hand, a merge of another branch and a merge with a conflict resolution or an edit still need the line, as does every commit the pull request adds. <!-- fix: 349959b6ff -->

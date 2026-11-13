@@ -48,7 +48,10 @@ checks:
     stage: cheap
     reads: [commits]
     rule: all-commits
-    with: {message: '(?m)^Signed-off-by: .+ <[^>]+>\s*$', help: 'add a `Signed-off-by:` line with `git commit --signoff`'}
+    # GitHub's "Update branch" merge cannot carry the line. It is exempt only when it is that merge and nothing else:
+    # two parents, committed and verified by GitHub, the second parent on the base branch, and the tree git's own merge
+    # of the two parents writes (merges.go).
+    with: {message: '(?m)^Signed-off-by: .+ <[^>]+>\s*$', exempt-update-branch-merges: true, help: 'add a `Signed-off-by:` line with `git commit --signoff`'}
 
   - name: depends-on
     when: {always: true}
