@@ -387,6 +387,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3838d0b](#bf-3838d0b) | Interactive mode is ready to type about 10 ms sooner when the recorded "what's new" version differs from the… | PiG's own defect | All platforms | Unreleased |
 | [BF-3840820](#bf-3840820) | MCP tool results whose content blocks carry members of another type than the protocol's (a numeric `text`, a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3868dd5](#bf-3868dd5) | MCP messages nested more than 10,000 levels deep (a tool `inputSchema`, `_meta` or `structuredContent` of a… | PiG's own defect | All platforms | Unreleased |
+| [BF-386b88c](#bf-386b88c) | A turn that ends with a provider error that reports only a socket error code, such as `read ECONNRESET`… | PiG's own defect | All platforms | Unreleased |
 | [BF-38b0f0c](#bf-38b0f0c) | Syntax highlighting keeps its colors after the first line of multiline strings and comments in fenced code… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-38e6506](#bf-38e6506) | The faux provider (`ai.NewFauxProvider`) no longer ends a streamed chunk inside a multibyte character | PiG's own defect | All platforms | 0.7.0 |
 | [BF-3902803](#bf-3902803) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
@@ -1352,6 +1353,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D618](#bf-d618) | A start repaints after the highlight grammar load only when a highlight lookup made before it could have… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D619](#bf-d619) | A status-indicator or Loader animation step asks for its frame within min(40 ms, interval/2), where Pi asks… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D628](#bf-d628) | auth.json is read once per availability pass, where Pi stats it on every credential read | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D629](#bf-d629) | A prompt that arrives while another prompt is being admitted in RPC mode is rejected with an error, where Pi… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D631](#bf-d631) | A command run by `pi.exec` or the bash tool gets pipes for its output, where Pi gives it socket pairs | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26](#bf-a09da26) | `pi.getSettings()` in a subprocess extension lists the settings in Pi's order: the global settings file's… | PiG's own defect | All platforms | 0.5.0 |
@@ -7161,6 +7163,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `3868dd514e` (2026-11-08)
 - **Tests:** `mcp/deepjson_test.go::TestParseWireMessageKeepsACallResultNested12000LevelsDeep`, `mcp/deepjson_test.go::TestParseWireMessageKeepsAToolSchemaNested12000LevelsDeep`, `mcp/deepjson_test.go::TestParseWireMessageRejectsMalformedTextNested12000LevelsDeep`
 - **Release note:** MCP messages nested more than 10,000 levels deep (a tool `inputSchema`, `_meta` or `structuredContent` of a server that nests that far) are now read the way Pi reads them with `JSON.parse`, instead of being refused by Go's JSON decoder.
+
+### BF-386b88c
+
+**A turn that ends with a provider error that reports only a socket error code, such as `read ECONNRESET`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A turn that ends with a provider error that reports only a socket error code, such as `read ECONNRESET`, `write EPIPE` or `connect ETIMEDOUT`, or with `connection reset by peer`, is now retried automatically like other dropped connections, instead of stopping with the error; this is what Amazon Bedrock reports when a connection fails before a response.
+- **Root cause:** Pi (fixes #12128) adds two entries to the transport section of RETRYABLE_PROVIDER_ERROR_PATTERN (packages/ai/src/utils/retry.ts), after "getaddrinfo":
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `386b88c3b6` (2026-11-13)
+- **Tests:** `ai/assistant_retry_classifier_oracle_test.go::TestIsRetryableAssistantErrorMatchesPiOracle`, `ai/assistant_retry_socket_codes_upstream_test.go::TestCodelessTransportErrorsKeepTheirNodeForm`, `ai/assistant_retry_socket_codes_upstream_test.go::TestIsRetryableAssistantErrorNodeSocketErrorCodes`, `ai/assistant_retry_socket_codes_upstream_test.go::TestIsRetryableAssistantErrorOtherSocketCodesStayNonRetryable`, `ai/assistant_retry_socket_codes_upstream_test.go::TestSocketCodeTransportErrorsAreRetriedInTheirNodeForm`, `ai/assistant_retry_test.go::TestConnectionResetTextIsRetryable`, `ai/providers/bedrock/bedrock_error_metadata_upstream_test.go::TestBedrockRefusedConnectIsNodesErrorLikePi`, `ai/providers/bedrock/bedrock_socket_code_retry_test.go::TestBedrockBadRequestThatNamesASocketCodeInsideAnIdentifierIsNotRetried` and 11 more in docs/bug-ledger.json
+- **Release note:** A turn that ends with a provider error that reports only a socket error code, such as `read ECONNRESET`, `write EPIPE` or `connect ETIMEDOUT`, or with `connection reset by peer`, is now retried automatically like other dropped connections, instead of stopping with the error; this is what Amazon Bedrock reports when a connection fails before a response. The same applies in the extension SDKs' `isRetryableAssistantError` (Go, Python, Rust, Lisp and the Node runtime).
 
 ### BF-38b0f0c
 
@@ -20563,6 +20579,21 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `b5c9e29c8f` (2026-11-12)
 - **Tests:** `coding/model_availability_auth_pass_test.go::TestAuthWriteDuringAvailabilityPassIsUsedByNextRequest`, `coding/model_availability_auth_pass_test.go::TestAvailabilityPassStatsEachAuthFileOnce`, `coding/model_availability_auth_pass_test.go::TestAvailabilityPassStatsEveryReadAfterACommandKey`, `coding/model_availability_auth_pass_test.go::TestBrokenAuthFileDuringAvailabilityPass`, `coding/model_availability_auth_pass_test.go::TestCredentialAPIWriteDuringAvailabilityPassIsUsedByTheSamePass`, `coding/model_availability_auth_pass_test.go::TestExtensionCheckRewritingAuthFileIsUsedByNextRequest`, `coding/model_availability_auth_view_test.go::TestAvailabilityPassAuthViewMatchesPiUpstream`, `internal/codingagent/model_availability_read_context_test.go::TestAvailabilityReadContextGivesEveryPassOneAuthView`
 
+### BF-D629
+
+**A prompt that arrives while another prompt is being admitted in RPC mode is rejected with an error, where Pi…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D629)
+- **Symptom:** A prompt is answered `started` and never run; no error is emitted; an `agent_settled` is emitted for a run that never started, and it clears the busy state of the run that did. An upstream issue draft is the owner's to post; none has been posted.
+- **Root cause:** a client is told that its prompt was not taken and can send it again or queue it. Pi accepts the prompt and loses it without an error, so a client that waits for the run of a prompt answered `started` waits for a run that never comes, and reads an `agent_settled` that belongs to no run it can see.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** Pi rejects the second prompt of a batch with an error, or stops answering `started` for a prompt it does not run. `TestRPCPromptsWrittenInOneChunkDivergeFromPi` runs the pinned Pi and fails when Pi's side changes.
+- **Fix commits:** `dbb1bbb1bd` (2026-11-12)
+- **Tests:** `coding/cli/rpc_prompt_one_chunk_pi_test.go::TestRPCPromptsWrittenInOneChunkDivergeFromPi`, `coding/cli/rpc_prompt_order_test.go::TestRPCPromptsOfOneBatchAnswerInRequestOrder`, `coding/cli/rpc_prompt_order_test.go::TestRPCPromptsWithDueCompactionsAnswerInRequestOrder`
+
 ### BF-D631
 
 **A command run by `pi.exec` or the bash tool gets pipes for its output, where Pi gives it socket pairs**
@@ -30783,6 +30814,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D618 | A start repaints after the highlight grammar load only when a highlight lookup made before it could have… | [BF-D618](#bf-d618) |
 | D619 | A status-indicator or Loader animation step asks for its frame within min(40 ms, interval/2), where Pi asks… | [BF-D619](#bf-d619) |
 | D628 | auth.json is read once per availability pass, where Pi stats it on every credential read | [BF-D628](#bf-d628) |
+| D629 | A prompt that arrives while another prompt is being admitted in RPC mode is rejected with an error, where Pi… | [BF-D629](#bf-d629) |
 | D631 | A command run by `pi.exec` or the bash tool gets pipes for its output, where Pi gives it socket pairs | [BF-D631](#bf-d631) |
 
 ## Fix-titled commits that are not bugs in a release

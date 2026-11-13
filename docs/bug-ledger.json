@@ -10430,6 +10430,46 @@
       ]
     },
     {
+      "id": "BF-386b88c",
+      "title": "A turn that ends with a provider error that reports only a socket error code, such as `read ECONNRESET`…",
+      "symptom": "A turn that ends with a provider error that reports only a socket error code, such as `read ECONNRESET`, `write EPIPE` or `connect ETIMEDOUT`, or with `connection reset by peer`, is now retried automatically like other dropped connections, instead of stopping with the error; this is what Amazon Bedrock reports when a connection fails before a response.",
+      "rootCause": "Pi (fixes #12128) adds two entries to the transport section of RETRYABLE_PROVIDER_ERROR_PATTERN (packages/ai/src/utils/retry.ts), after \"getaddrinfo\":",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A turn that ends with a provider error that reports only a socket error code, such as `read ECONNRESET`, `write EPIPE` or `connect ETIMEDOUT`, or with `connection reset by peer`, is now retried automatically like other dropped connections, instead of stopping with the error; this is what Amazon Bedrock reports when a connection fails before a response. The same applies in the extension SDKs' `isRetryableAssistantError` (Go, Python, Rust, Lisp and the Node runtime).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "386b88c3b6",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "ai/assistant_retry_classifier_oracle_test.go::TestIsRetryableAssistantErrorMatchesPiOracle",
+        "ai/assistant_retry_socket_codes_upstream_test.go::TestCodelessTransportErrorsKeepTheirNodeForm",
+        "ai/assistant_retry_socket_codes_upstream_test.go::TestIsRetryableAssistantErrorNodeSocketErrorCodes",
+        "ai/assistant_retry_socket_codes_upstream_test.go::TestIsRetryableAssistantErrorOtherSocketCodesStayNonRetryable",
+        "ai/assistant_retry_socket_codes_upstream_test.go::TestSocketCodeTransportErrorsAreRetriedInTheirNodeForm",
+        "ai/assistant_retry_test.go::TestConnectionResetTextIsRetryable",
+        "ai/providers/bedrock/bedrock_error_metadata_upstream_test.go::TestBedrockRefusedConnectIsNodesErrorLikePi",
+        "ai/providers/bedrock/bedrock_socket_code_retry_test.go::TestBedrockBadRequestThatNamesASocketCodeInsideAnIdentifierIsNotRetried",
+        "ai/providers/bedrock/bedrock_socket_code_retry_test.go::TestBedrockBareSocketCodeIsRetriedByTheAssistantRetryLoop",
+        "ai/providers/bedrock/bedrock_socket_code_retry_test.go::TestBedrockConnectionResetBeforeTheResponseIsRetried",
+        "coding/session_socket_code_retry_test.go::TestSessionDoesNotRetryABadRequestThatNamesASocketCodeInsideAnIdentifier",
+        "coding/session_socket_code_retry_test.go::TestSessionDoesNotRetryASocketCodeInsideAnIdentifier",
+        "coding/session_socket_code_retry_test.go::TestSessionRetriesABareSocketCodeOnce",
+        "coding/session_socket_code_retry_test.go::TestSessionRetriesAConnectionResetAfterTheRequestHeaders",
+        "coding/session_socket_code_retry_test.go::TestSessionRetriesARequestThatReachesItsDeadline",
+        "coding/session_socket_code_retry_test.go::TestSessionSurfacesABareSocketCodeAfterTheConfiguredRetries",
+        "coding/session_socket_code_retry_test.go::TestSessionSurfacesAConnectionResetAfterTheConfiguredRetries",
+        "durable/core/turn/classify_carried_test.go::TestNodeSocketErrorCodesAreRetryable",
+        "extensions/sdk/pi_ai_helpers_test.go::TestNodeSocketErrorCodesAreRetryable"
+      ]
+    },
+    {
       "id": "BF-38b0f0c",
       "title": "Syntax highlighting keeps its colors after the first line of multiline strings and comments in fenced code…",
       "symptom": "Syntax highlighting keeps its colors after the first line of multiline strings and comments in fenced code blocks.",
@@ -36910,6 +36950,31 @@
       ]
     },
     {
+      "id": "BF-D629",
+      "title": "A prompt that arrives while another prompt is being admitted in RPC mode is rejected with an error, where Pi…",
+      "symptom": "A prompt is answered `started` and never run; no error is emitted; an `agent_settled` is emitted for a run that never started, and it clears the busy state of the run that did. An upstream issue draft is the owner's to post; none has been posted.",
+      "rootCause": "a client is told that its prompt was not taken and can send it again or queue it. Pi accepts the prompt and loses it without an error, so a client that waits for the run of a prompt answered `started` waits for a run that never comes, and reads an `agent_settled` that belongs to no run it can see.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D629",
+      "removeWhen": "Pi rejects the second prompt of a batch with an error, or stops answering `started` for a prompt it does not run. `TestRPCPromptsWrittenInOneChunkDivergeFromPi` runs the pinned Pi and fails when Pi's side changes.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "dbb1bbb1bd",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_prompt_one_chunk_pi_test.go::TestRPCPromptsWrittenInOneChunkDivergeFromPi",
+        "coding/cli/rpc_prompt_order_test.go::TestRPCPromptsOfOneBatchAnswerInRequestOrder",
+        "coding/cli/rpc_prompt_order_test.go::TestRPCPromptsWithDueCompactionsAnswerInRequestOrder"
+      ]
+    },
+    {
       "id": "BF-D631",
       "title": "A command run by `pi.exec` or the bash tool gets pipes for its output, where Pi gives it socket pairs",
       "symptom": "none. The socket pair is libuv's choice for every Node child; Pi does not ask for it.",
@@ -59523,6 +59588,11 @@
       "id": "D628",
       "title": "auth.json is read once per availability pass, where Pi stats it on every credential read",
       "entry": "BF-D628"
+    },
+    {
+      "id": "D629",
+      "title": "A prompt that arrives while another prompt is being admitted in RPC mode is rejected with an error, where Pi…",
+      "entry": "BF-D629"
     },
     {
       "id": "D631",
