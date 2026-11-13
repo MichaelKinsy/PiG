@@ -1,4 +1,3 @@
 # Tests of ./ai/ that fail in a build with every strip tag. One per line: the test, then why.
 # make piglet-strip-matrix fails when one of them passes (remove its line) and when a test not listed here fails.
-# The expectation tables of the other ai tests take the stripped APIs of a tagged build from ai/strip_built_test.go (BuiltAPI, BuiltStrippedAPIs, BuiltStrippedProviders).
-TestCompatAPIStreamsMatchPi the subtest "mistralConversationsApi without credentials" expects the strip message and the stream of the stripped mistral-conversations API ends with "No API key for provider: mistral": without a key the credential check answers before the strip does (google-vertex and bedrock-converse-stream report the strip there). A product finding, not an expectation row.
+# None: the expectation tables of the ai tests take the stripped APIs of a tagged build from ai/strip_built_test.go (BuiltAPI, BuiltStrippedAPIs, BuiltStrippedProviders).
