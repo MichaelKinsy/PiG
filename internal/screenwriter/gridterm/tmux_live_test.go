@@ -17,6 +17,8 @@ import (
 	"time"
 
 	"golang.org/x/term"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // TestMain runs the tests, or, started by tmux as the program of a pane (TestLinesAreWhatTmuxShows), that program.
@@ -145,12 +147,8 @@ func TestLinesAreWhatTmuxShows(t *testing.T) {
 	version := strings.TrimPrefix(strings.TrimSpace(string(versionOut)), "tmux ")
 	t.Logf("tmux %s", version)
 	// The server's socket is in a directory of its own that ends with the test, so that nothing of the server is left then, whatever
-	// tmux does with the file. The directory is in /tmp and not in t.TempDir(): a socket's path has to fit in about a hundred bytes.
-	socketDir, err := os.MkdirTemp("/tmp", "pig-gridterm-")
-	if err != nil {
-		t.Fatalf("no directory for the tmux server's socket: %v", err)
-	}
-	t.Cleanup(func() { _ = os.RemoveAll(socketDir) })
+	// tmux does with the file. The directory is a short one and not t.TempDir(): a socket's path has to fit in about a hundred bytes.
+	socketDir := testenv.ShortTempDir(t, "pig-gridterm-")
 	socket := filepath.Join(socketDir, "tmux")
 	// The server ends with its last session: this one keeps it up between two cases, and its end is the server's.
 	if out, err := tmuxCommand(socket, "new-session", "-d", "-s", "hold", "-x", "80", "-y", "24", "sleep 900"); err != nil {
