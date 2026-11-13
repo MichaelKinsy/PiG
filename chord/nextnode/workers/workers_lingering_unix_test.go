@@ -133,7 +133,7 @@ func streamReaders() int {
 		buffer = make([]byte, 2*len(buffer))
 	}
 	count := 0
-	for _, goroutine := range strings.Split(string(buffer), "\n\n") {
+	for goroutine := range strings.SplitSeq(string(buffer), "\n\n") {
 		if strings.Contains(goroutine, "workers.(*WorkerProcess).pump") || strings.Contains(goroutine, "workers.(*channel).run") || strings.Contains(goroutine, "workers.(*channel).write") {
 			count++
 		}
