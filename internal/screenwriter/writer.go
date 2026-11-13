@@ -11,6 +11,8 @@
 //     frame's own line (the first-cell rule), when the line is no narrower than the row, has a cell that is not a blank under
 //     the default pen wherever the row has one (the same cluster, where terminals disagree on its width), and has others only
 //     after the last of them; a line that has others is written through its last cell; what follows the written cells stays;
+//   - a row as wide as the screen of which that would send every cell is written whole instead: the writer prints in the screen's
+//     last column only as the frame does, and such a row waits for no settle write;
 //   - every other row whose cells change is written whole, as the frame wrote it: the line erased, then the row;
 //   - a frame that changes no cell, cursor position or cursor visibility is not written;
 //   - once no frame was written for the settle time, every row that had a part written is rewritten whole, as the frame wrote it.
@@ -429,6 +431,12 @@ func (w *Writer) writeDiff(index int, o, t *row, shared, same int) bool {
 		}
 	}
 	oe, te := no-s, nt-s
+	// Every cell of a row as wide as the screen would be sent. The frame's own write of the row is a few bytes more (the erase and
+	// what ends the line) and is whole: what a terminal keeps of the line, after another program wrote to it too, is what the frame
+	// leaves, so no settle write is owed for the row; and the last column is printed in only as the frame prints in it.
+	if te == nt && t.width == w.cols {
+		return false
+	}
 	// The cells after the written ones stay where they are only if those are as wide as what they replace in every terminal.
 	if !uncertainAlike(o, oe, t, te, p) {
 		return false
@@ -444,7 +452,8 @@ func (w *Writer) writeDiff(index int, o, t *row, shared, same int) bool {
 		last := t.cells[te-1]
 		w.out = append(w.out, t.line[:last.end()]...)
 		w.aPen = t.pens[last.pen()]
-		w.aCol = min(last.col()+last.width(), w.cols-1)
+		// Short of the last column: a row that reaches it has a cell after these, or was written whole (above).
+		w.aCol = last.col() + last.width()
 		if t.uncertain < te {
 			w.aCurKnown = false
 		}

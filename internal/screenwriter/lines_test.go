@@ -297,7 +297,9 @@ func randomFrames(t *testing.T, images bool) {
 			}
 		}
 	}
-	if inPlace < frames/10 || whole < frames/10 {
+	// The rows are as wide as the screen: one that changes through its last cell (more text, or other blanks after it) is written
+	// whole, so the rows written in place are those whose text changed without its length.
+	if inPlace < frames/30 || whole < frames/10 {
 		t.Errorf("of %d frames' rows the writer wrote %d in place and %d whole: the frames do not exercise both", frames, inPlace, whole)
 	}
 	if images && (drawn < 300 || covered < 300 || closed < 300) {
@@ -330,9 +332,11 @@ func TestAClusterOfUncertainWidthKeepsItsPlace(t *testing.T) {
 }
 
 // Every other way a row changes keeps the rule for writing it in place, or makes the writer forget the row: after each of them
-// the next frames leave the lines the renderers' bytes leave, and a forgotten row is written whole. A row known to be blank, after
-// a repaint or scrolled in, is written in place: the frame's erase of it frees nothing. A row written while the pen is not known
-// (the first after another size or after the alternate screen is entered again) is written as the frame wrote it and stays unknown.
+// the next frames leave the lines the renderers' bytes leave, and a forgotten row is written whole. The rows are padded with
+// blanks to the screen's width, as the renderers write them: one that gets text on a blank row, or more text, changes through its
+// last cell and is written whole; one whose text changes without getting longer is written in place. A row written while the pen
+// is not known (the first after another size or after the alternate screen is entered again) is written as the frame wrote it and
+// stays unknown.
 //
 // An image's rows under an overlay: the frame that draws an image, the one that puts an overlay over its rows and the one that
 // draws it again when the overlay is closed are sent as they came (kittyFrame, itermFrame: the frames the alternate screen writes
@@ -387,84 +391,84 @@ func TestEveryChangeOfARowKeepsItsLineOrForgetsTheRow(t *testing.T) {
 		steps []step
 	}{
 		{"scroll", []step{
-			{frame(line(2, pad("one", 20)), line(3, pad("a long line here", 20)), line(5, pad("x", 20))), 0},
+			{frame(line(2, pad("one", 20)), line(3, pad("a long line here", 20)), line(5, pad("x", 20))), 3},
 			// The region scrolls up: the lines move with the rows, and the row scrolled in is a blank one.
-			{frame("\x1b[2;5r"+at(5, 1)+"\n\x1b[r", line(5, pad("new", 20))), 0},
-			{frame(line(2, pad("a long line here!", 20))), 0},
-			{frame(line(4, pad("xy", 20))), 0},
+			{frame("\x1b[2;5r"+at(5, 1)+"\n\x1b[r", line(5, pad("new", 20))), 1},
+			{frame(line(2, pad("a long line HERE", 20))), 0},
+			{frame(line(4, pad("y", 20))), 0},
 			{frame(line(2, pad("a", 20))), 1},
-			{frame("\x1b[2;5r"+at(2, 1)+"\x1bM\x1b[r", line(2, pad("top", 20))), 0},
-			{frame(line(3, pad("ab", 20))), 0},
-			{frame(line(5, pad("xyz", 20)), line(2, pad("t", 20))), 1},
+			{frame("\x1b[2;5r"+at(2, 1)+"\x1bM\x1b[r", line(2, pad("top", 20))), 1},
+			{frame(line(3, pad("b", 20))), 0},
+			{frame(line(5, pad("z", 20)), line(2, pad("t", 20))), 1},
 		}},
 		{"erase under a pen", []step{
-			{frame(line(2, pad("two", 20)), line(3, pad("three", 20))), 0},
+			{frame(line(2, pad("two", 20)), line(3, pad("three", 20))), 2},
 			// Row 2's line ends under a background: row 3 is erased under it, and the writer does not know the row any more.
 			{frame(at(2, 1)+erase+"\x1b[44mblue", line(3, pad("three", 20))), 2},
 			{frame(line(3, pad("three!", 20))), 1},
-			{frame(line(3, pad("three!!", 20))), 0},
+			{frame(line(3, pad("three?", 20))), 0},
 			{frame(line(2, pad("two", 20))), 1},
 		}},
 		{"resize", []step{
-			{frame(line(2, pad("two", 20)), line(3, pad("three", 20))), 0},
-			{frame(line(2, pad("two!", 20))), 0},
+			{frame(line(2, pad("two", 20)), line(3, pad("three", 20))), 2},
+			{frame(line(2, pad("tWo", 20))), 0},
 			{"resize", 0},
-			{frame("\x1b[2J", line(2, pad("two!", 30)), line(3, pad("three", 30))), -1},
+			{frame("\x1b[2J", line(2, pad("tWo", 30)), line(3, pad("three", 30))), -1},
 			// The repaint wrote row 2 while the pen was not known: the row is written whole once more. Row 3 is known and shows the line.
-			{frame(line(2, pad("two!", 30)), line(3, pad("three", 30))), 1},
-			{frame(line(2, pad("two!!", 30))), 0},
+			{frame(line(2, pad("tWo", 30)), line(3, pad("three", 30))), 1},
+			{frame(line(2, pad("tWO", 30))), 0},
 			{frame(line(2, pad("t", 30))), 1},
 		}},
 		{"alternate screen", []step{
-			{frame(line(2, pad("two", 20)), line(3, pad("three", 20))), 0},
+			{frame(line(2, pad("two", 20)), line(3, pad("three", 20))), 2},
 			{"\x1b[?1049l", -1},
 			{"\x1b[?1049h\x1b[?7l", -1},
 			// The first row is written while the pen is not known, and whole once more; then in place.
 			{frame(line(2, pad("two!", 20))), 1},
 			{frame(line(2, pad("two!!", 20))), 1},
-			{frame(line(2, pad("two!!!", 20))), 0},
+			{frame(line(2, pad("two!?", 20))), 0},
 		}},
 		{"settle write", []step{
-			{frame(line(2, pad("count 1", 20)), line(3, pad("three", 20))), 0},
+			{frame(line(2, pad("count 1", 20)), line(3, pad("three", 20))), 2},
 			{frame(line(2, pad("count 2", 20)), line(3, pad("three", 20))), 0},
-			{frame(line(2, pad("count 2 and more", 20))), 0},
+			{frame(line(2, pad("count 3", 20))), 0},
 			// The settle write writes rows 2 and 3 whole, as the frames wrote them: the lines they have already.
 			{"settle", 2},
-			{frame(line(2, pad("count 3 and more", 20))), 0},
+			{frame(line(2, pad("count 4", 20))), 0},
 			{frame(line(2, pad("count", 20))), 1},
 			{"settle", 0},
 		}},
 		{"a Kitty image's rows under an overlay", []step{
-			{frame(line(1, pad("top", 20)), line(3, pad("side", 20)), line(5, pad("after", 20))), 0},
+			{frame(line(1, pad("top", 20)), line(3, pad("side", 20)), line(5, pad("after", 20))), 3},
 			{kittyFrame(true, "side", "", "after"), -1},
 			// No row is known after the image's frame. Row 3, which the image covers beside its text, is written as the frame
 			// wrote it while the pen is not known: its erase takes the image from the row's cells, as the frame's does. It is
 			// written whole once more, and then in place.
 			{frame(line(3, pad("side!", 20))), 1},
 			{frame(line(3, pad("side!!", 20))), 1},
-			{frame(line(3, pad("side!!!", 20))), 0},
+			{frame(line(3, pad("side!?", 20))), 0},
 			// The overlay over the image's rows: the placements go, and no row is known again.
 			{kittyFrame(false, "side!!!", " PANEL", "after"), -1},
 			{frame(line(1, pad("top", 20)), line(4, pad(" PANEL!", 20))), 2},
-			{frame(line(4, pad(" PANEL!!", 20))), 0},
+			{frame(line(4, pad(" PANEL?", 20))), 0},
 			// The overlay is closed and the image drawn again.
 			{kittyFrame(true, "side!!!", "", "after"), -1},
 			{frame(line(1, pad("top", 20)), line(3, pad("side!!!!", 20))), 2},
-			{frame(line(3, pad("side!!!!!", 20))), 0},
+			{frame(line(3, pad("side!!!?", 20))), 0},
 		}},
 		{"an iTerm2 image's rows under an overlay", []step{
-			{frame(line(1, pad("top", 20)), line(3, pad("side", 20)), line(5, pad("after", 20))), 0},
+			{frame(line(1, pad("top", 20)), line(3, pad("side", 20)), line(5, pad("after", 20))), 3},
 			{itermFrame(true, "side", "", "after"), -1},
 			{frame(line(3, pad("side!", 20))), 1},
 			{frame(line(3, pad("side!!", 20))), 1},
-			{frame(line(3, pad("side!!!", 20))), 0},
+			{frame(line(3, pad("side!?", 20))), 0},
 			// The overlay's frame holds no image: it is a repaint, which erases the screen and leaves every row known.
 			{itermFrame(false, "side!!!", " PANEL", "after"), -1},
-			{frame(line(1, pad("top", 20)), line(4, pad(" PANEL!", 20))), 0},
-			{frame(line(4, pad(" PANEL!!", 20))), 0},
+			{frame(line(1, pad("top", 20)), line(4, pad(" PANEl", 20))), 0},
+			{frame(line(4, pad(" PANeL", 20))), 0},
 			{itermFrame(true, "side!!!", "", "after"), -1},
 			{frame(line(1, pad("top", 20)), line(3, pad("side!!!!", 20))), 2},
-			{frame(line(3, pad("side!!!!!", 20))), 0},
+			{frame(line(3, pad("side!!!?", 20))), 0},
 		}},
 	} {
 		t.Run(c.name, func(t *testing.T) {

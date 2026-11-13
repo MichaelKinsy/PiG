@@ -26,8 +26,9 @@ type Model struct {
 	// Segment is the first cluster of s and the columns it takes.
 	Segment func(s string) (cluster string, width int)
 	// NoHome is a terminal that leaves the cursor where it is when the scroll region is set (pyte); PastEdge one that keeps a cursor
-	// position past the last column as it was addressed (wezterm-term).
-	NoHome, PastEdge bool
+	// position past the last column as it was addressed (wezterm-term); NoBCE one that erases to the default background whatever the
+	// pen's is (a terminal without background-colour-erase). None of Models is one: a test that wants one makes it.
+	NoHome, PastEdge, NoBCE bool
 }
 
 // Models are the renderers' own widths, UAX 29 clusters, and a terminal without clusters that gives every code point its wcwidth, with
@@ -192,8 +193,12 @@ func (v *Terminal) erase(r, from, to int) {
 	if from < to && from < v.cols {
 		v.unwide(r, from)
 	}
+	erased := cell{pen: pen{bg: v.pen.bg}}
+	if v.model.NoBCE {
+		erased = cell{}
+	}
 	for c := from; c < to && c < v.cols; c++ {
-		v.grid[r][c] = cell{pen: pen{bg: v.pen.bg}}
+		v.grid[r][c] = erased
 	}
 	switch {
 	case from == 0 && to >= v.cols:
