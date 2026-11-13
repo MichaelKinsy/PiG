@@ -32142,6 +32142,134 @@
       ]
     },
     {
+      "id": "BF-8e93ec8",
+      "title": "A view's `title`, its `key` and the `name` of a key binding could hold text that breaks the line a client…",
+      "symptom": "A view's `title`, its `key` and the `name` of a key binding could hold text that breaks the line a client writes it on or that passes for another label.",
+      "rootCause": "The key \"+\". ParseBindingKey refused \"+\" because it cut the id at every \"+\". It now reads the modifiers as Pi's parseKeyId does, so \"+\" and \"ctrl++\" are keys, and shift with it is refused like shift with any symbol.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A view's `title`, its `key` and the `name` of a key binding could hold text that breaks the line a client writes it on or that passes for another label. The host now answers `invalid` for one that holds a control character, a line separator or a control that reorders the text around it (U+202A to U+202E and U+2066 to U+2069). The direction marks of Arabic and Hebrew text (U+200E, U+200F, U+061C) are accepted.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8e93ec85d6",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/uiview/bindings_test.go::TestBindingsAccepted",
+        "coding/uiview/bindings_test.go::TestBindingsRefused",
+        "coding/uiview/label_test.go::TestLabelsHoldNoControlThatBreaksOrReordersALine",
+        "coding/uiview/typed_content_test.go::TestTypedContentIsCheckedLikeARecordOffTheWire",
+        "internal/codingagent/view_client_bindings_test.go::TestTerminalViewClientGivesNoBindingAKeyOfAReservedAction",
+        "internal/codingagent/view_client_bindings_test.go::TestViewClientAHandlerThatNeverAnswersHoldsNoKey",
+        "internal/codingagent/view_client_bindings_test.go::TestViewClientBindingKeyTable",
+        "internal/codingagent/view_client_bindings_test.go::TestViewClientDrawsAHintRowForTheFocusedMount",
+        "internal/codingagent/view_client_bindings_test.go::TestViewClientReservedActionsAreTheRowsOfTheReservedTable",
+        "internal/codingagent/view_client_bindings_test.go::TestViewClientReservedActionsKeepTheUsersKeys",
+        "test/extension-conformance/ui_view_bindings_test.go::TestConformance_UIViewBindings"
+      ]
+    },
+    {
+      "id": "BF-8e93ec8-2",
+      "title": "An extension can bind `+`: `+` and `ctrl++` are key ids, as in Pi",
+      "symptom": "An extension can bind `+`: `+` and `ctrl++` are key ids, as in Pi.",
+      "rootCause": "The key \"+\". ParseBindingKey refused \"+\" because it cut the id at every \"+\". It now reads the modifiers as Pi's parseKeyId does, so \"+\" and \"ctrl++\" are keys, and shift with it is refused like shift with any symbol.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension can bind `+`: `+` and `ctrl++` are key ids, as in Pi. The host refused them.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8e93ec85d6",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/uiview/bindings_test.go::TestBindingsAccepted",
+        "coding/uiview/bindings_test.go::TestBindingsRefused",
+        "coding/uiview/label_test.go::TestLabelsHoldNoControlThatBreaksOrReordersALine",
+        "coding/uiview/typed_content_test.go::TestTypedContentIsCheckedLikeARecordOffTheWire",
+        "internal/codingagent/view_client_bindings_test.go::TestTerminalViewClientGivesNoBindingAKeyOfAReservedAction",
+        "internal/codingagent/view_client_bindings_test.go::TestViewClientAHandlerThatNeverAnswersHoldsNoKey",
+        "internal/codingagent/view_client_bindings_test.go::TestViewClientBindingKeyTable",
+        "internal/codingagent/view_client_bindings_test.go::TestViewClientDrawsAHintRowForTheFocusedMount",
+        "internal/codingagent/view_client_bindings_test.go::TestViewClientReservedActionsAreTheRowsOfTheReservedTable",
+        "internal/codingagent/view_client_bindings_test.go::TestViewClientReservedActionsKeepTheUsersKeys",
+        "test/extension-conformance/ui_view_bindings_test.go::TestConformance_UIViewBindings"
+      ]
+    },
+    {
+      "id": "BF-8e93ec8-3",
+      "title": "In the terminal, a key your keybindings give to interrupt, clear, exit or suspend no longer raises an…",
+      "symptom": "In the terminal, a key your keybindings give to interrupt, clear, exit or suspend no longer raises an extension's binding, also after you change `keybindings.json` and run `/reload`.",
+      "rootCause": "The key \"+\". ParseBindingKey refused \"+\" because it cut the id at every \"+\". It now reads the modifiers as Pi's parseKeyId does, so \"+\" and \"ctrl++\" are keys, and shift with it is refused like shift with any symbol.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "In the terminal, a key your keybindings give to interrupt, clear, exit or suspend no longer raises an extension's binding, also after you change `keybindings.json` and run `/reload`. The extension reads one notice for such a binding.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8e93ec85d6",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/uiview/bindings_test.go::TestBindingsAccepted",
+        "coding/uiview/bindings_test.go::TestBindingsRefused",
+        "coding/uiview/label_test.go::TestLabelsHoldNoControlThatBreaksOrReordersALine",
+        "coding/uiview/typed_content_test.go::TestTypedContentIsCheckedLikeARecordOffTheWire",
+        "internal/codingagent/view_client_bindings_test.go::TestTerminalViewClientGivesNoBindingAKeyOfAReservedAction",
+        "internal/codingagent/view_client_bindings_test.go::TestViewClientAHandlerThatNeverAnswersHoldsNoKey",
+        "internal/codingagent/view_client_bindings_test.go::TestViewClientBindingKeyTable",
+        "internal/codingagent/view_client_bindings_test.go::TestViewClientDrawsAHintRowForTheFocusedMount",
+        "internal/codingagent/view_client_bindings_test.go::TestViewClientReservedActionsAreTheRowsOfTheReservedTable",
+        "internal/codingagent/view_client_bindings_test.go::TestViewClientReservedActionsKeepTheUsersKeys",
+        "test/extension-conformance/ui_view_bindings_test.go::TestConformance_UIViewBindings"
+      ]
+    },
+    {
+      "id": "BF-8e93ec8-4",
+      "title": "A Go program that mounts a view through `uiview.Registry` with a record it built itself is now held to the…",
+      "symptom": "A Go program that mounts a view through `uiview.Registry` with a record it built itself is now held to the same checks as an extension: `Registry.Mount` and `Registry.Update` answer `invalid` for what `DecodeMount` and `DecodeUpdate` refuse.",
+      "rootCause": "The key \"+\". ParseBindingKey refused \"+\" because it cut the id at every \"+\". It now reads the modifiers as Pi's parseKeyId does, so \"+\" and \"ctrl++\" are keys, and shift with it is refused like shift with any symbol.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Go program that mounts a view through `uiview.Registry` with a record it built itself is now held to the same checks as an extension: `Registry.Mount` and `Registry.Update` answer `invalid` for what `DecodeMount` and `DecodeUpdate` refuse.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8e93ec85d6",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/uiview/bindings_test.go::TestBindingsAccepted",
+        "coding/uiview/bindings_test.go::TestBindingsRefused",
+        "coding/uiview/label_test.go::TestLabelsHoldNoControlThatBreaksOrReordersALine",
+        "coding/uiview/typed_content_test.go::TestTypedContentIsCheckedLikeARecordOffTheWire",
+        "internal/codingagent/view_client_bindings_test.go::TestTerminalViewClientGivesNoBindingAKeyOfAReservedAction",
+        "internal/codingagent/view_client_bindings_test.go::TestViewClientAHandlerThatNeverAnswersHoldsNoKey",
+        "internal/codingagent/view_client_bindings_test.go::TestViewClientBindingKeyTable",
+        "internal/codingagent/view_client_bindings_test.go::TestViewClientDrawsAHintRowForTheFocusedMount",
+        "internal/codingagent/view_client_bindings_test.go::TestViewClientReservedActionsAreTheRowsOfTheReservedTable",
+        "internal/codingagent/view_client_bindings_test.go::TestViewClientReservedActionsKeepTheUsersKeys",
+        "test/extension-conformance/ui_view_bindings_test.go::TestConformance_UIViewBindings"
+      ]
+    },
+    {
       "id": "BF-8eb1202",
       "title": "An OpenAI Chat Completions chunk with a member of an unexpected type (a number for `delta.content`…",
       "symptom": "An OpenAI Chat Completions chunk with a member of an unexpected type (a number for `delta.content`, `delta.tool_calls` or `function.arguments`, a non-object `choices` or `delta`, a non-string `delta.role` or tool call `type`, a falsy `custom`, a tool call element that is not an object) is read as Pi's JavaScript reads it: the member is ignored, tool-call arguments append their string form, a `tool_calls` string makes one empty tool call per character, any other `tool_calls` value that is not an array ends the turn with `choice.delta.tool_calls is not iterable`, non-empty array content (or an object with a positive `length`) appends its string form, a truthy `finish_reason` that is not a string ends the turn with `Provider finish_reason: \u003cits string form\u003e`, a usage that is not an object resets the counts to 0, a falsy count or a details member that is not an object reads as 0, and a prompt count that is not a number counts as its Number() when that is an integer.",
@@ -60123,6 +60251,28 @@
         "chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberKeepsACommitMadeWhileTheObjectOpens",
         "chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberOfTenThousandDocumentsIsCopiedBeforeTheObjectIsLive",
         "chord/nextnode/plugins/plugins_node_extract_test.go::TestTheExtractedRuntimeIsNamedByEveryFileOfTheRuntimeBesideTheManifest"
+      ]
+    },
+    {
+      "id": "BF-fc028ee",
+      "title": "The reference web client no longer erases what the user is typing when a view is updated: an `input` or…",
+      "symptom": "The reference web client no longer erases what the user is typing when a view is updated: an `input` or `editor` whose `id` is in the next view keeps its text, selection and the focus, unless the extension changed its `value`.",
+      "rootCause": "The page rebuilt a mount on every changed digest, so an update of one node (a new mail in the list) erased a half-typed reply in another and could drop the focus. A mount now keeps its element and the new view is morphed into the drawn one: a node of the same kind under the same id keeps its element, so an input or editor keeps its text, selection and the focus; a value the extension changes still replaces the text; a text node that moved to another parent hands its text and the focus to its new element. Nodes with an id are matched by id only, so a node that is gone never lends its text to another id.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The reference web client no longer erases what the user is typing when a view is updated: an `input` or `editor` whose `id` is in the next view keeps its text, selection and the focus, unless the extension changed its `value`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "fc028ee6d6",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "examples/ui-view-web/bridge_test.go::TestPageKeepsTypedTextAcrossUpdates"
       ]
     },
     {

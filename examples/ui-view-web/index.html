@@ -6,8 +6,9 @@
 <title>PiG plugin views</title>
 <style>
   :root { color-scheme: light dark; font: 15px/1.45 system-ui, sans-serif; }
-  body { margin: 0; display: flex; justify-content: center; }
-  main { width: min(52rem, 100%); min-height: 100vh; display: flex; flex-direction: column; gap: .5rem; padding: .75rem; box-sizing: border-box; }
+  body { margin: 0; display: flex; justify-content: center; flex-wrap: wrap; }
+  [hidden] { display: none !important; }
+  main { flex: 1 1 24rem; max-width: 52rem; min-height: 100vh; display: flex; flex-direction: column; gap: .5rem; padding: .75rem; box-sizing: border-box; }
   section[data-slot] { display: flex; flex-direction: column; gap: .5rem; }
   section[data-slot]:empty { display: none; }
   #chat { flex: 1; display: flex; flex-direction: column; gap: .5rem; overflow-y: auto; }
@@ -15,24 +16,53 @@
   .line.user { align-self: flex-end; background: color-mix(in srgb, Highlight 25%, Canvas); }
   .line.note { font-size: .85em; opacity: .75; }
   .mount { border: 1px solid color-mix(in srgb, CanvasText 25%, Canvas); border-radius: .5rem; padding: .6rem; }
+  /* The panels stand beside the chat: side by side, or one at a time under their tabs (client.js: showPanels). */
+  #panels { flex: 1 1 28rem; min-width: 0; display: flex; flex-direction: column; gap: .5rem; padding: .75rem; box-sizing: border-box; }
+  #panels > nav { display: flex; gap: .5rem; align-items: center; }
+  #panels [role=tablist] { flex: 1; display: flex; gap: .25rem; flex-wrap: wrap; }
+  #panels [role=tab] { border: 1px solid var(--pig-border); border-radius: .4rem; background: none; padding: .15rem .6rem; }
+  #panels [role=tab][aria-selected=true] { background: var(--pig-selectedBg); }
+  #panels > section { flex-direction: row; flex-wrap: wrap; align-items: flex-start; }
+  #panels .mount { flex: 1 1 12rem; min-width: 0; box-sizing: border-box; }
+  #panels .mount.behind { display: none; }
   .mount > header { display: flex; gap: .5rem; align-items: center; font-size: .8em; opacity: .75; margin-bottom: .4rem; }
   .mount > header span { flex: 1; }
   .mount > footer { font-size: .8em; opacity: .75; margin-top: .4rem; min-height: 1.2em; }
-  .hstack { display: flex; flex-direction: row; gap: .5rem; align-items: baseline; }
-  .vstack, .container, .box { display: flex; flex-direction: column; gap: .25rem; }
-  .box { padding: .35rem .6rem; border-radius: .35rem; background: color-mix(in srgb, CanvasText 5%, Canvas); }
-  .text, .lines { white-space: pre-wrap; margin: 0; font: inherit; }
+  /* The page's colours for the theme tokens a view names (client.js: colour); a view's theme overrides them for itself. */
+  :root {
+    --pig-text: CanvasText; --pig-accent: #0a7ea4; --pig-muted: color-mix(in srgb, CanvasText 65%, Canvas); --pig-dim: color-mix(in srgb, CanvasText 45%, Canvas);
+    --pig-border: color-mix(in srgb, CanvasText 30%, Canvas); --pig-borderAccent: var(--pig-accent); --pig-borderMuted: color-mix(in srgb, CanvasText 15%, Canvas);
+    --pig-success: #2e9e4f; --pig-warning: #c98a00; --pig-error: #d1344b;
+    --pig-selectedBg: color-mix(in srgb, Highlight 30%, Canvas); --pig-customMessageBg: color-mix(in srgb, #8250df 16%, Canvas);
+    --pig-userMessageBg: color-mix(in srgb, CanvasText 8%, Canvas); --pig-toolPendingBg: color-mix(in srgb, CanvasText 6%, Canvas);
+    --pig-toolSuccessBg: color-mix(in srgb, #2e9e4f 14%, Canvas); --pig-toolErrorBg: color-mix(in srgb, #d1344b 14%, Canvas);
+  }
+  .view { color: var(--pig-text); }
+  .view a { color: var(--pig-accent); }
+  .markdown > :first-child { margin-top: 0; }
+  .markdown > :last-child { margin-bottom: 0; }
+  .markdown pre, .markdown code { font-family: ui-monospace, monospace; white-space: pre-wrap; }
+  .markdown blockquote { margin-inline: 0; padding-inline-start: 1ch; border-inline-start: 2px solid var(--pig-borderMuted); white-space: pre-wrap; }
+  .markdown p { white-space: pre-wrap; }
+  /* A cell of a view: 1ch wide, one line high (client.js: cols, rows). */
+  .view { --col: 1ch; --row: 1.45em; }
+  .hstack { display: flex; flex-direction: row; }
+  .vstack { display: flex; flex-direction: column; }
+  .view * { box-sizing: border-box; }
+  .text, .lines { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; font: inherit; }
+  .text.truncated { white-space: pre; overflow: hidden; text-overflow: ellipsis; }
   .lines { font-family: ui-monospace, monospace; }
-  .rule { border: 0; border-top: 1px solid color-mix(in srgb, CanvasText 30%, Canvas); width: 100%; }
+  .rule { border: 0; border-top: 1px solid var(--pig-border); width: 100%; margin: calc(var(--row) / 2) 0; }
   [role=listbox] { display: flex; flex-direction: column; border: 1px solid color-mix(in srgb, CanvasText 25%, Canvas); border-radius: .35rem; }
   [role=option] { padding: .2rem .5rem; cursor: pointer; display: flex; gap: .75rem; }
   [role=option] small { opacity: .7; }
-  [role=option][aria-selected=true] { background: color-mix(in srgb, Highlight 30%, Canvas); }
+  [role=option][aria-selected=true] { background: var(--pig-selectedBg); }
   .mouse-region { cursor: pointer; border: 1px dashed color-mix(in srgb, CanvasText 35%, Canvas); border-radius: .35rem; padding: .3rem .5rem; }
   .scroll-view { max-height: 9rem; overflow-y: auto; border: 1px solid color-mix(in srgb, CanvasText 20%, Canvas); border-radius: .35rem; padding: .3rem .5rem; }
   .undrawn { font-style: italic; opacity: .6; }
   :focus-visible { outline: 2px solid Highlight; outline-offset: 1px; }
   input, textarea, select, button { font: inherit; }
+  .view input, .view textarea { max-width: 100%; }
   textarea { width: 100%; box-sizing: border-box; min-height: 4rem; }
   form.arg { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; margin-top: .4rem; }
   section[data-slot=notify] { position: fixed; top: .75rem; right: .75rem; width: 18rem; }
@@ -50,7 +80,6 @@
     <section data-slot="message"></section>
     <section data-slot="entry"></section>
     <section data-slot="tool-card"></section>
-    <section data-slot="panel"></section>
   </div>
   <section data-slot="widget-above"></section>
   <form id="prompt"><input name="message" autocomplete="off" aria-label="Message" placeholder="Message, or a /command of an extension"><button>Send</button></form>
@@ -60,6 +89,10 @@
   <section data-slot="footer"></section>
   <div id="state" role="status">connecting</div>
 </main>
+<aside id="panels" aria-label="Panels" hidden>
+  <nav><div role="tablist" aria-label="Panels"></div><button id="side" aria-pressed="true">Side by side</button></nav>
+  <section data-slot="panel"></section>
+</aside>
 <section data-slot="notify"></section>
 <section data-slot="dialog"></section>
 <section data-slot="overlay"></section>

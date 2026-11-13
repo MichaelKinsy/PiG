@@ -8,6 +8,10 @@
 //   node bridge.mjs [--port <n>] --connect <socket, or the directory it is in> [--wait <seconds>]
 //       starts no pig: every page is one more client of the view endpoint of a running interactive pig, beside its
 //       terminal (Piglet keys `viewClient: terminal` and `viewEndpoint: socket`).
+//   --theme <directory>, with either form
+//       gives the page a presentation of the caller's: the directory's theme.css is linked from the page, and the
+//       files theme.css names (images, fonts) are served from the same directory under /theme/. Without it the page
+//       is index.html as it is.
 //
 // It listens on 127.0.0.1 only and prints the page's address, which carries a token every request must repeat.
 import { spawn } from "node:child_process";
@@ -43,6 +47,15 @@ const target = argv.includes("--connect") ? resolve(option("--connect") ?? "") :
 const waitMs = Number(option("--wait", "60")) * 1000;
 if (argv.includes("--connect") && (option("--connect") === undefined || rest.length > 0 || !(waitMs >= 0))) {
   console.error("usage: node bridge.mjs --connect <socket, or the directory it is in> [--wait <seconds>] [--port <n>]\n--connect starts no pig, so nothing follows `--`");
+  process.exit(2);
+}
+// A theme is a directory with a theme.css. Its files are served by name, with the type of their extension; a name
+// with a separator, a leading dot or another extension is not found, so nothing outside the directory is read.
+const theme = argv.includes("--theme") ? resolve(option("--theme") ?? "") : "";
+const THEME_TYPES = { css: "text/css; charset=utf-8", svg: "image/svg+xml", png: "image/png", woff2: "font/woff2", json: "application/json" };
+const THEME_LINK = '<link rel="stylesheet" href="theme/theme.css">\n';
+if (argv.includes("--theme") && (option("--theme") === undefined || !statSync(join(theme, "theme.css"), { throwIfNoEntry: false })?.isFile())) {
+  console.error("usage: node bridge.mjs --theme <directory> ...\nthe directory must hold a theme.css");
   process.exit(2);
 }
 const token = randomBytes(16).toString("hex");
@@ -283,8 +296,17 @@ const server = createServer(async (req, res) => {
   if (!own(req)) return refuse(res, 403, "not this page's request");
   if (req.method === "GET" && files[url.pathname]) {
     const [name, type] = files[url.pathname];
-    const body = await readFile(fileURLToPath(new URL(name, import.meta.url)));
+    let body = await readFile(fileURLToPath(new URL(name, import.meta.url)));
+    // The theme's stylesheet comes last in the head, so its rules follow the page's own.
+    if (theme && name === "index.html") body = body.toString("utf8").replace("</head>", `${THEME_LINK}</head>`);
     res.writeHead(200, { "content-type": type, "cache-control": "no-store" });
+    return res.end(body);
+  }
+  if (req.method === "GET" && theme && url.pathname.startsWith("/theme/")) {
+    const name = /^\/theme\/([A-Za-z0-9][A-Za-z0-9_-]*(?:\.[A-Za-z0-9_-]+)*)\.([a-z0-9]+)$/.exec(url.pathname);
+    const body = name && THEME_TYPES[name[2]] ? await readFile(join(theme, `${name[1]}.${name[2]}`)).catch(() => null) : null;
+    if (!body) return refuse(res, 404, "not found");
+    res.writeHead(200, { "content-type": THEME_TYPES[name[2]], "cache-control": "no-store" });
     return res.end(body);
   }
   if (url.searchParams.get("token") !== token) return refuse(res, 403, "the token is missing or wrong");

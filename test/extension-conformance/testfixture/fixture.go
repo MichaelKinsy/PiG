@@ -1532,6 +1532,54 @@ func Extension() *sdk.Extension {
 		ctx.Notify(fmt.Sprintf("view-g-state:%s,rev=%d", cur.State, cur.Mount.Rev), "info")
 		return nil
 	})
+	// D614 bindings: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewBindings).
+	// The key and the number come from the test, so a binding the SDK dropped, or one it made up, is not what the host holds.
+	ext.Command("ui_view_bindings", "Mount a view with bindings and probe what the host refuses", func(ctx sdk.Context, args string) error {
+		key, number, _ := strings.Cut(args, " ")
+		n, err := strconv.Atoi(number)
+		if err != nil {
+			return err
+		}
+		content := func(bindings ...sdk.ViewBinding) sdk.ViewContent {
+			return sdk.ViewContent{View: viewText(ctx, "-bind"), Bindings: bindings, Intents: []sdk.ViewIntent{
+				{Name: "fx.go", Arg: sdk.ViewShape{Type: "object", Properties: map[string]sdk.ViewShape{"n": {Type: "integer"}}, Required: []string{"n"}}},
+				{Name: "fx.tap", Arg: sdk.ViewShape{Type: "object"}},
+			}}
+		}
+		goTo := func(key string, n any) sdk.ViewBinding {
+			return sdk.ViewBinding{Key: key, Intent: "fx.go", Arg: map[string]any{"n": n}}
+		}
+		tap := func(key string) sdk.ViewBinding { return sdk.ViewBinding{Key: key, Intent: "fx.tap"} }
+		first := goTo(key, n)
+		first.Name = fmt.Sprintf("Go %d", n)
+		st, err := ctx.MountView(sdk.ViewMount{Key: "bind", Slot: sdk.ViewSlotPanel,
+			ViewContent: content(first, goTo("w", n+1), sdk.ViewBinding{Gesture: "swipe-left", Intent: "fx.tap"})})
+		if err != nil {
+			return err
+		}
+		ctx.Notify("view-b-mounted:"+string(st.State), "info")
+		attempt := func(label string, bindings ...sdk.ViewBinding) {
+			code := "none"
+			if _, err := ctx.UpdateView(sdk.ViewUpdate{Mount: st.Mount, ViewContent: content(bindings...)}); err != nil {
+				code = "error"
+				if ve, ok := errors.AsType[*sdk.ViewError](err); ok {
+					code = string(ve.Code)
+				}
+			}
+			ctx.Notify("view-b-"+label+":"+code, "info")
+		}
+		var many []sdk.ViewBinding
+		for _, c := range "abcdefghijklmnopqrstuvwxyz0123456" {
+			many = append(many, tap(string(c)))
+		}
+		attempt("many", many...)
+		attempt("reserved", tap("shift+tab"))
+		attempt("order", tap("ctrl+shift+p"), tap("shift+ctrl+p"))
+		attempt("gesture", sdk.ViewBinding{Gesture: "pinch", Intent: "fx.tap"})
+		attempt("arg", goTo("a", "x"))
+		attempt("ok", goTo("ctrl+shift+p", n), goTo("shift+ctrl+q", n+1))
+		return nil
+	})
 	ext.OnViewIntent(func(in sdk.ViewIntentInvocation) sdk.ViewIntentResult {
 		switch in.Intent {
 		case "fx.redraw", "fx.foreign":

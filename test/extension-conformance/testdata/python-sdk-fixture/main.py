@@ -2656,6 +2656,40 @@ def new_extension() -> pig_sdk.Extension:
         ctx.notify(f"view-g-state:{cur.state},rev={cur.mount.rev}", "info")
 
     ext.command("ui_view_grid", "Mount a month as a grid and probe the bounds of the grid", view_grid_probe)
+
+    # D614 bindings: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewBindings).
+    def view_bindings_probe(ctx, args):
+        key, number = args.split(" ")
+        n = int(number)
+
+        def content(bindings):
+            intents = [
+                pig_sdk.ViewIntent("fx.go", pig_sdk.ViewShape("object", properties={"n": pig_sdk.ViewShape("integer")}, required=("n",))),
+                pig_sdk.ViewIntent("fx.tap", pig_sdk.ViewShape("object")),
+            ]
+            return {"intents": intents, "bindings": bindings}
+
+        def go_to(key, n):
+            return {"key": key, "intent": "fx.go", "arg": {"n": n}}
+
+        def tap(key):
+            return {"key": key, "intent": "fx.tap"}
+
+        first = {**go_to(key, n), "name": f"Go {n}"}
+        st = ctx.mount_view("bind", "panel", view_text(ctx, "-bind"), **content([first, go_to("w", n + 1), {"gesture": "swipe-left", "intent": "fx.tap"}]))
+        ctx.notify(f"view-b-mounted:{st.state}", "info")
+
+        def attempt(label, bindings):
+            ctx.notify(f"view-b-{label}:{x_code(lambda: ctx.update_view(st.mount, view_text(ctx, '-bind'), **content(bindings)))}", "info")
+
+        attempt("many", [tap(c) for c in "abcdefghijklmnopqrstuvwxyz0123456"])
+        attempt("reserved", [tap("shift+tab")])
+        attempt("order", [tap("ctrl+shift+p"), tap("shift+ctrl+p")])
+        attempt("gesture", [{"gesture": "pinch", "intent": "fx.tap"}])
+        attempt("arg", [go_to("a", "x")])
+        attempt("ok", [go_to("ctrl+shift+p", n), go_to("shift+ctrl+q", n + 1)])
+
+    ext.command("ui_view_bindings", "Mount a view with bindings and probe what the host refuses", view_bindings_probe)
     ext.command("ui_view_extras", "Mount a view with alternatives, a drawing, a11y and focus, and probe the bounds", view_extras_probe)
     ext.command("ui_view_extras_end", "Read the notices of the extras mount and finish it with a result", view_extras_end_probe)
     ext.command("ui_view_abilities", "Report the replicated client abilities", view_abilities_probe)

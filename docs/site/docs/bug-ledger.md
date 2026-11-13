@@ -1173,6 +1173,10 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-8e3613d](#bf-8e3613d) | Text typed over an extension's autocomplete provider and followed at once by Enter no longer skips the menu… | A Pi defect that PiG fixed first | All platforms | 0.7.0 |
 | [BF-8e49dba](#bf-8e49dba) | Tooling: `make pin-bump` retires the carried oracle as it is built now | PiG's own defect | All platforms | Unreleased |
 | [BF-8e70eff](#bf-8e70eff) | fix(chord/nextnode/workers): the channel refuses a record over the limit | PiG's own defect | All platforms | Unreleased |
+| [BF-8e93ec8](#bf-8e93ec8) | A view's `title`, its `key` and the `name` of a key binding could hold text that breaks the line a client… | PiG's own defect | All platforms | Unreleased |
+| [BF-8e93ec8-2](#bf-8e93ec8-2) | An extension can bind `+`: `+` and `ctrl++` are key ids, as in Pi | PiG's own defect | All platforms | Unreleased |
+| [BF-8e93ec8-3](#bf-8e93ec8-3) | In the terminal, a key your keybindings give to interrupt, clear, exit or suspend no longer raises an… | PiG's own defect | All platforms | Unreleased |
+| [BF-8e93ec8-4](#bf-8e93ec8-4) | A Go program that mounts a view through `uiview.Registry` with a record it built itself is now held to the… | PiG's own defect | All platforms | Unreleased |
 | [BF-8eb1202](#bf-8eb1202) | An OpenAI Chat Completions chunk with a member of an unexpected type (a number for `delta.content`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8f241ca](#bf-8f241ca) | A response stream dropped mid-run reports `terminated: other side closed (UND_ERR_SOCKET)` on… | PiG's own defect | All platforms | Unreleased |
 | [BF-8f45099](#bf-8f45099) | Compaction summaries, branch summaries and bug reports omit thinking blocks (Pi 15e7bdc1, Pi #9602): replayed… | PiG's own defect | All platforms | 0.5.0 |
@@ -2125,6 +2129,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-fbd3640](#bf-fbd3640) | The legacy credential migration writes `auth.json` and the rewritten `settings.json` with the key order Pi… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-fbd59e3](#bf-fbd59e3) | `chord/nextnode/plugins`, `chord/nextnode/app` (Pi `app.test.ts` "round-trips a worker's documents, tables… | PiG's own defect | All platforms | Unreleased |
 | [BF-fbd59e3-2](#bf-fbd59e3-2) | `chord/next/surfaces` (Pi `translations.ts` `canonicalLocale`, `language.ts` `directionOf`): a locale tag is… | PiG's own defect | All platforms | Unreleased |
+| [BF-fc028ee](#bf-fc028ee) | The reference web client no longer erases what the user is typing when a view is updated: an `input` or… | PiG's own defect | All platforms | Unreleased |
 | [BF-fc1703f](#bf-fc1703f) | Durable's `tool_search` and Code Mode `searchTools()` rank like the coding agent's tool search: a query that… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-fc5baaf](#bf-fc5baaf) | `pi.exec`'s `timeout` starts once the command has been spawned, as in Pi, so time spent finding and starting… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-fc749ad](#bf-fc749ad) | A task list item whose first line looks like a heading, quote, rule, bullet, fence, table row or HTML tag… | PiG's own defect | All platforms | 0.5.0 |
@@ -18111,6 +18116,62 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `8e70effabd` (2026-10-31)
 - **Tests:** `chord/nextnode/workers/workers_process_test.go::TestAChannelRefusesARecordOverTheLimitAndStaysUsable`
 
+### BF-8e93ec8
+
+**A view's `title`, its `key` and the `name` of a key binding could hold text that breaks the line a client…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A view's `title`, its `key` and the `name` of a key binding could hold text that breaks the line a client writes it on or that passes for another label.
+- **Root cause:** The key "+". ParseBindingKey refused "+" because it cut the id at every "+". It now reads the modifiers as Pi's parseKeyId does, so "+" and "ctrl++" are keys, and shift with it is refused like shift with any symbol.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8e93ec85d6` (2026-11-12)
+- **Tests:** `coding/uiview/bindings_test.go::TestBindingsAccepted`, `coding/uiview/bindings_test.go::TestBindingsRefused`, `coding/uiview/label_test.go::TestLabelsHoldNoControlThatBreaksOrReordersALine`, `coding/uiview/typed_content_test.go::TestTypedContentIsCheckedLikeARecordOffTheWire`, `internal/codingagent/view_client_bindings_test.go::TestTerminalViewClientGivesNoBindingAKeyOfAReservedAction`, `internal/codingagent/view_client_bindings_test.go::TestViewClientAHandlerThatNeverAnswersHoldsNoKey`, `internal/codingagent/view_client_bindings_test.go::TestViewClientBindingKeyTable`, `internal/codingagent/view_client_bindings_test.go::TestViewClientDrawsAHintRowForTheFocusedMount` and 3 more in docs/bug-ledger.json
+- **Release note:** A view's `title`, its `key` and the `name` of a key binding could hold text that breaks the line a client writes it on or that passes for another label. The host now answers `invalid` for one that holds a control character, a line separator or a control that reorders the text around it (U+202A to U+202E and U+2066 to U+2069). The direction marks of Arabic and Hebrew text (U+200E, U+200F, U+061C) are accepted.
+
+### BF-8e93ec8-2
+
+**An extension can bind `+`: `+` and `ctrl++` are key ids, as in Pi**
+
+- **Source:** PiG's own defect
+- **Symptom:** An extension can bind `+`: `+` and `ctrl++` are key ids, as in Pi.
+- **Root cause:** The key "+". ParseBindingKey refused "+" because it cut the id at every "+". It now reads the modifiers as Pi's parseKeyId does, so "+" and "ctrl++" are keys, and shift with it is refused like shift with any symbol.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8e93ec85d6` (2026-11-12)
+- **Tests:** `coding/uiview/bindings_test.go::TestBindingsAccepted`, `coding/uiview/bindings_test.go::TestBindingsRefused`, `coding/uiview/label_test.go::TestLabelsHoldNoControlThatBreaksOrReordersALine`, `coding/uiview/typed_content_test.go::TestTypedContentIsCheckedLikeARecordOffTheWire`, `internal/codingagent/view_client_bindings_test.go::TestTerminalViewClientGivesNoBindingAKeyOfAReservedAction`, `internal/codingagent/view_client_bindings_test.go::TestViewClientAHandlerThatNeverAnswersHoldsNoKey`, `internal/codingagent/view_client_bindings_test.go::TestViewClientBindingKeyTable`, `internal/codingagent/view_client_bindings_test.go::TestViewClientDrawsAHintRowForTheFocusedMount` and 3 more in docs/bug-ledger.json
+- **Release note:** An extension can bind `+`: `+` and `ctrl++` are key ids, as in Pi. The host refused them.
+
+### BF-8e93ec8-3
+
+**In the terminal, a key your keybindings give to interrupt, clear, exit or suspend no longer raises an…**
+
+- **Source:** PiG's own defect
+- **Symptom:** In the terminal, a key your keybindings give to interrupt, clear, exit or suspend no longer raises an extension's binding, also after you change `keybindings.json` and run `/reload`.
+- **Root cause:** The key "+". ParseBindingKey refused "+" because it cut the id at every "+". It now reads the modifiers as Pi's parseKeyId does, so "+" and "ctrl++" are keys, and shift with it is refused like shift with any symbol.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8e93ec85d6` (2026-11-12)
+- **Tests:** `coding/uiview/bindings_test.go::TestBindingsAccepted`, `coding/uiview/bindings_test.go::TestBindingsRefused`, `coding/uiview/label_test.go::TestLabelsHoldNoControlThatBreaksOrReordersALine`, `coding/uiview/typed_content_test.go::TestTypedContentIsCheckedLikeARecordOffTheWire`, `internal/codingagent/view_client_bindings_test.go::TestTerminalViewClientGivesNoBindingAKeyOfAReservedAction`, `internal/codingagent/view_client_bindings_test.go::TestViewClientAHandlerThatNeverAnswersHoldsNoKey`, `internal/codingagent/view_client_bindings_test.go::TestViewClientBindingKeyTable`, `internal/codingagent/view_client_bindings_test.go::TestViewClientDrawsAHintRowForTheFocusedMount` and 3 more in docs/bug-ledger.json
+- **Release note:** In the terminal, a key your keybindings give to interrupt, clear, exit or suspend no longer raises an extension's binding, also after you change `keybindings.json` and run `/reload`. The extension reads one notice for such a binding.
+
+### BF-8e93ec8-4
+
+**A Go program that mounts a view through `uiview.Registry` with a record it built itself is now held to the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Go program that mounts a view through `uiview.Registry` with a record it built itself is now held to the same checks as an extension: `Registry.Mount` and `Registry.Update` answer `invalid` for what `DecodeMount` and `DecodeUpdate` refuse.
+- **Root cause:** The key "+". ParseBindingKey refused "+" because it cut the id at every "+". It now reads the modifiers as Pi's parseKeyId does, so "+" and "ctrl++" are keys, and shift with it is refused like shift with any symbol.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8e93ec85d6` (2026-11-12)
+- **Tests:** `coding/uiview/bindings_test.go::TestBindingsAccepted`, `coding/uiview/bindings_test.go::TestBindingsRefused`, `coding/uiview/label_test.go::TestLabelsHoldNoControlThatBreaksOrReordersALine`, `coding/uiview/typed_content_test.go::TestTypedContentIsCheckedLikeARecordOffTheWire`, `internal/codingagent/view_client_bindings_test.go::TestTerminalViewClientGivesNoBindingAKeyOfAReservedAction`, `internal/codingagent/view_client_bindings_test.go::TestViewClientAHandlerThatNeverAnswersHoldsNoKey`, `internal/codingagent/view_client_bindings_test.go::TestViewClientBindingKeyTable`, `internal/codingagent/view_client_bindings_test.go::TestViewClientDrawsAHintRowForTheFocusedMount` and 3 more in docs/bug-ledger.json
+- **Release note:** A Go program that mounts a view through `uiview.Registry` with a record it built itself is now held to the same checks as an extension: `Registry.Mount` and `Registry.Update` answer `invalid` for what `DecodeMount` and `DecodeUpdate` refuse.
+
 ### BF-8eb1202
 
 **An OpenAI Chat Completions chunk with a member of an unexpected type (a number for `delta.content`…**
@@ -31351,6 +31412,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `618af0a411` (2026-11-10), `7ddb7c1a27` (2026-11-10), `fbd59e3aff` (2026-11-10)
 - **Tests:** `chord/nextnode/app/app_workers_test.go::TestAppAWorkersDirectoryKeepsItsStoreAndFilesAcrossItsProcessesRestarts`, `chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberIsCopiedToThePluginsHost`, `chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberIsReadAgainAfterTheGoFacetReloads`, `chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberKeepsACommitMadeWhileTheObjectOpens`, `chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberOfTenThousandDocumentsIsCopiedBeforeTheObjectIsLive`, `chord/nextnode/plugins/plugins_node_extract_test.go::TestTheExtractedRuntimeIsNamedByEveryFileOfTheRuntimeBesideTheManifest`
 - **Release note:** `chord/next/surfaces` (Pi `translations.ts` `canonicalLocale`, `language.ts` `directionOf`): a locale tag is canonical as Node's `Intl.getCanonicalLocales` has it for the value aliases of `-u-` keywords and `-t-` fields (`ca-islamicc` is `ca-islamic-civil`, `ks-primary` is `ks-level1`, `kb-yes` is `kb`, `m0-names` is `m0-prprname`) and for the alias rules of several subtags (a language with a region or script, such as `sgn-BR`; `Qaai` is `Zinh`), so the `lang` and `dir` of a page and the locale chosen for a client no longer differ from Pi's for those tags. The tables are generated from the pinned Node by `testdata/locale_tables.mjs` and checked against its Intl.
+
+### BF-fc028ee
+
+**The reference web client no longer erases what the user is typing when a view is updated: an `input` or…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The reference web client no longer erases what the user is typing when a view is updated: an `input` or `editor` whose `id` is in the next view keeps its text, selection and the focus, unless the extension changed its `value`.
+- **Root cause:** The page rebuilt a mount on every changed digest, so an update of one node (a new mail in the list) erased a half-typed reply in another and could drop the focus. A mount now keeps its element and the new view is morphed into the drawn one: a node of the same kind under the same id keeps its element, so an input or editor keeps its text, selection and the focus; a value the extension changes still replaces the text; a text node that moved to another parent hands its text and the focus to its new element. Nodes with an id are matched by id only, so a node that is gone never lends its text to another id.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `fc028ee6d6` (2026-11-12)
+- **Tests:** `examples/ui-view-web/bridge_test.go::TestPageKeepsTypedTextAcrossUpdates`
+- **Release note:** The reference web client no longer erases what the user is typing when a view is updated: an `input` or `editor` whose `id` is in the next view keeps its text, selection and the focus, unless the extension changed its `value`.
 
 ### BF-fc1703f
 
