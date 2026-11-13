@@ -54,7 +54,8 @@ func uiViewWebBridge(t *testing.T, node string, run *uiViewRun) string {
 // One session, its terminal and a web page. The page draws the mounts the terminal draws; a click in the page changes
 // what the terminal shows and a key in the terminal changes the page. A reload keeps the page's connection. A new
 // session closes it: the page attaches to the session that follows and draws what that one mounts. Each time the page
-// holds what a client of the socket with the page's abilities is sent, by digest.
+// holds what a client of the socket with the page's abilities is sent, by digest. The exit closes the connection for
+// good: the page shows no mount and says that it waits for a session.
 func TestUIViewWebPageAndTerminalShareOneSession(t *testing.T) {
 	node, err := exec.LookPath("node")
 	if err != nil {
@@ -129,10 +130,9 @@ func TestUIViewWebPageAndTerminalShareOneSession(t *testing.T) {
 	run.sendKey("Enter")
 	shows("picked beta")
 
-	// A reload keeps the registry, so the session closes nothing: the page keeps its session, and it holds what the
-	// session has afterwards, mount for mount. What a reload does to an extension's mounts is the extension host's
-	// matter; the page is sent it as the terminal is.
-	session := browser.String(`window.uiView.session`)
+	// A reload keeps the registry, so the session closes nothing and sends nothing because of the reload: the page
+	// keeps its connection and its attachment, and it holds what the session has afterwards, mount for mount.
+	session := browser.String(`window.uiView.session + " " + window.uiView.attachment`)
 	// The focus is in the panel's list: Escape returns it to the editor, so the next command is typed there.
 	run.sendKey("Escape")
 	run.settle()
@@ -145,14 +145,14 @@ func TestUIViewWebPageAndTerminalShareOneSession(t *testing.T) {
 	}) {
 		t.Fatalf("after the reload the page shows\n%s\nthe session has\n%s", page, has)
 	}
-	if got := browser.String(`window.uiView.session`); got != session {
-		t.Fatalf("the reload gave the page the session %q, it had %s", got, session)
+	if got := browser.String(`window.uiView.session + " " + window.uiView.attachment`); got != session {
+		t.Fatalf("after the reload the page has the session and attachment %q, it had %q", got, session)
 	}
 
 	// A new session ends the registry: the session closes the connection, the bridge connects to the socket of the
 	// session that follows, and the page attaches to it. Nothing of the session before is on the page.
 	run.send("/new\r")
-	browser.Wait(`window.uiView.session !== "" && window.uiView.session !== "` + session + `" && window.uiView.attachment > 0 && document.querySelectorAll(".mount").length === 0`)
+	browser.Wait(`window.uiView.session !== "" && !"` + session + `".startsWith(window.uiView.session + " ") && window.uiView.attachment > 0 && document.querySelectorAll(".mount").length === 0`)
 	run.settle()
 	run.send("/vmount\r")
 	shows("fixture panel")
@@ -160,5 +160,19 @@ func TestUIViewWebPageAndTerminalShareOneSession(t *testing.T) {
 	shows("picked alpha")
 	if got := browser.String(`String(window.uiView.resyncs) + "/" + String(window.uiView.gaps)`); got != "0/0" {
 		t.Errorf("resyncs/gaps = %s, want 0/0", got)
+	}
+
+	// The exit closes the connection and removes the socket: nothing of the session is on the page, and the page says
+	// that it waits for a session.
+	path, _ := uiViewSocket(t, run)
+	run.sendKey("Escape")
+	run.settle()
+	run.send("/quit\r")
+	browser.Wait(`document.querySelectorAll(".mount").length === 0 && window.uiView.session === "" && document.getElementById("state").textContent.includes("no running session")`)
+	if !waitFor(30*time.Second, func() bool {
+		_, err := os.Lstat(path)
+		return err != nil
+	}) {
+		t.Fatalf("the session ended and left its socket %s", path)
 	}
 }

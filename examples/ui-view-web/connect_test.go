@@ -133,7 +133,7 @@ func (h *host) replace(ref uiview.Ref, content string) uiview.Ref {
 }
 
 // drawn returns, by key, the digest of every mount as the registry resolves it for a client with these abilities. A
-// mount that ended (the registry keeps the broken ones of a reload) is none.
+// mount that ended (the registry keeps the broken ones) is none.
 func (h *host) drawn(abilities string) map[string]string {
 	h.t.Helper()
 	t, state, err := h.reg.Attach(abilitiesOf(h.t, abilities), nil)
@@ -150,8 +150,8 @@ func (h *host) drawn(abilities string) map[string]string {
 	return digests
 }
 
-// reload breaks the plugin's mounts, as the reload of its extension does: the registry and its clients stay.
-func (h *host) reload() { h.reg.Break(boardPlugin, uiview.ReasonOwnerGone) }
+// ownerGone breaks the plugin's mounts, as the end of its extension's process does: the registry and its clients stay.
+func (h *host) ownerGone() { h.reg.Break(boardPlugin, uiview.ReasonOwnerGone) }
 
 // held returns how many clients the registry holds, the terminal among them. A registry takes 8.
 func (h *host) held() int {
@@ -716,10 +716,10 @@ func TestConnectPicksTheOneSocketOfADirectory(t *testing.T) {
 	})
 }
 
-// TestConnectKeepsTheConnectionAcrossAReload: a reload of the extension keeps the registry, so the session closes
-// nothing. The page is sent the board as broken and then the board the extension mounts again, on the connection and
-// under the attachment it has; it is sent no `end` and no second session.
-func TestConnectKeepsTheConnectionAcrossAReload(t *testing.T) {
+// TestConnectKeepsTheConnectionWhenAMountBreaks: a mount whose extension ended leaves the registry in place, so the
+// session closes nothing. The page is sent the board as broken and then the board that is mounted again, on the
+// connection and under the attachment it has; it is sent no `end` and no second session.
+func TestConnectKeepsTheConnectionWhenAMountBreaks(t *testing.T) {
 	s := newFakeSession(t)
 	h := newHost(t)
 	h.put("board", "panel", board("plan one"))
@@ -736,16 +736,16 @@ func TestConnectKeepsTheConnectionAcrossAReload(t *testing.T) {
 		mount, _ = snapshot["mount"].(map[string]any)
 		return event, snapshot, mount
 	}
-	h.reload()
+	h.ownerGone()
 	event, snapshot, mount := view("the broken board")
 	if event["seq"] != 1.0 || snapshot["state"] != "broken" || mount["key"] != "board" || mount["epoch"] != 1.0 {
-		t.Fatalf("after the reload the page is sent %v", event)
+		t.Fatalf("after the extension ended the page is sent %v", event)
 	}
 	h.put("board", "panel", board("plan two"))
 	event, snapshot, mount = view("the board mounted again")
 	title, digest := titleOf(snapshot)
 	if want := h.drawn(connectAbilities)["board"]; event["seq"] != 2.0 || snapshot["state"] != "live" || mount["epoch"] != 2.0 || title != "plan two" || digest == "" || digest != want {
-		t.Fatalf("the board mounted after the reload is sent as %v, the host has it with digest %q", event, want)
+		t.Fatalf("the board mounted again is sent as %v, the host has it with digest %q", event, want)
 	}
 	// The attachment is the one the page has: a resync under it answers with that board and nothing else.
 	if status := page.post(fmt.Sprintf(`{"id":"r","type":"ui_view_resync","attachment":%v}`, page.attachment)); status != http.StatusNoContent {
@@ -761,7 +761,7 @@ func TestConnectKeepsTheConnectionAcrossAReload(t *testing.T) {
 		t.Fatalf("the resync has the board as %q with digest %q, want %q", title, again, digest)
 	}
 	if page.seen["end"] != 0 || page.seen["session"] != 1 {
-		t.Fatalf("across the reload the page was sent %d end events and %d sessions, want 0 and 1", page.seen["end"], page.seen["session"])
+		t.Fatalf("the page was sent %d end events and %d sessions, want 0 and 1", page.seen["end"], page.seen["session"])
 	}
 }
 
@@ -1051,9 +1051,10 @@ func TestConnectCutsAPageThatDoesNotRead(t *testing.T) {
 
 // TestPageFollowsARunningSession opens the page in headless Chromium (skipped where there is none) on a bridge that is
 // connected to a session: the page draws the board and has no prompt, a click raises the intent and the board
-// changes. A reload keeps the connection: the broken board goes from the page with a line that says so, and the board
-// mounted again is drawn once. When the session's host ends the board goes from the page, and with the next host the
-// page shows what that one holds, each mount once, by its content and by the digest the host gives.
+// changes. When the extension ends, the page keeps its session: the broken mounts go from the page, each with a line
+// that says so, and the board mounted again is drawn once. When the session's host ends the board goes from the page,
+// and with the next host the page shows what that one holds, each mount once, by its content and by the digest the
+// host gives.
 func TestPageFollowsARunningSession(t *testing.T) {
 	s := newFakeSession(t)
 	first := newHost(t)
@@ -1102,13 +1103,13 @@ func TestPageFollowsARunningSession(t *testing.T) {
 	pick("Beta item", "beta")
 	shows(first, map[string]string{"board": "picked beta", "note": "only the first host has this"})
 
-	// A reload: the page keeps its session. The mounts arrive broken and go from the page, each with a line that says
-	// so, and the board the extension mounts again is drawn once.
+	// The extension ends: the page keeps its session. The mounts arrive broken and go from the page, each with a line
+	// that says so, and the board that is mounted again is drawn once.
 	session := browser.String(`window.uiView.session`)
-	first.reload()
+	first.ownerGone()
 	browser.Wait(`document.querySelectorAll(".mount").length === 0 && window.uiView.mounts.size === 0`)
 	if got := browser.String(`[...document.querySelectorAll(".line.note")].map((line) => line.textContent).join("|")`); !strings.Contains(got, "plan/board broken") || !strings.Contains(got, "plan/note broken") {
-		t.Errorf("after the reload the page says %q, want a line for each broken mount", got)
+		t.Errorf("after the extension ended the page says %q, want a line for each broken mount", got)
 	}
 	first.put("board", "panel", board("plan one again"))
 	browser.Wait(`document.querySelectorAll(".mount").length > 0`)
@@ -1116,7 +1117,7 @@ func TestPageFollowsARunningSession(t *testing.T) {
 	pick("Alpha item", "alpha")
 	shows(first, map[string]string{"board": "picked alpha"})
 	if got := browser.String(`window.uiView.session`); got != session {
-		t.Errorf("the reload gave the page the session %s, it had %s", got, session)
+		t.Errorf("the broken mounts gave the page the session %s, it had %s", got, session)
 	}
 
 	// The host ends, as when another session takes its place: the page shows nothing of it.
