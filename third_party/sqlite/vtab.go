@@ -411,7 +411,7 @@ func vtabBestIndexTrampoline(tls *libc.TLS, pVtab uintptr, pInfo uintptr) int32 
 		cs := make([]vtab.Constraint, 0, n)
 		base := idx.FaConstraint
 		sz := unsafe.Sizeof(cIndexConstraint{})
-		for i := 0; i < n; i++ {
+		for i := range n {
 			c := (*cIndexConstraint)(unsafe.Pointer(base + uintptr(i)*sz))
 			op := vtab.OpUnknown
 			switch int32(c.Fop) {
@@ -467,7 +467,7 @@ func vtabBestIndexTrampoline(tls *libc.TLS, pVtab uintptr, pInfo uintptr) int32 
 		obs := make([]vtab.OrderBy, 0, n)
 		base := idx.FaOrderBy
 		sz := unsafe.Sizeof(cIndexOrderBy{})
-		for i := 0; i < n; i++ {
+		for i := range n {
 			ob := (*cIndexOrderBy)(unsafe.Pointer(base + uintptr(i)*sz))
 			obs = append(obs, vtab.OrderBy{
 				Column: int(ob.FiColumn),
@@ -745,7 +745,7 @@ func lookupGoModule(id uintptr) *goModule {
 
 func extractVtabArgs(tls *libc.TLS, argc int32, argv uintptr) []string {
 	args := make([]string, argc)
-	for i := int32(0); i < argc; i++ {
+	for i := range argc {
 		cstr := *(*uintptr)(unsafe.Pointer(argv + uintptr(i)*unsafe.Sizeof(uintptr(0))))
 		args[i] = libc.GoString(cstr)
 	}

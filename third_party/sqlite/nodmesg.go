@@ -3,10 +3,9 @@
 // license that can be found in the LICENSE file.
 
 //go:build !sqlite.dmesg
-// +build !sqlite.dmesg
 
 package sqlite
 
 const dmesgs = false
 
-func dmesg(s string, args ...interface{}) {}
+func dmesg(s string, args ...any) {}

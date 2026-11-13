@@ -203,7 +203,7 @@ func TestInvalidateFromARenderDoesNotWaitForTheFrame(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			s := build()
 			state := "OLD"
-			asking := &renderInvalidates{cachedRows: cachedRows{label: "asking", state: &state}, invalidate: s.invalidate}
+			asking := &renderInvalidates{label: "asking", state: &state, invalidate: s.invalidate}
 			overlay := &cachedRows{label: "overlay", state: &state}
 			s.add(asking)
 			s.show(overlay, OverlayOptions{})

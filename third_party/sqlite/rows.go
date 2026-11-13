@@ -342,7 +342,7 @@ func (r *rows) ColumnTypePrecisionScale(index int) (precision, scale int64, ok b
 func (r *rows) ColumnTypeScanType(index int) reflect.Type {
 	t, err := r.c.columnType(r.pstmt, index)
 	if err != nil {
-		return reflect.TypeOf("")
+		return reflect.TypeFor[string]()
 	}
 
 	switch t {
@@ -351,26 +351,26 @@ func (r *rows) ColumnTypeScanType(index int) reflect.Type {
 		case "BOOLEAN":
 			return reflect.TypeOf(false)
 		case "DATE", "DATETIME", "TIME", "TIMESTAMP":
-			return reflect.TypeOf(time.Time{})
+			return reflect.TypeFor[time.Time]()
 		default:
-			return reflect.TypeOf(int64(0))
+			return reflect.TypeFor[int64]()
 		}
 	case sqlite3.SQLITE_FLOAT:
-		return reflect.TypeOf(float64(0))
+		return reflect.TypeFor[float64]()
 	case sqlite3.SQLITE_TEXT:
 		if r.c.textToTime {
 			switch r.decltypes[index] {
 			case "DATE", "DATETIME", "TIME", "TIMESTAMP":
-				return reflect.TypeOf(time.Time{})
+				return reflect.TypeFor[time.Time]()
 			}
 		}
-		return reflect.TypeOf("")
+		return reflect.TypeFor[string]()
 	case sqlite3.SQLITE_BLOB:
-		return reflect.TypeOf([]byte(nil))
+		return reflect.TypeFor[[]byte]()
 	case sqlite3.SQLITE_NULL:
 		return reflect.TypeOf(nil)
 	default:
-		return reflect.TypeOf("")
+		return reflect.TypeFor[string]()
 	}
 }
 

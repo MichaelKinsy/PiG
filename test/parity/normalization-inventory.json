@@ -1097,6 +1097,78 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/extensions-runtime/100-overlay-invalidate-settings-preview.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "OVINV",
+            "capture_end": "OVEND"
+          },
+          "reason": "Owned visible surface: An extension overlay that keeps a themed row until invalidate() shows the new theme: the /settings theme preview while a non-capturing overlay is open, regular screen.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/101-overlay-invalidate-settings-preview-fullscreen.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "OVINV",
+            "capture_end": "OVEND"
+          },
+          "reason": "Owned visible surface: An extension overlay that keeps a themed row until invalidate() shows the new theme: the /settings theme preview while a non-capturing overlay is open, alternate screen.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/104-editor-slot-invalidate-set-theme.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "EDINV",
+            "capture_end": "EDEND"
+          },
+          "reason": "Owned visible surface: A ui.custom component in the editor slot is invalidated as often as Pi invalidates it by one theme set, regular screen.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/105-editor-slot-invalidate-set-theme-fullscreen.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "EDINV",
+            "capture_end": "EDEND"
+          },
+          "reason": "Owned visible surface: A ui.custom component in the editor slot is invalidated as often as Pi invalidates it by one theme set, alternate screen.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/extensions-runtime/11-subprocess-tool-ui-dialogs.toml",
       "transforms": [
         {
@@ -2637,6 +2709,42 @@
             "capture_end": "details of second"
           },
           "reason": "Owned visible surface: A custom entry card expanded by a click stays expanded after the transcript is rebuilt from the session",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/98-overlay-invalidate-set-theme.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "OVINV",
+            "capture_end": "OVEND"
+          },
+          "reason": "Owned visible surface: An extension overlay that keeps a themed row until invalidate() shows the new theme: an extension's ctx.ui.setTheme while its overlay is open, regular screen.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/99-overlay-invalidate-set-theme-fullscreen.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "OVINV",
+            "capture_end": "OVEND"
+          },
+          "reason": "Owned visible surface: An extension overlay that keeps a themed row until invalidate() shows the new theme: an extension's ctx.ui.setTheme while its overlay is open, alternate screen.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {

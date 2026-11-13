@@ -8,6 +8,7 @@ import (
 	"context"
 	"database/sql/driver"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -188,7 +189,7 @@ func newConn(dsn string) (*conn, error) {
 //
 // Return value contract is preserved: (parsed-value, ok). On failure the
 // value is the original input string and ok is false.
-func (c *conn) parseTime(s string, hintIdx int) (interface{}, bool, int) {
+func (c *conn) parseTime(s string, hintIdx int) (any, bool, int) {
 	if v, ok := c.parseTimeString(s, strings.Index(s, "m=")); ok {
 		return v, true, -1
 	}
@@ -227,7 +228,7 @@ func (c *conn) parseTime(s string, hintIdx int) (interface{}, bool, int) {
 // not recognized as a valid time encoding.
 // This intentionally uses time.Parse, not time.ParseInLocation,
 // because the format already contains timezone information (-0700 MST).
-func (c *conn) parseTimeString(s0 string, x int) (interface{}, bool) {
+func (c *conn) parseTimeString(s0 string, x int) (any, bool) {
 	s := s0
 	if x > 0 {
 		s = s[:x] // "2006-01-02 15:04:05.999999999 -0700 MST m=+9999" -> "2006-01-02 15:04:05.999999999 -0700 MST "
@@ -704,9 +705,9 @@ func (f *argFinder) nameIndex(name string) (int, bool) {
 
 	if f.byName == nil {
 		f.byName = make(map[string]int, len(f.args))
-		for j := len(f.args) - 1; j >= 0; j-- {
-			if f.args[j].Name != "" {
-				f.byName[f.args[j].Name] = j
+		for j, v := range slices.Backward(f.args) {
+			if v.Name != "" {
+				f.byName[v.Name] = j
 			}
 		}
 	}

@@ -528,7 +528,7 @@ func applyQueryParams(c *conn, query string, defensive bool) error {
 }
 
 func unlockNotify(t *libc.TLS, ppArg uintptr, nArg int32) {
-	for i := int32(0); i < nArg; i++ {
+	for range nArg {
 		mu := *(*uintptr)(unsafe.Pointer(ppArg))
 		(*mutex)(unsafe.Pointer(mu)).wake()
 		ppArg += ptrSize
@@ -990,7 +990,7 @@ func releaseUDFCall(c *udfCall) {
 func functionArgs(tls *libc.TLS, ctx uintptr, argc int32, argv uintptr, volatile bool) *udfCall {
 	call := acquireUDFCall(tls, ctx, int(argc))
 	args := call.args
-	for i := int32(0); i < argc; i++ {
+	for i := range argc {
 		valPtr := *(*uintptr)(unsafe.Pointer(argv + uintptr(i)*sqliteValPtrSize))
 
 		switch valType := sqlite3.Xsqlite3_value_type(tls, valPtr); valType {
