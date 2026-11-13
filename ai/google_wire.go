@@ -172,7 +172,9 @@ func (dialect *geminiWireDialect) lowerBody(body map[string]json.RawMessage) (js
 
 // wireBody writes the REST body the SDK's api backend sends for the request's params.
 func (request geminiRequest) wireBody(api API) (json.RawMessage, error) {
-	native, err := json.Marshal(request)
+	// A functionCall and a functionResponse part name a tool, and the name can hold a lone UTF-16 surrogate that Pi does not sanitize (google-shared.ts
+	// convertMessages): the request is written as JSON.stringify writes it.
+	native, err := marshalStringify(request)
 	if err != nil {
 		return nil, err
 	}

@@ -95,6 +95,15 @@
     (pig:tool ext "big_out" "Return text of the size in the argument" (core-schema "properties" (pig:obj))
               (lambda (ctx params) (declare (ignore ctx))
                 (core-text-content (make-string (pig:jget params "n") :initial-element #\a :element-type 'base-char))))
+    ;; lone_decl: a description, a parameter name and a parameter's text hold a lone UTF-16 surrogate
+    ;; (TestConformance_ToolDeclarationLoneSurrogatesAgreeAcrossSDKs).
+    (let ((high (code-char #xD83D)) (low (code-char #xDE00)))
+      (pig:tool ext "lone_decl" (format nil "D[~C]" high)
+                (core-schema "properties"
+                             (pig:obj (format nil "K[~C~C]" low high)
+                                      (pig:obj "type" "string" "description" (format nil "PD[~C]" high)
+                                               "enum" (vector (format nil "E[~C]" low)) "default" (format nil "DF[~C]" high))))
+                (lambda (ctx params) (declare (ignore ctx params)) (core-text-content "lone"))))
     (pig:tool ext "echo_params" "Return the arguments as the result details" (core-schema "properties" (pig:obj))
               (lambda (ctx params) (declare (ignore ctx)) (pig:obj "content" (vector (pig:obj "type" "text" "text" "echoed")) "details" params)))
     (pig:tool ext "nan_out" "Return details holding NaN and Infinity" (core-schema "properties" (pig:obj))

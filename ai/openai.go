@@ -453,7 +453,8 @@ func (f oaiToolFunction) MarshalJSON() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return json.Marshal(wire)
+	// The name and the description are written as JSON.stringify writes them: a lone UTF-16 surrogate as its escape (openai-completions.ts convertTools).
+	return marshalStringify(wire)
 }
 
 // oaiToolFunctionWire is the value oaiToolFunction's MarshalJSON writes.
@@ -1981,7 +1982,7 @@ func (p *openAIProvider) parseSSE(ctx context.Context, r io.Reader, builder *ass
 		if !decodedFast {
 			chunk = oaiChunk{}
 			text := jsjson.NormalizeIntegers([]byte(data))
-			if err := json.Unmarshal(text, &chunk); err != nil {
+			if err := unmarshalKeepingSurrogates(text, &chunk); err != nil {
 				normalized, read, normalizable := []byte(nil), openAIChunkRead{}, false
 				if _, ok := errors.AsType[*json.UnmarshalTypeError](err); ok {
 					normalized, read, normalizable = normalizeOpenAIChunkJS(text)

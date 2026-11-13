@@ -32,7 +32,7 @@ type anthropicEventJS struct {
 func decodeAnthropicEventJS(sse anthropicStreamEvent, target any) (anthropicEventJS, error) {
 	var js anthropicEventJS
 	text := jsjson.NormalizeIntegers([]byte(sse.JSON))
-	err := json.Unmarshal(text, target)
+	err := unmarshalKeepingSurrogates(text, target)
 	if _, ok := errors.AsType[*json.UnmarshalTypeError](err); ok {
 		if normalized, read, ok := normalizeAnthropicEventJS(sse.Type, text); ok && json.Unmarshal(normalized, target) == nil {
 			js, err = read, nil

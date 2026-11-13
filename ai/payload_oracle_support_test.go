@@ -8,7 +8,6 @@ import (
 	"maps"
 	"math/rand"
 	"os/exec"
-	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -322,27 +321,10 @@ func comparePayload(t *testing.T, label, got, want string, failures *int, classe
 // JSON.stringify writes the members of an object in the order Pi's code created them, and that order is on the wire.
 func comparePayloadBytes(t *testing.T, label, got, want string, reordered *int) {
 	t.Helper()
-	// NOT EQUAL today, and not this comparison's subject: a tool description that holds an unpaired surrogate reaches PiG as U+FFFD
-	// (ai.ToolSchema decodes a declaration with encoding/json) where Pi writes the surrogate's escape. Both texts are compared with U+FFFD
-	// in the place of such an escape.
-	got, want = withoutLoneSurrogates(got), withoutLoneSurrogates(want)
 	if got == want || payloadDiff(got, want) != "" {
 		return
 	}
 	if *reordered++; *reordered <= 4 {
 		t.Errorf("%s: %s", label, wireDifference(got, want))
 	}
-}
-
-// loneSurrogateEscape matches an escaped backslash, which is kept, or the escape JSON.stringify writes for an unpaired UTF-16 surrogate.
-var loneSurrogateEscape = regexp.MustCompile(`\\\\|\\ud[89a-f][0-9a-f]{2}`)
-
-// withoutLoneSurrogates is a JSON.stringify text with U+FFFD in the place of each unpaired surrogate escape.
-func withoutLoneSurrogates(text string) string {
-	return loneSurrogateEscape.ReplaceAllStringFunc(text, func(match string) string {
-		if match == `\\` {
-			return match
-		}
-		return "\uFFFD"
-	})
 }

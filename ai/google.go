@@ -145,7 +145,9 @@ func (request geminiRequest) parameters(model string) map[string]any {
 
 // marshalGeminiParameters lowers native model/contents/config after onPayload, including a replacement model and generation configuration.
 func marshalGeminiParameters(payload any, api API) (string, []byte, error) {
-	encoded, err := json.Marshal(payload)
+	// A functionCall and a functionResponse part name a tool, and the name can hold a lone UTF-16 surrogate that Pi does not sanitize (google-shared.ts
+	// convertMessages): the payload a hook handed back is written as JSON.stringify writes it, as wireBody writes the request.
+	encoded, err := marshalStringify(payload)
 	if err != nil {
 		return "", nil, err
 	}

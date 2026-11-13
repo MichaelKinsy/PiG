@@ -316,7 +316,8 @@ func (t ResponsesTool) MarshalJSON() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return json.Marshal(wire)
+	// The name and the description are written as JSON.stringify writes them: a lone UTF-16 surrogate as its escape (openai-responses-shared.ts:386-393).
+	return marshalStringify(wire)
 }
 
 // responsesToolWire is the value ResponsesTool's MarshalJSON writes.
@@ -1448,7 +1449,9 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 		return nil, err
 	}
 
-	inputJSON, marshalErr := json.Marshal(msgs)
+	// An item names a called tool, and the name can hold a lone UTF-16 surrogate that Pi does not sanitize (openai-responses-shared.ts convertResponsesMessages,
+	// the function_call item): the items are written as JSON.stringify writes them.
+	inputJSON, marshalErr := marshalStringify(msgs)
 	if marshalErr != nil {
 		return nil, fmt.Errorf("openai-responses: marshal input: %w", marshalErr)
 	}
