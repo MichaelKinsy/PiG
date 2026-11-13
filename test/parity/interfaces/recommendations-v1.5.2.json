@@ -317373,7 +317373,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "41 normalized-name Pig candidates are ambiguous."
+        "42 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -317416,6 +317416,7 @@
         "go:github.com/MichaelKinsy/PiG/coding#requestOptionsProvider.ID",
         "go:github.com/MichaelKinsy/PiG/coding#unroutedProvider.ID",
         "go:github.com/MichaelKinsy/PiG/coding/extension#ValidatedSpriteDefinition.ID",
+        "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#MountImages.id",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#nativeOAuthProxy.ID",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#oauthProxy.ID",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#oauthProxyWithStore.ID",
@@ -329631,7 +329632,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -329641,6 +329642,7 @@
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#mountImage.wake",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#renderOrder.wake",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#viewClient.wake"
       ],
