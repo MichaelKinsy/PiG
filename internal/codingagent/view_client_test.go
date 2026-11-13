@@ -5,15 +5,16 @@ import (
 	"encoding/json"
 	"go/parser"
 	"go/token"
-	"runtime"
 	"slices"
 	"strconv"
 	"strings"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/uiview"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -243,11 +244,17 @@ func (f *viewFixture) notices(key string) []uiview.Notice {
 // pig additive (D614): a client that is attached and was never sent a mount adds nothing to the loop: no component, no
 // input listener, no goroutine, no timer. Extensions read its abilities.
 func TestViewClientIsInertUntilAMount(t *testing.T) {
-	before := runtime.NumGoroutine()
+	synctest.Test(t, testViewClientIsInertUntilAMount)
+}
+
+func testViewClientIsInertUntilAMount(t *testing.T) {
+	// The count is of the test's own bubble: a goroutine of another test is not the client's.
+	before := testenv.LiveGoroutines()
 	f := newViewFixture(t)
 	f.loop.run()
-	if after := runtime.NumGoroutine(); after != before {
-		t.Errorf("attaching started %d goroutines", after-before)
+	synctest.Wait()
+	if n := testenv.LiveGoroutines() - before; n != 0 {
+		t.Errorf("attaching started %d goroutines", n)
 	}
 	f.client.wake()
 	f.loop.run()
