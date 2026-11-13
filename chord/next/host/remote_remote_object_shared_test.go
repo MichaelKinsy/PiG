@@ -243,7 +243,7 @@ func TestReferencesSharingOneWireHoldSharing(t *testing.T) {
 			t.Fatalf("the aborted getter = %v, want gone", err)
 		}
 		_, err := late.wait()
-		requireChordError(t, err, data.CodeUnavailable, "")
+		_ = requireChordError(t, err, data.CodeUnavailable, "")
 		bindHold(t, rig.Peer, hold)
 		waitLive(t, kept)
 		// After the first binding: a getter of a failed object times out.
@@ -342,7 +342,7 @@ func TestReferencesSharingOneWireHoldStateChanges(t *testing.T) {
 			}
 		}
 		_, err := call.wait(background)
-		requireChordError(t, err, data.CodeReleased, data.ReasonEnded)
+		_ = requireChordError(t, err, data.CodeReleased, data.ReasonEnded)
 		rhHoldRef(t, rig.Client, Notes, rhNotes("S1"))
 		if id := rig.Peer.Next("hold").(*link.HoldMessage).Hold; id != 1 {
 			t.Fatalf("the hold of a reference after gone = %d, want 1", id)
@@ -359,7 +359,7 @@ func TestReferencesSharingOneWireHoldStateChanges(t *testing.T) {
 		}
 		for _, wait := range waits {
 			_, err := wait.wait()
-			requireChordError(t, err, data.CodeReleased, "")
+			_ = requireChordError(t, err, data.CodeReleased, "")
 		}
 	})
 

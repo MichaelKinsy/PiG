@@ -1414,7 +1414,7 @@ func TestCancellingOneReferencesCallsOnASharedHoldAFiniteWindowTheReleasedOnesQu
 	requireStrings(t, sharedWire(t, s.peer, texts), []string{"call:A1", "abort:A1", "call:B1"})
 	for _, result := range []*parkedCallResult{a1, a2} {
 		_, err := result.wait(background)
-		requireChordError(t, err, data.CodeReleased, "")
+		_ = requireChordError(t, err, data.CodeReleased, "")
 	}
 	rhWaitFor(t, func() bool { orderMu.Lock(); defer orderMu.Unlock(); return len(order) == 2 })
 	orderMu.Lock()

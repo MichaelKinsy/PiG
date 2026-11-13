@@ -1445,7 +1445,7 @@ func (h *chordHost) bindRemote(b *binding, typ *contracts.Contract, params check
 		found = p.shared[key]
 	}
 	waiting := found != nil && found.refState.Kind == RefStateFailed && found.refState.Cause.Kind == data.FailureWaiting
-	if found != nil && !(waiting && p.link() != nil) {
+	if found != nil && (!waiting || p.link() == nil) {
 		b.bind(found)
 		if waiting {
 			p.requested(found)
