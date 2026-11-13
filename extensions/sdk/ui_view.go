@@ -108,7 +108,9 @@ type ViewShape struct {
 // ViewIntent declares one intent the view's nodes may raise. Name is "<extension>.<verb>". TimeoutMs defaults to 30000
 // and is 100..300000. WhenHidden lets a client raise the intent while the mount is hidden: it is how the user opens a
 // view the extension hid, and the handler shows the mount. At most one intent of a mount has it; it names no node and
-// its Arg accepts the empty object.
+// its Arg accepts the empty object. Dismiss names the intent a client raises, with the empty object, when the user
+// dismisses a dialog or overlay mount: the handler closes the mount. The same three rules hold for it. Without one,
+// Escape leaves the mount and it stays open until the extension closes it.
 type ViewIntent struct {
 	Name        string     `json:"name"`
 	NodeKey     string     `json:"nodeKey,omitempty"`
@@ -117,6 +119,7 @@ type ViewIntent struct {
 	Cancellable bool       `json:"cancellable,omitempty"`
 	TimeoutMs   int        `json:"timeoutMs,omitempty"`
 	WhenHidden  bool       `json:"whenHidden,omitempty"`
+	Dismiss     bool       `json:"dismiss,omitempty"`
 }
 
 // ViewAsset is a bounded image a view refers to by id.
