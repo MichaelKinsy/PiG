@@ -72,17 +72,6 @@ func resolveStartupModelEntry(providerID, modelID string, registry *codingagent.
 	return entry
 }
 
-// printModelDiagnostic writes a model-resolution warning to stderr in the
-// same shape as upstream reportDiagnostics: a yellow "Warning: <msg>" line.
-// Color follows chalk's level, which supports-color takes from stdout.
-func printModelDiagnostic(msg string) {
-	text := "Warning: " + msg
-	if chalkStdoutColor() {
-		text = codingagent.ChalkApply("\x1b[33m", "\x1b[39m", text)
-	}
-	fmt.Fprintln(os.Stderr, text)
-}
-
 // providerFallbackModel returns the catalog model whose capabilities are
 // borrowed when a requested model is unknown under providerID: the
 // provider's default model when catalogued, else its first catalogued model.

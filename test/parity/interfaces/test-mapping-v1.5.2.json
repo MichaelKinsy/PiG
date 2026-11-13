@@ -6262,7 +6262,7 @@
       "evidence": [
         "coding/cli/model_resolver_defaults_upstream_test.go"
       ],
-      "rationale": "The changed Pi default-model expectations are asserted with the same provider ids and model ids."
+      "rationale": "The changed Pi default-model expectations are asserted with the same provider ids and model ids. Pi bacd45b9c delta: the case \"resolveModelScope preserves CLI warning output\" is removed with resolveModelScope, and its Go subtest with it."
     },
     {
       "path": "packages/coding-agent/test/model-runtime-auth-options.test.ts",

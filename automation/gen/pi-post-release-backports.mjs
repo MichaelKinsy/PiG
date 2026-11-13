@@ -94,6 +94,34 @@ const qwenTokenPlanBackports = Object.fromEntries(qwenTokenPlans.flatMap((plan) 
 ]));
 
 export const backportPatches = {
+  // bacd45b9c (#11973, #11264): the model scope warnings are diagnostics of the runtime the factory returns, not lines it prints on every session replacement.
+  "pi-coding-agent/main.js": [
+    ['import { resolveCliModel, resolveModelScope } from "./core/model-resolver.js";', 'import { resolveCliModel, resolveModelScopeWithDiagnostics } from "./core/model-resolver.js";'],
+    [`        const scopedModels = modelPatterns && modelPatterns.length > 0
+            ? await resolveModelScope(modelPatterns, modelRuntime, { signal: AbortSignal.timeout(15_000) })
+            : [];
+`, `        ${note("bacd45b9c").trim()}
+        const { scopedModels, diagnostics: modelScopeDiagnostics } = modelPatterns && modelPatterns.length > 0
+            ? await resolveModelScopeWithDiagnostics(modelPatterns, modelRuntime, {
+                signal: AbortSignal.timeout(15_000),
+            })
+            : { scopedModels: [], diagnostics: [] };
+        // Returned as diagnostics instead of printed: this factory runs again on /new, /resume and /fork,
+        // while the interactive TUI draws on the terminal (#11264).
+        diagnostics.push(...modelScopeDiagnostics);
+`],
+  ],
+  // bacd45b9c: resolveModelScope, which printed each warning with console.warn, has no caller left and is removed.
+  "pi-coding-agent/core/model-resolver.js": [
+    [`export async function resolveModelScope(patterns, modelRuntime, options) {
+    const { scopedModels, diagnostics } = await resolveModelScopeWithDiagnostics(patterns, modelRuntime, options);
+    for (const diagnostic of diagnostics) {
+        console.warn(chalk.yellow(\`Warning: \${diagnostic.message}\`));
+    }
+    return scopedModels;
+}
+`, ""],
+  ],
   // b3c2e4a6bef8 (#12001): the llama.cpp default server port is 9931.
   "pi-coding-agent/extensions/llama/provider.js": [
     ['export const DEFAULT_LLAMA_SERVER_URL = "http://127.0.0.1:8080";', 'export const DEFAULT_LLAMA_SERVER_URL = "http://127.0.0.1:9931";'],

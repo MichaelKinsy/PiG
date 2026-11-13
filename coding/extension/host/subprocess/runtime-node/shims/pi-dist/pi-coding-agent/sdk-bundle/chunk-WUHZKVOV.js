@@ -12106,14 +12106,6 @@ async function resolveModelScopeWithDiagnostics(patterns, modelRuntime, options)
   return resolveModelScopeFromModels(patterns, await modelRuntime.getAvailable(void 0, options));
 }
 __name(resolveModelScopeWithDiagnostics, "resolveModelScopeWithDiagnostics");
-async function resolveModelScope(patterns, modelRuntime, options) {
-  const { scopedModels, diagnostics } = await resolveModelScopeWithDiagnostics(patterns, modelRuntime, options);
-  for (const diagnostic of diagnostics) {
-    console.warn(chalk2.yellow(`Warning: ${diagnostic.message}`));
-  }
-  return scopedModels;
-}
-__name(resolveModelScope, "resolveModelScope");
 function resolveCliModel(options) {
   const { cliProvider, cliModel, cliThinking, inlineApiKey, modelRuntime } = options;
   if (!cliModel) {
@@ -16839,7 +16831,6 @@ export {
   findExactModelReferenceMatch,
   resolveModelScopeFromModels,
   resolveModelScopeWithDiagnostics,
-  resolveModelScope,
   resolveCliModel,
   findInitialModel,
   parseGitUrl,

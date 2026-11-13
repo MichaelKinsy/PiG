@@ -75501,17 +75501,6 @@
       "shapeHash": "sha256:5ea5d78181b5af1d1c2fc124278fcaa48703826f8f965d06296f6a0023ce8226"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding#ResolveModelScope",
-      "package": "github.com/MichaelKinsy/PiG/coding",
-      "name": "ResolveModelScope",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(ctx context.Context, patterns []string, runtime *ModelRuntime) ([]ScopedModel, error)"
-      },
-      "shapeHash": "sha256:c7ee3b9a1c0b750cf118af3ea7f86fd5e735f333097253327d6c0dee3d19001e"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#ResolveModelScopeResult",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "ResolveModelScopeResult",
@@ -97708,17 +97697,6 @@
         "type": "func() github.com/MichaelKinsy/PiG/coding.SessionStartOptions"
       },
       "shapeHash": "sha256:654ae9a3443dc626ac2b6407633d5f69920683a5c2350c5dee11f91a53149ad1"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#printModelDiagnostic",
-      "package": "github.com/MichaelKinsy/PiG/coding/cli",
-      "name": "printModelDiagnostic",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(msg string)"
-      },
-      "shapeHash": "sha256:345614520fe35d250af5faad5945fc56785826dd8e93b4fc2ad6d1ed43f11431"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#printModelList",
@@ -268177,17 +268155,6 @@
       "shapeHash": "sha256:23bcbdf8df18e4c48ea8a80d26e5c652bdcf1455e7c8c31937a97f157562629c"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ResolveModelScope",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "ResolveModelScope",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(ctx context.Context, patterns []string, runtime ModelScopeRuntime) ([]ScopedModel, error)"
-      },
-      "shapeHash": "sha256:b2a3f1c5400e189c6f7615789e597dd5538c7111ff34a9ea11bbfaf2dd3ab66a"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ResolveModelScopeFromModels",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "ResolveModelScopeFromModels",
@@ -305520,17 +305487,6 @@
         "type": "func(input string, items []github.com/MichaelKinsy/PiG/tui.ModelSelectorItem) (string, bool)"
       },
       "shapeHash": "sha256:51095a044180756c562727e08b6ff5a3f43f94ccfd4e6d4f6a1a7956427b92b4"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#resolveModelScopeWarningTo",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "resolveModelScopeWarningTo",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(ctx context.Context, w io.Writer, color bool, patterns []string, runtime ModelScopeRuntime) ([]ScopedModel, error)"
-      },
-      "shapeHash": "sha256:89eafc9b6d8a096f60fc3d945c1a5d7ebfbe92150fddd1580e0c6c3fd4508c07"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#resolveOutcome",
