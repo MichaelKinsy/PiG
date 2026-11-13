@@ -155,7 +155,7 @@ func NewWorkerProcess(options ForkOptions, events ProcessEvents) (*WorkerProcess
 		told := process.drain()
 		parent.reads = told.reader
 		//portlint:allow golifetime the channel's reader returns at its stream's end, once every holder of the child's end is gone, or when this side closes the channel; ended waits until it settled what the process wrote
-		go func() {
+		go func() { //portlint:allow asyncorder process.ts:68 child.on("message", ...) is an event of the child with no ordering against other work; its ordering point is the drain's settled channel, which the exit waits for
 			defer told.settle()
 			defer process.reading.Add(-1)
 			parent.run()
@@ -211,7 +211,7 @@ func (p *WorkerProcess) pump(file *os.File, stream string, onOutput func(stream 
 	told := p.drain()
 	reader := told.reader(file)
 	//portlint:allow golifetime the reader returns at the stream's end, once every holder of its write end is gone; ended waits until it settled what the process wrote
-	go func() {
+	go func() { //portlint:allow asyncorder process.ts:61 child[stream].on("data", ...) is an event of the child with no ordering against other work; its ordering point is the drain's settled channel, which the exit waits for
 		defer told.settle()
 		defer p.reading.Add(-1)
 		defer func() { _ = file.Close() }()
