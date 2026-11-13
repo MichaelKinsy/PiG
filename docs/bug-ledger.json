@@ -2923,6 +2923,34 @@
       ]
     },
     {
+      "id": "BF-114f195",
+      "title": "Chord plugins (internal, the tests' seam): a tree the plugins component's file watcher watches on request…",
+      "symptom": "Chord plugins (internal, the tests' seam): a tree the plugins component's file watcher watches on request (`Plugins.WatchTree`, which only the tests' barrier `pluginstest.Settle` calls) stays watched across discoveries until the component is closed.",
+      "rootCause": "Plugins.WatchTree is the seam of the tests' barrier (pluginstest.Settle): the barrier has the watcher watch a directory of its own, makes a directory in it and waits until the watcher watches that one, which says every earlier file event was handled. No product path calls WatchTree.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord plugins (internal, the tests' seam): a tree the plugins component's file watcher watches on request (`Plugins.WatchTree`, which only the tests' barrier `pluginstest.Settle` calls) stays watched across discoveries until the component is closed. A discovery dropped it with every tree that is no root's, base's or linked plugin's, so the build of an apply that ran beside a test's edit could take the barrier's watch away between the barrier's request and the event it waits for: `TestARolloutAcrossHostsEndsTwoRolloutsBackToBackOnTheSecondsCodeThePageFollowingWithoutFailing` then failed with `timed out after 15s waiting for the watcher to handle a directory made after the edits`, in about one run in ten. No product path calls `WatchTree`: the trees of the roots, of the base code and of linked plugins are watched and released as before.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "114f195453",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/app/app_web_browser_test.go::TestThePagesLanguageWritesLangAndDirOnTheRootElementFromTheDeviceThenTheUsersPick",
+        "chord/nextnode/app/reload_rollout_test.go::TestARolloutAcrossHostsEndsTwoRolloutsBackToBackOnTheSecondsCodeThePageFollowingWithoutFailing",
+        "chord/nextnode/plugins/plugins_plugins_test.go::TestAComponentsDiscoveryKeepsTheTreeItsBarrierWatches",
+        "chord/nextnode/plugins/plugins_watcher_linux_test.go::TestClosingTheWatcherReleasesTheWatchesOfATreeItWasAskedToWatch",
+        "chord/nextnode/plugins/plugins_watcher_test.go::TestADiscoveryDropsTheTreeOfAPluginWhoseLinkIsGoneAndKeepsATreeTheWatcherWasAskedToWatch",
+        "chord/nextnode/plugins/plugins_watcher_test.go::TestATreeTheWatcherWasAskedToWatchStaysWatchedAcrossDiscoveries",
+        "chord/nextnode/plugins/plugins_watcher_test.go::TestTheBarrierReturnsWhenADiscoveryLandsBetweenItsWatchTreeAndItsDirectory"
+      ]
+    },
+    {
       "id": "BF-116b36c",
       "title": "fix(extensions): answer the start-window report of a tool call that holds no window, where the report is read",
       "symptom": "fix(extensions): answer the start-window report of a tool call that holds no window, where the report is read",
