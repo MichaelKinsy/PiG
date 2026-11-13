@@ -36543,7 +36543,7 @@
     },
     {
       "id": "BF-D624",
-      "title": "Fullscreen frames reach the terminal through a screen writer that sends only what changes the screen, where…",
+      "title": "An opt-in screen writer sends the terminal only what changes the screen in fullscreen mode, where Pi sends…",
       "symptom": "none. Pi has no layer under the terminal's write; its bytes are correct, only more.",
       "rootCause": "through tmux or ssh the bytes of a frame are what the terminal and the multiplexer read and parse, a row's unchanged cells included; the writer sends between a fifth and nine tenths of them on the streams above.",
       "rootCauseSource": "divergence record",
@@ -36551,7 +36551,7 @@
       "platform": "All platforms",
       "class": "ahead-of-pi",
       "divergence": "D624",
-      "removeWhen": "Pi sends only what changes the screen, or the owner declines the writer. If the owner rules that it is opt-in, `TerminalScreenWriterDefault` becomes `\"pi\"` and this record says so; if he declines it, `internal/screenwriter`, `tui/terminal_screen_writer.go`, the five hunks in `tui/terminal.go`, the setting, the markers and this record go.",
+      "removeWhen": "Pi sends only what changes the screen, or the owner declines the writer. It is opt-in in 0.8.0: `TerminalScreenWriterDefault` is `\"pi\"`. When the owner's real-terminal condition is shown the constant becomes `\"writer\"` and this record says so; if he declines the writer, `internal/screenwriter`, `tui/terminal_screen_writer.go`, the five hunks in `tui/terminal.go`, the setting, the markers and this record go.",
       "fixedIn": "Unreleased",
       "origin": "divergence",
       "commits": [
@@ -36564,7 +36564,19 @@
           "date": "2026-11-12"
         },
         {
+          "hash": "2cc9c4a3e0",
+          "date": "2026-11-12"
+        },
+        {
           "hash": "30eff09b91",
+          "date": "2026-11-12"
+        },
+        {
+          "hash": "6db3b075a5",
+          "date": "2026-11-12"
+        },
+        {
+          "hash": "8c698d0e45",
           "date": "2026-11-12"
         },
         {
@@ -36598,6 +36610,15 @@
         "internal/screenwriter/lines_test.go::TestRecordedMenuReturnLeavesTheRenderersLines",
         "internal/screenwriter/outside_modes_test.go::TestOutsideReadsAPrivateModeOnlyAsItsNumber",
         "internal/screenwriter/regular_test.go::TestRegularModeIsSentAsItCame",
+        "internal/screenwriter/whole_row_test.go::TestAFullWidthRowUnderABackgroundOnTerminalsWithAndWithoutBackgroundColourErase",
+        "internal/screenwriter/whole_row_test.go::TestAFullWidthRowWrittenThroughItsLastCellIsWrittenWholeAndWaitsForNoSettleWrite",
+        "internal/screenwriter/whole_row_test.go::TestAResizeAfterAFullWidthRowWasWrittenWhole",
+        "internal/screenwriter/whole_row_test.go::TestARowNarrowerThanTheScreenWrittenThroughItsLastCellStillSettles",
+        "internal/screenwriter/whole_row_test.go::TestAScribbledFullWidthRowHealsByTheFrameThatChangesIt",
+        "internal/screenwriter/whole_row_test.go::TestFullWidthRowsOfWideJoinedAndLinkedCells",
+        "internal/screenwriter/whole_row_test.go::TestImageRowsAreNeverWrittenByTheWriter",
+        "internal/screenwriter/whole_row_test.go::TestTheWriteInPlaceNeverPrintsInTheLastColumn",
+        "internal/screenwriter/whole_row_test.go::TestWhatFollowsARowWrittenThroughTheLastColumn",
         "internal/screenwriter/writer_test.go::TestDropSendsEveryWriteAsItCame",
         "internal/screenwriter/writer_test.go::TestRandomEditsShowTheSameScreens",
         "internal/screenwriter/writer_test.go::TestRecordedStreamsShowTheSameScreens",
@@ -59032,7 +59053,7 @@
     },
     {
       "id": "D624",
-      "title": "Fullscreen frames reach the terminal through a screen writer that sends only what changes the screen, where…",
+      "title": "An opt-in screen writer sends the terminal only what changes the screen in fullscreen mode, where Pi sends…",
       "entry": "BF-D624"
     }
   ],

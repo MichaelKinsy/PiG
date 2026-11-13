@@ -1699,8 +1699,9 @@ const (
 )
 
 // TerminalScreenWriterDefault is what terminal.screenWriter means when the key is unset or holds neither value: the one place
-// that says what a fullscreen terminal is sent when nobody chose (D624). Nothing else in the tree names the default.
-const TerminalScreenWriterDefault = TerminalScreenWriterWriter
+// that says what a fullscreen terminal is sent when nobody chose (D624). Nothing else in the tree names the default. The screen
+// writer is opt-in in 0.8.0: the default is Pi's bytes until the writer is shown on the owner's terminals.
+const TerminalScreenWriterDefault = TerminalScreenWriterPi
 
 // GetTerminalScreenWriter returns the terminal.screenWriter setting, TerminalScreenWriterWriter or TerminalScreenWriterPi. The key unset, and any other value, is TerminalScreenWriterDefault.
 // pig divergence (D624): see Settings.TerminalScreenWriter.
