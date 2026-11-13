@@ -71,7 +71,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/agent-session.js",
-      "sha256": "c54603ec64635716944f19e11fdbe6d9a1c63b354ba6614c5cb01ca30add911d"
+      "sha256": "fd10aaf2e45d19e4167cba59a1a6e509415d745f55f66cb438b43eba84b6140e"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/auth-guidance.js",

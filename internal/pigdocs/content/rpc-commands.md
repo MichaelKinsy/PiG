@@ -39,7 +39,7 @@ This page lists the commands an RPC client writes to PiG on standard input, with
 | `get_fork_messages` | none | List user messages that can identify a fork point. |
 | `get_entries` | optional `since` | Read Session entries after an entry ID. |
 | `get_tree` | none | Read the Session entry tree and active leaf. |
-| `get_last_assistant_text` | none | Read the last assistant text, when present. |
+| `get_last_assistant_text` | none | Read the last assistant text, when present. Messages without text from an aborted or failed turn, or that only call tools, are skipped. |
 | `set_session_name` | `name` | Set the current Session name. |
 | `get_messages` | none | Read current Agent messages. |
 
@@ -65,7 +65,7 @@ PiG acknowledges the prompt after extension input handling and model authenticat
 {"id":"prompt-2","type":"prompt","message":"Review this change","metadata":{"task_id":"task-42"}}
 ```
 
-RPC prompt input accepts text and optional images. If the Agent is already running, set `streamingBehavior` to `steer` or `followUp`. PiG rejects a second prompt without this field. A prompt without it that arrives while an earlier prompt is still being admitted, for example two `prompt` commands written to standard input in one chunk, is rejected with the same error, `Agent is already processing. Specify streamingBehavior ('steer' or 'followUp') to queue the message.`; Pi 1.5.2 answers such a prompt `started` and never runs it (D629).
+RPC prompt input accepts text and optional images. If the Agent is already running, set `streamingBehavior` to `steer` or `followUp`. PiG rejects a second prompt without this field.
 
 The Agent counts as running from the moment PiG accepts a prompt, including while extension `before_agent_start` handlers run. A prompt with `streamingBehavior` sent in that time joins the starting run, and an `abort` stops the run as soon as it starts. This is new in Pi 1.3.0. In Pi 1.1.0, a second prompt sent in that time started a second run, which failed with `Agent is already processing`.
 
@@ -226,7 +226,7 @@ Get the complete tree:
 {"type":"get_tree"}
 ```
 
-Get the last assistant text:
+Get the last assistant text. Messages without text from an aborted or failed turn, or that only call tools, are skipped:
 
 ```json
 {"type":"get_last_assistant_text"}

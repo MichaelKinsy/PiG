@@ -556,6 +556,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-4ed1d72](#bf-4ed1d72) | A session swap (`/new`, `/resume`, `/fork`, `Session.ReplaceInner`) no longer races with `/new`, a fork or a… | PiG's own defect | All platforms | Unreleased |
 | [BF-4f079a7](#bf-4f079a7) | An MCP request over Streamable HTTP that is cancelled or times out while the server's authorization is being… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
 | [BF-4f3cc2e](#bf-4f3cc2e) | `Session.ID`, `Session.Path`, `Session.CWD` and `Session.Inner` no longer race with a session swap (`/new`… | PiG's own defect | All platforms | Unreleased |
+| [BF-4f62143](#bf-4f62143) | `/copy`, the copy key, RPC `get_last_assistant_text` and a child session's `getLastAssistantText` now skip a… | PiG's own defect | All platforms | Unreleased |
 | [BF-4f6992d](#bf-4f6992d) | Durable: a tool's `PrepareArguments` result of a typed object (a struct, or a map of another element type)… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4f6992d-2](#bf-4f6992d-2) | Durable: a `PrepareArguments` result that is not an object fails validation as an `invalid_arguments` tool… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4f75f77](#bf-4f75f77) | Chord (Go): the observer of a followed source has `Section`, which runs a runtime's read and its advance as… | PiG's own defect | All platforms | Unreleased |
@@ -1352,6 +1353,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D618](#bf-d618) | A start repaints after the highlight grammar load only when a highlight lookup made before it could have… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D619](#bf-d619) | A status-indicator or Loader animation step asks for its frame within min(40 ms, interval/2), where Pi asks… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D628](#bf-d628) | auth.json is read once per availability pass, where Pi stats it on every credential read | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D629](#bf-d629) | A prompt that arrives while another prompt is being admitted in RPC mode is rejected with an error, where Pi… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D631](#bf-d631) | A command run by `pi.exec` or the bash tool gets pipes for its output, where Pi gives it socket pairs | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26](#bf-a09da26) | `pi.getSettings()` in a subprocess extension lists the settings in Pi's order: the global settings file's… | PiG's own defect | All platforms | 0.5.0 |
@@ -9486,6 +9488,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `4f3cc2e060` (2026-11-08)
 - **Tests:** None recorded.
 - **Release note:** `Session.ID`, `Session.Path`, `Session.CWD` and `Session.Inner` no longer race with a session swap (`/new`, `/resume`, `/fork`, `Session.ReplaceInner`): a host call that reads the session id while the swap runs sees the old or the new session, and the Go race detector no longer reports the read.
+
+### BF-4f62143
+
+**`/copy`, the copy key, RPC `get_last_assistant_text` and a child session's `getLastAssistantText` now skip a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `/copy`, the copy key, RPC `get_last_assistant_text` and a child session's `getLastAssistantText` now skip a turn that ended without an answer.
+- **Root cause:** An assistant message without text is skipped when its turn did not end normally (aborted, failed, only tool calls, or cut at the length limit); a reply that ended normally without text is still the last reply.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `4f62143568` (2026-11-13)
+- **Tests:** `coding/cli/child_session_last_assistant_text_test.go::TestChildSessionLastAssistantTextSkipsATurnWithoutAnAnswer`, `coding/cli/rpc_upstream_test.go::TestRPCModeUpstream`, `coding/session_last_assistant_text_cases_test.go::TestSessionLastAssistantTextCases`, `coding/session_last_assistant_text_cases_test.go::TestSessionLastAssistantTextMatchesPi`, `coding/session_last_assistant_text_test.go::TestSessionLastAssistantText`, `internal/codingagent/copy_after_abort_or_error_upstream_test.go::TestCopyAfterAProviderErrorCopiesThePreviousAnswer`, `internal/codingagent/copy_after_abort_or_error_upstream_test.go::TestCopyWithNothingToCopySaysSo`, `test/parity/scenarios/slash-commands/27-copy-after-aborted-turn.toml` and 1 more in docs/bug-ledger.json
+- **Release note:** `/copy`, the copy key, RPC `get_last_assistant_text` and a child session's `getLastAssistantText` now skip a turn that ended without an answer. After Esc during a tool call or after a provider error they copy or return the previous answer; before, `/copy` said `No agent messages to copy yet.` and RPC returned `null` while the answer was on screen. An assistant message without text is skipped when its turn did not end normally (aborted, failed, only tool calls, or cut at the length limit); a reply that ended normally without text is still the last reply. Follows Pi #12121 (ede360e4d).
 
 ### BF-4f6992d
 
@@ -20563,6 +20579,21 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `b5c9e29c8f` (2026-11-12)
 - **Tests:** `coding/model_availability_auth_pass_test.go::TestAuthWriteDuringAvailabilityPassIsUsedByNextRequest`, `coding/model_availability_auth_pass_test.go::TestAvailabilityPassStatsEachAuthFileOnce`, `coding/model_availability_auth_pass_test.go::TestAvailabilityPassStatsEveryReadAfterACommandKey`, `coding/model_availability_auth_pass_test.go::TestBrokenAuthFileDuringAvailabilityPass`, `coding/model_availability_auth_pass_test.go::TestCredentialAPIWriteDuringAvailabilityPassIsUsedByTheSamePass`, `coding/model_availability_auth_pass_test.go::TestExtensionCheckRewritingAuthFileIsUsedByNextRequest`, `coding/model_availability_auth_view_test.go::TestAvailabilityPassAuthViewMatchesPiUpstream`, `internal/codingagent/model_availability_read_context_test.go::TestAvailabilityReadContextGivesEveryPassOneAuthView`
 
+### BF-D629
+
+**A prompt that arrives while another prompt is being admitted in RPC mode is rejected with an error, where Pi…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D629)
+- **Symptom:** A prompt is answered `started` and never run; no error is emitted; an `agent_settled` is emitted for a run that never started, and it clears the busy state of the run that did. An upstream issue draft is the owner's to post; none has been posted.
+- **Root cause:** a client is told that its prompt was not taken and can send it again or queue it. Pi accepts the prompt and loses it without an error, so a client that waits for the run of a prompt answered `started` waits for a run that never comes, and reads an `agent_settled` that belongs to no run it can see.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** Pi rejects the second prompt of a batch with an error, or stops answering `started` for a prompt it does not run. `TestRPCPromptsWrittenInOneChunkDivergeFromPi` runs the pinned Pi and fails when Pi's side changes.
+- **Fix commits:** `dbb1bbb1bd` (2026-11-12)
+- **Tests:** `coding/cli/rpc_prompt_one_chunk_pi_test.go::TestRPCPromptsWrittenInOneChunkDivergeFromPi`, `coding/cli/rpc_prompt_order_test.go::TestRPCPromptsOfOneBatchAnswerInRequestOrder`, `coding/cli/rpc_prompt_order_test.go::TestRPCPromptsWithDueCompactionsAnswerInRequestOrder`
+
 ### BF-D631
 
 **A command run by `pi.exec` or the bash tool gets pipes for its output, where Pi gives it socket pairs**
@@ -30783,6 +30814,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D618 | A start repaints after the highlight grammar load only when a highlight lookup made before it could have… | [BF-D618](#bf-d618) |
 | D619 | A status-indicator or Loader animation step asks for its frame within min(40 ms, interval/2), where Pi asks… | [BF-D619](#bf-d619) |
 | D628 | auth.json is read once per availability pass, where Pi stats it on every credential read | [BF-D628](#bf-d628) |
+| D629 | A prompt that arrives while another prompt is being admitted in RPC mode is rejected with an error, where Pi… | [BF-D629](#bf-d629) |
 | D631 | A command run by `pi.exec` or the bash tool gets pipes for its output, where Pi gives it socket pairs | [BF-D631](#bf-d631) |
 
 ## Fix-titled commits that are not bugs in a release
