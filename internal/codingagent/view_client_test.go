@@ -59,10 +59,12 @@ type viewTestLoop struct {
 	keybindings *KeybindingsManager
 	// frames is every frame the client drew over the screen, closed ones too, in the order it drew them.
 	frames []*viewTestFrame
+	// waiting is the row the client laid for the dialogs that hold no keyboard, or nil.
+	waiting *viewWaiting
 }
 
-// viewTestFrame is a frame the test loop drew over the screen. It behaves as the renderer's overlay does: drawn with the
-// focus it takes it, and closed while it holds the focus it gives it back to what held it before.
+// viewTestFrame is a frame the test loop drew over the screen. It behaves as the renderer's overlay does: it takes the
+// focus when it is drawn, and closed while it holds the focus it gives it back to what held it before.
 type viewTestFrame struct {
 	l      *viewTestLoop
 	mount  *viewMount
@@ -82,8 +84,6 @@ func (fr *viewTestFrame) Close() {
 	}
 	fr.l.focus(nil)
 }
-
-func (fr *viewTestFrame) Focus() { fr.l.focus(fr.mount) }
 
 func (fr *viewTestFrame) Leave() { fr.l.focus(nil) }
 
@@ -140,14 +140,13 @@ func (l *viewTestLoop) ui() viewClientUI {
 		layout: func(mounts []*viewMount) { l.laid = append(l.laid, slices.Clone(mounts)) },
 		render: func() { l.renders++ },
 		focus:  l.focus,
-		float: func(mount *viewMount, title string, focus bool) viewFloat {
+		float: func(mount *viewMount, title string) viewFloat {
 			fr := &viewTestFrame{l: l, mount: mount, title: title, before: l.focused}
 			l.frames = append(l.frames, fr)
-			if focus {
-				l.focus(mount)
-			}
+			l.focus(mount)
 			return fr
 		},
+		waitRow:       func(row *viewWaiting) { l.waiting = row },
 		editorFocused: func() bool { return l.focused == nil && !l.elsewhere && !l.onRow },
 		editorEmpty:   func() bool { return !l.typed },
 		tabRow:        func(row *viewTabs) { l.row = row },

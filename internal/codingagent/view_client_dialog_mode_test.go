@@ -1,8 +1,6 @@
 package codingagent
 
 import (
-	"fmt"
-	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -39,6 +37,9 @@ func (p *viewModeProbe) mounted(key string) *viewMount {
 // framed reports whether the renderer holds a visible overlay: a frame it drew at the last frame.
 func (p *viewModeProbe) framed() bool {
 	for _, m := range p.m.viewClient.Load().floats {
+		if m.frame == nil {
+			continue
+		}
 		if _, drawn := m.frame.(*viewFrame).handle.GetBounds(); drawn {
 			return true
 		}
@@ -150,10 +151,10 @@ func TestTerminalViewClientDrawsADialogInTheRenderersFrame(t *testing.T) {
 	})
 }
 
-// The key that interrupts leaves the dialog for the editor and the frame stays; the next press interrupts. F6 moves
-// between the editor and the dialog and passes a focusable panel by. A key typed while the dialog is drawn without the
-// focus is the editor's.
-func TestTerminalViewClientEscapeLeavesTheDialogDrawn(t *testing.T) {
+// The key that interrupts leaves the dialog for the editor, and the frame gives way to one row above the editor; the
+// next press interrupts. F6 moves between the editor and the dialog and passes a focusable panel by. A key typed while
+// the dialog waits on its row is the editor's.
+func TestTerminalViewClientEscapeLeavesTheDialogForItsRow(t *testing.T) {
 	viewDialogModes(t, func(t *testing.T, p *viewModeProbe) {
 		interrupts := 0
 		p.m.defaultCustomEditor().OnEscape = func() { interrupts++ }
@@ -165,16 +166,21 @@ func TestTerminalViewClientEscapeLeavesTheDialogDrawn(t *testing.T) {
 			t.Fatal("the dialog shown over an empty editor does not hold the focus")
 		}
 		p.key("\x1b")
-		if interrupts != 0 || dialog.focused || p.m.tuiInst.GetFocusedComponent() != p.m.editor || !p.framed() {
-			t.Fatalf("after Escape: interrupts %d, the dialog focused %v, overlay %v", interrupts, dialog.focused, p.framed())
+		if frame := widthx.StripAnsi(p.frame()); !strings.Contains(frame, "Probe map: F6 to enter") {
+			t.Fatalf("after Escape the row of the dialog is not drawn:\n%s", frame)
+		}
+		if interrupts != 0 || dialog.focused || p.m.tuiInst.GetFocusedComponent() != p.m.editor || p.framed() || p.m.tuiInst.HasOverlay() {
+			t.Fatalf("after Escape: interrupts %d, the dialog focused %v, frame %v", interrupts, dialog.focused, p.framed())
 		}
 		p.key("\x1b")
 		if interrupts != 1 {
 			t.Fatalf("the second Escape interrupted %d times, want 1", interrupts)
 		}
 		for i, want := range []bool{true, false, true, false} {
-			if _, consumed := p.m.tuiInst.RunInputListeners("\x1b[17~"); !consumed || dialog.focused != want || panel.focused {
-				t.Fatalf("F6 press %d: consumed %v, the dialog focused %v (want %v), the panel focused %v", i+1, consumed, dialog.focused, want, panel.focused)
+			_, consumed := p.m.tuiInst.RunInputListeners("\x1b[17~")
+			p.frame()
+			if !consumed || dialog.focused != want || p.framed() != want || panel.focused {
+				t.Fatalf("F6 press %d: consumed %v, the dialog focused %v and framed %v (want %v), the panel focused %v", i+1, consumed, dialog.focused, p.framed(), want, panel.focused)
 			}
 		}
 		if p.m.tuiInst.GetFocusedComponent() != p.m.editor {
@@ -182,8 +188,8 @@ func TestTerminalViewClientEscapeLeavesTheDialogDrawn(t *testing.T) {
 		}
 		p.key("z")
 		p.frame()
-		if text := p.m.editor.Text(); text != "z" || !p.framed() {
-			t.Fatalf("a key typed beside the dialog: the editor holds %q, overlay %v", text, p.framed())
+		if text := p.m.editor.Text(); text != "z" || p.framed() {
+			t.Fatalf("a key typed while the dialog waits: the editor holds %q, frame %v", text, p.framed())
 		}
 	})
 }
@@ -212,50 +218,28 @@ func TestTerminalViewClientStacksDialogs(t *testing.T) {
 	})
 }
 
-// A dialog shown while the editor holds text is drawn without the focus, so what the user types stays the editor's.
+// A dialog shown while the editor holds text has no frame, so it covers nothing the user types: one row names it, and
+// F6 enters it.
 func TestTerminalViewClientDialogLeavesATypingUserTheKeys(t *testing.T) {
 	viewDialogModes(t, func(t *testing.T, p *viewModeProbe) {
 		p.typeText("hello")
 		p.must("ui.view.mount", viewDialogProbeMount("map"))
-		p.frame()
+		if frame := widthx.StripAnsi(p.frame()); !strings.Contains(frame, "Probe map: F6 to enter") {
+			t.Fatalf("the row of the waiting dialog is not drawn:\n%s", frame)
+		}
 		dialog := p.mounted("map")
-		if dialog.focused || !p.framed() || p.m.tuiInst.GetFocusedComponent() != p.m.editor {
-			t.Fatalf("a dialog shown over a typing user: focused %v, overlay %v", dialog.focused, p.framed())
+		if dialog.focused || p.framed() || p.m.tuiInst.HasOverlay() || p.m.tuiInst.GetFocusedComponent() != p.m.editor {
+			t.Fatalf("a dialog shown to a typing user: focused %v, frame %v", dialog.focused, p.framed())
 		}
 		p.key("!")
+		p.frame()
 		if text := p.m.editor.Text(); text != "hello!" {
 			t.Fatalf("the editor holds %q", text)
 		}
-		if _, consumed := p.m.tuiInst.RunInputListeners("\x1b[17~"); !consumed || !dialog.focused {
-			t.Fatal("F6 did not give the focus to the dialog")
-		}
-	})
-}
-
-// In fullscreen mode a click inside the frame gives the dialog the focus.
-func TestTerminalViewClientClickFocusesTheDialog(t *testing.T) {
-	synctest.Test(t, func(t *testing.T) {
-		p := newViewModeProbe(t, "fullscreen", true)
-		p.must("ui.view.mount", viewDialogProbeMount("map"))
+		_, consumed := p.m.tuiInst.RunInputListeners("\x1b[17~")
 		p.frame()
-		dialog := p.mounted("map")
-		p.key("\x1b")
-		p.frame()
-		bounds, ok := dialog.frame.(*viewFrame).handle.GetBounds()
-		if dialog.focused || !ok {
-			t.Fatalf("before the click: the dialog focused %v, frame %v", dialog.focused, ok)
-		}
-		// The list's first item, three cells into the frame. The frame's border is one cell, and the report is 1-based.
-		item := slices.IndexFunc(dialog.Render(dialog.lineWidth), func(line string) bool { return strings.Contains(line, "Alpha") })
-		if item < 0 {
-			t.Fatal("the dialog draws no list item")
-		}
-		column, row := bounds.Col+4, bounds.Row+1+item+1
-		p.m.altScreen.HandleViewportInput(fmt.Sprintf("\x1b[<0;%d;%dM", column, row))
-		p.m.altScreen.HandleViewportInput(fmt.Sprintf("\x1b[<0;%d;%dm", column, row))
-		p.frame()
-		if !dialog.focused {
-			t.Fatal("a click inside the frame did not give the dialog the focus")
+		if !consumed || !dialog.focused || !p.framed() {
+			t.Fatal("F6 did not enter the dialog")
 		}
 	})
 }

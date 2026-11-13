@@ -55,7 +55,7 @@ type viewSlot struct {
 	columns func(terminalColumns int) int
 	// focus reports that a mount of the slot can hold the keyboard focus.
 	focus bool
-	// float reports that a mount of the slot is drawn over the screen in a frame of its own (see viewClient.float).
+	// float reports that a mount of the slot is drawn over the screen in a frame of its own (see view_client_dialog.go).
 	float bool
 	// tabs reports that the mounts of the slot are tabs: one is drawn at a time, under a row of their titles (see
 	// viewTabs). Without it every live mount of the slot is drawn, one under the other.
@@ -163,8 +163,11 @@ type viewClientUI struct {
 	// focus gives the keyboard focus to mount, or to the editor with nil.
 	focus func(mount *viewMount)
 	// float draws mount over the screen in a frame titled title, on top of every frame drawn before, and gives it the
-	// keyboard focus when focus is set. It returns the frame, or nil when the renderer drew none.
-	float func(mount *viewMount, title string, focus bool) viewFloat
+	// keyboard focus. It returns the frame, or nil when the renderer drew none.
+	float func(mount *viewMount, title string) viewFloat
+	// waitRow sets the row that stands for the dialogs while none holds the keyboard, directly above the editor, or none
+	// with nil.
+	waitRow func(row *viewWaiting)
 	// editorFocused reports whether the editor holds the keyboard focus.
 	editorFocused func() bool
 	// editorEmpty reports whether the editor holds no text.
@@ -191,9 +194,7 @@ type viewClientUI struct {
 type viewFloat interface {
 	// Close removes the frame. The keyboard focus it held returns to what held it before.
 	Close()
-	// Focus gives the frame the keyboard focus.
-	Focus()
-	// Leave returns the keyboard focus to the editor; the frame stays drawn.
+	// Leave returns the keyboard focus to the editor.
 	Leave()
 }
 
@@ -236,8 +237,13 @@ type viewClient struct {
 	order []*viewMount
 	// drawn is the mounts last given to layout.
 	drawn []*viewMount
-	// floats is the mounts drawn over the screen, each in its frame, in the order they were shown: the last is on top.
-	floats []*viewMount
+	// floats is the visible mounts of float slots in the order they were shown: the last is on top. left reports that
+	// one of them lost the keyboard since the last settle. waiting is the row that stands for them while none holds the
+	// keyboard, and waitingOn reports that it is in the tree.
+	floats    []*viewMount
+	left      bool
+	waiting   *viewWaiting
+	waitingOn bool
 	// focused is the mount that holds the keyboard focus.
 	focused *viewMount
 	// asks holds, in the order they arrived, the mounts that asked to be shown (they turned live) or for the focus (their
@@ -428,7 +434,7 @@ func (c *viewClient) apply(s *uiview.Snapshot) {
 		}
 	}
 	if m.frame != nil && m.title != s.Title {
-		// The frame carries the title, so a mount with another title is drawn in a new frame.
+		// The frame carries the title, so a mount with another title is drawn in a new frame, on top.
 		c.unfloat(m)
 	}
 	m.ref, m.intents, m.digest, m.title = s.Mount, s.Intents, s.Digest, s.Title
@@ -504,6 +510,7 @@ func (c *viewClient) settle() {
 	}
 	clear(c.asks[len(waiting):])
 	c.asks = waiting
+	c.settleFloats()
 	switch stops := len(c.stops()) + len(c.floats); {
 	case stops > 0 && c.unlisten == nil:
 		c.unlisten = c.ui.listen(&c.listener)
@@ -549,14 +556,14 @@ func (c *viewClient) grant(m *viewMount) {
 		why = "another component holds the keyboard focus"
 	case c.at != m && !c.ui.editorEmpty():
 		why = "the editor holds text"
+	case m.slot.float:
+		// A dialog that waits on its row is entered: every dialog of the stack is drawn, the last on top.
+		c.enter()
+		return
 	case !m.takesFocus():
 		why = "the terminal gives the nodes of the view no keyboard focus"
 	case c.at == m:
 		// settle moves the focus from the tab row into the view.
-		return
-	case m.frame != nil:
-		m.frame.Focus()
-		c.dirty = true
 		return
 	default:
 		c.ui.focus(m)
@@ -564,43 +571,6 @@ func (c *viewClient) grant(m *viewMount) {
 		return
 	}
 	c.report(m, uiview.Notice{Code: uiview.NoticeUnfocused, Severity: uiview.SeverityInfo, Path: "focus", Message: why})
-}
-
-// float draws m, a visible mount of a float slot, over the screen in a frame of its own, on top of the frames drawn
-// before. The frame takes the keyboard focus by the rule of a focus request (grant): from a view of the client, from the
-// tab row and from an editor that holds no text. Otherwise it is drawn without the focus, the plugin reads an unfocused
-// notice, and the focus key reaches it. A mount that has its frame keeps it.
-func (c *viewClient) float(m *viewMount) {
-	if m.frame != nil {
-		return
-	}
-	var why string
-	switch {
-	case c.focused != nil || c.at != nil:
-	case !c.ui.editorFocused():
-		why = "another component holds the keyboard focus"
-	case !c.ui.editorEmpty():
-		why = "the editor holds text"
-	}
-	if m.frame = c.ui.float(m, m.label(), why == ""); m.frame == nil {
-		return
-	}
-	c.floats = append(c.floats, m)
-	if why != "" {
-		c.report(m, uiview.Notice{Code: uiview.NoticeUnfocused, Severity: uiview.SeverityInfo, Path: "focus", Message: why})
-	}
-}
-
-// unfloat removes the frame of m, when it has one: the mount was hidden or ended. The frame under it, or what held the
-// focus before, has the keyboard again.
-func (c *viewClient) unfloat(m *viewMount) {
-	if m.frame == nil {
-		return
-	}
-	m.frame.Close()
-	m.frame = nil
-	c.floats = slices.DeleteFunc(c.floats, func(o *viewMount) bool { return o == m })
-	m.SetFocused(false)
 }
 
 // rewired tells the client that the renderer was replaced: the focus key's listener went with the old one, and the
@@ -612,8 +582,9 @@ func (c *viewClient) rewired() {
 
 // focusKey is the input listener of viewFocusKey: from the editor it moves to the first stop, from a stop to the next,
 // and from the last back to the editor. The stops are the focusable panels, or the entries of the tab row while it is
-// drawn (see stops). While a frame is drawn over the screen the key moves between the editor and the top frame and
-// passes every other stop by. While something else holds the focus it passes the key on.
+// drawn (see stops). While a dialog is live the key moves between the editor and the dialogs and passes every other
+// stop by: it draws their frames with the keyboard, and from the top frame it returns to the editor. While something
+// else holds the focus it passes the key on.
 func (c *viewClient) focusKey(data string) *tui.TuiInputResult {
 	if !tui.MatchesKeyID(data, viewFocusKey) {
 		return nil
@@ -623,10 +594,11 @@ func (c *viewClient) focusKey(data string) *tui.TuiInputResult {
 		case top.focused:
 			top.frame.Leave()
 		case c.standing() != nil || c.ui.editorFocused():
-			top.frame.Focus()
+			c.enter()
 		default:
 			return nil
 		}
+		c.settle()
 		c.ui.render()
 		return &tui.TuiInputResult{Consume: true}
 	}

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/uiview"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // pig additive (D614): the terminal draws a mount of slot dialog in a frame over the screen. These tests drive the
@@ -105,10 +106,18 @@ func TestViewClientDrawsADialogInAFrameWithTheFocus(t *testing.T) {
 	}
 }
 
-// The key that interrupts cancels a cancellable intent of the dialog in flight and returns the focus to the editor. The
-// frame stays, and the focus key moves between the editor and the dialog, passing a focusable panel by; without a
-// dialog it cycles the panels again.
-func TestViewClientEscapeLeavesADialogThatStaysDrawn(t *testing.T) {
+// waitingRow is the row that stands for the dialogs, without styling, or "" while the client lays none.
+func waitingRow(f *viewFixture) string {
+	if f.loop.waiting == nil {
+		return ""
+	}
+	return strings.TrimSpace(widthx.StripAnsi(strings.Join(f.loop.waiting.Render(40), "\n")))
+}
+
+// The key that interrupts cancels a cancellable intent of the dialog in flight and returns the focus to the editor. A
+// dialog without the keyboard has no frame: one row names it. The focus key enters it again and leaves it for the
+// editor, passing a focusable panel by; without a dialog it cycles the panels again.
+func TestViewClientEscapeLeavesADialogForItsRow(t *testing.T) {
 	f := newViewFixture(t)
 	cancelled := make(chan struct{})
 	f.host.invoke = func(ctx context.Context, _ uiview.Invocation) (uiview.Result, error) {
@@ -120,6 +129,9 @@ func TestViewClientEscapeLeavesADialogThatStaysDrawn(t *testing.T) {
 	panel := f.loop.drawn()[0]
 	ref := f.mount("d", uiview.SlotDialog, viewDialogContent())
 	dialog := f.loop.open()[0].mount
+	if waitingRow(f) != "" {
+		t.Fatalf("a dialog that holds the keyboard has the row %q", waitingRow(f))
+	}
 	dialog.HandleInput("\r")
 	dialog.HandleInput("\x1b")
 	select {
@@ -127,25 +139,26 @@ func TestViewClientEscapeLeavesADialogThatStaysDrawn(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("Escape did not cancel the dialog's cancellable intent in flight")
 	}
-	if f.loop.focused != nil || dialog.focused || len(f.loop.open()) != 1 {
-		t.Fatalf("after Escape: focused %v, frames %d, want the editor and the frame still drawn", f.loop.focused, len(f.loop.open()))
+	if f.loop.focused != nil || dialog.focused || len(f.loop.open()) != 0 || waitingRow(f) != "d: F6 to enter" {
+		t.Fatalf("after Escape: focused %v, frames %d, row %q", f.loop.focused, len(f.loop.open()), waitingRow(f))
 	}
 	f.awaitResult()
 	f.loop.run()
 	if len(f.loop.notices) != 0 {
 		t.Fatalf("a cancelled intent wrote %q", f.loop.notices)
 	}
-	for i, want := range []*viewMount{dialog, nil, dialog} {
-		if !f.loop.key("\x1b[17~") || f.loop.focused != want {
-			t.Fatalf("F6 press %d: the focus is on %v, want the dialog %v", i+1, f.loop.focused, want != nil)
+	for i, entered := range []bool{true, false, true} {
+		if !f.loop.key("\x1b[17~") || (f.loop.focused == dialog) != entered || len(f.loop.open()) != map[bool]int{true: 1, false: 0}[entered] || (waitingRow(f) == "") != entered {
+			t.Fatalf("F6 press %d: the dialog focused %v, frames %d, row %q", i+1, f.loop.focused == dialog, len(f.loop.open()), waitingRow(f))
 		}
+		f.loop.run()
 	}
 	if panel.focused {
 		t.Fatal("F6 stopped on the panel under the dialog")
 	}
 	f.transition("hide", ref)
-	if f.loop.focused != nil {
-		t.Fatal("the hidden dialog did not give the focus back to the editor")
+	if f.loop.focused != nil || waitingRow(f) != "" || len(f.loop.open()) != 0 {
+		t.Fatalf("the hidden dialog left the focus on %v, the row %q", f.loop.focused, waitingRow(f))
 	}
 	if !f.loop.key("\x1b[17~") || f.loop.focused != panel {
 		t.Fatal("without a dialog F6 does not reach the panel")
@@ -153,7 +166,8 @@ func TestViewClientEscapeLeavesADialogThatStaysDrawn(t *testing.T) {
 }
 
 // Several live dialogs are stacked in the order they were shown: the last has the keyboard, and when it ends the one
-// under it has it again. A dialog that ends under another takes nothing from the one on top.
+// under it has it again. Leaving removes every frame and entering draws them all again. A dialog that ends under
+// another takes nothing from the one on top.
 func TestViewClientStacksDialogs(t *testing.T) {
 	f := newViewFixture(t)
 	first := f.mount("one", uiview.SlotDialog, viewDialogContent())
@@ -164,8 +178,14 @@ func TestViewClientStacksDialogs(t *testing.T) {
 	}
 	one, two := open[0].mount, open[1].mount
 	two.HandleInput("\x1b")
+	if len(f.loop.open()) != 0 || waitingRow(f) != "two: F6 to enter" || f.loop.focused != nil {
+		t.Fatalf("after leaving the top dialog: %d frames, row %q", len(f.loop.open()), waitingRow(f))
+	}
 	if !f.loop.key("\x1b[17~") || f.loop.focused != two {
 		t.Fatal("F6 from the editor did not reach the dialog on top")
+	}
+	if open := f.loop.open(); len(open) != 2 || open[0].mount != one || open[1].mount != two {
+		t.Fatalf("entering drew %d frames, want the stack of two in order", len(open))
 	}
 	f.transition("hide", second)
 	if open := f.loop.open(); len(open) != 1 || open[0].mount != one || f.loop.focused != one {
@@ -184,8 +204,8 @@ func TestViewClientStacksDialogs(t *testing.T) {
 	}
 	f.transition("finish", third)
 	f.transition("remove", second)
-	if len(f.loop.open()) != 0 || f.loop.focused != nil || len(f.loop.listeners) != 0 {
-		t.Fatalf("after every dialog ended: %d frames, %d listeners", len(f.loop.open()), len(f.loop.listeners))
+	if len(f.loop.open()) != 0 || f.loop.focused != nil || len(f.loop.listeners) != 0 || waitingRow(f) != "" {
+		t.Fatalf("after every dialog ended: %d frames, %d listeners, row %q", len(f.loop.open()), len(f.loop.listeners), waitingRow(f))
 	}
 }
 
@@ -212,15 +232,14 @@ func TestViewClientDialogWithoutAFocusableNodeAndDetach(t *testing.T) {
 	}
 }
 
-// A dialog is drawn with the focus by the rule of a focus request: not from an editor that holds text. Then it is drawn
-// without it, the plugin reads an unfocused notice, and the focus key reaches the dialog.
+// A dialog enters by the rule of a focus request: not from an editor that holds text. Then it has no frame, so it
+// covers nothing the user types: the row names it, the plugin reads an unfocused notice, and the focus key enters it.
 func TestViewClientDialogTakesNoFocusFromAnEditorThatHoldsText(t *testing.T) {
 	f := newViewFixture(t)
 	f.loop.typed = true
 	f.mount("d", uiview.SlotDialog, viewDialogContent())
-	open := f.loop.open()
-	if len(open) != 1 || f.loop.focused != nil || open[0].mount.focused {
-		t.Fatalf("a dialog shown while the editor holds text: %d frames, focused %v", len(open), f.loop.focused != nil)
+	if len(f.loop.frames) != 0 || f.loop.focused != nil || waitingRow(f) != "d: F6 to enter" {
+		t.Fatalf("a dialog shown while the editor holds text: %d frames, focused %v, row %q", len(f.loop.frames), f.loop.focused != nil, waitingRow(f))
 	}
 	var codes []string
 	for _, n := range f.notices("d") {
@@ -229,8 +248,8 @@ func TestViewClientDialogTakesNoFocusFromAnEditorThatHoldsText(t *testing.T) {
 	if !slices.Equal(codes, []string{"unfocused focus the editor holds text"}) {
 		t.Fatalf("notices = %q", codes)
 	}
-	if !f.loop.key("\x1b[17~") || f.loop.focused != open[0].mount {
-		t.Fatal("F6 did not give the focus to the dialog that was drawn without it")
+	if !f.loop.key("\x1b[17~") || len(f.loop.open()) != 1 || f.loop.focused != f.loop.open()[0].mount || waitingRow(f) != "" {
+		t.Fatal("F6 did not enter the dialog that waited on its row")
 	}
 }
 

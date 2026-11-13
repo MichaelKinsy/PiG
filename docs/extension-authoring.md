@@ -722,12 +722,14 @@ check the abilities and keep a fallback such as a widget or a notice.
 - A panel that you mount, show after a hide, or update with a focus request comes to the front when the user is in the editor
   or on its tab. While the user works in another view yours stays where it is and its tab is marked with `*`.
 - A `dialog` mount floats over the transcript, the panels and the editor, which keep their state under it. The frame's title
-  is the mount's `title`, or its `key` without one. It takes the keys when it is shown, by the rule of a focus request below;
-  shown while the user types in the editor it is drawn without them and `ViewDiagnostics` returns `unfocused`. Several live
-  dialogs are stacked, the last shown on top with the keys.
+  is the mount's `title`, or its `key` without one. It takes the keys when it is shown, by the rule of a focus request below.
+  A dialog is drawn in its frame only while a dialog holds the keys, so no frame covers what the user types: shown while the
+  user types in the editor it waits as one row above the editor, `<title>: F6 to enter`, and `ViewDiagnostics` returns
+  `unfocused`. Several live dialogs are stacked, the last shown on top with the keys.
 - Only your extension closes a dialog: hide, finish or remove it from the handler of a key it binds or of a node's intent.
-  Escape returns the keys to the editor and the dialog stays; F6 moves between the editor and the dialog on top. Bind a key
-  to close it (`escape`, `tab` and `f6` cannot be bound) and give the binding a `name`, which the hint row in the frame shows.
+  Escape returns the keys to the editor and the frame gives way to that row, while the mount stays live; F6 enters the
+  dialogs again and leaves them. Bind a key to close a dialog (`escape`, `tab` and `f6` cannot be bound) and give the
+  binding a `name`, which the hint row in the frame shows.
   The TUI lists no hidden dialog, so open one from a key or a node of another view, not from a `whenHidden` intent.
 - A focus request (`request: "mount"` or `"update"`) is granted when your view already has the focus, when the user stands on
   its tab, or when the editor has the focus and is empty. Otherwise `ViewDiagnostics` returns an `unfocused` notice with the

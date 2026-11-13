@@ -30,17 +30,14 @@ func (m *InteractiveMode) attachTerminalViewClient(bridge SubprocessUIBridge) {
 			}
 			m.tuiInst.SetFocus(mount)
 		},
-		float: func(mount *viewMount, title string, focus bool) viewFloat {
+		float: func(mount *viewMount, title string) viewFloat {
 			handle := m.tuiInst.ShowOverlay(mount, viewDialogOverlay(title))
 			if handle == nil {
 				return nil
 			}
-			if !focus {
-				// The overlay took the focus as it was drawn: it goes back to what held it.
-				handle.Unfocus()
-			}
 			return &viewFrame{m: m, handle: handle}
 		},
+		waitRow: m.setViewWaitRow,
 		editorFocused: func() bool {
 			return m.tuiInst.ActiveOverlay() == nil && m.tuiInst.GetFocusedComponent() == tui.Component(m.editor)
 		},
@@ -72,8 +69,6 @@ type viewFrame struct {
 
 func (f *viewFrame) Close() { f.handle.Close() }
 
-func (f *viewFrame) Focus() { f.handle.Focus() }
-
 func (f *viewFrame) Leave() { f.handle.UnfocusWith(tui.OverlayUnfocusOptions{Target: f.m.editor}) }
 
 // detachTerminalViewClient ends the terminal's attachment to the outgoing build's registry and removes its mounts.
@@ -89,6 +84,15 @@ func (m *InteractiveMode) viewClientResized() {
 	if client := m.viewClient.Load(); client != nil {
 		client.wake()
 	}
+}
+
+// setViewWaitRow sets the row that stands for the dialogs, directly above the editor, or none with nil, and lays the
+// widgets out.
+func (m *InteractiveMode) setViewWaitRow(row *viewWaiting) {
+	m.widgetMu.Lock()
+	defer m.widgetMu.Unlock()
+	m.viewWaitRow = row
+	m.renderWidgetsLocked()
 }
 
 // setViewTabRow sets the tab row the panel region draws above its mounts, or none with nil, and lays the widgets out.

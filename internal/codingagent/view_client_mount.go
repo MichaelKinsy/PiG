@@ -26,7 +26,7 @@ type viewMount struct {
 	// live and, in a slot with tabs, the tab that is drawn.
 	accepted, drawable, live, hidden, visible bool
 	focused                                   bool
-	// frame is the frame a mount of a float slot is drawn in, and nil while it is not drawn.
+	// frame is the frame a mount of a float slot is drawn in, and nil while no dialog holds the keyboard.
 	frame viewFloat
 	// title is the snapshot's. node is the node of the last focus request, which takes the keys while the focus records
 	// name it. asksFocus reports a focus request the client has not answered, and attention that the mount asked to be
@@ -137,6 +137,11 @@ func (m *viewMount) SetFocused(focused bool) {
 	}
 	m.focused = focused
 	m.c.stamp++
+	if !focused && m.frame != nil {
+		// A dialog lost the keyboard: the client removes the frames unless another dialog has it (settleFloats).
+		m.c.left = true
+		m.c.wake()
+	}
 	m.surface.SetFocused(focused)
 	switch {
 	case focused:
@@ -175,13 +180,6 @@ func (m *viewMount) HandleMouse(event tui.TuiMouseEvent) *tui.TuiMouseDispatchRe
 	if !result.Handled && !result.Capture && !result.Focus {
 		return nil
 	}
-	if result.Focus && m.frame != nil {
-		// The frame is the renderer's overlay, so the focus is the frame's to take.
-		if !m.focused {
-			m.frame.Focus()
-		}
-		result.Focus = false
-	}
 	dispatched := &tui.TuiMouseDispatchResult{
 		Handled: true, Capture: result.Capture, Focus: result.Focus && m.takesFocus(), Render: result.Render,
 		Target: tui.TuiMouseDispatchTarget{
@@ -196,13 +194,14 @@ func (m *viewMount) HandleMouse(event tui.TuiMouseEvent) *tui.TuiMouseDispatchRe
 }
 
 // leave returns the focus to the editor: the focused node gave it up, or the user pressed the key that interrupts. A
-// frame stays drawn.
+// dialog's frame goes with the focus.
 func (m *viewMount) leave() {
 	if !m.focused {
 		return
 	}
 	if m.frame != nil {
 		m.frame.Leave()
+		m.c.settle()
 	} else {
 		m.c.ui.focus(nil)
 	}
