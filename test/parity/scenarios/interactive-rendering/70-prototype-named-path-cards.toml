@@ -26,6 +26,11 @@
 # The write card proper would draw `write out.constructor`, a blank row and the two content rows; the read card proper a blank row between its header and
 # the output. Before this scenario PiG drew those. Both turns end, the result reaches the model (the faux provider echoes it as `ext-tool-done: ...`) and
 # the interface stays usable.
+#
+# Crop: the capture runs from the first prompt (`Run: ext tool write`) to the faux provider's echo of the read result (`ext-tool-done: alpha line`). It holds
+# both prompts, both expanded cards and both echoes. The startup header above it and the editor and footer below it belong to other scenarios and are not
+# claimed here. Inside the crop the escaped bytes are compared. The runner's cwd_snapshot_digits step (D2) replaces the digits of the per-run cwd copy by the
+# same number of placeholders; the prompts and the cards name relative paths, so no row of the crop holds the cwd and the step changes nothing here.
 
 name = "70-prototype-named-path-cards"
 description = "A write and a read of a path whose extension is `constructor` draw Pi's call and result fallbacks, expanded, byte for byte."

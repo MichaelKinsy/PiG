@@ -2,9 +2,20 @@
 # Surface: the same fallbacks as 70-prototype-named-path-cards, drawn from stored entries when a session is reopened.
 #
 # The session file holds one assistant message that wrote out.constructor and Constructor.CONSTRUCTOR, read notes.constructor and x.__proto__ (through
-# file_path), and wrote and read control.ts. Reopened with -c and expanded with ctrl+o, Pi draws the write calls of the first two paths as the call fallback
-# and the reads of the next two as the result fallback, and the control cards as themselves (pi 1.5.2 at b4afdddf, `--continue` twice after the live turns of
-# scenario 70's probe: the same cards at every open, the session continues, exports and compacts).
+# file_path), and wrote and read control.ts. Each stored write call holds `path` before `content`, the order the model sent.
+#
+# Upstream evidence (pi 1.5.2 at b4afdddf, the bundle, Node 24.22.2, tmux, 2026-11-13): after the live turns of scenario 70's probe, `--continue` twice and
+# ctrl+o each time. Pi draws the write calls of the first two paths as the call fallback (`write`, then `path: ...` and `content: ...` in the stored
+# order) and the reads of the next two as the result fallback, and the control cards as themselves. The cards are the same at every open, and the session
+# continues, exports and compacts. Pi draws the stored file of this scenario the same way in each of its three runs at 100x70.
+#
+# Before the fix PiG drew the reopened call fallback with `content` above `path`: the reopened transcript encoded the argument map, which sorts the keys.
+#
+# Crop: the capture runs from the first stored user message (`Prototype path redraw start`) to the last (`Prototype path redraw end`). It holds every card
+# of the stored turn, expanded. The startup header above it and the editor and footer below it belong to other scenarios and are not claimed here. Inside
+# the crop the escaped bytes are compared. The runner's cwd_snapshot_digits step (D2) replaces the digits of the per-run cwd copy by the same number of
+# placeholders; the cards show the stored relative paths, so no row of the crop holds the cwd and the step changes nothing here.
+# The pane is 70 rows: the expanded cards and both markers are then in the visible pane, which the step's wait reads.
 
 name = "71-resume-prototype-named-path-cards"
 description = "Reopened write and read cards of paths whose extension is `constructor` or `__proto__` draw Pi's fallbacks from the stored entries."
