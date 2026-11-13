@@ -3,7 +3,7 @@
 
 // Microtask passes of the paths Pi b3a29f11 and f3255de7 added, against the reference's own: the generation, tool and compaction
 // tasks of a host that died (harness-restart-failure.test.ts) and the attach of a windowed view (view.ts attach). Each case builds
-// its store with the reference's Harness (the pinned build of b3a29f11 that `make link-durable-host` links), killed as a crash does,
+// its store with the reference's Harness (the vendored pinned build, third_party/pi-packs), killed as a crash does,
 // and then opens a copy of it with the reference and a copy with the core and counts the passes each call keeps pending, as
 // scenarios/client-ticks.mjs does: the reference's count is measured here, not recorded, and the core must spend the same.
 // The reference's own numbers at e7a0df27 (gate-less Node SQLite adapter, profile `node`) are measured by every run of this file (the `pi` side of `counts`) and pinned beside the comparison so a

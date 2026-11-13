@@ -706,3 +706,47 @@ func TestValuesMemoryKeepsNoOldCompositionOnceItsReadersStoppedWaitingAndNobodyF
 	}
 	must(t, host.Close(background))
 }
+
+// rvEnds records how an observer of a registry value ended.
+type rvEnds struct{ ends []chord.WatchEnd }
+
+func (*rvEnds) Advance(chord.NativeWatchCall[any], context.Context) {}
+func (recorder *rvEnds) End(end chord.WatchEnd)                     { recorder.ends = append(recorder.ends, end) }
+
+var _ state.NativeObserver[any] = (*rvEnds)(nil)
+
+// Pi: "a value an app keeps after `host.close` keeps no closed host, and reads its last composition (Sol, Astra)": the value of
+// `host.registry` kept past `host.close` ends its observation with the host, holds no closed host, and reads its last composition.
+func TestValuesMemoryAValueAnAppKeepsAfterHostCloseKeepsNoClosedHostAndReadsItsLastCompositionSolAstra(t *testing.T) {
+	kept := rvRegistryOf("app.kept", 1)
+	recorder := &rvEnds{}
+	ctx, cancel := context.WithCancel(background)
+	defer cancel()
+	closedHost, value := func() (weak.Pointer[chordHost], *registries.RegistryValueSource) {
+		host := newHost(t, HostOptions{OnError: noopOnError})
+		mustLoad(t)(host.Load([]HostFacet{rvPlugin("@app/a", func(h FacetHost, _ FacetSelf) error {
+			return h.Serve(kept, registries.RegistryProvider[any, any]{
+				Compose: func(registries.RegistryTable[any], registries.ComposeContext) (any, error) { return 7.0, nil },
+			}, ServeOptions{})
+		})}, background))
+		value, err := host.Registry(background, kept, GetOptions{})
+		must(t, err)
+		if _, err := value.Observe(recorder, ctx); err != nil {
+			t.Fatal(err)
+		}
+		must(t, host.Close(background))
+		return weak.Make(host.(*chordHost)), value
+	}()
+	// The observation ended with the host: nothing of it is left to run when its context is cancelled.
+	if len(recorder.ends) != 1 {
+		t.Fatalf("observation ends after the host closed = %#v, want exactly one", recorder.ends)
+	}
+	cancel()
+	if len(recorder.ends) != 1 {
+		t.Fatalf("observation ends after its context was cancelled = %#v, want still one", recorder.ends)
+	}
+	expectCollected(t, closedHost)
+	if got := value.Value(); got != 7.0 {
+		t.Fatalf("value = %v, want its last composition 7", got)
+	}
+}

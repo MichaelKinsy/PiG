@@ -6,6 +6,11 @@
       "reason": "Normalized/layout comparators are explicit plain-terminal contracts: ANSI, CR, trailing spaces and outer blank rows are not compared. They are not full wire proof. Exact comparators apply only scenario-declared, justified replacements."
     },
     {
+      "source": "test/parity/runner/capture_stable.go",
+      "sha256": "b1cc3c4c0d146cb6330865b6afd6c5d60eb4a26c58721cd38f04ecadfc67ffad",
+      "reason": "The final terminal capture is the plain screen, the escaped screen and the plain screen again; it is accepted only when both plain captures are equal and hold the scenario's capture_start, and it is retaken every poll within the last step budget until then. Only the capture kinds a comparator reads are cropped to capture_start/capture_end: a capture_start absent from one of those fails the run (the whole captures are kept in the artifacts, with the failure joined to any step failure), and a capture no comparator reads is kept whole under a not-asserted-uncropped artifact name. No comparison is loosened: this is synchronization with the screen and a stricter crop, not a normalization."
+    },
+    {
       "source": "test/parity/runner/changelog_assert.go",
       "sha256": "616bfcede15420081ca71ac5229e0a3930fe71f752f0893348c5dc2fd9cb3610",
       "reason": "D22: the products ship different changelog documents. Compare every rendered release header, in order, against that binary's independent source document; this does not claim cross-product equality of body text or styling."
@@ -17,8 +22,8 @@
     },
     {
       "source": "test/parity/runner/driver_ht.go",
-      "sha256": "69a91a07c9bc69269eca4ae4325da959194a5689037ff44f122d6995eb7416cf",
-      "reason": "Headless terminal state capture compares the declared visible surface, not transient bytes. Tool stderr is diagnostic transport noise, not product stderr."
+      "sha256": "8b4b59fd3b8faf1a1048769f3650a72297beabfdd63b4af4fc68dc768162813a",
+      "reason": "Headless terminal state capture compares the declared visible surface, not transient bytes. Tool stderr is diagnostic transport noise, not product stderr. A capture_start absent from a capture a comparator reads fails the run instead of comparing the whole screen."
     },
     {
       "source": "test/parity/runner/driver_rpc.go",
@@ -27,8 +32,8 @@
     },
     {
       "source": "test/parity/runner/driver_tmux.go",
-      "sha256": "6da493568046b813904eb4e809da7cf6f8d563e5d1b72549bec8593fed0a1f98",
-      "reason": "Terminal state capture is not a byte-stream assertion. A scenario explicitly selects viewport or retained history and its crop. History capture uses session-local maximum retention without changing pane size or shared defaults; required anchors and source-derived assertions reject incomplete history. Readiness and new-output barriers are synchronization, not behavioral coverage."
+      "sha256": "d2388fd63d543abbc8cf7d86f8a970ab9062828469798354e6128b92cd2a7fd3",
+      "reason": "Terminal state capture is not a byte-stream assertion. A scenario explicitly selects viewport or retained history and its crop. History capture uses session-local maximum retention without changing pane size or shared defaults; required anchors and source-derived assertions reject incomplete history. Readiness and new-output barriers are synchronization, not behavioral coverage. The final capture is taken only from a still screen (the plain captures around the escaped one are equal, within the last step budget), and a capture_start absent from a capture a comparator reads, still absent when that budget ends, fails the run instead of comparing the whole screen. A capture no comparator reads is kept whole, not cropped."
     },
     {
       "source": "test/parity/runner/footer_crop.go",
@@ -92,7 +97,7 @@
     },
     {
       "source": "test/parity/testdata/test-faux-provider.ts",
-      "sha256": "9f542ec08a60642b0ea56ad439080c7c4b531d9c42185fd8162ac79d8c8c4afd",
+      "sha256": "7496298e10fbaeca1c41c905fb4380d271050fe5b9615b8e98e4dc79705a6a59",
       "reason": "Canned followups exercise specific orchestration/rendering questions, not complete result metadata. Full RPC tool records and real-provider mode scenarios supply result acceptance independently of final prose."
     }
   ],
@@ -4637,8 +4642,8 @@
         {
           "kind": "terminal_crop",
           "configuration": {
-            "capture_start": "reply with exactly: FRAMETAILOK",
-            "capture_end": "FRAMETAILOK"
+            "capture_start": "queued-after-compaction-ok",
+            "capture_end": "queued-after-compaction-ok"
           },
           "reason": "Owned visible surface: No frame begins after the frame that carries the end of a reply, in the raw terminal stream.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."

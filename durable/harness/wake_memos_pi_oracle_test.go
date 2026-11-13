@@ -7,12 +7,11 @@ import (
 	"context"
 	"encoding/json"
 	"os/exec"
-	"path/filepath"
 	"reflect"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/durable"
-	"github.com/MichaelKinsy/PiG/internal/testenv"
+	"github.com/MichaelKinsy/PiG/internal/pioracle"
 	"github.com/MichaelKinsy/PiG/schema"
 )
 
@@ -95,9 +94,8 @@ func TestWakeRecordMemosMatchPi(t *testing.T) {
 		return decoded
 	}
 
-	root := testenv.ModuleRoot(t)
 	cmd := exec.CommandContext(t.Context(), "node", "--disable-warning=ExperimentalWarning", "testdata/wake_memos_oracle.mjs", suspendableOraclePackages(t))
-	cmd.Env = append(cmd.Environ(), "PI_INTEROP_DIR="+filepath.Join(root, "durable", "interop")+"/")
+	cmd.Env = append(cmd.Environ(), "PI_INTEROP_DIR="+pioracle.Project(t))
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	output, err := cmd.Output()

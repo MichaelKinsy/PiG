@@ -32,7 +32,7 @@ func TestConformance_UIViewSecondClient(t *testing.T) {
 			})
 			views := h.bridge.Views()
 			first := attachViewClient(t, views, tc.extName, *conformanceClientAbilities())
-			const abilities = "view-abilities:mounts=7,argbytes=123,slots=panel+status,nodes=text+box,markdown=true"
+			const abilities = "view-abilities:mounts=7,argbytes=123,slots=panel+status,nodes=text+box+select-list,markdown=true"
 			pollUntilConformance(t, "abilities never replicated", func() bool {
 				h.ui.ClearRecorded()
 				runConformanceCommand(t, h, "ui_view_abilities")

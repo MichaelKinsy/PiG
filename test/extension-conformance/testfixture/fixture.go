@@ -1428,10 +1428,175 @@ func Extension() *sdk.Extension {
 		return nil
 	})
 	redrawIntent := registerViewRows(ext)
+	// D614: a view an agent's tool shows. The command registers the tool; the tool mounts a titled panel, hides it,
+	// shows it and updates it with a focus request, the same way in every SDK fixture (conformance
+	// TestConformance_UIViewToolShowsAndFocuses). The title and the node are the caller's.
+	ext.Command("ui_view_tool", "Register the tool that shows a titled view", func(ctx sdk.Context, args string) error {
+		ctx.RegisterTool(sdk.ToolDefinition{Name: "view_show", Label: "view_show", Description: "Mount, show and focus a titled view", Parameters: sdk.Schema{"type": "object"}, Execute: func(ctx sdk.Context, params map[string]any) (any, error) {
+			title, _ := params["title"].(string)
+			node, _ := params["node"].(string)
+			if op, _ := params["op"].(string); op == "hide" {
+				st, err := ctx.ViewState("shown")
+				if err == nil {
+					st, err = ctx.HideView(st.Mount)
+				}
+				if err != nil {
+					return nil, err
+				}
+				return "view-tool:" + string(st.State), nil
+			}
+			content := func(title, request string) sdk.ViewContent {
+				return sdk.ViewContent{Title: title, View: viewList(node, "fixture-shown"),
+					Intents: []sdk.ViewIntent{{Name: "fx.reopen", Arg: sdk.ViewShape{Type: "object"}, WhenHidden: true}, {Name: "fx.tap", Arg: sdk.ViewShape{Type: "object"}}},
+					Focus:   []sdk.ViewFocus{{Node: node, Request: request}}}
+			}
+			st, err := ctx.MountView(sdk.ViewMount{Key: "shown", Slot: sdk.ViewSlotPanel, ViewContent: content(title, "")})
+			if err == nil {
+				st, err = ctx.HideView(st.Mount)
+			}
+			if err == nil {
+				st, err = ctx.ShowView(st.Mount)
+			}
+			if err == nil {
+				st, err = ctx.UpdateView(sdk.ViewUpdate{Mount: st.Mount, ViewContent: content(title+"/2", "update")})
+			}
+			if err != nil {
+				return nil, err
+			}
+			return fmt.Sprintf("view-tool:%s,rev=%d", st.State, st.Mount.Rev), nil
+		}})
+		return nil
+	})
+	// D614 grid node: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewGrid). The
+	// argument is the row's token: the cell values, the selection and one chip text are built from it.
+	ext.Command("ui_view_grid", "Mount a month as a grid and probe the bounds of the grid", func(ctx sdk.Context, args string) error {
+		tok := strings.TrimSpace(args)
+		code := func(err error) string {
+			if ve, ok := errors.AsType[*sdk.ViewError](err); ok {
+				return string(ve.Code)
+			}
+			return "none"
+		}
+		cells := []kit.GridCell{{Label: "30", Dim: true}, {Label: "31", Dim: true}}
+		for d := 1; d <= 28; d++ {
+			cell := kit.GridCell{Value: fmt.Sprintf("%s-%d", tok, d), Label: strconv.Itoa(d)}
+			switch d {
+			case 1:
+				cell.Chips = []kit.GridChip{{Text: tok + " standup", Color: "#3366cc"}, {Text: "lunch", Color: "accent"}}
+				cell.More = 2
+			case 2:
+				cell.Mark, cell.Color = "current", "#ff000080"
+			case 3:
+				cell.Chips = []kit.GridChip{{Text: "plain"}}
+			case 28:
+				cell.Label = ""
+			}
+			cells = append(cells, cell)
+		}
+		month := kit.NewGrid("month", 7, cells)
+		month.Head = []string{"Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"}
+		month.ChipRows = new(2)
+		month.Selected = tok + "-2"
+		content := func(grid *kit.Grid) sdk.ViewContent {
+			return sdk.ViewContent{
+				View:     kit.View{Root: kit.NewContainer(kit.NewText("Month "+tok, 0, 0), grid)},
+				Intents:  []sdk.ViewIntent{{Name: "fx.pick", NodeKey: "month", Arg: sdk.ViewShape{Type: "object", Properties: map[string]sdk.ViewShape{"value": {Type: "string"}}, Required: []string{"value"}}}},
+				Fallback: kit.NewText("grid-fallback "+tok, 0, 0),
+			}
+		}
+		st, err := ctx.MountView(sdk.ViewMount{Key: "grid", Slot: sdk.ViewSlotPanel, ViewContent: content(month)})
+		if err != nil {
+			return err
+		}
+		ctx.Notify("view-g-mounted:"+string(st.State), "info")
+		attempt := func(label string, columns int, cells []kit.GridCell) {
+			_, err := ctx.UpdateView(sdk.ViewUpdate{Mount: st.Mount, ViewContent: content(kit.NewGrid("month", columns, cells))})
+			ctx.Notify("view-g-"+label+":"+code(err), "info")
+		}
+		many := make([]kit.GridCell, 129)
+		for i := range many {
+			many[i] = kit.GridCell{Label: "x"}
+		}
+		attempt("cells", 7, many)
+		chips := make([]kit.GridChip, 9)
+		for i := range chips {
+			chips[i] = kit.GridChip{Text: "c"}
+		}
+		attempt("chips", 7, []kit.GridCell{{Value: "a", Chips: chips}})
+		attempt("columns", 17, []kit.GridCell{{Value: "a"}})
+		attempt("mark", 7, []kit.GridCell{{Value: "a", Mark: tok}})
+		cur, err := ctx.ViewState("grid")
+		if err != nil {
+			return err
+		}
+		ctx.Notify(fmt.Sprintf("view-g-state:%s,rev=%d", cur.State, cur.Mount.Rev), "info")
+		return nil
+	})
+	// D614 bindings: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewBindings).
+	// The key and the number come from the test, so a binding the SDK dropped, or one it made up, is not what the host holds.
+	ext.Command("ui_view_bindings", "Mount a view with bindings and probe what the host refuses", func(ctx sdk.Context, args string) error {
+		key, number, _ := strings.Cut(args, " ")
+		n, err := strconv.Atoi(number)
+		if err != nil {
+			return err
+		}
+		content := func(bindings ...sdk.ViewBinding) sdk.ViewContent {
+			return sdk.ViewContent{View: viewText(ctx, "-bind"), Bindings: bindings, Intents: []sdk.ViewIntent{
+				{Name: "fx.go", Arg: sdk.ViewShape{Type: "object", Properties: map[string]sdk.ViewShape{"n": {Type: "integer"}}, Required: []string{"n"}}},
+				{Name: "fx.tap", Arg: sdk.ViewShape{Type: "object"}},
+			}}
+		}
+		goTo := func(key string, n any) sdk.ViewBinding {
+			return sdk.ViewBinding{Key: key, Intent: "fx.go", Arg: map[string]any{"n": n}}
+		}
+		tap := func(key string) sdk.ViewBinding { return sdk.ViewBinding{Key: key, Intent: "fx.tap"} }
+		first := goTo(key, n)
+		first.Name = fmt.Sprintf("Go %d", n)
+		st, err := ctx.MountView(sdk.ViewMount{Key: "bind", Slot: sdk.ViewSlotPanel,
+			ViewContent: content(first, goTo("w", n+1), sdk.ViewBinding{Gesture: "swipe-left", Intent: "fx.tap"})})
+		if err != nil {
+			return err
+		}
+		ctx.Notify("view-b-mounted:"+string(st.State), "info")
+		attempt := func(label string, bindings ...sdk.ViewBinding) {
+			code := "none"
+			if _, err := ctx.UpdateView(sdk.ViewUpdate{Mount: st.Mount, ViewContent: content(bindings...)}); err != nil {
+				code = "error"
+				if ve, ok := errors.AsType[*sdk.ViewError](err); ok {
+					code = string(ve.Code)
+				}
+			}
+			ctx.Notify("view-b-"+label+":"+code, "info")
+		}
+		var many []sdk.ViewBinding
+		for _, c := range "abcdefghijklmnopqrstuvwxyz0123456" {
+			many = append(many, tap(string(c)))
+		}
+		attempt("many", many...)
+		attempt("reserved", tap("shift+tab"))
+		attempt("order", tap("ctrl+shift+p"), tap("shift+ctrl+p"))
+		attempt("gesture", sdk.ViewBinding{Gesture: "pinch", Intent: "fx.tap"})
+		attempt("arg", goTo("a", "x"))
+		attempt("ok", goTo("ctrl+shift+p", n), goTo("shift+ctrl+q", n+1))
+		return nil
+	})
 	ext.OnViewIntent(func(in sdk.ViewIntentInvocation) sdk.ViewIntentResult {
 		switch in.Intent {
 		case "fx.redraw", "fx.foreign":
 			return redrawIntent(in)
+		case "fx.reopen":
+			// The user opened the hidden view: its handler shows it.
+			if _, err := in.Context.ShowView(sdk.ViewRef{Key: in.Mount.Key, Epoch: in.Mount.Epoch, Rev: in.Rev}); err != nil {
+				return sdk.ViewIntentResult{Outcome: "failed", Error: err.Error()}
+			}
+			return sdk.ViewIntentResult{Outcome: "done"}
+		case "fx.pick":
+			var arg struct {
+				Value string `json:"value"`
+			}
+			_ = json.Unmarshal(in.Arg, &arg)
+			answer, _ := json.Marshal(map[string]string{"node": in.NodeKey, "picked": arg.Value})
+			return sdk.ViewIntentResult{Outcome: "done", Answer: answer}
 		case "fx.add":
 			var arg struct {
 				N int `json:"n"`

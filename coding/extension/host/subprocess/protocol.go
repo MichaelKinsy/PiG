@@ -90,6 +90,9 @@ type Envelope struct {
 	// barrier, when set, is a host-side marker, not a frame: the dispatcher closes it when it reaches it, so everything the read loop read before the marker is dispatched.
 	barrier *dispatchMark
 
+	// pooled is the reusable frame the read loop built this envelope in (response_frame.go); releaseResponse returns it.
+	pooled *responseFrame
+
 	// Common fields
 	ID string `json:"id,omitempty"` // Correlation ID for request/response pairs
 
@@ -1263,6 +1266,8 @@ type ViewNode struct {
 
 	// ViewWidgetFields are the fields of the widget kinds (view_widget_wire.go).
 	ViewWidgetFields
+	// ViewGridFields are the fields of a grid (view_grid_wire.go).
+	ViewGridFields
 }
 
 // viewNodeWire is a ViewNode with its "message" as raw JSON: a loader's
@@ -1282,6 +1287,12 @@ func (n *ViewNode) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	*n = ViewNode(wire.viewNodeFields)
+	if n.Kind == ViewKindGrid {
+		// pig additive (D614): a grid is read strictly, in the node, its cells and its chips.
+		if err := decodeGridNode(data); err != nil {
+			return err
+		}
+	}
 	if len(wire.Message) == 0 || string(wire.Message) == "null" {
 		return nil
 	}

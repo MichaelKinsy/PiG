@@ -75,7 +75,7 @@ func TestConformance_UIViewExtras(t *testing.T) {
 			pollUntilConformance(t, "abilities never replicated", func() bool {
 				h.ui.ClearRecorded()
 				runConformanceCommand(t, h, "ui_view_abilities")
-				return slices.Contains(viewNotifies(h), "view-abilities:mounts=7,argbytes=123,slots=panel+status,nodes=text+box,markdown=true")
+				return slices.Contains(viewNotifies(h), "view-abilities:mounts=7,argbytes=123,slots=panel+status,nodes=text+box+select-list,markdown=true")
 			})
 
 			h.ui.ClearRecorded()

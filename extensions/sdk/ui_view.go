@@ -106,7 +106,9 @@ type ViewShape struct {
 }
 
 // ViewIntent declares one intent the view's nodes may raise. Name is "<extension>.<verb>". TimeoutMs defaults to 30000
-// and is 100..300000.
+// and is 100..300000. WhenHidden lets a client raise the intent while the mount is hidden: it is how the user opens a
+// view the extension hid, and the handler shows the mount. At most one intent of a mount has it; it names no node and
+// its Arg accepts the empty object.
 type ViewIntent struct {
 	Name        string     `json:"name"`
 	NodeKey     string     `json:"nodeKey,omitempty"`
@@ -114,6 +116,7 @@ type ViewIntent struct {
 	Answer      *ViewShape `json:"answer,omitempty"`
 	Cancellable bool       `json:"cancellable,omitempty"`
 	TimeoutMs   int        `json:"timeoutMs,omitempty"`
+	WhenHidden  bool       `json:"whenHidden,omitempty"`
 }
 
 // ViewAsset is a bounded image a view refers to by id.
@@ -324,16 +327,31 @@ type ViewA11y struct {
 }
 
 // ViewFocus makes the node with id Node focusable; the order of the entries is the focus order. Request "mount" asks
-// for the focus when the mount is first drawn (at most one entry may); Restore is "previous" or "self".
+// for the focus when the mount is first drawn and "update" when the revision that carries it is first drawn (at most
+// one entry may ask); a client that does not give it leaves an "unfocused" notice. Restore is "previous" or "self".
 type ViewFocus struct {
 	Node    string `json:"node"`
 	Request string `json:"request,omitempty"`
 	Restore string `json:"restore,omitempty"`
 }
 
+// ViewBinding ties a key or a gesture to an intent of the same content that names no node; a client fires it only while
+// the mount holds the focus and the focused node did not take the key. Exactly one of Key and Gesture is set. Key is a
+// key id as RegisterShortcut writes it ("d", "shift+left", "ctrl+shift+p"); Gesture is "swipe-left", "swipe-right",
+// "swipe-up" or "swipe-down". Arg is the constant argument the intent is raised with ({} when nil) and Name what a client
+// shows for the binding. At most 32; the host checks the record and answers "invalid".
+type ViewBinding struct {
+	Key     string `json:"key,omitempty"`
+	Gesture string `json:"gesture,omitempty"`
+	Intent  string `json:"intent"`
+	Arg     any    `json:"arg,omitzero"`
+	Name    string `json:"name,omitempty"`
+}
+
 // ViewNotice is one diagnostic of a mount: an operation the host rejected (Code "invalid", "unsupported", "limit",
-// "stale", "terminal"), an intent it ended ("refused", "failed", "timeout", "stale") or a part a client could not draw
-// ("undrawn"). Severity is "info", "warning" or "error"; Count how often it happened.
+// "stale", "terminal"), an intent it ended ("refused", "failed", "timeout", "stale"), a part a client could not draw
+// ("undrawn") or a focus request a client did not grant ("unfocused"). Severity is "info", "warning" or "error"; Count
+// how often it happened.
 type ViewNotice struct {
 	Code     string `json:"code"`
 	Severity string `json:"severity"`
@@ -349,8 +367,11 @@ type ViewNotice struct {
 }
 
 // ViewContent is what a mount shows: the view, the intents its nodes raise, its assets and a degrade node; and beside
-// them the alternatives the client's claims select from, a drawing, and the a11y and focus records of the view's nodes.
+// them the alternatives the client's claims select from, a drawing, the a11y and focus records of the view's nodes, and
+// the bindings of keys and gestures to its intents.
+// Title is the short text a client labels the mount with, in a tab or a list of views: at most 64 bytes on one line.
 type ViewContent struct {
+	Title        string
 	View         kit.View
 	Intents      []ViewIntent
 	Assets       []ViewAsset
@@ -359,6 +380,7 @@ type ViewContent struct {
 	Drawing      *ViewDrawing
 	A11y         []ViewA11y
 	Focus        []ViewFocus
+	Bindings     []ViewBinding
 }
 
 // ViewMount is the argument of [Context.MountView].
@@ -547,6 +569,9 @@ func (c Context) encodeViewContent(v ViewContent) (map[string]any, error) {
 		return nil, err
 	}
 	out := map[string]any{"view": view}
+	if v.Title != "" {
+		out["title"] = v.Title
+	}
 	if len(v.Alternatives) > 0 {
 		alts := make([]map[string]any, len(v.Alternatives))
 		for i, alt := range v.Alternatives {
@@ -569,6 +594,9 @@ func (c Context) encodeViewContent(v ViewContent) (map[string]any, error) {
 	}
 	if len(v.Focus) > 0 {
 		out["focus"] = v.Focus
+	}
+	if len(v.Bindings) > 0 {
+		out["bindings"] = v.Bindings
 	}
 	if len(v.Intents) > 0 {
 		out["intents"] = v.Intents

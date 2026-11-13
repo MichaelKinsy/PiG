@@ -55,6 +55,11 @@ function makeJsonSchemaNodeStrict(schema, isUnsupportedKeyword) {
             }
         }
     }
+    // Pi 406e719a6bff (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+    // OpenAI strict mode rejects nodes without a type; a bare enum counts as typed, a bare const does not.
+    if (schema.type === undefined && schema.anyOf === undefined && schema.enum === undefined) {
+        throw new UnsupportedStrictJsonSchemaError("schemas without a type are unsupported");
+    }
     if (schema.anyOf !== undefined) {
         if (!Array.isArray(schema.anyOf) || schema.anyOf.length === 0) {
             throw new UnsupportedStrictJsonSchemaError("anyOf must contain at least one schema");

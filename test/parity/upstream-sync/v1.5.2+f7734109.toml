@@ -1,0 +1,9 @@
+from = "1.5.2+22f456d7"
+to = "1.5.2+f7734109"
+
+[[files]]
+path = "packages/chord/docs/shared-holds/design.md"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "502f79e3e (design for review), 20a6e09dc (the sharing key includes the computed address), 7a1c1f61e (third draft: event fence, reference count), 1b3223b96 (fourth draft: one request per reference, shared streams with a join model) ec1ffa15c (joined is a control message, joins never wait for the window) 0b48a1d18 (fifth draft: host-side sharing, no round trip) and f7734109c (sixth draft: review fixes); the row is the file in its final state. It is a design for references that share one wire hold, status \"design, sixth draft, for review, then build\", not implemented in Pi (no sharing of a hold between references in packages/chord/src; host.ts makes one RemoteObject per binding; PiG's chord/next/host/host_host.go bind makes one remoteObject per binding the same way). chord/README.md: Pi's chord design documents are not ported; the Go packages follow them."

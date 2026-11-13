@@ -86,6 +86,8 @@ func TestTrustSelectorSettlesSelectionBeforeRestoringFocus(t *testing.T) {
 	input <- []byte("\n")
 	m := &InteractiveMode{editor: tui.NewEditor(), editorContainer: tui.NewContainer(), modalInputCh: input}
 	m.tuiInst = tui.NewWithOutput(io.Discard, 120, 40)
+	// The selector asks for a frame as it closes: the renderer is stopped so that frame's timer does not fire in a later test.
+	t.Cleanup(m.tuiInst.Stop)
 	m.tuiInst.SetFocus(m.editor)
 	called := false
 	_, ok := m.runTrustSelector(TrustSelectorOptions{Cwd: t.TempDir(), OnSelect: func(TrustSelection) {

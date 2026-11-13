@@ -3464,7 +3464,7 @@ class Context:
             wire["images"] = [{"ref": i.ref, "mimeType": i.mime_type, "data": base64.b64encode(i.data).decode("ascii")} for i in encoded.images]
         return wire
 
-    def _view_content(self, view: "kit.View", intents: Any, assets: Any, fallback: Any, alternatives: Any = (), drawing: Any = None, a11y: Any = (), focus: Any = ()) -> dict[str, Any]:
+    def _view_content(self, view: "kit.View", intents: Any, assets: Any, fallback: Any, alternatives: Any = (), drawing: Any = None, a11y: Any = (), focus: Any = (), bindings: Any = (), title: str = "") -> dict[str, Any]:
         fallback_wire = None if fallback is None else self.extension._views.encode(kit.View(root=fallback)).body
         alts = []
         for alt in alternatives or ():
@@ -3472,7 +3472,7 @@ class Context:
             if alt.get("drawing") is not None:
                 entry["drawing"] = alt["drawing"]
             alts.append(entry)
-        return _ui_view.encode_content(self._view_wire(view), intents, assets, fallback_wire, alts, drawing, a11y, focus)
+        return _ui_view.encode_content(self._view_wire(view), intents, assets, fallback_wire, alts, drawing, a11y, focus, bindings, title)
 
     def mount_view(
         self,
@@ -3481,6 +3481,7 @@ class Context:
         view: "kit.View",
         *,
         target: ViewTarget | None = None,
+        title: str = "",
         intents: Any = (),
         assets: Any = (),
         fallback: Any = None,
@@ -3488,14 +3489,20 @@ class Context:
         drawing: Any = None,
         a11y: Any = (),
         focus: Any = (),
+        bindings: Any = (),
     ) -> ViewStatus:
         """Mount ``view`` in a slot the attached client draws. ``key`` names the mount among this extension's.
 
         ``alternatives`` (at most 8) are dicts ``{"when": {"any": [{"all": [{"claim", "op", "value"}]}]}, "view": kit.View,
         "drawing": ...}``; a client draws the first whose ``when`` holds for its claims. ``drawing`` is the wire record
         (``profile`` ``scene`` with ``shapes`` or ``pixels`` with ``pixels``, and ``regions``); ``a11y`` and ``focus`` are
-        lists of wire records naming view nodes by id (at most 256 each). The host checks every bound."""
-        args = self._view_content(view, intents, assets, fallback, alternatives, drawing, a11y, focus)
+        lists of wire records naming view nodes by id (at most 256 each); a focus record's ``request`` is ``"mount"`` or
+        ``"update"``. ``title`` is the short text a client labels the mount with (at most 64 bytes on one line). ``bindings``
+        (at most 32) are wire records ``{"key" or "gesture", "intent", "arg", "name"}`` that tie a key id (``"d"``,
+        ``"shift+left"``) or a gesture (``"swipe-left"``, ``"swipe-right"``, ``"swipe-up"``, ``"swipe-down"``) to an intent that
+        names no node; a client fires one only while the mount holds the focus and the focused node did not take the key. The
+        host checks every bound."""
+        args = self._view_content(view, intents, assets, fallback, alternatives, drawing, a11y, focus, bindings, title)
         args["key"], args["slot"] = key, slot
         if target is not None:
             args["target"] = target._wire()
@@ -3506,6 +3513,7 @@ class Context:
         mount: ViewRef,
         view: "kit.View",
         *,
+        title: str = "",
         intents: Any = (),
         assets: Any = (),
         fallback: Any = None,
@@ -3513,9 +3521,10 @@ class Context:
         drawing: Any = None,
         a11y: Any = (),
         focus: Any = (),
+        bindings: Any = (),
     ) -> ViewStatus:
-        """Replace the content of a mount. Fails with ``ViewError`` code ``"stale"`` unless ``mount`` carries the epoch and rev the last operation returned."""
-        args = self._view_content(view, intents, assets, fallback, alternatives, drawing, a11y, focus)
+        """Replace the content of a mount, its ``title`` included. Fails with ``ViewError`` code ``"stale"`` unless ``mount`` carries the epoch and rev the last operation returned."""
+        args = self._view_content(view, intents, assets, fallback, alternatives, drawing, a11y, focus, bindings, title)
         args["mount"] = mount._wire()
         return self._view_call("ui.view.update", args)
 
@@ -3934,7 +3943,7 @@ class Context:
         the ``signal`` (a :class:`ProviderSignal`) terminates the command, as
         Pi does: the command alone receives SIGTERM (the process is killed on
         Windows), no descendant is signalled, and the call returns the output
-        written so far with ``killed`` set and ``exit_code`` 0, which is what a
+        written so far with ``killed`` set and ``exit_code`` 143 (128 + SIGTERM), which is what a
         command that a signal ended reports. A signal that is set before the
         call starts the command and ends it at once. SIGKILL follows the
         SIGTERM five seconds later if the command has not exited, for a

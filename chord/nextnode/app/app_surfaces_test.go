@@ -14,11 +14,14 @@ import (
 	"testing"
 	"time"
 
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	nextsurfaces "github.com/MichaelKinsy/PiG/chord/next/surfaces"
 	chordhttp "github.com/MichaelKinsy/PiG/chord/nextnode/http"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/build"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 	nodesurfaces "github.com/MichaelKinsy/PiG/chord/nextnode/surfaces"
 )
@@ -407,6 +410,39 @@ func TestAppRunsTheWebAndTheTerminalSurfacesWithTheirOwnBaseBundles(t *testing.T
 	}
 }
 
+// Pi 53af02378 (webSurface and tuiSurface take tsconfig; app.ts spreads options.web and options.tui into them): an app whose web and terminal
+// entries import a package that exports only an unbuilt dist/ builds both bases through the given tsconfig's `paths` (without it
+// the imports do not resolve: TestConditionsResolvesThroughAGivenTsconfigsPaths...).
+func TestAppSurfacesBuildTheirBasesThroughAGivenTsconfigsPathsPi53af02378(t *testing.T) {
+	dir := t.TempDir()
+	for file, body := range map[string]string{
+		"workspace/aiish/package.json":          `{"name":"aiish","type":"module","exports":{"./utils/*":{"import":"./dist/utils/*.js"}}}`,
+		"workspace/aiish/src/utils/estimate.ts": "export const from: string = \"paths\";\n",
+		"tsconfig.json":                         `{"compilerOptions":{"paths":{"aiish/*":["./workspace/aiish/src/*.ts"]}}}`,
+		"web.ts":                                "import { from } from \"aiish/utils/estimate\";\nglobalThis.started = from;\n",
+		"tui.ts":                                "import { from } from \"aiish/utils/estimate\";\nglobalThis.started = from;\n",
+	} {
+		path := filepath.Join(dir, filepath.FromSlash(file))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	tuiAPI := surfacesFixture(t, "tui", "api.ts")
+	tsconfig := filepath.Join(dir, "tsconfig.json")
+	s := startTestApp(t, nil, func(o *AppOptions) {
+		withWeb(filepath.Join(dir, "web.ts"), false)(o)
+		o.Web.Tsconfig = tsconfig
+		o.Kinds = append(o.Kinds, AppKindEntry{Name: "tui", Kind: AppKind{Platform: model.PlatformNode, Packages: map[string]string{"@test/app/v1/tui": tuiAPI}}})
+		o.Tui = &AppTui{Entry: filepath.Join(dir, "tui.ts"), Conditions: []string{}, Tsconfig: tsconfig}
+	})
+	if s.app.Web.Base() == "" || s.app.Tui.Base() == "" {
+		t.Fatalf("web base %q, tui base %q: a base did not build through the tsconfig", s.app.Web.Base(), s.app.Tui.Base())
+	}
+}
+
 func TestAppAppliesChangesToTheServerThenTheWebAndTheTerminalSurfacesEachWithItsOwnPlugins(t *testing.T) {
 	s := surfaceApp(t)
 	if err := os.WriteFile(filepath.Join(s.root, "lines", "tui.ts"), []byte("import { defineFacet } from \"@test/app/v1\";\nexport default defineFacet(() => { void 1; });"), 0o644); err != nil {
@@ -459,5 +495,104 @@ func TestAppMarksBaseForAChangeOfTheWebSurfacesBaseBundleInputs(t *testing.T) {
 			}
 			untilBase(t, s.app)
 		})
+	}
+}
+
+// An app with an HTTP stack of its own serves the surface itself (Pi 22fe46c7b: webSurface(server, { routes: false })): the surface
+// contributes no Http routes and gives file, pageAssets and base. Forced difference: Go's optional routes flag is the pointer Routes.
+func TestAnAppServingTheSurfaceItselfRoutesFalseContributesNoRoutesAndGivesTheFilesThePagesAssetsAndTheBaseHash(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "plugins")
+	if err := os.MkdirAll(filepath.Join(root, "notes"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for file, text := range map[string]string{"package.json": `{ "name": "notes" }`, "web.ts": "export default { setup() {} };\n"} {
+		if err := os.WriteFile(filepath.Join(root, "notes", file), []byte(text), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	kind, err := contracts.NewHostKind("server")
+	if err != nil {
+		t.Fatal(err)
+	}
+	address := kind.Address(nil)
+	server, err := host.CreateHost(host.HostOptions{Address: &address, Principal: delta.JsonObjectOf("kind", "server"), OnError: func(host.HostError) {}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	created := plugins.CreatePlugins(plugins.PluginsOptions{
+		Build: build.BuildFacet, Roots: []model.PluginRoot{{Path: root}}, Kinds: []plugins.KindEntry{{Name: "web", Definition: plugins.KindDefinition{Platform: model.PlatformBrowser}}},
+	}, chordctx.Background())
+	routes := false
+	web := nodesurfaces.NewWebSurface(server, nodesurfaces.WebSurfaceOptions{Plugins: created, Entry: webEntry(t, webStarted), Routes: &routes})
+	component := chordhttp.CreateHttp(server, chordhttp.HttpOptions{OnError: func(chordhttp.HttpError) {}}, background)
+	defer func() {
+		component.Close(background)
+		_ = server.Close(background)
+		created.Close()
+	}()
+	if report, err := server.Load([]host.HostFacet{
+		{Name: "chord.http", Facet: component.Facet()},
+		{Name: "chord.web", Facet: web.Facet},
+		{Name: "chord.web.scripts", Facet: web.Scripts},
+	}, background); err != nil || len(report.Failed) != 0 {
+		t.Fatalf("load = %+v, %v", report.Failed, err)
+	}
+	if built := web.Build(); built.Kind != nodesurfaces.SurfaceBuiltKindBuilt {
+		t.Fatalf("build = %+v", built)
+	}
+	// The surface's public route of every app serving it through the HTTP component: none here.
+	request, err := http.NewRequest(http.MethodGet, "http://127.0.0.1/_chord/web/base", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	asked := component.Fetch(request, chordhttp.Connection{LocalAddress: "127.0.0.1", LocalPort: 80, RemoteAddress: "127.0.0.1"})
+	_ = asked.Body.Close()
+	if asked.StatusCode != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404", asked.StatusCode)
+	}
+	base, err := web.Base(background)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !regexp.MustCompile(`^[0-9a-f]{16}$`).MatchString(base) {
+		t.Fatalf("base = %q", base)
+	}
+	assets, err := web.PageAssets(background)
+	if err != nil {
+		t.Fatal(err)
+	}
+	scripts, err := server.Get(background, nextsurfaces.WebScripts, delta.NewJsonObject(0), host.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer scripts.Release()
+	value, err := scripts.Member("set").Value()
+	if err != nil {
+		t.Fatal(err)
+	}
+	set := nextsurfaces.ScriptSetOf(value)
+	var names []string
+	for _, entry := range set.Plugins {
+		names = append(names, entry.Name)
+	}
+	if !reflect.DeepEqual(names, []string{"notes"}) {
+		t.Fatalf("plugins = %v", names)
+	}
+	want := nodesurfaces.PageAssets{
+		Bootstrap: nodesurfaces.PageBootstrap(base, set),
+		Script:    "/_chord/web/base." + base + ".js",
+		Plugins:   set.Combined,
+		Styles:    []string{"/_chord/web/base." + base + ".css"},
+	}
+	if assets == nil || !reflect.DeepEqual(*assets, want) {
+		t.Fatalf("assets = %+v, want %+v", assets, want)
+	}
+	file, err := web.File(set.Combined, background)
+	if err != nil || file.Kind != chordhttp.KindBytes {
+		t.Fatalf("file = %+v, %v, want bytes", file, err)
+	}
+	missing, err := web.File("/_chord/web/none.js", background)
+	if err != nil || missing.Kind != chordhttp.KindError {
+		t.Fatalf("missing = %+v, %v, want error", missing, err)
 	}
 }

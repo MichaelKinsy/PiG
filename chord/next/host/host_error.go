@@ -55,6 +55,10 @@ const (
 	// ErrDeriveFailed: a derive's compute threw (Object, Member when it is an exposed state member, Error), once per
 	// failure episode.
 	ErrDeriveFailed HostErrorKind = "derive_failed"
+	// ErrEventMappingFailed: an event mapping for an older consumer threw (decision "Events: fire-and-forget members"): that
+	// emit is dropped for that version only; once per failure episode, the next mapped emit ends it (Object, Member,
+	// Version, Error).
+	ErrEventMappingFailed HostErrorKind = "event_mapping_failed"
 	// ErrQueryFailed: a live query's run in a commit threw (a row its code cannot read), once per failure episode (a good
 	// run ends it): the query is a failed member until then (Object, Table, Error; `self.query`).
 	ErrQueryFailed HostErrorKind = "query_failed"
@@ -96,10 +100,12 @@ type HostError struct {
 	Address string
 	Member  string
 	// Table is a query_failed's table (its name in the object).
-	Table      string
-	Job        string
-	ID         string
-	Restarts   int
+	Table    string
+	Job      string
+	ID       string
+	Restarts int
+	// Version is an event_mapping_failed's consumer version.
+	Version    int
 	WaitingFor string
 	// State is a parked_long's blocker state: "loading" or "failed".
 	State    string

@@ -8,9 +8,9 @@ C: {"id":"3","type":"ui_view_report","attachment":1,"plugin":"p","mount":{"key":
 H: {"id":"3","type":"response","command":"ui_view_report","success":true,"data":{}}
 C: {"id":"4","type":"ui_view_report","attachment":1,"plugin":"p","mount":{"key":"k","epoch":1},"notice":{"code":"unsupported","severity":"info"}}
 H: {"id":"4","type":"response","command":"ui_view_report","success":true,"data":{}}
-# A client reports undrawn, unsupported or limit; the mount must be the current incarnation of its key.
+# A client reports undrawn, unsupported, limit or unfocused; the mount must be the current incarnation of its key.
 C: {"id":"5","type":"ui_view_report","attachment":1,"plugin":"p","mount":{"key":"k","epoch":1},"notice":{"code":"refused","severity":"info"}}
-H: {"id":"5","type":"response","command":"ui_view_report","success":false,"error":"invalid: a client reports undrawn, unsupported or limit, not \"refused\"","code":"invalid"}
+H: {"id":"5","type":"response","command":"ui_view_report","success":false,"error":"invalid: a client reports undrawn, unsupported, limit or unfocused, not \"refused\"","code":"invalid"}
 C: {"id":"6","type":"ui_view_report","attachment":1,"plugin":"p","mount":{"key":"k","epoch":2},"notice":{"code":"undrawn","severity":"info"}}
 H: {"id":"6","type":"response","command":"ui_view_report","success":false,"error":"stale: epoch 2 is not current (1)","code":"stale"}
 C: {"id":"7","type":"ui_view_report","attachment":1,"plugin":"p","mount":{"key":"gone","epoch":1},"notice":{"code":"undrawn","severity":"info"}}

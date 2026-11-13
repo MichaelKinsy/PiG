@@ -40,6 +40,9 @@ type KeybindingsManager struct {
 	// merged is upstream's single KEYBINDINGS manager: the tui.* and app.*
 	// table with every user override. syncToTUI installs it for tui components.
 	merged *tui.TUIKeybindingsManager
+	// matchKeys holds keysOf of every action merged defines, read by Matches for each key typed; rebuild replaces it with merged and nothing
+	// writes it afterwards.
+	matchKeys map[string][]string
 }
 
 // appKeybindingRow is one row of the app.* definition table. A row with platform set takes its keys from it; the rest take keys, and a row with
@@ -362,6 +365,10 @@ func (km *KeybindingsManager) rebuild() {
 		}
 	}
 	km.merged = tui.NewKeybindingsManager(definitions, userBindings)
+	km.matchKeys = make(map[string][]string, len(definitions))
+	for action := range definitions {
+		km.matchKeys[action] = km.merged.GetKeys(action)
+	}
 }
 
 // stripOwner is the strip entry of the built-in an app action runs.
@@ -598,7 +605,8 @@ func (km *KeybindingsManager) KeyText(action string) string {
 }
 
 func (km *KeybindingsManager) Matches(input, action string) bool {
-	for _, key := range km.keysOf(action) {
+	// keysOf copies the action's keys; a typed key asks for every action, so the copies of one rebuild are read here.
+	for _, key := range km.matchKeys[action] {
 		// Upstream KeybindingsManager.matches delegates every resolved KeyId to
 		// matchesKey. Keeping one matcher here preserves Kitty-mode ambiguity,
 		// alternate-layout, remapped-layout, and terminal-protocol semantics for

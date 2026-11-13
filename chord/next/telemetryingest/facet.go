@@ -1,9 +1,9 @@
 package telemetryingest
 
-// Ports packages/chord/src/telemetry-ingest/facet.ts (Pi main c23b9ec1). The server's telemetry ingest (decisions "Telemetry
+// Ports packages/chord/src/telemetry-ingest/facet.ts (Pi main 7ae9ff8c7). The server's telemetry ingest (decisions "Telemetry
 // from browser pages", "The server is the one place telemetry is stored", "Who a span was for"): a facet serving
 // PageTelemetry and WorkerTelemetry, whose `ingest(batch)` writes what pages and workers recorded to the server's store. A
-// page is untrusted: its spans must carry its own ids (`browser:<its incarnation>:...`), are capped per page and minute,
+// page is untrusted: only principals the app admits may send (Admit), its spans must carry its own ids (`browser:<its incarnation>:...`), are capped per page and minute,
 // marked `chord.host: browser` and stamped with the principal of the link they came over; a worker's are written as they
 // are, stamped with its host. A page's own `chord.*` attributes are dropped (15a51145): what Chord records about a span,
 // the server stamps itself.
@@ -30,6 +30,10 @@ type IngestTarget interface {
 // IngestOptions is what the ingest facet takes.
 type IngestOptions struct {
 	Target IngestTarget
+	// Admit decides whose pages may send their spans (PageTelemetry; a refused principal's hold fails `forbidden`): the
+	// per-page budget bounds one page, not one principal, who may open many pages (links), so an app admits whom it trusts.
+	// It is required.
+	Admit func(principal data.Principal) bool
 	// WorkerHost is the address key of the worker whose link stamps principal; ok is false for any other principal.
 	WorkerHost func(principal data.Principal) (key string, ok bool)
 	// PrincipalAttributes are the attributes a page's spans record for the principal of their link (the server host's
@@ -52,6 +56,9 @@ const minuteMs = 60_000
 func IngestFacet(options IngestOptions) host.Facet {
 	return host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
 		if err := h.Serve(PageTelemetry, func(_ *delta.JsonObject, principal data.Principal, _ host.Self) (contracts.Implementation, error) {
+			if !options.Admit(principal) {
+				return contracts.Implementation{}, data.Forbidden("chord.telemetry.page: not admitted")
+			}
 			// Per span, as for every span Chord records with a principal: caching is the hook's own.
 			who := func() telemetry.SpanAttributes { return options.PrincipalAttributes(principal) }
 			budgets := &pageBudgets{budgets: map[string]*budget{}}

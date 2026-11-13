@@ -711,8 +711,9 @@ func TestAnthropicConvertToolsStrict(t *testing.T) {
 	if _, exists := legacyTools[0].InputSchema["title"]; exists {
 		t.Fatalf("legacy input schema retained title: %#v", legacyTools[0].InputSchema)
 	}
-	if _, exists := legacyTools[0].InputSchema["additionalProperties"]; exists {
-		t.Fatalf("legacy input schema retained additionalProperties: %#v", legacyTools[0].InputSchema)
+	// Pi aa47cedce (#12100): a non-strict schema keeps its root additionalProperties.
+	if got, exists := legacyTools[0].InputSchema["additionalProperties"]; !exists || got != false {
+		t.Fatalf("legacy input schema additionalProperties = %#v, want false: %#v", got, legacyTools[0].InputSchema)
 	}
 
 	strict := legacy

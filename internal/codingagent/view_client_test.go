@@ -5,15 +5,16 @@ import (
 	"encoding/json"
 	"go/parser"
 	"go/token"
-	"runtime"
 	"slices"
 	"strconv"
 	"strings"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/uiview"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -45,15 +46,21 @@ type viewTestLoop struct {
 	renders   int
 	focused   *viewMount
 	elsewhere bool
-	notices   []string
+	// row is the tab row the client laid, onRow reports that it holds the focus, and typed that the editor holds text.
+	row     *viewTabs
+	onRow   bool
+	typed   bool
+	notices []string
 	// onNotice runs when the client writes a notice, before it is recorded.
 	onNotice  func()
 	size      viewSize
 	listeners []*tui.TuiInputListener
+	// keybindings are the user's: Pi's defaults until a test gives an action other keys.
+	keybindings *KeybindingsManager
 }
 
 func newViewTestLoop(t *testing.T) *viewTestLoop {
-	return &viewTestLoop{t: t, posted: make(chan struct{}, 4096), size: viewSize{columns: 40, rows: 24}}
+	return &viewTestLoop{t: t, posted: make(chan struct{}, 4096), size: viewSize{columns: 40, rows: 24}, keybindings: NewKeybindingsManagerFromBindings(nil, "")}
 }
 
 func (l *viewTestLoop) post(fn func()) bool {
@@ -79,8 +86,11 @@ func (l *viewTestLoop) ui() viewClientUI {
 		layout: func(mounts []*viewMount) { l.laid = append(l.laid, slices.Clone(mounts)) },
 		render: func() { l.renders++ },
 		focus: func(mount *viewMount) {
-			previous := l.focused
-			l.focused, l.elsewhere = mount, false
+			previous, wasOnRow := l.focused, l.onRow
+			l.focused, l.elsewhere, l.onRow = mount, false, false
+			if wasOnRow {
+				l.row.SetFocused(false)
+			}
 			if previous != nil && previous != mount {
 				previous.SetFocused(false)
 			}
@@ -88,14 +98,26 @@ func (l *viewTestLoop) ui() viewClientUI {
 				mount.SetFocused(true)
 			}
 		},
-		editorFocused: func() bool { return l.focused == nil && !l.elsewhere },
+		editorFocused: func() bool { return l.focused == nil && !l.elsewhere && !l.onRow },
+		editorEmpty:   func() bool { return !l.typed },
+		tabRow:        func(row *viewTabs) { l.row = row },
+		focusRow: func(row *viewTabs) {
+			previous := l.focused
+			l.focused, l.elsewhere, l.onRow = nil, false, true
+			if previous != nil {
+				previous.SetFocused(false)
+			}
+			row.SetFocused(true)
+		},
+		confirms: func(data string) bool { return data == "\r" },
 		listen: func(listener *tui.TuiInputListener) func() {
 			l.listeners = append(l.listeners, listener)
 			return func() {
 				l.listeners = slices.DeleteFunc(l.listeners, func(o *tui.TuiInputListener) bool { return o == listener })
 			}
 		},
-		interrupts: func(data string) bool { return data == "\x1b" },
+		interrupts: func(data string) bool { return l.keybindings.Matches(data, string(AppInterrupt)) },
+		reserved:   func(data string) string { return viewReservedAction(l.keybindings, data) },
 		notify: func(message, level string) {
 			if l.onNotice != nil {
 				l.onNotice()
@@ -213,7 +235,10 @@ func (f *viewFixture) transition(op string, ref uiview.Ref) {
 	f.loop.run()
 }
 
-// awaitResult waits until the client's queue holds an intent's result and returns the queue as it is then.
+// awaitResult waits until the client's queue holds an intent's result and the loop holds the drain that applies it, and
+// returns the queue as it is then. The client queues a result and then wakes the loop, so the result alone does not say
+// that the loop can apply it: a test that ran the loop between the two left the intent in flight, and the client drops
+// an activation made while an intent is in flight.
 func (f *viewFixture) awaitResult() []viewItem {
 	f.t.Helper()
 	deadline := time.Now().Add(5 * time.Second)
@@ -221,7 +246,10 @@ func (f *viewFixture) awaitResult() []viewItem {
 		f.client.mu.Lock()
 		queue := slices.Clone(f.client.queue)
 		f.client.mu.Unlock()
-		if slices.ContainsFunc(queue, func(it viewItem) bool { return it.result != nil }) {
+		f.loop.mu.Lock()
+		held := len(f.loop.tasks)
+		f.loop.mu.Unlock()
+		if held > 0 && slices.ContainsFunc(queue, func(it viewItem) bool { return it.result != nil }) {
 			return queue
 		}
 		if time.Now().After(deadline) {
@@ -243,11 +271,17 @@ func (f *viewFixture) notices(key string) []uiview.Notice {
 // pig additive (D614): a client that is attached and was never sent a mount adds nothing to the loop: no component, no
 // input listener, no goroutine, no timer. Extensions read its abilities.
 func TestViewClientIsInertUntilAMount(t *testing.T) {
-	before := runtime.NumGoroutine()
+	synctest.Test(t, testViewClientIsInertUntilAMount)
+}
+
+func testViewClientIsInertUntilAMount(t *testing.T) {
+	// The count is of the test's own bubble: a goroutine of another test is not the client's.
+	before := testenv.LiveGoroutines()
 	f := newViewFixture(t)
 	f.loop.run()
-	if after := runtime.NumGoroutine(); after != before {
-		t.Errorf("attaching started %d goroutines", after-before)
+	synctest.Wait()
+	if n := testenv.LiveGoroutines() - before; n != 0 {
+		t.Errorf("attaching started %d goroutines", n)
 	}
 	f.client.wake()
 	f.loop.run()
@@ -642,9 +676,18 @@ func TestViewClientClickFocusesAPanelAndRaisesAnIntent(t *testing.T) {
 	}
 }
 
+// viewStackPanels draws the panels of this test one under the other, as a slot without tabs does.
+func viewStackPanels(t *testing.T) {
+	slot := viewSlotOf(uiview.SlotPanel)
+	slot.tabs = false
+	t.Cleanup(func() { slot.tabs = true })
+}
+
 // pig additive (D614): F6 is bound only while a focusable panel is drawn. It moves the focus from the editor through
-// the panels and back, and passes the key on while something else (a selector) holds the focus.
+// the panels and back, and passes the key on while something else (a selector) holds the focus. The panels of this
+// test are stacked: it pins the walk of a slot without tabs.
 func TestViewClientFocusKeyCyclesPanels(t *testing.T) {
+	viewStackPanels(t)
 	f := newViewFixture(t)
 	f.mount("w", uiview.SlotWidgetAbove, uiview.Content{View: viewList("widget")})
 	if len(f.loop.listeners) != 0 {

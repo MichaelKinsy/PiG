@@ -3,6 +3,7 @@
  */
 import { constants as bufferConstants } from "node:buffer";
 import { spawn } from "node:child_process";
+import { constants as osConstants } from "node:os";
 import { StringDecoder } from "node:string_decoder";
 import { waitForChildProcess } from "../utils/child-process.js";
 const DEFAULT_EXEC_MAX_BUFFER = Math.min(256 * 1024 * 1024, bufferConstants.MAX_STRING_LENGTH);
@@ -106,7 +107,10 @@ export async function execCommand(command, args, cwd, options) {
         stdout += stdoutDecoder.end();
         stderr += stderrDecoder.end();
     }
-    const exitCode = code ?? 0;
+    // Pi a83b75a07 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+    // A signal-killed command has no exit code. Use the shell convention, as the bash tool does, so a
+    // timeout, an abort or a crash does not read as success (#12088).
+    const exitCode = code ?? (proc.signalCode ? 128 + (osConstants.signals[proc.signalCode] ?? 0) : 1);
     return {
         stdout,
         stderr,

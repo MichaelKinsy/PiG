@@ -2474,6 +2474,12 @@ def new_extension() -> pig_sdk.Extension:
     def view_intent(inv):
         if inv.intent in ("fx.redraw", "fx.foreign"):
             return view_redraw_intent(inv)
+        if inv.intent == "fx.reopen":
+            # The user opened the hidden view: its handler shows it.
+            inv.context.show_view(pig_sdk.ViewRef(inv.mount.key, inv.mount.epoch, inv.rev))
+            return pig_sdk.ViewIntentResult("done")
+        if inv.intent == "fx.pick":
+            return pig_sdk.ViewIntentResult("done", {"node": inv.node_key, "picked": inv.arg["value"]})
         if inv.intent == "fx.add":
             ab = inv.context.view_abilities()
             total = inv.arg["n"] * 2 + (ab.limits.intent_arg_bytes if ab else 0)
@@ -2576,6 +2582,114 @@ def new_extension() -> pig_sdk.Extension:
         cur = ctx.view_state("extras")
         ctx.notify(f"view-x-state:{cur.state},picked={cur.result['picked']}", "info")
 
+    # D614: a view an agent's tool shows. The command registers the tool; the tool mounts a titled panel, hides it, shows it and
+    # updates it with a focus request, the same way in every SDK fixture (conformance TestConformance_UIViewToolShowsAndFocuses).
+    def view_show(ctx, params):
+        if params.get("op") == "hide":
+            return f"view-tool:{ctx.hide_view(ctx.view_state('shown').mount).state}"
+        title, node = params["title"], params["node"]
+
+        def content(title, request):
+            return {
+                "title": title,
+                "intents": [
+                    pig_sdk.ViewIntent("fx.reopen", pig_sdk.ViewShape("object"), when_hidden=True),
+                    pig_sdk.ViewIntent("fx.tap", pig_sdk.ViewShape("object")),
+                ],
+                "focus": [{"node": node, "request": request} if request else {"node": node}],
+            }
+
+        st = ctx.mount_view("shown", "panel", x_list(node, "fixture-shown"), **content(title, ""))
+        st = ctx.hide_view(st.mount)
+        st = ctx.show_view(st.mount)
+        st = ctx.update_view(st.mount, x_list(node, "fixture-shown"), **content(title + "/2", "update"))
+        return f"view-tool:{st.state},rev={st.mount.rev}"
+
+    def view_tool_probe(ctx, _args):
+        ctx.register_tool(pig_sdk.ToolDefinition(
+            name="view_show",
+            label="view_show",
+            description="Mount, show and focus a titled view",
+            parameters={"type": "object"},
+            execute=view_show,
+        ))
+
+    ext.command("ui_view_tool", "Register the tool that shows a titled view", view_tool_probe)
+
+    # D614 grid node: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewGrid). The argument is
+    # the row's token: the cell values, the selection and one chip text are built from it.
+    def view_grid_probe(ctx, args):
+        tok = args.strip()
+        cells = [kit.GridCell(label="30", dim=True), kit.GridCell(label="31", dim=True)]
+        for d in range(1, 29):
+            cell = kit.GridCell(value=f"{tok}-{d}", label=str(d))
+            if d == 1:
+                cell.chips = [kit.GridChip(f"{tok} standup", "#3366cc"), kit.GridChip("lunch", "accent")]
+                cell.more = 2
+            elif d == 2:
+                cell.mark, cell.color = "current", "#ff000080"
+            elif d == 3:
+                cell.chips = [kit.GridChip("plain")]
+            elif d == 28:
+                cell.label = None
+            cells.append(cell)
+
+        def content(grid):
+            return {
+                "view": kit.View(kit.Container([kit.Text(f"Month {tok}", 0, 0), grid])),
+                "intents": [pig_sdk.ViewIntent("fx.pick", pig_sdk.ViewShape("object", properties={"value": pig_sdk.ViewShape("string")}, required=("value",)), node_key="month")],
+                "fallback": kit.Text(f"grid-fallback {tok}", 0, 0),
+            }
+
+        month = kit.Grid("month", 7, cells, head=["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"], chip_rows=2, selected=f"{tok}-2")
+        st = ctx.mount_view("grid", "panel", **content(month))
+        ctx.notify(f"view-g-mounted:{st.state}", "info")
+
+        def attempt(label, columns, cells):
+            ctx.notify(f"view-g-{label}:{x_code(lambda: ctx.update_view(st.mount, **content(kit.Grid('month', columns, cells))))}", "info")
+
+        attempt("cells", 7, [kit.GridCell(label="x") for _ in range(129)])
+        attempt("chips", 7, [kit.GridCell(value="a", chips=[kit.GridChip("c") for _ in range(9)])])
+        attempt("columns", 17, [kit.GridCell(value="a")])
+        attempt("mark", 7, [kit.GridCell(value="a", mark=tok)])
+        cur = ctx.view_state("grid")
+        ctx.notify(f"view-g-state:{cur.state},rev={cur.mount.rev}", "info")
+
+    ext.command("ui_view_grid", "Mount a month as a grid and probe the bounds of the grid", view_grid_probe)
+
+    # D614 bindings: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewBindings).
+    def view_bindings_probe(ctx, args):
+        key, number = args.split(" ")
+        n = int(number)
+
+        def content(bindings):
+            intents = [
+                pig_sdk.ViewIntent("fx.go", pig_sdk.ViewShape("object", properties={"n": pig_sdk.ViewShape("integer")}, required=("n",))),
+                pig_sdk.ViewIntent("fx.tap", pig_sdk.ViewShape("object")),
+            ]
+            return {"intents": intents, "bindings": bindings}
+
+        def go_to(key, n):
+            return {"key": key, "intent": "fx.go", "arg": {"n": n}}
+
+        def tap(key):
+            return {"key": key, "intent": "fx.tap"}
+
+        first = {**go_to(key, n), "name": f"Go {n}"}
+        st = ctx.mount_view("bind", "panel", view_text(ctx, "-bind"), **content([first, go_to("w", n + 1), {"gesture": "swipe-left", "intent": "fx.tap"}]))
+        ctx.notify(f"view-b-mounted:{st.state}", "info")
+
+        def attempt(label, bindings):
+            ctx.notify(f"view-b-{label}:{x_code(lambda: ctx.update_view(st.mount, view_text(ctx, '-bind'), **content(bindings)))}", "info")
+
+        attempt("many", [tap(c) for c in "abcdefghijklmnopqrstuvwxyz0123456"])
+        attempt("reserved", [tap("shift+tab")])
+        attempt("order", [tap("ctrl+shift+p"), tap("shift+ctrl+p")])
+        attempt("gesture", [{"gesture": "pinch", "intent": "fx.tap"}])
+        attempt("arg", [go_to("a", "x")])
+        attempt("ok", [go_to("ctrl+shift+p", n), go_to("shift+ctrl+q", n + 1)])
+
+    ext.command("ui_view_bindings", "Mount a view with bindings and probe what the host refuses", view_bindings_probe)
     ext.command("ui_view_extras", "Mount a view with alternatives, a drawing, a11y and focus, and probe the bounds", view_extras_probe)
     ext.command("ui_view_extras_end", "Read the notices of the extras mount and finish it with a result", view_extras_end_probe)
     ext.command("ui_view_abilities", "Report the replicated client abilities", view_abilities_probe)

@@ -2426,6 +2426,28 @@
    "new": "source.Fork == policy"
   }
  ],
+ "packages/durable/src/session/writer.ts": [
+  {
+   "file": "durable/session/writer.go",
+   "old": "failure = &PublishFailure{Kind: PublishAdoption, Err: panicError(recovered)}",
+   "new": "failure = &PublishFailure{Kind: PublishListener, Err: panicError(recovered)}"
+  },
+  {
+   "file": "durable/session/writer.go",
+   "old": "case result != nil && index == result.Stored && result.Refused != nil:",
+   "new": "case result != nil && index != result.Stored && result.Refused != nil:"
+  },
+  {
+   "file": "durable/session/writer.go",
+   "old": "if published > 0 {\n\t\t\twriter.host.Hop()",
+   "new": "if published > 1 {\n\t\t\twriter.host.Hop()"
+  },
+  {
+   "file": "durable/session/writer.go",
+   "old": "failedOutcome{own: true, err: rejected}, published: true})",
+   "new": "failedOutcome{err: rejected}, published: true})"
+  }
+ ],
  "packages/durable/src/session/keys.ts": [
   {
    "file": "durable/session/keys.go",

@@ -1,0 +1,82 @@
+from = "1.5.2+7ae9ff8c"
+to = "1.5.2+22f456d7"
+
+[[files]]
+path = "packages/ai/src/api/google-generative-ai.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/fetch_option_upstream_test.go#TestFetchOptionUpstream", "test:ai/google_fetch_option_shapes_test.go#TestGoogleAdaptersRouteEveryRequestShapeThroughTheCallersFetch", "test:ai/google_fetch_option_shapes_test.go#TestGoogleAdaptersWithoutFetchUseTheirOwnClientNotACallersFetch", "test:ai/google_stop_reason_continuation_upstream_test.go#TestGoogleContinuationEndsTheTurnAsLengthInsteadOfSendingAContinuationRequest", "test:ai/google_generative_ai_payload_oracle_test.go#TestGoogleGenerativeAIPayloadMatchesPi", "test:ai/google_generative_ai_payload_oracle_test.go#TestGoogleVertexPayloadMatchesPi", "test:ai/google_request_body_oracle_test.go#TestGoogleRequestBodyMatchesPi"]
+rationale = "f72f799a4 (#12103): the adapter no longer throws `Custom fetch is not supported by the Google Generative AI adapter` for a fetch other than globalThis.fetch; options.fetch reaches @google/genai through httpOptions.fetch, so every request of the adapter (generate, stream) goes through the caller's fetch. ai/google.go drops the guard at the top of googleProvider.Stream; providerHTTPClient(opts.Fetch) already carried the request. Pi always passes a fetch (globalThis.fetch by default) so the SDK adds no per-request dispatcher that disables undici's header and body timeouts: Go has no per-request dispatcher, the provider's own client keeps its idle timeouts when no Fetch is given (TestGoogleAdaptersWithoutFetchUseTheirOwnClientNotACallersFetch). `automaticContinuation: false` turns off the SDK's own continuation requests: Go has no SDK and never resumes a stream, so nothing changes. The commit also sets `automaticContinuation: false` in buildParams' config (google-generative-ai.ts:397), which this row did not account for until the oracle carried the commit: geminiRequest.parameters (ai/google.go) now carries the member, so an onPayload handler sees it as in Pi, and the request body does not (it is an option of the SDK): TestGoogleGenerativeAIPayloadMatchesPi, TestGoogleVertexPayloadMatchesPi and TestGoogleRequestBodyMatchesPi against the oracle that carries f72f799a4."
+
+[[files]]
+path = "packages/ai/src/api/google-vertex.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/fetch_option_upstream_test.go#TestFetchOptionUpstream", "test:ai/google_fetch_option_shapes_test.go#TestGoogleAdaptersRouteEveryRequestShapeThroughTheCallersFetch", "test:ai/google_stop_reason_continuation_upstream_test.go#TestGoogleContinuationEndsTheTurnAsLengthInsteadOfSendingAContinuationRequest", "test:ai/google_generative_ai_payload_oracle_test.go#TestGoogleGenerativeAIPayloadMatchesPi", "test:ai/google_generative_ai_payload_oracle_test.go#TestGoogleVertexPayloadMatchesPi", "test:ai/google_request_body_oracle_test.go#TestGoogleRequestBodyMatchesPi"]
+rationale = "f72f799a4 (#12103): the Vertex adapter passes options.fetch through buildHttpOptions for both the API-key client and the ADC client (project and location); the `Custom fetch is not supported by the Google Vertex adapter` rejection is gone. ai/google_vertex.go drops the guard; the ADC token request keeps its own HTTP client (Pi: google-auth-library's), only the API requests use the caller's fetch, which TestGoogleAdaptersRouteEveryRequestShapeThroughTheCallersFetch asserts for the ADC shape (the bearer token reaches the caller's fetch). The commit also sets `automaticContinuation: false` in buildParams' config (google-vertex.ts:507), which this row did not account for until the oracle carried the commit: geminiRequest.parameters (ai/google.go) now carries the member, so an onPayload handler sees it as in Pi, and the request body does not (it is an option of the SDK): TestGoogleGenerativeAIPayloadMatchesPi, TestGoogleVertexPayloadMatchesPi and TestGoogleRequestBodyMatchesPi against the oracle that carries f72f799a4."
+
+[[files]]
+path = "packages/ai/src/api/google-shared.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/google_stop_reason_continuation_upstream_test.go#TestGoogleContinuationMapsToLengthLikeMaxTokens", "test:ai/google_contract_0861_test.go#TestMapGoogleFinishReasonFollowsMapStopReason", "test:ai/google_shared_stop_disabled_test.go#TestMapStopReasonStringIsStopLengthOrError"]
+rationale = "f72f799a4: mapStopReason maps FinishReason.CONTINUATION to length like MAX_TOKENS, and the exported mapStopReasonString (STOP and MAX_TOKENS, else error) is removed. ai/google.go mapStopReason has the CONTINUATION arm (through mapStopReasonString, which maps CONTINUATION to length); Go keeps mapStopReasonString and its test because the pinned interface inventory (c23b9ec1) still lists google-shared#mapStopReasonString: a pin bump past f72f799a4 drops that ID and then the Go function."
+
+[[files]]
+path = "packages/ai/test/fetch-option.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/fetch_option_upstream_test.go#TestFetchOptionUpstream", "test:ai/google_fetch_option_shapes_test.go#TestGoogleAdaptersWithoutFetchUseTheirOwnClientNotACallersFetch"]
+rationale = "f72f799a4 replaces the case that expected the custom fetch rejection with `passes fetch through streamSimple to the Google GenAI SDK adapters` (both adapters, fetch called once each against the model's base URL, the 401 body surfaced) and adds `keeps the global dispatcher for Google adapters when no fetch is given`; 22f456d73 (#12108) deletes `allows Google adapters to receive globalThis.fetch explicitly`. TestFetchOptionUpstream's Google row and the shapes test port them; the dispatcher property of the request init has no Go counterpart."
+
+[[files]]
+path = "packages/ai/test/google-stop-reason-continuation.test.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:ai/google_stop_reason_continuation_upstream_test.go#TestGoogleContinuationMapsToLengthLikeMaxTokens", "test:ai/google_stop_reason_continuation_upstream_test.go#TestGoogleContinuationEndsTheTurnAsLengthInsteadOfSendingAContinuationRequest"]
+rationale = "f72f799a4: new in Pi. Both cases are ported; the second one's request count already held in Go (no SDK continuation), its stop reason needed the CONTINUATION arm."
+
+[[files]]
+path = "packages/ai/test/google-vertex-api-key-resolution.test.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "f72f799a4: two assertions that the SDK constructor's httpOptions now carry `fetch: globalThis.fetch`. They pin the shape of an @google/genai constructor argument; Go has no SDK constructor. The routing they exist for is TestGoogleAdaptersRouteEveryRequestShapeThroughTheCallersFetch and TestGoogleAdaptersWithoutFetchUseTheirOwnClientNotACallersFetch."
+
+[[files]]
+path = "packages/ai/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "f72f799a4 and 22f456d73: Pi's package changelog entries. PiG's user-visible change is its own changelog.d fragment."
+
+[[files]]
+path = "packages/ai/package.json"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/google_request_body_oracle_test.go#TestGoogleRequestBodyMatchesPi", "test:ai/google_request_body_oracle_test.go#TestGoogleWireMirrorsTheInstalledSDK"]
+rationale = "f72f799a4: `@google/genai` 2.21.0 to 2.32.0 (httpOptions.fetch). PiG has no @google/genai dependency, but ai/google_wire.go mirrors the SDK's converters (the member order of the request body), so the update is a port obligation; this row first classed it designed-out for the missing dependency, which hid the port. Ported: between the two versions the converters reachable from generateContentParametersToMldev and generateContentParametersToVertex change as follows, and the tables follow. Gemini API: inlineData and fileData are no longer rebuilt (the params' member order is sent), the config sends labels after toolConfig, then continuationToken and store, and a part sends speechMetadata. Vertex: a functionResponse is rebuilt as id, name, parts, response, scheduling with each part as fileData, inlineData, the config sends continuationToken and outputConfig (its generationOutputConfig), and a part sends speechMetadata. Not mirrored, as before: the members of speechConfig (voiceConfigToVertex gains voice) and of tools, which PiG copies as the params give them. geminiMirroredSDKVersion names the mirrored version; make pin-check and TestGoogleWireMirrorsTheInstalledSDK compare it with the version the oracle installs."
+oracle = "carried: f72f799a4: the oracle installs @google/genai 2.32.0 with the integrity Pi's lock records (a dependency entry of automation/gen/pi-post-release-backports.mjs). The installed manifest keeps the range 2.21.0: published ranges follow the pin until the re-pin."
+
+[[files]]
+path = "scripts/generate-coding-agent-install-lock.mjs"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "f72f799a4: moves the install-lock allowlist entry from @google/genai@2.21.0 to 2.32.0. PiG has no npm install lock of Pi's coding agent."
+
+[[files]]
+path = "packages/coding-agent/install-lock/package-lock.json"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "f72f799a4: the regenerated install lock of the @google/genai update. PiG ships no npm install lock."
+oracle = "not carried: the oracle installs its frozen closure, not Pi's install lock. The install lock's one changed entry is the @google/genai entry of package-lock.json, which is carried (f72f799a4)."
+
+[[files]]
+path = "package-lock.json"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "f72f799a4: the workspace lock of the @google/genai update. PiG's Go module has no npm workspace lock."
+oracle = "carried: f72f799a4: the lock's one changed entry (@google/genai 2.32.0: version, archive, integrity) replaces the frozen closure's for the oracle's npm ci. The disposition above is about PiG, which has no npm lock."

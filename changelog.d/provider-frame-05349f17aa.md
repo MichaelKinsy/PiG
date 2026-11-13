@@ -1,0 +1,3 @@
+### Changed
+
+- Streaming a provider response costs fewer allocations per delta record, with the same events in the same order. Marginal allocations per frame through the HTTP client, decoder, builder and event stream (measured on linux/amd64, go1.27.4, TestStreamFrameAllocationCeilings): openai-completions text 12.1 to 8.1 and tool-call arguments 22.2 to 18.2, openai-responses text 13.1 to 9.1, anthropic text 18.1 to 9.1 and tool-call arguments 28.2 to 19.2, Google text 69.0 to 26.2, Mistral text 38.3 to 21.2, openai-codex-responses text 33.1 to 29.2. Bytes per frame fall for every provider (Google 3,040 to 1,920, Mistral 3,043 to 1,518) and the ceilings in `automation/perf/ratchet.toml` drop to match.

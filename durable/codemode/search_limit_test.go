@@ -37,12 +37,12 @@ func TestSearchToolsReturnsEightMatchesWithoutALimit(t *testing.T) {
 
 // Pi c7372af4 (#11631): searchTools() searches a namespace's instructions, as a field of the tool's namespace text.
 func TestSearchToolsSearchesNamespaceInstructions(t *testing.T) {
-	chat := codemodeChatWith(t, ToolOptions{Namespaces: []Namespace{{Name: "x", Description: "X server", Instructions: "Kubernetes cluster tools", Prefix: "mcp__x__"}}})
-	for _, name := range []string{"mcp__x__run", "other"} {
-		addTool(t, chat.setup.registry, tool(name, func(context.Context, toolArgs, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
-			return durable.ToolExecutionResult{}, nil
-		}, durable.ReplayUnsafe))
+	chat := codemodeChatWith(t, ToolOptions{})
+	noop := func(context.Context, toolArgs, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
+		return durable.ToolExecutionResult{}, nil
 	}
+	addNamespaced(t, chat.setup.registry, "mcp:x", durable.ToolNamespace{Name: "x", Description: "X server", Instructions: "Kubernetes cluster tools"}, tool("mcp__x__run", noop, durable.ReplayUnsafe))
+	addTool(t, chat.setup.registry, tool("other", noop, durable.ReplayUnsafe))
 	run := runScript(t, `return (await searchTools("kubernetes")).map((tool) => tool.name);`, chat)
 	var got []string
 	if err := json.Unmarshal([]byte(scriptHeader.ReplaceAllString(run.text, "")), &got); err != nil {
