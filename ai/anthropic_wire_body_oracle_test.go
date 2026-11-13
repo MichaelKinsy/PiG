@@ -96,6 +96,7 @@ func anthropicWireRows() []anthropicWireRow {
 	add("default retention", anthropicWireRow{Context: full("anthropic")})
 	add("long retention, model without it", anthropicWireRow{Compat: raw(`{"supportsLongCacheRetention":false}`), Options: raw(`{"cacheRetention":"long"}`), Context: full("anthropic")})
 	add("model without breakpoints on tools", anthropicWireRow{Compat: raw(`{"supportsCacheControlOnTools":false}`), Context: full("anthropic")})
+	add("no message", anthropicWireRow{Context: context("")})
 	add("system prompt, no tools", anthropicWireRow{Context: context(system, userGo)})
 
 	add("last block: user string", anthropicWireRow{Context: context(tools, userGo)})

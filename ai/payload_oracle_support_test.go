@@ -280,6 +280,7 @@ func payloadDiff(got, want string) string {
 			var am, bm []json.RawMessage
 			_ = json.Unmarshal(a, &am)
 			_ = json.Unmarshal(b, &bm)
+			found := false
 			for i := range max(len(am), len(bm)) {
 				var l, r string
 				if i < len(am) {
@@ -290,8 +291,13 @@ func payloadDiff(got, want string) string {
 				}
 				if l != r {
 					fmt.Fprintf(&out, "\n  %s[%d]:\n   PiG %.500s\n   Pi  %.500s", k, i, l, r)
+					found = true
 					break
 				}
+			}
+			if !found {
+				// The same items one by one, and the values still differ: null where the other side has an empty list, or a value that is no list.
+				fmt.Fprintf(&out, "\n  %s:\n   PiG %.300s\n   Pi  %.300s", k, norm(a), norm(b))
 			}
 			continue
 		}
@@ -327,4 +333,138 @@ func comparePayloadBytes(t *testing.T, label, got, want string, reordered *int) 
 	if *reordered++; *reordered <= 4 {
 		t.Errorf("%s: %s", label, wireDifference(got, want))
 	}
+}
+
+// requireReplayCoverage fails an oracle whose probes never produce the objects it compares. payloadGen.message draws, into the turns of the
+// generator's own provider, API and model, a thinking block under one of thinkingSignatures and tool calls, and a provider replays a turn's
+// reasoning only for the model that produced it (transformMessages, isSameModel). A generator that has a signature to draw must therefore
+// leave, among Pi's payloads, probes that replay reasoning and probes that replay it beside a tool call of the same turn. None means the
+// generator's turns are not of the probe's model, and every comparison of that object passed with nothing to compare.
+func (g *payloadGen) requireReplayCoverage(t *testing.T, payloads []string, replay func(payload map[string]any) (reasoning, withCall bool)) {
+	t.Helper()
+	if !slices.ContainsFunc(g.thinkingSignatures, func(signature string) bool { return signature != "" }) {
+		return
+	}
+	reasoning, withCall := 0, 0
+	for _, text := range payloads {
+		var payload map[string]any
+		if text == "" || json.Unmarshal([]byte(text), &payload) != nil {
+			continue
+		}
+		replayed, beside := replay(payload)
+		if replayed {
+			reasoning++
+		}
+		if beside {
+			withCall++
+		}
+	}
+	t.Logf("replay coverage: of %d Pi payloads %d replay reasoning, %d beside a tool call of the same turn", len(payloads), reasoning, withCall)
+	if reasoning == 0 || withCall == 0 {
+		t.Fatalf("the probes do not exercise the replay this oracle compares: of %d Pi payloads %d replay reasoning and %d replay it beside a tool call of the same turn", len(payloads), reasoning, withCall)
+	}
+}
+
+// payloadObjects is the objects of a decoded JSON list.
+func payloadObjects(value any) []map[string]any {
+	list, _ := value.([]any)
+	objects := make([]map[string]any, 0, len(list))
+	for _, item := range list {
+		if object, ok := item.(map[string]any); ok {
+			objects = append(objects, object)
+		}
+	}
+	return objects
+}
+
+// completionsReplay: an assistant message holds a reasoning member (openai-completions.ts isOpenAICompletionsReasoningField) with text, and
+// holds it beside tool_calls.
+func completionsReplay(payload map[string]any) (reasoning, withCall bool) {
+	for _, message := range payloadObjects(payload["messages"]) {
+		if message["role"] != "assistant" {
+			continue
+		}
+		for _, member := range []string{"reasoning", "reasoning_content", "reasoning_text"} {
+			if text, _ := message[member].(string); text != "" {
+				reasoning = true
+				if _, ok := message["tool_calls"]; ok {
+					withCall = true
+				}
+			}
+		}
+	}
+	return reasoning, withCall
+}
+
+// responsesReplay: the input holds a stored reasoning item, and one followed by a function call of the same assistant turn.
+func responsesReplay(payload map[string]any) (reasoning, withCall bool) {
+	open := false
+	for _, item := range payloadObjects(payload["input"]) {
+		switch {
+		case item["type"] == "reasoning":
+			reasoning, open = true, true
+		case item["type"] == "function_call":
+			withCall = withCall || open
+		case item["type"] == "message" && item["role"] == "assistant":
+		default:
+			open = false
+		}
+	}
+	return reasoning, withCall
+}
+
+// anthropicReplay: an assistant message holds a thinking or redacted_thinking block, and holds one beside a tool_use block.
+func anthropicReplay(payload map[string]any) (reasoning, withCall bool) {
+	for _, message := range payloadObjects(payload["messages"]) {
+		if message["role"] != "assistant" {
+			continue
+		}
+		thinking, call := false, false
+		for _, block := range payloadObjects(message["content"]) {
+			thinking = thinking || block["type"] == "thinking" || block["type"] == "redacted_thinking"
+			call = call || block["type"] == "tool_use"
+		}
+		reasoning = reasoning || thinking
+		withCall = withCall || thinking && call
+	}
+	return reasoning, withCall
+}
+
+// mistralReplay: an assistant message holds a thinking chunk, and holds one beside toolCalls.
+func mistralReplay(payload map[string]any) (reasoning, withCall bool) {
+	for _, message := range payloadObjects(payload["messages"]) {
+		if message["role"] != "assistant" {
+			continue
+		}
+		for _, chunk := range payloadObjects(message["content"]) {
+			if chunk["type"] == "thinking" {
+				reasoning = true
+				if _, ok := message["toolCalls"]; ok {
+					withCall = true
+				}
+			}
+		}
+	}
+	return reasoning, withCall
+}
+
+// googleReplay: a model turn holds a part with a thoughtSignature, and holds one beside a functionCall part.
+func googleReplay(payload map[string]any) (reasoning, withCall bool) {
+	for _, turn := range payloadObjects(payload["contents"]) {
+		if turn["role"] != "model" {
+			continue
+		}
+		signed, call := false, false
+		for _, part := range payloadObjects(turn["parts"]) {
+			if _, ok := part["thoughtSignature"]; ok {
+				signed = true
+			}
+			if _, ok := part["functionCall"]; ok {
+				call = true
+			}
+		}
+		reasoning = reasoning || signed
+		withCall = withCall || signed && call
+	}
+	return reasoning, withCall
 }

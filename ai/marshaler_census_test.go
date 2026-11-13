@@ -73,6 +73,9 @@ var marshalerCensus = map[string]censusRow{
 	"ai.ResponsesTool": {probe: func() any {
 		return ResponsesTool{Type: "function", Name: loneSurrogateProbe, Description: loneSurrogateProbe, Parameters: censusProbeSchema()}
 	}, sameUnderEncodingJSON: true},
+	"ai.ResponsesInputItem": {probe: func() any {
+		return ResponsesInputItem{Type: "function_call", CallID: "call_1", Name: loneSurrogateProbe, Arguments: json.RawMessage(`"{}"`)}
+	}},
 	"ai.mistralToolFn": {probe: func() any {
 		return mistralToolFn{Name: loneSurrogateProbe, Description: loneSurrogateProbe, Parameters: censusProbeSchema()}
 	}, sameUnderEncodingJSON: true},
