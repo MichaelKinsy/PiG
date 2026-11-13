@@ -3270,6 +3270,11 @@ allocs = 14
 
 [[benchmark]]
 package = "./tui"
+benchmark = "BenchmarkAltScreenFirstFrameLongTranscript"
+allocs = 549720
+
+[[benchmark]]
+package = "./tui"
 benchmark = "BenchmarkAltScreenFrameWhileTheTranscriptGrows/draw-every-row"
 allocs = 65
 
@@ -3295,6 +3300,21 @@ allocs = 46
 
 [[benchmark]]
 package = "./tui"
+benchmark = "BenchmarkAltScreenStreamingFrameLongTranscript/entries-0"
+allocs = 57
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkAltScreenStreamingFrameLongTranscript/entries-1000"
+allocs = 84
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkAltScreenStreamingFrameLongTranscript/entries-4000"
+allocs = 84
+
+[[benchmark]]
+package = "./tui"
 benchmark = "BenchmarkApplyLineResetsCached_TypingFrame"
 allocs = 1
 
@@ -3311,7 +3331,7 @@ allocs = 2
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkAssistantMessageStreaming"
-allocs = 949
+allocs = 381
 
 [[benchmark]]
 package = "./tui"
@@ -3361,7 +3381,7 @@ allocs = 0
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkBashLongCommandHeader"
-allocs = 43
+allocs = 15
 
 [[benchmark]]
 package = "./tui"
@@ -3571,7 +3591,7 @@ allocs = 8
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkMarkdownAdversarialDelimiters/alternating"
-allocs = 37493
+allocs = 34814
 
 [[benchmark]]
 package = "./tui"
@@ -3591,17 +3611,17 @@ allocs = 19992
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkMarkdownAdversarialDelimiters/unclosed-em-underscore"
-allocs = 4177
+allocs = 175
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkMarkdownAdversarialDelimiters/unclosed-strong"
-allocs = 4223
+allocs = 214
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkMarkdownAdversarialDelimiters/unclosed-tags"
-allocs = 4643
+allocs = 637
 
 [[benchmark]]
 package = "./tui"
@@ -3611,17 +3631,17 @@ allocs = 22063
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkMarkdownAssistantStreaming/tokens=100"
-allocs = 557
+allocs = 402
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkMarkdownAssistantStreaming/tokens=10000"
-allocs = 3271098
+allocs = 2391202
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkMarkdownAssistantStreaming/tokens=2000"
-allocs = 135974
+allocs = 99783
 
 [[benchmark]]
 package = "./tui"
@@ -3815,6 +3835,51 @@ allocs = 1
 
 [[benchmark]]
 package = "./tui"
+benchmark = "BenchmarkPlainBoxAllChildrenChange"
+allocs = 267
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkPlainBoxChangingChild"
+allocs = 36
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkPlainBoxChangingChildNoRebuild"
+allocs = 229
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkPlainTextAllLinesChange"
+allocs = 405
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkPlainTextFresh"
+allocs = 110
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkPlainTextLastLineChanges"
+allocs = 87
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkPlainTextRetained/rendered-after-change"
+allocs = 119602
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkPlainTextRetained/rendered-once"
+allocs = 59805
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkPlainTextStatic"
+allocs = 0
+
+[[benchmark]]
+package = "./tui"
 benchmark = "BenchmarkProcessTerminalFullRedrawCJK/turns=500"
 allocs = 46
 
@@ -3827,6 +3892,11 @@ allocs = 315
 package = "./tui"
 benchmark = "BenchmarkRefreshActiveThemeColorModeRoundTrip"
 allocs = 340
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkRenderDiff"
+allocs = 10528
 
 [[benchmark]]
 package = "./tui"
@@ -3966,7 +4036,7 @@ allocs = 1826313
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkStreamedFence/typescript"
-allocs = 22066093
+allocs = 13974398
 
 [[benchmark]]
 package = "./tui"
@@ -4205,23 +4275,53 @@ allocs = 2
 
 [[benchmark]]
 package = "./tui"
+benchmark = "BenchmarkTuiJSONReaders/extractColorKeyOrder/jsontext"
+allocs = 29
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkTuiJSONReaders/extractColorKeyOrder/v1"
+allocs = 85
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkTuiJSONReaders/rawObjectKeys/jsontext"
+allocs = 34
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkTuiJSONReaders/rawObjectKeys/v1"
+allocs = 65
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkTuiJSONReaders/toolCallArgEntries/jsontext"
+allocs = 39
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkTuiJSONReaders/toolCallArgEntries/v1"
+allocs = 60
+
+[[benchmark]]
+package = "./tui"
 benchmark = "BenchmarkUserMessageRetention/messages=10"
-allocs = 12968
+allocs = 7276
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkUserMessageRetention/messages=100"
-allocs = 128832
+allocs = 71746
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkUserMessageRetention/messages=1000"
-allocs = 1288063
+allocs = 717056
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkUserMessageRetention/messages=10000"
-allocs = 12817113
+allocs = 7107072
 
 [[benchmark]]
 package = "./tui/widthx"
