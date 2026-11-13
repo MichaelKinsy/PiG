@@ -130,3 +130,49 @@ func themeClient(t *testing.T) host.Host {
 	t.Cleanup(func() { _ = client.Close(bg) })
 	return client
 }
+
+// D636: a theme pick the server stored before the follower's hold had its first values is applied when the hold binds (Pi's
+// follower applies only the pick's next change). The page has the same row over the patched TypeScript follower
+// (chord/nextnode/app/app_web_stored_pick_test.go).
+func TestFollowsAThemePickThePrincipalStoredBeforeTheFollowerStarted(t *testing.T) {
+	facet, err := ThemeChoiceFacet()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, server, closeAll := serverAndClients(t, ":memory:", facet, "chord.themes.choice")
+	defer closeAll()
+	var plugins []host.HostFacet
+	plugins = append(plugins, host.HostFacet{Name: "chord.themes", Facet: ThemesFacet()})
+	for i, theme := range []Theme{solid("night", "dark"), solid("dusk", "dark"), solid("paper", "light")} {
+		plugins = append(plugins, host.HostFacet{Name: "@test/theme-" + string(rune('0'+i)), Facet: host.DefineFacet(func(_ host.FacetHost, self host.FacetSelf) error {
+			return self.Contribute(registries.Registry[any, any](Themes), theme)
+		})})
+	}
+	client := connectUserWith(t, server, "ada", plugins)
+	defer func() { closed(t, client.Close(bg)) }()
+	choose := func(dark any) {
+		t.Helper()
+		choice, err := client.Get(bg, ThemeChoice, delta.NewJsonObject(0), host.GetOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer choice.Release()
+		if _, err := choice.Call("choose", delta.JsonObjectOf("dark", dark, "light", nil), bg); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Stored before the follower starts.
+	choose("dusk")
+	var mu sync.Mutex
+	var seen []string
+	last := func() string { mu.Lock(); defer mu.Unlock(); return seen[len(seen)-1] }
+	follower, err := FollowActiveTheme(client, "dark", func(active Theme) { mu.Lock(); seen = append(seen, active.ID); mu.Unlock(); wakeups.poke() }, bg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer follower.Stop()
+	until(t, func() bool { return last() == "dusk" })
+	// The pick's next change is followed as before.
+	choose(nil)
+	until(t, func() bool { return last() == "night" })
+}

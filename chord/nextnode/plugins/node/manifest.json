@@ -11,7 +11,12 @@
 		"da44c4df38c9e74a1bcb165af237e86c1ad33124",
 		"3c771bd18ebf71be1ee6a2df5a9b214d123b755d"
 	],
-	"patches": [],
+	"patches": [
+		{
+			"name": "D636-apply-acquired-pick.patch",
+			"sha256": "be36842369fd837b3330c094623486d1647267a7eae73906ecdf715797a19e7a"
+		}
+	],
 	"piSchema": "1.5.2",
 	"piTelemetry": "1.5.2",
 	"files": [
@@ -701,11 +706,11 @@
 		},
 		{
 			"path": "pi/chord/src/surfaces/active-language.ts",
-			"sha256": "1ef415ca186e8937ae30d66d5fa939e188588fc801bf662cdea7082be0d8b2d3"
+			"sha256": "394bb8f04d41ebda7fd3219714ffbdb76eb2d9792d06cfeb832fa7db570b6a8c"
 		},
 		{
 			"path": "pi/chord/src/surfaces/active-theme.ts",
-			"sha256": "4ff8b1a2a0b2838f3e4f1605551f350ccc269e37dada61dc7883f27fef3608d5"
+			"sha256": "f4fdc47a28bc5632843db61821d6e51892bbdfef8a4ec0e3ff371ce2e9454276"
 		},
 		{
 			"path": "pi/chord/src/surfaces/client.ts",
