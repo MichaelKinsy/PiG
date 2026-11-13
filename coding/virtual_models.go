@@ -499,18 +499,18 @@ func (s *Session) recordThinkingLevel(branch []icodingagent.SessionEntry) {
 // A session's own entry holds the level its record decodes to, so it is read from the entry: every agent run asks, and decoding the record
 // allocated the level again each time. An entry of any other shape is read from its record, and skipped when the record holds no level.
 func recordedThinkingLevel(branch []icodingagent.SessionEntry) (ai.ModelThinkingLevel, bool) {
-	for i := len(branch) - 1; i >= 0; i-- {
-		if branch[i].Base().Type != "thinking_level_change" {
+	for _, b := range slices.Backward(branch) {
+		if b.Base().Type != "thinking_level_change" {
 			continue
 		}
-		if typed, ok := branch[i].(icodingagent.ThinkingLevelEntry); ok {
+		if typed, ok := b.(icodingagent.ThinkingLevelEntry); ok {
 			return ai.ModelThinkingLevel(typed.ThinkingLevel), true
 		}
 		var entry struct {
 			ThinkingLevel string `json:"thinkingLevel"`
 		}
 		// upstream: packages/coding-agent/src/core/session-manager.ts:loadEntriesFromFile
-		if json.Unmarshal(branch[i].Raw(), &entry) != nil {
+		if json.Unmarshal(b.Raw(), &entry) != nil {
 			continue
 		}
 		return ai.ModelThinkingLevel(entry.ThinkingLevel), true

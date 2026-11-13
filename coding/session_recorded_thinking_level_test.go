@@ -1,6 +1,7 @@
 package coding
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -12,14 +13,14 @@ import (
 // recordDecodedThinkingLevel is how the level was read before recordedThinkingLevel read a session's own entry directly: every
 // thinking_level_change entry from the decode of its record.
 func recordDecodedThinkingLevel(branch []icodingagent.SessionEntry) (ai.ModelThinkingLevel, bool) {
-	for i := len(branch) - 1; i >= 0; i-- {
-		if branch[i].Base().Type != "thinking_level_change" {
+	for _, b := range slices.Backward(branch) {
+		if b.Base().Type != "thinking_level_change" {
 			continue
 		}
 		var entry struct {
 			ThinkingLevel string `json:"thinkingLevel"`
 		}
-		if json.Unmarshal(branch[i].Raw(), &entry) != nil {
+		if json.Unmarshal(b.Raw(), &entry) != nil {
 			continue
 		}
 		return ai.ModelThinkingLevel(entry.ThinkingLevel), true
