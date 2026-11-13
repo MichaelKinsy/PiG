@@ -11520,6 +11520,26 @@
       "tests": []
     },
     {
+      "id": "BF-3bf8080",
+      "title": "`pig docs show divergences` lists every active divergence in one table, each once",
+      "symptom": "`pig docs show divergences` lists every active divergence in one table, each once.",
+      "rootCause": "D540 had rows at lines 180 and 195 and D605 at lines 182 and 197, with different wording.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig docs show divergences` lists every active divergence in one table, each once. A blank line inside the table and rows added after the page's last section had left 80 of its 143 rows outside the table, and D540 and D605 each had two rows with different wording.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3bf80808ee",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-3c2dde4",
       "title": "A terminal read that ends inside a UTF-8 character and holds every byte of it no longer restarts the ESC…",
       "symptom": "A terminal read that ends inside a UTF-8 character and holds every byte of it no longer restarts the ESC timer, as in Pi, where Node emits no data event for it.",
@@ -16930,6 +16950,26 @@
       ]
     },
     {
+      "id": "BF-5425648",
+      "title": "A provider written with the Go extension SDK whose `streamSimple` request the host cancels is now always…",
+      "symptom": "A provider written with the Go extension SDK whose `streamSimple` request the host cancels is now always answered with the cancellation's error.",
+      "rootCause": "The context is now read first, and once, when forward returns. forward returns without an error only because the context is done or because the stream has ended and every event of it was sent, so a result is answered only when the context was not done at that read; the select is gone. The context is the record of the cancel and is done before an author can see it, so the cancel and the end need no lock to order them. A cancel that arrives after the read leaves the result, as in the Node, Rust, Lisp and Python SDKs, which read the cancel once after their forwarding loop.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A provider written with the Go extension SDK whose `streamSimple` request the host cancels is now always answered with the cancellation's error. The SDK chose between that error and the stream's result with a `select` on the request's context and the stream's end; a provider that ends its stream when it sees the cancel makes both ready, and Go then picks at random, so the cancelled request was answered with the provider's result now and then (5 of 30 runs with the extension loaded in process, 1 of 30 as a subprocess), where the Rust, Lisp and Python SDKs answer the abort. PiG's host stops listening to such a request at its cancel and shows the stream as aborted either way, so the wrong answer was on the wire only. The window has been in the SDK since 0.3.0. A cancel that arrives after the stream ended and was forwarded still leaves the result.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "5425648cb7",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-54283ce",
       "title": "fix(extension): Shutdown closes live child sessions and releases the objects they hold",
       "symptom": "fix(extension): Shutdown closes live child sessions and releases the objects they hold",
@@ -18149,6 +18189,26 @@
         "coding/model_availability_auth_view_test.go::TestAvailabilityPassAuthViewMatchesPiUpstream",
         "coding/model_runtime_injected_credentials_test.go::TestInjectedCredentialStoreAvailabilityReadsProvidersConcurrently"
       ]
+    },
+    {
+      "id": "BF-57f113b",
+      "title": "A provider written with the Go, Python or Lisp extension SDK now reaches the host with each stream event…",
+      "symptom": "A provider written with the Go, Python or Lisp extension SDK now reaches the host with each stream event showing the partial message as it was when the provider pushed the event, and with the stream's result as it was when the provider ended it.",
+      "rootCause": "The Go, Python and Lisp SDKs queued the event the author pushed and a forwarding goroutine or thread encoded it later, while the author's code could still append to the shared partial message: the host then received later text (every text_delta showing the finished message under load) and, in Go, the forwarder's read of the author's map raced the author's writes. Push and End now take the event, and the result, at the call: the Go SDK encodes the event on the author's goroutine and the forwarder writes those bytes, the Python and Lisp SDKs queue a copy. The result the author reads is still its own message. Events the SDK builds or decodes itself are queued as they are. The Rust SDK takes…",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A provider written with the Go, Python or Lisp extension SDK now reaches the host with each stream event showing the partial message as it was when the provider pushed the event, and with the stream's result as it was when the provider ended it. The SDK queued the event the provider pushed and a goroutine or thread encoded it later, so a provider that appended to its shared partial message right after a `Push` could have the host receive the later text (under load every `text_delta` showed the finished message), and in the Go SDK the encoder's read of the provider's map was a data race with the provider's writes. `Push` and `End` now take the event, and the result, at the call (the Go SDK encodes the event on the provider's goroutine; the Python and Lisp SDKs queue a copy), so the host sees each event as it was at the push, which is stronger than Pi's own guarantee (D615): Pi's consumer reads the shared message at its own turn, so after a synchronous burst of pushes or between microtask awaits it shows later changes. The event and the message the provider reads back (`Events()`, `result()`) are still its own objects, and a value of a kind JSON has no copy of (a lock, a cycle) ends the request instead of raising in the provider's `Push`. The Rust SDK takes the event by value and is unchanged.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "57f113ba40",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-58f6697",
@@ -19571,7 +19631,7 @@
       "symptom": "An extension that stopped reading its connection while its component was being invalidated could hold the delivery of that component's keys until the connection ended.",
       "rootCause": "Pi's Container has no such check. The walk now records the theme it invalidated a container's children under, and the render's check leaves them alone for that theme; a container no walk reached still tells its children at the render. Scenarios extensions-runtime 104 and 105 (escaped-equal to Pi, inv=2); TestContainerThemeCheckDoesNotRepeatTheWalk.",
       "rootCauseSource": "commit",
-      "userImpact": "Lost or altered data",
+      "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
@@ -35928,6 +35988,26 @@
       ]
     },
     {
+      "id": "BF-98a2e8d",
+      "title": "The Go extension SDK no longer forwards a provider stream event that the provider pushed after the cancel of…",
+      "symptom": "The Go extension SDK no longer forwards a provider stream event that the provider pushed after the cancel of its request.",
+      "rootCause": "drain read the context only before it took the next event. A cancel, and a push by an author that saw it, between that read and the take sent the host one event that was pushed after the cancel. drain now reads the context again once it has taken the event: an author that saw the cancel pushed after the context was done, so the read after the take sees it. The Rust, Lisp, Python and Node SDKs read the cancel after the take as well. The read at the top of the loop stays: it keeps a cancelled consumer from waiting for the delivery lock.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The Go extension SDK no longer forwards a provider stream event that the provider pushed after the cancel of its request. The forwarder read the request's cancellation before it took the next event, so a cancel and a later push that both landed between the two sent the host one more event; it now reads the cancellation again once it has the event, as the Rust, Lisp, Python and Node SDKs do. The window was two statements wide (no run of the conformance row showed it) and has been in the SDK since 0.3.0; PiG's host has ended its own stream at the cancel, so the extra event was on the wire only.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "98a2e8d071",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-98f0403",
       "title": "`AgentSessionRuntime.dispose` in the Go, Python, Rust and Lisp extension SDKs now settles a run still in…",
       "symptom": "`AgentSessionRuntime.dispose` in the Go, Python, Rust and Lisp extension SDKs now settles a run still in flight (it aborts the current session first) before it emits `session_shutdown`, as Pi's `dispose` does; the run's `agent_end` reaches the extension before the shutdown.",
@@ -41248,6 +41328,26 @@
         "chord/next/link/link_end_transports_test.go::TestALinkHandsOverWhatArrivedBeforeItsTransportEndedThenCloses",
         "chord/next/link/link_end_transports_test.go::TestALinkToldOfItsCloseHasLeftItsTransport"
       ]
+    },
+    {
+      "id": "BF-adddfb8",
+      "title": "A provider written with the Python extension SDK whose `streamSimple` request the host cancels is now always…",
+      "symptom": "A provider written with the Python extension SDK whose `streamSimple` request the host cancels is now always answered with the abort error.",
+      "rootCause": "The read loop of the Python SDK handles an ordinary cancel of a provider_stream_simple request in two steps: under the state lock it ends the request's provider stream (end(None)) and marks the request cancelled, and after the lock it sets the request's signal. The request's thread decided between a result and the abort by the signal alone. A thread that ran between the two steps saw the stream ended and the signal not set, and answered the request with a null result and no error, where the Go SDK answers the cancellation's error and the Lisp SDK, whose stream is ended by a subscriber of the signal, the abort.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A provider written with the Python extension SDK whose `streamSimple` request the host cancels is now always answered with the abort error. The SDK's read loop ended the request's provider stream before it set the request's signal, and the request's thread, when it ran between the two, answered the request with a null result and no error, where the Go, Rust and Lisp SDKs answer the abort. PiG's host stops listening to such a request at its cancel and shows the stream as aborted either way, so the wrong answer was on the wire only. The window is older than the push snapshot of provider stream events (the release line had the same order before this change) and a few bytecodes wide: none of 150 unforced runs of a cancel in the middle of a push burst hit it, and holding the signal back by 0.3 s hit it every time.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "adddfb8a1a",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-ae1ee6d",
@@ -61673,6 +61773,10 @@
     {
       "id": "D607",
       "title": "The plugins component loads hosts through a Node subprocess it starts: Pi's `evaluate`, `stack` and runtime…"
+    },
+    {
+      "id": "D615",
+      "title": "The Go, Python, Lisp and Rust SDKs show the host each provider stream event as it was when the provider…"
     },
     {
       "id": "D616",

@@ -428,6 +428,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3b9bd16-3](#bf-3b9bd16-3) | `chord/next/link`: `Channel.Idle` returns when the channel closes | PiG's own defect | All platforms | 0.7.0 |
 | [BF-3b9c7da](#bf-3b9c7da) | The edit tool keeps the line endings of the lines it does not touch in files with mixed CRLF, LF or lone CR… | PiG's own defect | All platforms | Unreleased |
 | [BF-3ba74f2](#bf-3ba74f2) | fix(codingagent): wait for a read's rest on the route snapshot that found no modal | PiG's own defect | All platforms | Unreleased |
+| [BF-3bf8080](#bf-3bf8080) | `pig docs show divergences` lists every active divergence in one table, each once | PiG's own defect | All platforms | Unreleased |
 | [BF-3c2dde4](#bf-3c2dde4) | A terminal read that ends inside a UTF-8 character and holds every byte of it no longer restarts the ESC… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-3ca622b](#bf-3ca622b) | fix(durable/core): the tool round resumes one tick after runtime.outcomes, as Pi's #read does; drop the… | PiG's own defect | All platforms | Unreleased |
 | [BF-3cb7131](#bf-3cb7131) | fix(sdk-py): stage pig_sdk.tui with the package, which pig_sdk imports at load; keep the pi-ai patterns… | PiG's own defect | All platforms | Unreleased |
@@ -621,6 +622,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-53385a3](#bf-53385a3) | Registering a large MCP catalog, building a CodeMode sandbox from one, and CodeMode tool discovery were… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-536faf0](#bf-536faf0) | A failed extension load could report a less specific error than the extension's stderr gave | PiG's own defect | All platforms | Unreleased |
 | [BF-5380e0a](#bf-5380e0a) | fix(extension): load failure shows the extension's own cause; registration edge-case rows | PiG's own defect | All platforms | Unreleased |
+| [BF-5425648](#bf-5425648) | A provider written with the Go extension SDK whose `streamSimple` request the host cancels is now always… | PiG's own defect | All platforms | Unreleased |
 | [BF-54283ce](#bf-54283ce) | fix(extension): Shutdown closes live child sessions and releases the objects they hold | PiG's own defect | All platforms | Unreleased |
 | [BF-542b536](#bf-542b536) | fix(cli): PIG_VERSION_FORMAT=pi prints the pinned Pi package version | PiG's own defect | All platforms | Unreleased |
 | [BF-5443b6c](#bf-5443b6c) | `durable/images` is the image processor of pi-durable: `images.CreatePhotonImages()` (also `images/node` and… | PiG's own defect | All platforms | 0.5.0 |
@@ -658,6 +660,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-57a1687](#bf-57a1687) | fix(ai,agent): return a projection's blocks apart from its scalars so the caller's buffer stays on its stack | PiG's own defect | All platforms | Unreleased |
 | [BF-57dc298](#bf-57dc298) | On Linux, the native X11 clipboard reads a `DISPLAY` that starts with `/` or `unix:` as a socket path with an… | PiG's own defect | Linux | Unreleased |
 | [BF-57ee33b](#bf-57ee33b) | A model an extension registers with `registerProvider` reaches `ctx.modelRegistry`, `ctx.model` and RPC as… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-57f113b](#bf-57f113b) | A provider written with the Go, Python or Lisp extension SDK now reaches the host with each stream event… | PiG's own defect | All platforms | Unreleased |
 | [BF-58f6697](#bf-58f6697) | Text typed and followed at once by Enter no longer skips the autocomplete menu Pi opens: `/model provider/id`… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-59456ae](#bf-59456ae) | Pressing a key in a subprocess extension's overlay no longer freezes interactive mode when the key reaches… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-59693cd](#bf-59693cd) | Interactive mode: after choosing an entry in `/tree` the chat first redrew at the old position and, about a… | PiG's own defect | All platforms | Unreleased |
@@ -1323,6 +1326,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-98666df](#bf-98666df) | Closing a Harness over the TypeScript host no longer rejects when the write-back of the tasks the close… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-9883d4b](#bf-9883d4b) | Large nested-call fan-outs in the Durable core no longer re-send the whole document per call: the core sends… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-98a21df](#bf-98a21df) | Tool output bounded by `chord/output`, the durable core and the Cloudflare host now loses whole ANSI escape… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
+| [BF-98a2e8d](#bf-98a2e8d) | The Go extension SDK no longer forwards a provider stream event that the provider pushed after the cancel of… | PiG's own defect | All platforms | Unreleased |
 | [BF-98f0403](#bf-98f0403) | `AgentSessionRuntime.dispose` in the Go, Python, Rust and Lisp extension SDKs now settles a run still in… | PiG's own defect | All platforms | Unreleased |
 | [BF-98f0403-2](#bf-98f0403-2) | `pig --help` in a build that strips a built-in no longer shows the `pig --tools +codemode` example when… | PiG's own defect | All platforms | Unreleased |
 | [BF-9910d00](#bf-9910d00) | An extension that declared one provider name in several `registerProvider` calls while it loaded kept only… | PiG's own defect | All platforms | Unreleased |
@@ -1493,6 +1497,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ad9ed64-2](#bf-ad9ed64-2) | A large message's session record no longer keeps a regrown buffer when its text has escapes such as newlines… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ada7018](#bf-ada7018) | `events.off` on an extension listener that had migrated to the routed event bus panicked on a nil untrack | PiG's own defect | All platforms | Unreleased |
 | [BF-adc27a4](#bf-adc27a4) | A Chord host's link no longer drops the messages its transport delivered before closing when the close… | PiG's own defect | All platforms | Unreleased |
+| [BF-adddfb8](#bf-adddfb8) | A provider written with the Python extension SDK whose `streamSimple` request the host cancels is now always… | PiG's own defect | All platforms | Unreleased |
 | [BF-ae1ee6d](#bf-ae1ee6d) | The login dialog opens and prints only `http:` and `https:` URLs, in their normalized form (percent-encoded… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-ae1ee6d-2](#bf-ae1ee6d-2) | A terminal title that holds a control character (a session name from a session file with an ESC or BEL) no… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-ae498eb](#bf-ae498eb) | A line of many `>` characters no longer makes the Markdown renderer's output grow exponentially with the… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
@@ -7805,6 +7810,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `3ba74f2827` (2026-10-13)
 - **Tests:** None recorded.
 
+### BF-3bf8080
+
+**`pig docs show divergences` lists every active divergence in one table, each once**
+
+- **Source:** PiG's own defect
+- **Symptom:** `pig docs show divergences` lists every active divergence in one table, each once.
+- **Root cause:** D540 had rows at lines 180 and 195 and D605 at lines 182 and 197, with different wording.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `3bf80808ee` (2026-11-12)
+- **Tests:** None recorded.
+- **Release note:** `pig docs show divergences` lists every active divergence in one table, each once. A blank line inside the table and rows added after the page's last section had left 80 of its 143 rows outside the table, and D540 and D605 each had two rows with different wording.
+
 ### BF-3c2dde4
 
 **A terminal read that ends inside a UTF-8 character and holds every byte of it no longer restarts the ESC…**
@@ -10467,6 +10486,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `5380e0acc2` (2026-10-09)
 - **Tests:** `coding/extension/host/subprocess/load_error_cause_test.go::TestStderrCausePicksTheRuntimeErrorLine`
 
+### BF-5425648
+
+**A provider written with the Go extension SDK whose `streamSimple` request the host cancels is now always…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A provider written with the Go extension SDK whose `streamSimple` request the host cancels is now always answered with the cancellation's error.
+- **Root cause:** The context is now read first, and once, when forward returns. forward returns without an error only because the context is done or because the stream has ended and every event of it was sent, so a result is answered only when the context was not done at that read; the select is gone. The context is the record of the cancel and is done before an author can see it, so the cancel and the end need no lock to order them. A cancel that arrives after the read leaves the result, as in the Node, Rust, Lisp and Python SDKs, which read the cancel once after their forwarding loop.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `5425648cb7` (2026-11-13)
+- **Tests:** None recorded.
+- **Release note:** A provider written with the Go extension SDK whose `streamSimple` request the host cancels is now always answered with the cancellation's error. The SDK chose between that error and the stream's result with a `select` on the request's context and the stream's end; a provider that ends its stream when it sees the cancel makes both ready, and Go then picks at random, so the cancelled request was answered with the provider's result now and then (5 of 30 runs with the extension loaded in process, 1 of 30 as a subprocess), where the Rust, Lisp and Python SDKs answer the abort. PiG's host stops listening to such a request at its cancel and shows the stream as aborted either way, so the wrong answer was on the wire only. The window has been in the SDK since 0.3.0. A cancel that arrives after the stream ended and was forwarded still leaves the result.
+
 ### BF-54283ce
 
 **fix(extension): Shutdown closes live child sessions and releases the objects they hold**
@@ -10976,6 +11009,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `50ca49180f` (2026-10-13), `57ee33b5c7` (2026-10-13), `5cd840e477` (2026-10-13)
 - **Tests:** `coding/cli/model_registry_refresh_test.go::TestSubprocessModelRegistryPublishesExtensionReplacementAndRestoration`, `coding/cli/model_registry_refresh_test.go::TestSubprocessModelRegistryPublishesProviderOnlyOverlayRefresh`, `coding/cli/model_registry_refresh_test.go::TestSubprocessModelRegistryPublishesProviderRegistrationAndRemoval`, `coding/cli/model_registry_refresh_test.go::TestSubprocessModelRegistryRefreshesConnectedNode`, `coding/cli/port_wave_10_package_command_paths_test.go::TestPortWave10ModelRuntimeCreation`, `coding/cli/shipped_piglet_inventory_test.go::TestShippedPigletInventory`, `coding/cli/strip_leak_gate_test.go::TestStripLeakGate`, `coding/model_availability_auth_view_test.go::TestAvailabilityPassAuthViewMatchesPiUpstream` and 1 more in docs/bug-ledger.json
 - **Release note:** A model an extension registers with `registerProvider` reaches `ctx.modelRegistry`, `ctx.model` and RPC as Pi's object: the definition's members in the order the extension wrote them, then `api`, `provider` and `baseUrl`, and its `input` as written. PiG sent the members in its own order and filled in `input: ["text"]` when the definition left it out.
+
+### BF-57f113b
+
+**A provider written with the Go, Python or Lisp extension SDK now reaches the host with each stream event…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A provider written with the Go, Python or Lisp extension SDK now reaches the host with each stream event showing the partial message as it was when the provider pushed the event, and with the stream's result as it was when the provider ended it.
+- **Root cause:** The Go, Python and Lisp SDKs queued the event the author pushed and a forwarding goroutine or thread encoded it later, while the author's code could still append to the shared partial message: the host then received later text (every text_delta showing the finished message under load) and, in Go, the forwarder's read of the author's map raced the author's writes. Push and End now take the event, and the result, at the call: the Go SDK encodes the event on the author's goroutine and the forwarder writes those bytes, the Python and Lisp SDKs queue a copy. The result the author reads is still its own message. Events the SDK builds or decodes itself are queued as they are. The Rust SDK takes…
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `57f113ba40` (2026-11-09)
+- **Tests:** None recorded.
+- **Release note:** A provider written with the Go, Python or Lisp extension SDK now reaches the host with each stream event showing the partial message as it was when the provider pushed the event, and with the stream's result as it was when the provider ended it. The SDK queued the event the provider pushed and a goroutine or thread encoded it later, so a provider that appended to its shared partial message right after a `Push` could have the host receive the later text (under load every `text_delta` showed the finished message), and in the Go SDK the encoder's read of the provider's map was a data race with the provider's writes. `Push` and `End` now take the event, and the result, at the call (the Go SDK encodes the event on the provider's goroutine; the Python and Lisp SDKs queue a copy), so the host sees each event as it was at the push, which is stronger than Pi's own guarantee (D615): Pi's consumer reads the shared message at its own turn, so after a synchronous burst of pushes or between microtask awaits it shows later changes. The event and the message the provider reads back (`Events()`, `result()`) are still its own objects, and a value of a kind JSON has no copy of (a lock, a cycle) ends the request instead of raising in the provider's `Push`. The Rust SDK takes the event by value and is unchanged.
 
 ### BF-58f6697
 
@@ -11674,7 +11721,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Source:** PiG's own defect
 - **Symptom:** An extension that stopped reading its connection while its component was being invalidated could hold the delivery of that component's keys until the connection ended.
 - **Root cause:** Pi's Container has no such check. The walk now records the theme it invalidated a container's children under, and the render's check leaves them alone for that theme; a container no walk reached still tells its children at the render. Scenarios extensions-runtime 104 and 105 (escaped-equal to Pi, inv=2); TestContainerThemeCheckDoesNotRepeatTheWalk.
-- **User impact:** Lost or altered data
+- **User impact:** An operation failed or was rejected
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `2e82be6163` (2026-11-13), `5f449b50d4` (2026-11-13), `b0d8eb3988` (2026-11-13), `e516ccd06b` (2026-11-13), `e84bbf2122` (2026-11-13)
@@ -20211,6 +20258,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `chord/output/output_test.go::TestToolOutputBounds`, `durable/core/host/cf/test/output-sanitize.test.ts`, `durable/core/turn/output_test.go::TestSanitizeOutputRemovesWholeEscapeSequences`
 - **Release note:** Tool output bounded by `chord/output`, the durable core and the Cloudflare host now loses whole ANSI escape sequences (strings up to BEL or ST, CSI, short `ESC x` forms), not only their ESC bytes, which left `[31m` in transcripts; a sequence split across chunks goes too. Carried forward from Pi 50d9f823 (earendil-works/pi#11604), past the 1.4.0+b3a29f11 pin.
 
+### BF-98a2e8d
+
+**The Go extension SDK no longer forwards a provider stream event that the provider pushed after the cancel of…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The Go extension SDK no longer forwards a provider stream event that the provider pushed after the cancel of its request.
+- **Root cause:** drain read the context only before it took the next event. A cancel, and a push by an author that saw it, between that read and the take sent the host one event that was pushed after the cancel. drain now reads the context again once it has taken the event: an author that saw the cancel pushed after the context was done, so the read after the take sees it. The Rust, Lisp, Python and Node SDKs read the cancel after the take as well. The read at the top of the loop stays: it keeps a cancelled consumer from waiting for the delivery lock.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `98a2e8d071` (2026-11-13)
+- **Tests:** None recorded.
+- **Release note:** The Go extension SDK no longer forwards a provider stream event that the provider pushed after the cancel of its request. The forwarder read the request's cancellation before it took the next event, so a cancel and a later push that both landed between the two sent the host one more event; it now reads the cancellation again once it has the event, as the Rust, Lisp, Python and Node SDKs do. The window was two statements wide (no run of the conformance row showed it) and has been in the SDK since 0.3.0; PiG's host has ended its own stream at the cancel, so the extra event was on the wire only.
+
 ### BF-98f0403
 
 **`AgentSessionRuntime.dispose` in the Go, Python, Rust and Lisp extension SDKs now settles a run still in…**
@@ -22601,6 +22662,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `adc27a4cbe` (2026-11-13)
 - **Tests:** `chord/next/link/link_end_test.go::TestALinkEndHandsOverWhatArrivedBeforeItsTransportEndedThenEnds`, `chord/next/link/link_end_test.go::TestALinkEndWhoseListenerPanicsDuringTheHandOver`, `chord/next/link/link_end_transports_test.go::TestALinkClosedByThisSideWhileItsQueueIsHandedOverClosesAtOnce`, `chord/next/link/link_end_transports_test.go::TestALinkHandsOverWhatArrivedBeforeItsTransportEndedThenCloses`, `chord/next/link/link_end_transports_test.go::TestALinkToldOfItsCloseHasLeftItsTransport`
 - **Release note:** A Chord host's link no longer drops the messages its transport delivered before closing when the close arrives while the link's listener is still being handed the messages queued for it: a host that set its listener with messages already waiting (a worker's IPC link queues until its start message) lost the rest of that queue and was told of the close first. The listener now gets them in order and the close after them, as in Pi, where the hand-over is finished before a close is heard; a link closed from its own side still drops what it has not delivered.
+
+### BF-adddfb8
+
+**A provider written with the Python extension SDK whose `streamSimple` request the host cancels is now always…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A provider written with the Python extension SDK whose `streamSimple` request the host cancels is now always answered with the abort error.
+- **Root cause:** The read loop of the Python SDK handles an ordinary cancel of a provider_stream_simple request in two steps: under the state lock it ends the request's provider stream (end(None)) and marks the request cancelled, and after the lock it sets the request's signal. The request's thread decided between a result and the abort by the signal alone. A thread that ran between the two steps saw the stream ended and the signal not set, and answered the request with a null result and no error, where the Go SDK answers the cancellation's error and the Lisp SDK, whose stream is ended by a subscriber of the signal, the abort.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `adddfb8a1a` (2026-11-13)
+- **Tests:** None recorded.
+- **Release note:** A provider written with the Python extension SDK whose `streamSimple` request the host cancels is now always answered with the abort error. The SDK's read loop ended the request's provider stream before it set the request's signal, and the request's thread, when it ran between the two, answered the request with a null result and no error, where the Go, Rust and Lisp SDKs answer the abort. PiG's host stops listening to such a request at its cancel and shows the stream as aborted either way, so the wrong answer was on the wire only. The window is older than the push snapshot of provider stream events (the release line had the same order before this change) and a few bytecodes wide: none of 150 unforced runs of a cancel in the middle of a push burst hit it, and holding the signal back by 0.3 s hit it every time.
 
 ### BF-ae1ee6d
 
@@ -31881,6 +31956,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D601 | The browser page's and the terminal sandbox's client runtimes, and the React bindings, are Pi's TypeScript… | [BF-D601](#bf-d601) |
 | D605 | The server's two hosts serve one union: `Host.Delegate` one way, the Node host's destination the other | [BF-D605](#bf-d605) |
 | D607 | The plugins component loads hosts through a Node subprocess it starts: Pi's `evaluate`, `stack` and runtime… | deliberate difference |
+| D615 | The Go, Python, Lisp and Rust SDKs show the host each provider stream event as it was when the provider… | deliberate difference |
 | D616 | An npm tarball is extracted with `tar` told the archive and the destination relative to the pack directory… | [BF-5043738](#bf-5043738) |
 | D617 | A command-only session action called through a context that is not a command context is a method that refuses… | [BF-105a93f](#bf-105a93f) |
 | D618 | A start repaints after the highlight grammar load only when a highlight lookup made before it could have… | [BF-D618](#bf-d618) |

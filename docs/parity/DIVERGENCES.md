@@ -3542,7 +3542,7 @@ Pi bug: Not a Pi bug.
 
 Scope: `chord/nextnode/plugins/plugins_watcher_identity_other.go`, the `base` mark of `pluginWatcher` on DragonFly, Solaris and illumos, and AIX.
 
-Owner decision: owner sign-off pending (drafted by the FollowChordPlugins lane on 2026-11-08).
+Owner decision: approved (owner, 2026-11-13T01:13:59Z: "Proceed with recommendations."; the line of that decision for this record: "D540: confirmed APPROVED; remove the 'sign-off pending' line."). Drafted by the FollowChordPlugins lane on 2026-11-08.
 
 SCRUTINIZED:approved
 
