@@ -53,6 +53,11 @@ var cutOffEnds = []cutOffEnd{
 	// exits 1; the SIGTERM ends it after any of them, the last included (143). A run cut off before the text of the error counts here. Pi: 9,604
 	// of 20,000 alone (1 in 792) and 5,944 of 10,000 beside load (1 in 893).
 	{name: "a reset report", socket: true, holds: reportEnds(yesResetReport)},
+	// unix_release_sock marks yes's end shut down one statement before it posts the reset. A write past the entry check that reads the two in
+	// between fails with EPIPE in sock_alloc_send_pskb, the one EPIPE of a socket that comes without SIGPIPE, so yes reports a broken pipe
+	// instead. A pipe raises SIGPIPE with every EPIPE. Pi: 11 of 20,000 alone (1 in 1) and 3 of 10,000 beside load. With yes's write loop and a
+	// SIGPIPE flag in its place, 33 of Pi's 20,000 runs and none of PiG's 4,000 met EPIPE without the signal.
+	{name: "a broken-pipe report", socket: true, holds: reportEnds(yesPipeReport)},
 }
 
 // reportEnds is the rule of an end in which yes reports a failed write: the whole report with yes's own exit code 1, or any beginning of it, the
@@ -121,18 +126,16 @@ func TestCutOffEndsAreTheOutcomesMeasuredForPi(t *testing.T) {
 // PiG's ends by a signal and reports nothing. Every run of Pi shows one of the ends measured for it (cutOffEnds), so an end Pi did not have is
 // seen here, and every run of PiG shows the one end that a pipe shares with a socket. Each run's stderr goes to a file of its own, which the
 // closed pipes of a truncated call do not hide.
+//
+// That Pi's writer does meet the reset is asked of a yes that ignores SIGTERM. The SIGTERM of exec.ts:113 can end yes before it reports, and where
+// yes waits for a CPU it mostly does: on 2 CPUs shared with 8 busy loops, 3,993 of Pi's 4,000 runs of `exec yes` ended so and 7 held a report,
+// so 200 runs held none in 60 of 100 test runs. A yes that ignores SIGTERM lives to report what its write met: 5,087 of Pi's 10,000 such runs
+// alone, 2,625 of 4,000 beside 32 busy loops and 3,200 of 4,000 on those 2 CPUs ended 1 with a whole report and the others 141, as each of
+// PiG's 8,000 did.
 func TestExecCommandCutOffWriterMeetsSIGPIPEWherePisMeetsAReset(t *testing.T) {
 	const runs = 200
 	dir := t.TempDir()
 	zero := 0.0
-	scenarios := func(side string) (list []execScenario, files []string) {
-		for i := range runs {
-			file := filepath.Join(dir, fmt.Sprintf("%s-%d", side, i))
-			files = append(files, file)
-			list = append(list, execScenario{Command: "sh", Args: []string{"-c", "exec yes 2>'" + file + "'"}, CWD: dir, MaxBuffer: &zero})
-		}
-		return list, files
-	}
 	said := func(file string) string {
 		text, err := os.ReadFile(file)
 		if err != nil {
@@ -140,33 +143,50 @@ func TestExecCommandCutOffWriterMeetsSIGPIPEWherePisMeetsAReset(t *testing.T) {
 		}
 		return string(text)
 	}
+	for _, row := range []struct {
+		name, script string
+		// reports is set where one of Pi's runs has to report a failed write.
+		reports bool
+	}{
+		{name: "yes", script: "exec yes"},
+		{name: "deaf-yes", script: "trap '' TERM; exec yes", reports: true},
+	} {
+		scenarios := func(side string) (list []execScenario, files []string) {
+			for i := range runs {
+				file := filepath.Join(dir, fmt.Sprintf("%s-%s-%d", row.name, side, i))
+				files = append(files, file)
+				list = append(list, execScenario{Command: "sh", Args: []string{"-c", row.script + " 2>'" + file + "'"}, CWD: dir, MaxBuffer: &zero})
+			}
+			return list, files
+		}
 
-	list, files := scenarios("pi")
-	reports := 0
-	for i, outcome := range piExecOutcomes(t, list) {
-		text := said(files[i])
-		if end := cutOffEndOf(outcome, text); end == nil {
-			t.Errorf("Pi run %d = %+v with %q on stderr, which is none of the ends measured for Pi (cutOffEnds)", i, outcome, text)
-		} else if end.socket {
-			reports++
+		list, files := scenarios("pi")
+		reports := 0
+		for i, outcome := range piExecOutcomes(t, list) {
+			text := said(files[i])
+			if end := cutOffEndOf(outcome, text); end == nil {
+				t.Errorf("Pi run %d of %q = %+v with %q on stderr, which is none of the ends measured for Pi (cutOffEnds)", i, row.script, outcome, text)
+			} else if end.socket {
+				reports++
+			}
 		}
-	}
-	if reports == 0 {
-		t.Errorf("none of Pi's %d runs reported a failed write: its command no longer writes a socket", runs)
-	}
+		if row.reports && reports == 0 {
+			t.Errorf("none of Pi's %d runs of %q reported a failed write: its writer no longer meets a reset", runs, row.script)
+		}
 
-	list, files = scenarios("pig")
-	for i, scenario := range list {
-		outcome := pigExecOutcome(context.Background(), scenario)
-		text := said(files[i])
-		end := cutOffEndOf(outcome, text)
-		if end != nil && !end.socket {
-			continue
+		list, files = scenarios("pig")
+		for i, scenario := range list {
+			outcome := pigExecOutcome(context.Background(), scenario)
+			text := said(files[i])
+			end := cutOffEndOf(outcome, text)
+			if end != nil && !end.socket {
+				continue
+			}
+			is := "none of Pi's ends"
+			if end != nil {
+				is = end.name + ", which only the writer of a socket meets"
+			}
+			t.Errorf("Pig run %d of %q = %+v with %q on stderr, want a truncated result that SIGPIPE (141) or SIGTERM (143) ended and nothing on stderr: this is %s", i, row.script, outcome, text, is)
 		}
-		is := "none of Pi's ends"
-		if end != nil {
-			is = end.name + ", which only the writer of a socket meets"
-		}
-		t.Errorf("Pig run %d = %+v with %q on stderr, want a truncated result that SIGPIPE (141) or SIGTERM (143) ended and nothing on stderr: this is %s", i, outcome, text, is)
 	}
 }
