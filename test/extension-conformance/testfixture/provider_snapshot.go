@@ -69,6 +69,30 @@ func registerProviderCancelBurst(ext *sdk.Extension) {
 	})
 }
 
+// registerProviderCancelEnd registers a provider that answers the cancel of its request by ending its stream with a result: it pushes start and ProviderCancelBurstBefore
+// text_delta events, waits until its request is cancelled, and calls End with the message, pushing nothing more.
+func registerProviderCancelEnd(ext *sdk.Extension) {
+	ext.RegisterProvider("cancel-end-provider", sdk.ProviderConfig{
+		"api": "cancel-end-extension-api", "baseUrl": "https://extension.invalid", "apiKey": "extension-key",
+		"models": []any{map[string]any{"id": "faux", "name": "Faux", "reasoning": false, "input": []string{"text"}, "cost": map[string]any{"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0}, "contextWindow": 128000, "maxTokens": 4096}},
+		"streamSimple": func(ctx sdk.Context, model, _, _ map[string]any) (*sdk.ModelEventStream, error) {
+			block := map[string]any{"type": "text", "text": ""}
+			message := map[string]any{"role": "assistant", "api": model["api"], "provider": model["provider"], "model": model["id"], "content": []any{block}, "stopReason": "stop", "timestamp": 1, "usage": map[string]any{"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0, "totalTokens": 0, "cost": map[string]any{"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0, "total": 0}}}
+			stream := sdk.CreateAssistantMessageEventStream()
+			go func() {
+				stream.Push(map[string]any{"type": "start", "partial": message})
+				for i := range ProviderCancelBurstBefore {
+					block["text"] = strings.Repeat("x", i+1)
+					stream.Push(map[string]any{"type": "text_delta", "contentIndex": 0, "delta": "x", "partial": message})
+				}
+				<-ctx.Done()
+				stream.End(message)
+			}()
+			return stream, nil
+		},
+	})
+}
+
 // ProviderSnapshotWant is the text the host must see in each event: the empty message of start, i "x" in the i-th text_delta, and every "x" plus the tail in done.
 func ProviderSnapshotWant() (start string, deltas []string, done string) {
 	for i := 1; i <= ProviderSnapshotBurst; i++ {
