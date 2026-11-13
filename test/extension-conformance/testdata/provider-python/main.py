@@ -38,4 +38,34 @@ def new_extension() -> pig_sdk.Extension:
         threading.Thread(target=produce, daemon=True).start()
         return result
     extension.register_provider("snapshot-provider",{"api":"snapshot-extension-api","baseUrl":"https://extension.invalid","apiKey":"extension-key","models":[{"id":"faux","name":"Faux","reasoning":False,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":128000,"maxTokens":4096}],"streamSimple":snapshot})
+    def cancel_burst(hold_signal):
+        # The producer thread is cancelled in the middle of a burst: it pushes start and three text_delta events, waits until its request is cancelled, and goes on pushing.
+        # hold_signal holds the request's signal back for 0.3 s: the SDK's read loop ends the stream of a cancelled request before it sets the signal, and the request's thread
+        # then runs between the two. The answer is the abort error in both cases.
+        def stream(ctx, model, request, options):
+            import time
+            if hold_signal:
+                set_signal = ctx._cancelled.set
+                def set_late():
+                    time.sleep(0.3)
+                    set_signal()
+                ctx._cancelled.set = set_late
+            block = {"type": "text", "text": ""}
+            message = {"role":"assistant","api":model["api"],"provider":model["provider"],"model":model["id"],"content":[block],"stopReason":"stop","timestamp":1,"usage":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"totalTokens":0,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}}}
+            result = pig_sdk.ModelEventStream()
+            def produce():
+                result.push({"type":"start","partial":message})
+                for index in range(6):
+                    if index == 3:
+                        deadline = time.monotonic() + 10
+                        while not ctx.is_cancelled() and time.monotonic() < deadline:
+                            time.sleep(0.005)
+                    block["text"] = "x" * (index + 1)
+                    result.push({"type":"text_delta","contentIndex":0,"delta":"x","partial":message})
+                result.push({"type":"done","reason":"stop","message":message})
+            threading.Thread(target=produce, daemon=True).start()
+            return result
+        return stream
+    extension.register_provider("cancel-burst-provider",{"api":"cancel-burst-extension-api","baseUrl":"https://extension.invalid","apiKey":"extension-key","models":[{"id":"faux","name":"Faux","reasoning":False,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":128000,"maxTokens":4096}],"streamSimple":cancel_burst(False)})
+    extension.register_provider("cancel-burst-held-provider",{"api":"cancel-burst-extension-api","baseUrl":"https://extension.invalid","apiKey":"extension-key","models":[{"id":"faux","name":"Faux","reasoning":False,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":128000,"maxTokens":4096}],"streamSimple":cancel_burst(True)})
     return extension

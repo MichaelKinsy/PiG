@@ -48,5 +48,6 @@ func ProviderProducer() *sdk.Extension {
 		},
 	})
 	registerProviderSnapshot(ext)
+	registerProviderCancelBurst(ext)
 	return ext
 }

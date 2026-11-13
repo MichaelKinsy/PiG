@@ -49,6 +49,25 @@
      :name "snapshot producer")
     result))
 
+(defun cancel-burst-stream (ctx model request options)
+  "The producer thread is cancelled in the middle of a burst: it pushes start and three text_delta events, waits until its request is cancelled, and goes on pushing."
+  (declare (ignore request options))
+  (let* ((block (pig:obj "type" "text" "text" ""))
+         (message (pig:obj "role" "assistant" "api" (pig:jget model "api") "provider" (pig:jget model "provider") "model" (pig:jget model "id")
+                           "content" (vector block) "stopReason" "stop" "timestamp" 1 "usage" (zero-usage)))
+         (result (pig:make-model-event-stream)))
+    (sb-thread:make-thread
+     (lambda ()
+       (pig:model-stream-push result (pig:obj "type" "start" "partial" message))
+       (dotimes (i 6)
+         (when (= i 3)
+           (loop repeat 2000 until (pig:ctx-cancelled-p ctx) do (sleep 0.005)))
+         (setf (gethash "text" block) (make-string (1+ i) :initial-element #\x))
+         (pig:model-stream-push result (pig:obj "type" "text_delta" "contentIndex" 0 "delta" "x" "partial" message)))
+       (pig:model-stream-push result (pig:obj "type" "done" "reason" "stop" "message" message)))
+     :name "cancel burst producer")
+    result))
+
 (defun new-extension ()
   (let ((ext (pig:make-extension "provider-producer")))
     (pig:register-provider ext "extension-provider"
@@ -63,4 +82,10 @@
                                                               "cost" (pig:obj "input" 0 "output" 0 "cacheRead" 0 "cacheWrite" 0)
                                                               "contextWindow" 128000 "maxTokens" 4096))
                                     "streamSimple" #'snapshot-stream))
+    (pig:register-provider ext "cancel-burst-provider"
+                           (pig:obj "api" "cancel-burst-extension-api" "baseUrl" "https://extension.invalid" "apiKey" "extension-key"
+                                    "models" (vector (pig:obj "id" "faux" "name" "Faux" "reasoning" :false "input" (vector "text")
+                                                              "cost" (pig:obj "input" 0 "output" 0 "cacheRead" 0 "cacheWrite" 0)
+                                                              "contextWindow" 128000 "maxTokens" 4096))
+                                    "streamSimple" #'cancel-burst-stream))
     ext))

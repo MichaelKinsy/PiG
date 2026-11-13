@@ -39,6 +39,36 @@ func registerProviderSnapshot(ext *sdk.Extension) {
 	})
 }
 
+// ProviderCancelBurstBefore is how many text_delta events the cancel-burst provider pushes before it waits for the cancel of its request; it pushes as many after it, and done.
+const ProviderCancelBurstBefore = 3
+
+// registerProviderCancelBurst registers a provider whose producer goroutine is cancelled in the middle of a burst: it pushes start and ProviderCancelBurstBefore text_delta events,
+// waits until its request is cancelled, and goes on pushing as if nothing had happened. The host has the events pushed before the cancel, the SDK forwards none of the later
+// ones, and the SDK answers the request with the abort error, never with a result.
+func registerProviderCancelBurst(ext *sdk.Extension) {
+	ext.RegisterProvider("cancel-burst-provider", sdk.ProviderConfig{
+		"api": "cancel-burst-extension-api", "baseUrl": "https://extension.invalid", "apiKey": "extension-key",
+		"models": []any{map[string]any{"id": "faux", "name": "Faux", "reasoning": false, "input": []string{"text"}, "cost": map[string]any{"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0}, "contextWindow": 128000, "maxTokens": 4096}},
+		"streamSimple": func(ctx sdk.Context, model, _, _ map[string]any) (*sdk.ModelEventStream, error) {
+			block := map[string]any{"type": "text", "text": ""}
+			message := map[string]any{"role": "assistant", "api": model["api"], "provider": model["provider"], "model": model["id"], "content": []any{block}, "stopReason": "stop", "timestamp": 1, "usage": map[string]any{"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0, "totalTokens": 0, "cost": map[string]any{"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0, "total": 0}}}
+			stream := sdk.CreateAssistantMessageEventStream()
+			go func() {
+				stream.Push(map[string]any{"type": "start", "partial": message})
+				for i := range 2 * ProviderCancelBurstBefore {
+					if i == ProviderCancelBurstBefore {
+						<-ctx.Done()
+					}
+					block["text"] = strings.Repeat("x", i+1)
+					stream.Push(map[string]any{"type": "text_delta", "contentIndex": 0, "delta": "x", "partial": message})
+				}
+				stream.Push(map[string]any{"type": "done", "reason": "stop", "message": message})
+			}()
+			return stream, nil
+		},
+	})
+}
+
 // ProviderSnapshotWant is the text the host must see in each event: the empty message of start, i "x" in the i-th text_delta, and every "x" plus the tail in done.
 func ProviderSnapshotWant() (start string, deltas []string, done string) {
 	for i := 1; i <= ProviderSnapshotBurst; i++ {

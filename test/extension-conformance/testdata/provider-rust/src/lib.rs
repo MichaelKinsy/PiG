@@ -12,6 +12,23 @@ pub fn new_extension() -> Extension {
   for event in [json!({"type":"start","partial":message}),json!({"type":"text_start","contentIndex":0,"partial":message}),json!({"type":"text_delta","contentIndex":0,"delta":"custom provider response","partial":message}),json!({"type":"text_end","contentIndex":0,"content":"custom provider response","partial":message}),json!({"type":"done","reason":"stop","message":message})]{stream.push(event)}
   Ok(stream)
  });
+    // The producer thread is cancelled in the middle of a burst: it pushes start and three text_delta events, waits until its request is cancelled, and goes on pushing.
+    extension.register_provider_stream("cancel-burst-provider",json!({"api":"cancel-burst-extension-api","baseUrl":"https://extension.invalid","apiKey":"extension-key","models":[{"id":"faux","name":"Faux","reasoning":false,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":128000,"maxTokens":4096}]}),|ctx,model,_request,_options|{
+  let mut message=json!({"role":"assistant","api":model["api"],"provider":model["provider"],"model":model["id"],"content":[{"type":"text","text":""}],"stopReason":"stop","timestamp":1,"usage":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"totalTokens":0,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}}});
+  let stream=Arc::new(ModelEventStream::new());
+  let producer=stream.clone();
+  let ctx=ctx.clone();
+  std::thread::spawn(move||{
+   producer.push(json!({"type":"start","partial":message.clone()}));
+   for i in 0..6usize{
+    if i==3{let deadline=std::time::Instant::now()+std::time::Duration::from_secs(10);while !ctx.is_cancelled()&&std::time::Instant::now()<deadline{std::thread::sleep(std::time::Duration::from_millis(5));}}
+    message["content"][0]["text"]=json!("x".repeat(i+1));
+    producer.push(json!({"type":"text_delta","contentIndex":0,"delta":"x","partial":message.clone()}));
+   }
+   producer.push(json!({"type":"done","reason":"stop","message":message}));
+  });
+  Ok(stream)
+ });
     // A producer thread appends to one message and pushes a copy of it, without yielding between the two: an event shows the message as it was at the push.
     extension.register_provider_stream("snapshot-provider",json!({"api":"snapshot-extension-api","baseUrl":"https://extension.invalid","apiKey":"extension-key","models":[{"id":"faux","name":"Faux","reasoning":false,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":128000,"maxTokens":4096}]}),|_ctx,model,_request,_options|{
   let mut message=json!({"role":"assistant","api":model["api"],"provider":model["provider"],"model":model["id"],"content":[{"type":"text","text":""}],"stopReason":"stop","timestamp":1,"usage":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"totalTokens":0,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}}});
