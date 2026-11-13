@@ -320,6 +320,18 @@ patch("406e719a6bff", "pi-ai/api/constrained-sampling.js", [
 packageFile("49fe0a237", "pi-coding-agent/schemas/models.schema.json", [messageThreadsDefault]);
 // END backport 49fe0a237
 
+// BEGIN backport 49fe0a237
+// 49fe0a237 (#11987), the behavior its three description entries describe: any provider with a baseUrl on api.anthropic.com uses message threads by
+// default, not only the provider named anthropic. The installed Pi only, as for aa47cedce below: ai/anthropic.go (supportsMessageThreads) has the change.
+packageFile("49fe0a237", "pi-ai/api/anthropic-messages.js", [
+    [`        supportsMessageThreads: model.compat?.supportsMessageThreads ??
+            (model.provider === "anthropic" && model.baseUrl.includes("api.anthropic.com")),
+`, `        ${note("49fe0a237").trim()}
+        supportsMessageThreads: model.compat?.supportsMessageThreads ?? model.baseUrl.includes("api.anthropic.com"),
+`],
+]);
+// END backport 49fe0a237
+
 // BEGIN backport aa47cedce
 // aa47cedce (#12100): a non-strict Anthropic tool schema keeps its root additionalProperties (false, true or a schema). PiG's vendored runtime carries pi-ai's
 // anthropic-messages as a bridge stub that runs in PiG's host (ai/anthropic.go, which has the change), so the file is the installed Pi's only: the parity oracle
