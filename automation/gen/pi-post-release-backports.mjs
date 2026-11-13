@@ -17,7 +17,8 @@
 // the entries to the source build's packages too (`--package-files` names the files, so the build can put them back) and has Pi's own bundler make the bundle again.
 // The source mirror (.upstream/current) stays the pinned build, which the sync ledger's delta audit compares with the earlier pin; the
 // tests that read the mirror's docs and schemas read them through `--read-mirror <mirror> <path>` (internal/upstreammirror.ReadPicked), the
-// pinned file plus the entries of packageFileBackports and backportPatches that cover it.
+// pinned file plus the entries of packageFileBackports and backportPatches that cover it, and the TypeScript sources a mirrorSource entry covers.
+// `--mirror-paths` lists the mirror files a backport covers (internal/upstreammirror.PickedPaths), so a test that reads many mirror files reads only those through `--read-mirror`.
 // `--verify-packages` and `--verify-mirror` fail when an installed Pi does not carry each entry once, or a mirror file is not the pinned build's.
 // A commit that also moves a dependency a Pi package pins exactly carries that as a `dependency(...)` entry in a block of its own (oracle only; see `dependency` below).
 // What a commit's blocks deliberately leave at the pin is said in them, one `// not carried: <file> (<what>): <reason>` line per file. The sync ledger rows of a followed
@@ -41,6 +42,44 @@ const patch = (id, key, patches) => blocks.push({ id, key, patches, table: "dist
 // pin's range: published ranges follow the pin), and the vendored runtime installs no carried dependency. `--classify` reads the package's package.json (classifyDependency).
 const dependency = (id, pkg, dep) => blocks.push({ id, key: `${pkg}/package.json`, table: "dependency", dependency: { id, package: pkg, ...dep } });
 const packageFile = (id, key, patches) => blocks.push({ id, key, patches, table: "package" });
+// A Pi TypeScript source that tests read from the source mirror and that a backport of its compiled output changes, by path in the Pi
+// repository, with the same change as Pi's commit makes to the source. It stands in a block of its commit, so the bump that retires the
+// commit's entries retires it with them.
+const mirrorSource = (id, path, patches) => blocks.push({ id, key: path, patches, table: "mirror" });
+
+// BEGIN backport bacd45b9c
+// bacd45b9c (#11973, #11264): the model scope warnings are diagnostics of the runtime the factory returns, not lines it prints on every session replacement.
+patch("bacd45b9c", "pi-coding-agent/main.js", [
+    ['import { resolveCliModel, resolveModelScope } from "./core/model-resolver.js";', 'import { resolveCliModel, resolveModelScopeWithDiagnostics } from "./core/model-resolver.js";'],
+    [`        const scopedModels = modelPatterns && modelPatterns.length > 0
+            ? await resolveModelScope(modelPatterns, modelRuntime, { signal: AbortSignal.timeout(15_000) })
+            : [];
+`, `        ${note("bacd45b9c").trim()}
+        const { scopedModels, diagnostics: modelScopeDiagnostics } = modelPatterns && modelPatterns.length > 0
+            ? await resolveModelScopeWithDiagnostics(modelPatterns, modelRuntime, {
+                signal: AbortSignal.timeout(15_000),
+            })
+            : { scopedModels: [], diagnostics: [] };
+        // Returned as diagnostics instead of printed: this factory runs again on /new, /resume and /fork,
+        // while the interactive TUI draws on the terminal (#11264).
+        diagnostics.push(...modelScopeDiagnostics);
+`],
+]);
+// END backport bacd45b9c
+
+// BEGIN backport bacd45b9c
+// bacd45b9c: resolveModelScope, which printed each warning with console.warn, has no caller left and is removed.
+patch("bacd45b9c", "pi-coding-agent/core/model-resolver.js", [
+    [`export async function resolveModelScope(patterns, modelRuntime, options) {
+    const { scopedModels, diagnostics } = await resolveModelScopeWithDiagnostics(patterns, modelRuntime, options);
+    for (const diagnostic of diagnostics) {
+        console.warn(chalk.yellow(\`Warning: \${diagnostic.message}\`));
+    }
+    return scopedModels;
+}
+`, ""],
+]);
+// END backport bacd45b9c
 
 // BEGIN backport b3c2e4a6bef8
 // b3c2e4a6bef8 (#12001): the llama.cpp default server port is 9931.
@@ -63,6 +102,23 @@ patch("9b88b94e2", "pi-ai/utils/retry.js", [
 `],
 ]);
 // END backport 9b88b94e2
+
+// BEGIN backport 4699b5b26
+// 4699b5b26 (#12136, #12128): a provider error that reports only a Node socket error code ("read ECONNRESET", "write EPIPE", "connect ETIMEDOUT 1.2.3.4:443") or "connection reset by peer" is retried (the classifier that pi-ai's SDK, the coding agent and the oracle test of ai.IsRetryableAssistantError run).
+patch("4699b5b26", "pi-ai/utils/retry.js", [
+    [`    "getaddrinfo",
+    "ENOTFOUND",
+`, `    "getaddrinfo",
+    ${note("4699b5b26").trim()}
+    // Bare Node socket error codes, e.g. "read ECONNRESET", "write EPIPE", or
+    // "connect ETIMEDOUT 1.2.3.4:443" when a transport reports only the code (#12128).
+    // The codes must not be part of a longer identifier.
+    "(?<![a-z0-9_])(?:ECONNRESET|ECONNABORTED|ECONNREFUSED|ETIMEDOUT|EPIPE)(?![a-z0-9_])",
+    "connection reset by peer",
+    "ENOTFOUND",
+`],
+]);
+// END backport 4699b5b26
 
 // BEGIN backport 49fe0a237
 // 49fe0a237 (#11987): Anthropic message threads default by endpoint, not provider id (the description pi-ai's compat schema and the models docs carry).
@@ -205,6 +261,123 @@ patch("bbfc6c7ce", "pi-coding-agent/core/tools/find.js", [
 `],
 ]);
 // END backport bbfc6c7ce
+
+// BEGIN backport 282b01c80
+// 282b01c80 (#12116, #12066): a relative path pattern is anchored at the search path, like grep's glob, instead of matching through the folders above it.
+patch("282b01c80", "pi-coding-agent/core/tools/find.js", [
+    [`        description: "Glob pattern to match files, e.g. '*.ts', '**/*.json', or 'src/**/*.spec.ts'",
+`,
+      `        description: "Glob pattern relative to the search directory, e.g. 'src/**/*.ts'. Without '/', e.g. '*.ts', it matches file names at any depth",
+`],
+    [`                        // mode it matches against the absolute candidate path, so a path-containing
+                        // pattern like 'src/**/*.spec.ts' needs a leading '**/' to match anything.
+`,
+      `                        // mode it matches against the absolute candidate path.
+`],
+    [`                        const isPathPattern = effectivePattern.includes("/");
+                        if (isPathPattern &&
+                            !effectivePattern.startsWith("/") &&
+                            !effectivePattern.startsWith("**/") &&
+                            effectivePattern !== "**") {
+                            effectivePattern = \`**/\${effectivePattern}\`;
+                        }
+                        // fd before 10.5.1 never matches --full-path globs on Windows, and workarounds for that
+                        // break on fd 10.5.1 (sharkdp/fd#2067). pi cannot rely on either fd version, so on
+                        // Windows fd lists every entry and minimatch matches path patterns. The options keep
+                        // fd's glob behavior: \`*\` matches dotfiles, \`+(a|b)\` is literal, and an all-lowercase
+                        // pattern matches case-insensitively (smart case). A trailing '/**' becomes '/**/*'
+                        // because minimatch's 'src/**' also matches 'src' itself and fd's does not.
+`,
+      `                        const isPathPattern = effectivePattern.includes("/");
+                        ${note("282b01c80").trim()}
+                        // fd's smart case: an all-lowercase pattern matches case-insensitively.
+                        const ignoreCase = effectivePattern === effectivePattern.toLowerCase();
+                        // A relative path pattern is anchored at the search path, like grep's glob (#12066):
+                        // 'src/*.ts' finds 'src/a.ts' but not 'pkg/src/b.ts'; '**/src/*.ts' finds both.
+                        // Absolute patterns are matched as given.
+                        const isRelativePathPattern = isPathPattern && !path.isAbsolute(effectivePattern);
+                        // fd before 10.5.1 never matches --full-path globs on Windows, and workarounds for that
+                        // break on fd 10.5.1 (sharkdp/fd#2067). pi cannot rely on either fd version, so on
+                        // Windows fd lists every entry and minimatch matches path patterns against the path
+                        // relative to the search path, or the absolute path for absolute patterns. The options
+                        // keep fd's glob behavior: \`*\` matches dotfiles, \`+(a|b)\` is literal, and smart case.
+                        // A trailing '/**' becomes '/**/*' because minimatch's 'src/**' also matches 'src'
+                        // itself and fd's does not.
+`],
+    [`                                nocase: effectivePattern === effectivePattern.toLowerCase(),
+`,
+      `                                nocase: ignoreCase,
+`],
+    [`                            if (isPathPattern)
+                                args.push("--full-path");
+                            args.push("--", effectivePattern, searchPath);
+`,
+      `                            if (isPathPattern)
+                                args.push("--full-path");
+                            if (isRelativePathPattern) {
+                                // fd matches the absolute path, so the pattern is prefixed with the glob-escaped
+                                // search path. Smart case is decided by the user's pattern, not by the search
+                                // path's letters, so it is set explicitly.
+                                const escapedRoot = searchPath.replace(/\\/+$/, "").replace(/[\\\\*?[\\]{}]/g, "\\\\$&");
+                                effectivePattern = \`\${escapedRoot}/\${effectivePattern}\`;
+                                if (ignoreCase)
+                                    args.push("--ignore-case");
+                            }
+                            args.push("--", effectivePattern, searchPath);
+`],
+    [`                            if (windowsPathMatcher && !windowsPathMatcher.match(line))
+                                return;
+                            if (resultCount === effectiveLimit) {
+                                resultLimitReached = true;
+                                // Without --max-results, fd keeps listing after the limit.
+                                if (windowsPathMatcher)
+                                    stopChild?.();
+                                return;
+                            }
+                            const result = relativizeFindResultPath(line, searchPath);
+`,
+      `                            const result = relativizeFindResultPath(line, searchPath);
+                            if (windowsPathMatcher && !windowsPathMatcher.match(isRelativePathPattern ? result : line))
+                                return;
+                            if (resultCount === effectiveLimit) {
+                                resultLimitReached = true;
+                                // Without --max-results, fd keeps listing after the limit.
+                                if (windowsPathMatcher)
+                                    stopChild?.();
+                                return;
+                            }
+`],
+]);
+// END backport 282b01c80
+
+// BEGIN backport 282b01c80
+// 282b01c80: grep's glob description, in the wording find's pattern now shares.
+patch("282b01c80", "pi-coding-agent/core/tools/grep.js", [
+    [`"Filter files by glob pattern, relative to path, e.g. '*.ts', 'src/**/*.ts' or '**/*.spec.ts'. A pattern without '/' matches file names at any depth"`,
+      `"Filter files by glob pattern relative to path, e.g. 'src/**/*.ts'. Without '/', e.g. '*.ts', it matches file names at any depth"`],
+]);
+// END backport 282b01c80
+
+// BEGIN backport 282b01c80
+// 282b01c80: the gondolin example's glob for find and grep anchors too and drops a leading "./".
+patch("282b01c80", "pi-coding-agent/examples/extensions/gondolin/index.ts", [
+    [`function matchesToolGlob(relativePath: string, pattern: string): boolean {
+	const normalizedPattern = toPosix(pattern);
+	if (normalizedPattern.includes("/")) {
+		return (
+			path.posix.matchesGlob(relativePath, normalizedPattern) ||
+			path.posix.matchesGlob(relativePath, \`**/\${normalizedPattern}\`)
+		);
+	}
+`,
+      `// Like the built-in find and grep: a pattern with '/' is relative to the search root, one without
+// '/' matches file names at any depth.
+function matchesToolGlob(relativePath: string, pattern: string): boolean {
+	const normalizedPattern = toPosix(pattern).replace(/^(?:\\.\\/)+/, "");
+	if (normalizedPattern.includes("/")) return path.posix.matchesGlob(relativePath, normalizedPattern);
+`],
+]);
+// END backport 282b01c80
 
 // BEGIN backport 935f0ac0ccfc
 // 935f0ac0ccfc (#12092): the bash tool keeps the end of the last line when the retained tail is only that over-long line.
@@ -486,9 +659,362 @@ patch("406e719a6bff", "pi-ai/api/constrained-sampling.js", [
 ]);
 // END backport 406e719a6bff
 
+// BEGIN backport 1397070024
+// 1397070024 (#12112, #11773): Qwen Token Plan uses the current gateways, per-plan key variables and the current Team and Individual model lists.
+// Pi's four provider modules, its env-api-keys table, its help text and its providers doc carry the change as source; the provider data
+// (providers/data/*.json, which Pi regenerates from models.dev at each build) carries it as the result of that generation over the release's
+// data: the new base URL on every record, the Team lists without the records models.dev marks deprecated (catalog skipDeprecated), and the
+// two records the Individual allowlist gains, which are the Team records of the same models.dev source under the Individual provider id.
+patch("1397070024", "pi-ai/providers/qwen-token-plan.js", [
+    [`        name: "Qwen Token Plan",
+        baseUrl: "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+        auth: { apiKey: envApiKeyAuth("Qwen Token Plan API key", ["QWEN_TOKEN_PLAN_API_KEY"]) },
+`, `        ${note("1397070024").trim()}
+        name: "Qwen Token Plan Team",
+        baseUrl: "https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",
+        auth: {
+            apiKey: envApiKeyAuth("Qwen Token Plan Team API key", [
+                "QWEN_TOKEN_PLAN_TEAM_API_KEY",
+                "QWEN_TOKEN_PLAN_API_KEY",
+            ]),
+        },
+`],
+]);
+// END backport 1397070024
+
+// BEGIN backport 1397070024
+patch("1397070024", "pi-ai/providers/data/qwen-token-plan.json", [
+    ['"chat:deepseek-v3.2":{"id":"deepseek-v3.2","name":"DeepSeek V3.2","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1","reasoning":true,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":131072,"maxTokens":65536,"compat":{"supportsStrictMode":true,"thinkingFormat":"qwen","supportsDeveloperRole":false,"supportsStore":false,"supportsReasoningEffort":false},"type":"chat"},', ""],
+    ['"chat:deepseek-v4-flash":{"id":"deepseek-v4-flash","name":"DeepSeek V4 Flash","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1","reasoning":true,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":1000000,"maxTokens":384000,"compat":{"supportsStrictMode":true,"thinkingFormat":"qwen","supportsDeveloperRole":false,"supportsStore":false,"supportsReasoningEffort":true},"thinkingLevelMap":{"off":null,"minimal":null,"low":null,"medium":null,"high":"high","xhigh":null,"max":"max"},"type":"chat"},', ""],
+    ['"chat:deepseek-v4-flash-0731":{"id":"deepseek-v4-flash-0731","name":"DeepSeek V4 Flash 0731","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:deepseek-v4-flash-0731":{"id":"deepseek-v4-flash-0731","name":"DeepSeek V4 Flash 0731","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:deepseek-v4-pro":{"id":"deepseek-v4-pro","name":"DeepSeek V4 Pro","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:deepseek-v4-pro":{"id":"deepseek-v4-pro","name":"DeepSeek V4 Pro","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:deepseek-v4-pro-0813":{"id":"deepseek-v4-pro-0813","name":"DeepSeek V4 Pro 0813","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:deepseek-v4-pro-0813":{"id":"deepseek-v4-pro-0813","name":"DeepSeek V4 Pro 0813","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:deepseek-v4.1-flash":{"id":"deepseek-v4.1-flash","name":"DeepSeek V4.1 Flash","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:deepseek-v4.1-flash":{"id":"deepseek-v4.1-flash","name":"DeepSeek V4.1 Flash","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:deepseek-v4.1-flash-1017":{"id":"deepseek-v4.1-flash-1017","name":"DeepSeek V4.1 Flash 1017","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:deepseek-v4.1-flash-1017":{"id":"deepseek-v4.1-flash-1017","name":"DeepSeek V4.1 Flash 1017","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:glm-5":{"id":"glm-5","name":"GLM-5","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:glm-5":{"id":"glm-5","name":"GLM-5","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:glm-5.1":{"id":"glm-5.1","name":"GLM-5.1","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:glm-5.1":{"id":"glm-5.1","name":"GLM-5.1","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:glm-5.2":{"id":"glm-5.2","name":"GLM-5.2","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:glm-5.2":{"id":"glm-5.2","name":"GLM-5.2","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:glm-5.3":{"id":"glm-5.3","name":"GLM-5.3","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:glm-5.3":{"id":"glm-5.3","name":"GLM-5.3","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:kimi-k2.5":{"id":"kimi-k2.5","name":"Kimi K2.5","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:kimi-k2.5":{"id":"kimi-k2.5","name":"Kimi K2.5","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:kimi-k2.6":{"id":"kimi-k2.6","name":"Kimi K2.6","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:kimi-k2.6":{"id":"kimi-k2.6","name":"Kimi K2.6","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:kimi-k2.7-code":{"id":"kimi-k2.7-code","name":"Kimi K2.7 Code","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:kimi-k2.7-code":{"id":"kimi-k2.7-code","name":"Kimi K2.7 Code","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:MiniMax-M2.5":{"id":"MiniMax-M2.5","name":"MiniMax-M2.5","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:MiniMax-M2.5":{"id":"MiniMax-M2.5","name":"MiniMax-M2.5","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:qwen3.6-flash":{"id":"qwen3.6-flash","name":"Qwen3.6 Flash","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:qwen3.6-flash":{"id":"qwen3.6-flash","name":"Qwen3.6 Flash","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:qwen3.6-plus":{"id":"qwen3.6-plus","name":"Qwen3.6 Plus","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:qwen3.6-plus":{"id":"qwen3.6-plus","name":"Qwen3.6 Plus","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:qwen3.7-max":{"id":"qwen3.7-max","name":"Qwen3.7 Max","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:qwen3.7-max":{"id":"qwen3.7-max","name":"Qwen3.7 Max","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:qwen3.7-plus":{"id":"qwen3.7-plus","name":"Qwen3.7 Plus","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:qwen3.7-plus":{"id":"qwen3.7-plus","name":"Qwen3.7 Plus","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:qwen3.8-flash":{"id":"qwen3.8-flash","name":"Qwen3.8 Flash","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:qwen3.8-flash":{"id":"qwen3.8-flash","name":"Qwen3.8 Flash","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:qwen3.8-max":{"id":"qwen3.8-max","name":"Qwen3.8 Max","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:qwen3.8-max":{"id":"qwen3.8-max","name":"Qwen3.8 Max","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+]);
+// END backport 1397070024
+
+// BEGIN backport 1397070024
+patch("1397070024", "pi-ai/providers/qwen-token-plan-cn.js", [
+    [`        name: "Qwen Token Plan CN",
+        baseUrl: "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+        auth: { apiKey: envApiKeyAuth("Qwen Token Plan CN API key", ["QWEN_TOKEN_PLAN_CN_API_KEY"]) },
+`, `        ${note("1397070024").trim()}
+        name: "Qwen Token Plan Team CN",
+        baseUrl: "https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",
+        auth: {
+            apiKey: envApiKeyAuth("Qwen Token Plan Team CN API key", [
+                "QWEN_TOKEN_PLAN_TEAM_CN_API_KEY",
+                "QWEN_TOKEN_PLAN_CN_API_KEY",
+            ]),
+        },
+`],
+]);
+// END backport 1397070024
+
+// BEGIN backport 1397070024
+patch("1397070024", "pi-ai/providers/data/qwen-token-plan-cn.json", [
+    ['"chat:deepseek-v3.2":{"id":"deepseek-v3.2","name":"DeepSeek V3.2","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1","reasoning":true,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":131072,"maxTokens":65536,"compat":{"supportsStrictMode":true,"thinkingFormat":"qwen","supportsDeveloperRole":false,"supportsStore":false,"supportsReasoningEffort":false},"type":"chat"},', ""],
+    ['"chat:deepseek-v4-flash":{"id":"deepseek-v4-flash","name":"DeepSeek V4 Flash","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1","reasoning":true,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":1000000,"maxTokens":384000,"compat":{"supportsStrictMode":true,"thinkingFormat":"qwen","supportsDeveloperRole":false,"supportsStore":false,"supportsReasoningEffort":true},"thinkingLevelMap":{"off":null,"minimal":null,"low":null,"medium":null,"high":"high","xhigh":null,"max":"max"},"type":"chat"},', ""],
+    ['"chat:deepseek-v4-flash-0731":{"id":"deepseek-v4-flash-0731","name":"DeepSeek V4 Flash 0731","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:deepseek-v4-flash-0731":{"id":"deepseek-v4-flash-0731","name":"DeepSeek V4 Flash 0731","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:deepseek-v4-pro":{"id":"deepseek-v4-pro","name":"DeepSeek V4 Pro","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:deepseek-v4-pro":{"id":"deepseek-v4-pro","name":"DeepSeek V4 Pro","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:deepseek-v4-pro-0813":{"id":"deepseek-v4-pro-0813","name":"DeepSeek V4 Pro 0813","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:deepseek-v4-pro-0813":{"id":"deepseek-v4-pro-0813","name":"DeepSeek V4 Pro 0813","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:deepseek-v4.1-flash":{"id":"deepseek-v4.1-flash","name":"DeepSeek V4.1 Flash","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:deepseek-v4.1-flash":{"id":"deepseek-v4.1-flash","name":"DeepSeek V4.1 Flash","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:deepseek-v4.1-flash-1017":{"id":"deepseek-v4.1-flash-1017","name":"DeepSeek V4.1 Flash 1017","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:deepseek-v4.1-flash-1017":{"id":"deepseek-v4.1-flash-1017","name":"DeepSeek V4.1 Flash 1017","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:glm-5":{"id":"glm-5","name":"GLM-5","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:glm-5":{"id":"glm-5","name":"GLM-5","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:glm-5.1":{"id":"glm-5.1","name":"GLM-5.1","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:glm-5.1":{"id":"glm-5.1","name":"GLM-5.1","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:glm-5.2":{"id":"glm-5.2","name":"GLM-5.2","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:glm-5.2":{"id":"glm-5.2","name":"GLM-5.2","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:glm-5.3":{"id":"glm-5.3","name":"GLM-5.3","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:glm-5.3":{"id":"glm-5.3","name":"GLM-5.3","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:kimi-k2.5":{"id":"kimi-k2.5","name":"Kimi K2.5","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:kimi-k2.5":{"id":"kimi-k2.5","name":"Kimi K2.5","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:kimi-k2.6":{"id":"kimi-k2.6","name":"Kimi K2.6","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:kimi-k2.6":{"id":"kimi-k2.6","name":"Kimi K2.6","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:kimi-k2.7-code":{"id":"kimi-k2.7-code","name":"Kimi K2.7 Code","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:kimi-k2.7-code":{"id":"kimi-k2.7-code","name":"Kimi K2.7 Code","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:MiniMax-M2.5":{"id":"MiniMax-M2.5","name":"MiniMax-M2.5","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:MiniMax-M2.5":{"id":"MiniMax-M2.5","name":"MiniMax-M2.5","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:qwen3.6-flash":{"id":"qwen3.6-flash","name":"Qwen3.6 Flash","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:qwen3.6-flash":{"id":"qwen3.6-flash","name":"Qwen3.6 Flash","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:qwen3.6-plus":{"id":"qwen3.6-plus","name":"Qwen3.6 Plus","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:qwen3.6-plus":{"id":"qwen3.6-plus","name":"Qwen3.6 Plus","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:qwen3.7-max":{"id":"qwen3.7-max","name":"Qwen3.7 Max","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:qwen3.7-max":{"id":"qwen3.7-max","name":"Qwen3.7 Max","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:qwen3.7-plus":{"id":"qwen3.7-plus","name":"Qwen3.7 Plus","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:qwen3.7-plus":{"id":"qwen3.7-plus","name":"Qwen3.7 Plus","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:qwen3.8-flash":{"id":"qwen3.8-flash","name":"Qwen3.8 Flash","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:qwen3.8-flash":{"id":"qwen3.8-flash","name":"Qwen3.8 Flash","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:qwen3.8-max":{"id":"qwen3.8-max","name":"Qwen3.8 Max","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:qwen3.8-max":{"id":"qwen3.8-max","name":"Qwen3.8 Max","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+]);
+// END backport 1397070024
+
+// BEGIN backport 1397070024
+patch("1397070024", "pi-ai/providers/qwen-token-plan-individual.js", [
+    [`        name: "Qwen Token Plan Individual",
+        baseUrl: "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+        auth: { apiKey: envApiKeyAuth("Qwen Token Plan Individual API key", ["QWEN_TOKEN_PLAN_API_KEY"]) },
+`, `        ${note("1397070024").trim()}
+        name: "Qwen Token Plan Individual",
+        baseUrl: "https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",
+        auth: {
+            apiKey: envApiKeyAuth("Qwen Token Plan Individual API key", [
+                "QWEN_TOKEN_PLAN_INDIVIDUAL_API_KEY",
+                "QWEN_TOKEN_PLAN_API_KEY",
+            ]),
+        },
+`],
+]);
+// END backport 1397070024
+
+// BEGIN backport 1397070024
+patch("1397070024", "pi-ai/providers/data/qwen-token-plan-individual.json", [
+    ['"chat:deepseek-v4-flash-0731":{"id":"deepseek-v4-flash-0731","name":"DeepSeek V4 Flash 0731","api":"openai-completions","provider":"qwen-token-plan-individual","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:deepseek-v4-flash-0731":{"id":"deepseek-v4-flash-0731","name":"DeepSeek V4 Flash 0731","api":"openai-completions","provider":"qwen-token-plan-individual","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:deepseek-v4-pro":{"id":"deepseek-v4-pro","name":"DeepSeek V4 Pro","api":"openai-completions","provider":"qwen-token-plan-individual","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:deepseek-v4-pro":{"id":"deepseek-v4-pro","name":"DeepSeek V4 Pro","api":"openai-completions","provider":"qwen-token-plan-individual","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:deepseek-v4-pro-0813":{"id":"deepseek-v4-pro-0813","name":"DeepSeek V4 Pro 0813","api":"openai-completions","provider":"qwen-token-plan-individual","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:deepseek-v4-pro-0813":{"id":"deepseek-v4-pro-0813","name":"DeepSeek V4 Pro 0813","api":"openai-completions","provider":"qwen-token-plan-individual","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:glm-5.3":{"id":"glm-5.3","name":"GLM-5.3","api":"openai-completions","provider":"qwen-token-plan-individual","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:glm-5.3":{"id":"glm-5.3","name":"GLM-5.3","api":"openai-completions","provider":"qwen-token-plan-individual","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:qwen3.6-flash":{"id":"qwen3.6-flash","name":"Qwen3.6 Flash","api":"openai-completions","provider":"qwen-token-plan-individual","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:qwen3.6-flash":{"id":"qwen3.6-flash","name":"Qwen3.6 Flash","api":"openai-completions","provider":"qwen-token-plan-individual","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:qwen3.7-max":{"id":"qwen3.7-max","name":"Qwen3.7 Max","api":"openai-completions","provider":"qwen-token-plan-individual","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:qwen3.7-max":{"id":"qwen3.7-max","name":"Qwen3.7 Max","api":"openai-completions","provider":"qwen-token-plan-individual","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:qwen3.7-plus":{"id":"qwen3.7-plus","name":"Qwen3.7 Plus","api":"openai-completions","provider":"qwen-token-plan-individual","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:qwen3.7-plus":{"id":"qwen3.7-plus","name":"Qwen3.7 Plus","api":"openai-completions","provider":"qwen-token-plan-individual","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:qwen3.8-flash":{"id":"qwen3.8-flash","name":"Qwen3.8 Flash","api":"openai-completions","provider":"qwen-token-plan-individual","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:qwen3.8-flash":{"id":"qwen3.8-flash","name":"Qwen3.8 Flash","api":"openai-completions","provider":"qwen-token-plan-individual","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:qwen3.8-max":{"id":"qwen3.8-max","name":"Qwen3.8 Max","api":"openai-completions","provider":"qwen-token-plan-individual","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:qwen3.8-max":{"id":"qwen3.8-max","name":"Qwen3.8 Max","api":"openai-completions","provider":"qwen-token-plan-individual","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:glm-5.2":{"id":"glm-5.2","name":"GLM-5.2","api":"openai-completions","provider":"qwen-token-plan-individual","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:deepseek-v4.1-flash":{"id":"deepseek-v4.1-flash","name":"DeepSeek V4.1 Flash","api":"openai-completions","provider":"qwen-token-plan-individual","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1","reasoning":true,"input":["text","image"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":1000000,"maxTokens":384000,"compat":{"supportsStrictMode":true,"thinkingFormat":"qwen","supportsDeveloperRole":false,"supportsStore":false,"supportsReasoningEffort":true},"thinkingLevelMap":{"off":null,"minimal":null,"low":"low","medium":null,"high":"high","xhigh":null,"max":"max"},"inputLimits":{"images":{"resize":{"maxWidth":2000,"maxHeight":2000,"maxBytes":4718592,"jpegQuality":80}}},"type":"chat"},"chat:deepseek-v4.1-flash-1017":{"id":"deepseek-v4.1-flash-1017","name":"DeepSeek V4.1 Flash 1017","api":"openai-completions","provider":"qwen-token-plan-individual","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1","reasoning":true,"input":["text","image"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":1000000,"maxTokens":384000,"compat":{"supportsStrictMode":true,"thinkingFormat":"qwen","supportsDeveloperRole":false,"supportsStore":false,"supportsReasoningEffort":true},"thinkingLevelMap":{"off":null,"minimal":null,"low":"low","medium":null,"high":"high","xhigh":null,"max":"max"},"inputLimits":{"images":{"resize":{"maxWidth":2000,"maxHeight":2000,"maxBytes":4718592,"jpegQuality":80}}},"type":"chat"},"chat:glm-5.2":{"id":"glm-5.2","name":"GLM-5.2","api":"openai-completions","provider":"qwen-token-plan-individual","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+]);
+// END backport 1397070024
+
+// BEGIN backport 1397070024
+patch("1397070024", "pi-ai/providers/qwen-token-plan-individual-cn.js", [
+    [`        name: "Qwen Token Plan Individual CN",
+        baseUrl: "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+        auth: { apiKey: envApiKeyAuth("Qwen Token Plan Individual CN API key", ["QWEN_TOKEN_PLAN_CN_API_KEY"]) },
+`, `        ${note("1397070024").trim()}
+        name: "Qwen Token Plan Individual CN",
+        baseUrl: "https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",
+        auth: {
+            apiKey: envApiKeyAuth("Qwen Token Plan Individual CN API key", [
+                "QWEN_TOKEN_PLAN_INDIVIDUAL_CN_API_KEY",
+                "QWEN_TOKEN_PLAN_CN_API_KEY",
+            ]),
+        },
+`],
+]);
+// END backport 1397070024
+
+// BEGIN backport 1397070024
+patch("1397070024", "pi-ai/providers/data/qwen-token-plan-individual-cn.json", [
+    ['"chat:deepseek-v4-flash-0731":{"id":"deepseek-v4-flash-0731","name":"DeepSeek V4 Flash 0731","api":"openai-completions","provider":"qwen-token-plan-individual-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:deepseek-v4-flash-0731":{"id":"deepseek-v4-flash-0731","name":"DeepSeek V4 Flash 0731","api":"openai-completions","provider":"qwen-token-plan-individual-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:deepseek-v4-pro":{"id":"deepseek-v4-pro","name":"DeepSeek V4 Pro","api":"openai-completions","provider":"qwen-token-plan-individual-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:deepseek-v4-pro":{"id":"deepseek-v4-pro","name":"DeepSeek V4 Pro","api":"openai-completions","provider":"qwen-token-plan-individual-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:deepseek-v4-pro-0813":{"id":"deepseek-v4-pro-0813","name":"DeepSeek V4 Pro 0813","api":"openai-completions","provider":"qwen-token-plan-individual-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:deepseek-v4-pro-0813":{"id":"deepseek-v4-pro-0813","name":"DeepSeek V4 Pro 0813","api":"openai-completions","provider":"qwen-token-plan-individual-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:glm-5.3":{"id":"glm-5.3","name":"GLM-5.3","api":"openai-completions","provider":"qwen-token-plan-individual-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:glm-5.3":{"id":"glm-5.3","name":"GLM-5.3","api":"openai-completions","provider":"qwen-token-plan-individual-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:qwen3.6-flash":{"id":"qwen3.6-flash","name":"Qwen3.6 Flash","api":"openai-completions","provider":"qwen-token-plan-individual-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:qwen3.6-flash":{"id":"qwen3.6-flash","name":"Qwen3.6 Flash","api":"openai-completions","provider":"qwen-token-plan-individual-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:qwen3.7-max":{"id":"qwen3.7-max","name":"Qwen3.7 Max","api":"openai-completions","provider":"qwen-token-plan-individual-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:qwen3.7-max":{"id":"qwen3.7-max","name":"Qwen3.7 Max","api":"openai-completions","provider":"qwen-token-plan-individual-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:qwen3.7-plus":{"id":"qwen3.7-plus","name":"Qwen3.7 Plus","api":"openai-completions","provider":"qwen-token-plan-individual-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:qwen3.7-plus":{"id":"qwen3.7-plus","name":"Qwen3.7 Plus","api":"openai-completions","provider":"qwen-token-plan-individual-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:qwen3.8-flash":{"id":"qwen3.8-flash","name":"Qwen3.8 Flash","api":"openai-completions","provider":"qwen-token-plan-individual-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:qwen3.8-flash":{"id":"qwen3.8-flash","name":"Qwen3.8 Flash","api":"openai-completions","provider":"qwen-token-plan-individual-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:qwen3.8-max":{"id":"qwen3.8-max","name":"Qwen3.8 Max","api":"openai-completions","provider":"qwen-token-plan-individual-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:qwen3.8-max":{"id":"qwen3.8-max","name":"Qwen3.8 Max","api":"openai-completions","provider":"qwen-token-plan-individual-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:glm-5.2":{"id":"glm-5.2","name":"GLM-5.2","api":"openai-completions","provider":"qwen-token-plan-individual-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:deepseek-v4.1-flash":{"id":"deepseek-v4.1-flash","name":"DeepSeek V4.1 Flash","api":"openai-completions","provider":"qwen-token-plan-individual-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1","reasoning":true,"input":["text","image"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":1000000,"maxTokens":384000,"compat":{"supportsStrictMode":true,"thinkingFormat":"qwen","supportsDeveloperRole":false,"supportsStore":false,"supportsReasoningEffort":true},"thinkingLevelMap":{"off":null,"minimal":null,"low":"low","medium":null,"high":"high","xhigh":null,"max":"max"},"inputLimits":{"images":{"resize":{"maxWidth":2000,"maxHeight":2000,"maxBytes":4718592,"jpegQuality":80}}},"type":"chat"},"chat:deepseek-v4.1-flash-1017":{"id":"deepseek-v4.1-flash-1017","name":"DeepSeek V4.1 Flash 1017","api":"openai-completions","provider":"qwen-token-plan-individual-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1","reasoning":true,"input":["text","image"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":1000000,"maxTokens":384000,"compat":{"supportsStrictMode":true,"thinkingFormat":"qwen","supportsDeveloperRole":false,"supportsStore":false,"supportsReasoningEffort":true},"thinkingLevelMap":{"off":null,"minimal":null,"low":"low","medium":null,"high":"high","xhigh":null,"max":"max"},"inputLimits":{"images":{"resize":{"maxWidth":2000,"maxHeight":2000,"maxBytes":4718592,"jpegQuality":80}}},"type":"chat"},"chat:glm-5.2":{"id":"glm-5.2","name":"GLM-5.2","api":"openai-completions","provider":"qwen-token-plan-individual-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+]);
+// END backport 1397070024
+
+// BEGIN backport 1397070024
+// 1397070024: each Qwen Token Plan provider reads its per-plan variable first, then the region variable both plans used to share.
+patch("1397070024", "pi-ai/env-api-keys.js", [
+    [`        "ant-ling": "ANT_LING_API_KEY",
+        "qwen-token-plan": "QWEN_TOKEN_PLAN_API_KEY",
+        "qwen-token-plan-cn": "QWEN_TOKEN_PLAN_CN_API_KEY",
+        "qwen-token-plan-individual": "QWEN_TOKEN_PLAN_API_KEY",
+        "qwen-token-plan-individual-cn": "QWEN_TOKEN_PLAN_CN_API_KEY",
+`, `        "ant-ling": "ANT_LING_API_KEY",
+        ${note("1397070024").trim()}
+        // Qwen Token Plan: the per-plan variable first, then the region variable both plans used to share.
+        "qwen-token-plan": ["QWEN_TOKEN_PLAN_TEAM_API_KEY", "QWEN_TOKEN_PLAN_API_KEY"],
+        "qwen-token-plan-cn": ["QWEN_TOKEN_PLAN_TEAM_CN_API_KEY", "QWEN_TOKEN_PLAN_CN_API_KEY"],
+        "qwen-token-plan-individual": ["QWEN_TOKEN_PLAN_INDIVIDUAL_API_KEY", "QWEN_TOKEN_PLAN_API_KEY"],
+        "qwen-token-plan-individual-cn": ["QWEN_TOKEN_PLAN_INDIVIDUAL_CN_API_KEY", "QWEN_TOKEN_PLAN_CN_API_KEY"],
+`],
+    [`    const envVar = envMap[provider];
+    return envVar ? [envVar] : undefined;
+`, `    const envVars = envMap[provider];
+    return typeof envVars === "string" ? [envVars] : envVars;
+`],
+]);
+// END backport 1397070024
+
+// BEGIN backport 1397070024
+// 1397070024: --help lists the four per-plan variables.
+patch("1397070024", "pi-coding-agent/cli/args.js", [
+    [`  QWEN_TOKEN_PLAN_API_KEY          - Qwen Token Plan API key (international region)
+  QWEN_TOKEN_PLAN_CN_API_KEY       - Qwen Token Plan API key (China region)
+`, `  QWEN_TOKEN_PLAN_TEAM_API_KEY     - Qwen Token Plan Team API key (international region)
+  QWEN_TOKEN_PLAN_TEAM_CN_API_KEY  - Qwen Token Plan Team API key (China region)
+  QWEN_TOKEN_PLAN_INDIVIDUAL_API_KEY - Qwen Token Plan Individual API key (international region)
+  QWEN_TOKEN_PLAN_INDIVIDUAL_CN_API_KEY - Qwen Token Plan Individual API key (China region)
+`],
+]);
+// END backport 1397070024
+
+// BEGIN backport 1397070024
+// 1397070024: the providers doc lists the four per-plan variables.
+patch("1397070024", "pi-coding-agent/docs/providers.md", [
+    [`| Qwen Token Plan and Individual | \`QWEN_TOKEN_PLAN_API_KEY\` |
+| Qwen Token Plan (China) and Individual (China) | \`QWEN_TOKEN_PLAN_CN_API_KEY\` |
+`, `| Qwen Token Plan Team | \`QWEN_TOKEN_PLAN_TEAM_API_KEY\` |
+| Qwen Token Plan Team (China) | \`QWEN_TOKEN_PLAN_TEAM_CN_API_KEY\` |
+| Qwen Token Plan Individual | \`QWEN_TOKEN_PLAN_INDIVIDUAL_API_KEY\` |
+| Qwen Token Plan Individual (China) | \`QWEN_TOKEN_PLAN_INDIVIDUAL_CN_API_KEY\` |
+`],
+]);
+// END backport 1397070024
+
+// BEGIN backport 1397070024
+// 1397070024: Pi's TypeScript sources of the four provider modules, which tests read from the source mirror (`--read-mirror`), by path in the Pi
+// repository, with the same change as Pi's commit makes to the source.
+mirrorSource("1397070024", "packages/ai/src/providers/qwen-token-plan.ts", [
+    [`		name: "Qwen Token Plan",
+		baseUrl: "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+		auth: { apiKey: envApiKeyAuth("Qwen Token Plan API key", ["QWEN_TOKEN_PLAN_API_KEY"]) },
+`, `		name: "Qwen Token Plan Team",
+		baseUrl: "https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",
+		auth: {
+			apiKey: envApiKeyAuth("Qwen Token Plan Team API key", [
+				"QWEN_TOKEN_PLAN_TEAM_API_KEY",
+				"QWEN_TOKEN_PLAN_API_KEY",
+			]),
+		},
+`],
+]);
+// END backport 1397070024
+
+// BEGIN backport 1397070024
+mirrorSource("1397070024", "packages/ai/src/providers/qwen-token-plan-cn.ts", [
+    [`		name: "Qwen Token Plan CN",
+		baseUrl: "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+		auth: { apiKey: envApiKeyAuth("Qwen Token Plan CN API key", ["QWEN_TOKEN_PLAN_CN_API_KEY"]) },
+`, `		name: "Qwen Token Plan Team CN",
+		baseUrl: "https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",
+		auth: {
+			apiKey: envApiKeyAuth("Qwen Token Plan Team CN API key", [
+				"QWEN_TOKEN_PLAN_TEAM_CN_API_KEY",
+				"QWEN_TOKEN_PLAN_CN_API_KEY",
+			]),
+		},
+`],
+]);
+// END backport 1397070024
+
+// BEGIN backport 1397070024
+mirrorSource("1397070024", "packages/ai/src/providers/qwen-token-plan-individual.ts", [
+    [`		name: "Qwen Token Plan Individual",
+		baseUrl: "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+		auth: { apiKey: envApiKeyAuth("Qwen Token Plan Individual API key", ["QWEN_TOKEN_PLAN_API_KEY"]) },
+`, `		name: "Qwen Token Plan Individual",
+		baseUrl: "https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",
+		auth: {
+			apiKey: envApiKeyAuth("Qwen Token Plan Individual API key", [
+				"QWEN_TOKEN_PLAN_INDIVIDUAL_API_KEY",
+				"QWEN_TOKEN_PLAN_API_KEY",
+			]),
+		},
+`],
+]);
+// END backport 1397070024
+
+// BEGIN backport 1397070024
+mirrorSource("1397070024", "packages/ai/src/providers/qwen-token-plan-individual-cn.ts", [
+    [`		name: "Qwen Token Plan Individual CN",
+		baseUrl: "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+		auth: { apiKey: envApiKeyAuth("Qwen Token Plan Individual CN API key", ["QWEN_TOKEN_PLAN_CN_API_KEY"]) },
+`, `		name: "Qwen Token Plan Individual CN",
+		baseUrl: "https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",
+		auth: {
+			apiKey: envApiKeyAuth("Qwen Token Plan Individual CN API key", [
+				"QWEN_TOKEN_PLAN_INDIVIDUAL_CN_API_KEY",
+				"QWEN_TOKEN_PLAN_CN_API_KEY",
+			]),
+		},
+`],
+]);
+// END backport 1397070024
+
+// BEGIN backport 4be4cb4f5e9c
+// 4be4cb4f5e9c (#12139): read's text no longer says that the selected model takes no images (the text is stored and replayed after a switch to a
+// vision model); the tool names such a model in details.imageUnsupportedByModel instead, which the TUI shows and the model never gets.
+patch("4be4cb4f5e9c", "pi-coding-agent/core/tools/read.js", [
+    [`function getNonVisionImageNote(model) {
+    if (!model || model.input.includes("image")) {
+        return undefined;
+    }
+    return "[Current model does not support images. The image will be omitted from this request.]";
+}
+`, ""],
+    ["                        const nonVisionImageNote = getNonVisionImageNote(ctx?.model);\n", ""],
+    [`                                let textNote = \`Read image file [\${mimeType}]\\n\${processed.message}\`;
+                                if (nonVisionImageNote)
+                                    textNote += \`\\n\${nonVisionImageNote}\`;
+                                content = [{ type: "text", text: textNote }];
+`, `                                const textNote = \`Read image file [\${mimeType}]\\n\${processed.message}\`;
+                                content = [{ type: "text", text: textNote }];
+`],
+    [`                                if (nonVisionImageNote)
+                                    textNote += \`\\n\${nonVisionImageNote}\`;
+                                content = [
+                                    { type: "text", text: textNote },
+                                    { type: "image", data: processed.data, mimeType: processed.mimeType },
+                                ];
+`, `                                content = [
+                                    { type: "text", text: textNote },
+                                    { type: "image", data: processed.data, mimeType: processed.mimeType },
+                                ];
+                                ${note("4be4cb4f5e9c").trim()}
+                                if (ctx?.model && !ctx.model.input.includes("image")) {
+                                    details = { imageUnsupportedByModel: ctx.model.id };
+                                }
+`],
+]);
+// END backport 4be4cb4f5e9c
+
+// BEGIN backport 4be4cb4f5e9c
+// 4be4cb4f5e9c (#12139): the read card draws the warning from details.imageUnsupportedByModel, collapsed and expanded, naming the model that read the image.
+patch("4be4cb4f5e9c", "pi-coding-agent/core/tools/renderers/read.js", [
+    [`function formatReadResult(args, result, options, theme, showImages, _cwd, isError) {
+    if (!options.expanded && !isError) {
+        return "";
+    }
+`, `function formatReadResult(args, result, options, theme, showImages, _cwd, isError) {
+    ${note("4be4cb4f5e9c").trim()}
+    const unsupportedBy = result.details?.imageUnsupportedByModel;
+    const imageWarning = unsupportedBy
+        ? \`\\n\${theme.fg("warning", \`[\${unsupportedBy} does not support images; it saw a placeholder instead]\`)}\`
+        : "";
+    if (!options.expanded && !isError) {
+        return imageWarning;
+    }
+`],
+    [`    return text;
+}
+export const readRenderers = {`, `    return text + imageWarning;
+}
+export const readRenderers = {`],
+]);
+// END backport 4be4cb4f5e9c
+
 // BEGIN backport 49fe0a237
 // 49fe0a237 (#11987): the models.json schema Pi generates from compat-schema.ts.
 packageFile("49fe0a237", "pi-coding-agent/schemas/models.schema.json", [messageThreadsDefault]);
+// END backport 49fe0a237
+
+// BEGIN backport 49fe0a237
+// 49fe0a237 (#11987), the behavior its three description entries describe: any provider with a baseUrl on api.anthropic.com uses message threads by
+// default, not only the provider named anthropic. The installed Pi only, as for aa47cedce below: ai/anthropic.go (supportsMessageThreads) has the change.
+packageFile("49fe0a237", "pi-ai/api/anthropic-messages.js", [
+    [`        supportsMessageThreads: model.compat?.supportsMessageThreads ??
+            (model.provider === "anthropic" && model.baseUrl.includes("api.anthropic.com")),
+`, `        ${note("49fe0a237").trim()}
+        supportsMessageThreads: model.compat?.supportsMessageThreads ?? model.baseUrl.includes("api.anthropic.com"),
+`],
+]);
 // END backport 49fe0a237
 
 // BEGIN backport aa47cedce
@@ -664,11 +1190,103 @@ packageFile("f72f799a4", "pi-ai/api/google-vertex.js", [
 ]);
 // END backport f72f799a4
 
+// BEGIN backport ede360e4d
+// ede360e4d (#12121): getLastAssistantText (/copy, RPC get_last_assistant_text) skips an assistant message without text whose turn did not end normally.
+patch("ede360e4d", "pi-coding-agent/core/agent-session.js", [
+    [`     * Get text content of last assistant message.
+     * Useful for /copy command.
+     * @returns Text content, or undefined if no assistant message exists
+     */
+    getLastAssistantText() {
+        const lastAssistant = this.messages
+            .slice()
+            .reverse()
+            .find((m) => {
+            if (m.role !== "assistant")
+                return false;
+            const msg = m;
+            // Skip aborted messages with no content
+            if (msg.stopReason === "aborted" && msg.content.length === 0)
+                return false;
+`, `     * Get text content of the last assistant reply.
+     * Useful for /copy command.
+     * @returns Text content, or undefined if no assistant message exists or the last reply has no text
+     */
+    getLastAssistantText() {
+        const lastAssistant = this.messages
+            .slice()
+            .reverse()
+            .find((m) => {
+            if (m.role !== "assistant")
+                return false;
+            const msg = m;
+            // Skip messages without text from a turn that did not end normally: aborted, failed or only
+            // calling tools (#12119). A reply that ended normally stays the last reply even without text.
+            ${note("ede360e4d").trim()}
+            if (msg.stopReason !== "stop" && !msg.content.some((c) => c.type === "text" && c.text.trim()))
+                return false;
+`],
+]);
+// END backport ede360e4d
+
+// BEGIN backport ede360e4d
+// ede360e4d (#12121): the RPC docs of get_last_assistant_text name the skipped messages.
+patch("ede360e4d", "pi-coding-agent/docs/rpc-commands.md", [
+    ["Get the text content of the last assistant message.\n",
+      "Get the text content of the last assistant message. Messages without text from an aborted or failed turn, or that only call tools, are skipped.\n"],
+]);
+// END backport ede360e4d
+
+// BEGIN backport 5b5be2c316e0
+// 5b5be2c316e0 (#12145): the rows of a tool that draws itself (renderShell "self", which includes the built-in edit) are appended in a loop. The spread of hundreds of
+// thousands of wrapped rows exceeded V8's argument limit (RangeError: Maximum call stack size exceeded) on the render and on every resume of the session. The vendored
+// runtime exports ToolExecutionComponent to Node extensions, and the parity oracle resumes the generated session of interactive-rendering/72-resume-very-large-edit-diff.
+patch("5b5be2c316e0", "pi-coding-agent/modes/interactive/components/tool-execution.js", [
+    [`                lines.push("");
+                lines.push(...contentLines);
+`, `                lines.push("");
+                ${note("5b5be2c316e0").trim()}
+                // Append in a loop: spreading hundreds of thousands of wrapped lines exceeds V8's argument limit.
+                for (const line of contentLines)
+                    lines.push(line);
+`],
+]);
+// END backport 5b5be2c316e0
+
 // backportPatches keys the compiled output of a Pi package; packageFileBackports the files that are not compiled output and that the vendored runtime
 // does not carry, but that the installed Pi package (the parity oracle) and the source mirror hold, with the same text. Both are keyed by package and path.
-const tableOf = (name) => Object.fromEntries(blocks.filter((b) => b.table === name).map((b) => [b.key, b.patches]));
+// Blocks of several Pi commits can name one file: their patches add up, in the order of the blocks in this script.
+const tableOf = (name) => {
+  // The table of the blocks whose table is `name`: key -> patches. The patches of every block of a key are joined in the order the blocks
+  // are written (two Pi commits can change one file); classification stays per block. Blocks of other tables are not read, so a block of
+  // another kind need not have patches. What cannot work fails here, when the script loads, naming both blocks: two patches that replace
+  // the same text of a key (the second would find nothing to replace), and a key that one block names with patch and another with
+  // packageFile (patchesOf reads one of those two tables).
+  const table = {};
+  const owners = new Map();
+  const twin = name === "dist" ? "package" : name === "package" ? "dist" : undefined;
+  for (const block of blocks.filter((b) => b.table === name)) {
+    const { id, key, patches } = block;
+    const other = blocks.find((b) => b.table === twin && b.key === key);
+    if (other !== undefined) {
+      const [first, second] = blocks.indexOf(other) < blocks.indexOf(block) ? [other.id, id] : [id, other.id];
+      throw new Error(`backport blocks ${first} and ${second} disagree on ${key}: one names it with patch (compiled output), the other with packageFile`);
+    }
+    for (const [before] of patches) {
+      const place = `${key}\n${before}`;
+      if (owners.has(place)) {
+        throw new Error(`backport blocks ${owners.get(place)} and ${id} both replace the same text of ${key}: ${JSON.stringify(before.slice(0, 80))}`);
+      }
+      owners.set(place, id);
+    }
+    (table[key] ??= []).push(...patches);
+  }
+  return table;
+};
 export const backportPatches = tableOf("dist");
 export const packageFileBackports = tableOf("package");
+// mirrorSourceBackports keys the mirrorSource entries by the path of the source in the Pi repository (packages/ai/src/providers/x.ts).
+export const mirrorSourceBackports = tableOf("mirror");
 // carriedDependencies lists the `dependency` entries: {id, package, name, from, to, resolved, integrity, dependencies}.
 export const carriedDependencies = blocks.filter((b) => b.dependency).map((b) => b.dependency);
 
@@ -692,8 +1310,8 @@ export function applyBackportPatches(dist) {
 }
 
 // packageLocation is where the file of package `name` with the path `rest` (the segments of its backport key after the package)
-// lives in an installed Pi package: the compiled output under dist/, the docs and schemas at the package root.
-const packageLocation = (name, rest) => (name === "pi-coding-agent" && (rest[0] === "docs" || rest[0] === "schemas") ? rest : ["dist", ...rest]).join("/");
+// lives in an installed Pi package: the compiled output under dist/, the docs, schemas and examples at the package root.
+const packageLocation = (name, rest) => (name === "pi-coding-agent" && (rest[0] === "docs" || rest[0] === "schemas" || rest[0] === "examples") ? rest : ["dist", ...rest]).join("/");
 
 const packageBackportKeys = () => [...Object.keys(backportPatches), ...Object.keys(packageFileBackports)];
 
@@ -778,7 +1396,8 @@ function classifyDependency({ id, key, dependency: dep }, root) {
 // asking whether the target contains the Pi commit.
 export function classifyBackports(packages) {
   const results = [];
-  for (const block of blocks) {
+  // A mirror source is no file of an installed package: the compiled files of its commit decide the commit.
+  for (const block of blocks.filter((block) => block.table !== "mirror")) {
     const { id, key, patches } = block;
     const [name, ...rest] = key.split("/");
     if (!(name in packages)) continue;
@@ -805,27 +1424,35 @@ export function classifyBackports(packages) {
   return results;
 }
 
-// mirrorKey is the backport key of a file of the Pi repository the source mirror holds (packages/coding-agent/docs/x.md), or undefined
-// for a file no backport table covers: the mirror's TypeScript sources stay Pi's, whose delta from the pin the sync ledger accounts for.
+// mirrorKey is the backport key of a file of the Pi repository the source mirror holds with the text of the installed package
+// (packages/coding-agent/docs/x.md, packages/ai/src/providers/data/x.json), or undefined for a file no backport table covers.
 const mirrorKey = (path) => {
   const match = /^packages\/coding-agent\/((?:docs|schemas)\/.+)$/.exec(path);
-  return match && `pi-coding-agent/${match[1]}`;
+  if (match) return `pi-coding-agent/${match[1]}`;
+  const data = /^packages\/ai\/src\/(providers\/data\/.+\.json)$/.exec(path);
+  return data ? `pi-ai/${data[1]}` : undefined;
 };
+const mirrorPathOf = (key) => key.replace(/^pi-coding-agent\//, "packages/coding-agent/").replace(/^pi-ai\//, "packages/ai/src/");
+
+// mirrorBackportPaths are the files of the source mirror a backport covers: those mirrorKey names, and the TypeScript sources of
+// mirrorSourceBackports. Every other mirror file is the pinned build's, whose delta from the pin the sync ledger accounts for.
+export const mirrorBackportPaths = () => [...packageBackportKeys().map(mirrorPathOf).filter((path) => mirrorKey(path) !== undefined && patchesOf(mirrorKey(path)).length > 0), ...Object.keys(mirrorSourceBackports)];
 
 // readMirrorFile returns the text of `path` (relative to the Pi repository) in the source mirror `mirror` with the backports applied:
 // the file of the pinned release plus the fixes the release line carries. The mirror itself stays the pinned release.
 export function readMirrorFile(mirror, path) {
-  const source = readFileSync(join(mirror, path), "utf8");
+  let source = readFileSync(join(mirror, path), "utf8");
+  for (const [before, after] of mirrorSourceBackports[path] ?? []) {
+    if (source.split(before).length !== 2) throw new Error(`Pi source changed in ${path}, a post-v1.5.2 backport no longer applies: ${before}`);
+    source = source.replace(before, () => after);
+  }
   const key = mirrorKey(path);
   return key === undefined ? source : patchBackports(key, source);
 }
 
 // verifyMirrorBackports throws when a mirror file a backport covers is not the pinned release's (the backport no longer applies once).
 export function verifyMirrorBackports(mirror) {
-  for (const key of packageBackportKeys()) {
-    const path = key.replace(/^pi-coding-agent\//, "packages/coding-agent/");
-    if (mirrorKey(path) === key) readMirrorFile(mirror, path);
-  }
+  for (const path of mirrorBackportPaths()) readMirrorFile(mirror, path);
 }
 
 const packagesOf = (args) => Object.fromEntries(args.map((arg) => arg.split(/=(.*)/s).slice(0, 2)));
@@ -839,5 +1466,6 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   else if (mode === "--dependencies") process.stdout.write(JSON.stringify(carriedDependencies));
   else if (mode === "--read-mirror") process.stdout.write(readMirrorFile(args[0], args[1]));
   else if (mode === "--verify-mirror") verifyMirrorBackports(args[0]);
+  else if (mode === "--mirror-paths") process.stdout.write(mirrorBackportPaths().map((path) => `${path}\n`).join(""));
   else applyBackportPatches(mode);
 }

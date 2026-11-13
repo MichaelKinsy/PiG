@@ -43,7 +43,7 @@ type TUI interface {
 	RenderSnapshot(width int) []string
 	// Add mounts a component in the render tree.
 	Add(component Component)
-	// Invalidate marks the render tree dirty.
+	// Invalidate invalidates every mounted root and every overlay's component with their descendants (Pi's TUI.invalidate).
 	Invalidate()
 	// ShowOverlay pushes an overlay and returns its handle.
 	ShowOverlay(component Component, opts OverlayOptions) *OverlayHandle

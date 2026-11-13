@@ -154,7 +154,7 @@ func webRoutes(options WebSurfaceOptions, building *surfaceBuild) []http.HttpRou
 		{Key: "GET " + WebPrefix + ":file", Route: http.HttpRouteOptions{Public: options.Public, Handler: serve}},
 		{Key: "GET " + WebPrefix + "plugin/:file", Route: http.HttpRouteOptions{Public: options.Public, Handler: serve}},
 		{Key: "GET " + WebPrefix + "assets/:file", Route: http.HttpRouteOptions{Public: options.Public, Handler: serve}},
-		// Asked by a page before it reconnects: another base means its code is outdated. Public: an outdated page whose session
+		// Asked by a page before it reconnects: another base means its code is outdated. Public: an outdated page whose sign-in
 		// ended still learns it should reload.
 		{Key: "GET " + WebPrefix + "base", Route: http.HttpRouteOptions{Public: true, Handler: func(_ http.HttpRequest, ctx host.Ctx) (http.HttpResponse, error) {
 			parts, err := building.parts(ctx)

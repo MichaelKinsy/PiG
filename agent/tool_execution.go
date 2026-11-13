@@ -56,11 +56,12 @@ func (r *loopRun) toolCtx() context.Context {
 // sequential execution or any call targets a tool whose ExecutionMode is
 // sequential; otherwise in parallel.
 func (r *loopRun) executeToolCalls(assistant *AssistantMessage, calls []pendingToolCall) executedToolCallBatch {
-	ctx := WithToolCallHookContext(r.toolCtx(), r.toolCallHookContext(assistant))
 	if r.h.cfg.ToolExecution == ToolModeSequential || r.hasSequentialToolCall(calls) {
+		// The hooks of these calls run one at a time, so they receive the run's own messages, as Pi's hooks do (hookView).
+		ctx := WithToolCallHookContext(r.toolCtx(), r.toolCallHookContext(assistant, hookView(r.context)))
 		return r.executeToolCallsSequential(ctx, calls)
 	}
-	return r.executeToolCallsParallel(ctx, calls)
+	return r.executeToolCallsParallel(r.toolCtx(), assistant, calls)
 }
 
 func (r *loopRun) hasSequentialToolCall(calls []pendingToolCall) bool {
@@ -112,14 +113,21 @@ func (r *loopRun) executeToolCallsSequential(ctx context.Context, calls []pendin
 // prefix — including a file-mutation-queue registration — in call order,
 // before any call's async work begins, and Go's per-call goroutines below
 // have no equivalent guarantee on their own (see QueueOrderable).
-func (r *loopRun) executeToolCallsParallel(ctx context.Context, calls []pendingToolCall) executedToolCallBatch {
+// executeToolCallsParallel runs the calls at once. Every call is handed the run's own messages (hookView), as Pi hands every call
+// currentContext (prepareToolCall, and each call's closure under Promise.all): what a before hook, a tool or an after hook replaces in
+// place, the batch's other calls and the next request see. The run does not read or write that array from the start of the first
+// call's tool to the end of the last call's after hooks. The before hooks run one after another here. The after hooks of a call start
+// once the hooks of every call that settled before it returned or invoked their first extension handler (finalizeCalledTool), so the
+// batch's hooks write the array one at a time. The tools run at the same time, which Pi's never do (one thread): a tool that reads or
+// writes the messages while another call's tool or after hook does shares memory with that code and synchronizes with it.
+func (r *loopRun) executeToolCallsParallel(ctx context.Context, assistant *AssistantMessage, calls []pendingToolCall) executedToolCallBatch {
 	outcomes := make([]toolCallOutcome, 0, len(calls))
 	callCtxs := make([]context.Context, 0, len(calls))
 	var registration registrationOrder
 	for _, call := range calls {
 		r.h.emitToolExecutionStart(call)
-		outcome := r.h.prepareToolCall(ctx, call)
-		callCtx := ctx
+		callCtx := WithToolCallHookContext(ctx, r.toolCallHookContext(assistant, hookView(r.context)))
+		outcome := r.h.prepareToolCall(callCtx, call)
 		if outcome.prepared != nil {
 			tool := outcome.prepared.tool
 			if mayTake, ok := tool.(MayTakeFileMutationQueue); ok && mayTake.MayTakeFileMutationQueue() {

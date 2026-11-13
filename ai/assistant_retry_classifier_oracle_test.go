@@ -27,6 +27,12 @@ func TestIsRetryableAssistantErrorMatchesPiOracle(t *testing.T) {
 		"😀 429", "stream ended before message_stop", "stream ended before a terminal response event", "HTTP2 request did not get a response", "pending stream has been canceled", "you can retry your request", "TRY YOUR REQUEST AGAIN",
 		"subscription_sharing_usage_limit_exceeded 503", "subscription_sharing_usage_unavailable", "Monthly usage limit reached 429", "available balance", "AVAILABLE BALANCE 500", "out of budget", "Out Of Budget",
 		`{"type":"error","error":{"type":"api_error","message":"Connection closed."}}`, "Connection closed by proxy server before the response completed", `{"type":"error","error":{"type":"api_error","message":"Connection closed. insufficient_quota"}}`, "connection\u2028closed", "connectionclosed", "Connection closed 429 billing",
+		// Pi 4699b5b26 (#12128): bare Node socket error codes, their guards on both sides, and what the commit leaves alone.
+		"read ECONNRESET", "connect ETIMEDOUT 140.82.113.3:443", "write EPIPE", "connect ECONNREFUSED 127.0.0.1:443", "ECONNABORTED", "Connection reset by peer", "Invalid value EXECONNRESET", "Unknown field ETIMEDOUTX", "Invalid key ERR_EPIPE_ID",
+		`400 {"type":"error","error":{"type":"invalid_request_error","message":"Invalid value EXECONNRESET"}}`, `400 {"error":{"message":"the tool reported ECONNRESET while fetching","type":"invalid_request_error"}}`, "400 Invalid value EXECONNRESET",
+		"connect EHOSTUNREACH 140.82.113.3:443", "connect ENETUNREACH 140.82.113.3:443", "UND_ERR_SOCKET", "ECONNRESET_", "_ECONNRESET", "0EPIPE", "EPIPE0", "ETIMEDOUTS", "XECONNREFUSED", "ECONNABORTEDLY", "write: broken pipe", "software caused connection abort",
+		"read econnreset", "(EPIPE)", "code=ETIMEDOUT;", `{"code":"ECONNABORTED"}`, "Error: ECONNREFUSED.", "read tcp 100.64.0.1:50817->140.82.112.22:443: read: connection reset by peer", "CONNECTION RESET BY PEER", "connection reset\nby peer",
+		"\u212aECONNRESET", "EPIPE\u017f", "ECONNRESET\u212a", "\u017fEPIPE", "EPIPE billing", "ECONNRESET\n", "a\nETIMEDOUT", "éECONNRESET", "EPIPEé", "ECONNRESET ECONNRESETX", "ECONNRESETX ECONNRESET", "EPIPEEPIPE", "E PIPE",
 	)
 	type result struct {
 		Retryable bool `json:"retryable"`

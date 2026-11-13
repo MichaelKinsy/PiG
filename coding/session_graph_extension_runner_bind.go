@@ -431,14 +431,11 @@ func (g *GraphExtensionRunner) bindBridges(actionIDs, contextIDs callbackIDs) {
 			bridge.SetHostAction("getSessionName", actions.GetSessionName)
 		}
 		if actions.SetLabel != nil {
-			bridge.SetHostAction("setLabel", func(entryID, label string) error {
+			bridge.SetHostAction("setLabel", func(entryID string, label *string, null bool) error {
 				if err := live(); err != nil {
 					return err
 				}
-				if label == "" {
-					return actions.SetLabel(entryID, nil)
-				}
-				return actions.SetLabel(entryID, &label)
+				return actions.ApplyLabel(entryID, label, null)
 			})
 		}
 		if actions.GetActiveTools != nil {
@@ -479,9 +476,17 @@ func (g *GraphExtensionRunner) bindBridges(actionIDs, contextIDs callbackIDs) {
 			})
 		}
 		if actions.SetModel != nil {
-			bridge.SetHostAction("setModel", func(ctx context.Context, spec string) (bool, error) {
+			bridge.SetHostAction(subprocess.CallSetModel, func(ctx context.Context, object *ai.Model) (bool, error) {
 				extension.CallInitiated(ctx)
-				return g.runBridgeSetModel(ctx, actionIDs, spec)
+				wire, err := wireModel(object)
+				if err != nil {
+					return false, err
+				}
+				return runDecoded[bool](g, ctx, actionIDs, "setModel", wire)
+			})
+			bridge.SetHostAction(subprocess.CallResolveModel, func(ctx context.Context, spec string) (*ai.Model, error) {
+				extension.CallInitiated(ctx)
+				return g.registryModelNamed(spec)
 			})
 		}
 		if actions.GetThinkingLevel != nil {
@@ -553,25 +558,16 @@ func (g *GraphExtensionRunner) bindBridges(actionIDs, contextIDs callbackIDs) {
 	}
 }
 
-// runBridgeSetModel is a setModel of a loaded extension, which names the model by its `provider/id` spec: the extension's function receives the model object of that name when the runner's model registry lists it.
-func (g *GraphExtensionRunner) runBridgeSetModel(ctx context.Context, ids callbackIDs, spec string) (bool, error) {
-	var model *ai.Model
+// registryModelNamed is the model a loaded extension names by its `provider/id` spec (the string form of an SDK's set-model): the model of that name in the runner's model registry. The extension's setModel function then receives that object, as it receives any object a loaded extension passes.
+func (g *GraphExtensionRunner) registryModelNamed(spec string) (*ai.Model, error) {
 	if registry := g.runner.GetModelRegistry(); registry != nil {
 		for _, candidate := range registry.GetAll() {
 			if candidate.ProviderMeta.ProviderID+"/"+candidate.ID == spec {
-				model = candidate
-				break
+				return candidate, nil
 			}
 		}
 	}
-	if model == nil {
-		return false, fmt.Errorf("Model not found: %s", spec)
-	}
-	wire, err := wireModel(model)
-	if err != nil {
-		return false, err
-	}
-	return runDecoded[bool](g, ctx, ids, "setModel", wire)
+	return nil, fmt.Errorf("Model not found: %s", spec)
 }
 
 // bindSessionReads gives the loaded extensions the log the runner was constructed over, as ctx.sessionManager.

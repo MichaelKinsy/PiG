@@ -381,8 +381,8 @@ image(shot);`)
 		if result.IsError {
 			t.Fatalf("result failed: %+v", result.Content)
 		}
-		if got, want := checkSavedImages(t, codemodeResultText(t, result)), "==> text 1/2 <==\nhello\n==> text 2/2 <==\nRead image file [image/png]\n[Current model does not support images. The image will be omitted from this request.]\n<saved>\n<image>"; got != want {
-			// The harness model does not declare image input, so read's note says so, as it does for a text-only model upstream.
+		if got, want := checkSavedImages(t, codemodeResultText(t, result)), "==> text 1/2 <==\nhello\n==> text 2/2 <==\nRead image file [image/png]\n<saved>\n<image>"; got != want {
+			// The harness model does not declare image input; read's note says nothing of it (Pi 4be4cb4f5e9c tools.test.ts:240: the text is "Read image file [image/png]").
 			t.Errorf("result = %q, want %q", got, want)
 		}
 		if image, ok := result.Content[len(result.Content)-1].(ai.ImageContent); !ok || image.Data != tinyPNGBase64 || image.MimeType != "image/png" {

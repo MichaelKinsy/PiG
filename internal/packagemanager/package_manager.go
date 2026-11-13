@@ -171,6 +171,7 @@ func (m *PackageManager) AddSourceToSettings(source string, local bool) (bool, e
 	} else {
 		current = append(current, codingagent.PackageSource{Source: normalized})
 	}
+	// pig divergence (D633): a failed save of the package list is returned, so `pig install` reports it and exits 1; Pi's addSourceToSettings (package-manager.ts:902) cannot fail and `pi install` prints Installed.
 	if local {
 		return true, sm.SetProjectPackages(current)
 	}
@@ -198,6 +199,7 @@ func (m *PackageManager) RemoveSourceFromSettings(source string, local bool) (bo
 	if len(next) == len(current) {
 		return false, nil
 	}
+	// pig divergence (D633): a failed save of the package list is returned, so `pig remove` reports it and exits 1; Pi's removeSourceFromSettings (package-manager.ts:933) cannot fail.
 	if local {
 		return true, sm.SetProjectPackages(next)
 	}
@@ -371,7 +373,7 @@ func (m *PackageManager) Update(source string) error {
 	return updateConfiguredSources(cwd, sm, matched, progress)
 }
 
-// CheckForAvailableUpdates queries npm registry and git remotes for updates to installed, unpinned packages with at most five joined workers. It returns a non-nil slice, including when offline or no updates are available.
+// CheckForAvailableUpdates queries npm registry and git remotes for updates to installed, unpinned packages with at most four joined workers. It returns a non-nil slice, including when offline or no updates are available.
 // Mirrors upstream DefaultPackageManager.checkForAvailableUpdates (packages/coding-agent/src/core/package-manager.ts:1186-1253).
 // User-package metadata uses managed storage (D79); trusted project packages use cwd.
 func (m *PackageManager) CheckForAvailableUpdates() []PackageUpdate {

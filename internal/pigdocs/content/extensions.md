@@ -14,6 +14,8 @@ behavior must match subprocess behavior.
 PiG does not use PigScript, embedded JavaScript, WASM, dynamic Go plugins, or an
 authored extension manifest.
 
+To show one GUI in the terminal and in a web page, mount a view: [Extension views](ui-views.md) (D614).
+
 ## Source forms
 
 PiG accepts exactly two forms.

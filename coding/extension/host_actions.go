@@ -27,6 +27,9 @@ type ExtensionActions struct {
 	GetSessionName func() string
 	// upstream: types.ts:2106: SetLabelHandler
 	SetLabel func(entryID string, label *string) error
+	// SetLabelNull is SetLabel for a label written as null: Pi's setLabel(entryId, null) hands the null to appendLabelChange, and the entry holds
+	// `"label":null` (session-manager.ts appendLabelChange). It clears the label as a call without one does.
+	SetLabelNull func(entryID string) error
 	// upstream: types.ts:2080: GetActiveToolsHandler
 	GetActiveTools func() []string
 	// upstream: types.ts:2090: GetAllToolsHandler
@@ -87,4 +90,13 @@ func (a ProviderActions) registerNative(ctx context.Context, provider *ai.Models
 		return a.RegisterNativeProviderCarrier(ctx, carrier)
 	}
 	return a.RegisterNativeProvider(ctx, provider)
+}
+
+// ApplyLabel calls the label handlers with what pi.setLabel was given: a string, a label written as null (a nil label with null set) or no label
+// (a nil label). A binding without SetLabelNull records a null label as no label.
+func (a *ExtensionActions) ApplyLabel(entryID string, label *string, null bool) error {
+	if label == nil && null && a.SetLabelNull != nil {
+		return a.SetLabelNull(entryID)
+	}
+	return a.SetLabel(entryID, label)
 }

@@ -77,10 +77,7 @@ func TestBuiltinCatalogsMatchPinnedProviderDataModules(t *testing.T) {
 		}
 		seen[provider[1]] = true
 		t.Run(provider[1], func(t *testing.T) {
-			raw, err := os.ReadFile(filepath.Join("../.upstream/current/packages/ai/src/providers/data", data[1]+".json"))
-			if err != nil {
-				t.Fatal(err)
-			}
+			raw := readPinnedMirror(t, "../.upstream/current/packages/ai/src/providers/data/"+data[1]+".json")
 			var groups map[string]map[string]map[string]any
 			if err := json.Unmarshal(raw, &groups); err != nil {
 				t.Fatal(err)
@@ -103,6 +100,10 @@ func TestBuiltinCatalogsMatchPinnedProviderDataModules(t *testing.T) {
 						t.Fatalf("%s: unknown model type in key %q", data[1], key)
 					}
 				}
+			}
+			if slices.Contains(BuiltStrippedProviders(), provider[1]) {
+				// A build with the pig_strip tag of this provider's API offers none of its chat models.
+				wantChat = map[string]map[string]any{}
 			}
 			checkChatCatalog(t, provider[1], wantChat)
 			checkImageCatalog(t, provider[1], wantImage)

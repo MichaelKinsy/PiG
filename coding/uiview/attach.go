@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"slices"
 	"strconv"
+
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // pig additive (D614): attachments. Every client that draws mounts holds one attachment. The registry resolves each
@@ -103,7 +105,7 @@ func (r *Registry) ordered() []ownerKey {
 	for k := range r.mounts {
 		keys = append(keys, k)
 	}
-	slices.SortFunc(keys, func(a, b ownerKey) int {
+	sortx.Func(keys, func(a, b ownerKey) int {
 		return int(int64(r.mounts[a].snap.Mount.Epoch) - int64(r.mounts[b].snap.Mount.Epoch))
 	})
 	return keys
@@ -275,9 +277,10 @@ func fallbackFits(a *ClientAbilities, m measured) bool {
 }
 
 // resolve returns the snapshot one client draws for a mount: the alternative its claims select or the view, with the
-// a11y and focus entries of the nodes that view has. A client that does not draw the slot is not sent the mount. A
-// client the content does not fit is sent the fallback (or no view when that does not fit either), marked degraded, and
-// the plugin gets a notice. It reads the measurements made when the content was admitted and never walks a view.
+// a11y and focus entries of the nodes that view has and, unless the fallback stands in, every binding. A client that
+// does not draw the slot is not sent the mount. A client the content does not fit is sent the fallback (or no view when
+// that does not fit either), marked degraded, and the plugin gets a notice. It reads the measurements made when the
+// content was admitted and never walks a view.
 func (r *Registry) resolve(t *Attachment, m *mount) (Snapshot, bool) {
 	if !slices.Contains(t.abilities.Slots, m.snap.Slot) {
 		return Snapshot{}, false
@@ -312,6 +315,9 @@ func (r *Registry) resolve(t *Attachment, m *mount) (Snapshot, bool) {
 		if _, ok := ids[f.Node]; ok {
 			out.Focus = append(out.Focus, f)
 		}
+	}
+	if i >= 0 {
+		out.Bindings = c.Bindings
 	}
 	if i > 0 {
 		s.Alternative = i

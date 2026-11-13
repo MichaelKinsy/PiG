@@ -189,19 +189,22 @@ func MatchObject(actual, expected any) bool {
 func RegisterStorageConformance(t *testing.T, name string, withStorage StorageConformanceProvider) {
 	t.Helper()
 	t.Run(name, func(t *testing.T) {
-		names := caseNames()
-		for index, caseName := range names {
-			t.Run(caseName, func(t *testing.T) {
-				cases := CreateStorageConformance(StorageConformanceOptions{
-					Assertions:  CreateTestingAssertions(t),
-					WithStorage: withStorage,
-				})
-				if err := cases[index].Run(); err != nil {
-					t.Fatal(err)
-				}
-			})
+		for index, caseName := range caseNames() {
+			t.Run(caseName, func(t *testing.T) { runStorageConformanceCase(t, withStorage, index) })
 		}
 	})
+}
+
+// runStorageConformanceCase runs conformance case index against a fresh storage from withStorage and ends tb with the case's failure (testing/runner.ts: runner.it(testCase.name, testCase.run)).
+func runStorageConformanceCase(tb testing.TB, withStorage StorageConformanceProvider, index int) {
+	tb.Helper()
+	cases := CreateStorageConformance(StorageConformanceOptions{
+		Assertions:  CreateTestingAssertions(tb),
+		WithStorage: withStorage,
+	})
+	if err := cases[index].Run(); err != nil {
+		tb.Fatalf("%v", err)
+	}
 }
 
 func caseNames() []string {

@@ -81,67 +81,92 @@ func (s Shape) Validate(raw json.RawMessage) error {
 	if !json.Valid(raw) {
 		return errors.New("not one JSON value")
 	}
-	return s.validate(bytes.TrimSpace(raw), "value")
+	return s.validate(bytes.TrimSpace(raw), &shapePath{name: "value"})
+}
+
+// shapePath names the value validate is checking: the root, a member of an object or an item of an array. Its text is
+// built only for an error, so a value that passes formats no path.
+type shapePath struct {
+	parent *shapePath
+	name   string // the root's text, or the member's name
+	index  int    // the item's index when item is set
+	item   bool
+}
+
+func (p *shapePath) String() string { return string(p.appendTo(nil)) }
+
+func (p *shapePath) appendTo(b []byte) []byte {
+	if p.parent == nil {
+		return append(b, p.name...)
+	}
+	b = p.parent.appendTo(b)
+	if p.item {
+		b = append(b, '[')
+		b = strconv.AppendInt(b, int64(p.index), 10)
+		return append(b, ']')
+	}
+	b = append(b, '.')
+	return append(b, p.name...)
 }
 
 // validate checks one valid JSON value against the shape. It decodes objects and arrays one level at a time into raw
 // members, so no value is decoded into an interface.
-func (s Shape) validate(raw []byte, at string) error {
+func (s Shape) validate(raw []byte, at *shapePath) error {
 	first := raw[0]
 	switch s.Type {
 	case "boolean":
 		if first != 't' && first != 'f' {
-			return fmt.Errorf("%s is not a boolean", at)
+			return fmt.Errorf("%s is not a boolean", at.String())
 		}
 	case "string":
 		if first != '"' {
-			return fmt.Errorf("%s is not a string", at)
+			return fmt.Errorf("%s is not a string", at.String())
 		}
 	case "enum":
 		var str string
 		if first != '"' || json.Unmarshal(raw, &str) != nil || !slices.Contains(s.Enum, str) {
-			return fmt.Errorf("%s is not one of the enum values", at)
+			return fmt.Errorf("%s is not one of the enum values", at.String())
 		}
 	case "number", "integer":
 		if first != '-' && (first < '0' || first > '9') {
-			return fmt.Errorf("%s is not a number", at)
+			return fmt.Errorf("%s is not a number", at.String())
 		}
 		f, err := strconv.ParseFloat(string(raw), 64)
 		if err != nil || math.IsInf(f, 0) {
-			return fmt.Errorf("%s is not a finite number", at)
+			return fmt.Errorf("%s is not a finite number", at.String())
 		}
 		if s.Type == "integer" && (f != math.Trunc(f) || math.Abs(f) > 1<<53-1) {
-			return fmt.Errorf("%s is not a safe integer", at)
+			return fmt.Errorf("%s is not a safe integer", at.String())
 		}
 	case "object":
 		var obj map[string]json.RawMessage
 		if first != '{' || json.Unmarshal(raw, &obj) != nil {
-			return fmt.Errorf("%s is not an object", at)
+			return fmt.Errorf("%s is not an object", at.String())
 		}
 		for name, val := range obj {
 			p, known := s.Properties[name]
 			if !known {
-				return fmt.Errorf("%s has unknown member %q", at, name)
+				return fmt.Errorf("%s has unknown member %q", at.String(), name)
 			}
-			if err := p.validate(bytes.TrimSpace(val), at+"."+name); err != nil {
+			if err := p.validate(bytes.TrimSpace(val), &shapePath{parent: at, name: name}); err != nil {
 				return err
 			}
 		}
 		for _, name := range s.Required {
 			if _, ok := obj[name]; !ok {
-				return fmt.Errorf("%s lacks required member %q", at, name)
+				return fmt.Errorf("%s lacks required member %q", at.String(), name)
 			}
 		}
 	case "array":
 		var arr []json.RawMessage
 		if first != '[' || json.Unmarshal(raw, &arr) != nil {
-			return fmt.Errorf("%s is not an array", at)
+			return fmt.Errorf("%s is not an array", at.String())
 		}
 		if len(arr) > s.MaxItems {
-			return fmt.Errorf("%s has %d items, at most %d", at, len(arr), s.MaxItems)
+			return fmt.Errorf("%s has %d items, at most %d", at.String(), len(arr), s.MaxItems)
 		}
 		for i, val := range arr {
-			if err := s.Items.validate(bytes.TrimSpace(val), fmt.Sprintf("%s[%d]", at, i)); err != nil {
+			if err := s.Items.validate(bytes.TrimSpace(val), &shapePath{parent: at, index: i, item: true}); err != nil {
 				return err
 			}
 		}

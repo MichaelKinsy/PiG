@@ -39,7 +39,7 @@ def _setup_error_stream(model: dict, error: BaseException | str) -> Any:
         "stopReason": "error", "errorMessage": str(error), "timestamp": int(time.time() * 1000),
     }
     stream = create_assistant_message_event_stream()
-    stream.push({"type": "error", "reason": "error", "error": message})
+    stream._enqueue({"type": "error", "reason": "error", "error": message}, False)
     return stream
 
 

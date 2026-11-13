@@ -9,7 +9,22 @@
 		"8d30e63067c5b0ebef4e0f8fe4150a5dd7a53d7e",
 		"22fe46c7b889bb469017e00f621ec1f2779d7809",
 		"da44c4df38c9e74a1bcb165af237e86c1ad33124",
-		"3c771bd18ebf71be1ee6a2df5a9b214d123b755d"
+		"3c771bd18ebf71be1ee6a2df5a9b214d123b755d",
+		"502f79e3eb3dc0af9706c5d7b1458a7892942b81",
+		"20a6e09dc60a13a3ec4988ba4d3e4b9e78c1f940",
+		"7a1c1f61ea624f58f26a29e86dc037d405920c03",
+		"1b3223b969934e9b760edeefa7cb39ba4c700032",
+		"ec1ffa15cb356ef712574c51d209e52c26daa773",
+		"0b48a1d18910d73094d46aedf2607f7306014d74",
+		"f7734109c7cf1b27682b3bd6f32b326c3ed9676c",
+		"47e9d74f9186de37e700693fac0f6e56a499657a",
+		"90ed3e3b14b58c48193a467e4d5af035570ce56d",
+		"cc96b4a90b1cb94c1a34911f9d3b415628cc2d98",
+		"2e74510dedfe41e90e14e87760eee567be81bf31",
+		"6268cc5cda2b97f1af95e10c350a72975406ea16",
+		"c8390defa9b69a05629a1a0877cd91aa18585ecd",
+		"926b2f8cd8a8ac966f331882557f1bdc98e200de",
+		"7ae9ff8c7be018d526cd50c6ffe35ad9e8128127"
 	],
 	"patches": [
 		{
@@ -54,7 +69,7 @@
 		},
 		{
 			"path": "pi/chord/src/contracts/internal.ts",
-			"sha256": "0919cbc300ea453bcedfd44f6cfcf26e1af39fe71755327491933d637f16ed3f"
+			"sha256": "00a9d9d18551e58a1295291933e7c52d195e3a817f1ccdba7d25c50faf295011"
 		},
 		{
 			"path": "pi/chord/src/contracts/names.ts",
@@ -62,7 +77,7 @@
 		},
 		{
 			"path": "pi/chord/src/contracts/params.ts",
-			"sha256": "de6e942f4b119a02768461693481b869ec9ec5bcf854375c828020fe12664ed1"
+			"sha256": "a33dc790b7bf2b011e19ac37dbe0e585290baca639e35e99fe80c79cc3b7de0b"
 		},
 		{
 			"path": "pi/chord/src/contracts/schema.ts",
@@ -90,7 +105,7 @@
 		},
 		{
 			"path": "pi/chord/src/data/internal.ts",
-			"sha256": "9a07ab03d99ebbcff23208924f29dc408963151ae37053fd5894ec5891627dcb"
+			"sha256": "26e18efe34a74fd4bbb2eda2b7ecfbd2e92583db729f9c2a2bfb047301a0379f"
 		},
 		{
 			"path": "pi/chord/src/data/params.ts",
@@ -98,7 +113,7 @@
 		},
 		{
 			"path": "pi/chord/src/data/principal.ts",
-			"sha256": "d72f41b38e488df634e4fe1175fb44a76eaced6522c7f08de0d20a970496b19f"
+			"sha256": "3c5e5b47e96e5f9ce057d93d9e2bb4ee592841c44baf2c113664ff5543a418a8"
 		},
 		{
 			"path": "pi/chord/src/data/validator.ts",
@@ -226,7 +241,7 @@
 		},
 		{
 			"path": "pi/chord/src/host/host.ts",
-			"sha256": "dd410ca34a060bfd6fa5715005bc0f05375f745e4d4e9f1b4b08a3023c51c02a"
+			"sha256": "bf981672f8816cbfa9fbb4bac6fad7ebd2e83b54d1483f80a8ba9aed8dbd7d61"
 		},
 		{
 			"path": "pi/chord/src/host/index.ts",
@@ -246,7 +261,7 @@
 		},
 		{
 			"path": "pi/chord/src/host/object.ts",
-			"sha256": "a9d22c966d5bd0ad52ced1634406e0345ef94137f753d3beadac6cf9c6ae8c9b"
+			"sha256": "ff3b997416ac551b1ac6c1f4faacf2b4ff67db550acc4870bde19172724edc47"
 		},
 		{
 			"path": "pi/chord/src/host/old-work.ts",
@@ -278,11 +293,11 @@
 		},
 		{
 			"path": "pi/chord/src/host/reference-source.ts",
-			"sha256": "bd0f064bbb3676b5113ce7bde4938a98fd91f18258cf61a8c8c48dc0ec447d41"
+			"sha256": "2a15eafc6869b169dd1705091d29d3ea1284e5caa56efeb2f3b7b4cc6afb36bc"
 		},
 		{
 			"path": "pi/chord/src/host/reference.ts",
-			"sha256": "1334f0a290f37293169298cb0c1b50bfddba9c987136a87def4977c102b73d11"
+			"sha256": "f18fa40b8ea18156109254809ded8c6a3f963b6f572149a223baa5cac0859219"
 		},
 		{
 			"path": "pi/chord/src/host/reload-cycle.ts",
@@ -302,7 +317,7 @@
 		},
 		{
 			"path": "pi/chord/src/host/route.ts",
-			"sha256": "21aa19556d505a4d048c35074b86ba7895566b9bf9843d413e0e440ceb406e0a"
+			"sha256": "9da79300d542aad133e073ba6aaf99ca8b457a3b1d1dadec0528917d749b5dbe"
 		},
 		{
 			"path": "pi/chord/src/host/routines.ts",
@@ -470,15 +485,15 @@
 		},
 		{
 			"path": "pi/chord/src/remote/calls.ts",
-			"sha256": "4312659f14786ee74d2c9b8ac340a4b320cb868dc192495efa5af9281583e6d4"
+			"sha256": "e6bdc270c25d2f60cf0b3a43e928c70847c7f64c93c2f1376b4572527018fe55"
 		},
 		{
 			"path": "pi/chord/src/remote/consumer.ts",
-			"sha256": "b1c7f0d1cc1d901abe24e551efed727386c962741d3f1905a3598fc7e5b4bda8"
+			"sha256": "ef93975399357f3ce07b69303799a89df4ad233be93a8f4efb21e7d9b78e0ee5"
 		},
 		{
 			"path": "pi/chord/src/remote/hold.ts",
-			"sha256": "9625dd847d9dc866562f9bcd8d67fc02cd14ae2e0633e881600bc18daf6fd2d0"
+			"sha256": "0adf801964b697d0294538f3c3c37a34861118535cedb65e27d7f6dc7191d046"
 		},
 		{
 			"path": "pi/chord/src/remote/host-link.ts",
@@ -490,7 +505,7 @@
 		},
 		{
 			"path": "pi/chord/src/remote/path.ts",
-			"sha256": "5ac81481f75e45a71aa76db8df29364a3283b8cd4c0bcd54dc838c36298f95ed"
+			"sha256": "5a4d2c08fee28856c5885b7686ed6f6d7de0274129eae33d9e4d63a6f6a9d5e8"
 		},
 		{
 			"path": "pi/chord/src/remote/provider.ts",
@@ -502,11 +517,11 @@
 		},
 		{
 			"path": "pi/chord/src/remote/remote-object.ts",
-			"sha256": "2afc2de6d4244b088bd7945562b5ef2881f89c085b7b68274ebf13bd7234637d"
+			"sha256": "5973aa00dd78f3c7afecaf829f843e92814cba7c5cd62e28b6f97b9715e0e995"
 		},
 		{
 			"path": "pi/chord/src/remote/replica.ts",
-			"sha256": "32462ae60f6b0220949c75a8279f7a398924f011e8268097a7a8d895d18c971a"
+			"sha256": "834d0f13dfd93b00d0578a86e30fb0f482f3c7fe92951a47406459da7d419b6b"
 		},
 		{
 			"path": "pi/chord/src/sqlite/database.ts",
@@ -670,7 +685,7 @@
 		},
 		{
 			"path": "pi/chord/src/store/store.ts",
-			"sha256": "002d713fa42f8c1afeef829000c1442c419da696b06d157142d2935d267a9626"
+			"sha256": "ff16c327cb0399cf4da07b51593ca682985c825795b3e1943f574a6ccec51d95"
 		},
 		{
 			"path": "pi/chord/src/store/table-changes.ts",

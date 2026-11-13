@@ -8,13 +8,15 @@ import (
 )
 
 // wantBoundaryDrafts is what every SDK's fixture leaves behind for the drafts its agent_before_settle handler returns: the line the next handler writes about the
-// drafts it was handed, then each draft as the host decoded it. The fixture returns a context_edit with a null replacement, a context_edit without the member and
-// a compaction with a null firstKeptEntryId and details. An SDK that drops a null member, writes null for an omitted one, or does not hand the result to the next
-// handler leaves another line.
-const wantBoundaryDrafts = `agent_before_settle_drafts:4:null:absent:null:conformance-checkpoint:info` +
+// drafts it was handed, then each draft as the host decoded it. The fixture returns a custom draft without data, a context_edit with a null replacement, a
+// context_edit without the member, a compaction with a null firstKeptEntryId, details and a null usage, a custom draft with a null data and a custom_message with
+// null details. An SDK that drops a null member, writes null for an omitted one, or does not hand the result to the next handler leaves another line.
+const wantBoundaryDrafts = `agent_before_settle_drafts:6:null:absent:null:conformance-checkpoint:absent:null:null:null:info` +
 	`|{"type":"context_edit","targetId":"conformance-failed-attempt","replacement":null}` +
 	`|{"type":"context_edit","targetId":"conformance-omitted-member"}` +
-	`|{"type":"compaction","summary":"conformance-summary","firstKeptEntryId":null,"details":{"format":"conformance-checkpoint"}}`
+	`|{"type":"compaction","summary":"conformance-summary","firstKeptEntryId":null,"details":{"format":"conformance-checkpoint"},"usage":null}` +
+	`|{"type":"custom","customType":"conformance-null-data","data":null}` +
+	`|{"type":"custom_message","customType":"conformance-null-details","content":"x","display":false,"details":null}`
 
 // boundaryDraftsLine joins the next handler's report with the drafts after the first as the host decoded them.
 func boundaryDraftsLine(t *testing.T, report string, drafts []extension.SessionBoundaryDraft) string {
@@ -57,7 +59,7 @@ func TestBoundaryDraftNullAndAbsentMembersAcrossSDKs(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !boundary.Valid || !boundary.Continue || len(boundary.Entries) != 4 {
+			if !boundary.Valid || !boundary.Continue || len(boundary.Entries) != 6 {
 				t.Fatalf("boundary result: %+v", boundary)
 			}
 			waitFor(t, func() bool { return len(*h.notify) > 1 })

@@ -108,19 +108,26 @@ type anthRequest struct {
 	Stream    bool          `json:"stream"`
 	// Betas is visible to OnPayload as upstream params.betas. The wire body
 	// omits it and sends it as the anthropic-beta header instead.
-	Betas      []string          `json:"betas,omitempty" requestsplice:"read"`
-	System     []anthSystemBlock `json:"system,omitempty"`
-	Tools      []anthTool        `json:"tools,omitempty"`
-	ToolChoice any               `json:"tool_choice,omitempty"`
-	Metadata   *anthMetadata     `json:"metadata,omitempty"`
-	Thinking   *anthThinking     `json:"thinking,omitempty"`
+	//portlint:allow emptydrop buildParams adds betas only when there is a beta feature (anthropic-messages.ts:1487): Pi sends no empty array
+	Betas []string `json:"betas,omitempty" requestsplice:"read"`
+	// The members below follow in the order buildParams assigns them to the literal of the members above (anthropic-messages.ts:1487-1597):
+	// JSON.stringify writes an object's members in the order they were created.
+	//portlint:allow emptydrop buildParams sets system only to a non-empty array, the OAuth identity block or a non-empty prompt (anthropic-messages.ts:1491-1508)
+	System []anthSystemBlock `json:"system,omitempty"`
+	// Temperature is incompatible with extended thinking.
+	Temperature *float64 `json:"temperature,omitempty"`
+	//portlint:allow emptydrop buildParams sets tools to the definitions and the placeholder, or only when there is a tool (anthropic-messages.ts:1533-1537)
+	Tools    []anthTool    `json:"tools,omitempty"`
+	Thinking *anthThinking `json:"thinking,omitempty"`
 	// OutputConfig controls output quality knobs like thinking effort.
 	// Used with adaptive thinking (Opus 4.6+, Sonnet 4.6) to set effort level.
 	// Mirrors upstream anthropic.ts output_config.
 	OutputConfig *anthOutputConfig `json:"output_config,omitempty"`
-	// Temperature is incompatible with extended thinking.
-	Temperature *float64       `json:"temperature,omitempty"`
-	Fallbacks   []anthFallback `json:"fallbacks,omitempty"`
+	Metadata     *anthMetadata     `json:"metadata,omitempty"`
+	// ToolChoice is { type } for a named choice, or the caller's object as the caller wrote it.
+	ToolChoice any `json:"tool_choice,omitempty"`
+	//portlint:allow emptydrop buildParams sets fallbacks only when the model allows a fallback model (anthropic-messages.ts:1593-1594)
+	Fallbacks []anthFallback `json:"fallbacks,omitempty"`
 }
 
 type anthFallback struct {
@@ -152,6 +159,13 @@ type anthMessage struct {
 	OutputConfig *anthOutputConfig `json:"output_config,omitempty"`
 }
 
+// anthImageSource is the source of an image block, with its members in the order convertImageBlock writes them (anthropic-messages.ts:150-154).
+type anthImageSource struct {
+	Type      string `json:"type"` // "base64"
+	MediaType string `json:"media_type"`
+	Data      string `json:"data"`
+}
+
 // anthContentBlock is the union type for Anthropic content blocks.
 // Fields are selectively present depending on Type.
 type anthContentBlock struct {
@@ -166,8 +180,8 @@ type anthContentBlock struct {
 	ToolUseID string `json:"tool_use_id,omitempty"`
 	Content   any    `json:"content,omitempty"` // string | []block for tool_result
 	IsError   *bool  `json:"is_error,omitempty"`
-	// image (base64 source: {type, media_type, data})
-	Source any `json:"source,omitempty"`
+	// image
+	Source *anthImageSource `json:"source,omitempty"`
 	// thinking
 	Thinking  string `json:"thinking,omitempty"`
 	Signature string `json:"signature,omitempty"`
@@ -193,10 +207,12 @@ func (block anthContentBlock) MarshalJSON() ([]byte, error) {
 func (block anthContentBlock) wire() any {
 	type payload anthContentBlock
 	if block.Type == "text" {
+		// A text block is the literal { type, text }, and the conversation's cache breakpoint is assigned to the built block, so cache_control follows text (anthropic-messages.ts:1811, :1815-1819).
 		return struct {
-			payload
-			Text string `json:"text"`
-		}{payload: payload(block), Text: block.Text}
+			Type         string            `json:"type"`
+			Text         string            `json:"text"`
+			CacheControl *anthCacheControl `json:"cache_control,omitempty"`
+		}{block.Type, block.Text, block.CacheControl}
 	}
 	if block.Type != "thinking" {
 		return payload(block)
@@ -422,10 +438,8 @@ func normalizeAnthropicToolCallID(id string) string {
 // anthImageBlock is convertImageBlock: a base64 image block.
 func anthImageBlock(image ImageContent) anthContentBlock {
 	return anthContentBlock{
-		Type: "image",
-		Source: map[string]any{
-			"type": "base64", "media_type": image.MimeType, "data": image.Data,
-		},
+		Type:   "image",
+		Source: &anthImageSource{Type: "base64", MediaType: image.MimeType, Data: image.Data},
 	}
 }
 
@@ -584,9 +598,7 @@ func anthConvertMessagesDetailed(messages []Message, isOAuthToken, allowEmptySig
 							blocks = append(blocks, anthContentBlock{Type: "text", Text: text})
 						}
 					case ImageContent:
-						blocks = append(blocks, anthContentBlock{Type: "image", Source: map[string]any{
-							"type": "base64", "media_type": content.MimeType, "data": content.Data,
-						}})
+						blocks = append(blocks, anthImageBlock(content))
 					}
 				}
 				if len(blocks) > 0 {

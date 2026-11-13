@@ -1218,7 +1218,7 @@ func TestObjectParkedWalksADiamondOnOneHostOnceASharedParkedDependencyPassesARet
 	held := mustHold(t, host, top, jsonObject())
 	untilKind(t, held, RefStateFailed)
 	walk := newRetryWalk(link.RETRY_HOPS)
-	host.(*chordHost).enter(func() { held.binding.target().retry(walk) })
+	host.(*chordHost).enter(func() { held.binding.target().retry(walk, held.binding) })
 	var labels []string
 	for object := range walk.visited {
 		labels = append(labels, object.text)

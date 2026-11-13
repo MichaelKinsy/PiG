@@ -788,3 +788,109 @@ func TestHoldWaitingForAWindowSlotWhoseSlotFreesBetweenTheOldAttemptsSealAndItsE
 		})
 	})
 }
+
+// hold.test.ts: holds across a reload (slice 7b §6) › a reference made during a version-dropping reload's drain joins the
+// old live binding: no fresh admission (decision "References share one wire hold", accepted difference 2)
+func TestHoldsAcrossAReloadAReferenceMadeDuringAVersionDroppingReloadsDrainJoinsTheOldLiveBindingNoFreshAdmission(t *testing.T) {
+	gate, entered := newSignal(), newSignal()
+	s := linked(t, func(h FacetHost) error {
+		return h.Serve(rhShown, func(*delta.JsonObject, data.Principal, Self) (contracts.Implementation, error) {
+			return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+				State: map[string]chord.Watchable[delta.JsonValue]{"label": rhConst("v1"), "n": rhConst(float64(0))},
+				Methods: map[string]contracts.MethodFunction{
+					"bump": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+						entered.fire()
+						gate.await(t, ctx)
+						return float64(1), nil
+					},
+				},
+			}}, nil
+		}, ServeOptions{})
+	}, linkedOptions{})
+	a := refGet(t, s.Client, rhShown, jsonObject())
+	// A running call keeps the old attempt open: it drains after the reload commits.
+	running := rhGo(func() (delta.JsonValue, error) { return a.Call("bump", nil, background) })
+	entered.wait(t)
+	rhReload(t, s.Server, func(h FacetHost) error { return rhServeShownV2(h, "v2", false) })
+	transported(s.Links[0], s.Links[1])
+	if kind := rhRefState(a); kind != RefStateLive {
+		t.Fatalf("a = %v during the drain, want live", kind)
+	}
+	b := rhHoldRef(t, s.Client, rhShown, jsonObject())
+	if kind := rhRefState(b); kind != RefStateLive {
+		t.Fatalf("b = %v at once, want live (it joins the old live binding)", kind)
+	}
+	rhEqual(t, "b's label", memberValue(t, b, "label"), "v1")
+	if got := rhActivityReferences(t, s.Server); got != 1 {
+		t.Fatalf("the server's references = %v, want 1", got)
+	}
+	// A separate consumer's new hold is admitted against the new code: v1 is no longer accepted.
+	other := newHost(t, HostOptions{OnError: func(HostError) {}})
+	mustLoad(t)(other.Load(nil, background))
+	near, far := link.MemoryLinkPair()
+	must(t, s.Server.Accept(near, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background))
+	must(t, other.Connect(far, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, background))
+	fresh := rhHoldRef(t, other, rhShown, jsonObject())
+	rhWaitFor(t, func() bool { return rhRefState(fresh) == RefStateFailed })
+	rhFailedState(t, fresh, data.CodeContractMismatch)
+	gate.fire()
+	rhEqual(t, "the running call", running.must(t), float64(1))
+	// After the drain both references leave the old binding together.
+	rhWaitFor(t, func() bool { return rhRefState(a) == RefStateFailed && rhRefState(b) == RefStateFailed })
+	rhFailedState(t, a, data.CodeContractMismatch)
+	rhFailedState(t, b, data.CodeContractMismatch)
+}
+
+// hold.test.ts: holds across a reload (slice 7b §6) › two references sharing one hold (decision "References share one wire
+// hold") follow a restart, a dropped version and a removal together
+func TestHoldsAcrossAReloadTwoReferencesSharingOneHoldFollowARestartADroppedVersionAndARemovalTogether(t *testing.T) {
+	s := linked(t, func(h FacetHost) error { return rhServeShown(h, "v1", true) }, linkedOptions{})
+	a := refGet(t, s.Client, rhShown, jsonObject())
+	b := refGet(t, s.Client, rhShown, jsonObject())
+	rhLinks(t, s)
+	if got := rhActivityReferences(t, s.Server); got != 1 {
+		t.Fatalf("the server's references = %v, want 1", got)
+	}
+	var states []*statesCollector
+	for _, ref := range []*Reference{a, b} {
+		watch, err := refStateWatch(ref, background)
+		must(t, err)
+		states = append(states, statesOf(t, watch))
+	}
+	seen := func(n int) {
+		t.Helper()
+		rhWaitFor(t, func() bool { return len(states[0].All()) >= n && len(states[1].All()) >= n })
+		rhLinks(t, s)
+	}
+	labels := func(want string) {
+		t.Helper()
+		rhEqual(t, "labels", []any{memberValue(t, a, "label"), memberValue(t, b, "label")}, []any{want, want})
+	}
+	rhReload(t, s.Server, func(h FacetHost) error { return rhServeShown(h, "v2", true) })
+	seen(2)
+	labels("v2")
+	rhReload(t, s.Server, func(h FacetHost) error { return rhServeShownV2(h, "v3", false) })
+	seen(4)
+	_, err := s.Server.Reload(nil, background, ReloadOptions{})
+	must(t, err)
+	rhLinks(t, s)
+	rhReload(t, s.Server, func(h FacetHost) error { return rhServeShown(h, "v4", false) })
+	seen(6)
+	labels("v4")
+	// Each reference sees what one hold of its own would have: the restart, the dropped version, the removal while
+	// failed (no change), the type served again.
+	followed := []string{"loading", "live", "loading", "failed", "loading", "live"}
+	for index, each := range states {
+		kinds := []string{}
+		for _, state := range each.All() {
+			kind, _, _ := strings.Cut(state, ":")
+			kinds = append(kinds, kind)
+		}
+		if !slices.Equal(kinds, followed) {
+			t.Fatalf("states of reference %d = %v, want %v", index, kinds, followed)
+		}
+	}
+	if got := rhActivityReferences(t, s.Server); got != 1 {
+		t.Fatalf("the server's references = %v, want 1", got)
+	}
+}

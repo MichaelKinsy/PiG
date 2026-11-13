@@ -1,0 +1,79 @@
+# Behavior family: tools
+# Surface: the bash tool keeps the end of its output when the last line alone overflows the retained tail.
+#
+# Upstream evidence (Pi 935f0ac0ccfc, #12092, fixes #12062; packages/coding-agent/src/core/tools/output-accumulator.ts, bash.ts): the
+# accumulator keeps a rolling tail of the output and, once it has trimmed it, clips the tail's partial first line. When the last line is longer
+# than the tail and the output ends with its newline, that clip removed everything: the tool answered "(no output)" under
+# "[Showing lines 3-2 of 2 (50.0KB limit) ...]". The fix shows the last 50 KB of that line. The oracle is the pinned Pi 1.5.2 plus the
+# post-release backports (automation/gen/pi-post-release-backports.mjs), 935f0ac0ccfc among them.
+#
+# The faux provider (test-faux-provider.ts and ai/test_faux.go, twins) calls bash with Pi's own test input in shell form,
+#   echo short; head -c 219000 /dev/zero | tr '\0' x; echo END
+# and answers with the tool's result text, so print mode prints exactly what the model was given. A canned answer could not fail.
+# Both conditions are needed to reach the fix: a last line over 204800 bytes (twice the 102400-byte rolling tail, where the trim starts) and
+# a final newline. `head -c 150000 ... | tr` without the newline prints the same text with and without the fix (measured: the scenario stayed
+# unchanged under the reverted port).
+#
+# Pi probe, the oracle alone (2026-11-13; check-oracle: backports 569928a7cdd3, pi bundle dffb7fef14a9):
+#   pi --no-extensions -e test-faux-provider.ts -p --model test-faux/faux-1 --tools bash "Run: bash long last line"
+#   exit 0; stdout is 51197 times "x", "END", a blank line and
+#     [Showing last 50.0KB of line 2 (line is 0B). Full output: /tmp/pi-bash-f1448e82d5545981.log]
+#
+# Print mode, not JSON mode: the number and the boundaries of the tool_execution_update records follow the pipe's read sizes, which are not
+# a contract; the result text is.
+#
+# D153 (docs/parity/DIVERGENCES.md, approved): when the output ends with a newline, Pi's notice counts the bytes after it and reads
+# "(line is 0B)"; PiG names the size of the line it shows, "(line is 213.9KB)". Every input that reaches this fix ends with a newline, so
+# the pair meets D153 by construction. The second replacement below matches only the clause "(line is <size>)" with exactly these two sizes
+# ("Showing last 50.0KB of line 2" and "Full output:" stay compared), and [diverge] requires Pi's text on the Pi side and PiG's on the PiG
+# side: another size on either side, or the same size on both, fails. That makes this pair the tripwire for D153's "Remove when": the day
+# Pi reports the size of the line, the Pi pin fails here.
+#
+# Red proof (2026-11-13): with `&& i+1 < len(tail)` removed from snapshotText (internal/codingagent/tools/output_accumulator.go, PiG's port
+# of the fix; go build -overlay) pig prints "(no output)", a blank line and "[Showing lines 3-2 of 2 (50.0KB limit). Full output: ...]",
+# and the scenario fails on both_contain, both_not_contain and output_equal.
+name = "31-print-bash-long-last-line"
+description = "Print mode returns the end of an over-long last line of bash output, as pi does"
+covers = [
+  "packages/coding-agent/src/core/tools/output-accumulator.ts",
+  "packages/coding-agent/src/core/tools/bash.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_args = ["--no-extensions", "--tools", "bash"]
+pi_args = ["--tools", "bash"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[print]
+prompt = "Run: bash long last line"
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+both_contain = ["xxxxEND\n\n[Showing last 50.0KB of line 2 (line is "]
+both_not_contain = ["Showing lines 3-2", "(no output)", "short"]
+output_equal = true
+runs = 3
+
+# normalize-rationale: the bash tool names its full-output file with 16 random hex digits; only those digits are replaced, the directory and
+# the rest of the notice stay compared.
+[[assert.normalize_replace]]
+pattern = 'pi-bash-[0-9a-f]{16}\.log'
+with = 'pi-bash-ID.log'
+reason = "The full-output file name carries 16 random hex digits (bash.ts); the directory, prefix and extension stay compared."
+
+# normalize-rationale: D153. Pi prints "(line is 0B)", PiG prints "(line is 213.9KB)"; only that clause, with exactly these two sizes, is
+# replaced, and [diverge] below pins each text to its own side.
+[[assert.normalize_replace]]
+pattern = '\(line is (0B|213\.9KB)\)'
+with = '(line is D153)'
+reason = "D153: Pi counts the bytes after the final newline (0B), PiG names the last line's size (213.9KB); [diverge] pins each text to its side."
+
+[diverge]
+pig_contains = ["(line is 213.9KB)"]
+pi_contains = ["(line is 0B)"]
+reason = "D153 SCRUTINIZED:approved. The bash truncation notice names the size of the last line in PiG and the bytes after the final newline in Pi (Pi #10015)."

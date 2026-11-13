@@ -625,17 +625,21 @@ func (m *InteractiveMode) wireSubprocessHostCallbacks() func() {
 			opts.OnError(errors.New("compaction is not available"))
 		}
 	})
-	b.SetHostAction("setModel", func(ctx context.Context, spec string) (bool, error) {
+	b.SetHostAction(subprocess.CallSetModel, func(ctx context.Context, object *ai.Model) (bool, error) {
 		m.invalidatePostLoginSelection()
 		extension.CallInitiated(ctx)
-		if m.opts.ModelBuilder == nil {
-			return false, fmt.Errorf("model switching not configured")
-		}
-		newModel, err := m.opts.ModelBuilder(spec)
+		newModel, err := m.bindExtensionModelObject(object)
 		if err != nil {
 			return false, err
 		}
 		return m.switchExtensionModel(ctx, newModel)
+	})
+	b.SetHostAction(subprocess.CallResolveModel, func(ctx context.Context, spec string) (*ai.Model, error) {
+		extension.CallInitiated(ctx)
+		if m.opts.ModelBuilder == nil {
+			return nil, fmt.Errorf("model switching not configured")
+		}
+		return m.opts.ModelBuilder(spec)
 	})
 	b.SetHostAction("getSessionName", m.extensionSessionName)
 	b.SetHostAction("getSessionID", func() string {
@@ -698,16 +702,12 @@ func (m *InteractiveMode) wireSubprocessHostCallbacks() func() {
 	b.SetHostAction("exec", func(ctx context.Context, command string, args []string, opts *extension.ExecOptions) (extension.ExecResult, error) {
 		return extension.ExecCommand(ctx, m.opts.CWD, command, args, opts)
 	})
-	// agent-session.ts:3419 binds setLabel into the runner's runtime; the host action reaches that one handler. An empty label clears it (upstream label undefined).
-	b.SetHostAction("setLabel", func(entryID, label string) error {
+	// agent-session.ts:3419 binds setLabel into the runner's runtime; the host action reaches that one handler with the label as the extension gave it: a string (an empty one included), null, or none.
+	b.SetHostAction("setLabel", func(entryID string, label *string, null bool) error {
 		if m.currentSession() == nil || m.newRunner == nil || m.newRunner.Runtime().SetLabel == nil {
 			return fmt.Errorf("session not available")
 		}
-		var value *string
-		if label != "" {
-			value = &label
-		}
-		return m.newRunner.Runtime().SetLabel(entryID, value)
+		return m.newRunner.Runtime().ApplyLabel(entryID, label, null)
 	})
 	b.SetHostAction("setSessionName", m.setExtensionSessionName)
 	b.SetHostAction("sendMessage", func(msg extension.CustomMessageRef, opts subprocess.SendMessageOptions) error {

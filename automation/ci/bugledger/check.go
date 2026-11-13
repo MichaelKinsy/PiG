@@ -80,6 +80,11 @@ func verify(root string, generated *Ledger, genJSON []byte, genPage string, stri
 		}
 	}
 	problems = append(problems, checkMovedTests(root)...)
+	settled, err := unsettled(root, committed, generated)
+	if err != nil {
+		return err
+	}
+	problems = append(problems, settled...)
 	page, err := os.ReadFile(filepath.Join(root, pagePath))
 	if err != nil {
 		problems = append(problems, fmt.Sprintf("%s: %v", pagePath, err))
@@ -99,6 +104,86 @@ func verify(root string, generated *Ledger, genJSON []byte, genPage string, stri
 	}
 	slices.Sort(problems)
 	return errors.New("the bug ledger is out of date; run `make bug-ledger` and commit the result:\n  " + strings.Join(problems, "\n  "))
+}
+
+// causeRequiredFrom is the first day whose fixes must have a root cause: an entry whose newest fix commit is dated on or after it, and for which no source gives a cause, fails the check. The fixes before it were written when the ledger took whatever paragraph held a cause word, and their commit messages cannot change; they stay "Not recorded" until their changelog bullet gets a cause marker.
+const causeRequiredFrom = "2026-11-14"
+
+// needsCause reports whether an entry is a fix that must state its cause and has none.
+func needsCause(e Entry) bool {
+	return e.RootCause == "" && len(e.Commits) > 0 && e.Commits[len(e.Commits)-1].Date >= causeRequiredFrom
+}
+
+// askForCause says where the cause of an entry that has none is written.
+func askForCause(e Entry) string {
+	switch {
+	case e.Origin == "commit":
+		return fmt.Sprintf("entry %s has no root cause: the message of commit %s gives none and cannot change. Write the fix as a \"### Fixed\" bullet of a changelog.d fragment that ends with <!-- fix: %s --> <!-- cause: <why it happened> -->, or, if it fixes no product bug, exempt the commit in automation/ci/bugledger/exempt.txt", e.ID, e.Commits[0].Hash, e.Commits[0].Hash)
+	case e.stated.file != "":
+		return fmt.Sprintf("entry %s has no root cause: neither its bullet in %s nor its fix commits say why the bug happened. Add <!-- cause: <why it happened> --> to the bullet %q and run `make bug-ledger`", e.ID, e.stated.file, clip(e.Title, 60))
+	}
+	return fmt.Sprintf("entry %s %q has no root cause: state it where the entry is written and run `make bug-ledger`", e.ID, clip(e.Title, 60))
+}
+
+// unsettled reports what `make bug-ledger` would settle differently from the committed ledger for the bugs both have, because the tree or the rules now say otherwise: a class the rules no longer give the entry's text, a cause or tests the entry's bullet states and the entry lacks, a cause that is a paragraph about how the fix was checked, a commit HEAD does not reach where the fix marker names the commit that replaced it. It also reports the fixes made since causeRequiredFrom for which no cause can be derived. A commit list or a test list that only differs in what the history attributes is not reported: the check tolerates those, so that the commit that adds a fix and the commit that regenerates the ledger need not be the same.
+func unsettled(root string, committed, generated *Ledger) ([]string, error) {
+	moved, err := loadMovedTests(root)
+	if err != nil {
+		return nil, err
+	}
+	written := *generated
+	written.Entries = slices.Clone(generated.Entries)
+	written.Divergences = slices.Clone(generated.Divergences)
+	keepPrior(&written, committed.Entries, root, moved)
+	byID := map[string]Entry{}
+	file := map[string]string{}
+	names := map[string]bool{}
+	for _, e := range written.Entries {
+		byID[e.ID] = e
+		if e.stated.file != "" {
+			file[identity(e)] = e.stated.file
+		}
+		for _, c := range e.Commits {
+			names[c.Hash] = true
+		}
+	}
+	var problems []string
+	for _, c := range committed.Entries {
+		for _, x := range c.Commits {
+			if !generated.reach.has(x.Hash) && !names[x.Hash] {
+				where := ""
+				if f := file[identity(c)]; f != "" {
+					where = " in " + f
+				}
+				problems = append(problems, fmt.Sprintf("entry %s names the commit %s, which HEAD does not reach, and the fix marker of its bullet%s names the commit that replaced it", c.ID, x.Hash, where))
+			}
+		}
+		e, ok := byID[c.ID]
+		if !ok || identity(e) != identity(c) {
+			continue
+		}
+		if e.Impact != c.Impact {
+			problems = append(problems, fmt.Sprintf("entry %s: the user impact is %q and its text now reads as %q", c.ID, c.Impact, e.Impact))
+		}
+		if e.Platform != c.Platform {
+			problems = append(problems, fmt.Sprintf("entry %s: the platform is %q and its text now reads as %q", c.ID, c.Platform, e.Platform))
+		}
+		if e.stated.tests && !slices.Equal(e.Tests, c.Tests) {
+			problems = append(problems, fmt.Sprintf("entry %s does not list the tests the tests marker of its bullet in %s names", c.ID, e.stated.file))
+		}
+		switch {
+		case needsCause(e):
+			problems = append(problems, askForCause(e))
+		case e.RootCause == c.RootCause && e.CauseFrom == c.CauseFrom:
+		case e.stated.cause:
+			problems = append(problems, fmt.Sprintf("entry %s does not have the root cause the cause marker of its bullet in %s states", c.ID, e.stated.file))
+		case c.CauseFrom == "commit" && evidenceHead.MatchString(c.RootCause):
+			problems = append(problems, fmt.Sprintf("entry %s: the root cause is a paragraph about how the fix was checked (%q), not why the bug happened", c.ID, clip(c.RootCause, 60)))
+		case needsCause(c):
+			problems = append(problems, fmt.Sprintf("entry %s has no root cause and its sources now give one", c.ID))
+		}
+	}
+	return problems, nil
 }
 
 func firstCommit(e Entry) string {

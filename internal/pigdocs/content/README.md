@@ -54,6 +54,7 @@ Read the one row that matches the task, then follow only its direct links.
 | run scripts that call tools | [Codemode](codemode.md) | [MCP servers](mcp.md) |
 | route requests to different models | [Virtual models](virtual-models.md) | [Extensions](extensions.md) |
 | change colors | [Themes](themes.md) | [Settings](settings.md) |
+| build a GUI that an extension shows in the terminal and in a web page (views, intents, alternatives, a dialog, a drawing) | [Extension views](ui-views.md) | [Extensions](extensions.md) |
 | build terminal UI for an extension | [TUI components](tui.md) | [Extension API](extension-api.md) |
 | embed PiG in a program | [SDK](sdk.md) | [Extensions](extensions.md) |
 | add a provider or model endpoint | [Custom providers](custom-provider.md) | [Models](models.md) |

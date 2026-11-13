@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/sha256"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -200,5 +201,43 @@ func TestUnchangedSurfacesKeepReviewedEntriesAndResetChangedOnes(t *testing.T) {
 		if entry.Disposition != want[entry.ID] {
 			t.Errorf("%s = %s, want %s", entry.ID, entry.Disposition, want[entry.ID])
 		}
+	}
+}
+
+// A pin move that only shifts a surface in its file (other code above it grew or shrank) keeps the reviewed entry: the start and end
+// lines, the line of a referenced constant and the line of a keybinding declaration are not part of what was reviewed. A change of
+// the source hash, of a facet or of a referenced constant's value still resets the entry.
+func TestUnchangedSurfacesIgnoreMovedLinesOnly(t *testing.T) {
+	before := inputInventory{
+		Keybindings: []keybinding{{ID: "app.a", Description: "A", Line: 10}},
+		Handlers: []inputHandler{
+			{ID: "input:moved", SourceHash: "h1", StartLine: 10, EndLine: 20, Bindings: []string{"app.a"}},
+			{ID: "input:moved-and-edited", SourceHash: "h2", StartLine: 30, EndLine: 40},
+			{ID: "input:moved-new-facet", SourceHash: "h3", StartLine: 50, EndLine: 60, Callbacks: []string{"this.a"}},
+		},
+		Renderers: []renderer{
+			{ID: "render:moved", SourceHash: "r1", StartLine: 5, EndLine: 9, Dependencies: []rendererDependency{{Name: "MAX", Value: "4", Line: 2}}},
+			{ID: "render:constant-changed", SourceHash: "r2", StartLine: 15, EndLine: 19, Dependencies: []rendererDependency{{Name: "MAX", Value: "4", Line: 2}}},
+		},
+	}
+	after := inputInventory{
+		Keybindings: []keybinding{{ID: "app.a", Description: "A", Line: 12}},
+		Handlers: []inputHandler{
+			{ID: "input:moved", SourceHash: "h1", StartLine: 13, EndLine: 23, Bindings: []string{"app.a"}},
+			{ID: "input:moved-and-edited", SourceHash: "h2b", StartLine: 33, EndLine: 44},
+			{ID: "input:moved-new-facet", SourceHash: "h3", StartLine: 53, EndLine: 63, Callbacks: []string{"this.a", "this.b"}},
+		},
+		Renderers: []renderer{
+			{ID: "render:moved", SourceHash: "r1", StartLine: 6, EndLine: 10, Dependencies: []rendererDependency{{Name: "MAX", Value: "4", Line: 3}}},
+			{ID: "render:constant-changed", SourceHash: "r2", StartLine: 16, EndLine: 20, Dependencies: []rendererDependency{{Name: "MAX", Value: "5", Line: 3}}},
+		},
+	}
+	got := unchangedSurfaces(before, after)
+	want := map[string]bool{"input:moved": true, "render:moved": true}
+	if !maps.Equal(got, want) {
+		t.Errorf("carried surfaces = %v, want %v", got, want)
+	}
+	if before.Renderers[0].Dependencies[0].Line != 2 || after.Renderers[0].Dependencies[0].Line != 3 {
+		t.Error("comparing the inventories changed their dependency lines")
 	}
 }

@@ -2925,6 +2925,8 @@ func (h *Host) Reload(ctx context.Context) ([]extension.Extension, error) {
 	h.releaseRetryableQuarantines()
 	// Explicit reload ends inconclusive diagnostic partitions; identified culprits remain quarantined.
 	clear(h.nodeGroups)
+	// pig additive (D614): the reload replaces or removes every loaded extension instance from here on, and a view mount belongs to the instance that made it.
+	h.supersedeViews()
 
 	for _, cfg := range cfgs {
 		if cfg.resolveErr != nil {
@@ -3062,6 +3064,17 @@ func (h *Host) Reload(ctx context.Context) ([]extension.Extension, error) {
 	}
 	rep.Unacknowledged = h.unacknowledgedNotices(unacknowledged)
 	return h.Extensions(), nil
+}
+
+// supersedeViews ends the view mounts of every loaded extension, in name order, before a reload starts their replacements.
+func (h *Host) supersedeViews() {
+	if h.uiBridge == nil {
+		return
+	}
+	h.mu.Lock()
+	names := slices.Sorted(maps.Keys(h.exts))
+	h.mu.Unlock()
+	h.uiBridge.SupersedeViews(names)
 }
 
 func reloadIssue(cfg ExtConfig, err error) string {

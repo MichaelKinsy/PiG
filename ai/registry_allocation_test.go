@@ -12,7 +12,8 @@ func TestListModelsAllocatesOnlyFilteredCatalog(t *testing.T) {
 		t.Run(provider, func(t *testing.T) {
 			want := []GeneratedModel{}
 			for _, model := range GeneratedModels {
-				if provider == "" || model.Provider == provider {
+				// ListModels offers no model of an API this build strips (pig_strip tag); the default build strips none.
+				if (provider == "" || model.Provider == provider) && BuiltAPI(model.API) {
 					want = append(want, model)
 				}
 			}

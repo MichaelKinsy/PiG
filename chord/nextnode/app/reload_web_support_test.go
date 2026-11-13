@@ -200,16 +200,16 @@ func (r *reloadTab) signIn(s started, views ...string) {
 	}
 }
 
-// signInAgain signs in with a new owner browser session (the owner link is single use: a second page needs its own session) and
+// signInAgain signs in with a new owner browser sign-in (the owner link is single use: a second page needs its own sign-in) and
 // waits as signIn does, and until each view (each holding the counter) registered its reference.
 func (r *reloadTab) signInAgain(s started, views ...string) {
 	r.t.Helper()
-	sessions, err := s.app.Host.Get(background, Sessions, delta.NewJsonObject(0), host.GetOptions{})
+	signIns, err := s.app.Host.Get(background, SignIns, delta.NewJsonObject(0), host.GetOptions{})
 	if err != nil {
 		r.t.Fatal(err)
 	}
-	defer sessions.Release()
-	issued, err := sessions.Call("issue", delta.JsonObjectOf("principal", testOwner, "label", "second page", "kind", "browser"), background)
+	defer signIns.Release()
+	issued, err := signIns.Call("issue", delta.JsonObjectOf("principal", testOwner, "label", "second page", "kind", "browser"), background)
 	if err != nil {
 		r.t.Fatal(err)
 	}

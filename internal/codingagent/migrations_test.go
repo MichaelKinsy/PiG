@@ -37,12 +37,12 @@ func requireMigratedOrLeftAtRoot(t *testing.T, agentDir, encodedDir, name, conte
 }
 
 func TestMigrationDocsURLsUseEarendilWorksRepo(t *testing.T) {
-	if !strings.Contains(migrationGuideURL, "github.com/earendil-works/pi") {
-		t.Fatalf("migrationGuideURL = %q, want earendil-works repo", migrationGuideURL)
+	if !strings.Contains(MigrationGuideURL, "github.com/earendil-works/pi") {
+		t.Fatalf("MigrationGuideURL = %q, want earendil-works repo", MigrationGuideURL)
 	}
 	// D2 ("Product name in messages"): the extensions page a PiG warning links is PiG's own.
-	if extensionsDocURL != "https://pi-in-go.dev/docs/latest/extensions" {
-		t.Fatalf("extensionsDocURL = %q, want PiG's extensions page", extensionsDocURL)
+	if ExtensionsDocURL != "https://pi-in-go.dev/docs/latest/extensions" {
+		t.Fatalf("ExtensionsDocURL = %q, want PiG's extensions page", ExtensionsDocURL)
 	}
 }
 

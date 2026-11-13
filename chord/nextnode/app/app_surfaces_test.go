@@ -104,15 +104,15 @@ func surfaceGet(t testing.TB, port int, path string, headers map[string]string) 
 	return reply{status: response.StatusCode, headers: response.Header, body: body}
 }
 
-// ownerHeaders is a bearer header of a new owner session of app.
+// ownerHeaders is a bearer header of a new owner sign-in of app.
 func ownerHeaders(t testing.TB, app *App) map[string]string {
 	t.Helper()
-	sessions, err := app.Host.Get(background, Sessions, delta.NewJsonObject(0), host.GetOptions{})
+	signIns, err := app.Host.Get(background, SignIns, delta.NewJsonObject(0), host.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer sessions.Release()
-	issued, err := sessions.Call("issue", delta.JsonObjectOf("principal", delta.JsonObjectOf("kind", "owner"), "label", "t", "kind", "device"), background)
+	defer signIns.Release()
+	issued, err := signIns.Call("issue", delta.JsonObjectOf("principal", delta.JsonObjectOf("kind", "owner"), "label", "t", "kind", "device"), background)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -208,17 +208,17 @@ func TestWebSurfaceServesThePageWithTheBootstrapTheScriptsAndTheStylesheetsTheFi
 	}
 }
 
-func TestWebSurfaceAnswersTheCurrentBaseHashPubliclyAndRefusesThePageAndFilesToARequestWithoutASession(t *testing.T) {
+func TestWebSurfaceAnswersTheCurrentBaseHashPubliclyAndRefusesThePageAndFilesToARequestWithoutASignIn(t *testing.T) {
 	s := startTestApp(t, nil, withWeb(webEntry(t, webStarted), false))
 	base := surfaceGet(t, s.port, "/_chord/web/base", nil)
 	if base.status != 200 || string(base.body) != `"`+s.app.Web.Base()+`"` || base.headers.Get("Cache-Control") != "no-store" {
 		t.Fatalf("base = %d %s (cache-control %q)", base.status, base.body, base.headers.Get("Cache-Control"))
 	}
 	if status := surfaceGet(t, s.port, "/", nil).status; status != 401 {
-		t.Fatalf("page without a session = %d, want 401", status)
+		t.Fatalf("page without a sign-in = %d, want 401", status)
 	}
 	if status := surfaceGet(t, s.port, "/_chord/web/base."+s.app.Web.Base()+".js", nil).status; status != 401 {
-		t.Fatalf("base script without a session = %d, want 401", status)
+		t.Fatalf("base script without a sign-in = %d, want 401", status)
 	}
 	// One app at a time: the leak check of each app's cleanup would see the other's goroutines.
 	if err := s.app.Close(background); err != nil {

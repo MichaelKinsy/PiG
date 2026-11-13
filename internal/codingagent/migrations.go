@@ -23,9 +23,10 @@ import (
 )
 
 const (
-	migrationGuideURL = "https://github.com/earendil-works/pi/blob/main/packages/coding-agent/CHANGELOG.md#extensions-migration"
+	// MigrationGuideURL and ExtensionsDocURL are the two links the deprecated-extension-directory warning prints (migrations.ts MIGRATION_GUIDE_URL, EXTENSIONS_DOC_URL).
+	MigrationGuideURL = "https://github.com/earendil-works/pi/blob/main/packages/coding-agent/CHANGELOG.md#extensions-migration"
 	// pig divergence (D2): the warning links PiG's own extensions page where Pi links its repository's ("Product name in messages").
-	extensionsDocURL = "https://pi-in-go.dev/docs/latest/extensions"
+	ExtensionsDocURL = "https://pi-in-go.dev/docs/latest/extensions"
 )
 
 // RunMigrations runs the startup migrations, including the persisted keybinding-name rewrite. Auth writes return errors; malformed or unwritable keybindings are left alone, as in upstream runMigrations.

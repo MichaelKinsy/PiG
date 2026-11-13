@@ -38,7 +38,7 @@ func TestExtensionAPIThinkingLevelAndSetModelAcrossSDKs(t *testing.T) {
 				defer mu.Unlock()
 				return level
 			})
-			h.bridge.SetHostAction("setModel", func(_ context.Context, model string) (bool, error) {
+			setModelBySpec(h.bridge, func(_ context.Context, model string) (bool, error) {
 				mu.Lock()
 				defer mu.Unlock()
 				models = append(models, model)

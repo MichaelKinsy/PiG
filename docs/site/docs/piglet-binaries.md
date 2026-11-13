@@ -463,6 +463,15 @@ The member's source is part of the Binary's identity: its tree digest is a `fron
 
 A Piglet's `strip` list (D92, see [Piglets](piglets.md#strip-built-ins)) carries into its Binary. The native builder passes one Go build tag per stripped built-in extension, model API and compile-out feature (`pig_strip_<id>`, for example `pig_strip_mcp` or `pig_strip_node_extensions`), so the Binary does not link that code; the build prints the tags it uses. The baked Piglet keeps the list, so the Binary also disables the runtime-only entries (tools, commands, `themes`, `skills`, `prompt-templates`) at startup. A Piglet cannot compile out an extension runtime its own extensions run on: a Node or Python extension, or a Go or Rust extension the Binary builds at runtime, fails the build with the strip entry named. A Piglet whose strip list removes every built-in tool and `/quit` together does not build either (see [Piglets](piglets.md#strip-built-ins)).
 
+A Binary built without a model API runs without that API's provider. A provider whose built-in models are all on stripped APIs is absent: `amazon-bedrock` without `bedrock-converse-stream`, `google-vertex` without `google-vertex`, `mistral` without `mistral-conversations`. `--list-models`, `/model`, RPC `get_available_models`, `/login` and an extension's model registry do not show it, and the built-in provider collection that an extension's pi-ai `stream` and `complete` calls use, in the extension process and through the provider bridge of its detached helpers, does not hold it. Requests to every other provider run as in Stock PiG. Naming the stripped provider fails with the strip message and exit status 1:
+
+```text
+$ pig-core --model google-vertex/gemini-2.5-flash -p hi
+Error: Provider google-vertex: API google-vertex is stripped from the Piglet "pig-core" (strip.apis: google-vertex); to keep it, remove google-vertex from strip.apis in the Piglet manifest and rebuild
+```
+
+A `--models` pattern that matches only its models prints `Warning: No models match pattern "google-vertex/*"`. A saved default model of a stripped provider (`defaultProvider` and `defaultModel` in settings) is not available, so the session starts on the first available model.
+
 Stripping cuts size and startup work. On darwin/arm64 a Piglet Binary with one fused Go extension is 62.2 MB; stripping MCP, codemode, llama.cpp, tool-search and three provider APIs makes it 54.2 MB, and stripping every binary ID makes it 31.7 MB.
 
 The Binary record lists each stripped ID with its kind and disposition in its `strip` field, so the strip list is part of the Binary's identity and record digest. A Binary without a strip list has no `strip` field. `pig piglet show` prints the list under each Binary in a `Slots` section (`extensions.mcp  stripped(binary)`, `tools.bash  stripped(runtime)`), and `pig piglet show --record <path>` prints it for one record.

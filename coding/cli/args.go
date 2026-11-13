@@ -120,6 +120,9 @@ type Args struct {
 	// TerminalViewClient attaches the TUI as a client of the interactive session's plugin view registry. A Piglet's viewClient: terminal sets it; no command-line flag does.
 	// pig additive (D614).
 	TerminalViewClient bool
+	// ViewEndpoint serves the view carrier of an interactive session on a Unix socket. A Piglet's viewEndpoint: socket sets it; no command-line flag does. Print, JSON and RPC mode do not read it.
+	// pig additive (D614).
+	ViewEndpoint bool
 	// Export exports a session file to HTML and exits.
 	// Mirrors upstream --export (args.ts:106).
 	Export string

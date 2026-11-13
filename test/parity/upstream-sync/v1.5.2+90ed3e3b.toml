@@ -1,0 +1,275 @@
+from = "1.5.2+f7734109"
+to = "1.5.2+90ed3e3b"
+
+[[files]]
+path = "packages/chord/src/contracts/internal.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "47e9d74f9: the barrel also exports joinKey for the host's sharing key. Go imports the package: contracts.JoinKey is exported already (chord/next/contracts/params.go)."
+
+[[files]]
+path = "packages/chord/src/contracts/params.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/contracts/params_test.go#TestJoinKey"]
+rationale = "47e9d74f9: joinKey escapes a part only when it holds `\\` or `|` (no copy for the others); the joined text is unchanged. contracts.JoinKey tests each part with strings.ContainsAny before it replaces; TestJoinKey (the cases of the pin) holds the unchanged result."
+
+[[files]]
+path = "packages/chord/src/data/internal.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "47e9d74f9: the barrel also exports principalJson. Go imports the package: data.PrincipalJson."
+
+[[files]]
+path = "packages/chord/src/data/principal.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/data/principal_test.go#TestPrincipalJson"]
+rationale = "47e9d74f9: principalJson(principal, context): the principal's own JSON as the wire carries it (fields in insertion order), cached per principal object without retaining it, one chord.data.walks per object. data.PrincipalJson marshals with chordjson.Marshal (what chord/next/link writes a principal with) and caches in a principalKeys (weak pointers). Used by the host's sharing key (host/host.ts of the same commit)."
+
+[[files]]
+path = "packages/chord/src/remote/calls.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_calls_test.go#TestCallWindowTakesOutTheWaitingCallsAPredicateMatchesInOrderAndLeavesTheRestQueued", "test:chord/next/host/remote_calls_test.go#TestCallWindowTakesOutCancelledAndRebindingCalls"]
+rationale = "47e9d74f9: CallWindow.removeWhere(matches) takes the waiting calls a predicate matches out, in order; removeHold is built on it. callWindow.removeWhere, removeHold through it."
+
+[[files]]
+path = "packages/chord/src/remote/path.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_path_test.go#TestPathCountsAJoinToAHeldHolderAsARequestWithoutALinkNoneWithOne", "test:chord/next/host/remote_path_test.go#TestPathTellsWhetherItsRouteSuspendedItAPathWithoutARouteNeverIs"]
+rationale = "47e9d74f9: Path takes `suspended` (default: never) and has the `suspended` getter and requested(holder) (a join to a held holder is an `attached` event while the path has no link). newPath(changed, suspended) with nil for Pi's absent argument, path.suspended(), path.requested(holder). Part B2: the path also carries its host's sharing table (path.shared, made by tableOf): Go's form of the host's `WeakMap<Path, Map<string, RemoteObject>>` of host.ts, so a dropped route path takes its table."
+
+[[files]]
+path = "packages/chord/src/remote/replica.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_replica_test.go#TestReplicasCountTheValuesTheyTakeASnapshotsValueEachAdoptionAndRecoveryFailuresAndVanishingsCountNone", "test:chord/next/host/remote_replica_test.go#TestReplicasForkWithTheirStateLastGoodValueAndCountOnAnotherBatchWithAFreshDecoder"]
+rationale = "47e9d74f9: Replica counts the values it takes (`generation`: 1 for a value snapshot, 0 for a failed one, one more per adopt, so per reset to a value and per retirement alone of a value) and fork(batch) copies its state, last good value and count onto another batch with a fresh decoder. replica.generation, replica.fork."
+
+[[files]]
+path = "packages/chord/test/data/principal.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/data/principal_test.go#TestPrincipalJson"]
+rationale = "47e9d74f9 adds describe \"principalJson\" (3 cases: insertion order and equality, one walk per object, dropped principals are not retained): the three subtests of TestPrincipalJson, same inputs."
+
+[[files]]
+path = "packages/chord/test/remote/calls.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_calls_test.go#TestCallWindowTakesOutTheWaitingCallsAPredicateMatchesInOrderAndLeavesTheRestQueued"]
+rationale = "47e9d74f9 adds 1 case (removeWhere with owners a, a, b, a behind a window of 1): the same four calls; the Go test also names the two calls taken out (A2, A3), where Pi's compares their owners."
+
+[[files]]
+path = "packages/chord/test/remote/path.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_path_test.go#TestPathCountsAJoinToAHeldHolderAsARequestWithoutALinkNoneWithOne", "test:chord/next/host/remote_path_test.go#TestPathTellsWhetherItsRouteSuspendedItAPathWithoutARouteNeverIs"]
+rationale = "47e9d74f9 adds 2 cases (requested without and with a link; suspended with and without a route's function): one Go test each, same inputs."
+
+[[files]]
+path = "packages/chord/test/remote/replica.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_replica_test.go#TestReplicasCountTheValuesTheyTakeASnapshotsValueEachAdoptionAndRecoveryFailuresAndVanishingsCountNone", "test:chord/next/host/remote_replica_test.go#TestReplicasForkWithTheirStateLastGoodValueAndCountOnAnotherBatchWithAFreshDecoder"]
+rationale = "47e9d74f9 adds 2 cases (the count of values; the fork): one Go test each, same inputs and counts (0, 1, 2, 4; fork 2 then 3, original 2)."
+
+[[files]]
+path = "packages/chord/src/host/object.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/host_object_test.go#TestObjectCallsForAReferenceRunAsTheReferencesBindingsCallerALocalObjectKeepsNoReplicaCounts"]
+rationale = "47e9d74f9: call(method, args, context, binding) calls callAs with the binding's caller and its contract's version (callAs is the former call, with the parent span); generationOf() is undefined (members on this host are no replicas). 90ed3e3b1 puts the context last, Target.call(method, args, binding, context). chordObject.call(method, args, b, ctx, parent), callAs, generationOf (false). Go forced difference: retry keeps one signature for the interface, retry(walk, b), with nil where no reference makes the step (a `retry` message, the object's own retry); Pi's local object takes the walk alone."
+
+[[files]]
+path = "packages/chord/src/host/reference-source.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/host_reference_source_test.go#TestReferenceSourceUnseenStartsAndOpensWatchesAsOnAFreshFailedSnapshotTheFailureNoLastValueFromBefore", "test:chord/next/host/host_reference_source_test.go#TestReferenceSourceUnseenHeldOrVanishedKeepsNoLastValueFromBeforeEither", "test:chord/next/host/host_reference_source_test.go#TestReferenceSourceUnseenOnceSeenStartsAtTheMembersLastValueAndStaysSeen"]
+rationale = "47e9d74f9: unseen(seen) and #startOf: while its reference has not seen the member, a failure of the member it follows shows no last value (start, openWatch, hold, vanish); seen once, it stays seen. referenceSource.unseen, startOf (Start and keep read through it)."
+
+[[files]]
+path = "packages/chord/src/remote/hold.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_provider_test.go#TestProviderCallsArrivingOnALink"]
+rationale = "47e9d74f9: Hold.call calls object.callAs (the hold's caller and version, the call's parent span), the renamed ChordObject.call. hold.call calls chordObject.callAs; no behaviour change (the calls arriving on a link run as before)."
+
+[[files]]
+path = "packages/chord/test/host/object.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/host_object_test.go#TestObjectCallsForAReferenceRunAsTheReferencesBindingsCallerALocalObjectKeepsNoReplicaCounts"]
+rationale = "47e9d74f9 adds 1 case (calls for a reference run as the binding's caller; a local object keeps no replica counts): the same contract app.who on a host with the owner principal, the call answers owner, generationOf has no count."
+
+[[files]]
+path = "packages/chord/test/host/reference-source.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/host_reference_source_test.go#TestReferenceSourceUnseenStartsAndOpensWatchesAsOnAFreshFailedSnapshotTheFailureNoLastValueFromBefore", "test:chord/next/host/host_reference_source_test.go#TestReferenceSourceUnseenHeldOrVanishedKeepsNoLastValueFromBeforeEither", "test:chord/next/host/host_reference_source_test.go#TestReferenceSourceUnseenOnceSeenStartsAtTheMembersLastValueAndStaysSeen"]
+rationale = "47e9d74f9 adds describe \"a member its reference has not seen\" (3 cases over a replica of 7 failed with `x threw`): one Go test each, same inputs."
+
+[[files]]
+path = "packages/chord/src/host/host.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/host_host_test.go#TestBindRemoteReferencesSharingOneWireHoldOneHoldPerTypeVersionFingerprintParamsAndPlacedAddressEscapedPartsNeverCollide", "test:chord/next/host/host_host_test.go#TestBindRemoteReferencesSharingOneWireHoldOneHoldPerCallerEqualPrincipalJSONSharesAnotherFieldOrderAnotherPrincipalOrNoneHoldsAnew", "test:chord/next/host/host_host_test.go#TestBindRemoteReferencesSharingOneWireHoldOneHoldPerCallersIncarnationCtxGetForTwoCallsOfOneTabSharesForAnotherTabsHoldsAnew", "test:chord/next/host/host_host_test.go#TestBindRemoteReferencesSharingOneWireHoldSelfGetReferencesHoldOnTheirOwnWhileActivatingOnceLiveAndOnAReHold", "test:chord/next/host/host_host_test.go#TestBindRemoteReferencesSharingOneWireHoldARelayForwardsTwoDownstreamHoldsOfTheSameKeyAsTwoUpstreamHolds", "test:chord/next/host/host_host_test.go#TestBindRemoteReferencesSharingOneWireHoldRevocationEndsEveryReferenceSharingAHoldAndTheNextOneHoldsAnew", "test:chord/next/host/host_host_test.go#TestBindRemoteTheSharingTableIsEmptyAfterMakeAndReleaseRoundsAReferenceMadeInTheTurnOfTheLastReleaseHoldsAnew"]
+rationale = "47e9d74f9: bind places a remote reference through #bindRemote: the object this host holds for its sharing key (#sharingKey: type, version, fingerprint, params key, placed address, the caller's principal JSON and incarnation, each part escaped) is joined with no message (a join to a hold whose route failed to resolve is a new request, path.requested; a joining traced getter links to the open hold span), else a new object is stored and bound BEFORE it attaches; self.get references, a suspended path and a key whose object is failed waiting over a link hold on their own. chordHost.bindRemote / sharingKey. Forced difference: Pi's `#shared` is a WeakMap by path; Go has none, so the table is a field of its path (path.shared); entries are taken out by their object in both (the PiG-own table case: no entry and no holder after make / release rounds)."
+
+[[files]]
+path = "packages/chord/src/host/reference.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/host_reference_test.go#TestABindingMovedByARetryAloneKeepsItsReferenceMemberHandlesStateWatchAndMemberWatchTheSiblingItLeavesStaysFailed", "test:chord/next/host/remote_remote_object_shared_test.go#TestReferencesSharingOneWireHoldSharing"]
+rationale = "47e9d74f9: Binding gains #unseen (the members it has not seen since it joined a bound shared object, with their replicas' counts), bind -> #boundTo, joined(unseen), transfer(target) (a retry alone keeps the reference, its watches, calls and last values), #seen(member) (seen once the replica's count passes the recorded one), the member source told `unseen` when made; retry passes the binding. binding.unseen / boundTo / joined / transfer / seen. Target.call's order and generationOf are part B1's. 90ed3e3b1 changes only that order."
+
+[[files]]
+path = "packages/chord/src/host/route.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/host_route_test.go#TestRoutesAndReferencesSharingOneWireHoldASuspendedAddressAHeldReferenceStaysLoadingANewOneHoldsOnItsOwnAndFailsUnavailable"]
+rationale = "47e9d74f9: a routed address's Path is made with `() => made.suspended`, so a new reference on a suspended address holds on its own. route.path: newPath(changed, func() bool { return made.suspended })."
+
+[[files]]
+path = "packages/chord/src/remote/consumer.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_consumer_test.go#TestCancellingOneReferencesCallsOnASharedHoldAFiniteWindowTheReleasedOnesQueuedCallLeavesUnsentItsSentOneIsAbortedTheOthersQueuedCallGoesOut", "test:chord/next/host/remote_consumer_test.go#TestCancellingOneReferencesCallsOnASharedHoldSeveralSentCallsAreAbortedNewestFirstAReplyCrossingTheReleaseIsIgnoredTheLastReleaseSendsRelease"]
+rationale = "47e9d74f9: OutgoingCall.owner (the binding that made it, never on the wire), call(hold, method, data, args, owner, context), cancelCalls(hold, owner, label): the owner's waiting calls leave the window unsent, its sent calls are aborted newest id first, then their slots free, then they reject `released` (waiting in queue order, then sent newest first); no calls: nothing. consumerSide.call / cancelCalls, outgoingCall.owner. The rejection order is asserted by a PiG-own check in the first case (Pi awaits them together)."
+
+[[files]]
+path = "packages/chord/src/remote/remote-object.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_remote_object_shared_test.go#TestReferencesSharingOneWireHoldSharing", "test:chord/next/host/remote_remote_object_shared_test.go#TestReferencesSharingOneWireHoldStateChanges", "test:chord/next/host/remote_remote_object_shared_test.go#TestRemoteObjectMoveTellsItsBindingsInTheOrderTheyJoined", "test:chord/next/host/host_host_test.go#TestBindRemoteTheSharingTableIsEmptyAfterMakeAndReleaseRoundsAReferenceMadeInTheTurnOfTheLastReleaseHoldsAnew"]
+rationale = "47e9d74f9: one RemoteObject per sharing key: #bindings (join order) in place of the one binding, #unindex / #unpublish (out of the table at the last unhold, tooLarge, revoke, lost, #end and a broken failure), hold (a join to a bound object is told its unseen members), #unseen, unhold (a non-last binding only cancels its own calls; the last unpublishes first, then release, then end), unplaced, retry(walk, binding) -> #retryAlone (a private object with forked replicas and new event nodes; the old one ends with its last binding), #place without the move to loading, lost (bindings copied, each ended once), #move (all retargets in one batch, then moved in join order, one released meanwhile skipped); the chord.hold span is a root on the host's adapter linked to its first getter, #holdTrace none without a first carrier. 90ed3e3b1: call's parameter order (part B1). remoteObject.bindings / unindex / unpublish / unseen / retryAlone / move. The cases of its test file still to port are named in that file's row."
+
+[[files]]
+path = "packages/chord/test/host/host.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/host_host_test.go#TestBindRemoteReferencesSharingOneWireHoldOneHoldPerTypeVersionFingerprintParamsAndPlacedAddressEscapedPartsNeverCollide", "test:chord/next/host/host_host_test.go#TestBindRemoteReferencesSharingOneWireHoldOneHoldPerCallerEqualPrincipalJSONSharesAnotherFieldOrderAnotherPrincipalOrNoneHoldsAnew", "test:chord/next/host/host_host_test.go#TestBindRemoteReferencesSharingOneWireHoldOneHoldPerCallersIncarnationCtxGetForTwoCallsOfOneTabSharesForAnotherTabsHoldsAnew", "test:chord/next/host/host_host_test.go#TestBindRemoteReferencesSharingOneWireHoldSelfGetReferencesHoldOnTheirOwnWhileActivatingOnceLiveAndOnAReHold", "test:chord/next/host/host_host_test.go#TestBindRemoteReferencesSharingOneWireHoldARelayForwardsTwoDownstreamHoldsOfTheSameKeyAsTwoUpstreamHolds", "test:chord/next/host/host_host_test.go#TestBindRemoteReferencesSharingOneWireHoldRevocationEndsEveryReferenceSharingAHoldAndTheNextOneHoldsAnew"]
+rationale = "47e9d74f9 adds describe 'bind: remote references sharing one wire hold' (6 cases): one Go test each, same inputs and counts. Go forms: where Pi's turn order has every getter bound, the test waits for the bindings (remoteBindings); the self.get case's dependent re-exposes the remote member (Expose) where Pi derives it."
+
+[[files]]
+path = "packages/chord/test/host/route.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/host_route_test.go#TestRoutesAndReferencesSharingOneWireHoldAReferenceJoiningAHoldWhoseResolveFailedResolvesTheAddressAgainBothLiveOnOneHold", "test:chord/next/host/host_route_test.go#TestRoutesAndReferencesSharingOneWireHoldASuspendedAddressAHeldReferenceStaysLoadingANewOneHoldsOnItsOwnAndFailsUnavailable", "test:chord/next/host/host_route_test.go#TestRoutesAndReferencesSharingOneWireHoldAResolverReEnteringForTheSameKeyFindsTheStoredObjectOneHoldItsOwnReferenceReleasedThereIsNotTheLast", "test:chord/next/host/host_route_test.go#TestRoutesAndReferencesSharingOneWireHoldAResolverThatFailsAfterReEnteringFailsBothReferencesWaitingTheNextRequestResolvesAgain", "test:chord/next/host/host_route_test.go#TestRoutesAndReferencesSharingOneWireHoldTooLargePartA1RetryingAloneReEntersTheResolverWhichFindsCsNewEntryA2AndCReleaseInAnyOrder"]
+rationale = "47e9d74f9 adds describe 'routes and references sharing one wire hold' (5 cases): one Go test each; the resolver re-enters the server's hold inside the section the route lends it, as Pi's synchronous resolver does."
+
+[[files]]
+path = "packages/chord/test/host/reference.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/host_reference_test.go#TestABindingMovedByARetryAloneKeepsItsReferenceMemberHandlesStateWatchAndMemberWatchTheSiblingItLeavesStaysFailed"]
+rationale = "47e9d74f9 adds describe 'a binding moved by a retry alone' (1 case): same part limit (64), same oversized ops, same states (failed, loading, live) and count calls."
+
+[[files]]
+path = "packages/chord/test/remote/hold.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_hold_reload_test.go#TestHoldsAcrossAReloadAReferenceMadeDuringAVersionDroppingReloadsDrainJoinsTheOldLiveBindingNoFreshAdmission", "test:chord/next/host/remote_hold_reload_test.go#TestHoldsAcrossAReloadTwoReferencesSharingOneHoldFollowARestartADroppedVersionAndARemovalTogether"]
+rationale = "47e9d74f9 adds 1 case (two references sharing one hold follow a restart, a dropped version and a removal together), 90ed3e3b1 adds 1 (a reference made during a version-dropping reload's drain joins the old live binding: no fresh admission): one Go test each."
+
+[[files]]
+path = "packages/chord/test/remote/consumer.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_consumer_test.go#TestCancellingOneReferencesCallsOnASharedHoldAFiniteWindowTheReleasedOnesQueuedCallLeavesUnsentItsSentOneIsAbortedTheOthersQueuedCallGoesOut", "test:chord/next/host/remote_consumer_test.go#TestCancellingOneReferencesCallsOnASharedHoldSeveralSentCallsAreAbortedNewestFirstAReplyCrossingTheReleaseIsIgnoredTheLastReleaseSendsRelease"]
+rationale = "47e9d74f9 adds describe 'cancelling one reference's calls on a shared hold' (2 cases; call() gains its owner): one Go test each, same windows (1 and 3), same wire lists. One existing case is adapted: the old-work back-call of the dependent on the server (backCall, not raised) has a condition barrier before the gate (no open old attempt), because Go's memory links deliver per link and not through one process-wide queue."
+
+[[files]]
+path = "packages/chord/test/remote/remote-object.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_remote_object_test.go#TestRemoteObjectHoldOverTheParentLink", "test:chord/next/host/remote_remote_object_shared_test.go#TestReferencesSharingOneWireHoldSharing", "test:chord/next/host/remote_remote_object_shared_test.go#TestReferencesSharingOneWireHoldStateChanges", "test:chord/next/host/remote_remote_object_shared_retry_test.go#TestReferencesSharingOneWireHoldRetryAlone", "test:chord/next/host/remote_remote_object_shared_seen_test.go#TestReferencesSharingOneWireHoldSeenMembers", "test:chord/next/host/remote_remote_object_shared_differences_test.go#TestReferencesSharingOneWireHoldAcceptedDifferences", "test:chord/next/host/remote_remote_object_shared_differences_test.go#TestRemoteObjectWatchesGetTheHoldsCommitsInCommitOrder", "test:chord/next/host/remote_remote_object_shared_events_test.go#TestReferencesSharingOneWireHoldEvents", "test:chord/next/host/remote_remote_object_shared_cancellation_test.go#TestReferencesSharingOneWireHoldCancellation", "test:chord/next/host/remote_remote_object_shared_admission_test.go#TestReferencesSharingOneWireHoldAdmission", "test:chord/next/host/remote_remote_object_shared_cost_test.go#TestReferencesSharingOneWireHoldCost", "test:chord/next/host/remote_remote_object_shared_telemetry_test.go#TestReferencesSharingOneWireHoldTelemetry", "test:chord/next/host/remote_remote_object_shared_gc_test.go#TestReferencesSharingOneWireHoldGC"]
+rationale = "47e9d74f9 retitles one case (two references from one host with one key share one hold; another key is another hold: the subtest of TestRemoteObjectHoldOverTheParentLink, changed with it) and adds 36, 90ed3e3b1 adds 4 (40 new declarations, 42 at run time). ALL 40 RUN, one Go subtest per Pi case under Pi's title, one Go test per Pi describe of the block 'references sharing one wire hold': sharing 5 and state changes 6 (remote_remote_object_shared_test.go; the fan-out case compares each batch's callbacks as a set, the order of the object's own calls is PiG's TestRemoteObjectMoveTellsItsBindingsInTheOrderTheyJoined), too_large/part and the retry alone 2, seen members 5, the accepted differences 5, events 5 (7 subtests: the 90ed case 'ends every reference sharing the hold once' runs for gone, the host's close and revocation; 'once' is a count: each binding is told one end and no state on the way), cancellation 3, admission 1, cost 1, telemetry 2, GC 5 (weak pointers and nexttest.ExpectCollected). One order differs: 'watch callbacks of one shared commit run in subscription order, not hold order (accepted difference 9)': Go delivers each watch on its own task; Pi's subscription order between two references is not defined here. The case keeps Pi's inputs and expects the commit at b's and a's callbacks once each; PiG's TestRemoteObjectWatchesGetTheHoldsCommitsInCommitOrder pins the order Go defines (each watch gets the hold's commits in commit order). Event listeners keep Pi's order (entry order, then subscription order) and the cases compare Pi's lists as they are. The cancellation case that names its two handlers by their start order starts A's call before B's is made (Go starts handlers off the loop) and expects Pi's result for each. Go forms: `await delivered()` is rhSync (plus the host's event flush for events), one synchronous Pi sequence is one hostTurn. The GC case 'a released joiner with queued calls ...' found a retention in part B2's callWindow.removeWhere (a zero-length slice of the old queue array kept the calls taken out): fixed in remote_calls.go with it, and drain clears the slot it sends (PiG's TestCallWindowKeepsNoCallItSent)."
+
+[[files]]
+path = "packages/chord/test/telemetry.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/host_telemetry_test.go#TestReHoldsCarryTheCarrierOnlyOnAReferencesFirstHoldAReHoldAfterAReconnectIsAFreshRootLinkedToIt"]
+rationale = "47e9d74f9 changes one case: its title (an object's first hold, a root linked to its getter: shared work) and its expectation: the four holds' parent ids are all null (was: the first under the page load) and the first hold has one link, to the page load. The Go test keeps its name (the derived interface mapping names it as evidence), carries Pi's new title in its comment, and expects the same."
+
+[[files]]
+path = "packages/chord/test/telemetry-ingest/sender.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageSenderSendsItsSpansWithoutMetricsOnceBoundUntilThenTheyWaitInTheRecorder", "test:chord/next/telemetryingest/ingest_upstream_test.go#TestWorkerSenderSendsSpansAndMetricsToTheWorkerVariant"]
+rationale = "47e9d74f9 changes two expectations: the sender's own hold is shared work, a chord.hold root on the sender's adapter, sent with the rest: the page batch's spans are [page.click, chord.hold] (was [page.click]), the worker batch's [chord.hold, worker.job] (was [worker.job])."
+
+[[files]]
+path = "packages/chord/test/bench/shared-holds.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:chord/next/host/bench_shared_holds_test.go#BenchmarkSharedHolds", "test:chord/next/host/bench_shared_holds_test.go#TestBenchSharedHoldsServerBytesAndEncodesPerStep"]
+rationale = "47e9d74f9 adds the shared-holds benchmark (a first reference got and released, a joining reference got and released, a commit to ten references of one object, the heap per reference of 1,000 held), 'Run by hand from packages/chord (not in CI)'; 90ed3e3b1 changes what its heap column is (observed heap growth per step, heapUsed after a burst minus before it, not allocated bytes) and its header. BenchmarkSharedHolds has one sub-benchmark per row of the script's table, as the sibling benches (bench_events_test.go); time and heap are Go's own (b.ReportAllocs reports allocated bytes, which is not Pi's heap growth: the columns are not comparable and no number of Pi's is asserted for them). The values the script prints that do not depend on the machine are checked on every run by TestBenchSharedHoldsServerBytesAndEncodesPerStep with Pi's recorded results (docs/benchmarks.md at 90ed3e3b1, 'Shared holds (2026-11-13)', column After) over the script's own 14,200 steps per row: the server's bytes per step 10 B (first reference), 0 B (a join: not one byte over all the steps, as Pi's text 'sends nothing' says), 23 B and 1 encode per commit to ten references, each commit one `state` message with one hold entry."
+
+[[files]]
+path = "packages/chord/test/examples/68-shared-holds.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:chord/next/host/host_example_68_test.go#TestExample68SharedHolds"]
+rationale = "47e9d74f9: the shared-holds example (a page with three references to one remote counter, the binary codec, the page's link counting the kinds it sends, the server's adapter counting chord.link.encodes). The script prints four lines and asserts nothing; the twin runs the same inputs and turns each printed value into a check with the value Pi's host prints: holds sent 1 and the server's references 1; counts [1, 1, 1] and 1 encode for the commit; releases after two 0; releases after three 1 and holds sent 2. One wait differs: Pi sleeps 10 ms for the commit to reach the page; the twin watches the three counts and waits for the three values (bounded by exReceive's 10 s), then lets the server's turn end before it reads the encodes."
+
+[[files]]
+path = "packages/chord/docs/benchmarks.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "47e9d74f9, 90ed3e3b1: the 'Shared holds (2026-11-13)' results of Pi's test/bench/shared-holds.ts (the bench is ported: chord/next/host/bench_shared_holds_test.go; the document's machine-independent values, the server's bytes per step and the one encode and one hold entry of a commit to ten references, are checked there). chord/README.md: Pi's chord design documents are not ported; the Go packages follow them."
+
+[[files]]
+path = "packages/chord/docs/decisions.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "47e9d74f9: the decision 'References share one wire hold'; 90ed3e3b1: its review fixes. The Go host carries the decision (chord/next/host/host_host.go, remote_remote_object.go, remote_consumer.go and their file comments). chord/README.md: Pi's chord design documents are not ported; the Go packages follow them."
+
+[[files]]
+path = "packages/chord/docs/design.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "47e9d74f9, 90ed3e3b1: the design text of references sharing one wire hold (the sharing key, the table, releases, cancellation of one reference's calls). chord/README.md: Pi's chord design documents are not ported; the Go packages follow them."
+
+[[files]]
+path = "packages/chord/docs/events/spec.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "47e9d74f9, 90ed3e3b1: the events specification restated for references that share a hold. chord/README.md: Pi's chord design documents are not ported; the Go packages follow them."
+
+[[files]]
+path = "packages/chord/docs/shared-holds/design.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "47e9d74f9, 90ed3e3b1: the design document of shared holds brought to what was built and reviewed. chord/README.md: Pi's chord design documents are not ported; the Go packages follow them."
+
+[[files]]
+path = "packages/chord/docs/slices.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "47e9d74f9: one line, the slice of shared holds. chord/README.md: Pi's chord design documents are not ported; the Go packages follow them."
+
+[[files]]
+path = "packages/chord/src/remote/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "47e9d74f9, 90ed3e3b1: documentation of the shared hold (one hold per key, the bindings of a remote object, the cancellation of one reference's calls); the Go file comments carry it (chord/next/host/remote_remote_object.go, remote_consumer.go)."
+
+[[files]]
+path = "packages/chord/docs/tutorial/book.md"
+change = "modified"
+disposition = "ported"
+evidence = ["test:examples/chord-todo/tutorial_test.go#TestTheTutorialsStepsPrintWhatTheBookShows"]
+rationale = "47e9d74f9: the trap 'a trace starts where a span starts' says the panel's hold is shared work, a chord.hold root of its own linked to the getter's span, and step 11's trace of the request loses its chord.hold line. The twin docs/chord/tutorial.md changes the same way, with what examples/chord-todo prints on the Go host that shares holds: the chord.hold line and the worker's chord.relay of that hold leave the trace of the request and of the refused request (PiG's server relays to a Node worker, so the hold had a relay span under it), and the three chord.http traces of the list count 6 spans (were 8). The test that holds 'the shown output is what the steps print' was red on the Go host of part B2 until the page changed."

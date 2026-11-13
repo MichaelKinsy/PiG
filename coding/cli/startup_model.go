@@ -162,7 +162,7 @@ type startupModelOptions struct {
 	APIKey string
 }
 
-// startupModel keeps immediate scope warnings separate from deferred model warnings and errors. Selection and fallback continue after an explicit-model diagnostic so metadata can still use the runtime.
+// startupModel keeps the scope warnings, which the runtime's diagnostics list before the session option diagnostics, separate from the model warnings and errors. Selection and fallback continue after an explicit-model diagnostic so metadata can still use the runtime.
 type startupModel struct {
 	Model                *ai.Model
 	Thinking             string

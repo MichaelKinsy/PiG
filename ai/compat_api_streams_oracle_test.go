@@ -89,6 +89,10 @@ func TestCompatAPIStreamsMatchPi(t *testing.T) {
 		"mistralConversationsApi": {MistralConversationsAPI, APIMistralConversations, "mistral", ""},
 	}
 	for name, c := range apis {
+		if !BuiltAPI(c.api) {
+			// Pi has no build without the API, so a build with its pig_strip tag compares the served request and message of the kept APIs only; the setup comparison below expects the strip message for this one.
+			continue
+		}
 		t.Run(name, func(t *testing.T) {
 			var seen *compatAPIOracleRequest
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -161,8 +165,13 @@ func TestCompatAPIStreamsMatchPi(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got := compatAPIResult(events.Result()); got != pi.Setup[name] {
-				t.Errorf("got %+v, Pi %+v", got, pi.Setup[name])
+			want := pi.Setup[name]
+			if !BuiltAPI(c.api) {
+				// A build with this API's pig_strip tag reports the strip where Pi reports the missing credential.
+				want.ErrorMessage = strippedAPIMessage(c.provider, c.api)
+			}
+			if got := compatAPIResult(events.Result()); got != want {
+				t.Errorf("got %+v, want %+v", got, want)
 			}
 		})
 	}
@@ -179,7 +188,12 @@ func TestCompatAPIStreamsMatchPi(t *testing.T) {
 			t.Fatal(err)
 		}
 		got := compatAPIResult(events.Result())
-		if got.StopReason != "error" || !strings.Contains(got.ErrorMessage, "Bedrock Runtime") || got.API != "bedrock-converse-stream" || got.Provider != "amazon-bedrock" || got.Model != "m1" {
+		wantText := "Bedrock Runtime"
+		if !BuiltAPI(APIBedrockConverseStream) {
+			// A build with pig_strip_bedrock_converse_stream reports the strip in place of the SDK's credential error.
+			wantText = strippedAPIMessage("amazon-bedrock", APIBedrockConverseStream)
+		}
+		if got.StopReason != "error" || !strings.Contains(got.ErrorMessage, wantText) || got.API != "bedrock-converse-stream" || got.Provider != "amazon-bedrock" || got.Model != "m1" {
 			t.Errorf("got %+v", got)
 		}
 	})

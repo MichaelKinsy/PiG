@@ -1,6 +1,6 @@
 package coding
 
-// Ports packages/coding-agent/src/core/model-resolver.ts (resolveCliModel, resolveModelScopeWithDiagnostics, resolveModelScope).
+// Ports packages/coding-agent/src/core/model-resolver.ts (resolveCliModel, resolveModelScopeWithDiagnostics).
 
 import (
 	"context"
@@ -111,14 +111,4 @@ func ResolveModelScopeWithDiagnostics(ctx context.Context, patterns []string, ru
 		return ResolveModelScopeResult{}, err
 	}
 	return ResolveModelScopeResult{ScopedModels: scopedModelsOf(resolved.ScopedModels), Diagnostics: resolved.Diagnostics}, nil
-}
-
-// ResolveModelScope is [ResolveModelScopeWithDiagnostics] that writes each diagnostic to stderr as a yellow "Warning: " line and returns only the scope.
-// upstream: model-resolver.ts:372-382 (resolveModelScope)
-func ResolveModelScope(ctx context.Context, patterns []string, runtime *ModelRuntime) ([]ScopedModel, error) {
-	scoped, err := icodingagent.ResolveModelScope(ctx, patterns, resolverRuntime{runtime})
-	if err != nil {
-		return nil, err
-	}
-	return scopedModelsOf(scoped), nil
 }

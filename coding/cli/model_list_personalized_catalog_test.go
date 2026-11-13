@@ -38,7 +38,7 @@ func TestPrintModelList_PersonalizedOpenRouterCatalogReplacesBundledModels(t *te
 	if result := registry.RefreshModelRuntime(t.Context(), ai.ModelsRefreshOptions{AllowNetwork: new(false)}); len(result.Errors) != 0 {
 		t.Fatalf("offline restore errors = %v", result.Errors)
 	}
-	out := captureStdout(func() { printModelList(registry, "") })
+	out := captureStdout(func() { printModelTable(registry, "") })
 
 	if !strings.Contains(out, "vendor/personal-only") {
 		t.Fatalf("--list-models omits the saved personalized model:\n%s", out)

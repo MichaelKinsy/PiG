@@ -9,7 +9,16 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/nodepath"
 )
+
+// windowsRelativize is the relativize of a Windows find call: find.ts's relativizeFindResultPath with path.win32.
+func windowsRelativize(searchPath string) func(string) string {
+	return func(line string) string {
+		return relativizeFindResultPathFor(line, searchPath, true, nodepath.Process())
+	}
+}
 
 // Pi v1.5.1 463b8f89 (#11972, fixes #9262) 3302-find-path-glob.test.ts: the cases beyond the shared fixture that run on every platform.
 func TestFindPathPatternsPi151(t *testing.T) {
@@ -81,6 +90,7 @@ func TestFindFdInvocationWindowsPathPattern(t *testing.T) {
 		`C:\work\proj\Src\Upper.TS`,
 		`C:\work\proj\src\+(a|b).ts`,
 		`C:\work\proj\src\a.ts`,
+		`C:\work\proj\pkg\src\d.ts`,
 	}
 	for _, tc := range []struct {
 		pattern string
@@ -104,6 +114,13 @@ func TestFindFdInvocationWindowsPathPattern(t *testing.T) {
 		{`src/upper.ts`, []string{paths[7]}},
 		{`Src/Upper.TS`, []string{paths[7]}},
 		{`Src/upper.ts`, nil},
+		// Pi 282b01c80 (#12066): a relative pattern is anchored at the search path; a leading `**/` matches at any depth, and an absolute
+		// pattern is matched against the absolute path.
+		{`pkg/src/*.ts`, []string{paths[10]}},
+		{`**/src/d.ts`, []string{paths[10]}},
+		{`proj/src/a.ts`, nil},
+		{`C:/work/proj/pkg/src/*.ts`, []string{paths[10]}},
+		{`C:\work\proj\pkg\src\*.ts`, []string{paths[10]}},
 	} {
 		inv, err := newFindFdInvocation(tc.pattern, search, 1000, true, true)
 		if err != nil {
@@ -116,9 +133,16 @@ func TestFindFdInvocationWindowsPathPattern(t *testing.T) {
 		if !slices.Equal(inv.args, wantArgs) {
 			t.Fatalf("%q: args = %q, want %q", tc.pattern, inv.args, wantArgs)
 		}
+		if want := !strings.HasPrefix(tc.pattern, "C:"); inv.matchRelative != want {
+			t.Fatalf("%q: matchRelative = %v, want %v", tc.pattern, inv.matchRelative, want)
+		}
 		var got []string
 		for _, path := range paths {
-			if inv.pathMatcher.Match(path) {
+			candidate := path
+			if inv.matchRelative {
+				candidate = relativizeFindResultPathFor(path, search, true, nodepath.Process())
+			}
+			if inv.pathMatcher.Match(candidate) {
 				got = append(got, path)
 			}
 		}
@@ -142,9 +166,11 @@ func TestFindFdInvocationFdGlobArguments(t *testing.T) {
 		{"basename on POSIX", "*.ts", false, true, []string{"--color=never", "--hidden", "--glob", "--max-results", "1001", "--", "*.ts", search}},
 		{"basename on Windows", "*.ts", true, true, []string{"--color=never", "--hidden", "--glob", "--max-results", "1001", "--", "*.ts", search}},
 		{"outside a repo", "*.ts", false, false, []string{"--color=never", "--hidden", "--no-require-git", "--glob", "--max-results", "1001", "--", "*.ts", search}},
-		{"path pattern on POSIX", "src/**/*.ts", false, true, []string{"--color=never", "--hidden", "--glob", "--max-results", "1001", "--full-path", "--", "**/src/**/*.ts", search}},
+		{"path pattern on POSIX", "src/**/*.ts", false, true, []string{"--color=never", "--hidden", "--glob", "--max-results", "1001", "--full-path", "--ignore-case", "--", "/work/proj/src/**/*.ts", search}},
+		{"path pattern with a leading **/ on POSIX", "**/src/*.ts", false, true, []string{"--color=never", "--hidden", "--glob", "--max-results", "1001", "--full-path", "--ignore-case", "--", "/work/proj/**/src/*.ts", search}},
+		{"path pattern with a capital on POSIX", "Src/a.ts", false, true, []string{"--color=never", "--hidden", "--glob", "--max-results", "1001", "--full-path", "--", "/work/proj/Src/a.ts", search}},
 		{"absolute path pattern on POSIX", "/abs/*.ts", false, true, []string{"--color=never", "--hidden", "--glob", "--max-results", "1001", "--full-path", "--", "/abs/*.ts", search}},
-		{"backslash escape on POSIX", `src/\*.ts`, false, true, []string{"--color=never", "--hidden", "--glob", "--max-results", "1001", "--full-path", "--", `**/src/\*.ts`, search}},
+		{"backslash escape on POSIX", `src/\*.ts`, false, true, []string{"--color=never", "--hidden", "--glob", "--max-results", "1001", "--full-path", "--ignore-case", "--", `/work/proj/src/\*.ts`, search}},
 		{"backslash basename on POSIX", `a\*b`, false, true, []string{"--color=never", "--hidden", "--glob", "--max-results", "1001", "--", `a\*b`, search}},
 	} {
 		inv, err := newFindFdInvocation(tc.pattern, search, findDefaultLimit, tc.windows, tc.insideGit)
@@ -155,8 +181,14 @@ func TestFindFdInvocationFdGlobArguments(t *testing.T) {
 			t.Errorf("%s: args = %q matcher = %v, want %q", tc.name, inv.args, inv.pathMatcher, tc.want)
 		}
 	}
+	// Pi 282b01c80: the search path is literal text of the glob (\ * ? [ ] { } escaped) without its trailing slashes.
+	const odd = `/w*?[1]{x,y}\z//`
+	inv, err := newFindFdInvocation("src/*.ts", odd, findDefaultLimit, false, true)
+	if want := []string{"--color=never", "--hidden", "--glob", "--max-results", "1001", "--full-path", "--ignore-case", "--", `/w\*\?\[1\]\{x,y\}\\z/src/*.ts`, odd}; err != nil || !slices.Equal(inv.args, want) {
+		t.Fatalf("glob characters in the search path: args = %q, %v, want %q", inv.args, err, want)
+	}
 	// A Windows pattern whose backslash makes it a path pattern goes to the matcher, not to fd.
-	inv, err := newFindFdInvocation(`a\b`, search, findDefaultLimit, true, true)
+	inv, err = newFindFdInvocation(`a\b`, search, findDefaultLimit, true, true)
 	if err != nil || inv.pathMatcher == nil || slices.Contains(inv.args, "--glob") {
 		t.Fatalf("backslash pattern on Windows: %+v, %v", inv, err)
 	}
@@ -164,20 +196,20 @@ func TestFindFdInvocationFdGlobArguments(t *testing.T) {
 
 // find.ts: with a path matcher fd has no --max-results, so pi stops fd once one match past the limit arrives and keeps nothing after it.
 func TestFindPathFilterStopsFdAtTheLimit(t *testing.T) {
-	inv, err := newFindFdInvocation("src/*.ts", "/s", 2, true, true)
+	inv, err := newFindFdInvocation("src/*.ts", `C:\s`, 2, true, true)
 	if err != nil {
 		t.Fatal(err)
 	}
 	stops := 0
-	filter := &findPathFilter{matcher: inv.pathMatcher, limit: 2, stop: func() { stops++ }}
+	filter := &findPathFilter{matcher: inv.pathMatcher, relativize: windowsRelativize(`C:\s`), limit: 2, stop: func() { stops++ }}
 	// Chunks split a line, mix in non-matching entries and CRLF, and end with one entry past the limit.
-	for _, chunk := range []string{"/s/src/a.t", "s\r\n/s/other/x.ts\n/s/src/b", ".ts\n  \n/s/src/c.ts\n", "/s/src/d.ts\n/s/src/e.ts\n"} {
+	for _, chunk := range []string{`C:\s\src\a.t`, "s\r\n" + `C:\s\lib\x.ts` + "\n" + `C:\s\pkg\src\x.ts` + "\n" + `C:\s\src\b`, ".ts\n  \n" + `C:\s\src\c.ts` + "\n", `C:\s\src\d.ts` + "\n" + `C:\s\src\e.ts` + "\n"} {
 		if n, err := filter.Write([]byte(chunk)); n != len(chunk) || err != nil {
 			t.Fatalf("Write(%q) = %d, %v", chunk, n, err)
 		}
 	}
 	filter.finish()
-	if got, want := filter.kept.String(), "/s/src/a.ts\n/s/src/b.ts\n/s/src/c.ts\n"; got != want {
+	if got, want := filter.kept.String(), `C:\s\src\a.ts`+"\n"+`C:\s\src\b.ts`+"\n"+`C:\s\src\c.ts`+"\n"; got != want {
 		t.Fatalf("kept = %q, want %q", got, want)
 	}
 	if stops != 1 {
@@ -186,14 +218,14 @@ func TestFindPathFilterStopsFdAtTheLimit(t *testing.T) {
 }
 
 func TestFindPathFilterKeepsAFinalLineWithoutANewline(t *testing.T) {
-	inv, err := newFindFdInvocation("src/*.ts", "/s", 5, true, true)
+	inv, err := newFindFdInvocation("src/*.ts", `C:\s`, 5, true, true)
 	if err != nil {
 		t.Fatal(err)
 	}
-	filter := &findPathFilter{matcher: inv.pathMatcher, limit: 5, stop: func() { t.Fatal("stopped below the limit") }}
-	_, _ = filter.Write([]byte("/s/src/a.ts\n/s/src/b.ts"))
+	filter := &findPathFilter{matcher: inv.pathMatcher, relativize: windowsRelativize(`C:\s`), limit: 5, stop: func() { t.Fatal("stopped below the limit") }}
+	_, _ = filter.Write([]byte(`C:\s\src\a.ts` + "\n" + `C:\s\src\b.ts`))
 	filter.finish()
-	if got, want := filter.kept.String(), "/s/src/a.ts\n/s/src/b.ts\n"; got != want {
+	if got, want := filter.kept.String(), `C:\s\src\a.ts`+"\n"+`C:\s\src\b.ts`+"\n"; got != want {
 		t.Fatalf("kept = %q, want %q", got, want)
 	}
 }

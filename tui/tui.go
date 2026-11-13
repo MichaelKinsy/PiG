@@ -120,13 +120,17 @@ type Container struct {
 	// identity. renderedLines is the immutable concatenation consumed by the
 	// package renderers; settled frames reuse it without copying Session history.
 	// Render clones it to preserve upstream's fresh-array ownership for callers.
-	cacheWidth     int
-	cacheTheme     *Theme
-	childCache     map[Component]cachedChild
-	renderLineHint int
-	renderedLines  []string
-	renderedValid  bool
-	renderVersion  uint64
+	cacheWidth int
+	cacheTheme *Theme
+	// invalidatedTheme is the theme under which the whole-tree walk (invalidateComponentTree, Pi's TUI.invalidate) last invalidated
+	// this container's children. The render's own theme check leaves them alone for that theme, so a theme change invalidates a
+	// mounted child as often as Pi does (once per TUI.invalidate) and not once more at the next render.
+	invalidatedTheme *Theme
+	childCache       map[Component]cachedChild
+	renderLineHint   int
+	renderedLines    []string
+	renderedValid    bool
+	renderVersion    uint64
 	// structureGen counts the changes of the children. A render that finds it changed when its loop ends knows a child's Render changed the children
 	// (a subprocess extension's component calls the screen's addChild or removeChild, as Pi's render may), so what it built is not the children now.
 	structureGen uint64
@@ -533,8 +537,9 @@ func (c *Container) renderBorrowedLocked(width int, recycle bool) []string {
 	if c.cacheWidth != width || c.cacheTheme != ActiveTheme() {
 		c.childCache = nil
 		c.cacheWidth = width
-		if c.cacheTheme != nil && c.cacheTheme != ActiveTheme() {
-			// Upstream's UI invalidates every component when the theme changes (container.ts invalidate forwards to its children); components that bake theme colors into their strings, like ThemedText, rebuild on the next render.
+		if c.cacheTheme != nil && c.cacheTheme != ActiveTheme() && c.invalidatedTheme != ActiveTheme() {
+			// A container the renderer's walk did not reach under this theme (it is not mounted, or the theme changed with no TUI
+			// invalidation) tells its children here. Upstream's UI invalidates every component when the theme changes (container.ts invalidate forwards to its children); components that bake theme colors into their strings, like ThemedText, rebuild on the next render.
 			for _, child := range c.children {
 				child.Invalidate()
 			}
@@ -803,6 +808,8 @@ type tuiBase struct {
 	deferredRenderGeneration uint64
 	// frameActive is set while a frame holds mu and renders components (lockFrame). mu is not reentrant, so RequestRender during the frame (from a component's Render, as Pi's Loader.invalidate and requestRender-on-image-load do, or from another goroutine) is recorded in frameRenderRequest and issued when the frame releases mu.
 	frameActive atomic.Bool
+	// invalidateAfterFrame holds an Invalidate that arrived during a frame; unlockFrame runs its walk.
+	invalidateAfterFrame atomic.Bool
 	// frameOwner is the goroutine that set frameActive (0 outside a frame): the goroutine running a frame holds mu and the base container's lock while it
 	// waits on a component's Render, so a call that component makes back to the renderer must run on it (TuiAltScreen.Frame). baseOwner is the goroutine
 	// that is rendering the base container, whose lock it holds across the children's Render.
@@ -1066,7 +1073,7 @@ func (t *tuiBase) postOverlayCommand(command overlayCommand) bool {
 	dispatch(func() {
 		result := t.applyOverlayCommand(command)
 		if result.changed {
-			t.Invalidate()
+			t.markDirty()
 		}
 	})
 	return true
@@ -1117,7 +1124,7 @@ func (h *OverlayHandle) apply(command overlayCommand) {
 		if command.kind == overlayRemoveTarget {
 			h.tui.hideTerminalCursorWithoutOverlays()
 		}
-		h.tui.Invalidate()
+		h.tui.markDirty()
 		h.tui.RequestRender() // upstream hide, setHidden, focus and unfocus request a frame
 	}
 }
@@ -1194,7 +1201,7 @@ func (t *tuiBase) ShowOverlay(c Component, opts OverlayOptions) *OverlayHandle {
 		return nil
 	}
 	t.hideTerminalCursor()
-	t.Invalidate()
+	t.markDirty()
 	t.RequestRender() // upstream showOverlay requests a frame
 	return &OverlayHandle{tui: t, id: result.entryID}
 }
@@ -1310,7 +1317,7 @@ func (t *tuiBase) openNestedOverlay(parent *OverlayHandle, component Component, 
 	if !result.changed {
 		return nil
 	}
-	t.Invalidate()
+	t.markDirty()
 	return &OverlayHandle{tui: t, id: result.entryID}
 }
 
@@ -1329,7 +1336,7 @@ func (t *tuiBase) replaceOverlaySnapshot(handle *OverlayHandle, geometryGenerati
 		lines: lines, visible: visible,
 	})
 	if result.changed {
-		t.Invalidate()
+		t.markDirty()
 	}
 	return result.changed
 }
@@ -1348,7 +1355,7 @@ func (t *tuiBase) HideOverlay() {
 	result := t.applyOverlayCommand(overlayCommand{kind: overlayRemoveAppendTail})
 	if result.changed {
 		t.hideTerminalCursorWithoutOverlays()
-		t.Invalidate()
+		t.markDirty()
 		t.RequestRender()
 	}
 }
@@ -1924,6 +1931,10 @@ func (t *tuiBase) lockFrame() {
 func (t *tuiBase) unlockFrame() {
 	t.leaveFrame()
 	t.mu.Unlock()
+	if t.invalidateAfterFrame.Swap(false) {
+		t.invalidateMounted()
+		t.RequestRender()
+	}
 	t.issueFrameRenderRequest()
 }
 

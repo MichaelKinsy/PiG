@@ -2,6 +2,8 @@
 
 This document is the canonical reference for the wire protocol and host API surface that pig exposes to extensions. The same API is bridged by all official subprocess SDKs (Go in `extensions/sdk`, Rust in `extensions/sdk-rs`, Python in `extensions/sdk-py`). Node extensions use Pi's canonical TypeScript API through PiG's compatibility runtime. `extensions/sdk-ts` adds declarations for PiG-only calls. Method names below are normalized; SDK bindings use language-idiomatic spellings.
 
+The calls that mount views, which the terminal and a web page draw, are in [Extension views](ui-views.md) (D614).
+
 ## Wire protocol (subprocess, current unversioned shape)
 
 The host and extension exchange length-prefixed JSON envelopes over a Unix domain socket. Each frame is a 4-byte big-endian unsigned length followed by exactly that many bytes of one JSON object; a single frame is capped at `MaxFrameSize` (128 MB), a constant the host and every SDK share. The host binds the listening socket and passes the path via `PIG_EXT_SOCKET` (or `PIG_EXT_SOCKET_<EXT_NAME>` for each contained extension in a packed cell). Every envelope carries a `type`, an optional `id` for request/response correlation, and a body field named after the type:

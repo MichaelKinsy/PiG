@@ -19,7 +19,7 @@ func TestRequestTypesEncodeAsTheirMarshalJSON(t *testing.T) {
 		anthContentBlock{Type: "redacted_thinking", Data: text},
 		anthContentBlock{Type: "tool_use", ID: "toolu_1", Name: "write", Input: json.RawMessage(`{"path":"a<b>.go","content":"` + "x\\n" + `"}`)},
 		anthContentBlock{Type: "tool_result", ToolUseID: "toolu_1", Content: []anthContentBlock{{Type: "text", Text: text}}, IsError: &isError},
-		anthContentBlock{Type: "image", Source: map[string]any{"type": "base64", "media_type": "image/png", "data": "AAAA"}},
+		anthContentBlock{Type: "image", Source: &anthImageSource{Type: "base64", MediaType: "image/png", Data: "AAAA"}},
 		anthContentBlock{Type: "tool_addition", Tool: &anthToolChange{Type: "tool_definition", Definition: &anthTool{Name: "t", Description: text, InputSchema: map[string]any{"type": "object"}}}},
 		anthTool{Name: "read", Description: text, Strict: &strict, EagerInputStream: true, InputSchema: map[string]any{"type": "object", "properties": map[string]any{"z": map[string]any{"type": "string"}, "a": map[string]any{}}}, inputSchemaOrder: schemaObjectOrder{"": {"type", "properties"}, "properties": {"z", "a"}}, CacheControl: &anthCacheControl{Type: "ephemeral"}},
 		deferredToolPlaceholder(),

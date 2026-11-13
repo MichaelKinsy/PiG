@@ -1,0 +1,11 @@
+name: ui-view-subprocess
+description: "A view extension that runs in a Node process of its own, with the terminal view client and the view endpoint."
+viewClient: terminal
+viewEndpoint: socket
+extensions:
+  - name: viewsub
+    origins:
+      - local:./viewsub.mjs
+discovery:
+  extensions: []
+  skills: []

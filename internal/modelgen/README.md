@@ -38,6 +38,28 @@ own compat, then the shared rules run (models.dev effort levels for APIs that se
 then `FinalizeAll` runs cross-model logic. Match the TypeScript object construction exactly (member order, `||` against `??`,
 where a spread puts a key): a model that is built differently serializes differently.
 
+## Released clients
+
+Pi (`packages/ai/catalog/README.md`, e675a0d7f): pi.dev serves each published catalog to every released pi at or above
+`MINIMUM_PI_VERSION` (`scripts/model-catalog-minimum-version.mjs` in Pi's repository root). Released clients use it within hours,
+without updating pi, and combine it with their own code's defaults, such as `detectCompat()` in `src/api/openai-completions.ts`
+(`DetectCompat` in `ai/openai.go`).
+
+A catalog change must therefore work with the latest release's code, not only with the code in the same commit. Example: a new code
+default makes `supportsDeveloperRole: false` redundant for a provider, so the line is removed from the catalog. Released clients still
+default to `true` and start sending the `developer` role, which the provider rejects.
+
+If a catalog change needs new code, either keep the catalog working with old code (add explicit values; remove nothing old clients
+rely on), or set `MINIMUM_PI_VERSION` to the next release in the same commit. Clients below the minimum keep the last catalog
+published for them and receive no further catalog updates. Pi's `npm run check:model-catalog-compat` only catches type errors against
+the latest release, not changed behavior.
+
+A released pig is such a client of the catalog its own endpoint serves (`internal/codingagent/remote_catalog_provider.go`, D64): for
+each built-in provider it requests `/api/models/providers/<id>` from pi-in-go.dev with the `pig/<version>` user agent (D65), and a
+catalog whose `Last-Modified` is later than the bundled data's generation time replaces the bundled models of the same type and id
+and adds the others. So the rule above holds for every catalog that endpoint publishes: it must work with the code of the released
+pig binaries.
+
 ## Checking a change
 
 `test/parity/testdata/catalog-generation/equivalence.sh` runs Pi's generator (from `.upstream/current`) and this one over the
@@ -52,5 +74,8 @@ test/parity/testdata/catalog-generation/equivalence.sh compare build/catalog-fix
 a pruned set of recorded responses (`cmd/gen-models/testdata/catalog-generation`). After a pin bump, re-record, prune
 (`prune.mjs`), and refresh the golden file with `equivalence.sh golden`.
 
-The golden file holds the sha256 of Pi's generator at the pin (`c23b9ec1`), recorded from the mirror with no patches applied: the pin
-contains the OpenCode (9ee7586a9) and Claude Sonnet 5 (4b9777737) changes, and the Qwen Token Plan Individual CN provider and glm-5.3.
+The golden file holds the sha256 of Pi's generator at the pin, recorded from the mirror, except the twelve Qwen Token Plan files and
+the two lists of every model (`catalog/models.json`, `catalog/models.all.json`): those are what Pi's generator writes with `catalog/providers/qwen-token-plan.ts` and `qwen-token-plan-individual.ts` of Pi 1397070024
+(the current gateways, `skipDeprecated`, the Individual allowlist with `deepseek-v4.1-flash` and `deepseek-v4.1-flash-1017`) in place
+of the pin's. `PI_CATALOG_OVERLAY=<dir> equivalence.sh golden ...` copies the files of `<dir>` (paths relative to Pi's `packages/ai`)
+over the mirror copy before it generates.

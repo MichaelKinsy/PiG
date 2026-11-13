@@ -5,8 +5,6 @@ package codingagent
 import (
 	"context"
 	"fmt"
-	"io"
-	"os"
 	"slices"
 	"strings"
 
@@ -47,22 +45,6 @@ func ResolveModelScopeWithDiagnostics(ctx context.Context, patterns []string, ru
 		return ResolveModelScopeResult{}, err
 	}
 	return ResolveModelScopeFromModels(patterns, models), nil
-}
-
-// ResolveModelScope is ResolveModelScopeWithDiagnostics that writes each diagnostic to stderr as a yellow "Warning: " line and returns only the scope (model-resolver.ts:372-382 resolveModelScope, console.warn(chalk.yellow(...))).
-func ResolveModelScope(ctx context.Context, patterns []string, runtime ModelScopeRuntime) ([]ScopedModel, error) {
-	return resolveModelScopeWarningTo(ctx, os.Stderr, chalkModifiersEnabled(), patterns, runtime)
-}
-
-func resolveModelScopeWarningTo(ctx context.Context, w io.Writer, color bool, patterns []string, runtime ModelScopeRuntime) ([]ScopedModel, error) {
-	result, err := ResolveModelScopeWithDiagnostics(ctx, patterns, runtime)
-	if err != nil {
-		return nil, err
-	}
-	for _, diagnostic := range result.Diagnostics {
-		_, _ = fmt.Fprintln(w, formatReportedDiagnostic(AgentSessionRuntimeDiagnostic{Type: "warning", Message: diagnostic.Message}, color))
-	}
-	return result.ScopedModels, nil
 }
 
 // ResolveModelScopeFromModels resolves a scope without refreshing or reading authentication.

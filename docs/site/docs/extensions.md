@@ -4,6 +4,8 @@ Extensions add executable behavior to PiG. They can register tools, commands, ev
 
 PiG preserves the Pi extension model while using a process-oriented host that supports Go, Rust, Python, and Node. A compatible Go extension can also be compiled into a Piglet Binary.
 
+To show one GUI in the terminal and in a web page, mount a view: [Extension views](ui-views.md) (D614).
+
 ## Table of Contents
 
 - [Quick Start](#quick-start)
@@ -229,6 +231,12 @@ A command handler receives the same context plus the calls that replace or reloa
 ## ExtensionAPI Methods
 
 The Node API object is `pi`, with Pi's methods such as `pi.on`, `pi.registerTool`, `pi.sendMessage`, `pi.appendEntry`, `pi.getAllTools` and `pi.registerMcpServer`. The Go, Rust and Python SDKs expose the same behavior under their own naming. A capability counts as supported only when every runtime offers it and the conformance suite can detect a broken implementation (see [SDKs](#sdks)). The symbol-by-symbol surface is generated into `docs/extension-sdk-surface.md` in the source tree, and `docs/extension-api-parity.md` lists every upstream interface and its PiG mapping. See also [Custom messages](#custom-messages), [Registration inputs](#registration-inputs) and [User bash operations](#user-bash-operations).
+
+An optional member of a session entry has three states, as in Pi: left out, `null`, or a value. PiG writes each to the session file as the extension set it. The empty value of each SDK leaves the member out: Node `undefined`, Go `nil`, Python `None`, Rust `Value::Null` (`None` in the methods that take an `Option`), Lisp `NIL`. To write the member as `null`, use Node `null`, Go `json.RawMessage("null")`, Python `pig_sdk.NULL`, Rust `Some(Value::Null)` with `append_entry_opt` or `send_message_with_details`, or Lisp `:null`. This applies to the data of `appendEntry`, to the details of `sendMessage`, and to the `data`, `details` and `usage` members of a boundary draft, of a `session_before_compact` result and of a `session_before_tree` result.
+
+`setLabel` has the same three states. A call without a label writes a label entry without a `label` member. A null label writes `"label":null`. An empty string writes `"label":""`. Each clears the label. Use Node `pi.setLabel(id)`, `pi.setLabel(id, null)` or `pi.setLabel(id, "")`; Go `SetLabelValue(id, nil)`, `SetLabelValue(id, json.RawMessage("null"))` or `SetLabel(id, "")`; Python `set_label(id)`, `set_label(id, pig_sdk.NULL)` or `set_label(id, "")`; Rust `set_label_opt(id, None)`, `set_label_opt(id, Some(Value::Null))` or `set_label(id, "")`; Lisp `(ctx-set-label ctx id)`, `(ctx-set-label ctx id :null)` or `(ctx-set-label ctx id "")`.
+
+PiG writes a `usage` object that an extension supplies as the extension wrote it. The member order and any extra member reach the session file. This applies to a compaction draft, to a `session_before_compact` result and to a `session_before_tree` result.
 
 ## State Management
 

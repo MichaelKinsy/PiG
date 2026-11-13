@@ -5,6 +5,7 @@ package subprocess
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"maps"
 	"path/filepath"
@@ -571,9 +572,12 @@ func TestNodeRuntimeExposesSessionAndWorkingVisibleAPI(t *testing.T) {
 		mu.Unlock()
 		return nil
 	})
-	bridge.SetHostAction("setLabel", func(entryID, label string) error {
+	bridge.SetHostAction("setLabel", func(entryID string, label *string, _ bool) error {
+		if label == nil {
+			return errors.New("the test sends a label")
+		}
 		mu.Lock()
-		labelEntry, labelValue = entryID, label
+		labelEntry, labelValue = entryID, *label
 		mu.Unlock()
 		return nil
 	})

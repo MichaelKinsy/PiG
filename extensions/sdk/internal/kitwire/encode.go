@@ -164,31 +164,31 @@ func (e *encoder) node(node kit.Node, depth int) (viewNode, error) {
 		if n == nil {
 			break
 		}
-		out = viewNode{Kind: kindContainer}
+		out = viewNode{Kind: kindContainer, ID: n.ID}
 		out.Children, err = e.nodes(n.Children, depth)
 		return out, err
 	case *kit.Box:
 		if n == nil {
 			break
 		}
-		out = viewNode{Kind: kindBox, PaddingX: new(n.PaddingX), PaddingY: new(n.PaddingY), Bg: n.Bg}
+		out = viewNode{Kind: kindBox, ID: n.ID, PaddingX: new(n.PaddingX), PaddingY: new(n.PaddingY), Bg: n.Bg}
 		out.Children, err = e.nodes(n.Children, depth)
 		return out, err
 	case *kit.Text:
 		if n == nil {
 			break
 		}
-		return viewNode{Kind: kindText, Text: n.Text, PaddingX: new(n.PaddingX), PaddingY: new(n.PaddingY), Bg: n.Bg}, nil
+		return viewNode{Kind: kindText, ID: n.ID, Text: n.Text, PaddingX: new(n.PaddingX), PaddingY: new(n.PaddingY), Bg: n.Bg}, nil
 	case *kit.TruncatedText:
 		if n == nil {
 			break
 		}
-		return viewNode{Kind: kindTruncatedText, Text: n.Text, PaddingX: new(n.PaddingX), PaddingY: new(n.PaddingY)}, nil
+		return viewNode{Kind: kindTruncatedText, ID: n.ID, Text: n.Text, PaddingX: new(n.PaddingX), PaddingY: new(n.PaddingY)}, nil
 	case *kit.Markdown:
 		if n == nil {
 			break
 		}
-		out = viewNode{Kind: kindMarkdown, Text: n.Text, PaddingX: new(n.PaddingX), PaddingY: new(n.PaddingY), RenderLatex: n.RenderLatex}
+		out = viewNode{Kind: kindMarkdown, ID: n.ID, Text: n.Text, PaddingX: new(n.PaddingX), PaddingY: new(n.PaddingY), RenderLatex: n.RenderLatex}
 		if style := n.DefaultTextStyle; style != nil {
 			out.DefaultTextStyle = &viewTextStyle{Color: style.Color, BgColor: style.BgColor, Bold: style.Bold, Italic: style.Italic, Strikethrough: style.Strikethrough, Underline: style.Underline}
 		}
@@ -197,12 +197,12 @@ func (e *encoder) node(node kit.Node, depth int) (viewNode, error) {
 		if n == nil {
 			break
 		}
-		return viewNode{Kind: kindSpacer, Lines: new(n.Lines)}, nil
+		return viewNode{Kind: kindSpacer, ID: n.ID, Lines: new(n.Lines)}, nil
 	case *kit.DynamicBorder:
 		if n == nil {
 			break
 		}
-		return viewNode{Kind: kindDynamicBorder, Color: n.Color}, nil
+		return viewNode{Kind: kindDynamicBorder, ID: n.ID, Color: n.Color}, nil
 	case *kit.SelectList:
 		if n == nil {
 			break
@@ -243,12 +243,12 @@ func (e *encoder) node(node kit.Node, depth int) (viewNode, error) {
 		}
 		ref := n.Ref()
 		e.addImage(ref, n.MimeType, n.Data())
-		return viewNode{Kind: kindImage, Ref: ref, MimeType: n.MimeType, MaxWidthCells: n.MaxWidthCells, MaxHeightCells: n.MaxHeightCells, Filename: n.Filename, FallbackColor: n.FallbackColor}, nil
+		return viewNode{Kind: kindImage, ID: n.ID, Ref: ref, MimeType: n.MimeType, MaxWidthCells: n.MaxWidthCells, MaxHeightCells: n.MaxHeightCells, Filename: n.Filename, FallbackColor: n.FallbackColor}, nil
 	case *kit.Loader:
 		if n == nil {
 			break
 		}
-		out = viewNode{Kind: kindLoader, Message: n.Message, SpinnerColor: n.SpinnerColor, MessageColor: n.MessageColor, Frame: n.Frame}
+		out = viewNode{Kind: kindLoader, ID: n.ID, Message: n.Message, SpinnerColor: n.SpinnerColor, MessageColor: n.MessageColor, Frame: n.Frame}
 		if indicator := n.Indicator; indicator != nil {
 			out.Indicator = &viewLoaderIndicator{IntervalMs: indicator.IntervalMs}
 			if indicator.Frames != nil {
@@ -260,21 +260,21 @@ func (e *encoder) node(node kit.Node, depth int) (viewNode, error) {
 		if n == nil {
 			break
 		}
-		out = viewNode{Kind: kindHStack, Gap: gap(n.Gap), Align: n.Align}
+		out = viewNode{Kind: kindHStack, ID: n.ID, Gap: gap(n.Gap), Align: n.Align}
 		out.Children, err = e.stackChildren(n.Children, depth)
 		return out, err
 	case *kit.VStack:
 		if n == nil {
 			break
 		}
-		out = viewNode{Kind: kindVStack, Gap: gap(n.Gap), Align: n.Align}
+		out = viewNode{Kind: kindVStack, ID: n.ID, Gap: gap(n.Gap), Align: n.Align}
 		out.Children, err = e.stackChildren(n.Children, depth)
 		return out, err
 	case *kit.Lines:
 		if n == nil {
 			break
 		}
-		out = viewNode{Kind: kindLines, Content: n.Lines}
+		out = viewNode{Kind: kindLines, ID: n.ID, Content: n.Lines}
 		if e.frontend {
 			if image := n.Image; image != nil {
 				ref := imageRef(image.Data)
@@ -297,7 +297,7 @@ func (e *encoder) node(node kit.Node, depth int) (viewNode, error) {
 		if n == nil {
 			break
 		}
-		return viewNode{Kind: kindUserMessage, Text: n.Text, OutputPad: new(n.OutputPad)}, nil
+		return viewNode{Kind: kindUserMessage, ID: n.ID, Text: n.Text, OutputPad: new(n.OutputPad)}, nil
 	case *kit.AssistantMessage:
 		if n == nil {
 			break
@@ -335,7 +335,7 @@ func (e *encoder) node(node kit.Node, depth int) (viewNode, error) {
 		if n == nil {
 			break
 		}
-		return viewNode{Kind: kindDiff, Diff: n.Diff, FilePath: n.FilePath, PaddingX: new(n.PaddingX), PaddingY: new(n.PaddingY)}, nil
+		return viewNode{Kind: kindDiff, ID: n.ID, Diff: n.Diff, FilePath: n.FilePath, PaddingX: new(n.PaddingX), PaddingY: new(n.PaddingY)}, nil
 	case kit.Wired:
 		return e.widget(n, depth)
 	}

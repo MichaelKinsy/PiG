@@ -35,6 +35,10 @@ func TestImageToolResultMatrixUpstream(t *testing.T) {
 		t.Fatalf("unported matrix change: %d cases for %d models", len(cases), len(specs))
 	}
 	for index, tc := range cases {
+		if spec := specs[index/2]; !ai.BuiltCatalogModel(spec.provider + "/" + spec.model) {
+			// A build with this API's pig_strip tag has no provider for the row.
+			continue
+		}
 		t.Run(tc.ID, func(t *testing.T) {
 			t.Logf(".upstream/current/packages/ai/test/image-tool-result.test.ts:%d", tc.Line)
 			spec := specs[index/2]

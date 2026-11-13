@@ -41,9 +41,13 @@ type ReadTruncation struct {
 	MaxBytes              int                 `json:"maxBytes"`
 }
 
-// ReadToolDetails are the details of a read result that was truncated.
+// ReadToolDetails are the details of a read result: how the shown text was cut, or the model an image was read under.
 type ReadToolDetails struct {
 	Truncation *ReadTruncation `json:"truncation,omitempty"`
+	// ImageUnsupportedByModel is the id of the conversation's model when the image was read, if it has no image input. For UIs
+	// only: the model gets pi-ai's placeholder per request, so the stored result stays right after a switch to a vision model.
+	// A pointer, because Pi writes the member for every such model, also one whose id is "".
+	ImageUnsupportedByModel *string `json:"imageUnsupportedByModel,omitempty"`
 }
 
 // ReadToolOptions configures the read tool.

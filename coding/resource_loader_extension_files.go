@@ -275,7 +275,7 @@ func (l *DefaultResourceLoader) closeExtensionFiles() {
 
 // Close shuts down the Extension Host the default extension load started. The loaded extensions stop.
 func (l *DefaultResourceLoader) Close() {
-	l.opMu.Lock()
-	defer l.opMu.Unlock()
+	_, leave := l.takeOperation(nil)
+	defer leave()
 	l.closeExtensionFiles()
 }

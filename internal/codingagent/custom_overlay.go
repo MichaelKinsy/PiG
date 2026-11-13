@@ -51,6 +51,8 @@ type customOverlay struct {
 	releaseInput func()
 	inputChanged chan struct{}
 	inputRetired bool
+	// pendingInvalidations counts the TUI invalidations not yet published to the extension.
+	pendingInvalidations int
 	// endOnHide marks a raw overlay (ExtUIContext.ShowRemoteOverlay): no ui.custom call owns it, so its handle's hide ends it.
 	// Set before the controls are bound.
 	endOnHide bool
@@ -89,13 +91,28 @@ func (c *customOverlay) Render(width int) []string {
 
 // Invalidate drops a view's cached lines; cached lines from the extension
 // have nothing to drop.
+// Invalidate is the TUI's invalidation of the component (Pi's TUI.invalidate, tui.ts:951-954). The TUI calls it on its owner
+// loop, which never writes to the extension's connection: the invalidation is counted here, and the goroutine that delivers the
+// component's input publishes it (serveRemoteInput).
 func (c *customOverlay) Invalidate() {
-	c.mu.RLock()
+	c.mu.Lock()
 	view := c.view
-	c.mu.RUnlock()
+	c.pendingInvalidations++
+	close(c.inputChanged)
+	c.inputChanged = make(chan struct{})
+	c.mu.Unlock()
 	if view != nil {
 		view.Invalidate()
 	}
+}
+
+// takeInvalidations returns how many invalidations the extension has not been told of, and forgets them.
+func (c *customOverlay) takeInvalidations() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	n := c.pendingInvalidations
+	c.pendingInvalidations = 0
+	return n
 }
 
 // FrontendView reports the view's structure to a D91 frontend (D107).

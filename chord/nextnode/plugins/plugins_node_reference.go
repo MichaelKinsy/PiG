@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 	"sync"
 	"sync/atomic"
 
@@ -42,6 +43,10 @@ type getRequest struct {
 	ReadyTimeout *int64 `json:"readyTimeout,omitempty"`
 	// Hold asks for `host.hold` (NodeHost.Hold): the reference at once, in whatever state its object is.
 	Hold bool `json:"hold,omitempty"`
+	// Events are the type's event members, sorted (an empty list for a type without any): the Node host taps its reference
+	// for them when it binds it, and the `member` of an entry of its `event` messages is an index into this list
+	// (plugins_node_events.go).
+	Events []string `json:"events"`
 }
 
 // memberRequest is the `value` control request: a state member's value, or a keyed member's document at Key.
@@ -167,7 +172,7 @@ func (b *nodeBridge) reference(handle int) *NodeReference {
 }
 
 // NodeReference is a reference to an object of a local type that the plugins of a Node host serve: host.Reference's shape for
-// the members a local type has (`Member`, `Keyed`, `Call`, `State`, `Release`), held through the Node host's own
+// the members a local type has (`Member`, `Keyed`, `Events`, `Call`, `State`, `Release`), held through the Node host's own
 // `host.get`. Additive Go API: it is what the app's Go code uses where Pi's app `get`s a local type in process.
 //
 // Its reads, calls and watches are round trips to the Node host (a state member's `Value` is a read of the Node host's
@@ -179,6 +184,12 @@ type NodeReference struct {
 	state    map[string]*NodeMember
 	keyed    map[string]*NodeKeyed
 	methods  map[string]struct{}
+	// events are its event members by name, eventOrder the same in the order of their names: what an entry's member indexes.
+	events     map[string]*NodeEvents
+	eventOrder []*NodeEvents
+	// eventMembers are the names of eventOrder: what `get` tells the Node host to tap, in that order (never nil: it is sent
+	// as it is).
+	eventMembers []string
 
 	mu sync.Mutex
 	// current is the state the Node host showed last, stateSeq the number of that change (the reply of `get` shows change
@@ -189,6 +200,8 @@ type NodeReference struct {
 	released bool
 	watches  map[int]struct{}
 	done     chan struct{}
+	// eventsEnded is set once its subscriptions ended for good (its release, the process's exit): On makes no other.
+	eventsEnded bool
 }
 
 // Get is the Go form of Pi's `server.get(Index)` for a local type the Node host's plugins serve: a reference once its object
@@ -220,9 +233,6 @@ func (h *NodeHost) reference(ctx context.Context, contract *contracts.Contract, 
 	if declared.Kind != contracts.KindLocal {
 		return nil, fmt.Errorf("%s: NodeHost.Get holds a local type; a remote type is held through a Go host that routes its kind to the node", declared.Name)
 	}
-	if err := eventsDoNotCross(declared); err != nil {
-		return nil, err
-	}
 	wire, err := ContractDataOf(contract)
 	if err != nil {
 		return nil, err
@@ -233,7 +243,7 @@ func (h *NodeHost) reference(ctx context.Context, contract *contracts.Contract, 
 	}
 	// Registered before the request is sent: the state changes that follow its reply find the reference.
 	reference := newNodeReference(h, contract, declared)
-	request := &getRequest{Contract: wire, Params: encoded, Handle: reference.handle, Hold: hold}
+	request := &getRequest{Contract: wire, Params: encoded, Handle: reference.handle, Hold: hold, Events: reference.eventMembers}
 	if options.ReadyTimeout != nil {
 		ms := options.ReadyTimeout.Milliseconds()
 		request.ReadyTimeout = &ms
@@ -272,7 +282,7 @@ func (h *NodeHost) reference(ctx context.Context, contract *contracts.Contract, 
 func newNodeReference(h *NodeHost, contract *contracts.Contract, declared *contracts.ContractData) *NodeReference {
 	r := &NodeReference{
 		node: h, contract: contract,
-		state: map[string]*NodeMember{}, keyed: map[string]*NodeKeyed{}, methods: map[string]struct{}{},
+		state: map[string]*NodeMember{}, keyed: map[string]*NodeKeyed{}, methods: map[string]struct{}{}, events: map[string]*NodeEvents{}, eventMembers: []string{},
 		current: &host.RefState{Kind: host.RefStateLoading}, stateSeq: -1, watches: map[int]struct{}{}, done: make(chan struct{}),
 	}
 	variant := declared.Versions[len(declared.Versions)-1].Variants.Value(contracts.LocalVariant)
@@ -285,6 +295,12 @@ func newNodeReference(h *NodeHost, contract *contracts.Contract, declared *contr
 	for name := range variant.Methods.All() {
 		r.methods[name] = struct{}{}
 	}
+	for _, name := range slices.Sorted(slices.Values(variant.Events.Keys())) {
+		events := &NodeEvents{reference: r}
+		r.events[name] = events
+		r.eventOrder = append(r.eventOrder, events)
+		r.eventMembers = append(r.eventMembers, name)
+	}
 	r.handle = h.bridge.addReference(r)
 	// The process ends before the reference is released: the reference is `loading` for good, as a lost link's.
 	//portlint:allow golifetime ends with the reference's release or the process's exit, whichever comes first
@@ -292,6 +308,7 @@ func newNodeReference(h *NodeHost, contract *contracts.Contract, declared *contr
 		select {
 		case <-h.exited:
 			r.setState(math.MaxInt, &host.RefState{Kind: host.RefStateLoading})
+			r.endEvents()
 		case <-r.done:
 		}
 	}()
@@ -426,6 +443,7 @@ func (r *NodeReference) end(release bool) {
 	close(r.done)
 	r.mu.Unlock()
 	r.node.bridge.removeReference(r.handle)
+	r.endEvents()
 	for id := range watches {
 		if w := r.node.bridge.removeWatch(id); w != nil {
 			// The Node host ends its watches with its reference.
@@ -663,7 +681,7 @@ func (h *NodeHost) bridgeEvent(event string, payload []byte) {
 	case "state":
 		h.referenceState(payload)
 	case "event":
-		h.nodeEvents()
+		h.nodeEvents(payload)
 	case "ack":
 		h.eventsAcked(payload)
 	default:

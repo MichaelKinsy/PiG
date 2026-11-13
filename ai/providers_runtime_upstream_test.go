@@ -14,9 +14,10 @@ import (
 func TestBuiltinModelsRuntimeRegistersCatalog(t *testing.T) {
 	builtin := ai.BuiltinModels()
 	providers := builtin.GetProviders()
-	catalog := ai.ListProviders()
-	if len(providers) != len(ai.BuiltinProviders()) || len(providers) != len(catalog) {
-		t.Fatalf("runtime providers=%d builtin providers=%d catalog providers=%d", len(providers), len(ai.BuiltinProviders()), len(catalog))
+	// The catalog without the provider a pig_strip_<api> build strips.
+	catalog := len(ai.ListProviders()) - len(ai.BuiltStrippedProviders())
+	if len(providers) != len(ai.BuiltinProviders()) || len(providers) != catalog {
+		t.Fatalf("runtime providers=%d builtin providers=%d catalog providers=%d", len(providers), len(ai.BuiltinProviders()), catalog)
 	}
 	if !slices.ContainsFunc(providers, func(p *ai.ModelsProvider) bool { return p.ID == "anthropic" }) || len(builtin.GetModels()) <= 500 {
 		t.Fatalf("incomplete builtin runtime: %d models", len(builtin.GetModels()))

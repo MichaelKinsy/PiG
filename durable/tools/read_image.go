@@ -15,14 +15,15 @@ import (
 
 // Ports packages/durable/src/tools/read.ts (readImage, imageModel, imageError) and the limits of image-processor.ts.
 
-// imageModel is what the conversation's model takes: whether images, and within which limits.
+// imageModel is the conversation's model as images see it: its limits, and its id if it has no image input.
 type imageModel struct {
-	vision bool
 	limits ImageLimits
+	// imageUnsupportedByModel is nil for a model with image input, and without a resolvable model.
+	imageUnsupportedByModel *string
 }
 
-// imageModelOf is the conversation model's image input: the defaults overridden by its inputLimits.images.resize. Without a
-// resolvable model, it counts as one that takes images within the defaults.
+// imageModelOf is the conversation model's image limits, the defaults overridden by its inputLimits.images.resize, and its id
+// if it has no image input. Without a resolvable model, the defaults and no id.
 func imageModelOf(ctx context.Context, api durable.ToolExecutionApi) (imageModel, error) {
 	agent, err := api.Agent(ctx)
 	if err != nil {
@@ -32,11 +33,14 @@ func imageModelOf(ctx context.Context, api durable.ToolExecutionApi) (imageModel
 	if agent.Model != nil {
 		model = api.Models().GetModel(agent.Model.Provider, agent.Model.ModelId)
 	}
-	out := imageModel{vision: true, limits: DEFAULT_IMAGE_LIMITS}
+	out := imageModel{limits: DEFAULT_IMAGE_LIMITS}
 	if model == nil {
 		return out, nil
 	}
-	out.vision = slices.Contains(model.Input, "image")
+	if !slices.Contains(model.Input, "image") {
+		id := model.ID
+		out.imageUnsupportedByModel = &id
+	}
 	if model.InputLimits != nil && model.InputLimits.Images != nil && model.InputLimits.Images.Resize != nil {
 		resize := model.InputLimits.Images.Resize
 		if resize.MaxWidth != 0 {
@@ -54,8 +58,8 @@ func imageModelOf(ctx context.Context, api durable.ToolExecutionApi) (imageModel
 
 // readImage is one image block, prepared by processor or, without one, as the file is when its format is inline and it
 // fits the limits (its size is checked before reading it, its dimensions from its header); otherwise an error result saying
-// why. What happened to the image is an info diagnostic. A model without image input sees pi-ai's placeholder instead; a
-// diagnostic says so.
+// why. What happened to the image is an info diagnostic. A model without image input sees pi-ai's placeholder instead,
+// decided per request; details names it for UIs.
 func readImage(ctx context.Context, reader env.BinaryReader, info env.FileInfo, path, mimeType string, processor ImageProcessor, model imageModel) (durable.ToolExecutionResult, error) {
 	var image ai.ImageContent
 	var notes []string
@@ -101,16 +105,21 @@ func readImage(ctx context.Context, reader env.BinaryReader, info env.FileInfo, 
 		}
 		image = ai.ImageContent{Data: ToBase64(bytes), MimeType: mimeType}
 	}
-	if !model.vision {
-		notes = append(notes, "The current model does not support images; it sees a placeholder instead.")
-	}
 	message := strings.Join(append([]string{fmt.Sprintf("Read image file [%s].", image.MimeType)}, notes...), " ")
-	return durable.ToolExecutionResult{
+	result := durable.ToolExecutionResult{
 		Output:              []ai.ToolResultMessageContent{image},
 		StructuredOutput:    delta.JsonObjectOf("type", "image", "data", image.Data, "mimeType", image.MimeType),
 		HasStructuredOutput: true,
 		Diagnostics:         []durable.ToolDiagnostic{{Severity: durable.SeverityInfo, Code: "image", Message: message}},
-	}, nil
+	}
+	if model.imageUnsupportedByModel != nil {
+		encoded, err := durable.ToJsonValue(&ReadToolDetails{ImageUnsupportedByModel: model.imageUnsupportedByModel})
+		if err != nil {
+			return durable.ToolExecutionResult{}, err
+		}
+		result.Details, result.HasDetails = encoded, true
+	}
+	return result, nil
 }
 
 func imageError(message string) durable.ToolExecutionResult {

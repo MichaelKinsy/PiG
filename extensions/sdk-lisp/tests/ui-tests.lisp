@@ -102,6 +102,30 @@
       {\"kind\":\"dynamic-border\",\"color\":\"border\"},{\"kind\":\"loader\",\"message\":\"Loading...\"},{\"kind\":\"text\",\"text\":\"\",\"paddingX\":1,\"paddingY\":1}]}"
               (kt-node-json (pig:kit-container (list (pig:kit-box) (pig:kit-spacer) (pig:kit-dynamic-border) (pig:kit-loader) (pig:kit-text))))))
 
+;; Every node kind can carry an id: an a11y, focus or drawing record of a mounted view names a node by it.
+(deftest kit-structural-kinds-carry-an-id
+  (let ((pairs '()))
+    (labels ((walk (node)
+               (push (cons (pig:jget node "kind") (pig:jget node "id")) pairs)
+               (map nil #'walk (or (pig:jget node "children") #()))))
+      (walk (kt-node-json
+             (pig:kit-container
+              (list (pig:kit-box 1 1 :id "id-box" :children (list (pig:kit-text "t" 0 0 :id "id-text")))
+                    (pig:kit-truncated-text "t" 0 0 :id "id-truncated-text")
+                    (pig:kit-markdown "m" 0 0 :id "id-markdown")
+                    (pig:kit-spacer 1 :id "id-spacer")
+                    (pig:kit-dynamic-border "border" :id "id-dynamic-border")
+                    (pig:kit-image (kt-octets "png") "image/png" :id "id-image")
+                    (pig:kit-loader "l" :id "id-loader")
+                    (pig:kit-hstack nil :id "id-hstack")
+                    (pig:kit-vstack nil :id "id-vstack")
+                    (pig:kit-lines '("row") :id "id-lines")
+                    (pig:kit-user-message "u" 1 :id "id-user-message")
+                    (pig:kit-diff "d" :id "id-diff"))
+              :id "id-container"))))
+    (check-equal 14 (length pairs))
+    (dolist (pair pairs) (check-equal (format nil "id-~A" (car pair)) (cdr pair)))))
+
 ;; The grid node (D614): columns is always sent, and an optional member left unset is absent, not null, zero or empty.
 (deftest kit-grid-holds-exactly-the-members-set
   (kt-check-json "{\"kind\":\"container\",\"children\":[
@@ -833,3 +857,20 @@
         (check-equal "viewport=done" (pig:jget (kth-args h :notify "ui.custom.close") "result"))
         (hsend (kth-host h) "type" "call_result" "id" (pig:jget (fourth call) "id") "call_result" (pig:obj "result" (pig:obj "ok" t "result" "viewport=done")))
         (kth-next h :response "response")))))
+
+;;; ---------------------------------------------------------------- the host's invalidation of a mounted component
+
+(deftest an-invalidate-queued-for-a-closed-overlay-is-dropped
+  ;; ui.custom.invalidate is one event of the component's serial queue: a component that closed while it was queued is not
+  ;; invalidated, not rendered, and no error is raised or sent
+  (let* ((invalidations 0) (renders 0)
+         (ov (pig::uc-make-ov (pig:make-custom-component :render (lambda (width) (declare (ignore width)) (incf renders) (list "row"))
+                                                         :invalidate (lambda () (incf invalidations)))
+                              #'identity)))
+    (check (pig::uc-enqueue ov :invalidate 2) "queued while the component is mounted")
+    (pig::uc-stop ov)
+    (pig::uc-worker (pig:make-extension "kit-invalidate") "custom-1" ov)
+    (check-equal '(0 0) (list invalidations renders) "no invalidate and no render after the close")
+    (let ((queued (length (pig::uc-ov-events ov))))
+      (check (pig::uc-enqueue ov :invalidate 1) "an invalidate for a closed component is not an error")
+      (check-equal queued (length (pig::uc-ov-events ov)) "and it is not queued"))))
