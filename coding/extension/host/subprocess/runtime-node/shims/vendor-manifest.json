@@ -7340,7 +7340,7 @@
         "integrity": "sha512-2tWPSnV3qzfiDIY3aWluBag3vC++Vs+VsXt/UquSU5onPMohPih72FUhIhaqmDdMYubOgB3Byl9uF4Vk40JLvQ=="
       },
       "source": "dist/api/google-generative-ai.js",
-      "sourceSha256": "44beb6dfb5a9f8ce35eee4121473af2fc23456b12e5992b94d98c57f68d3a867",
+      "sourceSha256": "417cd31d5d16eb75199c854bd0db120d2a35b104a8afa77599720c2be3afd77e",
       "sha256": "d6386e6305951cc59951f285dd2fa6928c07b7db1b18dc4137b03a9fecd21080",
       "rewrite": "D74 host API leaf"
     },
@@ -7363,7 +7363,7 @@
         "integrity": "sha512-2tWPSnV3qzfiDIY3aWluBag3vC++Vs+VsXt/UquSU5onPMohPih72FUhIhaqmDdMYubOgB3Byl9uF4Vk40JLvQ=="
       },
       "source": "dist/api/google-vertex.js",
-      "sourceSha256": "90288ba15a1c4a2d9ca1f6956bcbe329de3e70dfdbd7377cca1ba2d578ed8880",
+      "sourceSha256": "74ce0353f43f12e4a7bd8c947e84afd833a6b5a084e4aed01795b2a6780a5de4",
       "sha256": "994129aa12e78966f965d01a32452cd5e4a18aea14517bc4083d519023409b3a",
       "rewrite": "D74 host API leaf"
     },
