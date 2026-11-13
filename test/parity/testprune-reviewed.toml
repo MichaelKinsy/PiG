@@ -2143,3 +2143,10 @@ path = "internal/pioracle/bin_test.go"
 commit = "0022dfc94a0e68a24ec51f1a3566b0827cce9e9b"
 class = "NOBEHAVIOR"
 reason = "internal/pioracle is PiG-original test support (it finds and checks the installed Pi oracle), so no Pi line governs the test. The commit makes the durable check read the vendored packs: the eight values are the fixture of the check and its refusals, which were a package.json version and a build stamp file and are the packs' manifest.json (commit and package version) and the installed .package-lock.json (resolved file and sha512 integrity); the case `another commit of the same package version` (`build of Pi commit`) becomes `packs of another commit` (`want <the pinned commit>`), and the messages name checkDurable where they named CheckDurable."
+
+[[entry]]
+path = "ai/tool_surrogate_wire_test.go"
+commit = "e95b1a4f1165a0867517cca6b34fcb6fda7f07b4"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "No expected value changed: the called tool's name was and is `N[\\ude00]`, the unit the stream gave. The assertion that held the literal (strings.Contains on PiG's message, two API kinds) was replaced by one that reads the name out of the message Pi's pinned build ends with for the same stream (testdata/tool_surrogate_stream.mjs), requires that to be `N[\\ude00]`, and compares PiG's with it, for eight API kinds. Pi takes the name as the stream gives it (openai-completions.ts:489, anthropic-messages.ts:1012) and sanitizes no tool name; JSON.stringify writes the lone unit as its escape. Stricter, not weaker."
