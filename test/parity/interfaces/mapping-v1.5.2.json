@@ -17687,6 +17687,7 @@
       ],
       "evidence": [
         "test:ai/google_vertex_option_fields_upstream_test.go#TestGoogleVertexProjectAndLocationOptions",
+        "test:ai/google_fetch_option_shapes_test.go#TestGoogleAdaptersRouteEveryRequestShapeThroughTheCallersFetch",
         "test:ai/google_vertex_adc_test.go#TestGoogleVertexProjectAndLocationFromStreamOptions"
       ]
     },
@@ -17865,6 +17866,7 @@
       ],
       "evidence": [
         "test:ai/google_vertex_option_fields_upstream_test.go#TestGoogleVertexProjectAndLocationOptions",
+        "test:ai/google_fetch_option_shapes_test.go#TestGoogleAdaptersRouteEveryRequestShapeThroughTheCallersFetch",
         "test:ai/google_vertex_adc_test.go#TestGoogleVertexProjectAndLocationFromStreamOptions"
       ]
     },
@@ -42301,6 +42303,7 @@
       ],
       "evidence": [
         "test:ai/google_vertex_option_fields_upstream_test.go#TestGoogleVertexProjectAndLocationOptions",
+        "test:ai/google_fetch_option_shapes_test.go#TestGoogleAdaptersRouteEveryRequestShapeThroughTheCallersFetch",
         "test:ai/google_vertex_adc_test.go#TestGoogleVertexProjectAndLocationFromStreamOptions"
       ]
     },
@@ -42479,6 +42482,7 @@
       ],
       "evidence": [
         "test:ai/google_vertex_option_fields_upstream_test.go#TestGoogleVertexProjectAndLocationOptions",
+        "test:ai/google_fetch_option_shapes_test.go#TestGoogleAdaptersRouteEveryRequestShapeThroughTheCallersFetch",
         "test:ai/google_vertex_adc_test.go#TestGoogleVertexProjectAndLocationFromStreamOptions"
       ]
     },
@@ -63122,6 +63126,7 @@
       ],
       "evidence": [
         "test:ai/google_vertex_option_fields_upstream_test.go#TestGoogleVertexProjectAndLocationOptions",
+        "test:ai/google_fetch_option_shapes_test.go#TestGoogleAdaptersRouteEveryRequestShapeThroughTheCallersFetch",
         "test:ai/google_vertex_adc_test.go#TestGoogleVertexProjectAndLocationFromStreamOptions"
       ]
     },
@@ -63300,6 +63305,7 @@
       ],
       "evidence": [
         "test:ai/google_vertex_option_fields_upstream_test.go#TestGoogleVertexProjectAndLocationOptions",
+        "test:ai/google_fetch_option_shapes_test.go#TestGoogleAdaptersRouteEveryRequestShapeThroughTheCallersFetch",
         "test:ai/google_vertex_adc_test.go#TestGoogleVertexProjectAndLocationFromStreamOptions"
       ]
     },
@@ -108713,8 +108719,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_follow_hold_test.go#TestFollowObserverSectionHoldsTheDeliverySchedulerSoTwoCommitsOfOneSectionAreOneCall",
-        "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchACallAndAnEndOutsideABatchWithNothingWatchingALaterWatchOpensAtTheValueAndEnds",
-        "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchARetirementAndAnEndInsideOneBatchTheWatchGetsTheRetirementThenEnds"
+        "test:chord/next/host/host_follow_section_test.go#TestFollowSectionAfterItsSourceDetachedStillRunsWorkOnceAndTheAdvanceInItIsDropped",
+        "test:chord/next/host/host_follow_section_test.go#TestFollowSectionKeepsTheReadsAndTheAdvancesOfTwoGoroutinesInOneOrder"
       ]
     },
     {
@@ -113564,9 +113570,9 @@
         "call:chord/next/state/native_source.go#FollowedSource.Observe"
       ],
       "evidence": [
+        "test:chord/next/host/host_watch_outside_loop_test.go#TestAnObserverAttachedFromOutsideTheLoopIsToldOfAChangeCommittedWhileItAttached",
         "test:chord/next/registries/value_test.go#TestObserve",
-        "test:chord/next/registries/value_test.go#TestRegistryValue",
-        "test:chord/next/state/native_own_test.go#TestFollowedSourceEnd"
+        "test:chord/next/registries/value_test.go#TestRegistryValue"
       ]
     },
     {
@@ -170260,7 +170266,7 @@
       "evidence": [
         "test:internal/codingagent/custom_editor_test.go#TestCustomEditorEscapeOverAutocompleteGoesToTheEditor",
         "test:internal/codingagent/custom_editor_test.go#TestCustomEditorEscapePrefersOnEscapeThenTheInterruptActionThenTheEditor",
-        "test:internal/codingagent/custom_editor_oracle_test.go#TestCustomEditorMatchesPi"
+        "test:internal/codingagent/view_client_mode_test.go#TestTerminalViewClientEscapeLeavesThePanelBeforeItInterrupts"
       ]
     },
     {
@@ -183439,7 +183445,7 @@
       "evidence": [
         "test:coding/cli/resource_extensions_upstream_test.go#TestUpstreamResourceLoaderExtensionConflicts",
         "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitWidgetHeaderFooterAndRenderers",
-        "test:coding/cli/configured_resources_test.go#TestResourceLoaderUpstreamExtensionConflicts"
+        "test:test/extension-conformance/ui_view_tool_test.go#TestConformance_UIViewToolShowsAndFocuses"
       ]
     },
     {
@@ -183461,7 +183467,7 @@
       "evidence": [
         "test:coding/cli/resource_extensions_upstream_test.go#TestUpstreamResourceLoaderExtensionConflicts",
         "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitWidgetHeaderFooterAndRenderers",
-        "test:coding/cli/configured_resources_test.go#TestResourceLoaderUpstreamExtensionConflicts"
+        "test:test/extension-conformance/ui_view_tool_test.go#TestConformance_UIViewToolShowsAndFocuses"
       ]
     },
     {
@@ -312881,14 +312887,15 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:tui/renderer.go#TUI.AddInputListener"
+        "call:internal/codingagent/view_client_wire.go#InteractiveMode.attachTerminalViewClient"
       ],
       "evidence": [
-        "test:tui/tui_base_members_upstream_test.go#TestViewportTUIInheritedMembers"
+        "test:tui/tui_base_members_upstream_test.go#TestViewportTUIInheritedMembers",
+        "test:tui/viewport_tui_upstream_test.go#TestTUIInterfaceMembersBehaveLikePi"
       ]
     },
     {
@@ -312901,14 +312908,15 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:tui/renderer.go#TUI.AddInputListener"
+        "call:internal/codingagent/view_client_wire.go#InteractiveMode.attachTerminalViewClient"
       ],
       "evidence": [
-        "test:tui/tui_base_members_upstream_test.go#TestViewportTUIInheritedMembers"
+        "test:tui/tui_base_members_upstream_test.go#TestViewportTUIInheritedMembers",
+        "test:tui/viewport_tui_upstream_test.go#TestTUIInterfaceMembersBehaveLikePi"
       ]
     },
     {
@@ -313248,6 +313256,7 @@
         "call:tui/editor_remote.go#Editor.renderRemote"
       ],
       "evidence": [
+        "test:internal/codingagent/view_client_mode_test.go#TestTerminalViewClientMountThenUnmountLeavesNoTrace",
         "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate"
       ]
     },
@@ -313268,6 +313277,7 @@
         "call:tui/editor_remote.go#Editor.renderRemote"
       ],
       "evidence": [
+        "test:internal/codingagent/view_client_mode_test.go#TestTerminalViewClientMountThenUnmountLeavesNoTrace",
         "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate"
       ]
     },
@@ -318120,14 +318130,15 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:tui/renderer.go#TUI.AddInputListener"
+        "call:internal/codingagent/view_client_wire.go#InteractiveMode.attachTerminalViewClient"
       ],
       "evidence": [
-        "test:tui/tui_base_members_upstream_test.go#TestViewportTUIInheritedMembers"
+        "test:tui/tui_base_members_upstream_test.go#TestViewportTUIInheritedMembers",
+        "test:tui/viewport_tui_upstream_test.go#TestTUIInterfaceMembersBehaveLikePi"
       ]
     },
     {
@@ -318140,14 +318151,15 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:tui/renderer.go#TUI.AddInputListener"
+        "call:internal/codingagent/view_client_wire.go#InteractiveMode.attachTerminalViewClient"
       ],
       "evidence": [
-        "test:tui/tui_base_members_upstream_test.go#TestViewportTUIInheritedMembers"
+        "test:tui/tui_base_members_upstream_test.go#TestViewportTUIInheritedMembers",
+        "test:tui/viewport_tui_upstream_test.go#TestTUIInterfaceMembersBehaveLikePi"
       ]
     },
     {
@@ -318489,6 +318501,7 @@
         "call:tui/editor_remote.go#Editor.renderRemote"
       ],
       "evidence": [
+        "test:internal/codingagent/view_client_mode_test.go#TestTerminalViewClientMountThenUnmountLeavesNoTrace",
         "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate"
       ]
     },
@@ -318509,6 +318522,7 @@
         "call:tui/editor_remote.go#Editor.renderRemote"
       ],
       "evidence": [
+        "test:internal/codingagent/view_client_mode_test.go#TestTerminalViewClientMountThenUnmountLeavesNoTrace",
         "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate"
       ]
     },

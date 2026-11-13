@@ -11,12 +11,14 @@ import (
 func resetDerivedVariants(t *testing.T) {
 	t.Helper()
 	derivedVariants.Lock()
-	bundle, byKey, bySpec := derivedVariants.bundle.Load(), derivedVariants.byKey, derivedVariants.bySpec
+	listing, bundle, byKey, bySpec := derivedVariants.listing.Load(), derivedVariants.bundle.Load(), derivedVariants.byKey, derivedVariants.bySpec
+	derivedVariants.listing.Store(nil)
 	derivedVariants.bundle.Store(nil)
 	derivedVariants.byKey, derivedVariants.bySpec = nil, nil
 	derivedVariants.Unlock()
 	t.Cleanup(func() {
 		derivedVariants.Lock()
+		derivedVariants.listing.Store(listing)
 		derivedVariants.bundle.Store(bundle)
 		derivedVariants.byKey, derivedVariants.bySpec = byKey, bySpec
 		derivedVariants.Unlock()

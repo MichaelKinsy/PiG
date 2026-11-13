@@ -140,6 +140,10 @@ from . import kit as kit
 from . import _tui_state
 from . import tui as tui  # loaded here with every other module: tests/test_staged_directory_independence.py
 from .kit import ViewComponent as ViewComponent
+from . import ui_view as _ui_view
+
+_NO_VIEW_RESULT: Any = object()
+from .ui_view import ViewAbilities as ViewAbilities, ViewAsset as ViewAsset, ViewClaim as ViewClaim, ViewDrawingAbilities as ViewDrawingAbilities, ViewNotice as ViewNotice, ViewSlotClaims as ViewSlotClaims, ViewError as ViewError, ViewInput as ViewInput, ViewIntent as ViewIntent, ViewIntentInvocation as ViewIntentInvocation, ViewIntentResult as ViewIntentResult, ViewLimits as ViewLimits, ViewRef as ViewRef, ViewShape as ViewShape, ViewStatus as ViewStatus, ViewTarget as ViewTarget
 from .event_bus import EventBus as EventBus, EventBusHandler as EventBusHandler, _EventBusHub
 from .state_feed import StateFeed
 from .user_bash import BashExecOptions as BashExecOptions, BashOperations as BashOperations, _BashOperationsTable, _data_update, _run_user_bash_exec, _user_bash_operations_reply
@@ -3437,6 +3441,122 @@ class Context:
         """Pi's ``ReadonlyFooterDataProvider`` (footer-data-provider.ts:103-163,387), the third argument of a ``ui.setFooter`` factory. A footer renderer reads it from the context it was installed with; ``set_footer_renderer`` renders again when the host's footer data changes."""
         return FooterData(self.extension)
 
+    # D614 plugin UI mounts ---------------------------------------------------
+
+    def view_abilities(self) -> ViewAbilities | None:
+        """What the attached client draws, or ``None`` while none is attached."""
+        self._assert_active()
+        return self.extension._view_state.abilities()
+
+    def _view_call(self, method: str, args: dict[str, Any]) -> ViewStatus:
+        self._assert_active()
+        try:
+            return _ui_view.decode_status(self._call(method, args).get("result"))
+        except HostCallError as err:
+            if err.code in ("invalid", "unsupported", "limit", "stale", "terminal", "not_found"):
+                raise ViewError(err.code, err.message) from err
+            raise
+
+    def _view_wire(self, view: "kit.View") -> dict[str, Any]:
+        encoded = self.extension._views.encode(view)
+        wire = dict(encoded.body)
+        if encoded.images:
+            wire["images"] = [{"ref": i.ref, "mimeType": i.mime_type, "data": base64.b64encode(i.data).decode("ascii")} for i in encoded.images]
+        return wire
+
+    def _view_content(self, view: "kit.View", intents: Any, assets: Any, fallback: Any, alternatives: Any = (), drawing: Any = None, a11y: Any = (), focus: Any = (), title: str = "") -> dict[str, Any]:
+        fallback_wire = None if fallback is None else self.extension._views.encode(kit.View(root=fallback)).body
+        alts = []
+        for alt in alternatives or ():
+            entry = {"when": alt["when"], "view": self._view_wire(alt["view"])}
+            if alt.get("drawing") is not None:
+                entry["drawing"] = alt["drawing"]
+            alts.append(entry)
+        return _ui_view.encode_content(self._view_wire(view), intents, assets, fallback_wire, alts, drawing, a11y, focus, title)
+
+    def mount_view(
+        self,
+        key: str,
+        slot: str,
+        view: "kit.View",
+        *,
+        target: ViewTarget | None = None,
+        title: str = "",
+        intents: Any = (),
+        assets: Any = (),
+        fallback: Any = None,
+        alternatives: Any = (),
+        drawing: Any = None,
+        a11y: Any = (),
+        focus: Any = (),
+    ) -> ViewStatus:
+        """Mount ``view`` in a slot the attached client draws. ``key`` names the mount among this extension's.
+
+        ``alternatives`` (at most 8) are dicts ``{"when": {"any": [{"all": [{"claim", "op", "value"}]}]}, "view": kit.View,
+        "drawing": ...}``; a client draws the first whose ``when`` holds for its claims. ``drawing`` is the wire record
+        (``profile`` ``scene`` with ``shapes`` or ``pixels`` with ``pixels``, and ``regions``); ``a11y`` and ``focus`` are
+        lists of wire records naming view nodes by id (at most 256 each); a focus record's ``request`` is ``"mount"`` or
+        ``"update"``. ``title`` is the short text a client labels the mount with (at most 64 bytes on one line). The host
+        checks every bound."""
+        args = self._view_content(view, intents, assets, fallback, alternatives, drawing, a11y, focus, title)
+        args["key"], args["slot"] = key, slot
+        if target is not None:
+            args["target"] = target._wire()
+        return self._view_call("ui.view.mount", args)
+
+    def update_view(
+        self,
+        mount: ViewRef,
+        view: "kit.View",
+        *,
+        title: str = "",
+        intents: Any = (),
+        assets: Any = (),
+        fallback: Any = None,
+        alternatives: Any = (),
+        drawing: Any = None,
+        a11y: Any = (),
+        focus: Any = (),
+    ) -> ViewStatus:
+        """Replace the content of a mount, its ``title`` included. Fails with ``ViewError`` code ``"stale"`` unless ``mount`` carries the epoch and rev the last operation returned."""
+        args = self._view_content(view, intents, assets, fallback, alternatives, drawing, a11y, focus, title)
+        args["mount"] = mount._wire()
+        return self._view_call("ui.view.update", args)
+
+    def hide_view(self, mount: ViewRef) -> ViewStatus:
+        return self._view_call("ui.view.hide", {"mount": mount._wire()})
+
+    def show_view(self, mount: ViewRef) -> ViewStatus:
+        return self._view_call("ui.view.show", {"mount": mount._wire()})
+
+    def finish_view(self, mount: ViewRef, *, result: Any = _NO_VIEW_RESULT) -> ViewStatus:
+        """End a mount as completed. Terminal: a later operation on the mount fails with code ``"terminal"``.
+
+        ``result``, any JSON value of at most 65536 encoded bytes, is the extension's last word on the mount; the reply
+        and ``view_state`` carry it as ``ViewStatus.result``."""
+        args: dict[str, Any] = {"mount": mount._wire()}
+        if result is not _NO_VIEW_RESULT:
+            args["result"] = result
+        return self._view_call("ui.view.finish", args)
+
+    def remove_view(self, mount: ViewRef) -> ViewStatus:
+        """End a mount as withdrawn. Terminal."""
+        return self._view_call("ui.view.remove", {"mount": mount._wire()})
+
+    def view_state(self, key: str) -> ViewStatus:
+        return self._view_call("ui.view.state", {"key": key})
+
+    def view_diagnostics(self, key: str) -> list[ViewNotice]:
+        """The notices of the mount under ``key``, oldest first: what the host rejected or ended and what a client could
+        not draw. The host keeps at most 32 and counts repeats."""
+        self._assert_active()
+        try:
+            return _ui_view.decode_notices(self._call("ui.view.diagnostics", {"key": key}).get("result"))
+        except HostCallError as err:
+            if err.code in ("invalid", "not_found"):
+                raise ViewError(err.code, err.message) from err
+            raise
+
     def has_ui(self) -> bool:
         """Whether the host binds a UI context: interactive and RPC, not print/JSON."""
         self._assert_active()
@@ -4666,6 +4786,10 @@ class Extension:
         self._overlay_lock = threading.Lock()
         # The frontend flag, the image refs sent, and the live widget, header and footer views (D107).
         self._views = kit._ViewLedger()
+        # D614 plugin UI mounts: the replicated client abilities and the intent handler.
+        self._view_state = _ui_view.ViewState()
+        # A change of the replicated client abilities reaches the on_view_abilities handlers on a worker of its own (StateFeed).
+        self._view_abilities_feed = StateFeed(self, "view abilities")
         self._shutdown = ProviderSignal()
         self._shutdown_noted = False
         # The replicated signal of the run in progress: (host run number, signal), None while no run is active (Context.signal).
@@ -5710,6 +5834,23 @@ class Extension:
         for evicted in stream.get("evict") or ():
             replicas.pop((name, str(evicted)), None)
 
+    def on_view_intent(self, handler: "_ui_view.ViewIntentHandler") -> None:
+        """Answer the intents of this extension's mounts (D614). ``handler(invocation)`` returns a :class:`ViewIntentResult`. A later call replaces it."""
+        if not callable(handler):
+            raise TypeError("on_view_intent requires a callable handler")
+        self._view_state.handler = handler
+
+    def on_view_abilities(self, handler: "Callable[[ViewAbilities | None, Context], Any]") -> None:
+        """Run ``handler(abilities, ctx)`` when what the attached client draws changed (D614): the first client attached, the abilities changed, or the last client left (``abilities`` is ``None``; a client that draws no slot is a record with no slots).
+
+        It is where an extension mounts its views for a client that arrives while the session is idle, and stops work no client can see. The handler receives the abilities of the change it is delivered for, and :meth:`Context.view_abilities` already reports them when it runs, so a mount it makes is checked against that client. The state an extension starts in is not a change: an extension loaded while a client is attached reads :meth:`Context.view_abilities` at ``session_start``. A session no client attaches to never runs the handler.
+
+        Handlers run in registration order on a worker thread, one change at a time in the order the changes arrived, never on the thread that reads the host's replies, so a handler can make a blocking host call. The host does not wait for them. A handler that raises is reported in the extension's log and does not stop the others.
+        """
+        if not callable(handler):
+            raise TypeError("on_view_abilities requires a callable handler")
+        self._view_abilities_feed.subscribe(lambda abilities: handler(abilities, Context(self)))
+
     def on_loaded(self, handler: "Callable[[Context], Any]") -> None:
         """Run ``handler(ctx)`` once the extension is registered with the host and has received its state, before it serves any request (session_start included).
 
@@ -6010,6 +6151,9 @@ class Extension:
     def _apply_ui_state(self, state: dict[str, Any]) -> None:
         """Record the snapshot's replicated values: hasUI, theme, settings, MCP servers, the model and the session name. The ready state and every state_update pass through here. Caller holds _state_lock."""
         self._views.apply_state(state)
+        abilities_changed, abilities = self._view_state.apply_state(state)
+        if abilities_changed:
+            self._view_abilities_feed.publish(abilities)
         if "model" in state:
             # An absent key keeps the replica; an explicit null clears it (the Session holds no model). A push that repeats the model derives nothing.
             model = state["model"]
@@ -6342,6 +6486,8 @@ class Extension:
                     else:
                         result = {"messages": returned, "_pigContextUnchanged": unchanged}
                 self._respond(req_id, result, None)
+            elif method == "ui.view.intent":
+                self._respond(req_id, _ui_view.handle_intent(self._view_state, ctx, req.get("args") or {}), None)
             elif method == "shortcut":
                 key = req.get("tool", "")
                 self._shortcut_handlers[key](ctx)

@@ -20,6 +20,7 @@ pub enum Widget {
     Editor(Editor),
     ScrollView(ScrollView),
     MouseRegion(MouseRegion),
+    Grid(Grid),
     // widget-variants
 }
 
@@ -43,6 +44,7 @@ widget_from!(
     Editor,
     ScrollView,
     MouseRegion,
+    Grid,
     /* widget-from */
 );
 
@@ -59,6 +61,7 @@ impl Widget {
             Widget::Editor(_) => "editor",
             Widget::ScrollView(_) => "scroll-view",
             Widget::MouseRegion(_) => "mouse-region",
+            Widget::Grid(_) => "grid",
             // widget-kinds
         }
     }
@@ -193,6 +196,26 @@ impl Widget {
                 }
                 put_opt(&mut region, "render", &n.render);
                 put(map, "region", Value::Object(region));
+            }
+            Widget::Grid(n) => {
+                put(map, "id", n.id.as_str());
+                put(map, "columns", n.columns);
+                put_opt(map, "chipRows", &n.chip_rows);
+                if !n.head.is_empty() {
+                    put(
+                        map,
+                        "head",
+                        Value::Array(n.head.iter().map(|h| Value::String(h.clone())).collect()),
+                    );
+                }
+                if !n.cells.is_empty() {
+                    put(
+                        map,
+                        "cells",
+                        Value::Array(n.cells.iter().map(GridCell::wire).collect()),
+                    );
+                }
+                put_opt(map, "selected", &n.selected);
             } // widget-encode
         }
         Ok(())
@@ -890,6 +913,166 @@ impl MouseRegion {
     /// The result's `render`; absent takes upstream's per-type default.
     pub fn render(mut self, render: bool) -> Self {
         self.render = Some(render);
+        self
+    }
+}
+
+/// The grid node of D614 (the cell form): a calendar-style grid of equal
+/// columns whose cells are data, not nodes, so a month of events is one node.
+/// The host is its only validator and answers a mount or an update that breaks
+/// a rule with code `invalid`: 1 to 16 columns, no head or one label a column
+/// (64 bytes each), 1 to 8 chip rows, at most 128 cells in at most 32 rows,
+/// cell values unique and `selected` one of them. An intent whose `node_key`
+/// is the grid's id is raised with `{"value": <the cell's value>}` when the
+/// user chooses a cell.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Grid {
+    id: String,
+    columns: u32,
+    head: Vec<String>,
+    chip_rows: Option<u32>,
+    selected: Option<String>,
+    cells: Vec<GridCell>,
+}
+
+impl Grid {
+    /// A grid named `id` (required, unique within the view) of `columns`
+    /// equal columns over `cells`, row by row; the last row may be short.
+    pub fn new(id: impl Into<String>, columns: u32, cells: Vec<GridCell>) -> Self {
+        Self {
+            id: id.into(),
+            columns,
+            head: Vec::new(),
+            chip_rows: None,
+            selected: None,
+            cells,
+        }
+    }
+
+    /// The column labels: as many as the columns.
+    pub fn head(mut self, head: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        self.head = head.into_iter().map(Into::into).collect();
+        self
+    }
+
+    /// The most chip lines a cell draws; absent takes the host's 3.
+    pub fn chip_rows(mut self, chip_rows: u32) -> Self {
+        self.chip_rows = Some(chip_rows);
+        self
+    }
+
+    /// The value of the cell the cursor starts on.
+    pub fn selected(mut self, value: impl Into<String>) -> Self {
+        self.selected = Some(value.into());
+        self
+    }
+}
+
+/// One cell of a [`Grid`]. `value` names it in the intent a choice raises (at
+/// most 256 bytes; a cell without one cannot be chosen), `label` is its first
+/// line (at most 64 bytes), `mark` `"current"` draws it as today, `dim` as
+/// outside the shown range, and `color` tints the label (a theme token,
+/// `#rrggbb` or `#rrggbbaa`). `chips` are the events it shows (at most 8) and
+/// `more` counts the events the sender left out (0 to 9999). A member left
+/// `None`, `false` or empty is not sent.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct GridCell {
+    pub value: Option<String>,
+    pub label: Option<String>,
+    pub mark: Option<String>,
+    pub dim: bool,
+    pub color: Option<String>,
+    pub chips: Vec<GridChip>,
+    pub more: Option<u32>,
+}
+
+impl GridCell {
+    /// A cell with no member set.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn value(mut self, value: impl Into<String>) -> Self {
+        self.value = Some(value.into());
+        self
+    }
+
+    pub fn label(mut self, label: impl Into<String>) -> Self {
+        self.label = Some(label.into());
+        self
+    }
+
+    pub fn mark(mut self, mark: impl Into<String>) -> Self {
+        self.mark = Some(mark.into());
+        self
+    }
+
+    pub fn dim(mut self, dim: bool) -> Self {
+        self.dim = dim;
+        self
+    }
+
+    pub fn color(mut self, color: impl Into<String>) -> Self {
+        self.color = Some(color.into());
+        self
+    }
+
+    /// Appends a chip.
+    pub fn chip(mut self, chip: GridChip) -> Self {
+        self.chips.push(chip);
+        self
+    }
+
+    pub fn more(mut self, more: u32) -> Self {
+        self.more = Some(more);
+        self
+    }
+
+    fn wire(&self) -> Value {
+        let mut cell = Map::new();
+        put_opt(&mut cell, "value", &self.value);
+        put_opt(&mut cell, "label", &self.label);
+        put_opt(&mut cell, "mark", &self.mark);
+        if self.dim {
+            put(&mut cell, "dim", true);
+        }
+        put_opt(&mut cell, "color", &self.color);
+        if !self.chips.is_empty() {
+            let chips = self
+                .chips
+                .iter()
+                .map(|chip| {
+                    let mut c = Map::new();
+                    put(&mut c, "text", chip.text.as_str());
+                    put_opt(&mut c, "color", &chip.color);
+                    Value::Object(c)
+                })
+                .collect();
+            put(&mut cell, "chips", Value::Array(chips));
+        }
+        put_opt(&mut cell, "more", &self.more);
+        Value::Object(cell)
+    }
+}
+
+/// One event of a cell: its text (at most 256 bytes) and its colour (a theme
+/// token, `#rrggbb` or `#rrggbbaa`).
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct GridChip {
+    pub text: String,
+    pub color: Option<String>,
+}
+
+impl GridChip {
+    pub fn new(text: impl Into<String>) -> Self {
+        Self {
+            text: text.into(),
+            color: None,
+        }
+    }
+
+    pub fn color(mut self, color: impl Into<String>) -> Self {
+        self.color = Some(color.into());
         self
     }
 }

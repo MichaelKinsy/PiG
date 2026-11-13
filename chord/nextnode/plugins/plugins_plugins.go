@@ -337,6 +337,29 @@ func (c *Plugins) Discovery() model.Discovery {
 	return discovery
 }
 
+// WatchTree has the watcher watch the tree at dir as it watches a root's: dir and every directory under it but the ignored
+// ones (`node_modules`, `.git`). It returns the directories watched then, and false when the watcher watches nothing (it could
+// not watch, or the component is closed). The watch changes no mark: a change under a tree that holds no plugin, no root and
+// no base code marks nothing, and the next discovery drops a tree that is no root's, base's or linked plugin's. Only Go code
+// that holds the component reaches it: no contract, wire message, plugin or configuration names a tree to watch. Its callers
+// are the tests' barrier (pluginstest.Settle, which watches a directory of its own to learn that the events before a point
+// were handled); Pi's watcher has no such member (its tests share the watcher's thread).
+func (c *Plugins) WatchTree(dir string) ([]string, bool) {
+	var watched []string
+	var watching bool
+	c.section(func() { watched, watching = c.watcher.alsoWatch(dir) })
+	return watched, watching
+}
+
+// Watches reports whether the watcher has a watch on the directory dir now: a directory under a watched tree has one once
+// the watcher handled the event of its creation. It reads the watcher's state and changes nothing. Its callers are the
+// tests' barrier (pluginstest.Settle); no contract, wire message, plugin or configuration reaches it.
+func (c *Plugins) Watches(dir string) bool {
+	var watches bool
+	c.section(func() { watches = c.watcher.watches(dir) })
+	return watches
+}
+
 // Build builds every facet of names (and of plugins discovered since the last build; discovery runs again first when the
 // plugin set changed, or when a named plugin is unknown to it or its files are gone before the watcher said so): plain data. It changes no current set: a rollout ships it.
 func (c *Plugins) Build(names []string, ctx context.Context) (*Built, error) {

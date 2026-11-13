@@ -1,0 +1,21 @@
+# ui_view_report {attachment, plugin, mount {key, epoch}, notice {code, severity, message?, path?, claim?, measured?, limit?}} is Attachment.Report: the client could not draw part of a mount, and the plugin reads the notice with ui.view.diagnostics.
+C: {"id":"1","type":"ui_view_attach","abilities":{"slots":["panel","tool-card"],"nodes":["text","box"],"markdown":true,"imageFormats":["png"],"limits":{"nodes":64,"depth":8,"snapshotBytes":4096,"textBytes":1024,"mounts":8,"intentArgBytes":64},"input":{"keyboard":true,"pointer":true,"text":false},"claims":[{"name":"display.colors","value":256}],"slotClaims":[{"slot":"panel","claims":[{"name":"display.colors","value":16}]}],"drawing":{"profiles":["scene"],"shapes":8,"pixels":0}}}
+H: {"id":"1","type":"response","command":"ui_view_attach","success":true,"data":{"attachment":1,"seq":0,"snapshots":[]}}
+H: {"type":"ui_view","attachment":1,"seq":1,"snapshot":{"plugin":"p","slot":"panel","mount":{"key":"k","epoch":1,"rev":1},"state":"live","view":{"root":{"kind":"text","text":"one"}},"digest":"dca2195ea1ba1541fd95edc4dc30c59adfee255396642c34d8cee6eff4a21e47"}}
+C: {"id":"2","type":"ui_view_report","attachment":1,"plugin":"p","mount":{"key":"k","epoch":1},"notice":{"code":"undrawn","severity":"warning","message":"no room for the box","path":"root/0"}}
+H: {"id":"2","type":"response","command":"ui_view_report","success":true,"data":{}}
+C: {"id":"3","type":"ui_view_report","attachment":1,"plugin":"p","mount":{"key":"k","epoch":1},"notice":{"code":"limit","severity":"error","claim":"display.colors","measured":300,"limit":256}}
+H: {"id":"3","type":"response","command":"ui_view_report","success":true,"data":{}}
+C: {"id":"4","type":"ui_view_report","attachment":1,"plugin":"p","mount":{"key":"k","epoch":1},"notice":{"code":"unsupported","severity":"info"}}
+H: {"id":"4","type":"response","command":"ui_view_report","success":true,"data":{}}
+# A client reports undrawn, unsupported, limit or unfocused; the mount must be the current incarnation of its key.
+C: {"id":"5","type":"ui_view_report","attachment":1,"plugin":"p","mount":{"key":"k","epoch":1},"notice":{"code":"refused","severity":"info"}}
+H: {"id":"5","type":"response","command":"ui_view_report","success":false,"error":"invalid: a client reports undrawn, unsupported, limit or unfocused, not \"refused\"","code":"invalid"}
+C: {"id":"6","type":"ui_view_report","attachment":1,"plugin":"p","mount":{"key":"k","epoch":2},"notice":{"code":"undrawn","severity":"info"}}
+H: {"id":"6","type":"response","command":"ui_view_report","success":false,"error":"stale: epoch 2 is not current (1)","code":"stale"}
+C: {"id":"7","type":"ui_view_report","attachment":1,"plugin":"p","mount":{"key":"gone","epoch":1},"notice":{"code":"undrawn","severity":"info"}}
+H: {"id":"7","type":"response","command":"ui_view_report","success":false,"error":"not_found: no mount under key \"gone\"","code":"not_found"}
+C: {"id":"8","type":"ui_view_report","attachment":3,"plugin":"p","mount":{"key":"k","epoch":1},"notice":{"code":"undrawn","severity":"info"}}
+H: {"id":"8","type":"response","command":"ui_view_report","success":false,"error":"stale: the connection does not hold attachment 3","code":"stale"}
+C: {"id":"9","type":"ui_view_report","attachment":1,"plugin":"p","mount":{"key":"k","epoch":1,"rev":1},"notice":{"code":"undrawn","severity":"info"}}
+H: {"id":"9","type":"response","command":"ui_view_report","success":false,"error":"invalid: unknown field \"rev\"","code":"invalid"}

@@ -21,6 +21,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/pluginstest"
 )
 
 // The reload suite's kit (Pi's test/node/fixtures/reload/{app,plugins}.ts, packages/chord test/node/reload/*, pin c23b9ec1): an app with
@@ -147,15 +148,26 @@ func controlContract(placement string) *contracts.Contract {
 	})
 }
 
-// edit writes files into plugin dir of the app's root (an edit on disk) and waits until the watcher marked every plugin the edit
-// affects dirty: the plugin itself (for one not discovered yet, until the plugin set changed) and the plugins in alsoDirty, the ones
-// that import its files. The rollout applies the marks the watcher has made when it runs: one that finds a dependent unmarked leaves
-// it out. A plugin already there is waited for by its own mark, not by the set mark an earlier edit left.
+// edit writes files into plugin dir of the app's root (an edit on disk) and returns once the watcher handled every file event of the
+// edit and marked every plugin the edit affects dirty: the plugin itself (for one not discovered yet, until the plugin set changed) and
+// the plugins in alsoDirty, the ones that import its files. The rollout applies the marks the watcher has made when it runs: one that
+// finds a dependent unmarked leaves it out. A plugin already there is waited for by its own mark, not by the set mark an earlier edit
+// left.
+//
+// It departs from Pi's helper on purpose, in the harness and not in what is tested. Pi's `edit` (pin b4afdddf,
+// test/node/fixtures/reload/app.ts:82-87) returns at the first mark, and this one did too. An edit is several files, one file event
+// or more each, and a plugin stays dirty when a change of it comes after the snapshot its build started from (Pi's watcher.ts:201-207
+// `applied` and :350-364, plugins_watcher.go here: the same rule, unchanged). Pi's test and Pi's watcher share Node's one thread; here
+// the watcher handles the events on a goroutine of its own while the test goes on to ApplyChanges, so an event of the edit handled
+// after the snapshot left the plugin dirty where the test expects it applied (reload_web_test.go, `dirty = [@test/alpha], want none`,
+// about one run in 36). The barrier (pluginstest.Settle, the one the plugins package's tests use) waits for the events of everything
+// written so far; the marks waited for after it are the edit's whole.
 func (s started) edit(t testing.TB, dir string, files map[string]string, alsoDirty ...string) {
 	t.Helper()
 	_, err := os.Stat(filepath.Join(s.root, dir))
 	known := err == nil
 	writePluginAtomically(t, s.root, dir, "@test/"+dir, files)
+	pluginstest.Settle(t, s.app.Plugins.Component)
 	name := "@test/" + dir
 	untilMarks(t, s.app, strings.Join(append([]string{name}, alsoDirty...), ", ")+" marked", func(m plugins.PluginsState) bool {
 		return (slices.Contains(m.Dirty, name) || (!known && m.Set)) && !slices.ContainsFunc(alsoDirty, func(also string) bool { return !slices.Contains(m.Dirty, also) })
@@ -210,12 +222,14 @@ func (s started) apply(t testing.TB) plugins.RolloutResult {
 	return result
 }
 
-// removeAndApply removes plugin dir from the app's root, waits until the watcher saw the plugin set change, and applies it.
+// removeAndApply removes plugin dir from the app's root, waits until the watcher handled every file event of the removal (see edit:
+// Pi's `removeAndApply`, app.ts:90-94, waits for the set mark alone) and saw the plugin set change, and applies it.
 func (s started) removeAndApply(t testing.TB, dir string) plugins.RolloutResult {
 	t.Helper()
 	if err := os.RemoveAll(filepath.Join(s.root, dir)); err != nil {
 		t.Fatal(err)
 	}
+	pluginstest.Settle(t, s.app.Plugins.Component)
 	untilMarks(t, s.app, "the plugin set marked changed", func(m plugins.PluginsState) bool { return m.Set })
 	return s.apply(t)
 }

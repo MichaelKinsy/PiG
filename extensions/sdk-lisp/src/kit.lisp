@@ -564,6 +564,37 @@
     (setf (gethash "id" out) (kit-get node :id) (gethash "children" out) (vector (kit-enc-node enc (kit-get node :child) (1+ depth)))
           (gethash "region" out) region)))
 
+(defun kit-grid-chip (text &optional color)
+  "One event of a grid cell: TEXT (at most 256 bytes) and COLOR (a theme token, #rrggbb or #rrggbbaa)."
+  (let ((chip (obj "text" text))) (kit-out chip "color" color) chip))
+
+(defun kit-grid-cell (&key value label mark dim color chips more)
+  "One cell of a KIT-GRID. VALUE names it in the intent a choice raises (at most 256 bytes; a cell without one cannot be chosen), LABEL is its
+first line (at most 64 bytes), MARK \"current\" draws it as today, DIM as outside the shown range, COLOR tints the label (a theme token,
+#rrggbb or #rrggbbaa). CHIPS are the KIT-GRID-CHIPs it shows (at most 8) and MORE counts the events the sender left out (0 to 9999). A member
+left NIL is not sent."
+  (let ((cell (obj)))
+    (kit-out cell "value" value) (kit-out cell "label" label) (kit-out cell "mark" mark)
+    (when dim (setf (gethash "dim" cell) t))
+    (kit-out cell "color" color)
+    (when chips (setf (gethash "chips" cell) (kit-vector chips)))
+    (kit-out cell "more" more)
+    cell))
+
+(defun kit-grid (id columns cells &key head chip-rows selected)
+  "The grid node of D614 (the cell form): a calendar-style grid of COLUMNS equal columns whose CELLS (KIT-GRID-CELLs, row by row; the last row
+may be short) are data, not nodes. The host is its only validator and answers a mount or an update that breaks a rule with code \"invalid\":
+1 to 16 columns, HEAD absent or one label a column, CHIP-ROWS 1 to 8 (NIL takes the host's 3), at most 128 cells in at most 32 rows, cell
+values unique and SELECTED one of them. ID is required and unique within the view; an intent whose node key is ID is raised with the chosen
+cell's value."
+  (kit-new "grid" :id id :columns columns :cells (copy-list cells) :head (copy-list head) :chip-rows chip-rows :selected selected))
+(def-kit-encoder "grid" (node enc depth out)
+  (setf (gethash "id" out) (kit-get node :id) (gethash "columns" out) (kit-get node :columns))
+  (kit-out out "chipRows" (kit-get node :chip-rows))
+  (when (kit-get node :head) (setf (gethash "head" out) (kit-vector (kit-get node :head))))
+  (when (kit-get node :cells) (setf (gethash "cells" out) (kit-vector (kit-get node :cells))))
+  (kit-out out "selected" (kit-get node :selected)))
+
 ;;; ---------------------------------------------------------------- views and events
 
 (defstruct (kit-view (:constructor %kit-view (root focus theme))) root focus theme)
@@ -628,6 +659,7 @@ background: selectedBg customMessageBg."
   (jobs (kit-make-feed "view job"))
   (theme-feed (kit-make-feed "theme"))
   (tools-feed (kit-make-feed "tools expanded"))
+  (abilities-feed (kit-make-feed "view abilities"))
   (theme nil) (palette-json nil)
   (tools-expanded nil) (tools-known nil)
   (footer-json nil)

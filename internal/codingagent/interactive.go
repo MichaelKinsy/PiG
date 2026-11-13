@@ -174,8 +174,14 @@ type InteractiveMode struct {
 	editorFactory   extension.EditorFactory
 	widgetContainer *tui.Container
 	// widgetMu guards the widget state below: the extension processes' widgets (bridgeWidgets) and the host-process ones (inprocessWidgets).
-	widgetMu         sync.Mutex
-	bridgeWidgets    map[string]*subprocess.PushProxy
+	widgetMu      sync.Mutex
+	bridgeWidgets map[string]*subprocess.PushProxy
+	// viewMounts is the plugin mounts the terminal view client draws (D614), in mount order; widgetMu guards it. It is empty unless a Piglet selected the client and an extension mounted a view.
+	viewMounts []*viewMount
+	// viewTabRow is the tab row the view client draws above the panel mounts, nil while it draws none; widgetMu guards it.
+	viewTabRow *viewTabs
+	// viewClient is the terminal's attachment to the bound build's view registry, nil unless a Piglet selected it.
+	viewClient       atomic.Pointer[viewClient]
 	inprocessWidgets []inprocessWidget
 	// widgetSeq counts widget sets across both hosts; bridgeWidgetSeqs is the sequence each extension-process widget got when it was set, by its
 	// bridge insertion order, so the layout interleaves the hosts in the order Pi's one Map per side keeps.
@@ -1264,6 +1270,12 @@ type InteractiveModeOptions struct {
 
 	// ReplacementResources returns the cwd-bound options of the build that owns session.
 	ReplacementResources func(session InteractiveSessionHandle) InteractiveReplacement
+
+	// TerminalViewClient attaches the TUI as a client of the plugin view registry of SubprocessUIBridge, so the views
+	// extensions mount (ui.view) are drawn in the terminal. A Piglet's viewClient: terminal sets it.
+	//
+	// pig additive (D614).
+	TerminalViewClient bool
 
 	// SubprocessUIBridge, when non-nil, is the UI bridge for subprocess
 	// extensions. Run() wires it to the TUI after creation via

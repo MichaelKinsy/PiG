@@ -881,7 +881,7 @@ func TestAltScreenAutoScrollCancelledMidScrollDoesNotResurrect(t *testing.T) {
 			tui.selectionFocus = nil
 		}},
 		{"stopped-flag", func(tui *TuiAltScreen) {
-			tui.stopped = true
+			tui.stopped.Store(true)
 			tui.stopSelectionAutoScrollLocked()
 		}},
 	} {
@@ -952,7 +952,7 @@ func TestAltScreenStartStopStartRestoresCleanState(t *testing.T) {
 	tui.StopWithOptions(StopOptions{})
 
 	tui.mu.Lock()
-	if !tui.stopped {
+	if !tui.stopped.Load() {
 		t.Error("stop should set stopped=true")
 	}
 	if tui.selectionPressActive || tui.scrollbarHover != nil || tui.scrollbarDrag != nil {
@@ -964,7 +964,7 @@ func TestAltScreenStartStopStartRestoresCleanState(t *testing.T) {
 
 	tui.mu.Lock()
 	defer tui.mu.Unlock()
-	if tui.stopped {
+	if tui.stopped.Load() {
 		t.Error("restart must set stopped=false so rendering resumes")
 	}
 	if tui.selectionAnchor != nil || tui.selectionFocus != nil {

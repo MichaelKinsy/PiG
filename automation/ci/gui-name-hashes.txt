@@ -1,0 +1,7 @@
+# SHA-256 of lowercase words that must not appear in the GUI extension paths (check-public-hygiene.py).
+# Hashes, so the list does not itself publish the words. Append one hash per line.
+6c43993dc2a74842f9f6f2a3ec5890467bba32b28c536d8310bc8049d5ef6524
+a6b70a8a5074fc12ed70d61d05fffa30a5bec120ed140cf009b8a6302328360b
+b4e453cc9e68d8ccd8637fc7e00266c0d3f55bc04a33046565b6ed0778c889b0
+# A line is the SHA-256 of one name in lower case: a word of three letters or more, or a compound of words and numbers
+# joined by -, _ or . (printf %s 'the-name' | sha256sum). The check hashes every word and every compound of a line.

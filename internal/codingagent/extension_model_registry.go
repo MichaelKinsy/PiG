@@ -310,7 +310,7 @@ func (r *ModelRegistry) usingOAuth(providerID string) bool {
 	if _, ok := r.RuntimeAPIKey(providerID); ok {
 		return false
 	}
-	credential, ok := r.storedCredential(context.Background(), providerID)
+	credential, ok := r.storedCredential(providerID)
 	return ok && credential.Type == ai.CredentialOAuth
 }
 

@@ -5066,6 +5066,30 @@
       ]
     },
     {
+      "id": "BF-1eea8f0",
+      "title": "`ctx.ui.viewAbilities()` of a Node extension reported no client after a session log sync until the next state…",
+      "symptom": "`ctx.ui.viewAbilities()` of a Node extension reported no client after a session log sync until the next state update.",
+      "rootCause": "pi.onViewAbilities((abilities, ctx) =\u003e ...) runs when the replicated client abilities change, in registration order, one change at a time, without the host waiting. The replica is now applied where a whole state arrives (the ready payload and state_update): applyState cleared it on the partial snapshot of a session log sync, so viewAbilities() reported no client until the next state. sdk-ts declares the registration. The rpc fixture gains a panel whose handler redraws it and an abilities handler; three tests run the real binary: the handler's ui_view event precedes the ui_view_intent reply for twenty clicks in a row, a client that attaches to an idle session is sent the mount made in the…",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`ctx.ui.viewAbilities()` of a Node extension reported no client after a session log sync until the next state update.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1eea8f0691",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_ui_view_answer_test.go::TestRPCUIViewAbilitiesEventMountsForAClientThatAttachesToAnIdleSession",
+        "coding/cli/rpc_ui_view_answer_test.go::TestRPCUIViewBlockedAbilitiesHandlerDelaysNothing",
+        "coding/cli/rpc_ui_view_answer_test.go::TestRPCUIViewHandlersRedrawIsWrittenBeforeTheIntentReply"
+      ]
+    },
+    {
       "id": "BF-1f2f940",
       "title": "The Anthropic workload-identity token exchange now reads `expires_in` with JavaScript's `Number()`, as the…",
       "symptom": "The Anthropic workload-identity token exchange now reads `expires_in` with JavaScript's `Number()`, as the Anthropic SDK does.",
@@ -5700,6 +5724,28 @@
         "tui/main_screen_lone_surrogate_test.go::TestMainScreenLoneSurrogateRowIsEncodedByProcessTerminal",
         "tui/main_screen_lone_surrogate_test.go::TestMainScreenLoneSurrogateRowMatchesPi",
         "tui/widthx/lone_surrogate_normalize_test.go::TestNormalizeTerminalOutputKeepsLoneSurrogatesLikePi"
+      ]
+    },
+    {
+      "id": "BF-21d2227",
+      "title": "tui: a frame request that lost that race to the stop no longer arms a frame timer on the stopped renderer, or…",
+      "symptom": "tui: a frame request that lost that race to the stop no longer arms a frame timer on the stopped renderer, or hands a render to the owner loop after it; the request is dropped under the render lock.",
+      "rootCause": "RequestRender reads stopped before it takes the render lock. A request made from a component goroutine could pass that read, lose the lock to the owner's stop, and then arm a frame on the stopped renderer: a timer that outlived the stop and, with a render dispatcher, a closure handed to the owner loop after it. The frame itself was never drawn (renderScheduled and the screens' doRender check stopped under the lock). requestRender now checks again under the lock, where every stop writes the flag.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "tui: a frame request that lost that race to the stop no longer arms a frame timer on the stopped renderer, or hands a render to the owner loop after it; the request is dropped under the render lock.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "21d22277cb",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "tui/tui_request_render_after_stop_test.go::TestARenderRequestThatLosesTheRaceWithStopArmsNoFrame"
       ]
     },
     {
@@ -14114,6 +14160,31 @@
       ]
     },
     {
+      "id": "BF-4967f7d",
+      "title": "tui: stopping the renderer while a component asked for a frame from its own goroutine (the Loader's spinner…",
+      "symptom": "tui: stopping the renderer while a component asked for a frame from its own goroutine (the Loader's spinner, since 0.5.0) was a data race on the renderer's `stopped` flag: the stop wrote it while `RequestRender` read it without the render lock, on all three screens.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "tui: stopping the renderer while a component asked for a frame from its own goroutine (the Loader's spinner, since 0.5.0) was a data race on the renderer's `stopped` flag: the stop wrote it while `RequestRender` read it without the render lock, on all three screens. It could show as a rare crash report under the race detector or as a frame asked for on a renderer that had just stopped. The flag is now atomic and still written under the render lock, so the geometry callbacks' rule that nothing is delivered after a stop holds unchanged.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4967f7dca3",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "tui/render_overflow_test.go::TestOverflowDifferentialTerminatesWithCrashLog",
+        "tui/render_overflow_test.go::TestOverflowFullRenderPathsEmitRowUnchanged",
+        "tui/tui_alt_screen_test.go::TestAltScreenAutoScrollCancelledMidScrollDoesNotResurrect",
+        "tui/tui_alt_screen_test.go::TestAltScreenStartStopStartRestoresCleanState"
+      ]
+    },
+    {
       "id": "BF-4a0bc3d",
       "title": "The footer context percentage is refreshed after a `!` command is recorded, as Pi's footer asks the session…",
       "symptom": "The footer context percentage is refreshed after a `!` command is recorded, as Pi's footer asks the session on every render.",
@@ -15066,6 +15137,30 @@
         "durable/core/driver/tool_intent_pi_test.go::TestCoreToolRecordsItsPreparedArgumentsAndDefaultReplayBeforeExecuting",
         "durable/core/driver/tool_intent_pi_test.go::TestCoreToolRefusesANonObjectPreparedResultAsInvalidArguments",
         "durable/core/turn/generation_test.go::TestToolBlockedAndInvalid"
+      ]
+    },
+    {
+      "id": "BF-4f75f77",
+      "title": "Chord (Go): the observer of a followed source has `Section`, which runs a runtime's read and its advance as…",
+      "symptom": "Chord (Go): the observer of a followed source has `Section`, which runs a runtime's read and its advance as one section of the host's loop.",
+      "rootCause": "A runtime that tells of its changes from several goroutines read its state on the teller's goroutine and advanced in a section of its own: an older read could be advanced after a newer one, and the source kept the older value until the next change. Pi's runtime reads and advances in one synchronous turn.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord (Go): the observer of a followed source has `Section`, which runs a runtime's read and its advance as one section of the host's loop. A runtime that told of its changes from several goroutines could publish an older read last, and the followed value stayed stale until its next change.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4f75f77581",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "chord/next/host/host_follow_section_test.go::TestFollowSectionAfterItsSourceDetachedStillRunsWorkOnceAndTheAdvanceInItIsDropped",
+        "chord/next/host/host_follow_section_test.go::TestFollowSectionKeepsTheReadsAndTheAdvancesOfTwoGoroutinesInOneOrder",
+        "chord/next/host/host_follow_section_test.go::TestFollowSectionRunsWorkOnceAsOneSectionOfTheLoopBeforeItReturnsAndInlineInsideOne"
       ]
     },
     {
@@ -16351,6 +16446,29 @@
         "test/extension-conformance/session_skill_helpers_test.go::TestConformance_SessionAndSkillHelpersAgreeAcrossSDKs",
         "test/longsession/session_oracle_test.go::TestSessionManagerMatchesPi",
         "test/parity/scenarios/rpc/58-rpc-session-wrong-typed-members.toml"
+      ]
+    },
+    {
+      "id": "BF-54bf1a5",
+      "title": "Two clients that a mount's content does not fit, one shown the fallback and one shown no view, were sent the…",
+      "symptom": "Two clients that a mount's content does not fit, one shown the fallback and one shown no view, were sent the same digest (D614).",
+      "rootCause": "A client that a mount's content does not fit is sent the fallback, or no view when the fallback does not fit it either. The digest of a resolved content is kept per revision under the candidate's index, and both of these contents were kept under -1. Of two such clients the second was sent the digest of the other's content, and a client whose limits changed from one case to the other was delivered nothing, because the content it was owed had the identity of the one it was sent.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Two clients that a mount's content does not fit, one shown the fallback and one shown no view, were sent the same digest (D614). Each is now sent the digest of its own content, and a client whose limits change so that it is owed the other content is delivered it; before, that delivery was taken for the one already made and the client kept what it drew.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "54bf1a5cfa",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/uiview/degraded_digest_test.go::TestDegradedClientsAreSentTheDigestOfTheirOwnContent",
+        "internal/viewcarrier/degraded_digest_test.go::TestCarrierDegradedClientsAreSentTheDigestOfTheirOwnContent"
       ]
     },
     {
@@ -24548,6 +24666,26 @@
       ]
     },
     {
+      "id": "BF-6da170c",
+      "title": "`pi.exec`: when a command's output exceeds `maxBuffer`, the output pipes are now closed before the command is…",
+      "symptom": "`pi.exec`: when a command's output exceeds `maxBuffer`, the output pipes are now closed before the command is signalled, as Pi does.",
+      "rootCause": "Pi's execCommand, on the chunk that crosses the cap, destroys both pipes and then calls killProcess (core/exec.ts:111-113; Node's destroy() closes the descriptor before it returns). ExecCommand did the two in the other order: SIGTERM, then the two Close calls. The order decides the code of a command that is still writing: with Pi's order its next write meets the closed pipe and SIGPIPE ends it (141) unless the SIGTERM lands first (143); with the signal first it always ended by SIGTERM.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pi.exec`: when a command's output exceeds `maxBuffer`, the output pipes are now closed before the command is signalled, as Pi does. PiG signalled first, so a command that was still writing always reported code 143; it now reports 141 when its next write met the closed pipe first (SIGPIPE) and 143 when the SIGTERM came first, as Pi does. A command that had already exited keeps its own code, 1 for a 0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6da170c870",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-6debb12",
       "title": "fix(train): gate repairs after merging train 3 and the ordering stack",
       "symptom": "fix(train): gate repairs after merging train 3 and the ordering stack",
@@ -25799,6 +25937,31 @@
       ],
       "tests": [
         "chord/next/host/host_native_test.go::TestNativeAnOpenThatStartsAfterItsCloseOpensNothing"
+      ]
+    },
+    {
+      "id": "BF-7369b8f",
+      "title": "Chord (Go): a watch, an observer or a subscriber of a registry value or a writable that was registered from…",
+      "symptom": "Chord (Go): a watch, an observer or a subscriber of a registry value or a writable that was registered from outside the host's loop is told of a change committed while it registered.",
+      "rootCause": "The read and the registration were two steps, so such a change reached nobody and the follower kept the older value until the next change (seen as a p2 session worker that failed to start with `p2.harness-host: did not become live within 60000 ms`).",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord (Go): a watch, an observer or a subscriber of a registry value or a writable that was registered from outside the host's loop is told of a change committed while it registered. The read and the registration were two steps, so such a change reached nobody and the follower kept the older value until the next change (seen as a p2 session worker that failed to start with `p2.harness-host: did not become live within 60000 ms`).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7369b8f863",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "chord/next/host/host_watch_outside_loop_test.go::TestASubscriberAddedFromOutsideTheLoopIsToldOfAChangeCommittedWhileItWasAdded",
+        "chord/next/host/host_watch_outside_loop_test.go::TestAWatchOpenedFromOutsideTheLoopIsToldOfAChangeCommittedWhileItOpened",
+        "chord/next/host/host_watch_outside_loop_test.go::TestAWatchOpenedInsideASectionOpensInlineAndOneOpenedAfterTheSourceEndedIsEnded",
+        "chord/next/host/host_watch_outside_loop_test.go::TestAnObserverAttachedFromOutsideTheLoopIsToldOfAChangeCommittedWhileItAttached"
       ]
     },
     {
@@ -35452,6 +35615,31 @@
       ]
     },
     {
+      "id": "BF-9e34810",
+      "title": "A plugin view is sent only to a client that draws every node kind it holds (D614): the registry now reads the…",
+      "symptom": "A plugin view is sent only to a client that draws every node kind it holds (D614): the registry now reads the client's `nodes` list when it decides what a client is sent.",
+      "rootCause": "fits and fallbackFits never read ClientAbilities.Nodes, so a view holding a kind the client does not draw was sent to it as is. The registry now measures the kinds a view holds and a client the content does not fit is refused or sent the fallback, as for a limit; an empty nodes list draws no kind, as an empty slots list draws no slot (D614 abilities paragraph, awaiting the owner). Two conformance fixtures declared too few kinds for what they mount and now declare select-list.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A plugin view is sent only to a client that draws every node kind it holds (D614): the registry now reads the client's `nodes` list when it decides what a client is sent. A view with a kind outside the list does not fit that client (code `unsupported` when no attached client draws it) and a client the content does not fit is sent the fallback, as for a limit; an empty or absent `nodes` list draws no kind.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "9e348106ed",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/uiview/nodes_test.go::TestAClientIsOnlySentNodeKindsItDraws",
+        "test/extension-conformance/ui_view_carrier_test.go::TestConformance_UIViewCarrier",
+        "test/extension-conformance/ui_view_extras_test.go::TestConformance_UIViewExtras",
+        "test/extension-conformance/ui_view_test.go::TestConformance_UIViewMounts"
+      ]
+    },
+    {
       "id": "BF-9e72f22",
       "title": "A terminal client's device pairing ended its wait between polls at a cancel; it now settles when the poll…",
       "symptom": "A terminal client's device pairing ended its wait between polls at a cancel; it now settles when the poll interval ends (at most 2 s later) with the cancellation's cause and no further poll, as Pi's bare timeout does.",
@@ -36723,6 +36911,47 @@
       ]
     },
     {
+      "id": "BF-D631",
+      "title": "A command run by `pi.exec` or the bash tool gets pipes for its output, where Pi gives it socket pairs",
+      "symptom": "none. The socket pair is libuv's choice for every Node child; Pi does not ask for it.",
+      "rootCause": "a faithful port would make commands that work on Linux fail (`\u003e /dev/stdout`, `tee /dev/stderr`), which no PiG user gains from. The cost of keeping pipes is that a command which fails under Pi for that reason succeeds under PiG, and that an exit code 1 which Pi shows in a share of cut-off runs never appears.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D631",
+      "removeWhen": "PiG gives the commands of `pi.exec` and the bash tool socket pairs on Unix (stdin included where the bash tool gives one), or Node gives its children pipes.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "27686ebf32",
+          "date": "2026-11-12"
+        },
+        {
+          "hash": "4ea002437f",
+          "date": "2026-11-12"
+        },
+        {
+          "hash": "6da170c870",
+          "date": "2026-11-12"
+        },
+        {
+          "hash": "bc197ac2ba",
+          "date": "2026-11-12"
+        },
+        {
+          "hash": "e3a198a439",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/extension/exec_oracle_test.go::TestExecCommandMatchesPi",
+        "coding/extension/exec_socket_linux_test.go::TestExecCommandCutOffWriterMeetsSIGPIPEWherePisMeetsAReset",
+        "coding/extension/exec_socket_linux_test.go::TestExecCommandReopensItsOutputWherePiCannot"
+      ]
+    },
+    {
       "id": "BF-a076a50",
       "title": "A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…",
       "symptom": "The time the connection had spent idle in the pool was deducted from the next request's timeout.",
@@ -37648,6 +37877,26 @@
         "internal/codingagent/exit_record_test.go::TestUnrecoveredGoroutinePanicBecomesACrashRecordAtTheNextStart",
         "internal/codingagent/send_user_message_test.go::TestSubprocessShutdownHostActionRequestsExitViaOwnerLoop"
       ]
+    },
+    {
+      "id": "BF-a47c8e8",
+      "title": "`view_abilities()` of a Rust extension reported no client from its connect until the first state update, even…",
+      "symptom": "`view_abilities()` of a Rust extension reported no client from its connect until the first state update, even with a client attached.",
+      "rootCause": "The handler runs on a worker thread when the replicated client abilities change. The ready payload's state is now applied to the view replica: view_abilities() returned None after a connect until the first state update, even with a client attached.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`view_abilities()` of a Rust extension reported no client from its connect until the first state update, even with a client attached.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a47c8e87c7",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-a47eb1a",
@@ -59275,6 +59524,11 @@
       "id": "D628",
       "title": "auth.json is read once per availability pass, where Pi stats it on every credential read",
       "entry": "BF-D628"
+    },
+    {
+      "id": "D631",
+      "title": "A command run by `pi.exec` or the bash tool gets pipes for its output, where Pi gives it socket pairs",
+      "entry": "BF-D631"
     }
   ],
   "exemptCommits": {

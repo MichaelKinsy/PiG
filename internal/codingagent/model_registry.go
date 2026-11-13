@@ -1311,7 +1311,7 @@ func (r *ModelRegistry) refreshContext(ctx context.Context, providers []string) 
 
 // GetAll returns explicit models and configured overlays for exact generated identities; dynamic providers take precedence over models.json. It omits the models of a stripped API, as the composed catalog does (ai.OfferedModels).
 func (r *ModelRegistry) GetAll() []ModelEntry {
-	out := append(r.getAllConfigured(), r.radiusEntries(context.Background(), false)...)
+	out := append(r.getAllConfigured(), r.radiusEntries(nil)...)
 	out = slices.DeleteFunc(out, func(entry ModelEntry) bool {
 		return r.GetProvider(entry.ProviderID) != nil || pigstrip.Has(pigstrip.ListAPIs, entry.API)
 	})
@@ -1729,7 +1729,7 @@ var noStoredCredentials = ai.NewInMemoryCredentialStore()
 func (r *ModelRegistry) AvailableProviderCount() int {
 	providers := make(map[string]struct{})
 	ctx := availabilityPassContext()
-	for _, entry := range r.radiusEntries(ctx, true) {
+	for _, entry := range r.radiusEntries(func(providerID string) bool { return r.radiusHasAuth(ctx, providerID) }) {
 		providers[entry.ProviderID] = struct{}{}
 	}
 	r.mu.RLock()
