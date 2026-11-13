@@ -18630,6 +18630,170 @@
       "tests": []
     },
     {
+      "id": "BF-5f449b5",
+      "title": "An extension's overlay (`ctx.ui.custom` with `overlay: true`) that keeps colored rows until its…",
+      "symptom": "An extension's overlay (`ctx.ui.custom` with `overlay: true`) that keeps colored rows until its `invalidate()` is called kept the old theme after a theme change, in the regular and the fullscreen screen, and after a theme change in `/settings` it was not drawn again at all, where Pi redraws it.",
+      "rootCause": "The release line carries Pi fixes picked after the pinned v1.5.2 (the 0.8.0 sync ledger).",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension's overlay (`ctx.ui.custom` with `overlay: true`) that keeps colored rows until its `invalidate()` is called kept the old theme after a theme change, in the regular and the fullscreen screen, and after a theme change in `/settings` it was not drawn again at all, where Pi redraws it. PiG's `Invalidate` set a flag on the root of the screen and reached no component, where Pi's `TUI.invalidate` calls `invalidate()` on every mounted root and every overlay's component. It now reaches both, the host tells a subprocess extension's component (`ui.custom.invalidate`, after the new palette), the Node runtime calls its `invalidate()`, and a theme set invalidates twice as Pi's does. Extensions on the Go, Python, Rust and Lisp runtimes follow too: see the entry on the component's invalidate in every SDK.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7b66371088",
+          "date": "2026-11-11"
+        },
+        {
+          "hash": "f55df43e29",
+          "date": "2026-11-11"
+        },
+        {
+          "hash": "70f016651d",
+          "date": "2026-11-12"
+        },
+        {
+          "hash": "7d64c8a1e2",
+          "date": "2026-11-12"
+        },
+        {
+          "hash": "2e82be6163",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "557b2210a1",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "5f449b50d4",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "98d708f331",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "b0d8eb3988",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "e516ccd06b",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "e84bbf2122",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/custom_overlay_invalidate_queue_test.go::TestCustomOverlayInvalidateIsReleasedWhenAStalledConnectionCloses",
+        "coding/extension/host/subprocess/custom_overlay_invalidate_queue_test.go::TestCustomOverlayInvalidateIsReleasedWhenTheComponentsContextEnds",
+        "coding/extension/host/subprocess/runtime_node_vendor_script_test.go::TestVendorPiDistIsIdempotentOnTheCommittedTree",
+        "coding/extension/host/subprocess/runtime_node_vendored_test.go::TestPinnedPiPackagesCarryTheRecordedFixesOnce",
+        "extensions/sdk-py/tests/test_overlay_invalidate.py",
+        "extensions/sdk/remote_overlay_host_invalidate_test.go::TestHostInvalidateQueuedForAClosedComponentIsDropped",
+        "internal/codingagent/configschema/references_test.go::TestModelsConfigurationReferenceMatchesThePinnedPiPage",
+        "internal/codingagent/configschema/render_settings_test.go::TestRenderedSettingsSchemaIsByteEqualToTheUpstreamMirror",
+        "internal/codingagent/configschema/render_test.go::TestRenderedSchemasAreByteEqualToTheUpstreamMirror",
+        "internal/codingagent/custom_overlay_invalidate_test.go::TestRemoteOverlayInvalidateOnlyCountsOnTheOwnerLoop",
+        "internal/codingagent/custom_overlay_invalidate_test.go::TestRemoteOverlayInvalidationsCoalesceWhileTheConnectionHasNoRoom",
+        "internal/codingagent/llama/vendored_default_test.go::TestVendoredPiDistDefaultServerURLMatchesGo",
+        "internal/upstreammirror/upstreammirror_test.go::TestTheMirrorHoldsThePinnedReleaseWhereTheRecordedFixesApply",
+        "test/extension-conformance/overlay_invalidate_test.go::TestCustomOverlayInvalidateReachesSDKs",
+        "test/extension-conformance/overlay_invalidate_test.go::TestThemeReadWithoutAMountedComponentFollowsTheHostAcrossSDKs",
+        "test/extension-conformance/tui_alt_screen_test.go::TestTuiAltScreenFrameReadsAcrossSDKs",
+        "test/parity/scenarios/extensions-runtime/100-overlay-invalidate-settings-preview.toml",
+        "test/parity/scenarios/extensions-runtime/101-overlay-invalidate-settings-preview-fullscreen.toml",
+        "test/parity/scenarios/extensions-runtime/104-editor-slot-invalidate-set-theme.toml",
+        "test/parity/scenarios/extensions-runtime/105-editor-slot-invalidate-set-theme-fullscreen.toml",
+        "test/parity/scenarios/extensions-runtime/98-overlay-invalidate-set-theme.toml",
+        "test/parity/scenarios/extensions-runtime/99-overlay-invalidate-set-theme-fullscreen.toml",
+        "tui/container_theme_walk_test.go::TestContainerThemeCheckDoesNotRepeatTheWalk",
+        "tui/editor_handle_input_contract_test.go::TestEditorSharedKeyProbesDump",
+        "tui/keystroke_gc_norace_test.go::TestEditorKeystrokeHeapBytesAndCollectorWork",
+        "tui/text_row_bound_test.go::TestTextAfterOneChangeRetainsAboutAsMuchAsATextDrawnOnce",
+        "tui/tui_invalidate_test.go::TestAltScreenStartInvalidatesOverlayComponentsWhenITerm2ImagesAreDropped",
+        "tui/tui_invalidate_test.go::TestInvalidateFromARenderDoesNotWaitForTheFrame",
+        "tui/tui_invalidate_test.go::TestInvalidateReachesMountedRootsAndEveryOverlayComponent",
+        "tui/tui_invalidate_test.go::TestOverlayBookkeepingInvalidatesNoComponent"
+      ]
+    },
+    {
+      "id": "BF-5f449b5-2",
+      "title": "An extension component in the editor's place (`ctx.ui.custom` without `overlay`) was invalidated three times…",
+      "symptom": "An extension component in the editor's place (`ctx.ui.custom` without `overlay`) was invalidated three times by one theme change where Pi invalidates it twice.",
+      "rootCause": "Pi's Container has no such check. The walk now records the theme it invalidated a container's children under, and the render's check leaves them alone for that theme; a container no walk reached still tells its children at the render. Scenarios extensions-runtime 104 and 105 (escaped-equal to Pi, inv=2); TestContainerThemeCheckDoesNotRepeatTheWalk.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension component in the editor's place (`ctx.ui.custom` without `overlay`) was invalidated three times by one theme change where Pi invalidates it twice. The count is Pi's now.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "5f449b50d4",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "test/parity/scenarios/extensions-runtime/104-editor-slot-invalidate-set-theme.toml",
+        "test/parity/scenarios/extensions-runtime/105-editor-slot-invalidate-set-theme-fullscreen.toml",
+        "tui/container_theme_walk_test.go::TestContainerThemeCheckDoesNotRepeatTheWalk"
+      ]
+    },
+    {
+      "id": "BF-5f449b5-3",
+      "title": "An extension that stopped reading its connection while its component was being invalidated could hold the…",
+      "symptom": "An extension that stopped reading its connection while its component was being invalidated could hold the delivery of that component's keys until the connection ended.",
+      "rootCause": "Pi's Container has no such check. The walk now records the theme it invalidated a container's children under, and the render's check leaves them alone for that theme; a container no walk reached still tells its children at the render. Scenarios extensions-runtime 104 and 105 (escaped-equal to Pi, inv=2); TestContainerThemeCheckDoesNotRepeatTheWalk.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension that stopped reading its connection while its component was being invalidated could hold the delivery of that component's keys until the connection ended. Invalidations that cannot be sent are now sent as one message with their count, and the wait ends when the component closes.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2e82be6163",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "5f449b50d4",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "b0d8eb3988",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "e516ccd06b",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "e84bbf2122",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/custom_overlay_invalidate_queue_test.go::TestCustomOverlayInvalidateIsReleasedWhenAStalledConnectionCloses",
+        "coding/extension/host/subprocess/custom_overlay_invalidate_queue_test.go::TestCustomOverlayInvalidateIsReleasedWhenTheComponentsContextEnds",
+        "extensions/sdk-py/tests/test_overlay_invalidate.py",
+        "extensions/sdk/remote_overlay_host_invalidate_test.go::TestHostInvalidateQueuedForAClosedComponentIsDropped",
+        "internal/codingagent/custom_overlay_invalidate_test.go::TestRemoteOverlayInvalidateOnlyCountsOnTheOwnerLoop",
+        "internal/codingagent/custom_overlay_invalidate_test.go::TestRemoteOverlayInvalidationsCoalesceWhileTheConnectionHasNoRoom",
+        "test/extension-conformance/overlay_invalidate_test.go::TestCustomOverlayInvalidateReachesSDKs",
+        "test/extension-conformance/overlay_invalidate_test.go::TestThemeReadWithoutAMountedComponentFollowsTheHostAcrossSDKs",
+        "test/extension-conformance/tui_alt_screen_test.go::TestTuiAltScreenFrameReadsAcrossSDKs",
+        "test/parity/scenarios/extensions-runtime/104-editor-slot-invalidate-set-theme.toml",
+        "test/parity/scenarios/extensions-runtime/105-editor-slot-invalidate-set-theme-fullscreen.toml",
+        "tui/container_theme_walk_test.go::TestContainerThemeCheckDoesNotRepeatTheWalk"
+      ]
+    },
+    {
       "id": "BF-5f4a0b2",
       "title": "fix(durable/core): a Session's reports reach its report(error, info)",
       "symptom": "fix(durable/core): a Session's reports reach its report(error, info)",
@@ -34613,44 +34777,6 @@
         "chord/output/output_test.go::TestToolOutputBounds",
         "durable/core/host/cf/test/output-sanitize.test.ts",
         "durable/core/turn/output_test.go::TestSanitizeOutputRemovesWholeEscapeSequences"
-      ]
-    },
-    {
-      "id": "BF-98d708f",
-      "title": "An extension's overlay (`ctx.ui.custom` with `overlay: true`) that keeps colored rows until its…",
-      "symptom": "An extension's overlay (`ctx.ui.custom` with `overlay: true`) that keeps colored rows until its `invalidate()` is called kept the old theme after a theme change, in the regular and the fullscreen screen, and after a theme change in `/settings` it was not drawn again at all, where Pi redraws it.",
-      "rootCause": "An extension's overlay (`ctx.ui.custom` with `overlay: true`) that keeps colored rows until its `invalidate()` is called kept the old theme after a theme change, in the regular and the fullscreen screen, and after a theme change in `/settings` it was not drawn again at all, where Pi redraws it.",
-      "rootCauseSource": "release note",
-      "userImpact": "Wrong display",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "An extension's overlay (`ctx.ui.custom` with `overlay: true`) that keeps colored rows until its `invalidate()` is called kept the old theme after a theme change, in the regular and the fullscreen screen, and after a theme change in `/settings` it was not drawn again at all, where Pi redraws it. PiG's `Invalidate` set a flag on the root of the screen and reached no component, where Pi's `TUI.invalidate` calls `invalidate()` on every mounted root and every overlay's component. It now reaches both, the host tells a subprocess extension's component (`ui.custom.invalidate`, after the new palette), the Node runtime calls its `invalidate()`, and a theme set invalidates twice as Pi's does. Extensions on the Go, Python, Rust and Lisp runtimes ignore the notify until those runtimes handle it.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "2e82be6163",
-          "date": "2026-11-13"
-        },
-        {
-          "hash": "557b2210a1",
-          "date": "2026-11-13"
-        },
-        {
-          "hash": "98d708f331",
-          "date": "2026-11-13"
-        }
-      ],
-      "tests": [
-        "internal/codingagent/custom_overlay_invalidate_test.go::TestRemoteOverlayInvalidateOnlyCountsOnTheOwnerLoop",
-        "test/parity/scenarios/extensions-runtime/100-overlay-invalidate-settings-preview.toml",
-        "test/parity/scenarios/extensions-runtime/101-overlay-invalidate-settings-preview-fullscreen.toml",
-        "test/parity/scenarios/extensions-runtime/98-overlay-invalidate-set-theme.toml",
-        "test/parity/scenarios/extensions-runtime/99-overlay-invalidate-set-theme-fullscreen.toml",
-        "tui/tui_invalidate_test.go::TestAltScreenStartInvalidatesOverlayComponentsWhenITerm2ImagesAreDropped",
-        "tui/tui_invalidate_test.go::TestInvalidateFromARenderDoesNotWaitForTheFrame",
-        "tui/tui_invalidate_test.go::TestInvalidateReachesMountedRootsAndEveryOverlayComponent",
-        "tui/tui_invalidate_test.go::TestOverlayBookkeepingInvalidatesNoComponent"
       ]
     },
     {
@@ -52584,6 +52710,28 @@
       ],
       "tests": [
         "internal/codingagent/extension_editor_test.go::TestExtensionEditorHandleInputMatchesPi"
+      ]
+    },
+    {
+      "id": "BF-e84bbf2",
+      "title": "The components of an extension's own `TuiAltScreen` in the Go, Rust, Python and Lisp SDKs were invalidated…",
+      "symptom": "The components of an extension's own `TuiAltScreen` in the Go, Rust, Python and Lisp SDKs were invalidated twice per `invalidate()` where Pi invalidates them once.",
+      "rootCause": "Since Invalidate became Pi's TUI.invalidate, the TuiAltScreen bridge of the Go, Rust, Python and Lisp SDKs invalidated an extension's components twice per call: the renderer's walk, then the bridge's own loop (during a frame the loop at once and the walk when the frame ended). Pi's class, which the Node runtime serves, calls each mounted component once. The bridge now flags the root and keeps its loop, which runs at once, so a render that invalidates reads its own invalidation back (TestTuiAltScreenFrameReadsAcrossSDKs).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The components of an extension's own `TuiAltScreen` in the Go, Rust, Python and Lisp SDKs were invalidated twice per `invalidate()` where Pi invalidates them once. The count is Pi's now.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e84bbf2122",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "test/extension-conformance/tui_alt_screen_test.go::TestTuiAltScreenFrameReadsAcrossSDKs"
       ]
     },
     {

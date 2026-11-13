@@ -675,6 +675,9 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-5f03fa4](#bf-5f03fa4) | An extension that a child agent session's resource loader loads now receives the session's events, as in Pi… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-5f03fa4-2](#bf-5f03fa4-2) | The contexts of those extensions read the child session: `ctx.model`, `ctx.scopedModels` (the session's… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-5f22b85](#bf-5f22b85) | fix(coding): shut down the extension host of a DefaultResourceLoader an extension constructed when its last… | PiG's own defect | All platforms | Unreleased |
+| [BF-5f449b5](#bf-5f449b5) | An extension's overlay (`ctx.ui.custom` with `overlay: true`) that keeps colored rows until its… | PiG's own defect | All platforms | Unreleased |
+| [BF-5f449b5-2](#bf-5f449b5-2) | An extension component in the editor's place (`ctx.ui.custom` without `overlay`) was invalidated three times… | PiG's own defect | All platforms | Unreleased |
+| [BF-5f449b5-3](#bf-5f449b5-3) | An extension that stopped reading its connection while its component was being invalidated could hold the… | PiG's own defect | All platforms | Unreleased |
 | [BF-5f4a0b2](#bf-5f4a0b2) | fix(durable/core): a Session's reports reach its report(error, info) | PiG's own defect | All platforms | Unreleased |
 | [BF-6018935](#bf-6018935) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-60473d7](#bf-60473d7) | The default output limit leaves 15% of the estimated input unused (at least 4,096 tokens), and near a full… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
@@ -1278,7 +1281,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-98666df](#bf-98666df) | Closing a Harness over the TypeScript host no longer rejects when the write-back of the tasks the close… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-9883d4b](#bf-9883d4b) | Large nested-call fan-outs in the Durable core no longer re-send the whole document per call: the core sends… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-98a21df](#bf-98a21df) | Tool output bounded by `chord/output`, the durable core and the Cloudflare host now loses whole ANSI escape… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
-| [BF-98d708f](#bf-98d708f) | An extension's overlay (`ctx.ui.custom` with `overlay: true`) that keeps colored rows until its… | PiG's own defect | All platforms | Unreleased |
 | [BF-98f0403](#bf-98f0403) | `AgentSessionRuntime.dispose` in the Go, Python, Rust and Lisp extension SDKs now settles a run still in… | PiG's own defect | All platforms | Unreleased |
 | [BF-98f0403-2](#bf-98f0403-2) | `pig --help` in a build that strips a built-in no longer shows the `pig --tools +codemode` example when… | PiG's own defect | All platforms | Unreleased |
 | [BF-9910d00](#bf-9910d00) | An extension that declared one provider name in several `registerProvider` calls while it loaded kept only… | PiG's own defect | All platforms | Unreleased |
@@ -1871,6 +1873,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-e79c70e](#bf-e79c70e) | fix(ai): Codex WebSocket, OpenRouter images, pi-messages and replaced Anthropic bodies write JSON.stringify… | PiG's own defect | All platforms | Unreleased |
 | [BF-e7b494a](#bf-e7b494a) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-e8489d4](#bf-e8489d4) | A key hint for an app action the user unbound shows no key, as in Pi, instead of the action's default key | PiG's own defect | All platforms | 0.5.0 |
+| [BF-e84bbf2](#bf-e84bbf2) | The components of an extension's own `TuiAltScreen` in the Go, Rust, Python and Lisp SDKs were invalidated… | PiG's own defect | All platforms | Unreleased |
 | [BF-e88f858](#bf-e88f858) | Windows: a connection reset before the response headers, or a response body reset, is reported as Pi reports… | PiG's own defect | Windows | Unreleased |
 | [BF-e8a5d2e](#bf-e8a5d2e) | The model catalog generator gives OpenCode Zen and Go Claude 5.5 models, Opus 5 and Fable 5.1 per-message… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-e90ac19](#bf-e90ac19) | Very long streamed answers no longer slow down with their length: each streamed frame renders only the last… | PiG's own defect | All platforms | 0.5.0 |
@@ -11132,6 +11135,48 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `5f22b85fa3` (2026-10-21)
 - **Tests:** None recorded.
 
+### BF-5f449b5
+
+**An extension's overlay (`ctx.ui.custom` with `overlay: true`) that keeps colored rows until its…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An extension's overlay (`ctx.ui.custom` with `overlay: true`) that keeps colored rows until its `invalidate()` is called kept the old theme after a theme change, in the regular and the fullscreen screen, and after a theme change in `/settings` it was not drawn again at all, where Pi redraws it.
+- **Root cause:** The release line carries Pi fixes picked after the pinned v1.5.2 (the 0.8.0 sync ledger).
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `7b66371088` (2026-11-11), `f55df43e29` (2026-11-11), `70f016651d` (2026-11-12), `7d64c8a1e2` (2026-11-12), `2e82be6163` (2026-11-13), `557b2210a1` (2026-11-13), `5f449b50d4` (2026-11-13), `98d708f331` (2026-11-13), `b0d8eb3988` (2026-11-13), `e516ccd06b` (2026-11-13), `e84bbf2122` (2026-11-13)
+- **Tests:** `coding/extension/host/subprocess/custom_overlay_invalidate_queue_test.go::TestCustomOverlayInvalidateIsReleasedWhenAStalledConnectionCloses`, `coding/extension/host/subprocess/custom_overlay_invalidate_queue_test.go::TestCustomOverlayInvalidateIsReleasedWhenTheComponentsContextEnds`, `coding/extension/host/subprocess/runtime_node_vendor_script_test.go::TestVendorPiDistIsIdempotentOnTheCommittedTree`, `coding/extension/host/subprocess/runtime_node_vendored_test.go::TestPinnedPiPackagesCarryTheRecordedFixesOnce`, `extensions/sdk-py/tests/test_overlay_invalidate.py`, `extensions/sdk/remote_overlay_host_invalidate_test.go::TestHostInvalidateQueuedForAClosedComponentIsDropped`, `internal/codingagent/configschema/references_test.go::TestModelsConfigurationReferenceMatchesThePinnedPiPage`, `internal/codingagent/configschema/render_settings_test.go::TestRenderedSettingsSchemaIsByteEqualToTheUpstreamMirror` and 22 more in docs/bug-ledger.json
+- **Release note:** An extension's overlay (`ctx.ui.custom` with `overlay: true`) that keeps colored rows until its `invalidate()` is called kept the old theme after a theme change, in the regular and the fullscreen screen, and after a theme change in `/settings` it was not drawn again at all, where Pi redraws it. PiG's `Invalidate` set a flag on the root of the screen and reached no component, where Pi's `TUI.invalidate` calls `invalidate()` on every mounted root and every overlay's component. It now reaches both, the host tells a subprocess extension's component (`ui.custom.invalidate`, after the new palette), the Node runtime calls its `invalidate()`, and a theme set invalidates twice as Pi's does. Extensions on the Go, Python, Rust and Lisp runtimes follow too: see the entry on the component's invalidate in every SDK.
+
+### BF-5f449b5-2
+
+**An extension component in the editor's place (`ctx.ui.custom` without `overlay`) was invalidated three times…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An extension component in the editor's place (`ctx.ui.custom` without `overlay`) was invalidated three times by one theme change where Pi invalidates it twice.
+- **Root cause:** Pi's Container has no such check. The walk now records the theme it invalidated a container's children under, and the render's check leaves them alone for that theme; a container no walk reached still tells its children at the render. Scenarios extensions-runtime 104 and 105 (escaped-equal to Pi, inv=2); TestContainerThemeCheckDoesNotRepeatTheWalk.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `5f449b50d4` (2026-11-13)
+- **Tests:** `test/parity/scenarios/extensions-runtime/104-editor-slot-invalidate-set-theme.toml`, `test/parity/scenarios/extensions-runtime/105-editor-slot-invalidate-set-theme-fullscreen.toml`, `tui/container_theme_walk_test.go::TestContainerThemeCheckDoesNotRepeatTheWalk`
+- **Release note:** An extension component in the editor's place (`ctx.ui.custom` without `overlay`) was invalidated three times by one theme change where Pi invalidates it twice. The count is Pi's now.
+
+### BF-5f449b5-3
+
+**An extension that stopped reading its connection while its component was being invalidated could hold the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An extension that stopped reading its connection while its component was being invalidated could hold the delivery of that component's keys until the connection ended.
+- **Root cause:** Pi's Container has no such check. The walk now records the theme it invalidated a container's children under, and the render's check leaves them alone for that theme; a container no walk reached still tells its children at the render. Scenarios extensions-runtime 104 and 105 (escaped-equal to Pi, inv=2); TestContainerThemeCheckDoesNotRepeatTheWalk.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2e82be6163` (2026-11-13), `5f449b50d4` (2026-11-13), `b0d8eb3988` (2026-11-13), `e516ccd06b` (2026-11-13), `e84bbf2122` (2026-11-13)
+- **Tests:** `coding/extension/host/subprocess/custom_overlay_invalidate_queue_test.go::TestCustomOverlayInvalidateIsReleasedWhenAStalledConnectionCloses`, `coding/extension/host/subprocess/custom_overlay_invalidate_queue_test.go::TestCustomOverlayInvalidateIsReleasedWhenTheComponentsContextEnds`, `extensions/sdk-py/tests/test_overlay_invalidate.py`, `extensions/sdk/remote_overlay_host_invalidate_test.go::TestHostInvalidateQueuedForAClosedComponentIsDropped`, `internal/codingagent/custom_overlay_invalidate_test.go::TestRemoteOverlayInvalidateOnlyCountsOnTheOwnerLoop`, `internal/codingagent/custom_overlay_invalidate_test.go::TestRemoteOverlayInvalidationsCoalesceWhileTheConnectionHasNoRoom`, `test/extension-conformance/overlay_invalidate_test.go::TestCustomOverlayInvalidateReachesSDKs`, `test/extension-conformance/overlay_invalidate_test.go::TestThemeReadWithoutAMountedComponentFollowsTheHostAcrossSDKs` and 4 more in docs/bug-ledger.json
+- **Release note:** An extension that stopped reading its connection while its component was being invalidated could hold the delivery of that component's keys until the connection ended. Invalidations that cannot be sent are now sent as one message with their count, and the wait ends when the component closes.
+
 ### BF-5f4a0b2
 
 **fix(durable/core): a Session's reports reach its report(error, info)**
@@ -19506,20 +19551,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `chord/output/output_test.go::TestToolOutputBounds`, `durable/core/host/cf/test/output-sanitize.test.ts`, `durable/core/turn/output_test.go::TestSanitizeOutputRemovesWholeEscapeSequences`
 - **Release note:** Tool output bounded by `chord/output`, the durable core and the Cloudflare host now loses whole ANSI escape sequences (strings up to BEL or ST, CSI, short `ESC x` forms), not only their ESC bytes, which left `[31m` in transcripts; a sequence split across chunks goes too. Carried forward from Pi 50d9f823 (earendil-works/pi#11604), past the 1.4.0+b3a29f11 pin.
 
-### BF-98d708f
-
-**An extension's overlay (`ctx.ui.custom` with `overlay: true`) that keeps colored rows until its…**
-
-- **Source:** PiG's own defect
-- **Symptom:** An extension's overlay (`ctx.ui.custom` with `overlay: true`) that keeps colored rows until its `invalidate()` is called kept the old theme after a theme change, in the regular and the fullscreen screen, and after a theme change in `/settings` it was not drawn again at all, where Pi redraws it.
-- **Root cause:** An extension's overlay (`ctx.ui.custom` with `overlay: true`) that keeps colored rows until its `invalidate()` is called kept the old theme after a theme change, in the regular and the fullscreen screen, and after a theme change in `/settings` it was not drawn again at all, where Pi redraws it.
-- **User impact:** Wrong display
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `2e82be6163` (2026-11-13), `557b2210a1` (2026-11-13), `98d708f331` (2026-11-13)
-- **Tests:** `internal/codingagent/custom_overlay_invalidate_test.go::TestRemoteOverlayInvalidateOnlyCountsOnTheOwnerLoop`, `test/parity/scenarios/extensions-runtime/100-overlay-invalidate-settings-preview.toml`, `test/parity/scenarios/extensions-runtime/101-overlay-invalidate-settings-preview-fullscreen.toml`, `test/parity/scenarios/extensions-runtime/98-overlay-invalidate-set-theme.toml`, `test/parity/scenarios/extensions-runtime/99-overlay-invalidate-set-theme-fullscreen.toml`, `tui/tui_invalidate_test.go::TestAltScreenStartInvalidatesOverlayComponentsWhenITerm2ImagesAreDropped`, `tui/tui_invalidate_test.go::TestInvalidateFromARenderDoesNotWaitForTheFrame`, `tui/tui_invalidate_test.go::TestInvalidateReachesMountedRootsAndEveryOverlayComponent` and 1 more in docs/bug-ledger.json
-- **Release note:** An extension's overlay (`ctx.ui.custom` with `overlay: true`) that keeps colored rows until its `invalidate()` is called kept the old theme after a theme change, in the regular and the fullscreen screen, and after a theme change in `/settings` it was not drawn again at all, where Pi redraws it. PiG's `Invalidate` set a flag on the root of the screen and reached no component, where Pi's `TUI.invalidate` calls `invalidate()` on every mounted root and every overlay's component. It now reaches both, the host tells a subprocess extension's component (`ui.custom.invalidate`, after the new palette), the Node runtime calls its `invalidate()`, and a theme set invalidates twice as Pi's does. Extensions on the Go, Python, Rust and Lisp runtimes ignore the notify until those runtimes handle it.
-
 ### BF-98f0403
 
 **`AgentSessionRuntime.dispose` in the Go, Python, Rust and Lisp extension SDKs now settles a run still in…**
@@ -27737,6 +27768,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `e8489d4003` (2026-10-11), `fac470319e` (2026-10-11)
 - **Tests:** `internal/codingagent/extension_editor_test.go::TestExtensionEditorHandleInputMatchesPi`
 - **Release note:** A key hint for an app action the user unbound shows no key, as in Pi, instead of the action's default key. For example, the extension editor dialog showed `ctrl+g external editor` after `app.editor.external` was bound to `[]`; it now shows ` external editor` (`tui/keybinding_hints.go` AppKeyText, keybinding-hints.ts keyText; probe in `TestExtensionEditorHandleInputMatchesPi`, red before).
+
+### BF-e84bbf2
+
+**The components of an extension's own `TuiAltScreen` in the Go, Rust, Python and Lisp SDKs were invalidated…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The components of an extension's own `TuiAltScreen` in the Go, Rust, Python and Lisp SDKs were invalidated twice per `invalidate()` where Pi invalidates them once.
+- **Root cause:** Since Invalidate became Pi's TUI.invalidate, the TuiAltScreen bridge of the Go, Rust, Python and Lisp SDKs invalidated an extension's components twice per call: the renderer's walk, then the bridge's own loop (during a frame the loop at once and the walk when the frame ended). Pi's class, which the Node runtime serves, calls each mounted component once. The bridge now flags the root and keeps its loop, which runs at once, so a render that invalidates reads its own invalidation back (TestTuiAltScreenFrameReadsAcrossSDKs).
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `e84bbf2122` (2026-11-13)
+- **Tests:** `test/extension-conformance/tui_alt_screen_test.go::TestTuiAltScreenFrameReadsAcrossSDKs`
+- **Release note:** The components of an extension's own `TuiAltScreen` in the Go, Rust, Python and Lisp SDKs were invalidated twice per `invalidate()` where Pi invalidates them once. The count is Pi's now.
 
 ### BF-e88f858
 
