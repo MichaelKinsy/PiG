@@ -111,6 +111,64 @@ func TestSessionFailsWithItsOwnAdoptionErrorWhichNeverReachesStorage(t *testing.
 	}
 }
 
+// fakeWriterHost is the Session as a writer sees it: storage stored batches in one call, nothing is published through a scope,
+// and what fails the Session is recorded.
+type fakeWriterHost struct {
+	mu      sync.Mutex
+	nextSeq durable.Seq
+	failure error
+	fails   []fakeFail
+	reports []error
+}
+
+type fakeFail struct {
+	err error
+	at  int
+	own []int
+}
+
+func (host *fakeWriterHost) Commit(_ context.Context, batches [][]durable.StorageWrite, receive func(index int, seq durable.Seq)) (durable.CommitResult, error) {
+	for index := range batches {
+		host.mu.Lock()
+		host.nextSeq++
+		seq := host.nextSeq
+		host.mu.Unlock()
+		receive(index, seq)
+	}
+	return durable.CommitResult{Stored: len(batches)}, nil
+}
+
+func (host *fakeWriterHost) Stored([]durable.StorageWrite) {}
+
+func (host *fakeWriterHost) Publishing(publish func(), _ context.Context) <-chan struct{} {
+	publish()
+	return nil
+}
+
+func (host *fakeWriterHost) Failure() error {
+	host.mu.Lock()
+	defer host.mu.Unlock()
+	return host.failure
+}
+
+func (host *fakeWriterHost) Fail(err error, at int, own []int) {
+	host.mu.Lock()
+	defer host.mu.Unlock()
+	if host.failure != nil {
+		return
+	}
+	host.failure = err
+	host.fails = append(host.fails, fakeFail{err: err, at: at, own: own})
+}
+
+func (host *fakeWriterHost) Report(err error, _ context.Context) {
+	host.mu.Lock()
+	host.reports = append(host.reports, err)
+	host.mu.Unlock()
+}
+
+func (host *fakeWriterHost) Hop() {}
+
 // rejectingHost is a fakeWriterHost whose storage rejects the call: after taking the batch's receipt (received) or before.
 type rejectingHost struct {
 	*fakeWriterHost
