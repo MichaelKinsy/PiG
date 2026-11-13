@@ -14,6 +14,10 @@ func CloneFields(fields reflect.Value) bool {
 	for i := range count {
 		field := fields.Field(i)
 		if !field.CanSet() {
+			// An unexported field is not in the JSON form. An empty map stays as the copy has it; anything else is data the caller's round trip decides.
+			if field.Kind() == reflect.Map && field.Len() == 0 {
+				continue
+			}
 			return false
 		}
 		switch field.Kind() {

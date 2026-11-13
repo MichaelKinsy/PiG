@@ -22,6 +22,9 @@ type AzureOpenAIResponsesConfig struct {
 	SamplingParams map[string]any
 	// SamplingParamsByThinkingLevel overrides SamplingParams for the effective thinking level.
 	SamplingParamsByThinkingLevel SamplingParamsByThinkingLevel
+	// SamplingParamsOrder and SamplingParamsByThinkingLevelOrder are Model.SamplingParamsOrder and Model.SamplingParamsByThinkingLevelOrder.
+	SamplingParamsOrder                []string
+	SamplingParamsByThinkingLevelOrder map[ModelThinkingLevel][]string
 	// ThinkingLevelMap overrides catalog effort values when non-nil.
 	ThinkingLevelMap ThinkingLevelMap
 	// Env is the provider's environment; request env entries outrank it. The Azure endpoint options (azureBaseUrl, azureResourceName, azureApiVersion, azureDeploymentName) are per-request StreamOptions fields.
@@ -39,23 +42,25 @@ func NewAzureOpenAIResponsesProvider(cfg AzureOpenAIResponsesConfig) Provider {
 		providerID = string(APIAzureOpenAIResponses)
 	}
 	baseCfg := OpenAIResponsesConfig{
-		api:                           APIAzureOpenAIResponses,
-		StrictModeDefault:             true, // upstream azure-openai-responses.ts: supportsStrictMode ?? true
-		SkipServiceTierPricing:        true,
-		APIKey:                        cfg.APIKey,
-		APIKeyHeader:                  "api-key",
-		APIKeyPrefix:                  "",
-		Model:                         cfg.Model,
-		azure:                         &azureResponsesEndpoint{env: cfg.Env, modelBaseURL: cfg.BaseURL},
-		ProviderID:                    providerID,
-		ExtraHeaders:                  cfg.ExtraHeaders,
-		SamplingParams:                cfg.SamplingParams,
-		SamplingParamsByThinkingLevel: cfg.SamplingParamsByThinkingLevel,
-		ModelMetadata:                 cfg.ModelMetadata,
-		ThinkingLevelMap:              cfg.ThinkingLevelMap,
-		Compat:                        cfg.Compat,
-		IsReasoning:                   cfg.IsReasoning,
-		BaseURLIsEndpoint:             true,
+		api:                                APIAzureOpenAIResponses,
+		StrictModeDefault:                  true, // upstream azure-openai-responses.ts: supportsStrictMode ?? true
+		SkipServiceTierPricing:             true,
+		APIKey:                             cfg.APIKey,
+		APIKeyHeader:                       "api-key",
+		APIKeyPrefix:                       "",
+		Model:                              cfg.Model,
+		azure:                              &azureResponsesEndpoint{env: cfg.Env, modelBaseURL: cfg.BaseURL},
+		ProviderID:                         providerID,
+		ExtraHeaders:                       cfg.ExtraHeaders,
+		SamplingParams:                     cfg.SamplingParams,
+		SamplingParamsByThinkingLevel:      cfg.SamplingParamsByThinkingLevel,
+		SamplingParamsOrder:                cfg.SamplingParamsOrder,
+		SamplingParamsByThinkingLevelOrder: cfg.SamplingParamsByThinkingLevelOrder,
+		ModelMetadata:                      cfg.ModelMetadata,
+		ThinkingLevelMap:                   cfg.ThinkingLevelMap,
+		Compat:                             cfg.Compat,
+		IsReasoning:                        cfg.IsReasoning,
+		BaseURLIsEndpoint:                  true,
 		GetAPIKey: func(context.Context) (string, error) {
 			apiKey := firstNonEmptyString(cfg.APIKey, os.Getenv("AZURE_OPENAI_API_KEY"))
 			if apiKey == "" {

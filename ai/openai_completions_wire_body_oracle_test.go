@@ -104,6 +104,9 @@ func openAICompletionsWireRows() []providerWireRow {
 		{"qwen", `{"thinkingFormat":"qwen","supportsReasoningEffort":true}`},
 		{"qwen with a budget field", `{"thinkingFormat":"qwen","thinkingTokenBudgetField":"thinking_budget","supportsThinkingTokenBudget":true}`},
 		{"qwen-chat-template", `{"thinkingFormat":"qwen-chat-template"}`},
+		{"chat-template", `{"thinkingFormat":"chat-template","chatTemplateKwargs":{"preserve_thinking":true,"enable_thinking":{"$var":"thinking.enabled"},"budget":{"$var":"thinking.budget"},"effort":{"$var":"thinking.effort","omitWhenOff":true},"a":1}}`},
+		{"chat-template, sorted entry", `{"thinkingFormat":"chat-template","chatTemplateKwargs":{"a":1,"enable_thinking":{"$var":"thinking.enabled"},"preserve_thinking":true}}`},
+		{"baseten", `{"thinkingFormat":"baseten","supportsReasoningEffort":true,"chatTemplateArgs":{"thinking":{"$var":"thinking.enabled"},"effort":{"$var":"thinking.effort"},"clear":false}}`},
 		{"deepseek", `{"thinkingFormat":"deepseek","supportsReasoningEffort":true}`},
 		{"openrouter", `{"thinkingFormat":"openrouter"}`},
 	} {
@@ -112,8 +115,14 @@ func openAICompletionsWireRows() []providerWireRow {
 	}
 
 	// Routing a catalog entry supplies: params.provider is the entry's own object (:979-980); the gateway options are built only, order (:984-990).
+	add("openrouter routing", providerWireRow{Compat: raw(`{"openRouterRouting":{"order":["a","b"],"only":["a"],"ignore":["c"],"quantizations":["fp8"],"max_price":{"prompt":1,"completion":2},"allow_fallbacks":false}}`)})
+	add("openrouter routing, sorted entry", providerWireRow{Compat: raw(`{"openRouterRouting":{"allow_fallbacks":false,"ignore":["c"],"only":["a"],"order":["a","b"]}}`)})
 	add("vercel gateway routing", providerWireRow{Compat: raw(`{"vercelGatewayRouting":{"order":["x"],"only":["y"]}}`)})
 	add("vercel gateway routing, order alone", providerWireRow{Compat: raw(`{"vercelGatewayRouting":{"order":["x"]}}`)})
+
+	// Sampling parameters are assigned last, in the order the entry and the caller list them (:994-997).
+	add("model sampling parameters", providerWireRow{Model: raw(`{"samplingParams":{"top_p":0.9,"min_p":0.1,"repetition_penalty":1.1}}`)})
+	add("request sampling parameters", providerWireRow{Options: raw(`{"temperature":0.5,"samplingParams":{"top_p":0.9,"min_p":0.1,"temperature":0.3}}`)})
 
 	// Each block kind as the last one of the conversation.
 	add("last block: user string", providerWireRow{Context: wireContext(wireTools, wireUserGo)})

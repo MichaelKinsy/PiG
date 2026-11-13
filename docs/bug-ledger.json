@@ -12327,6 +12327,37 @@
       ]
     },
     {
+      "id": "BF-3fe8180",
+      "title": "OpenAI-compatible (chat completions) requests write the objects a model entry or the caller supplies with…",
+      "symptom": "OpenAI-compatible (chat completions) requests write the objects a model entry or the caller supplies with their members in the order the source lists them, as Pi does; PiG wrote each sorted by key.",
+      "rootCause": "Three objects of an openai-completions request are supplied by a catalog entry, models.json, an extension or the caller, and Pi writes each with its members in the order the source lists them. PiG held them in Go maps, which encoding/json writes sorted.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "OpenAI-compatible (chat completions) requests write the objects a model entry or the caller supplies with their members in the order the source lists them, as Pi does; PiG wrote each sorted by key. This holds for `chat_template_kwargs` / `chat_template_args` (compat `chatTemplateKwargs` / `chatTemplateArgs`), for `provider` and its nested objects such as `max_price` (compat `openRouterRouting`), and for the sampling parameters at the top level of the request (`samplingParams`, `samplingParamsByThinkingLevel` and a request's own). The content was the same. The order is kept from `models.json`, from a provider an extension registers and from a request an extension streams with; a provider entry's compat merged with a model's and with a model override's follows Pi's spread (the base's members in the base's order, an overridden member in its place, new members after them). The sampling parameters of OpenAI Responses and Azure OpenAI Responses requests follow the same order. Go callers: `ai.Model` and `ai.StreamOptions` gain `SamplingParamsOrder` (`ai.Model` also `SamplingParamsByThinkingLevelOrder`) beside the maps, and `ai.MergeOpenAICompat` merges two compats as Pi's `mergeCompat` does; a caller that sets only the map still sends its members sorted.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3fe81801cc",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "ai/openai_compat_objects_test.go::TestBundledCatalogCompatObjectsRoundTrip",
+        "ai/openai_compat_objects_test.go::TestMergeOpenAICompatSpreadsObjectMembers",
+        "ai/openai_compat_objects_test.go::TestOpenAICompatKeepsObjectMemberOrder",
+        "ai/openai_compat_objects_test.go::TestResolveSamplingParamsInOrder",
+        "coding/extension/host/subprocess/model_stream_sampling_order_test.go::TestDecodeModelStreamRequestKeepsSamplingParamsOrder",
+        "coding/model_member_order_wire_test.go::TestSuppliedObjectsReachTheWireInTheirSourceOrder",
+        "internal/codingagent/model_registry_member_order_test.go::TestSamplingParamsMergeKeepsSpreadOrder",
+        "internal/codingagent/model_registry_merge_compat_fields_test.go::TestMergeCompatSpreadsEveryScalarCompatField",
+        "internal/codingagent/subprocess_member_order_test.go::TestAPIModelOfJSONKeepsSuppliedMemberOrder",
+        "internal/codingagent/subprocess_member_order_test.go::TestSubprocessStreamOptionsKeepSamplingParamsOrder"
+      ]
+    },
+    {
       "id": "BF-4027b34",
       "title": "A finished code-mode execution no longer keeps its closed VM reachable through its stopped halt-grace timer…",
       "symptom": "A finished code-mode execution no longer keeps its closed VM reachable through its stopped halt-grace timer, which stays in an idle scheduler's timer heap until that scheduler next runs.",

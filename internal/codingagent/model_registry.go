@@ -25,6 +25,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsonopts"
 	"github.com/MichaelKinsy/PiG/internal/jsonparse"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 	"github.com/MichaelKinsy/PiG/internal/text"
 )
@@ -58,18 +59,22 @@ type ModelEntry struct {
 	SamplingParams   map[string]any
 	// SamplingParamsByThinkingLevel overrides SamplingParams for the effective Pi thinking level.
 	SamplingParamsByThinkingLevel ai.SamplingParamsByThinkingLevel
-	InputLimits                   *ai.ModelInputLimits
-	Input                         []string // ["text"] or ["text","image"]
-	ContextWindow                 int      // default: 128000
-	MaxTokens                     int      // default: 16384
-	InputCost                     float64
-	OutputCost                    float64
-	CacheReadCost                 float64
-	CacheWriteCost                float64
-	CostTiers                     []ai.CostTier
-	PromptCache                   ai.ModelPromptCache
-	Env                           map[string]string // provider-scoped env overrides (auth.json env)
-	Insecure                      bool              // skip TLS verification (self-signed/internal-CA on-prem endpoints)
+	// SamplingParamsOrder and SamplingParamsByThinkingLevelOrder are ai.Model's: the member order of the sampling parameters in models.json or
+	// in the registering extension's definition, merged as Pi's spreads merge it. nil is the sorted order.
+	SamplingParamsOrder                []string
+	SamplingParamsByThinkingLevelOrder map[ai.ModelThinkingLevel][]string
+	InputLimits                        *ai.ModelInputLimits
+	Input                              []string // ["text"] or ["text","image"]
+	ContextWindow                      int      // default: 128000
+	MaxTokens                          int      // default: 16384
+	InputCost                          float64
+	OutputCost                         float64
+	CacheReadCost                      float64
+	CacheWriteCost                     float64
+	CostTiers                          []ai.CostTier
+	PromptCache                        ai.ModelPromptCache
+	Env                                map[string]string // provider-scoped env overrides (auth.json env)
+	Insecure                           bool              // skip TLS verification (self-signed/internal-CA on-prem endpoints)
 }
 
 // ─── models.json schema (upstream-compatible) ────────────────────────────────
@@ -157,6 +162,10 @@ type modelDefinition struct {
 	// models.json model. Pi's model object is that definition spread (provider-composer.ts extensionModelFromDefinition), not the
 	// member-by-member object modelFromJson builds, so the definition fixes its members and their order.
 	registration *registeredDefinition
+	// samplingOrder and samplingLevelOrder are the member order of SamplingParams and of each level of SamplingParamsByThinkingLevel in the
+	// JSON this was decoded from, where it is not the sorted one (decodeSamplingOrder).
+	samplingOrder      []string
+	samplingLevelOrder map[ai.ModelThinkingLevel][]string
 }
 
 type modelCostJSON struct {
@@ -191,6 +200,10 @@ type modelOverrideJSON struct {
 	Headers                       map[string]*string               `json:"headers,omitempty"`
 	headerEntries                 []orderedHeaderEntry
 	Compat                        *providerCompat `json:"compat,omitempty"`
+	// samplingOrder and samplingLevelOrder are the member order of SamplingParams and of each level of SamplingParamsByThinkingLevel in the
+	// JSON this was decoded from, where it is not the sorted one (decodeSamplingOrder).
+	samplingOrder      []string
+	samplingLevelOrder map[ai.ModelThinkingLevel][]string
 }
 
 type orderedHeaderEntry struct {
@@ -233,6 +246,7 @@ func (definition *modelDefinition) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	definition.headerEntries = entries
+	definition.samplingOrder, definition.samplingLevelOrder = decodeSamplingOrder(data)
 	return nil
 }
 
@@ -251,6 +265,7 @@ func (override *modelOverrideJSON) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	override.headerEntries = entries
+	override.samplingOrder, override.samplingLevelOrder = decodeSamplingOrder(data)
 	return nil
 }
 
@@ -988,6 +1003,7 @@ func providerConfigFromRegistration(configMap extension.ProviderConfig) (provide
 		}
 		if definition != nil {
 			provider.Models[i].registration = &registeredDefinition{raw: definition}
+			provider.Models[i].readDefinitionOrder(definition)
 		}
 	}
 	if configMap.Headers != nil && provider.Headers == nil {
@@ -1836,27 +1852,124 @@ func cloneSamplingParamsByThinkingLevel(in ai.SamplingParamsByThinkingLevel) ai.
 
 // mergeSamplingParamsByThinkingLevel merges a model override's per-level sampling parameters over the base model's, per key within each Pi thinking level.
 // Mirrors upstream provider-composer.ts mergeSamplingParamsByThinkingLevel.
-func mergeSamplingParamsByThinkingLevel(base, override ai.SamplingParamsByThinkingLevel) ai.SamplingParamsByThinkingLevel {
+func mergeSamplingParamsByThinkingLevel(base ai.SamplingParamsByThinkingLevel, baseOrder map[ai.ModelThinkingLevel][]string, override ai.SamplingParamsByThinkingLevel, overrideOrder map[ai.ModelThinkingLevel][]string) (ai.SamplingParamsByThinkingLevel, map[ai.ModelThinkingLevel][]string) {
 	if override == nil {
-		return base
+		return base, baseOrder
 	}
 	merged := cloneSamplingParamsByThinkingLevel(base)
 	if merged == nil {
 		merged = ai.SamplingParamsByThinkingLevel{}
 	}
+	order := maps.Clone(baseOrder)
 	for _, level := range []ai.ModelThinkingLevel{ai.ThinkingOff, ai.ThinkingMinimal, ai.ThinkingLow, ai.ThinkingMedium, ai.ThinkingHigh, ai.ThinkingXHigh, ai.ThinkingMax} {
 		params := override[level]
 		if params == nil {
 			continue
 		}
-		next := maps.Clone(base[level])
-		if next == nil {
-			next = make(ai.SamplingParams, len(params))
-		}
-		maps.Copy(next, params)
+		next, keys := mergeSamplingParams(base[level], baseOrder[level], params, overrideOrder[level])
 		merged[level] = next
+		if keys == nil {
+			delete(order, level)
+			continue
+		}
+		if order == nil {
+			order = make(map[ai.ModelThinkingLevel][]string)
+		}
+		order[level] = keys
 	}
-	return merged
+	if len(order) == 0 {
+		order = nil
+	}
+	return merged, order
+}
+
+// mergeSamplingParams is `{ ...base, ...override }` (provider-composer.ts:201-203, :164-172): the merged parameters and their member order,
+// base's members in base's order with an overridden one in its place, then override's new members in override's order; a nil order is the
+// sorted one.
+func mergeSamplingParams(base ai.SamplingParams, baseOrder []string, override ai.SamplingParams, overrideOrder []string) (ai.SamplingParams, []string) {
+	keys := samplingKeys(base, baseOrder)
+	for _, key := range samplingKeys(override, overrideOrder) {
+		if _, inBase := base[key]; !inBase {
+			keys = append(keys, key)
+		}
+	}
+	merged := maps.Clone(base)
+	if merged == nil {
+		merged = make(ai.SamplingParams, len(override))
+	}
+	maps.Copy(merged, override)
+	return merged, unsortedKeys(keys)
+}
+
+// samplingKeys is the keys of params in member order: those order records, then the others sorted.
+func samplingKeys(params ai.SamplingParams, order []string) []string {
+	keys := make([]string, 0, len(params))
+	for _, key := range order {
+		if _, ok := params[key]; ok && !slices.Contains(keys, key) {
+			keys = append(keys, key)
+		}
+	}
+	recorded := len(keys)
+	for key := range params {
+		if !slices.Contains(keys[:recorded], key) {
+			keys = append(keys, key)
+		}
+	}
+	slices.Sort(keys[recorded:])
+	return keys
+}
+
+// unsortedKeys is keys, or nil when they are in the sorted order a map without a recorded order is written in.
+func unsortedKeys(keys []string) []string {
+	if slices.IsSorted(keys) {
+		return nil
+	}
+	return keys
+}
+
+// decodeSamplingOrder is the member order of samplingParams and of each level of samplingParamsByThinkingLevel in data, a model's JSON
+// object, where it is not the sorted one. Pi hands those objects on as JSON.parse built them (model-config.ts:185, provider-composer.ts:246-247,
+// :299), and a Go map has no order.
+func decodeSamplingOrder(data []byte) ([]string, map[ai.ModelThinkingLevel][]string) {
+	if !bytes.Contains(data, []byte(`"samplingParams`)) {
+		return nil, nil
+	}
+	var members struct {
+		SamplingParams                *orderedjson.Object                           `json:"samplingParams"`
+		SamplingParamsByThinkingLevel map[ai.ModelThinkingLevel]*orderedjson.Object `json:"samplingParamsByThinkingLevel"`
+	}
+	if json.Unmarshal(data, &members) != nil {
+		return nil, nil
+	}
+	var order []string
+	if members.SamplingParams != nil {
+		order = unsortedKeys(members.SamplingParams.Keys())
+	}
+	var levels map[ai.ModelThinkingLevel][]string
+	for level, params := range members.SamplingParamsByThinkingLevel {
+		if params == nil {
+			continue
+		}
+		if keys := unsortedKeys(params.Keys()); keys != nil {
+			if levels == nil {
+				levels = make(map[ai.ModelThinkingLevel][]string)
+			}
+			levels[level] = keys
+		}
+	}
+	return order, levels
+}
+
+// readDefinitionOrder takes the member order of the sampling parameters and of the compat objects from raw, the definition as the
+// registering extension wrote it: the model itself was decoded from the host's encoding of the definition, which writes every map sorted.
+func (definition *modelDefinition) readDefinitionOrder(raw json.RawMessage) {
+	definition.samplingOrder, definition.samplingLevelOrder = decodeSamplingOrder(raw)
+	var members struct {
+		Compat *providerCompat `json:"compat"`
+	}
+	if definition.Compat != nil && json.Unmarshal(raw, &members) == nil && members.Compat != nil {
+		definition.Compat = members.Compat
+	}
 }
 
 func mergeThinkingLevelMaps(base, override ai.ThinkingLevelMap) ai.ThinkingLevelMap {
@@ -1915,197 +2028,10 @@ func mergeHeadersOrdered(base map[string]string, overrides map[string]*string, o
 	return out
 }
 
-// mergeCompat merges two compat structs; b fields override a fields (per-field).
-// Mirrors upstream mergeCompat (model-registry.ts).
+// mergeCompat merges two compat structs; b fields override a fields (per-field): ai.MergeOpenAICompat, which keeps the member order of
+// the compat objects with their values.
 func mergeCompat(a, b *providerCompat) *ai.OpenAICompat {
-	if a == nil && b == nil {
-		return nil
-	}
-	if a == nil {
-		cp := ai.OpenAICompat(*b)
-		return &cp
-	}
-	if b == nil {
-		cp := ai.OpenAICompat(*a)
-		return &cp
-	}
-	// b overrides a per-field.
-	base := ai.OpenAICompat(*a)
-	ovr := ai.OpenAICompat(*b)
-	merged := base
-	if ovr.SupportsDeveloperRole != nil {
-		merged.SupportsDeveloperRole = ovr.SupportsDeveloperRole
-	}
-	if ovr.SupportsReasoningEffort != nil {
-		merged.SupportsReasoningEffort = ovr.SupportsReasoningEffort
-	}
-	if ovr.SupportsStore != nil {
-		merged.SupportsStore = ovr.SupportsStore
-	}
-	if ovr.SupportsUsageInStreaming != nil {
-		merged.SupportsUsageInStreaming = ovr.SupportsUsageInStreaming
-	}
-	if ovr.SupportsFinishReason != nil {
-		merged.SupportsFinishReason = ovr.SupportsFinishReason
-	}
-	if ovr.MaxTokensField != "" {
-		merged.MaxTokensField = ovr.MaxTokensField
-	}
-	if ovr.RequiresToolResultName != nil {
-		merged.RequiresToolResultName = ovr.RequiresToolResultName
-	}
-	if ovr.RequiresAssistantAfterToolResult != nil {
-		merged.RequiresAssistantAfterToolResult = ovr.RequiresAssistantAfterToolResult
-	}
-	if ovr.RequiresNonNullAssistantContent != nil {
-		merged.RequiresNonNullAssistantContent = ovr.RequiresNonNullAssistantContent
-	}
-	if ovr.RequiresToolsWithToolHistory != nil {
-		merged.RequiresToolsWithToolHistory = ovr.RequiresToolsWithToolHistory
-	}
-	if ovr.RequiresThinkingAsText != nil {
-		merged.RequiresThinkingAsText = ovr.RequiresThinkingAsText
-	}
-	if ovr.RequiresReasoningContentOnAssistantMessages != nil {
-		merged.RequiresReasoningContentOnAssistantMessages = ovr.RequiresReasoningContentOnAssistantMessages
-	}
-	if ovr.SupportsOpenAIGrammarTools != nil {
-		merged.SupportsOpenAIGrammarTools = ovr.SupportsOpenAIGrammarTools
-	}
-	if ovr.SupportsExplicitPromptCacheMode != nil {
-		merged.SupportsExplicitPromptCacheMode = ovr.SupportsExplicitPromptCacheMode
-	}
-	if ovr.SupportsStrictTools != nil {
-		merged.SupportsStrictTools = ovr.SupportsStrictTools
-	}
-	if ovr.ThinkingFormat != "" {
-		merged.ThinkingFormat = ovr.ThinkingFormat
-	}
-	if ovr.CacheControlFormat != "" {
-		merged.CacheControlFormat = ovr.CacheControlFormat
-	}
-	if ovr.SendSessionAffinityHeaders != nil {
-		merged.SendSessionAffinityHeaders = ovr.SendSessionAffinityHeaders
-	}
-	if ovr.SupportsStrictMode != nil {
-		merged.SupportsStrictMode = ovr.SupportsStrictMode
-	}
-	merged.OpenRouterRouting = mergeCompatMap(base.OpenRouterRouting, ovr.OpenRouterRouting)
-	merged.ChatTemplateKwargs = mergeCompatMap(base.ChatTemplateKwargs, ovr.ChatTemplateKwargs)
-	if ovr.VLLMPriority != nil {
-		merged.VLLMPriority = ovr.VLLMPriority
-	}
-	merged.VercelGatewayRouting = mergeVercelGatewayRouting(base.VercelGatewayRouting, ovr.VercelGatewayRouting)
-	if ovr.SupportsLongCacheRetention != nil {
-		merged.SupportsLongCacheRetention = ovr.SupportsLongCacheRetention
-	}
-	if ovr.SendSessionIdHeader != nil {
-		merged.SendSessionIdHeader = ovr.SendSessionIdHeader
-	}
-	if ovr.SupportsEagerToolInputStreaming != nil {
-		merged.SupportsEagerToolInputStreaming = ovr.SupportsEagerToolInputStreaming
-	}
-	if ovr.SupportsCacheControlOnTools != nil {
-		merged.SupportsCacheControlOnTools = ovr.SupportsCacheControlOnTools
-	}
-	if ovr.ForceAdaptiveThinking != nil {
-		merged.ForceAdaptiveThinking = ovr.ForceAdaptiveThinking
-	}
-	if ovr.AllowEmptySignature != nil {
-		merged.AllowEmptySignature = ovr.AllowEmptySignature
-	}
-	if ovr.SupportsTemperature != nil {
-		merged.SupportsTemperature = ovr.SupportsTemperature
-	}
-	if ovr.ZaiToolStream != nil {
-		merged.ZaiToolStream = ovr.ZaiToolStream
-	}
-	if ovr.DeferredToolsMode != "" {
-		merged.DeferredToolsMode = ovr.DeferredToolsMode
-	}
-	if ovr.SessionAffinityFormat != "" {
-		merged.SessionAffinityFormat = ovr.SessionAffinityFormat
-	}
-	if ovr.PromptCacheKeyMode != "" {
-		merged.PromptCacheKeyMode = ovr.PromptCacheKeyMode
-	}
-	if ovr.SupportsToolSearch != nil {
-		merged.SupportsToolSearch = ovr.SupportsToolSearch
-	}
-	if ovr.SupportsMaxOutputTokens != nil {
-		merged.SupportsMaxOutputTokens = ovr.SupportsMaxOutputTokens
-	}
-	merged.ChatTemplateArgs = mergeCompatMap(base.ChatTemplateArgs, ovr.ChatTemplateArgs)
-	if ovr.SupportsThinkingTokenBudget != nil {
-		merged.SupportsThinkingTokenBudget = ovr.SupportsThinkingTokenBudget
-	}
-	if ovr.ThinkingTokenBudgetField != "" {
-		merged.ThinkingTokenBudgetField = ovr.ThinkingTokenBudgetField
-	}
-	if ovr.SupportsAdditionalTools != nil {
-		merged.SupportsAdditionalTools = ovr.SupportsAdditionalTools
-	}
-	if ovr.SupportsMidConvoEffort != nil {
-		merged.SupportsMidConvoEffort = ovr.SupportsMidConvoEffort
-	}
-	if ovr.SupportsMidConvoSystemMessages != nil {
-		merged.SupportsMidConvoSystemMessages = ovr.SupportsMidConvoSystemMessages
-	}
-	if ovr.SupportsMidConvoToolAdditions != nil {
-		merged.SupportsMidConvoToolAdditions = ovr.SupportsMidConvoToolAdditions
-	}
-	if ovr.SupportsMidConvoToolChanges != nil {
-		merged.SupportsMidConvoToolChanges = ovr.SupportsMidConvoToolChanges
-	}
-	if ovr.SupportsMessageThreads != nil {
-		merged.SupportsMessageThreads = ovr.SupportsMessageThreads
-	}
-	if base.Extra != nil || ovr.Extra != nil {
-		merged.Extra = maps.Clone(base.Extra)
-		if merged.Extra == nil {
-			merged.Extra = make(map[string]json.RawMessage, len(ovr.Extra))
-		}
-		maps.Copy(merged.Extra, ovr.Extra)
-	}
-	if ovr.AllowedFallbackModels != nil {
-		merged.AllowedFallbackModels = slices.Clone(ovr.AllowedFallbackModels)
-		for i := range merged.AllowedFallbackModels {
-			merged.AllowedFallbackModels[i].Cost.Tiers = slices.Clone(merged.AllowedFallbackModels[i].Cost.Tiers)
-		}
-	}
-	return &merged
-}
-
-// mergeVercelGatewayRouting merges key by key, as mergeCompatMap does: a list the override sets replaces the base list, and an absent list keeps it.
-func mergeVercelGatewayRouting(base, override *ai.VercelGatewayRouting) *ai.VercelGatewayRouting {
-	if base == nil && override == nil {
-		return nil
-	}
-	merged := ai.VercelGatewayRouting{}
-	if base != nil {
-		merged = ai.VercelGatewayRouting{Only: slices.Clone(base.Only), Order: slices.Clone(base.Order)}
-	}
-	if override != nil {
-		if override.Only != nil {
-			merged.Only = slices.Clone(override.Only)
-		}
-		if override.Order != nil {
-			merged.Order = slices.Clone(override.Order)
-		}
-	}
-	return &merged
-}
-
-func mergeCompatMap(base, override map[string]any) map[string]any {
-	if base == nil && override == nil {
-		return nil
-	}
-	merged := maps.Clone(base)
-	if merged == nil {
-		merged = make(map[string]any, len(override))
-	}
-	maps.Copy(merged, override)
-	return merged
+	return ai.MergeOpenAICompat((*ai.OpenAICompat)(a), (*ai.OpenAICompat)(b))
 }
 
 // HasAnyKey reports whether the registry has at least one entry for

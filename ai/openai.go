@@ -46,6 +46,9 @@ type OpenAIConfig struct {
 	SamplingParams map[string]any
 	// SamplingParamsByThinkingLevel overrides SamplingParams for the effective thinking level.
 	SamplingParamsByThinkingLevel SamplingParamsByThinkingLevel
+	// SamplingParamsOrder and SamplingParamsByThinkingLevelOrder are Model.SamplingParamsOrder and Model.SamplingParamsByThinkingLevelOrder.
+	SamplingParamsOrder                []string
+	SamplingParamsByThinkingLevelOrder map[ModelThinkingLevel][]string
 	// Env holds provider-scoped environment overrides that take precedence over
 	// the process environment when resolving provider configuration such as
 	// PI_CACHE_RETENTION and Cloudflare base-URL placeholders. Mirrors the
@@ -167,6 +170,10 @@ type OpenAICompat struct {
 	// Extra holds the members PiG does not model, as written. Pi's compat schemas allow additional properties and a compat object keeps
 	// them (model-config.ts getProvider, provider-composer.ts mergeCompat), so a custom API can read its own compat settings.
 	Extra map[string]json.RawMessage `json:"-"`
+	// objectOrder is the member order of OpenRouterRouting, ChatTemplateKwargs and ChatTemplateArgs, nested objects included, where the JSON the
+	// compat was decoded from or a merge of two compats lists them in another order than the sorted one encoding/json writes. A compat
+	// built in Go has none.
+	objectOrder schemaObjectOrder
 }
 
 func ptrBool(v bool) *bool { return new(v) }
@@ -230,7 +237,7 @@ func (p *openAIProvider) thinkingModel() *Model {
 
 // samplingModel is the model view resolveSamplingParams reads: reasoning support and the thinking map clamp the level, and the configured defaults and per-level overrides are merged.
 func (p *openAIProvider) samplingModel(reasoning bool) *Model {
-	model := &Model{SamplingParams: p.cfg.SamplingParams, SamplingParamsByThinkingLevel: p.cfg.SamplingParamsByThinkingLevel}
+	model := &Model{SamplingParams: p.cfg.SamplingParams, SamplingParamsByThinkingLevel: p.cfg.SamplingParamsByThinkingLevel, SamplingParamsOrder: p.cfg.SamplingParamsOrder, SamplingParamsByThinkingLevelOrder: p.cfg.SamplingParamsByThinkingLevelOrder}
 	if reasoning {
 		model.ProviderMeta.Reasoning = true
 		model.ThinkingLevelMap = p.thinkingModel().ThinkingLevelMap
@@ -1647,14 +1654,14 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 			req.EnableThinking = &reasoningOn
 			req.ReasoningEffort = qwenReasoningEffort(reasoningOn, supportsRE, mappedEffort)
 		case "qwen-chat-template":
-			req.ChatTemplateKwargs = map[string]any{"enable_thinking": reasoningOn, "preserve_thinking": true}
+			req.ChatTemplateKwargs = oaiQwenChatTemplateKwargs{EnableThinking: reasoningOn, PreserveThinking: true}
 		case "chat-template":
 			if resolved := resolveChatTemplateValues(p.compat().ChatTemplateKwargs, reasoningOn, templateEffort, thinkingBudget); resolved != nil {
-				req.ChatTemplateKwargs = resolved
+				req.ChatTemplateKwargs = p.compat().requestObject(resolved, "chatTemplateKwargs")
 			}
 		case "baseten":
 			if resolved := resolveChatTemplateValues(p.compat().ChatTemplateArgs, reasoningOn, templateEffort, thinkingBudget); resolved != nil {
-				req.ChatTemplateArgs = resolved
+				req.ChatTemplateArgs = p.compat().requestObject(resolved, "chatTemplateArgs")
 			}
 			// openai-completions.ts:919-924: the requested level's mapped value, or the off value when reasoning is off; a null entry is unsupported and an absent off entry sends nothing.
 			if value, emit := templateEffort(); supportsRE && emit {
@@ -1726,7 +1733,7 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 	// OpenRouter provider routing preferences. Mirrors openai-completions.ts:613
 	// (no baseURL gate as of 0.79.1: applies whenever compat sets it).
 	if p.compat().OpenRouterRouting != nil {
-		req.Provider = p.compat().OpenRouterRouting
+		req.Provider = p.compat().requestObject(p.compat().OpenRouterRouting, "openRouterRouting")
 	}
 	// Vercel AI Gateway provider routing preferences. Pi applies them to every request whose compat sets them, with no base URL gate (openai-completions.ts:992-1001).
 	if p.compat().VercelGatewayRouting != nil && (p.compat().VercelGatewayRouting.Only != nil || p.compat().VercelGatewayRouting.Order != nil) {
@@ -1766,7 +1773,7 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 
 	payload := any(req)
 	// Last so model and request sampling parameters override named request fields (openai-completions.ts:1004-1007).
-	if keys, samplingParams := resolveSamplingParamsInOrder(p.samplingModel(opts.IsReasoning), completionsSamplingLevel(opts), opts.SamplingParams); samplingParams != nil {
+	if keys, samplingParams := resolveSamplingParamsInOrder(p.samplingModel(opts.IsReasoning), completionsSamplingLevel(opts), opts.SamplingParams, opts.SamplingParamsOrder); samplingParams != nil {
 		assigned, err := assignSamplingParams(req, oaiRequestLiteralKeys, keys, samplingParams)
 		if err != nil {
 			return nil, fmt.Errorf("openai: %w", err)
