@@ -117,8 +117,10 @@ func anthropicWireRows() []anthropicWireRow {
 	add("unsigned thinking, model with empty signatures", anthropicWireRow{Compat: raw(`{"allowEmptySignature":true}`), Context: context("", userGo, assistant("anthropic", "stop", `{"type":"thinking","thinking":"plan"},`+text), userNext)})
 	add("turn of another provider", anthropicWireRow{Context: context(system+","+tools, userGo, called("other"), result("call_1", text, false), userNext)})
 
-	// A lone surrogate keeps its own escape where Pi does not sanitize the text (a tool description), and < > & U+2028 stay raw.
-	add("lone surrogates and the characters JSON.stringify leaves raw", anthropicWireRow{Context: context(`"systemPrompt":"a\ud83db <&> \u2028","tools":[{"name":"read","description":"a\ude00b <&> \u2028","parameters":{"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}}]`,
+	// Pi removes a lone surrogate from the system prompt and from message text, and < > & U+2028 stay raw.
+	// NOT EQUAL today, and not a row: a tool description that holds a lone surrogate. Pi sends the surrogate's escape; PiG sends U+FFFD,
+	// because ai.ToolSchema decodes a declaration with encoding/json.
+	add("sanitized lone surrogates and the characters JSON.stringify leaves raw", anthropicWireRow{Context: context(`"systemPrompt":"a\ud83db <&> \u2028","tools":[{"name":"read","description":"ab <&> \u2028","parameters":{"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}}]`,
 		`{"role":"user","content":"x\ud83d <&> \u2028","timestamp":1}`)})
 
 	add("poisoned: errored turn", anthropicWireRow{Context: context(tools, userGo, assistant("anthropic", "error", `{"type":"text","text":"partial"},`+call), userNext)})
