@@ -74,7 +74,7 @@ func TestRunSystemPromptFollowsEveryInput(t *testing.T) {
 		t.Fatalf("the prompt with nothing hidden is %q, want %q", got, first)
 	}
 
-	// The base sections, edited in place under the write lock as rebuildSystemPrompt does, and the base options, for a prompt whose sections are the caller's.
+	// The base sections, edited in place under the write lock as rebuildSystemPrompt does, for a prompt whose sections are the caller's.
 	s.toolRegistryMu.Lock()
 	s.defaultSystemPrompt = false
 	s.toolRegistryMu.Unlock()
@@ -98,6 +98,38 @@ func TestRunSystemPromptFollowsEveryInput(t *testing.T) {
 	}
 }
 
+// The run's prompt follows the kind of prompt the Session has. A caller-owned structured prompt takes only the tools and rules from the run's options; once the caller supplies the resources behind it, the same run's prompt is built whole from the run's options, as effectiveSystemSections builds the request's.
+func TestRunSystemPromptFollowsTheResourcesBehindACallerPrompt(t *testing.T) {
+	h := newRecoveryHarness(t, harnessOptions{defaultTools: true})
+	s := h.session
+	s.SetSystemPromptSections(ai.OrderedSections{{Name: "preamble", Value: new("CALLER-PREAMBLE")}})
+	base := *s.GetSystemPromptOptions()
+	edited := base
+	edited.AppendSystemPrompt = "RUN-APPENDED"
+	run, err := icodingagent.ResolveBeforeAgentStartRun(base, &extension.BeforeAgentStartCombinedResult{SystemPromptOptions: &edited})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.SetRunPrompt(&run)
+	if got := s.SystemPrompt(); !strings.Contains(got, "CALLER-PREAMBLE") || strings.Contains(got, "RUN-APPENDED") {
+		t.Fatalf("the run's prompt over a caller-owned prompt:\n%s", got)
+	}
+	s.SetSystemPromptResources(SystemPromptResources{})
+	requested := func() string {
+		t.Helper()
+		s.toolRegistryMu.RLock()
+		defer s.toolRegistryMu.RUnlock()
+		sections, err := s.effectiveSystemSections()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return ai.GetCurrentSystemPrompt([]ai.Message{ai.SystemMessage{Sections: sections}})
+	}
+	if got, want := s.SystemPrompt(), requested(); got != want || !strings.Contains(got, "RUN-APPENDED") {
+		t.Fatalf("the run's prompt once the caller supplied resources:\n%s\nthe request's:\n%s", got, want)
+	}
+}
+
 // A prompt whose inputs did not change is not built again: the host reads it before every event it dispatches.
 func TestRunSystemPromptIsNotRebuiltForUnchangedInputs(t *testing.T) {
 	h := newRecoveryHarness(t, harnessOptions{defaultTools: true})
@@ -113,6 +145,7 @@ func TestRunSystemPromptIsNotRebuiltForUnchangedInputs(t *testing.T) {
 	if got != prompt {
 		t.Fatalf("the prompt changed from %q to %q", prompt, got)
 	}
+	t.Logf("an unchanged run prompt costs %.0f allocations", allocs)
 	// The active tool names are the one allocation of the key.
 	if allocs > 3 {
 		t.Fatalf("an unchanged run prompt costs %.0f allocations, want the key's names only", allocs)

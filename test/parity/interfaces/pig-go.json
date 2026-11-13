@@ -78813,6 +78813,17 @@
       "shapeHash": "sha256:c43b053c6d2f8ee0026f2eabbc934670896af5294931adfecd92444116619d84"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#Session.buildsRunPromptWhole",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "Session.buildsRunPromptWhole",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#Session.cacheContextIsCurrent",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "Session.cacheContextIsCurrent",
