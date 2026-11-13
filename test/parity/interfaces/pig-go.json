@@ -138917,6 +138917,17 @@
       "shapeHash": "sha256:479ca81167c7a4e95ec88af640fba184f0c9aa0eb2d2f14a1eb416f029b0f84d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#MountImages.halfBlock",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "MountImages.halfBlock",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(img *viewImage, dims *github.com/MichaelKinsy/PiG/tui.ImageDimensions, half mountHalf) []string"
+      },
+      "shapeHash": "sha256:c0d0688b99cea98beabf1dba52b1c7f9105530ba3afec453b9a2e839f3705846"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#MountImages.id",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "MountImages.id",
@@ -138956,9 +138967,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(img *viewImage, png bool, ready func()) (*mountImageData, bool)"
+        "type": "func(img *viewImage, png bool, half mountHalf, waiter func() func()) (*mountImageData, []string, bool)"
       },
-      "shapeHash": "sha256:0833b05b85692733d76e0c33f4d6c6e0c386a5a0f10f3aa6bd13b5de34ac5809"
+      "shapeHash": "sha256:ca85da004d31cc7e0be2e2fabe1d4b99f2e5bdeb77aa58ed10770766014cb698"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#MountImages.release",
@@ -153721,6 +153732,28 @@
         "type": "[]string"
       },
       "shapeHash": "sha256:a1c330895d4124c2ac5e7956eaa7a61082b08546669578b38030562429ad3b1e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#mountHalf",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "mountHalf",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "mountHalf"
+      },
+      "shapeHash": "sha256:8e620950cf147c7f0eddedab12ffdf7fc9a8941e438c2d6cd6db835e11ea38ee"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#mountHalfMaxPixels",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "mountHalfMaxPixels",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#mountImage",

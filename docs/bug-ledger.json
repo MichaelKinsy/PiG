@@ -12575,6 +12575,27 @@
       ]
     },
     {
+      "id": "BF-40cd4f1",
+      "title": "fix(view): the mount is told on the loop that its image is ready; the three reds of the gates",
+      "symptom": "fix(view): the mount is told on the loop that its image is ready; the three reds of the gates",
+      "rootCause": "The image worker called the mount's repaint from its own goroutine; under -race the view client test showed a data race on the loop's state. MountImages gains Post, which the terminal client sets to its loop's postWait, so the wake runs on the loop. Lint: the longest-text condition without the negated conjunction, and the client's images field in a block of its own. Divergence guard: the default width 60 names Pi's image.ts render.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "40cd4f158e",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/view_client_image_test.go::TestViewClientDrawsAPhotographInAPanel"
+      ]
+    },
+    {
       "id": "BF-4106324",
       "title": "A `session_tree` handler is no longer cancelled, and later extensions no longer miss the event, when the…",
       "symptom": "A `session_tree` handler is no longer cancelled, and later extensions no longer miss the event, when the context of the tree navigation ended while it ran.",
