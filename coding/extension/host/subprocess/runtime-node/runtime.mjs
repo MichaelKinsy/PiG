@@ -5254,6 +5254,8 @@ export class Runtime {
               this.conn.socket.once("drain",drain);this.conn.socket.once("close",closed);ctx[requestSignal].addEventListener("abort",aborted,{once:true});if(ctx[requestSignal].aborted)aborted();
             });
           }
+          // The stream ended. An ordinary cancel that arrived first has ended the request, and the answer is the abort, as in the Go, Python, Rust and Lisp SDKs, which read the cancel once more after their forwarding loop; one that arrives later finds the stream ended and forwarded, and the request keeps its result.
+          if (cancelsHostCalls(controller)) throw new Error("provider stream aborted");
           await this.respond(id, await stream.result());
           return;
         }

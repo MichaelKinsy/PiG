@@ -604,6 +604,8 @@ struct RequestCancel {
     flag: Arc<AtomicBool>,
     reason: Arc<Mutex<Option<String>>>,
     provider_stream: Arc<Mutex<Option<Arc<ModelEventStream>>>>,
+    // Set by an ordinary cancel and by the end of the runtime: the request has ended. A signal-only cancel leaves it clear.
+    ended: Arc<AtomicBool>,
 }
 
 impl RequestCancel {
@@ -613,16 +615,28 @@ impl RequestCancel {
             reason: Arc::new(Mutex::new(None)),
             signal: crate::ProviderSignal::new(),
             provider_stream: Arc::new(Mutex::new(None)),
+            ended: Arc::new(AtomicBool::new(false)),
         }
     }
 
+    // Aborts the signal the handler holds, which is all a signal-only cancel does: the request goes on. The stream of a provider_stream_simple request is left to its author, as Pi's consumer has no check of the signal (packages/agent/src/agent-loop.ts:424-478).
     fn cancel(&self, reason: impl Into<String>) {
         self.flag.store(true, Ordering::Relaxed);
         *self.reason.lock().unwrap() = Some(reason.into());
         self.signal.cancel();
+    }
+
+    // An ordinary cancel, or the end of the runtime: the request has ended. Its signal aborts and the stream of a provider_stream_simple request is ended, so its forwarder stops and answers the abort. The flag is set before the stream ends, so a stream this ended is never answered as one its author ended.
+    fn end_request(&self, reason: impl Into<String>) {
+        self.ended.store(true, Ordering::Relaxed);
+        self.cancel(reason);
         if let Some(stream) = self.provider_stream.lock().unwrap().as_ref() {
             stream.end(Value::Null);
         }
+    }
+
+    fn request_ended(&self) -> bool {
+        self.ended.load(Ordering::Relaxed)
     }
 }
 
@@ -2064,7 +2078,7 @@ impl Extension {
             width_deliveries.stop();
             base_ctx.host_subs.stop();
             for cancel in active_requests.lock().unwrap().values() {
-                cancel.cancel(reason);
+                cancel.end_request(reason);
             }
             // The sessions end with the connection, as the host disposes them: no listener runs after it.
             conn.children.close_all();
@@ -2253,7 +2267,11 @@ impl Extension {
                             .as_ref()
                             .map(|c| c.reason.clone())
                             .unwrap_or_default();
-                        cancel.cancel(reason);
+                        if signal_only {
+                            cancel.cancel(reason);
+                        } else {
+                            cancel.end_request(reason);
+                        }
                     }
                 }
                 "notify" => {
@@ -3224,15 +3242,16 @@ impl Extension {
                         args["context"].clone(),
                         args["options"].clone(),
                     )?;
+                    // An ordinary cancel ends the request (RequestCancel::end_request): the stream is ended, the loop stops and the answer is the abort. A signal-only cancel, the abort of a turn, aborts the signal the author holds and nothing else: what its stream gives after it is forwarded and its result is the answer.
                     {
                         let mut active = cancel.provider_stream.lock().unwrap();
                         *active = Some(stream.clone());
-                        if ctx.is_cancelled() {
+                        if cancel.request_ended() {
                             stream.end(Value::Null);
                         }
                     }
                     while let Some(event) = stream.next() {
-                        if ctx.is_cancelled() {
+                        if cancel.request_ended() {
                             return Err("provider stream aborted".into());
                         };
                         conn.notify(
@@ -3241,7 +3260,7 @@ impl Extension {
                         )
                         .map_err(|error| error.to_string())?;
                     }
-                    if ctx.is_cancelled() {
+                    if cancel.request_ended() {
                         return Err("provider stream aborted".into());
                     };
                     Ok(stream.result().unwrap_or(Value::Null))
