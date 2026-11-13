@@ -2920,6 +2920,20 @@ def new_extension() -> pig_sdk.Extension:
         for off in event_probe_on_offs.pop(args.strip(), []):
             off()
 
+    # event_probe_fail subscribes to the event named by the argument with a handler that reads the active tools from the host, reports the servers of the event and then fails (TestConformance_McpServersChangeFirstHandlerInAnotherProcessIsSentAndItsFailureReported).
+    def event_probe_fail(ctx, args):
+        name = args.strip()
+
+        def failing(hctx, data):
+            servers = data.get("servers") if isinstance(data, dict) else None
+            # The read is the handler's first host call: nothing of the handler reaches the host before it.
+            hctx.get_active_tools()
+            hctx.notify("event_probe_fail:%s:%s" % (name, ",".join(str(s.get("name")) for s in servers or [])), "info")
+            raise RuntimeError("event_probe_fail: %s handler failed" % name)
+
+        ext.on_event(name, failing)
+
+    ext.command("event_probe_fail", "Subscribe to the event named by the argument with a handler that fails", event_probe_fail)
     ext.command("event_probe_result", "Queue the JSON result the next event_probe_on handler call of an event returns", event_probe_result)
     ext.command("event_probe_on", "Subscribe to the event named by the argument", event_probe_on)
 
