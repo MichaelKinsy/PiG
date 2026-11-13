@@ -323,12 +323,22 @@ class ViewState:
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._abilities: ViewAbilities | None = None
+        # The uiAbilities member the abilities were decoded from (None: no client), and whether the host sent a state: a later different member is a change.
+        self._raw: Any = None
+        self._known = False
         self.handler: ViewIntentHandler | None = None
 
-    def apply_state(self, state: dict[str, Any]) -> None:
-        """Apply a whole state snapshot: an absent ``uiAbilities`` clears them."""
+    def apply_state(self, state: dict[str, Any]) -> tuple[bool, ViewAbilities | None]:
+        """Apply a whole state snapshot: an absent ``uiAbilities`` clears them. Returns whether they differ from the ones the
+        snapshot before carried, and the new abilities. The first snapshot is where the extension starts, not a change."""
+        raw = state.get("uiAbilities")
+        abilities = decode_abilities(raw)
+        if abilities is None:
+            raw = None
         with self._lock:
-            self._abilities = decode_abilities(state.get("uiAbilities"))
+            changed = self._known and raw != self._raw
+            self._abilities, self._raw, self._known = abilities, raw, True
+        return changed, abilities
 
     def abilities(self) -> ViewAbilities | None:
         with self._lock:

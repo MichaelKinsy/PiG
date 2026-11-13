@@ -254,10 +254,10 @@ func TestExecCommandDoesNotWaitForADescendantHoldingTheOutput(t *testing.T) {
 }
 
 // The issue's second row: `sleep 12 & wait` with a timeout. Pi sends SIGTERM to
-// the child alone, resolves with code 0 (the signal gives no code) and
-// killed=true, and leaves the descendant running. On Windows Node's kill
-// terminates the child with status 1, but libuv reports the signal it sent
-// and no code, so the code is 0 there too.
+// the child alone, resolves with code 143 (128 + SIGTERM, the signal gives no
+// code) and killed=true, and leaves the descendant running. On Windows Node's
+// kill terminates the child with status 1, but libuv reports the signal it
+// sent and no code, so the code is 143 there too.
 func TestExecCommandTimeoutSignalsOnlyTheLeader(t *testing.T) {
 	f := newTreeFixture(t)
 	command, args := f.args(t, "bg-wait")
@@ -275,7 +275,7 @@ func TestExecCommandTimeoutSignalsOnlyTheLeader(t *testing.T) {
 	if outcome.err != nil {
 		t.Fatal(outcome.err)
 	}
-	if want := (extension.ExecResult{Killed: true}); outcome.result != want {
+	if want := (extension.ExecResult{Code: 143, Killed: true}); outcome.result != want {
 		t.Fatalf("result = %+v, want %+v", outcome.result, want)
 	}
 	assertAlive(t, conn)
@@ -362,7 +362,7 @@ func TestExecCommandForceKillsAChildThatIgnoresSIGTERMAfterFiveSeconds(t *testin
 			if outcome.err != nil {
 				t.Fatal(outcome.err)
 			}
-			if want := (extension.ExecResult{Killed: true}); outcome.result != want {
+			if want := (extension.ExecResult{Code: 137, Killed: true}); outcome.result != want {
 				t.Fatalf("result = %+v, want %+v", outcome.result, want)
 			}
 		})

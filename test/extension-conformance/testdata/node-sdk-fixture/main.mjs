@@ -1051,6 +1051,55 @@ export default function (pi) {
     const cur = await ctx.ui.viewState("extras");
     ctx.ui.notify(`view-x-state:${cur.state},picked=${cur.result?.picked}`, "info");
   } });
+  // D614: the redraw panel and the abilities watcher, the same way in every SDK fixture (conformance TestConformance_UIViewAnswerRedraw and
+  // TestConformance_UIViewAbilitiesEvent).
+  const redrawShape = (member) => ({ type: "object", properties: { [member]: { type: "integer" } }, required: [member] });
+  const redrawIntents = ["fx.redraw", "fx.foreign"].map((name) => ({ name, arg: redrawShape("n"), answer: redrawShape("rev") }));
+  const textView = (text) => ({ root: { kind: "text", text } });
+  // foreignUpdate hands an update to the loop the ui_view_redraw command started: the call is made in that command's continuation, so it is the
+  // extension's, not an intent handler's.
+  let foreignUpdate = async () => { throw new Error("ui_view_redraw has not run"); };
+  pi.registerCommand("ui_view_redraw", { description: "Mount the panel whose intents redraw it", handler: async (_args, ctx) => {
+    const st = await ctx.ui.mountView({ key: "redraw", slot: "panel", view: textView("fixture-redraw-0"), intents: redrawIntents });
+    const jobs = [];
+    let wake = () => {};
+    foreignUpdate = (mount, content) => new Promise((resolve, reject) => { jobs.push({ mount, content, resolve, reject }); wake(); });
+    (async () => {
+      for (;;) {
+        while (jobs.length === 0) await new Promise((resolve) => { wake = resolve; });
+        const job = jobs.shift();
+        ctx.ui.updateView(job.mount, job.content).then(job.resolve, job.reject);
+      }
+    })();
+    ctx.ui.notify(`view-redraw:rev=${st.mount.rev}`, "info");
+  } });
+  const viewWatch = { armed: false, block: false, events: 0, release: undefined };
+  const describeAbilities = (ab) => (ab ? `slots=${ab.slots.join("+")},mounts=${ab.limits.mounts}` : "none");
+  pi.onViewAbilities(async (ab, ctx) => {
+    viewWatch.events++;
+    if (!viewWatch.armed) return;
+    if (viewWatch.block) {
+      viewWatch.block = false;
+      ctx.ui.notify("view-event-blocked", "info");
+      await new Promise((resolve) => { viewWatch.release = resolve; });
+      ctx.ui.notify("view-event-released", "info");
+    }
+    if (!ab) {
+      ctx.ui.notify("view-event:none", "info");
+      return;
+    }
+    ctx.ui.notify(`view-event:${describeAbilities(ab)},same=${describeAbilities(ab) === describeAbilities(ctx.ui.viewAbilities())}`, "info");
+    try {
+      const st = await ctx.ui.mountView({ key: "arrived", slot: "panel", view: textView(`fixture-arrived-${ab.limits.mounts}`) });
+      ctx.ui.notify(`view-arrived:${st.state}`, "info");
+    } catch (err) {
+      ctx.ui.notify(`view-arrived:${err.code}`, "info");
+    }
+  });
+  pi.registerCommand("ui_view_watch", { description: "Arm the abilities watcher", handler: async (_args, ctx) => { viewWatch.armed = true; ctx.ui.notify("view-watch:armed", "info"); } });
+  pi.registerCommand("ui_view_block", { description: "Block the abilities watcher on its next event", handler: async (_args, ctx) => { viewWatch.block = true; ctx.ui.notify("view-block:set", "info"); } });
+  pi.registerCommand("ui_view_release", { description: "Release the blocked abilities watcher", handler: async (_args, ctx) => { viewWatch.release?.(); viewWatch.release = undefined; ctx.ui.notify("view-release:done", "info"); } });
+  pi.registerCommand("ui_view_events", { description: "Report how often the abilities watcher ran", handler: async (_args, ctx) => ctx.ui.notify(`view-events:${viewWatch.events}`, "info") });
   // D614: a view an agent's tool shows. The command registers the tool; the tool mounts a titled panel, hides it, shows it and
   // updates it with a focus request, the same way in every SDK fixture (conformance TestConformance_UIViewToolShowsAndFocuses).
   pi.registerCommand("ui_view_tool", { description: "Register the tool that shows a titled view", handler: async () => {
@@ -1096,6 +1145,13 @@ export default function (pi) {
     await attempt("ok", [goTo("ctrl+shift+p", n), goTo("shift+ctrl+q", n + 1)]);
   } });
   pi.onViewIntent(async (inv, ctx) => {
+    if (inv.intent === "fx.redraw" || inv.intent === "fx.foreign") {
+      const own = inv.intent === "fx.redraw";
+      const content = { view: textView(`fixture-${own ? "redraw" : "foreign"}-${inv.arg.n + (ctx.ui.viewAbilities()?.limits.intentArgBytes ?? 0)}`), intents: redrawIntents };
+      const mount = { key: inv.mount.key, epoch: inv.mount.epoch, rev: inv.rev };
+      const st = own ? await ctx.ui.updateView(mount, content) : await foreignUpdate(mount, content);
+      return { outcome: "done", answer: { rev: st.mount.rev } };
+    }
     if (inv.intent === "fx.reopen") {
       // The user opened the hidden view: its handler shows it.
       await ctx.ui.showView({ ...inv.mount, rev: inv.rev });

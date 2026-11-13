@@ -293,12 +293,12 @@ func (r *Registry) resolve(t *Attachment, m *mount) (Snapshot, bool) {
 			n.Measured, n.Limit = &bad.measured, &bad.over
 		}
 		m.note(n)
-		i, ids = -1, nil
+		i, ids = digestOfNoView, nil
 		out.View, out.Drawing = nil, nil
 		s.Degraded = true
 		if m.fb != nil && fallbackFits(&t.abilities, *m.fb) {
 			out.View = append(append(json.RawMessage(`{"root":`), c.Fallback...), '}')
-			ids = m.fb.ids
+			i, ids = digestOfFallback, m.fb.ids
 		}
 	}
 	for _, e := range c.A11y {
@@ -324,8 +324,16 @@ func (r *Registry) resolve(t *Attachment, m *mount) (Snapshot, bool) {
 	return s, true
 }
 
-// digest returns the canonical hash of a resolved content, computed once per revision and candidate. A content RFC 8785
-// cannot canonicalize (a lone surrogate, a number outside a double) has no digest, and a client redraws it.
+// digestOfFallback and digestOfNoView are the keys of the two contents a client the content does not fit is sent. They
+// differ, so a client shown the fallback and one shown no view are each sent the digest of their own content.
+const (
+	digestOfFallback = -1
+	digestOfNoView   = -2
+)
+
+// digest returns the canonical hash of a resolved content, computed once per revision and content: a candidate by its
+// index, the fallback, or no view. A content RFC 8785 cannot canonicalize (a lone surrogate, a number outside a double)
+// has no digest, and a client redraws it.
 func (m *mount) digest(i int, c *Content) string {
 	if d, ok := m.digests[i]; ok {
 		return d

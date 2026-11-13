@@ -2417,6 +2417,11 @@ export class Runtime {
     this.loadedHandlers = [];
     this.viewIntentHandler = undefined;
     this.viewAbilities = null;
+    // viewAbilitiesSignature is the JSON of the replicated abilities ("" for none) and viewAbilitiesKnown says the host sent a state, so a later different value is a change for the pi.onViewAbilities handlers.
+    this.viewAbilitiesSignature = "";
+    this.viewAbilitiesKnown = false;
+    this.viewAbilitiesHandlers = [];
+    this.viewAbilitiesDelivery = Promise.resolve();
     this.loadedPromise = undefined;
     this.commands = new Map();
     this.shortcuts = new Map();
@@ -2566,6 +2571,15 @@ export class Runtime {
       onViewIntent: (handler) => {
         if (typeof handler !== "function") throw new TypeError("onViewIntent requires a handler function");
         this.viewIntentHandler = handler;
+      },
+      // pig additive (D614): handler(abilities, ctx) runs when what the attached client draws changed: the first client attached, the
+      // abilities changed, or the last client left (abilities is null; a client that draws no slot is a record with no slots). ctx.ui.viewAbilities()
+      // already reports the new value, so a mount made in the handler is checked against that client. The state the extension starts in is not a
+      // change, and a session no client attaches to never runs the handler. Handlers run in registration order, one change at a time; the host
+      // does not wait for them.
+      onViewAbilities: (handler) => {
+        if (typeof handler !== "function") throw new TypeError("onViewAbilities requires a handler function");
+        this.viewAbilitiesHandlers.push(handler);
       },
       registerMessageRenderer: (customType, handler) => this.registerMessageRenderer(customType, handler),
       registerEntryRenderer: (customType, handler) => this.registerEntryRenderer(customType, handler),
@@ -3404,8 +3418,9 @@ export class Runtime {
           this.contextValues.cwd = this.ready.cwd || this.contextValues.cwd;
           this.contextValues.mode = this.ready.mode || this.contextValues.mode;
           if (env.ready?.state) {
-            // StatePayload is whole here, so an absent frontend is false.
+            // StatePayload is whole here, so an absent frontend is false and an absent uiAbilities is no client.
             this.setFrontend(env.ready.state.frontend === true);
+            this.setViewAbilities(env.ready.state.uiAbilities);
             this.applyState(env.ready.state);
           }
           this.readyStateApplied = true;
@@ -3700,8 +3715,6 @@ export class Runtime {
 
   applyState(snapshot) {
     if (!snapshot || typeof snapshot !== "object") return;
-    // pig additive (D614): every state is a full snapshot, so an absent uiAbilities clears the replica.
-    this.viewAbilities = snapshot.uiAbilities && typeof snapshot.uiAbilities === "object" ? snapshot.uiAbilities : null;
     for (const key of ["commands", "allThemes"]) {
       if (Object.hasOwn(snapshot, key)) this.state[key] = [...(snapshot[key] ?? [])];
     }
@@ -4862,7 +4875,10 @@ export class Runtime {
         try {
           const args = typeof notify.args === "string" ? JSON.parse(notify.args) : notify.args;
           const state = args?.state ?? args;
-          if (state && typeof state === "object") this.setFrontend(state.frontend === true);
+          if (state && typeof state === "object") {
+            this.setFrontend(state.frontend === true);
+            this.setViewAbilities(state.uiAbilities);
+          }
           this.applyState(state);
         } catch {}
         return;
@@ -5947,6 +5963,35 @@ export class Runtime {
     this.ui.theme.setPalette(palette);
     this.themeSignature = signature;
     if (changed) this.fireChangeHandlers(this.themeChangeHandlers, this.ui.theme);
+  }
+
+  // setViewAbilities applies StatePayload.uiAbilities (D614) of a whole state: an absent value is no client and clears the replica. A value that
+  // differs from the one the state before carried is delivered to the pi.onViewAbilities handlers; the first state is where the extension starts.
+  setViewAbilities(value) {
+    const abilities = value && typeof value === "object" ? value : null;
+    const signature = abilities ? JSON.stringify(abilities) : "";
+    const changed = this.viewAbilitiesKnown && this.viewAbilitiesSignature !== signature;
+    this.viewAbilities = abilities;
+    this.viewAbilitiesSignature = signature;
+    this.viewAbilitiesKnown = true;
+    if (changed) this.deliverViewAbilities(abilities);
+  }
+
+  // deliverViewAbilities queues one change for the handlers registered now: in registration order, each awaited, one change at a time in the
+  // order the changes arrived. The message loop does not wait, so a handler's host calls are answered; a handler that throws or rejects is
+  // reported in the extension's log and does not stop the others.
+  deliverViewAbilities(abilities) {
+    const handlers = [...this.viewAbilitiesHandlers];
+    if (handlers.length === 0) return;
+    this.viewAbilitiesDelivery = this.viewAbilitiesDelivery.then(async () => {
+      for (const handler of handlers) {
+        try {
+          await handler(abilities ? structuredClone(abilities) : null, this.ctx);
+        } catch (error) {
+          diagnose(`extension: ${this.name}: onViewAbilities handler failed: ${error?.stack ?? error}\n`);
+        }
+      }
+    });
   }
 
   // fireChangeHandlers calls the handlers subscribed now, in order; a throw or a rejection of one does not stop the others.

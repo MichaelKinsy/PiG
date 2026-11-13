@@ -1427,6 +1427,7 @@ func Extension() *sdk.Extension {
 		ctx.Notify(fmt.Sprintf("view-x-state:%s,picked=%d", cur.State, picked(cur)), "info")
 		return nil
 	})
+	redrawIntent := registerViewRows(ext)
 	// D614: a view an agent's tool shows. The command registers the tool; the tool mounts a titled panel, hides it,
 	// shows it and updates it with a focus request, the same way in every SDK fixture (conformance
 	// TestConformance_UIViewToolShowsAndFocuses). The title and the node are the caller's.
@@ -1516,6 +1517,8 @@ func Extension() *sdk.Extension {
 	})
 	ext.OnViewIntent(func(in sdk.ViewIntentInvocation) sdk.ViewIntentResult {
 		switch in.Intent {
+		case "fx.redraw", "fx.foreign":
+			return redrawIntent(in)
 		case "fx.reopen":
 			// The user opened the hidden view: its handler shows it.
 			if _, err := in.Context.ShowView(sdk.ViewRef{Key: in.Mount.Key, Epoch: in.Mount.Epoch, Rev: in.Rev}); err != nil {

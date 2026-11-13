@@ -370,7 +370,7 @@ func TestSetVersionRejectsAnSDKManifestWithoutAVersion(t *testing.T) {
 // set-version writes it, and nothing else on the page, which test/docs-drift TestProseNamesTheCurrentPin would otherwise fail at the next release.
 func TestSetVersionWritesTheREADMEVersionExample(t *testing.T) {
 	root := fixture(t)
-	const page = "Pin 0.2.1+0.87.1 stays.\n\nThe banner and the startup line print PiG's version as `<PiG release>+<Pi release>`, for example `0.2.1+0.87.1+0123abcd`: build metadata.\n"
+	const page = "Pin 0.2.1+0.87.1 stays.\n\nThe banner and the startup line print PiG's version as `<PiG release>+<Pi release>`, for example `0.2.1+0.87.1.0123abcd`: build metadata.\n"
 	put(t, root, "README.md", page)
 	if err := run(root, options{version: "0.3.0", date: "2026-10-11"}, io.Discard, func(string, io.Writer) error { return nil }); err != nil {
 		t.Fatal(err)

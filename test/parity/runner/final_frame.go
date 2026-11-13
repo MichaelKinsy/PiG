@@ -42,13 +42,16 @@ func (r FinalFrameResult) CursorOnly() int {
 	return len(cursorOnlyFrame.FindAllString(r.Frames, -1))
 }
 
-// observeFinalFrame waits the quiet window and reads the raw transcript (tmux pipe-pane) for frames written after the last Text.
-func observeFinalFrame(transcriptPath string, spec TmuxFinalFrame) FinalFrameResult {
-	quiet := finalFrameQuietDefault
+// finalFrameQuiet is how long a final_frame step lets the pane run on after its waits, so a late frame is in the transcript when it is read.
+func finalFrameQuiet(spec TmuxFinalFrame) time.Duration {
 	if spec.QuietMilliseconds > 0 {
-		quiet = time.Duration(spec.QuietMilliseconds) * time.Millisecond
+		return time.Duration(spec.QuietMilliseconds) * time.Millisecond
 	}
-	time.Sleep(quiet)
+	return finalFrameQuietDefault
+}
+
+// observeFinalFrame reads the raw transcript (tmux pipe-pane) for frames written after the last Text. It reads the finished transcript: finishTranscript has returned nil, so the file holds every byte the pane wrote.
+func observeFinalFrame(transcriptPath string, spec TmuxFinalFrame) FinalFrameResult {
 	raw, _ := os.ReadFile(transcriptPath)
 	result := FinalFrameResult{Observed: true, Text: spec.Text}
 	at := bytes.LastIndex(raw, []byte(spec.Text))

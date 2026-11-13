@@ -8,13 +8,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
-	"path/filepath"
 	"reflect"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
-	"github.com/MichaelKinsy/PiG/internal/testenv"
+	"github.com/MichaelKinsy/PiG/internal/pioracle"
 )
 
 // Pi's createCodemodeTool and createCodemodeExtension, its module constants and its three documents (codemode.ts,
@@ -25,15 +24,16 @@ import (
 // tools that include internal and deferred ones.
 
 type codemodeOptions struct {
-	Models       *bool        `json:"models"`
-	InlineBudget *int         `json:"inlineBudget"`
-	Namespaces   []describeNS `json:"namespaces"`
+	Models       *bool `json:"models"`
+	InlineBudget *int  `json:"inlineBudget"`
 }
 
 type codemodeOp struct {
 	Op       string            `json:"op"`
 	Options  codemodeOptions   `json:"options"`
 	Callable []json.RawMessage `json:"callable"`
+	// Extensions are the selected extensions of a section op: the namespaces come from them (Pi 5e24c6b1f).
+	Extensions []describeExt `json:"extensions"`
 }
 
 type docAnswer struct {
@@ -82,13 +82,14 @@ func canonical(t *testing.T, raw []byte) any {
 }
 
 func TestCodemodeDeclarationsMatchPi(t *testing.T) {
+	namespaceOracleSkip(t)
 	yes, no := true, false
 	budgets := []*int{nil, new(0), new(1), new(40), new(150), new(400), new(3000), new(100000)}
 	variants := []codemodeOptions{
-		{Namespaces: []describeNS{}},
-		{Models: &yes, Namespaces: []describeNS{}},
-		{Models: &no, Namespaces: []describeNS{}},
-		{Models: &no, InlineBudget: new(5), Namespaces: []describeNS{{Name: "github", Description: "GitHub", Prefix: "mcp__github__"}}},
+		{},
+		{Models: &yes},
+		{Models: &no},
+		{Models: &no, InlineBudget: new(5)},
 	}
 	ops := []codemodeOp{{Op: "static"}}
 	for _, v := range variants {
@@ -104,20 +105,24 @@ func TestCodemodeDeclarationsMatchPi(t *testing.T) {
 		json.RawMessage(`{"name":"deferred_tool","description":"Found with searchTools.","deferred":true,"parameters":{"type":"object","properties":{}}}`),
 		json.RawMessage(`{"name":"write","description":"Write a file.","parameters":{"type":"object","properties":{"path":{"type":"string"},"content":{"type":"string"}}}}`),
 	}
-	namespaces := []describeNS{{Name: "github", Description: "GitHub MCP server", Prefix: "mcp__github__"}}
+	// The namespaces come from the selected extensions: github brings two of the tools, linear is a namespace without tools yet.
+	extensions := []describeExt{
+		{Name: "coding", Tools: []string{"read", "write", "deferred_tool"}},
+		{Name: "mcp:github", Tools: []string{"mcp__github__list_issues", "mcp__github__search"}, Namespace: &describeNS{Name: "github", Description: "GitHub MCP server", Instructions: "Pass repositories as owner/name."}},
+		{Name: "mcp:linear", Tools: []string{}, Namespace: &describeNS{Name: "linear", Description: "Linear: sign in first."}},
+	}
 	for _, budget := range budgets {
-		ops = append(ops, codemodeOp{Op: "section", Options: codemodeOptions{InlineBudget: budget, Namespaces: namespaces}, Callable: callable})
+		ops = append(ops, codemodeOp{Op: "section", Options: codemodeOptions{InlineBudget: budget}, Callable: callable, Extensions: extensions})
 	}
 	for _, callableSet := range [][]json.RawMessage{{}, callable[3:6], callable[4:5], callable[5:6]} {
-		ops = append(ops, codemodeOp{Op: "section", Options: codemodeOptions{Namespaces: namespaces}, Callable: callableSet})
+		ops = append(ops, codemodeOp{Op: "section", Options: codemodeOptions{}, Callable: callableSet, Extensions: extensions})
 	}
 	input, err := json.Marshal(ops)
 	if err != nil {
 		t.Fatal(err)
 	}
-	root := testenv.ModuleRoot(t)
-	cmd := exec.CommandContext(t.Context(), "node", "--disable-warning=ExperimentalWarning", "testdata/codemode_oracle.mjs", filepath.Join(root, ".upstream", "current", "packages"))
-	cmd.Env = append(cmd.Environ(), "PI_INTEROP_DIR="+filepath.Join(root, "durable", "interop")+"/")
+	cmd := exec.CommandContext(t.Context(), "node", "--disable-warning=ExperimentalWarning", "testdata/codemode_oracle.mjs", pioracle.Packages(t))
+	cmd.Env = append(cmd.Environ(), "PI_INTEROP_DIR="+pioracle.Project(t))
 	cmd.Stdin = bytes.NewReader(input)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
@@ -174,8 +179,8 @@ func TestCodemodeDeclarationsMatchPi(t *testing.T) {
 				}
 				callable[j].Deferred = flag.Deferred
 			}
-			extension := CreateExtension(ToolOptions{Models: op.Options.Models, InlineBudget: op.Options.InlineBudget, Namespaces: namespacesOf(op.Options.Namespaces)})
-			got, err := extension.Sections[0].Render(context.Background(), durable.PromptInput{Agent: durable.Agent{Callable: callable}})
+			extension := CreateExtension(ToolOptions{Models: op.Options.Models, InlineBudget: op.Options.InlineBudget})
+			got, err := extension.Sections[0].Render(context.Background(), durable.PromptInput{Agent: durable.Agent{Callable: callable, Extensions: extensionsOf(op.Extensions)}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -227,7 +232,7 @@ func compareDocument(t *testing.T, name string, got *durable.AnyDocDefinition, p
 
 func compareVariant(t *testing.T, options codemodeOptions, pi codemodeVariant) {
 	t.Helper()
-	toolOptions := ToolOptions{Models: options.Models, InlineBudget: options.InlineBudget, Namespaces: namespacesOf(options.Namespaces)}
+	toolOptions := ToolOptions{Models: options.Models, InlineBudget: options.InlineBudget}
 	tool := CreateTool(toolOptions)
 	label := fmt.Sprintf("models %v", options.Models)
 	if tool.Name != pi.Tool.Name || tool.Description != pi.Tool.Description {

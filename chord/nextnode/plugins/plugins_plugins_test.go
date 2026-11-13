@@ -390,6 +390,42 @@ func TestPluginsPerPluginAtReloadAddsAPluginDiscoveredSinceRemovesOneNoLongerThe
 	}
 }
 
+// pcLagBehind is the watcher not having reported the change made so far: its events are let through, then the marks that
+// make a build discover again are cleared.
+func pcLagBehind(t *testing.T, c *pcComponent) {
+	t.Helper()
+	settle(t, c.Plugins)
+	c.section(func() { c.watcher.set, c.watcher.manifest = 0, 0 })
+}
+
+// plugins.test.ts › per plugin at reload › discovers again for a named plugin the watcher has not reported yet: removed, or
+// new. (Pi builds in the same tick as the change, before any file event can arrive: the watcher has marked nothing yet. A Go
+// watcher runs on its own goroutine, so the lag is made exact: the events of the change are let through, then the watcher's
+// marks are cleared, which is the state of a build that came before them.)
+func TestPluginsPerPluginAtReloadDiscoversAgainForANamedPluginTheWatcherHasNotReportedYetRemovedOrNew(t *testing.T) {
+	root, c, h := pcLoadedABC(t)
+	if err := os.RemoveAll(filepath.Join(root, "c")); err != nil {
+		t.Fatal(err)
+	}
+	pcLagBehind(t, c)
+	removed := c.build(t, "@test/c")
+	if !slices.Equal(removed.Removed, []string{"@test/c"}) || len(removed.Plugins) != 0 {
+		t.Fatalf("removed = %v, plugins = %v", removed.Removed, removed.Plugins)
+	}
+	if got := c.reload(t, h, removed).Plugins.Removed; !slices.Equal(got, []string{"@test/c"}) {
+		t.Fatalf("reload removed = %v", got)
+	}
+	pcItemPlugin(t, root, "f", "f1")
+	pcLagBehind(t, c)
+	added := c.build(t, "@test/f")
+	if _, ok := added.Plugins["@test/f"]; !ok || len(added.Plugins) != 1 {
+		t.Fatalf("added plugins = %+v", added.Plugins)
+	}
+	if got := c.reload(t, h, added).Plugins.Added; !slices.Equal(got, []string{"@test/f"}) {
+		t.Fatalf("reload added = %v", got)
+	}
+}
+
 // plugins.test.ts › per plugin at reload › keeps a consumer edited together with a provider whose new build fails (the
 // closure rule through builds). Pi's `shown` is a held reference to the local `test.consumer`; the probe reads it with a
 // `ctx.get` of its own: the object lives on its old code, so the label is read from it the same.

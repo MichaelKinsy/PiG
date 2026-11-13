@@ -2,16 +2,13 @@ package export
 
 import (
 	"math/rand"
-	"regexp"
 	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/pioracle"
 )
 
-var preOSC8SGR = regexp.MustCompile(`\x1b\[[\d;]*m`)
-
-// Pi's ansiToHtml (core/export-html/ansi-to-html.js) runs against the vendored Pi module over hand-picked and seeded random SGR sequences: extended colors with missing or oversized parameters, empty parameters, leading zeros, large numbers (up to 65536; parameters beyond int64 are a known gap: Pi keeps a double, Go reads 0), unterminated sequences (skipped, see below), HTML-special text and astral characters.
+// Pi's ansiToHtml (core/export-html/ansi-to-html.js) runs against the vendored Pi module over hand-picked and seeded random SGR sequences: extended colors with missing or oversized parameters, empty parameters, leading zeros, large numbers (up to 65536; parameters beyond int64 are a known gap: Pi keeps a double, Go reads 0), unterminated sequences, HTML-special text and astral characters.
 func TestAnsiToHTMLMatchesPiOracle(t *testing.T) {
 	inputs := []string{
 		"", "plain", "<b>&\"'", "\x1b[0m", "\x1b[m", "\x1b[1mbold\x1b[22m", "\x1b[31mred\x1b[0m tail", "\x1b[38;5;196mx", "\x1b[38;5;256mx", "\x1b[38;5;999mx",
@@ -47,11 +44,6 @@ const mod = await load("pi-coding-agent/core/export-html/ansi-to-html.js");
 emit(input.map((s) => mod.ansiToHtml(s)));`, inputs, &want)
 	mismatches := 0
 	for i, input := range inputs {
-		// The pinned Pi module (1.5.2) predates #12052, which drops CSI, OSC and APC sequences and stray ESC characters
-		// and converts OSC 8 links; inputs with an ESC outside a complete SGR sequence are covered by ansi_links_port_test.go.
-		if strings.Contains(preOSC8SGR.ReplaceAllString(input, ""), "\x1b") {
-			continue
-		}
 		if got := ansiToHTML(input); got != want[i] {
 			if mismatches++; mismatches <= 8 {
 				t.Errorf("%q:\n Go %q\n Pi %q", input, got, want[i])

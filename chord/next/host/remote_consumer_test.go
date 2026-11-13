@@ -769,6 +769,49 @@ func TestConsumerCallWindow(t *testing.T) {
 			}
 		})
 
+		// Ports "sends every call at once to a peer that announced no window (a trusted link's)".
+		t.Run("sends every call at once to a peer that announced no window (a trusted link's)", func(t *testing.T) {
+			client := newHost(t, HostOptions{OnError: func(HostError) {}})
+			mustLoad(t)(client.Load(nil, background))
+			a, b := link.MemoryLinkPair()
+			must(t, client.Connect(a, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, background))
+			peer := newRawPeer(t, b, rawPeerOptions{NoCalls: true})
+			got := asyncGet(client, Notes, jsonObject("session", "S1"), background, GetOptions{})
+			hold := bindNext(t, peer)
+			notes := awaitReference(t, got)
+			for range 300 {
+				startCall(t, notes, "wait", nil, background)
+			}
+			settle(peer)
+			want := make([]int, 300)
+			for i := range want {
+				want[i] = hold
+			}
+			if got := callsOf(peer); !slices.Equal(got, want) {
+				t.Fatalf("calls = %v, want 300 calls of hold %d", got, hold)
+			}
+		})
+
+		// Ports "sends the calls parked while rebinding after the ack of the new bound: decoded by its indexes".
+		t.Run("sends the calls parked while rebinding after the ack of the new bound: decoded by its indexes", func(t *testing.T) {
+			n := narrow(t)
+			n.Peer.Send(&link.LoadingMessage{Hold: n.Holds[0]})
+			settle(n.Peer)
+			startCall(t, n.One, "wait", nil, background)
+			before := len(n.Peer.Received())
+			bindHold(t, n.Peer, n.Holds[0])
+			settle(n.Peer)
+			after := n.Peer.Received()[before:]
+			kinds := make([]string, len(after))
+			for i, message := range after {
+				kinds[i] = message.Kind()
+			}
+			requireStrings(t, kinds, []string{"ack", "call"})
+			if call := after[1].(*link.CallMessage); call.Hold != n.Holds[0] {
+				t.Fatalf("call hold = %d, want %d", call.Hold, n.Holds[0])
+			}
+		})
+
 		// Ports "rejects a call still waiting when its hold rebinds: unavailable (race 26)".
 		t.Run("rejects a call still waiting when its hold rebinds: unavailable (race 26)", func(t *testing.T) {
 			n := narrow(t)

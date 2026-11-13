@@ -1,5 +1,6 @@
 // Run Pi's packages/durable/src/codemode/describe.ts (imported as-is with types stripped) over tool sets and budgets.
-// Op: {op: "constants"} | {op: "description", models} | {op: "section", tools, namespaces, budget} | {op: "namespace", name, namespaces}
+// Op: {op: "constants"} | {op: "description", models} | {op: "section", tools, extensions, budget} | {op: "namespacesOf", extensions}
+//   extensions: [{name, tools: [tool name], namespace?: {name, description, instructions?}}] (Pi 5e24c6b1f: namespaces come from extensions)
 //   | {op: "sample", tool}      a tool is {name, description, parameters, structuredOutputSchema?}
 // stdout: per op {ok} or {err} (an Error's message).
 // usage: node describe_oracle.mjs <packages dir>   (PI_INTEROP_DIR: a directory whose node_modules holds @earendil-works/pi-durable)
@@ -23,6 +24,12 @@ module.registerHooks({
 	},
 });
 const describe = await import(pathToFileURL(`${packages}durable/src/codemode/describe.ts`).href);
+const extensionsOf = (raw) =>
+	(raw ?? []).map((extension) => ({
+		name: extension.name,
+		tools: extension.tools.map((name) => ({ name })),
+		...(extension.namespace ? { namespace: extension.namespace } : {}),
+	}));
 let input = "";
 process.stdin.setEncoding("utf8");
 for await (const chunk of process.stdin) input += chunk;
@@ -37,10 +44,10 @@ for (const op of JSON.parse(input)) {
 				out.push({ ok: describe.codemodeDescription(op.models) });
 				break;
 			case "section":
-				out.push({ ok: describe.codemodeSection(op.tools, op.namespaces, op.budget) ?? null });
+				out.push({ ok: describe.codemodeSection(op.tools, extensionsOf(op.extensions), op.budget) ?? null });
 				break;
-			case "namespace":
-				out.push({ ok: describe.namespaceOf(op.name, op.namespaces) ?? null });
+			case "namespacesOf":
+				out.push({ ok: Object.fromEntries([...describe.namespacesOf(extensionsOf(op.extensions))].map(([tool, namespace]) => [tool, namespace.name])) });
 				break;
 			case "sample":
 				out.push({ ok: describe.sampleOf(op.tool) });

@@ -64,7 +64,7 @@ func TestResumedContextEntriesServeTheirLines(t *testing.T) {
 			t.Fatalf("entry %s serves\n%s\nits line is\n%s", id, got, lines[i+1])
 		}
 		session.mu.RLock()
-		slotEntry := session.slots[session.slotOrZero(id)].entry
+		slotEntry := session.resident.get(session.slotOrZero(id))
 		session.mu.RUnlock()
 		if slotEntry == nil {
 			continue

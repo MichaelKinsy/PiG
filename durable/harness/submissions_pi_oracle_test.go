@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"math/rand"
 	"os/exec"
-	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -18,7 +17,7 @@ import (
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/session"
 	"github.com/MichaelKinsy/PiG/durable/storage"
-	"github.com/MichaelKinsy/PiG/internal/testenv"
+	"github.com/MichaelKinsy/PiG/internal/pioracle"
 )
 
 // admitStep is one commit of a seeded program: a Session commit that creates a conversation, appends an entry, admits a submission, ends a run, applies an inbox boundary or withdraws queued inputs.
@@ -365,9 +364,8 @@ func piAdmissionOutcomes(t *testing.T, programs [][]admitStep) [][]admitOutcome 
 	if err != nil {
 		t.Fatal(err)
 	}
-	root := testenv.ModuleRoot(t)
 	cmd := exec.CommandContext(t.Context(), "node", "--disable-warning=ExperimentalWarning", "testdata/submissions_oracle.mjs", suspendableOraclePackages(t))
-	cmd.Env = append(cmd.Environ(), "PI_INTEROP_DIR="+filepath.Join(root, "durable", "interop")+"/")
+	cmd.Env = append(cmd.Environ(), "PI_INTEROP_DIR="+pioracle.Project(t))
 	cmd.Stdin = bytes.NewReader(payload)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr

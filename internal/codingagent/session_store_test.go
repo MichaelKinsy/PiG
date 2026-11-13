@@ -328,7 +328,7 @@ func TestLiveSessionReleasesEntriesBehindCompaction(t *testing.T) {
 	resident := 0
 	session.mu.RLock()
 	for i := range session.slots {
-		if session.slots[i].entry != nil {
+		if session.resident.get(i) != nil {
 			resident++
 		}
 	}
@@ -444,8 +444,8 @@ func TestParallelHistoryReadMatchesTheWholeLoad(t *testing.T) {
 		t.Fatal(err)
 	}
 	evicted := 0
-	for _, slot := range indexed.slots {
-		if slot.entry == nil {
+	for i := range indexed.slots {
+		if indexed.resident.get(i) == nil {
 			evicted++
 		}
 	}
@@ -485,8 +485,8 @@ func TestAppendedLinesReadBackAfterEviction(t *testing.T) {
 		t.Fatal(err)
 	}
 	evicted := 0
-	for _, slot := range s.slots {
-		if slot.entry == nil {
+	for i := range s.slots {
+		if s.resident.get(i) == nil {
 			evicted++
 		}
 	}

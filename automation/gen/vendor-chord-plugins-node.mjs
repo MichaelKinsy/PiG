@@ -1,10 +1,9 @@
 // Copy Pi's own chord sources for the plugins component's Node subprocess (chord/nextnode/plugins/node/pi) and write
 // the manifest that records the Pi commit and the hash of every copied file.
 //
-//   node vendor-chord-plugins-node.mjs <pi tree root> <pi commit> <pi-telemetry package dir> <out node dir> <pin commit>
+//   node vendor-chord-plugins-node.mjs <pi tree root> <pi commit> <pi-telemetry package dir> <out node dir> <pin commit> [<carried commits, comma-separated>]
 //
-// The manifest records the pin the copy was made against; when the copied commit is not the pin's, it names that commit as
-// `catchup` (the commit the manifest may differ from the pin by: the Go test accepts exactly it, while the pin stays put).
+// The manifest's provenance (commit, pin, `catchup`, `carried`) is vendor-chord-provenance.mjs's, shared with the client surfaces' copy.
 //
 // packages/chord/src is copied byte for byte, keeping its layout, for the import closure of the entries the subprocess
 // loads (Node strips the types of the copies; nothing is transpiled). The closure is found on the type-stripped source,
@@ -17,8 +16,9 @@ import { createHash } from "node:crypto";
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { stripTypeScriptTypes } from "node:module";
 import { dirname, join, relative, resolve, sep } from "node:path";
+import { provenance } from "./vendor-chord-provenance.mjs";
 
-const [piTree, commit, telemetryDir, outDir, pin] = process.argv.slice(2);
+const [piTree, commit, telemetryDir, outDir, pin, carriedList = ""] = process.argv.slice(2);
 if (pin === undefined) throw new Error("usage: vendor-chord-plugins-node.mjs <pi tree> <commit> <pi-telemetry> <out> <pin>");
 
 const ENTRIES = [
@@ -89,9 +89,7 @@ for (const file of walk(join(telemetryDir, "dist")).sort()) {
 }
 
 const manifest = {
-	commit,
-	pin,
-	...(commit === pin ? {} : { catchup: commit }),
+	...provenance(commit, pin, carriedList),
 	piSchema: JSON.parse(readFileSync(join(schemaDir, "package.json"), "utf8")).version,
 	piTelemetry: JSON.parse(readFileSync(join(telemetryDir, "package.json"), "utf8")).version,
 	files: files.sort().map((path) => ({ path, sha256: createHash("sha256").update(readFileSync(join(outDir, path))).digest("hex") })),

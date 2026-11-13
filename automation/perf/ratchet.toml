@@ -18,11 +18,11 @@
 "ai.stream.toolcall_delta.bytes" = 3600
 
 # ai: bytes per SSE delta record through the HTTP client, decoder, builder and event stream (TestProviderStreamPerFrameAllocationGate); the allocation count per record is TestStreamFrameAllocationCeilings'.
-"ai.provider_frame.openai-completions-text.bytes" = 3660
-"ai.provider_frame.openai-completions-toolcall.bytes" = 7920
-"ai.provider_frame.openai-responses-text.bytes" = 3250
-"ai.provider_frame.anthropic-text.bytes" = 3800
-"ai.provider_frame.anthropic-toolcall.bytes" = 6580
+"ai.provider_frame.openai-completions-text.bytes" = 1300
+"ai.provider_frame.openai-completions-toolcall.bytes" = 2950
+"ai.provider_frame.openai-responses-text.bytes" = 1420
+"ai.provider_frame.anthropic-text.bytes" = 1280
+"ai.provider_frame.anthropic-toolcall.bytes" = 2800
 
 # ai: bytes of one short streamed openai-completions request and response through the real HTTP client (TestProviderResponseAllocationGate); a body read costs the bytes it carries, not the 64 KiB read size.
 "ai.provider_response.openai-completions.bytes" = 45400
@@ -70,10 +70,10 @@
 "process.print_tools.gc_cycles" = 0
 "process.print_tools.goroutines_created" = 120
 "process.print_tools.auth_stats" = 16
-"ai.provider_frame.google-text.bytes" = 4460
-"ai.provider_frame.mistral-text.bytes" = 4460
-# Codex Responses over SSE (its own decoder, continuation iterator and per-event clones): measured 4548-4656 B per frame on linux/amd64.
-"ai.provider_frame.openai-codex-responses-text.bytes" = 4900
+"ai.provider_frame.google-text.bytes" = 1960
+"ai.provider_frame.mistral-text.bytes" = 1560
+# Codex Responses over SSE (its own decoder, continuation iterator and per-event clones): measured 1906-2004 B per frame on linux/amd64.
+"ai.provider_frame.openai-codex-responses-text.bytes" = 2050
 
 # coding: goroutine wake-ups (a parked goroutine made runnable through the scheduler, runtime/trace; an iter.Pull coroutine switch is not one) per 16-byte tool-call arguments delta of a write streamed through a Session in -p text mode, marginal between 1k and 2k deltas, at GOMAXPROCS=1 (TestStreamWakesPerDelta). "text" streams from the faux provider, "extension" adds one in-process message_update handler, "openai_text" streams openai-completions from a local HTTP server, one flushed SSE record per delta. Measured at 4cfaf24153: 5.36, 5.36, 11.9; LW roadmap S1, S2 and S3 take them to at most 1.
 "coding.pipeline.text.wakes_per_delta" = 5.5
@@ -111,15 +111,23 @@
 "tui.stream_frame.allocs_growth_per_100_tokens" = 142
 
 # session: loading a persisted session, per JSONL line (TestSessionLoadPerLineAllocationGate).
-"session.load_line.allocs" = 94
-"session.load_line.bytes" = 6800
-"session.load_line.retained_bytes" = 2000
+"session.load_line.allocs" = 6.5
+"session.load_line.bytes" = 440
+"session.load_line.retained_bytes" = 96
 
 # session: one turn (two appends and one context build), and what each existing entry adds to it (TestSessionTurnAllocationGate).
-"session.turn.allocs" = 3140
-"session.turn.bytes" = 500000
-"session.turn.allocs_per_existing_entry" = 5.2
-"session.turn.bytes_per_existing_entry" = 900
+"session.turn.allocs" = 76
+"session.turn.bytes" = 23000
+"session.turn.allocs_per_existing_entry" = 0.05
+"session.turn.bytes_per_existing_entry" = 36
+"session.context_copy.allocs_per_entry" = 3.2
+"session.context_copy.bytes_per_entry" = 640
+"session.long.resume_allocs_per_line" = 12.5
+"session.long.resume_heap_bytes" = 2900000
+"session.long.first_turn_heap_bytes" = 15200000
+"session.long.turn_allocs" = 76
+"session.long.turn_allocs_growth" = 1
+"session.long.turn_bytes_per_existing_entry" = 37
 
 # coding: a later Session turn at history N, 10N, 100N (TestSessionTurnScalingExponents): allocations independent of the history, bytes linear (copies of the context slice).
 "coding.session_turn.allocs_exponent" = 0.05
@@ -135,8 +143,8 @@
 "mcp.tool_call_over_servers.bytes_exponent" = 0.05
 
 # extension host: one event request to an extension and its response, host side (TestExtensionEventRoundTripAllocationGate).
-"extension.event_roundtrip.allocs" = 21
-"extension.event_roundtrip.bytes" = 1550
+"extension.event_roundtrip.allocs" = 2.5
+"extension.event_roundtrip.bytes" = 420
 
 # extension host: goroutine wake-ups per event dispatch (state push + event request + the runtime's started/completed/response), host
 # goroutines only (TestConnDispatchReadsAndWakesPerEvent). The fake runtime's wakes are the harness's and depend on OS scheduling
@@ -160,8 +168,8 @@
 "process.rpc_startup.temp_entries_at_exit" = 0
 "process.rpc_turn.allocs" = 3150
 "process.rpc_turn.bytes" = 335000
-"process.rpc_ext10_turn.allocs" = 16000
-"process.rpc_ext10_turn.bytes" = 3620000
+"process.rpc_ext10_turn.allocs" = 4900
+"process.rpc_ext10_turn.bytes" = 780000
 "process.rpc_ext10_turn.allocs_growth" = 1.12
 # process: the same turn at one and three extensions (TestRPCExtensionTurnProcessGateByExtensionCount), so the per-extension and the fixed cost are gated apart. Each ceiling is the measured maximum of four runs plus about 6%.
 "process.rpc_ext1_turn.allocs" = 4200
@@ -171,6 +179,12 @@
 "process.rpc_ext0_turn.allocs" = 3100
 "process.rpc_ext0_turn.bytes" = 305000
 "process.rpc_ext0_turn.allocs_growth" = 1.3
+
+# process: what one streamed message_update costs the host per subscribing TypeScript extension, over a 24-delta faux stream to one and to four extensions less the same turn with agent_end subscribers, per update and subscriber (TestRPCMessageUpdateProcessGate). The shared encoding of the update is paid once, so the cost per subscriber falls as subscribers are added. Measured on go1.27.4: 122 / 23,920 at one subscriber and 55 / 9,005 at four; the ceilings add about 6%.
+"process.rpc_message_update_ext1.allocs" = 130
+"process.rpc_message_update_ext1.bytes" = 25500
+"process.rpc_message_update_ext4.allocs" = 59
+"process.rpc_message_update_ext4.bytes" = 9600
 "fused.dispatch_k1.allocs" = 1330
 "fused.dispatch_k3.allocs" = 3010
 "fused.dispatch_k10.allocs" = 8560

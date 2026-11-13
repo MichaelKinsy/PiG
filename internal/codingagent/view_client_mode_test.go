@@ -270,116 +270,6 @@ func TestTerminalViewClientEscapeLeavesThePanelBeforeItInterrupts(t *testing.T) 
 	}
 }
 
-const viewProbeList = `{"root":{"kind":"select-list","id":"pick","maxVisible":4,"items":[{"value":"a","label":"Alpha"},{"value":"b","label":"Beta"}]},"focus":"pick"}`
-
-// pig additive (D614): one live panel without a title is drawn as it was before panels were tabs: a client whose panel
-// slot has tabs and one whose panels are stacked write the same bytes for the mount, for F6 into it and for a key in it.
-func TestTerminalViewClientOneUntitledPanelDrawsAsWithoutTabs(t *testing.T) {
-	for _, mode := range []string{"regular", "fullscreen"} {
-		t.Run(mode, func(t *testing.T) {
-			synctest.Test(t, func(t *testing.T) {
-				run := func(tabs bool) []string {
-					slot := viewSlotOf(uiview.SlotPanel)
-					was := slot.tabs
-					slot.tabs = tabs
-					defer func() { slot.tabs = was }()
-					p := newViewModeProbe(t, mode, true)
-					var frames []string
-					p.must("ui.view.mount", `{"key":"list","slot":"panel","view":`+viewProbeList+`}`)
-					frames = append(frames, p.frame())
-					if _, consumed := p.m.tuiInst.RunInputListeners("\x1b[17~"); !consumed {
-						t.Fatal("F6 was not consumed")
-					}
-					frames = append(frames, p.frame())
-					if err := p.m.handleKey(t.Context(), "\x1b[B"); err != nil {
-						t.Fatal(err)
-					}
-					frames = append(frames, p.frame())
-					if p.m.viewTabRow != nil {
-						t.Fatal("one live panel without a title laid a tab row")
-					}
-					p.m.detachTerminalViewClient()
-					return frames
-				}
-				tabs, stacked := run(true), run(false)
-				for i := range tabs {
-					if tabs[i] != stacked[i] {
-						t.Fatalf("frame %d with tabs wrote\n%q\nand stacked\n%q", i, tabs[i], stacked[i])
-					}
-					if stacked[i] == "" {
-						t.Fatalf("frame %d is empty: the comparison proves nothing", i)
-					}
-				}
-			})
-		})
-	}
-}
-
-// pig additive (D614): the production renderer draws titled panels as tabs: one row of titles, the front tab's view
-// under it, F6 from tab to tab. A focus request moves the focus from an empty editor and leaves an editor that holds
-// text alone, and the extension reads why.
-func TestTerminalViewClientDrawsPanelsAsTabs(t *testing.T) {
-	for _, mode := range []string{"regular", "fullscreen"} {
-		t.Run(mode, func(t *testing.T) {
-			synctest.Test(t, func(t *testing.T) {
-				p := newViewModeProbe(t, mode, true)
-				p.must("ui.view.mount", `{"key":"mail","slot":"panel","title":"Mail","view":{"root":{"kind":"text","text":"the inbox rows"}}}`)
-				p.must("ui.view.mount", `{"key":"cal","slot":"panel","title":"Calendar","view":`+viewProbeList+`}`)
-				frame := widthx.StripAnsi(p.frame())
-				if !strings.Contains(frame, "Mail  Calendar") || !strings.Contains(frame, "Alpha") || strings.Contains(frame, "the inbox rows") {
-					t.Fatalf("two titled panels drew %q, want the tab row and the panel shown last alone", frame)
-				}
-				client := p.m.viewClient.Load()
-				mail, cal := client.order[0], client.order[1]
-				if _, consumed := p.m.tuiInst.RunInputListeners("\x1b[17~"); !consumed || p.m.tuiInst.GetFocusedComponent() != tui.Component(p.m.viewTabRow) {
-					t.Fatalf("F6 from the editor: the focus is %T, want the tab row on Mail, whose view takes no key", p.m.tuiInst.GetFocusedComponent())
-				}
-				if frame := widthx.StripAnsi(p.frame()); !strings.Contains(frame, "[Mail]  Calendar") || !strings.Contains(frame, "the inbox rows") || strings.Contains(frame, "Alpha") {
-					t.Fatalf("on the first tab the terminal drew %q", frame)
-				}
-				if _, consumed := p.m.tuiInst.RunInputListeners("\x1b[17~"); !consumed || p.m.tuiInst.GetFocusedComponent() != tui.Component(cal) {
-					t.Fatal("F6 from the first tab did not focus the second tab's view")
-				}
-				if _, consumed := p.m.tuiInst.RunInputListeners("\x1b[17~"); !consumed || p.m.tuiInst.GetFocusedComponent() != tui.Component(p.m.editor) {
-					t.Fatal("F6 from the last tab did not return the focus to the editor")
-				}
-				p.frame()
-
-				// The editor holds text: Mail asks for the focus on an update, is shown, and the focus stays.
-				p.typeText("draft")
-				mailRef := `{"key":"mail","epoch":` + strconv.FormatUint(mail.ref.Epoch, 10) + `,"rev":` + strconv.FormatUint(mail.ref.Rev, 10) + `}`
-				asking := `,"title":"Mail","focus":[{"node":"pick","request":"update"}],"view":` + viewProbeList + `}`
-				next := p.must("ui.view.update", `{"mount":`+mailRef+asking)
-				if frame := widthx.StripAnsi(p.frame()); p.m.tuiInst.GetFocusedComponent() != tui.Component(p.m.editor) || client.front != mail || !strings.Contains(frame, "Mail  Calendar") {
-					t.Fatalf("a focus request while the editor holds text: focus %T, front %s, frame %q", p.m.tuiInst.GetFocusedComponent(), client.front.key.key, frame)
-				}
-				if text := p.m.editor.Text(); text != "draft" {
-					t.Fatalf("the editor holds %q, want draft", text)
-				}
-				var diag struct {
-					Notices []uiview.Notice `json:"notices"`
-				}
-				res, err := p.bridge.HandleCall("ext", &subprocess.CallPayload{Method: "ui.view.diagnostics", Args: json.RawMessage(`{"key":"mail"}`)})
-				if err != nil || res.Error != nil || json.Unmarshal(res.Result, &diag) != nil {
-					t.Fatalf("diagnostics: %v %+v", err, res)
-				}
-				if !slices.ContainsFunc(diag.Notices, func(n uiview.Notice) bool {
-					return n.Code == uiview.NoticeUnfocused && n.Path == "focus" && n.Message == "the editor holds text"
-				}) {
-					t.Fatalf("the extension reads %+v, want an unfocused notice: the editor holds text", diag.Notices)
-				}
-				// The editor is empty: the same request is granted.
-				p.typeText("\x7f\x7f\x7f\x7f\x7f")
-				p.must("ui.view.update", `{"mount":`+string(next)+asking)
-				p.frame()
-				if p.m.tuiInst.GetFocusedComponent() != tui.Component(mail) {
-					t.Fatalf("a focus request with an empty editor: the focus is %T, want Mail's view", p.m.tuiInst.GetFocusedComponent())
-				}
-			})
-		})
-	}
-}
-
 // viewAttachRun is one session whose extension takes the state the bridge pushes when the client attaches, which is how
 // the abilities reach an extension, and, with mounts, mounts at that moment, off the loop.
 type viewAttachRun struct {
@@ -492,6 +382,116 @@ func TestTerminalViewClientAttachWithAListeningExtensionCostsNothing(t *testing.
 				}
 				if n := len(on.p.m.widgetContainer.Children()) - len(off.p.m.widgetContainer.Children()); n != 0 {
 					t.Errorf("the widget container holds %d more children with the client attached", n)
+				}
+			})
+		})
+	}
+}
+
+const viewProbeList = `{"root":{"kind":"select-list","id":"pick","maxVisible":4,"items":[{"value":"a","label":"Alpha"},{"value":"b","label":"Beta"}]},"focus":"pick"}`
+
+// pig additive (D614): one live panel without a title is drawn as it was before panels were tabs: a client whose panel
+// slot has tabs and one whose panels are stacked write the same bytes for the mount, for F6 into it and for a key in it.
+func TestTerminalViewClientOneUntitledPanelDrawsAsWithoutTabs(t *testing.T) {
+	for _, mode := range []string{"regular", "fullscreen"} {
+		t.Run(mode, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				run := func(tabs bool) []string {
+					slot := viewSlotOf(uiview.SlotPanel)
+					was := slot.tabs
+					slot.tabs = tabs
+					defer func() { slot.tabs = was }()
+					p := newViewModeProbe(t, mode, true)
+					var frames []string
+					p.must("ui.view.mount", `{"key":"list","slot":"panel","view":`+viewProbeList+`}`)
+					frames = append(frames, p.frame())
+					if _, consumed := p.m.tuiInst.RunInputListeners("\x1b[17~"); !consumed {
+						t.Fatal("F6 was not consumed")
+					}
+					frames = append(frames, p.frame())
+					if err := p.m.handleKey(t.Context(), "\x1b[B"); err != nil {
+						t.Fatal(err)
+					}
+					frames = append(frames, p.frame())
+					if p.m.viewTabRow != nil {
+						t.Fatal("one live panel without a title laid a tab row")
+					}
+					p.m.detachTerminalViewClient()
+					return frames
+				}
+				tabs, stacked := run(true), run(false)
+				for i := range tabs {
+					if tabs[i] != stacked[i] {
+						t.Fatalf("frame %d with tabs wrote\n%q\nand stacked\n%q", i, tabs[i], stacked[i])
+					}
+					if stacked[i] == "" {
+						t.Fatalf("frame %d is empty: the comparison proves nothing", i)
+					}
+				}
+			})
+		})
+	}
+}
+
+// pig additive (D614): the production renderer draws titled panels as tabs: one row of titles, the front tab's view
+// under it, F6 from tab to tab. A focus request moves the focus from an empty editor and leaves an editor that holds
+// text alone, and the extension reads why.
+func TestTerminalViewClientDrawsPanelsAsTabs(t *testing.T) {
+	for _, mode := range []string{"regular", "fullscreen"} {
+		t.Run(mode, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				p := newViewModeProbe(t, mode, true)
+				p.must("ui.view.mount", `{"key":"mail","slot":"panel","title":"Mail","view":{"root":{"kind":"text","text":"the inbox rows"}}}`)
+				p.must("ui.view.mount", `{"key":"cal","slot":"panel","title":"Calendar","view":`+viewProbeList+`}`)
+				frame := widthx.StripAnsi(p.frame())
+				if !strings.Contains(frame, "Mail  Calendar") || !strings.Contains(frame, "Alpha") || strings.Contains(frame, "the inbox rows") {
+					t.Fatalf("two titled panels drew %q, want the tab row and the panel shown last alone", frame)
+				}
+				client := p.m.viewClient.Load()
+				mail, cal := client.order[0], client.order[1]
+				if _, consumed := p.m.tuiInst.RunInputListeners("\x1b[17~"); !consumed || p.m.tuiInst.GetFocusedComponent() != tui.Component(p.m.viewTabRow) {
+					t.Fatalf("F6 from the editor: the focus is %T, want the tab row on Mail, whose view takes no key", p.m.tuiInst.GetFocusedComponent())
+				}
+				if frame := widthx.StripAnsi(p.frame()); !strings.Contains(frame, "[Mail]  Calendar") || !strings.Contains(frame, "the inbox rows") || strings.Contains(frame, "Alpha") {
+					t.Fatalf("on the first tab the terminal drew %q", frame)
+				}
+				if _, consumed := p.m.tuiInst.RunInputListeners("\x1b[17~"); !consumed || p.m.tuiInst.GetFocusedComponent() != tui.Component(cal) {
+					t.Fatal("F6 from the first tab did not focus the second tab's view")
+				}
+				if _, consumed := p.m.tuiInst.RunInputListeners("\x1b[17~"); !consumed || p.m.tuiInst.GetFocusedComponent() != tui.Component(p.m.editor) {
+					t.Fatal("F6 from the last tab did not return the focus to the editor")
+				}
+				p.frame()
+
+				// The editor holds text: Mail asks for the focus on an update, is shown, and the focus stays.
+				p.typeText("draft")
+				mailRef := `{"key":"mail","epoch":` + strconv.FormatUint(mail.ref.Epoch, 10) + `,"rev":` + strconv.FormatUint(mail.ref.Rev, 10) + `}`
+				asking := `,"title":"Mail","focus":[{"node":"pick","request":"update"}],"view":` + viewProbeList + `}`
+				next := p.must("ui.view.update", `{"mount":`+mailRef+asking)
+				if frame := widthx.StripAnsi(p.frame()); p.m.tuiInst.GetFocusedComponent() != tui.Component(p.m.editor) || client.front != mail || !strings.Contains(frame, "Mail  Calendar") {
+					t.Fatalf("a focus request while the editor holds text: focus %T, front %s, frame %q", p.m.tuiInst.GetFocusedComponent(), client.front.key.key, frame)
+				}
+				if text := p.m.editor.Text(); text != "draft" {
+					t.Fatalf("the editor holds %q, want draft", text)
+				}
+				var diag struct {
+					Notices []uiview.Notice `json:"notices"`
+				}
+				res, err := p.bridge.HandleCall("ext", &subprocess.CallPayload{Method: "ui.view.diagnostics", Args: json.RawMessage(`{"key":"mail"}`)})
+				if err != nil || res.Error != nil || json.Unmarshal(res.Result, &diag) != nil {
+					t.Fatalf("diagnostics: %v %+v", err, res)
+				}
+				if !slices.ContainsFunc(diag.Notices, func(n uiview.Notice) bool {
+					return n.Code == uiview.NoticeUnfocused && n.Path == "focus" && n.Message == "the editor holds text"
+				}) {
+					t.Fatalf("the extension reads %+v, want an unfocused notice: the editor holds text", diag.Notices)
+				}
+				// The editor is empty: the same request is granted.
+				p.typeText("\x7f\x7f\x7f\x7f\x7f")
+				p.must("ui.view.update", `{"mount":`+string(next)+asking)
+				p.frame()
+				if p.m.tuiInst.GetFocusedComponent() != tui.Component(mail) {
+					t.Fatalf("a focus request with an empty editor: the focus is %T, want Mail's view", p.m.tuiInst.GetFocusedComponent())
 				}
 			})
 		})

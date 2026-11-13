@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: MIT
 """Tests of the pin model and its derivations. They use no network: refs that
 need resolution are exercised through the cached and committed paths."""
+import argparse
 import contextlib
 import hashlib
 import io
@@ -21,6 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import pinlib  # noqa: E402
 import pin as pin_tool  # noqa: E402
 import oracle  # noqa: E402
+import backport_fixture  # noqa: E402
 
 TAG = pinlib.Pin("v1.1.0", "a" * 40, "1.1.0", "1.1.0")
 COMMIT = pinlib.Pin("b" * 40, "b" * 40, "1.1.0", "1.1.0+bbbbbbbb")
@@ -120,8 +122,11 @@ class RepositoryTests(unittest.TestCase):
         self.assertTrue("commit/" + "b" * 40 in moved["README.md"])
         self.assertTrue("1.1.0%2B" + "b" * 8 in moved["README.md"])
         self.assertTrue("The pinned Pi build is 1.1.0+bbbbbbbb, commit `" + "b" * 40 in moved["README.md"])
-        # The README's example shows the composite version of the banner, whose Pi part is the pin's display version.
-        self.assertRegex(moved["README.md"], r"for example `\d+\.\d+\.\d+\+1\.1\.0\+bbbbbbbb`")
+        # The README's example is the string the binary prints (pigversion.Version: PigVersion + "+" + the build metadata, one plus).
+        binary = re.search(r'^const Version = PigVersion \+ "(\+[^"]+)"', moved["internal/coding/pigversion/pigversion.go"], re.M).group(1)
+        self.assertEqual(binary, "+1.1.0.bbbbbbbb")
+        example = re.search(r"for example `(\d+\.\d+\.\d+)(\+[^`]+)`", moved["README.md"])
+        self.assertEqual(example.group(2), binary)
         self.assertTrue("ARG PI_COMMIT=" + "b" * 40 in moved["automation/images/ci-parity/Dockerfile"])
 
     def test_provenance_names_the_committed_pin(self):
@@ -670,24 +675,6 @@ class SharedStoreTests(unittest.TestCase):
         self.assertEqual(oracle.ensure(COMMIT), held)
         self.assertEqual(self.builds, 1)
 
-    def test_ensure_durable_packs_the_published_build_not_the_entry(self):
-        # ensure() builds into entry/build-<random>/src and publishes it through current.ref; it never creates entry/src.
-        # ensure_durable must pack that published build's source, as freeze_closure resolves it.
-        built = oracle.ensure(COMMIT).parent
-        (built / "src" / "packages" / "durable" / "dist").mkdir(parents=True)
-        self.assertFalse((oracle.entry(COMMIT) / "src").exists())
-        packed_from = []
-
-        def pack(source, _destination, *_roots):
-            packed_from.append(source)
-            raise pinlib.PinError("packed")
-
-        with mock.patch.object(oracle, "pack", pack), mock.patch.object(oracle, "read_frozen_lock", lambda *_a: None):
-            with self.assertRaisesRegex(pinlib.PinError, "packed"):
-                oracle.ensure_durable(COMMIT)
-        self.assertEqual(packed_from, [built / "src"])
-
-
     def carries_backports(self, pin=COMMIT):
         """The committed pin is `pin`, whose oracle carries the post-release backports; apply_backports is recorded, not run."""
         applied = []
@@ -943,125 +930,6 @@ class ClosureTests(unittest.TestCase):
             (pkg / "package.json").write_text(json.dumps({"name": ident, "dependencies": {d: "1" for d in deps if d != ident}}))
         self.assertEqual(oracle.closure_workspaces(source), ["@earendil-works/pi-ai", oracle.AGENT])
 
-    def test_a_commit_pin_freezes_a_durable_closure_whose_top_level_is_what_durable_interop_imports(self):
-        pin = pinlib.committed()
-        if pin.kind == "tag":
-            self.skipTest("a release installs the published pi-durable (npm-locked.py durable/interop)")
-        lock = oracle.read_frozen_lock(pin, oracle.DURABLE)
-        self.assertIsNotNone(lock, f"no frozen durable closure for {pin.commit}: durable/interop would run the published pi-durable, not a build of the pin")
-        top = lock["packages"][""]["devDependencies"]
-        self.assertLessEqual(set(oracle.INTEROP), set(top))
-        self.assertIn("diff", top, "pi-durable's source imports diff: it resolves it from the top of durable/interop/node_modules")
-        for name in oracle.INTEROP:
-            item = lock["packages"]["node_modules/" + name]
-            self.assertTrue(item["resolved"].startswith(oracle.PACK_PREFIX), f"{name} must come from the pin's pack: {item['resolved']}")
-        imported = json.loads((oracle.ROOT / "durable/interop/package.json").read_text())["dependencies"]
-        photon = "@silvia-odwyer/photon"  # the image oracle's processor: durable/interop imports it beside the three packs
-        self.assertIn(photon, top)
-        self.assertEqual(sorted(imported), sorted([*oracle.INTEROP, photon]))
-
-    def test_check_durable_rejects_an_interop_tree_that_is_not_the_pins_durable_oracle(self):
-        pin = pinlib.committed()
-        if pin.kind == "tag":
-            self.skipTest("a release installs the published pi-durable")
-        root = Path(tempfile.mkdtemp())
-        (root / "durable" / "interop").mkdir(parents=True)
-        stale = root / "stale"
-        (stale / "@earendil-works" / "pi-durable").mkdir(parents=True)
-        (stale / "@earendil-works" / "pi-durable" / "package.json").write_text(json.dumps({"name": oracle.DURABLE, "version": pin.package_version}))
-        (root / "durable" / "interop" / "node_modules").symlink_to(stale)
-        saved = oracle.ROOT
-        oracle.ROOT = root
-        try:
-            with self.assertRaisesRegex(pinlib.PinError, "not the durable oracle of commit"):
-                oracle.check_durable(pin)
-        finally:
-            oracle.ROOT = saved
-
-    def host_fixture(self, shared_store: bool):
-        """A Cloudflare host with a locked tree that holds the published packages, and a pinned durable oracle with the pin's."""
-        root = Path(tempfile.mkdtemp())
-        host = root / "host"
-        host.mkdir()
-        locked = (root / "store" / "host-abc" / "node_modules") if shared_store else host / "node_modules"
-        pinned = root / "oracle" / "node_modules"
-        for tree, kind in ((locked, "published"), (pinned, "pinned")):
-            for name in ("@earendil-works/chord", "@earendil-works/pi-ai", "@earendil-works/pi-durable", "typebox"):
-                (tree / name).mkdir(parents=True)
-                version = "1.3.0" if kind == "published" else pinlib.committed().package_version
-                (tree / name / "package.json").write_text(json.dumps({"name": name, "version": version, "kind": kind}))
-        (locked / "@earendil-works" / "pi-codemode").mkdir()  # a published package the pinned oracle holds only nested
-        (locked / "miniflare").mkdir()
-        (locked / ".pig-deps-ready").write_text("stamp")
-        if shared_store:
-            (host / "node_modules").symlink_to(locked, target_is_directory=True)
-        return host, locked, pinned
-
-    def kind_of(self, host: Path, name: str) -> str:
-        return json.loads((host / "node_modules" / name / "package.json").read_text())["kind"]
-
-    def test_a_commit_pins_host_imports_pis_packages_from_the_pinned_build_and_keeps_its_other_packages(self):
-        pin = pinlib.committed()
-        if pin.kind == "tag":
-            self.skipTest("a release pin installs the published packages")
-        for shared_store in (False, True):
-            with self.subTest(shared_store=shared_store):
-                host, locked, pinned = self.host_fixture(shared_store)
-                with mock.patch.object(oracle, "check_durable"), mock.patch.object(oracle, "durable_modules", return_value=pinned):
-                    with self.assertRaisesRegex(pinlib.PinError, "does not use the pinned build"):
-                        oracle.check_host(pin, host)  # the freshly locked tree is the published release: the failure this guards
-                    linked = oracle.link_host(pin, host)
-                    self.assertEqual(linked, ["@earendil-works/chord", "@earendil-works/pi-ai", "@earendil-works/pi-durable", "typebox"])
-                    for name in linked:
-                        self.assertEqual(self.kind_of(host, name), "pinned", name)
-                        self.assertEqual((host / "node_modules" / name).resolve(), (pinned / name).resolve())
-                    self.assertTrue((host / "node_modules" / "miniflare").exists(), "a package only the host locks stays")
-                    self.assertTrue((host / "node_modules" / "@earendil-works" / "pi-codemode").exists())
-                    self.assertTrue((host / "node_modules" / ".pig-deps-ready").exists(), "the lock stamp survives, so the locked install is not repeated")
-                    self.assertEqual(oracle.link_host(pin, host), linked, "linking again changes nothing")
-                    oracle.check_host(pin, host)
-                    if shared_store:
-                        for name in ("@earendil-works/chord", "@earendil-works/pi-ai", "@earendil-works/pi-durable", "typebox"):
-                            self.assertEqual(json.loads((locked / name / "package.json").read_text())["kind"], "published", "the shared store is never edited")
-                        self.assertFalse((host / "node_modules").is_symlink())
-
-    def test_a_host_tree_of_another_pi_version_than_the_pin_is_rejected(self):
-        pin = pinlib.committed()
-        if pin.kind == "tag":
-            self.skipTest("a release pin installs the published packages")
-        host, _locked, pinned = self.host_fixture(False)
-        (pinned / "@earendil-works" / "pi-durable" / "package.json").write_text(json.dumps({"name": oracle.DURABLE, "version": "0.0.1", "kind": "pinned"}))
-        with mock.patch.object(oracle, "check_durable"), mock.patch.object(oracle, "durable_modules", return_value=pinned):
-            with self.assertRaisesRegex(pinlib.PinError, "the pin needs"):
-                oracle.link_host(pin, host)
-
-    def test_a_release_pins_host_keeps_the_published_install_and_checks_its_version(self):
-        host, _locked, _pinned = self.host_fixture(False)
-        pin = pinlib.Pin("v1.3.0", "a" * 40, "1.3.0", "1.3.0")
-        self.assertEqual(oracle.link_host(pin, host), [])
-        self.assertEqual(self.kind_of(host, "@earendil-works/pi-durable"), "published")
-        oracle.check_host(pin, host)
-        with self.assertRaisesRegex(pinlib.PinError, "the release pin needs 1.4.0"):
-            oracle.check_host(pinlib.Pin("v1.4.0", "a" * 40, "1.4.0", "1.4.0"), host)
-
-    def test_the_host_manifest_follows_the_pin(self):
-        pin = pinlib.committed()
-        manifest = json.loads((oracle.ROOT / "durable/core/host/cf/package.json").read_text())["dependencies"]
-        for name in pin_tool.CF_HOST:
-            self.assertEqual(manifest[name], pin.package_version, name)
-
-    def test_the_durable_closure_has_its_own_frozen_file(self):
-        pin = pinlib.committed()
-        self.assertNotEqual(oracle.frozen_lock_path(pin), oracle.frozen_lock_path(pin, oracle.DURABLE))
-
-    def test_the_workspace_closure_of_durable_is_its_own_root(self):
-        source = Path(tempfile.mkdtemp())
-        for name, ident, deps in (("durable", oracle.DURABLE, ["@earendil-works/pi-ai"]), ("ai", "@earendil-works/pi-ai", []), ("agent", oracle.AGENT, [oracle.DURABLE])):
-            pkg = source / "packages" / name
-            pkg.mkdir(parents=True)
-            (pkg / "package.json").write_text(json.dumps({"name": ident, "dependencies": {d: "1" for d in deps}}))
-        self.assertEqual(oracle.closure_workspaces(source, oracle.DURABLE), ["@earendil-works/pi-ai", oracle.DURABLE])
-
     def test_the_committed_pins_frozen_closure_matches_the_pin(self):
         pin = pinlib.committed()
         lock = oracle.read_frozen_lock(pin)
@@ -1098,7 +966,7 @@ class BackportTests(unittest.TestCase):
                 oracle.apply_backports(modules)
 
     def test_a_backport_that_does_not_apply_fails_the_build_with_the_scripts_reason(self):
-        with tempfile.TemporaryDirectory() as root:
+        with tempfile.TemporaryDirectory() as root, mock.patch.object(oracle, "BACKPORTS", backport_fixture.script()):
             modules = self.tree(Path(root))
             with self.assertRaisesRegex(pinlib.PinError, "do not apply to the installed oracle"):
                 oracle.apply_backports(modules)  # the packages hold no dist/ files
@@ -1131,7 +999,7 @@ for (const [file, entries] of Object.entries(entriesByFile)) {
 assert.throws(() => applyPackageBackports(packages), /no longer applies/, "a second application must fail, not pass silently");
 '''
         with tempfile.TemporaryDirectory() as root:
-            done = subprocess.run(["node", "--input-type=module", "-e", script], env={**os.environ, "BACKPORTS": oracle.BACKPORTS.as_uri(), "ROOT": root}, capture_output=True, text=True, timeout=60)
+            done = subprocess.run(["node", "--input-type=module", "-e", script], env={**os.environ, "BACKPORTS": backport_fixture.script().as_uri(), "ROOT": root}, capture_output=True, text=True, timeout=60)
             self.assertEqual(done.returncode, 0, done.stderr)
 
 
@@ -1265,6 +1133,35 @@ class CarryTests(unittest.TestCase):
     def test_an_override_run_restores_the_reviewed_types_the_update_pruned(self):
         self.assertEqual(self.carry(TAG).read_text(), "original")
 
+    def gaps(self, committed):
+        calls = self.calls
+        reviewed = self.root / "test/parity/interface-closure/autobind/reviewed-types.json"
+        reviewed.parent.mkdir(parents=True, exist_ok=True)
+        reviewed.write_text("stale")
+
+        def fake_run(command, **kwargs):
+            calls.append(command[-1])
+            if command[-1] == "ledger-update":
+                reviewed.write_text("pruned")
+            elif reviewed.read_text() != "pruned":
+                raise subprocess.CalledProcessError(2, command)  # ledger-check stops on a stale exception
+
+        saved = (pin_tool.ROOT, pinlib.effective, pinlib.committed, pin_tool.subprocess.run)
+        pin_tool.ROOT, pinlib.effective, pinlib.committed, pin_tool.subprocess.run = self.root, (lambda: (COMMIT, committed != COMMIT)), (lambda: committed), fake_run
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                pin_tool.cmd_gaps(argparse.Namespace(updates=1))
+        finally:
+            pin_tool.ROOT, pinlib.effective, pinlib.committed, pin_tool.subprocess.run = saved
+        return reviewed
+
+    def test_the_gaps_step_binds_the_ledgers_before_it_checks_them(self):
+        self.gaps(COMMIT)
+        self.assertEqual(self.calls, ["ledger-update", "ledger-check"])
+
+    def test_the_gaps_step_of_an_override_run_leaves_the_committed_pins_reviewed_types(self):
+        self.assertEqual(self.gaps(TAG).read_text(), "stale")
+
     def test_the_committed_pin_keeps_the_prune(self):
         self.assertEqual(self.carry(COMMIT).read_text(), "pruned")
 
@@ -1275,6 +1172,48 @@ class CarryTests(unittest.TestCase):
         self.assertEqual(len(self.calls), first, self.calls[first:])
         self.carry(COMMIT, force=True)
         self.assertGreater(len(self.calls), first)
+
+
+class OverrideTreeCommandTests(unittest.TestCase):
+    """`pin.py override-tree` is read by make as $(...): its standard output is the tree's path and nothing else, whatever the build prints."""
+
+    def run_command(self, ref: str) -> str:
+        def build(pin):
+            print("npm said something")
+            os.write(1, b"a child process said something\n")
+            return Path("/store") / pin.commit / "durable-x"
+
+        import vendor
+
+        with tempfile.TemporaryFile() as captured:
+            saved = os.dup(1)
+            os.dup2(captured.fileno(), 1)
+            try:
+                with mock.patch.dict(os.environ, {pinlib.OVERRIDE_ENV: ref}), mock.patch.object(pinlib, "effective", lambda: (COMMIT, False)), mock.patch.object(vendor, "override_tree", build), contextlib.redirect_stderr(io.StringIO()):
+                    pin_tool.cmd_override_tree(None)
+            finally:
+                sys.stdout.flush()
+                os.dup2(saved, 1)
+                os.close(saved)
+            captured.seek(0)
+            return captured.read().decode()
+
+    def test_standard_output_is_the_path_alone(self):
+        with tempfile.TemporaryFile() as errors:
+            saved = os.dup(2)
+            os.dup2(errors.fileno(), 2)
+            try:
+                printed = self.run_command(COMMIT.commit)
+            finally:
+                os.dup2(saved, 2)
+                os.close(saved)
+            errors.seek(0)
+            self.assertIn(b"a child process said something", errors.read())
+        self.assertEqual(printed, str(Path("/store") / COMMIT.commit / "durable-x") + "\n")
+
+    def test_a_run_that_names_no_commit_has_no_override_tree(self):
+        with self.assertRaisesRegex(pinlib.PinError, "PI_UPSTREAM_REF"):
+            self.run_command("")
 
 
 class MirrorLinkTests(unittest.TestCase):

@@ -167,16 +167,21 @@ func TestRewriteRecordIdentity(t *testing.T) {
 func TestDerivedOpenRouterVariantsAreBuiltOnce(t *testing.T) {
 	bases := piListedModels(ListModels("openrouter"))
 	count := func() int {
+		held := 0
+		if bundle := derivedVariants.bundle.Load(); bundle != nil {
+			held = len(bundle.models) - len(bundle.source)
+		}
 		derivedVariants.RLock()
 		defer derivedVariants.RUnlock()
-		return len(derivedVariants.byKey)
+		return held + len(derivedVariants.byKey)
 	}
 	first := count()
 	if first < len(bases)*len(OpenRouterRoutingVariants) {
 		t.Fatalf("%d derived variants held after a list of %d bases", first, len(bases))
 	}
+	bundle := derivedVariants.bundle.Load()
 	allocs := testing.AllocsPerRun(5, func() { _ = ListModels("openrouter") })
-	if second := count(); second != first {
+	if second := count(); second != first || derivedVariants.bundle.Load() != bundle {
 		t.Errorf("a second list holds %d derived variants, the first held %d", second, first)
 	}
 	// Copying held entries costs the two lists it builds, not the 2,661 deriving every variant took.
@@ -185,10 +190,7 @@ func TestDerivedOpenRouterVariantsAreBuiltOnce(t *testing.T) {
 	}
 	spec := "openrouter/" + bases[0].ID + ":nitro"
 	got, _ := LookupModelExact(spec)
-	derivedVariants.RLock()
-	held := derivedVariants.byKey[derivedVariantKey{bases[0].ID, "nitro"}]
-	derivedVariants.RUnlock()
-	if got != &held.entry {
+	if held := bundle.variant(&bases[0], "nitro"); held == nil || got != held {
 		t.Error("a lookup returns an entry other than the held one")
 	}
 }

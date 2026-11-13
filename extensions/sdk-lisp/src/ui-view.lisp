@@ -188,16 +188,33 @@ cancels a cancellable intent; an answer after that is dropped. A later call repl
     (when error (setf (gethash "error" result) error))
     result))
 
-(def-state-hook "ui-view" (ext state)
-  ;; every state is a full snapshot, so an absent uiAbilities clears the replica
-  (let ((abilities (jget state "uiAbilities")))
-    (sb-thread:with-mutex ((extension-view-lock ext))
-      (setf (extension-view-abilities ext) (and (hash-table-p abilities) abilities)))))
+(defun on-view-abilities (ext handler)
+  "Run HANDLER, (lambda (ctx abilities)), when what the attached client draws changed: the first client attached, the abilities changed, or the
+last client left (ABILITIES is NIL; a client that draws no slot is an object whose \"slots\" is empty). It is where an extension mounts its
+views for a client that arrives while the session is idle, and stops work no client can see. HANDLER receives the abilities of the change it is
+delivered for, and CTX-VIEW-ABILITIES already reports them when it runs, so a mount it makes is checked against that client. The state an
+extension starts in is not a change: an extension loaded while a client is attached reads CTX-VIEW-ABILITIES at session_start. A session no
+client attaches to never runs HANDLER. Handlers run in registration order on a worker thread, one change at a time in the order the changes
+arrived, never on the thread that reads the host's replies, so a handler can make a blocking host call; the host does not wait for them, and one
+that signals is reported in the extension's log and does not stop the others."
+  (unless (functionp handler) (error "on-view-abilities requires a function"))
+  (kit-feed-subscribe (kit-state-abilities-feed (kit-state ext)) (lambda (abilities) (funcall handler (make-ctx ext) abilities)))
+  ext)
 
-(def-ready-hook "ui-view" (ext ready)
-  (let ((abilities (jget (jget ready "state") "uiAbilities")))
-    (sb-thread:with-mutex ((extension-view-lock ext))
-      (setf (extension-view-abilities ext) (and (hash-table-p abilities) abilities)))))
+(defun view-apply-state (ext state)
+  "Replace the replicated client abilities with the uiAbilities member of STATE, a whole state (an absent member is no client), and deliver them
+to the ON-VIEW-ABILITIES handlers when they differ from the ones the state before carried. The first state is where the extension starts."
+  (when (hash-table-p state)
+    (let ((abilities (let ((member (jget state "uiAbilities"))) (and (hash-table-p member) member)))
+          (changed nil))
+      (sb-thread:with-mutex ((extension-view-lock ext))
+        (setf changed (and (extension-view-abilities-known ext) (not (ts-json-equal (extension-view-abilities ext) abilities)))
+              (extension-view-abilities ext) abilities
+              (extension-view-abilities-known ext) t))
+      (when changed (kit-feed-publish ext (kit-state-abilities-feed (kit-state ext)) abilities)))))
+
+(def-state-hook "ui-view" (ext state) (view-apply-state ext state))
+(def-ready-hook "ui-view" (ext ready) (view-apply-state ext (jget ready "state")))
 
 (def-request "ui.view.intent" (ext ctx req)
   (let ((handler (sb-thread:with-mutex ((extension-view-lock ext)) (extension-view-intent-handler ext))))

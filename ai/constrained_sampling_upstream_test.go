@@ -65,15 +65,21 @@ func TestConstrainedSamplingConversionUpstream(t *testing.T) {
 	}
 }
 
-// .upstream/v0.87.1/packages/ai/test/constrained-sampling.test.ts:156 — all four unsupported-schema rows, including wire fallback.
+// .upstream/v0.87.1/packages/ai/test/constrained-sampling.test.ts:156 — the unsupported-schema rows, including wire fallback.
+// The last three rows are Pi 406e719a6bff (#12049, post-v1.5.2): OpenAI strict mode rejects a schema node without a type, so such a tool
+// falls back to non-strict for "prefer" and fails locally for "require". Their schemas are the Type.Optional(Type.Array(Type.Unknown())),
+// Type.Any({ description }) and bare-const schemas of that test, as TypeBox serializes them.
 func TestConstrainedSamplingUnsupportedSchemasUpstream(t *testing.T) {
-	for _, tc := range []struct{ schema, message string }{
-		{`{"type":"object","properties":{"metadata":{"type":"object","properties":{},"additionalProperties":{"type":"string"}}},"required":["metadata"]}`, "additionalProperties is unsupported"},
-		{`{"type":"object","allOf":[{"type":"object","properties":{"a":{"type":"string"}},"required":["a"]},{"type":"object","properties":{"b":{"type":"number"}},"required":["b"]}]}`, "allOf schemas are unsupported"},
-		{`{"type":"object","properties":{"value":{"anyOf":[{"type":"object","properties":{"nested":{"type":"string"}},"required":["nested"]},{"type":"null"}]}},"required":["value"]}`, "object and array unions are unsupported"},
-		{`{"type":"object","properties":{"child":{"$ref":"https://example.com/child.json"}},"required":["child"]}`, "$ref schemas are unsupported"},
+	for _, tc := range []struct{ name, schema, message string }{
+		{"additionalProperties", `{"type":"object","properties":{"metadata":{"type":"object","properties":{},"additionalProperties":{"type":"string"}}},"required":["metadata"]}`, "additionalProperties is unsupported"},
+		{"allOf", `{"type":"object","allOf":[{"type":"object","properties":{"a":{"type":"string"}},"required":["a"]},{"type":"object","properties":{"b":{"type":"number"}},"required":["b"]}]}`, "allOf schemas are unsupported"},
+		{"object union", `{"type":"object","properties":{"value":{"anyOf":[{"type":"object","properties":{"nested":{"type":"string"}},"required":["nested"]},{"type":"null"}]}},"required":["value"]}`, "object and array unions are unsupported"},
+		{"$ref", `{"type":"object","properties":{"child":{"$ref":"https://example.com/child.json"}},"required":["child"]}`, "$ref schemas are unsupported"},
+		{"array of unknown items", `{"type":"object","properties":{"commandArguments":{"type":"array","items":{}}}}`, "schemas without a type are unsupported"},
+		{"any", `{"type":"object","required":["value"],"properties":{"value":{"description":"Any JSON value"}}}`, "schemas without a type are unsupported"},
+		{"bare const", `{"type":"object","properties":{"mode":{"const":"fast"}},"required":["mode"]}`, "schemas without a type are unsupported"},
 	} {
-		t.Run(tc.message, func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
 			var parameters map[string]any
 			if err := json.Unmarshal([]byte(tc.schema), &parameters); err != nil {
 				t.Fatal(err)
@@ -97,6 +103,21 @@ func TestConstrainedSamplingUnsupportedSchemasUpstream(t *testing.T) {
 				t.Fatalf("require=%v", err)
 			}
 		})
+	}
+}
+
+// .upstream/main packages/ai/test/constrained-sampling.test.ts (Pi 406e719a6bff, #12049) "keeps strict mode for enum-only schemas": OpenAI and
+// Anthropic strict mode accept an enum without a type, so a node with only an enum stays strict.
+func TestConstrainedSamplingKeepsStrictForEnumOnlySchemasUpstream(t *testing.T) {
+	parameters := map[string]any{"type": "object", "required": []any{"level"}, "properties": map[string]any{"level": map[string]any{"enum": []any{"low", "high"}}}}
+	tool := sampleGrammarTool(&ConstrainedSamplingConfig{Type: "json_schema", Strict: "prefer"})
+	tool.Parameters = parameters
+	if _, typed := parameters["properties"].(map[string]any)["level"].(map[string]any)["type"]; typed {
+		t.Fatal("the enum node has a type")
+	}
+	converted, err := (&openAIResponsesProvider{}).convertTools([]ToolSchema{tool}, true, false)
+	if err != nil || len(converted) != 1 || string(converted[0].Strict) != "true" {
+		t.Fatalf("converted=%#v error=%v", converted, err)
 	}
 }
 

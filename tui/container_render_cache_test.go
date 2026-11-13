@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
@@ -291,7 +292,12 @@ func productionFullscreenDocumentBytesPerFrame(messages int) uint64 {
 	return fixedAllocatedBytesPerCall(64, func() []string { return document.renderBorrowed(100) })
 }
 
+// The figures are TotalAlloc growth, which counts every goroutine of the process: one that an earlier test left running adds its own
+// allocation to a frame's share (a few KB per frame is the whole margin). The test counts in a process of its own (testenv.InOwnProcess).
 func TestContainerRenderAllocationDoesNotScaleWithProductionHistory(t *testing.T) {
+	if !testenv.InOwnProcess(t) {
+		return
+	}
 	mainSmall := productionMainScreenBytesPerFrame(16)
 	mainLarge := productionMainScreenBytesPerFrame(2048)
 	fullSmall := productionFullscreenDocumentBytesPerFrame(16)

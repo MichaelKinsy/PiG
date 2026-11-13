@@ -9,8 +9,8 @@ export default function rpcUIViewExtension(pi) {
   ];
   let shown;
 
-  // view-try reports what a mount returned. With PIG_TEST_VIEW_MOUNT unset it makes no view call at all, so two sessions
-  // that differ only in that variable differ only in the reported code.
+  // view-try reports what a mount returned. With PIG_TEST_VIEW_MOUNT unset it makes no view call at all and registers no
+  // abilities handler, so two sessions that differ only in that variable differ only in the reported code.
   pi.registerCommand("view-try", {
     description: "Report the result of a mount",
     handler: async (_args, ctx) => {
@@ -48,15 +48,41 @@ export default function rpcUIViewExtension(pi) {
     },
   });
 
-  pi.registerCommand("view-notices", {
-    description: "Report the notices of the mounted view",
+  // view-redraw mounts a panel whose intent is answered by a handler that redraws the panel first.
+  const redraw = [{ name: "fx.redraw", arg: { type: "object", properties: { n: { type: "integer" } }, required: ["n"] }, answer: { type: "object", properties: { rev: { type: "integer" } }, required: ["rev"] } }];
+  pi.registerCommand("view-redraw", {
+    description: "Mount a view whose intent redraws it",
     handler: async (_args, ctx) => {
-      const notices = await ctx.ui.viewDiagnostics("show");
+      await ctx.ui.mountView({ key: "redraw", slot: "panel", view: text("redrawn-0"), intents: redraw });
+    },
+  });
+
+  // The abilities handler. PIG_TEST_VIEW_ARRIVE=mount mounts a view for the client that arrived; =block never returns.
+  // With PIG_TEST_VIEW_MOUNT=1 alone it is registered and, in a session no client attaches to, never runs.
+  const arrive = process.env.PIG_TEST_VIEW_ARRIVE;
+  if (arrive || process.env.PIG_TEST_VIEW_MOUNT === "1") {
+    pi.onViewAbilities(async (abilities, ctx) => {
+      ctx.ui.notify(`view-arrive:${abilities ? "client" : "none"}`, "info");
+      if (!abilities) return;
+      if (arrive === "block") await new Promise(() => {});
+      if (arrive === "mount") await ctx.ui.mountView({ key: "arrived", slot: "panel", view: text(`arrived-${ctx.ui.viewAbilities().limits.intentArgBytes}-${abilities.slots.join("+")}`) });
+    });
+  }
+
+  pi.registerCommand("view-notices", {
+    description: "Report the notices of a mounted view (the argument names its key; show by default)",
+    handler: async (args, ctx) => {
+      const notices = await ctx.ui.viewDiagnostics(args.trim() || "show");
       ctx.ui.notify(`view-notices:${notices.map((n) => `${n.code}/${n.severity}/${n.message ?? ""}`).join(",")}`, "info");
     },
   });
 
   pi.onViewIntent(async (inv, ctx) => {
+    if (inv.intent === "fx.redraw") {
+      // Change, redraw, answer: the update is made inside the answer, with no delay.
+      const st = await ctx.ui.updateView({ ...inv.mount, rev: inv.rev }, { view: text(`redrawn-${inv.arg.n}`), intents: redraw });
+      return { outcome: "done", answer: { rev: st.mount.rev } };
+    }
     if (inv.intent === "fx.add") return { outcome: "done", answer: { sum: inv.arg.n + (ctx.ui.viewAbilities()?.limits.intentArgBytes ?? 0) } };
     if (inv.intent === "fx.wait") {
       ctx.ui.notify(`intent-started:${inv.arg.tag}`, "info");

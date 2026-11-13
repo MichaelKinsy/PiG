@@ -474,6 +474,8 @@ Export one Pi-compatible default extension function. Pig packs Node factories in
 
 Use `@michaelkinsy/pig-extension-types` during development when the extension uses a PiG-only API such as `ui.setLogin`. The declaration package pins the exact Pi version from `coding.UpstreamVersion`; it does not provide a second runtime implementation. See `extensions/sdk-ts/README.md`.
 
+A project that imports `@michaelkinsy/pig-extension-types` type-checks `@earendil-works/pi-coding-agent`, `pi-ai`, `pi-tui` and `pi-agent-core` against the Pi build PiG is pinned to, not against the installed release: the package's `pi-pin.d.ts` declares them, and no `tsconfig` entry is needed. The pin can be past the published release, so a member the pin has and the release lacks exists only in PiG, and an extension that uses it does not run on that Pi release. The comment at the top of `node_modules/@michaelkinsy/pig-extension-types/pi-pin.d.ts` lists those members.
+
 ## Contributing an OAuth provider
 
 Register OAuth only through the runtime provider declaration. `pig login --list` resolves enabled extensions. For each source extension without a valid projection for its exact source configuration and immutable artifact digest, Pig starts it for registration inspection, collects OAuth provider declarations, and stops it without dispatching session or capability handlers. A valid projection avoids startup. Embedded packed members are inspected independently through the complete compiled artifact. Duplicate provider IDs fail and name both owners. Login then starts only the owning extension. Embedded and fused extensions use the same registration contract.
@@ -594,7 +596,7 @@ An extension that draws the model's thinking itself, for example in an activity 
 
 An extension can mount a view in a slot that the attached client draws, update it, and answer the user's intents. The view is a
 D107 view, so every SDK builds it with its kit. No client is attached by default: read the abilities first and mount only if
-there are any.
+there are any, and mount when a client arrives (step 12).
 
 1. `ctx.ViewAbilities()` (Go), `ctx.view_abilities()` (Python), `ctx.view_abilities()` (Rust), `ctx-view-abilities` (Lisp) or
    `ctx.ui.viewAbilities()` (Node) returns what the client draws: slots, node kinds, markdown, image formats, limits and input.
@@ -634,15 +636,51 @@ there are any.
 10. Read what went wrong with `ViewDiagnostics(key)`, `view_diagnostics`, `view_diagnostics`, `ctx-view-diagnostics` or
     `ctx.ui.viewDiagnostics`: the notices of a mount say which update the host rejected, which intent it ended and what a client
     could not draw. The host keeps 32 notices for a mount and counts repeats.
-11. Give the mount a `title` (Go `ViewContent.Title`, Python and Lisp the `title` keyword, Rust `ViewMount.title` and
+11. On a click: change, redraw, answer. An update your handler makes to the mount its intent came from belongs to the answer:
+    the intent settles `done`, and the client is sent the new view before it is told the intent is done. Make the update through
+    the context the handler was given (`in.Context`, `inv.context`, the handler's `ctx`) and wait for it before you answer. Use no
+    timer and no delay. Hide, show, finish and remove never make an answer stale, so a handler may close its own panel and answer
+    `done`. A change that is not the handler's still settles the intent `stale`: your own background work that updates the mount
+    while the handler answers, another intent's handler, or a context kept from another request.
+
+    ```js
+    pi.onViewIntent(async (inv, ctx) => {
+      if (inv.intent !== "counter.add") return { outcome: "refused", error: "unknown intent" };
+      count += inv.arg.by;
+      mount = (await ctx.ui.updateView(mount, { view: view(), intents })).mount;
+      return { outcome: "done", answer: { count } };
+    });
+    ```
+
+12. Mount when a client arrives. Register one handler while the extension loads: `pi.onViewAbilities((abilities, ctx) => ...)`
+    (Node), `ext.OnViewAbilities(func(ctx sdk.Context, abilities *sdk.ViewAbilities))` (Go), `ext.on_view_abilities(handler)` with
+    `handler(abilities, ctx)` (Python), `ext.on_view_abilities(|ctx, abilities| ...)` (Rust), `(on-view-abilities ext (lambda (ctx
+    abilities) ...))` (Lisp). It runs when the first client attaches, when the abilities change and when the last client leaves.
+    The value is what `viewAbilities()` returns at that moment: nil, None, `null` or NIL for no client, and a record with an empty
+    `slots` for a client that draws no slot. With several clients attached it is the merge of their abilities, and the handler
+    runs when the merge changes: a client that attaches or leaves without changing it causes no event. A client inside the
+    process and a client on RPC mode's lines are the same to you. A mount made in the handler succeeds, so a client that attaches to an idle session is
+    shown your view without a prompt; when the value is absent, stop the work no client can see. The handler does not run for the
+    state the extension starts in (read `viewAbilities()` at `session_start` for a client that was attached before you loaded)
+    and never runs in a session no client attaches to. Handlers run one change at a time, in order; the host does not wait for
+    them, and an error in one is written to the extension's log.
+
+    ```js
+    pi.onViewAbilities(async (abilities, ctx) => {
+      if (!abilities) return stopTicking();
+      if (!mount && abilities.slots.includes("panel")) mount = (await ctx.ui.mountView({ key: "counter", slot: "panel", view: view(), intents })).mount;
+    });
+    ```
+
+13. Give the mount a `title` (Go `ViewContent.Title`, Python and Lisp the `title` keyword, Rust `ViewMount.title` and
     `ViewUpdate.title`, Node the `title` member): at most 64 bytes on one line. A client labels the mount with it, in a tab or a
     list of views. It is content, so send it again with every update; an update without it clears it.
-12. Let the user open a view you hid. Declare one intent with `whenHidden` (Go `WhenHidden`, Python `when_hidden`, Rust
+14. Let the user open a view you hid. Declare one intent with `whenHidden` (Go `WhenHidden`, Python `when_hidden`, Rust
     `when_hidden`, Lisp `:when-hidden`, Node `whenHidden`): no `nodeKey`, and an argument shape that accepts `{}`. It is the one
     intent a hidden mount takes. A client lists your hidden mount by its title, and when the user chooses it your handler gets
     that intent: call `ShowView`, after an update if the view is out of date. A hidden mount without such an intent is not
     offered to the user.
-13. Show a view from a tool. Register a tool of your own (for example `mail_show`); its handler mounts the view, or shows and
+15. Show a view from a tool. Register a tool of your own (for example `mail_show`); its handler mounts the view, or shows and
     updates it, from the context it is given. To ask for the keyboard too, put `request: "update"` on one `focus` record of that
     update (`request: "mount"` asks when the mount is first drawn). Send it only with the update that should move the focus,
     because every revision that carries it asks again. The client decides: it shows the view where it can, and when it does not
@@ -682,7 +720,8 @@ check the abilities and keep a fallback such as a widget or a notice.
 - One intent per mount runs at a time. Redraw the view from the handler to show what it did; an activation made before your
   answer arrived is dropped.
 
-Conformance: `TestConformance_UIViewMounts`, `TestConformance_UIViewExtras` and `TestConformance_UIViewToolShowsAndFocuses` run the
+Conformance: `TestConformance_UIViewMounts`, `TestConformance_UIViewExtras`, `TestConformance_UIViewAnswerRedraw`,
+`TestConformance_UIViewAbilitiesEvent`, `TestConformance_UIViewToolShowsAndFocuses` and `TestConformance_UIViewBindings` run the
 same probes in every SDK against the host, and `docs/additive-features.md` D614 lists the records.
 
 ## Adding a new extension API surface

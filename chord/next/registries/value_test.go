@@ -5,6 +5,7 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+	"time"
 	"weak"
 
 	"github.com/MichaelKinsy/PiG/chord"
@@ -16,20 +17,9 @@ import (
 
 // pi: packages/chord/src/registries/value.ts
 // Ports the registry-layer behavior of packages/chord/test/registries/value.test.ts that does not need a host,
-// driven on RegistryRecord.Value(version) as `host.registry` and `self.registry` read it.
-//
-// Pending on the host (and contracts, documents, store) lanes, with their upstream case names: "older readers (S2)":
-// "without a value mapping, and for a reader newer than the provider, park readers failed { waiting }" (`host.hold`,
-// `host.registry` readyTimeout), "never hands out a mapped native whose contributor failed and closed it" (`self.open`,
-// `self.follow`), "drops an older reader's last good mapping after a contributor it was built from failed live"
-// (`self.follow`); "readers (S3)": all five ("activate once the registry has a value ... parks failed { waiting }",
-// "a reader parked on a first `compose` that threw", "host.registry before the publication", "host.registry waits
-// through no value", "once live, a later throwing `compose` changes nothing for the reader"; `host.hold`,
-// `host.get`, `host.registry`); "readers' memory" ("an ended reader is collected", ChordObject attempts);
-// "values' memory": "keeps no old composition once its readers stopped waiting and nobody follows it (Opus)"
-// (attempts waiting on `self.registry`), and the host half of "a value an app keeps after `host.close` keeps no closed
-// host" (the weak reference to the host); "observe": the abort of `withCancel` (`context` cancellation is the state
-// lane's FollowedSource.Observe). The record-level halves are below.
+// driven on RegistryRecord.Value(version) as `host.registry` and `self.registry` read it. The cases that run a loaded host
+// with plugins are host/host_registry_readers_test.go's (the readers, their memory, the older readers that need
+// `self.follow`, and the host half of "a value an app keeps after `host.close`"); the record-level halves are below.
 
 type sumValue struct{ total int }
 
@@ -50,12 +40,19 @@ func total(table registries.RegistryTable[int], _ registries.ComposeContext) (su
 type observed struct {
 	calls []chord.NativeWatchCall[any]
 	ends  []chord.WatchEnd
+	// aborted, when set, is closed when the observation ended as aborted.
+	aborted chan struct{}
 }
 
 func (o *observed) Advance(call chord.NativeWatchCall[any], _ context.Context) {
 	o.calls = append(o.calls, call)
 }
-func (o *observed) End(end chord.WatchEnd) { o.ends = append(o.ends, end) }
+func (o *observed) End(end chord.WatchEnd) {
+	o.ends = append(o.ends, end)
+	if end.Kind == chord.WatchAborted && o.aborted != nil {
+		close(o.aborted)
+	}
+}
 
 // waiter is a parked attempt or a waiting `host.registry`.
 type waiter struct {
@@ -420,8 +417,10 @@ func TestObserve(t *testing.T) {
 		label := newCell("a")
 		contribute(e, Labels, "@app/labels", "app.label", label.native())
 		value := record.Value(1)
-		observer := &observed{}
-		observation, err := value.Observe(observer, context.Background())
+		observer := &observed{aborted: make(chan struct{})}
+		cancellable, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		observation, err := value.Observe(observer, cancellable)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -433,6 +432,18 @@ func TestObserve(t *testing.T) {
 		if len(observer.calls) != 1 || observer.calls[0].Kind != chord.WatchCallValue || observer.calls[0].Value != "b" {
 			t.Fatalf("calls = %#v", observer.calls)
 		}
+		// Cancelling the observation's context ends it as aborted (Go delivers the end from the cancellation's own goroutine: wait for
+		// it), and a later composition calls it no more.
+		cancel()
+		select {
+		case <-observer.aborted:
+		case <-time.After(10 * time.Second):
+			t.Fatal("the observer was not ended after its context was cancelled")
+		}
+		label.set(e, "c", nil)
+		if len(observer.calls) != 1 || len(observer.ends) != 1 || observer.ends[0].Kind != chord.WatchAborted {
+			t.Fatalf("after the cancellation: calls = %#v, ends = %#v, want the one value call and aborted", observer.calls, observer.ends)
+		}
 		again := &observed{}
 		detached, err := value.Observe(again, context.Background())
 		if err != nil {
@@ -440,12 +451,16 @@ func TestObserve(t *testing.T) {
 		}
 		detached.Detach()
 		label.set(e, "d", nil)
-		if len(again.calls) != 0 || len(observer.calls) != 2 {
-			t.Fatalf("a detached observer was called: %d/%d", len(again.calls), len(observer.calls))
+		if len(again.calls) != 0 || len(observer.calls) != 1 {
+			t.Fatalf("a detached or cancelled observer was called: %d/%d", len(again.calls), len(observer.calls))
+		}
+		last := &observed{}
+		if _, err := value.Observe(last, context.Background()); err != nil {
+			t.Fatal(err)
 		}
 		record.Close()
-		if len(observer.ends) != 1 || observer.ends[0].Kind != chord.WatchEnded {
-			t.Fatalf("ends = %#v", observer.ends)
+		if len(last.ends) != 1 || last.ends[0].Kind != chord.WatchEnded {
+			t.Fatalf("ends = %#v", last.ends)
 		}
 	})
 }

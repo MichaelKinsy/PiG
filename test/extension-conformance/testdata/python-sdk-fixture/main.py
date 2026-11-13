@@ -2402,7 +2402,78 @@ def new_extension() -> pig_sdk.Extension:
         st = ctx.view_state("probe2")
         ctx.notify(f"view-state:{st.state}:{st.reason}", "info")
 
+    # D614: the redraw panel and the abilities watcher, the same way in every SDK fixture (conformance TestConformance_UIViewAnswerRedraw and
+    # TestConformance_UIViewAbilitiesEvent).
+    def redraw_intents():
+        shape = pig_sdk.ViewShape
+        n = shape("object", properties={"n": shape("integer")}, required=("n",))
+        rev = shape("object", properties={"rev": shape("integer")}, required=("rev",))
+        return [pig_sdk.ViewIntent("fx.redraw", n, answer=rev), pig_sdk.ViewIntent("fx.foreign", n, answer=rev)]
+
+    # The context of the command that mounted the redraw panel: an update made through it is the extension's, not an intent handler's.
+    redraw_command: list = []
+
+    def view_redraw_probe(ctx, _args):
+        st = ctx.mount_view("redraw", "panel", kit.View(kit.Text("fixture-redraw-0")), intents=redraw_intents())
+        redraw_command.append(ctx)
+        ctx.notify(f"view-redraw:rev={st.mount.rev}", "info")
+
+    def view_redraw_intent(inv):
+        own = inv.intent == "fx.redraw"
+        ab = inv.context.view_abilities()
+        text = f"fixture-{'redraw' if own else 'foreign'}-{inv.arg['n'] + (ab.limits.intent_arg_bytes if ab else 0)}"
+        ctx = inv.context if own else redraw_command[-1]
+        try:
+            st = ctx.update_view(pig_sdk.ViewRef(inv.mount.key, inv.mount.epoch, inv.rev), kit.View(kit.Text(text)), intents=redraw_intents())
+        except pig_sdk.ViewError as err:
+            return pig_sdk.ViewIntentResult("failed", error=str(err))
+        return pig_sdk.ViewIntentResult("done", {"rev": st.mount.rev})
+
+    view_watch = {"armed": False, "block": False, "events": 0}
+    view_watch_release = threading.Event()
+
+    def describe_abilities(ab):
+        return f"slots={'+'.join(ab.slots)},mounts={ab.limits.mounts}" if ab else "none"
+
+    def view_abilities_changed(ab, ctx):
+        view_watch["events"] += 1
+        if not view_watch["armed"]:
+            return
+        if view_watch["block"]:
+            view_watch["block"] = False
+            ctx.notify("view-event-blocked", "info")
+            view_watch_release.wait()
+            view_watch_release.clear()
+            ctx.notify("view-event-released", "info")
+        if ab is None:
+            ctx.notify("view-event:none", "info")
+            return
+        same = describe_abilities(ab) == describe_abilities(ctx.view_abilities())
+        ctx.notify(f"view-event:{describe_abilities(ab)},same={'true' if same else 'false'}", "info")
+        try:
+            st = ctx.mount_view("arrived", "panel", kit.View(kit.Text(f"fixture-arrived-{ab.limits.mounts}")))
+            ctx.notify(f"view-arrived:{st.state}", "info")
+        except pig_sdk.ViewError as err:
+            ctx.notify(f"view-arrived:{err.code}", "info")
+
+    def view_watch_probe(ctx, _args):
+        view_watch["armed"] = True
+        ctx.notify("view-watch:armed", "info")
+
+    def view_block_probe(ctx, _args):
+        view_watch["block"] = True
+        ctx.notify("view-block:set", "info")
+
+    def view_release_probe(ctx, _args):
+        view_watch_release.set()
+        ctx.notify("view-release:done", "info")
+
+    def view_events_probe(ctx, _args):
+        ctx.notify(f"view-events:{view_watch['events']}", "info")
+
     def view_intent(inv):
+        if inv.intent in ("fx.redraw", "fx.foreign"):
+            return view_redraw_intent(inv)
         if inv.intent == "fx.reopen":
             # The user opened the hidden view: its handler shows it.
             inv.context.show_view(pig_sdk.ViewRef(inv.mount.key, inv.mount.epoch, inv.rev))
@@ -2582,6 +2653,12 @@ def new_extension() -> pig_sdk.Extension:
     ext.command("ui_view_cancelled", "Report the intent whose handler was cancelled", view_cancelled_probe)
     ext.command("ui_view_state", "Report the state of the second mount", view_state_probe)
     ext.on_view_intent(view_intent)
+    ext.command("ui_view_redraw", "Mount the panel whose intents redraw it", view_redraw_probe)
+    ext.command("ui_view_watch", "Arm the abilities watcher", view_watch_probe)
+    ext.command("ui_view_block", "Block the abilities watcher on its next event", view_block_probe)
+    ext.command("ui_view_release", "Release the blocked abilities watcher", view_release_probe)
+    ext.command("ui_view_events", "Report how often the abilities watcher ran", view_events_probe)
+    ext.on_view_abilities(view_abilities_changed)
     ext.command(
         "report_geometry",
         "Report observed terminal geometry",

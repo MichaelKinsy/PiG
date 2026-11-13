@@ -3,6 +3,7 @@ package uiview
 import (
 	"context"
 	"encoding/json"
+	"maps"
 	"strings"
 	"testing"
 )
@@ -77,9 +78,7 @@ func TestWhenHiddenIntentIsTheOnlyOneAHiddenMountTakes(t *testing.T) {
 	a := richAbilities()
 	open := func(extra map[string]any) map[string]any {
 		d := map[string]any{"name": "fx.open", "arg": map[string]any{"type": "object"}, "whenHidden": true}
-		for k, v := range extra {
-			d[k] = v
-		}
+		maps.Copy(d, extra)
 		return d
 	}
 	tap := map[string]any{"name": "fx.tap", "arg": map[string]any{"type": "object"}}

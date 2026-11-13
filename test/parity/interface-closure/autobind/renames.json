@@ -1126,7 +1126,6 @@
  "pkg:durable/codemode#CODEMODE_MODULE_VERSION": "durable/codemode/docs.go#ModuleVersion",
  "pkg:durable/codemode#CODEMODE_TOOL_NAME": "durable/codemode/docs.go#ToolName",
  "pkg:durable/codemode#CodemodeGlobal": "durable/codemode/tool.go#Global",
- "pkg:durable/codemode#CodemodeNamespace": "durable/codemode/describe.go#Namespace",
  "pkg:durable/codemode#CodemodeNestedCall": "durable/codemode/docs.go#NestedCall",
  "pkg:durable/codemode#CodemodeStoreDoc": "durable/codemode/docs.go#StoreDoc",
  "pkg:durable/codemode#CodemodeToolDetails": "durable/codemode/docs.go#ToolDetails",

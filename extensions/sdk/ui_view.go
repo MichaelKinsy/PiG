@@ -462,13 +462,24 @@ type ViewIntentResult struct {
 // ViewIntentHandler answers the intents of this extension's mounts.
 type ViewIntentHandler func(in ViewIntentInvocation) ViewIntentResult
 
+// ViewAbilitiesHandler receives what the attached client draws after it changed: the first client attached, the
+// abilities changed, or the last client left (abilities is nil).
+type ViewAbilitiesHandler func(ctx Context, abilities *ViewAbilities)
+
 type viewState struct {
 	mu        sync.RWMutex
 	abilities *ViewAbilities
-	handler   ViewIntentHandler
+	// raw is the uiAbilities member abilities was decoded from (nil: none), and known reports that the host sent a
+	// state, so a later different member is a change (viewAbilitiesFeed).
+	raw     []byte
+	known   bool
+	handler ViewIntentHandler
 }
 
-func (s *viewState) applyAbilities(raw json.RawMessage) {
+// applyAbilities replaces the replicated abilities with the uiAbilities member of a state snapshot and reports whether
+// they differ from the ones the snapshot before carried. The first snapshot is the state the extension starts in, not
+// a change.
+func (s *viewState) applyAbilities(raw json.RawMessage) (changed bool, abilities *ViewAbilities) {
 	var a *ViewAbilities
 	if len(raw) > 0 && string(raw) != "null" {
 		var v ViewAbilities
@@ -476,9 +487,54 @@ func (s *viewState) applyAbilities(raw json.RawMessage) {
 			a = &v
 		}
 	}
+	if a == nil {
+		raw = nil
+	}
 	s.mu.Lock()
-	s.abilities = a
-	s.mu.Unlock()
+	defer s.mu.Unlock()
+	changed = s.known && !bytes.Equal(s.raw, raw)
+	s.abilities, s.raw, s.known = a, bytes.Clone(raw), true
+	return changed, a
+}
+
+// clone returns a copy that shares no slice with a; nil stays nil.
+func (a *ViewAbilities) clone() *ViewAbilities {
+	if a == nil {
+		return nil
+	}
+	c := *a
+	c.Slots = append([]ViewSlot(nil), c.Slots...)
+	c.Nodes = append([]string(nil), c.Nodes...)
+	c.ImageFormats = append([]string(nil), c.ImageFormats...)
+	c.Claims = cloneViewClaims(c.Claims)
+	c.SlotClaims = append([]ViewSlotClaims(nil), c.SlotClaims...)
+	for i := range c.SlotClaims {
+		c.SlotClaims[i].Claims = cloneViewClaims(c.SlotClaims[i].Claims)
+	}
+	if c.Drawing != nil {
+		d := *c.Drawing
+		d.Profiles = append([]string(nil), d.Profiles...)
+		c.Drawing = &d
+	}
+	return &c
+}
+
+// OnViewAbilities registers a handler for changes of what the attached client draws: it runs when the first client
+// attaches, when the abilities change, and when the last client leaves (abilities is nil; a client that draws no slot
+// is a record with no slots). It is where an extension mounts its views for a client that arrives while the session is
+// idle, and stops work no client can see. The handler receives the abilities of the change it is delivered for, and
+// [Context.ViewAbilities] already reports them when it runs, so a mount it makes is checked against that client. The
+// state an extension starts in is not a change: an extension loaded while a client is attached reads
+// [Context.ViewAbilities] at session_start. A session no client attaches to never runs the handler.
+//
+// Handlers run in registration order on a goroutine of their own, one change at a time in the order the changes
+// arrived, never on the message loop, so a handler can make a blocking host call. The host does not wait for them. A
+// handler that panics is recovered and does not stop the others.
+func (e *Extension) OnViewAbilities(handler ViewAbilitiesHandler) {
+	if handler == nil {
+		panic("sdk: OnViewAbilities: handler must not be nil")
+	}
+	e.viewAbilitiesFeed.subscribe(func(ctx Context, abilities *ViewAbilities) { handler(ctx, abilities.clone()) })
 }
 
 // OnViewIntent registers the handler that answers the intents of this extension's mounts. A later call replaces it.
@@ -496,24 +552,7 @@ func (c Context) ViewAbilities() *ViewAbilities {
 	c.assertActive()
 	c.ext.views.mu.RLock()
 	defer c.ext.views.mu.RUnlock()
-	if c.ext.views.abilities == nil {
-		return nil
-	}
-	a := *c.ext.views.abilities
-	a.Slots = append([]ViewSlot(nil), a.Slots...)
-	a.Nodes = append([]string(nil), a.Nodes...)
-	a.ImageFormats = append([]string(nil), a.ImageFormats...)
-	a.Claims = cloneViewClaims(a.Claims)
-	a.SlotClaims = append([]ViewSlotClaims(nil), a.SlotClaims...)
-	for i := range a.SlotClaims {
-		a.SlotClaims[i].Claims = cloneViewClaims(a.SlotClaims[i].Claims)
-	}
-	if a.Drawing != nil {
-		d := *a.Drawing
-		d.Profiles = append([]string(nil), d.Profiles...)
-		a.Drawing = &d
-	}
-	return &a
+	return c.ext.views.abilities.clone()
 }
 
 func (c Context) encodeView(v kit.View) (any, error) {

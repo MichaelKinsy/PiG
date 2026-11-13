@@ -282,23 +282,45 @@ impl ViewIntentResult {
 pub(crate) type ViewIntentHandler =
     Box<dyn Fn(ViewIntentInvocation) -> ViewIntentResult + Send + Sync>;
 
+/// Runs when what the attached client draws changed; `None` is no client.
+pub(crate) type ViewAbilitiesHandler = Box<dyn Fn(&Context, Option<ViewAbilities>) + Send + Sync>;
+
+#[derive(Default)]
+struct ViewReplica {
+    abilities: Option<ViewAbilities>,
+    /// The `uiAbilities` member the abilities were decoded from (`None`: no client).
+    raw: Option<Value>,
+    /// Whether the host sent a state, so a later different member is a change.
+    known: bool,
+}
+
 /// The replicated abilities of one connection.
 #[derive(Default)]
 pub(crate) struct ViewState {
-    abilities: Mutex<Option<ViewAbilities>>,
+    replica: Mutex<ViewReplica>,
 }
 
 impl ViewState {
-    /// Applies a whole state snapshot: an absent `uiAbilities` clears them.
-    pub(crate) fn apply_state(&self, state: &Map<String, Value>) {
-        let next = state
-            .get("uiAbilities")
-            .and_then(|v| serde_json::from_value::<ViewAbilities>(v.clone()).ok());
-        *self.abilities.lock().unwrap() = next;
+    /// Applies a whole state snapshot: an absent `uiAbilities` clears them. Returns the new abilities when they differ
+    /// from the ones the snapshot before carried. The first snapshot is where the extension starts, not a change.
+    pub(crate) fn apply_state(&self, state: &Map<String, Value>) -> Option<Option<ViewAbilities>> {
+        let member = state.get("uiAbilities");
+        let next = member.and_then(|v| serde_json::from_value::<ViewAbilities>(v.clone()).ok());
+        let raw = if next.is_some() {
+            member.cloned()
+        } else {
+            None
+        };
+        let mut replica = self.replica.lock().unwrap();
+        let changed = replica.known && replica.raw != raw;
+        replica.abilities = next.clone();
+        replica.raw = raw;
+        replica.known = true;
+        changed.then_some(next)
     }
 
     pub(crate) fn abilities(&self) -> Option<ViewAbilities> {
-        self.abilities.lock().unwrap().clone()
+        self.replica.lock().unwrap().abilities.clone()
     }
 }
 
@@ -941,6 +963,39 @@ mod tests {
             .unwrap(),
             json!({"name": "y.go", "arg": {"type": "integer"}})
         );
+    }
+
+    #[test]
+    fn apply_state_reports_each_change_of_the_abilities_and_not_the_first_state() {
+        let state = ViewState::default();
+        let apply = |snapshot: Value| state.apply_state(snapshot.as_object().unwrap());
+        let client =
+            json!({"uiAbilities": {"slots": ["panel", "status"], "limits": {"mounts": 7}}});
+        assert!(
+            apply(client.clone()).is_none(),
+            "the first state is where the extension starts"
+        );
+        assert!(
+            apply(client.clone()).is_none(),
+            "an equal snapshot is not a change"
+        );
+        let left = apply(json!({"hasUI": true})).expect("the last client left: a change");
+        assert!(left.is_none(), "no client is None");
+        assert!(
+            apply(json!({"toolsExpanded": true})).is_none(),
+            "a session without a client reports no change"
+        );
+        let empty = apply(json!({"uiAbilities": {"slots": [], "limits": {"mounts": 7}}}))
+            .expect("a client that draws no slot: a change")
+            .expect("is a record, not None");
+        assert!(empty.slots.is_empty());
+        assert_eq!(empty.limits.mounts, 7);
+        let back = apply(client)
+            .expect("the abilities changed")
+            .expect("a record");
+        assert_eq!(back.slots, vec!["panel".to_string(), "status".to_string()]);
+        // The replica holds the change when the caller delivers it.
+        assert_eq!(state.abilities(), Some(back));
     }
 
     #[test]

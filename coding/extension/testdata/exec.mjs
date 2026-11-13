@@ -1,4 +1,4 @@
-// Run the installed Pi's execCommand (core/exec.ts) on seeded real commands, working directories, timeouts, maxBuffer caps and pre-aborted signals: output, exit code (a signal-killed child resolves as 0), the killed flag, a program or directory that cannot start (code 1) and arguments Node's spawn rejects.
+// Run the installed Pi's execCommand (core/exec.ts) on seeded real commands, working directories, timeouts, maxBuffer caps and pre-aborted signals: output, exit code (a signal-killed child resolves as 128 + the signal number), the killed flag, a program or directory that cannot start (code 1) and arguments Node's spawn rejects.
 import { readFileSync, realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 const root = realpathSync(new URL("../../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/", import.meta.url)) + "/";

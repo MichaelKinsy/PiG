@@ -3712,3 +3712,57 @@ Call-site markers: `tui/loader.go` (`requestStepRender`), `tui/tui.go` (`Request
 Evidence: `tui/render_within_test.go` (`TestRequestRenderWithinAsksForAFrameOnlyWhenNoneIsDrawn`, `TestFrameDrawnWithinTheDelayCarriesTheChange`, `TestRequestRenderWithinIsCoveredByAFrameAlreadyAskedFor`, `TestRequestRenderWithinDuringAFrameAsksForTheNextFrame`, `TestLoaderAnimationStepAsksForItsFrameWithin`, `TestLoaderTickStepAsksForNoFrame`, `TestCancelRenderWithinDropsTheWaitingStepFrame`) and `internal/codingagent/status_tick_within_test.go` (`TestStatusTickAsksForItsFrameWithinTheStepDelay`, `TestStatusTickDrawsAtOnceOnATUIThatCannotWait`, `TestRemovingTheIndicatorCancelsItsWaitingStepFrame`).
 
 Parity allowance: the frame count differs from Pi's on a streaming call (3,278 against 3,951 frames in 66 s of the `write:50` cell) and the final screen is identical; the frames of a spinner step that another frame draws are not written; the settled screen and every frame a request other than a spinner step asks for are Pi's.
+
+## D628 auth.json is read once per availability pass, where Pi stats it on every credential read
+
+What: Pi's `AuthStorage.readLatestData` stats the auth file on every credential read (`packages/coding-agent/src/core/auth-storage.ts:409`, `getFileRevision`). An availability refresh reads each provider's credential two or more times (`packages/ai/src/models.ts:729-738` `getAuthenticatedProviders`, `packages/coding-agent/src/core/model-runtime.ts:343-357` `runAvailabilityRefresh`); all of those reads run in one macrotask, so a write by another process lands before all of them or after all of them. The one writer that can land between them is an extension provider whose own auth check rewrites auth.json on disk during the synchronous part of that check: Pi's later reads of the same pass stat again and use the rewrite. PiG makes one revision check at the start of a pass and serves the whole pass from it, with or without extension providers (`ai.WithFileReadSnapshot`): the asynchronous availability refresh (`ModelRegistry.AvailabilityReadContext`) and the synchronous passes `ModelRegistry.GetAvailableModelData` and `ModelRegistry.AvailableProviderCount`. Such an on-disk rewrite is used by the next request and by the next pass, not by the rest of the pass it was made in.
+
+Unchanged: a write through the credential API in this process (`Modify`, `Delete`, a login, a logout, a token refresh) ends the view at once, and the reads of the same pass that follow it use the write. A `!command` key is evaluated on every read, and a store that holds one is statted on every read. A pass whose extension providers do not rewrite the file publishes what Pi's pass publishes. A request, a login, a logout and a single provider's check are not passes and make their own revision check. A file that becomes malformed or unreadable during a pass is reported by the next request and the next pass with the text they report when it breaks between two passes.
+
+Why: an interactive start made 455 revision stats (two synchronous passes of 126 to 131 each and one asynchronous pass of 176, in a fresh home with three models.json providers), 4 to 5 per provider; the built-in llama.cpp extension registers a provider in every start, so the earlier one-view rule, which excluded every pass with an extension provider, never applied to the start's refresh. With one check per pass the same start makes 19, one of them per pass.
+
+Pi bug: none; Pi's stat per read is correct, only costlier.
+
+Scope: `internal/codingagent` (`AvailabilityReadContext`, `GetAvailableModelData`, `AvailableProviderCount` and the auth helpers they call) and `ai` (`WithFileReadSnapshot`, `ReadRawCredential`). The models store's view (models-store.json) follows the same operation.
+
+Owner decision: owner approved 2026-11-12T18:45Z: "one auth.json check per pass, with a test that a write mid-pass is used by the next request".
+
+SCRUTINIZED:approved 2026-11-12
+
+Remove when: Pi reads its auth storage once per availability refresh, or an extension API exists through which a provider's check announces that it changed stored credentials, so the view can end there. The credential API already ends the view for writes made through it in this process; no API covers a check that writes the file itself.
+
+Call-site markers: `internal/codingagent/model_availability.go` (`AvailabilityReadContext`).
+
+Evidence: `coding/model_availability_auth_pass_test.go`: `TestExtensionCheckRewritingAuthFileIsUsedByNextRequest` (the divergent case: the pass publishes from the view of its start, the next request and the next pass use the rewrite), `TestAuthWriteDuringAvailabilityPassIsUsedByNextRequest` (another process writes during each kind of pass: an API key, an OAuth token refreshed elsewhere, an OpenAI-compatible provider with a custom base URL, a credential removed, a credential added; the next request succeeds or fails exactly as a process started over the new file), `TestCredentialAPIWriteDuringAvailabilityPassIsUsedByTheSamePass`, `TestAvailabilityPassStatsEveryReadAfterACommandKey`, `TestAvailabilityPassStatsEachAuthFileOnce` (at most one stat per auth file per pass), `TestBrokenAuthFileDuringAvailabilityPass`; `internal/codingagent/model_availability_read_context_test.go` (`TestAvailabilityReadContextGivesEveryPassOneAuthView`); `coding/model_availability_auth_view_test.go` (`TestAvailabilityPassAuthViewMatchesPiUpstream`: a pass without extension providers publishes what Pi publishes for a rewrite before, during and after it).
+
+Parity allowance: no parity scenario can make an extension provider's check rewrite auth.json between two credential reads of one pass, so no scenario pins the difference; `TestExtensionCheckRewritingAuthFileIsUsedByNextRequest` is its regression test. Every scenario of the oauth, model-runtime-store-catalog and startup families compares as before.
+
+## D631 A command run by `pi.exec` or the bash tool gets pipes for its output, where Pi gives it socket pairs
+
+What: Pi starts a command with Node's `spawn` and `stdio: ["ignore", "pipe", "pipe"]` (`packages/coding-agent/src/core/exec.ts:58-62`; the bash tool spawns the same way). On Linux and macOS libuv makes each such "pipe" a Unix socket pair (`uv_socketpair` in `uv__process_init_stdio`), so the command's stdout and stderr are sockets. PiG gives the command the write end of a pipe (`childwait.NewPipe`, `os.Pipe` on Unix). A command can tell the two apart, and two effects were measured (Linux container of the lane image, dash as `sh`, Pi 1.5.2 with the post-release backports, 96-CPU host xd6702):
+
+1. Reopening its own output. `sh -c 'echo x > /dev/stdout'` through `execCommand`: Pi resolves code 2, stdout empty, stderr `sh: 1: cannot create /dev/stdout: No such device or address` (a socket cannot be opened through `/proc/self/fd/1`, ENXIO); PiG resolves code 0, stdout `x`. Every run, both sides. The same holds for `/dev/stderr` and `/proc/self/fd/N`, so for `tee /dev/stderr`.
+2. The code of a command cut off at `maxBuffer` while it writes stdout. When the reader closes a socket that still holds unread data, the writer's next write fails once with ECONNRESET and raises no SIGPIPE; a pipe raises SIGPIPE at once. `sh -c 'exec yes'` over the cap: in Pi `yes` goes on to report `yes: standard output: Connection reset by peer` and exits 1 when it gets that far, is ended by Pi's SIGTERM while it reports (143), or its report meets the closed stderr (141). Pi's code was 1 in 257 of 3600 runs (7%) inside one Node process of 34800 calls and in 167 and 159 of 360 runs (46%, 44%) inside Node processes of 240 calls; of 1200 runs with stderr in a file, the 16 that ended 1 all held the full report and 664 of the 920 that ended 143 held its beginning. PiG's code was 141 in 3571 of 3600 runs and 143 in 29: never 1, and no report.
+
+Not measured: macOS. Expected there, as a guess: `/dev/stdout` is `/dev/fd/1`, which duplicates the descriptor instead of opening the file again, so effect 1 should not appear, and a write to a Unix socket whose peer closed gives EPIPE with SIGPIPE, so effect 2 should not appear either. Windows has named pipes on both sides and is not part of this record.
+
+
+Measured at the Node level, not tested through the tools: `pi.exec` gives the command no stdin on either side (`"ignore"`, `/dev/null`). The bash tool gives it one only when the shell takes the command from stdin (`packages/coding-agent/src/core/tools/bash.ts:129`), and Node's is then a socket pair too. Measured once with Node's `spawn` and a `"pipe"` stdin: `stat -L -c %F /proc/self/fd/0` prints `socket` and `cat /dev/stdin` fails with `cat: /dev/stdin: No such device or address`; through a pipe, which is what PiG's bash tool gives the shell, the same command prints `fifo` and reads the input. It is not one of this record's effects until a test on each side holds it.
+
+Why: a faithful port would make commands that work on Linux fail (`> /dev/stdout`, `tee /dev/stderr`), which no PiG user gains from. The cost of keeping pipes is that a command which fails under Pi for that reason succeeds under PiG, and that an exit code 1 which Pi shows in a share of cut-off runs never appears.
+
+Pi bug: none. The socket pair is libuv's choice for every Node child; Pi does not ask for it.
+
+Scope: `coding/extension` (`ExecCommand`, both output pipes) and `internal/codingagent/tools` (the bash tool's output pipe). Unix only.
+
+Owner decision: approved. The owner said "proceed with recommendations" (2026-11-12T23:22:43Z, owner decisions of 0.8.0), and the recommendation recorded there for this item is "D631 exec/bash child stdio: KEEP PIPES, record D631 as a numbered divergence with both effects locked by tests against the Pi oracle."
+
+SCRUTINIZED:approved 2026-11-12
+
+Remove when: PiG gives the commands of `pi.exec` and the bash tool socket pairs on Unix (stdin included where the bash tool gives one), or Node gives its children pipes.
+
+Call-site markers: `coding/extension/exec.go` (`ExecCommand`, the two `childwait.NewPipe` calls), `internal/codingagent/tools/bash_operations.go` (its `childwait.NewPipe` call).
+
+Evidence: `coding/extension/exec_socket_linux_test.go` (`TestExecCommandReopensItsOutputWherePiCannot`: both sides' code and text for effect 1 through Pi's `execCommand`; `TestExecCommandCutOffWriterMeetsSIGPIPEWherePisMeetsAReset`: effect 2, PiG's writer never reports a write error and never exits 1, and Pi's that ends 1 holds the reset report) and `coding/extension/exec_oracle_test.go` (`execSocketResetScript`, the mark that keeps Pi's codes for `exec yes` out of the comparison of the most frequent code).
+
+Parity allowance: for the commands above PiG's code and output differ from Pi's as stated; every other field of an `ExecResult` and every other command of the exec oracle (`TestExecCommandMatchesPi`) is Pi's.
