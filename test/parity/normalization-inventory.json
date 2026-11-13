@@ -97,7 +97,7 @@
     },
     {
       "source": "test/parity/testdata/test-faux-provider.ts",
-      "sha256": "7496298e10fbaeca1c41c905fb4380d271050fe5b9615b8e98e4dc79705a6a59",
+      "sha256": "63923fbc91a4b78cef37cef06bf2257dc1b4803af68e89ce3dcc85f6ca33b12f",
       "reason": "Canned followups exercise specific orchestration/rendering questions, not complete result metadata. Full RPC tool records and real-provider mode scenarios supply result acceptance independently of final prose."
     }
   ],
@@ -10833,6 +10833,24 @@
             "capture_end_regex": "COMMAND AFTER:[^\\n]*"
           },
           "reason": "Owned visible surface: An extension command typed while another one runs starts only after that one returned, as pi's prompt loop awaits each prompt().",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/startup/24-startup-model-scope-warning-in-chat.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Warning: No models match pattern",
+            "capture_end_regex": "─{10}"
+          },
+          "reason": "Owned visible surface: An unmatched model scope pattern is shown once as a chat warning at startup, as pi does.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
