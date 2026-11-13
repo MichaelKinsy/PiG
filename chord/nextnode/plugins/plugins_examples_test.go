@@ -685,7 +685,11 @@ func TestExample36PluginFailures(t *testing.T) {
 	if !reflect.DeepEqual(objects, wantObjects) {
 		t.Fatalf("3. objects: %v, want %v", objects, wantObjects)
 	}
-	// The summary's new code waited for the new `Price` object (parked at the report): it runs once that one is live.
+	// The summary's new code waits for the new `Price` object and runs once that one is live. Its fate above is `restarted`
+	// all the same: a restart reports what its readiness holds when the report is made (host.ts:1061), a cause only for a
+	// refused or failed request (readiness.ts:50), and it holds none here (the price object restarts in the same commit).
+	// Pi's main.ts:123 still says "parked at the report" (its wording from before Pi a5d209afd); the example prints
+	// `example.summary restarted`.
 	eventually(t, 15*time.Second, "the summary on price v2", func() bool {
 		text, _ := server.read("example.summary", "text", "str").(string)
 		return strings.HasPrefix(text, "price v2")
