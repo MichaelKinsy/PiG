@@ -441,7 +441,8 @@ func TestPageDefaultTokensHaveContrast(t *testing.T) {
 		["fg-muted","bg",4.5],["fg-muted","surface",4.5],["fg-muted","surface-2",4.5],["fg-muted","selected",4.5],
 		["accent","surface",4.5],["accent","bg",4.5],["accent","selected",4.5],["on-accent","accent",4.5],
 		["success","surface",4.5],["warning","surface",4.5],["error","surface",4.5],["error","bg",4.5],
-		["focus","surface",4.5],["focus","surface-2",4.5],["focus","bg",4.5]]`
+		["focus","surface",4.5],["focus","surface-2",4.5],["focus","bg",4.5],
+		["fg","surface-raised",4.5],["fg-muted","surface-raised",4.5],["accent","surface-raised",4.5],["focus","surface-raised",4.5],["error","surface-raised",4.5]]`
 	check := `(() => { const probe = document.body.appendChild(document.createElement("span"));
 		const rgb = (value) => { probe.style.color = value; return getComputedStyle(probe).color; };
 		const lum = (c) => { const [r, g, b] = c.match(/[\d.]+/g).slice(0, 3).map((v) => { v /= 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
@@ -690,6 +691,13 @@ func TestPageDrawsADialogMountAsADialog(t *testing.T) {
 	state := `(() => { const el = document.querySelector('[data-key="fx-a"]'); return [el.tagName, el.open, el.matches(":modal"), el.getAttribute("aria-label"), el.contains(document.activeElement) ? document.activeElement.dataset.node : document.activeElement.name].join(); })()`
 	if got, want := browser.String(state), "DIALOG,true,true,fixture-a / fx-a,q"; got != want {
 		t.Errorf("the dialog mount is %s, want %s", got, want)
+	}
+	// A dialog stands on the raised surface, a step above a card in the dark scheme.
+	face := `(() => { const probe = document.body.appendChild(document.createElement("span")); const faces = ["surface-raised", "surface"].map((name) => { probe.style.color = "var(--view-" + name + ")"; return getComputedStyle(probe).color; });
+		probe.remove(); return [getComputedStyle(document.querySelector('[data-key="fx-a"]')).backgroundColor === faces[0], faces[0] !== faces[1]].join(); })()`
+	browser.Emulate("prefers-color-scheme", "dark")
+	if got := browser.String(face); got != "true,true" {
+		t.Errorf("in the dark scheme: the dialog's face is the raised surface, the raised surface differs from a card's = %s, want true,true", got)
 	}
 	press(t, browser, "Escape", 0)
 	press(t, browser, "Escape", 0)

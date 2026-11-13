@@ -15,7 +15,7 @@
     --view-space: 8px; --view-col: 8px; --view-row: 16px;
     --view-radius: 8px; --view-radius-sm: 6px; --view-control: 32px;
     --view-motion: 150ms;
-    --view-bg: #f6f7f9; --view-surface: #ffffff; --view-surface-2: #eef0f3; --view-border: #d9dde3;
+    --view-bg: #f6f7f9; --view-surface: #ffffff; --view-surface-2: #eef0f3; --view-surface-raised: #ffffff; --view-border: #d9dde3;
     --view-fg: #1a1d21; --view-fg-muted: #5a6270;
     --view-accent: #2456d6; --view-on-accent: #ffffff; --view-selected: #e3ebfd; --view-focus: #2456d6;
     --view-success: #1a7f37; --view-warning: #8a5a00; --view-error: #c62b3b;
@@ -26,7 +26,7 @@
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --view-bg: #111315; --view-surface: #1b1e22; --view-surface-2: #262a30; --view-border: #343a43;
+      --view-bg: #111315; --view-surface: #1b1e22; --view-surface-2: #262a30; --view-surface-raised: #23272d; --view-border: #343a43;
       --view-fg: #e8eaed; --view-fg-muted: #a3abb8;
       --view-accent: #8ab0ff; --view-on-accent: #0c1a3a; --view-selected: #253454; --view-focus: #8ab0ff;
       --view-success: #5fd07f; --view-warning: #e6b450; --view-error: #ff8090;
@@ -88,7 +88,7 @@
   /* An intent that settled done with nothing to show is said to assistive technology and not drawn. */
   .mount > footer[data-outcome=done]:not([data-answer]) { position: absolute; width: 1px; height: 1px; margin: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   /* The dialog and the overlay slot: a dialog element over the page. */
-  dialog.mount { width: min(40rem, calc(100vw - 4 * var(--view-space))); max-height: calc(100vh - 8 * var(--view-space)); overflow: auto; box-shadow: var(--view-shadow-raised); }
+  dialog.mount { background: var(--view-surface-raised); width: min(40rem, calc(100vw - 4 * var(--view-space))); max-height: calc(100vh - 8 * var(--view-space)); overflow: auto; box-shadow: var(--view-shadow-raised); }
   dialog.mount::backdrop { background: var(--view-backdrop); }
   dialog.mount:not([open]) { display: none; }
   section[data-slot=overlay] dialog.mount { position: fixed; inset: 15% 0 auto 0; margin: 0 auto; z-index: 2; }

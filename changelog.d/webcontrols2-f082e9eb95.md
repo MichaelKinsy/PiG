@@ -7,3 +7,4 @@
 ### Changed
 
 - The reference web client draws a mount's `title` as the heading of its card; a mount without one keeps the small caption `<plugin> / <key>`. The page under a modal dialog is dimmed by the new token `--view-backdrop` (black at 20 % in the light scheme, 30 % in the dark one), a loader stands 8 px under the node before it, and under a panel taller than the window the prompt stays in sight at the window's lower edge.
+- The reference web client says less when a mount ends: nothing for a mount its extension finished or removed, and for a mount that broke one line by its title (`<title> closed: its extension stopped.`) that goes when the same key is mounted again, as after `/reload`. Before, it wrote `<plugin>/<key> <state> (<reason>)` for every end and kept the line; that form is now written only with `?debug`. A dialog stands on the new token `--view-surface-raised`, a step above a card in the dark scheme.

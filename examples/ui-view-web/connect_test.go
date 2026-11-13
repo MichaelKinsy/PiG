@@ -1077,7 +1077,7 @@ func TestConnectCutsAPageThatDoesNotRead(t *testing.T) {
 // TestPageFollowsARunningSession opens the page in headless Chromium (skipped where there is none) on a bridge that is
 // connected to a session: the page draws the board and has no prompt, a click raises the intent and the board
 // changes. When the extension ends, the page keeps its session: the broken mounts go from the page, each with a line
-// that says so, and the board mounted again is drawn once. When the session's host ends the board goes from the page,
+// that says so until its key is mounted again, and the board mounted again is drawn once. When the session's host ends the board goes from the page,
 // and with the next host the page shows what that one holds, each mount once, by its content and by the digest the
 // host gives.
 func TestPageFollowsARunningSession(t *testing.T) {
@@ -1133,11 +1133,15 @@ func TestPageFollowsARunningSession(t *testing.T) {
 	session := browser.String(`window.uiView.session`)
 	first.ownerGone()
 	browser.Wait(`document.querySelectorAll(".mount").length === 0 && window.uiView.mounts.size === 0`)
-	if got := browser.String(`[...document.querySelectorAll(".line.note")].map((line) => line.textContent).join("|")`); !strings.Contains(got, "plan/board broken") || !strings.Contains(got, "plan/note broken") {
-		t.Errorf("after the extension ended the page says %q, want a line for each broken mount", got)
+	notes := `[...document.querySelectorAll(".line.note")].map((line) => line.textContent).sort().join("|")`
+	if got, want := browser.String(notes), "board closed: its extension stopped.|note closed: its extension stopped."; got != want {
+		t.Errorf("after the extension ended the page says %q, want %q", got, want)
 	}
 	first.put("board", "panel", board("plan one again"))
 	browser.Wait(`document.querySelectorAll(".mount").length > 0`)
+	if got, want := browser.String(notes), "note closed: its extension stopped."; got != want {
+		t.Errorf("with the board mounted again the page says %q, want %q", got, want)
+	}
 	shows(first, map[string]string{"board": "plan one again"})
 	pick("Alpha item", "alpha")
 	shows(first, map[string]string{"board": "picked alpha"})

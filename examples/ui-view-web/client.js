@@ -45,6 +45,7 @@ function say(text, kind = "note") {
   line.textContent = text;
   chat.append(line);
   line.scrollIntoView({ block: "nearest" });
+  return line;
 }
 
 function post(command) {
@@ -229,15 +230,31 @@ function drop(key, mount, restore = true) {
   if (focused && restore) mount.restore?.focus();
 }
 
+// ended is what the page says when a mount ends. A mount its extension ended itself (finished, removed) goes from the
+// page without a word: the extension closed its own view. A mount that broke while it was on the page (its extension
+// stopped, or is being loaded again by a reload) leaves one line in the user's words, by the mount's title, and the
+// line goes when the same key is mounted again, as it is after a reload. With `?debug` the end is also written as the
+// carrier states it.
+const notices = new Map(); // plugin + "\n" + key -> the line of the mount that broke
+function ended(key, snapshot, held) {
+  const why = snapshot.reason ? ` (${snapshot.reason})` : "";
+  if (debug) say(`${snapshot.plugin}/${snapshot.mount.key} ${snapshot.state}${why}${snapshot.result === undefined ? "" : `: ${JSON.stringify(snapshot.result)}`}`);
+  if (snapshot.state !== "broken" || !held) return;
+  notices.get(key)?.remove();
+  notices.set(key, say(`${labelOf(held.snapshot)} closed${snapshot.reason === "owner_gone" ? ": its extension stopped" : why}.`));
+}
+
 function apply(snapshot) {
   const key = `${snapshot.plugin}\n${snapshot.mount.key}`;
   const held = mounts.get(key);
+  if (!["finished", "removed", "broken"].includes(snapshot.state) && notices.has(key)) {
+    notices.get(key).remove();
+    notices.delete(key);
+  }
   if (held?.tab && held.snapshot.state === "hidden" && snapshot.state !== "hidden") panels.chosen = key;
   if (["finished", "removed", "broken"].includes(snapshot.state)) {
     if (held) drop(key, held);
-    const why = snapshot.reason ? ` (${snapshot.reason})` : "";
-    const result = snapshot.result === undefined ? "" : `: ${JSON.stringify(snapshot.result)}`;
-    say(`${snapshot.plugin}/${snapshot.mount.key} ${snapshot.state}${why}${result}`);
+    ended(key, snapshot, held);
   } else if (held && held.snapshot.mount.epoch === snapshot.mount.epoch && snapshot.digest && held.snapshot.digest === snapshot.digest) {
     // The same content: nothing is drawn.
     held.snapshot = snapshot;
