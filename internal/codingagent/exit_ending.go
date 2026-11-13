@@ -26,7 +26,10 @@ package codingagent
 //  3. The emergency exit outranks the other exits. A path about to call os.Exit (BeforeExit) blocks behind a running
 //     emergency exit, so the status is Pi's 129, and otherwise waits for the line that is in flight, so os.Exit never
 //     overtakes the record.
-//  4. Flush before exit. The owner returns from RecordEnding only after the line is appended and closed, and a caller
+//  4. Extensions before the kill. The emergency exit gives extensions their signal shutdown (session_shutdown, reason
+//     "quit") after the record is on disk and before it kills their processes, for at most a second; an emission the
+//     signal goroutine started is joined inside that second, not cut (shutdownExtensionsBriefly).
+//  5. Flush before exit. The owner returns from RecordEnding only after the line is appended and closed, and a caller
 //     that lost the claim blocks until then.
 
 import "sync"

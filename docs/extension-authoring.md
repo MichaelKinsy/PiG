@@ -144,6 +144,12 @@ Detached Go work must have an owner that:
 
 A naked `go func()` with ignored error is not a valid translation of a Promise.
 
+### `session_shutdown` when the terminal goes away
+
+A closed terminal window, `tmux kill-session` or a dropped connection ends an interactive session with exit status 129. The extension still gets `session_shutdown` with the reason `quit` first, as on SIGTERM, SIGHUP and a normal quit, in every SDK and every realization. Write the last record there: the host waits for the handler before it stops the extension's process.
+
+The wait is one second, because nobody can see or stop a process whose terminal is gone. Do the flush first and keep it short; a handler that is still running after a second is cut. Do not use the terminal: `notify`, `setStatus` and widgets show nothing, and a dialog is never answered, so a handler that waits for one runs into the second. Files, sockets and child processes behave as usual. Pi runs the same handler when its SIGHUP handler runs, awaits it without a limit, and ends at once if anything writes to the dead terminal meanwhile (D186).
+
 ### UI and cancellation
 
 Upstream Promise-based dialogs (`select`, `confirm`, `input`, `editor`) map to blocking Go SDK calls because the handler is already off the host UI loop. In interactive mode that includes the `input` event: a handler registered for it runs on its own goroutine, one dispatch at a time, and the rest of the prompt path is applied on the owner loop when the handlers return. An input handler may therefore open a dialog and wait for the answer. With no `input` handler loaded there is nothing that can suspend the dispatch, and the prompt path stays synchronous, because several of the loop's guarantees are stated in terms of a submission being fully dispatched before the loop reads the next keystroke.

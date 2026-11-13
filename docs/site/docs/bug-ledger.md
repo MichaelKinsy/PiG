@@ -662,6 +662,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-5b15407](#bf-5b15407) | In-process extensions that call `pi.getCommands()` now receive the extension commands, prompt templates and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5b1d5b1](#bf-5b1d5b1) | A resource pattern that starts with `~` (`!~/claude-backup/skills/pdf`, `+~/…`, `-~/…`, wildcards) now… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5b36301](#bf-5b36301) | A Chord activation that waited at the host data gate while an import or delete ran no longer crashes the host… | PiG's own defect | All platforms | Unreleased |
+| [BF-5b36a5f](#bf-5b36a5f) | Closing the terminal of an interactive session (a closed window, `tmux kill-session`, a dropped connection)… | PiG's own defect | All platforms | Unreleased |
 | [BF-5b4a3d3](#bf-5b4a3d3) | A lazy line no longer continues a quote whose last quoted line is empty (`>\nnext` is an empty quote then a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5b637b1](#bf-5b637b1) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-5b8189f](#bf-5b8189f) | In RPC and print mode, a shutdown that has started now finishes | PiG's own defect | All platforms | Unreleased |
@@ -11001,6 +11002,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `5b36301b39` (2026-11-11)
 - **Tests:** `chord/next/documents/documents_test.go::TestHydrateOfDocumentsThatEndedWhileTheAttemptWaitedFailsReleasedAndReleasesItsPins`, `chord/next/host/host_host_data_test.go::TestHostDataAnActivationWaitingAtTheGateWhoseObjectEndedMeanwhileFailsReleased`, `chord/next/host/host_host_data_test.go::TestHostDataLifecycleADeleteAbortedAfterItsLinesWereTakenIsRefusedAtAdmissionAndWritesNothing`, `chord/next/host/host_host_data_test.go::TestHostDataLifecycleAnImportAbortedAfterItsLinesWereTakenIsRefusedAtAdmissionAndWritesNothing`
 - **Release note:** A Chord activation that waited at the host data gate while an import or delete ran no longer crashes the host when its object ended meanwhile (a reload that no longer serves the type, a close). Its documents were gone, and the activation dereferenced a missing slot. It now ends as Pi's does, as the abandonment of the ended object (Pi's `#broken` returns the abandonment before a failure), and releases the keys it pinned.
+
+### BF-5b36a5f
+
+**Closing the terminal of an interactive session (a closed window, `tmux kill-session`, a dropped connection)…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Closing the terminal of an interactive session (a closed window, `tmux kill-session`, a dropped connection) now gives extensions `session_shutdown` with the reason `quit` before the exit, as Pi does when the hangup reaches it as SIGHUP.
+- **Root cause:** PiG's input reader sees the end of input on a hung-up terminal before any signal arrives, and emergencyTerminalExit ended the process from there without running the signal shutdown, so session_shutdown was not emitted on that path. The same exit killed the extension processes while an emission that the signal goroutine had already started was still inside its handlers.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `5b36a5f599` (2026-11-13), `aef7184ef3` (2026-11-13)
+- **Tests:** `internal/codingagent/dead_terminal_shutdown_unix_test.go::TestDeadTerminalExitGivesExtensionsTheirShutdownFirst`, `internal/codingagent/dead_terminal_shutdown_unix_test.go::TestDeadTerminalShutdownChild`, `test/integration/dead_terminal_shutdown_test.go::TestDeadTerminalEmitsSessionShutdownToExtensions`, `test/integration/dead_terminal_shutdown_test.go::TestDeadTerminalWithATurnInFlightWaitsOneSecondForTheShutdownHandler`, `test/parity/scenarios/session/38-terminal-disconnect-shutdown-event.toml`
+- **Release note:** Closing the terminal of an interactive session (a closed window, `tmux kill-session`, a dropped connection) now gives extensions `session_shutdown` with the reason `quit` before the exit, as Pi does when the hangup reaches it as SIGHUP. PiG's input reader saw the dead terminal before any signal and exited 129 without the event, and it killed the extension processes under an event the signal path had already started, so an extension lost its last write (reported for a fused Piglet extension whose session log ended without its shutdown record). The exit waits for the handlers for at most one second, writes nothing new to the dead terminal, stays 129 and leaves one `exit.log` line; a session without a `session_shutdown` handler exits as fast as before. D186 records the differences from Pi, which waits for a slow handler without a limit, cuts a working session's handler at its next terminal write, and emits nothing when its event loop is empty.
 
 ### BF-5b4a3d3
 
@@ -31407,7 +31422,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D183 | A message delivered at the terminal proxy event is not changed by later events | deliberate difference |
 | D184 | A script's unawaited tool call can be aborted before its tool starts, where Pi always starts it first | deliberate difference |
 | D185 | A Kitty CSI-u Shift+letter with no shifted alternate decodes as the uppercase letter, where Pi keeps the base… | deliberate difference |
-| D186 | A hung-up terminal under a session whose event loop holds nothing: Pi exits 0 or 129, PiG exits 129 | deliberate difference |
+| D186 | A hung-up terminal: PiG gives extensions `session_shutdown` for at most a second and exits 129; Pi's exit… | deliberate difference |
 | D187 | A native SDK holds a batch's first host calls and responses in call and answer order, where Pi's single… | deliberate difference |
 | D190 | The built-in file mutation queue also orders mutations of one existing file reached through a hard link or a… | [BF-648ff3e-13](#bf-648ff3e-13) |
 | D195 | An empty AWS_BEARER_TOKEN_BEDROCK is no token, where Pi's AWS SDK treats the variable as set and the request… | [BF-D195](#bf-d195) |
