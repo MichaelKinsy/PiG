@@ -41,7 +41,8 @@
       ],
       "evidence": [
         "test:agent/hook_context_view_test.go#TestAfterHooksOfParallelToolCallsWriteTheRunsMessagesOneAtATime",
-        "test:agent/tool_call_hook_funcs_test.go#TestAfterToolCallFunc_SeesTheResultAndOverridesIt"
+        "test:agent/parallel_shared_context_test.go#TestAToolOfAParallelBatchThatReplacesAMessageInPlaceChangesTheRun",
+        "test:agent/parallel_shared_context_test.go#TestAToolThatWritesTheMessagesKeptFromItsBeforeHook"
       ]
     },
     {
