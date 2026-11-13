@@ -5727,6 +5727,28 @@
       ]
     },
     {
+      "id": "BF-21d2227",
+      "title": "tui: a frame request that lost that race to the stop no longer arms a frame timer on the stopped renderer, or…",
+      "symptom": "tui: a frame request that lost that race to the stop no longer arms a frame timer on the stopped renderer, or hands a render to the owner loop after it; the request is dropped under the render lock.",
+      "rootCause": "RequestRender reads stopped before it takes the render lock. A request made from a component goroutine could pass that read, lose the lock to the owner's stop, and then arm a frame on the stopped renderer: a timer that outlived the stop and, with a render dispatcher, a closure handed to the owner loop after it. The frame itself was never drawn (renderScheduled and the screens' doRender check stopped under the lock). requestRender now checks again under the lock, where every stop writes the flag.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "tui: a frame request that lost that race to the stop no longer arms a frame timer on the stopped renderer, or hands a render to the owner loop after it; the request is dropped under the render lock.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "21d22277cb",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "tui/tui_request_render_after_stop_test.go::TestARenderRequestThatLosesTheRaceWithStopArmsNoFrame"
+      ]
+    },
+    {
       "id": "BF-224dbd9",
       "title": "On Linux and macOS, the bash tool, a `!` command and an extension's `exec` no longer report no output for a…",
       "symptom": "On Linux and macOS, the bash tool, a `!` command and an extension's `exec` no longer report no output for a command that printed, when the machine is too busy to run PiG's pipe reader within 100 ms of the command's exit.",
@@ -14135,6 +14157,31 @@
         "internal/codingagent/output_pad_blocks_test.go::TestResumedBranchSummaryHasPiSpacingAboveItsLabel",
         "internal/sessionentry/entry_test.go::TestBashExecutionEntryKeepsExcludeFromContextFalseAndOmitsUnset",
         "internal/sessionentry/entry_test.go::TestBranchSummaryEntryWritesFromHookFalseInPiMemberOrder"
+      ]
+    },
+    {
+      "id": "BF-4967f7d",
+      "title": "tui: stopping the renderer while a component asked for a frame from its own goroutine (the Loader's spinner…",
+      "symptom": "tui: stopping the renderer while a component asked for a frame from its own goroutine (the Loader's spinner, since 0.5.0) was a data race on the renderer's `stopped` flag: the stop wrote it while `RequestRender` read it without the render lock, on all three screens.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "tui: stopping the renderer while a component asked for a frame from its own goroutine (the Loader's spinner, since 0.5.0) was a data race on the renderer's `stopped` flag: the stop wrote it while `RequestRender` read it without the render lock, on all three screens. It could show as a rare crash report under the race detector or as a frame asked for on a renderer that had just stopped. The flag is now atomic and still written under the render lock, so the geometry callbacks' rule that nothing is delivered after a stop holds unchanged.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4967f7dca3",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "tui/render_overflow_test.go::TestOverflowDifferentialTerminatesWithCrashLog",
+        "tui/render_overflow_test.go::TestOverflowFullRenderPathsEmitRowUnchanged",
+        "tui/tui_alt_screen_test.go::TestAltScreenAutoScrollCancelledMidScrollDoesNotResurrect",
+        "tui/tui_alt_screen_test.go::TestAltScreenStartStopStartRestoresCleanState"
       ]
     },
     {
@@ -36790,6 +36837,47 @@
       ]
     },
     {
+      "id": "BF-D631",
+      "title": "A command run by `pi.exec` or the bash tool gets pipes for its output, where Pi gives it socket pairs",
+      "symptom": "none. The socket pair is libuv's choice for every Node child; Pi does not ask for it.",
+      "rootCause": "a faithful port would make commands that work on Linux fail (`\u003e /dev/stdout`, `tee /dev/stderr`), which no PiG user gains from. The cost of keeping pipes is that a command which fails under Pi for that reason succeeds under PiG, and that an exit code 1 which Pi shows in a share of cut-off runs never appears.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D631",
+      "removeWhen": "PiG gives the commands of `pi.exec` and the bash tool socket pairs on Unix (stdin included where the bash tool gives one), or Node gives its children pipes.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "27686ebf32",
+          "date": "2026-11-12"
+        },
+        {
+          "hash": "4ea002437f",
+          "date": "2026-11-12"
+        },
+        {
+          "hash": "6da170c870",
+          "date": "2026-11-12"
+        },
+        {
+          "hash": "bc197ac2ba",
+          "date": "2026-11-12"
+        },
+        {
+          "hash": "e3a198a439",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/extension/exec_oracle_test.go::TestExecCommandMatchesPi",
+        "coding/extension/exec_socket_linux_test.go::TestExecCommandCutOffWriterMeetsSIGPIPEWherePisMeetsAReset",
+        "coding/extension/exec_socket_linux_test.go::TestExecCommandReopensItsOutputWherePiCannot"
+      ]
+    },
+    {
       "id": "BF-a076a50",
       "title": "A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…",
       "symptom": "The time the connection had spent idle in the pool was deducted from the next request's timeout.",
@@ -59362,6 +59450,11 @@
       "id": "D628",
       "title": "auth.json is read once per availability pass, where Pi stats it on every credential read",
       "entry": "BF-D628"
+    },
+    {
+      "id": "D631",
+      "title": "A command run by `pi.exec` or the bash tool gets pipes for its output, where Pi gives it socket pairs",
+      "entry": "BF-D631"
     }
   ],
   "exemptCommits": {
