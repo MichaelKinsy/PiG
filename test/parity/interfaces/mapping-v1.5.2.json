@@ -191069,7 +191069,7 @@
       "evidence": [
         "test:internal/codingagent/frame_timer_linux_test.go#TestFirstFrameOfARunTicksAtOnceWithoutArmingTheKernelTimer",
         "test:internal/codingagent/frame_timer_linux_test.go#TestOwnerLoopKeepsTheFrameDeadlineOnAKernelTimerOnlyWhenAsked",
-        "test:internal/codingagent/frame_timer_linux_test.go#TestStoppedRendererLeavesTheKernelFrameTimerDisarmed"
+        "test:internal/codingagent/frame_timer_linux_test.go#TestStopOfARunLeavesNoKernelTimerGoroutineAndNoDescriptor"
       ]
     },
     {
@@ -191091,7 +191091,7 @@
       "evidence": [
         "test:internal/codingagent/frame_timer_linux_test.go#TestFirstFrameOfARunTicksAtOnceWithoutArmingTheKernelTimer",
         "test:internal/codingagent/frame_timer_linux_test.go#TestOwnerLoopKeepsTheFrameDeadlineOnAKernelTimerOnlyWhenAsked",
-        "test:internal/codingagent/frame_timer_linux_test.go#TestStoppedRendererLeavesTheKernelFrameTimerDisarmed"
+        "test:internal/codingagent/frame_timer_linux_test.go#TestStopOfARunLeavesNoKernelTimerGoroutineAndNoDescriptor"
       ]
     },
     {
@@ -313833,7 +313833,7 @@
       "evidence": [
         "test:internal/codingagent/interactive_tui_factory_upstream_test.go#TestInteractiveTuiSelectsAlternateRendererOnlyWhenRequested",
         "test:internal/codingagent/frame_timer_linux_test.go#TestFirstFrameOfARunTicksAtOnceWithoutArmingTheKernelTimer",
-        "test:internal/codingagent/frame_timer_linux_test.go#TestStoppedRendererLeavesTheKernelFrameTimerDisarmed"
+        "test:internal/codingagent/frame_timer_linux_test.go#TestStopOfARunLeavesNoKernelTimerGoroutineAndNoDescriptor"
       ]
     },
     {
@@ -313855,7 +313855,7 @@
       "evidence": [
         "test:internal/codingagent/interactive_tui_factory_upstream_test.go#TestInteractiveTuiSelectsAlternateRendererOnlyWhenRequested",
         "test:internal/codingagent/frame_timer_linux_test.go#TestFirstFrameOfARunTicksAtOnceWithoutArmingTheKernelTimer",
-        "test:internal/codingagent/frame_timer_linux_test.go#TestStoppedRendererLeavesTheKernelFrameTimerDisarmed"
+        "test:internal/codingagent/frame_timer_linux_test.go#TestStopOfARunLeavesNoKernelTimerGoroutineAndNoDescriptor"
       ]
     },
     {
@@ -319124,7 +319124,7 @@
       "evidence": [
         "test:internal/codingagent/interactive_tui_factory_upstream_test.go#TestInteractiveTuiSelectsAlternateRendererOnlyWhenRequested",
         "test:internal/codingagent/frame_timer_linux_test.go#TestFirstFrameOfARunTicksAtOnceWithoutArmingTheKernelTimer",
-        "test:internal/codingagent/frame_timer_linux_test.go#TestStoppedRendererLeavesTheKernelFrameTimerDisarmed"
+        "test:internal/codingagent/frame_timer_linux_test.go#TestStopOfARunLeavesNoKernelTimerGoroutineAndNoDescriptor"
       ]
     },
     {
@@ -319146,7 +319146,7 @@
       "evidence": [
         "test:internal/codingagent/interactive_tui_factory_upstream_test.go#TestInteractiveTuiSelectsAlternateRendererOnlyWhenRequested",
         "test:internal/codingagent/frame_timer_linux_test.go#TestFirstFrameOfARunTicksAtOnceWithoutArmingTheKernelTimer",
-        "test:internal/codingagent/frame_timer_linux_test.go#TestStoppedRendererLeavesTheKernelFrameTimerDisarmed"
+        "test:internal/codingagent/frame_timer_linux_test.go#TestStopOfARunLeavesNoKernelTimerGoroutineAndNoDescriptor"
       ]
     },
     {
