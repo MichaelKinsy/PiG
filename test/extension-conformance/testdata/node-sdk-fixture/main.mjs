@@ -1357,8 +1357,29 @@ export default function (pi) {
     description: "Switch to the model in the arguments",
     handler: async (args, ctx) => {
       const slash = args.indexOf("/");
-      const ok = await pi.setModel({ provider: args.slice(0, slash), id: args.slice(slash + 1) });
+      const provider = args.slice(0, slash), id = args.slice(slash + 1);
+      // The registry's model of that name, as a Pi extension passes it; a name the registry does not list is an object built by hand.
+      const ok = await pi.setModel(ctx.modelRegistry.find(provider, id) ?? { provider, id });
       ctx.ui.notify(`setModel=${ok}`, "info");
+    },
+  });
+  pi.registerCommand("set_model_object", {
+    description: "Switch to the model object in the arguments",
+    handler: async (args, ctx) => {
+      try {
+        ctx.ui.notify(`setModelObject=${await pi.setModel(JSON.parse(args))}`, "info");
+      } catch (err) {
+        ctx.ui.notify(`setModelObject=error:${err.message}`, "info");
+      }
+    },
+  });
+  pi.registerCommand("set_model_object_before_agent_start", {
+    description: "Switch to the model object in the arguments before each agent start",
+    handler: async (args) => {
+      const model = JSON.parse(args);
+      pi.on("before_agent_start", async (_event, ctx) => {
+        ctx.ui.notify(`beforeAgentSetModel=${await pi.setModel(model)}`, "info");
+      });
     },
   });
   const eventProbeOn = new Map();

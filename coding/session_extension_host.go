@@ -285,17 +285,21 @@ func BindSessionExtensionActions(runner *inproc.Runner, bridge *subprocess.UIBri
 		return nil
 	})
 	// Pi binds setModel, setThinkingLevel, isProjectTrusted and compact to the Session in every mode (agent-session.ts:3343-3349, 3355, 3369-3379 _bindExtensionCore).
-	bridge.SetHostAction("setModel", func(ctx context.Context, spec string) (bool, error) {
+	bridge.SetHostAction(subprocess.CallSetModel, func(ctx context.Context, object *ai.Model) (bool, error) {
 		extension.CallInitiated(ctx)
 		sess := current()
 		if sess == nil {
 			return false, ErrSessionNotReady
 		}
-		model, err := BuildModel(spec, sess.Services())
-		if err != nil {
-			return false, err
+		return actions.SetModel(ctx, sess.modelRuntime.BindModelObject(object))
+	})
+	bridge.SetHostAction(subprocess.CallResolveModel, func(ctx context.Context, spec string) (*ai.Model, error) {
+		extension.CallInitiated(ctx)
+		sess := current()
+		if sess == nil {
+			return nil, ErrSessionNotReady
 		}
-		return actions.SetModel(ctx, model)
+		return BuildModel(spec, sess.Services())
 	})
 	bridge.SetHostAction("setThinkingLevel", func(level string) { actions.SetThinkingLevel(extension.ThinkingLevel(level)) })
 	bridge.SetHostAction("isProjectTrusted", func() bool {

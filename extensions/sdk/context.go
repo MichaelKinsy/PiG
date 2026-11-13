@@ -793,10 +793,42 @@ func (c Context) SetThinkingLevel(level string) {
 	_, _ = c.callHost("setThinkingLevel", map[string]string{"level": level})
 }
 
-// SetModel changes the active model.
-func (c Context) SetModel(model string) (bool, error) {
-	result, err := c.callHost("setModel", map[string]string{"model": model})
-	if err != nil {
+// SetModel is Pi's pi.setModel(model): it makes model, a Pi model object, the Session's model and reports whether it did. It reports false, and changes
+// nothing, when the model's provider has no configured auth. The Session uses the object as given, with the members the caller left on it (its context
+// window, limits, base URL, compat): a model taken from ModelRegistry and edited, or one built by hand for a provider the host knows. The model_select
+// handlers have run when it returns. A Go map has no member order, so an edited or hand-built object reaches model_select with its members sorted.
+//
+// SetModelNamed takes a `provider/id` name instead.
+func (c Context) SetModel(model map[string]any) (bool, error) {
+	return c.setModel(model)
+}
+
+// SetModelNamed is SetModel for the model a `provider/id` name stands for: the registry's model of that name, or for an id the registry does not list a
+// model the host builds from the provider. A name with no slash is an openai model. It asks the host for the model object and then sets it, two calls: the
+// object the first call returned is the one set, whatever the registry became in between, and an error of the first call is returned without setting.
+func (c Context) SetModelNamed(spec string) (bool, error) {
+	result, err := c.callHost("resolveModel", map[string]string{"spec": spec})
+	if err := callResultError(result, err); err != nil {
+		return false, err
+	}
+	if result == nil {
+		return false, nil
+	}
+	var resolved struct {
+		Model json.RawMessage `json:"model"`
+		Error string          `json:"error,omitempty"`
+	}
+	_ = json.Unmarshal(result.Result, &resolved)
+	if resolved.Error != "" {
+		return false, fmt.Errorf("%s", resolved.Error)
+	}
+	return c.setModel(resolved.Model)
+}
+
+func (c Context) setModel(model any) (bool, error) {
+	result, err := c.callHost("setModel", map[string]any{"model": model})
+	// The host rejects a value that is not a chat model object; Pi's Promise rejects.
+	if err := callResultError(result, err); err != nil {
 		return false, err
 	}
 	if result == nil {

@@ -59,7 +59,7 @@ func testExtensionHostModelMutations(t *testing.T, boundSession bool) {
 	if got := m.agent.ThinkingLevel(); got != ai.ThinkingHigh {
 		t.Errorf("agent thinking = %s, want high", got)
 	}
-	if ok, err := bridge.actions["setModel"].(func(context.Context, string) (bool, error))(t.Context(), "fixture/next"); err != nil || !ok {
+	if ok, err := bridge.actions["setModel"].(func(context.Context, *ai.Model) (bool, error))(t.Context(), &ai.Model{ID: "next", ProviderMeta: ai.ProviderMetadata{ProviderID: "fixture"}}); err != nil || !ok {
 		t.Fatalf("model switch = %v, %v", ok, err)
 	}
 	for len(m.uiTaskCh) > 0 {

@@ -2865,6 +2865,28 @@ def new_extension() -> pig_sdk.Extension:
         ctx.notify(f"setModel={'true' if ok else 'false'}", "info")
 
     ext.command("set_model", "Switch to the model in the arguments", set_model)
+
+    def set_model_object(ctx: pig_sdk.Context, args: str) -> None:
+        try:
+            ok, error = ctx.set_model(json.loads(args))
+        except Exception as exc:  # the host's rejection of the call
+            ok, error = False, str(exc)
+        ctx.notify(f"setModelObject=error:{error}" if error else f"setModelObject={'true' if ok else 'false'}", "info")
+
+    ext.command("set_model_object", "Switch to the model object in the arguments", set_model_object)
+
+    def set_model_object_before_agent_start(ctx: pig_sdk.Context, args: str) -> None:
+        model = json.loads(args)
+
+        def before_agent_start(hctx, _data):
+            ok, error = hctx.set_model(model)
+            if error:
+                raise RuntimeError(error)
+            hctx.notify(f"beforeAgentSetModel={'true' if ok else 'false'}", "info")
+
+        ext.on_event("before_agent_start", before_agent_start)
+
+    ext.command("set_model_object_before_agent_start", "Switch to the model object in the arguments before each agent start", set_model_object_before_agent_start)
     ext.command("append_entry", "Append a custom entry", lambda ctx, args: ctx.append_entry("conformance-entry", "hello-entry"))
 
     def append_entries_probe(ctx: pig_sdk.Context, args: str) -> None:

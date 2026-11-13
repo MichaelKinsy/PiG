@@ -625,17 +625,21 @@ func (m *InteractiveMode) wireSubprocessHostCallbacks() func() {
 			opts.OnError(errors.New("compaction is not available"))
 		}
 	})
-	b.SetHostAction("setModel", func(ctx context.Context, spec string) (bool, error) {
+	b.SetHostAction(subprocess.CallSetModel, func(ctx context.Context, object *ai.Model) (bool, error) {
 		m.invalidatePostLoginSelection()
 		extension.CallInitiated(ctx)
-		if m.opts.ModelBuilder == nil {
-			return false, fmt.Errorf("model switching not configured")
-		}
-		newModel, err := m.opts.ModelBuilder(spec)
+		newModel, err := m.bindExtensionModelObject(object)
 		if err != nil {
 			return false, err
 		}
 		return m.switchExtensionModel(ctx, newModel)
+	})
+	b.SetHostAction(subprocess.CallResolveModel, func(ctx context.Context, spec string) (*ai.Model, error) {
+		extension.CallInitiated(ctx)
+		if m.opts.ModelBuilder == nil {
+			return nil, fmt.Errorf("model switching not configured")
+		}
+		return m.opts.ModelBuilder(spec)
 	})
 	b.SetHostAction("getSessionName", m.extensionSessionName)
 	b.SetHostAction("getSessionID", func() string {

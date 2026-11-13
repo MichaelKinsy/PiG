@@ -1,6 +1,7 @@
 package subprocess
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -327,9 +328,12 @@ type HostCallbacks struct {
 	// GetCommandsVersion numbers the states of the catalog GetCommands returns. A push re-encodes the catalog only when the number changes, so it must change whenever GetCommands can return something different, and never repeat. Nil means every push encodes it.
 	GetCommandsVersion func() uint64
 
-	// SetModel changes the active model.
+	// SetModel makes the model object an extension passed the active model. The model has no backend: the Session binds one for its provider.
 	// upstream: types.ts:1459
-	SetModel func(context.Context, string) (bool, error)
+	SetModel func(context.Context, *ai.Model) (bool, error)
+
+	// ResolveModel builds the model a `provider/id` name stands for (CallResolveModel).
+	ResolveModel func(context.Context, string) (*ai.Model, error)
 
 	// GetThinkingLevel returns the current thinking level.
 	// upstream: types.ts:1460
@@ -1207,7 +1211,8 @@ func (b *UIBridge) HostStateSettled() {
 //   - "setLabel":        func(string, string) error
 //   - "setActiveTools":  func([]string)
 //   - "refreshTools":    func() error
-//   - "setModel":        func(context.Context, string) (bool, error)
+//   - "setModel":        func(context.Context, *ai.Model) (bool, error)
+//   - "resolveModel":    func(context.Context, string) (*ai.Model, error)
 //   - "isIdle":          func() bool
 //   - "getSignal":       func() context.Context
 //   - "abort":           func()
@@ -1282,7 +1287,9 @@ func (b *UIBridge) SetHostAction(key string, fn any) {
 	case "refreshTools":
 		b.actions.RefreshTools = fn.(func() error)
 	case "setModel":
-		b.actions.SetModel = fn.(func(context.Context, string) (bool, error))
+		b.actions.SetModel = fn.(func(context.Context, *ai.Model) (bool, error))
+	case CallResolveModel:
+		b.actions.ResolveModel = fn.(func(context.Context, string) (*ai.Model, error))
 	case "isIdle":
 		b.actions.IsIdle = fn.(func() bool)
 	case "getSignal":
@@ -1616,8 +1623,10 @@ func (b *UIBridge) handleCall(ctx context.Context, extName string, owner *Conn, 
 		return b.handleRefreshTools(actions)
 	case "getCommands":
 		return b.handleGetCommands(actions)
-	case "setModel":
+	case CallSetModel:
 		return b.handleSetModel(ctx, actions, call.Args)
+	case CallResolveModel:
+		return b.handleResolveModel(ctx, actions, call.Args)
 	case "getThinkingLevel":
 		return b.handleGetThinkingLevel(actions)
 	case "setThinkingLevel":
@@ -4092,24 +4101,79 @@ func (b *UIBridge) handleGetCommands(actions *HostCallbacks) (*CallResultPayload
 }
 
 func (b *UIBridge) handleSetModel(ctx context.Context, actions *HostCallbacks, args json.RawMessage) (*CallResultPayload, error) {
-	var p struct {
-		Model string `json:"model"`
-	}
+	var p SetModelArgs
 	if err := json.Unmarshal(args, &p); err != nil {
 		return nil, fmt.Errorf("parse setModel args: %w", err)
 	}
+	model, err := decodeSetModelObject(p.Model)
+	if err != nil {
+		return nil, err
+	}
 	if actions == nil || actions.SetModel == nil {
 		extension.CallInitiated(ctx)
-		result, _ := json.Marshal(map[string]any{"success": false, "error": "not ready"})
+		result, _ := json.Marshal(SetModelResult{Error: "not ready"})
 		return &CallResultPayload{Result: result}, nil
 	}
-	ok, err := actions.SetModel(ctx, p.Model)
+	ok, err := actions.SetModel(ctx, model)
 	if err != nil {
-		result, _ := json.Marshal(map[string]any{"success": false, "error": err.Error()})
+		result, _ := json.Marshal(SetModelResult{Error: err.Error()})
 		return &CallResultPayload{Result: result}, nil
 	}
-	result, _ := json.Marshal(map[string]any{"success": ok})
+	result, _ := json.Marshal(SetModelResult{Success: ok})
 	return &CallResultPayload{Result: result}, nil
+}
+
+// decodeSetModelObject reads the model object of a setModel call. The wire has one shape for a model, the object: a `provider/id` string, which an
+// extension built with an SDK older than the object form sends, is rejected rather than looked up.
+func decodeSetModelObject(raw json.RawMessage) (*ai.Model, error) {
+	raw = bytes.TrimSpace(raw)
+	if len(raw) == 0 || raw[0] != '{' {
+		return nil, errors.New("setModel: model must be a model object")
+	}
+	decoded, known, err := ai.DecodeStoredModel(raw)
+	if err != nil {
+		return nil, fmt.Errorf("setModel: %w", err)
+	}
+	model, chat := decoded.(*ai.Model)
+	if !known || !chat || model == nil {
+		return nil, errors.New("setModel: model must be a chat model object")
+	}
+	if model.ID == "" {
+		return nil, errors.New("setModel: model has no id")
+	}
+	return model, nil
+}
+
+// handleResolveModel answers CallResolveModel. An error of the build is the result's error, which the SDK's string form reports as the error of its
+// set-model without sending one.
+func (b *UIBridge) handleResolveModel(ctx context.Context, actions *HostCallbacks, args json.RawMessage) (*CallResultPayload, error) {
+	var p ResolveModelArgs
+	if err := json.Unmarshal(args, &p); err != nil {
+		return nil, fmt.Errorf("parse resolveModel args: %w", err)
+	}
+	reply := func(result ResolveModelResult) (*CallResultPayload, error) {
+		encoded, err := json.Marshal(result)
+		if err != nil {
+			return nil, err
+		}
+		return &CallResultPayload{Result: encoded}, nil
+	}
+	if actions == nil || actions.ResolveModel == nil {
+		extension.CallInitiated(ctx)
+		return reply(ResolveModelResult{Error: "not ready"})
+	}
+	model, err := actions.ResolveModel(ctx, p.Spec)
+	if err != nil {
+		return reply(ResolveModelResult{Error: err.Error()})
+	}
+	object, err := extension.ModelObject(model)
+	if err != nil {
+		return reply(ResolveModelResult{Error: err.Error()})
+	}
+	if object == nil {
+		return reply(ResolveModelResult{Error: "model not found: " + p.Spec})
+	}
+	return reply(ResolveModelResult{Model: object})
 }
 
 func (b *UIBridge) handleGetThinkingLevel(actions *HostCallbacks) (*CallResultPayload, error) {

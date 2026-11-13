@@ -3327,7 +3327,24 @@ class Context:
         """Pi's stripFrontmatter over this handler's own connection."""
         return self.parse_frontmatter(content).body
 
-    def set_model(self, model: str) -> tuple[bool, str]:
+    def set_model(self, model: dict[str, Any] | str) -> tuple[bool, str]:
+        """Pi's ``pi.setModel(model)``: make ``model``, a Pi model object, the Session's model. Returns ``(switched, error)``.
+
+        ``switched`` is false, and nothing changes, when the model's provider has no configured auth. The Session uses the object as given, with the
+        members the caller left on it (its context window, limits, base URL, compat): a model taken from ``ctx.model_registry`` and edited, or one
+        built by hand for a provider the host knows. The ``model_select`` handlers have run when it returns.
+
+        A ``provider/id`` string stands for the registry's model of that name, or for an id the registry does not list a model the host builds from
+        the provider; a name with no slash is an openai model. The string form asks the host for the model object and then sets it, two calls: the
+        object the first call returned is the one set, whatever the registry became in between, and an error of the first call is returned without
+        setting.
+        """
+        if isinstance(model, str):
+            resolved = self._call("resolveModel", {"spec": model}).get("result") or {}
+            error = str(resolved.get("error") or "")
+            if error:
+                return False, error
+            model = resolved.get("model")
         result = self._call("setModel", {"model": model}).get("result") or {}
         return bool(result.get("success", result.get("ok", False))), str(result.get("error") or "")
 

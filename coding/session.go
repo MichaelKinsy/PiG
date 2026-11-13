@@ -11,7 +11,6 @@ import (
 	"math"
 	"os"
 	"path/filepath"
-	"reflect"
 	"runtime/debug"
 	"slices"
 	"strings"
@@ -1230,7 +1229,7 @@ func (s *Session) refreshCurrentModelFromRegistry() {
 	if refreshed == nil {
 		return
 	}
-	if s.modelRuntime.sameBoundModelMetadata(current, refreshed) {
+	if s.modelRuntime.sameBoundModelMetadata(current, refreshed) || s.modelRuntime.keepsModelObject(current, refreshed) {
 		return
 	}
 	defer s.beginReplicatedChange()()
@@ -1251,9 +1250,7 @@ func (runtime *ModelRuntime) sameBoundModelMetadata(current, refreshed *ai.Model
 	default:
 		return false
 	}
-	left, right := *current, *refreshed
-	left.Provider, right.Provider = nil, nil
-	return reflect.DeepEqual(left, right)
+	return sameModelMetadata(current, refreshed)
 }
 
 // ModelRuntime returns this Session's mode-independent model execution path.

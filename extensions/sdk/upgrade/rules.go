@@ -67,6 +67,7 @@ const (
 	RuleDialogResults       = "dialog-results-are-json-values"
 	RuleHostHighlightCode   = "host-helpers-highlight-code-no-markdown"
 	RuleMarkdownTransformer = "markdown-transformer-options"
+	RuleSetModelObject      = "set-model-takes-model-object"
 )
 
 // markdownTransformerSymbol names the changed method as apidiff reports it.
@@ -274,6 +275,15 @@ func Rules() []Rule {
 			Remedy:  "A call `ext.MarkdownTransformer(fn)` still compiles and keeps the default surfaces (user, assistant and thinking messages). To transform custom, summary or changelog messages pass `sdk.MarkdownTransformerOptions{MessageTypes: ...}` as the second argument. Only a use of the method as a value (a variable, a field or an interface whose method has the one-parameter signature) fails to compile: give it the signature func(sdk.MarkdownTransformerFunc, ...sdk.MarkdownTransformerOptions).",
 			Changes: []Change{
 				{Symbol: markdownTransformerSymbol, Old: "func(MarkdownTransformerFunc)", New: "func(MarkdownTransformerFunc, ...MarkdownTransformerOptions)", Since: "0.8.0"},
+			},
+		},
+		{
+			ID:       RuleSetModelObject,
+			Summary:  "Context.SetModel takes Pi's model object; Context.SetModelNamed takes the provider/id name",
+			Rewrites: true,
+			Remedy:   "Call `ctx.SetModelNamed(\"provider/id\")` where you passed the name. `ctx.SetModel` takes a model object, as Pi's pi.setModel(model) does: one from `ctx.ModelRegistry().Find(provider, id)`, as it is or edited, or one you build; the Session uses the object you pass.",
+			Changes: []Change{
+				{Symbol: setModelSymbol, Old: "func(string) (bool, error)", New: "func(map[string]any) (bool, error)", Since: setModelSince},
 			},
 		},
 	}

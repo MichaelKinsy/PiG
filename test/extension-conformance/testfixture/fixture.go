@@ -477,7 +477,7 @@ func Extension() *sdk.Extension {
 			return err
 		}
 		ctx.SetThinkingLevel("high")
-		ok, err := ctx.SetModel("probe/model")
+		ok, err := ctx.SetModelNamed("probe/model")
 		if err != nil {
 			return err
 		}
@@ -1907,11 +1907,41 @@ func Extension() *sdk.Extension {
 		return nil
 	})
 	ext.Command("set_model", "Switch to the model in the arguments", func(ctx sdk.Context, args string) error {
-		ok, err := ctx.SetModel(args)
+		ok, err := ctx.SetModelNamed(args)
 		if err != nil {
 			return err
 		}
 		ctx.Notify(fmt.Sprintf("setModel=%t", ok), "info")
+		return nil
+	})
+	// set_model_object (TestSetModelTakesTheObjectAcrossSDKs) passes the model object its argument is the JSON of to SetModel and reports the answer, or the error. Every SDK fixture has it.
+	ext.Command("set_model_object", "Switch to the model object in the arguments", func(ctx sdk.Context, args string) error {
+		var model map[string]any
+		if err := json.Unmarshal([]byte(args), &model); err != nil {
+			return err
+		}
+		ok, err := ctx.SetModel(model)
+		if err != nil {
+			ctx.Notify("setModelObject=error:"+err.Error(), "info")
+			return nil
+		}
+		ctx.Notify(fmt.Sprintf("setModelObject=%t", ok), "info")
+		return nil
+	})
+	// set_model_object_before_agent_start (TestSetModelObjectFromBeforeAgentStartAcrossSDKs) subscribes a before_agent_start handler that passes the model object its argument is the JSON of to SetModel, as the extension of Pi's issue 9631 does. Every SDK fixture has it.
+	ext.Command("set_model_object_before_agent_start", "Switch to the model object in the arguments before each agent start", func(_ sdk.Context, args string) error {
+		var model map[string]any
+		if err := json.Unmarshal([]byte(args), &model); err != nil {
+			return err
+		}
+		ext.OnEvent("before_agent_start", func(hctx sdk.Context, _ map[string]any) (any, error) {
+			ok, err := hctx.SetModel(model)
+			if err != nil {
+				return nil, err
+			}
+			hctx.Notify(fmt.Sprintf("beforeAgentSetModel=%t", ok), "info")
+			return nil, nil
+		})
 		return nil
 	})
 	// event_probe_off runs every unsubscribe event_probe_on returned for the event named by the argument (TestConformance_EventUnsubscribeEveryEvent).
@@ -2201,7 +2231,7 @@ func Extension() *sdk.Extension {
 		return nil
 	})
 	ext.Command("model_set", "Switch the model", func(ctx sdk.Context, args string) error {
-		ok, err := ctx.SetModel(strings.TrimSpace(args))
+		ok, err := ctx.SetModelNamed(strings.TrimSpace(args))
 		if err != nil {
 			return err
 		}
@@ -2404,7 +2434,7 @@ func Extension() *sdk.Extension {
 	// replica-probe (TestReplicatedReadsAreLocalAcrossSDKs) reads the model object, the session id, name and file (from the context and from the session manager) and the context usage, and reports them as one JSON object. Its argument is empty, or "set-model:<provider>/<id>" to call SetModel before it reads. Every SDK fixture reports the same shape.
 	ext.Command("replica-probe", "Report the replicated model object, session ids and context usage", func(ctx sdk.Context, args string) error {
 		if model, ok := strings.CutPrefix(args, "set-model:"); ok {
-			if _, err := ctx.SetModel(model); err != nil {
+			if _, err := ctx.SetModelNamed(model); err != nil {
 				return err
 			}
 		}

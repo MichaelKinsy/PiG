@@ -5011,6 +5011,46 @@ fn main() {
             CommandResult::Ok
         },
     );
+    ext.command(
+        "set_model_object",
+        "Switch to the model object in the arguments",
+        |ctx, args| {
+            let model: serde_json::Value = match serde_json::from_str(args) {
+                Ok(model) => model,
+                Err(err) => return CommandResult::Error(err.to_string()),
+            };
+            let (ok, error) = ctx.set_model(&model);
+            if error.is_empty() {
+                ctx.notify(&format!("setModelObject={ok}"), "info");
+            } else {
+                ctx.notify(&format!("setModelObject=error:{error}"), "info");
+            }
+            CommandResult::Ok
+        },
+    );
+    let before_agent_model_subscriber = ext.event_subscriber();
+    ext.command(
+        "set_model_object_before_agent_start",
+        "Switch to the model object in the arguments before each agent start",
+        move |_ctx, args| {
+            let model: serde_json::Value = match serde_json::from_str(args) {
+                Ok(model) => model,
+                Err(err) => return CommandResult::Error(err.to_string()),
+            };
+            let subscription =
+                before_agent_model_subscriber.on_before_agent_start(move |ctx, _event| {
+                    let (ok, error) = ctx.set_model(&model);
+                    if !error.is_empty() {
+                        return Err(error);
+                    }
+                    ctx.notify(&format!("beforeAgentSetModel={ok}"), "info");
+                    Ok(None)
+                });
+            // The handler stays subscribed for the life of the extension.
+            std::mem::forget(subscription);
+            CommandResult::Ok
+        },
+    );
     let event_probe_on_subscriber = ext.event_subscriber();
     let event_probe_on_subscriptions: Arc<Mutex<Vec<(String, pig_sdk::EventSubscription)>>> =
         Arc::new(Mutex::new(Vec::new()));

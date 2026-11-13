@@ -294,6 +294,23 @@
                  (multiple-value-bind (ok error) (pig:ctx-set-model ctx args)
                    (when (plusp (length error)) (error "~A" error))
                    (core-info ctx (format nil "setModel=~A" (if ok "true" "false"))))))
+  (pig:command ext "set_model_object" "Switch to the model object in the arguments"
+               (lambda (ctx args)
+                 (multiple-value-bind (ok error)
+                     (handler-case (pig:ctx-set-model ctx (pig:from-json args))
+                       (pig:host-call-error (e) (values nil (pig:host-call-error-message e))))
+                   (core-info ctx (if (plusp (length error))
+                                      (format nil "setModelObject=error:~A" error)
+                                      (format nil "setModelObject=~A" (if ok "true" "false")))))))
+  (pig:command ext "set_model_object_before_agent_start" "Switch to the model object in the arguments before each agent start"
+               (lambda (ctx args) (declare (ignore ctx))
+                 (let ((model (pig:from-json args)))
+                   (pig:on ext "before_agent_start"
+                           (lambda (hctx data) (declare (ignore data))
+                             (multiple-value-bind (ok error) (pig:ctx-set-model hctx model)
+                               (when (plusp (length error)) (error "~A" error))
+                               (core-info hctx (format nil "beforeAgentSetModel=~A" (if ok "true" "false"))))
+                             nil)))))
   (pig:command ext "thinking_set" "Set the thinking level"
                (lambda (ctx args) (pig:ctx-set-thinking-level ctx (string-trim '(#\Space #\Newline) args))))
   (pig:command ext "thinking_get" "Report the thinking level"
