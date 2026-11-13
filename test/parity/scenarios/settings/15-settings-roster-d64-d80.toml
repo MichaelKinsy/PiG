@@ -1,0 +1,64 @@
+# Behavior family: settings
+# Surface: the two /settings rows in which PiG's roster differs from Pi's
+#
+# Upstream evidence (Pi 1.5.2, settings-selector.ts): the items array holds "Session share destination" (id share-destination, :516; added by Pi cea25743, first released in 1.3.0) and no secret-input row. settings-list.ts:316 filters the rows by fuzzy match on the label, prints "No matching settings" for an empty result (a list of ten rows or fewer has no counter).
+# PiG omits the share-destination row by approved divergence D64 (/share always uploads to pi-in-go.dev, so the row would change nothing) and adds "Mask secret input" by approved divergence D80. The two cancel in the row counts that settings/02, settings/09 and clipboard-images/05 assert, so those scenarios cannot tell which rows differ. This scenario names them: the search "destination" finds exactly one row in Pi and none in PiG (step 2, asserted per side while the search is on screen), and the search "secret" finds exactly one row in PiG and none in Pi (step 3, asserted the same way). A step whose per-side text does not appear fails the scenario. The runner's [diverge] pins apply only to the final capture and a tmux scenario must end in an equality comparison, so the per-side text is pinned in the steps and the scenario ends on a search both rosters answer alike ("theme"), compared plain and escaped. The equality of every other row is asserted by settings/02 and clipboard-images/05, and internal/codingagent TestSettingsRosterDiffersFromPiOnlyByD64AndD80 derives the whole roster from the pinned source.
+
+name = "15-settings-roster-d64-d80"
+description = "The /settings search finds Pi's Session share destination row only in Pi (D64) and the Mask secret input row only in PiG (D80)."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/settings-selector.ts",
+  "packages/tui/src/components/settings-list.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "Warning: No models available."
+ready_pattern_pi = "Warning: No models available."
+ready_timeout_seconds = 25
+capture_start = "> theme"
+capture_end = "Type to search · Enter/Space to change · Esc to cancel"
+
+[[tmux.steps]]
+keys = ["/settings", "Enter"]
+wait_visible_contains = [">", "Type to search · Enter/Space to change · Esc to cancel"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["destination"]
+wait_visible_contains = ["> destination"]
+wait_visible_contains_pi = ["→ Session share destination"]
+wait_visible_contains_pig = ["No matching settings"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["BSpace", "BSpace", "BSpace", "BSpace", "BSpace", "BSpace", "BSpace", "BSpace", "BSpace", "BSpace", "BSpace", "secret"]
+wait_visible_contains = ["> secret"]
+wait_visible_contains_pi = ["No matching settings"]
+wait_visible_contains_pig = ["→ Mask secret input"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["BSpace", "BSpace", "BSpace", "BSpace", "BSpace", "BSpace", "theme"]
+wait_visible_contains = ["> theme", "Color theme for the interface"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+output_equal = true
+escaped_output_equal = true
+runs = 3

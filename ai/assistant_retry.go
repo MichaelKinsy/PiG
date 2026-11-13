@@ -77,6 +77,12 @@ var retryableProviderErrorPattern = buildProviderErrorPattern([]string{
 	// node-fetch system errors, e.g. the Google ADC OAuth token refresh used by google-vertex; the reason is often empty (#10996, Pi 0fbdbd3f).
 	"request to \\S+ failed, reason:",
 	"getaddrinfo",
+	// Bare Node socket error codes, e.g. "read ECONNRESET", "write EPIPE", or "connect ETIMEDOUT 1.2.3.4:443" when a transport reports only the code (#12128, Pi 4699b5b26). The codes must not be part of a longer identifier.
+	// Pi spells it (?<![a-z0-9_])(?:ECONNRESET|ECONNABORTED|ECONNREFUSED|ETIMEDOUT|EPIPE)(?![a-z0-9_]); RE2 has no lookaround, so the neighbours are matched, as for the status codes above.
+	// upstream: packages/ai/src/utils/retry.ts:RETRYABLE_PROVIDER_ERROR_PATTERN
+	"(?:^|[^a-z0-9_])(?:ECONNRESET|ECONNABORTED|ECONNREFUSED|ETIMEDOUT|EPIPE)(?:[^a-z0-9_]|$)",
+	// upstream: packages/ai/src/utils/retry.ts:RETRYABLE_PROVIDER_ERROR_PATTERN
+	"connection reset by peer",
 	"ENOTFOUND",
 	"EAI_AGAIN",
 	"upstream.?connect",
@@ -264,6 +270,7 @@ func sleepContext(ctx context.Context, delay time.Duration) error {
 // IsRetryableAssistantError classifies whether a failed assistant message looks
 // like a transient provider or transport error. It does not implement retry
 // policy; callers handle context overflow first.
+// The socket error codes of the pattern are Node's text; a Go transport error (a syscall.Errno in a *net.OpError) reaches this text form through nodeNetErrorMessage, nodeConnectionFailure and WithCauseDetail, which name it with the same code, so there is no typed match here.
 func IsRetryableAssistantError(message AssistantMessage) bool {
 	if message.StopReason != StopReasonError || message.ErrorMessage == "" {
 		return false

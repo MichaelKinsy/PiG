@@ -90,7 +90,15 @@ func TestBedrockStreamSimpleThinkingBudgetsMatchPi(t *testing.T) {
 				}
 				return nil, captured
 			}
-			if _, err := StreamSimple(t.Context(), model, NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("Hello")}}}), options); !errors.Is(err, captured) {
+			_, err := StreamSimple(t.Context(), model, NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("Hello")}}}), options)
+			if !BuiltAPI(APIBedrockConverseStream) {
+				// A build with pig_strip_bedrock_converse_stream builds no Converse request: the stream reports the strip.
+				if err == nil || err.Error() != strippedAPIMessage("amazon-bedrock", APIBedrockConverseStream) {
+					t.Fatalf("err = %v, want the strip message", err)
+				}
+				return
+			}
+			if !errors.Is(err, captured) {
 				t.Fatalf("err = %v", err)
 			}
 			thinking, _ := fields["thinking"].(map[string]any)

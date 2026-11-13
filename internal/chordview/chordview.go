@@ -88,13 +88,14 @@ type textNode struct {
 	Text string `json:"text"`
 }
 
-type content struct {
-	Key   string      `json:"key,omitempty"`
-	Slot  uiview.Slot `json:"slot,omitempty"`
-	Mount *uiview.Ref `json:"mount,omitempty"`
-	View  struct {
-		Root textNode `json:"root"`
-	} `json:"view"`
+type view struct {
+	Root textNode `json:"root"`
+}
+
+// textView is the view of a panel: one text node.
+func textView(text string) json.RawMessage {
+	raw, _ := json.Marshal(view{Root: textNode{Kind: "text", Text: text}})
+	return raw
 }
 
 func text(s Surface) string {
@@ -128,21 +129,18 @@ func (v *Views) Refresh() *uiview.Error {
 		if mounted && v.shown[s.Name] == want {
 			continue
 		}
-		c := content{}
-		c.View.Root = textNode{Kind: "text", Text: want}
+		content := uiview.Content{View: textView(want)}
 		var st uiview.Status
 		var err *uiview.Error
 		if mounted {
-			c.Mount = &ref
-			st, err = v.update(c)
+			st, err = v.update(ref, content)
 			if err != nil && (err.Code == uiview.CodeTerminal || err.Code == uiview.CodeNotFound || err.Code == uiview.CodeStale) {
 				mounted = false
 				delete(v.refs, s.Name)
 			}
 		}
 		if !mounted {
-			c.Mount, c.Key, c.Slot = nil, s.Name, uiview.SlotPanel
-			st, err = v.mount(c)
+			st, err = v.mount(s.Name, content)
 		}
 		if err != nil {
 			if first == nil {
@@ -155,19 +153,19 @@ func (v *Views) Refresh() *uiview.Error {
 	return first
 }
 
-func (v *Views) mount(c content) (uiview.Status, *uiview.Error) {
-	raw, _ := json.Marshal(c)
-	args, err := uiview.DecodeMount(raw)
-	if err != nil {
+// mount mounts a panel under key. The record is built here, not decoded, so it is checked as the decoder checks one.
+func (v *Views) mount(key string, content uiview.Content) (uiview.Status, *uiview.Error) {
+	args := uiview.MountArgs{Key: key, Slot: uiview.SlotPanel, Content: content}
+	if err := args.Check(); err != nil {
 		return uiview.Status{}, err
 	}
 	return v.r.Mount(Plugin, args)
 }
 
-func (v *Views) update(c content) (uiview.Status, *uiview.Error) {
-	raw, _ := json.Marshal(c)
-	args, err := uiview.DecodeUpdate(raw)
-	if err != nil {
+// update replaces the content of the panel ref names, checked as mount checks it.
+func (v *Views) update(ref uiview.Ref, content uiview.Content) (uiview.Status, *uiview.Error) {
+	args := uiview.UpdateArgs{Mount: ref, Content: content}
+	if err := args.Check(); err != nil {
 		return uiview.Status{}, err
 	}
 	return v.r.Update(Plugin, args)

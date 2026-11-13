@@ -14,6 +14,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
 func TestReadImageModelProfileOverridesFallback(t *testing.T) {
@@ -45,14 +46,23 @@ func TestReadImageModelProfileOverridesFallback(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !strings.Contains(got.Text(), "Read image file [image/png]") || !strings.Contains(got.Text(), "Current model does not support images") {
+			// Pi 4be4cb4f5e9c packages/coding-agent/test/tools.test.ts:240: the text says nothing of the model's image support.
+			if !strings.Contains(got.Text(), "Read image file [image/png]") || strings.Contains(got.Text(), "does not support images") {
 				t.Fatalf("content=%q", got.Text())
 			}
 			if tc.omit {
-				if len(got.Images()) != 0 || !strings.Contains(got.Text(), "omitted") {
+				// read.ts names the model only beside an image it attached.
+				if len(got.Images()) != 0 || !strings.Contains(got.Text(), "omitted") || got.Details != nil {
 					t.Fatalf("failed image result=%#v", got)
 				}
 				return
+			}
+			// The environment names no model: Pi writes `details = { imageUnsupportedByModel: ctx.model.id }` for an id of "" too,
+			// in the session (the tool's own details) and for extensions (the SDK's).
+			for name, details := range map[string]any{"session": got.Details, "extension": extension.ToolResultDetailsFor(got.Details)} {
+				if raw, err := json.Marshal(details); err != nil || string(raw) != `{"imageUnsupportedByModel":""}` {
+					t.Fatalf("%s details = %s, %v", name, raw, err)
+				}
 			}
 			if len(got.Images()) != 1 {
 				t.Fatalf("images=%#v", got.Images())

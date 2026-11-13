@@ -1,0 +1,45 @@
+# Behavior family: providers-registry
+# Surface: whether an anthropic-messages request starts a message thread, decided from the model's base URL alone.
+#
+# Upstream evidence (Pi 49fe0a237, #11987; packages/ai/src/api/anthropic-messages.ts getAnthropicCompat): supportsMessageThreads defaults to
+# `model.baseUrl.includes("api.anthropic.com")`. Pi v1.5.2 as published also asks for the provider id "anthropic", so a provider with
+# another name on Anthropic's endpoint sends no thread. A request that uses threads carries the body member "thread", {"type":"create"} for
+# the first request of a session.
+# The oracle is the pinned Pi plus the post-release backports (automation/gen/pi-post-release-backports.mjs), 49fe0a237 among them; `pi` runs the
+# package's bundle, which the oracle build makes again from the patched compiled output.
+#
+# Probe (Pi alone, 2026-11-13): `pi -p "ECHO_REQUEST /thread"` printed
+#   absent
+#
+# How the request is seen: both binaries talk to the runner's local provider fixture (provider_fixture, test/parity/README.md). The prompt
+# `ECHO_REQUEST /thread` makes the fixture answer with that part of the request body it received, members in the order received, so each
+# binary prints what it sent and output_equal compares the thread member, or the word absent on a side that sent none. No normalization: the two requests must be the same bytes after the
+# fixture's uniform spelling of white space and string escapes.
+# The model has the fixture's plain address (http://127.0.0.1:PORT), which does not hold "api.anthropic.com": no thread by default.
+# 23-print-anthropic-threads-by-endpoint is the same request with the endpoint's name in the base URL.
+# Mutation: with supportsMessageThreads (ai/anthropic.go) answering true whatever the base URL, pig prints {"type":"create"} and
+# output_equal fails.
+name = "24-print-anthropic-no-threads-off-endpoint"
+description = "A provider whose base URL is not on api.anthropic.com sends no message thread, as pi does"
+covers = ["packages/ai/src/api/anthropic-messages.ts"]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+provider_fixture = "anthropic-messages"
+model = "strict-wire/strict"
+
+[print]
+prompt = "ECHO_REQUEST /thread"
+timeout_seconds = 30
+
+[env]
+pig = ["PIG_HOME=../rpc/testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=../rpc/testdata/pi-home/agent"]
+pig_args = ["--offline", "--no-extensions", "--tools", "read", "--system-prompt", "Strict wire probe.", "--no-context-files", "--no-skills", "--no-session"]
+pi_args = ["--offline", "--no-extensions", "--tools", "read", "--system-prompt", "Strict wire probe.", "--no-context-files", "--no-skills", "--no-session"]
+
+[assert]
+exit_code = 0
+both_contain = ['absent']
+output_equal = true
+stderr_equal = true
+runs = 3

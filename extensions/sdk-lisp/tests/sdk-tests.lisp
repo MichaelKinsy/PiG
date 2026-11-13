@@ -317,8 +317,13 @@ Returns the host and the register envelope."
         (check-equal "m" (pig:jget *thunk-result* "id"))
         (check-call (lambda (c) (pig:ctx-get-model-auth c "p" "m")) "getModelAuth" (pig:obj "provider" "p" "modelId" "m"))
         (check-call (lambda (c) (pig:ctx-get-scoped-models c)) "getScopedModels" (pig:obj))
-        (check-call (lambda (c) (pig:ctx-set-model c "p/m")) "setModel" (pig:obj "model" "p/m") (pig:obj "success" t))
+        ;; pi.setModel(model): the model object crosses as given.
+        (check-call (lambda (c) (pig:ctx-set-model c (pig:obj "provider" "p" "id" "m" "contextWindow" 4321))) "setModel"
+                    (pig:obj "model" (pig:obj "provider" "p" "id" "m" "contextWindow" 4321)) (pig:obj "success" t))
         (check-equal t *thunk-result*)
+        ;; The string form asks the host for the model object of the name first; an error of that call is the answer and no setModel follows.
+        (check-call (lambda (c) (multiple-value-list (pig:ctx-set-model c "p/m"))) "resolveModel" (pig:obj "spec" "p/m") (pig:obj "error" "no such model"))
+        (check-equal (list nil "no such model") *thunk-result*)
         (check-call (lambda (c) (pig:ctx-set-thinking-level c "high")) "setThinkingLevel" (pig:obj "level" "high"))
         (check-call (lambda (c) (pig:ctx-set-label c "e1" "L")) "setLabel" (pig:obj "entryId" "e1" "label" "L"))
         (check-call (lambda (c) (pig:ctx-wait-for-idle c)) "waitForIdle" (pig:obj))

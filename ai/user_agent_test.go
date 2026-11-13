@@ -208,6 +208,10 @@ func userAgentProviderCases(t *testing.T) []userAgentProviderCase {
 func TestProviderDefaultUserAgent(t *testing.T) {
 	want := FormatUserAgent(nil)
 	for _, tc := range userAgentProviderCases(t) {
+		if !BuiltAPI(API(tc.name)) {
+			// A build with this API's pig_strip tag has no provider for the row.
+			continue
+		}
 		t.Run(tc.name, func(t *testing.T) {
 			var header http.Header
 			provider := tc.build(sseClient(&header, tc.sse))
@@ -280,6 +284,10 @@ func TestProviderUserAgentOverridePrecedence(t *testing.T) {
 			sse: userAgentMistralSSE,
 		},
 	} {
+		if api, _, _ := strings.Cut(tc.name, " "); !BuiltAPI(API(api)) {
+			// A build with this API's pig_strip tag has no provider for the row.
+			continue
+		}
 		t.Run(tc.name, func(t *testing.T) {
 			var header http.Header
 			provider := tc.build(sseClient(&header, tc.sse), map[string]string{"User-Agent": "model-client"})

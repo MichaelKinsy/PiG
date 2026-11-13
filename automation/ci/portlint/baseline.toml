@@ -2748,24 +2748,6 @@ snippet = "result, _ := json.Marshal(map[string]any{\"commands\": commands})"
 [[hit]]
 check = "mapkeyorder"
 file = "coding/extension/host/subprocess/ui_bridge.go"
-func = "UIBridge.handleSetModel"
-snippet = "result, _ := json.Marshal(map[string]any{\"success\": false, \"error\": \"not ready\"})"
-
-[[hit]]
-check = "mapkeyorder"
-file = "coding/extension/host/subprocess/ui_bridge.go"
-func = "UIBridge.handleSetModel"
-snippet = "result, _ := json.Marshal(map[string]any{\"success\": false, \"error\": err.Error()})"
-
-[[hit]]
-check = "mapkeyorder"
-file = "coding/extension/host/subprocess/ui_bridge.go"
-func = "UIBridge.handleSetModel"
-snippet = "result, _ := json.Marshal(map[string]any{\"success\": ok})"
-
-[[hit]]
-check = "mapkeyorder"
-file = "coding/extension/host/subprocess/ui_bridge.go"
 func = "UIBridge.handleGetThinkingLevel"
 snippet = "result, _ := json.Marshal(map[string]any{\"level\": \"\"})"
 

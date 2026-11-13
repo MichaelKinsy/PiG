@@ -138,6 +138,9 @@ var (
 	credentialType      = lazyPattern(`\*\w+\.Credential\b`)
 	// highlightCodeTarget matches the SDK side of the compiler's message when a function written for the old HighlightCode is assigned to the new field: the target type, whatever the author named or left unnamed the parameters of the function.
 	highlightCodeTarget = lazyPattern(`^cannot use .+ as func\((?:code )?string, (?:lang )?string, (?:palette )?\[\]byte\) \(\[\]string, error\) value`)
+	// setModelNameArgument matches the compiler's message for a value that is not a model object passed to a SetModel method: `cannot use "p/id"
+	// (untyped string constant) as map[string]any value in argument to ctx.SetModel`.
+	setModelNameArgument = lazyPattern(`^cannot use .+ as map\[string\]any value in argument to .*\bSetModel$`)
 )
 
 // UsagePointerTypes matches the pointer types the fields of ContextUsage have now.
@@ -198,6 +201,8 @@ func ClassifyDiagnostic(diagnostic Diagnostic, source FileSource, files map[stri
 		return RuleHostHighlightCode, "HostHelpers.HighlightCode", true
 	case strings.Contains(message, "MarkdownTransformer") && strings.Contains(message, "MarkdownTransformerOptions") && importsSDK(diagnostic, source, files):
 		return RuleMarkdownTransformer, markdownTransformerSymbol, true
+	case setModelNameArgument().MatchString(message) && importsSDK(diagnostic, source, files):
+		return RuleSetModelObject, SetModelSymbol, true
 	case strings.Contains(message, "TransformHeaders") && strings.Contains(message, "ProviderStreamOptions"):
 		return RuleTransformHeaders, "ProviderStreamOptions.TransformHeaders", true
 	case credentialType().MatchString(message) && importsSDK(diagnostic, source, files):

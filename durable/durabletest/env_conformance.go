@@ -226,17 +226,18 @@ func (options EnvConformanceRegisterOptions) conformanceOptions(assertions EnvCo
 func RegisterEnvConformance(t *testing.T, name string, withEnv EnvConformanceProvider, options EnvConformanceRegisterOptions) {
 	t.Helper()
 	t.Run(name, func(t *testing.T) {
-		conformanceOptions := func(t *testing.T) EnvConformanceOptions {
-			return options.conformanceOptions(CreateTestingAssertions(t), withEnv)
-		}
-		for index, testCase := range CreateEnvConformance(conformanceOptions(t)) {
-			t.Run(testCase.Name, func(t *testing.T) {
-				if err := CreateEnvConformance(conformanceOptions(t))[index].Run(); err != nil {
-					t.Fatal(err)
-				}
-			})
+		for index, testCase := range CreateEnvConformance(options.conformanceOptions(CreateTestingAssertions(t), withEnv)) {
+			t.Run(testCase.Name, func(t *testing.T) { runEnvConformanceCase(t, withEnv, options, index) })
 		}
 	})
+}
+
+// runEnvConformanceCase runs environment conformance case index and ends tb with the case's failure (testing/runner.ts: runner.it(testCase.name, testCase.run, testCase.timeoutMs)).
+func runEnvConformanceCase(tb testing.TB, withEnv EnvConformanceProvider, options EnvConformanceRegisterOptions, index int) {
+	tb.Helper()
+	if err := CreateEnvConformance(options.conformanceOptions(CreateTestingAssertions(tb), withEnv))[index].Run(); err != nil {
+		tb.Fatalf("%v", err)
+	}
 }
 
 // CreateEnvConformance creates runner-independent cases for an ExecutionEnv. WithEnv must call its callback exactly

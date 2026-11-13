@@ -120,19 +120,25 @@ func TestRemoteObjectHoldOverTheParentLink(t *testing.T) {
 			}
 		})
 
-		// remote-object.test.ts: a hold over the parent link › two references from one host are two holds
-		t.Run("two references from one host are two holds", func(t *testing.T) {
+		// remote-object.test.ts: a hold over the parent link › two references from one host with one key share one hold; another key is another hold
+		t.Run("two references from one host with one key share one hold; another key is another hold", func(t *testing.T) {
 			rig := rhProvider(t)
-			first := rhGo(func() (*Reference, error) { return rig.Client.Get(background, Notes, rhNotes("S1"), GetOptions{}) })
+			get := func(session string) *rhAsync[*Reference] {
+				return rhGo(func() (*Reference, error) { return rig.Client.Get(background, Notes, rhNotes(session), GetOptions{}) })
+			}
+			first, second, other := get("S1"), get("S1"), get("S2")
 			if id := bindNext(t, rig.Peer); id != 0 {
 				t.Fatalf("first hold = %d, want 0", id)
 			}
-			second := rhGo(func() (*Reference, error) { return rig.Client.Get(background, Notes, rhNotes("S1"), GetOptions{}) })
 			if id := bindNext(t, rig.Peer); id != 1 {
 				t.Fatalf("second hold = %d, want 1", id)
 			}
 			first.must(t)
 			second.must(t)
+			other.must(t)
+			if holds := holdsAt(t, rig.Peer); holds != 0 {
+				t.Fatalf("holds left = %d, want none (two keys, two holds)", holds)
+			}
 		})
 
 		// remote-object.test.ts: a hold over the parent link › a member failure fails only that replica: reads throw it, its watch gets a failure call and stays open; the others update

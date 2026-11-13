@@ -55,12 +55,6 @@ function toReadOutput(content) {
     const image = content.find((block) => block.type === "image");
     return image ? { type: "image", data: image.data, mimeType: image.mimeType, note: text } : text;
 }
-function getNonVisionImageNote(model) {
-    if (!model || model.input.includes("image")) {
-        return undefined;
-    }
-    return "[Current model does not support images. The image will be omitted from this request.]";
-}
 /**
  * Whether a range can be streamed. Other values (fractional, negative limit) keep the whole-file path,
  * whose array slicing defines what they select, for example limit -1 as all lines but the last.
@@ -207,7 +201,6 @@ export function createReadToolDefinition(cwd, options) {
                         const mimeType = ops.detectImageMimeType ? await ops.detectImageMimeType(absolutePath) : undefined;
                         let content;
                         let details;
-                        const nonVisionImageNote = getNonVisionImageNote(ctx?.model);
                         if (mimeType) {
                             // Read image as binary.
                             const buffer = await ops.readFile(absolutePath);
@@ -216,21 +209,21 @@ export function createReadToolDefinition(cwd, options) {
                                 resizeOptions: ctx?.model?.inputLimits?.images?.resize ?? fallbackResizeOptions,
                             });
                             if (!processed.ok) {
-                                let textNote = `Read image file [${mimeType}]\n${processed.message}`;
-                                if (nonVisionImageNote)
-                                    textNote += `\n${nonVisionImageNote}`;
+                                const textNote = `Read image file [${mimeType}]\n${processed.message}`;
                                 content = [{ type: "text", text: textNote }];
                             }
                             else {
                                 let textNote = `Read image file [${processed.mimeType}]`;
                                 if (processed.hints.length > 0)
                                     textNote += `\n${processed.hints.join("\n")}`;
-                                if (nonVisionImageNote)
-                                    textNote += `\n${nonVisionImageNote}`;
                                 content = [
                                     { type: "text", text: textNote },
                                     { type: "image", data: processed.data, mimeType: processed.mimeType },
                                 ];
+                                // Pi 4be4cb4f5e9c (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+                                if (ctx?.model && !ctx.model.input.includes("image")) {
+                                    details = { imageUnsupportedByModel: ctx.model.id };
+                                }
                             }
                         }
                         else {

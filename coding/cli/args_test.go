@@ -275,6 +275,11 @@ func TestHelpTextMentionsProviderEnvVars(t *testing.T) {
 	help := captureStdout(func() { printHelp(os.Stdout, false) })
 	for _, envVar := range []string{
 		"TOGETHER_API_KEY",
+		// Pi 1397070024: a variable per Qwen Token Plan.
+		"QWEN_TOKEN_PLAN_TEAM_API_KEY",
+		"QWEN_TOKEN_PLAN_TEAM_CN_API_KEY",
+		"QWEN_TOKEN_PLAN_INDIVIDUAL_API_KEY",
+		"QWEN_TOKEN_PLAN_INDIVIDUAL_CN_API_KEY",
 		"XIAOMI_API_KEY",
 		"XIAOMI_TOKEN_PLAN_CN_API_KEY",
 		"XIAOMI_TOKEN_PLAN_AMS_API_KEY",

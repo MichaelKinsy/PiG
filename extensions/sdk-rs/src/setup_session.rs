@@ -40,11 +40,21 @@ impl SetupSessionManager<'_> {
     }
 
     /// session-manager.ts:304: an extension entry that does not take part in the model context.
+    /// `Value::Null` leaves the entry without a data member, as Pi's appendCustomEntry(customType)
+    /// does; [`SetupSessionManager::append_custom_entry_opt`] writes an explicit null.
     pub fn append_custom_entry(&self, custom_type: &str, data: Value) -> io::Result<Value> {
-        self.write(
-            "appendCustomEntry",
-            json!({"customType": custom_type, "data": data}),
-        )
+        self.append_custom_entry_opt(custom_type, if data.is_null() { None } else { Some(data) })
+    }
+
+    /// Appends a custom entry whose `data` member is left out (`None`, Pi's
+    /// appendCustomEntry(customType)), written as null (`Some(Value::Null)`, Pi's
+    /// appendCustomEntry(customType, null)) or a value.
+    pub fn append_custom_entry_opt(
+        &self,
+        custom_type: &str,
+        data: Option<Value>,
+    ) -> io::Result<Value> {
+        self.write("appendCustomEntry", custom_entry_args(custom_type, data))
     }
 
     /// session-manager.ts:353: an extension message that takes part in the model context.
@@ -54,6 +64,28 @@ impl SetupSessionManager<'_> {
         content: Value,
         display: bool,
         details: Value,
+    ) -> io::Result<Value> {
+        self.append_custom_message_entry_opt(
+            custom_type,
+            content,
+            display,
+            if details.is_null() {
+                None
+            } else {
+                Some(details)
+            },
+        )
+    }
+
+    /// Appends an extension message whose `details` member is left out (`None`), written as null
+    /// (`Some(Value::Null)`, Pi's appendCustomMessageEntry(customType, content, display, null)) or
+    /// a value.
+    pub fn append_custom_message_entry_opt(
+        &self,
+        custom_type: &str,
+        content: Value,
+        display: bool,
+        details: Option<Value>,
     ) -> io::Result<Value> {
         self.write(
             "appendCustomMessageEntry",
@@ -85,9 +117,27 @@ impl SetupSessionManager<'_> {
     }
 }
 
-/// The sessionWrite arguments of appendCustomMessageEntry; the host reads `customType`, `content`, `display` and `details`.
-fn custom_message_args(custom_type: &str, content: Value, display: bool, details: Value) -> Value {
-    json!({"customType": custom_type, "content": content, "display": display, "details": details})
+/// The sessionWrite arguments of appendCustomEntry; the host reads `customType` and `data`. `None` leaves the data member out and `Some(Value::Null)` sends it as null.
+fn custom_entry_args(custom_type: &str, data: Option<Value>) -> Value {
+    let mut args = json!({"customType": custom_type});
+    if let Some(data) = data {
+        args["data"] = data;
+    }
+    args
+}
+
+/// The sessionWrite arguments of appendCustomMessageEntry; the host reads `customType`, `content`, `display` and `details`. `None` leaves the details member out and `Some(Value::Null)` sends it as null.
+fn custom_message_args(
+    custom_type: &str,
+    content: Value,
+    display: bool,
+    details: Option<Value>,
+) -> Value {
+    let mut args = json!({"customType": custom_type, "content": content, "display": display});
+    if let Some(details) = details {
+        args["details"] = details;
+    }
+    args
 }
 
 /// The sessionWrite arguments of appendModelChange; the host reads `provider` and `modelId`.
@@ -235,8 +285,22 @@ mod tests {
     #[test]
     fn session_write_arguments_use_the_hosts_names() {
         assert_eq!(
-            custom_message_args("t", json!([{"type": "text"}]), true, json!({"k": 1})),
+            custom_message_args("t", json!([{"type": "text"}]), true, Some(json!({"k": 1}))),
             json!({"customType": "t", "content": [{"type": "text"}], "display": true, "details": {"k": 1}})
+        );
+        // None leaves the optional member out and Some(Value::Null) sends it as null, which the host writes as null.
+        assert_eq!(
+            custom_message_args("t", json!("x"), false, None),
+            json!({"customType": "t", "content": "x", "display": false})
+        );
+        assert_eq!(
+            custom_message_args("t", json!("x"), false, Some(Value::Null)),
+            json!({"customType": "t", "content": "x", "display": false, "details": null})
+        );
+        assert_eq!(custom_entry_args("t", None), json!({"customType": "t"}));
+        assert_eq!(
+            custom_entry_args("t", Some(Value::Null)),
+            json!({"customType": "t", "data": null})
         );
         assert_eq!(
             model_change_args("openai", "gpt-x"),

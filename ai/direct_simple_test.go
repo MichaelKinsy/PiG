@@ -19,6 +19,13 @@ func TestDirectSimpleAuthenticationReachesRealConverters(t *testing.T) {
 				apiKey = codexToken()
 			}
 			stream, err := StreamSimple(t.Context(), model, NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("Hi")}}}), StreamOptions{APIKey: apiKey, OnPayload: func(any, *Model) (any, error) { called = true; return nil, sentinel }})
+			if !BuiltAPI(api) {
+				// A build with this API's pig_strip tag fails the call with the strip before it builds a payload.
+				if called || stream != nil || err == nil || err.Error() != strippedAPIMessage("test-provider", api) {
+					t.Fatalf("called=%v stream=%v error=%v, want the strip error", called, stream != nil, err)
+				}
+				return
+			}
 			if api == APIAnthropicMessages {
 				// packages/ai/src/api/anthropic-messages.ts:521-539,817-830: setup rejection returns the initialized assistant through one terminal error event, before start.
 				if err != nil || stream == nil {

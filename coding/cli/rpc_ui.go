@@ -128,6 +128,10 @@ func (u *rpcUIContext) request(ctx context.Context, request rpcUIRequest, opts e
 	if ctx == nil {
 		ctx = context.Background()
 	}
+	// rpc-mode.ts:101: a dialog whose signal is already aborted resolves its default before any request is written.
+	if err := ctx.Err(); err != nil {
+		return rpcUIResponse{}, err
+	}
 	id := uuid.NewString()
 	request.Type = "extension_ui_request"
 	request.ID = id

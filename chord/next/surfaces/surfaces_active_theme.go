@@ -108,21 +108,42 @@ func FollowActiveTheme(h host.Host, mode string, changed func(Theme), ctx contex
 			return
 		}
 		addStop(func() { _, _ = watch.Stop() })
-		// The caller may cancel the ctx it passed instead of calling Stop: the watch has ended then, and there is nothing to follow
-		// (Pi: `watch(ctx).then(start, () => {})` ignores it).
-		chord.StartUnlessEnded(func() {
-			watch.Start(func(_ context.Context, call chord.WatchCall[delta.JsonValue]) error {
-				if call.Kind == chord.WatchCallValue {
-					if value, ok := call.Value.(*delta.JsonObject); ok {
-						mu.Lock()
-						pick = ThemePick{Dark: idOf(value.Value("dark")), Light: idOf(value.Value("light"))}
-						mu.Unlock()
+		// pig divergence (D636): the pick the watch was acquired with is applied before Start. Pi sets `pick` only in a listener
+		// call (`choice.pick.watch(ctx).then((watch) => watch.start(...))`), so a theme stored before this client's hold had
+		// its first values was never applied. The follower's callback must not run inside this microtask of the host's loop: the
+		// value is applied and the listener started on a goroutine, in that order; what the watch gets meanwhile waits in it for
+		// Start.
+		acquired := watch.Value()
+		//portlint:allow golifetime ends with the update and the start below: neither waits for the host
+		go func() { //portlint:allow asyncorder the acquired pick is applied, then the listener started, in that order on this one goroutine
+			if value, ok := acquired.(*delta.JsonObject); ok {
+				mu.Lock()
+				pick = ThemePick{Dark: idOf(value.Value("dark")), Light: idOf(value.Value("light"))}
+				mu.Unlock()
+			}
+			update()
+			// Stop marks the follower stopped under gate before it ends the watches: a follower stopped by now starts nothing.
+			gate.Lock()
+			defer gate.Unlock()
+			if stopped.Load() {
+				return
+			}
+			// The caller may cancel the ctx it passed instead of calling Stop: the watch has ended then, and there is nothing to follow
+			// (Pi: `watch(ctx).then(start, () => {})` ignores it).
+			chord.StartUnlessEnded(func() {
+				watch.Start(func(_ context.Context, call chord.WatchCall[delta.JsonValue]) error {
+					if call.Kind == chord.WatchCallValue {
+						if value, ok := call.Value.(*delta.JsonObject); ok {
+							mu.Lock()
+							pick = ThemePick{Dark: idOf(value.Value("dark")), Light: idOf(value.Value("light"))}
+							mu.Unlock()
+						}
 					}
-				}
-				update()
-				return nil
+					update()
+					return nil
+				})
 			})
-		})
+		}()
 	})
 	return &ThemeFollower{
 		SetMode: func(next string) {

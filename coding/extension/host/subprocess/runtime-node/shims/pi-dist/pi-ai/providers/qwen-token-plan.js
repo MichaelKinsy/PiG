@@ -5,9 +5,15 @@ import { QWEN_TOKEN_PLAN_MODELS } from "./qwen-token-plan.models.js";
 export function qwenTokenPlanProvider() {
     return createProvider({
         id: "qwen-token-plan",
-        name: "Qwen Token Plan",
-        baseUrl: "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
-        auth: { apiKey: envApiKeyAuth("Qwen Token Plan API key", ["QWEN_TOKEN_PLAN_API_KEY"]) },
+        // Pi 1397070024 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+        name: "Qwen Token Plan Team",
+        baseUrl: "https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",
+        auth: {
+            apiKey: envApiKeyAuth("Qwen Token Plan Team API key", [
+                "QWEN_TOKEN_PLAN_TEAM_API_KEY",
+                "QWEN_TOKEN_PLAN_API_KEY",
+            ]),
+        },
         models: Object.values(QWEN_TOKEN_PLAN_MODELS),
         api: openAICompletionsApi(),
     });

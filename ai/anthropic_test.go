@@ -1604,8 +1604,8 @@ func TestAnthConvertMessages_ImageAndToolResultImage(t *testing.T) {
 	if !ok || len(blocks) != 1 || blocks[0].Type != "image" {
 		t.Fatalf("user image block = %#v", userImg[0].Content)
 	}
-	src, _ := blocks[0].Source.(map[string]any)
-	if src["type"] != "base64" || src["media_type"] != "image/png" || src["data"] != "QUJD" {
+	src := blocks[0].Source
+	if src == nil || src.Type != "base64" || src.MediaType != "image/png" || src.Data != "QUJD" {
 		t.Errorf("image source = %#v, want base64/image-png/QUJD", src)
 	}
 

@@ -20,8 +20,15 @@ func newCompactionSuiteHarness(t *testing.T, options harnessOptions, responses .
 		options.contextWindow = 200000
 	}
 	h := newRecoveryHarness(t, options, responses...)
+	h.provider.estimateUsage = fauxUsageEstimate(t)
+	return h
+}
+
+// fauxUsageEstimate is the upstream faux provider's usage estimate (faux.ts withUsageEstimate): the prompt's and the response's text lengths in tokens, with the
+// session's simulated prompt cache.
+func fauxUsageEstimate(t *testing.T) func(ai.TranscriptContext, ai.StreamOptions, *ai.AssistantMessage) {
 	cache := map[string]string{}
-	h.provider.estimateUsage = func(request ai.TranscriptContext, options ai.StreamOptions, message *ai.AssistantMessage) {
+	return func(request ai.TranscriptContext, options ai.StreamOptions, message *ai.AssistantMessage) {
 		var parts []string
 		for _, message := range request.Messages() {
 			switch value := message.(type) {
@@ -92,7 +99,6 @@ func newCompactionSuiteHarness(t *testing.T, options harnessOptions, responses .
 		}
 		message.Usage = ai.Usage{Input: input, Output: output, CacheRead: read, CacheWrite: write, TotalTokens: input + output + read + write}
 	}
-	return h
 }
 func suiteJSON(t *testing.T, value any) string {
 	t.Helper()

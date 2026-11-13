@@ -23,7 +23,9 @@ import (
 	"embed"
 	"encoding/json"
 	"encoding/json/jsontext"
+	"errors"
 	"fmt"
+	"io/fs"
 	"math"
 	"os"
 	"path/filepath"
@@ -33,6 +35,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsonopts"
 	"github.com/MichaelKinsy/PiG/internal/jsonparse"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
 	"github.com/MichaelKinsy/PiG/internal/text"
 )
 
@@ -80,30 +83,57 @@ func LoadThemeFile(path string) (*Theme, error) {
 
 // LoadThemeFromPath reads a theme JSON file and returns the resolved Theme in mode (theme.ts loadThemeFromPath).
 func LoadThemeFromPath(path string, mode TerminalColorMode) (*Theme, error) {
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("read theme %s: %w", path, err)
-	}
-	data := text.StripBomBytes(raw)
-	if err := jsonparse.Validate(data); err != nil {
-		return nil, fmt.Errorf("Failed to parse theme %s: SyntaxError: %w", path, err)
-	}
-	// Pi validates every user-authored theme before use (theme-schema.ts).
-	if err := ValidateThemeJSON(path, data); err != nil {
-		return nil, err
-	}
-	var tj ThemeJSON
-	if err := json.Unmarshal(data, &tj); err != nil {
-		return nil, fmt.Errorf("parse theme %s: %w", path, err)
-	}
-	tj.colorKeys = extractColorKeyOrder(data)
-	theme, err := resolveThemeWithMode(&tj, mode)
+	theme, err := loadThemeLabeled(path, path, mode)
 	if err != nil {
 		return nil, err
 	}
 	// theme.ts loadThemeFromPath: createTheme(themeJson, mode, themePath) records where the theme was loaded from.
 	theme.SourcePath = path
 	return theme, nil
+}
+
+// loadThemeLabeled reads the theme JSON file at path and resolves it in mode. label names the theme in a syntax or schema error (theme.ts parseThemeJsonContent's label): the path for a file loaded by path, the name for one looked up by name.
+func loadThemeLabeled(path, label string, mode TerminalColorMode) (*Theme, error) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read theme %s: %w", path, err)
+	}
+	data := text.StripBomBytes(raw)
+	if err := jsonparse.Validate(data); err != nil {
+		return nil, fmt.Errorf("Failed to parse theme %s: SyntaxError: %w", label, err)
+	}
+	// Pi validates every user-authored theme before use (theme-schema.ts).
+	if err := ValidateThemeJSON(label, data); err != nil {
+		return nil, err
+	}
+	var tj ThemeJSON
+	if err := json.Unmarshal(data, &tj); err != nil {
+		return nil, fmt.Errorf("parse theme %s: %w", label, err)
+	}
+	tj.colorKeys = extractColorKeyOrder(data)
+	return resolveThemeWithMode(&tj, mode)
+}
+
+// loadUnregisteredTheme mirrors theme.ts loadTheme for a name that is neither built in nor registered (loadThemeJson): the theme of <custom themes directory>/<name>.json.
+// Only a file that does not exist is "Theme not found"; a file that exists and cannot be read, parsed, validated or resolved fails with that reason, which setTheme reports.
+// A theme that failed to load at startup is not registered, so this is where its reason comes from when it is selected.
+func loadUnregisteredTheme(name string) (*Theme, error) {
+	notFound := fmt.Errorf("Theme not found: %s", name)
+	dir := customThemesDir.Load()
+	if dir == nil || *dir == "" {
+		return nil, notFound
+	}
+	path := filepath.Join(*dir, name+".json")
+	// fs.existsSync is false for every stat failure.
+	if _, err := os.Stat(path); err != nil {
+		return nil, notFound
+	}
+	// loadThemeJson reads with fs.readFileSync, whose error message is the reason, and labels the content with the name; createTheme(themeJson, mode) records no source path.
+	theme, err := loadThemeLabeled(path, name, currentColorMode())
+	if _, isPathError := errors.AsType[*fs.PathError](err); isPathError {
+		return nil, nodeerrno.FromPathError(err)
+	}
+	return theme, err
 }
 
 // ThemeColorValue mirrors theme-schema.ts ColorValue: a hex color, variable
@@ -178,6 +208,7 @@ func resolveVarRefs(value ThemeColorValue, vars map[string]ThemeColorValue, visi
 	if visited[value.Text] {
 		return ThemeColorValue{}, fmt.Errorf("Circular variable reference detected: %s", value.Text)
 	}
+	// pig divergence (D645): vars is a Go map with no inherited members, so a color that names an Object.prototype member (constructor, toString, __proto__) is a missing variable; Pi's `value in vars` finds the inherited member and the next step throws "TypeError: value.startsWith is not a function".
 	next, ok := vars[value.Text]
 	if !ok {
 		return ThemeColorValue{}, fmt.Errorf("Variable reference not found: %s", value.Text)

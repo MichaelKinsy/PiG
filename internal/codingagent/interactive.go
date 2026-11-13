@@ -1196,6 +1196,8 @@ type InteractiveModeOptions struct {
 	// DefaultModelPerProvider shares the startup resolver's provider defaults with /login.
 	DefaultModelPerProvider map[string]string
 
+	// ModelBinder gives a model object an extension passed to setModel over the wire the Session runtime's backend (coding.ModelRuntime.BindModelObject).
+	ModelBinder func(*ai.Model) *ai.Model
 	// ModelLookup resolves a provider/model identity through the Session-owned runtime.
 	ModelLookup  func(providerID, modelID string) *ai.Model
 	ModelCatalog func(providerID ...string) []*ai.Model
@@ -1478,6 +1480,8 @@ func NewInteractiveMode(runtimeHost InteractiveRuntime, options InteractiveModeO
 	// Mirrors the upstream InteractiveMode constructor's
 	// setCapabilityOverrides(settingsManager.getTerminalCapabilityOverrides()).
 	tui.SetCapabilityOverrides(opts.Settings.GetTerminalCapabilityOverrides())
+	// pig divergence (D624): terminal.screenWriter is applied here, once, before a renderer exists and so before the alternate screen is entered; a settings change or a reload acts at the next start. The merged settings carry the global file's value, because a project file cannot set the key.
+	tui.SetScreenWriter(opts.Settings.GetTerminalScreenWriter() == TerminalScreenWriterWriter)
 	ensurePngTranscoder(nil)
 	// Pi's constructor uses options.tuiMode ?? settingsManager.getTuiMode().
 	if opts.TuiMode == "" {

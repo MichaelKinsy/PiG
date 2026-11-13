@@ -1,0 +1,54 @@
+# Behavior family: tools (read of an image under a model without image input)
+# Pi 4be4cb4f5e9c (#12139; the oracle carries it as a post-release backport of core/tools/read.js and renderers/read.js). Probe: Pi interactive draws the read card
+# with the faux model made text-only. TEST_FAUX_TEXT_ONLY=1 changes only the model's `input` (["text"] instead of ["text", "image"]) in
+# both faux twins (test/parity/testdata/test-faux-provider.ts, ai.TestFauxInput). The file the prompt reads, parity-read-target.txt, is a
+# 1x1 PNG: read detects an image by its bytes.
+# Upstream evidence: Pi 1.5.2 with the 4be4cb4f5e9c backport (check-oracle: backports e0d086255c86, pi bundle 5e093fc7e8e5), probed first through this
+# scenario's own Pi side on 2026-11-13 (make parity-family FAMILY=tools, 3 runs): Pi draws "[faux-1 does not support images; it saw a placeholder instead]"
+# while the card is collapsed and, after Ctrl+O, below "Read image file [image/png]" and the image line.
+# What the USER sees: the card draws "[faux-1 does not support images; it saw a placeholder instead]" while collapsed (the first step
+# waits for it before any key) and, after Ctrl+O, below the result text when expanded (the compared capture).
+name = "33-interactive-read-image-text-only-model"
+description = "The read card of an image read under a text-only model names the model in a warning, collapsed and expanded"
+covers = [
+  "packages/coding-agent/src/core/tools/renderers/read.ts",
+  "packages/coding-agent/src/core/tools/read.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "TEST_FAUX_TEXT_ONLY=1"]
+pi = ["TEST_FAUX_TEXT_ONLY=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 50
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "testdata/read-image-text-only"
+capture_start = "Run: read parity-read-target.txt"
+capture_end_regex = 'it saw a placeholder instead\][\s\S]*?done'
+
+[[tmux.steps]]
+keys = ["Run: read parity-read-target.txt", "Enter"]
+wait_contains = ["[faux-1 does not support images; it saw a placeholder instead]", "done"]
+wait_timeout_seconds = 20
+
+[[tmux.steps]]
+keys = ["C-o"]
+settle_seconds = 1
+wait_contains = ["Read image file [image/png]", "[faux-1 does not support images; it saw a placeholder instead]"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_contain = ["Read image file [image/png]", "[faux-1 does not support images; it saw a placeholder instead]"]
+both_not_contain = ["panic:", "goroutine ", "test-faux:", "Current model does not support images"]
+escaped_output_equal = true
+runs = 3

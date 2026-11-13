@@ -72,7 +72,7 @@ func (t *FindTool) schema(borrow bool) ai.ToolSchema {
 		Name:        "find",
 		Description: "Search for files by glob pattern. Returns matching file paths relative to the search directory. Respects .gitignore. Output is truncated to 1000 results or 50KB (whichever is hit first).",
 	}, `{"type":"object","required":["pattern"],"properties":{
-		"pattern":{"type":"string","description":"Glob pattern to match files, e.g. '*.ts', '**/*.json', or 'src/**/*.spec.ts'"},
+		"pattern":{"type":"string","description":"Glob pattern relative to the search directory, e.g. 'src/**/*.ts'. Without '/', e.g. '*.ts', it matches file names at any depth"},
 		"path":{"type":"string","description":"Directory to search in (default: current directory)"},
 		"limit":{"type":"number","description":"Maximum number of results (default: 1000)"}
 	}}`, borrow)
@@ -142,6 +142,9 @@ func (t *FindTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 	var filter *findPathFilter
 	if invocation.pathMatcher != nil {
 		filter = &findPathFilter{matcher: invocation.pathMatcher, limit: effectiveLimit, stop: stopFd}
+		if invocation.matchRelative {
+			filter.relativize = func(line string) string { return relativizeFindResultPath(line, searchPath) }
+		}
 		cmd.Stdout = filter
 	} else {
 		cmd.Stdout = &stdout
@@ -256,9 +259,9 @@ func formatFindResults(relativized []string, effectiveLimit float64, resultLimit
 	result := agent.AgentToolResult{}
 	if len(notices) > 0 {
 		resultOutput += "\n\n[" + strings.Join(notices, ". ") + "]"
-		shareTruncatedContent(details.Truncation, resultOutput)
 		result.Details = details
 	}
+	resultOutput = sharedOutput(details.Truncation, resultOutput)
 	result.Content = []ai.ToolResultMessageContent{ai.TextContent{Text: resultOutput}}
 	return result
 }
@@ -338,13 +341,22 @@ func (t *FindTool) insideGitRepo(searchPath string) bool {
 type findFdInvocation struct {
 	args        []string
 	pathMatcher *minimatch.Minimatch
+	// matchRelative says pathMatcher matches a listed path relative to the search path (a relative path pattern), not the absolute path fd
+	// printed (an absolute pattern).
+	matchRelative bool
 }
+
+// findGlobEscaper is find.ts's searchPath.replace(/[\\*?[\]{}]/g, "\\$&"): the search path as literal text of an fd glob.
+var findGlobEscaper = strings.NewReplacer(`\`, `\\`, `*`, `\*`, `?`, `\?`, `[`, `\[`, `]`, `\]`, `{`, `\{`, `}`, `\}`)
 
 // newFindFdInvocation builds find.ts's fd arguments. On Windows `\` in the pattern is a path separator and becomes `/` (#9262); on POSIX it stays
 // a glob escape. fd before 10.5.1 never matches --full-path globs on Windows and workarounds for that break on fd 10.5.1 (sharkdp/fd#2067), so on
-// Windows a path pattern (one with `/`) is not given to fd: fd lists every entry and the matcher decides (#11972). Its options keep fd's glob
-// behaviour: `*` matches dotfiles, `+(a|b)` is literal, and an all-lowercase pattern matches case-insensitively (smart case). A trailing `/**`
-// matches as `/**/*`, because minimatch's `src/**` also matches `src` itself and fd's does not.
+// Windows a path pattern (one with `/`) is not given to fd: fd lists every entry and the matcher decides (#11972), against the path relative to
+// the search path, or the absolute path for an absolute pattern. Its options keep fd's glob behaviour: `*` matches dotfiles, `+(a|b)` is literal,
+// and an all-lowercase pattern matches case-insensitively (smart case). A trailing `/**` matches as `/**/*`, because minimatch's `src/**` also
+// matches `src` itself and fd's does not.
+// Pi 282b01c80 (#12116, #12066): a relative path pattern is anchored at the search path, like grep's glob: "src/*.ts" finds "src/a.ts" but not
+// "pkg/src/b.ts", and "**/src/*.ts" finds both. The former leading "**/" matched through the folders above the search path.
 func newFindFdInvocation(pattern, searchPath string, effectiveLimit float64, windows, insideGit bool) (findFdInvocation, error) {
 	args := []string{"--color=never", "--hidden"}
 	// fd ignores .gitignore outside git repos unless --no-require-git; inside a repo its git-aware default stops parent rules at nested repos
@@ -352,8 +364,7 @@ func newFindFdInvocation(pattern, searchPath string, effectiveLimit float64, win
 	if !insideGit {
 		args = append(args, "--no-require-git")
 	}
-	// fd --glob matches the basename unless --full-path is set; in --full-path mode it matches the absolute candidate path, so a path-containing
-	// pattern needs a leading "**/".
+	// fd --glob matches the basename unless --full-path is set; in --full-path mode it matches the absolute candidate path.
 	effectivePattern := pattern
 	if windows {
 		effectivePattern = strings.ReplaceAll(pattern, `\`, "/")
@@ -364,24 +375,37 @@ func newFindFdInvocation(pattern, searchPath string, effectiveLimit float64, win
 		effectivePattern = effectivePattern[2:]
 	}
 	isPathPattern := strings.Contains(effectivePattern, "/")
-	if isPathPattern && !strings.HasPrefix(effectivePattern, "/") && !strings.HasPrefix(effectivePattern, "**/") && effectivePattern != "**" {
-		effectivePattern = "**/" + effectivePattern
+	// fd's smart case: an all-lowercase pattern matches case-insensitively.
+	ignoreCase := effectivePattern == jsstring.ToLower(effectivePattern)
+	// Absolute patterns are matched as given (path.isAbsolute of the host's path module).
+	isAbsolute := nodepath.PosixIsAbsolute
+	if windows {
+		isAbsolute = nodepath.Win32IsAbsolute
 	}
+	isRelativePathPattern := isPathPattern && !isAbsolute(effectivePattern)
 	if windows && isPathPattern {
 		globPattern := effectivePattern
 		if strings.HasSuffix(globPattern, "/**") {
 			globPattern = strings.TrimSuffix(globPattern, "**") + "**/*"
 		}
-		matcher, err := minimatch.New(globPattern, minimatch.Options{Dot: true, NoExt: true, NoCase: effectivePattern == jsstring.ToLower(effectivePattern), Platform: "win32"})
+		matcher, err := minimatch.New(globPattern, minimatch.Options{Dot: true, NoExt: true, NoCase: ignoreCase, Platform: "win32"})
 		if err != nil {
 			return findFdInvocation{}, err
 		}
-		return findFdInvocation{args: append(args, "--", "", searchPath), pathMatcher: matcher}, nil
+		return findFdInvocation{args: append(args, "--", "", searchPath), pathMatcher: matcher, matchRelative: isRelativePathPattern}, nil
 	}
 	// One result past the limit tells "exactly N matches" from "more than N".
 	args = append(args, "--glob", "--max-results", jsNumber(effectiveLimit+1))
 	if isPathPattern {
 		args = append(args, "--full-path")
+	}
+	if isRelativePathPattern {
+		// fd matches the absolute path, so the pattern is prefixed with the glob-escaped search path. Smart case is decided by the user's
+		// pattern, not by the search path's letters, so it is set explicitly.
+		effectivePattern = findGlobEscaper.Replace(strings.TrimRight(searchPath, "/")) + "/" + effectivePattern
+		if ignoreCase {
+			args = append(args, "--ignore-case")
+		}
 	}
 	return findFdInvocation{args: append(args, "--", effectivePattern, searchPath)}, nil
 }
@@ -390,8 +414,10 @@ func newFindFdInvocation(pattern, searchPath string, effectiveLimit float64, win
 // limit at most, and stops fd once it has them.
 type findPathFilter struct {
 	matcher *minimatch.Minimatch
-	limit   float64
-	stop    func()
+	// relativize, when set, turns a listed path into the path relative to the search path, which the matcher of a relative pattern matches.
+	relativize func(line string) string
+	limit      float64
+	stop       func()
 
 	pending []byte
 	count   float64
@@ -429,7 +455,14 @@ func (f *findPathFilter) finish() {
 
 func (f *findPathFilter) line(raw []byte) {
 	line := jsstring.Trim(strings.TrimSuffix(jsstring.FromUTF8(raw), "\r"))
-	if line == "" || !f.matcher.Match(line) {
+	if line == "" {
+		return
+	}
+	candidate := line
+	if f.relativize != nil {
+		candidate = f.relativize(line)
+	}
+	if !f.matcher.Match(candidate) {
 		return
 	}
 	f.kept.WriteString(line)

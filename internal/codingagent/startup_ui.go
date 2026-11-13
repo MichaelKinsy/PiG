@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"slices"
 	"sync"
 	"time"
@@ -325,15 +326,16 @@ func runStartupComponentWith(component startupComponent, opts StartupUIOptions, 
 		return false, asyncSelector.operationError
 	}
 
-	// Stop joins the terminal's decoder before retaining its final events for the next owner.
-	stopAndDrain(true)
-
 	if clear {
 		ui.Clear()
 		ui.Render()
-		// upstream: cli/startup-ui.ts:clearStartupTui waits 25 ms after the clear for the render requestRender queued; Render here draws before it returns.
+		// upstream: cli/startup-ui.ts:118-122 clearStartupTui waits 25 ms after the clear for the render requestRender queued; Render here draws before it returns.
 		time.Sleep(25 * time.Millisecond)
 	}
+
+	// upstream: cli/startup-ui.ts:163-164,235-236 stop the terminal once the clear has settled. Stop joins the terminal's decoder before retaining its final
+	// events for the next owner.
+	stopAndDrain(true)
 	return true, nil
 }
 
@@ -363,6 +365,11 @@ func configureStartupTui(opts StartupUIOptions) *KeybindingsManager {
 		}
 	}
 	tui.SetThemeRegistry(registry)
+	customThemesDir := ""
+	if opts.AgentDir != "" {
+		customThemesDir = filepath.Join(opts.AgentDir, "themes")
+	}
+	tui.SetCustomThemesDir(customThemesDir)
 	// The system theme starts in grayscale until the terminal reports its colors.
 	tui.MarkTerminalColorsPending()
 	tui.SetThemeSettingPresence(settings.themeSetting())

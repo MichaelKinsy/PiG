@@ -1,0 +1,16 @@
+from = "1.5.2+53af0237"
+to = "1.5.2+5b5be2c3"
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/tool-execution.ts"
+change = "modified"
+disposition = "unchanged-observable"
+evidence = ["test:tui/tool_execution_self_shell_large_test.go#TestSelfShellCardDrawsHundredsOfThousandsOfRowsPi5b5be2c31", "test:internal/codingagent/interactive_resume_large_edit_test.go#TestResumedSessionWithVeryLargeEditDiffPi5b5be2c31", "test:coding/extension/host/subprocess/runtime_node_tool_execution_large_test.go#TestNodeToolExecutionComponentDrawsVeryLargeSelfRenderedRowsPi5b5be2c31"]
+rationale = "5b5be2c31 (#12145, fixes #8036): ToolExecutionComponent.render appended the rows of a tool that draws itself (renderShell \"self\", which includes the built-in edit) with lines.push(...contentLines); a large edit diff (a file with a multi-megabyte line, such as exported HTML) wraps to hundreds of thousands of rows, the spread exceeds V8's argument limit and pi exited with RangeError: Maximum call stack size exceeded, again on every resume because the diff is saved in the session. Pi now appends in a loop; nothing changes in what is rendered or saved. That is a V8 call limit: renderSelfShell (tui/tool_execution_definition.go) appends a slice and was never broken (measured on the base: Pi's manual case, a session whose edit result has a diff with two lines of about 12 MB each, opens at 100 columns and takes input). Pi's commit has no test; its manual case is ported three ways: the card draws 300 001 rows from a self-rendered definition, each in order, and a second draw allocates nothing per row; a persisted session with such a diff resumes through the production reader and transcript with the row count derived from the diff and the width, also with an errored assistant turn after the result and with the result as the last entry, and a second draw does not wrap again (Pi's Text keeps its rows per text and width too); and scenario interactive-rendering/72-resume-very-large-edit-diff resumes, in both binaries at 100 columns, a generated session whose edit diff draws 190 000 rows (1.5 times the row count at which the spread fails; the two 12 MB lines of the manual case were measured by hand on the base) with an exact escaped comparison of the visible end. The parity oracle and the vendored Node runtime (which exports ToolExecutionComponent to extensions) carry Pi's line through the 5b5be2c316e0 block of automation/gen/pi-post-release-backports.mjs; without it the oracle crashes in that scenario, and TestNodeToolExecutionComponentDrawsVeryLargeSelfRenderedRowsPi5b5be2c31 (coding/extension/host/subprocess) draws the vendored component from a Node extension."
+
+[[files]]
+path = "packages/coding-agent/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "5b5be2c31: Pi's own changelog line; PiG records its own reach (the vendored Node runtime) in changelog.d."

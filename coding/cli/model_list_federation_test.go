@@ -26,10 +26,10 @@ func TestPrintModelList_AnthropicFederationEnv_ListsAnthropic(t *testing.T) {
 	dir := t.TempDir()
 	reg := codingagent.NewModelRegistry(dir)
 
-	out := captureStdout(func() { printModelList(reg, "claude-sonnet-4-5") })
+	out := captureStdout(func() { printModelTable(reg, "claude-sonnet-4-5") })
 
 	if strings.Contains(out, "No models available") || !strings.Contains(out, "anthropic") || !strings.Contains(out, "claude-sonnet-4-5") {
-		t.Fatalf("printModelList with federation-only env:\n%s", out)
+		t.Fatalf("printModelTable with federation-only env:\n%s", out)
 	}
 }
 

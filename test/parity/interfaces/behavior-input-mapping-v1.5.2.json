@@ -4,30 +4,69 @@
     {
       "id": "input:packages/coding-agent/src/core/agent-session.ts#AgentSession._emitExtensionEvent",
       "ownerFamily": "extensions-runtime",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "agent/message_json.go#ReplaceMessageInPlace",
+        "coding/session.go#currentRunner",
+        "coding/session_boundaries.go#handleAgentEvent",
+        "coding/session_extension_hooks.go#extensionEventHook",
+        "coding/session_extension_hooks.go#normalizeReplacementContent",
+        "internal/codingagent/event_bridge.go#DispatchAgentLoopEvent"
+      ],
+      "evidence": [
+        "agent/message_custom_order_test.go#TestAdoptMemberOrderReachesEveryCopy",
+        "coding/session_emit_extension_event_oracle_test.go#TestEmitExtensionEventMatchesPi",
+        "coding/session_extension_hooks_test.go#TestMessageEndReplacementPersisted",
+        "coding/session_message_source_test.go#TestMessageEndCustomReplacementWithoutContentPutsContentLast",
+        "coding/session_rpc33_observation_test.go#TestSessionExtensionUpdateUsesCurrentMessage",
+        "coding/session_test.go#TestAC54SessionReplaceRunnerRedirectsAgentLifecycle",
+        "test/parity/scenarios/extensions-runtime/16-resumed-session-identity.toml",
+        "test/parity/scenarios/json/09-json-extension-object-member-order.toml"
+      ],
+      "contracts": [
+        "coding-agent/extensions/current-session-lifecycle-context"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "input:packages/coding-agent/src/extensions/llama/ui.ts#HuggingFaceSearch.handleInput",
       "ownerFamily": "llama-runtime",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/llama/ui.go#HandleInput",
+        "internal/codingagent/llama/ui.go#runSearch",
+        "internal/codingagent/llama/ui.go#scheduleSearch"
+      ],
+      "evidence": [
+        "internal/codingagent/llama/search_contract_test.go#TestLlamaSearchDirectedKeysMatchPi",
+        "internal/codingagent/llama/search_oracle_test.go#TestLlamaSearchMatchesPi",
+        "internal/codingagent/llama/search_oracle_test.go#TestLlamaSearchStartsNoSearchAfterClose",
+        "internal/codingagent/llama/ui_selection_test.go#TestHuggingFaceSearchKeepsTheBrowsedModelSelectedWhenTheNextSearchLands",
+        "internal/codingagent/llama/ui_selection_test.go#TestHuggingFaceSearchSelectsTheBestMatchWhenTheUserDidNotBrowse",
+        "internal/codingagent/llama/ui_test.go#TestHuggingFaceSearchPageKeysMoveTenResults",
+        "test/parity/scenarios/extensions-runtime/76-llama-search.toml"
+      ],
+      "contracts": [
+        "coding-agent/llama-search/handle-input"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "input:packages/coding-agent/src/extensions/llama/ui.ts#LlamaView.handleInput",
       "ownerFamily": "llama-runtime",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/llama/ui.go#HandleInput"
+      ],
+      "evidence": [
+        "internal/codingagent/llama/ui_oracle_test.go#TestLlamaViewMatchesPi",
+        "test/parity/scenarios/extensions-runtime/75-llama-view.toml"
+      ],
+      "contracts": [
+        "coding-agent/llama-view/handle-input"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -153,10 +192,33 @@
     {
       "id": "input:packages/coding-agent/src/modes/interactive/components/custom-editor.ts#CustomEditor.handleInput",
       "ownerFamily": "interactive-rendering",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/custom_editor.go#HandleInput",
+        "internal/codingagent/custom_editor.go#OnAction",
+        "internal/codingagent/interactive_input.go#handleCustomEditorKey",
+        "internal/codingagent/interactive_input.go#inputLoopUntil",
+        "internal/codingagent/keys.go#classifyKeyWithBindings"
+      ],
+      "evidence": [
+        "internal/codingagent/custom_editor_keybindings_test.go#TestCustomEditorExplicitHistoryBindingBeatsModelCycling",
+        "internal/codingagent/custom_editor_keybindings_test.go#TestPR7680AutocompletePageKeysWinOverTheImagePasteShortcut",
+        "internal/codingagent/custom_editor_test.go#TestCustomEditorEscapePrefersOnEscapeThenTheInterruptActionThenTheEditor",
+        "internal/codingagent/custom_editor_test.go#TestCustomEditorExitOnlyWhenTheEditorIsEmpty",
+        "internal/codingagent/custom_editor_test.go#TestCustomEditorExtensionShortcutThenPasteImageComeFirst",
+        "internal/codingagent/custom_editor_test.go#TestCustomEditorRunsTheRegisteredAppActionAndReplacesIt",
+        "internal/codingagent/interactive_remapped_submit_test.go#TestTerminalInputPreservesRemappedSubmitBindings",
+        "internal/codingagent/keybindings_inventory_test.go#TestAppKeybindingDefinitionsMatchUpstreamInventory",
+        "internal/codingagent/keybindings_platform_test.go#TestKeybindingDefinitionsApplyPlatformDefaults",
+        "internal/codingagent/select_page_keys_test.go#TestCustomEditorGivesSelectionPageKeysToAnOpenAutocomplete",
+        "test/parity/scenarios/custom-editor-precedence.toml",
+        "test/parity/scenarios/tui-components/22-editor-remapped-submit-with-key-diagnostics.toml"
+      ],
+      "contracts": [
+        "coding-agent/custom-editor/active-keybinding-manager",
+        "coding-agent/custom-editor/app-key-precedence",
+        "coding-agent/custom-editor/handler-order"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -232,10 +294,21 @@
     {
       "id": "input:packages/coding-agent/src/modes/interactive/components/extension-selector.ts#ExtensionSelectorComponent.handleInput",
       "ownerFamily": "selectors",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/ext_ui_context.go#Select",
+        "tui/extension_selector.go#HandleInput"
+      ],
+      "evidence": [
+        "internal/codingagent/extension_dialog_remapping_test.go#TestExtensionDialogRemappingThroughOwnerLoop",
+        "test/parity/scenarios/selectors/12-extension-dialog-remapping.toml",
+        "tui/extension_dialog_bindings_test.go#TestExtensionDialogsMatchPiBindingsAndPalette",
+        "tui/extension_dialog_contract_test.go#TestExtensionDialogCallbacksFireOncePerCompletingKey",
+        "tui/extension_dialog_contract_test.go#TestExtensionSelectorBranchOrderAndBoundariesMatchPi"
+      ],
+      "contracts": [
+        "coding-agent/extension-selector/empty-and-remapped-actions"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -260,40 +333,110 @@
     {
       "id": "input:packages/coding-agent/src/modes/interactive/components/login-dialog.ts#LoginDialogComponent.handleInput",
       "ownerFamily": "selectors",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/login_dialog.go#HandleInput",
+        "tui/login_dialog.go#showInput"
+      ],
+      "evidence": [
+        "test/parity/scenarios/oauth/26-login-cancel-returns-to-provider-list.toml",
+        "tui/login_dialog_cancel_order_test.go#TestLoginDialogCancelAbortsBeforeEndingTheInput",
+        "tui/login_dialog_contract_test.go#TestLoginDialogHandleInputBranchOrderAndPreconditions",
+        "tui/login_dialog_device_code_test.go#TestDeviceCodeLoginOpensTheVerificationPageAndCopiesTheCodeOnceAfterConfirmation",
+        "tui/login_dialog_oracle_test.go#TestLoginDialogInputMatchesPi"
+      ],
+      "contracts": [
+        "coding-agent/login-dialog/cancel-copy-input"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "input:packages/coding-agent/src/modes/interactive/components/model-selector.ts#ModelSelectorComponent.handleInput",
       "ownerFamily": "model-resolver-selector",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "coding/session.go#setModel",
+        "internal/codingagent/interactive_commands.go#buildSlashContext",
+        "internal/codingagent/model_picker.go#persistDefaultModel",
+        "tui/model_select.go#HandleInput",
+        "tui/model_select.go#applyFilter",
+        "tui/model_select.go#moveCursor"
+      ],
+      "evidence": [
+        "coding/session_model_default_test.go#TestSessionModelSwitchDoesNotRewriteGlobalDefault",
+        "internal/codingagent/model_picker_parity_test.go#TestModelPickerPersistsOnlyExplicitDefault",
+        "internal/codingagent/model_picker_parity_test.go#TestModelPickerReopensInScopeOrderAfterSavingDefault",
+        "test/parity/scenarios/model-resolver-selector/06-model-scope-toggle.toml",
+        "test/parity/scenarios/model-resolver-selector/09-model-filter-resets-selection.toml",
+        "test/parity/scenarios/model-resolver-selector/11-model-picker-arrow-wrap.toml",
+        "test/parity/scenarios/model-resolver-selector/14-model-picker-fuzzy-filter.toml",
+        "test/parity/scenarios/model-resolver-selector/16-model-picker-enter-session-only.toml",
+        "test/parity/scenarios/model-resolver-selector/17-model-picker-save-default.toml",
+        "test/parity/scenarios/model-resolver-selector/18-model-picker-save-default-scope-order.toml",
+        "test/parity/scenarios/model-resolver-selector/24-fullscreen-model-picker-page-keys-reach-selector.toml",
+        "tui/model_select_default_test.go#TestModelSelectorCtrlSSelectsDefault",
+        "tui/model_select_default_test.go#TestModelSelectorRemappedDefaultAction",
+        "tui/model_select_test.go#TestModelSelectorArrowNavigationWrapsAtBothEnds",
+        "tui/model_select_test.go#TestModelSelector_FilterResetsSelectionToBestMatch",
+        "tui/model_select_test.go#TestModelSelector_FilterUsesFuzzySubsequence",
+        "tui/model_select_test.go#TestModelSelector_SearchDelegatesCursorEditingToInput",
+        "tui/model_selector_contract_test.go#TestModelSelectorOverlappingBindingsMatchPi",
+        "tui/model_selector_oracle_test.go#TestModelSelectorInputMatchesPi",
+        "tui/select_page_keys_upstream_test.go#TestUpstreamModelSelectorMovesByOnePageWithRemappedSelectionPageKeys"
+      ],
+      "contracts": [
+        "coding-agent/model-selector/arrow-wrap",
+        "coding-agent/model-selector/explicit-default",
+        "coding-agent/model-selector/input-state-machine"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "input:packages/coding-agent/src/modes/interactive/components/model-selector.ts#ModelSelectorComponent.refreshModels",
       "ownerFamily": "model-resolver-selector",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/interactive_models.go#modelSelectorRuntime",
+        "tui/model_select.go#UpdateModels",
+        "tui/model_selector_runtime.go#NewModelSelectorComponent",
+        "tui/model_selector_runtime.go#applyCatalogRefresh",
+        "tui/model_selector_runtime.go#rejectCatalogRefresh"
+      ],
+      "evidence": [
+        "test/parity/scenarios/model-resolver-selector/03-model-invalid.toml",
+        "test/parity/scenarios/model-resolver-selector/12-expired-credential-is-not-refresh-failure.toml",
+        "tui/model_select_refresh_test.go#TestModelSelectorUpdateModelsKeepsTheSelectionWhileASearchQueryIsActive",
+        "tui/model_selector_refresh_oracle_test.go#TestModelSelectorRefreshModelsMatchesPi",
+        "tui/model_selector_runtime_test.go#TestModelSelectorConstructorKeepsTheListAfterATimedOutRefresh"
+      ],
+      "contracts": [
+        "coding-agent/model-selector/refresh-result-status"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "input:packages/coding-agent/src/modes/interactive/components/oauth-selector.ts#OAuthSelectorComponent.handleInput",
       "ownerFamily": "selectors",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/oauth_selector.go#HandleInput",
+        "tui/oauth_selector.go#confirm"
+      ],
+      "evidence": [
+        "test/parity/scenarios/oauth/17-login-method-search.toml",
+        "test/parity/scenarios/oauth/26-login-cancel-returns-to-provider-list.toml",
+        "tui/oauth_selector_contract_test.go#TestOAuthSelectorBranchOrderAndBoundariesMatchPi",
+        "tui/oauth_selector_input_test.go#TestOAuthSelectorInputMatchesPi",
+        "tui/oauth_selector_oracle_test.go#TestOAuthSelectorHandleInputMatchesPi",
+        "tui/select_page_keys_test.go#TestSelectorComponentsMoveByTheirPage"
+      ],
+      "contracts": [
+        "coding-agent/oauth-selector/boundary-transitions",
+        "coding-agent/oauth-selector/input-state-machine"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -477,40 +620,89 @@
     {
       "id": "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#LabelInput.handleInput",
       "ownerFamily": "tree",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/tree_select.go#HandleInput",
+        "tui/tree_select.go#handleLabelInput"
+      ],
+      "evidence": [
+        "internal/codingagent/tree_selector_label_contract_test.go#TestTreeLabelInputAndRoutingContractsMatchPi",
+        "internal/codingagent/tree_selector_label_contract_test.go#TestTreeSavedLabelCarriesTheSaveTimeAndRemovalClearsIt",
+        "internal/codingagent/tree_selector_oracle_test.go#TestTreeSelectorInputMatchesPi",
+        "test/parity/scenarios/tree/14-tree-label-input-render.toml",
+        "test/parity/scenarios/tree/15-tree-label-save-and-filter-cycle.toml"
+      ],
+      "contracts": [
+        "coding-agent/tree-selector/label-input-state-machine"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#SearchLine.handleInput",
       "ownerFamily": "tree",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/tree_select.go#renderSearchLine",
+        "tui/tree_select.go#treeSection"
+      ],
+      "evidence": [
+        "internal/codingagent/tree_selector_contract_test.go#TestTreeListHandleInputContractsMatchPi",
+        "internal/codingagent/tree_selector_label_contract_test.go#TestTreeSearchLineTakesNoInput",
+        "test/parity/scenarios/tree/12-tree-digit-search.toml"
+      ],
+      "contracts": [
+        "coding-agent/tree-selector/search-line-ignores-input"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeList.handleInput",
       "ownerFamily": "tree",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/tree_select.go#HandleInput",
+        "tui/tree_select.go#cycleFilterMode",
+        "tui/tree_select.go#findBranchSegmentStart",
+        "tui/tree_select.go#fixScroll",
+        "tui/tree_select.go#setFilterMode"
+      ],
+      "evidence": [
+        "internal/codingagent/tree_selector_contract_test.go#TestTreeListHandleInputContractsMatchPi",
+        "internal/codingagent/tree_selector_contract_test.go#TestTreeListRemappedKeysMatchPi",
+        "internal/codingagent/tree_selector_oracle_test.go#TestTreeSelectorInputMatchesPi",
+        "test/parity/scenarios/tree/07-tree-fold-root.toml",
+        "test/parity/scenarios/tree/09-tree-filter-user-only.toml",
+        "test/parity/scenarios/tree/12-tree-digit-search.toml",
+        "test/parity/scenarios/tree/15-tree-label-save-and-filter-cycle.toml",
+        "tui/tree_select_contract_test.go#TestTreeFoldedRowIsNotFoldable"
+      ],
+      "contracts": [
+        "coding-agent/tree-selector/list-input-boundaries",
+        "coding-agent/tree-selector/list-input-rebound-keys",
+        "coding-agent/tree-selector/list-input-state-machine"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeSelectorComponent.handleInput",
       "ownerFamily": "tree",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/tree_select.go#CapturesViewportInput",
+        "tui/tree_select.go#HandleInput"
+      ],
+      "evidence": [
+        "internal/codingagent/tree_selector_label_contract_test.go#TestTreeLabelInputAndRoutingContractsMatchPi",
+        "internal/codingagent/tree_selector_label_contract_test.go#TestTreeSelectorCapturesViewportInputExceptWhileLabelling",
+        "test/parity/scenarios/tree/14-tree-label-input-render.toml",
+        "test/parity/scenarios/tree/15-tree-label-save-and-filter-cycle.toml"
+      ],
+      "contracts": [
+        "coding-agent/tree-selector/component-input-routing"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -556,90 +748,427 @@
     {
       "id": "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.flushCompactionQueue",
       "ownerFamily": "compaction",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "coding/session.go#RunAgentPrompt",
+        "internal/codingagent/interactive_events.go#handleAgentEvent",
+        "internal/codingagent/interactive_input_preflight.go#finishPreflight",
+        "internal/codingagent/interactive_transcript.go#flushCompactionQueue",
+        "internal/codingagent/interactive_transcript.go#runFlushSteps",
+        "internal/codingagent/interactive_turn.go#dispatchExtensionCommand",
+        "internal/codingagent/interactive_turn.go#queueUserInput",
+        "internal/codingagent/prompt_rejection.go#rejectPrompt"
+      ],
+      "evidence": [
+        "coding/session_run_agent_prompt_test.go#TestRunAgentPromptWaitsForTheEventConsumerBeforeContinuing",
+        "internal/codingagent/interactive_compaction_queue_contract_test.go#TestFlushCompactionQueueDeliversInOrderToTheActiveRun",
+        "internal/codingagent/interactive_compaction_queue_contract_test.go#TestFlushCompactionQueueRestoresTheQueueWhenThePromptIsRejected",
+        "internal/codingagent/interactive_compaction_queue_contract_test.go#TestFlushCompactionQueueWithNothingQueuedChangesNothing",
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go#TestFlushCompactionQueueFirstPromptKeepsItsModeWhileTheRunSettles",
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go#TestFlushCompactionQueueIdleRunsCommandsThenStartsTheFirstPrompt",
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go#TestFlushCompactionQueueIntoASettlingRunKeepsItsAbortContext",
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go#TestFlushCompactionQueueLeavesPendingBashOutputInThePendingArea",
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go#TestFlushCompactionQueueRestoresAtEveryRejectionSite",
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go#TestFlushCompactionQueueRetryQueuesThroughInputHandlersAndExpansion",
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go#TestFlushCompactionQueueRunsExtensionCommands",
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go#TestFlushCompactionQueueStartsTheTurnUnderALiveAbortContext",
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go#TestFlushCompactionQueueStopsAtTheFirstFailedMessage",
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go#TestSubmitDoesNotDrainRestoredCompactionQueue",
+        "internal/codingagent/interactive_flush_compaction_queue_order_test.go#TestFlushCompactionQueueAwaitsEachExtensionCommand",
+        "internal/codingagent/interactive_flush_compaction_queue_order_test.go#TestFlushCompactionQueueFirstPromptJoinsTheRunACommandStarted",
+        "internal/codingagent/interactive_session_test.go#TestInteractiveMessageQueuedDuringEndOfTurnCompactionIsDelivered",
+        "internal/codingagent/interactive_test.go#TestAC49CompactionEndWillRetryQueuesMessageForRetryTurn",
+        "test/parity/scenarios/compaction/06-overflow-retry-flushes-queued-message.toml",
+        "test/parity/scenarios/compaction/08-manual-compaction-flushes-entered-message.toml"
+      ],
+      "contracts": [
+        "coding-agent/compaction/retry-queue-flush"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.handleEvent",
       "ownerFamily": "compaction",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/interactive_cache_warming.go#handleEntryAppended",
+        "internal/codingagent/interactive_cache_warming.go#renderBoundaryCompaction",
+        "internal/codingagent/interactive_chat.go#maybeSuggestBugReport",
+        "internal/codingagent/interactive_compaction.go#renderCompactionResult",
+        "internal/codingagent/interactive_events.go#handleAgentEvent",
+        "internal/codingagent/interactive_input.go#dispatchInputChunk",
+        "internal/codingagent/interactive_input.go#dispatchKey",
+        "internal/codingagent/interactive_status.go#clearStatusIndicator",
+        "internal/codingagent/interactive_status.go#showCompactionStatusIndicator",
+        "internal/codingagent/interactive_status.go#showRetryStatusIndicator",
+        "internal/codingagent/interactive_thinking.go#refreshThinkingLevel",
+        "internal/codingagent/interactive_transcript.go#addCustomEntryToChat",
+        "internal/codingagent/interactive_transcript.go#updatePendingMessagesDisplay",
+        "internal/codingagent/interactive_tui.go#checkShutdownRequested",
+        "internal/codingagent/interactive_tui.go#requestExtensionShutdown",
+        "internal/codingagent/interactive_turn.go#flushPendingBashBlocks",
+        "tui/editor_status.go#renderStatusBorder"
+      ],
+      "evidence": [
+        "internal/codingagent/interactive_events_contract_test.go#TestEventAgentEndClearsTheRunState",
+        "internal/codingagent/interactive_events_contract_test.go#TestEventAgentEndSettlesRunningToolsAndForgetsPendingArguments",
+        "internal/codingagent/interactive_events_contract_test.go#TestEventAgentStartClearsThePendingTools",
+        "internal/codingagent/interactive_events_contract_test.go#TestEventAutoRetry",
+        "internal/codingagent/interactive_events_contract_test.go#TestEventCompactionStartAndEnd",
+        "internal/codingagent/interactive_events_contract_test.go#TestEventMessageEndFinishesTheMessage",
+        "internal/codingagent/interactive_events_contract_test.go#TestEventMessageEndRequestsAFrame",
+        "internal/codingagent/interactive_events_contract_test.go#TestEventMessageStartRendersEachRole",
+        "internal/codingagent/interactive_events_contract_test.go#TestEventMessageUpdateStreamsTextAndCreatesOneCardPerToolCall",
+        "internal/codingagent/interactive_events_contract_test.go#TestEventSummarizationRetry",
+        "internal/codingagent/interactive_events_contract_test.go#TestEventToolCardArgumentsAndExecutionStart",
+        "internal/codingagent/interactive_events_contract_test.go#TestEventToolExecutionLifecycle",
+        "internal/codingagent/interactive_events_contract_test.go#TestEventToolUpdateIsPartialAndEndRecordsTheDuration",
+        "internal/codingagent/interactive_events_contract_test.go#TestEventTurnStartShowsProgressAndTheWorkingStatus",
+        "internal/codingagent/interactive_events_contract_test.go#TestEventUserMessageStartRefreshesThePendingMessages",
+        "internal/codingagent/interactive_handle_event_compaction_test.go#TestHandleEventCompactionEndRedrawsTheTranscriptWithTheSummaryLast",
+        "internal/codingagent/interactive_handle_event_entries_test.go#TestHandleEventEntryAppendedCompactionRebuildsTheTranscript",
+        "internal/codingagent/interactive_handle_event_entries_test.go#TestHandleEventEntryAppendedCustomMessageDrawsWhenDisplayed",
+        "internal/codingagent/interactive_handle_event_entries_test.go#TestHandleEventEntryAppendedCustomUsesTheEntryRenderer",
+        "internal/codingagent/interactive_handle_event_entries_test.go#TestHandleEventEntryAppendedIgnoresOtherEntries",
+        "internal/codingagent/interactive_handle_event_entries_test.go#TestHandleEventEntryAppendedSupersededCompactionChangesNothing",
+        "internal/codingagent/interactive_handle_event_messages_test.go#TestHandleEventMessageEndNeedsAStreamingMessage",
+        "internal/codingagent/interactive_handle_event_messages_test.go#TestHandleEventMessageEndShowsTheNoticesOfAFinishedResponseOnly",
+        "internal/codingagent/interactive_handle_event_messages_test.go#TestHandleEventMessageUpdateNeedsAStreamingMessage",
+        "internal/codingagent/interactive_handle_event_messages_test.go#TestHandleEventSessionInfoChangedSetsTheTerminalTitle",
+        "internal/codingagent/interactive_handle_event_probe_test.go#TestHandleEventProbe",
+        "internal/codingagent/interactive_handle_event_run_test.go#TestHandleEventAgentSettledChecksTheShutdownRequest",
+        "internal/codingagent/interactive_handle_event_run_test.go#TestHandleEventAgentStartKeepsTheRetryStatusUntilTurnStart",
+        "internal/codingagent/interactive_handle_event_run_test.go#TestHandleEventAgentStartRestoresTheMainEscapeHandler",
+        "internal/codingagent/interactive_handle_event_run_test.go#TestHandleEventAgentStartShowsNeitherProgressNorStatus",
+        "internal/codingagent/interactive_handle_event_run_test.go#TestHandleEventAutoRetryEndRestoresTheMainEscapeHandler",
+        "internal/codingagent/interactive_handle_event_run_test.go#TestHandleEventBashExecutionUpdateChangesNothing",
+        "internal/codingagent/interactive_handle_event_run_test.go#TestHandleEventQueueUpdateRefreshesThePendingMessages",
+        "internal/codingagent/interactive_handle_event_run_test.go#TestHandleEventThinkingLevelChangedRefreshesTheEditorAndFooter",
+        "internal/codingagent/interactive_pending_bash_test.go#TestSettlingTheRunMovesUserBashOutputToTheChat",
+        "internal/codingagent/interactive_test.go#TestInteractiveMode_EscCancelsCompactionWhileAgentIsIdle",
+        "internal/codingagent/interactive_test.go#TestInteractiveMode_EscapeAbortsCompactionOnlyBetweenStartAndEnd",
+        "internal/codingagent/interactive_test.go#TestInteractiveMode_ManualCompactionCancellationPersistsInConversation",
+        "internal/codingagent/session_name_event_test.go#TestSessionNameEventUpdatesInteractiveFooter",
+        "test/parity/scenarios/compaction/01-compact-command.toml",
+        "test/parity/scenarios/compaction/07-escape-cancels-compaction.toml",
+        "test/parity/scenarios/extensions-runtime/91-boundary-entries-render-live.toml",
+        "test/parity/scenarios/extensions-runtime/92-boundary-compaction-render-live.toml",
+        "test/parity/scenarios/extensions-runtime/93-shutdown-during-run-waits-for-settle.toml",
+        "test/parity/scenarios/interactive-rendering/21-status-lifecycle.toml",
+        "test/parity/scenarios/interactive-rendering/58-alt-up-dequeues-queued-message.toml",
+        "test/parity/scenarios/interactive-rendering/66-handle-event-differential.toml",
+        "tui/editor_status_test.go#TestEmbeddedCompactionStatusTakesTheEditorBorderColorLikeWorking"
+      ],
+      "contracts": [
+        "coding-agent/compaction/escape-cancel",
+        "coding-agent/handle-event/run-start",
+        "coding-agent/handle-event/queue-update",
+        "coding-agent/handle-event/entry-appended-entries",
+        "coding-agent/handle-event/entry-appended-compaction",
+        "coding-agent/handle-event/session-info-thinking",
+        "coding-agent/handle-event/message-start-update",
+        "coding-agent/handle-event/message-end",
+        "coding-agent/handle-event/tool-execution",
+        "coding-agent/handle-event/agent-end-settled",
+        "coding-agent/handle-event/compaction-end",
+        "coding-agent/handle-event/auto-retry",
+        "coding-agent/handle-event/summarization-retry"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.init",
       "ownerFamily": "startup",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/interactive.go#Init",
+        "internal/codingagent/interactive.go#Run",
+        "internal/codingagent/interactive_changelog.go#getChangelogForDisplay",
+        "internal/codingagent/interactive_changelog.go#getExtensionChangelogUpdates",
+        "internal/codingagent/interactive_editor.go#setAllToolsExpanded",
+        "internal/codingagent/interactive_tools_status.go#ensureManagedTools",
+        "internal/codingagent/interactive_transcript.go#renderInitialMessages",
+        "internal/codingagent/interactive_turn.go#promptLoopSubmit",
+        "internal/codingagent/interactive_turn.go#startExtensionCommand",
+        "internal/codingagent/model_scope_line.go#getModelScopeNotice",
+        "internal/codingagent/model_scope_line.go#showFullscreenModelScopeNotice",
+        "internal/codingagent/settings_diagnostics.go#showInitNotices",
+        "internal/codingagent/startup_header.go#drawBuiltInHeader",
+        "internal/codingagent/startup_header.go#mountStartupHeader",
+        "internal/codingagent/startup_header.go#renderBuiltInHeader",
+        "internal/codingagent/startup_input.go#beginStartupSubmitWindow",
+        "internal/codingagent/startup_input.go#endStartupSubmitWindow",
+        "internal/codingagent/startup_input.go#handleStartupInput",
+        "internal/codingagent/startup_input.go#handleStartupSubmit",
+        "internal/codingagent/startup_visibility.go#shouldShowStartupDetails",
+        "internal/codingagent/startup_visibility.go#shouldShowStartupHeader"
+      ],
+      "evidence": [
+        "internal/codingagent/interactive_changelog_test.go#TestStartupChangelogFollowsPi",
+        "internal/codingagent/interactive_init_changelog_full_test.go#TestInitShowsTheStartupChangelogOfAnUpdate",
+        "internal/codingagent/interactive_init_state_pty_test.go#TestInitBuildsTheInteractiveStateBeforeTheSessionBind",
+        "internal/codingagent/loaded_resources_oracle_test.go#TestLoadedResourcesFormattingMatchesPi",
+        "internal/codingagent/loaded_resources_quiet_header_upstream_test.go#TestLoadedResourcesQuietStartupHeaderUpstream",
+        "internal/codingagent/startup_changelog_init_pty_test.go#TestInitRecordsTheChangelogVersionsBeforeAnythingStarts",
+        "internal/codingagent/startup_changelog_init_test.go#TestChangelogForDisplayFollowsTheSessionMessages",
+        "internal/codingagent/startup_changelog_init_test.go#TestExtensionChangelogUpdatesFollowTheSessionMessages",
+        "internal/codingagent/startup_color_wait_render_test.go#TestStartupColorWaitPaintsTheRequestedFirstFrameBeforeItReturns",
+        "internal/codingagent/startup_header_details_capture_test.go#TestBuiltInHeaderOnboardingKeepsStartupDetailsCapture",
+        "internal/codingagent/startup_header_test.go#TestBuiltInHeaderInitialExpansion",
+        "internal/codingagent/startup_header_test.go#TestBuiltInHeaderMatchesPiStartupHelp",
+        "internal/codingagent/startup_header_test.go#TestVerboseHeaderExpansionAndRestoration",
+        "internal/codingagent/startup_hints_test.go#TestFullscreenModelScopeNoticeRendersInHeader",
+        "internal/codingagent/startup_hints_test.go#TestModelScopeLineMatchesPiInit",
+        "internal/codingagent/startup_hints_test.go#TestStartupKeybindHintsShowsCoreBindings",
+        "internal/codingagent/startup_init_contract_test.go#TestInitReturnsWithoutWorkOnceInitialized",
+        "internal/codingagent/startup_prompt_commands_test.go#TestInitialExtensionCommandsRunInOrder",
+        "internal/codingagent/startup_prompt_commands_test.go#TestTypedExtensionCommandHoldsTheNextPrompt",
+        "internal/codingagent/startup_query_order_pty_test.go#TestStartupWritesTheTerminalColorQueryBeforeTheFirstFrame",
+        "internal/codingagent/startup_submit_test.go#TestManagedToolSetupWithoutADownloadReadsNoInput",
+        "internal/codingagent/startup_submit_test.go#TestStartupSubmitKeepsTextAndReportsProgress",
+        "internal/codingagent/startup_submit_test.go#TestStartupSubmitWindowCoversManagedToolSetup",
+        "internal/codingagent/startup_visibility_contract_test.go#TestStartupHeaderAndDetailsVisibilityFollowVerboseAndQuietStartup",
+        "internal/codingagent/startup_window_keys_pty_test.go#TestInitBindsOnlyTheClearAndExitKeysDuringStartup",
+        "test/parity/scenarios/startup/02-startup-compact-help.toml",
+        "test/parity/scenarios/startup/03-startup-expanded-help.toml",
+        "test/parity/scenarios/startup/04-startup-verbose-collapse.toml",
+        "test/parity/scenarios/startup/05-startup-loaded-resources.toml",
+        "test/parity/scenarios/startup/10-startup-input-before-session-start-completes.toml",
+        "test/parity/scenarios/startup/14-startup-quiet-header.toml",
+        "test/parity/scenarios/startup/16-startup-clear-key-before-session-start-completes.toml",
+        "test/parity/scenarios/startup/17-startup-exit-key-before-session-start-completes.toml",
+        "test/parity/scenarios/startup/18-startup-model-scope-notice-main-screen.toml",
+        "test/parity/scenarios/startup/19-startup-notices-follow-the-resumed-transcript.toml",
+        "test/parity/scenarios/startup/20-startup-changelog-version-recorded-before-session-start.toml",
+        "test/parity/scenarios/startup/21-startup-changelog-version-recorded-for-a-resumed-session-without-messages.toml",
+        "test/parity/scenarios/startup/22-startup-initial-extension-commands-run-in-order.toml",
+        "test/parity/scenarios/startup/23-startup-typed-extension-commands-run-in-order.toml"
+      ],
+      "contracts": [
+        "coding-agent/startup/init-header-construction",
+        "coding-agent/startup/init-lifecycle-order",
+        "coding-agent/startup/init-post-header-order",
+        "coding-agent/startup/verbose-header-collapse"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.onExtensionShortcut",
       "ownerFamily": "extensions-runtime",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/interactive_helpers.go#setupExtensionShortcutListener",
+        "internal/codingagent/reload_resources.go#replaceExtensionRunner"
+      ],
+      "evidence": [
+        "internal/codingagent/extension_shortcut_contract_test.go#TestExtensionShortcutDispatchMatchesPi",
+        "internal/codingagent/extension_shortcut_contract_test.go#TestExtensionShortcutHandlerDoesNotBlockInput",
+        "internal/codingagent/extension_shortcut_contract_test.go#TestExtensionShortcutListenerIsReplacedBySetup",
+        "internal/codingagent/extension_shortcut_contract_test.go#TestExtensionShortcutsFollowRemappedKeybindings",
+        "internal/codingagent/interactive_command_error_test.go#TestInteractiveShortcutDiagnosticOwnership",
+        "internal/codingagent/reload_resources_test.go#TestReloadRefreshesExtensionShortcuts",
+        "internal/codingagent/reload_resources_test.go#TestReloadRefreshesRealSubprocessShortcuts",
+        "test/parity/scenarios/extensions-runtime/10-shortcut-reload-authority.toml"
+      ],
+      "contracts": [
+        "coding-agent/extensions/shortcut-reload-authority"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.setExtensionFooter",
       "ownerFamily": "extensions-runtime",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/ext_ui_context.go#SetFooter",
+        "internal/codingagent/status_line.go#Render(width int)"
+      ],
+      "evidence": [
+        "internal/codingagent/ext_ui_factories_test.go#TestExtUIContextHeaderAndFooterFactoriesBuildAndDisposeComponents",
+        "internal/codingagent/ext_ui_footer_contract_test.go#TestSetExtensionFooterFollowsUpstreamOrder",
+        "internal/codingagent/status_line_test.go#TestAC53CustomFooterOwnsKeyedStatusRendering",
+        "test/parity/scenarios/extensions-runtime/15-footer-status-reload-composition.toml",
+        "test/parity/scenarios/extensions-runtime/34-empty-custom-footer.toml"
+      ],
+      "contracts": [
+        "coding-agent/extensions/footer-status-composition"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.setupKeyHandlers",
       "ownerFamily": "interactive-input",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "coding/session_model_cycle.go#CycleModel",
+        "internal/codingagent/interactive_editor.go#setAllToolsExpanded",
+        "internal/codingagent/interactive_input.go",
+        "internal/codingagent/interactive_input.go#handleEditorAction",
+        "internal/codingagent/interactive_input.go#setupKeyHandlers",
+        "internal/codingagent/interactive_models.go#cycleModel",
+        "internal/codingagent/interactive_thinking.go#toggleThinkingVisibility",
+        "internal/codingagent/keys.go#resolveOutcome",
+        "tui/editor.go#IsBashMode"
+      ],
+      "evidence": [
+        "coding/session_model_extension_upstream_test.go#TestSessionModelExtensionCyclesUpstream",
+        "internal/codingagent/debug_hotkey_test.go#TestShiftCtrlDWritesTheDebugLogThroughTheTuisDebugKey",
+        "internal/codingagent/interactive_key_handlers_state_test.go#TestSetupKeyHandlersBashModeFollowsTheEditorText",
+        "internal/codingagent/interactive_key_handlers_state_test.go#TestSetupKeyHandlersDequeueReportsTheRestoredCount",
+        "internal/codingagent/interactive_key_handlers_state_test.go#TestSetupKeyHandlersEscapeAndClearBranches",
+        "internal/codingagent/interactive_key_handlers_state_test.go#TestSetupKeyHandlersExitRunsOnlyForAnEmptyEditor",
+        "internal/codingagent/interactive_key_handlers_state_test.go#TestSetupKeyHandlersFollowUpBranches",
+        "internal/codingagent/interactive_key_handlers_state_test.go#TestSetupKeyHandlersModelSelectOpensTheSelectorForItsDefaultAndRemappedKey",
+        "internal/codingagent/interactive_key_handlers_state_test.go#TestSetupKeyHandlersRegistrationOrderDecidesOverlappingBindings",
+        "internal/codingagent/interactive_key_handlers_test.go#TestSetupKeyHandlersRunsEachAppActionForItsDefaultAndRemappedKey",
+        "internal/codingagent/interactive_test.go#TestInteractiveMode_EscapeAbortsCompactionOnlyBetweenStartAndEnd",
+        "internal/codingagent/interactive_test.go#TestInteractiveMode_EscapeArmsTheDoubleEscapeOverAWhitespaceOnlyEditor",
+        "internal/codingagent/model_cycle_parity_test.go#TestInteractiveCycleUsesSessionSelections",
+        "test/parity/scenarios/interactive-rendering/40-suspend-resume-session.toml",
+        "test/parity/scenarios/interactive-rendering/65-app-action-keys.toml",
+        "test/parity/scenarios/model-resolver-selector/26-interactive-cycle-custom-scope.toml",
+        "tui/bash_execution_test.go#TestEditorBashModeTrimsTheWholeTextAsJavaScript"
+      ],
+      "contracts": [
+        "coding-agent/interactive/key-handlers",
+        "coding-agent/interactive/model-cycle-actions"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.showExtensionEditor",
       "ownerFamily": "extensions-runtime",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "coding/extension/host/subprocess/ui_bridge.go#handleCall",
+        "internal/codingagent/custom_overlay_control.go#SetFocused",
+        "internal/codingagent/ext_ui_context.go#Editor",
+        "internal/codingagent/ext_ui_context.go#runDialog",
+        "internal/codingagent/ext_ui_dialog_stack.go#finishExtensionDialog",
+        "internal/codingagent/ext_ui_dialog_stack.go#pushExtensionDialog",
+        "internal/codingagent/ext_ui_dialog_stack.go#removeExtensionDialog",
+        "internal/codingagent/ext_ui_dialog_stack.go#showTopExtensionDialog"
+      ],
+      "evidence": [
+        "coding/extension/host/subprocess/ui_bridge_test.go#TestInteractiveDialogOpensOverFocusedOverlay",
+        "coding/extension/host/subprocess/ui_bridge_test.go#TestInteractiveDialogsDoNotWaitForEachOther",
+        "internal/codingagent/ext_ui_dialog_contract_test.go#TestExtensionDialogClosesTheActiveSelector",
+        "internal/codingagent/ext_ui_dialog_contract_test.go#TestExtensionDialogsRequestARenderWhenTheSlotChanges",
+        "internal/codingagent/ext_ui_dialog_contract_test.go#TestExtensionEditorDialogIsBuiltFromTheModeAndSettings",
+        "internal/codingagent/ext_ui_dialog_displace_test.go#TestAbortingAHiddenDialogLeavesTheShownDialog",
+        "internal/codingagent/ext_ui_dialog_displace_test.go#TestExtensionDialogStacksOverTheOpenDialog",
+        "internal/codingagent/ext_ui_dialog_focus_test.go#TestExtensionDialogStacksOverFocusedEditorSlotCustom",
+        "internal/codingagent/ext_ui_dialog_focus_test.go#TestExtensionDialogTakesFocusFromFocusedCustomOverlay",
+        "internal/codingagent/ext_ui_dialog_focus_test.go#TestExtensionDialogTakesTerminalFromFocusedRemoteOverlay",
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogTimeoutOfAHiddenDialogLeavesTheVisibleDialog",
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogsAnswerASelectInputAndEditorMixInStackOrder",
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogsRemoveAHiddenDialogWhenItsSignalAborts",
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogsShowTheEarlierConfirmAgainAfterTheLaterIsAnswered",
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestSessionReplacementDisposesEveryExtensionDialog",
+        "internal/codingagent/ext_ui_dialog_test.go#TestAC48SubprocessDialogsRunOnUILoop",
+        "internal/codingagent/ext_ui_dialog_test.go#TestExtUIContextDialogCancellationIsExplicit",
+        "test/extension-conformance/ui_concurrent_dialogs_test.go#TestConformance_ConcurrentDialogsAgreeAcrossSDKs",
+        "test/parity/scenarios/extensions-runtime/11-subprocess-tool-ui-dialogs.toml",
+        "test/parity/scenarios/extensions-runtime/83-extension-dialog-displacement.toml"
+      ],
+      "contracts": [
+        "coding-agent/extensions/editor-dialog-lifecycle"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.showExtensionInput",
       "ownerFamily": "extensions-runtime",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "coding/extension/host/subprocess/ui_bridge.go#handleCall",
+        "internal/codingagent/custom_overlay_control.go#SetFocused",
+        "internal/codingagent/ext_ui_context.go#Input",
+        "internal/codingagent/ext_ui_context.go#runDialog",
+        "internal/codingagent/ext_ui_dialog_stack.go#finishExtensionDialog",
+        "internal/codingagent/ext_ui_dialog_stack.go#pushExtensionDialog",
+        "internal/codingagent/ext_ui_dialog_stack.go#removeExtensionDialog",
+        "internal/codingagent/ext_ui_dialog_stack.go#showTopExtensionDialog"
+      ],
+      "evidence": [
+        "coding/extension/host/subprocess/push_proxy_test.go#TestUIBridge_EmptyDialogSubmissionIsSuccessful",
+        "coding/extension/host/subprocess/ui_bridge_test.go#TestInteractiveDialogOpensOverFocusedOverlay",
+        "coding/extension/host/subprocess/ui_bridge_test.go#TestInteractiveDialogsDoNotWaitForEachOther",
+        "internal/codingagent/ext_ui_dialog_contract_test.go#TestExtensionDialogClosesTheActiveSelector",
+        "internal/codingagent/ext_ui_dialog_contract_test.go#TestExtensionDialogWithAnAbortedSignalShowsNothing",
+        "internal/codingagent/ext_ui_dialog_contract_test.go#TestExtensionInputIgnoresItsPlaceholder",
+        "internal/codingagent/ext_ui_dialog_contract_test.go#TestRemovingAHiddenExtensionDialogLeavesTheSlotAlone",
+        "internal/codingagent/ext_ui_dialog_displace_test.go#TestAbortingAHiddenDialogLeavesTheShownDialog",
+        "internal/codingagent/ext_ui_dialog_displace_test.go#TestExtensionDialogStacksOverTheOpenDialog",
+        "internal/codingagent/ext_ui_dialog_focus_test.go#TestExtensionDialogStacksOverFocusedEditorSlotCustom",
+        "internal/codingagent/ext_ui_dialog_focus_test.go#TestExtensionDialogTakesFocusFromFocusedCustomOverlay",
+        "internal/codingagent/ext_ui_dialog_focus_test.go#TestExtensionDialogTakesTerminalFromFocusedRemoteOverlay",
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogTimeoutOfAHiddenDialogLeavesTheVisibleDialog",
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogsAnswerASelectInputAndEditorMixInStackOrder",
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogsRemoveAHiddenDialogWhenItsSignalAborts",
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogsShowTheEarlierConfirmAgainAfterTheLaterIsAnswered",
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestSessionReplacementDisposesEveryExtensionDialog",
+        "internal/codingagent/ext_ui_dialog_test.go#TestAC48SubprocessDialogsRunOnUILoop",
+        "internal/codingagent/ext_ui_dialog_test.go#TestExtUIContextDialogCancellationIsExplicit",
+        "test/extension-conformance/ui_concurrent_dialogs_test.go#TestConformance_ConcurrentDialogsAgreeAcrossSDKs",
+        "test/parity/scenarios/extensions-runtime/11-subprocess-tool-ui-dialogs.toml",
+        "test/parity/scenarios/extensions-runtime/83-extension-dialog-displacement.toml"
+      ],
+      "contracts": [
+        "coding-agent/extensions/input-dialog-lifecycle"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.showExtensionSelector",
       "ownerFamily": "extensions-runtime",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "coding/extension/host/subprocess/ui_bridge.go#handleCall",
+        "internal/codingagent/custom_overlay_control.go#SetFocused",
+        "internal/codingagent/ext_ui_context.go#runDialog",
+        "internal/codingagent/ext_ui_context.go#selectWithStatus",
+        "internal/codingagent/ext_ui_dialog_stack.go#finishExtensionDialog",
+        "internal/codingagent/ext_ui_dialog_stack.go#pushExtensionDialog",
+        "internal/codingagent/ext_ui_dialog_stack.go#removeExtensionDialog",
+        "internal/codingagent/ext_ui_dialog_stack.go#showTopExtensionDialog"
+      ],
+      "evidence": [
+        "coding/extension/host/subprocess/ui_bridge_test.go#TestInteractiveDialogOpensOverFocusedOverlay",
+        "coding/extension/host/subprocess/ui_bridge_test.go#TestInteractiveDialogsDoNotWaitForEachOther",
+        "internal/codingagent/ext_ui_dialog_contract_test.go#TestExtensionDialogClosesTheActiveSelector",
+        "internal/codingagent/ext_ui_dialog_contract_test.go#TestExtensionDialogWithAnAbortedSignalShowsNothing",
+        "internal/codingagent/ext_ui_dialog_contract_test.go#TestExtensionDialogsRequestARenderWhenTheSlotChanges",
+        "internal/codingagent/ext_ui_dialog_contract_test.go#TestRemovingAHiddenExtensionDialogLeavesTheSlotAlone",
+        "internal/codingagent/ext_ui_dialog_displace_test.go#TestAbortingAHiddenDialogLeavesTheShownDialog",
+        "internal/codingagent/ext_ui_dialog_displace_test.go#TestExtensionDialogStacksOverTheOpenDialog",
+        "internal/codingagent/ext_ui_dialog_focus_test.go#TestExtensionDialogStacksOverFocusedEditorSlotCustom",
+        "internal/codingagent/ext_ui_dialog_focus_test.go#TestExtensionDialogTakesFocusFromFocusedCustomOverlay",
+        "internal/codingagent/ext_ui_dialog_focus_test.go#TestExtensionDialogTakesTerminalFromFocusedRemoteOverlay",
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogTimeoutOfAHiddenDialogLeavesTheVisibleDialog",
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogsAnswerASelectInputAndEditorMixInStackOrder",
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogsRemoveAHiddenDialogWhenItsSignalAborts",
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogsShowTheEarlierConfirmAgainAfterTheLaterIsAnswered",
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestSessionReplacementDisposesEveryExtensionDialog",
+        "internal/codingagent/ext_ui_dialog_test.go#TestAC48SubprocessDialogsRunOnUILoop",
+        "internal/codingagent/ext_ui_dialog_test.go#TestExtUIContextDialogCancellationIsExplicit",
+        "internal/codingagent/extension_dialog_remapping_test.go#TestExtensionDialogRemappingThroughOwnerLoop",
+        "test/extension-conformance/ui_concurrent_dialogs_test.go#TestConformance_ConcurrentDialogsAgreeAcrossSDKs",
+        "test/parity/scenarios/extensions-runtime/11-subprocess-tool-ui-dialogs.toml",
+        "test/parity/scenarios/extensions-runtime/12-subprocess-tool-ui-cancel.toml",
+        "test/parity/scenarios/extensions-runtime/83-extension-dialog-displacement.toml"
+      ],
+      "contracts": [
+        "coding-agent/extensions/select-dialog-lifecycle"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -968,11 +1497,28 @@
     {
       "id": "input:packages/tui/src/terminal-image.ts#<module>.detectCapabilities",
       "ownerFamily": "tui-components",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
-      "divergence": "",
+      "disposition": "divergence",
+      "pigTargets": [
+        "tui/terminal_image.go#DetectCapabilities",
+        "tui/terminal_image.go#detectCapabilitiesFromEnvironment",
+        "tui/terminal_image.go#parseBooleanCapabilityOverride"
+      ],
+      "evidence": [
+        "docs/parity/DIVERGENCES.md#D44 Positive image capability for Herdr intermediaries",
+        "test/parity/scenarios/tui-components/37-terminal-capability-detection.toml",
+        "tui/color_detection_pi_test.go#TestColorDetectionMatchesPi",
+        "tui/terminal_image_detect_contract_test.go#detectCapabilitiesBranchOrderCases",
+        "tui/terminal_image_test.go#TestAC51HerdrImageCapabilityOwnsRowReservation",
+        "tui/terminal_image_test.go#TestDetectCapabilities",
+        "tui/terminal_image_test.go#TestHerdrWithGraphicsSignalRendersKittyImage"
+      ],
+      "contracts": [
+        "tui/terminal-image/detect-capabilities",
+        "tui/terminal-image/detect-capabilities-branch-order",
+        "tui/terminal-image/detect-capabilities-overrides",
+        "tui/terminal/herdr-image-capability"
+      ],
+      "divergence": "D44",
       "rationale": ""
     },
     {
@@ -1416,10 +1962,22 @@
     {
       "id": "render:packages/coding-agent/src/core/extensions/runner.ts#ExtensionRunner.renderCurrentSystemPrompt",
       "ownerFamily": "extensions-runtime",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "coding/extension/host/inproc/runner.go#EmitBeforeAgentStart",
+        "coding/extension/host/inproc/runner.go#RenderSystemPrompt",
+        "coding/extension/host/subprocess/prompt_options.go#renderSystemPromptCall",
+        "coding/extension/host/subprocess/runtime-node/runtime.mjs#renderCurrentSystemPrompt"
+      ],
+      "evidence": [
+        "coding/extension/host/inproc/before_agent_start_render_test.go#TestBeforeAgentStartRendersThePromptOnlyWhenTheOptionsChange",
+        "coding/extension/host/inproc/specialized_dispatch_test.go#TestEmitBeforeAgentStart_GetSystemPromptTracksChainedValue",
+        "coding/extension/host/subprocess/render_system_prompt_test.go#TestUIBridgeRenderSystemPromptRendersTheOptionsItIsSent",
+        "test/parity/scenarios/extensions-runtime/82-before-agent-start-current-system-prompt.toml"
+      ],
+      "contracts": [
+        "coding-agent/extensions/render-current-system-prompt"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -1793,60 +2351,110 @@
     {
       "id": "render:packages/coding-agent/src/extensions/codemode/tool.ts#<module>.renderToolSection",
       "ownerFamily": "extensions-runtime",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "coding/extension/builtin/codemode/description.go#CreateDescription",
+        "coding/extension/builtin/codemode/description.go#renderToolSection"
+      ],
+      "evidence": [
+        "coding/extension/builtin/codemode/description_oracle_test.go#TestCodemodeDescriptionMatchesPi",
+        "coding/extension/builtin/codemode/description_upstream_test.go#TestCodemodeDescriptionListsEverythingWithoutABudget",
+        "test/parity/scenarios/extensions-runtime/79-codemode-tool-description.toml"
+      ],
+      "contracts": [
+        "coding-agent/codemode/render-tool-section"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/coding-agent/src/extensions/llama/ui.ts#LlamaView.render",
       "ownerFamily": "llama-runtime",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/llama/ui.go#Render",
+        "internal/codingagent/llama/ui.go#ShowModels",
+        "internal/codingagent/llama/ui.go#frame",
+        "internal/codingagent/llama/ui.go#updateProgressLocked"
+      ],
+      "evidence": [
+        "internal/codingagent/llama/ui_oracle_test.go#TestLlamaViewMatchesPi",
+        "test/parity/scenarios/extensions-runtime/75-llama-view.toml"
+      ],
+      "contracts": [
+        "coding-agent/llama-view/render"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/coding-agent/src/extensions/mcp/index.ts#<module>.renderServersSection",
       "ownerFamily": "extensions-runtime",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "coding/mcpext/extension.go#RenderServersSection"
+      ],
+      "evidence": [
+        "coding/mcpext/servers_section_intro_upstream_test.go",
+        "coding/mcpext/servers_section_test.go",
+        "test/parity/scenarios/slash-commands/22-mcp-servers-section-in-transcript.toml",
+        "test/parity/scenarios/slash-commands/23-mcp-servers-section-text.toml"
+      ],
+      "contracts": [
+        "coding-agent/mcp/servers-section-render"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/coding-agent/src/extensions/mcp/oauth.ts#<module>.renderCallbackPage",
       "ownerFamily": "extensions-runtime",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "coding/mcpext/oauth.go#renderCallbackPage"
+      ],
+      "evidence": [
+        "coding/mcpext/oauth_callback_page_internal_test.go#TestOAuthCallbackPageEscapesRequestValues",
+        "coding/mcpext/oauth_callback_render_page_contract_test.go#TestMCPCallbackRenderPageMatchesPi",
+        "test/parity/scenarios/slash-commands/24-mcp-callback-error-page.toml"
+      ],
+      "contracts": [
+        "coding-agent/mcp/callback-page-render"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/coding-agent/src/extensions/mcp/tools.ts#<module>.renderCall",
       "ownerFamily": "extensions-runtime",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "coding/mcpext/mcptui/render.go#renderCall"
+      ],
+      "evidence": [
+        "coding/mcpext/tools_render_test.go",
+        "test/parity/scenarios/slash-commands/25-mcp-tool-card.toml"
+      ],
+      "contracts": [
+        "coding-agent/mcp/tool-call-render"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/coding-agent/src/extensions/mcp/tools.ts#<module>.renderResult",
       "ownerFamily": "extensions-runtime",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "coding/mcpext/mcptui/render.go#renderResult"
+      ],
+      "evidence": [
+        "coding/mcpext/tools_render_test.go",
+        "test/parity/scenarios/slash-commands/25-mcp-tool-card.toml"
+      ],
+      "contracts": [
+        "coding-agent/mcp/tool-result-render"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -2018,20 +2626,37 @@
     {
       "id": "render:packages/coding-agent/src/modes/interactive/components/diff.ts#<module>.renderDiff",
       "ownerFamily": "interactive-rendering",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/diff_render.go#RenderDiff"
+      ],
+      "evidence": [
+        "test/parity/scenarios/interactive-rendering/10-edit-tool-diff.toml",
+        "test/parity/scenarios/interactive-rendering/49-edit-tool-diff-output-pad-0.toml",
+        "tui/diff_render_oracle_test.go#TestRenderDiffMatchesPi"
+      ],
+      "contracts": [
+        "coding-agent/diff/render-diff"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/coding-agent/src/modes/interactive/components/diff.ts#<module>.renderIntraLineDiff",
       "ownerFamily": "interactive-rendering",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/diff_render.go#RenderIntraLineDiff"
+      ],
+      "evidence": [
+        "test/parity/scenarios/interactive-rendering/10-edit-tool-diff.toml",
+        "test/parity/scenarios/interactive-rendering/49-edit-tool-diff-output-pad-0.toml",
+        "tui/diff_render_oracle_test.go#TestRenderDiffMatchesPi",
+        "tui/diff_render_test.go#TestRenderDiffDoesNotHighlightSharedIndentationAsAnInsertion"
+      ],
+      "contracts": [
+        "coding-agent/diff/render-intra-line"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -2127,20 +2752,38 @@
     {
       "id": "render:packages/coding-agent/src/modes/interactive/components/oauth-selector.ts#OAuthSelectorComponent.render",
       "ownerFamily": "selectors",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/oauth_selector.go#Render",
+        "tui/oauth_selector.go#selectedBrandStyle"
+      ],
+      "evidence": [
+        "test/parity/scenarios/oauth/33-login-partner-rows-release-brand-style.toml",
+        "tui/oauth_selector_partner_test.go#TestOAuthSelectorAnimatesAPartnerRowUntilDisposed",
+        "tui/oauth_selector_partner_test.go#TestOAuthSelectorKeepsTheAccentStyleWithoutATUI",
+        "tui/oauth_selector_partner_test.go#TestOAuthSelectorShowsTheBrandStyleOnlyOnTheSelectedPartnerRow",
+        "tui/oauth_selector_render_contract_test.go#TestOAuthSelectorRenderRebuildsTheSelectedPartnerRowForEachFrame"
+      ],
+      "contracts": [
+        "coding-agent/oauth-selector/render-animated-row"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/coding-agent/src/modes/interactive/components/radius-login-selector.ts#RadiusLoginMenuComponent.render",
       "ownerFamily": "selectors",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/radius_login_selector.go#Render"
+      ],
+      "evidence": [
+        "internal/codingagent/radius_login_oracle_test.go#TestRadiusLoginMenuRendersLikePi",
+        "test/parity/scenarios/oauth/27-login-radius-method-intro.toml"
+      ],
+      "contracts": [
+        "coding-agent/radius-login/menu-render"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -2299,50 +2942,99 @@
     {
       "id": "render:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#<module>.renderHorizontalViewport",
       "ownerFamily": "tree",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/tree_select.go#renderTreeHorizontalViewport",
+        "tui/tree_select.go#renderTreeList"
+      ],
+      "evidence": [
+        "internal/codingagent/tree_selector_oracle_test.go#TestTreeSelectorInputMatchesPi",
+        "internal/codingagent/tree_selector_render_contract_test.go#TestTreeHorizontalViewportMatchesPiAtEveryWidth",
+        "test/parity/scenarios/tree/10-tree-scroll-cursor-visible.toml"
+      ],
+      "contracts": [
+        "coding-agent/tree-selector/horizontal-viewport"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#LabelInput.render",
       "ownerFamily": "tree",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/tree_select.go#renderLabelInput"
+      ],
+      "evidence": [
+        "internal/codingagent/tree_selector_oracle_test.go#TestTreeSelectorInputMatchesPi",
+        "internal/codingagent/tree_selector_render_contract_test.go#TestTreeLabelInputRenderMatchesPi",
+        "test/parity/scenarios/tree/14-tree-label-input-render.toml"
+      ],
+      "contracts": [
+        "coding-agent/tree-selector/label-input-render"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#SearchLine.render",
       "ownerFamily": "tree",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/tree_select.go#renderSearchLine"
+      ],
+      "evidence": [
+        "internal/codingagent/tree_selector_oracle_test.go#TestTreeSelectorInputMatchesPi",
+        "internal/codingagent/tree_selector_render_contract_test.go#TestTreeSearchLineRenderMatchesPi",
+        "test/parity/scenarios/tree/12-tree-digit-search.toml"
+      ],
+      "contracts": [
+        "coding-agent/tree-selector/search-line-render"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeHelp.render",
       "ownerFamily": "tree",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/tree_select.go#compactTreeHelpKeys",
+        "tui/tree_select.go#formatTreeHelpKeys",
+        "tui/tree_select.go#renderHelp",
+        "tui/tree_select.go#treeHelpLines"
+      ],
+      "evidence": [
+        "internal/codingagent/tree_selector_oracle_test.go#TestTreeSelectorInputMatchesPi",
+        "internal/codingagent/tree_selector_render_contract_test.go#TestTreeHelpRenderMatchesPi",
+        "test/parity/scenarios/tree/06-tree-header-spacing.toml"
+      ],
+      "contracts": [
+        "coding-agent/tree-selector/help-render"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeList.render",
       "ownerFamily": "tree",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/tree_select.go#fixScroll",
+        "tui/tree_select.go#getStatusLabels",
+        "tui/tree_select.go#renderTreeList",
+        "tui/tree_select.go#swapConnectorMiddle"
+      ],
+      "evidence": [
+        "internal/codingagent/tree_selector_oracle_test.go#TestTreeSelectorInputMatchesPi",
+        "internal/codingagent/tree_selector_render_contract_test.go#TestTreeListRenderMatchesPi",
+        "test/parity/scenarios/tree/05-tree-nonempty-overlay.toml",
+        "test/parity/scenarios/tree/15-tree-label-save-and-filter-cycle.toml",
+        "tui/tree_label_timestamp_oracle_test.go#TestFormatLabelTimestampMatchesPi"
+      ],
+      "contracts": [
+        "coding-agent/tree-selector/list-render"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -2400,90 +3092,210 @@
     {
       "id": "render:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.renderCurrentSessionState",
       "ownerFamily": "interactive-input",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/interactive_rebind.go#renderCurrentSessionState",
+        "internal/codingagent/interactive_transcript.go#repaintInitialMessages"
+      ],
+      "evidence": [
+        "internal/codingagent/interactive_resume_bash_test.go#TestResumedSessionRendersPersistedBashExecutionBlocks",
+        "internal/codingagent/render_initial_messages_test.go#TestRenderCurrentSessionStateForgetsPendingBashBlocks",
+        "internal/codingagent/render_initial_messages_test.go#TestRenderCurrentSessionStateForgetsTheReplacedSessionsState",
+        "internal/codingagent/render_initial_messages_test.go#TestRepaintAfterReplacementOrNavigationShowsTheTrustWarning",
+        "internal/codingagent/render_session_items_contract_test.go#TestRenderCurrentSessionStateShowsTheCompactionCount",
+        "internal/codingagent/render_session_items_contract_test.go#TestRenderSessionEntriesPopulatesTheEditorHistoryOnlyWhenAsked",
+        "test/parity/scenarios/project-trust/21-new-session-repaints-trust-warning.toml"
+      ],
+      "contracts": [
+        "coding-agent/interactive/render-current-session-state"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.renderInfo",
       "ownerFamily": "interactive-input",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/interactive_commands.go#AppendThemedText",
+        "internal/codingagent/slash_commands.go#sessionInfoRenderer",
+        "internal/codingagent/slash_commands.go#writeCacheWarmingSection"
+      ],
+      "evidence": [
+        "internal/codingagent/session_accounting_oracle_test.go#TestSessionInfoCommandMatchesPi",
+        "internal/codingagent/session_info_contract_test.go#TestSessionInfoShowsTheCostSectionForAMissWithoutCost",
+        "internal/codingagent/session_info_contract_test.go#TestSessionInfoSnapshotsTheCacheWarmingStatusWhenItRuns",
+        "internal/codingagent/session_info_contract_test.go#TestSessionInfoWithoutAModelHidesAnUndefinedUsageKey",
+        "internal/codingagent/session_info_themed_test.go#TestSessionCommandBlockFollowsThemeChanges",
+        "test/parity/scenarios/slash-commands/08-session-info-populated-all-entries.toml"
+      ],
+      "contracts": [
+        "coding-agent/interactive/session-info-render"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.renderInitialMessages",
       "ownerFamily": "extensions-runtime",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "coding/extension/host/subprocess/render_proxy.go#Render(width int)",
+        "coding/extension/host/subprocess/render_proxy.go#requestLoop",
+        "internal/codingagent/interactive_chat.go#surfaceMarkdownTransform",
+        "internal/codingagent/interactive_transcript.go#appendCustomMessage",
+        "internal/codingagent/interactive_transcript.go#renderInitialMessages",
+        "internal/codingagent/interactive_transcript.go#showSessionCompactedStatus"
+      ],
+      "evidence": [
+        "coding/extension/host/subprocess/render_proxy_test.go#TestAC52RenderProxyRejectsStaleGeneration",
+        "coding/extension/host/subprocess/render_proxy_test.go#TestRenderProxyRenderNeverWaitsForIPC",
+        "internal/codingagent/custom_message_renderer_test.go#TestCustomMessageUsesRegisteredProductionRenderer",
+        "internal/codingagent/interactive_compaction_notice_test.go#TestRenderInitialMessagesShowsTheTrustWarningBeforeTheCompactionNotice",
+        "internal/codingagent/interactive_compaction_notice_test.go#TestSessionCompactedStatusIsShownByInitialRenderOnly",
+        "internal/codingagent/interactive_initial_messages_contract_test.go#TestRenderInitialMessagesCountsEveryCompactionOfTheFile",
+        "internal/codingagent/interactive_initial_messages_contract_test.go#TestRenderInitialMessagesKeepsTheLoadedRowsAndPaintsAnEmptySession",
+        "internal/codingagent/interactive_initial_messages_contract_test.go#TestRenderInitialMessagesMatchesPi",
+        "internal/codingagent/live_message_meta_test.go#TestRestoredCustomMessageAndSummaryKeepTheirEntryIdentity",
+        "internal/codingagent/resume_editor_history_test.go#TestInitialRenderPopulatesTheEditorHistory",
+        "test/parity/scenarios/extensions-runtime/14-subprocess-message-renderer.toml",
+        "test/parity/scenarios/interactive-rendering/57-resume-initial-messages.toml"
+      ],
+      "contracts": [
+        "coding-agent/extensions/custom-message-renderer",
+        "coding-agent/interactive/render-initial-messages"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.renderProjectTrustWarningIfNeeded",
       "ownerFamily": "interactive-input",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
-      "divergence": "",
+      "disposition": "divergence",
+      "pigTargets": [
+        "internal/codingagent/project_trust_warning.go#renderProjectTrustWarningIfNeeded"
+      ],
+      "evidence": [
+        "internal/codingagent/project_trust_warning_test.go#TestProjectTrustWarningRendering",
+        "internal/codingagent/render_initial_messages_test.go#TestRenderInitialMessagesPaintsTheTranscriptThenTheTrustWarning",
+        "test/parity/scenarios/project-trust/14-resumed-denied-project-warning-follows-history.toml"
+      ],
+      "contracts": [
+        "coding-agent/interactive/project-trust-warning"
+      ],
+      "divergence": "D2",
       "rationale": ""
     },
     {
       "id": "render:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.renderSessionEntries",
       "ownerFamily": "interactive-input",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/interactive_transcript.go#renderSessionEntriesWithHistory",
+        "internal/codingagent/interactive_transcript.go#renderSessionEntryListWithHistory"
+      ],
+      "evidence": [
+        "internal/codingagent/interactive_cache_warming_test.go#TestRebuildRendersPersistedCacheWarmingUsage",
+        "internal/codingagent/interactive_resume_bash_test.go#TestResumedSessionRendersPersistedBashExecutionBlocks",
+        "internal/codingagent/interactive_selection_reset_test.go#TestRenderSessionEntriesDropsFullscreenTextSelection",
+        "internal/codingagent/markdown_message_meta_test.go#TestMarkdownTransformContextCarriesPersistedEntryIdentity",
+        "internal/codingagent/render_session_items_contract_test.go#TestRenderSessionEntriesPopulatesTheEditorHistoryOnlyWhenAsked",
+        "internal/codingagent/render_session_items_contract_test.go#TestRenderSessionEntriesRefreshesTheFooterSessionName",
+        "internal/codingagent/render_session_items_contract_test.go#TestRenderSessionItemsCompactionAndBranchSummaryCostNotices",
+        "internal/codingagent/render_session_items_contract_test.go#TestRenderSessionItemsDropsAnEmptyBranchSummaryAndItsCostNotice",
+        "internal/codingagent/render_session_items_contract_test.go#TestRenderSessionItemsRendersCustomEntriesOnlyWithARegisteredRenderer",
+        "test/parity/scenarios/interactive-rendering/52-resumed-bash-execution.toml"
+      ],
+      "contracts": [
+        "coding-agent/interactive/render-session-entries"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.renderSessionItems",
       "ownerFamily": "interactive-input",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/interactive_transcript.go#renderSessionEntryListWithHistory"
+      ],
+      "evidence": [
+        "internal/codingagent/interactive_cache_miss_entries_test.go#TestRebuiltCacheMissNoticesScanEveryEntryInFileOrder",
+        "internal/codingagent/interactive_resume_tools_test.go#TestInteractiveMode_ResumeShellToolsShowRecordedDuration",
+        "internal/codingagent/interactive_resume_tools_test.go#TestResumeAbortedToolIgnoresOrphanedResult",
+        "internal/codingagent/markdown_message_meta_test.go#TestMarkdownTransformContextCarriesPersistedEntryIdentity",
+        "internal/codingagent/render_session_items_contract_test.go#TestRenderSessionItemsCacheMissNoticesFollowTheStopReasonAndTheSetting",
+        "internal/codingagent/render_session_items_contract_test.go#TestRenderSessionItemsExpandsCardsLikeTheToolToggle",
+        "internal/codingagent/render_session_items_contract_test.go#TestRenderSessionItemsLeavesAnAnsweredCallPendingUntilItsResult",
+        "internal/codingagent/render_session_items_contract_test.go#TestRenderSessionItemsSettlesEachToolCardByTheStopReason",
+        "internal/codingagent/render_session_items_contract_test.go#TestRenderSessionItemsSkipsAUserMessageWithoutText",
+        "test/parity/scenarios/interactive-rendering/24-resume-file-tool-previews.toml"
+      ],
+      "contracts": [
+        "coding-agent/interactive/render-session-items"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.renderStack",
       "ownerFamily": "extensions-runtime",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/interactive_extension_errors.go#showExtensionError"
+      ],
+      "evidence": [
+        "internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "internal/codingagent/interactive_command_error_test.go#TestExtensionErrorHasNoAddedSpacers",
+        "test/parity/scenarios/extensions-runtime/81-extension-error-stack.toml"
+      ],
+      "contracts": [
+        "coding-agent/extensions/render-stack"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.renderWidgetContainer",
       "ownerFamily": "interactive-input",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/interactive_extensions.go#renderWidgetsLocked"
+      ],
+      "evidence": [
+        "internal/codingagent/host_ui_commands_test.go#TestHostSpacerSurvivesEditorReplacementAndWidgetClear",
+        "internal/codingagent/widget_contract_test.go#TestEmptyAndBelowWidgetSidesHaveTheUpstreamSpacers",
+        "internal/codingagent/widget_contract_test.go#TestWidgetSetBeforeTheContainersExistDoesNotPanic",
+        "internal/codingagent/widget_layout_test.go#TestAboveEditorWidgetSpacerPrecedesWidgets",
+        "internal/codingagent/widget_layout_test.go#TestWidgetsFollowTheOrderTheyWereSetAcrossExtensionHosts",
+        "test/parity/scenarios/extensions-runtime/69-sdk-string-widget-python.toml"
+      ],
+      "contracts": [
+        "coding-agent/interactive/render-widget-container"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.renderWidgets",
       "ownerFamily": "interactive-input",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/ext_widgets.go#setExtensionWidget",
+        "internal/codingagent/interactive_extensions.go#renderWidgetsLocked"
+      ],
+      "evidence": [
+        "internal/codingagent/widget_contract_test.go#TestMovedBridgeWidgetTakesTheEndOfItsSide",
+        "internal/codingagent/widget_contract_test.go#TestSettingAWidgetRequestsARender",
+        "internal/codingagent/widget_contract_test.go#TestWidgetKeysAreOneNamespaceAcrossHosts",
+        "internal/codingagent/widget_contract_test.go#TestWidgetsFirstSeenTogetherKeepTheBridgeOrder",
+        "internal/codingagent/widget_layout_test.go#TestAboveEditorWidgetSpacerPrecedesWidgets",
+        "internal/codingagent/widget_layout_test.go#TestWidgetsFollowTheOrderTheyWereSetAcrossExtensionHosts",
+        "test/parity/scenarios/extensions-runtime/17-subprocess-widget-factory.toml"
+      ],
+      "contracts": [
+        "coding-agent/interactive/render-widgets"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -2682,60 +3494,277 @@
     {
       "id": "render:packages/tui/src/components/markdown.ts#Markdown.render",
       "ownerFamily": "tui-components",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
-      "divergence": "",
+      "disposition": "divergence",
+      "pigTargets": [
+        "tui/markdown.go#Render",
+        "tui/markdown_blocks.go#renderBlocks",
+        "tui/markdown_html_comments.go#removeHTMLCommentBlocks",
+        "tui/markdown_marked_lexer.go#blockTokens"
+      ],
+      "evidence": [
+        "test/parity/scenarios/tui-components/05-markdown-text-fits.toml",
+        "test/parity/scenarios/tui-components/16-markdown-user-components.toml",
+        "tui/markdown_block_edge_contract_test.go#TestMarkdownBlockEdgeDocsMatchPi",
+        "tui/markdown_block_reuse_upstream_test.go#TestMarkdownReusedHighlightingEqualsAFreshRender",
+        "tui/markdown_commonmark_contract_test.go#TestMarkdownCommonmarkDocsMatchPi",
+        "tui/markdown_contract_oracle_test.go#TestMarkdownCodeAndImageRowsMatchPi",
+        "tui/markdown_contract_oracle_test.go#TestMarkdownRenderSequencesMatchPi",
+        "tui/markdown_contract_oracle_test.go#TestMarkdownRenderVariantsMatchPi",
+        "tui/markdown_core_contract_test.go#TestMarkdownAsyncPendingFrameIsKeptOnlyAtItsWidth",
+        "tui/markdown_core_contract_test.go#TestMarkdownFinishStreamingDropsTheMemos",
+        "tui/markdown_core_contract_test.go#TestMarkdownNegativeWidthRendersAsZero",
+        "tui/markdown_core_contract_test.go#TestMarkdownRandomOperationsEqualAFreshRender",
+        "tui/markdown_core_contract_test.go#TestMarkdownRenderCacheKey",
+        "tui/markdown_html_comments_upstream_test.go#TestUpstreamMarkdownHTMLComments",
+        "tui/markdown_lexer_pool_allocs_norace_test.go#TestMarkdownRenderReusesPooledLexerState",
+        "tui/markdown_marked_lexer_oracle_test.go#TestMarkedBlockLexerEqualsMarkedOnCommittedCorpora",
+        "tui/markdown_marked_lexer_oracle_test.go#TestMarkedBlockLexerEqualsMarkedOnGeneratedDocuments",
+        "tui/markdown_marked_lexer_oracle_test.go#TestMarkedBlockLexerEqualsMarkedOnTokenizerSources",
+        "tui/markdown_marked_lexer_pool_test.go#TestMarkedBlockLexerFillsItsSlabsInOrderAndReusesThem",
+        "tui/markdown_marked_lexer_pool_test.go#TestMarkedBlockLexerResetsItsQueueAndKeepsItsTokenList",
+        "tui/markdown_marked_lexer_rules_test.go#TestMarkedBlockRulesEqualTheirPatterns",
+        "tui/markdown_marked_lexer_survivors_test.go#TestMarkedBlockLexerSurvivorDocsMatchMarked",
+        "tui/markdown_marked_lexer_survivors_test.go#TestMarkedBlockTokenOffsetsLocateTheirTokens",
+        "tui/markdown_marked_tokenizers_contract_test.go#TestMarkedBlockLexerReuseEqualsFresh",
+        "tui/markdown_marked_tokenizers_contract_test.go#TestMarkedBlockTokenizersEqualTheirPatterns",
+        "tui/markdown_memo_state_contract_test.go#TestMarkdownFinishedStateKeepsNoMemos",
+        "tui/markdown_memo_state_contract_test.go#TestMarkdownInlineMemoIsNotUsedForReferencesAcrossDefinitions",
+        "tui/markdown_memo_state_contract_test.go#TestMarkdownStreamedStateEqualsAFreshComponents",
+        "tui/markdown_memo_work_contract_test.go#TestMarkdownFinishStreamingAfterAnUndrawnDelta",
+        "tui/markdown_memo_work_contract_test.go#TestMarkdownKeepsNoResumePointForAnImpureTheme",
+        "tui/markdown_memo_work_contract_test.go#TestMarkdownNegativePaddingYRendersAsNone",
+        "tui/markdown_memo_work_contract_test.go#TestMarkdownResumePointsOfCraftedDocuments",
+        "tui/markdown_memo_work_contract_test.go#TestMarkdownSetDefaultColorRepaints",
+        "tui/markdown_memo_work_contract_test.go#TestMarkdownStreamedRenderResumesFromTheSecondLastPoint",
+        "tui/markdown_partial_fence_markers_oracle_test.go#TestMarkdownPartialClosingFencesMatchPi",
+        "tui/markdown_partial_fence_markers_oracle_test.go#TestMarkdownPreservedListMarkersMatchPi",
+        "tui/markdown_random_contract_test.go#TestMarkdownRandomDocsMatchPi",
+        "tui/markdown_regression_contract_test.go#TestMarkdownRegressionDocsMatchPi",
+        "tui/markdown_render_oracle_test.go#TestMarkdownBlockReuseDiffersFromPi",
+        "tui/markdown_render_oracle_test.go#TestMarkdownRenderMatchesPi",
+        "tui/markdown_residual_contract_test.go#TestMarkdownResidualDocsMatchPi",
+        "tui/markdown_sweep_contract_test.go#TestMarkdownBlockSweepMatchesPi",
+        "tui/markdown_sweep_contract_test.go#TestMarkdownInlineSweepMatchesPi",
+        "tui/markdown_sweep_contract_test.go#TestMarkdownTableWidthSweepMatchesPi"
+      ],
+      "contracts": [
+        "tui/markdown/render"
+      ],
+      "divergence": "D220",
       "rationale": ""
     },
     {
       "id": "render:packages/tui/src/components/markdown.ts#Markdown.renderBlock",
       "ownerFamily": "tui-components",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/markdown.go#applyMarkdownBackground",
+        "tui/markdown.go#renderDocument"
+      ],
+      "evidence": [
+        "test/parity/scenarios/tui-components/16-markdown-user-components.toml",
+        "tui/markdown_contract_oracle_test.go#TestMarkdownCodeAndImageRowsMatchPi",
+        "tui/markdown_contract_oracle_test.go#TestMarkdownRenderSequencesMatchPi",
+        "tui/markdown_contract_oracle_test.go#TestMarkdownRenderVariantsMatchPi",
+        "tui/markdown_core_contract_test.go#TestMarkdownAsyncPendingFrameIsKeptOnlyAtItsWidth",
+        "tui/markdown_core_contract_test.go#TestMarkdownFinishStreamingDropsTheMemos",
+        "tui/markdown_core_contract_test.go#TestMarkdownNegativeWidthRendersAsZero",
+        "tui/markdown_core_contract_test.go#TestMarkdownRandomOperationsEqualAFreshRender",
+        "tui/markdown_core_contract_test.go#TestMarkdownRenderCacheKey",
+        "tui/markdown_lexer_pool_allocs_norace_test.go#TestMarkdownRenderReusesPooledLexerState",
+        "tui/markdown_marked_lexer_oracle_test.go#TestMarkedBlockLexerEqualsMarkedOnCommittedCorpora",
+        "tui/markdown_marked_lexer_oracle_test.go#TestMarkedBlockLexerEqualsMarkedOnGeneratedDocuments",
+        "tui/markdown_marked_lexer_oracle_test.go#TestMarkedBlockLexerEqualsMarkedOnTokenizerSources",
+        "tui/markdown_marked_lexer_pool_test.go#TestMarkedBlockLexerFillsItsSlabsInOrderAndReusesThem",
+        "tui/markdown_marked_lexer_pool_test.go#TestMarkedBlockLexerResetsItsQueueAndKeepsItsTokenList",
+        "tui/markdown_marked_lexer_survivors_test.go#TestMarkedBlockLexerSurvivorDocsMatchMarked",
+        "tui/markdown_marked_lexer_survivors_test.go#TestMarkedBlockTokenOffsetsLocateTheirTokens",
+        "tui/markdown_marked_tokenizers_contract_test.go#TestMarkedBlockLexerReuseEqualsFresh",
+        "tui/markdown_marked_tokenizers_contract_test.go#TestMarkedBlockTokenizersEqualTheirPatterns",
+        "tui/markdown_memo_state_contract_test.go#TestMarkdownFinishedStateKeepsNoMemos",
+        "tui/markdown_memo_state_contract_test.go#TestMarkdownInlineMemoIsNotUsedForReferencesAcrossDefinitions",
+        "tui/markdown_memo_state_contract_test.go#TestMarkdownStreamedStateEqualsAFreshComponents",
+        "tui/markdown_memo_work_contract_test.go#TestMarkdownFinishStreamingAfterAnUndrawnDelta",
+        "tui/markdown_memo_work_contract_test.go#TestMarkdownKeepsNoResumePointForAnImpureTheme",
+        "tui/markdown_memo_work_contract_test.go#TestMarkdownNegativePaddingYRendersAsNone",
+        "tui/markdown_memo_work_contract_test.go#TestMarkdownResumePointsOfCraftedDocuments",
+        "tui/markdown_memo_work_contract_test.go#TestMarkdownSetDefaultColorRepaints",
+        "tui/markdown_memo_work_contract_test.go#TestMarkdownStreamedRenderResumesFromTheSecondLastPoint",
+        "tui/markdown_partial_fence_markers_oracle_test.go#TestMarkdownPartialClosingFencesMatchPi",
+        "tui/markdown_partial_fence_markers_oracle_test.go#TestMarkdownPreservedListMarkersMatchPi",
+        "tui/markdown_random_contract_test.go#TestMarkdownRandomDocsMatchPi",
+        "tui/markdown_regression_contract_test.go#TestMarkdownRegressionDocsMatchPi",
+        "tui/markdown_sweep_contract_test.go#TestMarkdownBlockSweepMatchesPi",
+        "tui/markdown_sweep_contract_test.go#TestMarkdownInlineSweepMatchesPi",
+        "tui/markdown_sweep_contract_test.go#TestMarkdownTableWidthSweepMatchesPi"
+      ],
+      "contracts": [
+        "tui/markdown/render-block"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/tui/src/components/markdown.ts#Markdown.renderInlineTokens",
       "ownerFamily": "tui-components",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/markdown.go#renderInlineMarkdown",
+        "tui/markdown_html_comments.go#skipsHTMLComment",
+        "tui/markdown_marked.go#emStrong"
+      ],
+      "evidence": [
+        "test/parity/scenarios/tui-components/05-markdown-text-fits.toml",
+        "test/parity/scenarios/tui-components/16-markdown-user-components.toml",
+        "tui/markdown_commonmark_contract_test.go#TestMarkdownCommonmarkDocsMatchPi",
+        "tui/markdown_contract_oracle_test.go#TestMarkdownCodeAndImageRowsMatchPi",
+        "tui/markdown_contract_oracle_test.go#TestMarkdownRenderSequencesMatchPi",
+        "tui/markdown_contract_oracle_test.go#TestMarkdownRenderVariantsMatchPi",
+        "tui/markdown_emphasis_contract_test.go#TestMarkdownOrphanDelimiterSkipMatchesPi",
+        "tui/markdown_emphasis_contract_test.go#TestMarkdownRandomEmphasisMatchesPi",
+        "tui/markdown_html_comments_upstream_test.go#TestUpstreamMarkdownHTMLComments",
+        "tui/markdown_memo_work_contract_test.go#TestMarkdownBracketTextIsMemoizedWithoutDefinitions",
+        "tui/markdown_memo_work_contract_test.go#TestMarkdownDefaultStyleWithoutColorKeepsInlineRenderings",
+        "tui/markdown_memo_work_contract_test.go#TestMarkdownInlineMarkdownAfterRenderStartsClean",
+        "tui/markdown_memo_work_contract_test.go#TestMarkdownThemeStyleChangedBetweenRendersIsReadAgain",
+        "tui/markdown_random_contract_test.go#TestMarkdownRandomDocsMatchPi",
+        "tui/markdown_regression_contract_test.go#TestMarkdownRegressionDocsMatchPi",
+        "tui/markdown_render_oracle_test.go#TestMarkdownRenderMatchesPi",
+        "tui/markdown_residual_contract_test.go#TestMarkdownResidualDocsMatchPi",
+        "tui/markdown_spans_contract_test.go#TestMarkdownBackslashEscapesInEmphasisMatchPi",
+        "tui/markdown_spans_contract_test.go#TestMarkdownDefaultColorEqualsAColorTextStyle",
+        "tui/markdown_spans_contract_test.go#TestMarkdownInlineLatexOffMatchesPi",
+        "tui/markdown_spans_contract_test.go#TestMarkdownTextStyleCombinationsMatchPi",
+        "tui/markdown_spans_contract_test.go#TestStackedInlineRenderingCallsThemeFunctionsOncePerToken",
+        "tui/markdown_spans_contract_test.go#TestStackedInlineRenderingTakesCodesOutsideEveryLevel",
+        "tui/markdown_style_state_contract_test.go#TestMarkdownDefaultStyleCallsMatchPi",
+        "tui/markdown_sweep_contract_test.go#TestMarkdownBlockSweepMatchesPi",
+        "tui/markdown_sweep_contract_test.go#TestMarkdownInlineSweepMatchesPi",
+        "tui/markdown_sweep_contract_test.go#TestMarkdownTableWidthSweepMatchesPi"
+      ],
+      "contracts": [
+        "tui/markdown/render-inline-tokens"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/tui/src/components/markdown.ts#Markdown.renderList",
       "ownerFamily": "tui-components",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/markdown_blocks.go#renderList"
+      ],
+      "evidence": [
+        "test/parity/scenarios/tui-components/05-markdown-text-fits.toml",
+        "test/parity/scenarios/tui-components/16-markdown-user-components.toml",
+        "tui/markdown_contract_oracle_test.go#TestMarkdownCodeAndImageRowsMatchPi",
+        "tui/markdown_contract_oracle_test.go#TestMarkdownRenderSequencesMatchPi",
+        "tui/markdown_contract_oracle_test.go#TestMarkdownRenderVariantsMatchPi",
+        "tui/markdown_marked_lexer_oracle_test.go#TestMarkedBlockLexerEqualsMarkedOnCommittedCorpora",
+        "tui/markdown_marked_lexer_oracle_test.go#TestMarkedBlockLexerEqualsMarkedOnGeneratedDocuments",
+        "tui/markdown_marked_lexer_oracle_test.go#TestMarkedBlockLexerEqualsMarkedOnTokenizerSources",
+        "tui/markdown_marked_lexer_pool_test.go#TestMarkedBlockLexerFillsItsSlabsInOrderAndReusesThem",
+        "tui/markdown_marked_lexer_pool_test.go#TestMarkedBlockLexerResetsItsQueueAndKeepsItsTokenList",
+        "tui/markdown_marked_lexer_survivors_test.go#TestMarkedBlockLexerSurvivorDocsMatchMarked",
+        "tui/markdown_marked_lexer_survivors_test.go#TestMarkedBlockTokenOffsetsLocateTheirTokens",
+        "tui/markdown_marked_tokenizers_contract_test.go#TestMarkedBlockLexerReuseEqualsFresh",
+        "tui/markdown_marked_tokenizers_contract_test.go#TestMarkedBlockTokenizersEqualTheirPatterns",
+        "tui/markdown_partial_fence_markers_oracle_test.go#TestMarkdownPartialClosingFencesMatchPi",
+        "tui/markdown_partial_fence_markers_oracle_test.go#TestMarkdownPreservedListMarkersMatchPi",
+        "tui/markdown_random_contract_test.go#TestMarkdownRandomDocsMatchPi",
+        "tui/markdown_regression_contract_test.go#TestMarkdownRegressionDocsMatchPi",
+        "tui/markdown_render_oracle_test.go#TestMarkdownRenderMatchesPi",
+        "tui/markdown_sweep_contract_test.go#TestMarkdownBlockSweepMatchesPi",
+        "tui/markdown_sweep_contract_test.go#TestMarkdownInlineSweepMatchesPi",
+        "tui/markdown_sweep_contract_test.go#TestMarkdownTableWidthSweepMatchesPi"
+      ],
+      "contracts": [
+        "tui/markdown/render-list"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/tui/src/components/markdown.ts#Markdown.renderTable",
       "ownerFamily": "tui-components",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/markdown.go#renderMarkdownTable"
+      ],
+      "evidence": [
+        "test/parity/scenarios/tui-components/05-markdown-text-fits.toml",
+        "test/parity/scenarios/tui-components/16-markdown-user-components.toml",
+        "tui/markdown_contract_oracle_test.go#TestMarkdownCodeAndImageRowsMatchPi",
+        "tui/markdown_contract_oracle_test.go#TestMarkdownRenderSequencesMatchPi",
+        "tui/markdown_contract_oracle_test.go#TestMarkdownRenderVariantsMatchPi",
+        "tui/markdown_random_contract_test.go#TestMarkdownRandomDocsMatchPi",
+        "tui/markdown_regression_contract_test.go#TestMarkdownRegressionDocsMatchPi",
+        "tui/markdown_render_oracle_test.go#TestMarkdownRenderMatchesPi",
+        "tui/markdown_spans_contract_test.go#TestMarkdownTableWithoutHeaderCellsRendersNothing",
+        "tui/markdown_sweep_contract_test.go#TestMarkdownBlockSweepMatchesPi",
+        "tui/markdown_sweep_contract_test.go#TestMarkdownInlineSweepMatchesPi",
+        "tui/markdown_sweep_contract_test.go#TestMarkdownTableWidthSweepMatchesPi",
+        "tui/markdown_table_arith_oracle_test.go#TestMarkdownTableColumnWidthsMatchPiManyColumns",
+        "tui/markdown_table_arith_oracle_test.go#TestMarkdownTableColumnWidthsMatchPiOneAndTwoColumns",
+        "tui/markdown_table_arith_oracle_test.go#TestMarkdownTableRandomCellsMatchPi",
+        "tui/markdown_table_contract_test.go#TestMarkdownRandomTablesMatchPi",
+        "tui/markdown_table_contract_test.go#TestMarkdownTableColumnsOfNoWidthMatchPi"
+      ],
+      "contracts": [
+        "tui/markdown/render-table"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/tui/src/components/markdown.ts#Markdown.renderToken",
       "ownerFamily": "tui-components",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/markdown_blocks.go#renderQuote",
+        "tui/markdown_blocks.go#renderToken"
+      ],
+      "evidence": [
+        "test/parity/scenarios/tui-components/05-markdown-text-fits.toml",
+        "test/parity/scenarios/tui-components/16-markdown-user-components.toml",
+        "tui/markdown_block_reuse_upstream_test.go#TestUpstreamMarkdownBlockReuse",
+        "tui/markdown_contract_oracle_test.go#TestMarkdownCodeAndImageRowsMatchPi",
+        "tui/markdown_contract_oracle_test.go#TestMarkdownRenderSequencesMatchPi",
+        "tui/markdown_contract_oracle_test.go#TestMarkdownRenderVariantsMatchPi",
+        "tui/markdown_core_contract_test.go#TestMarkdownAsyncPendingFrameIsKeptOnlyAtItsWidth",
+        "tui/markdown_core_contract_test.go#TestMarkdownFinishStreamingDropsTheMemos",
+        "tui/markdown_core_contract_test.go#TestMarkdownNegativeWidthRendersAsZero",
+        "tui/markdown_core_contract_test.go#TestMarkdownRandomOperationsEqualAFreshRender",
+        "tui/markdown_core_contract_test.go#TestMarkdownRenderCacheKey",
+        "tui/markdown_html_comments_upstream_test.go#TestUpstreamMarkdownHTMLComments",
+        "tui/markdown_latex_width_test.go#TestMarkdownDisplayMathWiderThanTheContentWidthFallsBackToRawSource",
+        "tui/markdown_latex_width_test.go#TestMarkdownDisplayMathWidthFallbackMatchesPi",
+        "tui/markdown_marked_lexer_oracle_test.go#TestMarkedBlockLexerEqualsMarkedOnCommittedCorpora",
+        "tui/markdown_marked_lexer_oracle_test.go#TestMarkedBlockLexerEqualsMarkedOnGeneratedDocuments",
+        "tui/markdown_marked_lexer_oracle_test.go#TestMarkedBlockLexerEqualsMarkedOnTokenizerSources",
+        "tui/markdown_marked_lexer_pool_test.go#TestMarkedBlockLexerFillsItsSlabsInOrderAndReusesThem",
+        "tui/markdown_marked_lexer_pool_test.go#TestMarkedBlockLexerResetsItsQueueAndKeepsItsTokenList",
+        "tui/markdown_marked_lexer_survivors_test.go#TestMarkedBlockLexerSurvivorDocsMatchMarked",
+        "tui/markdown_marked_lexer_survivors_test.go#TestMarkedBlockTokenOffsetsLocateTheirTokens",
+        "tui/markdown_marked_tokenizers_contract_test.go#TestMarkedBlockLexerReuseEqualsFresh",
+        "tui/markdown_marked_tokenizers_contract_test.go#TestMarkedBlockTokenizersEqualTheirPatterns",
+        "tui/markdown_memo_state_contract_test.go#TestMarkdownFinishedStateKeepsNoMemos",
+        "tui/markdown_memo_state_contract_test.go#TestMarkdownInlineMemoIsNotUsedForReferencesAcrossDefinitions",
+        "tui/markdown_memo_state_contract_test.go#TestMarkdownStreamedStateEqualsAFreshComponents",
+        "tui/markdown_partial_fence_markers_oracle_test.go#TestMarkdownPartialClosingFencesMatchPi",
+        "tui/markdown_partial_fence_markers_oracle_test.go#TestMarkdownPreservedListMarkersMatchPi",
+        "tui/markdown_random_contract_test.go#TestMarkdownRandomDocsMatchPi",
+        "tui/markdown_regression_contract_test.go#TestMarkdownRegressionDocsMatchPi",
+        "tui/markdown_render_oracle_test.go#TestMarkdownRenderMatchesPi",
+        "tui/markdown_sweep_contract_test.go#TestMarkdownBlockSweepMatchesPi",
+        "tui/markdown_sweep_contract_test.go#TestMarkdownInlineSweepMatchesPi",
+        "tui/markdown_sweep_contract_test.go#TestMarkdownTableWidthSweepMatchesPi",
+        "tui/markdown_upstream_test.go#TestMarkdownRendersQuotesNestedDeeperThanTheWidthAllowsWithoutExploding"
+      ],
+      "contracts": [
+        "tui/markdown/render-token"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -3053,20 +4082,45 @@
     {
       "id": "render:packages/tui/src/terminal-image.ts#<module>.renderImage",
       "ownerFamily": "clipboard-images",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/terminal_image.go#RenderImage"
+      ],
+      "evidence": [
+        "test/parity/scenarios/tui-components/34-render-image.toml",
+        "tui/render_image_oracle_test.go#TestRenderImageMatchesPi",
+        "tui/render_image_registry_contract_test.go#TestRenderImageRegistersKittyMetadataLikePi"
+      ],
+      "contracts": [
+        "tui/terminal-image/render-image"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/tui/src/tui-alt-screen.ts#TuiAltScreen.doRender",
       "ownerFamily": "fullscreen",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/tui.go#resolveFakeCursors",
+        "tui/tui_alt_screen.go#compositeFlashes",
+        "tui/tui_alt_screen.go#compositeOverlays",
+        "tui/tui_alt_screen.go#doRender",
+        "tui/tui_alt_screen.go#prepareKittyScreen"
+      ],
+      "evidence": [
+        "test/parity/scenarios/fullscreen/01-conversation-fullscreen.toml",
+        "test/parity/scenarios/fullscreen/13-alt-screen-search-input.toml",
+        "test/parity/scenarios/fullscreen/15-keyboard-scroll-actions-fullscreen.toml",
+        "test/parity/scenarios/fullscreen/18-alt-screen-search-highlights.toml",
+        "tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
+        "tui/alt_screen_render_contract_test.go#TestAltScreenDoesNotDrawWhileInactive",
+        "tui/alt_screen_render_contract_test.go#TestRenderLayoutFrameClampsTheViewportToOneCell",
+        "tui/fake_cursor_test.go#TestAltScreenKeepsTheSelectionHighlightAfterAFakeCursorCell"
+      ],
+      "contracts": [
+        "tui/tui-alt-screen/doRender"
+      ],
       "divergence": "",
       "rationale": ""
     },

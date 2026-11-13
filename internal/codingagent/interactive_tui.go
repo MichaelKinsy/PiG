@@ -503,6 +503,16 @@ func (m *InteractiveMode) interruptShutdown() bool {
 	// pig additive (D102): Pi dies on SIGINT with no trace.
 	RecordEnding(m.opts.AgentDir, "received SIGINT (exit 130)")
 	// pig divergence (D51): restore terminal state before exit 130.
+	m.shutdownExtensionsBriefly()
+	return true
+}
+
+// shutdownExtensionsBriefly gives extensions their signal shutdown (the interrupted run settles, then session_shutdown with the reason
+// "quit", once per runtime) and waits for the handlers for at most a second. The emission runs on its own goroutine, so the wait also
+// bounds a caller that a handler waits for (the owner loop, a writer that holds the output lock) and the join of an emission that the
+// termination-signal goroutine already holds: shutdownFromSignal serializes on shutdownMu, inside this wait. The owner loop is not
+// asked to unwind, because the callers end the process themselves (130 on SIGINT, 129 on a dead terminal).
+func (m *InteractiveMode) shutdownExtensionsBriefly() {
 	done := make(chan struct{})
 	go func() {
 		m.shutdownFromSignal(false)
@@ -512,7 +522,6 @@ func (m *InteractiveMode) interruptShutdown() bool {
 	case <-done:
 	case <-time.After(time.Second):
 	}
-	return true
 }
 
 // `/model` empty-args) and applies the chosen model.

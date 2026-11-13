@@ -61,6 +61,7 @@ const (
 	RuleDialogResults       = "dialog-results-are-json-values"
 	RuleHostHighlightCode   = "host-helpers-highlight-code-no-markdown"
 	RuleMarkdownTransformer = "markdown-transformer-options"
+	RuleSetModelObject      = "set-model-takes-model-object"
 )
 
 // markdownTransformerSymbol names the changed method as apidiff reports it.
@@ -272,6 +273,15 @@ func Rules() []Rule {
 				{Symbol: markdownTransformerSymbol, Old: "func(MarkdownTransformerFunc)", New: "func(MarkdownTransformerFunc, ...MarkdownTransformerOptions)", Since: "0.8.0"},
 			},
 		},
+		{
+			ID:       RuleSetModelObject,
+			Summary:  "Context.SetModel takes Pi's model object; Context.SetModelNamed takes the provider/id name",
+			Rewrites: true,
+			Remedy:   "Call `ctx.SetModelNamed(\"provider/id\")` where you passed the name. `ctx.SetModel` takes a model object, as Pi's pi.setModel(model) does: one from `ctx.ModelRegistry().Find(provider, id)`, as it is or edited, or one you build; the Session uses the object you pass.",
+			Changes: []Change{
+				{Symbol: SetModelSymbol, Old: "func(string) (bool, error)", New: "func(map[string]any) (bool, error)", Since: setModelSince},
+			},
+		},
 	}
 }
 
@@ -285,6 +295,13 @@ func dialogResultChanges() []Change {
 	}
 	return changes
 }
+
+const (
+	// setModelSince is the SDK release whose Context.SetModel takes Pi's model object.
+	setModelSince = "0.8.0"
+	// SetModelSymbol names the changed method as apidiff reports it.
+	SetModelSymbol = "Context.SetModel"
+)
 
 const (
 	// SystemPromptSince is the SDK release whose before_agent_start data["systemPrompt"] is an *SystemPrompt.

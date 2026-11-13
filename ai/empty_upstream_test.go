@@ -46,6 +46,10 @@ func TestEmptyMessagesUpstream(t *testing.T) {
 		t.Fatalf("upstream denominator has %d cases for %d four-case model groups", len(cases), len(models))
 	}
 	for index, tc := range cases {
+		if spec := models[index/4]; !ai.BuiltCatalogModel(spec.provider + "/" + spec.model) {
+			// A build with this API's pig_strip tag has no provider for the row.
+			continue
+		}
 		t.Run(tc.ID, func(t *testing.T) {
 			t.Logf(".upstream/current/packages/ai/test/empty.test.ts:%d", tc.Line)
 			spec := models[index/4]

@@ -6,6 +6,7 @@
 #   equivalence.sh compare <fixtures-dir> [<work>]  generate with both over the fixtures and compare (work dir kept when given)
 #   equivalence.sh golden <fixtures-dir> <file>     write the sha256 of every file Pi's generator writes for the fixtures
 #                                                   (what cmd/gen-models' TestCatalogGenerationMatchesPi holds the Go output to)
+#   PI_CATALOG_OVERLAY=<dir> equivalence.sh ...     copy the files of <dir> (paths relative to Pi's packages/ai) over the Pi side first
 #
 # Needs `make upstream-mirror` (the Pi side runs from a copy of .upstream/current/packages/ai) and Node >= 24.
 set -euo pipefail
@@ -31,6 +32,8 @@ compare|golden)
 	mkdir "$copy"
 	trap 'rm -rf "$copy"' EXIT
 	for entry in package.json catalog scripts src; do cp -R "$mirror/ai/$entry" "$copy/$entry"; done
+	# PI_CATALOG_OVERLAY: files of a later Pi commit (paths relative to packages/ai) that replace those of the mirror copy, for a golden file that holds a post-release catalog change.
+	if [ -n "${PI_CATALOG_OVERLAY:-}" ]; then cp -R "$PI_CATALOG_OVERLAY"/. "$copy"/; fi
 	rm -rf "$copy/src/providers/data"
 	(cd "$copy" && CATALOG_FIXTURES=$fixtures node --import "$root/test/parity/testdata/catalog-generation/replay.mjs" catalog/generate.ts --strict --json-output "$work/pi/catalog" >"$work/pi.log")
 	mkdir -p "$work/pi"

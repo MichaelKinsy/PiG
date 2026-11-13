@@ -367,6 +367,10 @@ func runWorkerFixture() {
 	if os.Getenv(fixtureReportCompileCache) != "" {
 		_, _ = fmt.Fprintf(os.Stdout, "compilecache %q\n", os.Getenv("NODE_COMPILE_CACHE"))
 	}
+	// A process outside the worker's tree, started before the worker opened its channel: it holds what the worker was given.
+	if os.Getenv(lastWordsGrandchild) == "before" {
+		startOutsideTree()
+	}
 	port := &countingPort{processPort: openProcessChannel()}
 	var worker host.Host
 	serve(port, func(start WorkerStart, ctx context.Context) (*WorkerResult, error) {

@@ -28,7 +28,7 @@ import { formatNoModelsAvailableMessage } from "./core/auth-guidance.js";
 import { AuthStorage, ReadOnlyAuthStorage } from "./core/auth-storage.js";
 import { exportFromFile } from "./core/export-html/index.js";
 import { applyHttpProxySettings, configureHttpDispatcher } from "./core/http-dispatcher.js";
-import { resolveCliModel, resolveModelScope } from "./core/model-resolver.js";
+import { resolveCliModel, resolveModelScopeWithDiagnostics } from "./core/model-resolver.js";
 import { ModelRuntime } from "./core/model-runtime.js";
 import { restoreStdout, takeOverStdout } from "./core/output-guard.js";
 import { resolveProjectTrusted } from "./core/project-trust.js";
@@ -713,9 +713,15 @@ export async function main(args, options) {
             })),
         ];
         const modelPatterns = parsed.models ?? settingsManager.getEnabledModels();
-        const scopedModels = modelPatterns && modelPatterns.length > 0
-            ? await resolveModelScope(modelPatterns, modelRuntime, { signal: AbortSignal.timeout(15_000) })
-            : [];
+        // Pi bacd45b9c (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+        const { scopedModels, diagnostics: modelScopeDiagnostics } = modelPatterns && modelPatterns.length > 0
+            ? await resolveModelScopeWithDiagnostics(modelPatterns, modelRuntime, {
+                signal: AbortSignal.timeout(15_000),
+            })
+            : { scopedModels: [], diagnostics: [] };
+        // Returned as diagnostics instead of printed: this factory runs again on /new, /resume and /fork,
+        // while the interactive TUI draws on the terminal (#11264).
+        diagnostics.push(...modelScopeDiagnostics);
         const { options: sessionOptions, cliThinkingFromModel, diagnostics: sessionOptionDiagnostics, } = buildSessionOptions(parsed, scopedModels, sessionManager.buildSessionContext().messages.length > 0, modelRuntime, settingsManager);
         diagnostics.push(...sessionOptionDiagnostics);
         if (parsed.apiKey) {

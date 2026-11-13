@@ -44,6 +44,15 @@ classification = "external"
 rationale = "Google provider API path version is owned by the external provider contract."
 
 [[fields]]
+id = "ai/google_wire.go#const.geminiMirroredSDKVersion:go:-"
+path = "ai/google_wire.go"
+owner = "<package>"
+field = "geminiMirroredSDKVersion"
+wire_name = "-"
+classification = "external"
+rationale = "Release version of the external @google/genai SDK whose converters' member order the Google wire tables mirror; Google owns it, no Pig format carries it and nothing sends it: the request-body oracle test and make pin-check compare it with the version the parity oracle installs."
+
+[[fields]]
 id = "ai/identity.go#ClientIdentity.Version:json:version"
 path = "ai/identity.go"
 owner = "ClientIdentity"

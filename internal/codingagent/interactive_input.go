@@ -75,14 +75,26 @@ func (m *InteractiveMode) exitOnDeadTerminalWrite() (remove func()) {
 	})
 }
 
-// emergencyTerminalExit exits without the normal teardown: the terminal is gone, so TUI and extension cleanup would write
+// emergencyTerminalExit exits without the normal teardown: the terminal is gone, so the TUI's cleanup would write
 // restore sequences and fail again. Pi's process.exit(129) still runs the TUI's exit handler, which writes the mode resets
 // synchronously and swallows the write errors (9df819de, #11170); tui.RestoreTerminalOnExit does the same here.
 // It kills the tracked detached children first, as upstream does, so a running shell command does not outlive the exit
 // in its own process group. Pi's extensions run inside the exiting process and die with it; pig's run as child
 // processes in their own process groups, so it kills them too, or they would keep writing into the session's
 // directories.
-// Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts (emergencyTerminalExit).
+//
+// Extensions get session_shutdown first. In Pi a terminal that goes away reaches a session through SIGHUP: the handler
+// (registerSignalHandlers) kills the tracked children and runs shutdown({fromSignal: true}), which awaits
+// runtimeHost.dispose() (the interrupted run settles, then session_shutdown with the reason "quit") before any terminal
+// write; the restore writes that follow meet EIO and end in emergencyTerminalExit. Measured on Pi 1.5.2 in a git
+// repository (tmux kill-session and kill-pane, a closed pty master as session leader and under a shell; 16 of 16): the
+// handler ran, its awaited write landed, exit 129. PiG's input reader sees the hung-up terminal before any signal and
+// used to exit here without the event; it also killed the extension processes under an emission the signal goroutine
+// had started. The shutdown below is that handler's: it writes nothing to the terminal, a handler's failed terminal
+// write is swallowed by exitOnDeadTerminalWrite once emergencyExiting is set, and Run is not unwound, so none of the
+// normal teardown's writes (input drain, cursor, bracketed paste, Kitty, modifyOtherKeys, the alternate screen, the
+// final frame, the resume hint) is made.
+// Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts (emergencyTerminalExit, registerSignalHandlers, shutdown).
 //
 // The input reader, a failed terminal write and a crash on a dead terminal can all arrive here at once (exit_ending.go has
 // the ordering contract). Pi's is `never`: the first caller ends the process with 129, and a later caller blocks behind it
@@ -96,6 +108,10 @@ func (m *InteractiveMode) emergencyTerminalExit(reason string) {
 	// pig additive (D102): Pi exits here with no trace.
 	RecordEnding(m.opts.AgentDir, reason+" (exit 129)")
 	tools.KillTrackedDetachedChildren()
+	// pig divergence (D186): Pi awaits the handlers without a limit and emits nothing when its event loop is empty at the hangup
+	// or a terminal write fails first; PiG always emits and waits at most the second of shutdownExtensionsBriefly, so no handler
+	// holds a process whose terminal is gone.
+	m.shutdownExtensionsBriefly()
 	if m.opts.TerminateExtensionProcesses != nil {
 		m.opts.TerminateExtensionProcesses()
 	}

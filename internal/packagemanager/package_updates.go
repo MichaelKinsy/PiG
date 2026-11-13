@@ -12,7 +12,7 @@ import (
 )
 
 // updateCheckConcurrency limits parallel npm/git remote queries.
-const updateCheckConcurrency = 5
+const updateCheckConcurrency = 4
 
 // PackageUpdate describes an available update for a configured package.
 // Mirrors upstream PackageUpdate (package-manager.ts).

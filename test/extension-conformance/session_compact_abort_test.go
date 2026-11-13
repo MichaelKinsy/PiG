@@ -70,8 +70,8 @@ export default function (pi) {
 		var got outcome
 		select {
 		case got = <-done:
-		case <-t.Context().Done():
-			t.Fatal("compaction did not finish")
+		case <-time.After(testbudget.Wait(t)):
+			t.Fatalf("compaction did not finish after the first handler was released; notifications = %v", rig.notifications())
 		}
 		if got.err != nil || got.result == nil || got.result.Summary == "" {
 			t.Fatalf("Compact = %+v, %v; want the saved compaction", got.result, got.err)
