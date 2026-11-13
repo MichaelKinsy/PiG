@@ -3,6 +3,8 @@ package extension
 import (
 	"encoding/json"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 )
 
 func sessionBoundaryDraftMarshalCases() []struct {
@@ -19,7 +21,8 @@ func sessionBoundaryDraftMarshalCases() []struct {
 		{"custom, no data", SessionBoundaryDraft{Type: SessionBoundaryDraftCustom, CustomType: "note"}, `{"type":"custom","customType":"note"}`},
 		{"custom, empty members", SessionBoundaryDraft{Type: SessionBoundaryDraftCustom}, `{"type":"custom","customType":""}`},
 		{"custom, empty object data", SessionBoundaryDraft{Type: SessionBoundaryDraftCustom, CustomType: "note", Data: map[string]any{}}, `{"type":"custom","customType":"note","data":{}}`},
-		{"custom_message, nil content", SessionBoundaryDraft{Type: SessionBoundaryDraftCustomMessage}, `{"type":"custom_message","customType":"","content":null,"display":false}`},
+		{"custom_message, absent content", SessionBoundaryDraft{Type: SessionBoundaryDraftCustomMessage}, `{"type":"custom_message","customType":"","display":false}`}, // session-manager.ts:1359: the entry holds the content it was given, and JSON.stringify drops an undefined member
+		{"custom_message, explicit null content", SessionBoundaryDraft{Type: SessionBoundaryDraftCustomMessage, Content: orderedjson.Null()}, `{"type":"custom_message","customType":"","content":null,"display":false}`}, // session-manager.ts:1359: a null content is held and written
 		{"custom_message, details", SessionBoundaryDraft{Type: SessionBoundaryDraftCustomMessage, CustomType: "note", Content: "hi", Display: true, Details: []any{}}, `{"type":"custom_message","customType":"note","content":"hi","display":true,"details":[]}`},
 		// context_edit: the member is absent only for a draft decoded without it; a draft with no value has null.
 		{"context_edit, undefined replacement", SessionBoundaryDraft{Type: SessionBoundaryDraftContextEdit, TargetID: "e1", ReplacementUndefined: true}, `{"type":"context_edit","targetId":"e1"}`},
