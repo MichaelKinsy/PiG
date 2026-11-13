@@ -8,13 +8,13 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding/uiview"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // BenchmarkUpdateWithSocketClients measures what the clients of the socket cost the one call that reaches them: an
@@ -24,12 +24,7 @@ import (
 func BenchmarkUpdateWithSocketClients(b *testing.B) {
 	for _, clients := range []int{0, 1, 7} {
 		b.Run(strconv.Itoa(clients), func(b *testing.B) {
-			//portlint:allow hardtmp a socket path must stay under the 104-byte sun_path of macOS, which a scoped TMPDIR exceeds
-			dir, err := os.MkdirTemp("/tmp", "ve")
-			if err != nil {
-				b.Fatal(err)
-			}
-			defer func() { _ = os.RemoveAll(dir) }()
+			dir := testenv.ShortTempDir(b, "ve")
 			h, _ := newHost()
 			e := New(Options{Dir: filepath.Join(dir, "view-endpoint")})
 			defer e.Close()

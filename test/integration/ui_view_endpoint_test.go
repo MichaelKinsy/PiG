@@ -16,6 +16,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // pig additive (D614): the view endpoint of a real interactive session. The Piglet testdata/ui-view/shared.yaml selects
@@ -28,13 +30,7 @@ const uiViewEndpointAbilities = `{"slots":["panel","widget-above","widget-below"
 // 108 on Linux, and a test's own temporary directory carries the test's name.
 func uiViewShortHome(t *testing.T) string {
 	t.Helper()
-	//portlint:allow hardtmp a socket path must stay under the 104-byte sun_path of macOS, which a scoped TMPDIR exceeds
-	home, err := os.MkdirTemp("/tmp", "pv")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.RemoveAll(home) })
-	return home
+	return testenv.ShortTempDir(t, "pv")
 }
 
 // uiViewSocket waits for the session's socket and returns its path and the pid it is named for.

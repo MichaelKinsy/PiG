@@ -24,6 +24,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/uiview"
 	"github.com/MichaelKinsy/PiG/internal/browsertest"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 	"github.com/MichaelKinsy/PiG/internal/viewendpoint"
 )
 
@@ -173,12 +174,7 @@ func (h *host) held() int {
 // shortDir returns a directory whose path leaves room for a socket's name: a socket address holds 104 bytes on macOS.
 func shortDir(t *testing.T) string {
 	t.Helper()
-	dir, err := os.MkdirTemp("/tmp", "vw")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.RemoveAll(dir) })
-	return dir
+	return testenv.ShortTempDir(t, "vw")
 }
 
 // eventually waits until cond holds.

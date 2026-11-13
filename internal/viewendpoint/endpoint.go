@@ -4,8 +4,8 @@
 // It adds no message: a connection speaks the seven commands and two events of docs/ui-view-carrier.md and nothing else.
 // The socket exists while a session's extension host is bound. When that host is unbound (a reload, a session
 // replacement, the exit) every connection is closed and the socket is removed; the next host is served under the same
-// path. Nothing here runs on the interactive loop: Bind, Unbind and Close only queue, one worker goroutine creates and
-// removes the socket, and each connection has its own reader and writer.
+// path. Nothing here runs on the interactive loop: Bind and Unbind only queue, one worker goroutine creates and removes
+// the socket, and each connection has its own reader and writer.
 package viewendpoint
 
 import (
@@ -52,14 +52,20 @@ type Endpoint struct {
 	// uid is the user every peer must be: the user of this process.
 	uid int
 
-	mu      sync.Mutex
-	idle    *sync.Cond
-	ops     []viewcarrier.Host // the hosts to serve next, in order; nil stops serving
+	mu sync.Mutex
+	// idle is signalled when ops, working or closed changes.
+	idle *sync.Cond
+	ops  []viewcarrier.Host // the hosts to serve next, in order; nil stops serving
+	// working is true from a Bind or an Unbind until the worker has run every one queued.
 	working bool
+	started bool
 	closed  bool
 	path    string
 	told    map[string]bool
 
+	// worker is the one goroutine that creates and removes the socket. The first Bind or Unbind starts it and Close
+	// joins it.
+	worker sync.WaitGroup
 	// srv is the server of the bound host. Only the worker touches it.
 	srv *server
 }
@@ -78,17 +84,13 @@ func (e *Endpoint) Bind(host viewcarrier.Host) { e.post(host) }
 func (e *Endpoint) Unbind() { e.post(nil) }
 
 // Close unbinds, waits until the socket is removed and every goroutine of the endpoint ended, and makes every later
-// Bind do nothing. It waits for no client: a connection is closed, not drained.
+// Bind and Unbind do nothing. It waits for no client: a connection is closed, not drained.
 func (e *Endpoint) Close() {
 	e.mu.Lock()
 	e.closed = true
+	e.idle.Broadcast()
 	e.mu.Unlock()
-	e.post(nil)
-	e.mu.Lock()
-	for e.working {
-		e.idle.Wait()
-	}
-	e.mu.Unlock()
+	e.worker.Wait()
 }
 
 // Path returns the socket's path while one is served, and "" otherwise.
@@ -101,23 +103,33 @@ func (e *Endpoint) Path() string {
 func (e *Endpoint) post(host viewcarrier.Host) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	if e.closed && host != nil {
+	if e.closed || host == nil && !e.started {
 		return
 	}
 	e.ops = append(e.ops, host)
-	if !e.working {
-		e.working = true
-		//portlint:allow golifetime the worker ends when its queue is empty, and Close waits for that through idle
-		go e.work()
+	e.working = true
+	if !e.started {
+		// Close reads closed under mu before it joins the worker, so the worker never starts beside that join.
+		e.started = true
+		e.worker.Go(e.work)
 	}
+	e.idle.Broadcast()
 }
 
-// work runs the queued binds and unbinds in order and ends when none is left, so an endpoint that serves keeps no
-// goroutine beyond its listener and its connections.
+// work runs the queued binds and unbinds in order until Close, which ends what is served and drops what is queued.
 func (e *Endpoint) work() {
+	e.mu.Lock()
 	for {
-		e.mu.Lock()
-		if len(e.ops) == 0 {
+		for len(e.ops) == 0 && !e.closed {
+			e.working = false
+			e.idle.Broadcast()
+			e.idle.Wait()
+		}
+		if e.closed {
+			e.ops = nil
+			e.mu.Unlock()
+			e.stop()
+			e.mu.Lock()
 			e.working = false
 			e.idle.Broadcast()
 			e.mu.Unlock()
@@ -130,6 +142,7 @@ func (e *Endpoint) work() {
 		if host != nil {
 			e.start(host)
 		}
+		e.mu.Lock()
 	}
 }
 
@@ -270,8 +283,6 @@ func (k *conn) read() {
 		Write:   k.queue,
 		Flushed: k.flushed,
 	})
-	//portlint:allow ctxbackground the wait ends when the connection is cut: no command's context outlives a connection
-	ctx := context.Background()
 	r := bufio.NewReaderSize(k.c, 64<<10)
 	for {
 		line, ok := readLine(r)
@@ -281,7 +292,7 @@ func (k *conn) read() {
 		k.handle(carrier, line)
 		// The next command is read once the client was written this one's reply, so a client that does not read is
 		// owed at most one reply besides those of its intents in flight.
-		if !k.flushed(ctx) {
+		if !k.written(nil) {
 			break
 		}
 	}
@@ -380,10 +391,16 @@ func (k *conn) flushed(ctx context.Context) bool {
 		k.wake.Broadcast()
 		k.mu.Unlock()
 	})()
+	return k.written(ctx.Err)
+}
+
+// written returns once the client was written every line queued so far. It reports false when the connection ended
+// first, or when ended, which is asked at each wake, reports an error.
+func (k *conn) written(ended func() error) bool {
 	k.mu.Lock()
 	defer k.mu.Unlock()
 	target := k.put
-	for k.wrote < target && !k.closed && ctx.Err() == nil {
+	for k.wrote < target && !k.closed && (ended == nil || ended() == nil) {
 		k.wake.Wait()
 	}
 	return k.wrote >= target

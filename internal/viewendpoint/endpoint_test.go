@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/uiview"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 type testHost struct {
@@ -71,13 +72,7 @@ type fixture struct {
 // shortDir returns a directory whose path leaves room for a socket name: a socket address holds 104 bytes on macOS.
 func shortDir(t *testing.T) string {
 	t.Helper()
-	//portlint:allow hardtmp a socket path must stay under the 104-byte sun_path of macOS, which a scoped TMPDIR exceeds
-	dir, err := os.MkdirTemp("/tmp", "ve")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.RemoveAll(dir) })
-	return dir
+	return testenv.ShortTempDir(t, "ve")
 }
 
 func newHost() (*testHost, *testPlugin) {
@@ -789,7 +784,7 @@ func TestAClientThatConnectsWhileTheHostIsUnboundIsNeverLeftAttached(t *testing.
 }
 
 // pig additive (D614): Close waits for no client. With a client that attached and reads nothing, its queue full and
-// its writer blocked, Close returns at once, the socket is gone and the connection is closed.
+// its writer blocked, Close returns within 5 seconds, the socket is gone and the connection is closed.
 func TestCloseDoesNotWaitForAClientThatDoesNotRead(t *testing.T) {
 	f := newFixture(t)
 	path := f.serve()
@@ -800,10 +795,20 @@ func TestCloseDoesNotWaitForAClientThatDoesNotRead(t *testing.T) {
 	for i := 1; i <= 600; i++ {
 		ref = f.update(ref, strconv.Itoa(i)+pad)
 	}
-	start := time.Now()
-	f.e.Close()
-	if took := time.Since(start); took > 5*time.Second {
-		t.Fatalf("Close took %v with a client that does not read", took)
+	closed := make(chan struct{})
+	go func() {
+		f.e.Close()
+		close(closed)
+	}()
+	bound := time.NewTimer(5 * time.Second)
+	defer bound.Stop()
+	select {
+	case <-closed:
+	case <-bound.C:
+		// A Close that waits for the client ends once the client is gone, so this row fails by its own line.
+		_ = stalled.c.Close()
+		<-closed
+		t.Fatal("Close did not return within 5 s with a client that does not read")
 	}
 	if _, err := os.Lstat(path); err == nil {
 		t.Fatal("Close left the socket")

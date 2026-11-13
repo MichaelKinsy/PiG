@@ -180,9 +180,9 @@ type InteractiveMode struct {
 	// viewMounts is the plugin mounts the terminal view client draws (D614), in mount order; widgetMu guards it. It is empty unless a Piglet selected the client and an extension mounted a view.
 	viewMounts []*viewMount
 	// viewClient is the terminal's attachment to the bound build's view registry, nil unless a Piglet selected it.
-	viewClient       atomic.Pointer[viewClient]
+	viewClient atomic.Pointer[viewClient]
 	// viewEndpoint is the socket that serves the bound build's view registry to clients outside the process, nil unless a Piglet selected it.
-	viewEndpoint atomic.Pointer[viewendpoint.Endpoint]
+	viewEndpoint     atomic.Pointer[viewendpoint.Endpoint]
 	inprocessWidgets []inprocessWidget
 	// widgetSeq counts widget sets across both hosts; bridgeWidgetSeqs is the sequence each extension-process widget got when it was set, by its
 	// bridge insertion order, so the layout interleaves the hosts in the order Pi's one Map per side keeps.
