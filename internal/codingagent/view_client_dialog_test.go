@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -301,15 +302,26 @@ func TestViewClientDialogTitleAndBindings(t *testing.T) {
 // that declares a dismiss intent is left, not dismissed, and its plugin reads that the terminal does not offer it.
 func TestViewClientEscapeRaisesADialogsDismissIntentOnce(t *testing.T) {
 	f := newViewFixture(t)
+	// The registry runs a handler on a goroutine it does not join when the caller cancels the intent. So the record is
+	// kept under a lock, and the handler of the pick closes picking when it holds the intent and picked when it has
+	// returned: the test waits for the first before the key that cancels the pick and for the second after it, and no
+	// handler runs once the test has ended.
+	var mu sync.Mutex
 	var raised []string
+	picking, picked := make(chan struct{}), make(chan struct{})
 	f.host.invoke = func(ctx context.Context, inv uiview.Invocation) (uiview.Result, error) {
+		mu.Lock()
 		raised = append(raised, inv.Mount.Key+" "+inv.Intent+" ["+inv.NodeKey+"] "+string(inv.Arg))
+		mu.Unlock()
 		if inv.Intent == viewPickIntent.Name {
+			defer close(picked)
+			close(picking)
 			<-ctx.Done()
 			return uiview.Result{}, ctx.Err()
 		}
 		return uiview.Result{Outcome: uiview.OutcomeDone}, nil
 	}
+	sent := func() []string { mu.Lock(); defer mu.Unlock(); return slices.Clone(raised) }
 	shut := uiview.IntentDecl{Name: "ext.shut", Arg: uiview.Shape{Type: "object"}, Dismiss: true, TimeoutMs: 30000}
 	content := viewDialogContent()
 	content.Intents = append(content.Intents, shut)
@@ -332,8 +344,8 @@ func TestViewClientEscapeRaisesADialogsDismissIntentOnce(t *testing.T) {
 	dialog.HandleInput("\x1b")
 	f.awaitResult()
 	f.loop.run()
-	if !slices.Equal(raised, []string{dismissal}) {
-		t.Fatalf("Escape in the dialog sent the plugin %q, want %q", raised, dismissal)
+	if got := sent(); !slices.Equal(got, []string{dismissal}) {
+		t.Fatalf("Escape in the dialog sent the plugin %q, want %q", got, dismissal)
 	}
 	if f.loop.focused != dialog || !dialog.focused || len(f.loop.open()) != 1 || waitingRow(f) != "" {
 		t.Fatalf("after Escape in a dialog its plugin did not close: focused %v, frames %d, row %q", f.loop.focused == dialog, len(f.loop.open()), waitingRow(f))
@@ -341,18 +353,28 @@ func TestViewClientEscapeRaisesADialogsDismissIntentOnce(t *testing.T) {
 	// The plugin answered and closed nothing: the second press is not the plugin's.
 	dialog.HandleInput("\x1b")
 	f.loop.run()
-	if len(raised) != 1 || !left() {
-		t.Fatalf("the second Escape: the plugin was sent %q, focused %v, frames %d, row %q", raised, f.loop.focused, len(f.loop.open()), waitingRow(f))
+	if got := sent(); len(got) != 1 || !left() {
+		t.Fatalf("the second Escape: the plugin was sent %q, focused %v, frames %d, row %q", got, f.loop.focused, len(f.loop.open()), waitingRow(f))
 	}
 
-	// An intent in flight: the key cancels it and leaves, and raises nothing more.
+	// An intent in flight, in the plugin's hands: the key cancels it and leaves, and raises nothing more.
 	enter()
 	dialog.HandleInput("\r")
+	select {
+	case <-picking:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the pick did not reach the plugin")
+	}
 	dialog.HandleInput("\x1b")
+	select {
+	case <-picked:
+	case <-time.After(5 * time.Second):
+		t.Fatal("Escape did not cancel the cancellable intent in flight")
+	}
 	f.awaitResult()
 	f.loop.run()
-	if len(raised) != 2 || !strings.HasPrefix(raised[1], "d ext.pick [pick] ") || !left() {
-		t.Fatalf("Escape with an intent in flight: the plugin was sent %q, focused %v, frames %d, row %q", raised, f.loop.focused, len(f.loop.open()), waitingRow(f))
+	if got := sent(); len(got) != 2 || !strings.HasPrefix(got[1], "d ext.pick [pick] ") || !left() {
+		t.Fatalf("Escape with an intent in flight: the plugin was sent %q, focused %v, frames %d, row %q", got, f.loop.focused, len(f.loop.open()), waitingRow(f))
 	}
 
 	// Entered again the key dismisses again, and this time the plugin closes the dialog.
@@ -360,8 +382,8 @@ func TestViewClientEscapeRaisesADialogsDismissIntentOnce(t *testing.T) {
 	dialog.HandleInput("\x1b")
 	f.awaitResult()
 	f.loop.run()
-	if len(raised) != 3 || raised[2] != dismissal || f.loop.focused != dialog {
-		t.Fatalf("Escape in the entered dialog sent the plugin %q, focused %v", raised, f.loop.focused == dialog)
+	if got := sent(); len(got) != 3 || got[2] != dismissal || f.loop.focused != dialog {
+		t.Fatalf("Escape in the entered dialog sent the plugin %q, focused %v", got, f.loop.focused == dialog)
 	}
 	f.transition("hide", ref)
 	if f.loop.focused != nil || len(f.loop.open()) != 0 || waitingRow(f) != "" {
@@ -378,8 +400,8 @@ func TestViewClientEscapeRaisesADialogsDismissIntentOnce(t *testing.T) {
 	}
 	panel.HandleInput("\x1b")
 	f.loop.run()
-	if len(raised) != 3 || f.loop.focused != nil || panel.focused {
-		t.Fatalf("Escape in a panel that declares a dismiss intent: the plugin was sent %q, the panel focused %v", raised, panel.focused)
+	if got := sent(); len(got) != 3 || f.loop.focused != nil || panel.focused {
+		t.Fatalf("Escape in a panel that declares a dismiss intent: the plugin was sent %q, the panel focused %v", got, panel.focused)
 	}
 }
 
