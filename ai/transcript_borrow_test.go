@@ -29,7 +29,7 @@ func richTranscriptMessages(model *GeneratedModel, removal bool) []Message {
 	return []Message{
 		SystemMessage{Content: SystemText("base prompt"), ToolsAdded: []ToolSchema{{Name: "read", Description: "read a file", Parameters: map[string]any{"type": "object"}}}},
 		UserMessage{Content: UserText("start")},
-		same(ThinkingContent{Thinking: "plan", ThinkingSignature: "sig"}, ThinkingContent{Thinking: "plain"}, ThinkingContent{Redacted: true, ThinkingSignature: "r"}, ThinkingContent{Thinking: "  "},
+		same(ThinkingContent{Thinking: "plan", ThinkingSignature: `{"type":"reasoning","id":"rs_1","summary":[]}`}, ThinkingContent{Thinking: "plain"}, ThinkingContent{Redacted: true, ThinkingSignature: `{"type":"reasoning","id":"rs_2","summary":[]}`}, ThinkingContent{Thinking: "  "},
 			TextContent{Text: "calling", TextSignature: "t"}, validityToolCall("a"), validityToolCall("b")),
 		ToolResultMessage{ToolCallID: "a", ToolName: "read", Content: []ToolResultMessageContent{TextContent{Text: "A"}, image}},
 		later,
