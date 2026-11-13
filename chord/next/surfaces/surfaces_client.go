@@ -87,12 +87,12 @@ type ClientOptions struct {
 	Open func(events SocketEvents) link.Link
 	// FetchScript fetches a plugin's script of a set (at its URL), which registers itself.
 	FetchScript func(ctx context.Context, entry ScriptEntry) (RegisteredScript, error)
-	// ServerBase is the server's current base bundle hash, asked before each reconnect (nil: unknown, try again): another one
-	// means this client is outdated (a new protocol comes with a new base bundle).
+	// ServerBase is the server's current base bundle hash, asked at each reconnect beside the next attempt (nil: unknown, try
+	// again): another one means this client is outdated (a new protocol comes with a new base bundle).
 	ServerBase func(ctx context.Context) (*string, error)
 	// Outdated says this client's code is outdated: the app starts it over (a page reloads); the loop has stopped.
 	Outdated func()
-	// CanRetry is asked before each reconnect; false stops the loop (a guest's ended share). Nil: always true.
+	// CanRetry is asked at each reconnect, beside the next attempt; false stops the loop (a guest's ended share). Nil: always true.
 	CanRetry     func(ctx context.Context) (bool, error)
 	OnConnection func(state ConnectionState)
 	// Styles are the plugins' stylesheets (a page's; a terminal has none). Nil: none.
@@ -102,7 +102,7 @@ type ClientOptions struct {
 	// first span, after the host was made).
 	Telemetry func(incarnation func() string) telemetry.TelemetryContext
 	// Follow is whether the client follows the scripts object (new sets applied, another base Outdated, the server's base asked
-	// before each reconnect): yes by default (nil); false for a static client (a page built offline and served elsewhere).
+	// at each reconnect): yes by default (nil); false for a static client (a page built offline and served elsewhere).
 	Follow  *bool
 	OnError func(err ClientError)
 }
@@ -199,10 +199,11 @@ func (c *Client) Stop(ctx context.Context) error {
 	return c.Host.Close(ctx)
 }
 
-// connect keeps h's parent link to the server, asking ServerBase and CanRetry before every reconnect; onState hears each state
+// connect keeps h's parent link to the server, asking ServerBase and CanRetry at every reconnect; onState hears each state
 // after the app's OnConnection.
 func connect(h host.Host, options ClientOptions, ctx context.Context, serverBase func(context.Context) (*string, error), onState func(ConnectionState)) *Connection {
-	return KeepConnected(LoopOptions{
+	var loop *Connection
+	loop = newConnection(LoopOptions{
 		Open: func(events SocketEvents) LoopLink {
 			// The loop and the host both follow the link's close; a link has one close listener.
 			shared := newSharedClose(options.Open(events))
@@ -225,6 +226,8 @@ func connect(h host.Host, options ClientOptions, ctx context.Context, serverBase
 				return false, err
 			}
 			if base != nil && *base != options.Base {
+				// Stopped first, as Outdated promises: an attempt made meanwhile ends with it.
+				loop.stopNow()
 				options.Outdated()
 				return false, nil
 			}
@@ -235,6 +238,8 @@ func connect(h host.Host, options ClientOptions, ctx context.Context, serverBase
 		},
 		Environment: options.Environment,
 	})
+	loop.start()
+	return loop
 }
 
 // sharedClose is a link whose close several follow (the host and the connection loop): each listener added runs once it closes.
