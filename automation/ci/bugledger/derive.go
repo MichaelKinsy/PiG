@@ -61,7 +61,6 @@ func sentences(s string) []string {
 var (
 	beforeSentence = regexp.MustCompile(`^(Before\b|Previously\b|PiG (previously|used to)\b|It (used to|had)\b|They (used to|had)\b|The \w[\w ]*? (used to|had)\b|.*\bused to\b)`)
 	causeWords     = regexp.MustCompile(`(?i)\b(because|caused by|root cause|the cause|due to|since the|raced|race between|never (re)?(armed|read|checked|set|cleared|called)|was not|did not|never reached)\b`)
-	causeLabel     = regexp.MustCompile(`(?im)^(root cause|cause)\s*:\s*`)
 )
 
 // symptomOf returns the sentence that says what the user saw: a "Before..." or "used to" sentence when the note has one, otherwise the first sentence.
@@ -146,30 +145,33 @@ func clip(s string, n int) string {
 	return strings.TrimRight(s[:cut], " ,;:") + "…"
 }
 
-// rootCauseOf reads the cause of the bug from the sources in order of how directly they state it: a "Root cause:" paragraph of the fix commit message, a commit paragraph or release-note sentence that says why, and last the first paragraph of the commit message, which for a fix describes the behavior Pi has and the mismatch.
+// rootCauseOf reads the cause of the bug from the fix commits' messages and the release note, in order of how directly they state it:
+//
+//  1. the cause a fix commit states outright: a "Root-Cause:" trailer, or a paragraph that starts "Root cause:" or "Cause:";
+//  2. a paragraph of a fix commit's body that says why (causeWords);
+//  3. a sentence of the release note that says why;
+//  4. the first paragraph of a fix commit's body, which for a fix describes the behavior Pi has and the mismatch.
+//
+// The subject, the trailer block and a paragraph that reports how the change was checked (see readMessage) are never the cause, whatever words they hold. It returns "", "" when no source states a cause; the check then asks for one (see needsCause).
+//
+// The text goes to the ledger page as its source wrote it, code spans, commands and paths included. That page is generated, so a check of what the docs tell a reader to type has to skip it (test/docs-drift): `go vet ./...` in a root cause is a quotation, not an instruction.
 func rootCauseOf(messages []string, note string) (text, from string) {
-	var firsts []string
-	for _, msg := range messages {
-		ps := splitParagraphs(msg)
-		for _, p := range ps {
-			if loc := causeLabel.FindStringIndex(p); loc != nil && loc[0] == 0 {
-				if t := publicText(p[loc[1]:]); t != "" {
-					return clip(t, maxCause), "commit"
-				}
-			}
+	read := make([]commitMessage, len(messages))
+	for i, msg := range messages {
+		read[i] = readMessage(msg)
+	}
+	for _, m := range read {
+		if t := publicText(m.cause); t != "" {
+			return clip(t, maxCause), "commit"
 		}
-		for i, p := range ps {
-			if i == 0 {
-				continue // the subject line is not a paragraph of the body
-			}
+	}
+	for _, m := range read {
+		for _, p := range m.body {
 			if causeWords.MatchString(p) {
 				if t := publicText(p); t != "" {
 					return clip(t, maxCause), "commit"
 				}
 			}
-		}
-		if len(ps) > 1 {
-			firsts = append(firsts, ps[1])
 		}
 	}
 	for _, s := range sentences(note) {
@@ -177,12 +179,20 @@ func rootCauseOf(messages []string, note string) (text, from string) {
 			return s, "release note"
 		}
 	}
-	for _, p := range firsts {
-		if t := publicText(p); t != "" {
+	for _, m := range read {
+		if len(m.body) == 0 {
+			continue
+		}
+		if t := publicText(m.body[0]); t != "" {
 			return clip(t, maxCause), "commit"
 		}
 	}
 	return "", ""
+}
+
+// wholeWords compiles alternatives that match only as whole words, ignoring case: no keyword matches inside a longer word, so "closes" is not "loses", "border" is not "order" and "precursor" is not "cursor". Each alternative lists the forms of its word that count.
+func wholeWords(alternatives ...string) *regexp.Regexp {
+	return regexp.MustCompile(`(?i)\b(?:` + strings.Join(alternatives, "|") + `)\b`)
 }
 
 type impactRule struct {
@@ -191,17 +201,18 @@ type impactRule struct {
 }
 
 // allocationCost matches wording about what a run allocates: allocations as a noun, allocs/op, fewer objects, or a verb that counts or compares what is allocated ("allocates two fewer objects", "allocated as many", "no longer allocates"). A verb that only says a value was given an identity ("allocated a new ID") is not a cost.
-var allocationCost = regexp.MustCompile(`(?i)\ballocations\b|\ballocation (cost|count|rate)\b|allocs/op|fewer objects|no longer allocat|\ballocat(es|ed|e|ing) (as many|two|one|\d+|fewer|more|less|no|zero|extra|an extra|a (slice|buffer|map|string|copy)|new (slices?|buffers?|maps?|strings?|copies))\b`)
+var allocationCost = wholeWords(`allocations`, `allocation (cost|count|rate)`, `allocs/op`, `fewer objects`, `no longer allocat(es|ed|e|ing)`,
+	`allocat(es|ed|e|ing) (as many|two|one|\d+|fewer|more|less|no|zero|extra|an extra|a (slice|buffer|map|string|copy)|new (slices?|buffers?|maps?|strings?|copies))`)
 
-// impactRules classify a release note by what it says went wrong. The first rule that matches decides. The classes describe the wording of the note, not a measured severity.
+// impactRules classify a release note by what it says went wrong. The first rule that matches decides. The classes describe the wording of the note, not a measured severity. Every keyword is a whole word (see wholeWords).
 var impactRules = []impactRule{
-	{regexp.MustCompile(`(?i)credential|secret|permission|owner-only|world-readable|injection|sandbox escape|unauthori[sz]ed`), "Credential or permission exposure"},
-	{regexp.MustCompile(`(?i)crash|panic|\bhang|hung\b|freez|deadlock|never (returns|ends|exits|finishes)|without bound|unbounded|out of memory|exits? (1|0)\b|outlives|exited 1`), "Crash, hang or runaway process"},
-	{regexp.MustCompile(`(?i)\blost\b|loses|corrupt|overwr[io]te|silently dropped|data loss|dropped (the|a|every|members)|discarded`), "Lost or altered data"},
-	{regexp.MustCompile(`(?i)\bfail(s|ed|ure)?\b|\berror(s|ed)?\b|rejected|refus|EPERM|cannot|could not|\binvalid\b|no longer (works|runs|loads)|did not (load|start|run)`), "An operation failed or was rejected"},
+	{wholeWords(`credentials?`, `secrets?`, `permissions?`, `owner-only`, `world-readable`, `injections?`, `sandbox escapes?`, `unauthori[sz]ed`), "Credential or permission exposure"},
+	{wholeWords(`crash(es|ed|ing)?`, `panic(s|ked|king)?`, `hang(s|ing)?`, `hung`, `freez(e|es|ing)`, `deadlock(s|ed|ing)?`, `never (returns|ends|exits|finishes)`, `without bound`, `unbounded`, `out of memory`, `exits? (1|0)`, `exited 1`, `outlives`), "Crash, hang or runaway process"},
+	{wholeWords(`lost`, `loses`, `corrupt(s|ed|ing|ion)?`, `overwr(ites?|ote)`, `silently dropped`, `data loss`, `dropped (the|an?|every|members)`, `discarded`), "Lost or altered data"},
+	{wholeWords(`fail(s|ed|ure)?`, `error(s|ed)?`, `rejected`, `refus(e|es|ed|ing|als?)`, `EPERM`, `cannot`, `could not`, `invalid`, `no longer (works|runs|loads)`, `did not (load|start|run)`), "An operation failed or was rejected"},
 	{allocationCost, "Extra allocation or slower run"},
-	{regexp.MustCompile(`(?i)render|\bdraw|colou?r|highlight|display|repaint|cursor|layout|padded|spinner|glyph`), "Wrong display"},
-	{regexp.MustCompile(`(?i)\bsorted|order|escaped|wrong|incorrect|instead of`), "Wrong output or ordering"},
+	{wholeWords(`(re-?)?render(s|ed|ing|ers?)?`, `draw(s|n|ing)?`, `colou?r(s|ed|ing)?`, `highlight(s|ed|ing)?`, `display(s|ed|ing)?`, `repaint(s|ed|ing)?`, `cursors?`, `layouts?`, `padded`, `spinners?`, `glyphs?`), "Wrong display"},
+	{wholeWords(`sorted`, `(re)?order(s|ed|ing)?`, `(un)?escaped`, `wrong(ly)?`, `incorrect(ly)?`, `instead of`), "Wrong output or ordering"},
 }
 
 func impactOf(note string) string {
@@ -217,11 +228,12 @@ var platformWords = []struct {
 	re   *regexp.Regexp
 	name string
 }{
-	{regexp.MustCompile(`(?i)\bwindows\b|\.exe\b|EPERM|PowerShell|\bpwsh\b`), "Windows"},
-	{regexp.MustCompile(`(?i)\bmacos\b|darwin|\bmac os\b`), "macOS"},
-	{regexp.MustCompile(`(?i)\blinux\b`), "Linux"},
-	{regexp.MustCompile(`(?i)\bWSL\b`), "WSL"},
-	{regexp.MustCompile(`(?i)\btermux\b|\bandroid\b`), "Android and Termux"},
+	// ".exe" ends a file name, so it is a suffix and not a whole word.
+	{regexp.MustCompile(wholeWords(`windows`, `EPERM`, `PowerShell`, `pwsh`).String() + `|(?i)\.exe\b`), "Windows"},
+	{wholeWords(`macos`, `darwin`, `mac os`), "macOS"},
+	{wholeWords(`linux`), "Linux"},
+	{wholeWords(`WSL`), "WSL"},
+	{wholeWords(`termux`, `android`), "Android and Termux"},
 }
 
 func platformOf(note string) string {
