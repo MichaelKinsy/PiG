@@ -37,8 +37,8 @@ func rpcOneChunkTag(r rpcRecord) string {
 	return ""
 }
 
-// startPiRPCOneChunk starts the pinned Pi in RPC mode with Pi's test-faux provider and no other extension.
-func startPiRPCOneChunk(t *testing.T) *rpcProcess {
+// startPiRPCFaux starts the pinned Pi in RPC mode with Pi's test-faux provider, env and the further arguments args.
+func startPiRPCFaux(t *testing.T, env []string, args ...string) *rpcProcess {
 	t.Helper()
 	root, err := filepath.Abs("../..")
 	if err != nil {
@@ -58,9 +58,9 @@ func startPiRPCOneChunk(t *testing.T) *rpcProcess {
 		t.Fatal(err)
 	}
 	home := t.TempDir()
-	return startJSONLProcessAt(t, t.TempDir(), []string{"HOME=" + home, "PI_CODING_AGENT_DIR=" + filepath.Join(home, "agent")}, node,
-		filepath.Join(piRoot, "dist", "cli.js"), "--mode", "rpc", "--no-extensions", "--no-skills", "--no-prompt-templates", "--no-session", "--model", "test-faux/faux-1",
-		"-e", filepath.Join(root, "test", "parity", "testdata", "test-faux-provider.ts"))
+	argv := append([]string{filepath.Join(piRoot, "dist", "cli.js"), "--mode", "rpc", "--no-extensions", "--no-skills", "--no-prompt-templates", "--no-session", "--model", "test-faux/faux-1",
+		"-e", filepath.Join(root, "test", "parity", "testdata", "test-faux-provider.ts")}, args...)
+	return startJSONLProcessAt(t, t.TempDir(), append([]string{"HOME=" + home, "PI_CODING_AGENT_DIR=" + filepath.Join(home, "agent")}, env...), node, argv...)
 }
 
 func startPigRPCOneChunk(t *testing.T) *rpcProcess {
@@ -141,7 +141,7 @@ func TestRPCPromptsWrittenInOneChunkDivergeFromPi(t *testing.T) {
 			name  string
 			start func(*testing.T) *rpcProcess
 			side  side
-		}{{"pi", startPiRPCOneChunk, tc.pi}, {"pig", startPigRPCOneChunk, tc.pig}} {
+		}{{"pi", func(t *testing.T) *rpcProcess { return startPiRPCFaux(t, nil) }, tc.pi}, {"pig", startPigRPCOneChunk, tc.pig}} {
 			t.Run(tc.name+"/"+impl.name, func(t *testing.T) {
 				p := impl.start(t)
 				var seen, users []string

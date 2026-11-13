@@ -1428,7 +1428,17 @@ SCRUTINIZED:approved
 
 ## D93 /reload evaluates an edited ES module extension again
 
-What: Pi 1.0.0 imports each extension through jiti with `moduleCache: false` (`core/extensions/loader.ts:569-572`, `loadExtensionModule`), so `/reload` evaluates a TypeScript or CommonJS extension and its local imports again. jiti 2.7.0 hands a file it treats as an ES module, an `.mjs` file or a `.js` file under `"type": "module"`, to Node's own `import()` when it imports asynchronously (`eval_evalModule`), and Node keeps an ES module for the life of the process by its URL. Pi therefore keeps running an edited ES module, an extension's entry or a local module it imports, until it restarts, even when the edit is a syntax error. This also holds for an `.mjs` module that a TypeScript extension imports. A TypeScript extension's own source runs its edit. This was probed with the pinned Pi in RPC mode.
+What: Pi 1.5.2 imports each extension through jiti with `moduleCache: false` (`packages/coding-agent/src/core/extensions/loader.ts:571-602`, `loadExtensionModule`; the jiti instance and its `import` are `:588-593`), so `/reload` evaluates a TypeScript extension and its local TypeScript imports again. jiti 2.7.0 hands a file it treats as an ES module, an `.mjs` file or a `.js` file under `"type": "module"`, to Node's own `import()` when it imports asynchronously (`eval_evalModule`), and Node keeps an ES module for the life of the process by its URL. Pi therefore keeps running an edited ES module, an extension's entry or a local module it imports, until it restarts, even when the edit is a syntax error. This also holds for an `.mjs` module that a TypeScript extension imports. A TypeScript extension's own source runs its edit. This was probed with the pinned Pi in RPC mode. Pi main is the same: at `d36266e06` (read 2026-11-13) `loader.ts` does not differ from 1.5.2 and jiti is still 2.7.0.
+
+What an edit followed by `/reload` runs, per source form (Pi 1.5.2 and PiG on the same extension, `TestReloadOfAnEditedNodeExtensionAgainstPi`):
+
+| Source form | Pi | PiG |
+|---|---|---|
+| Node `.ts`: the entry and its local `.ts` imports | the edit | the edit |
+| Node `.mjs` | the old module | the edit (this record) |
+| Node `.js` under `"type": "module"` | the old module | the edit (this record) |
+| Node `.cjs`, and `.js` read as CommonJS: the entry or a module it requires | the old module, which Node's `require` cache keeps | the old module |
+| Go, Python and Rust source extensions | no Pi side: Pi loads no such extension | the edit: PiG builds or starts the extension again (`TestReloadRunsTheCurrentSourceOfACommandLineExtension/go`, `/python`, `/rust`) |
 
 PiG's runtime hooks record, for each local extension module that Node loads, the source it loaded and the extension modules each evaluation imports. Local means outside the runtime and outside `node_modules`. When a reload pass starts, PiG gives a new URL, with a `pig-reload=<pass>` query, to each ES module whose source changed since Node loaded it and to each ES module that imports one, directly or through others. The resolve hook resolves every import of such a module to that URL, so the reload evaluates exactly those modules again:
 - Every other module keeps its instance and its state, as in Pi.
@@ -1464,12 +1474,13 @@ Evidence: these tests are in `coding/extension/host/subprocess`.
 - `TestNodeReloadEvaluatesAnEditedTypeModuleJsEntryAgain`: an edit runs, a broken edit fails the load, and the fix loads it again. It replaces the test that pinned Pi's behavior.
 - `TestSessionReplacementKeepsAnEditedESModuleUntilAReload`.
 - `TestHostReloadKeepsMjsModuleStateAndReevaluatesTsModules`: Pi's rule for an unedited `.mjs` module.
-- `TestReloadRunsTheCurrentSourceOfACommandLineExtension/node-mjs` (`cmd/pig`): the real CLI over RPC.
+- `TestReloadRunsTheCurrentSourceOfACommandLineExtension/node-mjs` (`coding/cli`): the real CLI over RPC.
+- `TestReloadOfAnEditedNodeExtensionAgainstPi` (`coding/cli/reload_edited_source_pi_test.go`): the pinned Pi and PiG over RPC on the same extension, for each Node source form of the table above. Its Pi rows fail when Pi's side changes.
 - The Bun row (`PIG_TS_RUNTIME=bun` with Bun 1.4.2 in the runtime slot) runs every test above in `coding/extension/host/subprocess` and passes them; before the Bun plugin, nine of them failed there.
 
 Each test fails with an earlier runtime: the CLI test with the runtime before D93, and the last four regression tests with the first D93 runtime. Each of ten mutations of the rules fails at least one test. Loading 19 more ES module extensions in one process takes the same 30 ms as before D93.
 
-Parity allowance: Pi keeps the old code of an edited ES module, so no paired scenario compares the reload; the tests above pin PiG's behavior.
+Parity allowance: after an edit and `/reload`, the factory of an ES module extension runs from the new module in PiG and from the old one in Pi. `TestReloadOfAnEditedNodeExtensionAgainstPi` compares both on the same extension and fails when Pi's side changes; the other tests above pin PiG's behavior.
 
 Remove when: Pi's loader evaluates an edited ES module extension again on `/reload` (upstream issue drafted 2026-10-04).
 
