@@ -63,9 +63,10 @@ A snapshot's `bindings [{key | gesture, intent, arg?, name?}]` tie keys and gest
 - A gesture binding fires when the gesture (`swipe-left`, `swipe-right`, `swipe-up`, `swipe-down`) is made on the mount and the node under it did not take it.
 - To fire a binding, send `ui_view_intent` with the binding's `intent`, no `nodeKey`, and its `arg`, or `{}` when it has none.
 - `key` is a key id: `shift`, `ctrl` and `alt` in any order, each followed by `+`, then the base key. Compare keys parsed, not as text.
-- The keys of `uiview.ReservedKeys` never arrive in a binding (`escape`, `tab` and `f6` with any modifiers; `c`, `d` and `z` with `ctrl`): keep them for leaving the mount, moving the focus, and the terminal's interrupt, end of input and suspend.
+- The keys of `uiview.ReservedKeys` never arrive in a binding (`escape`, `tab` and `f6` with any modifiers; `c`, `d` and `z` with `ctrl`): keep them for leaving the mount, moving the focus, and the terminal's interrupt, end of input and suspend. Those are the default keys. If your user can give one of those actions another key, give no binding that key either, and decide it when the key is pressed, as the terminal client does.
 - A client that takes keyboard input for a focused mount honours key bindings, and one whose pointing surface reports swipes honours gesture bindings. Report binding `i` that you cannot honour with `ui_view_report`: `{code: "unsupported", severity: "info", path: "bindings[i]"}`.
-- You may state the claim `input.bindings` (a list of `key` and `gesture`) in your abilities, so that an extension's `alternatives` can test it. The host does not read it.
+- You may state the claim `input.bindings` (a list of `key` and `gesture`) in your abilities, so that an extension's `alternatives` can test it. The host does not read it. It says which kinds of trigger you honour, not which keys.
+- A binding's `name`, a `title` and a mount's `key` are labels: the host has refused a control character, a line separator and the controls that reorder text (U+202A to U+202E, U+2066 to U+2069), so you can write them on one line as they are.
 
 ## Errors
 
