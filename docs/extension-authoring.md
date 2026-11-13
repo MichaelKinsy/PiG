@@ -661,6 +661,20 @@ there are any, and mount when a client arrives (step 11).
     });
     ```
 
+12. Give the mount a `title` (Go `ViewContent.Title`, Python and Lisp the `title` keyword, Rust `ViewMount.title` and
+    `ViewUpdate.title`, Node the `title` member): at most 64 bytes on one line. A client labels the mount with it, in a tab or a
+    list of views. It is content, so send it again with every update; an update without it clears it.
+13. Let the user open a view you hid. Declare one intent with `whenHidden` (Go `WhenHidden`, Python `when_hidden`, Rust
+    `when_hidden`, Lisp `:when-hidden`, Node `whenHidden`): no `nodeKey`, and an argument shape that accepts `{}`. It is the one
+    intent a hidden mount takes. A client lists your hidden mount by its title, and when the user chooses it your handler gets
+    that intent: call `ShowView`, after an update if the view is out of date. A hidden mount without such an intent is not
+    offered to the user.
+14. Show a view from a tool. Register a tool of your own (for example `mail_show`); its handler mounts the view, or shows and
+    updates it, from the context it is given. To ask for the keyboard too, put `request: "update"` on one `focus` record of that
+    update (`request: "mount"` asks when the mount is first drawn). Send it only with the update that should move the focus,
+    because every revision that carries it asks again. The client decides: it shows the view where it can, and when it does not
+    give the focus `ViewDiagnostics` returns an `unfocused` notice that says why.
+
 Every bound is the host's: one past it fails with code `invalid` in every SDK. `docs/additive-features.md` D614 lists the bounds.
 
 ### Views in the terminal
@@ -672,13 +686,22 @@ check the abilities and keep a fallback such as a widget or a notice.
 |---|---|---|---|
 | `widget-above` | above the editor, after the widgets | at most 10 | no |
 | `widget-below` | below the editor, after the widgets | at most 10 | no |
-| `panel` | the rows directly above the editor | at most half the terminal | yes |
+| `panel` | the rows directly above the editor, as tabs | at most half the terminal | yes |
 
 - The TUI draws every D107 node kind except `image`, at the terminal's width. It states its size as claims: `size.columns`,
   and `size.rows` for each slot. Use them in `alternatives` (`atLeast`) to send a layout that fits; `client.kind` is `terminal`.
 - A view taller than its slot is cut, the last row reads `... (view truncated)`, and `ViewDiagnostics` returns a `limit` notice.
-- A panel takes the focus when one of its `focus` records has `request: "mount"`, when the user presses F6, or on a click in
-  fullscreen mode. Escape returns the focus to the editor. Name the node that takes the keys in the view's `focus`.
+- Panels are tabs. One row above the panel lists every live panel, and every hidden one that declares a `whenHidden` intent,
+  by `title` (or by `key` without one); only the front tab's view is drawn. One live panel without a title has no tab row. A
+  label that does not fit is cut by display cells with `...`.
+- F6 walks from the editor through the tabs and back; Escape returns the focus to the editor, and the tab last visited stays
+  drawn. A view that takes keys gets the focus; otherwise the tab row holds it. On a hidden tab (drawn dim, in parentheses)
+  Enter raises its `whenHidden` intent: show the mount in your handler. A click in fullscreen mode focuses a panel.
+- A panel that you mount, show after a hide, or update with a focus request comes to the front when the user is in the editor
+  or on its tab. While the user works in another view yours stays where it is and its tab is marked with `*`.
+- A focus request (`request: "mount"` or `"update"`) is granted when your view already has the focus, when the user stands on
+  its tab, or when the editor has the focus and is empty. Otherwise `ViewDiagnostics` returns an `unfocused` notice with the
+  reason, for example `the editor holds text`. Name the node that takes the keys in the view's `focus`, or request it.
 - Bind an intent to a node with `nodeKey`. Choosing a select-list item, changing a settings-list value, submitting an input or
   an editor and clicking a mouse-region raise it. Declare the argument as an object with a `value` property (the item's value,
   the new setting value or the submitted text) and, for a settings-list, an `item` property (the setting's id), or as a scalar
@@ -686,9 +709,9 @@ check the abilities and keep a fallback such as a widget or a notice.
 - One intent per mount runs at a time. Redraw the view from the handler to show what it did; an activation made before your
   answer arrived is dropped.
 
-Conformance: `TestConformance_UIViewMounts`, `TestConformance_UIViewExtras`, `TestConformance_UIViewAnswerRedraw` and
-`TestConformance_UIViewAbilitiesEvent` run the same probes in every SDK against the host, and
-`docs/additive-features.md` D614 lists the records.
+Conformance: `TestConformance_UIViewMounts`, `TestConformance_UIViewExtras`, `TestConformance_UIViewAnswerRedraw`,
+`TestConformance_UIViewAbilitiesEvent` and `TestConformance_UIViewToolShowsAndFocuses` run the same probes in every SDK against the
+host, and `docs/additive-features.md` D614 lists the records.
 
 ## Adding a new extension API surface
 

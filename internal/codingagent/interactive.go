@@ -178,6 +178,8 @@ type InteractiveMode struct {
 	bridgeWidgets map[string]*subprocess.PushProxy
 	// viewMounts is the plugin mounts the terminal view client draws (D614), in mount order; widgetMu guards it. It is empty unless a Piglet selected the client and an extension mounted a view.
 	viewMounts []*viewMount
+	// viewTabRow is the tab row the view client draws above the panel mounts, nil while it draws none; widgetMu guards it.
+	viewTabRow *viewTabs
 	// viewClient is the terminal's attachment to the bound build's view registry, nil unless a Piglet selected it.
 	viewClient       atomic.Pointer[viewClient]
 	inprocessWidgets []inprocessWidget

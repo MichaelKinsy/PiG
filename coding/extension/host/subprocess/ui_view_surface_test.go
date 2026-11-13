@@ -69,8 +69,9 @@ func TestMountSurfaceDrawsTheViewAndMapsListEvents(t *testing.T) {
 	}
 }
 
-// pig additive (D614): a view that names no focus takes the client's (the first focus record of the mount), and a
-// rejected view leaves the frame the surface had.
+// pig additive (D614): a view that names no focus takes the client's (the node of a focus request, else the first focus
+// record of the mount), an unchanged view is not built again when the client names another node, and a rejected view
+// leaves the frame the surface had.
 func TestMountSurfaceDefaultFocusAndRejectedView(t *testing.T) {
 	var p mountProbe
 	s := p.surface()
@@ -81,11 +82,21 @@ func TestMountSurfaceDefaultFocusAndRejectedView(t *testing.T) {
 	if s.Focusable() {
 		t.Fatal("a view with no focus and no default is focusable")
 	}
+	built := s.s.frame
 	if err := s.Accept(mountView(""), "pick"); err != nil {
 		t.Fatal(err)
 	}
-	if s.Focusable() {
+	if s.s.frame != built {
 		t.Fatal("an unchanged view was built again for a new default focus")
+	}
+	if !s.Focusable() {
+		t.Fatal("the unchanged view did not give its keys to the node the client named")
+	}
+	if err := s.Accept(mountView(""), "nope"); err != nil {
+		t.Fatal(err)
+	}
+	if s.s.frame != built || s.Focusable() {
+		t.Fatal("a default focus that names no node of the unchanged view left the view focusable, or built it again")
 	}
 	if err := s.Accept(mountView(` `), "pick"); err != nil {
 		t.Fatal(err)

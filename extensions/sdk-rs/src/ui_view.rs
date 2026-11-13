@@ -108,7 +108,9 @@ impl ViewShape {
 }
 
 /// One intent the view's nodes may raise. `name` is `"<extension>.<verb>"`; `timeout_ms` defaults to 30000 (0) and is
-/// 100..300000.
+/// 100..300000. `when_hidden` lets a client raise the intent while the mount is hidden: it is how the user opens a view
+/// the extension hid, and the handler shows the mount. At most one intent of a mount has it; it names no node and its
+/// `arg` accepts the empty object.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 pub struct ViewIntent {
     pub name: String,
@@ -121,6 +123,8 @@ pub struct ViewIntent {
     pub cancellable: bool,
     #[serde(rename = "timeoutMs", skip_serializing_if = "is_zero")]
     pub timeout_ms: u32,
+    #[serde(rename = "whenHidden", skip_serializing_if = "std::ops::Not::not")]
+    pub when_hidden: bool,
 }
 
 /// A bounded image a view refers to by id; `delivery` is inline or managed.
@@ -137,6 +141,9 @@ pub struct ViewAsset {
 pub struct ViewMount {
     pub key: String,
     pub slot: String,
+    /// The short text a client labels the mount with, in a tab or a list of views: at most 64 bytes on one line;
+    /// empty for none.
+    pub title: String,
     pub target: Option<ViewTarget>,
     pub view: crate::kit::View,
     pub intents: Vec<ViewIntent>,
@@ -154,6 +161,8 @@ pub struct ViewMount {
 /// The argument of [`Context::update_view`]: a full replacement of the content of the revision `mount` names.
 pub struct ViewUpdate {
     pub mount: ViewRef,
+    /// The mount's title from this revision on; empty for none.
+    pub title: String,
     pub view: crate::kit::View,
     pub intents: Vec<ViewIntent>,
     pub assets: Vec<ViewAsset>,
@@ -612,7 +621,8 @@ pub struct ViewA11y {
 }
 
 /// Makes the node with id `node` focusable; the order of the entries is the focus order. `request` `mount` asks for
-/// the focus when the mount is first drawn (at most one entry may); `restore` is `previous` or `self`.
+/// the focus when the mount is first drawn and `update` when the revision that carries it is first drawn (at most one
+/// entry may ask); a client that does not give it leaves an `unfocused` notice. `restore` is `previous` or `self`.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 pub struct ViewFocus {
     pub node: String,
@@ -623,8 +633,8 @@ pub struct ViewFocus {
 }
 
 /// One diagnostic of a mount: an operation the host rejected (`invalid`, `unsupported`, `limit`, `stale`,
-/// `terminal`), an intent it ended (`refused`, `failed`, `timeout`, `stale`) or a part a client could not draw
-/// (`undrawn`). `count` is how often it happened.
+/// `terminal`), an intent it ended (`refused`, `failed`, `timeout`, `stale`), a part a client could not draw
+/// (`undrawn`) or a focus request a client did not grant (`unfocused`). `count` is how often it happened.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
 pub struct ViewNotice {
     pub code: String,
@@ -651,6 +661,7 @@ pub struct ViewNotice {
 
 /// The content of a mount or an update, borrowed from either.
 struct ViewParts<'a> {
+    title: &'a str,
     view: &'a crate::kit::View,
     intents: &'a [ViewIntent],
     assets: &'a [ViewAsset],
@@ -681,6 +692,7 @@ impl Context {
 
     fn view_content(&self, parts: ViewParts<'_>) -> Result<Map<String, Value>, ViewError> {
         let ViewParts {
+            title,
             view,
             intents,
             assets,
@@ -692,6 +704,9 @@ impl Context {
         } = parts;
         let mut out = Map::new();
         out.insert("view".into(), self.view_wire(view)?);
+        if !title.is_empty() {
+            out.insert("title".into(), Value::String(title.into()));
+        }
         if !alternatives.is_empty() {
             let mut alts = Vec::with_capacity(alternatives.len());
             for alt in alternatives {
@@ -772,6 +787,7 @@ impl Context {
     /// Mounts a view in a slot the attached client draws. The key names the mount among this extension's.
     pub fn mount_view(&self, mount: ViewMount) -> Result<ViewStatus, ViewError> {
         let mut args = self.view_content(ViewParts {
+            title: &mount.title,
             view: &mount.view,
             intents: &mount.intents,
             assets: &mount.assets,
@@ -796,6 +812,7 @@ impl Context {
     /// operation returned.
     pub fn update_view(&self, update: ViewUpdate) -> Result<ViewStatus, ViewError> {
         let mut args = self.view_content(ViewParts {
+            title: &update.title,
             view: &update.view,
             intents: &update.intents,
             assets: &update.assets,
@@ -891,6 +908,7 @@ mod tests {
             }),
             cancellable: true,
             timeout_ms: 500,
+            when_hidden: true,
         };
         assert_eq!(
             serde_json::to_value(&intent).unwrap(),
@@ -900,7 +918,8 @@ mod tests {
                 "arg": {"type": "object", "properties": {"n": {"type": "integer"}}, "required": ["n"]},
                 "answer": {"type": "array", "items": {"type": "string"}, "maxItems": 3},
                 "cancellable": true,
-                "timeoutMs": 500
+                "timeoutMs": 500,
+                "whenHidden": true
             })
         );
         assert_eq!(
@@ -1052,6 +1071,15 @@ mod tests {
             })
             .unwrap(),
             json!({"node": "n", "request": "mount"})
+        );
+        assert_eq!(
+            serde_json::to_value(ViewFocus {
+                node: "n".into(),
+                request: "update".into(),
+                ..Default::default()
+            })
+            .unwrap(),
+            json!({"node": "n", "request": "update"})
         );
         let state = ViewState::default();
         let snapshot = json!({"uiAbilities": {"claims": [{"name": "display.colors", "value": 4242}], "slotClaims": [{"slot": "panel", "claims": [{"name": "display.colors", "value": 77}]}], "drawing": {"profiles": ["scene"], "shapes": 5, "pixels": 16}}});

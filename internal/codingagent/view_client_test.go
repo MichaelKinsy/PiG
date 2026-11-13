@@ -45,7 +45,11 @@ type viewTestLoop struct {
 	renders   int
 	focused   *viewMount
 	elsewhere bool
-	notices   []string
+	// row is the tab row the client laid, onRow reports that it holds the focus, and typed that the editor holds text.
+	row     *viewTabs
+	onRow   bool
+	typed   bool
+	notices []string
 	// onNotice runs when the client writes a notice, before it is recorded.
 	onNotice  func()
 	size      viewSize
@@ -79,8 +83,11 @@ func (l *viewTestLoop) ui() viewClientUI {
 		layout: func(mounts []*viewMount) { l.laid = append(l.laid, slices.Clone(mounts)) },
 		render: func() { l.renders++ },
 		focus: func(mount *viewMount) {
-			previous := l.focused
-			l.focused, l.elsewhere = mount, false
+			previous, wasOnRow := l.focused, l.onRow
+			l.focused, l.elsewhere, l.onRow = mount, false, false
+			if wasOnRow {
+				l.row.SetFocused(false)
+			}
 			if previous != nil && previous != mount {
 				previous.SetFocused(false)
 			}
@@ -88,7 +95,18 @@ func (l *viewTestLoop) ui() viewClientUI {
 				mount.SetFocused(true)
 			}
 		},
-		editorFocused: func() bool { return l.focused == nil && !l.elsewhere },
+		editorFocused: func() bool { return l.focused == nil && !l.elsewhere && !l.onRow },
+		editorEmpty:   func() bool { return !l.typed },
+		tabRow:        func(row *viewTabs) { l.row = row },
+		focusRow: func(row *viewTabs) {
+			previous := l.focused
+			l.focused, l.elsewhere, l.onRow = nil, false, true
+			if previous != nil {
+				previous.SetFocused(false)
+			}
+			row.SetFocused(true)
+		},
+		confirms: func(data string) bool { return data == "\r" },
 		listen: func(listener *tui.TuiInputListener) func() {
 			l.listeners = append(l.listeners, listener)
 			return func() {
@@ -642,9 +660,18 @@ func TestViewClientClickFocusesAPanelAndRaisesAnIntent(t *testing.T) {
 	}
 }
 
+// viewStackPanels draws the panels of this test one under the other, as a slot without tabs does.
+func viewStackPanels(t *testing.T) {
+	slot := viewSlotOf(uiview.SlotPanel)
+	slot.tabs = false
+	t.Cleanup(func() { slot.tabs = true })
+}
+
 // pig additive (D614): F6 is bound only while a focusable panel is drawn. It moves the focus from the editor through
-// the panels and back, and passes the key on while something else (a selector) holds the focus.
+// the panels and back, and passes the key on while something else (a selector) holds the focus. The panels of this
+// test are stacked: it pins the walk of a slot without tabs.
 func TestViewClientFocusKeyCyclesPanels(t *testing.T) {
+	viewStackPanels(t)
 	f := newViewFixture(t)
 	f.mount("w", uiview.SlotWidgetAbove, uiview.Content{View: viewList("widget")})
 	if len(f.loop.listeners) != 0 {

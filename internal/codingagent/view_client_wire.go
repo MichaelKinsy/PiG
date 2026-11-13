@@ -33,9 +33,13 @@ func (m *InteractiveMode) attachTerminalViewClient(bridge SubprocessUIBridge) {
 		editorFocused: func() bool {
 			return m.tuiInst.ActiveOverlay() == nil && m.tuiInst.GetFocusedComponent() == tui.Component(m.editor)
 		},
-		listen:     func(listener *tui.TuiInputListener) func() { return m.tuiInst.AddInputListener(listener) },
-		interrupts: func(data string) bool { return m.keybindings.Matches(data, string(AppInterrupt)) },
-		notify:     (&ExtUIContext{m: m}).Notify,
+		editorEmpty: func() bool { return m.editor.Text() == "" },
+		tabRow:      m.setViewTabRow,
+		focusRow:    func(row *viewTabs) { m.tuiInst.SetFocus(row) },
+		confirms:    func(data string) bool { return m.keybindings.Matches(data, string(tui.KBSelectConfirm)) },
+		listen:      func(listener *tui.TuiInputListener) func() { return m.tuiInst.AddInputListener(listener) },
+		interrupts:  func(data string) bool { return m.keybindings.Matches(data, string(AppInterrupt)) },
+		notify:      (&ExtUIContext{m: m}).Notify,
 		size: func() viewSize {
 			return viewSize{columns: m.tuiInst.Width(), rows: m.tuiInst.Height(), pointer: m.altScreen != nil}
 		},
@@ -55,6 +59,14 @@ func (m *InteractiveMode) viewClientResized() {
 	if client := m.viewClient.Load(); client != nil {
 		client.wake()
 	}
+}
+
+// setViewTabRow sets the tab row the panel region draws above its mounts, or none with nil, and lays the widgets out.
+func (m *InteractiveMode) setViewTabRow(row *viewTabs) {
+	m.widgetMu.Lock()
+	defer m.widgetMu.Unlock()
+	m.viewTabRow = row
+	m.renderWidgetsLocked()
 }
 
 // setViewMounts sets the mounts the widget containers draw and lays the widgets out.

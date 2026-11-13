@@ -1100,6 +1100,30 @@ export default function (pi) {
   pi.registerCommand("ui_view_block", { description: "Block the abilities watcher on its next event", handler: async (_args, ctx) => { viewWatch.block = true; ctx.ui.notify("view-block:set", "info"); } });
   pi.registerCommand("ui_view_release", { description: "Release the blocked abilities watcher", handler: async (_args, ctx) => { viewWatch.release?.(); viewWatch.release = undefined; ctx.ui.notify("view-release:done", "info"); } });
   pi.registerCommand("ui_view_events", { description: "Report how often the abilities watcher ran", handler: async (_args, ctx) => ctx.ui.notify(`view-events:${viewWatch.events}`, "info") });
+  // D614: a view an agent's tool shows. The command registers the tool; the tool mounts a titled panel, hides it, shows it and
+  // updates it with a focus request, the same way in every SDK fixture (conformance TestConformance_UIViewToolShowsAndFocuses).
+  pi.registerCommand("ui_view_tool", { description: "Register the tool that shows a titled view", handler: async () => {
+    pi.registerTool({
+      name: "view_show",
+      label: "view_show",
+      description: "Mount, show and focus a titled view",
+      parameters: { type: "object", properties: {} },
+      async execute(_id, params, _signal, _onUpdate, ctx) {
+        const text = (value) => ({ content: [{ type: "text", text: value }] });
+        if (params.op === "hide") return text(`view-tool:${(await ctx.ui.hideView((await ctx.ui.viewState("shown")).mount)).state}`);
+        const content = (title, request) => ({
+          title, view: xList(params.node, "fixture-shown"),
+          intents: [{ name: "fx.reopen", arg: { type: "object" }, whenHidden: true }, { name: "fx.tap", arg: { type: "object" } }],
+          focus: [request ? { node: params.node, request } : { node: params.node }],
+        });
+        let st = await ctx.ui.mountView({ key: "shown", slot: "panel", ...content(params.title) });
+        st = await ctx.ui.hideView(st.mount);
+        st = await ctx.ui.showView(st.mount);
+        st = await ctx.ui.updateView(st.mount, content(`${params.title}/2`, "update"));
+        return text(`view-tool:${st.state},rev=${st.mount.rev}`);
+      },
+    });
+  } });
   pi.onViewIntent(async (inv, ctx) => {
     if (inv.intent === "fx.redraw" || inv.intent === "fx.foreign") {
       const own = inv.intent === "fx.redraw";
@@ -1107,6 +1131,11 @@ export default function (pi) {
       const mount = { key: inv.mount.key, epoch: inv.mount.epoch, rev: inv.rev };
       const st = own ? await ctx.ui.updateView(mount, content) : await foreignUpdate(mount, content);
       return { outcome: "done", answer: { rev: st.mount.rev } };
+    }
+    if (inv.intent === "fx.reopen") {
+      // The user opened the hidden view: its handler shows it.
+      await ctx.ui.showView({ ...inv.mount, rev: inv.rev });
+      return { outcome: "done" };
     }
     if (inv.intent === "fx.add") return { outcome: "done", answer: { sum: inv.arg.n * 2 + (ctx.ui.viewAbilities()?.limits.intentArgBytes ?? 0) } };
     if (inv.intent === "fx.wait") {

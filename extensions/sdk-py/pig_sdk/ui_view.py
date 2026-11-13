@@ -77,8 +77,9 @@ class ViewDrawingAbilities:
 @dataclass(frozen=True)
 class ViewNotice:
     """One diagnostic of a mount: an operation the host rejected (``invalid``, ``unsupported``, ``limit``, ``stale``,
-    ``terminal``), an intent it ended (``refused``, ``failed``, ``timeout``, ``stale``) or a part a client could not draw
-    (``undrawn``). ``count`` is how often it happened; ``measured`` and ``limit`` are ``None`` unless a limit was hit."""
+    ``terminal``), an intent it ended (``refused``, ``failed``, ``timeout``, ``stale``), a part a client could not draw
+    (``undrawn``) or a focus request a client did not grant (``unfocused``). ``count`` is how often it happened; ``measured``
+    and ``limit`` are ``None`` unless a limit was hit."""
 
     code: str
     severity: str
@@ -142,7 +143,10 @@ class ViewShape:
 
 @dataclass(frozen=True)
 class ViewIntent:
-    """One intent the view's nodes may raise. ``name`` is ``"<extension>.<verb>"``; ``timeout_ms`` defaults to 30000 and is 100..300000."""
+    """One intent the view's nodes may raise. ``name`` is ``"<extension>.<verb>"``; ``timeout_ms`` defaults to 30000 and is 100..300000.
+
+    ``when_hidden`` lets a client raise the intent while the mount is hidden: it is how the user opens a view the extension
+    hid, and the handler shows the mount. At most one intent of a mount has it; it names no node and its ``arg`` accepts ``{}``."""
 
     name: str
     arg: ViewShape
@@ -150,6 +154,7 @@ class ViewIntent:
     answer: ViewShape | None = None
     cancellable: bool = False
     timeout_ms: int = 0
+    when_hidden: bool = False
 
     def _wire(self) -> dict[str, Any]:
         out: dict[str, Any] = {"name": self.name, "arg": self.arg._wire()}
@@ -161,6 +166,8 @@ class ViewIntent:
             out["cancellable"] = True
         if self.timeout_ms:
             out["timeoutMs"] = self.timeout_ms
+        if self.when_hidden:
+            out["whenHidden"] = True
         return out
 
 
@@ -347,10 +354,13 @@ def encode_content(
     drawing: Any = None,
     a11y: Any = (),
     focus: Any = (),
+    title: str = "",
 ) -> dict[str, Any]:
     """Build the content of a mount or an update. ``alternatives`` are already in wire form (``when``, ``view``, ``drawing``);
     ``drawing``, ``a11y`` and ``focus`` are the wire records themselves."""
     out: dict[str, Any] = {"view": wire_view}
+    if title:
+        out["title"] = title
     if alternatives:
         out["alternatives"] = list(alternatives)
     if drawing is not None:

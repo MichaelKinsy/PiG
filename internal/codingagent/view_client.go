@@ -50,6 +50,9 @@ type viewSlot struct {
 	rows func(terminalRows int) int
 	// focus reports that a mount of the slot can hold the keyboard focus.
 	focus bool
+	// tabs reports that the mounts of the slot are tabs: one is drawn at a time, under a row of their titles (see
+	// viewTabs). Without it every live mount of the slot is drawn, one under the other.
+	tabs bool
 }
 
 // pig additive (D614): the row caps of the terminal's slots. A widget slot draws at most viewWidgetRows rows (Pi cuts a
@@ -69,7 +72,7 @@ func viewPanelSlotRows(terminalRows int) int { return max(viewPanelMinRows, term
 var viewSlots = []viewSlot{
 	{slot: uiview.SlotWidgetAbove, region: viewAboveEditor, rows: viewWidgetSlotRows},
 	{slot: uiview.SlotWidgetBelow, region: viewBelowEditor, rows: viewWidgetSlotRows},
-	{slot: uiview.SlotPanel, region: viewPanel, rows: viewPanelSlotRows, focus: true},
+	{slot: uiview.SlotPanel, region: viewPanel, rows: viewPanelSlotRows, focus: true, tabs: true},
 }
 
 func viewSlotOf(slot uiview.Slot) *viewSlot {
@@ -133,6 +136,14 @@ type viewClientUI struct {
 	focus func(mount *viewMount)
 	// editorFocused reports whether the editor holds the keyboard focus.
 	editorFocused func() bool
+	// editorEmpty reports whether the editor holds no text.
+	editorEmpty func() bool
+	// tabRow sets the tab row the panel region draws above its mounts, or none with nil.
+	tabRow func(row *viewTabs)
+	// focusRow gives the keyboard focus to the tab row.
+	focusRow func(row *viewTabs)
+	// confirms reports whether data is the key that confirms a selection (tui.select.confirm).
+	confirms func(data string) bool
 	// listen registers an input listener and returns the function that removes it.
 	listen func(listener *tui.TuiInputListener) (remove func())
 	// interrupts reports whether data is the key that interrupts (app.interrupt).
@@ -182,9 +193,19 @@ type viewClient struct {
 	order []*viewMount
 	// drawn is the mounts last given to layout.
 	drawn []*viewMount
-	// focused is the mount that holds the keyboard focus, and wanted the one whose focus record asked for it and has
-	// not been given it yet.
-	focused, wanted *viewMount
+	// focused is the mount that holds the keyboard focus.
+	focused *viewMount
+	// asks holds, in the order they arrived, the mounts that asked to be shown (they turned live) or for the focus (their
+	// focus record requests it) and were not answered yet. A mount that is not live waits here.
+	asks []*viewMount
+	// row is the tab row, made when a slot with tabs first lists a mount; rowOn reports that it is in the tree.
+	row   *viewTabs
+	rowOn bool
+	// front is the tab whose view is drawn, and at the entry the tab row stands on while it holds the focus: a hidden
+	// mount the user can open, or a live one whose view takes no key.
+	front, at *viewMount
+	// stamp changes whenever what the tab row draws may have changed.
+	stamp uint64
 	// seq is the number of the last delivery the client applied, or of the last resync.
 	seq uint64
 	// dirty reports that what the terminal draws changed since the last frame the client asked for.
@@ -352,20 +373,25 @@ func (c *viewClient) apply(s *uiview.Snapshot) {
 		c.order = append(c.order, m)
 	}
 	redraw := fresh || m.ref != s.Mount || m.digest != s.Digest || s.Digest == ""
-	m.ref, m.intents, m.digest = s.Mount, s.Intents, s.Digest
+	// A focus record asks for the focus when its mount is first drawn (mount) or when the revision that carries it is
+	// (update); a snapshot the client already holds asks nothing again.
+	var request *uiview.Focus
+	for i := range s.Focus {
+		if f := &s.Focus[i]; (f.Request == uiview.FocusOnMount && fresh) || (f.Request == uiview.FocusOnUpdate && (fresh || m.ref.Rev != s.Mount.Rev)) {
+			request = f
+		}
+	}
+	m.ref, m.intents, m.digest, m.title = s.Mount, s.Intents, s.Digest, s.Title
 	if redraw {
 		for i := range s.Intents {
-			if d := &s.Intents[i]; d.NodeKey == "" {
+			// The intent a hidden mount takes is offered on the tab row while the mount is hidden.
+			if d := &s.Intents[i]; d.NodeKey == "" && (!d.WhenHidden || !slot.tabs) {
 				m.reportNotOffered(d.Name, "the terminal offers no control for intent "+d.Name+", which names no node")
 			}
 		}
 		m.drawable = false
 		if len(s.View) > 0 {
-			focus := ""
-			if len(s.Focus) > 0 {
-				focus = s.Focus[0].Node
-			}
-			if err := m.surface.Accept(s.View, focus); err != nil {
+			if err := m.surface.Accept(s.View, m.focusNode(s.Focus, request)); err != nil {
 				// The surface keeps the view it had; a mount with none draws nothing.
 				c.report(m, uiview.Notice{Code: uiview.NoticeUndrawn, Severity: uiview.SeverityError, Path: "view", Message: err.Error()})
 				m.drawable = m.accepted
@@ -375,12 +401,15 @@ func (c *viewClient) apply(s *uiview.Snapshot) {
 		}
 		m.lines = nil
 	}
-	visible := m.drawable && s.State == uiview.StateLive
-	c.dirty = c.dirty || redraw || visible != m.visible
-	m.visible = visible
-	if fresh && slot.focus && slices.ContainsFunc(s.Focus, func(f uiview.Focus) bool { return f.Request == "mount" }) {
-		c.wanted = m
+	live := m.drawable && s.State == uiview.StateLive
+	hidden := s.State == uiview.StateHidden
+	c.dirty = c.dirty || redraw || live != m.live || hidden != m.hidden
+	// A mount that turns live asks to be shown, and one whose focus record requests it asks for the focus.
+	if (slot.tabs && live && !m.live) || (slot.focus && request != nil) {
+		m.asksFocus = m.asksFocus || (slot.focus && request != nil)
+		c.asks = append(slices.DeleteFunc(c.asks, func(o *viewMount) bool { return o == m }), m)
 	}
+	m.live, m.hidden = live, hidden
 }
 
 // drop ends a mount: its intent in flight is cancelled and its surface closed.
@@ -390,81 +419,118 @@ func (c *viewClient) drop(m *viewMount) {
 		m.cancel = nil
 	}
 	m.surface.Close()
-	c.dirty = c.dirty || m.visible
-	m.visible = false
+	c.dirty = c.dirty || m.visible || m.hidden
+	m.visible, m.live, m.hidden = false, false, false
 	delete(c.mounts, m.key)
 	c.order = slices.DeleteFunc(c.order, func(o *viewMount) bool { return o == m })
-	if c.wanted == m {
-		c.wanted = nil
+	c.asks = slices.DeleteFunc(c.asks, func(o *viewMount) bool { return o == m })
+	if c.front == m {
+		c.front = nil
+	}
+	if c.at == m {
+		c.at = nil
 	}
 }
 
-// settle brings the layout, the focus key and the focus up to date after a change, and asks for a frame when what the
-// terminal draws changed.
+// settle answers the mounts that asked to be shown or for the focus, brings the layout, the focus key and the focus up
+// to date after a change, and asks for a frame when what the terminal draws changed.
 func (c *viewClient) settle() {
-	drawn := make([]*viewMount, 0, len(c.order))
-	focusable := false
-	for _, m := range c.order {
-		if m.visible {
-			drawn = append(drawn, m)
-			focusable = focusable || m.takesFocus()
+	c.arrange()
+	waiting := c.asks[:0]
+	for _, m := range c.asks {
+		if !m.live {
+			waiting = append(waiting, m)
+			continue
+		}
+		c.show(m)
+		c.arrange()
+		if m.asksFocus {
+			m.asksFocus = false
+			c.grant(m)
 		}
 	}
-	if !slices.Equal(drawn, c.drawn) {
-		c.drawn = drawn
-		c.ui.layout(drawn)
-	}
-	switch {
-	case focusable && c.unlisten == nil:
+	clear(c.asks[len(waiting):])
+	c.asks = waiting
+	switch stops := len(c.stops()); {
+	case stops > 0 && c.unlisten == nil:
 		c.unlisten = c.ui.listen(&c.listener)
-	case !focusable && c.unlisten != nil:
+	case stops == 0 && c.unlisten != nil:
 		c.unlisten()
 		c.unlisten = nil
+	}
+	// The tab row holds the focus only while it stands on an entry whose view takes no key.
+	switch at := c.at; {
+	case at == nil && c.row != nil && c.row.focused:
+		c.ui.focus(nil)
+		c.dirty = true
+	case at == nil:
+	case at.takesFocus():
+		c.at = nil
+		c.ui.focus(at)
+		c.dirty = true
+	case !c.row.focused:
+		c.ui.focusRow(c.row)
+		c.dirty = true
 	}
 	if m := c.focused; m != nil && !m.takesFocus() {
 		c.ui.focus(nil)
 		c.dirty = true
 	}
-	if m := c.wanted; m != nil && m.visible {
-		c.wanted = nil
-		if m.takesFocus() && c.ui.editorFocused() {
-			c.ui.focus(m)
-			c.dirty = true
-		}
-	}
 	// A drain that changed nothing the terminal draws asks for no frame.
 	if c.dirty {
 		c.dirty = false
+		c.stamp++
 		c.ui.render()
 	}
+}
+
+// grant answers the focus request of m, a live mount. The focus moves only where it does not take the keys from the
+// user: into the view the user is already in or on whose tab the tab row stands, or from an editor that holds no text.
+// A refused request is told to the plugin as an unfocused notice; the registry counts the repeats.
+func (c *viewClient) grant(m *viewMount) {
+	var why string
+	switch {
+	case c.focused == m:
+		return
+	case c.at != m && !c.ui.editorFocused():
+		why = "another component holds the keyboard focus"
+	case c.at != m && !c.ui.editorEmpty():
+		why = "the editor holds text"
+	case !m.takesFocus():
+		why = "the terminal gives the nodes of the view no keyboard focus"
+	case c.at == m:
+		// settle moves the focus from the tab row into the view.
+		return
+	default:
+		c.ui.focus(m)
+		c.dirty = true
+		return
+	}
+	c.report(m, uiview.Notice{Code: uiview.NoticeUnfocused, Severity: uiview.SeverityInfo, Path: "focus", Message: why})
 }
 
 // rewired tells the client that the renderer was replaced: the focus key's listener went with the old one, and the
 // focus is the editor's again. It does not draw; the drain it posts does.
 func (c *viewClient) rewired() {
-	c.unlisten = nil
+	c.unlisten, c.at = nil, nil
 	c.wake()
 }
 
-// focusKey is the input listener of viewFocusKey: from the editor it gives the focus to the first focusable panel, from
-// a panel to the next, and from the last back to the editor. While something else holds the focus it passes the key on.
+// focusKey is the input listener of viewFocusKey: from the editor it moves to the first stop, from a stop to the next,
+// and from the last back to the editor. The stops are the focusable panels, or the entries of the tab row while it is
+// drawn (see stops). While something else holds the focus it passes the key on.
 func (c *viewClient) focusKey(data string) *tui.TuiInputResult {
 	if !tui.MatchesKeyID(data, viewFocusKey) {
 		return nil
 	}
-	var panels []*viewMount
-	for _, m := range c.drawn {
-		if m.takesFocus() {
-			panels = append(panels, m)
-		}
-	}
-	switch at := slices.Index(panels, c.focused); {
-	case c.focused != nil && at >= 0 && at+1 < len(panels):
-		c.ui.focus(panels[at+1])
-	case c.focused != nil:
+	panels, standing := c.stops(), c.standing()
+	switch at := slices.Index(panels, standing); {
+	case standing != nil && at >= 0 && at+1 < len(panels):
+		c.visit(panels[at+1])
+	case standing != nil:
 		c.ui.focus(nil)
 	case len(panels) > 0 && c.ui.editorFocused():
-		c.ui.focus(panels[0])
+		c.visit(panels[0])
 	default:
 		return nil
 	}

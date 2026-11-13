@@ -783,6 +783,25 @@ kit-widget-event=<type>:<value> (a change report is not one). It never closes it
                            (kp-notify ctx (format nil "view-x-finished:~A,picked=~D" (pig:view-status-state done) (pig:jget (pig:view-status-result done) "picked"))))
                          (let ((cur (pig:ctx-view-state ctx "extras")))
                            (kp-notify ctx (format nil "view-x-state:~A,picked=~D" (pig:view-status-state cur) (pig:jget (pig:view-status-result cur) "picked"))))))))
+      ;; D614: a view an agent's tool shows. The command registers the tool; the tool mounts a titled panel, hides it, shows it and
+      ;; updates it with a focus request, the same way in every SDK fixture (conformance TestConformance_UIViewToolShowsAndFocuses).
+      (pig:command ext "ui_view_tool" "Register the tool that shows a titled view"
+                   (lambda (ctx args) (declare (ignore ctx args))
+                     (pig:tool ext "view_show" "Mount, show and focus a titled view" (pig:obj "type" "object")
+                               (lambda (ctx params)
+                                 (if (equal (pig:jget params "op") "hide")
+                                     (format nil "view-tool:~A" (pig:view-status-state (pig:ctx-hide-view ctx (pig:view-status-mount (pig:ctx-view-state ctx "shown")))))
+                                     (let* ((title (pig:jget params "title"))
+                                            (node (pig:jget params "node"))
+                                            (view (pig:kit-view (pig:kit-select-list node (list (pig:kit-select-item node "fixture-shown")))))
+                                            (intents (list (pig:view-intent "fx.reopen" (pig:view-shape "object") :when-hidden t)
+                                                           (pig:view-intent "fx.tap" (pig:view-shape "object"))))
+                                            (st (pig:ctx-mount-view ctx "shown" "panel" view :title title :intents intents :focus (list (pig:obj "node" node)))))
+                                       (setf st (pig:ctx-hide-view ctx (pig:view-status-mount st)))
+                                       (setf st (pig:ctx-show-view ctx (pig:view-status-mount st)))
+                                       (setf st (pig:ctx-update-view ctx (pig:view-status-mount st) view :title (concatenate 'string title "/2") :intents intents
+                                                                     :focus (list (pig:obj "node" node "request" "update"))))
+                                       (format nil "view-tool:~A,rev=~D" (pig:view-status-state st) (pig:view-ref-rev (pig:view-status-mount st)))))))))
       (pig:command ext "ui_view_cancelled" "Report the intent whose handler was cancelled"
                    (lambda (ctx args) (declare (ignore args)) (kp-notify ctx (format nil "intent-cancelled:~A" (car cancelled-tag)))))
       (pig:command ext "ui_view_state" "Report the state of the second mount"
@@ -795,6 +814,10 @@ kit-widget-event=<type>:<value> (a change report is not one). It never closes it
        (lambda (ctx inv)
          (let ((intent (pig:jget inv "intent")) (arg (pig:jget inv "arg")))
            (cond ((member intent '("fx.redraw" "fx.foreign") :test #'equal) (kp-redraw-intent ctx inv))
+                 ((equal intent "fx.reopen")
+                  ;; the user opened the hidden view: its handler shows it
+                  (pig:ctx-show-view ctx (pig:view-ref (pig:jref inv "mount" "key") (pig:jref inv "mount" "epoch") (pig:jget inv "rev")))
+                  (pig:view-intent-result "done"))
                  ((equal intent "fx.add")
                   (let ((ab (pig:ctx-view-abilities ctx)))
                     (pig:view-intent-result "done" :answer (pig:obj "sum" (+ (* 2 (pig:jget arg "n")) (if ab (pig:jref ab "limits" "intentArgBytes") 0))))))

@@ -205,10 +205,11 @@ func (t *Attachment) Invoke(ctx context.Context, plugin string, ref Ref, nodeKey
 	return res
 }
 
-// Report records that this client could not draw part of a mount. Code is undrawn, unsupported or limit.
+// Report records that this client could not draw part of a mount, or did not give it the focus it asked for. Code is
+// undrawn, unsupported, limit or unfocused.
 func (t *Attachment) Report(plugin string, ref Ref, n Notice) *Error {
-	if n.Code != NoticeUndrawn && n.Code != string(CodeUnsupported) && n.Code != string(CodeLimit) {
-		return fail(CodeInvalid, "a client reports undrawn, unsupported or limit, not %q", n.Code)
+	if n.Code != NoticeUndrawn && n.Code != NoticeUnfocused && n.Code != string(CodeUnsupported) && n.Code != string(CodeLimit) {
+		return fail(CodeInvalid, "a client reports undrawn, unsupported, limit or unfocused, not %q", n.Code)
 	}
 	if n.Severity != SeverityInfo && n.Severity != SeverityWarning && n.Severity != SeverityError {
 		return fail(CodeInvalid, "unknown severity %q", n.Severity)
@@ -283,7 +284,7 @@ func (r *Registry) resolve(t *Attachment, m *mount) (Snapshot, bool) {
 	c := &m.snap.Content
 	i, view, d := candidate(&t.abilities, m.snap.Slot, c)
 	s := m.snap
-	out := Content{Intents: c.Intents, Assets: c.Assets, View: view, Drawing: d}
+	out := Content{Title: c.Title, Intents: c.Intents, Assets: c.Assets, View: view, Drawing: d}
 	ids := m.cands[i].ids
 	if bad := fits(&t.abilities, c, m.cands[i], d); bad != nil {
 		n := Notice{Code: string(bad.code), Severity: SeverityWarning, Path: "delivery", Message: bad.message}

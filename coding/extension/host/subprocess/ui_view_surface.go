@@ -73,13 +73,33 @@ func NewMountSurface(o MountSurfaceOptions) *MountSurface {
 }
 
 // Accept installs view, a D107 view, as the surface's frame. focus is the id of the node that takes the keys when the
-// view names none. An error leaves the frame the surface had; a view equal to the current one is accepted.
+// view names none. An error leaves the frame the surface had; a view equal to the current one is accepted and is not
+// built again: when focus names another node than before, that node takes the keys of the frame as it stands.
 func (m *MountSurface) Accept(view json.RawMessage, focus string) error {
-	m.s.mu.Lock()
-	m.s.defaultFocus = focus
-	m.s.mu.Unlock()
-	if err := m.s.accept(view, nil); err != nil && !errors.Is(err, errViewUnchanged) {
+	s := m.s
+	s.mu.Lock()
+	moved := s.defaultFocus != focus
+	s.defaultFocus = focus
+	s.mu.Unlock()
+	err := s.accept(view, nil)
+	if !errors.Is(err, errViewUnchanged) {
 		return err
+	}
+	if !moved {
+		return nil
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if f := s.frame; f != nil && f.payload.Focus == "" {
+		inst := s.instances[focus]
+		if inst != nil && inst.list == nil && inst.settings == nil && !viewWidgetFocusable(inst.kind) {
+			inst = nil
+		}
+		if f.focus != inst {
+			f.focus = inst
+			s.focusWidgetsLocked(f)
+			s.rev++
+		}
 	}
 	return nil
 }

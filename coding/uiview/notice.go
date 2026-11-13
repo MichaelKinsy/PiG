@@ -52,13 +52,20 @@ type A11y struct {
 }
 
 // Focus makes one node focusable. The order of the entries is the focus order. Request "mount" asks for the focus when
-// the mount is first drawn; Restore says where the focus goes when the mount ends: "previous" (where it was before) or
-// "self" (the client keeps it on the slot).
+// the mount is first drawn and "update" when the revision that carries it is first drawn; the client decides whether it
+// gives it, and reports unfocused when it does not. Restore says where the focus goes when the mount ends: "previous"
+// (where it was before) or "self" (the client keeps it on the slot).
 type Focus struct {
 	Node    string `json:"node"`
 	Request string `json:"request,omitempty"`
 	Restore string `json:"restore,omitempty"`
 }
+
+// The values of [Focus.Request].
+const (
+	FocusOnMount  = "mount"
+	FocusOnUpdate = "update"
+)
 
 func checkA11y(entries []A11y) error {
 	if len(entries) > maxA11y {
@@ -97,10 +104,10 @@ func checkFocus(entries []Focus) error {
 			return fmt.Errorf("focus node %q is empty or repeated", e.Node)
 		}
 		seen[e.Node] = struct{}{}
-		if e.Request == "mount" {
+		if e.Request == FocusOnMount || e.Request == FocusOnUpdate {
 			requests++
 		} else if e.Request != "" {
-			return fmt.Errorf("focus request is %q; only mount is known", e.Request)
+			return fmt.Errorf("focus request is %q; mount and update are known", e.Request)
 		}
 		if e.Restore != "" && e.Restore != "previous" && e.Restore != "self" {
 			return fmt.Errorf("focus restore is %q; previous and self are known", e.Restore)
@@ -124,8 +131,12 @@ const (
 // NoticeUndrawn is the code of a client's report that it could not draw part of a mount.
 const NoticeUndrawn = "undrawn"
 
+// NoticeUnfocused is the code of a client's report that it did not give a mount the focus its focus record asked for.
+const NoticeUnfocused = "unfocused"
+
 // Notice is one diagnostic of a mount. Code is an operation error code (invalid, unsupported, limit, stale, terminal),
-// an intent outcome the host decided (refused, failed, timeout, stale) or undrawn. Count is how often it happened.
+// an intent outcome the host decided (refused, failed, timeout, stale), undrawn or unfocused. Count is how often it
+// happened.
 type Notice struct {
 	Code     string   `json:"code"`
 	Severity Severity `json:"severity"`
