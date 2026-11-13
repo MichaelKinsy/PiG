@@ -148,9 +148,10 @@ type target interface {
 	hold(holder holder)
 	// unhold: holder was released.
 	unhold(holder holder)
-	// call calls a method of the live object for from, bound at version (an older one is mapped, Q10): the admission is
-	// the synchronous part of Pi's async call (in a section), the result settles later, in one.
-	call(method string, args any, ctx context.Context, parent telemetry.TelemetrySpan, from caller, version int) *parkedCallResult
+	// call calls a method of the live object for b (its caller, at its contract's version: an older one is mapped, Q10);
+	// over a link the call is the binding's own, cancelled with its release. The admission is the synchronous part of Pi's
+	// async call (in a section), the result settles later, in one.
+	call(method string, args any, b *binding, ctx context.Context, parent telemetry.TelemetrySpan) *parkedCallResult
 	// followed is what a reference of version follows for state member now (decision "References are the only
 	// indirection"): the live instance's member (a replica over a link), or nothing (`loading`, or `failed` with the
 	// cause's error), with the member a reference takes its last value from.
@@ -167,9 +168,13 @@ type target interface {
 	// pinKey pins key of the keyed member on the live instance, loaded, as a consumer of version reads it (mapped when
 	// older); only a live local object has keyed members. It blocks, outside a section.
 	pinKey(member, key string, version int, ctx context.Context) (pinnedKey, error)
-	// retry is `ref.retry()`, as one step of walk: an attempt now if failed; an object parked on failed dependencies
-	// passes it on; ignored otherwise.
-	retry(walk *retryWalk)
+	// retry is `ref.retry()` from b, as one step of walk: an attempt now if failed; an object parked on failed
+	// dependencies passes it on; ignored otherwise. b is nil for a step no reference makes (a `retry` message, an
+	// object's own retry): Pi's local object takes the walk alone, and a Go interface method has one signature.
+	retry(walk *retryWalk, b *binding)
+	// generationOf is how many values the shared replica of state member took (a remote object's); false without one
+	// (and on this host, where members are no replicas).
+	generationOf(member string) (int, bool)
 	// pathTo is the chain of activation waits from this object to goal, both included (Q5); nil when there is none.
 	// visited keeps a search over shared dependencies linear in the waits.
 	pathTo(goal *chordObject, visited map[target]struct{}) []*chordObject
@@ -1089,7 +1094,7 @@ func (b *binding) pinKeys(ctx context.Context) *keyedPromise[struct{}] {
 func (b *binding) retry(walk *retryWalk) {
 	switch b.state.kind {
 	case bindingBound:
-		b.state.target.retry(walk)
+		b.state.target.retry(walk, b)
 	case bindingRefused:
 		bind := b.state.bind
 		b.state = bindingState{kind: bindingUnbound, batch: b.state.batch, dependent: b.state.dependent}
@@ -1217,7 +1222,7 @@ func (b *binding) send(method string, args any, ctx context.Context) *parkedCall
 	}
 	linked := withLinkedAbortSignal(b.calls, ctx)
 	out := newParkedCallResult()
-	goal.call(method, args, linked.context, chordctx.Telemetry(ctx), b.from, b.consumer.Version).then(b.loop, func(value any, err error) {
+	goal.call(method, args, b, linked.context, chordctx.Telemetry(ctx)).then(b.loop, func(value any, err error) {
 		linked.release()
 		out.settle(value, err)
 	})

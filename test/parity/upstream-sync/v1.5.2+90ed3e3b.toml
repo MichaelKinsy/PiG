@@ -1,5 +1,5 @@
 from = "1.5.2+f7734109"
-to = "1.5.2+47e9d74f"
+to = "1.5.2+90ed3e3b"
 
 [[files]]
 path = "packages/chord/src/contracts/internal.ts"
@@ -77,3 +77,38 @@ change = "modified"
 disposition = "ported"
 evidence = ["test:chord/next/host/remote_replica_test.go#TestReplicasCountTheValuesTheyTakeASnapshotsValueEachAdoptionAndRecoveryFailuresAndVanishingsCountNone", "test:chord/next/host/remote_replica_test.go#TestReplicasForkWithTheirStateLastGoodValueAndCountOnAnotherBatchWithAFreshDecoder"]
 rationale = "47e9d74f9 adds 2 cases (the count of values; the fork): one Go test each, same inputs and counts (0, 1, 2, 4; fork 2 then 3, original 2)."
+
+[[files]]
+path = "packages/chord/src/host/object.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/host_object_test.go#TestObjectCallsForAReferenceRunAsTheReferencesBindingsCallerALocalObjectKeepsNoReplicaCounts"]
+rationale = "47e9d74f9: call(method, args, context, binding) calls callAs with the binding's caller and its contract's version (callAs is the former call, with the parent span); generationOf() is undefined (members on this host are no replicas). 90ed3e3b1 puts the context last, Target.call(method, args, binding, context). chordObject.call(method, args, b, ctx, parent), callAs, generationOf (false). Go forced difference: retry keeps one signature for the interface, retry(walk, b), with nil where no reference makes the step (a `retry` message, the object's own retry); Pi's local object takes the walk alone."
+
+[[files]]
+path = "packages/chord/src/host/reference-source.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/host_reference_source_test.go#TestReferenceSourceUnseenStartsAndOpensWatchesAsOnAFreshFailedSnapshotTheFailureNoLastValueFromBefore", "test:chord/next/host/host_reference_source_test.go#TestReferenceSourceUnseenHeldOrVanishedKeepsNoLastValueFromBeforeEither", "test:chord/next/host/host_reference_source_test.go#TestReferenceSourceUnseenOnceSeenStartsAtTheMembersLastValueAndStaysSeen"]
+rationale = "47e9d74f9: unseen(seen) and #startOf: while its reference has not seen the member, a failure of the member it follows shows no last value (start, openWatch, hold, vanish); seen once, it stays seen. referenceSource.unseen, startOf (Start and keep read through it)."
+
+[[files]]
+path = "packages/chord/src/remote/hold.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_provider_test.go#TestProviderCallsArrivingOnALink"]
+rationale = "47e9d74f9: Hold.call calls object.callAs (the hold's caller and version, the call's parent span), the renamed ChordObject.call. hold.call calls chordObject.callAs; no behaviour change (the calls arriving on a link run as before)."
+
+[[files]]
+path = "packages/chord/test/host/object.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/host_object_test.go#TestObjectCallsForAReferenceRunAsTheReferencesBindingsCallerALocalObjectKeepsNoReplicaCounts"]
+rationale = "47e9d74f9 adds 1 case (calls for a reference run as the binding's caller; a local object keeps no replica counts): the same contract app.who on a host with the owner principal, the call answers owner, generationOf has no count."
+
+[[files]]
+path = "packages/chord/test/host/reference-source.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/host_reference_source_test.go#TestReferenceSourceUnseenStartsAndOpensWatchesAsOnAFreshFailedSnapshotTheFailureNoLastValueFromBefore", "test:chord/next/host/host_reference_source_test.go#TestReferenceSourceUnseenHeldOrVanishedKeepsNoLastValueFromBeforeEither", "test:chord/next/host/host_reference_source_test.go#TestReferenceSourceUnseenOnceSeenStartsAtTheMembersLastValueAndStaysSeen"]
+rationale = "47e9d74f9 adds describe \"a member its reference has not seen\" (3 cases over a replica of 7 failed with `x threw`): one Go test each, same inputs."

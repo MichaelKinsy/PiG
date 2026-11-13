@@ -2805,7 +2805,7 @@
         "chord/next/host/host_object_reload_test.go",
         "chord/next/host/host_old_work_test.go"
       ],
-      "rationale": "All 81 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
+      "rationale": "All 81 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none). Pi 47e9d74f9 adds 1 case (calls for a reference): TestObjectCallsForAReferenceRunAsTheReferencesBindingsCallerALocalObjectKeepsNoReplicaCounts (host_object_test.go); the hash is the pin's."
     },
     {
       "path": "packages/chord/test/host/old-work.test.ts",
@@ -2868,7 +2868,7 @@
       "evidence": [
         "chord/next/host/host_reference_source_test.go"
       ],
-      "rationale": "All 18 upstream cases run in the evidence files."
+      "rationale": "All 18 upstream cases run in the evidence files. Pi 47e9d74f9 adds 3 cases (a member its reference has not seen): the three TestReferenceSourceUnseen... tests; the hash is the pin's."
     },
     {
       "path": "packages/chord/test/host/reference.test.ts",

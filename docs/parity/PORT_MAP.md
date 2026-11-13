@@ -877,7 +877,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/host/internal.ts` | `(barrel for jobs/remote: one package, identifiers are unexported where Pi keeps them out of index.ts (DESIGN-go-layout.md sections 1-2))` | n/a |
 | `packages/chord/src/host/host.ts` | `chord/next/host/host_host.go, chord/next/host/host_error.go` | ✅ |
 | `packages/chord/src/host/attempt.ts` | `chord/next/host/host_attempt.go` | ✅ |
-| `packages/chord/src/host/object.ts` | `chord/next/host/host_object.go` | ✅ |
+| `packages/chord/src/host/object.ts` | `chord/next/host/host_object.go` Shared holds at 47e9d74f9 (Pi tests of that commit): chord/next/host/host_object_test.go | ✅ |
 | `packages/chord/src/host/reference.ts` | `chord/next/host/host_reference.go` | ✅ |
 | `packages/chord/src/jobs/definition.ts` | `chord/next/host/jobs_definition.go` | ✅ |
 | `packages/chord/src/jobs/persisted.ts` | `chord/next/host/jobs_persisted.go` | ✅ |
@@ -954,7 +954,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/node/plugins/watcher.ts` | `chord/nextnode/plugins/plugins_watcher.go (base marks: recordBase/recordOwn, locations and ancestors watched alone, comparisons by at most 8 goroutines; an entry on the way to base code is renewed on a Create, Remove or Rename event only when its identity (inode and birth time: plugins_watcher_identity*.go, as Pi's `identityOf`) is not the one it had when watched; a watch fsnotify dropped with a move is put back without a comparison; the start reads entry types from ReadDir and hashes on at most 8 goroutines; D540 records the inode-only identity of other Unixes)` | ✅ |
 | `packages/chord/src/host/adapted.ts` | `chord/next/host/host_adapted.go` | ✅ |
 | `packages/chord/src/host/reference-keys.ts` | `chord/next/host/host_reference_keys.go` | ✅ |
-| `packages/chord/src/host/reference-source.ts` | `chord/next/host/host_reference_source.go` | ✅ |
+| `packages/chord/src/host/reference-source.ts` | `chord/next/host/host_reference_source.go` Shared holds at 47e9d74f9 (Pi tests of that commit): chord/next/host/host_reference_source_test.go | ✅ |
 | `packages/chord/src/host/staging.ts` | `chord/next/host/host_staging.go, chord/next/host/host_host.go` | ✅ |
 | `packages/chord/src/node/workers/control.ts` | `chord/nextnode/workers/workers_control.go` | ✅ |
 | `packages/chord/src/node/workers/index.ts` | `(re-export barrel; the exported set is the package's (CrossedError, ProcessLock, WorkerMain, WorkerStart, WorkerPlugins, WorkerResult, WorkerMainOptions, CreateWorkers, WorkerState, Workers, WorkersError, WorkersOptions))` | n/a |

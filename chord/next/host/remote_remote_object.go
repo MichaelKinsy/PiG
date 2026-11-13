@@ -192,6 +192,18 @@ func (r *remoteObject) variant() (string, bool) {
 // hydrated is whether its state members have values: bound once.
 func (r *remoteObject) hydrated() bool { return r.bound != nil }
 
+// generationOf is how many values the replica of member took; false without one.
+func (r *remoteObject) generationOf(member string) (int, bool) {
+	if r.bound == nil {
+		return 0, false
+	}
+	replica := r.bound.replicas.byName[member]
+	if replica == nil {
+		return 0, false
+	}
+	return replica.generation, true
+}
+
 // hold: its one reference bound to it.
 func (r *remoteObject) hold(h holder) { r.binding = h }
 
@@ -232,7 +244,7 @@ func (r *remoteObject) dropped(*data.ChordError) {
 
 // call calls a method of the bound variant over the link; one outside it fails `invalid/member`. Only a live object is
 // called: bound on an open link. The result settles as the call over the link does.
-func (r *remoteObject) call(method string, args any, ctx context.Context, parent telemetry.TelemetrySpan, _ caller, _ int) *parkedCallResult {
+func (r *remoteObject) call(method string, args any, _ *binding, ctx context.Context, parent telemetry.TelemetrySpan) *parkedCallResult {
 	result := newParkedCallResult()
 	bound, held := r.bound, r.held
 	methodData, ok := bound.methods.Get(method)
@@ -395,7 +407,7 @@ func (*remoteObject) pathTo(*chordObject, map[target]struct{}) []*chordObject { 
 // budget, none left: nothing is sent (a hold it refused is started there again; a parked object there passes it on with
 // one hop less). One that failed for a part past the link's limits is placed anew and held with a new id, now or on its
 // path's next link (a `hostAddress` that throws fails it broken again).
-func (r *remoteObject) retry(walk *retryWalk) {
+func (r *remoteObject) retry(walk *retryWalk, _ *binding) {
 	if r.refState.Kind != RefStateFailed {
 		return
 	}
