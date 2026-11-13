@@ -18,6 +18,8 @@ import (
 	"sync"
 	"time"
 	"unicode"
+
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // Slot names where a client draws a mount. The set is closed.
@@ -1025,7 +1027,7 @@ func (r *Registry) Snapshots() []Snapshot {
 }
 
 func sortSnapshots(out []Snapshot) {
-	slices.SortFunc(out, func(a, b Snapshot) int {
+	sortx.Func(out, func(a, b Snapshot) int {
 		if a.Mount.Epoch < b.Mount.Epoch {
 			return -1
 		}

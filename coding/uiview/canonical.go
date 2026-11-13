@@ -14,6 +14,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // pig additive (D614): canonical hashing. Canonical is the JSON Canonicalization Scheme of RFC 8785: no whitespace,
@@ -113,7 +114,7 @@ func (c *canon) value(dst []byte) ([]byte, error) {
 			members = append(members, canonMember{name, text})
 		}
 		c.pos++
-		slices.SortFunc(members, func(a, b canonMember) int { return slices.Compare(a.name, b.name) })
+		sortx.Func(members, func(a, b canonMember) int { return slices.Compare(a.name, b.name) })
 		dst = append(dst, '{')
 		for i, m := range members {
 			if i > 0 {
