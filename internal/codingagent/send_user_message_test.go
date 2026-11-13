@@ -29,6 +29,7 @@ func (b *captureUIBridge) SetUIPromptScope(subprocess.UIPromptScope)            
 func (b *captureUIBridge) PublishModelCatalog()                                     {}
 func (b *captureUIBridge) SetWidgetSyncFunc(func(map[string]*subprocess.PushProxy)) {}
 func (b *captureUIBridge) SetWidgetClearFunc(func(string))                          {}
+func (b *captureUIBridge) ResetExtensionUI()                                        {}
 func (b *captureUIBridge) RemoveWidget(string)                                      {}
 func (b *captureUIBridge) SetFrontend(on bool)                                      { b.frontend = append(b.frontend, on) }
 func (b *captureUIBridge) SetHostAction(key string, fn any) {

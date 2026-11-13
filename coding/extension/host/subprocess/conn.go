@@ -421,6 +421,8 @@ func (c *Conn) Start(ctx context.Context) {
 	go func() {
 		wg.Wait()
 		close(c.done)
+		// After Done: the keys that named the transcript's messages to the peer would hold the connection for as long as the messages are shown.
+		renderKeys.forget(c)
 	}()
 }
 

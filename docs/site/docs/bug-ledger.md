@@ -183,6 +183,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-1a893bc](#bf-1a893bc) | fix(durable/core): report task_interrupted from the runtime's commit path for every task (Pi scheduler.ts) | PiG's own defect | All platforms | Unreleased |
 | [BF-1aaf60f](#bf-1aaf60f) | Rendered diffs keep the indentation shared by a removed and an added line when text is inserted at the start… | PiG's own defect | All platforms | Unreleased |
 | [BF-1b5540a](#bf-1b5540a) | `client.Client.Disconnect` takes the reason string as Pi's `Client.disconnect(reason)` does (it was an… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-1b699a5](#bf-1b699a5) | extensions: a session leaked one goroutine and the state of the replaced generation (about 14 KiB for an… | PiG's own defect | All platforms | Unreleased |
 | [BF-1b9718b](#bf-1b9718b) | fix(photonimage): register the lossless decoders Decode falls back to and decode test sources with Photon | PiG's own defect | All platforms | Unreleased |
 | [BF-1be8228](#bf-1be8228) | `listDir` of the local and remote execution environments leaves out an entry removed between enumeration and… | PiG's own defect | All platforms | Unreleased |
 | [BF-1c1887a](#bf-1c1887a) | Closing a Chord host no longer hangs when a hold arrives over a link that closes at the same time | PiG's own defect | Windows | 0.7.0 |
@@ -373,6 +374,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-35be5ca](#bf-35be5ca) | A key bound to two editor actions now performs the action Pi performs | PiG's own defect | All platforms | Unreleased |
 | [BF-35e46b1](#bf-35e46b1) | Codemode output and returned values keep a nested Error's name and message, with its own enumerable fields… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-3602f48](#bf-3602f48) | fix(durable/core): scheduler microtasks of the commit observer run behind the host listeners' dispatch; a… | PiG's own defect | All platforms | Unreleased |
+| [BF-36123ec](#bf-36123ec) | extensions: the animated loader of an extension's view kept running after its message or tool card was gone… | PiG's own defect | All platforms | Unreleased |
 | [BF-364cc57](#bf-364cc57) | RPC model objects of built-in models match Pi's: each keeps its catalog entry's own member order and spelling… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3651a90](#bf-3651a90) | A provider stream that keeps sending keepalive comments or pings but no event now ends with an error after… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-366ae8e](#bf-366ae8e) | An extension provider's model that another provider also catalogs, such as `gpt-6-astra` under `azure`, no… | PiG's own defect | All platforms | 0.7.0 |
@@ -990,6 +992,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-78c4c6c](#bf-78c4c6c) | `pig piglet add` now names the offending bundled path and where it came from (for example `Package herdr… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-78f1007](#bf-78f1007) | The Durable core conformance gate runs `U-codemode` and `U-harness-tools` alone, their reference run before… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-78f2d55](#bf-78f2d55) | `pig mcp login --help` described `--timeout` as only the wait for the browser; it limits the whole sign-in… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
+| [BF-78f9ff1](#bf-78f9ff1) | extensions: a widget that an extension set before `/reload` and did not set again stayed on screen for the… | PiG's own defect | All platforms | Unreleased |
 | [BF-7901dbc](#bf-7901dbc) | fix: cover the Lisp SDK in the blocked custom component row; regenerate the Node runtime pack and the bug… | PiG's own defect | All platforms | Unreleased |
 | [BF-79eadcf](#bf-79eadcf) | Long sessions no longer slow down each streamed frame in the main screen: a frame redraws from the first line… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-79f9a9e](#bf-79f9a9e) | fix(agent): convert a live partial with one clone and keep events at an unchanged publication (TU-T7 rest) | PiG's own defect | All platforms | Unreleased |
@@ -1000,6 +1003,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-7b92429](#bf-7b92429) | `find` and `grep` trim like JavaScript: `FindTool` trimmed each fd output line with `strings.TrimSpace` where… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7ba3211](#bf-7ba3211) | A resumed session no longer holds its whole file in memory | PiG's own defect | macOS | 0.5.0 |
 | [BF-7bcd404](#bf-7bcd404) | fix(durable): state the lifetime of the goroutine that publishes an adopted commit | PiG's own defect | All platforms | Unreleased |
+| [BF-7c24a92](#bf-7c24a92) | extensions: when the Node process that several TypeScript or JavaScript extensions share was killed or… | PiG's own defect | All platforms | Unreleased |
 | [BF-7c59949](#bf-7c59949) | fix(codingagent): session selector keeps Pi's out-of-range selected index | PiG's own defect | All platforms | Unreleased |
 | [BF-7c848e3](#bf-7c848e3) | A Zhipu/Z.ai usage limit (HTTP 429 with error code `1308`, which resets after hours) is no longer retried, in… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-7c936f9](#bf-7c936f9) | The Lisp SDK reads a Windows path as one: `with-file-mutation-queue` no longer sends the host the working… | PiG's own defect | Windows | 0.7.0 |
@@ -1642,6 +1646,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-d133e3d-2](#bf-d133e3d-2) | MCP OAuth sign-in no longer fails with `invalid_redirect_uri` on OpenID Connect servers: client registration… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
 | [BF-d134159](#bf-d134159) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-d1785c8](#bf-d1785c8) | Ctrl+P and Shift+Ctrl+P now cycle to the only model in scope when the active model is outside it, instead of… | PiG's own defect | All platforms | Unreleased |
+| [BF-d1848ed](#bf-d1848ed) | extensions: `/reload` left on screen what the replaced extensions had set and Pi resets when a reload begins… | PiG's own defect | All platforms | Unreleased |
 | [BF-d1af7ae](#bf-d1af7ae) | The crash message of a deterministic code mode VM that is told a result number it cannot take now reads as… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-d1af7ae-2](#bf-d1af7ae-2) | The errors that name a code mode tool or global (`Tool "x" is already registered`, `Invalid global name "x"`… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-d1af7ae-3](#bf-d1af7ae-3) | A code mode `done` message that carries no store writes now fails the execution with Pi's `store writes is… | PiG's own defect | All platforms | 0.7.0 |
@@ -4322,6 +4327,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `durable/storage/jsonl/jsonl_storage_reads_test.go::TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose`, `durable/tools/bash_input_test.go::TestBashToolInputIsTheBashSchemaArguments`
 - **Release note:** `client.Client.Disconnect` takes the reason string as Pi's `Client.disconnect(reason)` does (it was an `error`); the connection fails with a `DisconnectedError` carrying it.
 
+### BF-1b699a5
+
+**extensions: a session leaked one goroutine and the state of the replaced generation (about 14 KiB for an…**
+
+- **Source:** PiG's own defect
+- **Symptom:** extensions: a session leaked one goroutine and the state of the replaced generation (about 14 KiB for an extension in its own process, about 30 KiB for a cell of two) for every `/reload` of an unchanged subprocess extension, until the extension's process ended.
+- **Root cause:** A reload keeps the process of an unchanged extension and runs its factory again in it. Each generation it replaced left one goroutine that waited for that process to exit, holding the generation's state: the connection loop of a Node extension in its own process (it waited before it removed the stderr log), and the watcher of a packed cell's process state (Node, Go, Python, Rust and Lisp cells). A session that reloaded n times held n of them, about 14 KiB each for an isolated extension, until the process ended. They also removed the stderr log the moment the process died, before the crash report of the running generation kept it, so the report of a process that had been reloaded did not…
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1b699a5442` (2026-11-12)
+- **Tests:** None recorded.
+- **Release note:** extensions: a session leaked one goroutine and the state of the replaced generation (about 14 KiB for an extension in its own process, about 30 KiB for a cell of two) for every `/reload` of an unchanged subprocess extension, until the extension's process ended. A reload keeps that process and runs the extension's factory in it again; each generation it replaced kept a goroutine that waited for the process to exit. The same goroutines removed the extension's stderr log the moment the process died, so the crash notice of a process that had been reloaded did not name its log. The end of a process is now handled once: over a hundred reloads the host's goroutines do not grow and its live heap stays within 512 KiB, for every SDK (Node, Go, Python, Rust, Lisp), isolated and packed, and the crash notice names the log as it does for a process that was never reloaded. Present in releases 0.3.0 to 0.7.0.
+
 ### BF-1b9718b
 
 **fix(photonimage): register the lossless decoders Decode falls back to and decode test sources with Photon**
@@ -6950,6 +6969,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `3602f483f9` (2026-10-27)
 - **Tests:** `durable/contract/test/vitest-candidate-plugin.test.mjs`
+
+### BF-36123ec
+
+**extensions: the animated loader of an extension's view kept running after its message or tool card was gone…**
+
+- **Source:** PiG's own defect
+- **Symptom:** extensions: the animated loader of an extension's view kept running after its message or tool card was gone from the transcript.
+- **Root cause:** A tick now arms the next one only when the surface was drawn since the timer was armed (Render or FrontendView). A surface that is drawn asks for its next draw with every tick, so its loaders run on; one that nothing draws has no timer after one interval, and the next draw starts its loaders again. docs/plan/extension-component-kit.md says so.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `36123ec15c` (2026-11-12)
+- **Tests:** `coding/extension/host/subprocess/view_loader_draw_test.go::TestViewLoadersStopWhenNothingDrawsTheirSurface`
+- **Release note:** extensions: the animated loader of an extension's view kept running after its message or tool card was gone from the transcript. A transcript that is rebuilt (after `/reload`, a compaction, `/tree`) drops its cards, and each dropped view with a loader left a timer that asked the terminal to draw again on every tick and kept the view and its extension's connection for the rest of the session: fifty rebuilds left fifty timers, and a session that reloaded an extension drawing such views grew by about 27 KiB for each reload (54 KiB for two extensions in one cell). A loader is now animated while its view is drawn, stops within one tick once nothing draws it, and starts again with the next draw. Present in releases 0.5.0 to 0.7.0.
 
 ### BF-364cc57
 
@@ -15486,6 +15519,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `coding/cli/mcp_command_test.go::TestPigMcpHelpIsPisHelpWithPiGsIdentity`, `coding/mcpext/cli_oracle_test.go::TestMcpCommandMatchesPi`, `coding/mcpext/cli_test.go::TestMcpCommandHelpIsPisHelpWithPiGsIdentity`
 - **Release note:** `pig mcp login --help` described `--timeout` as only the wait for the browser; it limits the whole sign-in, as Pi 148622bc now says.
 
+### BF-78f9ff1
+
+**extensions: a widget that an extension set before `/reload` and did not set again stayed on screen for the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** extensions: a widget that an extension set before `/reload` and did not set again stayed on screen for the rest of the session, for an extension process and for an extension of the host process alike.
+- **Root cause:** A widget that an extension set before a /reload and did not set again stayed drawn for the rest of the session, with its view surface and the connection of the generation that set it. The bridge cleared an extension's widgets only for the connection it currently named, and a reload registers the new connection before it stops the old generation; the interactive mode's /reload cleared no widget at all, for a host-process extension or an extension process. Pi clears the extension widgets when a reload begins (interactive-mode.ts handleReloadCommand, resetExtensionUI, clearExtensionWidgets).
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `78f9ff1ba7` (2026-11-12)
+- **Tests:** `coding/extension/host/subprocess/reload_widget_test.go::TestReloadDropsAWidgetTheReloadedExtensionDoesNotSetAgain`, `coding/extension/host/subprocess/widget_generation_test.go::TestWidgetGoesWithTheConnectionThatSetIt`, `internal/codingagent/reload_widgets_test.go::TestReloadClearsTheExtensionWidgets`, `test/extension-conformance/reload_leak_test.go::TestReloadLeak`
+- **Release note:** extensions: a widget that an extension set before `/reload` and did not set again stayed on screen for the rest of the session, for an extension process and for an extension of the host process alike. `/reload` now clears the extension widgets when it begins, as Pi does, and the reloaded extensions set their own. Present in releases 0.2.0 to 0.7.0.
+
 ### BF-7901dbc
 
 **fix: cover the Lisp SDK in the blocked custom component row; regenerate the Node runtime pack and the bug…**
@@ -15620,6 +15667,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `7bcd404f4b` (2026-10-26)
 - **Tests:** None recorded.
+
+### BF-7c24a92
+
+**extensions: when the Node process that several TypeScript or JavaScript extensions share was killed or…**
+
+- **Source:** PiG's own defect
+- **Symptom:** extensions: when the Node process that several TypeScript or JavaScript extensions share was killed or crashed, an extension could be reported twice: first as disabled (`packed member connection closed; /reload restarts it`), then as crashed and restarting, so one exit read as an error that asked for `/reload` and a warning that the extension restarts by itself.
+- **Root cause:** A member of a Node cell whose connection closed was disabled at once, with "packed member connection closed; /reload restarts it", and the watcher of the process then restarted the cell and reported the same member again, as restarting. What a user saw depended on which of the two the host saw first: two, three or four notices for a cell of two, four in 86 of 100 kills, and for each doubled member an error that told them to run /reload beside a warning that the extension restarts by itself.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `7c24a924a9` (2026-11-12)
+- **Tests:** `coding/extension/host/subprocess/retention_dead_share_reload_test.go::TestReloadOfAKilledNodeCellRefusesItsUnreapedProcess`
+- **Release note:** extensions: when the Node process that several TypeScript or JavaScript extensions share was killed or crashed, an extension could be reported twice: first as disabled (`packed member connection closed; /reload restarts it`), then as crashed and restarting, so one exit read as an error that asked for `/reload` and a warning that the extension restarts by itself. How many notices appeared depended on whether the host noticed the closed connections or the exited process first: two, three or four for two extensions, four in 86 of 100 kills. The host now reports the exit once for each extension, as restarting, in the order the extensions load, whichever it notices first. The extensions of a Go, Python or Rust cell that stops are reported in load order too, where the order varied from one exit to the next. Present in releases 0.3.0 to 0.7.0.
 
 ### BF-7c59949
 
@@ -24544,6 +24605,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `d1785c847b` (2026-11-05)
 - **Tests:** `coding/agent_session_oracle_test.go::TestAgentSessionMatchesPi`, `coding/model_registration_snapshot_test.go::TestSessionCycleModelSeesExtensionProviderRegistration`, `coding/session_model_extension_upstream_test.go::TestSessionModelExtensionCyclesUpstream`
 - **Release note:** Ctrl+P and Shift+Ctrl+P now cycle to the only model in scope when the active model is outside it, instead of saying "Only one model in scope", and cycling from outside the scope selects the first scoped model forward and the last backward instead of skipping the first (Pi #11806, D258).
+
+### BF-d1848ed
+
+**extensions: `/reload` left on screen what the replaced extensions had set and Pi resets when a reload begins…**
+
+- **Source:** PiG's own defect
+- **Symptom:** extensions: `/reload` left on screen what the replaced extensions had set and Pi resets when a reload begins: keyed statuses (`ctx.ui.setStatus`), a custom footer and header, the working message and indicator, the hidden thinking label, overlays, and the terminal title; a terminal input listener (`ctx.ui.onTerminalInput`) of a replaced extension kept receiving every key, and `ctx.ui.getEditorComponent()` kept answering its editor factory.
+- **Root cause:** After a /reload an extension's keyed statuses, its footer and header, its working message and indicator, its hidden thinking label, its terminal input listeners and its overlays stayed, and the terminal kept the title an extension had set, unless the reloaded extension set them again. A session replacement kept the statuses, the footer and header, the title and the input listeners. Pi's resetExtensionUI resets all of them in both places.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d1848ed259` (2026-11-12)
+- **Tests:** `coding/extension/host/subprocess/reset_extension_ui_test.go::TestResetExtensionUIForgetsWhatTheBridgeShowsALaterUI`, `internal/codingagent/reload_allocs_norace_test.go::TestInteractiveSessionReloadAllocatesPerRetainedMessageWithinBudget`, `test/parity/scenarios/extensions-runtime/98-reload-resets-extension-ui.toml`
+- **Release note:** extensions: `/reload` left on screen what the replaced extensions had set and Pi resets when a reload begins: keyed statuses (`ctx.ui.setStatus`), a custom footer and header, the working message and indicator, the hidden thinking label, overlays, and the terminal title; a terminal input listener (`ctx.ui.onTerminalInput`) of a replaced extension kept receiving every key, and `ctx.ui.getEditorComponent()` kept answering its editor factory. A session replacement (`/new`, `/resume`, `/fork`) kept the statuses, the footer and header, the title and the input listeners. Both now reset all of them, as Pi's `resetExtensionUI` does, and dispose the footer and header components; an extension that wants them after a reload sets them again in its `session_start` handler. Present in releases 0.2.0 to 0.7.0.
 
 ### BF-d1af7ae
 
