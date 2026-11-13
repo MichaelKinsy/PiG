@@ -1440,6 +1440,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-aa2003c](#bf-aa2003c) | The edit tool's prepared arguments keep the members in the order the model sent them | PiG's own defect | All platforms | 0.5.0 |
 | [BF-aa48a25](#bf-aa48a25) | A command that writes to both stdout and stderr no longer keeps a reader spinning while the other stream's… | PiG's own defect | Windows, macOS, Linux | Unreleased |
 | [BF-aa69959](#bf-aa69959) | Key matching follows Pi for more terminal inputs and key identifiers | PiG's own defect | All platforms | 0.5.0 |
+| [BF-aa77aa9](#bf-aa77aa9) | chord: a server that is still loading its plugins refuses requests and links with 503, as Pi's does, instead… | PiG's own defect | All platforms | Unreleased |
 | [BF-aabd300](#bf-aabd300) | An OpenAI Responses, Azure OpenAI Responses or Google stream event whose JSON is a number, string, boolean or… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ab0ee71](#bf-ab0ee71) | Hiding an overlay whose preFocus is another overlay, such as a panel focused when the overlay was shown over… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ab1d070](#bf-ab1d070) | A durable code mode script's journal now records the calls a script had issued after a batch of results in… | PiG's own defect | All platforms | 0.7.0 |
@@ -1456,6 +1457,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ac8664c](#bf-ac8664c) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-aca35e7](#bf-aca35e7) | In print and JSON mode, a Node extension no longer runs a timer or other callback between a prompt's last… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-acb7737](#bf-acb7737) | chord: a client starts without its server (a page renders offline, from a service worker's kept page)… | PiG's own defect | All platforms | Unreleased |
+| [BF-acc1492](#bf-acc1492) | chord: a client whose link dropped while it was away (a laptop or phone woken, a network changed) reconnects… | PiG's own defect | All platforms | Unreleased |
 | [BF-ad0c167](#bf-ad0c167) | Bold, italic, underline, strikethrough and inverse text (markdown headings, quotes, table headers, links and… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-ad24cdf](#bf-ad24cdf) | fix(entered): a wait the Go runtime ends is not a wait the goroutine has entered | PiG's own defect | All platforms | Unreleased |
 | [BF-ad6d659](#bf-ad6d659) | The durable scheduler's per-commit work no longer grows with the number of conversations: after a commit it… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
@@ -21817,6 +21819,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/authorization_input_oracle_test.go::TestAuthorizationInputParsersMatchPi`, `chord/delta/own_key_order_test.go::TestDiffRevisionsVisitsArrayIndexKeysFirstInNumericOrder`, `coding/cli/strip_app_features_test.go::TestStripExportHTMLBuildOmitsExportPackage`, `internal/chord/chordjson/own_key_order_test.go::TestCopyFollowsPisKeyOrderAndMessages`, `internal/evals/plan_oracle_test.go::TestPlanMatchesPiOnSeededProbes`, `internal/evals/report_oracle_test.go::TestEvalReportMatchesPiOnSeededDesigns`, `tui/fuzzy_oracle_test.go::TestFuzzyMatchesPiOnSeededProbes`, `tui/keys_oracle_test.go::TestParseAndMatchKeyMatchPiOnSeededInput` and 2 more in docs/bug-ledger.json
 - **Release note:** Key matching follows Pi for more terminal inputs and key identifiers. Unmodified `enter` and `tab` no longer match an xterm modifyOtherKeys sequence. A sequence number with a sign (`ESC [ 1 ; +5 A`) or an event field with no digits (`ESC [ 1 ; 5 : A`) is no longer read as a key. Modifier and codepoint numbers are read as JavaScript numbers, so very large values wrap and round as in Pi. A key identifier part that names no modifier, such as `meta` in `meta+a`, is ignored as in Pi instead of making the identifier match nothing, and identifiers are lowercased as JavaScript's `toLowerCase` does.
 
+### BF-aa77aa9
+
+**chord: a server that is still loading its plugins refuses requests and links with 503, as Pi's does, instead…**
+
+- **Source:** PiG's own defect
+- **Symptom:** chord: a server that is still loading its plugins refuses requests and links with 503, as Pi's does, instead of answering them.
+- **Root cause:** the Go server host loads its own facets first and its plugins after, in the Node plugin host, and its HTTP component resolved its registries once the first of the two were loaded. Pi's one host loads both in one load, and until then its HTTP component refuses every request and upgrade with 503.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `aa77aa9c2f` (2026-11-13), `bedd7ec384` (2026-11-13)
+- **Tests:** `chord/nextnode/app/app_bases_linux_test.go::TestAppRefusesRequestsAndLinksWith503WhileTheServersPluginsAreStillLoading`
+- **Release note:** chord: a server that is still loading its plugins refuses requests and links with 503, as Pi's does, instead of answering them. A page that reconnected to a restarted server in that time (about 220 ms in the run that found it; the page's first retry comes after 250 ms) was connected, shown the scripts object's empty set, took its base for another one and reloaded: what the page held was lost (the server's state was kept). This happened because the Go server host loads its own facets first and its plugins after, in the Node plugin host, and its HTTP component answered once the first of the two were loaded, where Pi's one host loads both in one `load` and its HTTP component refuses until that ended (`not_ready`). The HTTP component now sees the server host's registries only once the plugins are loaded. In no release: the app kit (`chord/nextnode/app`) is in none of v0.2.0, v0.3.0 and v0.7.0.
+
 ### BF-aabd300
 
 **An OpenAI Responses, Azure OpenAI Responses or Google stream event whose JSON is a number, string, boolean or…**
@@ -22036,6 +22052,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `acb7737a0a` (2026-11-12)
 - **Tests:** `chord/next/surfaces/surfaces_client_test.go::TestAppliesTheSetTheServerShowsWhenItStartsFollowingThoughNoFrameBroughtIt`, `chord/next/surfaces/surfaces_client_test.go::TestEndsTheWaitForStylesheetsAtTheClientsStopTheUpdateStopsThere`, `chord/next/surfaces/surfaces_client_test.go::TestStartClientReportsAnInitialScriptThatFailsAndStartsWithTheOthers`
 - **Release note:** chord: a client starts without its server (a page renders offline, from a service worker's kept page): `StartClient` follows the scripts object in the background, a failure reported as `update_failed`, and `Client.Stop` ends and joins it; the set the scripts object shows when following begins is applied too, so a set published while the client started is no longer missed (Pi 3c771bd18).
+
+### BF-acc1492
+
+**chord: a client whose link dropped while it was away (a laptop or phone woken, a network changed) reconnects…**
+
+- **Source:** PiG's own defect
+- **Symptom:** chord: a client whose link dropped while it was away (a laptop or phone woken, a network changed) reconnects at once instead of first waiting for its `CanRetry` check: with a check that takes 3 s, the next attempt went 3 250 ms after the wake and now goes at 0 ms.
+- **Root cause:** The wait happened because the connection loop scheduled its next attempt only once `CanRetry` had answered.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6e061374e2` (2026-11-13), `acc14924df` (2026-11-13)
+- **Tests:** `chord/next/surfaces/surfaces_client_test.go::TestASlowBaseAnswerAfterTheNextLinkOpenedThatLinkEndsBeforeOutdatedIsCalled`, `chord/next/surfaces/surfaces_client_test.go::TestAsksTheServersBaseAtAReconnectAnotherOneStopsTheLoopThenCallsOutdated`, `chord/next/surfaces/surfaces_connection_test.go::TestADropCountsAsSoonAfterAWakeForTheStaleChecksReachAndNoLonger`, `chord/next/surfaces/surfaces_connection_test.go::TestALateErrorFromCanRetryKeepsTheOpenLinkAndTheNextCloseAsksAgain`, `chord/next/surfaces/surfaces_connection_test.go::TestALateNoWhileTheNextAttemptIsConnectingClosesItThenReportsWaitingAndTheLoopStaysStopped`, `chord/next/surfaces/surfaces_connection_test.go::TestAsksCanRetryOneQuestionAtATimeClosesWhileItIsOpenAskNothingMoreTheNextCloseAsksAgain`, `chord/next/surfaces/surfaces_connection_test.go::TestDoesNotWaitForCanRetryTheNextAttemptGoesAheadALateNoAfterItOpenedClosesItReportedWaiting`, `chord/next/surfaces/surfaces_connection_test.go::TestOneWakeWithASlowCheckTheNextAttemptGoesAtOnceBesideTheOneCheck` and 3 more in docs/bug-ledger.json
+- **Release note:** chord: a client whose link dropped while it was away (a laptop or phone woken, a network changed) reconnects at once instead of first waiting for its `CanRetry` check: with a check that takes 3 s, the next attempt went 3 250 ms after the wake and now goes at 0 ms. The wait happened because the connection loop scheduled its next attempt only once `CanRetry` had answered. `KeepConnected` now asks `CanRetry` beside the next attempt, one question at a time (a link that drops while a question is open asks nothing more); a late `false` still stops the loop and ends the attempt made meanwhile, which is reported `waiting`; a drop within 26 s of a wake is retried at once, once per wake, and the replacement of a silent socket no longer waits a pause. `StartClient` stops the loop before it calls `Outdated`, so the app starts over with the link already ended. The vendored page and plugin runtimes carry the same change (Pi 21e4cb80d: `surfaces/connection.ts`, `surfaces/client.ts`, `web/page.ts`). The old loop is in v0.2.0, v0.3.0 and v0.7.0.
 
 ### BF-ad0c167
 
