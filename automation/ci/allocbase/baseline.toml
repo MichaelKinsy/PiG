@@ -1956,12 +1956,12 @@ allocs = 1
 [[benchmark]]
 package = "./coding/extension/host/inproc"
 benchmark = "BenchmarkRunnerMarkdownTransformerCollection/1024"
-allocs = 11
+allocs = 1
 
 [[benchmark]]
 package = "./coding/extension/host/inproc"
 benchmark = "BenchmarkRunnerMarkdownTransformerCollection/64"
-allocs = 6
+allocs = 1
 
 [[benchmark]]
 package = "./coding/extension/host/inproc"
