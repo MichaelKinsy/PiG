@@ -774,6 +774,12 @@ func (runtime *ModelRuntime) fail(ctx context.Context, stream *ai.AssistantMessa
 	_ = stream.Push(ai.ErrorEvent{Reason: reason, Error: message})
 }
 
+// testFauxModelID is the one model the harness provider lists (test/parity/testdata/test-faux-provider.ts:706).
+const testFauxModelID = "faux-1"
+
+// IsTestFauxModel reports whether id is a model the harness test-faux provider lists.
+func IsTestFauxModel(id string) bool { return id == testFauxModelID }
+
 // registerHarnessTestFaux registers the provider Pi's parity harness registers from an extension (test/parity/testdata/test-faux-provider.ts): one provider
 // with a configured key, so it is an available provider of the model snapshot as there, and every consumer of that snapshot (the footer's provider count,
 // the selectors, the model lists) sees what Pi's sees. The faux stream itself is built in (buildProviderForEntry).
@@ -783,7 +789,7 @@ func registerHarnessTestFaux(reg *icodingagent.ModelRegistry) error {
 		APIKey:  "unused",
 		API:     "test-faux",
 		Models: []extension.ProviderModelConfig{{
-			ID: "faux-1", Name: "Test Faux", API: "test-faux", Provider: "test-faux", BaseURL: "http://localhost:0",
+			ID: testFauxModelID, Name: "Test Faux", API: "test-faux", Provider: "test-faux", BaseURL: "http://localhost:0",
 			Input: []string{"text", "image"}, ContextWindow: ai.TestFauxContextWindow, MaxTokens: ai.TestFauxMaxTokens,
 		}},
 	})

@@ -295,11 +295,13 @@ func buildSelectedModel(ctx context.Context, selected *codingagent.RuntimeModel,
 	return buildModelFromRef(ctx, selected.Provider, selected.ID, services)
 }
 
-// testFauxCLIModel selects the test-only test-faux provider for a --model naming it, without the registry resolution a real --model takes
-// (ResolveCliModel, which builds every runtime model). It exists only when PIG_TEST_FAUX=1. The provider is registered in the model registry
+// testFauxCLIModel selects the test-only test-faux provider's own model for a --model naming it, without the registry resolution a real --model
+// takes (ResolveCliModel, which builds every runtime model). It exists only when PIG_TEST_FAUX=1. The provider is registered in the model registry
 // (registerHarnessTestFaux), so every consumer of the registry sees it as Pi's harness-registered one; only this selection is a shortcut, and
 // the startup allocation ceilings (TestStartupAllocationBudget, test/perfgate), which only move down, are measured with it: the registry
-// resolution adds about 6,100 allocations and 380 KB to the warm first prompt.
+// resolution adds about 6,100 allocations and 380 KB to the warm first prompt. The shortcut stands for the resolution only where both select
+// the same model: an id the provider lists. Any other id is resolved like any provider's, as Pi resolves it for the provider its harness
+// registers from an extension: a copy of the listed model under the id, with the custom model id warning (model-resolver.ts:302-313, 518-532).
 func testFauxCLIModel(options startupModelOptions) (*codingagent.RuntimeModel, string, bool) {
 	if !coding.TestFauxProviderEnabled() {
 		return nil, "", false
@@ -315,6 +317,9 @@ func testFauxCLIModel(options startupModelOptions) (*codingagent.RuntimeModel, s
 	thinking := ""
 	if colon := strings.LastIndex(modelID, ":"); colon != -1 && validThinkingLevels[modelID[colon+1:]] { //portlint:allow utf16units colon is the byte index of ASCII ':' (0x3A), which never occurs inside a multibyte UTF-8 sequence, so the slices split at the same character as lastIndexOf/substring; the suffix is only used when it equals a thinking level (test-faux-only shortcut)
 		modelID, thinking = modelID[:colon], modelID[colon+1:] //portlint:allow utf16units colon is the byte index of ASCII ':' (0x3A), which never occurs inside a multibyte UTF-8 sequence, so the slices split at the same character as lastIndexOf/substring; the suffix is only used when it equals a thinking level (test-faux-only shortcut)
+	}
+	if !coding.IsTestFauxModel(modelID) {
+		return nil, "", false
 	}
 	return &codingagent.RuntimeModel{Provider: "test-faux", ID: modelID, Name: "Test Faux"}, thinking, true
 }
