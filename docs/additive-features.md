@@ -2192,7 +2192,7 @@ SCRUTINIZED:approved
 
 ## D625 terminal.framePacing "adaptive" begins a streaming reply's next frame 10 to 16 ms after the last, by what that frame cost
 
-Summary: With `terminal.framePacing: "adaptive"` or `PIG_FRAME_PACING=adaptive` and the opt-in screen writer (D624) selected, a streaming reply's frames begin 10 to 16 ms apart in fullscreen mode on listed terminals; unset, 16 ms apart as Pi's.
+Summary: With `terminal.framePacing: "adaptive"` and the opt-in screen writer (D624) on, a streaming reply's frames begin 10 to 16 ms apart in fullscreen mode on listed terminals; otherwise 16 ms, as Pi's.
 
 Audience: runtime
 
