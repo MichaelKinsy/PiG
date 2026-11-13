@@ -1,6 +1,7 @@
 package coding
 
 import (
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -100,27 +101,27 @@ func TestSessionSurfacesAConnectionResetAfterTheConfiguredRetries(t *testing.T) 
 	}
 }
 
-// A listener that does not answer until the request's own deadline (retry.provider.timeoutMs): the timeout class. The server holds the
-// first request until the client gives it up, so the deadline, not the test, decides the event.
+// A listener that does not answer until the request's own deadline (retry.provider.timeoutMs): the timeout class. The handler reads the request
+// and then waits for the client to give it up, so the deadline, not the test, decides the event. Reading the body first is what lets it wait:
+// net/http's server learns of a peer's close from its background read, which starts only when the request body has been read to its end, so a
+// handler that never read the body is never told, and server.Close then waits for it without end. The client does close the connection at
+// the deadline (TestSessionProviderTimeoutClosesTheRequestConnection).
 func TestSessionRetriesARequestThatReachesItsDeadline(t *testing.T) {
 	for _, api := range closedConnectionAPIs() {
 		t.Run(api.name, func(t *testing.T) {
 			var requests atomic.Int32
-			// released ends the held request when the test ends, for a client that gave the request up without closing its connection.
-			released := make(chan struct{})
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if requests.Add(1) == 1 {
-					select {
-					case <-r.Context().Done():
-					case <-released:
+					if _, err := io.Copy(io.Discard, r.Body); err != nil {
+						return
 					}
+					<-r.Context().Done()
 					return
 				}
 				w.Header().Set("Content-Type", "text/event-stream")
 				_, _ = w.Write([]byte(api.okBody))
 			}))
 			t.Cleanup(server.Close)
-			t.Cleanup(func() { close(released) })
 			h := closedConnectionHarness(t, api, server, `{"retry":{"enabled":true,"maxRetries":3,"baseDelayMs":1,"provider":{"timeoutMs":1000,"maxRetries":0}}}`)
 			log := recordSessionEvents(h.session)
 			retryPrompt(t, h, "hello")
