@@ -5,6 +5,7 @@ package env
 // Differential tests of exec, hello, output ordering and watch against Pi's own Rust daemon: see daemon_wire_oracle_test.go.
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -278,19 +279,30 @@ func TestDaemonHelloMatchesPisDaemon(t *testing.T) {
 }
 
 // TestDaemonRepliesBeforeBulkOutputLikePisDaemon: a small reply goes ahead of command output that is queued behind a client that
-// does not read. Output is read only after the request is answered, so the queued bulk output is what the reply jumps.
+// does not read, and the output arrives whole and in order around it. Output is read only once the reply is queued, so the
+// output read ahead of the reply is what the daemon had already handed to the client.
 func TestDaemonRepliesBeforeBulkOutputLikePisDaemon(t *testing.T) {
-	// The command has written 3.2 MB when the request is sent, so at least 1.9 MB of it waits in the daemon behind what its
+	// The command has written 3.2 MB when the requests are sent, so at least 1.9 MB of it waits in the daemon behind what its
 	// output buffer (1 MiB) and the pipe (64 KiB) hold. A reply that waited its turn would come after that much output.
 	const bound = 1_600_000
+	// The output is numbered lines of 16 bytes: a frame that is lost, repeated or out of its place does not match its offset.
+	const firstLines, restLines = 200_000, 1_250_000
+	output := make([]byte, 0, (firstLines+restLines)*16)
+	for line := range firstLines + restLines {
+		output = fmt.Appendf(output, "%015d\n", line)
+	}
 	oracle := oracleDaemon(t)
 	for name, binary := range map[string]string{"pi": oracle, "pig": daemonBinary(t)} {
 		base := t.TempDir()
 		root := filepath.Join(base, "root")
 		mustDo(os.MkdirAll(root, 0o755))
+		mustDo(os.WriteFile(filepath.Join(root, "first"), output[:firstLines*16], 0o644))
+		mustDo(os.WriteFile(filepath.Join(root, "rest"), output[firstLines*16:], 0o644))
 		d := startWireDaemon(t, binary, root, daemonEnvironment(base, base))
+		barrier := filepath.Join(root, "barrier")
+		handle := d.call(object("op", "write", "path", barrier, "keep", true), nil)[0].JSON.(daemon.Object)["handle"]
 		started := filepath.Join(root, "started")
-		execID := d.start(object("op", "exec", "cwd", root, "command", "head -c 3200000 /dev/zero; touch started; head -c 20000000 /dev/zero"), nil)
+		execID := d.start(object("op", "exec", "cwd", root, "command", "cat first; touch started; cat rest"), nil)
 		for deadline := time.Now().Add(30 * time.Second); ; {
 			if _, err := os.Stat(started); err == nil {
 				break
@@ -300,30 +312,47 @@ func TestDaemonRepliesBeforeBulkOutputLikePisDaemon(t *testing.T) {
 			}
 			time.Sleep(10 * time.Millisecond)
 		}
-		infoID := d.start(object("op", "lstat", "path", root), nil)
-		before := 0
-		for {
-			frame := d.next()
-			if frame.ID == infoID {
+		// The reply under test answers the first of two chunk writes to one handle. A daemon runs the chunk writes of a handle one
+		// after another and queues a request's reply before it takes the next (Pi: run_in_order and respond in main.rs), so the
+		// second chunk in the file says the first reply is queued, and reading starts then. Reading at once measured the scheduler:
+		// until a worker of the daemon is scheduled to run the request and queue its reply, a reading client drains the output at
+		// the stream's rate, megabytes in a few milliseconds on a loaded machine. Waiting for the request's own effect leaves the
+		// same wait between the effect and the queued reply.
+		replyID := d.start(object("op", "writeChunk", "handle", handle), []byte("1"))
+		behindID := d.start(object("op", "writeChunk", "handle", handle), []byte("2"))
+		for deadline := time.Now().Add(30 * time.Second); ; {
+			if info, err := os.Stat(barrier); err == nil && info.Size() == 2 {
 				break
 			}
-			if frame.ID != execID || frame.Kind != daemon.FrameEvent {
+			if time.Now().After(deadline) {
+				t.Fatalf("%s: the daemon never ran the requests", name)
+			}
+			time.Sleep(time.Millisecond)
+		}
+		received, before := 0, -1
+		behind, ended := false, false
+		for before < 0 || !behind || !ended {
+			frame := d.next()
+			switch {
+			case frame.ID == execID && frame.Kind == daemon.FrameEvent && !ended:
+				end := received + len(frame.Payload)
+				if end > len(output) || !bytes.Equal(frame.Payload, output[received:end]) {
+					t.Fatalf("%s: the output is lost, repeated or out of order from byte %d", name, received)
+				}
+				received = end
+			case frame.ID == execID && frame.Kind == daemon.FrameResult && !ended:
+				ended = true
+			case frame.ID == replyID && frame.Kind == daemon.FrameResult && before < 0:
+				before = received
+			case frame.ID == behindID && frame.Kind == daemon.FrameResult && !behind:
+				behind = true
+			default:
 				t.Fatalf("%s: unexpected frame %+v", name, frame)
 			}
-			before += len(frame.Payload)
 		}
-		total := before
-		for {
-			frame := d.next()
-			if frame.Kind == daemon.FrameEvent {
-				total += len(frame.Payload)
-			}
-			if frame.Kind == daemon.FrameResult {
-				break
-			}
-		}
-		if total != 3_200_000+20_000_000 {
-			t.Fatalf("%s: %d bytes of output arrived", name, total)
+		t.Logf("%s: %d bytes of output went ahead of the reply", name, before)
+		if received != len(output) {
+			t.Fatalf("%s: %d bytes of output arrived", name, received)
 		}
 		if before > bound {
 			t.Errorf("%s: %d bytes of queued output went ahead of the reply, more than the %d a client's buffers hold", name, before, bound)
