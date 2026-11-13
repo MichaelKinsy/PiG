@@ -676,8 +676,56 @@ packageFile("f72f799a4", "pi-ai/api/google-vertex.js", [
 ]);
 // END backport f72f799a4
 
+// BEGIN backport ede360e4d
+// ede360e4d (#12121): getLastAssistantText (/copy, RPC get_last_assistant_text) skips an assistant message without text whose turn did not end normally.
+patch("ede360e4d", "pi-coding-agent/core/agent-session.js", [
+    [`     * Get text content of last assistant message.
+     * Useful for /copy command.
+     * @returns Text content, or undefined if no assistant message exists
+     */
+    getLastAssistantText() {
+        const lastAssistant = this.messages
+            .slice()
+            .reverse()
+            .find((m) => {
+            if (m.role !== "assistant")
+                return false;
+            const msg = m;
+            // Skip aborted messages with no content
+            if (msg.stopReason === "aborted" && msg.content.length === 0)
+                return false;
+`, `     * Get text content of the last assistant reply.
+     * Useful for /copy command.
+     * @returns Text content, or undefined if no assistant message exists or the last reply has no text
+     */
+    getLastAssistantText() {
+        const lastAssistant = this.messages
+            .slice()
+            .reverse()
+            .find((m) => {
+            if (m.role !== "assistant")
+                return false;
+            const msg = m;
+            // Skip messages without text from a turn that did not end normally: aborted, failed or only
+            // calling tools (#12119). A reply that ended normally stays the last reply even without text.
+            ${note("ede360e4d").trim()}
+            if (msg.stopReason !== "stop" && !msg.content.some((c) => c.type === "text" && c.text.trim()))
+                return false;
+`],
+]);
+// END backport ede360e4d
+
+// BEGIN backport ede360e4d
+// ede360e4d (#12121): the RPC docs of get_last_assistant_text name the skipped messages.
+patch("ede360e4d", "pi-coding-agent/docs/rpc-commands.md", [
+    ["Get the text content of the last assistant message.\n",
+      "Get the text content of the last assistant message. Messages without text from an aborted or failed turn, or that only call tools, are skipped.\n"],
+]);
+// END backport ede360e4d
+
 // backportPatches keys the compiled output of a Pi package; packageFileBackports the files that are not compiled output and that the vendored runtime
 // does not carry, but that the installed Pi package (the parity oracle) and the source mirror hold, with the same text. Both are keyed by package and path.
+// Blocks of several Pi commits can name one file: their patches add up, in the order of the blocks in this script.
 const tableOf = (name) => {
   // The table of the blocks whose table is `name`: key -> patches. The patches of every block of a key are joined in the order the blocks
   // are written (two Pi commits can change one file); classification stays per block. Blocks of other tables are not read, so a block of

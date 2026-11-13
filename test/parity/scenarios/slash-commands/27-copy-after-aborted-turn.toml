@@ -1,0 +1,52 @@
+# Behavior family: slash-commands
+# Surface: /copy after a turn that ended without an answer (Esc during a tool call) copies the previous answer.
+#
+# Upstream evidence: Pi ede360e4d (#12121, issue #12119), agent-session.ts getLastAssistantText: an assistant message without text whose
+# stopReason is not "stop" is skipped, so interactive-mode.ts handleCopyCommand copies the answer above it and shows
+# "Copied last agent message to clipboard". The Pi side is the parity oracle, which carries that commit as a post-release backport
+# (automation/gen/pi-post-release-backports.mjs, block ede360e4d); the pinned release shows "Error: No agent messages to copy yet." here.
+# History (testdata/copy-poisoned-cwd/sessions/aborted.jsonl, resumed with --session): the answer, a tool-call-only message (toolUse), its result, an empty aborted message.
+#
+# The clipboard itself is not observed: in the headless tmux pane both sides have no display and no clipboard tool and fall back to an
+# OSC 52 write, which the pane capture does not hold. The comparison is the transcript and the status line both sides print after /copy.
+# Red: PiG with the old selection (only an aborted message with no content is skipped; here the tool-call-only message is the last candidate) prints "Error: No agent messages to copy yet.".
+
+name = "27-copy-after-aborted-turn"
+description = "/copy after Esc during a tool call copies the previous answer and prints the copy status line on both sides."
+covers = [
+  "packages/coding-agent/src/core/agent-session.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions", "--session", "sessions/aborted.jsonl"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions", "--session", "sessions/aborted.jsonl"]
+
+[tmux]
+width = 100
+height = 50
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "testdata/copy-poisoned-cwd"
+capture_start = "first question"
+capture_end = "to clipboard"
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["/copy", "Enter"]
+wait_contains = ["to clipboard"]
+wait_timeout_seconds = 10
+settle_seconds = 1
+
+[assert]
+both_reach_ready = true
+both_contain = ["Here is the answer.", "run the blocking tool", "Copied last agent message to clipboard"]
+both_not_contain = ["No agent messages to copy yet.", "panic:", "goroutine "]
+escaped_output_equal = true
+runs = 3

@@ -10581,6 +10581,42 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/slash-commands/27-copy-after-aborted-turn.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "first question",
+            "capture_end": "to clipboard"
+          },
+          "reason": "Owned visible surface: /copy after Esc during a tool call copies the previous answer and prints the copy status line on both sides.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/slash-commands/28-copy-after-errored-turn.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "first question",
+            "capture_end": "to clipboard"
+          },
+          "reason": "Owned visible surface: /copy after a provider error copies the previous answer and prints the copy status line on both sides.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/startup/00-startup-banner.toml",
       "transforms": [
         {

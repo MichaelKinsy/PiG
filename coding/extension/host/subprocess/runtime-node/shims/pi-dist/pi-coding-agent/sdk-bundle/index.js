@@ -124,7 +124,7 @@ import {
   wrapRegisteredTools,
   writeBugReportArchive,
   writeRawStdout
-} from "./chunk-P7ETM5TA.js";
+} from "./chunk-BYHKDTJN.js";
 import {
   CredentialSynchronizationError,
   InMemoryCodingAgentModelsStore,

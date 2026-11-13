@@ -11790,16 +11790,16 @@ ${command}` : command;
   // Utilities
   // =========================================================================
   /**
-   * Get text content of last assistant message.
+   * Get text content of the last assistant reply.
    * Useful for /copy command.
-   * @returns Text content, or undefined if no assistant message exists
+   * @returns Text content, or undefined if no assistant message exists or the last reply has no text
    */
   getLastAssistantText() {
     const lastAssistant = this.messages.slice().reverse().find((m) => {
       if (m.role !== "assistant")
         return false;
       const msg = m;
-      if (msg.stopReason === "aborted" && msg.content.length === 0)
+      if (msg.stopReason !== "stop" && !msg.content.some((c) => c.type === "text" && c.text.trim()))
         return false;
       return true;
     });
