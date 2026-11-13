@@ -40,7 +40,7 @@
         "call:agent/tool_call_hook_funcs.go#AfterToolCallFunc.hook"
       ],
       "evidence": [
-        "test:agent/hook_context_view_test.go#TestHooksOfParallelToolCallsWriteTheirOwnCopyOfTheMessages",
+        "test:agent/hook_context_view_test.go#TestAfterHooksOfParallelToolCallsWriteTheRunsMessagesOneAtATime",
         "test:agent/tool_call_hook_funcs_test.go#TestAfterToolCallFunc_SeesTheResultAndOverridesIt"
       ]
     },
@@ -84,7 +84,7 @@
       "evidence": [
         "test:agent/tool_call_hook_func_upstream_test.go#TestToolCallFuncsReceiveTheToolCallBlockAndTheAgentContext",
         "test:agent/hook_context_view_test.go#TestAHookOfASequentialToolCallThatReplacesAMessageInPlaceChangesTheRun",
-        "test:agent/hook_context_view_test.go#TestHooksOfParallelToolCallsWriteTheirOwnCopyOfTheMessages"
+        "test:agent/hook_context_view_test.go#TestAfterHooksOfParallelToolCallsWriteTheRunsMessagesOneAtATime"
       ]
     },
     {
@@ -2785,7 +2785,7 @@
       "evidence": [
         "test:agent/tool_call_hook_func_upstream_test.go#TestToolCallFuncsReceiveTheToolCallBlockAndTheAgentContext",
         "test:agent/hook_context_view_test.go#TestAHookOfASequentialToolCallThatReplacesAMessageInPlaceChangesTheRun",
-        "test:agent/hook_context_view_test.go#TestHooksOfParallelToolCallsWriteTheirOwnCopyOfTheMessages"
+        "test:agent/hook_context_view_test.go#TestAfterHooksOfParallelToolCallsWriteTheRunsMessagesOneAtATime"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -4243,7 +4243,7 @@
       "evidence": [
         "test:agent/tool_call_hook_func_upstream_test.go#TestBeforeToolCallFuncMixedBatchWithOneTerminatingBlockedCallContinues",
         "test:agent/tool_call_hook_func_upstream_test.go#TestRunToolCallFuncHooksValidateRunAndReportFailures",
-        "test:agent/hook_context_view_test.go#TestHooksOfParallelToolCallsWriteTheirOwnCopyOfTheMessages"
+        "test:agent/hook_context_view_test.go#TestAfterHooksOfParallelToolCallsWriteTheRunsMessagesOneAtATime"
       ]
     },
     {
@@ -4286,7 +4286,7 @@
       ],
       "evidence": [
         "test:agent/tool_call_hook_func_upstream_test.go#TestToolCallFuncsReceiveTheToolCallBlockAndTheAgentContext",
-        "test:agent/hook_context_view_test.go#TestHooksOfParallelToolCallsWriteTheirOwnCopyOfTheMessages",
+        "test:agent/hook_context_view_test.go#TestAfterHooksOfParallelToolCallsWriteTheRunsMessagesOneAtATime",
         "test:agent/hook_context_view_test.go#TestTheBeforeHooksOfParallelToolCallsShareTheRunsMessages"
       ]
     },
