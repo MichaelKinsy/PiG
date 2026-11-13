@@ -143,6 +143,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-1c6b864](#bf-1c6b864) | A Session that an extension creates with `createAgentSession`, or that `coding.CreateAgentSession` returns… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-1ca0e2f](#bf-1ca0e2f) | fix(codingagent): the terminal reader yields to the main loop it readied before it polls again | PiG's own defect | All platforms | Unreleased |
 | [BF-1cc7519](#bf-1cc7519) | fix(sdk): a command, shortcut, flag or renderer registered after load reaches the host in every SDK | PiG's own defect | All platforms | Unreleased |
+| [BF-1cd8ed7](#bf-1cd8ed7) | chord: a worker that fails right after it started now reports its reason | PiG's own defect | Windows | Unreleased |
 | [BF-1ce00b0](#bf-1ce00b0) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-1d02c73](#bf-1d02c73) | Filters that Pi writes with `toLowerCase()` (select lists, the config selector, file autocomplete, `/model`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1d1c8aa](#bf-1d1c8aa) | RPC mode now ends by the signal when a termination signal arrives while a quit `session_shutdown` handler is… | PiG's own defect | All platforms | 0.5.0 |
@@ -381,6 +382,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-488a47a](#bf-488a47a) | `chord/host`: `ProcessLock` no longer fails with `invalid argument` on macOS and the BSDs when the temporary… | PiG's own defect | macOS | 0.5.0 |
 | [BF-48a28fe](#bf-48a28fe) | Models an extension's provider object returns keep the member order the extension wrote them in, as Pi keeps… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4916f14](#bf-4916f14) | A streamed answer's partial commits cost the new text, not the length of the message so far, as in Pi… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-49534d1](#bf-49534d1) | chord: a message sent to a worker that had just ended no longer discards what the worker wrote before it ended | PiG's own defect | All platforms | Unreleased |
 | [BF-495f017](#bf-495f017) | A `bashExecution` entry records `excludeFromContext: false` when the caller passed `false`, as Pi does; an… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-495f017-2](#bf-495f017-2) | A branch-summary entry writes `fromHook: false` in Pi's member order, and the summary has its Spacer | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4a0bc3d](#bf-4a0bc3d) | The footer context percentage is refreshed after a `!` command is recorded, as Pi's footer asks the session… | PiG's own defect | All platforms | 0.5.0 |
@@ -508,6 +510,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-606a74f](#bf-606a74f) | `TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits` no longer counts the probe's own module as a write on… | PiG's own defect | All platforms | Unreleased |
 | [BF-609d2bd](#bf-609d2bd) | fix(photonimage): decode DDS (DXT1, DXT3, DXT5) as Photon does | PiG's own defect | All platforms | Unreleased |
 | [BF-60c4c6f](#bf-60c4c6f) | A tool call whose finished arguments are not a valid JSON object no longer runs with the parsed prefix: its… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-6116b4e](#bf-6116b4e) | chord: a worker's exit is no longer held by a process that outlives it | PiG's own defect | Windows, macOS | Unreleased |
 | [BF-612955a](#bf-612955a) | The Rust and Go SDKs keep an unpaired surrogate through `prepareBranchEntries`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-61300bb](#bf-61300bb) | MCP OAuth reads a non-HTTP redirect or server URL as Node's `new URL` does: dot segments are removed, a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-61300bb-2](#bf-61300bb-2) | Sorting names with `localeCompare` (MCP servers, sessions, login providers, codemode namespaces, model lists… | PiG's own defect | All platforms | 0.5.0 |
@@ -3370,6 +3373,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `1cc75198f6` (2026-10-10)
 - **Tests:** None recorded.
+
+### BF-1cd8ed7
+
+**chord: a worker that fails right after it started now reports its reason**
+
+- **Source:** PiG's own defect
+- **Symptom:** chord: a worker that fails right after it started now reports its reason.
+- **Root cause:** WorkerProcess.ended closed the worker's channel and told Exited without waiting for the channel's reader. What the worker wrote before it ended and the reader had not taken yet, or had taken and not yet handed to its listeners, was dropped: its last link frames (the answer to a holder) and its `fatal`. A worker that failed right after `started` was then recorded with the fixed 'worker failed to start' instead of its reason.
+- **User impact:** An operation failed or was rejected
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `1cd8ed7464` (2026-11-13)
+- **Tests:** `chord/nextnode/workers/workers_fixture_test.go::TestMain`, `chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessExitIsNotHeldByAProcessOutsideItsTreeThatItStartedAfterItOpenedItsChannel`, `chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessLinkClosedByThisSideWhileItsChannelsReaderIsHeldDoesNotWaitForIt`, `chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessTellsItsExitAfterItsChannelsReaderTookWhatItsChildWrote`, `chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessTellsItsExitAfterItsOutputWhenItsChannelsReaderEndedFirst`, `chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessTellsItsExitAfterWhatItsChannelsReaderTookIsTold`
+- **Release note:** chord: a worker that fails right after it started now reports its reason. The server could handle a worker's exit before it had read, or before it had handed over, the last messages the worker wrote (its answer to a waiting holder and its `fatal` report); it then closed the connection and recorded the fixed `worker failed to start` (in p2, under load: a session whose worker dies at its start showed that text where Pi shows why, for example `Unknown model`). As in Node, which emits a child's messages before its `exit` event, the exit is now told after the channel's reader took and told everything the worker wrote. Limits: not run on Windows, where a worker that ends before the server accepted its pipe connection can still lose its last messages.
 
 ### BF-1ce00b0
 
@@ -6655,6 +6672,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `durable/harness/checkpoint_decode_differential_test.go::TestRawCheckpointPredicateChecksTheOperationsInsideAPartialMessage`, `durable/harness/checkpoint_decode_differential_test.go::TestRawCheckpointPredicatesFailLikeTheTypedDecode`, `durable/harness/partial_object_test.go::TestPartialObjectEqualsTheEncodedPartial`, `durable/harness/streamed_partials_memory_test.go::TestStreamedPartialsCommitAtACostThatFollowsTheNewText`
 - **Release note:** A streamed answer's partial commits cost the new text, not the length of the message so far, as in Pi (`harness-view-run.test.ts` "commits a growing text and tool call at a cost that follows the new text"). A commit of `pi.live`'s partial no longer encodes and decodes the whole message: it takes the text and thinking of the partial as they are, and the check that a committed value decodes as its type decodes only the members and content blocks an operation touched, and not at all an append to a text, thinking or argument string. Streaming a 400 KB answer allocates about as much per commit as a 40 KB one. The stored format is unchanged.
 
+### BF-49534d1
+
+**chord: a message sent to a worker that had just ended no longer discards what the worker wrote before it ended**
+
+- **Source:** PiG's own defect
+- **Symptom:** chord: a message sent to a worker that had just ended no longer discards what the worker wrote before it ended.
+- **Root cause:** The channel's writer finished the channel when a write failed: a send to a worker that had just ended (EPIPE) closed the connection and dropped the listeners while the reader had not yet told what the worker wrote before it ended, its `fatal` among it.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `49534d1948` (2026-11-13)
+- **Tests:** `chord/nextnode/workers/workers_channel_write_unix_test.go::TestAChannelTellsWhatTheOtherEndWroteBeforeItClosedWhenASendFailedMeanwhile`
+- **Release note:** chord: a message sent to a worker that had just ended no longer discards what the worker wrote before it ended. The failed write closed the connection under its reader, so messages not yet told (a `fatal` report with the worker's reason) were dropped. As Node's `send`, a failed write now only tells its sender; the reader ends the channel after it told what the worker wrote.
+
 ### BF-495f017
 
 **A `bashExecution` entry records `excludeFromContext: false` when the caller passed `false`, as Pi does; an…**
@@ -8399,6 +8430,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `60c4c6f887` (2026-10-14, #10944)
 - **Tests:** `ai/json_parse_upstream_test.go::TestParseToolCallArguments`, `ai/openai_responses_partial_json_cleanup_upstream_test.go::TestOpenAIResponsesMarksMalformedFinalArguments`, `ai/rpc33_provider_abort_test.go::TestOpenAIProviderAbortAfterAdmission`, `ai/rpc33_provider_abort_test.go::TestOpenAIProviderAbortAtParserReadBoundaries`, `ai/rpc33_provider_scratch_test.go::TestProviderScratchInterleavedTools`, `ai/validate_upstream_test.go::TestValidateToolArgumentsReportsArgumentsError`
 - **Release note:** A tool call whose finished arguments are not a valid JSON object no longer runs with the parsed prefix: its arguments are `{}` and `argumentsError` holds the reason and the text the model sent, which tool validation reports back to the model. Carried forward from Pi 87f9a364 (earendil-works/pi#10944, #10897), past the 1.2.0+3daa2028 pin.
+
+### BF-6116b4e
+
+**chord: a worker's exit is no longer held by a process that outlives it**
+
+- **Source:** PiG's own defect
+- **Symptom:** chord: a worker's exit is no longer held by a process that outlives it.
+- **Root cause:** A process the worker started in a session of its own survives the kill of the worker's process group; when it held the worker's stdout or stderr, the server waited for the stream's end and told the worker's exit only when that process ended, so the worker's session never learned that its worker had died (and since the fix of a worker's last messages, a holder of the worker's channel did the same).
+- **User impact:** Crash, hang or runaway process
+- **Platform:** Windows, macOS
+- **Fixed in:** Unreleased
+- **Fix commits:** `6116b4e77f` (2026-11-13)
+- **Tests:** `chord/nextnode/workers/workers_drain_unix_test.go::TestADrainSettlesWhenItsProcessEndsBetweenItsReadersLookAtItsStreamAndItsWaitForIt`, `chord/nextnode/workers/workers_fixture_test.go::TestMain`, `chord/nextnode/workers/workers_lingering_unix_test.go::TestCloseEndsWhatIsStillReadOfAnExitedWorkerWhoseStreamsAProcessOutsideItsTreeHolds`, `chord/nextnode/workers/workers_lingering_unix_test.go::TestWhatAnExitedWorkersStreamsTellLaterIsToldOfItNotOfTheWorkerThatFollowedIt`, `chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessExitIsNotHeldByAProcessOutsideItsTreeThatHoldsItsChannel`, `chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessExitIsNotHeldByAProcessOutsideItsTreeThatHoldsItsOutput`, `chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessTellsWhatAProcessOutsideItsTreeWritesToItsOutputAfterItsExit`
+- **Release note:** chord: a worker's exit is no longer held by a process that outlives it. A process the worker started in a session of its own survives the kill of the worker's process group; when it held the worker's stdout or stderr, the server waited for the stream's end and told the worker's exit only when that process ended, so the worker's session never learned that its worker had died (and since the fix of a worker's last messages, a holder of the worker's channel did the same). As Node, which emits `exit` when the process ended, after what it wrote, and `close` when its streams did, the exit is now told once everything the worker wrote before it ended was read and told, and waits for no stream's end. What such a process writes later is still told (output, the stderr tail, control messages, link frames) and is recorded on the worker that exited, never on a worker started after it. The server reads those streams on, three descriptors and goroutines per exited worker at most, until they end or the workers component closes, which now ends them. Limits: on Windows the exit is still told when the worker's streams ended (its pipes have no read that does not wait, and the worker's job object ends them with it): built and vetted, not run; not run on macOS.
 
 ### BF-612955a
 
