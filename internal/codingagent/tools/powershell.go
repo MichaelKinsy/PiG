@@ -138,7 +138,12 @@ func (t *PowerShellTool) Label() string { return "" }
 func (t *PowerShellTool) OutputSchema() json.RawMessage { return json.RawMessage(shellOutputSchema) }
 
 func (t *PowerShellTool) Schema() ai.ToolSchema {
-	return shellToolSchema("powershell", "PowerShell", !t.HideSessionEnvironment)
+	return shellToolSchema("powershell", "PowerShell", !t.HideSessionEnvironment, false)
+}
+
+// BorrowedSchema is Schema with the parameters shared, not copied: the caller reads them and never modifies them.
+func (t *PowerShellTool) BorrowedSchema() ai.ToolSchema {
+	return shellToolSchema("powershell", "PowerShell", !t.HideSessionEnvironment, true)
 }
 
 // ExecutionMode is parallel: upstream's shell tool definition sets no

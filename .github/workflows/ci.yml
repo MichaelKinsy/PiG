@@ -72,6 +72,7 @@ jobs:
       windows: ${{ steps.plan.outputs.windows }}
       macos: ${{ steps.plan.outputs.macos }}
       run-node-runtime: ${{ steps.plan.outputs.run-node-runtime }}
+      run-chord: ${{ steps.plan.outputs.run-chord }}
       run-durable-cf-host: ${{ steps.plan.outputs.run-durable-cf-host }}
       run-durable-contract: ${{ steps.plan.outputs.run-durable-contract }}
       run-android: ${{ steps.plan.outputs.run-android }}
@@ -749,22 +750,6 @@ jobs:
           set -euo pipefail
           node --version
           automation/ci/with-isolated-pig-home.sh make ci-node-runtime
-      - name: Test the terminal surface on current Node (its sandbox needs 26.5.1 or later)
-        if: ${{ !cancelled() && steps.oracle.outcome == 'success' }}
-        env:
-          CI: '1'
-        run: |
-          set -euo pipefail
-          node --version
-          automation/ci/with-isolated-pig-home.sh make ci-chord-tui
-      - name: Test the web surface in a real Chromium on current Node
-        if: ${{ !cancelled() && steps.oracle.outcome == 'success' }}
-        env:
-          CI: '1'
-        run: |
-          set -euo pipefail
-          node --version
-          automation/ci/with-isolated-pig-home.sh make ci-chord-web
       - name: Save the Go module cache
         if: ${{ env.CACHE_SAVE == 'true' && steps.cache-gomod.outcome == 'success' && steps.cache-gomod.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -777,6 +762,67 @@ jobs:
         with:
           path: ~/.npm
           key: node-cache-${{ runner.os }}-${{ runner.arch }}-npm-${{ hashFiles('extensions/sdk-ts/package-lock.json') }}
+
+  # The chord surfaces' tests that need more than the general suites provide: the terminal surface under a Node that has its
+  # sandbox (26.5.1 or later) and the web surface in a real Chromium (the runner image's Google Chrome). Both make targets set the
+  # variable that turns a missing Node or browser into a failure (CHORD_REQUIRE_TUI_NODE, CHORD_REQUIRE_CHROMIUM), so neither
+  # can skip its tests and report success. The tests run Pi's chord client from the vendored tree (chord/nextnode/**/pi), so the
+  # job builds no Pi mirror and installs no npm or apt package. They were the last two steps of Node extensions; as Pi did
+  # (aca89cfe14) they have a job of their own, which starts with the other jobs instead of after three runs of
+  # ci-node-runtime. test/ci-images/chord_job_test.go keeps each target in exactly one job that CI result requires.
+  chord:
+    name: Chord surfaces
+    needs: [changes, bookkeeping]
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.run-chord == 'true' && (needs.bookkeeping.outputs.shards-blocked == 'false' || needs.changes.outputs.os-parallel == 'true') }}
+    runs-on: ubuntu-24.04
+    # Not yet measured on GitHub. In a container on the lane host (8 CPUs, warm Go build cache; job ChordCiSplit/j2, 2026-11-13)
+    # make ci-chord-tui took 21 s and make ci-chord-web 99 s. The limit leaves the runner's setup, its fewer cores and a cold
+    # build cache room and ends a browser that hangs; lower it once GitHub runs are recorded in .github/AGENTS.md.
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - name: Restore the Go module cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            gomod-${{ runner.os }}-
+      # A pull request restores the newest build cache of main (cache-warm.yml and the weekly run save it) and saves none; the
+      # jobs that fill these two caches save them, this one only reads them.
+      - name: Restore the Go build cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/go-build
+          key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: automation/ci/node-current.version
+      - name: Test the terminal surface on current Node (its sandbox needs 26.5.1 or later)
+        env:
+          CI: '1'
+        run: |
+          set -euo pipefail
+          node --version
+          automation/ci/with-isolated-pig-home.sh make ci-chord-tui
+      # Runs when the terminal surface's tests failed too, so one run reports both surfaces.
+      - name: Test the web surface in a real Chromium on current Node
+        if: ${{ !cancelled() }}
+        env:
+          CI: '1'
+        run: |
+          set -euo pipefail
+          node --version
+          automation/ci/with-isolated-pig-home.sh make ci-chord-web
+
   node-loader:
     name: Node loader / ${{ matrix.os }}
     needs: [changes, preflight]
@@ -1549,7 +1595,7 @@ jobs:
     # is label) a pull request's result fails unless this run is the full run
     # on the pull request's current head, so a head that only the light run
     # tested can never satisfy the required check.
-    needs: [changes, bookkeeping, docs, preflight, verify, node-runtime, windows, macos, android, node-loader, durable-cf-host, durable-contract]
+    needs: [changes, bookkeeping, docs, preflight, verify, node-runtime, chord, windows, macos, android, node-loader, durable-cf-host, durable-contract]
     if: ${{ always() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -1568,6 +1614,7 @@ jobs:
           REPO: ${{ github.repository }}
           GH_TOKEN: ${{ github.token }}
           RUN_NODE_RUNTIME: ${{ needs.changes.outputs.run-node-runtime }}
+          RUN_CHORD: ${{ needs.changes.outputs.run-chord }}
           RUN_NODE_LOADER: ${{ needs.changes.outputs.run-node-loader }}
           RUN_ANDROID: ${{ needs.changes.outputs.run-android }}
           RUN_DURABLE_CF_HOST: ${{ needs.changes.outputs.run-durable-cf-host }}
@@ -1577,6 +1624,7 @@ jobs:
           BOOKKEEPING: ${{ needs.bookkeeping.result }}
           VERIFY: ${{ needs.verify.result }}
           NODE_RUNTIME: ${{ needs.node-runtime.result }}
+          CHORD: ${{ needs.chord.result }}
           WINDOWS: ${{ needs.windows.result }}
           MACOS: ${{ needs.macos.result }}
           ANDROID: ${{ needs.android.result }}
@@ -1632,6 +1680,7 @@ jobs:
           expect "Linux verification" "$VERIFY" false
           expect "Linux preflight" "$PREFLIGHT" "$product_skip"
           expect "Node extensions" "$NODE_RUNTIME" "$(skip_unless_planned "$RUN_NODE_RUNTIME")"
+          expect "Chord surfaces" "$CHORD" "$(skip_unless_planned "$RUN_CHORD")"
           expect "Windows" "$WINDOWS" "$product_skip"
           expect "macOS" "$MACOS" "$product_skip"
           expect "Android" "$ANDROID" "$(skip_unless_planned "$RUN_ANDROID")"

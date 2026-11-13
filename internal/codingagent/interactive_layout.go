@@ -238,10 +238,37 @@ func (c *idleHeapCollector) collect() {
 
 // releaseStartupHeap returns the heap the start left free to the OS, once: the first frame and the startup loads (settings, the model catalog,
 // the resource listings, the grammars) allocate several times what they keep, and the runtime's background scavenger releases the rest
-// slowly. It runs on a background task after the first frame, never on the owner loop, which keeps handling input while the collection runs.
+// slowly. It runs on a background task, never on the owner loop, which keeps handling input while the collection runs.
 // pig additive (D172): the same heap return as the idle collection, once at start.
 func releaseStartupHeap() {
-	debug.FreeOSMemory()
+	returnHeapToOS()
+}
+
+// returnHeapToOS is debug.FreeOSMemory; a test counts the calls.
+var returnHeapToOS = debug.FreeOSMemory
+
+// releaseStartupHeapWhenIdle is the start's heap return (releaseStartupHeap) for a session that has stayed without a run for idleCollectAfter,
+// the wait of the idle collection. A run that begins sooner allocates into the heap the start left free, which a return would have it fault
+// back in page by page, and the idle collection after that run returns what is free then; a run that is active, armed or already collected
+// therefore ends this without a collection, as does a mode that stops first.
+// pig additive (D172): the start's heap return waits like the idle collection does.
+func (m *InteractiveMode) releaseStartupHeapWhenIdle(ctx context.Context) {
+	var stopped <-chan struct{}
+	if ctx != nil {
+		stopped = ctx.Done()
+	}
+	//perf:ok one timer per start
+	timer := time.NewTimer(idleCollectAfter)
+	defer timer.Stop()
+	select {
+	case <-stopped:
+		return
+	case <-timer.C:
+	}
+	if m.turnActive.Load() || m.idleCollectArmed.Load() || m.idleCollector.collects.Load() > 0 {
+		return
+	}
+	releaseStartupHeap()
 }
 
 // releaseSwitchHeap returns the heap a Session replacement or a tree navigation left free to the OS, on a task the mode owns after the new
