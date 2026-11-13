@@ -2233,6 +2233,20 @@ func Extension() *sdk.Extension {
 	ext.Command("append_entry", "Append a custom entry", func(ctx sdk.Context, args string) error {
 		return ctx.AppendEntry("conformance-entry", "hello-entry")
 	})
+	// entry_null_members appends an entry and sends a message with the optional member left out, then with it written as null: Go's nil is Pi's omitted
+	// argument and json.RawMessage("null") is its null.
+	ext.Command("entry_null_members", "Append entries and send messages with an omitted and a null member", func(ctx sdk.Context, args string) error {
+		if err := ctx.AppendEntry("conformance-null-omitted", nil); err != nil {
+			return err
+		}
+		if err := ctx.AppendEntry("conformance-null-explicit", json.RawMessage("null")); err != nil {
+			return err
+		}
+		if err := ctx.SendMessage("conformance-null-omitted", "x", false, sdk.SendMessageOptions{}); err != nil {
+			return err
+		}
+		return ctx.SendMessage("conformance-null-explicit", "x", false, sdk.SendMessageOptions{Details: json.RawMessage("null")})
+	})
 	// append-entries-probe appends one custom entry for each comma-separated type in order. Pi's appendEntry returns nothing and never fails, so a refusal the SDK reports is dropped here; the row reads the session afterwards.
 	ext.Command("append-entries-probe", "Append a custom entry for each comma-separated type", func(ctx sdk.Context, args string) error {
 		for customType := range strings.SplitSeq(args, ",") {
@@ -3893,14 +3907,17 @@ func Extension() *sdk.Extension {
 				map[string]any{"type": "custom", "customType": "conformance-boundary"},
 				map[string]any{"type": "context_edit", "targetId": "conformance-failed-attempt", "replacement": nil},
 				map[string]any{"type": "context_edit", "targetId": "conformance-omitted-member"},
-				map[string]any{"type": "compaction", "summary": "conformance-summary", "firstKeptEntryId": nil, "details": map[string]any{"format": "conformance-checkpoint"}},
+				map[string]any{"type": "compaction", "summary": "conformance-summary", "firstKeptEntryId": nil, "details": map[string]any{"format": "conformance-checkpoint"}, "usage": nil},
+				// A data, a details and (above) a usage member written as null: Pi's file holds each as null.
+				map[string]any{"type": "custom", "customType": "conformance-null-data", "data": nil},
+				map[string]any{"type": "custom_message", "customType": "conformance-null-details", "content": "x", "display": false, "details": nil},
 			},
 			"continue": true,
 		}, nil
 	})
 	ext.OnEvent("agent_before_settle", func(ctx sdk.Context, data map[string]any) (any, error) {
 		entries, _ := data["entries"].([]any)
-		if len(entries) != 4 {
+		if len(entries) != 6 {
 			return nil, fmt.Errorf("boundary result reached the next handler as %d entries", len(entries))
 		}
 		member := func(index int, key string) string {
@@ -3916,7 +3933,7 @@ func Extension() *sdk.Extension {
 		}
 		compaction, _ := entries[3].(map[string]any)
 		details, _ := compaction["details"].(map[string]any)
-		ctx.Notify(fmt.Sprintf("agent_before_settle_drafts:%d:%s:%s:%s:%v", len(entries), member(1, "replacement"), member(2, "replacement"), member(3, "firstKeptEntryId"), details["format"]), "info")
+		ctx.Notify(fmt.Sprintf("agent_before_settle_drafts:%d:%s:%s:%s:%v:%s:%s:%s:%s", len(entries), member(1, "replacement"), member(2, "replacement"), member(3, "firstKeptEntryId"), details["format"], member(0, "data"), member(3, "usage"), member(4, "data"), member(5, "details")), "info")
 		return nil, nil
 	})
 	ext.OnSessionStart(func(ctx sdk.Context, data map[string]any) (any, error) {

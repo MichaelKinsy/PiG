@@ -5422,6 +5422,32 @@ fn main() {
             Err(err) => CommandResult::Error(err.to_string()),
         },
     );
+    // An entry and a message with the optional member left out, then with it written as null: Value::Null is Pi's omitted argument in append_entry, and
+    // the siblings that take an Option write Some(Value::Null) as null.
+    ext.command(
+        "entry_null_members",
+        "Append entries and send messages with an omitted and a null member",
+        |ctx, _args| {
+            let result = ctx
+                .append_entry("conformance-null-omitted", Value::Null)
+                .and_then(|_| ctx.append_entry_opt("conformance-null-explicit", Some(Value::Null)))
+                .and_then(|_| ctx.send_message("conformance-null-omitted", "x", false, None, None))
+                .and_then(|_| {
+                    ctx.send_message_with_details(
+                        "conformance-null-explicit",
+                        "x",
+                        false,
+                        None,
+                        None,
+                        Some(Value::Null),
+                    )
+                });
+            match result {
+                Ok(_) => CommandResult::Ok,
+                Err(err) => CommandResult::Error(err.to_string()),
+            }
+        },
+    );
     ext.command(
         "append-entries-probe",
         "Append a custom entry for each comma-separated type",
@@ -6769,14 +6795,16 @@ fn main() {
                 {"type": "custom", "customType": "conformance-boundary"},
                 {"type": "context_edit", "targetId": "conformance-failed-attempt", "replacement": null},
                 {"type": "context_edit", "targetId": "conformance-omitted-member"},
-                {"type": "compaction", "summary": "conformance-summary", "firstKeptEntryId": null, "details": {"format": "conformance-checkpoint"}}
+                {"type": "compaction", "summary": "conformance-summary", "firstKeptEntryId": null, "details": {"format": "conformance-checkpoint"}, "usage": null},
+                {"type": "custom", "customType": "conformance-null-data", "data": null},
+                {"type": "custom_message", "customType": "conformance-null-details", "content": "x", "display": false, "details": null}
             ],
             "continue": true
         }))
     });
     ext.on_event("agent_before_settle", |ctx, data| {
         let entries = data["entries"].as_array().cloned().unwrap_or_default();
-        assert_eq!(entries.len(), 4, "boundary result reached the next handler");
+        assert_eq!(entries.len(), 6, "boundary result reached the next handler");
         let member = |index: usize, key: &str| match entries[index].get(key) {
             None => "absent",
             Some(Value::Null) => "null",
@@ -6785,12 +6813,16 @@ fn main() {
         let format = entries[3]["details"]["format"].as_str().unwrap_or("");
         ctx.notify(
             &format!(
-                "agent_before_settle_drafts:{}:{}:{}:{}:{}",
+                "agent_before_settle_drafts:{}:{}:{}:{}:{}:{}:{}:{}:{}",
                 entries.len(),
                 member(1, "replacement"),
                 member(2, "replacement"),
                 member(3, "firstKeptEntryId"),
-                format
+                format,
+                member(0, "data"),
+                member(3, "usage"),
+                member(4, "data"),
+                member(5, "details")
             ),
             "info",
         );

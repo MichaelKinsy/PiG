@@ -866,7 +866,7 @@ func captureRecording(t *testing.T, h *harness) recording {
 	if len(boundaryErrors) != 1 {
 		t.Fatalf("boundary must surface only the deliberate handler failure: %+v", boundaryErrors)
 	}
-	if !boundary.Valid || !boundary.Continue || len(boundary.Entries) != 4 || boundary.Entries[0].CustomType != "conformance-boundary" {
+	if !boundary.Valid || !boundary.Continue || len(boundary.Entries) != 6 || boundary.Entries[0].CustomType != "conformance-boundary" {
 		t.Fatalf("boundary mutation/error/result chain: %+v", boundary)
 	}
 	waitFor(t, func() bool { return len(*h.notify) > 1 })
@@ -2597,14 +2597,17 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 						{Type: "custom", CustomType: "conformance-boundary"},
 						{Type: "context_edit", TargetID: "conformance-failed-attempt"},
 						{Type: "context_edit", TargetID: "conformance-omitted-member", ReplacementUndefined: true},
-						{Type: "compaction", Summary: "conformance-summary", Details: map[string]any{"format": "conformance-checkpoint"}},
+						{Type: "compaction", Summary: "conformance-summary", Details: map[string]any{"format": "conformance-checkpoint"}, UsageNull: true},
+						// A data, a details and (above) a usage member written as null: Pi's file holds each as null.
+						{Type: "custom", CustomType: "conformance-null-data", Data: json.RawMessage("null")},
+						{Type: "custom_message", CustomType: "conformance-null-details", Content: "x", Details: json.RawMessage("null")},
 					}
 					continued := true
 					return extension.BoundaryResult{Entries: &entries, Continue: &continued}, nil
 				},
 				func(args ...any) (any, error) {
 					event := args[0].(*extension.AgentBeforeSettleEvent)
-					if len(event.Entries) != 4 {
+					if len(event.Entries) != 6 {
 						return nil, fmt.Errorf("boundary result reached the next handler as %d entries", len(event.Entries))
 					}
 					replacement := func(draft extension.SessionBoundaryDraft) string {
@@ -2621,7 +2624,22 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 						firstKept = "value"
 					}
 					details, _ := event.Entries[3].Details.(map[string]any)
-					ui.Notify(fmt.Sprintf("agent_before_settle_drafts:%d:%s:%s:%s:%v", len(event.Entries), replacement(event.Entries[1]), replacement(event.Entries[2]), firstKept, details["format"]), "info")
+					member := func(value any) string {
+						if value == nil {
+							return "absent"
+						}
+						if raw, ok := value.(json.RawMessage); ok && string(raw) == "null" {
+							return "null"
+						}
+						return "value"
+					}
+					usage := "absent"
+					if event.Entries[3].UsageNull {
+						usage = "null"
+					} else if event.Entries[3].Usage != nil {
+						usage = "value"
+					}
+					ui.Notify(fmt.Sprintf("agent_before_settle_drafts:%d:%s:%s:%s:%v:%s:%s:%s:%s", len(event.Entries), replacement(event.Entries[1]), replacement(event.Entries[2]), firstKept, details["format"], member(event.Entries[0].Data), usage, member(event.Entries[4].Data), member(event.Entries[5].Details)), "info")
 					return nil, nil
 				},
 			},

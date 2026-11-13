@@ -2867,6 +2867,15 @@ def new_extension() -> pig_sdk.Extension:
     ext.command("set_model", "Switch to the model in the arguments", set_model)
     ext.command("append_entry", "Append a custom entry", lambda ctx, args: ctx.append_entry("conformance-entry", "hello-entry"))
 
+    def entry_null_members(ctx: pig_sdk.Context, args: str) -> None:
+        # An entry and a message with the optional member left out, then with it written as null: None is Pi's omitted argument and pig_sdk.NULL is its null.
+        ctx.append_entry("conformance-null-omitted", None)
+        ctx.append_entry("conformance-null-explicit", pig_sdk.NULL)
+        ctx.send_message("conformance-null-omitted", "x", False)
+        ctx.send_message("conformance-null-explicit", "x", False, details=pig_sdk.NULL)
+
+    ext.command("entry_null_members", "Append entries and send messages with an omitted and a null member", entry_null_members)
+
     def append_entries_probe(ctx: pig_sdk.Context, args: str) -> None:
         # Pi's appendEntry returns nothing and never fails, so a refusal the SDK reports is dropped here; the row reads the session afterwards.
         for custom_type in args.split(","):
@@ -3727,6 +3736,16 @@ def new_extension() -> pig_sdk.Extension:
                     "summary": "conformance-summary",
                     "firstKeptEntryId": None,
                     "details": {"format": "conformance-checkpoint"},
+                    "usage": None,
+                },
+                # A data, a details and (above) a usage member written as null: Pi's file holds each as null.
+                {"type": "custom", "customType": "conformance-null-data", "data": None},
+                {
+                    "type": "custom_message",
+                    "customType": "conformance-null-details",
+                    "content": "x",
+                    "display": False,
+                    "details": pig_sdk.NULL,
                 },
             ],
             "continue": True,
@@ -3734,7 +3753,7 @@ def new_extension() -> pig_sdk.Extension:
 
     def boundary_drafts(ctx: pig_sdk.Context, data: dict[str, Any]) -> None:
         entries = data["entries"]
-        assert len(entries) == 4, "boundary result reached the next handler as %d entries" % len(entries)
+        assert len(entries) == 6, "boundary result reached the next handler as %d entries" % len(entries)
 
         def member(index: int, key: str) -> str:
             if key not in entries[index]:
@@ -3742,13 +3761,17 @@ def new_extension() -> pig_sdk.Extension:
             return "null" if entries[index][key] is None else "value"
 
         ctx.notify(
-            "agent_before_settle_drafts:%d:%s:%s:%s:%s"
+            "agent_before_settle_drafts:%d:%s:%s:%s:%s:%s:%s:%s:%s"
             % (
                 len(entries),
                 member(1, "replacement"),
                 member(2, "replacement"),
                 member(3, "firstKeptEntryId"),
                 (entries[3].get("details") or {}).get("format"),
+                member(0, "data"),
+                member(3, "usage"),
+                member(4, "data"),
+                member(5, "details"),
             ),
             "info",
         )
