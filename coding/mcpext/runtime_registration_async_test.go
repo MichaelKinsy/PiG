@@ -115,3 +115,26 @@ func TestAServerRegisteredAtRunTimeIsListedWhenTheRegistrationReturns(t *testing
 	rig.release()
 	waitFor(t, "the first server's tools", func() bool { return slices.Contains(rig.host.callable(), "mcp__slow__search") })
 }
+
+// Go addition: the Runner owns the emission that runs the handler, and the Session joins it when it closes. Invalidating the Runner
+// ends the handler's context, and the handler stops waiting for the servers that are still connecting: they stay under the session,
+// which closes them when it ends.
+func TestAnInvalidatedRunnerEndsTheMcpServersChangeHandlersWaitForItsConnections(t *testing.T) {
+	rig := newRegistrationRig(t)
+	rig.register(t, "slow")
+	waitFor(t, "the server's connection to start", func() bool { return rig.started("slow") })
+	rig.runner.Invalidate("")
+	drained := make(chan struct{})
+	go func() {
+		rig.runner.DrainMcpServersChanges()
+		close(drained)
+	}()
+	waitFor(t, "the emission to end while its server is still connecting", func() bool {
+		select {
+		case <-drained:
+			return true
+		default:
+			return false
+		}
+	})
+}

@@ -92,6 +92,16 @@ type EventContext struct {
 	Notify func(message, level string)
 }
 
+// yield reports that the handler stops running synchronously, as Pi's handler reaches an await (handleryield), and returns the channel
+// that closes when the handler's context ends: nil for an EventContext without one.
+func (c EventContext) yield() <-chan struct{} {
+	if c.Context == nil {
+		return nil
+	}
+	handleryield.Report(c.Context)
+	return c.Context.Done()
+}
+
 // notify shows a message. A panic in Notify propagates, as a throw from ctx.ui.notify does in upstream.
 func (c EventContext) notify(message, level string) {
 	if c.Notify == nil {
@@ -1816,6 +1826,9 @@ func (e *Extension) McpServersChange(ctx EventContext) {
 	e.mu.Unlock()
 	e.emitChange()
 	e.ensureDiscoveryActive(ctx)
+	// Pi's handler awaits here for the first time (index.ts:1236): what precedes ran inside the registration that fired the event
+	// (runner.ts:465-468), and the Runner's listener goes on at this report.
+	stale := ctx.yield()
 	var closing sync.WaitGroup
 	for _, s := range removed {
 		e.mu.Lock()
@@ -1840,7 +1853,13 @@ func (e *Extension) McpServersChange(ctx EventContext) {
 		readies[i] = e.startConnection(ctx, s, nil)
 	}
 	for _, ready := range readies {
-		<-ready
+		select {
+		case <-ready:
+		case <-stale:
+			// The Runner that dispatched the event was invalidated, which makes ctx stale: the connections stay under the session,
+			// which closes them when it ends.
+			return
+		}
 	}
 	if session.Err() != nil {
 		// The session ended meanwhile: close what connected.

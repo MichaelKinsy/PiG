@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
@@ -21,8 +22,8 @@ import (
 // Every SDK registers two servers in one synchronous run and reads pi.getActiveTools after each call. The first handler is a Go
 // reference on the production Runner that stands for the built-in: in its synchronous part it activates a discovery tool named after
 // the servers it was given, then it awaits its connection, which the test never completes. The reads are host state no SDK fallback
-// holds: an SDK that does not make the calls, a host that answers before the handler ran, and a host that delivers the second event
-// only after the first handler ended all report something else.
+// holds: an SDK that does not make the calls, a host that answers before the handler's synchronous part ended, and a host that
+// delivers the second event only after the first handler ended all report something else.
 func TestConformance_McpServerRegisteredAtRunTimeIsHandledInsideTheCall(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
@@ -46,7 +47,12 @@ func TestConformance_McpServerRegisteredAtRunTimeIsHandledInsideTheCall(t *testi
 
 			var mu sync.Mutex
 			active := []string{"read"}
+			reads := make(chan struct{}, 8)
 			h.bridge.SetHostAction("getActiveTools", func() []string {
+				select {
+				case reads <- struct{}{}:
+				default:
+				}
 				mu.Lock()
 				defer mu.Unlock()
 				return slices.Clone(active)
@@ -61,6 +67,16 @@ func TestConformance_McpServerRegisteredAtRunTimeIsHandledInsideTheCall(t *testi
 					if name, ok := strings.CutPrefix(server.Name, "conformance-run-"); ok {
 						names = append(names, name)
 					}
+				}
+				// The synchronous part stays open for a moment before it activates the tool. The registering call is inside it, so no
+				// read can arrive and the moment passes; a host that answered the call already lets the SDK's read in, which then
+				// misses the tool.
+				for len(reads) > 0 {
+					<-reads // a read made before this event
+				}
+				select {
+				case <-reads:
+				case <-time.After(200 * time.Millisecond):
 				}
 				mu.Lock()
 				active = []string{"read", "discovery:" + strings.Join(names, "+")}

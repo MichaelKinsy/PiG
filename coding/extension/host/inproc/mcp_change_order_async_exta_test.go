@@ -271,3 +271,29 @@ func TestRunnerMcpServersChangeStartsNoHandlerOnceTheRunnerIsInvalidated(t *test
 		})
 	})
 }
+
+// Go addition: the runner owns its emissions. DrainMcpServersChanges waits for the handlers that still run, and no emission starts
+// after it.
+func TestRunnerMcpServersChangeDrainWaitsForTheRunningEmissions(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		p := newMcpOrderProbe(t)
+		p.register(t, "a")
+		p.runner.InvalidateKeepingRuntime("stale")
+		drained := make(chan struct{})
+		go func() {
+			p.runner.DrainMcpServersChanges()
+			p.note("drained")
+			close(drained)
+		}()
+		synctest.Wait()
+		p.note("settled")
+		p.release(1)
+		<-drained
+		p.register(t, "b")
+		synctest.Wait()
+		wantMcpOrder(t, p.lines(), []string{
+			"register a: call", "handler 1 start: 1 server(s)", "handler 1 awaits", "register a: returned",
+			"settled", "handler 1 end", "drained", "register b: call", "register b: returned",
+		})
+	})
+}
