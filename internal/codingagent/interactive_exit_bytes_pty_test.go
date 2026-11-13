@@ -97,8 +97,8 @@ func TestExitWritesOnlyTheProgressClearThePiStopWrites(t *testing.T) {
 				if !progress {
 					return
 				}
-				// The renderer's stop turns bracketed paste off; it is the last write of that sequence.
-				clearAt, stopAt := strings.Index(written, want[0]), strings.LastIndex(written, "\x1b[?2004l")
+				// The renderer's stop shows the cursor again; on the terminal option that is the last write of that sequence.
+				clearAt, stopAt := strings.Index(written, want[0]), strings.LastIndex(written, "\x1b[?25h")
 				if stopAt < 0 || clearAt > stopAt {
 					t.Fatalf("the progress clear is at byte %d and the renderer's stop at %d, want the clear before the stop\nlast bytes: %q",
 						clearAt, stopAt, written[max(0, len(written)-300):])
