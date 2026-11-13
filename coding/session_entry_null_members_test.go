@@ -32,7 +32,7 @@ func nullMembersGolden(t *testing.T) (rows []string, records map[string]string) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	records = map[string]string{}
 	scanner := bufio.NewScanner(file)
 	scanner.Buffer(nil, 1<<20)

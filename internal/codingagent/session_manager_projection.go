@@ -364,8 +364,9 @@ func sessionEntryToContextMessagesInto(entry SessionEntry, decode messageDecoder
 		if json.Unmarshal(entry.Raw(), &custom) != nil {
 			return nil
 		}
+		// upstream: session-manager.ts:455 (`entry.content ?? []`): a content member that is null or absent is an empty list.
 		content := custom.Content
-		if content == nil {
+		if content == nil || orderedjson.IsNull(content) {
 			content = []any{}
 		}
 		message := map[string]any{
