@@ -85149,6 +85149,28 @@
       "shapeHash": "sha256:2daec57dc190a99e56b06184e1ff8812a63ddc792c4e0964924cb634b672a6dd"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#modelObjectValue",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "modelObjectValue",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "modelObjectValue"
+      },
+      "shapeHash": "sha256:c04786418bad5b7c6a54b268d15ec6c99db73b40d54ff504058e39923421ef3a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#modelObjectValue.UnmarshalJSON",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "modelObjectValue.UnmarshalJSON",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(data []byte) error"
+      },
+      "shapeHash": "sha256:2e7a46ef7c2011cd2aa41a3ad171f9b6f5461f06a15b57547cff43508937a222"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#modelRuntimeAuthMissingError",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "modelRuntimeAuthMissingError",
@@ -86335,6 +86357,17 @@
         "type": "func(left *github.com/MichaelKinsy/PiG/ai.Model, right *github.com/MichaelKinsy/PiG/ai.Model) bool"
       },
       "shapeHash": "sha256:f483e6bcd8cb7eac208ff89090fc212bd79ef3f3cc297941fd3f67976a8517af"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#sameModelObjectJSON",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "sameModelObjectJSON",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(left encoding/json.RawMessage, right encoding/json.RawMessage) bool"
+      },
+      "shapeHash": "sha256:01a558b094bb10bd4e47303bcca09166732cb31daac5bde786412d1cc4d14238"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding#sameSystemPromptOptions",

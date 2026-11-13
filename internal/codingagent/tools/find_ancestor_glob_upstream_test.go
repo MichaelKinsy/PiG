@@ -4,12 +4,13 @@ package tools
 
 import (
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // Regression test for https://github.com/earendil-works/pi/issues/12066
@@ -112,13 +113,7 @@ func TestFindPathGlobsDoNotMatchAboveTheSearchPath(t *testing.T) {
 		createProject(t, project)
 		link := filepath.Join(tempRoot, "src", "link")
 		// A junction on Windows needs no extra privileges.
-		if runtime.GOOS == "windows" {
-			if out, err := exec.Command("cmd", "/c", "mklink", "/J", link, project).CombinedOutput(); err != nil {
-				t.Fatalf("mklink /J: %v: %s", err, out)
-			}
-		} else if err := os.Symlink(project, link); err != nil {
-			t.Fatal(err)
-		}
+		testenv.RequireDirectoryLink(t, project, link)
 
 		expect(t, link, "src/**/*.ts", "src/a.ts")
 	})
