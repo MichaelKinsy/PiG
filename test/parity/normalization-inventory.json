@@ -9194,6 +9194,45 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/rpc/82-rpc-abort-mid-batch-answers-every-call.toml",
+      "transforms": [
+        {
+          "kind": "timestamp",
+          "paths": [
+            "/**/timestamp"
+          ],
+          "reason": "Independent message clocks vary; retain event order, field presence and timestamp type."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/25/message/durationMs",
+            "/26/message/durationMs",
+            "/27/message/durationMs",
+            "/28/messages/5/durationMs",
+            "/30/data/messages/5/durationMs"
+          ],
+          "optional": true,
+          "reason": "The next request's setup-error message, at every record that carries it: Pi sets its durationMs only when the millisecond did not tick between lazy.ts's startedAt and the stream's own #startedAt (event-stream.ts #time returns early when message.timestamp < #startedAt), so Pi's own presence varies from run to run (rpc/55 records the measurement); PiG times it the same way."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/wall_time_seconds",
+            "/**/durationMs"
+          ],
+          "reason": "Pi times each response with a monotonic clock (event-stream.ts), so the whole-millisecond value differs between runs; retain the field's presence, its position and its number spelling. bash does not run here, so no wall_time_seconds is emitted; the path is named because the prompt is a faux bash prompt (TestJSONScenariosAliasMeasuredDurations)."
+        },
+        {
+          "kind": "path",
+          "paths": [
+            "/**/sections/cwd"
+          ],
+          "reason": "D2: alias only the exact isolated cwd in the system section."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/selectors/01-config-empty.toml",
       "transforms": [
         {

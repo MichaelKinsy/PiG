@@ -1602,6 +1602,41 @@ func Extension() *sdk.Extension {
 		attempt("ok", goTo("ctrl+shift+p", n), goTo("shift+ctrl+q", n+1))
 		return nil
 	})
+	// D614 slot dialog: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewDialog).
+	// The key and the number come from the test: the title is built from the number and the key is bound to fx.add with it.
+	ext.Command("ui_view_dialog", "Mount a titled view with a bound key in the dialog slot, hide it and show it", func(ctx sdk.Context, args string) error {
+		key, number, _ := strings.Cut(args, " ")
+		n, err := strconv.Atoi(number)
+		if err != nil {
+			return err
+		}
+		integer := map[string]sdk.ViewShape{"n": {Type: "integer"}}
+		st, err := ctx.MountView(sdk.ViewMount{Key: "dlg", Slot: sdk.ViewSlotDialog,
+			Title: fmt.Sprintf("Chart %d", n), View: viewText(ctx, "-dlg"),
+			Intents: []sdk.ViewIntent{{Name: "fx.add", Arg: sdk.ViewShape{Type: "object", Properties: integer, Required: []string{"n"}},
+				Answer: &sdk.ViewShape{Type: "object", Properties: map[string]sdk.ViewShape{"sum": {Type: "integer"}}, Required: []string{"sum"}}}},
+			Bindings: []sdk.ViewBinding{{Key: key, Intent: "fx.add", Arg: map[string]any{"n": n}}}})
+		if err != nil {
+			ve, ok := errors.AsType[*sdk.ViewError](err)
+			if !ok {
+				return err
+			}
+			ctx.Notify("view-d-mounted:"+string(ve.Code), "info")
+			return nil
+		}
+		ctx.Notify("view-d-mounted:"+string(st.State), "info")
+		hidden, err := ctx.HideView(st.Mount)
+		if err != nil {
+			return err
+		}
+		ctx.Notify("view-d-hidden:"+string(hidden.State), "info")
+		shown, err := ctx.ShowView(st.Mount)
+		if err != nil {
+			return err
+		}
+		ctx.Notify("view-d-shown:"+string(shown.State), "info")
+		return nil
+	})
 	// D614 dismiss: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewDismiss).
 	// The name of the dismiss intent comes from the test, so a flag the SDK dropped, or one it made up, is not what the host holds.
 	ext.Command("ui_view_dismiss", "Mount a dialog with a dismiss intent and probe what the host refuses", func(ctx sdk.Context, args string) error {

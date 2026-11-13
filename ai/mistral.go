@@ -306,7 +306,18 @@ func mistralToolChoice(choice any) any {
 		return choice
 	}
 	function, _ := object["function"].(map[string]any)
-	return map[string]any{"type": "function", "function": map[string]any{"name": function["name"]}}
+	return mistralFunctionChoice{Type: "function", Function: mistralFunctionName{Name: function["name"]}}
+}
+
+// mistralFunctionChoice is the tool choice mapToolChoice builds for a named function: type, then function (mistral-conversations.ts:902-905).
+type mistralFunctionChoice struct {
+	Type     string              `json:"type"`
+	Function mistralFunctionName `json:"function"`
+}
+
+// mistralFunctionName is the function member of mistralFunctionChoice: the caller's name and nothing else of the caller's object.
+type mistralFunctionName struct {
+	Name any `json:"name"`
 }
 
 func (p *mistralProvider) resolveModel() *Model {

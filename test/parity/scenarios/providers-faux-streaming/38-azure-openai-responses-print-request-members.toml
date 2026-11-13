@@ -1,0 +1,33 @@
+# Behavior family: providers-faux-streaming
+# Surface: the members of the Azure OpenAI Responses request body in print mode.
+#
+# azure-openai-responses builds its own request (buildParams): a prompt cache
+# key, and no prompt_cache_retention, prompt_cache_options or service_tier,
+# which the OpenAI Responses request has. Both CLIs run in print mode with
+# PI_CACHE_RETENTION=long against a local endpoint under a model that supports
+# long cache retention, and the harness prints the member names of each request
+# body in wire order. Strings other than type and role are elided: the system
+# prompt and the paths differ per run.
+
+name = "38-azure-openai-responses-print-request-members"
+description = "Print mode sends the Azure OpenAI Responses body with the members Pi's Azure request has."
+covers = ["packages/ai/src/api/azure-openai-responses.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/provider-print-request-order.mjs", "azure-openai-responses", "pig"]
+pi_args = ["node", "./test/parity/testdata/provider-print-request-order.mjs", "azure-openai-responses", "pi"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 90
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["{model:s,input:[", "{id:s,type:reasoning,encrypted_content:s,summary:[]}"]
+runs = 3

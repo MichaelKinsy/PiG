@@ -181,6 +181,9 @@ type InteractiveMode struct {
 	viewMounts []*viewMount
 	// viewTabRow is the tab row the view client draws above the panel mounts, nil while it draws none; widgetMu guards it.
 	viewTabRow *viewTabs
+	// viewWaitRow is the row that stands for the dialogs while none holds the keyboard, nil while the view client draws
+	// none; widgetMu guards it.
+	viewWaitRow *viewWaiting
 	// viewClient is the terminal's attachment to the bound build's view registry, nil unless a Piglet selected it.
 	viewClient atomic.Pointer[viewClient]
 	// viewEndpoint is the socket that serves the bound build's view registry to clients outside the process, nil unless a Piglet selected it.

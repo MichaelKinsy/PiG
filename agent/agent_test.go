@@ -920,24 +920,33 @@ func abortingBatch(t *testing.T, mode ToolExecutionMode) ([]ToolResultMessage, [
 	return results, starts, beforeCalls.Load()
 }
 
+// checkAbortedBatch expects what Pi 4438c58ba (#9986) does with a batch aborted while the first call is prepared: both calls are
+// started and answered "Operation aborted", and the before hook is not asked about the second.
 func checkAbortedBatch(t *testing.T, results []ToolResultMessage, starts []string, beforeCalls int32) {
 	t.Helper()
-	if len(results) != 1 || results[0].Text() != "Operation aborted" || !results[0].IsError {
-		t.Fatalf("results = %+v, want one aborted error result", results)
+	if len(results) != 2 {
+		t.Fatalf("results = %+v, want an aborted error result for each of the two calls", results)
 	}
-	if !reflect.DeepEqual(starts, []string{"call-1"}) || beforeCalls != 1 {
-		t.Fatalf("started %v, before hook calls %d; want only call-1", starts, beforeCalls)
+	for i, id := range []string{"call-1", "call-2"} {
+		if results[i].ToolCallID != id || results[i].Text() != "Operation aborted" || !results[i].IsError {
+			t.Fatalf("result %d = %+v, want %s aborted", i, results[i], id)
+		}
+	}
+	if !reflect.DeepEqual(starts, []string{"call-1", "call-2"}) || beforeCalls != 1 {
+		t.Fatalf("started %v, before hook calls %d; want both calls started and the hook asked about call-1 only", starts, beforeCalls)
 	}
 }
 
-func TestExecuteSequentialBreaksAfterContextAbort(t *testing.T) {
+// Upstream executeToolCallsSequential no longer leaves the batch once the run is aborted: the call it had not reached is started
+// and answered without running (agent-loop.ts:540-590 at Pi 4438c58ba).
+func TestExecuteSequentialAnswersEveryCallAfterContextAbort(t *testing.T) {
 	results, starts, beforeCalls := abortingBatch(t, ToolModeSequential)
 	checkAbortedBatch(t, results, starts, beforeCalls)
 }
 
-// Upstream executeToolCallsParallel stops preparing calls once the run is
-// aborted, so later calls never start.
-func TestExecuteParallelSkipsUnstartedCallsAfterContextAbort(t *testing.T) {
+// Upstream executeToolCallsParallel keeps preparing calls once the run is aborted, and prepareToolCall answers each of them
+// "Operation aborted" before its hooks (agent-loop.ts:592-646, :716-725 at Pi 4438c58ba).
+func TestExecuteParallelAnswersUnstartedCallsAfterContextAbort(t *testing.T) {
 	results, starts, beforeCalls := abortingBatch(t, ToolModeParallel)
 	checkAbortedBatch(t, results, starts, beforeCalls)
 }

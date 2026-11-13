@@ -2754,6 +2754,22 @@ def new_extension() -> pig_sdk.Extension:
         attempt("arg", [go_to("a", "x")])
         attempt("ok", [go_to("ctrl+shift+p", n), go_to("shift+ctrl+q", n + 1)])
 
+    # D614 slot dialog: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewDialog).
+    def view_dialog_probe(ctx, args):
+        key, number = args.split(" ")
+        n = int(number)
+        obj = pig_sdk.ViewShape
+        add = pig_sdk.ViewIntent("fx.add", obj("object", properties={"n": obj("integer")}, required=("n",)), answer=obj("object", properties={"sum": obj("integer")}, required=("sum",)))
+        try:
+            st = ctx.mount_view("dlg", "dialog", view_text(ctx, "-dlg"), title=f"Chart {n}", intents=[add], bindings=[{"key": key, "intent": "fx.add", "arg": {"n": n}}])
+        except pig_sdk.ViewError as err:
+            ctx.notify(f"view-d-mounted:{err.code}", "info")
+            return
+        ctx.notify(f"view-d-mounted:{st.state}", "info")
+        ctx.notify(f"view-d-hidden:{ctx.hide_view(st.mount).state}", "info")
+        ctx.notify(f"view-d-shown:{ctx.show_view(st.mount).state}", "info")
+
+    ext.command("ui_view_dialog", "Mount a titled view with a bound key in the dialog slot, hide it and show it", view_dialog_probe)
     ext.command("ui_view_bindings", "Mount a view with bindings and probe what the host refuses", view_bindings_probe)
 
     # D614 dismiss: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewDismiss).

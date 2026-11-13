@@ -7093,8 +7093,8 @@
         "integrity": "sha512-ie5mejS7mGfXt//9As7i3LfxVXdktZvF1JP4EQsUXTp4mU437h23MNGx7wXZ5VYs3YiG/Qnj3e7OZ2HC069OMw=="
       },
       "source": "dist/agent-loop.js",
-      "sourceSha256": "22ee81f9977e211044c1ad41a763876c793ca7fc1c5b39b9fa7f76f3cb281129",
-      "sha256": "b96917c7c38610e97c553dbb980f34f9f2f35b3b4d552ce27c3e8eb9efb99667",
+      "sourceSha256": "74962e0457ee42151539696ca3b0ac665b32a61970e0c69bfcddeb2bef32ed50",
+      "sha256": "6d9f0b466362f6a4cb50f9ff85c184fb93e19515195b99e9aff344c31c1e1a81",
       "rewrite": "module specifiers"
     },
     {

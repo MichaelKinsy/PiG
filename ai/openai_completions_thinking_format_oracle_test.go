@@ -18,7 +18,7 @@ import (
 // each level, over both stream and streamSimple options. The payload handed to onPayload by the pinned pi-ai and by PiG must be equal as parsed JSON.
 func TestOpenAICompletionsThinkingFormatsPayloadMatchesPi(t *testing.T) {
 	rng := rand.New(rand.NewSource(97))
-	g := &payloadGen{rng: rng, api: "openai-completions", provider: "p", model: "m", thinkingSignatures: []string{""}}
+	g := &payloadGen{rng: rng, api: "openai-completions", provider: "p", model: "m", thinkingSignatures: []string{"", `,"thinkingSignature":"reasoning_content"`, `,"thinkingSignature":"reasoning"`, `,"thinkingSignature":"sig"`}}
 	pick, boolean := g.pick, g.boolean
 	value := func() string {
 		return pick(`"x"`, `""`, `1`, `0`, `true`, `false`, `null`,
@@ -94,11 +94,15 @@ func TestOpenAICompletionsThinkingFormatsPayloadMatchesPi(t *testing.T) {
 		if rng.Intn(2) == 0 {
 			p.Options["maxTokens"] = 1 + rng.Intn(20000)
 		}
+		// A provider replays a turn's reasoning only for the model that produced it (transformMessages, isSameModel): the transcript's own
+		// turns are of the probe's provider.
+		g.provider = p.Provider
 		p.Context = g.context()
 		probes = append(probes, p)
 	}
 	want := piPayloads(t, "testdata/openai_completions_payload.mjs", probes)
-	failures := 0
+	g.requireReplayCoverage(t, want, completionsReplay)
+	failures, reordered := 0, 0
 	classes := map[string]int{}
 	for i, p := range probes {
 		model := &ai.Model{ID: "m", DisplayName: "m", Input: p.Input, Capabilities: ai.ModelCapabilities{ContextWindow: 128000, MaxOutputTokens: 16384}, ProviderMeta: ai.ProviderMetadata{API: ai.APIOpenAICompletions, ProviderID: p.Provider, BaseURL: p.BaseURL, Reasoning: p.Reasoning}}
@@ -126,7 +130,7 @@ func TestOpenAICompletionsThinkingFormatsPayloadMatchesPi(t *testing.T) {
 		var got string
 		sentinel := errors.New("payload captured")
 		options.OnPayload = func(payload any, _ *ai.Model) (any, error) {
-			encoded, err := json.Marshal(payload)
+			encoded, err := ai.MarshalRequestBody(payload)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -147,9 +151,14 @@ func TestOpenAICompletionsThinkingFormatsPayloadMatchesPi(t *testing.T) {
 			}
 			t.Fatalf("probe %d: Pi produced no payload where PiG did: %.300s", i, got)
 		}
-		comparePayload(t, fmt.Sprintf("probe %d provider=%s reasoning=%v simple=%v compat=%s levels=%s options=%v", i, p.Provider, p.Reasoning, p.Simple, p.Compat, p.Levels, p.Options), got, want[i], &failures, classes)
+		label := fmt.Sprintf("probe %d provider=%s reasoning=%v simple=%v compat=%s levels=%s options=%v", i, p.Provider, p.Reasoning, p.Simple, p.Compat, p.Levels, p.Options)
+		comparePayload(t, label, got, want[i], &failures, classes)
+		comparePayloadBytes(t, label, got, want[i], &reordered)
 	}
 	if failures > 0 {
 		t.Errorf("%d of %d probes differ from Pi; differing members: %v", failures, len(probes), classes)
+	}
+	if reordered > 0 {
+		t.Errorf("%d of %d probes write Pi's payload in another member order", reordered, len(probes))
 	}
 }

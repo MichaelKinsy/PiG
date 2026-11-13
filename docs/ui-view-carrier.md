@@ -78,6 +78,18 @@ A snapshot's `bindings [{key | gesture, intent, arg?, name?}]` tie keys and gest
 - You may state the claim `input.bindings` (a list of `key` and `gesture`) in your abilities, so that an extension's `alternatives` can test it. The host does not read it. It says which kinds of trigger you honour, not which keys.
 - A binding's `name`, a `title` and a mount's `key` are labels: the host has refused a control character, a line separator and the controls that reorder text (U+202A to U+202E, U+2066 to U+2069), so you can write them on one line as they are.
 
+## Gestures on a region of a drawing
+
+PROPOSED (2026-11-13; not yet part of D614): D614 says a client raises a region's intent "with the argument its declared shape asks for" and names no property. Every client must fill that argument the same way, so this is the reading proposed for all of them; the reference web client implements it.
+
+- A property of the argument is filled only when the intent's declared argument shape names it. An intent whose shape names none of the properties below is sent `{}`.
+- `x` and `y`: the pointer's position in the drawing's coordinates (the viewport's units). For `activate` made with the keyboard, the centre of the region.
+- `dx` and `dy`: for `drag`, the pointer's movement since the last event of this drag, in the drawing's units; 0 for every other gesture.
+- `gesture`: `activate`, `press`, `release` or `drag`. `region`: the region's `key`.
+- A property of type `integer` takes the nearest whole number.
+- `nodeKey` is the declared intent's own, when it has one.
+- A drag is a sequence: `press` (if the region lists it), any number of `drag`, then `release` (if listed). A client raises one of them at a time, each on the mount ref it holds after the reply to the one before, sums the movement made meanwhile into the next `drag`, sends at most 30 `drag` a second, and always sends the `release`.
+
 ## Errors
 
 A failed carrier command is RPC mode's error response with one more member, `code`:
@@ -159,6 +171,30 @@ Carry `code` wherever the other protocol puts an error's data, and members as th
 
 ## Reference client
 
-[`examples/ui-view-web`](../examples/ui-view-web) is a static page and a bridge program (Node, standard library only) that relays pig's lines as Server-Sent Events and the page's lines by POST on 127.0.0.1. The bridge starts `pig --mode rpc` for each page or, with `--connect`, makes every page a client of the socket of a running interactive session, beside its terminal. The page keeps the client's rule above, draws the view nodes that carry an id as focusable elements, applies `a11y` and `focus`, and raises intents. Pig itself has no web server.
+[`examples/ui-view-web`](../examples/ui-view-web) is a static page and a bridge program (Node, standard library only) that relays pig's lines as Server-Sent Events and the page's lines by POST on 127.0.0.1. The bridge starts `pig --mode rpc` for each page or, with `--connect`, makes every page a client of the socket of a running interactive session, beside its terminal. The page keeps the client's rule above and draws a view as controls: a node is the control its kind and the role and states of its `a11y` record make it (a `mouse-region` with the role `checkbox` is a native checkbox), a `grid` is a grid, a mount of the `dialog` slot is a modal dialog, and a `drawing` is one SVG element whose regions take the pointer and the keyboard. It labels a mount with its `title`, fires key bindings and shows the named ones as buttons with their key, applies `a11y` and `focus`, raises intents, and updates in place, keeping every element whose node or keyed shape is still in the view. Its look is a default stylesheet of custom properties that a theme directory overrides. Pig itself has no web server.
 
-Its tests are in `examples/ui-view-web`: `bridge_test.go` for the bridge that starts pig and `connect_test.go` for `--connect`, against a view endpoint the test serves. The tests that drive the bridge with an HTTP client always run (they need Node). `TestPageDrawsFocusesAndRaisesIntents` and `TestPageFollowsARunningSession` open the page in headless Chromium: they need `CHROMIUM_BIN` to name a Chromium binary and are skipped without it. `TestUIViewWebPageAndTerminalShareOneSession` in `test/integration` opens the page on a real interactive session.
+What the page draws (the page's [README](../examples/ui-view-web/README.md) has the full table with the keys of each control, and what the page leaves out):
+
+| Node | Element | Role and states |
+|---|---|---|
+| `container`, `vstack`, `hstack`, `box` | a block; a stack is a flex row or column; a `box` with a `bg` is a card | the a11y role of the node, when it has one |
+| `text`, `truncated-text` | text; with the a11y role `heading`, an `h2` to `h6` | heading with its level; `status`, `alert` |
+| `markdown` | headings, paragraphs, lists, quotes, code and links, built element by element | the elements' own |
+| `lines` | a `pre`; with `progress` a `progress` element; with `list` rows in columns; with `image` an `img` | none; progressbar; list and listitem, the selected row `aria-current`; image |
+| `select-list`, `settings-list` | a list of rows | listbox and option with `aria-selected`; with the a11y role `tablist`, tablist and tab |
+| `grid` | a grid of equal columns | grid, row, columnheader, gridcell; `aria-selected`, `aria-current` |
+| `input`, `editor` | an `input`, a `textarea` | textbox; `required`, `readOnly`, `disabled` |
+| `mouse-region` | a `button`; with the a11y role `checkbox`, `switch` or `radio` a native checkbox or radio | the control's own; `checked`, `disabled` |
+| `scroll-view`, `loader`, `image`, `spacer`, `dynamic-border` | a block that scrolls; a spinner with its message; an `img`; space; a rule | the a11y role; status; image; hidden; separator |
+| an intent of the mount without a `nodeKey`; a named key binding | a `button` in the mount's header; a `button` that shows its key | button |
+| a mount of the `dialog` or `overlay` slot | a `dialog` element, modal for `dialog` | dialog, named by the title |
+| a hidden mount with a `whenHidden` intent | a `button` with the mount's title in a list above the prompt | button |
+| a `drawing` | one `svg` element; each region an element over its shape | the region's `role` (default button) and `name` |
+
+- Hidden mounts. The page offers a hidden mount only when it declares a `whenHidden` intent, and choosing it raises that intent with `{}`; the plugin's handler shows the mount.
+- Dismiss. In a mount of the `dialog` or `overlay` slot that declares a `dismiss` intent, Escape and the dialog element's `cancel` event raise that intent with `{}`; the page closes no mount itself, and a mount that declares none stays as it is.
+- Ends. A mount its plugin finished or removed goes from the page without a line. A mount that breaks while it is on the page leaves one line by its title (`<title> closed: its extension stopped.`), and the line goes when the same key is mounted again, as after a reload. The contract says when a mount is gone, not what a client tells the user: this is the page's reading.
+- Gestures. What the page sends for a gesture on a region is the PROPOSED reading of the section above (not yet part of D614): `x`, `y`, `dx`, `dy`, `gesture` and `region`, each only when the intent's declared argument shape names it.
+- Tokens. The look is custom properties on `:root`, neutral, light or dark by `prefers-color-scheme`: `--view-font`, `--view-font-mono`; `--view-text-sm`, `--view-text`, `--view-text-lg`, `--view-text-xl`, `--view-leading`; `--view-space`, `--view-col`, `--view-row`; `--view-radius`, `--view-radius-sm`, `--view-control`; `--view-motion`; `--view-bg`, `--view-surface`, `--view-surface-2`, `--view-surface-raised`, `--view-border`; `--view-fg`, `--view-fg-muted`; `--view-accent`, `--view-on-accent`, `--view-selected`, `--view-focus`; `--view-success`, `--view-warning`, `--view-error`, `--view-success-bg`, `--view-error-bg`; `--view-shadow`, `--view-shadow-raised`, `--view-backdrop`; and one `--pig-<token>` for every colour token of Pi's theme schema, set from those, which is what a view's `bg` and `color` and a drawing's `fill` and `stroke` name. A `--theme` directory overrides any of them.
+
+Its tests are in `examples/ui-view-web`: `bridge_test.go` for the bridge that starts pig, `connect_test.go` for `--connect`, against a view endpoint the test serves, and `controls_test.go` for the controls, the drawing, the look, a hidden view the user opens and the dismiss intent. The tests that drive the bridge with an HTTP client always run (they need Node). The `TestPage*` tests open the page in headless Chromium: they need `CHROMIUM_BIN` to name a Chromium binary and are skipped without it. `TestUIViewWebPageAndTerminalShareOneSession` in `test/integration` opens the page on a real interactive session.

@@ -4499,10 +4499,12 @@ func (b *UIBridge) handleComplete(ctx context.Context, actions *HostCallbacks, a
 		}
 		var fields struct {
 			RequestMetadata json.RawMessage `json:"requestMetadata"`
+			SamplingParams  json.RawMessage `json:"samplingParams"`
 			ToolChoice      json.RawMessage `json:"toolChoice"`
 		}
 		if json.Unmarshal(p.Request, &fields) == nil {
 			orderRequestMetadata(request, fields.RequestMetadata)
+			orderSamplingParams(request, fields.SamplingParams)
 			keepToolChoiceText(request, fields.ToolChoice)
 		}
 	}
@@ -4530,6 +4532,18 @@ func orderRequestMetadata(request map[string]any, raw json.RawMessage) {
 	}
 }
 
+// orderSamplingParams replaces a samplingParams object whose members are not in sorted order with its *orderedjson.Object, so the provider
+// sends them in the extension's order (Pi assigns the caller's object to the request: openai-completions.ts:994-997). A sorted object stays
+// the decoded map, which is written sorted.
+func orderSamplingParams(request map[string]any, raw json.RawMessage) {
+	if request == nil || !orderedjson.IsObject(raw) {
+		return
+	}
+	if object, err := orderedjson.Parse(raw); err == nil && !slices.IsSorted(object.Keys()) {
+		request["samplingParams"] = object
+	}
+}
+
 // keepToolChoiceText replaces a toolChoice object with the JSON text the extension sent. Pi hands the caller's object to the provider, which
 // writes its members in the caller's order (anthropic-messages.ts:1587-1593), and a Go map has no order. A name or null stays as decoded.
 func keepToolChoiceText(request map[string]any, raw json.RawMessage) {
@@ -4548,6 +4562,7 @@ func decodeModelStreamRequest(raw json.RawMessage) (map[string]any, error) {
 		return nil, err
 	}
 	orderRequestMetadata(request, fields["requestMetadata"])
+	orderSamplingParams(request, fields["samplingParams"])
 	keepToolChoiceText(request, fields["toolChoice"])
 	var rawMessages []json.RawMessage
 	if messages, exists := fields["messages"]; exists {

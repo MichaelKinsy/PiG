@@ -32,6 +32,7 @@ func oaiMessageKey(k *messageKey, m *oaiMessage) bool {
 		k.raw(detail)
 	}
 	k.optionalText(m.ReasoningContent)
+	k.present(m.reasoningContentLast)
 	k.text(m.Reasoning)
 	k.text(m.ReasoningText)
 	k.length(len(m.Tools), m.Tools == nil)

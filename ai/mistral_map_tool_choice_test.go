@@ -21,9 +21,9 @@ func TestMistralToolChoiceMatchesPiMapToolChoice(t *testing.T) {
 		{"none", ToolChoiceNone, "none"},
 		{"any", "any", "any"},
 		{"required", "required", "required"},
-		{"an extension's object as the JSON text it sent", json.RawMessage(`{"function":{"name":"lookup","extra":1},"type":"function"}`), map[string]any{"type": "function", "function": map[string]any{"name": "lookup"}}},
-		{"function object keeps only its name", map[string]any{"type": "function", "function": map[string]any{"name": "lookup", "extra": 1}, "other": true}, map[string]any{"type": "function", "function": map[string]any{"name": "lookup"}}},
-		{"object without a type is rebuilt as a function choice", map[string]any{"function": map[string]any{"name": "lookup"}}, map[string]any{"type": "function", "function": map[string]any{"name": "lookup"}}},
+		{"an extension's object as the JSON text it sent", json.RawMessage(`{"function":{"name":"lookup","extra":1},"type":"function"}`), mistralFunctionChoice{Type: "function", Function: mistralFunctionName{Name: "lookup"}}},
+		{"function object keeps only its name", map[string]any{"type": "function", "function": map[string]any{"name": "lookup", "extra": 1}, "other": true}, mistralFunctionChoice{Type: "function", Function: mistralFunctionName{Name: "lookup"}}},
+		{"object without a type is rebuilt as a function choice", map[string]any{"function": map[string]any{"name": "lookup"}}, mistralFunctionChoice{Type: "function", Function: mistralFunctionName{Name: "lookup"}}},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
