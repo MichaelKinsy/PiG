@@ -17,6 +17,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 
@@ -82,7 +83,13 @@ func newHost() (*testHost, *testPlugin) {
 
 func newFixture(t *testing.T) *fixture {
 	t.Helper()
-	f := &fixture{t: t, dir: filepath.Join(shortDir(t), "view-endpoint")}
+	return newFixtureAt(t, filepath.Join(shortDir(t), "view-endpoint"))
+}
+
+// newFixtureAt is newFixture with the endpoint's directory at dir.
+func newFixtureAt(t *testing.T, dir string) *fixture {
+	t.Helper()
+	f := &fixture{t: t, dir: dir}
 	f.h, f.p = newHost()
 	f.e = New(Options{Dir: f.dir, Notify: func(message string) {
 		f.mu.Lock()
@@ -570,6 +577,30 @@ func TestAnUnboundEndpointTouchesNothing(t *testing.T) {
 	e.Close()
 	if _, err := os.Lstat(dir); err == nil {
 		t.Fatal("an endpoint that was never bound made its directory")
+	}
+}
+
+// pig additive (D614): a socket path that does not fit a socket address is refused before anything is bound, with one
+// notice that names the path, its length and the limit.
+func TestASocketPathLongerThanAnAddressHoldsIsRefused(t *testing.T) {
+	parent := filepath.Join(shortDir(t), strings.Repeat("d", 120))
+	if err := os.Mkdir(parent, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	f := newFixtureAt(t, filepath.Join(parent, "view-endpoint"))
+	f.e.Bind(f.h)
+	f.settle()
+	path := filepath.Join(f.dir, strconv.Itoa(os.Getpid())+".sock")
+	limit := len(syscall.RawSockaddrUnix{}.Path) - 1
+	want := fmt.Sprintf("View endpoint: the socket path %s is %d bytes, longer than the %d a socket address holds; no view endpoint is served", path, len(path), limit)
+	if got := f.notices(); len(got) != 1 || got[0] != want {
+		t.Fatalf("notices = %q, want %q", got, want)
+	}
+	if f.e.Path() != "" {
+		t.Fatalf("a socket is served at %s", f.e.Path())
+	}
+	if _, err := os.Lstat(path); err == nil {
+		t.Fatalf("%s was made", path)
 	}
 }
 

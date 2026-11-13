@@ -14,8 +14,9 @@ import (
 	"time"
 )
 
-// pig additive (D614): the terminal view client in a real interactive session. A fused Go SDK fixture
-// (testdata/ui-view/fixture) mounts a panel and a widget, and the test drives them with keys through tmux.
+// pig additive (D614): the terminal view client in a real interactive session. A Go SDK fixture
+// (testdata/ui-view/fixture), which pig builds and runs as a child process, mounts a panel and a widget, and the test
+// drives them with keys through tmux.
 
 const uiViewModels = `{"providers":{"test-faux":{"baseUrl":"http://localhost:0","api":"test-faux","authHeader":false,"models":[{"id":"faux-1","name":"Test Faux","api":"test-faux","input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":128000,"maxTokens":4096}]}}}`
 
@@ -44,6 +45,12 @@ func startUIViewAt(t *testing.T, home, piglet, mode string, mounts bool) *uiView
 	if err != nil {
 		t.Fatal(err)
 	}
+	return startUIViewPiglet(t, home, filepath.Join(root, "test", "integration", "testdata", "ui-view", piglet), mode, mounts)
+}
+
+// startUIViewPiglet is startUIViewAt with the Piglet's file named by its path.
+func startUIViewPiglet(t *testing.T, home, piglet, mode string, mounts bool) *uiViewRun {
+	t.Helper()
 	agentDir := filepath.Join(home, "agent")
 	if err := os.MkdirAll(agentDir, 0o755); err != nil {
 		t.Fatal(err)
@@ -60,7 +67,7 @@ func startUIViewAt(t *testing.T, home, piglet, mode string, mounts bool) *uiView
 	}
 	h := newHarness(t)
 	cwd := t.TempDir()
-	h.startArgsAt([]string{"--piglet", filepath.Join(root, "test", "integration", "testdata", "ui-view", piglet), "--model", "test-faux/faux-1"}, cwd,
+	h.startArgsAt([]string{"--piglet", piglet, "--model", "test-faux/faux-1"}, cwd,
 		"PIG_HOME="+home, "PIG_TEST_FAUX=1", "PIG_TEST_FAUX_SCENARIO=parity-basic", "PIG_UI_VIEW_FIXTURE_MOUNTS="+flag)
 	// The first start builds the fixture.
 	h.expectContains(4*time.Minute, interactiveReadyMarker)

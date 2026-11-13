@@ -130,8 +130,9 @@ func TestUIViewWebPageAndTerminalShareOneSession(t *testing.T) {
 	run.sendKey("Enter")
 	shows("picked beta")
 
-	// A reload keeps the registry, so the session closes nothing and sends nothing because of the reload: the page
-	// keeps its connection and its attachment, and it holds what the session has afterwards, mount for mount.
+	// A reload keeps the registry, so the session closes nothing: the page keeps its connection and its attachment.
+	// The reload replaces the fixture's instance, whose mounts end: the page is sent them broken and shows none, as
+	// the session holds none, until the new instance mounts again.
 	session := browser.String(`window.uiView.session + " " + window.uiView.attachment`)
 	// The focus is in the panel's list: Escape returns it to the editor, so the next command is typed there.
 	run.sendKey("Escape")
@@ -148,6 +149,11 @@ func TestUIViewWebPageAndTerminalShareOneSession(t *testing.T) {
 	if got := browser.String(`window.uiView.session + " " + window.uiView.attachment`); got != session {
 		t.Fatalf("after the reload the page has the session and attachment %q, it had %q", got, session)
 	}
+	browser.Wait(`document.querySelectorAll(".mount").length === 0`)
+	run.send("/vmount\r")
+	shows("fixture panel")
+	run.sendKey("Escape")
+	run.settle()
 
 	// A new session ends the registry: the session closes the connection, the bridge connects to the socket of the
 	// session that follows, and the page attaches to it. Nothing of the session before is on the page.

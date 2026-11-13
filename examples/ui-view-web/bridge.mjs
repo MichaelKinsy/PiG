@@ -137,7 +137,7 @@ const DATA = Buffer.from("data: ");
 const BLANK = Buffer.from("\n\n");
 
 // follow makes one page a client of the session's view endpoint. It holds one connection for the page and relays the
-// endpoint's lines in their order. A reload keeps the registry and so the connection, and sends nothing by itself. The
+// endpoint's lines in their order. A reload keeps the registry and so the connection; the mounts of the extensions it reloads arrive broken. The
 // session closes the connection when its registry ends (a new, resumed, forked or switched session, the exit): the
 // page is then sent `end`, the bridge tries again every RETRY_MS while no session takes a connection, and with the
 // next connection the page is sent `session` again, so it attaches to the new registry and draws what that one holds.
