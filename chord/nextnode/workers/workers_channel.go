@@ -55,6 +55,8 @@ type channel struct {
 	// unwritable: a write failed; nothing is sent any more.
 	unwritable bool
 	started    bool
+	// reads, set before the reader begins, is what it reads the connection through: a worker process's drain of it.
+	reads func(conn io.Reader) io.Reader
 }
 
 type outgoing struct {
@@ -93,7 +95,7 @@ func (c *channel) start() {
 	}
 }
 
-// begin reports whether run is to be called: once, and not on a finished channel. A caller that joins the reader calls
+// begin reports whether run is to be called: once, and not on a finished channel. A caller that waits for the reader calls
 // run on a goroutine it owns (WorkerProcess, whose exit is told after what the reader took).
 func (c *channel) begin() bool {
 	c.mu.Lock()
@@ -133,11 +135,15 @@ func (c *channel) run() {
 	c.mu.Unlock()
 	//portlint:allow golifetime the writer returns when the channel finishes
 	go c.write(conn)
-	c.read(conn)
+	if c.reads != nil {
+		c.read(c.reads(conn))
+	} else {
+		c.read(conn)
+	}
 	c.finish()
 }
 
-func (c *channel) read(conn net.Conn) {
+func (c *channel) read(conn io.Reader) {
 	var header [5]byte
 	for {
 		if _, err := io.ReadFull(conn, header[:]); err != nil {
