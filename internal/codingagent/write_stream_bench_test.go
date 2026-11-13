@@ -23,7 +23,9 @@ func streamedWriteTypeScript(kb int) string {
 
 // BenchmarkStreamedWriteCard draws a collapsed write card for every update of a write call whose content streams in 16
 // characters at a time, as the harness's write:N scenario does: one op is the whole stream, the content as the arguments
-// carry it at each update included.
+// carry it at each update included. The highlight warm-up, which the card's worker runs beside the frames, is replaced by nothing,
+// as in BenchmarkWriteCardFrames warm=off: how many of its steps fold into one depends on when the worker is scheduled, so with it
+// the 50KB stream read 778,482 to 857,657 allocations in five runs, and the frames are what this benchmark draws.
 func BenchmarkStreamedWriteCard(b *testing.B) {
 	for _, kb := range []int{5, 50} {
 		content := streamedWriteTypeScript(kb)
@@ -40,6 +42,9 @@ func BenchmarkStreamedWriteCard(b *testing.B) {
 			}
 		}
 		b.Run(strconv.Itoa(kb)+"KB", func(b *testing.B) {
+			previous := writeWarmHighlight
+			writeWarmHighlight = func(string, string) bool { return true }
+			b.Cleanup(func() { writeWarmHighlight = previous })
 			b.ReportAllocs()
 			for b.Loop() {
 				context := extension.ToolRenderContext{State: map[string]any{}, Cwd: "/work"}
