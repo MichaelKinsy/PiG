@@ -152,6 +152,7 @@ func (m *viewMount) HandleInput(data string) {
 	took := m.surface.HandleInput(data)
 	switch {
 	case interrupts:
+		m.c.withheld(m, data, string(AppInterrupt))
 		if m.focused {
 			m.leave()
 		}

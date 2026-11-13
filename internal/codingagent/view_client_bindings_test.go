@@ -372,7 +372,7 @@ func TestViewClientDrawsAHintRowForTheFocusedMount(t *testing.T) {
 		content := func(view json.RawMessage) uiview.Content {
 			return uiview.Content{View: view, Intents: []uiview.IntentDecl{viewGoIntent, viewTapIntent}, Bindings: []uiview.Binding{
 				{Key: "d", Intent: "ext.tap", Name: "Day"}, {Key: "x", Intent: "ext.go"}, {Key: "shift+left", Intent: "ext.go", Arg: json.RawMessage(`{"n":2}`), Name: "Back"},
-				{Gesture: "swipe-up", Intent: "ext.tap", Name: "Swipe"}, {Key: "m", Intent: "ext.go", Arg: json.RawMessage(`{"n":3}`), Name: "Mo\x1b[31mnth\nview"},
+				{Gesture: "swipe-up", Intent: "ext.tap", Name: "Swipe"}, {Key: "m", Intent: "ext.go", Arg: json.RawMessage(`{"n":3}`), Name: "  Month view "},
 			}}
 		}
 		ref := f.mount("p", uiview.SlotPanel, content(viewText("the day")))
@@ -382,7 +382,7 @@ func TestViewClientDrawsAHintRowForTheFocusedMount(t *testing.T) {
 			t.Fatalf("without the focus the mount draws %q", rows)
 		}
 		f.loop.press(viewF6)
-		const hint = "d Day  shift+left Back  m Mo [31mnth view"
+		const hint = "d Day  shift+left Back  m Month view"
 		lines := m.Render(60)
 		if got, want := last(t, lines), " "+theme.Fg("muted", hint); got != want {
 			t.Fatalf("the hint row is %q, want %q", got, want)
@@ -443,11 +443,11 @@ func TestViewClientDrawsAHintRowForTheFocusedMount(t *testing.T) {
 //     fires neither the binding of the base key nor one of a symbol: which symbol the layout produces is not in it;
 //   - a legacy "A" is shift and "a" or Caps Lock and "a": it fires shift+a (kitty reports Caps Lock and fires a);
 //   - a digit produced with shift (AZERTY) fires as that digit when it arrives as text, and not from an escape code;
-//   - "+" cannot be bound: it separates a modifier from its key, so the registry refuses the id.
+//   - "+" is a key like any symbol: the text "+" and the shifted alternate "+" of an escape code fire it.
 func TestViewClientBindingKeyTable(t *testing.T) {
 	was := tui.IsKittyProtocolActive()
 	defer tui.SetKittyProtocolActive(was)
-	keys := []string{"?", ":", "shift+a", "a", "/", "ctrl+?", "alt+d", "1", "="}
+	keys := []string{"?", ":", "shift+a", "a", "/", "ctrl+?", "alt+d", "1", "=", "+", "ctrl++"}
 	f := newViewFixture(t)
 	asked := f.raised()
 	var bindings []uiview.Binding
@@ -456,9 +456,6 @@ func TestViewClientBindingKeyTable(t *testing.T) {
 	}
 	f.mount("p", uiview.SlotPanel, uiview.Content{View: viewText("keys"), Intents: []uiview.IntentDecl{viewGoIntent}, Bindings: bindings})
 	f.loop.press(viewF6)
-	if _, err := uiview.ParseBindingKey("+"); err == nil {
-		t.Error(`the key id "+" parsed: the table below says it cannot be bound`)
-	}
 	for _, c := range []struct {
 		name  string
 		kitty bool
@@ -470,7 +467,7 @@ func TestViewClientBindingKeyTable(t *testing.T) {
 		{"legacy A", false, "A", "shift+a"},
 		{"legacy a", false, "a", "a"},
 		{"legacy /", false, "/", "/"},
-		{"legacy + is bound by nothing", false, "+", ""},
+		{"legacy +", false, "+", "+"},
 		{"legacy alt+d", false, "\x1bd", "alt+d"},
 		{"kitty text ?", true, "?", "?"},
 		{"kitty text :", true, ":", ":"},
@@ -479,7 +476,8 @@ func TestViewClientBindingKeyTable(t *testing.T) {
 		{"kitty Caps Lock and a", true, "\x1b[97;65u", "a"},
 		{"every key as an escape code: shift and / with the alternate ?", true, "\x1b[47:63;2u", "?"},
 		{"every key as an escape code: shift and ; with the alternate :", true, "\x1b[59:58;2u", ":"},
-		{"every key as an escape code: shift and = with the alternate +", true, "\x1b[61:43;2u", ""},
+		{"every key as an escape code: shift and = with the alternate +", true, "\x1b[61:43;2u", "+"},
+		{"kitty ctrl, shift and = with the alternate +", true, "\x1b[61:43;6u", "ctrl++"},
 		{"every key as an escape code: shift and a with the alternate A", true, "\x1b[97:65;2u", "shift+a"},
 		{"every key as an escape code: shift and a without an alternate", true, "\x1b[97;2u", "shift+a"},
 		{"every key as an escape code: shift and / without an alternate", true, "\x1b[47;2u", ""},
@@ -606,4 +604,218 @@ func TestTerminalViewClientUnnamedBindingsDrawAsNone(t *testing.T) {
 			})
 		})
 	}
+}
+
+const viewProbeUserKeys = `{"key":"day","slot":"panel","view":{"root":{"kind":"text","text":"the day rows"}},` +
+	`"intents":[{"name":"ext.go","arg":{"type":"object","properties":{"n":{"type":"integer"}}}}],` +
+	`"bindings":[{"key":"ctrl+g","intent":"ext.go","arg":{"n":1}},{"key":"ctrl+q","intent":"ext.go","arg":{"n":2}}]}`
+
+// pig additive (D614): a key the user's keybindings give to a reserved action (viewReservedActions) is never a
+// binding's, on the production renderer in both TUI modes, whatever was mounted and whenever the keybindings changed.
+// Under Pi's defaults ctrl+g and ctrl+q are free, so the mount binds them and they raise its intent. The user then
+// gives app.interrupt and app.exit those keys, as the keybindings file does at /reload: ctrl+q raises nothing and the
+// focus stays, ctrl+g leaves the mount as the key that interrupts does, and the extension reads one unsupported notice
+// for each binding. Escape, no longer the key that interrupts, stays a row of the reserved table: the host refuses a
+// mount that binds it, and in the focused mount it raises nothing. With the defaults back the keys are the mount's.
+func TestTerminalViewClientGivesNoBindingAKeyOfAReservedAction(t *testing.T) {
+	for _, mode := range []string{"regular", "fullscreen"} {
+		t.Run(mode, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				p := newViewModeProbe(t, mode, true)
+				p.must("ui.view.mount", viewProbeUserKeys)
+				p.frame()
+				client := p.m.viewClient.Load()
+				mount := client.order[0]
+				enter := func() {
+					t.Helper()
+					if _, consumed := p.m.tuiInst.RunInputListeners(viewF6); !consumed || p.m.tuiInst.GetFocusedComponent() != tui.Component(mount) {
+						t.Fatalf("F6 gave the focus to %T, want the mount that binds keys", p.m.tuiInst.GetFocusedComponent())
+					}
+				}
+				// fires presses data and reports whether it raised an intent; the frames let a raised intent settle.
+				fires := func(data string) bool {
+					t.Helper()
+					before := client.flight
+					if err := p.m.handleKey(t.Context(), data); err != nil {
+						t.Fatal(err)
+					}
+					p.frame()
+					p.frame()
+					return client.flight != before
+				}
+				onMount := func() bool { return p.m.tuiInst.GetFocusedComponent() == tui.Component(mount) }
+				enter()
+				if !fires("\x07") || !fires("\x11") {
+					t.Fatal("under Pi's default keybindings ctrl+g and ctrl+q did not each raise the mount's intent")
+				}
+				p.m.keybindings.SetUserBindings(map[string][]KeyID{string(AppInterrupt): {"ctrl+g"}, string(AppExit): {"ctrl+q"}})
+				if fires("\x11") || !onMount() {
+					t.Fatal("ctrl+q, now the user's key of app.exit, raised the mount's intent or moved the focus")
+				}
+				if fires("\x11") || !onMount() {
+					t.Fatal("ctrl+q, pressed again, raised the mount's intent or moved the focus")
+				}
+				if fires("\x07") || p.m.tuiInst.GetFocusedComponent() != tui.Component(p.m.editor) {
+					t.Fatal("ctrl+g, now the user's key of app.interrupt, raised the mount's intent or did not leave the mount")
+				}
+				enter()
+				if fires("\x1b") || !onMount() {
+					t.Fatal("Escape, no longer the key that interrupts, raised an intent or left the mount")
+				}
+				if _, code := p.call("ui.view.mount", strings.Replace(viewBoundMount, "%KEY%", "escape", 1)); code != "invalid" {
+					t.Fatalf("a mount that binds escape was answered %q, want invalid whatever the user's keybindings are", code)
+				}
+				var diag struct {
+					Notices []uiview.Notice `json:"notices"`
+				}
+				res, err := p.bridge.HandleCall("ext", &subprocess.CallPayload{Method: "ui.view.diagnostics", Args: json.RawMessage(`{"key":"day"}`)})
+				if err != nil || res.Error != nil || json.Unmarshal(res.Result, &diag) != nil {
+					t.Fatalf("diagnostics: %v %+v", err, res)
+				}
+				told := map[string]int{}
+				for _, n := range diag.Notices {
+					if n.Code == string(uiview.CodeUnsupported) && n.Severity == uiview.SeverityInfo && n.Count <= 1 {
+						told[n.Path]++
+					}
+				}
+				if len(told) != 2 || told["bindings[0]"] != 1 || told["bindings[1]"] != 1 {
+					t.Fatalf("the extension reads %+v, want each of the two bindings reported once", diag.Notices)
+				}
+				p.m.keybindings.SetUserBindings(nil)
+				if !fires("\x11") || !fires("\x07") {
+					t.Fatal("with the default keybindings back, ctrl+q and ctrl+g did not each raise the mount's intent")
+				}
+			})
+		})
+	}
+}
+
+// pig additive (D614): the reserved actions and the reserved table say the same. Every default key of a reserved action,
+// on every platform, is a row of uiview.ReservedKeys, so the host refuses it when it is mounted; and every row is the
+// focus key, Tab or such a default, so no row is kept for an action the terminal does not ask the keybindings about.
+func TestViewClientReservedActionsAreTheRowsOfTheReservedTable(t *testing.T) {
+	defaults := map[string]bool{viewFocusKey: true, "tab": true}
+	for _, action := range viewReservedActions {
+		at := slices.IndexFunc(appKeybindingRows[:], func(row appKeybindingRow) bool { return row.id == string(action) })
+		if at < 0 {
+			t.Fatalf("%s is no row of Pi's keybindings", action)
+		}
+		keys := slices.Clone(appKeybindingRows[at].keys)
+		if platform := appKeybindingRows[at].platform; platform != nil {
+			keys = slices.Concat(keys, platform.Other, platform.Darwin, platform.Windows, platform.Win32)
+		}
+		if len(keys) == 0 {
+			t.Errorf("%s has no default key on any platform", action)
+		}
+		for _, key := range keys {
+			if parsed, err := uiview.ParseBindingKey(string(key)); err != nil || parsed.Reserved() == nil {
+				t.Errorf("%s has the default key %q, which the reserved table does not hold (%v)", action, key, err)
+			}
+			defaults[string(key)] = true
+		}
+	}
+	for _, row := range uiview.ReservedKeys() {
+		id := row.Base
+		if row.Ctrl {
+			id = "ctrl+" + id
+		}
+		if !defaults[id] {
+			t.Errorf("the reserved row %q is the default key of no reserved action", id)
+		}
+	}
+}
+
+// pig additive (D614): the keys of the reserved actions are the user's, asked for when a key is pressed. A mount binds
+// four keys that are free under Pi's defaults and each raises its intent. The user then gives each reserved action one
+// of them: the keys of app.clear, app.exit and app.suspend raise nothing and leave the focus where it is, the key of
+// app.interrupt leaves the mount, and the plugin is told once for each binding. With the defaults back they fire again.
+func TestViewClientReservedActionsKeepTheUsersKeys(t *testing.T) {
+	f := newViewFixture(t)
+	asked := f.raised()
+	f.mount("p", uiview.SlotPanel, uiview.Content{View: viewText("the day"), Intents: []uiview.IntentDecl{viewGoIntent},
+		Bindings: []uiview.Binding{viewGo("ctrl+g", 1), viewGo("ctrl+q", 2), viewGo("ctrl+w", 3), viewGo("ctrl+y", 4)}})
+	m := f.only()
+	f.loop.press(viewF6)
+	keys := []string{"\x07", "\x11", "\x17", "\x19"}
+	for i, data := range keys {
+		if got, want := f.fired(asked, data), `p ext.go [] {"n":`+strconv.Itoa(i+1)+`}`; got != want {
+			t.Fatalf("under Pi's defaults %q raised %q, want %q", data, got, want)
+		}
+	}
+	f.loop.keybindings.SetUserBindings(map[string][]KeyID{
+		string(AppInterrupt): {"ctrl+g"}, string(AppClear): {"ctrl+q"}, string(AppExit): {"ctrl+w"}, string(AppSuspend): {"ctrl+y"},
+	})
+	for range 2 {
+		for _, data := range keys[1:] {
+			if got := f.fired(asked, data); got != "" || f.loop.focused != m {
+				t.Fatalf("%q, now the user's key of a reserved action, raised %q or moved the focus", data, got)
+			}
+		}
+	}
+	if got := f.fired(asked, keys[0]); got != "" || f.loop.focused != nil {
+		t.Fatalf("the user's key that interrupts raised %q, or did not leave the mount", got)
+	}
+	told := map[string]int{}
+	for _, n := range f.notices("p") {
+		if n.Code == string(uiview.CodeUnsupported) && n.Severity == uiview.SeverityInfo && n.Count <= 1 {
+			told[n.Path]++
+		}
+	}
+	if len(told) != 4 || told["bindings[0]"] != 1 || told["bindings[1]"] != 1 || told["bindings[2]"] != 1 || told["bindings[3]"] != 1 {
+		t.Fatalf("the plugin reads %+v, want each of the four bindings reported once", f.notices("p"))
+	}
+	f.loop.keybindings.SetUserBindings(nil)
+	f.loop.press(viewF6)
+	for i, data := range keys {
+		if got, want := f.fired(asked, data), `p ext.go [] {"n":`+strconv.Itoa(i+1)+`}`; got != want {
+			t.Fatalf("with the defaults back %q raised %q, want %q", data, got, want)
+		}
+	}
+}
+
+// pig additive (D614): a binding's handler runs off the input loop (viewClient.raise starts it in its own goroutine), so
+// a handler that never answers holds no key: the key that fired returns at once, a second bound key is counted as
+// dropped, and the key that interrupts and the focus key still move the focus.
+func TestViewClientAHandlerThatNeverAnswersHoldsNoKey(t *testing.T) {
+	f := newViewFixture(t)
+	running, release := make(chan struct{}, 4), make(chan struct{})
+	f.host.invoke = func(ctx context.Context, _ uiview.Invocation) (uiview.Result, error) {
+		running <- struct{}{}
+		select {
+		case <-release:
+		case <-ctx.Done():
+		}
+		return uiview.Result{Outcome: uiview.OutcomeDone}, nil
+	}
+	f.mount("p", uiview.SlotPanel, uiview.Content{View: viewText("the day"), Intents: []uiview.IntentDecl{viewGoIntent}, Bindings: []uiview.Binding{viewGo("d", 1), viewGo("w", 2)}})
+	m := f.only()
+	f.loop.press(viewF6)
+	f.loop.press("d")
+	f.client.mu.Lock()
+	settled := slices.ContainsFunc(f.client.queue, func(it viewItem) bool { return it.result != nil })
+	f.client.mu.Unlock()
+	if settled {
+		t.Fatal("d returned with its intent settled: the input loop waited for the handler")
+	}
+	<-running
+	f.loop.press("w")
+	if f.client.droppedActivations != 1 || len(running) != 0 {
+		t.Fatalf("w, pressed while the handler of d had not answered: dropped %d, handler calls waiting %d", f.client.droppedActivations, len(running))
+	}
+	f.loop.press("\x1b")
+	if f.loop.focused != nil {
+		t.Fatal("the key that interrupts did not leave the mount whose handler never answers")
+	}
+	f.loop.press(viewF6)
+	if f.loop.focused != m {
+		t.Fatal("the focus key did not enter the mount whose handler never answers")
+	}
+	f.loop.press(viewF6)
+	if f.loop.focused != nil {
+		t.Fatal("the focus key did not leave the mount whose handler never answers")
+	}
+	// The handler answered nothing while the keys were pressed. The test lets it end, so that it leaves no goroutine.
+	close(release)
+	f.awaitResult()
+	f.loop.run()
 }

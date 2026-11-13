@@ -1,6 +1,7 @@
 package extensionconformance
 
 import (
+	"encoding/json"
 	"fmt"
 	"slices"
 	"strings"
@@ -21,6 +22,9 @@ import (
 //     SDK, and none of them reaches a client. The host parses the keys; an SDK that rewrote or dropped a binding would
 //     answer `none` to `order`;
 //   - ok: two keys that differ only in their letter are accepted, and the host holds them spelled as they were sent.
+//
+// A record built in Go is held to the same checks: on the registry of the same host, typed content with an unknown key,
+// a 33rd binding or a reserved key is answered what the record off the wire is answered.
 func TestConformance_UIViewBindings(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
@@ -104,6 +108,27 @@ func TestConformance_UIViewBindings(t *testing.T) {
 			}
 			if sent := bindings(deliveries[1]); !slices.Equal(sent, updated) || deliveries[1].Digest == deliveries[0].Digest {
 				t.Errorf("after the update the client was sent\n  %q (digest %q, before %q)\nwant\n  %q", sent, deliveries[1].Digest, deliveries[0].Digest, updated)
+			}
+			many := make([]uiview.Binding, 33)
+			for j := range many {
+				many[j] = uiview.Binding{Key: string("abefghijklmnopqrstuvwxy0123456789"[j]), Intent: "fx.tap"}
+			}
+			for what, bad := range map[string][]uiview.Binding{
+				"an unknown key": {{Key: "hyper", Intent: "fx.tap"}}, "a 33rd binding": many, "a reserved key": {{Key: "shift+escape", Intent: "fx.tap"}},
+			} {
+				content := uiview.Content{
+					View:    json.RawMessage(`{"root":{"kind":"text","text":"typed"}}`),
+					Intents: []uiview.IntentDecl{{Name: "fx.tap", Arg: uiview.Shape{Type: "object"}}}, Bindings: bad,
+				}
+				typed := uiview.MountArgs{Key: "typed", Slot: uiview.SlotPanel, Content: content}
+				raw, merr := json.Marshal(typed)
+				if merr != nil {
+					t.Fatal(merr)
+				}
+				_, wire := uiview.DecodeMount(raw)
+				if _, err := views.Mount(tc.extName, typed); wire == nil || wire.Code != uiview.CodeInvalid || err == nil || *err != *wire {
+					t.Errorf("typed content with %s was answered %v, want what the record off the wire is answered: %v", what, err, wire)
+				}
 			}
 			// What the host holds is the accepted update, one revision after the mount: the five refused ones changed nothing.
 			for _, snap := range views.Snapshots() {

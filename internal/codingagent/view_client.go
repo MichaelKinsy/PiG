@@ -148,6 +148,8 @@ type viewClientUI struct {
 	listen func(listener *tui.TuiInputListener) (remove func())
 	// interrupts reports whether data is the key that interrupts (app.interrupt).
 	interrupts func(data string) bool
+	// reserved returns the reserved action (viewReservedActions) the user's keybindings give data to, or "".
+	reserved func(data string) string
 	// notify shows one notice line.
 	notify func(message, level string)
 	// size returns the terminal's columns and rows and whether it reports the pointer.
@@ -544,9 +546,14 @@ func (c *viewClient) focusKey(data string) *tui.TuiInputResult {
 // bindings: the mount holds the focus and its node declined the key. The key the terminal reported is compared with the
 // parsed key of each binding (tui.MatchesKeyID), never with its text, so the order the plugin wrote the modifiers in
 // changes nothing. The first match raises the binding's intent, with no node, and its argument; a key no binding names
-// is dropped. At most 32 bindings are compared.
+// is dropped. At most 32 bindings are compared. A key the user's keybindings give to a reserved action is asked for
+// first, when the key is pressed, and reaches no binding, whatever the mount binds and whenever the keybindings changed.
 func (c *viewClient) unhandledKey(m *viewMount, data string) {
 	if !m.focused || !m.keys {
+		return
+	}
+	if action := c.ui.reserved(data); action != "" {
+		c.withheld(m, data, action)
 		return
 	}
 	for i := range m.bindings {
@@ -564,6 +571,17 @@ func (c *viewClient) unhandledKey(m *viewMount, data string) {
 		}
 		c.raise(m, &m.intents[at], arg)
 		return
+	}
+}
+
+// withheld tells the plugin, once for a binding, that the key it names is the user's key of the reserved action, so the
+// terminal does not honour the binding.
+func (c *viewClient) withheld(m *viewMount, data, action string) {
+	for i := range m.bindings {
+		if b := &m.bindings[i]; b.Key != "" && tui.MatchesKeyID(data, b.Key) {
+			m.reportUnbound(i, b.Key, "key "+b.Key+" is the user's key of "+action+", so it raises nothing")
+			return
+		}
 	}
 }
 

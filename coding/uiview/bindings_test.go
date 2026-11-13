@@ -60,7 +60,7 @@ func TestBindingsAccepted(t *testing.T) {
 		map[string]any{"gesture": "swipe-up", "intent": "fx.tap"}, map[string]any{"gesture": "swipe-down", "intent": "fx.tap"})))
 	for _, key := range []string{"a", "z", "0", "9", "enter", "space", "backspace", "delete", "insert", "home", "end", "pageUp", "pageDown", "up", "down",
 		"f1", "f5", "f7", "f12", "?", "/", "[", "\\", "`", "shift+left", "shift+a", "ctrl+p", "alt+enter", "ctrl+shift+p", "alt+ctrl+shift+f5", "ctrl+1", "alt+/",
-		"c", "shift+c", "alt+c", "d", "ctrl+x"} {
+		"c", "shift+c", "alt+c", "d", "ctrl+x", "+", "ctrl++", "alt+ctrl++"} {
 		wantOK(t, key, tryMount(t, a, bindingRecord(keyBinding(key, "fx.tap"))))
 	}
 }
@@ -109,7 +109,8 @@ func TestBindingsRefused(t *testing.T) {
 		"unknown modifier":       {keyBinding("super+a", "fx.tap")},
 		"modifier twice":         {keyBinding("ctrl+ctrl+a", "fx.tap")},
 		"modifier alone":         {keyBinding("ctrl+", "fx.tap")},
-		"plus":                   {keyBinding("+", "fx.tap")},
+		"shift and plus":         {keyBinding("shift++", "fx.tap")},
+		"plus twice":             {keyBinding("++", "fx.tap")},
 		"shifted digit":          {keyBinding("shift+1", "fx.tap")},
 		"shifted symbol":         {keyBinding("shift+/", "fx.tap")},
 		"two keys":               {keyBinding("a+b", "fx.tap")},

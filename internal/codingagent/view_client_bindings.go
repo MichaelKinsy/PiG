@@ -4,7 +4,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"unicode"
 
 	"github.com/MichaelKinsy/PiG/coding/uiview"
 	"github.com/MichaelKinsy/PiG/tui"
@@ -20,6 +19,9 @@ import (
 // so the focus key reaches it even when its view has no node that takes keys, and the mount itself, not its tab entry,
 // holds the focus then: a key has one path to the bindings.
 //
+// On that path the reserved actions come first (viewReservedActions): a key the user's keybindings give to one of them
+// reaches no binding.
+//
 // The terminal reports no gesture, and a mount of a slot that takes no focus is never given a key. The plugin is told
 // each such binding once, as an unsupported notice with the path bindings[i].
 //
@@ -28,6 +30,23 @@ import (
 
 // viewHintGap separates the entries of the hint row.
 const viewHintGap = "  "
+
+// viewReservedActions are the actions whose keys no binding is given: the four app.* rows of Pi's KEYBINDINGS
+// (core/keybindings.ts, appKeybindingRows here) whose default keys are rows of uiview.ReservedKeys: app.interrupt
+// (escape), app.clear (ctrl+c), app.exit (ctrl+d) and app.suspend (ctrl+z). The host refuses a binding of those defaults
+// when it is mounted. The user's keybindings file gives an action other keys and /reload reads it again, so the
+// terminal asks the keybindings when a key is pressed (viewClient.unhandledKey, viewMount.HandleInput).
+var viewReservedActions = [...]AppKeybinding{AppInterrupt, AppClear, AppExit, AppSuspend}
+
+// viewReservedAction returns the reserved action the keybindings give data to, or "".
+func viewReservedAction(km *KeybindingsManager, data string) string {
+	for _, action := range viewReservedActions {
+		if km.Matches(data, string(action)) {
+			return string(action)
+		}
+	}
+	return ""
+}
 
 // bind takes the bindings of a snapshot: it decides whether the mount offers a key, builds the text of the hint row and
 // tells the plugin which bindings the terminal cannot honour. It runs once for a snapshot, never for a frame.
@@ -43,7 +62,7 @@ func (m *viewMount) bind(bindings []uiview.Binding) {
 			m.reportUnbound(i, b.Key, "a mount of slot "+string(m.slot.slot)+" never holds the keyboard focus in the terminal, so key "+b.Key+" raises nothing")
 		default:
 			m.keys = true
-			if name := viewHintName(b.Name); name != "" {
+			if name := strings.TrimSpace(b.Name); name != "" {
 				if hint.Len() > 0 {
 					hint.WriteString(viewHintGap)
 				}
@@ -72,17 +91,6 @@ func (m *viewMount) reportUnbound(index int, trigger, message string) {
 	}
 	m.unbound[path+trigger] = true
 	m.c.report(m, uiview.Notice{Code: string(uiview.CodeUnsupported), Severity: uiview.SeverityInfo, Path: path, Message: message})
-}
-
-// viewHintName is a binding's name as the hint row writes it: on one line, so a control character, a line separator or
-// a paragraph separator becomes a space. The contract bounds a name's bytes, not its characters.
-func viewHintName(name string) string {
-	return strings.TrimSpace(strings.Map(func(r rune) rune {
-		if unicode.IsControl(r) || r == '\u2028' || r == '\u2029' {
-			return ' '
-		}
-		return r
-	}, name))
 }
 
 // viewHintRow is the hint row at width: the text cut by cells, never by bytes, in the theme's muted colour.

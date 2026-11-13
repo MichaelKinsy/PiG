@@ -21,7 +21,7 @@ const (
 
 // Binding ties one trigger, a key or a gesture, to an intent the content declares without a nodeKey. Arg is the constant
 // argument the client raises the intent with; absent, the client raises it with {}. Name is what a client shows for the
-// binding (a hint, a button, the accessible name).
+// binding (a hint, a button, the accessible name): a label (offLabel) of at most 256 bytes.
 type Binding struct {
 	Key     string          `json:"key,omitempty"`
 	Gesture string          `json:"gesture,omitempty"`
@@ -44,8 +44,8 @@ var bindingNamedKeys = []string{
 }
 
 // bindingSymbolKeys is the closed set of symbol keys, each named by the character it produces. It is Pi's set of symbol
-// keys without "+", which separates a modifier from its key.
-const bindingSymbolKeys = "`-=[]\\;',./!@#$%^&*()_|~{}:<>?"
+// keys.
+const bindingSymbolKeys = "`-=+[]\\;',./!@#$%^&*()_|~{}:<>?"
 
 // bindingGestures is the closed set of gestures.
 var bindingGestures = []string{"swipe-left", "swipe-right", "swipe-up", "swipe-down"}
@@ -62,7 +62,8 @@ type ReservedKey struct {
 }
 
 // reservedKeys is the one table of reserved keys: the host refuses a binding of a row, and a client keeps the row's key
-// ahead of the focused node and of every binding.
+// ahead of the focused node and of every binding. The rows are the keys the actions have by default. Where a user can
+// give the action of a row another key, the client asks when a key is pressed and gives no binding that key either.
 var reservedKeys = []ReservedKey{
 	{Base: "escape", Why: "leaves the mount"},
 	{Base: "tab", Why: "moves the focus"},
@@ -88,13 +89,14 @@ func (k BindingKey) Reserved() *ReservedKey {
 
 // ParseBindingKey reads a key id as tui.ParseKey and registerShortcut write it: the modifiers shift, ctrl and alt in
 // any order, each at most once and each followed by "+", then one base key. The base is a lower-case letter, a digit, a
-// named key or a symbol key. The id is lower case but for pageUp and pageDown, and a key has one name: no alias is read.
+// named key or a symbol key. "+" is a symbol key, as Pi's parseKeyId reads it: "ctrl++" is ctrl held with it. The id is
+// lower case but for pageUp and pageDown, and a key has one name: no alias is read.
 // Shift goes with a letter or a named key only, because the character a shifted digit or symbol produces depends on the
 // keyboard layout; such a key is named by the symbol it produces.
 func ParseBindingKey(id string) (BindingKey, error) {
 	var k BindingKey
 	base := id
-	for {
+	for base != "+" {
 		mod, rest, found := strings.Cut(base, "+")
 		if !found {
 			break
@@ -163,6 +165,9 @@ func checkBindings(bindings []Binding, intents []IntentDecl) error {
 		}
 		if len(b.Name) > maxBindingName {
 			return fmt.Errorf("binding %d: name is %d bytes, at most %d", i, len(b.Name), maxBindingName)
+		}
+		if offLabel(b.Name) {
+			return fmt.Errorf("binding %d: name holds %s", i, labelFault)
 		}
 		if len(b.Arg) > maxBindingArg {
 			return fmt.Errorf("binding %d: arg is %d bytes, at most %d", i, len(b.Arg), maxBindingArg)

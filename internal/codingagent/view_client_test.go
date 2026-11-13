@@ -54,10 +54,12 @@ type viewTestLoop struct {
 	onNotice  func()
 	size      viewSize
 	listeners []*tui.TuiInputListener
+	// keybindings are the user's: Pi's defaults until a test gives an action other keys.
+	keybindings *KeybindingsManager
 }
 
 func newViewTestLoop(t *testing.T) *viewTestLoop {
-	return &viewTestLoop{t: t, posted: make(chan struct{}, 4096), size: viewSize{columns: 40, rows: 24}}
+	return &viewTestLoop{t: t, posted: make(chan struct{}, 4096), size: viewSize{columns: 40, rows: 24}, keybindings: NewKeybindingsManagerFromBindings(nil, "")}
 }
 
 func (l *viewTestLoop) post(fn func()) bool {
@@ -113,7 +115,8 @@ func (l *viewTestLoop) ui() viewClientUI {
 				l.listeners = slices.DeleteFunc(l.listeners, func(o *tui.TuiInputListener) bool { return o == listener })
 			}
 		},
-		interrupts: func(data string) bool { return data == "\x1b" },
+		interrupts: func(data string) bool { return l.keybindings.Matches(data, string(AppInterrupt)) },
+		reserved:   func(data string) string { return viewReservedAction(l.keybindings, data) },
 		notify: func(message, level string) {
 			if l.onNotice != nil {
 				l.onNotice()
