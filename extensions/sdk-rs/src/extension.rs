@@ -4492,6 +4492,178 @@ mod tests {
         let _ = std::fs::remove_file(sock);
     }
 
+    // Runs one provider_stream_simple request of an author that pushes start, waits until its request's signal aborts, then (when `release` is given) for the test's word, and goes on: it pushes a text_delta and ends its stream with a result. `host` plays the host from the request's first frame to its response.
+    fn run_provider_stream_probe(
+        tag: &str,
+        release: Option<mpsc::Receiver<()>>,
+        host: impl FnOnce(&mut UnixStream),
+    ) {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let sock = std::env::temp_dir().join(format!("pig-sdk-rs-{tag}-{unique}.sock"));
+        let _ = std::fs::remove_file(&sock);
+        let listener = UnixListener::bind(&sock).unwrap();
+        let mut ext = Extension::new("stream-cancel-kinds");
+        let release = std::sync::Mutex::new(release);
+        ext.register_provider_stream(
+            "probe",
+            serde_json::json!({"api":"probe-api","baseUrl":"https://extension.invalid","apiKey":"probe-key","models":[]}),
+            move |ctx, _model, _request, _options| {
+                let stream = std::sync::Arc::new(crate::ModelEventStream::new());
+                let producer = stream.clone();
+                let ctx = ctx.clone();
+                let release = release.lock().unwrap().take();
+                std::thread::spawn(move || {
+                    producer.push(serde_json::json!({"type":"start","partial":{"role":"assistant","content":[]}}));
+                    while !ctx.is_cancelled() {
+                        std::thread::sleep(Duration::from_millis(2));
+                    }
+                    if let Some(release) = release {
+                        let _ = release.recv_timeout(Duration::from_secs(5));
+                    }
+                    producer.push(serde_json::json!({"type":"text_delta","contentIndex":0,"delta":"after the abort","partial":{"role":"assistant","content":[{"type":"text","text":"after the abort"}]}}));
+                    producer.end(serde_json::json!({"role":"assistant","content":[{"type":"text","text":"the author's result"}],"stopReason":"stop"}));
+                });
+                Ok(stream)
+            },
+        );
+        let sock_for_ext = sock.clone();
+        let handle =
+            std::thread::spawn(move || ext.run_with_socket(sock_for_ext.to_str().unwrap()));
+        let (mut stream, _) = listener.accept().unwrap();
+        assert_eq!(read_env(&mut stream).msg_type, "register");
+        write_env(
+            &mut stream,
+            &Envelope {
+                msg_type: "ready".to_string(),
+                ready: Some(ReadyMsg {
+                    cwd: "/tmp".to_string(),
+                    mode: "tui".to_string(),
+                    width: 80,
+                    height: 24,
+                    source_info: None,
+                    state: None,
+                }),
+                ..Default::default()
+            },
+        );
+        write_env(
+            &mut stream,
+            &Envelope {
+                msg_type: "request".to_string(),
+                id: Some("req-stream".to_string()),
+                request: Some(RequestMsg {
+                    signal_aborted: false,
+                    child_session: None,
+                    terminal_input: None,
+                    stream: None,
+                    stream_error: None,
+                    args_error: None,
+                    deep_args: false,
+                    tool_call_index: None,
+                    args_raw: None,
+                    method: "provider_stream_simple".to_string(),
+                    tool: Some("probe".to_string()),
+                    event: None,
+                    handler_id: 0,
+                    tool_call_id: None,
+                    batch: None,
+                    args: Some(serde_json::json!({"model":{},"context":{},"options":{}})),
+                }),
+                ..Default::default()
+            },
+        );
+        host(&mut stream);
+        write_env(
+            &mut stream,
+            &Envelope {
+                msg_type: "shutdown".to_string(),
+                ..Default::default()
+            },
+        );
+        handle.join().unwrap().unwrap();
+        let _ = std::fs::remove_file(sock);
+    }
+
+    // Reads frames up to the next stream event of the request, whose type it returns, or up to the request's response.
+    fn next_stream_frame(
+        stream: &mut UnixStream,
+    ) -> (Option<String>, Option<crate::protocol::ResponseMsg>) {
+        loop {
+            let env = read_env(stream);
+            match env.msg_type.as_str() {
+                "notify" => {
+                    if let Some(notify) = env
+                        .notify
+                        .as_ref()
+                        .filter(|notify| notify.method == "provider_stream_event")
+                    {
+                        let kind = notify
+                            .args
+                            .as_ref()
+                            .and_then(|args| args["result"]["type"].as_str());
+                        return (Some(kind.unwrap_or_default().to_string()), None);
+                    }
+                }
+                "response" => return (None, env.response),
+                "call" => answer_call(stream, &env),
+                _ => {}
+            }
+        }
+    }
+
+    // Pi's consumer of a response has no check of the abort signal (packages/agent/src/agent-loop.ts:424-478): after the abort of a turn, a signal-only cancel, the author's signal is aborted, the events its stream gives are forwarded and its result is the answer.
+    #[test]
+    fn provider_stream_goes_on_after_a_signal_only_cancel_and_answers_the_authors_result() {
+        run_provider_stream_probe("stream-signal-only", None, |stream| {
+            assert_eq!(next_stream_frame(stream).0.as_deref(), Some("start"));
+            write_env(stream, &cancel_env("req-stream", "context canceled", true));
+            assert_eq!(
+                next_stream_frame(stream).0.as_deref(),
+                Some("text_delta"),
+                "the event the author pushed after the abort of its signal is forwarded"
+            );
+            let (event, response) = next_stream_frame(stream);
+            assert_eq!(event, None);
+            let response = response.unwrap();
+            assert_eq!(response.error.map(|error| error.message), None);
+            assert_eq!(
+                response.result.unwrap()["content"][0]["text"],
+                "the author's result"
+            );
+        });
+    }
+
+    // An ordinary cancel ends the request, also after a signal-only cancel: the author's stream is ended, nothing more is forwarded and the answer is the abort.
+    #[test]
+    fn ordinary_cancel_after_a_signal_only_cancel_ends_the_provider_stream_request() {
+        let (release_tx, release_rx) = mpsc::channel();
+        run_provider_stream_probe("stream-ordinary-after", Some(release_rx), |stream| {
+            assert_eq!(next_stream_frame(stream).0.as_deref(), Some("start"));
+            write_env(stream, &cancel_env("req-stream", "context canceled", true));
+            write_env(
+                stream,
+                &cancel_env("req-stream", "the host ends the request", false),
+            );
+            let (event, response) = next_stream_frame(stream);
+            assert_eq!(
+                event, None,
+                "no event is forwarded after the ordinary cancel"
+            );
+            assert_eq!(
+                response
+                    .unwrap()
+                    .error
+                    .map(|error| error.message)
+                    .as_deref(),
+                Some("provider stream aborted")
+            );
+            let _ = release_tx.send(());
+        });
+    }
+
     #[test]
     fn oauth_registration_flags_modify_models_and_uses_callback_server_beside_refresh_models() {
         use crate::oauth::{OAuthCredentials, OAuthProvider};

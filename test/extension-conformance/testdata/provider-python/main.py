@@ -87,4 +87,33 @@ def new_extension() -> pig_sdk.Extension:
         return stream
     extension.register_provider("cancel-burst-provider",{"api":"cancel-burst-extension-api","baseUrl":"https://extension.invalid","apiKey":"extension-key","models":[{"id":"faux","name":"Faux","reasoning":False,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":128000,"maxTokens":4096}],"streamSimple":cancel_burst(False)})
     extension.register_provider("cancel-burst-held-provider",{"api":"cancel-burst-extension-api","baseUrl":"https://extension.invalid","apiKey":"extension-key","models":[{"id":"faux","name":"Faux","reasoning":False,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":128000,"maxTokens":4096}],"streamSimple":cancel_burst(True)})
+    def cancel_error(ctx, model, request, options):
+        # The producer answers the abort of its request with an error event that holds its partial message: it pushes start and three text_delta events, waits until its
+        # request's signal aborts, and pushes the error event (reason aborted) whose message is the partial with stopReason aborted and its errorMessage.
+        import time
+        block = {"type": "text", "text": ""}
+        message = {"role":"assistant","api":model["api"],"provider":model["provider"],"model":model["id"],"content":[block],"stopReason":"stop","timestamp":1,"usage":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"totalTokens":0,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}}}
+        result = pig_sdk.ModelEventStream()
+        def produce():
+            result.push({"type":"start","partial":message})
+            for index in range(3):
+                block["text"] = "x" * (index + 1)
+                result.push({"type":"text_delta","contentIndex":0,"delta":"x","partial":message})
+            deadline = time.monotonic() + 10
+            while not ctx.is_cancelled() and time.monotonic() < deadline:
+                time.sleep(0.005)
+            message["stopReason"] = "aborted"
+            message["errorMessage"] = "the author saw the abort"
+            result.push({"type":"error","reason":"aborted","error":message})
+        threading.Thread(target=produce, daemon=True).start()
+        return result
+    extension.register_provider("cancel-error-provider",{"api":"cancel-error-extension-api","baseUrl":"https://extension.invalid","apiKey":"extension-key","models":[{"id":"faux","name":"Faux","reasoning":False,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":128000,"maxTokens":4096}],"streamSimple":cancel_error})
+    def cancel_throw(ctx, model, request, options):
+        # streamSimple waits until its request's signal aborts and fails, showing nothing.
+        import time
+        deadline = time.monotonic() + 10
+        while not ctx.is_cancelled() and time.monotonic() < deadline:
+            time.sleep(0.005)
+        raise RuntimeError("the author's stream threw at the abort")
+    extension.register_provider("cancel-throw-provider",{"api":"cancel-throw-extension-api","baseUrl":"https://extension.invalid","apiKey":"extension-key","models":[{"id":"faux","name":"Faux","reasoning":False,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":128000,"maxTokens":4096}],"streamSimple":cancel_throw})
     return extension

@@ -86,6 +86,31 @@
      :name "cancel end producer")
     result))
 
+(defun cancel-error-stream (ctx model request options)
+  "The producer answers the abort of its request with an error event that holds its partial message: it pushes start and three text_delta events, waits until its request's signal aborts, and pushes the error event (reason aborted) whose message is the partial with stopReason aborted and its errorMessage."
+  (declare (ignore request options))
+  (let* ((block (pig:obj "type" "text" "text" ""))
+         (message (pig:obj "role" "assistant" "api" (pig:jget model "api") "provider" (pig:jget model "provider") "model" (pig:jget model "id")
+                           "content" (vector block) "stopReason" "stop" "timestamp" 1 "usage" (zero-usage)))
+         (result (pig:make-model-event-stream)))
+    (sb-thread:make-thread
+     (lambda ()
+       (pig:model-stream-push result (pig:obj "type" "start" "partial" message))
+       (dotimes (i 3)
+         (setf (gethash "text" block) (make-string (1+ i) :initial-element #\x))
+         (pig:model-stream-push result (pig:obj "type" "text_delta" "contentIndex" 0 "delta" "x" "partial" message)))
+       (loop repeat 2000 until (pig:ctx-cancelled-p ctx) do (sleep 0.005))
+       (setf (gethash "stopReason" message) "aborted" (gethash "errorMessage" message) "the author saw the abort")
+       (pig:model-stream-push result (pig:obj "type" "error" "reason" "aborted" "error" message)))
+     :name "cancel error producer")
+    result))
+
+(defun cancel-throw-stream (ctx model request options)
+  "streamSimple waits until its request's signal aborts and fails, showing nothing."
+  (declare (ignore model request options))
+  (loop repeat 2000 until (pig:ctx-cancelled-p ctx) do (sleep 0.005))
+  (error "the author's stream threw at the abort"))
+
 (defun new-extension ()
   (let ((ext (pig:make-extension "provider-producer")))
     (pig:register-provider ext "extension-provider"
@@ -112,4 +137,16 @@
                                                               "cost" (pig:obj "input" 0 "output" 0 "cacheRead" 0 "cacheWrite" 0)
                                                               "contextWindow" 128000 "maxTokens" 4096))
                                     "streamSimple" #'cancel-end-stream))
+    (pig:register-provider ext "cancel-error-provider"
+                           (pig:obj "api" "cancel-error-extension-api" "baseUrl" "https://extension.invalid" "apiKey" "extension-key"
+                                    "models" (vector (pig:obj "id" "faux" "name" "Faux" "reasoning" :false "input" (vector "text")
+                                                              "cost" (pig:obj "input" 0 "output" 0 "cacheRead" 0 "cacheWrite" 0)
+                                                              "contextWindow" 128000 "maxTokens" 4096))
+                                    "streamSimple" #'cancel-error-stream))
+    (pig:register-provider ext "cancel-throw-provider"
+                           (pig:obj "api" "cancel-throw-extension-api" "baseUrl" "https://extension.invalid" "apiKey" "extension-key"
+                                    "models" (vector (pig:obj "id" "faux" "name" "Faux" "reasoning" :false "input" (vector "text")
+                                                              "cost" (pig:obj "input" 0 "output" 0 "cacheRead" 0 "cacheWrite" 0)
+                                                              "contextWindow" 128000 "maxTokens" 4096))
+                                    "streamSimple" #'cancel-throw-stream))
     ext))
