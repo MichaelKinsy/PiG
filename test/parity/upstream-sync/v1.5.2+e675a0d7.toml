@@ -11,6 +11,7 @@ rationale = "e675a0d7f adds the section \"Released clients\": pi.dev serves each
 [[files]]
 path = "packages/coding-agent/src/core/remote-catalog-provider.ts"
 change = "modified"
-disposition = "ported"
+disposition = "unchanged-observable"
 evidence = ["test:internal/codingagent/remote_catalog_provider_upstream_test.go#TestRemoteCatalogProviderUpstream"]
 rationale = "e675a0d7f adds a doc comment to requestCatalog and no code: the User-Agent carries the client's version, pi.dev serves the newest catalog published for a minimum version at or below it, so a client receives catalogs published after its release. newCatalogRequest (internal/codingagent/remote_catalog_provider.go) carries the comment; its request is unchanged and the existing port test covers it."
+oracle = "not carried: comment only"
