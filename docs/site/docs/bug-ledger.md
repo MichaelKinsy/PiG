@@ -847,6 +847,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-8894a13](#bf-8894a13) | A double-quoted YAML string in a skill, prompt template or `parseFrontmatter` header now reads a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8894a13-2](#bf-8894a13-2) | The liveness conformance harness answers the host-parser helper calls a factory makes before the register… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8897a1b](#bf-8897a1b) | Interactive startup lists skill diagnostics under `[Skill warnings]` instead of `[Skill conflicts]`; most of… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
+| [BF-88cf285](#bf-88cf285) | `TestDaemonRepliesBeforeBulkOutputLikePisDaemon` failed on a loaded machine because it started to read before… | PiG's own defect | All platforms | Unreleased |
 | [BF-892827f](#bf-892827f) | `coding`: while the run of a session-graph client (an ExtensionRunner an extension constructed) was aborted… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-893ff97](#bf-893ff97) | A `read` call whose `offset` or `limit` arrives as a string shows the right line range (`:25-37`, not… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-89d167f](#bf-89d167f) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
@@ -13079,6 +13080,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `8897a1b41f` (2026-10-30, #11566)
 - **Tests:** `internal/codingagent/interactive_resource_test.go::TestResourceCollisionDiagnostics_SkillIncludesSourceInfo`, `internal/codingagent/loaded_resources_diagnostics_test.go::TestShowLoadedResourcesListingThenDiagnostics`, `internal/codingagent/loaded_resources_quiet_upstream_test.go::TestLoadedResourcesQuietReloadUpstream`, `internal/codingagent/skill_collision_test.go::TestShowLoadedResourcesSkillConflicts`, `internal/codingagent/skill_file_metadata_test.go::TestSkillFileMetadataRetainsCollisionDiagnostics`
 - **Release note:** Interactive startup lists skill diagnostics under `[Skill warnings]` instead of `[Skill conflicts]`; most of them are validation warnings for skills that still load, not name collisions. Carried forward from Pi f14813e9 (earendil-works/pi#11521), past the 1.4.0+b3a29f11 pin.
+
+### BF-88cf285
+
+**`TestDaemonRepliesBeforeBulkOutputLikePisDaemon` failed on a loaded machine because it started to read before…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `TestDaemonRepliesBeforeBulkOutputLikePisDaemon` failed on a loaded machine because it started to read before the daemon had queued the reply it measures, so it counted command output that its own reading drained as output "ahead of the reply" (2.7 MB against Pi's own daemon in one CI run).
+- **Root cause:** `TestDaemonRepliesBeforeBulkOutputLikePisDaemon` failed on a loaded machine because it started to read before the daemon had queued the reply it measures, so it counted command output that its own reading drained as output "ahead of the reply" (2.7 MB against Pi's own daemon in one CI run).
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `88cf2855e3` (2026-11-13)
+- **Tests:** `env/daemon_wire_exec_oracle_test.go::TestDaemonRepliesBeforeBulkOutputLikePisDaemon`
+- **Release note:** `TestDaemonRepliesBeforeBulkOutputLikePisDaemon` failed on a loaded machine because it started to read before the daemon had queued the reply it measures, so it counted command output that its own reading drained as output "ahead of the reply" (2.7 MB against Pi's own daemon in one CI run). The defect was the test's: no daemon changes. Both daemons send a small reply ahead of the command output still in their queue, and the test bounds the output that arrives ahead of that reply. It read as soon as it had sent its request, or as soon as the request's effect (a `mkdir`) showed, which leaves the time until a worker of the daemon is scheduled to queue the reply: with the `mkdir` wait, 1.57 MB arrived ahead of the reply of PiG's daemon once in 400 runs on a loaded machine. The reply now answers the first of two chunk writes to one handle and the test reads once the second chunk is in the file: a daemon runs a handle's chunk writes in order, so the first reply is queued by then, and exactly one 64 KiB frame is ahead of it on both daemons. The command prints numbered lines instead of zeros, so the test also fails when output is missing, repeated or out of order.
 
 ### BF-892827f
 
