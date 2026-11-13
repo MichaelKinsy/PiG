@@ -1,0 +1,236 @@
+# SPDX-License-Identifier: MIT
+name: Pre-flight
+
+# The PiG CI pre-flight: automation/ci/preflight/README.md.
+
+on:
+  # A PR event judges that PR at once, from main's workflow and a checkout of main (pull_request_target; the PR's own code
+  # is never run), so ci.yml's Pre-flight verdict job has a status to wait for. The hourly run judges every open PR again.
+  pull_request_target: # zizmor: ignore[dangerous-triggers] main's code and a sparse checkout of main; the PR is data read through the API, never executed
+    types: [opened, synchronize, reopened, edited, ready_for_review]
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+    inputs:
+      prs:
+        description: PR numbers, space-separated; empty runs every open PR
+        required: false
+        default: ''
+        type: string
+      dry-run:
+        description: Read only; set no status and post no comment
+        required: false
+        default: false
+        type: boolean
+      repo:
+        description: With dry-run only, another repository's PRs to judge, read only (for a test on a fork)
+        required: false
+        default: ''
+        type: string
+
+permissions: {}
+
+# The checkout is sparse: go.work names modules it leaves out.
+env:
+  GOWORK: "off"
+
+# One PR's runs queue behind each other per PR (a newer push supersedes an older one); the hourly sweep has a group of its own.
+concurrency:
+  group: preflight-${{ github.event.pull_request.number || 'sweep' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request_target' }}
+
+jobs:
+  preflight:
+    name: Pre-flight
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      statuses: write
+      pull-requests: write
+    outputs:
+      next: ${{ steps.run.outputs.next }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # What the pre-flight builds from and reads of main; a test holds it to config.yaml.
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /go.mod
+            /go.sum
+            /.go-version
+            /automation/ci/preflight/
+            /.gitleaks.toml
+            /.gitleaksignore
+            /.github/actionlint.yaml
+            /LICENSES/
+            /docs/parity/PORT_MAP.md
+            /test/parity/interfaces/test-mapping-v*.json
+            /test/parity/upstream-sync/*.toml
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - name: Build the pre-flight and install its scanners
+        shell: bash
+        run: |
+          set -euo pipefail
+          go build -o "$RUNNER_TEMP/preflight/preflight" ./automation/ci/preflight
+          "$RUNNER_TEMP/preflight/preflight" install --bin "$RUNNER_TEMP/preflight/bin"
+      - name: Run the pre-flight over the PRs
+        id: run
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PRS: ${{ inputs.prs || github.event.pull_request.number }}
+          DRY_RUN: ${{ inputs.dry-run }}
+          REPO: ${{ inputs.repo }}
+          PRIVATE_TERMS: ${{ secrets.PIG_PRIVATE_TERMS }}
+        run: |
+          set -uo pipefail
+          if [ -n "${PRIVATE_TERMS:-}" ]; then
+            (umask 077 && printf '%s\n' "$PRIVATE_TERMS" > "$RUNNER_TEMP/private-terms")
+            export PIG_PRIVATE_TERMS_FILE="$RUNNER_TEMP/private-terms"
+          fi
+          extra=()
+          if [ "${DRY_RUN:-}" = true ]; then extra+=(--dry-run); fi
+          # Another repository is read only.
+          if [ -n "${REPO:-}" ] && [ "${DRY_RUN:-}" != true ]; then
+            echo "::error::repo is for a dry run only"
+            exit 2
+          fi
+          "$RUNNER_TEMP/preflight/preflight" run --repo "${REPO:-$GITHUB_REPOSITORY}" --root "$GITHUB_WORKSPACE" \
+            --bin "$RUNNER_TEMP/preflight/bin" --work "$RUNNER_TEMP/preflight/work" \
+            --prs "${PRS:-}" --budget 200 --time-budget 25m --next "$RUNNER_TEMP/preflight/next.json" \
+            --handled "$RUNNER_TEMP/preflight/preflight-handled-0.json" "${extra[@]}"
+          status=$?
+          # Written also when the run failed, so the deferred PRs still get their jobs.
+          if [ -s "$RUNNER_TEMP/preflight/next.json" ]; then
+            echo "next=$(cat "$RUNNER_TEMP/preflight/next.json")" >> "$GITHUB_OUTPUT"
+          fi
+          exit "$status"
+      - name: Keep what the job did with each PR, for the verify job
+        if: ${{ always() && inputs.dry-run != true }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        # The name verify requires (firstReport in verify.go).
+        with:
+          name: preflight-handled-0
+          path: ${{ runner.temp }}/preflight/preflight-handled-0.json
+          if-no-files-found: ignore
+          retention-days: 1
+
+  more:
+    name: Pre-flight (PRs ${{ matrix.prs }})
+    needs: preflight
+    if: ${{ !cancelled() && needs.preflight.outputs.next != '' && needs.preflight.outputs.next != '[]' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      statuses: write
+      pull-requests: write
+    strategy:
+      fail-fast: false
+      matrix:
+        prs: ${{ fromJSON(needs.preflight.outputs.next) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /go.mod
+            /go.sum
+            /.go-version
+            /automation/ci/preflight/
+            /.gitleaks.toml
+            /.gitleaksignore
+            /.github/actionlint.yaml
+            /LICENSES/
+            /docs/parity/PORT_MAP.md
+            /test/parity/interfaces/test-mapping-v*.json
+            /test/parity/upstream-sync/*.toml
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - name: Build the pre-flight and install its scanners
+        shell: bash
+        run: |
+          set -euo pipefail
+          go build -o "$RUNNER_TEMP/preflight/preflight" ./automation/ci/preflight
+          "$RUNNER_TEMP/preflight/preflight" install --bin "$RUNNER_TEMP/preflight/bin"
+      - name: Run the pre-flight over these PRs
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PRS: ${{ matrix.prs }}
+          JOB_INDEX: ${{ strategy.job-index }}
+          DRY_RUN: ${{ inputs.dry-run }}
+          REPO: ${{ inputs.repo }}
+          PRIVATE_TERMS: ${{ secrets.PIG_PRIVATE_TERMS }}
+        run: |
+          set -euo pipefail
+          if [ -n "${PRIVATE_TERMS:-}" ]; then
+            (umask 077 && printf '%s\n' "$PRIVATE_TERMS" > "$RUNNER_TEMP/private-terms")
+            export PIG_PRIVATE_TERMS_FILE="$RUNNER_TEMP/private-terms"
+          fi
+          extra=()
+          if [ "${DRY_RUN:-}" = true ]; then extra+=(--dry-run); fi
+          "$RUNNER_TEMP/preflight/preflight" run --repo "${REPO:-$GITHUB_REPOSITORY}" --root "$GITHUB_WORKSPACE" \
+            --bin "$RUNNER_TEMP/preflight/bin" --work "$RUNNER_TEMP/preflight/work" \
+            --prs "$PRS" --time-budget 25m --handled "$RUNNER_TEMP/preflight/preflight-handled-$JOB_INDEX-more.json" "${extra[@]}"
+      - name: Keep what the job did with each PR, for the verify job
+        if: ${{ always() && inputs.dry-run != true }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: preflight-handled-${{ strategy.job-index }}-more
+          path: ${{ runner.temp }}/preflight/preflight-handled-${{ strategy.job-index }}-more.json
+          if-no-files-found: ignore
+          retention-days: 1
+
+  verify:
+    name: Every PR has its verdict
+    needs: [preflight, more]
+    if: ${{ always() && inputs.dry-run != true }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      statuses: read
+      pull-requests: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /go.mod
+            /go.sum
+            /.go-version
+            /automation/ci/preflight/
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - name: Build the pre-flight
+        shell: bash
+        run: go build -o "$RUNNER_TEMP/preflight" ./automation/ci/preflight
+      - name: Collect what the jobs did
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        continue-on-error: true
+        with:
+          pattern: preflight-handled-*
+          path: ${{ runner.temp }}/handled
+          # Without it, one artifact lands in the path without the directory of its name.
+          merge-multiple: true
+      - name: Check every PR and keep the issue
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/handled"
+          "$RUNNER_TEMP/preflight" verify --repo "$GITHUB_REPOSITORY" --handled "$RUNNER_TEMP/handled"

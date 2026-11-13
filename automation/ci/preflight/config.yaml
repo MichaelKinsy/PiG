@@ -1,0 +1,194 @@
+# SPDX-License-Identifier: MIT
+
+engine-revision: 1
+
+tools:
+  - name: reuse
+    version: 6.2.0
+    pip: automation/ci/preflight/reuse-requirements.txt
+  - name: gitleaks
+    version: 8.30.1
+    sha256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+    url: https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+  - name: trufflehog
+    version: 3.99.7
+    sha256: bdbea0508e439b144f49de14e775908de5f902f3d14ea7ae8354bae72b0b72ef
+    url: https://github.com/trufflesecurity/trufflehog/releases/download/v3.99.7/trufflehog_3.99.7_linux_amd64.tar.gz
+  - name: actionlint
+    version: 1.7.12
+    sha256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+    url: https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz
+  - name: zizmor
+    version: 1.31.1
+    sha256: d185f726bdaf92df78273217dfdd24ebcd6b0ef48cf3ce776ff5762b6e138c99
+    url: https://github.com/zizmorcore/zizmor/releases/download/v1.31.1/zizmor-x86_64-unknown-linux-gnu.tar.gz
+
+checks:
+  - name: template
+    when: {always: true}
+    stage: cheap
+    reads: [pull]
+    rule: body-fields
+    with:
+      fields:
+        - {name: Tracking, pattern: '^(?:https?://\S+|No issue: \S.*)$', help: '`Tracking: <issue URL>` or `Tracking: No issue: <reason>`'}
+        - {name: Depends on, pattern: '^(?:None|#[1-9][0-9]*)$', help: '`Depends on: None` or `Depends on: #<n>`'}
+        - {name: Fix, pattern: '^(?i:yes|no)$', help: '`Fix: yes` or `Fix: no`'}
+        - {name: User-facing, pattern: '^(?i:yes|no)$', help: '`User-facing: yes` or `User-facing: no`'}
+
+  - name: signed
+    when: {always: true}
+    stage: cheap
+    reads: [commits]
+    rule: all-commits
+    with: {verified: true, help: 'sign with `git commit -S` (see .github/CONTRIBUTING.md)'}
+
+  - name: signoff
+    when: {always: true}
+    stage: cheap
+    reads: [commits]
+    rule: all-commits
+    # GitHub's "Update branch" merge cannot carry the line. It is exempt only when it is that merge and nothing else:
+    # two parents, committed and verified by GitHub, the second parent on the base branch, and the tree git's own merge
+    # of the two parents writes (merges.go).
+    with: {message: '(?m)^Signed-off-by: .+ <[^>]+>\s*$', exempt-update-branch-merges: true, help: 'add a `Signed-off-by:` line with `git commit --signoff`'}
+
+  - name: depends-on
+    when: {always: true}
+    stage: cheap
+    reads: [pull, depends-on]
+    rule: depends-on-merged
+
+  - name: up-to-date
+    when: {always: true}
+    stage: cheap
+    reads: [pull, compare-main]
+    rule: up-to-date
+
+  - name: bug-ledger
+    when: {always: true}
+    stage: cheap
+    reads: [pull, commits, files]
+    rule: fix-ledger
+    with: {ledger: docs/bug-ledger.json, help: 'run `make bug-ledger` and commit docs/bug-ledger.json and docs/site/docs/bug-ledger.md'}
+
+  - name: changelog
+    when: {always: true}
+    stage: cheap
+    reads: [pull, commits, files]
+    rule: changelog-fragment
+
+  - name: test-expectation
+    when: {paths: ['**/*.go']}
+    stage: cheap
+    reads: [pull, commits, files]
+    rule: test-expectation
+    main: [docs/parity/PORT_MAP.md, 'test/parity/interfaces/test-mapping-v*.json', 'test/parity/upstream-sync/*.toml']
+    with:
+      inventories: [docs/parity/PORT_MAP.md, 'test/parity/interfaces/test-mapping-v*.json', 'test/parity/upstream-sync/*.toml']
+
+  - name: dependency-review
+    when: {paths: ['**/go.mod', '**/go.sum', '**/package.json', '**/package-lock.json', '**/Cargo.toml', '**/Cargo.lock', '**/requirements*.txt']}
+    stage: cheap
+    reads: [dependency-graph]
+    rule: no-advisories
+    with: {severities: [high, critical]}
+
+  - name: licenses
+    when: {always: true}
+    stage: cheap
+    reads: [files]
+    rule: license-notices
+    main: [LICENSES]
+    with:
+      notice-files: ['LICENSES/**', NOTICE, THIRD_PARTY_NOTICES.md, REUSE.toml, '**/FORK.md']
+      code-files: '\.(?:go|sh|py|ts|mts|js|mjs|rs|lisp|c|h|ps1)$'
+
+  - name: inline-suppressions
+    when: {always: true}
+    stage: cheap
+    reads: [files]
+    rule: added-lines-warn
+    with: {pattern: 'gitleaks:allow', text: 'adds an inline `gitleaks:allow` suppression'}
+
+  - name: gitleaks
+    when: {always: true}
+    stage: scan
+    alert: 'a secret was found in this PR. Revoke it now, then remove it from the branch history (rewrite and force-push; a later commit that deletes it is not enough). A false positive is allowed only on main: a maintainer adds an allowlist entry to .gitleaks.toml.'
+    main: [.gitleaks.toml]
+    scan:
+      input: added
+      # An inline gitleaks:allow in the PR is not trusted; a false positive is allowed only in main's .gitleaks.toml.
+      run: [gitleaks, dir, '{input}', --config, '{main}/.gitleaks.toml', --gitleaks-ignore-path, '{main}', --ignore-gitleaks-allow, --max-archive-depth, '3', --no-banner, --redact, --exit-code, '3', --report-format, json, --report-path, '{out}']
+      # Exit 3 means leaks; gitleaks exits 1 on its own errors.
+      exit: {clean: [0], findings: [3]}
+      report: {in: out, format: json, file: File, line: StartLine, message: RuleID}
+
+  - name: trufflehog
+    when: {always: true}
+    stage: scan
+    # Verified secrets only: a finding is a live credential, never a false positive.
+    alert: 'a verified, working secret was found in this PR. Revoke it now, then remove it from the branch history (rewrite and force-push; a later commit that deletes it is not enough).'
+    scan:
+      input: added
+      run: [trufflehog, filesystem, '{input}', --only-verified, --fail, --json, --no-update]
+      exit: {clean: [0], findings: [183]}
+      report: {in: stdout, format: json-lines, file: SourceMetadata.Data.Filesystem.file, line: SourceMetadata.Data.Filesystem.line, message: DetectorName}
+
+  - name: reuse
+    when: {always: true}
+    stage: scan
+    scan:
+      input: changed
+      checkout: [REUSE.toml, LICENSES/, .reuse/]
+      run: [reuse, lint-file, --, '{files}']
+      dir: '{head}'
+      exit: {clean: [0], findings: [1]}
+      report: {in: stdout, format: lines, pattern: '^(?P<file>[^:]+): (?P<message>.+)$'}
+
+  - name: reuse-tree
+    when: {paths: [REUSE.toml, 'LICENSES/**', '.reuse/**']}
+    stage: scan
+    scan:
+      input: changed
+      checkout: ['/*']
+      run: [reuse, lint, --lines]
+      dir: '{head}'
+      exit: {clean: [0], findings: [1]}
+      report: {in: stdout, format: lines, pattern: '^(?P<file>[^:]+): (?P<message>.+)$'}
+
+  - name: workflows
+    when: {paths: ['.github/**']}
+    stage: scan
+    scan:
+      input: changed
+      select: '^\.github/workflows/.*\.ya?ml$'
+      overlay: [.github/actionlint.yaml]
+      run: [actionlint, -format, '{{json .}}', --, '{files}']
+      dir: '{head}'
+      exit: {clean: [0], findings: [1]}
+      report: {in: stdout, format: json, file: filepath, line: line, message: message}
+      added-lines-only: true
+
+  - name: workflows-security
+    when: {paths: ['.github/**']}
+    stage: scan
+    scan:
+      input: changed
+      select: '^\.github/workflows/.*\.ya?ml$'
+      run: [zizmor, --offline, --no-config, --format, github, --, '{files}']
+      dir: '{head}'
+      exit: {clean: [0], findings: [10, 11, 12, 13, 14]}
+      report: {in: stdout, format: lines, pattern: '^::\w+ file=(?P<file>[^,]+),line=(?P<line>\d+)[^:]*::(?P<message>.*)$'}
+      added-lines-only: true
+
+  - name: content
+    when: {always: true}
+    stage: scan
+    main: [automation/ci/preflight/forbidden.yaml, automation/ci/preflight/mandatory.yaml]
+    scan:
+      input: changed
+      checkout: [variables/versions.yaml, test/testdata-provenance.toml]
+      run: ['{self}', content, --data, '{data}', --head, '{head}', --out, '{out}']
+      exit: {clean: [0], findings: [1]}
+      report: {in: out, format: json, file: file, line: line, message: message}
