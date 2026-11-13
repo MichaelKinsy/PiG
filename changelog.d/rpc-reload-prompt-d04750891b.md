@@ -1,0 +1,5 @@
+### Fixed
+
+- RPC mode: a prompt written right behind an extension command that calls `ctx.reload()` is read after the reload, runs on the reloaded extension and answers after that command, as in Pi. PiG read it while the reload ran: it ran on the extension being replaced and answered first, and with a TypeScript extension neither prompt was answered and the stream stayed silent until stdin closed. A client that waits for each response before it writes the next record was not affected. Present since 0.5.2. <!-- fix: d04750891b39f6d01f26116bac727542e213c003 -->
+- RPC mode: a prompt read while a `session_start` handler of a reload waits runs on the reloaded extension; it ran on the replaced one, whose `ctx` was stale. <!-- fix: d04750891b39f6d01f26116bac727542e213c003 -->
+- Extensions: a host call made by a handler that is still running while a reload replaces its extension is answered with Pi's stale-context error. For a TypeScript extension PiG dropped the call while the replacement was loading, so the handler's command never finished and, in RPC mode, its prompt got no response. <!-- fix: 095939f576f8ffc10909e11ac7770dba3f4c58e4 -->
