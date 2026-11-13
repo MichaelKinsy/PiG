@@ -12,7 +12,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"golang.org/x/text/width"
+	"github.com/mattn/go-runewidth"
 
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -101,8 +101,10 @@ func certainWidth(cluster string) bool {
 		return true
 	}
 	if r >= 0xa1 && r < 0x530 && unicode.IsLetter(r) {
-		kind := width.LookupRune(r).Kind()
-		return kind == width.Neutral || kind == width.EastAsianNarrow
+		// go-runewidth's ambiguous table is already in the binary (the ANSI package links it). For every letter of this range it gives the answer
+		// of golang.org/x/text/width (Neutral or EastAsianNarrow), which would link a 15 KB table for this one question:
+		// TestCertainWidthAgreesWithXTextWidth compares the two over the whole range.
+		return !runewidth.IsAmbiguousWidth(r)
 	}
 	return false
 }
