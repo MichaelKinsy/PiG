@@ -554,6 +554,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-4f3cc2e](#bf-4f3cc2e) | `Session.ID`, `Session.Path`, `Session.CWD` and `Session.Inner` no longer race with a session swap (`/new`… | PiG's own defect | All platforms | Unreleased |
 | [BF-4f6992d](#bf-4f6992d) | Durable: a tool's `PrepareArguments` result of a typed object (a struct, or a map of another element type)… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4f6992d-2](#bf-4f6992d-2) | Durable: a `PrepareArguments` result that is not an object fails validation as an `invalid_arguments` tool… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-4f75f77](#bf-4f75f77) | Chord (Go): the observer of a followed source has `Section`, which runs a runtime's read and its advance as… | PiG's own defect | All platforms | Unreleased |
 | [BF-4fab2ef](#bf-4fab2ef) | Durable error values (FileError, ExecutionError, JsonlCorruptionError, ReadAfterWrite, StorageRejected… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4fc8c2e](#bf-4fc8c2e) | With an active Piglet, an extension that denies every tool with `SetActiveTools([])` is no longer widened… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4fd80d1](#bf-4fd80d1) | On Windows, PiG finds PowerShell in its installation directories when it is not on `PATH`: PowerShell 7 under… | PiG's own defect | Windows | 0.5.2 |
@@ -945,6 +946,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-731474b](#bf-731474b) | `coding.DefineTool` returns the tool definition it is given, as Pi's `defineTool` does | PiG's own defect | All platforms | 0.5.0 |
 | [BF-731474b-2](#bf-731474b-2) | `codemode.CodemodeJsonSchema` names the raw JSON of a tool's JSON Schema document, as Pi's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-735e4a2](#bf-735e4a2) | fix(chord/next/host): a native closed before its open began opens nothing | PiG's own defect | All platforms | Unreleased |
+| [BF-7369b8f](#bf-7369b8f) | Chord (Go): a watch, an observer or a subscriber of a registry value or a writable that was registered from… | PiG's own defect | All platforms | Unreleased |
 | [BF-7375fe4](#bf-7375fe4) | After `pig piglet update` installs a new release of a pulled Piglet Binary, `pig piglet list` shows the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-73a09eb](#bf-73a09eb) | fix: the ANSI renderer that replaces a frontend surface draws on the options terminal, not the surface's… | PiG's own defect | All platforms | Unreleased |
 | [BF-73a6c8c](#bf-73a6c8c) | OpenAI-compatible chat completions requests keep the tool-call ids of the same model's earlier calls as they… | PiG's own defect | All platforms | 0.5.0 |
@@ -9436,6 +9438,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `durable/core/driver/tool_intent_pi_test.go::TestCoreToolRecordsItsPreparedArgumentsAndDefaultReplayBeforeExecuting`, `durable/core/driver/tool_intent_pi_test.go::TestCoreToolRefusesANonObjectPreparedResultAsInvalidArguments`, `durable/core/turn/generation_test.go::TestToolBlockedAndInvalid`
 - **Release note:** Durable: a `PrepareArguments` result that is not an object fails validation as an `invalid_arguments` tool error whose `Received arguments` shows the returned value, as Pi does; it panicked the core.
 
+### BF-4f75f77
+
+**Chord (Go): the observer of a followed source has `Section`, which runs a runtime's read and its advance as…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Chord (Go): the observer of a followed source has `Section`, which runs a runtime's read and its advance as one section of the host's loop.
+- **Root cause:** A runtime that tells of its changes from several goroutines read its state on the teller's goroutine and advanced in a section of its own: an older read could be advanced after a newer one, and the source kept the older value until the next change. Pi's runtime reads and advances in one synchronous turn.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `4f75f77581` (2026-11-12)
+- **Tests:** `chord/next/host/host_follow_section_test.go::TestFollowSectionAfterItsSourceDetachedStillRunsWorkOnceAndTheAdvanceInItIsDropped`, `chord/next/host/host_follow_section_test.go::TestFollowSectionKeepsTheReadsAndTheAdvancesOfTwoGoroutinesInOneOrder`, `chord/next/host/host_follow_section_test.go::TestFollowSectionRunsWorkOnceAsOneSectionOfTheLoopBeforeItReturnsAndInlineInsideOne`
+- **Release note:** Chord (Go): the observer of a followed source has `Section`, which runs a runtime's read and its advance as one section of the host's loop. A runtime that told of its changes from several goroutines could publish an older read last, and the followed value stayed stale until its next change.
+
 ### BF-4fab2ef
 
 **Durable error values (FileError, ExecutionError, JsonlCorruptionError, ReadAfterWrite, StorageRejected…**
@@ -14859,6 +14875,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `735e4a2a50` (2026-10-30)
 - **Tests:** `chord/next/host/host_native_test.go::TestNativeAnOpenThatStartsAfterItsCloseOpensNothing`
+
+### BF-7369b8f
+
+**Chord (Go): a watch, an observer or a subscriber of a registry value or a writable that was registered from…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Chord (Go): a watch, an observer or a subscriber of a registry value or a writable that was registered from outside the host's loop is told of a change committed while it registered.
+- **Root cause:** The read and the registration were two steps, so such a change reached nobody and the follower kept the older value until the next change (seen as a p2 session worker that failed to start with `p2.harness-host: did not become live within 60000 ms`).
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `7369b8f863` (2026-11-12)
+- **Tests:** `chord/next/host/host_watch_outside_loop_test.go::TestASubscriberAddedFromOutsideTheLoopIsToldOfAChangeCommittedWhileItWasAdded`, `chord/next/host/host_watch_outside_loop_test.go::TestAWatchOpenedFromOutsideTheLoopIsToldOfAChangeCommittedWhileItOpened`, `chord/next/host/host_watch_outside_loop_test.go::TestAWatchOpenedInsideASectionOpensInlineAndOneOpenedAfterTheSourceEndedIsEnded`, `chord/next/host/host_watch_outside_loop_test.go::TestAnObserverAttachedFromOutsideTheLoopIsToldOfAChangeCommittedWhileItAttached`
+- **Release note:** Chord (Go): a watch, an observer or a subscriber of a registry value or a writable that was registered from outside the host's loop is told of a change committed while it registered. The read and the registration were two steps, so such a change reached nobody and the follower kept the older value until the next change (seen as a p2 session worker that failed to start with `p2.harness-host: did not become live within 60000 ms`).
 
 ### BF-7375fe4
 
