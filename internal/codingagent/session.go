@@ -250,7 +250,7 @@ type Session struct {
 	revision uint64
 }
 
-// sessionClock is the time a new session's header records; tests replace it to make two sessions share a timestamp, as Pi's `new Date()` does for two sessions created in one millisecond.
+// sessionClock is the time a new session's header and a compaction entry record; tests replace it to make two sessions share a timestamp, as Pi's `new Date()` does for two sessions created in one millisecond.
 var sessionClock = time.Now
 
 // NewSession creates an in-memory session with an ISO millisecond header timestamp and an optional parent session path.
@@ -1241,7 +1241,7 @@ func (s *Session) AppendCompactionHookUndefined(summary, firstKeptEntryID string
 // caller that read them from an extension's JSON keeps a usage written as null (UsageNull) and an absent fromHook (FromHookAbsent). The session sets the type,
 // the identity, the time and the system message.
 func (s *Session) AppendCompactionEntry(members CompactionEntry) (string, error) {
-	now := time.Now().UTC()
+	now := sessionClock().UTC()
 	// compactionSystemMessage only reads the context's latest system message, so it reads the kept projection rather than a copy of the
 	// whole context projected again.
 	systemMessage, err := compactionSystemMessage(s.BuildSessionProjectionView().Messages, now.UnixMilli())

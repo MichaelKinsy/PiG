@@ -1763,6 +1763,7 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 	requestContext, abort := context.WithCancel(httpReq.Context())
 	builder.abort = abort
 	httpReq = httpReq.WithContext(requestContext)
+	//portlint:allow asyncorder Pi's stream() starts a detached async IIFE and returns the stream (openai-responses.ts:164, :272); the stream owns this goroutine, which sends the request and runs the body pipeline as a turn of the stream's continuation executor (responseTurn in streamResponse), the ordering point with the consumer; coding's TestRPC33ObservationMatrix holds every observation of an immediate, delayed or held consumer of this API to Pi's, TestAzureResponsesTickOrder the ticks of the Azure rows
 	go builder.runResponse(func() error { return p.streamResponse(ctx, httpReq, opts, builder, grammarProps) })
 	return builder.stream, nil
 }
