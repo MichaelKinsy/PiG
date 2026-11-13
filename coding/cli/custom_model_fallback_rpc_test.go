@@ -34,7 +34,7 @@ func TestRPCCustomModelIDKeepsTheProvidersLimitsCostAndCompat(t *testing.T) {
 			`{"id":"c1","object":"chat.completion.chunk","created":1,"model":"nosuch","choices":[],"usage":{"prompt_tokens":1000,"completion_tokens":500,"total_tokens":1500}}`,
 			`[DONE]`,
 		} {
-			fmt.Fprintf(w, "data: %s\n\n", chunk)
+			_, _ = fmt.Fprintf(w, "data: %s\n\n", chunk)
 		}
 	}))
 	t.Cleanup(server.Close)
