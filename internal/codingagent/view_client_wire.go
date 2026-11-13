@@ -1,6 +1,9 @@
 package codingagent
 
 import (
+	"os"
+	"strings"
+
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -44,7 +47,28 @@ func (m *InteractiveMode) attachTerminalViewClient(bridge SubprocessUIBridge) {
 		size: func() viewSize {
 			return viewSize{columns: m.tuiInst.Width(), rows: m.tuiInst.Height(), pointer: m.altScreen != nil}
 		},
+		write: func(data string) {
+			if writer, ok := m.tuiInst.(interface{ WriteRaw(string) }); ok {
+				writer.WriteRaw(data)
+			}
+		},
+		placeholders: viewKittyPlaceholders(os.Getenv),
 	}))
+}
+
+// viewKittyPlaceholders reports whether the environment is that of a terminal known to draw Kitty Unicode placeholders:
+// kitty and Ghostty. It decides nothing by itself: the client asks it only where the TUI detected the Kitty protocol.
+// A terminal that names itself otherwise (TERM_PROGRAM) is not one of them even when kitty's variables leak into it,
+// and neither is a pane of Herdr.
+func viewKittyPlaceholders(getenv func(string) string) bool {
+	term, program := strings.ToLower(getenv("TERM")), strings.ToLower(getenv("TERM_PROGRAM"))
+	switch {
+	case getenv("HERDR_ENV") == "1":
+		return false
+	case program != "":
+		return program == "kitty" || program == "ghostty"
+	}
+	return getenv("KITTY_WINDOW_ID") != "" || term == "xterm-kitty" || strings.Contains(term, "ghostty") || getenv("GHOSTTY_RESOURCES_DIR") != ""
 }
 
 // detachTerminalViewClient ends the terminal's attachment to the outgoing build's registry and removes its mounts.

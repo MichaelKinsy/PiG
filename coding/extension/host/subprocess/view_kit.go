@@ -55,6 +55,8 @@ type viewSurface struct {
 	// rowBudget is the rows the surface is drawn with when its owner cuts it, 0 or nil for no cut; a grid draws fewer
 	// chip lines to fit it (nil: a D107 surface).
 	rowBudget func() int
+	// mountImages draws the image nodes of a mount's surface (nil: a D107 surface, whose image is Pi's component).
+	mountImages *MountImages
 
 	frame     *viewFrame
 	instances map[string]*viewInstance
@@ -893,17 +895,15 @@ func (b *viewBuilder) build(n *ViewNode, out *frontend.ViewNode) (tui.Component,
 		if n.MaxHeightCells != nil {
 			opts.MaxHeightCells = *n.MaxHeightCells
 		}
-		// A mount is cut to the rows of its slot, so its image is at most that tall.
-		if b.s.rowBudget != nil {
-			if budget := b.s.rowBudget(); budget > 0 && (opts.MaxHeightCells <= 0 || opts.MaxHeightCells > budget) {
-				opts.MaxHeightCells = budget
-			}
-		}
 		fallback := b.fgFn(n.FallbackColor)
 		if fallback == nil {
 			fallback = identity
 		}
-		c = tui.NewImage(img.b64, n.MimeType, tui.ImageTheme{FallbackColor: fallback}, opts, nil)
+		if b.s.mountImages != nil {
+			c = b.mountImage(n, img, fallback)
+		} else {
+			c = tui.NewImage(img.b64, n.MimeType, tui.ImageTheme{FallbackColor: fallback}, opts, nil)
+		}
 	case ViewKindLoader:
 		c = b.loader(n, out)
 	case ViewKindUserMessage:

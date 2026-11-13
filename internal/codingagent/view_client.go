@@ -159,6 +159,11 @@ type viewClientUI struct {
 	notify func(message, level string)
 	// size returns the terminal's columns and rows and whether it reports the pointer.
 	size func() viewSize
+	// write writes bytes to the terminal ahead of the frame being drawn (nil: no such writer); placeholders reports
+	// that the terminal draws Kitty Unicode placeholders. An image node is transmitted once through write and drawn
+	// as placeholder cells when both hold.
+	write        func(data string)
+	placeholders bool
 }
 
 type viewMountKey struct{ plugin, key string }
@@ -181,6 +186,8 @@ type viewItem struct {
 type viewClient struct {
 	host viewHost
 	ui   viewClientUI
+	// images is what the mounts' surfaces share to draw image nodes.
+	images *subprocess.MountImages
 	att  *uiview.Attachment
 	ctx  context.Context
 	end  context.CancelFunc
@@ -230,6 +237,8 @@ type viewClient struct {
 // registry takes no further client. It runs on the interactive loop.
 func attachViewClient(ctx context.Context, host viewHost, ui viewClientUI) *viewClient {
 	c := &viewClient{host: host, ui: ui, mounts: map[viewMountKey]*viewMount{}}
+	// The conversion of an image to PNG runs off the loop, on the goroutine the surface starts for it.
+	c.images = &subprocess.MountImages{Write: ui.write, Placeholders: ui.placeholders, ToPNG: ConvertImageBytesToPng}
 	c.ctx, c.end = context.WithCancel(ctx)
 	c.listener = c.focusKey
 	c.declared = ui.size()
@@ -376,6 +385,7 @@ func (c *viewClient) apply(s *uiview.Snapshot) {
 			Leave:        m.leave,
 			TerminalRows: func() int { return c.ui.size().rows },
 			RowBudget:    func() int { return m.slot.rows(c.ui.size().rows) },
+			Images:       c.images,
 		})
 		c.mounts[key] = m
 		c.order = append(c.order, m)
