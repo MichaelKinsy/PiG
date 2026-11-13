@@ -8401,8 +8401,16 @@ mod overlay_invalidate_tests {
             request_id: String::new(),
         });
         done_rx.recv().expect("the worker ended");
-        assert_eq!(invalidations.load(Ordering::SeqCst), 0, "no invalidate after the close");
-        assert_eq!(renders.load(Ordering::SeqCst), 0, "no render after the close");
+        assert_eq!(
+            invalidations.load(Ordering::SeqCst),
+            0,
+            "no invalidate after the close"
+        );
+        assert_eq!(
+            renders.load(Ordering::SeqCst),
+            0,
+            "no render after the close"
+        );
         let mut byte = [0u8; 1];
         assert!(
             !matches!(peer.read(&mut byte), Ok(read) if read > 0),
