@@ -13,7 +13,6 @@ import (
 	"strconv"
 	"strings"
 
-	sdkjson "github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/jsonopts"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/sortx"
@@ -364,8 +363,7 @@ func (tool *ToolSchema) UnmarshalJSON(data []byte) error {
 		ConstrainedSampling json.RawMessage `json:"constrainedSampling"`
 	}
 	envelope.wire = &decoded
-	// The decoder that keeps a lone UTF-16 surrogate, as JSON.parse does: Pi sends a tool's description as it was parsed.
-	if err := sdkjson.Unmarshal(data, &envelope); err != nil {
+	if err := json.Unmarshal(data, &envelope); err != nil {
 		return err
 	}
 	if value := envelope.ConstrainedSampling; len(value) > 0 {
