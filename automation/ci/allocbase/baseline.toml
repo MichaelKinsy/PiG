@@ -2226,7 +2226,7 @@ allocs = 20052
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkNativeProviderStream"
-allocs = 500
+allocs = 469
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
