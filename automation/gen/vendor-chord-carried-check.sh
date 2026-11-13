@@ -2,7 +2,7 @@
 # Prove that both vendored chord trees (chord/nextnode/plugins/node and chord/nextnode/surfaces/client) are what their
 # manifests record: Pi at the manifest's commit with exactly its `carried` commits cherry-picked onto it, in order. It
 # makes that tree in a scratch worktree of a Pi clone, runs each tree's vendoring script into a scratch directory, and
-# compares the manifest it writes (commit, pin, carried, versions, every file's hash) with the committed one, byte for
+# compares the manifest it writes (commit, pin, carried, patches, versions, every file's hash) with the committed one, byte for
 # byte. The Go tests TestNodeVendoredFilesAreExactlyTheManifests and TestClientVendoredFilesAreExactlyTheManifests prove
 # the other half: the committed files are the ones the committed manifests hash.
 #   PI_REPO        a clone of Pi that has every manifest's commit and carried commits (required)

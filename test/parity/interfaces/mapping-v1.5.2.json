@@ -108563,9 +108563,9 @@
         "call:chord/next/surfaces/surfaces_active_language.go#FollowActiveLanguage"
       ],
       "evidence": [
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsAPickThePrincipalStoredBeforeTheFollowerStarted",
         "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsTheDevicesLanguagesThePrincipalsPickAndTheCatalogsKeptAsThePageState",
-        "test:chord/next/surfaces/surfaces_active_language_test.go#TestPassesEachDistinctReportOnOnce",
-        "test:chord/next/surfaces/surfaces_follower_cancel_test.go#TestCancellingAFollowersContextBeforeItsPickWatchBindsEndsQuietly"
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestPassesEachDistinctReportOnOnce"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -108586,9 +108586,9 @@
         "call:chord/next/surfaces/surfaces_active_language.go#FollowActiveLanguage"
       ],
       "evidence": [
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsAPickThePrincipalStoredBeforeTheFollowerStarted",
         "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsTheDevicesLanguagesThePrincipalsPickAndTheCatalogsKeptAsThePageState",
-        "test:chord/next/surfaces/surfaces_active_language_test.go#TestPassesEachDistinctReportOnOnce",
-        "test:chord/next/surfaces/surfaces_follower_cancel_test.go#TestCancellingAFollowersContextBeforeItsPickWatchBindsEndsQuietly"
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestPassesEachDistinctReportOnOnce"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -108609,9 +108609,9 @@
         "call:chord/next/surfaces/surfaces_active_theme.go#FollowActiveTheme"
       ],
       "evidence": [
+        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsAThemePickThePrincipalStoredBeforeTheFollowerStarted",
         "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsTheRegistryThePrincipalsPickAndTheMode",
-        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestAThemeFollowersCallbackMayStopItAndSetTheMode",
-        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestStoppingAThemeFollowerBeforeItsPickWatchBindsEndsQuietly"
+        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestAThemeFollowersCallbackMayStopItAndSetTheMode"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -108632,9 +108632,9 @@
         "call:chord/next/surfaces/surfaces_active_theme.go#FollowActiveTheme"
       ],
       "evidence": [
+        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsAThemePickThePrincipalStoredBeforeTheFollowerStarted",
         "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsTheRegistryThePrincipalsPickAndTheMode",
-        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestAThemeFollowersCallbackMayStopItAndSetTheMode",
-        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestStoppingAThemeFollowerBeforeItsPickWatchBindsEndsQuietly"
+        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestAThemeFollowersCallbackMayStopItAndSetTheMode"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -112038,9 +112038,9 @@
         "call:chord/next/surfaces/surfaces_active_language.go#FollowActiveLanguage"
       ],
       "evidence": [
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsAPickThePrincipalStoredBeforeTheFollowerStarted",
         "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsTheDevicesLanguagesThePrincipalsPickAndTheCatalogsKeptAsThePageState",
-        "test:chord/next/surfaces/surfaces_active_language_test.go#TestPassesEachDistinctReportOnOnce",
-        "test:chord/next/surfaces/surfaces_follower_cancel_test.go#TestCancellingAFollowersContextBeforeItsPickWatchBindsEndsQuietly"
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestPassesEachDistinctReportOnOnce"
       ]
     },
     {
@@ -112613,8 +112613,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/proof_chord_test.go#TestLocaleChoiceTakesATagOf35CharactersAndRefusesOneOf36",
-        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsTheDevicesLanguagesThePrincipalsPickAndTheCatalogsKeptAsThePageState",
-        "test:chord/next/surfaces/surfaces_preference_test.go#TestLocaleChoiceKeepsALanguageTagOrNullPerPrincipalAndRefusesAnythingElse"
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsAPickThePrincipalStoredBeforeTheFollowerStarted",
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsTheDevicesLanguagesThePrincipalsPickAndTheCatalogsKeptAsThePageState"
       ]
     },
     {
@@ -112636,7 +112636,7 @@
       "evidence": [
         "test:chord/next/surfaces/proof_chord_test.go#TestLocaleChoiceTakesATagOf35CharactersAndRefusesOneOf36",
         "test:chord/next/surfaces/surfaces_preference_test.go#TestLocaleChoiceKeepsALanguageTagOrNullPerPrincipalAndRefusesAnythingElse",
-        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsTheDevicesLanguagesThePrincipalsPickAndTheCatalogsKeptAsThePageState"
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsAPickThePrincipalStoredBeforeTheFollowerStarted"
       ]
     },
     {
@@ -112658,7 +112658,7 @@
       "evidence": [
         "test:chord/next/surfaces/proof_chord_test.go#TestLocaleChoiceTakesATagOf35CharactersAndRefusesOneOf36",
         "test:chord/next/surfaces/surfaces_preference_test.go#TestLocaleChoiceKeepsALanguageTagOrNullPerPrincipalAndRefusesAnythingElse",
-        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsTheDevicesLanguagesThePrincipalsPickAndTheCatalogsKeptAsThePageState"
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsAPickThePrincipalStoredBeforeTheFollowerStarted"
       ]
     },
     {
@@ -113371,9 +113371,9 @@
         "call:chord/next/surfaces/surfaces_active_language.go#FollowActiveLanguage"
       ],
       "evidence": [
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsAPickThePrincipalStoredBeforeTheFollowerStarted",
         "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsTheDevicesLanguagesThePrincipalsPickAndTheCatalogsKeptAsThePageState",
-        "test:chord/next/surfaces/surfaces_active_language_test.go#TestPassesEachDistinctReportOnOnce",
-        "test:chord/next/surfaces/surfaces_follower_cancel_test.go#TestCancellingAFollowersContextBeforeItsPickWatchBindsEndsQuietly"
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestPassesEachDistinctReportOnOnce"
       ]
     },
     {
@@ -121147,9 +121147,9 @@
         "call:chord/next/surfaces/surfaces_active_theme.go#FollowActiveTheme"
       ],
       "evidence": [
+        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsAThemePickThePrincipalStoredBeforeTheFollowerStarted",
         "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsTheRegistryThePrincipalsPickAndTheMode",
-        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestAThemeFollowersCallbackMayStopItAndSetTheMode",
-        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestStoppingAThemeFollowerBeforeItsPickWatchBindsEndsQuietly"
+        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestAThemeFollowersCallbackMayStopItAndSetTheMode"
       ]
     },
     {
@@ -121169,9 +121169,9 @@
         "call:chord/next/surfaces/surfaces_active_theme.go#FollowActiveTheme"
       ],
       "evidence": [
+        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsAThemePickThePrincipalStoredBeforeTheFollowerStarted",
         "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsTheRegistryThePrincipalsPickAndTheMode",
-        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestThemeChoicesAreKeptPerPrincipal",
-        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestThemeChoicesRefuseAnIDOver128Characters"
+        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestThemeChoicesAreKeptPerPrincipal"
       ]
     },
     {
@@ -121191,9 +121191,9 @@
         "call:chord/next/surfaces/surfaces_theme_choice.go#ThemeChoiceFacet"
       ],
       "evidence": [
+        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsAThemePickThePrincipalStoredBeforeTheFollowerStarted",
         "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsTheRegistryThePrincipalsPickAndTheMode",
-        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestThemeChoicesAreKeptPerPrincipal",
-        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestThemeChoicesRefuseAnIDOver128Characters"
+        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestThemeChoicesAreKeptPerPrincipal"
       ]
     },
     {
@@ -121213,9 +121213,9 @@
         "call:chord/next/surfaces/surfaces_theme_choice.go#ThemeChoiceFacet"
       ],
       "evidence": [
+        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsAThemePickThePrincipalStoredBeforeTheFollowerStarted",
         "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsTheRegistryThePrincipalsPickAndTheMode",
-        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestThemeChoicesAreKeptPerPrincipal",
-        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestThemeChoicesRefuseAnIDOver128Characters"
+        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestThemeChoicesAreKeptPerPrincipal"
       ]
     },
     {
@@ -121235,9 +121235,9 @@
         "call:chord/next/surfaces/surfaces_active_theme.go#FollowActiveTheme"
       ],
       "evidence": [
+        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsAThemePickThePrincipalStoredBeforeTheFollowerStarted",
         "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsTheRegistryThePrincipalsPickAndTheMode",
-        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestAThemeFollowersCallbackMayStopItAndSetTheMode",
-        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestStoppingAThemeFollowerBeforeItsPickWatchBindsEndsQuietly"
+        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestAThemeFollowersCallbackMayStopItAndSetTheMode"
       ]
     },
     {
@@ -121277,6 +121277,7 @@
         "call:chord/next/surfaces/surfaces_active_theme.go#FollowActiveTheme"
       ],
       "evidence": [
+        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsAThemePickThePrincipalStoredBeforeTheFollowerStarted",
         "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsTheRegistryThePrincipalsPickAndTheMode"
       ]
     },
@@ -121297,9 +121298,9 @@
         "call:chord/next/surfaces/surfaces_themes.go#ThemesFacet"
       ],
       "evidence": [
+        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsAThemePickThePrincipalStoredBeforeTheFollowerStarted",
         "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsTheRegistryThePrincipalsPickAndTheMode",
-        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestAThemeFollowersCallbackMayStopItAndSetTheMode",
-        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestStoppingAThemeFollowerBeforeItsPickWatchBindsEndsQuietly"
+        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestAThemeFollowersCallbackMayStopItAndSetTheMode"
       ]
     },
     {
@@ -121319,9 +121320,9 @@
         "call:chord/next/surfaces/surfaces_themes.go#ThemesFacet"
       ],
       "evidence": [
+        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsAThemePickThePrincipalStoredBeforeTheFollowerStarted",
         "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsTheRegistryThePrincipalsPickAndTheMode",
-        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestAThemeFollowersCallbackMayStopItAndSetTheMode",
-        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestStoppingAThemeFollowerBeforeItsPickWatchBindsEndsQuietly"
+        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestAThemeFollowersCallbackMayStopItAndSetTheMode"
       ]
     },
     {
@@ -121426,8 +121427,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_translations_test.go#TestTranslationsFacetServesTheRegistryComposingItsPluginsContributions",
-        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsTheDevicesLanguagesThePrincipalsPickAndTheCatalogsKeptAsThePageState",
-        "test:chord/next/surfaces/surfaces_active_language_test.go#TestPassesEachDistinctReportOnOnce"
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsAPickThePrincipalStoredBeforeTheFollowerStarted",
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsTheDevicesLanguagesThePrincipalsPickAndTheCatalogsKeptAsThePageState"
       ]
     },
     {
@@ -121448,8 +121449,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_translations_test.go#TestTranslationsFacetServesTheRegistryComposingItsPluginsContributions",
-        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsTheDevicesLanguagesThePrincipalsPickAndTheCatalogsKeptAsThePageState",
-        "test:chord/next/surfaces/surfaces_active_language_test.go#TestPassesEachDistinctReportOnOnce"
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsAPickThePrincipalStoredBeforeTheFollowerStarted",
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsTheDevicesLanguagesThePrincipalsPickAndTheCatalogsKeptAsThePageState"
       ]
     },
     {
@@ -121470,8 +121471,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_translations_test.go#TestTranslationsFacetServesTheRegistryComposingItsPluginsContributions",
-        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsTheDevicesLanguagesThePrincipalsPickAndTheCatalogsKeptAsThePageState",
-        "test:chord/next/surfaces/surfaces_active_language_test.go#TestPassesEachDistinctReportOnOnce"
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsAPickThePrincipalStoredBeforeTheFollowerStarted",
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsTheDevicesLanguagesThePrincipalsPickAndTheCatalogsKeptAsThePageState"
       ]
     },
     {
