@@ -477,6 +477,22 @@ func (w *pluginWatcher) watchTree(dir string) {
 	w.watchDirs(dir)
 }
 
+// alsoWatch watches the tree at dir (watchTree) and returns the directories watched then; false when nothing is watched (no
+// system watcher: it failed to start, or the watcher was closed).
+func (w *pluginWatcher) alsoWatch(dir string) ([]string, bool) {
+	if w.fs == nil {
+		return nil, false
+	}
+	w.watchTree(dir)
+	return slices.Collect(maps.Keys(w.watched)), true
+}
+
+// watches reports whether dir has a watch.
+func (w *pluginWatcher) watches(dir string) bool {
+	_, ok := w.watched[dir]
+	return ok
+}
+
 // unwatchTree stops watching the tree at dir.
 func (w *pluginWatcher) unwatchTree(dir string) {
 	delete(w.trees, dir)
