@@ -5051,20 +5051,15 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 
 	if me.packedCellKey != "" {
 		if me.packedProcess != nil {
-			// A native process that ends is its watcher's to report (watchPackedProcess): it blames the one member its trace names and restarts the others, or stops
-			// the whole cell, and says so once for each member. Detaching the member here first would tell a member that is about to restart to run /reload.
+			// A shared process that ends is its watcher's to report (watchPackedProcess), once for each member and in load order: it restarts the members of a
+			// Node cell, blames the one member a native trace names and restarts the others, or stops the whole cell. The end reaches the host twice, as this
+			// closed connection and as the reaped process, in either order. Detaching the member here first would report one end twice for it, and tell a member
+			// that is about to restart to run /reload; so this loop waits for the process, and reports nothing when it ended.
 			if h.sharedProcessEnded(me.packedProcess) {
 				return
 			}
-			// A closed connection proves only that this one member stopped
-			// talking to us. It does not prove the shared process is still
-			// running: if the process itself exited, watchPackedProcess
-			// independently quarantines the whole cell (with an accurate,
-			// "process exited" reason) whether or not it wins the race
-			// against this handler. Don't assert a liveness state we have
-			// not verified either way; the process is only withdrawn from
-			// retention claims above.
-			// A native packed member is not restarted automatically, and the quarantine notice that names /reload is lost when this handler detaches the member first, so this notice names the recovery too.
+			// The process outlived the heartbeat deadline: this member's connection closed alone. The member is not restarted automatically, so the notice
+			// names the recovery. It does not say that the process is alive, which the deadline does not prove.
 			h.disablePackedMember(me, "packed member connection closed; /reload restarts it")
 			return
 		}
@@ -5139,11 +5134,11 @@ const (
 	deathSeenByWatcher    deathObserver = "watcher"
 )
 
-// sharedProcessEnded reports whether the native process a packed member shares ended within the heartbeat deadline that bounds how long a process may outlive a
-// closed connection (D56), after one of its members' connections closed. It never stops the process, which serves the other members: one that is still running
-// after the deadline closed this member's connection alone. A state that spawned no process of its own has nothing to wait for.
+// sharedProcessEnded reports whether the process a packed member shares, a native cell's or a Node cell's, ended within the heartbeat deadline that bounds how
+// long a process may outlive a closed connection (D56), after one of its members' connections closed. It never stops the process, which serves the other
+// members: one that is still running after the deadline closed this member's connection alone. A state without a process has nothing to wait for.
 func (h *Host) sharedProcessEnded(p *packedProcessState) bool {
-	if p.node || p.spawner().cmd == nil {
+	if p.spawner().cmd == nil {
 		return false
 	}
 	exited := p.startWait()
