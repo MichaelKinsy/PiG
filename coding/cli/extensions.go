@@ -117,7 +117,11 @@ func withFusedExtensionConfigs(fused, configs []subprocess.ExtConfig, bakedSourc
 				return candidate.Name == cfg.Name && candidate.Source != ""
 			}); i >= 0 {
 				all = append(all, configs[i])
-				configs = slices.Delete(slices.Clone(configs), i, i+1)
+				// The source configuration and the member's own name-only entries (the active Piglet lists its fused members too) are one extension.
+				source := configs[i].Source
+				configs = slices.DeleteFunc(slices.Clone(configs), func(candidate subprocess.ExtConfig) bool {
+					return candidate.Name == cfg.Name && (candidate.Source == source || candidate.Source == "" && candidate.Path == "")
+				})
 				continue
 			}
 		}

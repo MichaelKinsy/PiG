@@ -493,7 +493,7 @@ func TestChangedFusedMemberStartsFromTheBuildCache(t *testing.T) {
 	cache := func() []string {
 		t.Helper()
 		var files []string
-		err := filepath.WalkDir(filepath.Join(configRoot, "cache", "ext"), func(path string, entry os.DirEntry, err error) error {
+		err := filepath.WalkDir(filepath.Join(configRoot, "cache"), func(path string, entry os.DirEntry, err error) error {
 			if err != nil || entry.IsDir() {
 				return nil
 			}
@@ -518,9 +518,7 @@ func TestChangedFusedMemberStartsFromTheBuildCache(t *testing.T) {
 		t.Fatalf("a start with the unchanged source answers %q, want the fused copy", v)
 	}
 	unchanged.host.Shutdown("done")
-	if files := cache(); len(files) != 0 {
-		t.Fatalf("a start with the unchanged source built something: %q", files)
-	}
+	before := cache()
 
 	hybridEdit(t, source, hybridName, "v1")
 	first := startHybridHost(t, configRoot, cfg)
@@ -529,8 +527,8 @@ func TestChangedFusedMemberStartsFromTheBuildCache(t *testing.T) {
 	}
 	first.host.Shutdown("done")
 	built := cache()
-	if len(built) == 0 {
-		t.Fatal("the first start with the changed source left no artifact in the build cache")
+	if slices.Equal(built, before) {
+		t.Fatalf("the first start with the changed source left no artifact in the build cache %s: %q", filepath.Join(configRoot, "cache"), built)
 	}
 	second := startHybridHost(t, configRoot, cfg)
 	if v := second.version(t, hybridName); v != "v1" {

@@ -113,11 +113,16 @@ func TestPigletBinaryRunsAnEditedFusedMemberFromItsSource(t *testing.T) {
 		binary := buildSmallPigletBinary(t)
 		member := filepath.Join(filepath.Dir(binary), "hello")
 		edit(t, member)
-		got, output := markerDescriptions(t, binary, path, "-e", member)
-		slices.Sort(got)
-		if len(got) != 2 || !slices.Contains(got, "marker: "+componentMarker) || strings.Contains(output, "fused copy") {
-			t.Fatalf("without the key: %q, want the fused member and the source copy beside it as before\n%s", got, output)
+		// The source copy packs with the SDK of this checkout, as it did before the key existed.
+		sourceRoot, err := pigSourceRoot()
+		if err != nil {
+			t.Fatal(err)
 		}
-		t.Logf("without the key: %q", got)
+		t.Setenv("PIG_SDK_GO_ROOT", filepath.Join(sourceRoot, "extensions", "sdk"))
+		got, output := markerDescriptions(t, binary, path, "-e", member)
+		// Two copies, as before the key: the fused member and the source beside it, their commands numbered.
+		if want := []string{"marker:1: " + componentMarker, "marker:2: edited-description"}; !slices.Equal(got, want) || strings.Contains(output, "fused copy") {
+			t.Fatalf("without the key: %q, want %q\n%s", got, want, output)
+		}
 	})
 }

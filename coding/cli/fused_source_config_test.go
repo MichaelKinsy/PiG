@@ -38,6 +38,11 @@ func TestSourceConfigTakesTheFusedMembersPlaceOnlyWithABakedDigest(t *testing.T)
 			t.Fatalf("%s: %q, want today's %q", name, got, want)
 		}
 	}
+	// The active Piglet's own entry for the fused member (name only) is the same extension, not a second copy.
+	listed := append([]subprocess.ExtConfig{{Name: "core", Enabled: true}}, configs...)
+	if got, want := configNames(subprocess.DisambiguateIdentities(withFusedExtensionConfigs(fused, listed, baked))), []string{"core=" + core, "plain=", "other=" + other}; !slices.Equal(got, want) {
+		t.Fatalf("with the member listed by name too: %q, want %q", got, want)
+	}
 	// A configuration of the name without a source does not take the place.
 	nameOnly := []subprocess.ExtConfig{{Name: "core", Path: "/bin/core", Enabled: true}}
 	if got := configNames(withFusedExtensionConfigs(fused, nameOnly, baked)); !slices.Equal(got, []string{"core=", "plain=", "core="}) {

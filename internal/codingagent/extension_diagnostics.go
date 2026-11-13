@@ -43,8 +43,16 @@ func (m *InteractiveMode) extensionDiagnostics() []extension.ResourceDiagnostic 
 	return out
 }
 
+// fusedCopyRunsNotice is the clause every fused-source warning of the subprocess host carries (subprocess.resolveFused).
+const fusedCopyRunsNotice = ": running the fused copy: "
+
 // extensionLoadIssueDiagnostic separates a reload issue's path from its complete loader diagnostic.
 func extensionLoadIssueDiagnostic(issue string) extension.ResourceDiagnostic {
+	// pig additive (D31): a member fused into a Piglet Binary that is loaded and runs its compiled copy although its source differs
+	// (the host's fused-source warning) is a warning, not a failed load.
+	if strings.Contains(issue, fusedCopyRunsNotice) {
+		return extension.ResourceDiagnostic{Type: extension.DiagnosticWarning, Message: issue}
+	}
 	for _, messagePrefix := range []string{"Failed to load extension: ", "Extension does not export a valid factory function: "} {
 		if path, message, ok := strings.Cut(issue, ": "+messagePrefix); ok {
 			return extension.ResourceDiagnostic{Type: extension.DiagnosticError, Message: messagePrefix + message, Path: path}
