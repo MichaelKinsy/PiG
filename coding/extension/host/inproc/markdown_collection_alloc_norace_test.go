@@ -9,8 +9,9 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 )
 
-// Collecting the Markdown transformers allocates the list once and one wrapper per transformer (Pi runner.ts getMarkdownTransformers wraps each on
-// every call), not the list again each time it grows: 65 allocations for 64 transformers among 128 extensions, none for a runner without one.
+// Collecting the Markdown transformers allocates the list and nothing else, whatever their number: a registration holds the wrapper that limits its
+// transformer to its surfaces (Pi runner.ts getMarkdownTransformers makes that wrapper again on every call). One allocation for 64 transformers
+// among 128 extensions, none for a runner without one.
 func TestRunnerMarkdownTransformerCollectionAllocatesTheListOnce(t *testing.T) {
 	const registered = 64
 	exts := make([]extension.Extension, 2*registered)
@@ -19,8 +20,8 @@ func TestRunnerMarkdownTransformerCollectionAllocatesTheListOnce(t *testing.T) {
 	}
 	runner := inproc.NewRunner(exts, t.TempDir())
 	var transformers []extension.MarkdownTransformer
-	if got := testing.AllocsPerRun(20, func() { transformers = runner.GetMarkdownTransformers() }); got != registered+1 {
-		t.Errorf("collecting %d transformers allocated %v times, want %d: the list and one wrapper each", registered, got, registered+1)
+	if got := testing.AllocsPerRun(20, func() { transformers = runner.GetMarkdownTransformers() }); got != 1 {
+		t.Errorf("collecting %d transformers allocated %v times, want 1: the list", registered, got)
 	}
 	if len(transformers) != registered || cap(transformers) != registered {
 		t.Fatalf("collected %d transformers in a list of capacity %d, want %d and no spare capacity", len(transformers), cap(transformers), registered)
