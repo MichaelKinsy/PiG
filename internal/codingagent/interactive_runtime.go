@@ -247,6 +247,7 @@ func (m *InteractiveMode) attachSubprocess() {
 		bridge.SetFrontend(m.surface != nil)
 		m.detachModelRegistry = m.wireSubprocessHostCallbacks()
 		m.attachTerminalViewClient(bridge)
+		m.attachViewEndpoint(bridge)
 	}
 	if host := m.opts.SubprocessHost; host != nil {
 		if resolved, ok := host.(interface{ SetToolRenderersResolvedFunc(func(string)) }); ok {
@@ -288,6 +289,7 @@ func (m *InteractiveMode) detachSubprocess() {
 		m.detachModelRegistry = nil
 	}
 	m.detachTerminalViewClient()
+	m.detachViewEndpoint()
 	if bridge := m.opts.SubprocessUIBridge; bridge != nil {
 		bridge.SetUIContext(extension.NoopUIContext)
 		bridge.SetWidgetSyncFunc(func(map[string]*subprocess.PushProxy) {})

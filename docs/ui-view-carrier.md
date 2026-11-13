@@ -10,6 +10,8 @@ Nothing here has a version member and nothing is negotiated by version. A client
 
 One connection holds one attachment at a time. Several clients use several connections. With `--listen` every connection has its own session, so its own registry.
 
+An interactive session serves the carrier too when its Piglet sets `viewEndpoint: socket`: on the Unix socket `<agent directory>/view-endpoint/<pid>.sock`, where every connection reaches that one session. Its clients and the terminal then share one registry. See [The socket of an interactive session](#the-socket-of-an-interactive-session).
+
 ## Messages
 
 | Direction | `type` | Members | Reply `data`, or meaning | Go API |
@@ -99,6 +101,22 @@ The seven command names above are commands for every client. Any other `type`, i
 ## Session replacement and the end of the connection
 
 An attachment belongs to one session's registry. When the session is replaced (`new_session`, a switch, a fork), the attachment ends: the next command under its number is `stale`, and the same connection may send `ui_view_attach` again, which attaches to the new session. Closing the connection is a detach. Either way intents in flight settle `stale`.
+
+## The socket of an interactive session
+
+Stock PiG serves no socket. A Piglet selects it:
+
+```yaml
+viewClient: terminal    # the TUI draws the mounts
+viewEndpoint: socket    # other programs of this user may attach to the same session
+```
+
+- Path: `<agent directory>/view-endpoint/<pid>.sock`, in a directory of mode 0700, the socket 0600. Only this user can connect: pig also reads each peer's user from the kernel and closes a peer of another user before reading a byte.
+- Lines: the seven commands and two events of this page, with the same replies, errors and bounds. Nothing else of RPC mode is served: any other `type` gets `{"type":"response","command":"<type>","success":false,"error":"Unknown command: <type>"}`. A client of the socket draws mounts and raises their intents; it cannot prompt or read the session.
+- One registry: the terminal and every connection attach to the same registry, so the bound of 8 attachments counts them together, each client is sent every mount resolved for its own abilities, and the redraw a handler makes for one client's intent is delivered to all of them.
+- The end of a connection is the signal. A reload, a new, resumed, forked or switched session and the exit close every connection and remove the socket; the next extension host is served under the same path. A client whose connection ended connects again (the path is absent until the next host is bound: try again) and sends `ui_view_attach`: it is attached to the new registry and the reply carries what that registry holds. An intent that was in flight has no reply.
+- Bounds beside the carrier's: 16 connections at once; a line longer than 4194304 bytes closes the connection; a connection that is owed 512 lines or 8388608 bytes it has not read is closed. A client that only stops reading is owed the carrier's queue and then `ui_view_gap`, as on any transport.
+- Print, JSON and RPC mode ignore the key. On Windows the session starts, no socket is served and one warning says so.
 
 ## Relaying the carrier over another protocol
 

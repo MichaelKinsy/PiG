@@ -29,6 +29,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/internal/installchange"
 	"github.com/MichaelKinsy/PiG/tui"
+	"github.com/MichaelKinsy/PiG/internal/viewendpoint"
 )
 
 // SubprocessUIBridge is the interface satisfied by *subprocess.UIBridge
@@ -180,6 +181,8 @@ type InteractiveMode struct {
 	viewMounts []*viewMount
 	// viewClient is the terminal's attachment to the bound build's view registry, nil unless a Piglet selected it.
 	viewClient       atomic.Pointer[viewClient]
+	// viewEndpoint is the socket that serves the bound build's view registry to clients outside the process, nil unless a Piglet selected it.
+	viewEndpoint atomic.Pointer[viewendpoint.Endpoint]
 	inprocessWidgets []inprocessWidget
 	// widgetSeq counts widget sets across both hosts; bridgeWidgetSeqs is the sequence each extension-process widget got when it was set, by its
 	// bridge insertion order, so the layout interleaves the hosts in the order Pi's one Map per side keeps.
@@ -1275,6 +1278,13 @@ type InteractiveModeOptions struct {
 	// pig additive (D614).
 	TerminalViewClient bool
 
+	// ViewEndpoint serves the view carrier of SubprocessUIBridge's registry on a Unix socket in AgentDir/view-endpoint,
+	// so a client outside the process attaches to the session beside the terminal. A Piglet's viewEndpoint: socket
+	// sets it.
+	//
+	// pig additive (D614).
+	ViewEndpoint bool
+
 	// SubprocessUIBridge, when non-nil, is the UI bridge for subprocess
 	// extensions. Run() wires it to the TUI after creation via
 	// SetUIContext and SetInvalidate.
@@ -1567,6 +1577,7 @@ func (m *InteractiveMode) Run(ctx context.Context) (err error) {
 	defer SetUncaughtGoroutineHandler(m.uncaughtOffLoop)()
 	// Runs first on return, before the handlers above: Stop is upstream's stop(), which run() reaches through shutdown() or handleFatalRuntimeError.
 	defer func() { err = errors.Join(err, m.stopRun()) }()
+	defer m.closeViewEndpoint()
 	if err := m.Init(ctx); err != nil {
 		return err
 	}
