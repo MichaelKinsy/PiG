@@ -90,7 +90,7 @@ def identity(data_sha: str, closure_sha: str, backports: str = "") -> str:
 # port with this oracle, so the oracle carries the same fixes: a pinned release lacks them, and every scenario they change would
 # differ for a reason that is the pin's age, not a port defect.
 BACKPORTS = ROOT / "automation" / "gen" / "pi-post-release-backports.mjs"
-BACKPORT_PACKAGES = ("pi-ai", "pi-coding-agent", "pi-tui")
+BACKPORT_PACKAGES = ("pi-agent-core", "pi-ai", "pi-coding-agent", "pi-tui")
 
 
 def backport_ids(text: str | None = None) -> list[str]:
