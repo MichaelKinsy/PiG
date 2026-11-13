@@ -2,6 +2,7 @@ package extensionconformance
 
 import (
 	"encoding/json"
+	"errors"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding"
@@ -67,7 +68,13 @@ func TestConformance_ExtensionAPISessionWrites(t *testing.T) {
 				api.AppendEntry(customType, data)
 				return nil
 			})
-			h.bridge.SetHostAction("setLabel", func(entryID, label string) error { api.SetLabel(entryID, label); return nil })
+			h.bridge.SetHostAction("setLabel", func(entryID string, label *string, _ bool) error {
+				if label == nil {
+					return errors.New("the set_label command sends a label")
+				}
+				api.SetLabel(entryID, *label)
+				return nil
+			})
 
 			runConformanceCommand(t, h, "set_session_name")
 			pollUntilConformance(t, "the Session never took the name the SDK set", func() bool { return session.SessionName() == "conformance-session" })

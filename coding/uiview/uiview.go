@@ -18,6 +18,8 @@ import (
 	"sync"
 	"time"
 	"unicode"
+
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // Slot names where a client draws a mount. The set is closed.
@@ -211,19 +213,27 @@ func DecodeMount(raw []byte) (MountArgs, *Error) {
 	if err := closed(dec, dec.Decode(&a)); err != nil {
 		return a, err
 	}
+	return a, a.Check()
+}
+
+// Check verifies a mount record that was not decoded by DecodeMount, which calls it: the key is 1..128 bytes, the slot
+// is known, the target fits the slot and is there when the slot needs one, and the content is well formed (the title,
+// the view's root, the fallback, the intents, assets, alternatives, drawing, accessibility and focus members). It sets
+// the default timeout of an intent that names none, as decoding does.
+func (a *MountArgs) Check() *Error {
 	if n := len(a.Key); n < 1 || n > 128 {
-		return a, fail(CodeInvalid, "key must be 1..128 bytes")
+		return fail(CodeInvalid, "key must be 1..128 bytes")
 	}
 	if !slices.Contains(slots, a.Slot) {
-		return a, fail(CodeInvalid, "unknown slot %q", a.Slot)
+		return fail(CodeInvalid, "unknown slot %q", a.Slot)
 	}
 	if a.Target != nil && !validTarget(a.Slot, *a.Target) {
-		return a, fail(CodeInvalid, "target does not fit slot %q", a.Slot)
+		return fail(CodeInvalid, "target does not fit slot %q", a.Slot)
 	}
 	if a.Target == nil && (a.Slot == SlotToolCard || a.Slot == SlotMessage || a.Slot == SlotEntry) {
-		return a, fail(CodeInvalid, "slot %q needs a target", a.Slot)
+		return fail(CodeInvalid, "slot %q needs a target", a.Slot)
 	}
-	return a, a.check()
+	return a.check()
 }
 
 func DecodeUpdate(raw []byte) (UpdateArgs, *Error) {
@@ -232,10 +242,17 @@ func DecodeUpdate(raw []byte) (UpdateArgs, *Error) {
 	if err := closed(dec, dec.Decode(&a)); err != nil {
 		return a, err
 	}
+	return a, a.Check()
+}
+
+// Check verifies an update record that was not decoded by DecodeUpdate, which calls it: the mount's key is named and
+// the content is well formed, as MountArgs.Check verifies it. It sets the default timeout of an intent that names none,
+// as decoding does.
+func (a *UpdateArgs) Check() *Error {
 	if a.Mount.Key == "" {
-		return a, fail(CodeInvalid, "mount.key is required")
+		return fail(CodeInvalid, "mount.key is required")
 	}
-	return a, a.check()
+	return a.check()
 }
 
 func DecodeRef(raw []byte) (RefArgs, *Error) {
@@ -1025,7 +1042,7 @@ func (r *Registry) Snapshots() []Snapshot {
 }
 
 func sortSnapshots(out []Snapshot) {
-	slices.SortFunc(out, func(a, b Snapshot) int {
+	sortx.Func(out, func(a, b Snapshot) int {
 		if a.Mount.Epoch < b.Mount.Epoch {
 			return -1
 		}

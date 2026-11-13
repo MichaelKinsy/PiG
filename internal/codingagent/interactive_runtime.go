@@ -74,6 +74,7 @@ type InteractiveReplacement struct {
 	ReloadBuiltinExtensions func() []extension.Extension
 	SubprocessUIBridge      SubprocessUIBridge
 	SubprocessHost          SubprocessHost
+	ModelBinder             func(*ai.Model) *ai.Model
 	ModelLookup             func(providerID, modelID string) *ai.Model
 	ModelCatalog            func(providerID ...string) []*ai.Model
 	ModelClassify           func(context.Context, *ai.ClassifierModel, ai.ClassifierContext, ...ai.ModelsClassifierOptions) ai.ClassifierResult
@@ -226,6 +227,7 @@ func (m *InteractiveMode) applyReplacement(session InteractiveSessionHandle, r I
 	m.opts.ReloadBuiltinExtensions = r.ReloadBuiltinExtensions
 	m.opts.SubprocessUIBridge = r.SubprocessUIBridge
 	m.opts.SubprocessHost = r.SubprocessHost
+	m.opts.ModelBinder = r.ModelBinder
 	m.opts.ModelLookup = r.ModelLookup
 	m.opts.ModelCatalog = r.ModelCatalog
 	m.opts.ModelClassify = r.ModelClassify

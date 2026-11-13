@@ -165,13 +165,20 @@ func vertexAuth() *APIKeyAuth {
 				return &AuthResult{Auth: ModelAuth{APIKey: credential.Key}, Source: "stored credential"}, nil
 			}
 			if !credentialHasKey(credential) || bytes.Equal(bytes.TrimSpace(credential.Extra["key"]), []byte("null")) {
-				if key, ok := input.Ctx.Env("GOOGLE_CLOUD_API_KEY"); ok {
+				key, ok, err := authEnv(ctx, input.Ctx.Env, "GOOGLE_CLOUD_API_KEY")
+				if err != nil {
+					return nil, err
+				}
+				if ok {
 					return &AuthResult{Auth: ModelAuth{APIKey: key}, Source: "GOOGLE_CLOUD_API_KEY"}, nil
 				}
 			}
 			adcPath, stored := credentialEnvValue(credential, "GOOGLE_APPLICATION_CREDENTIALS")
 			if !stored {
-				adcPath, _ = input.Ctx.Env("GOOGLE_APPLICATION_CREDENTIALS")
+				var err error
+				if adcPath, _, err = authEnv(ctx, input.Ctx.Env, "GOOGLE_APPLICATION_CREDENTIALS"); err != nil {
+					return nil, err
+				}
 			}
 			if adcPath == "" && !stored {
 				adcPath = vertexADCPath
@@ -182,13 +189,22 @@ func vertexAuth() *APIKeyAuth {
 			}
 			project, stored := credentialEnvValue(credential, "GOOGLE_CLOUD_PROJECT")
 			if !stored {
-				if project, stored = input.Ctx.Env("GOOGLE_CLOUD_PROJECT"); !stored {
-					project, _ = input.Ctx.Env("GCLOUD_PROJECT")
+				var err error
+				if project, stored, err = authEnv(ctx, input.Ctx.Env, "GOOGLE_CLOUD_PROJECT"); err != nil {
+					return nil, err
+				}
+				if !stored {
+					if project, _, err = authEnv(ctx, input.Ctx.Env, "GCLOUD_PROJECT"); err != nil {
+						return nil, err
+					}
 				}
 			}
 			location, stored := credentialEnvValue(credential, "GOOGLE_CLOUD_LOCATION")
 			if !stored {
-				location, _ = input.Ctx.Env("GOOGLE_CLOUD_LOCATION")
+				var err error
+				if location, _, err = authEnv(ctx, input.Ctx.Env, "GOOGLE_CLOUD_LOCATION"); err != nil {
+					return nil, err
+				}
 			}
 			if hasCredentials && project != "" && location != "" {
 				source := "gcloud application default credentials"
@@ -216,29 +232,47 @@ type cloudflareResolution struct {
 
 // resolveCloudflareValue merges per field: the credential value wins, then
 // the ambient environment.
-func resolveCloudflareValue(name string, input APIKeyAuthInput) string {
+func resolveCloudflareValue(ctx context.Context, name string, input APIKeyAuthInput) (string, error) {
 	if input.Credential != nil {
 		if name == cloudflareAPIKey {
 			if credentialHasKey(input.Credential) {
-				return input.Credential.Key
+				return input.Credential.Key, nil
 			}
 		} else if value, ok := input.Credential.Env[name]; ok {
-			return value
+			return value, nil
 		}
 	}
-	value, _ := input.Ctx.Env(name)
-	return value
+	value, _, err := authEnv(ctx, input.Ctx.Env, name)
+	return value, err
 }
 
-func resolveCloudflareEnv(gateway bool, input APIKeyAuthInput) *cloudflareResolution {
-	apiKey := resolveCloudflareValue(cloudflareAPIKey, input)
-	accountID := resolveCloudflareValue(cloudflareAccountID, input)
+// authEnv is the `env` lookup of Pi's resolve functions: the signal is checked after the awaited lookup (the check before it is the one after the lookup
+// before, or the resolver's entry check), so a cancellation that arrives while the lookup runs rejects the resolution even when the lookup found a value.
+func authEnv(ctx context.Context, env func(string) (string, bool), name string) (string, bool, error) {
+	value, ok := env(name)
+	if err := ctx.Err(); err != nil {
+		return "", false, err
+	}
+	return value, ok, nil
+}
+
+func resolveCloudflareEnv(ctx context.Context, gateway bool, input APIKeyAuthInput) (*cloudflareResolution, error) {
+	apiKey, err := resolveCloudflareValue(ctx, cloudflareAPIKey, input)
+	if err != nil {
+		return nil, err
+	}
+	accountID, err := resolveCloudflareValue(ctx, cloudflareAccountID, input)
+	if err != nil {
+		return nil, err
+	}
 	gatewayID := ""
 	if gateway {
-		gatewayID = resolveCloudflareValue(cloudflareGatewayID, input)
+		if gatewayID, err = resolveCloudflareValue(ctx, cloudflareGatewayID, input); err != nil {
+			return nil, err
+		}
 	}
 	if apiKey == "" || accountID == "" || (gateway && gatewayID == "") {
-		return nil
+		return nil, nil
 	}
 	env := map[string]string{cloudflareAccountID: accountID}
 	if gatewayID != "" {
@@ -248,7 +282,7 @@ func resolveCloudflareEnv(gateway bool, input APIKeyAuthInput) *cloudflareResolu
 	if input.Credential != nil {
 		source = "stored credential"
 	}
-	return &cloudflareResolution{apiKey: apiKey, env: env, source: source}
+	return &cloudflareResolution{apiKey: apiKey, env: env, source: source}, nil
 }
 
 func cloudflareWorkersAIAuth() *APIKeyAuth {
@@ -259,9 +293,9 @@ func cloudflareWorkersAIAuth() *APIKeyAuth {
 			if err := ctx.Err(); err != nil {
 				return nil, err
 			}
-			resolved := resolveCloudflareEnv(false, input)
-			if resolved == nil {
-				return nil, nil
+			resolved, err := resolveCloudflareEnv(ctx, false, input)
+			if err != nil || resolved == nil {
+				return nil, err
 			}
 			return &AuthResult{Auth: ModelAuth{APIKey: resolved.apiKey}, Env: resolved.env, Source: resolved.source}, nil
 		},
@@ -276,9 +310,9 @@ func cloudflareAIGatewayAuth() *APIKeyAuth {
 			if err := ctx.Err(); err != nil {
 				return nil, err
 			}
-			resolved := resolveCloudflareEnv(true, input)
-			if resolved == nil {
-				return nil, nil
+			resolved, err := resolveCloudflareEnv(ctx, true, input)
+			if err != nil || resolved == nil {
+				return nil, err
 			}
 			headers := ProviderHeaders{
 				"cf-aig-authorization": new("Bearer " + resolved.apiKey),

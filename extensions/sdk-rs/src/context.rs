@@ -2182,6 +2182,9 @@ pub(crate) fn model_identity(model: &serde_json::Value) -> (String, String) {
 }
 
 /// Context provides access to the host's UI and session state.
+/// It has no method that continues a turn or appends a compaction at a turn's end: a `turn_end` or `agent_before_settle` handler does both with its result,
+/// `entries` (custom, custom_message, context_edit and compaction drafts) and `continue` (one more provider request, no new user message). See "Own compaction
+/// and continue after an overflow" in the extensions guide.
 /// Passed to every handler function. Clones share the connection, cancellation and live session state, so retained callbacks can own a context without copying that state.
 #[derive(Clone)]
 pub struct Context {
@@ -2571,6 +2574,46 @@ const RPC_SYNCHRONOUS_UI_EFFECTS: &[&str] = &[
     "ui.setFooter",
     "ui.setHeader",
 ];
+
+/// The model [`Context::set_model`] takes: a Pi model object, or the `provider/id` name of one. Both convert into it, so
+/// `ctx.set_model(&object)` and `ctx.set_model("provider/id")` compile.
+#[derive(Debug, Clone, PartialEq)]
+pub enum SetModelArg {
+    /// A Pi model object.
+    Object(serde_json::Value),
+    /// A `provider/id` name.
+    Named(String),
+}
+
+impl From<serde_json::Value> for SetModelArg {
+    fn from(object: serde_json::Value) -> Self {
+        SetModelArg::Object(object)
+    }
+}
+
+impl From<&serde_json::Value> for SetModelArg {
+    fn from(object: &serde_json::Value) -> Self {
+        SetModelArg::Object(object.clone())
+    }
+}
+
+impl From<&str> for SetModelArg {
+    fn from(spec: &str) -> Self {
+        SetModelArg::Named(spec.to_string())
+    }
+}
+
+impl From<String> for SetModelArg {
+    fn from(spec: String) -> Self {
+        SetModelArg::Named(spec)
+    }
+}
+
+impl From<&String> for SetModelArg {
+    fn from(spec: &String) -> Self {
+        SetModelArg::Named(spec.clone())
+    }
+}
 
 impl Context {
     pub fn model_registry(&self) -> ModelRegistry {
@@ -3272,6 +3315,28 @@ impl Context {
         trigger_turn: Option<bool>,
         deliver_as: Option<&str>,
     ) -> io::Result<()> {
+        self.send_message_with_details(
+            custom_type,
+            content,
+            display,
+            trigger_turn,
+            deliver_as,
+            None,
+        )
+    }
+
+    /// [`Context::send_message`] with upstream's message `details`, extension data kept with the
+    /// message and not sent to the model: `None` leaves the member out and `Some(Value::Null)`
+    /// writes it as null.
+    pub fn send_message_with_details(
+        &self,
+        custom_type: &str,
+        content: &str,
+        display: bool,
+        trigger_turn: Option<bool>,
+        deliver_as: Option<&str>,
+        details: Option<serde_json::Value>,
+    ) -> io::Result<()> {
         // Both options are optional upstream: None is sent as unset and the
         // host applies upstream's default for the session's state.
         let mut options = serde_json::Map::new();
@@ -3284,16 +3349,17 @@ impl Context {
                 serde_json::Value::String(deliver_as.to_string()),
             );
         }
+        let mut message = serde_json::json!({
+            "customType": custom_type,
+            "content": content,
+            "display": display,
+        });
+        if let Some(details) = details {
+            message["details"] = details;
+        }
         call_result_to_io(self.call_wire(
             "sendMessage",
-            Some(serde_json::json!({
-                "message": {
-                    "customType": custom_type,
-                    "content": content,
-                    "display": display,
-                },
-                "options": options,
-            })),
+            Some(serde_json::json!({"message": message, "options": options})),
         )?)
     }
 
@@ -3337,12 +3403,30 @@ impl Context {
             .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))
     }
 
-    /// Append a custom persistent entry to the session.
+    /// Append a custom persistent entry to the session. `Value::Null` leaves the entry without a
+    /// `data` member, as Pi's `appendEntry(customType)` does; [`Context::append_entry_opt`] writes
+    /// an explicit null.
     pub fn append_entry(&self, custom_type: &str, data: serde_json::Value) -> io::Result<()> {
-        call_result_to_io(self.call_wire(
-            "appendEntry",
-            Some(serde_json::json!({"customType": custom_type, "data": data})),
-        )?)
+        self.append_entry_opt(custom_type, if data.is_null() { None } else { Some(data) })
+    }
+
+    /// Append a custom persistent entry whose `data` member is left out (`None`, Pi's
+    /// `appendEntry(customType)`), written as null (`Some(Value::Null)`, Pi's
+    /// `appendEntry(customType, null)`) or a value.
+    pub fn append_entry_opt(
+        &self,
+        custom_type: &str,
+        data: Option<serde_json::Value>,
+    ) -> io::Result<()> {
+        let mut args = serde_json::Map::new();
+        args.insert(
+            "customType".into(),
+            serde_json::Value::String(custom_type.to_string()),
+        );
+        if let Some(data) = data {
+            args.insert("data".into(), data);
+        }
+        call_result_to_io(self.call_wire("appendEntry", Some(serde_json::Value::Object(args)))?)
     }
 
     // ─── Editor access ───────────────────────────────────────────────────
@@ -3400,14 +3484,31 @@ impl Context {
         )
     }
 
-    /// Set or clear a label for a session entry.
-    /// Sets or clears an entry label. The host's failure is returned, as
-    /// upstream's setLabel throws when the session cannot record the label.
+    /// Sets or clears an entry label. The label is written as given: an empty one clears the label
+    /// and its entry holds `"label":""`, as Pi's `setLabel(entryId, "")` writes it. The host's
+    /// failure is returned, as upstream's setLabel throws when the session cannot record the label.
     pub fn set_label(&self, entry_id: &str, label: &str) -> io::Result<()> {
-        call_result_to_io(self.call_wire(
-            "setLabel",
-            Some(serde_json::json!({"entryId": entry_id, "label": label})),
-        )?)
+        self.set_label_opt(entry_id, Some(serde_json::Value::String(label.to_string())))
+    }
+
+    /// Sets or clears an entry label in every form Pi's `setLabel(entryId, label?)` takes: `None`
+    /// is the call without a label, whose entry has no `label` member; `Some(Value::Null)` is a
+    /// null label, written as null; a string is written as given. All but a string that is not
+    /// empty clear the label.
+    pub fn set_label_opt(
+        &self,
+        entry_id: &str,
+        label: Option<serde_json::Value>,
+    ) -> io::Result<()> {
+        let mut args = serde_json::Map::new();
+        args.insert(
+            "entryId".into(),
+            serde_json::Value::String(entry_id.to_string()),
+        );
+        if let Some(label) = label {
+            args.insert("label".into(), label);
+        }
+        call_result_to_io(self.call_wire("setLabel", Some(serde_json::Value::Object(args)))?)
     }
 
     /// Return the host flag value or its first registered default; false and empty strings remain values. `None` is Pi's undefined; a host failure is an error, not the default.
@@ -3432,10 +3533,44 @@ impl Context {
         );
     }
 
-    /// Set the model. Returns (success, error_message).
-    pub fn set_model(&self, model: &str) -> (bool, String) {
+    /// Pi's `pi.setModel(model)`: make `model`, a Pi model object, the Session's model. Returns (switched, error_message).
+    ///
+    /// `switched` is false, and nothing changes, when the model's provider has no configured auth. The Session uses the object as given, with
+    /// the members the caller left on it (its context window, limits, base URL, compat): a model taken from the model registry and edited, or
+    /// one built by hand for a provider the host knows. The `model_select` handlers have run when it returns.
+    ///
+    /// A `provider/id` string stands for the registry's model of that name, or for an id the registry does not list a model the host builds
+    /// from the provider; a name with no slash is an openai model. The string form asks the host for the model object and then sets it, two
+    /// calls: the object the first call returned is the one set, whatever the registry became in between, and an error of the first call is
+    /// returned without setting.
+    pub fn set_model(&self, model: impl Into<SetModelArg>) -> (bool, String) {
+        let model = match model.into() {
+            SetModelArg::Object(object) => object,
+            SetModelArg::Named(spec) => {
+                match self.call_wire("resolveModel", Some(serde_json::json!({"spec": spec}))) {
+                    Ok(result) => {
+                        if let Some(error) = result.error {
+                            return (false, error.message);
+                        }
+                        let mut v = result.result.unwrap_or_default();
+                        let err = v.get("error").and_then(|s| s.as_str()).unwrap_or("");
+                        if !err.is_empty() {
+                            return (false, err.to_string());
+                        }
+                        v.get_mut("model")
+                            .map(serde_json::Value::take)
+                            .unwrap_or(serde_json::Value::Null)
+                    }
+                    Err(e) => return (false, e.to_string()),
+                }
+            }
+        };
         match self.call_wire("setModel", Some(serde_json::json!({"model": model}))) {
             Ok(result) => {
+                // The host rejects a value that is not a chat model object; Pi's Promise rejects.
+                if let Some(error) = result.error {
+                    return (false, error.message);
+                }
                 let v = result.result.unwrap_or_default();
                 let ok = v
                     .get("success")

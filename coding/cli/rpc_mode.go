@@ -1636,6 +1636,7 @@ commandLoop:
 				continue
 			}
 			if err := sess().SetSteeringMode(agent.QueueMode(cmd.Mode)); err != nil {
+				// pig divergence (D633): a failed save of the mode answers an error; Pi answers success (rpc-mode.ts:540-548).
 				writeRPC(rpcError(env.ID, "set_steering_mode", err.Error()))
 				continue
 			}
@@ -1648,6 +1649,7 @@ commandLoop:
 				continue
 			}
 			if err := sess().SetFollowUpMode(agent.QueueMode(cmd.Mode)); err != nil {
+				// pig divergence (D633): a failed save of the mode answers an error; Pi answers success (rpc-mode.ts:540-548).
 				writeRPC(rpcError(env.ID, "set_follow_up_mode", err.Error()))
 				continue
 			}

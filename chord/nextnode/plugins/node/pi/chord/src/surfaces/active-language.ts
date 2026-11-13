@@ -56,11 +56,16 @@ export async function followActiveLanguage<P extends Principal>(
 	});
 	const choice = host.hold(LocaleChoice, {}, ctx);
 	choice.pick.watch(ctx).then(
-		(watch) =>
+		(watch) => {
+			// pig divergence (D636): the pick the watch was acquired with is applied before `start`. Pi sets `pick` only in a
+			// listener call, so a language stored before this client's hold had its first values was never applied.
+			pick = watch.value;
+			update();
 			watch.start(async (call) => {
 				if (call.kind === "value") pick = call.value;
 				update();
-			}),
+			});
+		},
 		// The hold ended (the follower stopped) before its first value.
 		() => {},
 	);

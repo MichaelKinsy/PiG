@@ -1,0 +1,46 @@
+# Behavior family: extensions-runtime
+# Scenario: print mode calls the tool `search` of a direct MCP server that also has a tool named `constructor`: the
+# control of 102-print-mcp-tool-named-constructor.
+#
+# The extension and the server are those of 102-print-mcp-tool-named-constructor. Print mode answers one prompt per process, so the ordinary tool of
+# the same server is called here: the two outputs must be equal, so a break of the ordinary path (a direct server's tool
+# is offered and runs) is not hidden under divergence D645, which owns only the tool named `constructor`.
+#
+# Upstream evidence (Pi 1.5.2 source build b4afdddf oracle, Linux amd64 host in the CI image, Node 24.22.2, 2026-11-13, 3 runs,
+# test-faux):
+#   PI_CODING_AGENT_DIR=<empty agent dir> pi -e test-faux-provider.ts -e mcp-tool-named-constructor.mjs \
+#     --model test-faux/faux-1 -p 'Run: ext tool mcp__docs__search {"query":"cards"}'
+#   output: "ext-tool-done: mcp-hit: search cards"; exit: 0
+#
+# The built-in MCP extension is part of the surface, so the default --no-extensions is not passed.
+
+name = "103-print-mcp-tool-beside-constructor"
+description = "The ordinary tool of a direct MCP server that also has a tool named constructor runs in print mode on both sides"
+covers = [
+  "packages/coding-agent/src/core/mcp-servers.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+override_base_args = true
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+pig_extensions = ["testdata/ext/mcp-tool-named-constructor.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/mcp-tool-named-constructor.mjs",
+]
+
+[print]
+prompt = "Run: ext tool mcp__docs__search {\"query\":\"cards\"}"
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+both_contain = ["ext-tool-done: mcp-hit: search cards"]
+output_equal = true
+runs = 3

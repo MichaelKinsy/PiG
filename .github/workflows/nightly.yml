@@ -1,11 +1,13 @@
 # SPDX-License-Identifier: MIT
-name: Nightly race, fuzz and allocation ratchet
+name: Nightly race, fuzz, allocation ratchet and Piglet strip matrix
 
 # Whole-package -race on the packages that own concurrency, on Linux and on macOS (darwin/arm64), and every Fuzz
 # target for 30 seconds, and the full products of the oracle sweeps whose covering subsets the fast tier runs (make test-oracle-sweeps-nightly).
 # Pull requests run only the narrow race regressions of make test-race; these runs are too long
 # for every change. The allocation job runs every benchmark of the hot packages once and compares allocs/op with
 # automation/ci/allocbase/baseline.toml (make alloc-baseline).
+# The strip matrix job runs make piglet-strip-matrix in its default mode (automation/ci/stripmatrix): 2610 s at 8 CPUs, so pull requests
+# run only its go vet of ./ai/... (make piglet-strip-guard, in ci-contracts).
 on:
   schedule:
     - cron: '23 3 * * *'
@@ -210,3 +212,38 @@ jobs:
         env:
           CI: '1'
         run: make alloc-baseline
+
+  strip-matrix:
+    name: Piglet strip matrix / API tags and all tags
+    runs-on: ubuntu-24.04
+    # The default mode took 2610 s at 8 CPUs (vet of every package, the ai tests and the stripped binary for four tag sets); the hosted runner has fewer.
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: true
+      # The matrix runs the tests of ./ai/, whose Pi-oracle tests start node, and the stripped binary loads a TypeScript extension: the pinned Node, as in the race job.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      # The Pi-oracle tests of ./ai/ need the oracle and the locked npm trees of the oracle tests, and npm on PATH: the race job's steps for its ai group.
+      - name: Install native test tools and the pinned Pi oracle
+        shell: bash
+        run: |
+          set -euo pipefail
+          automation/ci/install-native-test-packages.sh
+          npm_version="$(awk '/^  NPM_VERSION:/ { print $2; exit }' .github/workflows/ci.yml)"
+          automation/ci/install-npm-toolchain.sh
+          bin="$PWD/automation/ci/npm-toolchain/node_modules/.bin"
+          echo "$bin" >> "$GITHUB_PATH"
+          export PATH="$bin:$PATH"
+          test "$(npm --version)" = "$npm_version"
+          make upstream-mirror
+      - name: Check cmd/pig under each API strip tag and under all strip tags
+        env:
+          CI: '1'
+        run: make piglet-strip-matrix

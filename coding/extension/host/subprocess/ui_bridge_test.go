@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
@@ -848,19 +849,59 @@ func TestUIBridge_HandleCall_GetSessionName(t *testing.T) {
 
 func TestUIBridge_HandleCall_SetModel(t *testing.T) {
 	b := newTestBridge(&mockUIContext{})
-	var modelSet string
+	var modelSet *ai.Model
 	b.SetActions(&HostCallbacks{
-		SetModel: func(_ context.Context, m string) (bool, error) { modelSet = m; return true, nil },
+		SetModel: func(_ context.Context, m *ai.Model) (bool, error) { modelSet = m; return true, nil },
+		ResolveModel: func(_ context.Context, spec string) (*ai.Model, error) {
+			if spec != "openai/gpt-4" {
+				return nil, errors.New("no model named " + spec)
+			}
+			return &ai.Model{ID: "gpt-4", ProviderMeta: ai.ProviderMetadata{ProviderID: "openai", API: ai.APIOpenAICompletions}, Capabilities: ai.ModelCapabilities{ContextWindow: 8192}}, nil
+		},
 	})
 
-	res, err := call(b, "setModel", `{"model":"gpt-4"}`)
+	// The model object reaches the action with the members the extension left on it, including one no catalog has.
+	res, err := call(b, "setModel", `{"model":{"id":"gpt-4","name":"GPT 4","provider":"openai","api":"openai-completions","baseUrl":"http://127.0.0.1:9/v1","contextWindow":4321,"maxTokens":77}}`)
 	if err != nil {
 		t.Fatal(err)
 	}
-	var out map[string]any
+	var out SetModelResult
 	_ = json.Unmarshal(res.Result, &out)
-	if out["success"] != true || modelSet != "gpt-4" {
-		t.Errorf("got %v, modelSet=%q", out, modelSet)
+	if !out.Success || modelSet == nil || modelSet.ID != "gpt-4" || modelSet.ProviderMeta.ProviderID != "openai" || modelSet.ProviderMeta.BaseURL != "http://127.0.0.1:9/v1" || modelSet.Capabilities.ContextWindow != 4321 || modelSet.Capabilities.MaxOutputTokens != 77 {
+		t.Errorf("got %+v, model=%+v", out, modelSet)
+	}
+
+	// The wire has one shape for a model: the name an SDK older than the object form sends is rejected, and no model is set.
+	modelSet = nil
+	for _, args := range []string{`{"model":"openai/gpt-4"}`, `{"model":null}`, `{}`, `{"model":{"provider":"openai"}}`, `{"model":{"type":"image","id":"i","provider":"openai"}}`} {
+		if res, err := call(b, "setModel", args); err == nil || modelSet != nil {
+			t.Errorf("setModel %s = %v, %v (model %v), want a rejection and no model set", args, res, err, modelSet)
+		}
+	}
+
+	// resolveModel answers the object of a name, or the error of building it as the result's error.
+	res, err = call(b, CallResolveModel, `{"spec":"openai/gpt-4"}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var resolved ResolveModelResult
+	_ = json.Unmarshal(res.Result, &resolved)
+	var object struct {
+		ID, Provider  string
+		ContextWindow int
+	}
+	_ = json.Unmarshal(resolved.Model, &object)
+	if resolved.Error != "" || object.ID != "gpt-4" || object.Provider != "openai" || object.ContextWindow != 8192 {
+		t.Errorf("resolveModel = %s (error %q)", resolved.Model, resolved.Error)
+	}
+	res, err = call(b, CallResolveModel, `{"spec":"nonesuch/x"}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolved = ResolveModelResult{}
+	_ = json.Unmarshal(res.Result, &resolved)
+	if resolved.Error != "no model named nonesuch/x" || len(resolved.Model) != 0 {
+		t.Errorf("resolveModel of an unknown name = %s (error %q), want the build error and no model", resolved.Model, resolved.Error)
 	}
 }
 

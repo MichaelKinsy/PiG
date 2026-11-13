@@ -1,3 +1,7 @@
+//go:build !pig_strip_mistral_conversations
+
+// The whole file is about mistral-conversations requests, which a build with the API's strip tag does not build.
+
 package ai
 
 import (

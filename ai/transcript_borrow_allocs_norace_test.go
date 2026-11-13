@@ -18,6 +18,10 @@ func TestRequestBuildDoesNotCopyWhatItDoesNotSend(t *testing.T) {
 			// Converse has no payload hook to stop the build before the SDK serializes and signs the request; its conversion is covered by TestRequestBuildLeavesTheTranscriptUnchanged.
 			continue
 		}
+		if !BuiltAPI(model.API) {
+			// A build with this API's pig_strip tag has no provider for the row.
+			continue
+		}
 		t.Run(model.Provider+"/"+model.ID, func(t *testing.T) {
 			var provider Provider
 			if model.API == APIPiMessages {

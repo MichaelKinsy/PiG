@@ -89,13 +89,17 @@ func LoginGitHubCopilot(ctx context.Context, cb CopilotLoginCallbacks) (Credenti
 	if cb.OnPrompt != nil {
 		input, err := cb.OnPrompt(ctx)
 		if err != nil {
-			return Credential{}, fmt.Errorf("github-copilot: prompt: %w", err)
+			return Credential{}, err
+		}
+		// loginGitHubCopilot (github-copilot.ts:433): a prompt that settles after the signal aborted is "Login cancelled".
+		if ctx.Err() != nil {
+			return Credential{}, errors.New("Login cancelled")
 		}
 		input = trimJSWhitespace(input)
 		if input != "" {
 			d, ok := normalizeDomain(input)
 			if !ok {
-				return Credential{}, fmt.Errorf("github-copilot: invalid enterprise domain %q", input)
+				return Credential{}, errors.New("Invalid GitHub Enterprise URL/domain")
 			}
 			domain = d
 			enterprise = d
@@ -104,7 +108,7 @@ func LoginGitHubCopilot(ctx context.Context, cb CopilotLoginCallbacks) (Credenti
 
 	device, err := startDeviceFlow(ctx, domain)
 	if err != nil {
-		return Credential{}, fmt.Errorf("github-copilot: device flow: %w", err)
+		return Credential{}, err
 	}
 	if cb.OnDeviceCode != nil {
 		interval := float64(0)
@@ -118,12 +122,12 @@ func LoginGitHubCopilot(ctx context.Context, cb CopilotLoginCallbacks) (Credenti
 
 	githubAccessToken, err := pollForGitHubAccessToken(ctx, domain, device)
 	if err != nil {
-		return Credential{}, fmt.Errorf("github-copilot: poll: %w", err)
+		return Credential{}, err
 	}
 
 	cred, err := refreshCopilotAccessToken(ctx, githubAccessToken, enterprise)
 	if err != nil {
-		return Credential{}, fmt.Errorf("github-copilot: exchange: %w", err)
+		return Credential{}, err
 	}
 
 	// Unlike the individual policy POSTs below, the catalog fetch itself is
@@ -131,7 +135,7 @@ func LoginGitHubCopilot(ctx context.Context, cb CopilotLoginCallbacks) (Credenti
 	// failure here fails the whole login. Mirrors github-copilot.ts:462-470.
 	catalog, err := fetchGitHubCopilotModels(ctx, cred.Access, enterprise, copilotRetryPolicy{MaxRetries: 2, MaxElapsedMs: 5000})
 	if err != nil {
-		return Credential{}, fmt.Errorf("github-copilot: list models: %w", err)
+		return Credential{}, err
 	}
 
 	// Only models whose account policy is "unconfigured" need a policy POST
@@ -152,7 +156,7 @@ func LoginGitHubCopilot(ctx context.Context, cb CopilotLoginCallbacks) (Credenti
 		// failures per model and only propagates a caller cancellation.
 		enabled, err := enableGitHubCopilotModels(ctx, cred.Access, catalog.PolicyModelIDs, enterprise)
 		if err != nil {
-			return Credential{}, fmt.Errorf("github-copilot: enable models: %w", err)
+			return Credential{}, err
 		}
 		for _, id := range enabled {
 			if !slices.Contains(availableModelIDs, id) {

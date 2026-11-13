@@ -36,8 +36,8 @@ func TestBuiltinProvidersUpstream(t *testing.T) {
 	// .upstream/v0.99.1/packages/ai/test/providers.test.ts:56
 	t.Run("builtinModels registers every builtin provider with models", func(t *testing.T) {
 		providers := ListProviders()
-		if len(BuiltinProviders()) != len(providers) {
-			t.Fatalf("BuiltinProviders() = %d providers, ListProviders() = %d", len(BuiltinProviders()), len(providers))
+		if built := builtCatalogProviders(); len(BuiltinProviders()) != len(built) {
+			t.Fatalf("BuiltinProviders() = %d providers, the catalog without this build's stripped providers = %d", len(BuiltinProviders()), len(built))
 		}
 		if !slices.Contains(providers, "anthropic") || len(ListModels("")) <= 500 {
 			t.Fatal("incomplete builtin catalog")
@@ -45,7 +45,8 @@ func TestBuiltinProvidersUpstream(t *testing.T) {
 		if providerModelUpstream(t, "anthropic", "claude-haiku-4-5").API != APIAnthropicMessages {
 			t.Fatal("wrong Anthropic API")
 		}
-		for _, provider := range providers {
+		// A build with a pig_strip_<api> tag offers no model of the provider it strips.
+		for _, provider := range builtCatalogProviders() {
 			models := GetAllBuiltinModels(provider)
 			if len(models) == 0 {
 				t.Fatal(provider)
@@ -321,6 +322,8 @@ func TestListProvidersMatchesPinnedBarrelKeys(t *testing.T) {
 	for _, provider := range BuiltinProviders() {
 		built = append(built, provider.ID)
 	}
+	// A build with a pig_strip_<api> tag builds the barrel's providers without the one it strips.
+	want = slices.DeleteFunc(want, func(id string) bool { return slices.Contains(BuiltStrippedProviders(), id) })
 	if !slices.Equal(built, want) {
 		t.Fatalf("BuiltinProviders() ids = %v\nwant %v", built, want)
 	}

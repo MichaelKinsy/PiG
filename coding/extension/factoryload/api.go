@@ -366,18 +366,14 @@ func (a *api) GetSessionName() string {
 	return get()
 }
 
-// SetLabel sets the label of an entry; an empty label clears it, as upstream's `undefined` does.
+// SetLabel sets the label of an entry. The label is handed on as given: an empty one clears the label and its entry holds `"label":""`, as Pi's setLabel(entryId, "") does.
 func (a *api) SetLabel(entryID string, label string) {
 	a.assertActive()
 	set := a.runtime.SetLabel
 	if set == nil {
 		panic(notInitialized())
 	}
-	var value *string
-	if label != "" {
-		value = &label
-	}
-	if err := set(entryID, value); err != nil {
+	if err := set(entryID, &label); err != nil {
 		panic(err)
 	}
 }

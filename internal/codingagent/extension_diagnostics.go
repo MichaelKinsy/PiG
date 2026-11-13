@@ -90,10 +90,14 @@ func (m *InteractiveMode) loadThemes() {
 	}
 	mode := tui.GetTerminalColorMode(tui.ApplyCapabilityOverrides(tui.DetectCapabilities(func() bool { return false }), overrides))
 	m.loadedThemes, m.themeDiagnostics = loadThemeResources(registry, m.opts.ThemePaths, mode)
+	customThemesDir := ""
 	if m.opts.AgentDir != "" {
-		addCustomDirectoryThemes(registry, filepath.Join(m.opts.AgentDir, "themes"), mode)
+		customThemesDir = filepath.Join(m.opts.AgentDir, "themes")
+		addCustomDirectoryThemes(registry, customThemesDir, mode)
 	}
 	tui.SetThemeRegistry(registry)
+	// theme.ts loadThemeJson reads an unregistered name's file from this directory; a file that fails to load there is the reason setTheme reports.
+	tui.SetCustomThemesDir(customThemesDir)
 }
 
 // addCustomDirectoryThemes mirrors Pi getCustomThemeInfos: unreadable and invalid files are ignored, and built-in or registered names keep precedence.

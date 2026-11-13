@@ -19,6 +19,8 @@ type testCall struct {
 	name string
 	hold int
 	sent *[]string
+	// owner is who made it (Pi's `QueuedCall & { readonly owner: string }` of the removeWhere case).
+	owner string
 }
 
 func callOf(name string, sent *[]string, hold ...int) *testCall {
@@ -135,5 +137,31 @@ func TestCallWindowSendsEveryCallAtOnceToAPeerThatAnnouncedNoWindow(t *testing.T
 	}
 	if len(sent) != 301 {
 		t.Fatalf("sent %d calls, want 301", len(sent))
+	}
+}
+
+// calls.test.ts: the call window › takes out the waiting calls a predicate matches, in order, and leaves the rest queued
+// (one reference's calls) (Pi main 47e9d74f9)
+func TestCallWindowTakesOutTheWaitingCallsAPredicateMatchesInOrderAndLeavesTheRestQueued(t *testing.T) {
+	var sent []string
+	window := &callWindow[*testCall]{}
+	window.opened(1)
+	call := func(name, owner string) *testCall {
+		queued := callOf(name, &sent)
+		queued.owner = owner
+		return queued
+	}
+	calls := []*testCall{call("A1", "a"), call("A2", "a"), call("B1", "b"), call("A3", "a")}
+	for _, queued := range calls {
+		window.submit(queued)
+	}
+	// A1 went out; A2 and A3 wait.
+	if removed := window.removeWhere(func(queued *testCall) bool { return queued.owner == "a" }); !slices.Equal(removed, []*testCall{calls[1], calls[3]}) {
+		t.Fatalf("removeWhere(owner a) = %v, want A2 and A3 in order", removed)
+	}
+	window.freed()
+	expectSent(t, sent, "A1", "B1")
+	if removed := window.removeWhere(func(*testCall) bool { return true }); len(removed) != 0 {
+		t.Fatalf("removeWhere(all) = %v, want none", removed)
 	}
 }

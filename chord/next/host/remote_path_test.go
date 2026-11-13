@@ -59,7 +59,7 @@ func expectLog(t *testing.T, got []string, want ...string) {
 func TestPathAsksForALinkAndHoldsEveryHolderOnEachLink(t *testing.T) {
 	rig := newPathRig()
 	changes := 0
-	p := newPath(func(pathEvent) { changes++ })
+	p := newPath(func(pathEvent) { changes++ }, nil)
 	p.attach(rig.holder("a"))
 	p.attach(rig.holder("b"))
 	if changes != 2 {
@@ -81,7 +81,7 @@ func TestPathAsksForALinkAndHoldsEveryHolderOnEachLink(t *testing.T) {
 func TestPathTellsHoldersWhenItsLinkDrops(t *testing.T) {
 	rig := newPathRig()
 	changes := 0
-	p := newPath(func(pathEvent) { changes++ })
+	p := newPath(func(pathEvent) { changes++ }, nil)
 	first, second := rig.linkOf("1"), rig.linkOf("2")
 	p.connected(first)
 	p.attach(rig.holder("a"))
@@ -108,7 +108,7 @@ func TestPathTellsHoldersWhenItsLinkDrops(t *testing.T) {
 func TestPathReportsItsLastHoldersDetach(t *testing.T) {
 	rig := newPathRig()
 	changes := 0
-	p := newPath(func(pathEvent) { changes++ })
+	p := newPath(func(pathEvent) { changes++ }, nil)
 	a, b := rig.holder("a"), rig.holder("b")
 	p.connected(rig.linkOf("1"))
 	p.attach(a)
@@ -132,7 +132,7 @@ func TestPathReportsItsLastHoldersDetach(t *testing.T) {
 func TestPathSaysWhatChangedAHolderAttachedWithoutALinkADropTheLastReleaseFailsItsHoldersWaiting(t *testing.T) {
 	rig := newPathRig()
 	var events []pathEventKind
-	p := newPath(func(event pathEvent) { events = append(events, event.kind) })
+	p := newPath(func(event pathEvent) { events = append(events, event.kind) }, nil)
 	a := rig.holder("a")
 	p.attach(a)
 	p.unreachable(data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "no worker"}, nil))
@@ -144,4 +144,39 @@ func TestPathSaysWhatChangedAHolderAttachedWithoutALinkADropTheLastReleaseFailsI
 		t.Fatalf("events = %v, want attached, dropped, released", events)
 	}
 	expectLog(t, rig.log, "a unreachable: no worker", "a@1", "a dropped")
+}
+
+// path.test.ts: a path › counts a join to a held holder as a request without a link (a failed route resolves again),
+// none with one (Pi main 47e9d74f9)
+func TestPathCountsAJoinToAHeldHolderAsARequestWithoutALinkNoneWithOne(t *testing.T) {
+	rig := newPathRig()
+	var events []pathEventKind
+	p := newPath(func(event pathEvent) { events = append(events, event.kind) }, nil)
+	a := rig.holder("a")
+	p.attach(a)
+	p.requested(a)
+	if !slices.Equal(events, []pathEventKind{pathAttached, pathAttached}) {
+		t.Fatalf("events = %v, want attached, attached", events)
+	}
+	p.connected(rig.linkOf("1"))
+	p.requested(a)
+	if !slices.Equal(events, []pathEventKind{pathAttached, pathAttached}) {
+		t.Fatalf("events with a link = %v, want attached, attached", events)
+	}
+}
+
+// path.test.ts: a path › tells whether its route suspended it; a path without a route never is (Pi main 47e9d74f9)
+func TestPathTellsWhetherItsRouteSuspendedItAPathWithoutARouteNeverIs(t *testing.T) {
+	suspended := false
+	if newPath(func(pathEvent) {}, nil).suspended() {
+		t.Fatal("a path without a route is suspended")
+	}
+	routed := newPath(func(pathEvent) {}, func() bool { return suspended })
+	if routed.suspended() {
+		t.Fatal("suspended() before its route suspended it")
+	}
+	suspended = true
+	if !routed.suspended() {
+		t.Fatal("suspended() is false after its route suspended it")
+	}
 }

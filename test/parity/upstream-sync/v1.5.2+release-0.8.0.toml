@@ -118,7 +118,7 @@ path = "packages/coding-agent/docs/nvidia-rtx-llama-cpp.md"
 change = "modified"
 disposition = "ported"
 evidence = ["test:internal/codingagent/llama/native_provider_test.go#TestModelsProviderIsDormantUntilConfigured"]
-rationale = "Pi b3c2e4a6bef8 (#12001): the NVIDIA RTX guide drops --port 8080 from the llama-server command and connects to http://127.0.0.1:9931; docs/site/docs/nvidia-rtx-llama-cpp.md follows (the llama-cpp.md mirror also uses 9931 for the default URL, LLAMA_BASE_URL and health checks)."
+rationale = "Pi b3c2e4a6bef8 (#12001): the NVIDIA RTX guide drops --port 8080 from the llama-server command and connects to http://127.0.0.1:9931; docs/site/docs/nvidia-rtx-llama-cpp.md follows (the llama-cpp.md mirror also uses 9931 for the default URL, LLAMA_BASE_URL and health checks). Pi 74dcca7d4140 (#12004), docs only: the guide starts the router with `llama serve` (`llama.exe serve` in the PowerShell command, with the options of `llama-server`), checks `llama serve --help` for `--models-preset`, and saves the preset in the llama.cpp folder; the page follows in the same four lines."
 oracle = "not carried: the oracle carries b3c2e4a6bef8's behaviour (extensions/llama/provider.js); the guide's text in the installed package stays the pin's, and no scenario or mirror test reads it there."
 
 [[files]]

@@ -9,6 +9,7 @@ set -euo pipefail
 
 name=vendor-chord-surfaces-client
 default_out=chord/nextnode/surfaces/client
+# shellcheck source=automation/gen/vendor-chord-common.sh
 . "$(dirname -- "${BASH_SOURCE[0]}")/vendor-chord-common.sh"
 
 node --disable-warning=ExperimentalWarning "$root/automation/gen/vendor-chord-surfaces-client.mjs" "$tree" "$commit" "$telemetry" "$out" "$pin" "$carried"

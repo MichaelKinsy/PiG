@@ -154,10 +154,7 @@ func (t *Theme) WithColorMode(mode TerminalColorMode) *Theme {
 // currentColorMode mirrors createTheme's default mode:
 // getCapabilities().trueColor ? "truecolor" : "256color".
 func currentColorMode() TerminalColorMode {
-	if GetCapabilities().TrueColor {
-		return TerminalColorModeTrueColor
-	}
-	return TerminalColorMode256
+	return GetTerminalColorMode()
 }
 
 // storeActiveTheme activates t in the color mode the terminal supports now,
@@ -484,6 +481,7 @@ func SetThemeByName(name string, enableWatcher ...bool) {
 }
 
 // SetThemeByNameChecked is SetThemeByName that reports why a theme could not be activated; the system theme is active then (theme.ts setTheme's `{ success: false, error }`).
+// A name that is neither built in nor registered is the file <custom themes directory>/<name>.json (theme.ts loadTheme, loadThemeJson): it loads by its file name, and when it exists and fails the error is the loader's reason, not "Theme not found".
 func SetThemeByNameChecked(name string, enableWatcher ...bool) error {
 	themeMutationMu.Lock()
 	defer themeMutationMu.Unlock()
@@ -498,8 +496,22 @@ func SetThemeByNameChecked(name string, enableWatcher ...bool) error {
 		setBuiltinTheme(name, watch && name != SystemThemeName)
 		return nil
 	}
-	setBuiltinTheme(SystemThemeName, false)
-	return fmt.Errorf("Theme not found: %s", name)
+	t, err := loadUnregisteredTheme(name)
+	if err != nil {
+		setBuiltinTheme(SystemThemeName, false)
+		return err
+	}
+	storeActiveTheme(t)
+	noteSelectedTheme(name, watch)
+	return nil
+}
+
+// customThemesDir is the agent directory's themes directory (config.ts getCustomThemesDir), where a name that is not registered is looked up.
+var customThemesDir atomic.Pointer[string]
+
+// SetCustomThemesDir sets the directory in which SetThemeByName looks for the file of a theme that is not registered; "" means there is none.
+func SetCustomThemesDir(dir string) {
+	customThemesDir.Store(&dir)
 }
 
 // globalRegistry holds the theme registry for /theme command. It is read on

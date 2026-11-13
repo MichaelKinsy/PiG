@@ -16,7 +16,11 @@ type sessionCompactionData struct {
 	FirstKeptEntryID string
 	TokensBefore     int
 	Usage            *ai.Usage
-	Details          any
+	// UsageNull marks a nil Usage the extension wrote as null (agent-session.ts compact: `usage = extensionCompaction.usage`).
+	UsageNull bool
+	// UsageRaw is the usage object as the extension wrote it, which the entry holds as Pi's does.
+	UsageRaw json.RawMessage
+	Details  any
 }
 
 func (s *Session) extensionCompaction(
@@ -75,13 +79,19 @@ func (s *Session) extensionCompaction(
 	if err := json.Unmarshal(envelope.Compaction, &wire); err != nil {
 		return nil, false, err
 	}
-	// The details are the value the extension wrote; keep its member order.
-	details := orderedjson.Value(wire.Details)
+	// The details are the value the extension wrote; keep its member order, and a null apart from no member.
+	details := orderedjson.Member(wire.Details)
+	var usageRaw json.RawMessage
+	if wire.Usage != nil {
+		usageRaw = orderedjson.ContainerMember(envelope.Compaction, "usage")
+	}
 	return &sessionCompactionData{
 		Summary:          wire.Summary,
 		FirstKeptEntryID: wire.FirstKeptEntryID,
 		TokensBefore:     wire.TokensBefore,
 		Usage:            wire.Usage,
+		UsageNull:        wire.Usage == nil && orderedjson.IsNullMember(envelope.Compaction, "usage"),
+		UsageRaw:         usageRaw,
 		Details:          details,
 	}, true, nil
 }

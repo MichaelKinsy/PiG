@@ -311,6 +311,7 @@ func TestScrollRegionsShowTheSameScreenAsPisBytes(t *testing.T) {
 				t.Parallel()
 				version, screens := e.run(t, dir)
 				compared, mismatched, known, nonBlank := 0, 0, 0, 0
+				writerCompared, writerMismatched := 0, 0
 				var leakDiffer []string
 				leakTotal := 0
 				for _, sc := range plan {
@@ -328,6 +329,22 @@ func TestScrollRegionsShowTheSameScreenAsPisBytes(t *testing.T) {
 						if !pisMargins(b[i].Margins) {
 							t.Errorf("%s step %d: %s printed margins %s for B (Pi's bytes), want the whole screen with origin mode off", sc.name, i, e.name, b[i].Margins)
 							break
+						}
+					}
+					// The screen writer's bytes (C from A, D from B) show what the bytes they were made from show, in every scenario.
+					for _, pair := range [][2]string{{"A", "C"}, {"B", "D"}} {
+						reference, written := got[pair[0]], got[pair[1]]
+						pr, pw := sc.variants[pair[0]], sc.variants[pair[1]]
+						if pw == nil || len(reference) != len(pr.steps) || len(written) != len(pw.steps) || len(reference) != len(written) {
+							t.Errorf("%s: %d/%d screens printed for the writer's variant %s of %s", sc.name, len(reference), len(written), pair[1], pair[0])
+							continue
+						}
+						if step, difference := firstMismatch(reference, written, pr, pw); step >= 0 {
+							writerMismatched++
+							t.Errorf("%s (%dx%d) step %d (resize %v): %s shows other screens for %s and the screen writer's bytes %s:%s\nstep bytes %s: %s\nstep bytes %s: %s",
+								sc.name, sc.cols, sc.rows, step, pr.steps[step].resize, e.name, pair[0], pair[1], difference, pair[0], quoteTail(stepBytes(pr, step)), pair[1], quoteTail(stepBytes(pw, step)))
+						} else {
+							writerCompared += len(reference)
 						}
 					}
 					step, difference := firstMismatch(a, b, pa, pb)
@@ -359,6 +376,7 @@ func TestScrollRegionsShowTheSameScreenAsPisBytes(t *testing.T) {
 							sc.name, sc.cols, sc.rows, step, pa.steps[step].resize, e.name, difference, quoteTail(stepBytes(pa, step)), quoteTail(stepBytes(pb, step)))
 					}
 				}
+				t.Logf("%s %s: the screen writer's bytes: %d checkpoints identical to the bytes they were made from, %d scenarios differ", e.name, version, writerCompared, writerMismatched)
 				t.Logf("%s %s: %d scenarios, %d checkpoints per variant identical, %d scenarios differ, %d known findings reproduce; %d of %d fixture scenarios left out for a clipped line differ as they are: %v", e.name, version, len(plan), compared, mismatched, known, len(leakDiffer), leakTotal, leakDiffer)
 				if compared == 0 || nonBlank < compared/4 {
 					t.Errorf("%s showed text after only %d of %d steps: the replay did not draw the frames", e.name, nonBlank, compared)

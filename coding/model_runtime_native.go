@@ -153,6 +153,8 @@ func (runtime *ModelRuntime) bindNativeModel(model *ai.Model) *ai.Model {
 type nativeModelBackend struct {
 	runtime *ModelRuntime
 	model   *ai.Model
+	// object is catalogModelBackend.object for a model object of a provider object.
+	object *modelObjectOrigin
 }
 
 func (provider *nativeModelBackend) ID() string { return provider.model.ProviderMeta.ProviderID }

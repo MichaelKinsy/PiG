@@ -469,7 +469,9 @@ func TestPageSenderSendsItsSpansWithoutMetricsOnceBoundUntilThenTheyWaitInTheRec
 	transported()
 	sender.Send(true)
 	batches := s.batches.taken()
-	if len(batches) != 1 || len(batches[0].Spans) != 1 || batches[0].Spans[0].Name != "page.click" || len(batches[0].Metrics) != 0 {
+	// The sender's own hold is shared work: a `chord.hold` root on the page's adapter, sent with the rest.
+	if len(batches) != 1 || len(batches[0].Spans) != 2 || batches[0].Spans[0].Name != "page.click" ||
+		batches[0].Spans[1].Name != "chord.hold" || len(batches[0].Metrics) != 0 {
 		t.Fatalf("batches = %+v", batches)
 	}
 	if recorder.QueuedSpans() != 0 {
@@ -511,7 +513,7 @@ func TestWorkerSenderSendsSpansAndMetricsToTheWorkerVariant(t *testing.T) {
 	recorder.Counter("runs", telemetry.InstrumentOptions{}).Add(2, nil)
 	sender.Send(true)
 	batches := s.batches.taken()
-	if len(batches) != 1 || len(batches[0].Spans) != 1 || batches[0].Spans[0].Name != "worker.job" {
+	if len(batches) != 1 || len(batches[0].Spans) != 2 || batches[0].Spans[0].Name != "chord.hold" || batches[0].Spans[1].Name != "worker.job" {
 		t.Fatalf("batches = %+v", batches)
 	}
 	var sum float64

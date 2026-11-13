@@ -14,6 +14,10 @@ require a live mapping (partial is acceptable). This catches stale negative
 classifications without pretending code presence proves behavioral completeness.
 Explicitly mapped non-test sources outside the automatic src roots, such as model-generation scripts, are checked for physical existence rather than mistaken for removed source. Automatic root completeness remains unchanged.
 
+Pi's directories under apps/ are outside the packages and have no rows. The check reads their path names in the mirror and fails on a
+directory that APPS does not name and on a path of a documents-only app that is outside its documents directory or is not a document.
+--apps runs that part alone; --docs-only-listing runs it on a path listing taken from a Pi clone.
+
 --reconcile prepares an upstream leap: it appends a ⬜ row for each new file to
 its package table and deletes each row whose file disappeared. It never marks
 anything ported; review the result.
@@ -47,6 +51,89 @@ def package_list_problems(upstream_root: pathlib.Path, roots: tuple[str, ...]) -
     return [f"package {name} is in the upstream mirror but not in test/parity/upstreampackages/packages.json" for name in sorted(present - listed)] + [
         f"package {name} is in test/parity/upstreampackages/packages.json but not in the upstream mirror" for name in sorted(listed - present)
     ]
+
+
+@dataclass(frozen=True)
+class App:
+    """One of Pi's directories under apps/. They are outside the packages and the map has no rows for them; the "Package scope" section of
+    docs/parity/PORT_MAP.md records each one. An app with docs is recorded as design documents only: every path it holds is under docs
+    and has one of the document extensions in kinds. An app without docs is ported on a line of its own."""
+
+    root: str
+    docs: str = ""
+    kinds: frozenset[str] = frozenset()
+
+
+APPS = (App("apps/p2"), App("apps/p3", "apps/p3/docs", frozenset({".html", ".md"})))
+APPS_RECORD = 'docs/parity/PORT_MAP.md "Package scope" and APPS in automation/ci/check-port-map-drift.py'
+
+
+def shown(paths: list[str]) -> str:
+    return ", ".join(paths[:10]) + (f" and {len(paths) - 10} more" if len(paths) > 10 else "")
+
+
+def apps_problems(paths: list[str], apps: tuple[App, ...] = APPS) -> list[str]:
+    """Report, from upstream path names alone, a directory under apps/ that APPS does not name and every path of a documents-only app
+    that is outside its documents directory or is not a document."""
+    known = {app.root for app in apps}
+    roots = {"/".join(path.split("/")[:2]) for path in paths if path.startswith("apps/") and path.count("/") >= 2}
+    problems = [f"Pi added {root}: record its disposition in {APPS_RECORD}" for root in sorted(roots) if root not in known]
+    for app in apps:
+        if not app.docs:
+            continue
+        inside = sorted(path for path in paths if path.startswith(app.root + "/"))
+        code = [path for path in inside if not path.startswith(app.docs + "/")]
+        other = [path for path in inside if path.startswith(app.docs + "/") and pathlib.PurePosixPath(path).suffix not in app.kinds]
+        if code:
+            problems.append(
+                f"{app.root} holds a path outside {app.docs}/ ({shown(code)}): Pi started its code. "
+                f"Start a port line for {app.root} (a line of its own, as apps/p2 has) and rewrite its record in {APPS_RECORD}"
+            )
+        if other:
+            problems.append(
+                f"{app.docs}/ holds a file that is not a document ({shown(other)}; documents are {', '.join(sorted(app.kinds))}): read it. "
+                f"Code needs a port line for {app.root} and a rewritten record in {APPS_RECORD}; a document asset gets its extension added to APPS"
+            )
+    return problems
+
+
+def mirror_apps_problems(upstream_root: pathlib.Path, port_map: pathlib.Path) -> tuple[list[str], str]:
+    """Check the mirror's apps/ directories against APPS and the PORT_MAP record, reading path names only. The second value says what
+    was checked: a mirror without apps/ shows nothing, and that is said instead of passed over."""
+    base = upstream_root / "apps"
+    if not base.is_dir():
+        return [], f"{base} is absent: Pi's apps/ directories were not checked"
+    paths: list[str] = []
+    for directory, dirnames, filenames in os.walk(base):
+        links = [name for name in dirnames if os.path.islink(os.path.join(directory, name))]
+        paths.extend(pathlib.Path(directory, name).relative_to(upstream_root).as_posix() for name in filenames + links)
+    problems = apps_problems(paths)
+    record = port_map.read_text(encoding="utf-8")
+    for app in APPS:
+        if not any(path.startswith(app.root + "/") for path in paths):
+            problems.append(f"{app.root} is recorded but the upstream mirror has no file under it: Pi moved or removed it; rewrite its record in {APPS_RECORD}")
+        if f"`{app.root}`" not in record:
+            problems.append(f'docs/parity/PORT_MAP.md "Package scope" lost its record of {app.root}, which APPS in automation/ci/check-port-map-drift.py names')
+    return problems, f"Pi's apps/ directories are as recorded ({', '.join(app.root for app in APPS)}; {len(paths)} path names read)"
+
+
+def listing_apps_problems(text: str) -> tuple[list[str], str]:
+    """Check a listing of upstream path names, one per line, taken from a Pi clone at a commit the mirror is not at."""
+    paths = [line.strip() for line in text.splitlines() if line.strip()]
+    problems = apps_problems(paths)
+    documents = [path for path in paths if any(app.docs and path.startswith(app.docs + "/") for app in APPS)]
+    if not documents:
+        problems.append("the listing names no path of a documents-only app (" + ", ".join(app.docs + "/" for app in APPS if app.docs) + "): nothing was checked")
+    return problems, f"the listing is as recorded ({len(paths)} path names read, {len(documents)} documents)"
+
+
+def report_apps(problems: list[str], note: str) -> int:
+    for problem in problems:
+        print(f"port-map-drift: {problem}", file=sys.stderr)
+    if problems:
+        return 1
+    print(f"port-map-drift: {note}")
+    return 0
 
 
 TRACKED_ROOTS = load_tracked_roots()
@@ -177,7 +264,12 @@ def main() -> int:
     parser.add_argument("--port-map", default="docs/parity/PORT_MAP.md", help="docs/parity/PORT_MAP.md path")
     parser.add_argument("--reconcile", action="store_true", help="add ⬜ rows for new files and retire rows for removed files, then recheck")
     parser.add_argument("--packages", default=str(PACKAGES_JSON), help="shared upstream package list")
+    parser.add_argument("--apps", action="store_true", help="check only Pi's apps/ directories in the mirror (make upstream-mirror)")
+    parser.add_argument("--docs-only-listing", metavar="FILE", help="check only a listing of upstream path names, one per line, - for standard input (`git ls-tree -r --name-only <commit> apps/p3` in a Pi clone)")
     args = parser.parse_args()
+    if args.docs_only_listing:
+        text = sys.stdin.read() if args.docs_only_listing == "-" else pathlib.Path(args.docs_only_listing).read_text(encoding="utf-8")
+        return report_apps(*listing_apps_problems(text))
     global TRACKED_ROOTS
     TRACKED_ROOTS = load_tracked_roots(pathlib.Path(args.packages))
 
@@ -190,10 +282,11 @@ def main() -> int:
         print(f"port-map-drift: PORT_MAP not found: {port_map}", file=sys.stderr)
         return 2
 
+    apps, apps_note = mirror_apps_problems(upstream_root, port_map)
+    if args.apps:
+        return report_apps(apps, apps_note)
     list_problems = package_list_problems(upstream_root, TRACKED_ROOTS)
-    for problem in list_problems:
-        print(f"port-map-drift: {problem}", file=sys.stderr)
-    if list_problems:
+    if report_apps(list_problems + apps, apps_note):
         return 1
     upstream_files = discover_upstream(upstream_root)
     rows = parse_rows(port_map)

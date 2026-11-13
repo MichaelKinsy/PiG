@@ -310,6 +310,7 @@ func (g *GraphSettingsManager) Call(_ context.Context, method string, raw json.R
 		return nil, err
 	}
 	sm := g.manager
+	// pig divergence (D633): a setter's failed save is returned to the extension; Pi's setters return nothing and record the failure for drainErrors.
 	switch method {
 	case "getSettings":
 		return settingsJSON(sm.GetSettings())

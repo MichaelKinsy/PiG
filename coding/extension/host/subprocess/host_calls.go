@@ -45,7 +45,7 @@ func startsAsync(method string) bool {
 		// The public call remains synchronous in its SDK. A reverse factory/provider callback can reenter the host, so release its call lane at callback initiation.
 		return true
 	case "ui.select", "ui.confirm", "ui.input", "ui.editor", CallUICustom,
-		"setModel", "registerProvider", "exec", CallLoadingExec, "complete", "modelStream", CallProviderObject, "getModelAuth", "getProviderAuth", "getAvailableOfType", "classify", "generateImages", "refreshModelRegistry", "compact",
+		CallSetModel, CallResolveModel, "registerProvider", "exec", CallLoadingExec, "complete", "modelStream", CallProviderObject, "getModelAuth", "getProviderAuth", "getAvailableOfType", "classify", "generateImages", "refreshModelRegistry", "compact",
 		"waitForIdle", "newSession", "fork", "navigateTree", "switchSession", "reload", CallExecuteTool, CallBuiltinToolExecute, CallBuiltinToolLocalExec, CallSessionGraphAsync,
 		CallChildSessionCreate, CallChildSessionPrompt, CallChildSessionQueue, CallChildSessionAbort, CallChildSessionBindExtensions, CallChildSessionEmit, CallChildSessionOpAsync,
 		CallOAuthOnPrompt, CallOAuthOnSelect, CallOAuthOnManualCodeInput:
@@ -599,7 +599,7 @@ func settlesCaller(method string) bool {
 // focus exposes its state the same way. The Go SDK's statePublishingCalls lists the Session writes (extensions/sdk/context.go).
 func publishesStateBeforeResult(method string) bool {
 	switch method {
-	case "setModel", "appendEntry", "setLabel", "setSessionName", "sendMessage", "registerProvider", "unregisterProvider", CallRegisterVirtualModel, CallUnregisterVirtualModel, "refreshModelRegistry":
+	case CallSetModel, "appendEntry", "setLabel", "setSessionName", "sendMessage", "registerProvider", "unregisterProvider", CallRegisterVirtualModel, CallUnregisterVirtualModel, "refreshModelRegistry":
 		return true
 	}
 	return takesInteractiveFocus(method)

@@ -22,10 +22,14 @@ import (
 // Forced Go differences. A worker is an executable, not a Node module: `Entry` is its path and `ExecArgv` its arguments
 // (Node's `execArgv` and entry file). The IPC channel is workers_channel.go's. Events are called from the owned goroutines
 // that observe them (the channel's reader, the waiter), in the order each source tells them; a handler enters its own
-// serialization. `exited` is a closed channel plus the Exit the handler also receives: the handler runs before anyone
+// serialization. Node tells what a child wrote before its `exit` (one thread reads its streams and hears of its end, the
+// reads first) and waits for no stream's end to tell it (that is `close`), so the waiter tells the exit once each reader
+// of what the child writes, its channel's too, settled what was written before the end (workers_drain.go); the readers
+// read on, and what a process that still holds a stream writes later is told too. `exited` is a closed channel plus the Exit the handler also receives: the handler runs before anyone
 // waiting on `Exited` resumes, as Node runs the `exit` listener before the promise's continuations. A start that fails
 // (the executable is missing) leaves a process of pid -1 whose exit {null, null} is told like Node's `error` event; only a
-// channel that cannot be made fails the constructor, as Node's `fork` throws synchronously for it.
+// channel that cannot be made fails the constructor, as Node's `fork` throws synchronously for it. On Windows the exit is
+// told when the worker's streams ended (Node's `close`), not when the process did: see Exited.
 
 // ForkOptions is how a worker process is started: the bootstrap options of the workers component.
 type ForkOptions struct {
@@ -73,8 +77,15 @@ type WorkerProcess struct {
 	// killed: Kill ended the process (its exit is reported by killedExit).
 	killed atomic.Bool
 
-	// pumps are the goroutines reading its output; ended joins them.
-	pumps sync.WaitGroup
+	// drains are of the goroutines reading what it writes, its output (pump) and its channel: each tells what it read, in
+	// order, to its stream's end; ended waits until each settled what the process wrote.
+	drains []*drain
+	// reading counts those goroutines while they read.
+	reading atomic.Int32
+	// telling is Link as this side made it; outputs are this side's ends of its output streams, each closed by its pump at
+	// the stream's end, or by release.
+	telling *tellingLink
+	outputs []*os.File
 
 	mu     sync.Mutex
 	stderr string
@@ -106,7 +117,8 @@ func NewWorkerProcess(options ForkOptions, events ProcessEvents) (*WorkerProcess
 	}
 	cmd.Stdout, cmd.Stderr = stdoutWrite, stderrWrite
 	process := &WorkerProcess{Pid: -1, StartedAt: time.Now().UnixMilli(), channel: parent, cmd: cmd, done: make(chan struct{})}
-	process.Link = newTellingLink(link.IpcLink(parent), events.LinkLost, events.LinkClosed)
+	process.telling = newTellingLink(link.IpcLink(parent), events.LinkLost, events.LinkClosed)
+	process.Link = process.telling
 	parent.OnMessage(func(message any) {
 		if control, ok := controlOf[FromWorker](message); ok && events.Control != nil {
 			events.Control(control)
@@ -136,9 +148,19 @@ func NewWorkerProcess(options ForkOptions, events ProcessEvents) (*WorkerProcess
 		process.keepStderr([]byte("workers: placing the worker in a job object: " + err.Error() + "\n"))
 		_ = cmd.Process.Kill()
 	}
+	process.outputs = []*os.File{stdout, stderr}
 	process.pump(stdout, "stdout", options.OnOutput)
 	process.pump(stderr, "stderr", options.OnOutput)
-	parent.start()
+	if parent.begin() {
+		told := process.drain()
+		parent.reads = told.reader
+		//portlint:allow golifetime the channel's reader returns at its stream's end, once every holder of the child's end is gone, or when this side closes the channel; ended waits until it settled what the process wrote
+		go func() { //portlint:allow asyncorder process.ts:68 child.on("message", ...) is an event of the child with no ordering against other work; its ordering point is the drain's settled channel, which the exit waits for
+			defer told.settle()
+			defer process.reading.Add(-1)
+			parent.run()
+		}()
+	}
 	//portlint:allow golifetime the waiter returns when the leader exits
 	go func() { //portlint:allow asyncorder process.ts:79 child.once("exit", ...) is an event of the child with no ordering against other work; the exit handler runs inside it
 		state, _ := cmd.Process.Wait()
@@ -175,12 +197,24 @@ func environment(env map[string]string) []string {
 	return merged
 }
 
+// drain is the drain of one more goroutine that reads what the process writes.
+func (p *WorkerProcess) drain() *drain {
+	told := newDrain()
+	p.drains = append(p.drains, told)
+	p.reading.Add(1)
+	return told
+}
+
 // pump reads one of the child's output streams: the stderr tail is kept, and each chunk goes to onOutput, or to this
 // process's own stream. It ends with the stream: when every process holding its write end is gone.
-func (p *WorkerProcess) pump(reader *os.File, stream string, onOutput func(stream string, chunk []byte)) {
-	//portlint:allow golifetime the reader returns at the stream's end, once every holder of its write end is gone; ended joins it
-	p.pumps.Go(func() {
-		defer func() { _ = reader.Close() }()
+func (p *WorkerProcess) pump(file *os.File, stream string, onOutput func(stream string, chunk []byte)) {
+	told := p.drain()
+	reader := told.reader(file)
+	//portlint:allow golifetime the reader returns at the stream's end, once every holder of its write end is gone; ended waits until it settled what the process wrote
+	go func() { //portlint:allow asyncorder process.ts:61 child[stream].on("data", ...) is an event of the child with no ordering against other work; its ordering point is the drain's settled channel, which the exit waits for
+		defer told.settle()
+		defer p.reading.Add(-1)
+		defer func() { _ = file.Close() }()
 		buffer := make([]byte, 32*1024)
 		for {
 			count, err := reader.Read(buffer)
@@ -202,7 +236,7 @@ func (p *WorkerProcess) pump(reader *os.File, stream string, onOutput func(strea
 				return
 			}
 		}
-	})
+	}()
 }
 
 // keepStderr appends chunk to the tail: the last 4096 UTF-16 code units of what it has written.
@@ -227,10 +261,17 @@ func (p *WorkerProcess) ended(exit Exit, events ProcessEvents) {
 		exit = killedExit(exit)
 	}
 	p.tree.kill()
-	// Everything it wrote is told before its exit, and nothing of it is left running: its output streams end with the last
-	// process holding them (the tree is gone), and its channel with it.
-	p.pumps.Wait()
-	p.channel.finish()
+	// Everything it wrote is told before its exit, and its exit waits for no stream's end: each reader settles what was
+	// written before the end and reads on, so a process outside the tree that holds its output or its channel holds neither
+	// the exit nor what it writes later. The channel is not closed here: it ends with the last process holding the child's
+	// end, or when this side closes it. A channel the child never connected to is not waited for.
+	p.channel.abandon()
+	for _, told := range p.drains {
+		told.processEnded()
+	}
+	for _, told := range p.drains {
+		<-told.settled
+	}
 	if events.Exited != nil {
 		events.Exited(exit)
 	}
@@ -239,8 +280,34 @@ func (p *WorkerProcess) ended(exit Exit, events ProcessEvents) {
 	p.doneOnce.Do(func() { close(p.done) })
 }
 
-// Exited is closed when the process ended (every process it spawned is killed then); Exit is its result.
+// Exited is closed when the process ended (every process it spawned is killed then); Exit is its result. What the process
+// wrote before its end was told by then, and nothing waited for a stream's end (Node's `exit`, not `close`).
+//
+// Its streams are read on after it. A process outside its tree that holds its output or its channel (one it started in a
+// session of its own) may write more, which is told as before the exit: output to OnOutput and the stderr tail, a control
+// message to Control, a frame to Link. For as long as such a process lives this side keeps the stream's descriptor and the
+// goroutine that reads it, three of each at most (stdout, stderr, the channel), as Node keeps the child's handles: until
+// the stream ends, until this side closes Link (the channel's), or until release, which the workers component calls for
+// every worker that exited when it closes.
+//
+// On Windows the exit is told when the streams ended, and nothing is kept after it: there is no read of them that does
+// not wait, and their end comes with the worker's job object, which nothing it starts leaves (workers_drain_windows.go).
 func (p *WorkerProcess) Exited() <-chan struct{} { return p.done }
+
+// stillRead reports whether this side still reads something the process writes: after its exit, that a process outside its
+// tree holds its output or its channel.
+func (p *WorkerProcess) stillRead() bool { return p.reading.Load() > 0 }
+
+// release ends what this side still reads of a process that exited: its channel and its output streams are closed, their
+// readers return, and nothing more is told of it but the link's close to who listens to the link. Go's part of the rule:
+// Node's handles end with the server's process, a Go server's goroutines and descriptors with the component that owns them.
+func (p *WorkerProcess) release() {
+	p.telling.release()
+	p.channel.finish()
+	for _, output := range p.outputs {
+		_ = output.Close()
+	}
+}
 
 // Exit is how the process ended; it is valid once Exited is closed.
 func (p *WorkerProcess) Exit() Exit { return p.exit }
@@ -324,6 +391,14 @@ func (l *tellingLink) Close() {
 	if l.linkLost != nil {
 		l.linkLost()
 	}
+	l.inner.Close()
+}
+
+// release closes the link without telling who closed it: its process exited, and that was told.
+func (l *tellingLink) release() {
+	l.mu.Lock()
+	l.closed = true
+	l.mu.Unlock()
 	l.inner.Close()
 }
 
