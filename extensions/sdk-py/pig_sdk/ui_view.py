@@ -146,7 +146,11 @@ class ViewIntent:
     """One intent the view's nodes may raise. ``name`` is ``"<extension>.<verb>"``; ``timeout_ms`` defaults to 30000 and is 100..300000.
 
     ``when_hidden`` lets a client raise the intent while the mount is hidden: it is how the user opens a view the extension
-    hid, and the handler shows the mount. At most one intent of a mount has it; it names no node and its ``arg`` accepts ``{}``."""
+    hid, and the handler shows the mount. At most one intent of a mount has it; it names no node and its ``arg`` accepts ``{}``.
+
+    ``dismiss`` names the intent a client raises, with ``{}``, when the user dismisses a dialog or overlay mount: the handler
+    closes the mount. The same three rules hold for it. Without one, Escape leaves the mount and it stays open until the
+    extension closes it."""
 
     name: str
     arg: ViewShape
@@ -155,6 +159,7 @@ class ViewIntent:
     cancellable: bool = False
     timeout_ms: int = 0
     when_hidden: bool = False
+    dismiss: bool = False
 
     def _wire(self) -> dict[str, Any]:
         out: dict[str, Any] = {"name": self.name, "arg": self.arg._wire()}
@@ -168,6 +173,8 @@ class ViewIntent:
             out["timeoutMs"] = self.timeout_ms
         if self.when_hidden:
             out["whenHidden"] = True
+        if self.dismiss:
+            out["dismiss"] = True
         return out
 
 
