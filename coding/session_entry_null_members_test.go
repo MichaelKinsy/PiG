@@ -284,6 +284,12 @@ func TestSessionEntryNullMembersMatchPi(t *testing.T) {
 		return appendID(in().BranchWithSummaryEntry(leaf(), icodingagent.BranchSummaryEntry{Summary: "api-branch", FromHookAbsent: true}))
 	})
 
+	// A custom message whose writer left display or content out: Pi stores undefined and the entry has no such member.
+	draft("draft custom_message display omitted", `[{"type":"custom_message","customType":"draft-message","content":"x"}]`)
+	draft("draft custom_message content omitted", `[{"type":"custom_message","customType":"draft-message","display":true}]`)
+	row("extension sendMessage display omitted", send(`{"customType":"extension-message","content":"x"}`, false))
+	row("extension sendMessage display omitted, triggerTurn", send(`{"customType":"extension-message","content":"x"}`, true))
+
 	entries, err := icodingagent.LoadEntriesFromFile(path)
 	if err != nil {
 		t.Fatal(err)

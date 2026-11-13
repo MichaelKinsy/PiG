@@ -222,13 +222,13 @@ func (e CustomMessageEntry) MarshalJSON() ([]byte, error) {
 	return encodeFields(e.ParentID, struct {
 		Type       string  `json:"type"`
 		CustomType string  `json:"customType"`
-		Content    any     `json:"content"`
-		Display    bool    `json:"display"`
+		Content    any     `json:"content,omitempty"`
+		Display    any     `json:"display,omitempty"`
 		Details    any     `json:"details,omitempty"`
 		ID         string  `json:"id"`
 		ParentID   *string `json:"parentId"`
 		Timestamp  string  `json:"timestamp"`
-	}{e.Type, e.CustomType, e.Content, e.Display, e.Details, e.ID, e.ParentID, e.Timestamp})
+	}{e.Type, e.CustomType, e.Content, presentMember(e.Display, e.DisplayAbsent), e.Details, e.ID, e.ParentID, e.Timestamp})
 }
 
 func (e ContextEditEntry) Base() SessionEntryBase { return e.withoutRecord() }

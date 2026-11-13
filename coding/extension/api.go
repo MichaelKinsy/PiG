@@ -31,13 +31,19 @@ type SendMessagePayload struct {
 	// extension boundary.
 	Content any  `json:"content,omitempty"`
 	Display bool `json:"display"`
-	Details any  `json:"details,omitempty"`
+	// DisplayAbsent marks a message whose writer left display out, as on CustomMessageRef.
+	DisplayAbsent bool `json:"-"`
+	Details       any  `json:"details,omitempty"`
 }
 
 // UnmarshalJSON keeps the member order of the `details` object the extension wrote.
 func (p *SendMessagePayload) UnmarshalJSON(data []byte) error {
 	type plain SendMessagePayload
-	return orderedjson.UnmarshalFields(data, (*plain)(p), "details")
+	if err := orderedjson.UnmarshalFields(data, (*plain)(p), "details"); err != nil {
+		return err
+	}
+	p.DisplayAbsent = !p.Display && !orderedjson.HasMember(data, "display")
+	return nil
 }
 
 // SendMessageOptions mirrors the inline options object on sendMessage.

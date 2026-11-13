@@ -415,13 +415,20 @@ type CustomMessageRef struct {
 	CustomType string `json:"customType"`
 	Content    any    `json:"content"`
 	Display    bool   `json:"display"`
-	Details    any    `json:"details,omitempty"`
+	// DisplayAbsent marks a message whose writer left display out: Pi's message then has no display member, and neither has its session entry.
+	DisplayAbsent bool `json:"-"`
+	Details       any  `json:"details,omitempty"`
 }
 
-// UnmarshalJSON keeps the member order of the `content` blocks and `details` object the extension wrote: Pi appends the objects themselves.
+// UnmarshalJSON keeps the member order of the `content` blocks and `details` object the extension wrote: Pi appends the objects themselves. It also keeps a
+// message without `display` apart from one whose display is false.
 func (r *CustomMessageRef) UnmarshalJSON(data []byte) error {
 	type plain CustomMessageRef
-	return orderedjson.UnmarshalFields(data, (*plain)(r), "content", "details")
+	if err := orderedjson.UnmarshalFields(data, (*plain)(r), "content", "details"); err != nil {
+		return err
+	}
+	r.DisplayAbsent = !r.Display && !orderedjson.HasMember(data, "display")
+	return nil
 }
 
 // AgentStartEvent: upstream types.ts AgentStartEvent.
@@ -542,6 +549,9 @@ type SessionBoundaryDraft struct {
 	Summary              string    `json:"summary,omitempty"`
 	FirstKeptEntryID     *string   `json:"firstKeptEntryId,omitempty"`
 	Usage                *ai.Usage `json:"usage,omitempty"`
+	// DisplayAbsent marks a custom_message draft whose writer left display out: Pi's appendCustomMessageEntry stores undefined and the entry has no display
+	// member (session-manager.ts:1350-1366).
+	DisplayAbsent bool `json:"-"`
 	// UsageNull marks a compaction draft's nil Usage as an explicit null: Pi's appendCompaction stores the null and the entry holds `"usage":null`
 	// (session-manager.ts:1283-1295). `data` and `details` hold a null in the value itself: json.RawMessage("null").
 	UsageNull bool `json:"-"`
@@ -561,10 +571,10 @@ func (d SessionBoundaryDraft) MarshalJSON() ([]byte, error) {
 		return json.Marshal(struct {
 			Type       SessionBoundaryDraftType `json:"type"`
 			CustomType string                   `json:"customType"`
-			Content    any                      `json:"content"`
-			Display    bool                     `json:"display"`
+			Content    any                      `json:"content,omitempty"`
+			Display    any                      `json:"display,omitempty"`
 			Details    any                      `json:"details,omitempty"`
-		}{d.Type, d.CustomType, d.Content, d.Display, d.Details})
+		}{d.Type, d.CustomType, d.Content, draftDisplay(d.Display, d.DisplayAbsent), d.Details})
 	case SessionBoundaryDraftContextEdit:
 		if d.ReplacementUndefined {
 			// The next handler is handed the draft as the extension wrote it, without the member.
@@ -596,6 +606,14 @@ func (d SessionBoundaryDraft) MarshalJSON() ([]byte, error) {
 	}
 }
 
+// draftDisplay is what a custom_message draft's display member encodes: the boolean, and no member for a draft written without one.
+func draftDisplay(display, absent bool) any {
+	if absent {
+		return nil
+	}
+	return display
+}
+
 // draftUsage is what a compaction draft's usage member encodes: the usage, null for one written as null, and no member otherwise.
 func draftUsage(usage *ai.Usage, null bool) any {
 	switch {
@@ -617,6 +635,7 @@ func (d *SessionBoundaryDraft) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	d.UsageNull = d.Usage == nil && orderedjson.IsNullMember(data, "usage")
+	d.DisplayAbsent = d.Type == SessionBoundaryDraftCustomMessage && !d.Display && !orderedjson.HasMember(data, "display")
 	if d.Type != SessionBoundaryDraftContextEdit || len(d.Replacement) > 0 {
 		return nil
 	}

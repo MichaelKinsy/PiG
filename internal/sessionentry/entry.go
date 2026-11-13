@@ -144,8 +144,12 @@ type CustomEntry struct {
 type CustomMessageEntry struct {
 	SessionEntryBase
 	CustomType string `json:"customType"`
-	Content    any    `json:"content"` // string | []ContentBlock
-	Display    bool   `json:"display"`
+	// Content is a string or content blocks. Nil is no content member, which a writer that left it out gets (Pi stores undefined); orderedjson.Null is null.
+	Content any  `json:"content"`
+	Display bool `json:"display"`
+	// DisplayAbsent leaves the display member out when the entry is written: an extension's message or draft without display, which Pi's
+	// appendCustomMessageEntry stores as undefined (session-manager.ts:1350-1366). A decoded entry has it set when its record has no display member.
+	DisplayAbsent bool `json:"-"`
 	// Details is the value an extension supplied. Nil is no details member; orderedjson.Null is a member written as null.
 	Details any `json:"details,omitempty"`
 }
@@ -159,7 +163,11 @@ func (e *CustomEntry) UnmarshalJSON(data []byte) error {
 // UnmarshalJSON keeps the member order of `content` blocks and `details`, the objects an extension wrote (session-manager.ts appendCustomMessageEntry).
 func (e *CustomMessageEntry) UnmarshalJSON(data []byte) error {
 	type plain CustomMessageEntry
-	return orderedjson.UnmarshalFields(data, (*plain)(e), "content", "details")
+	if err := orderedjson.UnmarshalFields(data, (*plain)(e), "content", "details"); err != nil {
+		return err
+	}
+	e.DisplayAbsent = !e.Display && !orderedjson.HasMember(data, "display")
+	return nil
 }
 
 // LabelEntry is upstream's "user-renamed this branch" marker. Carries

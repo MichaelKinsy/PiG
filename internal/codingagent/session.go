@@ -720,9 +720,7 @@ func (s *Session) appendAgentMessage(msg agent.AgentMessage) (string, error) {
 			}
 			return s.AppendBashExecution(bash)
 		}
-		customType, _ := msg.Custom["customType"].(string)
-		display, _ := msg.Custom["display"].(bool)
-		return s.AppendCustomMessageEntry(customType, msg.Custom["content"], display, msg.Custom["details"])
+		return s.AppendCustomMessage(msg.Custom)
 	}
 	return s.appendMessageEntry(msg)
 }
@@ -913,27 +911,31 @@ func decodesToAppended(decoded SessionEntry, appended MessageEntry) bool {
 // AppendCustomMessageEntry persists an extension-injected custom message as a
 // "custom_message" entry and returns the new entry id.
 func (s *Session) AppendCustomMessageEntry(customType string, content any, display bool, details any) (string, error) {
-	entry, err := s.customMessageEntry(customType, content, display, details, true)
+	entry, err := s.customMessageEntry(CustomMessageEntry{CustomType: customType, Content: content, Display: display, Details: details}, true)
 	return entry.ID, err
 }
 
-func (s *Session) customMessageEntry(customType string, content any, display bool, details any, persist bool) (CustomMessageEntry, error) {
+// AppendCustomMessage persists a custom agent message as its "custom_message" entry, with the members the message holds: Pi's
+// appendCustomMessageEntry(message.customType, message.content, message.display, message.details) stores a member the message lacks as undefined, so the
+// entry of a message without display has no display member (agent-session.ts:1217, 2499).
+func (s *Session) AppendCustomMessage(custom map[string]any) (string, error) {
+	customType, _ := custom["customType"].(string)
+	display, _ := custom["display"].(bool)
+	_, hasDisplay := custom["display"]
+	entry, err := s.customMessageEntry(CustomMessageEntry{CustomType: customType, Content: custom["content"], Display: display, DisplayAbsent: !hasDisplay, Details: custom["details"]}, true)
+	return entry.ID, err
+}
+
+// customMessageEntry is the entry of members, which hold the customType, content, display and details; the session sets the type, the identity and the time.
+func (s *Session) customMessageEntry(members CustomMessageEntry, persist bool) (CustomMessageEntry, error) {
 	s.leafAppendMu.Lock()
 	defer s.leafAppendMu.Unlock()
 	id, err := s.generateEntryID()
 	if err != nil {
 		return CustomMessageEntry{}, err
 	}
-	entry := CustomMessageEntry{
-		Type:       "custom_message",
-		ID:         id,
-		ParentID:   s.GetLeafID(),
-		Timestamp:  RFC3339NowNano(),
-		CustomType: customType,
-		Content:    content,
-		Display:    display,
-		Details:    details,
-	}
+	entry := members
+	entry.SessionEntryBase = SessionEntryBase{Type: "custom_message", ID: id, ParentID: s.GetLeafID(), Timestamp: RFC3339NowNano()}
 	if persist {
 		if err := s.AppendEntry(entry); err != nil {
 			return CustomMessageEntry{}, err

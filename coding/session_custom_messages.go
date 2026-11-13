@@ -34,7 +34,10 @@ func (s *Session) sendCustomMessage(ctx context.Context, message extension.Custo
 		content = []any{}
 	}
 	fields := map[string]any{"role": agent.RoleCustom, "customType": message.CustomType, "content": content, "timestamp": time.Now().UnixMilli()}
-	fields["display"] = message.Display
+	if !message.DisplayAbsent {
+		// upstream: agent-session.ts sendCustomMessage builds the message with `display: message.display`: undefined for a caller that left it out.
+		fields["display"] = message.Display
+	}
 	if message.Details != nil {
 		fields["details"] = message.Details
 	}
@@ -197,9 +200,7 @@ func (s *Session) completeCustomMessage(ctx context.Context, finish context.Canc
 
 // appendCustomMessage runs while admission is excluded by pendingBashMu or while the active Agent is suspended at a completed turn.
 func (s *Session) appendCustomMessage(message agent.AgentMessage) error {
-	customType, _ := message.Custom["customType"].(string)
-	display, _ := message.Custom["display"].(bool)
-	if _, err := s.inner.Load().AppendCustomMessageEntry(customType, message.Custom["content"], display, message.Custom["details"]); err != nil {
+	if _, err := s.inner.Load().AppendCustomMessage(message.Custom); err != nil {
 		return err
 	}
 	s.refreshContext()

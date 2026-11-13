@@ -64,6 +64,13 @@ func IsNullMember(data []byte, name string) bool {
 	return isNullText(raw[0])
 }
 
+// HasMember reports whether the top-level object in data, which is valid JSON, has a member name. It allocates nothing unless a key holds an escape.
+func HasMember(data []byte, name string) bool {
+	var raw [1][]byte
+	lastMembers(data, []string{name}, raw[:])
+	return raw[0] != nil
+}
+
 // UnmarshalFields decodes data into v, a pointer to a struct, like encoding/json, then replaces each named member of an `any` field with [Member] of its raw JSON, so an object an extension supplied is not reordered by a Go map and a member it wrote as null holds [Null]. A named member absent from data leaves its field as it is. v must not have an UnmarshalJSON method that calls UnmarshalFields: decode into a local alias type.
 //
 // It decodes data once: each named field (an `any` holding nil) is pointed at a placeholder that keeps the decoder from building the member

@@ -113,6 +113,10 @@ await row("api usage note value", file, () => sm.appendUsage("k", "p", "m", usag
 await row("api session_info name empty", file, () => sm.appendSessionInfo(""));
 await row("api session_info name value", file, () => sm.appendSessionInfo(" n\nm "));
 await row("api branch_summary fromHook omitted", file, () => sm.branchWithSummary(sm.getLeafId(), "api-branch"));
+await draft("draft custom_message display omitted", [{type: "custom_message", customType: "draft-message", content: "x"}]);
+await draft("draft custom_message content omitted", [{type: "custom_message", customType: "draft-message", display: true}]);
+await row("extension sendMessage display omitted", file, async () => { pi.sendMessage({customType: "extension-message", content: "x"}); await idle(); });
+await row("extension sendMessage display omitted, triggerTurn", file, async () => { pi.sendMessage({customType: "extension-message", content: "x"}, {triggerTurn: true}); await idle(); });
 // JavaScript rows: values the declarations do not allow, and JSON.stringify's rules.
 await row("js api compaction fromHook null", file, () => sm.appendCompaction("api-compaction", userId, 10, undefined, null), true);
 await row("js api branch_summary fromHook null", file, () => sm.branchWithSummary(sm.getLeafId(), "api-branch", undefined, null), true);
@@ -123,15 +127,11 @@ await row("js api toolResult details null", file, () => sm.appendMessage({role: 
 await row("js extension setLabel value", file, () => pi.setLabel(lastUser(), "x"), true);
 await row("js extension setLabel omitted", file, () => pi.setLabel(lastUser()), true);
 await row("js extension setLabel null", file, () => pi.setLabel(lastUser(), null), true);
-await draft("js draft custom_message display omitted", [{type: "custom_message", customType: "draft-message", content: "x"}], true);
 await draft("js draft custom_message display null", [{type: "custom_message", customType: "draft-message", content: "x", display: null}], true);
-await draft("js draft custom_message content omitted", [{type: "custom_message", customType: "draft-message", display: true}], true);
 await draft("js draft custom_message content null", [{type: "custom_message", customType: "draft-message", content: null, display: true}], true);
 await draft("js draft custom data NaN", [{type: "custom", customType: "draft-custom", data: NaN}], true);
 await draft("js draft compaction usage in another member order", [{type: "compaction", summary: "draft-compaction", usage: {cost: {total: 0, input: 0, output: 0, cacheRead: 0, cacheWrite: 0}, totalTokens: 3, output: 2, input: 1, cacheRead: 0, cacheWrite: 0, extra: 1}}], true);
-await row("js extension sendMessage display omitted", file, async () => { pi.sendMessage({customType: "extension-message", content: "x"}); await idle(); }, true);
 await row("js extension sendMessage display null", file, async () => { pi.sendMessage({customType: "extension-message", content: "x", display: null}); await idle(); }, true);
-await row("js extension sendMessage display omitted, triggerTurn", file, async () => { pi.sendMessage({customType: "extension-message", content: "x"}, {triggerTurn: true}); await idle(); }, true);
 await row("js extension setLabel empty", file, () => pi.setLabel(lastUser(), ""), true);
 await row("js extension setSessionName null", file, () => pi.setSessionName(null), true);
 await row("js extension setSessionName undefined", file, () => pi.setSessionName(undefined), true);
