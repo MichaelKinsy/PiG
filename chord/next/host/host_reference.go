@@ -333,6 +333,9 @@ type binding struct {
 	attached attachable
 	// eventsOf are its events, for a contract with event members only; dropped at its end (it keeps no host).
 	eventsOf *bindingEvents
+	// unseen are the state members it has not seen since it joined a shared remote object, each with its replica's count
+	// of values then (decision "References share one wire hold"); one is seen once that count passes. Made at the join.
+	unseen map[string]int
 	// events are its event members, by name.
 	events map[string]*ReferenceEvents
 	// unlisted is whether presence lists leave it out: a restart's readiness bindings (`unlist`).
@@ -488,9 +491,14 @@ func (b *binding) contract() contractRef {
 // bind binds to goal, which counts this binding as a reference; its members and keys follow what goal shows now (one
 // frame from their last values), and the reference takes its state.
 func (b *binding) bind(goal target) {
-	if b.state.kind != bindingUnbound {
-		return
+	if b.state.kind == bindingUnbound {
+		b.boundTo(goal)
 	}
+}
+
+// boundTo: counted by goal as a reference (with its state's batch and dependent): its members and keys follow what goal
+// shows now, and it is told.
+func (b *binding) boundTo(goal target) {
 	batch := b.state.batch
 	b.state = bindingState{kind: bindingBound, batch: batch, dependent: b.state.dependent, target: goal}
 	goal.hold(b)
@@ -501,6 +509,36 @@ func (b *binding) bind(goal target) {
 		b.retarget()
 	}
 	b.moved()
+}
+
+// joined: it joined a shared remote object that was bound already: unseen are the members it has not seen, with their
+// replicas' counts of values now. Until a value arrives for one, it shows no last value of it from before the join (as on
+// a fresh failed snapshot), whether it is read meanwhile or not. A member it holds a value of its own for (a binding that
+// followed another object before) keeps its history.
+func (b *binding) joined(unseen []unseenMember) {
+	for _, each := range unseen {
+		member := each.member
+		source, found := b.sources.get(member)
+		if found && !source.unbound() {
+			continue
+		}
+		if b.unseen == nil {
+			b.unseen = map[string]int{}
+		}
+		b.unseen[member] = each.count
+		if found {
+			source.unseen(func() bool { return b.seen(member) })
+		}
+	}
+}
+
+// transfer moves it to goal keeping everything of its own (its reference, watches, subscriptions, waiters, calls, last
+// values, unseen members): a reference retrying alone after `too_large/part` (decision "References share one wire hold").
+// Its previous target let it go already; its members and keys follow goal, and it is told.
+func (b *binding) transfer(goal target) {
+	if b.state.kind == bindingBound {
+		b.boundTo(goal)
+	}
 }
 
 // following is whether its members or keys were used: `retarget` moves them (in a batch).
@@ -807,11 +845,33 @@ func (b *binding) memberSource(member string) (*referenceSource, error) {
 	}
 	source := newReferenceSource(b.state.batch, b.scheduler, b)
 	b.sources.set(member, source)
+	if _, is := b.unseen[member]; is {
+		source.unseen(func() bool { return b.seen(member) })
+	}
 	// New, nothing follows it yet: placing it needs no batch.
 	if b.state.kind == bindingBound {
 		place(source, b.state.target.followed(member, b.consumer.Version), b.attached)
 	}
 	return source, nil
+}
+
+// seen is whether member, unseen at its join, took a value since (its replica's count of values passed the one recorded
+// then, also across rebinds and a private retry's copies): from then on it is seen for good.
+func (b *binding) seen(member string) bool {
+	count, is := b.unseen[member]
+	if !is {
+		return true
+	}
+	goal := b.target()
+	if goal == nil {
+		return false
+	}
+	generation, has := goal.generationOf(member)
+	if !has || generation <= count {
+		return false
+	}
+	delete(b.unseen, member)
+	return true
 }
 
 // none is what a read of a member that never had a value fails with: `released`, the failure's error, or `not_ready`.
@@ -1137,6 +1197,7 @@ func (b *binding) end(err *data.ChordError) {
 	b.sources = keyedMap[*referenceSource]{}
 	b.heldKeys = nil
 	b.attached = nil
+	b.unseen = nil
 	// Its subscriptions end and its event members untap (taken out first: a stopping subscription finds none).
 	var eventTaps *referenceEventTaps
 	if b.eventsOf != nil {

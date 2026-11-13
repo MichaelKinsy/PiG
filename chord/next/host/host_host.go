@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -1425,6 +1426,70 @@ func (h *chordHost) reference(typ *contracts.Contract, dependent *chordObject, f
 	return h.newBindingFor(typ, dependent, from, options), nil
 }
 
+// bindRemote binds b to a remote object over p (decision "References share one wire hold"): the one this host holds for
+// its sharing key, joined with no message (on a path whose route failed to resolve here, a join is a new request:
+// `path.requested`), or a new one, stored and bound before it attaches (a resolver re-entering `bind` finds it, and a
+// reference it makes and releases there is not its last). A `self.get` reference (its hold carries its dependent's chain,
+// Q5), one on a suspended path, and one whose key's object a provider or relay left failed `waiting` (a new hold is a new
+// request there: a relay's failed route resolves again for it) hold on their own, as before. Pi keeps the tables in a
+// `WeakMap<Path, Map<string, RemoteObject>>` of the host; Go has no WeakMap, so the table is a field of its path
+// (`path.shared`, made by tableOf): a dropped route path takes its table as in Pi, and each entry is owned by its object,
+// which takes it out (unpublish).
+func (h *chordHost) bindRemote(b *binding, typ *contracts.Contract, params checkedParams, p *path, address link.WireAddress, ctx context.Context) *remoteObject {
+	from, dependent := b.caller(), b.dependent()
+	shared := dependent == nil && !p.suspended()
+	var key string
+	var found *remoteObject
+	if shared {
+		key = h.sharingKey(typ, params, address, from, ctx)
+		found = p.shared[key]
+	}
+	waiting := found != nil && found.refState.Kind == RefStateFailed && found.refState.Cause.Kind == data.FailureWaiting
+	if found != nil && (!waiting || p.link() == nil) {
+		b.bind(found)
+		if waiting {
+			p.requested(found)
+		}
+		// A joining getter links to the hold while it is open (decision "Shared work").
+		if span := found.span(); span != nil && !chordtelemetry.Untraced(chordctx.Telemetry(ctx)) {
+			chordctx.Telemetry(ctx).AddLink(telemetry.SpanLink{Context: span})
+		}
+		return found
+	}
+	// Owned entries: only the object an entry maps to takes it out, so an ended object never removes a newer one.
+	var remote *remoteObject
+	var unindex func()
+	indexed := shared && found == nil
+	if indexed {
+		table := p.tableOf()
+		unindex = func() {
+			if table[key] == remote {
+				delete(table, key)
+			}
+		}
+	}
+	remote = newRemoteObject(h, typ, params, address, from, p, dependent, chordctx.Telemetry(ctx), unindex)
+	if indexed {
+		p.tableOf()[key] = remote
+	}
+	b.bind(remote)
+	p.attach(remote)
+	return remote
+}
+
+// sharingKey is the key under which references of this host share a remote object: its type, version and fingerprint, its
+// params' identity key, the address its placement computed (`hostAddress` is not in the fingerprint), and its caller (its
+// principal's JSON as the wire carries it, and the incarnation it acts with); every part escaped (JoinKey).
+func (h *chordHost) sharingKey(typ *contracts.Contract, params checkedParams, address link.WireAddress, from caller, ctx context.Context) string {
+	// A `hostAddress` returns JSON params (checked where the address is routed or served).
+	placed := contracts.JoinKey([]string{address.Kind, data.CanonicalJson(address.Params, ctx)})
+	principal := "-"
+	if from.principal != nil {
+		principal = "+" + data.PrincipalJson(from.principal, ctx)
+	}
+	return contracts.JoinKey([]string{typ.Name, strconv.Itoa(typ.Version), typ.Fingerprint, params.key, placed, principal, from.incarnation})
+}
+
 // bind binds b to the object for (typ, params) as its principal where its host address puts it (`destination`): the object
 // here, created with its first attempt if there is none, or a remote object held over its path. Placed here, the check is
 // only against the type served here: not served (or of the other kind) or not at the caller's version and fingerprint, the
@@ -1437,10 +1502,7 @@ func (h *chordHost) bind(b *binding, typ *contracts.Contract, params checkedPara
 		return nil, err
 	}
 	if placed.kind == placedPath {
-		remote := newRemoteObject(h, typ, params, placed.address, from, placed.path, b.dependent(), chordctx.Telemetry(ctx))
-		placed.path.attach(remote)
-		b.bind(remote)
-		return remote, nil
+		return h.bindRemote(b, typ, params, placed.path, placed.address, ctx), nil
 	}
 	entry := h.served(typ.Name)
 	unbound := unboundCause(entry, typ.Kind, typ.Name, typ.Version, typ.Fingerprint)

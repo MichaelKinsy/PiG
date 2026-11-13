@@ -145,3 +145,43 @@ func awaitWatchCalls[T any](t testing.TB, what string, calls *nexttest.Collector
 	t.Helper()
 	scopeEventually(t, what, func() bool { return len(calls.Items()) >= n })
 }
+
+// takenOf is how many messages of kind the raw peer received and did not take, taken out: Pi's `taken(peer, kind)`.
+func takenOf(peer *RawPeer, kind string) int {
+	peer.mu.Lock()
+	defer peer.mu.Unlock()
+	kept := make([]link.Message, 0, len(peer.received))
+	count := 0
+	for _, message := range peer.received {
+		if message.Kind() == kind {
+			count++
+		} else {
+			kept = append(kept, message)
+		}
+	}
+	peer.received = kept
+	return count
+}
+
+// holdsAt is how many holds peer got since the last count (taken out), once the host handled what the peer sent before:
+// Pi's `holdsAt(peer)` of host.test.ts.
+func holdsAt(t testing.TB, peer *RawPeer) int {
+	t.Helper()
+	rhSync(t, peer)
+	return takenOf(peer, "hold")
+}
+
+// remoteBindings is how many bindings the remote objects on host's parent path count, and how many entries its sharing
+// table has: a Go test waits on the first where Pi's turn order has every getter bound already.
+func remoteBindings(host Host) (bindings, entries int) {
+	h := host.(*chordHost)
+	h.loop().Run(func() {
+		for _, holder := range h.parent.holders() {
+			if remote, is := holder.(*remoteObject); is {
+				bindings += len(remote.bindings)
+			}
+		}
+		entries = len(h.parent.shared)
+	})
+	return bindings, entries
+}

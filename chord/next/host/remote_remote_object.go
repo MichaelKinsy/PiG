@@ -54,9 +54,11 @@ type remoteHold struct {
 	id   int
 }
 
-// remoteObject is one remote reference's object, owned by its host across the links of its path. It is `loading` until a
-// link's hold of it is bound, and again whenever that link drops or its relay's upstream starts over; each link holds it
-// with its own id. Two references are two holds, each member of each with its own Delta decoder.
+// remoteObject is the object of the remote references with one sharing key, owned by its host across the links of its
+// path (one held by a `self.get` reference or a private retry is its reference's alone). It is `loading` until a link's
+// hold of it is bound, and again whenever that link drops or its relay's upstream starts over; each link holds it once,
+// with its own id, each member with its own Delta decoder. It tells every binding of each change; the hold ends with the
+// last (decision "References share one wire hold").
 type remoteObject struct {
 	// name is the object in errors: its type, and its params key when it has params.
 	name     string
@@ -66,8 +68,8 @@ type remoteObject struct {
 	request holdRequest
 	// caller is whom its reference acts for: named on route links (actingFor).
 	caller caller
-	// params are its params, for placing it anew (`retry` after a part past the limits).
-	params *delta.JsonObject
+	// checked are its params as L1 checked them, for placing it anew (a private retry after a part past the limits).
+	checked checkedParams
 	// path is its path: the parent's or a route address's; the host's `unplaced` one after a part past the limits.
 	path *path
 	// dependent is the object whose activation declared the reference (`self.get`): its holds carry its chain while it
@@ -75,9 +77,12 @@ type remoteObject struct {
 	dependent *chordObject
 	refState  *RefState
 	// bound is the last binding, kept while loading or failed: members keep their last values and watches.
-	bound   *boundVariant
-	held    *remoteHold
-	binding holder
+	bound *boundVariant
+	held  *remoteHold
+	// bindings are its references' bindings, in the order they joined (Pi's `Set<Binding>`); the hold ends with the last.
+	bindings []*binding
+	// unindex takes its entry out of its path's sharing table, once; nil for a private object or once taken out.
+	unindex func()
 	failure *data.ChordError
 	// holding is its current `chord.hold` span until its hold's `bound` or failure; nil when nothing records.
 	holding *chordtelemetry.OpenSpan
@@ -92,7 +97,9 @@ var (
 	_ target   = (*remoteObject)(nil)
 )
 
-func newRemoteObject(host *chordHost, contract *contracts.Contract, checked checkedParams, address link.WireAddress, from caller, p *path, dependent *chordObject, holder telemetry.TelemetryContext) *remoteObject {
+// newRemoteObject makes the object for its first reference (its getter's trigger), on p; unindex takes it out of its
+// path's sharing table (nil: a private object, never shared).
+func newRemoteObject(host *chordHost, contract *contracts.Contract, checked checkedParams, address link.WireAddress, from caller, p *path, dependent *chordObject, trigger telemetry.TelemetryContext, unindex func()) *remoteObject {
 	name := contract.Name
 	if checked.key != "" {
 		name = fmt.Sprintf("%s(%s)", contract.Name, checked.key)
@@ -103,15 +110,19 @@ func newRemoteObject(host *chordHost, contract *contracts.Contract, checked chec
 		panic(err)
 	}
 	r := &remoteObject{
-		name: name, contract: contract, host: host, caller: from, params: checked.params, path: p, dependent: dependent,
-		refState: refLoading,
+		name: name, contract: contract, host: host, caller: from, checked: checked, path: p, dependent: dependent,
+		refState: refLoading, unindex: unindex,
 		request: holdRequest{
 			Type: contract.Name, Version: contract.Version, Fingerprint: contract.Fingerprint, Params: params, Address: address,
 		},
 	}
-	// Its first hold carries the carrier of its `chord.hold` span, under its holder's span (holdTrace).
-	if !chordtelemetry.Untraced(holder) {
-		r.holding = chordtelemetry.NewOpenSpan(holder, "chord.hold", r.holdAttributes())
+	// Its hold is shared work (decision "Shared work"): a root on the host's adapter whatever its first getter's context,
+	// linked to that getter's span when traced; its first hold carries the span's carrier (holdTrace).
+	if !chordtelemetry.Untraced(host.telemetry) {
+		r.holding = chordtelemetry.NewOpenSpan(host.telemetry, "chord.hold", r.holdAttributes())
+		if !chordtelemetry.Untraced(trigger) {
+			r.holding.Span().AddLink(telemetry.SpanLink{Context: trigger})
+		}
 		r.firstHold = chordtelemetry.CarrierOf(r.holding.Span())
 	}
 	return r
@@ -134,19 +145,20 @@ func (r *remoteObject) span() telemetry.TelemetrySpan {
 	return r.holding.Span()
 }
 
-// holdTrace is the carrier of this hold: the first one's span's (a child of its holder's span); a re-hold on a later link
-// (a reconnect, days later for a page kept open) is a fresh `chord.hold` root of this host's adapter linked to the first,
-// so nothing keeps adding children under a span long ended (review L1).
+// holdTrace is the carrier of this hold: the first one's span's (a root of this host's adapter); a re-hold on a later
+// link (a reconnect, days later for a page kept open) is a fresh `chord.hold` root linked to the first, so nothing keeps
+// adding children under a span long ended (review L1). None when the host's adapter records nothing (then the first hold
+// had no span either, whatever its getter's context).
 func (r *remoteObject) holdTrace() telemetry.TelemetryCarrier {
 	first := r.holds == 0
 	r.holds++
 	if first {
 		return r.firstHold
 	}
-	adapter := r.host.telemetry
-	if r.firstHold == nil || chordtelemetry.Untraced(adapter) {
+	if r.firstHold == nil {
 		return nil
 	}
+	adapter := r.host.telemetry
 	// A hold that dropped before it was bound ends here.
 	r.endHold("ended", nil)
 	r.holding = chordtelemetry.NewOpenSpan(adapter, "chord.hold", r.holdAttributes(), telemetry.SpanLink{Context: chordtelemetry.ParentOf(r.firstHold, adapter)})
@@ -204,16 +216,96 @@ func (r *remoteObject) generationOf(member string) (int, bool) {
 	return replica.generation, true
 }
 
-// hold: its one reference bound to it.
-func (r *remoteObject) hold(h holder) { r.binding = h }
+// unseenMember is a state member a binding joining a bound object has not seen, with its replica's count of values then
+// (0 without one): an entry of Pi's `ReadonlyMap<string, number>`.
+type unseenMember struct {
+	member string
+	count  int
+}
 
-// unhold: the reference was released: the current link's provider is told and the reference's sent calls rejected.
-func (r *remoteObject) unhold(holder) {
+// unplaced is whether its path is the host's unplaced one: a part past the limits failed it, so it holds nothing anywhere.
+func (r *remoteObject) unplaced() bool { return r.path == r.host.unplaced }
+
+// hold counts h (a reference's binding) as one of its references. One joining it after it was bound (decision
+// "References share one wire hold") has not seen what it finds: every member when it is not live, else the members
+// failed or missing from the bound variant; each counts as seen once its replica takes a value after the join.
+// `binding.bind` retargets and tells it.
+func (r *remoteObject) hold(h holder) {
+	b := h.(*binding)
+	if r.bound != nil && len(r.bindings) > 0 {
+		b.joined(r.unseen(r.bound))
+	}
+	if !slices.Contains(r.bindings, b) {
+		r.bindings = append(r.bindings, b)
+	}
+}
+
+// unseen are the members a binding joining now has not seen, each with its replica's count of values now (0 without
+// one): its own history starts there.
+func (r *remoteObject) unseen(bound *boundVariant) []unseenMember {
+	live := r.refState.Kind == RefStateLive
+	variants, err := contracts.CurrentVariants(r.contract)
+	if err != nil {
+		// A served or got contract was checked when it was made.
+		return nil
+	}
+	var unseen []unseenMember
+	listed := map[string]struct{}{}
+	for _, variant := range variants.All() {
+		for _, member := range contracts.VariantNamesOf(variant).State {
+			if _, is := listed[member]; is {
+				continue
+			}
+			listed[member] = struct{}{}
+			replica := bound.replicas.byName[member]
+			good := live && slices.Contains(bound.names.State, member) && replica != nil && replica.Start().Kind == state.StartValue
+			if good {
+				continue
+			}
+			count := 0
+			if replica != nil {
+				count = replica.generation
+			}
+			unseen = append(unseen, unseenMember{member: member, count: count})
+		}
+	}
+	return unseen
+}
+
+// unhold: h was released. While others remain nothing is sent but the cancellation of its own calls (queued ones leave
+// unsent, sent ones are aborted); with the last the hold is released and the object ends (no linger, D8).
+func (r *remoteObject) unhold(h holder) {
+	b, is := h.(*binding)
+	if !is {
+		return
+	}
+	at := slices.Index(r.bindings, b)
+	if at < 0 {
+		return
+	}
+	r.bindings = slices.Delete(r.bindings, at, at+1)
+	if len(r.bindings) > 0 {
+		if r.held != nil {
+			r.held.side.cancelCalls(r.held.id, b, r.name)
+		}
+		return
+	}
 	err := data.NewChordError(data.ChordErrorInit{Code: data.CodeReleased, Message: r.name + ": released"}, nil)
+	// Out of the table before anything else runs: a reference made from here on holds anew.
+	r.unpublish()
 	if r.held != nil {
 		r.held.side.release(r.held.id, err)
 	}
 	r.endWith(err)
+}
+
+// unpublish leaves its path's sharing table (once): it is never put back.
+func (r *remoteObject) unpublish() {
+	unindex := r.unindex
+	r.unindex = nil
+	if unindex != nil {
+		unindex()
+	}
 }
 
 // attach holds on link, the path's link now (a first hold, or a re-hold on a new link), with the activation chain of its
@@ -244,7 +336,7 @@ func (r *remoteObject) dropped(*data.ChordError) {
 
 // call calls a method of the bound variant over the link; one outside it fails `invalid/member`. Only a live object is
 // called: bound on an open link. The result settles as the call over the link does.
-func (r *remoteObject) call(method string, args any, _ *binding, ctx context.Context, parent telemetry.TelemetrySpan) *parkedCallResult {
+func (r *remoteObject) call(method string, args any, b *binding, ctx context.Context, parent telemetry.TelemetrySpan) *parkedCallResult {
 	result := newParkedCallResult()
 	bound, held := r.bound, r.held
 	methodData, ok := bound.methods.Get(method)
@@ -255,7 +347,7 @@ func (r *remoteObject) call(method string, args any, _ *binding, ctx context.Con
 	// Arguments are checked by the provider.
 	index := slices.Index(bound.names.Methods, method)
 	if chordtelemetry.Untraced(parent) {
-		held.side.call(held.id, index, methodData, args, ctx).then(r.host.loop(), result.settle)
+		held.side.call(held.id, index, methodData, args, b, ctx).then(r.host.loop(), result.settle)
 		return result
 	}
 	attributes := telemetry.SpanAttributes{
@@ -267,7 +359,7 @@ func (r *remoteObject) call(method string, args any, _ *binding, ctx context.Con
 	}
 	attributes = append(attributes, r.host.PrincipalAttributes(r.caller.principal, ctx)...)
 	span := chordtelemetry.NewOpenSpan(parent, "chord.call", attributes)
-	sent := held.side.call(held.id, index, methodData, args, chordctx.WithTelemetry(ctx, span.Span()))
+	sent := held.side.call(held.id, index, methodData, args, b, chordctx.WithTelemetry(ctx, span.Span()))
 	sent.then(r.host.loop(), func(value any, err error) {
 		span.EndWith(err, "call_failed", ctx)
 		result.settle(value, err)
@@ -403,16 +495,16 @@ func (*remoteObject) activationId() string { return "" }
 // pathTo: an object over a link waits for nothing on this host: no chain of waits (its holds carry the chain, Q5).
 func (*remoteObject) pathTo(*chordObject, map[target]struct{}) []*chordObject { return nil }
 
-// retry is `ref.retry()`, as a step of walk: a failed object's provider is asked for an attempt with the walk's hop
-// budget, none left: nothing is sent (a hold it refused is started there again; a parked object there passes it on with
-// one hop less). One that failed for a part past the link's limits is placed anew and held with a new id, now or on its
-// path's next link (a `hostAddress` that throws fails it broken again).
-func (r *remoteObject) retry(walk *retryWalk, _ *binding) {
+// retry is `ref.retry()` from b, as a step of walk: a failed object's provider is asked for an attempt with the walk's
+// hop budget, none left: nothing is sent (a hold it refused is started there again, for every reference sharing it; a
+// parked object there passes it on with one hop less). After a part past the link's limits b alone moves to a private
+// object of its own, placed anew and held with a new id (retryAlone).
+func (r *remoteObject) retry(walk *retryWalk, b *binding) {
 	if r.refState.Kind != RefStateFailed {
 		return
 	}
-	if r.path == r.host.unplaced {
-		r.place()
+	if r.unplaced() {
+		r.retryAlone(b)
 		return
 	}
 	if r.held != nil && walk.hops > 0 {
@@ -420,28 +512,56 @@ func (r *remoteObject) retry(walk *retryWalk, _ *binding) {
 	}
 }
 
-// place places a reference whose part was past the limits anew, on its path now (a throwing `hostAddress` fails it).
+// retryAlone moves b to a private object (never shared) that keeps what this one had for it (its variant, copies of its
+// replicas with their counts: its last values and seen members stay its own) and places it anew; the others stay here,
+// failed, until they retry. The binding leaves first, so this object ending with its last binding never ends it. A
+// placement that fails fails only the private object broken (`hostAddress`, a route that refuses).
+func (r *remoteObject) retryAlone(b *binding) {
+	host := r.host
+	own := newRemoteObject(host, r.contract, r.checked, r.request.Address, r.caller, host.unplaced, r.dependent, chordctx.Telemetry(chordctx.Background()), nil)
+	if bound := r.bound; bound != nil {
+		replicas := newReplicaSet()
+		for _, member := range bound.replicas.names {
+			replicas.set(member, bound.replicas.byName[member].fork(host.batch))
+		}
+		forked := *bound
+		forked.replicas = replicas
+		forked.nodes = eventNodes(bound.names.Events)
+		own.bound = &forked
+	}
+	host.unplaced.attach(own)
+	if at := slices.Index(r.bindings, b); at >= 0 {
+		r.bindings = slices.Delete(r.bindings, at, at+1)
+	}
+	b.transfer(own)
+	if len(r.bindings) == 0 {
+		r.endWith(data.NewChordError(data.ChordErrorInit{Code: data.CodeReleased, Message: r.name + ": released"}, nil))
+	}
+	own.place()
+}
+
+// place places a private object anew, on its path now (a failing `hostAddress` or route fails it broken).
 func (r *remoteObject) place() {
-	placed, err := r.host.pathOf(r.contract, r.params, r.caller.principal)
+	placed, err := r.host.pathOf(r.contract, r.checked.params, r.caller.principal)
 	if err != nil {
 		r.fail(data.AsChordError(err, r.contract.Name))
 		return
 	}
 	r.path.detach(r)
 	r.path = placed
-	r.move(refLoading)
 	placed.attach(r)
 }
 
 // tooLarge: a part of its snapshot or of a state change was past the link's limits (`too_large/part`): the hold is
-// released at the provider, and the reference fails broken with err, final: no link holds it again (a reconnect included)
-// until `retry`.
+// released at the provider, it leaves the sharing table, and every binding fails broken with err (they share the part),
+// final: no link holds it again (a reconnect included); each binding's `retry` moves it alone (retryAlone).
 func (r *remoteObject) tooLarge(err *data.ChordError) {
 	held := r.held
 	if held == nil {
 		return
 	}
 	r.held = nil
+	r.unpublish()
 	held.side.release(held.id, err)
 	r.path.detach(r)
 	r.path = r.host.unplaced
@@ -685,30 +805,34 @@ func (r *remoteObject) prepare(entry link.StateEntry, hl *hostLink) (func(), err
 func (r *remoteObject) revoke(err *data.ChordError) {
 	held := r.held
 	r.held = nil
+	r.unpublish()
 	if held != nil {
 		held.side.release(held.id, err)
 	}
 	r.lost(err)
 }
 
-// lost: `gone`, or the host closes: the reference ends, its calls reject with err.
+// lost: `gone`, or the host closes: every reference ends, their calls reject with err. The bindings are taken and the
+// object ends first, so each ends exactly once whatever ending one does.
 func (r *remoteObject) lost(err *data.ChordError) {
-	binding := r.binding
+	bindings := slices.Clone(r.bindings)
+	r.unpublish()
 	if r.held != nil {
 		r.held.side.forget(r.held.id, err)
 	}
 	r.endWith(err)
-	if binding != nil {
-		binding.end(err)
+	for _, b := range bindings {
+		b.end(err)
 	}
 }
 
-// endWith ends the object: detached from its path, waits rejected, replicas ended; keeps nothing of its reference.
+// endWith ends the object: out of the table, detached from its path, replicas ended; keeps none of its references.
 func (r *remoteObject) endWith(err *data.ChordError) {
+	r.unpublish()
 	bound := r.bound
 	r.endHold("ended", nil)
 	r.refState = &RefState{Kind: RefStateEnded, Error: err}
-	r.binding = nil
+	r.bindings = nil
 	r.dependent = nil
 	r.held = nil
 	r.bound = nil
@@ -729,19 +853,35 @@ func (r *remoteObject) startOver() {
 	}
 }
 
-// move moves to next and tells the reference: its members follow what it shows now (in a batch), then its state.
+// move moves to next and tells every binding, as a local object tells its holders: their members follow what it shows
+// now (all in one batch), then each its state, in the order they joined; one released meanwhile is not told. A broken
+// failure takes it out of the sharing table first, for good: a new reference holds anew.
 func (r *remoteObject) move(next *RefState) {
+	if next.Kind == RefStateFailed && next.Cause.Kind == data.FailureBroken {
+		r.unpublish()
+	}
 	r.refState = next
-	binding := r.binding
-	if binding == nil {
+	if len(r.bindings) == 0 {
 		return
 	}
-	if binding.following() {
-		_ = r.host.batch.Within(func() error { binding.retarget(); return nil }, chordctx.Background())
+	bindings := slices.Clone(r.bindings)
+	if slices.ContainsFunc(bindings, (*binding).following) {
+		_ = r.host.batch.Within(func() error {
+			for _, b := range bindings {
+				b.retarget()
+			}
+			return nil
+		}, chordctx.Background())
 	} else {
-		binding.retarget()
+		for _, b := range bindings {
+			b.retarget()
+		}
 	}
-	binding.moved()
+	for _, b := range bindings {
+		if slices.Contains(r.bindings, b) {
+			b.moved()
+		}
+	}
 }
 
 // memberInvalid is the `invalid/member` error.

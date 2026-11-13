@@ -58,6 +58,9 @@ type path struct {
 	current    *hostLink
 	// everLinked is whether it ever had a link: a host never connected to a parent has no parent path to wait on.
 	everLinked bool
+	// shared are the remote objects the references of its host share over it, by sharing key (decision "References share
+	// one wire hold"; Pi's host keeps them in a WeakMap by path): each entry owned by its object, which takes it out.
+	shared map[string]*remoteObject
 }
 
 // newPath makes a path; suspended nil is Pi's absent argument (never suspended).
@@ -74,6 +77,14 @@ func (p *path) link() *hostLink { return p.current }
 
 // linked is whether it had a link once (it may be down now: its holders wait for the next).
 func (p *path) linked() bool { return p.everLinked }
+
+// tableOf is its sharing table, made by its first shared object.
+func (p *path) tableOf() map[string]*remoteObject {
+	if p.shared == nil {
+		p.shared = map[string]*remoteObject{}
+	}
+	return p.shared
+}
 
 // held is whether anything is held over this path.
 func (p *path) held() bool { return len(p.holders_) > 0 }
