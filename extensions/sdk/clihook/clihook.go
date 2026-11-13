@@ -25,13 +25,39 @@ type Env struct {
 	StdoutTTY      bool
 }
 
+// RetryFailure describes one failed model request to RetryDecider: Attempt is the 1-based retry being considered,
+// MaxRetries is the resolved retry budget (after settings.json `retry`), ErrorMessage is the assistant error text,
+// Status is the HTTP response status (0 when no response arrived), Headers holds the lower-cased response headers when
+// available, and StreamStarted reports whether any stream event was emitted before the failure.
+type RetryFailure struct {
+	Attempt       int
+	MaxRetries    int
+	ErrorMessage  string
+	Status        int
+	Headers       map[string]string
+	StreamStarted bool
+}
+
+// RetryDecision is what RetryDecider decides for one failed model request.
+type RetryDecision struct {
+	Retry   bool
+	DelayMs int
+}
+
+// RetryDecider classifies a failed model request and chooses the delay before the retry.
+type RetryDecider func(RetryFailure) RetryDecision
+
 // RetryPolicy is the agent-level retry policy the hook asks PiG to use when the user's settings name none: the number of
 // retries of a failed model request, the delay before the first one (it doubles each time) and the cap on one delay.
-// settings.json `retry` still wins over it.
+// settings.json `retry` still wins over the numeric fields. Decide, when non-nil, classifies failures and selects
+// per-attempt delays in place of PiG's default classifier and exponential formula, and Silent suppresses PiG's built-in
+// interactive retry status indicator and final "Retry failed after ..." error line when the piglet renders its own.
 type RetryPolicy struct {
 	MaxRetries      int
 	BaseDelayMs     int
 	MaxAgentDelayMs int
+	Decide          RetryDecider
+	Silent          bool
 }
 
 // Result is what the hook decided.
@@ -43,6 +69,8 @@ type Result struct {
 	Args []string
 	// Retry, when set, replaces PiG's built-in retry defaults (3 retries, 2 s base, 60 s cap) for a session run.
 	Retry *RetryPolicy
+	// HTTPIdleTimeoutMs, when non-nil, replaces PiG's default HTTP idle timeout (300 s) when settings.json names none.
+	HTTPIdleTimeoutMs *int
 	// OwnPrintOutput: the run is a print run whose stdout the hook's extension writes itself (through Stdout). PiG's
 	// print mode then writes nothing to stdout (text or JSON), leaves the words of a failed run's stderr line to the
 	// extension, and exits with ExitCode when that is not 0 and the run succeeded in PiG's own terms.

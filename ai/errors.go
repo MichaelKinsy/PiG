@@ -34,6 +34,7 @@ type NormalizedProviderError struct {
 // providerError carries the raw error fields owned by the HTTP adapters. Native SDK errors retain their own types.
 type providerError struct {
 	status  *int
+	headers map[string]string
 	body    any
 	message string
 	prefix  []string
@@ -42,6 +43,13 @@ type providerError struct {
 // ProviderStatus is the HTTP status of the response the error reports; a retry policy reads it.
 func (err *providerError) ProviderStatus() *int { return err.status }
 
+// withHeaders attaches lower-cased response headers to a *providerError without changing its formatted message.
+func withErrorHeaders(err error, headers map[string]string) error {
+	if own, ok := err.(*providerError); ok && own != nil && len(headers) > 0 {
+		own.headers = headers
+	}
+	return err
+}
 func (err *providerError) Error() string {
 	return FormatProviderError(NormalizeProviderError(err), err.prefix...)
 }

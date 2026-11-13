@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"maps"
 )
 
 // Message is the closed provider-facing transcript union.
@@ -148,6 +148,9 @@ type AssistantMessage struct {
 	// that lists the keys in that order decodes. JavaScript keeps the order its source wrote, so the order is part of the
 	// message; both encoders write it.
 	ErrorBeforeTimestamp bool `json:"-"`
+	// FailureResponse holds non-serialized response metadata for a failed request (status, headers, stream phase) so a
+	// custom retry policy can inspect Retry-After and stream state without altering JSON wire encodings.
+	FailureResponse *FailureResponse `json:"-"`
 	// DurationMs is the milliseconds from the start of the request to the final message, measured with a monotonic clock by the AssistantMessageEventStream. Nil for legacy messages and for deferred results fetched later.
 	// upstream: ai/src/types.ts:582 AssistantMessage.durationMs
 	DurationMs *int64 `json:"durationMs,omitempty"`
@@ -184,7 +187,19 @@ func cloneAssistantMessageWith(message AssistantMessage, cloneArguments func(any
 	if message.DurationMs != nil {
 		message.DurationMs = new(*message.DurationMs)
 	}
+	if message.FailureResponse != nil {
+		copied := *message.FailureResponse
+		copied.Headers = maps.Clone(message.FailureResponse.Headers)
+		message.FailureResponse = &copied
+	}
 	return message
+}
+
+// FailureResponse carries non-serialized HTTP status, response headers, and stream-start state for a failed assistant message.
+type FailureResponse struct {
+	Status        int
+	Headers       map[string]string
+	StreamStarted bool
 }
 
 // NestedToolCallStatus is the state of a [NestedToolCallRecord]. `unfinished` means the call was still running when the calling tool finished.

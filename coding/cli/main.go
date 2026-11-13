@@ -770,6 +770,27 @@ func Main(args []string, options *MainOptions) {
 			// pig additive (D653): the member's retry defaults; settings.json `retry` still overrides each field.
 			codingagent.SetDefaultRetryConfig(codingagent.RetryConfig{Enabled: true, MaxRetries: res.Retry.MaxRetries,
 				BaseDelayMs: res.Retry.BaseDelayMs, MaxAgentDelayMs: res.Retry.MaxAgentDelayMs})
+			var decider ai.RetryDecider
+			if decide := res.Retry.Decide; decide != nil {
+				decider = func(attempt, maxAttempts int, response ai.AssistantMessage) ai.RetryDecision {
+					failure := clihook.RetryFailure{
+						Attempt:      attempt,
+						MaxRetries:   maxAttempts,
+						ErrorMessage: response.ErrorMessage,
+					}
+					if response.FailureResponse != nil {
+						failure.Status = response.FailureResponse.Status
+						failure.Headers = response.FailureResponse.Headers
+						failure.StreamStarted = response.FailureResponse.StreamStarted
+					}
+					d := decide(failure)
+					return ai.RetryDecision{Retry: d.Retry, DelayMs: d.DelayMs}
+				}
+			}
+			codingagent.SetDefaultRetryDecider(decider, res.Retry.Silent)
+		}
+		if res.HTTPIdleTimeoutMs != nil {
+			codingagent.SetDefaultHTTPIdleTimeoutMs(res.HTTPIdleTimeoutMs)
 		}
 	}
 

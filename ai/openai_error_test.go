@@ -73,3 +73,25 @@ func TestOpenAIHTTPErrorMatchesPi(t *testing.T) {
 		}
 	}
 }
+
+func TestOpenAIHTTPErrorRecordsFailureResponseHeadersWithoutChangingJSON(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Retry-After", "3")
+		w.WriteHeader(http.StatusTooManyRequests)
+		_, _ = w.Write([]byte(`{"error":{"message":"rate limited"}}`))
+	}))
+	defer server.Close()
+	p := NewOpenAIProvider(OpenAIConfig{BaseURL: server.URL, APIKey: "fake", Model: "test-model", ProviderID: "custom"})
+	result := transportErrorTestResult(t, p)
+	if result.FailureResponse == nil || result.FailureResponse.Status != 429 || result.FailureResponse.Headers["retry-after"] != "3" || result.FailureResponse.StreamStarted {
+		t.Fatalf("FailureResponse = %#v", result.FailureResponse)
+	}
+	encoded, err := json.Marshal(result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(encoded), "FailureResponse") || strings.Contains(string(encoded), "retry-after") {
+		t.Fatalf("FailureResponse leaked into JSON: %s", encoded)
+	}
+}

@@ -456,3 +456,39 @@ func TestConnectionResetTextIsRetryable(t *testing.T) {
 		t.Fatalf("IsRetryableAssistantError(%q) = false; pi-ai's pattern list retries it", message)
 	}
 }
+
+func TestRetryAssistantCallCustomDeciderAndFailureResponse(t *testing.T) {
+	recorder := &retryRecorder{}
+	calls := 0
+	policy := &RetryPolicy{
+		Enabled:    true,
+		MaxRetries: 5,
+		Decide: func(attempt, maxAttempts int, response AssistantMessage) RetryDecision {
+			if maxAttempts != 5 {
+				t.Errorf("maxAttempts = %d, want 5", maxAttempts)
+			}
+			if response.FailureResponse != nil && response.FailureResponse.Status == 401 {
+				if attempt <= 2 {
+					return RetryDecision{Retry: true, DelayMs: 1}
+				}
+				return RetryDecision{Retry: false}
+			}
+			return RetryDecision{Retry: false}
+		},
+	}
+	response, err := RetryAssistantCall(context.Background(), func() (AssistantMessage, error) {
+		calls++
+		msg := errorFaux("401 unauthorized")
+		msg.FailureResponse = &FailureResponse{Status: 401, Headers: map[string]string{"retry-after": "2"}}
+		return msg, nil
+	}, policy, recorder.callbacks())
+	if err != nil || response.StopReason != StopReasonError || calls != 3 {
+		t.Fatalf("response=%#v err=%v calls=%d, want 3 calls", response, err, calls)
+	}
+	if len(recorder.scheduled) != 2 || recorder.scheduled[0][2] != 1 || recorder.scheduled[1][2] != 1 {
+		t.Fatalf("scheduled = %v, want two 1ms retries", recorder.scheduled)
+	}
+	if !reflect.DeepEqual(recorder.finished, [][3]any{{false, 2, "401 unauthorized"}}) {
+		t.Fatalf("finished = %v", recorder.finished)
+	}
+}

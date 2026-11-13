@@ -66,9 +66,11 @@ type AssistantMessage struct {
 	// ErrorMessage holds the error string when StopReason == "error".
 	ErrorMessage string `json:"errorMessage,omitempty"`
 	// ErrorBeforeTimestamp records that the message was built with errorMessage before timestamp; see ai.AssistantMessage.ErrorBeforeTimestamp.
-	ErrorBeforeTimestamp bool   `json:"-"`
-	RawStopReason        string `json:"rawStopReason,omitempty"`
-	EndTurn              *bool  `json:"endTurn,omitempty"`
+	ErrorBeforeTimestamp bool `json:"-"`
+	// FailureResponse holds non-serialized HTTP status/headers/stream state for custom retry policies; see ai.AssistantMessage.FailureResponse.
+	FailureResponse *ai.FailureResponse `json:"-"`
+	RawStopReason   string              `json:"rawStopReason,omitempty"`
+	EndTurn         *bool               `json:"endTurn,omitempty"`
 	// DurationMs is the milliseconds from the start of the request to the final message, measured with a monotonic clock by the AssistantMessageEventStream. Nil for legacy messages and for deferred results fetched later.
 	// upstream: ai/src/types.ts:582 AssistantMessage.durationMs
 	DurationMs *int64 `json:"durationMs,omitempty"`
@@ -2320,6 +2322,7 @@ func assistantMessageWith(message *ai.AssistantMessage, content []ai.AssistantCo
 		StopReason:            message.StopReason,
 		ErrorMessage:          message.ErrorMessage,
 		ErrorBeforeTimestamp:  message.ErrorBeforeTimestamp,
+		FailureResponse:       message.FailureResponse,
 		RawStopReason:         message.RawStopReason,
 		EndTurn:               message.EndTurn,
 		DurationMs:            message.DurationMs,

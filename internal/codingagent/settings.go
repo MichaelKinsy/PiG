@@ -2656,6 +2656,54 @@ func DefaultRetryConfig() RetryConfig {
 	return builtinRetryConfig
 }
 
+var (
+	defaultRetryDecider       atomic.Pointer[ai.RetryDecider]
+	defaultRetrySilent        atomic.Bool
+	defaultHTTPIdleMsOverride atomic.Pointer[int]
+)
+
+// SetDefaultRetryDecider installs the retry classifier and delay hook a fused Piglet member supplies through
+// clihook.Result.Retry. Nil restores PiG's built-in classifier and exponential schedule.
+func SetDefaultRetryDecider(decider ai.RetryDecider, silent bool) {
+	if decider == nil {
+		defaultRetryDecider.Store(nil)
+	} else {
+		defaultRetryDecider.Store(&decider)
+	}
+	defaultRetrySilent.Store(silent)
+}
+
+// DefaultRetryDecider returns the installed retry decider, or nil when PiG's built-in retry rules apply.
+func DefaultRetryDecider() ai.RetryDecider {
+	if p := defaultRetryDecider.Load(); p != nil {
+		return *p
+	}
+	return nil
+}
+
+// DefaultRetrySilent reports whether PiG's built-in interactive retry status indicator and final "Retry failed after ..."
+// error line are suppressed because the piglet renders its own.
+func DefaultRetrySilent() bool { return defaultRetrySilent.Load() }
+
+// SetDefaultHTTPIdleTimeoutMs replaces the default HTTP idle timeout GetHttpIdleTimeoutMs uses when settings.json names
+// none; nil restores PiG's built-in 300000 ms default.
+func SetDefaultHTTPIdleTimeoutMs(timeoutMs *int) {
+	if timeoutMs == nil {
+		defaultHTTPIdleMsOverride.Store(nil)
+		return
+	}
+	v := *timeoutMs
+	defaultHTTPIdleMsOverride.Store(&v)
+}
+
+// DefaultHTTPIdleTimeoutMs is the HTTP idle timeout a Session uses when no settings file names one.
+func DefaultHTTPIdleTimeoutMs() int {
+	if p := defaultHTTPIdleMsOverride.Load(); p != nil {
+		return *p
+	}
+	return defaultHTTPIdleTimeoutMs
+}
+
 // GetRetrySettings returns retry settings with defaults applied.
 // Mirrors upstream SettingsManager.getRetrySettings (settings-manager.ts:683-690).
 func (sm *SettingsManager) GetRetrySettings() RetryConfig {
@@ -2760,7 +2808,7 @@ func (s *Settings) httpIdleTimeoutMs() (int, error) {
 		return 0, fmt.Errorf("Invalid httpIdleTimeoutMs setting: %v", s.httpIdleTimeoutInvalid)
 	}
 	if s.HTTPIdleTimeoutMs == nil {
-		return defaultHTTPIdleTimeoutMs, nil
+		return DefaultHTTPIdleTimeoutMs(), nil
 	}
 	timeoutMs, ok := parseHTTPIdleTimeoutMs(*s.HTTPIdleTimeoutMs)
 	if !ok {

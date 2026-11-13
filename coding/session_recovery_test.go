@@ -633,3 +633,54 @@ func TestPrePromptRecoveryOfAResumedLengthStopOmitsTheTruncatedCallAndItsResult(
 		t.Fatalf("request still carries the truncated call or its result: %s", requests[0])
 	}
 }
+
+func TestDefaultRetryDeciderDrivesSessionRetriesAndDelays(t *testing.T) {
+	t.Cleanup(func() { icodingagent.SetDefaultRetryDecider(nil, false) })
+	var seen []int
+	icodingagent.SetDefaultRetryDecider(func(attempt, maxAttempts int, response ai.AssistantMessage) ai.RetryDecision {
+		seen = append(seen, attempt)
+		status := 0
+		if response.FailureResponse != nil {
+			status = response.FailureResponse.Status
+		}
+		if status == 401 && attempt <= 2 && attempt <= maxAttempts {
+			return ai.RetryDecision{Retry: true, DelayMs: 2 + attempt}
+		}
+		return ai.RetryDecision{Retry: false}
+	}, true)
+	unauth := func([]ai.Message) *ai.AssistantMessage {
+		return &ai.AssistantMessage{
+			Provider: "faux", Model: "faux-1", StopReason: ai.StopReasonError,
+			ErrorMessage:    `401 {"message":"bad key"}`,
+			FailureResponse: &ai.FailureResponse{Status: 401, Headers: map[string]string{"retry-after": "1"}},
+			Timestamp:       time.Now().UnixMilli(),
+		}
+	}
+	h := newRecoveryHarness(t, harnessOptions{settings: `{"retry":{"enabled":true,"maxRetries":5,"baseDelayMs":500}}`},
+		unauth, unauth, unauth, fauxReply("unreachable", ai.StopReasonStop, 0),
+	)
+	_, _ = h.session.Send(context.Background(), "hello")
+	events := h.settle(t)
+	if got := h.provider.callCount(); got != 3 {
+		t.Fatalf("model calls = %d, want 3 (initial + 2 auth retries)", got)
+	}
+	var willRetry []bool
+	var delays []int
+	for _, ev := range events {
+		switch ev := ev.(type) {
+		case agent.AgentEndEvent:
+			willRetry = append(willRetry, ev.WillRetry)
+		case agent.AutoRetryStartEvent:
+			delays = append(delays, ev.DelayMs)
+		}
+	}
+	if len(willRetry) != 3 || !willRetry[0] || !willRetry[1] || willRetry[2] {
+		t.Fatalf("willRetry = %v, want [true true false]", willRetry)
+	}
+	if len(delays) != 2 || delays[0] != 3 || delays[1] != 4 {
+		t.Fatalf("delays = %v, want [3 4]", delays)
+	}
+	if len(seen) != 3 {
+		t.Fatalf("decider called %d times, want 3 (once per attempt)", len(seen))
+	}
+}

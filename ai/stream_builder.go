@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"context"
 	"errors"
+	"maps"
 	"strconv"
 	"sync/atomic"
 	"time"
@@ -497,9 +498,31 @@ func (builder *assistantStreamBuilder) recordTransportFailure(err error) {
 	if err == nil {
 		return
 	}
+	builder.recordFailureResponse(err)
 	if diagnostic, ok := transportFailureDiagnostic(err, builder.started); ok {
 		AppendAssistantMessageDiagnostic(builder.partial, diagnostic)
 	}
+}
+
+// recordFailureResponse stores non-serialized HTTP status/headers and stream-start state for custom retry policies.
+func (builder *assistantStreamBuilder) recordFailureResponse(err error) {
+	info := &FailureResponse{StreamStarted: builder.started}
+	if own, ok := errors.AsType[*providerError](err); ok && own != nil {
+		if own.status != nil {
+			info.Status = *own.status
+		}
+		if len(own.headers) > 0 {
+			info.Headers = maps.Clone(own.headers)
+		}
+	} else if reported, ok := errors.AsType[ProviderRequestError](err); ok {
+		if st := reported.ProviderStatus(); st != nil {
+			info.Status = *st
+		}
+		if hdr := reported.ProviderHeaders(); len(hdr) > 0 {
+			info.Headers = headersToRecord(hdr)
+		}
+	}
+	builder.partial.FailureResponse = info
 }
 
 // failureMessage is the ErrorMessage recorded for err.

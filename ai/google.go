@@ -1555,7 +1555,7 @@ func googleHTTPError(resp *http.Response, body []byte) error {
 		message = string(text)
 	}
 	if resp.StatusCode >= 400 && resp.StatusCode < 600 {
-		return &providerError{status: new(resp.StatusCode), message: message}
+		return withErrorHeaders(&providerError{status: new(resp.StatusCode), message: message}, headersToRecord(resp.Header))
 	}
 	return errors.New(message)
 }
