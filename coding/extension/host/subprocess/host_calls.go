@@ -368,15 +368,17 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 		refuseReferences()
 		return
 	}
-	// A reload invalidates the runner of the generations it replaces before the extensions load again, so their captured pi and ctx throw Pi's stale message from then on (agent-session.ts:3825-3826 oldRunner.invalidate(), runner.ts:729-741). A generation runs on past that point: every handler that was in flight goes on until the commit, and its command until it returns from `await ctx.reload()` (retireGeneration). So each call it makes from the reload's start (superseded) is answered with that error: a dropped call would block the handler that waits for it, and the stop that waits for that handler, forever.
-	if me.replaced.Load() || me.superseded.Load() {
-		refuseReferences()
-		if callID != "" {
-			_ = conn.Send(&Envelope{Type: MsgCallResult, ID: callID, CallResult: &CallResultPayload{Error: &ErrorInfo{Message: (&inproc.StaleError{}).Error()}}})
+	// A reload invalidates the runner of the generations it replaces before the extensions load again, so their captured pi and ctx throw Pi's stale message from then on (agent-session.ts:3825-3826 oldRunner.invalidate(), runner.ts:729-741). A generation runs on past that point: every handler that was in flight goes on until the commit, and its command until it returns from `await ctx.reload()` (retireGeneration). So each call it makes from that point (Host.supersedes) is answered with that error: a dropped call would block the handler that waits for it, and the stop that waits for that handler, forever. A call that was running at that point keeps its result: Pi checks staleness where a member is used, not where a pending promise settles.
+	if me.replaced.Load() || h.supersedes(me) {
+		// The runtime releases its bus listeners when the invalidate notification arrives, and Pi's unsubscribe never throws (releasesBusListeners): a refusal would end the process with the handlers the generation still runs.
+		if !releasesBusListeners(call.Method) {
+			refuseReferences()
+			if callID != "" {
+				_ = conn.Send(&Envelope{Type: MsgCallResult, ID: callID, CallResult: &CallResultPayload{Error: &ErrorInfo{Message: (&inproc.StaleError{}).Error()}}})
+			}
+			return
 		}
-		return
-	}
-	if !h.acceptsNodeGeneration(me) {
+	} else if !h.acceptsNodeGeneration(me) {
 		refuseReferences()
 		return
 	}
@@ -409,8 +411,8 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 	if settlesCaller(call.Method) {
 		callCtx = extension.WithCallerSettlement(callCtx, func(fn func()) { afterCaller = append(afterCaller, fn) })
 	}
-	// pig additive (D232): a runtime releases its bus listeners (events.off, after its lazy xref.hello) when the invalidate notification arrives, and Pi's unsubscribe never throws; refusing them would end a process other Hosts share.
-	if message := h.staleMessage.Load(); message != nil && (h.cells == nil || (call.Method != callEventsOff && call.Method != callXrefHello)) {
+	// pig additive (D232): refusing a runtime's bus release (releasesBusListeners) would end a process other Hosts share.
+	if message := h.staleMessage.Load(); message != nil && (h.cells == nil || !releasesBusListeners(call.Method)) {
 		if callID != "" {
 			_ = conn.Send(&Envelope{Type: MsgCallResult, ID: callID, CallResult: &CallResultPayload{Error: &ErrorInfo{Message: *message}}})
 		}
