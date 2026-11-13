@@ -421,7 +421,7 @@ func TestAnErrorFromCanRetryRetries(t *testing.T) {
 }
 
 // A late rejection of CanRetry (the next link already open) stops nothing, and the question is closed: the next close asks again.
-// Cites packages/chord/src/surfaces/connection.ts:181 (`canRetry().then(answered, () => answered(true))`).
+// Cites packages/chord/src/surfaces/connection.ts:181 at Pi 21e4cb80d (`canRetry().then(answered, () => answered(true))`).
 func TestALateErrorFromCanRetryKeepsTheOpenLinkAndTheNextCloseAsksAgain(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		w := newFakeWorld()
@@ -446,7 +446,7 @@ func TestALateErrorFromCanRetryKeepsTheOpenLinkAndTheNextCloseAsksAgain(t *testi
 
 // A late no while the next attempt is still connecting ends that attempt: it is reported waiting once, its link is closed
 // before the report, and the loop stays stopped (no retry, no wake).
-// Cites packages/chord/src/surfaces/connection.ts:144 (stop: `if (attempt !== undefined) this.#options.onState("waiting")`).
+// Cites packages/chord/src/surfaces/connection.ts:144 at Pi 21e4cb80d (stop: `if (attempt !== undefined) this.#options.onState("waiting")`).
 func TestALateNoWhileTheNextAttemptIsConnectingClosesItThenReportsWaitingAndTheLoopStaysStopped(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		w := newFakeWorld()
@@ -482,7 +482,7 @@ func TestALateNoWhileTheNextAttemptIsConnectingClosesItThenReportsWaitingAndTheL
 
 // A drop is "soon after a wake" up to STALE_MS + WAKE_GRACE_MS after it (the stale check's reach); one millisecond later it
 // waits the pause.
-// Cites packages/chord/src/surfaces/connection.ts:163 (`now - this.#wokenAt <= STALE_MS + WAKE_GRACE_MS`).
+// Cites packages/chord/src/surfaces/connection.ts:163 at Pi 21e4cb80d (`now - this.#wokenAt <= STALE_MS + WAKE_GRACE_MS`).
 func TestADropCountsAsSoonAfterAWakeForTheStaleChecksReachAndNoLonger(t *testing.T) {
 	for _, each := range []struct {
 		name  string
@@ -590,7 +590,7 @@ func TestClosesTheLinkAtStopAndOpensNoOther(t *testing.T) {
 
 // Stop reports the attempt it ended as waiting, once, after closing its link; a stop between attempts (the last state already
 // waiting) and a second stop report nothing.
-// Cites packages/chord/src/surfaces/connection.ts:144 (stop: `if (attempt !== undefined) this.#options.onState("waiting")`).
+// Cites packages/chord/src/surfaces/connection.ts:144 at Pi 21e4cb80d (stop: `if (attempt !== undefined) this.#options.onState("waiting")`).
 func TestStopReportsTheAttemptItEndedAsWaitingOnceAndNothingBetweenAttempts(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		w := newFakeWorld()
