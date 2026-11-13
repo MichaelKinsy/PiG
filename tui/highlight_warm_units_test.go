@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"math/rand"
 	"slices"
 	"strings"
 	"sync"
@@ -29,6 +30,60 @@ func warmedSource(lines int) string {
 		}
 	}
 	return b.String()
+}
+
+// A text warmed in steps that end anywhere, inside a multi-byte character or a lone surrogate included, and interleaved with the
+// highlights a frame asks for, draws the lines of a run over all of it: what the warm-ups keep of the text's units across steps is
+// the units of a fresh conversion. A build that strips syntax-highlight holds what WarmHighlight documents for it instead: no step
+// reports a state and none is left, and the lines are still those of a whole run.
+func TestWarmHighlightStepsAcrossCharacterBoundariesDrawTheLinesOfAWholeRun(t *testing.T) {
+	orig := ActiveTheme().Name
+	defer SetTheme(orig)
+	SetTheme("dark")
+
+	rng := rand.New(rand.NewSource(11))
+	for _, steps := range []struct {
+		name  string
+		lines int
+		next  func() int
+	}{
+		{"one byte", 8, func() int { return 1 }},
+		{"a few bytes", 20, func() int { return 1 + rng.Intn(7) }},
+		{"a hundred bytes", 120, func() int { return 60 + rng.Intn(80) }},
+		{"a few kilobytes", 400, func() int { return 1500 + rng.Intn(1500) }},
+	} {
+		code := warmedSource(steps.lines)
+		t.Run(steps.name, func(t *testing.T) {
+			hlMu.Lock()
+			resetHighlightCacheLocked()
+			hlMu.Unlock()
+			held, warmed := 0, 0
+			for end := steps.next(); end < len(code); end += steps.next() {
+				if WarmHighlight(code[:end], "typescript") {
+					held++
+				}
+				warmed = end
+				if held%37 == 4 {
+					// a frame draws the text so far, which continues from the state and leaves one without the units
+					want := highlightCodeUncached(highlightRegistry(), code[:end], "typescript", ActiveTheme())
+					if got := HighlightCode(code[:end], "typescript"); !slices.Equal(got, want) {
+						t.Fatalf("the lines of the first %d bytes differ from a whole run", end)
+					}
+				}
+			}
+			if warmHighlightKeepsState() {
+				if held == 0 {
+					t.Fatal("no step left a state to resume from")
+				}
+			} else if left := highlightResumeHeld(code[:warmed], "typescript", ActiveTheme()); held != 0 || left {
+				t.Fatalf("%d steps reported a resume state and one is held after the last = %v, in a build without syntax highlighting: want none reported and none left", held, left)
+			}
+			want := highlightCodeUncached(highlightRegistry(), code, "typescript", ActiveTheme())
+			if got := HighlightCode(code, "typescript"); !slices.Equal(got, want) {
+				t.Errorf("the lines of the whole text differ from a whole run (%d lines, want %d)", len(got), len(want))
+			}
+		})
+	}
 }
 
 // Warm-ups of the same text in two languages keep their states apart, and the text that follows continues each of them.
