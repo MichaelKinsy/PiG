@@ -5,8 +5,8 @@ to = "1.5.2+7ae9ff8c"
 path = "packages/chord/src/telemetry-ingest/facet.ts"
 change = "modified"
 disposition = "ported"
-evidence = ["test:chord/next/telemetryingest/ingest_upstream_test.go#TestAdmittingPagesRefusesThePageOfAPrincipalTheAppDoesNotAdmitItsHoldFailsForbiddenNothingIsWritten"]
-rationale = "7ae9ff8c7: telemetryIngestFacet requires admit(principal). PageTelemetry's serve function runs it first, before the per-page budgets and any batch check: a refused principal's hold fails with the forbidden error `chord.telemetry.page: not admitted` and nothing is written; WorkerTelemetry is untouched. chord/next/telemetryingest/facet.go ports it as IngestOptions.Admit (required, as in Pi: a nil Admit panics at the first page hold where Pi throws a TypeError) and data.Forbidden in the PageTelemetry serve function."
+evidence = ["test:chord/next/telemetryingest/ingest_upstream_test.go#TestAdmittingPagesRefusesThePageOfAPrincipalTheAppDoesNotAdmitItsHoldFailsForbiddenNothingIsWritten", "test:chord/nextnode/plugins/plugins_node_store_on_committed_vendored_test.go#TestTheClientTreesIngestFacetAsksAdmit"]
+rationale = "7ae9ff8c7: telemetryIngestFacet requires admit(principal). PageTelemetry's serve function runs it first, before the per-page budgets and any batch check: a refused principal's hold fails with the forbidden error `chord.telemetry.page: not admitted` and nothing is written; WorkerTelemetry is untouched. chord/next/telemetryingest/facet.go ports it as IngestOptions.Admit (required, as in Pi: a nil Admit panics at the first page hold where Pi throws a TypeError) and data.Forbidden in the PageTelemetry serve function. The client tree (chord/nextnode/surfaces/client) carries this commit's facet.ts too, by the vendoring tool (c8390defa and 926b2f8cd are carried before it only so that it cherry-picks: it also changes packages/chord/CHANGELOG.md, which they changed); nothing of PiG serves that file (the server is Go)."
 
 [[files]]
 path = "packages/chord/src/node/app/app.ts"
