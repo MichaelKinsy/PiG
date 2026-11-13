@@ -579,3 +579,84 @@
     (check-error simple-error (pig:events-on bus 3 #'identity))
     (check-error simple-error (pig:events-on bus "ch" "not a function"))
     (check-error simple-error (pig:events-emit bus "ch" (make-array 2 :element-type 'complex)))))
+
+;; The ready payload is a connection's first state, and the host writes no state before it. A state notify that reaches the extension before ready is still
+;; applied to the replica, never dropped and never a load failure, whichever read takes it: a factory-time call on the connection the factory dialled, the
+;; registration of a listener before the register frame, or the wait for ready. The Go SDK's tests for the same contract are
+;; extensions/sdk/state_before_ready_test.go.
+(defun sbe-state ()
+  "A state_update that reports a UI: a value the replica's fallback, NIL, differs from."
+  (pig:obj "type" "notify" "notify" (pig:obj "method" "state_update" "args" (pig:obj "state" (pig:obj "hasUI" t)))))
+
+(defun sbe-has-ui-after-ready (ext conn)
+  "Send a ready payload whose state names no UI, wait until the run has handled it, and return what the replica holds: what the early state brought."
+  (pig::send-frame conn (pig:obj "type" "ready" "ready" (pig:obj "cwd" "/w" "mode" "tui" "width" 80 "state" (pig:obj))))
+  (pig::send-frame conn (pig:obj "type" "ping" "ping" (pig:obj "nonce" "after-ready")))
+  (let ((pong (handler-case (pig::read-frame conn) (error () :eof))))
+    (check-equal "pong" (and (hash-table-p pong) (pig:jget pong "type")) "the run handled the ready"))
+  (sb-thread:with-mutex ((pig::extension-state-lock ext)) (pig::extension-has-ui ext)))
+
+(defun sbe-call-with-served-extension (ext script)
+  "Serve EXT against a fake host and run SCRIPT with the host's end of the connection; the run is shut down afterwards."
+  (let* ((path (format nil "/tmp/pig-lisp-test-state-early-~D-~D.sock" (sb-posix:getpid) (random 1000000)))
+         (listener (make-instance 'sb-bsd-sockets:local-socket :type :stream)))
+    (ignore-errors (delete-file path))
+    (sb-bsd-sockets:socket-bind listener path)
+    (sb-bsd-sockets:socket-listen listener 4)
+    (let* ((thread (sb-thread:make-thread (lambda () (handler-case (pig::serve ext (pig::connect-unix path)) (error () nil))) :name "test-extension"))
+           (conn (accept-host-conn listener))
+           (host (make-host :listener listener :conn conn :thread thread :ext ext :path path)))
+      (unwind-protect (funcall script conn) (stop-host host)))))
+
+(deftest state-between-register-and-ready-is-applied
+  (let ((ext (pig:make-extension "rt-state-before-ready")))
+    (sbe-call-with-served-extension
+     ext
+     (lambda (conn)
+       (check-equal "register" (pig:jget (pig::read-frame conn) "type"))
+       (pig::send-frame conn (sbe-state))
+       (check (eq t (sbe-has-ui-after-ready ext conn)) "the state the host sent between the register and the ready is in the replica")))))
+
+(deftest state-ahead-of-the-result-of-a-listener-registered-before-register-is-applied
+  (let ((ext (pig:make-extension "rt-state-before-listener-result")))
+    (pig:events-on (pig:extension-events ext) "ch" (lambda (ctx data) (declare (ignore ctx data))))
+    (sbe-call-with-served-extension
+     ext
+     (lambda (conn)
+       (let ((call (pig::read-frame conn)))
+         (check-equal "events.on" (pig:jref call "call" "method"))
+         ;; a run that ended on the state closes the connection: the writes or the read then fail
+         (let ((register (handler-case (progn (pig::send-frame conn (sbe-state))
+                                              (sbr-answer-call conn call (pig:obj))
+                                              (pig::read-frame conn))
+                           (error () :eof))))
+           (check-equal "register" (and (hash-table-p register) (pig:jget register "type"))
+                        "the load went on after a state ahead of the listener's result")
+           (when (hash-table-p register)
+             (check (eq t (sbe-has-ui-after-ready ext conn)) "the state ahead of the listener's result is in the replica"))))))))
+
+(deftest state-ahead-of-a-factory-calls-result-is-applied
+  (let* ((path (format nil "/tmp/pig-lisp-test-factory-state-~D-~D.sock" (sb-posix:getpid) (random 1000000)))
+         (listener (make-instance 'sb-bsd-sockets:local-socket :type :stream))
+         (ext (pig:make-extension "rt-state-before-register")))
+    (ignore-errors (delete-file path))
+    (sb-bsd-sockets:socket-bind listener path)
+    (sb-bsd-sockets:socket-listen listener 4)
+    (sb-posix:setenv "PIG_EXT_SOCKET" path 1)
+    (unwind-protect
+         (let* ((caller (sb-thread:make-thread (lambda () (pig::helper-call "factory-time" (pig:obj))) :name "test-factory"))
+                (conn (accept-host-conn listener))
+                (call (pig::read-frame conn)))
+           (check-equal "call" (pig:jget call "type"))
+           ;; the host flushed its state ahead of the result of the factory's call
+           (pig::send-frame conn (sbe-state))
+           (sbr-answer-call conn call (pig:obj "answer" 7))
+           (check-equal 7 (pig:jget (sb-thread:join-thread caller :default nil :timeout 10) "answer") "the factory's call returned the host's result")
+           (let ((runner (sb-thread:make-thread (lambda () (handler-case (pig:run-extension ext path) (error () nil))) :name "test-extension")))
+             (check-equal "register" (pig:jget (pig::read-frame conn) "type"))
+             (check (eq t (sbe-has-ui-after-ready ext conn)) "the state ahead of the factory call's result is in the replica")
+             (sbr-send-shutdown conn)
+             (sb-thread:join-thread runner :default nil :timeout 10)))
+      (sb-posix:unsetenv "PIG_EXT_SOCKET")
+      (ignore-errors (sb-bsd-sockets:socket-close listener))
+      (ignore-errors (delete-file path)))))
