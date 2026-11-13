@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -60,7 +61,7 @@ func (h *Host) supersedeGenerations(ctx context.Context) (unacknowledged []unack
 		failure := &ExtensionUnresponsiveError{Extension: one.conn.name, ReloadDeadline: one.conn.heartbeatTimeout}
 		one.conn.fail(failure)
 		// A connection that another failure ended first is that failure's to report.
-		if one.conn.failureError() == error(failure) {
+		if errors.Is(one.conn.failureError(), failure) {
 			unacknowledged = append(unacknowledged, unacknowledgedGeneration{me: one.me, deadline: failure.ReloadDeadline, lostRequests: one.conn.requestsEndedByFailure()})
 		}
 	}
