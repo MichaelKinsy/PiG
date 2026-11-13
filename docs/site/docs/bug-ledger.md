@@ -163,6 +163,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-167dae3](#bf-167dae3) | fix(codingagent): the idle collection runs two GC cycles again so pool victims are freed (D172) | PiG's own defect | All platforms | Unreleased |
 | [BF-168d095](#bf-168d095) | fix(photonimage): decode farbfeld as Photon does | PiG's own defect | All platforms | Unreleased |
 | [BF-16d0758](#bf-16d0758) | A LiteLLM pre-call context check (`litellm.ContextWindowExceededError: ... Context Window exceeded for given… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
+| [BF-16f41f0](#bf-16f41f0) | The provider bridge (`pig` `--provider-bridge`), the Durable core's `model_context` effect and an extension… | PiG's own defect | All platforms | Unreleased |
 | [BF-16f8d39](#bf-16f8d39) | fix(codingagent): keep the clock allowance on the marker header's time.Now line | PiG's own defect | All platforms | Unreleased |
 | [BF-1724c9e](#bf-1724c9e) | Two pig processes that reach the same `auth.json` through different paths, such as an agent directory whose… | PiG's own defect | Windows | Unreleased |
 | [BF-173060b](#bf-173060b) | fix(chord/next/store): decodeStoreWrite never panics (2500 malformed writes); no recover in the outbox; D3… | PiG's own defect | All platforms | Unreleased |
@@ -638,6 +639,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-578804d](#bf-578804d) | fix(photonimage): the remaining if-else chains of the inflater are switches | PiG's own defect | All platforms | Unreleased |
 | [BF-578c1a3](#bf-578c1a3) | The "Applied use cases" page in the manual that ships inside PiG now links the Security page on the website | PiG's own defect | All platforms | 0.5.0 |
 | [BF-57a1687](#bf-57a1687) | fix(ai,agent): return a projection's blocks apart from its scalars so the caller's buffer stays on its stack | PiG's own defect | All platforms | Unreleased |
+| [BF-57dc298](#bf-57dc298) | On Linux, the native X11 clipboard reads a `DISPLAY` that starts with `/` or `unix:` as a socket path with an… | PiG's own defect | Linux | Unreleased |
 | [BF-57ee33b](#bf-57ee33b) | A model an extension registers with `registerProvider` reaches `ctx.modelRegistry`, `ctx.model` and RPC as… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-58f6697](#bf-58f6697) | Text typed and followed at once by Enter no longer skips the autocomplete menu Pi opens: `/model provider/id`… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-59456ae](#bf-59456ae) | Pressing a key in a subprocess extension's overlay no longer freezes interactive mode when the key reaches… | PiG's own defect | All platforms | 0.5.0 |
@@ -1562,6 +1564,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-bd3e8ab-2](#bf-bd3e8ab-2) | On arm64 and other CPUs with a fused multiply-add, the cache-warming expected savings (shown by `/session`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-bd8849d](#bf-bd8849d) | Quitting through `Runtime.Close` or the interactive quit during a tool call now waits for the interrupted run… | PiG's own defect | All platforms | Unreleased |
 | [BF-bdb7ad8](#bf-bdb7ad8) | A single server-sent-event line larger than 32 MiB (for example a base64 image chunk) no longer fails the… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-bddbf4c](#bf-bddbf4c) | A Piglet whose `discovery.extensions` leaves out `user` no longer runs the user's extensions before a project… | PiG's own defect | All platforms | Unreleased |
 | [BF-be2920a](#bf-be2920a) | A tool with JSON-schema constrained sampling `strict: "require"` now fails an OpenAI Chat Completions request… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-be6803c](#bf-be6803c) | The /tree "Summarize branch?" selector and "Custom summarization instructions" editor, the /import… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-beeb36a](#bf-beeb36a) | Running with no home directory now fails the way Pi's package manager does, instead of reading the project's… | PiG's own defect | All platforms | 0.7.0 |
@@ -4094,6 +4097,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `16d0758710` (2026-10-30, #11492)
 - **Tests:** `ai/overflow_upstream_test.go::TestOverflowUpstream`, `ai/utils_exports_upstream_test.go::TestGetOverflowPatternsMatchesUpstreamList`, `durable/core/turn/classify_carried_test.go::TestLiteLLMContextWindowExceededIsOverflow`, `extensions/sdk/pi_ai_helpers_test.go::TestLiteLLMContextWindowExceededIsOverflow`
 - **Release note:** A LiteLLM pre-call context check (`litellm.ContextWindowExceededError: ... Context Window exceeded for given call`) is now recognised as a context overflow, so the turn compacts instead of failing, in `ai.IsContextOverflow`, the durable turn classifier and the Go, Rust, Python and Lisp extension SDKs. Carried forward from Pi d3398f82 (earendil-works/pi#11492), past the 1.4.0+b3a29f11 pin.
+
+### BF-16f41f0
+
+**The provider bridge (`pig` `--provider-bridge`), the Durable core's `model_context` effect and an extension…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The provider bridge (`pig` `--provider-bridge`), the Durable core's `model_context` effect and an extension host's `modelStream` call now send a `start` event whose partial is the pending, empty message the provider built, as Pi does (the durable generation task reads the same pending partial but skips content-less partials before its observer, so it publishes no start partial): Pi attaches its consumer before any response I/O can complete.
+- **Root cause:** Fix-Commit: (cherry picked from commit) Signed-off-by: Michael Kinsy <54590707+MichaelKinsy@users.noreply.github.com>
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `16f41f045e` (2026-11-09, #443)
+- **Tests:** `coding/cli/provider_bridge_test.go::TestProviderBridgeStartIsSerializedBeforeTheResponseFillsItsPartial`, `coding/extension/host/subprocess/model_stream_attach_test.go::TestModelStreamForwardsStartBeforeTheResponseFillsItsPartial`, `durable/core/driver/model_test.go::TestModelContextSendsStartBeforeTheResponseFillsItsPartial`, `durable/harness/observe_response_test.go::TestObserveResponseSkipsTheStartEventWhoseProviderPartialHasNoContentYet`
+- **Release note:** The provider bridge (`pig` `--provider-bridge`), the Durable core's `model_context` effect and an extension host's `modelStream` call now send a `start` event whose partial is the pending, empty message the provider built, as Pi does (the durable generation task reads the same pending partial but skips content-less partials before its observer, so it publishes no start partial): Pi attaches its consumer before any response I/O can complete. Each created the provider's stream and read it from an ordinary goroutine, so under load the goroutine could start reading after the provider had filled the shared partial, and a `start` event reached the wire carrying the finished message (`toolUse`, the whole content and the final usage) where Pi sends `stopReason: "pending"` and no content. Each now creates the stream and reads it inside one stream continuation, as the Agent does; event content, order, cancellation and errors are unchanged.
 
 ### BF-16f8d39
 
@@ -10651,6 +10668,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `57a1687bc4` (2026-10-13)
 - **Tests:** `agent/messages_projection_test.go::TestAssistantMessageProjectionEqualsObserve`, `ai/assistant_observation_projection_norace_test.go::TestObserveProjectionAllocatesNothing`, `ai/assistant_observation_projection_test.go::TestObserveProjectionEqualsObserve`, `internal/codingagent/reload_allocs_norace_test.go::TestInteractiveSessionReloadAllocatesPerRetainedMessageWithinBudget`
+
+### BF-57dc298
+
+**On Linux, the native X11 clipboard reads a `DISPLAY` that starts with `/` or `unix:` as a socket path with an…**
+
+- **Source:** PiG's own defect
+- **Symptom:** On Linux, the native X11 clipboard reads a `DISPLAY` that starts with `/` or `unix:` as a socket path with an optional screen (`/tmp/.X11-unix/X0.1`, `unix:/tmp/.X11-unix/X0`), as libxcb 1.16 and later do.
+- **Root cause:** Fix-Commit: (cherry picked from commit) Signed-off-by: Michael Kinsy <54590707+MichaelKinsy@users.noreply.github.com>
+- **User impact:** An operation failed or was rejected
+- **Platform:** Linux
+- **Fixed in:** Unreleased
+- **Fix commits:** `57dc298c19` (2026-11-11, #424)
+- **Tests:** `internal/nativeplatform/clipboard_x11_display_range_linux_test.go::TestX11DisplayNumbersParseAsXcbDoes`, `internal/nativeplatform/clipboard_x11_display_range_linux_test.go::TestX11DisplaySpellingsConnectAsPiDoes`, `internal/nativeplatform/clipboard_x11_display_range_linux_test.go::TestX11SocketPathDisplaysParseAsXcbDoes`
+- **Release note:** On Linux, the native X11 clipboard reads a `DISPLAY` that starts with `/` or `unix:` as a socket path with an optional screen (`/tmp/.X11-unix/X0.1`, `unix:/tmp/.X11-unix/X0`), as libxcb 1.16 and later do. A socket path now connects where it failed before, and `DISPLAY=unix:0` no longer names display 0 by itself. As libxcb 1.16 does (xcb_util.c `_xcb_parse_display_path_to_socket` and `_xcb_open`), the text after `unix:` is a path that must exist once any `.N` screen suffix is removed (`unix:relative-socket.1` needs `relative-socket`), and only an absolute path is dialed directly: a relative path that exists (`unix:relative-socket`, or `unix:0` with a file named `0` in the working directory) dials display 0's socket, `/tmp/.X11-unix/X0`, and one that does not exist fails. Pi's addon links the host's libxcb, so hosts with libxcb 1.15 or earlier read these displays differently.
 
 ### BF-57ee33b
 
@@ -23500,6 +23531,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `bdb7ad8292` (2026-10-09), `c715193fab` (2026-10-09)
 - **Tests:** `ai/sse_long_line_test.go::TestSSEDecoderAcceptsALineLargerThan32MiB`, `ai/sse_long_line_test.go::TestSSEDecoderBoundsALine`, `ai/sse_long_line_test.go::TestSSELineLimitIsNodesMaxStringLength`
 - **Release note:** A single server-sent-event line larger than 32 MiB (for example a base64 image chunk) no longer fails the stream with `token too long` on the providers that use PiG's SSE decoder. A line is now bounded where Pi's runtime bounds it, at Node's maximum string length (512 MiB), so a server that never ends a line cannot exhaust memory (D134).
+
+### BF-bddbf4c
+
+**A Piglet whose `discovery.extensions` leaves out `user` no longer runs the user's extensions before a project…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Piglet whose `discovery.extensions` leaves out `user` no longer runs the user's extensions before a project trust decision.
+- **Root cause:** A Piglet with discovery.extensions: [] ran the user's extension factories anyway, and a closed Piglet Binary without the Node runtime failed to start. The pass now reads ambientScopes(false): ["user"] for stock pig, as Pi does; the Piglet's trusted scopes otherwise; none for a closed Binary.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `bddbf4c888` (2026-11-10)
+- **Tests:** `coding/cli/piglet_pretrust_discovery_test.go::TestPreTrustPassFollowsPigletDiscovery`
+- **Release note:** A Piglet whose `discovery.extensions` leaves out `user` no longer runs the user's extensions before a project trust decision. When the project had config that needs one (for example `.pig/mcp.json`), the pre-trust pass loaded `~/.pig/agent/extensions` with a fixed user scope, so an ambient extension's factory ran in a Piglet that discovers none (it did not join the session), and a closed Piglet Binary built without the Node runtime failed to start. The pre-trust pass now reads the scopes the Piglet's discovery allows for an untrusted project; stock pig still loads user extensions there, as Pi does.
 
 ### BF-be2920a
 
