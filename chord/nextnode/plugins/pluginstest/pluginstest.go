@@ -1,0 +1,94 @@
+// Package pluginstest holds what the tests of the plugins component and the tests of an app that owns one share: the barrier
+// of the component's file watcher. Import this package only from _test.go files: TestNoProductionCodeImportsTheTestHelper
+// enforces it.
+package pluginstest
+
+import (
+	"os"
+	"path/filepath"
+	"runtime"
+	"strconv"
+	"sync"
+	"sync/atomic"
+	"testing"
+	"time"
+)
+
+// Watcher is what the barrier asks of a file watcher. *plugins.Plugins answers for its own (WatchTree, Watches); the tests of
+// package plugins answer for a watcher they made without a component.
+type Watcher interface {
+	// WatchTree has the watcher watch the tree at dir too and returns the directories it watches then; false when it
+	// watches nothing (a watcher that failed to watch, or a closed one).
+	WatchTree(dir string) (watched []string, watching bool)
+	// Watches reports whether the watcher has a watch on the directory dir.
+	Watches(dir string) bool
+}
+
+// settleBound is how long Settle waits for the watcher before it fails the test.
+const settleBound = 15 * time.Second
+
+// barrier is the barrier of one watcher: a directory outside its roots that the watcher watches too, where a new directory is
+// made to learn that the events of everything written before it were handled; count numbers them.
+type barrier struct {
+	dir   string
+	count atomic.Int64
+}
+
+// barriers is each watcher's barrier, from its first Settle until the test that made it ends.
+var barriers sync.Map
+
+// Settle returns once watcher handled the events of every file operation made before the call: a watch event of an edit
+// arrives on its own time, and one that arrives after a build that followed the first event of the edit would leave the plugin
+// dirty. A write in place is two events, a removed directory many. The events of one file system arrive in order, and a
+// directory made in a watched one is watched when its event was handled: the watcher's own answer (Watches) says the barrier's
+// directory was reached, so everything before it was. Nothing is waited for when the watcher does not watch. It fails the
+// test when the watcher has not reached the directory after 15 s.
+func Settle(t testing.TB, watcher Watcher) {
+	t.Helper()
+	settle(t, watcher, settleBound)
+}
+
+// settle is Settle with the bound a test of it gives.
+func settle(t testing.TB, watcher Watcher, bound time.Duration) {
+	t.Helper()
+	found, ok := barriers.Load(watcher)
+	if !ok {
+		found, ok = barriers.LoadOrStore(watcher, &barrier{dir: t.TempDir()})
+		if !ok {
+			// The directory goes with the test that made it: a later test's Settle of the same watcher makes its own.
+			t.Cleanup(func() { barriers.Delete(watcher) })
+		}
+	}
+	own := found.(*barrier)
+	// A discovery drops the trees that are no root's, base's or linked plugin's: the barrier's is put back each time.
+	directories, watching := watcher.WatchTree(own.dir)
+	if !watching {
+		return
+	}
+	if runtime.GOOS == "windows" {
+		settleDirectoryStamps(directories)
+	}
+	sentinel := filepath.Join(own.dir, "sentinel-"+strconv.FormatInt(own.count.Add(1), 10))
+	if err := os.Mkdir(sentinel, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(bound)
+	for !watcher.Watches(sentinel) {
+		if time.Now().After(deadline) {
+			t.Fatalf("timed out after %v waiting for the watcher to handle a directory made after the edits", bound)
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+}
+
+// settleDirectoryStamps has Windows report, before the barrier's directory is made, the last-write time of the watched
+// directories whose entries changed. Windows reports it as a write of the directory to the watch of its parent, lazily, at a
+// moment after the entry's own event that no barrier orders; opening and closing each watched directory makes the report
+// come then, so a case reads marks that already hold it.
+func settleDirectoryStamps(directories []string) {
+	for _, directory := range directories {
+		if file, err := os.Open(directory); err == nil {
+			_ = file.Close()
+		}
+	}
+}
