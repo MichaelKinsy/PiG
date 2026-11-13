@@ -39,6 +39,7 @@ var errChannelClosed = errors.New("workers: channel closed")
 type channel struct {
 	connected atomic.Bool
 	// acquire returns the connection, waiting for the other end if it must; cancel ends that wait and closes what it holds.
+	// conn is nil while the other end has not arrived.
 	acquire func() (net.Conn, error)
 	cancel  func()
 
@@ -66,7 +67,9 @@ var _ link.IpcPort = (*channel)(nil)
 
 // newChannel makes the channel end that reads and writes conn.
 func newChannel(conn net.Conn) *channel {
-	return newPendingChannel(func() (net.Conn, error) { return conn, nil }, func() { _ = conn.Close() })
+	c := newPendingChannel(func() (net.Conn, error) { return conn, nil }, nil)
+	c.conn = conn
+	return c
 }
 
 // newPendingChannel makes a channel whose connection acquire returns. It is connected from the start, as Node's
@@ -78,19 +81,38 @@ func newPendingChannel(acquire func() (net.Conn, error), cancel func()) *channel
 	return c
 }
 
-// start begins reading and writing. It runs once.
+// start begins reading and writing on a goroutine of its own. It runs once.
 func (c *channel) start() {
-	c.mu.Lock()
-	if c.started || c.finished {
-		c.mu.Unlock()
-		return
+	if c.begin() {
+		//portlint:allow golifetime the channel's goroutine returns when its connection ends (finish closes it)
+		go c.run()
 	}
-	c.started = true
-	c.mu.Unlock()
-	//portlint:allow golifetime the channel's goroutine returns when its connection ends (finish closes it)
-	go c.run()
 }
 
+// begin reports whether run is to be called: once, and not on a finished channel. A caller that joins the reader calls
+// run on a goroutine it owns (WorkerProcess, whose exit is told after what the reader took).
+func (c *channel) begin() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.started || c.finished {
+		return false
+	}
+	c.started = true
+	return true
+}
+
+// abandon gives up the wait for an other end that has not arrived: its process ended, so nothing comes to make the
+// connection, and the reader ends. A connection that was made is left to the reader: it ends with what the other end wrote.
+func (c *channel) abandon() {
+	c.mu.Lock()
+	waiting := c.conn == nil && !c.finished
+	c.mu.Unlock()
+	if waiting && c.cancel != nil {
+		c.cancel()
+	}
+}
+
+// run is the reader: it tells what arrives, in order, on its own goroutine, and finishes the channel at the connection's end.
 func (c *channel) run() {
 	conn, err := c.acquire()
 	if err != nil {
