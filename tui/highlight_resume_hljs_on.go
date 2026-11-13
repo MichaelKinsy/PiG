@@ -5,6 +5,7 @@ package tui
 import (
 	"errors"
 	"strings"
+	"sync"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/tui/internal/hljs"
@@ -33,6 +34,29 @@ type hlResume struct {
 // hlResumes holds the states, least recently used first; hlMu guards it.
 var hlResumes []hlResume
 
+// hlTexts holds the units a run converted its code into, for the next run to convert into. A block that streams is highlighted once per frame, and each frame converts the whole code of the block (4 bytes for each code unit): into a new array every time, a stream allocates the square of the block's length.
+var hlTexts = sync.Pool{New: func() any { return new(hljs.Text) }}
+
+// hlPooledUnitsMax bounds the units of a Text that goes back to hlTexts (1 MiB): a pooled array keeps the size of the largest code it held (golang/go#23199).
+// pig additive (D112): see hlCacheMax. The units are a function of the code; only where they are written differs.
+const hlPooledUnitsMax = 1 << 18
+
+// hlFormatters is cliHighlightTheme(hlFormattersTheme); hlMu guards both. A streamed block is highlighted once per frame, and the formatters of a theme are the same every time: each reads the theme when it runs.
+var (
+	hlFormatters      HighlightTheme
+	hlFormattersTheme *Theme
+)
+
+// hlFormattersOf is cliHighlightTheme(t), built once for a theme. Its callers only read it.
+func hlFormattersOf(t *Theme) HighlightTheme {
+	hlMu.Lock()
+	defer hlMu.Unlock()
+	if hlFormattersTheme != t || hlFormatters == nil {
+		hlFormatters, hlFormattersTheme = cliHighlightTheme(t), t
+	}
+	return hlFormatters
+}
+
 func resetHighlightResumesLocked() { hlResumes = nil }
 
 // highlightResumable highlights code as highlightCodeUncached does, restarting from the resume state of an earlier prefix of the same block when it has one, and leaves the state to resume from next. It reports false when the engine cannot highlight the language, so the caller highlights without resuming.
@@ -45,10 +69,17 @@ func highlightResumable(registry *hljs.Registry, code, lang string, t *Theme, ke
 	base, generation := hlFindResume(code, lang, t, true)
 	source := base.text
 	if source == nil {
-		source = hljs.NewText(code)
+		source = hlTexts.Get().(*hljs.Text).Reset(code)
 	} else {
 		source = source.Grow(code)
 	}
+	kept := false
+	defer func() {
+		// The units go to the next run unless a state holds them: the engine keeps none of them past its run.
+		if !kept && source.Cap() <= hlPooledUnitsMax {
+			hlTexts.Put(source.Reset(""))
+		}
+	}()
 	html, points, err := registry.HighlightResumable(source, lang, true, hljs.ResumePoint{Byte: len(base.prefix), Unit: base.unit, Iterations: base.iterations})
 	if errors.Is(err, hljs.ErrResumeFailed) {
 		base = hlResume{}
@@ -57,7 +88,7 @@ func highlightResumable(registry *hljs.Registry, code, lang string, t *Theme, ke
 	if err != nil {
 		return nil, false
 	}
-	theme := cliHighlightTheme(t)
+	theme := hlFormattersOf(t)
 	split := len(html)
 	if len(points) > 0 {
 		split = points[len(points)-1].HTML
@@ -90,6 +121,7 @@ func highlightResumable(registry *hljs.Registry, code, lang string, t *Theme, ke
 		}
 		if keepUnits {
 			next.text = source
+			kept = true
 		}
 		hlStoreResume(next, base, generation)
 	}
