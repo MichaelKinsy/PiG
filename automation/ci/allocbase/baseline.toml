@@ -1266,7 +1266,7 @@ allocs = 314
 [[benchmark]]
 package = "./coding"
 benchmark = "BenchmarkModelAvailabilitySnapshot/1"
-allocs = 497
+allocs = 371
 
 [[benchmark]]
 package = "./coding"
@@ -1331,17 +1331,17 @@ allocs = 453541
 [[benchmark]]
 package = "./coding"
 benchmark = "BenchmarkProviderRegistration"
-allocs = 297
+allocs = 235
 
 [[benchmark]]
 package = "./coding"
 benchmark = "BenchmarkRegistryNamespaceSwitch/1"
-allocs = 377
+allocs = 316
 
 [[benchmark]]
 package = "./coding"
 benchmark = "BenchmarkRegistryNamespaceSwitch/128"
-allocs = 18852
+allocs = 12555
 
 [[benchmark]]
 package = "./coding"
@@ -1351,17 +1351,17 @@ allocs = 3337
 [[benchmark]]
 package = "./coding"
 benchmark = "BenchmarkSameContextMessagesPerRequest/exchanges=50"
-allocs = 3850
+allocs = 2050
 
 [[benchmark]]
 package = "./coding"
 benchmark = "BenchmarkSameContextMessagesPerRequest/exchanges=500"
-allocs = 38504
+allocs = 20501
 
 [[benchmark]]
 package = "./coding"
 benchmark = "BenchmarkSameContextMessagesPerRequest/exchanges=5000"
-allocs = 385014
+allocs = 205006
 
 [[benchmark]]
 package = "./coding"
@@ -1386,17 +1386,17 @@ allocs = 861
 [[benchmark]]
 package = "./coding"
 benchmark = "BenchmarkSessionBeforeSettleBoundary/bytes=0"
-allocs = 3039
+allocs = 2808
 
 [[benchmark]]
 package = "./coding"
 benchmark = "BenchmarkSessionBeforeSettleBoundary/bytes=64"
-allocs = 2925
+allocs = 2629
 
 [[benchmark]]
 package = "./coding"
 benchmark = "BenchmarkSessionBeforeSettleBoundary/bytes=65536"
-allocs = 2951
+allocs = 2661
 
 [[benchmark]]
 package = "./coding"
@@ -1451,7 +1451,7 @@ allocs = 15
 [[benchmark]]
 package = "./coding"
 benchmark = "BenchmarkSessionReplaceInnerCacheWarming/history"
-allocs = 2876
+allocs = 1478
 
 [[benchmark]]
 package = "./coding"
@@ -1501,12 +1501,12 @@ allocs = 1326
 [[benchmark]]
 package = "./coding"
 benchmark = "BenchmarkSessionToolRegistry/1024"
-allocs = 59938
+allocs = 53801
 
 [[benchmark]]
 package = "./coding"
 benchmark = "BenchmarkSessionToolRegistry/64"
-allocs = 5087
+allocs = 4710
 
 [[benchmark]]
 package = "./coding"
