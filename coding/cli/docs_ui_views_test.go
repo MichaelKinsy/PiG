@@ -41,8 +41,8 @@ func docsUIViewsSamples(t *testing.T) (page string, examples map[string]string, 
 			piglet = m[2] + "\n"
 		}
 	}
-	if examples["todo.mjs"] == "" || examples["meter.mjs"] == "" || piglet == "" {
-		t.Fatalf("%s holds the examples %v and the Piglet %q, want todo.mjs, meter.mjs and a Piglet", docsUIViewsPagePath, len(examples), piglet)
+	if examples["todo.mjs"] == "" || examples["week.mjs"] == "" || examples["meter.mjs"] == "" || piglet == "" {
+		t.Fatalf("%s holds %d examples and the Piglet %q, want todo.mjs, week.mjs, meter.mjs and a Piglet", docsUIViewsPagePath, len(examples), piglet)
 	}
 	return page, examples, piglet
 }
@@ -86,16 +86,16 @@ func docsUIViewsExtension(t *testing.T, name, source string) string {
 	return path
 }
 
-const docsUIViewsNodes = `["container","box","vstack","hstack","text","truncated-text","markdown","lines","spacer","dynamic-border","select-list","settings-list","input","editor","mouse-region","scroll-view"]`
+const docsUIViewsNodes = `"container","box","vstack","hstack","text","truncated-text","markdown","lines","spacer","dynamic-border","select-list","settings-list","input","editor","mouse-region","scroll-view"`
 
 // The claims and limits below are the terminal's (internal/codingagent/view_client.go) and the reference page's
 // (examples/ui-view-web/client.js). docsUIViewsDrawingClient is the page's with the scene profile, which no client of
 // this tree states.
 const (
-	docsUIViewsTerminal = `{"slots":["widget-above","widget-below","panel"],"nodes":` + docsUIViewsNodes + `,"markdown":true,"imageFormats":[],` +
+	docsUIViewsTerminal = `{"slots":["widget-above","widget-below","panel"],"nodes":[` + docsUIViewsNodes + `,"grid"],"markdown":true,"imageFormats":[],` +
 		`"limits":{"nodes":512,"depth":16,"snapshotBytes":262144,"textBytes":65536,"mounts":16,"intentArgBytes":4096},"input":{"keyboard":true,"pointer":false,"text":true},` +
 		`"claims":[{"name":"client.kind","value":"terminal"},{"name":"size.columns","value":80}],"slotClaims":[{"slot":"panel","claims":[{"name":"size.rows","value":12}]}]}`
-	docsUIViewsWebHead = `{"slots":["notify","status","widget-above","widget-below","header","footer","dialog","overlay","panel","tool-card","message","entry"],"nodes":` + docsUIViewsNodes + `,"markdown":true,"imageFormats":["png","jpeg","gif","webp"],` +
+	docsUIViewsWebHead = `{"slots":["notify","status","widget-above","widget-below","header","footer","dialog","overlay","panel","tool-card","message","entry"],"nodes":[` + docsUIViewsNodes + `],"markdown":true,"imageFormats":["png","jpeg","gif","webp"],` +
 		`"limits":{"nodes":2048,"depth":32,"snapshotBytes":1048576,"textBytes":65536,"mounts":32,"intentArgBytes":65536},"input":{"keyboard":true,"pointer":true,"text":true},` +
 		`"claims":[{"name":"client.kind","value":"web"}]`
 	docsUIViewsWeb           = docsUIViewsWebHead + `}`
@@ -141,8 +141,18 @@ func docsUIViewsAttach(t *testing.T, c *rpcLines, id, abilities string) (attachm
 	return attachment, docsUIViewsSnapshot(t, event["snapshot"])
 }
 
-// raise raises intent on mount and returns the snapshots written before the reply and the reply's data.
+// docsUIViewsRaise raises intent on mount and returns the handler's redraw, written before the reply, and the reply's data.
 func docsUIViewsRaise(t *testing.T, c *rpcLines, attachment float64, mount docsUIViewsMount, node, intent, arg string) ([]docsUIViewsMount, map[string]any) {
+	t.Helper()
+	before, data := docsUIViewsRaiseAny(t, c, attachment, mount, node, intent, arg)
+	if len(before) != 1 || before[0].rev != mount.rev+1 {
+		t.Fatalf("intent %s: %d snapshots were written before the reply, want the handler's redraw at rev %v: %v", intent, len(before), mount.rev+1, before)
+	}
+	return before, data
+}
+
+// docsUIViewsRaiseAny raises intent on mount and returns the snapshots written before the reply and the reply's data.
+func docsUIViewsRaiseAny(t *testing.T, c *rpcLines, attachment float64, mount docsUIViewsMount, node, intent, arg string) ([]docsUIViewsMount, map[string]any) {
 	t.Helper()
 	ref, _ := mount.snapshot["mount"].(map[string]any)
 	nodeKey := ""
@@ -161,9 +171,6 @@ func docsUIViewsRaise(t *testing.T, c *rpcLines, attachment float64, mount docsU
 	data, _ := reply["data"].(map[string]any)
 	if reply["success"] != true || data["outcome"] != "done" {
 		t.Fatalf("intent %s replied %s, want done", intent, line)
-	}
-	if len(before) != 1 || before[0].rev != mount.rev+1 {
-		t.Fatalf("intent %s: %d snapshots were written before the reply, want the handler's redraw at rev %v: %v", intent, len(before), mount.rev+1, before)
 	}
 	return before, data
 }
@@ -191,12 +198,14 @@ func TestDocsUIViewsTodoExampleServesTheTerminalAndTheWebPage(t *testing.T) {
 	if mount.snapshot["alternative"] != nil || mount.snapshot["slot"] != "panel" || mount.snapshot["state"] != "live" {
 		t.Fatalf("the terminal was sent %v, want the live panel with the mount's own view", mount.snapshot)
 	}
-	docsUIViewsWant(t, "the terminal's view", mount.view, "Todo: 2 open", "[ ] Buy milk", "[ Clear done ]")
+	docsUIViewsWant(t, "the terminal's view", mount.view, "Todo: 2 open", "[ ] Buy milk")
 	if strings.Contains(mount.view, "markdown") {
 		t.Errorf("the terminal's view = %s, want no markdown node", mount.view)
 	}
-	if a11y, _ := mount.snapshot["a11y"].([]any); len(a11y) != 2 {
-		t.Errorf("the terminal was sent the a11y records %v, want those of the list and the button", mount.snapshot["a11y"])
+	a11y, _ := mount.snapshot["a11y"].([]any)
+	bindings, _ := mount.snapshot["bindings"].([]any)
+	if len(a11y) != 1 || len(bindings) != 1 || mount.snapshot["title"] != "Todo" {
+		t.Errorf("the terminal was sent the a11y records %v, the bindings %v and the title %v, want the list's record, the binding of c and Todo", mount.snapshot["a11y"], mount.snapshot["bindings"], mount.snapshot["title"])
 	}
 	redrawn, _ := docsUIViewsRaise(t, c, terminal, mount, "items", "todo.toggle", `{"value":"milk"}`)
 	docsUIViewsWant(t, "the view after the toggle", redrawn[0].view, "Todo: 1 open", "[x] Buy milk")
@@ -208,10 +217,91 @@ func TestDocsUIViewsTodoExampleServesTheTerminalAndTheWebPage(t *testing.T) {
 	if mount.snapshot["alternative"] != 1.0 {
 		t.Fatalf("the web page was sent alternative %v of %v, want alternative 1", mount.snapshot["alternative"], mount.snapshot)
 	}
-	docsUIViewsWant(t, "the web page's view", mount.view, `# Todo\n\n**1** of 3 open.`, "hstack", "[x] Buy milk")
-	_, data := docsUIViewsRaise(t, c, web, mount, "clear", "todo.clear", `{}`)
+	docsUIViewsWant(t, "the web page's view", mount.view, `# Todo\n\n**1** of 3 open.`, "[x] Buy milk")
+	// A binding and a mount-wide control raise the intent without a nodeKey.
+	_, data := docsUIViewsRaise(t, c, web, mount, "", "todo.clear", `{}`)
 	if fmt.Sprint(data["answer"]) != "map[removed:2]" {
 		t.Errorf("todo.clear answered %v, want removed 2", data["answer"])
+	}
+	c.end()
+}
+
+// TestDocsUIViewsWeekExampleHidesAndOpens runs the page's grid example: the client is sent the grid under its title, a
+// chosen cell is redrawn as the selected one, the bound intent hides the mount, and the whenHidden intent, raised on the
+// hidden mount, shows it again.
+func TestDocsUIViewsWeekExampleHidesAndOpens(t *testing.T) {
+	if testing.Short() {
+		t.Skip("starts pig and a Node extension")
+	}
+	_, examples, _ := docsUIViewsSamples(t)
+	c := startDocsUIViews(t, "-e", docsUIViewsExtension(t, "week.mjs", examples["week.mjs"]))
+	terminal, mount := docsUIViewsAttach(t, c, "terminal", docsUIViewsTerminal)
+	docsUIViewsWant(t, "the grid's view", mount.view, `"kind":"grid"`, `"columns":7`, `"selected":"Wed"`, `"mark":"current"`, `"text":"Demo"`)
+	if mount.snapshot["title"] != "Week" {
+		t.Errorf("the mount's title = %v, want Week", mount.snapshot["title"])
+	}
+	redrawn, _ := docsUIViewsRaise(t, c, terminal, mount, "days", "week.pick", `{"value":"Fri"}`)
+	docsUIViewsWant(t, "the grid after the choice", redrawn[0].view, `"selected":"Fri"`)
+	hidden, _ := docsUIViewsRaiseAny(t, c, terminal, redrawn[0], "", "week.hide", `{}`)
+	if len(hidden) != 1 || hidden[0].snapshot["state"] != "hidden" {
+		t.Fatalf("week.hide wrote %v before its reply, want the hidden mount", hidden)
+	}
+	shown, _ := docsUIViewsRaiseAny(t, c, terminal, hidden[0], "", "week.open", `{}`)
+	if len(shown) != 1 || shown[0].snapshot["state"] != "live" {
+		t.Fatalf("week.open on the hidden mount wrote %v before its reply, want the live mount", shown)
+	}
+	c.end()
+}
+
+// TestDocsUIViewsPageAloneTeachesACounter runs testdata/docs-ui-views-counter.mjs, an extension written from the page
+// alone by a reader without the source: a text view with a button for the terminal, a markdown alternative for the web
+// page, and for a client that draws the scene profile a drawing of one shape whose region raises an intent.
+func TestDocsUIViewsPageAloneTeachesACounter(t *testing.T) {
+	if testing.Short() {
+		t.Skip("starts pig and a Node extension")
+	}
+	counter, err := filepath.Abs(filepath.Join("testdata", "docs-ui-views-counter.mjs"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := startDocsUIViews(t, "-e", counter)
+	terminal, mount := docsUIViewsAttach(t, c, "terminal", docsUIViewsTerminal)
+	docsUIViewsWant(t, "the terminal's counter", mount.view, "Count: 0", "[ Add ]")
+	if mount.snapshot["alternative"] != nil || mount.snapshot["drawing"] != nil {
+		t.Errorf("the terminal was sent %v, want the view without a drawing", mount.snapshot)
+	}
+	redrawn, data := docsUIViewsRaise(t, c, terminal, mount, "add", "counter.add", `{}`)
+	docsUIViewsWant(t, "the terminal's counter after the button", redrawn[0].view, "Count: 1")
+	if fmt.Sprint(data["answer"]) != "map[count:1]" {
+		t.Errorf("counter.add answered %v, want count 1", data["answer"])
+	}
+	c.end()
+
+	c = startDocsUIViews(t, "-e", counter)
+	_, mount = docsUIViewsAttach(t, c, "web", docsUIViewsWeb)
+	docsUIViewsWant(t, "the web page's counter", mount.view, `# Counter\n\nThe count is **0**.`, "[ Add ]")
+	if mount.snapshot["alternative"] != 1.0 || mount.snapshot["drawing"] != nil {
+		t.Errorf("the web page was sent %v, want alternative 1 without a drawing", mount.snapshot)
+	}
+	c.end()
+
+	c = startDocsUIViews(t, "-e", counter)
+	able, mount := docsUIViewsAttach(t, c, "able", docsUIViewsDrawingClient)
+	width := func(mount docsUIViewsMount) any {
+		drawing, _ := mount.snapshot["drawing"].(map[string]any)
+		shapes, _ := drawing["shapes"].([]any)
+		regions, _ := drawing["regions"].([]any)
+		if mount.snapshot["alternative"] != 1.0 || drawing["node"] != "chart" || len(shapes) != 1 || len(regions) != 1 {
+			t.Fatalf("the client that draws scenes was sent %v, want alternative 1 with a drawing of one shape and one region in the node chart", mount.snapshot)
+		}
+		return shapes[0].(map[string]any)["width"]
+	}
+	if width(mount) != 10.0 {
+		t.Errorf("the chart's bar is %v wide, want 10", width(mount))
+	}
+	redrawn, _ = docsUIViewsRaise(t, c, able, mount, "", "counter.add-chart", `{}`)
+	if width(redrawn[0]) != 20.0 {
+		t.Errorf("after the region's intent the bar is %v wide, want 20", width(redrawn[0]))
 	}
 	c.end()
 }
@@ -312,7 +402,7 @@ func TestDocsUIViewsPageIsInTheBundle(t *testing.T) {
 	}
 	shown := pig("docs", "show", "ui-views")
 	docsUIViewsWant(t, "pig docs show ui-views", shown, "# Extension views", "ctx.ui.mountView({ key", `alternatives: [{ when: { any: [{ all: [{ claim: "client.kind", op: "equals", value: "web" }] }] }, view: rich() }]`, "## Drawings", "## What the clients draw",
-		strings.TrimSuffix(examples["todo.mjs"], "\n"), strings.TrimSuffix(examples["meter.mjs"], "\n"))
+		strings.TrimSuffix(examples["todo.mjs"], "\n"), strings.TrimSuffix(examples["week.mjs"], "\n"), strings.TrimSuffix(examples["meter.mjs"], "\n"))
 	if !strings.Contains(pig("docs", "list"), "ui-views.md\n") {
 		t.Error("pig docs list does not name ui-views.md")
 	}
