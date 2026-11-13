@@ -583,6 +583,11 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 		return "tool", "", []testFauxToolCall{{Name: "edit", ArgsJSON: `{"newText":"REPLACED","oldText":"REPLACE_ME","path":"parity-edit-target.txt"}`}}
 	}
 
+	// A short line, then one line that alone overflows the bash tool's rolling tail and ends the output with its newline (Pi 935f0ac0ccfc, #12092).
+	if strings.Contains(lastText, "Run: bash long last line") {
+		return "tool", "", []testFauxToolCall{{Name: "bash", ArgsJSON: `{"command":"echo short; head -c 219000 /dev/zero | tr '\\0' x; echo END"}`}}
+	}
+
 	// Long-output bash tool parity (exercises visual-truncate.ts via bash.ts collapse hint).
 	if strings.Contains(lastText, "Run: bash long output") {
 		return "tool", "", []testFauxToolCall{{Name: "bash", ArgsJSON: `{"command":"seq 1 30"}`}}
@@ -712,6 +717,10 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 		}
 		if strings.Contains(currentUserText, "Run: tui live tool") {
 			return "text", "LIVE-TOOL-DONE", nil
+		}
+		if strings.Contains(currentUserText, "Run: bash long last line") {
+			// The tool's result is the answer, so the kept end of the line and the notice under it are what the scenario compares.
+			return "text", lastText, nil
 		}
 		if strings.Contains(currentUserText, "Run: bash long output") {
 			return "text", "ran", nil

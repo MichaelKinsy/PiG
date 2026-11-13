@@ -402,6 +402,10 @@ function classify(messages: any[]) {
   if (lastText.includes("Run: edit parity-edit-target.txt")) {
     return { kind: "tool", toolCalls: [{ toolName: "edit", toolArgs: { path: "parity-edit-target.txt", oldText: "REPLACE_ME", newText: "REPLACED" } }] };
   }
+  // A short line, then one line that alone overflows the bash tool's rolling tail and ends the output with its newline (Pi 935f0ac0ccfc, #12092).
+  if (lastText.includes("Run: bash long last line")) {
+    return { kind: "tool", toolCalls: [{ toolName: "bash", toolArgs: { command: "echo short; head -c 219000 /dev/zero | tr '\\0' x; echo END" } }] };
+  }
   // Long-output bash tool parity (exercises visual-truncate.ts via bash.ts collapse hint).
   if (lastText.includes("Run: bash long output")) {
     return { kind: "tool", toolCalls: [{ toolName: "bash", toolArgs: { command: "seq 1 30" } }] };
@@ -494,6 +498,8 @@ function classify(messages: any[]) {
     if (currentUserText.includes("Run: edit parity-edit-target.txt")) return { kind: "text", text: "edited" };
     if (currentUserText.includes("Run: tui live parallel tools")) return { kind: "text", text: "LIVE-PARALLEL-DONE" };
     if (currentUserText.includes("Run: tui live tool")) return { kind: "text", text: "LIVE-TOOL-DONE" };
+    // The tool's result is the answer, so the kept end of the line and the notice under it are what the scenario compares.
+    if (currentUserText.includes("Run: bash long last line")) return { kind: "text", text: lastText };
     if (currentUserText.includes("Run: bash long output")) return { kind: "text", text: "ran" };
     if (currentUserText.includes("Run: parallel reads")) return { kind: "text", text: "parallel-done" };
     if (currentUserText.includes("Run: compact reads")) return { kind: "text", text: "compact-reads-done" };
