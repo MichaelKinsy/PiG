@@ -8,15 +8,35 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 )
 
+// google_wire.go mirrors the converters of one @google/genai version. The oracle's Pi installs the version Pi's lock pins (with the
+// dependency a carried Pi commit moves), so a pin or a carried commit that moves the SDK fails here until the tables are ported again.
+func TestGoogleWireMirrorsTheInstalledSDK(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join(piCodingAgentPackage(t), "node_modules", "@google", "genai", "package.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var manifest struct {
+		Version string `json:"version"`
+	}
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		t.Fatal(err)
+	}
+	if manifest.Version != geminiMirroredSDKVersion {
+		t.Fatalf("the oracle installs @google/genai %s, ai/google_wire.go mirrors the converters of %s: port the converter changes between the two and update geminiMirroredSDKVersion", manifest.Version, geminiMirroredSDKVersion)
+	}
+}
+
 // The @google/genai SDK writes the body Pi's buildParams hands it through its converters, which build each object member by member
-// (generateContentParametersToMldev, generateContentConfigToMldev, contentToMldev, partToMldev, functionCallToMldev, blobToMldev) and pass
-// a functionResponse and the function declarations through as Pi built them. Pi's own stream posts the oracle body to a local server;
-// PiG's provider posts to another.
+// (generateContentParametersToMldev, generateContentConfigToMldev, contentToMldev, partToMldev, functionCallToMldev; on Vertex also
+// functionResponseToVertex) and pass inlineData, fileData, the function declarations and, on the Gemini API, a functionResponse through
+// as Pi built them. Pi's own stream posts the oracle body to a local server; PiG's provider posts to another.
 func TestGoogleRequestBodyMatchesPi(t *testing.T) {
 	type bodyCase struct {
 		Name   string          `json:"name"`
@@ -40,9 +60,20 @@ func TestGoogleRequestBodyMatchesPi(t *testing.T) {
 		return json.RawMessage(`{"config":{"temperature":0.1,"systemInstruction":"s","tools":[{"functionDeclarations":[{"parametersJsonSchema":{"type":"object","properties":{"z":{"type":"string"},"a":{}}},"name":"n","description":"d"}]}],"maxOutputTokens":9` + labels +
 			`,"toolConfig":{"functionCallingConfig":{"mode":"AUTO"}}},"contents":[{"parts":[{"text":"q"}],"role":"user"},{"parts":[{"text":"x"},{"functionCall":{"name":"n","args":{"z":"1","a":2},"id":"c1"}}],"role":"model"},{"role":"user","parts":[{"functionResponse":{"response":{"z":1,"a":2},"name":"n","id":"c1"}}]}],"model":"` + model + `"}`)
 	}
+	// Every member SDK 2.32.0 added to or moved in a converter google_wire.go mirrors, in an order that is not the SDK's: the Gemini API
+	// sends labels (after toolConfig), continuationToken and store, a part's speechMetadata, and inlineData and fileData as given; Vertex
+	// sends continuationToken and outputConfig (the config's generationOutputConfig), a part's speechMetadata, and rebuilds a functionResponse (id, name, parts, response,
+	// scheduling) and its parts (fileData, inlineData). automaticContinuation is an SDK option and is never sent.
+	const movedContents = `[{"role":"user","parts":[{"speechMetadata":{"z":1},"text":"q"},{"inlineData":{"data":"aGk=","mimeType":"image/png"}},{"fileData":{"mimeType":"image/png","fileUri":"gs://b/o"}}]},` +
+		`{"role":"model","parts":[{"functionCall":{"name":"n","args":{"z":"1"},"id":"c1"}}]},` +
+		`{"role":"user","parts":[{"functionResponse":{"scheduling":"WHEN_IDLE","response":{"z":1},"parts":[{"inlineData":{"data":"aGk=","mimeType":"image/png"},"fileData":{"mimeType":"image/png","fileUri":"gs://b/o"}}],"name":"n","id":"c1"}}]}]`
 	cases := []bodyCase{
 		{Name: "replaced payload", Model: "gemini-2.5-flash", Schema: json.RawMessage(`{"type":"object"}`), Replacement: replacement("gemini-2.5-flash", false)},
 		{Vertex: true, Name: "vertex replaced payload", Model: "gemini-2.5-flash", Schema: json.RawMessage(`{"type":"object"}`), Replacement: replacement("gemini-2.5-flash", true)},
+		{Name: "replaced payload with the members SDK 2.32.0 moved", Model: "gemini-2.5-flash", Schema: json.RawMessage(`{"type":"object"}`),
+			Replacement: json.RawMessage(`{"model":"gemini-2.5-flash","config":{"store":true,"continuationToken":"t","automaticContinuation":true,"labels":{"z":"1","a":"2"},"temperature":0.1},"contents":` + movedContents + `}`)},
+		{Vertex: true, Name: "vertex replaced payload with the members SDK 2.32.0 moved", Model: "gemini-2.5-flash", Schema: json.RawMessage(`{"type":"object"}`),
+			Replacement: json.RawMessage(`{"model":"gemini-2.5-flash","config":{"generationOutputConfig":{"z":1},"continuationToken":"t","automaticContinuation":true,"temperature":0.1},"contents":` + movedContents + `}`)},
 		{Name: "strict tool", Model: "gemini-3-pro-preview", Strict: true,
 			Schema: json.RawMessage(`{"type":"object","properties":{"z":{"type":"string"},"a":{"type":"number"}},"required":["z"]}`)},
 		{Name: "history with a tool call and options", Model: "gemini-2.5-flash", System: "be brief", Options: json.RawMessage(`{"temperature":0.5,"maxTokens":100}`),
@@ -113,6 +144,9 @@ func TestGoogleRequestBodyMatchesPi(t *testing.T) {
 				constrained = `,"constrainedSampling":{"type":"json_schema"}`
 			}
 			tools := mustTools(t, `[{"name":"lookup","description":"Look up","parameters":`+string(c.Schema)+constrained+`}]`)
+			if strings.Contains(want[c.Name], "automaticContinuation") {
+				t.Fatalf("Pi sends automaticContinuation in the request body: %s", want[c.Name])
+			}
 			if c.Images && !strings.Contains(want[c.Name], `"inlineData"`) {
 				t.Fatalf("oracle body has no image: %s", want[c.Name])
 			}

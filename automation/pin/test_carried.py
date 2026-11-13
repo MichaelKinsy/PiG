@@ -495,5 +495,126 @@ class RetireTests(unittest.TestCase):
                 carried.retire(COMMIT, self.root, modules=Path("/unused"))
 
 
+class DependencyEntryTests(unittest.TestCase):
+    """A `dependency(...)` entry rides the block of its Pi commit: it is listed for the oracle build, patches no file, and is classified
+    by the range the target's package pins, so it is retired with the commit's other blocks."""
+
+    ENTRY = """// BEGIN backport f00d
+// not carried: pi-ai/package.json: published ranges follow the pin.
+dependency("f00d", "pi-ai", { name: "@google/genai", from: "2.21.0", to: "2.32.0", resolved: "https://registry.npmjs.org/@google/genai/-/genai-2.32.0.tgz", integrity: "sha512-new", dependencies: { ws: "^8.18.0" } });
+// END backport f00d
+
+"""
+
+    def setUp(self):
+        self.root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.root, True)
+        self.script = self.root / "backports.mjs"
+        self.script.write_text(backport_fixture.text(self.ENTRY), encoding="utf-8")
+
+    def node(self, *arguments: str) -> str:
+        return subprocess.run(["node", str(self.script), *arguments], capture_output=True, text=True, check=True).stdout
+
+    def package(self, pinned: str) -> Path:
+        package = self.root / pinned
+        package.mkdir()
+        (package / "package.json").write_text(json.dumps({"name": "@earendil-works/pi-ai", "dependencies": {"@google/genai": pinned}}))
+        return package
+
+    def test_the_entry_is_listed_with_its_commit_and_the_lock_entry_of_the_carried_version(self):
+        self.assertEqual(json.loads(self.node("--dependencies")), [{"id": "f00d", "package": "pi-ai", "name": "@google/genai", "from": "2.21.0", "to": "2.32.0", "resolved": "https://registry.npmjs.org/@google/genai/-/genai-2.32.0.tgz", "integrity": "sha512-new", "dependencies": {"ws": "^8.18.0"}}])
+        self.assertEqual(oracle.backport_ids(self.script.read_text(encoding="utf-8")), ["f00d"])
+
+    def test_no_file_of_the_installed_package_is_rewritten(self):
+        package = self.package("2.21.0")
+        before = (package / "package.json").read_bytes()
+        self.assertEqual(json.loads(self.node("--package-files", f"pi-ai={package}")), [])
+        self.node("--packages", f"pi-ai={package}")
+        self.node("--verify-packages", f"pi-ai={package}")
+        self.assertEqual((package / "package.json").read_bytes(), before, "the manifest keeps the pin's range")
+
+    def test_the_entry_is_pending_on_the_pinned_range_carried_on_its_own_and_settled_by_ancestry_on_a_later_one(self):
+        states = {}
+        for pinned in ("2.21.0", "2.32.0", "2.40.0"):
+            (result,) = json.loads(self.node("--classify", f"pi-ai={self.package(pinned)}"))
+            self.assertEqual((result["id"], result["key"]), ("f00d", "pi-ai/package.json"))
+            states[pinned] = result
+        self.assertEqual({pinned: (r["state"], r["beforeGone"]) for pinned, r in states.items()}, {"2.21.0": ("pending", False), "2.32.0": ("carried", True), "2.40.0": ("conflict", True)})
+        self.assertIn("pins @google/genai 2.40.0, the entry moves 2.21.0 to 2.32.0", states["2.40.0"]["detail"])
+        self.assertEqual(carried.decide_backports([states["2.32.0"]], lambda _commit: self.fail("the target's own range decides"))["f00d"]["state"], "carried")
+        self.assertEqual(carried.decide_backports([states["2.40.0"]], lambda _commit: {"status": "ahead"})["f00d"]["state"], "carried")
+        self.assertEqual(carried.decide_backports([states["2.40.0"]], lambda _commit: {"status": "diverged"})["f00d"]["state"], "conflict")
+
+    def test_retiring_the_commit_deletes_the_entry_with_its_block(self):
+        text = carried.retire_backport_blocks(self.script.read_text(encoding="utf-8"), ["f00d"])
+        self.assertNotIn("f00d", text)
+        self.assertNotIn("not carried: pi-ai/package.json", text)
+        self.script.write_text(text, encoding="utf-8")
+        self.assertEqual(json.loads(self.node("--dependencies")), [])
+
+
+class OracleLedgerTests(unittest.TestCase):
+    """A followed Pi commit that changes what the oracle installs or runs must be carried by the oracle or say why not."""
+
+    PIN = pinlib.Pin("v1.5.2", "b" * 40, "1.5.2", "1.5.2")
+    SCRIPT = """// BEGIN backport abc123
+patch("abc123", "pi-ai/utils/retry.js", [["a", "b"]]);
+// END backport abc123
+
+// BEGIN backport abc123
+packageFile("abc123", "pi-coding-agent/docs/models.md", [["a", "b"]]);
+// END backport abc123
+"""
+
+    def problems(self, rows: str, name: str = "v1.5.2+abc12345.toml") -> list[str]:
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, root, True)
+        (root / "automation/gen").mkdir(parents=True)
+        (root / "automation/gen/pi-post-release-backports.mjs").write_text(self.SCRIPT, encoding="utf-8")
+        (root / carried.LEDGERS).mkdir(parents=True)
+        (root / carried.LEDGERS / name).write_text('from = "1.5.2"\nto = "1.5.2+abc12345"\n' + rows, encoding="utf-8")
+        return carried.oracle_ledger_problems(self.PIN, root)
+
+    @staticmethod
+    def row(path: str, disposition: str = "ported", oracle: str | None = None) -> str:
+        return f'\n[[files]]\npath = "{path}"\nchange = "modified"\ndisposition = "{disposition}"\nevidence = []\nrationale = "r"\n' + (f'oracle = "{oracle}"\n' if oracle is not None else "")
+
+    def test_a_path_is_keyed_as_the_installed_file_a_block_patches(self):
+        self.assertEqual(carried.ledger_block_key("packages/ai/src/api/google-shared.ts"), "pi-ai/api/google-shared.js")
+        self.assertEqual(carried.ledger_block_key("packages/coding-agent/src/core/export-html/template.js"), "pi-coding-agent/core/export-html/template.js")
+        self.assertEqual(carried.ledger_block_key("packages/coding-agent/docs/models.md"), "pi-coding-agent/docs/models.md")
+        self.assertEqual(carried.ledger_block_key("packages/tui/src/tui.ts"), "pi-tui/tui.js")
+        for path in ("packages/ai/test/fetch-option.test.ts", "packages/ai/CHANGELOG.md", "packages/chord/src/store/store.ts", "packages/ai/package.json", "package-lock.json"):
+            self.assertIsNone(carried.ledger_block_key(path), path)
+
+    def test_a_ported_change_of_a_file_the_oracle_runs_needs_a_block_or_a_reason(self):
+        self.assertEqual(self.problems(self.row("packages/ai/src/utils/retry.ts") + self.row("packages/coding-agent/docs/models.md")), [])
+        (problem,) = self.problems(self.row("packages/ai/src/api/google-vertex.ts"))
+        self.assertIn("v1.5.2+abc12345.toml: packages/ai/src/api/google-vertex.ts: ported, and the oracle's pi-ai/api/google-vertex.js has no backport block", problem)
+        self.assertEqual(self.problems(self.row("packages/ai/src/api/google-vertex.ts", oracle="not carried: no scenario reaches it")), [])
+        self.assertEqual(self.problems(self.row("packages/ai/src/api/google-vertex.ts", "designed-out") + self.row("packages/ai/test/x.test.ts") + self.row("packages/chord/src/store/store.ts")), [],
+                         "a change PiG does not port, a test and a package the oracle does not patch have nothing to carry")
+
+    def test_a_changed_manifest_or_lock_must_say_what_the_oracle_installs_whatever_its_disposition(self):
+        for path in ("packages/ai/package.json", "packages/chord/package.json", "package-lock.json", "packages/coding-agent/install-lock/package-lock.json"):
+            with self.subTest(path=path):
+                (problem,) = self.problems(self.row(path, "designed-out"))
+                self.assertIn("does not say what the oracle installs", problem)
+                self.assertEqual(self.problems(self.row(path, "designed-out", "not carried: the oracle does not install it")), [])
+                self.assertEqual(self.problems(self.row(path, "designed-out", "carried: abc123 as a dependency entry")), [])
+
+    def test_an_answer_must_name_a_carried_entry_or_give_a_reason(self):
+        self.assertIn("names the entry def456, which", self.problems(self.row("package-lock.json", "designed-out", "carried: def456"))[0])
+        for said in ("yes", "not carried:", "not carried: "):
+            self.assertIn("is neither", self.problems(self.row("package-lock.json", "designed-out", said))[0], said)
+
+    def test_only_the_ledgers_of_commits_past_the_pin_are_read(self):
+        self.assertEqual(self.problems(self.row("package-lock.json"), name="v1.5.2.toml"), [])
+        self.assertEqual(self.problems(self.row("package-lock.json"), name="v1.4.0+abc12345.toml"), [])
+
+    def test_the_committed_ledgers_account_for_the_oracle(self):
+        self.assertEqual(carried.oracle_ledger_problems(pinlib.committed()), [])
+
+
 if __name__ == "__main__":
     unittest.main()
