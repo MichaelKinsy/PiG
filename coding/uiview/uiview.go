@@ -232,6 +232,7 @@ func DecodeMount(raw []byte) (MountArgs, *Error) {
 // is known, the target fits the slot and is there when the slot needs one, and the content is well formed (the title,
 // the view's root, the fallback, the intents, assets, alternatives, drawing, accessibility and focus members). It sets
 // the default timeout of an intent that names none, as decoding does.
+// MountArgs must keep its own check: without it a.check() is the embedded content's check (no key, slot, target, mark).
 func (a *MountArgs) Check() *Error { return a.check() }
 
 // check holds a mount record to the closed shape and marks the record that passed, so that it is checked once whichever
@@ -275,6 +276,7 @@ func DecodeUpdate(raw []byte) (UpdateArgs, *Error) {
 // Check verifies an update record that was not decoded by DecodeUpdate, which calls it: the mount's key is named and
 // the content is well formed, as MountArgs.Check verifies it. It sets the default timeout of an intent that names none,
 // as decoding does.
+// UpdateArgs must keep its own check: without it a.check() is the embedded content's check (no mount key, no mark).
 func (a *UpdateArgs) Check() *Error { return a.check() }
 
 // check holds an update record to the closed shape and marks the record that passed, as [MountArgs.check] does.
