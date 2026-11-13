@@ -107,6 +107,11 @@ class AmendmentTest(unittest.TestCase):
         self.assertEqual(out, {"view": {"root": {}}, "title": "Mail", "intents": [{"name": "x.open", "arg": {"type": "object"}, "whenHidden": True}], "focus": [{"node": "n", "request": "update"}]})
         self.assertNotIn("title", ui_view.encode_content({"root": {}}, (), (), None, title=""))
 
+    def test_the_intent_the_users_dismissal_raises(self):
+        close = pig_sdk.ViewIntent("x.close", pig_sdk.ViewShape("object"), dismiss=True)
+        self.assertEqual(close._wire(), {"name": "x.close", "arg": {"type": "object"}, "dismiss": True})
+        self.assertNotIn("dismiss", pig_sdk.ViewIntent("x.tap", pig_sdk.ViewShape("object"))._wire())
+
 
 if __name__ == "__main__":
     unittest.main()
