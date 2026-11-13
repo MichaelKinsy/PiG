@@ -42639,20 +42639,26 @@
       "symptom": "PiG took the absent member for null, left the target out of model context and continued.",
       "rootCause": "the host decoded a draft into a struct whose replacement is a raw JSON value, so an absent member and a null one were the same nil, and applyBoundaryDrafts took nil for null.",
       "rootCauseSource": "commit",
-      "userImpact": "An operation failed or was rejected",
+      "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "A `turn_end` or `agent_before_settle` handler that returns a `context_edit` draft without the `replacement` member is refused, as Pi refuses it (\"Invalid boundary entries: Context edit replacement must be null or contain string/array content\"): nothing is appended and the run does not continue. Before this fix, PiG took the absent member for null, left the target out of model context and continued. The cause: the host decoded an absent member and a null one into the same value.",
+      "releaseNote": "A `turn_end` or `agent_before_settle` handler that returns a `context_edit` draft without the `replacement` member now stops the run as it does in Pi, with Pi's message that the replacement \"must be null or contain string/array content\": nothing is appended and the run does not continue. Before this fix, PiG took the absent member for null, left the target out of model context and continued. The cause: the host decoded an absent member and a null one into the same value.",
       "origin": "release note",
       "commits": [
+        {
+          "hash": "65a97c7f91",
+          "date": "2026-11-13"
+        },
         {
           "hash": "c05aa12b6c",
           "date": "2026-11-13"
         }
       ],
       "tests": [
-        "coding/session_overflow_owner_test.go::TestExtensionOwnedCompactionContinuesAfterOverflow"
+        "coding/session_overflow_owner_test.go::TestExtensionOwnedCompactionContinuesAfterOverflow",
+        "test/extension-conformance/boundary_draft_members_test.go::TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
+        "test/extension-conformance/conformance_test.go::TestConformance_TransportsMatch"
       ]
     },
     {

@@ -23304,12 +23304,12 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Source:** PiG's own defect
 - **Symptom:** PiG took the absent member for null, left the target out of model context and continued.
 - **Root cause:** the host decoded a draft into a struct whose replacement is a raw JSON value, so an absent member and a null one were the same nil, and applyBoundaryDrafts took nil for null.
-- **User impact:** An operation failed or was rejected
+- **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `c05aa12b6c` (2026-11-13)
-- **Tests:** `coding/session_overflow_owner_test.go::TestExtensionOwnedCompactionContinuesAfterOverflow`
-- **Release note:** A `turn_end` or `agent_before_settle` handler that returns a `context_edit` draft without the `replacement` member is refused, as Pi refuses it ("Invalid boundary entries: Context edit replacement must be null or contain string/array content"): nothing is appended and the run does not continue. Before this fix, PiG took the absent member for null, left the target out of model context and continued. The cause: the host decoded an absent member and a null one into the same value.
+- **Fix commits:** `65a97c7f91` (2026-11-13), `c05aa12b6c` (2026-11-13)
+- **Tests:** `coding/session_overflow_owner_test.go::TestExtensionOwnedCompactionContinuesAfterOverflow`, `test/extension-conformance/boundary_draft_members_test.go::TestBoundaryDraftNullAndAbsentMembersAcrossSDKs`, `test/extension-conformance/conformance_test.go::TestConformance_TransportsMatch`
+- **Release note:** A `turn_end` or `agent_before_settle` handler that returns a `context_edit` draft without the `replacement` member now stops the run as it does in Pi, with Pi's message that the replacement "must be null or contain string/array content": nothing is appended and the run does not continue. Before this fix, PiG took the absent member for null, left the target out of model context and continued. The cause: the host decoded an absent member and a null one into the same value.
 
 ### BF-c1055c4
 
