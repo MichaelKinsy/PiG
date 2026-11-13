@@ -2026,6 +2026,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-fbd3640](#bf-fbd3640) | The legacy credential migration writes `auth.json` and the rewritten `settings.json` with the key order Pi… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-fbd59e3](#bf-fbd59e3) | `chord/nextnode/plugins`, `chord/nextnode/app` (Pi `app.test.ts` "round-trips a worker's documents, tables… | PiG's own defect | All platforms | Unreleased |
 | [BF-fbd59e3-2](#bf-fbd59e3-2) | `chord/next/surfaces` (Pi `translations.ts` `canonicalLocale`, `language.ts` `directionOf`): a locale tag is… | PiG's own defect | All platforms | Unreleased |
+| [BF-fc028ee](#bf-fc028ee) | The reference web client no longer erases what the user is typing when a view is updated: an `input` or… | PiG's own defect | All platforms | Unreleased |
 | [BF-fc1703f](#bf-fc1703f) | Durable's `tool_search` and Code Mode `searchTools()` rank like the coding agent's tool search: a query that… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-fc5baaf](#bf-fc5baaf) | `pi.exec`'s `timeout` starts once the command has been spawned, as in Pi, so time spent finding and starting… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-fc749ad](#bf-fc749ad) | A task list item whose first line looks like a heading, quote, rule, bullet, fence, table row or HTML tag… | PiG's own defect | All platforms | 0.5.0 |
@@ -29857,6 +29858,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `618af0a411` (2026-11-10), `7ddb7c1a27` (2026-11-10), `fbd59e3aff` (2026-11-10)
 - **Tests:** `chord/nextnode/app/app_workers_test.go::TestAppAWorkersDirectoryKeepsItsStoreAndFilesAcrossItsProcessesRestarts`, `chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberIsCopiedToThePluginsHost`, `chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberIsReadAgainAfterTheGoFacetReloads`, `chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberKeepsACommitMadeWhileTheObjectOpens`, `chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberOfTenThousandDocumentsIsCopiedBeforeTheObjectIsLive`, `chord/nextnode/plugins/plugins_node_extract_test.go::TestTheExtractedRuntimeIsNamedByEveryFileOfTheRuntimeBesideTheManifest`
 - **Release note:** `chord/next/surfaces` (Pi `translations.ts` `canonicalLocale`, `language.ts` `directionOf`): a locale tag is canonical as Node's `Intl.getCanonicalLocales` has it for the value aliases of `-u-` keywords and `-t-` fields (`ca-islamicc` is `ca-islamic-civil`, `ks-primary` is `ks-level1`, `kb-yes` is `kb`, `m0-names` is `m0-prprname`) and for the alias rules of several subtags (a language with a region or script, such as `sgn-BR`; `Qaai` is `Zinh`), so the `lang` and `dir` of a page and the locale chosen for a client no longer differ from Pi's for those tags. The tables are generated from the pinned Node by `testdata/locale_tables.mjs` and checked against its Intl.
+
+### BF-fc028ee
+
+**The reference web client no longer erases what the user is typing when a view is updated: an `input` or…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The reference web client no longer erases what the user is typing when a view is updated: an `input` or `editor` whose `id` is in the next view keeps its text, selection and the focus, unless the extension changed its `value`.
+- **Root cause:** The page rebuilt a mount on every changed digest, so an update of one node (a new mail in the list) erased a half-typed reply in another and could drop the focus. A mount now keeps its element and the new view is morphed into the drawn one: a node of the same kind under the same id keeps its element, so an input or editor keeps its text, selection and the focus; a value the extension changes still replaces the text; a text node that moved to another parent hands its text and the focus to its new element. Nodes with an id are matched by id only, so a node that is gone never lends its text to another id.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `fc028ee6d6` (2026-11-12)
+- **Tests:** `examples/ui-view-web/bridge_test.go::TestPageKeepsTypedTextAcrossUpdates`
+- **Release note:** The reference web client no longer erases what the user is typing when a view is updated: an `input` or `editor` whose `id` is in the next view keeps its text, selection and the focus, unless the extension changed its `value`.
 
 ### BF-fc1703f
 

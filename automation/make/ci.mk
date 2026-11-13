@@ -95,10 +95,13 @@ ci-chord-tui:
 
 # ci-chord-web runs the web surface's tests in a real Chromium (the page, React hooks, language, stylesheets, and the reload suite's rows
 # with the delegate test: reload_*_test.go, app_delegate_test.go) and the React stores under the Node on the PATH. CI sets CHORD_REQUIRE_CHROMIUM, so a missing browser fails them rather than skipping them.
+# The page tests of the reference web client of plugin views (examples/ui-view-web, TestPage*) run in the same Chromium under the same rule.
 ci-chord-web:
 	CHROMIUM_BIN="$${CHROMIUM_BIN:-$$(command -v google-chrome-stable || command -v google-chrome || command -v chromium || command -v chromium-browser)}" CHORD_REQUIRE_CHROMIUM=1 \
 		go test -count=1 ./chord/nextnode/app -run '^Test(React|ThePagesLanguage|APage|AChangeOfBaseCode|AReload|ARollout|AJobRunning|AServerPluginsObject)'
 	go test -count=1 ./chord/nextnode/surfaces -run '^TestReact'
+	CHROMIUM_BIN="$${CHROMIUM_BIN:-$$(command -v google-chrome-stable || command -v google-chrome || command -v chromium || command -v chromium-browser)}" CHORD_REQUIRE_CHROMIUM=1 \
+		go test -count=1 ./examples/ui-view-web -run '^TestPage'
 
 ci-node-runtime:
 	go test -tags=parity -count=1 ./coding/extension/host/subprocess -skip '^TestNodePiAiExtensionViewMatchesThePinnedView$$' -run '^Test(Node|EmbeddedNode|ResolveNode|EnsureNode|Host.*Node|Builder.*Node|BuildExtCommand_Node|PiDiff|PiScrollView|PiTui|VendoredCrossSpawn|TerminalInputNode)'
