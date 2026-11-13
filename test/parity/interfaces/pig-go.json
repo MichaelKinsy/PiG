@@ -136727,6 +136727,17 @@
       "shapeHash": "sha256:99b2f0daea2fa02fc914a648e106daded5256ebd450a525affbca76e1bb1f7d3"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.supersedeViews",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.supersedeViews",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.syncGeometry",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "Host.syncGeometry",
@@ -141072,6 +141083,17 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.SupersedeViews",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "UIBridge.SupersedeViews",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(extNames []string)"
+      },
+      "shapeHash": "sha256:3f19df7d4db5dcd7adb5c86f14dfa1938da1853ac6f0808d06da400591049e95"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.SyncAutocomplete",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "UIBridge.SyncAutocomplete",
@@ -142310,9 +142332,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(extName string, call *CallPayload) (*CallResultPayload, error)"
+        "type": "func(extName string, owner *Conn, call *CallPayload) (*CallResultPayload, error)"
       },
-      "shapeHash": "sha256:722772611e4692222b40f0a58eec3515f1e1402bccb75a856127d777a6d1938e"
+      "shapeHash": "sha256:8b2f06470b92853bd98864afdf63f8efe46036de22c1df10a07b484b413c3435"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.handleWaitForIdle",
