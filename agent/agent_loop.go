@@ -372,8 +372,8 @@ func (r *loopRun) turnContext(assistant *AssistantMessage, toolResults []ToolRes
 // and new-message arrays (agent-loop.ts runLoop: prepareRequest, finishTurn and prepareNextTurn receive currentContext and newMessages;
 // executeToolCalls gives beforeToolCall and afterToolCall currentContext), so a hook that replaces a message in place changes the run,
 // as it does there. The run only ever appends to the array or replaces it whole (applyUpdate), so a view a hook keeps does not change
-// under it, and a hook's append goes to an array of its own: the cut leaves it no room in the run's. Only hooks that never run at the
-// same time receive the view: the tools and after hooks of tool calls executed in parallel get a copy each (executeToolCallsParallel).
+// under it, and a hook's append goes to an array of its own: the cut leaves it no room in the run's. The calls of a parallel tool
+// batch all receive this one view (executeToolCallsParallel).
 func hookView(messages []AgentMessage) []AgentMessage {
 	return messages[:len(messages):len(messages)]
 }
