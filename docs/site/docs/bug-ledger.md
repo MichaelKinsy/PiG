@@ -322,6 +322,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-305bd8b](#bf-305bd8b) | A durable task that panics with a value whose `String` method panics now faults with the message `[object… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-308d280](#bf-308d280) | `chord/next/surfaces`: a locale tag whose `-u-` extension is only `true` or `yes` keeps it as Node's… | PiG's own defect | All platforms | Unreleased |
 | [BF-308d280-2](#bf-308d280-2) | `chord/nextnode/plugins`: a Go facet that reloads twice in a row no longer leaves the copy of its keyed… | PiG's own defect | All platforms | Unreleased |
+| [BF-30a10ed](#bf-30a10ed) | chord: a message sent to a worker that had just ended no longer discards what the worker wrote before it ended | PiG's own defect | All platforms | Unreleased |
 | [BF-30cdab4](#bf-30cdab4) | Windows: the environment daemon's `taskkill /F /T` runs with the `SystemRoot` it resolved for its path… | PiG's own defect | Windows | Unreleased |
 | [BF-30d4a6d](#bf-30d4a6d) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-30e47f4](#bf-30e47f4) | fix(tui): SetThemeInstance notifies the active theme observers, as Pi's setThemeInstance runs its callback | PiG's own defect | All platforms | Unreleased |
@@ -681,6 +682,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-604e180](#bf-604e180) | `tool_search` (and its Durable copy) now finds a tool by property names and descriptions behind a local… | PiG's own defect | All platforms | Unreleased |
 | [BF-609d2bd](#bf-609d2bd) | fix(photonimage): decode DDS (DXT1, DXT3, DXT5) as Photon does | PiG's own defect | All platforms | Unreleased |
 | [BF-60c4c6f](#bf-60c4c6f) | A tool call whose finished arguments are not a valid JSON object no longer runs with the parsed prefix: its… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-60cc9c5](#bf-60cc9c5) | chord: a worker that fails right after it started now reports its reason | PiG's own defect | Windows | Unreleased |
 | [BF-612955a](#bf-612955a) | The Rust and Go SDKs keep an unpaired surrogate through `prepareBranchEntries`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-61300bb](#bf-61300bb) | MCP OAuth reads a non-HTTP redirect or server URL as Node's `new URL` does: dot segments are removed, a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-61300bb-2](#bf-61300bb-2) | Sorting names with `localeCompare` (MCP servers, sessions, login providers, codemode namespaces, model lists… | PiG's own defect | All platforms | 0.5.0 |
@@ -1352,6 +1354,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D618](#bf-d618) | A start repaints after the highlight grammar load only when a highlight lookup made before it could have… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D619](#bf-d619) | A status-indicator or Loader animation step asks for its frame within min(40 ms, interval/2), where Pi asks… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D628](#bf-d628) | auth.json is read once per availability pass, where Pi stats it on every credential read | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D629](#bf-d629) | A prompt that arrives while another prompt is being admitted in RPC mode is rejected with an error, where Pi… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D631](#bf-d631) | A command run by `pi.exec` or the bash tool gets pipes for its output, where Pi gives it socket pairs | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26](#bf-a09da26) | `pi.getSettings()` in a subprocess extension lists the settings in Pi's order: the global settings file's… | PiG's own defect | All platforms | 0.5.0 |
@@ -6260,6 +6263,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `308d2802ce` (2026-11-10)
 - **Tests:** `chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberIsReadAgainWhenTheNextSlotEndsAfterTheResync`, `chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberKeepsACommitMadeWhileTheObjectOpens`, `chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAMethodCalledWhileTheMirrorIsReadAgainAnswersAfterItsFrames`
 - **Release note:** `chord/nextnode/plugins`: a Go facet that reloads twice in a row no longer leaves the copy of its keyed member on the slot of the first reload (the mirror stopped resyncing after it queued the reset, so an end of the next slot in between was lost), and a method called while the copy is read again answers after the frames of its commits were sent, so the plugin reads what it wrote.
+
+### BF-30a10ed
+
+**chord: a message sent to a worker that had just ended no longer discards what the worker wrote before it ended**
+
+- **Source:** PiG's own defect
+- **Symptom:** chord: a message sent to a worker that had just ended no longer discards what the worker wrote before it ended.
+- **Root cause:** The channel's writer finished the channel when a write failed: a send to a worker that had just ended (EPIPE) closed the connection and dropped the listeners while the reader had not yet told what the worker wrote before it ended, its `fatal` among it.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `30a10edfb2` (2026-11-13)
+- **Tests:** `chord/nextnode/workers/workers_channel_write_unix_test.go::TestAChannelTellsWhatTheOtherEndWroteBeforeItClosedWhenASendFailedMeanwhile`
+- **Release note:** chord: a message sent to a worker that had just ended no longer discards what the worker wrote before it ended. The failed write closed the connection under its reader, so messages not yet told (a `fatal` report with the worker's reason) were dropped. As Node's `send`, a failed write now only tells its sender; the reader ends the channel after it told what the worker wrote.
 
 ### BF-30cdab4
 
@@ -11211,6 +11228,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `60c4c6f887` (2026-10-14, #10944)
 - **Tests:** `ai/json_parse_upstream_test.go::TestParseToolCallArguments`, `ai/openai_responses_partial_json_cleanup_upstream_test.go::TestOpenAIResponsesMarksMalformedFinalArguments`, `ai/rpc33_provider_abort_test.go::TestOpenAIProviderAbortAfterAdmission`, `ai/rpc33_provider_abort_test.go::TestOpenAIProviderAbortAtParserReadBoundaries`, `ai/rpc33_provider_scratch_test.go::TestProviderScratchInterleavedTools`, `ai/validate_upstream_test.go::TestValidateToolArgumentsReportsArgumentsError`
 - **Release note:** A tool call whose finished arguments are not a valid JSON object no longer runs with the parsed prefix: its arguments are `{}` and `argumentsError` holds the reason and the text the model sent, which tool validation reports back to the model. Carried forward from Pi 87f9a364 (earendil-works/pi#10944, #10897), past the 1.2.0+3daa2028 pin.
+
+### BF-60cc9c5
+
+**chord: a worker that fails right after it started now reports its reason**
+
+- **Source:** PiG's own defect
+- **Symptom:** chord: a worker that fails right after it started now reports its reason.
+- **Root cause:** WorkerProcess.ended closed the worker's channel and told Exited without waiting for the channel's reader. What the worker wrote before it ended and the reader had not taken yet, or had taken and not yet handed to its listeners, was dropped: its last link frames (the answer to a holder) and its `fatal`. A worker that failed right after `started` was then recorded with the fixed 'worker failed to start' instead of its reason.
+- **User impact:** An operation failed or was rejected
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `60cc9c5bd3` (2026-11-13)
+- **Tests:** `chord/nextnode/workers/workers_fixture_test.go::TestMain`, `chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessExitHeldByAProcessOutsideItsTreeThatHoldsItsChannelIsToldWhenThisSideClosesTheLink`, `chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessExitIsNotHeldByAProcessOutsideItsTreeThatItStartedAfterItOpenedItsChannel`, `chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessLinkClosedByThisSideWhileItsChannelsReaderIsHeldDoesNotWaitForIt`, `chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessTellsItsExitAfterItsChannelsReaderTookWhatItsChildWrote`, `chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessTellsItsExitAfterItsOutputWhenItsChannelsReaderEndedFirst`, `chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessTellsItsExitAfterWhatItsChannelsReaderTookIsTold`
+- **Release note:** chord: a worker that fails right after it started now reports its reason. The server could handle a worker's exit before it had read, or before it had handed over, the last messages the worker wrote (its answer to a waiting holder and its `fatal` report); it then closed the connection and recorded the fixed `worker failed to start` (in p2, under load: a session whose worker dies at its start showed that text where Pi shows why, for example `Unknown model`). As in Node, which emits a child's messages before its `exit` event, the exit is now told after the channel's reader took and told everything the worker wrote. Limits: the exit waits for the end of the worker's channel as it already waits for the end of its output, so a process outside the worker's tree that holds the channel (a Go worker cannot hand it on: a kept test) delays the exit until the link is closed, where Node does not wait; not run on Windows, where a worker that ends before the server accepted its pipe connection can still lose its last messages.
 
 ### BF-612955a
 
@@ -20562,6 +20593,21 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Removed when Pi fixes it:** Pi reads its auth storage once per availability refresh, or an extension API exists through which a provider's check announces that it changed stored credentials, so the view can end there. The credential API already ends the view for writes made through it in this process; no API covers a check that writes the file itself.
 - **Fix commits:** `b5c9e29c8f` (2026-11-12)
 - **Tests:** `coding/model_availability_auth_pass_test.go::TestAuthWriteDuringAvailabilityPassIsUsedByNextRequest`, `coding/model_availability_auth_pass_test.go::TestAvailabilityPassStatsEachAuthFileOnce`, `coding/model_availability_auth_pass_test.go::TestAvailabilityPassStatsEveryReadAfterACommandKey`, `coding/model_availability_auth_pass_test.go::TestBrokenAuthFileDuringAvailabilityPass`, `coding/model_availability_auth_pass_test.go::TestCredentialAPIWriteDuringAvailabilityPassIsUsedByTheSamePass`, `coding/model_availability_auth_pass_test.go::TestExtensionCheckRewritingAuthFileIsUsedByNextRequest`, `coding/model_availability_auth_view_test.go::TestAvailabilityPassAuthViewMatchesPiUpstream`, `internal/codingagent/model_availability_read_context_test.go::TestAvailabilityReadContextGivesEveryPassOneAuthView`
+
+### BF-D629
+
+**A prompt that arrives while another prompt is being admitted in RPC mode is rejected with an error, where Pi…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D629)
+- **Symptom:** A prompt is answered `started` and never run; no error is emitted; an `agent_settled` is emitted for a run that never started, and it clears the busy state of the run that did. An upstream issue draft is the owner's to post; none has been posted.
+- **Root cause:** a client is told that its prompt was not taken and can send it again or queue it. Pi accepts the prompt and loses it without an error, so a client that waits for the run of a prompt answered `started` waits for a run that never comes, and reads an `agent_settled` that belongs to no run it can see.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** Pi rejects the second prompt of a batch with an error, or stops answering `started` for a prompt it does not run. `TestRPCPromptsWrittenInOneChunkDivergeFromPi` runs the pinned Pi and fails when Pi's side changes.
+- **Fix commits:** `dbb1bbb1bd` (2026-11-12)
+- **Tests:** `coding/cli/rpc_prompt_one_chunk_pi_test.go::TestRPCPromptsWrittenInOneChunkDivergeFromPi`, `coding/cli/rpc_prompt_order_test.go::TestRPCPromptsOfOneBatchAnswerInRequestOrder`, `coding/cli/rpc_prompt_order_test.go::TestRPCPromptsWithDueCompactionsAnswerInRequestOrder`
 
 ### BF-D631
 
@@ -30783,6 +30829,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D618 | A start repaints after the highlight grammar load only when a highlight lookup made before it could have… | [BF-D618](#bf-d618) |
 | D619 | A status-indicator or Loader animation step asks for its frame within min(40 ms, interval/2), where Pi asks… | [BF-D619](#bf-d619) |
 | D628 | auth.json is read once per availability pass, where Pi stats it on every credential read | [BF-D628](#bf-d628) |
+| D629 | A prompt that arrives while another prompt is being admitted in RPC mode is rejected with an error, where Pi… | [BF-D629](#bf-d629) |
 | D631 | A command run by `pi.exec` or the bash tool gets pipes for its output, where Pi gives it socket pairs | [BF-D631](#bf-d631) |
 
 ## Fix-titled commits that are not bugs in a release
