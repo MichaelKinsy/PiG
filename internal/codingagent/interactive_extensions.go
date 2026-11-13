@@ -495,6 +495,10 @@ func (m *InteractiveMode) renderWidgetsLocked() {
 			}
 		}
 	}
+	// pig additive (D614): the row that stands for the dialogs is the row directly above the editor.
+	if m.viewWaitRow != nil {
+		above = append(above, m.viewWaitRow)
+	}
 	// pig divergence (D228): the one-time copy tip sits under the editor, after the below-editor widgets.
 	if m.queueCopyTip != nil {
 		below = append(below, m.queueCopyTip)
