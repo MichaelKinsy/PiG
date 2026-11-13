@@ -2752,10 +2752,21 @@
     {
       "id": "render:packages/coding-agent/src/modes/interactive/components/oauth-selector.ts#OAuthSelectorComponent.render",
       "ownerFamily": "selectors",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/oauth_selector.go#Render",
+        "tui/oauth_selector.go#selectedBrandStyle"
+      ],
+      "evidence": [
+        "test/parity/scenarios/oauth/33-login-partner-rows-release-brand-style.toml",
+        "tui/oauth_selector_partner_test.go#TestOAuthSelectorAnimatesAPartnerRowUntilDisposed",
+        "tui/oauth_selector_partner_test.go#TestOAuthSelectorKeepsTheAccentStyleWithoutATUI",
+        "tui/oauth_selector_partner_test.go#TestOAuthSelectorShowsTheBrandStyleOnlyOnTheSelectedPartnerRow",
+        "tui/oauth_selector_render_contract_test.go#TestOAuthSelectorRenderRebuildsTheSelectedPartnerRowForEachFrame"
+      ],
+      "contracts": [
+        "coding-agent/oauth-selector/render-animated-row"
+      ],
       "divergence": "",
       "rationale": ""
     },
