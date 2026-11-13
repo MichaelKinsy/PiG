@@ -399,6 +399,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-36e82ad](#bf-36e82ad) | fix(durable): a non-finite number is a strict JSON error whichever JSON package a value's own encoder used | PiG's own defect | All platforms | Unreleased |
 | [BF-36fd3b5](#bf-36fd3b5) | Hyperlinks (OSC 8) now work in Alacritty, which sets `TERM=alacritty` or `ALACRITTY_WINDOW_ID` but not… | PiG's own defect | All platforms | Unreleased |
 | [BF-37c6048](#bf-37c6048) | fix(tui): a streamed Markdown never resumes past a paragraph clipped before a LaTeX start | PiG's own defect | All platforms | Unreleased |
+| [BF-37c6264](#bf-37c6264) | A Node extension that draws Pi's `ToolExecutionComponent` for a tool that renders itself (`renderShell… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-37d2daa](#bf-37d2daa) | An extension's `ctx.model` and model lists keep a model's `cost.tiers` when the model's record has it as an… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3804a5a](#bf-3804a5a) | The pi-messages and classifier (System One, decisions) requests are sent to the URL as written and a URL with… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-380ea0e](#bf-380ea0e) | fix(durable/core): a settled outcome without error detail is no cut-off (Pi) | PiG's own defect | All platforms | Unreleased |
@@ -7393,6 +7394,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `37c60480c3` (2026-10-10)
 - **Tests:** `tui/markdown_resume_soup_test.go::TestResumedAssistantBlockEqualsAFreshBlock`, `tui/markdown_resume_soup_test.go::TestResumedMarkdownSoupEqualsAFreshRender`, `tui/markdown_resume_test.go::TestResumedMarkdownEqualsAFreshRenderForDependentBlocks`
+
+### BF-37c6264
+
+**A Node extension that draws Pi's `ToolExecutionComponent` for a tool that renders itself (`renderShell…**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** A Node extension that draws Pi's `ToolExecutionComponent` for a tool that renders itself (`renderShell: "self"`) no longer fails with `RangeError: Maximum call stack size exceeded` when the tool's result draws about 125,000 rows or more: the bundled Node runtime carries Pi's fix (Pi #12145).
+- **Root cause:** The sync ledger records tool-execution.ts as unchanged-observable in Go.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `37c6264b53` (2026-11-13)
+- **Tests:** `test/parity/scenarios/interactive-rendering/72-resume-very-large-edit-diff.toml`
+- **Release note:** A Node extension that draws Pi's `ToolExecutionComponent` for a tool that renders itself (`renderShell: "self"`) no longer fails with `RangeError: Maximum call stack size exceeded` when the tool's result draws about 125,000 rows or more: the bundled Node runtime carries Pi's fix (Pi #12145). PiG's own interactive screen draws tool cards in Go and never had this limit.
 
 ### BF-37d2daa
 

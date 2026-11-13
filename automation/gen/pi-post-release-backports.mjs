@@ -1237,6 +1237,22 @@ patch("ede360e4d", "pi-coding-agent/docs/rpc-commands.md", [
 ]);
 // END backport ede360e4d
 
+// BEGIN backport 5b5be2c316e0
+// 5b5be2c316e0 (#12145): the rows of a tool that draws itself (renderShell "self", which includes the built-in edit) are appended in a loop. The spread of hundreds of
+// thousands of wrapped rows exceeded V8's argument limit (RangeError: Maximum call stack size exceeded) on the render and on every resume of the session. The vendored
+// runtime exports ToolExecutionComponent to Node extensions, and the parity oracle resumes the generated session of interactive-rendering/72-resume-very-large-edit-diff.
+patch("5b5be2c316e0", "pi-coding-agent/modes/interactive/components/tool-execution.js", [
+    [`                lines.push("");
+                lines.push(...contentLines);
+`, `                lines.push("");
+                ${note("5b5be2c316e0").trim()}
+                // Append in a loop: spreading hundreds of thousands of wrapped lines exceeds V8's argument limit.
+                for (const line of contentLines)
+                    lines.push(line);
+`],
+]);
+// END backport 5b5be2c316e0
+
 // backportPatches keys the compiled output of a Pi package; packageFileBackports the files that are not compiled output and that the vendored runtime
 // does not carry, but that the installed Pi package (the parity oracle) and the source mirror hold, with the same text. Both are keyed by package and path.
 // Blocks of several Pi commits can name one file: their patches add up, in the order of the blocks in this script.

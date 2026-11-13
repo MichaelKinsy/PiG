@@ -747,7 +747,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/tool-execution.js",
-      "sha256": "f10c2f09bdd33a55e42ed56b3b34786628848a02cfd56548b3a10a86c8cb2971"
+      "sha256": "b60ad577cedce33d58a81f12f28507fdd1546a50a84a0c0879813f95d6612cf9"
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/tree-selector.js",
