@@ -850,7 +850,8 @@ func TestPageDrawsAGrid(t *testing.T) {
 
 // TestPageShowsNoCountersAndOneColumnUntilThereIsATranscript: the default page shows no line of the carrier's numbers
 // (the address asks for it with ?debug), and while its chat holds no line the panels and the prompt are one centred
-// column of at most 880 px; under a panel taller than the window the page scrolls and the prompt stays in sight; with
+// column of at most 880 px; under a panel taller than the window the page scrolls, the prompt stays in sight and what
+// is scrolled into view stops above it; with
 // a line in the chat the panels stand beside it.
 func TestPageShowsNoCountersAndOneColumnUntilThereIsATranscript(t *testing.T) {
 	b := startBridge(t, "-e", "testdata/scene.mjs")
@@ -877,8 +878,14 @@ func TestPageShowsNoCountersAndOneColumnUntilThereIsATranscript(t *testing.T) {
 	// In a window lower than the panel the page scrolls and the prompt stays in sight, under the panel.
 	window(480)
 	fits := `(() => { const prompt = document.getElementById("prompt").getBoundingClientRect(), page = document.documentElement, at = document.elementFromPoint(640, prompt.top + prompt.height / 2);
-		return JSON.stringify({ pageScrolls: page.scrollHeight > page.clientHeight, promptInSight: prompt.top > 0 && prompt.bottom <= innerHeight, promptOnTop: at?.closest("#prompt") !== null }); })()`
-	if got, want := browser.String(fits), `{"pageScrolls":true,"promptInSight":true,"promptOnTop":true}`; got != want {
+		const fits = { pageScrolls: page.scrollHeight > page.clientHeight, promptInSight: prompt.top > 0 && prompt.bottom <= innerHeight, promptOnTop: at?.closest("#prompt") !== null };
+		// What the browser scrolls into view, as it does for the focus, is not under the prompt: a press on it reaches the panel.
+		const low = document.querySelector('[data-key="scene"] [data-k="credit"]');
+		low.scrollIntoView({ block: "nearest" });
+		const box = low.getBoundingClientRect();
+		fits.scrolledIntoViewIsHit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)?.closest('[data-key="scene"]') != null;
+		return JSON.stringify(fits); })()`
+	if got, want := browser.String(fits), `{"pageScrolls":true,"promptInSight":true,"promptOnTop":true,"scrolledIntoViewIsHit":true}`; got != want {
 		t.Errorf("in a window lower than the panel the page is\n  %s\nwant\n  %s", got, want)
 	}
 	window(800)

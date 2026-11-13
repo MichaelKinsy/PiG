@@ -147,6 +147,14 @@ function showPanels() {
   offer();
 }
 
+// The prompt stands at the window's lower edge while the page is one column (index.html: sticky), over what scrolls
+// under it. What the browser scrolls into view, a focused row for one, stops above it: the page's scroll padding is
+// the height of that block.
+const root = document.documentElement;
+new ResizeObserver(([entry]) => {
+  root.style.scrollPaddingBottom = getComputedStyle(entry.target).position === "sticky" ? `${entry.target.offsetHeight}px` : "";
+}).observe(document.querySelector("main"));
+
 // offer lists the hidden mounts the user can open: the ones that declare a `whenHidden` intent, each as a button that
 // reads the mount's title. Choosing one raises that intent with {}, and the extension's handler shows the view; the
 // page shows nothing by itself. A hidden mount without the intent is not offered.
