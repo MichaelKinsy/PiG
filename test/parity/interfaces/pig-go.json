@@ -151017,6 +151017,193 @@
       "shapeHash": "sha256:8bb1208bc168a2c4c644fe70596bc60c4934c3ef46be4203eee30f2b42636613"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#halfBlock256",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "halfBlock256",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "halfBlockDepth"
+      },
+      "shapeHash": "sha256:05a69d120345164f797c8a7b2461457a56e9184a30f300ef25a84f855db28c39"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#halfBlock256Index",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "halfBlock256Index",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(r uint8, g uint8, b uint8) uint8"
+      },
+      "shapeHash": "sha256:699370df5e97116c75411605d51a665f49cd942a7d84ada198fbfcc7e01a3d11"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#halfBlockBlend",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "halfBlockBlend",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(sum [4]uint64, bg [3]uint64, weight uint64) halfBlockRGB"
+      },
+      "shapeHash": "sha256:1805ea6e2cf06ba76cafb28e973936318f739c284a68bdf262275b2e8ffd8225"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#halfBlockCubeStep",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "halfBlockCubeStep",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(v int) int"
+      },
+      "shapeHash": "sha256:e37b4db63bdfdf92abcb281cae8fdfb73657cf8656a8ae261947ca6a5b6136c2"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#halfBlockDepth",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "halfBlockDepth",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "halfBlockDepth"
+      },
+      "shapeHash": "sha256:05a69d120345164f797c8a7b2461457a56e9184a30f300ef25a84f855db28c39"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#halfBlockGlyph",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "halfBlockGlyph",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#halfBlockMaxCols",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "halfBlockMaxCols",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#halfBlockMaxRows",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "halfBlockMaxRows",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#halfBlockOversample",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "halfBlockOversample",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#halfBlockPixels",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "halfBlockPixels",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(img image.Image, w int, h int, background image/color.Color) []halfBlockRGB"
+      },
+      "shapeHash": "sha256:06a312095e8035c606ba1389a57013a07055fd5e46d2f579c793b39ba4427d9f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#halfBlockRGB",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "halfBlockRGB",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "halfBlockRGB"
+      },
+      "shapeHash": "sha256:3d4f7ed5a5b7bd1e39e090fe123d15d69c59f9ef264fef4621eef03423576b6a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#halfBlockReset",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "halfBlockReset",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#halfBlockRows",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "halfBlockRows",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(img image.Image, cols int, rows int, depth halfBlockDepth, background image/color.Color) []string"
+      },
+      "shapeHash": "sha256:f5ea9cab9c41779ab64677dede375d46fc47c4845ba4a93409180d87ebb40f76"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#halfBlockSize",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "halfBlockSize",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(pxWidth int, pxHeight int, maxCols int, maxRows int) (cols int, rows int)"
+      },
+      "shapeHash": "sha256:fbbbd2a762dd764aa39b6563e2b7423b61c36c2003e1dc9714831a49e655a9e9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#halfBlockTrueColor",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "halfBlockTrueColor",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "halfBlockDepth"
+      },
+      "shapeHash": "sha256:05a69d120345164f797c8a7b2461457a56e9184a30f300ef25a84f855db28c39"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#halfBlockWriteColour",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "halfBlockWriteColour",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(b *strings.Builder, plane string, c halfBlockRGB, depth halfBlockDepth)"
+      },
+      "shapeHash": "sha256:5446e09cdcb174b8e59e84232981843682f0821f85bb199a46287823ef666282"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#halfBlockWriteNumber",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "halfBlockWriteNumber",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(b *strings.Builder, v uint8)"
+      },
+      "shapeHash": "sha256:943ea74991bce4d686c5a34c52963eafaf75892db856a809e264ef32864fbb77"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#harnessArgvFileEnv",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "harnessArgvFileEnv",
