@@ -1983,12 +1983,14 @@ func (s *Session) PendingMessageCount() int {
 // SetSteeringMode updates the active queue and persists its drain mode.
 func (s *Session) SetSteeringMode(mode agent.QueueMode) error {
 	s.agent.SetSteeringMode(mode)
+	// pig divergence (D633): a failed save of the mode is returned; Pi's setSteeringMode (agent-session.ts:2859-2862) returns nothing.
 	return s.SettingsManager().SetSteeringMode(string(mode))
 }
 
 // SetFollowUpMode updates the active queue and persists its drain mode.
 func (s *Session) SetFollowUpMode(mode agent.QueueMode) error {
 	s.agent.SetFollowUpMode(mode)
+	// pig divergence (D633): a failed save of the mode is returned; Pi's setFollowUpMode (agent-session.ts:2868-2871) returns nothing.
 	return s.SettingsManager().SetFollowUpMode(string(mode))
 }
 

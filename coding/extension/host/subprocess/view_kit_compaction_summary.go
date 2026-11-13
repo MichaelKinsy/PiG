@@ -16,7 +16,6 @@ func init() {
 				c.fail("compaction-summary tokensBefore %d is negative", *n.TokensBefore)
 			}
 		},
-		build: buildCompactionSummary,
 	})
 }
 

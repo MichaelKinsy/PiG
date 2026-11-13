@@ -21,7 +21,9 @@ import (
 //
 // A write never blocks its caller (Node's `send` queues and returns false past the high-water mark): records go to an
 // unbounded queue one owned writer goroutine drains. One owned reader goroutine reads and tells the listeners in order,
-// and tells the disconnect once; both end with the connection. The channel implements link.IpcPort.
+// and tells the disconnect once; both end with the connection. A write that fails tells its send and ends the writer
+// only, as a failed `send` of Node's tells its callback: the other end is gone, and the reader ends the channel once it
+// told what that end wrote before. The channel implements link.IpcPort.
 
 const (
 	recordFrame   byte = 0
@@ -39,6 +41,7 @@ var errChannelClosed = errors.New("workers: channel closed")
 type channel struct {
 	connected atomic.Bool
 	// acquire returns the connection, waiting for the other end if it must; cancel ends that wait and closes what it holds.
+	// conn is nil while the other end has not arrived.
 	acquire func() (net.Conn, error)
 	cancel  func()
 
@@ -49,7 +52,11 @@ type channel struct {
 	queue      []outgoing
 	wake       chan struct{}
 	finished   bool
+	// unwritable: a write failed; nothing is sent any more.
+	unwritable bool
 	started    bool
+	// reads, set before the reader begins, is what it reads the connection through: a worker process's drain of it.
+	reads func(conn io.Reader) io.Reader
 }
 
 type outgoing struct {
@@ -66,7 +73,9 @@ var _ link.IpcPort = (*channel)(nil)
 
 // newChannel makes the channel end that reads and writes conn.
 func newChannel(conn net.Conn) *channel {
-	return newPendingChannel(func() (net.Conn, error) { return conn, nil }, func() { _ = conn.Close() })
+	c := newPendingChannel(func() (net.Conn, error) { return conn, nil }, nil)
+	c.conn = conn
+	return c
 }
 
 // newPendingChannel makes a channel whose connection acquire returns. It is connected from the start, as Node's
@@ -78,19 +87,38 @@ func newPendingChannel(acquire func() (net.Conn, error), cancel func()) *channel
 	return c
 }
 
-// start begins reading and writing. It runs once.
+// start begins reading and writing on a goroutine of its own. It runs once.
 func (c *channel) start() {
-	c.mu.Lock()
-	if c.started || c.finished {
-		c.mu.Unlock()
-		return
+	if c.begin() {
+		//portlint:allow golifetime the channel's goroutine returns when its connection ends (finish closes it)
+		go c.run()
 	}
-	c.started = true
-	c.mu.Unlock()
-	//portlint:allow golifetime the channel's goroutine returns when its connection ends (finish closes it)
-	go c.run()
 }
 
+// begin reports whether run is to be called: once, and not on a finished channel. A caller that waits for the reader calls
+// run on a goroutine it owns (WorkerProcess, whose exit is told after what the reader took).
+func (c *channel) begin() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.started || c.finished {
+		return false
+	}
+	c.started = true
+	return true
+}
+
+// abandon gives up the wait for an other end that has not arrived: its process ended, so nothing comes to make the
+// connection, and the reader ends. A connection that was made is left to the reader: it ends with what the other end wrote.
+func (c *channel) abandon() {
+	c.mu.Lock()
+	waiting := c.conn == nil && !c.finished
+	c.mu.Unlock()
+	if waiting && c.cancel != nil {
+		c.cancel()
+	}
+}
+
+// run is the reader: it tells what arrives, in order, on its own goroutine, and finishes the channel at the connection's end.
 func (c *channel) run() {
 	conn, err := c.acquire()
 	if err != nil {
@@ -107,11 +135,15 @@ func (c *channel) run() {
 	c.mu.Unlock()
 	//portlint:allow golifetime the writer returns when the channel finishes
 	go c.write(conn)
-	c.read(conn)
+	if c.reads != nil {
+		c.read(c.reads(conn))
+	} else {
+		c.read(conn)
+	}
 	c.finish()
 }
 
-func (c *channel) read(conn net.Conn) {
+func (c *channel) read(conn io.Reader) {
 	var header [5]byte
 	for {
 		if _, err := io.ReadFull(conn, header[:]); err != nil {
@@ -162,12 +194,16 @@ func (c *channel) write(conn net.Conn) {
 				record.callback(err)
 			}
 			if err != nil {
-				for _, dropped := range batch[index+1:] {
+				c.mu.Lock()
+				c.unwritable = true
+				unsent := slices.Concat(batch[index+1:], c.queue)
+				c.queue = nil
+				c.mu.Unlock()
+				for _, dropped := range unsent {
 					if dropped.callback != nil {
 						dropped.callback(errChannelClosed)
 					}
 				}
-				c.finish()
 				return
 			}
 		}
@@ -222,7 +258,7 @@ func (c *channel) enqueue(kind byte, payload []byte, callback func(error)) bool 
 		return false
 	}
 	c.mu.Lock()
-	if c.finished {
+	if c.finished || c.unwritable {
 		c.mu.Unlock()
 		if callback != nil {
 			callback(errChannelClosed)

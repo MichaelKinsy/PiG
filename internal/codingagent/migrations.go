@@ -23,8 +23,9 @@ import (
 )
 
 const (
-	migrationGuideURL = "https://github.com/earendil-works/pi/blob/main/packages/coding-agent/CHANGELOG.md#extensions-migration"
-	extensionsDocURL  = "https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/extensions.md"
+	// MigrationGuideURL and ExtensionsDocURL are the two links the deprecated-extension-directory warning prints (migrations.ts MIGRATION_GUIDE_URL, EXTENSIONS_DOC_URL).
+	MigrationGuideURL = "https://github.com/earendil-works/pi/blob/main/packages/coding-agent/CHANGELOG.md#extensions-migration"
+	ExtensionsDocURL  = "https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/extensions.md"
 )
 
 // RunMigrations runs the startup migrations, including the persisted keybinding-name rewrite. Auth writes return errors; malformed or unwritable keybindings are left alone, as in upstream runMigrations.

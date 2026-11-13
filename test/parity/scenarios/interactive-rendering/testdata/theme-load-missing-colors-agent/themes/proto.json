@@ -1,0 +1,21 @@
+{
+  "$schema": "https://pi.dev/schemas/theme.schema.json",
+  "name": "proto",
+  "appearance": "dark",
+  "vars": {
+    "text": "okhsl(234 3% 89%)",
+    "muted": "okhsl(229 6% 67%)",
+    "violet": "okhsl(295 50% 67%)",
+    "blue": "okhsl(232 54% 67%)",
+    "green": "okhsl(159 59% 67%)",
+    "red": "okhsl(20 72% 67%)",
+    "yellow": "okhsl(83 88% 67%)",
+    "blueBg": "okhsl(233 41% 24%)"
+  },
+  "colors": {},
+  "export": {
+    "pageBg": "okhsl(262 14% 16%)",
+    "cardBg": "okhsl(264 13% 19%)",
+    "infoBg": "okhsl(53 51% 24%)"
+  }
+}

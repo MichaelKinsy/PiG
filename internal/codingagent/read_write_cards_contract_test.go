@@ -331,6 +331,43 @@ func readWriteCardProbes(t *testing.T) ([]toolCardProbe, []string) {
 	}
 	add("write partial result", "write", map[string]any{"path": "out.txt", "content": "x"}, failed("partial failure"), dark, w80, bothStates, nil)
 
+	// A path whose lowercased extension is constructor or __proto__: getLanguageFromPath reads a plain object and returns the member it inherits from Object.prototype,
+	// highlightCode throws for it, and the card draws the result fallback (read, expanded, no error) or the call fallback (write, unless a complete call's content is empty or
+	// no string). Every other member name of Object.prototype holds an upper-case letter and draws as a path without a language.
+	for _, path := range []string{"notes.constructor", "x.__proto__", "a/b/c.constructor", "Constructor.CONSTRUCTOR", "NOTES.__PROTO__", ".constructor", "constructor", "__proto__", "a.ts.constructor", "a.constructor.ts", "dir.constructor/file", "notes.toString", "notes.valueOf", "notes.hasOwnProperty", "notes.isPrototypeOf", "notes.propertyIsEnumerable", "notes.toLocaleString", "notes.__defineGetter__", "notes.__lookupSetter__", "notes.prototype"} {
+		add(fmt.Sprintf("read prototype-named %q", path), "read", map[string]any{"path": path}, ok("alpha line\n\tbeta tabbed\r\ngamma line\n\n"), dark, w80, bothStates, nil)
+		add(fmt.Sprintf("read prototype-named %q error", path), "read", map[string]any{"path": path}, failed("ENOENT: no such file"), dark, w80, bothStates, nil)
+		add(fmt.Sprintf("write prototype-named %q", path), "write", map[string]any{"path": path, "content": "const x = 1;\n\tlet y = 2;\n"}, nil, dark, w80, bothStates, nil)
+		add(fmt.Sprintf("write prototype-named %q result", path), "write", map[string]any{"path": path, "content": "const x = 1;\n\tlet y = 2;\n"}, ok("Successfully wrote to "+path), dark, w80, bothStates, nil)
+	}
+	for name, args := range ordered(map[string]map[string]any{
+		"file_path":      {"file_path": "out.constructor", "path": "out.ts", "content": "x"},
+		"path loses":     {"file_path": "out.ts", "path": "out.constructor", "content": "x"},
+		"empty content":  {"path": "out.constructor", "content": ""},
+		"no content":     {"path": "out.constructor"},
+		"number content": {"path": "out.constructor", "content": 5},
+		"null content":   {"path": "out.constructor", "content": nil},
+		"twelve lines":   {"path": "out.constructor", "content": rows(12, "w")},
+		"null path":      {"path": nil, "content": "x"},
+	}) {
+		add("write prototype-named "+name, "write", args, nil, both, bothWidths, bothStates, nil)
+		add("write prototype-named "+name+" failed", "write", args, failed("EACCES: permission denied"), dark, w80, bothStates, nil)
+		add("write prototype-named "+name+" streaming", "write", args, nil, dark, w80, bothStates, func(p *toolCardProbe) { p.Streaming = true })
+	}
+	for name, args := range ordered(map[string]map[string]any{
+		"highlighted":   {"path": "out.ts", "content": "const x = 1;\n"},
+		"plain":         {"path": "out.txt", "content": "x"},
+		"empty content": {"path": "out.txt", "content": ""},
+	}) {
+		add("write streaming control "+name, "write", args, nil, dark, w80, bothStates, func(p *toolCardProbe) { p.Streaming = true })
+	}
+	add("read prototype-named twelve rows", "read", map[string]any{"path": "notes.constructor"}, ok(rows(12, "r")), both, bothWidths, bothStates, nil)
+	add("read prototype-named truncated", "read", map[string]any{"path": "notes.constructor"}, trunc(nil), dark, w80, bothStates, nil)
+	add("read prototype-named file_path", "read", map[string]any{"file_path": "notes.__proto__", "path": "a.ts"}, ok("a = 1"), dark, w80, bothStates, nil)
+	add("read prototype-named range", "read", map[string]any{"path": "notes.constructor", "offset": 2, "limit": 3}, ok("a\nb"), dark, w80, bothStates, nil)
+	add("read prototype-named no content", "read", map[string]any{"path": "notes.constructor"}, &toolCardResult{Content: []map[string]any{}}, dark, w80, bothStates, nil)
+	add("read prototype-named two blocks", "read", map[string]any{"path": "notes.constructor"}, blocks("first", "second"), dark, w80, bothStates, nil)
+
 	// Path links: a terminal with hyperlink support links the path in the call header, and a path whose file URL cannot be named makes the call renderer
 	// throw, which draws the call fallback (read, write, edit and ls resolve it; grep and find only shorten it).
 	for _, path := range []string{"notes.txt", "/abs/dir/f.go", "~/f.txt", "a b#c.txt", "file:///tmp/x%20y", "file://localhost/tmp/x", "file://host/x", "file:///a%2Fb", "file:///a%00b", "日本語.txt", "SKILL.md", "AGENTS.md"} {

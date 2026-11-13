@@ -57,7 +57,7 @@ func TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream(t *testing.T) {
 		model := toolChoiceModel(t, "opencode-go", "kimi-k3", true)
 		cfg := &OpenAICompat{SupportsStore: new(false), SupportsDeveloperRole: new(false), SupportsReasoningEffort: new(true), SupportsUsageInStreaming: new(true), SupportsFinishReason: new(true), MaxTokensField: "max_completion_tokens", ThinkingFormat: "openai", SupportsStrictMode: new(true), SupportsOpenAIGrammarTools: new(false), SendSessionAffinityHeaders: new(false), SessionAffinityFormat: SessionAffinityOpenAI, SupportsLongCacheRetention: new(true)}
 		provider := &openAIProvider{cfg: OpenAIConfig{Model: model.ID, ProviderID: "opencode-go", Compat: cfg, ModelMetadata: model}}
-		messages, err := provider.convertMessagesWithCompat([]Message{AssistantMessage{API: APIOpenAICompletions, Provider: "opencode-go", Model: "kimi-k3", Content: []AssistantContentBlock{ThinkingContent{Thinking: "think", ThinkingSignature: "reasoning"}, ToolCall{ID: "call_1", Name: "read", Arguments: JsonObject{"path": "README.md"}}}, StopReason: StopReasonStop}}, nil, "system", toolAnchors{}, false)
+		messages, err := provider.convertMessagesWithCompat([]Message{AssistantMessage{API: APIOpenAICompletions, Provider: "opencode-go", Model: "kimi-k3", Content: []AssistantContentBlock{ThinkingContent{Thinking: "think", ThinkingSignature: "reasoning"}, ToolCall{ID: "call_1", Name: "read", Arguments: JsonObject{"path": "README.md"}}}, StopReason: StopReasonStop}}, nil, "system", toolAnchors{}, false, 0)
 		if err != nil || len(messages) == 0 {
 			t.Fatalf("messages=%#v err=%v", messages, err)
 		}

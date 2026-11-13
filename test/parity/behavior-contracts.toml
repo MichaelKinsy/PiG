@@ -2348,6 +2348,8 @@ evidence = [
   "test/parity/scenarios/custom-editor-precedence.toml",
   "internal/codingagent/custom_editor_keybindings_test.go#TestPR7680AutocompletePageKeysWinOverTheImagePasteShortcut",
   "internal/codingagent/select_page_keys_test.go#TestCustomEditorGivesSelectionPageKeysToAnOpenAutocomplete",
+  "internal/codingagent/keybindings_inventory_test.go#TestAppKeybindingDefinitionsMatchUpstreamInventory",
+  "internal/codingagent/keybindings_platform_test.go#TestKeybindingDefinitionsApplyPlatformDefaults",
 ]
 
 [contract.upstream]
@@ -5204,6 +5206,32 @@ path = "packages/coding-agent/src/modes/interactive/components/radius-login-sele
 start = "\toverride render(width: number): string[] {\n\t\tconst lines = super.render(width);"
 end = "\t\treturn lines;\n\t}\n\n\tprivate stopAnimation"
 sha256 = "4504d04e2a6dda9f9610553a26af8185358c58be6de5561206dcc5e735d5c6b9"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/oauth-selector/render-animated-row"
+upstream_id = "render:packages/coding-agent/src/modes/interactive/components/oauth-selector.ts#OAuthSelectorComponent.render"
+family = "selectors"
+kind = "render-layout"
+claim = "render rebuilds the list before delegating to the container exactly while the selector has a TUI to animate in and the selected row is a preferred partner's (Radius, OpenRouter): that row is the accent arrow and the brand style at the time of the frame, so successive frames differ; with any other row selected, or without a TUI, a frame is the list the last key built (selected row in the accent style, the partner rows in the text style with their mark); dispose ends the per-frame render requests"
+status = "ported"
+pig_targets = [
+  "tui/oauth_selector.go#Render",
+  "tui/oauth_selector.go#selectedBrandStyle",
+]
+evidence = [
+  "tui/oauth_selector_render_contract_test.go#TestOAuthSelectorRenderRebuildsTheSelectedPartnerRowForEachFrame",
+  "tui/oauth_selector_partner_test.go#TestOAuthSelectorShowsTheBrandStyleOnlyOnTheSelectedPartnerRow",
+  "tui/oauth_selector_partner_test.go#TestOAuthSelectorKeepsTheAccentStyleWithoutATUI",
+  "tui/oauth_selector_partner_test.go#TestOAuthSelectorAnimatesAPartnerRowUntilDisposed",
+  "test/parity/scenarios/oauth/33-login-partner-rows-release-brand-style.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/oauth-selector.ts"
+start = "\toverride render(width: number): string[] {\n\t\t// The list is built from styled text"
+end = "\t/** Stops the brand animation. */"
+sha256 = "2ce3030c01c53e36405fc761bcb8dff18c611ff82c9663105c04a8360856bc1a"
 keybindings = []
 
 [[contract]]

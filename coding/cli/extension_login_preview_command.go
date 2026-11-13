@@ -110,6 +110,8 @@ func runExtensionLoginPreview(args []string) int {
 
 	ctx, cancel := context.WithTimeout(context.Background(), extensionLoginPreviewTimeout)
 	defer cancel()
+	// Main enabled the views before it ran the command; a caller that runs the preview without Main has them from here.
+	enableViews()
 	host := subprocess.NewHostWithConfigRoot(filepath.Dir(abs), codingagent.ConfigRoot())
 	defer host.Shutdown("login preview complete")
 	ui := newLoginPreviewUI()

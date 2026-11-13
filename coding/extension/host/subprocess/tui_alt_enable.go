@@ -18,8 +18,8 @@ type tuiAltServer struct {
 
 var tuiAltEnabled atomic.Pointer[tuiAltServer]
 
-// EnableTuiAltScreens lets an extension construct a TuiAltScreen (pi-tui's alternate-screen host). The `pig` command calls it where it creates the
-// extension host, so every mode serves TuiAltScreens. An embedder that never draws one leaves it out and does not link the renderer; one that serves
+// EnableTuiAltScreens lets an extension construct a TuiAltScreen (pi-tui's alternate-screen host). The `pig` command calls it before it runs a
+// command, so every mode serves TuiAltScreens. An embedder that never draws one leaves it out and does not link the renderer; one that serves
 // them to its own terminal calls it once before the first extension loads. It is safe to call more than once and from any goroutine.
 func EnableTuiAltScreens() {
 	tuiAltEnabled.Store(&tuiAltServer{

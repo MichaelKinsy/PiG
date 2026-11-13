@@ -1,0 +1,87 @@
+# Behavior family: providers-faux-streaming
+# Surface: a provider error that reads "Connection closed." is retried.
+#
+# Upstream evidence (Pi 9b88b94e2, #12093 and #12064; packages/ai/src/utils/retry.ts): RETRYABLE_PROVIDER_ERROR_PATTERN gained
+# "connection.?closed", the text a gateway relays when it drops a stream midway
+# ({"type":"error","error":{"type":"api_error","message":"Connection closed."}}). The oracle is the pinned Pi 1.5.2 plus the post-release
+# backports (automation/gen/pi-post-release-backports.mjs), 9b88b94e2 among them.
+#
+# Pi probe, the oracle alone (2026-11-13; check-oracle: backports 569928a7cdd3, pi bundle dffb7fef14a9):
+#   PI_CODING_AGENT_DIR=<copy of testdata/retry-pi-agent> PI_SKIP_VERSION_CHECK=1 pi --no-extensions -e test-faux-provider.ts --mode json \
+#     --model test-faux/faux-1 --system-prompt "JSON event probe." --no-context-files --no-skills --session-dir <tmp> \
+#     "Trigger: connection closed provider error"
+#   exit 0, empty stderr. The first turn ends with stopReason "error", errorMessage "Connection closed."; then
+#     {"type":"auto_retry_start","attempt":1,"maxAttempts":1,"delayMs":1,"errorMessage":"Connection closed."}
+#     {"type":"entry_appended","entry":{"type":"context_edit",...,"replacement":null}}
+#     agent_start, turn_start, the assistant message "retry-ok" with its text_start/text_delta/text_end updates
+#     {"type":"auto_retry_end","success":true,"attempt":1}
+#     turn_end, agent_end, {"type":"agent_settled","aborted":false}
+#   The same prompt with -p prints "retry-ok".
+#
+# The faux provider (test-faux-provider.ts and ai/test_faux.go, twins) fails the first request of this prompt with that message and answers
+# the retry with "retry-ok". testdata/retry-*-agent/settings.json enables one retry with a 1 ms delay, as for 08-print-faux-auto-retry, which
+# pins another wording ("please retry your request").
+#
+# JSON mode, not print mode: the two auto_retry records are the classification's own output; print mode shows only the final text.
+# In PiG this path reads the pattern list of ai/assistant_retry.go (internal/codingagent/auto_recovery.go IsRetryableError ->
+# ai.IsRetryableAssistantError). The copies in the extension SDKs (Go, Rust, Python, Lisp), in durable/core/turn/patterns.go and in the
+# vendored pi-ai retry.js are not reached by it.
+
+name = "34-json-faux-connection-closed-retry"
+description = "--mode json retries a provider error reading \"Connection closed.\" and emits Pi's auto_retry records"
+covers = [
+  "packages/ai/src/utils/retry.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[cli]
+args = ["--mode", "json", "--model", "test-faux/faux-1", "--system-prompt", "JSON event probe.", "--no-context-files", "--no-skills", "Trigger: connection closed provider error"]
+timeout_seconds = 30
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/retry-pig-agent"]
+pig_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi = ["PI_CODING_AGENT_DIR=testdata/retry-pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+runs = 3
+output_equal = true
+stderr_equal = true
+both_contain = [
+  '{"type":"auto_retry_start","attempt":1,"maxAttempts":1,"delayMs":1,"errorMessage":"Connection closed."}',
+  '"delta":"retry-ok"',
+  '{"type":"auto_retry_end","success":true,"attempt":1}',
+  '{"type":"agent_settled","aborted":false}',
+]
+both_not_contain = ["test-faux: unhandled request", "panic:"]
+
+# normalize-rationale: the rules below alias only values that two independent processes cannot share (the isolated cwd, wall clocks, measured
+# durations, generated ids). Every record, key, key order, error text and retry field stays compared byte for byte.
+[[assert.normalize_replace]]
+pattern = 'parity-snap-cwd-[0-9]{10}'
+with = 'parity-snap-cwd-0000000000'
+reason = "Alias the isolated working-directory identity while preserving path suffixes and content."
+[[assert.normalize_replace]]
+pattern = '"timestamp":[0-9]+'
+with = '"timestamp":0'
+reason = "Independent numeric wall clocks vary; retain field placement, type and every other byte."
+[[assert.normalize_replace]]
+pattern = '"durationMs":[0-9]+'
+with = '"durationMs":0'
+reason = "Pi times each response with a monotonic clock, so the whole-millisecond value differs between runs; retain the field's presence, placement and number spelling."
+[[assert.normalize_replace]]
+pattern = '"timestamp":"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z"'
+with = '"timestamp":"2000-01-01T00:00:00.000Z"'
+reason = "Independent ISO wall clocks vary; preserve the string type and exact timestamp syntax."
+[[assert.normalize_replace]]
+pattern = '"id":"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"'
+with = '"id":"SESSION"'
+reason = "The header UUID is independently generated; no message content or property order is replaced."
+[[assert.normalize_replace]]
+pattern = '"(id|parentId|targetId)":"[0-9a-f]{8}"'
+with = '"${1}":"ENTRY"'
+reason = "The context_edit entry the retry appends carries generated 8-hex entry ids (its own, its parent, its target); the keys, their order and the id shape stay."

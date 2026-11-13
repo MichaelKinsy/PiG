@@ -31,6 +31,8 @@ Package scope, one line each:
 - `packages/evals` is the evaluation tooling and `packages/telemetry` is the standalone telemetry library.
 - `packages/schema` is the eval-free JSON Schema validator (drafts 2020-12 and 7, compiled to closures); the Go package is `schema` (with `schema/formats`).
 
+Outside the packages: at Pi 3e23dd9f53be `apps/p3` holds design documents only (39 paths, all under `apps/p3/docs/`); they are designed-out as design documents. `make port-map-drift` and `make upstream-mirror` fail when the mirror holds a path under `apps/p3/` outside `apps/p3/docs/`; such a path needs a port line of its own. `apps/p2` is ported on its own line; the map has no rows for it. The same two targets fail when the mirror holds a directory under `apps/` that this paragraph does not name. (Owner decision, 2026-11-13T14:59:07Z: "proceed with recommendation".)
+
 The drift gate also rejects explicit production comments claiming to port an
 upstream file while its row remains not-started, deferred, or n/a. Such conflicts
 require reviewed mappings; code presence alone never automatically earns ✅.
@@ -775,7 +777,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/data/index.ts` | `(re-export barrel)` | n/a |
 | `packages/chord/src/data/internal.ts` | `(re-export barrel)` | n/a |
 | `packages/chord/src/data/params.ts` | `chord/next/data/params.go` | ✅ |
-| `packages/chord/src/data/principal.ts` | `chord/next/data/principal.go` | ✅ |
+| `packages/chord/src/data/principal.ts` | `chord/next/data/principal.go` Shared holds at 47e9d74f9 (Pi tests of that commit): chord/next/data/principal_test.go | ✅ |
 | `packages/chord/src/data/validator.ts` | `chord/next/data/validator.go` | ✅ |
 | `packages/chord/src/index.ts` | `(aggregate barrel of every layer; Go imports the layer packages)` | n/a |
 | `packages/chord/src/registries/contribution.ts` | `chord/next/registries/contribution.go` | ✅ |
@@ -877,7 +879,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/host/internal.ts` | `(barrel for jobs/remote: one package, identifiers are unexported where Pi keeps them out of index.ts (DESIGN-go-layout.md sections 1-2))` | n/a |
 | `packages/chord/src/host/host.ts` | `chord/next/host/host_host.go, chord/next/host/host_error.go` | ✅ |
 | `packages/chord/src/host/attempt.ts` | `chord/next/host/host_attempt.go` | ✅ |
-| `packages/chord/src/host/object.ts` | `chord/next/host/host_object.go` | ✅ |
+| `packages/chord/src/host/object.ts` | `chord/next/host/host_object.go` Shared holds at 47e9d74f9 (Pi tests of that commit): chord/next/host/host_object_test.go | ✅ |
 | `packages/chord/src/host/reference.ts` | `chord/next/host/host_reference.go` | ✅ |
 | `packages/chord/src/jobs/definition.ts` | `chord/next/host/jobs_definition.go` | ✅ |
 | `packages/chord/src/jobs/persisted.ts` | `chord/next/host/jobs_persisted.go` | ✅ |
@@ -891,12 +893,12 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/remote/hold.ts` | `chord/next/host/remote_hold.go` Events at 8d30e6306 (Pi tests of that commit): chord/next/host/remote_provider_events_test.go, chord/next/host/remote_relay_events_test.go | ✅ |
 | `packages/chord/src/remote/remote-object.ts` | `chord/next/host/remote_remote_object.go` Events at 8d30e6306 (Pi tests of that commit): chord/next/host/remote_consumer_events_test.go | ✅ |
 | `packages/chord/src/remote/host-link.ts` | `chord/next/host/remote_host_link.go` Events at 8d30e6306 (Pi tests of that commit): chord/next/host/remote_host_link_trust_test.go | ✅ |
-| `packages/chord/src/remote/path.ts` | `chord/next/host/remote_path.go` | ✅ |
-| `packages/chord/src/remote/calls.ts` | `chord/next/host/remote_calls.go` Events at 8d30e6306 (Pi tests of that commit): chord/next/host/remote_calls_test.go | ✅ |
+| `packages/chord/src/remote/path.ts` | `chord/next/host/remote_path.go` Shared holds at 47e9d74f9 (Pi tests of that commit): chord/next/host/remote_path_test.go | ✅ |
+| `packages/chord/src/remote/calls.ts` | `chord/next/host/remote_calls.go` Events at 8d30e6306 (Pi tests of that commit): chord/next/host/remote_calls_test.go Shared holds at 47e9d74f9 (Pi tests of that commit): chord/next/host/remote_calls_test.go | ✅ |
 | `packages/chord/src/remote/provider.ts` | `chord/next/host/remote_provider.go` Events at 8d30e6306 (Pi tests of that commit): chord/next/host/remote_provider_events_test.go, chord/next/host/remote_provider_test.go | ✅ |
 | `packages/chord/src/remote/consumer.ts` | `chord/next/host/remote_consumer.go` Events at 8d30e6306 (Pi tests of that commit): chord/next/host/remote_consumer_events_test.go, chord/next/host/remote_consumer_test.go | ✅ |
 | `packages/chord/src/remote/relay.ts` | `chord/next/host/remote_relay.go` Events at 8d30e6306 (Pi tests of that commit): chord/next/host/remote_relay_events_test.go | ✅ |
-| `packages/chord/src/remote/replica.ts` | `chord/next/host/remote_replica.go` | ✅ |
+| `packages/chord/src/remote/replica.ts` | `chord/next/host/remote_replica.go` Shared holds at 47e9d74f9 (Pi tests of that commit): chord/next/host/remote_replica_test.go | ✅ |
 | `packages/chord/src/remote/internal.ts` | `(barrel for Chord's own layers: Go imports the package; what it exported (Path, Upstream, HostLink, HoldRequest, actingFor, ...) is unexported in Go (DESIGN-go-layout.md section 2))` | n/a |
 | `packages/chord/src/jobs/job.ts` | `chord/next/host/jobs_job.go` | ✅ |
 | `packages/chord/test/examples/01-objects.ts` | `chord/next/host/host_example_01_test.go`, `chord/next/host/host_host.go`, `chord/next/host/host_object.go`, `chord/next/data/args.go` | ✅ |
@@ -954,7 +956,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/node/plugins/watcher.ts` | `chord/nextnode/plugins/plugins_watcher.go (base marks: recordBase/recordOwn, locations and ancestors watched alone, comparisons by at most 8 goroutines; an entry on the way to base code is renewed on a Create, Remove or Rename event only when its identity (inode and birth time: plugins_watcher_identity*.go, as Pi's `identityOf`) is not the one it had when watched; a watch fsnotify dropped with a move is put back without a comparison; the start reads entry types from ReadDir and hashes on at most 8 goroutines; D540 records the inode-only identity of other Unixes)` | ✅ |
 | `packages/chord/src/host/adapted.ts` | `chord/next/host/host_adapted.go` | ✅ |
 | `packages/chord/src/host/reference-keys.ts` | `chord/next/host/host_reference_keys.go` | ✅ |
-| `packages/chord/src/host/reference-source.ts` | `chord/next/host/host_reference_source.go` | ✅ |
+| `packages/chord/src/host/reference-source.ts` | `chord/next/host/host_reference_source.go` Shared holds at 47e9d74f9 (Pi tests of that commit): chord/next/host/host_reference_source_test.go | ✅ |
 | `packages/chord/src/host/staging.ts` | `chord/next/host/host_staging.go, chord/next/host/host_host.go` | ✅ |
 | `packages/chord/src/node/workers/control.ts` | `chord/nextnode/workers/workers_control.go` | ✅ |
 | `packages/chord/src/node/workers/index.ts` | `(re-export barrel; the exported set is the package's (CrossedError, ProcessLock, WorkerMain, WorkerStart, WorkerPlugins, WorkerResult, WorkerMainOptions, CreateWorkers, WorkerState, Workers, WorkersError, WorkersOptions))` | n/a |

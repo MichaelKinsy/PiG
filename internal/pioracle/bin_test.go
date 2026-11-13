@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // fakeOracle lays out <dir>/oracle/node_modules/.bin/pi printing version, with an optional build stamp in <dir>/oracle.
@@ -84,9 +85,7 @@ func bundledOracle(t *testing.T) (bin, digest string) {
 	if err := os.MkdirAll(filepath.Dir(bin), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Symlink(filepath.Join(bundle, "cli.js"), bin); err != nil {
-		t.Fatal(err)
-	}
+	testenv.Symlink(t, filepath.Join(bundle, "cli.js"), bin)
 	// oracle.py's tree_digest, written out: one `<sha256 of the file>  <path>` line per file, in path order.
 	lines := fmt.Sprintf("%x  chunks/chunk.js\n%x  cli.js\n", sha256.Sum256([]byte(chunk)), sha256.Sum256([]byte(cli)))
 	return bin, fmt.Sprintf("%x", sha256.Sum256([]byte(lines)))

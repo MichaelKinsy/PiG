@@ -196,9 +196,9 @@ func (t *LsTool) Execute(ctx context.Context, _ string, rawParams json.RawMessag
 	result := agent.AgentToolResult{}
 	if len(notices) > 0 {
 		output += "\n\n[" + strings.Join(notices, ". ") + "]"
-		shareTruncatedContent(details.Truncation, output)
 		result.Details = details
 	}
+	output = sharedOutput(details.Truncation, output)
 	result.Content = []ai.ToolResultMessageContent{ai.TextContent{Text: output}}
 	return result, nil
 }

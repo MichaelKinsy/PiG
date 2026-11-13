@@ -1,0 +1,34 @@
+# Behavior family: providers-faux-streaming
+# Surface: the member order of the Anthropic Messages request body in print mode.
+#
+# JSON.stringify writes the members of an object in the order Pi's code created
+# them: a text block is { type, text } and takes its cache_control afterwards
+# (anthropic-messages.ts convertMessages), and an image source is
+# { type, media_type, data } (convertImageBlock). Both CLIs run in print mode
+# against a local Anthropic Messages endpoint, once with a text prompt and once
+# with an attached image, and the harness prints the member names of each
+# request body in wire order. Strings other than type and role are elided: the
+# system prompt and the paths differ per run.
+
+name = "31-anthropic-print-request-member-order"
+description = "Print mode sends the Anthropic Messages body with the members of each object in Pi's order."
+covers = ["packages/ai/src/api/anthropic-messages.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/anthropic-print-request-order.mjs", "pig"]
+pi_args = ["node", "./test/parity/testdata/anthropic-print-request-order.mjs", "pi"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 90
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["{type:text,text:s,cache_control:{type:ephemeral}}", "{type:image,source:{type:base64,media_type:s,data:s},cache_control:{type:ephemeral}}"]
+runs = 3

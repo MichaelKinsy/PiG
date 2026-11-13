@@ -45,6 +45,7 @@ func (m *InteractiveMode) persistDefaultModel(model *ai.Model) error {
 	provider, _, _ := strings.Cut(spec, "/")
 	if sm := m.opts.SettingsManager; sm != nil {
 		if err := sm.SetDefaultModelAndProvider(provider, model.ID); err != nil {
+			// pig divergence (D633): a failed save of the default model is returned to the selector, which shows it; Pi's setter cannot throw.
 			return err
 		}
 	}

@@ -6,6 +6,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -189,29 +191,181 @@ func TestLoginMaskSettingReachesStandardDialog(t *testing.T) {
 	}
 }
 
-// Pi's settings-selector.ts lists 33 rows on a terminal without inline images; PiG omits "share-destination" (D64) and adds "mask-secret-input" (D80), so the counts coincide and the roster differs by exactly those two ids.
+const piSettingsSelectorSource = "../../.upstream/current/packages/coding-agent/src/modes/interactive/components/settings-selector.ts"
+
+var (
+	piSettingsArrayRow  = regexp.MustCompile(`(?m)^\t\t\t\tid: "([^"]+)",\n\t\t\t\tlabel: "([^"]+)",$`)
+	piSettingsFindIndex = regexp.MustCompile(`^const (\w+) = items\.findIndex\(\(item\) => item\.id === "([^"]+)"\);$`)
+	piSettingsSplice    = regexp.MustCompile(`^items\.splice\((.+), 0, \{$`)
+	piSettingsTernary   = regexp.MustCompile(`^supportsImages \? (\d+) : (\d+)$`)
+	piSettingsAfter     = regexp.MustCompile(`^(\w+) \+ 1$`)
+	piSettingsID        = regexp.MustCompile(`^id: "([^"]+)",$`)
+	piSettingsLabel     = regexp.MustCompile(`^label: "([^"]+)",$`)
+	piSettingsItemsUse  = regexp.MustCompile(`\bitems\s*[.\[=]`)
+)
+
+// piSettingsRoster replays the item list of Pi's SettingsSelectorComponent constructor from its source: the rows of the `items` array literal, then every `items.splice` in statement order, with the `if (supportsImages)` block taken only when supportsImages is set. Each row is "id (label)". A statement on `items` or a condition it does not know fails the test, so a new way of adding or gating a row cannot pass unseen.
+func piSettingsRoster(t *testing.T, source string, supportsImages bool) []string {
+	t.Helper()
+	_, body, ok := strings.Cut(source, "\t\tconst supportsImages = getCapabilities().images;\n")
+	if !ok {
+		t.Fatal("settings-selector.ts: no supportsImages declaration")
+	}
+	if body, _, ok = strings.Cut(body, "\t\tthis.settingsList = new SettingsList("); !ok {
+		t.Fatal("settings-selector.ts: no SettingsList construction")
+	}
+	_, body, ok = strings.Cut(body, "\t\tconst items: SettingItem[] = [\n")
+	if !ok {
+		t.Fatal("settings-selector.ts: no items array")
+	}
+	array, rest, ok := strings.Cut(body, "\n\t\t];\n")
+	if !ok {
+		t.Fatal("settings-selector.ts: items array is not closed")
+	}
+	var roster []string
+	for _, m := range piSettingsArrayRow.FindAllStringSubmatch(array, -1) {
+		roster = append(roster, m[1]+" ("+m[2]+")")
+	}
+	if entries := strings.Count(array, "\n\t\t\t\tid: "); len(roster) == 0 || len(roster) != entries {
+		t.Fatalf("settings-selector.ts: read %d of %d items array rows", len(roster), entries)
+	}
+	indexOf := func(id string) int {
+		return slices.IndexFunc(roster, func(row string) bool { return strings.HasPrefix(row, id+" (") })
+	}
+	indexes := map[string]int{}
+	inImages := false
+	lines := strings.Split(rest, "\n")
+	for i := 0; i < len(lines); i++ { // the body skips the two lines of a spliced row
+		line := strings.TrimSpace(lines[i])
+		if strings.HasPrefix(line, "//") {
+			continue
+		}
+		if lines[i] == "\t\tif (supportsImages) {" {
+			inImages = true
+			continue
+		}
+		if inImages && lines[i] == "\t\t}" {
+			inImages = false
+			continue
+		}
+		if m := piSettingsFindIndex.FindStringSubmatch(line); m != nil {
+			indexes[m[1]] = indexOf(m[2])
+			continue
+		}
+		m := piSettingsSplice.FindStringSubmatch(line)
+		if m == nil {
+			if piSettingsItemsUse.MatchString(line) || strings.HasPrefix(line, "if ") || strings.HasPrefix(line, "} else") {
+				t.Fatalf("settings-selector.ts: statement not understood by the roster reader: %s", line)
+			}
+			continue
+		}
+		at := 0
+		if n, err := strconv.Atoi(m[1]); err == nil {
+			at = n
+		} else if c := piSettingsTernary.FindStringSubmatch(m[1]); c != nil {
+			at, _ = strconv.Atoi(c[2])
+			if supportsImages {
+				at, _ = strconv.Atoi(c[1])
+			}
+		} else if a := piSettingsAfter.FindStringSubmatch(m[1]); a != nil {
+			index, known := indexes[a[1]]
+			if !known {
+				t.Fatalf("settings-selector.ts: splice at unknown index %s", a[1])
+			}
+			at = index + 1
+		} else {
+			t.Fatalf("settings-selector.ts: splice position not understood: %s", m[1])
+		}
+		if i+2 >= len(lines) {
+			t.Fatalf("settings-selector.ts: splice without a row: %s", line)
+		}
+		id := piSettingsID.FindStringSubmatch(strings.TrimSpace(lines[i+1]))
+		label := piSettingsLabel.FindStringSubmatch(strings.TrimSpace(lines[i+2]))
+		if id == nil || label == nil {
+			t.Fatalf("settings-selector.ts: splice without a literal id and label: %s", line)
+		}
+		i += 2
+		if inImages && !supportsImages {
+			continue
+		}
+		roster = slices.Insert(roster, min(at, len(roster)), id[1]+" ("+label[1]+")")
+	}
+	return roster
+}
+
+// pigSettingsRosterFromPi applies the two recorded differences to Pi's roster: D64 omits "share-destination" and D80 adds "mask-secret-input" after "tree-filter-mode". It reports whether both anchors were present in Pi's roster.
+func pigSettingsRosterFromPi(pi []string) (want []string, anchored bool) {
+	omitted, added := false, false
+	for _, row := range pi {
+		if strings.HasPrefix(row, "share-destination (") {
+			omitted = true // D64
+			continue
+		}
+		want = append(want, row)
+		if strings.HasPrefix(row, "tree-filter-mode (") {
+			want = append(want, "mask-secret-input (Mask secret input)") // D80
+			added = true
+		}
+	}
+	return want, omitted && added
+}
+
+// The denominator is the pinned Pi source, not a typed list: on a terminal with and without inline images PiG's /settings rows are Pi's rows, ids and labels in order, minus "share-destination" (D64) plus "mask-secret-input" (D80), so both list counters read the same total. A pin that adds, removes, renames or re-gates a Pi row turns this red.
 func TestSettingsRosterDiffersFromPiOnlyByD64AndD80(t *testing.T) {
-	piRoster := []string{"autocompact", "auto-resize-images", "block-images", "skill-commands", "show-hardware-cursor", "editor-padding", "output-padding", "autocomplete-max-visible", "clear-on-shrink", "terminal-progress", "steering-mode", "follow-up-mode", "transport", "share-destination", "http-idle-timeout", "cache-warming-mode", "hide-thinking", "mermaid-rendering", "cache-miss-notices", "collapse-changelog", "quiet-startup", "install-telemetry", "default-project-trust", "double-escape-action", "tree-filter-mode", "warnings", "model-thinking", "tui-mode", "fullscreen-exit-output", "fullscreen-scrollbar", "fullscreen-copy-on-select", "fullscreen-wheel-scroll-lines", "theme"}
-	var got []string
-	for _, item := range NewSettingsSelectorComponent(SettingsConfig{}, SettingsCallbacks{}).GetSettingsList().Items() {
-		if item.ID != "show-images" && item.ID != "image-width-cells" { // the two rows only an image-capable terminal adds
-			got = append(got, item.ID)
+	raw, err := os.ReadFile(piSettingsSelectorSource)
+	if err != nil {
+		t.Fatal(err)
+	}
+	prev := tuiCapabilitiesForTest()
+	defer prev.restore()
+	for _, images := range []bool{false, true} {
+		pi := piSettingsRoster(t, string(raw), images)
+		want, anchored := pigSettingsRosterFromPi(pi)
+		if !anchored {
+			t.Fatalf("images=%v: Pi roster lacks share-destination or tree-filter-mode: %v", images, pi)
+		}
+		tuiSetCapsForTest(images)
+		var got []string
+		for _, item := range NewSettingsSelectorComponent(SettingsConfig{}, SettingsCallbacks{}).GetSettingsList().Items() {
+			got = append(got, item.ID+" ("+item.Label+")")
+		}
+		if !slices.Equal(got, want) {
+			t.Fatalf("images=%v roster\n got  %q\n want %q", images, got, want)
+		}
+		if len(got) != len(pi) {
+			t.Fatalf("images=%v counts: pig %d, pi %d; D64 and D80 must cancel", images, len(got), len(pi))
 		}
 	}
-	var want []string
-	for _, id := range piRoster {
-		if id == "share-destination" {
-			continue // D64
-		}
-		want = append(want, id)
-		if id == "tree-filter-mode" {
-			want = append(want, "mask-secret-input") // D80
-		}
+}
+
+// The roster reader must see a row however Pi adds it: in the array, by a splice after a named row, or behind the image gate.
+func TestPiSettingsRosterReadsEveryFormOfRow(t *testing.T) {
+	raw, err := os.ReadFile(piSettingsSelectorSource)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if strings.Join(got, ",") != strings.Join(want, ",") {
-		t.Fatalf("roster = %v\nwant     %v", got, want)
+	source := string(raw)
+	base := piSettingsRoster(t, source, true)
+	mutate := func(old, replacement string) string {
+		t.Helper()
+		if strings.Count(source, old) != 1 {
+			t.Fatalf("settings-selector.ts: %q occurs %d times", old, strings.Count(source, old))
+		}
+		return strings.Replace(source, old, replacement, 1)
 	}
-	if len(piRoster) != 33 || len(got) != 33 {
-		t.Fatalf("counts: pi %d, pig %d, want 33 each", len(piRoster), len(got))
+	arrayRow := "\t\t\t{\n\t\t\t\tid: \"transport\",\n"
+	inArray := piSettingsRoster(t, mutate(arrayRow, "\t\t\t{\n\t\t\t\tid: \"new-array-row\",\n\t\t\t\tlabel: \"New array row\",\n\t\t\t},\n"+arrayRow), true)
+	transport := slices.Index(base, "transport (Transport)")
+	if transport < 0 || !slices.Equal(inArray, slices.Insert(slices.Clone(base), transport, "new-array-row (New array row)")) {
+		t.Fatalf("array row not read:\n %q", inArray)
+	}
+	construction := "\t\t// Add borders\n"
+	spliced := piSettingsRoster(t, mutate(construction, "\t\tconst themeIndex = items.findIndex((item) => item.id === \"theme\");\n\t\titems.splice(themeIndex + 1, 0, {\n\t\t\tid: \"new-spliced-row\",\n\t\t\tlabel: \"New spliced row\",\n\t\t});\n"+construction), true)
+	if !slices.Equal(spliced, append(slices.Clone(base), "new-spliced-row (New spliced row)")) {
+		t.Fatalf("spliced row not read:\n %q", spliced)
+	}
+	withImages, withoutImages := len(base), len(piSettingsRoster(t, source, false))
+	if withImages-withoutImages != 2 || !slices.Contains(base, "show-images (Show images)") || !slices.Contains(base, "image-width-cells (Image width)") {
+		t.Fatalf("image gate: %d rows with images, %d without", withImages, withoutImages)
 	}
 }

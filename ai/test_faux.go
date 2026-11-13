@@ -174,13 +174,22 @@ func (p *TestFauxProvider) Stream(ctx context.Context, transcript TranscriptCont
 			builder.done(StopReasonStop, nil, "")
 			return
 		}
-		if strings.Contains(lastText, "Trigger: retryable provider error") {
-			if _, loaded := testFauxRetryState.LoadOrStore("retryable-provider-error", true); !loaded {
-				// test/parity/testdata/test-faux-provider.ts:531-535 sets the error state on its output, then pushes `start` and `error`.
+		// A retryable trigger fails its first request with the provider's wording and answers the retry. "Connection closed." is the gateway
+		// drop Pi 9b88b94e2 (#12093) added to the retryable wordings.
+		retryableError, retryableKey := "", ""
+		switch {
+		case strings.Contains(lastText, "Trigger: retryable provider error"):
+			retryableError, retryableKey = "please retry your request", "retryable-provider-error"
+		case strings.Contains(lastText, "Trigger: connection closed provider error"):
+			retryableError, retryableKey = "Connection closed.", "connection-closed-provider-error"
+		}
+		if retryableKey != "" {
+			if _, loaded := testFauxRetryState.LoadOrStore(retryableKey, true); !loaded {
+				// test/parity/testdata/test-faux-provider.ts sets the error state on its output, then pushes `start` and `error`.
 				builder.partial.StopReason = StopReasonError
-				builder.partial.ErrorMessage = "please retry your request"
+				builder.partial.ErrorMessage = retryableError
 				builder.start()
-				builder.fail(StopReasonError, errors.New("please retry your request"))
+				builder.fail(StopReasonError, errors.New(retryableError))
 				return
 			}
 			builder.textDelta("retry-ok")
@@ -574,6 +583,11 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 		return "tool", "", []testFauxToolCall{{Name: "edit", ArgsJSON: `{"newText":"REPLACED","oldText":"REPLACE_ME","path":"parity-edit-target.txt"}`}}
 	}
 
+	// A short line, then one line that alone overflows the bash tool's rolling tail and ends the output with its newline (Pi 935f0ac0ccfc, #12092).
+	if strings.Contains(lastText, "Run: bash long last line") {
+		return "tool", "", []testFauxToolCall{{Name: "bash", ArgsJSON: `{"command":"echo short; head -c 219000 /dev/zero | tr '\\0' x; echo END"}`}}
+	}
+
 	// Long-output bash tool parity (exercises visual-truncate.ts via bash.ts collapse hint).
 	if strings.Contains(lastText, "Run: bash long output") {
 		return "tool", "", []testFauxToolCall{{Name: "bash", ArgsJSON: `{"command":"seq 1 30"}`}}
@@ -703,6 +717,10 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 		}
 		if strings.Contains(currentUserText, "Run: tui live tool") {
 			return "text", "LIVE-TOOL-DONE", nil
+		}
+		if strings.Contains(currentUserText, "Run: bash long last line") {
+			// The tool's result is the answer, so the kept end of the line and the notice under it are what the scenario compares.
+			return "text", lastText, nil
 		}
 		if strings.Contains(currentUserText, "Run: bash long output") {
 			return "text", "ran", nil

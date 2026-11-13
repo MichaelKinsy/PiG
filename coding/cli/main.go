@@ -701,6 +701,8 @@ func Main(args []string, options *MainOptions) {
 	tui.SetChalkModifiers(chalkStdoutColor())
 	// The pig command serves the test-only test-faux provider under PIG_TEST_FAUX=1; an embedder that leaves the call out does not link it.
 	coding.EnableTestFauxProvider()
+	// Every command of pig may load an extension, whose views the host then builds: a session's host, a renderer of a host without a UI bridge, preview-login, validation.
+	enableViews()
 	// upstream: packages/coding-agent/src/main.ts:574 resetTimings(); PI_TIMING=1 prints the report before the mode runs.
 	timings.ResetTimings()
 	// main.ts:575: the built-in extensions, then the program's own.
@@ -723,6 +725,7 @@ func Main(args []string, options *MainOptions) {
 	defer nativeplatform.ShutdownClipboard()
 	defer exitOnRenderOverflow()
 	defer exitOnConfigRootFailure()
+	defer codingagent.FlushSettingsWrites()
 
 	termuxenv.Configure()
 	// pig additive (D95): record the executable before anything can replace it, so an error can report that this process runs a replaced install.
@@ -1045,7 +1048,7 @@ func Main(args []string, options *MainOptions) {
 	// Run one-shot config migrations before loading services/resources so
 	// renamed directories (e.g. commands/ → prompts/) are visible on the
 	// current startup path. Mirrors upstream startup ordering.
-	migratedProviders, _, err := codingagent.RunMigrations(cwd, agentDir)
+	migratedProviders, deprecationWarnings, err := codingagent.RunMigrations(cwd, agentDir)
 	if err != nil {
 		printCLIError("%v", err)
 		exitProcess(1)
@@ -1294,7 +1297,11 @@ func Main(args []string, options *MainOptions) {
 	}
 	if flags.ListModels != "" || flags.ListModelsAll {
 		codingagent.ReportDiagnostics(metadataDiagnostics)
-		printModelList(build.Services.Registry().ModelRegistry, flags.ListModels)
+		// main.ts:951 leaves a rejection of listModels uncaught: Node reports the error and exits with status 1.
+		if err := listModels(ctx, build.Services.ModelRuntime(), build.Services.Registry().ModelRegistry, flags.ListModels); err != nil {
+			fmt.Fprintln(os.Stderr, uncaughtListModelsError(err))
+			exitProcess(1)
+		}
 		exitProcess(0)
 	}
 	// RPC owns stdin as JSONL. Other modes read piped input before runtime diagnostics, and metadata commands above never consume it.
@@ -1329,6 +1336,13 @@ func Main(args []string, options *MainOptions) {
 		initTheme(configuredThemeName(build.Services.SettingsManager()), false)
 	}
 	timings.Time("initTheme")
+	// main.ts:970-973 prints the deprecated-extension-directory warnings of an interactive start and waits for a key before the TUI starts.
+	if processAppMode(flags) == appModeInteractive {
+		if err := showDeprecationWarnings(os.Stdout, os.Stdin, deprecationWarnings); err != nil {
+			printCLIError("%v", err)
+			exitProcess(1)
+		}
+	}
 	// Only an error diagnostic stops startup; warnings are reported and startup goes on (main.ts:908-916).
 	hasRuntimeErrors := modelErr != nil || slices.ContainsFunc(extensionDiagnostics, func(diagnostic codingagent.AgentSessionRuntimeDiagnostic) bool { return diagnostic.Type == "error" })
 	if hasRuntimeErrors {

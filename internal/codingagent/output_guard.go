@@ -1,10 +1,13 @@
 package codingagent
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"sync"
+	"syscall"
+	"time"
 )
 
 // Output guard for non-TTY contexts.
@@ -97,24 +100,45 @@ func IsStdoutTakenOver() bool {
 	return guardState != nil
 }
 
-// WriteRawStdout writes `text` to the original (pre-takeover)
-// stdout, bypassing the redirect. Use for explicit framed output:
-// print-mode final text, RPC JSON-RPC frames. When no takeover is
-// active, this is equivalent to writing directly to `os.Stdout`.
-func WriteRawStdout(text string) (int, error) {
-	guardMu.Lock()
-	state := guardState
-	guardMu.Unlock()
-	if state != nil {
-		return state.originalStdout.WriteString(text)
-	}
-	return os.Stdout.WriteString(text)
+// RawStdoutRetryDelay is the pause between the attempts of a raw stdout write that failed with ENOBUFS, EAGAIN or
+// EWOULDBLOCK (output-guard.ts RAW_STDOUT_RETRY_DELAY_MS).
+const RawStdoutRetryDelay = 10 * time.Millisecond
+
+// retryingWriter is writeRawStdoutChunk (output-guard.ts:20-45): a write that fails with ENOBUFS, EAGAIN or
+// EWOULDBLOCK waits RawStdoutRetryDelay and tries again without limit; any other error is returned. The retry
+// continues with the bytes the failed call did not accept, so a partial write is never repeated.
+type retryingWriter struct {
+	w    io.Writer
+	wait func(time.Duration)
 }
 
-// RawStdoutWriter returns an `io.Writer` that writes to the
-// pre-takeover stdout. Convenient for passing into helpers like
-// `printToolsForMessages` that expect a Writer interface.
-func RawStdoutWriter() io.Writer {
+// NewRetryingWriter wraps w with the raw stdout retry. wait performs the pause between attempts; nil sleeps.
+func NewRetryingWriter(w io.Writer, wait func(time.Duration)) io.Writer {
+	if wait == nil {
+		wait = time.Sleep
+	}
+	return &retryingWriter{w: w, wait: wait}
+}
+
+func (r *retryingWriter) Write(p []byte) (int, error) {
+	done := 0
+	for {
+		n, err := r.w.Write(p[done:])
+		done += n
+		if err == nil {
+			if done < len(p) {
+				return done, io.ErrShortWrite
+			}
+			return done, nil
+		}
+		if !errors.Is(err, syscall.ENOBUFS) && !errors.Is(err, syscall.EAGAIN) && !errors.Is(err, syscall.EWOULDBLOCK) {
+			return done, err
+		}
+		r.wait(RawStdoutRetryDelay)
+	}
+}
+
+func rawStdoutFile() *os.File {
 	guardMu.Lock()
 	state := guardState
 	guardMu.Unlock()
@@ -122,4 +146,21 @@ func RawStdoutWriter() io.Writer {
 		return state.originalStdout
 	}
 	return os.Stdout
+}
+
+// WriteRawStdout writes `text` to the original (pre-takeover)
+// stdout, bypassing the redirect, and retries as writeRawStdoutChunk does.
+// Use for explicit framed output. When no takeover is active, this writes
+// to `os.Stdout`.
+func WriteRawStdout(text string) (int, error) {
+	return RawStdoutWriter().Write([]byte(text))
+}
+
+// RawStdoutWriter returns an `io.Writer` that writes to the
+// pre-takeover stdout with the retry of writeRawStdoutChunk. print mode, json
+// mode and rpc mode hand it to their ordered stdout queue (coding/cli
+// stdoutQueue: writeRawStdout's tail, waitForRawStdoutBackpressure and
+// flushRawStdout, a failed write exits 1).
+func RawStdoutWriter() io.Writer {
+	return NewRetryingWriter(rawStdoutFile(), nil)
 }

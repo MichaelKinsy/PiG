@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/jsjson"
+	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
@@ -299,7 +300,8 @@ func mistralToolChoice(choice any) any {
 		}
 		return name
 	}
-	object, ok := choice.(map[string]any)
+	// An extension's object arrives as the JSON text it sent.
+	object, ok := orderedjson.Map(choice)
 	if !ok {
 		return choice
 	}

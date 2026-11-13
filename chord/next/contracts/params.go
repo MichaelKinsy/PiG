@@ -54,11 +54,18 @@ func ReadParams(declared []Property, path string) (*ParamsData, error) {
 	return &ParamsData{Fields: fields, Schema: Schema{Node: schema}, Normal: normal}, nil
 }
 
+// special is what JoinKey escapes in a part: its separator and the escape itself.
+const special = `\|`
+
 // JoinKey joins key parts with `|`, each escaped (`\` and `|`), so two different part lists never join to one key.
 func JoinKey(parts []string) string {
 	escaped := make([]string, len(parts))
 	for i, part := range parts {
-		escaped[i] = strings.ReplaceAll(strings.ReplaceAll(part, `\`, `\\`), "|", `\|`)
+		// Most parts have nothing to escape: no copy for them.
+		if strings.ContainsAny(part, special) {
+			part = strings.ReplaceAll(strings.ReplaceAll(part, `\`, `\\`), "|", `\|`)
+		}
+		escaped[i] = part
 	}
 	return strings.Join(escaped, "|")
 }
