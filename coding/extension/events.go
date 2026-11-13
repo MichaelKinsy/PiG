@@ -520,17 +520,21 @@ const (
 // SessionBoundaryDraft is the wire representation of upstream's closed
 // SessionBoundaryDraft union. Fields apply according to Type.
 type SessionBoundaryDraft struct {
-	Type             SessionBoundaryDraftType `json:"type"`
-	CustomType       string                   `json:"customType,omitempty"`
-	Data             any                      `json:"data,omitempty"`
-	Content          any                      `json:"content,omitempty"`
-	Display          bool                     `json:"display,omitempty"`
-	Details          any                      `json:"details,omitempty"`
-	TargetID         string                   `json:"targetId,omitempty"`
-	Replacement      json.RawMessage          `json:"replacement,omitempty"`
-	Summary          string                   `json:"summary,omitempty"`
-	FirstKeptEntryID *string                  `json:"firstKeptEntryId,omitempty"`
-	Usage            *ai.Usage                `json:"usage,omitempty"`
+	Type        SessionBoundaryDraftType `json:"type"`
+	CustomType  string                   `json:"customType,omitempty"`
+	Data        any                      `json:"data,omitempty"`
+	Content     any                      `json:"content,omitempty"`
+	Display     bool                     `json:"display,omitempty"`
+	Details     any                      `json:"details,omitempty"`
+	TargetID    string                   `json:"targetId,omitempty"`
+	Replacement json.RawMessage          `json:"replacement,omitempty"`
+	// ReplacementUndefined marks a context_edit draft decoded from a handler's result that has no `replacement` member. Pi's appendContextEdit takes null
+	// (omit the target) and rejects undefined (session-manager.ts:1371-1379), so the decode keeps the two apart. A draft built in Go has no undefined: its
+	// nil Replacement is null.
+	ReplacementUndefined bool      `json:"-"`
+	Summary              string    `json:"summary,omitempty"`
+	FirstKeptEntryID     *string   `json:"firstKeptEntryId,omitempty"`
+	Usage                *ai.Usage `json:"usage,omitempty"`
 }
 
 // MarshalJSON preserves each upstream union member's required fields,
@@ -552,6 +556,13 @@ func (d SessionBoundaryDraft) MarshalJSON() ([]byte, error) {
 			Details    any                      `json:"details,omitempty"`
 		}{d.Type, d.CustomType, d.Content, d.Display, d.Details})
 	case SessionBoundaryDraftContextEdit:
+		if d.ReplacementUndefined {
+			// The next handler is handed the draft as the extension wrote it, without the member.
+			return json.Marshal(struct {
+				Type     SessionBoundaryDraftType `json:"type"`
+				TargetID string                   `json:"targetId"`
+			}{d.Type, d.TargetID})
+		}
 		replacement := d.Replacement
 		if len(replacement) == 0 {
 			replacement = json.RawMessage("null")
@@ -576,10 +587,26 @@ func (d SessionBoundaryDraft) MarshalJSON() ([]byte, error) {
 }
 
 // UnmarshalJSON keeps the member order of the `data` and `details` objects and of the `content` blocks the extension wrote: Pi appends the objects themselves and
-// writes their members in insertion order.
+// writes their members in insertion order. It also keeps a context_edit's absent `replacement` apart from a null one (ReplacementUndefined).
 func (d *SessionBoundaryDraft) UnmarshalJSON(data []byte) error {
 	type plain SessionBoundaryDraft
-	return orderedjson.UnmarshalFields(data, (*plain)(d), "data", "details", "content")
+	d.ReplacementUndefined = false
+	if err := orderedjson.UnmarshalFields(data, (*plain)(d), "data", "details", "content"); err != nil {
+		return err
+	}
+	if d.Type != SessionBoundaryDraftContextEdit || len(d.Replacement) > 0 {
+		return nil
+	}
+	var members map[string]json.RawMessage
+	if err := json.Unmarshal(data, &members); err != nil {
+		return err
+	}
+	if _, present := members["replacement"]; present {
+		d.Replacement = json.RawMessage("null")
+	} else {
+		d.ReplacementUndefined = true
+	}
+	return nil
 }
 
 // ProjectedSessionEntry is one boundary preview entry and its model-visible messages.
