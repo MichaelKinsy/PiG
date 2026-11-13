@@ -10,6 +10,7 @@ package perfgate
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"slices"
 	"sort"
@@ -43,11 +44,44 @@ type linkedBinary struct {
 	Forbid map[string]string `toml:"forbid"`
 }
 
+// loadLinkedPackages reads the policy file at path.
+func loadLinkedPackages(path string) (linkedPackages, error) {
+	var policy linkedPackages
+	if _, err := toml.DecodeFile(path, &policy); err != nil {
+		return linkedPackages{}, err
+	}
+	return policy, nil
+}
+
+// A policy file that does not parse is an error that names the file and the line, and one that lists no target or no binary is an error too: the gate would build nothing and pass.
+func TestLinkedPackagesPolicyMustParseAndListBinaries(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "linked-packages.toml")
+	for _, c := range []struct{ name, content, want string }{
+		{"malformed", "heavy_bytes = 1\ntargets = [\"linux_amd64\"]\"\n", "line 2"},
+		{"empty", "", "lists no"},
+		{"no binary", "heavy_bytes = 1\ntargets = [\"linux_amd64\"]\n", "lists no"},
+		{"no target", "heavy_bytes = 1\n\n[binary.pig]\nbuild = \"./cmd/pig\"\n", "lists no"},
+	} {
+		if err := os.WriteFile(path, []byte(c.content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := loadLinkedPackages(path); err == nil || !strings.Contains(err.Error(), path) || !strings.Contains(err.Error(), c.want) {
+			t.Errorf("%s: err = %v, want it to name %s and %q", c.name, err, path, c.want)
+		}
+	}
+	if err := os.WriteFile(path, []byte("heavy_bytes = 1\ntargets = [\"linux_amd64\"]\n\n[binary.pig]\nbuild = \"./cmd/pig\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if policy, err := loadLinkedPackages(path); err != nil || len(policy.Binary) != 1 || len(policy.Targets) != 1 {
+		t.Fatalf("policy = %+v, err = %v; want one binary and one target", policy, err)
+	}
+}
+
 // The stock binaries of the release, built unstripped (the code is the same as the stripped release build), may link only the heavyweight packages the policy file lists.
 func TestReleaseBinaryLinksOnlyAllowedPackages(t *testing.T) {
 	root := testenv.ModuleRoot(t)
-	var policy linkedPackages
-	if _, err := toml.DecodeFile(filepath.Join(root, linkedPackagesPath), &policy); err != nil {
+	policy, err := loadLinkedPackages(filepath.Join(root, linkedPackagesPath))
+	if err != nil {
 		t.Fatal(err)
 	}
 	for name, binary := range policy.Binary {
@@ -111,8 +145,8 @@ func whyHint(build, goos, goarch, pkg string) string {
 // The dependency gate reads its target list from the policy file, and every target must be a release target of the size gate.
 func TestLinkedPackagesTargetsAreReleaseTargets(t *testing.T) {
 	root := testenv.ModuleRoot(t)
-	var policy linkedPackages
-	if _, err := toml.DecodeFile(filepath.Join(root, linkedPackagesPath), &policy); err != nil {
+	policy, err := loadLinkedPackages(filepath.Join(root, linkedPackagesPath))
+	if err != nil {
 		t.Fatal(err)
 	}
 	for _, target := range policy.Targets {

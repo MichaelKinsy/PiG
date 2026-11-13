@@ -105,6 +105,22 @@ func loadUnitEvidence(root string) (map[string]bool, error) {
 	return keys, nil
 }
 
+// loadPiGoldenBases returns the base names of the golden files the provenance manifest declares as produced by Pi.
+func loadPiGoldenBases(root string) ([]string, error) {
+	var bases []string
+	var prov provenance
+	if _, err := toml.DecodeFile(filepath.Join(root, provenanceFile), &prov); err == nil {
+		for _, g := range prov.Golden {
+			for _, p := range g.Paths {
+				if g.Owner == "pi" {
+					bases = append(bases, filepath.Base(p))
+				}
+			}
+		}
+	}
+	return bases, nil
+}
+
 func runInventory(root string, args []string) error {
 	fs := flag.NewFlagSet("inventory", flag.ExitOnError)
 	out := fs.String("out", "tmp/test-prune", "output directory")
@@ -119,16 +135,11 @@ func runInventory(root string, args []string) error {
 	if err != nil {
 		return err
 	}
-	var prov provenance
-	if _, err := toml.DecodeFile(filepath.Join(root, provenanceFile), &prov); err == nil {
-		for _, g := range prov.Golden {
-			for _, p := range g.Paths {
-				if g.Owner == "pi" {
-					piGoldenBases = append(piGoldenBases, filepath.Base(p))
-				}
-			}
-		}
+	bases, err := loadPiGoldenBases(root)
+	if err != nil {
+		return err
 	}
+	piGoldenBases = append(piGoldenBases, bases...)
 	funcs, err := inventoryFiles(root, files, evidence)
 	if err != nil {
 		return err
