@@ -4,9 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"hash/fnv"
+	"maps"
 	"math/rand/v2"
 	"slices"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"unicode/utf8"
@@ -22,8 +24,8 @@ type frameChain struct {
 	point ResumePoint
 	// resumedAt is the byte offset the last frame resumed at.
 	resumedAt int
-	// frames counts the frames, resumed those that resumed from a point, engine the units handed to the engine and units the units of the frames' texts.
-	frames, resumed, engine, units int
+	// frames counts the frames, resumed those that resumed from a point, engine the units handed to the engine and units the units of the frames' texts; last is the units of the last frame's text.
+	frames, resumed, engine, units, last int
 }
 
 // frame highlights text, the next frame, and returns its HTML; ok is false when highlight.js throws for the text.
@@ -47,6 +49,7 @@ func (c *frameChain) frame(text string) (html string, ok bool) {
 	}
 	c.engine += len(source.units) - c.point.Unit
 	c.units += len(source.units)
+	c.last = len(source.units)
 	html = c.head + tail
 	if len(points) > 0 {
 		last := points[len(points)-1]
@@ -57,7 +60,15 @@ func (c *frameChain) frame(text string) (html string, ok bool) {
 }
 
 // frameStats sums the chains of one cut schedule.
-type frameStats struct{ inputs, bytes, frames, resumed, engine, units atomic.Int64 }
+type frameStats struct {
+	inputs, bytes, frames, resumed, engine, units atomic.Int64
+	// byLanguage, when it is made, sums the chains of each language; mu guards it.
+	mu         sync.Mutex
+	byLanguage map[string]*languageFrames
+}
+
+// languageFrames is the streams of one language: texts counts them, units the units of the whole texts, and engine the units their frames handed to the engine.
+type languageFrames struct{ texts, units, engine int }
 
 func (s *frameStats) add(c *frameChain, code string) {
 	s.inputs.Add(1)
@@ -66,6 +77,19 @@ func (s *frameStats) add(c *frameChain, code string) {
 	s.resumed.Add(int64(c.resumed))
 	s.engine.Add(int64(c.engine))
 	s.units.Add(int64(c.units))
+	if s.byLanguage == nil {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	row := s.byLanguage[c.lang]
+	if row == nil {
+		row = &languageFrames{}
+		s.byLanguage[c.lang] = row
+	}
+	row.texts++
+	row.units += c.last
+	row.engine += c.engine
 }
 
 func (s *frameStats) String() string {
@@ -140,7 +164,60 @@ func everyCut(code string) []int {
 	return cuts
 }
 
-// TestStreamedFramesEqualAWholeRun is the property the resumable path stands on: a text that arrives in frames, each frame resumed from the last point an earlier frame offered, has at every frame the HTML of one whole run over the text so far. Every distinct sample of the highlight.js oracle corpus is streamed twice: a frame at every line boundary, and a frame at each of 48 sampled characters (inside tokens, strings and comments, wherever the sample puts them). Under the race detector every fourth sample runs.
+// streamedFrameBytes is the bytes a frame of a streamed answer adds: the scoreboard's md:20000 cell draws a frame every 175 characters (tui md20000FrameChars).
+const streamedFrameBytes = 175
+
+// stepCuts is the offsets of code a stream reaches in frames of step bytes, and its end.
+func stepCuts(code string, step int) []int {
+	var cuts []int
+	for at := step; at < len(code); at += step {
+		cuts = append(cuts, at)
+	}
+	return append(cuts, len(code))
+}
+
+// chunkCuts is offsets of code that grow by 1 to most bytes at a time, chosen by seed, and its end: the frames of a stream that delivers chunks of uneven sizes, which end inside characters, tokens and modes wherever the sizes put them.
+func chunkCuts(code string, most int, seed uint64) []int {
+	random := rand.New(rand.NewPCG(seed, uint64(most)))
+	var cuts []int
+	for at := 0; at < len(code); {
+		at = min(at+1+random.IntN(most), len(code))
+		cuts = append(cuts, at)
+	}
+	return cuts
+}
+
+// logLanguageFrames logs, for each language of stats, the units its streams handed to the engine for each unit of their texts: 1 is every unit read once.
+func logLanguageFrames(t *testing.T, stats *frameStats) {
+	t.Helper()
+	for _, lang := range slices.Sorted(maps.Keys(stats.byLanguage)) {
+		row := stats.byLanguage[lang]
+		t.Logf("engine units per unit of text: %-18s %7.3f (%d texts, %d units)", lang, float64(row.engine)/float64(max(1, row.units)), row.texts, row.units)
+	}
+}
+
+// logLanguagesWithoutASample logs the registered languages the corpus has no sample of, which no frame of the corpus streams.
+func logLanguagesWithoutASample(t *testing.T, samples []corpusSample) {
+	t.Helper()
+	r := NewRegistry()
+	r.LoadAllLanguages()
+	sampled := map[*Mode]bool{}
+	for _, c := range samples {
+		if c.Code != "" && r.SupportsLanguage(c.Lang) {
+			sampled[r.getLanguage(c.Lang)] = true
+		}
+	}
+	names := r.Languages()
+	var missing []string
+	for _, name := range names {
+		if !sampled[r.getLanguage(name)] {
+			missing = append(missing, name)
+		}
+	}
+	t.Logf("%d registered languages, %d without a sample: %s", len(names), len(missing), strings.Join(missing, ", "))
+}
+
+// TestStreamedFramesEqualAWholeRun is the property the resumable path stands on: a text that arrives in frames, each frame resumed from the last point an earlier frame offered, has at every frame the HTML of one whole run over the text so far. Every distinct sample of the highlight.js oracle corpus, which has the samples of every registered language but those the test logs, is streamed five times: a frame at every line boundary, a frame at each of 48 sampled characters (inside tokens, strings and comments, wherever the sample puts them), chunks of 1 to 40 and of 1 to 400 bytes, and frames of 175 bytes, for which the test logs a row for each language. Under the race detector every fourth sample runs.
 func TestStreamedFramesEqualAWholeRun(t *testing.T) {
 	type indexed struct {
 		index  int
@@ -151,7 +228,8 @@ func TestStreamedFramesEqualAWholeRun(t *testing.T) {
 	for i, sample := range samples {
 		items[i] = indexed{i, sample}
 	}
-	var byLines, bySamples frameStats
+	var byLines, bySamples, byChunks frameStats
+	bySteps := frameStats{byLanguage: map[string]*languageFrames{}}
 	parallelEach(t, items, func() (func(indexed), func(int)) {
 		r := NewRegistry()
 		r.LoadAllLanguages()
@@ -165,11 +243,23 @@ func TestStreamedFramesEqualAWholeRun(t *testing.T) {
 			}
 			h := fnv.New64a()
 			h.Write([]byte(c.ID))
-			checkFrames(t, r, c.ID+", frames at sampled characters", c.Lang, c.Code, sampledCuts(c.Code, 48, h.Sum64()), &bySamples)
+			if !checkFrames(t, r, c.ID+", frames at sampled characters", c.Lang, c.Code, sampledCuts(c.Code, 48, h.Sum64()), &bySamples) {
+				return
+			}
+			for _, most := range []int{40, 400} {
+				if !checkFrames(t, r, fmt.Sprintf("%s, chunks of up to %d bytes", c.ID, most), c.Lang, c.Code, chunkCuts(c.Code, most, h.Sum64()), &byChunks) {
+					return
+				}
+			}
+			checkFrames(t, r, c.ID+", frames of 175 bytes", c.Lang, c.Code, stepCuts(c.Code, streamedFrameBytes), &bySteps)
 		}, nil
 	})
 	t.Logf("a frame per line: %s", &byLines)
 	t.Logf("frames at sampled characters: %s", &bySamples)
+	t.Logf("chunks of uneven sizes: %s", &byChunks)
+	t.Logf("frames of %d bytes: %s", streamedFrameBytes, &bySteps)
+	logLanguageFrames(t, &bySteps)
+	logLanguagesWithoutASample(t, samples)
 	// The floor keeps the corpus exercising resumption; the existing streamed tests hold a quarter of their steps to it.
 	if !t.Failed() && byLines.resumed.Load()*10 < byLines.frames.Load() {
 		t.Fatalf("only %d of %d line frames resumed: the corpus no longer exercises resumption", byLines.resumed.Load(), byLines.frames.Load())
@@ -181,7 +271,7 @@ type streamedSnippet struct{ name, lang, code string }
 
 func (s streamedSnippet) text() string { return strings.ReplaceAll(s.code, "§", "`") }
 
-// streamedSnippets are code blocks of the languages most often fenced, with the constructs a frame can end inside: strings, template literals and their substitutions, block and line comments, regular expressions, parameter lists over lines, tags, here documents, blank lines and trailing white space.
+// streamedSnippets are code blocks of the languages most often fenced, with the constructs a frame can end inside: strings, template literals and their substitutions, block and line comments, regular expressions, parameter lists over lines, tags, here documents, blank lines and trailing white space; and modes inside modes: strings with escapes, substitutions inside substitutions, objects inside lists, comments inside documents, here documents with substitutions, a script and a style sheet inside a page, tags inside a template and inside Markdown.
 var streamedSnippets = []streamedSnippet{
 	{"scoreboard block", "typescript", `export function parse1(input: string): Node[] {
 	const out: Node[] = [];
@@ -528,6 +618,140 @@ final class A extends B implements C {
 ?>
 <p>html</p>
 `},
+	{"documents in a list", "json", `[
+  {
+    "id": 1,
+    "name": "a \"quoted\" name \\ with \u00e9",
+    "tags": ["x", "y", ["deep", [1, 2.5e3, null]]],
+    "meta": {"ok": true, "none": null, "list": [], "obj": {}}
+  },
+  // a comment between documents
+  {
+    "id": 2,
+    "path": "C:\\dir\\file",
+    "nested": {"a": {"b": {"c": [{"d": "e"}, {"f": [false]}]}}},
+    /* a block comment
+       over lines */
+    "last": -0.5
+  }
+]
+`},
+	{"substitutions", "python", `def render(items, sep=", "):
+    """Join the items.
+
+    The second paragraph has a \"quote\" and a \\ backslash.
+    """
+    head = f"{len(items):>4} items: {sep.join(f'{i!r}' for i in items)} {{braces}}"
+    body = f'''first {items[0]}
+second {items[1] if len(items) > 1 else "none"}
+third \N{BULLET} {{literal}}'''
+    return head + "\n" + body, b"\x00\xff", r"raw \d+ {not} a field"
+`},
+	{"strings and a comment", "go", `package demo
+
+/* A block comment that the frames end inside of: you will see
+   the words it marks, and the lines it runs over. */
+var (
+	escaped = "tab\t quote\" unicode\u00e9 \\"
+	raw     = §first line
+second \n line
+§ + "tail"
+	char = '\''
+)
+`},
+	{"here documents", "bash", `cat <<EOF
+first $name line
+second $(date "+%H:%M") line
+EOF
+msg="outer $(echo "inner ${name:-"default value"}" | tr a-z A-Z) end"
+cat <<-'RAW'
+	$not expanded
+	RAW
+echo "after ${#msg} \"escaped\" $((1 + 2))"
+`},
+	{"nested rules", "css", `@media (min-width: 600px) and (max-width: 900px) {
+  .card > a[href^="http://"]:not(.x)::after {
+    content: "\201C quoted \" text";
+    background: url("img/a b.png") no-repeat, linear-gradient(to right, rgba(0, 0, 0, .5), #fff);
+    margin: 0 auto !important; /* a comment
+    over lines */
+  }
+  @supports (display: grid) {
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); }
+  }
+}
+`},
+	{"embedded script and style", "xml", `<div class="a"
+     data-x='1 > 0'
+     hidden>
+  <style media="screen">
+    .a { color: red; }
+    .b::after { content: "</p>"; }
+  </style>
+  <script type="text/javascript">
+    const s = §line ${a + §inner ${b}§} end
+    second§;
+    if (a < b && b > c) { run("</div>"); }
+  </script>
+  <p>after <b>bold</b></p>
+</div>
+`},
+	{"a tag the template continues", "erb", `<a href="<%= url %>"
+   class="x">link</a>
+<p>one</p>
+<% items.each do |item| %>
+  <li title="<%= item.name %>"><%= item %></li>
+<% end %>
+<p>two</p>
+<p>three</p>
+`},
+	{"embedded code and tags", "markdown", `Intro with <span class="x">inline *tag*</span> text.
+
+<div align="center">
+  <img src="a.png" alt="A">
+</div>
+
+§§§js
+const a = §t ${x}§;
+§§§
+
+1. item with §code§ and [a link](http://x.y "title")
+   continued line
+
+Heading
+-------
+`},
+	{"template literals", "javascript", `const page = html§
+  <ul class="${cls}">
+    ${items.map((item) => §<li>${item.name + §(${item.id})§}</li>§).join("")}
+  </ul>
+§;
+const s = 'it\'s \
+continued', t = §a ${b} c§;
+/** A comment
+ * @param {string} a the "name"
+ */
+`},
+	{"template literal types", "typescript", `type Route<T extends string> = §/${T}/${number}§;
+const text = §first ${one(§inner ${two}§)}
+second line ${three /* comment */} end§;
+function f<A, B = A[]>(a: A, ...rest: B[]): asserts a is A {
+	return;
+}
+`},
+	{"strings and comments", "sql", `SELECT 'it''s', "quoted ""name""", 'esc\'aped'
+FROM t /* a block
+comment */ WHERE a = 'two
+lines' -- trailing
+  AND b IN (1, 2.5, 'x');
+`},
+	{"interpolation", "ruby", `text = <<~EOS
+  first #{name} line
+  second line
+EOS
+s = "outer #{items.map { |i| "inner #{i}" }.join(", ")} end"
+r = %r{a/b#{c}}i
+`},
 }
 
 // snippetVariants are the texts a snippet is streamed as: as written; with carriage returns before its line feeds; with one and then two backticks on a line after it, the start of the fence that closes it; and with a line of characters outside ASCII after it (two and three byte sequences, a surrogate pair, a no-break space, which a white-space pattern matches, and U+2028, a line terminator that is not a line feed).
@@ -541,7 +765,7 @@ func snippetVariants(s streamedSnippet) []streamedSnippet {
 	}
 }
 
-// TestStreamedFramesEqualAWholeRunAtEveryPrefix streams each snippet variant one byte at a time: every prefix is a frame, so a frame ends inside every token, string, comment, substitution and UTF-8 sequence of it, and after every line. Under the race detector every fourth variant runs.
+// TestStreamedFramesEqualAWholeRunAtEveryPrefix streams each snippet variant one byte at a time: every prefix is a frame, so a frame ends inside every token, string, comment, substitution and UTF-8 sequence of it, and after every line. It then streams the variant in chunks of 1 to 3, to 17 and to 60 bytes, whose frames resume from points several frames old. Under the race detector every fourth variant runs.
 func TestStreamedFramesEqualAWholeRunAtEveryPrefix(t *testing.T) {
 	type indexed struct {
 		index   int
@@ -553,7 +777,7 @@ func TestStreamedFramesEqualAWholeRunAtEveryPrefix(t *testing.T) {
 			items = append(items, indexed{len(items), variant})
 		}
 	}
-	var stats frameStats
+	var stats, chunks frameStats
 	parallelEach(t, items, func() (func(indexed), func(int)) {
 		r := NewRegistry()
 		r.LoadAllLanguages()
@@ -566,10 +790,18 @@ func TestStreamedFramesEqualAWholeRunAtEveryPrefix(t *testing.T) {
 				t.Errorf("%s: no language %s", s.name, s.lang)
 				return
 			}
-			checkFrames(t, r, s.name+", every prefix", s.lang, s.code, everyCut(s.code), &stats)
+			if !checkFrames(t, r, s.name+", every prefix", s.lang, s.code, everyCut(s.code), &stats) {
+				return
+			}
+			for _, most := range []int{3, 17, 60} {
+				if !checkFrames(t, r, fmt.Sprintf("%s, chunks of up to %d bytes", s.name, most), s.lang, s.code, chunkCuts(s.code, most, uint64(item.index)), &chunks) {
+					return
+				}
+			}
 		}, nil
 	})
 	t.Logf("every prefix: %s", &stats)
+	t.Logf("chunks of uneven sizes: %s", &chunks)
 	if !t.Failed() && stats.resumed.Load()*10 < stats.frames.Load() {
 		t.Fatalf("only %d of %d frames resumed: the snippets no longer exercise resumption", stats.resumed.Load(), stats.frames.Load())
 	}
