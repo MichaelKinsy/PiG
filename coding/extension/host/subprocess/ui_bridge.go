@@ -208,6 +208,8 @@ type UIBridge struct {
 	views *uiview.Registry
 	// viewAnswers maps each unanswered ui.view.intent request (viewAnswer) to its intent's ticket.
 	viewAnswers sync.Map
+	// viewSuperseded holds the connections of the extension instances a reload is replacing (SupersedeViews), until each is cleared. mu guards it.
+	viewSuperseded map[*Conn]struct{}
 
 	// notifyFunc renders notifications via the TUI chat area.
 	// Set by InteractiveMode after TUI creation.
@@ -854,6 +856,7 @@ func NewUIBridge(invalidateTUI func()) *UIBridge {
 		surfaceOwners:   make(map[string]surfaceOwner),
 		customOverlays:  make(map[string]extension.RemoteOverlayHandle),
 		extConns:        make(map[string]*Conn),
+		viewSuperseded:  make(map[*Conn]struct{}),
 		editorsByConn:   make(map[string]*editorProxy),
 		modelStreams:    make(map[modelStreamKey]context.CancelFunc),
 		uiCtx:           extension.NoopUIContext,
@@ -1472,7 +1475,7 @@ func (b *UIBridge) handleCall(ctx context.Context, extName string, owner *Conn, 
 	}
 
 	if isViewCall(call.Method) {
-		return b.handleViewCall(extName, call)
+		return b.handleViewCall(extName, owner, call)
 	}
 
 	switch call.Method {
@@ -1900,6 +1903,10 @@ func (b *UIBridge) clearExtension(extName string, owner *Conn, ownerOnly bool) {
 		if origin.owner == owner || (!ownerOnly && origin.owner == b.extConns[extName]) {
 			delete(b.autocompleteOrigins, provider)
 		}
+	}
+	delete(b.viewSuperseded, owner)
+	if !ownerOnly {
+		delete(b.viewSuperseded, b.extConns[extName])
 	}
 	ownerGone := !ownerOnly || currentOwner
 	if ownerGone {

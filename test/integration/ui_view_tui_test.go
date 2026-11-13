@@ -14,8 +14,9 @@ import (
 	"time"
 )
 
-// pig additive (D614): the terminal view client in a real interactive session. A fused Go SDK fixture
-// (testdata/ui-view/fixture) mounts a panel and a widget, and the test drives them with keys through tmux.
+// pig additive (D614): the terminal view client in a real interactive session. A Go SDK fixture
+// (testdata/ui-view/fixture), which pig builds and runs as a child process, mounts a panel and a widget, and the test
+// drives them with keys through tmux.
 
 const uiViewModels = `{"providers":{"test-faux":{"baseUrl":"http://localhost:0","api":"test-faux","authHeader":false,"models":[{"id":"faux-1","name":"Test Faux","api":"test-faux","input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":128000,"maxTokens":4096}]}}}`
 
@@ -34,11 +35,34 @@ func (r *uiViewRun) clean(s string) string {
 // off.
 func startUIView(t *testing.T, piglet, mode string, mounts bool) *uiViewRun {
 	t.Helper()
+	return startUIViewAt(t, t.TempDir(), piglet, mode, mounts)
+}
+
+// startUIViewAt is startUIView with the run's home at home.
+func startUIViewAt(t *testing.T, home, piglet, mode string, mounts bool) *uiViewRun {
+	t.Helper()
 	root, err := findRepoRoot()
 	if err != nil {
 		t.Fatal(err)
 	}
-	home := t.TempDir()
+	return startUIViewPiglet(t, home, filepath.Join(root, "test", "integration", "testdata", "ui-view", piglet), mode, mounts)
+}
+
+// startUIViewPiglet is startUIViewAt with the Piglet's file named by its path.
+func startUIViewPiglet(t *testing.T, home, piglet, mode string, mounts bool) *uiViewRun {
+	t.Helper()
+	return startUIViewSession(t, home, "", []string{"--piglet", piglet}, mode, mounts)
+}
+
+// startUIViewBinary is startUIViewPiglet for a Piglet Binary, which carries its Piglet: the session runs the Binary in the pig's place.
+func startUIViewBinary(t *testing.T, home, binary, mode string) *uiViewRun {
+	t.Helper()
+	return startUIViewSession(t, home, binary, nil, mode, true)
+}
+
+// startUIViewSession starts a view test's session under tmux with its home at home: the pig the tests built with args, or the executable binary when it names one.
+func startUIViewSession(t *testing.T, home, binary string, args []string, mode string, mounts bool) *uiViewRun {
+	t.Helper()
 	agentDir := filepath.Join(home, "agent")
 	if err := os.MkdirAll(agentDir, 0o755); err != nil {
 		t.Fatal(err)
@@ -55,8 +79,13 @@ func startUIView(t *testing.T, piglet, mode string, mounts bool) *uiViewRun {
 	}
 	h := newHarness(t)
 	cwd := t.TempDir()
-	h.startArgsAt([]string{"--piglet", filepath.Join(root, "test", "integration", "testdata", "ui-view", piglet), "--model", "test-faux/faux-1"}, cwd,
-		"PIG_HOME="+home, "PIG_TEST_FAUX=1", "PIG_TEST_FAUX_SCENARIO=parity-basic", "PIG_UI_VIEW_FIXTURE_MOUNTS="+flag)
+	args = append(args, "--model", "test-faux/faux-1")
+	env := []string{"PIG_HOME=" + home, "PIG_TEST_FAUX=1", "PIG_TEST_FAUX_SCENARIO=parity-basic", "PIG_UI_VIEW_FIXTURE_MOUNTS=" + flag}
+	if binary == "" {
+		h.startArgsAt(args, cwd, env...)
+	} else {
+		h.startBinaryArgsAt(binary, args, cwd, env...)
+	}
 	// The first start builds the fixture.
 	h.expectContains(4*time.Minute, interactiveReadyMarker)
 	return &uiViewRun{harness: h, home: home, cwd: cwd}

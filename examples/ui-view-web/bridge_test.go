@@ -53,17 +53,31 @@ type bridge struct {
 // startBridge runs bridge.mjs over a pig with the demo extension and the faux model, and returns the page's address.
 func startBridge(t *testing.T) bridge {
 	t.Helper()
+	node := nodeBinary(t)
+	home := t.TempDir()
+	env := []string{"PIG_TEST_FAUX=1", "PIG_HOME=" + filepath.Join(home, "home"), "PI_HOME=" + filepath.Join(home, "pihome"),
+		"PIG_CODING_AGENT_DIR=" + filepath.Join(home, "agent"), "PI_CODING_AGENT_DIR=" + filepath.Join(home, "piagent")}
+	return runBridge(t, node, env, "--pig", buildPig(t), "--", "--model", "test-faux/echo", "--no-session", "-e", "demo-extension.mjs")
+}
+
+// nodeBinary returns the Node that runs the bridge. The test is skipped in short mode and where there is none.
+func nodeBinary(t *testing.T) string {
+	t.Helper()
 	if testing.Short() {
-		t.Skip("starts Node and pig")
+		t.Skip("starts Node")
 	}
 	node, err := exec.LookPath("node")
 	if err != nil {
 		t.Skip("node is not installed")
 	}
-	home := t.TempDir()
-	cmd := exec.Command(node, "bridge.mjs", "--port", "0", "--pig", buildPig(t), "--", "--model", "test-faux/echo", "--no-session", "-e", "demo-extension.mjs")
-	cmd.Env = append(os.Environ(), "PIG_TEST_FAUX=1", "PIG_HOME="+filepath.Join(home, "home"), "PI_HOME="+filepath.Join(home, "pihome"),
-		"PIG_CODING_AGENT_DIR="+filepath.Join(home, "agent"), "PI_CODING_AGENT_DIR="+filepath.Join(home, "piagent"))
+	return node
+}
+
+// runBridge runs bridge.mjs with args on any free port and returns the page's address.
+func runBridge(t *testing.T, node string, env []string, args ...string) bridge {
+	t.Helper()
+	cmd := exec.Command(node, append([]string{"bridge.mjs", "--port", "0"}, args...)...)
+	cmd.Env = append(os.Environ(), env...)
 	cmd.Stderr = os.Stderr
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {

@@ -103,6 +103,7 @@ type Piglet struct {
 	Discovery        *Discovery          `yaml:"discovery,omitempty"`
 	ContextFiles     string              `yaml:"contextFiles,omitempty"` // pig additive (D211): trusted-only withholds an untrusted project's context files.
 	ViewClient       string              `yaml:"viewClient,omitempty"`   // pig additive (D614): terminal attaches the TUI as a view client of an interactive session.
+	ViewEndpoint     string              `yaml:"viewEndpoint,omitempty"` // pig additive (D614): socket serves the view carrier of an interactive session on a Unix socket.
 	SystemPrompt     *PromptRef          `yaml:"systemPrompt,omitempty"`
 	AgentEnv         *AgentEnvironment   `yaml:"agentEnv,omitempty"`
 	Model            *ModelConfig        `yaml:"model,omitempty"`
@@ -494,6 +495,9 @@ func (p *Piglet) Validate() error {
 	if err := validateViewClient(p.ViewClient); err != nil {
 		return err
 	}
+	if err := validateViewEndpoint(p.ViewEndpoint); err != nil {
+		return err
+	}
 	if err := validateStrip("strip", p.Strip); err != nil {
 		return err
 	}
@@ -634,6 +638,8 @@ var (
 	agentPolicyPresets = []string{"minimal", "standard", "elevated"}
 	// viewClients are the viewClient values.
 	viewClients = []string{ViewClientNone, ViewClientTerminal}
+	// viewEndpoints are the viewEndpoint values.
+	viewEndpoints = []string{ViewEndpointNone, ViewEndpointSocket}
 	// extensionRealizations are the build.extensionRealization values.
 	extensionRealizations = []string{"fused"}
 )
@@ -718,6 +724,26 @@ func validateViewClient(client string) error {
 // TerminalViewClient reports whether the Piglet attaches the TUI as a view client. A nil Piglet does not.
 func (p *Piglet) TerminalViewClient() bool {
 	return p != nil && p.ViewClient == ViewClientTerminal
+}
+
+// View endpoints a Piglet may select. ViewEndpointNone is Stock PiG: an interactive session serves its view registry to
+// no other process. ViewEndpointSocket serves the view carrier on a Unix socket only this user can connect to.
+const (
+	ViewEndpointNone   = "none"
+	ViewEndpointSocket = "socket"
+)
+
+func validateViewEndpoint(endpoint string) error {
+	if endpoint == "" || slices.Contains(viewEndpoints, endpoint) {
+		return nil
+	}
+	return fmt.Errorf("viewEndpoint must be %q or %q, got %q", ViewEndpointNone, ViewEndpointSocket, endpoint)
+}
+
+// ViewEndpointSocket reports whether an interactive session of the Piglet serves its view carrier on a Unix socket. A
+// nil Piglet's does not.
+func (p *Piglet) ViewEndpointSocket() bool {
+	return p != nil && p.ViewEndpoint == ViewEndpointSocket
 }
 
 // WithholdsUntrustedContextFiles reports whether the Piglet withholds an untrusted project's context files. A nil Piglet does not.

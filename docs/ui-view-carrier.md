@@ -10,6 +10,8 @@ Nothing here has a version member and nothing is negotiated by version. A client
 
 One connection holds one attachment at a time. Several clients use several connections. With `--listen` every connection has its own session, so its own registry.
 
+An interactive session serves the carrier too when its Piglet sets `viewEndpoint: socket`: on the Unix socket `<agent directory>/view-endpoint/<pid>.sock`, where every connection reaches that one session. Its clients and the terminal then share one registry. See [The socket of an interactive session](#the-socket-of-an-interactive-session).
+
 ## Messages
 
 | Direction | `type` | Members | Reply `data`, or meaning | Go API |
@@ -100,6 +102,30 @@ The seven command names above are commands for every client. Any other `type`, i
 
 An attachment belongs to one session's registry. When the session is replaced (`new_session`, a switch, a fork), the attachment ends: the next command under its number is `stale`, and the same connection may send `ui_view_attach` again, which attaches to the new session. Closing the connection is a detach. Either way intents in flight settle `stale`.
 
+## The socket of an interactive session
+
+Stock PiG serves no socket. A Piglet selects it:
+
+```yaml
+viewClient: terminal    # the TUI draws the mounts
+viewEndpoint: socket    # other programs of this user may attach to the same session
+```
+
+- Path: `<agent directory>/view-endpoint/<pid>.sock`, in a directory of mode 0700, the socket 0600. Only this user can connect: pig also reads each peer's user from the kernel and closes a peer of another user before reading a byte. The path must fit a socket address: at most 103 bytes on macOS and 107 on Linux. With a longer agent directory nothing is bound, no socket is served, and one warning names the path, its length and the limit.
+- Lines: the seven commands and two events of this page, with the same replies, errors and bounds. Nothing else of RPC mode is served: any other `type` gets `{"type":"response","command":"<type>","success":false,"error":"Unknown command: <type>"}`. A client of the socket draws mounts and raises their intents; it cannot prompt or read the session.
+- One registry: the terminal and every connection attach to the same registry, so the bound of 8 attachments counts them together, each client is sent every mount resolved for its own abilities, and the redraw a handler makes for one client's intent is delivered to all of them.
+- What a client sees when the session changes or ends:
+
+  | What happens | What the client sees | What the client does |
+  |---|---|---|
+  | `/reload` | The connection and the attachment stay: the registry is the same one. A reload replaces the instance of every extension it loads again (a fused Go member, a Go, Rust, Python or Lisp extension in a process, a Node extension in its runtime's process, whether or not that process is kept), and a mount belongs to the instance that made it. Before the extensions load again the client is sent each of their mounts once more, in state `broken` with reason `owner_gone`, as the terminal is, and nothing else. A mount the new instance makes follows as a new mount: the same key under a higher epoch. An intent raised on the mount of the instance before is refused (`mount is broken`) and reaches no handler. | Draws what it is sent: the broken mount goes, the new one is drawn. |
+  | An extension's process ends (it crashes or is killed) | The connection and the attachment stay. Each mount of that extension arrives in state `broken` with reason `owner_gone`. An intent raised on it is refused. The extension mounts again when a reload has started it again. | Draws what it is sent. |
+  | The session is replaced (new, resume, fork, switch) | The connection ends. The socket is removed and appears again under the same path when the next extension host is bound. An intent that was in flight has no reply. | Connects again, retrying while the path is absent, and sends `ui_view_attach`: the reply carries what the new registry holds. |
+  | pig exits (`/quit`, a signal that ends it, the terminal is lost) | The connection ends and the socket is removed. | Stops, or waits for another session: its socket has another name, because the name is the pid. |
+  | pig is killed or the machine stops | The connection ends when the kernel closes it. The socket file stays and refuses every connect. The next pig that starts in that agent directory removes it, after checking that it is this user's own socket and that a connect is refused. | Treats a socket that refuses the connect as absent. It never deletes the file. |
+- Bounds beside the carrier's: 16 connections at once; a line longer than 4194304 bytes closes the connection; a connection that is owed 512 lines or 8388608 bytes it has not read is closed. A client that only stops reading is owed the carrier's queue and then `ui_view_gap`, as on any transport.
+- Print, JSON and RPC mode ignore the key. On Windows the session starts, no socket is served and one warning says so.
+
 ## Relaying the carrier over another protocol
 
 A program that speaks another protocol to its client and these lines to pig is a relay. Every message is self-contained and names its attachment (except `ui_view_attach`, which has none yet, and `ui_view_intent_cancel`, which names a request), so a relay keeps no state beyond the map of its own request ids. It must preserve three things:
@@ -112,6 +138,6 @@ Carry `code` wherever the other protocol puts an error's data, and members as th
 
 ## Reference client
 
-[`examples/ui-view-web`](../examples/ui-view-web) is a static page and a bridge program (Node, standard library only) that starts `pig --mode rpc` for each page, relays its lines as Server-Sent Events and the page's lines by POST on 127.0.0.1. The page keeps the client's rule above, draws the view nodes that carry an id as focusable elements, applies `a11y` and `focus`, and raises intents. Pig itself has no web server.
+[`examples/ui-view-web`](../examples/ui-view-web) is a static page and a bridge program (Node, standard library only) that relays pig's lines as Server-Sent Events and the page's lines by POST on 127.0.0.1. The bridge starts `pig --mode rpc` for each page or, with `--connect`, makes every page a client of the socket of a running interactive session, beside its terminal. The page keeps the client's rule above, draws the view nodes that carry an id as focusable elements, applies `a11y` and `focus`, and raises intents. Pig itself has no web server.
 
-Its tests are in `examples/ui-view-web/bridge_test.go`. `TestBridgeRelaysTheCarrier` drives the bridge with an HTTP client and always runs (it needs Node). `TestPageDrawsFocusesAndRaisesIntents` opens the page in headless Chromium: it needs `CHROMIUM_BIN` to name a Chromium binary and is skipped without it.
+Its tests are in `examples/ui-view-web`: `bridge_test.go` for the bridge that starts pig and `connect_test.go` for `--connect`, against a view endpoint the test serves. The tests that drive the bridge with an HTTP client always run (they need Node). `TestPageDrawsFocusesAndRaisesIntents` and `TestPageFollowsARunningSession` open the page in headless Chromium: they need `CHROMIUM_BIN` to name a Chromium binary and are skipped without it. `TestUIViewWebPageAndTerminalShareOneSession` in `test/integration` opens the page on a real interactive session.
